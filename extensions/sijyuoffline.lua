@@ -30743,7 +30743,53 @@ sfofl_indulgencechan:addSkill(sfofl_leyu)
 sfofl_indulgencechan:addSkill(sfofl_yuanli)
 
 
+--[[
+	技能名：魔力
+	相关武将：甄姬[官盗]
+	技能描述：魔力：变身技（0/5），当你于摸牌阶段外获得牌时，你可以展示之，若为黑色，你获得1点魔力，结束阶段，你进行吟唱并变身。
+	引用：sfofl_moli_zhenji
+]] --
 
+sfofl_moli_zhenji = sgs.CreateTriggerSkill{
+    name = "sfofl_moli_zhenji",
+    events = {sgs.CardsMoveOneTime, sgs.EventPhaseEnd},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.CardsMoveOneTime then
+            local move = data:toMoveOneTime()
+            if move.to and move.to:objectName() == player:objectName()
+                and move.to_place == sgs.Player_PlaceHand and move.from_places:contains(sgs.Player_PlaceDraw) and player:getPhase() ~= sgs.Player_Draw then
+                for i, id in sgs.qlist(move.card_ids) do
+                    if room:askForSkillInvoke(player, self:objectName(), ToData(id)) then
+                        room:showCard(player, id)
+                        local card = sgs.Sanguosha:getCard(id)
+                        if card:isBlack() then
+                            room:broadcastSkillInvoke(self:objectName(),1)
+                            if player:getMark("&sfofl_moli") < 5 then
+                                room:addPlayerMark(player, "&sfofl_moli")
+                            end
+                        end
+                    end
+                end
+            end
+        elseif event == sgs.EventPhaseEnd then
+            if player:getPhase() == sgs.Player_Finish and player:getMark("&sfofl_moli") >= 5 then
+                room:broadcastSkillInvoke(self:objectName(),2)
+                room:setPlayerMark(player, "&sfofl_moli", 0)
+                room:doLightbox("&sfofl_moli_zhenji_magic", 3000)
+                player:setTag("sfofl_magic_zhenji", ToData(player:getHp()))
+                if player:getGeneralName() == "sfofl_magic_zhenji" then
+                    room:changeHero(player, "sfofl_magic_zhenji_change", false, false, false, true, player:getTag("sfofl_magic_zhenji_change"):toInt() or 0)
+                else
+                    room:changeHero(player, "sfofl_magic_zhenji_change", false, false, true, true, player:getTag("sfofl_magic_zhenji_change"):toInt() or 0)
+                end
+            end
+        end
+    end,
+    can_trigger = function(self, target)
+        return target and target:isAlive()
+    end,
+}
 
 
 

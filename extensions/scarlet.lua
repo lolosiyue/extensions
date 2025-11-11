@@ -7996,6 +7996,11 @@ s4_yanshi = sgs.CreateTriggerSkill {
                 room:addPlayerMark(player,"s4_yanshi")
                 room:changeTranslation(player,"s4_xingyi",player:getMark("s4_yanshi"))
                 room:loseMaxHp(player, 2, self:objectName())
+                local log = sgs.LogMessage()
+                log.type = "#JiexunChange"
+                log.from = player
+                log.arg = "s4_xingyi"
+                room:sendLog(log)
             end
         end 
 	end,
@@ -8101,6 +8106,7 @@ s4_s_yuanshe = sgs.CreateTriggerSkill{
                     player:skip(sgs.Player_Draw)
                     local card = sgs.Sanguosha:cloneCard("archery_attack", sgs.Card_NoSuit, 0)
                     card:setSkillName(self:objectName())
+                    card:deleteLater()
                     local use = sgs.CardUseStruct()
                     use.card = card
                     use.from = player
@@ -8321,7 +8327,9 @@ s4_s_ruqin = sgs.CreateTriggerSkill{
         elseif event == sgs.CardUsed then
             local use = data:toCardUse()
             if use.card and use.card:isKindOf("SavageAssault") then
+                room:setTag("s4_s_ruqin", data)
                 local target = room:askForPlayerChosen(player, use.to, self:objectName(), "s4_s_ruqin-invoke", true, true)
+                room:removeTag("s4_s_ruqin")
                 if target then
                     local log = sgs.LogMessage()
                     log.type = "#SkillAvoidFrom"
@@ -8782,15 +8790,20 @@ s4_s_zhanchuanVS = sgs.CreateOneCardViewAsSkill{
 
 s4_s_zhanchuan = sgs.CreateTriggerSkill{
     name = "s4_s_zhanchuan",
-    events = {sgs.Damaged},
+    events = {sgs.Damaged, sgs.PreCardUsed},
     view_as_skill = s4_s_zhanchuanVS,
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
-       if event == sgs.Damaged then
+        if event == sgs.Damaged then
             if player:getPile("s4_s_zhanchuan"):length() > 0 then
                 room:broadcastSkillInvoke(self:objectName())
                 room:sendCompulsoryTriggerLog(player, self:objectName(), true)
                 player:clearOnePrivatePile("s4_s_zhanchuan")
+            end
+        elseif event == sgs.PreCardUsed then
+            local use = data:toCardUse()
+            if use.card and not use.card:isKindOf("SkillCard") and player:getPile("s4_s_zhanchuan"):length() > 0 then
+                player:addQinggangTag(use.card)
             end
         end
         return false
@@ -9536,7 +9549,7 @@ s4_s_jingjia = sgs.CreateViewAsSkill{
     name = "s4_s_jingjia",
     n = 999,
     view_filter = function(self, selected, to_select)
-        return to_select:isKindOf("EquipCard")
+        return to_select:isKindOf("EquipCard") and sgs.Self:getHandcards():contains(to_select)
     end,
     view_as = function(self, cards)
         if #cards == 0 then

@@ -6541,6 +6541,7 @@ function SmartAI:cantDamageMore(from,to)
 		if to:hasSkill("kejieyaoliandu") then return true end
 		if to:getMark("@silver_lion") > 0 and not IgnoreArmor(from,to) then return true end
 		if to:hasSkill("s2_gangzhi") then return true end
+		if to:hasSkill("s4_s_gedang") then return true end
 	end
 	return false
 end
@@ -6633,6 +6634,9 @@ function SmartAI:ajustDamage(from,to,dmg,card,nature)
 	end
 	if to:getMark("&f_jishen+jsweapon-SelfClear")>0 and card and not card:isVirtualCard() then
 		dmg = dmg * 2
+	end
+	if card and card:getSkillName() == "s4_s_yuanshe" then
+		nature = "T"
 	end
 	local sj = self.room:getTag("guandu_sj"):toString()
 	if sj == "gd_huoshaowuchao" and nature == "N" then
@@ -7030,6 +7034,9 @@ function SmartAI:dontHurt(to,from)	--针对队友
 		return true
 	end
 	if to:hasSkill("yuri_sizhan") then
+		return true
+	end
+	if to:hasSkill("s4_s_zhanchuan") and not to:getPile("s4_s_zhanchuan"):isEmpty() then
 		return true
 	end
 	for _, mark in sgs.list(to:getMarkNames()) do
@@ -7624,6 +7631,7 @@ function SmartAI:canLiegong(to, from)
 			return true 
 		end
 	end
+	if from:hasSkill("s4_s_jinggong") and to and (to:getArmor() or to:getDefensiveHorse() or to:getOffensiveHorse()) then return true end
 	return false
 end
 
