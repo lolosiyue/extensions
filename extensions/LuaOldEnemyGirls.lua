@@ -162,11 +162,10 @@ LuaLinluVS = sgs.CreateViewAsSkill {
 LuaLinlu = sgs.CreateTriggerSkill {
 	name = "LuaLinlu",
 	frequency = sgs.Skill_Limited,
-	events = { sgs.GameStart },
+	events = { },
 	view_as_skill = LuaLinluVS,
-
+	limit_mark = "@LuaLinlu",
 	on_trigger = function(self, event, player, data)
-		player:gainMark("@LuaLinlu")
 	end
 }
 

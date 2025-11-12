@@ -2697,15 +2697,11 @@ LuaPositionMove = sgs.CreateTriggerSkill {
 LuaSpkprison = sgs.CreateTriggerSkill {
 	name = "LuaSpkprison",
 	frequency = sgs.Skill_Limited,
-	events = { sgs.GameStart, sgs.EventPhaseStart },
+	limit_mark = "@Spkprison",
+	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if event == sgs.GameStart then
-			local selfplayer = room:findPlayerBySkillName(self:objectName())
-			if selfplayer:getMark("@Spkprison") == 0 then
-				selfplayer:gainMark("@Spkprison")
-			end
-		elseif event == sgs.EventPhaseStart then
+		if event == sgs.EventPhaseStart then
 			if player:getPhase() ~= sgs.Player_Start then return end
 			local selfplayer = room:findPlayerBySkillName(self:objectName())
 			if selfplayer:getMark("@Spkprison") == 0 then return end

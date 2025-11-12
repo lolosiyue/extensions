@@ -13634,7 +13634,6 @@ LuaLeishi = sgs.CreateTriggerSkill {
 Luayuanxing = sgs.CreateTriggerSkill {
 	name = "Luayuanxing",
 	events = sgs.DamageCaused,
-	global = true,
 	limit_mark = "&Luayuanxing",
 	frequency = sgs.Skill_Limited,
 	on_trigger = function(self, event, player, data)
@@ -15458,9 +15457,15 @@ huidang = sgs.CreateTriggerSkill {
 						room:setPlayerProperty(p, "hp", sgs.QVariant(p:getGeneral():getMaxHp()))
 					end
 					for _, skill in sgs.qlist(p:getGeneral():getVisibleSkillList()) do
+						room:setPlayerMark(p, skill, 0)
 						if skill:getFrequency() == sgs.Skill_Wake then
 							room:setPlayerMark(p, skill, 0)
 							room:setPlayerMark(p, "@waked", 0)
+						end
+					end
+					for _, mark in sgs.qlist(p:getMarkNames()) do
+						if string.find(mark, "used") then
+							room:setPlayerMark(p, mark, 0)
 						end
 					end
 					for _, skill in sgs.qlist(p:getGeneral():getVisibleSkillList()) do

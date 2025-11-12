@@ -9665,11 +9665,9 @@ meizlzshtuogu = sgs.CreateTriggerSkill {
 	name = "meizlzshtuogu",
 	frequency = sgs.Skill_Limited,
 	view_as_skill = meizlzshtuoguskill,
-	events = { sgs.GameStart },
+	events = { },
+	limit_mark = "@meizlzshtuogu",
 	on_trigger = function(self, event, player, data)
-		if event == sgs.GameStart then
-			player:gainMark("@meizlzshtuogu", 1)
-		end
 	end
 }
 

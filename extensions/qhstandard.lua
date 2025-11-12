@@ -3020,7 +3020,8 @@ qhwindwushenFilter = sgs.CreateFilterSkill {
 qhwindwuhun = sgs.CreateTriggerSkill {
     name = "qhwindwuhun",
     frequency = sgs.Skill_Compulsory,
-    events = { sgs.Damage, sgs.Damaged, sgs.GameStart, sgs.AskForPeaches, sgs.Death },
+    limit_mark = "&qhwindwuhun_limit",
+    events = { sgs.Damage, sgs.Damaged, sgs.AskForPeaches, sgs.Death },
     on_trigger = function(self, event, player, data, room)
         if event == sgs.Damage or event == sgs.Damaged then
             if player:getMark("qhwindwuhun-Clear") < 2 then
@@ -3030,9 +3031,6 @@ qhwindwuhun = sgs.CreateTriggerSkill {
                 player:addMark("qhwindwuhun-Clear", 1)
                 player:addMark("&qhwindwuhun-Clear", 1)
             end
-        elseif event == sgs.GameStart then
-            room:sendCompulsoryTriggerLog(player, self:objectName())
-            player:gainMark("&qhwindwuhun_limit", 1)
         elseif event == sgs.AskForPeaches then
             local dying = data:toDying()
             if dying.who:objectName() ~= player:objectName() then
@@ -3191,11 +3189,10 @@ qhfiremanjuann = sgs.CreateTriggerSkill {
 qhfireniepan = sgs.CreateTriggerSkill {
     name = "qhfireniepan",
     frequency = sgs.Skill_Limited,
-    events = { sgs.GameStart, sgs.AskForPeaches },
+    events = { sgs.AskForPeaches },
+    limit_mark = "&qhfireniepan_limit",
     on_trigger = function(self, event, player, data, room)
-        if event == sgs.GameStart then
-            room:addPlayerMark(player, "&qhfireniepan_limit", 1)
-        elseif event == sgs.AskForPeaches then
+        if event == sgs.AskForPeaches then
             local dying = data:toDying()
             if dying.who:objectName() ~= player:objectName() then
                 return false

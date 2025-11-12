@@ -1676,13 +1676,12 @@ TH_fanhundieCARD = sgs.CreateSkillCard{--反魂蝶
 TH_fanhundie=sgs.CreateTriggerSkill{--反魂蝶
 	name = "TH_fanhundie",
 	frequency = sgs.Skill_Limited,
-	events = {sgs.EventPhaseEnd, sgs.GameStart, sgs.EventPhaseStart, sgs.Death},
+	events = {sgs.EventPhaseEnd, sgs.EventPhaseStart, sgs.Death},
 	view_as_skill = TH_fanhundieVS,
+	limit_mark = "@TH_fhdonce",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if event == sgs.GameStart then
-			room:setPlayerMark(player, "@TH_fhdonce", 1)
-		elseif event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Play then
+		if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Play then
 			if player:getMark("@TH_fhdonce") == 1 then return false end
 			local sb
 			for _,p in sgs.qlist(room:getAlivePlayers()) do

@@ -7836,7 +7836,7 @@ se_chenglingcard = sgs.CreateSkillCard {
 			targets[1]:loseAllMarks("@waked")
 		end
 		for _, skill in sgs.qlist(targets[1]:getVisibleSkillList()) do
-			if skill:getFrequency(targets[1]) == sgs.Skill_Wake then
+			if skill:getFrequency() == sgs.Skill_Wake then
 				room:setPlayerMark(targets[1], skill:objectName(), 0)
 			end
 		end
@@ -7857,7 +7857,7 @@ se_chenglingcard = sgs.CreateSkillCard {
 				targets[2]:loseAllMarks("@waked")
 			end
 			for _, skill in sgs.qlist(targets[2]:getVisibleSkillList()) do
-				if skill:getFrequency(targets[2]) == sgs.Skill_Wake then
+				if skill:getFrequency() == sgs.Skill_Wake then
 					room:setPlayerMark(targets[2], skill:objectName(), 0)
 				end
 			end
@@ -8554,11 +8554,9 @@ end
 SE_Baskervilles_make = sgs.CreateTriggerSkill {
 	name = "#SE_Baskervilles_make",
 	frequency = sgs.Skill_Limited,
-	events = { sgs.GameStart },
+	events = {},
 	limit_mark = "@Baskervilles",
 	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		player:gainMark("@Baskervilles", 1)
 	end
 }
 
@@ -13146,7 +13144,7 @@ se_bilingvscard = sgs.CreateSkillCard {
 }
 
 
-se_biling = sgs.CreateViewAsSkill {
+se_bilingVS = sgs.CreateViewAsSkill {
 	name = "se_biling",
 	n = 0,
 	view_as = function(self, cards)
@@ -13158,9 +13156,11 @@ se_biling = sgs.CreateViewAsSkill {
 	end,
 }
 
-se_biling_tg = sgs.CreateTriggerSkill {
-	name = "#se_biling_tg",
+se_biling = sgs.CreateTriggerSkill {
+	name = "se_biling",
 	frequency = sgs.Skill_Limited,
+	view_as_skill = se_bilingVS,
+	limit_mark = "@Biling_kiri",
 	events = { sgs.DamageCaused, sgs.GameStart, sgs.EventAcquireSkill },
 	on_trigger = function(self, event, player, data)
 		if event == sgs.DamageCaused then
@@ -13172,8 +13172,6 @@ se_biling_tg = sgs.CreateTriggerSkill {
 				data:setValue(damage)
 				return true
 			end
-		elseif event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == "se_biling") then
-			player:gainMark("@Biling_kiri")
 		end
 	end
 }
@@ -13219,7 +13217,6 @@ Kiritsugu:addSkill(se_origin_tmod)
 extension:insertRelatedSkills("se_origin", "#se_origin_tmod")
 extension:insertRelatedSkills("se_origin", "#se_origin")
 Kiritsugu:addSkill(se_biling)
-Kiritsugu:addSkill(se_biling_tg)
 extension:insertRelatedSkills("se_biling", "#se_biling_tg")
 Kiritsugu:addSkill(se_jianqiao)
 

@@ -3118,7 +3118,7 @@ luayijue = sgs.CreateTriggerSkill
 		frequency = sgs.Skill_Limited,
 		on_trigger = function(self, event, player, data)
 			local room = player:getRoom()
-			if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Start and player:hasSkill(self:objectName()) and not (player:getMark("luayijue_use") > 0) then
+			if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Start and player:hasSkill(self:objectName()) and not (player:getMark("luayijue_used") > 0) then
 				local yijueed = false
 				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 					if (p:getMark("@luayijue") > 0) then
@@ -3130,7 +3130,7 @@ luayijue = sgs.CreateTriggerSkill
 					local yijuetarget = room:askForPlayerChosen(player, room:getOtherPlayers(player), "luayijue")
 					room:addPlayerMark(yijuetarget, "&luayijue+to+#" .. player:objectName())
 					yijuetarget:gainMark("@luayijue")
-					room:setPlayerMark(player, "luayijue_use", 1)
+					room:setPlayerMark(player, "luayijue_used", 1)
 					room:broadcastSkillInvoke("danji", 1)
 					room:attachSkillToPlayer(yijuetarget, "luayijuedest")
 				end

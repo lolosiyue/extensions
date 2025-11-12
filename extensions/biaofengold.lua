@@ -1207,11 +1207,10 @@ FourJiaozhao_VS = sgs.CreateViewAsSkill {
 FourJiaozhao = sgs.CreateTriggerSkill {
 	name = "FourJiaozhao",
 	frequency = sgs.Skill_Limited,
-	events = { sgs.GameStart },
+	events = { },
+	limit_mark = "@jiaozhao",
 	view_as_skill = FourJiaozhao_VS,
 	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		player:gainMark("@jiaozhao", 1)
 	end,
 }
 
