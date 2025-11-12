@@ -490,7 +490,7 @@ sgs.LoadTranslationTable {
 	["#PlusKeji_Jink"] = "克己",
 
 	["PlusDujiang"] = "渡江",
-	[":PlusDujiang"] = "<font color=\"purple\"><b>觉醒技，</b></font>回合开始阶段开始时，若“懈”的数量达到4或更多，你须减1点体力上限，摸两张牌，并获得技能“夺城”（出牌阶段，你可以将一张“懈”置入弃牌堆并指定一名其他角色，然后弃置X张手牌并指定该角色装备区里的X张牌，你获得其中一张牌，再将其余的牌依次弃置。每阶段限一次）。",
+	[":PlusDujiang"] = "<font color=\"purple\"><b>觉醒技，</b></font>回合开始阶段开始时，若“懈”的数量达到4或更多，你须减1点体力上限，摸两张牌，并获得技能“夺城”。",
 	["#PlusDujiang"] = "%from 的懈的数量达到 %arg 个，触发“%arg2”",
 	["$PlusDujiang_Animation"] = "技能 渡江 的觉醒台词（求建议）",
 
@@ -6365,6 +6365,7 @@ extension:insertRelatedSkills("PlusKeji", "#PlusKeji_Jink")
 PlusDujiang = sgs.CreateTriggerSkill {
 	name = "PlusDujiang",
 	frequency = sgs.Skill_Wake,
+	waked_skills = "PlusDuocheng",
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
@@ -6488,7 +6489,7 @@ if not skill then
 	skillList:append(PlusDuocheng)
 	sgs.Sanguosha:addSkills(skillList)
 end
-LvMeng_Plus:addRelateSkill("PlusDuocheng")
+
 
 ----------------------------------------------------------------------------------------------------
 

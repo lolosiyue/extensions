@@ -1521,7 +1521,7 @@ sgs.LoadTranslationTable {
 	[":bings"]                          = "当你受到伤害时，你可以弃置一张手牌里的装备牌令此伤害-1；当你于出牌阶段造成伤害时，你可以弃置一张装备牌令此伤害+1。",
 	[":guailj"]                         = "<font color=\"red\"><b>限定技，</b></font>出牌阶段，你可以令所有其他角色依次选择一项：1.弃置装备区中的防具牌；2.受到你造成的1点伤害。",
 	[":zhou"]                           = "<font color=\"blue\"><b>锁定技，</b></font>其他角色与你距离+X（奇数轮时，X为你的体力值；偶数轮时，X为你已损失的体力值）。",
-	[":ye"]                             = "觉醒技，准备阶段，若你的体力值为全场最低（或之一），你减少一点体力上限并回复一点体力并获得技能“鬼缠”（其他角色进入濒死状态时，你获得其一张牌，其他角色死亡时，你摸一张牌）。",
+	[":ye"]                             = "觉醒技，准备阶段，若你的体力值为全场最低（或之一），你减少一点体力上限并回复一点体力并获得技能“鬼缠”。",
 	[":guichan"]                        = "当其他角色进入濒死状态时，你可获得其一张牌；其他角色死亡时，你摸一张牌。",
 	[":dafan"]                          = "当你受到【杀】伤害时，你可以令伤害来源与你同时交给对方一张手牌，若双方因此获得【基本牌】则双方各失去一点体力；若一方因此获得【锦囊牌】双方将手牌弃置至一张；若一方因此获得【杀】则此伤害无效；",
 	[":juej"]                           = "准备阶段开始，当你体力值或手牌数为1时，减少一点体力上限并回复一点体力，选择：1，所有其他角色失去一点体力；2所有其他角色将手牌弃置至1；然后获得技能“圣母圣咏”。（当你使用【杀】或【决斗】对其他角色造成伤害时，你可以弃置一张牌，然后若你：1.有手牌，此伤害+1；2.没有手牌，此伤害+2。）",
@@ -1569,7 +1569,7 @@ sgs.LoadTranslationTable {
 	--	[":jinhua"] = "锁定技。摸牌阶段，你固定摸x张牌（x为你的当前回合数，且至多为体力上限。）。",
 	[":Luayumian"]                      = "<font color=\"blue\"><b>锁定技，</b></font>当你进入濒死状态时，你须展示牌堆顶的一张牌，若为锦囊牌，则你弃置这张牌，回复至1点体力，否则你获得之。",
 	[":jinhua"]                         = "当一名其他角色死亡时，若你的“进化”标记小于你的体力上限，你摸两张牌，回复一点体力并获得一枚“进化”标记",
-	[":wuduan"]                         = "<font color=\"purple\"><b>觉醒技，</b></font>准备阶段，若你“进化”标记不小于你的当前体力，你须失去一点体力并获得技能“提升”（<font color=\"blue\"><b>锁定技，</b></font>摸牌阶段，你失去一点体力并多摸X张牌（X为“进化”数量且至多为你的体力上限）。",
+	[":wuduan"]                         = "<font color=\"purple\"><b>觉醒技，</b></font>准备阶段，若你“进化”标记不小于你的当前体力，你须失去一点体力并获得技能“提升”。",
 	[":tisheng"]                        = "<font color=\"blue\"><b>锁定技，</b></font>摸牌阶段，你失去一点体力并多摸X张牌（X为进化数量且不大于你的体力上限）",
 	[":Luayanhu"]                       = "当一名距离1以内的其他角色受到伤害时，你可以将此伤害转移给你。",
 	[":xinsuo"]                         = "一名角色的结束阶段，你可标记其身份或更改其身份标记。当其死亡时，若其身份与此标记相同，你摸两张牌。",
@@ -1594,7 +1594,7 @@ sgs.LoadTranslationTable {
 	[":fuzou"]                          = "当一名角色成为锦囊牌的目标时，你可弃置“韵”，令其所有非红桃手牌均视为【无懈可击】直到回合结束。",
 	[":zangsong"]                       = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以展示一名角色的一张手牌：若该牌为<font color=\"red\">♥</font>，视为你对其使用一张【杀】；若不为<font color=\"red\">♥</font>，你摸一张牌。",
 	[":jianwushu"]                      = "当你使用【杀】指定一名角色后，若你装备了武器牌，你可以弃置目标角色一张牌；当你成为一名角色【杀】的目标后，若你没有装备武器牌，你可以弃置其一张牌。",
-	[":jichengzhe"]                     = "<font color=\"purple\"><b>觉醒技，</b></font>当你处于濒死状态时，回复一点体力，获得技能“火力全开”（准备阶段，你可弃置全部区域的牌，对一名角色造成一点伤害然后摸一张牌），当你死亡时，将武将变更为瓦沙克。",
+	[":jichengzhe"]                     = "<font color=\"purple\"><b>觉醒技，</b></font>当你处于濒死状态时，回复一点体力，获得技能“火力全开”，当你死亡时，将武将变更为瓦沙克。",
 	[":huoliquankai"]                   = "准备阶段，你可弃置全部区域的牌，对一名角色造成一点伤害然后摸一张牌。",
 	[":Cjiyongbing"]                    = "<font color=\"blue\"><b>锁定技，</b></font>若你不为主公，你的身份初始为内奸，若主公阵营女性较多，则变更身份为忠臣；若反贼阵营女性较多，则变更身份为反贼。",
 	[":juexingmoshen"]                  = "当你造成伤害时，你可以进行一次判定，若为黑桃，对一名角色造成一点伤害，若为梅花：摸一张牌，若为红桃则恢复一点体力值，若为方块增加一点体力上限。",
@@ -1700,7 +1700,7 @@ sgs.LoadTranslationTable {
 	[":void"]                           = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以观看一名其他角色所有牌，获得其中一张牌，且其摸一张牌，且此回合结束时，若你拥有此牌，该角色获得此牌；否则该角色失去一点体力。",
 	[":wangguo"]                        = "<font color=\"blue\"><b>锁定技，</b></font>准备阶段开始时，成为过你“虚空”目标的所有角色依次选择：1，令你失去一点体力，本回合虚空次数-1，然后你视为未对其使用“虚空”；2，令你回复一点体力，本回合虚空次数+1。",
 	[":lsqd"]                           = "准备阶段/结束阶段开始时，你可选择：1，弃置一张手牌使用一张弃牌堆一张武器牌；2，装备区内有牌：摸一张牌并将装备区内一张牌置于牌顶。",
-	[":tscg"]                           = "<font color=\"purple\"><b>觉醒技，</b></font>当一名其他角色死亡时，你须对一名角色造成一点伤害，然后获得【武装构造】（<font color=\"green\"><b>出牌阶段限一次，</b></font>你可获得一名角色装备区内一张牌，若此牌不为武器牌，则你须弃置一张手牌。）。",
+	[":tscg"]                           = "<font color=\"purple\"><b>觉醒技，</b></font>当一名其他角色死亡时，你须对一名角色造成一点伤害，然后获得【武装构造】。",
 	[":wzgz"]                           = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可获得一名角色装备区内一张牌，若此牌不为武器牌，则你须弃置一张手牌。",
 	[":tcmfs"]                          = "锁定技，你的职业默认为【天才魔法师】：始终获得【法师】第二阶段效果。",
 	[":blmf"]                           = "你可将一张基本牌视为【火攻】使用，此【火攻】基础伤害+1，此牌结算后立刻结束出牌阶段。",
@@ -6397,6 +6397,7 @@ zhou = sgs.CreateDistanceSkill {
 ye = sgs.CreateTriggerSkill {
 	name = "ye",
 	frequency = sgs.Skill_Wake,
+	waked_skills = "guichan",
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
@@ -6405,7 +6406,6 @@ ye = sgs.CreateTriggerSkill {
 		-- 	if aplayer:getHp() < player:getHp() then return false end
 		-- end
 		room:sendCompulsoryTriggerLog(player, self:objectName())
-		--player:gainMark("@waked",1)
 		room:setPlayerMark(player, self:objectName(), 1)
 		room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 		room:recover(player, sgs.RecoverStruct(player))
@@ -6548,6 +6548,7 @@ dafan = sgs.CreateTriggerSkill {
 juej = sgs.CreateTriggerSkill {
 	name = "juej",
 	frequency = sgs.Skill_Wake,
+	waked_skills = "smsy",
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
@@ -7150,6 +7151,7 @@ feils = sgs.CreateDistanceSkill {
 jssg = sgs.CreateTriggerSkill {
 	name = "jssg",
 	frequency = sgs.Skill_Wake,
+	waked_skills = "feils2",
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data, room)
 		room:sendCompulsoryTriggerLog(player, self:objectName())
@@ -7714,13 +7716,14 @@ zuihoudefanji = sgs.CreateTriggerSkill
 		name = "zuihoudefanji",
 		events = { sgs.Dying },
 		frequency = sgs.Skill_Wake,
+		waked_skills = "kuixin",
 		on_trigger = function(self, event, player, data)
 			local room = player:getRoom()
 			local dying = data:toDying()
 			if dying.who:objectName() == player:objectName() then
 				room:addPlayerMark(player, "fanji_waked")
 				room:addPlayerMark(player, self:objectName())
-				room:addPlayerMark(player, "@waked")
+				room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 				room:sendCompulsoryTriggerLog(player, self:objectName())
 				for _, p in sgs.qlist(room:getPlayers()) do
 					room:notifyProperty(p, player, "role", player:getRole())
@@ -8561,6 +8564,7 @@ wuduan = sgs.CreateTriggerSkill {
 	name = "wuduan",
 	frequency = sgs.Skill_Wake,
 	events = { sgs.EventPhaseStart },
+	waked_skills = "tisheng",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local msg = sgs.LogMessage()
@@ -11831,13 +11835,14 @@ jichengzhe = sgs.CreateTriggerSkill {
 	name = "jichengzhe",
 	events = { sgs.Dying },
 	frequency = sgs.Skill_Wake,
+	waked_skills = "huoliquankai",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local dying = data:toDying()
 		if dying.who:objectName() == player:objectName() then
 			room:addPlayerMark(player, "fanji_waked")
 			room:addPlayerMark(player, self:objectName())
-			room:addPlayerMark(player, "@waked")
+			room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 			room:handleAcquireDetachSkills(player, "huoliquankai", true)
 			room:recover(player, sgs.RecoverStruct(player, nil, 1))
 		end
@@ -15453,14 +15458,18 @@ huidang = sgs.CreateTriggerSkill {
 						room:setPlayerProperty(p, "hp", sgs.QVariant(p:getGeneral():getMaxHp()))
 					end
 					for _, skill in sgs.qlist(p:getGeneral():getVisibleSkillList()) do
-						if not p:hasSkill(skill:objectName()) then room:acquireSkill(p, skill:objectName()) end
-						if skill:getFrequency() == sgs.Skill_Limited then
-							if p:getMark("@" .. skill:objectName()) == 0 then p:gainMark("@" .. skill:objectName()) end
+						if skill:getFrequency() == sgs.Skill_Wake then
+							room:setPlayerMark(p, skill, 0)
+							room:setPlayerMark(p, "@waked", 0)
 						end
 					end
-					if p:getMark("@waked") > 0 then
-						p:loseAllMarks("@waked")
+					for _, skill in sgs.qlist(p:getGeneral():getVisibleSkillList()) do
+						if not p:hasSkill(skill:objectName()) then room:acquireSkill(p, skill:objectName()) end
+						if skill:getFrequency() == sgs.Skill_Limited then
+							if p:getMark(skill:getLimitMark()) == 0 then p:gainMark(skill:getLimitMark()) end
+						end
 					end
+					
 				end
 			end
 		end
@@ -15844,6 +15853,7 @@ ujzhongshi = sgs.CreateTriggerSkill {
 	name = "ujzhongshi",
 	frequency = sgs.Skill_Wake,
 	events = { sgs.MarkChanged },
+	waked_skills = "smsy",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.MarkChanged then
@@ -16163,6 +16173,7 @@ tscg = sgs.CreateTriggerSkill {
 	name = "tscg",
 	frequency = sgs.Skill_Wake,
 	events = { sgs.Death },
+	waked_skills = "wzgz",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.Death and player:getMark(self:objectName()) == 0 then
@@ -19366,11 +19377,9 @@ jejms:addSkill(guailj)
 --奴良陆生
 nlls:addSkill(zhou)
 nlls:addSkill(ye)
-nlls:addRelateSkill("guichan")
 --优纪
 youj:addSkill(dafan)
 youj:addSkill(juej)
-youj:addRelateSkill("smsy")
 --卡卡罗特
 kklt:addSkill(jiewq)
 kklt:addSkill(saiya)
@@ -19395,7 +19404,6 @@ feicunjianxin:addSkill(badaozhai)
 --波风水门
 bfsm:addSkill(feils)
 bfsm:addSkill(jssg)
-bfsm:addRelateSkill("feils2")
 --羽入
 yuru:addSkill(kuixin)
 --言和
@@ -19450,7 +19458,6 @@ extension:insertRelatedSkills("lanyuhua", "#lanyuhuaSla")
 --千代田
 qiandaitian:addSkill(jinhua)
 qiandaitian:addSkill(wuduan)
-qiandaitian:addRelateSkill("tisheng")
 --武藏
 htms_wuzang:addSkill(Luayumian)
 htms_wuzang:addSkill(Luayanhu)

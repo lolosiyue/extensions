@@ -1011,7 +1011,7 @@ fz_zhiyong = sgs.CreateTriggerSkill{
 	    local room = player:getRoom()
 		room:doLightbox("$fz_zhiyong")
 	    room:broadcastSkillInvoke(self:objectName())
-		room:loseMaxHp(player, 1)
+		room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 		local recover = sgs.RecoverStruct()
 		recover.recover = 1
 		recover.who = player
@@ -1024,7 +1024,6 @@ fz_zhiyong = sgs.CreateTriggerSkill{
 		    room:acquireSkill(player, "ollongdan")
 		end
 		room:addPlayerMark(player, "fz_zhiyong")
-		room:addPlayerMark(player, "@waked")
 	end,
 }
 if not sgs.Sanguosha:getSkill("fz_zhiyong") then skills:append(fz_zhiyong) end
@@ -1060,7 +1059,7 @@ fz_mouxing = sgs.CreateTriggerSkill{
 	    local room = player:getRoom()
 		room:doLightbox("$fz_mouxing")
 		room:broadcastSkillInvoke(self:objectName())
-        room:loseMaxHp(player, 1)
+        room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 		room:drawCards(player, 3, self:objectName())
 		if not player:hasSkill("mx_xinghan") then
 		    room:acquireSkill(player, "mx_xinghan")
@@ -1069,7 +1068,6 @@ fz_mouxing = sgs.CreateTriggerSkill{
 		    room:acquireSkill(player, "mx_hanhun")
 		end
 		room:addPlayerMark(player, self:objectName())
-		room:addPlayerMark(player, "@waked")
 	end,
 }
 if not sgs.Sanguosha:getSkill("#mouxingDying") then skills:append(mouxingDying) end
@@ -1685,7 +1683,7 @@ f_chengwang = sgs.CreateTriggerSkill{
 	end,
 	on_trigger = function(self, event, player, data)
 	    local room = player:getRoom()
-		room:loseMaxHp(player)
+		room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 		local recover = sgs.RecoverStruct()
 		recover.who = player
 		room:recover(player, recover)
@@ -1696,7 +1694,6 @@ f_chengwang = sgs.CreateTriggerSkill{
 		    room:acquireSkill(player, "f_hanzhongwang")
 		end
 		room:addPlayerMark(player, self:objectName())
-		room:addPlayerMark(player, "@waked")
 	end,
 }
 hzw_shenliubei:addSkill(f_chengwang)
@@ -2609,7 +2606,7 @@ f_moshi = sgs.CreateTriggerSkill{
 		    room:acquireSkill(player, "f_kuanglong")
 		end
 		room:addPlayerMark(player, self:objectName())
-		room:addPlayerMark(player, "@waked")
+		room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 		local n = player:getMark("&f_moshiFQC")
 		room:removePlayerMark(player, "&f_moshiFQC", n)
 	end,
@@ -4547,12 +4544,11 @@ sp_qiangu = sgs.CreateTriggerSkill{
 	    local room = player:getRoom()
 		room:broadcastSkillInvoke(self:objectName())
 		room:doLightbox("$sp_qiangu")
-		room:loseMaxHp(player, 1)
+		room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 		if not player:hasSkill("sp_shenzi") then
 		    room:acquireSkill(player, "sp_shenzi")
 		end
 		room:addPlayerMark(player, self:objectName())
-		room:addPlayerMark(player, "@waked")
 	end,
 }
 sp_shenzhouyu:addSkill(sp_qiangu)
@@ -4889,7 +4885,7 @@ sp_zhijue = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 	    local room = player:getRoom()
 		room:doLightbox("$sp_zhijue")
-		room:loseMaxHp(player, 1)
+		room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 		player:gainMark("@sp_fog")
 		if not player:hasSkill("bazhen") then
 		    room:acquireSkill(player, "bazhen")
@@ -4898,7 +4894,6 @@ sp_zhijue = sgs.CreateTriggerSkill{
 		    room:acquireSkill(player, "sp_guimen")
 		end
 		room:addPlayerMark(player, self:objectName())
-		room:addPlayerMark(player, "@waked")
 	end,
 }
 sp_zhijue_fog = sgs.CreateTriggerSkill{ --赋予“大雾”标记相应的技能
@@ -5252,7 +5247,7 @@ sp_wujiChoice = sgs.CreateTriggerSkill{
 sp_wuji = sgs.CreateTriggerSkill{
 	name = "sp_wuji",
 	frequency = sgs.Skill_Wake,
-	waked_skills = "sp_hengsaoqianjun",
+	waked_skills = "wushuang,sp_feijiang,sp_mengguan,sp_duyong,sp_hengsaoqianjun",
 	events = {sgs.EventPhaseStart},
 	can_wake = function(self, event, player, data)
 		local room = player:getRoom()
@@ -5267,7 +5262,7 @@ sp_wuji = sgs.CreateTriggerSkill{
 		room:doSuperLightbox("sp_shenlvbuu", "sp_wuji")
 		room:acquireSkill(player, "sp_hengsaoqianjun")
 		room:addPlayerMark(player, self:objectName())
-		room:addPlayerMark(player, "@waked")
+		room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 		local n = player:getMark("&sp_wujiAnger")
 		if n > 0 then room:removePlayerMark(player, "&sp_wujiAnger", n) end
 	end,
@@ -5276,10 +5271,7 @@ sp_wuji = sgs.CreateTriggerSkill{
 sp_shenlvbuu:addSkill(sp_wuji)
 sp_shenlvbuu:addSkill(sp_wujiChoice)
 extension:insertRelatedSkills("sp_wuji", "#sp_wujiChoice")
-sp_shenlvbuu:addRelateSkill("wushuang")
-sp_shenlvbuu:addRelateSkill("sp_feijiang")
-sp_shenlvbuu:addRelateSkill("sp_mengguan")
-sp_shenlvbuu:addRelateSkill("sp_duyong")
+
 
 --“无双”（即吕布的技能“无双”）
 --“飞将”
@@ -5829,7 +5821,7 @@ sp_qichu = sgs.CreateTriggerSkill{
 			room:acquireSkill(player, "sp_gudan")
 			room:acquireSkill(player, "sp_lingyun")
 			room:addPlayerMark(player, self:objectName())
-			room:addPlayerMark(player, "@waked")
+			room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 		end
 	end,
 }
@@ -6381,15 +6373,13 @@ sp_xiongxin = sgs.CreateTriggerSkill{
 		if player:faceUp() or player:canWake(self:objectName()) then
 			room:broadcastSkillInvoke(self:objectName())
 			room:doSuperLightbox("sp_shensima", self:objectName())
-			local count = player:getMaxHp()
-			room:setPlayerProperty(player, "maxhp", sgs.QVariant(count+3))
+			room:changeMaxHpForAwakenSkill(player, 3, self:objectName())
 			room:recover(player, sgs.RecoverStruct(player, nil, 3))
 			room:drawCards(player, 3, self:objectName())
 			room:acquireSkill(player, "sp_yinren")
 			room:acquireSkill(player, "sp_shenmou")
 			room:acquireSkill(player, "sp_yinyang")
 			room:addPlayerMark(player, self:objectName())
-			room:addPlayerMark(player, "@waked")
 		end
 	end,
 }
@@ -10334,9 +10324,8 @@ fcj_zhaotao = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		room:broadcastSkillInvoke(self:objectName())
 		room:doSuperLightbox("fcj_jinduyu", self:objectName())
-		room:loseMaxHp(player, 1)
+		room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 		room:addPlayerMark(player, self:objectName())
-		room:addPlayerMark(player, "@waked")
 		if not player:hasSkill("jinpozhu") then
 			room:acquireSkill(player, "jinpozhu")
 		end
@@ -13316,7 +13305,7 @@ kjmoujuezhan = sgs.CreateTriggerSkill{
 		end
 		room:doSuperLightbox("kj_mou_xiahouba", "kjmoujuezhan")
 		room:addPlayerMark(player, self:objectName())
-		room:addPlayerMark(player, "@waked")
+		room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 		if player:isWounded() then
 			if room:askForChoice(player, self:objectName(), "1+2") == "1" then
 				local recover = sgs.RecoverStruct()

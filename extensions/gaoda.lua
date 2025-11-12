@@ -3633,6 +3633,7 @@ NTD = sgs.CreateTriggerSkill
 	name = "NTD",
 	events = {sgs.TargetConfirming},
 	frequency = sgs.Skill_Wake,
+	waked_skills = "huimie",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local use = data:toCardUse()
@@ -3748,6 +3749,7 @@ quanwu = sgs.CreateTriggerSkill
 	name = "quanwu",
 	events = {sgs.EventPhaseStart},
 	frequency = sgs.Skill_Wake,
+	waked_skills = "zhonggong,qingzhuang,linguang",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 			room:broadcastSkillInvoke(self:objectName())
@@ -3779,7 +3781,6 @@ UNICORN:addSkill(quanwu)
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("huimie") then skills:append(huimie) end
 sgs.Sanguosha:addSkills(skills)
-UNICORN:addRelateSkill("huimie")
 
 UNICORN_NTD = sgs.General(extension, "UNICORN_NTD", "EFSF", 4, true, true, true)
 
@@ -5949,6 +5950,7 @@ NTD4 = sgs.CreateTriggerSkill{
 	frequency = sgs.Skill_Wake,
 	events = {sgs.AskForPeaches},
 	view_as_skill = NTD4vs,
+	waked_skills = "qiji",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local dying_data = data:toDying()
@@ -6099,7 +6101,6 @@ PHENEX:addSkill(NTD4_slash)
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("qiji") then skills:append(qiji) end
 sgs.Sanguosha:addSkills(skills)
-PHENEX:addRelateSkill("qiji")
 extension:insertRelatedSkills("shenniao", "#shenniao_clear")
 
 PHENEX_NTD = sgs.General(extension, "PHENEX_NTD", "EFSF", 4, false, true, true)
@@ -6901,6 +6902,7 @@ mingjingzhishui = sgs.CreateTriggerSkill{
 	name = "mingjingzhishui",
 	frequency = sgs.Skill_Wake,
 	events = {sgs.EventPhaseStart, sgs.DrawNCards},
+	waked_skills = "aoyi",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.EventPhaseStart then
@@ -7179,7 +7181,6 @@ GOD:addSkill(mingjingzhishui)
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("aoyi") then skills:append(aoyi) end
 sgs.Sanguosha:addSkills(skills)
-GOD:addRelateSkill("aoyi")
 
 GOD_S = sgs.General(extension, "GOD_S", "OTHERS", 4, true, true, true)
 GOD_0 = sgs.General(extension, "GOD_0", "OTHERS", 4, true, true, true)
@@ -7239,6 +7240,7 @@ anzhang = sgs.CreateTriggerSkill{
 m_mingjingzhishui = sgs.CreateTriggerSkill{
 	name = "m_mingjingzhishui",
 	frequency = sgs.Skill_Wake,
+	waked_skills = "m_aoyi",
 	events = {sgs.EventPhaseStart, sgs.DrawNCards},
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
@@ -7636,7 +7638,6 @@ MASTER:addSkill(m_mingjingzhishui)
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("m_aoyi") then skills:append(m_aoyi) end
 sgs.Sanguosha:addSkills(skills)
-MASTER:addRelateSkill("m_aoyi")
 MASTER:addSkill(m_aoyi_death)
 extension:insertRelatedSkills("m_aoyi", "#m_aoyi_death")
 
@@ -9827,6 +9828,7 @@ zhongzi = sgs.CreateTriggerSkill{
 	name = "zhongzi",
 	events = {sgs.AskForPeachesDone},
 	frequency = sgs.Skill_Wake,
+	waked_skills = "gaoda_qishe",
 	on_trigger = function(self,event,player,data)
 		local room = player:getRoom()
 		local dying = data:toDying()
@@ -9906,7 +9908,6 @@ if not sgs.Sanguosha:getSkill("#gaoda_qishea") then skills:append(gaoda_qishea) 
 sgs.Sanguosha:addSkills(skills)
 extension:insertRelatedSkills("gaoda_qishe", "#gaoda_qishes")
 extension:insertRelatedSkills("gaoda_qishe", "#gaoda_qishea")
-FREEDOM:addRelateSkill("gaoda_qishe")
 
 JUSTICE = sgs.General(extension, "JUSTICE", "ORB", 4, true, false)
 
@@ -9946,6 +9947,7 @@ zhongzij = sgs.CreateTriggerSkill
 	name = "zhongzij",
 	events = {sgs.MaxHpChanged},
 	frequency = sgs.Skill_Wake,
+	waked_skills = "huiwu",
 	on_trigger = function(self,event,player,data)
 		local room = player:getRoom()
 		if player:getMaxHp() == 1 and player:getMark("@seedj") == 0 then
@@ -10034,7 +10036,6 @@ JUSTICE:addSkill(zhongzij)
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("huiwu") then skills:append(huiwu) end
 sgs.Sanguosha:addSkills(skills)
-JUSTICE:addRelateSkill("huiwu")
 
 CFR = sgs.General(extension, "CFR", "OMNI", 3, true, false)
 
@@ -10956,6 +10957,7 @@ gaoda_luanzhan = sgs.CreateTriggerSkill
 	name = "gaoda_luanzhan",
 	events = {sgs.Dying},
 	frequency = sgs.Skill_Wake,
+	waked_skills = "huiwu,gaoda_qishe",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local dying = data:toDying()
@@ -11024,8 +11026,6 @@ FREEDOM_D:addSkill(xinnian)
 FREEDOM_D:addSkill(xinniana)
 FREEDOM_D:addSkill(gaoda_luanzhan)
 FREEDOM_D:addSkill(gaoda_luanzhane)
-FREEDOM_D:addRelateSkill("huiwu")
-FREEDOM_D:addRelateSkill("gaoda_qishe")
 extension:insertRelatedSkills("xinnian", "#xinniana")
 extension:insertRelatedSkills("gaoda_luanzhan", "#gaoda_luanzhane")
 
@@ -11555,6 +11555,7 @@ zhongzisf = sgs.CreateTriggerSkill{
 	name = "zhongzisf",
 	events = {sgs.EventPhaseStart, sgs.TargetConfirming},
 	frequency = sgs.Skill_Wake,
+	waked_skills = "chaoqi",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if ((event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Start) or (data:toCardUse().card and data:toCardUse().card:isKindOf("Slash")))
@@ -11618,7 +11619,6 @@ SF:addSkill(zhongzisf)
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("chaoqi") then skills:append(chaoqi) end
 sgs.Sanguosha:addSkills(skills)
-SF:addRelateSkill("chaoqi")
 extension:insertRelatedSkills("daijin", "#daijina")
 
 IJ = sgs.General(extension, "IJ", "ORB", 4, true, false)
@@ -11666,6 +11666,7 @@ zhongziij = sgs.CreateTriggerSkill{
 	name = "zhongziij",
 	events = {sgs.EventPhaseStart, sgs.TargetConfirming},
 	frequency = sgs.Skill_Wake,
+	waked_skills = "shijiu",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if ((event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Start) or (data:toCardUse().card and data:toCardUse().card:isKindOf("Slash")))
@@ -11727,7 +11728,6 @@ IJ:addSkill(zhongziij)
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("shijiu") then skills:append(shijiu) end
 sgs.Sanguosha:addSkills(skills)
-IJ:addRelateSkill("shijiu")
 
 DESTINY = sgs.General(extension, "DESTINY", "ZAFT", 4, true, false)
 
@@ -13620,6 +13620,7 @@ zhenmao = sgs.CreateTriggerSkill{
 	name = "zhenmao",
 	events = {sgs.QuitDying},
 	frequency = sgs.Skill_Wake,
+	waked_skills = "gaoda_shenpan,",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if player:isAlive() and player:getMark(self:objectName()) == 0 then
@@ -17644,7 +17645,7 @@ sgs.LoadTranslationTable{
 	[":shenshou"] = "当你使用一张<font color='red'><b>红色</b></font>的【杀】指定一名角色为目标后，你可以令其交给你一张<font color='red'><b>红色</b></font>牌，否则此【杀】不可被【闪】响应。",
 	["@@shenshou"] = "请交给 %src 一张<font color='red'><b>红色</b></font>牌，否则此【杀】不可被【闪】响应",
 	["NTD"] = "NT-D",
-	[":NTD"] = "<img src=\"image/mark/@NTD.png\"><b><font color='green'>觉醒技，</font></b>当你成为一张非延时类锦囊牌的目标时，若你的体力不多于2，你须减1点体力上限终止此牌结算，展示你当前手牌，其中每有一张<font color='red'><b>红色</b></font>牌，你回复1点体力或摸一张牌，并获得技能<b>“毁灭”</b>（当你成为一张非延时类锦囊牌的目标时，你可以弃置一张<font color='red'><b>红色</b></font>手牌终止此牌结算，并视为你使用此牌）。",
+	[":NTD"] = "<img src=\"image/mark/@NTD.png\"><b><font color='green'>觉醒技，</font></b>当你成为一张非延时类锦囊牌的目标时，若你的体力不多于2，你须减1点体力上限终止此牌结算，展示你当前手牌，其中每有一张<font color='red'><b>红色</b></font>牌，你回复1点体力或摸一张牌，并获得技能<b>“毁灭”</b>。",
 	["@NTD"] = "NT-D",
 	["ntddraw"] = "摸一张牌",
 	["ntdrecover"] = "回复 1 点体力",
@@ -17901,7 +17902,7 @@ sgs.LoadTranslationTable{
 	["$ShenniaoNullify"] = "%to 的装备由于“%arg”效果无效，直到其下回合结束",
 	["$ShenniaoReset"] = "“%arg”效果消失，%from 的装备恢复有效",
 	["ntdfour"] = "NT-D",
-	[":ntdfour"] = "<img src=\"image/mark/@NTD4.png\"><b><font color='green'>觉醒技，</font></b>当你处于濒死状态时，你减1点体力上限，发动技能<b>“涅槃”</b>，展示你当前手牌，每有一张基本牌，你可以视为使用一张【杀】（无距离限制），并获得技能<b>“奇迹”</b>（<b><font color='magenta'>转换技，</font></b>①当一名角色使用通常锦囊时，你可以摸一张牌。②你可以将最后一张手牌当【杀】/【闪】使用或打出，若为<b><font color='red'>红色</font></b>，你可以令一名角色回复1点体力）。",
+	[":ntdfour"] = "<img src=\"image/mark/@NTD4.png\"><b><font color='green'>觉醒技，</font></b>当你处于濒死状态时，你减1点体力上限，发动技能<b>“涅槃”</b>，展示你当前手牌，每有一张基本牌，你可以视为使用一张【杀】（无距离限制），并获得技能<b>“奇迹”</b>。",
 	["ntdfourcard"] = "NT-D",
 	["@NTD4"] = "NT-D",
 	["@ntdfour"] = "请选择【杀】的目标角色（无距离限制）",
@@ -18494,7 +18495,7 @@ sgs.LoadTranslationTable{
 	[":jiaoxie"] = "当你使一名其他角色进入濒死状态、或一名其他角色使你进入濒死状态时，你可以令其失去一项技能（不可为限定技或觉醒技）。",
 	["zhongzi"] = "种子",
 	["@seed"] = "SEED",
-	[":zhongzi"] = "<img src=\"image/mark/@seed.png\"><b><font color='green'>觉醒技，</font></b>当你处于濒死状态求桃完毕后，你将体力回复至1点，失去技能<b>“缴械”</b>并获得技能<b>“齐射”</b>（出牌阶段，你可以将所有手牌（至少一张）当火【杀】使用，此【杀】可指定至多X个目标且无距离限制（X为手牌数））。",
+	[":zhongzi"] = "<img src=\"image/mark/@seed.png\"><b><font color='green'>觉醒技，</font></b>当你处于濒死状态求桃完毕后，你将体力回复至1点，失去技能<b>“缴械”</b>并获得技能<b>“齐射”</b>。",
 	["gaoda_qishe"] = "齐射",
 	[":gaoda_qishe"] = "出牌阶段，你可以将所有手牌（至少一张）当火【杀】使用，此【杀】可指定至多X个目标且无距离限制（X为手牌数）。",
 	["~FREEDOM"] = "僕のせいで、僕のせいで!",
@@ -18514,7 +18515,7 @@ sgs.LoadTranslationTable{
 	["shouwang"] = "守望",
 	[":shouwang"] = "当你需要使用一张【桃】时，你可以减1点体力上限，视为你使用之。",
 	["zhongzij"] = "种子",
-	[":zhongzij"] = "<img src=\"image/mark/@seedj.png\"><b><font color='green'>觉醒技，</font></b>当你的体力上限为1时，你将体力上限增加至3点，失去技能<b>“守望”</b>并获得技能<b>“挥舞”</b>（出牌阶段限一次，当你使用【杀】结算后，你可以弃置所有手牌（至少一张）：<b>黑色</b>【杀】：弃置目标角色装备区里的一张牌；<b><font color='red'>红色</font></b>【杀】：额外结算一次。）",
+	[":zhongzij"] = "<img src=\"image/mark/@seedj.png\"><b><font color='green'>觉醒技，</font></b>当你的体力上限为1时，你将体力上限增加至3点，失去技能<b>“守望”</b>并获得技能<b>“挥舞”</b>",
 	["@seedj"] = "SEED",
 	["huiwu"] = "挥舞",
 	[":huiwu"] = "出牌阶段限一次，当你使用【杀】结算后，你可以弃置所有手牌（至少一张）：<b>黑色</b>【杀】：弃置目标角色装备区里的一张牌；<b><font color='red'>红色</font></b>【杀】：额外结算一次。",
@@ -18771,7 +18772,7 @@ sgs.LoadTranslationTable{
 	["$DaijinNullify"] = "%to 的技能“%arg”由于“%arg2”效果无效，直到其下回合结束",
 	["$DaijinReset"] = "“%arg2”效果消失，%from 的技能“%arg”恢复有效",
 	["zhongzisf"] = "种子",
-	[":zhongzisf"] = "<img src=\"image/mark/@seedsf.png\"><b><font color='green'>觉醒技，</font></b>准备阶段开始时或成为【杀】的目标时，若你没有手牌，你减1点体力上限并摸两张牌，将<b>“殆烬”</b>描述中的<b>“两张”</b>改为<b>“至少两张”</b>，并获得技能<b>“超骑”</b>（当你成为【杀】的目标后，你可以：摸一张牌并展示之，若为红桃，你对其造成1点伤害；若为方块，你弃置来源一张牌，重复此流程）。",
+	[":zhongzisf"] = "<img src=\"image/mark/@seedsf.png\"><b><font color='green'>觉醒技，</font></b>准备阶段开始时或成为【杀】的目标时，若你没有手牌，你减1点体力上限并摸两张牌，将<b>“殆烬”</b>描述中的<b>“两张”</b>改为<b>“至少两张”</b>，并获得技能<b>“超骑”</b>。",
 	["@seedsf"] = "SEED",
 	["chaoqi"] = "超骑",
 	[":chaoqi"] = "当你成为【杀】的目标后，你可以：摸一张牌并展示之，若为红桃，你对其造成1点伤害；若为方块，你弃置来源一张牌，重复此流程。",
@@ -18794,7 +18795,7 @@ sgs.LoadTranslationTable{
 	["hanwei:jink"] = "你想发动技能“捍卫”令 %src 使用两张【闪】抵消此【杀】吗？",
 	["#hanwei"] = "%to 须使用两张【闪】抵消此【杀】",
 	["zhongziij"] = "种子",
-	[":zhongziij"] = "<img src=\"image/mark/@seedij.png\"><b><font color='green'>觉醒技，</font></b>准备阶段开始时或成为【杀】的目标时，若你已受伤且装备区有牌，你减1点体力上限，并获得技能<b>“狮鹫”</b>（当你成为【杀】的目标后，你可以将一张与装备区中相同花色的手牌当【杀】使用，若如此做，终止其【杀】结算）。",
+	[":zhongziij"] = "<img src=\"image/mark/@seedij.png\"><b><font color='green'>觉醒技，</font></b>准备阶段开始时或成为【杀】的目标时，若你已受伤且装备区有牌，你减1点体力上限，并获得技能<b>“狮鹫”</b>。",
 	["@seedij"] = "SEED",
 	["shijiu"] = "狮鹫",
 	[":shijiu"] = "当你成为【杀】的目标后，你可以将一张与装备区中相同花色的手牌当【杀】使用，若如此做，终止其【杀】结算。",

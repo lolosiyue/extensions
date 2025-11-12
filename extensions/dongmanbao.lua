@@ -222,6 +222,7 @@ Yingbi = sgs.CreateTriggerSkill {
 Dianci = sgs.CreateTriggerSkill {
 	name = "Dianci",
 	frequency = sgs.Skill_Wake,
+	waked_skills = "se_paoji",
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
@@ -320,7 +321,6 @@ Mikoto:addSkill(YingbiGet)
 Mikoto:addSkill(Yingbi)
 extension:insertRelatedSkills("Yingbi", "#YingbiGet")
 Mikoto:addSkill(Dianci)
-Mikoto:addRelateSkill("se_paoji")
 
 
 
@@ -337,7 +337,7 @@ sgs.LoadTranslationTable {
 	["Dianci"] = "电磁「电磁炮发动准备」",
 	["$Dianci"] = "别叫我嗶哩嗶哩，我可是好好地有着御坂美琴这个名字啊！",
 	["Dianci$"] = "image=image/animate/Dianci.png",
-	[":Dianci"] = "<font color=\"purple\"><b>觉醒技，</b></font>摸牌阶段开始时，若你的“硬币”数量大于或等于2，你需失去一点体力上限，并获得<font color=\"brown\"><b>“炮击”</b></font>\n\n<font weight=2><font color=\"brown\"><b>炮击「超电磁炮」：</b></font> <font color=\"green\"><b>出牌阶段限一次，</b></font>你可以弃置X枚“硬币”，使一名其他角色进行一次判定：若结果为♠，则受到你造成的2^X点雷属性伤害，否则受到你造成的2^（X-1）点雷属性伤害。",
+	[":Dianci"] = "<font color=\"purple\"><b>觉醒技，</b></font>摸牌阶段开始时，若你的“硬币”数量大于或等于2，你需失去一点体力上限，并获得<font color=\"brown\"><b>“炮击”</b></font>",
 	["se_paoji"] = "炮击「超电磁炮」",
 	["se_paoji$"] = "image=image/animate/se_paoji.png",
 	["$se_paoji1"] = "给我觉悟吧，你这个臭笨蛋！",
@@ -4138,6 +4138,7 @@ Daolu = sgs.CreateTriggerSkill {
 	name = "Daolu",
 	frequency = sgs.Skill_Wake,
 	events = { sgs.AskForPeachesDone },
+	waked_skills = "se_diangong,Shouyang,Haixing",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local dying_data = data:toDying()
@@ -4404,10 +4405,6 @@ Tomoya_sub:addSkill(DaoluA)
 Tomoya_sub:addSkill(DaoluB)
 Tomoya_sub:addSkill(DaoluC)
 
-Tomoya:addRelateSkill("se_diangong")
-Tomoya:addRelateSkill("Shouyang")
-Tomoya:addRelateSkill("Haixing")
-
 sgs.LoadTranslationTable {
 	["se_zhuren"] = "助人「实现梦想」",
 	["zhuren"] = "助人「实现梦想」",
@@ -4431,7 +4428,7 @@ sgs.LoadTranslationTable {
 	["$DaoluA"] = "请和我交往吧，渚。",
 	["$DaoluB"] = "虽然稍微慢了一点，但我也要到你的身边来。",
 	["$DaoluC"] = "如果可以的话，请成为风子的好朋友！",
-	[":Daolu"] = "<font color=\"purple\"><b>觉醒技，</b></font>你的濒死状态结束时，你可以将体力回复至2点，然后你减一点体力上限并选择一个技能获得：“电工”“收养”“海星”。\n\n<font weight=2><font color=\"brown\"><b>电工「电路工人」：</b></font>出牌阶段，你可以将一张黑色手牌当【闪电】使用；你防止【闪电】对你造成的伤害；每当你获得此技能后，你须指定至多三名角色，你防止【闪电】对他们造成的伤害。\n\n<font weight=2><font color=\"brown\"><b>收养「Tomo」：</b></font>结束阶段结束时，你可以摸X+1张牌（X为你已损失的体力）；每当你获得此技能后，你须指定一名其他角色，每当其受到伤害时，该角色将此伤害转移给你。\n\n<font weight=2><font color=\"brown\"><b>海星「梦的碎片」：</b></font>每当一名角色的濒死状态结束时，你可以弃置一张牌并进行一次判定：若结果大于8，该角色回复1点体力；若结果为红色，该角色回复1点体力。",
+	[":Daolu"] = "<font color=\"purple\"><b>觉醒技，</b></font>你的濒死状态结束时，你可以将体力回复至2点，然后你减一点体力上限并选择一个技能获得：“电工”“收养”“海星”。",
 	["@Nagisa"] = "渚的守护者",
 	["@Tomoyo"] = "智代的伴侣",
 	["@Fuko"] = "风子召唤使",
@@ -5328,6 +5325,7 @@ SE_Maoqun_KOF = sgs.CreateTriggerSkill {
 SE_Chengzhang = sgs.CreateTriggerSkill {
 	name = "SE_Chengzhang",
 	frequency = sgs.Skill_Wake,
+	waked_skills = "se_zhiling,SE_Zhixing",
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
@@ -5604,7 +5602,7 @@ sgs.LoadTranslationTable {
 	["SE_Chengzhang"] = "成长「Refrain」",
 	["SE_Chengzhang$"] = "image=image/animate/SE_Chengzhang.png",
 	["$SE_Chengzhang"] = "理树，拉住我的手吧！",
-	[":SE_Chengzhang"] = "<font color=\"purple\"><b>觉醒技，</b></font>准备阶段开始时，若“猫”的数量达到12或更多，若你的体力上限小于100，你须将体力上限减少至3；若你的体力上限大于99，你须减96点体力上限。然后失去“怕生”和“猫群”，获得“指令”和“执行”。\n\n<font weight=2><font color=\"brown\"><b>指令「无限猫制~」：</b></font>出牌阶段，你可以将一张“猫”置入弃牌堆并指定一名角色，你令其根据此“猫”的花色获得以下效果：♠：摸牌阶段，你有1/3概率少摸两张牌；♣：你的手牌上限-1；<font color=\"red\"><b>♦</b></font>：每当你受到一次属性伤害时，此伤害+1；<font color=\"red\"><b>♥</b></font>：每当你进入濒死状态时，直到濒死状态结束，有1/2概率令其他角色的【桃】不能指定你为目标。\n\n<font weight=2><font color=\"brown\"><b>执行「果断的执行力」：</b></font>每当一名角色进入濒死状态时，你可以指定一名男性角色，你与其各展示一张手牌：若这些牌的花色相同，其摸两张牌；若这些牌颜色相同，其回复1点体力；若这些牌点数相同，其摸X张牌（X为这些牌的点数）；若这些牌颜色不同，你与其各摸一张牌；若这些牌颜色相同，弃置这些牌。",
+	[":SE_Chengzhang"] = "<font color=\"purple\"><b>觉醒技，</b></font>准备阶段开始时，若“猫”的数量达到12或更多，若你的体力上限小于100，你须将体力上限减少至3；若你的体力上限大于99，你须减96点体力上限。然后失去“怕生”和“猫群”，获得“指令”和“执行”。",
 	["se_zhiling"] = "指令「无限猫制~」",
 	["se_zhiling"] = "指令「无限猫制~」",
 	["se_zhilingcard"] = "指令「无限猫制~」",
@@ -6808,6 +6806,7 @@ se_xunyu = sgs.CreateViewAsSkill {
 SE_Heiyang = sgs.CreateTriggerSkill {
 	name = "SE_Heiyang",
 	frequency = sgs.Skill_Wake,
+	waked_skills = "SE_Chaopin,qingguo",
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
@@ -6922,7 +6921,7 @@ sgs.LoadTranslationTable {
 
 	["SE_Heiyang"] = "黑扬「黑扬之羽蝶」",
 	["$SE_Heiyang"] = "此刻，我就让你一睹我的真正姿态。",
-	[":SE_Heiyang"] = "<font color=\"purple\"><b>觉醒技，</b></font>准备阶段开始时，若场上有已觉醒的其他角色或有当前体力值为1的其他角色，你须减1点体力上限并摸两张牌，获得“超频”和“倾国”。\n\n<font weight=2><font color=\"brown\"><b>超频「Overdrive」：</b></font>准备阶段开始时，你可以选择一项：1.弃置1枚“绿”标记或“蓝”并获得1枚“红”标记；2.弃置1枚“红”标记或“蓝”标记并获得1枚“绿”标记；3.弃置1枚“红”标记或“绿”标记并获得1枚“蓝”标记。若你拥有“红”标记，你使用“迅羽”时攻击范围无限且可以不交给目标角色手牌，若该角色的攻击范围内没有你，其失去1点体力；若你拥有“蓝”标记，将“迅羽”的“将一张手牌交给你攻击范围内的一名其他角色”改为“弃置一张手牌”，“出牌阶段限一次”改为“出牌阶段限X次（X为场上存活角色数）”；若你拥有“绿”标记，你获得“克己”。",
+	[":SE_Heiyang"] = "<font color=\"purple\"><b>觉醒技，</b></font>准备阶段开始时，若场上有已觉醒的其他角色或有当前体力值为1的其他角色，你须减1点体力上限并摸两张牌，获得“超频”和“倾国”。",
 	["SE_Chaopin"] = "超频「Overdrive」",
 	["$SE_Chaopin1"] = "想加速的更快吗，少年？",
 	["$SE_Chaopin2"] = "Death By Piercing",
@@ -10489,18 +10488,13 @@ sgs.LoadTranslationTable {
 SE_Shenghua = sgs.CreateTriggerSkill {
 	name = "SE_Shenghua",
 	frequency = sgs.Skill_NotFrequent,
+	waked_skills = "suipian,erciyuan_qiji",
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if player:isAlive() then
 			if event == sgs.EventPhaseStart then
 				if player:getPhase() == sgs.Player_Start then
-					if player:hasSkill("suipian") then
-						room:detachSkillFromPlayer(player, "suipian")
-					end
-					if player:hasSkill("erciyuan_qiji") then
-						room:detachSkillFromPlayer(player, "erciyuan_qiji")
-					end
 					if player:askForSkillInvoke(self:objectName(), data) then
 						room:broadcastSkillInvoke("SE_Shenghua")
 						local choice = room:askForChoice(player, "SE_Shenghua", "Shenghua_suipian+Shenghua_qiji")
@@ -10570,6 +10564,7 @@ SE_Poxiao = sgs.CreateTriggerSkill {
 	name = "SE_Poxiao",
 	frequency = sgs.Skill_Wake,
 	events = { sgs.EventPhaseStart },
+	waked_skills = "se_mipa",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if room:changeMaxHpForAwakenSkill(player, 1, self:objectName()) then
@@ -10674,9 +10669,6 @@ SE_Mipa_ed = sgs.CreateTriggerSkill {
 Rika:addSkill(SE_Shenghua)
 Rika:addSkill(SE_Wumai)
 Rika:addSkill(SE_Poxiao)
-Rika:addRelateSkill("se_mipa")
-Rika:addRelateSkill("suipian")
-Rika:addRelateSkill("erciyuan_qiji")
 Mikotopart:addSkill(se_mipa)
 Mikotopart:addSkill(SE_Mipa_ed)
 extension:insertRelatedSkills("se_mipa", "#SE_Mipa_ed")
@@ -10706,7 +10698,7 @@ sgs.LoadTranslationTable {
 	["SE_Poxiao"] = "破晓",
 	["$SE_Poxiao1"] = "我要回到属于我的雏见泽，我有着非常重要的工作，而且...如果不回去的话，我就再也见不到羽入了。我最最最喜欢羽入了~咪啪~（背景音：羽入哽咽中）",
 	["$SE_Poxiao2"] = "看来我不得不放弃成为魔女了，现在的我必须舍弃身为贝伦卡斯特尔的魔女身份，回到古手梨花的位置上来了。",
-	[":SE_Poxiao"] = "<font color=\"purple\"><b>觉醒技，</b></font>准备阶段开始时，若你的“碎片”大于你的手牌数，你须增加1点体力上限，然后你失去“升华”并获得“咪啪”。\n\n<font weight=2><font color=\"brown\"><b>咪啪：</b></font>出牌阶段，你可以弃置1枚“碎片”并指定一名角色，直到你的下个准备阶段开始时，你选择一项：令该角色不能使用或打出基本牌，或令该角色不能使用非锦囊牌。",
+	[":SE_Poxiao"] = "<font color=\"purple\"><b>觉醒技，</b></font>准备阶段开始时，若你的“碎片”大于你的手牌数，你须增加1点体力上限，然后你失去“升华”并获得“咪啪”。",
 	["se_mipa"] = "咪啪",
 	["@mipa_basic"] = "咪啪-基本牌",
 	["@mipa_notbasic"] = "咪啪-非基本牌",

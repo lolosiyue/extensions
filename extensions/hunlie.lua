@@ -5842,6 +5842,7 @@ end
 sgkgoddengji = sgs.CreateTriggerSkill{
 	name = "sgkgoddengji",
 	frequency = sgs.Skill_Wake,
+	waked_skills = "sgkgodrenzheng,sgkgodjiquan",
 	events = {sgs.EventPhaseStart},
 	can_wake = function(self, event, player, data, room)
 		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
@@ -5900,8 +5901,6 @@ sgkgoddengji = sgs.CreateTriggerSkill{
 
 
 sgkgodcaopi:addSkill(sgkgoddengji)
-sgkgodcaopi:addRelateSkill("sgkgodrenzheng")
-sgkgodcaopi:addRelateSkill("sgkgodjiquan")
 
 
 sgs.LoadTranslationTable{

@@ -1401,7 +1401,7 @@ independent = sgs.CreateTriggerSkill{
 	name = "independent",
 	events = {sgs.EventPhaseStart},
 	frequency = sgs.Skill_Wake,
-	waked_skills = "fencheng+luanwu+jianshu+xiongyi+fenwei",
+	waked_skills = "fencheng,luanwu,jianshu,xiongyi,fenwei",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		-- room:addPlayerMark(player, "independent")
@@ -6614,7 +6614,7 @@ inheritedthefather = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if event == sgs.EventPhaseStart then
 			room:setPlayerMark(player, "inheritedthefather", 1)
-			room:setPlayerMark(player, "@waked", 1)
+			room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 			room:setPlayerMark(player, self:objectName(), 1)
 			player:gainMark("@meiying", 2)
 			room:drawCards(player, math.max(player:getLostHp(), 1))
@@ -6669,7 +6669,7 @@ ihtf_effect = sgs.CreateTriggerSkill{
 		return target and target:hasSkill("inheritedthefather")
 				and target:isAlive()
 				and target:getMark("@meiying") > 0
-				and target:getMark("@waked") > 0
+				and target:getMark("inheritedthefather") > 0
 	end
 }
 -- hotfightlm = sgs.CreateTriggerSkill{
@@ -9474,9 +9474,8 @@ graduation = sgs.CreateTriggerSkill{
 		if player:getMark("@k-on") > 4 or player:canWake(self:objectName()) then
 			room:broadcastSkillInvoke("graduation", 1)
 			room:setEmotion(player, "skill/yuri_graduation")
-			player:gainMark("@waked")
 			room:addPlayerMark(player, self:objectName())
-			room:loseMaxHp(player, 1)
+			room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 			room:acquireSkill(player, "songforatsu")
 			room:acquireSkill(player, "newmember")
 			if player:isWounded() then

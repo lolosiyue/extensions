@@ -691,14 +691,14 @@ ckjinshu = sgs.CreateTriggerSkill{
 	name = "ckjinshu",
 	events = {sgs.Dying },
 	frequency = sgs.Skill_Wake,
-	
+	waked_skills = "ckshengyu,cklongxi",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local dying = data:toDying()
 		if dying.who~=player or player:getMark("ckjinshuWaked")>0 then return end
 		room:broadcastSkillInvoke(self:objectName())
 		room:doSuperLightbox("ck_indexWaked", "#jinshu")
-		room:addPlayerMark(player, "@waked")
+		room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 		room:addPlayerMark(player, "ckjinshuWaked")
 		room:addPlayerMark(player, "ckjinshu")
 		local theRecover = sgs.RecoverStruct()
@@ -726,8 +726,6 @@ sgs.Sanguosha:addSkills(Skills)
 
 ck_index:addSkill(ckyongchang)
 ck_index:addSkill(ckjinshu)
-ck_index:addRelateSkill("ckshengyu")
-ck_index:addRelateSkill("cklongxi")
 indexWaked:addSkill(ckyongchang)
 indexWaked:addSkill(ckjinshu)
 indexWaked:addSkill("ckshengyu")

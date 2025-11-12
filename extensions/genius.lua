@@ -279,7 +279,7 @@ f_sandao = sgs.CreateTriggerSkill{
 		room:doSuperLightbox("WEhaveLSD", self:objectName())
 		room:addPlayerMark(player, self:objectName())
 		room:addPlayerMark(player, "f_sandao_using")
-		room:addPlayerMark(player, "@waked")
+		room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 		room:attachSkillToPlayer(player, "f_sandaoEX")
 		room:addPlayerMark(player, "@f_sandaoEX")
 	end,
@@ -3130,9 +3130,8 @@ f_diyun = sgs.CreateTriggerSkill{
 		if math.random() <= 0.5 then room:doLightbox("$f_diyun1")
 		else room:doLightbox("$f_diyun2") end
 		room:doSuperLightbox("f_shensimayan", self:objectName())
-		room:loseMaxHp(player, 1)
 		room:addPlayerMark(player, self:objectName())
-		room:addPlayerMark(player, "@waked")
+		room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 		if player:isWounded() then
 			if room:askForChoice(player, self:objectName(), "rec+drw") == "rec" then
 				local recover = sgs.RecoverStruct()
@@ -3448,7 +3447,7 @@ f_handi = sgs.CreateTriggerSkill{
 		room:broadcastSkillInvoke(self:objectName())
 		room:doSuperLightbox("f_shenliuxie_handi", self:objectName())
 		room:addPlayerMark(player, self:objectName())
-		room:addPlayerMark(player, "@waked")
+		room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 		if not player:hasSkill("f_skysson") then
 			room:acquireSkill(player, "f_skysson")
 		end
@@ -4212,7 +4211,7 @@ f_mingmen = sgs.CreateTriggerSkill{
 		if isTCB then
 			sgs.Sanguosha:changeBGMEffect("audio/skill/f_shenyuanshao_if.ogg") --切换为神袁绍-江山如梦专属BGM
 		end
-		room:addPlayerMark(player, "@waked")
+		room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 		room:addPlayerMark(player, self:objectName())
 		if player:hasSkill("f_yourou") then
 			room:detachSkillFromPlayer(player, "f_yourou")

@@ -228,6 +228,7 @@ du_jieying = sgs.CreateTriggerSkill {
 	name = "du_jieying",
 	frequency = sgs.Skill_Wake,
 	events = { sgs.EventPhaseStart },
+	waked_skills = "qixi",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local hp = player:getHp()
@@ -241,7 +242,6 @@ du_jieying = sgs.CreateTriggerSkill {
 			room:handleAcquireDetachSkills(player, "qixi")
 		end
 	end,
-	waked_skills = "qixi",
 	can_wake = function(self, event, player, data, room)
 		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then
 			return false
@@ -1004,7 +1004,6 @@ duGanning:addSkill(jinfanEnd)
 extension:insertRelatedSkills("jinfan", "#jinfanStart")
 extension:insertRelatedSkills("jinfan", "#jinfanEnd")
 duGanning:addSkill(du_jieying)
-duGanning:addRelateSkill("qixi")
 
 test:addSkill(jinfanTake)
 addToSkills(tongpaodest)

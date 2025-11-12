@@ -454,10 +454,9 @@ pokong = sgs.CreateTriggerSkill{
 		room:sendLog(msg)
 		room:broadcastSkillInvoke("pokong")
 		room:setPlayerMark(player, "pokong", 1)
-		player:gainMark("@waked")
+		room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 		room:acquireSkill(player, "jianwu")
-		room:acquireSkill(player, "#jianwuMod")
-		room:loseMaxHp(player)			
+		room:acquireSkill(player, "#jianwuMod")		
 		return false
 	end, 
 	can_wake = function(self, event, player, data, room)
@@ -538,7 +537,7 @@ sgs.LoadTranslationTable{
 	["#darenEffect2"] = "%to 的“<font color=\"yellow\"><b>达人</b></font>”被触发，%to 不会受到【<font color=\"yellow\"><b>决斗</b></font>】造成的伤害",
 
 	["pokong"] = "破空",
-	[":pokong"] = "<font color=\"purple\"><b>觉醒技，</b></font>回合开始阶段，若所有其他角色均在你攻击范围内，你减少1点体力值上限并永久获得技能“剑舞”（当你使用或打出一张【杀】时，你可以摸一张牌；你使用的红色【杀】无距离限制；出牌阶段，你可以额外使用一张【杀】）。",
+	[":pokong"] = "<font color=\"purple\"><b>觉醒技，</b></font>回合开始阶段，若所有其他角色均在你攻击范围内，你减少1点体力值上限并永久获得技能“剑舞”。",
 	["#pokong"] = "%from 符合觉醒条件，失去 <font color=\"yellow\"><b>1</b></font> 点体力值上限并获得技能“<font color=\"yellow\"><b>剑舞</b></font>”",
 	["$pokongQP"] = "破空",
 	
@@ -777,9 +776,8 @@ zhizun = sgs.CreateTriggerSkill{
 		room:sendLog(msg)
 		room:broadcastSkillInvoke("zhizun")
 		room:setPlayerMark(player, "zhizun", 1)
-		player:gainMark("@waked")
+		room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 		room:acquireSkill(player, "lol_liren")
-		room:loseMaxHp(player)
 		return false
 	end, 
 	can_wake = function(self, event, player, data, room)
@@ -887,7 +885,7 @@ sgs.LoadTranslationTable{
 	[":recheng"] = "<font color=\"blue\"><b>锁定技，</b></font>若你的判定区内有牌，则你不能成为延时锦囊的目标。",
 
 	["zhizun"] = "至尊",
-	[":zhizun"] = "<font color=\"purple\"><b>觉醒技，</b></font>回合开始阶段，若你装备区的牌为全场最多，则你减少1点体力上限并永久获得技能“利刃”(<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以弃置一张牌并指定一名角色，若如此做，该角色的防具无效且不能使用或打出其手牌直到回合结束)。",
+	[":zhizun"] = "<font color=\"purple\"><b>觉醒技，</b></font>回合开始阶段，若你装备区的牌为全场最多，则你减少1点体力上限并永久获得技能“利刃”。",
 	["#zhizun"] = "%from 符合觉醒条件，失去 <font color=\"yellow\"><b>1</b></font> 点体力值上限并获得技能“<font color=\"yellow\"><b>利刃</b></font>”",
 	["$zhizun"] = "真正的意志是不会被击败的！",
 	["$zhizunQP"] = "至尊",

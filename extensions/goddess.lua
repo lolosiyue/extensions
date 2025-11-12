@@ -25,6 +25,7 @@ LuaSP_guanyu:addSkill("wusheng")
 LuaDanji = sgs.CreateTriggerSkill{
 	name = "LuaDanji",
 	frequency = sgs.Skill_Wake,
+	waked_skills = "mashu",
 	events = {sgs.EventPhaseStart},
 	-- can_trigger = function(self, target)
 	-- 	return target:isAlive() and target:hasSkill(self:objectName()) and target:getPhase() == sgs.Player_Start
@@ -61,7 +62,7 @@ LuaDanji = sgs.CreateTriggerSkill{
 			msg.arg = result
 			room:sendLog(msg)
 			room:acquireSkill(player, "mashu")
-			player:gainMark("@waked")
+			room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 			room:setPlayerMark(player, "LuaDanji", 1)
 			room:setPlayerMark(player, "danji", 1)
 		-- end

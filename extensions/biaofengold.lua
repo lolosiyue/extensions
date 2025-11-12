@@ -26,7 +26,7 @@ sgs.LoadTranslationTable {
 	["fivefanjian_"] = "反间",
 
 	["FiveYingzhan"] = "迎战",
-	[":FiveYingzhan"] = "觉醒技，回合结束阶段开始时，若你此回合内曾造成火焰伤害（以你为伤害来源），你须减1点体力上限，并获得技能“反间”（<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以将一张红桃手牌交给一名其他角色，令该角色与你指定的另一名有手牌的角色拼点，视为拼点赢的角色对没赢的角色使用一张【杀】）。",
+	[":FiveYingzhan"] = "觉醒技，回合结束阶段开始时，若你此回合内曾造成火焰伤害（以你为伤害来源），你须减1点体力上限，并获得技能“反间”。",
 	["#FiveYingzhan"] = "%from 在本回合内造成了火焰伤害，触发“%arg”",
 	["$FiveYingzhan"] = "技能 迎战 的觉醒台词（求建议）",
 
@@ -393,6 +393,7 @@ FiveYingzhan_Count = sgs.CreateTriggerSkill {
 FiveYingzhan = sgs.CreateTriggerSkill {
 	name = "FiveYingzhan",
 	frequency = sgs.Skill_Wake,
+	waked_skills = "FiveFanjian",
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
@@ -544,7 +545,6 @@ if not skill then
 	sgs.Sanguosha:addSkills(skillList)
 end
 
-ZhouYu_Five:addRelateSkill("FiveFanjian")
 
 ----------------------------------------------------------------------------------------------------
 --                                             群
@@ -1212,85 +1212,11 @@ FourJiaozhao = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		player:gainMark("@jiaozhao", 1)
-		room:setTag("FourJiaozhao_wake", sgs.QVariant(0)) --防止在若愚触发前其他觉醒技先触发
-		room:setTag("FourJiaozhao_wakeOther", sgs.QVariant(0))
 	end,
 }
-FourJiaozhao_wakeOtherSkills = sgs.CreateTriggerSkill {
-	name = "#FourJiaozhao_wakeOtherSkills",
-	ferquency = sgs.Skill_Compulsory,
-	events = { sgs.EventAcquireSkill, sgs.EventLoseSkill },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		local marksPre = room:getTag("FourJiaozhao_wake"):toInt() --上次获得/失去技能时的觉醒标记数
-		local marksNow = player:getMark("@waked")           --当前觉醒标记数
-		if marksNow > marksPre then                         --觉醒标记数增加，包括：获得技能的觉醒技触发，失去技能的觉醒技触发（如武继）；不包括断肠失去技能
-			local marksGained = room:getTag("FourJiaozhao_wakeOther"):toInt()
-			room:removeTag("FourJiaozhao_wakeOther")
-			room:setTag("FourJiaozhao_wakeOther", sgs.QVariant(marksGained + 1)) --正常获得的觉醒标记数（即正常发动的觉醒技数量）+1
-			room:removeTag("FourJiaozhao_wake")
-			room:setTag("FourJiaozhao_wake", sgs.QVariant(marksNow)) --更新觉醒标记数
-		end
-	end,
-}
-FourJiaozhao_wakeRuoyu = sgs.CreateTriggerSkill {
-	name = "#FourJiaozhao_wakeRuoyu",
-	frequency = sgs.Skill_Frequent, --由于锁定技的priority问题被迫设置为Frequent
-	events = { sgs.EventPhaseStart },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		local phase = player:getPhase()
-		if phase == sgs.Player_Start then
-			--if player:getMark("@duanchang") == 0 then
-			local marks = player:getMark("@waked")
-			local marksGained = room:getTag("FourJiaozhao_wakeOther"):toInt()
 
-			if marks > marksGained then                                 --如果觉醒技数<当前标记数，说明至少一个觉醒技未获得技能，即若愚
-				local marksPre = room:getTag("FourJiaozhao_wake"):toInt()
-				if marksPre == marks then                               --防止若愚和其他觉醒技一起触发的情况，此时如果第二个觉醒技后触发，marksPre=marksNow，需要手动处理，否则在acquireSkill处理即可
-					room:removeTag("FourJiaozhao_wakeOther")
-					room:setTag("FourJiaozhao_wakeOther", sgs.QVariant(marksGained + 1)) --正常获得的觉醒标记数（即正常发动的觉醒技数量）+1
-					room:removeTag("FourJiaozhao_wake")
-					room:setTag("FourJiaozhao_wake", sgs.QVariant(marksNow)) --更新觉醒标记数
-				end
-				room:acquireSkill(player, "jijiang")
-			end
-			--end
-		end
-	end,
-}
---[[
-	由于太阳神三国杀中，若愚发动时在获得激将之前会检查当前角色是否为主公，因此曹操获得若愚后发动时，只能增加体力上限等，无法获得激将。
-	袁术和倚天包魏武帝的代码解决了这个问题，但是是通过源码实现的，lua显然无法用这样简单的方式实现。
-	理论上的解决方法很简单，增加一个隐藏技能，在若愚发动完毕后，获得技能激将。但是很遗憾，太阳神三国杀没有“技能发动完毕”这个触发技触发时机。
-	于是只能退一步，通过检查觉醒标记来确定若愚是否发动。但是又遇到了双将的问题……
-	然后就出现了以上2个技能：FourJiaozhao_wakeOtherSkills，和FourJiaozhao_wakeRuoyu。
-	
-	具体流程主要是靠2个标签实现的：
-	FourJiaozhao_wake 记录当前觉醒标记的数量，在获得或失去技能时，记录的是这之前的觉醒标记数量。
-	FourJiaozhao_wakeOther 记录除获得的若愚之外，正常发动的觉醒技数量，即正常获得的觉醒标记数量。
-	原理是这样：觉醒技在获得或失去技能之前，会获得一个觉醒标记，表示这个觉醒技已发动。而发动矫诏获得的若愚，也会获得一个觉醒标记，但是没有获得技能。
-	也就是说，我们记录一下当前的觉醒标记数（可以直接从游戏中读取，那个标签的用处下面解释），和正常获得的觉醒标记数，就可以发现是否有觉醒标记非正常获得（若愚）。
-	
-	FourJiaozhao_wakeOtherSkills 这个技能的作用是，在获得或失去技能时，如果是觉醒技造成的，更新正常的觉醒标记数（FourJiaozhao_wakeOther）。
-	由于FourJiaozhao_wake是在此技能发动的结尾更新，因此当技能发动时，这个标签存储的是上次获得或失去技能时的觉醒标记数。和现在的对比一下，就能判断这之间是否发动了觉醒技。
-	确定这是觉醒技造成的之后，不管是获得技能还是失去技能（如武继），FourJiaozhao_wakeOther加1。然后维护FourJiaozhao_wake。
-	由于此技能发动时必须获得或失去了技能，因此若愚发动后此技能不会触发，FourJiaozhao_wakeOther不会增加。这就表示这个觉醒标记是非正常获得的。
-	
-	然后FourJiaozhao_wakeRuoyu在回合开始阶段，觉醒技发动后发动。它用来检查当前的觉醒标记和正常获得的标记是否一致。
-	如果不一致，说明在这个回合开始阶段发动了若愚。于是可以获得技能激将。
-	然后将FourJiaozhao_wakeOther加1，因为这个若愚结算完毕，已经和正常觉醒技的效果相同。因此下次发动觉醒技就会一切正常。
-	
-	这样的问题在于：当前的官方主公技只有若愚一个是觉醒技，但是如果有其它lua包中有主公技觉醒技（谁这么无聊）或者有了类似的官方武将，我们无法确定获得的技能是否为激将。
-	并且，若2个觉醒技在同一回合开始阶段发动，且若愚先发动，则在第二个觉醒技发动之后才会显示获得激将。（目前还未发现这种情况）
-	
-	PS.所以说觉醒技是一个非常麻烦的东西……代码长度长了一半
-]]
 CaoCao_Four:addSkill(FourJiaozhao)
-CaoCao_Four:addSkill(FourJiaozhao_wakeOtherSkills)
-CaoCao_Four:addSkill(FourJiaozhao_wakeRuoyu)
-extension:insertRelatedSkills("FourJiaozhao", "#FourJiaozhao_wakeOtherSkills")
-extension:insertRelatedSkills("FourJiaozhao", "#FourJiaozhao_wakeRuoyu")
+
 --[[
 	技能：hujia
 	技能名：护驾
@@ -2885,6 +2811,7 @@ ZhangJiao_Four:addSkill(FourGuidao)
 FourDedao = sgs.CreateTriggerSkill {
 	name = "FourDedao",
 	frequency = sgs.Skill_Wake,
+	waked_skills = "leiji",
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
@@ -2897,7 +2824,6 @@ FourDedao = sgs.CreateTriggerSkill {
 		room:broadcastInvoke("animate", "lightbox:$FourDedao:3000")
 		room:getThread():delay(4000)
 
-		--player:gainMark("@waked")
 		if room:changeMaxHpForAwakenSkill(player,-1, self:objectName()) then
 			room:setPlayerMark(player, "FourDedao", 1)
 			room:handleAcquireDetachSkills(player, "leiji")
@@ -2929,7 +2855,6 @@ ZhangJiao_Four:addSkill(FourDedao)
    --
 ZhangJiao_Four:addSkill("huangtian")
 
-ZhangJiao_Four:addRelateSkill("leiji")
 
 ----------------------------------------------------------------------------------------------------
 
@@ -3260,6 +3185,7 @@ extension:insertRelatedSkills("DiyJisu", "#DiyJisu_Clear")
 DiyBaobian = sgs.CreateTriggerSkill {
 	name = "DiyBaobian",
 	frequency = sgs.Skill_Wake,
+	waked_skills = "tiaoxin,paoxiao,DiyXX",
 	events = { sgs.FinishJudge },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
@@ -3274,8 +3200,6 @@ DiyBaobian = sgs.CreateTriggerSkill {
 			room:broadcastInvoke("animate", "lightbox:$DiyBaobian:3000")
 			room:getThread():delay(4000)
 			room:setPlayerMark(player, "DiyBaobian", 1)
-			--player:gainMark("@waked")
-			--room:loseMaxHp(player)
 			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 				room:setPlayerFlag(player, "DiyBaobian_Process") --防止失去疾速时失去神速
 				room:handleAcquireDetachSkills(player, "-DiyJisu")
@@ -3421,7 +3345,6 @@ if not skill then
 	sgs.Sanguosha:addSkills(skillList)
 end
 
-XiaHouBa_Diy:addRelateSkill("DiyXX")
 
 
 ----------------------------------------------------------------------------------------------------

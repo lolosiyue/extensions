@@ -34,6 +34,7 @@ krskitgxuhua = sgs.CreateTriggerSkill {
 	name = "krskitgxuhua",
 	frequency = sgs.Skill_Wake,
 	events = { sgs.EventPhaseStart },
+	waked_skills = "krskitgjiamian+krskitgwuyue",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 
@@ -180,8 +181,6 @@ kurosakiichigo:addSkill(krskitgxuhua)
 kurosakiichigoex:addSkill(krskitgwuyue)
 kurosakiichigoex:addSkill(krskitgtiansuo)
 kurosakiichigoex:addSkill(krskitgjiamian)
-kurosakiichigo:addRelateSkill("krskitgjiamian")
-kurosakiichigo:addRelateSkill("krskitgwuyue")
 
 
 sgs.LoadTranslationTable {

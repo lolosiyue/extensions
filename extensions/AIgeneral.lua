@@ -1176,6 +1176,7 @@ dengbaoCMT:addSkill(tiaojiaoCMT)
 
 gaimingCMT = sgs.CreateTriggerSkill{
     name = "gaimingCMT",
+    waked_skills = "daduanCMT",
     events = {sgs.EventPhaseStart,sgs.Dying},
     frequency = sgs.Skill_Compulsory,
     on_trigger = function(self, event, player, data)
@@ -1189,6 +1190,7 @@ gaimingCMT = sgs.CreateTriggerSkill{
                 room:changeHero(player, "dengbaoCMT", true, true, true, true)
             end
             room:setPlayerProperty(player, "hp", sgs.QVariant(2))
+            room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
         elseif event == sgs.Dying then
             local dying = data:toDying()
             if dying.who == player then
@@ -1204,6 +1206,7 @@ gaimingCMT = sgs.CreateTriggerSkill{
                 local currentdying = room:getTag("CurrentDying"):toStringList()
                 table.removeOne(currentdying,player:objectName())
                 room:setTag("CurrentDying", sgs.QVariant(table.concat(currentdying, "|")))
+                room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
             end
         end
         return false
@@ -1266,7 +1269,6 @@ daduanCMTSC = sgs.CreateTriggerSkill{
 dengbaoCMT:addSkill(daduanCMT)
 dengbaoCMT:addSkill(daduanCMTSC)
 extension:insertRelatedSkills("daduanCMT", "#daduanCMTSC")
-doubaoCMT:addRelateSkill("daduanCMT")
 
 sgs.LoadTranslationTable{
     ["doubaoCMT"] = "豆包",

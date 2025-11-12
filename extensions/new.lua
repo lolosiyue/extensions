@@ -90,6 +90,7 @@ luawu_trs = sgs.CreateTriggerSkill {
 	events = {},
 	frequency = sgs.Skill_Limited,
 	limit_mark = "@luawu_mark",
+	waked_skills = "wansha",
 	on_trigger = function(self, event, player, data)
 	end,
 
@@ -97,6 +98,7 @@ luawu_trs = sgs.CreateTriggerSkill {
 luajuemou = sgs.CreateTriggerSkill { --觉醒 可实现
 	name = "luajuemou",
 	frequency = sgs.Skill_Wake,
+	waked_skills = "lualveji_vs",
 	priority = 3,
 	events = { sgs.EventPhaseStart },
 	--[[can_trigger=function(self,player)
@@ -203,8 +205,6 @@ end
 luayiheng:addSkill(lualilian)
 luayiheng:addSkill(luawu_trs)
 luayiheng:addSkill(luajuemou)
-luayiheng:addRelateSkill("lualveji_vs")
-luayiheng:addRelateSkill("wansha")
 sgs.LoadTranslationTable {
 	["luayiheng"] = "伊衡",
 
@@ -346,6 +346,7 @@ luaguidao = sgs.CreateTriggerSkill {
 luaxumou = sgs.CreateTriggerSkill { --蓄谋 实现
 	name = "luaxumou",
 	frequency = sgs.Skill_Wake,
+	waked_skills = "luaguidao+luaqiyi",
 	events = { sgs.EventPhaseStart },
 
 	on_trigger = function(self, event, player, data)
@@ -391,8 +392,6 @@ if not skill then
 end
 luazhangjiao:addSkill(luafan)
 luazhangjiao:addSkill(luaxumou)
-luazhangjiao:addRelateSkill("luaqiyi")
-luazhangjiao:addRelateSkill("luaguidao")
 
 sgs.LoadTranslationTable {
 	["luazhangjiao"] = "☆张角",

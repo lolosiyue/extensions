@@ -1769,6 +1769,7 @@ LuaJianzhi = sgs.CreateTriggerSkill {
 	name = "LuaJianzhi",
 	frequency = sgs.Skill_Wake,
 	events = { sgs.EventPhaseStart },
+	waked_skills = "luajianyu,LuaChitian",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
@@ -1910,7 +1911,7 @@ LuaRedoWake = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		player:gainMark("@waked")
+		room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 		player:loseAllMarks("@Chamber")
 		room:addPlayerMark(player, "LuaRedoWake")
 		local wakercv = sgs.RecoverStruct()
@@ -3367,8 +3368,6 @@ redarcher:addSkill(LuaJianyong)
 redarcher:addSkill(LuaJianzhi)
 redarcher:addSkill(LuaJianzhiGive)
 extension:insertRelatedSkills("LuaJianzhi", "#LuaJianzhiGive")
-redarcher:addRelateSkill("luajianyu")
-redarcher:addRelateSkill("LuaChitian")
 redo:addSkill(LuaRedoWake)
 redo:addSkill(LuaChamberStart)
 redo:addSkill(LuaChamberMove)

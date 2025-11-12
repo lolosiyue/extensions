@@ -122,8 +122,9 @@ blood_sunbofu:addSkill(blood_hj)
 
 blood_hunzi=sgs.CreateTriggerSkill{
 	name = "blood_hunzi$",
+  waked_skills = "yingzi,yinghun",
 	frequency = sgs.Skill_Wake,
-    events = {sgs.AskForPeaches},
+  events = {sgs.AskForPeaches},
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local dying_data = data:toDying()
@@ -177,8 +178,6 @@ blood_hunzi=sgs.CreateTriggerSkill{
 
 
 blood_sunbofu:addSkill(blood_hunzi)
-blood_sunbofu:addRelateSkill("yingzi")
-blood_sunbofu:addRelateSkill("yinghun")
 
 sgs.LoadTranslationTable{
 ["blood"]="血战包",

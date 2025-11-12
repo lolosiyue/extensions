@@ -177,6 +177,7 @@ jialan = sgs.CreateTriggerSkill {
 	frequency = sgs.Skill_Wake,
 	events = { sgs.Dying },
 	priority = 2,
+	waked_skills = "sinzhisi",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local dying_data = data:toDying()
@@ -196,7 +197,7 @@ jialan = sgs.CreateTriggerSkill {
 			if player:hasSkill("yinyang") then
 				room:handleAcquireDetachSkills(player, "-yinyang")
 			end
-			room:addPlayerMark(player, "@waked")
+			room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 			room:addPlayerMark(player, "jialan")
 			room:handleAcquireDetachSkills(player, "sinzhisi")
 
@@ -239,7 +240,7 @@ sgs.LoadTranslationTable {
 	["$Jiuzi"] = "一刀",
 	["@jianding"] = "兼定",
 	["jialan"] = "伽蓝",
-	[":jialan"] = "<font color=purple><b>觉醒技</b></font>，你处于濒死状态时，将你的武将牌翻面摸三张牌并回复至3点体力 ，失去技能“阴阳”，然后获得技能“直死”(<font color=blue><b>锁定技</b></font>，你使用【杀】对有“杀人鬼”标记的角色造成伤害时，他将直接进入濒死状态)。",
+	[":jialan"] = "<font color=purple><b>觉醒技</b></font>，你处于濒死状态时，将你的武将牌翻面摸三张牌并回复至3点体力 ，失去技能“阴阳”，然后获得技能“直死”。",
 	["$jialan"] = "只要是活着的东西，就算是神也杀给你看。",
 	["recover"] = "回血",
 	["shayi"] = "杀意",

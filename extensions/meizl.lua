@@ -3848,6 +3848,7 @@ meizlshangwu = sgs.CreateTriggerSkill {
 	name = "meizlshangwu",
 	frequency = sgs.Skill_Wake,
 	events = { sgs.EventPhaseStart, sgs.Damage },
+	waked_skills = "xiaoji,ganlu,xuanfeng",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Start then
@@ -3866,7 +3867,7 @@ meizlshangwu = sgs.CreateTriggerSkill {
 		elseif event == sgs.Damage then
 			local damage = data:toDamage()
 			if damage.nature ~= sgs.DamageStruct_Normal and player:getMark("meizlshangwu3") == 0 then
-				player:gainMark("@waked")
+				room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 				player:addMark("meizlshangwu3")
 				room:loseHp(player, 1)
 				room:doLightbox("$meizlshangwuanimate", 1000)
@@ -3903,9 +3904,6 @@ meizlshangwu = sgs.CreateTriggerSkill {
 meizlshensunshangxiang:addSkill(meizlmengyuan)
 meizlshensunshangxiang:addSkill(meizlshangwu)
 meizlshensunshangxiang:addSkill(meizljinguo)
-meizlshensunshangxiang:addRelateSkill("xuanfeng")
-meizlshensunshangxiang:addRelateSkill("ganlu")
-meizlshensunshangxiang:addRelateSkill("xiaoji")
 sgs.LoadTranslationTable {
 	["meizlshensunshangxiang"] = "神孙尚香",
 	["#meizlshensunshangxiang"] = "江东郡主",

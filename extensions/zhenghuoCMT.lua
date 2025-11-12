@@ -1380,11 +1380,10 @@ dengshenZHCMT = sgs.CreateTriggerSkill {
     end
 }
 maodieZHCMT:addSkill(dengshenZHCMT)
-maodieZHCMT:addRelateSkill("tenyeartuxi")
-maodieZHCMT:addRelateSkill("haqiZHCMT")
 guiweiZHCMT = sgs.CreateTriggerSkill{
     name = "guiweiZHCMT",
     events = {sgs.EventPhaseStart,},
+    waked_skills = "tenyeartuxi,haqiZHCMT",
     frequency = sgs.Skill_Wake,--触发频率：觉醒技
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
@@ -1392,7 +1391,7 @@ guiweiZHCMT = sgs.CreateTriggerSkill{
             room:doSuperLightbox("guiweiZHCMT", "guiweiZHCMT")
             room:sendCompulsoryTriggerLog(player, "guiweiZHCMT")
             room:changeHero(player, "maodie2ZHCMT", false, true)
-            player:gainMark("@waked")
+            room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
         end
     end
 }

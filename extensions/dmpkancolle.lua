@@ -312,6 +312,7 @@ se_emeng = sgs.CreateTriggerSkill {
 	name = "se_emeng",
 	frequency = sgs.Skill_Wake,
 	events = { sgs.EventPhaseStart },
+	waked_skills = "poi_yingzi,poi_paoxiao,se_chongzhuang",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
@@ -969,6 +970,7 @@ zheyi = sgs.CreateTriggerSkill {
 	name = "zheyi",
 	frequency = sgs.Skill_Wake,
 	events = { sgs.EnterDying },
+	waked_skills = "youdiz",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local zuikakus = room:findPlayersBySkillName(self:objectName())
@@ -1271,9 +1273,6 @@ Kitagami:addSkill(se_mowang)
 Kitagami:addRelateSkill("SE_Lingshang")
 Yuudachi:addSkill(se_emeng)
 Yuudachi:addSkill(se_kuangquan)
-Yuudachi:addRelateSkill("poi_yingzi")
-Yuudachi:addRelateSkill("se_chongzhuang")
-Yuudachi:addRelateSkill("poi_paoxiao")
 poi_kai2:addSkill(poi_yingzi)
 poi_kai2:addSkill(poi_paoxiao)
 poi_kai2:addSkill(se_chongzhuang)
@@ -1296,7 +1295,6 @@ local s_skillList = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("youdiz") then
 	s_skillList:append(youdiz)
 end
-Zuikaku:addRelateSkill("youdiz")
 sgs.Sanguosha:addSkills(s_skillList)
 
 Kongou:addSkill(nuequ)
@@ -1375,7 +1373,7 @@ sgs.LoadTranslationTable {
 	["$se_emeng1"] = "所罗门的噩梦，让你们见识一下！",
 	["$se_emeng2"] = "那么，让我们举办一场华丽的派对吧！",
 	["$se_emeng3"] = "夕立、突击poi。",
-	[":se_emeng"] = "<font color=\"purple\"><b>觉醒技，</b></font>回合开始时，若你的体力值不大于1，你失去一点体力上限并获得技能【英姿】【咆哮】和【冲撞】（当你进入濒死时，移动到一名其他角色的左侧并视为对其使用一张【杀】。），你与所有角色计算距离时为1，其他角色与你计算距离时为1。",
+	[":se_emeng"] = "<font color=\"purple\"><b>觉醒技，</b></font>回合开始时，若你的体力值不大于1，你失去一点体力上限并获得技能【英姿】【咆哮】和【冲撞】，你与所有角色计算距离时为1，其他角色与你计算距离时为1。",
 	["se_emeng$"] = "image=image/animate/se_emeng.png",
 
 	["se_suo$"] = "所    ",

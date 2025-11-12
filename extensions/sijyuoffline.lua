@@ -6789,6 +6789,7 @@ sfofl_jizun = sgs.CreateTriggerSkill{
     name = "sfofl_jizun",
     frequency = sgs.Skill_Wake,
     events = {sgs.QuitDying},
+    waked_skills = "sfofl_qingsuan",
     on_trigger = function(self, event, player, data, room)
         if player:getMark(self:objectName()) == 0 then
             room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)

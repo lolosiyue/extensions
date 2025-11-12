@@ -1147,6 +1147,7 @@ s_w_luopo = sgs.CreateTriggerSkill{
 	name = "s_w_luopo" ,
 	frequency = sgs.Skill_Wake,
 	events = {sgs.ChoiceMade} ,
+	waked_skills = "s_w_geran,s_w_qipao",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local str = data:toString()
@@ -1290,8 +1291,6 @@ s_w_caocao:addSkill(s_w_jianxiong)
 s_w_caocao:addSkill(s_w_luopo)
 s_w_caocao:addSkill(s_w_qipao)
 s_w_caocao:addSkill("hujia")
-s_w_caocao:addRelateSkill("s_w_geran")
-s_w_caocao:addRelateSkill("s_w_qipao")
 --http://tieba.baidu.com/p/3826540104
  sgs.LoadTranslationTable{
 	["s_w_caocao"] = "曹操",
@@ -1997,6 +1996,7 @@ end
 
 s_w_juezhan = sgs.CreateTriggerSkill{
 	name = "s_w_juezhan",
+	waked_skills = "wushuang,buqu,tenyeartuxi",
 	events = {sgs.TargetSpecified,sgs.AskForPeaches,sgs.DrawNCards, sgs.AfterDrawNCards, sgs.CardEffected},
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
@@ -2132,9 +2132,6 @@ s_w_3_lubu:addSkill(s_w_fanji)
 if not sgs.Sanguosha:getSkill("s_w_juezhan") then
 	s_skillList:append(s_w_juezhan)
 end
-s_w_3_lubu:addRelateSkill("tenyeartuxi")
-s_w_3_lubu:addRelateSkill("wushuang")
-s_w_3_lubu:addRelateSkill("buqu")
 --http://tieba.baidu.com/p/1715633502?fr=frs
 sgs.LoadTranslationTable{
 	["s_w_3_lubu"] = "呂布",
@@ -3929,6 +3926,7 @@ s2_jiangwu = sgs.CreateTriggerSkill{
 	name = "s2_jiangwu" ,
 	frequency = sgs.Skill_Wake ,
 	events = {sgs.EventPhaseStart} ,
+	waked_skills = "s2_gn_nixi",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if player:canWake(self:objectName()) or player:getMark("&s2_jie") >= 4 then
@@ -3966,6 +3964,7 @@ s2_gn_nixi = sgs.CreateTriggerSkill{
 	name = "s2_gn_nixi",
 	events = {sgs.DrawNCards, sgs.AfterDrawNCards, sgs.TargetSpecified},
 	view_as_skill = s2_gn_nixiVS,
+	waked_skills = "tenyeartuxi,qixi",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		player:setMark("s_w_juezhanEvent",tonumber(event))
@@ -4011,9 +4010,6 @@ if not sgs.Sanguosha:getSkill("s2_gn_nixi") then
 	s_skillList:append(s2_gn_nixi)
 end
 s2_SPgangning:addSkill(s2_jiangwu)
-s2_SPgangning:addRelateSkill("s2_gn_nixi")
-s2_SPgangning:addRelateSkill("qixi")
-s2_SPgangning:addRelateSkill("tenyeartuxi")
 --http://tieba.baidu.com/p/1473754971
 sgs.LoadTranslationTable{
 	["s2_SPgangning"] = "甘宁",
@@ -12260,7 +12256,7 @@ sgs.LoadTranslationTable{
 	["s3_sizhan"] = "死战",
 	[":s3_sizhan"] = "你每受到1点伤害，可以弃置一张牌，视为对伤害来源使用了一张【杀】。",
 	["s3_zhonglie"] = "忠烈",
-	[":s3_zhonglie"] = "<font color=\"purple\"><b>觉醒技，</b></font>回合开始阶段开始时，若你的体力值为2点或更低，你须回复1点体力，然后减1点体力上限，并永久获得技能“死战”（你每受到1点伤害，可以弃置一张牌，视为对伤害来源使用了一张【杀】。）。",
+	[":s3_zhonglie"] = "<font color=\"purple\"><b>觉醒技，</b></font>回合开始阶段开始时，若你的体力值为2点或更低，你须回复1点体力，然后减1点体力上限，并永久获得技能“死战”。",
 --http://tieba.baidu.com/p/1679633227
 }
 
@@ -13376,7 +13372,7 @@ s3_yt_kangrui = sgs.CreateTriggerSkill{
 		if not targets:isEmpty() or player:canWake(self:objectName()) then
 		room:sendCompulsoryTriggerLog(player, self:objectName())
 		room:addPlayerMark(player, self:objectName(), 1)
-		room:addPlayerMark(player,"@waked", 1)
+		room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 		room:drawCards(targets, 2, self:objectName())
 		room:changeTranslation(player,"s3_yt_zhengtao",2)
 		end
@@ -13410,7 +13406,7 @@ sgs.LoadTranslationTable{
 	["@s3_yt_zhengtao"] = "征讨",
 	["@s3_yt_zhengtao_add"] = "征讨",
 	[":s3_yt_zhengtao"] = "出牌阶段，若你使用的第 X 张牌为【杀】，则你可令一名角色摸一张牌。然后若其的手牌不小于你，你本回合可使用【杀】的次数 +1 （ X 为你已损失的体力值，且至少为 1 ）。",
-	[":s3_yt_zhengtao2"] = "出牌阶段，若你使用的第 1 张牌为【杀】，则你可令一名角色摸一张牌。然后若其的手牌不小于你，你本回合可使用【杀】的次数 +1 （ X 为你已损失的体力值，且至少为 1 ）。",
+	[":s3_yt_zhengtao2"] = "出牌阶段，若你使用的第 1 张牌为【杀】，则你可令一名角色摸一张牌。然后若其的手牌不小于你，你本回合可使用【杀】的次数 +1 。",
 
 	["s3_yt_kangrui"] = "亢锐",
 	[":s3_yt_kangrui"] = "<font color=\"purple\"><b>觉醒技，</b></font>结束阶段开始时，若场上有角色没有手牌，你令没有手牌的所有角色摸两张牌，然后你将“征讨”描述中的“ X ”改为“ 1 ”。",
@@ -15634,7 +15630,7 @@ sgs.LoadTranslationTable{
 	[":s3_fans_qingyu"] = "当你即将受到一次伤害时，若你装备区内没有牌，你可进行一次判定：若结果为红色，防止此伤害。",
 	
 	["s3_fans_yihun"] = "翼魂",
-	[":s3_fans_yihun"] = "<font color=\"purple\"><b>觉醒技，</b></font>准备阶段开始时，若你装备区内有四张牌，你须增加一点体力上限，失去技能“轻羽”并获得技能“彩华”（<font color=\"blue\"><b>锁定技，</b></font>你使用的无色【杀】伤害+1。）",
+	[":s3_fans_yihun"] = "<font color=\"purple\"><b>觉醒技，</b></font>准备阶段开始时，若你装备区内有四张牌，你须增加一点体力上限，失去技能“轻羽”并获得技能“彩华”",
 	
 	["s3_fans_caihua"] = "彩华",
 	[":s3_fans_caihua"] = "<font color=\"blue\"><b>锁定技，</b></font>你使用的无色【杀】伤害+1。",

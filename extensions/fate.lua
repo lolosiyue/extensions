@@ -369,6 +369,7 @@ fatesizhan = sgs.CreateTriggerSkill{
 	name = "fatesizhan",
 	frequency = sgs.Skill_Wake,
 	events = {sgs.Dying},
+	waked_skills = "buqu",
 	on_trigger=function(self,event,player,data)
 		local room=player:getRoom()
 		if event==sgs.Dying then	
@@ -1168,6 +1169,7 @@ fateheihua = sgs.CreateTriggerSkill{
 	name = "fateheihua",
 	frequency = sgs.Skill_Wake,
 	events = {sgs.Dying},
+	waked_skills = "fateyaoshu,fatexineng",
 	on_trigger=function(self,event,player,data)
 		local room=player:getRoom()
 		if event==sgs.Dying then	
@@ -1186,7 +1188,6 @@ fateheihua = sgs.CreateTriggerSkill{
 					room:handleAcquireDetachSkills(player,"fatexineng")
 					room:addPlayerMark(player, "fateheihua")
 				end
-				--room:addPlayerMark(player, "@waked")
 				end
 		end
 	end,
@@ -2674,7 +2675,6 @@ fate_Shirou:addSkill(fatetouying)
 fate_Shirou:addSkill(fatetouyingTargetMod)
 extension:insertRelatedSkills("fatetouying","#fatetouying")
 fate_Shirou:addSkill(fatesizhan)
-fate_Shirou:addRelateSkill("buqu")
 fate_Carene:addSkill(fatexianshen)
 fate_Carene:addSkill(fateshenghai)
 fate_Carene:addSkill(fateshenghaiGive)
@@ -2692,8 +2692,6 @@ fate_Medea:addSkill(fateshenyan)
 fate_Medea:addSkill(fatefapao)
 fate_Sakura:addSkill(fatechuyi_vs)
 fate_Sakura:addSkill(fateheihua)
-fate_Sakura:addRelateSkill("fateyaoshu")
-fate_Sakura:addRelateSkill("fatexineng")
 fate_Gilgamesh:addSkill(fateluanshe_vs)
 fate_Gilgamesh:addSkill(fatechuanxin_trs)
 fate_Emiya_Archer:addSkill(fatetiangong_vs)
@@ -2814,7 +2812,7 @@ sgs.LoadTranslationTable{
 	["fatechuyi_"] = "厨艺",
 	[":fatechuyi_vs"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以弃置两张手牌，令一名其他角色摸两张牌并回复一点体力。",	
 	["fateheihua"] = "黑化",
-	[":fateheihua"] = "<font color=\"purple\"><b>觉醒技，</b></font>当你处于濒死状态时，弃置你的所有手牌，将武将牌恢复至初始状态，摸三张牌并回复至3点体力，然后你失去技能【厨艺】，并获得技能【妖术】与【吸能】。（吸能：锁定技，准备阶段开始时，你获得下家的一张牌，并可以令其失去一点体力。）",
+	[":fateheihua"] = "<font color=\"purple\"><b>觉醒技，</b></font>当你处于濒死状态时，弃置你的所有手牌，将武将牌恢复至初始状态，摸三张牌并回复至3点体力，然后你失去技能【厨艺】，并获得技能【妖术】与【吸能】。",
 	["fatexineng"] = "吸能",
 	["@fatexineng"] = "吸能",
 	[":fatexineng"] = "<font color=\"blue\"><b>锁定技，</b></font>准备阶段开始时，你获得下家的一张牌，并可以令其失去一点体力。",
