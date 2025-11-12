@@ -378,7 +378,7 @@ fatesizhan = sgs.CreateTriggerSkill{
 					recover.who = player
 					recover.recover = 1 - player:getHp()
 					room:recover(player, recover)
-				if room:changeMaxHpForAwakenSkill(player, 1) then
+				if room:changeMaxHpForAwakenSkill(player, 1, self:objectName()) then
 				player:drawCards(3)
 				room:handleAcquireDetachSkills(player,"buqu")
 				room:addPlayerMark(player, "fatesizhan")
@@ -1180,7 +1180,7 @@ fateheihua = sgs.CreateTriggerSkill{
 					recover.who = from
 					recover.recover = 3 - player:getHp()
 					room:recover(player, recover)
-				if room:changeMaxHpForAwakenSkill(player, 0) then
+				if room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) then
 					room:handleAcquireDetachSkills(player,"-fatechuyi_vs")
 					room:handleAcquireDetachSkills(player,"fateyaoshu")
 					room:handleAcquireDetachSkills(player,"fatexineng")

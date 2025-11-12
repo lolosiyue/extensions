@@ -742,7 +742,6 @@ Dragon_tongling = sgs.CreateTriggerSkill{
 					log.arg2 = source:getRole()
 				room:sendLog(log)
 				room:setPlayerProperty(player, "maxhp", sgs.QVariant(player:getMaxHp() + 1))			--锁定技
-				--room:changeMaxHpForAwakenSkill(player, 1)			--觉醒技
 				local recover = sgs.RecoverStruct()
 				recover.who = player
 				room:recover(player, recover)

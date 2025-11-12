@@ -116,7 +116,7 @@ luajuemou = sgs.CreateTriggerSkill { --觉醒 可实现
 		if choice == "luajuemouCd" then
 			player:drawCards(2)
 		end
-		if room:changeMaxHpForAwakenSkill(player, -1) then
+		if room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) then
 			room:addPlayerMark(player, self:objectName())
 			room:handleAcquireDetachSkills(player, "lualveji_vs")
 			return false
@@ -357,7 +357,7 @@ luaxumou = sgs.CreateTriggerSkill { --蓄谋 实现
 
 		room:broadcastSkillInvoke("luaxumou") --音效  ok
 		room:addPlayerMark(player, "luaxumou")
-		if room:changeMaxHpForAwakenSkill(player, 1) then
+		if room:changeMaxHpForAwakenSkill(player, 1, self:objectName()) then
 			player:drawCards(2)
 			room:handleAcquireDetachSkills(player, "luaguidao")
 			room:handleAcquireDetachSkills(player, "luaqiyi")

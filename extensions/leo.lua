@@ -1715,7 +1715,7 @@ end,]]
 	on_trigger = function(self, event, player, data)
 		if player:getPhase() ~= sgs.Player_Start then return false end
 		local room = player:getRoom()
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			player:drawCards(2)
 			room:handleAcquireDetachSkills(player, "fankui")
 			room:handleAcquireDetachSkills(player, "lianpo")
@@ -1829,7 +1829,7 @@ luatuwei = sgs.CreateTriggerSkill {
 		return false
 	end,
 	on_trigger = function(self, event, player, data, room)
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			room:handleAcquireDetachSkills(player, "mashu")
 			room:addPlayerMark(player, "luatuwei")
 			return false
@@ -3441,7 +3441,7 @@ luatianming = sgs.CreateTriggerSkill{
 		local count = player:getMark("&luarangxingRX")
 		player:drawCards(count)
 		room:addMaxCards(player, count, false)
-		room:changeMaxHpForAwakenSkill(player, 0) 
+		room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) 
 		room:acquireSkill(player, "bazhen")
 		room:acquireSkill(player, "kanpo")
 		room:acquireSkill(player, "jizhi")

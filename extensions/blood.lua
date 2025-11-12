@@ -148,7 +148,7 @@ blood_hunzi=sgs.CreateTriggerSkill{
         table.removeOne(currentdying,player:objectName())
         room:setTag("CurrentDying", sgs.QVariant(table.concat(currentdying, "|")))
 				player:drawCards(3)
-				if room:changeMaxHpForAwakenSkill(player, -1) then
+				if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 		        room:handleAcquireDetachSkills(player,"-blood_hj")
 		        room:handleAcquireDetachSkills(player, "yingzi")
 		        room:handleAcquireDetachSkills(player, "yinghun")

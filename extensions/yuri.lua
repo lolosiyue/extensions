@@ -1406,7 +1406,7 @@ independent = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		-- room:addPlayerMark(player, "independent")
 			room:setPlayerMark(player, "independent", 1)
-			if room:changeMaxHpForAwakenSkill(player) and player:getMark("independent") == 1 then
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) and player:getMark("independent") == 1 then
 				room:doLightbox("$nonowake") --這是顯示字
 				room:broadcastSkillInvoke("independent", 1)
 				-- room:doSuperLightbox("nono","independent")

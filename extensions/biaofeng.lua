@@ -6377,7 +6377,7 @@ PlusDujiang = sgs.CreateTriggerSkill {
 		room:broadcastInvoke("animate", "lightbox:$PlusDujiang_Animation:3000")
 		room:getThread():delay(4000)
 		room:setPlayerMark(player, "PlusDujiang", 1)
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			room:drawCards(player, 2, self:objectName())
 			room:handleAcquireDetachSkills(player, "PlusDuocheng")
 		end

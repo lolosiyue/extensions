@@ -1608,7 +1608,7 @@ kezaoxian = sgs.CreatePhaseChangeSkill {
 		room:broadcastSkillInvoke(self:objectName())
 		room:doSuperLightbox("kenewdengai", "kezaoxian")
 		room:setPlayerMark(player, self:objectName(), 1)
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			if player:isWounded() and room:askForChoice(player, self:objectName(), "recover+draw") == "recover" then
 				room:recover(player, sgs.RecoverStruct(player))
 			else
@@ -1783,7 +1783,7 @@ kezhiji = sgs.CreateTriggerSkill {
 		room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
 		room:doSuperLightbox("kenewjiangwei", "kezhiji")
 		room:setPlayerMark(player, self:objectName(), 1)
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			if player:isWounded() and room:askForChoice(player, self:objectName(), "recover+draw") == "recover" then
 				room:recover(player, sgs.RecoverStruct(player))
 			else
@@ -3689,7 +3689,7 @@ kepingpiao = sgs.CreateTriggerSkill {
 		room:broadcastSkillInvoke(self:objectName())
 		room:doSuperLightbox("kenewxushu", "kepingpiao")
 		room:addPlayerMark(player, "kepingpiao")
-		if room:changeMaxHpForAwakenSkill(player, -1) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			--if player:isWounded() and room:askForChoice(player, self:objectName(), "recover+draw") == "recover" then
 			local recover = sgs.RecoverStruct()
 			recover.who = player
@@ -4666,7 +4666,7 @@ kezili = sgs.CreatePhaseChangeSkill {
 			room:doSuperLightbox("kenewzhonghuizg", "kezili")
 		end
 		room:setPlayerMark(player, self:objectName(), 1)
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			if player:isWounded() and room:askForChoice(player, self:objectName(), "recover+draw") == "recover" then
 				room:recover(player, sgs.RecoverStruct(player))
 			else

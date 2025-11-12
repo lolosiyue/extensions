@@ -314,7 +314,7 @@ se_emeng = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if room:changeMaxHpForAwakenSkill(player, -1) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			room:broadcastSkillInvoke(self:objectName())
 			room:doLightbox("se_suo$", 500)
 			room:doLightbox("se_luo$", 500)
@@ -977,7 +977,7 @@ zheyi = sgs.CreateTriggerSkill {
 			for _, zuikaku in sgs.qlist(zuikakus) do
 				if zuikaku and zuikaku:getMark("zheyi") == 0 and zuikaku:getMark("@EryuMark") > 0 then
 					room:addPlayerMark(zuikaku, "zheyi")
-					if room:changeMaxHpForAwakenSkill(zuikaku, 1) then
+					if room:changeMaxHpForAwakenSkill(zuikaku, 1, self:objectName()) then
 						room:broadcastSkillInvoke(self:objectName())
 						room:doLightbox("zheyi$", 3000)
 						room:handleAcquireDetachSkills(zuikaku, "youdiz")

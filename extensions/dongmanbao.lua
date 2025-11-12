@@ -225,7 +225,7 @@ Dianci = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if room:changeMaxHpForAwakenSkill(player, -1) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			room:addPlayerMark(player, self:objectName())
 			room:handleAcquireDetachSkills(player, "se_paoji", true)
 			room:broadcastSkillInvoke("Dianci")
@@ -5340,7 +5340,7 @@ SE_Chengzhang = sgs.CreateTriggerSkill {
 		else
 			x = 96
 		end
-		if room:changeMaxHpForAwakenSkill(player, -x) then
+		if room:changeMaxHpForAwakenSkill(player, -x, self:objectName()) then
 			room:doLightbox("SE_Chengzhang$", 3000)
 			room:detachSkillFromPlayer(player, "SE_Pasheng")
 			room:detachSkillFromPlayer(player, "SE_Maoqun")
@@ -6811,7 +6811,7 @@ SE_Heiyang = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			room:handleAcquireDetachSkills(player, "SE_Chaopin")
 			room:handleAcquireDetachSkills(player, "qingguo")
 			room:broadcastSkillInvoke("SE_Heiyang")
@@ -10572,7 +10572,7 @@ SE_Poxiao = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if room:changeMaxHpForAwakenSkill(player, 1) then
+		if room:changeMaxHpForAwakenSkill(player, 1, self:objectName()) then
 			room:broadcastSkillInvoke("SE_Poxiao")
 			room:doLightbox("SE_Poxiao$", 3000)
 			room:addPlayerMark(player, "SE_Poxiao")

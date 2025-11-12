@@ -404,7 +404,7 @@ FiveYingzhan = sgs.CreateTriggerSkill {
 		room:broadcastInvoke("animate", "lightbox:$FiveYingzhan:3000")
 		room:getThread():delay(4000)
 		player:addMark("FiveYingzhan")
-		if room:changeMaxHpForAwakenSkill(player, -1) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			room:handleAcquireDetachSkills(player, "FiveFanjian")
 		end
 		return false
@@ -2898,7 +2898,7 @@ FourDedao = sgs.CreateTriggerSkill {
 		room:getThread():delay(4000)
 
 		--player:gainMark("@waked")
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player,-1, self:objectName()) then
 			room:setPlayerMark(player, "FourDedao", 1)
 			room:handleAcquireDetachSkills(player, "leiji")
 		end
@@ -3276,7 +3276,7 @@ DiyBaobian = sgs.CreateTriggerSkill {
 			room:setPlayerMark(player, "DiyBaobian", 1)
 			--player:gainMark("@waked")
 			--room:loseMaxHp(player)
-			if room:changeMaxHpForAwakenSkill(player) then
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 				room:setPlayerFlag(player, "DiyBaobian_Process") --防止失去疾速时失去神速
 				room:handleAcquireDetachSkills(player, "-DiyJisu")
 				room:setPlayerFlag(player, "-DiyBaobian_Process")

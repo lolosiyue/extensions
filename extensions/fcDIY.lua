@@ -8582,7 +8582,7 @@ fcj_poshi = sgs.CreateTriggerSkill{
 		room:broadcastSkillInvoke(self:objectName())
 		room:doSuperLightbox("fcj_lukang", self:objectName())
 		room:addPlayerMark(player, self:objectName())
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			local n = player:getMaxHp() - player:getHandcardNum()
 			for i = 0, 4 do
 				if player:hasEquipArea(i) then
@@ -13537,7 +13537,7 @@ fcmouzhiji = sgs.CreateTriggerSkill{
 		room:doSuperLightbox("fc_mou_jiangwei", "fcmouzhiji")
 		
 		room:addPlayerMark(player, self:objectName())
-		if room:changeMaxHpForAwakenSkill(player, -1) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			if not player:hasSkill("fcmzj_yaozhi") then
 				room:acquireSkill(player, "fcmzj_yaozhi")
 			end

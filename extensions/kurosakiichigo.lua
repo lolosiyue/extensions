@@ -52,7 +52,7 @@ krskitgxuhua = sgs.CreateTriggerSkill {
 		if player:isWounded() then
 			room:recover(player, sgs.RecoverStruct(player, nil, player:getLostHp()))
 		end
-		if room:changeMaxHpForAwakenSkill(player, 0) then
+		if room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) then
 			if player:getGeneralName() == "kurosakiichigo" then
 				room:changeHero(player, "kurosakiichigoex", true, false, false, true)
 				room:handleAcquireDetachSkills(player, "-krskitgzhanyue")

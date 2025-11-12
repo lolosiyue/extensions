@@ -2710,7 +2710,7 @@ zzsl = sgs.CreateTriggerSkill {
 		local use = data:toCardUse()
 		if use.card and use.card:isKindOf("Slash") then
 			room:addPlayerMark(player, "zzsl")
-			if room:changeMaxHpForAwakenSkill(player, 0) then
+			if room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) then
 				room:sendCompulsoryTriggerLog(player, self:objectName())
 				room:broadcastSkillInvoke(self:objectName())
 				--room:handleAcquireDetachSkills(player, "-shilian")
@@ -6407,7 +6407,7 @@ ye = sgs.CreateTriggerSkill {
 		room:sendCompulsoryTriggerLog(player, self:objectName())
 		--player:gainMark("@waked",1)
 		room:setPlayerMark(player, self:objectName(), 1)
-		room:changeMaxHpForAwakenSkill(player, -1)
+		room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 		room:recover(player, sgs.RecoverStruct(player))
 		room:broadcastSkillInvoke(self:objectName(), 1)
 		room:handleAcquireDetachSkills(player, "guichan")
@@ -6553,7 +6553,7 @@ juej = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if player:getPhase() == sgs.Player_Start and (player:getHp() == 1 or player:getHandcardNum() == 1) then
 			room:sendCompulsoryTriggerLog(player, self:objectName())
-			room:changeMaxHpForAwakenSkill(player, -1)
+			room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 			room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
 			room:recover(player, sgs.RecoverStruct(player, nil, 1))
 			local choice = room:askForChoice(player, self:objectName(), "juejian:ls+juejian:qz", data)
@@ -7157,7 +7157,7 @@ jssg = sgs.CreateTriggerSkill {
 			room:recover(player, sgs.RecoverStruct(player, nil, 1))
 		end
 		room:setPlayerMark(player, self:objectName(), 1)
-		room:changeMaxHpForAwakenSkill(player, -1)
+		room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 		room:acquireSkill(player, "feils2")
 		return false
 	end,
@@ -8565,7 +8565,8 @@ wuduan = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		local msg = sgs.LogMessage()
 		room:setPlayerMark(player, "wuduan", 1)
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) then
+			room:loseHp(player, 1, true, player, self:objectName())
 			room:acquireSkill(player, "tisheng")
 			room:broadcastSkillInvoke("wuduan")
 			return false
@@ -15848,7 +15849,7 @@ ujzhongshi = sgs.CreateTriggerSkill {
 		if event == sgs.MarkChanged then
 			local mark = data:toMark()
 			if (mark.name == "@shengyong") and (mark.gain > 0) then
-				if room:changeMaxHpForAwakenSkill(player, -1) then
+				if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 					room:broadcastSkillInvoke("ujlianji", math.random(1, 3))
 					room:handleAcquireDetachSkills(player, "ujlianjig")
 					room:handleAcquireDetachSkills(player, "-ujlianji|smsy")
@@ -16165,7 +16166,7 @@ tscg = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.Death and player:getMark(self:objectName()) == 0 then
-			if room:changeMaxHpForAwakenSkill(player) then
+			if room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) then
 				local s = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "tscg-invoke",
 					true, true)
 				if not s then return false end

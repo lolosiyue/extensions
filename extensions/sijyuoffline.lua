@@ -7490,7 +7490,7 @@ sfofl_2_qijin = sgs.CreatePhaseChangeSkill{
     on_phasechange = function(self, player)
         local room = player:getRoom()
         room:setPlayerMark(player, self:objectName(), 1)
-        if room:changeMaxHpForAwakenSkill(player) then
+        if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
             room:handleAcquireDetachSkills(player, "chongzhen")
         end
         return false
@@ -7515,7 +7515,7 @@ sfofl_2_qichu = sgs.CreateTriggerSkill{
         local room = player:getRoom()
         if player:getHp() <= 2  then
             room:setPlayerMark(player, self:objectName(), 1)
-            if room:changeMaxHpForAwakenSkill(player) then
+            if room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) then
                 room:handleAcquireDetachSkills(player, "yicong")
                 player:drawCards(2, self:objectName())
             end
@@ -17235,7 +17235,7 @@ sfofl_moucheng = sgs.CreateTriggerSkill{
                     room:addPlayerMark(owner, "sfofl_lianji_damage")
                     if owner:getMark("sfofl_lianji_damage") >= 3 or owner:canWake(self:objectName()) then
                         room:addPlayerMark(owner, self:objectName())
-                        if room:changeMaxHpForAwakenSkill(owner, 1) then
+                        if room:changeMaxHpForAwakenSkill(owner, 1, self:objectName()) then
                             room:handleAcquireDetachSkills(owner, "-sfofl_lianji")
                             local recover = sgs.RecoverStruct()
                             recover.who = owner

@@ -9007,7 +9007,7 @@ s4_s_tuji = sgs.CreateTriggerSkill{
         if player:getHp() == min_hp or player:canWake(self:objectName()) then
             room:broadcastSkillInvoke(self:objectName())
             room:sendCompulsoryTriggerLog(player, self:objectName(), true)
-            if room:changeMaxHpForAwakenSkill(player, -1) then
+            if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
                 room:addPlayerMark(player, self:objectName())
                 room:acquireSkill(player, "tuxi")
             end
@@ -9716,7 +9716,10 @@ s4_s_yongwuVS = sgs.CreateViewAsSkill{
     name = "s4_s_yongwu",
     n = 2,
     view_filter = function(self, selected, to_select)
-        return to_select:isRed() or to_select:isBlack()
+        if #selected > 0 then
+            return selected[1]:getColor() ~= to_select:getColor() and sgs.Self:getHandcards():contains(to_select)
+        end
+        return sgs.Self:getHandcards():contains(to_select)
     end,
     view_as = function(self, cards)
         if #cards == 0 then
@@ -9942,10 +9945,10 @@ s4_s_liaoshang_godSalvation = sgs.CreateViewAsSkill{
         if #cards ~= 1 then
             return nil
         end
-        local godSalvation = sgs.Sanguosha:cloneCard("godSalvation", cards[1]:getSuit(), cards[1]:getNumber())
-        godSalvation:setSkillName(self:objectName())
-        godSalvation:addSubcard(cards[1])
-        return godSalvation
+        local god_salvation = sgs.Sanguosha:cloneCard("god_salvation", cards[1]:getSuit(), cards[1]:getNumber())
+        god_salvation:setSkillName("s4_s_liaoshang")
+        god_salvation:addSubcard(cards[1])
+        return god_salvation
     end,
     enabled_at_play = function(self, player)
         return true
@@ -10089,51 +10092,49 @@ s4_s_citan = sgs.CreateTriggerSkill{
     on_trigger = function(self, event, player, data)
         if player:getPhase() == sgs.Player_Draw then
             local room = player:getRoom()
-            if room:askForSkillInvoke(player, self:objectName(), data) then
-                room:broadcastSkillInvoke(self:objectName())
-                local targets = sgs.SPlayerList()
-                for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-                    if player:inMyAttackRange(p) and not p:isKongcheng() then
-                        targets:append(p)
-                    end
-                end
-                if targets:isEmpty() then
-                    return false
-                end
-                local target = room:askForPlayerChosen(player, targets, self:objectName(), "s4_s_citan-invoke", true, true)
-                if target then
-                    local handcards = target:getHandcards()
-                    room:showAllCards(target, player)
-                    room:fillAG(handcards, player)
-                    local to_obtain = dummyCard()
-                    local id = room:askForAG(player, handcards, false, self:objectName())
-                    local card_ids = sgs.IntList()
-                    local disable = sgs.IntList()
-                    card_ids:append(id)
-                    room:clearAG(player)
-                    for _, c in sgs.qlist(handcards) do
-                        if c:getId() ~= id and c:getSuit() == sgs.Sanguosha:getCard(id):getSuit() then
-                            card_ids:append(c:getId())
-                        else
-                            disable:append(c:getId())
-                        end
-                    end
-                    if card_ids:subcardsLength() < 4 then
-                        to_obtain:addSubcards(card_ids)
-                        room:obtainCard(player, to_obtain, false)
-                    else
-                        room:fillAG(handcards, player, disable)
-                        for i = 1, 3 do
-                            local id = room:askForAG(player, card_ids, false, self:objectName())
-                            to_obtain:addSubcard(id)
-                            room:clearAG(player)
-                        end
-                        room:obtainCard(player, to_obtain, false)
-                    end
-                    
-                    return true
+            local targets = sgs.SPlayerList()
+            for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+                if player:inMyAttackRange(p) and not p:isKongcheng() then
+                    targets:append(p)
                 end
             end
+            if targets:isEmpty() then
+                return false
+            end
+            local target = room:askForPlayerChosen(player, targets, self:objectName(), "s4_s_citan-invoke", true, true)
+            if target then
+                local handcards = target:getHandcards()
+                room:showAllCards(target, player)
+                room:fillAG(handcards, player)
+                local to_obtain = dummyCard()
+                local id = room:askForAG(player, handcards, false, self:objectName())
+                local card_ids = sgs.IntList()
+                local disable = sgs.IntList()
+                card_ids:append(id)
+                room:clearAG(player)
+                for _, c in sgs.qlist(handcards) do
+                    if c:getId() ~= id and c:getSuit() == sgs.Sanguosha:getCard(id):getSuit() then
+                        card_ids:append(c:getId())
+                    else
+                        disable:append(c:getId())
+                    end
+                end
+                if card_ids:subcardsLength() < 4 then
+                    to_obtain:addSubcards(card_ids)
+                    room:obtainCard(player, to_obtain, false)
+                else
+                    room:fillAG(handcards, player, disable)
+                    for i = 1, 3 do
+                        local id = room:askForAG(player, card_ids, false, self:objectName())
+                        to_obtain:addSubcard(id)
+                        room:clearAG(player)
+                    end
+                    room:obtainCard(player, to_obtain, false)
+                end
+                
+                return true
+            end
+            
         end
         return false
     end,
@@ -10257,26 +10258,30 @@ s4_s_shangwu = sgs.CreateTriggerSkill{
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
         if event == sgs.TargetSpecified then
-            if room:askForSkillInvoke(player, "s4_s_shangwu_liegong", data) then
-                room:removePlayerMark(player, "&s4_s_cisha")
-                room:broadcastSkillInvoke(self:objectName())
-                local liegong = sgs.Sanguosha:getTriggerSkill("liegong")
-                liegong:trigger(event, room, player, data)
+            if player:getMark("&s4_s_cisha") > 0 then
+                if room:askForSkillInvoke(player, "s4_s_shangwu_liegong", data) then
+                    room:removePlayerMark(player, "&s4_s_cisha")
+                    room:broadcastSkillInvoke(self:objectName())
+                    local liegong = sgs.Sanguosha:getTriggerSkill("liegong")
+                    liegong:trigger(event, room, player, data)
+                end
             end
         elseif event == sgs.DrawNCards then
 			local draw = data:toDraw()
             if draw.reason ~= "draw_phase" then return false end
-			local tuxi = sgs.Sanguosha:getTriggerSkill("tenyeartuxi")
-			if tuxi then
-				room:setPlayerMark(player, "tenyeartuxi", draw.num)
-				if player:askForSkillInvoke("s4_s_shangwu_tuxi",data)  then
-			
-				room:notifySkillInvoked(player,self:objectName())
-				player:loseMark("&s4_s_cisha")
-				tuxi:trigger(event,room,player,data)
-				end
-				room:setPlayerMark(player, "tuxi", 0)
-			end
+            if player:getMark("&s4_s_cisha") > 0 then
+                local tuxi = sgs.Sanguosha:getTriggerSkill("tenyeartuxi")
+                if tuxi then
+                    room:setPlayerMark(player, "tenyeartuxi", draw.num)
+                    if player:askForSkillInvoke("s4_s_shangwu_tuxi",data)  then
+                
+                    room:notifySkillInvoked(player,self:objectName())
+                    player:loseMark("&s4_s_cisha")
+                    tuxi:trigger(event,room,player,data)
+                    end
+                    room:setPlayerMark(player, "tuxi", 0)
+                end
+            end
 		elseif event == sgs.AfterDrawNCards then
 			local draw = data:toDraw()
             if draw.reason ~= "draw_phase" then return false end
@@ -10288,7 +10293,7 @@ s4_s_shangwu = sgs.CreateTriggerSkill{
         return false
     end,
     can_trigger = function(self, target)
-        return target and target:isAlive() and target:hasSkill(self:objectName()) and target:getMark("&s4_s_cisha") > 0
+        return target and target:isAlive() and target:hasSkill(self:objectName())
     end,
 }
 

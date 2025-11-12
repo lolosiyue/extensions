@@ -1771,7 +1771,7 @@ LuaJianzhi = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			room:doLightbox("LuaJianzhi$", 2500)
 			room:broadcastSkillInvoke("LuaJianzhi")
 			room:handleAcquireDetachSkills(player, "luajianyu")

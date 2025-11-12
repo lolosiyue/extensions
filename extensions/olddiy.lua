@@ -804,7 +804,7 @@ guishu = sgs.CreateTriggerSkill{
         local room = player:getRoom()
         player:setMark("guishu", 1)
         local room = player:getRoom()
-        if room:changeMaxHpForAwakenSkill(player) then 
+        if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
             room:setPlayerProperty(player,"kingdom",sgs.QVariant("shu")) 
             room:handleAcquireDetachSkills(player, "longdan")
             room:handleAcquireDetachSkills(player, "dangqian")

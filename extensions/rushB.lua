@@ -493,7 +493,7 @@ rushB_zili = sgs.CreateTriggerSkill{
 		room:sendCompulsoryTriggerLog(player, self:objectName())
 		room:broadcastSkillInvoke(self:objectName(), math.random(1, 3))
 		room:addPlayerMark(player, "rushB_zili")
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			local recover = sgs.RecoverStruct()
 			recover.who = player
 			room:recover(player, recover)

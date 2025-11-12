@@ -1049,7 +1049,7 @@ LuaJuejing = sgs.CreateTriggerSkill {
 				player:removeMark(self:objectName())
 				if not room:askForSkillInvoke(player, self:objectName(), data) then return end
 				room:broadcastSkillInvoke("LuaJuejing");
-				if room:changeMaxHpForAwakenSkill(player) then
+				if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 					room:handleAcquireDetachSkills(player, "LuaLongwei|-LuaJuejing|-LuaShenyong")
 					room:addMaxCards(player, 1, false)
 					room:addPlayerMark(player, "&LuaJuejing")
@@ -1220,14 +1220,14 @@ Exchange1 = function(xinglvbu)
 
 		room:broadcastSkillInvoke("LuaBaonu")
 		if xinglvbu:hasSkill("xingLuashenji") then
-			if room:changeMaxHpForAwakenSkill(xinglvbu) then
+			if room:changeMaxHpForAwakenSkill(xinglvbu, -1, self:objectName()) then
 				room:addMaxCards(xinglvbu, 1, false)
 				room:handleAcquireDetachSkills(xinglvbu, "exshenji")
 				room:handleAcquireDetachSkills(xinglvbu, "-LuaBaonu")
 				room:handleAcquireDetachSkills(xinglvbu, "-LuaHuaji")
 			end
 		else
-			if room:changeMaxHpForAwakenSkill(xinglvbu) then
+			if room:changeMaxHpForAwakenSkill(xinglvbu, -1, self:objectName()) then
 				room:addMaxCards(xinglvbu, 1, false)
 				room:handleAcquireDetachSkills(xinglvbu, "xingLuashenji")
 			end

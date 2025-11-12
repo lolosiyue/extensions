@@ -3852,14 +3852,14 @@ meizlshangwu = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Start then
 			if player:getMark("meizlshangwu_canWake1") > 0 and player:getMark("meizlshangwu1") == 0 then
-				room:changeMaxHpForAwakenSkill(player, -1)
+				room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 				player:addMark("meizlshangwu1")
 				room:doLightbox("$meizlshangwuanimate", 1000)
 				room:handleAcquireDetachSkills(player, "xiaoji")
 			end
 			if player:getMark("meizlshangwu_canWake2") > 0 and player:getMark("meizlshangwu2") == 0 then
 				player:addMark("meizlshangwu2")
-				room:changeMaxHpForAwakenSkill(player, -1)
+				room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 				room:doLightbox("$meizlshangwuanimate", 1000)
 				room:handleAcquireDetachSkills(player, "ganlu")
 			end

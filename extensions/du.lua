@@ -237,7 +237,7 @@ du_jieying = sgs.CreateTriggerSkill {
 		theRecover.who = player
 		room:recover(player, theRecover)
 		room:addPlayerMark(player, self:objectName())
-		if room:changeMaxHpForAwakenSkill(player, -1) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			room:handleAcquireDetachSkills(player, "qixi")
 		end
 	end,
@@ -444,7 +444,7 @@ duWuhun = sgs.CreateTriggerSkill {
 			local recover = sgs.RecoverStruct()
 			recover.who = player
 			room:recover(player, recover)
-			room:changeMaxHpForAwakenSkill(player, -1)
+			room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 			room:addPlayerMark(player, self:objectName())
 			room:broadcastSkillInvoke(self:objectName())
 		end

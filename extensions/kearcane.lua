@@ -742,7 +742,7 @@ kechuzhism = sgs.CreateTriggerSkill{
 					--改技能描述
 					-- local translate = sgs.Sanguosha:translate(":kejintuo1")
 					room:changeTranslation(player, "kejintuo", 1);
-					if room:changeMaxHpForAwakenSkill(player, -1) then
+					if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 						local tp = math.random(1,2)
 						if tp == 1 then
 							room:broadcastSkillInvoke("kechuzhism",1)
@@ -2870,7 +2870,7 @@ keluxr = sgs.CreateTriggerSkill{
 		end
 
 		if can_invoke or player:canWake(self:objectName()) then
-			if room:changeMaxHpForAwakenSkill(player, 0) then
+			if room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) then
 			room:addPlayerMark(player, "keluxr")
 			room:broadcastSkillInvoke("keluxr")
 			room:doSuperLightbox("kelux", "keluxr")

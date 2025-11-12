@@ -1153,7 +1153,7 @@ s_w_luopo = sgs.CreateTriggerSkill{
 		local data_list = str:split(":")
 		if (data_list[2] == "s_w_jianxiong") then 
 			if data_list[3] == "cancel" then return false end
-			if (player:getHp() <=2 or player:canWake(self:objectName())) and room:changeMaxHpForAwakenSkill(player) then
+			if (player:getHp() <=2 or player:canWake(self:objectName())) and room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 				room:addPlayerMark(player, "s_w_luopo")
 				local hp = player:getHp()
 				if hp < 3 then
@@ -1639,7 +1639,7 @@ s_w_longnu = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		room:addPlayerMark(player, "s_w_longnu")
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			room:handleAcquireDetachSkills(player, "longdan|chongzhen|mashu|feiying")
 		end
 		return false
@@ -1967,7 +1967,7 @@ s_w_fanji = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		room:addPlayerMark(player, "s_w_fanji")
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			room:handleAcquireDetachSkills(player, "s_w_juezhan")
 		end
 		return false
@@ -3522,7 +3522,7 @@ s2_huzi = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if player:canWake(self:objectName()) or player:getHp() <= 2 then
-	if 	room:changeMaxHpForAwakenSkill(player, -2) then 
+	if 	room:changeMaxHpForAwakenSkill(player, -2, self:objectName()) then 
 		room:addPlayerMark(player, self:objectName())
 		room:handleAcquireDetachSkills(player, "wushen")
 		room:handleAcquireDetachSkills(player, "paoxiao")
@@ -3933,7 +3933,7 @@ s2_jiangwu = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if player:canWake(self:objectName()) or player:getMark("&s2_jie") >= 4 then
 		room:addPlayerMark(player, "s2_jiangwu")
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) then
 				player:getRoom():setPlayerProperty(player, "kingdom", sgs.QVariant("wu"))
 				room:handleAcquireDetachSkills(player, "s2_gn_nixi")
 		end
@@ -6079,7 +6079,7 @@ s2_wuwei = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if player:getHp() <= 2  and player:canWake(self:objectName()) then
 			room:addPlayerMark(player, "s2_wuwei")
-			if room:changeMaxHpForAwakenSkill(player) then
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 				room:handleAcquireDetachSkills(player, "mengjin")
 			end
 		end
@@ -8381,7 +8381,7 @@ s2_qizha = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		room:addPlayerMark(player, "s2_qizha")
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			room:handleAcquireDetachSkills(player, "s2_andu")
 			room:broadcastSkillInvoke(self:objectName())
 		end
@@ -8590,7 +8590,7 @@ s2_shehua = sgs.CreateTriggerSkill{
 	waked_skills = "s2_shemi",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-	if 	room:changeMaxHpForAwakenSkill(player, -1) then 
+	if 	room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then 
 		room:addPlayerMark(player, self:objectName())
 		room:handleAcquireDetachSkills(player, "s2_shemi")
 		return false
@@ -8901,7 +8901,7 @@ s2_hengjiang = sgs.CreateTriggerSkill{
 	waked_skills = "s2_qigong",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-	if 	room:changeMaxHpForAwakenSkill(player, -1) then 
+	if 	room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then 
 	if player:isWounded() then
 				if room:askForChoice(player, self:objectName(), "recover+draw") == "recover" then
 					local recover = sgs.RecoverStruct()
@@ -9115,7 +9115,7 @@ s2_qibei = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		room:addPlayerMark(player, "s2_qibei")
-		if room:changeMaxHpForAwakenSkill(player, -1) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			room:handleAcquireDetachSkills(player, "s2_qingfa")
 			room:setPlayerFlag(player, "s2_qibei")
 		end
@@ -9433,7 +9433,7 @@ s2_yitong = sgs.CreateTriggerSkill{
 		end
 		if x > (room:getAlivePlayers():length()/2) or player:canWake(self:objectName()) then 
 			room:addPlayerMark(player, "s2_yitong")
-			if room:changeMaxHpForAwakenSkill(player, -1) then
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 				if player:isLord() then
 					room:handleAcquireDetachSkills(player, "jijiang")
 					room:handleAcquireDetachSkills(player, "zhiba")
@@ -11588,7 +11588,7 @@ s3_xiaohu = sgs.CreateTriggerSkill{
 			room:drawCards(player, 2, self:objectName())
 		end
 		room:addPlayerMark(player, "s3_xiaohu")
-		if room:changeMaxHpForAwakenSkill(player) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			room:handleAcquireDetachSkills(player, "s3_tianwei")
 		end
 		return false
@@ -12228,7 +12228,8 @@ s3_zhonglie = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		room:addPlayerMark(player, "s3_zhonglie")
-		if room:changeMaxHpForAwakenSkill(player) then
+		room:recover(player, sgs.RecoverStruct(self:objectName(), player, 1))
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			room:handleAcquireDetachSkills(player, "s3_sizhan")
 		end
 		return false
@@ -12533,7 +12534,7 @@ s3_xiongzhi = sgs.CreateTriggerSkill{
 		end
 		if (can_invoke and player:isKongcheng()) or player:canWake(self:objectName()) then
 			room:addPlayerMark(player, "s3_xiongzhi")
-			if room:changeMaxHpForAwakenSkill(player, -1) then
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 					room:handleAcquireDetachSkills(player, "guixin")
 			end
 		end
@@ -13703,7 +13704,7 @@ s3_yt_qibingCard = sgs.CreateSkillCard{
 		effect.from:loseMark("@s3_yt_qibing", 1)
 		room:damage(sgs.DamageStruct(self:objectName(), effect.from, effect.to))
 		if effect.to:isAlive() then
-		if room:changeMaxHpForAwakenSkill(effect.from, -1) then
+		if room:changeMaxHpForAwakenSkill(effect.from, -1, self:objectName()) then
 					room:handleAcquireDetachSkills(effect.from, "s3_yt_panjiang")
 			end
 		end
@@ -14923,7 +14924,7 @@ s3_fans_guzhi = sgs.CreateTriggerSkill{
 	waked_skills = "tiaoxin",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if room:changeMaxHpForAwakenSkill(player, -1) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 		room:addPlayerMark(player, self:objectName())
 		if player:isWounded() then
 		if room:askForChoice(player, self:objectName(), "s3_fans_guzhirecover+s3_fans_guzhidraw") == "s3_fans_guzhirecover" then
@@ -15565,7 +15566,7 @@ s3_fans_yihun = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 			room:setPlayerMark(player, "s3_fans_yihun", 1)
-			if room:changeMaxHpForAwakenSkill(player , 1) then
+			if room:changeMaxHpForAwakenSkill(player , 1, self:objectName()) then
 			room:handleAcquireDetachSkills(player, "-s3_fans_qingyu")
 			room:handleAcquireDetachSkills(player, "s3_fans_caihua")
 			end

@@ -75,7 +75,7 @@ function SkillWakeTrigger(self,player,n,gn)
 	then gn = gn or player:getGeneral2Name() end
 	gn = gn or player:getGeneralName()
 	room:doSuperLightbox(gn,self)
-	room:changeMaxHpForAwakenSkill(player,n)
+	room:changeMaxHpForAwakenSkill(player,n,self)
 	player:setTag(self,sgs.QVariant(true))
 end
 function NotifySkillInvoked(self,player,tos,num)
