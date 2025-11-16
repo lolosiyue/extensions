@@ -2971,11 +2971,15 @@ sgs.ai_card_intention["sfofl_lilu"] = -80
 
 sgs.ai_skill_discard.sfofl_lilu = function(self, discard_num, min_num, optional, include_equip)
 	local to_discard = {}
-	local cards = sgs.QList2Table(self.player:getCards("he"))
+	local cards = sgs.QList2Table(self.player:getCards("h"))
 	self:sortByKeepValue(cards)
 	for _,c in ipairs(cards)do
-		if #to_discard>=discard_num then break end
-		if not self:aiUseCard(c, dummy()).card then
+		if self:getKeepValue(c) > 10 then continue end
+		if self:willUse(self.player,c, false,false, true) then continue end
+			table.insert(to_discard,c:getEffectiveId())
+		end
+	for _,c in ipairs(sgs.QList2Table(self.player:getCards("e")))do
+		if self:doDisCard(self.player, c:getEffectiveId()) then
 			table.insert(to_discard,c:getEffectiveId())
 		end
 	end
@@ -3039,7 +3043,7 @@ sgs.ai_fill_skill.sfofl_liaofu = function(self)
     local cards = self.player:getCards("h")
     cards = self:sortByUseValue(cards,true) -- 按保留值排序
 	for i,h in sgs.list(cards)do
-		if h:isKindOf("Slash") and self.player:getMark("sfofl_liaofu"..card:objectName()) == 0 then
+		if h:isKindOf("Slash") and self.player:getMark("sfofl_liaofu"..h:objectName()) == 0 then
 			use_card = h
 			break
 		end
@@ -3062,13 +3066,20 @@ sgs.ai_skill_invoke.sfofl_jinshou = function(self,data)
 	return self:isWeak() and self:getAllPeachNum() + self.player:getHp() - 1 - getCardsNum("Peach,Analeptic",self.player,self.player) > 0
 end
 
+sgs.ai_target_revises.sfofl_jinshou = function(to,card,self)
+	return card:isDamageCard() and card:isSingleTargetCard() and self.player~=to and to:getMark("&sfofl_jinshou-Self"..sgs.Player_RoundStart.."Clear") > 0
+end
+
+
 sgs.ai_skill_invoke.sfofl_sitong = function(self,data)
 	local use = data:toCardUse()
 	local target = use.from
 	local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 	slash:deleteLater()
 	slash:setSkillName("sfofl_sitong")
-	local dummy_use = self:aiUseCard(slash, dummy(true, 0, self.room:getOtherPlayers(target)))
+	self.player:setFlags("slashNoDistanceLimit")
+	local dummy_use = self:aiUseCard(slash, dummy(true, 99, self.room:getOtherPlayers(target)))
+	self.player:setFlags("-slashNoDistanceLimit")
 	if dummy_use.card and dummy_use and dummy_use.to and dummy_use.to:contains(target) then
 		return true
 	end
@@ -3092,7 +3103,7 @@ sgs.ai_skill_use_func["#sfofl_jianjing"] = function(card,use,self)
 	self:sort(self.enemies,"handcard")
 
 	for _,enemy in sgs.list(self.enemies)do
-		if enemy:getHp()>self.player:getHp() and self.player:canPindian(enemy) then
+		if self.player:canPindian(enemy) then
 			local enemy_max_card = self:getMaxCard(enemy)
 			local allknown = 0
 			if self:getKnownNum(enemy)==enemy:getHandcardNum() then
@@ -3111,6 +3122,21 @@ sgs.ai_skill_use_func["#sfofl_jianjing"] = function(card,use,self)
 					end
 				end
 			end
+		end
+	end
+	local min_card = self:getMinCard()
+	local min_point = min_card:getNumber()
+	for _,friend in sgs.list(self.friends_noself)do
+		if self.player:canPindian(friend) and min_point < 6 then
+			for _,enemy2 in sgs.list(self.enemies)do
+				if friend:distanceTo(enemy2)<=friend:getAttackRange() then
+					self.sfofl_jianjing_card = min_card:getEffectiveId()
+					use.card = sgs.Card_Parse("#sfofl_jianjing:.:")
+					use.to:append(friend)
+					return
+				end
+			end
+			
 		end
 	end
 end
@@ -3145,7 +3171,9 @@ sgs.ai_skill_playerschosen.sfofl_jiaozheng = function(self, targets, max, min)
 	local card = dummyCard()
 	card:setSkillName("sfofl_jiaozheng")
 	card:deleteLater()
+	self.player:setFlags("slashNoDistanceLimit")
 	local dummy_use = self:aiUseCard(card, dummy())
+	self.player:setFlags("-slashNoDistanceLimit")
 	if dummy_use.card and dummy_use.to and not dummy_use.to:isEmpty() then
 		for _, p in sgs.qlist(dummy_use.to) do 
 			if table.contains(can_choose, p) then
@@ -3164,26 +3192,32 @@ sgs.ai_skill_playerschosen.sfofl_jiaozheng = function(self, targets, max, min)
 end
 
 sgs.ai_skill_playerchosen.sfofl_jiaozheng = function(self,targets)
-	for _,friend in ipairs(friends)do
+	local slash = dummyCard()
+	slash:setSkillName("sfofl_jiaozheng")
+	for _,friend in ipairs(sgs.QList2Table(targets))do
+		if self:isFriend(friend) then
 		for _,enemy in ipairs(self.enemies)do
-			if friend:canSlash(enemy) and not self:slashProhibit(slash,enemy) and self:getDefenseSlash(enemy)<=2
+				if friend:canSlash(enemy, false) and not self:slashProhibit(slash,enemy) and self:getDefenseSlash(enemy)<=2
 			and self:slashIsEffective(slash,enemy) and self:isGoodTarget(enemy,self.enemies,slash)
 			and enemy:objectName()~=self.player:objectName() then
 				return friend
 			end
 		end
 	end
+	end
 	return nil
 end
 
 sgs.ai_playerchosen_intention.sfofl_jiaozheng = -80
 
-sgs.ai_skill_invoke.sfofl_sitong = function(self,data)
+sgs.ai_skill_invoke.sfofl_qingjin = function(self,data)
 	local target = data:toPlayer()
 	local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 	slash:deleteLater()
-	slash:setSkillName("sfofl_sitong")
-	local dummy_use = self:aiUseCard(slash, dummy(true, 0, self.room:getOtherPlayers(target)))
+	slash:setSkillName("sfofl_qingjin")
+	self.player:setFlags("slashNoDistanceLimit")
+	local dummy_use = self:aiUseCard(slash, dummy(true, 99, self.room:getOtherPlayers(target)))
+	self.player:setFlags("-slashNoDistanceLimit")
 	if dummy_use.card and dummy_use and dummy_use.to and dummy_use.to:contains(target) then
 		if not self:isWeak() or getCardsNum("Jink",target,self.player)==0 then
 			return true
@@ -3205,8 +3239,55 @@ sgs.ai_skill_use_func["#sfofl_fenqi"] = function(card,use,self)
 	use.card = card
 end
 
+sgs.ai_use_priority["sfofl_fenqi"] = 10
 
+sgs.ai_skill_playerchosen.sfofl_mouni = function(self,targets)
+	local slash = dummyCard()
+	slash:setSkillName("sfofl_mouni")
+	self:sort(self.enemies,"handcard",true)
+	for _,enemy in ipairs(self.enemies)do
+		if self.player:canSlash(enemy, false) and not self:slashProhibit(slash,enemy) and self:slashIsEffective(slash,enemy) and ((self:canHit(enemy, self.player) or (getCardsNum("Jink", enemy, self.player) < getCardsNum("Slash", enemy, self.player))) and (getCardsNum("Slash", enemy, self.player) > 0)) then
+			return enemy
+		end
+	end
+	for _,enemy in ipairs(self.enemies)do
+		if self.player:canSlash(enemy, false) and not self:slashProhibit(slash,enemy) and self:slashIsEffective(slash,enemy) and (self:isGoodTarget(enemy,self.enemies,slash) and math.random() < 0.4 and enemy:getHandcardNum() > 2) then
+			return enemy
+		end
+	end
+		
+	return nil
+end
 
+sgs.ai_playerchosen_intention.sfofl_mouni = 40
+
+sgs.ai_skill_playerchosen.sfofl_zongfan = function(self,targets)
+	for _,p in sgs.list(self.friends_noself)do
+		if self:canDraw(p, self.player) then
+			return p
+		end
+	end
+	return targets:first()
+end
+sgs.ai_playerchosen_intention.sfofl_zongfan = -80
+
+sgs.ai_skill_discard.sfofl_zongfan = function(self, discard_num, min_num, optional, include_equip)
+	local target = self.player:getTag("sfofl_zongfan"):toPlayer()
+	local to_discard = {}
+	local cards = sgs.QList2Table(self.player:getCards("he"))
+	self:sortByKeepValue(cards)
+	for _, card in ipairs(cards) do
+        table.insert(to_discard, card:getEffectiveId())
+		if #to_discard >= 5 or not self:isFriend(target) then
+        	break
+		end
+	end
+	if #to_discard > 0 then
+		return to_discard
+	end
+
+	return {}
+end
 
 function SmartAI:useCardJingxiangGoldenage(card,use)
 	local targets = sgs.SPlayerList()
@@ -5499,10 +5580,10 @@ sgs.ai_skill_choice.sfofl_suibian = function(self, choices, data)
 	local null = getChoice(choices, "nullified")
 	if self:isFriend(use.to:first()) and null then
 		local target = use.to:first()
-		if not use.from or use.from:isDead() then return "draw" end
+		if not use.from or use.from:isDead() then return draw end
 		if self.role == "rebel" and sgs.ai_role[use.from:objectName()] == "rebel" and not hasJueqingEffect(use.from, target, sgs.card_damage_nature[use.card:getClassName()])
 			and self.player:getHp() == 1 and self:getAllPeachNum() < 1 then
-			return "draw"
+			return draw
 		end
 		if self:isEnemy(use.from) or (self:isFriend(use.from) and self.role == "loyalist" and not hasJueqingEffect(use.from, target, sgs.card_damage_nature[use.card:getClassName()]) and use.from:isLord() and self.player:getHp() == 1) then
 			if use.card:isKindOf("AOE") then
@@ -10208,7 +10289,7 @@ end
 sgs.ai_skill_invoke.sfofl_n_jianbing = function(self,data)
 	local damage = data:toDamage()
 	if self:doDisCard(damage.to, "he", true) then return true end
-	if self:isFriend(damage.to) and self:isWeak(damage.to) and self:getKnownCard(damage.to,self.player,"heart")>0 then return true end
+	if self:isFriend(damage.to) and self:isWeak(damage.to) and getKnownCard(damage.to,self.player,"heart")>0 then return true end
 	return false
 end
 
@@ -10865,7 +10946,7 @@ sgs.ai_skill_cardask["@sfofl_shanwu"] = function(self, data, pattern, target, ta
 		or use.card:isKindOf("NatureSlash") and self.player:isChained() and self:isGoodChainTarget(target,use.card,use.from)
 		or self:needToLoseHp(target,use.from,use.card) and self:ajustDamage(use.from,target,1,use.card)==1 then return "." end
 	if self:needToLoseHp(target, use.from,use.card, true, true) then return "." end
-	if self:getCardsNum("Jink") == 0 then return true end
+	if getCardsNum("Jink", target, self.player) == 0 then return true end
 	return true
 end
 
@@ -10888,9 +10969,16 @@ sgs.ai_skill_cardask["@sfofl_guisha"] = function(self,data)
 	local use = data:toCardUse()
 	local slash = use.card
 	local slash_num = 0
-	if use.from:objectName()==self.player:objectName() then slash_num = self:getCardsNum("Slash") else slash_num = getCardsNum("Slash",use.from,self.player) end
-	if self:isEnemy(use.from) and use.m_addHistory and not self:hasCrossbowEffect(use.from) and slash_num>0 then return "." end
+	if use.from:objectName()==self.player:objectName() then 
+		slash_num = self:getCardsNum("Slash") 
+	else 
+		slash_num = getCardsNum("Slash",use.from,self.player) 
+	end
+	if self:isEnemy(use.from) then return "." end
 	if (use.m_reason==sgs.CardUseStruct_CARD_USE_REASON_PLAY and use.m_addHistory and self:isFriend(use.from) and slash_num>=1) then
+		return true
+	end
+	if self:isFriend(use.from) and (not self:isFriend(use.to:first()) and not self:cantDamageMore(use.from, use.to:first())) then
 		return true
 	end
 	return "."
@@ -10898,7 +10986,8 @@ end
 
 sgs.ai_choicemade_filter.cardResponded["@sfofl_guisha"] = function(self, player, promptlist)
 	if promptlist[#promptlist] ~= "" then
-		local target = self.room:findPlayerByObjectName(promptlist[2])
+		self.room:writeToConsole(promptlist[#promptlist]..": "..promptlist[4])
+		local target = self.room:findPlayerByObjectName(promptlist[4])
 		if target then
 			sgs.updateIntention(player, target, -40)
 		end
@@ -10923,10 +11012,16 @@ end
 
 
 sgs.ai_skill_invoke.sfofl_meiniang = function(self, data)
-	local target = data:toPlayer()
+	local target = self.room:getCurrent()
     if target and self:isFriend(target) then return true end
 	return false
 end
+
+sgs.ai_choicemade_filter.skillInvoke.sfofl_meiniang = function(self, player, promptlist)
+    local target = self.room:getCurrent()
+	if target then sgs.updateIntention(player,target,-50) end
+end
+
 
 sgs.ai_skill_invoke.sfofl_yaoli = function(self, data)
 	local target = data:toCardUse().from
@@ -10939,7 +11034,8 @@ end
 sgs.ai_skill_discard.sfofl_leyu = function(self, discard_num, min_num, optional, include_equip)
 	local to_discard = {}
 	local current = self.room:getCurrent()
-	if #self.enemies<1 and self.player:getHandcardNum()-#self.toUse-self.player:getMaxCards()<1 then return {} end
+	if not current then return {} end
+	if #self.enemies<1 then return {} end
 	local getvalue = function(enemy)
 		if type(enemy)~="userdata" then return -100 end
 		local value = enemy:getHandcardNum()-enemy:getHp()
@@ -10972,7 +11068,7 @@ sgs.ai_skill_discard.sfofl_leyu = function(self, discard_num, min_num, optional,
 		if #to_discard == 3 then
 			return to_discard
 		end
-	elseif self.player:getCards("he"):length() - #to_discard > 3 then
+	elseif self.player:getCards("he"):length() - #to_discard > 3 and #to_discard == 3 then
 		for _,p in sgs.list(self.enemies)do
 			if p:objectName() == current:objectName() then
 				return to_discard

@@ -1294,7 +1294,7 @@ sgs.LoadTranslationTable {
     ["sfofl_taoyan"] = "桃宴",
     [":sfofl_taoyan"] = "回合开始时，你可以令至多两名其他角色各摸一张牌并从游戏外获得一张【桃】。",
     ["_peach"] = "桃",
-	[":_peach"] = "基本牌<br/><b>时机</b>：出牌阶段，对已受伤的你使用；一名角色处于濒死状态时对其使用。<br/><b>效果</b>：目标回复1点体力。"
+	[":_peach"] = "基本牌<br/><b>时机</b>：出牌阶段，对已受伤的你使用；一名角色处于濒死状态时对其使用。<br/><b>效果</b>：目标回复1点体力。",
     ["sfofl_yanli"] = "妍丽",
     [":sfofl_yanli"] = "每轮限一次，当一名角色于你的回合外进入濒死状态时，你可以令其回复至1点体力，然后其摸一张牌。",
     
@@ -6674,7 +6674,7 @@ for i = 1, 4, 1 do
     horseof:setParent(extension_card)
 end
 
-sfofl_2_shenmachao = sgs.General(extension_s, "sfofl_2_shenmachao", "god", 4, true)
+sfofl_2_shenmachao = sgs.General(extension_s, "sfofl_2_shenmachao", "god", 4, true, true)
 sfofl_2_shenmachao:addSkill("undershouli")
 sfofl_2_shenmachao:addSkill("underhengwu")
 
@@ -11825,7 +11825,7 @@ sfofl_barbs = sgs.CreateViewAsSkill{
 }
 if not sgs.Sanguosha:getSkill("sfofl_barbs") then skills:append(sfofl_barbs) end
 
-sfofl_caosong = sgs.General(extension_s, "sfofl_caosong", "wei", 4, true, true)
+sfofl_caosong = sgs.General(extension_s, "sfofl_caosong", "wei", 4, true)
 --[[
 	技能名：礼赂
 	相关武将：曹嵩[官盗]
@@ -11988,7 +11988,7 @@ sfofl_caosong:addSkill(sfofl_lilu)
 sfofl_caosong:addSkill(sfofl_yizhengc)
 
 
-sfofl_chengyu = sgs.General(extension_s, "sfofl_chengyu", "wei", 3, true, true)
+sfofl_chengyu = sgs.General(extension_s, "sfofl_chengyu", "wei", 3, true)
 
 --[[
 	技能名：燎伏
@@ -12110,7 +12110,7 @@ sfofl_chengyu:addSkill(sfofl_jinshou)
 
 
 
-sfofl_5_caocao = sgs.General(extension_s, "sfofl_5_caocao", "wei", 4, true, true)
+sfofl_5_caocao = sgs.General(extension_s, "sfofl_5_caocao", "wei", 4, true)
 
 --[[
 	技能名：旌聚
@@ -12218,7 +12218,7 @@ sfofl_5_caocao:addSkill(sfofl_jingju_buff)
 extension_s:insertRelatedSkills("sfofl_jingju", "#sfofl_jingju_buff")
 sfofl_5_caocao:addSkill(sfofl_sitong)
 
-sfofl_xunyu = sgs.General(extension_s, "sfofl_xunyu", "wei", 3, true, true)
+sfofl_xunyu = sgs.General(extension_s, "sfofl_xunyu", "wei", 3, true)
 
 
 --[[
@@ -12326,7 +12326,7 @@ sfofl_xunyu:addSkill(sfofl_dishou_Clear)
 sfofl_xunyu:addSkill(sfofl_dishou)
 extension_s:insertRelatedSkills("sfofl_dishou", "#sfofl_dishou_Clear")
 
-sfofl_chengong = sgs.General(extension_s, "sfofl_chengong", "qun", 3, true, true)
+sfofl_chengong = sgs.General(extension_s, "sfofl_chengong", "qun", 3, true)
 
 
 --[[
@@ -12370,7 +12370,7 @@ sfofl_jiaozheng = sgs.CreateTriggerSkill{
 sfofl_chengong:addSkill("mingce")
 sfofl_chengong:addSkill(sfofl_jiaozheng)
 
-sfofl_zhangkai = sgs.General(extension_s, "sfofl_zhangkai", "qun", 4, true, true)
+sfofl_zhangkai = sgs.General(extension_s, "sfofl_zhangkai", "qun", 4, true)
 
 
 --[[
@@ -12437,7 +12437,7 @@ sfofl_zhangkai:addSkill(sfofl_qingjin_record)
 sfofl_zhangkai:addSkill(sfofl_qingjin)
 extension_s:insertRelatedSkills("sfofl_qingjin", "#sfofl_qingjin_record")
 
-sfofl_3_lvbu = sgs.General(extension_s, "sfofl_3_lvbu", "qun", 5, true, true)
+sfofl_3_lvbu = sgs.General(extension_s, "sfofl_3_lvbu", "qun", 5, true)
 --[[
 	技能名：虓袭
 	相关武将：吕布[官盗]
@@ -12503,7 +12503,7 @@ sfofl_fenqi = sgs.CreateZeroCardViewAsSkill{
 sfofl_3_lvbu:addSkill(sfofl_xiaoxi)
 sfofl_3_lvbu:addSkill(sfofl_fenqi)
 
-sfofl_zhangmiao = sgs.General(extension_s, "sfofl_zhangmiao", "qun", 4, true, true)
+sfofl_zhangmiao = sgs.General(extension_s, "sfofl_zhangmiao", "qun", 4, true)
 
 --[[
 	技能名：谋逆
@@ -20065,7 +20065,7 @@ sfofl_ardashirI:addSkill(sfofl_wanwang)
 sfofl_ardashirI:addSkill(sfofl_sashan)
 sfofl_ardashirI:addSkill(sfofl_nagong)
 
-sfofl_makang = sgs.General(extension_e, "sfofl_makang", "west", 4, true, true)
+sfofl_makang = sgs.General(extension_e, "sfofl_makang", "west", 4, true)
 --[[
 	技能名：西入
 	相关武将：马抗[欧陆]
@@ -30363,7 +30363,7 @@ sfofl_xiacaopi:addSkill(sfofl_jiwei_record)
 sfofl_xiacaopi:addSkill(sfofl_jiwei)
 extension_e:insertRelatedSkills("sfofl_jiwei", "#sfofl_jiwei_record")
 
-sfofl_peachchan = sgs.General(extension_s, "sfofl_peachchan", "qun", 4, false, true)
+sfofl_peachchan = sgs.General(extension_s, "sfofl_peachchan", "qun", 4, false)
 --[[
 	技能名：桃宴
 	相关武将：小桃[官盗]
@@ -30435,7 +30435,7 @@ sfofl_peachchan:addSkill(sfofl_taoyan)
 sfofl_peachchan:addSkill(sfofl_yanli)
 
 
-sfofl_jinkchan = sgs.General(extension_s, "sfofl_jinkchan", "qun", 4, false, true)
+sfofl_jinkchan = sgs.General(extension_s, "sfofl_jinkchan", "qun", 4, false)
 
 
 
@@ -30510,7 +30510,7 @@ sfofl_jinkchan:addSkill(sfofl_xianli)
 
 
 
-sfofl_slashchan = sgs.General(extension_s, "sfofl_slashchan", "qun", 4, false, true)
+sfofl_slashchan = sgs.General(extension_s, "sfofl_slashchan", "qun", 4, false)
 
 --[[
 	技能名：瑰杀
@@ -30586,7 +30586,7 @@ extension_s:insertRelatedSkills("sfofl_guisha", "#sfofl_guisha_buff")
 sfofl_slashchan:addSkill(sfofl_shuli)
 
 
-sfofl_analepticchan = sgs.General(extension_s, "sfofl_analepticchan", "qun", 4, false, true)
+sfofl_analepticchan = sgs.General(extension_s, "sfofl_analepticchan", "qun", 4, false)
 
 --[[
 	技能名：美酿
@@ -30671,7 +30671,7 @@ sfofl_analepticchan:addSkill(sfofl_yaoli)
 sfofl_analepticchan:addSkill(sfofl_yaoli_buff)
 extension_s:insertRelatedSkills("sfofl_yaoli", "#sfofl_yaoli_buff")
 
-sfofl_indulgencechan = sgs.General(extension_s, "sfofl_indulgencechan", "qun", 4, false, true)
+sfofl_indulgencechan = sgs.General(extension_s, "sfofl_indulgencechan", "qun", 4, false)
 --[[
 	技能名：乐虞
 	相关武将：小乐[官盗]
@@ -30687,7 +30687,7 @@ sfofl_leyu = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if player:getPhase() == sgs.Player_Start then
 			for _,p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-                if room:askForDiscard(p, self:objectName(), 3, 3, true, true, "@sfofl_leyu-discard") then
+                if room:askForDiscard(p, self:objectName(), 3, 3, true, true, "@sfofl_leyu-discard", ".", self:objectName()) then
                     room:broadcastSkillInvoke(self:objectName(),1)
                     local judge = sgs.JudgeStruct()
                     judge.who = player
