@@ -1533,12 +1533,25 @@ end
 
 sgs.ai_playerchosen_intention.s4_s_changqiang = 80
 
+sgs.ai_used_revises.s4_s_jixing = function(self, use)
+	if use.card:isKindOf("TrickCard") and (self.player:getDefensiveHorse() == nil and self.player:getOffensiveHorse() == nil) then
+		local handcards = sgs.QList2Table(self.player:getCards("h"))
+		for _,card in ipairs(handcards)do
+            if (card:isKindOf("DefensiveHorse") and self.player:getDefensiveHorse() == nil) or (card:isKindOf("OffensiveHorse") and self.player:getOffensiveHorse() == nil ) and CanToCard(card,self.player,self.player) then	
+				use.card = card
+				use.to = sgs.SPlayerList()
+				return false
+			end
+		end
+	end
+end
+
 sgs.ai_skill_invoke.s4_s_yuanshe = function(self, data)
     local card = sgs.Sanguosha:cloneCard("archery_attack", sgs.Card_NoSuit, 0)
     card:setSkillName("s4_s_yuanshe")
     card:deleteLater()
     local dummy_use = self:aiUseCard(card, dummy(true))
-    if dummy_use.card and dummy_use and self:getOverflow() <= 0 then
+    if dummy_use.card and dummy_use then
         return true
     end
     return false
@@ -1611,12 +1624,12 @@ end
 
 sgs.ai_skill_cardask["@s4_s_ruqin"] = function(self, data, pattern, target)
     for _,c in sgs.qlist(self.player:getCards("he"))do
+        if c:isKindOf("TrickCard") and c:isBlack() then
         local SavageAssault = sgs.Sanguosha:cloneCard("SavageAssault", c:getSuit(), c:getNumber())
         SavageAssault:addSubcard(c)
         SavageAssault:setSkillName("s4_s_ruqin")
         SavageAssault:deleteLater()
-        if c:isKindOf("TrickCard") and c:isBlack() then
-            local dummy_use = self:aiUseCard(c, dummy(true))
+            local dummy_use = self:aiUseCard(SavageAssault, dummy(true))
             if dummy_use.card and dummy_use then
                 return c:toString()
             end
@@ -1625,7 +1638,7 @@ sgs.ai_skill_cardask["@s4_s_ruqin"] = function(self, data, pattern, target)
 end
 
 sgs.ai_skill_playerchosen.s4_s_ruqin = function(self, targets)
-    local data = self.room:getTag("s4_s_ruqin"):toCardUse()
+    local data = self.room:getTag("s4_s_ruqin")
     local use = data:toCardUse()
 	if sgs.ai_skill_choice.sheyan(self,"remove", data) == "remove" then
 		if self.sheyan_remove_target then
@@ -1669,9 +1682,14 @@ sgs.ai_need_damaged.s4_s_roubo = function (self,attacker,player)
 end
 
 sgs.ai_skill_cardask["@s4_s_jianta"] = function(self, data, pattern, target)
+    local use = data:toCardUse()
+    local target = use.to:first()
     if not self:isEnemy(target) then return "." end
 	if self:cantDamageMore(self.player,target) then return "." end
-    return self:damageIsEffective(target, data:toCardUse().card, self.player)
+    if (self:damageIsEffective(target, use.card, self.player) and (self:canHit(target,self.player) or math.random()<0.5)) then 
+        return true
+    end
+    return "."
 end
 
 sgs.ai_ajustdamage_from.s4_s_jianta = function(self, from, to, card, nature)
@@ -1699,6 +1717,8 @@ sgs.ai_skill_use_func["#s4_s_zhanchuan"] = function(card,use,self)
     use.card = card
 end
 
+sgs.ai_use_priority["s4_s_zhanchuan"] = 10
+
 sgs.ai_use_revises.s4_s_zhanchuan = function(self,card,use)
 	if not self.player:getPile("s4_s_zhanchuan"):isEmpty() and not card:isKindOf("SkillCard") then
 		card:setFlags("Qinggang")
@@ -1710,6 +1730,22 @@ sgs.ai_skill_invoke.s4_s_xuezhan = function(self,data)
 	if to then return not self:isFriend(to) end
 	return false
 end
+
+sgs.ai_can_damagehp.s4_s_xuezhan = function(self,from,card,to)
+	if from and to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
+	and self:canLoseHp(from,card,to)
+	then
+        if self:isEnemy(from) then
+            local indulgence = sgs.Sanguosha:cloneCard("indulgence", sgs.Card_NoSuit, 0)
+            local supply_shortage = sgs.Sanguosha:cloneCard("supply_shortage", sgs.Card_NoSuit, 0)
+            indulgence:deleteLater()
+            supply_shortage:deleteLater()
+            return CanToCard(indulgence, to, from) or CanToCard(supply_shortage, to, from)
+        end
+		return false
+	end
+end
+
 
 sgs.ai_skill_playerschosen.s4_s_yuangong = function(self, targets, max, min)
     local selected = sgs.SPlayerList()
@@ -1733,7 +1769,13 @@ sgs.ai_skill_playerschosen.s4_s_yuangong = function(self, targets, max, min)
 			end
 		end
 	end
+    if selected:length() >= 2 then
+        local useds = self:getTurnUse()
+        if #useds <= 2 or self:getOverflow() <= 1 then
     return selected
+end
+    end
+    return sgs.SPlayerList()
 end
 
 sgs.ai_fill_skill.s4_s_chuqi = function(self)
@@ -1744,6 +1786,15 @@ sgs.ai_fill_skill.s4_s_chuqi = function(self)
     end
 end
 sgs.ai_skill_use_func["#s4_s_chuqi"] = function(card,use,self)
+    local choices = {}
+    for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+        for _, c in sgs.qlist(p:getEquips()) do
+            if card:isKindOf("Weapon") and not table.contains(choices, card:objectName()) then
+                table.insert(choices, card:objectName())
+            end
+        end
+    end
+    if #choices == 0 then return end
     use.card = card
 end
 sgs.ai_use_priority["s4_s_chuqi"] = sgs.ai_use_priority.Slash + 0.1

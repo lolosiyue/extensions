@@ -1532,8 +1532,8 @@ sgs.ai_skill_use_func["#rushB_baobian_tiaoxin"] = function(card,use,self)
 
 	sgs.ai_use_priority.rushB_baobian_tiaoxin = 8
 	if not self.player:getArmor() and not self.player:isKongcheng() then
-		for _,card in sgs.qlist(self.player:getCards("h"))do
-			if card:isKindOf("Armor") and self:evaluateArmor(card)>3 then
+		for _,c in sgs.qlist(self.player:getCards("h"))do
+			if c:isKindOf("Armor") and self:evaluateArmor(c)>3 then
 				sgs.ai_use_priority.rushB_baobian_tiaoxin = 5.9
 				break
 			end
@@ -1542,7 +1542,7 @@ sgs.ai_skill_use_func["#rushB_baobian_tiaoxin"] = function(card,use,self)
 
 	self:sort(targets,"defenseSlash")
 	use.to:append(targets[1])
-	use.card = sgs.Card_Parse("#rushB_baobian_tiaoxin:.:")
+	use.card = card
 end
 
 sgs.ai_card_intention.rushB_baobian_tiaoxin = sgs.ai_card_intention.TiaoxinCard
