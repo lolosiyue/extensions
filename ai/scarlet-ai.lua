@@ -85,6 +85,10 @@ sgs.ai_ajustdamage_from.s4_cloud_liegong = function(self, from, to, card, nature
     end
 end
 
+sgs.ai_canliegong_skill.s4_cloud_liegong = function(self, from, to)
+	return to:getHandcardNum() >= from:getHp() or to:getHandcardNum() <= from:getAttackRange()
+end
+
 sgs.ai_use_revises.s4_cloud_yongyi = function(self, card, use)
     local record = self.player:property("s4_cloud_yongyiRecords"):toString()
     local suit = card:getSuitString()
@@ -1277,6 +1281,10 @@ sgs.ai_skill_askforag.s4_tieji = function(self, card_ids)
 	return to_obtain[1]:getEffectiveId()
 end
 
+sgs.ai_canliegong_skill.s4_liegong = function(self, from, to)
+	return to:getHandcardNum() >= from:getHp() or to:getHandcardNum() <= from:getAttackRange()
+end
+
 sgs.ai_ajustdamage_from.s4_liegong = function(self, from, to, card, nature)
     if card and card:isKindOf("Slash") and ((card:hasFlag("s4_liegong") and to and to:hasFlag("s4_liegong")) or (to:getHp() <= from:getAttackRange() or to:getHp() >= from:getHp()))
     then
@@ -1883,6 +1891,10 @@ sgs.ai_skill_use_func["#s4_s_gongpo"] = function(card,use,self)
 end
 
 sgs.ai_use_priority["s4_s_gongpo"] = 6
+
+sgs.ai_canliegong_skill.s4_s_jinggong = function(self, from, to)
+	return to and (to:getArmor() or to:getDefensiveHorse() or to:getOffensiveHorse())
+end
 
 sgs.ai_fill_skill.s4_s_jingjia = function(self)
     local cards = sgs.QList2Table(self.player:getCards("h"))

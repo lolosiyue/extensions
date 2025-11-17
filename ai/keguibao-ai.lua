@@ -143,6 +143,10 @@ function sgs.ai_cardneed.keguisheji(to, card, self)
 	return  ( card:isKindOf("Slash") or (slash_num > 1 and card:isKindOf("Analeptic")))
 end
 
+sgs.ai_canliegong_skill.keguisheji = function(self, from, to)
+	return from:getPhase() == sgs.Player_Play and from:inMyAttackRange(to, 0, true) and to:inMyAttackRange(from, 0, true)
+end
+
 sgs.ai_cardneed.keguijueluone = function(to,card,self)
 	return isCard("Slash",card,to) and getKnownCard(to,self.player,"Slash",true)==0
 end

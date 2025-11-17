@@ -1132,6 +1132,10 @@ sgs.ai_ajustdamage_from.qhwindliegong = function(self, from, to, card, nature)
 end
 
 sgs.ai_cardneed.qhwindliegong = sgs.ai_cardneed.slash
+
+sgs.ai_canliegong_skill.qhwindliegong = function(self, from, to)
+	return to:getHandcardNum() <= from:getAttackRange()
+end
 sgs.ai_cardneed.qhwindgongshu = sgs.ai_cardneed.weapon
 
 sgs.ai_card_priority.qhwindkuanggu = function(self,card,v)

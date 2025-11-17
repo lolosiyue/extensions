@@ -2880,6 +2880,10 @@ sgs.ai_choicemade_filter.skillInvoke.cqtieji = function(self,player,promptlist)
 end
 sgs.ai_cardneed.cqtieji = sgs.ai_cardneed.slash
 sgs.hit_skill = sgs.hit_skill .. "|cqtieji"
+
+sgs.ai_canliegong_skill.cqtieji = function(self, from, to)
+	return true
+end
 --长驱
 
 sgs.ai_skill_playerchosen.cqchangqu = function(self, targets)

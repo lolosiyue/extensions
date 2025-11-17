@@ -3008,6 +3008,11 @@ sgs.ai_skill_invoke.blooddry = function(self,data)
 	return false
 end
 
+
+sgs.ai_canliegong_skill.blooddry = function(self, from, to)
+	return from:distanceTo(to) <= 1
+end
+
 local suckblood_skill={}
 suckblood_skill.name="suckblood"
 table.insert(sgs.ai_skills, suckblood_skill)

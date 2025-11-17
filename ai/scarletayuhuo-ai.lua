@@ -496,6 +496,10 @@ function sgs.ai_cardneed.s_w_shenyong(to, card, self)
 	return card:isKindOf("Slash")
 end
 
+sgs.ai_canliegong_skill.s_w_shenyong = function(self, from, to)
+	return true
+end
+
 sgs.ai_ajustdamage_from.s_w_nilin = function(self, from, to, card, nature)
 	if card and card:isKindOf("Slash") and from:getPhase() ~= sgs.Player_NotActive
 	then
@@ -2192,6 +2196,17 @@ sgs.dynamic_value.benefit["#s2_shanqi"] = true
 
 sgs.ai_skill_choice["s2_shanqi"] = function(self, choices, data)
 	return "s2_shanqi_draw"
+end
+
+
+sgs.ai_canliegong_skill.s2_baibu = function(self, from, to)
+	local distance = 0 
+	for _, q in sgs.qlist(self.room:getOtherPlayers(from)) do
+		if from:inMyAttackRange(q) then 
+			distance = math.max(distance, from:distanceTo(q))
+		end
+	end
+	return distance == from:distanceTo(to)
 end
 
 

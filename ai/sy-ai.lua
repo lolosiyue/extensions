@@ -1225,6 +1225,9 @@ end
 sgs.ai_use_value["sy_longnuCard"] = 5.98
 sgs.ai_use_priority["sy_longnuCard"] = 2.7
 
+sgs.ai_canliegong_skill.sy_longnu = function(self, from, to)
+	return from:getMark("longnu_nojink") > 0
+end
 
 --浴血
 local sy_yuxue_skill = {}

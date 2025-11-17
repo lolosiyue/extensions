@@ -2039,7 +2039,9 @@ sgs.ai_skill_invoke.PlusLiegong = function(self, data)
 	return true
 end
 
-
+sgs.ai_canliegong_skill.PlusLiegong = function(self, from, to)
+	return from:getPhase() == sgs.Player_Play and (to:getHandcardNum() >= from:getHp() or to:getHandcardNum() <= from:getAttackRange())
+end
 
 local PlusQimou_skill = {}
 PlusQimou_skill.name = "PlusQimou"

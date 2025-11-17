@@ -1025,6 +1025,10 @@ sgs.ai_target_revises.luaxiaomeng = function(to, card, self)
 	end
 end
 
+sgs.ai_canliegong_skill.luaxiaomeng = function(self, from, to)
+    if from:hasSkill("luaxiaomeng") and from:distanceTo(to) <= 1 then return true end
+end
+
 --fail
 --[[
 local luagudan_skill={}

@@ -1740,6 +1740,10 @@ end
 sgs.hit_skill = sgs.hit_skill .. "|LuaGungnir"
 sgs.ai_cardneed.LuaGungnir = sgs.ai_cardneed.weapon
 
+sgs.ai_canliegong_skill.LuaGungnir = function(self, from, to)
+	return from:getWeapon() ~= nil and from:hasWeapon(from:getWeapon():objectName())
+end
+
 sgs.ai_cardneed.luasynchrogazer = sgs.ai_cardneed.weapon
 sgs.double_slash_skill = sgs.double_slash_skill .. "|luasynchrogazer"
 

@@ -6595,6 +6595,10 @@ sgs.ai_skill_invoke.sfofl_bozhan = function(self, data)
 	return false
 end
 
+sgs.ai_canliegong_skill.sfofl_tieti = function(self, from, to)
+	return from:distanceTo(to) <= 1
+end
+
 sgs.ai_skill_invoke.sfofl_guwei = function(self, data)
 	local target
     for _,p in sgs.qlist(self.room:getAlivePlayers()) do

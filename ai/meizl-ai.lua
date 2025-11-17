@@ -1801,6 +1801,10 @@ sgs.ai_use_priority["meizljianwucard"]    = sgs.ai_use_priority.Slash + 0.1
 
 sgs.ai_cardneed.meizljianwu = sgs.ai_cardneed.slash
 
+sgs.ai_canliegong_skill.meizljianwu = function(self, from, to)
+    if from:getMark("@meizljianwu") > 0 and to:getHandcardNum() <= from:getAttackRange() then return true end
+end
+
 sgs.ai_view_as.meizljianwuskill2 = function(card, player, card_place)
 	if sgs.Sanguosha:getCurrentCardUseReason() ~= sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then return end
 	local suit = card:getSuitString()
@@ -4429,6 +4433,10 @@ end
 sgs.ai_cardneed.meizlsebihui = sgs.ai_cardneed.slash
 sgs.ai_cardneed.meizlsejunwang = sgs.ai_cardneed.slash
 sgs.hit_skill = sgs.hit_skill .. "|meizlsejunwang"
+
+sgs.ai_canliegong_skill.meizlsejunwang = function(self, from, to)
+    if from:distanceTo(to) <= from:getLostHp() then return true end
+end
 
 --MEISE 007 魔界七将‧贝尔芬格‧大乔
 local meizlselanduo_skill = {}
