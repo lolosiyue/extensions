@@ -160,10 +160,6 @@ s4_cloud_yongqian = sgs.CreateTriggerSkill {
                 room:setFixedDistance(player, target, 1);
                 room:setPlayerMark(player, self:objectName() .. target:objectName(), 1)
                 room:addPlayerMark(target, "&" .. self:objectName() .. "+to+#" .. player:objectName())
-                -- local assignee_list = player:property("extra_slash_specific_assignee"):toString():split("+")
-                -- table.insert(assignee_list, target:objectName())
-                -- room:setPlayerProperty(player, "extra_slash_specific_assignee",
-                --     sgs.QVariant(table.concat(assignee_list, "+")))
             end
         elseif event == sgs.TargetConfirmed then
             local use = data:toCardUse()
@@ -190,7 +186,6 @@ s4_cloud_yongqianClear = sgs.CreateTriggerSkill {
     on_trigger = function(self, event, player, data, room)
         if event == sgs.EventPhaseChanging then
             if data:toPhaseChange().to == sgs.Player_Start then
-                local assignee_list = player:property("extra_slash_specific_assignee"):toString():split("+")
                 for _, p in sgs.qlist(room:getAllPlayers()) do
                     if player:getMark("s4_cloud_yongqian" .. p:objectName()) > 0 then
                         table.removeOne(assignee_list, p:objectName())
@@ -199,8 +194,6 @@ s4_cloud_yongqianClear = sgs.CreateTriggerSkill {
                         room:setPlayerMark(p, "&s4_cloud_yongqian+to+#" .. player:objectName(), 0)
                     end
                 end
-                -- room:setPlayerProperty(player, "extra_slash_specific_assignee",
-                    -- sgs.QVariant(table.concat(assignee_list, "+")))
             end
         end
         return false
