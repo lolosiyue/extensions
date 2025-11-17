@@ -290,8 +290,6 @@ stabs_slash = sgs.CreateBasicCard
 				if player:getSlashCount()<=n
 				or player:canSlashWithoutCrossbow()
 				then return true end
-				n = player:property("extra_slash_specific_assignee"):toString():split("+")
-				if table.contains(n,to:objectName()) then return true end
 			end
 		end
     end,
