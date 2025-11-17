@@ -3225,49 +3225,106 @@ end
 function SmartAI:getLeastHandcardNum(player)
 	local least = 0
 	player = player or self.player
+	
+	-- Core leastHandcard skills (before --add)
 	if player:hasSkills("lianying|noslianying|kezhuanmanjuan") then least = 1 end
 	if least<1 and self:hasSkills("shoucheng",self:getFriends(player)) then least = 1 end
 	if least<math.min(2,player:getLostHp()) and player:hasSkill("shangshi") then least = math.min(2,player:getLostHp()) end
 	if least<player:getLostHp() and player:hasSkill("nosshangshi") then least = player:getLostHp() end
 
-	--add
-	if player:hasSkill("LuaXiongcai") and player:getPhase() ~= sgs.Player_Discard and least < 3
-		then
-		least = 3
-	end
-	if player:hasSkill("meizlsecanhui") and player:getMark("@meizlsejidu") > 0 and least < 1
-	then
-		least = 1
-	end
-	if player:hasSkill("luahuju") then
-		local x = math.min(getKingdoms(player), 3)
-		if x > 0 and least < x
-		then
-			least = x
+	-- Check extended getLeastHandcardNum skills through table
+	for _, s in ipairs(aiConnect(player)) do
+		local skill_func = sgs.ai_getLeastHandcardNum_skill[s]
+		if type(skill_func) == "function" then
+			local result = skill_func(self, player, least)
+			if type(result) == "number" and result > least then
+				least = result
+			end
 		end
 	end
-
-	if player:hasSkill("PlusDuoshi") and least < 1
-	then
-		least = 1
-	end
-	if player:hasSkill("keyaozhongyi") and least < 1
-	then
-		least = player:getHp()
-	end
-	if player:hasSkill("Meowshangshi") and least < player:getLostHp() then least = math.max(player:getLostHp(), 1) end
-	if player:hasSkills("feilianying") and least < 1 then least = 1 end
-	if player:hasSkills("exshangshi")  then 
-		local x = math.max(player:getLostHp(), 1)
-		if least < x then least = x end
-	end
-	if player:hasSkill("y_lianying") and least < 1 then least = 1 end
-	if player:hasSkill("qhstandardlianying") and least < 2 then least = 2 end
-	if player:hasSkill("nyarz_lianying") and least < player:getMaxCards() + 1 then least = player:getMaxCards() + 1 end
-	if player:hasSkill("sgkgodshenfu") and least < 4 then least = 4 end
-	if player:hasSkill("scoopthemoonup") and least < 3 and self.room:getDiscardPile():length() > 0 then least = 3 end
-
+	
 	return least
+end
+
+-- Register extended getLeastHandcardNum skills
+sgs.ai_getLeastHandcardNum_skill.LuaXiongcai = function(self, player, least)
+	if player:getPhase() ~= sgs.Player_Discard and least < 3 then
+		return 3
+	end
+end
+
+sgs.ai_getLeastHandcardNum_skill.meizlsecanhui = function(self, player, least)
+	if player:getMark("@meizlsejidu") > 0 and least < 1 then
+		return 1
+	end
+end
+
+sgs.ai_getLeastHandcardNum_skill.luahuju = function(self, player, least)
+	local x = math.min(getKingdoms(player), 3)
+	if x > 0 and least < x then
+		return x
+	end
+end
+
+sgs.ai_getLeastHandcardNum_skill.PlusDuoshi = function(self, player, least)
+	if least < 1 then
+		return 1
+	end
+end
+
+sgs.ai_getLeastHandcardNum_skill.keyaozhongyi = function(self, player, least)
+	if least < 1 then
+		return player:getHp()
+	end
+end
+
+sgs.ai_getLeastHandcardNum_skill.Meowshangshi = function(self, player, least)
+	if least < player:getLostHp() then
+		return math.max(player:getLostHp(), 1)
+	end
+end
+
+sgs.ai_getLeastHandcardNum_skill.feilianying = function(self, player, least)
+	if least < 1 then
+		return 1
+	end
+end
+
+sgs.ai_getLeastHandcardNum_skill.exshangshi = function(self, player, least)
+	local x = math.max(player:getLostHp(), 1)
+	if least < x then
+		return x
+	end
+end
+
+sgs.ai_getLeastHandcardNum_skill.y_lianying = function(self, player, least)
+	if least < 1 then
+		return 1
+	end
+end
+
+sgs.ai_getLeastHandcardNum_skill.qhstandardlianying = function(self, player, least)
+	if least < 2 then
+		return 2
+	end
+end
+
+sgs.ai_getLeastHandcardNum_skill.nyarz_lianying = function(self, player, least)
+	if least < player:getMaxCards() + 1 then
+		return player:getMaxCards() + 1
+	end
+end
+
+sgs.ai_getLeastHandcardNum_skill.sgkgodshenfu = function(self, player, least)
+	if least < 4 then
+		return 4
+	end
+end
+
+sgs.ai_getLeastHandcardNum_skill.scoopthemoonup = function(self, player, least)
+	if least < 3 and self.room:getDiscardPile():length() > 0 then
+		return 3
+	end
 end
 
 function SmartAI:hasLoseHandcardEffective(player,num)
@@ -5139,6 +5196,10 @@ function SmartAI:damageMinusHp(enemy,type)
 end
 
 sgs.ai_getBestHp_skill = {}
+sgs.ai_hasBuquEffect_skill = {}
+sgs.ai_canNiepan_skill = {}
+sgs.ai_hasTuntianEffect_skill = {}
+sgs.ai_getLeastHandcardNum_skill = {}
 function getBestHp(owner)
 	-- Core getBestHp logic (before --add)
 	if owner:getCardCount()>2 and owner:hasSkill("longhun") then return 1 end
@@ -6018,28 +6079,31 @@ function SmartAI:willSkipDiscardPhase(player)
 end
 
 function hasBuquEffect(player)
-	return player:hasSkill("buqu") and player:getPile("buqu"):length()<=4
-	or player:hasSkill("nosbuqu") and player:getPile("nosbuqu"):length()<=4
-	or player:hasSkill("PlusBuqu") and player:getPile("Plushurt"):length() <= 4 --add
-	or player:hasSkill("lol_mzzw_r") and player:getMark("lol_mzzw_r_damage") > 0 --add
-	or player:hasSkill("fateshilian") and player:getMaxHp() > 3 --add
-	or player:hasSkill("qhwindbuqu") and player:getPile("qhwindbuqu"):length()<=4 --add
-	or player:hasSkill("lol_nuhuo") and (player:getMark("wjnh") > 0 or player:getMark("@lol_nuhuo") > 0)
+	if player:hasSkill("buqu") and player:getPile("buqu"):length()<=4 then return true end
+	if player:hasSkill("nosbuqu") and player:getPile("nosbuqu"):length()<=4 then return true end
+	for _, s in ipairs(aiConnect(player)) do
+		local skill_func = sgs.ai_hasBuquEffect_skill[s]
+		if type(skill_func) == "function" then
+			if skill_func(player) then return true end
+		end
+	end
+	
+	return false
 end
 
 function canNiepan(player)
-	return player:hasSkill("niepan") and player:getMark("@nirvana")>0
-	or player:hasSkill("mobileniepan") and player:getMark("@mobileniepanMark")>0
-	or player:hasSkill("olniepan") and player:getMark("@olniepanMark")>0
-	or player:hasSkill("mouniepan") and player:getMark("@mouniepan")>0
-	or player:hasSkill("mouzhiba") and player:getMark("@mouzhiba")>0
-	or player:hasSkill("mouzhibas") and player:getMark("@mouzhibas")>0
-
-
-	or player:hasSkill("fuli") and player:getMark("@laoji")>0
-	or player:hasSkill("FourNiepan") and player:getMark("@Four_nirvana")>0
-	or player:hasSkill("kechengzhasi") and player:getMark("@kechengzhasi")>0
-	or (player:hasSkill("SE_Boming") and player:getMark("@HIMIKO") > 0
+	-- Core niepan skills (before --add)
+	if player:hasSkill("niepan") and player:getMark("@nirvana")>0 then return true end
+	if player:hasSkill("mobileniepan") and player:getMark("@mobileniepanMark")>0 then return true end
+	if player:hasSkill("olniepan") and player:getMark("@olniepanMark")>0 then return true end
+	if player:hasSkill("mouniepan") and player:getMark("@mouniepan")>0 then return true end
+	if player:hasSkill("mouzhiba") and player:getMark("@mouzhiba")>0 then return true end
+	if player:hasSkill("mouzhibas") and player:getMark("@mouzhibas")>0 then return true end
+	if player:hasSkill("fuli") and player:getMark("@laoji")>0 then return true end
+	--add
+	if player:hasSkill("FourNiepan") and player:getMark("@Four_nirvana")>0 then return true end
+	if player:hasSkill("kechengzhasi") and player:getMark("@kechengzhasi")>0 then return true end
+	if player:hasSkill("SE_Boming") and player:getMark("@HIMIKO") > 0
 		and (
 			player:hasSkill("yingzi") or
 			player:hasSkill("shensu") or
@@ -6047,38 +6111,159 @@ function canNiepan(player)
 			player:hasSkill("longdan") or
 			player:hasSkill("paoxiao") or
 			player:hasSkill("guicao")
-		)
-	)
-	or (player:hasSkill("se_mowang") and player:getMaxHp() > 2)    --add
-	or (player:hasSkill("feiniepan") and player:getMark("@nirvana") > 0) --add
-	or (player:hasSkill("blood_gudan") and player:getMark("@gudan") > 0) --add
-	or (player:hasLordSkill("blood_hunzi") and player:getMark("blood_hunzi") == 0) --add
-	or (player:hasSkill("lol_ayjm_t") and player:getMark("@lol_ayjm_t") > 0) --add
-	or (player:hasSkill("lol_bjfh_t") ) --add
-	or (player:hasSkill("midie") and player:getMark("@midie") > 0) --add
-	or (player:hasSkill("afuhuo") and player:getMark("@fuhuo") > 0) --add
-	or (player:hasSkill("fatesizhan") and player:getMark("fatesizhan") == 0) --add
-	or (player:hasSkill("TH_Phoenixrevive") and player:getMark("Phoenixrevive") == 0) --add
-	or (player:hasSkill("qhwindwuhun") and player:getMark("qhwindwuhun_limit") > 0) --add
-	or (player:hasSkill("qhfireniepan") and player:getMark("qhfireniepan_limit") > 0) --add
-	or (player:hasSkill("ark_zhuye") and player:getMark("@ark_zhuye_mark") > 0) --add
-	or (player:hasLordSkill("sphunzi") and player:getMark("sphunzi") == 0) --add
-	or (player:hasSkill("sijyufakeoffline_qibu") and player:getMark("@sijyufakeoffline_qibu") > 0) --add
-	or (player:hasSkill("sr_zhuizun") and player:getMark("@zhuizun") > 0) --add
-	or (player:hasSkill("sy_guiming") and player:getMark("@guiming") > 0) --add
-	or (player:hasSkill("luatianming") and player:getMark("@RX") >= 7 and player:getMark("luatianming") == 0 ) --add
-	or (player:hasSkill("kenewgirljizhi") and player:getMark("@kenewgirljizhi") > 0) --add
-	or (player:hasSkill("htms_beihai") and player:getMark("htms_beihai") == 0) --add
-	or (player:hasSkill("xuemo") and player:getMark("@xuemo") > 0) --add
-	or (player:hasSkill("lxtx_jizhao") and player:getMark("lxtx_jizhao") == 0) --add
-	or (player:hasSkill("fcjieniepan") and player:getMark("&fcj_Phoenix") >= 2) --add
-	or (player:hasSkill("MR_niepan") and player:getMark("MR_niepan") < 1) --add
-	or (player:hasSkill("sy_xiaoshi") and player:getMark("@xiaoshi") > 0) --add
-	or (player:hasSkill("berserk_jichang") and player:getMark("@jichang") > 0) --add
-	or (player:hasSkill("sfofl_wuchao")) --add
-	or (player:hasSkill("sfofl_guiji")) --add
-	or (player:hasSkill("sfofl_n_menghuo_rule") and player:property("sfofl_nw_shenmenghuo_Phase"):toInt() < 3) --add
-	or (player:hasSkill("fcmouhunzi") and player:getMark("fcmouhunzi") == 0) --add
+		) then return true end
+	
+	-- Check extended niepan-like effects through table
+	for _, s in ipairs(aiConnect(player)) do
+		local skill_func = sgs.ai_canNiepan_skill[s]
+		if type(skill_func) == "function" then
+			if skill_func(player) then return true end
+		end
+	end
+	
+	return false
+end
+
+-- Register extended hasBuquEffect skills
+sgs.ai_hasBuquEffect_skill.PlusBuqu = function(player)
+	return player:getPile("Plushurt"):length() <= 4
+end
+
+sgs.ai_hasBuquEffect_skill.lol_mzzw_r = function(player)
+	return player:getMark("lol_mzzw_r_damage") > 0
+end
+
+sgs.ai_hasBuquEffect_skill.fateshilian = function(player)
+	return player:getMaxHp() > 3
+end
+
+sgs.ai_hasBuquEffect_skill.qhwindbuqu = function(player)
+	return player:getPile("qhwindbuqu"):length() <= 4
+end
+
+sgs.ai_hasBuquEffect_skill.lol_nuhuo = function(player)
+	return player:getMark("wjnh") > 0 or player:getMark("@lol_nuhuo") > 0
+end
+
+-- Register extended canNiepan skills
+sgs.ai_canNiepan_skill.se_mowang = function(player)
+	return player:getMaxHp() > 2
+end
+
+sgs.ai_canNiepan_skill.feiniepan = function(player)
+	return player:getMark("@nirvana") > 0
+end
+
+sgs.ai_canNiepan_skill.blood_gudan = function(player)
+	return player:getMark("@gudan") > 0
+end
+
+sgs.ai_canNiepan_skill.blood_hunzi = function(player)
+	return player:hasLordSkill("blood_hunzi") and player:getMark("blood_hunzi") == 0
+end
+
+sgs.ai_canNiepan_skill.lol_ayjm_t = function(player)
+	return player:getMark("@lol_ayjm_t") > 0
+end
+
+sgs.ai_canNiepan_skill.lol_bjfh_t = function(player)
+	return true
+end
+
+sgs.ai_canNiepan_skill.midie = function(player)
+	return player:getMark("@midie") > 0
+end
+
+sgs.ai_canNiepan_skill.afuhuo = function(player)
+	return player:getMark("@fuhuo") > 0
+end
+
+sgs.ai_canNiepan_skill.fatesizhan = function(player)
+	return player:getMark("fatesizhan") == 0
+end
+
+sgs.ai_canNiepan_skill.TH_Phoenixrevive = function(player)
+	return player:getMark("Phoenixrevive") == 0
+end
+
+sgs.ai_canNiepan_skill.qhwindwuhun = function(player)
+	return player:getMark("qhwindwuhun_limit") > 0
+end
+
+sgs.ai_canNiepan_skill.qhfireniepan = function(player)
+	return player:getMark("qhfireniepan_limit") > 0
+end
+
+sgs.ai_canNiepan_skill.ark_zhuye = function(player)
+	return player:getMark("@ark_zhuye_mark") > 0
+end
+
+sgs.ai_canNiepan_skill.sphunzi = function(player)
+	return player:hasLordSkill("sphunzi") and player:getMark("sphunzi") == 0
+end
+
+sgs.ai_canNiepan_skill.sijyufakeoffline_qibu = function(player)
+	return player:getMark("@sijyufakeoffline_qibu") > 0
+end
+
+sgs.ai_canNiepan_skill.sr_zhuizun = function(player)
+	return player:getMark("@zhuizun") > 0
+end
+
+sgs.ai_canNiepan_skill.sy_guiming = function(player)
+	return player:getMark("@guiming") > 0
+end
+
+sgs.ai_canNiepan_skill.luatianming = function(player)
+	return player:getMark("@RX") >= 7 and player:getMark("luatianming") == 0
+end
+
+sgs.ai_canNiepan_skill.kenewgirljizhi = function(player)
+	return player:getMark("@kenewgirljizhi") > 0
+end
+
+sgs.ai_canNiepan_skill.htms_beihai = function(player)
+	return player:getMark("htms_beihai") == 0
+end
+
+sgs.ai_canNiepan_skill.xuemo = function(player)
+	return player:getMark("@xuemo") > 0
+end
+
+sgs.ai_canNiepan_skill.lxtx_jizhao = function(player)
+	return player:getMark("lxtx_jizhao") == 0
+end
+
+sgs.ai_canNiepan_skill.fcjieniepan = function(player)
+	return player:getMark("&fcj_Phoenix") >= 2
+end
+
+sgs.ai_canNiepan_skill.MR_niepan = function(player)
+	return player:getMark("MR_niepan") < 1
+end
+
+sgs.ai_canNiepan_skill.sy_xiaoshi = function(player)
+	return player:getMark("@xiaoshi") > 0
+end
+
+sgs.ai_canNiepan_skill.berserk_jichang = function(player)
+	return player:getMark("@jichang") > 0
+end
+
+sgs.ai_canNiepan_skill.sfofl_wuchao = function(player)
+	return true
+end
+
+sgs.ai_canNiepan_skill.sfofl_guiji = function(player)
+	return true
+end
+
+sgs.ai_canNiepan_skill.sfofl_n_menghuo_rule = function(player)
+	return player:property("sfofl_nw_shenmenghuo_Phase"):toInt() < 3
+end
+
+sgs.ai_canNiepan_skill.fcmouhunzi = function(player)
+	return player:getMark("fcmouhunzi") == 0
 end
 
 function SmartAI:adjustAIRole()
@@ -6103,95 +6288,108 @@ function hasWulingEffect(element)
 end
 
 function hasTuntianEffect(to,need_zaoxian)
-	if to:hasSkills("tuntian|mobiletuntian|oltuntian") and to:getPhase()==sgs.Player_NotActive
-	then return not need_zaoxian or to:hasSkills("zaoxian|olzaoxian") end
-	--add
-	if to:hasSkill("meizlguiyuan") and to:getPhase() == sgs.Player_NotActive
-	then
-		return true
+	-- Core tuntian effects (before --add)
+	if to:hasSkills("tuntian|mobiletuntian|oltuntian") and to:getPhase()==sgs.Player_NotActive then
+		return not need_zaoxian or to:hasSkills("zaoxian|olzaoxian")
 	end
-	if to:hasSkill("meizljinlian") and to:getPhase() == sgs.Player_NotActive
-	then
-		return true
+	
+	-- Check extended tuntian-like effects through table
+	for _, s in ipairs(aiConnect(to)) do
+		local skill_func = sgs.ai_hasTuntianEffect_skill[s]
+		if type(skill_func) == "function" then
+			if skill_func(to, need_zaoxian) then return true end
+		end
 	end
-	if to:hasSkill("meizlshjinlian") and to:getPhase() == sgs.Player_NotActive
-	then
-		return true
-	end
-	if to:hasSkill("meizlsesiyi") and to:getPhase() == sgs.Player_NotActive
-	then
+	
+	return false
+end
+
+-- Register extended hasTuntianEffect skills
+sgs.ai_hasTuntianEffect_skill.meizlguiyuan = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
+sgs.ai_hasTuntianEffect_skill.meizljinlian = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
+sgs.ai_hasTuntianEffect_skill.meizlshjinlian = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
+sgs.ai_hasTuntianEffect_skill.meizlsesiyi = function(to, need_zaoxian)
+	if to:getPhase() == sgs.Player_NotActive then
 		for _, p in sgs.qlist(global_room:getAlivePlayers()) do
 			if p:getKingdom() == "sevendevil" then
 				return true
 			end
 		end
 	end
-	if to:hasSkill("FiveGuidaoA") and to:getPhase() == sgs.Player_NotActive and to:getPile("dao"):length() < 5
-	then
-		return true
-	end
-	if to:hasSkill("FiveLeiji") and to:getPhase() == sgs.Player_NotActive
-	then
-		return true
-	end
-	if to:hasSkill("FourQixiA") and to:getPhase() == sgs.Player_NotActive and to:getPile("horseA"):length() < 4
-	then
-		return true
-	end
-	if to:hasSkill("keshengliufeng") and to:getPhase() == sgs.Player_NotActive
-	then
-		return true
-	end
-	if to:hasSkill("kejieshengliufeng") and to:getPhase() == sgs.Player_NotActive
-	then
-		return true
-	end
-	if to:hasSkill("SE_Kurimu") and to:getPhase() == sgs.Player_NotActive
-	then
-		return true
-	end
-	if to:hasSkill("SE_Minatsu") and to:getPhase() == sgs.Player_NotActive
-	then
-		return true
-	end
-	if to:hasSkill("SE_Chizuru") and to:getPhase() == sgs.Player_NotActive
-	then
-		return true
-	end
-	if to:hasSkill("SE_Mafuyu") and to:getPhase() == sgs.Player_NotActive
-	then
-		return true
-	end
-	if to:hasSkill("nyarz_diancai")
-	then
-		return true
-	end
-	if to:hasSkill("lunhui")  and to:getPhase() == sgs.Player_NotActive
-	then
-		return true
-	end
-	if to:hasSkill("luaspbazhen")  and to:getPhase() == sgs.Player_NotActive
-	then
-		return true
-	end
-	
-	if to:hasSkill("nyarz_bingji")
-	then
-		return true
-	end
-	if to:hasSkill("nyarz_xialei") and to:getMark("nyarz_xialei-Clear") == 0
-	then
-		return true
-	end
-	if to:hasSkill("s3_guyang")  and to:getPhase() == sgs.Player_NotActive
-	then
-		return true
-	end
-	if to:hasSkill("rushB_tuntian")  and to:getPhase() == sgs.Player_NotActive
-	then
-		return true
-	end
-		
+	return false
+end
+
+sgs.ai_hasTuntianEffect_skill.FiveGuidaoA = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive and to:getPile("dao"):length() < 5
+end
+
+sgs.ai_hasTuntianEffect_skill.FiveLeiji = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
+sgs.ai_hasTuntianEffect_skill.FourQixiA = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive and to:getPile("horseA"):length() < 4
+end
+
+sgs.ai_hasTuntianEffect_skill.keshengliufeng = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
+sgs.ai_hasTuntianEffect_skill.kejieshengliufeng = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
+sgs.ai_hasTuntianEffect_skill.SE_Kurimu = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
+sgs.ai_hasTuntianEffect_skill.SE_Minatsu = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
+sgs.ai_hasTuntianEffect_skill.SE_Chizuru = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
+sgs.ai_hasTuntianEffect_skill.SE_Mafuyu = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
+sgs.ai_hasTuntianEffect_skill.nyarz_diancai = function(to, need_zaoxian)
+	return true
+end
+
+sgs.ai_hasTuntianEffect_skill.lunhui = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
+sgs.ai_hasTuntianEffect_skill.luaspbazhen = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
+sgs.ai_hasTuntianEffect_skill.nyarz_bingji = function(to, need_zaoxian)
+	return true
+end
+
+sgs.ai_hasTuntianEffect_skill.nyarz_xialei = function(to, need_zaoxian)
+	return to:getMark("nyarz_xialei-Clear") == 0
+end
+
+sgs.ai_hasTuntianEffect_skill.s3_guyang = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
+sgs.ai_hasTuntianEffect_skill.rushB_tuntian = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
 end
 
 function SmartAI:isValueSkill(skill_name,player,HighValue)
