@@ -18,12 +18,16 @@ sgs.ai_skill_invoke.Elucidator = function(self, data)
 	return false
 end
 
-sgs.ai_skill_invoke.rishi = function(self, data)
+sgs.ai_skill_invoke.htms_rishi = function(self, data)
 	local target = data:toPlayer()
 	if target and self:isEnemy(target) then
 		return true
 	end
 	return false
+end
+
+sgs.ai_canliegong_skill.htms_rishi = function(self, from, to)
+	return from:getHandcardNum() < to:getHandcardNum()
 end
 
 sgs.weapon_range.chopper = 3

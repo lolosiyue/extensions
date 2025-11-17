@@ -190,10 +190,33 @@ card_clear = sgs.CreateTriggerSkill{
 		end
 	end
 }
+
+IgnoreArmorLog = sgs.CreateTriggerSkill{
+	name = "IgnoreArmorLog",
+	events = {sgs.CardUsed},
+	global = true,
+	on_trigger = function(self, event, player, data, room)
+		local use = data:toCardUse()
+		if use.card:hasFlag("SlashIgnoreArmor") then
+			local log = sgs.LogMessage()
+			log.type = "#IgnoreArmor"
+			log.from = player
+			log.card_str = use.card:toString()
+			room:sendLog(log)
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target ~= nil
+	end
+}
+
+
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("card_used") then skills:append(card_used) end
 if not sgs.Sanguosha:getSkill("damage_record") then skills:append(damage_record) end
 if not sgs.Sanguosha:getSkill("card_clear") then skills:append(card_clear) end
+if not sgs.Sanguosha:getSkill("IgnoreArmorLog") then skills:append(IgnoreArmorLog) end
 
 -- 武将：许攸（官渡之战身份版） --
 guandu_xuyou = sgs.General(extension_guandu, "guandu_xuyou", "qun", "3", true)

@@ -1560,6 +1560,11 @@ sgs.ai_skill_invoke.heg_ol_liegong = function(self,data)
 	return not self:isFriend(target)
 end
 sgs.hit_skill = sgs.hit_skill .. "|heg_ol_liegong"
+
+sgs.ai_canliegong_skill.heg_ol_liegong = function(self, from, to)
+	return from:getPhase() == sgs.Player_Play and (to:getHandcardNum() >= from:getHp() or to:getHandcardNum() <= from:getAttackRange())
+end
+
 sgs.ai_cardneed.heg_ol_liegong = sgs.ai_cardneed.slash
 
 sgs.ai_skill_invoke["ChangeGeneral"] = function(self, data)

@@ -4178,7 +4178,7 @@ sgs.ai_ajustdamage_from.kongju = function(self,from,to,card,nature)
 	if from:getMark("@kongju") > 0 and card and card:getSkillName() == "huohai"
 	then return 1 end
 end
-sgs.ai_target_revises.luaxiaomeng = function(to, card, self)
+sgs.ai_target_revises.tiebi = function(to, card, self)
 	if ((card:isRed() and card:isKindOf("Slash")) or card:isKindOf("FireSlash"))
 	then
 		return to:distanceTo(self.player) > 1

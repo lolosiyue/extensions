@@ -429,6 +429,10 @@ sgs.ai_ajustdamage_from.f_shennu = function(self,from,to,slash,nature)
 	end
 end
 
+sgs.ai_canliegong_skill.f_shennu = function(self, from, to)
+	return from:hasFlag("shenzhinuhuo")
+end
+
 local function isSpecialOne(player, name)
 	local g_name = sgs.Sanguosha:translate(player:getGeneralName())
 	if string.find(g_name, name) then return true end
@@ -776,6 +780,10 @@ sgs.ai_ajustdamage_from.f_shengong = function(self,from,to,card,nature)
 end
 sgs.ai_cardneed.f_shengong = sgs.ai_cardneed.slash
 sgs.hit_skill = sgs.hit_skill .. "|f_shengong"
+
+sgs.ai_canliegong_skill.f_shengong = function(self, from, to)
+	return from:getPile("ShenJian"):length() >= 8
+end
 
   --“定军”AI（不智能）
 local f_dingjun_skill = {}
@@ -4976,6 +4984,15 @@ sgs.ai_ajustdamage_from.fcmouliegong = function(self, from, to, card, nature)
 			return 1
 		end
 	end
+end
+
+sgs.ai_canliegong_skill.fcmouliegong = function(self, from, to)
+	local record = from:property("fcmouliegongRecords"):toString()
+	local records = {}
+	if record then
+		records = record:split(",")
+	end
+	return #records >= 2
 end
 
 --FC谋关羽

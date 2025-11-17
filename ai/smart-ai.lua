@@ -7563,75 +7563,24 @@ function SmartAI:useTrickCard(card,use)
 	end
 end
 
+sgs.ai_canliegong_skill = {}
 function SmartAI:canLiegong(to, from)
 	from = from or self.room:getCurrent()
 	to = to or self.player
 	if not from then return false end
 	if from:hasSkill("liegong") and from:getPhase() == sgs.Player_Play and (to:getHandcardNum() >= from:getHp() or to:getHandcardNum() <= from:getAttackRange()) then return true end
-	
 	if from:hasSkill("kofliegong") and from:getPhase() == sgs.Player_Play and to:getHandcardNum() >= from:getHp() then return true end
 	if from:hasSkill("tenyearliegong") and to:getHandcardNum() <= from:getHandcardNum() then return true end
 
-	--add
-	if from:hasSkill("meizljianwu") and from:getMark("@meizljianwu") > 0 and to:getHandcardNum() <= from:getAttackRange() then return true end
-	if from:hasSkill("meizlsejunwang") and from:distanceTo(to) <= from:getLostHp() then return true end
-	if from:hasSkill("luaxiaomeng") and from:distanceTo(to) <= 1 then return true end
-	if from:hasSkill("PlusLiegong") and from:getPhase() == sgs.Player_Play and (to:getHandcardNum() >= from:getHp() or to:getHandcardNum() <= from:getAttackRange()) then return true end
-	if from:hasSkill("keguisheji") and from:getPhase() == sgs.Player_Play and from:inMyAttackRange(to, 0, true) and to:inMyAttackRange(from, 0, true) then return true end
-	--add leo
-	if from:hasSkill("luaxiaomeng") and to:distanceTo(from) <= 1 then return true end
-
-	--add dongmanbao
-	if from:hasSkill("SE_Juji") and from:getPhase() == sgs.Player_Play and not to:inMyAttackRange(from) then return true end
-	if from:hasSkill("SE_Juji_Reki") and from:getPhase() == sgs.Player_Play and not to:inMyAttackRange(from) then return true end
-	if from:hasSkill("SE_Wuwei") and from:getMark("@Wuwei") > self.room:getAlivePlayers():length() and from:getMark("@Wuwei") > 4 then return true end
-	if from:hasSkill("SE_Tiansuo") and to:isChained() and to:isKongcheng() then return true end
-	if from:hasSkill("htms_rishi") and from:getHandcardNum() < to:getHandcardNum() then return true end
-	if from:hasSkill("LuaGungnir") and from:getWeapon() then return true end
-	if from:hasSkill("ckqishan") then return true end
-	if from:hasSkill("TH_huanzang") and from:distanceTo(to) <= 1 then return true end
-	if from:hasSkill("TH_MissingPower") and to:getHp()>from:getHp() then return true end
-	if from:getWeapon() and from:getWeapon():isKindOf("TH_Weapon_SpearTheGungnir") then return true end
-	if from:hasSkill("qhwindliegong") and to:getHandcardNum() <= from:getAttackRange() then return true end
-	if from:hasSkill("cqtieji")  then return true end
-	
-	if from:hasSkill("heg_ol_liegong") and from:getPhase() == sgs.Player_Play and (to:getHandcardNum() >= from:getHp() or to:getHandcardNum() <= from:getAttackRange()) then return true end
-	
-	if from:hasSkill("lol_zhiming") and (to:getHp()< from:getHp() and from:distanceTo(to) <= 1 ) then return true end
-	if from:hasSkill("kuangnu") and from:getLostHp() >= 4  then return true end
-	if from:hasSkill("juji") and not to:inMyAttackRange(from) then return true end
-	if from:hasSkill("shenghua") and from:hasFlag("shenghuaTCdww") then return true end
-	if from:hasSkill("s_w_shenyong")  then return true end
-	if from:hasSkill("s4_cloud_liegong") and (to:getHandcardNum() >= from:getHp() or to:getHandcardNum() <= from:getAttackRange()) then return true end
-	if from:hasSkill("lxtx_shouyue_liegong") and from:getPhase() == sgs.Player_Play and (to:getHandcardNum() >= from:getHp() or to:getHandcardNum() <= from:getAttackRange()) then return true end
-	if from:hasSkill("f_shennu") and (from:hasFlag("shenzhinuhuo")) then return true end
-	if from:hasSkill("f_shengong") and from:getPile("ShenJian"):length() >= 8 then return true end
-	if from:hasSkill("sy_longnu") and from:getMark("longnu_nojink") > 0 then return true end
-	if from:hasSkill("s2_baibu") then
-		local distance = 0 
-		for _, q in sgs.qlist(self.room:getOtherPlayers(from)) do
-			if from:inMyAttackRange(q) then 
-				distance = math.max(distance, from:distanceTo(q))
-			end
-		end
-		if distance == from:distanceTo(to) then
-			return true 
+	-- Check extended liegong-like skills through table
+	for _, s in ipairs(aiConnect(from)) do
+		local skill_func = sgs.ai_canliegong_skill[s]
+		if type(skill_func) == "function" then
+			local result = skill_func(self, from, to)
+			if result then return true end
 		end
 	end
-	if from:hasSkill("blooddry") and from:distanceTo(to) <= 1 then return true end
-	if from:hasSkill("s4_liegong") and (to:getHandcardNum() >= from:getHp() or to:getHandcardNum() <= from:getAttackRange()) then return true end
-	if from:hasSkill("sfofl_tieti") and from:distanceTo(to) <= 1 then return true end
-	if from:hasSkill("fcmouliegong") then 
-		local record = from:property("fcmouliegongRecords"):toString()
-		local records = {}
-		if (record) then
-			records = record:split(",")
-		end
-		if #records >= 2 then
-			return true 
-		end
-	end
-	if from:hasSkill("s4_s_jinggong") and to and (to:getArmor() or to:getDefensiveHorse() or to:getOffensiveHorse()) then return true end
+	
 	return false
 end
 
@@ -8697,4 +8646,11 @@ end
 
 for _,skill in ipairs(sgs.ai_skills)do
 	sgs.ai_fill_skill[skill.name] = skill.getTurnUseCard
+end
+
+-- Automatically set ai_cardneed for all liegong-like skills
+for skill_name, _ in pairs(sgs.ai_canliegong_skill) do
+	if not sgs.ai_cardneed[skill_name] then
+		sgs.ai_cardneed[skill_name] = sgs.ai_cardneed.slash
+	end
 end

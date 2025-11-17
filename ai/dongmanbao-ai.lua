@@ -3582,6 +3582,11 @@ sgs.ai_use_priority["se_jianyucard"]    = 2
 sgs.ai_card_intention["se_jianyucard"]  = 100
 
 sgs.hit_skill = sgs.hit_skill .. "|SE_Juji"
+
+sgs.ai_canliegong_skill.SE_Juji = function(self, from, to)
+	return from:getPhase() == sgs.Player_Play and not to:inMyAttackRange(from)
+end
+
 --御坂妹
 sgs.ai_skill_invoke.se_qidian           = function(self, data)
 	if #self.enemies == 0 then return false end
@@ -6015,6 +6020,11 @@ end
 --雷姬
 sgs.hit_skill = sgs.hit_skill .. "|SE_Juji_Reki"
 sgs.ai_cardneed.SE_Juji_Reki = sgs.ai_cardneed.slash
+
+sgs.ai_canliegong_skill.SE_Juji_Reki = function(self, from, to)
+	return from:getPhase() == sgs.Player_Play and not to:inMyAttackRange(from)
+end
+
 sgs.ai_cardneed.SE_Zhiyuan = sgs.ai_cardneed.slash
 
 sgs.ai_skill_invoke.SE_Zhiyuan = function(self, data)
@@ -7596,6 +7606,9 @@ end
 
 sgs.ai_cardneed.SE_Wuwei = sgs.ai_cardneed.slash
 
+sgs.ai_canliegong_skill.SE_Wuwei = function(self, from, to)
+	return from:getMark("@Wuwei") > self.room:getAlivePlayers():length() and from:getMark("@Wuwei") > 4
+end
 
 --tiansuo
 sgs.ai_skill_invoke["SE_Tiansuo"] = function(self, data)
@@ -7744,6 +7757,10 @@ end]]
 sgs.ai_cardneed.se_gate = sgs.ai_cardneed.weapon
 sgs.double_slash_skill = sgs.double_slash_skill .. "|se_gate"
 sgs.hit_skill = sgs.hit_skill .. "|SE_Tiansuo"
+
+sgs.ai_canliegong_skill.SE_Tiansuo = function(self, from, to)
+	return to:isChained() and to:isKongcheng()
+end
 
 sgs.ai_skill_cardask["@SE_Tiansuo-discard"] = function(self, data, pattern)
 	local use = data:toCardUse()

@@ -620,6 +620,11 @@ sgs.hit_skill = sgs.hit_skill .. "|lxtx_shouyue_liegong"
 sgs.ai_cardneed.lxtx_shouyue_liegong = sgs.ai_cardneed.slash
 sgs.ai_skill_invoke.lxtx_shouyue_liegong = sgs.ai_skill_invoke.liegong
 
+sgs.ai_canliegong_skill.lxtx_shouyue_liegong = function(self, from, to)
+	return from:getPhase() == sgs.Player_Play and (to:getHandcardNum() >= from:getHp() or to:getHandcardNum() <= from:getAttackRange())
+end
+
+
 sgs.ai_cardneed.lxtx_shouyue_tieqi = sgs.ai_cardneed.slash
 sgs.ai_skill_invoke.lxtx_shouyue_tieqi = sgs.ai_skill_invoke.nostieji
 sgs.hit_skill = sgs.hit_skill .. "|lxtx_shouyue_tieqi"

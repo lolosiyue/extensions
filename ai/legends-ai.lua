@@ -50,6 +50,9 @@ sgs.ai_playerchosen_intention.tulong = -40
 
 sgs.ai_cardneed.lol_zhiming = sgs.ai_cardneed.slash
 sgs.hit_skill = sgs.hit_skill .. "|lol_zhiming"
+sgs.ai_canliegong_skill.lol_zhiming = function(self, from, to)
+	return to:getHp() < from:getHp() and from:distanceTo(to) <= 1
+end
 sgs.recover_hp_skill = sgs.recover_hp_skill .. "|yongqi"
 
 
@@ -890,6 +893,9 @@ sgs.juji_keep_value = {
 	Jink = 5.1,
 	Weapon = 5.2,	
 }
+sgs.ai_canliegong_skill.juji = function(self, from, to)
+	return not to:inMyAttackRange(from)
+end
 
 sgs.ai_cardneed.qiangpao = sgs.ai_cardneed.slash
 function sgs.ai_skill_invoke.jiaohuo(self, data)
@@ -1116,6 +1122,10 @@ sgs.ai_skill_use_func["#shenghuaCard"] = function(card, use, self)
 	end
 end
 sgs.ai_use_priority["shenghuaCard"] = sgs.ai_use_priority.Slash + 1
+
+sgs.ai_canliegong_skill.shenghua = function(self, from, to)
+	return from:hasFlag("shenghuaTCdww")
+end
 
 sgs.hit_skill = sgs.hit_skill .. "|shenghua"
 sgs.ai_cardneed.shenghua = sgs.ai_cardneed.slash
@@ -2380,6 +2390,9 @@ sgs.ai_ajustdamage_from.kuangnu = function(self, from, to, card, nature)
 	then
 		return 1
 	end
+end
+sgs.ai_canliegong_skill.kuangnu = function(self, from, to)
+	return from:getLostHp() >= 4
 end
 
 

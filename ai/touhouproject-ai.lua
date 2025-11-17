@@ -1069,6 +1069,10 @@ sgs.ai_skill_invoke.TH_Eternal = function(self, data)
 	return
 end
 
+sgs.ai_canliegong_skill.TH_huanzang = function(self, from, to)
+	return from:distanceTo(to) <= 1
+end
+
 sgs.ai_skill_cardask.TH_Sakuya = function(self, data)
 	local da = data:toDamage()
 	local needtodiscard = true
@@ -5134,6 +5138,10 @@ TH_MissingPower_skill.getTurnUseCard = function(self, inclusive)
 	end
 end
 
+sgs.ai_canliegong_skill.TH_MissingPower = function(self, from, to)
+	return to:getHp() > from:getHp()
+end
+
 local TH_suiyue_skill ={}
 TH_suiyue_skill.name = "TH_suiyue"
 table.insert(sgs.ai_skills, TH_suiyue_skill)
@@ -6212,6 +6220,10 @@ sgs.ai_slash_weaponfilter.TH_Weapon_SpearTheGungnir = function(self, to, player)
 	return getCardsNum("Jink", to, player) > 0
 end
 sgs.weapon_range.TH_Weapon_SpearTheGungnir = 5
+
+sgs.ai_canliegong_skill.TH_Weapon_SpearTheGungnir = function(self, from, to)
+	return from:getWeapon() and from:getWeapon():isKindOf("TH_Weapon_SpearTheGungnir") and from:hasEquip("TH_Weapon_SpearTheGungnir")
+end
 -- sgs.ai_use_priority.TH_Weapon_SpearTheGungnir = 5.700
 
 sgs.ai_weapon_value.TH_Weapon_Penglaiyuzhi = function(self, enemy, player)--������֦

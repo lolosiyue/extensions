@@ -310,6 +310,10 @@ sgs.dynamic_value.damage_card["cklongxicard"] = true
 
 sgs.ai_cardneed.ckqishan = sgs.ai_cardneed.slash
 
+sgs.ai_canliegong_skill.ckqishan = function(self, from, to)
+	return true
+end
+
 local ckweishan_skill = {}
 ckweishan_skill.name= "ckweishan"
 table.insert(sgs.ai_skills,ckweishan_skill)
