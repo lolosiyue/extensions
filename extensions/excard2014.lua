@@ -289,7 +289,7 @@ if EquipCard_typs == 1 then
 				if move.from and move.from:objectName() == player:objectName() and move.from_places:contains(sgs.Player_PlaceEquip) then
 					for _, id in sgs.qlist(move.card_ids) do
 						if sgs.Sanguosha:getEngineCard(id):getClassName() == "EXCard_TPYS" then
-							room:loseHp(player)
+							room:loseHp(player, 1, true, player, self:objectName())
 							if player:isAlive() then player:drawCards(2) end
 							return
 						end

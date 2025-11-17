@@ -559,7 +559,7 @@ lol_jiushuCard = sgs.CreateSkillCard{
 	on_use = function(self, room, source, targets)
 		local target = targets[1]
 		room:broadcastSkillInvoke("jiushu", math.random(1, 2))
-		room:loseHp(source)
+		room:loseHp(source, 1, true, source, "lol_jiushu")
 		local recover = sgs.RecoverStruct()
 		recover.who = target
 		room:recover(target, recover)
@@ -2061,7 +2061,7 @@ ningshi = sgs.CreateTriggerSkill{
 		local reason = damage.card
 		if reason and reason:isKindOf("Slash") then
 			if room:askForSkillInvoke(player, self:objectName(), data) then
-				room:loseHp(player, 1)
+				room:loseHp(player, 1, true, player, self:objectName())
 				local msg = sgs.LogMessage()
 				msg.type = "#ningshiEffect"
 				msg.from = player
@@ -2770,7 +2770,7 @@ lumangCard = sgs.CreateSkillCard{
 			if source:getHp() <= p:getHp() then
 				source:addMark("lm")
 			end
-			room:loseHp(source)
+			room:loseHp(source, 1, true, source, "lumang")
 			local x = 1
 			local damage = sgs.DamageStruct()
 			damage.reason = "lumang"
@@ -4070,7 +4070,7 @@ juewang = sgs.CreateTriggerSkill{
 					for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 						if room:askForCard(p, ".", "@juewangdis:", sgs.QVariant(), sgs.CardDiscarded) then
 						else
-							room:loseHp(p, 1)
+							room:loseHp(p, 1, true, player, self:objectName())
 						end
 					end
 				end
@@ -4543,7 +4543,7 @@ xuechang = sgs.CreateTriggerSkill{
 				if reason:isKindOf("Slash") or reason:isKindOf("Duel") then
 					local choice = room:askForChoice(player, self:objectName(), "hurt+reco+cancel", data)
 					if choice == "hurt" then
-						room:loseHp(player, 1)
+						room:loseHp(player, 1, true, player, self:objectName())
 						local msg = sgs.LogMessage()
 						msg.type = "#xuechang1Effect"
 						msg.from = player
@@ -5042,7 +5042,7 @@ jingxi = sgs.CreateTriggerSkill{
 		local targets = room:getAlivePlayers()
 		local target = room:askForPlayerChosen(player, targets, self:objectName(), "jingxiinvoke", true, true)
 		if not target then return false end
-		room:loseHp(target, 3)
+		room:loseHp(target, 3, true, player, self:objectName())
 		return false
 	end,
 	can_trigger = function(self, target)

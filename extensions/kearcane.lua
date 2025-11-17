@@ -1804,7 +1804,7 @@ ketinghu_extra = sgs.CreateTriggerSkill{
 			local num = player:getMark("&usetinghu")
 			local result = room:askForChoice(player,"vander_choice","loseanddraw+losemaxhp")
 			if result == "loseanddraw" then
-				room:loseHp(player,num,true)
+				room:loseHp(player,num,true, player, "ketinghu")
 				player:drawCards(num + num)
 
 			end
@@ -3385,7 +3385,7 @@ kejiguan = sgs.CreateTriggerSkill{
 				player:throwEquipArea()		 
 			end
 			if player:getPhase() == sgs.Player_Finish then
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, "kejiguan")
 			end
 		end
 		if (event == sgs.TargetConfirming) and player:hasSkill(self:objectName()) then

@@ -190,7 +190,7 @@ burste = sgs.CreateTriggerSkill{
 				
 				for _, p in ipairs(targets) do
 					room:doAnimate(1, player:objectName(), p:objectName())
-					room:loseHp(p)
+					room:loseHp(p, 1, true, player, self:objectName())
 				end
 			end
 		end

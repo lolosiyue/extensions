@@ -271,7 +271,7 @@ fuxieffect = sgs.CreateTriggerSkill
 			log.from = player
 			log.arg = "fuxi"
 			room:sendLog(log)
-		    room:loseHp(player, 1)
+		    room:loseHp(player, 1, true, nil, "fuxi")
 		end
 	end
 }

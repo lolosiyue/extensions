@@ -440,7 +440,7 @@ f_longnu_buffs = sgs.CreateTriggerSkill{
 				if choice == "1" then
 					room:sendCompulsoryTriggerLog(current, "f_longnu")
 					room:broadcastSkillInvoke("f_longnu", math.random(1,2))
-					room:loseHp(current, 1)
+					room:loseHp(current, 1, true, current, "f_longnu")
 					room:drawCards(current, 1, "f_longnu")
 				else
 					room:sendCompulsoryTriggerLog(current, "f_longnu")
@@ -523,7 +523,7 @@ f_xiongyan = sgs.CreateTriggerSkill{
 							end
 							local choice = room:askForChoice(oc, self:objectName(), table.concat(choices, "+"))
 							if choice == "1" then
-								room:loseHp(oc, 1)
+								room:loseHp(oc, 1, true, player, self:objectName())
 								if not oc:isChained() then room:setPlayerChained(oc) end
 							else
 								local card = room:askForExchange(oc, self:objectName(), 999, 2, true, "#f_xiongyan:".. player:getGeneralName())
@@ -1170,7 +1170,7 @@ f_dansha = sgs.CreateTriggerSkill{
 					local smz = room:askForPlayerChosen(player, room:getAllPlayers(), self:objectName(), "f_danshaSiMaZhao", true, true)
 					if smz then
 						room:broadcastSkillInvoke(self:objectName())
-						room:loseHp(smz, 2)
+						room:loseHp(smz, 2, true, player, self:objectName())
 						if not smz:isAlive() then room:detachSkillFromPlayer(player, self:objectName())
 						end
 					end
@@ -1597,7 +1597,7 @@ f_jianyuan = sgs.CreateTriggerSkill{
 				local y = 2 + player:getMark("&f_jianyuanY")
 				if player:getWeapon() ~= nil then y = y + 1 end
 				if player:getHandcardNum() > y then player:turnOver() end
-				if player:getHandcardNum() > 4 then room:loseHp(player, 1) end
+				if player:getHandcardNum() > 4 then room:loseHp(player, 1, true, player, self:objectName()) end
 				--==《剑缘录》==--
 				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 					if p:hasFlag("f_JYuan_real") then
@@ -1970,7 +1970,7 @@ f_shenpanCard = sgs.CreateSkillCard{
 			room:damage(sgs.DamageStruct("f_shenpan", nil, effect.to))
 		end
 		if effect.to:getMark("f_shenpanThree") > 0 then
-			room:loseHp(effect.to, 1)
+			room:loseHp(effect.to, 1, true, effect.from, "f_shenpan")
 		end
 	end,
 }
@@ -2065,7 +2065,7 @@ f_luofeng = sgs.CreateTriggerSkill{
 				room:doLightbox("f_luofengAnimate")
 			end
 			
-			room:loseHp(player, player:getHp())
+			room:loseHp(player, player:getHp(), true, player, self:objectName())
 			if not player:isAlive() then return false end
 			if player:hasSkill("f_fengchu") then
 				room:detachSkillFromPlayer(player, "f_fengchu")
@@ -2630,7 +2630,7 @@ f_lingqi = sgs.CreateTriggerSkill{
 					if damage.to:isMale() then sgs.Sanguosha:playAudioEffect("audio/system/poison_injure1.ogg", false)
 					elseif damage.to:isFemale() then sgs.Sanguosha:playAudioEffect("audio/system/poison_injure2.ogg", false)
 					end
-					room:loseHp(damage.to, 1)
+					room:loseHp(damage.to, 1, true, player, self:objectName())
 				end
 			end
 		end
@@ -3501,10 +3501,10 @@ f_dansha_new = sgs.CreateTriggerSkill{
 						room:broadcastSkillInvoke(self:objectName())
 						local m = 1
 						if player:isLord() then
-							room:loseHp(smz, m*2)
+							room:loseHp(smz, m*2, true, player, self:objectName())
 							room:askForDiscard(smz, self:objectName(), m*2, m*2, false, true)
 						else
-							room:loseHp(smz, m)
+							room:loseHp(smz, m, true, player, self:objectName())
 							room:askForDiscard(smz, self:objectName(), m, m, false, true)
 						end
 						if not smz:isAlive() then
@@ -3850,7 +3850,7 @@ f_feishi = sgs.CreateTriggerSkill{
 			and death.who:getMark("&f_ysS") > 0 and player:hasSkill(self:objectName()) then
 				room:sendCompulsoryTriggerLog(player, self:objectName())
 				room:broadcastSkillInvoke(self:objectName())
-				room:loseHp(player, 1)
+				room:loseHp(player, 1, true, player, self:objectName())
 			end
 		end
 	end,
@@ -4090,7 +4090,7 @@ lcd_f_huimengCard = sgs.CreateSkillCard{
 	    room:broadcastSkillInvoke("f_huimeng")
 		source:gainMark("&fUnited", 1)
 		if self:getSubcards():isEmpty() then
-			room:loseHp(source, 1)
+			room:loseHp(source, 1, true, source, "f_huimeng")
 		end
 	end,
 }
@@ -4350,7 +4350,7 @@ tc_liefeng_spwd = sgs.CreateTriggerSkill{
 				room:damage(sgs.DamageStruct(self:objectName(), player, to, math.random(1, 3), dama))
 				if not targets:isEmpty() then
 				    for _, pe in sgs.qlist(targets) do
-			            room:loseHp(pe)
+			            room:loseHp(pe, 1, true, player, self:objectName())
 					end
 				end
 			end

@@ -1150,7 +1150,7 @@ on_trigger=function(self,event,player,data)
 	--	room:loseHp(target)
 	--end
 	if room:askForSkillInvoke(player,"fatexinengloseHP",data) then 
-		room:loseHp(target)
+		room:loseHp(target, 1, true, player, self:objectName())
 	end
 	return false
 end,
@@ -1661,7 +1661,7 @@ fatefanshi_card = sgs.CreateSkillCard
 		local to = effect.to
 		local room = from:getRoom()
 		room:showAllCards(from,to)
-		room:loseHp(to)
+		room:loseHp(to,1, true, from, "fatefanshi")
 	end,
 }
 

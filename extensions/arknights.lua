@@ -156,7 +156,7 @@ ark_guozaiCard = sgs.CreateSkillCard
         room:sendLog(log)
 
         if source:getMark("&ark_guozai-PlayClear") > source:getMaxHp() then
-            room:loseHp(source, source:getMark("&ark_guozai-PlayClear") - source:getMaxHp())
+            room:loseHp(source, source:getMark("&ark_guozai-PlayClear") - source:getMaxHp(), true, source, self:objectName())
             room:getThread():delay(200)
         end
 
@@ -374,7 +374,7 @@ ark_douzheng = sgs.CreateTriggerSkill{
         local damage = data:toDamage()
         if damage.to:objectName() ~= player:objectName() then
             room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
-            if damage.to:getHp() < player:getHp() then room:loseHp(player, 1) end
+            if damage.to:getHp() < player:getHp() then room:loseHp(player, 1, true, player, self:objectName()) end
             local log = CreateDamageLog(damage, 1, self:objectName(), 1)
             room:sendLog(log)
             damage.damage = damage.damage + 1
@@ -437,7 +437,7 @@ ark_yongbao = sgs.CreateTriggerSkill{
             room:sendLog(log)
 
             room:setPlayerMark(use.from, "&ark_yongbao-SelfClear", 1)
-            room:loseHp(use.from, 1)
+            room:loseHp(use.from, 1, true, player, self:objectName())
         end
     end,
     can_trigger = function(self, target)
@@ -483,7 +483,7 @@ ark_kewang = sgs.CreateTriggerSkill{
             log.arg2 = damage.damage
             room:sendLog(log)
             if damage.from then
-                room:loseHp(damage.from, 1)
+                room:loseHp(damage.from, 1, true, player, self:objectName())
             end
             return true
         end

@@ -95,7 +95,7 @@ lxtx_taoxi = sgs.CreateTriggerSkill{
 			end
 			for _, name in ipairs(taoxi) do
 			    room:sendCompulsoryTriggerLog(player, self)
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 				table.removeOne(taoxi, name)
 			end
 		elseif event == sgs.PreCardUsed then

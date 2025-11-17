@@ -145,11 +145,11 @@ function reward(player, enemy, reward_type)  --奖励函数：用于进行奖励
 	elseif reward_type == "re_type16" then
 		gainCardRandomly(player, "BasicCard", 5)
 	elseif reward_type == "re_type17" then
-		room:loseHp(player)
+		room:loseHp(player, 1, true, nil, "reward")
 		room:drawCards(player, 5, "reward")
 	elseif reward_type == "re_type18" then
 		if player:getHp() > 1 then
-			room:loseHp(player, player:getHp() - 1)
+			room:loseHp(player, player:getHp() - 1, true, nil, "reward")
 		end
 		room:drawCards(player, 7, "reward")
 	elseif reward_type == "re_type19" then

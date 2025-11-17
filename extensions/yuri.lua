@@ -1345,7 +1345,7 @@ LuaZhenlie = sgs.CreateTriggerSkill{
 							if room:askForChoice(player, "LuaZhenlie", "losehp+no", data) == "losehp" then
 								room:addPlayerMark(player, "LuaZhenlie-Clear")
 								room:addPlayerMark(player, "&LuaZhenlie-Clear")
-								room:loseHp(player)
+								room:loseHp(player, 1, true, player, self:objectName())
 								if not player:isAlive() then return end
 								if player:canDiscard(use.from, "he") then
 									local id = room:askForCardChosen(player, use.from, "he", self:objectName(), false, sgs.Card_MethodNone)
@@ -1489,7 +1489,7 @@ machiko = sgs.CreateTriggerSkill{
 					-- end
 				-- end
 				if room:askForChoice(player, "machiko", "xiongyi+fenwei") == "xiongyi" then
-					room:loseHp(player)
+					room:loseHp(player, 1, true, player, self:objectName())
 					player:gainMark("@arise")
 				else
 					player:gainMark("@fenwei")
@@ -1725,7 +1725,7 @@ PoisonMaggots = sgs.CreateTriggerSkill{
 					        log.card_str = card:toString()
 					        room:sendLog(log)
 							
-							room:loseHp(MaggotMom)
+							room:loseHp(MaggotMom, 1, true, MaggotMom, self:objectName())
 							
 						end
                     else
@@ -2097,7 +2097,7 @@ maggotschagelifeCard = sgs.CreateSkillCard{ -- self:getSubcards():length() and (
 			-- if theDamage.chain or theDamage.transfer or (not damage.by_user) then return false end
 			-- room:damage(sgs.DamageStruct("PoisonMaggotsdamage", source, targets[1], count, sgs.DamageStruct_Thunder))
 
-			room:loseHp(source, self:subcardsLength())
+			room:loseHp(source, self:subcardsLength(), true, source, "maggotschagelife")
 		end
 	end
 }
@@ -3946,7 +3946,7 @@ goodatwepCard = sgs.CreateSkillCard{
 				local choice = room:askForChoice(source, "goodatwep", "gogetit+cancel")
 				if choice == "gogetit" then
 					if source:getMark("@SuperLimitBreak") == 0 or (source:getMark("@SuperLimitBreak") > 0 and not source:isWounded()) then
-						room:loseHp(source, 1)
+						room:loseHp(source, 1, true, source, "goodatwep")
 					end
 					room:obtainCard(source, target:getEquip(0))
 				end
@@ -4808,7 +4808,7 @@ peekingCard = sgs.CreateSkillCard
 				room:throwCard(allcard ,to ,from)
 			end
 			if x >= 2 then
-				room:loseHp(to)
+				room:loseHp(to, 1, true, from, "peeking")
 			end
 			x = 0
 		end
@@ -5191,7 +5191,7 @@ kurashinfurashuCard = sgs.CreateSkillCard{
 		room:setPlayerMark(effect.from, "AddMaxHandCards", n)
 		if not rc:isKindOf("Analeptic") and not rc:isKindOf("Peach") then
 			room:throwCard(card_id, effect.to, effect.from)
-			if effect.from:getCards("he"):length() <= effect.to:getCards("he"):length() then room:loseHp(effect.to) end
+			if effect.from:getCards("he"):length() <= effect.to:getCards("he"):length() then room:loseHp(effect.to, 1, true, effect.from, "kurashinfurashu") end
 		else
 			-- if effect.from:getMark("@SuperLimitBreak") > 0 then
 				room:moveCardTo(rc, effect.from, sgs.Player_PlaceTable)
@@ -5422,7 +5422,7 @@ bffeedingpoisoning = sgs.CreateTriggerSkill{
 						if p:getMark("@poison") < i then i = p:getMark("@poison") end
 						player:drawCards(i)
 						p:loseMark("@poison", i)
-						room:loseHp(p, i)
+						room:loseHp(p, i, true, player, "bffeedingpoisoning")
 						i = 0
 						break
 					end
@@ -6347,7 +6347,7 @@ magicat = sgs.CreateTriggerSkill{
 							local id = room:askForCardChosen(owner, player, "he", "magicat", false, sgs.Card_MethodNone)
 							room:obtainCard(owner, id)
 						end
-						room:loseHp(player)
+						room:loseHp(player, 1, true, owner, "magicat")
 						if owner:isWounded() then
 							local theRecover = sgs.RecoverStruct()
 							theRecover.recover = 1
@@ -6865,7 +6865,7 @@ zhixi = sgs.CreateTriggerSkill{
 					room:broadcastSkillInvoke("zhixi", math.random(3, 4))
 					if tar:isKongcheng() then
 						-- room:damage(sgs.DamageStruct("zhixiDamage", player, tar, 1, sgs.DamageStruct_Normal))
-						room:loseHp(tar)
+						room:loseHp(tar, 1, true, player, "zhixi")
 					else
 						local hcn = tar:getHandcardNum()*0.5
 						local discount = math.ceil(hcn)
@@ -6874,7 +6874,7 @@ zhixi = sgs.CreateTriggerSkill{
 							room:throwCard(card, tar, player)
 						end
 						-- if discount > 2 then room:damage(sgs.DamageStruct("zhixiDamage", player, tar, 1, sgs.DamageStruct_Normal)) end
-						if discount > 2 then room:loseHp(tar) end
+						if discount > 2 then room:loseHp(tar, 1, true, player, "zhixi") end
 					end
 				end
 				room:setPlayerMark(tar, "AI_zhixi", 0)
@@ -7125,7 +7125,7 @@ tomowodaji = sgs.CreateTriggerSkill{
 				room:sendLog(log)
 			if room:askForSkillInvoke(yuna,self:objectName(),data) then
 				-- damage.damage = math.max(0, damage.damage - 1)
-				room:loseHp(yuna, 1)
+				room:loseHp(yuna, 1, true, yuna, "tomowodaji")
 				if damage.from and killer:objectName() ~= yuna:objectName() then
 					room:setPlayerFlag(yuna,"tomowodaji")
 					room:askForUseSlashTo(yuna, killer, "#tomowodaji_slash")
@@ -8176,7 +8176,7 @@ deterrence = sgs.CreateTriggerSkill{
 							player:objectName(), "deterrence", nil)
 						room:throwCard(dis, reason, nil)
 					else
-						room:loseHp(player)
+						room:loseHp(player, 1, true, player, self:objectName())
 					end
 					-- if total <= 8 then -- 跳過遊戲階段的判斷處，因太狂被砍
 						-- if not room:askForCard(player, "TrickCard", "@deterrenceAsk", sgs.QVariant(), sgs.Card_MethodDiscard) then
@@ -8511,7 +8511,7 @@ fakebody = sgs.CreateTriggerSkill{
 				theRecover.recover = count
 				theRecover.who = player
 				room:recover(player, theRecover)
-				room:loseHp(from, count)
+				room:loseHp(from, count, true, player, self:objectName())
 				if from:hasSkill("chanyuan") then
 					player:drawCards(1)
 				else
@@ -11062,7 +11062,7 @@ blooddry = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Finish then
 			local room = player:getRoom()
-			room:loseHp(player)
+			room:loseHp(player, 1, true, player, self:objectName())
 		else
 			local use = data:toCardUse()
 			if not use.card or not use.card:isKindOf("Slash") then return false end
@@ -11230,7 +11230,7 @@ suckblood = sgs.CreateTriggerSkill{
 				card = response.m_card
 			end
 			if card and not card:isKindOf("SkillCard") and card:getSkillName() == "suckblood" then
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 			end
 		else
 			local damage = data:toDamage()
@@ -13414,7 +13414,7 @@ yuri_sizhan = sgs.CreateTriggerSkill{
 			if x > 0 and player:hasFlag("YS_active") then
 				player:loseAllMarks("@struggle")
 				x = math.min(3, x)
-				room:loseHp(player, x)
+				room:loseHp(player, x, true, player, self:objectName())
 				player:setFlags("-YS_active")
 			end
 			player:setFlags("-shenli")

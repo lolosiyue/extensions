@@ -51,13 +51,13 @@ luawu_card = sgs.CreateSkillCard { --限定技,新神杀已实现
 			if p:getHp() <= 1 then
 				p:turnOver()
 				room:handleAcquireDetachSkills(selfplayer, "wansha")
-				room:loseHp(p, 1)
+				room:loseHp(p, 1, true, selfplayer, self:objectName())
 				p:throwAllEquips()
 				room:handleAcquireDetachSkills(selfplayer, "-wansha")
 				--room:loseMaxHp(p,1)
 			else
 				room:loseMaxHp(p, 1)
-				room:loseHp(p, 1)
+				room:loseHp(p, 1, true, selfplayer, self:objectName())
 			end
 		end
 	end,
@@ -138,7 +138,7 @@ lualveji_card = sgs.CreateSkillCard { --略计
 	on_use = function(self, room, source, targets)
 		local selfplayer = source
 		local card_ids = room:getNCards(3)
-		room:loseHp(selfplayer, 1)
+		room:loseHp(selfplayer, 1, true, selfplayer, self:objectName())
 		if selfplayer:isAlive() then
 			for var = 1, 3, 1 do
 				room:broadcastSkillInvoke("lualveji_vs") --音效  ok
@@ -497,7 +497,7 @@ luajiejiang = sgs.CreateTriggerSkill { --溃袭
 					if to then
 						to:turnOver()
 						if (to:getHandcardNum() >= player:getHp()) then
-							room:loseHp(to, 1)
+							room:loseHp(to, 1, true, player, self:objectName())
 						end
 					end
 				end
@@ -576,7 +576,7 @@ luamoucecard = sgs.CreateSkillCard { --实现
 		room:broadcastSkillInvoke("mouce") --音效  ok
 
 		room:throwCard(room:askForCardChosen(from, to, "hej", self:objectName()), to)
-		room:loseHp(to, 2)
+		room:loseHp(to, 2, true, from, self:objectName())
 		room:setPlayerFlag(from, "luamouce_used")
 		from:turnOver()
 	end,
@@ -685,7 +685,7 @@ luaqinglong = sgs.CreateTriggerSkill
 
 				local x = player:getLostHp()
 				player:drawCards(x)
-				room:loseHp(damage.to)
+				room:loseHp(damage.to, 1, true, player, self:objectName())
 				return false
 			end
 		end,
@@ -990,7 +990,7 @@ luahuntian_card = sgs.CreateSkillCard
 					room:throwCard(card, to, from);
 				end
 			else
-				room:loseHp(to, 1)
+				room:loseHp(to, 1, true, from, self:objectName())
 				to:throwAllEquips()
 				return false
 			end

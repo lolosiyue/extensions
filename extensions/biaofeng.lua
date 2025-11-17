@@ -2569,7 +2569,7 @@ PlusGanglie = sgs.CreateTriggerSkill {
 							msg.from = player
 							msg.arg = self:objectName()
 							room:sendLog(msg)
-							room:loseHp(player)
+							room:loseHp(player, 1, true, player, self:objectName())
 							if player:isAlive() then
 								local card = use.card
 								if room:getCardPlace(card:getEffectiveId()) == sgs.Player_PlaceTable and not card:isKindOf("AmazingGrace") then --五谷丰登的BUG
@@ -2587,7 +2587,7 @@ PlusGanglie = sgs.CreateTriggerSkill {
 								msg.arg = self:objectName()
 								msg.arg2 = use.card:objectName()
 								room:sendLog(msg)
-								room:loseHp(player)
+								room:loseHp(player, 1, true, player, self:objectName())
 								if player:isAlive() then
 									local new_targets = sgs.SPlayerList()
 									new_targets:append(from)
@@ -3016,7 +3016,7 @@ PlusHuwei = sgs.CreateTriggerSkill {
 		local pattern = data:toStringList()[1]
 		if pattern == "jink" then
 			if player:getHp() > 1 and room:askForSkillInvoke(player, self:objectName()) then
-				room:loseHp(player, 1)
+				room:loseHp(player, 1, true, player, self:objectName())
 				if player:isAlive() then
 					local jink = sgs.Sanguosha:cloneCard("jink", sgs.Card_NoSuit, 0)
 					jink:setSkillName(self:objectName())
@@ -6182,7 +6182,7 @@ PlusFanjian = sgs.CreateTriggerSkill {
 			local use = data:toCardUse()
 			if use.card:isKindOf("Slash") and use.card:hasFlag("PlusFanjian_Missed") then
 				if use.from:isAlive() then
-					room:loseHp(use.from)
+					room:loseHp(use.from, 1, true, use.from, self:objectName())
 					room:setCardFlag(use.card, "-PlusFanjian_Missed")
 				end
 			end
@@ -6848,7 +6848,7 @@ PlusKurou_Card = sgs.CreateSkillCard {
 	will_throw = true,
 	on_use = function(self, room, source, targets)
 		room:broadcastSkillInvoke("PlusKurou")
-		room:loseHp(source, 1)
+		room:loseHp(source, 1, true, source, self:objectName())
 		if source:isAlive() then
 			local target = room:askForPlayerChosen(source, room:getAlivePlayers(), "PlusKurou")
 			local target_hand = target:getHandcardNum()
@@ -8049,7 +8049,7 @@ PlusBiyou = sgs.CreateTriggerSkill {
 			dest:setValue(target)
 			while target:getHp() <= 0 and player:getHp() > 1 do
 				if room:askForSkillInvoke(player, self:objectName(), dest) then
-					room:loseHp(player, 1)
+					room:loseHp(player, 1, true, player, self:objectName())
 					if player:isAlive() then
 						local recover = sgs.RecoverStruct()
 						recover.who = player
@@ -8921,7 +8921,7 @@ PlusQingnang = sgs.CreateTriggerSkill {
 							msg.arg = 1
 							room:sendLog(msg)
 						elseif choice == "PlusQingnang_choice2" then
-							room:loseHp(target, 1)
+							room:loseHp(target, 1, true, player, self:objectName())
 							if target:isAlive() then
 								room:acquireSkill(target, "PlusXuanhu")
 							end
@@ -9748,7 +9748,7 @@ PlusMizhao = sgs.CreateTriggerSkill {
 		if event == sgs.CardOffset then
 			local effect = data:toCardEffect()
 			if effect.card and effect.card:isKindOf("Slash") and effect.card:hasFlag("PlusMizhao_Slash") then
-				room:loseHp(effect.from)
+				room:loseHp(effect.from, 1, true, nil, self:objectName())
 				room:setCardFlag(effect.card, "-PlusMizhao_Slash")
 			end
 		elseif event == sgs.CardUsed then
@@ -10101,7 +10101,7 @@ PlusZhuni = sgs.CreateTriggerSkill {
 								dest:setValue(wangyun)
 								local prompt = string.format("@PlusZhuni:%s", wangyun:objectName())
 								if target and room:askForCard(target, ".Equip", prompt, dest, sgs.Card_MethodDiscard) then
-									room:loseHp(wangyun)
+									room:loseHp(wangyun, 1, true, target, self:objectName())
 								end
 							end
 						end
@@ -12704,7 +12704,7 @@ SixHusi = sgs.CreateTriggerSkill {
 						SixHusiOriginal = original_places
 
 						room:drawCards(player, 1, self:objectName())
-						room:loseHp(player)
+						room:loseHp(player, 1, true, player, self:objectName())
 					end
 				end
 			end
@@ -12854,7 +12854,7 @@ PlusYingwu = sgs.CreateTriggerSkill {
 				if room:askForSkillInvoke(player, self:objectName(), data) then
 					if not (player:canDiscard(player, "he") and room:askForCard(player, ".|.|.|.|.", "@PlusYingwu", data, self:objectName())) then
 						if player:getHp() > 0 then
-							room:loseHp(player)
+							room:loseHp(player, 1, true, player, self:objectName())
 						else
 							return false
 						end
@@ -13623,7 +13623,7 @@ SixJianCe = sgs.CreatePhaseChangeSkill {
 						to_exchange = room:askForExchange(p, "SixJianCe", x, x)
 						room:moveCardTo(to_exchange, player, sgs.Player_PlaceHand, false)
 					else
-						room:loseHp(p)
+						room:loseHp(p, 1, true, p, self:objectName())
 					end
 				end
 			end
@@ -14058,7 +14058,7 @@ SevenQuanBian = sgs.CreateTriggerSkill {
 					end
 				elseif card:isBlack() then
 					for _, p in sgs.qlist(room:getAllPlayers()) do
-						room:loseHp(p)
+						room:loseHp(p, 1, true, player, self:objectName())
 					end
 				end
 			end
@@ -14188,7 +14188,7 @@ SevenWeiYuanCard = sgs.CreateSkillCard {
 		local who = room:getCurrentDyingPlayer()
 		if not who then return end
 		if self:getSubcards():isEmpty() then
-			room:loseHp(player)
+			room:loseHp(player, 1, true, player, self:objectName())
 			if not who:isNude() then
 				local id = room:askForCardChosen(player, who, "he", self:objectName())
 				if id ~= -1 then
@@ -14271,7 +14271,7 @@ SevenJuGong = sgs.CreateTriggerSkill {
 			if player:getHandcardNum() > max then
 				local choice = room:askForChoice(player, self:objectName(), "loseHp+discard")
 				if choice == "loseHp" then
-					room:loseHp(player)
+					room:loseHp(player, 1, true, player, self:objectName())
 				elseif choice == "discard" then
 					room:askForDiscard(player, self:objectName(), player:getLostHp(), player:getLostHp(), false, true)
 				end
@@ -14838,7 +14838,7 @@ SevenBaChao = sgs.CreateTriggerSkill {
 			if card and card:isNDTrick() and target and RIGHT(self, target) then
 				local result = room:askForChoice(player, self:objectName(), "hp+maxhp")
 				if result == "hp" then
-					room:loseHp(player)
+					room:loseHp(player, 1, true, player, self:objectName())
 				else
 					room:loseMaxHp(player)
 				end

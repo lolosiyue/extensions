@@ -143,7 +143,7 @@ rushB_shibei = sgs.CreateTriggerSkill{
 			    else
 				    room:sendCompulsoryTriggerLog(player, self:objectName())
 				    room:broadcastSkillInvoke(self:objectName())
-				    room:loseHp(player)
+				    room:loseHp(player, 1, true, player, self:objectName())
 			    end
 			end
 		end
@@ -1192,7 +1192,7 @@ diy_k_tongqu = sgs.CreateTriggerSkill{
 			local draw = data:toDraw()
         	if draw.reason ~= "draw_phase" then return false end
 			if room:askForSkillInvoke(player, self:objectName()) then
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 				draw.num = draw.num + 1 + player:getLostHp()
 				data:setValue(draw)
 			else
@@ -1483,7 +1483,7 @@ rushB_fanjianCard = sgs.CreateSkillCard{
 			room:damage(damage)
 		else
 		    room:obtainCard(target, self, false)
-		    room:loseHp(target)
+		    room:loseHp(target, 1, true, source, self:objectName())
 		end
 	end,
 }
@@ -2437,7 +2437,7 @@ diy_m_chuifengCard = sgs.CreateSkillCard{
 		return #targets >= 0
 	end,
 	on_use = function(self, room, source, targets)
-		room:loseHp(source)
+		room:loseHp(source, 1, true, source, self:objectName())
 		if targets[1] then
 			local choice = room:askForChoice(source, self:objectName(), "duel+slash+thunder_slash+ice_slash+fire_slash")
 			local card = sgs.Sanguosha:cloneCard(choice)
@@ -3227,7 +3227,7 @@ rushB_baobianCard = sgs.CreateSkillCard{
 	name = "rushB_baobian",
 	target_fixed = true,
 	on_use = function(self, room, source, targets)
-		room:loseHp(source)
+		room:loseHp(source, 1, true, source, self:objectName())
 		if source:isAlive() then
 			room:drawCards(source, 1, "baobian")
 		end
@@ -5354,7 +5354,7 @@ rushB_kanxue = sgs.CreateTriggerSkill{
 				player:drawCards(n)
 			elseif change.to == sgs.Player_RoundStart and player:hasSkill(self:objectName()) and room:askForSkillInvoke(player, self:objectName()) then
 				room:broadcastSkillInvoke(self:objectName(), 1)
-			    room:loseHp(player)
+			    room:loseHp(player, 1, true, player, self:objectName())
 				player:gainHujia(2)
 				if not player:isNude() then
 				    if room:askForDiscard(player, self:objectName(), 1, 1, true, true) then

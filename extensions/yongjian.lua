@@ -1442,7 +1442,7 @@ zd_xunzhi = sgs.CreatePhaseChangeSkill{
 			and room:askForSkillInvoke(player,self:objectName())
 			then
 				room:broadcastSkillInvoke(self:objectName())
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 				room:addMaxCards(player,2,false)
 				break
 			end
@@ -2877,7 +2877,7 @@ WenheOnTrigger = sgs.CreateTriggerSkill{
 						if x<=log then sj:append(p) end
 					end
 					log = room:askForUseSlashTo(to,sj,"wl_luanwu_slash:")
-					if log then else room:loseHp(to) end
+					if log then else room:loseHp(to, 1, true, nil, "wl_luanwu") end
 				end
 			end
 		elseif event==sgs.CardsMoveOneTime then
@@ -2981,7 +2981,7 @@ WenheOnTrigger = sgs.CreateTriggerSkill{
 					for x,to in sgs.list(ap)do
 						if to:getEquips():length()>func
 						then continue end
-						room:loseHp(to)
+						room:loseHp(to,1,true,nil,"wl_hengdaoyuema")
 						if to:isDead()
 						or sj:isEmpty()
 						then continue end
@@ -2997,7 +2997,7 @@ WenheOnTrigger = sgs.CreateTriggerSkill{
 					log.arg = "wl_pofuchenzhou"
 					log.arg2 = ":wl_pofuchenzhou"
 					room:sendLog(log)
-					room:loseHp(player)
+					room:loseHp(player,1,true,nil,"wl_pofuchenzhou")
 					if player:isDead() then return end
 					player:drawCards(3,"wl_pofuchenzhou")
 				end

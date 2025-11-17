@@ -485,11 +485,11 @@ MR_enyuan = sgs.CreateTriggerSkill{
 			if damage.to:objectName() == player:objectName() and player:hasSkill(self:objectName()) then
 				room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
 				if damage.from:isKongcheng() then
-				    room:loseHp(damage.from)
+				    room:loseHp(damage.from, 1, true, player, self:objectName())
 				else
 				    local card_id = room:askForExchange(damage.from, self:objectName(), 1, 1, false, "@MR_enyuan"..player:objectName(), true)
 					if not card_id then
-					    room:loseHp(damage.from)
+					    room:loseHp(damage.from, 1, true, player, self:objectName())
 					else
 					    room:obtainCard(player, card_id, false)
 					end
@@ -643,7 +643,7 @@ MR_fanjianCard = sgs.CreateSkillCard{
 		room:showCard(source, card_id)
 		if card:getSuit() ~= suit then
 		    room:throwCard(self, source, nil)
-		    room:loseHp(target)
+		    room:loseHp(target, 1, true, source, self:objectName())
 		else
 			room:obtainCard(target, self, false)
 			if source:getMark("MR_fanjian_fail-PlayClear") == 0 then

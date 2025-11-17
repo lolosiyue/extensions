@@ -439,7 +439,7 @@ wuqiongdewulian = sgs.CreateTriggerSkill{
 				for _, card_id in sgs.qlist(move.card_ids) do
 					local card = sgs.Sanguosha:getCard(card_id)
 					if card:getId() == acard:getId() then
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 				player:setTag("wuqiongdewulian_different", sgs.QVariant())
 				end
 				end
@@ -451,7 +451,7 @@ wuqiongdewulian = sgs.CreateTriggerSkill{
 		if card and card:getSkillName()== "wuqiongdewulian" then
 	
 		if (card:isKindOf("Slash") and not sgs.Sanguosha:getCard(card:getSubcards():first()):isKindOf("Slash")) or (card:isKindOf("Jink") and not sgs.Sanguosha:getCard(card:getSubcards():first()):isKindOf("Jink")) then
-			room:loseHp(player)
+			room:loseHp(player, 1, true, player, self:objectName())
 				player:setTag("wuqiongdewulian_different", sgs.QVariant())
 				end
 			end
@@ -1562,7 +1562,7 @@ pomou = sgs.CreateTriggerSkill{
                         for _, card_id in sgs.qlist(move.card_ids) do
                             local card = sgs.Sanguosha:getCard(card_id)
                             if card:getId() == acard:getId() then
-                                room:loseHp(player)
+                                room:loseHp(player, 1, true, player, self:objectName())
                                 player:setTag("pomou_different", sgs.QVariant())
                             end
                         end
@@ -2378,7 +2378,7 @@ if victim and victim:getHp() <= source:getHp() then
 room:setTag("busizhixue", data)
 if room:askForSkillInvoke(source, self:objectName(), data) then
     room:removeTag("busizhixue")
-room:loseHp(source)
+room:loseHp(source, 1, true, source, self:objectName())
 source:drawCards(source:getLostHp())
 
 damage.prevented = true
@@ -2660,7 +2660,7 @@ room:throwCard(room:askForCardChosen(source, p, "hej", "DuriNoko"), p, source)
 cardcount = cardcount + 1 
 end
 if cardcount > source:getLostHp() then
-room:loseHp(source)
+room:loseHp(source, 1, true, source, self:objectName())
 end
 end
 }

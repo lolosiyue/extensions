@@ -633,7 +633,7 @@ Beizeng = sgs.CreateTriggerSkill {
 						player:loseMark("@shouhu", 2)
 						room:broadcastSkillInvoke("Beizeng")
 						room:loseMaxHp(target)
-						room:loseHp(target)
+						room:loseHp(target, 1, true, player, self:objectName())
 					end
 					return false
 				end
@@ -772,9 +772,9 @@ se_hengsaocard = sgs.CreateSkillCard {
 	on_use = function(self, room, source, targets)
 		--KOF
 		if room:getAllPlayers(true):length() == 2 then
-			room:loseHp(source, 1)
+			room:loseHp(source, 1, true, source, self:objectName())
 		else
-			room:loseHp(source, 2)
+			room:loseHp(source, 2, true, source, self:objectName())
 		end
 		room:broadcastSkillInvoke("se_hengsao")
 		if source:isAlive() then
@@ -2234,7 +2234,7 @@ se_erdao_oldCard = sgs.CreateSkillCard {
 		damage.card = nil
 		room:damage(damage)
 		if dest:isAlive() then
-			room:loseHp(source, 1)
+			room:loseHp(source, 1, true, source, self:objectName())
 		end
 	end
 }
@@ -3103,14 +3103,14 @@ se_jianwucard = sgs.CreateSkillCard {
 		room:doLightbox("se_jianwu$", 2000)
 		if source:isAlive() then
 			targets[1]:turnOver()
-			room:loseHp(targets[1])
+			room:loseHp(targets[1], 1, true, source, self:objectName())
 			if #targets >= 2 then
 				targets[2]:turnOver()
-				room:loseHp(targets[2])
+				room:loseHp(targets[2], 1, true, source, self:objectName())
 			end
 			if #targets == 3 then
 				targets[3]:turnOver()
-				room:loseHp(targets[3])
+				room:loseHp(targets[3], 1, true, source, self:objectName())
 			end
 		end
 	end,
@@ -3493,7 +3493,7 @@ se_shourencard = sgs.CreateSkillCard {
 		room:broadcastSkillInvoke("se_shouren")
 		local target = targets[1]
 		local hp = target:getHp()
-		room:loseHp(target, 1)
+		room:loseHp(target, 1, true, source, self:objectName())
 		--KOF
 		if hp == 1 and room:getAllPlayers(true):length() > 2 and target:isAlive() then
 			target:turnOver()
@@ -5283,7 +5283,7 @@ SE_Maoqun = sgs.CreateTriggerSkill {
 		if event == sgs.Damage then
 			for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
 				room:broadcastSkillInvoke(self:objectName())
-				room:loseHp(p)
+				room:loseHp(p, 1, true, p, self:objectName())
 				if room:getDrawPile():length() == 0 then room:swapPile() end
 				local cards = room:getDrawPile()
 				local cardsid = cards:at(0)
@@ -5990,7 +5990,7 @@ SE_Mengfeng = sgs.CreateTriggerSkill {
 				--KOF
 				if room:getAllPlayers(true):length() == 2 then
 					local target = player:getNextAlive()
-					room:loseHp(target)
+					room:loseHp(target, 1, true, player, self:objectName())
 				else
 					local list = room:getOtherPlayers(player)
 					local target = room:askForPlayerChosen(player, list, self:objectName())
@@ -6001,7 +6001,7 @@ SE_Mengfeng = sgs.CreateTriggerSkill {
 					if choice == "TurnOver_target" then
 						target:turnOver()
 					else
-						room:loseHp(target)
+						room:loseHp(target, 1, true, player, self:objectName())
 					end
 					local value = sgs.QVariant()
 					value:setValue(target)
@@ -6733,7 +6733,7 @@ se_xunyucard = sgs.CreateSkillCard {
 		room:useCard(use, false)
 		if source:getMark("@SE_Chaopin_Red") > 0 then
 			if not target:inMyAttackRange(source) and target:isAlive() then
-				room:loseHp(target)
+				room:loseHp(target, 1, true, source, self:objectName())
 			end
 		end
 		if not target:isNude() and source:getMark("@SE_Chaopin_Blue") == 0 then
@@ -7015,8 +7015,8 @@ SE_Mishi = sgs.CreateTriggerSkill {
 						end
 					end
 					room:doLightbox("SE_Mishi$", 800)
-					room:loseHp(mygod)
-					room:loseHp(source)
+					room:loseHp(mygod, 1, true, mygod, self:objectName())
+					room:loseHp(source, 1, true, mygod, self:objectName())
 					if source:isAlive() then
 						if not source:isNude() then
 							local card = room:askForCardChosen(mygod, source, "he", self:objectName())
@@ -7326,7 +7326,7 @@ SE_Menghei = sgs.CreateTriggerSkill {
 						local The_vic = room:askForPlayerChosen(source, list, self:objectName(), prompt, true, true)
 						if not The_vic then return false end
 						room:broadcastSkillInvoke("SE_Menghei")
-						room:loseHp(The_vic)
+						room:loseHp(The_vic, 1, true, source, self:objectName())
 						--KOF
 						if room:getAllPlayers(true):length() == 2 then
 							if not source:getNextAlive():isMale() then
@@ -9478,7 +9478,7 @@ se_zhanjingcard = sgs.CreateSkillCard {
 		local hp = target:getHp()
 		local maxhp = target:getMaxHp()
 		if hp > source:getHp() then
-			room:loseHp(target)
+			room:loseHp(target, 1, true, source, self:objectName())
 		end
 		--KOF
 		if maxhp > source:getMaxHp() and room:getAllPlayers(true):length() > 2 then
@@ -9614,7 +9614,7 @@ SE_Guanli = sgs.CreateTriggerSkill {
 					player:insertPhase(sgs.Player_Discard)
 					--KOF
 					if room:getAllPlayers(true):length() == 2 then
-						room:loseHp(player)
+						room:loseHp(player, 1, true, player, self:objectName())
 					end
 				end
 			end
@@ -9809,7 +9809,7 @@ se_youhuocard = sgs.CreateSkillCard {
 				end
 			end
 		else
-			room:loseHp(target, 1)
+			room:loseHp(target, 1, true, source, self:objectName())
 			local re = sgs.RecoverStruct()
 			re.who = source
 			room:recover(source, re, true)
@@ -10253,7 +10253,7 @@ SE_Rennai = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if event == sgs.DamageInflicted then
 			if player:hasSkill(self:objectName()) and player:getMark("@Patience") == 0 then
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 				room:doLightbox("SE_Rennai$", 800)
 				player:gainMark("@Patience")
 				room:handleAcquireDetachSkills(player, "se_qingqiangwei")
@@ -10983,7 +10983,7 @@ se_chenyan = sgs.CreateTriggerSkill {
 			local use = data:toCardUse()
 			if use.card:getSkillName() == "se_chenyan" and use.card:getTypeId() ~= 0 then
 				if use.card:subcardsLength() == 0 then
-					room:loseHp(player)
+					room:loseHp(player, 1, true, player, self:objectName())
 				end
 				room:addPlayerMark(player, "se_chenyan-Clear")
 				room:addPlayerMark(player, "&se_chenyan-"..player:getPhase().."Clear")
@@ -11220,7 +11220,7 @@ luaqice_tr = sgs.CreateTriggerSkill {
 			if use.card:getSkillName() == "luaqice" then
 				room:setPlayerFlag(player, "qiceused")
 			elseif use.card:getSkillName() == "luaqice1" then
-				room:loseHp(use.from)
+				room:loseHp(use.from, 1, true, use.from, self:objectName())
 				room:setPlayerFlag(player, "qiceused")
 			end
 		end

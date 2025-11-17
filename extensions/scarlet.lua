@@ -116,7 +116,7 @@ s4_cloud_tuxi = sgs.CreateTriggerSkill {
                         table.insert(lose_num, tostring(i))
                     end
                     local choice = room:askForChoice(p, "s4_cloud_tuxi", table.concat(lose_num, "+"))
-                    room:loseHp(p, tonumber(choice))
+                    room:loseHp(p, tonumber(choice), true, p, self:objectName())
                 end
                 if p:isAlive() then
                     if player:getHandcardNum() >= p:getHandcardNum() and not player:isKongcheng() then
@@ -727,7 +727,7 @@ s4_jiwu = sgs.CreateTriggerSkill {
                             local card = room:askForDiscard(lubu, "s4_jiwu_invoke", x, x, true, true, "@s4_jiwu:" .. x)
                             if card then
                             else
-                                room:loseHp(lubu, 1)
+                                room:loseHp(lubu, 1, true, lubu, self:objectName())
                             end
                         end
                         data:setValue(use)
@@ -856,7 +856,7 @@ s4_jiuzhu = sgs.CreateTriggerSkill {
                             "@s4_jiuzhu:" .. target:objectName())
                         if discard then
                         else
-                            room:loseHp(player, 1)
+                            room:loseHp(player, 1, true, player, self:objectName())
                         end
                         if not player:isAlive() then return false end
                         target:obtainCard(card)
@@ -1896,7 +1896,7 @@ s4_txbw_feidang = sgs.CreateTriggerSkill {
                             if room:askForCard(player, "Weapon", "s4_txbw_feidang:" .. winner:objectName(),
                                     ToQVData(winner)) then
                             else
-                                room:loseHp(player, 1)
+                                room:loseHp(player, 1, true, player, self:objectName())
                             end
                             local damage = sgs.DamageStruct()
                             damage.card = nil
@@ -3150,7 +3150,7 @@ s4_txbw_tianjian = sgs.CreateTriggerSkill {
                         if target and target:isAlive() then
                             local result = room:askForChoice(target, self:objectName(), "hp+maxhp")
                             if result == "hp" then
-                                room:loseHp(target)
+                                room:loseHp(target, 1, true, player, self:objectName())
                             else
                                 room:loseMaxHp(target)
                             end
@@ -4506,7 +4506,7 @@ s4_shiyong = sgs.CreateTriggerSkill {
 
                         room:sendCompulsoryTriggerLog(player, self:objectName(), true)
                         for i = 0, x - 1, 1 do
-                            room:loseHp(player, 1)
+                            room:loseHp(player, 1, true, player, self:objectName())
                             break
                         end
                         
@@ -4601,7 +4601,7 @@ s4_beizhen = sgs.CreateTriggerSkill{
                         room:addPlayerMark(player, "s4_beizhen")
                         room:addPlayerMark(player, "&s4_beizhen")
                     else
-                        room:loseHp(player)
+                        room:loseHp(player, 1, true, player, self:objectName())
                         player:drawCards(1, self:objectName())
                     end
                 end
@@ -5441,7 +5441,7 @@ s4_daoli = sgs.CreateTriggerSkill{
             room:setPlayerMark(player, "s4_daoli-Clear",0)
             if player:getMark("damage_point_play_phase") == 0 then
                 room:sendCompulsoryTriggerLog(player,self)
-                room:loseHp(player, 1)
+                room:loseHp(player, 1, true, player, self:objectName())
                 player:drawCards(2, self:objectName())
                 if player:getMark("s4_daoliUsing-Clear") == 0 then
                     room:setPlayerMark(player, "s4_daoliUsing-Clear", 1)
@@ -6543,7 +6543,7 @@ s4_wuhu_heduanCard = sgs.CreateSkillCard{
 	name = "s4_wuhu_heduan",
 	target_fixed = true,
 	on_use = function(self, room, source, targets)
-		room:loseHp(source, 1)
+		room:loseHp(source, 1, true, source, self:objectName())
         room:addPlayerMark(source, "&s4_wuhu_heduan-Clear")
 	end
 }
@@ -7916,7 +7916,7 @@ s4_xingyiCard = sgs.CreateSkillCard {
             if self:subcardsLength() == 0 and sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
                 local result = room:askForChoice(yuji, self:objectName(), "hp+maxhp")
                 if result == "hp" then
-                    room:loseHp(yuji)
+                    room:loseHp(yuji, 1, true, yuji, self:objectName())
                 else
                     room:loseMaxHp(yuji)
                 end
@@ -9440,7 +9440,7 @@ s4_s_gongpo = sgs.CreateTriggerSkill{
         if damage.from and damage.from:isAlive() and damage.from:objectName() == player:objectName()
             and player:getMark("s4_s_gongpo-"..sgs.Player_Play.."Clear") > 0 then
             room:sendCompulsoryTriggerLog(player, objectName())
-            room:loseHp(HpLostStruct(damage.to, damage.damage, objectName(), player))
+            room:loseHp(damage.to, damage.damage, true, player, self:objectName())
             return true
         end
         return false
@@ -9871,7 +9871,7 @@ s4_s_xianneng = sgs.CreateTriggerSkill{
         local room = player:getRoom()
         if player:getPhase() == sgs.Player_Finish and player:getMark("s4_s_xiannengExtraTurn") == 0 and player:askForSkillInvoke(self:objectName(), data) then
             room:broadcastSkillInvoke(self:objectName())
-            room:loseHp(player)
+            room:loseHp(player, 1, true, player, self:objectName())
             if player:isAlive() then
                 local playerdata = sgs.QVariant()
                 playerdata:setValue(player)

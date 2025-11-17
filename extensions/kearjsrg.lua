@@ -2151,7 +2151,7 @@ keqizhaohan = sgs.CreateTriggerSkill{
 					room:recover(player, sgs.RecoverStruct())	
 				else
 					room:broadcastSkillInvoke(self:objectName(),2)
-					room:loseHp(player,1,true,player)
+					room:loseHp(player,1,true,player,self:objectName())
 				end
 			end
 		end
@@ -8007,7 +8007,7 @@ kezhuanfushan = sgs.CreateTriggerSkill{
 				end	
 				if (willlose == 2) then
 					room:sendCompulsoryTriggerLog(player,self)
-					room:loseHp(player,2)
+					room:loseHp(player,2,true, player, self:objectName())
 				else
 					local cha = player:getMaxHp() - player:getHandcardNum() 
 					if (cha > 0) then

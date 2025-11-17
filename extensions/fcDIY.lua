@@ -354,7 +354,7 @@ f_yaoshuCard = sgs.CreateSkillCard{
 	    room:doLightbox("f_yaoshuAnimate")
 	    for _, ct in sgs.list(targets) do
 			ct:turnOver()
-			room:loseHp(ct, 1)
+			room:loseHp(ct, 1, true, source, self:objectName())
 		end
 		room:removePlayerMark(source, "@f_yaoshu")
 		room:setPlayerFlag(source, "f_yaoshu_used")
@@ -441,7 +441,7 @@ SZJLimitSkillSideEffect = sgs.CreateTriggerSkill{ --“妖术”和“落雷”�
 		local room = player:getRoom()
 		if player:getPhase() == sgs.Player_Play then
 			if player:hasSkill("f_yaoshu") and player:hasFlag("f_yaoshu_used") then
-			    room:loseHp(player, 1)
+			    room:loseHp(player, 1, true, player, self:objectName())
 			end
 			if player:hasSkill("f_luolei") and player:hasFlag("f_luolei_used") then
 			    room:loseMaxHp(player, 1)
@@ -1164,7 +1164,7 @@ mx_hanhunCard = sgs.CreateSkillCard{
 	on_use = function(self, room, source, targets)
 	    room:doLightbox("$mx_hanhun")
 		room:removePlayerMark(source, "@mx_hanhun")
-		room:loseHp(source, 1)
+		room:loseHp(source, 1, true, source, "mx_hanhun")
 		local hanhun = targets[1]
         room:addPlayerMark(hanhun, "@ZhanDouXuXing")
         room:addPlayerMark(hanhun, "&mx_hanhun+to+#"..source:objectName())
@@ -1252,7 +1252,7 @@ f_hunsan = sgs.CreateTriggerSkill{
 	    local room = player:getRoom()
 	    if player:getPhase() == sgs.Player_Finish then
 		    room:sendCompulsoryTriggerLog(player, self:objectName())
-		    room:loseHp(player, 1)
+		    room:loseHp(player, 1, true, player, "f_hunsan")
 		end
 	end,
 }
@@ -2465,7 +2465,7 @@ f_doufaCard = sgs.CreateSkillCard{
 		elseif choice == "f_doufaNormal" then
 		    room:damage(sgs.DamageStruct("f_doufa", source, dest, 2, sgs.DamageStruct_Normal))
 		elseif choice == "f_doufalosehp" then
-		    room:loseHp(dest, 2)
+		    room:loseHp(dest, 2, true, source, self:objectName())
 		end
 	end,
 }
@@ -2514,7 +2514,7 @@ f_diyuxiCard = sgs.CreateSkillCard{
 		local choice = room:askForChoice(source, "f_diyuxi", table.concat(choices, "+"))
 		if choice == "L1D1SD1" then
 			room:broadcastSkillInvoke("f_diyuxi")
-			room:loseHp(source, 1)
+			room:loseHp(source, 1, true, source, "f_diyuxi")
 			room:drawCards(source, 1, "f_diyuxi")
 			room:setPlayerFlag(source, "L1D1SD1_BUFF")
 			room:setPlayerFlag(source, "L1D1SD1_used")
@@ -2569,7 +2569,7 @@ f_diyuxiBUFF = sgs.CreateTriggerSkill{
 			room:broadcastSkillInvoke("f_diyuxi")
 		elseif event == sgs.EventPhaseStart then
 		    if player:getPhase() == sgs.Player_Finish and ((not player:hasFlag("L1D1SD1_used") and not player:hasFlag("LM1D2D1_used")) or (player:hasFlag("L1D1SD1_used") and player:hasFlag("LM1D2D1_used"))) then
-			    room:loseHp(player, 1)
+			    room:loseHp(player, 1, true, player, "f_diyuxi")
 			end
 		end
     end,
@@ -4141,7 +4141,7 @@ sp_weizhen_limited = sgs.CreateTriggerSkill{
 				room:addPlayerMark(player, "sp_weizhen_used")
 				local n = player:getMark("sp_weizhen_used")
 				if n == 2 then
-					room:loseHp(player, 1)
+					room:loseHp(player, 1, true, player, self:objectName())
 				elseif n >= 3 then
 					room:loseMaxHp(player, 1)
 				end
@@ -4423,7 +4423,7 @@ sp_qinmo = sgs.CreateTriggerSkill{
 			    local plistls = room:getAllPlayers()
 				local victim = room:askForPlayerChosen(player, plistls, self:objectName())
 				room:broadcastSkillInvoke(self:objectName())
-				room:loseHp(victim, 1)
+				room:loseHp(victim, 1, true, player, self:objectName())
 				room:setPlayerFlag(player, "Global_PlayPhaseTerminated")
 			elseif choice == "sp_qinmoaddHp" then
 			    local plistad = room:getAllPlayers()
@@ -5098,7 +5098,7 @@ sp_tianxiaCard = sgs.CreateSkillCard{
 	on_use = function(self, room, source, targets)
 		local choice = room:askForChoice(source, "sp_tianxia", "1+2+3+cancel")
 		if choice == "1" then
-			room:loseHp(source, 1)
+			room:loseHp(source, 1, true, source, "sp_tianxia")
 			room:broadcastSkillInvoke("sp_tianxia", 1)
 			for _, t in sgs.qlist(room:getOtherPlayers(source)) do
 		    	local choices = {}
@@ -5135,7 +5135,7 @@ sp_tianxiaCard = sgs.CreateSkillCard{
 		elseif choice == "3" then
 			room:loseMaxHp(source, 1)
 			--执行第一项
-			room:loseHp(source, 1)
+			room:loseHp(source, 1, true, source, "sp_tianxia")
 			room:broadcastSkillInvoke("sp_tianxia", 1)
 			for _, t in sgs.qlist(room:getOtherPlayers(source)) do
 		    	local choices = {}
@@ -6481,7 +6481,7 @@ sp_yinyangSSJQ = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local damage = data:toDamage()
-		room:loseHp(damage.to, damage.damage)
+		room:loseHp(damage.to, damage.damage, true, damage.from, self:objectName())
 		return true
 	end,
 	can_trigger = function(self, player)
@@ -6493,7 +6493,7 @@ sp_sishiCard = sgs.CreateSkillCard{
 	name = "sp_sishiCard",
 	target_fixed = true,
 	on_use = function(self, room, source, targets)
-		room:loseHp(source, 1)
+		room:loseHp(source, 1, true, source, "sp_sishi")
 		local dummy = sgs.Sanguosha:cloneCard("slash")
 		dummy:addSubcards(source:getPile("sp_ss"))
 		room:obtainCard(source, dummy, false)
@@ -7045,7 +7045,7 @@ sp_zaoyan = sgs.CreateTriggerSkill{
 								table.insert(nullified_list, to:objectName())
 								use.nullified_list = nullified_list
 								data:setValue(use)
-								room:loseHp(to, 1)
+								room:loseHp(to, 1, true, p, self:objectName())
 							end
 							room:broadcastSkillInvoke(self:objectName(), 2)
 						end
@@ -10149,7 +10149,7 @@ fcj_yimie = sgs.CreateTriggerSkill{
 			and damage.to and damage.to:objectName() ~= player:objectName() then
 				if room:askForSkillInvoke(player, self:objectName(), data) then
 					room:addPlayerMark(player, self:objectName().."-Clear")
-					room:loseHp(player, 1)
+					room:loseHp(player, 1, true, player, self:objectName())
 					if damage.to:getHp() > 0 then
 						room:setPlayerMark(damage.to, "fcj_yimieMoreDMG", damage.to:getHp())
 						local log = sgs.LogMessage()
@@ -10216,9 +10216,9 @@ fcj_tairan = sgs.CreateTriggerSkill{
 				room:setPlayerMark(player, "&fcj_tairanR", 0)
 				local lhp = player:getHp() - 1
 				if lhp >= r then
-					room:loseHp(player, r)
+					room:loseHp(player, r, true, player, self:objectName())
 				elseif lhp < r and lhp > 0 then
-					room:loseHp(player, lhp)
+					room:loseHp(player, lhp, true, player, self:objectName())
 				end
 				if player:isAlive() and not player:isKongcheng() and player:getMark("&fcj_tairanD") > 0 then
 					room:setPlayerMark(player, "&fcj_tairanD", 0)
@@ -10354,7 +10354,7 @@ fcj_longnu = sgs.CreatePhaseChangeSkill{
 			    room:setChangeSkillState(player, self:objectName(), 2)
 				room:sendCompulsoryTriggerLog(player, self:objectName())
 				room:broadcastSkillInvoke(self:objectName())
-				room:loseHp(player, 1)
+				room:loseHp(player, 1, true, player, self:objectName())
 				room:drawCards(player, player:getHp(), self:objectName())
 				room:acquireSkill(player, "fcj_longnu_yang", false)
 				room:filterCards(player, player:getCards("h"), true)
@@ -11290,7 +11290,7 @@ f_huishiCard = sgs.CreateSkillCard{
 				if choice == "mhp" then
 					room:loseMaxHp(source, 1)
 				else
-					room:loseHp(source, 1)
+					room:loseHp(source, 1, true, source, "f_huishi")
 				end
 		    end
 		end
@@ -11522,7 +11522,7 @@ f_pinghe = sgs.CreateTriggerSkill{
 			if player:getHp() > 1 then
 				room:sendCompulsoryTriggerLog(player, "f_pinghe")
 				room:broadcastSkillInvoke("f_pinghe")
-				room:loseHp(player, 1)
+				room:loseHp(player, 1, true, player, "f_pinghe")
 				room:drawCards(player, player:getHp(), "f_pinghe")
 			end
 		end
@@ -12673,7 +12673,7 @@ fcmouliegong = sgs.CreateTriggerSkill{
 									room:setPlayerMark(player, mark, 0)
 								end
 							end
-							room:loseHp(player, 1)
+							room:loseHp(player, 1, true, player, self:objectName())
 						else
 							damage.damage = damage.damage + 1
 							data:setValue(damage)
@@ -13276,7 +13276,7 @@ kjmoushifeng = sgs.CreateTriggerSkill{
 		elseif event == sgs.CardOffset then
 			local effect = data:toCardEffect()
 			if effect.card:getSkillName() == "kjmoushifeng" and effect.from:objectName() == player:objectName() and player:hasSkill(self:objectName()) then
-				room:loseHp(player, 1)
+				room:loseHp(player, 1, true, player, self:objectName())
 			end
 		end
 	end,
@@ -14000,7 +14000,7 @@ fcmoujiang = sgs.CreateTriggerSkill{
 					for _, p in sgs.qlist(use.to) do
 						room:sendCompulsoryTriggerLog(player, self:objectName())
 						room:broadcastSkillInvoke(self:objectName())
-						room:loseHp(player, 1)
+						room:loseHp(player, 1, true, player, self:objectName())
 						if player:isAlive() then
 							room:drawCards(player, 1, self:objectName())
 						end
@@ -15074,7 +15074,7 @@ fcmoumingceCard = sgs.CreateSkillCard{
 		room:obtainCard(effect.to, self, false)
 		local choice = room:askForChoice(effect.to, "fcmoumingce", "1+2")
 		if choice == "1" then
-			room:loseHp(effect.to, 1)
+			room:loseHp(effect.to, 1, true, effect.from, self:objectName())
 			room:drawCards(effect.from, 2, "fcmoumingce")
 			effect.from:gainMark("&fcmCe", 1)
 		else
@@ -16368,7 +16368,7 @@ f_gonghun = sgs.CreateTriggerSkill{
 					if not player:hasSkill("sgkgodliegong") then
 						room:acquireSkill(player, "sgkgodliegong")
 					end
-					room:loseHp(player, 1)
+					room:loseHp(player, 1, true, player, self:objectName())
 				elseif player:getMark("&f_gonghun") == 5 then --升至满阶
 					room:broadcastSkillInvoke(self:objectName(), 4)
 					local log = sgs.LogMessage()
@@ -16760,7 +16760,7 @@ Fmorigongs = sgs.CreateTriggerSkill{
 		local damage = data:toDamage()
 		if damage.card:isKindOf("Slash") and damage.from:objectName() == player:objectName() and damage.to then
 			if room:askForSkillInvoke(player, self:objectName(), data) then
-				room:loseHp(damage.to, damage.damage)
+				room:loseHp(damage.to, damage.damage, true, player, self:objectName())
 				return true
 			end
 		end
@@ -16804,7 +16804,7 @@ f_mieshiSBCard = sgs.CreateSkillCard{
 		local mssb = sgs.Sanguosha:getCard(self:getSubcards():first())
 		if mssb:isKindOf("Fchixieren") then
 			local hp = effect.from:getHp()
-			room:loseHp(effect.from, hp)
+			room:loseHp(effect.from, hp, true, effect.from, "f_mieshiSB")
 			local mhp = effect.to:getMaxHp()
 			room:loseMaxHp(effect.to, mhp)
 		elseif mssb:isKindOf("Fmorigong") then
@@ -16815,7 +16815,7 @@ f_mieshiSBCard = sgs.CreateSkillCard{
 				end
 			end
 			local hp = effect.to:getHp()
-			room:loseHp(effect.to, hp)
+			room:loseHp(effect.to, hp, true, effect.from, "f_mieshiSB")
 			for _, q in sgs.qlist(room:getAllPlayers()) do
 				if q:hasFlag("Fmorigong_cupTarget") then
 					room:setPlayerFlag(q, "-Fmorigong_cupTarget")

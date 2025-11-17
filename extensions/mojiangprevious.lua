@@ -31,7 +31,7 @@ sy_old_zongyu_lose = sgs.CreateTriggerSkill{
 	    local use = data:toCardUse()
 		local card = use.card
 		if card:getSkillName() == "sy_old_zongyu" then
-		    room:loseHp(player)
+		    room:loseHp(player, 1, true, player, "sy_old_zongyu")
 			room:broadcastSkillInvoke("analeptic")
 		end
 	end
@@ -1555,7 +1555,7 @@ sy_old_huoxin = sgs.CreateTriggerSkill{
 			room:sendCompulsoryTriggerLog(player, self:objectName())
 		    room:broadcastSkillInvoke(self:objectName())
 		    if not damage.from:hasEquip() then
-			    room:loseHp(damage.from)
+			    room:loseHp(damage.from, 1, true, player, self:objectName())
 				return false
 			else
 			    local choices = {"obtain_equip", "lose_hp"}
@@ -1564,7 +1564,7 @@ sy_old_huoxin = sgs.CreateTriggerSkill{
 				    local equip = room:askForCardChosen(player, damage.from, "e", self:objectName())
 					if equip then room:obtainCard(player, equip) end
 				else
-				    room:loseHp(damage.from)
+				    room:loseHp(damage.from, 1, true, player, self:objectName())
 				end
 			end
 		end

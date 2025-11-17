@@ -510,7 +510,7 @@ ov_equanbf = sgs.CreateTriggerSkill{
 				Skill_msg("ov_equan",player)
 				player:loseAllMarks("&ov_equan_du")
 				player:setFlags("ov_equan_du")
-				room:loseHp(player,n)
+				room:loseHp(player,n, true, nil, self:objectName())
 				player:setFlags("-ov_equan_du")
 			end
 		elseif event==sgs.EnterDying
@@ -979,9 +979,9 @@ ov_mouzhuCard = sgs.CreateSkillCard{
 			end
 			if n<1
 			then
-				room:loseHp(source)
+				room:loseHp(source, 1, true, source, self:objectName())
 				for c,p in sgs.list(tos)do
-					room:loseHp(p)
+					room:loseHp(p, 1, true, p, self:objectName())
 				end
 			else
 				tos = {}
@@ -3211,7 +3211,7 @@ ov_linglubf = sgs.CreateTriggerSkill{
 						and ToSkillInvoke("ov_xiongsi",p,player)
 						then n = 2 else n = 1 end
 						for i=1,n do
-							room:loseHp(player)
+							room:loseHp(player,1, true, player, "ov_linglu")
 						end
 					end
 				end
@@ -4473,7 +4473,7 @@ ov_xingzhui = sgs.CreateTriggerSkill{
 		then
 			local use = data:toCardUse()
 			if use.card:objectName()~="ov_xingzhuiCard" then return end
-			room:loseHp(player)
+			room:loseHp(player,1, true, player, self:objectName())
 			SetShifa("ov_xingzhui",player).effect = function(owner,x)
 				room:broadcastSkillInvoke(self:objectName())
 				local ids = room:getNCards(x*2,false)
@@ -4570,7 +4570,7 @@ ov_jiekuang = sgs.CreateTriggerSkill{
 				and ToSkillInvoke(self,owner,use.to:at(0)) then
 					owner:addMark("ov_jiekuang-Clear")
 					if room:askForChoice(owner,"ov_jiekuang","ov_jiekuang1+ov_jiekuang2")~="ov_jiekuang1"
-					then room:loseMaxHp(owner) else room:loseHp(owner) end
+					then room:loseMaxHp(owner) else room:loseHp(owner, 1, true, owner, self:objectName()) end
 					owner:addMark("ov_jiekuang"..use.card:toString())
 					use.to:removeOne(use.to:at(0))
 					use.to:append(owner)
@@ -5432,7 +5432,7 @@ ov_fenwu = sgs.CreateTriggerSkill{
 			if table.contains(use.card:getSkillNames(),"ov_fenwu")
 			or use.card:hasFlag("ov_fenwu") then
 				ToSkillInvoke(self,player,true,nil,false)
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 				if player:isDead() then
 					use.to = sgs.SPlayerList()
 					data:setValue(use)
@@ -6100,7 +6100,7 @@ ov_fujian = sgs.CreateTriggerSkill{
 						id = sgs.Sanguosha:getCard(id)
 						if id:isKindOf("Weapon") then
 							room:sendCompulsoryTriggerLog(player,self:objectName(),true,true,2)
-							room:loseHp(player)
+							room:loseHp(player, 1, true, player, self:objectName())
 						end
 					end
 				end
@@ -6299,7 +6299,7 @@ ov_suizhengbf = sgs.CreateTriggerSkill{
 				if dc then
 					room:recover(player,sgs.RecoverStruct(owner))
 				else
-					room:loseHp(owner)
+					room:loseHp(owner,1, true, owner, "ov_suizheng")
 					if owner:isDead() then continue end
 					dc = room:askForChoice(owner,"ov_suizheng","slash+duel",ToData(player))
 					local cs = sgs.CardList()
@@ -8678,7 +8678,7 @@ ov_wuhun = sgs.CreateTriggerSkill{
 				room:doSuperLightbox("shenguanyu","ov_wuhun")
 				death = room:askForPlayersChosen(player,death,"ov_wuhun",1,death:length(),"ov_wuhun0:",true)
 				for _,p in sgs.list(death)do
-					room:loseHp(p,p:getMark("&nightmare"))
+					room:loseHp(p,p:getMark("&nightmare"), true, player, self:objectName())
 				end
 			end
 		end
@@ -9962,7 +9962,7 @@ ov_zaoliCard = sgs.CreateSkillCard{
 				cns:removeOne(ids)
 			end
 		end
-		if n>2 then room:loseHp(source) end
+		if n>2 then room:loseHp(source, 1, true, source, "ov_zaoli") end
 	end
 }
 ov_zaolivs = sgs.CreateViewAsSkill{
@@ -10460,7 +10460,7 @@ ov_zhilve = sgs.CreateTriggerSkill{
 				if not choice then return end
 				if choice.to_place~=sgs.Player_PlaceEquip
 				then room:addPlayerMark(player,"ov_zhilvedebf-Clear")
-				else room:loseHp(player) end
+				else room:loseHp(player, 1, true, player, self:objectName()) end
 			else
 				room:addPlayerMark(player,"ov_zhilvebf-Clear")
 			end
@@ -10722,7 +10722,7 @@ ov_lihuo = sgs.CreateTriggerSkill{
 			and table.contains(use.card:getSkillNames(),"mobilelihuo") then
 				player:setFlags("-ov_lihuo_Dying")
 				Skill_msg(self,player)
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, "ov_lihuo")
 			end
 		end
 		return false
@@ -10937,7 +10937,7 @@ ov_enyuan = sgs.CreateTriggerSkill{
 					then
 						room:giveCard(damage.from,player,i,"ov_enyuan")
 						if i:getSuit()~=2 then player:drawCards(1,"ov_enyuan") end
-					else room:loseHp(damage.from) end
+					else room:loseHp(damage.from, 1, true, player, self:objectName()) end
 				else break end
 			end
 			player:setFlags("-Damaged")
@@ -11972,7 +11972,7 @@ ov_zhenhuCard = sgs.CreateSkillCard{
 			source:addMark("ov_zhenhu_success")
 			return
 		end
-		room:loseHp(source)
+		room:loseHp(source, 1, true, source, "ov_zhenhu")
 	end
 }
 ov_zhenhuvs = sgs.CreateViewAsSkill{

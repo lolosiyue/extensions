@@ -798,7 +798,7 @@ ss_ranhun = sgs.CreateTriggerSkill{
 				room:doAnimate(1, player:objectName(), t:objectName())
 			end
 			for _, t in sgs.qlist(targets) do
-				room:loseHp(t)
+				room:loseHp(t, 1, true, player, self:objectName())
 			end
 		end
 		return false
@@ -1425,7 +1425,7 @@ ms_guimouCard = sgs.CreateSkillCard{
 		if #skills > 0 then
 			room:handleAcquireDetachSkills(source, table.concat(skills, "|"))
 			if #skills >= 1 then room:loseMaxHp(source) end
-			if #skills >= 2 then room:loseHp(source) end
+			if #skills >= 2 then room:loseHp(source, 1, true, source, "ms_guimou") end
 			if #skills >= 3 then source:throwJudgeArea() end
 		end
 	end

@@ -924,7 +924,7 @@ sgkgodshajueCard = sgs.CreateSkillCard{
 	on_use = function(self, room, source, targets)
 		room:addPlayerMark(source, "sgkgodshajue".."engine")
 		if source:getMark("sgkgodshajue".."engine") > 0 then
-			room:loseHp(source, 1, true)
+			room:loseHp(source, 1, true, source, "sgkgodshajue")
 			room:doSuperLightbox("sgkgodsplvbu", "sgkgodshajue")
 			local vic = targets[1]
 			local inicards = sgs.CardList()
@@ -1334,7 +1334,7 @@ function exchangeYinYang(from, target)  --“交换”一名角色的体力与�
 	if x > 0 then
 		if getYinyangState(target) == "hp_Yang" then  --阳：体力大于已损失体力，则以体力流失的形式，失去等同于差额值的体力
 			room:doAnimate(1, from:objectName(), target:objectName())
-			room:loseHp(target, x, true)
+			room:loseHp(target, x, true, from, "sgkgoddingming")
 		elseif getYinyangState(target) == "hp_Yin" then  --阴：体力小于已损失体力，则回复等同于差额值的体力
 			room:doAnimate(1, from:objectName(), target:objectName())
 			local yinyangrec = sgs.RecoverStruct()
@@ -1550,7 +1550,7 @@ sgkgodzhiti = sgs.CreateTriggerSkill{
 					msg1.to:append(damage.to)
 					msg1.type = "#SPGodZhiti1"
 					room:sendLog(msg1)
-					room:loseHp(damage.to, 1, true)
+					room:loseHp(damage.to, 1, true, player, "sgkgodzhiti")
 					room:loseMaxHp(damage.to, 1)
 					room:gainMaxHp(player, 1)
 					if player:isWounded() then
@@ -2355,7 +2355,7 @@ function shenyinRewrite(player)
 	end
 	--回溯体力
 	if player:getHp() > rec_hp then
-		room:loseHp(player, hp_dif, true)
+		room:loseHp(player, hp_dif, true, nil, "sgkgodshenyin")
 	elseif player:getHp() < rec_hp then
 		local recover = sgs.RecoverStruct()
 		recover.recover = math.min(hp_dif, player:getLostHp())
@@ -2560,7 +2560,7 @@ qianyuanDoDebuff = function(spshenzhaoyun, exe)
 			spshenzhaoyun:setTag("qianyuan_recorded_debuff", sgs.QVariant(table.concat(qy_recorded, "+")))
 		end
 	elseif exe == "qianyuan_losehp" then
-		room:loseHp(spshenzhaoyun)
+		room:loseHp(spshenzhaoyun, 1, true, spshenzhaoyun, "sgkgodqianyuan")
 		if not table.contains(qy_recorded, exe) then
 			table.insert(qy_recorded, exe)
 			spshenzhaoyun:setTag("qianyuan_recorded_debuff", sgs.QVariant(table.concat(qy_recorded, "+")))
@@ -2638,9 +2638,9 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 						local db = debuffs[math.random(1, #debuffs)]
 						if db == "qianyuan_losehp" then
 							if not damage.from then
-								room:loseHp(player, 1)
+								room:loseHp(player, 1, true, nil, self:objectName())
 							else
-								room:loseHp(player, 1, true, damage.from)
+								room:loseHp(player, 1, true, damage.from, self:objectName())
 							end
 							if not table.contains(qy_recorded, db) then table.insert(qy_recorded, db) end
 							player:setTag("qianyuan_recorded_debuff", sgs.QVariant(table.concat(qy_recorded, "+")))
@@ -2792,7 +2792,7 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 							if not table.contains(qy_recorded, db) then table.insert(qy_recorded, db) end
 							player:setTag("qianyuan_recorded_debuff", sgs.QVariant(table.concat(qy_recorded, "+")))
 						elseif db == "qianyuan_losehp" then
-							room:loseHp(player)
+							room:loseHp(player, 1, true, player, self:objectName())
 							if not table.contains(qy_recorded, db) then table.insert(qy_recorded, db) end
 							player:setTag("qianyuan_recorded_debuff", sgs.QVariant(table.concat(qy_recorded, "+")))
 						elseif db == "qianyuan_discard" then
@@ -2883,9 +2883,9 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 							player:setTag("qianyuan_recorded_debuff", sgs.QVariant(table.concat(qy_recorded, "+")))
 						elseif db == "qianyuan_losehp" then
 							if source == -1 then
-								room:loseHp(player, 1)
+								room:loseHp(player, 1, true, nil, self:objectName())
 							else
-								room:loseHp(player, 1, true, source)
+								room:loseHp(player, 1, true, source, self:objectName())
 							end
 							if not table.contains(qy_recorded, db) then table.insert(qy_recorded, db) end
 							player:setTag("qianyuan_recorded_debuff", sgs.QVariant(table.concat(qy_recorded, "+")))
@@ -3232,7 +3232,7 @@ sgkgodhualong = sgs.CreateTriggerSkill{
 					end
 					local dif2 = math.abs(player:getMark(self:objectName()) - player:getHp())
 					if player:getHp() > player:getMark(self:objectName()) then
-						room:loseHp(player, dif2)
+						room:loseHp(player, dif2, true, nil, self:objectName())
 					else
 						if player:isWounded() and player:getHp() < player:getMark(self:objectName()) then
 							room:recover(player, sgs.RecoverStruct(player, nil, dif2))

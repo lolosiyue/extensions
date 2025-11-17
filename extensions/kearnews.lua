@@ -2274,7 +2274,7 @@ kenewzhenlie = sgs.CreateTriggerSkill {
 				if use.card:isKindOf("Slash") or use.card:isNDTrick() then
 					if room:askForSkillInvoke(player, self:objectName(), data) then
 						room:broadcastSkillInvoke(self:objectName())
-						room:loseHp(player)
+						room:loseHp(player, 1, true, player, self:objectName())
 						if player:isAlive() then
 							local nullified_list = use.nullified_list
 							table.insert(nullified_list, player:objectName())
@@ -2295,7 +2295,7 @@ kenewzhenlie = sgs.CreateTriggerSkill {
 			if (use.card:isKindOf("Slash") or use.card:isNDTrick()) and use.card:isDamageCard() then
 				if room:askForSkillInvoke(player, "kenewzhenlietwo", data) then
 					room:broadcastSkillInvoke(self:objectName())
-					room:loseHp(player)
+					room:loseHp(player, 1, true, player, self:objectName())
 					local no_respond_list = use.no_respond_list
 					for _, szm in sgs.qlist(use.to) do
 						table.insert(no_respond_list, szm:objectName())
@@ -4049,7 +4049,7 @@ keqinji = sgs.CreateTriggerSkill {
 				local lose = player:getMark("@keqinji")
 				room:broadcastSkillInvoke(self:objectName())
 				player:loseAllMarks("@keqinji")
-				room:loseHp(player, lose)
+				room:loseHp(player, lose, true, player, self:objectName())
 			end
 		end
 	end,
@@ -4758,7 +4758,7 @@ kesuniCard = sgs.CreateSkillCard {
 		end
 		for _, p in ipairs(targets) do
 			if (p:getMark("willsunida") > 0) then
-				room:loseHp(p, 1, true, player)
+				room:loseHp(p, 1, true, player, "kesuni")
 				room:setPlayerMark(p, "willsunida", 0)
 			end
 		end
@@ -6064,7 +6064,7 @@ kenewqingfu = sgs.CreateTriggerSkill {
 					or (player:getGeneralName() == "kenewbilan" or player:getGeneral2Name() == "kenewbilan" or player:getGeneralName() == "kenewbilanex" or player:getGeneral2Name() == "kenewbilanex")
 				)
 			then
-				room:loseHp(player, player:getHp())
+				room:loseHp(player, player:getHp(), true, player, self:objectName())
 			end
 		end
 		--阴间状态直接切换，不能被救活
@@ -6665,7 +6665,7 @@ kenewsiji = sgs.CreateTriggerSkill {
 						end
 						room:addPlayerMark(gw, "usekenewsiji", 1)
 						room:removePlayerMark(gw, "@kenewsiji", 1)
-						room:loseHp(recover.who, recover.recover)
+						room:loseHp(recover.who, recover.recover, true, gw, self:objectName())
 						return true
 					end
 				end

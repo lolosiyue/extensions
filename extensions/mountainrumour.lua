@@ -37,7 +37,7 @@ luatoudumr = sgs.CreateTriggerSkill
 				choice = "toudu_dm"
 			end
 			if choice == "toudu_dm" then
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 				draw.num = draw.num + 1
 			else
 				draw.num = draw.num - 1
@@ -826,9 +826,9 @@ luazhaoxucard = sgs.CreateSkillCard
 		local choice = room:askForChoice(source, self:objectName(), "zhaoxulosehp+zhaoxurecoverhp")
 		if choice == "zhaoxulosehp" then
 			room:broadcastSkillInvoke("luazhaoxu", 1)
-			room:loseHp(source, num)
+			room:loseHp(source, num, true, source, "luazhaoxu")
 			for _,p in ipairs(targets) do
-				room:loseHp(p)
+				room:loseHp(p, 1, true, source, "luazhaoxu")
 			end
 		elseif choice == "zhaoxurecoverhp" then
 			room:broadcastSkillInvoke("luazhaoxu", 2)
@@ -1123,7 +1123,7 @@ luahuanying = sgs.CreateTriggerSkill
 						return true
 					else
 						if card:getSuit() == sgs.Card_Club then
-							room:loseHp(damage.from)
+							room:loseHp(damage.from, 1, true, player, "luahuanying")
 						else
 							damage.damage = damage.damage + 1
 							data:setValue(damage)

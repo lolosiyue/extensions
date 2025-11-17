@@ -52,7 +52,7 @@ LuaDanji = sgs.CreateTriggerSkill{
 			end
 			local result = room:askForChoice(player, self:objectName(), choicelist )
 			if result == "loseonehp" then
-				room:loseHp(player, 1)
+				room:loseHp(player, 1, true, player, self:objectName())
 			else
 				room:askForDiscard(player, self:objectName(), 2, 2)
 			end
@@ -138,7 +138,7 @@ GodXiaoshi = sgs.CreateTriggerSkill{
 				end
 			end
 			if cantrigger then
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 				room:broadcastSkillInvoke(self:objectName())
 			end
 			return false

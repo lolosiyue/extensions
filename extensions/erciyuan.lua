@@ -600,10 +600,10 @@ luarenzhacard = sgs.CreateSkillCard {
 		end
 		if luanwu_targets:length() > 0 then
 			if not room:askForUseSlashTo(dest, luanwu_targets, "@luanwu-slash") then
-				room:loseHp(dest)
+				room:loseHp(dest, 1, true, effect.from, self:objectName())
 			end
 		else
-			room:loseHp(dest)
+			room:loseHp(dest, 1, true, effect.from, self:objectName())
 		end
 	end
 }
@@ -783,7 +783,7 @@ LuaChigui = sgs.CreateTriggerSkill {
 				local target = room:askForPlayerChosen(player, targets, self:objectName(), "LuaChigui-invoke", true, true)
 				if target then
 					room:broadcastSkillInvoke("LuaChigui")
-					room:loseHp(player)
+					room:loseHp(player, 1, true, player, self:objectName())
 					if not player:isAlive() then break end
 					local weapon2 = target:getWeapon()
 					player:obtainCard(weapon2)
@@ -908,7 +908,7 @@ luablackflamecard = sgs.CreateSkillCard {
 		flame.to = target
 		flame.damage = 1
 		flame.nature = sgs.DamageStruct_Fire
-		room:loseHp(source)
+		room:loseHp(source, 1, true, source, self:objectName())
 		--room:broadcastSkillInvoke("luablackflame")
 		room:doLightbox("luablackflame$", 1000)
 		room:damage(flame)
@@ -1581,13 +1581,13 @@ LuaXinbi = sgs.CreateTriggerSkill {
 					local target = room:askForPlayerChosen(player, targets, self:objectName(), "LuaXinbi-invoke", true,
 						true)
 					if not target then
-						room:loseHp(player, 1)
+						room:loseHp(player, 1, true, player, self:objectName())
 					else
 						local id = room:askForCardChosen(player, target, "e", self:objectName())
 						room:throwCard(id, target, player)
 					end
 				else
-					room:loseHp(player, 1)
+					room:loseHp(player, 1, true, player, self:objectName())
 				end
 				room:broadcastSkillInvoke("LuaXinbi")
 			end
@@ -1611,7 +1611,7 @@ LuaXinbi = sgs.CreateTriggerSkill {
 							if who and not player:hasFlag("BaozouTurn") then
 								room:sendCompulsoryTriggerLog(player, self:objectName(), true)
 								for i = 0, x - 1, 1 do
-									room:loseHp(player, 1)
+									room:loseHp(player, 1, true, player, self:objectName())
 									room:drawCards(who, 1, self:objectName())
 								end
 							end
@@ -2284,7 +2284,7 @@ luaposhicard = sgs.CreateSkillCard {
 	target_fixed = true,
 	will_throw = true,
 	on_use = function(self, room, source, targets)
-		room:loseHp(source, 1)
+		room:loseHp(source, 1, true, source, self:objectName())
 		--room:broadcastSkillInvoke("luaposhi")
 		for _, p in sgs.qlist(room:getOtherPlayers(source)) do
 			room:addPlayerMark(p, "Armor_Nullified")
@@ -2468,7 +2468,7 @@ function takeyanhuocard(source, player, id)
 			recov.recover = 1
 			room:recover(player, recov)
 		elseif suit == sgs.Card_Heart then
-			room:loseHp(player)
+			room:loseHp(player, 1, true, source, self:objectName())
 		elseif suit == sgs.Card_Club then
 			player:drawCards(2)
 		elseif suit == sgs.Card_Diamond and source:canDiscard(player, "he") then
@@ -2760,7 +2760,7 @@ erciyuan_qiji = sgs.CreateTriggerSkill
 				recov.who = player
 				recov.recover = dying.who:getMaxHp() - dying.who:property("hp"):toInt()
 				room:recover(dying.who, recov)
-				room:loseHp(dying.damage.from, math.max(dying.damage.from:property("hp"):toInt(), 0))
+				room:loseHp(dying.damage.from, math.max(dying.damage.from:property("hp"):toInt(), 0), true, player, self:objectName())
 			end
 			return false
 		end

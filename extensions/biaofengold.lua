@@ -2018,7 +2018,7 @@ FourFanjian_Card = sgs.CreateSkillCard {
 		target:obtainCard(self)
 		room:showCard(target, card_id)
 		if card:getSuit() ~= suit then
-			room:loseHp(target)
+			room:loseHp(target, 1, true, source, self:objectName())
 		end
 	end
 }

@@ -1061,7 +1061,7 @@ GuanduOnTrigger = sgs.CreateTriggerSkill{
 						log.arg = "gd_shicongerjiao"
 						log.arg2 = ":gd_shicongerjiao"
 						room:sendLog(log)
-						room:loseHp(player, 1)
+						room:loseHp(player, 1, true, nil, "gd_shicongerjiao")
 					end
 				end
 			elseif player:getPhase() == sgs.Player_Start then
@@ -1076,7 +1076,7 @@ GuanduOnTrigger = sgs.CreateTriggerSkill{
 							targets:append(p)
 						end
 					end
-					if targets:isEmpty() then room:loseHp(player, 1) return false end
+					if targets:isEmpty() then room:loseHp(player, 1, true, nil, "gd_zhanyanliangzhuwenchou") return false end
 					local target = room:askForPlayerChosen(player, targets, "gd_zhanyanliangzhuwenchou", "@gd_zhanyanliangzhuwenchou:"..card:objectName(), true, true)
 					if target then
 						local use = sgs.CardUseStruct()
@@ -1085,7 +1085,7 @@ GuanduOnTrigger = sgs.CreateTriggerSkill{
 						use.to:append(target)
 						room:useCard(use, false)
 					else
-						room:loseHp(player, 1)
+						room:loseHp(player, 1, true, nil, "gd_zhanyanliangzhuwenchou")
 					end
 				end
 			end
@@ -1794,7 +1794,7 @@ heg_kurouCard = sgs.CreateSkillCard{
 	name = "heg_kurou",
 	target_fixed = true,
 	on_use = function(self, room, source, targets)
-		room:loseHp(source)
+		room:loseHp(source, 1, true, source, self:objectName())
 		room:drawCards(source, 3, self:objectName())
 		room:addSlashCishu(source, 1, true)
 		room:addPlayerMark(source, "&heg_kurou-Clear")
@@ -2087,7 +2087,7 @@ heg_shensu = sgs.CreateTriggerSkill{
 			end
 		elseif sgs.Slash_IsAvailable(player) and change.to == sgs.Player_Discard and not player:isSkipped(sgs.Player_Discard) then
 			if player:canDiscard(player, "he") and room:askForUseCard(player, "@@heg_shensu3", "@tenyearshensu3", 2, sgs.Card_MethodDiscard) then
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 				player:skip(sgs.Player_Discard)
 			end
 		end
@@ -2170,7 +2170,7 @@ heg_qiangxiCard = sgs.CreateSkillCard{
 	on_effect = function(self, effect)
 		local room = effect.to:getRoom()
 		if self:getSubcards():isEmpty() then 
-			room:loseHp(effect.from)
+			room:loseHp(effect.from, 1, true, effect.from, self:objectName())
 		end
 		room:damage(sgs.DamageStruct(self:objectName(), effect.from, effect.to))
 	end
@@ -2369,7 +2369,7 @@ heg_tianxiangCard = sgs.CreateSkillCard{
 				targets[1]:drawCards(math.min(targets[1]:getLostHp(), 5), "tianxiang")
 			elseif choice == "heg_tianxiang2" then
 				room:addPlayerMark(source, "heg_tianxiang_two-Clear")
-				room:loseHp(targets[1])
+				room:loseHp(targets[1], 1, true, source, self:objectName())
 				if targets[1]:isAlive() then
 					room:obtainCard(targets[1], self)
 				end

@@ -1410,12 +1410,12 @@ MeowJueqing = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if not player:hasSkill(Meowdoumiao) then
 			if room:askForSkillInvoke(player, "MeowJueqing", data) then
-				room:loseHp(damage.from, damage.damage)
+				room:loseHp(damage.from, damage.damage, true, player, self:objectName())
 				damage.damage = damage.damage * 2
 			end
 		end
 		room:broadcastSkillInvoke("MeowJueqing", math.random(1, 2))
-		room:loseHp(damage.to, damage.damage)
+		room:loseHp(damage.to, damage.damage, true, player, self:objectName())
 		return true
 	end,
 }
@@ -1480,7 +1480,7 @@ MeowZhenlie = sgs.CreateTriggerSkill {
 					if room:askForSkillInvoke(player, self:objectName(), data) then
 						player:setFlags("-MeowZhenlieTarget")
 						player:setFlags("MeowZhenlieTarget")
-						room:loseHp(player)
+						room:loseHp(player, 1, true, player, self:objectName())
 						if player:isAlive() and player:hasFlag("MeowZhenlieTarget") then
 							player:setFlags("-MeowZhenlieTarget")
 							local nullified_list = use.nullified_list

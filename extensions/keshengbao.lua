@@ -264,7 +264,7 @@ keshenghuixueCard = sgs.CreateSkillCard {
 		end
 		if result == "shanghai" then
 			room:broadcastSkillInvoke(self:objectName())
-			room:loseHp(player, 1, true)
+			room:loseHp(player, 1, true, player, "keshenghuixue")
 			if player:isAlive() then
 				room:damage(sgs.DamageStruct(self:objectName(), player, target))
 			else
@@ -1030,7 +1030,7 @@ kejieshenghuixueCard = sgs.CreateSkillCard {
 			room:setPlayerMark(player, "&useshengshanghai", 1)
 			room:setPlayerFlag(player, "useshenghuixue")
 			room:broadcastSkillInvoke(self:objectName())
-			room:loseHp(player, 1, true)
+			room:loseHp(player, 1, true, player, self:objectName())
 			room:damage(sgs.DamageStruct(self:objectName(), player, target))
 			player:drawCards(1)
 			target:drawCards(1)

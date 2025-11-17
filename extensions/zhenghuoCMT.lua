@@ -678,7 +678,7 @@ XiansiZHCMT = sgs.CreateTriggerSkill{
         -- 所有角色失去3点体力
         for _, p in sgs.qlist(players) do
             if p:isAlive() then
-                room:loseHp(p, 3)  -- 直接失去体力
+                room:loseHp(p, 3, true, player, "newyongdi")  -- 直接失去体力
             end
         end
 
@@ -1013,7 +1013,7 @@ zhengsiZHCMTCard = sgs.CreateSkillCard{
                 if table.contains(max_players, p) then
                     room:askForDiscard(p, self:objectName(), 2, 2, false, true)
                 else
-                    room:loseHp(p, 1)
+                    room:loseHp(p, 1, true, source, "zhengsiZHCMT")
                 end
             end
     end
@@ -1539,7 +1539,7 @@ zhaniZHCMT = sgs.CreateTriggerSkill{
             room:setPlayerMark(player, "zhaniZHCMT", 1)
             room:setPlayerMark(player, "zhaniZHCMT0", 1)
             if player:getKingdom() ~= "shu" then
-                room:loseHp(player, player:getHp())
+                room:loseHp(player, player:getHp(), true, player, "zhaniZHCMT")
             end
             for _ = 0, player:getMaxHp() - player:getHp() do
                 local p = room:askForPlayerChosen(player, room:getAlivePlayers(), "zhaniZHCMT", "zhaniZHCMT_choose", false, true)

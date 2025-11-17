@@ -79,7 +79,7 @@ zuyuzhi = sgs.CreateTriggerSkill{
 				end
 				if room:askForChoice(player, "losehoorremoveskill", table.concat(choices, "+")) ~= "losehps"
 				then room:detachSkillFromPlayer(player, "zu_zhong_baozu")
-				else room:loseHp(player) end
+				else room:loseHp(player, 1, true, player, self:objectName()) end
 			end
 		end
 	end,

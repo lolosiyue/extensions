@@ -836,7 +836,7 @@ Dragon_kurouCard = sgs.CreateSkillCard{
 	name = "Dragon_kurouCard", 
 	target_fixed = true, 
 	on_use = function(self, room, source, targets)
-		room:loseHp(source)
+		room:loseHp(source, 1, true, source, "Dragon_kurou")
 		room:broadcastSkillInvoke("kurou")
 		if source:isAlive() then
 			room:drawCards(source, 2, "Dragon_kurou")
