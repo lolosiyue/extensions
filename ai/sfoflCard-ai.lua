@@ -267,6 +267,11 @@ sgs.ai_skill_invoke.sfofl_sheji = function(self,data)
 end
 sgs.need_kongcheng = sgs.need_kongcheng .. "|sfofl_hengzheng"
 
+sgs.ai_getBestHp_skill.sfofl_hengzheng = function(owner)
+	if owner:getPhase() == sgs.Player_NotActive and owner:getHp() <= 2 then
+		return 1
+	end
+end
 
 sgs.ai_skill_playerschosen.sijyuoffline_huyi = function(self, targets, max, min)
 	local enemy = sgs.SPlayerList()

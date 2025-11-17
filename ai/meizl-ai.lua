@@ -176,6 +176,9 @@ sgs.ai_skill_invoke.meizlguiyuan = function(self, data)
 end
 sgs.ai_choicemade_filter.cardChosen.meizlguiyuan = sgs.ai_choicemade_filter.cardChosen.snatch
 
+sgs.ai_getBestHp_skill.meizlwuqing = function(owner)
+	return owner:getMaxHp() - 1
+end
 
 --MEIZL 005 祝融
 --飞刃（祝融）
@@ -2491,6 +2494,11 @@ sgs.ai_use_revises.meizlshangwu = function(self, card, use)
 end
 sgs.need_equip_skill = sgs.need_equip_skill .. "|meizljinguo"
 
+sgs.ai_getBestHp_skill.meizlshangwu = function(owner)
+	if owner:getMark("meizlshangwu1") == 0 then return 2 end
+	if owner:getMark("meizlshangwu2") == 0 then return 1 end
+end
+
 
 --曼舞（神貂蝉）
 sgs.ai_skill_cardask["@meizlmanwu"] = function(self, data)
@@ -4307,6 +4315,9 @@ sgs.ai_skill_use_func["#meizlseyinyucard"] = function(card, use, self)
 	return
 end
 
+sgs.ai_getBestHp_skill.meizlseyaohuo = function(owner)
+	return owner:getMaxHp() - 1
+end
 
 
 sgs.ai_use_value["meizlsejiducard"] = sgs.ai_use_value.ExNihilo
@@ -5483,6 +5494,10 @@ end
 
 sgs.ai_skill_invoke.guihans = function(self, data)
 	return true
+end
+
+sgs.ai_getBestHp_skill.guihans = function(owner)
+	return owner:getMaxHp() - 1
 end
 
 sgs.ai_skill_invoke.hujias = function(self, data)

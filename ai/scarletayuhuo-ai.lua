@@ -1275,6 +1275,10 @@ function sgs.ai_cardneed.s2_longhun(to, card, self)
 	return card:isKindOf("BasicCard")
 end
 
+sgs.ai_getBestHp_skill.s2_longhun = function(owner)
+	return owner:getMaxHp() - 1
+end
+
 sgs.need_kongcheng = sgs.need_kongcheng .. "|s2_juejing"
 
 sgs.ai_skill_playerchosen.s2_juejing = function(self, targets)
@@ -3209,7 +3213,9 @@ sgs.ai_skill_playerchosen.s2_danjing = function(self, targets)
 end
 sgs.ai_cardneed.s2_xuezhan = sgs.ai_cardneed.slash
 
-
+sgs.ai_getBestHp_skill.s2_tuwei = function(owner)
+	return owner:getMaxHp() - 1
+end
 
 
 local s2_leiyin_skill = {}

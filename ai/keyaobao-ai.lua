@@ -533,6 +533,10 @@ sgs.ai_ajustdamage_to["&keyaozhabing"] = function(self, from, to, card, nature)
 	return -99
 end
 
+sgs.ai_getBestHp_skill.keyaoguimou = function(owner)
+	return owner:getMaxHp() - 1
+end
+
 --界司马懿
 
 sgs.ai_skill_invoke.kejieyaozhabing = function(self, data)
@@ -543,6 +547,10 @@ sgs.ai_skill_invoke.kejieyaozhabing = function(self, data)
 		return true
 	end
 	return false
+end
+
+sgs.ai_getBestHp_skill.kejieyaoguimou = function(owner)
+	return owner:getMaxHp() - 1
 end
 
 --周泰

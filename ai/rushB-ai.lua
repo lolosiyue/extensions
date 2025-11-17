@@ -1569,6 +1569,9 @@ end
 sgs.ai_use_value.rushB_baobian = 9.4
 sgs.ai_use_priority.rushB_baobian = 0.8
 
+sgs.ai_getBestHp_skill.rushB_baobian = function(owner)
+	return math.max(1, owner:getMaxHp() - 3)
+end
 
 
 local rushB_dimeng_skill = {}

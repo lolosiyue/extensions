@@ -561,6 +561,10 @@ sgs.ai_choicemade_filter.skillChoice.yinghun_po = function(self,player,promptlis
 	sgs.updateIntention(player,to,intention)
 end
 
+sgs.ai_getBestHp_skill.yinghun_po = function(owner)
+	return owner:getMaxHp() - 2
+end
+
 
 --已下複製OL解圍並做技能卡修改(去掉棄牌)
 sgs.ai_skill_use["@heg_mouduan"] = function(self, prompt, method)
@@ -1174,6 +1178,10 @@ sgs.ai_skill_choice.heg_yinghun = function(self,choices, data)
 		end
 	end
 	return "d1tx"
+end
+
+sgs.ai_getBestHp_skill.heg_yinghun = function(owner)
+	return owner:getMaxHp() - 2
 end
 
 sgs.ai_cardneed.heg_xiaoji = sgs.ai_cardneed.equip

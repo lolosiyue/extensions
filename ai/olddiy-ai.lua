@@ -345,6 +345,15 @@ sgs.ai_choicemade_filter.skillInvoke.lybeixi = function(self, player, promptlist
 	end
 end
 
+
+sgs.ai_getBestHp_skill.dj = function(owner)
+	return owner:getMaxHp() - 1
+end
+
+sgs.ai_getBestHp_skill.pj = function(owner)
+	return owner:getMaxHp() - 1
+end
+
 sgs.ai_skill_invoke.fjsp_youlong = function(self, data)
 	local damage = data:toDamage()
 	local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)

@@ -5138,7 +5138,9 @@ function SmartAI:damageMinusHp(enemy,type)
 	return -10
 end
 
+sgs.ai_getBestHp_skill = {}
 function getBestHp(owner)
+	-- Core getBestHp logic (before --add)
 	if owner:getCardCount()>2 and owner:hasSkill("longhun") then return 1 end
 	if owner:getMark("hunzi")<1 and owner:hasSkill("hunzi") then return 2 end
 	local n = owner:getMaxHp()
@@ -5151,63 +5153,14 @@ function getBestHp(owner)
 	or owner:hasSkills("quanji+zili") and owner:getMark("zili")<1
 	then return owner:getMaxHp()-1 end
 
-	--add
-	if owner:hasSkills("LuaHuaji+LuaBaonu") and owner:getMark("LuaBaonu") == 0 then return owner:getMaxHp() - 1 end
-	if owner:hasSkills("LuaHuaji+xingLuashenji") and owner:getMark("xingLuashenji") == 0 then return owner:getMaxHp() - 1 end
-	if owner:hasSkills("du_jieying+duYinling") and owner:getMark("du_jieying") == 0 and owner:getPile("du_jin"):length() >= 2 then
-		return
-			owner:getMaxHp() - 2
+	-- Check extended getBestHp skills through table
+	for _, s in ipairs(aiConnect(owner)) do
+		local skill_func = sgs.ai_getBestHp_skill[s]
+		if type(skill_func) == "function" then
+			local result = skill_func(owner)
+			if result then return result end
+		end
 	end
-	if owner:hasSkill("duWuhun") and owner:getMark("BladeUsed") == 0 and owner:getMark("ChiTuUsed") == 0 then
-		return
-			owner:getMaxHp() - 1
-	end
-
-	if owner:hasSkill("guihans") then return owner:getMaxHp() - 1 end
-	--if owner:hasSkill("luanixi") then return owner:getMaxHp() - 1 end
-
-	if owner:hasSkill("meizlwuqing") then return owner:getMaxHp() - 1 end
-	if owner:hasSkill("meizlshangwu") and owner:getMark("meizlshangwu1") == 0 then return 2 end
-	if owner:hasSkill("meizlshangwu") and owner:getMark("meizlshangwu2") == 0 then return 1 end
-	if owner:hasSkill("meizlseyaohuo") then return owner:getMaxHp() - 1 end
-
-	if owner:hasSkill("luajiye") and owner:getMark("luajiye") == 0 then return owner:getMaxHp() - 1 end
-	if owner:hasSkill("luatuwei") and owner:getMark("luatuwei") == 0 then return owner:getMaxHp() - 1 end
-	if owner:hasSkill("luashenweiex1") then return owner:getMaxHp() - 1 end
-
-	if owner:hasSkill("PlusPaoxiao") then return owner:getMaxHp() - 1 end
-
-	if owner:hasSkill("PlusLongdan") then return 2 end
-	if owner:hasSkill("PlusDujiang") and owner:getMark("PlusDujiang") == 0 and owner:getPile("slack"):length() >= 4 then
-		return
-			owner:getMaxHp() - 1
-	end
-	if owner:hasSkill("keshengxionglve") then return owner:getMaxHp() - 1 end
-	if owner:hasSkill("kejieshengxionglve") then return owner:getMaxHp() - 1 end
-	if owner:hasSkill("keyaoguimou") then return owner:getMaxHp() - 1 end
-	if owner:hasSkill("kejieyaoguimou") then return owner:getMaxHp() - 1 end
-	if owner:hasSkill("keshengxionglve") then return owner:getMaxHp() - 1 end
-	if owner:hasSkill("kejieshengxionglve") then return owner:getMaxHp() - 1 end
-	if owner:hasSkill("dj") then return owner:getMaxHp() - 1 end
-	if owner:hasSkill("pj") then return owner:getMaxHp() - 1 end
-	if owner:hasSkill("Dianci") and owner:getMark("@ying") >= 1 then return owner:getMaxHp() - 1 end
-	if owner:hasSkill("feiyinghun") and owner:getMark("&feiyinghun") >= 1 then return owner:getMaxHp()-2 end
-	
-	if owner:hasSkill("SE_Qifen") then return owner:getMaxHp()-1 end
-	if owner:hasSkill("sk_miji") then return owner:getMaxHp()-1 end
-	if owner:hasSkill("kenewmiji") then return owner:getMaxHp()-1 end
-	
-	if owner:hasSkill("kewulie") then return owner:getMaxHp()-2 end
-	if owner:hasSkill("sijyufakeoffline_hengzheng") and owner:getPhase() == sgs.Player_NotActive and owner:getHp() <= 2 then return 1 end
-	if owner:hasSkill("tiexue") then return owner:getMaxHp()-1 end
-	if owner:hasSkill("yinghun_po") then return owner:getMaxHp()-2 end
-	if owner:hasSkill("heg_yinghun") then return owner:getMaxHp()-2 end
-	if owner:hasSkill("lol_nuhuo") and owner:getMark("wjnh") > 0 and owner:getPhase() == sgs.Player_NotActive then return 0 end
-	if owner:hasSkill("kuangnu") then return owner:getMaxHp()-1 end
-	if owner:hasSkill("s2_longhun") then return owner:getMaxHp()-1 end
-	if owner:hasSkill("s2_tuwei") then return owner:getMaxHp()-1 end
-	if owner:hasSkill("rushB_baobian") then return math.max(1,owner:getMaxHp()-3) end
-	
 	
 	return owner:getMaxHp()
 end

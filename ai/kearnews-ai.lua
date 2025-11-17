@@ -1594,6 +1594,11 @@ sgs.ai_skill_playerschosen.kewulie = function(self, targets, max, min)
 	end
 	return tos
 end
+
+sgs.ai_getBestHp_skill.kewulie = function(owner)
+	return owner:getMaxHp() - 2
+end
+
 local kexihuo_skill = {}
 kexihuo_skill.name = "kexihuo"
 table.insert(sgs.ai_skills, kexihuo_skill)
@@ -1965,4 +1970,8 @@ sgs.ai_skill_discard.kenewmiji = function(self, discard_num, min_num, optional, 
 		end
 		return to_discard
 	end
+end
+
+sgs.ai_getBestHp_skill.kenewmiji = function(owner)
+	return owner:getMaxHp() - 1
 end

@@ -2384,6 +2384,12 @@ sgs.ai_can_damagehp.lol_nuhuo = function(self, from, card, to)
 	if to:getMark("wjnh") > 0 and self:canLoseHp(from, card, to) then return true end
 end
 
+sgs.ai_getBestHp_skill.lol_nuhuo = function(owner)
+	if owner:getMark("wjnh") > 0 and owner:getPhase() == sgs.Player_NotActive then
+		return 0
+	end
+end
+
 sgs.ai_cardneed.kuangnu = sgs.ai_cardneed.slash
 sgs.ai_ajustdamage_from.kuangnu = function(self, from, to, card, nature)
 	if from:getLostHp() >= 3  and card and (card:isKindOf("Slash") or card:isKindOf("Duel"))
@@ -2393,6 +2399,10 @@ sgs.ai_ajustdamage_from.kuangnu = function(self, from, to, card, nature)
 end
 sgs.ai_canliegong_skill.kuangnu = function(self, from, to)
 	return from:getLostHp() >= 4
+end
+
+sgs.ai_getBestHp_skill.kuangnu = function(owner)
+	return owner:getMaxHp() - 1
 end
 
 

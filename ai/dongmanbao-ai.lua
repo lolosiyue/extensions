@@ -691,6 +691,12 @@ sgs.ai_card_intention["se_paojicard"] = 100
 
 sgs.straight_damage_skill = sgs.straight_damage_skill .. "|se_paoji"
 
+sgs.ai_getBestHp_skill.Dianci = function(owner)
+	if owner:getMark("@ying") >= 1 then
+		return owner:getMaxHp() - 1
+	end
+end
+
 
 --露易丝 vs
 se_cairen_skill = {}
@@ -5044,6 +5050,10 @@ sgs.ai_skill_invoke.SE_Qifen = function(self, data)
 	return false
 end
 --sgs.ai_skillInvoke_intention.SE_Qifen = -5
+
+sgs.ai_getBestHp_skill.SE_Qifen = function(owner)
+	return owner:getMaxHp() - 1
+end
 
 sgs.ai_skill_invoke.SE_Mishi = function(self, data)
 	local dying_data = data:toDying()
