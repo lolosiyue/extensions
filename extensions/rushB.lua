@@ -908,11 +908,12 @@ wen_jingtian = sgs.CreatePhaseChangeSkill{
 }
 wen_jingtian_ex = sgs.CreateTriggerSkill{
 	name = "#wen_jingtian_ex",
-	events = {sgs.GameStart, sgs.EventPhaseProceeding},
+	events = {sgs.GameStart, sgs.EventPhaseChanging},
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if event == sgs.EventPhaseProceeding then
-		    if player:getPhase() == sgs.Player_Finish then
+		if event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+		    if change.to == sgs.Player_NotActive then
 			    for _, splayer in sgs.qlist(room:findPlayersBySkillName("wen_jingtian")) do
 				    if splayer:getPile("chushibiao"):isEmpty() then
 						room:sendCompulsoryTriggerLog(splayer, "wen_jingtian")
@@ -2589,9 +2590,10 @@ diy_m_choujue = sgs.CreateTriggerSkill{
 	--global = true,
 	priority = 100,
 	frequency = sgs.Skill_Compulsory,
-	events = {sgs.EventPhaseEnd},
+	events = {sgs.EventPhaseChanging},
 	on_trigger = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Finish then return false end
+		local change = data:toPhaseChange()
+		if change.to ~= sgs.Player_NotActive then return false end
 		for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
 			if math.abs(p:getHandcardNum() - p:getHp()) < 3 or p:objectName() == player:objectName() then continue end
 			local card = sgs.Sanguosha:cloneCard("slash")
@@ -3566,10 +3568,11 @@ rushB_diaoguivs = sgs.CreateViewAsSkill{
 rushB_diaogui = sgs.CreateTriggerSkill{
 	name = "rushB_diaogui",
 	view_as_skill = rushB_diaoguivs,
-	events = {sgs.EventPhaseEnd},
+	events = {sgs.EventPhaseChanging},
 	on_trigger = function(self, event, player, data, room)
-		if event == sgs.EventPhaseEnd then
-			if player:getPhase() == sgs.Player_Finish and player:hasSkill(self:objectName()) then
+		if event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to == sgs.Player_NotActive and player:hasSkill(self:objectName()) then
 		  	    local players = sgs.SPlayerList()
 			    for _, p in sgs.qlist(room:getAlivePlayers()) do
 				    if p:hasFlag("diaogui") then players:append(p) end
@@ -5343,7 +5346,7 @@ rushB_kanxue = sgs.CreateTriggerSkill{
 			end
 		else
 		    local change = data:toPhaseChange()
-			if change.to == sgs.Player_Finish and player:hasSkill(self:objectName()) and player:getHujia() >= 1 and room:askForSkillInvoke(player, self:objectName()) then
+			if change.to == sgs.Player_NotActive and player:hasSkill(self:objectName()) and player:getHujia() >= 1 and room:askForSkillInvoke(player, self:objectName()) then
 				room:broadcastSkillInvoke(self:objectName(), 2)
 				local n = player:getHujia()
 				player:loseHujia(n)

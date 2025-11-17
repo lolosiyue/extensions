@@ -2929,7 +2929,7 @@ sgkgodjizhao = sgs.CreateViewAsSkill{
 
 sgkgodjizhaoCount = sgs.CreateTriggerSkill{
     name = "#gkgodjizhao",
-	events = {sgs.EventPhaseStart, sgs.Damage},
+	events = {sgs.EventPhaseStart, sgs.Damage, sgs.EventPhaseChanging},
 	on_trigger = function(self, event, player, data, room)
 		if not room:findPlayerBySkillName(self:objectName()) then return false end
 		local liubei = room:findPlayerBySkillName(self:objectName())
@@ -2937,8 +2937,16 @@ sgkgodjizhaoCount = sgs.CreateTriggerSkill{
 		    if player:getPhase() == sgs.Player_Start and player:objectName() ~= liubei:objectName() and player:getMark("@zhao") > 0 then
 			    player:setTag("jizhao_damage", sgs.QVariant(false))
 			end
-		    if player:getPhase() == sgs.Player_Finish and player:objectName() ~= liubei:objectName() then 
-				if player:getMark("&zhao") > 0 then
+		elseif event == sgs.Damage then
+		    local damage = data:toDamage()
+			if damage.from and damage.from:getMark("&zhao") > 0 then
+			    if damage.from:getPhase() == sgs.Player_NotActive then return false end
+				damage.from:setTag("jizhao_damage", sgs.QVariant(true))
+			end
+		elseif event == sgs.EventPhaseChanging then
+		    local change = data:toPhaseChange()
+			if change.to == sgs.Player_NotActive then
+			    if player:getMark("&zhao") > 0 then
 					local jizhao = player:getTag("jizhao_damage"):toBool()
 					if not jizhao then
 						player:loseAllMarks("&zhao")
@@ -2955,12 +2963,6 @@ sgkgodjizhaoCount = sgs.CreateTriggerSkill{
 					end
 				end
 				player:removeTag("jizhao_damage")
-			end
-		elseif event == sgs.Damage then
-		    local damage = data:toDamage()
-			if damage.from and damage.from:getMark("&zhao") > 0 then
-			    if damage.from:getPhase() == sgs.Player_NotActive then return false end
-				damage.from:setTag("jizhao_damage", sgs.QVariant(true))
 			end
 		end
 	end,
@@ -6852,22 +6854,23 @@ nos_sgkgodzhaoyun = sgs.General(extension, "nos_sgkgodzhaoyun", "sy_god", 2)
 nos_sgkgodjuejing = sgs.CreateTriggerSkill{
     name = "nos_sgkgodjuejing",
 	frequency = sgs.Skill_Compulsory,
-	events = {sgs.EventPhaseStart},
+	events = {sgs.EventPhaseChanging},
 	on_trigger = function(self, event, player, data)
+		local change = data:toPhaseChange()
+		if change.to ~= sgs.Player_NotActive then return false end
 	    local room = player:getRoom()
 		if not room:findPlayerBySkillName(self:objectName()) then return false end
 		local zhaoyun = room:findPlayerBySkillName(self:objectName())
-		if player:getPhase() == sgs.Player_Finish then
-		    room:sendCompulsoryTriggerLog(zhaoyun, self:objectName())
-			room:notifySkillInvoked(zhaoyun, self:objectName())
-			room:broadcastSkillInvoke(self:objectName())
-			if zhaoyun:getHp() >= 2 then
-			    room:loseHp(zhaoyun)
-				zhaoyun:drawCards(2)
-			else
-			    zhaoyun:drawCards(1)
-			end
+		room:sendCompulsoryTriggerLog(zhaoyun, self:objectName())
+		room:notifySkillInvoked(zhaoyun, self:objectName())
+		room:broadcastSkillInvoke(self:objectName())
+		if zhaoyun:getHp() >= 2 then
+			room:loseHp(zhaoyun)
+			zhaoyun:drawCards(2)
+		else
+			zhaoyun:drawCards(1)
 		end
+		
 	end,
 	can_trigger = function(self, target)
 	    return true
@@ -7989,9 +7992,10 @@ new_sgkgodyoulongActive = sgs.CreateTriggerSkill {
 					if p:getMark("new_sgkgodyoulong-Clear") == 0 and p:objectName() ~= player:objectName() then
 						room:sendCompulsoryTriggerLog(p,"new_sgkgodyoulong")
 						p:drawCards(1, "new_sgkgodyoulong")
-						local phase = sgs.PhaseList()
-						phase:append(sgs.Player_Play)
-						p:play(phase) 
+						-- local phase = sgs.PhaseList()
+						-- phase:append(sgs.Player_Play)
+						-- p:play(phase) 
+						PhaseExtra(p,sgs.Player_Play,true)
 					end
 				end
 			end

@@ -416,16 +416,17 @@ se_fuzhi_give = sgs.CreateTriggerSkill {
 			room:removeTag("se_fuzhi_givetarget")
 			if target and target:isAlive() then
 				doLog("#se_fuzhi_give_message", target)
-				target:setPhase(sgs.Player_Play)
-				room:broadcastProperty(target, "phase")
-				local thread = room:getThread()
-				if not thread:trigger(sgs.EventPhaseStart, room, target) then
-					thread:trigger(sgs.EventPhaseProceeding, room, target)
-				end
-				thread:trigger(sgs.EventPhaseEnd, room, target)
+				PhaseExtra(target, sgs.Player_Play)
+				-- target:setPhase(sgs.Player_Play)
+				-- room:broadcastProperty(target, "phase")
+				-- local thread = room:getThread()
+				-- if not thread:trigger(sgs.EventPhaseStart, room, target) then
+				-- 	thread:trigger(sgs.EventPhaseProceeding, room, target)
+				-- end
+				-- thread:trigger(sgs.EventPhaseEnd, room, target)
 
-				player:setPhase(sgs.Player_RoundStart)
-				room:broadcastProperty(player, "phase")
+				-- player:setPhase(sgs.Player_RoundStart)
+				-- room:broadcastProperty(player, "phase")
 			end
 		end
 		return false

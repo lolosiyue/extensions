@@ -149,7 +149,7 @@ lol_zhiming = sgs.CreateTriggerSkill{
 yongqi = sgs.CreateTriggerSkill{
 	name = "yongqi",
 	frequency = sgs.Skill_Compulsory, 
-	events = {sgs.EventPhaseStart, sgs.EventPhaseEnd, sgs.TargetConfirmed},
+	events = {sgs.EventPhaseStart, sgs.EventPhaseChanging, sgs.TargetConfirmed},
 	on_trigger = function(self, event, player, data) 
 		local room = player:getRoom()
 		if event == sgs.EventPhaseStart then
@@ -167,8 +167,9 @@ yongqi = sgs.CreateTriggerSkill{
 					end
 				end
 			end
-		elseif event == sgs.EventPhaseEnd then
-			if player:getPhase() == sgs.Player_Finish then
+		elseif event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to == sgs.Player_NotActive then
 				for _, hero in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
 					if hero:getMark("yong") > 0 then
 						hero:setMark("yong", 0)
@@ -965,11 +966,12 @@ mingxiang = sgs.CreateTriggerSkill{
 	name = "mingxiang",
 	frequency = sgs.Skill_Limited,
 	limit_mark = "@mingxiang",
-	events = {sgs.EventPhaseEnd},
+	events = {sgs.EventPhaseChanging},
 	view_as_skill = mingxiangVS,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if player:getPhase() == sgs.Player_Finish then
+		local change = data:toPhaseChange()
+		if change.to == sgs.Player_NotActive then
 			if player:hasFlag("mingxiangTarget") then
 				room:broadcastSkillInvoke("mingxiang", math.random(2,3))
 				room:loseMaxHp(player)
@@ -2695,7 +2697,7 @@ lol_nuhuo = sgs.CreateTriggerSkill{
 	name = "lol_nuhuo",
 	frequency = sgs.Skill_Limited,
 	limit_mark = "@lol_nuhuo",
-	events = {sgs.HpChanged, sgs.DamageCaused, sgs.EventPhaseEnd},
+	events = {sgs.HpChanged, sgs.DamageCaused, sgs.EventPhaseChanging},
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.HpChanged then
@@ -2720,8 +2722,9 @@ lol_nuhuo = sgs.CreateTriggerSkill{
 				room:addPlayerMark(player, "&lol_nuhuo+:+damage-Clear")
 				player:addMark("nuqi-Clear", damage.damage)
 			end
-		elseif event == sgs.EventPhaseEnd then
-			if player:getPhase() == sgs.Player_Finish then
+		elseif event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to == sgs.Player_NotActive then
 				if player:getMark("wjnh") > 0 then
 					local hp = math.min(math.max(player:getMark("nuqi-Clear"), 1), player:getMaxHp())
 					room:setPlayerProperty(player, "hp", sgs.QVariant(hp))
@@ -3976,13 +3979,14 @@ bihuVS = sgs.CreateViewAsSkill{
 bihu = sgs.CreateTriggerSkill{
 	name = "bihu", 
 	frequency = sgs.Skill_NotFrequent, 
-	events = {sgs.EventPhaseEnd, sgs.DamageInflicted, sgs.EventPhaseStart, sgs.Death}, 
+	events = {sgs.EventPhaseChanging, sgs.DamageInflicted, sgs.EventPhaseStart, sgs.Death}, 
 	view_as_skill = bihuVS, 
 	on_trigger = function(self, event, player, data) 
 		local room = player:getRoom()
-		if event == sgs.EventPhaseEnd then
+		if event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
 			if player:isAlive() and player:hasSkill(self:objectName()) then
-				if player:getPhase() == sgs.Player_Finish then
+				if change.to == sgs.Player_NotActive then
 					room:askForUseCard(player, "@@bihu", "@bihuinvoke")
 					return false
 				end

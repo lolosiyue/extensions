@@ -7432,7 +7432,7 @@ mythmeibu = sgs.CreateTriggerSkill {
                         room:broadcastSkillInvoke("meibu") -- 播放配音
                         if not player:hasSkill("mythzhixi") then
                             room:setPlayerProperty(player, "mythzhixi", sgs.QVariant(play:objectName()))
-                            room:acquireSkill(player, "mythzhixi")
+                            room:acquireOneTurnSkills(player, "mythmeibu","mythzhixi")
                         end
                         room:loseHp(sgs.HpLostStruct(player, 1, self:objectName(), play))
                         break

@@ -1870,12 +1870,14 @@ kenewgirlscshixieVS = sgs.CreateViewAsSkill{
 kenewgirlscshixie = sgs.CreateTriggerSkill{
 	name = "kenewgirlscshixie",
 	view_as_skill = kenewgirlscshixieVS,
-	events = {sgs.EventPhaseStart},
+	events = {sgs.EventPhaseChanging},
 	frequency = sgs.Skill_Limited,
 	limit_mark = "@kenewgirlscshixie",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if (event == sgs.EventPhaseStart) and (player:getPhase() == sgs.Player_Finish) then
+		if (event == sgs.EventPhaseChanging) then
+			local change = data:toPhaseChange()
+			if (change.to ~= sgs.Player_NotActive) then	return false end
 			for _, yj in sgs.qlist(room:getAllPlayers(true)) do
 				if (player:getMark("&kenewgirlscshixie+"..yj:getGeneralName()) > 0)
 				and yj:isDead() then

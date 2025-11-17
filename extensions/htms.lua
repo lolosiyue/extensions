@@ -11447,7 +11447,7 @@ suoersiman = sgs.CreateTriggerSkill {
 jysuit = {}
 leijijingyan = sgs.CreateTriggerSkill {
 	name = "leijijingyan",
-	events = { sgs.PreCardUsed, sgs.CardResponded, sgs.EventPhaseStart, sgs.EventPhaseEnd, sgs.CardUsed, sgs.CardFinished },
+	events = { sgs.PreCardUsed, sgs.CardResponded, sgs.EventPhaseStart, sgs.EventPhaseChanging, sgs.CardUsed, sgs.CardFinished },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local use = data:toCardUse()
@@ -11486,9 +11486,10 @@ leijijingyan = sgs.CreateTriggerSkill {
 			end
 		elseif (event == sgs.EventPhaseStart) and (player:getPhase() == sgs.Player_RoundStart) then
 			while #jysuit > 0 do table.remove(jysuit) end
-		elseif event == sgs.EventPhaseEnd then
+		elseif event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
 			local num = (player:getMark("@jingyan") + 1)
-			if (player:getPhase() == sgs.Player_Finish) and (#jysuit >= num) then
+			if change.to == sgs.Player_NotActive and (#jysuit >= num) then
 				if room:askForSkillInvoke(player, self:objectName(), data) then
 					player:gainMark("@jingyan")
 					room:broadcastSkillInvoke("leijijingyan", math.random(1, 2)) --语音
@@ -12598,14 +12599,16 @@ zhihoujb     = sgs.CreateTriggerSkill {
 zhihouz = sgs.CreateTriggerSkill {
 	name = "zhihouz",
 	frequency = sgs.Skill_NotFrequent,
-	events = { sgs.EventPhaseEnd, sgs.EventPhaseStart },
+	events = { sgs.EventPhaseChanging, sgs.EventPhaseStart },
 	can_trigger = function(self, target)
 		return target ~= nil
 	end,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local huawan = room:findPlayerBySkillName(self:objectName())
-		if event == sgs.EventPhaseEnd and player:getPhase() == sgs.Player_Finish then
+		if event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to ~= sgs.Player_NotActive then return false end
 			if not huawan or not huawan:isAlive() then return false end
 			room:setPlayerFlag(huawan, "-zhihou")
 			if huawan:getMark("@zhihou") ~= 0 then
@@ -16054,13 +16057,13 @@ voidvs = sgs.CreateZeroCardViewAsSkill {
 
 void = sgs.CreateTriggerSkill {
 	name = "void",
-	events = { sgs.EventPhaseEnd, sgs.EventPhaseStart },
+	events = { sgs.EventPhaseEnd, sgs.EventPhaseStart, sgs.EventPhaseChanging },
 	view_as_skill = voidvs,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if event == sgs.EventPhaseEnd then
-			if player:getPhase() == sgs.Player_Finish then
-				room:setPlayerMark(player, "voidcanuse", 0)
+		if event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to == sgs.Player_NotActive then
 				local idlist = room:getTag(player:objectName() .. "voidid"):toString():split("+")
 				local names = room:getTag(player:objectName() .. "voidtarget"):toString():split("+")
 
@@ -16085,6 +16088,10 @@ void = sgs.CreateTriggerSkill {
 
 				room:setTag(player:objectName() .. "voidtarget", sgs.QVariant())
 				room:setTag(player:objectName() .. "voidid", sgs.QVariant())
+			end
+		elseif event == sgs.EventPhaseEnd then
+			if player:getPhase() == sgs.Player_Finish then
+				room:setPlayerMark(player, "voidcanuse", 0)
 			elseif player:getPhase() == sgs.Player_Play then
 				room:setPlayerMark(player, "voidused", 0)
 			end
@@ -19018,7 +19025,7 @@ s_newtype = sgs.CreateTriggerSkill
 		name = "s_newtype",
 		view_as_skill = s_newtypeVS,
 		frequency = sgs.Skill_NotFrequent,
-		events = { sgs.GameStart, sgs.EventAcquireSkill, sgs.EventLoseSkill, sgs.EventPhaseStart, sgs.CardUsed, sgs.CardResponded },
+		events = { sgs.GameStart, sgs.EventAcquireSkill, sgs.EventLoseSkill, sgs.EventPhaseStart, sgs.CardUsed, sgs.CardResponded, sgs.EventPhaseChanging },
 		on_trigger = function(self, event, player, data)
 			local room = player:getRoom()
 			if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == self:objectName()) then
@@ -19030,6 +19037,21 @@ s_newtype = sgs.CreateTriggerSkill
 			elseif event == sgs.EventLoseSkill and data:toString() == self:objectName() then
 				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 					room:detachSkillFromPlayer(p, "s_newtypeOther", true)
+				end
+			elseif event == sgs.EventPhaseChanging then
+				local change = data:toPhaseChange()
+				if change.to == sgs.Player_NotActive then
+					if player:getMark("s_newtype-Clear") > 0 then
+						room:removePlayerMark(player, "s_newtype-Clear")
+						for _, amuro in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+							if player:getMark("s_newtype" .. amuro:objectName() .. "-Clear") > 0 then
+								local card = amuro:property("s_newtype"):toString()
+								local prompt = string.format("@s_newtypeOther:%s", card)
+								room:askForUseCard(player, "@@s_newtypeOther", prompt)
+							end
+							room:setPlayerProperty(amuro, "s_newtype", sgs.QVariant(""))
+						end
+					end
 				end
 			elseif event == sgs.EventPhaseStart then
 				if player:getPhase() == sgs.Player_Play then
@@ -19043,19 +19065,6 @@ s_newtype = sgs.CreateTriggerSkill
 							player:drawCards(2)
 							room:askForUseCard(amuro, "@@s_newtype", "@s_newtype")
 							room:setPlayerMark(player, "s_newtype-Clear", 1)
-						end
-					end
-				end
-				if player:getPhase() == sgs.Player_Finish then
-					if player:getMark("s_newtype-Clear") > 0 then
-						room:removePlayerMark(player, "s_newtype-Clear")
-						for _, amuro in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-							if player:getMark("s_newtype" .. amuro:objectName() .. "-Clear") > 0 then
-								local card = amuro:property("s_newtype"):toString()
-								local prompt = string.format("@s_newtypeOther:%s", card)
-								room:askForUseCard(player, "@@s_newtypeOther", prompt)
-							end
-							room:setPlayerProperty(amuro, "s_newtype", sgs.QVariant(""))
 						end
 					end
 				end

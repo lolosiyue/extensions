@@ -2153,12 +2153,13 @@ sk_dongyun = sgs.General(extension, "sk_dongyun", "shu", 3, true)
 --裨补
 sk_bibu = sgs.CreateTriggerSkill{
     name = "sk_bibu",
-	events = {sgs.EventPhaseStart},
+	events = {sgs.EventPhaseChanging},
 	on_trigger = function(self, event, player, data, room)
-	    
+	    local change = data:toPhaseChange()
+		if change.to ~= sgs.Player_NotActive then return false end
 		if room:findPlayersBySkillName(self:objectName()):isEmpty() then return false end
 		for _, dongyun in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-		    if player:getPhase() == sgs.Player_Finish and player:objectName() ~= dongyun:objectName() then
+		    if player:objectName() ~= dongyun:objectName() then
 			    if dongyun:getHandcardNum() > math.max(1, dongyun:getHp()) then
 				    if dongyun:askForSkillInvoke(self:objectName(), sgs.QVariant("bibu_give:" .. player:objectName())) then
 					    local c = room:askForExchange(dongyun, self:objectName(), 1, 1, false, "@bibu:" .. player:objectName())
@@ -2239,10 +2240,10 @@ end
 
 sk_kuangzheng = sgs.CreateTriggerSkill{
     name = "sk_kuangzheng",
-	events = {sgs.EventPhaseStart},
+	events = {sgs.EventPhaseChanging},
 	on_trigger = function(self, event, player, data, room)
-	    
-		if player:getPhase() ~= sgs.Player_Finish then return false end
+	    local change = data:toPhaseChange()
+		if change.to ~= sgs.Player_NotActive then return false end
 		local targets = sgs.SPlayerList()
 		for _, t in sgs.qlist(room:getAlivePlayers()) do
 		    if canKuangzheng(t) then targets:append(t) end

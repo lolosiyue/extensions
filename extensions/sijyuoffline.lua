@@ -11906,7 +11906,7 @@ sfofl_lilu = sgs.CreateTriggerSkill
 sfofl_yizhengc = sgs.CreateTriggerSkill{
 	name = "sfofl_yizhengc",
 	frequency = sgs.Skill_Frequent,
-	events = {sgs.DamageCaused, sgs.EventPhaseStart, sgs.PreHpRecover},
+	events = {sgs.DamageCaused, sgs.EventPhaseChanging, sgs.EventPhaseStart,sgs.PreHpRecover},
 	on_trigger = function(self, event, player, data, room)
 		if event == sgs.DamageCaused then
             local can_invoke = false
@@ -11939,20 +11939,23 @@ sfofl_yizhengc = sgs.CreateTriggerSkill{
 				end
 			end
 		elseif event == sgs.EventPhaseStart and player:hasSkill(self:objectName()) then
-			if player:getPhase() == sgs.Player_Start then
+			if player:getPhase() == sgs.Player_RoundStart then
 				for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 					if p:getMark("sfofl_yizhengc"..player:objectName()) > 0 then
 						room:setPlayerMark(p, "sfofl_yizhengc"..player:objectName(), 0)
 						room:setPlayerMark(p, "&sfofl_yizhengc+to+#"..player:objectName(), 0)
 					end
 				end
-			elseif player:getPhase() == sgs.Player_Finish then
-				local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "sfofl_yizhengc-invoke", true, true)
-				if not target then return false end
-				room:setPlayerMark(target, "sfofl_yizhengc"..player:objectName(), 1)
-				room:setPlayerMark(target, "&sfofl_yizhengc+to+#"..player:objectName(), 1)
-				room:broadcastSkillInvoke(self:objectName())
-			end
+            end
+        elseif event == sgs.EventPhaseChanging then
+            local change = data:toPhaseChange()
+            if change.to == sgs.Player_NotActive then
+                local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "sfofl_yizhengc-invoke", true, true)
+                if not target then return false end
+                room:setPlayerMark(target, "sfofl_yizhengc"..player:objectName(), 1)
+                room:setPlayerMark(target, "&sfofl_yizhengc+to+#"..player:objectName(), 1)
+                room:broadcastSkillInvoke(self:objectName())
+            end
 		elseif event == sgs.PreHpRecover then
             local can_invoke = false
             for _,m in ipairs(player:getMarkNames()) do
@@ -25203,29 +25206,33 @@ sfofl_gaolan = sgs.General(extension_gai, "sfofl_gaolan", "qun", 4)
 	技能描述：出牌阶段开始时，你可以弃置一张牌并令所有其他角色选择一项：弃置一张牌；本回合内不能使用或打出牌；若如此做且当前回合结束时，若你本回合造成过伤害，你可以获得弃牌堆中的一张【杀】或伤害类锦囊。
 	引用：sfofl_xiying
 ]] --  
-sfofl_xiying = sgs.CreatePhaseChangeSkill{
+sfofl_xiying = sgs.CreateTriggerSkill{
 	name = "sfofl_xiying" ,
     frequency = sgs.Skill_Frequent,
-	on_phasechange = function(self, player)
+    events = {sgs.EventPhaseStart, sgs.EventPhaseChanging} ,
+	on_trigger = function(self, event, player, data)
         local room = player:getRoom()
-		if (player:getPhase() == sgs.Player_Play) and (not player:isKongcheng()) then
-			local card = room:askForCard(player, ".", "@sfofl_xiying", sgs.QVariant(), sgs.Card_MethodDiscard, player, false, self:objectName())
-            if card then
-                room:addPlayerMark(player, self:objectName().."-Clear")
-                room:broadcastSkillInvoke(self:objectName())
-                for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-                    local dest = sgs.QVariant()
-                    dest:setValue(player)
-                    local cd = room:askForCard(p, ".|.|.", "@xiying_CardLimitation", dest, sgs.Card_MethodDiscard, player, false, self:objectName())
-                    if not cd then
-                        room:addPlayerMark(p, self:objectName().. player:objectName() .."-Clear")
-                        room:addPlayerMark(p, "&sfofl_xiying-Clear")
-                        room:setPlayerCardLimitation(p, "use,response", ".", true)
+        if event == sgs.EventPhaseStart then
+            if (player:getPhase() == sgs.Player_Play) and (not player:isKongcheng()) then
+                local card = room:askForCard(player, ".", "@sfofl_xiying", sgs.QVariant(), sgs.Card_MethodDiscard, player, false, self:objectName())
+                if card then
+                    room:addPlayerMark(player, self:objectName().."-Clear")
+                    room:broadcastSkillInvoke(self:objectName())
+                    for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+                        local dest = sgs.QVariant()
+                        dest:setValue(player)
+                        local cd = room:askForCard(p, ".|.|.", "@xiying_CardLimitation", dest, sgs.Card_MethodDiscard, player, false, self:objectName())
+                        if not cd then
+                            room:addPlayerMark(p, self:objectName().. player:objectName() .."-Clear")
+                            room:addPlayerMark(p, "&sfofl_xiying-Clear")
+                            room:setPlayerCardLimitation(p, "use,response", ".", true)
+                        end
                     end
                 end
             end
-        elseif player:getPhase() == sgs.Player_Finish then
-            if player:getMark("sfofl_xiying-Clear") > 0 and player:getMark("damage_point_turn-Clear") > 0 and room:askForSkillInvoke(player, self:objectName()) then
+        elseif event == sgs.EventPhaseChanging then
+            local change = data:toPhaseChange()
+            if change.to == sgs.Player_NotActive and player:getMark("sfofl_xiying-Clear") > 0 and player:getMark("damage_point_turn-Clear") > 0 and room:askForSkillInvoke(player, self:objectName()) then
                 room:broadcastSkillInvoke("sfofl_xiying")
                 local card_ids = sgs.IntList()
                 for _, id in sgs.qlist(room:getDiscardPile()) do
@@ -26947,12 +26954,14 @@ sfofl_shoufanVS = sgs.CreateOneCardViewAsSkill{
 		return pattern == "@@sfofl_shoufan!"
 	end
 }
-sfofl_shoufan = sgs.CreatePhaseChangeSkill{
+sfofl_shoufan = sgs.CreateTriggerSkill{
 	name = "sfofl_shoufan",
+    events = {sgs.EventPhaseChanging},
     view_as_skill = sfofl_shoufanVS,
-	on_phasechange = function(self,target)
+	on_trigger = function(self, event, target, data)
 		local room = target:getRoom()
-		if target:getPhase() == sgs.Player_Finish and room:askForSkillInvoke(target, self:objectName()) then	
+        local change = data:toPhaseChange()
+		if change.to == sgs.Player_NotActive and room:askForSkillInvoke(target, self:objectName()) then	
             local card_ids = target:drawCardsList(3, self:objectName(), true, false)
             if not target:isKongcheng() then
                 local x = 0
