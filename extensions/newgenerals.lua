@@ -1793,7 +1793,7 @@ on_trigger = function(self,event,player,data,room)
 		local from = room:getTag("JinZhaosongUser_"..use.card:toString()):toPlayer()
 		room:removeTag("JinZhaosongUser_"..use.card:toString())
 		if num >= 2 or not from or from:isDead() then return false end
-		room:loseHp(from)
+		-- room:loseHp(from)
 		for _,p in sgs.qlist(room:getAllPlayers())do
 			if not p:hasSkill(self) then continue end
 			room:loseHp(sgs.HpLostStruct(from,1,"jinzhaosong",p))
@@ -4877,7 +4877,7 @@ kemobileyijin = sgs.CreateTriggerSkill{
 		and player:getMark("keyijin_guxiong-SelfClear")>0
 		and player:getMark("@keyijin_guxiong")>0 then
 			room:sendCompulsoryTriggerLog(player,"keyijin_guxiong")
-			room:loseHp(player)
+			room:loseHp(player, 1, true, player, "keyijin_guxiong")
 			room:addMaxCards(player,-3)
 		elseif event == sgs.DrawNCards--V我50
 		and player:getMark("keyijin_wushi-SelfClear")>0

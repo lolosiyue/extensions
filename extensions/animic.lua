@@ -335,7 +335,7 @@ guihao = sgs.CreateTriggerSkill{
 				room:setPlayerMark(player, "guihao",0)
 				room:setPlayerMark(player, "&guihao",0)
 				if (not room:askForSkillInvoke(player,self:objectName(),data)) then return false end
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 				room:drawCards(player, player:getLostHp(), "guihao")
 				room:addPlayerMark(player, "guihao")
 				room:addPlayerMark(player, "&guihao")
@@ -538,7 +538,7 @@ shenni = sgs.CreateTriggerSkill{
 				and not (move.to and (move.to:objectName() == player:objectName() and (move.to_place == sgs.Player_PlaceHand or move.to_place == sgs.Player_PlaceEquip))) then
 					room:setPlayerFlag(current, "shenni"..player:objectName()..self:objectName())
 					room:setPlayerMark(player, "&shenni-Clear", 0)
-					room:loseHp(player)
+					room:loseHp(player,1, true, player, self:objectName())
 				end
 			else
 				if move.to_place == sgs.Player_DiscardPile then

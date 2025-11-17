@@ -152,7 +152,7 @@ kezhenlie = sgs.CreateTriggerSkill {
 				if use.card:isKindOf("Slash") or use.card:isNDTrick() then
 					if room:askForSkillInvoke(player, self:objectName(), data) then
 						room:broadcastSkillInvoke(self:objectName())
-						room:loseHp(player)
+						room:loseHp(player, 1, true, player, self:objectName())
 						if player:isAlive() then
 							local nullified_list = use.nullified_list
 							table.insert(nullified_list, player:objectName())
@@ -184,7 +184,7 @@ kezhenliexiangying = sgs.CreateTriggerSkill {
 		if (use.card:isKindOf("Slash") or use.card:isNDTrick()) and use.card:isDamageCard() then
 			if room:askForSkillInvoke(player, "kezhenliexiangying", data) then
 				room:broadcastSkillInvoke("kezhenlie")
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, "kezhenlie")
 				--local rs = 0
 				local no_respond_list = use.no_respond_list
 				for _, szm in sgs.qlist(use.to) do

@@ -1895,7 +1895,7 @@ exjueqing = sgs.CreateTriggerSkill{
             room:sendCompulsoryTriggerLog(player, self:objectName())
             room:broadcastSkillInvoke(self:objectName())
             local damage = data:toDamage()
-            room:loseHp(damage.to, damage.damage)
+            room:loseHp(damage.to, damage.damage, true, player, self:objectName())
 		    return true
         end
 
@@ -1998,7 +1998,7 @@ yanshi = sgs.CreateTriggerSkill{
             if choice == "discard" then
                 room:askForDiscard(player, self:objectName(), 1, 1, false, true)
             elseif choice == "losehp" then
-                room:loseHp(player, 1)
+                room:loseHp(player, 1, true, player, self:objectName())
             end
         elseif player:getChangeSkillState(self:objectName()) == 2 then
             room:setChangeSkillState(player, self:objectName(), 1)
@@ -3367,7 +3367,7 @@ spjiangCard = sgs.CreateSkillCard
         for _,id in sgs.qlist(self:getSubcards()) do
             duel:addSubcard(sgs.Sanguosha:getCard(id))
         end
-        room:loseHp(source, 1)
+        room:loseHp(source, 1, true, source, self:objectName())
         room:setCardFlag(duel, source:objectName())
         return duel
     end,
@@ -5638,7 +5638,7 @@ godlongnustart = sgs.CreateTriggerSkill{
             local choice = room:askForChoice(player, "godlongnu", table.concat(choices, "+"))
             
             if choice == "red" or choice == "all" then
-                room:loseHp(player, 1)
+                room:loseHp(player, 1, true, player, "godlongnu")
                 player:drawCards(2)
                 if choice ~= "all" then
                     room:setPlayerMark(player, "&godlongnu+:+fire_slash-PlayClear", 1)
@@ -7000,7 +7000,7 @@ yzyuzhi = sgs.CreateTriggerSkill{
             log.arg = num
             room:sendLog(log)
 
-            room:loseHp(player, num)
+            room:loseHp(player, num, true, player, self:objectName())
         end
     end,
     can_trigger = function(self, target)

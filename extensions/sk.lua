@@ -526,7 +526,7 @@ sk_midaoCard = sgs.CreateSkillCard{
 		    _max = math.max(m:getHandcardNum(), _max)
 		end
 		if source:getHandcardNum() <= _max then return false end
-		room:loseHp(source)
+		room:loseHp(source, 1, true, source, "sk_midao")
 	end
 }
 
@@ -1156,7 +1156,7 @@ sk_chaohuangCard = sgs.CreateSkillCard{
 	    return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
-	    room:loseHp(source)
+	    room:loseHp(source, 1, true, source, "sk_chaohuang")
 	    local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName("sk_chaohuangSlash")
 		slash:deleteLater()
@@ -1760,7 +1760,7 @@ sk_zhongyong = sgs.CreateTriggerSkill{
 		elseif event == sgs.EventPhaseStart then
 			if player:getPhase() == sgs.Player_Start then
 				if player:askForSkillInvoke(self:objectName(), data) then
-					room:loseHp(player)
+					room:loseHp(player, 1, true, player, self:objectName())
 					room:broadcastSkillInvoke(self:objectName(), 1)
 					room:setPlayerFlag(player, "sk_zhongyong")
 					room:addPlayerMark(player, "&sk_zhongyong-Clear")
@@ -4280,7 +4280,7 @@ sk_zhenlie = sgs.CreateTriggerSkill{
 			if use.card and (use.card:isKindOf("Slash") or use.card:isNDTrick()) then
 				if player:askForSkillInvoke(self:objectName(), data) then
 					room:broadcastSkillInvoke(self:objectName())
-					room:loseHp(player, 1)
+					room:loseHp(player, 1, true, player, self:objectName())
 					local nullified_list = use.nullified_list
 					table.insert(nullified_list, player:objectName())
 					use.nullified_list = nullified_list
@@ -4293,7 +4293,7 @@ sk_zhenlie = sgs.CreateTriggerSkill{
 					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_THROW, player:objectName(), self:objectName(), "")
 					room:throwCard(card, reason, nil)
 					if use.from:isKongcheng() then
-						room:loseHp(use.from, 1)
+						room:loseHp(use.from, 1, true, player, self:objectName())
 					else
 						local suit = card:getSuit()
 						local dummy = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
@@ -4302,7 +4302,7 @@ sk_zhenlie = sgs.CreateTriggerSkill{
 						end
 						dummy:deleteLater()
 						if dummy:getSubcards():isEmpty() then
-							room:loseHp(use.from, 1)
+							room:loseHp(use.from, 1, true, player, self:objectName())
 						else
 							local choice = room:askForChoice(use.from, self:objectName(), "throwallsuitcards+lose1hp")
 							if choice == "throwallsuitcards" then
@@ -4310,7 +4310,7 @@ sk_zhenlie = sgs.CreateTriggerSkill{
 								local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_THROW, use.from:objectName(), self:objectName(), "")
 								room:throwCard(dummy, reason, nil)
 							else
-								room:loseHp(use.from, 1)
+								room:loseHp(use.from, 1, true, player, self:objectName())
 							end
 						end
 					end

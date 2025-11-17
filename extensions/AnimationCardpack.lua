@@ -300,7 +300,7 @@ together_go_die = sgs.CreateTrickCard{
 			room:addPlayerMark(to, "@skill_invalidity")
 			room:addPlayerMark(to, "&together_go_die+to+#"..from:objectName().."-Clear")
 			room:setPlayerCardLimitation(to, "use,response", ".|.|.|hand", true)
-			room:loseHp(from)
+			room:loseHp(from, 1, true, from, self:objectName())
 			from:drawCards(2, self:objectName())
 			for _, p in sgs.qlist(room:getAllPlayers()) do
 				room:filterCards(p, p:getCards("he"), true)
@@ -1195,7 +1195,7 @@ heikeji_test_skill = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data, room)
 		if event == sgs.EventPhaseStart then
 			if room:askForSkillInvoke(player, self:objectName(), data) then
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 				local standrad = {"god_salvation", "amazing_grace", "savage_assault", "archery_attack", "collateral", "dismantlement", "snatch", "ex_nihilo", "duel", "iron_chain", "fire_attack", "mouthgun", "rotenburo", "bunkasai", "fall_back_in_disorder"}
 				local choices = {}
 				local trick1 = standrad[math.random(1,#standrad)]
@@ -1369,7 +1369,7 @@ MurasameSkill = sgs.CreateTriggerSkill{
 				if player:hasWeapon("Murasame") and damage.card and damage.card:isKindOf("Slash") then
 					local choice = room:askForChoice(damage.to, "Murasame", "murasamelshp+murasamelsmhp", data)
 					if choice == "murasamelshp" then
-						room:loseHp(damage.to, damage.to:getHp())
+						room:loseHp(damage.to, damage.to:getHp()-1, true, player, "Murasame")
 					elseif choice == "murasamelsmhp" then
 						room:loseMaxHp(damage.to)
 					end
@@ -1380,7 +1380,7 @@ MurasameSkill = sgs.CreateTriggerSkill{
 				if not (string.find(player:getGeneralName(), "Akame") or string.find(player:getGeneral2Name(), "Akame")
 						or string.find(player:getGeneralName(), "chitong") or string.find(player:getGeneral2Name(), "chitong")) then
 					if not room:askForCard(player, ".", "@murasameself", sgs.QVariant(), sgs.CardDiscarded) then
-						room:loseHp(player)
+						room:loseHp(player, 1, true, player, "Murasame")
 					end
 				end
 			end
@@ -1621,7 +1621,7 @@ sgs.LoadTranslationTable{
 	<b>攻击范围</b>：２\
 	<b>武器技能</b>：①当你使用【杀】指定目标角色后，你可以令其选择是否弃置一张手牌：\
 	若其弃置的牌与此【杀】颜色相同，则此【杀】对其无效；\
-	若颜色不同或不弃置，则当此【杀】造成伤害时，目标角色选择一项：失去当前所有体力值，或减少一点体力上限。\
+	若颜色不同或不弃置，则当此【杀】造成伤害时，目标角色选择一项：失去当前体力值-1体力值，或减少一点体力上限。\
 	②<font color=\"blue\"><b>锁定技，</b></font>当你使用【杀】时，若你不是“赤瞳”，你须弃置一张手牌或失去一点体力。",
 	["murasamelshp"] = "失去所有体力",
 	["murasamelsmhp"] = "减少体力上限",

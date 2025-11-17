@@ -292,7 +292,7 @@ ny_10th_xianshuCard = sgs.CreateSkillCard
         if card:isRed() and effect.to:getHp() <= effect.from:getHp() then
             room:recover(effect.to, sgs.RecoverStruct(effect.from, nil, 1))
         elseif card:isBlack() and effect.to:getHp() >= effect.from:getHp() then
-            room:loseHp(effect.to, 1)
+            room:loseHp(effect.to, 1, true, effect.from, self:objectName())
         end
         if effect.to:isAlive() and effect.from:isAlive() then
             local n = effect.to:getHp() - effect.from:getHp()
@@ -437,7 +437,7 @@ ny_10th_jieling_buff = sgs.CreateTriggerSkill{
                 room:setCardFlag(damage.card, "ny_10th_jieling_success")
                 if damage.to:isAlive() then
                     room:sendCompulsoryTriggerLog(player, "ny_10th_jieling", true)
-                    room:loseHp(damage.to)
+                    room:loseHp(damage.to, 1, true, player, self:objectName())
                 end
             end
         end
@@ -4111,7 +4111,7 @@ ny_10th_jxxiantu = sgs.CreateTriggerSkill{
                     room:broadcastSkillInvoke(self:objectName())
                     room:setPlayerMark(p, "&ny_10th_jxxiantu-PlayClear", 0)
                     room:sendCompulsoryTriggerLog(p, self:objectName())
-                    room:loseHp(p, 1)
+                    room:loseHp(p, 1, true, p, self:objectName())
                 end
             end
         end
@@ -6974,7 +6974,7 @@ ny_10th_xinyou_buff = sgs.CreateTriggerSkill{
         and player:getMark("ny_10th_xinyou_draw-Clear") == 0 then return false end
         room:sendCompulsoryTriggerLog(player, "ny_10th_xinyou", true, true)
         if player:getMark("ny_10th_xinyou_draw-Clear") > 0 then
-            room:loseHp(player, 1)
+            room:loseHp(player, 1, true, player, "ny_10th_xinyou")
         end
         if player:getMark("ny_10th_xinyou_recover-Clear") > 0 then
             room:askForDiscard(player, "ny_10th_xinyou", 1, 1, false, true)
@@ -7937,7 +7937,7 @@ ny_10th_cuguo = sgs.CreateTriggerSkill{
         if effect.card:hasFlag("ny_10th_cuguo_"..effect.to:objectName()) then
             room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
             room:setCardFlag(effect.card, "-ny_10th_cuguo_"..effect.to:objectName())
-            room:loseHp(player, 1)
+            room:loseHp(player, 1, true, player, self:objectName())
         end
 
         if player:isNude() then return false end
@@ -8080,7 +8080,7 @@ ny_10th_shouze = sgs.CreateTriggerSkill{
             end
             if #blacks > 0 then
                 room:obtainCard(player, blacks[math.random(1,#blacks)])
-                if player:isAlive() then room:loseHp(player, 1) end
+                if player:isAlive() then room:loseHp(player, 1, true, player, self:objectName()) end
             end
         end
     end,
@@ -8751,7 +8751,7 @@ ny_10th_xianshu_secondCard = sgs.CreateSkillCard
         if card:isRed() and effect.to:getHp() <= effect.from:getHp() and effect.to:isWounded() then
             room:recover(effect.to, sgs.RecoverStruct(effect.from, nil, 1))
         elseif card:isBlack() and effect.to:getHp() >= effect.from:getHp() then
-            room:loseHp(effect.to, 1)
+            room:loseHp(effect.to, 1, true, effect.from, self:objectName())
         end
     end
 }
@@ -8885,7 +8885,7 @@ ny_tenth_zhifouCard = sgs.CreateSkillCard
         if effect.to:isDead() then return false end
 
         if choice == "lose" then
-            room:loseHp(effect.to, 1)
+            room:loseHp(effect.to, 1, true, effect.from, self:objectName())
         elseif choice == "discard" then
             room:askForDiscard(effect.to, self:objectName(), 2, 2, false, true)
         else
@@ -9556,7 +9556,7 @@ ny_10th_weiwanCard = sgs.CreateSkillCard
         if effect.to:isAlive() then
             local n = get:subcardsLength()
             if n == 1 then
-                room:loseHp(effect.to, 1)
+                room:loseHp(effect.to, 1, true, effect.from, self:objectName())
             elseif n == 2 then
                 local mark = string.format("&ny_10th_weiwan_nolimit+#%s-Clear", effect.from:objectName())
                 room:setPlayerMark(effect.to, mark, 1)
@@ -10264,7 +10264,7 @@ ny_10th_jiaowang = sgs.CreateTriggerSkill{
         local room = player:getRoom()
         if player:getMark("ny_10th_jiaowang_lun") > 0 then return false end
         room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
-        room:loseHp(player, 1)
+        room:loseHp(player, 1, true, player, self:objectName())
         if player:isDead() then return false end
         room:getThread():delay()
         local skill = sgs.Sanguosha:getTriggerSkill("ny_10th_xiaoyan")
@@ -11079,7 +11079,7 @@ ny_tenth_miyun = sgs.CreateTriggerSkill{
                     if card:hasFlag("ny_tenth_miyun_an") then
                         room:setCardFlag(card, "-ny_tenth_miyun_an")
                         room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
-                        room:loseHp(player, 1)
+                        room:loseHp(player, 1, true, player, self:objectName())
                     end
                 end
             end
@@ -12310,8 +12310,8 @@ ny_10th_fudou = sgs.CreateTriggerSkill{
             if target:getMark("ny_10th_fudou+"..player:objectName()) > 0 and use.card:isBlack() then
                 if room:askForSkillInvoke(player, self:objectName(), sgs.QVariant("lose:"..target:getGeneralName())) then
                     room:broadcastSkillInvoke(self:objectName())
-                    room:loseHp(player, 1)
-                    room:loseHp(target, 1)
+                    room:loseHp(player, 1, true, player, self:objectName())
+                    room:loseHp(target, 1, true, player, self:objectName())
                 end
             end
             if target:getMark("ny_10th_fudou+"..player:objectName()) == 0 and use.card:isRed() then
@@ -13809,7 +13809,7 @@ ny_10th_suchou = sgs.CreateTriggerSkill{
             room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
             local choices = "losehp+losemaxhp+loseskill"
             local choice = room:askForChoice(player, self:objectName(), choices)
-            if choice == "losehp" then room:loseHp(player, 1) end
+            if choice == "losehp" then room:loseHp(player, 1, true, player, self:objectName()) end
             if choice == "losemaxhp" then room:loseMaxHp(player, 1) end
             if choice == "loseskill" then 
                 room:detachSkillFromPlayer(player, self:objectName())

@@ -1735,7 +1735,7 @@ qhfireqiangxiCARD = sgs.CreateSkillCard { -- 强袭 技能卡
         local room = effect.from:getRoom()
         room:broadcastSkillInvoke("qiangxi") -- 播放配音
         if self:getSubcards():isEmpty() then --无牌发动
-            room:loseHp(effect.from, 1)
+            room:loseHp(effect.from, 1, true, effect.from, "qhfireqiangxi")
             room:setPlayerMark(effect.from, "qhfireqiangxi_lose-Clear", 1)
         else
             room:setPlayerMark(effect.from, "qhfireqiangxi_card-Clear", 1)
@@ -3618,7 +3618,7 @@ qhstandardkurouCARD = sgs.CreateSkillCard {                                     
     name = "qhstandardkurouCARD",
     target_fixed = true,                                                        -- 不选择目标
     on_use = function(self, room, source, targets)
-        room:loseHp(source)                                                     -- 失去体力
+        room:loseHp(source, 1, true, source, "qhstandardkurou")                                                     -- 失去体力
         if source:isAlive() then                                                -- 存活
             room:drawCards(source, 3, self:objectName())
             room:broadcastSkillInvoke("kurou")                                  -- 播放配音

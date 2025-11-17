@@ -159,7 +159,7 @@ shuiyanCard = sgs.CreateSkillCard {
 				dest:setValue(p)
 				local choice = room:askForChoice(p, self:objectName(), table.concat(choicelist, "+"), dest)
 				if choice == "be_lost" then
-					room:loseHp(p)
+					room:loseHp(p, 1, true, source, "shuiyan")
 				elseif choice == "throw_equips" then
 					p:throwAllEquips()
 				end

@@ -1239,7 +1239,7 @@ sijyu_youbing = sgs.CreateTriggerSkill {
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
         if ((event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Start) or event == sgs.RoundEnd) then
-            room:loseHp(player)
+            room:loseHp(player, 1, true, player, self:objectName())
             room:sendCompulsoryTriggerLog(player, self:objectName(), true, true, 1)
         end
         if (event == sgs.AskForPeaches) then
@@ -1350,12 +1350,12 @@ sijyu_xiaowang = sgs.CreateTriggerSkill {
                 newdamage.nature = sgs.DamageStruct_Fire
                 room:damage(newdamage)
             end
-        elseif event then
+        elseif event == sgs.EventPhaseChanging then
             local change = data:toPhaseChange()
             if change.to == sgs.Player_NotActive then
                 if player:getMark("damage_point_turn-Clear") == 0 then
                     room:sendCompulsoryTriggerLog(player, self:objectName())
-                    room:loseHp(player)
+                    room:loseHp(player, 1, true, player, self:objectName())
                     for _, p in sgs.qlist(room:getOtherPlayers(player)) do
                         local damage = sgs.DamageStruct()
                         damage.from = player
@@ -2009,7 +2009,7 @@ sijyu_fabei = sgs.CreateTriggerSkill {
                         if dummy:subcardsLength() > 0 then
                             p:obtainCard(dummy)
                         end
-                        room:loseHp(p)
+                        room:loseHp(p, 1, true, p, self:objectName())
                         room:broadcastSkillInvoke("sijyu_fabei")
                         if p:isAlive() then
                             local phases = sgs.PhaseList()

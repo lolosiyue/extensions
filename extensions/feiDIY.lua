@@ -282,7 +282,7 @@ feiyinghun = sgs.CreateTriggerSkill {
                         if room:askForSkillInvoke(p, self:objectName(), data) then
                             local choices = "draw+throw"
                             p:loseMark("&feiyinghun", 1)
-                            room:loseHp(p)
+                            room:loseHp(p, 1, true, p, self:objectName())
                             if p:getHujia() < 5 then p:gainHujia(1) end
                             local choice = room:askForChoice(p, self:objectName(), choices)
                             if choice == "draw" then
@@ -811,7 +811,7 @@ feitouhuo = sgs.CreateTriggerSkill {
             if death.damage and death.damage.from == player then
                 local choice = room:askForChoice(player, self:objectName(), "hp+Maxhp", data)
                 if choice == "hp" then
-                    room:loseHp(player)
+                    room:loseHp(player, 1, true, player, self:objectName())
                 elseif choice == "Maxhp" then
                     room:loseMaxHp(player)
                 end
@@ -998,7 +998,7 @@ feiyanjunCard = sgs.CreateSkillCard {
                 theDamage.nature = sgs.DamageStruct_Thunder
                 room:damage(theDamage)
             elseif choice == "losehp" then
-                room:loseHp(effect.to, 2)
+                room:loseHp(effect.to, 2, true, effect.from, "feiyanjun")
                 effect.to:gainHujia(1)
             end
         end

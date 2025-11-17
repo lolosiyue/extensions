@@ -215,7 +215,7 @@ keyaozhabing = sgs.CreateTriggerSkill {
 			if change.to == sgs.Player_Finish then
 				if room:askForSkillInvoke(player, self:objectName(), data) then
 					room:broadcastSkillInvoke(self:objectName())
-					room:loseHp(player)
+					room:loseHp(player, 1, true, player, self:objectName())
 					room:addPlayerMark(player, "&keyaozhabing")
 				end
 			end
@@ -948,7 +948,7 @@ kejieyaozhabing = sgs.CreateTriggerSkill {
 			if change.to == sgs.Player_Finish then
 				if room:askForSkillInvoke(player, self:objectName(), data) then
 					room:broadcastSkillInvoke(self:objectName())
-					room:loseHp(player)
+					room:loseHp(player, 1, true, player, self:objectName())
 					room:addPlayerMark(player, "&keyaozhabing")
 				end
 			end

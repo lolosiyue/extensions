@@ -823,7 +823,7 @@ ckweishancard = sgs.CreateSkillCard{
 		room:doSuperLightbox("ck_kanzaki", "ckweishan")
 		room:broadcastSkillInvoke("ckweishan")
 		room:damage(sgs.DamageStruct("ckweishan", effect.from, effect.to, effect.to:getMaxHp()))
-		room:loseHp(effect.from, 1)
+		room:loseHp(effect.from, 1, true, effect.from, self:objectName())
 		effect.from:turnOver()
 		return false
 	end

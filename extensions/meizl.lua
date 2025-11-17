@@ -242,7 +242,7 @@ meizlqiji = sgs.CreateTriggerSkill
 				-- room:setTag("CurrentDamageStruct", data)
 				if room:askForDiscard(player, self:objectName(), 1, 1, true, true, "@meizlqiji") then
 					room:notifySkillInvoked(player, self:objectName())
-					room:loseHp(damage.from, 1)
+					room:loseHp(damage.from, 1, true, player, self:objectName())
 				end
 				-- room:removeTag("CurrentDamageStruct")
 			end
@@ -318,7 +318,7 @@ meizlwuqing = sgs.CreateTriggerSkill {
 			log.arg = self:objectName()
 			log.to:append(damage.to)
 			room:sendLog(log)
-			room:loseHp(damage.to, damage.damage)
+			room:loseHp(damage.to, damage.damage, true, player, self:objectName())
 			return true
 		elseif player:getHp() == 1 and damage.nature ~= sgs.DamageStruct_Normal then
 			log.from = player
@@ -613,7 +613,7 @@ meizltuogucard = sgs.CreateSkillCard {
 		room:addPlayerMark(source, "&meizltuogu-Clear")
 		for _, p in sgs.qlist(room:getAllPlayers(false)) do
 			if p:getKingdom() ~= "shu" then
-				room:loseHp(p, 1)
+				room:loseHp(p, 1, true, source, "meizltuogu")
 			end
 		end
 
@@ -1198,7 +1198,7 @@ meizlhunshi = sgs.CreateTriggerSkill {
 		if not death.who:hasSkill(self:objectName()) then return end
 		if not player:objectName() == death.who:objectName() then return end
 		if death.damage and death.damage.from then
-			room:loseHp(death.damage.from, 1)
+			room:loseHp(death.damage.from, 1, true, player, self:objectName())
 			room:handleAcquireDetachSkills(death.damage.from, "meizlhunshidistance")
 			room:addPlayerMark(death.damage.from, "&meizlhunshi+to+#" .. player:objectName())
 		end
@@ -3528,7 +3528,7 @@ meizlfunei = sgs.CreateTriggerSkill {
 		if player:getPhase() ~= sgs.Player_Start then return end
 		for _, splayer in sgs.qlist(allplayers) do
 			if splayer:askForSkillInvoke(self:objectName()) then
-				room:loseHp(splayer, 1)
+				room:loseHp(splayer, 1, true, splayer, self:objectName())
 				player:drawCards(2)
 				room:attachSkillToPlayer(player, "meizlfuneix")
 				room:addPlayerMark(player, "&meizlfunei+to+#" .. splayer:objectName() .. "+-Clear")
@@ -3881,7 +3881,7 @@ meizlshangwu = sgs.CreateTriggerSkill {
 			if damage.nature ~= sgs.DamageStruct_Normal and player:getMark("meizlshangwu3") == 0 then
 				room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 				player:addMark("meizlshangwu3")
-				room:loseHp(player, 1)
+				room:loseHp(player, 1, true, player, self:objectName())
 				room:doLightbox("$meizlshangwuanimate", 1000)
 				room:handleAcquireDetachSkills(player, "xuanfeng")
 			end
@@ -4369,7 +4369,7 @@ meizlhuhun = sgs.CreateTriggerSkill {
 				local from = dying.damage.from
 				if from and from:isAlive() then
 					room:setPlayerMark(from, "meizlhuhunFail", 1)
-					room:loseHp(from, 1)
+					room:loseHp(from, 1, true, from, self:objectName())
 				end
 			end
 		end
@@ -4553,7 +4553,7 @@ meizlzhixi = sgs.CreateTriggerSkill {
 			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", self:objectName(), "")
 			local card = sgs.Sanguosha:getCard(card_throw)
 			room:throwCard(card, reason, target)
-			room:loseHp(target, 1)
+			room:loseHp(target, 1, true, player, self:objectName())
 			if card:isKindOf("EquipCard") then
 				player:drawCards(2)
 			end
@@ -5024,7 +5024,7 @@ meizltihen = sgs.CreateTriggerSkill
 					local y = p:getHp()
 					local x = math.max(p:getHandcardNum(), 1)
 					if y > x then
-						room:loseHp(p, y - x)
+						room:loseHp(p, y - x, true, nil , self:objectName())
 					elseif y < x then
 						local recover = sgs.RecoverStruct()
 						recover.recover = x - y
@@ -5682,7 +5682,7 @@ meispruixue                = sgs.CreateTriggerSkill {
 				local damage = data:toDamage()
 				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 					if p:objectName() ~= damage.to:objectName() then
-						room:loseHp(p, tonumber(damage.damage))
+						room:loseHp(p, tonumber(damage.damage), true, player, self:objectName())
 					end
 				end
 			end
@@ -5827,7 +5827,7 @@ meispshuzhuang = sgs.CreateTriggerSkill {
 			if not targets:isEmpty() then
 				local target = room:askForPlayerChosen(player, targets, self:objectName(), "meispshuzhuangchoose", true)
 				if target then
-					room:loseHp(target)
+					room:loseHp(target, 1, true, player, self:objectName())
 				end
 			end
 		end
@@ -6503,7 +6503,7 @@ meizlselueduo      = sgs.CreateTriggerSkill {
 								return false
 							end
 						else
-							room:loseHp(splayer, 1)
+							room:loseHp(splayer, 1, true, splayer, self:objectName())
 						end
 						local x = player:getHandcardNum() - player:getHp()
 						local card = room:askForExchange(player, self:objectName(), x, x, true, "@meizlselueduocard",
@@ -6796,7 +6796,7 @@ meizlsecanhui             = sgs.CreateTriggerSkill {
 				local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(),
 					"meizlsecanhui-invoke", true, true)
 				if target then
-					room:loseHp(target, 1)
+					room:loseHp(target, 1, true, player, self:objectName())
 					if player:getMark("@meizlsejidu") > 0 then player:drawCards(1) end
 				end
 			end
@@ -6814,7 +6814,7 @@ meizlsecanhuiZeroMaxCards = sgs.CreateTriggerSkill {
 			player:getRoom():setPlayerFlag(player, "-meizlsecanhuiZeroMaxCards")
 			if player:askForSkillInvoke("meizlsecanhui") then
 				local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName())
-				room:loseHp(target, 1)
+				room:loseHp(target, 1, true, player, "meizlsecanhui")
 				if player:getMark("@meizlsejidu") > 0 then player:drawCards(1) end
 			end
 		end
@@ -7714,7 +7714,7 @@ meizlshhunshi = sgs.CreateTriggerSkill {
 		if not death.who:hasSkill(self:objectName()) then return end
 		if not player:objectName() == death.who:objectName() then return end
 		if death.damage.from then
-			room:loseHp(death.damage.from, 2)
+			room:loseHp(death.damage.from, 2,true, player, self:objectName())
 			room:attachSkillToPlayer(death.damage.from, "meizlshhunshidistance")
 			room:addPlayerMark(death.damage.from, "&meizlshhunshidistance")
 		end
@@ -7749,9 +7749,9 @@ meizlzhenhunqucard = sgs.CreateSkillCard {
 		local x = card:getNumber() + card2:getNumber()
 		if x ~= 18 then
 			if x > 18 then
-				room:loseHp(targets[1], x - 18)
+				room:loseHp(targets[1], x - 18, true, source, "meizlzhenhunqu")
 			else
-				room:loseHp(targets[1], 18 - x)
+				room:loseHp(targets[1], 18 - x, true, source, "meizlzhenhunqu")
 			end
 		end
 	end
@@ -8365,7 +8365,7 @@ meizlshtuogucard = sgs.CreateSkillCard {
 		source:gainMark("@meizlmifurenmark", 3)
 		for _, p in sgs.qlist(room:getAllPlayers(false)) do
 			if p:getKingdom() ~= "shu" then
-				room:loseHp(p, 1)
+				room:loseHp(p, 1, true, source, "meizlshtuogu")
 			end
 		end
 
@@ -9493,7 +9493,7 @@ meispshruixue = sgs.CreateTriggerSkill {
 			if player:getMark("@meispshruixueeffect") > 0 then
 				local damage = data:toDamage()
 				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-					room:loseHp(p, tonumber(damage.damage))
+					room:loseHp(p, tonumber(damage.damage), true, player, self:objectName())
 				end
 			end
 		elseif event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_NotActive then
@@ -9651,7 +9651,7 @@ meizlzshtuogucard = sgs.CreateSkillCard {
 		source:gainMark("@meizlmifurenmark", 3)
 		for _, p in sgs.qlist(room:getAllPlayers(false)) do
 			if p:getKingdom() ~= "shu" then
-				room:loseHp(p, 2)
+				room:loseHp(p, 2, true, source, "meizlshtuogu")
 			end
 		end
 		if not source:askForSkillInvoke("meizlzshtuogu") then return end
@@ -10194,7 +10194,7 @@ meizlboss2dusha = sgs.CreateTriggerSkill {
 					log.arg = self:objectName()
 					room:sendLog(log)
 					for _, p in sgs.qlist(use.to) do
-						room:loseHp(p, 1)
+						room:loseHp(p, 1, true, player, self:objectName())
 					end
 				end
 			end
@@ -10261,7 +10261,7 @@ meizlboss2nuesha = sgs.CreateTriggerSkill {
 					log.arg = self:objectName()
 					room:sendLog(log)
 					for _, p in sgs.qlist(use.to) do
-						room:loseHp(p, 1)
+						room:loseHp(p, 1, true, player, self:objectName())
 					end
 				end
 			end
@@ -10298,7 +10298,7 @@ meizlboss2tuji = sgs.CreateTriggerSkill {
 					local x = math.random(1, 4)
 					if x ~= 1 then
 						for _, p in sgs.qlist(use.to) do
-							room:loseHp(p, 1)
+							room:loseHp(p, 1, true, player, self:objectName())
 						end
 					end
 				end
@@ -10852,7 +10852,7 @@ meizlbooss2jishuhandahaoling = sgs.CreateTriggerSkill {
 				player:loseMark("@meizlbooss2mufunrenmark", 2)
 				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 					if p:getKingdom() ~= "shu" then
-						room:loseHp(p, math.ceil(p:getHp() / 10))
+						room:loseHp(p, math.ceil(p:getHp() / 10), true, player, self:objectName())
 					end
 				end
 				local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
@@ -11124,7 +11124,7 @@ meizlbooss2bashuhandahaoling = sgs.CreateTriggerSkill {
 			player:loseMark("@meizlbooss2mufunrenmark", 0)
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:getKingdom() ~= "shu" then
-					room:loseHp(p, math.ceil(p:getHp() / 20))
+					room:loseHp(p, math.ceil(p:getHp() / 20), true, player, self:objectName())
 				end
 			end
 			for _, q in sgs.qlist(room:getAlivePlayers()) do
@@ -11700,7 +11700,7 @@ meispzlbhshuzhuang = sgs.CreateTriggerSkill {
 						local target = room:askForPlayerChosen(player, targets, self:objectName(),
 							"meispzlbhshuzhuangchoose", true)
 						if target then
-							room:loseHp(target)
+							room:loseHp(target, 1, true, player, self:objectName())
 						end
 					end
 				end
@@ -11865,7 +11865,7 @@ hujias = sgs.CreateTriggerSkill
 			if damage.from == nil then return end
 			if not room:askForSkillInvoke(player, "hujias", data) then return false end
 			room:loseMaxHp(damage.from, 1)
-			room:loseHp(damage.from, 1)
+			room:loseHp(damage.from, 1, true, player, self:objectName())
 			local recover = sgs.RecoverStruct()
 			recover.recover = 1
 			recover.who = player
@@ -11992,7 +11992,7 @@ guyanjh = sgs.CreateTriggerSkill
 					judge.who = damage.from
 					room:judge(judge)
 					if judge.card:getSuit() ~= suit then
-						room:loseHp(damage.from, 1)
+						room:loseHp(damage.from, 1, true, splayer, self:objectName())
 					end
 				end
 				--room:removeTag("CurrentDamageStruct")
@@ -12017,7 +12017,7 @@ hujiajh = sgs.CreateTriggerSkill {
 			local source = damage.from
 			if source == nil then return false end
 			room:loseMaxHp(source, player:getHandcardNum())
-			room:loseHp(source, source:getHandcardNum())
+			room:loseHp(source, source:getHandcardNum(), true, player, self:objectName())
 		end
 	end,
 }

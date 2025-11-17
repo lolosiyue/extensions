@@ -950,7 +950,7 @@ mapcard = sgs.CreateSkillCard{
 			end
 			room:getThread():delay(1500)
 			for _,q in ipairs(targets) do
-				room:loseHp(q, 2)
+				room:loseHp(q, 2, true, source, "map")
 			end
 		elseif source:getKingdom() == "CB" or source:getGeneralName():startsWith("REBORNS") then
 			local log = sgs.LogMessage()
@@ -3308,7 +3308,7 @@ tucicard = sgs.CreateSkillCard{
 		end
 		room:setEmotion(effect.from, "tuci")
 		room:getThread():delay(2800)
-		room:loseHp(effect.from, x)
+		room:loseHp(effect.from, x, true, effect.from, "tuci")
 		room:loseMaxHp(effect.to, x)
 	end
 }
@@ -4705,7 +4705,7 @@ tupo = sgs.CreateTriggerSkill{
 								break
 							end
 						end
-						room:loseHp(effect.from)
+						room:loseHp(effect.from, 1, true, effect.from, "tupo")
 					end
 				end
 			end
@@ -7539,7 +7539,7 @@ m_aoyi = sgs.CreateTriggerSkill{
 					
 					for _, p in ipairs(targets) do
 						if p:isAlive() then
-							room:loseHp(p)
+							room:loseHp(p, 1, true, player, self:objectName())
 						end
 					end
 				end
@@ -7589,7 +7589,7 @@ m_aoyi = sgs.CreateTriggerSkill{
 					room:obtainCard(player, card, reason)
 					
 					if server_to and server_to:isAlive() and move.to and move.to:objectName() == player:objectName() then
-						room:loseHp(server_to)
+						room:loseHp(server_to, 1, true, player, self:objectName())
 					end
 				end
 			end
@@ -7930,7 +7930,7 @@ shuangpaocard = sgs.CreateSkillCard{
 	target_fixed = true,
 	will_throw = false,
 	on_use = function(self, room, source, targets)
-		room:loseHp(source)
+		room:loseHp(source, 1, true, source, self:objectName())
 		source:drawCards(1, self:objectName())
 		room:addPlayerMark(source, "&shuangpao-Clear")
 		--[[
@@ -8126,7 +8126,7 @@ gaoda_ansha = sgs.CreateTriggerSkill{
 					selfplayer:turnOver()
 				end
 				room:doAnimate(1, selfplayer:objectName(), player:objectName())
-				room:loseHp(player)
+				room:loseHp(player, 1, true, selfplayer, self:objectName())
 				--[[local x = player:getMaxCards()
 				local z = player:getHandcardNum()
 				if z > x then
@@ -9419,7 +9419,7 @@ juexineffect = sgs.CreateTriggerSkill
 					if judge:isBad() then
 						room:setEmotion(player, "juexin2")
 						room:getThread():delay(2000)
-						room:loseHp(player, 2)
+						room:loseHp(player, 2, true, player, "juexin")
 					
 						for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 							if p:objectName() == from then
@@ -10874,10 +10874,10 @@ xinnian = sgs.CreateTriggerSkill
 			if damage.from and (string.find(damage.from:getGeneralName(), "IMPULSE") or string.find(damage.from:getGeneral2Name(), "IMPULSE")) then --For death special scene use only
 				-- 联动图片：脉冲
 				room:setPlayerFlag(player, "IMPULSE_FREEDOM")
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 				room:setPlayerFlag(player, "-IMPULSE_FREEDOM")
 			else
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 			end
 			return true
 		end
@@ -13152,7 +13152,7 @@ chaobingcard = sgs.CreateSkillCard{
 		room:setChangeSkillState(source, "chaobing", 1)
 		room:broadcastSkillInvoke(self:objectName(), math.random(4, 6))
 		if self:getSubcards():isEmpty() then
-			room:loseHp(source)
+			room:loseHp(source, 1, true, source, "chaobing")
 		end
 	end
 }
@@ -16032,7 +16032,7 @@ tianlang = sgs.CreateTriggerSkill{
 		else
 			if player:getPhase() == sgs.Player_Finish and player:getMark("damage_point_round") > 0 and room:askForSkillInvoke(player, self:objectName(), data) then
 				room:broadcastSkillInvoke(self:objectName())
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 				player:drawCards(2, self:objectName())
 			end
 		end
@@ -16450,7 +16450,7 @@ redpacket = sgs.CreateTriggerSkill{
 								room:throwCard(equips:at(rand), player)
 							end
 						elseif x == 3 then
-							room:loseHp(player)
+							room:loseHp(player, 1, true, player, self:objectName())
 						elseif x == 4 then
 							player:skip(sgs.Player_Draw)
 						elseif x == 5 then

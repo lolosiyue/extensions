@@ -1865,7 +1865,7 @@ sy_kuangxi = sgs.CreateTriggerSkill{
 				end
 			end
 			if use.card and use.card:getSkillName() == self:objectName() and player:getMark(self:objectName()) == 0 then
-				room:loseHp(player, 1, true)
+				room:loseHp(player, 1, true, player, self:objectName())
 			end
 			room:setPlayerMark(player, self:objectName(), 0)
 		elseif event == sgs.Damage then
@@ -2388,7 +2388,7 @@ sy_huoxin = sgs.CreateTriggerSkill{
 		if damage.from and damage.from:objectName() ~= player:objectName() then
 			room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
 		    if damage.from:isAllNude() then
-			    room:loseHp(damage.from, 1, true)
+			    room:loseHp(damage.from, 1, true, player, self:objectName())
 				return true
 			else
 			    local choices = {"obtain_onebyone", "lose_hp"}
@@ -2407,7 +2407,7 @@ sy_huoxin = sgs.CreateTriggerSkill{
 					end
 					if dummy:subcardsLength() > 0 then room:obtainCard(player, dummy, false) end
 				else
-				    room:loseHp(damage.from, 1, true)
+				    room:loseHp(damage.from, 1, true, player, self:objectName())
 					return true
 				end
 			end
@@ -4037,7 +4037,7 @@ sy_xushu = sgs.CreateTriggerSkill{
 			    room:sendCompulsoryTriggerLog(sakura, self:objectName())
 				room:notifySkillInvoked(sakura, self:objectName())
 				room:broadcastSkillInvoke(self:objectName())
-				room:loseHp(damage.to, n)
+				room:loseHp(damage.to, n, true, sakura, self:objectName())
 				return true
 			end
 		elseif event == sgs.EventPhaseStart then
@@ -4047,7 +4047,7 @@ sy_xushu = sgs.CreateTriggerSkill{
 				    room:sendCompulsoryTriggerLog(sakura, self:objectName())
 				    room:notifySkillInvoked(sakura, self:objectName())
 				    room:broadcastSkillInvoke(self:objectName())
-					room:loseHp(target)
+					room:loseHp(target, 1, true, sakura, self:objectName())
 				end
 			end
 		end
@@ -5153,7 +5153,7 @@ sy_shishenCard = sgs.CreateSkillCard{
 	on_use = function(self, room, source, targets)
 		local target = targets[1]
 		local room = source:getRoom()
-		room:loseHp(target)
+		room:loseHp(target, 1, true, source, "sy_shishen")
 	end
 }
 

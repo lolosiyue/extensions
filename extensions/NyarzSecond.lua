@@ -1543,7 +1543,7 @@ gsgusheCard = sgs.CreateSkillCard
             if source:isAlive() then
                 room:setPlayerMark(source, "gsgushe_failed-PlayClear", 1)
                 room:setPlayerMark(source, "&gsgushe", source:getMark("&gsgushe")+1)
-                room:loseHp(source, 1)
+                room:loseHp(source, 1, true, source, self:objectName())
             end
         end
     end
@@ -1784,7 +1784,7 @@ bnbenghuai = sgs.CreateTriggerSkill{
                 room:sendLog(log)
 
                 if string.find(choice, "hp") or string.find(choice, "all") then
-                    room:loseHp(player, 1)
+                    room:loseHp(player, 1, true, player, self:objectName())
                 end
                 if player:isDead() then return false end
                 if string.find(choice, "max") or string.find(choice, "all") then
@@ -1866,7 +1866,7 @@ bnhengzheng = sgs.CreateTriggerSkill{
         if player:getHandcardNum() > player:getHp() then return false end
         if room:askForSkillInvoke(player, self:objectName(), sgs.QVariant("get")) then
             room:broadcastSkillInvoke(self:objectName())
-            room:loseHp(player, 1)
+            room:loseHp(player, 1, true, player, self:objectName())
             if player:isDead() then return false end
             for _,other in sgs.qlist(room:getOtherPlayers(player)) do
                 if (not other:isNude()) and other:isAlive() then
@@ -2090,7 +2090,7 @@ xsxingshang = sgs.CreateTriggerSkill{
                 room:broadcastSkillInvoke(self:objectName())
                 room:setPlayerMark(target, "xsxingshangfrom"..player:objectName(), 1)
                 room:setPlayerMark(target, "&xsxingshang+to+#"..player:objectName(), 1)
-                room:loseHp(target, 1)
+                room:loseHp(target, 1, true, player, self:objectName())
             end
         end
     end,
@@ -2164,7 +2164,7 @@ xsfangzu = sgs.CreateTriggerSkill{
                 end
                 if string.find(choice, "discard") then
                     room:askForDiscard(target, self:objectName(), n, n, false, true)
-                    if target:isAlive() then room:loseHp(target, 1) end
+                    if target:isAlive() then room:loseHp(target, 1, true, player, self:objectName()) end
                 end
             else
                 return false
@@ -4248,7 +4248,7 @@ nyarz_yongjinCard = sgs.CreateSkillCard
 
         if source:isDead() then return false end
         if string.find(choice,"all") then
-            room:loseHp(source, 1)
+            room:loseHp(source, 1, true, source, self:objectName())
             if source:isDead() then return false end
             source:drawCards(1, self:objectName())
         end
@@ -4544,7 +4544,7 @@ nyarz_jiqiao = sgs.CreateTriggerSkill{
             if #colors <= 1 and player:isWounded() then
                 room:recover(player, sgs.RecoverStruct(self:objectName(), player, 1))
             elseif #colors > 1 then
-                room:loseHp(player, 1)
+                room:loseHp(player, 1, true, player, self:objectName())
             end
         end
     end,
@@ -5033,7 +5033,7 @@ nyarz_longnu_buff2 = sgs.CreateTriggerSkill{
             if not player:hasSkill("nyarz_longnu") then return false end
             room:addPlayerMark(player, "&nyarz_longnu", 1)
             room:sendCompulsoryTriggerLog(player, "nyarz_longnu", true, true)
-            room:loseHp(player, player:getMark("&nyarz_longnu"))
+            room:loseHp(player, player:getMark("&nyarz_longnu"), true, player, "nyarz_longnu")
             if player:isAlive() then
                 player:drawCards(3*player:getMark("&nyarz_longnu"), "nyarz_longnu")
             end
@@ -5075,13 +5075,13 @@ nyarz_shibei = sgs.CreateTriggerSkill{
                 room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
                 room:addPlayerMark(player, "nyarz_shibei-Clear", 1)
                 room:addPlayerMark(player, "&nyarz_shibei+-Clear", 1)
-                room:loseHp(player, 1)
+                room:loseHp(player, 1, true, player, self:objectName())
             end
         end
         if event == sgs.DamageInflicted then
             if player:getMark("nyarz_shibei-Clear") <= 1 then return false end
             room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
-            room:loseHp(player, damage.damage)
+            room:loseHp(player, damage.damage, true, player, self:objectName())
             return true
         end
     end,
@@ -5818,7 +5818,7 @@ nyarz_mengmou_mou = sgs.CreateTriggerSkill{
                     sgs.Card_MethodUse, false, player, nil, "nyarz_mengmou_mou_lose")
 
                     if target:isAlive() and (not card) then
-                        room:loseHp(target, 1)
+                        room:loseHp(target, 1, true, player, self:objectName())
                     end
                 end
             end
@@ -5838,7 +5838,7 @@ nyarz_mengmou_mou = sgs.CreateTriggerSkill{
             end
             if use.card:hasFlag("nyarz_mengmou_mou_lose") and (not use.card:hasFlag("nyarz_mengmou_mou_damage"))
             and use.from:isAlive() then
-                room:loseHp(use.from, 1)
+                room:loseHp(use.from, 1, true, nil, self:objectName())
             end
         end
     end,
@@ -6255,7 +6255,7 @@ nyarz_funing = sgs.CreateTriggerSkill{
             end
             if recast:isEmpty() then
                 room:setPlayerMark(player, "&nyarz_funing-Clear", 1)
-                room:loseHp(player, 1)
+                room:loseHp(player, 1, true, player, self:objectName())
                 if player:isAlive() then player:drawCards(3, self:objectName()) end
             else
                 local log = sgs.LogMessage()
@@ -9485,7 +9485,7 @@ nyarz_zhonggu = sgs.CreateTriggerSkill{
                         room:addPlayerMark(p, "&nyarz_zhonggu_draw", 1)
                         room:addPlayerMark(player, "nyarz_zhonggu+"..p:objectName(), 1)
                     end
-                    room:loseHp(player, 1)
+                    room:loseHp(player, 1, true, player, self:objectName())
                     room:getThread():delay(300)
                 end
             end
@@ -10253,7 +10253,7 @@ nyarz_xionghuo = sgs.CreateTriggerSkill{
             if damage.to:isDead() then return false end
             if damage.damage ~= 1 then return false end
             room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
-            room:loseHp(damage.to, damage.to:getHp())
+            room:loseHp(damage.to, damage.to:getHp(), true, player, self:objectName())
         end
     end,
     can_trigger = function(self, target)

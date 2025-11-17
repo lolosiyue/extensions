@@ -645,7 +645,7 @@ LuaFanjianCard = sgs.CreateSkillCard {
 				target:throwAllEquips()
 			end
 		else
-			room:loseHp(target, 1)
+			room:loseHp(target, 1, true, source, "LuaFanjian")
 		end
 	end
 }

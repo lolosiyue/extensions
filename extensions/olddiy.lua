@@ -258,12 +258,12 @@ lyduji = sgs.CreateTriggerSkill {
 					if pindian.from_number > pindian.to_number then
 						liyu:obtainCard(pindian.from_card)
 						if not room:askForDiscard(target, "lyduji", 2, 2, true, false) then
-							room:loseHp(target)
+							room:loseHp(target, 1, true, player, self:objectName())
 						end
 					elseif pindian.from_number < pindian.to_number then
 						liyu:obtainCard(pindian.to_card)
 						if not room:askForDiscard(source, "lyduji", 2, 2, true, false) then
-							room:loseHp(source)
+							room:loseHp(source, 1, true, player, self:objectName())
 							--拼点赢了之后
 						end
 					else
@@ -499,7 +499,7 @@ spwuhun=sgs.CreateTriggerSkill{
 			end	
 			for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:getMark("@spnightmare")>0 then
-					room:loseHp(p,p:getMark("@spnightmare"))
+					room:loseHp(p,p:getMark("@spnightmare"), true, player, self:objectName())
 					p:loseAllMarks("@spnightmare")
 				end
 			end
@@ -1247,7 +1247,7 @@ LuaLongya = sgs.CreateTriggerSkill {
 						player:drawCards(1)
 					elseif suit == sgs.Card_Heart or suit == sgs.Card_Diamond then
 						if victim:isAlive() then
-							room:loseHp(victim)
+							room:loseHp(victim, 1, true, player, self:objectName())
 						end
 					end
 				end
@@ -1284,7 +1284,7 @@ LuaLongyaT = sgs.CreateTriggerSkill {
 						player:drawCards(1)
 					elseif kind == sgs.Card_Heart or kind == sgs.Card_Diamond then
 						if p:isAlive() then
-							room:loseHp(p)
+							room:loseHp(p, 1, true, player, "LuaLongya")
 						end
 					end
 					p:setFlags("-LuaTiejiTarget")

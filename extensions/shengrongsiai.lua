@@ -323,7 +323,7 @@ luaRhuogen = sgs.CreateTriggerSkill {
 			dest:setValue(target)
 			while target:getHp() <= 0 and player:getHp() > 1 do
 				if room:askForSkillInvoke(player, self:objectName(), dest) then
-					room:loseHp(player, 1)
+					room:loseHp(player, 1, true, player, self:objectName())
 					if player:isAlive() then
 						local recover = sgs.RecoverStruct()
 						recover.who = player
@@ -604,7 +604,7 @@ luaRqice = sgs.CreateTriggerSkill {
                             room:addPlayerMark(p, "luaRqice-Clear")
                             room:addPlayerMark(p, "&luaRqice-Clear")
                             if p:isKongcheng() then
-                                room:loseHp(p)
+                                room:loseHp(p, 1, true, p, self:objectName())
                             else
                                 p:throwAllHandCards()
                             end
@@ -763,7 +763,7 @@ luaRqiangquan = sgs.CreateTriggerSkill{
 			    if dest then
                     local prompt = string.format("luaRqiangquan-slash:%s", damage.to:objectName())
                     if not room:askForUseSlashTo(dest, damage.to, prompt) then
-                        room:loseHp(dest)
+                        room:loseHp(dest, 1, true, player, self:objectName())
                     end
                 end
             end

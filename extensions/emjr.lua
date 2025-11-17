@@ -1017,7 +1017,7 @@ etiaoboCard = sgs.CreateSkillCard {
 				end
 			end
 		else
-			room:loseHp(source, 1)
+			room:loseHp(source, 1, true, source, self:objectName())
 		end
 	end
 }

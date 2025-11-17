@@ -496,7 +496,7 @@ keguitiqiCard = sgs.CreateSkillCard {
 		return (#targets < self:subcardsLength()) and (to_select:objectName() ~= sgs.Self:objectName())
 	end,
 	on_use = function(self, room, player, targets)
-		room:loseHp(player)
+		room:loseHp(player, 1, true, player, self:objectName())
 		for _, p in ipairs(targets) do
 			room:damage(sgs.DamageStruct(self:objectName(), player, p))
 		end

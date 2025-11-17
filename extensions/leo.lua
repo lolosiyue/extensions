@@ -69,7 +69,7 @@ luajuesii_card = sgs.CreateSkillCard {
 		if (choice == "luajuesii1") then
 			room:loseMaxHp(source, 1)
 		else
-			room:loseHp(source, 1)
+			room:loseHp(source, 1, true, source, self:objectName())
 		end
 		return use_card
 	end,
@@ -606,7 +606,7 @@ luayuanlue_card = sgs.CreateSkillCard
 				x = hp - handcardnum
 				if x > 4 then x = 4 end
 				to:drawCards(x)
-				room:loseHp(to, 1)
+				room:loseHp(to, 1, true, from, self:objectName())
 			end
 		end
 	}
@@ -2010,7 +2010,7 @@ luachunl = sgs.CreateTriggerSkill
 				room:recover(from, recov)
 				return true
 			elseif to:hasSkill("luachunl") and room:askForSkillInvoke(to, "luachunl", data) then
-				room:loseHp(to, 1)
+				room:loseHp(to, 1, true, to, self:objectName())
 				local x = to:getMaxHp() - to:getHp()
 				if x > 2 then x = 2 end
 				to:drawCards(x)
@@ -2598,7 +2598,7 @@ luadushi = sgs.CreateTriggerSkill {
 					if (dushidiscard:match(dushicardname)) then
 						if player:isKongcheng() and not player:hasEquip() then
 							room:broadcastSkillInvoke("wansha", 1)
-							room:loseHp(player, 1)
+							room:loseHp(player, 1, true, nil, self:objectName())
 						else
 							choice = room:askForChoice(curp, "luadushi", "luadushi1+luadushi2")
 							if (choice == "luadushi1") then
@@ -2607,7 +2607,7 @@ luadushi = sgs.CreateTriggerSkill {
 								curp:obtainCard(sgs.Sanguosha:getCard(movecard_id))
 							else
 								room:broadcastSkillInvoke("wansha", 1)
-								room:loseHp(player, 1)
+								room:loseHp(player, 1, true, nil, self:objectName())
 							end
 						end
 					end
@@ -3504,7 +3504,7 @@ luajincui = sgs.CreateTriggerSkill
 			local choice = room:askForChoice(player, "luajincui", "luajincui1+luajincui2")
 			jincuiTarget:drawCards(2) 
 			if(choice == "luajincui1") then
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 			else
 				room:loseMaxHp(player)
 			end	

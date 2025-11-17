@@ -1660,7 +1660,7 @@ lol_ayjm_q = sgs.CreateTriggerSkill{
 		local use = data:toCardUse()
 		if use.card:getSkillName() == self:objectName() and use.from:objectName() == player:objectName() then 		    
 		    room:setPlayerFlag(player, "lol_ayjm_q")
-            room:loseHp(player)
+            room:loseHp(player, 1, true, player, self:objectName())
 			room:setPlayerMark(player, "@lol_ayjm_t", player:getMark("@lol_ayjm_t") + 1)
 			for _,p in sgs.qlist(use.to) do
 				for _,equip in sgs.qlist(p:getEquips()) do p:obtainCard(equip) end				
@@ -1695,7 +1695,7 @@ lol_ayjm_w = sgs.CreateTriggerSkill{
 				room:broadcastSkillInvoke("lol_ayjm_w")	
 				room:notifySkillInvoked(player, self:objectName())
 				if choice == "lol_ayjm_w_damage" then
-					room:loseHp(player)
+					room:loseHp(player, 1, true, player, self:objectName())
 					room:setPlayerMark(player, "@lol_ayjm_t", player:getMark("@lol_ayjm_t") + 1)
 					damage.damage = damage.damage + 1
 					data:setValue(damage)				
@@ -1729,7 +1729,7 @@ lol_ayjm_e = sgs.CreateTriggerSkill{
 		if event == sgs.TargetConfirmed then
 		    local use = data:toCardUse()
 		    if use.card:getSkillName() == self:objectName() and use.from:objectName() == player:objectName() then 	
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 				room:setPlayerMark(player, "@lol_ayjm_t", player:getMark("@lol_ayjm_t") + 1)
 				room:setPlayerFlag(player, "lol_ayjm_e")				
             end				

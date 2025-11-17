@@ -102,7 +102,7 @@ on_use = function(self, room, source, targets)
 			end
             duel:deleteLater()
 		else
-			room:loseHp(source)
+			room:loseHp(source, 1, true, source, "blood_hj")
 		end
 	end
 }
@@ -226,7 +226,7 @@ luaxiongfengCard = sgs.CreateSkillCard{
        room:cardEffect(self, source, p)
      end
      source:removeTag("xiongfeng_choice")
-      if x > 2 then room:loseHp(source) end
+      if x > 2 then room:loseHp(source, 1, true, source, self:objectName()) end
     end,
   on_effect = function(self,effect)
     local source = effect.from

@@ -1541,7 +1541,7 @@ nykangge = sgs.CreateTriggerSkill{
                 player:drawCards(2)
                 if player:getMark("nykanggerecord-Clear") >= 7 then
                     room:setPlayerMark(player, "nykangfefailed_lun", 1)
-                    room:loseHp(player, 1)
+                    room:loseHp(player, 1, true, player, self:objectName())
                 end
             end
         end
@@ -1600,7 +1600,7 @@ nyjielie = sgs.CreateTriggerSkill{
             if target then
                 room:setPlayerFlag(player, "-nyjielietarget")
                 room:broadcastSkillInvoke(self:objectName())
-                room:loseHp(player, 1)
+                room:loseHp(player, 1, true, player, self:objectName())
                 if target:isAlive() then
                     target:drawCards(damage.damage)
                 end
@@ -1614,7 +1614,7 @@ nyjielie = sgs.CreateTriggerSkill{
                     if target then
                         room:setPlayerFlag(player, "-nyjielietarget")
                         room:broadcastSkillInvoke(self:objectName())
-                        room:loseHp(p, 1)
+                        room:loseHp(p, 1, true, p, self:objectName())
                         if target:isAlive() then
                             target:drawCards(damage.damage)
                         end
@@ -3544,7 +3544,7 @@ nyarz_lingxi = sgs.CreateTriggerSkill{
                     local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "@nyarz_lingxi", true, true)
                     if target then
                         if target:isNude() then
-                            room:loseHp(target, 1)
+                            room:loseHp(target, 1, true, player, self:objectName())
                         else
                             room:askForDiscard(target, self:objectName(), 2, 2, false, true)
                         end

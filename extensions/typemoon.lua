@@ -306,7 +306,7 @@ pinxue = sgs.CreateTriggerSkill {
 			local room = player:getRoom()
 			if player:getMark("@yanjing") == 0 then
 				room:sendCompulsoryTriggerLog(player, "pinxue", true)
-				room:loseHp(player)
+				room:loseHp(player, 1, true, player, self:objectName())
 				room:broadcastSkillInvoke(self:objectName())
 				player:gainMark("@yanjing", 1)
 			end

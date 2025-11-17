@@ -181,7 +181,7 @@ se_wuyi = sgs.CreateTriggerSkill {
 			if wore < maxhp then
 				room:loseMaxHp(player, maxhp - wore)
 				local target = room:askForPlayerChosen(player, room:getAlivePlayers(), "se_wuyi_losehp", "se_wuyi_losehp")
-				if target then room:loseHp(target) end
+				if target then room:loseHp(target, 1, true, player, self:objectName()) end
 				if player:getHp() < hp then
 					local x = 2 * (hp - player:getHp())
 					room:setPlayerMark(player, "se_wuyi-draw", x)

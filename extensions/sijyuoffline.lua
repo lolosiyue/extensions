@@ -4209,7 +4209,7 @@ sfofl_quanyiCard = sgs.CreateSkillCard {
                 room:damage(damage)
             end
             if card:getSuit() == sgs.Card_Spade and winner and winner:isAlive() then
-                room:loseHp(winner)
+                room:loseHp(winner, 1, true, source, self:objectName())
             end
             if card:getSuit() == sgs.Card_Club and winner and winner:isAlive() and winner:canDiscard(winner, "he") then
                 room:askForDiscard(winner, self:objectName(), 2, 2, false, true)
@@ -4407,7 +4407,7 @@ sfofl_qupo = sgs.CreateTriggerSkill {
                         if p:getMark("&sfofl_qupo+to+#"..q:objectName().."-Clear") > 0 and q:getMark("sfofl_qupoRed-Clear") == 1 then
                             if not use.to:contains(p) then
                                 room:sendCompulsoryTriggerLog(q, self:objectName(), true)
-                                room:loseHp(room:getCurrent(), 1)
+                                room:loseHp(room:getCurrent(), 1, true, q, self:objectName())
                             end
                         end
                     end
@@ -4422,7 +4422,7 @@ sfofl_qupo = sgs.CreateTriggerSkill {
                         for _, q in sgs.qlist(room:getAlivePlayers()) do
                             if q:getMark("&sfofl_qupo-Clear") > 0  then
                                 room:sendCompulsoryTriggerLog(p, self:objectName(), true)
-                                room:loseHp(q, 1)
+                                room:loseHp(q, 1, true, p, self:objectName())
                             end
                         end
                     end
@@ -5142,7 +5142,7 @@ sfofl_qixing_buff = sgs.CreateTriggerSkill {
             for _, mark in sgs.list(player:getMarkNames()) do
                 if string.find(mark, "sfofl_qixingCard"..use.card:getTypeId()) and player:getMark(mark) > 0 then
                     room:sendCompulsoryTriggerLog(player, "sfofl_qixing", true)
-                    room:loseHp(player)
+                    room:loseHp(player, 1, true, player, "sfofl_qixing")
                 end
             end
             for _, mark in sgs.list(player:getMarkNames()) do
@@ -5605,7 +5605,7 @@ sfofl_jianwei = sgs.CreateTriggerSkill{
 						"sfofl_jianwei-invoke", true, true)
             if not target then return false end
             player:loseMark("@sfofl_jianwei")
-            room:loseHp(player)
+            room:loseHp(player, 1, true, player, self:objectName())
             if not player:isAlive() then return false end
             room:swapCards(player, target, "hej", self:objectName())
         end
@@ -10928,7 +10928,7 @@ sfofl_lianhuanCard = sgs.CreateSkillCard{
 		return dc:targetFilter(plist,to_select,player)
 	end,
 	on_use = function(self, room, source, targets)
-        room:loseHp(source)
+        room:loseHp(source,1,true,source,self:objectName())
         local dc = dummyCard("iron_chain","sfofl_lianhuan")
         local targets_list = sgs.SPlayerList()
         for _,target in ipairs(targets) do
@@ -11156,7 +11156,7 @@ sfofl_yujun = sgs.CreateTriggerSkill{
             for _,p in sgs.list(room:findPlayersBySkillName(self:objectName()))do
                 if room:askForSkillInvoke(p, self:objectName(), data) then
                     p:turnOver()
-                    room:loseHp(p)
+                    room:loseHp(p, 1, true, p, self:objectName())
                     p:drawCards(3, self:objectName())
                     return player:damageRevises(data,-damage.damage)
                 end
@@ -11804,11 +11804,11 @@ sfofl_barbsCard = sgs.CreateSkillCard{
         elseif n<0 then 
             loser = player
         else
-            room:loseHp(player, 1)
-            room:loseHp(target, 1)
+            room:loseHp(player, 1, true, player, self:objectName())
+            room:loseHp(target, 1, true, target, self:objectName())
         end
         if loser then
-            room:loseHp(loser, 1)
+            room:loseHp(loser, 1, true, loser, self:objectName())
         end
 	end
 }
@@ -12085,7 +12085,7 @@ sfofl_jinshou = sgs.CreateTriggerSkill{
                 if player:getMark("sfofl_jinshou-Clear") == 0 then
                     if player:askForSkillInvoke(self:objectName(), data) then
                         room:throwAllHandCards(player)
-                        room:loseHp(player)
+                        room:loseHp(player, 1, true, player, self:objectName())
                         room:addPlayerMark(player, "&sfofl_jinshou-SelfstartClear")
                     end
                 end
@@ -13900,7 +13900,7 @@ sfofl_tianpan = sgs.CreateTriggerSkill{
         else
             local result = room:askForChoice(player, self:objectName(), "hp+maxhp", data)
             if result == "hp" then
-                room:loseHp(player)
+                room:loseHp(player, 1, true, player, self:objectName())
             else
                 room:loseMaxHp(player)
             end
@@ -14105,7 +14105,7 @@ sfofl_juedian = sgs.CreateTriggerSkill{
                 if use and use.card and use.to:length() == 1 then
                     local result = room:askForChoice(player, self:objectName(), "hp+maxhp+beishui", data)
                     if result == "hp" or result == "beishui" then
-                        room:loseHp(player)
+                        room:loseHp(player, 1, true, player, self:objectName())
                     end
                     if result == "maxhp" or result == "beishui" then
                         room:loseMaxHp(player)
@@ -17335,7 +17335,7 @@ sfofl_jingongz = sgs.CreateTriggerSkill{
             end
         elseif event==sgs.EventPhaseChanging and data:toPhaseChange().to==sgs.Player_NotActive then
             if player:getMark("sfofl_jingongz-Clear") > 0 and player:getPhase() == sgs.Player_Finish then
-                room:loseHp(player, 1)
+                room:loseHp(player, 1, true, player, self:objectName())
                 room:sendCompulsoryTriggerLog(player, self:objectName())
             end
         end
@@ -17451,7 +17451,7 @@ sfofl_jieao = sgs.CreateTriggerSkill{
 		if event==sgs.TurnOver then
             room:sendCompulsoryTriggerLog(player, self:objectName())
             for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-                room:loseHp(p)
+                room:loseHp(p, 1, true, player, self:objectName())
             end
 			return player:faceUp()
 		end
@@ -25907,7 +25907,7 @@ sfofl_n_linzhenCard = sgs.CreateSkillCard{
 	name = "sfofl_n_linzhen",
 	target_fixed = true,
 	on_use = function(self, room, source, targets)
-		room:loseHp(source)
+		room:loseHp(source, 1, true, source, self:objectName())
 		if source:isAlive() then
             local card_ids = room:drawCardsList(source, 3, self:objectName(), true, false)
             source:assignmentCards(card_ids,self:objectName(),room:getAllPlayers(),-1,0,false)
@@ -28589,7 +28589,7 @@ sfofl_n_yuanlueCard = sgs.CreateSkillCard{
 	name = "sfofl_n_yuanlue",
 	target_fixed = true,
 	on_use = function(self, room, source, targets)
-		room:loseHp(source)
+		room:loseHp(source, 1, true, source, self:objectName())
 		if source:isAlive() then
             source:drawCards(3, self:objectName())
             local card = room:askForExchange(source, self:objectName(), 2, 2, true, "@sfofl_n_yuanlue", true)

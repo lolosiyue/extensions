@@ -421,7 +421,7 @@ tieba_zhiliCard = sgs.CreateSkillCard{
         -- 标记"破防"状态
         room:setPlayerMark(target, "tieba_pofang", 1)
         -- 失去所有体力（进入濒死）
-        room:loseHp(target, target:getHp())
+        room:loseHp(target, target:getHp(), true, source, "tieba_zhili")
         
         -- 日志和动画
         room:broadcastSkillInvoke("tieba_zhili")

@@ -474,7 +474,7 @@ TH_ForbiddenFruitsCARD = sgs.CreateSkillCard{
 			if sgs.Sanguosha:getCard(id):isKindOf("Peach") then isPeach = true end
 			room:moveCardTo(sgs.Sanguosha:getCard(id), nil, source, sgs.Player_PlaceHand, reason, room:getCardPlace(id) ~= sgs.Player_PlaceHand)
 		end
-		if isPeach then room:loseHp(source) end
+		if isPeach then room:loseHp(source, 1, true, source, "TH_ForbiddenFruits") end
 	end
 }
 TH_ForbiddenFruits = sgs.CreateTriggerSkill{
@@ -1721,7 +1721,7 @@ TH_fanhundie=sgs.CreateTriggerSkill{--反魂蝶
 					sb:gainMark("@TH_fanhundie", 2)
 					player:addMark("TH_xixingyao2")
 				elseif sb:getMark("@TH_fanhundie") == 5 then
-					room:loseHp(sb)
+					room:loseHp(sb, 1, true, player, self:objectName())
 					if sb:isAlive() then sb:gainMark("@TH_fanhundie", 3)
 					else sb:loseAllMarks("@TH_fanhundie") end
 					player:addMark("TH_xixingyao3")
@@ -1729,7 +1729,7 @@ TH_fanhundie=sgs.CreateTriggerSkill{--反魂蝶
 					room:setPlayerMark(sb, "TH_fanhundie_target" .. player:objectName(), 0)
 					room:setPlayerMark(sb, "&TH_fanhundie+to+#" .. player:objectName(), 0)
 					room:loseMaxHp(sb)
-					room:loseHp(sb)
+					room:loseHp(sb, 1, true, player, self:objectName())
 					sb:loseAllMarks("@TH_fanhundie")
 					player:gainMark("@TH_fhdonce")
 					player:addMark("TH_xixingyao4")
@@ -2155,7 +2155,7 @@ TH_nantiCARD = sgs.CreateSkillCard{----难题
 			if card1 ~= nil then
 				target:drawCards(1)
 			else
-				room:loseHp(target)
+				room:loseHp(target, 1, true, source, "TH_nanti")
 				return
 			end
 		elseif choice == "nantibig" then
@@ -2164,7 +2164,7 @@ TH_nantiCARD = sgs.CreateSkillCard{----难题
 			if card2 ~= nil then
 				target:drawCards(1)
 			else
-				room:loseHp(target)
+				room:loseHp(target, 1, true, source, "TH_nanti")
 				return
 			end
 		elseif choice == "nantismall" then
@@ -2173,7 +2173,7 @@ TH_nantiCARD = sgs.CreateSkillCard{----难题
 			if card3 ~= nil then
 				target:drawCards(1)
 			else
-				room:loseHp(target)
+				room:loseHp(target, 1, true, source, "TH_nanti")
 				return
 			end
 		elseif choice == "nantiequip" then
@@ -2182,7 +2182,7 @@ TH_nantiCARD = sgs.CreateSkillCard{----难题
 			if card4 ~= nil then
 				target:drawCards(1)
 			else
-				room:loseHp(target)
+				room:loseHp(target, 1, true, source, "TH_nanti")
 			return
 			end
 		elseif choice == "nantisuicide" then
@@ -2582,7 +2582,7 @@ TH_bumie =sgs.CreateTriggerSkill{----不灭
 				if not room:askForSkillInvoke(player,self:objectName()) then return false end
 				-- player:throwAllHandCardsAndEquips()
 				player:throwAllCards()
-				if player:getHp() > 1 then room:loseHp(player, player:getHp() - 1) end
+				if player:getHp() > 1 then room:loseHp(player, player:getHp() - 1, true, player, self:objectName()) end
 				for _, acard in sgs.qlist(room:getDiscardPile()) do
 					local bcard = sgs.Sanguosha:getCard(acard)
 					if bcard:isKindOf("FireSlash") then
@@ -7088,7 +7088,7 @@ TH_huanghuoCARD = sgs.CreateSkillCard{
 			end
 		end
 		if not lose then
-			room:loseHp(targets[1])
+			room:loseHp(targets[1], 1, true, source, "TH_huanghuo")
 			room:setPlayerProperty(targets[1], "maxhp", sgs.QVariant(targets[1]:getMaxHp() + 1))
 		end
 		room:setPlayerFlag(targets[1], "TH_huanghuo_target")

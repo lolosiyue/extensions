@@ -64,7 +64,7 @@ berserk_benghuai = sgs.CreateTriggerSkill{
 			    if t:objectName() ~= player:objectName() then
 				    room:damage(sgs.DamageStruct(self:objectName(), player, t, math.ceil(t:getMark("@note")/2), sgs.DamageStruct_Fire))
 				elseif t:objectName() == player:objectName() then
-				    room:loseHp(t)
+				    room:loseHp(t, 1, true, player, self:objectName())
 					t:drawCards(1 + math.ceil(t:getMark("@note")/2))
 				end
 				t:loseAllMarks("@note")

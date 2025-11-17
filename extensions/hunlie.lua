@@ -834,12 +834,12 @@ sgkgodjuejing = sgs.CreateTriggerSkill{
 		if event == sgs.GameStart then
 			if player:getHp() >= 1 then
 				room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
-				room:loseHp(player, player:getHp() - 1)
+				room:loseHp(player, player:getHp() - 1, true, player, self:objectName())
 			end
 		elseif event == sgs.EventAcquireSkill then
 			if data:toString() == self:objectName() and player:getHp() >= 1 then
 				room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
-				room:loseHp(player, player:getHp() - 1)
+				room:loseHp(player, player:getHp() - 1, true, player, self:objectName())
 			end
 		elseif event == sgs.PreHpRecover then
 			local rec = data:toRecover()
@@ -1471,7 +1471,7 @@ sgkgodtianqiCard = sgs.CreateSkillCard{
 		room:sendLog(log)
 		room:getThread():delay(500)
 		room:clearAG()
-		if tianduguojia(guojia, poi) then room:loseHp(guojia) end
+		if tianduguojia(guojia, poi) then room:loseHp(guojia, 1, true, guojia, self:objectName()) end
 		if guojia:isAlive() then
 			local use_card = sgs.Sanguosha:cloneCard(user_str, sgs.Card_NoSuit, 0)
 			use_card:setSkillName("sgkgodtianqi")
@@ -1535,7 +1535,7 @@ sgkgodtianqiCard = sgs.CreateSkillCard{
 		room:sendLog(log)
 		room:getThread():delay(500)
 		room:clearAG()
-		if tianduguojia(guojia, poi) then room:loseHp(guojia) end
+		if tianduguojia(guojia, poi) then room:loseHp(guojia, 1, true, guojia, self:objectName()) end
 		if guojia:isAlive() then
 			local use_card = sgs.Sanguosha:cloneCard(user_str, sgs.Card_NoSuit, 0)
 			use_card:setSkillName("sgkgodtianqi")
@@ -2676,7 +2676,7 @@ sgkgodqinyin = sgs.CreateTriggerSkill{
 				room:doAnimate(1, player:objectName(), pe:objectName())
 			end
 			for _, t in sgs.qlist(room:getAlivePlayers()) do
-			    room:loseHp(t)
+			    room:loseHp(t, 1, true, player, self:objectName())
 			end
 			if player:getTag("sgkgodyeyan_used"):toBool() == true then
 				if player:askForSkillInvoke(self:objectName(), data) then
@@ -2684,7 +2684,7 @@ sgkgodqinyin = sgs.CreateTriggerSkill{
 						room:doAnimate(1, player:objectName(), pe:objectName())
 					end
 					for _, t in sgs.qlist(room:getAlivePlayers()) do
-						room:loseHp(t)
+						room:loseHp(t, 1, true, player, self:objectName())
 					end
 				end
 			end
@@ -2697,7 +2697,7 @@ sgkgodqinyin = sgs.CreateTriggerSkill{
 				    room:doAnimate(1, player:objectName(), t:objectName())
 				end
 				for _, t in sgs.qlist(room:getAlivePlayers()) do
-				    room:loseHp(t)
+				    room:loseHp(t, 1, true, player, self:objectName())
 				end
 				if player:getTag("sgkgodyeyan_used"):toBool() == true then
 					if player:askForSkillInvoke(self:objectName(), data) then
@@ -2705,7 +2705,7 @@ sgkgodqinyin = sgs.CreateTriggerSkill{
 							room:doAnimate(1, player:objectName(), pe:objectName())
 						end
 						for _, t in sgs.qlist(room:getAlivePlayers()) do
-							room:loseHp(t)
+							room:loseHp(t, 1, true, player, self:objectName())
 						end
 					end
 				end
@@ -2767,7 +2767,7 @@ sgkgodyeyanCard = sgs.CreateSkillCard{
 		for _, id in sgs.qlist(self:getSubcards()) do
 			if sgs.Sanguosha:getCard(id):isRed() then y = y + 1 end
 		end
-		if #targets * (y + 1) >= 5 then room:loseHp(source, 3) end
+		if #targets * (y + 1) >= 5 then room:loseHp(source, 3, true, source, self:objectName()) end
 		room:doSuperLightbox("sgkgodzhouyu", "sgkgodyeyan")
 		for i = 1, #targets do
 		    room:damage(sgs.DamageStruct("sgkgodyeyan", source, targets[i], y + 1, sgs.DamageStruct_Fire))
@@ -3789,7 +3789,7 @@ sgkgodzhitian = sgs.CreateTriggerSkill{
 				room:broadcastSkillInvoke(self:objectName())
 				if not player:isKongcheng() then room:obtainCard(target, player:wholeHandCards(), false) end
 				room:acquireSkill(target, skill)
-				room:loseHp(target)
+				room:loseHp(target, 1, true, player, self:objectName())
 			end
 		end
 	end
@@ -4136,7 +4136,7 @@ sgkgoddanjing = sgs.CreateTriggerSkill{
 			if target then
 				room:doAnimate(1, player:objectName(), target:objectName())
 				room:broadcastSkillInvoke(self:objectName())
-				room:loseHp(target, lose)
+				room:loseHp(target, lose, true, player, self:objectName())
 			end
 		elseif event == sgs.CardsMoveOneTime then
 			local move = data:toMoveOneTime()
@@ -5079,7 +5079,7 @@ sgkgodluoyan = sgs.CreateTriggerSkill{
 								room:throwCard(rc, reason, nil)
 							end
 						elseif player:getMark("luoyan_cardcount") == 2 then
-							room:loseHp(player)
+							room:loseHp(player, 1, true, player, self:objectName())
 						elseif player:getMark("luoyan_cardcount") == 3 then
 							room:loseMaxHp(player)
 						end
@@ -5427,7 +5427,7 @@ sgkgodxingwu = sgs.CreateTriggerSkill{
 						mark.who:setTag("xingwu_rec", sgs.QVariant(table.concat(xingwu_rec, "+")))
 					end
 				elseif mark.gain < 0 then
-					room:loseHp(mark.who)
+					room:loseHp(mark.who, 1, true, nil, self:objectName())
 					local to_lose = getTargetGenderSkills(mark.who)
 					if #to_lose > 0 then room:handleAcquireDetachSkills(mark.who, "-"..to_lose[math.random(1, #to_lose)]) end
 				end
@@ -6865,7 +6865,7 @@ nos_sgkgodjuejing = sgs.CreateTriggerSkill{
 		room:notifySkillInvoked(zhaoyun, self:objectName())
 		room:broadcastSkillInvoke(self:objectName())
 		if zhaoyun:getHp() >= 2 then
-			room:loseHp(zhaoyun)
+			room:loseHp(zhaoyun, 1, true, zhaoyun, self:objectName())
 			zhaoyun:drawCards(2)
 		else
 			zhaoyun:drawCards(1)
@@ -7489,7 +7489,7 @@ nos_sgkgoddanjingCard = sgs.CreateSkillCard{
 	target_fixed = true,
 	will_throw = false,
 	on_use = function(self, room, source, targets)
-	    room:loseHp(source)
+	    room:loseHp(source, 1, true, source, "nos_sgkgoddanjing")
 		local target = room:askForPlayerChosen(source, room:getOtherPlayers(source), "nos_sgkgoddanjing")
 		room:setPlayerMark(target, "danjing_AI", 2)--AI
 		local choice = room:askForChoice(source, "nos_sgkgoddanjing", "drawthree+throwthree")
@@ -7786,7 +7786,7 @@ jlsgguiyuanCard = sgs.CreateSkillCard{
     name = "jlsgguiyuanCard",
 	target_fixed = true,
 	on_use = function(self, room, source, targets)
-	    room:loseHp(source, 1)
+	    room:loseHp(source, 1, true, source, "jlsgguiyuan")
 		if not source:isAlive() then return false end
 		for _, p in sgs.qlist(room:getOtherPlayers(source)) do
 			if p:isKongcheng() or not hasPeach(p) then continue end

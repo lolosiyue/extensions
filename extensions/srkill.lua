@@ -1014,7 +1014,7 @@ sr_shuixicard = sgs.CreateSkillCard{
 		local srthrowcard = room:askForCard(target, pattern, "@srshuixithrow",sgs.QVariant(suitstring), 
 			sgs.CardDiscarded)
 		if not srthrowcard then
-			room:loseHp(target)
+			room:loseHp(target, 1, true, source, "sr_shuixi")
 			room:addPlayerMark(source, "&sr_shuixi-Clear")
 			room:setPlayerCardLimitation(source, "use", "Slash", true)
 		end		
@@ -5006,7 +5006,7 @@ sr_xiahoucard = sgs.CreateSkillCard{
 					local c = room:askForChoice(xiahou,"sr_xiahouhelp","srlosehp+srcancel")
 					room:setPlayerFlag(source,"xiahouused")
 					if c == "srcancel" then return end
-					room:loseHp(xiahou)
+					room:loseHp(xiahou, 1, true, xiahou, "sr_xiahou")
 					local slash = sgs.Sanguosha:cloneCard(choice,sgs.Card_NoSuit,0)
 					slash:deleteLater()
 					room:useCard(sgs.CardUseStruct(slash,source,player))
@@ -5022,7 +5022,7 @@ sr_xiahoucard = sgs.CreateSkillCard{
 				local c = room:askForChoice(xiahou,"sr_xiahouhelp","srlosehp+srcancel")
 				room:setPlayerFlag(source,"xiahouused")
 				if c == "srcancel" then return end
-				room:loseHp(xiahou)
+				room:loseHp(xiahou, 1, true, xiahou, "sr_xiahou")
 				local peach = sgs.Sanguosha:cloneCard(choice,sgs.Card_NoSuit,0)
 				peach:deleteLater()
 				room:useCard(sgs.CardUseStruct(peach,source,source))
@@ -5037,7 +5037,7 @@ sr_xiahoucard = sgs.CreateSkillCard{
 				local c = room:askForChoice(xiahou,"sr_xiahouhelp","srlosehp+srcancel")
 				room:setPlayerFlag(source,"xiahouused")
 				if c == "srcancel" then return end
-				room:loseHp(xiahou)
+				room:loseHp(xiahou, 1, true, xiahou, "sr_xiahou")
 				local analeptic = sgs.Sanguosha:cloneCard(choice,sgs.Card_NoSuit,0)
 				analeptic:deleteLater()
 				room:useCard(sgs.CardUseStruct(analeptic,source,source))
@@ -5062,7 +5062,7 @@ sr_xiahoucard = sgs.CreateSkillCard{
 				local c = room:askForChoice(xiahou,"sr_xiahouhelp","srlosehp+srcancel")
 				room:setPlayerFlag(source,"xiahouused")
 				if c == "srcancel" then return end
-				room:loseHp(xiahou)
+				room:loseHp(xiahou, 1, true, xiahou, "sr_xiahou")
 				local slash = sgs.Sanguosha:cloneCard(choice,sgs.Card_NoSuit,0)
 				slash:deleteLater()
 				room:provide(slash)
@@ -5077,7 +5077,7 @@ sr_xiahoucard = sgs.CreateSkillCard{
 				local c = room:askForChoice(xiahou,"sr_xiahouhelp","srlosehp+srcancel")
 				room:setPlayerFlag(source,"xiahouused")
 				if c == "srcancel" then return end
-				room:loseHp(xiahou)
+				room:loseHp(xiahou, 1, true, xiahou, "sr_xiahou")
 				local jink = sgs.Sanguosha:cloneCard(pattern,sgs.Card_NoSuit,0)
 				jink:deleteLater()
 				room:provide(jink)
@@ -5101,7 +5101,7 @@ sr_xiahoucard = sgs.CreateSkillCard{
 					local c = room:askForChoice(xiahou,"sr_xiahouhelp","srlosehp+srcancel")
 					room:setPlayerFlag(source,"xiahouused")
 					if c == "srcancel" then return end
-					room:loseHp(xiahou)
+					room:loseHp(xiahou, 1, true, xiahou, "sr_xiahou")
 					local peach = sgs.Sanguosha:cloneCard(choice,sgs.Card_NoSuit,0)
 					peach:deleteLater()
 					room:useCard(sgs.CardUseStruct(peach,source,room:getCurrentDyingPlayer()))
@@ -5220,7 +5220,7 @@ sr_ganglie = sgs.CreateTriggerSkill{
 			if player:getPhase() == sgs.Player_Play then
 				if room:askForSkillInvoke(player,self:objectName(),data) then
 					room:broadcastSkillInvoke("sr_ganglie")
-					room:loseHp(player)
+					room:loseHp(player, 1, true, player, self:objectName())
 					if player:isAlive() then
 						room:setPlayerFlag(player,"srganglieinvoked")
 					end

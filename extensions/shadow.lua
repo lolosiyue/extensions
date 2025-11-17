@@ -1583,7 +1583,7 @@ y_weiji = sgs.CreateTriggerSkill
 				if canwj then
 					if not player:askForSkillInvoke(self:objectName(), data) then return false end
 					room:broadcastSkillInvoke(self:objectName())
-					room:loseHp(player)
+					room:loseHp(player, 1, true, player, self:objectName())
 					local maxhp = player:getMaxHp()
 					local value = sgs.QVariant(maxhp + 1)
 					room:setPlayerProperty(player, "maxhp", value)
