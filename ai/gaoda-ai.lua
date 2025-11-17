@@ -6091,6 +6091,10 @@ sgs.ai_ajustdamage_from.tiexue = function(self, from, to, card, nature)
 	end
 end
 
+sgs.ai_getBestHp_skill.tiexue = function(owner)
+	return owner:getMaxHp() - 1
+end
+
 
 --巴巴托斯 天狼
 sgs.ai_skill_invoke.tianlang = function(self, data)

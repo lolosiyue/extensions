@@ -16,6 +16,10 @@ sgs.ai_skill_invoke.keshengxionglve = function(self, data)
 	return true
 end
 
+sgs.ai_getBestHp_skill.keshengxionglve = function(owner)
+	return owner:getMaxHp() - 1
+end
+
 sgs.ai_skill_invoke.keshengganen = function(self, data)
 	local target = data:toPlayer()
 	if target then
@@ -48,6 +52,10 @@ end
 
 sgs.ai_skill_invoke.kejieshengxionglve = function(self, data)
 	return true
+end
+
+sgs.ai_getBestHp_skill.kejieshengxionglve = function(owner)
+	return owner:getMaxHp() - 1
 end
 
 sgs.ai_skill_invoke.kejieshengganen = function(self, data)

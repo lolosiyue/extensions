@@ -1825,6 +1825,10 @@ sgs.ai_skill_choice.PlusPaoxiao_Card = function(self, choices, data)
 	return extra
 end
 
+sgs.ai_getBestHp_skill.PlusPaoxiao = function(owner)
+	return owner:getMaxHp() - 1
+end
+
 
 
 sgs.ai_cardneed.PlusJie = function(to, card)
@@ -1962,6 +1966,10 @@ sgs.ai_view_as.PlusLongdan = function(card, player, card_place, class_name)
 	elseif card:getSuit() == sgs.Card_Diamond and player:getHp() <= 2 then
 		return ("slash:PlusLongdan[%s:%s]=%d"):format(suit, number, card_id)
 	end
+end
+
+sgs.ai_getBestHp_skill.PlusLongdan = function(owner)
+	return 2
 end
 
 sgs.ai_cardneed.PlusTieji = function(to, card, self)
@@ -2662,6 +2670,12 @@ sgs.ai_use_revises.PlusKeji = function(self, card, use)
 		and ((self.player:getMark("PlusDujiang") == 0 and self.player:hasSkill("PlusDujiang")) or self.player:getPile("slack"):length() == 0)
 	then
 		return false
+	end
+end
+
+sgs.ai_getBestHp_skill.PlusDujiang = function(owner)
+	if owner:getMark("PlusDujiang") == 0 and owner:getPile("slack"):length() >= 4 then
+		return owner:getMaxHp() - 1
 	end
 end
 

@@ -234,6 +234,12 @@ sgs.ai_skill_use["@@duYinling"] = function(self, prompt)
     return "."
 end
 
+sgs.ai_getBestHp_skill.duYinling = function(owner)
+	if owner:hasSkills("du_jieying+duYinling") and owner:getMark("du_jieying") == 0 and owner:getPile("du_jin"):length() >= 2 then
+		return owner:getMaxHp() - 2
+	end
+end
+
 sgs.drawpeach_skill = sgs.drawpeach_skill .."|duYinling"
 sgs.ai_card_intention["#duYinlingCard"] = function(self, card, from, tos)
     local lord = getLord(self.player)
@@ -438,6 +444,13 @@ end
 function sgs.ai_armor_value.duWuhun(player, self, card)
     if card and (card:isKindOf("Blade") or card:objectName() == "chitu") then return 4 end
 end
+
+sgs.ai_getBestHp_skill.duWuhun = function(owner)
+	if owner:getMark("BladeUsed") == 0 and owner:getMark("ChiTuUsed") == 0 then
+		return owner:getMaxHp() - 1
+	end
+end
+
 
 jieyou_skill = {}
 jieyou_skill.name = "jieyou"

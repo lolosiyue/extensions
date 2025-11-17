@@ -1018,6 +1018,12 @@ sgs.ai_skill_discard["luashanquan"] = function(self, discard_num, optional, incl
 	return to_discard
 end
 
+sgs.ai_getBestHp_skill.luajiye = function(owner)
+	if owner:getMark("luajiye") == 0 then
+		return owner:getMaxHp() - 1
+	end
+end
+
 sgs.ai_target_revises.luaxiaomeng = function(to, card, self)
 	if card:isKindOf("Slash")
 	then
@@ -1026,7 +1032,13 @@ sgs.ai_target_revises.luaxiaomeng = function(to, card, self)
 end
 
 sgs.ai_canliegong_skill.luaxiaomeng = function(self, from, to)
-    if from:hasSkill("luaxiaomeng") and from:distanceTo(to) <= 1 then return true end
+    if from:distanceTo(to) <= 1 then return true end
+end
+
+sgs.ai_getBestHp_skill.luatuwei = function(owner)
+	if owner:getMark("luatuwei") == 0 then
+		return owner:getMaxHp() - 1
+	end
 end
 
 --fail
@@ -1322,7 +1334,9 @@ sgs.ai_card_priority.leo_luaboxue = function(self, card, v)
 	end
 end
 
-
+sgs.ai_getBestHp_skill.luashenweiex1 = function(owner)
+	return owner:getMaxHp() - 1
+end
 
 
 

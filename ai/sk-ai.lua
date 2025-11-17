@@ -1762,6 +1762,11 @@ sgs.ai_skill_playerchosen["sk_miji"] = function(self, targets)
 end
 sgs.ai_playerchosen_intention.sk_miji = -50
 
+sgs.ai_getBestHp_skill.sk_miji = function(owner)
+	return owner:getMaxHp() - 1
+end
+
+
 --咒缚
 sgs.ai_skill_cardask["@zhoufu"] = function(self, data)
 	local current = self.room:getCurrent()

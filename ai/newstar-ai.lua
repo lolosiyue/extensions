@@ -685,6 +685,12 @@ sgs.ai_skill_askforag.LuaLongwei = function(self, card_ids)
 	if self:needKongcheng(self.player, true) then return card_ids[1] else return -1 end
 end
 
+sgs.ai_getBestHp_skill.LuaBaonu = function(owner)
+	if owner:hasSkills("LuaHuaji+LuaBaonu") and owner:getMark("LuaBaonu") == 0 then
+		return owner:getMaxHp() - 1
+	end
+end
+
 sgs.hit_skill = sgs.hit_skill .. "|os_chitu"
 
 sgs.ai_cardneed.os_chitu = sgs.ai_cardneed.slash
@@ -715,4 +721,10 @@ end
 sgs.ai_can_damagehp.LuaHuaji = function(self, from, card, to)
 	return to:getHp() + self:getAllPeachNum() - self:ajustDamage(from, to, 1, card) > 1
 		and self:canLoseHp(from, card, to)
+end
+
+sgs.ai_getBestHp_skill.xingLuashenji = function(owner)
+	if owner:hasSkills("LuaHuaji+xingLuashenji") and owner:getMark("xingLuashenji") == 0 then
+		return owner:getMaxHp() - 1
+	end
 end

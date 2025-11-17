@@ -271,6 +271,13 @@ end
 sgs.ai_skill_choice.feiyinghun = function(self, targets)
 	return self.feiyinghun
 end
+
+sgs.ai_getBestHp_skill.feiyinghun = function(owner)
+	if owner:getMark("&feiyinghun") >= 1 then
+		return owner:getMaxHp() - 2
+	end
+end
+
 sgs.ai_skill_invoke.feijiangchi = function(self, data)
 	if self:getCardsNum("Slash") > 3 or self.player:getHandcardNum() < self.player:getHp() then
 		return true
