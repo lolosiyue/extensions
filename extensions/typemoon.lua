@@ -399,11 +399,12 @@ jishamod = sgs.CreateTriggerSkill {
 
 jishaDetach = sgs.CreateTriggerSkill {
 	name = "#jishaDetach",
-	events = { sgs.EventPhaseEnd },
+	events = { sgs.EventPhaseChanging },
 	frequency = sgs.Skill_NotFrequent,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if player:getPhase() == sgs.Player_Finish then
+		local change = data:toPhaseChange()
+		if change.to == sgs.Player_NotActive then
 			for _, p in sgs.qlist(room:getAlivePlayers()) do
 				if p:getPile("ren"):length() > 0 then
 					room:broadcastSkillInvoke(self:objectName())
@@ -483,17 +484,17 @@ sgs.LoadTranslationTable {
 	["Tohno_Shiki"] = "远野志贵",
 	["#Tohno_Shiki"] = "十七分割",
 	["Tohnozhisi"] = "直死",
-	[":Tohnozhisi"] = "出牌阶段开始时，你可以选择发动技能直死。若如此做，本回合你使用【杀】对其他角色造成伤害时，他将直接进入濒死状态。",
+	[":Tohnozhisi"] = "出牌阶段开始时，你可以选择发动技能“直死”。若如此做，本回合你使用【杀】对其他角色造成伤害时，其将直接进入濒死状态。",
 	["$Tohnozhisi"] = "全力以赴地上了",
 	["@yanjing"] = "眼镜",
 	["pinxue"] = "贫血",
-	[":pinxue"] = "<font color=blue><b>锁定技</b></font>，若本回合内，你发动过技能直死，回合结束阶段后你流失一点体力。",
+	[":pinxue"] = "<font color=blue><b>锁定技</b></font>，回合结束阶段结束时，若本回合内，你发动过技能“直死”，你流失一点体力。",
 	["$pinxue"] = "还能行",
 	["~Tohno_Shiki"] = "啊",
 	["Nanaya_Shiki"] = "七夜志贵",
 	["#Nanaya_Shiki"] = "杀人鬼",
 	["jisha"] = "极杀",
-	[":jisha"] = "<font color=green><b>阶段技</b></font>，你令一名角色进行判定：若结果为黑色，你将判定牌扣置于其武将牌旁，称为“刃”，扣有“刃”牌的该武将与你的距离为1。你可以使该武将无法使用【闪】响应你打出的【杀】，若如此做，当此【杀】对其造成伤害时，你将获得其”刃“牌。 你的回合结束时，该武将获得其武将牌上的”刃“牌。",
+	[":jisha"] = "<font color=green><b>阶段技</b></font>，你令一名角色进行判定：若结果为黑色，你将判定牌扣置于其武将牌旁，称为“刃”，扣有“刃”牌的该武将与你的距离为1。你可以使该武将无法使用【闪】响应你打出的【杀】，若如此做，当此【杀】对其造成伤害时，你将获得其”刃“牌。 你的回合结束时，该武将获得其武将牌上的“刃”牌。",
 	["$jisha"] = "来厮杀吧。",
 	["#jishamod"] = "极杀",
 	["ren"] = "刃",

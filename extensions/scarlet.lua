@@ -10290,8 +10290,8 @@ s4_s_cisha = sgs.CreateTriggerSkill{
 s4_s_shangwuCard = sgs.CreateSkillCard{
     name = "s4_s_shangwu",
     target_fixed = true,
-    about_to_use = function(self, room, use)
-        local shensimayi = use.from
+    on_use = function(self, room, source, targets)
+        local shensimayi = source
         local choices = {}
         if not shensimayi:hasFlag("s4_s_shangwuTianyi") then
             table.insert(choices,"tianyi")

@@ -18,7 +18,7 @@ Meowlvlingqi = sgs.General(extension, "Meowlvlingqi", "qun", 4, false)
 Meowdoumiao = sgs.CreateTriggerSkill {
 	name = "Meowdoumiao",
 	frequency = sgs.Skill_NotFrequent,
-	events = { sgs.EventPhaseStart, sgs.EventPhaseEnd },
+	events = { sgs.EventPhaseStart, sgs.EventPhaseChanging },
 	on_trigger = function(self, event, player, data)
 		local phase = player:getPhase()
 		local room = player:getRoom()
@@ -41,7 +41,9 @@ Meowdoumiao = sgs.CreateTriggerSkill {
 				room:drawCards(to, 1, self:objectName())
 				--room:broadcastSkillInvoke("Meowdoumiao")
 			end
-		elseif event == sgs.EventPhaseEnd and phase == sgs.Player_Finish then
+		elseif event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to ~= sgs.Player_NotActive then return false end
 			if not player:isNude() then
 				room:askForDiscard(player, self:objectName(), 1, 1, false, true)
 			end
@@ -315,14 +317,15 @@ Meowdiaochan:addSkill(Meowbiyue)
 
 MeowQieting = sgs.CreateTriggerSkill {
 	name = "MeowQieting",
-	events = { sgs.EventPhaseStart },
+	events = { sgs.EventPhaseChanging },
 	can_trigger = function(self, target)
 		return target and target:isAlive()
 	end,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if event == sgs.EventPhaseStart then
-			if player:getPhase() == sgs.Player_NotActive and not player:isNude() then
+		if event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to == sgs.Player_NotActive and not player:isNude() then
 				--local splayer = room:findPlayerBySkillName(self:objectName())
 				--if not splayer or splayer:objectName() == player:objectName() then return end
 				for _, splayer in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do

@@ -13999,12 +13999,12 @@ s3_yt_wangling = sgs.General(extension_bf,"s3_yt_wangling","wei","4")
 s3_yt_yinpan = sgs.CreateTriggerSkill{
 	name = "s3_yt_yinpan", 
 	frequency = sgs.Skill_Compulsory, 
-	events = {sgs.EventPhaseStart,sgs.CardFinished},   
+	events = {sgs.EventPhaseChanging,sgs.CardFinished},   
 	on_trigger = function(self, event, player, data) 
 		local room = player:getRoom()
-		if event == sgs.EventPhaseStart then
+		if event == sgs.EventPhaseChanging then
 		player:setMark("s3_yt_yinpan",0)
-			if player:getPhase() == sgs.Player_Finish and player:hasSkill(self:objectName()) and player:getPile("&s3_yinpan"):length() > 0 then
+			if player:getPhase() == sgs.Player_NotActive and player:hasSkill(self:objectName()) and player:getPile("&s3_yinpan"):length() > 0 then
 				--player:removePileByName("&s3_yinpan")
 				local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 				dummy:deleteLater()

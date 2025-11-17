@@ -591,12 +591,14 @@ dj = sgs.CreateTriggerSkill {
 pj = sgs.CreateTriggerSkill {
 	frequency = sgs.Skill_Frequent,
 	name = "pj",
-	events = { sgs.EventPhaseStart, sgs.FinishJudge },
+	events = { sgs.EventPhaseChanging, sgs.FinishJudge },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local x = player:getLostHp()
 		local w = 0
-		if (event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Finish) and (x >= 1) then
+		if (event == sgs.EventPhaseChanging) and (x >= 1) then
+			local change = data:toPhaseChange()
+			if change.to ~= sgs.Player_NotActive then return false end
 			while (player:askForSkillInvoke("pj")) do
 				room:broadcastSkillInvoke("rende")
 				w = w + 1

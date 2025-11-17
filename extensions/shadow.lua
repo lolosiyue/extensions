@@ -252,10 +252,11 @@ y_shushen = sgs.CreateTriggerSkill
 	{ --淑慎
 		name = "y_shushen",
 		frequency = sgs.Skill_NotFrequent,
-		events = { sgs.EventPhaseStart },
+		events = { sgs.EventPhaseChanging },
 
 		on_trigger = function(self, event, player, data)
-			if player:getPhase() ~= sgs.Player_Finish then return false end
+			local change = data:toPhaseChange()
+			if change.to ~= sgs.Player_NotActive then return false end
 			local room = player:getRoom()
 			local targets = room:getOtherPlayers(player)
 			--local players=room:getAlivePlayers()

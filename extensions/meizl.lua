@@ -1689,22 +1689,28 @@ meizlruimuskill = sgs.CreateViewAsSkill {
 meizlruimu = sgs.CreateTriggerSkill
 	{
 		name = "meizlruimu",
-		events = { sgs.EventPhaseStart },
+		events = { sgs.EventPhaseStart, sgs.EventPhaseChanging },
 		frequency = sgs.Skill_NotFrequent,
 		view_as_skill = meizlruimuskill,
 		on_trigger = function(self, event, player, data)
 			local room = player:getRoom()
-			if player:getPhase() == sgs.Player_Finish then
-				if player:getMark("meizlruimu") > 0 then
-					room:setPlayerProperty(player, "maxhp", sgs.QVariant(player:getMark("meizlruimu")))
-					room:setPlayerMark(player, "meizlruimu", 0)
-					local recover = sgs.RecoverStruct()
-					recover.who = player
-					room:recover(player, recover)
+			if event == sgs.EventPhaseStart then
+				if player:getPhase() == sgs.Player_Finish then
+					if player:hasSkill(self:objectName()) then
+						if not player:isNude() then
+							room:askForUseCard(player, "@@meizlruimu", "@meizlruimu-card")
+						end
+					end
 				end
-				if player:hasSkill(self:objectName()) then
-					if not player:isNude() then
-						room:askForUseCard(player, "@@meizlruimu", "@meizlruimu-card")
+			elseif event == sgs.EventPhaseChanging then
+				local change = data:toPhaseChange()
+				if change.to == sgs.Player_NotActive then
+					if player:getMark("meizlruimu") > 0 then
+						room:setPlayerProperty(player, "maxhp", sgs.QVariant(player:getMark("meizlruimu")))
+						room:setPlayerMark(player, "meizlruimu", 0)
+						local recover = sgs.RecoverStruct()
+						recover.who = player
+						room:recover(player, recover)
 					end
 				end
 			end
@@ -2151,7 +2157,7 @@ meizlmihun = sgs.CreateViewAsSkill {
 meizlyaorao = sgs.CreateTriggerSkill {
 	name = "meizlyaorao",
 	frequency = sgs.Skill_Limited,
-	events = { sgs.EventPhaseStart, sgs.EventPhaseEnd },
+	events = { sgs.EventPhaseStart, sgs.EventPhaseChanging },
 	limit_mark = "@meizlyaorao",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
@@ -2162,14 +2168,18 @@ meizlyaorao = sgs.CreateTriggerSkill {
 			room:addPlayerMark(player, "&meizlyaorao-Clear")
 			player:drawCards(2)
 		end
-		if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Finish and player:getMark("meizlyaorao") > 0 then
-			room:setPlayerMark(player, "meizlyaorao", 0)
-			local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-			for _, cd in sgs.qlist(player:getPile("meizlyaorao")) do
-				dummy:addSubcard(sgs.Sanguosha:getCard(cd))
+		if event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to ~= sgs.Player_NotActive then return false end
+			if player:getMark("meizlyaorao") > 0 then
+				room:setPlayerMark(player, "meizlyaorao", 0)
+				local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+				for _, cd in sgs.qlist(player:getPile("meizlyaorao")) do
+					dummy:addSubcard(sgs.Sanguosha:getCard(cd))
+				end
+				room:obtainCard(player, dummy)
+				dummy:deleteLater()
 			end
-			room:obtainCard(player, dummy)
-			dummy:deleteLater()
 		end
 	end
 }
@@ -2777,13 +2787,15 @@ meizlzenhui = sgs.CreateTriggerSkill {
 	name = "meizlzenhui",
 	frequency = sgs.Skill_NotFrequent,
 	view_as_skill = meizlzenhuiskill,
-	events = { sgs.ConfirmDamage, sgs.DrawNCards, sgs.Death, sgs.EventPhaseEnd },
+	events = { sgs.ConfirmDamage, sgs.DrawNCards, sgs.Death, sgs.EventPhaseChanging },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.Death and player:getPhase() ~= sgs.Player_NotActive then
 			room:setPlayerMark(player, "&meizlzenhuiskill", 1)
 		end
-		if event == sgs.EventPhaseEnd and player:getPhase() == sgs.Player_Finish then
+		if event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to ~= sgs.Player_NotActive then return false end
 			if player:getMark("&meizlzenhuiskill") == 0 and player:getMark("@meizlzenhui") > 0 then
 				room:loseMaxHp(player, 1)
 			else

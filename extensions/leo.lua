@@ -1099,26 +1099,29 @@ sdw = sgs.General(extension, "sdw", "god", "5", true)
 luazhonghun = sgs.CreateTriggerSkill
 	{
 		name = "luazhonghun",
-		events = { sgs.EventPhaseStart, sgs.DamageInflicted },
+		events = { sgs.EventPhaseStart, sgs.EventPhaseChanging, sgs.DamageInflicted },
 		can_trigger = function(self, target)
 			return true
 		end,
 		on_trigger = function(self, event, player, data)
 			local room = player:getRoom()
 			if player:hasSkill("luazhonghun") and event == sgs.EventPhaseStart then
-				if (player:getPhase() == sgs.Player_Finish) then
-					local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(),
-						"luazhonghun-invoke", true, true)
-					if not target then return false end
-					--target:gainMark("@zhonghuned")
-					room:addPlayerMark(target, "&luazhonghun+to+#" .. player:objectName())
-				elseif (player:getPhase() == sgs.Player_Start) then
+				if (player:getPhase() == sgs.Player_RoundStart) then
 					local players = room:getAllPlayers()
 					for _, p in sgs.qlist(players) do
 						if (p:getMark("&luazhonghun+to+#" .. player:objectName())) then
 							room:setPlayerMark(p, "&luazhonghun+to+#" .. player:objectName(), 0)
 						end
 					end
+				end
+			elseif event == sgs.EventPhaseChanging then
+				local change = data:toPhaseChange()
+				if change.to == sgs.Player_NotActive and player:hasSkill("luazhonghun") then
+					local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(),
+						"luazhonghun-invoke", true, true)
+					if not target then return false end
+					--target:gainMark("@zhonghuned")
+					room:addPlayerMark(target, "&luazhonghun+to+#" .. player:objectName())
 				end
 			elseif not player:hasSkill("luazhonghun") and event == sgs.DamageInflicted then
 				local damage = data:toDamage()
@@ -1271,11 +1274,12 @@ spwolong = sgs.General(extension, "spwolong", "shu", "3", true)
 luaweiwo = sgs.CreateTriggerSkill
 	{
 		name = "luaweiwo",
-		events = { sgs.EventPhaseStart },
+		events = { sgs.EventPhaseChanging },
 		frequency = sgs.Skill_Frequent,
 
 		on_trigger = function(self, event, player, data)
-			if (player:getPhase() == sgs.Player_Finish) then
+			local change = data:toPhaseChange()
+			if (change.to == sgs.Player_NotActive) then
 				local room = player:getRoom()
 				if player:askForSkillInvoke(self:objectName()) then
 					player:drawCards(3)
@@ -3512,7 +3516,7 @@ luajincui = sgs.CreateTriggerSkill
 newluaweiwo = sgs.CreateTriggerSkill
 {
 	name = "newluaweiwo",
-	events = {sgs.StartJudge, sgs.EventPhaseStart},
+	events = {sgs.StartJudge, sgs.EventPhaseChanging},
 	frequency = sgs.Skill_NotFrequent,
 	
 	can_trigger = function(self, target)
@@ -3557,30 +3561,34 @@ newluaweiwo = sgs.CreateTriggerSkill
 				end
 			end
 		end
-		if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Finish and player:hasSkill("newluaweiwo") then
-		    room:broadcastSkillInvoke("guanxing",1)
-		    player:drawCards(3)
-			--将x张手牌依次置于牌堆顶
-			local x = player:getHp()
-			if(x > 3) then x = 3 end
-			local card_ids = sgs.IntList()
-			for _,cd in sgs.qlist(player:getHandcards()) do
-				local id = cd:getEffectiveId()
-				card_ids:append(id)
-			end
-			for var = 1 , x, 1 do
-				room:fillAG(card_ids, player)
-				local cdid = room:askForAG(player, card_ids, false, self:objectName())
-				
-				local moveA = sgs.CardsMoveStruct()
-				local ln = sgs.IntList()
-				ln:append(cdid)
-				moveA.card_ids = ln
-				moveA.to_place = sgs.Player_DrawPile
-				room:moveCardsAtomic(moveA, false)
-				
-				card_ids:removeOne(cdid)
-				room:clearAG(player)
+		if event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to ~= sgs.Player_NotActive then return false end
+			if player:hasSkill("newluaweiwo") then
+				room:broadcastSkillInvoke("guanxing",1)
+				player:drawCards(3)
+				--将x张手牌依次置于牌堆顶
+				local x = player:getHp()
+				if(x > 3) then x = 3 end
+				local card_ids = sgs.IntList()
+				for _,cd in sgs.qlist(player:getHandcards()) do
+					local id = cd:getEffectiveId()
+					card_ids:append(id)
+				end
+				for var = 1 , x, 1 do
+					room:fillAG(card_ids, player)
+					local cdid = room:askForAG(player, card_ids, false, self:objectName())
+					
+					local moveA = sgs.CardsMoveStruct()
+					local ln = sgs.IntList()
+					ln:append(cdid)
+					moveA.card_ids = ln
+					moveA.to_place = sgs.Player_DrawPile
+					room:moveCardsAtomic(moveA, false)
+					
+					card_ids:removeOne(cdid)
+					room:clearAG(player)
+				end
 			end
 		end
 		return false

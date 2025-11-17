@@ -681,19 +681,37 @@ qigedazao = sgs.CreateTriggerSkill{
         room:setEmotion(player, "AIWJ/WXYY")
         room:broadcastSkillInvoke(self:objectName(),1)
         room:sendCompulsoryTriggerLog(player, self:objectName(), true)
-        if current ~= player then
-            player:gainAnExtraTurn()--获得一个额外的回合
-        else
-        room:setPlayerMark(player, "qigedazao", 1)
-        end
+        local playerdata = sgs.QVariant()
+        playerdata:setValue(player)
+        room:setTag("qigedazaoTarget", playerdata)
     end,
+}
+qigedazao_turn = sgs.CreateTriggerSkill{
+	name = "#qigedazao_turn" ,
+	events = {sgs.EventPhaseStart} ,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if room:getTag("qigedazaoTarget") then
+			local target = room:getTag("qigedazaoTarget"):toPlayer()
+			room:removeTag("qigedazaoTarget")
+			if target and target:isAlive() then
+				target:gainAnExtraTurn()
+			end
+		end
+		return false
+	end ,
+	can_trigger = function(self, target)
+		return target and (target:getPhase() == sgs.Player_NotActive)
+	end ,
+	priority = 1
 }
 qigedazao_gangewanji = sgs.CreateTriggerSkill{
     name = "#qigedazao_gangewanji",
-    events = {sgs.EventPhaseEnd},
+    events = {sgs.EventPhaseChanging},
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
-        if player:getPhase() == sgs.Player_Finish then
+        local change = data:toPhaseChange()
+        if change.to == sgs.Player_NotActive then
             room:setPlayerMark(player, "huiyuanCMT", 1)
             for _, p in sgs.qlist(room:getAllPlayers()) do
                 if p:getMark("&huiyuanCMT") == 1 then
@@ -707,10 +725,6 @@ qigedazao_gangewanji = sgs.CreateTriggerSkill{
                 player:drawCards(3)
             end
         end
-        if player:getPhase() == sgs.Player_Finish and player:getMark("qigedazao") == 1 then
-            room:setPlayerMark(player, "qigedazao", 0)
-            player:gainAnExtraTurn()--获得一个额外的回合
-        end
     end,
     can_trigger = function(self, target)
         return target:hasSkill("qigedazao")
@@ -718,7 +732,9 @@ qigedazao_gangewanji = sgs.CreateTriggerSkill{
 }
 wenxinyiyan:addSkill(qigedazao)
 wenxinyiyan:addSkill(qigedazao_gangewanji)
+wenxinyiyan:addSkill(qigedazao_turn)
 extension:insertRelatedSkills("qigedazao", "#qigedazao_gangewanji")
+extension:insertRelatedSkills("qigedazao", "#qigedazao_turn")
 
 huiyuanshenli = sgs.CreateTriggerSkill{
     name = "huiyuanshenli",

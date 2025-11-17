@@ -1632,15 +1632,16 @@ frequency=sgs.Skill_Compulsory,
 on_trigger = function(self, event, player, data)
     local change=data:toPhaseChange()
 	if change.to==sgs.Player_NotActive and change.from==sgs.Player_Finish then
-		local room=player:getRoom()
- 		local log= sgs.LogMessage()
-		log.type = "#TriggerSkill"
-		log.from = player
-		log.arg = self:objectName()
-		room:sendLog(log)
- 		change.to=sgs.Player_Play
-		data:setValue(change)
-		player:insertPhase(sgs.Player_Play)
+		-- local room=player:getRoom()
+ 		-- local log= sgs.LogMessage()
+		-- log.type = "#TriggerSkill"
+		-- log.from = player
+		-- log.arg = self:objectName()
+		-- room:sendLog(log)
+ 		-- change.to=sgs.Player_Play
+		-- data:setValue(change)
+		-- player:insertPhase(sgs.Player_Play)
+		PhaseExtra(player, sgs.Player_Play)
 	end
 return false
 end,

@@ -1003,7 +1003,7 @@ zheyi = sgs.CreateTriggerSkill {
 youdiz = sgs.CreateTriggerSkill {
 	name = "youdiz",
 	frequency = sgs.Skill_NotFrequent,
-	events = { sgs.TurnStart, sgs.DamageInflicted, sgs.EventPhaseEnd },
+	events = { sgs.TurnStart, sgs.DamageInflicted, sgs.EventPhaseChanging },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.TurnStart then
@@ -1051,8 +1051,9 @@ youdiz = sgs.CreateTriggerSkill {
 					return true
 				end
 			end
-		elseif event == sgs.EventPhaseEnd then
-			if player:getMark("@Youdi") > 0 and player:getPhase() == sgs.Player_Finish then
+		elseif event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if player:getMark("@Youdi") > 0 and change.to == sgs.Player_NotActive then
 				player:loseAllMarks("@Youdi")
 				player:turnOver()
 				for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do

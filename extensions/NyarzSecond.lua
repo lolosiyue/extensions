@@ -2370,12 +2370,13 @@ ty_xianjin = sgs.CreateTriggerSkill{
 
 tyqijin = sgs.CreateTriggerSkill{
     name = "tyqijin",
-    events = {sgs.EventPhaseStart},
+    events = {sgs.EventPhaseChanging},
     frequency = sgs.Skill_Wake,
     waked_skills = "tycuixin",
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
-        if player:getPhase() ~= sgs.Player_NotActive then return false end
+        local change = data:toPhaseChange()
+        if change.to ~= sgs.Player_NotActive then return false end
 
         local target = nil
         for _,p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
