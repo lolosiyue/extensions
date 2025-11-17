@@ -1762,26 +1762,19 @@ sgs.ai_skill_playerschosen.s4_s_yuangong = function(self, targets, max, min)
 	local card = dummyCard("thunder_slash")
 	card:setSkillName("s4_s_yuangong")
 	card:deleteLater()
-	local dummy_use = self:aiUseCard(card, dummy(true, 3))
+	local dummy_use = self:aiUseCard(card, dummy(true, 2))
 	if dummy_use.card and dummy_use.to and not dummy_use.to:isEmpty() then
 		for _, p in sgs.qlist(dummy_use.to) do 
 			if table.contains(can_choose, p) then
 				selected:append(p)
 			end
 		end
-	else
-		for _,target in ipairs(can_choose) do
-			if self:isEnemy(target) and self.player:canUse(card, target) then
-				selected:append(target)
-				if selected:length() >= max then break end
-			end
-		end
 	end
-    if selected:length() >= 2 then
+    if selected:length() >= 1 then
         local useds = self:getTurnUse()
-        if #useds <= 2 or self:getOverflow() <= 1 then
-    return selected
-end
+        if #useds <= selected:length() or self:getOverflow() <= 1 then
+            return selected
+        end
     end
     return sgs.SPlayerList()
 end
@@ -1797,8 +1790,8 @@ sgs.ai_skill_use_func["#s4_s_chuqi"] = function(card,use,self)
     local choices = {}
     for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
         for _, c in sgs.qlist(p:getEquips()) do
-            if card:isKindOf("Weapon") and not table.contains(choices, card:objectName()) then
-                table.insert(choices, card:objectName())
+            if c:isKindOf("Weapon") and not table.contains(choices, c:objectName()) then
+                table.insert(choices, c:objectName())
             end
         end
     end
