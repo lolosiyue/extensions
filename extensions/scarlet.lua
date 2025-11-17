@@ -9144,17 +9144,17 @@ s4_s_chuqiCard = sgs.CreateSkillCard{
         local choices = {}
         for _, p in sgs.qlist(room:getOtherPlayers(player)) do
             for _, c in sgs.qlist(p:getEquips()) do
-                if card:isKindOf("Weapon") and not table.contains(choices, card:objectName()) then
-                    table.insert(choices, card:objectName())
+                if c:isKindOf("Weapon") and not table.contains(choices, c:objectName()) then
+                    table.insert(choices, c:objectName())
                 end
             end
         end
         if #choices == 0 then return end
-        local choice = room:askForChoice(player, "s4_s_chuqi", table.concat(choices, "+"))
-        local old = player:property("s4_s_chuqi"):toString()
-        room:setPlayerMark(player, "&s4_s_chuqi+" .. old, 0)
-        room:setPlayerProperty(player, "s4_s_chuqi", sgs.QVariant(choice))
-        room:setPlayerMark(player, "&s4_s_chuqi+" .. choice, 1)
+        local choice = room:askForChoice(source, "s4_s_chuqi", table.concat(choices, "+"))
+        local old = source:property("s4_s_chuqi"):toString()
+        room:setPlayerMark(source, "&s4_s_chuqi+" .. old, 0)
+        room:setPlayerProperty(source, "s4_s_chuqi", sgs.QVariant(choice))
+        room:setPlayerMark(source, "&s4_s_chuqi+" .. choice, 1)
     end,
 }
 s4_s_chuqi_equip = sgs.CreateViewAsEquipSkill {
