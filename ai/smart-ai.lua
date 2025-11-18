@@ -4,6 +4,24 @@
 -- more information see: https://github.com/kikito/middleclass
 local middleclass = require "middleclass"
 
+-- AI Debug Logger Integration (Added 2025-11-18 for crash tracking)
+local AILogger = require "ai.ai-debug-logger"
+local logger = AILogger
+logger:init()
+
+-- Global error handler
+local original_error = error
+_G.AI_DEBUG_MODE = true -- Set to false to disable logging
+
+-- Safe function wrapper utility
+local function safecall(funcName, func, ...)
+	if _G.AI_DEBUG_MODE then
+		return logger:protect(funcName, func, ...)
+	else
+		return func(...)
+	end
+end
+
 -- initialize the random seed for later use
 math.randomseed(os.time())
 
@@ -179,6 +197,9 @@ function SmartAI:initialize(player)
 	self.role = player:getRole()
 	self.lua_ai = sgs.LuaAI(player)
 	self.lua_ai.callback = function(full_method_name,...)
+		-- Enhanced error tracking with AI Debug Logger
+		local callback_start = os.clock()
+		
 		--[[if self.room:getTag("callback"):toBool() then
 			self.room:removeTag("callback")
 			sgs.callback_time = os.time()
@@ -195,18 +216,68 @@ function SmartAI:initialize(player)
 		local method = self[method_name]
 		if method then
 			current_self = self
-			local success,result1,result2 = pcall(method,self,...)
-			if success then return result1,result2
-			else
-		 		self.room:writeToConsole(method_name)
-				self.room:writeToConsole(result1)
-				self.room:outputEventStack()
-				for _,w in ipairs({...})do
-					if type(w)=="string" then self.room:writeToConsole(w) end
+			
+			-- Wrap with logger if debug mode is enabled
+			if _G.AI_DEBUG_MODE then
+				local stackIndex = logger:logFunctionEntry("Callback:" .. method_name, {...})
+				local success, result1, result2 = pcall(method, self, ...)
+				
+				if success then
+					logger:logFunctionExit("Callback:" .. method_name, stackIndex, true, result1)
+					return result1, result2
+				else
+					-- Enhanced error logging
+					logger:logError("Callback:" .. method_name, result1, {
+						full_method = full_method_name,
+						args = {...},
+						player = player:getGeneralName(),
+						room_state = self.room:getTag("turncount"):toInt()
+					})
+					logger:logFunctionExit("Callback:" .. method_name, stackIndex, false, result1)
+					
+					self.room:writeToConsole("=== AI CRASH DETECTED ===")
+					self.room:writeToConsole("Method: " .. method_name)
+					self.room:writeToConsole("Error: " .. tostring(result1))
+					self.room:outputEventStack()
+					for _, w in ipairs({...}) do
+						if type(w) == "string" then self.room:writeToConsole(w) end
+					end
+					self.room:writeToConsole("Check logs at: lua/ai/logs/")
 				end
+			else
+				-- Original behavior without logging
+				local success, result1, result2 = pcall(method, self, ...)
+				if success then 
+					return result1, result2
+				else
+					self.room:writeToConsole(method_name)
+					self.room:writeToConsole(result1)
+					self.room:outputEventStack()
+					for _, w in ipairs({...}) do
+						if type(w) == "string" then self.room:writeToConsole(w) end
+					end
+				end
+			end
+		else
+			if _G.AI_DEBUG_MODE then
+				logger:writeLog("WARN", "Method not found: " .. method_name, {
+					full_method = full_method_name
+				})
 			end
 		end
 	end
+	
+	-- Add helper method to list available methods for debugging
+	self.getAvailableMethods = function()
+		local methods = {}
+		for k, v in pairs(self) do
+			if type(v) == "function" then
+				table.insert(methods, k)
+			end
+		end
+		return methods
+	end
+	
 	if self.room:getTag("initialized"):toBool()~=true then
 		sgs.defense = {}
 		sgs.drawData = {}
@@ -1760,16 +1831,37 @@ sgs.aiResponse = {Slash = "Jink"}
 sgs.cardEffect = nil
 
 function SmartAI:filterEvent(event,player,data)
-	sgs.filterData[event] = data
-	for _,callback in pairs(sgs.ai_event_callback[event])do
-		--if type(callback)=="function" then callback(self,player,data) end
-		callback(self,player,data)
+	-- Protect event filtering with error handling
+	if _G.AI_DEBUG_MODE then
+		local stackIndex = logger:logFunctionEntry("SmartAI:filterEvent", {
+			event = event,
+			player = player:getGeneralName(),
+			data = data:toString()
+		})
 	end
-	if sgs.aiHandCardVisible and sgs.turncount>0 then
-		local file = io.open("lua/ai/cstringEvent", "w")
-		file:write("event-"..event.."|"..player:getLogName().."|"..data:toString())
-		file:close()
-	end
+	
+	-- Wrap the entire function body in pcall for safety
+	local success, error_msg = pcall(function()
+		sgs.filterData[event] = data
+		for _,callback in pairs(sgs.ai_event_callback[event])do
+			-- Protected callback execution
+			if type(callback) == "function" then
+				local cb_success, cb_error = pcall(callback, self, player, data)
+				if not cb_success and _G.AI_DEBUG_MODE then
+					logger:logError("Event Callback", cb_error, {
+						event = event,
+						player = player:getGeneralName()
+					})
+				end
+			end
+		end
+		if sgs.aiHandCardVisible and sgs.turncount>0 then
+			local file = io.open("lua/ai/cstringEvent", "w")
+			if file then
+				file:write("event-"..event.."|"..player:getLogName().."|"..data:toString())
+				file:close()
+			end
+		end
 	if event==sgs.Death then
 		local de = data:toDeath()
 		sgs.ai_role[de.who:objectName()] = de.who:getRole()
@@ -2322,6 +2414,20 @@ function saveItemData(dataName)
 				break
 			end
 		end
+	end
+end
+	
+	end) -- End of pcall wrapper for filterEvent
+	
+	if not success and _G.AI_DEBUG_MODE then
+		logger:logError("SmartAI:filterEvent", error_msg, {
+			event = event,
+			player = player:getGeneralName(),
+			data_str = data:toString()
+		})
+		logger:logFunctionExit("SmartAI:filterEvent", nil, false)
+	elseif _G.AI_DEBUG_MODE then
+		logger:logFunctionExit("SmartAI:filterEvent", nil, true)
 	end
 end
 
