@@ -5493,11 +5493,15 @@ function SmartAI:findPlayerToDraw(include_self,drawnum,count)
 	drawnum = drawnum or 1
 	local friends,tos = {},{}
 	for _,p in sgs.list(include_self and self.room:getAlivePlayers() or self.room:getOtherPlayers(self.player))do
-		if self:isFriend(p) and self:canDraw(p)
+		if self:isFriend(p) and self:canDraw(p) and self:needDraw(p,drawnum)
 		and not(drawnum<=2 and p:isKongcheng() and p:hasSkill("kongcheng"))
 		then table.insert(friends,p) end
 	end
-	if #friends<1 then return count and {} end
+	for _,p in sgs.list(include_self and self.room:getAlivePlayers() or self.room:getOtherPlayers(self.player))do
+		if self:isFriend(p) and self:canDraw(p) and not table.contains(friends,p)
+		and not(drawnum<=2 and p:isKongcheng() and p:hasSkill("kongcheng"))
+		then table.insert(friends,p) end
+	end
 
 	self:sort(friends)
 	for _,friend in sgs.list(friends)do
