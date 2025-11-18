@@ -1689,7 +1689,7 @@ sgs.ai_skill_use_func.TenyearWurongCard = function(card,use,self)
     
     --自己展示的一定是【杀】，目标展示的不是【闪】时，可对目标造成1点伤害
     if all_slash and not target then
-        for _,p in ipairs(self:findPlayerToDamage(1,self.player,nil,nil,false,5))do
+        for _,p in ipairs(self:findPlayerToDamage(1,self.player,"N",nil,5))do
             if self.player~=p and not p:isKongcheng() then
                 local knowns,unknowns = getKnownHandcards(self.player,p)
                 if self:isFriend(p) then
@@ -1742,7 +1742,7 @@ sgs.ai_skill_use_func.TenyearWurongCard = function(card,use,self)
             end
         end
         
-        for _,enemy in ipairs(self:findPlayerToDamage(1,self.player,nil,enemies,false,5))do
+        for _,enemy in ipairs(self:findPlayerToDamage(1,self.player,"N",enemies,5))do
             local knowns,unknowns = getKnownHandcards(self.player,enemy)
             local no_jink = true
             if #unknowns==0 then
@@ -1799,7 +1799,7 @@ sgs.ai_skill_use_func.TenyearWurongCard = function(card,use,self)
         end
         
         if not target then
-            for _,friend in ipairs(self:findPlayerToDamage(1,self.player,nil,friends,false,25))do
+            for _,friend in ipairs(self:findPlayerToDamage(1,self.player,"N",friends,25))do
                 local knowns,unknowns = getKnownHandcards(self.player,friend)
                 local all_jink = true
                 for _,c in ipairs(knowns)do
@@ -1816,7 +1816,7 @@ sgs.ai_skill_use_func.TenyearWurongCard = function(card,use,self)
         end
         
         if not target then
-            local victim = self:findPlayerToDamage(1,self.player,nil,others,false,5)[1]
+            local victim = self:findPlayerToDamage(1,self.player,"N",others,5)[1]
             if victim then
                 need_slash,target = true,victim
             end
@@ -2948,7 +2948,7 @@ sgs.ai_skill_cardchosen.tenyearxuanfeng = function(self,who,flags)
 end
 
 sgs.ai_skill_playerchosen.tenyearxuanfeng_damage = function(self,targets)
-	return self:findPlayerToDamage(1,self.player,nil,targets)[1]
+	return self:findPlayerToDamage(1,self.player,"N",targets)[1]
 end
 
 sgs.tenyearxuanfeng_keep_value = sgs.xuanfeng_keep_value

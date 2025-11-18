@@ -1479,8 +1479,7 @@ sgs.ai_skill_invoke.s2_touben_wu = function(self, data)
 end
 
 sgs.ai_skill_playerchosen.s2_nixi = function(self, targets)
-	local target = self:findPlayerToDamage(1, self.player, sgs.DamageStruct_Normal, targets, false, 0, false)[1]
-
+	local target = self:findBestDamageTarget(1, "N")
 	return target
 end
 
@@ -2675,8 +2674,7 @@ sgs.ai_skill_defense["@s2_huzhu"] = function(self, player)
 end
 
 sgs.ai_skill_playerchosen.s2_xiaoguo = function(self, targets)
-	local target = self:findPlayerToDamage(1, self.player, sgs.DamageStruct_Normal, targets, false, 0)[1]
-
+	local target = self:findBestDamageTarget(1, "N")
 	return target
 end
 sgs.ai_skill_cardask["s2_xiaoguo"] = function(self, data, pattern, target, target2)

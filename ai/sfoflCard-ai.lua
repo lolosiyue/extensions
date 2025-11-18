@@ -2033,7 +2033,7 @@ end
 
 
 sgs.ai_skill_playerchosen.sfofl_langxi = function(self,targets)
-	local tos = self:findPlayerToDamage(2,self.player,nil,targets)
+	local tos = self:findPlayerToDamage(2,self.player,"N",targets)
 	if #tos>0 then
 		for _,p in ipairs(tos)do
 			if self:cantDamageMore(self.player,p) or self:isFriend(p) then continue end
@@ -4502,7 +4502,7 @@ sgs.ai_skill_cardask["@sfofl_zhongfu"] = function(self, data)
 end
 
 sgs.ai_skill_playerchosen.sfofl_dangjing = function(self,targets)
-	return self:findPlayerToDamage(1,self.player,sgs.DamageStruct_Thunder,targets,true, 1)[1]
+	return self:findBestDamageTarget(1, "T")
 end
 
 sgs.ai_playerchosen_intention.sfofl_dangjing = sgs.ai_playerchosen_intention.leiji
@@ -8012,7 +8012,7 @@ sgs.ai_skill_choice.sfofl_gezhi = function(self, choices, data)
 end
 
 sgs.ai_skill_playerchosen.sfofl_gezhi = function(self,targets)
-	return self:findPlayerToDamage(1,self.player,sgs.DamageStruct_Normal ,targets,true, 1)[1]
+	return self:findPlayerToDamage(1,self.player,"N",targets,1)[1]
 end
 
 sgs.ai_card_priority.sfofl_gezhi = function(self,card,v)
@@ -8051,7 +8051,7 @@ end
 
 
 sgs.ai_skill_playerchosen.sfofl_huanlei = function(self,targets)
-	return self:findPlayerToDamage(2,self.player,sgs.DamageStruct_Thunder,targets,true, 1)[1]
+	return self:findBestDamageTarget(2, "T")
 end
 
 sgs.ai_playerchosen_intention.sfofl_huanlei = sgs.ai_playerchosen_intention.leiji
@@ -9413,7 +9413,7 @@ end
 
 
 sgs.ai_skill_playerchosen.sfofl_chedian = function(self,targets)
-	return self:findPlayerToDamage(1,self.player,sgs.DamageStruct_Thunder,targets,true, 1)[1]
+	return self:findPlayerToDamage(1,self.player,"T",targets)[1]
 end
 
 addAiSkills("sfofl_tiangong").getTurnUseCard = function(self)

@@ -388,7 +388,7 @@ sgs.ai_use_priority.kenewgirljingmuCard = 9.5
 sgs.ai_card_intention.kenewgirljingmuCard = 80
 
 sgs.ai_skill_playerchosen.kenewgirlduoshuai = function(self, targets)
-	local target = self:findPlayerToDamage(2, self.player, sgs.DamageStruct_Normal, targets, false,0)
+	local target = self:findPlayerToDamage(2, self.player, "N", targets, 0)[1]
 	return target
 end
 

@@ -6817,7 +6817,7 @@ sgs.ai_skill_playerchosen.wanggui = function(self,targets)
 		if target then return target end
 		if self:canDraw() then return self.player end
 	else
-		return self:findPlayerToDamage(1,self.player,nil,targets)[1]
+		return self:findPlayerToDamage(1,self.player,"N",targets)[1]
 	end
 end
 

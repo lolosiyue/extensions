@@ -3623,7 +3623,7 @@ end
 
 --镇南
 sgs.ai_skill_playerchosen.zhennan = function(self,targets)
-	return self:findPlayerToDamage(2,self.player,nil,targets)[1]
+	return self:findPlayerToDamage(2,self.player,"N",targets)[1]
 end
 
 --姝勇
@@ -7352,7 +7352,7 @@ end
 
 --狼袭
 sgs.ai_skill_playerchosen.langxi = function(self,targets)
-	local tos = self:findPlayerToDamage(2,self.player,nil,targets)
+	local tos = self:findPlayerToDamage(2,self.player,"N",targets)
 	if #tos>0 then
 		for _,p in ipairs(tos)do
 			if self:cantDamageMore(self.player,p) or self:isFriend(p) then continue end
@@ -8720,7 +8720,7 @@ sgs.ai_skill_choice.pingcai = function(self,choices)
 end
 
 sgs.ai_skill_playerschosen.pcwolong = function(self,targets,x)
-	local tos = self:findPlayerToDamage(1,self.player,sgs.DamageStruct_Fire,targets)
+	local tos = self:findPlayerToDamage(1,self.player,"F",targets)
 	self:sort(tos)
 	local tos2 = {}
 	for _,p in ipairs(tos)do
@@ -9690,7 +9690,7 @@ liji_skill.getTurnUseCard = function(self,inclusive)
 end
 
 sgs.ai_skill_use_func.LijiCard = function(card,use,self)
-	local target = self:findPlayerToDamage(1,self.player,nil,self.room:getOtherPlayers(self.player))[1]
+	local target = self:findPlayerToDamage(1,self.player,"N",self.room:getOtherPlayers(self.player))[1]
 	if target and not self:isFriend(target) then
 		local cards = sgs.QList2Table(self.player:getCards("he"))
 		self:sortByKeepValue(cards)
@@ -9999,7 +9999,7 @@ sgs.ai_use_value.NewxuehenCard = 2.35
 sgs.ai_card_intention.NewxuehenCard = 20
 
 sgs.ai_skill_playerchosen.newxuehen = function(self,targets)
-	local to = self:findPlayerToDamage(1,self.player,sgs.DamageStruct_Fire,targets)[1]
+	local to = self:findPlayerToDamage(1,self.player,"F",targets)[1]
 	if to then return to end
 	targets = sgs.QList2Table(targets)
 	self:sort(targets,"hp")
