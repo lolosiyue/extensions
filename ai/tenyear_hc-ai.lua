@@ -5502,7 +5502,7 @@ sgs.ai_skill_cardask["@yangzhong"] = function(self,data,pattern,target)
 			return "."
 		end
 	end
-	if target:hasSkill("zhaxiang") and not self:willSkipPlayPhase(target) then return "." end
+	if hasZhaxiangEffect(target) and not self:willSkipPlayPhase(target) then return "." end
 	dis = self:askForDiscard("dummyreason",2,2,false,true)
 	if #dis==2 then
 		for _,id in ipairs(dis)do

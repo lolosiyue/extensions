@@ -383,7 +383,7 @@ sgs.ai_skill_playerchosen.yinghun_po = function(self, targets)
 		end
 		if not self.yinghun_po then
 			for _, friend in ipairs(self.friends_noself) do
-				if friend:hasSkills("tuntian+zaoxian") and not friend:hasSkill("manjuan") then
+				if hasTuntianEffect(friend, true) and not friend:hasSkill("manjuan") then
 					self.yinghun_po = friend
 					break
 				end
@@ -437,7 +437,7 @@ sgs.ai_skill_playerchosen.yinghun_po = function(self, targets)
 		end
 		if not self.yinghun_po then
 			for _, friend in ipairs(self.friends_noself) do
-				if friend:hasSkills("tuntian+zaoxian") and not friend:hasSkill("manjuan") then
+				if hasTuntianEffect(friend, true) and not friend:hasSkill("manjuan") then
 					self.yinghun_po = friend
 					break
 				end
@@ -518,7 +518,7 @@ sgs.ai_skill_playerchosen.yinghun_po = function(self, targets)
 			if not enemy:isNude()
 				and not (self:hasSkills(sgs.lose_equip_skill, enemy) and enemy:getCards("e"):length() > 0)
 				and not self:needToThrowArmor(enemy)
-				and not enemy:hasSkills("tuntian+zaoxian") then
+				and not hasTuntianEffect(enemy, true) then
 				self.yinghun_pochoice = "yinghun1"
 				return enemy
 			end
@@ -527,7 +527,7 @@ sgs.ai_skill_playerchosen.yinghun_po = function(self, targets)
 			if not enemy:isNude()
 				and not (self:hasSkills(sgs.lose_equip_skill, enemy) and enemy:getCards("e"):length() > 0)
 				and not self:needToThrowArmor(enemy)
-				and not (enemy:hasSkills("tuntian+zaoxian") and x < 3 and enemy:getCards("he"):length() < 2) then
+				and not (hasTuntianEffect(enemy, true) and x < 3 and enemy:getCards("he"):length() < 2) then
 				self.yinghun_pochoice = "yinghun1"
 				return enemy
 			end

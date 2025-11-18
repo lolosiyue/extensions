@@ -91,7 +91,7 @@ function SmartAI:useCardshit(card,use)
 	end
 	
 	
-	if self.player:getHp()>2 and self.player:hasSkill("zhaxiang") and (card:getSuit()==sgs.Card_Spade or self.player:hasSkill("jueqing")) then
+	if self.player:getHp()>2 and hasZhaxiangEffect(self.player) and (card:getSuit()==sgs.Card_Spade or self.player:hasSkill("jueqing")) then
 	    if self.player:getHp()>2 then 
             a = true
 		end

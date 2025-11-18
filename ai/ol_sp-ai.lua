@@ -3049,7 +3049,7 @@ end
 sgs.ai_skill_choice.shenfu = function(self,choices,data)
 	local player = data:toPlayer()
 	if self:isFriend(player) then
-		if player:hasSkills("tuntian|mobiletuntian|oltuntian") and player:getHandcardNum()-player:getHp()==1 then
+		if hasTuntianEffect(player) and player:getHandcardNum()-player:getHp()==1 then
 			return "discard"
 		end
 		return "draw"

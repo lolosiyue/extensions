@@ -227,7 +227,7 @@ sgs.ai_skill_use_func["#zhiluanCard"] = function(card,use,self)
 	self:sort(self.friends_noself, "defense") 
 	for _, friend in ipairs(self.friends_noself) do
 		if  not hasManjuanEffect(friend) then
-			if friend:hasSkills("tuntian+zaoxian") and not hasManjuanEffect(friend) and friend:getPhase() == sgs.Player_NotActive and not friend:isKongcheng() then
+			if hasTuntianEffect(friend, true) and not hasManjuanEffect(friend) and friend:getPhase() == sgs.Player_NotActive and not friend:isKongcheng() then
 				target = friend
 				break
 			end
@@ -244,7 +244,7 @@ sgs.ai_skill_use_func["#zhiluanCard"] = function(card,use,self)
 					target = enemy
 					break
 				end
-				if not enemy:hasSkills("tuntian+zaoxian") and not enemy:isKongcheng() then
+				if not hasTuntianEffect(enemy, true) and not enemy:isKongcheng() then
 					target = enemy
 					break
 				end

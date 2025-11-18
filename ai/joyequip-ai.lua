@@ -10,7 +10,7 @@ local function useShit_LoseHp(self,card,use)
         amSafe = ( lose<hp+self:getCardsNum("Peach") )
     end
     if amSafe then
-        if self.player:hasSkill("zhaxiang") then
+        if hasZhaxiangEffect(self.player) then
             use.card = card
             return 
         elseif self.player:getHandcardNum()==1 and self.player:getLostHp()==0 and self:needKongcheng() then

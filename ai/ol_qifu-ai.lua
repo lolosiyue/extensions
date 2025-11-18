@@ -703,7 +703,7 @@ function OlRendeArrange(self,cards,friends,enemies,unknowns,arrange,recover_only
                 for _,friend in ipairs(friends)do
                     if self:isWeak(friend) then
                     elseif friend:hasSkill("jueqing") or card:getSuit()==sgs.Card_Spade then
-                        if friend:hasSkill("zhaxiang") then
+                        if hasZhaxiangEffect(friend) then
                             return friend,card,"friend"
                         end
                     elseif self:hasSkills("guixin|jieming|yiji|nosyiji|chengxiang|noschengxiang|jianxiong",friend) then

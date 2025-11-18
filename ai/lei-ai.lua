@@ -35,7 +35,7 @@ end
 
 sgs.ai_playerchosen_intention.zuilun = function(self,from,to)
 	if self:needToLoseHp(friend,self.player,false,true) then return end
-	if to:hasSkill("zhaxiang") then return end
+	if hasZhaxiangEffect(to) then return end
 	sgs.updateIntention(from,to,10)
 end
 

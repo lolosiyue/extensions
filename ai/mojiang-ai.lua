@@ -375,11 +375,11 @@ sgs.ai_skill_invoke.sy_diaoling = function(self, data)
 	if self:isEnemy(to) then
 		if to:getHp() - x <= 2 then return true end
 		if x <= 1 then
-			if to:getHp() > 1 and to:hasSkill("zhaxiang") then return false end
+			if to:getHp() > 1 and hasZhaxiangEffect(to) then return false end
 		end
 		return true
 	elseif self:isFriend(to) then
-		if to:hasSkill("zhaxiang") and to:getHp() > 2 and x <= 2 then return true end
+		if hasZhaxiangEffect(to) and to:getHp() > 2 and x <= 2 then return true end
 	end
 end
 

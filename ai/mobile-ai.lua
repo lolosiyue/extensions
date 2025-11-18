@@ -121,7 +121,7 @@ sgs.ai_skill_discard.mobilezhishanxi = function(self,discard_num,min_num,optiona
 		if #give==2 then return give end
 	end
 	--if self:getCardsNum("Peach")>0 or self:getCardsNum("Analeptic")>0 or self:getSaveNum(true)>0 then return {} end  回复后还是会要求再选一次，不如给牌算了
-	if not self:isWeak() and self.player:hasSkill("zhaxiang") and not self:willSkipPlayPhase() then return {} end
+	if not self:isWeak() and hasZhaxiangEffect(self.player) and not self:willSkipPlayPhase() then return {} end
 	for _,c in ipairs(cards)do
 		table.insert(give,c:getEffectiveId())
 		if #give==2 then return give end

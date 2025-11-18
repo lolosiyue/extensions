@@ -147,7 +147,7 @@ sgs.ai_skill_playerchosen.weili = function(self,targets)
 end
 
 sgs.ai_skill_choice.weili = function(self,choices)
-	if self:getCardsNum("Peach")>self.player:getLostHp() or (not self:isWeak() and self.player:hasSkill("zhaxiang")) then return "losehp" end
+	if self:getCardsNum("Peach")>self.player:getLostHp() or (not self:isWeak() and hasZhaxiangEffect(self.player)) then return "losehp" end
 	return "losemark"
 end
 

@@ -587,7 +587,7 @@ sgs.ai_skill_use_func["#sijyu_sizhao"] = function(card, use, self)
     self:sortByUseValue(cards, true)
     if (self:getUseValue(cards[1]) < 10 and self:getKeepValue(cards[1]) < 10) or self.player:getMaxHp() <= 3 or self:getOverflow() > 0 then
         for _, enemy in ipairs(self.enemies) do
-            if self.player:canPindian(enemy) and not enemy:hasSkills("tuntian+zaoxian") then
+            if self.player:canPindian(enemy) and not hasTuntianEffect(enemy, true) then
                 self.sijyu_sizhao_card = cards[1]:getId()
                 use.card = card
                 use.to:append(enemy)

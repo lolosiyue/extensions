@@ -310,7 +310,7 @@ sgs.ai_skill_use_func["#MR_fanjian"]= function(card,use,self)
 				end
 			end
 		end
-		if friend:hasSkill("zhaxiang") and not self:isWeak(friend) and not (friend:getHp()==2 and friend:hasSkill("chanyuan")) then
+		if hasZhaxiangEffect(friend) and not self:isWeak(friend) and not (friend:getHp()==2 and friend:hasSkill("chanyuan")) then
 			for _,card in ipairs(cards)do
 				if self:getUseValue(card)<6 then
 					use.card = sgs.Card_Parse("#MR_fanjian:"..card:getEffectiveId()..":")

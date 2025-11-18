@@ -1225,7 +1225,7 @@ sgs.ai_skill_use_func.MobileXianzhenCard = function(card,use,self)
 	self:sortByUseValue(cards,true)
 	if (self:getUseValue(cards[1])<6 and self:getKeepValue(cards[1])<6) or self:getOverflow()>0 then
 		for _,enemy in ipairs(self.enemies)do
-			if not (enemy:hasSkill("kongcheng") and enemy:getHandcardNum()==1) and self.player:canPindian(enemy) and not enemy:hasSkills("tuntian+zaoxian") then
+			if not (enemy:hasSkill("kongcheng") and enemy:getHandcardNum()==1) and self.player:canPindian(enemy) and not hasTuntianEffect(enemy, true) then
 				self.mobilexianzhen_card = cards[1]:getId()
 				use.card = sgs.Card_Parse("@MobileXianzhenCard=.")
 				use.to:append(enemy)
