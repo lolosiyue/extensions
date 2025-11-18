@@ -4845,6 +4845,10 @@ sgs.ai_choicemade_filter.skillChoice["s3_fenzhi"] = function(self, player, promp
 	end
 end
 
+sgs.ai_hasTuntianEffect_skill.s3_guyang = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
 
 local s3_fudao_skill = {}
 s3_fudao_skill.name = "s3_fudao"

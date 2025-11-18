@@ -1183,6 +1183,10 @@ sgs.ai_skill_playerchosen.qhwindwuhun = function(self, targets) --选择目标
 	return targets[1]
 end
 
+sgs.ai_canNiepan_skill.qhwindwuhun = function(player)
+	return player:getMark("qhwindwuhun_limit") > 0
+end
+
 --火包-强化 庞统-连环
 sgs.ai_view_as.qhfirelianhuan = function(card, player, card_place) --重写视为技
 	local suit = card:getSuitString()
@@ -1246,6 +1250,10 @@ sgs.ai_skill_invoke.qhfireniepan_endPlay = function(self, data) --是否发动�
 	else
 		return true
 	end
+end
+
+sgs.ai_canNiepan_skill.qhfireniepan = function(player)
+	return player:getMark("qhfireniepan_limit") > 0
 end
 
 --火包-强化 诸葛亮-火计
@@ -1917,6 +1925,12 @@ sgs.ai_skill_discard.qhstandardlianying = function(self) --弃牌选择
 	return to_discard
 end
 
+sgs.ai_getLeastHandcardNum_skill.qhstandardlianying = function(self, player, least)
+	if least < 2 then
+		return 2
+	end
+end
+
 --标准版-强化 孙尚香-结姻
 local qhstandardjieyin_skill = {}
 qhstandardjieyin_skill.name = "qhstandardjieyin"
@@ -2062,6 +2076,9 @@ sgs.ai_card_intention["qhwindtianxiangCARD"] = function(self,card,from,tos)
 	sgs.updateIntention(from,to,intention)
 end
 
+sgs.ai_hasBuquEffect_skill.qhwindbuqu = function(player)
+	return player:getPile("qhwindbuqu"):length() <= 4
+end
 --风包-强化 周泰-奋激
 sgs.ai_skill_invoke.qhwindfenji = function(self, data) --是否发动技能
 	return true                                        --发动

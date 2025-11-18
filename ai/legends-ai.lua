@@ -2390,6 +2390,10 @@ sgs.ai_getBestHp_skill.lol_nuhuo = function(owner)
 	end
 end
 
+sgs.ai_hasBuquEffect_skill.lol_nuhuo = function(player)
+	return player:getMark("wjnh") > 0 or player:getMark("@lol_nuhuo") > 0
+end
+
 sgs.ai_cardneed.kuangnu = sgs.ai_cardneed.slash
 sgs.ai_ajustdamage_from.kuangnu = function(self, from, to, card, nature)
 	if from:getLostHp() >= 3  and card and (card:isKindOf("Slash") or card:isKindOf("Duel"))
@@ -2485,6 +2489,10 @@ sgs.ai_skill_choice.xuechang = function(self, choices, data)
 		end
 	end
 	return "cancel"
+end
+
+sgs.ai_canNiepan_skill.xuemo = function(player)
+	return player:getMark("@xuemo") > 0
 end
 
 sgs.ai_ajustdamage_from.InfinityEdge = function(self,from,to,slash,nature)

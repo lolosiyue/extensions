@@ -3983,6 +3983,12 @@ sgs.ai_skill_playerchosen.sgkgodshenfu = function(self, targets)
 	end
 end
 
+sgs.ai_getLeastHandcardNum_skill.sgkgodshenfu = function(self, player, least)
+	if least < 4 then
+		return 4
+	end
+end
+
 
 --千骑
 local sgkgodqianqi_skill = {}

@@ -74,6 +74,10 @@ sgs.ai_skill_invoke.sfofl_qibu = function(self,data)
 	return self:getCardsNum("Peach")+self:getCardsNum("Analeptic")<peaches
 end
 
+sgs.ai_canNiepan_skill.sfofl_qibu = function(player)
+	return player:getMark("@sfofl_qibu") > 0
+end
+
 sgs.ai_skill_invoke.sfofl_liushang = function(self, data)
 	for _, p in sgs.qlist(self.room:findPlayersBySkillName("sfofl_liushang")) do
         if not self:isEnemy(p) then
@@ -9402,6 +9406,10 @@ sgs.ai_skill_playerchosen.sfofl_rengong = function(self, targets)
     return nil
 end
 
+sgs.ai_canNiepan_skill.sfofl_guiji = function(player)
+	return true
+end
+
 
 sgs.ai_skill_playerchosen.sfofl_chedian = function(self,targets)
 	return self:findPlayerToDamage(1,self.player,sgs.DamageStruct_Thunder,targets,true, 1)[1]
@@ -9689,6 +9697,9 @@ sgs.ai_playerchosen_intention.sfofl_kuishe = function(self, from, to)
 	sgs.updateIntention(from, to, -50)
 end
 
+sgs.ai_canNiepan_skill.sfofl_wuchao = function(player)
+	return true
+end
 
 sgs.ai_ajustdamage_to.sfofl_liangying = function(self,from,to,slash,nature)
 	if nature == "F"
@@ -10827,6 +10838,11 @@ sgs.ai_skill_use["@@sfofl_n_shiji"] = function(self, prompt, method)
 	return "."
 end
 sgs.ai_card_intention["#sfofl_n_shiji"] = -80
+
+sgs.ai_canNiepan_skill.sfofl_n_menghuo_rule = function(player)
+	return player:property("sfofl_nw_shenmenghuo_Phase"):toInt() < 3
+end
+
 addAiSkills("sfofl_n_zhuifeng").getTurnUseCard = function(self)
 	for _,cn in sgs.list(patterns())do
 		local fs = dummyCard(cn)

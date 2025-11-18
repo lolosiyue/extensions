@@ -209,6 +209,10 @@ sgs.ai_skill_invoke.se_mowang = function(self, data)
 	return self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches
 end
 
+sgs.ai_canNiepan_skill.se_mowang = function(player)
+	return player:getMaxHp() > 2
+end
+
 
 function sgs.ai_cardneed.se_kuangquan(to, card, self)
 	return isCard("Slash", card, to) and getKnownCard(to, self.player, "Slash", true) == 0

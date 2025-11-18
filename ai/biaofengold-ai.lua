@@ -309,6 +309,9 @@ sgs.dynamic_value.damage_card["#FiveGuidaoA_Card"] = true
 
 sgs.dont_kongcheng_skill = sgs.dont_kongcheng_skill .. "|FiveGuidaoA"
 
+sgs.ai_hasTuntianEffect_skill.FiveGuidaoA = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive and to:getPile("dao"):length() < 5
+end
 
 sgs.ai_skill_invoke.FiveGuidaoB = function(self, data)
     local target = self.room:getCurrent() 
@@ -379,6 +382,9 @@ sgs.ai_card_intention["#FiveLeiji_Card"] = 80
 
 sgs.dont_kongcheng_skill = sgs.dont_kongcheng_skill .. "|FiveLeiji"
 
+sgs.ai_hasTuntianEffect_skill.FiveLeiji = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
 
 sgs.ai_skill_playerchosen.FiveHuangtianB = function(self, targets)
 	targets = sgs.QList2Table(targets)
@@ -835,7 +841,9 @@ sgs.ai_skill_use["@FourNiepan"]=function(self,prompt)
 	return "."
 end
 
-
+sgs.ai_canNiepan_skill.FourNiepan = function(player)
+	return player:getMark("@Four_nirvana")>0
+end
 
 local FourFanjian_skill = {}
 FourFanjian_skill.name = "FourFanjian"
@@ -1103,6 +1111,10 @@ sgs.ai_skill_cardask["@FourQixiA_Exchange"] = function(self, data, pattern, targ
         end
     end
 	return "."
+end
+
+sgs.ai_hasTuntianEffect_skill.FourQixiA = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive and to:getPile("horseA"):length() < 4
 end
 
 

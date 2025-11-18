@@ -143,6 +143,11 @@ sgs.ai_skill_use["@@MR_niepan"] = function(self, prompt)
 	end
 	return "."
 end
+
+sgs.ai_canNiepan_skill.MR_niepan = function(player)
+	return player:getMark("MR_niepan") < 1
+end
+
 sgs.ai_ajustdamage_from["&MR_luofeng"] = function(self,from,to,card,nature)
 	if card and (card:isKindOf("SkillCard") or (card:isVirtualCard() and card:subcardsLength() > 0))
 	then return 1 end

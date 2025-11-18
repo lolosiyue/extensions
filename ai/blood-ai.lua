@@ -14,6 +14,10 @@ sgs.ai_need_damaged.blood_gudan = function(self, attacker, player)
 	return false
 end
 
+sgs.ai_canNiepan_skill.blood_gudan = function(player)
+	return player:getMark("@gudan") > 0
+end
+
 
 local blood_hj_skill = {}
 blood_hj_skill.name = "blood_hj"
@@ -88,6 +92,10 @@ sgs.ai_need_damaged.blood_hunzi = function(self, attacker, player)
 		return true
 	end
 	return false
+end
+
+sgs.ai_canNiepan_skill.blood_hunzi = function(player)
+	return player:hasLordSkill("blood_hunzi") and player:getMark("blood_hunzi") == 0
 end
 
 

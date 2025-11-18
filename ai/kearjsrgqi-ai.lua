@@ -1261,6 +1261,10 @@ sgs.ai_skill_invoke.kechengzhasi = function(self, data)
 	return true
 end
 
+sgs.ai_canNiepan_skill.kechengzhasi = function(player)
+	return player:getMark("@kechengzhasi")>0
+end
+
 sgs.ai_skill_invoke.kechengbashi = function(self, data)
 	return #self.friends_noself>0
 end

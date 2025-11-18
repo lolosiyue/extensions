@@ -2459,6 +2459,10 @@ sgs.ai_skill_invoke["sr_zhuizun"] = function(self,data)
 	return self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches
 end
 
+sgs.ai_canNiepan_skill.sr_zhuizun = function(player)
+	return player:getMark("@zhuizun") > 0
+end
+
 --流云
 local sr_liuyun_skill = {}
 sr_liuyun_skill.name = "sr_liuyun"

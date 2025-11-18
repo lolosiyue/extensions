@@ -220,3 +220,7 @@ sgs.ai_ajustdamage_from.ark_zhuye = function(self, from, to, card, nature)
 		return 1
 	end
 end
+
+sgs.ai_canNiepan_skill.ark_zhuye = function(player)
+	return player:getMark("@ark_zhuye_mark") > 0
+end

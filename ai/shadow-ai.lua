@@ -53,6 +53,12 @@ sgs.ai_use_value.y_rendecard = 8.5
 sgs.ai_use_priority.y_rendecard = 8.8
 sgs.need_kongcheng = sgs.need_kongcheng .. "|y_lianying"
 
+sgs.ai_getLeastHandcardNum_skill.y_lianying = function(self, player, least)
+	if least < 1 then
+		return 1
+	end
+end
+
 --����ʦ
 --����
 local y_anxu_skill = {}
