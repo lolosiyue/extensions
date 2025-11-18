@@ -105,6 +105,9 @@ rushB_zhiheng_skill.getTurnUseCard = function(self)
 	return skillcard
 end
 
+sgs.ai_hasTuntianEffect_skill.rushB_tuntian = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
 
 sgs.ai_skill_invoke.rushB_jiuyuan = function(self,data)
 	local target = data:toPlayer()

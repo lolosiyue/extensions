@@ -2345,6 +2345,10 @@ end
 
 sgs.ai_cardneed.nyarz_funing = sgs.ai_cardneed.slash
 
+sgs.ai_hasTuntianEffect_skill.nyarz_bingji = function(to, need_zaoxian)
+	return true
+end
+
 --鸾凤
 
 sgs.ai_skill_invoke.nyarz_luanfeng = function(self, data)
@@ -2873,6 +2877,12 @@ sgs.ai_use_priority.nyarz_longhun_god = sgs.ai_use_priority.Slash
 sgs.need_kongcheng = sgs.need_kongcheng .. "|nyarz_lianying"
 sgs.ai_skill_invoke.nyarz_lianying = true
 
+sgs.ai_getLeastHandcardNum_skill.nyarz_lianying = function(self, player, least)
+	if least < player:getMaxCards() + 1 then
+		return player:getMaxCards() + 1
+	end
+end
+
 --度势
 
 sgs.ai_skill_use["@@nyarz_duoshi"] = function(self, prompt)
@@ -3360,6 +3370,10 @@ sgs.ai_use_priority.nyarz_longdan = 8
 --典财
 
 sgs.ai_skill_invoke.nyarz_diancai = true
+
+sgs.ai_hasTuntianEffect_skill.nyarz_diancai = function(to, need_zaoxian)
+	return true
+end
 
 --调度
 sgs.need_equip_skill = sgs.need_equip_skill .. "|nyarz_diaodu"

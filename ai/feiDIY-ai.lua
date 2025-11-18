@@ -99,6 +99,12 @@ sgs.ai_card_intention["#feiqianxuncard"] = function(self, card, from, tos, sourc
 	end
 end
 
+sgs.ai_getLeastHandcardNum_skill.feilianying = function(self, player, least)
+	if least < 1 then
+		return 1
+	end
+end
+
 sgs.ai_skill_invoke.feilianying = function(self, data)
 	return true
 end
@@ -902,4 +908,8 @@ end
 sgs.ai_can_damagehp.feiniepan = function(self,from,card,to)
 	return to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
 	and self:canLoseHp(from,card,to) and to:isKongcheng() and (card:isKindOf("FireAttack") or card:isKindOf("FireSlash"))
+end
+
+sgs.ai_canNiepan_skill.feiniepan = function(player)
+	return player:getMark("@nirvana") > 0
 end

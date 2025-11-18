@@ -2763,6 +2763,12 @@ sgs.ai_skill_use["@PlusCuorui"] = function(self, prompt)
 end
 
 
+sgs.ai_getLeastHandcardNum_skill.PlusDuoshi = function(self, player, least)
+	if least < 1 then
+		return 1
+	end
+end
+
 
 local PlusQixi_skill = {}
 PlusQixi_skill.name = "PlusQixi"
@@ -3364,6 +3370,10 @@ function sgs.ai_skill_invoke.PlusBuqu(self, data)
 	else
 		return true
 	end
+end
+
+sgs.ai_hasBuquEffect_skill.PlusBuqu = function(player)
+	return player:getPile("Plushurt"):length() <= 4
 end
 
 sgs.save_skill = sgs.save_skill .. "|PlusHuzhu"

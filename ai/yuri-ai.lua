@@ -1523,6 +1523,12 @@ sgs.ai_can_damagehp.loyalm = function(self,from,card,to)
 	and self:canLoseHp(from,card,to) and from and (self:doDisCard(from, "he") or from:isNude())
 end
 
+sgs.ai_getLeastHandcardNum_skill.scoopthemoonup = function(self, player, least)
+	if least < 3 and self.room:getDiscardPile():length() > 0 then
+		return 3
+	end
+end
+
 sgs.ai_skill_invoke.deterrence = function(self, data)
 	local current = self.room:getCurrent()
 	return self:isEnemy(current)

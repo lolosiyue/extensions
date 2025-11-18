@@ -1319,6 +1319,12 @@ sgs.ai_skill_invoke.MeowJueqing = function(self, data)
     return false
 end
 
+sgs.ai_getLeastHandcardNum_skill.Meowshangshi = function(self, player, least)
+	if least < player:getLostHp() then
+		return math.max(player:getLostHp(), 1)
+	end
+end
+
 
 function sgs.ai_skill_invoke.MeowZhenlie(self, data)
     local use = data:toCardUse()

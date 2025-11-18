@@ -395,6 +395,10 @@ sgs.ai_skill_invoke.lxtx_jizhao = function(self,data)
 	return self:getCardsNum("Peach")+self:getCardsNum("Analeptic")<peaches
 end
 
+sgs.ai_canNiepan_skill.lxtx_jizhao = function(player)
+	return player:getMark("lxtx_jizhao") == 0
+end
+
 
 local lxtx_rende_skill = {}
 lxtx_rende_skill.name = "lxtx_rende"

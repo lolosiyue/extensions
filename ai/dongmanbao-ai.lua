@@ -2925,6 +2925,16 @@ sgs.ai_skill_invoke["SE_Boming"] = function(self, data)
 	end
 end
 
+sgs.ai_canNiepan_skill.SE_Boming = function(player)
+	if player:getMark("@HIMIKO") > 0
+		and (player:hasSkill("yingzi") or
+			player:hasSkill("shensu") or
+			player:hasSkill("fankui") or
+			player:hasSkill("longdan") or
+			player:hasSkill("paoxiao") or
+			player:hasSkill("guicao")) 
+	then return true end
+end
 --sgs.ai_skillInvoke_intention.SE_Boming = -80
 
 --立华奏 vs
@@ -4875,6 +4885,22 @@ sgs.ai_skill_playerchosen.SE_Mafuyu = function(self, targets)
 		end
 	end
 	return self.enemies[1]
+end
+
+sgs.ai_hasTuntianEffect_skill.SE_Kurimu = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
+sgs.ai_hasTuntianEffect_skill.SE_Minatsu = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
+sgs.ai_hasTuntianEffect_skill.SE_Chizuru = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
+sgs.ai_hasTuntianEffect_skill.SE_Mafuyu = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
 end
 
 --黑雪姬

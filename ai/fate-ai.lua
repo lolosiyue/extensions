@@ -53,6 +53,9 @@ sgs.ai_view_as.fatetouying = function(card, player, card_place)
 end
 sgs.double_slash_skill = sgs.double_slash_skill .. "|fatetouying"
 
+sgs.ai_canNiepan_skill.fatesizhan = function(player)
+	return player:getMark("fatesizhan") == 0
+end
 
 --saber ���� 
 
@@ -628,6 +631,9 @@ sgs.ai_skill_invoke.fateshilian = function(self, data)
  	return true
 end
 
+sgs.ai_hasBuquEffect_skill.fateshilian = function(player)
+	return player:getMaxHp() > 3
+end
 
 --Iriya��ħ��
 sgs.ai_skill_invoke.fatemoli = function(self, data)

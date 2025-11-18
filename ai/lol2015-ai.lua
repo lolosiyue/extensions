@@ -563,7 +563,9 @@ end
 sgs.ai_use_priority["lol_mzzw_rCard"] = sgs.ai_use_priority["lol_mzzw_qCard"] - 0.1
 sgs.ai_use_value["lol_mzzw_rCard"] = 1
 
-
+sgs.ai_hasBuquEffect_skill.lol_mzzw_r = function(player)
+	return player:getMark("lol_mzzw_r_damage") > 0
+end
 
 
 
@@ -1194,7 +1196,9 @@ end
 
 
 
-
+sgs.ai_canNiepan_skill.lol_ayjm_t = function(player)
+	return player:getMark("@lol_ayjm_t") > 0
+end
 
 local lol_ayjm_q_skill={}
 lol_ayjm_q_skill.name="lol_ayjm_q"
@@ -1297,6 +1301,9 @@ end
 sgs.ai_use_priority["lol_ayjm_rCard"] = sgs.ai_use_priority.Slash - 0.1
 
 
+sgs.ai_canNiepan_skill.lol_bjfh_t = function(player)
+	return true
+end
 
 local lol_bjfh_q_skill = {}
 lol_bjfh_q_skill.name= "lol_bjfh_q"

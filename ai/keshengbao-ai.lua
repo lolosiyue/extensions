@@ -171,6 +171,10 @@ sgs.ai_skill_invoke.keshengliufeng = function(self, data)
 end
 sgs.dont_kongcheng_skill = sgs.dont_kongcheng_skill .. "|keshengliufeng"
 
+sgs.ai_hasTuntianEffect_skill.keshengliufeng = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
 sgs.ai_skill_choice.keshenghuixue = function(self, choices, data)
 	if self.keshenghuixueChoice then return self.keshenghuixueChoice end
 	return "huixue"
@@ -230,6 +234,10 @@ sgs.ai_use_priority.keshenghuixueCard = 9.5
 
 sgs.ai_skill_invoke.kejieshengliufeng = function(self, data)
 	return true
+end
+
+sgs.ai_hasTuntianEffect_skill.kejieshengliufeng = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
 end
 
 sgs.ai_skill_choice.kejieshenghuixue = function(self, choices, data)

@@ -3899,6 +3899,10 @@ sgs.ai_skill_invoke.fcjieniepan = function(self, data)
 	return self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches
 end
 
+sgs.ai_canNiepan_skill.fcjieniepan = function(player)
+	return player:getMark("&fcj_Phoenix") >= 2
+end
+
     --“鸾凤”AI
 sgs.ai_skill_invoke.fcluanfeng = function(self, data)
 	local dying = data:toDying()
@@ -5457,6 +5461,10 @@ end
 sgs.ai_card_priority.fcmoujiang = function(self,card)
 	if card:isKindOf("Slash") and card:isRed()
 	then return 0.05 end
+end
+
+sgs.ai_canNiepan_skill.fcmouhunzi = function(player)
+	return player:getMark("fcmouhunzi") == 0
 end
 
 --FC谋孙策

@@ -252,6 +252,10 @@ sgs.ai_skill_playerschosen.kenewgirljizhi = function(self, targets, max, min)
 end
 sgs.ai_skill_invoke["kenewgirljizhi"] = true
 
+sgs.ai_canNiepan_skill.kenewgirljizhi = function(player)
+	return player:getMark("@kenewgirljizhi") > 0
+end
+
 local kenewgirljingmu_skill = {}
 kenewgirljingmu_skill.name = "kenewgirljingmu"
 table.insert(sgs.ai_skills, kenewgirljingmu_skill)

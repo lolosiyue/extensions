@@ -107,6 +107,10 @@ sgs.ai_can_damagehp.meizlchunshen = function(self, from, card, to)
 	return sgs.ai_skill_use["@@meizlchunshen"](self, d, sgs.Card_MethodDiscard) ~= "."
 end
 
+sgs.ai_hasTuntianEffect_skill.meizljinlian = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
 --MEIZL 002 步练师
 --宠媛
 sgs.ai_target_revises.meizlchongyuan = function(to, card, self)
@@ -175,6 +179,10 @@ sgs.ai_skill_invoke.meizlguiyuan = function(self, data)
 	return false
 end
 sgs.ai_choicemade_filter.cardChosen.meizlguiyuan = sgs.ai_choicemade_filter.cardChosen.snatch
+
+sgs.ai_hasTuntianEffect_skill.meizlguiyuan = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
 
 sgs.ai_getBestHp_skill.meizlwuqing = function(owner)
 	return owner:getMaxHp() - 1
@@ -4216,6 +4224,13 @@ sgs.ai_playerchosen_intention["meizlsecanhui"] = function(self, from, to)
 end
 
 
+sgs.ai_getLeastHandcardNum_skill.meizlsecanhui = function(self, player, least)
+	if player:getMark("@meizlsejidu") > 0 and least < 1 then
+		return 1
+	end
+end
+
+
 
 
 
@@ -4469,7 +4484,16 @@ end
 sgs.ai_use_value["meizlselanduocard"] = sgs.ai_use_value.ExNihilo - 0.1
 sgs.ai_use_priority["meizlselanduocard"] = sgs.ai_use_priority.ExNihilo - 0.1
 
-
+sgs.ai_hasTuntianEffect_skill.meizlsesiyi = function(to, need_zaoxian)
+	if to:getPhase() == sgs.Player_NotActive then
+		for _, p in sgs.qlist(global_room:getAlivePlayers()) do
+			if p:getKingdom() == "sevendevil" then
+				return true
+			end
+		end
+	end
+	return false
+end
 
 
 
@@ -4563,7 +4587,9 @@ sgs.ai_can_damagehp.meizlshchunshen = function(self, from, card, to)
 	return sgs.ai_skill_use["@@meizlshchunshen"](self, d, sgs.Card_MethodDiscard) ~= "."
 end
 
-
+sgs.ai_hasTuntianEffect_skill.meizlshjinlian = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
 
 --落英缤纷
 meizlluoyingbinfen_skill = {}

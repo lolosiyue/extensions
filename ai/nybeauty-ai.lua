@@ -1777,6 +1777,10 @@ end
 
 sgs.ai_skill_invoke.nyarz_xialei = true
 
+sgs.ai_hasTuntianEffect_skill.nyarz_xialei = function(to, need_zaoxian)
+	return to:getMark("nyarz_xialei-Clear") == 0
+end
+
 --暗织
 
 local nyarz_anzhi_skill={}

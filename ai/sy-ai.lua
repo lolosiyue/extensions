@@ -45,6 +45,9 @@ sgs.ai_skill_invoke.sy_guiming = function(self, data)
 	return self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches
 end
 
+sgs.ai_canNiepan_skill.sy_guiming = function(player)
+	return player:getMark("@guiming") > 0
+end
 
 sgs.ai_can_damagehp.sy_fangu = function(self,from,card,to)
 	return to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
@@ -952,6 +955,10 @@ sgs.ai_skill_invoke.sy_xiaoshi = function(self, data)
 		return self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches
 	end
 	return false
+end
+
+sgs.ai_canNiepan_skill.sy_xiaoshi = function(player)
+	return player:getMark("@xiaoshi") > 0
 end
 
 sgs.ai_skill_cardask["@xiaoshiask"] = function(self, data)

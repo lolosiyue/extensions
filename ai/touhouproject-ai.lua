@@ -2409,6 +2409,10 @@ function sgs.ai_cardneed.TH_fengyitianxiang(to,card,self)
 	end
 end
 
+sgs.ai_canNiepan_skill.TH_Phoenixrevive = function(player)
+	return player:getMark("Phoenixrevive") == 0
+end
+
 sgs.ai_skill_invoke.TH_bumie = function(self, data)---����
 	if self:UseAoeSkillValue(sgs.DamageStruct_Fire) > 0 and self.player:getMark("Phoenixreviveon") < 1 and not self.player:containsTrick("indulgence") then
 		return true

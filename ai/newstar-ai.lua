@@ -522,6 +522,12 @@ function sgs.ai_skill_suit.LuaFanjian(self)
 	if self.player:hasSkill("hongyan") and suit == sgs.Card_Spade then return sgs.Card_Heart else return suit end
 end
 
+sgs.ai_getLeastHandcardNum_skill.LuaXiongcai = function(self, player, least)
+	if player:getPhase() ~= sgs.Player_Discard and least < 3 then
+		return 3
+	end
+end
+
 --星吕布
 sgs.ai_view_as.LuaGuishen = function(card, player, card_place)
 	local suit = card:getSuitString()

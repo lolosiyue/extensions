@@ -268,6 +268,13 @@ sgs.ai_skill_invoke.exjueqing = function(self, data)
     end
 end
 
+sgs.ai_getLeastHandcardNum_skill.exshangshi = function(self, player, least)
+	local x = math.max(player:getLostHp(), 1)
+	if least < x then
+		return x
+	end
+end
+
 --刃仇
 
 local renchou_skill = {}
@@ -1165,6 +1172,10 @@ sgs.ai_skill_use_func["#spjiang"] = function(card, use, self)
 end
 
 sgs.ai_use_priority.spjiang = 4
+
+sgs.ai_canNiepan_skill.sphunzi = function(player)
+	return player:hasLordSkill("sphunzi") and player:getMark("sphunzi") == 0
+end
 
 --英姿
 

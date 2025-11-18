@@ -1743,6 +1743,9 @@ sgs.ai_skill_use["@@lunhui"] = function(self, prompt, method)
 	return "."
 end
 
+sgs.ai_hasTuntianEffect_skill.lunhui = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
 
 --破除的束缚
 pocdsf_skill={}
@@ -6482,6 +6485,10 @@ sgs.ai_skill_invoke.midie = function(self, data)
 	return true
 end
 
+sgs.ai_canNiepan_skill.midie = function(player)
+	return player:getMark("@midie") > 0
+end
+
 --同舟
 sgs.ai_skill_invoke.tongzhouqg = function(self, data)
 	if #self.friends + 1 >= #self.enemies  then
@@ -8299,6 +8306,9 @@ sgs.ai_skill_invoke.afuhuo = function(self, data)
 	return false
 end
 
+sgs.ai_canNiepan_skill.afuhuo = function(player)
+	return player:getMark("@fuhuo") > 0
+end
 
 sgs.ai_skill_choice.afuhuo = function(self, choices)
 	local items = choices:split("+")
@@ -10098,6 +10108,9 @@ sgs.ai_target_revises.htms_coffee = function(to,card)
 	then return true end
 end
 
+sgs.ai_canNiepan_skill.htms_beihai = function(player)
+	return player:getMark("htms_beihai") == 0
+end
 
 sgs.ai_skill_discard.htms_lunbian = function(self,max,min,optional,equiped)
 	local use = self.room:getTag("htms_lunbian"):toCardUse()

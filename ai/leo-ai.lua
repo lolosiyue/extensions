@@ -909,6 +909,14 @@ end
 
 sgs.ai_card_intention["#luafuweicard"] = -20
 
+
+sgs.ai_getLeastHandcardNum_skill.luahuju = function(self, player, least)
+	local x = math.min(getKingdoms(player), 3)
+	if x > 0 and least < x then
+		return x
+	end
+end
+
 local luajieyi_skill = {}
 luajieyi_skill.name = "luajieyi"
 table.insert(sgs.ai_skills, luajieyi_skill)
@@ -1802,6 +1810,10 @@ sgs.ai_skill_playerchosen["@luaspbazhen4"] = function(self, targets)
 	return targets[1]
 end
 
+sgs.ai_hasTuntianEffect_skill.luaspbazhen = function(to, need_zaoxian)
+	return to:getPhase() == sgs.Player_NotActive
+end
+
 sgs.ai_skill_askforag["newluaweiwo"] = function(self, card_ids)
 	local judge = self.room:getTag("newluaweiwo"):toJudge()
 	local to_obtain = {}
@@ -1854,5 +1866,9 @@ sgs.ai_skill_choice.luajincui = function(self,choices,data)
 	else
 		return "luajincui1"
 	end
+end
+
+sgs.ai_canNiepan_skill.luatianming = function(player)
+	return player:getMark("@RX") >= 7 and player:getMark("luatianming") == 0
 end
 

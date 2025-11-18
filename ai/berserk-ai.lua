@@ -5,6 +5,10 @@ sgs.ai_skill_invoke.berserk_jichang = function(self, data)
 	return self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches and dying.who:getMark("@guiming") <= 0
 end
 
+sgs.ai_canNiepan_skill.berserk_jichang = function(player)
+	return player:getMark("@jichang") > 0
+end
+
 sgs.ai_skill_cardask["@jichang"] = function(self, data, pattern, target)
     local miku = self.room:findPlayerBySkillName("berserk_jichang")
 	if self:isFriend(miku) then return "." end

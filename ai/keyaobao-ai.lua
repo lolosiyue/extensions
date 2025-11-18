@@ -875,6 +875,12 @@ sgs.ai_skill_invoke.keyaozhongyi = function(self, data)
 	return true
 end
 
+sgs.ai_getLeastHandcardNum_skill.keyaozhongyi = function(self, player, least)
+	if least < 1 then
+		return player:getHp()
+	end
+end
+
 --程昱
 
 
