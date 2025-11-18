@@ -357,30 +357,15 @@ function sgs.getDefense(player,start)--状态值
 		then defense = defense+3 end
 	end
 	if player:getMark("@tied")>0 then defense = defense+1 end
-	if player:hasSkill("chengxiang") then defense = defense+2 end
-	if player:hasSkill("guixin") then defense = defense+player:aliveCount()-1 end
 	if player:getMark("xhate")>0 and player:hasLordSkill("shichou") then
 		for _,p in sgs.qlist(player:getAliveSiblings())do
 			if p:getMark("hate_"..player:objectName())>0 and p:getMark("@hate_to")>0
 			then defense = defense+p:getHp() break end
 		end
 	end
-	if player:getHp()>2 then
-		if player:getHandcardNum()>1 then
-			if player:hasSkill("rende") then defense = defense+1 end
-			if player:hasSkill("nosrende") then defense = defense+1 end
-		end
-	else
+	if player:getHp()<=2 then
 		defense = defense-0.4
 	end
-	if player:getHp()>1 then
-		if player:hasSkill("kuanggu") then defense = defense+0.5 end
-		if player:hasSkill("kofkuanggu") then defense = defense+1 end
-		if player:hasSkill("zaiqi") then defense = defense+player:getLostHp()*0.5 end
-	end
-	if not player:hasFlag("CurrentPlayer") and player:hasSkill("aocai") then defense = defense+0.5 end
-	if not hasManjuanEffect(player) and player:hasSkill("wanrong") then defense = defense+0.5 end
-	if player:hasSkill("tianxiang") then defense = defense+player:getHandcardNum()*0.5 end
 	if player:getHp()>getBestHp(player) then defense = defense+0.8 end
 	if isLord(player) then
 		defense = defense-0.4
@@ -389,19 +374,6 @@ function sgs.getDefense(player,start)--状态值
 	end
 	if not player:faceUp() then defense = defense-1 end
 	if player:getMark("@skill_invalidity")>0 then defense = defense-5 end
-	if player:hasSkill("qianhuan") then defense = defense+player:getPile("sorcery"):length() end
-	if player:hasSkill("qingnang") then defense = defense-2 end
-	if player:hasSkill("qiaobian") then defense = defense-2.4 end
-	if player:hasSkill("jieyin") then defense = defense-2.3 end
-	if player:hasSkill("xiliang") then defense = defense+2 end
-	if player:hasSkill("guhuo") then
-		for _,p in sgs.qlist(player:getAliveSiblings())do
-			if p:hasSkill("chanyuan") then defense = defense+1 end
-		end
-	end
-	if player:hasSkill("yishe") then defense = defense+2 end
-	if player:hasSkill("paiyi") then defense = defense+1.5 end
-	if player:hasSkill("yongsi") then defense = defense-2 end
 		if player:hasLordSkill("shichou") and player:getMark("xhate")>0 then
 			for _,p in sgs.qlist(player:getAliveSiblings())do
 				if p:getMark("hate_"..player:objectName())>0 and p:getMark("@hate_to")>0
@@ -409,12 +381,6 @@ function sgs.getDefense(player,start)--状态值
 			end
 		end
 
-	if player:hasSkill("yhnabi") then
-		for _,p in sgs.qlist(player:getAliveSiblings())do
-			if p:getMark("&yhyffu+#"..player:objectName())>0
-			then defense = defense+p:getHp() break end
-		end
-	end	
 	--add
 	if player:hasSkill("Shouyang_ed") and player:getMark("@Tomoyo") > 0 then
 		for _, p in sgs.qlist(global_room:getOtherPlayers(player)) do

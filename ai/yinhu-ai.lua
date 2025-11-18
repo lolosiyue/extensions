@@ -102,6 +102,14 @@ sgs.ai_skill_playerchosen.yhnabi = function(self,players)
 	return self:isWeak() and destlist[1]
 end
 
+sgs.ai_skill_defense.yhnabi = function(self, player)
+	for _,p in sgs.qlist(player:getAliveSiblings())do
+		if p:getMark("&yhyffu+#"..player:objectName())>0
+		then return p:getHp() end
+	end
+	return 0
+end
+
 addAiSkills("yhyijie").getTurnUseCard = function(self)
 	local cards = self.player:getCards("h")
 	for _,c in sgs.list(cards)do

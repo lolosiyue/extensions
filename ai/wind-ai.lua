@@ -527,6 +527,9 @@ function sgs.ai_cardneed.tianxiang(to,card,self)
 	and (getKnownCard(to,self.player,"heart",false)+getKnownCard(to,self.player,"spade",false))<2
 end
 
+sgs.ai_skill_defense.tianxiang = function(self, player)
+	return player:getHandcardNum()*0.5
+end
 
 sgs.ai_skill_choice.guhuo = function(self,choices)
 	local yuji = self.room:findPlayerBySkillName("guhuo")
@@ -680,8 +683,22 @@ sgs.ai_skill_choice.guhuo_slash = function(self,choices)
 	return "slash"
 end
 
+sgs.ai_skill_defense.guhuo = function(self, player)
+	for _,p in sgs.qlist(player:getAliveSiblings())do
+		if p:hasSkill("chanyuan") then return 1 end
+	end
+	return 0
+end
+
 function sgs.ai_cardneed.kuanggu(to,card,self)
 	return card:isKindOf("OffensiveHorse") and not (to:getOffensiveHorse() or getKnownCard(to,self.player,"OffensiveHorse",false)>0)
+end
+
+sgs.ai_skill_defense.kuanggu = function(self, player)
+	if player:getHp()>1 then
+		return 0.5
+	end
+	return 0
 end
 
 sgs.ai_skill_playerchosen.wuhun = function(self,targets)

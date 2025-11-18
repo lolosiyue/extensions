@@ -1058,6 +1058,8 @@ sgs.ai_skill_choice.xiliang = function(self,choices)
 	return "obtain"
 end
 
+sgs.ai_skill_defense.xiliang = 2
+
 --[[
 	技能：镇威
 	描述：你的【杀】被手牌中的【闪】抵消时，可立即获得该【闪】。

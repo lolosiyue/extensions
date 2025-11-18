@@ -330,6 +330,8 @@ function sgs.ai_cardneed.qiaobian(to,card)
 	return to:getCards("h"):length()<=2
 end
 
+sgs.ai_skill_defense.qiaobian = -2.4
+
 sgs.ai_skill_invoke.tuntian = function(self,data)
 	if #self.enemies==1 and self.room:alivePlayerCount()==2 and self:hasSkills("noswuyan|qianxun",self.enemies[1]) then
 		if (self.player:hasSkill("zaoxian") and self.player:getMark("zaoxian")==0) or (self.player:hasSkill("olzaoxian") and self.player:getMark("olzaoxian")==0) then

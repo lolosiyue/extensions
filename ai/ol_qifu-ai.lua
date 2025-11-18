@@ -206,6 +206,8 @@ sgs.ai_skill_use["@@midao"] = function(self,prompt,method)
     return "."    
 end
 
+sgs.ai_skill_defense.yishe = 2
+
 sgs.ai_skill_invoke["olmeibu2"] = function(self,data)
    	local target = self.room:getCurrent()
 	return self:isEnemy(target)

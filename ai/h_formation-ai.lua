@@ -321,6 +321,10 @@ sgs.ai_skill_choice.qianhuan = function(self,choices,data)
 	return "accept"
 end
 
+sgs.ai_skill_defense.qianhuan = function(self, player)
+	return player:getPile("sorcery"):length()
+end
+
 function will_discard_zhendu(self,skill_name)
 	local current = self.room:getCurrent()
 	local need_damage = self:needToLoseHp(current,self.player)
