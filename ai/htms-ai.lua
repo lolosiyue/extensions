@@ -3160,7 +3160,7 @@ sgs.ai_skill_choice["jixieshen"] = function(self, choices, data)
 end
 
 sgs.ai_skill_playerchosen.jixieshen = function(self, targets)
-	local target = self:findPlayerToDamage(1, self.player, sgs.DamageStruct_Normal, targets, false,0, false)
+	local target = self:findPlayerToDamage(1, self.player, "N", targets)[1]
 	return target
 end
 
@@ -8049,12 +8049,23 @@ sgs.recover_hp_skill = sgs.recover_hp_skill .. "|gxzhiliao"
 
 --审判
 sgs.ai_skill_playerchosen.shenpan = function(self, targets)
-	local target = self:findPlayerToDamage(1, self.player, sgs.DamageStruct_Normal, targets, false,0)[1]
+	local target = self:findPlayerToDamage(1, self.player, "N", targets, 5)[1]
 	return target
 end 
 
 sgs.ai_skill_invoke.shenpan = function(self, data)
-	local target = self:findPlayerToDamage(1, self.player, sgs.DamageStruct_Normal, nil, false,0)[1]
+	local n = 0
+	for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+		n = math.max(n, p:getHp())
+	end
+	local targets = sgs.SPlayerList()
+	for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+		if p:getHp() == n then
+			targets:append(p)
+		end
+	end
+	if targets:isEmpty() then return false end
+	local target = self:findPlayerToDamage(1, self.player, "N", targets, 5)[1]
 	if target then return true end
 	return false
 end

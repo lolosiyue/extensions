@@ -7584,8 +7584,7 @@ end
 
 
 sgs.ai_skill_playerchosen.SevenTaDao = function(self, targets)
-	local target = self:findPlayerToDamage(1, self.player, sgs.DamageStruct_Normal, targets, false, 0, false)
-
+	local target = self:findPlayerToDamage(1, self.player, "N", targets)[1]
 	return target
 end
 sgs.ai_skill_invoke.SevenMiDao = function(self, data)

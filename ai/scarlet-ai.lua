@@ -1627,7 +1627,7 @@ sgs.ai_skill_invoke.s4_s_yexi = function(self, data)
 end
 
 sgs.ai_skill_playerchosen.s4_s_touxi = function(self, targets)
-    return self:findPlayerToDamage(1,self.player,"F",targets,false)[1]
+    return self:findPlayerToDamage(1,self.player,"F",targets)[1]
 end
 
 sgs.ai_skill_cardask["@s4_s_ruqin"] = function(self, data, pattern, target)

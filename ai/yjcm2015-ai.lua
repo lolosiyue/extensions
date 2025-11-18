@@ -963,7 +963,7 @@ sgs.ai_skill_use_func.WurongCard = function(card,use,self)
     
     --自己展示的一定是【杀】，目标展示的不是【闪】时，可对目标造成1点伤害
     if all_slash and not target then
-        local targets = self:findPlayerToDamage(1,self.player,nil,nil,false,5)
+        local targets = self:findPlayerToDamage(1,self.player,"N",nil,5)
         for _,p in ipairs(targets)do
             if not p:isKongcheng() then
                 local knowns,unknowns = getKnownHandcards(self.player,p)
@@ -1017,7 +1017,7 @@ sgs.ai_skill_use_func.WurongCard = function(card,use,self)
             end
         end
         
-        local to_damage = self:findPlayerToDamage(1,self.player,nil,enemies,false,5)
+        local to_damage = self:findPlayerToDamage(1,self.player,"N",enemies,5)
         for _,enemy in ipairs(to_damage)do
             local knowns,unknowns = getKnownHandcards(self.player,enemy)
             local no_jink = true
@@ -1077,7 +1077,7 @@ sgs.ai_skill_use_func.WurongCard = function(card,use,self)
         end
         
         if not target then
-            to_damage = self:findPlayerToDamage(1,self.player,nil,friends,false,25)
+            to_damage = self:findPlayerToDamage(1,self.player,"N",friends,25)
             for _,friend in ipairs(to_damage)do
                 local knowns,unknowns = getKnownHandcards(self.player,friend)
                 local all_jink = true
@@ -1095,7 +1095,7 @@ sgs.ai_skill_use_func.WurongCard = function(card,use,self)
         end
         
         if not target then
-            local victim = self:findPlayerToDamage(1,self.player,nil,others,false,5)[1]
+            local victim = self:findPlayerToDamage(1,self.player,"N",others,5)[1]
             if victim then
                 need_slash,target = true,victim
             end

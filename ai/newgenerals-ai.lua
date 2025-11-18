@@ -4041,7 +4041,7 @@ end
 
 sgs.ai_skill_playerchosen.moumingce = function(self,targets)
 	targets = sgs.QList2Table(targets)
-	return self:findPlayerToDamage(self.player:getMark("&mouCeC"),self.player,"N",targets,false)[1]
+	return self:findPlayerToDamage(self.player:getMark("&mouCeC"),self.player,"N",targets)[1]
 end
 sgs.ai_ajustdamage_to.mouzhichi = function(self,from,to,card,nature)
 	if to:getMark("&mouzhichi-Clear")>0
@@ -5014,7 +5014,7 @@ sgs.ai_skill_invoke.mouzhiba = sgs.ai_skill_invoke.niepan
 sgs.ai_skill_invoke.mouzhibas = sgs.ai_skill_invoke.niepan
 
 sgs.ai_skill_playerchosen.moulieren = function(self, targets)
-	return self:findPlayerToDamage(1, self.player,sgs.DamageStruct_Normal, targets, false)[1]
+	return self:findPlayerToDamage(1, self.player,sgs.DamageStruct_Normal, targets)[1]
 end
 sgs.ai_cardneed.moulieren = sgs.ai_cardneed.lieren
 sgs.ai_skill_pindian.moulieren = sgs.ai_skill_pindian.lieren

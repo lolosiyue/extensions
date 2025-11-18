@@ -6238,7 +6238,7 @@ sgs.ai_use_value.jlsgyanlieCard = 2.35
 sgs.ai_card_intention.jlsgyanlieCard = 20
 
 sgs.ai_skill_playerchosen.jlsgyanlie = function(self,targets)
-	local to = self:findPlayerToDamage(1,self.player,sgs.DamageStruct_Fire,targets)[1]
+	local to = self:findPlayerToDamage(1,self.player,"F",targets)[1]
 	if to then return to end
 	targets = sgs.QList2Table(targets)
 	self:sort(targets,"hp")

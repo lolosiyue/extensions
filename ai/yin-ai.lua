@@ -727,7 +727,7 @@ end
 sgs.ai_skill_playerchosen.cuike = function(self,targets)
 	local mark = self.player:getMark("&junlve")
 	if mark % 2==1 then
-		local target = self:findPlayerToDamage(1,self.player,sgs.DamageStruct_Normal,targets)[1]
+		local target = self:findPlayerToDamage(1,self.player,"N",targets)[1]
 		if target then return target end
 		self:sort(self.enemies,"hp")
 		for _,enemy in sgs.list(self.enemies)do
@@ -853,7 +853,7 @@ sgs.ai_skill_use_func.ZhanhuoCard = function(card,use,self)
 end
 
 sgs.ai_skill_playerchosen.zhanhuo = function(self,targets)
-	local target = self:findPlayerToDamage(1,self.player,sgs.DamageStruct_Fire,targets)[1]
+	local target = self:findPlayerToDamage(1,self.player,"F",targets)[1]
 	if target then return target end
 	return target:first()
 end

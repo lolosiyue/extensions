@@ -37,7 +37,7 @@ sgs.ai_skill_use_func["#ckdianjicard"] = function(card,use,self)
         use.to:append(self.player)
         return
     end
-    local target = self:findPlayerToDamage(1,self.player, sgs.DamageStruct_Thunder,nil,true)[1]
+    local target = self:findBestDamageTarget(1, "T", 0, nil)
     if target then
         use.card = sgs.Card_Parse("#ckdianjicard:"..cards[1]:getEffectiveId()..":")
         use.to:append(target)
@@ -296,7 +296,7 @@ sgs.ai_skill_use_func["#cklongxicard"] = function(card,use,self)
             return
         end
     end
-    local target = self:findPlayerToDamage(3,self.player, sgs.DamageStruct_Normal,nil,true)[1]
+    local target = self:findBestDamageTarget(3, "N", 0, nil)
     if target then
         use.card = sgs.Card_Parse("#cklongxicard:.:")
         use.to:append(target)
@@ -335,14 +335,15 @@ sgs.ai_skill_use_func["#ckweishancard"] = function(card,use,self)
 		end
 	end
     if #use_cards < 3 then return end
-    for _,enemy in sgs.list(self.enemies)do
-        if self:objectiveLevel(enemy)>3 and not self:cantbeHurt(enemy) and self:canDamage(enemy,self.player,nil) and self:damageIsEffective(enemy, sgs.DamageStruct_Normal, self.player) and not self:cantDamageMore(self.player, enemy) and (enemy:isWounded() or self:isWeak()) then
-            use.card = sgs.Card_Parse("#ckweishancard:".. table.concat(use_cards, "+")..":")
-            use.to:append(enemy)
-            return
-        end
-    end
-    local target = self:findPlayerToDamage(3,self.player, sgs.DamageStruct_Normal,nil,true)[1]
+
+	local enemies = self:findPlayerToDamage(3, self.player, "N")
+	enemies = table.filter(enemies, function(p) return not self:cantDamageMore(self.player, p) end)
+	for _,enemy in ipairs(enemies) do
+		use.card = sgs.Card_Parse("#ckweishancard:".. table.concat(use_cards, "+")..":")
+        use.to:append(enemy)
+        return
+	end
+    local target = self:findBestDamageTarget(3, "N", 0, nil)
     if target then
         use.card = sgs.Card_Parse("#ckweishancard:".. table.concat(use_cards, "+")..":")
         use.to:append(target)

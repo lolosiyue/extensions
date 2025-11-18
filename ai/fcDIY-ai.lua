@@ -3344,7 +3344,7 @@ sgs.ai_skill_use["@@fcj_pingcaiFengchu"] = function(self, prompt, method)
 end
 
 sgs.ai_skill_use["@@fcj_pingcaiWolong"] = function(self, prompt, method)
-	local tos = self:findPlayerToDamage(1,self.player,sgs.DamageStruct_Fire,self.room:getAlivePlayers())
+	local tos = self:findPlayerToDamage(1,self.player,"F")
 	self:sort(tos)
 	local tos2 = {}
 	for _,p in ipairs(tos)do

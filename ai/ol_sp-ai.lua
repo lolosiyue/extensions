@@ -3014,7 +3014,7 @@ end
 
 --神赋
 sgs.ai_skill_playerchosen.shenfu_ji = function(self,targets)
-	local targets_table = self:findPlayerToDamage(1,self.player,sgs.DamageStruct_Thunder,targets)
+	local targets_table = self:findPlayerToDamage(1,self.player,"T",targets)
 	if #targets_table<=0 then return nil end
 	if not self.player:isChained() or not self:isWeak() or not self:damageIsEffective(self.player,sgs.DamageStruct_Thunder,self.player) then return targets_table[1] end
 	for _,p in sgs.list(targets_table)do

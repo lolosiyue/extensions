@@ -177,18 +177,9 @@ end
 
 
 sgs.ai_skill_playerchosen.se_leimu = function(self, targets)
-	self:sort(self.enemies, "hp")
-	for _, enemy in ipairs(self.enemies) do
-		if self:objectiveLevel(enemy) > 3 and not self:cantbeHurt(enemy) and self:canDamage(enemy,self.player,nil) and self:damageIsEffective(enemy, sgs.DamageStruct_Thunder, self.player) then
-			return enemy
-		end
-	end
-	return nil --mostPlayer(self, false, 3)
+	return self:findBestDamageTarget(1, "T", 0, nil)
 end
---[[
-sgs.ai_skill_playerchosen.se_leimu = function(self, targets)
-	return self:findPlayerToDamage(1, self.player, sgs.DamageStruct_Thunder, self.room:getOtherPlayers(self.player), false, 0,false)
-end]]
+
 sgs.ai_cardneed.se_yezhan         = function(to, card, self)
 	return card:isKindOf("FireSlash") or card:isKindOf("ThunderSlash") or card:isKindOf("FireAttack")
 end

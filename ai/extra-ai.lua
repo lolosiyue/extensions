@@ -706,7 +706,7 @@ sgs.ai_card_priority.heg_longdan = function(self,card)
 	end
 end
 sgs.ai_skill_playerchosen.heg_longdan = function(self, targets)
-	return self:findPlayerToDamage(1,self.player,sgs.DamageStruct_Normal,targets)[1]
+	return self:findBestDamageTarget(1, "N", 0, nil)[1]
 end
 sgs.ai_skill_playerchosen["heg_longdan_recover"] = function(self, targets)
 	local arr1, arr2 = self:getWoundedFriend(false, true)

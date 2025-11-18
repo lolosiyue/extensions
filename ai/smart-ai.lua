@@ -3556,15 +3556,7 @@ end
 
 sgs.ai_skill_playerchosen.damage = function(self,targets)
 	local targetlist = self:sort(targets,"hp")
-	for _,p in sgs.list(targetlist)do
-		if self:isEnemy(p) and self:damageIsEffective(p,"N",self.player)
-		then return p end
-	end
-	for _,p in sgs.list(targetlist)do
-		if not self:isFriend(p) and self:damageIsEffective(p,"N",self.player)
-		then return p end
-	end
-	return targetlist[#targetlist]
+	return self:findPlayerToDamage(1,self.player,"N",targets,false,0,nil)[1]
 end
 
 function SmartAI:askForPlayerChosen(targets,reason)
@@ -5501,7 +5493,7 @@ function SmartAI:findPlayerToDraw(include_self,drawnum,count)
 	drawnum = drawnum or 1
 	local friends,tos = {},{}
 	for _,p in sgs.list(include_self and self.room:getAlivePlayers() or self.room:getOtherPlayers(self.player))do
-		if self:isFriend(p) and not hasManjuanEffect(p)
+		if self:isFriend(p) and self:canDraw(p)
 		and not(drawnum<=2 and p:isKongcheng() and p:hasSkill("kongcheng"))
 		then table.insert(friends,p) end
 	end
@@ -5509,42 +5501,78 @@ function SmartAI:findPlayerToDraw(include_self,drawnum,count)
 
 	self:sort(friends)
 	for _,friend in sgs.list(friends)do
-		if friend:getHandcardNum()<2 and not self:needKongcheng(friend) and not self:willSkipPlayPhase(friend) then
+		if friend:getHandcardNum()<2 and not self:needKongcheng(friend) and not self:willSkipPlayPhase(friend) and self:canDraw(friend) then
 			if not table.contains(tos,friend) then table.insert(tos,friend) end
 		end
 	end
 
 	local at = self:AssistTarget()
-	if at and table.contains(friends,at) and not self:willSkipPlayPhase(at)
+	if at and table.contains(friends,at) and not self:willSkipPlayPhase(at) and self:canDraw(at)
 	and (at:getHandcardNum()<at:getMaxCards()*2 or at:getHandcardNum()<self.player:getHandcardNum()) then
 		if not table.contains(tos,at) then table.insert(tos,at) end
 	end
 
 	for _,friend in sgs.list(friends)do
-		if friend:hasSkills(sgs.cardneed_skill) and not self:willSkipPlayPhase(friend) then
+		if friend:hasSkills(sgs.cardneed_skill) and not self:willSkipPlayPhase(friend) and self:canDraw(friend) then
 			if not table.contains(tos,friend) then table.insert(tos,friend) end
 		end
 	end
 
 	self:sort(friends,"handcard")
 	for _,friend in sgs.list(friends)do
-		if not self:needKongcheng(friend) and not self:willSkipPlayPhase(friend) then
+		if not self:needKongcheng(friend) and not self:willSkipPlayPhase(friend) and self:canDraw(friend) then
 			if not table.contains(tos,friend) then table.insert(tos,friend) end
 		end
 	end
 	return count and tos or tos[1]
 end
 
-function SmartAI:findPlayerToDamage(damage,player,nature,targets,include_self,base_value)
+-- @param damage The base damage amount (default: 1)
+-- @param player The source player of the damage
+-- @param nature Damage nature: "N"(normal), "F"(fire), "T"(thunder) (default: "N")
+-- @param targets Optional player list to search (default: all other players)
+-- @param base_value Minimum value threshold for inclusion (default: 0)
+-- @param card Optional card object for accurate damage/nature calculation
+-- @return A sorted table of valid targets with positive value, best targets first
+function SmartAI:findPlayerToDamage(damage,player,nature,targets,base_value,card)
 	damage = damage or 1
-	nature = nature or "N"
 	base_value = base_value or 0	
-	targets = targets or include_self~=false and self.room:getOtherPlayers(player) or self.room:getAlivePlayers()
+	targets = targets or self.room:getOtherPlayers(player)
 	targets = sgs.QList2Table(targets)
 	if #targets<2 then return targets end
 	
+	-- Auto-detect nature from card if not specified
+	if card and not nature then
+		nature = sgs.card_damage_nature[card:getClassName()] or "N"
+	end
+	nature = nature or "N"
+	
 	function getDamageValue(target,self_only)
-		local value,count = 0,self:ajustDamage(player,target,damage,nil,nature)
+		-- Early validation checks using modern functions
+		if not self_only then
+			-- Check if damage is effective at all
+			if not self:damageIsEffective(target,nature,player) then
+				return -999
+			end
+			
+			-- Check comprehensive damage feasibility
+			if self:isEnemy(target) then
+				if not self:canDamage(target,player,card) then
+					return -999  -- Can't damage this enemy effectively
+				end
+			elseif self:isFriend(target) then
+				-- For friends, check if we should avoid hurting them
+				if self:dontHurt(target,player) then
+					return -999  -- Protected friend, don't damage
+				end
+				-- Only damage friends if they benefit from it
+				if not self:needToLoseHp(target,player,card,true) then
+					return -999  -- Friend doesn't benefit from damage
+				end
+			end
+		end
+		
+		local value,count = 0,self:ajustDamage(player,target,damage,card,nature)
 		if count>0 then
 			value = value+count*20 --设1牌价值为10，且1体力价值2牌，1回合价值2.5牌，下同
 			local hp = target:getHp()
@@ -5559,7 +5587,7 @@ function SmartAI:findPlayerToDamage(damage,player,nature,targets,include_self,ba
 					if target:faceUp() and target:hasSkill("jiushi")
 					then value = value+25 end
 				end
-				if self:needToLoseHp(target,player) then
+				if self:needToLoseHp(target,player,card) then
 					value = value-5
 					if target:hasSkill("nosyiji") then value = value-20*count end
 					if target:hasSkill("yiji") then value = value-10*count end
@@ -5584,6 +5612,15 @@ function SmartAI:findPlayerToDamage(damage,player,nature,targets,include_self,ba
 					end
 					if target:hasSkill("chengxiang") then value = value+15 end
 					if target:hasSkill("noschengxiang") then value = value+15 end
+				end
+				for _,sk in ipairs(sgs.getPlayerSkillList(target)) do
+					local ts = sgs.Sanguosha:getTriggerSkill(sk:objectName())
+					if ts and ts:hasEvent(sgs.Damaged) then
+						value = value+10
+					end
+				end
+				if count > 1 and self:cantDamageMore(player, target) then
+					value = value - 15
 				end
 			end
 			if self:isFriend(target) then value = -value
@@ -5618,6 +5655,22 @@ function SmartAI:findPlayerToDamage(damage,player,nature,targets,include_self,ba
 		then table.insert(result,p) end
 	end
 	return result
+end
+
+--- Simplified helper: Find the best enemy to damage
+-- Common use case wrapper that filters to only return enemies
+-- @param damage Base damage amount (default: 1)
+-- @param nature Damage nature "N"/"F"/"T" (default: "N")
+-- @param min_value Minimum value threshold (default: 5)
+-- @param card Optional card object for accurate calculation
+-- @return The best enemy target, or nil if none suitable
+function SmartAI:findBestDamageTarget(damage, nature, min_value, card)
+	damage = damage or 1
+	nature = nature or "N"
+	min_value = min_value or 5
+	
+	local targets = self:findPlayerToDamage(damage, self.player, nature, nil, min_value, card)
+	return targets[1]
 end
 
 function SmartAI:dontRespondPeachInJudge(judge)
