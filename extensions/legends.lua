@@ -3913,6 +3913,11 @@ shenyan = sgs.CreateTriggerSkill{
 								p:addQinggangTag(slash)
 							end
 						end
+						local log = sgs.LogMessage()
+						log.type = "#IgnoreArmor"
+						log.from = player
+						log.card_str = use.card:toString()
+						room:sendLog(log)
 					end
 				end
 			end

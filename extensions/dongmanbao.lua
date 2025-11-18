@@ -1496,81 +1496,15 @@ Zhudao = sgs.CreateTriggerSkill {
 				end
 				local room = player:getRoom()
 				for i = 1, n, 1 do
-					if room:askForSkillInvoke(player, self:objectName()) then
+					if self:canMoveField("ej") and room:askForSkillInvoke(player, self:objectName()) then
 						room:broadcastSkillInvoke("Zhudao")
 						room:doLightbox("Zhudao$", 800)
-						local list = room:getAlivePlayers()
-						local from = room:askForPlayerChosen(player, list, "Laiyuan")
-
-
-						if not from:isAllNude() then
-							local card_id = room:askForCardChosen(player, from, "hej", self:objectName())
-							local card = sgs.Sanguosha:getCard(card_id)
-							local place = room:getCardPlace(card_id)
-							local i = -1
-							--room:drawCards(player,1)
-							if place == sgs.Player_PlaceEquip then
-								if card:isKindOf("Weapon") then
-									i = 1
-								end
-								if card:isKindOf("Armor") then
-									i = 2
-								end
-								if card:isKindOf("DefensiveHorse") then
-									i = 3
-								end
-								if card:isKindOf("OffensiveHorse") then
-									i = 4
-								end
-							end
-							local tos = sgs.SPlayerList()
-							local list = room:getAlivePlayers()
-							--room:drawCards(player,1)
-							for _, p in sgs.qlist(list) do
-								if i ~= -1 then
-									if i == 1 then
-										if not p:getWeapon() and p:hasEquipArea(i) then
-											tos:append(p)
-										end
-									end
-									if i == 2 then
-										if not p:getArmor() and p:hasEquipArea(i) then
-											tos:append(p)
-										end
-									end
-									if i == 3 then
-										if not p:getDefensiveHorse() and p:hasEquipArea(i) then
-											tos:append(p)
-										end
-									end
-									if i == 4 then
-										if not p:getOffensiveHorse() and p:hasEquipArea(i) then
-											tos:append(p)
-										end
-									end
-								else
-									if not player:isProhibited(p, card) and not p:containsTrick(card:objectName()) and p:hasJudgeArea() then
-										tos:append(p)
-									end
-								end
-							end
-							--room:drawCards(player,1)
-							if tos:isEmpty() then return false end
-							local tag = sgs.QVariant()
-							tag:setValue(from)
-							room:setTag("SixuTarget", tag)
-							local to = room:askForPlayerChosen(player, tos, "Quxiang")
-							if to then
-								local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TRANSFER,
-									player:objectName(), self:objectName(), "")
-								room:moveCardTo(card, from, to, place, reason)
-							end
-							room:removeTag("SixuTarget")
-						end
-						room:sendCompulsoryTriggerLog(player, "Sixu", true)
+						room:moveField(player, self:objectName(), true, "ej")
+						room:sendCompulsoryTriggerLog(player, "Zhudao", true)
 						if not player:faceUp() then
 							player:turnOver()
 						end
+						break
 					end
 				end
 			end
@@ -1587,146 +1521,10 @@ Sixu = sgs.CreateTriggerSkill {
 		if player:isAlive() and player:hasSkill(self:objectName()) then
 			if player:getPhase() == sgs.Player_Play then
 				local room = player:getRoom()
-				if room:askForSkillInvoke(player, self:objectName()) then
+				if self:canMoveField("ej") and room:askForSkillInvoke(player, self:objectName()) then
 					room:broadcastSkillInvoke("Sixu")
-					local list = room:getAlivePlayers()
-					local from = room:askForPlayerChosen(player, list, "Laiyuan")
-
-
-					if not from:isAllNude() then
-						local card_id = room:askForCardChosen(player, from, "hej", self:objectName())
-						local card = sgs.Sanguosha:getCard(card_id)
-						local place = room:getCardPlace(card_id)
-						local i = -1
-						--room:drawCards(player,1)
-						if place == sgs.Player_PlaceEquip then
-							if card:isKindOf("Weapon") then
-								i = 1
-							end
-							if card:isKindOf("Armor") then
-								i = 2
-							end
-							if card:isKindOf("DefensiveHorse") then
-								i = 3
-							end
-							if card:isKindOf("OffensiveHorse") then
-								i = 4
-							end
-						end
-						local tos = sgs.SPlayerList()
-						local list = room:getAlivePlayers()
-						--room:drawCards(player,1)
-						for _, p in sgs.qlist(list) do
-							if i ~= -1 then
-								if i == 1 then
-									if not p:getWeapon() then
-										tos:append(p)
-									end
-								end
-								if i == 2 then
-									if not p:getArmor() then
-										tos:append(p)
-									end
-								end
-								if i == 3 then
-									if not p:getDefensiveHorse() then
-										tos:append(p)
-									end
-								end
-								if i == 4 then
-									if not p:getOffensiveHorse() then
-										tos:append(p)
-									end
-								end
-							else
-								if not player:isProhibited(p, card) and not p:containsTrick(card:objectName()) then
-									tos:append(p)
-								end
-							end
-						end
-						--room:drawCards(player,1)
-						if tos:isEmpty() then return false end
-						local tag = sgs.QVariant()
-						tag:setValue(from)
-						room:setTag("SixuTarget", tag)
-						local to = room:askForPlayerChosen(player, tos, "Quxiang")
-						if to then
-							local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TRANSFER, player:objectName(),
-								self:objectName(), "")
-							room:moveCardTo(card, from, to, place, reason)
-						end
-						room:removeTag("SixuTarget")
-					end
-
-
-					local from = room:askForPlayerChosen(player, list, "Laiyuan")
-
-
-					if not from:isAllNude() then
-						local card_id = room:askForCardChosen(player, from, "hej", self:objectName())
-						local card = sgs.Sanguosha:getCard(card_id)
-						local place = room:getCardPlace(card_id)
-						local i = -1
-						--room:drawCards(player,1)
-						if place == sgs.Player_PlaceEquip then
-							if card:isKindOf("Weapon") then
-								i = 1
-							end
-							if card:isKindOf("Armor") then
-								i = 2
-							end
-							if card:isKindOf("DefensiveHorse") then
-								i = 3
-							end
-							if card:isKindOf("OffensiveHorse") then
-								i = 4
-							end
-						end
-						local tos = sgs.SPlayerList()
-						local list = room:getAlivePlayers()
-						--room:drawCards(player,1)
-						for _, p in sgs.qlist(list) do
-							if i ~= -1 then
-								if i == 1 then
-									if not p:getWeapon() then
-										tos:append(p)
-									end
-								end
-								if i == 2 then
-									if not p:getArmor() then
-										tos:append(p)
-									end
-								end
-								if i == 3 then
-									if not p:getDefensiveHorse() then
-										tos:append(p)
-									end
-								end
-								if i == 4 then
-									if not p:getOffensiveHorse() then
-										tos:append(p)
-									end
-								end
-							else
-								if not player:isProhibited(p, card) and not p:containsTrick(card:objectName()) then
-									tos:append(p)
-								end
-							end
-						end
-						--room:drawCards(player,1)
-						if tos:isEmpty() then return false end
-						local tag = sgs.QVariant()
-						tag:setValue(from)
-						room:setTag("SixuTarget", tag)
-						local to = room:askForPlayerChosen(player, tos, "Quxiang")
-
-						if to then
-							local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TRANSFER, player:objectName(),
-								self:objectName(), "")
-							room:moveCardTo(card, from, to, place, reason)
-						end
-						room:removeTag("SixuTarget")
-					end
+					room:moveField(player, self:objectName(), true, "ej")
+					room:moveField(player, self:objectName(), true, "ej")
 					if room:getAllPlayers(true):length() > 2 then
 						player:skip(sgs.Player_Discard)
 						room:sendCompulsoryTriggerLog(player, "Sixu", true)

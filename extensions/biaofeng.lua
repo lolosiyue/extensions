@@ -4413,6 +4413,11 @@ PlusWusheng = sgs.CreateTriggerSkill {
 						end
 					end
 					room:setEmotion(use.from, "weapon/qinggang_sword")
+					local log = sgs.LogMessage()
+					log.type = "#IgnoreArmor"
+					log.from = player
+					log.card_str = use.card:toString()
+					room:sendLog(log)
 				end
 			end
 		elseif event == sgs.DamageCaused then --方块伤害+1（按照FAQ将时机改为造成伤害时）

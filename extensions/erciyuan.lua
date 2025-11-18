@@ -1339,6 +1339,11 @@ LuaPomo = sgs.CreateTriggerSkill {
 						end
 						room:setEmotion(use.from, "weapon/qinggang_sword")
 						room:sendCompulsoryTriggerLog(use.from, "LuaPomo", true)
+						local log = sgs.LogMessage()
+						log.type = "#IgnoreArmor"
+						log.from = player
+						log.card_str = use.card:toString()
+						room:sendLog(log)
 					end
 				end
 			end

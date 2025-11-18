@@ -1762,6 +1762,11 @@ s_w_qimou = sgs.CreateTriggerSkill{
 					p:addQinggangTag(use.card)
 				end
 			end 
+			local log = sgs.LogMessage()
+			log.type = "#IgnoreArmor"
+			log.from = player
+			log.card_str = use.card:toString()
+			room:sendLog(log)
 				room:setEmotion(use.from, "weapon/qinggang_sword")
 				end
 			elseif event == sgs.Damage then 
@@ -8266,6 +8271,11 @@ s2_chuanyang = sgs.CreateTriggerSkill{
 			end 
 				room:setEmotion(use.from, "weapon/qinggang_sword")
 				room:sendCompulsoryTriggerLog(use.from, "s2_chuanyang", true)
+				local log = sgs.LogMessage()
+				log.type = "#IgnoreArmor"
+				log.from = player
+				log.card_str = use.card:toString()
+				room:sendLog(log)
 				room:broadcastSkillInvoke(self:objectName())
 					end
 				end

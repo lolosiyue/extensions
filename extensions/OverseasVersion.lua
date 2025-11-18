@@ -6138,6 +6138,11 @@ ov_jianwei = sgs.CreateTriggerSkill{
 				for c,to in sgs.list(use.to)do
 					to:addQinggangTag(use.card)
 				end
+				local log = sgs.LogMessage()
+				log.type = "#IgnoreArmor"
+				log.from = player
+				log.card_str = use.card:toString()
+				room:sendLog(log)
 			end
 		end
 		return false

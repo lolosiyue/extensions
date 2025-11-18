@@ -2993,6 +2993,11 @@ qhwindwushen = sgs.CreateTriggerSkill {
             for _, target in sgs.qlist(use.to) do
                 target:addQinggangTag(use.card)
             end
+            local log = sgs.LogMessage()
+            log.type = "#IgnoreArmor"
+            log.from = player
+            log.card_str = use.card:toString()
+            room:sendLog(log)
         end
     end
 }
@@ -4481,6 +4486,11 @@ qhfiretianyi = sgs.CreateTriggerSkill { -- 天义 触发技
             for _, target in sgs.qlist(use.to) do
                 target:addQinggangTag(use.card)
             end
+            local log = sgs.LogMessage()
+            log.type = "#IgnoreArmor"
+            log.from = player
+            log.card_str = use.card:toString()
+            room:sendLog(log)
         end
     end
 }
