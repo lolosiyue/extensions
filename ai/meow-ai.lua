@@ -298,7 +298,7 @@ sgs.ai_card_intention.MeowlijianCard = function(self,card,from,to)
 end
 
 sgs.dynamic_value.damage_card.MeowlijianCard = true
-
+sgs.ai_suppress_intention["Meowlijian"] = true
 
 sgs.ai_skill_invoke.MeowQieting = function(self, data)
     return true

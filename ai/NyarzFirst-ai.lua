@@ -1898,7 +1898,7 @@ hfgushi_skill.getTurnUseCard = function(self, inclusive)
 end
 
 sgs.ai_card_priority.hfgushi = function(self,card)
-	if card:getSkillName() == "hfgushi"
+	if table.contains(card:getSkillNames(), "hfgushi")
 	then
 		if self.useValue
 		then return 1 end
@@ -2110,7 +2110,7 @@ end
 sgs.ai_use_priority.dwzhizhe = 8
 
 sgs.ai_card_priority.dwzhizhe = function(self,card)
-	if card:getSkillName() == "dwzhizhe"
+	if table.contains(card:getSkillNames(), "dwzhizhe")
 	then
 		if self.useValue
 		then return 1 end
@@ -2593,7 +2593,7 @@ end
 
 
 --认父
-
+sgs.ai_suppress_intention["xiaoyizi"] = true
 sgs.ai_skill_playerchosen.xiaorenfu = function(self, targets)
 	if self.player:hasFlag("xiaoyifu") then
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
@@ -3086,3 +3086,4 @@ sgs.ai_choicemade_filter.skillInvoke.lgliegong = function(self,player,promptlist
 end
 sgs.ai_cardneed.lgliegong = sgs.ai_cardneed.slash
 sgs.hit_skill = sgs.hit_skill .. "|lgliegong"
+

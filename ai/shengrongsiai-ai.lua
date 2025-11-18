@@ -86,6 +86,7 @@ sgs.ai_useto_revises.luaRduxian = function(self,card,use,p)
 	end
 end
 
+sgs.ai_damage_reason_suppress_intention["luaRduxian"] = true
 
 sgs.ai_skill_playerchosen.luaRcaiyi = function(self,targets)
 	self:sort(self.enemies,"handcard")

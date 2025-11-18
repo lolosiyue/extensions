@@ -775,7 +775,7 @@ f_lingqi_skill.getTurnUseCard = function(self,inclusive)
 end
 
 sgs.ai_card_priority.f_lingqi = function(self,card)
-	if card:getSkillName()=="f_lingqi" or card:getSkillName()=="f_lingqij" or card:getSkillName()=="f_lingqix_poison"
+	if table.contains(card:getSkillNames(), "f_lingqi") or table.contains(card:getSkillNames(), "f_lingqij") or table.contains(card:getSkillNames(), "f_lingqix_poison")
 	then
 		if self.useValue
 		then return 1 end
@@ -787,7 +787,7 @@ end
 
 
 sgs.ai_use_revises.f_lingqi = function(self,card,use)
-	if card:isKindOf("Slash") and card:getSkillName() == "f_lingqij" then
+	if card:isKindOf("Slash") and table.contains(card:getSkillNames(), "f_lingqij") then
 		card:setFlags("Qinggang")
 	end
 end
@@ -1132,7 +1132,7 @@ sgs.ai_ajustdamage_from.f_lijian = function(self, from, to, card, nature)
     end
 end
 sgs.ai_ajustdamage_from.f_luanji = function(self, from, to, card, nature)
-    if card and card:getSkillName() == "f_luanji" and card:subcardsLength() >= 3
+    if card and table.contains(card:getSkillNames(), "f_luanji") and card:subcardsLength() >= 3
     then
         return 1
     end
@@ -1479,7 +1479,7 @@ sgs.ai_use_priority.diy_k_shouli = 2.8
 
 
 sgs.ai_card_priority.diy_k_shouli = function(self,card)
-	if card:getSkillName()=="diy_k_shouli"
+	if table.contains(card:getSkillNames(), "diy_k_shouli")
 	then
 		if self.useValue
 		then return 1 end
@@ -1796,6 +1796,7 @@ end
 
 
 --
+
 
 
 

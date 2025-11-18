@@ -235,7 +235,7 @@ lxtx_taoxi.getTurnUseCard = function(self)
 end
 
 sgs.ai_card_priority.lxtx_taoxi = function(self,card)
-	if card:getSkillName()=="lxtx_taoxi"
+	if table.contains(card:getSkillNames(), "lxtx_taoxi")
 	then
 		if self.useValue
 		then return 1 end
@@ -613,7 +613,7 @@ end
 
 sgs.ai_cardneed.lxtx_shouyue_longdan = sgs.ai_cardneed.longdan
 sgs.ai_card_priority.lxtx_shouyue_longdan = function(self,card)
-	if card:getSkillName()=="lxtx_shouyue_longdan"
+	if table.contains(card:getSkillNames(), "lxtx_shouyue_longdan")
 	then
 		if self.useValue
 		then return 1 end
@@ -1227,3 +1227,4 @@ sgs.ai_skill_use["@@lxtx_yanpo"] = function(self,prompt)
     end
     return "."
 end
+

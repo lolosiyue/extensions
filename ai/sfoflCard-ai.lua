@@ -256,7 +256,7 @@ sfofl_sheji_skill.getTurnUseCard = function(self)
 end
 
 sgs.ai_card_priority.sfofl_sheji = function(self, card)
-	if card:isKindOf("Slash") and self.player:getHandcardNum() < 4 and card:getSkillName() == "sfofl_sheji"
+	if card:isKindOf("Slash") and self.player:getHandcardNum() < 4 and table.contains(card:getSkillNames(), "sfofl_sheji")
 	then
 		return 1
 	end
@@ -854,7 +854,7 @@ sgs.ai_skill_use_func["#sfofl_zhiji"] = function(card, use, self)
 	end	
 	return 	
 end
-
+sgs.ai_suppress_intention["sfofl_zhiji"] = true
 
 local sfofl_jiefeng_skill = {}
 sfofl_jiefeng_skill.name = "sfofl_jiefeng"
@@ -1329,7 +1329,7 @@ sgs.ai_use_priority.undershouli = 2.8
 
 
 sgs.ai_card_priority.undershouli = function(self,card)
-	if card:getSkillName()=="undershouli"
+	if table.contains(card:getSkillNames(), "undershouli")
 	then
 		if self.useValue
 		then return 1 end
@@ -3961,7 +3961,7 @@ end
 
 
 sgs.ai_ajustdamage_from.sfofl_deshi = function(self, from, to, card, nature)
-	if card and card:isKindOf("Slash") and card:getSkillName() == "sfofl_deshi"
+	if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "sfofl_deshi")
 	then
 		return card:subcardsLength() - 1
 	end
@@ -4729,7 +4729,7 @@ sfofl_zhaobing_skill.getTurnUseCard = function(self,inclusive)
 end
 sgs.ai_use_priority.sfofl_zhaobing = 5
 sgs.ai_card_priority.sfofl_zhaobing = function(self,card)
-	if card:getSkillName()=="sfofl_zhaobing"
+	if table.contains(card:getSkillNames(), "sfofl_zhaobing")
 	then return 5 end
 end
 
@@ -6377,7 +6377,7 @@ sgs.ai_skill_use["@@sfofl_qifeng"] = function(self, prompt)
 end
 
 sgs.ai_ajustdamage_from.sfofl_qifeng = function(self, from, to, card, nature)
-    if card and (card:isKindOf("Slash") and card:getSkillName() == "sfofl_qifeng")   then
+    if card and (card:isKindOf("Slash") and table.contains(card:getSkillNames(), "sfofl_qifeng"))   then
         return from:getMark("sfofl_qifeng-Clear") - 1
     end
 end
@@ -7372,7 +7372,7 @@ sgs.ai_skill_use["@@sfofl_qianjing"] = function(self, prompt)
 end
 
 sgs.ai_card_priority.sfofl_qianjing = function(self,card)
-	if card:getSkillName()=="sfofl_qianjing"
+	if table.contains(card:getSkillNames(), "sfofl_qianjing")
 	then
 		if self.useValue
 		then return 1 end
@@ -7527,6 +7527,7 @@ sgs.ai_ajustdamage_to["&sfofl_chiyan"] = function(self,from,to,card,nature)
 	return 1
 end
 
+sgs.ai_damage_reason_suppress_intention["sfofl_zimou"] = true
 sgs.ai_skill_discard.sfofl_zimou = function(self)
 	local to_discard = {}
 	local cards = self.player:getCards("he")
@@ -10197,7 +10198,7 @@ end
 sgs.ai_skill_invoke.sfofl_n_leiming = true
 
 sgs.ai_card_priority.sfofl_n_leiming = function(self,card)
-	if card:getSkillName()=="sfofl_n_leiming"
+	if table.contains(card:getSkillNames(), "sfofl_n_leiming")
 	then
 		if self.useValue
 		then return 1 end

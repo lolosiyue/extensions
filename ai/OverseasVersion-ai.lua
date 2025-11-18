@@ -2605,7 +2605,7 @@ sgs.ai_guhuo_card.ov_jiange = function(self,toname,class_name)
 end
 
 sgs.ai_card_priority.ov_jiange = function(self,card)
-	if card:getSkillName()=="ov_jiange" then
+	if table.contains(card:getSkillNames(), "ov_jiange") then
 		if self.player:getPhase()==sgs.Player_NotActive
 		then return 1 else return -1 end
 	end
@@ -6591,6 +6591,7 @@ sgs.ai_skill_playerchosen.ov_beixing = function(self,players,x,n)
 		end
 	end
 end
+
 
 
 

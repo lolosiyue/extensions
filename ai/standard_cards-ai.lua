@@ -755,7 +755,7 @@ sgs.ai_skill_cardask["slash-jink"] = function(self,data,pattern,target)
 			self.room:getThread():delay(math.random(global_delay*0.3,global_delay*1.3))
 		end
 		--add
-		if slash:getSkillName() == "s_w_wushuang" then
+		if table.contains(slash:getSkillNames(), "s_w_wushuang") then
 			for _,c in sgs.list(self:getCard("Jink",true))do
 				if c:getSuit()~=slash:getSuit() then continue end
 				return c:toString()
@@ -1656,7 +1656,7 @@ function SmartAI:useCardDuel(duel,use)
 	self.aiUsing = duel:getSubcards()
 	local n1 = self:getCardsNum("Slash")
 	--add
-	if self.player:hasSkill("sijyufakeoffline_boss_wushuang") then n1 = 999 end
+	if self.player:hasSkill("sfofl_boss_wushuang") then n1 = 999 end
 	if self.player:hasSkill("wushuang")
 	or use.isWuqian then n1 = n1*2 end
 	local extraTarget = sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget,self.player,duel)
@@ -2865,3 +2865,4 @@ end
 sgs.ai_playerchosen_intention.wooden_ox = -22
 
 sgs.ai_use_priority.WoodenOxCard = 0
+

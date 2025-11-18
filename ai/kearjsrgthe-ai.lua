@@ -923,7 +923,7 @@ end
 sgs.ai_use_priority.kehechiying = 6]]
 
 sgs.ai_use_revises.kehedanxin = function(self,card,use)
-	if card:getSkillName() == "kehedanxin" then
+	if table.contains(card:getSkillNames(), "kehedanxin") then
 		for _,friend in sgs.list(self.friends_noself)do
 			if friend:getHp() < getBestHp(friend) and self.player:distanceTo(friend) == 1 then
 				use.card = card
@@ -1200,6 +1200,7 @@ sgs.ai_skill_use["@@kehexiejuslash"] = function(self,prompt,method)
 	end
 	return "."
 end
+
 
 
 

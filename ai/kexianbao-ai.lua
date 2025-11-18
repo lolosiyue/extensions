@@ -89,6 +89,8 @@ sgs.ai_skill_playerschosen.kexianhuoqi = function(self, players, x, n)
 	return tos
 end
 
+sgs.ai_damage_reason_suppress_intention["kexianhuoqi"] = true
+
 
 sgs.ai_skill_use["@kexiantianbian"] = function(self, prompt)
 	local targets = sgs.QList2Table(self.room:getAllPlayers())
@@ -215,6 +217,8 @@ sgs.ai_skill_playerschosen.kejiexianhuoqi = function(self, players, x, n)
 	if #tos < 2 then return {} end
 	return tos
 end
+
+sgs.ai_damage_reason_suppress_intention["kejiexianhuoqi"] = true
 
 sgs.ai_skill_use["@kejiexiantianbian"] = function(self, prompt)
 	local targets = sgs.QList2Table(self.room:getAllPlayers())
@@ -902,7 +906,7 @@ sgs.ai_skill_invoke.kejiexianaoce = function(self, data)
 	return false
 end
 
-
+sgs.ai_suppress_intention["kejiexianaoce"] = true
 
 
 --张郃

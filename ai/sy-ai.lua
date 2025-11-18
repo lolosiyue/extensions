@@ -24,6 +24,7 @@ end
 
 --凌虐
 sgs.ai_skill_invoke.sy_lingnue = true
+sgs.ai_suppress_intention["sy_baozheng"] = true
 
 --忍忌
 sgs.ai_skill_invoke.sy_renji = function(self, data)
@@ -526,7 +527,7 @@ end
 sgs.ai_use_value["sy_dihuiCard"] = 9
 sgs.ai_use_priority["sy_dihuiCard"] = 7
 
-
+sgs.ai_damage_reason_suppress_intention["sy_dihui"] = true
 
 
 --谗陷
@@ -626,6 +627,7 @@ end
 sgs.ai_use_value["sy_chanxianCard"] = 6
 sgs.ai_use_priority["sy_chanxianCard"] = 0
 
+sgs.ai_suppress_intention["sy_chanxian"] = true
 
 --吕布重铸武器
 function canShenji(lvbu)

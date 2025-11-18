@@ -700,7 +700,7 @@ sgs.heg_longdan_keep_value = {
 }
 
 sgs.ai_card_priority.heg_longdan = function(self,card)
-	if card:getSkillName()=="heg_longdan"
+	if table.contains(card:getSkillNames(), "heg_longdan")
 	then
 		return 1
 	end
@@ -1551,7 +1551,7 @@ sgs.ai_view_as.heg_nos_guishu = function(card,player,card_place)
 	end
 end
 sgs.ai_card_priority.heg_nos_guishu = function(self,card)
-	if card:getSkillName()=="heg_nos_guishu" and card:isKindOf("EXCard_ZJZB")
+	if table.contains(card:getSkillNames(), "heg_nos_guishu") and card:isKindOf("EXCard_ZJZB")
 	then return 5 end
 end
 

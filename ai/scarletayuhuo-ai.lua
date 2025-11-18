@@ -431,7 +431,7 @@ s_w_wushuang_skill.getTurnUseCard = function(self, inclusive)
 	end
 end
 sgs.ai_card_priority.s_w_wushuang = function(self,card,v)
-	if card:getSkillName() == "s_w_wushuang"
+	if table.contains(card:getSkillNames(), "s_w_wushuang")
 	then return 1 end
 end
 
@@ -4705,7 +4705,7 @@ sgs.ai_skill_discard.s3_youlong = function(self, discard_num, min_num, optional,
 end
 
 sgs.ai_card_priority.s3_youlong = function(self,card)
-	if card:getSkillName()=="s3_youlong"
+	if table.contains(card:getSkillNames(), "s3_youlong")
 	then
 		if self.useValue
 		then return 1 end

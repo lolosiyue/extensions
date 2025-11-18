@@ -1571,7 +1571,7 @@ sgs.luazhiyong_suit_value = {
 }
 
 sgs.ai_card_priority.luazhiyong = function(self,card)
-	if card:getSkillName()=="luazhiyong"
+	if table.contains(card:getSkillNames(), "luazhiyong")
 	then
 		if self.player:getPhase() ==sgs.Player_NotActive
 		then return 1 end
@@ -1871,4 +1871,5 @@ end
 sgs.ai_canNiepan_skill.luatianming = function(player)
 	return player:getMark("@RX") >= 7 and player:getMark("luatianming") == 0
 end
+
 

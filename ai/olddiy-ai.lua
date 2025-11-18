@@ -416,7 +416,7 @@ sgs.ai_skill_use["@@dangqian"] = function(self)
 end
 
 sgs.ai_card_priority.dangqian = function(self, card)
-	if card:getSkillName() == "longdan"
+	if table.contains(card:getSkillNames(), "longdan")
 	then
 		return 1
 	end
@@ -675,7 +675,7 @@ sgs.krskitgjiamian_keep_value = {
 }
 
 sgs.ai_card_priority.krskitgjiamian = function(self,card)
-	if card:getSkillName()=="krskitgjiamian" and self.player:getHandcardNum() <= 1
+	if table.contains(card:getSkillNames(), "krskitgjiamian") and self.player:getHandcardNum() <= 1
 	then
 		if self.useValue
 		then return 1 end
@@ -836,3 +836,4 @@ sgs.ai_can_damagehp.bu_stwo_guicai = function(self,from,card,to)
 	return to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
 	and self:canLoseHp(from,card,to) and #self.enemies > 0
 end
+

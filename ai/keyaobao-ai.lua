@@ -792,7 +792,7 @@ sgs.ai_view_as.keyaogongdu = function(card, player, card_place)
 end
 
 sgs.ai_card_priority.keyaogongdu = function(self, card)
-	if card and card:getSkillName() == "keyaogongdu" then
+	if card and table.contains(card:getSkillNames(), "keyaogongdu") then
 		return 1
 	end
 end
@@ -933,3 +933,4 @@ sgs.ai_skill_choice["kejieyaoshiwei"] = function(self, choices, data)
 	local items = choices:split("+")
 	return items[math.random(1, #items)]
 end
+

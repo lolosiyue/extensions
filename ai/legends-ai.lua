@@ -1597,7 +1597,7 @@ sgs.ai_skill_playerchosen.quexie     = function(self, targets)
 end
 
 sgs.ai_card_priority.quexie = function(self,card)
-	if card:getSkillName()=="quexie"
+	if table.contains(card:getSkillNames(), "quexie")
 	then
 		if self.useValue
 		then return 1 end

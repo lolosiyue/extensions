@@ -437,7 +437,7 @@ end
 
 
 sgs.ai_use_priority.nylijian = sgs.ai_use_priority.Slash + 0.1
-
+sgs.ai_suppress_intention["nylijian"] = true
 --夺刃
 
 sgs.ai_skill_invoke.nyduoren = function(self, data)
@@ -1003,6 +1003,7 @@ sgs.ai_skill_discard.ny_channi = function(self,max,min)
     end
     return give
 end
+sgs.ai_suppress_intention["ny_channi"] = true
 
 --兴汉
 
