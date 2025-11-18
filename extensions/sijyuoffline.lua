@@ -24758,11 +24758,21 @@ sfofl_yuanchou = sgs.CreateTriggerSkill{
                         end
                         if p:hasSkill(self:objectName()) then
                             room:sendCompulsoryTriggerLog(p, self:objectName())
+                            local log = sgs.LogMessage()
+                            log.type = "#IgnoreArmor"
+                            log.from = p
+                            log.card_str = use.card:toString()
+                            room:sendLog(log)
                         end
                     end
                 end 
                 if player:objectName() == use.from:objectName() and player:hasSkill(self:objectName()) then
                     room:sendCompulsoryTriggerLog(player, self:objectName())
+                    local log = sgs.LogMessage()
+                    log.type = "#IgnoreArmor"
+                    log.from = player
+                    log.card_str = use.card:toString()
+                    room:sendLog(log)
                 end
             end
         elseif event == sgs.CardUsed then

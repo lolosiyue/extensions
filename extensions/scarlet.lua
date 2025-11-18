@@ -6896,7 +6896,9 @@ s4_wuhu_longdan = sgs.CreateTriggerSkill{
 				log.from = player
 				log.card_str = use.card:toString()
 				room:sendLog(log)
-                player:addQinggangTag(use.card)
+                for _, p in sgs.qlist(use.to) do
+                    p:addQinggangTag(use.card)
+                end
                 local gerenal = player:getTag("s4_baijiang_general"):toString()
                 local can_invoke = false
                 local g = sgs.Sanguosha:getGeneral(player:getGeneralName())
@@ -8838,7 +8840,9 @@ s4_s_zhanchuan = sgs.CreateTriggerSkill{
 				log.from = player
 				log.card_str = use.card:toString()
 				room:sendLog(log)
-                player:addQinggangTag(use.card)
+                for _, p in sgs.qlist(use.to) do
+                    p:addQinggangTag(use.card)
+                end
             end
         end
         return false
@@ -9812,6 +9816,11 @@ s4_s_yongwu = sgs.CreateTriggerSkill{
                     for _, p in sgs.qlist(use.to) do
                         p:addQinggangTag(use.card)
                     end
+                    local log = sgs.LogMessage()
+                    log.type = "#IgnoreArmor"
+                    log.from = player
+                    log.card_str = use.card:toString()
+                    room:sendLog(log)
                 end
             end
         end

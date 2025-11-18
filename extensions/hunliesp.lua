@@ -947,6 +947,11 @@ sgkgodshajueCard = sgs.CreateSkillCard{
 					use.from = source
 					use.to:append(vic)
 					use.card = random_slash
+					local log = sgs.LogMessage()
+					log.type = "#IgnoreArmor"
+					log.from = source
+					log.card_str = use.card:toString()
+					room:sendLog(log)
 					room:useCard(use, false)
 				end
 				if #inicards == 0 then break end

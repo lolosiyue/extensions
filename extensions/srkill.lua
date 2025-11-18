@@ -1633,7 +1633,12 @@ sr_jiuzhu = sgs.CreateTriggerSkill{
 								if room:askForSkillInvoke(zhaoyun,self:objectName(),data) then
 									room:notifySkillInvoked(zhaoyun,"sr_jiuzhu")
 									room:broadcastSkillInvoke("sr_jiuzhu")
-									current:addQinggangTag(slash)				
+									current:addQinggangTag(slash)	
+									local log = sgs.LogMessage()
+									log.type = "#IgnoreArmor"
+									log.from = zhaoyun
+									log.card_str = use.card:toString()
+									room:sendLog(log)			
 									room:useCard(sgs.CardUseStruct(slash,zhaoyun,current))
 								end
 							end

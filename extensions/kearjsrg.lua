@@ -7837,6 +7837,11 @@ kezhuanchixueqingfengskill = sgs.CreateTriggerSkill{
 					p:addQinggangTag(use.card)
 					p:setFlags("kezhuan_cxqfto")
 				end
+				local log = sgs.LogMessage()
+				log.type = "#IgnoreArmor"
+				log.from = player
+				log.card_str = use.card:toString()
+				room:sendLog(log)
 				data:setValue(use)
 			end
 		elseif event == sgs.CardFinished and use.card:isKindOf("Slash") then

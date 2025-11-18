@@ -999,7 +999,15 @@ sk_yexi = sgs.CreateTriggerSkill{
 		    local use = data:toCardUse()
 			local current = room:getCurrent()
 			if use.card:isKindOf("Slash") and use.card:isBlack() and current:objectName() == use.from:objectName() and current:hasFlag("yexi_blackslash_buff") then
-			    current:addQinggangTag(use.card)
+
+			    for _, p in sgs.qlist(use.to) do
+                    p:addQinggangTag(use.card)
+                end
+				local log = sgs.LogMessage()
+				log.type = "#IgnoreArmor"
+				log.from = current
+				log.card_str = use.card:toString()
+				room:sendLog(log)
 			end
 		elseif event == sgs.EventPhaseEnd then
 			for _, xuyou in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
