@@ -603,7 +603,7 @@ sr_hemou = sgs.CreateTriggerSkill{
 			end
 		else
 			local use = data:toCardUse()
-			if use.card:getSkillName() == "sr_hemouvs" then
+			if table.contains(use.card:getSkillNames(), "sr_hemouvs") then
 				if use.from and use.from:isAlive() then
 					if use.from:getMark("hemousuit")> 0 then
 						room:setPlayerMark(use.from,"hemousuit",0)
@@ -1779,7 +1779,7 @@ sr_quanheng = sgs.CreateTriggerSkill{
 			if from then
 			    if from:objectName() == player:objectName() then
 				    if card:isKindOf("Slash") or card:isKindOf("ExNihilo") then
-				        if card:getSkillName() == "sr_quanheng" then									
+				        if table.contains(card:getSkillNames(), "sr_quanheng") then									
 					        room:setPlayerMark(player, "srquanhengmark", 0)
 						end
 					end
@@ -1788,7 +1788,7 @@ sr_quanheng = sgs.CreateTriggerSkill{
 		elseif event == sgs.CardOffset then
 			local effect = data:toCardEffect()
 			local source = effect.from
-			if source and source:hasSkill(self:objectName()) and source:getMark("srquanhengmark") > 0 and effect.card and  effect.card:getSkillName() == "sr_quanheng"then
+			if source and source:hasSkill(self:objectName()) and source:getMark("srquanhengmark") > 0 and effect.card and  table.contains(effect.card:getSkillNames(), "sr_quanheng")then
 				room:sendCompulsoryTriggerLog(source, self:objectName())
 				room:notifySkillInvoked(source, self:objectName())
 				source:drawCards(source:getMark("srquanhengmark"))
@@ -6101,7 +6101,7 @@ sr_shejitm = sgs.CreateTargetModSkill{
 	name = "#sr_shejitm",
 	distance_limit_func = function(self, from, card)
 		if from:hasSkill("sr_sheji") then
-			if card:getSkillName() == "sr_sheji" then
+			if table.contains(card:getSkillNames(), "sr_sheji") then
 				return 9999
 			end
 		end
@@ -6147,7 +6147,7 @@ sr_shejiget = sgs.CreateTriggerSkill{
 	else
 		local use = data:toCardUse()
 		local slash1 = use.card				
-		if slash1:isKindOf("Slash") and slash1:getSkillName() == "sr_sheji" and 
+		if slash1:isKindOf("Slash") and table.contains(slash1:getSkillNames(), "sr_sheji") and 
 			(use.from:hasSkill(self:objectName())) then					
 			local jink_table = sgs.QList2Table(player:getTag("Jink_" .. slash1:toString()):toIntList())
 			for i = 0, use.to:length() - 1, 1 do

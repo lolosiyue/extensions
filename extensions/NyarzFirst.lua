@@ -1,4 +1,4 @@
-extension = sgs.Package("NyarzFirst", sgs.Package_GeneralPack)
+﻿extension = sgs.Package("NyarzFirst", sgs.Package_GeneralPack)
 
 local packages = {}
 table.insert(packages, extension)
@@ -2573,11 +2573,11 @@ gfengyingCard = sgs.CreateSkillCard
 gfengyingtarget = sgs.CreateTargetModSkill{
     name = "#gfengyingtarget",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "gfengying" then return 1000 end
+        if table.contains(card:getSkillNames(), "gfengying") then return 1000 end
         return 0
     end,
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "gfengying" then return 1000 end
+        if table.contains(card:getSkillNames(), "gfengying") then return 1000 end
         return 0
     end,
 }
@@ -3929,11 +3929,11 @@ sppingxiangSlashCard = sgs.CreateSkillCard
 sppingxiangbf = sgs.CreateTargetModSkill{
     name = "#sppingxiangbf",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "sppingxiang" then return 1000 end
+        if table.contains(card:getSkillNames(), "sppingxiang") then return 1000 end
         return 0
     end,
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "sppingxiang" then return 1000 end
+        if table.contains(card:getSkillNames(), "sppingxiang") then return 1000 end
         return 0
     end,
 }
@@ -4555,7 +4555,7 @@ hfgushibuff = sgs.CreateTriggerSkill{
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
         local card = data:toCardUse().card
-        if card:getSkillName() == "hfgushi" then
+        if table.contains(card:getSkillNames(), "hfgushi") then
             room:setPlayerMark(player, "&hfgushi-PlayClear", player:getMark("&hfgushi-PlayClear")+1)
         end
     end,
@@ -4923,7 +4923,7 @@ dwzhizhebuff = sgs.CreateTriggerSkill{
 		end
         if (not card) then return false end
         if card:isKindOf("SkillCard") then return false end
-        if card:getSkillName() == "dwzhizhe" then
+        if table.contains(card:getSkillNames(), "dwzhizhe") then
             room:setPlayerMark(player, "dwzhizhe-Clear", 1)
             room:setPlayerMark(player, "&dwzhizhe+-Clear", 1)
         end
@@ -5919,7 +5919,7 @@ xiaoyifubuff = sgs.CreateTriggerSkill{
 xiaoyifuslash = sgs.CreateTargetModSkill{
     name = "#xiaoyifuslash",
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "xiaoyizi" then return 1000 end
+        if table.contains(card:getSkillNames(), "xiaoyizi") then return 1000 end
         return 0
     end,
 }
@@ -6300,14 +6300,14 @@ jfjifengfailed = sgs.CreateTriggerSkill{
         local room = player:getRoom()
         if event == sgs.Damage then
             local damage = data:toDamage()
-            if damage.card and damage.card:getSkillName() == "jfjifeng" then
+            if damage.card and table.contains(damage.card:getSkillNames(), "jfjifeng") then
                 room:setCardFlag(damage.card, "jfjifengsuccess")
             end
         end
         if event == sgs.CardFinished then
             local use = data:toCardUse()
             if use.card:isKindOf("SkillCard") then return false end
-            if use.from:objectName() == player:objectName() and use.card:getSkillName() == "jfjifeng" and (not use.card:hasFlag("jfjifengsuccess")) then
+            if use.from:objectName() == player:objectName() and table.contains(use.card:getSkillNames(), "jfjifeng") and (not use.card:hasFlag("jfjifengsuccess")) then
                 --room:broadcastSkillInvoke("jfjifeng")
                 room:setPlayerMark(player, "jfjifengfailed-PlayClear", 1)
                 room:setPlayerMark(player, "&jfjifeng+fail+-PlayClear", 1)
@@ -6686,11 +6686,11 @@ xrshanjia = sgs.CreateTriggerSkill{
 xrshanjiabuff = sgs.CreateTargetModSkill{
     name = "#xrshanjiabuff",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "xrshanjia" then return 1000 end
+        if table.contains(card:getSkillNames(), "xrshanjia") then return 1000 end
         return 0
     end,
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "xrshanjia" then return 1000 end
+        if table.contains(card:getSkillNames(), "xrshanjia") then return 1000 end
         return 0
     end,
 }

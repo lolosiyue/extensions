@@ -1,4 +1,4 @@
-module("extensions.leo", package.seeall)
+﻿module("extensions.leo", package.seeall)
 extension = sgs.Package("leo")
 
 --傅佥
@@ -365,7 +365,7 @@ xinwushuangTM = sgs.CreateTargetModSkill {
 	name = "#xinwushuangTM",
 	pattern = "Duel",
 	extra_target_func = function(self, player, card)
-		if player:hasSkill("xinwushuang") and (card:getSkillName() == "xinwushuang") then
+		if player:hasSkill("xinwushuang") and (table.contains(card:getSkillNames(), "xinwushuang")) then
 			return card:subcardsLength() - 1
 		else
 			return 0
@@ -415,7 +415,7 @@ xinwushuang = sgs.CreateTriggerSkill
 		local can_invoke = false
 		if event == sgs.TargetSpecified then
 			local use = data:toCardUse()
-			if use.card:isKindOf("Duel") and use.card:getSkillName() == "xinwushuang" then
+			if use.card:isKindOf("Duel") and table.contains(use.card:getSkillNames(), "xinwushuang") then
 				if use.from and use.from:isAlive() and use.from:hasSkill(self:objectName()) then
 					can_invoke = true
 				end
@@ -689,7 +689,7 @@ luajiezhi = sgs.CreateTriggerSkill {
 
 					room:setPlayerMark(player, "luajiezhiskill", card_id)
 				end
-				if card:getSkillName() == "luajiezhi" then
+				if table.contains(card:getSkillNames(), "luajiezhi") then
 					room:setPlayerFlag(player, "luajiezhiused")
 					room:setPlayerFlag(player, "-luajiezhix")
 					local use = data:toCardUse()
@@ -704,7 +704,7 @@ luajiezhiTargetMod = sgs.CreateTargetModSkill {
 	name = "#luajiezhi",
 	pattern = "Slash",
 	residue_func = function(self, player, card)
-		if player:hasSkill("luajiezhi") and card:getSkillName() == "luajiezhi" then
+		if player:hasSkill("luajiezhi") and table.contains(card:getSkillNames(), "luajiezhi") then
 			return 999
 		else
 			return 0
@@ -1939,14 +1939,14 @@ luagudanSlash = sgs.CreateTargetModSkill {
 	name = "#luagudanSlash",
 	pattern = "Slash",
 	distance_limit_func = function(self, player, card)
-		if player:hasSkill("luagudan") and ((card:getSkillName() == "luagudan_dis") or (card:getSkillName() == "luagudan_ex")) then
+		if player:hasSkill("luagudan") and ((table.contains(card:getSkillNames(), "luagudan_dis")) or (table.contains(card:getSkillNames(), "luagudan_ex"))) then
 			return 1000
 		else
 			return 0
 		end
 	end,
 	extra_target_func = function(self, player, card)
-		if player and player:hasSkill("luagudan") and (card:getSkillName() == "luagudan_ex") then
+		if player and player:hasSkill("luagudan") and (table.contains(card:getSkillNames(), "luagudan_ex")) then
 			return card:subcardsLength() - 1
 		end
 	end,
@@ -2986,13 +2986,13 @@ luazhiyong = sgs.CreateTriggerSkill
 			if player:hasSkill("luazhiyong") then --关羽触发此处
 				if event == sgs.CardUsed then
 					local curcard = data:toCardUse().card
-					if curcard:getSkillName() == "luazhiyong" and player:getPhase() == sgs.Player_NotActive then
+					if table.contains(curcard:getSkillNames(), "luazhiyong") and player:getPhase() == sgs.Player_NotActive then
 						room:broadcastSkillInvoke("wusheng", 1)
 						player:drawCards(1)
 					end
 				elseif event == sgs.CardResponded then
 					local card = data:toCardResponse().m_card
-					if card:getSkillName() == "luazhiyong" and player:getPhase() == sgs.Player_NotActive then
+					if table.contains(card:getSkillNames(), "luazhiyong") and player:getPhase() == sgs.Player_NotActive then
 						room:broadcastSkillInvoke("wusheng", 1)
 						player:drawCards(1)
 					end

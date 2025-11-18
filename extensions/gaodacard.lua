@@ -1,4 +1,4 @@
-module("extensions.gaodacard", package.seeall)
+﻿module("extensions.gaodacard", package.seeall)
 extension = sgs.Package("gaodacard", sgs.Package_CardPack)
 
 shootUse = function(self, room, source, targets, isSpreadShoot)
@@ -556,7 +556,7 @@ laplace_box_card = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if event == sgs.TargetSpecifying then
 			local use = data:toCardUse()
-			if use.card and use.card:getSkillName() == "laplace_box" and use.card:isKindOf("AmazingGrace") and use.from:objectName() == player:objectName() then
+			if use.card and table.contains(use.card:getSkillNames(), "laplace_box") and use.card:isKindOf("AmazingGrace") and use.from:objectName() == player:objectName() then
 				local card_ids = room:getTag("AmazingGrace"..use.card:toString()):toIntList()
 				card_ids:append(room:getNCards(1):first())
 				local _data = sgs.QVariant()
@@ -566,7 +566,7 @@ laplace_box_card = sgs.CreateTriggerSkill{
 			end
 		elseif event == sgs.CardEffected then
 			local effect = data:toCardEffect()
-			if effect.card and effect.card:getSkillName() == "laplace_box" and effect.card:isKindOf("AmazingGrace") then
+			if effect.card and table.contains(effect.card:getSkillNames(), "laplace_box") and effect.card:isKindOf("AmazingGrace") then
 				room:setPlayerFlag(player, "Global_NonSkillNullify")
 				local card_ids = room:getTag("AmazingGrace"..effect.card:toString()):toIntList()
 				local card_ids2 = room:getTag("LaplaceBox"..effect.card:toString()):toIntList()
@@ -598,7 +598,7 @@ laplace_box_card = sgs.CreateTriggerSkill{
 			end
 		else
 			local use = data:toCardUse()
-			if use.card and use.card:getSkillName() == "laplace_box" and use.card:isKindOf("AmazingGrace") and use.from:objectName() == player:objectName() then
+			if use.card and table.contains(use.card:getSkillNames(), "laplace_box") and use.card:isKindOf("AmazingGrace") and use.from:objectName() == player:objectName() then
 				local card_ids = room:getTag("LaplaceBox"):toIntList()
 				if card_ids:isEmpty() then return false end
 				local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)

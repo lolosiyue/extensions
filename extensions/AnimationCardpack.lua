@@ -1,4 +1,4 @@
-module("extensions.AnimationCardpack",package.seeall)
+﻿module("extensions.AnimationCardpack",package.seeall)
 extension = sgs.Package("AnimationCardpack", sgs.Package_CardPack)
 
 
@@ -253,7 +253,7 @@ chopper_skill_addtarget = sgs.CreateTargetModSkill{
 	name = "#chopper_skill",
 	pattern = "Slash", --据说这里要填类别名
 	extra_target_func = function(self, poi, card)
-		if poi:hasWeapon("chopper") and card:getSkillName() == "chopper" then
+		if poi:hasWeapon("chopper") and table.contains(card:getSkillNames(), "chopper") then
 			local x = poi:getHandcardNum()
 			return x - 1
 		else
@@ -1215,7 +1215,7 @@ heikeji_test_skill = sgs.CreateTriggerSkill{
 			end
 		else
 			local use = data:toCardUse()
-			if use.card:getSkillName() == "heikeji_test_card" then
+			if table.contains(use.card:getSkillNames(), "heikeji_test_card") then
 				room:setPlayerFlag(player, "-ban_heikeji")
 				room:setPlayerProperty(player, "allowed_guhuo_dialog_buttons", sgs.QVariant())
 			end

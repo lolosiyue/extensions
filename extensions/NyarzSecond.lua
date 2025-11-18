@@ -1,4 +1,4 @@
-extension = sgs.Package("NyarzSecond", sgs.Package_GeneralPack)
+﻿extension = sgs.Package("NyarzSecond", sgs.Package_GeneralPack)
 
 local packages = {}
 table.insert(packages, extension)
@@ -225,11 +225,11 @@ jxyangjie = sgs.CreateTriggerSkill{
 jxyangjiebuff = sgs.CreateTargetModSkill{
     name = "#jxyangjiebuff",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "jxyangjie" then return 1000 end
+        if table.contains(card:getSkillNames(), "jxyangjie") then return 1000 end
         return 0
     end,
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "jxyangjie" then return 1000 end
+        if table.contains(card:getSkillNames(), "jxyangjie") then return 1000 end
         return 0
     end,
 }
@@ -2477,7 +2477,7 @@ jjjuanjia_start = sgs.CreateTriggerSkill{
         end
         if event == sgs.DamageCaused then
             local damage = data:toDamage()
-            if damage.card and damage.card:getSkillName() == "jjjuanjia" and (not damage.chain) then
+            if damage.card and table.contains(damage.card:getSkillNames(), "jjjuanjia") and (not damage.chain) then
                 local log = sgs.LogMessage()
                 log.type = "$jjjuanjia_damage"
                 log.from = player
@@ -2498,11 +2498,11 @@ jjjuanjia_start = sgs.CreateTriggerSkill{
 jjjuanjia_buff = sgs.CreateTargetModSkill{
     name = "#jjjuanjia_buff",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "jjjuanjia" then return 1000 end
+        if table.contains(card:getSkillNames(), "jjjuanjia") then return 1000 end
         return 0
     end,
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "jjjuanjia" then return 1000 end
+        if table.contains(card:getSkillNames(), "jjjuanjia") then return 1000 end
         return 0
     end,
 }
@@ -2709,7 +2709,7 @@ ny_zhanjue_diy_buff = sgs.CreateTriggerSkill{
         end
         if event == sgs.PreCardUsed then
             local use = data:toCardUse()
-            if use.card and use.card:getSkillName() == "ny_zhanjue_diy" then
+            if use.card and table.contains(use.card:getSkillNames(), "ny_zhanjue_diy") then
                 local no_offset_list = use.no_offset_list
                 table.insert(no_offset_list, "_ALL_TARGETS")
                 use.no_offset_list = no_offset_list
@@ -2915,7 +2915,7 @@ ny_second_juanxia = sgs.CreateTriggerSkill{
         end
         if event == sgs.TargetConfirmed then
             local use = data:toCardUse()
-            if use.card:getSkillName() == "ny_second_juanxia" and use.from:objectName() == player:objectName() then
+            if table.contains(use.card:getSkillNames(), "ny_second_juanxia") and use.from:objectName() == player:objectName() then
                 for _,target in sgs.qlist(use.to) do
                     if target:objectName() ~= player:objectName() then
                         room:addPlayerMark(target, "&ny_second_juanxia-SelfClear", 1)
@@ -3599,11 +3599,11 @@ nyarz_pojun = sgs.CreateTriggerSkill{
 nyarz_pojun_buff = sgs.CreateTargetModSkill{
     name = "#nyarz_pojun_buff",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "nyarz_pojun" then return 1000 end
+        if table.contains(card:getSkillNames(), "nyarz_pojun") then return 1000 end
         return 0
     end,
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "nyarz_pojun" then return 1000 end
+        if table.contains(card:getSkillNames(), "nyarz_pojun") then return 1000 end
         return 0
     end,
 }
@@ -5000,7 +5000,7 @@ nyarz_longnu_buff = sgs.CreateTargetModSkill{
         return from:getMark("nyarz_longnu_slash-PlayClear")
     end,
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "nyarz_longnu" then return 1000 end
+        if table.contains(card:getSkillNames(), "nyarz_longnu") then return 1000 end
         return 0
     end,
 }
@@ -6849,7 +6849,7 @@ nyarz_wuqian_godCard = sgs.CreateSkillCard
 nyarz_wuqian_god_buff = sgs.CreateTargetModSkill{
     name = "#nyarz_wuqian_god_buff",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "nyarz_wuqian_god" then return 1000 end
+        if table.contains(card:getSkillNames(), "nyarz_wuqian_god") then return 1000 end
         return 0
     end,
 }
@@ -8967,7 +8967,7 @@ nyarz_tongwei_buff = sgs.CreateTriggerSkill{
         if event == sgs.PreCardUsed then
             local use = data:toCardUse()
             if use.card:isKindOf("SkillCard") then return false end
-            if use.card:getSkillName() == "nyarz_tongwei" then
+            if table.contains(use.card:getSkillNames(), "nyarz_tongwei") then
                 local tos = sgs.SPlayerList()
                 for _,p in sgs.qlist(room:getOtherPlayers(player)) do
                     if use.card:hasFlag("nyarz_tongwei+"..p:objectName()) then
@@ -9049,7 +9049,7 @@ nyarz_tongwei_dis = sgs.CreateTargetModSkill{
     name = "#nyarz_tongwei_dis",
     pattern = ".",
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "nyarz_tongwei" then return 1000 end
+        if table.contains(card:getSkillNames(), "nyarz_tongwei") then return 1000 end
         return 0
     end,
 }

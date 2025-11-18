@@ -1,4 +1,4 @@
---==《双城之战》==--
+﻿--==《双城之战》==--
 extension = sgs.Package("kearcane", sgs.Package_GeneralPack)
 local skills = sgs.SkillList()
 
@@ -1408,7 +1408,7 @@ keyuji = sgs.CreateTriggerSkill{
 			local from = damage.from
 			local data = sgs.QVariant()
 			data:setValue(damage)
-			if damage.card and damage.card:getSkillName() == "kevioletspace" then
+			if damage.card and table.contains(damage.card:getSkillNames(), "kevioletspace") then
 				player:drawCards(2)
 				if player:getHp() <= from:getHp() then
 					player:gainHujia(1)
@@ -1857,7 +1857,7 @@ keblood = sgs.CreateTriggerSkill{
 		if (event == sgs.TargetSpecified) then 
 			local use = data:toCardUse()
 			if (use.to:length() == 1) and player:hasSkill(self:objectName()) and (not (use.to:contains(player)))
-			and (not ((use.card:isKindOf("SkillCard") or (use.card:isKindOf("Peach")) or (use.card:getSkillName() == "killaround")))) then
+			and (not ((use.card:isKindOf("SkillCard") or (use.card:isKindOf("Peach")) or (table.contains(use.card:getSkillNames(), "killaround"))))) then
 				for _, vic in sgs.qlist(use.to) do
 					--对每个目标
 					if (vic:getMark("@shixue") < 5) and not (vic:hasFlag("alreadyadd")) then--如果已经血怒加上了，就不能重复加
@@ -2034,7 +2034,7 @@ killaround = sgs.CreateTriggerSkill{
 			local room = player:getRoom()
 			local data = sgs.QVariant()
 			data:setValue(damage)
-			if not (player:isKongcheng() or (damage.card and damage.card:getSkillName() == "killaround")) then
+			if not (player:isKongcheng() or (damage.card and table.contains(damage.card:getSkillNames(), "killaround"))) then
 				if room:askForSkillInvoke(player, self:objectName(), data) then	
 					player:throwAllHandCards()	
 					room:setPlayerFlag(player, "kekilling")
@@ -2194,7 +2194,7 @@ kekillaroundrecover = sgs.CreateTriggerSkill{
 		local use = data:toCardUse()
 		if (event == sgs.Damage) then
 			local damage = data:toDamage()                                                                   
-			if damage.card and damage.card:isKindOf("Slash") and player:hasFlag("kekilling") and player:hasSkill(self:objectName()) --[[and (damage.card:getSkillName() == "killaround" )]] and player:hasSkill(self:objectName()) then
+			if damage.card and damage.card:isKindOf("Slash") and player:hasFlag("kekilling") and player:hasSkill(self:objectName()) --[[and (table.contains(damage.card:getSkillNames(), "killaround") )]] and player:hasSkill(self:objectName()) then
 
 				    local vic = damage.to
 					if player:hasSkill("kebloodangry") then
@@ -2301,7 +2301,7 @@ dariusslash = sgs.CreateTriggerSkill{
 		if (event == sgs.TargetSpecified) then
 			local room = player:getRoom()
 			local use = data:toCardUse()
-			if use.card:isKindOf("Slash") and not use.card:getSkillName() == "killaround" then
+			if use.card:isKindOf("Slash") and not table.contains(use.card:getSkillNames(), "killaround") then
 				room:broadcastSkillInvoke("killaround",math.random(8,35))
 			end
 		end

@@ -1,4 +1,4 @@
---[[英雄联盟穿越包]]--
+﻿--[[英雄联盟穿越包]]--
 module("extensions.legends", package.seeall)
 extension = sgs.Package("legends", sgs.Package_GeneralPack)  --武将包
 extension_card = sgs.Package("legends_card", sgs.Package_CardPack)  --卡牌包
@@ -304,7 +304,7 @@ chongfengMod = sgs.CreateTargetModSkill{
 	name = "#chongfengMod",
 	pattern = "Slash",
 	distance_limit_func = function(self, player, card)
-		if player:hasSkill("chongfeng") and (card:getSkillName() == "chongfeng") then
+		if player:hasSkill("chongfeng") and (table.contains(card:getSkillNames(), "chongfeng")) then
 			return 1000
 		end
 	end,
@@ -1469,7 +1469,7 @@ huanyin = sgs.CreateTriggerSkill{
 			end
 		elseif event == sgs.CardUsed then
 			local use = data:toCardUse()
-			if use.card:isKindOf("Slash") and use.card:getSkillName() == "huanyinCard" then
+			if use.card:isKindOf("Slash") and table.contains(use.card:getSkillNames(), "huanyinCard") then
 				if use.m_addHistory then
 					room:addPlayerHistory(player, use.card:getClassName(),-1)
 				end
@@ -2418,7 +2418,7 @@ jianshenForbid = sgs.CreateTriggerSkill{
 				room:addPlayerMark(player, "Forbidjianshen-PlayClear")
 			end
 		elseif event ==sgs.TargetConfirmed then
-			if (use.from:objectName() == player:objectName()) and (use.card:getSkillName() == "jianshen") then
+			if (use.from:objectName() == player:objectName()) and (table.contains(use.card:getSkillNames(), "jianshen")) then
 				player:getRoom():setPlayerCardLimitation(player, "use", "Slash", true)
 				room:addPlayerMark(player, "Forbidjianshen-PlayClear")
 			end

@@ -1,4 +1,4 @@
---Tip: The imformation of this package is at the end of this file.
+﻿--Tip: The imformation of this package is at the end of this file.
 --温馨提示：版本信息，武将及技能总汇见最后。
 ---------------------------------------------------------------------------
 --Ver变量：若版本不为2017.2.11，请将该变量设为0.
@@ -400,7 +400,7 @@ GodYouhua = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local use = data:toCardUse()
-		if use.card and use.card:getSkillName() == "GodYouhua" then
+		if use.card and table.contains(use.card:getSkillNames(), "GodYouhua") then
 			room:setPlayerFlag(player, "YouhuaUsed")
 		end
 	end

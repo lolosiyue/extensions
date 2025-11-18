@@ -1,4 +1,4 @@
---==《新武将》==--
+﻿--==《新武将》==--
 extension_lq = sgs.Package("kearlqxf", sgs.Package_GeneralPack)
 
 --buff集中
@@ -6,7 +6,7 @@ kelqxfslashmore = sgs.CreateTargetModSkill{
 	name = "kelqxfslashmore",
 	pattern = ".",
 	residue_func = function(self, from, card, to)
-		if card:getSkillName()=="kelqjuesui"
+		if table.contains(card:getSkillNames(), "kelqjuesui")
 		then return 999 end
 		if to and to:getHandcardNum()<1 and from:hasSkill("tyzhuiling")
 		then return 999 end
@@ -26,7 +26,7 @@ kelqxfslashmore = sgs.CreateTargetModSkill{
 			then return 999 end
 			if from:getMark("tylengjianUse2-Clear")<1 and from:hasSkill("tylengjian")
 			and not from:inMyAttackRange(to) then return 999 end
-			if card:getSkillName() == "tyxingsha"
+			if table.contains(card:getSkillNames(), "tyxingsha")
 			then return 999 end
 		end
 		if to and to:getMark("&ty2chengshi+#"..from:objectName().."_lun")>1

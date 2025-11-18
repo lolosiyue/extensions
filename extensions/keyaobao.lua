@@ -1,4 +1,4 @@
---==《三国 杀神附体——妖》==--
+﻿--==《三国 杀神附体——妖》==--
 extension = sgs.Package("keyaobao", sgs.Package_GeneralPack)
 local skills = sgs.SkillList()
 
@@ -120,7 +120,7 @@ keyaotaipingex = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if event == sgs.CardFinished then
 			if use.from:hasSkill("keyaotaiping") then
-				if use.card:getSkillName() == "keyaotaiping" then
+				if table.contains(use.card:getSkillNames(), "keyaotaiping") then
 					room:setPlayerFlag(use.from, "useyaotaiping")
 				end
 			end
@@ -401,7 +401,7 @@ keyaojiahuoex = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if event == sgs.CardFinished then
 			if use.from:hasSkill("keyaojiahuo") then
-				if use.card:getSkillName() == "keyaojiahuo" then
+				if table.contains(use.card:getSkillNames(), "keyaojiahuo") then
 					room:setPlayerFlag(use.from, "usedyaojiahuo")
 				end
 			end

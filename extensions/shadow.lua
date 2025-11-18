@@ -1,4 +1,4 @@
-module("extensions.shadow", package.seeall)
+﻿module("extensions.shadow", package.seeall)
 extension = sgs.Package("shadow")
 
 y_liubei = sgs.General(extension, "y_liubei", "shu", 3)
@@ -314,7 +314,7 @@ y_shenzhi = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		local use = data:toCardUse()
 		local card = use.card
-		if card:getSkillName() == "y_shenzhi" then
+		if table.contains(card:getSkillNames(), "y_shenzhi") then
 			local x = player:getHp()
 			local y = player:getHandcardNum()
 			if x < 0 then x = 0 end
@@ -1625,7 +1625,7 @@ y_jiushang = sgs.CreateTriggerSkill
 			local room = player:getRoom()
 			local use = data:toCardUse()
 			local card = use.card
-			if card:getSkillName() == "y_jiushang" then
+			if table.contains(card:getSkillNames(), "y_jiushang") then
 				room:loseMaxHp(player)
 			end
 			return false

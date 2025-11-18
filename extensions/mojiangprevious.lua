@@ -30,7 +30,7 @@ sy_old_zongyu_lose = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data, room)
 	    local use = data:toCardUse()
 		local card = use.card
-		if card:getSkillName() == "sy_old_zongyu" then
+		if table.contains(card:getSkillNames(), "sy_old_zongyu") then
 		    room:loseHp(player, 1, true, player, "sy_old_zongyu")
 			room:broadcastSkillInvoke("analeptic")
 		end
@@ -1268,7 +1268,7 @@ sy_old_zuijiu = sgs.CreateTriggerSkill{
 		if event == sgs.PreCardUsed then
 		    local use = data:toCardUse()
 			local card = use.card
-			if card:getSkillName() == "sy_old_zuijiu" then
+			if table.contains(card:getSkillNames(), "sy_old_zuijiu") then
 			    local red_count = 0
 				local black_count = 0
 				for _, c in sgs.qlist(player:getHandcards()) do

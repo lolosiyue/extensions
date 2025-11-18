@@ -1,4 +1,4 @@
---==《新武将》==--
+﻿--==《新武将》==--
 extension = sgs.Package("kearwangushengxiang", sgs.Package_GeneralPack)
 local skills = sgs.SkillList()
 
@@ -12,7 +12,7 @@ kenewgirlniangslashmore = sgs.CreateTargetModSkill{
 	end,]]
 	distance_limit_func = function(self, from, card, to)
 		local n = 0
-		--[[if (card:getSkillName() == "kerongchang") then
+		--[[if (table.contains(card:getSkillNames(), "kerongchang")) then
 			n = n + 1000
 		end]]
 		return n
@@ -1228,7 +1228,7 @@ kenewgirlbuguan = sgs.CreateTriggerSkill{
 	on_trigger = function(self,event,player,data,room)
 		if (event == sgs.CardUsed) then
 			local use = data:toCardUse()
-			if ((use.card:getSkillName() == "kenewgirlbuguan") or use.card:hasFlag("kenewgirlbuguan")) and use.m_addHistory then
+			if ((table.contains(use.card:getSkillNames(), "kenewgirlbuguan")) or use.card:hasFlag("kenewgirlbuguan")) and use.m_addHistory then
 				room:addPlayerHistory(player, use.card:getClassName(),-1)
 				--room:broadcastSkillInvoke(self:objectName())
 			end   
@@ -1237,7 +1237,7 @@ kenewgirlbuguan = sgs.CreateTriggerSkill{
 			local damage = data:toDamage()
 			local from = damage.from
 			local to = damage.to
-			if damage.card and ((damage.card:getSkillName() == "kenewgirlbuguan") or damage.card:hasFlag("kenewgirlbuguan")) then
+			if damage.card and ((table.contains(damage.card:getSkillNames(), "kenewgirlbuguan")) or damage.card:hasFlag("kenewgirlbuguan")) then
 				if from:hasSkill(self:objectName()) and (from:getMark("buguanlose-Clear") > 0) then
 					local result = room:askForChoice(from,self:objectName(),"hlose+hdraw", data)
 					if result == "hlose" then

@@ -1,4 +1,4 @@
-module("extensions.dongmanbao", package.seeall) --游戏包
+﻿module("extensions.dongmanbao", package.seeall) --游戏包
 extension = sgs.Package("dongmanbao")           --增加拓展包
 
 --势力
@@ -3004,7 +3004,7 @@ se_tianmingWore = sgs.CreateTriggerSkill {
 		if event == sgs.CardResponded then
 			local resp = data:toCardResponse()
 			local card = resp.m_card
-			if card:getSkillName() == "se_tianming" then
+			if table.contains(card:getSkillNames(), "se_tianming") then
 				if card:isKindOf("Slash") then
 					player:loseMark("@Tianming", 12)
 				elseif card:isKindOf("Jink") then
@@ -3014,7 +3014,7 @@ se_tianmingWore = sgs.CreateTriggerSkill {
 		elseif event == sgs.TargetConfirmed then
 			local use = data:toCardUse()
 			if use.from:objectName() == player:objectName() then
-				if use.card:getSkillName() == "se_tianming" then
+				if table.contains(use.card:getSkillNames(), "se_tianming") then
 					if use.card:isKindOf("Slash") then
 						player:loseMark("@Tianming", 12)
 					end
@@ -3023,7 +3023,7 @@ se_tianmingWore = sgs.CreateTriggerSkill {
 		elseif event == sgs.CardFinished then
 			local use = data:toCardUse()
 			if use.from:objectName() == player:objectName() then
-				if use.card:getSkillName() == "se_tianming" then
+				if table.contains(use.card:getSkillNames(), "se_tianming") then
 					if use.card:isKindOf("Nullification") then
 						player:loseMark("@Tianming", 23)
 					end
@@ -3048,7 +3048,7 @@ se_tianmingWore = sgs.CreateTriggerSkill {
 		elseif event == sgs.CardUsed then
 			local use = data:toCardUse()
 			local card = use.card
-			if card and card:getSkillName() == "se_tianming" then
+			if card and table.contains(card:getSkillNames(), "se_tianming") then
 				if card:isKindOf("Jink") then
 					player:loseMark("@Tianming", 17)
 				end
@@ -6752,7 +6752,7 @@ se_xunyu_damage = sgs.CreateTriggerSkill{
 		local target = damage.to
 		local slash = damage.card
 		if slash then
-			if slash:isKindOf("Slash") and slash:getSkillName() == "se_xunyucard" then
+			if slash:isKindOf("Slash") and table.contains(slash:getSkillNames(), "se_xunyucard") then
 				if target:objectName() ~= player:objectName() then
 					if not damage.chain then
 						if not damage.transfer then
@@ -10981,7 +10981,7 @@ se_chenyan = sgs.CreateTriggerSkill {
 		end
 		if event == sgs.PreCardUsed then
 			local use = data:toCardUse()
-			if use.card:getSkillName() == "se_chenyan" and use.card:getTypeId() ~= 0 then
+			if table.contains(use.card:getSkillNames(), "se_chenyan") and use.card:getTypeId() ~= 0 then
 				if use.card:subcardsLength() == 0 then
 					room:loseHp(player, 1, true, player, self:objectName())
 				end
@@ -11217,9 +11217,9 @@ luaqice_tr = sgs.CreateTriggerSkill {
 		end
 		if event == sgs.CardUsed then
 			local use = data:toCardUse()
-			if use.card:getSkillName() == "luaqice" then
+			if table.contains(use.card:getSkillNames(), "luaqice") then
 				room:setPlayerFlag(player, "qiceused")
-			elseif use.card:getSkillName() == "luaqice1" then
+			elseif table.contains(use.card:getSkillNames(), "luaqice1") then
 				room:loseHp(use.from, 1, true, use.from, self:objectName())
 				room:setPlayerFlag(player, "qiceused")
 			end
@@ -11638,12 +11638,12 @@ SE_Gaoling_tr = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if event == sgs.CardUsed then
 			local use = data:toCardUse()
-			if use.card:getSkillName() == "SE_Gaoling" then
+			if table.contains(use.card:getSkillNames(), "SE_Gaoling") then
 				player:drawCards(1)
 			end
 		elseif event == sgs.CardResponded then
 			local use = data:toCardResponse()
-			if use.m_card:getSkillName() == "SE_Gaoling" then
+			if table.contains(use.m_card:getSkillNames(), "SE_Gaoling") then
 				player:drawCards(1)
 			end
 		end
@@ -12919,7 +12919,7 @@ se_gateTargetMod = sgs.CreateTargetModSkill {
 	name = "#se_gate-target",
 	pattern = "Slash",
 	distance_limit_func = function(self, player, card)
-		if player:hasSkill("se_gate") and (card:getSkillName() == "se_gate") then
+		if player:hasSkill("se_gate") and (table.contains(card:getSkillNames(), "se_gate")) then
 			return 1000
 		else
 			return 0
@@ -13504,7 +13504,7 @@ se_zhiyan_Trigger = sgs.CreateTriggerSkill {
 			local card = use.card
 			local source = use.from
 			if card:isKindOf("Nullification") then
-				if source:objectName() == player:objectName() and card:getSkillName() == "se_zhiyan" and card:getSuit() == sgs.Card_NoSuit and card:getNumber() == 0 then
+				if source:objectName() == player:objectName() and table.contains(card:getSkillNames(), "se_zhiyan") and card:getSuit() == sgs.Card_NoSuit and card:getNumber() == 0 then
 					player:gainMark("@Yukino_shifeng")
 				end
 			end
@@ -13661,7 +13661,7 @@ se_linmo_trigger = sgs.CreateTriggerSkill {
 		if event == sgs.CardUsed then
 			local use = data:toCardUse()
 			if not use.card then return end
-			if use.card:getSkillName() == "se_linmo" then
+			if table.contains(use.card:getSkillNames(), "se_linmo") then
 				use.from:drawCards(1)
 				return false
 			end

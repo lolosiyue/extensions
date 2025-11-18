@@ -1,4 +1,4 @@
-module("extensions.fate", package.seeall)
+﻿module("extensions.fate", package.seeall)
 extension = sgs.Package("fate")
 fate_Kiritsugu=sgs.General(extension, "fate_Kiritsugu", "magic", "3", true) --切嗣
 fate_Shirou=sgs.General(extension, "fate_Shirou", "magic", "3", true)  --土狗
@@ -488,7 +488,7 @@ fatetouying_trs = sgs.CreateTriggerSkill{
 			lastcard = nil
 		elseif event==sgs.CardUsed and player:getPhase() == sgs.Player_Play and player:getMark("@touyingused")==0 then
 			local card = data:toCardUse().card
-			if card:getSkillName() == "fatetouying" then
+			if table.contains(card:getSkillNames(), "fatetouying") then
 				if card:isKindOf("BasicCard") then
 					room:broadcastSkillInvoke("lexue",2)
 				elseif card:isNDTrick() then
@@ -599,7 +599,7 @@ fatetouying = sgs.CreateTriggerSkill{
 				end
 				room:setPlayerMark(player, "&fatetouying+" .. card:objectName() .. "-".. player:getPhase() .."Clear", 1)
 				end
-				if card:getSkillName() == "fatetouying" then
+				if table.contains(card:getSkillNames(), "fatetouying") then
 					room:setPlayerFlag(player,"fatetouyingused")
 					room:setPlayerFlag(player,"-fatetouyingx")
 				end
@@ -611,7 +611,7 @@ fatetouyingTargetMod = sgs.CreateTargetModSkill{
 	name = "#fatetouying" ,
 	pattern = "Slash",
 	residue_func = function(self, player, card)
-		if player:hasSkill("fatetouying") and card:getSkillName() == "fatetouying" then
+		if player:hasSkill("fatetouying") and table.contains(card:getSkillNames(), "fatetouying") then
 			return 1
 		else
 			return 0

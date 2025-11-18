@@ -1,4 +1,4 @@
-module("extensions.erciyuan", package.seeall)
+﻿module("extensions.erciyuan", package.seeall)
 extension = sgs.Package("erciyuan")
 ------------------------------------------------------------------------武将登陆区
 yj = sgs.General(extension, "yj", "Erciyuan", 9, true, true, true)             --完全隐藏武将
@@ -1200,7 +1200,7 @@ LuaYaojingSound = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local use = data:toCardUse()
 		local room = player:getRoom()
-		if use.card:getSkillName() == "LuaYaojing" then
+		if table.contains(use.card:getSkillNames(), "LuaYaojing") then
 			room:broadcastSkillInvoke("LuaYaojing")
 			room:doLightbox("LuaYaojing$", 1500)
 		end
@@ -1505,7 +1505,7 @@ LuaBaozouSound = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local use = data:toCardUse()
 		local room = player:getRoom()
-		if use.card:getSkillName() == "LuaKuangshi" then
+		if table.contains(use.card:getSkillNames(), "LuaKuangshi") then
 			room:broadcastSkillInvoke("LuaKuangshi")
 		end
 	end,
@@ -1730,7 +1730,7 @@ LuaGongqi = sgs.CreateViewAsSkill {
 LuaGongqiTargetMod = sgs.CreateTargetModSkill {
 	name = "#LuaGongqi-target",
 	distance_limit_func = function(self, from, card)
-		if from:hasSkill("LuaGongqi") and card:getSkillName() == "LuaGongqi" then
+		if from:hasSkill("LuaGongqi") and table.contains(card:getSkillNames(), "LuaGongqi") then
 			return 1000
 		else
 			return 0
@@ -2970,7 +2970,7 @@ LuaCangshanTMS = sgs.CreateTargetModSkill {
 	name = "#LuaCangshanTMS",
 	distance_limit_func = function(self, from, card)
 		if from:hasSkill("LuaCangshan") then
-			if card:getSkillName() == "LuaCangshan" then
+			if table.contains(card:getSkillNames(), "LuaCangshan") then
 				return 1000
 			end
 		end
@@ -2988,7 +2988,7 @@ LuaCangshanTrig = sgs.CreateTriggerSkill {
 		elseif event == sgs.CardUsed then
 			card = data:toCardUse().card
 		end
-		if card:getSkillName() == "LuaCangshan" then
+		if table.contains(card:getSkillNames(), "LuaCangshan") then
 			player:drawCards(1)
 		end
 	end,

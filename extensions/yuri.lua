@@ -1,4 +1,4 @@
-module("extensions.yuri", package.seeall)
+﻿module("extensions.yuri", package.seeall)
 extension = sgs.Package("yuri")
 extension_h = sgs.Package("hotblood", sgs.Package_GeneralPack)
 
@@ -3327,7 +3327,7 @@ bs_ohb = sgs.CreateTargetModSkill{--or (from:isMale() and from:hasSkill("changes
 		end
 	end,
 	distance_limit_func = function(self, player, card)
-		if player and (player:getMark("losing_offensive_horse") > 0 or (player:isFemale() and player:hasSkill("changesexual")) or (player:hasSkill("LuaZhenlie") and (card:getSkillName() == "LuaZhenlie")) or card:getSkillName() == "reedship" 
+		if player and (player:getMark("losing_offensive_horse") > 0 or (player:isFemale() and player:hasSkill("changesexual")) or (player:hasSkill("LuaZhenlie") and (table.contains(card:getSkillNames(), "LuaZhenlie"))) or table.contains(card:getSkillNames(), "reedship") 
 		or player:hasFlag("tomowodaji")) then
 			return 998
 		end
@@ -3651,7 +3651,7 @@ SAeffect = sgs.CreateTriggerSkill{
 			-- local from = use.from
 			local tos = use.to
 
-			if use.card:getSkillName() == "sexualadvantage" and use.card:isKindOf("Slash") then
+			if table.contains(use.card:getSkillNames(), "sexualadvantage") and use.card:isKindOf("Slash") then
 				for _, to in sgs.qlist(tos) do
 					to:setFlags("SAEflag")
 					room:setPlayerMark(to, "@all_skill_invalidity", 1)
@@ -3872,7 +3872,7 @@ clearthemeridians = sgs.CreateTriggerSkill{
 			else
 				card = data:toCardResponse().m_card
 			end
-			if card and card:getSkillName() == "clearthemeridians" then
+			if card and table.contains(card:getSkillNames(), "clearthemeridians") then
 				local n = math.min(2, math.ceil(player:getMark("@pulse")/2))
 				player:gainMark("@pulse", 1)
 				if player:getMark("@pulse") >= 5 then
@@ -4207,7 +4207,7 @@ countertrick = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		local use = data:toCardUse()
 		if event == sgs.PreCardUsed then
-			if use.card and use.card:getSkillName() == "countertrick" then
+			if use.card and table.contains(use.card:getSkillNames(), "countertrick") then
 				if use.card:isKindOf("Nullification") then
 					room:broadcastSkillInvoke("countertrick", 1)
 				end
@@ -4920,7 +4920,7 @@ warlike = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if event == sgs.CardUsed then
 			local use = data:toCardUse()
-			if use.card and use.card:isKindOf("Duel") and use.card:getSkillName() == "warlike" and not player:hasSkill("bloodfight") then
+			if use.card and use.card:isKindOf("Duel") and table.contains(use.card:getSkillNames(), "warlike") and not player:hasSkill("bloodfight") then
 				-- room:broadcastSkillInvoke("warlike")
 				room:acquireSkill(player, "bloodfight")
 				if player:getMark("@SuperLimitBreak") > 0 and use.to:length() > 0 then
@@ -4995,7 +4995,7 @@ arkora = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		-- if event == sgs.CardResponded then
 	        	-- local resp = data:toCardResponse()
-	        	-- if resp.m_card:getSkillName() == "longdan" and resp.m_who and (not resp.m_who:isKongcheng()) then
+	        	-- if table.contains(resp.m_card:getSkillNames(), "longdan") and resp.m_who and (not resp.m_who:isKongcheng()) then
 		            	-- local _data = sgs.QVariant()
 				-- _data:setValue(resp.m_who)
 		                -- if player:askForSkillInvoke(self:objectName(), _data) then
@@ -6268,7 +6268,7 @@ clever = sgs.CreateTriggerSkill{
 				local response = data:toCardResponse()
 				card = response.m_card
 			end
-			if card and card:getSkillName() == "clever" then
+			if card and table.contains(card:getSkillNames(), "clever") then
 				player:loseMark("@cleverkon")
 			end
 		end
@@ -6685,7 +6685,7 @@ ihtf_effect = sgs.CreateTriggerSkill{
 				-- local response = data:toCardResponse()
 				-- card = response.m_card
 			-- end
-			-- if card and not card:isKindOf("SkillCard") and card:getSkillName() == "hotfight" then
+			-- if card and not card:isKindOf("SkillCard") and table.contains(card:getSkillNames(), "hotfight") then
 				-- player:setFlags("-hotfightJink")
 				-- player:setFlags("hotfightJink")
 				-- player:loseMark("@hotfightmark")
@@ -6698,7 +6698,7 @@ ihtf_effect = sgs.CreateTriggerSkill{
 		-- end
 		-- if event == sgs.JinkEffect then
 			-- local card = data:toCard()
-			-- if card and not card:isKindOf("SkillCard") and card:getSkillName() == "hotfight" and not player:hasFlag("hotfightJink") then
+			-- if card and not card:isKindOf("SkillCard") and table.contains(card:getSkillNames(), "hotfight") and not player:hasFlag("hotfightJink") then
 				-- player:loseMark("@hotfightmark")
 			-- elseif player:getMark("@hotfightmark") < 5 and not player:hasFlag("hotfightJink") then
 				-- player:gainMark("@hotfightmark")
@@ -7204,7 +7204,7 @@ japenknifejile = sgs.CreateTriggerSkill{
 				if not player:hasFlag("JPB_FS") then
 					player:setFlags("JPB_FS")
 					local num = math.min(player:getHp(), 3)
-					if player:getMark("@SuperLimitBreak") > 0 and use.card:getSkillName() == "japenknifeslashe2" then
+					if player:getMark("@SuperLimitBreak") > 0 and table.contains(use.card:getSkillNames(), "japenknifeslashe2") then
 						local wep_skillname = use.card:getTag("jnb_wtype"):toString()
 						if wep_skillname ~= nil then
 							if wep_skillname == "Wutiesuolian" then --新武器用不了sgs.weapon_range，估計是資料沒登入，只好這樣惡補
@@ -7238,7 +7238,7 @@ japenknifejile = sgs.CreateTriggerSkill{
 					-- room:acquireSkill(player, "japenknifeslashe")
 					room:filterCards(player, player:getCards("h"), true)
 					for _,c in sgs.list(player:getHandcards())do
-						if c:isRed() or c:getSkillName()=="japenknifeslashe" then continue end
+						if c:isRed() or table.contains(c:getSkillNames(), "japenknifeslashe") then continue end
 						local toc = sgs.Sanguosha:cloneCard("slash",2,c:getNumber())
 						toc:setSkillName("japenknifeslashe")
 						local wrap = sgs.Sanguosha:getWrappedCard(c:getEffectiveId())
@@ -7253,7 +7253,7 @@ japenknifejile = sgs.CreateTriggerSkill{
 					-- room:detachSkillFromPlayer(player, "japenknifeslashe")
 					local hw = sgs.CardList()
 					for _,c in sgs.list(player:getHandcards())do
-						if (c:isBlack() and not c:isKindOf("EquipCard")) or c:getSkillName()=="japenknifeslashe"
+						if (c:isBlack() and not c:isKindOf("EquipCard")) or table.contains(c:getSkillNames(), "japenknifeslashe")
 						then hw:append(c) end
 					end
 					if hw:length()>0 then
@@ -8470,7 +8470,7 @@ hotfightlm = sgs.CreateTriggerSkill{
 				local response = data:toCardResponse()
 				card = response.m_card
 			end
-			if card and not card:isKindOf("SkillCard") and card:getSkillName() == "hotfight" then
+			if card and not card:isKindOf("SkillCard") and table.contains(card:getSkillNames(), "hotfight") then
 				player:loseMark("@hotfightmark")
 			end
 			if player:getMark("@hotfightmark") < 5 and card and (card:isKindOf("Slash") or card:isKindOf("Jink")) and not card:isKindOf("SkillCard") and card:getSkillName() ~= "hotfight" then
@@ -11229,7 +11229,7 @@ suckblood = sgs.CreateTriggerSkill{
 				local response = data:toCardResponse()
 				card = response.m_card
 			end
-			if card and not card:isKindOf("SkillCard") and card:getSkillName() == "suckblood" then
+			if card and not card:isKindOf("SkillCard") and table.contains(card:getSkillNames(), "suckblood") then
 				room:loseHp(player, 1, true, player, self:objectName())
 			end
 		else
@@ -16425,7 +16425,7 @@ ynongquan = sgs.CreateTriggerSkill{
 			room:setPlayerFlag(player, "ynongquan")
 			local card_id = card:getEffectiveId()
 			room:setPlayerMark(player, "ynongquan", card_id)
-			if card:getSkillName() == "ynongquan" then
+			if table.contains(card:getSkillNames(), "ynongquan") then
 				room:broadcastSkillInvoke("ynongquan")
 				room:setPlayerFlag(player, "ynongquanused")
 				room:setPlayerFlag(player, "-ynongquan")

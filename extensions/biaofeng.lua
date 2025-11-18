@@ -1,4 +1,4 @@
--- Date 2013.5.24
+﻿-- Date 2013.5.24
 --module("extensions.biaofeng", package.seeall)
 extension = sgs.Package("biaofeng", sgs.Package_GeneralPack)
 extension_six = sgs.Package("biaofeng_six", sgs.Package_GeneralPack)
@@ -4961,14 +4961,14 @@ PlusChangsheng = sgs.CreateTriggerSkill{
 			if event == sgs.CardResponded then
 				local resp = data:toCardResponse()
 				local card = resp.m_card
-				if card:getSkillName() == "PlusLongdan" then
+				if table.contains(card:getSkillNames(), "PlusLongdan") then
 					if player:askForSkillInvoke(self:objectName(), data) then
 						room:drawCards(player, 1, "PlusLongdan")
 					end
 				end
 			elseif event == sgs.CardUsed then
 				local use = data:toCardUse()
-				if use.card:getSkillName() == "PlusLongdan" then
+				if table.contains(use.card:getSkillNames(), "PlusLongdan") then
 					if player:askForSkillInvoke(self:objectName(), data) then
 						room:drawCards(player, 1, "PlusLongdan")
 					end
@@ -4991,7 +4991,7 @@ PlusChangsheng = sgs.CreateTriggerSkill {
 		else
 			card = data:toCardResponse().m_card
 		end
-		if card and not card:isKindOf("SkillCard") and player:isWounded() and card:getSkillName() == "PlusLongdan" then
+		if card and not card:isKindOf("SkillCard") and player:isWounded() and table.contains(card:getSkillNames(), "PlusLongdan") then
 			if room:askForSkillInvoke(player, self:objectName(), data) then
 				room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
 				room:drawCards(player, 1, "PlusLongdan")
@@ -6809,7 +6809,7 @@ PlusQixi_Target = sgs.CreateTargetModSkill {
 	name = "#PlusQixi_Target",
 	pattern = "Dismantlement",
 	extra_target_func = function(self, player, card)
-		if player:hasSkill(self:objectName()) and card:getSuit() == sgs.Card_Club and card:getSkillName() == "PlusQixi" then
+		if player:hasSkill(self:objectName()) and card:getSuit() == sgs.Card_Club and table.contains(card:getSkillNames(), "PlusQixi") then
 			return 1
 		end
 	end,
@@ -7986,7 +7986,7 @@ PlusHuzhu_Effect = sgs.CreateTriggerSkill {
 		local card = effect.card
 		if target then
 			if card:isKindOf("Peach") then
-				if card:getSkillName() == "PlusHuzhu" then
+				if table.contains(card:getSkillNames(), "PlusHuzhu") then
 					room:setPlayerFlag(target, "PlusHuzhu_Succeed")
 				end
 			end
@@ -8587,21 +8587,21 @@ PlusSheji = sgs.CreateTriggerSkill {
 PlusSheji_Target = sgs.CreateTargetModSkill {
 	name = "#PlusSheji_Target",
 	distance_limit_func = function(self, player, card)
-		if card:getSkillName() == "PlusSheji" then
+		if table.contains(card:getSkillNames(), "PlusSheji") then
 			return 1000
 		else
 			return 0
 		end
 	end,
 	extra_target_func = function(self, player, card)
-		if card:getSkillName() == "PlusSheji" then
+		if table.contains(card:getSkillNames(), "PlusSheji") then
 			return 1
 		else
 			return 0
 		end
 	end,
 	residue_func = function(self, player, card)
-		if player:hasSkill("PlusSheji") and card:getSkillName() == "PlusSheji" then
+		if player:hasSkill("PlusSheji") and table.contains(card:getSkillNames(), "PlusSheji") then
 			return 999
 		end
 	end,
@@ -10533,7 +10533,7 @@ SixWulveUse = sgs.CreateTriggerSkill {
 		elseif event == sgs.PreCardUsed then --非自己使用
 			local room = player:getRoom()
 			local use = data:toCardUse()
-			if use.card:getSkillName() == "SixWulve" then
+			if table.contains(use.card:getSkillNames(), "SixWulve") then
 				use.m_isOwnerUse = false
 				data:setValue(use)
 			end
@@ -12145,7 +12145,7 @@ SixLongdanNDL = sgs.CreateTargetModSkill {
 	name = "#SixLongdan-slash-ndl",
 	pattern = "Slash",
 	distance_limit_func = function(self, player, card)
-		if player:hasSkill("SixLongdan") and (card:getSkillName() == "SixLongdan") then
+		if player:hasSkill("SixLongdan") and (table.contains(card:getSkillNames(), "SixLongdan")) then
 			return 1000
 		else
 			return 0

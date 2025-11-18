@@ -1,4 +1,4 @@
-module("extensions.dmpkancolle", package.seeall) --游戏包
+﻿module("extensions.dmpkancolle", package.seeall) --游戏包
 extension = sgs.Package("dmpkancolle")           --增加拓展包
 
 --势力
@@ -681,14 +681,14 @@ se_hongzhaSlash = sgs.CreateTargetModSkill {
 	name = "#se_hongzha-slash",
 	pattern = "Slash",
 	distance_limit_func = function(self, player, card)
-		if player:hasSkill("se_hongzha") and (card:getSkillName() == "se_hongzha") then
+		if player:hasSkill("se_hongzha") and (table.contains(card:getSkillNames(), "se_hongzha")) then
 			return 1000
 		else
 			return 0
 		end
 	end,
 	extra_target_func = function(self, player, card)
-		if player:hasSkill("se_hongzha") and (player:getPile("Kansaiki"):length() > 0) and (card:getSkillName() == "se_hongzha") then
+		if player:hasSkill("se_hongzha") and (player:getPile("Kansaiki"):length() > 0) and (table.contains(card:getSkillNames(), "se_hongzha")) then
 			return player:getPile("Kansaiki"):length() - 1
 		else
 			return 0
@@ -809,7 +809,7 @@ fanqian = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if (event == sgs.PreCardUsed) then
 			local use = data:toCardUse()
-			if ((use.card:isKindOf("AOE") or use.card:isKindOf("GlobalEffect")) and use.card:getSkillName() == "fanqian") then
+			if ((use.card:isKindOf("AOE") or use.card:isKindOf("GlobalEffect")) and table.contains(use.card:getSkillNames(), "fanqian")) then
 				use.to:clear()
 				use.to:append(room:getTag("fanqian_target"):toPlayer())
 				data:setValue(use)
@@ -1238,14 +1238,14 @@ jianhunTargetMod = sgs.CreateTargetModSkill {
 	name = "#jianhunTargetMod",
 	pattern = "Slash",
 	distance_limit_func = function(self, player, card)
-		if player:hasSkill("jianhun") and (card:getSkillName() == "jianhun") then
+		if player:hasSkill("jianhun") and (table.contains(card:getSkillNames(), "jianhun")) then
 			return 1000
 		else
 			return 0
 		end
 	end,
 	residue_func = function(self, player, card)
-		if player:hasSkill("jianhun") and (card:getSkillName() == "jianhun") then
+		if player:hasSkill("jianhun") and (table.contains(card:getSkillNames(), "jianhun")) then
 			return 1000
 		end
 	end,

@@ -1,4 +1,4 @@
-module("extensions.gaoda", package.seeall)
+﻿module("extensions.gaoda", package.seeall)
 extension=sgs.Package("gaoda")
 --extension = sgs.Package("gaoda", sgs.Package_GeneralPack)
 
@@ -2708,7 +2708,7 @@ yuexianmark=sgs.CreateTriggerSkill{
 			room:setPlayerMark(player,"@shensheng",0)
 		else
 			local use = data:toCardUse()
-			if use.card and use.card:getSkillName() == "yuexian" then
+			if use.card and table.contains(use.card:getSkillNames(), "yuexian") then
 				return true
 			end
 		end
@@ -3020,7 +3020,7 @@ gaoda_zhongjie = sgs.CreateTriggerSkill{
 	limit_mark = "@gaoda_zhongjie",
 	view_as_skill = gaoda_zhongjievs,
 	on_trigger = function(self, event, player, data)
-		if data:toCardUse().card:getSkillName() == "gaoda_zhongjiecard" then return true end
+		if data:toCardUse().card and table.contains(data:toCardUse().card:getSkillNames(), "gaoda_zhongjiecard") then return true end
 	end
 }
 
@@ -3095,7 +3095,7 @@ huixing = sgs.CreateTriggerSkill{
 		elseif event == sgs.CardResponded then
 			local resp = data:toCardResponse()
 			local subcard = sgs.Sanguosha:getCard(resp.m_card:getSubcards():first())
-			if resp.m_card:isKindOf("Jink") and resp.m_card:getSkillName() == "xiaya" and subcard:isKindOf("Slash") and room:askForSkillInvoke(player, self:objectName(), data) then
+			if resp.m_card:isKindOf("Jink") and table.contains(resp.m_card:getSkillNames(), "xiaya") and subcard:isKindOf("Slash") and room:askForSkillInvoke(player, self:objectName(), data) then
 				player:drawCards(1, self:objectName())
 				if resp.m_who then
 					room:broadcastSkillInvoke(self:objectName(), math.random(3, 4))
@@ -3105,7 +3105,7 @@ huixing = sgs.CreateTriggerSkill{
 		elseif event == sgs.CardUsed then
 			local use = data:toCardUse()
 			local subcard = sgs.Sanguosha:getCard(use.card:getSubcards():first())
-			if use.card:isKindOf("Jink") and use.card:getSkillName() == "xiaya" and subcard:isKindOf("Slash") and room:askForSkillInvoke(player, self:objectName(), data) then
+			if use.card:isKindOf("Jink") and table.contains(use.card:getSkillNames(), "xiaya") and subcard:isKindOf("Slash") and room:askForSkillInvoke(player, self:objectName(), data) then
 				player:drawCards(1, self:objectName())
 				if use.who then
 					room:broadcastSkillInvoke(self:objectName(), math.random(3, 4))
@@ -3163,7 +3163,7 @@ bianxing = sgs.CreateTriggerSkill{
 	events = {sgs.PreCardUsed},
 	view_as_skill = bianxingvs,
 	on_trigger = function(self, event, player, data)
-		if data:toCardUse().card:getSkillName() == "bianxing" then return true end
+		if table.contains(data:toCardUse().card:getSkillNames(), "bianxing") then return true end
 	end
 }
 
@@ -3395,7 +3395,7 @@ luashipo = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local use = data:toCardUse()
-		if use.card and use.card:getSkillName() == "luashipo" then
+		if use.card and table.contains(use.card:getSkillNames(), "luashipo") then
 			if use.card:isKindOf("Nullification") then
 				room:broadcastSkillInvoke("luashipo", math.random(3, 4))
 			end
@@ -3437,7 +3437,7 @@ leishe = sgs.CreateTriggerSkill{
 	view_as_skill = leishevs,
 	on_trigger = function(self, event, player, data)
 		local use = data:toCardUse()
-		if use.card and use.card:isKindOf("Nullification") and use.card:getSkillName() == "luashipo" then
+		if use.card and use.card:isKindOf("Nullification") and table.contains(use.card:getSkillNames(), "luashipo") then
 			player:gainMark("@leishe")
 		end
 	end
@@ -3541,7 +3541,7 @@ canying = sgs.CreateTriggerSkill{
 			else
 				card = data:toCardResponse().m_card
 			end
-			if card and card:getSkillName() == "canyingcard" then
+			if card and table.contains(card:getSkillNames(), "canyingcard") then
 				player:loseMark("@canying")
 				
 				if card:isKindOf("Jink") then
@@ -3581,7 +3581,7 @@ canying_d = sgs.CreateTargetModSkill{
 	name = "#canying_d",
 	pattern = "Slash",
 	distance_limit_func = function(self, player, card)
-		if card and card:getSkillName() == "canyingcard" then
+		if card and table.contains(card:getSkillNames(), "canyingcard") then
 			return 998
 		end
 	end
@@ -4033,7 +4033,7 @@ qingyu = sgs.CreateTriggerSkill{
 			room:clearAG()
 	elseif event == sgs.PreCardUsed then
 		local use = data:toCardUse()
-		if use.card:subcardsLength() == 0 and use.card:getSkillName() == "qingyu" then
+		if use.card:subcardsLength() == 0 and table.contains(use.card:getSkillNames(), "qingyu") then
 			if use.card:isKindOf("SavageAssault") then
 				for _,e in ipairs(qingyuspade) do
 					use.card:addSubcard(e)
@@ -4673,7 +4673,7 @@ tupo = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if event == sgs.CardEffected or event == sgs.PostCardEffected then
 			local effect = data:toCardEffect()
-			if effect.card:isKindOf("Collateral") and effect.card:getSkillName() == "tupo" then
+			if effect.card:isKindOf("Collateral") and table.contains(effect.card:getSkillNames(), "tupo") then
 				if event == sgs.CardEffected then
 					room:setPlayerFlag(player, "tupo_target")
 				else
@@ -4726,7 +4726,7 @@ tuporecord = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local use = data:toCardUse()
-		if use.card:isKindOf("Collateral") and use.card:getSkillName() == "tupo" then
+		if use.card:isKindOf("Collateral") and table.contains(use.card:getSkillNames(), "tupo") then
 			room:setPlayerFlag(player, "tupo_used")
 		end
 	end,
@@ -4831,7 +4831,7 @@ zhanshi = sgs.CreateTriggerSkill{
 				if not room:askForUseCard(player, "@@zhanshi", "@zhanshi") then
 					room:setPlayerProperty(player, "allowed_guhuo_dialog_buttons", sgs.QVariant())
 				end
-			elseif use.card:isNDTrick() and use.card:getSkillName() == "zhanshi" and use.to:length() == 1 then
+			elseif use.card:isNDTrick() and table.contains(use.card:getSkillNames(), "zhanshi") and use.to:length() == 1 then
 				local choices = {"eight_diagram", "renwang_shield", "silver_lion", "vine"}
 				for _, c in ipairs(choices) do
 					if player:getMark("@"..c) > 0 then
@@ -5720,7 +5720,7 @@ gaoda_zuzhou = sgs.CreateTriggerSkill{
 				end
 			end
 		else
-			if use.card and use.card:getSkillName() == "gaoda_zuzhou" then
+			if use.card and table.contains(use.card:getSkillNames(), "gaoda_zuzhou") then
 				local voice = false
 				for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 					if p:getGeneralName() == "UNICORN" or p:getGeneralName() == "FA_UNICORN" then
@@ -6018,7 +6018,7 @@ NTD4_slash = sgs.CreateTargetModSkill{
 	name = "#ntdfour_slash",
 	pattern = "Slash",
 	distance_limit_func = function(self, player, card)
-		if card:getSkillName() == "ntdfourcard" then
+		if table.contains(card:getSkillNames(), "ntdfourcard") then
 			return 998
 		end
 	end
@@ -6552,7 +6552,7 @@ haidao = sgs.CreateTriggerSkill
 					room:setPlayerProperty(player, "haidao", sgs.QVariant("iron_chain"))
 					room:askForUseCard(player, "@@haidao", "#haidao4")
 					room:setPlayerProperty(player, "haidao", sgs.QVariant())
-				elseif use.card:isKindOf("IronChain") and use.card:getSkillName() == "haidaocard" then
+				elseif use.card:isKindOf("IronChain") and table.contains(use.card:getSkillNames(), "haidaocard") then
 					for _, p in sgs.qlist(use.to) do
 						if p:isAlive() and (not p:isKongcheng()) and p:objectName() ~= player:objectName() then
 							local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName())
@@ -6561,7 +6561,7 @@ haidao = sgs.CreateTriggerSkill
 						end
 					end
 				end
-			elseif use.card:getSkillName() == "haidaocard" then
+			elseif table.contains(use.card:getSkillNames(), "haidaocard") then
 				local name = player:property("haidao"):toString()
 				if name == "slash" then
 					room:broadcastSkillInvoke(self:objectName(), 1)
@@ -7721,7 +7721,7 @@ liuxing = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		local use = data:toCardUse()
 	if event == sgs.CardUsed then
-		if use.card:isKindOf("Slash") and use.card:getSkillName() == "liuxing" then
+		if use.card:isKindOf("Slash") and table.contains(use.card:getSkillNames(), "liuxing") then
 			player:gainMark("@point")
 			local judge = sgs.JudgeStruct()
 			judge.pattern = ".|red"
@@ -7737,7 +7737,7 @@ liuxing = sgs.CreateTriggerSkill{
 	if event == sgs.DamageCaused then
 		local damage = data:toDamage()
 		if damage.chain or damage.transfer or (not damage.by_user) then return false end
-		if damage.card and damage.card:isKindOf("Slash") and damage.card:getSkillName() == "liuxing" and damage.card:hasFlag("liuxing") then
+		if damage.card and damage.card:isKindOf("Slash") and table.contains(damage.card:getSkillNames(), "liuxing") and damage.card:hasFlag("liuxing") then
 			room:broadcastSkillInvoke("liuxing",5)
 			room:clearCardFlag(damage.card)
 			damage.damage = damage.damage + 1
@@ -9475,7 +9475,7 @@ shuangqiang = sgs.CreateTriggerSkill
 	on_trigger=function(self,event,player,data)
 		local room = player:getRoom()
 		local damage = data:toDamage()
-	if damage.card and damage.card:isKindOf("Slash") and damage.card:getSkillName() == "shuangqiang" and not damage.chain and not damage.transfer then
+	if damage.card and damage.card:isKindOf("Slash") and table.contains(damage.card:getSkillNames(), "shuangqiang") and not damage.chain and not damage.transfer then
 		local subcard = sgs.Sanguosha:getCard(damage.card:getSubcards():first())
 		if subcard:isKindOf("EquipCard") and damage.to:getEquips():length() > 0 then
 			room:throwCard(room:askForCardChosen(player, damage.to, "e", self:objectName(), false, sgs.Card_MethodDiscard), damage.to, player)
@@ -9530,7 +9530,7 @@ zuzhuang = sgs.CreateTriggerSkill
 	on_trigger=function(self,event,player,data)
 		local room = player:getRoom()
 		local damage = data:toDamage()		
-	if damage.card and damage.card:isKindOf("Slash") and damage.card:getSkillName() == "zuzhuang" and not damage.chain and not damage.transfer then
+	if damage.card and damage.card:isKindOf("Slash") and table.contains(damage.card:getSkillNames(), "zuzhuang") and not damage.chain and not damage.transfer then
 		local pattern = {}
 		if damage.to:isNude() then return false end
 		if damage.to:getEquips():length() > 0 then
@@ -9616,7 +9616,7 @@ pojia = sgs.CreateTriggerSkill
 			use.card = duel
 			room:useCard(use)
 		end
-	elseif event == sgs.DamageForseen and damage.card and damage.card:isKindOf("Duel") and damage.card:getSkillName() == "pojiacard" and not damage.by_user then
+	elseif event == sgs.DamageForseen and damage.card and damage.card:isKindOf("Duel") and table.contains(damage.card:getSkillNames(), "pojiacard") and not damage.by_user then
 		damage.prevented = true
 		data:setValue(damage)
 		return true
@@ -9870,12 +9870,12 @@ gaoda_qishes = sgs.CreateTargetModSkill{
 	name = "#gaoda_qishes",
 	pattern = "Slash",
 	extra_target_func = function(self, player, card)
-		if player and player:hasSkill("gaoda_qishe") and card:getSkillName() == "gaoda_qishe" then
+		if player and player:hasSkill("gaoda_qishe") and table.contains(card:getSkillNames(), "gaoda_qishe") then
 			return card:subcardsLength() - 1
 		end
 	end,
 	distance_limit_func = function(self, player, card)
-		if player and player:hasSkill("gaoda_qishe") and card:getSkillName() == "gaoda_qishe" then
+		if player and player:hasSkill("gaoda_qishe") and table.contains(card:getSkillNames(), "gaoda_qishe") then
 			return 998
 		end
 	end
@@ -9888,7 +9888,7 @@ gaoda_qishea = sgs.CreateTriggerSkill
 	on_trigger = function(self,event,player,data)
 		local room = player:getRoom()
 		local use = data:toCardUse()
-		if use.card and use.card:isKindOf("Slash") and use.card:getSkillName() == "gaoda_qishe" then
+		if use.card and use.card:isKindOf("Slash") and table.contains(use.card:getSkillNames(), "gaoda_qishe") then
 			room:broadcastSkillInvoke("gaoda_qishe")
 			room:setEmotion(player, "gaoda_qishe")
 			room:getThread():delay(2150)
@@ -9936,7 +9936,7 @@ shouwang = sgs.CreateTriggerSkill
 	on_trigger = function(self,event,player,data)
 		local room = player:getRoom()
 		local use = data:toCardUse()
-		if use.card and use.card:isKindOf("Peach") and use.card:getSkillName() == "shouwang" then
+		if use.card and use.card:isKindOf("Peach") and table.contains(use.card:getSkillNames(), "shouwang") then
 			room:loseMaxHp(player)
 		end
 	end,
@@ -10118,7 +10118,7 @@ wenshen = sgs.CreateTriggerSkill
 	on_trigger = function(self,event,player,data)
 		local room = player:getRoom()
 		local use = data:toCardUse()
-		if use.card and use.card:getSkillName() == "wenshen" and use.card:isKindOf("SkillCard") then
+		if use.card and table.contains(use.card:getSkillNames(), "wenshen") and use.card:isKindOf("SkillCard") then
 			return true
 		end
 	end
@@ -10556,7 +10556,7 @@ dadi = sgs.CreateTriggerSkill
 		local room = player:getRoom()
 		if event == sgs.TargetSpecified then
 			local use = data:toCardUse()
-			if use.card and use.card:getSkillName() == "dadi" then
+			if use.card and table.contains(use.card:getSkillNames(), "dadi") then
 				local jink_table = sgs.QList2Table(player:getTag("Jink_" .. use.card:toString()):toIntList())
 				local index = 1
 				for _, p in sgs.qlist(use.to) do
@@ -10576,7 +10576,7 @@ dadi = sgs.CreateTriggerSkill
 				local response = data:toCardResponse()
 				card = response.m_card
 			end
-			if card and card:getSkillName() == "dadi" then
+			if card and table.contains(card:getSkillNames(), "dadi") then
 				player:turnOver()
 				if player:isWounded() then
 					room:recover(player, sgs.RecoverStruct(player))
@@ -11179,7 +11179,7 @@ kongjuClear = sgs.CreateTriggerSkill
 	on_trigger = function(self,event,player,data, room)
 		local damage = data:toDamage()
 		if damage.chain or damage.transfer or (not damage.by_user) then return false end
-		if damage.card and damage.card:getSkillName() == "huohai" then
+		if damage.card and table.contains(damage.card:getSkillNames(), "huohai") then
 			room:sendCompulsoryTriggerLog(player, "kongju")
 			local log = sgs.LogMessage()
 			log.type = "#tiexuedamage"
@@ -11462,7 +11462,7 @@ daijin = sgs.CreateTriggerSkill
 		local room = player:getRoom()
 		if event == sgs.Damage then
 			local damage = data:toDamage()
-			if damage.card and damage.card:getSkillName() == "daijincard" and damage.to and damage.to:isAlive() and (not damage.chain) and (not damage.transfer) then
+			if damage.card and table.contains(damage.card:getSkillNames(), "daijincard") and damage.to and damage.to:isAlive() and (not damage.chain) and (not damage.transfer) then
 				local record = {}
 				for _,skill in sgs.qlist(damage.to:getVisibleSkillList()) do
 					if skill and not skill:isAttachedLordSkill() and skill:getFrequency() ~= sgs.Skill_Wake and damage.to:getMark("Qingcheng"..skill:objectName()) == 0 then
@@ -11490,7 +11490,7 @@ daijin = sgs.CreateTriggerSkill
 			end
 		else
 			local use = data:toCardUse()
-			if use.card and use.card:getSkillName() == "daijincard" then
+			if use.card and table.contains(use.card:getSkillNames(), "daijincard") then
 				room:addPlayerHistory(player, "daijin")
 				if player:getMark("@seedsf") > 0 then
 					room:broadcastSkillInvoke(self:objectName(), 2)
@@ -11540,12 +11540,12 @@ daijins = sgs.CreateTargetModSkill{
 	name = "#daijins",
 	pattern = "Slash",
 	extra_target_func = function(self, player, card)
-		if player and player:hasSkill("daijin") and card:getSkillName() == "daijincard" then
+		if player and player:hasSkill("daijin") and table.contains(card:getSkillNames(), "daijincard") then
 			return card:subcardsLength() - 1
 		end
 	end,
 	distance_limit_func = function(self, player, card)
-		if player and player:hasSkill("daijin") and card:getSkillName() == "daijincard" then
+		if player and player:hasSkill("daijin") and table.contains(card:getSkillNames(), "daijincard") then
 			return 998
 		end
 	end
@@ -12267,7 +12267,7 @@ gaoda_jianhun = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local use = data:toCardUse()
-		if use.card and use.card:getSkillName() == "gaoda_jianhun" then
+		if use.card and table.contains(use.card:getSkillNames(), "gaoda_jianhun") then
 			if event == sgs.CardUsed then
 				room:addPlayerHistory(player, "gaoda_jianhun")
 				player:addToPile("hun", use.card)
@@ -12540,7 +12540,7 @@ sheweie = sgs.CreateTriggerSkill{
 		local effect = data:toCardEffect()
 		local can_invoke = false
 		if effect.card and effect.card:isKindOf("Duel") then				
-			if effect.from and effect.from:isAlive() and effect.from:property("shewei"):toInt() > 0 and effect.card:getSkillName() == "shewei" then
+			if effect.from and effect.from:isAlive() and effect.from:property("shewei"):toInt() > 0 and table.contains(effect.card:getSkillNames(), "shewei") then
 				can_invoke = true
 			end
 			if effect.to and effect.to:isAlive() and effect.to:hasSkill("wushuang") then
@@ -12563,7 +12563,7 @@ sheweie = sgs.CreateTriggerSkill{
 						break
 					end
 					local slash
-					if second:hasSkill("wushuang") or (second:property("shewei"):toInt() > 0 and effect.card:getSkillName() == "shewei") then
+					if second:hasSkill("wushuang") or (second:property("shewei"):toInt() > 0 and table.contains(effect.card:getSkillNames(), "shewei")) then
 						slash = room:askForCard(first,"slash","@wushuang-slash-1:" .. second:objectName(),data,sgs.Card_MethodResponse, second)
 						if slash == nil then
 							break
@@ -13054,7 +13054,7 @@ fudun = sgs.CreateTriggerSkill{
 			end
 		else
 			local response = data:toCardResponse()
-			if response.m_card and response.m_card:getSkillName() == "fuduncard" then
+			if response.m_card and table.contains(response.m_card:getSkillNames(), "fuduncard") then
 				room:broadcastSkillInvoke(self:objectName(), math.random(2, 3))
 			end
 		end
@@ -13872,7 +13872,7 @@ jidong = sgs.CreateTriggerSkill{-- ZY奆神的技能卡静音黑科技
 	events = {sgs.PreCardUsed},
 	view_as_skill = jidongvs,
 	on_trigger = function(self, event, player, data)
-		if data:toCardUse().card:getSkillName() == "jidong" then return true end
+		if table.contains(data:toCardUse().card:getSkillNames(), "jidong") then return true end
 	end
 }
 
@@ -14081,7 +14081,7 @@ feijianslash = sgs.CreateTargetModSkill{
 	name = "#feijianslash",
 	pattern = "Slash",
 	extra_target_func = function(self, player, card)
-		if player and player:hasSkill("feijian") and card:getSkillName() == "feijian" then
+		if player and player:hasSkill("feijian") and table.contains(card:getSkillNames(), "feijian") then
 			return 1
 		end
 	end,
@@ -14127,7 +14127,7 @@ gaoda_liuyan = sgs.CreateTriggerSkill{
 				player:drawCards(6)
 			end
 		elseif event == sgs.PreCardUsed then
-			if data:toCardUse().card:getSkillName() == "gaoda_liuyan" then
+			if table.contains(data:toCardUse().card:getSkillNames(), "gaoda_liuyan") then
 				room:broadcastSkillInvoke(self:objectName(), math.random(2, 5))
 				return true
 			end
@@ -15427,7 +15427,7 @@ shengfeng = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local use = data:toCardUse()
-		if use.card and use.card:isKindOf("FireAttack") and use.card:getSkillName() == "shengfeng" then
+		if use.card and use.card:isKindOf("FireAttack") and table.contains(use.card:getSkillNames(), "shengfeng") then
 			if event == sgs.CardUsed then
 				room:addPlayerHistory(player, "shengfeng")
 				local ids = table.concat(sgs.QList2Table(use.card:getSubcards()), "+")
@@ -15609,12 +15609,12 @@ G_SELF_SPACE_skill = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if event == sgs.CardResponded then
 			local resp = data:toCardResponse()
-			if resp.m_card and resp.m_card:getSkillName() == "G_SELF_SPACE_skill" then
+			if resp.m_card and table.contains(resp.m_card:getSkillNames(), "G_SELF_SPACE_skill") then
 				room:broadcastSkillInvoke("huanse", 4)
 			end
 		elseif event == sgs.CardUsed then
 			local use = data:toCardUse()
-			if use.card and use.card:getSkillName() == "G_SELF_SPACE_skill" then
+			if use.card and table.contains(use.card:getSkillNames(), "G_SELF_SPACE_skill") then
 				room:broadcastSkillInvoke("huanse", 4)
 			end
 		end

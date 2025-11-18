@@ -2773,7 +2773,7 @@ sy_mojian = sgs.CreateTriggerSkill{
 				room:useCard(use)
 			end
 		elseif event == sgs.CardResponded then
-			if data:toCardResponse().m_toCard and data:toCardResponse().m_toCard:getSkillName() == "sy_mojian" then
+			if data:toCardResponse().m_toCard and table.contains(data:toCardResponse().m_toCard:getSkillNames(), "sy_mojian") then
 				for _, yuanshao in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
 				if yuanshao:getMark("&mojian_jink") == 0 and yuanshao:getPhase() ~= sgs.Player_Finish then
 					room:addPlayerMark(yuanshao, "&mojian_jink")

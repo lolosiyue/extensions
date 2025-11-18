@@ -1,4 +1,4 @@
-module("extensions.touhouproject", package.seeall)
+﻿module("extensions.touhouproject", package.seeall)
 extension = sgs.Package("touhouproject")
 
 do
@@ -3969,7 +3969,7 @@ TH_menghuanpaoying = sgs.CreateTriggerSkill{----------梦幻泡影
 	on_trigger= function(self, event, player, data)
 		local room = player:getRoom()
 		local da = data:toDamage()
-		if da.from and da.card and da.card:getSkillName() == "TH_menghuanpaoying" then
+		if da.from and da.card and table.contains(da.card:getSkillNames(), "TH_menghuanpaoying") then
 			da.from:drawCards(1)
 		end
 	end
@@ -6019,7 +6019,7 @@ TH_GreatestTreasure = sgs.CreateTriggerSkill{
 			end
 		elseif event == sgs.CardUsed then
 			local use = data:toCardUse()
-			if use.card and use.card:isKindOf("Snatch") and use.card:getSkillName() == "TH_GreatestTreasure" then
+			if use.card and use.card:isKindOf("Snatch") and table.contains(use.card:getSkillNames(), "TH_GreatestTreasure") then
 				room:setPlayerFlag(player, "TH_GreatestTreasure_used")
 			end
 		end
@@ -6060,7 +6060,7 @@ TH_jiu = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local use = data:toCardUse()
-		if use.card and use.card:isKindOf("Analeptic") and use.card:getSkillName() == "TH_jiu" and use.from:getHp() < 1 and use.card:subcardsLength() == 0 then
+		if use.card and use.card:isKindOf("Analeptic") and table.contains(use.card:getSkillNames(), "TH_jiu") and use.from:getHp() < 1 and use.card:subcardsLength() == 0 then
 			room:setPlayerFlag(player, "TH_jiu_used")
 		end
 	end
@@ -6194,7 +6194,7 @@ TH_suiyue = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if event == sgs.CardUsed then
 			local use = data:toCardUse()
-			if use and use.card and use.card:getSkillName() == "TH_suiyueCARD" then
+			if use and use.card and table.contains(use.card:getSkillNames(), "TH_suiyueCARD") then
 				table.insert(TH_suiyue_use.usetime, os.time())
 				table.insert(TH_suiyue_use.owner, use.from:objectName())
 			end

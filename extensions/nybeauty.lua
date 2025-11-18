@@ -1,4 +1,4 @@
-extension = sgs.Package("nybeauty", sgs.Package_GeneralPack)
+﻿extension = sgs.Package("nybeauty", sgs.Package_GeneralPack)
 local packages = {}
 table.insert(packages, extension)
 
@@ -395,7 +395,7 @@ nymiaojianda = sgs.CreateTriggerSkill{
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
         local damage = data:toDamage()
-        if damage.card:getSkillName() == "nymiaojian" and (not damage.to:isNude()) and (damage.to:isAlive()) then
+        if table.contains(damage.card:getSkillNames(), "nymiaojian") and (not damage.to:isNude()) and (damage.to:isAlive()) then
             room:sendCompulsoryTriggerLog(player, "nymiaojian")
             local card = room:askForExchange(damage.to, "nymiaojian", 1, 1, true, "@nymiaojian:"..player:getGeneralName(), false)
             room:obtainCard(player, card, false)
@@ -409,11 +409,11 @@ nymiaojianda = sgs.CreateTriggerSkill{
 nymiaojianbuff = sgs.CreateTargetModSkill{
     name = "#nymiaojianbuff",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "nymiaojian" then return 1000 end
+        if table.contains(card:getSkillNames(), "nymiaojian") then return 1000 end
         return 0
     end,
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "nymiaojian" then return 1000 end
+        if table.contains(card:getSkillNames(), "nymiaojian") then return 1000 end
         return 0
     end,
 }
@@ -721,7 +721,7 @@ nytonglibuff = sgs.CreateTriggerSkill{
 
         if event == sgs.PreCardUsed then
             local use = data:toCardUse()
-            if use.card:getSkillName() == "nytongli" then
+            if table.contains(use.card:getSkillNames(), "nytongli") then
                 room:sendCompulsoryTriggerLog(player, "nytongli")
                 player:drawCards(1)
             end
@@ -766,7 +766,7 @@ nytonglielse = sgs.CreateTargetModSkill{
     name = "#nytonglielse",
     pattern = "BasicCard,TrickCard",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "nytongli" then return 1000 end
+        if table.contains(card:getSkillNames(), "nytongli") then return 1000 end
         return 0
     end,
 }
@@ -2028,11 +2028,11 @@ nyxili_buff = sgs.CreateTargetModSkill{
     name = "#nyxili_buff",
     pattern = ".",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "nyxili" or card:getSkillName() == "_nyxili" then return 1000 end
+        if table.contains(card:getSkillNames(), "nyxili") or table.contains(card:getSkillNames(), "_nyxili") then return 1000 end
         return 0
     end,
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "nyxili" or card:getSkillName() == "_nyxili" then return 1000 end
+        if table.contains(card:getSkillNames(), "nyxili") or table.contains(card:getSkillNames(), "_nyxili") then return 1000 end
         return 0
     end,
 }

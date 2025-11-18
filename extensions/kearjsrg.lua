@@ -1,4 +1,4 @@
---==《新武将》==--
+﻿--==《新武将》==--
 extension_qi = sgs.Package("kearjsrgqi", sgs.Package_GeneralPack)
 
 --buff集中
@@ -15,13 +15,13 @@ keslashmore = sgs.CreateTargetModSkill{
 		if to and from:getMark("&kechengbiaozhaofrom+#"..to:objectName())>0 then
 			return 999
 		end
-		if (card:getSkillName() == "kechengxianzhu") and from:hasSkill("kechengxianzhu") then
+		if (table.contains(card:getSkillNames(), "kechengxianzhu")) and from:hasSkill("kechengxianzhu") then
 			return 999
 		end
-		if (card:getSkillName() == "kezhuanzhenfeng")and from:hasSkill("kezhuanzhenfeng") then
+		if (table.contains(card:getSkillNames(), "kezhuanzhenfeng"))and from:hasSkill("kezhuanzhenfeng") then
 			return 999
 		end
-		if (card:getSkillName() == "kehexuanfeng") then
+		if (table.contains(card:getSkillNames(), "kehexuanfeng")) then
 			return 999
 		end
 		if to and (to:getMark("&kehezhubeisp-Clear") > 0) and from:hasSkill("kehezhubei") then
@@ -30,14 +30,14 @@ keslashmore = sgs.CreateTargetModSkill{
 		if to and (to:getMark("&keshuaizhuni-Clear") > 0) and from:hasSkill("keshuaizhuni") then
 			return 999
 		end
-		if (card:getSkillName() == "xingkuangjian") then
+		if (table.contains(card:getSkillNames(), "xingkuangjian")) then
 			return 999
 		end
 		return 0
 	end,
 	extra_target_func = function(self, from, card)
 		if card:isKindOf("FireAttack") 
-		and card:getSkillName() == "keshuaiguanshi"
+		and table.contains(card:getSkillNames(), "keshuaiguanshi")
 		and from:hasSkill("keshuaiguanshi") then
 			return 999
 		end
@@ -60,26 +60,26 @@ keslashmore = sgs.CreateTargetModSkill{
 		if to and from:getMark("&kechengbiaozhaofrom+#"..to:objectName())>0 then
 			return 999
 		end
-		if (card:getSkillName() == "kezhuancuifeng") then
+		if (table.contains(card:getSkillNames(), "kezhuancuifeng")) then
 			return 999
 		end
 		if card:isKindOf("Slash") and to and to:getMark("kezhuanrihui-Clear")<1
 		and to:getJudgingArea():length()<1 and from:hasSkill("kezhuanrihui") then
 			return 999
 		end
-		if (card:getSkillName() == "kezhuanzhenfeng") and from:hasSkill("kezhuanzhenfeng") then
+		if (table.contains(card:getSkillNames(), "kezhuanzhenfeng")) and from:hasSkill("kezhuanzhenfeng") then
 			return 999
 		end
 		if (from:getMark("&kezhuanfuni-Clear")>0) then
 			return 999
 		end
-		if (card:getSkillName() == "kehexuanfeng") then
+		if (table.contains(card:getSkillNames(), "kehexuanfeng")) then
 			return 999
 		end
 		if to and (to:getMark("&keshuaizhuni-Clear") > 0) and from:hasSkill("keshuaizhuni") then
 			return 999
 		end
-		if card:isKindOf("Slash") and card:getSkillName() == "keshuaiyansha" then
+		if card:isKindOf("Slash") and table.contains(card:getSkillNames(), "keshuaiyansha") then
 			return 999
 		end
 		return 0
@@ -7539,7 +7539,7 @@ kezhuanninghan = sgs.CreateTriggerSkill{
 				room:detachSkillFromPlayer(p, "kezhuanninghanbuff",true,true,false)
 				local cs = sgs.CardList()
 				for _,h in sgs.qlist(p:getHandcards())do
-					if h:getSkillName()=="kezhuanninghan"
+					if table.contains(h:getSkillNames(), "kezhuanninghan")
 					then cs:append(h) end
 				end
 				room:filterCards(p, cs, true)
@@ -9092,7 +9092,7 @@ kehejiangwei:addSkill(kehejinfa)
 kehefumouex = sgs.CreateProhibitSkill{
 	name = "#kehefumouex",
 	is_prohibited = function(self, from, to, card)
-		return card:getSkillName() == "kehefumou" and card:isKindOf("Chuqibuyi")
+		return table.contains(card:getSkillNames(), "kehefumou") and card:isKindOf("Chuqibuyi")
 		and to and to:getMark("&kehefumou+red")+to:getMark("&kehefumou+black")<1
 		and from:hasSkill("kehefumou")
 	end
@@ -12300,8 +12300,8 @@ keshuailiubiao:addSkill(keshuaiyansha)
 keshuaiyanshaslashex = sgs.CreateProhibitSkill{
 	name = "#keshuaiyanshaslashex",
 	is_prohibited = function(self, from, to, card)
-		if card:getSkillName() == "xingkuangjian" then return from==to end
-		return card:getSkillName() == "keshuaiyansha" and card:isKindOf("Slash")
+		if table.contains(card:getSkillNames(), "xingkuangjian") then return from==to end
+		return table.contains(card:getSkillNames(), "keshuaiyansha") and card:isKindOf("Slash")
 		and to and to:getMark("&keshuaiyansha")<1
 	end
 }

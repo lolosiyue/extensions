@@ -1,4 +1,4 @@
-module("extensions.excard2014", package.seeall)
+﻿module("extensions.excard2014", package.seeall)
 extension = sgs.Package("excard2014", sgs.Package_CardPack)
 
 -- 卡牌启用开关：1-开启，0-关闭
@@ -371,7 +371,7 @@ if TrickCard_wwjz == 1 then
 				end
 			elseif event == sgs.SlashMissed then
 				local slash = data:toSlashEffect()
-				if slash.slash:getSkillName() == "EXCard_WWJZ" then
+				if table.contains(slash.slash:getSkillNames(), "EXCard_WWJZ") then
 					local use = room:getTag("EXCard_WWJZ_data"):toCardUse()
 					room:setCardFlag(use.card, "EXCard_WWJZ_success")
 				end
