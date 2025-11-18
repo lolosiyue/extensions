@@ -3147,7 +3147,7 @@ sgs.ai_cardneed.qhfireshuangxiong=function(to,card,self)
 end
 sgs.ai_card_priority.qhfireshuangxiong = function(self,card,v)
 	if self.useValue
-	and card:getSkillName()=="qhfireshuangxiong"
+	and table.contains(card:getSkillNames(), "qhfireshuangxiong")
 	then v = 6 end
 end
 
@@ -3596,3 +3596,4 @@ sgs.ai_nullification.QhstandardIndulgence = function(self,trick,from,to,positive
 		
 	end
 end
+

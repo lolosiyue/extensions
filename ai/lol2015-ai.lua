@@ -494,7 +494,7 @@ end
 -- end
 
 -- sgs.ai_use_revises.lol_mzzw_e = function(self,card,use)
--- 	if card:getSkillName()=="lol_mzzw_e"
+-- 	if table.contains(card:getSkillNames(), "lol_mzzw_e")
 -- 	then
 -- 		local max_value = 0
 -- 		local target
@@ -534,7 +534,7 @@ end
 -- end
 
 -- sgs.ai_card_priority.lol_mzzw_e = function(self,card)
--- 	if card:getSkillName() == "lol_mzzw_e"
+-- 	if table.contains(card:getSkillNames(), "lol_mzzw_e")
 -- 	then
 -- 		if self.useValue
 -- 		then return 1 end
@@ -761,7 +761,7 @@ sgs.ai_use_value["lol_tqz_rCard"] = 1
 
 
 sgs.ai_card_priority["lol_xlnw_q"] = function(self, card)
-	if card and card:isKindOf("Slash") and card:getSkillName() == "lol_xlnw_q"
+	if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "lol_xlnw_q")
 	then
 		return 0.1
 	end
@@ -1533,7 +1533,7 @@ sgs.ai_skill_use_func["#lol_sxls_wCard"] = function(card, use, self)
 	for _,e in sgs.list(self.player:getEquips())do
 		for _,slash in sgs.list(table.copyFrom(slashes))do
 			if slash:getEffectiveId()==e:getId()
-			or slash:getSkillName()==e:objectName()
+			or table.contains(slash:getSkillNames(), e:objectName())
 			or not slash:isAvailable(self.player)
 			then table.removeOne(slashes,slash) end
 		end
@@ -1596,7 +1596,7 @@ sgs.ai_skill_use_func["#lol_sxls_rCard"] = function(card,use,self)
 	for _,e in sgs.list(self.player:getEquips())do
 		for _,slash in sgs.list(table.copyFrom(slashes))do
 			if slash:getEffectiveId()==e:getId()
-			or slash:getSkillName()==e:objectName()
+			or table.contains(slash:getSkillNames(), e:objectName())
 			or not slash:isAvailable(self.player)
 			then table.removeOne(slashes,slash) end
 		end
@@ -1634,7 +1634,7 @@ sgs.ai_use_value["lol_sxls_rCard"] = 3
 
 
 sgs.ai_card_priority["lol_bzll_w_skill"] = function(self, card)
-	if card and card:isKindOf("Slash") and card:getSkillName() == "lol_bzll_w"
+	if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "lol_bzll_w")
 	then
 		return 0.1
 	end
@@ -1773,11 +1773,12 @@ lol_bzll_r_skill.getTurnUseCard=function(self)
 	return skillcard
 end
 sgs.ai_ajustdamage_from.lol_bzll_r = function(self, from, to, card, nature)
-	if card and card:getSkillName() == "lol_bzll_r" and to and to:distanceTo(from) >= 2
+	if card and table.contains(card:getSkillNames(), "lol_bzll_r") and to and to:distanceTo(from) >= 2
 	then
 		return 1
 	end
 end
+
 
 
 

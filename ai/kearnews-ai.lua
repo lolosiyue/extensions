@@ -142,7 +142,7 @@ sgs.ai_view_as.kexianglong = function(card, player, card_place)
 	end
 end
 sgs.ai_card_priority.kexianglong = function(self,card)
-	if card:getSkillName()=="kexianglong" 
+	if table.contains(card:getSkillNames(), "kexianglong") 
 	then
 		if self.useValue
 		then return 1 end
@@ -1975,3 +1975,4 @@ end
 sgs.ai_getBestHp_skill.kenewmiji = function(owner)
 	return owner:getMaxHp() - 1
 end
+

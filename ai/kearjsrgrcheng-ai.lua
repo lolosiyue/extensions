@@ -530,7 +530,7 @@ sgs.ai_guhuo_card.kechengqongtu = function(self,cname,class_name)
 end
 
 sgs.ai_card_priority.kechengqongtu = function(self,card,v)
-	if self.player:getKingdom() == "qun" and card:getSkillName() == "kechengqongtu"
+	if self.player:getKingdom() == "qun" and table.contains(card:getSkillNames(), "kechengqongtu")
 	then return 10 end
 end
 
@@ -631,7 +631,7 @@ function sgs.ai_cardneed.kechengxianzhu(to, card)
 	return to:getKingdom() == "wei" and card:isNDTrick()
 end
 sgs.ai_card_priority.kechengxianzhu = function(self,card,v)
-	if self.player:getKingdom() == "wei" and card:getSkillName() == "kechengxianzhu"
+	if self.player:getKingdom() == "wei" and table.contains(card:getSkillNames(), "kechengxianzhu")
 	then return 10 end
 end
 
@@ -1108,3 +1108,4 @@ sgs.ai_nullification.KCTuixinzhifu = function(self,trick,from,to,positive)
 		end
 	end
 end
+

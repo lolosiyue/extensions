@@ -3776,7 +3776,7 @@ function sgs.ai_cardsview.PlusSheji(self, class_name, player)
 end
 
 sgs.ai_card_priority.PlusSheji = function(self, card)
-	if card:isKindOf("Slash") and self.player:getHandcardNum() < 4 and card:getSkillName() == "PlusSheji"
+	if card:isKindOf("Slash") and self.player:getHandcardNum() < 4 and table.contains(card:getSkillNames(), "PlusSheji")
 	then
 		return 1
 	end
@@ -7723,3 +7723,4 @@ sgs.ai_skill_invoke.SevenYueDan = function(self, data)
 	end
 	return false
 end
+

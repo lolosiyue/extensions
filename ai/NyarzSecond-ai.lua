@@ -618,6 +618,7 @@ sgs.ai_skill_choice["bnbenghuai"] = function(self, choices, data)
     end
     return "hp"
 end
+sgs.ai_damage_reason_suppress_intention["bnbaonve"] = true
 
 --横征
 
@@ -684,7 +685,7 @@ end
 sgs.ai_use_priority.bnjiuchi = sgs.ai_use_priority.Analeptic
 
 sgs.ai_card_priority.bnjiuchi = function(self,card)
-	if card:getSkillName()=="bnjiuchi"
+	if table.contains(card:getSkillNames(), "bnjiuchi")
 	then
 		if self.useValue
 		then return 5 end
@@ -851,7 +852,7 @@ sgs.ai_skill_invoke.tycuixin = function(self,data)
 end
 --捐甲
 sgs.ai_ajustdamage_from.jjjuanjia = function(self, from, to, card, nature)
-	if (card and (card:isKindOf("Slash") )) and card:getSkillName() == "jjjuanjia"
+	if (card and (card:isKindOf("Slash") )) and table.contains(card:getSkillNames(), "jjjuanjia")
 	then
 		return 1
 	end
@@ -3968,3 +3969,4 @@ sgs.ai_skill_choice.nyarz_ninge = function(self, choices, data)
     local items = choices:split("+")
     return items[math.random(1, #items)]
 end
+

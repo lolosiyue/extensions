@@ -115,7 +115,7 @@ sgs.ai_skill_use["@@kezhuanchuanxin"] = function(self,prompt)
 end
 
 sgs.ai_ajustdamage_from.kezhuanchuanxin = function(self,from,to,card,nature)
-	if card and card:getSkillName() == "kezhuanchuanxin"
+	if card and table.contains(card:getSkillNames(), "kezhuanchuanxin")
 	then return to:getMark("kezhuanchuanxin-Clear") end
 end
 sgs.Active_cardneed_skill = sgs.Active_cardneed_skill .. "|kezhuanchuanxin"
@@ -257,7 +257,7 @@ sgs.ai_skill_use_func["#kezhuanxushiCard"] = function(card, use, self)
 end
 
 sgs.ai_ajustdamage_from.kezhuanbaohe = function(self,from,to,card,nature)
-	if card and card:getSkillName() == "kezhuanbaohe"
+	if card and table.contains(card:getSkillNames(), "kezhuanbaohe")
 	then return card:getTag("kezhuanbaoheda"):toInt() end
 end
 sgs.Active_cardneed_skill = sgs.Active_cardneed_skill .. "|kezhuanbaohe"
@@ -1003,4 +1003,5 @@ sgs.ai_ajustdamage_from.kezhuanhuchou = function(self,from,to,card,nature)
 	if to:getMark("&kezhuanhuchou+#"..from:objectName())>0
 	then return 1 end
 end
+
 

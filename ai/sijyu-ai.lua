@@ -236,13 +236,13 @@ sgs.double_slash_skill = sgs.double_slash_skill .."|sijyu_zhanjiang"
 --目的是想讓角色先用技能轉酒+刷新技能+技能轉殺 每回合就能多過兩張牌 但實際效果不佳 要是有大佬能指點一下就好
 sgs.ai_use_revises.sijyu_youlong = function(self, card, use)
     if card and card:getClassName() and card:isKindOf("Analeptic") and
-        (card:getSkillName() == "sijyu_youlong" and (self.player:getMark("&sijyu_youlong-Clear") == 0))
+        (table.contains(card:getSkillNames(), "sijyu_youlong") and (self.player:getMark("&sijyu_youlong-Clear") == 0))
         and sgs.ai_use_priority[card:getClassName()] and self:getCardsNum("Slash") > 0 then
         sgs.ai_use_priority[card:getClassName()] = sgs.ai_use_priority[card:getClassName()] + 2
     end
 end
 sgs.ai_card_priority.sijyu_youlong = function(self, card)
-    if card:getSkillName() == "sijyu_youlong"
+    if table.contains(card:getSkillNames(), "sijyu_youlong")
     then
         return 1
     end
@@ -300,7 +300,7 @@ end
 sgs.ai_use_revises.sijyu_qizhan = function(self, card, use)
     if card and card:getClassName() and
         ((not card:isVirtualCard() and (self.player:getMark("&sijyu_youlong-Clear") > 0 or self.player:getMark("&sijyu_kehou-Clear") > 0))
-            or (self.player:hasSkills("sijyu_youlong") and (card:getSkillName() == "sijyu_youlong" and (self.player:getMark("&sijyu_youlong-Clear") == 0 or self.player:getMark("&sijyu_kehou-Clear") == 0)))
+            or (self.player:hasSkills("sijyu_youlong") and (table.contains(card:getSkillNames(), "sijyu_youlong") and (self.player:getMark("&sijyu_youlong-Clear") == 0 or self.player:getMark("&sijyu_kehou-Clear") == 0)))
         )
         and sgs.ai_use_priority[card:getClassName()] then
         sgs.ai_use_priority[card:getClassName()] = sgs.ai_use_priority[card:getClassName()] + 1
@@ -412,7 +412,7 @@ sgs.ai_skill_discard.sijyu_zhuluan = function(self, discard_num, min_num, option
 end
 
 sgs.ai_ajustdamage_from.sijyu_zhuluan = function(self, from, to, card, nature)
-    if card and card:getSkillName() == "sijyu_zhuluan" and from and from:getMark("zhuluandamage_lun") == 0 then
+    if card and table.contains(card:getSkillNames(), "sijyu_zhuluan") and from and from:getMark("zhuluandamage_lun") == 0 then
         return 1
     end
 end
@@ -933,6 +933,7 @@ sgs.gzj_tiandao_suit_value = {
 	club = 3.9,
 	spade = 3.5
 }
+
 
 
 

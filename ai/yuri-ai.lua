@@ -245,7 +245,7 @@ sgs.ai_view_as.clearthemeridians = function(card, player, card_place)
 end
 
 sgs.ai_card_priority.clearthemeridians = function(self,card)
-	if card:getSkillName()=="clearthemeridians"
+	if table.contains(card:getSkillNames(), "clearthemeridians")
 	then
 		return 1
 	end
@@ -4164,7 +4164,7 @@ sgs.ai_skill_playerchosen.genjutsu = function(self, targets)
 	return nil
 end
 sgs.ai_use_revises.genjutsu = function(self,card,use)
-	if card:isKindOf("Slash") and card:getSkillName() == "genjutsuslash" then
+	if card:isKindOf("Slash") and table.contains(card:getSkillNames(), "genjutsuslash") then
 		card:setFlags("Qinggang")
 	end
 end
@@ -4201,7 +4201,7 @@ sgs.ai_view_as.countertrick = function(card, player, card_place)
 end
 
 sgs.ai_card_priority.countertrick = function(self,card)
-	if card:getSkillName()=="countertrick"
+	if table.contains(card:getSkillNames(), "countertrick")
 	then
 		return 1
 	end

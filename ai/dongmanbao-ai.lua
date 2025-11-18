@@ -5435,7 +5435,7 @@ sgs.ai_choicemade_filter.skillChoice["SE_Feiti"] = function(self, player, prompt
 	end
 end
 
-
+sgs.ai_damage_reason_suppress_intention["SE_Feiti"] = true
 
 --[[sgs.ai_skillInvoke_intention.SE_Feiti = function(from, to, yesorno)
 	if to:hasFlag("SE_Feiti_Good") then
@@ -7472,6 +7472,8 @@ sgs.ai_use_value["se_jianshicard"] = 10
 sgs.ai_use_priority["se_jianshicard"] = 6
 
 sgs.ai_skill_invoke["SE_Heimu"] = true
+
+sgs.ai_damage_reason_suppress_intention["SE_Guiyin"] = true
 
 --家务
 sgs.ai_skill_invoke["SE_Jiawu"] = function(self, data)

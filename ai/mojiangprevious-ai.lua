@@ -358,6 +358,7 @@ sgs.ai_skill_invoke.sy_old_lingnue = true
 sgs.ai_cardneed.sy_old_lingnue = sgs.ai_cardneed.slash
 sgs.double_slash_skill = sgs.double_slash_skill .. "|sy_old_lingnue"
 
+
 --暴政
 sgs.ai_skill_cardask["@baozheng_old"] = function(self, data, pattern)
 	local cards = sgs.QList2Table(self.player:getCards("he"))
@@ -437,7 +438,7 @@ sgs.ai_skill_cardask["@baozheng_old"] = function(self, data, pattern)
 	end
 	return "$" .. baozhengcard:getEffectiveId()
 end
-
+sgs.ai_damage_reason_suppress_intention["sy_old_baozheng"] = true
 
 --醉酒
 local sy_old_zuijiu_skill = {}

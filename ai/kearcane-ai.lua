@@ -379,7 +379,7 @@ sgs.ai_skill_use["@@killaround"] = function(self, prompt)
 end
 
 sgs.ai_use_revises.killaround = function(self,card,use)
-	if card:isKindOf("Slash") and card:getSkillName() == "killaround" then
+	if card:isKindOf("Slash") and table.contains(card:getSkillNames(), "killaround") then
 		card:setFlags("Qinggang")
 	end
 end

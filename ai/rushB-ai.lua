@@ -1067,7 +1067,7 @@ sgs.ai_skill_choice.diy_m_chuifeng = function(self, choices, data)
 end
 
 sgs.ai_use_revises.diy_m_quedi = function(self,card,use)
-	if card:getSkillName() == "diy_m_chuifengg" or card:getSkillName() == "diy_m_chongjian" or card:getSkillName() == "diy_m_choujue" then
+	if table.contains(card:getSkillNames(), "diy_m_chuifengg") or table.contains(card:getSkillNames(), "diy_m_chongjian") or table.contains(card:getSkillNames(), "diy_m_choujue") then
 		card:setFlags("Qinggang")
 	end
 end
@@ -1093,7 +1093,7 @@ diy_m_chongjian_skill.getTurnUseCard = function(self)
 	end
 end
 sgs.ai_card_priority.diy_m_chongjian = function(self,card,v)
-	if card:getSkillName() == "diy_m_chongjian"
+	if table.contains(card:getSkillNames(), "diy_m_chongjian")
 	then return 5 end
 end
 
@@ -1132,7 +1132,7 @@ addAiSkills("diy_m_jichou").getTurnUseCard = function(self)
 	end
 end
 sgs.ai_card_priority.diy_m_jichou = function(self,card,v)
-	if card:getSkillName() == "diy_m_jichou"
+	if table.contains(card:getSkillNames(), "diy_m_jichou")
 	then return 5 end
 end
 sgs.ai_guhuo_card.diy_m_jichou = function(self,toname,class_name)
@@ -1167,7 +1167,7 @@ addAiSkills("diy_m_jilun").getTurnUseCard = function(self)
 	end
 end
 sgs.ai_card_priority.diy_m_jilun = function(self,card,v)
-	if card:getSkillName() == "diy_m_jilun"
+	if table.contains(card:getSkillNames(), "diy_m_jilun")
 	then return 4 end
 end
 
@@ -1452,7 +1452,7 @@ sgs.ai_use_priority.mjin_xiongzhi = 0
 sgs.ai_card_priority.mjin_xiongzhi = function(self,card,v)
 	if self.player:getMark("&mjin_quanbian-PlayClear") + 1 >= self.player:getMaxHp() then 
 		sgs.ai_use_priority.mjin_xiongzhi = 10
-		if card:getSkillName()=="mjin_xiongzhi" then
+		if table.contains(card:getSkillNames(), "mjin_xiongzhi") then
 			return 10 
 		end
 	end
@@ -2498,9 +2498,10 @@ end
 
 sgs.ai_card_priority.mk_kongying = function(self,card,v)
 	if self.player:getMark("&mk_kongying")==1
-	and card:getSkillName() == "mk_danlve_qinggang"
+	and table.contains(card:getSkillNames(), "mk_danlve_qinggang")
 	then return 10 end
 	if self.player:getMark("&mk_kongying")==0
-	and card:getSkillName() == "mk_danlve_yinyue" and self.player:getPile("mk_danlve_qinggang"):length() > 0
+	and table.contains(card:getSkillNames(), "mk_danlve_yinyue") and self.player:getPile("mk_danlve_qinggang"):length() > 0
 	then return 10 end
 end
+

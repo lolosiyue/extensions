@@ -3867,7 +3867,7 @@ end
 
 sgs.double_slash_skill = sgs.double_slash_skill .. "|sgkgodliegong"
 sgs.ai_ajustdamage_from.sgkgodliegong = function(self, from, to, card, nature)
-	if (card and (card:isKindOf("Slash") and card:subcardsLength() >= 3 )) and card:getSkillName() == "sgkgodliegong"
+	if (card and (card:isKindOf("Slash") and card:subcardsLength() >= 3 )) and table.contains(card:getSkillNames(), "sgkgodliegong")
 	then
 		return 1
 	end

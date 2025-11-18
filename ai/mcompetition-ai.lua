@@ -942,13 +942,13 @@ feitianshuangzhan_skill.getTurnUseCard = function(self,inclusive)
 end
 sgs.ai_event_callback[sgs.CardFinished].feitianshuangzhan = function(self,player,data)
 	local use = data:toCardUse()
-	if use.card and use.card:isKindOf("Slash") and use.card:getSkillName() == "feitianshuangzhan" then
+	if use.card and use.card:isKindOf("Slash") and use.table.contains(card:getSkillNames(), "feitianshuangzhan") then
 		sgs.ai_use_priority.Slash = 2.6
 	end
 end
 
 sgs.ai_card_priority.feitianshuangzhan = function(self,card)
-	if card:getSkillName()=="feitianshuangzhan"
+	if table.contains(card:getSkillNames(), "feitianshuangzhan")
 	then
 		if self.useValue
 		then return 10 end
@@ -1137,3 +1137,4 @@ sgs.ai_skill_use_func["#DuriNokocard"]=function(card,use,self)
 		return
 	end
 end
+

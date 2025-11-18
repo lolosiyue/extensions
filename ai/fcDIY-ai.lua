@@ -1299,7 +1299,7 @@ sgs.ai_card_intention.fcgongxinCard = 80
 --14 FC神赵云（不加AI）
 
 sgs.ai_ajustdamage_from.fclongming = function(self,from,to,card,nature)
-	if card and card:isBlack() and card:getSkillName() == "fclongmingBuff" then
+	if card and card:isBlack() and table.contains(card:getSkillNames(), "fclongmingBuff") then
 		if from:hasFlag("fclongmingANA_Buff") then
 			return 2
 		else
@@ -1676,7 +1676,7 @@ sp_weizhen_skill.getTurnUseCard = function(self)
 end
 sgs.ai_event_callback[sgs.PreCardUsed].sp_weizhen = function(self,player,data)
 	local use = data:toCardUse()
-	if use.card and use.card:getSkillName() == "sp_weizhen" then
+	if use.card and table.contains(use.card:getSkillNames(), "sp_weizhen") then
 		sgs.ai_use_priority.Drowning = 7
 	end
 end
@@ -1736,7 +1736,7 @@ function sgs.ai_cardneed.sp_qianlixing(to,card)
 	return to:getHandcardNum()<3 and card:isRed()
 end
 sgs.ai_use_revises.sp_qianlixing = function(self,card,use)
-	if card:isKindOf("Slash") and card:getSkillName() == "sp_qianlixing" and self.player:getPhase() == sgs.Player_Play then
+	if card:isKindOf("Slash") and table.contains(card:getSkillNames(), "sp_qianlixing") and self.player:getPhase() == sgs.Player_Play then
 		card:setFlags("Qinggang")
 	end
 end
@@ -2302,7 +2302,7 @@ sp_hengsaoqianjun_skill.getTurnUseCard = function(self)
 end
 
 sgs.ai_ajustdamage_from.sp_hengsaoqianjun = function(self,from,to,card,nature)
-	if card and card:isKindOf("Slash") and from:hasFlag("sp_hengsaoqianjunDMGbuff") and card:getSkillName() == "sp_hengsaoqianjun"
+	if card and card:isKindOf("Slash") and from:hasFlag("sp_hengsaoqianjunDMGbuff") and table.contains(card:getSkillNames(), "sp_hengsaoqianjun")
 	then return 1 end
 end
 
@@ -2330,7 +2330,7 @@ sgs.ai_skill_choice["sp_hengsaoqianjun"] = function(self, choices, data)
 	return "1"
 end
 sgs.ai_card_priority.sp_hengsaoqianjun = function(self,card)
-	if card:getSkillName()=="sp_hengsaoqianjun"
+	if table.contains(card:getSkillNames(), "sp_hengsaoqianjun")
 	then
 		if self.useValue
 		then return 1 end
@@ -2454,7 +2454,7 @@ sgs.ai_ajustdamage_from.sp_danqi = function(self,from,to,slash,nature)
 	end
 end
 sgs.ai_use_revises.sp_danqi = function(self,card,use)
-	if card:isKindOf("Slash") and (card:getSkillName() == "sp_danqi" or card:getSkillName() == "sp_danqi_buffs") then
+	if card:isKindOf("Slash") and (table.contains(card:getSkillNames(), "sp_danqi") or table.contains(card:getSkillNames(), "sp_danqi_buffs")) then
 		card:setFlags("Qinggang")
 	end
 end
@@ -2463,7 +2463,7 @@ sgs.ai_skill_choice["sp_danqi"] = function(self, choices, data)
 	local items = choices:split("+")
 	local use = data:toCardUse()
 	local buff = true
-	if use.card:getSkillName() == "sp_danqi" then
+	if table.contains(use.card:getSkillNames(), "sp_danqi") then
 		buff = false
 	end
 	if use.card:isKindOf("Slash") then
@@ -2512,7 +2512,7 @@ end
 
 
 sgs.ai_card_priority.sp_danqi = function(self,card)
-	if (card:getSkillName() == "sp_danqi" or card:getSkillName() == "sp_danqi_buffs")
+	if (table.contains(card:getSkillNames(), "sp_danqi") or table.contains(card:getSkillNames(), "sp_danqi_buffs"))
 	then
 		if self.useValue
 		then return 1 end
@@ -2631,7 +2631,7 @@ sgs.ai_skill_use_func["#sp_zhengbianCard"] = function(card,use,self)
 	for _,e in sgs.list(self.player:getEquips())do
 		for _,slash in sgs.list(table.copyFrom(slashes))do
 			if slash:getEffectiveId()==e:getId()
-			or slash:getSkillName()==e:objectName()
+			or table.contains(slash:getSkillNames(), e:objectName())
 			or not slash:isAvailable(self.player)
 			then table.removeOne(slashes,slash) end
 		end
@@ -3880,7 +3880,7 @@ end
 sgs.ai_use_value.fczhizheCard = 5.4
 sgs.ai_use_priority.fczhizheCard = 13.8
 sgs.ai_card_priority.fczhizhe = function(self,card)
-	if card:getSkillName() == "fczhizhe"
+	if table.contains(card:getSkillNames(), "fczhizhe")
 	then
 		if self.useValue
 		then return 1 end
@@ -4515,7 +4515,7 @@ sgs.ai_playerchosen_intention["fcbyajiaoequip"] = -50
 sgs.ai_skill_invoke.fcbpozhen = true
 
 sgs.ai_card_priority.fcbpozhen = function(self,card)
-	if card:getSkillName()=="longdan"
+	if table.contains(card:getSkillNames(), "longdan")
 	then
 		if self.useValue
 		then return 2 end
@@ -4822,7 +4822,7 @@ sgs.ai_use_priority.tyshouli = 2.8
 
 
 sgs.ai_card_priority.tyshouli = function(self,card)
-	if card:getSkillName()=="tyshouli"
+	if table.contains(card:getSkillNames(), "tyshouli")
 	then
 		if self.useValue
 		then return 1 end
@@ -6107,4 +6107,5 @@ end
 
 sgs.ai_use_value["f_shanmengHScard"] = 8
 sgs.ai_use_priority["f_shanmengHScard"] = 7
+
 

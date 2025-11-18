@@ -575,7 +575,7 @@ sgs.ai_skill_use_func.XiongluanCard = function(card,use,self)
 	for _,e in sgs.list(self.player:getEquips())do
 		for _,slash in sgs.list(table.copyFrom(slashes))do
 			if slash:getEffectiveId()==e:getId()
-			or slash:getSkillName()==e:objectName()
+			or table.contains(slash:getSkillNames(), e:objectName())
 			or not slash:isAvailable(self.player)
 			then table.removeOne(slashes,slash) end
 		end
@@ -1012,3 +1012,4 @@ sgs.ai_skill_playerchosen.olzhiti = function(self,targets)
 	
 	return nil
 end
+

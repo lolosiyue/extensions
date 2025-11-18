@@ -605,7 +605,7 @@ zhanjue_skill.getTurnUseCard = function(self)
 end
 
 sgs.ai_use_revises.zhanjue = function(self,card,use)
-	if card:getSkillName()=="zhanjue" then
+	if table.contains(card:getSkillNames(), "zhanjue") then
 		for _,ep in sgs.list(self.enemies)do
 			if CanToCard(card,self.player,ep,use.to)
 			and getCardsNum("Slash",ep,self.player)<1 then
@@ -677,7 +677,7 @@ olzhanjue_skill.getTurnUseCard = function(self)
 end
 
 sgs.ai_use_revises.olzhanjue = function(self,card,use)
-	if card:getSkillName()=="olzhanjue"
+	if table.contains(card:getSkillNames(), "olzhanjue")
 	then
 		for _,ep in sgs.list(self.enemies)do
 			if CanToCard(card,self.player,ep,use.to)
@@ -1368,4 +1368,5 @@ sgs.ai_skill_playerchosen.yaoming = function(self,players)
 		then return target end
 	end
 end
+
 

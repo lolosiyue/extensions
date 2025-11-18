@@ -4162,7 +4162,7 @@ addAiSkills("tenyearzhanjue").getTurnUseCard = function(self)
 end
 
 sgs.ai_use_revises.tenyearzhanjue = function(self,card,use)
-	if card:getSkillName()=="tenyearzhanjue" then
+	if table.contains(card:getSkillNames(), "tenyearzhanjue") then
 		for _,ep in sgs.list(self.enemies)do
 			if CanToCard(card,self.player,ep,use.to)
 			and getCardsNum("Slash",ep,self.player)<1 then
@@ -4547,6 +4547,7 @@ sgs.ai_skill_cardask["@mieji-discard"] = function(self,data,pattern,target)
 	end
 	return d:toString()
 end
+
 
 
 

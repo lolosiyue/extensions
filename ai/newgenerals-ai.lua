@@ -4796,7 +4796,7 @@ end
 
 sgs.ai_cardneed.moulongdan = sgs.ai_cardneed.longdan
 sgs.ai_card_priority.moulongdan = function(self,card)
-	if card:getSkillName()=="moulongdan"
+	if table.contains(card:getSkillNames(), "moulongdan")
 	then
 		return 1
 	end
@@ -4981,7 +4981,7 @@ addAiSkills("moujiang").getTurnUseCard = function(self)
 end
 
 sgs.ai_use_revises.moujiang = function(self,card,use)
-	if card:getSkillName()=="moujiang" then
+	if table.contains(card:getSkillNames(), "moujiang") then
 		for _,ep in sgs.list(self.enemies)do
 			if CanToCard(card,self.player,ep,use.to)
 			and getCardsNum("Slash",ep,self.player)<1 then
@@ -6107,7 +6107,7 @@ function sgs.ai_cardsview.keolweilin(self,class_name,player)
 end
 
 sgs.ai_card_priority.keolweilin = function(self,card,v)
-	if card:getSkillName()=="keolweilin" then
+	if table.contains(card:getSkillNames(), "keolweilin") then
 		return 0.5
 	end
 end
@@ -7025,6 +7025,7 @@ end
 
 sgs.ai_use_value._chunqiubiCard = 4.5
 sgs.ai_use_priority._chunqiubiCard = 7.7
+
 
 
 

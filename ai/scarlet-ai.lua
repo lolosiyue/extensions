@@ -725,7 +725,7 @@ sgs.ai_slash_prohibit.s4_longxin = function(self,from,to,card)
 	if to:hasSkill("s4_longxin") and to:getHandcardNum()>=3 and from:getHandcardNum()>1 and not to:isWounded() then return true end
 end
 sgs.ai_card_priority.s4_longxin = function(self,card)
-	if card:getSkillName()=="s4_longxin" and not self.player:isWounded()
+	if table.contains(card:getSkillNames(), "s4_longxin") and not self.player:isWounded()
 	then
 		if self.useValue
 		then return 1 end
@@ -1088,7 +1088,7 @@ sgs.ai_choicemade_filter.skillInvoke.s4_wuhu_longdan = function(self,player,prom
 end
 
 sgs.ai_card_priority.s4_wuhu_longdan = function(self,card)
-	if card:getSkillName()=="s4_wuhu_longdan"
+	if table.contains(card:getSkillNames(), "s4_wuhu_longdan")
 	then
 		if self.useValue
 		then return 1 end
@@ -2144,3 +2144,4 @@ sgs.ai_ajustdamage_to.s4_s_yinghun = function(self, from, to, card, nature)
         return -99
     end
 end
+

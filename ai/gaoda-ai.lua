@@ -3044,7 +3044,7 @@ sgs.ai_skill_invoke.lingshi = function(self, data)
 	return true
 end
 sgs.ai_card_priority.liuxing = function(self,card)
-	if card:getSkillName()=="liuxing"
+	if table.contains(card:getSkillNames(), "liuxing")
 	then
 		if self.useValue
 		then return 1 end
@@ -3053,7 +3053,7 @@ sgs.ai_card_priority.liuxing = function(self,card)
 end
 
 sgs.ai_ajustdamage_from.liuxing = function(self, from, to, card, nature)
-	if card and card:getSkillName()=="liuxing" and card:hasFlag("liuxing") then
+	if card and table.contains(card:getSkillNames(), "liuxing") and card:hasFlag("liuxing") then
 		return 1
 	end
 end
@@ -3721,7 +3721,7 @@ sgs.ai_skill_invoke.pojia = function(self, data)
 end
 
 sgs.ai_ajustdamage_to.pojia = function(self, from, to, card, nature)
-	if card and card:isKindOf("Duel") and card:getSkillName() == "pojiacard" then
+	if card and card:isKindOf("Duel") and table.contains(card:getSkillNames(), "pojiacard") then
 		return -99
 	end
 end
@@ -4077,7 +4077,7 @@ sgs.ai_use_priority["dadi"] = sgs.ai_use_priority.Slash + 1
 
 
 sgs.ai_card_priority.dadi = function(self,card)
-	if card:getSkillName()=="dadi"
+	if table.contains(card:getSkillNames(), "dadi")
 	then
 		return 1 
 	end
@@ -4173,9 +4173,10 @@ sgs.ai_skill_invoke.zhongcheng = function(self, data)
 	return self:isEnemy(damage.from) and
 	not (damage.from:getEquips():length() == 1 and damage.from:getArmor() and damage.from:getArmor():getClassName() == "SilverLion")
 end
+sgs.ai_suppress_intention["huohai"] = true
 
 sgs.ai_ajustdamage_from.kongju = function(self,from,to,card,nature)
-	if from:getMark("@kongju") > 0 and card and card:getSkillName() == "huohai"
+	if from:getMark("@kongju") > 0 and card and table.contains(card:getSkillNames(), "huohai")
 	then return 1 end
 end
 sgs.ai_target_revises.tiebi = function(to, card, self)
@@ -4343,7 +4344,7 @@ sgs.ai_skill_invoke.chaoqi = function(self, data)
 end
 
 sgs.ai_card_priority.daijin = function(self,card)
-	if card:getSkillName()=="daijincard"
+	if table.contains(card:getSkillNames(), "daijincard")
 	then
 		if self.useValue
 		then return 1 end
@@ -4961,7 +4962,7 @@ sgs.ai_use_value["qianzhi"] = sgs.ai_use_value.Slash
 sgs.ai_use_priority["qianzhi"] = sgs.ai_use_priority.Slash
 
 sgs.ai_ajustdamage_from.qianzhi = function(self,from,to,card,nature)
-	if card and card:isKindOf("Slash") and card:getSkillName() == "qianzhi" and to:isKongcheng() 
+	if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "qianzhi") and to:isKongcheng() 
 	then return 1 end
 end
 
@@ -5889,7 +5890,7 @@ end
 --创制燃焰
 sgs.ai_skill_use["@@ciyuanbawangliu"] = function(self, prompt)
 	local use = self.player:getTag("ciyuanbawangliu"):toCardUse()
-	if use.card and use.card:getSkillName() == "shengfeng" then return "." end
+	if use.card and table.contains(use.card:getSkillNames(), "shengfeng") then return "." end
 	local quanfa = self.player:getPile("quanfa")
 	for _,p in sgs.qlist(use.to) do
 		for _,id in sgs.qlist(quanfa) do
@@ -7047,3 +7048,4 @@ sgs.dynamic_value.benefit["boss_miehou"] = true
 
 sgs.ai_use_value["boss_miehou"] = sgs.ai_use_value.Slash + 0.1
 sgs.ai_use_priority["boss_miehou"] = sgs.ai_use_priority.Slash + 0.1
+

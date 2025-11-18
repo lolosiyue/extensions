@@ -1759,6 +1759,114 @@ sgs.filterData = {}
 sgs.aiResponse = {Slash = "Jink"}
 sgs.cardEffect = nil
 
+sgs.ai_suppress_intention =		{}
+function SmartAI:shouldSuppressIntention(struct)
+	local to = sgs.QList2Table(struct.to)
+	local card = struct.card
+	local from = struct.from
+	
+	-- Check for special skill-based suppression (spjili - 寄籬不更新仇恨值)
+	if not card:isKindOf("GlobalEffect") and not card:isKindOf("AOE") then
+		for _, p in ipairs(to) do
+			if p:hasSkill("spjili") and from:distanceTo(p) == 1 then
+				return true
+			end
+		end
+	end
+	
+	-- Check for lolita skill with Slash
+	if card:isKindOf("Slash") then
+		for _, p in ipairs(to) do
+			if p:hasSkill("lolita") and from:inMyAttackRange(p) then
+				return true
+			end
+		end
+	end
+	
+	-- Check for Zenhui flag on player
+	if from:hasFlag("ZenhuiUser_" .. card:toString()) then
+		return true
+	end
+	
+	-- Check for skills that suppress intention through table
+	local skill_names = card:getSkillNames()
+	for _, skill_name in sgs.list(skill_names) do
+		if sgs.ai_suppress_intention[skill_name] then
+			return true
+		end
+	end
+	
+	-- Check for card flags that suppress intention
+	if card:hasFlag("meihuomoyan") or 
+	   card:hasFlag("sgkgodshunshi") or 
+	   card:hasFlag("kenewmieyao") then
+		return true
+	end
+	
+	-- Check for target marks
+	for _, p in ipairs(to) do
+		if p:getMark("geass_target") > 0 then
+			return true
+		end
+	end
+	
+	-- Check for liuli/lijian effects
+	if sgs.ai_liuli_effect then
+		sgs.ai_liuli_effect = false
+		return true
+	end
+	
+	if sgs.ai_lijian_effect then
+		sgs.ai_lijian_effect = false
+		return true
+	end
+	
+	return false
+end
+
+sgs.ai_damage_reason_suppress_intention = {}
+sgs.ai_damage_from_flag_intention = {}
+function SmartAI:calculateDamageIntention(damage)
+	local from = damage.from
+	local reason = damage.reason or ""
+	local intention = damage.damage * 40
+	if reason == "" and damage.card then
+		for _, name in sgs.list(damage.card:getSkillNames()) do
+			if sgs.ai_damage_reason_suppress_intention[name] then
+				return 0
+			end
+		end
+	end
+	if sgs.ai_damage_reason_suppress_intention[reason] then
+		return 0
+	end
+	if from then
+		for flag, value in pairs(sgs.ai_damage_from_flag_intention) do
+			if from:hasFlag(flag) then
+				if value == 0 then return 0 end
+				if type(value) == "number" then
+					intention = damage.damage * value
+				end
+			end
+		end
+	end
+	if sgs.ai_quhu_effect or reason:match("quhu") then
+		sgs.ai_quhu_effect = false
+		intention = damage.damage * 30
+	elseif reason:match("zhendu") then
+		intention = damage.damage * 10
+	end
+	
+	if damage.transfer or damage.chain then
+		intention = damage.damage * 20
+	end
+	
+	return intention
+end
+
+sgs.ai_damage_from_flag_intention["ShenfenUsing"] = 10
+sgs.ai_damage_from_flag_intention["FenchengUsing"] = 10
+
 function SmartAI:filterEvent(event,player,data)
 	sgs.filterData[event] = data
 	for _,callback in pairs(sgs.ai_event_callback[event])do
@@ -1790,139 +1898,19 @@ function SmartAI:filterEvent(event,player,data)
 		if struct.card:objectName()~="collateral" then sgs.ai_collateral = false end
 		sgs.ai_collateral = struct.card:objectName()=="collateral"
 		if sgs.UsedData.card==struct.card and sgs.UsedData.from==player then
-			local to = sgs.QList2Table(struct.to)
-			--寄籬不更新仇恨值
-			local has_yanbaihu_effect = false
-			if not struct.card:isKindOf("GlobalEffect") and not struct.card:isKindOf("AOE") then
-				for _, p in ipairs(to) do
-					if p:hasSkill("spjili") and struct.from:distanceTo(p) == 1 then
-						sgs.ZenhuiEffect = true
-					end
-				end
-			end
-			if #to <= 1 then
-				sgs.ZenhuiEffect = false
-			end
-			if struct.card:isKindOf("Slash") then
-				for _, p in ipairs(to) do
-					if p:hasSkill("lolita") and struct.from:inMyAttackRange(p) then
-						sgs.ZenhuiEffect = true
-					end
-				end
-			end
-			if #to <= 1 then
-				sgs.ZenhuiEffect = false
-			end
-			if player:hasFlag("ZenhuiUser_" .. struct.card:toString())
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:getSkillName() == "ny_channi"
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:getSkillName() == "xiaoyizi"
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:getSkillName() == "Meowlijian"
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:getSkillName() == "Meowlijian"
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:getSkillName() == "meizlxiangjie"
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:getSkillName() == "meizlshxiangjie"
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:getSkillName() == "y_huiyu"
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:getSkillName() == "kejiexianaoce"
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:getSkillName() == "xiaoyizi"
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:getSkillName() == "cuifeng_slash"
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:getSkillName() == "sy_baozheng"
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:getSkillName() == "sy_chanxian"
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:hasFlag("meihuomoyan")
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:hasFlag("sgkgodshunshi")
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:hasFlag("kenewmieyao")
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:getSkillName() == "nylijian"
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:getSkillName() == "ny_channi"
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:getSkillName() == "huohai"
-			then
-				sgs.ZenhuiEffect = true
-			end
-			if struct.card:getSkillName() == "sijyufakeoffline_zhiji"
-			then
-				sgs.ZenhuiEffect = true
-			end
+			local suppress_intention = self:shouldSuppressIntention(struct)
 			
-			for _, p in ipairs(to) do
-				if p:getMark("geass_target") > 0 then
-					sgs.ZenhuiEffect = true
-				end
-			end
-			if sgs.ai_liuli_effect then
-				sgs.ai_liuli_effect = false
-				sgs.ZenhuiEffect = true
-			end
-			if sgs.ai_lijian_effect then
-				sgs.ai_lijian_effect = false
-				sgs.ZenhuiEffect = true
-			end
-			if not sgs.ZenhuiEffect then
+			if not suppress_intention then
 				local callback = sgs.ai_card_intention[struct.card:getClassName()]
-				if type(callback)=="function" then callback(self,struct.card,player,sgs.QList2Table(struct.to))
-				elseif type(callback)=="number" then sgs.updateIntentions(player,struct.to,callback) end
+				if type(callback)=="function" then 
+					callback(self,struct.card,player,sgs.QList2Table(struct.to))
+				elseif type(callback)=="number" then 
+					sgs.updateIntentions(player,struct.to,callback) 
+				end
 				if struct.card:objectName()~="collateral" then sgs.ai_collateral = false end
 			end
 		end
-		-- if not sgs.ZenhuiEffect then
-		-- 	local callback = sgs.ai_card_intention[struct.card:getClassName()]
-		-- 	if type(callback)=="function" then callback(self,struct.card,player,sgs.QList2Table(struct.to))
-		-- 	elseif type(callback)=="number" then sgs.updateIntentions(player,struct.to,callback) end
-		-- 	if struct.card:objectName()~="collateral" then sgs.ai_collateral = false end
-		-- end
-		if sgs.ZenhuiEffect then
-			sgs.ZenhuiEffect = false
-		end
+		
 		if struct.card:isDamageCard() then
 			if sgs.ai_role[player:objectName()]=="rebel"
 			and not self:isFriend(player:getNextAlive()) then
@@ -2000,59 +1988,22 @@ function SmartAI:filterEvent(event,player,data)
 			end
 			self.room:setTag("is_chained",ToData(n))
 		end
+		
 		local r = damage.reason
 		if damage.card then
 			sgs.card_damage_nature[damage.card:getClassName()] = damage.nature
 			if sgs.ai_card_intention[damage.card:getClassName()] then return end
 			if r=="" then r = damage.card:getSkillName() end
 		end
-		local intention = damage.damage*40
+		
+		-- Calculate intention value
+		local intention = self:calculateDamageIntention(damage)
 		local from = self.room:findPlayerBySkillName(r,true) or damage.from
+		
 		if r~="" then sgs.damageData[r] = (sgs.damageData[r] or 0)+damage.damage end
-		if sgs.ai_quhu_effect or r:match("quhu") then sgs.ai_quhu_effect = false intention = damage.damage*30
-		elseif from and (from:hasFlag("ShenfenUsing") or from:hasFlag("FenchengUsing") or r:match("zhendu")) then intention = damage.damage*10 end
-		--add
-		if r == "SE_Feiti" then
-			intention = 0
+		if from and intention ~= 0 then 
+			sgs.updateIntention(from,player,intention) 
 		end
-		if r == "SE_Guiyin" then
-			intention = 0
-		end
-		if r == "meizlseyousha" then
-			intention = 0
-		end
-		if r == "meizlsezhicuan" then
-			intention = 0
-		end
-		if r == "kexianhuoqi" then
-			intention = 0
-		end
-		if r == "kejiexianhuoqi" then
-			intention = 0
-		end
-		if r == "hezibz" then
-			intention = 0
-		end
-		if r == "luaRduxian" then
-			intention = 0
-		end
-		if r == "bnbaonve" then
-			intention = 0
-		end
-		if r == "sy_dihui" then
-			intention = 0
-		end
-		if r == "sy_old_baozheng" then
-			intention = 0
-		end
-		if r == "sfofl_zimou" then
-			intention = 0
-		end
-		if damage.card and damage.card:hasFlag("GodJiuse") then
-			intention = 0
-		end
-		if damage.transfer or damage.chain then intention = damage.damage*20 end
-		if from then sgs.updateIntention(from,player,intention) end
 	elseif event==sgs.PreCardUsed then
 		local struct = data:toCardUse()
 		local sn = getLord(player)
@@ -4598,7 +4549,7 @@ function SmartAI:getCardsNum(class_name,flag,selfonly)
 	for _,c in ipairs(self:getCards(class_name,flag))do
 		if ("spear|fuhun"):match(c:getSkillName())
 		then n = n+math.floor(#self:addHandPile()/2)
-		elseif c:getSkillName()=="jiuzhu"
+		elseif table.contains(c:getSkillNames(), "jiuzhu")
 		then n = math.max(n,math.max(0,math.min(self.player:getCardCount(),self.player:getHp()-1)))
 		elseif c:getSkillName():contains("chunlao")
 		then n = n+self.player:getPile("wine"):length()
@@ -5184,7 +5135,7 @@ function SmartAI:needToLoseHp(to,from,card,passive,recover)
 	if from:hasSkill("sinzhisi") and card and card:isKindOf("Slash") and to:getMark("@sharengui") > 0 then
 		return
 	end
-	if from:hasSkill("meizlhuhun") and card and card:isKindOf("Slash") and card:getSkillName() == "meizlhuhun" then
+	if from:hasSkill("meizlhuhun") and card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "meizlhuhun") then
 		return
 	end
 	if from:hasSkill("meizlxueshang") and from:getPhase() == sgs.Player_Play and to:getHp() <= 2 then
@@ -6457,7 +6408,7 @@ function SmartAI:ajustDamage(from,to,dmg,card,nature)
 	if to:getMark("&f_jishen+jsweapon-SelfClear")>0 and card and not card:isVirtualCard() then
 		dmg = dmg * 2
 	end
-	if card and card:getSkillName() == "s4_s_yuanshe" then
+	if card and table.contains(card:getSkillNames(), "s4_s_yuanshe") then
 		nature = "T"
 	end
 	local sj = self.room:getTag("guandu_sj"):toString()
@@ -6591,21 +6542,6 @@ function SmartAI:ajustDamage(from,to,dmg,card,nature)
 	if to:getMark("&f_jishen+jsarmor-SelfClear") > 0 and dmg > 1 and card and not card:isVirtualCard() then
 		dmg = dmg / 2
 	end
-
-
-	--[[if to:isChained() and not to:hasSkill("sijyufakeoffline_yihuo") then
-		local pangtong = self.room:findPlayerBySkillName("sijyufakeoffline_yihuo")
-		if pangtong then
-			if nature ~= "N" then
-				dmg = dmg + 1
-			end
-			if nature == "N" then
-				dmg = dmg - 1
-			end
-		end
-	end]]
-
-
 
 	return dmg<-10 and 0 or dmg
 end
@@ -8036,7 +7972,7 @@ end
 
 sgs.ai_card_priority.shuangxiong = function(self,card,v)
 	if self.useValue
-	and card:getSkillName()=="shuangxiong"
+	and table.contains(card:getSkillNames(), "shuangxiong")
 	then v = 6 end
 end
 
@@ -8071,7 +8007,7 @@ sgs.ai_card_priority.halberd = function(self,card,v)
 end
 
 sgs.ai_card_priority.spear = function(self,card)
-	if card:getSkillName()=="spear"
+	if table.contains(card:getSkillNames(), "spear")
 	then
 		if self.useValue
 		then return -1 end
@@ -8085,7 +8021,7 @@ sgs.ai_card_priority.jie = function(self,card)
 end
 
 sgs.ai_card_priority.chongzhen = function(self,card)
-	if card:getSkillName()=="longdan"
+	if table.contains(card:getSkillNames(), "longdan")
 	then
 		if self.useValue
 		then return 1 end
@@ -8094,7 +8030,7 @@ sgs.ai_card_priority.chongzhen = function(self,card)
 end
 
 sgs.ai_card_priority.fuhun = function(self,card)
-	if card:getSkillName()=="fuhun"
+	if table.contains(card:getSkillNames(), "fuhun")
 	then
 		if self.useValue
 		then return self.player:getPhase()==sgs.Player_Play and 1 or -1 end
@@ -8118,7 +8054,7 @@ sgs.ai_card_priority.olwushen = function(self,card)
 end
 
 sgs.ai_card_priority.lihuo = function(self,card)
-	if card:getSkillName()=="lihuo"
+	if table.contains(card:getSkillNames(), "lihuo")
 	then return -0.02 end
 end
 

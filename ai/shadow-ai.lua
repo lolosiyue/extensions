@@ -1676,3 +1676,5 @@ sgs.ai_skill_invoke.y_huiyu = function(self, data)
 	end
 	return false
 end
+
+sgs.ai_suppress_intention["y_huiyu"] = true

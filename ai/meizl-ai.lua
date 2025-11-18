@@ -4062,7 +4062,7 @@ end
 sgs.ai_use_value["#meizlseyoushacard"] = 8.5
 sgs.ai_use_priority["#meizlseyoushacard"] = 4
 
-
+sgs.ai_damage_reason_suppress_intention["meizlseyousha"] = true
 
 
 
@@ -4230,7 +4230,7 @@ sgs.ai_getLeastHandcardNum_skill.meizlsecanhui = function(self, player, least)
 	end
 end
 
-
+sgs.ai_damage_reason_suppress_intention["meizlsezhicuan"] = true
 
 
 
@@ -4857,6 +4857,7 @@ sgs.ai_skill_playerchosen.meizlshxiangjie = function(self, targets)
 	if self.meizlxiangjieTarget then return self.meizlxiangjieTarget end
 	return sgs.ai_skill_playerchosen.zero_card_as_slash(self, targets)
 end
+sgs.ai_suppress_intention["meizlxiangjie"] = true
 
 sgs.ai_skill_cardask["@meizlshxiangjie-slash"] = function(self, data, pattern)
 	local hcards = self.player:getCards("h")
@@ -4874,7 +4875,7 @@ sgs.ai_skill_cardask["@meizlshxiangjie-slash"] = function(self, data, pattern)
 end
 
 sgs.ai_cardneed.meizlshxiangjie = sgs.ai_cardneed.slash
-
+sgs.ai_suppress_intention["meizlshxiangjie"] = true
 
 local meizlmengshilong_skill = {}
 meizlmengshilong_skill.name = "meizlmengshilong"

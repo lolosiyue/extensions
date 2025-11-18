@@ -589,7 +589,7 @@ end
 
 
 sgs.ai_card_priority.LuaLongzhen_o = function(self, card)
-	if card:getSkillName() == "LuaLongzhen_o"
+	if table.contains(card:getSkillNames(), "LuaLongzhen_o")
 	then
 		return 2
 	end
@@ -734,3 +734,4 @@ sgs.ai_getBestHp_skill.xingLuashenji = function(owner)
 		return owner:getMaxHp() - 1
 	end
 end
+

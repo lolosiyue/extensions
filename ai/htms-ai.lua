@@ -57,7 +57,7 @@ sgs.ai_ajustdamage_from.zhuisha = function(self, from, to, card, nature)
 	end
 end
 sgs.ai_ajustdamage_from.htms_zangsong = function(self, from, to, card, nature)
-	if card and card:isKindOf("Slash") and card:getSkillName() == "htms_zangsong" then
+	if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "htms_zangsong") then
 		return to:getLostHp()
 	end
 end
@@ -1483,7 +1483,7 @@ sgs.ai_skill_invoke.tprs = function(self,data)
 	return false
 end
 sgs.ai_ajustdamage_from.tprs = function(self, from, to, card, nature)
-	if card and card:isKindOf("Slash") and card:getSkillName() == "tprs" then
+	if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "tprs") then
 		return from:getMark("tprs")
 	end
 end
@@ -6435,6 +6435,7 @@ sgs.ai_skill_choice["hezibz"] = function(self, choices, data)
 	return "hezibz:huif"
 end
 
+sgs.ai_damage_reason_suppress_intention["hezibz"] = true
 
 --断裁
 sgs.ai_skill_cardask["@duancai"] = function(self, data, pattern, target, target2)
@@ -7581,7 +7582,7 @@ blmf_skill.getTurnUseCard=function(self)
 end
 
 sgs.ai_ajustdamage_from.blmf = function(self, from, to, card, nature)
-	if card and card:getSkillName() == "blmf"
+	if card and table.contains(card:getSkillNames(), "blmf")
 	then
 		return 1
 	end
@@ -10181,3 +10182,4 @@ sgs.ai_skill_playerchosen.htms_godot = function(self, targets)
 	end
 	return targets:first()
 end
+
