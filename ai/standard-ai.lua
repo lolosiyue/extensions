@@ -228,7 +228,7 @@ sgs.ai_skill_use_func.NosXuanhuoCard = function(card,use,self)
 
 			local cards = sgs.QList2Table(enemy:getHandcards())
 			local flag = string.format("%s_%s_%s","visible",self.player:objectName(),enemy:objectName())
-			if not enemy:isKongcheng() and not enemy:hasSkills("tuntian+zaoxian") then
+			if not enemy:isKongcheng() and not hasTuntianEffect(enemy, true) then
 				for _,cc in ipairs(cards)do
 					if (cc:hasFlag("visible") or cc:hasFlag(flag)) and (cc:isKindOf("Peach") or cc:isKindOf("Analeptic")) then
 						target = enemy
@@ -247,7 +247,7 @@ sgs.ai_skill_use_func.NosXuanhuoCard = function(card,use,self)
 	end
 	if not target then
 		for _,friend in ipairs(self.friends_noself)do
-			if not friend:hasSkill("manjuan") and friend:hasSkills("tuntian+zaoxian") then
+			if not friend:hasSkill("manjuan") and hasTuntianEffect(friend, true) then
 				target = friend
 				break
 			end
@@ -3198,7 +3198,7 @@ sgs.ai_skill_use_func.YijueCard = function(card,use,self)
 	if self.player:hasSkill("yingyang") then max_point = math.min(max_point+3,13) end
 	if self.player:hasSkill("kongcheng") and self.player:getHandcardNum()==1 then
 		for _,enemy in ipairs(self.enemies)do
-			if self.player:canPindian(enemy) and self:hasLoseHandcardEffective(enemy) and not (enemy:hasSkills("tuntian+zaoxian") and enemy:getHandcardNum()>2) then
+			if self.player:canPindian(enemy) and self:hasLoseHandcardEffective(enemy) and not (hasTuntianEffect(enemy, true) and enemy:getHandcardNum()>2) then
 				sgs.ai_use_priority.YijueCard = 1.2
 				self.yijue_card = max_card:getId()
 				use.card = card
@@ -3971,7 +3971,7 @@ local kurou_skill = {}
 kurou_skill.name = "kurou"
 table.insert(sgs.ai_skills,kurou_skill)
 kurou_skill.getTurnUseCard = function(self,inclusive)
-	if not self.player:hasSkill("zhaxiang")
+	if not hasZhaxiangEffect(self.player)
 	or (self.player:getHp()==2 and self.player:hasSkill("chanyuan")) then return end
 	if (self.player:getHp()>3 and self.player:getHandcardNum()>self.player:getHp())
 	or (self.player:getHp()-self.player:getHandcardNum()>=2)
@@ -4141,7 +4141,7 @@ sgs.ai_skill_use_func.FanjianCard = function(card,use,self)
 				end
 			end
 		end
-		if friend:hasSkill("zhaxiang") and not self:isWeak(friend) and not (friend:getHp()==2 and friend:hasSkill("chanyuan")) then
+		if hasZhaxiangEffect(friend) and not self:isWeak(friend) and not (friend:getHp()==2 and friend:hasSkill("chanyuan")) then
 			for _,card in ipairs(cards)do
 				if self:getUseValue(card)<6 then
 					use.card = sgs.Card_Parse("@FanjianCard="..card:getEffectiveId())
@@ -4155,7 +4155,7 @@ end
 
 sgs.ai_card_intention.FanjianCard = function(self,card,from,tos)
 	local to = tos[1]
-	if to:hasSkill("zhaxiang") then
+	if hasZhaxiangEffect(to) then
 	elseif card:getSuit()==sgs.Card_Spade and to:hasSkill("hongyan") then
 		sgs.updateIntention(from,to,-10)
 	else
@@ -4167,7 +4167,7 @@ sgs.ai_use_priority.FanjianCard = 0.2
 
 sgs.ai_skill_invoke.fanjian_discard = function(self,data)
 	if self:getCardsNum("Peach")>=1 and not self:willSkipPlayPhase() then return false end
-	if not self:isWeak() and self.player:hasSkill("zhaxiang") and not (self.player:getHp()==2 and self.player:hasSkill("chanyuan")) then return false end
+	if not self:isWeak() and hasZhaxiangEffect(self.player) and not (self.player:getHp()==2 and self.player:hasSkill("chanyuan")) then return false end
 	if self.player:getHandcardNum()<=3 or self:isWeak() then return true end
 	local suit = self.player:getMark("FanjianSuit")
 	local count = 0
@@ -4919,7 +4919,7 @@ function SmartAI:hasLiyuEffect(target,slash)
 	and not self:needToLoseHp(target,self.player,slash) then return false end
 	if slash:hasFlag("AIGlobal_KillOff") or (target:getHp()==1 and self:isWeak(target) and self:getSaveNum()<1) then return false end
 
-        if self.player:hasSkill("wumou") and self.player:getMark("&wrath")==0 and (self:isWeak() or not self.player:hasSkill("zhaxiang")) then return true end
+        if self.player:hasSkill("wumou") and self.player:getMark("&wrath")==0 and (self:isWeak() or not hasZhaxiangEffect(self.player)) then return true end
         if self.player:hasSkills("jizhi|nosjizhi") or (self.player:hasSkill("jilve") and self.player:getMark("&bear")>0) then return false end
 	if not string.startsWith(self.room:getMode(),"06_") and not sgs.GetConfig("EnableHegemony",false) and self.role~="rebel" then
 		for _,friend in ipairs(self.friends_noself)do

@@ -1,6 +1,5 @@
 sgs.ai_judgestring = {
 	indulgence = ".|heart",
-	qhstandard_indulgence = ".|heart|3~10",
 	supply_shortage = ".|club",
 	lightning = {".|spade|2~9",false}
 }

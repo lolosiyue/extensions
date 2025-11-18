@@ -788,7 +788,7 @@ changesexual_skill.getTurnUseCard=function(self,inclusive)
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		-- if (not self:slashProhibit(slash, enemy, self.player)) and self:getCardsNum("Slash") > 0 and self:slashIsAvailable() then
 		if (not self:slashProhibit(slash, enemy, self.player)) and self:slashIsAvailable() then
-		-- and self.player:inMyAttackRange(enemy) and (enemy:hasSkills("tuntian+zaoxian") or enemy:hasSkills("bazhen|yizhong|linglong|enyuan|ganglie|gushou|huituo|wuhun|duanchang|huilei|niepan|fuli")) then
+		-- and self.player:inMyAttackRange(enemy) and (hasTuntianEffect(enemy, true) or enemy:hasSkills("bazhen|yizhong|linglong|enyuan|ganglie|gushou|huituo|wuhun|duanchang|huilei|niepan|fuli")) then
 			if self.player:inMyAttackRange(enemy) and (self.player:canSlash(enemy, slash) or ((not hasslash) and endboypoint > 0)) and (skills:length() > 0 or (enemy:getArmor() and enemy:getArmor():getClassName() ~= "GaleShell")) then
 				boypoint = boypoint + 2
 				-- if skills:length() > 0 or (enemy:getArmor() and enemy:getArmor():getClassName() ~= "GaleShell") then
@@ -6293,7 +6293,7 @@ local function getSubetewonomikonmuUseValueOfHECards(self,to)
 		if jwfy and self:isFriend(jwfy,to) and (not self:isWeak(jwfy) or jwfy:getHp()>1) then hcard = hcard-0.9 end
 	end
 	value_h = (hcard>4) and 16/hcard or hcard
-	if to:hasSkills("tuntian+zaoxian") then value = value*0.95 end
+	if hasTuntianEffect(to, true) then value = value*0.95 end
 	if (to:hasSkill("kongcheng") or (to:hasSkill("zhiji") and to:getHp()>2 and to:getMark("zhiji")==0)) and not to:isKongcheng() then value_h = value_h*0.7 end
 	if to:hasSkills("jijiu|qingnang|leiji|nosleiji|jieyin|beige|kanpo|liuli|qiaobian|zhiheng|guidao|longhun|xuanfeng|tianxiang|noslijian|lijian") then value_h = value_h*0.95 end
 	value = value+value_h

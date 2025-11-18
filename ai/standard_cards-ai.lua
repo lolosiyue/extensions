@@ -144,7 +144,7 @@ function SmartAI:getDefenseSlash(to)
 	if knownJink>0 then
 		if to:hasSkill("mingzhe") then defense = defense+0.2 end
 		if to:hasSkill("gushou") then defense = defense+0.2 end
-		if to:hasSkills("tuntian+zaoxian") then defense = defense+1.5 end
+		if hasTuntianEffect(to, true) then defense = defense+1.5 end
 	end
 	if to:getPhase()==sgs.Player_NotActive and to:hasSkill("aocai") then defense = defense+0.5 end
 	if to:hasSkill("wanrong") and not hasManjuanEffect(to) then defense = defense+0.5 end
@@ -813,7 +813,7 @@ sgs.ai_skill_cardask["slash-jink"] = function(self,data,pattern,target)
 		or not(self:hasLoseHandcardEffective() or self.player:isKongcheng()) then return getJink() end
 		if target:hasSkill("mengjin") and not(target:hasSkill("nosqianxi") and target:distanceTo(self.player)==1) then
 			if self.player:getCardCount()<2 and not self.player:getArmor() then return getJink() end
-			if self:getCardsNum("Peach,Analeptic")>0 and self:isWeak() and not(self.player:hasSkills("tuntian+zaoxian") or self:willSkipPlayPhase())
+			if self:getCardsNum("Peach,Analeptic")>0 and self:isWeak() and not(hasTuntianEffect(self.player, true) or self:willSkipPlayPhase())
 			or self.player:getCardCount()>1 and self.player:hasSkills("jijiu|qingnang")
 			or self:canUseJieyuanDecrease(target) then return "." end
 		end
@@ -1128,7 +1128,7 @@ sgs.ai_skill_invoke.ice_sword = function(self,data)
 		if target:getArmor() and self:evaluateArmor(target:getArmor(),target)>3 and not (target:hasArmorEffect("SilverLion") and target:isWounded()) then return true end
 		local num = target:getHandcardNum()
 		if self.player:hasSkill("tieji") or self:canLiegong(target,self.player) then return false end
-		if target:hasSkills("tuntian+zaoxian") and target:getPhase()==sgs.Player_NotActive then return false end
+		if hasTuntianEffect(target, true) and target:getPhase()==sgs.Player_NotActive then return false end
 		if self:hasSkills(sgs.need_kongcheng,target) then return false end
 		if target:getCards("he"):length()<4 and target:getCards("he"):length()>1 then return true end
 		return false
@@ -2073,7 +2073,7 @@ sgs.ai_choicemade_filter.cardChosen.snatch = function(self,player,promptlist)
 	local to = self.room:findPlayerByObjectName(promptlist[4])
 	if to then
 		local intention = 70
-		if to:hasSkills("tuntian+zaoxian") and to:getPile("field")==2 and to:getMark("zaoxian")<1
+		if hasTuntianEffect(to, true) and to:getPile("field")==2 and to:getMark("zaoxian")<1
 		then intention = 0 end
 		local card = sgs.Sanguosha:getCard(promptlist[3])
 		local place = self.room:getCardPlace(promptlist[3])

@@ -426,7 +426,7 @@ sgs.findTuxiTargetsFromCertainPlayers = function(self, players, target_num)
 		local x = p:getHandcardNum()
 		local good_target = true
 		if x == 1 and self:hasSkills(sgs.need_kongcheng, p) then good_target = false end
-		if x >= 2 and self:hasSkills("tuntian+zaoxian", p) then good_target = false end
+		if x >= 2 and hasTuntianEffect(p, true) then good_target = false end
 		if good_target and add_player(p) == target_num then return targets end
 	end
 
@@ -440,13 +440,13 @@ sgs.findTuxiTargetsFromCertainPlayers = function(self, players, target_num)
 
 	local others = self.room:getOtherPlayers(self.player)
 	for _, other in sgs.qlist(others) do
-		if self:objectiveLevel(other) >= 0 and other:hasSkills("tuntian+zaoxian") and add_player(other) == target_num then
+		if self:objectiveLevel(other) >= 0 and hasTuntianEffect(other, true) and add_player(other) == target_num then
 			return targets
 		end
 	end
 	--[[
 	for _, other in sgs.qlist(others) do
-		if self:objectiveLevel(other) >= 0 and not other:hasSkills("tuntian+zaoxian") and add_player(other) > 0 and math.random(0, 5) <= 1 then
+		if self:objectiveLevel(other) >= 0 and not hasTuntianEffect(other, true) and add_player(other) > 0 and math.random(0, 5) <= 1 then
 			return targets
 		end
 	end]]
@@ -870,7 +870,7 @@ sgs.ai_skill_cardask["@luajiebing"] = function(self, data)
 	local helper = self.friends[#self.friends]
 	for _,friend in ipairs(self.friends) do
 		if self:needToThrowArmor(friend) or (self:hasSkills(sgs.lose_equip_skill, friend)
-			or (friend:hasSkills("tuntian+zaoxian") and friend:getPhase() == sgs.Player_NotActive)) then
+			or (hasTuntianEffect(friend, true) and friend:getPhase() == sgs.Player_NotActive)) then
 			helper = friend
 			break
 		end

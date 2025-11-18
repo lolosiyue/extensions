@@ -380,7 +380,7 @@ sgs.ai_skill_use_func.TanhuCard = function(card,use,self)
 			return
 		end
 		for _,enemy in sgs.list(self.enemies)do
-			if not (enemy:hasSkill("kongcheng") and enemy:getHandcardNum()==1) and self.player:canPindian(enemy) and not enemy:hasSkills("tuntian+zaoxian") then
+			if not (enemy:hasSkill("kongcheng") and enemy:getHandcardNum()==1) and self.player:canPindian(enemy) and not hasTuntianEffect(enemy, true) then
 				self.tanhu_card = cards[1]:getId()
 				use.card = sgs.Card_Parse("@TanhuCard=.")
 				use.to:append(enemy)
@@ -924,7 +924,7 @@ sgs.ai_skill_choice.xuehen = function(self,choices)
 			and not (self:hasSkills(sgs.lose_equip_skill,current) and current:getHandcardNum()<n) then
 			return "discard"
 		end
-		if self:hasSkills("jijiu|tuntian+zaoxian|beige",current) and n>=2 and current:getCardCount(true)>=2 then return "discard" end
+		if self:hasSkills("jijiu|beige",current) or hasTuntianEffect(current, true) and n>=2 and current:getCardCount(true)>=2 then return "discard" end
 	end
 	self:sort(self.enemies,"defenseSlash")
 	for _,enemy in sgs.list(self.enemies)do

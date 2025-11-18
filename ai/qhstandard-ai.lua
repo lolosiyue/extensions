@@ -26,6 +26,10 @@ sgs.ai_use_priority.QhstandardIndulgence = 0.5   --使用优先值
 sgs.ai_card_intention.QhstandardIndulgence = 120 --仇恨值
 sgs.ai_keep_value.QhstandardIndulgence = 3.5     --保留值
 
+sgs.ai_judgestring.qhstandard_indulgence = ".|heart|3~10"
+
+sgs.ai_nullification.qhstandard_indulgence = sgs.ai_nullification.indulgence
+
 ----------------武将拓展----------------
 
 --标准版-强化 曹操-奸雄

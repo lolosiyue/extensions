@@ -956,7 +956,7 @@ sgs.ai_skill_use_func["#lxtx_xianzhen"] = function(card,use,self)
             end
         end
 		for _,enemy in ipairs(self.enemies)do
-			if not (enemy:hasSkill("kongcheng") and enemy:getHandcardNum()==1) and self.player:canPindian(enemy) and not enemy:hasSkills("tuntian+zaoxian") and targets:length() < n then
+			if not (enemy:hasSkill("kongcheng") and enemy:getHandcardNum()==1) and self.player:canPindian(enemy) and not hasTuntianEffect(enemy, true) and targets:length() < n then
 				targets:append(enemy)
 				if targets:length() >= n then 
                     break

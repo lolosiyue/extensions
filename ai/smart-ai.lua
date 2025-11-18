@@ -3399,7 +3399,7 @@ function SmartAI:getCardNeedPlayer(cards,include_self,tos)
 				if self:isWeak(friend) then
 				elseif shit:getSuit()==sgs.Card_Spade
 				or friend:hasSkill("jueqing") then
-					if friend:hasSkill("zhaxiang") then return shit,friend end
+					if hasZhaxiangEffect(friend) then return shit,friend end
 				elseif friend:hasSkills("guixin|jieming|yiji|nosyiji|chengxiang|noschengxiang|jianxiong")
 				then return shit,friend end
 			end
@@ -5471,7 +5471,30 @@ function SmartAI:findPlayerToDiscard(flags,include_self,no_dis,players,reason)
 		if table.contains(new_player_table,p)
 		then else table.insert(new_player_table,p) end
 	end
-	return new_player_table
+	-- Add scoring function
+    local function scoreTarget(player)
+        local score = 0
+        if self:isEnemy(player) then
+            score = score + 100
+            score = score + player:getHandcardNum() * 5
+            if self:getDangerousCard(player) then score = score + 50 end
+            if self:getValuableCard(player) then score = score + 30 end
+        else
+            -- Friend scoring for removing bad cards
+            if player:containsTrick("indulgence") or player:containsTrick("supply_shortage") or player:containsTrick("Dragon_indulgence") or player:containsTrick("qhstandard_indulgence") then
+                score = score + 80
+            end
+            if hasTuntianEffect(player) then score = score + 20 end
+        end
+        return score
+    end
+    
+    -- Sort by score descending
+    table.sort(new_player_table, function(a, b)
+        return scoreTarget(a) > scoreTarget(b)
+    end)
+    
+    return new_player_table
 end
 
 function SmartAI:findPlayerToDraw(include_self,drawnum,count)
@@ -5982,7 +6005,7 @@ function SmartAI:isValueSkill(skill_name,player,HighValue)
 		if skill_name=="hunzi" and player:getHp()==1 then return true end
 		if skill_name=="mobilechengzhang" and player:getMark("&mobilechengzhang")+player:getMark("mobilechengzhang_num")>=7 then return true end
 		if (skill_name=="zaoxian" or skill_name=="olzaoxian")
-		and (player:getPile("field"):length()>=3 or player:hasSkills("tuntian|mobiletuntian|oltuntian")) then return true end
+		and (player:getPile("field"):length()>=3 or hasTuntianEffect(player)) then return true end
 		if (skill_name=="ruoyu" or skill_name=="olruoyu") and player:isLowestHpPlayer() then return true end
 		if skill_name=="nosbaijiang" and player:getEquips():length()>=3 then return true end
 		if skill_name=="noszili" and (player:getPile("nospower"):length()>=3 or player:hasSkill("nosyexin")) then return true end

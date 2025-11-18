@@ -254,7 +254,7 @@ sgs.ai_skill_playerchosen.daiyan = function(self,targets)
 	for _,friend in ipairs(self.friends_noself)do
 		if hasManjuanEffect(friend) then continue end 
 		if self:needKongcheng(friend,true) then continue end
-		if friend:getMark("&daiyan+#"..self.player:objectName())==0 or friend:hasSkill("zhaxiang") or self:needToLoseHp(friend,self.player,nil,true) then
+		if friend:getMark("&daiyan+#"..self.player:objectName())==0 or hasZhaxiangEffect(friend) or self:needToLoseHp(friend,self.player,nil,true) then
 			return friend
 		end
 	end
@@ -388,12 +388,12 @@ end
 function SmartAI:qingxianLose(to,from)
 	from = from or self.player
 	if self:isFriend(to,from) then
-		if to:hasSkill("zhaxiang") and not(hasManjuanEffect(to) or self:willSkipPlayPhase(to))
+		if hasZhaxiangEffect(to) and not(hasManjuanEffect(to) or self:willSkipPlayPhase(to))
 		and (to:getHp()>1 or self:getAllPeachNum()>0)
 		or self:needToLoseHp(to,self.player,nil,false,true)
 		then return true end
 	else
-		if to:hasSkill("zhaxiang")
+		if hasZhaxiangEffect(to)
 		or self:needToLoseHp(to,self.player,nil,false,true)
 		then return false end
 	end
@@ -516,7 +516,7 @@ end
 
 function sgs.ai_slash_prohibit.qingxian(self,from,to,card)
 	if self:ajustDamage(to,from,1,card)>1
-	or from:hasSkill("zhaxiang")
+	or hasZhaxiangEffect(from)
 	or not(self:isFriend(to,from) or self:qingxianLose(to,from))
 	or from:getHp()>2
 	or from:hasSkills(sgs.need_equip_skill) and from:getHp()>1
@@ -531,7 +531,7 @@ sgs.ai_choicemade_filter.skillChoice.qingxian = function(self,player,promptlist)
 	if not to then return end
 	local choice = promptlist[#promptlist]
 	if choice=="losehp" then 
-		if to:hasSkill("zhaxiang") or self:needToLoseHp(to,player) or (to:hasSkills(sgs.need_equip_skill) and not self:isWeak(to)) then return end
+		if hasZhaxiangEffect(to) or self:needToLoseHp(to,player) or (to:hasSkills(sgs.need_equip_skill) and not self:isWeak(to)) then return end
 		sgs.updateIntention(player,to,10)
 	end
 	if choice=="recover" then 
@@ -621,7 +621,7 @@ sgs.ai_skill_use_func.MobileQingxianCard = function(card,use,self)
 	self:sort(self.enemies,"hp")
 	local targets = {}
 	for _,enemy in ipairs(self.enemies)do
-		if enemy:getEquips():length()>self.player:getEquips():length()-use_silver_lion and #targets<#useable_cards and not self:needToLoseHp(enemy,self.player,nil,true) and not enemy:hasSkill("zhaxiang") then
+		if enemy:getEquips():length()>self.player:getEquips():length()-use_silver_lion and #targets<#useable_cards and not self:needToLoseHp(enemy,self.player,nil,true) and not hasZhaxiangEffect(enemy) then
 			table.insert(targets,enemy)
 		end
 	end
@@ -663,7 +663,7 @@ sgs.ai_card_intention.MobileQingxianCard = function(self,card,from,tos)
 			if not self:canDraw(to,from) then return end
 			sgs.updateIntention(from,to,-10)
 		else
-			if self:needToLoseHp(to,from,nil,true) or to:hasSkill("zhaxiang") then return end
+			if self:needToLoseHp(to,from,nil,true) or hasZhaxiangEffect(to) then return end
 			sgs.updateIntention(from,to,10)
 		end
 	end
@@ -732,7 +732,7 @@ sgs.ai_skill_use_func.MobileCanyunCard = function(card,use,self)
 	local targets = {}
 	for _,enemy in ipairs(self.enemies)do
 		if enemy:getMark("mobilecanyun_used"..self.player:objectName())>0 then continue end
-		if enemy:getEquips():length()>self.player:getEquips():length()-use_silver_lion and #targets<#useable_cards and not self:needToLoseHp(enemy,self.player,nil,true) and not enemy:hasSkill("zhaxiang") then
+		if enemy:getEquips():length()>self.player:getEquips():length()-use_silver_lion and #targets<#useable_cards and not self:needToLoseHp(enemy,self.player,nil,true) and not hasZhaxiangEffect(enemy) then
 			table.insert(targets,enemy)
 		end
 	end
@@ -776,7 +776,7 @@ sgs.ai_card_intention.MobileCanyunCard = function(self,card,from,tos)
 			if not self:canDraw(to,from) then return end
 			sgs.updateIntention(from,to,-10)
 		else
-			if self:needToLoseHp(to,from,nil,true) or to:hasSkill("zhaxiang") then return end
+			if self:needToLoseHp(to,from,nil,true) or hasZhaxiangEffect(to) then return end
 			sgs.updateIntention(from,to,10)
 		end
 	end

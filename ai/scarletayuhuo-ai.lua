@@ -659,7 +659,7 @@ sgs.ai_skill_use_func["#s_w_shenghun"] = function(card, use, self)
 	self:sortByUseValue(cards, true)
 	if (self:getUseValue(cards[1]) < 6 and self:getKeepValue(cards[1]) < 6) or self:getOverflow() > 0 then
 		for _, enemy in ipairs(self.enemies) do
-			if not (enemy:hasSkill("kongcheng") and enemy:getHandcardNum() == 1) and not enemy:isKongcheng() and not enemy:hasSkills("tuntian+zaoxian") and self.player:canPindian(enemy) then
+			if not (enemy:hasSkill("kongcheng") and enemy:getHandcardNum() == 1) and not enemy:isKongcheng() and not hasTuntianEffect(enemy, true) and self.player:canPindian(enemy) then
 				--self.s_w_shenghun_card = cards[1]:getId()
 				use.card = sgs.Card_Parse("#s_w_shenghun:.:")
 				if use.to then use.to:append(enemy) end
@@ -3529,7 +3529,7 @@ sgs.ai_skill_use_func["#s2_chizha"] = function(card, use, self)
 
 			local cards = sgs.QList2Table(enemy:getHandcards())
 			local flag = string.format("%s_%s_%s", "visible", self.player:objectName(), enemy:objectName())
-			if not enemy:isKongcheng() and not enemy:hasSkills("tuntian+zaoxian") then
+			if not enemy:isKongcheng() and not hasTuntianEffect(enemy, true) then
 				for _, cc in ipairs(cards) do
 					if (cc:hasFlag("visible") or cc:hasFlag(flag)) and (cc:isKindOf("Peach") or cc:isKindOf("Analeptic")) then
 						target = enemy
@@ -3548,7 +3548,7 @@ sgs.ai_skill_use_func["#s2_chizha"] = function(card, use, self)
 	end
 	if not target then
 		for _, friend in ipairs(self.friends_noself) do
-			if friend:hasSkills("tuntian+zaoxian") and not self:needKongcheng(friend, true) and not hasManjuanEffect(friend) then
+			if hasTuntianEffect(friend, true) and not self:needKongcheng(friend, true) and not hasManjuanEffect(friend) then
 				target = friend
 				break
 			end
@@ -5937,7 +5937,7 @@ sgs.ai_skill_cardask["@s3_fans_pianji"] = function(self, data, pattern, target)
 			if self.player:hasSkills("jijiu|qingnang") and self.player:getCards("he"):length() > 1 then return "." end
 			if self:canUseJieyuanDecrease(target) then return "." end
 			if (self:getCardsNum("Peach") > 0 or (self:getCardsNum("Analeptic") > 0 and self:isWeak()))
-				and not self.player:hasSkills("tuntian+zaoxian") and not self:willSkipPlayPhase() then
+				and not hasTuntianEffect(self.player, true) and not self:willSkipPlayPhase() then
 				return "."
 			end
 		end

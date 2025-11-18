@@ -8190,7 +8190,7 @@ local function getzhachangUseValueOfHECards(self, to)
 		if jwfy and self:isFriend(jwfy, to) and (not self:isWeak(jwfy) or jwfy:getHp() > 1) then hcard = hcard - 0.9 end
 	end
 	value_h = (hcard > 4) and 16 / hcard or hcard
-	if to:hasSkills("tuntian+zaoxian") then value = value * 0.95 end
+	if hasTuntianEffect(to, true) then value = value * 0.95 end
 	if (to:hasSkill("kongcheng") or (to:hasSkill("zhiji") and to:getHp() > 2 and to:getMark("zhiji") == 0)) and not to:isKongcheng() then value_h = value_h * 0.7 end
 	if to:hasSkills("jijiu|qingnang|leiji|nosleiji|jieyin|beige|kanpo|liuli|qiaobian|zhiheng|guidao|longhun|new_longhun|xuanfeng|tianxiang|ol_tianxiang|noslijian|lijian") then value_h = value_h * 0.95 end
 	value = value + value_h

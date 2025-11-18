@@ -660,7 +660,7 @@ sgs.ai_skill_use_func["#sfofl_yijue"] = function(card,use,self)
 	if self.player:hasSkill("yingyang") then max_point = math.min(max_point+3,13) end
 	if self.player:hasSkill("kongcheng") and self.player:getHandcardNum()==1 then
 		for _,enemy in ipairs(self.enemies)do
-			if self.player:canPindian(enemy) and self:hasLoseHandcardEffective(enemy) and not (enemy:hasSkills("tuntian+zaoxian") and enemy:getHandcardNum()>2) then
+			if self.player:canPindian(enemy) and self:hasLoseHandcardEffective(enemy) and not (hasTuntianEffect(enemy, true) and enemy:getHandcardNum()>2) then
 				sgs.ai_use_priority["sfofl_yijue"] = 1.2
 				self.sfofl_yijue_card = max_card:getId()
 				use.card = card

@@ -481,7 +481,7 @@ sgs.ai_skill_cardask["@fatejuli-jink-1"] = function(self, data, pattern, target)
 			if self.player:hasSkills("jijiu|qingnang") and self.player:getCards("he"):length() > 1 then return "." end
 			if self:canUseJieyuanDecrease(target) then return "." end
 			if (self:getCardsNum("Peach") > 0 or (self:getCardsNum("Analeptic") > 0 and self:isWeak()))
-				and not self.player:hasSkills("tuntian+zaoxian") and not self:willSkipPlayPhase() then
+				and not hasTuntianEffect(self.player, true) and not self:willSkipPlayPhase() then
 				return "."
 			end
 		end
@@ -586,7 +586,7 @@ sgs.ai_skill_cardask["@fatejuli-jink-2"] = function(self, data, pattern, target)
 			if self.player:hasSkills("jijiu|qingnang") and self.player:getCards("he"):length() > 1 then return "." end
 			if self:canUseJieyuanDecrease(target) then return "." end
 			if (self:getCardsNum("Peach") > 0 or (self:getCardsNum("Analeptic") > 0 and self:isWeak()))
-				and not self.player:hasSkills("tuntian+zaoxian") and not self:willSkipPlayPhase() then
+				and not hasTuntianEffect(self.player, true) and not self:willSkipPlayPhase() then
 				return "."
 			end
 		end

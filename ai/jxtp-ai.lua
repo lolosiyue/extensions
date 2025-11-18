@@ -1268,20 +1268,20 @@ sgs.ai_skill_use["@@tenyeartianxiang"] = function(self,prompt)
 	self:sort(self.friends_noself)
 	
 	for _,friend in ipairs(self.friends_noself)do
-		if not friend:hasSkill("zhaxiang") or self:willSkipPlayPhase(friend) or self:isWeak(friend) then continue end
+		if not hasZhaxiangEffect(friend) or self:willSkipPlayPhase(friend) or self:isWeak(friend) then continue end
 		sgs.ai_skill_choice[reason] = "losehp"
 		return str..card_id.."->"..friend:objectName()
 	end
 
 	for _,enemy in ipairs(self.enemies)do
-		if enemy:getHp()<=1 and enemy:isAlive() and not enemy:hasSkill("zhaxiang") then
+		if enemy:getHp()<=1 and enemy:isAlive() and not hasZhaxiangEffect(enemy) then
 			sgs.ai_skill_choice[reason] = "losehp"
 			return str..card_id.."->"..enemy:objectName()
 		end
 	end
 	
 	for _,enemy in ipairs(self.enemies)do
-		if enemy:isAlive() and not enemy:hasSkill("zhaxiang") then
+		if enemy:isAlive() and not hasZhaxiangEffect(enemy) then
 			sgs.ai_skill_choice[reason] = "losehp"
 			return str..card_id.."->"..enemy:objectName()
 		end
@@ -2765,7 +2765,7 @@ sgs.ai_skill_use_func.TenyearXianzhenCard = function(card,use,self)
 	self:sortByUseValue(cards,true)
 	if (self:getUseValue(cards[1])<6 and self:getKeepValue(cards[1])<6) or self:getOverflow()>0 then
 		for _,enemy in ipairs(self.enemies)do
-			if not (enemy:hasSkill("kongcheng") and enemy:getHandcardNum()==1) and self.player:canPindian(enemy) and not enemy:hasSkills("tuntian+zaoxian") then
+			if not (enemy:hasSkill("kongcheng") and enemy:getHandcardNum()==1) and self.player:canPindian(enemy) and not hasTuntianEffect(enemy, true) then
 				self.tenyearxianzhen_card = cards[1]:getId()
 				use.card = card
 				use.to:append(enemy)
@@ -2852,7 +2852,7 @@ sgs.ai_skill_use_func.SecondTenyearXianzhenCard = function(card,use,self)
 	if (self:getUseValue(cards[1])<6 and self:getKeepValue(cards[1])<6) or self:getOverflow()>0 then
 		for _,enemy in ipairs(self.enemies)do
 			if not (enemy:hasSkill("kongcheng") and enemy:getHandcardNum()==1)
-			and self.player:canPindian(enemy) and not enemy:hasSkills("tuntian+zaoxian") then
+			and self.player:canPindian(enemy) and not hasTuntianEffect(enemy, true) then
 				self.secondtenyearxianzhen_card = cards[1]:getId()
 				use.card = card
 				use.to:append(enemy)
@@ -3025,7 +3025,7 @@ sgs.ai_choicemade_filter.skillInvoke.tenyearenyuan = function(self,player,prompt
 end
 
 sgs.ai_skill_discard.tenyearenyuan = function(self,discard_num,min_num,optional,include_equip)
-	if self.player:hasSkill("zhaxiang") and (self.player:getHp()>1 or hasBuquEffect(self.player) or self:getSaveNum(true)>=1) then return {} end
+	if hasZhaxiangEffect(self.player) and (self.player:getHp()>1 or hasBuquEffect(self.player) or self:getSaveNum(true)>=1) then return {} end
 
 	local damage = self.player:getTag("tenyearenyuan_data"):toDamage()
 	if not damage then return {} end

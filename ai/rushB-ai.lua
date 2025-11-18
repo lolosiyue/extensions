@@ -1595,7 +1595,7 @@ function DimengIsWorth(self, friend, enemy, mycards, myequips)
 	elseif e_peach < f_peach and e_peach < 1 then
 		return false
 	elseif e_hand1 == f_hand1 and e_hand1 > 0 then
-		return friend:hasSkills("tuntian+zaoxian")
+		return hasTuntianEffect(friend, true)
 	end
 	local cardNum = #mycards
 	local delt = e_hand1 - f_hand1 --assert: delt>0

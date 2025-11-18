@@ -331,7 +331,7 @@ sgs.ai_card_intention.XiansiCard = function(self,card,from,tos)
 	end
 	if from:getState()=="online" then
 		for _,to in ipairs(tos)do
-			if (self:hasSkills("kongcheng|zhiji|lianying|noslianying",to) and to:getHandcardNum()==1) or to:hasSkills("tuntian+zaoxian") then
+			if (self:hasSkills("kongcheng|zhiji|lianying|noslianying",to) and to:getHandcardNum()==1) or hasTuntianEffect(to, true) then
 			else
 				sgs.updateIntention(from,to,80)
 			end

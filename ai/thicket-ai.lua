@@ -217,7 +217,7 @@ sgs.ai_skill_playerchosen.yinghun = function(self,targets)
 		end
 		if not self.yinghun then
 			for _,friend in ipairs(self.friends_noself)do
-				if friend:hasSkills("tuntian+zaoxian") and not friend:hasSkill("manjuan") then
+				if hasTuntianEffect(friend, true) and not friend:hasSkill("manjuan") then
 					self.yinghun = friend
 					break
 				end
@@ -271,7 +271,7 @@ sgs.ai_skill_playerchosen.yinghun = function(self,targets)
 		end
 		if not self.yinghun then
 			for _,friend in ipairs(self.friends_noself)do
-				if friend:hasSkills("tuntian+zaoxian") and not friend:hasSkill("manjuan") then
+				if hasTuntianEffect(friend, true) and not friend:hasSkill("manjuan") then
 					self.yinghun = friend
 					break
 				end
@@ -352,7 +352,7 @@ sgs.ai_skill_playerchosen.yinghun = function(self,targets)
 			if not enemy:isNude()
 			and not (self:hasSkills(sgs.lose_equip_skill,enemy) and enemy:getCards("e"):length()>0)
 			and not self:needToThrowArmor(enemy)
-			and not enemy:hasSkills("tuntian+zaoxian") then
+			and not hasTuntianEffect(enemy, true) then
 				self.yinghunchoice = "d1tx"
 				return enemy
 			end
@@ -361,7 +361,7 @@ sgs.ai_skill_playerchosen.yinghun = function(self,targets)
 			if not enemy:isNude()
 				and not (self:hasSkills(sgs.lose_equip_skill,enemy) and enemy:getCards("e"):length()>0)
 				and not self:needToThrowArmor(enemy)
-				and not (enemy:hasSkills("tuntian+zaoxian") and x<3 and enemy:getCards("he"):length()<2) then
+				and not (hasTuntianEffect(enemy, true) and x<3 and enemy:getCards("he"):length()<2) then
 				self.yinghunchoice = "d1tx"
 				return enemy
 			end
@@ -486,7 +486,7 @@ function DimengIsWorth(self,friend,enemy,mycards,myequips)
 	elseif e_peach<f_peach and e_peach<1 then
 		return false
 	elseif e_hand1==f_hand1 and e_hand1>0 then
-		return friend:hasSkills("tuntian+zaoxian")
+		return hasTuntianEffect(friend, true)
 	end
 	local cardNum = #mycards
 	local delt = e_hand1-f_hand1 --assert: delt>0
@@ -881,7 +881,7 @@ function getGuixinValue(self,player)
 				elseif i==3 then value = 0.25
 				end
 				if player:hasSkills(sgs.lose_equip_skill) then value = value+0.1 end
-				if player:hasSkills("tuntian+zaoxian") then value = value+0.1 end
+				if hasTuntianEffect(player, true) then value = value+0.1 end
 				return value
 			end
 		end
@@ -891,7 +891,7 @@ function getGuixinValue(self,player)
 		else
 			local index = player:hasSkills("jijiu|qingnang|leiji|nosleiji|jieyin|beige|kanpo|liuli|qiaobian|zhiheng|guidao|longhun|xuanfeng|tianxiang|noslijian|lijian") and 0.5 or 0.4
 			local value = 0.2-index/(player:getHandcardNum()+1)
-			if player:hasSkills("tuntian+zaoxian") then value = value+0.1 end
+			if hasTuntianEffect(player, true) then value = value+0.1 end
 			return value
 		end
 	end
@@ -1042,7 +1042,7 @@ local function getShenfenUseValueOfHECards(self,to)
 		if jwfy and self:isFriend(jwfy,to) and (not self:isWeak(jwfy) or jwfy:getHp()>1) then hcard = hcard-0.9 end
 	end
 	value_h = (hcard>4) and 16/hcard or hcard
-	if to:hasSkills("tuntian+zaoxian") then value = value*0.95 end
+	if hasTuntianEffect(to, true) then value = value*0.95 end
 	if (to:hasSkill("kongcheng") or (to:hasSkill("zhiji") and to:getHp()>2 and to:getMark("zhiji")==0)) and not to:isKongcheng() then value_h = value_h*0.7 end
 	if to:hasSkills("jijiu|qingnang|leiji|nosleiji|jieyin|beige|kanpo|liuli|qiaobian|zhiheng|guidao|longhun|xuanfeng|tianxiang|noslijian|lijian") then value_h = value_h*0.95 end
 	value = value+value_h

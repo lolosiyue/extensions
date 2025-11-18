@@ -188,7 +188,7 @@ sgs.ai_choicemade_filter.skillInvoke.enyuan = function(self,player,promptlist)
 end
 
 sgs.ai_skill_discard.enyuan = function(self,discard_num,min_num,optional,include_equip)
-	if self.player:hasSkill("zhaxiang") and (self.player:getHp()>1 or hasBuquEffect(self.player) or self:getSaveNum(true)>=1) then return {} end
+	if hasZhaxiangEffect(self.player) and (self.player:getHp()>1 or hasBuquEffect(self.player) or self:getSaveNum(true)>=1) then return {} end
 
 	local damage = self.player:getTag("enyuan_data"):toDamage()
 	if not damage then return {} end
@@ -273,7 +273,7 @@ sgs.ai_skill_playerchosen.xuanhuo = function(self,targets)
 	if lord and self:isEnemy(lord) then  --killloyal
 		for _,enemy in ipairs(self.enemies)do
 			if (self:getDangerousCard(lord) or self:getValuableCard(lord))
-				and not self:hasSkills(sgs.lose_equip_skill,enemy) and not enemy:hasSkills("tuntian+zaoxian")
+				and not self:hasSkills(sgs.lose_equip_skill,enemy) and not hasTuntianEffect(enemy, true)
 				and lord:canSlash(enemy) and (enemy:getHp()<2 and not hasBuquEffect(enemy))
 				and sgs.getDefense(enemy)<2 then
 
@@ -285,7 +285,7 @@ sgs.ai_skill_playerchosen.xuanhuo = function(self,targets)
 	for _,enemy in ipairs(self.enemies)do --robequip
 		for _,enemy2 in ipairs(self.enemies)do
 			if enemy:canSlash(enemy2) and (self:getDangerousCard(enemy) or self:getValuableCard(enemy))
-			and not self:hasSkills(sgs.lose_equip_skill,enemy) and not (enemy:hasSkill("tuntian") and enemy:hasSkill("zaoxian"))
+			and not self:hasSkills(sgs.lose_equip_skill,enemy) and not hasTuntianEffect(enemy, true)
 			and not self:needLeiji(enemy2,enemy) and not self:needToLoseHp(enemy2,enemy,nil,true)
 			or (enemy:hasSkill("manjuan") and enemy:getCards("he"):length()>1 and getCardsNum("Slash",enemy)==0)
 			then return enemy end
@@ -301,7 +301,7 @@ sgs.ai_skill_playerchosen.xuanhuo = function(self,targets)
 		end
 	end
 	for _,friend in ipairs(self.friends_noself)do
-		if friend:hasSkills("tuntian+zaoxian") and not friend:hasSkill("manjuan") then
+		if hasTuntianEffect(friend, true) and not friend:hasSkill("manjuan") then
 			return friend
 		end
 	end
@@ -783,7 +783,7 @@ sgs.ai_skill_use_func.XianzhenCard = function(card,use,self)
 	self:sortByUseValue(cards,true)
 	if (self:getUseValue(cards[1])<6 and self:getKeepValue(cards[1])<6) or self:getOverflow()>0 then
 		for _,enemy in ipairs(self.enemies)do
-			if not (enemy:hasSkill("kongcheng") and enemy:getHandcardNum()==1) and self.player:canPindian(enemy) and not enemy:hasSkills("tuntian+zaoxian") then
+			if not (enemy:hasSkill("kongcheng") and enemy:getHandcardNum()==1) and self.player:canPindian(enemy) and not hasTuntianEffect(enemy, true) then
 				self.xianzhen_card = cards[1]:getId()
 				use.card = card
 				use.to:append(enemy)

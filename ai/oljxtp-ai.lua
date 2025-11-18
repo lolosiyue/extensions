@@ -652,7 +652,7 @@ sgs.ai_skill_choice.olguhuo_slash = function(self,choices)
 end
 
 sgs.ai_skill_discard.olguhuo = function(self,discard_num,min_num,optional,include_equip)
-	if self.player:hasSkill("zhaxiang") and self:canDraw() and not self:willSkipPlayPhase() and (self.player:getHp()>0 or hasBuquEffect(self.player) or self:getSaveNum(true)>0) then
+	if hasZhaxiangEffect(self.player) and self:canDraw() and not self:willSkipPlayPhase() and (self.player:getHp()>0 or hasBuquEffect(self.player) or self:getSaveNum(true)>0) then
 		return {}
 	end
 	return self:askForDiscard("dummy",1,1,false,include_equip)

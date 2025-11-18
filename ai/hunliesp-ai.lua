@@ -170,7 +170,7 @@ sgs.ai_skill_invoke.sgkgoddingming = function(self, data)
 		if getYinyangState(self.player) == "hp_Yang" and self:getCardsNum("Peach") + self:getCardsNum("Analeptic") >= 1 then
 			if x >= 2 then return true end
 			--有界黄盖的【诈降】，哪怕差值只有1也卖
-			if self.player:hasSkill("zhaxiang") then return true end
+			if hasZhaxiangEffect(self.player) then return true end
 			--能触发夏侯霸的【豹变】也卖了
 			if self.player:hasSkill("baobian") and self.player:getHp() - x <= 3 then return true end
 			--如果有【英魂】/【再起】也卖

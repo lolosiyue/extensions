@@ -1300,3 +1300,6 @@ sgs.ai_use_priority.DragonCollateral = 2.75
 sgs.ai_keep_value.DragonCollateral = 3.40
 
 sgs.dynamic_value.control_card.DragonCollateral = true
+
+sgs.ai_judgestring.Dragon_indulgence = ".|heart"
+sgs.ai_nullification.Dragon_indulgence = sgs.ai_nullification.indulgence
