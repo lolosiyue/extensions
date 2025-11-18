@@ -1,4 +1,4 @@
----@diagnostic disable: lowercase-global
+﻿---@diagnostic disable: lowercase-global
 -- module("extensions.qhstandard", package.seeall)
 extension = sgs.Package("qhstandard", sgs.Package_GeneralPack)      -- 标准版
 extensionMyth = sgs.Package("mythology", sgs.Package_GeneralPack)   -- 神话降临
@@ -496,7 +496,7 @@ qhstandardTargetMod = sgs.CreateTargetModSkill {  -- 目标增强技
             card:isKindOf("Slash") then -- 苦肉 杀
             n = n + 2
         end
-        if from:hasSkill("qhwindshensu") and (card:getSkillName() == "qhwindshensu") then -- 神速杀
+        if from:hasSkill("qhwindshensu") and (table.contains(card:getSkillNames(), "qhwindshensu")) then -- 神速杀
             n = n + 1000
         end
         if from:hasSkill("mythqicai") and card:isKindOf("TrickCard") then
@@ -2356,7 +2356,7 @@ qhstandardzhangba = sgs.CreateTriggerSkill { -- 丈八 触发技
             else
                 card = data:toCardResponse().m_card
             end
-            if card:isKindOf("Slash") and card:getSkillName() == "qhstandardzhangba" then
+            if card:isKindOf("Slash") and table.contains(card:getSkillNames(), "qhstandardzhangba") then
                 room:broadcastSkillInvoke("paoxiao") -- 播放配音
                 room:addPlayerMark(player, "qhstandardzhangbaUsed-Clear", 1)
             end
@@ -5740,7 +5740,7 @@ qhwindguhuoclear = sgs.CreateTriggerSkill {
             else
                 card = data:toCardResponse().m_card
             end
-            if card and card:getSkillName() == "qhwindguhuo" then                                -- 蛊惑卡
+            if card and table.contains(card:getSkillNames(), "qhwindguhuo") then                                -- 蛊惑卡
                 room:broadcastSkillInvoke("guhuo")
                 local qhwindguhuoused = player:property("qhwindguhuoused"):toString():split("+") -- 获取属性
                 table.insert(qhwindguhuoused, card:objectName())

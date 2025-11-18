@@ -1,4 +1,4 @@
-extension = sgs.Package("sgs10th", sgs.Package_GeneralPack)
+﻿extension = sgs.Package("sgs10th", sgs.Package_GeneralPack)
 local packages = {}
 table.insert(packages, extension)
 --local json = require ("json")
@@ -471,11 +471,11 @@ ny_10th_jieling_buff = sgs.CreateTriggerSkill{
 ny_10th_jieling_target = sgs.CreateTargetModSkill{
     name = "#ny_10th_jieling_target",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "ny_10th_jieling" then return 1000 end 
+        if table.contains(card:getSkillNames(), "ny_10th_jieling") then return 1000 end 
         return 0
     end,
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "ny_10th_jieling" then return 1000 end 
+        if table.contains(card:getSkillNames(), "ny_10th_jieling") then return 1000 end 
         return 0
     end,
 }
@@ -2703,12 +2703,12 @@ ny_tenth_dagongche_destory = sgs.CreateCardLimitSkill
 ny_tenth_dagongche_buff = sgs.CreateTargetModSkill{
     name = "ny_tenth_dagongche_buff",
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "ny_tenth_dagongche"
+        if table.contains(card:getSkillNames(), "ny_tenth_dagongche")
         and from:getMark("ny_tenth_xianzhu_ignore") > 0 then return 1000 end
         return 0
     end,
     extra_target_func = function(self, from, card)
-        if card:getSkillName() == "ny_tenth_dagongche" then
+        if table.contains(card:getSkillNames(), "ny_tenth_dagongche") then
             return from:getMark("SkillDescriptionArg2_ny_tenth_xianzhu")
         end
         return 0
@@ -7369,7 +7369,7 @@ ny_tenth_shuangbi_max = sgs.CreateMaxCardsSkill{
 ny_tenth_shuangbi_buff = sgs.CreateTargetModSkill{
     name = "#ny_tenth_shuangbi_buff",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "ny_tenth_shuangbi_mouzhouyu" then return 1000 end
+        if table.contains(card:getSkillNames(), "ny_tenth_shuangbi_mouzhouyu") then return 1000 end
         return 0
     end,
 }
@@ -8339,11 +8339,11 @@ ny_tenth_fengying_buff = sgs.CreateTargetModSkill{
     name = "#ny_tenth_fengying_buff",
     pattern = ".",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "ny_tenth_fengying" then return 1000 end
+        if table.contains(card:getSkillNames(), "ny_tenth_fengying") then return 1000 end
         return 0
     end,
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "ny_tenth_fengying" then return 1000 end
+        if table.contains(card:getSkillNames(), "ny_tenth_fengying") then return 1000 end
         return 0
     end,
 }
@@ -9807,7 +9807,7 @@ ny_tenth_shiji = sgs.CreateTriggerSkill{
 ny_tenth_shiji_limit = sgs.CreateProhibitSkill{
     name = "#ny_tenth_shiji_limit",
     is_prohibited = function(self, from, to, card)
-        return (from and to and from:objectName() == to:objectName()) and (card and card:getSkillName() == "ny_tenth_shiji")
+        return (from and to and from:objectName() == to:objectName()) and (card and table.contains(card:getSkillNames(), "ny_tenth_shiji"))
     end,
 }
 
@@ -10251,7 +10251,7 @@ ny_tenth_zongshi_buff = sgs.CreateTargetModSkill{
     name = "#ny_tenth_zongshi_buff",
     pattern = ".",
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "ny_tenth_zongshi" then return 1000 end
+        if table.contains(card:getSkillNames(), "ny_tenth_zongshi") then return 1000 end
         return 0
     end,
 }
@@ -10702,7 +10702,7 @@ ny_tenth_chanjuan_buff = sgs.CreateTargetModSkill{
     name = "#ny_tenth_chanjuan_buff",
     pattern = ".",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "ny_tenth_chanjuan" then return 1000 end
+        if table.contains(card:getSkillNames(), "ny_tenth_chanjuan") then return 1000 end
         return 0
     end,
 }
@@ -12609,11 +12609,11 @@ ny_tenth_wuyou_buff = sgs.CreateTargetModSkill{
     name = "#ny_tenth_wuyou_buff",
     pattern = ".",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "ny_tenth_wuyou" then return 1000 end
+        if table.contains(card:getSkillNames(), "ny_tenth_wuyou") then return 1000 end
         return 0
     end,
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "ny_tenth_wuyou" then return 1000 end
+        if table.contains(card:getSkillNames(), "ny_tenth_wuyou") then return 1000 end
         return 0
     end,
 }
@@ -13359,11 +13359,11 @@ ny_10th_wuwei_clear = sgs.CreateTriggerSkill{
 ny_10th_wuwei_buff = sgs.CreateTargetModSkill{
     name = "#ny_10th_wuwei_buff",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "ny_10th_wuwei" then return 1000 end
+        if table.contains(card:getSkillNames(), "ny_10th_wuwei") then return 1000 end
         return 0
     end,
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "ny_10th_wuwei" then return 1000 end
+        if table.contains(card:getSkillNames(), "ny_10th_wuwei") then return 1000 end
         return 0
     end,
 }

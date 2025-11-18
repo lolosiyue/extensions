@@ -1,4 +1,4 @@
---==《新武将》==--
+﻿--==《新武将》==--
 extension_li = sgs.Package("kearmsxfyli", sgs.Package_GeneralPack)
 extension_zhen = sgs.Package("kearmsxfyzhen", sgs.Package_GeneralPack)
 
@@ -8,7 +8,7 @@ kearmsxfyslashmore = sgs.CreateTargetModSkill{
 	pattern = ".",
 	residue_func = function(self, from, card, to)
 		local n = 0
-		--[[if card:getSkillName()=="kelqjuesui" and from:hasSkill("kelqjuesuiUse") then
+		--[[if table.contains(card:getSkillNames(), "kelqjuesui") and from:hasSkill("kelqjuesuiUse") then
 			n = n + 999
 		end]]
 		return n
@@ -22,7 +22,7 @@ kearmsxfyslashmore = sgs.CreateTargetModSkill{
 		return n
 	end,
 	distance_limit_func = function(self, from, card, to)
-		if card:isKindOf("Slash") and card:getSkillName() == "zcruixi" then
+		if card:isKindOf("Slash") and table.contains(card:getSkillNames(), "zcruixi") then
 			return 999
 		end
 		local n = 0

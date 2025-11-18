@@ -1,4 +1,4 @@
-extension = sgs.Package("feiDIY", sgs.Package_GeneralPack)
+﻿extension = sgs.Package("feiDIY", sgs.Package_GeneralPack)
 local skills = sgs.SkillList()
 feimore = sgs.CreateTargetModSkill {
     name = "feimore",
@@ -736,7 +736,7 @@ feiwanghou:addSkill(feifenhu)
 feifenhuex = sgs.CreateProhibitSkill {
     name = "#feifenhuex",
     is_prohibited = function(self, from, to, card)
-        return to and card and card:getSkillName() == "feifenhuCard" and (to:getMark("feifenhu") == 0) and
+        return to and card and table.contains(card:getSkillNames(), "feifenhuCard") and (to:getMark("feifenhu") == 0) and
             card:isKindOf("AmazingGrace")
     end
 }

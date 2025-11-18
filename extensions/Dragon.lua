@@ -1,4 +1,4 @@
---module("extensions.Dragon", package.seeall)
+﻿--module("extensions.Dragon", package.seeall)
 extension = sgs.Package("Dragon")
 local Promote_darksoul_mode = true
 --™&©2008游卡桌游 三国杀 总设计师：KayaK MOD汇总：Super飞虎将军 主要编写人：786852516 其他参与人员：myetyet JOOOOKER 啦啦SLG 西域伊浪 youko1316
@@ -1556,7 +1556,7 @@ Dragon_qiankun = sgs.CreateTriggerSkill{
 Dragon_qiankunSlash = sgs.CreateProhibitSkill{ 
 	name = "#Dragon_qiankunSlash", 
 	is_prohibited = function(self, from, to, card) 
-		return to:hasSkill("Dragon_qiankun") and card:isKindOf("Slash") and (from:distanceTo(to) > 1 --[[and (card:getSkillName() == "" ]]or card:getSkillName() == "spear" or card:getSkillName() == "fan" or card:getSkillName() == "halberd")
+		return to:hasSkill("Dragon_qiankun") and card:isKindOf("Slash") and (from:distanceTo(to) > 1 --[[and (card:getSkillName() == "" ]]or table.contains(card:getSkillNames(), "spear") or table.contains(card:getSkillNames(), "fan") or table.contains(card:getSkillNames(), "halberd"))
 	end
 }
 
@@ -2106,7 +2106,7 @@ Dragon_spearEmotion = sgs.CreateTriggerSkill{
 			room:setPlayerFlag(player, "Dragon_spear")
 		else
 			local card = data:toCardResponse().m_card
-			if card:isKindOf("Slash") and card:getSkillName() == "Dragon_spear" then
+			if card:isKindOf("Slash") and table.contains(card:getSkillNames(), "Dragon_spear") then
 				room:setEmotion(player, "weapon/spear")
 			end
 		end

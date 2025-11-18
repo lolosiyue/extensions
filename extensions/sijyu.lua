@@ -1,4 +1,4 @@
-extension = sgs.Package("sijyu", sgs.Package_GeneralPack)
+﻿extension = sgs.Package("sijyu", sgs.Package_GeneralPack)
 extension_lost = sgs.Package("sijyu_lost", sgs.Package_GeneralPack)
 
 sgs.LoadTranslationTable {
@@ -1109,7 +1109,7 @@ sijyu_zhuluan = sgs.CreateTriggerSkill {
             end
         elseif event == sgs.DamageCaused then
             local damage = data:toDamage()
-            if damage.card and damage.card:getSkillName() == "sijyu_zhuluan" and damage.from and damage.from:objectName() == player:objectName() then
+            if damage.card and table.contains(damage.card:getSkillNames(), "sijyu_zhuluan") and damage.from and damage.from:objectName() == player:objectName() then
                 room:sendCompulsoryTriggerLog(player, self)
                 damage.damage = damage.damage + 1
                 data:setValue(damage)
@@ -1124,7 +1124,7 @@ sijyu_zhuluan = sgs.CreateTriggerSkill {
             end
         elseif event == sgs.DamageDone then
             local damage = data:toDamage()
-            if damage.card and damage.card:getSkillName() == "sijyu_zhuluan" then
+            if damage.card and table.contains(damage.card:getSkillNames(), "sijyu_zhuluan") then
                 room:setPlayerFlag(damage.to, "-" .. self:objectName())
             end
         elseif event == sgs.CardFinished then

@@ -1,4 +1,4 @@
-module("extensions.olddiy", package.seeall)
+﻿module("extensions.olddiy", package.seeall)
 extension = sgs.Package("olddiy")
 
 luadiyguanyu = sgs.General(extension, "luadiyguanyu", "shu", 4)
@@ -773,17 +773,17 @@ dangqian = sgs.CreateTriggerSkill{
 		local arg = player:getHp()
 		if event == sgs.CardResponded then
 			local resp = data:toCardResponse()
-			if (resp.m_card:getSkillName() == "longdan")  then
+			if (table.contains(resp.m_card:getSkillNames(), "longdan"))  then
 				room:askForUseCard(player, "@@dangqian", "@dangqian")
 			end
 		elseif event == sgs.TargetConfirmed then
 			local use = data:toCardUse()
-			if (use.from:objectName() == player:objectName()) and (use.card:getSkillName() == "longdan") then
+			if (use.from:objectName() == player:objectName()) and (table.contains(use.card:getSkillNames(), "longdan")) then
 				room:askForUseCard(player, "@@dangqian", "@dangqian")
 			end
 		elseif event == sgs.CardUsed then
 			local use = data:toCardUse()
-			if (use.card:getSkillName() == "longdan") and use.card:isKindOf("Jink")  then
+			if (table.contains(use.card:getSkillNames(), "longdan")) and use.card:isKindOf("Jink")  then
 				room:askForUseCard(player, "@@dangqian", "@dangqian")
 			end
 		end

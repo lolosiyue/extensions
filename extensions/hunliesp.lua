@@ -1,4 +1,4 @@
-extension = sgs.Package("hunliesp", sgs.Package_GeneralPack)
+﻿extension = sgs.Package("hunliesp", sgs.Package_GeneralPack)
 
 
 sgs.LoadTranslationTable{
@@ -1000,7 +1000,7 @@ sgkgodguiquPeach = sgs.CreateTriggerSkill{
 	events = {sgs.CardUsed},
 	on_trigger = function(self, event, player, data, room)
 		local use = data:toCardUse()
-		if use.card and use.card:isKindOf("Peach") and use.card:getSkillName() == "sgkgodguiqu" then
+		if use.card and use.card:isKindOf("Peach") and table.contains(use.card:getSkillNames(), "sgkgodguiqu") then
 			room:addPlayerMark(player, "sgkgodguiqu".."engine")
 			if player:getMark("sgkgodguiqu".."engine") > 0 then
 				local my_skills = {}

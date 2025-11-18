@@ -1,4 +1,4 @@
-local extension = sgs.Package("newgenerals",sgs.Package_GeneralPack)
+﻿local extension = sgs.Package("newgenerals",sgs.Package_GeneralPack)
 
 --统一进行语音绑定
 --谋周瑜，谋孙策
@@ -512,9 +512,9 @@ chuifeng = sgs.CreateTriggerSkill{
 chongjianslash = sgs.CreateTargetModSkill{
 	name = "#chongjianslash",
 	distance_limit_func = function(self,from,card,to)
-		if card:getSkillName() == "chongjian"
-		or card:getSkillName() == "olluanwu"
-		or card:getSkillName() == "qingshu_tianshu0"
+		if table.contains(card:getSkillNames(), "chongjian")
+		or table.contains(card:getSkillNames(), "olluanwu")
+		or table.contains(card:getSkillNames(), "qingshu_tianshu0")
 		or to and to:getMark("&stscdlwei")<1 and from:hasSkill("dulie")
 		or to and to:getMark("&mouwushengTarget+#"..from:objectName().."-PlayClear")>0
 		or from:getWeapon() and from:hasSkill("moupaoxiao")
@@ -524,7 +524,7 @@ chongjianslash = sgs.CreateTargetModSkill{
 	extra_target_func = function(self,from,card)
 		local n = 0
 		if from:hasSkill("keolguangao") then n = n+1 end
-		if (card:getSkillName()=="keolkenshang" or card:hasFlag("keolkenshang"))
+		if (table.contains(card:getSkillNames(), "keolkenshang") or card:hasFlag("keolkenshang"))
 		and from:hasSkill("keolkenshang") then n = n+card:subcardsLength()-1 end
 		return n
 	end,
@@ -4700,8 +4700,8 @@ olruishibf2 = sgs.CreateTargetModSkill{
 		or from:getMark("mouzhaxiangCardUsed-Clear") < from:getLostHp() and from:hasSkill("mouzhaxiang")
 		or to and from:getMark(to:objectName().."SkillEffect24-SelfClear")>0
 		or from:hasFlag("dlszCardBuff") and from:hasSkill("ol_shengzhi")
-		or card:getSkillName()=="xdbaohe"
-		or card:getSkillName()=="yuanjue"
+		or table.contains(card:getSkillNames(), "xdbaohe")
+		or table.contains(card:getSkillNames(), "yuanjue")
 		or from:getMark("&juqi-Clear")>0
 		then return 999 end
 		if not card:isVirtualCard() and from:hasSkill("xingtu") then
@@ -13441,7 +13441,7 @@ moulianhuanbf = sgs.CreateCardLimitSkill{
 	end,
 	limit_pattern = function(self,player,card)
 		if player:getMark("moulianhuanICUsed-PlayClear")>0
-		and card:getSkillName()=="moulianhuan"
+		and table.contains(card:getSkillNames(), "moulianhuan")
 		and player:hasSkill(self,true)
 		then return "IronChain" end
 		return ""

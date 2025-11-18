@@ -1,4 +1,4 @@
-extension = sgs.Package("arknights", sgs.Package_GeneralPack)
+﻿extension = sgs.Package("arknights", sgs.Package_GeneralPack)
 local packages = {}
 table.insert(packages, extension)
 
@@ -172,11 +172,11 @@ ark_guozaiCard = sgs.CreateSkillCard
 ark_guozaibuff = sgs.CreateTargetModSkill{
     name = "#ark_guozaibuff",
     residue_func = function(self, from, card)
-        if card:getSkillName() == "ark_guozai" then return 1000 end
+        if table.contains(card:getSkillNames(), "ark_guozai") then return 1000 end
         return 0
     end,
     distance_limit_func = function(self, from, card)
-        if card:getSkillName() == "ark_guozai" then return 1000 end
+        if table.contains(card:getSkillNames(), "ark_guozai") then return 1000 end
         return 0
     end,
 }

@@ -1,4 +1,4 @@
---==《新武将》==--
+﻿--==《新武将》==--
 extension = sgs.Package("kearnews", sgs.Package_GeneralPack)
 local skills = sgs.SkillList()
 
@@ -12,7 +12,7 @@ kenewslashmore = sgs.CreateTargetModSkill {
 	end,]]
 	distance_limit_func = function(self, from, card, to)
 		local n = 0
-		if (card:getSkillName() == "kerongchang") then
+		if (table.contains(card:getSkillNames(), "kerongchang")) then
 			n = n + 1000
 		end
 		return n
@@ -1243,7 +1243,7 @@ xiaxingmie = sgs.CreateTriggerSkill {
 			if use.card:isKindOf("Jink") then
 				room:setPlayerMark(player, "&xmwuxie", 1)
 			end
-			if (use.card:getSkillName() == "xiaxingmieslash") then
+			if (table.contains(use.card:getSkillNames(), "xiaxingmieslash")) then
 				--每轮限一次
 				room:setPlayerMark(player, "xiaxingmieslash_lun", 1)
 			end
@@ -3004,13 +3004,13 @@ kexianglongcs = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local use = data:toCardUse()
-		if use.card:getSkillName() == "kexianglong" then
+		if table.contains(use.card:getSkillNames(), "kexianglong") then
 			if use.m_addHistory then
 				room:addPlayerHistory(player, use.card:getClassName(), -1)
 				room:broadcastSkillInvoke(self:objectName())
 			end
 		end
-		if use.card:getSkillName() == "kerongchang" then
+		if table.contains(use.card:getSkillNames(), "kerongchang") then
 			if use.m_addHistory then
 				room:addPlayerHistory(player, use.card:getClassName(), -1)
 			end
@@ -3212,7 +3212,7 @@ kerongchangjl = sgs.CreateTargetModSkill {
 	name = "#kerongchangjl",
 	pattern = "Slash",
 	distance_limit_func = function(self, player, card)
-		if player:hasSkill("kerongchang") and (card:getSkillName() == "kerongchang") then
+		if player:hasSkill("kerongchang") and (table.contains(card:getSkillNames(), "kerongchang")) then
 			return 1000
 		else
 			return 0
@@ -3668,7 +3668,7 @@ kexiajue = sgs.CreateTriggerSkill {
 		end
 		if event == sgs.CardUsed then
 			local use = data:toCardUse()
-			if use.card:isKindOf("Slash") and use.card:getSkillName() == "xiajueskill" then
+			if use.card:isKindOf("Slash") and table.contains(use.card:getSkillNames(), "xiajueskill") then
 				room:setCardFlag(use.card, "SlashIgnoreArmor")
 			end
 		end

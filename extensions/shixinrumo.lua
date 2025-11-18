@@ -182,12 +182,12 @@ yi_huatuo:addSkill(yimiehai)
 yimiehaibf = sgs.CreateTargetModSkill{
     name = "#yimiehaibf",
 	distance_limit_func = function(self, from, card, to)
-		if card:getSkillName()=="yimiehai"
+		if table.contains(card:getSkillNames(), "yimiehai")
 		then return 999 end
 		return 0
 	end,
 	residue_func = function(self, from, card, to)
-		if card:getSkillName()=="yimiehai"
+		if table.contains(card:getSkillNames(), "yimiehai")
 		then return 999 end
 		return 0
 	end,

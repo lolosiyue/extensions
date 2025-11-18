@@ -1,4 +1,4 @@
-module("extensions.meizl", package.seeall)
+﻿module("extensions.meizl", package.seeall)
 extension = sgs.Package("meizl")
 --遊戲包名稱：魅包
 --版本號：V2.35.1
@@ -4365,7 +4365,7 @@ meizlhuhun = sgs.CreateTriggerSkill {
 			end
 		elseif event == sgs.QuitDying then
 			local dying = data:toDying()
-			if dying.damage and dying.damage.card and dying.damage.card:getSkillName() == "meizlhuhun" and not dying.damage.chain and not dying.damage.transfer then
+			if dying.damage and dying.damage.card and table.contains(dying.damage.card:getSkillNames(), "meizlhuhun") and not dying.damage.chain and not dying.damage.transfer then
 				local from = dying.damage.from
 				if from and from:isAlive() then
 					room:setPlayerMark(from, "meizlhuhunFail", 1)

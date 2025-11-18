@@ -1,4 +1,4 @@
-extension = sgs.Package("OverseasVersion")
+﻿extension = sgs.Package("OverseasVersion")
 
 --SP
 extensionSp = sgs.Package("overseas_version_sp")
@@ -630,12 +630,12 @@ ov_wuban:addSkill(ov_jintao)
 ov_jintaobf = sgs.CreateTargetModSkill{
 	name = "#ov_jintaobf",
 	residue_func = function(self,from,card,to)--额外使用
-		if (card:getSkillName()=="ov_sidai" or card:hasFlag("ov_sidai")) and from:hasSkill("ov_sidai")
+		if (table.contains(card:getSkillNames(), "ov_sidai") or card:hasFlag("ov_sidai")) and from:hasSkill("ov_sidai")
 		or from:getMark("&ov_gongqi+:+"..card:getSuitString().."_char-PlayClear")>0 and from:hasSkill("ov_gongqi")
-		or (card:getSkillName()=="ov_jiange" or card:hasFlag("ov_jiange")) and from:hasSkill("ov_jiange")
+		or (table.contains(card:getSkillNames(), "ov_jiange") or card:hasFlag("ov_jiange")) and from:hasSkill("ov_jiange")
 		or from:hasFlag("CurrentPlayer") and from:getMark("&ov_renxian")>0
 		or card:hasTip("ov_dengjian") and from:hasSkill("ov_dengjian")
-		or card:getSkillName() == "ov_liyuan"
+		or table.contains(card:getSkillNames(), "ov_liyuan")
 		then return 999 end
 		local n = 0
 		if from:getMark("@ov_qiyiju")>0 then n = n+1
@@ -648,10 +648,10 @@ ov_jintaobf = sgs.CreateTargetModSkill{
 	end,
 	distance_limit_func = function(self,from,card,to)--使用距离
 		if from:hasSkill("ov_jintao")
-		or (card:getSkillName()=="ov_sidai" or card:hasFlag("ov_sidai")) and from:hasSkill("ov_sidai")
+		or (table.contains(card:getSkillNames(), "ov_sidai") or card:hasFlag("ov_sidai")) and from:hasSkill("ov_sidai")
 		or from:getMark("ov_zhilvebf-Clear")>0 and from:getMark("ov_zhilveUseSlash-Clear")<1 and from:hasSkill("ov_zhilve")
-		or (card:getSkillName()=="ov_jiange" or card:hasFlag("ov_jiange")) and from:hasSkill("ov_jiange")
-		or card:getSkillName() == "ov_liyuan"
+		or (table.contains(card:getSkillNames(), "ov_jiange") or card:hasFlag("ov_jiange")) and from:hasSkill("ov_jiange")
+		or table.contains(card:getSkillNames(), "ov_liyuan")
 		or from:hasSkill("ov_zhongyi")
 		then return 999 end
 	end,
@@ -659,7 +659,7 @@ ov_jintaobf = sgs.CreateTargetModSkill{
 		local n = 0
 		if card:objectName()=="fire_slash" and from:hasSkill("ov_lihuo")
 		then n = n+1 end
-		if card:getSkillName()=="ov_chue" and from:hasSkill("ov_chue")
+		if table.contains(card:getSkillNames(), "ov_chue") and from:hasSkill("ov_chue")
 		then n = n+from:getMark("ov_chuebf") end
 		return n
 	end
@@ -2005,7 +2005,7 @@ ov_fuman = sgs.CreateTriggerSkill{
 			then id = data:toCardResponse().m_card
 			else id = data:toCardUse().card end
 			if ids:contains(id:getEffectiveId())
---			and id:getSkillName()=="ov_fuman"
+--			and table.contains(id:getSkillNames(), "ov_fuman")
 --			and id:isKindOf("Slash")
 			then
 				id = room:getTag("damage_caused_"..id:toString()):toDamage()
@@ -3395,7 +3395,7 @@ ov_xiafengbf1 = sgs.CreateTargetModSkill{
 		or from:getMark("ov_xingqibf")>0 and from:hasSkill("ov_xingqi")
 		or to and to:getMark("&ov_zeshi+#"..from:objectName())>0
 		or card:getSuit()==2 and from:hasSkill("ov_wushen")
-		or card:getSkillName()=="ov_beiding"
+		or table.contains(card:getSkillNames(), "ov_beiding")
 		then return 999 end
 	end,
 	extra_target_func = function(self,from,card)--目标数
@@ -8614,7 +8614,7 @@ ov_wushen = sgs.CreateTriggerSkill{
 			if data:toString()=="ov_wushen" then
 				local hw = sgs.CardList()
 				for _,c in sgs.list(player:getHandcards())do
-					if c:getSuit()==2 or c:getSkillName()=="ov_wushen"
+					if c:getSuit()==2 or table.contains(c:getSkillNames(), "ov_wushen")
 					then hw:append(c) end
 				end
 				if hw:length()>0 then
@@ -8623,7 +8623,7 @@ ov_wushen = sgs.CreateTriggerSkill{
 			end
 		else
 			for _,c in sgs.list(player:getHandcards())do
-				if c:getSuit()~=2 or c:getSkillName()=="ov_wushen" then continue end
+				if c:getSuit()~=2 or table.contains(c:getSkillNames(), "ov_wushen") then continue end
 				local toc = sgs.Sanguosha:cloneCard("slash",2,c:getNumber())
 				toc:setSkillName("ov_wushen")
 				local wrap = sgs.Sanguosha:getWrappedCard(c:getEffectiveId())

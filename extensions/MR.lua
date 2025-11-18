@@ -1,4 +1,4 @@
---== << 新·神话再临 >> ==--
+﻿--== << 新·神话再临 >> ==--
 extension_MRmou = sgs.Package("MRmou", sgs.Package_GeneralPack)
 --extension_MRwu = sgs.Package("MRwu", sgs.Package_GeneralPack)
 --......
@@ -422,7 +422,7 @@ MR_lianhuanTarget = sgs.CreateTargetModSkill{
 	name = "#MR_lianhuanTarget",
 	pattern = "Card",
 	extra_target_func = function(self, player, card)
-		if card:getSkillName() == "MR_lianhuan" then
+		if table.contains(card:getSkillNames(), "MR_lianhuan") then
 			return 1000
 		else
 			return 0
@@ -1209,7 +1209,7 @@ MR_zhizhe = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if event == sgs.CardFinished then
 			local use = data:toCardUse()
-		    if use.card:getSkillName() == "MR_zhizhe" and player:hasSkill(self:objectName()) then
+		    if table.contains(use.card:getSkillNames(), "MR_zhizhe") and player:hasSkill(self:objectName()) then
 			    if player:getMark(self:objectName()..use.card:objectName().."-Clear") < 1 then
 					room:addPlayerMark(player, use.card:objectName().."+"..self:objectName().."-Clear")
 				end

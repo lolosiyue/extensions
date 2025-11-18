@@ -1,4 +1,4 @@
-extension = sgs.Package("DragonLoke", sgs.Package_GeneralPack)
+﻿extension = sgs.Package("DragonLoke", sgs.Package_GeneralPack)
 ---------------------------------
 sgs.LoadTranslationTable{
     ["DragonLoke"] = "龙飞腾天",
@@ -82,7 +82,7 @@ dl_chaju = sgs.CreateTriggerSkill{
 			end
 		elseif event == sgs.PreCardUsed then
 			local use = data:toCardUse()
-			if use.card:getSkillName() == "dl_chaju" then
+			if table.contains(use.card:getSkillNames(), "dl_chaju") then
 				room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
 			end
 		else

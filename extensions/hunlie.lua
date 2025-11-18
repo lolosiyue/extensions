@@ -1,4 +1,4 @@
-local extension = sgs.Package("hunlie", sgs.Package_GeneralPack)
+﻿local extension = sgs.Package("hunlie", sgs.Package_GeneralPack)
 
 sgs.Sanguosha:setAudioType("sgkgodlvbu", "wushuang", "7")
 sgs.Sanguosha:setAudioType("sgkgodsima", "zhiheng", "3")
@@ -46,16 +46,16 @@ hunlie_tarmod = sgs.CreateTargetModSkill{
 	residue_func = function(self, from, card, to)
 		local n = 0
 		if from:hasSkill("sgkgodshayi") and card:isKindOf("Slash") then n = n + 9999 end
-		if from:hasSkill("sgkgodliegong") and card:isKindOf("FireSlash") and card:getSkillName() == "sgkgodliegong" then n = n + 9999 end
+		if from:hasSkill("sgkgodliegong") and card:isKindOf("FireSlash") and table.contains(card:getSkillNames(), "sgkgodliegong") then n = n + 9999 end
 		if card:isKindOf("Slash") and from:getMark("hunlie_global_slashtime") > 0 then n = n + from:getMark("hunlie_global_slashtime") end
-		if card:isKindOf("Slash") and card:getSkillName() == "qianqi_slash" then n = n + 9999 end
+		if card:isKindOf("Slash") and table.contains(card:getSkillNames(), "qianqi_slash") then n = n + 9999 end
 		return n
 	end,
 	distance_limit_func = function(self, from, card, to)
 		local n = 0
 		if from:hasSkill("sgkgodshayi") and card:isKindOf("Slash") then n = n + 9999 end
-		if from:hasSkill("sgkgodliegong") and card:isKindOf("FireSlash") and card:getSkillName() == "sgkgodliegong" then n = n + 9999 end
-		if from:hasSkill("sgkgodqianqi") and card:isKindOf("Slash") and card:getSkillName() == "qianqi_slash" then n = n + 9999 end
+		if from:hasSkill("sgkgodliegong") and card:isKindOf("FireSlash") and table.contains(card:getSkillNames(), "sgkgodliegong") then n = n + 9999 end
+		if from:hasSkill("sgkgodqianqi") and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "qianqi_slash") then n = n + 9999 end
 		return n
 	end
 }
@@ -130,7 +130,7 @@ sgkgodlonghunC = sgs.CreateTriggerSkill{
 		else
 			card = data:toCardResponse().m_card
 		end
-		if card and (card:getSkillName() == "sgkgodlonghunC" or card:getSkillName() == "sgkgodlonghunBuff") then
+		if card and (table.contains(card:getSkillNames(), "sgkgodlonghunC") or table.contains(card:getSkillNames(), "sgkgodlonghunBuff")) then
 			if card:isKindOf("Nullification") then
 				room:broadcastSkillInvoke("sgkgodlonghun", 1)
 			elseif card:isKindOf("Jink") then
@@ -152,7 +152,7 @@ sgkgodlonghunBuff = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data, room)
 		if event == sgs.CardUsed then
 			local use = data:toCardUse()
-			if use.card and use.card:subcardsLength() == 2 and use.card:getSkillName() == "sgkgodlonghunBuff" then
+			if use.card and use.card:subcardsLength() == 2 and table.contains(use.card:getSkillNames(), "sgkgodlonghunBuff") then
 				if use.card:isKindOf("Nullification") then
 					local no_respond_list = use.no_respond_list
 					table.insert(no_respond_list, "_ALL_TARGETS")
@@ -191,7 +191,7 @@ sgkgodlonghunBuff = sgs.CreateTriggerSkill{
 			end
 		elseif event == sgs.CardResponded then
 			local res = data:toCardResponse()
-			if res.m_card and res.m_card:isKindOf("Nullification") and res.m_card:getSkillName() == "sgkgodlonghunBuff" then
+			if res.m_card and res.m_card:isKindOf("Nullification") and table.contains(res.m_card:getSkillNames(), "sgkgodlonghunBuff") then
 				local tocard = res.m_toCard
 				if tocard then
 					local ids = sgs.IntList()
@@ -1602,7 +1602,7 @@ sgkgodtianqi = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data, room)
 		if event == sgs.PreCardUsed then
 			local use = data:toCardUse()
-			if use.card and use.card:getSkillName() == "sgkgodtianqi" and player:getPhase() == sgs.Player_Play then
+			if use.card and table.contains(use.card:getSkillNames(), "sgkgodtianqi") and player:getPhase() == sgs.Player_Play then
 				if not player:hasFlag("tianqi_used") then room:setPlayerFlag(player, "tianqi_used") end
 			end
 		else
@@ -3489,7 +3489,7 @@ sgkgodshayiDo = sgs.CreateTriggerSkill{
 			end
 		elseif event == sgs.CardFinished then
 			local use = data:toCardUse()
-			if use.card and ((use.card:getSkillName() == "sgkgodshayi") or (use.card:getTag("sgkgodshayi"):toBool() and use.card:isKindOf("Slash") and use.card:isBlack())) then
+			if use.card and ((table.contains(use.card:getSkillNames(), "sgkgodshayi")) or (use.card:getTag("sgkgodshayi"):toBool() and use.card:isKindOf("Slash") and use.card:isBlack())) then
 				player:drawCards(1, "sgkgodshayi")
 				use.card:removeTag("sgkgodshayi")
 			end
@@ -4563,7 +4563,7 @@ sgkgodqianqi = sgs.CreateTriggerSkill{
 			end
 		elseif event == sgs.CardUsed then
 			local use = data:toCardUse()
-			if use.card and use.card:isKindOf("Slash") and use.card:getSkillName() == "qianqi_slash" then
+			if use.card and use.card:isKindOf("Slash") and table.contains(use.card:getSkillNames(), "qianqi_slash") then
 				room:broadcastSkillInvoke(self:objectName(), math.random(3, 4))
 				player:loseMark("&sgkgodqianqi")
 			end
@@ -4795,7 +4795,7 @@ sgkgodhuchi = sgs.CreateTriggerSkill{
 			end
 		elseif event == sgs.TrickCardCanceling then
 			local effect = data:toCardEffect()
-			if effect.card and effect.card:isKindOf("Duel") and effect.card:getSkillName() == "sgkgodhuchi" then
+			if effect.card and effect.card:isKindOf("Duel") and table.contains(effect.card:getSkillNames(), "sgkgodhuchi") then
 				return true
 			end
 		elseif event == sgs.DamageDone then

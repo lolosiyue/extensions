@@ -1,4 +1,4 @@
---[[高达杀杂兵包   
+﻿--[[高达杀杂兵包   
    编写者：某个什么都不会的杂兵指挥官
    鸣谢：高达杀制作组QQ群里的大佬们
    高达杀制作组QQ群：565837324
@@ -86,7 +86,7 @@ gaoda_lianxie = sgs.CreateTriggerSkill
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local use = data:toCardUse()
-		if use.card and use.card:getSkillName() == "gaoda_lianxie" then
+		if use.card and table.contains(use.card:getSkillNames(), "gaoda_lianxie") then
 			room:addPlayerHistory(player, self:objectName())
 		end
 	end

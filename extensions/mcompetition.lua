@@ -448,7 +448,7 @@ wuqiongdewulian = sgs.CreateTriggerSkill{
 		end
 		elseif event == sgs.CardResponded then 
 		local card =  data:toCardResponse().m_card		
-		if card and card:getSkillName()== "wuqiongdewulian" then
+		if card and table.contains(card:getSkillNames(), "wuqiongdewulian") then
 	
 		if (card:isKindOf("Slash") and not sgs.Sanguosha:getCard(card:getSubcards():first()):isKindOf("Slash")) or (card:isKindOf("Jink") and not sgs.Sanguosha:getCard(card:getSubcards():first()):isKindOf("Jink")) then
 			room:loseHp(player, 1, true, player, self:objectName())
@@ -501,7 +501,7 @@ Babylon_TM = sgs.CreateTargetModSkill{
 	name = "#Babylon_TM" ,
 	pattern = "Slash" ,
 	distance_limit_func = function(self, player, card)
-		if player:hasSkill("Babylon") and (card:getSkillName() == "Babylon") then
+		if player:hasSkill("Babylon") and (table.contains(card:getSkillNames(), "Babylon")) then
 			return 1000
 		else
 			return 0
@@ -2242,7 +2242,7 @@ on_trigger = function(self, event, player, data)
 local room = player:getRoom()
 if event == sgs.CardUsed then
 local use = data:toCardUse()
-if use.card:getSkillName() == "feitianshuangzhan" or use.from:hasSkill("feitianshuangzhan") then
+if table.contains(use.card:getSkillNames(), "feitianshuangzhan") or use.from:hasSkill("feitianshuangzhan") then
     room:setPlayerMark(player, "&feitianshuangzhan+:+"..use.card:getColorString().."-Clear", 1)
 if use.card:isRed() then
 room:setPlayerFlag(use.from, "feitianshuangzhan_RedUsed")
@@ -2263,7 +2263,7 @@ end
 end
 elseif event == sgs.PreCardUsed then 
 local use = data:toCardUse()
-if use.card and use.card:getSkillName() == "feitianshuangzhan" then
+if use.card and table.contains(use.card:getSkillNames(), "feitianshuangzhan") then
 if (use.m_addHistory) then
 room:addPlayerHistory(player, "Slash", -1)
 use.m_addHistory = false
@@ -2281,7 +2281,7 @@ feitianshuangzhanmod = sgs.CreateTargetModSkill{
 name = "feitianshuangzhanmod",
 global = true,
 distance_limit_func = function(self, player, card)
-if card:getSkillName() == "feitianshuangzhan" then
+if table.contains(card:getSkillNames(), "feitianshuangzhan") then
 return 998 
 end
 return 0

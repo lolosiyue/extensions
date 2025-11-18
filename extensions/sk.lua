@@ -4099,7 +4099,7 @@ sk_zhengyi = sgs.CreateTriggerSkill{
 				card = data:toCardResponse().m_card
 			end
 		end
-		if card and card:getSkillName() == "sk_zhengyi" and player:getHp() - player:getHandcardNum() == 1 then
+		if card and table.contains(card:getSkillNames(), "sk_zhengyi") and player:getHp() - player:getHandcardNum() == 1 then
 			player:drawCards(1, self:objectName())
 		end
 	end

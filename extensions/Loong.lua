@@ -1,4 +1,4 @@
---《太阳神三国杀·天才包》2024龙年新春专属：🐲《龙行天下》武将扩展包
+﻿--《太阳神三国杀·天才包》2024龙年新春专属：🐲《龙行天下》武将扩展包
 extension = sgs.Package("Loong", sgs.Package_GeneralPack)
 ---------------------------------
 sgs.LoadTranslationTable{
@@ -212,7 +212,7 @@ lxtx_jiangchi_slash = sgs.CreateTargetModSkill{
 	frequency = sgs.Skill_Compulsory,
 	distance_limit_func = function(self, from, card, to)
 	    local n = 0
-		if from:hasSkill("lxtx_zhangwu") and card:isKindOf("Slash") and from:getMark("lxtx_jiangchi_draw-Clear") > 0 and card:getSkillName() == "lxtx_zhangwuu" then
+		if from:hasSkill("lxtx_zhangwu") and card:isKindOf("Slash") and from:getMark("lxtx_jiangchi_draw-Clear") > 0 and table.contains(card:getSkillNames(), "lxtx_zhangwuu") then
 			n = 1000
 		end
 		return n
@@ -225,7 +225,7 @@ lxtx_jiangchi_slash = sgs.CreateTargetModSkill{
 		if from:hasSkill("lxtx_jiangchi") and card:isKindOf("Slash") and from:getMark("lxtx_jiangchi_draw-Clear") > 0 then
 			n = n - 1
 		end
-		if from:hasSkill("lxtx_zhangwu") and card:isKindOf("Slash") and card:getSkillName() == "lxtx_zhangwuu" and from:getMark("lxtx_jiangchi_draw-Clear") > 0 then
+		if from:hasSkill("lxtx_zhangwu") and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "lxtx_zhangwuu") and from:getMark("lxtx_jiangchi_draw-Clear") > 0 then
 			n = 1000
 		end
 		return n
@@ -247,7 +247,7 @@ lxtx_zhangwu_use = sgs.CreateTriggerSkill{
 				card = resp.m_card
 			end
 		end
-		if card and card:getSkillName() == "lxtx_zhangwuu" then
+		if card and table.contains(card:getSkillNames(), "lxtx_zhangwuu") then
 			room:addPlayerMark(player, card:getSkillName().."-SelfPlayClear")
 			if player:getMark("lxtx_jiangchi_draw-Clear") > 0 then
 				room:broadcastSkillInvoke("lxtx_zhangwu", 1)
@@ -717,7 +717,7 @@ lxtx_shouyue_use_skill = sgs.CreateTriggerSkill{
 				local resp = data:toCardResponse()
 				card = resp.m_card
 			end
-			if card and card:getSkillName() == "lxtx_shouyue_longdan" and player:hasSkill("lxtx_shouyue_longdan") then
+			if card and table.contains(card:getSkillNames(), "lxtx_shouyue_longdan") and player:hasSkill("lxtx_shouyue_longdan") then
 				player:drawCards(1)
 			end
 		end
@@ -1182,7 +1182,7 @@ lxtx_wupao_slash = sgs.CreateTargetModSkill{
 		end
 	end,
 	extra_target_func = function(self, player, card)
-		if card:getSkillName() == "lxtx_wupao" then
+		if table.contains(card:getSkillNames(), "lxtx_wupao") then
 			return 1
 		else
 			return 0
@@ -1317,7 +1317,7 @@ lxtx_yizan_extra = sgs.CreateTriggerSkill{
 		else
 			card = data:toCardResponse().m_card
 		end
-		if card and card:getSkillName() == "lxtx_yizan" then
+		if card and table.contains(card:getSkillNames(), "lxtx_yizan") then
 			room:addPlayerMark(player, "lxtx_yizan-Clear")
 		end
 	end,
@@ -1346,7 +1346,7 @@ lxtx_longyuan = sgs.CreateTriggerSkill{
 			else
 				card = data:toCardResponse().m_card
 			end
-			if card and card:getSkillName() == "lxtx_yizan" then
+			if card and table.contains(card:getSkillNames(), "lxtx_yizan") then
 				room:addPlayerMark(player, "&lxtx_yizan")
 			end
 		end
@@ -1762,7 +1762,7 @@ lxtx_gaoshun_extra = sgs.CreateTargetModSkill{
 	pattern = "Card",
 	frequency = sgs.Skill_Compulsory,
 	residue_func = function(self, from, card, to)
-		if from:hasSkill("lxtx_jinjiu") and (card:getSkillName() == "lxtx_jinjiu" or card:getSkillName() == "lxtx_jinjiu_extra") and card:objectName() == "slash" then
+		if from:hasSkill("lxtx_jinjiu") and (table.contains(card:getSkillNames(), "lxtx_jinjiu") or table.contains(card:getSkillNames(), "lxtx_jinjiu_extra")) and card:objectName() == "slash" then
 		    return 1000
 		else
 			return 0
@@ -1774,7 +1774,7 @@ lxtx_gaoshun_extra = sgs.CreateTargetModSkill{
 		end
 	end,
     distance_limit_func = function(self, from, card, to)
-		if from:hasSkill("lxtx_jinjiu") and (card:getSkillName() == "lxtx_jinjiu" or card:getSkillName() == "lxtx_jinjiu_extra") and card:objectName() == "slash" then
+		if from:hasSkill("lxtx_jinjiu") and (table.contains(card:getSkillNames(), "lxtx_jinjiu") or table.contains(card:getSkillNames(), "lxtx_jinjiu_extra")) and card:objectName() == "slash" then
 		    return 1000
 		else
 			return 0
@@ -1786,7 +1786,7 @@ lxtx_gaoshun_extra = sgs.CreateTargetModSkill{
 		end
 	end,
 	extra_target_func = function(self, from, card, to)
-	    if from:hasSkill("lxtx_jinjiu") and (card:getSkillName() == "lxtx_jinjiu" or card:getSkillName() == "lxtx_jinjiu_extra") and card:objectName() == "slash" then
+	    if from:hasSkill("lxtx_jinjiu") and (table.contains(card:getSkillNames(), "lxtx_jinjiu") or table.contains(card:getSkillNames(), "lxtx_jinjiu_extra")) and card:objectName() == "slash" then
 		    return 1000
 		else
 			return 0

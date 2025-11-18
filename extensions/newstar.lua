@@ -1,4 +1,4 @@
-module("extensions.newstar", package.seeall)
+﻿module("extensions.newstar", package.seeall)
 extension = sgs.Package("newstar")
 
 xingcaocao = sgs.General(extension, "xingcaocao", "wei", 3)
@@ -62,7 +62,7 @@ luanengchenskill = sgs.CreateTriggerSkill {
 					local card_id = card:getEffectiveId()
 					room:setPlayerMark(player, "luanengchenskill", card_id)
 				end
-				if card:getSkillName() == "LuaNengchen" then
+				if table.contains(card:getSkillNames(), "LuaNengchen") then
 					room:setPlayerFlag(player, "jxused")
 					room:setPlayerFlag(player, "-jx")
 				end
@@ -564,7 +564,7 @@ LuaChongzhen = sgs.CreateTriggerSkill {
 
 		if event == sgs.CardResponded then
 			local resp = data:toCardResponse()
-			if (resp.m_card:getSkillName() == "LuaLongzhen" or resp.m_card:isKindOf("Jink") or resp.m_card:isKindOf("Slash") or resp.m_card:isKindOf("FireSlash") or resp.m_card:isKindOf("ThunderSlash")) and resp.m_who and (not resp.m_who:isKongcheng()) then
+			if (table.contains(resp.m_card:getSkillNames(), "LuaLongzhen") or resp.m_card:isKindOf("Jink") or resp.m_card:isKindOf("Slash") or resp.m_card:isKindOf("FireSlash") or resp.m_card:isKindOf("ThunderSlash")) and resp.m_who and (not resp.m_who:isKongcheng()) then
 				room:broadcastSkillInvoke("#LuaChongzhen")
 				local _data = sgs.QVariant()
 				_data:setValue(resp.m_who)
@@ -577,7 +577,7 @@ LuaChongzhen = sgs.CreateTriggerSkill {
 			end
 		else
 			local use = data:toCardUse()
-			if ((use.from:objectName() == player:objectName()) and (use.card:getSkillName() == "LuaLongzhen" or use.card:isKindOf("Slash") or use.card:isKindOf("FireSlash") or use.card:isKindOf("ThunderSlash"))) then
+			if ((use.from:objectName() == player:objectName()) and (table.contains(use.card:getSkillNames(), "LuaLongzhen") or use.card:isKindOf("Slash") or use.card:isKindOf("FireSlash") or use.card:isKindOf("ThunderSlash"))) then
 				for _, p in sgs.qlist(use.to) do
 					if p:isNude() then continue end
 					local _data = sgs.QVariant()
@@ -878,7 +878,7 @@ LuaChongzhen_o = sgs.CreateTriggerSkill {
 			local resp = data:toCardResponse()
 			local dest = resp.m_who
 			local card = resp.m_card
-			if card:getSkillName() == "LuaLongzhen_o" then
+			if table.contains(card:getSkillNames(), "LuaLongzhen_o") then
 				if dest and not dest:isKongcheng() then
 					local ai_data = sgs.QVariant()
 					ai_data:setValue(dest)
@@ -892,7 +892,7 @@ LuaChongzhen_o = sgs.CreateTriggerSkill {
 		elseif event == sgs.TargetConfirmed then
 			local use = data:toCardUse()
 			if use.from:objectName() == player:objectName() then
-				if use.card:getSkillName() == "LuaLongzhen_o" then
+				if table.contains(use.card:getSkillNames(), "LuaLongzhen_o") then
 					local targets = use.to
 					for _, dest in sgs.qlist(targets) do
 						if not dest:isKongcheng() then

@@ -1,4 +1,4 @@
-extension = sgs.Package("extra", sgs.Package_GeneralPack)
+﻿extension = sgs.Package("extra", sgs.Package_GeneralPack)
 extension_guandu = sgs.Package("fixandadd_guandu", sgs.Package_GeneralPack)
 extension_heg = sgs.Package("new_heg", sgs.Package_GeneralPack)
 extension_hegbian = sgs.Package("heg_bian", sgs.Package_GeneralPack)
@@ -682,7 +682,7 @@ guandu_quanjiu_buff = sgs.CreateTargetModSkill{
 	name = "#guandu_quanjiu_buff",
 	residue_func = function(self, from, card, to)
         local n = 0
-        if from:hasSkill("guandu_quanjiu") and (card:getSkillName()== "guandu_quanjiu") then
+        if from:hasSkill("guandu_quanjiu") and (table.contains(card:getSkillNames(), "guandu_quanjiu")) then
             n = 999
         end
         return n
@@ -695,7 +695,7 @@ guandu_quanjiu_buff2 = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if event==sgs.CardUsed then
 			local use = data:toCardUse()
-			if use.card:isKindOf("Slash") and use.card:getSkillName() == "guandu_quanjiu" and use.m_addHistory then
+			if use.card:isKindOf("Slash") and table.contains(use.card:getSkillNames(), "guandu_quanjiu") and use.m_addHistory then
 				room:addPlayerHistory(player, use.card:getClassName(),-1)
 			end
 		end
@@ -1228,7 +1228,7 @@ GuanduOnTrigger = sgs.CreateTriggerSkill{
 					end
 				end
 				if sj == "gd_jianshoudaizhan" then
-					if card and card:getSkillName() == "gd_jianshou" then
+					if card and table.contains(card:getSkillNames(), "gd_jianshou") then
 						room:addPlayerMark(player, "&gd_jianshoudaizhan-SelfClear")
 						room:addPlayerMark(player, "gd_jianshoudaizhan-SelfClear")
 					end
@@ -1674,7 +1674,7 @@ heg_longdan_tr = sgs.CreateTriggerSkill{
             local effect = data:toCardEffect()
 			if effect.card and not effect.card:isKindOf("Slash") then return false end
             if  effect.to:hasSkill("heg_longdan") or effect.from:hasSkill("heg_longdan")  then
-                if effect.from:hasSkill("heg_longdan") and effect.card and effect.card:getSkillName() == "heg_longdan" and player:objectName() == effect.from:objectName() then
+                if effect.from:hasSkill("heg_longdan") and effect.card and table.contains(effect.card:getSkillNames(), "heg_longdan") and player:objectName() == effect.from:objectName() then
                     local target = room:askForPlayerChosen(player, room:getOtherPlayers(effect.to), "heg_longdan", "heg_longdan-invoke", true, true)
                     if not target then return false end
                     local damage = sgs.DamageStruct()
@@ -1683,7 +1683,7 @@ heg_longdan_tr = sgs.CreateTriggerSkill{
 						damage.damage = 1
 						room:damage(damage)
                 end
-                if effect.to:hasSkill("heg_longdan") and effect.offset_card and effect.offset_card:getSkillName() == "heg_longdan" then
+                if effect.to:hasSkill("heg_longdan") and effect.offset_card and table.contains(effect.offset_card:getSkillNames(), "heg_longdan") then
                     local target = room:askForPlayerChosen(effect.to, room:getOtherPlayers(effect.from), "heg_longdan_recover", "heg_longdan-invoke", true, true)
                     if not target then return false end
                     local recover = sgs.RecoverStruct()
@@ -1799,7 +1799,7 @@ heg_duanliangTargetMod = sgs.CreateTargetModSkill{
 	name = "#heg_duanliangTargetMod",
 	pattern = "SupplyShortage",
 	distance_limit_func = function(self, from, card)
-		if from:hasSkill("heg_duanliang") and card and card:getSkillName() == "heg_duanliang" then
+		if from:hasSkill("heg_duanliang") and card and table.contains(card:getSkillNames(), "heg_duanliang") then
 			return 999
 		else
 			return 0
@@ -2121,7 +2121,7 @@ heg_shensuSlash = sgs.CreateTargetModSkill{
 	name = "#heg_shensuSlash" ,
 	pattern = "Slash" ,
 	distance_limit_func = function(self, player, card)
-		if player:hasSkill("heg_shensu") and (card:getSkillName() == "heg_shensu") then
+		if player:hasSkill("heg_shensu") and (table.contains(card:getSkillNames(), "heg_shensu")) then
 			return 1000
 		else
 			return 0
@@ -2895,7 +2895,7 @@ heg_nos_guishu = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local use = data:toCardUse()
-		if use.card and use.card:getSkillName() == "heg_nos_guishu" then
+		if use.card and table.contains(use.card:getSkillNames(), "heg_nos_guishu") then
 			if player:getMark("heg_nos_guishu") == 1 then
 				room:setPlayerMark(player, "heg_nos_guishu", 2)
 				room:changeTranslation(player, "heg_nos_guishu", 2)
@@ -3432,7 +3432,7 @@ bf_qice = sgs.CreateTriggerSkill{
 	events = {sgs.CardFinished},
 	on_trigger = function(self, event, player, data, room)
 		local use = data:toCardUse()
-		if use.card:getSkillName() == "bf_qice" and use.card:getTypeId() ~= 0 and use.from then
+		if table.contains(use.card:getSkillNames(), "bf_qice") and use.card:getTypeId() ~= 0 and use.from then
 			if room:askForSkillInvoke(use.from, "ChangeGeneral", data) then
 				ChangeGeneral(room, use.from, "bf_xunyou")
 			end
@@ -3915,7 +3915,7 @@ bf_yigui = sgs.CreateTriggerSkill{
 bf_yigui_prohibit = sgs.CreateProhibitSkill{
     name = "#bf_yigui_prohibit",
     is_prohibited = function(self, from, to, card)
-		if from:hasSkill("bf_yigui") and card and card:getSkillName() == "bf_yigui" and to and card:hasFlag("bf_yiguiusing") then
+		if from:hasSkill("bf_yigui") and card and table.contains(card:getSkillNames(), "bf_yigui") and to and card:hasFlag("bf_yiguiusing") then
         	return not card:hasFlag(to:getKingdom())
 		end
     end,

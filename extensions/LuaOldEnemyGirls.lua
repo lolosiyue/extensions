@@ -1,4 +1,4 @@
-module("extensions.LuaOldEnemyGirls", package.seeall)
+﻿module("extensions.LuaOldEnemyGirls", package.seeall)
 extension = sgs.Package("LuaOldEnemyGirls")
 
 sgs.LoadTranslationTable {
@@ -409,7 +409,7 @@ LuaLianzhanTest = sgs.CreateTriggerSkill {
 		local effect = data:toCardEffect()
 		for _, source in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
 			if source and source:getPhase() == sgs.Player_NotActive then
-				if effect.card and effect.card:getSkillName() == "establishOECard" then
+				if effect.card and table.contains(effect.card:getSkillNames(), "establishOECard") then
 					room:notifySkillInvoked(source, self:objectName())
 					local log = sgs.LogMessage()
 					log.type = "#TriggerSkill"

@@ -1,4 +1,4 @@
-yongjian = sgs.Package("yongjian",sgs.Package_CardPack)
+﻿yongjian = sgs.Package("yongjian",sgs.Package_CardPack)
 local ZhongdanEvent = false
 local ZhongdanEvent_reward = false
 local Wenhe_event_only = false --文和乱武随机事件
@@ -2937,7 +2937,7 @@ WenheOnTrigger = sgs.CreateTriggerSkill{
 					end
 			else
 				for i,c in sgs.qlist(player:getHandcards())do
-					if c:getSkillName()=="wl_yananzhendu" then
+					if table.contains(c:getSkillNames(), "wl_yananzhendu") then
     		    		local hw = sgs.CardList()
 						hw:append(c)
 						room:filterCards(player,hw,true)

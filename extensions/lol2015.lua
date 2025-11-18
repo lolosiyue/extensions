@@ -1,4 +1,4 @@
-module("extensions.lol2015",package.seeall)--【NeonFire LOL 0519】for 0405 by NeonFire
+﻿module("extensions.lol2015",package.seeall)--【NeonFire LOL 0519】for 0405 by NeonFire
 extension = sgs.Package("lol2015")
 
 function GetColor(card)
@@ -535,7 +535,7 @@ lol_hbss_r = sgs.CreateTriggerSkill{
 lol_hbss_r_dis = sgs.CreateTargetModSkill{
 	name = "#lol_hbss_r_dis",
 	distance_limit_func = function(self, from, card)
-		if from:hasSkill("lol_hbss_r") and card:getSkillName() == "lol_hbss_r" then return 1000 end
+		if from:hasSkill("lol_hbss_r") and table.contains(card:getSkillNames(), "lol_hbss_r") then return 1000 end
 	end
 }
 lol_hbss:addSkill(lol_hbss_q)
@@ -2559,7 +2559,7 @@ lol_bzll_r = sgs.CreateTriggerSkill{
 lol_bzll_r_dis = sgs.CreateTargetModSkill{
 	name = "#lol_bzll_r_dis",
 	distance_limit_func = function(self, from, card)
-		if from:hasSkill("lol_bzll_r") and card:getSkillName() == "lol_bzll_r" then return 1000 end
+		if from:hasSkill("lol_bzll_r") and table.contains(card:getSkillNames(), "lol_bzll_r") then return 1000 end
 	end
 }
 lol_bzll:addSkill(lol_bzll_q)

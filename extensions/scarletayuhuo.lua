@@ -1,4 +1,4 @@
-extension = sgs.Package("scarletayuhuo", sgs.Package_GeneralPack)
+﻿extension = sgs.Package("scarletayuhuo", sgs.Package_GeneralPack)
 extension_sl = sgs.Package("scarletyuhuoskillList", sgs.Package_GeneralPack)
 extension_jx = sgs.Package("scarletbcuohuojixin", sgs.Package_GeneralPack)
 extension_bf = sgs.Package("scarletchoujibofa", sgs.Package_GeneralPack)
@@ -99,7 +99,7 @@ s_anrenSlash = sgs.CreateTargetModSkill{
 	name = "#s_anren-slash" ,
 	pattern = "Slash" ,
 	distance_limit_func = function(self, player, card)
-		if player:hasSkill("s_anren") and (card:getSkillName() == "s_anren") then
+		if player:hasSkill("s_anren") and (table.contains(card:getSkillNames(), "s_anren")) then
 			return 1000
 		else
 			return 0
@@ -430,7 +430,7 @@ s_fire_swordskill_tg = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 	local room = player:getRoom()
 		local damage = data:toDamage()
-		if damage.card and damage.card:getSkillName() == "s_fire_sword" and damage.to:hasFlag("s_fire_sword_target") then 
+		if damage.card and table.contains(damage.card:getSkillNames(), "s_fire_sword") and damage.to:hasFlag("s_fire_sword_target") then 
 		local list = room:getOtherPlayers(damage.to)
 		for _,q in sgs.qlist(list) do
 				if q:hasFlag("s_fire_sword_target") then 
@@ -981,7 +981,7 @@ s_w_yongjinWork = sgs.CreateTriggerSkill{
 		if event == sgs.CardResponded then
 			local resp = data:toCardResponse()
 			local card = resp.m_card
-			if card:getSkillName() == "s_w_yongjin" then
+			if table.contains(card:getSkillNames(), "s_w_yongjin") then
 				if card:isKindOf("Slash") then
 					player:loseMark("&s_w_yongjin", 1)
 				end
@@ -989,7 +989,7 @@ s_w_yongjinWork = sgs.CreateTriggerSkill{
 		elseif event == sgs.TargetConfirmed then
 			local use = data:toCardUse()
 			if use.from:objectName() == player:objectName() then
-				if use.card:getSkillName() == "s_w_yongjin" then
+				if table.contains(use.card:getSkillNames(), "s_w_yongjin") then
 					if use.card:isKindOf("Slash") then
 						player:loseMark("&s_w_yongjin", 1)
 						room:broadcastSkillInvoke("s_w_yongjin")
@@ -1013,7 +1013,7 @@ s_w_zhituiWork = sgs.CreateTriggerSkill{
 		if event == sgs.CardResponded then
 			local resp = data:toCardResponse()
 			local card = resp.m_card
-			if card:getSkillName() == "s_w_zhitui" then
+			if table.contains(card:getSkillNames(), "s_w_zhitui") then
 				if card:isKindOf("Jink") then
 					player:loseMark("&s_w_zhitui", 1)
 				elseif card:isKindOf("Peach") then
@@ -1026,7 +1026,7 @@ s_w_zhituiWork = sgs.CreateTriggerSkill{
 		elseif event == sgs.TargetConfirmed then
 			local use = data:toCardUse()
 			if use.from:objectName() == player:objectName() then
-				if use.card:getSkillName() == "s_w_zhitui" then
+				if table.contains(use.card:getSkillNames(), "s_w_zhitui") then
 					if use.card:isKindOf("Peach") then
 						player:loseMark("&s_w_zhitui", 1)
 						room:broadcastSkillInvoke("s_w_zhitui", math.random(2))
@@ -1353,7 +1353,7 @@ s_w_wushuang = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if event == sgs.CardUsed then
 			local use = data:toCardUse()
-			if use.card and use.card:isKindOf("Jink") and use.whocard and use.whocard:getSkillName() == "s_w_wushuang" and use.card:getSuit() ~= use.whocard:getSuit() then
+			if use.card and use.card:isKindOf("Jink") and use.whocard and table.contains(use.whocard:getSkillNames(), "s_w_wushuang") and use.card:getSuit() ~= use.whocard:getSuit() then
 				if use.who and use.who:hasSkill(self:objectName()) then
 					local log = sgs.LogMessage()
 					log.from = use.who
@@ -1368,7 +1368,7 @@ s_w_wushuang = sgs.CreateTriggerSkill{
 					data:setValue(use)
 				end
 			end
-			if use.card and use.card:isKindOf("Slash") and use.card:getSkillName() == "s_w_wushuang" then
+			if use.card and use.card:isKindOf("Slash") and table.contains(use.card:getSkillNames(), "s_w_wushuang") then
 				room:setPlayerMark(use.from, self:objectName().."-PlayClear", 1)
 			end
 		end
@@ -3992,7 +3992,7 @@ s2_gn_nixi = sgs.CreateTriggerSkill{
 				end
 		elseif event == sgs.TargetSpecified then 
 		local use = data:toCardUse()
-		if use.card:getSkillName() == "s2_gn_nixi" then 
+		if table.contains(use.card:getSkillNames(), "s2_gn_nixi") then 
 		player:loseMark("&s2_jie")
 		end
 		end
@@ -4856,7 +4856,7 @@ s2_guimou = sgs.CreateTriggerSkill{
 					room:setPlayerMark(player, "&s2_guimouUsed+:+" .. card:objectName() .. "-".. player:getPhase() .."Clear", 1)
 
 				end
-				if card:getSkillName() == "s2_guimou" then
+				if table.contains(card:getSkillNames(), "s2_guimou") then
 					room:setPlayerFlag(player,"s2_guimouused")
 					room:setPlayerFlag(player,"-s2_guimoux")
 				end
@@ -7063,7 +7063,7 @@ s2_qiangji = sgs.CreateFilterSkill{
 s2_qiangjiTargetMod = sgs.CreateTargetModSkill{
 	name = "#s2_qiangji-target",
 	distance_limit_func = function(self, from, card)
-		if from:hasSkill("s2_qiangji") and (card:getSuit() == sgs.Card_Heart) and card:isKindOf("Slash") and card:getSkillName() == "s2_qiangji" then
+		if from:hasSkill("s2_qiangji") and (card:getSuit() == sgs.Card_Heart) and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "s2_qiangji") then
 			return 1000
 		else
 			return 0
@@ -11756,7 +11756,7 @@ s3_youlong = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if event == sgs.CardResponded then
 	        	local resp = data:toCardResponse()
-	        	if resp.m_card:getSkillName() == "s3_youlong" and resp.m_who and (not resp.m_who:isKongcheng()) then
+	        	if table.contains(resp.m_card:getSkillNames(), "s3_youlong") and resp.m_who and (not resp.m_who:isKongcheng()) then
 		            	local _data = sgs.QVariant()
 				_data:setValue(resp.m_who)
 		                if player:canDiscard(player, "he") and player:askForSkillInvoke(self:objectName(), _data) then
@@ -11769,7 +11769,7 @@ s3_youlong = sgs.CreateTriggerSkill{
 	        	end
 	        elseif event == sgs.TargetSpecified then
 	            local use = data:toCardUse()
-	            if use.card:getSkillName() == "s3_youlong" then
+	            if table.contains(use.card:getSkillNames(), "s3_youlong") then
 	                for _, p in sgs.qlist(use.to) do
 	                	if p:isKongcheng() then continue end
 	                	local _data = sgs.QVariant()
@@ -11788,7 +11788,7 @@ s3_youlong = sgs.CreateTriggerSkill{
 	            end
 				elseif event == sgs.CardUsed then
 				local use = data:toCardUse()
-	            if use.card:getSkillName() == "s3_youlong" and use.whocard then
+	            if table.contains(use.card:getSkillNames(), "s3_youlong") and use.whocard then
 					if use.who:isKongcheng() then return false end
 	                	local _data = sgs.QVariant()
 				_data:setValue(use.who)
@@ -12757,7 +12757,7 @@ s3_yt_zhentui_t = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if event == sgs.CardResponded then
 	        	local resp = data:toCardResponse()
-	        	if resp.m_card:getSkillName() == "s3_yt_baier" and player:hasSkill("s3_yt_zhentui")  then
+	        	if table.contains(resp.m_card:getSkillNames(), "s3_yt_baier") and player:hasSkill("s3_yt_zhentui")  then
 				      room:addPlayerMark(player, "s3_yt_zhentui")
 					  if player:getMark("s3_yt_zhentui") == 2 then
 					  local current = room:getCurrent()
@@ -12768,7 +12768,7 @@ s3_yt_zhentui_t = sgs.CreateTriggerSkill{
 	        	end
 	        elseif event == sgs.TargetSpecified then
 	            local use = data:toCardUse()
-	            if use.card:getSkillName() == "s3_yt_baier" and player:hasSkill("s3_yt_zhentui") then
+	            if table.contains(use.card:getSkillNames(), "s3_yt_baier") and player:hasSkill("s3_yt_zhentui") then
 	               room:addPlayerMark(player, "s3_yt_zhentui")
 				   if player:getMark("s3_yt_zhentui") == 2 then
 					  local current = room:getCurrent()
@@ -12969,7 +12969,7 @@ s3_yt_shixuMod = sgs.CreateTargetModSkill{
 s3_yt_huangyiProhibit = sgs.CreateProhibitSkill{
 	name = "#s3_yt_huangyiProhibit" ,
 	is_prohibited = function(self, from, to, card)
-		if card:getSkillName() == "s3_yt_huangyi" then
+		if table.contains(card:getSkillNames(), "s3_yt_huangyi") then
 			if from:hasSkill("s3_yt_huangyi") then
 				return not to:hasFlag("s3_yt_huangyi_T")
 			end
@@ -15842,7 +15842,7 @@ s3_fans_shangji = sgs.CreateTriggerSkill{
 s3_fans_yunceProhibit = sgs.CreateProhibitSkill{
 	name = "#s3_fans_yunceProhibit" ,
 	is_prohibited = function(self, from, to, card)
-		if card:getSkillName() == "s3_fans_yunce" then
+		if table.contains(card:getSkillNames(), "s3_fans_yunce") then
 			if from:hasSkill("s3_fans_yunce") then
 				return not to:hasFlag("s3_fans_yunce_T")
 			end
