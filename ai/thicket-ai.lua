@@ -153,6 +153,13 @@ sgs.ai_skill_invoke.zaiqi = function(self,data)
 	return self.player:getLostHp()>=lostHp
 end
 
+sgs.ai_skill_defense.zaiqi = function(self, player)
+	if player:getHp()>1 then
+		return player:getLostHp()*0.5
+	end
+	return 0
+end
+
 sgs.ai_cardneed.lieren = function(to,card,self)
 	return isCard("Slash",card,to) and getKnownCard(to,self.player,"Slash",true)==0
 end
@@ -915,6 +922,9 @@ sgs.ai_skill_invoke.guixin = function(self,data)
 	end
 end
 
+sgs.ai_skill_defense.guixin = function(self, player)
+	return player:aliveCount()-1
+end
 sgs.ai_need_damaged.guixin = function(self,attacker,player)
 	if self.room:alivePlayerCount()<=3 or player:hasSkill("manjuan") then return false end
 	local diaochan = self.room:findPlayerBySkillName("lihun")

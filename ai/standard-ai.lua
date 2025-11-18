@@ -568,6 +568,13 @@ sgs.ai_use_revises.nosrende = function(self,card,use)
 	end
 end
 
+sgs.ai_skill_defense.nosrende = function(self, player)
+	if player:getHp()>2 and player:getHandcardNum()>1 then
+		return 1
+	end
+	return 0
+end
+
 function sgs.ai_cardneed.nosjizhi(to,card)
 	return card:isNDTrick()
 end
@@ -2033,6 +2040,7 @@ sgs.ai_use_priority.QingnangCard = 4.2
 sgs.ai_card_intention.QingnangCard = -100
 
 sgs.dynamic_value.benefit.QingnangCard = true
+sgs.ai_skill_defense.qingnang = -2
 
 local gdlonghun_skill={}
 gdlonghun_skill.name="gdlonghun"
@@ -2932,6 +2940,13 @@ sgs.ai_use_revises.rende = function(self,card,use)
 		or card:getTypeId()==3 and self:getSameEquip(card)
 		then return false end
 	end
+end
+
+sgs.ai_skill_defense.rende = function(self, player)
+	if player:getHp()>2 and player:getHandcardNum()>1 then
+		return 1
+	end
+	return 0
 end
 
 sgs.ai_choicemade_filter.cardUsed.JijiangCard = function(self,player,carduse)
@@ -4677,6 +4692,8 @@ sgs.ai_card_intention.JieyinCard = function(self,card,from,tos)
 end
 
 sgs.dynamic_value.benefit.JieyinCard = true
+
+sgs.ai_skill_defense.jieyin = -2.3
 
 sgs.xiaoji_keep_value = {
 	Peach = 6,

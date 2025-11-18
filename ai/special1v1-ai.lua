@@ -468,6 +468,13 @@ sgs.ai_skill_invoke.kofkuanggu = function(self,data)
 	return zhangjiao and self:isFriend(zhangjiao) and not zhangjiao:isNude()
 end
 
+sgs.ai_skill_defense.kofkuanggu = function(self, player)
+	if player:getHp()>1 then
+		return 1
+	end
+	return 0
+end
+
 local puji_skill = {}
 puji_skill.name = "puji"
 table.insert(sgs.ai_skills,puji_skill)
@@ -514,6 +521,13 @@ sgs.ai_card_intention.PujiCard = function(self,card,from,tos)
 	local to = tos[1]
 	local em_prompt = {"cardChosen","puji",tostring(self.puji_id_choice),to:objectName()}
 	sgs.ai_choicemade_filter.cardChosen.snatch(self,nil,em_prompt)
+end
+
+sgs.ai_skill_defense.wanrong = function(self, player)
+	if not hasManjuanEffect(player) then
+		return 0.5
+	end
+	return 0
 end
 
 sgs.ai_skill_use["@@niluan"] = function(self,prompt)

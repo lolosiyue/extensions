@@ -949,6 +949,8 @@ sgs.ai_card_intention.PaiyiCard = function(self,card,from,tos)
 	end
 end
 
+sgs.ai_skill_defense.paiyi = 1.5
+
 sgs.ai_skill_invoke.noszhenggong = function(self,data)
 	local from = data:toPlayer()
 	return self:doDisCard(from,"e",true)

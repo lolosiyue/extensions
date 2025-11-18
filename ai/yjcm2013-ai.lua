@@ -30,6 +30,7 @@ sgs.ai_can_damagehp.chengxiang = function(self,from,card,to)
 	return to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
 	and self:canLoseHp(from,card,to)
 end
+sgs.ai_skill_defense.chengxiang = 2
 
 local junxing_skill = {}
 junxing_skill.name = "junxing"

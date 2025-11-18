@@ -160,6 +160,8 @@ sgs.ai_skill_choice.jilei = function(self,choices)
 	end
 end
 
+sgs.ai_skill_defense.yongsi = -2
+
 local function yuanhu_validate(self,equip_type,is_handcard)
 	local is_SilverLion = false
 	if equip_type=="SilverLion" then
@@ -951,6 +953,13 @@ sgs.ai_skill_askforag.aocai = function(self,card_ids)
 		return -1
 	end
 	return card_ids[1]
+end
+
+sgs.ai_skill_defense.aocai = function(self, player)
+	if not player:hasFlag("CurrentPlayer") then
+		return 0.5
+	end
+	return 0
 end
 
 function SmartAI:getSaveNum(isFriend)

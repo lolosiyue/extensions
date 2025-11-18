@@ -3472,6 +3472,9 @@ sgs.ai_skill_discard["Haixing"]          = function(self, discard_num, min_num, 
 	return {}
 end
 
+sgs.ai_skill_defense.se_Fanshe = function(self, player)
+	return player:getCards("he"):length()
+end
 
 sgs.ai_skill_discard["se_Fanshe"] = function(self, discard_num, min_num, optional, include_equip)
 	local damage = self.room:getTag("FansheDamage"):toDamage()
@@ -4179,7 +4182,15 @@ sgs.ai_skill_playerchosen.SE_Zhihui = function(self, targets)
 	return nil
 end
 
-
+sgs.ai_skill_defense.SE_Zhihui = function(self, player)
+	local defense = 0
+	for _, p in sgs.qlist(global_room:getOtherPlayers(player)) do
+		if p:getMark("@Geass") > 0 then
+			defense = defense + 1
+		end
+	end
+	return defense
+end
 
 SE_Geass_skill = {}
 SE_Geass_skill.name = "SE_Geass"
