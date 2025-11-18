@@ -119,72 +119,80 @@ end
 function SmartAI:getDefenseSlash(to)
 	to = to or self.player
 	if sgs.turncount<1 then return sgs.getValue(to) end
-	local knownJink = getCardsNum("Jink",to,self.player)
-	local defense = knownJink*1.2
-	local hasEightDiagram = not IgnoreArmor(self.player,to) and to:hasArmorEffect("EightDiagram")
-	if hasEightDiagram then
-		defense = defense+1.3
-		if to:hasSkill("tiandu") then defense = defense+0.6 end
-		if to:hasSkill("gushou") then defense = defense+0.4 end
-		if to:hasSkill("leiji") then defense = defense+0.4 end
-		if to:hasSkill("nosleiji") then defense = defense+0.4 end
-		if to:hasSkill("noszhenlie") then defense = defense+0.2 end
-		if to:hasSkill("hongyan") then defense = defense+0.2 end
-	else
-		if to:hasSkill("jijiu") then defense = defense-3 end
-		if to:hasSkill("dimeng") then defense = defense-2.5 end
-		if knownJink<1 and to:hasSkill("guzheng") then defense = defense-2.5 end
-		if to:hasSkill("qiaobian") then defense = defense-2.4 end
-		if to:hasSkill("jieyin") then defense = defense-2.3 end
-		if to:hasSkills("noslijian|lijian") then defense = defense-2.2 end
-		if to:hasSkill("nosmiji") and to:isWounded() then defense = defense-1.5 end
-		if knownJink<1 and to:hasSkill("xiliang") then defense = defense-2 end
-		if to:hasSkill("shouye") then defense = defense-2 end
-	end
-	if knownJink>0 then
-		if to:hasSkill("mingzhe") then defense = defense+0.2 end
-		if to:hasSkill("gushou") then defense = defense+0.2 end
-		if hasTuntianEffect(to, true) then defense = defense+1.5 end
-	end
-	if to:getPhase()==sgs.Player_NotActive and to:hasSkill("aocai") then defense = defense+0.5 end
-	if to:hasSkill("wanrong") and not hasManjuanEffect(to) then defense = defense+0.5 end
-	local hujiaJink = 0
-	if to:hasLordSkill("hujia") then
-		local caocao = self.room:findPlayerByObjectName(to:objectName())
-		if caocao then
-			for _,liege in sgs.qlist(global_room:getLieges("wei", caocao))do
-				if self:compareRoleEvaluation(liege,"rebel","loyalist")==self:compareRoleEvaluation(to,"rebel","loyalist") then
-					hujiaJink = hujiaJink+getCardsNum("Jink",liege,self.player)
-					if liege:hasArmorEffect("EightDiagram") then hujiaJink = hujiaJink+0.8 end
+	if not self:canLiegong(to) then
+		local knownJink = getCardsNum("Jink",to,self.player)
+		local defense = knownJink*1.2
+		local hasEightDiagram = not IgnoreArmor(self.player,to) and to:hasArmorEffect("EightDiagram")
+		if hasEightDiagram then
+			defense = defense+1.3
+			if to:hasSkill("tiandu") then defense = defense+0.6 end
+			if to:hasSkill("gushou") then defense = defense+0.4 end
+			if to:hasSkill("leiji") then defense = defense+0.4 end
+			if to:hasSkill("nosleiji") then defense = defense+0.4 end
+			if to:hasSkill("noszhenlie") then defense = defense+0.2 end
+			if to:hasSkill("hongyan") then defense = defense+0.2 end
+		else
+			if to:hasSkill("jijiu") then defense = defense-3 end
+			if to:hasSkill("dimeng") then defense = defense-2.5 end
+			if knownJink<1 and to:hasSkill("guzheng") then defense = defense-2.5 end
+			if to:hasSkill("qiaobian") then defense = defense-2.4 end
+			if to:hasSkill("jieyin") then defense = defense-2.3 end
+			if to:hasSkills("noslijian|lijian") then defense = defense-2.2 end
+			if to:hasSkill("nosmiji") and to:isWounded() then defense = defense-1.5 end
+			if knownJink<1 and to:hasSkill("xiliang") then defense = defense-2 end
+			if to:hasSkill("shouye") then defense = defense-2 end
+		end
+		if knownJink>0 then
+			if to:hasSkill("mingzhe") then defense = defense+0.2 end
+			if to:hasSkill("gushou") then defense = defense+0.2 end
+			if hasTuntianEffect(to, true) then defense = defense+1.5 end
+		end
+		if to:getPhase()==sgs.Player_NotActive and to:hasSkill("aocai") then defense = defense+0.5 end
+		if to:hasSkill("wanrong") and not hasManjuanEffect(to) then defense = defense+0.5 end
+		local hujiaJink = 0
+		if to:hasLordSkill("hujia") then
+			local caocao = self.room:findPlayerByObjectName(to:objectName())
+			if caocao then
+				for _,liege in sgs.qlist(global_room:getLieges("wei", caocao))do
+					if self:compareRoleEvaluation(liege,"rebel","loyalist")==self:compareRoleEvaluation(to,"rebel","loyalist") then
+						hujiaJink = hujiaJink+getCardsNum("Jink",liege,self.player)
+						if liege:hasArmorEffect("EightDiagram") then hujiaJink = hujiaJink+0.8 end
+					end
+				end
+				defense = defense+hujiaJink
+			end
+		end
+		--add
+		if to:hasSkill("Lichang") then
+			local list = global_room:getAlivePlayers()
+			local maxhp = true
+			for _, p in sgs.qlist(list) do
+				if p:getHp() > self.player:getHp() then
+					maxhp = false
+					break
 				end
 			end
-			defense = defense+hujiaJink
-		end
-	end
-	--add
-	if to:hasSkill("Lichang") then
-		local list = global_room:getAlivePlayers()
-		local maxhp = true
-		for _, p in sgs.qlist(list) do
-			if p:getHp() > self.player:getHp() then
-				maxhp = false
-				break
+			if not maxhp then
+				defense = defense + 5
 			end
 		end
-		if not maxhp then
-			defense = defense + 5
+		if to:hasSkill("fatejiejie") then defense = defense + 0.2 end
+		if to:getMark("@tied")>0 and not self.player:hasSkill("jueqing") then defense = defense+1 end
+		if to:hasSkill("qhstandardkongcheng") and to:getHandcardNum() < 2 then defense = defense+5 end
+		if to:hasSkill("sr_youdi") and not to:faceUp() then defense = defense+5 end
+	end
+		
+	-- Extended skills using aiConnect
+	for _,sk in sgs.list(aiConnect(to))do
+		local def_func = sgs.ai_defense_slash[sk]
+		if type(def_func)=="function" then
+			local def_value = def_func(self, to, self.player)
+			if type(def_value)=="number" then
+				defense = defense + def_value
+			end
 		end
 	end
-	if to:hasSkill("fatejiejie") then defense = defense + 0.2 end
-	if to:getMark("@tied")>0 and not self.player:hasSkill("jueqing") then defense = defense+1 end
-	if to:hasSkill("qhstandardkongcheng") and to:getHandcardNum() < 2 then defense = defense+5 end
-	if to:hasSkill("sr_youdi") and not to:faceUp() then defense = defense+5 end
 
-	if self.player:getPhase()==sgs.Player_Play and self.player:canSlashWithoutCrossbow() then
-		local hcard = to:getHandcardNum()
-		if self.player:hasSkill("liegong") and (hcard>=self.player:getHp() or hcard<=self.player:getAttackRange()) then defense = 0 end
-		if hcard>=self.player:getHp() and self.player:hasSkill("kofliegong") then defense = 0 end
-	end
 	local jiangqin = global_room:findPlayerBySkillName("niaoxiang")
 	local need_double_jink = self.player:hasSkills("wushuang|drwushuang")
 				or self.player:hasSkill("roulin") and to:isFemale()

@@ -1866,7 +1866,9 @@ sgs.ai_skill_cardask["@rushB_wushuang-jink"] = function(self,data,pattern,target
 	local _data = sgs.QVariant()
 	_data:setValue(effect)
 	local slash = self.room:getTag("SlashData"):toCardEffect()
-	if sgs.ai_skill_cardask["@multi-jink-start"](self,data,"jink",data:toCardEffect().from, nil, slash.offset_num) == "." then return "." end
+	if slash and slash.offset_num > 1 then
+		if sgs.ai_skill_cardask["@multi-jink-start"](self,data,"jink",data:toCardEffect().from, nil, slash.offset_num) == "." then return "." end
+	end
 	return sgs.ai_skill_cardask["slash-jink"](self,data,"jink",data:toCardEffect().from)
 end
 
