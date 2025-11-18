@@ -2663,6 +2663,17 @@ sgs.ai_skill_playerchosen.s2_huzhu = function(self, targets)
 end
 sgs.ai_playerchosen_intention.s2_huzhu = -80
 
+sgs.ai_skill_defense["@s2_huzhu"] = function(self, player)
+	local defense = 0
+	for _, p in sgs.qlist(global_room:getOtherPlayers(player)) do
+		if p:hasSkill("s2_huzhu") then
+			defense = defense + p:getHp()
+			break
+		end
+	end
+	return defense
+end
+
 sgs.ai_skill_playerchosen.s2_xiaoguo = function(self, targets)
 	local target = self:findPlayerToDamage(1, self.player, sgs.DamageStruct_Normal, targets, false, 0)[1]
 

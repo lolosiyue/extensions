@@ -374,38 +374,14 @@ function sgs.getDefense(player,start)--状态值
 	end
 	if not player:faceUp() then defense = defense-1 end
 	if player:getMark("@skill_invalidity")>0 then defense = defense-5 end
-		if player:hasLordSkill("shichou") and player:getMark("xhate")>0 then
-			for _,p in sgs.qlist(player:getAliveSiblings())do
-				if p:getMark("hate_"..player:objectName())>0 and p:getMark("@hate_to")>0
-				then defense = defense+p:getHp() break end
-			end
+	if player:hasLordSkill("shichou") and player:getMark("xhate")>0 then
+		for _,p in sgs.qlist(player:getAliveSiblings())do
+			if p:getMark("hate_"..player:objectName())>0 and p:getMark("@hate_to")>0
+			then defense = defense+p:getHp() break end
 		end
+	end
 
 	--add
-	if player:hasSkill("Shouyang_ed") and player:getMark("@Tomoyo") > 0 then
-		for _, p in sgs.qlist(global_room:getOtherPlayers(player)) do
-			if p:hasSkill("Shouyang") then
-				defense = defense + p:getHp()
-				break
-			end
-		end
-	end
-	if player:hasSkill("se_Fanshe") then defense = defense + player:getCards("he"):length() end
-	if player:hasSkills("SE_Zhihui") then
-		for _, p in sgs.qlist(global_room:getOtherPlayers(player)) do
-			if p:getMark("@Geass") > 0 then
-				defense = defense + 1
-			end
-		end
-	end
-	if player:getMark("@s2_huzhu") > 0 then
-		for _, p in sgs.qlist(global_room:getOtherPlayers(player)) do
-			if p:hasSkill("s2_huzhu") then
-				defense = defense + p:getHp()
-				break
-			end
-		end
-	end
 	for _, p in sgs.qlist(player:getAliveSiblings()) do
 		if p:hasSkill("SixZhongyong") and player:getHandcardNum() < p:getHandcardNum() and beFriend(p, player) then
 			defense = defense + (p:getHandcardNum() + p:getHp()) * 0.5

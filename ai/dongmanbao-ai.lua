@@ -3413,7 +3413,16 @@ sgs.ai_ajustdamage_to.Shouyang_ed         = function(self, from, to, card, natur
 	end
 end
 
-
+sgs.ai_skill_defense.Shouyang_ed = function(self, player)
+	local defense = 0
+	for _, p in sgs.qlist(global_room:getOtherPlayers(player)) do
+		if p:hasSkill("Shouyang") then
+			defense = defense + p:getHp()
+			break
+		end
+	end
+	return defense
+end
 
 
 local se_diangong_skill = {}
