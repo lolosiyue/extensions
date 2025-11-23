@@ -1338,9 +1338,152 @@ sgs.LoadTranslationTable {
     [":sfofl_leyu"] = "一名角色的回合开始时，你可以弃置三张牌令其进行判定，若结果不为♥，其跳过本回合的出牌阶段。",
     ["sfofl_yuanli"] = "媛丽",
     [":sfofl_yuanli"] = "当一名角色跳过出牌阶段时，你可以与一名其他角色各摸一张牌。",
-
-
     --SX015天书乱斗
+
+--E1005 E10于赤壁星空下契约！闪耀战姬们的魔法乱舞
+    --[[
+    变身技：当你满足技能描述的条件时，你获得对应指示物。当该指示物达到上限时，你可以在对应的时间点进入变身状态；当该指示物消耗至0时，你退出变身状态。
+
+    进入变身状态：你弃置判定区所有牌，用新的武将牌替换原武将牌，两张武将牌的体力值互相单独计算。
+
+    退出变身状态：用原武将牌替换当前武将牌，两张武将牌的体力值互相单独计算。
+
+    吟唱：你需念出武将牌下的引文，然后才能执行技能后续效果。]]
+
+
+    ["sfofl_magic_zhenji"] = "甄姬[官盗]",
+    ["&sfofl_magic_zhenji"] = "甄姬",
+    ["#sfofl_magic_zhenji"] = "薄幸的美人",
+    ["illustrator:sfofl_magic_zhenji"] = "",
+    ["information:sfofl_magic_zhenji"] = "E10于赤壁星空下契约！闪耀战姬们的魔法乱舞",
+    --洛神：准备阶段，你可以进行判定，若结果为黑色，你获得该判定牌，然后你可重复此流程；你的手牌上限+X（X为你本回合因“洛神”获得的牌数）。 官正線下
+    --倾国：你可以将一张黑色手牌当做【闪】使用或打出。
+    ["sfofl_moli_zhenji"] = "魔力",
+    [":sfofl_moli_zhenji"] = "变身技（0/5），当你于摸牌阶段外获得牌时，你可以展示之，若为黑色，你获得1点魔力，结束阶段，你进行吟唱并变身。",
+    ["sfofl_magic_zhenji_henshin"] = "冻住，不许走！",
+
+    ["sfofl_magic_zhenji_change"] = "甄姬[闪耀战姬]",
+    ["&sfofl_magic_zhenji_change"] = "甄姬",
+    ["#sfofl_magic_zhenji_change"] = "闪耀战姬",
+    ["illustrator:sfofl_magic_zhenji_change"] = "",
+    ["information:sfofl_magic_zhenji_change"] = "E10于赤壁星空下契约！闪耀战姬们的魔法乱舞",
+    ["sfofl_jinghong"] = "惊鸿",
+    [":sfofl_jinghong"] = "称号与你相同的角色不因此技能获得牌后，你可以消耗1点魔力令其判定，若为黑色牌其获得并重复之；你的黑色牌无次数限制且不计入手牌上限。",
+    ["sfofl_youlong"] = "游龙",
+    [":sfofl_youlong"] = "锁定技，你造成的伤害改为冰冻伤害，受到冰冻伤害的角色直到其下个回合结束：摸牌数-1，你+1，且计算距离时+1，你-1，且不能响应你使用的牌。",
+    ["sfofl_haiyou"] = "海佑",
+    [":sfofl_haiyou"] = "称号与你相同的角色成为牌的目标时，你可以消耗1点魔力令之无效。",
+
+
+    ["sfofl_magic_woguotai"] = "吴国太[官盗]",
+    ["&sfofl_magic_woguotai"] = "吴国太",
+    ["#sfofl_magic_woguotai"] = "武烈皇后",
+    ["illustrator:sfofl_magic_woguotai"] = "",
+    ["information:sfofl_magic_woguotai"] = "E10于赤壁星空下契约！闪耀战姬们的魔法乱舞",
+    --甘露：出牌阶段限一次，你可以令两名角色交换装备区里的牌。若X大于你已损失的体力值，你须在选择角色时弃置X张牌（X为其装备区里的牌数之差）。
+    --补益：当一名角色进入濒死状态时，你可以选择其一张牌，若此牌不为基本牌，则其弃置此牌，然后回复1点体力。
+    ["sfofl_moli_woguotai"] = "魔力",
+    [":sfofl_moli_woguotai"] = "变身技（0/5），游戏开始时或当你场上的牌发生变化时，你获得1点魔力，当你失去牌时，你进行吟唱并变身。",
+    ["sfofl_magic_woguotai_henshin"] = "降临吧——属于我的真实姿态！",
+
+    ["sfofl_magic_woguotai_change"] = "吴国太[闪耀战姬]",
+    ["&sfofl_magic_woguotai_change"] = "吴国太",
+    ["#sfofl_magic_woguotai_change"] = "闪耀战姬",
+    ["illustrator:sfofl_magic_woguotai_change"] = "",
+    ["information:sfofl_magic_woguotai_change"] = "E10于赤壁星空下契约！闪耀战姬们的魔法乱舞",
+    ["sfofl_fengshou"] = "凤守",
+    [":sfofl_fengshou"] = "当你变身后，你可以重新分配与你距离为1的角色的座次，然后消耗任意魔​​力，令等量名角色受到的火焰伤害+1。",
+    ["sfofl_susheng"] = "苏生",
+    [":sfofl_susheng"] = "当称号与你相同的角色进入濒死状态时，你可以消耗任意魔​​力令其回复等量的体力和魔力，然后你摸等量张牌。",
+
+    ["sfofl_magic_ruiji"] = "芮姬[官盗]",
+    ["&sfofl_magic_ruiji"] = "芮姬",
+    ["#sfofl_magic_ruiji"] = "柔荑弄钺",
+    ["illustrator:sfofl_magic_ruiji"] = "",
+    ["information:sfofl_magic_ruiji"] = "E10于赤壁星空下契约！闪耀战姬们的魔法乱舞",
+    --妄缘：当你于回合外失去牌后，你可以将牌堆中一张非装备牌置于武将牌上，称为“妄”（每种牌名限一张，至多为游戏人数）。
+    --铃音：出牌阶段开始时，你可以获得至多X张“妄”（X为游戏轮数）。然后若“妄”的颜色均相同，本回合你可以将一张武器或防具牌当【决斗】使用，你对其他角色造成的伤害+1。
+    --俐影：每回合限一次，当你于摸牌阶段外获得牌后，你可以将这些牌交给一名其他角色，然后你摸一张牌。若你为当前回合角色，你将牌堆中的一张非装备牌置为“妄”。
+    ["sfofl_moli_ruiji"] = "魔力",
+    [":sfofl_moli_ruiji"] = "变身技（0/5），游戏开始时或当你造成或受到伤害时，你获得1点魔力；当你进入濒死状态时或发动“铃音”后，你进行吟唱并变身。",
+    ["sfofl_magic_ruiji_henshin"] = "一天是哥布林，一辈子都是哥布林！",
+
+    ["sfofl_magic_ruiji_change"] = "芮姬[闪耀战姬]",
+    ["&sfofl_magic_ruiji_change"] = "芮姬",
+    ["#sfofl_magic_ruiji_change"] = "闪耀战姬",
+    ["illustrator:sfofl_magic_ruiji_change"] = "",
+    ["information:sfofl_magic_ruiji_change"] = "E10于赤壁星空下契约！闪耀战姬们的魔法乱舞",
+    ["sfofl_shengcai"] = "圣裁",
+    [":sfofl_shengcai"] = "出牌阶段，你可消耗任意魔力，将等量张手牌当做无距离次数限制的【杀】使用，你以此法使用的【杀】造成的伤害+X（X为你本次消耗的魔力数）。",
+    ["sfofl_guanghui"] = "光辉",
+    [":sfofl_guanghui"] = "锁定技，所有进入变身状态的角色使用牌不能被非变身状态的角色响应；称号与你相同的角色造成伤害时，你获得1点魔力。",
+
+    ["sfofl_magic_lulingqi"] = "吕玲绮[官盗]",
+    ["&sfofl_magic_lulingqi"] = "吕玲绮",
+    ["#sfofl_magic_lulingqi"] = "无双虓姬",
+    ["illustrator:sfofl_magic_lulingqi"] = "",
+    ["information:sfofl_magic_lulingqi"] = "E10于赤壁星空下契约！闪耀战姬们的魔法乱舞",
+    --帼武：出牌阶段开始时，你可以展示所有手牌，若展示类型数大于0，你获得弃牌堆中的一张【杀】；大于1，此阶段你使用牌无距离限制；大于2，此阶段你使用【杀】或普通锦囊牌可以增加至多两个目标。
+    --妆戎：觉醒技，每回合结束时，若你的体力值或手牌数为1，你减1点体力上限并获得“神威”（锁定技，摸牌阶段你多摸两张牌；你的手牌上限+2）和“无双”，然后将体力回复至体力上限，并将手牌摸至体力上限。
+    ["sfofl_moli_lulingqi"] = "魔力",
+    [":sfofl_moli_lulingqi"] = "变身技（0/5），游戏开始时或当你造成1点伤害时，你获得1点魔力，准备阶段，你进行吟唱并变身。",
+    ["sfofl_magic_lulingqi_henshin"] = "Starlight Ascension！",
+
+    ["sfofl_magic_lulingqi_change"] = "吕玲绮[闪耀战姬]",
+    ["&sfofl_magic_lulingqi_change"] = "吕玲绮",
+    ["#sfofl_magic_lulingqi_change"] = "闪耀战姬",
+    ["illustrator:sfofl_magic_lulingqi_change"] = "",
+    ["information:sfofl_magic_lulingqi_change"] = "E10于赤壁星空下契约！闪耀战姬们的魔法乱舞",
+    ["sfofl_henghui"] = "恒辉",
+    [":sfofl_henghui"] = "锁定技，当你变身后，你获得任意个效果并消耗等量的魔力：1.使用【杀】的次数和造成的伤害+1；2.【杀】无距离限制且目标数+2；3.摸五张牌并弃置装备区内的所有牌。",
+    ["sfofl_moqi"] = "魔契",
+    [":sfofl_moqi"] = "魔契：每次变身限一次，出牌阶段，你可以消耗至少3点魔力并失去所有体力，然后你令“恒辉”的所有数值翻倍。若如此做，你保持变身状态直到结束阶段。",
+
+    ["sfofl_magic_dongwan"] = "董绾[官盗]",
+    ["&sfofl_magic_dongwan"] = "董绾",
+    ["#sfofl_magic_dongwan"] = "蜜言如鸩",
+    ["illustrator:sfofl_magic_dongwan"] = "",
+    ["information:sfofl_magic_dongwan"] = "E10于赤壁星空下契约！闪耀战姬们的魔法乱舞",
+    --生妒：回合开始时，你可以选择一名其他角色，其下个摸牌阶段结束后，你摸等于其摸牌数的牌。
+    --介绫：出牌阶段限一次，你可以将两张颜色不同的手牌当一张无距离次数限制的【杀】使用，结算完成后，若此【杀】造成过伤害/未造成过伤害，目标角色失去1点体力/你对目标发动一次“生妒”。
+    ["sfofl_moli_dongwan"] = "魔力",
+    [":sfofl_moli_dongwan"] = "变身技（0/5），游戏开始时或当你于摸牌阶段外获得牌时，你获得1点魔力，结束阶段，你进行吟唱并变身。",
+    ["sfofl_magic_dongwan_henshin"] = "Henshin！",
+
+    ["sfofl_magic_dongwan_change"] = "董绾[闪耀战姬]",
+    ["&sfofl_magic_dongwan_change"] = "董绾",
+    ["#sfofl_magic_dongwan_change"] = "闪耀战姬",
+    ["illustrator:sfofl_magic_dongwan_change"] = "",
+    ["information:sfofl_magic_dongwan_change"] = "E10于赤壁星空下契约！闪耀战姬们的魔法乱舞",
+    ["sfofl_shengyan"] = "圣焰",
+    [":sfofl_shengyan"] = "锁定技，你使用牌时额外结算一次，然后你消耗1点魔力或失去1点体力，对一名其他角色造成1点火焰伤害。",
+    ["sfofl_gongming"] = "共鸣",
+    [":sfofl_gongming"] = "当你消耗1点魔力后或失去1点体力后，你可以令称号与你相同的角色各摸X张牌（X为你本次变身此技能发动的次数）。",
+    
+    ["sfofl_lord_goblin"] = "哥布林领主[官盗]",
+    ["&sfofl_lord_goblin"] = "哥布林领主",
+    ["#sfofl_lord_goblin"] = "疑暴如麟",
+    ["illustrator:sfofl_lord_goblin"] = "",
+    ["information:sfofl_lord_goblin"] = "E10于赤壁星空下契约！闪耀战姬们的魔法乱舞",
+    ["sfofl_yibao"] = "疑暴",
+    [":sfofl_yibao"] = "锁定技，你造成或受到伤害后，令伤害角色摸三张牌；若你为伤害来源，随机废除受伤角色的一个装备区，然后你观看其手牌并获得其两张牌。",
+    ["sfofl_rulin"] = "如麟",
+    [":sfofl_rulin"] = "锁定技，当你将要造成致命伤害时，你防止之并改为减少其1点体力上限，你增加1点体力上限并回复等量体力。",
+    ["sfofl_kuangbao"] = "狂暴",
+    [":sfofl_kuangbao"] = "锁定技，当你造成或受到伤害时，若伤害来源手牌数大于受伤角色，此伤害+1，且此牌不计入次数。",
+    ["sfofl_feisheng"] = "飞升",
+    [":sfofl_feisheng"] = "锁定技，每个回合结束时，若你受到过至少2点伤害，你减2点体力上限且本回合结束时进行一个额外的回合。",
+     
+    ["sfofl_goblin"] = "哥布林[官盗]",
+    ["&sfofl_goblin"] = "哥布林",
+    ["#sfofl_goblin"] = "残暴掳掠",
+    ["illustrator:sfofl_goblin"] = "",
+    ["information:sfofl_goblin"] = "E10于赤壁星空下契约！闪耀战姬们的魔法乱舞",
+    ["sfofl_shiqiang"] = "恃强",
+    [":sfofl_shiqiang"] = "锁定技，你造成或受到伤害时，若受伤角色/伤害来源的手牌数小于/大于你，此伤害+1。",
+    ["sfofl_lingruo"] = "凌弱",
+    [":sfofl_lingruo"] = "锁定技，当你造成伤害后，你获得受伤角色的一张牌。",
+    --E1005 闪耀战姬
 
     
 }
@@ -11949,7 +12092,7 @@ sfofl_yizhengc = sgs.CreateTriggerSkill{
             end
         elseif event == sgs.EventPhaseChanging then
             local change = data:toPhaseChange()
-            if change.to == sgs.Player_NotActive then
+            if change.to == sgs.Player_NotActive  and player:hasSkill(self:objectName()) then
                 local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "sfofl_yizhengc-invoke", true, true)
                 if not target then return false end
                 room:setPlayerMark(target, "sfofl_yizhengc"..player:objectName(), 1)
@@ -20911,7 +21054,7 @@ sfofl_bladecartTr = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data, room)
         local use = data:toCardUse()
         if event == sgs.TargetConfirmed then
-            if use.to:contains(player) and use.card and use.card:isDamageCard() and not use.card:isKindOf("SkillCard") and player:objectName() ~= use.from:objectName() and player:hasTreasure("sfofl_bladecart") and room:askForSkillInvoke(player, self:objectName(), data) then
+            if use.to:contains(player) and use.card and use.from and use.card:isDamageCard() and not use.card:isKindOf("SkillCard") and player:objectName() ~= use.from:objectName() and player:hasTreasure("sfofl_bladecart") and room:askForSkillInvoke(player, self:objectName(), data) then
                 local judge = sgs.JudgeStruct()
                 judge.pattern = ".|"..use.card:getSuitString()
                 judge.good = true
@@ -30761,6 +30904,7 @@ sfofl_yuanli = sgs.CreateTriggerSkill {
 
 sfofl_indulgencechan:addSkill(sfofl_leyu)
 sfofl_indulgencechan:addSkill(sfofl_yuanli)
+
 
 
 --[[

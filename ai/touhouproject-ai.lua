@@ -6226,7 +6226,7 @@ end
 sgs.weapon_range.TH_Weapon_SpearTheGungnir = 5
 
 sgs.ai_canliegong_skill.TH_Weapon_SpearTheGungnir = function(self, from, to)
-	return from:getWeapon() and from:getWeapon():isKindOf("TH_Weapon_SpearTheGungnir") and from:hasEquip("TH_Weapon_SpearTheGungnir")
+	return from:getWeapon() and from:getWeapon():isKindOf("TH_Weapon_SpearTheGungnir") and from:hasWeapon("TH_Weapon_SpearTheGungnir")
 end
 -- sgs.ai_use_priority.TH_Weapon_SpearTheGungnir = 5.700
 

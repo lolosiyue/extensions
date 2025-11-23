@@ -1527,6 +1527,144 @@ end
 sgs.ai_use_priority["s4_xingyi"] = sgs.ai_use_priority.RendeCard
 sgs.dynamic_value.benefit["s4_xingyi"] = true
 
+sgs.ai_skill_invoke.s4_yuezhe = true
+sgs.ai_skill_playerchosen.s4_yuezhe_from = function(self, targets)
+    self.s4_yuezheData = {}
+    targets = sgs.QList2Table(targets)
+    self:sort(targets,"defense")
+	for _,ep in sgs.list(self.friends)do
+		if self:doDisCard(ep,"ej",true) then
+			local ejs = ep:getCards("ej")
+			ejs = self:sortByKeepValue(ejs)
+			for _,ej in sgs.list(ejs)do
+				local i = ej:getEffectiveId()
+				if self:doDisCard(ep,i,true) and (ej:isKindOf("Horse") or ej:isKindOf("DelayedTrick")) then
+					self.s4_yuezheData.cid = i
+					for _,fp in sgs.list(self.enemies)do
+                        if ep:isAdjacentTo(fp) then
+                            self.s4_yuezheData.to = fp
+                            if ej:getTypeId()==3 then
+                                local n = ej:getRealCard():toEquipCard():location()
+                                if not fp:getEquip(n) and fp:hasEquipArea(n)
+                                then return ep end
+                            else
+                                if self.player:canUse(ej,fp,true)
+                                then return ep end
+                            end
+                        end
+					end
+				end
+			end
+		end
+	end
+	for _,ep in sgs.list(self.enemies)do
+		if self:doDisCard(ep,"ej",true) then
+			local ejs = ep:getCards("ej")
+			ejs = self:sortByKeepValue(ejs,true)
+			for _,ej in sgs.list(ejs)do
+				local i = ej:getEffectiveId()
+				if self:doDisCard(ep,i,true) and (ej:isKindOf("Horse") or ej:isKindOf("DelayedTrick")) then
+					self.s4_yuezheData.cid = i
+					for _,fp in sgs.list(self.friends)do
+                        if ep:isAdjacentTo(fp) then
+						self.s4_yuezheData.to = fp
+                            if ej:getTypeId()==3 then
+                                local n = ej:getRealCard():toEquipCard():location()
+                                if not fp:getEquip(n) and fp:hasEquipArea(n)
+                                then return ep end
+                            else
+                                if self.player:canUse(ej,fp,true)
+                                then return ep end
+                            end
+                        end
+					end
+				end
+			end
+		end
+	end
+	for _,ep in sgs.list(self.room:getOtherPlayers(self.player))do
+		if self:doDisCard(ep,"ej",true) and not self:isFriend(ep) then
+			local ejs = ep:getCards("ej")
+			ejs = self:sortByKeepValue(ejs,true)
+			for _,ej in sgs.list(ejs)do
+				local i = ej:getEffectiveId()
+				if self:doDisCard(ep,i,true) and (ej:isKindOf("Horse") or ej:isKindOf("DelayedTrick")) then
+					self.s4_yuezheData.cid = i
+					for _,fp in sgs.list(self.friends)do
+                        if ep:isAdjacentTo(fp) then
+                            self.s4_yuezheData.to = fp
+                            if ej:getTypeId()==3 then
+                                local n = ej:getRealCard():toEquipCard():location()
+                                if not fp:getEquip(n) and fp:hasEquipArea(n)
+                                then return ep end
+                            else
+                                if not fp:containsTrick(ej:objectName())
+                                and self.player:canUse(ej,fp,true)
+                                then return ep end
+                            end
+                        end
+					end
+				end
+			end
+		end
+	end
+    return nil
+end
+sgs.ai_skill_playerchosen.s4_yuezhe_to = function(self, targets)
+    for _,target in sgs.list(targets)do
+		if target:objectName()==self.s4_yuezheData.to:objectName()
+		then return target end
+	end
+end
+
+sgs.ai_skill_cardchosen.s4_yuezhe = function(self,who,flags,method)
+	for _,e in sgs.list(who:getCards(flags))do
+		local id = e:getEffectiveId()
+		if id==self.s4_yuezheData.cid and (e:isKindOf("Horse") or e:isKindOf("DelayedTrick"))
+		then return id end
+	end
+    for _,e in sgs.list(who:getCards(flags))do
+        if self:doDisCard(who,e:getEffectiveId()) and (e:isKindOf("Horse") or e:isKindOf("DelayedTrick"))
+        then return e:getEffectiveId() end
+    end
+    return nil
+end
+
+sgs.ai_skill_playerschosen.s4_yuezhe = function(self, targets, max, min)
+    local id = self.player:getMark("s4_yuezhe")
+    local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+    slash:addSubcard(id)
+    slash:setSkillName("s4_yuezhe")
+    slash:deleteLater()
+	local dummy_use = self:aiUseCard(slash, dummy())
+	local enemy = sgs.SPlayerList()
+	if dummy_use.card and dummy_use.to:length() > 0 then
+		for _, p in sgs.qlist(dummy_use.to) do
+			if self:isEnemy(p) and targets:contains(p) then
+				enemy:append(p)
+				if enemy:length() >= max then
+					break
+				end
+			end
+		end
+	end
+	return enemy
+end
+
+sgs.ai_skill_playerchosen.s4_baojun = function(self, targets)
+    targets = sgs.QList2Table(targets)
+    self:sort(targets,"defense")
+    sgs.reverse(targets)
+    for _,target in ipairs(targets)do
+        if self:isFriend(target) then
+            return target
+        end
+    end
+    return nil
+end
+    
+
+
 -- soldier
 sgs.ai_skill_playerchosen.s4_s_changqiang = function(self, targets)
 	targets = sgs.QList2Table(targets)
@@ -1800,10 +1938,10 @@ sgs.ai_skill_use_func["#s4_s_chuqi"] = function(card,use,self)
 end
 sgs.ai_use_priority["s4_s_chuqi"] = sgs.ai_use_priority.Slash + 0.1
 
-sgs.ai_skill_invoke.s4_s_fengshi = function(self, data)
+sgs.ai_skill_invoke.s4_s_lumang = function(self, data)
     local effect = data:toCardEffect()
-    local duel = sgs.Sanguosha:cloneCard("duel", effect.card:getSuit(), effect.card:getNumber())
-    duel:setSkillName("s4_s_fengshi")
+    local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
+    duel:setSkillName("s4_s_lumang")
     duel:deleteLater()
     local dummy_use = self:aiUseCard(duel, dummy(true, 99, self.room:getOtherPlayers(effect.to)))
     if dummy_use.card and dummy_use and dummy_use.to and dummy_use.to:contains(effect.to) then
@@ -1816,7 +1954,7 @@ sgs.ai_view_as.s4_s_mengzhan = function(card,player,card_place)
 	local suit = card:getSuitString()
 	local number = card:getNumberString()
 	local card_id = card:getEffectiveId()
-	if player:getMark("s4_s_mengzhan") > 0 and not card:hasFlag("using") and (card:isKindOf("Slash") or card:isKindOf("EquipCard")) then
+	if player:getMark("s4_s_mengzhan") > 0 and not card:hasFlag("using") and (card:isKindOf("Jink") or card:isKindOf("EquipCard")) then
 		return ("slash:s4_s_mengzhan[%s:%s]=%d"):format(suit,number,card_id)
 	end
 end
@@ -1861,6 +1999,7 @@ sgs.ai_use_priority["s4_s_2_xuezhan"] = sgs.ai_use_priority.QiangxiCard
 
 sgs.ai_fill_skill.s4_s_gongpo = function(self)
     if self:needBear() then return nil end
+    if self.player:hasUsed("#s4_s_gongpo") then return nil end
     local cards = sgs.QList2Table(self.player:getCards("h"))
     self:sortByUseValue(cards, true)
     for _, card in ipairs(cards) do
@@ -1962,16 +2101,6 @@ sgs.ai_fill_skill.s4_s_zonghuo = function(self)
 			end
 		end
 	end
-	for _,c in sgs.list(cards)do
-		if c:isKindOf("FireSlash") then
-			local dc = dummyCard("fire_attack")
-			dc:setSkillName("s4_s_zonghuo")
-			dc:addSubcard(c)
-			if dc:isAvailable(self.player) then
-				return dc
-			end
-		end
-	end
 end
 
 sgs.ai_fill_skill.s4_s_yongwu = function(self)
@@ -1991,7 +2120,6 @@ sgs.ai_skill_use_func["#s4_s_yongwu"] = function(card,use,self)
         local dummy_use = self:aiUseCard(slash,dummy(true))
         self.player:setFlags("-InfinityAttackRange")
         if dummy_use.card and dummy_use.to:length() > 0 then
-            local target
             for _, enemy in sgs.qlist(dummy_use.to) do
                 if not self.player:inMyAttackRange(enemy) then
                     for _, card in ipairs(cards) do
@@ -2004,7 +2132,7 @@ sgs.ai_skill_use_func["#s4_s_yongwu"] = function(card,use,self)
                 end
             end
             for _, enemy in sgs.qlist(dummy_use.to) do
-                if enemy:hasArmorEffect() then
+                if enemy:hasArmorEffect(nil) then
                     for _, card in ipairs(cards) do
                         if ((not card:isKindOf("Peach") and not card:isKindOf("ExNihilo") and not card:isKindOf("Jink")) or self:getOverflow() > 0) and card:isBlack() then
                             table.insert(use_cards, card:getEffectiveId())
@@ -2015,7 +2143,7 @@ sgs.ai_skill_use_func["#s4_s_yongwu"] = function(card,use,self)
                 end
             end
             if #use_cards > 0 then
-                use.card = sgs.Card_Parse("#s4_s_yongwu:." .. table.concat(use_cards, "+") .. ":")
+                use.card = sgs.Card_Parse("#s4_s_yongwu:" .. table.concat(use_cards, "+") .. ":")
             end
         end
 	end
@@ -2023,18 +2151,23 @@ end
 
 sgs.ai_use_priority["s4_s_yongwu"] = sgs.ai_use_priority.Slash + 0.1
 
+sgs.ai_skill_invoke.s4_s_xianneng = function(self, data)
+    return self.player:getHp() + self:getAllPeachNum() - 1 > 0
+end
+
 sgs.ai_fill_skill.s4_s_jijiu = function(self)
     return sgs.Card_Parse("#s4_s_jijiu:.:")
 end
 
 sgs.ai_skill_use_func["#s4_s_jijiu"] = function(card,use,self)
-    local cards = sgs.QList2Table(self.player:getCards("he"))
+    local cards = sgs.QList2Table(self.player:getCards("h"))
     self:sort(self.friends, "hp")
+    self.friends = sgs.reverse(self.friends)
     for _,friend in ipairs(self.friends)do
         if friend:getPile("s4_s_jijiu"):isEmpty() then
             for _,c in sgs.list(cards)do
                 if c:getSuit() == sgs.Card_Diamond then
-                    use.card = sgs.Card_Parse("#s4_s_jijiu:." .. table.concat(use_cards, "+") .. ":")
+                    use.card = sgs.Card_Parse("#s4_s_jijiu:" .. c:getEffectiveId() .. ":")
                     use.to:append(friend)
                     return
                 end
@@ -2044,7 +2177,7 @@ sgs.ai_skill_use_func["#s4_s_jijiu"] = function(card,use,self)
     for _,friend in ipairs(self.friends)do
         for _,c in sgs.list(cards)do
             if c:getSuit() == sgs.Card_Diamond then
-                use.card = sgs.Card_Parse("#s4_s_jijiu:." .. table.concat(use_cards, "+") .. ":")
+                use.card = sgs.Card_Parse("#s4_s_jijiu:" .. c:getEffectiveId() .. ":")
                 use.to:append(friend)
                 return
             end
@@ -2137,6 +2270,42 @@ sgs.ai_skill_invoke["s4_s_shangwu_tuxi"] = function(self, data)
 		return false
 	end
 	return true
+end
+
+sgs.ai_fill_skill.s4_s_shangwu = function(self)
+    return sgs.Card_Parse("#s4_s_shangwu:.:")
+end
+
+sgs.ai_skill_use_func["#s4_s_shangwu"] = function(card,use,self)
+    local choices = {}
+    if not self.player:hasFlag("s4_s_shangwuTianyi") then
+        self.s4_s_shangwu = "tianyi"
+        sgs.ai_use_priority["s4_s_shangwu"] = sgs.ai_use_priority.TianyiCard
+        local c = sgs.Card_Parse("@TianyiCard=.")
+        local dummy_use = dummy()
+        self:useSkillCard(c,dummy_use)
+        if dummy_use.card then 
+            use.card = card
+        end
+    end
+    if not self.player:hasFlag("s4_s_shangwuQiangxi") then
+        self.s4_s_shangwu = "qiangxi"
+        sgs.ai_use_priority["s4_s_shangwu"] = sgs.ai_use_priority.QiangxiCard
+        local c = sgs.Card_Parse("@QiangxiCard=.")
+        local dummy_use = dummy()
+        self:useSkillCard(c,dummy_use)
+        if dummy_use.card then 
+            use.card = card
+        end
+    end
+end
+
+sgs.ai_skill_choice.s4_s_shangwu = function(self, choices, data)
+    local items = choices:split("+")
+    if self.s4_s_shangwu then
+        return self.s4_s_shangwu
+    end
+    return items[math.random(1, #items)]
 end
 
 sgs.ai_ajustdamage_to.s4_s_yinghun = function(self, from, to, card, nature)
