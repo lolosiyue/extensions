@@ -3556,7 +3556,7 @@ end
 
 sgs.ai_skill_playerchosen.damage = function(self,targets)
 	local targetlist = self:sort(targets,"hp")
-	return self:findPlayerToDamage(1,self.player,"N",targets,false,0,nil)[1]
+	return self:findPlayerToDamage(1,self.player,"N",targets,0,nil)[1]
 end
 
 function SmartAI:askForPlayerChosen(targets,reason)

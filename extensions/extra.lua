@@ -3,6 +3,7 @@ extension_guandu = sgs.Package("fixandadd_guandu", sgs.Package_GeneralPack)
 extension_heg = sgs.Package("new_heg", sgs.Package_GeneralPack)
 extension_hegbian = sgs.Package("heg_bian", sgs.Package_GeneralPack)
 extension_hegquan = sgs.Package("heg_quan", sgs.Package_GeneralPack)
+extension_heglordex = sgs.Package("heg_lordex", sgs.Package_GeneralPack)
 extension_twyj = sgs.Package("fixandadd_twyj", sgs.Package_GeneralPack)
 local Guandu_event_only = false --OL官渡之战随机事件
 local Guandu_event_reward = false 
@@ -4463,6 +4464,164 @@ sijyuoffline_zhaoyun = sgs.General(extension, "sijyuoffline_zhaoyun", "shu", 3, 
 sijyuoffline_zhaoyun:addSkill("longdan")
 sijyuoffline_zhaoyun:addSkill("chongzhen")
 
+--[[
+-- 军令
+
+--- 对某角色发起军令（抽取、选择、询问）
+---@param from ServerPlayer @ 军令发起者
+---@param to ServerPlayer @ 军令执行者
+---@param skill_name string @ 技能名
+---@param forced? boolean @ 是否强制执行
+---@return boolean @ 是否执行
+function H.askCommandTo(from, to, skill_name, forced)
+  if from.dead or to.dead then return false end
+  local room = from.room
+  room:sendLog{
+    type = "#AskCommandTo",
+    from = from.id,
+    to = {to.id},
+    arg = skill_name,
+    toast = true,
+  }
+
+  local index = H.startCommand(from, skill_name)
+  local invoke = H.doCommand(to, skill_name, index, from, forced)
+  return invoke
+end
+
+--- 军令发起者抽取并选择军令
+---@param from ServerPlayer @ 军令发起者
+---@param skill_name? string @ 技能名
+---@param num? integer @ 抽取数量
+---@return integer @ 选择的军令序号
+function H.startCommand(from, skill_name, num)
+  local allCommands = {"command1", "command2", "command3", "command4", "command5", "command6"}
+  num = num or 2
+  local commands = table.random(allCommands, num) ---@type string[]
+
+  local room = from.room
+  local choice = room:askToChoice(from, { choices = commands, skill_name = "start_command", detailed = true})
+
+  room:sendLog{
+    type = "#CommandChoice",
+    from = from.id,
+    arg = ":"+choice,
+    toast = true,
+  }
+
+  return table.indexOf(allCommands, choice)
+end
+
+--- 询问军令执行者是否执行军令（执行效果也在这里）
+---@param to ServerPlayer @ 军令执行者
+---@param skill_name string @ 技能名
+---@param index integer @ 军令序数
+---@param from ServerPlayer @ 军令发起者
+---@param forced? boolean @ 是否强制执行
+---@return boolean @ 是否执行
+function H.doCommand(to, skill_name, index, from, forced)
+  if to.dead or from.dead then return false end
+  local room = to.room
+
+  local allCommands = {"command1", "command2", "command3", "command4", "command5", "command6"}
+  local choices = forced and {allCommands[index]} or {allCommands[index], "Cancel"}
+
+  local choice = room:askToChoice(to, { choices = choices, skill_name = "do_command", detailed = true, all_choices = {allCommands[index], "Cancel"} })
+
+  local result = choice == "Cancel" and "#commandselect_no" or "#commandselect_yes"
+  room:sendLog{
+    type = "#CommandChoice",
+    from = to.id,
+    arg = result,
+    toast = true,
+  }
+  local commandData = {
+    from = from,
+    to = to,
+    command = index,
+  }
+  if choice == "Cancel" then
+    room.logic:trigger("fk.AfterCommandUse", to, commandData)
+    return false
+  end
+  if room.logic:trigger("fk.ChooseDoCommand", to, commandData) then
+    room.logic:trigger("fk.AfterCommandUse", to, commandData)
+    return true
+  end
+  if index == 1 then
+    local dest = room:askToChoosePlayers(from, {
+      targets = room.alive_players,
+      min_num = 1,
+      max_num = 1,
+      prompt = "#command1-damage::" .. to.id,
+      skill_name = skill_name,
+      cancelable = false,
+    })[1]
+    room:sendLog{
+      type = "#Command1Damage",
+      from = from.id,
+      to = {dest.id},
+    }
+    room:doIndicate(from.id, {dest.id})
+    room:damage{
+      from = to,
+      to = dest,
+      damage = 1,
+      skillName = "command",
+    }
+  elseif index == 2 then
+    to:drawCards(1, "command")
+    if to == from or to:isNude() then return true end
+    local cards = {}
+    if #to:getCardIds{Player.Hand, Player.Equip} == 1 then
+      cards = to:getCardIds{Player.Hand, Player.Equip}
+    else
+      cards = room:askToCards(to,{
+        min_num = 2,
+        max_num = 2,
+        include_equip = true,
+        skill_name = "command",
+        prompt = "#command2-give::" .. from.id,
+        cancelable = false,
+      })
+    end
+    room:moveCardTo(cards, Player.Hand, from, fk.ReasonGive, "command", nil, false, from.id)
+  elseif index == 3 then
+    room:loseHp(to, 1, "command")
+  elseif index == 4 then
+    room:setPlayerMark(to, "@@command4_effect-turn", 1)
+    room:addPlayerMark(to, MarkEnum.UncompulsoryInvalidity .. "-turn")
+    room:handleAddLoseSkills(to, "#command4_prohibit", nil, false, true) -- 为了不全局，流汗了
+  elseif index == 5 then
+    to:turnOver()
+    room:setPlayerMark(to, "@@command5_effect-turn", 1)
+    room:handleAddLoseSkills(to, "#command5_cannotrecover", nil, false, true) -- 为了不全局，流汗了
+  elseif index == 6 then
+    if to:getHandcardNum() < 2 and #to:getCardIds("e") < 2 then return true end
+    local to_remain = {}
+    if not to:isKongcheng() then
+      table.insert(to_remain, to:getCardIds("h")[1])
+    end
+    if #to:getCardIds("e") > 0 then
+      table.insert(to_remain, to:getCardIds("e")[1])
+    end
+    local _, ret = room:askToUseActiveSkill(to, {prompt = "#command6_select", skill_name = "#command6-select", cancelable = false})
+    if ret then
+      to_remain = ret.cards
+    end
+    local cards = table.filter(to:getCardIds{Player.Hand, Player.Equip}, function (id)
+      return not (table.contains(to_remain, id) or to:prohibitDiscard(Fk:getCardById(id)))
+    end)
+    if #cards > 0 then
+      room:throwCard(cards, "command", to)
+    end
+  end
+  room.logic:trigger("fk.AfterCommandUse", to, commandData)
+  return true
+end
+
+]]
+
 
 heg_yujin = sgs.General(extension_hegquan, "heg_yujin", "wei", 4)
 
@@ -4555,6 +4714,7 @@ sgs.LoadTranslationTable{
     ["new_heg"] = "新国战",
     ["heg_bian"] = "君临天下-变",
     ["heg_quan"] = "君临天下·权",
+    ["heg_lordex"] = "君临天下·EX/不臣篇",
     ["fixandadd_twyj"] = "台湾一将成名",
 
     ["guandu_xuyou"] = "许攸[官渡]",
@@ -4670,15 +4830,15 @@ sgs.LoadTranslationTable{
 	["gd_zhanyanliangzhuwenchou"] = "斩颜良诛文丑",
 	[":gd_zhanyanliangzhuwenchou"] = "本局游戏中，所有角色回合开始时，需要选择一名其他角色，视为对其进行决斗，否则失去一点体力。",
 	["@gd_zhanyanliangzhuwenchou"] = "斩颜良诛文丑：<b>你可以视为对一名其他角色进行决斗，否则失去一点体力",
---沒有語音
---[[十胜十败：今绍有十败，公有十胜！(郭嘉)
-粮草匮乏：休要瞒我，军中已无粮！(许攸)
-火烧乌巢：嗯？何故喧嚣？火！火啊！(淳于琼)
-斩颜良诛文丑：吾观颜良，乃插标卖首尔！(魏关羽)]]
+	--沒有語音
+	--[[十胜十败：今绍有十败，公有十胜！(郭嘉)
+	粮草匮乏：休要瞒我，军中已无粮！(许攸)
+	火烧乌巢：嗯？何故喧嚣？火！火啊！(淳于琼)
+	斩颜良诛文丑：吾观颜良，乃插标卖首尔！(魏关羽)]]
 
--- 戮力同心（替换【南蛮入侵】）
+	-- 戮力同心（替换【南蛮入侵】）
 
--- 出牌阶段，对己方所有角色或敌方所有角色使用，令己方所有被横置角色各摸一张牌或横置敌方所有角色。重铸：你可以将此牌置入弃牌堆，然后摸一张牌。 
+	-- 出牌阶段，对己方所有角色或敌方所有角色使用，令己方所有被横置角色各摸一张牌或横置敌方所有角色。重铸：你可以将此牌置入弃牌堆，然后摸一张牌。 
 	["gd_yuanjun"] = "援军",
 	[":gd_yuanjun"] = "锦囊牌·多目标锦囊<br/><b>时机</b>：出牌阶段，对至多两名已受伤的其他角色使用。<br/><b>效果</b>：每名目标角色各回复1点体力。",
 
@@ -4713,7 +4873,7 @@ sgs.LoadTranslationTable{
 	["$heg_mouduan2"] = "识谋善断，国士之风。",
 	["~heg_lvmeng"] = "被看穿了吗？",
 
-	["heg_zhangfei"] = "张飞",
+	["heg_zhangfei"] = "张飞-国",
     ["&heg_zhangfei"] = "张飞",
 	["#heg_zhangfei"] = "万夫不当",
 	["~heg_zhangfei"] = "实在是杀不动了……",
@@ -4722,7 +4882,7 @@ sgs.LoadTranslationTable{
     ["$heg_paoxiao1"] = "呃啊！",
     ["$heg_paoxiao2"] = "燕人张飞在此！！！",
 
-    ["heg_new_zhugeliang"] = "诸葛亮",
+    ["heg_new_zhugeliang"] = "诸葛亮-国",
     ["&heg_new_zhugeliang"] = "诸葛亮",
 	["#heg_new_zhugeliang"] = "迟暮的丞相",
 	["~heg_new_zhugeliang"] = "将星陨落，天命难违……",
@@ -4735,7 +4895,7 @@ sgs.LoadTranslationTable{
     ["$heg_kongcheng1"] = "（抚琴声）",
     ["$heg_kongcheng2"] = "（抚琴声）",
 
-    ["heg_zhaoyun"] = "赵云",
+    ["heg_zhaoyun"] = "赵云-国",
     ["&heg_zhaoyun"] = "赵云",
 	["#heg_zhaoyun"] = "少年将军",
 	["~heg_zhaoyun"] = "这，就是失败的滋味吗？",
@@ -4746,28 +4906,28 @@ sgs.LoadTranslationTable{
 	["$heg_longdan1"] = "吾乃常山赵子龙也！",
     ["$heg_longdan2"] = "能进能退，乃真正法器！",
 
-    ["heg_caoren"] = "曹仁",
+    ["heg_caoren"] = "曹仁-国",
     ["&heg_caoren"] = "曹仁",
 	["#heg_caoren"] = "大将军",
 	["~heg_caoren"] = "",
 	["heg_jushou"] = "据守",
     [":heg_jushou"] = "结束阶段，你可摸X张牌（X为势力数）然后弃置一张手牌，若以此法弃置的是装备牌，则改为使用之。若X大于2，你翻面。 ",
 
-    ["heg_xuhuang"] = "徐晃",
+    ["heg_xuhuang"] = "徐晃-国",
     ["&heg_xuhuang"] = "徐晃",
 	["#heg_xuhuang"] = "周亚夫之风",
 	["~heg_xuhuang"] = "",
 	["heg_duanliang"] = "断粮",
     [":heg_duanliang"] = "出牌阶段，你可将一张黑色基本牌或装备牌当做【兵粮寸断】无视距离使用。你对距离大于2的角色使用【兵粮寸断】后，“断粮”失效直到回合结束。",
 
-    ["heg_huanggai"] = "黄盖",
+    ["heg_huanggai"] = "黄盖-国",
     ["&heg_huanggai"] = "黄盖",
 	["#heg_huanggai"] = "轻身为国",
 	["~heg_huanggai"] = "",
 	["heg_kurou"] = "苦肉",
     [":heg_kurou"] = "出牌阶段限一次，你可弃置一张牌。若如此做，你失去1点体力，然后摸三张牌，此阶段你使用【杀】的次数上限+1。",
 
-    ["heg_zoushi"] = "邹氏",
+    ["heg_zoushi"] = "邹氏-国",
     ["&heg_zoushi"] = "邹氏",
 	["#heg_zoushi"] = "惑心之魅",
 	["illustrator:heg_zoushi"] = "Tuu.",
@@ -4778,7 +4938,7 @@ sgs.LoadTranslationTable{
 	["heg_huoshui"] = "祸水",
     [":heg_huoshui"] = "锁定技，你的回合内，体力值不少于体力上限一半的其他角色所有武将技能无效且不能使用或打出【闪】响应你使用的牌。",
 
-	["heg_xiahouyuan"] = "夏侯渊",
+	["heg_xiahouyuan"] = "夏侯渊-国",
     ["&heg_xiahouyuan"] = "夏侯渊",
 	["#heg_xiahouyuan"] = "虎步关右",
 	["illustrator:heg_xiahouyuan"] = "凡果",
@@ -4786,7 +4946,7 @@ sgs.LoadTranslationTable{
 	["heg_shensu"] = "神速",
     [":heg_shensu"] = "你可以执行以下一至三项：1.跳过判定阶段和摸牌阶段；2.跳过出牌阶段并弃置一张装备区；3.跳过弃牌阶段并失去1点体力。你执行一项后，便视为使用一张无距离限制的【杀】。",
 
-	["heg_xuchu"] = "许褚",
+	["heg_xuchu"] = "许褚-国",
     ["&heg_xuchu"] = "许褚",
 	["#heg_xuchu"] = "虎痴",
 	-- ["illustrator:heg_xuchu"] = "凡果",
@@ -4794,7 +4954,7 @@ sgs.LoadTranslationTable{
 	["heg_luoyi"] = "裸衣",
 	[":heg_luoyi"] = "摸牌阶段结束时，你可以弃置一张牌，本回合你使用【杀】或【决斗】造成的伤害+1。",
 	
-	["heg_dianwei"] = "典韦",
+	["heg_dianwei"] = "典韦-国",
     ["&heg_dianwei"] = "典韦",
 	["#heg_dianwei"] = "古之恶来",
 	["illustrator:heg_dianwei"] = "凡果",
@@ -4802,13 +4962,13 @@ sgs.LoadTranslationTable{
 	["heg_qiangxi"] = "强袭",
 	[":heg_qiangxi"] = "出牌阶段限一次，你可以失去1点体力或弃置一张武器牌，对一名其他角色造成1点伤害。",
 
-	["heg_guanyu"] = "关羽",
+	["heg_guanyu"] = "关羽-国",
     ["&heg_guanyu"] = "关羽",
 	["#heg_guanyu"] = "威震华夏",
 	["illustrator:heg_guanyu"] = "凡果",
 	["~heg_guanyu"] = "",
 
-	["heg_huangzhong"] = "黄忠",
+	["heg_huangzhong"] = "黄忠-国",
     ["&heg_huangzhong"] = "黄忠",
 	["#heg_huangzhong"] = "老当益壮",
 	["illustrator:heg_huangzhong"] = "凡果",
@@ -4818,7 +4978,7 @@ sgs.LoadTranslationTable{
 	["heg_liegong_cantjink"] = "令其不能响应此【杀】",
 	["heg_liegong_addDamage"] = "令此【杀】对其造成的伤害+1",
 
-	["heg_sunjian"] = "孙坚",
+	["heg_sunjian"] = "孙坚-国",
     ["&heg_sunjian"] = "孙坚",
 	["#heg_sunjian"] = "魂佑江东",
 	["illustrator:heg_sunjian"] = "凡果",
@@ -4827,7 +4987,7 @@ sgs.LoadTranslationTable{
 	["heg_yinghun"] = "英魂",
 	[":heg_yinghun"] = "准备阶段，你可以令一名其他角色执行以下一项：1.摸X张牌，弃置一张牌；2.摸一张牌，弃置X张牌。（X为你已损失体力值）",
 
-	["heg_sunshangxiang"] = "孙尚香",
+	["heg_sunshangxiang"] = "孙尚香-国",
     ["&heg_sunshangxiang"] = "孙尚香",
 	["#heg_sunshangxiang"] = "弓腰姬",
 	["illustrator:heg_sunshangxiang"] = "凡果",
@@ -4835,7 +4995,7 @@ sgs.LoadTranslationTable{
 	["heg_xiaoji"] = "枭姬",
 	[":heg_xiaoji"] = "当你失去装备区里的牌后，若此时为你的回合外，你可以摸三张牌。否则你可以摸一张牌。 ",
 
-	["heg_new_xiaoqiao"] = "小乔",
+	["heg_new_xiaoqiao"] = "小乔-国",
     ["&heg_new_xiaoqiao"] = "小乔",
 	["#heg_new_xiaoqiao"] = "矫情之花",
 	-- ["illustrator:heg_new_xiaoqiao"] = "凡果",
@@ -4849,7 +5009,7 @@ sgs.LoadTranslationTable{
 	["heg_hongyan"] = "红颜",
 	[":heg_hongyan"] = "锁定技，你的♤牌和♤判定牌花色均视为红桃；若你的装备区里有红桃牌，你的手牌上限+1。",
 
-	["heg_lubu"] = "吕布",
+	["heg_lubu"] = "吕布-国",
     ["&heg_lubu"] = "吕布",
 	["#heg_lubu"] = "戟指中原",
 	["illustrator:heg_lubu"] = "凡果",
@@ -4857,7 +5017,7 @@ sgs.LoadTranslationTable{
 	["heg_wushuang"] = "无双",
 	[":heg_wushuang"] = "锁定技，你使用的【杀】需依次使用两张【闪】才能抵消；与你进行【决斗】的角色每次需依次打出两张【杀】；你使用非转化的【决斗】可以多选择至多两个目标。",
 
-	["heg_jiling"] = "纪灵",
+	["heg_jiling"] = "纪灵-国",
     ["&heg_jiling"] = "纪灵",
 	["#heg_jiling"] = "仲家的主将",
 	-- ["illustrator:heg_jiling"] = "凡果",
@@ -4865,7 +5025,7 @@ sgs.LoadTranslationTable{
 	["heg_shuangren"] = "双刃",
 	[":heg_shuangren"] = "出牌阶段开始时，你可以与一名其他角色拼点。若你：赢，你视为对与一名其他角色使用一张不计入次数的【杀】；没赢，本回合你不能对其他角色使用牌。",
 	
-	["heg_panfeng"] = "潘凤",
+	["heg_panfeng"] = "潘凤-国",
     ["&heg_panfeng"] = "潘凤",
 	["#heg_panfeng"] = "联军上将",
 	["illustrator:heg_panfeng"] = "凡果",
@@ -4874,7 +5034,7 @@ sgs.LoadTranslationTable{
 	[":heg_kuangfu"] = "出牌阶段限一次，你使用【杀】指定一名角色为目标后，可以获得其装备区里的一张牌。若此【杀】未造成伤害，你弃置两张手牌。",
 
 	
-	["heg_new_ganfuren"] = "甘夫人",
+	["heg_new_ganfuren"] = "甘夫人-国",
     ["&heg_new_ganfuren"] = "甘夫人",
 	["#heg_new_ganfuren"] = "昭烈皇后",
 	-- ["illustrator:heg_new_ganfuren"] = "凡果",
@@ -4882,7 +5042,7 @@ sgs.LoadTranslationTable{
 	["heg_shushen"] = "淑慎",
 	[":heg_shushen"] = "当你回复1点体力后，你可以令一名其他角色摸一张牌。若其没有手牌，改为摸两张牌。 ",
 
-	["heg_new_xusheng"] = "徐盛",
+	["heg_new_xusheng"] = "徐盛-国",
     ["&heg_new_xusheng"] = "徐盛",
 	["#heg_new_xusheng"] = "江东的铁壁",
 	["illustrator:heg_new_xusheng"] = "天信",
@@ -4890,7 +5050,7 @@ sgs.LoadTranslationTable{
 	["heg_yicheng"] = "疑城",
 	[":heg_yicheng"] = "当一名角色使用【杀】指定目标后或成为【杀】的目标后，你可以令其摸一张牌并弃置一张牌。 ",
 
-	["heg_new_zangba"] = "臧霸",
+	["heg_new_zangba"] = "臧霸-国",
     ["&heg_new_zangba"] = "臧霸",
 	["#heg_new_zangba"] = "节度青徐",
 	["illustrator:heg_new_zangba"] = "HOOO",
@@ -4898,7 +5058,7 @@ sgs.LoadTranslationTable{
 	["heg_hengjiang"] = "横江",
 	[":heg_hengjiang"] = "当你受到1点伤害后若当前回合角色手牌上限大于0，你可以令其本回合手牌上限-X（X为其装备区里的牌数且至少为1）。则此回合结束时，若其未于本回合弃牌阶段弃置过其牌，你将手牌摸至体力上限。",
 
-	["heg_new_luxun"] = "陆逊",
+	["heg_new_luxun"] = "陆逊-国",
     ["&heg_new_luxun"] = "陆逊",
 	["#heg_new_luxun"] = "擎天之柱",
 	["~heg_new_luxun"] = "",
@@ -4906,21 +5066,21 @@ sgs.LoadTranslationTable{
 	[":heg_duoshi"] = "出牌阶段开始时，你可以视为使用一张【以逸待劳】。",
 	["@heg_duoshi"] = "度势：请选择【以逸待劳】的目标",
 
-	["heg_new_caohong"] = "曹洪",
+	["heg_new_caohong"] = "曹洪-国",
     ["&heg_new_caohong"] = "曹洪",
 	["#heg_new_caohong"] = "魏之福将",
 	["~heg_new_caohong"] = "",
 	["heg_huyuan"] = "护援",
 	[":heg_huyuan"] = "结束阶段，你可以选择一名其他角色并选择一项：1.将一张非装备牌交给其；2.将一张装备牌置入其装备区，你可以弃置场上一张牌。",
 	
-	["heg_new_chenwudongxi"] = "陈武董袭",
+	["heg_new_chenwudongxi"] = "陈武董袭-国",
     ["&heg_new_chenwudongxi"] = "陈武董袭",
 	["#heg_new_chenwudongxi"] = "壮怀激烈",
 	["~heg_new_chenwudongxi"] = "",
 	["heg_duanxie"] = "断绁",
 	[":heg_duanxie"] = "出牌阶段限一次，你可以横置至多X名其他角色，你横置。（X为你已损失体力值且至少为1）",
 	
-	["heg_nos_himiko"] = "卑弥呼[旧]",
+	["heg_nos_himiko"] = "卑弥呼-国[旧]",
     ["&heg_nos_himiko"] = "卑弥呼",
 	["#heg_nos_himiko"] = " 邪马台的女王",
 	["~heg_nos_himiko"] = "",
@@ -4934,7 +5094,7 @@ sgs.LoadTranslationTable{
 	
 	
 
-    ["bf_xunyou"] = "荀攸",
+    ["bf_xunyou"] = "荀攸-国",
 	["#bf_xunyou"] = "曹魏的谋主",--编一个
 	["illustrator:bf_xunyou"] = "心中一凛",
 	["bf_qice"] = "奇策",
@@ -4943,7 +5103,7 @@ sgs.LoadTranslationTable{
 	["$bf_qice2"] = "奇策在此，谁与争锋。",
 	["~bf_xunyou"] = "主公，臣下先行告退。",
 
-	["bf_bianhuanghou"] = "卞夫人",
+	["bf_bianhuanghou"] = "卞夫人-国",
 	["#bf_bianhuanghou"] = "奕世之雍容",
 	["illustrator:bf_bianhuanghou"] = "雪君S",
 	["bf_wanwei"] = "挽危",
@@ -4958,11 +5118,11 @@ sgs.LoadTranslationTable{
 	["$bf_yuejian2"] = "性情约俭，不尚华丽。",
 	["~bf_bianhuanghou"] = "心肝涂地，惊愕断绝",
 
-	["bf_shamoke"] = "沙摩柯",
+	["bf_shamoke"] = "沙摩柯-国",
 	["#bf_shamoke"] = "五溪蛮王",
 	["illustrator:bf_shamoke"] = "Liuheng",
 
-	["bf_masu"] = "马谡",
+	["bf_masu"] = "马谡-国",
 	["#bf_masu"] = "帷幄经谋",
 	["illustrator:bf_masu"] = "蚂蚁君",
 	["bf_zhiman"] = "制蛮",
@@ -4971,7 +5131,7 @@ sgs.LoadTranslationTable{
 	["$bf_zhiman2"] = "丞相多虑，且看我的。",
 	["~bf_masu"] = "败军之罪，万死难赎。",
 
-	["bf_lingtong"] = "凌统",
+	["bf_lingtong"] = "凌统-国",
 	["#bf_lingtong"] = "豪情烈胆",
 	["illustrator:bf_lingtong"] = "F.源",
 	["bf_xuanlve"] = "旋略",
@@ -4984,7 +5144,7 @@ sgs.LoadTranslationTable{
 	["$bf_yongjin2"] = "激流勇进，覆戈倒甲！",
 	["~bf_lingtong"] = "",
 	
-	["bf_lvfan"] = "吕范",
+	["bf_lvfan"] = "吕范-国",
 	["#bf_lvfan"] = "忠笃亮直",
 	["illustrator:bf_lvfan"] = "銘zmy",
 	["information:bf_lvfan"] = "2025吕范",
@@ -4999,7 +5159,7 @@ sgs.LoadTranslationTable{
 	["$bf_diancai2"] = "量入为出，利析秋毫。",
 	["~bf_lvfan"] = "印绶未下，疾病已发......",
 	
-	["bf_sec_lvfan"] = "吕范[二版]",
+	["bf_sec_lvfan"] = "吕范-国[二版]",
 	["#bf_sec_lvfan"] = "忠笃亮直",
 	["illustrator:bf_sec_lvfan"] = "銘zmy",
 	["information:bf_sec_lvfan"] = "2019吕范",
@@ -5008,7 +5168,7 @@ sgs.LoadTranslationTable{
 
 	["~bf_sec_lvfan"] = "印绶未下，疾病已发......",
 
-	["bf_third_lvfan"] = "吕范[三版]",
+	["bf_third_lvfan"] = "吕范-国[三版]",
 	["#bf_third_lvfan"] = "忠笃亮直",
 	["illustrator:bf_third_lvfan"] = "銘zmy",
 	["information:bf_third_lvfan"] = "2023吕范",
@@ -5017,7 +5177,7 @@ sgs.LoadTranslationTable{
 
 	["~bf_third_lvfan"] = "印绶未下，疾病已发......",
 
-	["bf_nos_lvfan"] = "吕范[旧]",
+	["bf_nos_lvfan"] = "吕范-国[旧]",
 	["#bf_nos_lvfan"] = "忠笃亮直",
 	["illustrator:bf_nos_lvfan"] = "銘zmy",
 	["information:bf_nos_lvfan"] = "2017初版吕范",
@@ -5028,7 +5188,7 @@ sgs.LoadTranslationTable{
 	[":bf_diancai"] = "其他角色的出牌阶段结束时，若你于此阶段内失去过至少X张牌，你可以将手牌补至上限，然后可以变更武将牌。（X为你的体力值）",
 	["~bf_nos_lvfan"] = "印绶未下，疾病已发......",
 
-	["bf_lijueguosi"] = "李傕&郭汜",
+	["bf_lijueguosi"] = "李傕&郭汜-国",
 	["&bf_lijueguosi"] = "李傕郭汜",
 	["#bf_lijueguosi"] = "犯祚倾祸",
 	["illustrator:bf_lijueguosi"] = "旭",
@@ -5042,7 +5202,7 @@ sgs.LoadTranslationTable{
 	["$bf_xiongsuan2"] = "谋算计策，吾二人尚有险招！",
 	["~bf_lijueguosi"] = "一心相争，兵败战损......",
 
-	["bf_zuoci"] = "左慈",
+	["bf_zuoci"] = "左慈-国",
 	["#bf_zuoci"] = "迷之仙人",
 	["illustrator:bf_zuoci"] = "吕阳",
 	["bf_yigui"] = "役鬼",
@@ -5059,7 +5219,7 @@ sgs.LoadTranslationTable{
 
 	-- ["~bf_zuoci"] = "仙人转世，一去无返",
 
-	["bf_nos_zuoci"] = "左慈-初版",
+	["bf_nos_zuoci"] = "左慈-国-初版",
 	["#bf_nos_zuoci"] = "迷之仙人",--编一个
 	["illustrator:bf_nos_zuoci"] = "吕阳",
 	["information:bf_nos_zuoci"] = "变包初稿左慈",
@@ -5137,26 +5297,869 @@ sgs.LoadTranslationTable{
     ["cv:sijyuoffline_zhaoyun"] = "",
     ["illustrator:sijyuoffline_zhaoyun"] = "VINCENT",
 
-
--------------------------------------------------------------
 	--君临天下·权
-	["heg_yujin"] = "于禁[国战]",
+	["command"] = "军令",
+
+	["#StartCommand"] = "%arg：请选择一项军令<br>%arg2；<br>%arg3",
+	["command1"] = "军令一",
+	["command2"] = "军令二",
+	["command3"] = "军令三",
+	["command4"] = "军令四",
+	["command5"] = "军令五",
+	["command6"] = "军令六",
+
+	[":command1"] = "军令一：对发起者指定的角色造成1点伤害",
+	[":command2"] = "军令二：摸一张牌，然后交给发起者两张牌",
+	[":command3"] = "军令三：失去1点体力",
+	[":command4"] = "军令四：本回合不能使用或打出手牌且所有非锁定技失效",
+	[":command5"] = "军令五：叠置，本回合不能回复体力",
+	[":command6"] = "军令六：选择一张手牌和一张装备区里的牌，弃置其余的牌",
+
+	["start_command"] = "发起军令",
+	["#AskCommandTo"] = "%from 发动了 “%arg”，对 %to 发起了 <font color='#0598BC'><b>军令",
+	["#CommandChoice"] = "%from 选择了 %arg",
+	["chose"] = "选择了",
+
+	["do_command"] = "执行军令",
+	["#commandselect_yes"] = "执行军令",
+	["#commandselect_no"] = "不执行军令",
+
+	["#command1-damage"] = "军令：请选择 %dest 伤害的目标",
+	["#Command1Damage"] = "%from 选择对 %to 造成伤害",
+	["#command2-give"] = "军令：请选择两张牌交给 %dest",
+	["@@command4_effect-turn"] = "军令禁出牌技能",
+	["@@command5_effect-turn"] = "军令 不能回血",
+	["#command6-select"] = "军令：请选择要保留的一张手牌和一张装备",
+
+	["heg_yujin"] = "于禁-国",
     ["&heg_yujin"] = "于禁",
     ["#heg_yujin"] = "讨暴坚垒",
     ["~heg_yujin"] = "",
-    ["designer:heg_yujin"] = "",
+    ["designer:heg_yujin"] = "Virgopaladin（韩旭）",
     ["cv:heg_yujin"] = "",
     ["illustrator:heg_yujin"] = "biou09",
 	["heg_jueyue"] = "节钺",
 	[":heg_jueyue"] = "准备阶段，你可以将一张牌交给一名其他角色，然后令其执行一次“军令”。若其：执行，你摸一张牌；不执行，摸牌阶段，你多摸三张牌。",
+	--4
+
+	["heg_cuiyanmaojie"] = "崔琰毛玠-国",
+    ["&heg_cuiyanmaojie"] = "崔琰毛玠",
+    ["#heg_cuiyanmaojie"] = "日出月盛",
+    ["~heg_cuiyanmaojie"] = "",
+    ["designer:heg_cuiyanmaojie"] = "Virgopaladin（韩旭）",
+    ["cv:heg_cuiyanmaojie"] = "",
+    ["illustrator:heg_cuiyanmaojie"] = "兴游",	
+	["heg_zhengbi"] = "征辟",
+	[":heg_zhengbi"] = "出牌阶段开始时，你可选择一项：1.选择一名角色，直至此回合结束，你对其使用牌无距离与次数限制；2.将一张基本牌交给一名角色，然后其交给你一张非基本牌或两张基本牌。",
+	["#heg_fengying"] = "奉迎",
+  	[":#heg_fengying"] = "限定技，出牌阶段，你可将所有手牌当【挟天子以令诸侯】（无视大势力限制）使用，然后所有与你势力相同的角色将手牌补至其体力上限。",
+	--3
+
+	["heg_wangping"] = "王平-国",
+    ["&heg_wangping"] = "王平",
+    ["#heg_wangping"] = "键闭剑门",
+    ["~heg_wangping"] = "",
+    ["designer:heg_wangping"] = "",
+    ["cv:heg_wangping"] = "",
+    ["illustrator:heg_wangping"] = "zoo",
+	["heg_jianglue"] = "将略",
+  	[":heg_jianglue"] = "限定技，出牌阶段，你可选择一个“军令”。你对任意名角色发起此“军令”。你加1点体力上限，回复1点体力，所有执行“军令”的角色各加1点体力上限，回复1点体力。然后你摸X张牌（X为以此法回复体力的角色数）。",
+	--4
+
+	["heg_fazheng"] = "法正-国",
+    ["&heg_fazheng"] = "法正",
+    ["#heg_fazheng"] = "蜀汉的辅翼",
+    ["~heg_fazheng"] = "",
+    ["designer:heg_fazheng"] = "",
+    ["cv:heg_fazheng"] = "",
+    ["illustrator:heg_fazheng"] = "黑白画谱",
+	["heg_xuanhuo"] = "眩惑",
+  	[":heg_xuanhuo"] = "其他角色的出牌阶段限一次，其可交给你一张手牌，然后其弃置一张牌，选择下列技能中的一个：“武圣”“咆哮”“龙胆”“铁骑”“烈弓”“狂骨”（场上已有的技能无法选择）。其于此回合内或明置有其以此法选择的技能的武将牌之前拥有其以此法选择的技能。",
+	["heg_enyuan"] = "恩怨",
+  	[":heg_enyuan"] = "锁定技，当你成为【桃】的目标后，若使用者不为你，其摸一张牌；当你受到伤害后，伤害来源需交给你一张手牌，否则失去1点体力。",
+	--3
+
+	["heg_lukang"] = "陆抗-国",
+    ["&heg_lukang"] = "陆抗",
+    ["#heg_lukang"] = "孤柱扶厦",
+    ["~heg_lukang"] = "",
+    ["designer:heg_lukang"] = "",
+    ["cv:heg_lukang"] = "",
+    ["illustrator:heg_lukang"] = "王立雄",
+	["heg_keshou"] = "恪守",
+  	[":heg_keshou"] = "当你受到伤害时，你可弃置两张颜色相同的牌，令此伤害值-1，然后你判定，若结果为红色，你摸一张牌。",
+	["heg_zhuwei"] = "筑围",
+  	[":heg_zhuwei"] = "当你的判定结果确定后，你可获得此判定牌，然后你可令当前回合角色手牌上限和使用【杀】的次数上限于此回合内+1。",
+	--3
+
+	["heg_wuguotai"] = "吴国太-国",
+    ["&heg_wuguotai"] = "吴国太",
+    ["#heg_wuguotai"] = "武烈皇后",
+    ["~heg_wuguotai"] = "",
+    ["designer:heg_wuguotai"] = "",
+    ["cv:heg_wuguotai"] = "",
+    ["illustrator:heg_wuguotai"] = "李秀森",
+	["heg_buyi"] = "补益",
+  	[":heg_buyi"] = "每回合限一次，当一名角色的濒死结算后，若其存活，你可对伤害来源发起“军令”。若来源不执行，则你令该角色回复1点体力。",
+	--3
+
+	["heg_yuanshu"] = "袁术-国",
+    ["&heg_yuanshu"] = "袁术",
+    ["#heg_yuanshu"] = "仲家帝",
+    ["~heg_yuanshu"] = "",
+    ["designer:heg_yuanshu"] = "",
+    ["cv:heg_yuanshu"] = "",
+    ["illustrator:heg_yuanshu"] = "YanBai",
+	["heg_yongsi"] = "庸肆",
+  	[":heg_yongsi"] = "锁定技，①若所有角色的装备区里均没有【玉玺】，你视为装备着【玉玺】；②当你成为【知己知彼】的目标后，展示所有手牌。",
+    ["heg_weidi"] = "伪帝",
+  	[":heg_weidi"] = "出牌阶段限一次，你可选择一名本回合从牌堆获得过牌的其他角色，对其发起“军令”。若其不执行，则你获得其所有手牌，然后交给其等量的牌。",
+	--4
+
+	["heg_zhangxiu"] = "张绣-国",
+    ["&heg_zhangxiu"] = "张绣",
+    ["#heg_zhangxiu"] = "北地枪王",
+    ["~heg_zhangxiu"] = "",
+    ["designer:heg_zhangxiu"] = "千幻",
+    ["cv:heg_zhangxiu"] = "",
+    ["illustrator:heg_zhangxiu"] = "青岛磐蒲",
+	["heg_fudi"] = "附敌",
+  	[":heg_fudi"] = "当你受到其他角色造成的伤害后，你可以交给伤害来源一张手牌。若如此做，你对体力值最多且不小于你的一名角色造成1点伤害。",
+    ["heg_congjian"] = "从谏",
+  	[":heg_congjian"] = "锁定技，当你于回合外造成伤害时或于回合内受到伤害时，伤害值+1。",
+	--4
+
+	--君临天下·EX/不臣篇
+	["heg_mengda"] = "孟达-国",
+    ["&heg_mengda"] = "孟达",
+    ["#heg_mengda"] = "怠军反复",
+    ["~heg_mengda"] = "",
+    ["designer:heg_mengda"] = "韩旭",
+    ["cv:heg_mengda"] = "",
+    ["illustrator:heg_mengda"] = "张帅",
+	["heg_qiuan"] = "求安",
+  	[":heg_qiuan"] = "当你受到伤害时，若没有“函”，你可将造成此伤害的牌置于武将牌上，称为“函”，然后防止此伤害。",
+	["heg_liangfan"] = "量反",
+  	[":heg_liangfan"] = "锁定技，准备阶段，若你有“函”，你获得之，然后失去1点体力，当你于此回合内使用以此法获得的牌造成伤害后，你可以获得受伤角色的一张牌。",
+
+	["heg_liuqi"] = "刘琦-国",
+    ["&heg_liuqi"] = "刘琦",
+    ["#heg_liuqi"] = "居外而安",
+    ["~heg_liuqi"] = "",
+    ["designer:heg_liuqi"] = "荼蘼（韩旭）",
+    ["cv:heg_liuqi"] = "",
+    ["illustrator:heg_liuqi"] = "绘聚艺堂",
+	["heg_wenji"] = "问计",
+  	[":heg_wenji"] = "出牌阶段开始时，你可令一名角色交给你一张牌，然后若其：与你势力相同或未确定势力，你于此回合内使用此牌无距离与次数限制且不能被响应；与你势力不同，你交给其另一张牌。",
+	--secondtunjiang
+
+	["heg_mifangfushiren"] = "糜芳傅士仁-国",
+    ["&heg_mifangfushiren"] = "糜芳傅士仁",
+    ["#heg_mifangfushiren"] = "逐驾迎尘",
+    ["~heg_mifangfushiren"] = "",
+    ["designer:heg_mifangfushiren"] = "Loun老萌",
+    ["cv:heg_mifangfushiren"] = "",
+    ["illustrator:heg_mifangfushiren"] = "木美人",
+	["heg_fengshih"] = "锋势",
+  	[":heg_fengshih"] = "①当你使用牌指定其他角色为唯一目标后，若其手牌数小于你且你与其均有牌，你可以弃置你与其各一张牌，然后此牌造成伤害值+1；②当你成为其他角色使用牌的唯一目标后，若你手牌数小于其且你与其均有牌，其可以令你弃置你与其各一张牌，然后此牌造成伤害值+1。",
+	
+	["heg_zhanglu"] = "张鲁-国",
+    ["&heg_zhanglu"] = "张鲁",
+    ["#heg_zhanglu"] = "政宽教惠",
+    ["~heg_zhanglu"] = "",
+    ["designer:heg_zhanglu"] = "",
+    ["cv:heg_zhanglu"] = "",
+    ["illustrator:heg_zhanglu"] = "磐蒲",
+	["heg_bushi"] = "布施",
+  	[":heg_bushi"] = "当你受到1点伤害后，你可以令一名角色摸一张牌；当你对其他角色造成伤害后，你令一名角色摸一张牌。",
+    ["heg_midao"] = "米道",
+  	[":heg_midao"] = "一名角色的出牌阶段限一次，当其使用的【杀】或伤害类锦囊牌指定第一个目标时，其可以交给你一张手牌，令你声明一种花色和一种属性，然后其此次使用牌的花色与造成伤害的属性视为与你声明的相同。",
+
+	["heg_shixie"] = "士燮-国",
+    ["&heg_shixie"] = "士燮",
+    ["#heg_shixie"] = "百粤灵欹",
+    ["~heg_shixie"] = "",
+    ["designer:heg_shixie"] = "韩旭",
+    ["cv:heg_shixie"] = "",
+    ["illustrator:heg_shixie"] = "磐蒲",	
+	["heg_lixia"] = "礼下",
+  	[":heg_lixia"] = "锁定技，其他势力角色的准备阶段，若你不在其攻击范围内，该角色须选择一项：1.令你摸一张牌；2.弃置你装备区内的一张牌，该角色失去1点体力。",
+	["heg_biluan"] = "避乱",
+  	[":heg_biluan"] = "锁定技，其他角色计算与你的距离+X（X为你装备区内的牌数）。",
+
+	["heg_tangzi"] = "唐咨-国",
+    ["&heg_tangzi"] = "唐咨",
+    ["#heg_tangzi"] = "得时识风",
+    ["~heg_tangzi"] = "",
+    ["designer:heg_tangzi"] = "荼蘼（韩旭）",
+    ["cv:heg_tangzi"] = "",
+    ["illustrator:heg_tangzi"] = "凝聚永恒",
+	["heg_xingzhao"] = "兴棹",
+  	[":heg_xingzhao"] = "锁定技，若场上受伤角色的势力数为：1个或以上，你拥有技能〖恂恂〗；2个或以上，你受到伤害后，你与伤害来源手牌数较少的角色摸一张牌；3个或以上，你的手牌上限+4；4个或以上，你失去装备区内的牌时，摸一张牌。",
+
+	["heg_tangzi"] = "董昭-国",
+    ["&heg_tangzi"] = "董昭",
+    ["#heg_tangzi"] = "移尊易鼎",
+    ["~heg_tangzi"] = "",
+    ["designer:heg_tangzi"] = "逍遥鱼叔",
+    ["cv:heg_tangzi"] = "",
+    ["illustrator:heg_tangzi"] = "小牛",
+	["heg_quanjin"] = "劝进",
+  	[":heg_quanjin"] = "出牌阶段限一次，你可将一张手牌交给一名此阶段受到过伤害的角色，对其发起“军令”。若其执行，你摸一张牌；若其不执行，你将手牌摸至与手牌最多的角色相同（最多摸五张）。",
+    ["heg_zaoyun"] = "凿运",
+  	[":heg_zaoyun"] = "出牌阶段限一次，你可选择一名至其距离大于1的角色并弃置X张手牌（X为你至其的距离-1），令你至其的距离此回合视为1，然后你对其造成1点伤害。",
+
+	["heg_xushu"] = "徐庶-国",
+    ["&heg_xushu"] = "徐庶",
+    ["#heg_xushu"] = "难为完臣",
+    ["~heg_xushu"] = "",
+    ["designer:heg_xushu"] = "",
+    ["cv:heg_xushu"] = "",
+    ["illustrator:heg_xushu"] = "YanBai",
+	["ld__qiance"] = "谦策",
+  	[":ld__qiance"] = "与你势力相同的角色使用锦囊牌指定目标后，其可令其中的大势力角色不能响应此牌。",
+	["ld__jujian"] = "举荐",
+  	[":ld__jujian"] = "锁定技，当与你势力相同的角色进入濒死阶段时，你令其将体力回复至1点，然后你变更副将。",
+
+	["heg_wujing"] = "吴景-国",
+    ["&heg_wujing"] = "吴景",
+    ["#heg_wujing"] = "汗马鎏金",
+    ["~heg_wujing"] = "",
+    ["designer:heg_wujing"] = "逍遥鱼叔",
+    ["cv:heg_wujing"] = "",
+    ["illustrator:heg_wujing"] = "小牛",
+  	["ld__diaogui"] = "调归",
+  	[":ld__diaogui"] = "出牌阶段限一次，你可将一张装备牌当【调虎离山】使用，然后若你的势力形成<a href='heg_formation'>队列</a>，则你摸X张牌（X为此队列中的角色数）。",
+	["ld__fengyang"] = "风扬",
+  	[":ld__fengyang"] = "阵法技，与你处于同一<a href='heg_formation'>队列</a>的角色装备区内的牌被与你势力不同的角色弃置或获得时，取消之。",
+	
+	["heg_yanbaihu"] = "严白虎-国",
+    ["&heg_yanbaihu"] = "严白虎",
+    ["#heg_yanbaihu"] = "豺牙落涧",
+    ["~heg_yanbaihu"] = "",
+    ["designer:heg_yanbaihu"] = "逍遥鱼叔",
+    ["cv:heg_yanbaihu"] = "",
+    ["illustrator:heg_yanbaihu"] = "",	
+	["ld__zhidao"] = "雉盗",
+	[":ld__zhidao"] = "锁定技，出牌阶段开始时，你选择一名其他角色，你于此回合内：1.使用牌仅能指定你或其为目标；2.计算与其距离为1；3.首次对其造成伤害后，获得其区域内一张牌。",
+	["ld__jilix"] = "寄篱",
+  	[":ld__jilix"] = "锁定技，①当你成为红色基本牌或红色普通锦囊牌的唯一目标后，你令此牌结算两次；②当你于一回合内第二次受到伤害时，你移除此武将牌，防止之。",
+	
+	["heg_wenqin"] = "文钦-国",
+    ["&heg_wenqin"] = "文钦",
+    ["#heg_wenqin"] = "勇而无算",
+    ["~heg_wenqin"] = "",
+    ["designer:heg_wenqin"] = "逍遥鱼叔",
+    ["cv:heg_wenqin"] = "",
+    ["illustrator:heg_wenqin"] = "匠人绘-零二",		
+	["ld__jinfa"] = "矜伐",
+  	[":ld__jinfa"] = "出牌阶段限一次，你可弃置一张牌并选择一名其他角色，令其选择一项：1.令你获得其一张牌；2.交给你一张装备牌，若此装备牌为♠，其视为对你使用一张【杀】。",
+	
+	["heg_xiahouba"] = "夏侯霸-国",
+    ["&heg_xiahouba"] = "夏侯霸",
+    ["#heg_xiahouba"] = "棘途壮志",
+    ["~heg_xiahouba"] = "",
+    ["designer:heg_xiahouba"] = "逍遥鱼叔",
+    ["cv:heg_xiahouba"] = "",
+    ["illustrator:heg_xiahouba"] = "小牛",		
+	["ld__baolie"] = "豹烈",
+  	[":ld__baolie"] = "锁定技，①出牌阶段开始时，你令所有与你势力不同且攻击范围内含有你的角色依次对你使用一张【杀】，否则你弃置其一张牌。②你对体力值不小于你的角色使用【杀】无距离与次数限制。",
+	
+	["heg_xuyou"] = "许攸-国",
+    ["&heg_xuyou"] = "许攸",
+    ["#heg_xuyou"] = "毕方矫翼",
+    ["~heg_xuyou"] = "",
+    ["designer:heg_xuyou"] = "逍遥鱼叔",
+    ["cv:heg_xuyou"] = "",
+    ["illustrator:heg_xuyou"] = "猎枭",	
+	["ld__chenglue"] = "成略",
+  	[":ld__chenglue"] = "当与你势力相同的角色使用多目标的牌结算后，你可令其摸一张牌。若你受到过此牌造成的伤害，你可令一名与你势力相同、武将牌均明置且没有国战标记的角色获得一个“阴阳鱼”标记。",
+	["ld__shicai"] = "恃才",
+  	[":ld__shicai"] = "锁定技，当你受到伤害后，若此伤害为1点，你摸一张牌，否则你弃置两张牌。",
+
+	["heg_sufei"] = "苏飞-国",
+    ["&heg_sufei"] = "苏飞",
+    ["#heg_sufei"] = "诤友投明",
+    ["~heg_sufei"] = "",
+    ["designer:heg_sufei"] = "逍遥鱼叔",
+    ["cv:heg_sufei"] = "",
+    ["illustrator:heg_sufei"] = "Domi",
+	["ld__lianpian"] = "联翩",
+  	[":ld__lianpian"] = "结束阶段，若你于此回合内弃置任意角色牌的总数大于你的体力值，你可以令一名与你势力相同的角色将手牌摸至体力上限。其他角色的结束阶段，若其于此回合内弃置任意角色牌的总数大于你的体力值，其可以弃置你的一张牌或令你回复1点体力。",
+
+	["heg_panjun"] = "潘濬-国",
+    ["&heg_panjun"] = "潘濬",
+    ["#heg_panjun"] = "逆鳞之砥",
+    ["~heg_panjun"] = "",
+    ["designer:heg_panjun"] = "逍遥鱼叔",
+    ["cv:heg_panjun"] = "",
+    ["illustrator:heg_panjun"] = "Domi",
+	["ld__congcha"] = "聪察",
+  	[":ld__congcha"] = "①准备阶段，你可选择一名未确定势力的角色，然后直到你的下回合开始，当其明置武将牌后，若其确定势力且势力与你：相同，你与其各摸两张牌；不同，其失去1点体力。②摸牌阶段，若场上不存在未确定势力的角色，你可多摸两张牌。",
+	--gongqing
+
+	["heg_pengyang"] = "彭羕-国",
+    ["&heg_pengyang"] = "彭羕",
+    ["#heg_pengyang"] = "误身的狂士",
+    ["~heg_pengyang"] = "",
+    ["designer:heg_pengyang"] = "韩旭",
+    ["cv:heg_pengyang"] = "",
+    ["illustrator:heg_pengyang"] = "匠人绘-零一",	
+	["ld__jinxian"] = "近陷",
+  	[":ld__jinxian"] = "当你明置此武将牌后，你令所有你计算距离不大于1的角色执行：若其武将牌均明置，暗置一张武将牌；否则其弃置两张牌。",
+	["ld__tongling"] = "通令",
+  	[":ld__tongling"] = "每阶段限一次，当你于出牌阶段内对其它势力角色造成伤害后，你可令一名与你势力相同的角色对其使用一张牌，然后若此牌：造成伤害，你与其各摸两张牌；未造成伤害，其获得你对其造成伤害的牌。",
+	
+	["heg_nos_pengyang"] = "彭羕-国[旧]",
+    ["&heg_nos_pengyang"] = "彭羕",
+    ["#heg_nos_pengyang"] = "误身的狂士",
+    ["~heg_nos_pengyang"] = "",
+    ["designer:heg_nos_pengyang"] = "韩旭",
+    ["cv:heg_nos_pengyang"] = "",
+    ["illustrator:heg_nos_pengyang"] = "匠人绘-零一",
+	["heg_nos_daming"] = "达命",
+  	[":heg_nos_daming"] = "与你势力相同的角色出牌阶段开始时，你可以弃置一张锦囊牌，横置一名角色并摸X张牌（X为有横置角色的势力数），然后选择一项：1.视为对当前回合角色使用一张【桃】；2.令当前回合角色视为对你选择的另一名角色使用一张雷【杀】。",
+	["heg_nos_xiaoni"] = "嚣逆",
+  	[":heg_nos_xiaoni"] = "锁定技，当你使用牌指定目标或成为牌的目标后，若场上有与你势力相同的其他角色且这些角色手牌数均不大于你，目标角色不能响应此牌。",
+
+	["heg_zhuling"] = "朱灵-国",
+    ["&heg_zhuling"] = "朱灵",
+    ["#heg_zhuling"] = "五子之亚",
+    ["~heg_zhuling"] = "",
+    ["designer:heg_zhuling"] = "",
+    ["cv:heg_zhuling"] = "",
+    ["illustrator:heg_zhuling"] = "YanBai",
+	["ld__juejue"] = "决绝",
+  	[":ld__juejue"] = "①弃牌阶段开始时，你可失去1点体力，若如此做，此阶段结束时，若你于此阶段内弃置过牌，你令所有其他角色选择一项：1.将X张手牌置入弃牌堆；2.受到你造成的1点伤害（X为你于此阶段内弃置的牌数）；②你杀死与你势力相同的角色不执行奖惩。",
+	["ld__fangyuan"] = "方圆",
+  	[":ld__fangyuan"] = "阵法技，①若你是围攻角色，此围攻关系中围攻角色手牌上限+1，被围攻角色手牌上限-1。②结束阶段，若你是被围攻角色，你视为对此围攻关系中一名围攻角色使用一张无距离限制的【杀】。",
+
+	["heg_liuba"] = "刘巴-国",
+    ["&heg_liuba"] = "刘巴",
+    ["#heg_liuba"] = "清河一鲲",
+    ["~heg_liuba"] = "",
+    ["designer:heg_liuba"] = "逍遥鱼叔",
+    ["cv:heg_liuba"] = "",
+    ["illustrator:heg_liuba"] = "Mr_Sleeping",
+	["ld__tongdu"] = "统度",
+  	[":ld__tongdu"] = "与你势力相同的角色的结束阶段，其可摸X张牌（X为其于弃牌阶段弃置的牌数且至多为3）",
+	["ld__qingyin"] = "清隐",
+ 	[":ld__qingyin"] = "限定技，出牌阶段，你可移除此武将牌，然后与你势力相同的角色将体力回复至体力上限。",
+
+	["heg_zhugeke"] = "诸葛恪-国",
+    ["&heg_zhugeke"] = "诸葛恪",
+    ["#heg_zhugeke"] = "兴家赤族",
+    ["~heg_zhugeke"] = "",
+    ["designer:heg_zhugeke"] = "逍遥鱼叔",
+    ["cv:heg_zhugeke"] = "",
+    ["illustrator:heg_zhugeke"] = "猎枭",
+	--aocai
+	["ld__duwu"] = "黩武",
+  	[":ld__duwu"] = "限定技，出牌阶段，你可以选择一个“军令”，你对你攻击范围内所有与你势力不同或未确定势力的角色发起此“军令”，若其不执行，你对其造成1点伤害并摸一张牌。此“军令”结算后，若存在进入濒死状态被救回的角色，你失去1点体力。",
+
+	["heg_huangzu"] = "黄祖-国",
+    ["&heg_huangzu"] = "黄祖",
+    ["#heg_huangzu"] = "遮山扼江",
+    ["~heg_huangzu"] = "",
+    ["designer:heg_huangzu"] = "逍遥鱼叔",
+    ["cv:heg_huangzu"] = "",
+    ["illustrator:heg_huangzu"] = "YanBai",
+	["ld__xishe"] = "袭射",
+  	[":ld__xishe"] = "其他角色的准备阶段，你可以弃置一张装备区内的牌，视为对其使用一张【杀】（体力值小于你的角色不能响应），然后你可以重复此流程。此回合结束时，若你以此法杀死了一名角色，你可以变更副将且变更后的副将处于暗置状态。 ",
+
+	["heg_simazhao"] = "司马昭-国",
+    ["&heg_simazhao"] = "司马昭",
+    ["#heg_simazhao"] = "嘲风开天",
+    ["~heg_simazhao"] = "",
+    ["designer:heg_simazhao"] = "韩旭",
+    ["cv:heg_simazhao"] = "",
+    ["illustrator:heg_simazhao"] = "凝聚永恒",
+	["ld__suzhi"] = "夙智",
+  	[":ld__suzhi"] = "锁定技，你的回合内：1.你执行【杀】或【决斗】的效果而造成伤害时，此伤害+1；2.你使用非转化锦囊牌时摸一张牌且无距离限制；3.其他角色的牌被弃置后，你获得其一张牌。当你于一回合内触发上述效果三次后，此技能于此回合内失效。回合结束时，你获得“反馈”直至回合开始。",
+	["ld__zhaoxin"] = "昭心",
+  	[":ld__zhaoxin"] = "当你受到伤害后，你可展示所有手牌，然后与一名手牌数不大于你的角色交换手牌。",
+
+	["heg_zhonghui"] = "钟会-国",
+    ["&heg_zhonghui"] = "钟会",
+    ["#heg_zhonghui"] = "桀骜的野心家",
+    ["~heg_zhonghui"] = "",
+    ["designer:heg_zhonghui"] = "韩旭",
+    ["cv:heg_zhonghui"] = "",
+    ["illustrator:heg_zhonghui"] = "磐蒲",
+	["ld__quanji"] = "权计",
+  	[":ld__quanji"] = "每回合各限一次，当你受到伤害或造成伤害后，你可摸一张牌，然后将一张牌置于武将牌上，称为“权”；你的手牌上限+X（X为“权”的数量）。",
+	["ld__paiyi"] = "排异",
+  	[":ld__paiyi"] = "出牌阶段限一次，你可将一张“权”置入弃牌堆并选择一名角色，其摸X张牌，若其手牌数大于你，你对其造成1点伤害（X为“权”的数量且至多为7）。",
+
+	["heg_nos_zhonghui"] = "钟会-国[旧]",
+    ["&heg_nos_zhonghui"] = "钟会",
+    ["#heg_nos_zhonghui"] = "桀骜的野心家",
+    ["~heg_nos_zhonghui"] = "",
+    ["designer:heg_nos_zhonghui"] = "韩旭",
+    ["cv:heg_nos_zhonghui"] = "",
+    ["illustrator:heg_nos_zhonghui"] = "磐蒲",
+	["heg_nos_quanji"] = "权计",
+  	[":heg_nos_quanji"] = "当你受到伤害后或使用牌指定唯一目标并对其造成伤害后，你可以摸一张牌，然后将一张牌置于武将牌上，称为“权”；你的手牌上限+X（X为“权”的数量）。",
+
+	["heg_sunchen"] = "孙綝-国",
+    ["&heg_sunchen"] = "孙綝",
+    ["#heg_sunchen"] = "食髓的朝堂客",
+    ["~heg_sunchen"] = "",
+    ["designer:heg_sunchen"] = "逍遥鱼叔",
+    ["cv:heg_sunchen"] = "",
+    ["illustrator:heg_sunchen"] = "depp",
+	["heg_shilus"] = "嗜戮",
+  	[":heg_shilus"] = "当一名角色死亡时，你可将其所有武将牌置于你的武将牌旁（称为“戮”），若你为来源，你从剩余武将牌堆额外获得两张“戮”。准备阶段，你可以弃置至多X张牌（X为“戮”数），摸等量的牌。",
+	["heg_xiongnve"] = "凶虐",
+  	[":heg_xiongnve"] = "出牌阶段开始时，你可以移去一张“戮”，令你本回合对此“戮”势力角色获得下列效果中的一项：1.对其造成伤害时，令此伤害+1；2.对其造成伤害时，你获得其一张牌；3.对其使用牌无次数限制。出牌阶段结束时，你可以移去两张“戮”，然后直到你的下回合，当你受到其他角色造成的伤害时，此伤害-1。",
+
+	["heg_gongsunyuan"] = "公孙渊-国",
+    ["&heg_gongsunyuan"] = "公孙渊",
+    ["#heg_gongsunyuan"] = "狡黠的投机者",
+    ["~heg_gongsunyuan"] = "",
+    ["designer:heg_gongsunyuan"] = "逍遥鱼叔",
+    ["cv:heg_gongsunyuan"] = "",
+    ["illustrator:heg_gongsunyuan"] = "猎枭",
+	["ld__huaiyi"] = "怀异",
+  	[":ld__huaiyi"] = "出牌阶段限一次，你可展示所有手牌，若其中包含两种颜色，则你弃置其中一种颜色的牌，然后获得至多X名角色的各一张牌（X为你以此法弃置的手牌数）。你将以此法获得的装备牌置于武将牌上，称为“异”。",
+	["ld__zisui"] = "恣睢",
+  	[":ld__zisui"] = "锁定技，①摸牌阶段，你多摸X张牌；②结束阶段，若X大于你的体力上限，你死亡（X为“异”的数量）。",
+
+	["heg_nos_gongsunyuan"] = "公孙渊-国[旧]",
+    ["&heg_nos_gongsunyuan"] = "公孙渊",
+    ["#heg_nos_gongsunyuan"] = "狡黠的投机者",
+    ["~heg_nos_gongsunyuan"] = "",
+    ["designer:heg_nos_gongsunyuan"] = "逍遥鱼叔",
+    ["cv:heg_nos_gongsunyuan"] = "",
+    ["illustrator:heg_nos_gongsunyuan"] = "猎枭",
+	["heg_nos_huaiyi"] = "怀异",
+  	[":heg_nos_huaiyi"] = "出牌阶段限一次，你可以展示所有手牌，若其中包含两种颜色，你弃置其中一种颜色的牌，然后获得至多等同于弃置牌数的其他角色各一张牌，将以此法获得的装备牌置于你的武将牌上，称为“异”。你可以将“异”如手牌般使用或打出。",
+
+	--紫气东来
+
+	["heg_simayi"] = "司马懿-国",
+    ["&heg_simayi"] = "司马懿",
+    ["#heg_simayi"] = "应期佐命",
+    ["~heg_simayi"] = "",
+    ["designer:heg_simayi"] = "",
+    ["cv:heg_simayi"] = "",
+    ["illustrator:heg_simayi"] = "小罗没想好",
+	["heg_yingshi"] = "鹰视",
+  	[":heg_yingshi"] = "出牌阶段开始时，你可以令一名角色视为对你指定的另一名角色使用一张【知己知彼】，然后若使用者不为你，你摸一张牌。",
+	["heg_shunfu"] = "瞬覆",
+  	[":heg_shunfu"] = "限定技，出牌阶段，你可以令至多三名未确定势力的其他角色各摸两张牌，然后这些角色依次可以使用一张【杀】（无距离限制且不可被响应）。",
+
+	["heg_zhangchunhua"] = "张春华-国",
+    ["&heg_zhangchunhua"] = "张春华",
+    ["#heg_zhangchunhua"] = "锋刃染霜",
+    ["~heg_zhangchunhua"] = "",
+    ["designer:heg_zhangchunhua"] = "",
+    ["cv:heg_zhangchunhua"] = "",
+    ["illustrator:heg_zhangchunhua"] = "小罗没想好",
+	["heg_ejue"] = "扼绝",
+  	[":heg_ejue"] = "锁定技，当你使用【杀】对未确定势力的角色造成伤害时，此伤害+1。",
+    ["heg_shangshi"] = "伤逝",
+  	[":heg_shangshi"] = "每名角色的回合结束时，你可以将手牌摸至已损失体力值。",
+
+	["heg_simashi"] = "司马师-国",
+    ["&heg_simashi"] = "司马师",
+    ["#heg_simashi"] = "睚眥侧目",
+    ["~heg_simashi"] = "",
+    ["designer:heg_simashi"] = "",
+    ["cv:heg_simashi"] = "",
+    ["illustrator:heg_simashi"] = "拉布拉卡",
+	["heg_yimie"] = "夷灭",
+  	[":heg_yimie"] = "锁定技，你的回合内，与处于濒死状态角色势力相同/势力不同的角色不能使用【桃】/可将一张<font color='red'>♥</font>手牌当【桃】对处于濒死状态的角色使用。",
+	["heg_ruilve"] = "睿略",
+  	[":heg_ruilve"] = "未确定势力的其他角色出牌阶段限一次，其可展示并交给你一张伤害类牌，然后其摸一张牌。",
+
+	["heg_simazhao"] = "司马昭-国",
+    ["&heg_simazhao"] = "司马昭",
+    ["#heg_simazhao"] = "天下畏威",
+    ["~heg_simazhao"] = "",
+    ["designer:heg_simazhao"] = "",
+    ["cv:heg_simazhao"] = "",
+    ["illustrator:heg_simazhao"] = "君桓文化",
+	["heg_zhaoran"] = "昭然",
+  	[":heg_zhaoran"] = "出牌阶段开始前，你可以摸X张牌（X为4-场上势力数），然后未确定势力的角色可以明置一张武将牌，令你结束此回合。",
+	["heg_beiluan"] = "备乱",
+  	[":heg_beiluan"] = "当你受到伤害后，你可以令伤害来源所有非装备手牌视为【杀】直到当前回合结束。",
+
+	["heg_simazhou"] = "司马伷-国",
+    ["&heg_simazhou"] = "司马伷",
+    ["#heg_simazhou"] = "温恭的狻猊",
+    ["~heg_simazhou"] = "",
+    ["designer:heg_simazhou"] = "",
+    ["cv:heg_simazhou"] = "",
+    ["illustrator:heg_simazhou"] = "凝聚永恒",
+	["heg_pojing"] = "迫境",
+  	[":heg_pojing"] = "出牌阶段限一次，你可以令一名其他角色选择一项：1.令你获得其区域内的一张牌；2.所有与你势力相同的角色可以明置任意张武将牌，对其造成等量的伤害。",
+
+	["heg_simaliang"] = "司马亮-国",
+    ["&heg_simaliang"] = "司马亮",
+    ["#heg_simaliang"] = "蒲牢惊啼",
+    ["~heg_simaliang"] = "",
+    ["designer:heg_simaliang"] = "",
+    ["cv:heg_simaliang"] = "",
+    ["illustrator:heg_simaliang"] = "小罗没想好",
+	["heg_gongzhi"] = "共执",
+  	[":heg_gongzhi"] = "你可以跳过摸牌阶段，令势力与你相同的角色依次摸一张牌，直到共计摸四张牌。",
+	["heg_shejus"] = "慑惧",
+  	[":heg_shejus"] = "锁定技，当其他角色明置武将牌后，若其势力与你相同，你回复1点体力，然后弃置所有手牌。",
+
+	["heg_simalun"] = "司马伦-国",
+    ["&heg_simalun"] = "司马伦",
+    ["#heg_simalun"] = "螭吻裂冠",
+    ["~heg_simalun"] = "",
+    ["designer:heg_simalun"] = "",
+    ["cv:heg_simalun"] = "",
+    ["illustrator:heg_simalun"] = "荆芥",
+	["heg_zhulan"] = "助澜",
+  	[":heg_zhulan"] = "当一名其他角色受到伤害时，若伤害来源与其势力相同，你可以弃置一张牌令此伤害+1。",
+	["heg_luanchang"] = "乱常",
+  	[":heg_luanchang"] = "限定技，与你势力相同的角色受到过伤害的回合结束时，你可以令当前回合角色将所有手牌（至少一张）当【万箭齐发】使用。",
+
+	["heg_shibao"] = "石苞-国",
+    ["&heg_shibao"] = "石苞",
+    ["#heg_shibao"] = "经国之才",
+    ["~heg_shibao"] = "",
+    ["designer:heg_shibao"] = "",
+    ["cv:heg_shibao"] = "",
+    ["illustrator:heg_shibao"] = "凝聚永恒",
+	["heg_zhuosheng"] = "擢升",
+  	[":heg_zhuosheng"] = "当你得到牌后，你可以令你本回合使用的下一张牌的伤害值基数+1（不能叠加）。",
+
+	["heg_yanghuiyu"] = "羊徽瑜-国",
+    ["&heg_yanghuiyu"] = "羊徽瑜",
+    ["#heg_yanghuiyu"] = "克明礼教",
+    ["~heg_yanghuiyu"] = "",
+    ["designer:heg_yanghuiyu"] = "",
+    ["cv:heg_yanghuiyu"] = "",
+    ["illustrator:heg_yanghuiyu"] = "Jzeo",
+	["heg_ciwei"] = "慈威",
+  	[":heg_ciwei"] = "你的回合内，当其他角色使用牌时，若场上有本回合使用或打出过牌且不与其势力相同的其他角色，你可以弃置一张牌令此牌无效（取消所有目标）。",
+
+	["heg_wangyuanji"] = "王元姬-国",
+    ["&heg_wangyuanji"] = "王元姬",
+    ["#heg_wangyuanji"] = "垂心万物",
+    ["~heg_wangyuanji"] = "",
+    ["designer:heg_wangyuanji"] = "",
+    ["cv:heg_wangyuanji"] = "",
+    ["illustrator:heg_wangyuanji"] = "六道目",
+	["heg_yanxi"] = "宴戏",
+  	[":heg_yanxi"] = "准备阶段，你可以选择至多三名其他势力的角色各一张手牌，这些角色依次声明一个牌名，然后你展示并获得其中一张牌，若获得的牌与其声明的牌名不同，你再获得其余被选择的牌。",
+	["heg_shiren"] = "识人",
+  	[":heg_shiren"] = "每回合限一次，当一名未确定势力的其他角色受到伤害后，你可以交给其两张牌并摸两张牌。",
+
+	["heg_weiguan"] = "卫瓘-国",
+    ["&heg_weiguan"] = "卫瓘",
+    ["#heg_weiguan"] = "忠允清识",
+    ["~heg_weiguan"] = "",
+    ["designer:heg_weiguan"] = "",
+    ["cv:heg_weiguan"] = "",
+    ["illustrator:heg_weiguan"] = "Karneval",
+	["heg_chengxi"] = "乘隙",
+  	[":heg_chengxi"] = "准备阶段，你可以令一名角色视为使用一张【以逸待劳】，结算结束后，若因此【以逸待劳】弃置的牌中包含非基本牌，此【以逸待劳】的使用者对目标各造成1点伤害。",
+	["heg_jiantong"] = "监统",
+  	[":heg_jiantong"] = "当你受到伤害后，你可以观看一名角色的手牌，然后你可以用装备区内的一张牌交换其中至多两张牌。",
+
+	["heg_jiachong"] = "贾充-国",
+    ["&heg_jiachong"] = "贾充",
+    ["#heg_jiachong"] = "悖逆篡弑",
+    ["~heg_jiachong"] = "",
+    ["designer:heg_jiachong"] = "",
+    ["cv:heg_jiachong"] = "",
+    ["illustrator:heg_jiachong"] = "游漫美绘",
+	["heg_chujue"] = "除绝",
+  	[":heg_chujue"] = "锁定技，你对有角色死亡的势力的角色使用牌无次数限制且不能被这些角色响应。",
+	["heg_jianzhi"] = "奸志",
+  	[":heg_jianzhi"] = "当你造成致命伤害时，你可以弃置所有手牌（至少一张），然后本回合下次击杀奖励改为三倍。",
+
+	["heg_guohuaij"] = "郭槐-国",
+    ["&heg_guohuaij"] = "郭槐",
+    ["#heg_guohuaij"] = "嫉贤妒能",
+    ["~heg_guohuaij"] = "",
+    ["designer:heg_guohuaij"] = "",
+    ["cv:heg_guohuaij"] = "",
+    ["illustrator:heg_guohuaij"] = "凝聚永恒",
+	["heg_zhefu"] = "哲妇",
+  	[":heg_zhefu"] = "当你于回合外使用或打出基本牌后，你可以观看一名同势力角色数不小于你的角色的手牌，然后你可以弃置其中一张基本牌。",
+	["heg_yidu"] = "遗毒",
+  	[":heg_yidu"] = "当你使用伤害类牌后，你可以展示一名未受到此牌伤害的目标角色至多两张手牌，若颜色均相同，你弃置这些牌。",
+
+	["heg_wangjun"] = "王濬-国",
+    ["&heg_wangjun"] = "王濬",
+    ["#heg_wangjun"] = "顺流长驱",
+    ["~heg_wangjun"] = "",
+    ["designer:heg_wangjun"] = "",
+    ["cv:heg_wangjun"] = "",
+    ["illustrator:heg_wangjun"] = "荆芥",
+	["heg_chengliu"] = "乘流",
+  	[":heg_chengliu"] = "出牌阶段限一次，你可以对一名装备区牌数小于你的角色造成1点伤害，然后你可以与其交换装备区的所有牌并重复此流程。",
+
+	["heg_malong"] = "马隆-国",
+    ["&heg_malong"] = "马隆",
+    ["#heg_malong"] = "困局诡阵",
+    ["~heg_malong"] = "",
+    ["designer:heg_malong"] = "",
+    ["cv:heg_malong"] = "",
+    ["illustrator:heg_malong"] = "荆芥",
+	["heg_zhuanzhan"] = "转战",
+  	[":heg_zhuanzhan"] = "锁定技，若场上有未确定势力的角色，你使用【杀】无距离限制且不能指定未确定势力的角色为目标。",
+	["heg_xunjim"] = "勋济",
+  	[":heg_xunjim"] = "你使用【杀】可以多选择至多两名角色为目标，此【杀】结算结束后，若对所有目标角色均造成伤害，此【杀】不计次数。",
+
+
+	--金印紫授
+	["heg_zhanghuyuechen"] = "张虎乐綝-国",
+    ["&heg_zhanghuyuechen"] = "张虎乐綝",
+    ["#heg_zhanghuyuechen"] = "文成武德",
+    ["~heg_zhanghuyuechen"] = "",
+    ["designer:heg_zhanghuyuechen"] = "",
+    ["cv:heg_zhanghuyuechen"] = "",
+    ["illustrator:heg_zhanghuyuechen"] = "凝聚永恒",
+	["heg_xijue"] = "袭爵",
+  	[":heg_xijue"] = "你可以弃置一张牌以发动〖突袭〗或〖骁果〗。",
+	["heg_lvxian"] = "履险",
+  	[":heg_lvxian"] = "主将技，当你每回合首次受到伤害后，若执行上回合的角色不为你，你可以摸X张牌（X为你上回合失去的牌数）。",
+	["heg_yingwei"] = "盈威",
+  	[":heg_yingwei"] = "副将技，结束阶段，若你本回合造成伤害数等于摸牌数，你可以重铸至多两张牌。",
+
+	["heg_wenyang"] = "文鸯-国",
+    ["&heg_wenyang"] = "文鸯",
+    ["#heg_wenyang"] = "勇冠三军",
+    ["~heg_wenyang"] = "",
+    ["designer:heg_wenyang"] = "",
+    ["cv:heg_wenyang"] = "",
+    ["illustrator:heg_wenyang"] = "小罗没想好",	
+	["heg_duanqiu"] = "断虬",
+  	[":heg_duanqiu"] = "准备阶段，你可以选择一个其他势力，视为对该势力的所有角色使用一张【决斗】，此牌结算后，你令所有角色本回合内至多共计再使用X张手牌（X为此【决斗】结算过程中打出的【杀】数量）。",
+
+	["heg_yanghu"] = "羊祜-国",
+    ["&heg_yanghu"] = "羊祜",
+    ["#heg_yanghu"] = "静水沧笙",
+    ["~heg_yanghu"] = "",
+    ["designer:heg_yanghu"] = "",
+    ["cv:heg_yanghu"] = "",
+    ["illustrator:heg_yanghu"] = "白",
+	["heg_huaiyuan"] = "怀远",
+    [":heg_huaiyuan"] = "与你势力相同角色的准备阶段，你可以令其以下项于本回合数值+1: 1.攻击范围；2.手牌上限；3.使用【杀】的次数上限。",
+	["heg_fushou"] = "付授",
+  	[":heg_fushou"] = "锁定技，与你势力相同的角色无视主副将条件拥有其武将牌上的所有主将技和副将技（计算阴阳鱼的效果除外）。",
+
+	["heg_yangjun"] = "杨骏-国",
+    ["&heg_yangjun"] = "杨骏",
+    ["#heg_yangjun"] = "阶缘佞宠",
+    ["~heg_yangjun"] = "",
+    ["designer:heg_yangjun"] = "",
+    ["cv:heg_yangjun"] = "",
+    ["illustrator:heg_yangjun"] = "荆芥",
+	["heg_neiji"] = "内忌",
+  	[":heg_neiji"] = "出牌阶段开始时，你可以选择一名其他势力角色，与其同时展示两张手牌，若如此做，你与其依次弃置以此法展示的【杀】，若以此法弃置【杀】的数量：大于1，你与其各摸三张牌；为1，以此法未弃置【杀】的角色视为对以此法弃置【杀】的角色使用一张【决斗】。",
+
+	["heg_bailingyun"] = "柏夫人-国",
+    ["&heg_bailingyun"] = "柏夫人",
+    ["#heg_bailingyun"] = "玲珑心窍",
+    ["~heg_bailingyun"] = "",
+    ["designer:heg_bailingyun"] = "",
+    ["cv:heg_bailingyun"] = "",
+    ["illustrator:heg_bailingyun"] = "小罗没想好",
+	["heg_xiace"] = "黠策",
+	[":heg_xiace"] = "若当前回合角色有【杀】的剩余使用次数，你可以将一张牌当【无懈可击】使用，" ..
+    "并令当前回合角色【杀】的剩余使用次数-1，然后你可以变更副将。",
+	["heg_limeng"] = "离梦",
+  	[":heg_limeng"] = "结束阶段，你可以弃置一张非基本牌并选择场上两张珠联璧合的武将牌，" ..
+    "若不为同一名角色的武将，则这些角色分别对另一名角色造成1点伤害。",
+
+	["heg_wangxiang"] = "王祥-国",
+    ["&heg_wangxiang"] = "王祥",
+    ["#heg_wangxiang"] = "沂川跃鲤",
+    ["~heg_wangxiang"] = "",
+    ["designer:heg_wangxiang"] = "",
+    ["cv:heg_wangxiang"] = "",
+    ["illustrator:heg_wangxiang"] = "KY",
+	["heg_bingxin"] = "冰心",
+  	[":heg_bingxin"] = "若你手牌的数量等于体力值且颜色相同，你可以展示手牌（无则跳过）并摸一张牌，视为使用一张本回合未以此法使用过牌名的基本牌。",
+
+	["heg_sunxiu"] = "孙秀-国",
+    ["&heg_sunxiu"] = "孙秀",
+    ["#heg_sunxiu"] = "黄钟毁弃",
+    ["~heg_sunxiu"] = "",
+    ["designer:heg_sunxiu"] = "",
+    ["cv:heg_sunxiu"] = "",
+    ["illustrator:heg_sunxiu"] = "荆芥",
+	["heg_xiejian"] = "挟奸",
+    [":heg_xiejian"] = "出牌阶段限一次，你可以对一名其他角色发起“军令”，且你以此法抽取的备选“军令”对其他角色不可见，若其不执行，其强制执行你抽取的备选“军令”。",
+	["heg_yinsha"] = "引杀",
+  	[":heg_yinsha"] = "你可以将所有手牌当【借刀杀人】使用，此牌目标必须使用【杀】或将所有手牌当【杀】使用以响应此牌。",
+
+	["heg_duyu"] = "杜预-国",
+    ["&heg_duyu"] = "杜预",
+    ["#heg_duyu"] = "文成武德",
+    ["~heg_duyu"] = "",
+    ["designer:heg_duyu"] = "",
+    ["cv:heg_duyu"] = "",
+    ["illustrator:heg_duyu"] = "君桓文化",
+	["heg_sanchen"] = "三陈",
+  	[":heg_sanchen"] = "出牌阶段，对每名角色限一次，若你的武将牌均明置，你可令一名角色摸三张牌然后弃置三张牌，若其因此弃置了类别相同的牌，你暗置此武将牌。",
+	["heg_pozhu"] = "破竹",
+  	[":heg_pozhu"] = "主将技，你计算体力上限时减少1个单独的阴阳鱼。准备阶段，你可以将一张牌当【杀】使用，"..
+    "结算后你展示唯一目标一张手牌，若两张牌花色不同，你可以重复此流程。",
+
+
+	
+	["heg_lordliubei"] = "君刘备-国",
+    ["&heg_lordliubei"] = "君刘备",
+    ["#heg_lordliubei"] = "龙横蜀汉",
+    ["~heg_lordliubei"] = "",
+    ["designer:heg_lordliubei"] = "",
+    ["cv:heg_lordliubei"] = "",
+    ["illustrator:heg_lordliubei"] = "",
+	["heg_lord_zhangwu"] = "章武",
+  	[":heg_lord_zhangwu"] = "锁定技，当【飞龙夺凤】进入弃牌堆或其他角色的装备区后，你获得之。当你失去【飞龙夺凤】前，展示之，然后将此牌置于牌堆底并摸两张牌。",
+	["heg_lord_shouyue"] = "君主技，你拥有“五虎将大旗”。",
+	[":heg_lord_shouyue"] = "君主技，你拥有“五虎将大旗”。\
+	“五虎将大旗”：存活的蜀势力角色的技能按如下规则改动——\
+	〖武圣〗：将“红色牌”改为“任意牌”；\
+	〖咆哮〗：增加描述“你使用的【杀】无视其他角色的防具”；\
+	〖龙胆〗：增加描述“你每发动一次〖龙胆〗便摸一张牌”；\
+	〖铁骑〗：将“一张明置的武将牌的非锁定技失效”改为“所有明置的武将牌的非锁定技失效”；\
+	〖烈弓〗：增加描述“你的攻击范围+1”。",
+	["heg_lord_jizhao"] = "激诏",
+  	[":heg_lord_jizhao"] = "限定技，当你处于濒死状态时，你可以将手牌补至体力上限，体力回复至2点，失去〖授钺〗并获得〖仁德〗。",
+	--飞龙夺凤♤2
+	--当你使用【杀】指定一名角色为目标后，你可以令其弃置一张牌；你使用【杀】令一名角色进入濒死状态时，你可以获得其一张牌。
+
+	["heg_lordzhangjiao"] = "君张角-国",
+    ["&heg_lordzhangjiao"] = "君张角",
+    ["#heg_lordzhangjiao"] = "时代的先驱",
+    ["~heg_lordzhangjiao"] = "",
+    ["designer:heg_lordzhangjiao"] = "",
+    ["cv:heg_lordzhangjiao"] = "",
+    ["illustrator:heg_lordzhangjiao"] = "",
+	["heg_lord_hongfa"] = "弘法",
+  	[":heg_lord_hongfa"] = "君主技，你拥有“黄巾天兵符”。准备阶段，若“黄巾天兵符”上没有牌，你将牌堆顶的X张牌置于“黄巾天兵符”上，称为“天兵”（X为存活群势力角色数）。\
+	“黄巾天兵符”：1.当你计算群势力角色数时，每一张“天兵”均可视为一名群势力角色。2.当你失去体力前，你可以改为将一张“天兵”置入弃牌堆。3.与你势力相同的角色可以将一张“天兵”当【杀】使用或打出。",
+	["heg_lord_wuxin"] = "悟心",
+  	[":heg_lord_wuxin"] = "摸牌阶段开始时，你可以观看牌堆顶的X张牌（X为存活群势力角色数），然后将这些牌以任意顺序置于牌堆顶。",
+	["heg_lord_wendao"] = "问道",
+  	[":heg_lord_wendao"] = "出牌阶段限一次，你可以弃置一张红色牌，然后从弃牌堆或场上获得【太平要术】。",
+
+	["heg_lordsunquan"] = "君孙权-国",
+    ["&heg_lordsunquan"] = "君孙权",
+    ["#heg_lordsunquan"] = "虎踞江东",
+    ["~heg_lordsunquan"] = "",
+    ["designer:heg_lordsunquan"] = "",
+    ["cv:heg_lordsunquan"] = "",
+    ["illustrator:heg_lordsunquan"] = "",
+	["heg_lord_jiahe"] = "嘉禾",
+  	[":heg_lord_jiahe"] = "君主技，你拥有“缘江烽火图”。\
+	“缘江烽火图”：1.每名吴势力角色的出牌阶段限一次，其可以将一张装备牌置于“缘江烽火图”上，称为“烽火”。 2.根据“烽火”的数量，所有吴势力角色可以于其准备阶段选择并获得其中一个技能直到回合结束：至少一张，〖英姿〗；至少两张，〖好施〗；至少三张，〖涉猎〗；至少四张，〖度势〗；至少五张，可多选择一个技能。 3.锁定技，当你受到【杀】或锦囊牌造成的伤害后，你将一张“烽火”置入弃牌堆。",
+	["heg_lord_lianzi"] = "敛资",
+  	[":heg_lord_lianzi"] = "出牌阶段限一次，你可以弃置一张手牌，然后亮出牌堆顶的X张牌（X为吴势力角色装备区里的牌数和“烽火”数之和），获得其中所有与你弃置牌类别相同的牌。若此次获得的牌数大于3，你失去〖敛资〗并获得〖制衡〗。",
+	["heg_lord_jubao"] = "聚宝",
+  	[":heg_lord_jubao"] = "锁定技，你装备区里的宝物牌不能被其他角色获得。结束阶段，若场上或弃牌堆中有【定澜夜明珠】，你摸一张牌，然后获得装备区里有【定澜夜明珠】角色的一张牌。",
+	--定澜夜明珠♢6
+	--锁定技，若你未拥有“制衡”，你获得“制衡”；若你拥有不以此法获得的“制衡”，则取消“制衡”牌数限制。
+
+	["heg_lordcaocao"] = "君曹操-国",
+    ["&heg_lordcaocao"] = "君曹操",
+    ["#heg_lordcaocao"] = "凤舞九天",
+    ["~heg_lordcaocao"] = "",
+    ["designer:heg_lordcaocao"] = "",
+    ["cv:heg_lordcaocao"] = "",
+    ["illustrator:heg_lordcaocao"] = "",
+	["heg_lord_jianan"] = "建安",
+	[":heg_lord_jianan"] = "君主技，你拥有“五子良将纛”。\
+	“五子良将纛”：魏势力角色的准备阶段，该角色可以弃置一张牌并选择自己暗置的一张武将牌（没有暗置的武将牌则选择一张暗置），然后获得以下技能之一直到你下回合开始：〖突袭〗、〖巧变〗、〖骁果〗、〖节钺〗、〖断粮〗。场上角色已有的技能无法选择，且在此期间该角色不能明置因此选择的武将牌。",
+	["heg_lord_huibian"] = "挥鞭",
+  	[":heg_lord_huibian"] = "出牌阶段限一次，你可以选择一名魏势力角色和另一名已受伤的魏势力角色，你对前者造成1点伤害并令其摸两张牌，然后令后者回复1点体力。",
+	["heg_lord_zongyu"] = "总御",
+  	[":heg_lord_zongyu"] = "当【六龙骖驾】进入其他角色装备区后，你可以用你装备区里的所有坐骑牌（至少一张）交换【六龙骖驾】；当你使用坐骑牌时，若场上或弃牌堆中有【六龙骖驾】，你将此牌置入你的装备区。",
+	--六龙骖驾♡K
+	--锁定技，你与其他角色距离-1；其他角色与你距离+1；此牌置入你的装备区后，将你装备区其他坐骑牌置入弃牌堆；若此牌在你的装备牌，你不能使用其他坐骑牌且所有角色不能将坐骑牌置入你的装备区。
+
+	["heg_lordsimayi"] = "君司马懿-国",
+    ["&heg_lordsimayi"] = "君司马懿",
+    ["#heg_lordsimayi"] = "时代的归墟",
+    ["~heg_lordsimayi"] = "",
+    ["designer:heg_lordsimayi"] = "",
+    ["cv:heg_lordsimayi"] = "",
+    ["illustrator:heg_lordsimayi"] = "",
+	["heg_jiaping"] = "嘉平",
+  	[":heg_jiaping"] = "<b><font color='goldenrod'>君主技</font></b>，你拥有“八荒死士令”。<br>#<b>八荒死士令</b>：每轮限一次，所有本轮明置过武将牌的晋势力角色可以移除其副将的武将牌并发动以下一个未以此法发动过的技能：“瞬覆”，“奉迎”，“将略”，“勇进”和“乱武”。",
+	["heg_guikuang"] = "诡诳",
+  	[":heg_guikuang"] = "出牌阶段限一次，你可以选择两名势力各不相同的角色，令这两名角色拼点，然后拼点牌为红色的角色依次对拼点没赢的角色造成1点伤害。",
+	["heg_shujuan"] = "舒卷",
+  	[":heg_shujuan"] = "锁定技，当每回合【戢鳞潜翼】首次置入弃牌堆或其他角色装备区后，你获得并使用之。",
+	--戢鳞潜翼黑桃6 攻击范围X
+	--你使用【杀】的结算过程中，你攻击范围内的非目标角色不能使用牌（X为你的已损失的体力值）。
 
 
 
 
+	["heg_mobile_zhanglu"] = "张鲁-国[手杀]",
+    ["&heg_mobile_zhanglu"] = "张鲁",
+    ["#heg_mobile_zhanglu"] = "政宽教惠",
+    ["~heg_mobile_zhanglu"] = "",
+    ["designer:heg_mobile_zhanglu"] = "",
+    ["cv:heg_mobile_zhanglu"] = "",
+    ["illustrator:heg_mobile_zhanglu"] = "磐蒲",
+	["heg_mobile_bushi"] = "布施",
+  	[":heg_mobile_bushi"] = "回合结束时，你获得X枚“义舍”；其他角色的准备阶段，你可以弃1枚“义舍”，然后交给其一张牌并摸两张牌；准备阶段，你弃置Y-2张牌并移去所有“义舍”标记（X为你的体力值，Y为存活角色数-你的体力值）。",
+	["heg_mobile_midao"] = "米道",
+  	[":heg_mobile_midao"] = "结束阶段，若你没有“米”，你可以摸两张牌，然后将两张牌置于你的武将牌上，称为“米”；当一名角色的判定牌生效前，你可以打出一张“米”替换之。",
 
+	["heg_mobile_xushu"] = "徐庶-国[手杀]",
+    ["&heg_mobile_xushu"] = "徐庶",
+    ["#heg_mobile_xushu"] = "难为完臣",
+    ["~heg_mobile_xushu"] = "",
+    ["designer:heg_mobile_xushu"] = "",
+    ["cv:heg_mobile_xushu"] = "",
+    ["illustrator:heg_mobile_xushu"] = "YanBai",
+	["heg_mobile_zhuhai"] = "诛害",
+	[":heg_mobile_zhuhai"] = "其他角色的结束阶段，若其本回合造成过伤害，你可以对其使用一张【杀】。若其本回合对与你势力相同的角色造成过伤害，此【杀】无视其防具，且当其使用【闪】响应此【杀】后，其弃置一张牌。",
+	["heg_mobile_jiancai"] = "荐才",
+  	[":heg_mobile_jiancai"] = "每轮开始时，你获知的未登场同势力武将牌增加至X张（X为轮次数的三倍）。当与你势力相同的角色受到致命伤害时，你可以防止此伤害，然后你变更副将；若你所属的势力不为唯一大势力，此次变更副将你可以优先从你获知的武将中选择。",
+
+	["heg_mobile_zhonghui"] = "钟会-国[手杀]",
+    ["&heg_mobile_zhonghui"] = "钟会",
+    ["#heg_mobile_zhonghui"] = "桀骜的野心家",
+    ["~heg_mobile_zhonghui"] = "",
+    ["designer:heg_mobile_zhonghui"] = "韩旭",
+    ["cv:heg_mobile_zhonghui"] = "",
+    ["illustrator:heg_mobile_zhonghui"] = "磐蒲",
+	["heg_mobile_paiyi"] = "排异",
+  	[":heg_mobile_paiyi"] = "出牌阶段限两次，你可以移去一张“权”并令一名角色摸两张牌。若其手牌多于你，你对其造成1点伤害。",
+
+	["heg_fk_zhanglu"] = "张鲁-国[新月]",
+    ["&heg_fk_zhanglu"] = "张鲁",
+    ["#heg_fk_zhanglu"] = "政宽教惠",
+    ["~heg_fk_zhanglu"] = "",
+    ["designer:heg_fk_zhanglu"] = "",
+    ["cv:heg_fk_zhanglu"] = "",
+    ["illustrator:heg_fk_zhanglu"] = "磐蒲",
+	["heg_fk_bushi"] = "布施",
+  	[":heg_fk_bushi"] = "一名角色的结束阶段，若你于此回合内造成或受到过伤害，你可移去一张“米”，令至多X名角色各摸一张牌（X为你的体力上限），以此法摸牌的角色可依次将一张牌置于你武将牌上，称为“米”。",
+    ["heg_fk_midao"] = "米道",
+  	[":heg_fk_midao"] = "①游戏开始时，你摸两张牌，然后将两张牌置于武将牌上，称为“米”②一名角色的判定牌生效前，你可以打出一张“米”替换之。",
+
+	["heg_true_xushu"] = "徐庶-国[萌剪]",
+    ["&heg_true_xushu"] = "徐庶",
+    ["#heg_true_xushu"] = "难为完臣",
+    ["~heg_true_xushu"] = "",
+    ["designer:heg_true_xushu"] = "",
+    ["cv:heg_true_xushu"] = "",
+    ["illustrator:heg_true_xushu"] = "YanBai",
+	["heg_true_zhuhai"] = "诛害",
+	[":heg_true_zhuhai"] = "一名其他角色的结束阶段开始时，若该角色本回合造成过伤害，你可以对其使用一张【杀】（无距离限制）。",
+	["heg_true_pozhen"] = "破阵",
+  	[":heg_true_pozhen"] = "限定技，其他角色的回合开始时，你可以令其本回合不可使用、打出或重铸手牌；若其处于队列或围攻关系中，你可依次弃置此队列或参与围攻关系的其他角色的一张牌。",
+	["heg_true_jiancai"] = "荐才",
+  	[":heg_true_jiancai"] = "你势力相同的角色即将受到伤害而进入濒死状态时，你可以防止此伤害，若如此做，你须变更副将；与你势力相同的角色变更副将时，你可令其额外获得两张备选武将牌。",
 
 
 
 }
 
-return {extension, extension_heg, extension_hegbian, extension_hegquan,extension_guandu, extension_twyj}
+return {extension, extension_heg, extension_hegbian, extension_hegquan, extension_heglordex,extension_guandu, extension_twyj}

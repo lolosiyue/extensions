@@ -289,8 +289,10 @@ if EquipCard_typs == 1 then
 				if move.from and move.from:objectName() == player:objectName() and move.from_places:contains(sgs.Player_PlaceEquip) then
 					for _, id in sgs.qlist(move.card_ids) do
 						if sgs.Sanguosha:getEngineCard(id):getClassName() == "EXCard_TPYS" then
-							room:loseHp(player, 1, true, player, self:objectName())
-							if player:isAlive() then player:drawCards(2) end
+							player:drawCards(2)
+							if player:getHp() > 1 then
+								room:loseHp(player, 1, true, player, self:objectName())
+							end
 							return
 						end
 					end
@@ -312,7 +314,7 @@ if EquipCard_typs == 1 then
 					end
 				end
 			end
-			return extra
+			return extra and player:hasArmorEffect("EXCard_TPYS")
 		end,
 		fixed_func = function()
 			return -1
@@ -750,7 +752,7 @@ sgs.LoadTranslationTable{
 
 	["EXCard_TPYS"] = "太平要术",
 	[":EXCard_TPYS"] = "装备牌·防具\
-	防具效果：防止你受到的所有属伤害。全场每有一名与你势力相同的角色存活，所有此势力角色手牌上限+1；当你失去装备牌区的【太平要术】时，你失去1点体力，然后摸两张牌。",
+	防具效果：防止你受到的所有属伤害。全场每有一名与你势力相同的角色存活，你手牌上限+1；当你失去装备牌区的【太平要术】时，你摸两张牌，然后若你的体力值大于1，你失去1点体力。",
 	["#EXCard_TPYS"] = "%from 的防具【<font color= 'gold'><b>太平要术</b></font>】效果被触发，属性伤害无效。",
 
 	["EXCard_WWJZ"] = "围魏救赵",

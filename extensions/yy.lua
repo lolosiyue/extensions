@@ -5,7 +5,7 @@ gz_zhaoyun = sgs.General(extension, "gz_zhaoyun", "qun", 4, true, true, false, 3
 Qinggangex = sgs.CreateViewAsEquipSkill {
 	name = "#Qinggangex",
 	view_as_equip = function(self, player)
-		return "chitu"
+		return "silver_lion"
 	end
 }
 --[[
@@ -142,13 +142,13 @@ luanixi_tr = sgs.CreateTriggerSkill {
 				end
 			end
 			for _, id in sgs.qlist(room:getDiscardPile()) do
-				if sgs.Sanguosha:getCard(id):isKindOf("BatteRingRam") then
+				if sgs.Sanguosha:getCard(id):isKindOf("Slash") then
 					ids:append(id)
 					break
 				end
 			end
 			for _, id in sgs.qlist(room:getDrawPile()) do
-				if sgs.Sanguosha:getCard(id):isKindOf("BatteRingRam") then
+				if sgs.Sanguosha:getCard(id):isKindOf("Slash") then
 					ids:append(id)
 					break
 				end
