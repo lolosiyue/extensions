@@ -5294,6 +5294,227 @@ function SmartAI:loseEquipEffect(to)
 	end
 end
 
+-- 擴展接口：杀增益技能評估表
+-- 每個技能函數返回 {value = 數值, benefit = 增益描述表} 或 nil
+-- 強命系
+sgs.ai_slash_benefit = {}
+sgs.ai_canliegong_skill = {}
+
+-- 強命系技能評估 (使對手不能閃或需要多閃)
+sgs.ai_slash_benefit.unblockable = function(self, player, slash)
+	for _, skill in ipairs(aiConnect(player)) do
+		if sgs.ai_canliegong_skill[skill] then
+			return {value = 30, unblockable = true, skill = skill}
+		end
+	end
+	
+	if sgs.hit_skill and player:hasSkills(sgs.hit_skill) then
+		local skills = aiConnect(player)
+		for _, skill in ipairs(skills) do
+			if string.find(sgs.hit_skill, skill) then
+				return {value = 28, unblockable = true, skill = skill}
+			end
+		end
+	end
+	
+	-- 方法3: 檢查技能描述
+	for _, skill in sgs.list(player:getVisibleSkillList(true)) do
+		local desc = skill:getDescription()
+		if string.find(desc, "使用【杀】") or string.find(desc, "使用【殺】") then
+			if string.find(desc, "不能使用【闪】") 
+			or string.find(desc, "不能使用【閃】")
+			or string.find(desc, "不可以使用【闪】")
+			or string.find(desc, "不可以使用【閃】")
+			or string.find(desc, "無法使用【闪】")
+			or string.find(desc, "無法使用【閃】")
+			or string.find(desc, "不可闪避")
+			or string.find(desc, "不可閃避") then
+				return {value = 25, unblockable = true, skill = skill:objectName()}
+			end
+		end
+	end
+	
+	if player:hasSkill("fuqi") or player:hasSkill("tenyearfuqi") then
+		return {value = 18, unblockable = true, skill = "fuqi"}
+	end
+	if  player:hasSkill("jiandao") then
+		if slash and slash:isRed() then
+			return {value = 18, unblockable = true, skill = "jiandao"}
+		end
+	end
+	
+	return nil
+end
+
+-- 無距離限制評估
+sgs.ai_slash_benefit.no_distance_limit = function(self, player, slash)
+	local value = 0
+	local skills = {}
+
+	local slash = slash or dummyCard("slash")
+	local distance_correction = sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_DistanceLimit, player, slash)
+	if distance_correction > 10 then
+		value = value + 18
+	end
+	
+	for _, skill in sgs.list(player:getVisibleSkillList(true)) do
+		local desc = skill:getDescription()
+		if (string.find(desc, "使用【杀】") or string.find(desc, "使用【殺】")) and
+		   (string.find(desc, "無距離限制") or string.find(desc, "无距离限制") or 
+		    string.find(desc, "無視距離") or string.find(desc, "无视距离")) then
+			value = value + 12
+			table.insert(skills, skill:objectName())
+		end
+	end
+	
+	if player:hasSkill("jiangchi") and player:hasFlag("JiangchiInvoke") then
+		value = value + 20
+		table.insert(skills, "jiangchi")
+	end
+	
+	if player:hasSkill("tianyi") and player:hasFlag("TianyiSuccess") then
+		value = value + 25
+		table.insert(skills, "tianyi")
+	end
+	
+	if player:hasFlag("InfinityAttackRange") or player:hasFlag("slashNoDistanceLimit") then
+		value = value + 15
+	end
+	
+	if value > 0 then
+		return {value = value, no_distance_limit = true, skills = skills}
+	end
+	
+	return nil
+end
+
+-- 額外目標評估
+sgs.ai_slash_benefit.extra_target = function(self, player, slash)
+	local slash = slash or dummyCard("slash")
+	local extra_target_num = sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, player, slash)
+	
+	if extra_target_num > 0 then
+		return {value = extra_target_num * 10, extra_targets = extra_target_num}
+	end
+	
+	return nil
+end
+
+-- 主函數：尋找最適合輔助使用殺的角色
+function SmartAI:findPlayerToUseSlash(distance_limit, players, reason, slash, extra_targets, fixed_target)
+	-- distance_limit: 距離限制(未使用)
+	-- players: 可選的玩家列表(若為nil則檢查所有友方)
+	-- reason: 原因字符串(未使用)
+	-- slash: 預想使用的殺牌
+	
+	local friends = players or self.friends_noself
+	local candidates = {}
+	local slash = slash or dummyCard()
+	extra_targets = extra_targets or 0
+	fixed_target = fixed_target or nil
+	if reason then
+		slash:setSkillName(reason)
+	end
+	
+	-- 評估每個友方角色使用殺的價值
+	for _, friend in ipairs(friends) do
+		if friend:isAlive() and not friend:isKongcheng() then
+			local total_value = 0
+			local all_benefits = {}
+			
+			-- 遍歷所有杀增益評估函數
+			for benefit_type, benefit_func in pairs(sgs.ai_slash_benefit) do
+				if type(benefit_func) == "function" then
+					local result = benefit_func(self, friend, slash)
+					if result and result.value then
+						total_value = total_value + result.value
+						-- 合併增益信息
+						for k, v in pairs(result) do
+							if k ~= "value" then
+								if type(v) == "table" then
+									if not all_benefits[k] then all_benefits[k] = {} end
+									for _, item in ipairs(v) do
+										table.insert(all_benefits[k], item)
+									end
+								else
+									all_benefits[k] = v
+								end
+							end
+						end
+					end
+				end
+			end
+			if fixed_target then
+				if not distance_limit then
+					friend:setFlags("slashNoDistanceLimit")
+				end
+				local dummy_use = self:aiUseCard(slash, dummy(true, 99, self.room:getOtherPlayers(fixed_target)))
+				if not distance_limit then
+					friend:setFlags("-slashNoDistanceLimit")
+				end
+				if dummy_use and dummy_use.card and dummy_use.to and dummy_use.to:contains(fixed_target) then
+					if self:hasHeavyDamage(friend,slash,fixed_target) then
+						value = value + 15 * self:ajustDamage(friend,fixed_target,1,slash)
+					end
+					if slash and (slash:hasFlag("SlashIgnoreArmor") or slash:hasFlag("Qinggang")) then
+						value = value + 12
+					end
+				end
+			else
+				if not distance_limit then
+					friend:setFlags("slashNoDistanceLimit")
+				end
+				local dummy_use = self:aiUseCard(slash, dummy(true, extra_targets))
+				if not distance_limit then
+					friend:setFlags("-slashNoDistanceLimit")
+				end
+				if dummy_use and dummy_use.card and dummy_use.to then
+					for _, p in sgs.qlist(dummy_use.to) do
+						if self:hasHeavyDamage(friend,slash,p) then
+							value = value + 15 * self:ajustDamage(friend,p,1,slash)
+						end
+					end
+					if slash and (slash:hasFlag("SlashIgnoreArmor") or slash:hasFlag("Qinggang")) then
+						value = value + 12
+					end
+				end
+			end
+			
+			-- 比較攻擊範圍內的敵人數量
+			local enemies_in_range = 0
+			for _, enemy in ipairs(self.enemies) do
+				if friend:inMyAttackRange(enemy) then
+					enemies_in_range = enemies_in_range + 1
+				end
+			end
+			-- 攻擊範圍內敵人越多，價值越高
+			total_value = total_value + enemies_in_range * 3
+			
+			-- 儲存候選人資料
+			if total_value > 0 then
+				table.insert(candidates, {
+					player = friend,
+					value = total_value,
+					benefits = all_benefits,
+					enemies_in_range = enemies_in_range
+				})
+			end
+		end
+	end
+	
+	-- 按價值排序
+	table.sort(candidates, function(a, b)
+		return a.value > b.value
+	end)
+	
+	-- 返回最佳候選人
+	if #candidates > 0 then
+		return candidates[1].player
+	end
+	
+	return nil, nil
+end
+
 function SmartAI:findPlayerToDiscard(flags,include_self,no_dis,players,reason)
 	local friends,enemies = {},{}
 	if players then
@@ -7343,7 +7564,7 @@ function SmartAI:useTrickCard(card,use)
 	end
 end
 
-sgs.ai_canliegong_skill = {}
+
 function SmartAI:canLiegong(to, from)
 	from = from or self.room:getCurrent()
 	to = to or self.player

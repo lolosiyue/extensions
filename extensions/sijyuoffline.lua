@@ -30907,6 +30907,57 @@ sfofl_indulgencechan:addSkill(sfofl_yuanli)
 
 
 
+
+    
+    
+doHenshin = function(player, gerenal_name)
+    local room = player:getRoom()
+    if player:getMark("&sfofl_moli") >= 5 then
+        room:doLightbox(gerenal_name.."_henshin", 3000)
+        local cards = player:getJudgingArea()
+        local slash = sgs.Sanguosha:cloneCard("slash")
+        slash:deleteLater()
+        slash:addSubcards(cards)
+        room:throwCard(slash, "henshin", player, player)
+        player:setTag(gerenal_name, ToData(player:getHp()))
+        if player:getGeneralName() == gerenal_name then
+            room:changeHero(player, gerenal_name.."_change", false, false, false, true, player:getTag(gerenal_name.."_change"):toInt() or 0)
+        else
+            room:changeHero(player, gerenal_name.."_change", false, false, true, true, player:getTag(gerenal_name.."_change"):toInt() or 0)
+        end
+        room:addPlayerMark(player, "sfofl_henshin")
+    end
+end
+
+quitHenshin = function(player, gerenal_name)
+    local room = player:getRoom()
+    if player:getMark("&sfofl_moli") == 0 then
+        player:setTag(gerenal_name .. "_change", ToData(player:getHp()))
+        if player:getGeneralName() == gerenal_name .. "_change" then
+            room:changeHero(player, gerenal_name, false, false, false, true, player:getTag(gerenal_name):toInt() or 0)
+        else
+            room:changeHero(player, gerenal_name, false, false, true, true, player:getTag(gerenal_name):toInt() or 0)
+        end
+    end
+end
+
+costMana = function(player, num, gerenal_name)
+    local room = player:getRoom()
+    local mark = player:getMark("&sfofl_moli")
+    if mark >= num then
+        room:removePlayerMark(player, "&sfofl_moli", num)
+        return true
+    else
+        local lost = num - mark
+        room:removePlayerMark(player, "&sfofl_moli", mark)
+        if player:getMark("&sfofl_moli") == 0 then
+            quitHenshin(player, gerenal_name)
+        end
+        return false
+    end
+end
+    
+sfofl_magic_zhenji = sgs.General(extension_e, "sfofl_magic_zhenji", "wei", 3, false)
 --[[
 	技能名：魔力
 	相关武将：甄姬[官盗]
@@ -30939,24 +30990,195 @@ sfofl_moli_zhenji = sgs.CreateTriggerSkill{
         elseif event == sgs.EventPhaseEnd then
             if player:getPhase() == sgs.Player_Finish and player:getMark("&sfofl_moli") >= 5 then
                 room:broadcastSkillInvoke(self:objectName(),2)
-                room:setPlayerMark(player, "&sfofl_moli", 0)
-                room:doLightbox("&sfofl_moli_zhenji_magic", 3000)
-                player:setTag("sfofl_magic_zhenji", ToData(player:getHp()))
-                if player:getGeneralName() == "sfofl_magic_zhenji" then
-                    room:changeHero(player, "sfofl_magic_zhenji_change", false, false, false, true, player:getTag("sfofl_magic_zhenji_change"):toInt() or 0)
-                else
-                    room:changeHero(player, "sfofl_magic_zhenji_change", false, false, true, true, player:getTag("sfofl_magic_zhenji_change"):toInt() or 0)
-                end
+                doHenshin(player, "sfofl_magic_zhenji")
             end
         end
     end,
-    can_trigger = function(self, target)
-        return target and target:isAlive()
-    end,
 }
 
+sfofl_magic_zhenji:addSkill("qingguo")
+sfofl_magic_zhenji:addSkill(sfofl_moli_zhenji)
 
 
+sfofl_magic_zhenji_change = sgs.General(extension_e, "sfofl_magic_zhenji_change", "wei", 3, false, true)
+--[[
+	技能名：惊鸿
+	相关武将：甄姬[闪耀战姬]
+	技能描述：称号与你相同的角色不因此技能获得牌后，你可以消耗1点魔力令其判定，若为黑色牌其获得并重复之；你的黑色牌无次数限制且不计入手牌上限。
+	引用：sfofl_jinghong
+]] --
+
+--[[
+	技能名：游龙
+	相关武将：甄姬[闪耀战姬]
+	技能描述：锁定技，你造成的伤害改为冰冻伤害，受到冰冻伤害的角色直到其下个回合结束：摸牌数-1，你+1，且计算距离时+1，你-1，且不能响应你使用的牌。
+	引用：sfofl_youlong
+]] --
+
+--[[
+	技能名：海佑
+	相关武将：甄姬[闪耀战姬]
+	技能描述：称号与你相同的角色成为牌的目标时，你可以消耗1点魔力令之无效。
+	引用：sfofl_haiyou
+]] --
+
+
+sfofl_magic_woguotai = sgs.General(extension_e, "sfofl_magic_woguotai", "wu", 3, false)
+--[[
+	技能名：魔力
+	相关武将：吴国太[官盗]
+	技能描述：变身技（0/5），游戏开始时或当你场上的牌发生变化时，你获得1点魔力，当你失去牌时，你进行吟唱并变身。
+	引用：sfofl_moli_woguotai
+]] --
+
+
+sfofl_magic_woguotai:addSkill("tenyearganlu")
+sfofl_magic_woguotai:addSkill("buyi")
+
+sfofl_magic_woguotai_change = sgs.General(extension_e, "sfofl_magic_woguotai_change", "wu", 3, false, true)
+--[[
+	技能名：凤守
+	相关武将：吴国太[闪耀战姬]
+	技能描述：当你变身后，你可以重新分配与你距离为1的角色的座次，然后消耗任意魔​​力，令等量名角色受到的火焰伤害+1。
+	引用：sfofl_fengshou
+]] --
+
+--[[
+	技能名：苏生
+	相关武将：吴国太[闪耀战姬]
+	技能描述：当称号与你相同的角色进入濒死状态时，你可以消耗任意魔​​力令其回复等量的体力和魔力，然后你摸等量张牌。
+	引用：sfofl_susheng
+]] --
+
+
+
+sfofl_magic_ruiji = sgs.General(extension_e, "sfofl_magic_ruiji", "wu", 4, false)
+--[[
+	技能名：魔力
+	相关武将：芮姬[官盗]
+	技能描述：变身技（0/5），游戏开始时或当你造成或受到伤害时，你获得1点魔力；当你进入濒死状态时或发动“铃音”后，你进行吟唱并变身。
+	引用：sfofl_moli_ruiji
+]] --
+
+
+sfofl_magic_ruiji:addSkill("tenyearwangyuan")
+sfofl_magic_ruiji:addSkill("tenyearlingyin")
+sfofl_magic_ruiji:addSkill("tenyearliying")
+
+ 
+sfofl_magic_ruiji_change = sgs.General(extension_e, "sfofl_magic_ruiji_change", "wu", 4, false, true)
+--[[
+	技能名：圣裁
+	相关武将：芮姬[闪耀战姬]
+	技能描述：出牌阶段，你可消耗任意魔力，将等量张手牌当做无距离次数限制的【杀】使用，你以此法使用的【杀】造成的伤害+X（X为你本次消耗的魔力数）。
+	引用：sfofl_shengcai
+]] --
+
+
+--[[
+	技能名：光辉
+	相关武将：芮姬[闪耀战姬]
+	技能描述：锁定技，所有进入变身状态的角色使用牌不能被非变身状态的角色响应；称号与你相同的角色造成伤害时，你获得1点魔力。
+	引用：sfofl_guanghui
+]] --   
+
+
+sfofl_magic_lulingqi = sgs.General(extension_e, "sfofl_magic_lulingqi", "qun", 4, false)
+--[[
+	技能名：魔力
+	相关武将：吕玲绮[官盗]
+	技能描述：变身技（0/5），游戏开始时或当你造成1点伤害时，你获得1点魔力，准备阶段，你进行吟唱并变身。
+	引用：sfofl_moli_lulingqi
+]] --
+
+sfofl_magic_lulingqi:addSkill("guowu")
+sfofl_magic_lulingqi:addSkill("zhuangrong")
+
+sfofl_magic_lulingqi_change = sgs.General(extension_e, "sfofl_magic_lulingqi_change", "qun", 4, false, true)
+--[[
+	技能名：恒辉
+	相关武将：吕玲绮[闪耀战姬]
+	技能描述：锁定技，当你变身后，你获得任意个效果并消耗等量的魔力：1.使用【杀】的次数和造成的伤害+1；2.【杀】无距离限制且目标数+2；3.摸五张牌并弃置装备区内的所有牌。
+	引用：sfofl_henghui
+]] --
+
+
+--[[
+	技能名：魔契
+	相关武将：吕玲绮[闪耀战姬]
+	技能描述：每次变身限一次，出牌阶段，你可以消耗至少3点魔力并失去所有体力，然后你令“恒辉”的所有数值翻倍。若如此做，你保持变身状态直到结束阶段。
+	引用：sfofl_moqi
+]] --
+
+
+
+sfofl_magic_dongwan = sgs.General(extension_e, "sfofl_magic_dongwan", "qun", 3, false)
+--[[
+	技能名：魔力
+	相关武将：董绾[官盗]
+	技能描述：变身技（0/5），游戏开始时或当你于摸牌阶段外获得牌时，你获得1点魔力，结束阶段，你进行吟唱并变身。
+	引用：sfofl_moli_dongwan
+]] --
+
+
+sfofl_magic_dongwan:addSkill("ny_10th_shengdu")
+sfofl_magic_dongwan:addSkill("ny_10th_jieling")
+
+sfofl_magic_dongwan_change = sgs.General(extension_e, "sfofl_magic_dongwan_change", "qun", 3, false, true)
+--[[
+	技能名：圣焰
+	相关武将：董绾[闪耀战姬]
+	技能描述：锁定技，你使用牌时额外结算一次，然后你消耗1点魔力或失去1点体力，对一名其他角色造成1点火焰伤害。
+	引用：sfofl_shengyan
+]] --
+
+
+--[[
+	技能名：共鸣
+	相关武将：董绾[闪耀战姬]
+	技能描述：当你消耗1点魔力后或失去1点体力后，你可以令称号与你相同的角色各摸X张牌（X为你本次变身此技能发动的次数）。
+	引用：sfofl_gongming
+]] --
+
+sfofl_lord_goblin = sgs.General(extension_e, "sfofl_lord_goblin", "mo", 6)
+--[[
+	技能名：疑暴
+	相关武将：哥布林领主[官盗]
+	技能描述：锁定技，你造成或受到伤害后，令伤害角色摸三张牌；若你为伤害来源，随机废除受伤角色的一个装备区，然后你观看其手牌并获得其两张牌。
+	引用：sfofl_yibao
+]] --
+--[[
+	技能名：如麟
+	相关武将：哥布林领主[官盗]
+	技能描述：锁定技，当你将要造成致命伤害时，你防止之并改为减少其1点体力上限，你增加1点体力上限并回复等量体力。
+	引用：sfofl_rulin
+]] --
+--[[
+	技能名：狂暴
+	相关武将：哥布林领主[官盗]
+	技能描述：锁定技，当你造成或受到伤害时，若伤害来源手牌数大于受伤角色，此伤害+1，且此牌不计入次数。
+	引用：sfofl_kuangbao
+]] --
+--[[
+	技能名：飞升
+	相关武将：哥布林领主[官盗]
+	技能描述：锁定技，每个回合结束时，若你受到过至少2点伤害，你减2点体力上限且本回合结束时进行一个额外的回合。
+	引用：sfofl_feisheng
+]] --
+
+sfofl_goblin = sgs.General(extension_e, "sfofl_goblin", "mo", 4)
+--[[
+	技能名：恃强
+	相关武将：哥布林[官盗]
+	技能描述：锁定技，你造成或受到伤害时，若受伤角色/伤害来源的手牌数小于/大于你，此伤害+1。
+	引用：sfofl_shiqiang
+]] --
+--[[
+	技能名：凌弱
+	相关武将：哥布林[官盗]
+	技能描述：锁定技，当你造成伤害后，你获得受伤角色的一张牌。
+	引用：sfofl_lingruo
+]] --
 
 
 

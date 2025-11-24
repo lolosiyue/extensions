@@ -4464,7 +4464,7 @@ sijyuoffline_zhaoyun = sgs.General(extension, "sijyuoffline_zhaoyun", "shu", 3, 
 sijyuoffline_zhaoyun:addSkill("longdan")
 sijyuoffline_zhaoyun:addSkill("chongzhen")
 
---[[
+
 -- 军令
 
 --- 对某角色发起军令（抽取、选择、询问）
@@ -4473,20 +4473,20 @@ sijyuoffline_zhaoyun:addSkill("chongzhen")
 ---@param skill_name string @ 技能名
 ---@param forced? boolean @ 是否强制执行
 ---@return boolean @ 是否执行
-function H.askCommandTo(from, to, skill_name, forced)
-  if from.dead or to.dead then return false end
-  local room = from.room
-  room:sendLog{
-    type = "#AskCommandTo",
-    from = from.id,
-    to = {to.id},
-    arg = skill_name,
-    toast = true,
-  }
+function askCommandTo(from, to, skill_name, forced)
+	if from:isDead() or to:isDead() then return false end
+	local room = from:getRoom()
+	local log = sgs.LogMessage()
+	log.type = "#AskCommandTo"
+	log.from = from
+	log.to = sgs.SPlayerList()
+	log.to:append(to)
+	log.arg = skill_name
+	room:sendLog(log)
 
-  local index = H.startCommand(from, skill_name)
-  local invoke = H.doCommand(to, skill_name, index, from, forced)
-  return invoke
+	local index = startCommand(from, skill_name)
+	local invoke = doCommand(to, skill_name, index, from, forced)
+	return invoke
 end
 
 --- 军令发起者抽取并选择军令
@@ -4494,22 +4494,35 @@ end
 ---@param skill_name? string @ 技能名
 ---@param num? integer @ 抽取数量
 ---@return integer @ 选择的军令序号
-function H.startCommand(from, skill_name, num)
-  local allCommands = {"command1", "command2", "command3", "command4", "command5", "command6"}
-  num = num or 2
-  local commands = table.random(allCommands, num) ---@type string[]
+function startCommand(from, skill_name, num)
+	local allCommands = {"command1", "command2", "command3", "command4", "command5", "command6"}
+	num = num or 2
+	local commands = {}
+	local indices = {}
+	for i = 1, #allCommands do
+		table.insert(indices, i)
+	end
+	for i = 1, num do
+		local idx = math.random(1, #indices)
+		table.insert(commands, allCommands[indices[idx]])
+		table.remove(indices, idx)
+	end
 
-  local room = from.room
-  local choice = room:askToChoice(from, { choices = commands, skill_name = "start_command", detailed = true})
+	local room = from:getRoom()
+	local choice = room:askForChoice(from, "start_command", table.concat(commands, "+"))
 
-  room:sendLog{
-    type = "#CommandChoice",
-    from = from.id,
-    arg = ":"+choice,
-    toast = true,
-  }
+	local log = sgs.LogMessage()
+	log.type = "#CommandChoice"
+	log.from = from
+	log.arg = ":" .. choice
+	room:sendLog(log)
 
-  return table.indexOf(allCommands, choice)
+	for i = 1, #allCommands do
+		if allCommands[i] == choice then
+		return i
+		end
+	end
+	return 1
 end
 
 --- 询问军令执行者是否执行军令（执行效果也在这里）
@@ -4519,121 +4532,234 @@ end
 ---@param from ServerPlayer @ 军令发起者
 ---@param forced? boolean @ 是否强制执行
 ---@return boolean @ 是否执行
-function H.doCommand(to, skill_name, index, from, forced)
-  if to.dead or from.dead then return false end
-  local room = to.room
+function doCommand(to, skill_name, index, from, forced)
+	if to:isDead() or from:isDead() then return false end
+	local room = to:getRoom()
 
-  local allCommands = {"command1", "command2", "command3", "command4", "command5", "command6"}
-  local choices = forced and {allCommands[index]} or {allCommands[index], "Cancel"}
+	local allCommands = {"command1", "command2", "command3", "command4", "command5", "command6"}
+	local choices = forced and allCommands[index] or (allCommands[index] .. "+cancel")
 
-  local choice = room:askToChoice(to, { choices = choices, skill_name = "do_command", detailed = true, all_choices = {allCommands[index], "Cancel"} })
+	local choice = room:askForChoice(to, "do_command", choices)
 
-  local result = choice == "Cancel" and "#commandselect_no" or "#commandselect_yes"
-  room:sendLog{
-    type = "#CommandChoice",
-    from = to.id,
-    arg = result,
-    toast = true,
-  }
-  local commandData = {
-    from = from,
-    to = to,
-    command = index,
-  }
-  if choice == "Cancel" then
-    room.logic:trigger("fk.AfterCommandUse", to, commandData)
-    return false
-  end
-  if room.logic:trigger("fk.ChooseDoCommand", to, commandData) then
-    room.logic:trigger("fk.AfterCommandUse", to, commandData)
-    return true
-  end
-  if index == 1 then
-    local dest = room:askToChoosePlayers(from, {
-      targets = room.alive_players,
-      min_num = 1,
-      max_num = 1,
-      prompt = "#command1-damage::" .. to.id,
-      skill_name = skill_name,
-      cancelable = false,
-    })[1]
-    room:sendLog{
-      type = "#Command1Damage",
-      from = from.id,
-      to = {dest.id},
-    }
-    room:doIndicate(from.id, {dest.id})
-    room:damage{
-      from = to,
-      to = dest,
-      damage = 1,
-      skillName = "command",
-    }
-  elseif index == 2 then
-    to:drawCards(1, "command")
-    if to == from or to:isNude() then return true end
-    local cards = {}
-    if #to:getCardIds{Player.Hand, Player.Equip} == 1 then
-      cards = to:getCardIds{Player.Hand, Player.Equip}
-    else
-      cards = room:askToCards(to,{
-        min_num = 2,
-        max_num = 2,
-        include_equip = true,
-        skill_name = "command",
-        prompt = "#command2-give::" .. from.id,
-        cancelable = false,
-      })
-    end
-    room:moveCardTo(cards, Player.Hand, from, fk.ReasonGive, "command", nil, false, from.id)
-  elseif index == 3 then
-    room:loseHp(to, 1, "command")
-  elseif index == 4 then
-    room:setPlayerMark(to, "@@command4_effect-turn", 1)
-    room:addPlayerMark(to, MarkEnum.UncompulsoryInvalidity .. "-turn")
-    room:handleAddLoseSkills(to, "#command4_prohibit", nil, false, true) -- 为了不全局，流汗了
-  elseif index == 5 then
-    to:turnOver()
-    room:setPlayerMark(to, "@@command5_effect-turn", 1)
-    room:handleAddLoseSkills(to, "#command5_cannotrecover", nil, false, true) -- 为了不全局，流汗了
-  elseif index == 6 then
-    if to:getHandcardNum() < 2 and #to:getCardIds("e") < 2 then return true end
-    local to_remain = {}
-    if not to:isKongcheng() then
-      table.insert(to_remain, to:getCardIds("h")[1])
-    end
-    if #to:getCardIds("e") > 0 then
-      table.insert(to_remain, to:getCardIds("e")[1])
-    end
-    local _, ret = room:askToUseActiveSkill(to, {prompt = "#command6_select", skill_name = "#command6-select", cancelable = false})
-    if ret then
-      to_remain = ret.cards
-    end
-    local cards = table.filter(to:getCardIds{Player.Hand, Player.Equip}, function (id)
-      return not (table.contains(to_remain, id) or to:prohibitDiscard(Fk:getCardById(id)))
-    end)
-    if #cards > 0 then
-      room:throwCard(cards, "command", to)
-    end
-  end
-  room.logic:trigger("fk.AfterCommandUse", to, commandData)
-  return true
+	local result = choice == "cancel" and "#commandselect_no" or "#commandselect_yes"
+	local log = sgs.LogMessage()
+	log.type = "#CommandChoice"
+	log.from = to
+	log.arg = result
+	room:sendLog(log)
+
+	local commandData = "AfterCommandUse:"..from:objectName() .. ":" .. to:objectName() .. ":" .. skill_name .. ":" .. tostring(index) .. ":" .. choice
+	if choice == "cancel" then
+		room:getThread():trigger(sgs.EventForDiy, room, to, sgs.QVariant(commandData))
+		return false
+	end
+	local ChooseDoCommandData = "ChooseDoCommand:"..from:objectName() .. ":" .. to:objectName() .. ":" .. skill_name .. ":" .. tostring(index) .. ":" .. choice
+	if room:getThread():trigger(sgs.EventForDiy, room, to, sgs.QVariant(ChooseDoCommandData)) then
+		room:getThread():trigger(sgs.EventForDiy, room, to, sgs.QVariant(commandData))
+		return true
+	end
+
+  	if index == 1 then
+		local targets = sgs.SPlayerList()
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+		targets:append(p)
+		end
+		local dest = room:askForPlayerChosen(from, targets, skill_name, "#command1-damage:" .. to:objectName(), false, false)
+		local log2 = sgs.LogMessage()
+		log2.type = "#Command1Damage"
+		log2.from = from
+		log2.to = sgs.SPlayerList()
+		log2.to:append(dest)
+		room:sendLog(log2)
+		room:doAnimate(1, from:objectName(), dest:objectName())
+		local damage = sgs.DamageStruct()
+		damage.from = to
+		damage.to = dest
+		damage.damage = 1
+		damage.reason = "command"
+		room:damage(damage)
+  	elseif index == 2 then
+		to:drawCards(1, "command")
+		if to:objectName() == from:objectName() or to:isNude() then return true end
+		local card_count = to:getHandcardNum() + to:getEquips():length()
+		if card_count == 1 then
+			local cards = to:getCards("he")
+			local dummy = dummyCard()
+			for _, card in sgs.qlist(cards) do
+				dummy:addSubcard(card)
+			end
+			room:obtainCard(from, dummy, false)
+			dummy:deleteLater()
+		else
+			local min_num = math.min(2, card_count)
+			local cards = room:askForExchange(to, "command", min_num, min_num, true,"#command2-give:" .. from:objectName(), false)
+			if cards then
+				local dummy = dummyCard()
+				local count = 0
+				for _, card in sgs.qlist(cards) do
+					if count < min_num then
+						dummy:addSubcard(card)
+						count = count + 1
+					end
+				end
+				room:obtainCard(from, dummy, false)
+				dummy:deleteLater()
+			end
+		end
+  	elseif index == 3 then
+    	room:loseHp(to, 1, true, to, "command")
+  	elseif index == 4 then
+		room:setPlayerMark(to, "@skill_invalidity", 1)
+		room:setPlayerMark(to, "command4_invalidity", 1)
+		room:setPlayerMark(to, "&command4_effect-Clear", 1)
+		room:setPlayerCardLimitation(to, "use,response", ".|.|.|hand", true)
+  	elseif index == 5 then
+		to:turnOver()
+		room:setPlayerMark(to, "command5_recover-Clear", 1)
+		room:setPlayerMark(to, "&command5_effect-Clear", 1)
+  	elseif index == 6 then
+		local hand_count = to:getHandcardNum()
+		local equip_count = to:getEquips():length()
+		if hand_count < 2 and equip_count < 2 then return true end
+		if equip_count > 1 and hand_count > 1 then
+			room:askForCard(to, "@@command6!", "#command6-select")
+		elseif equip_count > 1 then
+			room:askForDiscard(to, "command", equip_count-1, equip_count-1, false, true, "#command6-select", ".|.|.|equipped",  "command")
+		else
+			room:askForDiscard(to, "command", hand_count-1, hand_count-1, false, false, "#command6-select", "",  "command")
+  	end
+	room:getThread():trigger(sgs.EventForDiy, room, to, sgs.QVariant(commandData))
+  	return true
 end
 
-]]
+command_skill = sgs.CreateTriggerSkill{
+	name = "command",
+	events = {sgs.HpRecover, sgs.EventPhaseChanging},
+	global = true,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.HpRecover then
+			local recover = data:toRecover()
+			if player:getMark("command5_recover-Clear") > 0 then
+				return true
+			end
+		elseif event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to == sgs.Player_NotActive then
+				for _, p in sgs.qlist(room:getAlivePlayers()) do
+					if p::getMark("command4_invalidity") > 0 then
+						room:removePlayerMark(p, "command4_invalidity")
+						room:removePlayerMark(p, "@skill_invalidity")
+					end
+				end
+			end
+		end
+		return false
+	end
+}
+command_discard = sgs.CreateViewAsSkill{
+	name = "command6",
+	n = 999,
+	response_pattern = "@@command6!",
+	view_filter = function(self, selected, to_select)
+		local hand_count = sgs.Self:getHandcardNum()
+		local equip_count = sgs.Self:getEquips():length()
+		if #selected > 0 then
+			local hand_discard = 0
+			local equip_discard = 0
+			local card
+			for i = 1, #selected, 1 do
+				card = selected[i]
+				if sgs.Self:getHandcards():contains(card) then
+					hand_discard = hand_discard + 1
+				else
+					equip_discard = equip_discard + 1
+				end
+			end
+			if hand_discard < hand_count - 1 then
+				return sgs.Self:getHandcards():contains(to_select)
+			elseif equip_discard < equip_count - 1 then
+				return sgs.Self:getEquips():contains(to_select)
+			else
+				return false
+			end
+		end
+		if equip_count > 1 and hand_count > 1 then
+			return true
+		elseif equip_count > 1 then
+			return to_select:isEquipped()
+		else
+			return sgs.Self:getHandcards():contains(to_select)
+		end
+	end,
+	view_as = function(self, cards)
+		if #cards == 0 then return nil end
+		local skillcard = DummyCard():clone()
+		for _, card in ipairs(cards) do
+			skillcard:addSubcard(card)
+		end
+		local hand_count = sgs.Self:getHandcardNum()
+		local equip_count = sgs.Self:getEquips():length()
+		local hand_discard = 0
+		local equip_discard = 0
+		local card
+		for i = 1, #selected, 1 do
+			card = cards[i]
+			if sgs.Self:getHandcards():contains(card) then
+				hand_discard = hand_discard + 1
+			else
+				equip_discard = equip_discard + 1
+			end
+		end
+		if equip_discard == equip_count - 1 and hand_discard == hand_count - 1 then
+			return skillcard
+		end
+		return nil
+	end
+}
+if not sgs.Sanguosha:getSkill("command") then
+	sgs.Sanguosha:addSkill(command_skill)
+end
+if not sgs.Sanguosha:getSkill("command6") then
+	sgs.Sanguosha:addSkill(command_discard)
+end
 
 
 heg_yujin = sgs.General(extension_hegquan, "heg_yujin", "wei", 4)
 
---heg_jueyue
+heg_jueyue = sgs.CreateTriggerSkill{
+	name = "heg_jueyue",
+	events = {sgs.EventPhaseProceeding, sgs.DrawNCards},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.EventPhaseProceeding then
+			if player:getPhase() == sgs.Player_Start then
+				local card = room:askForCard(player, "..", "@heg_jueyue-give", sgs.QVariant(), sgs.Card_MethodNone)
+				if card then
+					local to = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "heg_jueyue-invoke", false, true)
+					room:obtainCard(to, card, false)
+					room:broadcastSkillInvoke(self:objectName())
+					local invoked = askCommandTo(player, to, self:objectName())
+					if invoked then
+						player:drawCards(1, self:objectName())
+					else
+						room:addPlayerMark(player, self:objectName().."-Clear")
+					end
+				end
+			end
+		elseif event == sgs.DrawNCards then
+			local draw = data:toDraw()
+			if draw.reason ~= "draw_phase" then return false end
+			if player:getMark(self:objectName().."-Clear") > 0 then
+				draw.num = draw.num + 3
+				data:setValue(draw)
+				room:removePlayerMark(player, self:objectName().."-Clear")
+			end
+		end
+	end
+}
 
-
-
-
-
-
-
-
+heg_yujin:addSkill(heg_jueyue)
 
 --[[
 	技能名：虎翼
@@ -4701,8 +4827,6 @@ sijyuoffline_huyi = sgs.CreateWeapon{
         end
     end,
 }
-
-
 sijyuoffline_huyi:setParent(extension_2card)
 ]]
 
@@ -5327,8 +5451,8 @@ sgs.LoadTranslationTable{
 	["#command1-damage"] = "军令：请选择 %dest 伤害的目标",
 	["#Command1Damage"] = "%from 选择对 %to 造成伤害",
 	["#command2-give"] = "军令：请选择两张牌交给 %dest",
-	["@@command4_effect-turn"] = "军令禁出牌技能",
-	["@@command5_effect-turn"] = "军令 不能回血",
+	["command4_effect"] = "军令禁出牌技能",
+	["command5_effect"] = "军令 不能回血",
 	["#command6-select"] = "军令：请选择要保留的一张手牌和一张装备",
 
 	["heg_yujin"] = "于禁-国",
@@ -5340,7 +5464,8 @@ sgs.LoadTranslationTable{
     ["illustrator:heg_yujin"] = "biou09",
 	["heg_jueyue"] = "节钺",
 	[":heg_jueyue"] = "准备阶段，你可以将一张牌交给一名其他角色，然后令其执行一次“军令”。若其：执行，你摸一张牌；不执行，摸牌阶段，你多摸三张牌。",
-	--4
+	["@heg_jueyue-give"] = "你可以将一张牌交给一名其他角色，令其执行一次“军令”",
+	["heg_jueyue-invoke"] = "你可以发动“节钺”<br/> <b>操作提示</b>: 选择一名其他角色→点击确定<br/>",
 
 	["heg_cuiyanmaojie"] = "崔琰毛玠-国",
     ["&heg_cuiyanmaojie"] = "崔琰毛玠",
@@ -5353,7 +5478,6 @@ sgs.LoadTranslationTable{
 	[":heg_zhengbi"] = "出牌阶段开始时，你可选择一项：1.选择一名角色，直至此回合结束，你对其使用牌无距离与次数限制；2.将一张基本牌交给一名角色，然后其交给你一张非基本牌或两张基本牌。",
 	["#heg_fengying"] = "奉迎",
   	[":#heg_fengying"] = "限定技，出牌阶段，你可将所有手牌当【挟天子以令诸侯】（无视大势力限制）使用，然后所有与你势力相同的角色将手牌补至其体力上限。",
-	--3
 
 	["heg_wangping"] = "王平-国",
     ["&heg_wangping"] = "王平",
