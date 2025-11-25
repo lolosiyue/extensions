@@ -1654,7 +1654,6 @@ end
 sgs.ai_skill_playerchosen.s4_baojun = function(self, targets)
     targets = sgs.QList2Table(targets)
     self:sort(targets,"defense")
-    sgs.reverse(targets)
     for _,target in ipairs(targets)do
         if self:isFriend(target) then
             return target
@@ -1662,8 +1661,104 @@ sgs.ai_skill_playerchosen.s4_baojun = function(self, targets)
     end
     return nil
 end
-    
 
+sgs.ai_fill_skill.s4_gonggeng_attach = function(self, target)
+    return sgs.Card_Parse("#s4_gonggeng:.:")
+end
+
+sgs.ai_skill_use_func["#s4_gonggeng"] = function(card,use,self)
+    for _,p in ipairs(self.friends) do
+        if p:hasSkill("s4_gonggeng") then
+            local cards = self.player:getCards("he")
+	        cards = self:sortByKeepValue(cards)
+            for _,c in ipairs(cards)do
+                if c:isDamageCard() then
+                    use.card = sgs.Card_Parse("#s4_gonggeng:"..c:getEffectiveId()..":")
+                    if use.to then
+                        use.to:append(p)
+                    end
+                    return
+                end
+            end
+        end
+    end
+    use.card = nil
+end
+
+sgs.ai_skill_invoke.s4_tonghan = true
+
+sgs.ai_skill_askforag.s4_tonghan = function(self, card_ids)
+    for _,id in ipairs(RandomList(card_ids))do
+		local card = sgs.Sanguosha:getCard(id)
+		local dummy_use = self:aiUseCard(card, dummy())
+		if card:isAvailable(self.player) and dummy_use.card then
+			return id
+		end
+	end
+end
+
+sgs.ai_skill_use["@@s4_tonghan"] = function(self, prompt)
+    local cards = self.player:getCards("he")
+	cards = self:sortByKeepValue(cards)
+	local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
+	pattern = self.player:getMark("s4_tonghan_id-Clear") - 1
+	pattern = sgs.Sanguosha:getEngineCard(pattern)
+    for _,c in sgs.list(cards)do
+        pattern = sgs.Sanguosha:cloneCard(pattern:objectName())
+        pattern:deleteLater()
+        pattern:addSubcard(c:getEffectiveId())
+        pattern:setSkillName("s4_tonghan")
+        local dummy_use = self:aiUseCard(pattern, dummy())
+        if dummy_use.to and dummy_use.to:length() > 0 then
+            local tos = {}
+            for _,to in sgs.qlist(dummy_use.to) do
+                table.insert(tos, to:objectName())
+            end
+            return pattern:toString().."->"..table.concat(tos, "+")
+        end
+    end
+    return "."
+end
+
+sgs.ai_target_revises.s4_xiemin = function(to,card,self,use)
+    if card:isKindOf("IronChain") then return true end
+end
+
+sgs.ai_skill_playerschosen.s4_xiemin = function(self, targets, max, min)
+    local selected = sgs.SPlayerList()
+    local can_choose = sgs.QList2Table(targets)
+    self:sort(can_choose, "defense")
+    for _,target in ipairs(can_choose) do
+        if self:isEnemy(target) and selected:length() < max then
+            selected:append(target)
+        end
+    end
+    for _,target in ipairs(can_choose) do
+        if not selected:contains(target) and selected:length() < max then
+            selected:append(target)
+        end
+    end
+    return selected
+end
+
+sgs.ai_skill_discard["@s4_xiemin-give"] = function(self, discard_num, min_num, optional, include_equip)
+    local to
+    for _,p in sgs.list(self.room:getOtherPlayers(self.player))do
+        if p:hasFlag("s4_xiemin_give") then
+            to = p
+            break
+        end
+    end
+    local cards = self.player:getCards("he")
+    cards = sgs.QList2Table(cards)
+    self:sortByKeepValue(cards)
+    if to then 
+		if self:isFriend(to) then
+			cards = sgs.reverse(cards)
+		end
+	end
+    return {cards[1]:getEffectiveId()}
+end
 
 -- soldier
 sgs.ai_skill_playerchosen.s4_s_changqiang = function(self, targets)

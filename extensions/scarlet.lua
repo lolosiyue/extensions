@@ -8114,7 +8114,7 @@ s4_yuezhe = sgs.CreateTriggerSkill{
                         local can_choose = sgs.IntList()
                         local disable = sgs.IntList()
                         for _, c in sgs.qlist(player:getCards("ej")) do
-                            if c:isKindOf("Horse") or c:isKindOf("DelayedTrick") then
+                            if (c:isKindOf("Horse") or c:isKindOf("DelayedTrick")) then
                                 can_choose:append(c:getEffectiveId())
                             else
                                 disable:append(c:getEffectiveId())
@@ -8123,6 +8123,10 @@ s4_yuezhe = sgs.CreateTriggerSkill{
                         if can_choose:isEmpty() then break end
                         local id = room:askForCardChosen(player, player, "ej", self:objectName(), false, sgs.Card_MethodNone, disable, true)
                         if id and id ~= -1 then
+                            local chitu = sgs.Sanguosha:getCard(id):objectName() == "_s4_horse_chitu"
+                            if chitu then
+                                break
+                            end
                             local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
                             slash:addSubcard(id)
                             slash:setSkillName(self:objectName())
@@ -8256,6 +8260,7 @@ s4_baojun_death = sgs.CreateTriggerSkill{
                 end
             end
             if targets:isEmpty() then return false end
+            player:gainMark("@choice")
             local target = room:askForPlayerChosen(player, targets, "s4_baojun", "s4_baojun-invoke", true, true)
             if target then
                 room:setPlayerMark(player, "s4_baojun", 1)
@@ -8328,15 +8333,15 @@ s4_gonggengCard = sgs.CreateSkillCard {
     target_fixed = false,
     will_throw = false,
     filter = function(self, targets, to_select)
-        return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and to_select:hasSkill("s4_gonggeng")
+        return #targets == 0 and to_select:hasSkill("s4_gonggeng")
     end,
     on_use = function(self, room, source, targets)
-        local card = sgs.Sanguosha:cloneCard("ex_nihilo", self:getSuit(), self:getNumber())
-        card:addSubcard(self)
+        local card = sgs.Sanguosha:cloneCard("ex_nihilo", sgs.Card_SuitToBeDecided, -1)
+        card:addSubcards(self:getSubcards())
         card:setSkillName("s4_gonggeng")
         card:deleteLater()
         local use = sgs.CardUseStruct()
-        use.from = use.from
+        use.from = source
         use.card = card
         use.to = sgs.SPlayerList()
         use.to:append(targets[1])
@@ -8368,9 +8373,7 @@ s4_gonggeng = sgs.CreateTriggerSkill {
         local room = player:getRoom()
         if event == sgs.GameStart or event == sgs.EventAcquireSkill and data:toString() == self:objectName() then
            for _, p in sgs.qlist(room:getAllPlayers()) do
-                if p:objectName() ~= player:objectName() then
-                    room:attachSkillToPlayer(p, "s4_gonggeng_attach&")
-                end
+                room:attachSkillToPlayer(p, "s4_gonggeng_attach")
             end
         end
     end,
@@ -8390,7 +8393,7 @@ s4_sangu = sgs.CreateTriggerSkill {
             if to:hasSkill("s4_gonggeng") and to:getMark(self:objectName()) == 0 then
                 room:addPlayerMark(to, "s4_gonggeng"..use.from:objectName())
                 if to:getMark("s4_gonggeng"..use.from:objectName()) >= 3 or to:canWake(self:objectName()) then
-                    if room:changeMaxHpForAwakenSkill(to, -1, self:objectName()) then
+                    if room:changeMaxHpForAwakenSkill(to, 0, self:objectName()) then
                     	room:broadcastSkillInvoke(self:objectName())
                         room:sendCompulsoryTriggerLog(to, self:objectName())
                         room:detachSkillFromPlayer(to, "s4_gonggeng")
@@ -8413,7 +8416,7 @@ s4_tonghanVS = sgs.CreateViewAsSkill{
         if #cards ~= 1 then return false end
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		if pattern=="@@s4_tonghan!" then
-			pattern = sgs.Self:getMark("s4_tonghan_id-PlayClear") - 1
+			pattern = sgs.Self:getMark("s4_tonghan_id-Clear") - 1
 			pattern = sgs.Sanguosha:getCard(pattern)
 			pattern = sgs.Sanguosha:cloneCard(pattern:objectName())
 			pattern:setSkillName("s4_tonghan")
@@ -8443,9 +8446,9 @@ s4_tonghan = sgs.CreateTriggerSkill {
         if event == sgs.EventPhaseProceeding and player:getMark(self:objectName()) == 0 then
             if player:getPhase() == sgs.Player_Start then
                 if room:askForSkillInvoke(player, self:objectName()) then
-                    room:askForGuanxing(player, 4)
+                    room:askForGuanxing(player, room:getNCards(4, false), 0, true)
                 end
-            elseif player:getPhase() == sgs.Player_Finish and not player:isNude() then
+            elseif player:getPhase() == sgs.Player_Finish and not player:isNude() and room:askForSkillInvoke(player, self:objectName()) then
                 local bans = {}
                 local cardNames = {}
                 local ids = sgs.IntList()
@@ -8460,16 +8463,16 @@ s4_tonghan = sgs.CreateTriggerSkill {
                         local cc = sgs.Sanguosha:cloneCard(c:objectName())
                         cc:setSkillName("s4_tonghan")
                         cc:deleteLater()
-                        if c:isDamageCard() and cc:isAvailable(target) then table.insert(cardNames,c:objectName()) ids:append(id) end
+                        if c:isDamageCard() and cc:isAvailable(player) then table.insert(cardNames,c:objectName()) ids:append(id) end
                     end
                 end
                 if(ids:length()>0) then
-                    room:fillAG(ids,source)
-                    local id = room:askForAG(source,ids,false,"s4_tonghan","@s4_tonghan-damagecard")
-                    room:clearAG(source)
+                    room:fillAG(ids,player)
+                    local id = room:askForAG(player,ids,false,"s4_tonghan","@s4_tonghan-damagecard")
+                    room:clearAG(player)
                     if id < 0 then return false end
-                    room:setPlayerMark(target, "s4_tonghan_id-PlayClear", id + 1);
-                    room:askForUseCard(target,"@@s4_tonghan","@s4_tonghan:"..sgs.Sanguosha:getEngineCard(id):objectName())
+                    room:setPlayerMark(player, "s4_tonghan_id-Clear", id + 1);
+                    room:askForUseCard(player,"@@s4_tonghan","@s4_tonghan:"..sgs.Sanguosha:getEngineCard(id):objectName())
                 end
             end
         elseif event == sgs.EnterDying then
@@ -8481,7 +8484,7 @@ s4_tonghan = sgs.CreateTriggerSkill {
             end
         elseif event == sgs.CardFinished then
             local use = data:toCardUse()
-            if use.card and use.card:getSkillName() == self:objectName() and player:isLastHandCard(use.card) then
+            if use.card and table.contains(use.card:getSkillNames(), self:objectName()) and player:isLastHandCard(use.card, true) then
                 room:acquireNextTurnSkills(player, "s4_tonghan","kongcheng")
             end
         end
@@ -8495,7 +8498,9 @@ if not sgs.Sanguosha:getSkill("s4_gonggeng_attach&") then
 end
 s4_zhugeliang:addSkill(s4_gonggeng)
 s4_zhugeliang:addSkill(s4_sangu)
-s4_zhugeliang:addSkill(s4_tonghan)
+if not sgs.Sanguosha:getSkill("s4_tonghan") then
+    s4_skillList:append(s4_tonghan)
+end
 
 sgs.LoadTranslationTable {
     ["s4_zhugeliang"] = "诸葛亮",
@@ -8506,6 +8511,8 @@ sgs.LoadTranslationTable {
     ["cv:s4_zhugeliang"] = "",
     ["illustrator:s4_zhugeliang"] = "LEO",
 
+    ["s4_gonggeng_attach"] = "躬耕",
+    [":s4_gonggeng_attach"] = "<font color=\"green\"><b>每回合限三次，</b></font>你将一张伤害牌当【无中生有】对诸葛亮使用。",
     ["s4_gonggeng"] = "躬耕",
     [":s4_gonggeng"] = "<font color=\"green\"><b>每回合限三次，</b></font>当前回合角色可以将一张伤害牌当【无中生有】对你使用。",
     ["s4_sangu"] = "三顾",
@@ -8530,8 +8537,10 @@ s4_xiemin = sgs.CreateTriggerSkill {
             room:setPlayerChained(player, true)
         elseif event == sgs.ChainStateChange then
             if not player:isChained() then return false end
-            room:sendCompulsoryTriggerLog(player, self:objectName(), true)
-            return true
+            if player:hasSkill(self:objectName()) then
+                room:sendCompulsoryTriggerLog(player, self:objectName(), true)
+                return true
+            end
         elseif event == sgs.EventPhaseProceeding then
             if player:getPhase() ~= sgs.Player_Start then return false end
             local chains = sgs.SPlayerList()
@@ -8556,8 +8565,10 @@ s4_xiemin = sgs.CreateTriggerSkill {
                 player:drawCards(chains:length(), self:objectName())
                 for _, to in sgs.qlist(chains) do
                     if to:objectName() ~= player:objectName() and not player:isNude() then
-                        local card = room:askForExchange(player, self:objectName(), 1, 1, true, "@s4_xiemin-give:"..to:objectName())
-                        room:obtainCard(player, card, false)
+                        room:setPlayerFlag(to, "s4_xiemin_give")
+                        local card = room:askForExchange(player, self:objectName(), 1, 1, false, "@s4_xiemin-give:"..to:objectName())
+                        room:setPlayerFlag(to, "-s4_xiemin_give")
+                        room:obtainCard(to, card, false)
                     end
                 end
             end
@@ -8572,16 +8583,17 @@ s4_deju_record = sgs.CreateTriggerSkill {
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
         local move = data:toMoveOneTime()
-        if move.from and move.from:objectName() == player:objectName()
+        if move.from and move.from:objectName() == player:objectName() and move.to
         and (move.from_places:contains(sgs.Player_PlaceHand) or move.from_places:contains(sgs.Player_PlaceEquip))
-        and 
-        (
-        bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_EXTRACTION or bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_GIVE
-        or bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_ROB
-    ) then
+        then
             local to = room:findPlayerByObjectName(move.to:objectName())
             if to and to:objectName() ~= player:objectName() then
                 room:addPlayerMark(player, "s4_deju"..to:objectName())
+                if player:hasSkill("s4_deju") then
+                    local players = sgs.SPlayerList()
+                    players:append(player)
+                    room:addPlayerMark(to, "&s4_deju+to+#"..player:objectName(), 1, players)
+                end
             end
         end
     end,
@@ -8612,6 +8624,9 @@ s4_deju = sgs.CreateTriggerSkill {
                             room:acquireSkill(liubei, "s4_zhaowu")
                         end
                         room:addPlayerMark(liubei, self:objectName())
+                        for _, p in sgs.qlist(room:getAlivePlayers()) do
+                            room:setPlayerMark(p, "&s4_deju+to+#"..liubei:objectName(), 0)
+                        end
                     end
                 end
             end
@@ -8691,10 +8706,12 @@ s4_zhaowu = sgs.CreateTriggerSkill{
 }
 
 s4_liubei:addSkill(s4_xiemin)
+s4_liubei:addSkill(s4_deju_record)
 s4_liubei:addSkill(s4_deju)
+extension:insertRelatedSkills("s4_deju", "#s4_deju_record")
 s4_liubei:addSkill(s4_zhaowu_record)
 s4_liubei:addSkill(s4_zhaowu)
-extension:insertRelatedSkills("s4_deju", "#s4_deju_record")
+extension:insertRelatedSkills("s4_zhaowu", "#s4_zhaowu_record")
 
 sgs.LoadTranslationTable {
     ["s4_liubei"] = "刘备",
@@ -8707,6 +8724,9 @@ sgs.LoadTranslationTable {
 
     ["s4_xiemin"] = "携民",
     [":s4_xiemin"] = "锁定技，你始终处于横置状态。准备阶段，若你已受伤且埸上有角色未横置，你回复1点体力并横置一至两名角色，否则你摸横置角色数张牌，交给每名横置的其他角色各一张牌。",
+    ["@s4_xiemin-give"] = "携民：交给 %src 一张牌",
+    ["@s4_xiemin"] = "携民：选择一至两名未横置的角色将其横置",
+    
     ["s4_deju"] = "德聚",
     [":s4_deju"] = "觉醒技，每回合开始时，若存活的其他角色均得到过你的牌，你加1点体力上限，若你不为主公，你获得“昭武”。",
     ["s4_zhaowu"] = "昭武",

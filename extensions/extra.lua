@@ -4562,7 +4562,7 @@ function doCommand(to, skill_name, index, from, forced)
   	if index == 1 then
 		local targets = sgs.SPlayerList()
 		for _, p in sgs.qlist(room:getAlivePlayers()) do
-		targets:append(p)
+			targets:append(p)
 		end
 		local dest = room:askForPlayerChosen(from, targets, skill_name, "#command1-damage:" .. to:objectName(), false, false)
 		local log2 = sgs.LogMessage()
@@ -4627,6 +4627,7 @@ function doCommand(to, skill_name, index, from, forced)
 			room:askForDiscard(to, "command", equip_count-1, equip_count-1, false, true, "#command6-select", ".|.|.|equipped",  "command")
 		else
 			room:askForDiscard(to, "command", hand_count-1, hand_count-1, false, false, "#command6-select", "",  "command")
+		end
   	end
 	room:getThread():trigger(sgs.EventForDiy, room, to, sgs.QVariant(commandData))
   	return true
@@ -4647,7 +4648,7 @@ command_skill = sgs.CreateTriggerSkill{
 			local change = data:toPhaseChange()
 			if change.to == sgs.Player_NotActive then
 				for _, p in sgs.qlist(room:getAlivePlayers()) do
-					if p::getMark("command4_invalidity") > 0 then
+					if p:getMark("command4_invalidity") > 0 then
 						room:removePlayerMark(p, "command4_invalidity")
 						room:removePlayerMark(p, "@skill_invalidity")
 					end
@@ -4717,12 +4718,8 @@ command_discard = sgs.CreateViewAsSkill{
 		return nil
 	end
 }
-if not sgs.Sanguosha:getSkill("command") then
-	sgs.Sanguosha:addSkill(command_skill)
-end
-if not sgs.Sanguosha:getSkill("command6") then
-	sgs.Sanguosha:addSkill(command_discard)
-end
+if not sgs.Sanguosha:getSkill("command") then skills:append(command_skill) end
+if not sgs.Sanguosha:getSkill("command6") then skills:append(command_discard) end
 
 
 heg_yujin = sgs.General(extension_hegquan, "heg_yujin", "wei", 4)
