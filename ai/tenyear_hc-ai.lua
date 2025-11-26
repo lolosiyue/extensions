@@ -2421,6 +2421,11 @@ sgs.ai_skill_cardchosen.peiqi = function(self,who,flags,method)
 	end
 end
 
+sgs.ai_choicemade_filter.cardChosen.peiqi = function(self,player,promptlist)
+	local em_prompt = {"cardChosen","peiqi",tostring(self.peiqiData.cid),self.peiqiData.to:objectName()}
+	sgs.ai_choicemade_filter.cardChosen.snatch(self,nil,em_prompt)
+end
+
 sgs.ai_can_damagehp.peiqi = function(self,from,card,to)
 	return to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
 	and self:canLoseHp(from,card,to)

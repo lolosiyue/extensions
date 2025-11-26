@@ -789,6 +789,14 @@ sgs.ai_skill_cardask["slash-jink"] = function(self,data,pattern,target)
 			end
 			return "."
 		end
+		if slash and slash:hasFlag("s4_wusheng") then
+			for _,c in sgs.list(js)do
+				if c:getSuit()==slash:getSuit() then continue end
+				return c:toString()
+			end
+			return "."
+		end
+
 
 		for _,c in sgs.list(js)do
 			if self.player:hasFlag("dahe") and c:getSuit()~=sgs.Card_Heart then continue end

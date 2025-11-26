@@ -1887,21 +1887,54 @@ keqifayi = sgs.CreateTriggerSkill{
 				for i,pn in sgs.list(tos) do
 					local to = room:findPlayerByObjectName(pn)
 					if to:isAlive() and to:hasSkill(self) then
-						local color1 = ids[i]
-						if type(ids[i])=="number" then
-							local c = sgs.Card_Parse(ids[i])
-							color1 = c:getColorString()
+						-- Parse colors from card string (may contain multiple cards like "$1234+$5678")
+						local card_str1 = ids[i]
+						local has_red1 = false
+						local has_black1 = false
+						if card_str1 then
+							local dc1 = sgs.Card_Parse(card_str1)
+							if dc1 then
+								for _,id in sgs.list(dc1:getSubcards()) do
+									local cs = sgs.Sanguosha:getCard(id):getColorString()
+									if cs == "red" then has_red1 = true end
+									if cs == "black" then has_black1 = true end
+								end
+							end
 						end
+						-- Check if player has mixed colors (red|black)
+						local is_mixed1 = has_red1 and has_black1
+						
 						local players = sgs.SPlayerList()
 						for n,qn in sgs.list(tos) do
 							local q = room:findPlayerByObjectName(qn)
-							local color2 = ids[n]
-							if type(ids[n])=="number" then
-								local c = sgs.Card_Parse(ids[n])
-								color2 = c:getColorString()
+							if q:isAlive() then
+								-- Parse colors from card string
+								local card_str2 = ids[n]
+								local has_red2 = false
+								local has_black2 = false
+								if card_str2 then
+									local dc2 = sgs.Card_Parse(card_str2)
+									if dc2 then
+										for _,id in sgs.list(dc2:getSubcards()) do
+											local cs = sgs.Sanguosha:getCard(id):getColorString()
+											if cs == "red" then has_red2 = true end
+											if cs == "black" then has_black2 = true end
+										end
+									end
+								end
+								local can_choose = false
+								if is_mixed1 then
+									can_choose = true
+								elseif has_red1 and not has_black1 then
+									can_choose = has_black2
+								elseif has_black1 and not has_red1 then
+									can_choose = has_red2
+								end
+								
+								if can_choose then
+									players:append(q)
+								end
 							end
-							if q:isAlive() and color1~=color2
-							then players:append(q) end
 						end
 						local eny = room:askForPlayerChosen(to, players, self:objectName(), "keqifayi-ask", true, true)
 						if eny then
