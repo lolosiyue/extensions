@@ -2374,9 +2374,8 @@ diy_k_fenyin = sgs.CreateTriggerSkill{
 			card = data:toCardResponse().m_card
 		end
 		if card then
-			local n, m = card:getNumber(), GetColor(card)
+			local n = card:getNumber()
 			if (card:isVirtualCard() or card:isKindOf("SkillCard")) and (n == nil or n < 1) then n = 1 end
-			if (card:isVirtualCard() or card:isKindOf("SkillCard")) and m == nil then m:isBlack() end
 			if card:isRed() and (player:getMark("&".."fenyin".."colorblack".."-Clear") > 0 or player:getMark("&".."fenyin".."colorred".."-Clear") > 0) then
 		    	if player:getMark("&".."fenyin".."colorblack".."-Clear") > 0 then
 				    fenyin = true

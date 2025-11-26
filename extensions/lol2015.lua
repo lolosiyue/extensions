@@ -1,10 +1,6 @@
 ﻿module("extensions.lol2015",package.seeall)--【NeonFire LOL 0519】for 0405 by NeonFire
 extension = sgs.Package("lol2015")
 
-function GetColor(card)
-	if card:isRed() then return "red" elseif card:isBlack() then return "black" end
-end
-
 lol_jiansu = sgs.CreateDistanceSkill{
 	name = "#lol_jiansu",
 	correct_func = function(self, from, to)
@@ -117,7 +113,6 @@ lol_jwyh_qCard = sgs.CreateSkillCard{
 		room:obtainCard(effect.from, card_id)
         room:showCard(effect.from, card_id)
 		if self:getSuit() ~= sgs.Sanguosha:getCard(card_id):getSuit() then return false end
-		--if GetColor(self) == GetColor(sgs.Sanguosha:getCard(card_id))  then return false end
 		local dest = sgs.QVariant()
 		dest:setValue(effect.to)
         if room:askForSkillInvoke(effect.from , "lol_jwyh_q", dest) then
@@ -153,7 +148,7 @@ lol_jwyh_wCard = sgs.CreateSkillCard{
 			card1 = sgs.Sanguosha:getCard(room:getNCards(1):first())
             room:throwCard(card1, reason, nil)			
 		end
-		if  GetColor(card1) == "red" then
+		if card1:isRed() then
 			room:setPlayerFlag(player, "lol_jwyh_wR")
 		else
 			room:setPlayerFlag(player, "lol_jwyh_wB")
@@ -163,7 +158,7 @@ lol_jwyh_wCard = sgs.CreateSkillCard{
 			card2 = sgs.Sanguosha:getCard(room:getNCards(1):first())
             room:throwCard(card2, reason, nil)			
 		end
-		if  GetColor(card2) == "red" then
+		if card2:isRed() then
 			room:setPlayerFlag(player, "lol_jwyh_wR")
 		else
 			room:setPlayerFlag(player, "lol_jwyh_wB")
@@ -176,8 +171,7 @@ lol_jwyh_wCard = sgs.CreateSkillCard{
 		room:setPlayerFlag(player, "-lol_jwyh_wB")
 		room:setPlayerFlag(player, "-lol_jwyh_wR")
 		room:setPlayerFlag(player, "-lol_jwyh_w_empty")
-		--if  card1:getSuit() == card2:getSuit() and card2:getSuit() == card3:getSuit() then 
-		if  GetColor(card1) == GetColor(card2) and GetColor(card2) == GetColor(card3) then 
+		if card1:getColor() == card2:getColor() and card2:getColor() == card3:getColor() then 
 		    local tos = sgs.SPlayerList()
 			for _,p in sgs.qlist(room:getAlivePlayers()) do
 			    if player:distanceTo(p) <= 1 and p:objectName() ~= player:objectName() then tos:append(p) end

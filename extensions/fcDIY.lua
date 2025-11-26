@@ -5364,7 +5364,7 @@ sp_hengsaoqianjunVS = sgs.CreateViewAsSkill{
 			return not to_select:isEquipped()
 		elseif #selected == 1 then
 			local card = selected[1]
-			if GetColor(to_select) ~= GetColor(card) then
+			if to_select:getColor() ~= card:getColor() then
 				return not to_select:isEquipped()
 			end
 		else
@@ -7635,12 +7635,6 @@ sp_shenya = sgs.CreateTriggerSkill{
 	end,
 }
 sp_shenganning:addSkill(sp_shenya)
-
---战神·吕布“横扫千军”的颜色函数
-function GetColor(card)
-	if card:isRed() then return "red" elseif card:isBlack() then return "black" end
-end
---
 
 --==（V3.0）DIY界限突破包==--
 extension_J = sgs.Package("fcDIY_jxtp", sgs.Package_GeneralPack)
