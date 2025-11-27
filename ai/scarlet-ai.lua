@@ -327,6 +327,9 @@ function SmartAI:getGeneralDuelPoint(player, card)
     if not card then return end
     player = player or self.player
     local x = card:getNumber()
+    if player:hasSkill("s4_txbw_motian") then
+        x = x + player:getMark("TurnLengthCount")
+    end
     return x
 end
 
@@ -369,6 +372,8 @@ sgs.ai_skill_use_func["#s4_txbw_general_duel_start"] = function(card,use,self)
 	end
 end
 
+sgs.ai_card_intention["s4_txbw_general_duel_start"] = 80
+
 sgs.ai_skill_discard.s4_txbw_general_duel = function(self, discard_num, min_num, optional, include_equip)
     if self.s4_txbw_general_duel_start_card then return { self.s4_txbw_general_duel_start_card } end
     if self:getGeneralDuelCard(self.player) then
@@ -377,8 +382,273 @@ sgs.ai_skill_discard.s4_txbw_general_duel = function(self, discard_num, min_num,
     return self:askForDiscard("dummy", min_num, min_num, false, include_equip)
 end
 
+sgs.ai_cardneed.s4_txbw_general_duel = sgs.ai_cardneed.bignumber
 
 sgs.ai_skill_invoke.s4_txbw_luoyi = sgs.ai_skill_invoke.luoyi
+
+sgs.ai_skill_invoke.s4_txbw_feidang = function(self, data)
+    local hand_weapon,cards
+    cards = self.player:getHandcards()
+    for _,card in sgs.qlist(cards)do
+        if card:isKindOf("Weapon") then
+            hand_weapon = card
+            break
+        end
+    end
+    if hand_weapon or self.player:getWeapon() then
+        return true
+    end
+    if self.player:getHp()>enemy:getHp() and self.player:getHp()>1 then
+        return true
+    end
+    return false
+end
+
+sgs.ai_skill_cardask["@s4_txbw_feidang"] = function(self,data,pattern,target)
+    return true
+end
+
+sgs.ai_skill_playerchosen.s4_txbw_tuxi = function(self, targets)
+    self:sort(self.enemies, "handcard")
+    for _, enemy in ipairs(self.enemies) do
+        if self:doDisCard(enemy, "h",true) then
+            return enemy
+        end
+    end
+    for _, friend in ipairs(self.friends_noself) do
+        if self:doDisCard(friend, "h", true) then
+            return friend
+        end
+    end
+    return nil
+end
+
+sgs.ai_playerchosen_intention.s4_txbw_tuxi = function(self,from,to)
+	if not hasTuntianEffect(to) then
+		sgs.updateIntention(from,to,40)
+	end
+end
+
+sgs.ai_fill_skill.s4_txbw_zhenyue = function(self)
+    return sgs.Card_Parse("#s4_txbw_zhenyue:.:")
+end
+
+sgs.ai_skill_use_func["#s4_txbw_zhenyue"] = function(card,use,self)
+    local cards = sgs.QList2Table(self.player:getCards("he"))
+	self:sortByUseValue(cards,true)
+    for _, c in ipairs(cards) do
+        if c:getNumber() == self.player:getMark("&s4_txbw_zhenyue") and not self:willUse(self.player, c) then
+            use.card = sgs.Card_Parse("#s4_txbw_zhenyue:" .. c:getEffectiveId() .. ":")
+            return
+        end
+    end
+end
+
+sgs.ai_card_priority["s4_txbw_zhenyue"] = 5
+
+sgs.ai_fill_skill.s4_txbw_huibian = function(self)
+    return sgs.Card_Parse("#s4_txbw_huibian:.:")
+end
+
+sgs.ai_skill_use_func["#s4_txbw_huibian"] = function(card,use,self)
+    self:sort(self.friends_noself, "hp")
+    local target1, target2
+    for _, friend in ipairs(self.friends_noself) do
+        if friend:getHp() > 1 and self:canDamage(friend,self.player, nil) and self:canDraw(friend) then
+            target1 = friend
+            break
+        end
+    end
+    if not target1 then
+        for _, enemy in ipairs(self.enemies) do
+            if enemy:getHp() > 1 and self:canDamage(enemy,self.player, nil) then
+                target1 = enemy
+                break
+            end
+        end
+    end
+    if not target1 then return end
+    for i = #self.friends_noself, 1, -1 do
+        local friend = self.friends_noself[i]
+        if friend:isWounded() and friend:objectName() ~= target1:objectName() then
+            target2 = friend
+            break
+        end
+    end
+    if target1 and target2 then
+        use.card = sgs.Card_Parse("#s4_txbw_huibian:.:")
+        use.to:append(target1)
+        use.to:append(target2)
+        return
+    end
+end
+
+sgs.ai_skill_invoke.s4_txbw_hujia = function(self, data)
+    local target = data:toPlayer()
+    if target and self:isFriend(target) then
+        return true
+    end
+    return false
+end
+
+sgs.ai_choicemade_filter.skillInvoke.s4_txbw_hujia = function(self,player,promptlist)
+	if promptlist[#promptlist]=="yes" then
+		local target = self.room:findPlayerByObjectName(promptlist[#promptlist-1])
+		if target then sgs.updateIntention(player,target,-80) end
+	end
+end
+
+sgs.ai_target_revises.s4_txbw_yizhong = function(to,card,self)
+	if card:isBlack() and card:isKindOf("Slash")
+	then return true end
+end
+
+sgs.ai_skill_invoke.s4_txbw_niansheng = sgs.ai_skill_invoke.luanfeng
+
+sgs.ai_ajustdamage_to["&s4_txbw_niansheng"] = function(self, from, to, card, nature)
+    return -99
+end
+
+sgs.ai_skill_playerchosen.s4_txbw_taohui = sgs.ai_skill_playerchosen.mingjian
+
+sgs.ai_playerchosen_intention.s4_txbw_taohui = -40
+
+sgs.ai_skill_cardask["@s4_txbw_lianpo"] = true
+
+sgs.ai_suppress_intention["s4_txbw_yanglei"] = true
+
+sgs.ai_skill_choice.s4_txbw_yanglei = function(self, choices, data)
+    local items = choices:split("+")
+    local draw = getChoice(choices, "draw")
+    local recover = getChoice(choices, "recover")
+    local damage = data:toDamage()
+    local target = damage.to
+    if target and self:isFriend(target) then
+        if ZishuEffect(target) > 0 and self:canDraw(target) then
+            return draw
+        end
+        if recover and self:isWeak(target) then
+            return recover
+        end
+    else
+        if ZishuEffect(target) <= 0 or not self:canDraw(target) then
+            for _, skill in sgs.list(target:getVisibleSkillList()) do
+                if skill:hasEvent(sgs.DrawNCards) then
+                    return draw
+                end
+            end
+        end
+    end
+    
+    return "cancel"
+end
+
+sgs.ai_skill_playerchosen.s4_txbw_jushou = function(self, targets)
+    self:sort(self.friends_noself, "hp")
+    if sgs.ai_skill_invoke.nosjushou(self, "") then
+        return self.player
+    end
+    return nil
+end
+
+sgs.ai_skill_invoke.s4_txbw_chili = function(self, data)
+    return sgs.ai_skill_playerchosen.s4_txbw_chili(self, nil) ~= nil
+end
+
+sgs.ai_skill_playerchosen.s4_txbw_chili = function(self, targets)
+    return self:findPlayerToDiscard("ej",true,false,targets,"")[1]
+end
+
+sgs.ai_choicemade_filter.cardChosen.s4_txbw_chili = sgs.ai_choicemade_filter.cardChosen.snatch
+
+sgs.ai_cardsview_valuable.s4_txbw_chili = function(self, class_name, player)
+	if class_name ~= "Nullification" then return end
+	local nullification = sgs.Sanguosha:cloneCard("nullification")
+	if player:getMark("@s4_txbw_general_1") > 0 then
+		return ("nullification:s4_txbw_chili[no_suit:-1]=.")
+	end
+end
+
+
+
+
+sgs.ai_skill_invoke.s4_txbw_xiaoguo = function(self, data)
+    if self:getCardsNum("BasicCard") > 0 then
+        return false
+    end
+    if player:getMaxHp() - player:getHandcardNum() < 1 then
+        return false
+    end
+    return true
+end
+
+sgs.ai_fill_skill.s4_txbw_qiaobian = function(self)
+    return sgs.Card_Parse("#s4_txbw_qiaobian:.:")
+end
+
+sgs.ai_skill_use_func["#s4_txbw_qiaobian"] = function(card,use,self)
+    local target1, target2
+    if sgs.ai_skill_invoke.peiqi(self, ToData()) then
+        for _,target in sgs.list(self.room:getAlivePlayers())do
+			if target:objectName()==self.peiqiData.from:objectName()
+			then target1 = target break end
+		end
+        local first_place = self.room:getCardPlace(self.peiqiData.cid)
+        local card = sgs.Sanguosha:getEngineCard(self.peiqiData.cid)
+        local second_area = ""
+        if first_place == sgs.Player_PlaceHand then
+            second_area = "h"
+        elseif first_place == sgs.Player_PlaceEquip then
+            second_area = "e"
+        elseif first_place == sgs.Player_PlaceDelayedTrick then
+            second_area = "j"
+        end
+        for _,target in sgs.list(self.room:getAlivePlayers())do
+            if target:objectName()==self.peiqiData.to:objectName() and target:getCards(""..second_area):length()>0
+            then target2 = target break end
+        end
+        for _,target in sgs.list(self.room:getAlivePlayers())do
+            if target:getCards(""..second_area):length()>0
+            then target2 = target break end
+        end
+    end
+    
+    if target1 and target2 then
+        use.card = sgs.Card_Parse("#s4_txbw_qiaobian:.:")
+        use.to:append(target1)
+        use.to:append(target2)
+        return
+    end
+end
+sgs.ai_skill_cardchosen.s4_txbw_qiaobian = function(self,who,flags,method)
+	for _,e in sgs.list(who:getCards(flags))do
+		local id = e:getEffectiveId()
+		if id==self.peiqiData.cid
+		then return id end
+	end
+end
+
+sgs.ai_skill_cardask["@s4_txbw_hongwu"] = function(self, data, pattern, target)
+    local player = data:toPlayer()
+    if self.player:objectName() == player:objectName() then
+        return true
+    end
+    return "."
+end
+
+sgs.ai_skill_invoke.s4_txbw_shenwei = true
+
+sgs.ai_skill_choice.s4_txbw_tianjian = sgs.ai_skill_choice.benghuai
+
+sgs.ai_skill_cardask["@s4_txbw_zhisun"] = function(self, data, pattern, target)
+    local number = data:toInt()
+    local self_number = self.player:getTag("s4_txbw_general_duel_card"):toCard():getNumber()
+    if self_number < number then
+        return true
+    end
+    return "."
+end
+
 
 
 
@@ -897,6 +1167,71 @@ sgs.ai_skill_playerchosen.s4_zuolong = function(self, targets)
 end
 
 sgs.ai_suppress_intention["s4_zuolong"] = true
+
+sgs.ai_skill_playerschosen.s4_xingshang = function(self, targets, max, min)
+    local selected = sgs.SPlayerList()
+    local can_choose = sgs.QList2Table(targets)
+    self:sort(can_choose, "defense")
+    for _,target in ipairs(can_choose) do
+        selected:append(target)
+    end
+    return selected
+end
+
+sgs.ai_skill_playerchosen.s4_fangzhu = function(self,targets)
+	self:sort(self.friends_noself,"handcard")
+	for _,friend in ipairs(self.friends_noself)do
+		if not friend:faceUp() and targets:contains(friend) then
+			return friend
+		end
+	end
+	local n = 0
+	for _,friend in ipairs(self.friends_noself)do
+		if not self:toTurnOver(friend,n,"fangzhu") and targets:contains(friend) then
+			return friend
+		end
+	end
+	if n>=3 then
+		local target = self:findPlayerToDraw(false,n)
+		if target then return target end
+		for _,enemy in ipairs(self.enemies)do
+			if self:toTurnOver(enemy,n,"fangzhu") and hasManjuanEffect(enemy) and targets:contains(enemy) then
+				return enemy
+			end
+		end
+	else
+		self:sort(self.enemies)
+		for _,enemy in ipairs(self.enemies)do
+			if self:toTurnOver(enemy,n,"fangzhu") and hasManjuanEffect(enemy) and targets:contains(enemy) then
+				return enemy
+			end
+		end
+		for _,enemy in ipairs(self.enemies)do
+			if self:toTurnOver(enemy,n,"fangzhu") and enemy:hasSkills(sgs.priority_skill) and targets:contains(enemy) then
+				return enemy
+			end
+		end
+		for _,enemy in ipairs(self.enemies)do
+			if self:toTurnOver(enemy,n,"fangzhu") and targets:contains(enemy) then
+				return enemy
+			end
+		end
+	end
+    return nil
+end
+
+sgs.ai_playerchosen_intention.s4_fangzhu = sgs.ai_playerchosen_intention.fangzhu
+
+
+sgs.ai_skill_playerschosen.s4_songwei = function(self, targets, max, min)
+    local selected = sgs.SPlayerList()
+    local can_choose = sgs.QList2Table(targets)
+    self:sort(can_choose, "defense")
+    for _,target in ipairs(can_choose) do
+        selected:append(target)
+    end
+    return selected
+end
 
 sgs.ai_skill_playerschosen.s4_zhaotao = function(self, targets, max, min)
     local selected = sgs.SPlayerList()

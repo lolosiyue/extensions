@@ -6195,7 +6195,7 @@ sgs.ai_view_as.clever = function(card, player, card_place)
 		local cardid = player:getPile("clevercards"):first()
 		local cardname = sgs.Sanguosha:getCard(cardid):objectName()
 		if cardname then
-			return (cardname..":sfofl_huxiao[%s:%s]=%d"):format(suit, number, card_id)
+			return (cardname..":clever[%s:%s]=%d"):format(suit, number, card_id)
 		end
 	end
 end
