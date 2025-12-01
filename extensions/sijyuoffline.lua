@@ -12237,7 +12237,7 @@ sfofl_jinshou = sgs.CreateTriggerSkill{
             room:setPlayerMark(player, "sfofl_jinshou-Clear", 1)
         elseif event == sgs.TargetConfirmed then
             local use = data:toCardUse()
-            if use.card and not use.card:isKindOf("SkillCard") and use.card:isDamageCard() and use.to:length() == 1 and use:contains(player) and use.from:objectName() ~= player:objectName() then
+            if use.card and not use.card:isKindOf("SkillCard") and use.card:isDamageCard() and use.to:length() == 1 and use.to:contains(player) and use.from:objectName() ~= player:objectName() then
                 if player:getMark("&sfofl_jinshou-SelfstartClear") > 0 then
                     local list = use.nullified_list
                     table.insert(list, "_ALL_TARGETS")
