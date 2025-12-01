@@ -30998,7 +30998,9 @@ sfofl_moli_zhenji = sgs.CreateTriggerSkill{
 
 sfofl_magic_zhenji:addSkill("qingguo")
 sfofl_magic_zhenji:addSkill(sfofl_moli_zhenji)
-
+sfofl_magic_zhenji:addRelateSkill("sfofl_jinghong")
+sfofl_magic_zhenji:addRelateSkill("sfofl_youlong")
+sfofl_magic_zhenji:addRelateSkill("sfofl_haiyou")
 
 sfofl_magic_zhenji_change = sgs.General(extension_e, "sfofl_magic_zhenji_change", "wei", 3, false, true)
 --[[
@@ -31008,6 +31010,65 @@ sfofl_magic_zhenji_change = sgs.General(extension_e, "sfofl_magic_zhenji_change"
 	引用：sfofl_jinghong
 ]] --
 
+
+sfofl_jinghong = sgs.CreateTriggerSkill{
+    name = "sfofl_jinghong",
+    events = {sgs.CardsMoveOneTime},
+    on_trigger = function(self, event, player, data)
+        if event == sgs.CardsMoveOneTime then
+            local move = data:toMoveOneTime()
+            if move.to and move.to_place == sgs.Player_PlaceHand and move.reason.m_skillName~=self:objectName() then
+                local to = room:findPlayerByObjectName(move.to:objectName())
+                if to and ((string.find(to:getGeneralName(), "_change") and string.find(to:getGeneralName(), "sfofl_")) or (string.find(to:getGeneral2Name(), "_change") and string.find(to:getGeneral2Name(), "sfofl_"))) then
+                    if room:askForSkillInvoke(player, self:objectName(), ToData(to)) then
+                        if costMana(player, 1, "sfofl_magic_zhenji") then
+                            while true do
+                                local judge = sgs.JudgeStruct()
+                                judge.who = player
+                                judge.pattern = ".|black"
+                                judge.good = true
+                                judge.reason = self:objectName()
+                                judge.throw_card = false
+                                room:judge(judge)
+                                if judge:isGood() then
+                                    room:broadcastSkillInvoke(self:objectName(),1)
+                                    room:obtainCard(p, judge.card, self:objectName(),false)
+                                else
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+}
+sfofl_jinghong_buff = sgs.CreateTargetModSkill{
+    name = "#sfofl_jinghong_buff",
+	residue_func = function(self, player, card)
+		if card and card:isBlack() then return 999 end
+		return 0
+	end,
+}
+
+sfofl_jinghong_limit = sgs.CreateCardLimitSkill{
+    name = "#sfofl_jinghong_limit",
+    limit_list = function(self, player)
+        if player:hasSkill("sfofl_jinghong") then 
+            return "ignore"
+        else
+            return ""
+        end
+    end,
+    limit_pattern = function(self, player)
+        if player:hasSkill("sfofl_jinghong") then 
+            return ".|black"
+        end
+    end,
+}
+
+
 --[[
 	技能名：游龙
 	相关武将：甄姬[闪耀战姬]
@@ -31015,12 +31076,139 @@ sfofl_magic_zhenji_change = sgs.General(extension_e, "sfofl_magic_zhenji_change"
 	引用：sfofl_youlong
 ]] --
 
+sfofl_youlong_buff = sgs.CreateTriggerSkill{
+    name = "#sfofl_youlong_buff",
+    events = {sgs.Damaged, sgs.DrawNCards},
+    frequency = sgs.Skill_Compulsory,
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.Damaged then
+            local damage = data:toDamage()
+            if damage.nature == sgs.DamageStruct_Ice then
+                local zhenji = room:findPlayerBySkillName(self:objectName())
+                if not zhenji then return false end
+                room:addPlayerMark(player, "&sfofl_youlong-SelfClear")
+            end
+        elseif event == sgs.DrawNCards then
+            if player:getMark("&sfofl_youlong-SelfClear") > 0 then
+                local draw = data:toDraw()
+                if draw.reason ~= "draw_phase" then return false end
+                draw.num = draw.num - 1
+                data:setValue(draw)
+            end
+        end
+    end,
+    can_trigger = function(self, target)
+        return target
+    end,
+}
+
+sfofl_youlong_distance = sgs.CreateDistanceSkill{
+    name = "#sfofl_youlong_distance",
+    correct_func = function(self, from, to)
+        if from:getMark("&sfofl_youlong-SelfClear") > 0 then
+            return 1
+        end
+        if from and from:hasSkill("sfofl_youlong") and to and to:getMark("&sfofl_youlong-SelfClear") > 0 then
+            return -1
+        end
+        return 0
+    end,
+}
+
+sfofl_youlong = sgs.CreateTriggerSkill{
+    name = "sfofl_youlong",
+    events = {sgs.Predamage, sgs.CardUsed, sgs.DrawNCards},
+    frequency = sgs.Skill_Compulsory,
+    on_trigger = function(self, event, player, data)
+        if event == sgs.Predamage then
+            local damage = data:toDamage()
+            if damage.from and damage.from:objectName() == player:objectName() then
+                damage.nature = sgs.DamageStruct_Ice
+                data:setValue(damage)
+                player:getRoom():sendCompulsoryTriggerLog(player, self:objectName())
+            end
+        elseif event == sgs.CardUsed then
+            local use = data:toCardUse()
+            if use.card and not use.card:isKindOf("SkillCard") then
+                local no_respond_list = use.no_respond_list
+                local targets = sgs.SPlayerList()
+                for _, p in sgs.qlist(room:getAlivePlayers()) do
+                    if p:getMark("&sfofl_youlong-SelfClear") > 0 then
+                        table.insert(no_respond_list, p:objectName())
+                        targets:append(p)
+                    end
+                end
+                if not targets:isEmpty() then
+                    local log = sgs.LogMessage()
+                    log.type = "$NoRespond"
+                    log.from = use.from
+                    log.to = targets
+                    log.arg = self:objectName()
+                    log.card_str = use.card:toString()
+                    room:sendLog(log)
+                    use.no_respond_list = no_respond_list
+                    data:setValue(use)
+                end
+            end
+        elseif event == sgs.DrawNCards then
+            local draw = data:toDraw()
+            if draw.reason ~= "draw_phase" then return false end
+            for _, p in sgs.qlist(room:getAlivePlayers()) do
+                if p:getMark("&sfofl_youlong-SelfClear") > 0 then
+                    draw.num = draw.num + 1
+                end
+            end
+            data:setValue(draw)
+            room:sendCompulsoryTriggerLog(player, self:objectName())
+        end
+    end,
+}
+
 --[[
 	技能名：海佑
 	相关武将：甄姬[闪耀战姬]
 	技能描述：称号与你相同的角色成为牌的目标时，你可以消耗1点魔力令之无效。
 	引用：sfofl_haiyou
 ]] --
+sfofl_haiyou = sgs.CreateTriggerSkill{
+	name = "sfofl_haiyou",
+	events = {sgs.TargetConfirming},
+    frequency = sgs.Skill_Frequent ,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if (event == sgs.TargetConfirming) then
+			local use = data:toCardUse()
+			if not use.card:isKindOf("SkillCard") then
+                for _, p in sgs.qlist(use.to) do
+                    if ((string.find(p:getGeneralName(), "_change") and string.find(p:getGeneralName(), "sfofl_")) or (string.find(p:getGeneral2Name(), "_change") and string.find(p:getGeneral2Name(), "sfofl_"))) then
+                        if room:askForSkillInvoke(player, self:objectName(), data) then
+                            costMana(player, 1, "sfofl_magic_zhenji")
+                            local list = use.nullified_list
+                            table.insert(list, "_ALL_TARGETS")
+                            use.nullified_list = list
+                            data:setValue(use)
+                            break
+                        end
+                    end
+                end
+			end
+		end
+	end,
+}
+
+sfofl_magic_zhenji_change:addSkill(sfofl_jinghong)
+sfofl_magic_zhenji_change:addSkill(sfofl_jinghong_buff)
+sfofl_magic_zhenji_change:addSkill(sfofl_jinghong_limit)
+extension_e:insertRelatedSkills("sfofl_jinghong", "#sfofl_jinghong_buff")
+extension_e:insertRelatedSkills("sfofl_jinghong", "#sfofl_jinghong_limit")
+sfofl_magic_zhenji_change:addSkill(sfofl_youlong)
+sfofl_magic_zhenji_change:addSkill(sfofl_youlong_buff)
+sfofl_magic_zhenji_change:addSkill(sfofl_youlong_distance)
+extension_e:insertRelatedSkills("sfofl_youlong", "#sfofl_youlong_buff")
+extension_e:insertRelatedSkills("sfofl_youlong", "#sfofl_youlong_distance")
+sfofl_magic_zhenji_change:addSkill(sfofl_haiyou)
+
 
 
 sfofl_magic_woguotai = sgs.General(extension_e, "sfofl_magic_woguotai", "wu", 3, false)
@@ -31030,6 +31218,37 @@ sfofl_magic_woguotai = sgs.General(extension_e, "sfofl_magic_woguotai", "wu", 3,
 	技能描述：变身技（0/5），游戏开始时或当你场上的牌发生变化时，你获得1点魔力，当你失去牌时，你进行吟唱并变身。
 	引用：sfofl_moli_woguotai
 ]] --
+sfofl_moli_woguotai = sgs.CreateTriggerSkill{
+    name = "sfofl_moli_woguotai",
+    events = {sgs.CardsMoveOneTime, sgs.GameStart},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.CardsMoveOneTime then
+            local move = data:toMoveOneTime()
+            if move.to and move.to:objectName() == player:objectName()
+                and move.to_place == sgs.Player_PlaceHand and move.from_places:contains(sgs.Player_PlaceDraw) and player:getPhase() ~= sgs.Player_Draw then
+                for i, id in sgs.qlist(move.card_ids) do
+                    if room:askForSkillInvoke(player, self:objectName(), ToData(id)) then
+                        room:showCard(player, id)
+                        local card = sgs.Sanguosha:getCard(id)
+                        if card:isBlack() then
+                            room:broadcastSkillInvoke(self:objectName(),1)
+                            if player:getMark("&sfofl_moli") < 5 then
+                                room:addPlayerMark(player, "&sfofl_moli")
+                            end
+                        end
+                    end
+                end
+                else
+                    doHenshin(player, "sfofl_magic_woguotai")
+            end
+        elseif event == sgs.GameStart then
+            if player:getMark("&sfofl_moli") < 5 then
+                room:addPlayerMark(player, "&sfofl_moli")
+            end
+        end
+    end,
+}
 
 
 sfofl_magic_woguotai:addSkill("tenyearganlu")
@@ -31147,18 +31366,99 @@ sfofl_lord_goblin = sgs.General(extension_e, "sfofl_lord_goblin", "mo", 6)
 	技能描述：锁定技，你造成或受到伤害后，令伤害角色摸三张牌；若你为伤害来源，随机废除受伤角色的一个装备区，然后你观看其手牌并获得其两张牌。
 	引用：sfofl_yibao
 ]] --
+sfofl_yibao = sgs.CreateTriggerSkill{
+    name = "sfofl_yibao",
+    frequency = sgs.Skill_Compulsory,
+    events = {sgs.Damage, sgs.Damaged},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        local damage = data:toDamage()
+        if damage.to and damage.to:isAlive() then
+            room:broadcastSkillInvoke(self:objectName(),1)
+            damage.to:drawCards(3, self:objectName())
+            if damage.from and damage.from:objectName() == player:objectName() then
+                room:broadcastSkillInvoke(self:objectName(),2)
+                local equip_area = {}
+                for i = 0, 4, 1 do
+                    if damage.to:hasEquipArea(i) then
+                        table.insert(equip_area, i)
+                    end
+                end
+                damage.to:throwEquipArea(equip_area[math.random(1, #equip_area)])
+                if not damage.to:isNude() then
+                    local remove = sgs.IntList()
+                    local to_obtain = dummyCard()
+                    local max = math.min(2, damage.to:getCardCount())
+                    for i = 1, max do--进行多次执行
+                        local id = room:askForCardChosen(player, damage.to, "he", self:objectName(),
+                            true,--选择卡牌时手牌可见
+                            sgs.Card_MethodNone,
+                            remove,--将子卡表设置为不可选卡牌id表（保证每张卡只能被选择一次）
+                            false)--只有执行过一次选择才可取消
+                        if id < 0 then break end--如果卡牌id无效就结束多次执行
+                        remove:append(id)--将选择的id添加到虚拟卡的子卡表
+                        to_obtain:addSubcard(id)
+                    end
+                    room:obtainCard(player, to_obtain, false)
+                end
+            end
+        end
+        return false
+    end,
+}
+
 --[[
 	技能名：如麟
 	相关武将：哥布林领主[官盗]
 	技能描述：锁定技，当你将要造成致命伤害时，你防止之并改为减少其1点体力上限，你增加1点体力上限并回复等量体力。
 	引用：sfofl_rulin
 ]] --
+
+sfofl_rulin = sgs.CreateTriggerSkill{
+    name = "sfofl_rulin",
+    frequency = sgs.Skill_Compulsory,
+    events = {sgs.DamageCaused},
+    on_trigger = function(self, event, player, data)
+        local damage = data:toDamage()
+        if damage.to and damage.to:isAlive() and damage.to:getHp() - damage.damage <= 0 then
+            room:broadcastSkillInvoke(self:objectName(),1)
+            room:sendCompulsoryTriggerLog(player, self:objectName())
+            room:loseMaxHp(damage.to, 1, self:objectName())
+            room:gainMaxHp(player, 1, self:objectName())
+            local recover = sgs.RecoverStruct()
+            recover.reason = self:objectName()
+            recover.who = player
+            recover.recover = damage.damage
+            room:recover(player, recover, true)
+            player:damageRevises(data, -damage.damage)
+        end
+        return false
+    end,
+}
+
 --[[
 	技能名：狂暴
 	相关武将：哥布林领主[官盗]
 	技能描述：锁定技，当你造成或受到伤害时，若伤害来源手牌数大于受伤角色，此伤害+1，且此牌不计入次数。
 	引用：sfofl_kuangbao
 ]] --
+
+sfofl_kuangbao = sgs.CreateTriggerSkill{
+    name = "sfofl_kuangbao",
+    frequency = sgs.Skill_Compulsory,
+    events = {sgs.DamageCaused, sgs.DamageInflicted},
+    on_trigger = function(self, event, player, data)
+        local damage = data:toDamage()
+        if damage.from and damage.from:getHandcardNum() > damage.to:getHandcardNum() then
+            player:damageRevises(data, 1)
+            if damage.card and not damage.card:isKindOf("SkillCard") then
+                room:addPlayerHistory(player, damage.card:getClassName(), -1)
+            end
+        end
+        return false
+    end,
+}
+
 --[[
 	技能名：飞升
 	相关武将：哥布林领主[官盗]
@@ -31173,14 +31473,49 @@ sfofl_goblin = sgs.General(extension_e, "sfofl_goblin", "mo", 4)
 	技能描述：锁定技，你造成或受到伤害时，若受伤角色/伤害来源的手牌数小于/大于你，此伤害+1。
 	引用：sfofl_shiqiang
 ]] --
+sfofl_shiqiang = sgs.CreateTriggerSkill{
+	name = "sfofl_shiqiang",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.DamageCaused, sgs.DamageInflicted},
+	on_trigger = function(self, event, player, data)
+		local damage = data:toDamage()
+        local target
+        if event == sgs.DamageCaused and player:getHandcardNum() > damage.to:getHandcardNum() then
+            target = damage.to
+        elseif event == sgs.DamageInflicted and player:getHandcardNum() < damage.from:getHandcardNum() then
+            target = damage.from
+        end
+		if target then
+            player:damageRevises(data, 1)
+		end
+		return false
+	end,
+}
+
+
 --[[
 	技能名：凌弱
 	相关武将：哥布林[官盗]
 	技能描述：锁定技，当你造成伤害后，你获得受伤角色的一张牌。
 	引用：sfofl_lingruo
 ]] --
-
-
+sfofl_lingruo = sgs.CreateTriggerSkill{
+    name = "sfofl_lingruo",
+    events = {sgs.Damage},
+    frequency = sgs.Skill_Compulsory,
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        local damage = data:toDamage()
+        if damage.to and not damage.to:isNude() then
+            room:broadcastSkillInvoke(self:objectName(),1)
+            local id = room:askForCardChosen(player, damage.to, "he", self:objectName(), false, sgs.Card_MethodNone)
+            local card = sgs.Sanguosha:getCard(id)
+            room:obtainCard(player, card, false)
+        end
+    end,
+}
+sfofl_goblin:addSkill(sfofl_shiqiang)
+sfofl_goblin:addSkill(sfofl_lingruo)
 
 
 sgs.Sanguosha:addSkills(skills)
