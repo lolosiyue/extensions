@@ -1168,6 +1168,8 @@ end
 
 sgs.ai_suppress_intention["s4_zuolong"] = true
 
+sgs.ai_skill_invoke.s4_xingshang = true
+
 sgs.ai_skill_playerschosen.s4_xingshang = function(self, targets, max, min)
     local selected = sgs.SPlayerList()
     local can_choose = sgs.QList2Table(targets)
@@ -1222,6 +1224,7 @@ end
 
 sgs.ai_playerchosen_intention.s4_fangzhu = sgs.ai_playerchosen_intention.fangzhu
 
+sgs.ai_need_damaged.s4_fangzhu = sgs.ai_need_damaged.fangzhu
 
 sgs.ai_skill_playerschosen.s4_songwei = function(self, targets, max, min)
     local selected = sgs.SPlayerList()
@@ -1231,6 +1234,14 @@ sgs.ai_skill_playerschosen.s4_songwei = function(self, targets, max, min)
         selected:append(target)
     end
     return selected
+end
+
+sgs.ai_skill_invoke.s4_songwei = function(self, data)
+    local target = data:toPlayer()
+    if self:isFriend(target) then
+        return true
+    end
+    return false
 end
 
 sgs.ai_skill_playerschosen.s4_zhaotao = function(self, targets, max, min)
@@ -2182,7 +2193,8 @@ sgs.ai_skill_discard["@s4_xiemin-give"] = function(self, discard_num, min_num, o
 end
 
 sgs.ai_skill_playerchosen.s4_zhaowu = function(self, targets)
-    local target = self.room:findPlayerToUseSlash(true, targets, "s4_zhaowu", dummyCard("thunder_slash"), nil)
+    targets = sgs.QList2Table(targets)
+    local target = self:findPlayerToUseSlash(true, targets, "s4_zhaowu", dummyCard("thunder_slash"), nil)
     if target then
         return target
     end
@@ -2212,6 +2224,18 @@ end
 
 sgs.ai_use_revises.s4_youlong = function(self,card,use)
 	card:setFlags("Qinggang")
+end
+
+sgs.ai_poison_card.Adou = function(c, owner)
+    if owner:hasSkill("s4_youlong") then
+        return false
+    end
+    return true
+end
+
+sgs.ai_use_revises.s4_youlong = function(self,card,use)
+	if card:isKindOf("Treasure")
+	then return false end
 end
 
 -- soldier

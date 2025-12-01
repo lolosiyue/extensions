@@ -163,7 +163,7 @@ luanixi_tr = sgs.CreateTriggerSkill {
 				to_handcard_x:deleteLater()
 			end
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-				room:setPlayerChained(p, true)
+				-- room:setPlayerChained(p, true)
 				-- room:setPlayerProperty(p, "kingdom", sgs.QVariant("wu"))
 			end
 		end
