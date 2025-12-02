@@ -3075,6 +3075,15 @@ function SmartAI:getFriendNumBySeat(from,to)
 	return friendnum
 end
 
+function SmartAI:getNumBySeat(from,to)
+	local players,num = sgs.QList2Table(self.room:getAlivePlayers()),0
+	for _,p in sgs.list(players)do
+		if (p:getSeat()-from:getSeat())%#players<(to:getSeat()-from:getSeat())%#players
+		then num = num+1 end
+	end
+	return num
+end
+
 function SmartAI:needKongcheng(player,keep)
 	player = player or self.player
 	if keep then

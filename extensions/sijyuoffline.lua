@@ -1391,6 +1391,8 @@ sgs.LoadTranslationTable {
     ["#sfofl_magic_woguotai_change"] = "闪耀战姬",
     ["illustrator:sfofl_magic_woguotai_change"] = "",
     ["information:sfofl_magic_woguotai_change"] = "E10于赤壁星空下契约！闪耀战姬们的魔法乱舞",
+    ["sfofl_fengshou-invoke"] = "你可以发动“凤守”<br/> <b>操作提示</b>: 选择距离为1的角色→点击确定<br/>",
+    ["@sfofl_fengshou"] = "凤守: 你可以等量名角色受到的火焰伤害+1",
     ["sfofl_fengshou"] = "凤守",
     [":sfofl_fengshou"] = "当你变身后，你可以重新分配与你距离为1的角色的座次，然后消耗任意魔​​力，令等量名角色受到的火焰伤害+1。",
     ["sfofl_susheng"] = "苏生",
@@ -1434,6 +1436,11 @@ sgs.LoadTranslationTable {
     ["#sfofl_magic_lulingqi_change"] = "闪耀战姬",
     ["illustrator:sfofl_magic_lulingqi_change"] = "",
     ["information:sfofl_magic_lulingqi_change"] = "E10于赤壁星空下契约！闪耀战姬们的魔法乱舞",
+    ["sfofl_henghui:damage"] = "使用【杀】的次数和造成的伤害+1",
+    ["sfofl_henghui:distance"] = "【杀】无距离限制且目标数+2",
+    ["sfofl_henghui:draw"] = "摸五张牌并弃置装备区内的所有牌",
+    ["sfofl_henghui_first"] = "恒辉①",
+    ["sfofl_henghui_sec"] = "恒辉②",
     ["sfofl_henghui"] = "恒辉",
     [":sfofl_henghui"] = "锁定技，当你变身后，你获得任意个效果并消耗等量的魔力：1.使用【杀】的次数和造成的伤害+1；2.【杀】无距离限制且目标数+2；3.摸五张牌并弃置装备区内的所有牌。",
     ["sfofl_moqi"] = "魔契",
@@ -30922,8 +30929,10 @@ doHenshin = function(player, gerenal_name)
         player:setTag(gerenal_name, ToData(player:getHp()))
         if player:getGeneralName() == gerenal_name then
             room:changeHero(player, gerenal_name.."_change", false, false, false, true, player:getTag(gerenal_name.."_change"):toInt() or 0)
-        else
+        elseif player:getGeneral2Name() == gerenal_name then
             room:changeHero(player, gerenal_name.."_change", false, false, true, true, player:getTag(gerenal_name.."_change"):toInt() or 0)
+        else
+            return false
         end
         room:addPlayerMark(player, "sfofl_henshin")
     end
@@ -30931,6 +30940,7 @@ end
 
 quitHenshin = function(player, gerenal_name)
     local room = player:getRoom()
+    if player:getMark("&sfofl_moqi") > 0 then return false end
     if player:getMark("&sfofl_moli") == 0 then
         player:setTag(gerenal_name .. "_change", ToData(player:getHp()))
         if player:getGeneralName() == gerenal_name .. "_change" then
@@ -30938,6 +30948,7 @@ quitHenshin = function(player, gerenal_name)
         else
             room:changeHero(player, gerenal_name, false, false, true, true, player:getTag(gerenal_name):toInt() or 0)
         end
+        room:removePlayerMark(player, "sfofl_henshin")
     end
 end
 
@@ -30967,7 +30978,7 @@ sfofl_magic_zhenji = sgs.General(extension_e, "sfofl_magic_zhenji", "wei", 3, fa
 
 sfofl_moli_zhenji = sgs.CreateTriggerSkill{
     name = "sfofl_moli_zhenji",
-    events = {sgs.CardsMoveOneTime, sgs.EventPhaseEnd},
+    events = {sgs.CardsMoveOneTime, sgs.EventPhaseProceeding},
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
         if event == sgs.CardsMoveOneTime then
@@ -30987,7 +30998,7 @@ sfofl_moli_zhenji = sgs.CreateTriggerSkill{
                     end
                 end
             end
-        elseif event == sgs.EventPhaseEnd then
+        elseif event == sgs.EventPhaseProceeding then
             if player:getPhase() == sgs.Player_Finish and player:getMark("&sfofl_moli") >= 5 then
                 room:broadcastSkillInvoke(self:objectName(),2)
                 doHenshin(player, "sfofl_magic_zhenji")
@@ -31225,22 +31236,19 @@ sfofl_moli_woguotai = sgs.CreateTriggerSkill{
         local room = player:getRoom()
         if event == sgs.CardsMoveOneTime then
             local move = data:toMoveOneTime()
-            if move.to and move.to:objectName() == player:objectName()
-                and move.to_place == sgs.Player_PlaceHand and move.from_places:contains(sgs.Player_PlaceDraw) and player:getPhase() ~= sgs.Player_Draw then
-                for i, id in sgs.qlist(move.card_ids) do
-                    if room:askForSkillInvoke(player, self:objectName(), ToData(id)) then
-                        room:showCard(player, id)
-                        local card = sgs.Sanguosha:getCard(id)
-                        if card:isBlack() then
-                            room:broadcastSkillInvoke(self:objectName(),1)
-                            if player:getMark("&sfofl_moli") < 5 then
-                                room:addPlayerMark(player, "&sfofl_moli")
-                            end
-                        end
-                    end
+            if ((move.to and move.to:objectName() == player:objectName()
+                and (move.to_place == sgs.Player_PlaceEquip or move.to_place == sgs.Player_PlaceDelayedTrick))
+                or (move.from and move.from:objectName() == player:objectName() and (move.from_places:contains(sgs.Player_PlaceEquip) or move.from_places:contains(sgs.Player_PlaceDelayedTrick)))) then
+                if player:getMark("&sfofl_moli") < 5 then
+                    room:addPlayerMark(player, "&sfofl_moli")
                 end
-                else
+            end
+            if move.from and move.from:objectName() == player:objectName()
+                and (move.from_places:contains(sgs.Player_PlaceEquip) or move.from_places:contains(sgs.Player_PlaceDelayedTrick)) then
+                if player:getMark("&sfofl_moli") >= 5 then
+                    room:broadcastSkillInvoke(self:objectName(),2)
                     doHenshin(player, "sfofl_magic_woguotai")
+                end
             end
         elseif event == sgs.GameStart then
             if player:getMark("&sfofl_moli") < 5 then
@@ -31253,6 +31261,9 @@ sfofl_moli_woguotai = sgs.CreateTriggerSkill{
 
 sfofl_magic_woguotai:addSkill("tenyearganlu")
 sfofl_magic_woguotai:addSkill("buyi")
+sfofl_magic_woguotai:addSkill(sfofl_moli_woguotai)
+sfofl_magic_woguotai:addRelateSkill("sfofl_fengshou")
+sfofl_magic_woguotai:addRelateSkill("sfofl_susheng")
 
 sfofl_magic_woguotai_change = sgs.General(extension_e, "sfofl_magic_woguotai_change", "wu", 3, false, true)
 --[[
@@ -31261,6 +31272,64 @@ sfofl_magic_woguotai_change = sgs.General(extension_e, "sfofl_magic_woguotai_cha
 	技能描述：当你变身后，你可以重新分配与你距离为1的角色的座次，然后消耗任意魔​​力，令等量名角色受到的火焰伤害+1。
 	引用：sfofl_fengshou
 ]] --
+sfofl_fengshou_buff = sgs.CreateTriggerSkill{
+    name = "#sfofl_fengshou_buff",
+    events = {sgs.Damaged},
+    frequency = sgs.Skill_Compulsory,
+    on_trigger = function(self, event, player, data)
+        local damage = data:toDamage()
+        if damage.nature == sgs.DamageStruct_Fire then
+            player:damageRevises(data, 1)
+        end
+    end,
+    can_trigger = function(self, target)
+        return target and target:getMark("&sfofl_fengshou") > 0
+    end,
+}
+sfofl_fengshou = sgs.CreateTriggerSkill{
+    name = "sfofl_fengshou",
+    events = {sgs.MarkChanged},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.MarkChanged then
+            local mark = data:toMark()
+			if mark.name == "sfofl_henshin" and mark.gain > 0 then
+                room:broadcastSkillInvoke(self:objectName(),1)
+                local others = sgs.SPlayerList()
+                for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+                    if player:distanceTo(p) == 1 then
+                        others:append(p)
+                    end
+                end
+                if not others:isEmpty() then
+                    while true do
+                        local from = room:askForPlayerChosen(player, others, self:objectName(), "sfofl_fengshou-invoke", true, true)
+                        if not from then break end
+                        room:setPlayerFlag(from, "sfofl_fengshou_target")
+                        local to = room:askForPlayerChosen(player, others, self:objectName())
+                        room:setPlayerFlag(from, "-sfofl_fengshou_target")
+                        room:swapSeat(from, to)
+                    end
+                end
+                local max_mana = player:getMark("&sfofl_moli")
+                if max_mana > 0 then
+                    local choicelist = {}
+                    for i = 1, max_mana do
+                        table.insert(choicelist, tostring(i))
+                    end
+                    local num = room:askForChoice(player, self:objectName(), table.concat(choicelist, "+"))
+                    if num > 0 then
+                        costMana(player, num, "sfofl_magic_woguotai")
+                        local targets = room:askForPlayersChosen(player, room:getAlivePlayers(), self:objectName(), num, num, "@sfofl_fengshou")
+                        for _, target in sgs.qlist(targets) do
+                            room:addPlayerMark(target, "&sfofl_fengshou")
+                        end
+                    end
+                end
+            end
+        end
+    end,
+}
 
 --[[
 	技能名：苏生
@@ -31268,8 +31337,39 @@ sfofl_magic_woguotai_change = sgs.General(extension_e, "sfofl_magic_woguotai_cha
 	技能描述：当称号与你相同的角色进入濒死状态时，你可以消耗任意魔​​力令其回复等量的体力和魔力，然后你摸等量张牌。
 	引用：sfofl_susheng
 ]] --
-
-
+sfofl_susheng = sgs.CreateTriggerSkill{
+	name = "sfofl_susheng",
+	events = {sgs.Dying},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local dying = data:toDying()
+		local _player = dying.who
+		if _player:isKongcheng() then return false end
+	    if ((string.find(_player:getGeneralName(), "_change") and string.find(_player:getGeneralName(), "sfofl_")) or (string.find(_player:getGeneral2Name(), "_change") and string.find(_player:getGeneral2Name(), "sfofl_"))) then
+            if _player:getHp() < 1 and player:askForSkillInvoke(self:objectName(), data) then
+                local max_mana = player:getMark("&sfofl_moli")
+                if max_mana == 0 then return false end
+                local choicelist = {}
+                for i = 1, max_mana do
+                    table.insert(choicelist, tostring(i))
+                end
+                local num = room:askForChoice(player, self:objectName(), table.concat(choicelist, "+"), data)
+                if num > 0 then
+                    costMana(player, num, "sfofl_magic_woguotai")
+                    room:broadcastSkillInvoke(self:objectName())
+                    room:recover(_player,sgs.RecoverStruct(self:objectName(),player, num))
+                    room:setPlayerMark(_player, "&sfofl_moli", math.min(num+_player:getMark("&sfofl_moli"), 5))
+                    player:drawCards(num, self:objectName())
+                end
+            end
+		end
+		return false
+	end,
+}
+sfofl_magic_woguotai_change:addSkill(sfofl_fengshou)
+sfofl_magic_woguotai_change:addSkill(sfofl_fengshou_buff)
+extension_e:insertRelatedSkills("sfofl_fengshou", "#sfofl_fengshou_buff")
+sfofl_magic_woguotai_change:addSkill(sfofl_susheng)
 
 sfofl_magic_ruiji = sgs.General(extension_e, "sfofl_magic_ruiji", "wu", 4, false)
 --[[
@@ -31278,12 +31378,41 @@ sfofl_magic_ruiji = sgs.General(extension_e, "sfofl_magic_ruiji", "wu", 4, false
 	技能描述：变身技（0/5），游戏开始时或当你造成或受到伤害时，你获得1点魔力；当你进入濒死状态时或发动“铃音”后，你进行吟唱并变身。
 	引用：sfofl_moli_ruiji
 ]] --
-
+sfofl_moli_ruiji = sgs.CreateTriggerSkill{
+    name = "sfofl_moli_ruiji",
+    events = {sgs.GameStart, sgs.DamageInflicted, sgs.DamageCaused, sgs.Dying, sgs.MarkChanged},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.DamageInflicted or event == sgs.DamageCaused or event == sgs.GameStart then
+            if player:getMark("&sfofl_moli") < 5 then
+                room:addPlayerMark(player, "&sfofl_moli")
+            end
+        elseif event == sgs.Dying then
+            local dying = data:toDying()
+            if dying.who:objectName() == player:objectName() then
+                if player:getMark("&sfofl_moli") >= 5 then
+                    room:broadcastSkillInvoke(self:objectName(),2)
+                    doHenshin(player, "sfofl_magic_ruiji")
+                end
+            end
+        elseif event == sgs.MarkChanged then
+            local mark = data:toMark()
+            if mark.name == "&tenyearlingyinBuff-Clear" and mark.gain > 0 then
+                if player:getMark("&sfofl_moli") >= 5 then
+                    room:broadcastSkillInvoke(self:objectName(),2)
+                    doHenshin(player, "sfofl_magic_ruiji")
+                end
+            end
+        end
+    end,
+}
 
 sfofl_magic_ruiji:addSkill("tenyearwangyuan")
 sfofl_magic_ruiji:addSkill("tenyearlingyin")
 sfofl_magic_ruiji:addSkill("tenyearliying")
-
+sfofl_magic_ruiji:addSkill(sfofl_moli_ruiji)
+sfofl_magic_ruiji:addRelateSkill("sfofl_shengcai")
+sfofl_magic_ruiji:addRelateSkill("sfofl_guanghui")
  
 sfofl_magic_ruiji_change = sgs.General(extension_e, "sfofl_magic_ruiji_change", "wu", 4, false, true)
 --[[
@@ -31293,6 +31422,70 @@ sfofl_magic_ruiji_change = sgs.General(extension_e, "sfofl_magic_ruiji_change", 
 	引用：sfofl_shengcai
 ]] --
 
+sfofl_shengcai_buff = sgs.CreateTargetModSkill{
+    name = "#sfofl_shengcai_buff",
+    residue_func = function(self, player, card)
+        if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "sfofl_shengcai") then return 999 end
+        return 0
+    end,
+    distance_limit_func = function(self, from, card)
+        if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "sfofl_shengcai") then return 1000 end
+        return 0
+    end,
+}
+
+
+sfofl_shengcaiVS = sgs.CreateViewAsSkill{
+    name = "sfofl_shengcai",
+    n = 999,
+    response_or_use = true,
+    view_filter = function(self, selected, to_select)
+        return not to_select:isEquipped()
+    end,
+    view_as = function(self, cards)
+        if #cards == 0 then return nil end
+        if #cards > sgs.Self:getMark("&sfofl_moli") then return nil end
+        local slash = sgs.Sanguosha:cloneCard("slash")
+        slash:setSkillName(self:objectName())
+        slash:addSubcards(cards)
+        return slash
+    end,
+    enabled_at_play = function(self, player)
+        return player:getMark("&sfofl_moli") > 0 and sgs.Slash_IsAvailable(player)
+    end,
+    enabled_at_response = function(self, player, pattern)
+        return false
+    end,
+}
+
+sfofl_shengcai = sgs.CreateTriggerSkill{
+    name = "sfofl_shengcai",
+    events = {sgs.DamageCaused, sgs.CardUsed},
+    view_as_skill = sfofl_shengcaiVS,
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.DamageCaused then
+            local damage = data:toDamage()
+            if damage.card and damage.card:isKindOf("Slash") and table.contains(damage.card:getSkillNames(), "sfofl_shengcai") then
+                damage.damage = damage.damage + damage.card:subcardsLength()
+                local log = sgs.LogMessage()
+                log.type = "#skill_add_damage"
+                log.from = damage.from
+                log.to:append(damage.to)
+                log.arg  = self:objectName()
+                log.arg2 = damage.damage
+                room:sendLog(log)
+                data:setValue(damage)
+            end
+        elseif event == sgs.CardUsed then
+            local use = data:toCardUse()
+            if use.card and use.card:isKindOf("Slash") and table.contains(use.card:getSkillNames(), "sfofl_shengcai") then
+                costMana(player, use.card:subcardsLength(), "sfofl_magic_ruiji")
+                room:addPlayerHistory(player, use.card:getClassName(), -1)
+            end
+        end
+    end,
+}
 
 --[[
 	技能名：光辉
@@ -31301,6 +31494,61 @@ sfofl_magic_ruiji_change = sgs.General(extension_e, "sfofl_magic_ruiji_change", 
 	引用：sfofl_guanghui
 ]] --   
 
+sfofl_guanghui = sgs.CreateTriggerSkill{
+    name = "sfofl_guanghui",
+    events = {sgs.DamageCaused, sgs.TargetConfirming},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.DamageCaused then
+            local damage = data:toDamage()
+            if damage.from and ((string.find(damage.from:getGeneralName(), "_change") and string.find(damage.from:getGeneralName(), "sfofl_")) or (string.find(damage.from:getGeneral2Name(), "_change") and string.find(damage.from:getGeneral2Name(), "sfofl_"))) then
+                for _, ruiji in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+                    room:broadcastSkillInvoke(self:objectName(),1)
+                    if ruiji:getMark("&sfofl_moli") < 5 then
+                        room:addPlayerMark(ruiji, "&sfofl_moli")
+                    end
+                end
+            end
+        elseif event == sgs.TargetConfirming then
+            local use = data:toCardUse()
+            if not use.card:isKindOf("SkillCard") then
+                if from and ((string.find(from:getGeneralName(), "_change") and string.find(from:getGeneralName(), "sfofl_")) or (string.find(from:getGeneral2Name(), "_change") and string.find(from:getGeneral2Name(), "sfofl_"))) then
+                    for _, p in sgs.qlist(room:findPlayerBySkillName(self:objectName())) do
+                        local list = use.no_respond_list
+                        local targets = sgs.SPlayerList()
+                        for _, p in sgs.qlist(use.to) do
+                            if not ((string.find(p:getGeneralName(), "_change") and string.find(p:getGeneralName(), "sfofl_")) or (string.find(p:getGeneral2Name(), "_change") and string.find(p:getGeneral2Name(), "sfofl_"))) then
+                                table.insert(list, p:objectName())
+                                targets:append(p)
+                            end
+                        end
+                        use.no_respond_list = list
+                        if not targets:isEmpty() then
+                            room:sendCompulsoryTriggerLog(p, self:objectName())
+                            local log = sgs.LogMessage()
+                            log.type = "$NoRespond"
+                            log.from = use.from
+                            log.to = use.to
+                            log.arg = self:objectName()
+                            log.card_str = use.card:toString()
+                            room:sendLog(log)
+                        end
+                        data:setValue(use)
+                        break
+                    end
+                end
+            end
+        end
+    end,
+    can_trigger = function(self, target)
+        return target
+    end
+}
+
+sfofl_magic_ruiji_change:addSkill(sfofl_shengcai)
+sfofl_magic_ruiji_change:addSkill(sfofl_shengcai_buff)
+extension_e:insertRelatedSkills("sfofl_shengcai", "#sfofl_shengcai_buff")
+sfofl_magic_ruiji_change:addSkill(sfofl_guanghui)
 
 sfofl_magic_lulingqi = sgs.General(extension_e, "sfofl_magic_lulingqi", "qun", 4, false)
 --[[
@@ -31310,8 +31558,32 @@ sfofl_magic_lulingqi = sgs.General(extension_e, "sfofl_magic_lulingqi", "qun", 4
 	引用：sfofl_moli_lulingqi
 ]] --
 
+sfofl_moli_lulingqi = sgs.CreateTriggerSkill{
+    name = "sfofl_moli_lulingqi",
+    events = {sgs.GameStart, sgs.DamageCaused, sgs.EventPhaseProceeding},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.DamageCaused or event == sgs.GameStart then
+            if player:getMark("&sfofl_moli") < 5 then
+                room:addPlayerMark(player, "&sfofl_moli")
+            end
+        elseif event == sgs.EventPhaseProceeding then
+            if player:getPhase() == sgs.Player_Start then
+                if player:getMark("&sfofl_moli") >= 5 then
+                    room:broadcastSkillInvoke(self:objectName(),2)
+                    doHenshin(player, "sfofl_magic_lulingqi")
+                end
+            end
+        end
+    end,
+}
+
+
 sfofl_magic_lulingqi:addSkill("guowu")
 sfofl_magic_lulingqi:addSkill("zhuangrong")
+sfofl_magic_lulingqi:addSkill(sfofl_moli_lulingqi)
+sfofl_magic_lulingqi:addRelateSkill("sfofl_henghui")
+sfofl_magic_lulingqi:addRelateSkill("sfofl_moqi")
 
 sfofl_magic_lulingqi_change = sgs.General(extension_e, "sfofl_magic_lulingqi_change", "qun", 4, false, true)
 --[[
@@ -31321,6 +31593,109 @@ sfofl_magic_lulingqi_change = sgs.General(extension_e, "sfofl_magic_lulingqi_cha
 	引用：sfofl_henghui
 ]] --
 
+sfofl_henghui_buff = sgs.CreateTargetModSkill{
+    name = "#sfofl_henghui_buff",
+    pattern = "Slash",
+    distance_limit_func = function(self, from, card)
+        if from:getMark("&sfofl_henghui_sec") > 0 then
+            return 1000
+        end
+        return 0
+    end,
+    extra_target_func = function(self,from,card)
+		if from:getMark("&sfofl_henghui_sec") > 0 then return 2*from:getMark("&sfofl_henghui_sec") end
+		return 0
+	end,
+    residue_func = function(self, player, card)
+        if player:getMark("&sfofl_henghui_first") > 0 then
+            return player:getMark("&sfofl_henghui_first")
+        end
+        return 0
+    end,
+}
+
+sfofl_henghui_damage = sgs.CreateTriggerSkill{
+    name = "#sfofl_henghui_damage",
+    events = {sgs.DamageCaused},
+    frequency = sgs.Skill_Compulsory,
+    on_trigger = function(self, event, player, data)
+        local damage = data:toDamage()
+        if damage.card and damage.card:isKindOf("Slash") then
+            damage.damage = damage.damage + player:getMark("&sfofl_henghui_first")
+            local log = sgs.LogMessage()
+            log.type = "#skill_add_damage"
+            log.from = damage.from
+            log.to:append(damage.to)
+            log.arg  = "sfofl_henghui"
+            log.arg2 = damage.damage
+            player:getRoom():sendLog(log)
+            data:setValue(damage)
+        end
+    end,
+    can_trigger = function(self, target)
+        return target and target:getMark("&sfofl_henghui_first") > 0
+    end,
+}
+
+sfofl_henghui_clear = sgs.CreateTriggerSkill{
+    name = "#sfofl_henghui_clear",
+    events = {sgs.MarkChanged},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.MarkChanged then
+            local mark = data:toMark()
+            if mark.name == "sfofl_henshin" and mark.gain < 0 then
+                room:setPlayerMark(player, "&sfofl_henghui_first", 0)
+                room:setPlayerMark(player, "&sfofl_henghui_sec", 0)
+            end
+        end
+    end,
+}
+
+sfofl_henghui = sgs.CreateTriggerSkill{
+    name = "sfofl_henghui",
+    events = {sgs.MarkChanged},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.MarkChanged then
+            local mark = data:toMark()
+            if mark.name == "sfofl_henshin" and mark.gain > 0 then
+                room:broadcastSkillInvoke(self:objectName(),1)
+                local max_mana = math.min(player:getMark("&sfofl_moli"), 3)
+                if max_mana > 0 then
+                    local choicelist = {}
+                    if player:getMark("&sfofl_henghui_first") == 0 then
+                        table.insert(choicelist, "damage")
+                    end
+                    if player:getMark("&sfofl_henghui_sec") == 0 then
+                        table.insert(choicelist, "distance")
+                    end
+                    table.insert(choicelist, "draw")
+                    table.insert(choicelist, "cancel")
+                    while player:getMark("&sfofl_moli") > 0 and #choicelist > 0 do
+                        local choice = room:askForChoice(player, self:objectName(), table.concat(choicelist, "+"))
+                        if choice == "cancel" then
+                            break
+                        else
+                            costMana(player, 1, "sfofl_magic_lulingqi")
+                            if choice == "damage" then
+                                room:addPlayerMark(player, "&sfofl_henghui_first")
+                                table.removeOne(choicelist, "damage")
+                            elseif choice == "distance" then
+                                room:addPlayerMark(player, "&sfofl_henghui_sec")
+                                table.removeOne(choicelist, "distance")
+                            elseif choice == "draw" then
+                                player:drawCards(5, self:objectName())
+                                player:throwAllEquips(self:objectName())
+                                table.removeOne(choicelist, "draw")
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end,
+}
 
 --[[
 	技能名：魔契
@@ -31328,8 +31703,68 @@ sfofl_magic_lulingqi_change = sgs.General(extension_e, "sfofl_magic_lulingqi_cha
 	技能描述：每次变身限一次，出牌阶段，你可以消耗至少3点魔力并失去所有体力，然后你令“恒辉”的所有数值翻倍。若如此做，你保持变身状态直到结束阶段。
 	引用：sfofl_moqi
 ]] --
+sfofl_moqi_clear = sgs.CreateTriggerSkill{
+    name = "#sfofl_moqi_clear",
+    events = {sgs.MarkChanged, sgs.EventPhaseChanging},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.MarkChanged then
+            local mark = data:toMark()
+            if mark.name == "sfofl_henshin" and mark.gain < 0 then
+                room:setPlayerMark(player, "sfofl_moqi_used", 0)
+            end
+        elseif event == sgs.EventPhaseChanging then
+            local change = data:toPhaseChange()
+            if change.to == sgs.Player_NotActive and player:getMark("&sfofl_moqi") > 0 then
+                room:setPlayerMark(source, "&sfofl_moqi", 0)
+                quitHenshin(player, "sfofl_magic_lulingqi")
+            end
+        end
+    end,
+}
 
+sfofl_moqiCard = sgs.CreateSkillCard{
+    name = "sfofl_moqi",
+    target_fixed = true,
+    on_use = function(self, room, source, targets)
+        local max_mana = source:getMark("&sfofl_moli")
+        if max_mana < 3 then return end
+        local choicelist = {}
+        for i = 3, max_mana do
+            table.insert(choicelist, tostring(i))
+        end
+        local num = room:askForChoice(source, "sfofl_moqi", table.concat(choicelist, "+"))
+        costMana(source, num, "sfofl_magic_lulingqi")
+        room:loseHp(source, source:getHp(), true, source, "sfofl_moqi")
+        local first = source:getMark("&sfofl_henghui_first")
+        local sec = source:getMark("&sfofl_henghui_sec")
+        room:setPlayerMark(source, "&sfofl_henghui_first", first * 2)
+        room:setPlayerMark(source, "&sfofl_henghui_sec", sec * 2)
+        room:setPlayerMark(source, "&sfofl_moqi", 1)
+        room:setPlayerMark(source, "sfofl_moqi_used", 1)
+    end,
+}
+sfofl_moqi = sgs.CreateViewAsSkill{
+    name = "sfofl_moqi",
+    n = 0,
+    view_as = function(self, cards)
+        return sfofl_moqiCard:clone()
+    end,
+    enabled_at_play = function(self, player)
+        return player:getMark("sfofl_moqi_used") == 0 and player:getMark("&sfofl_moli") >= 3 and player:getHp() > 0
+    end,
+}
 
+sfofl_magic_lulingqi_change:addSkill(sfofl_henghui)
+sfofl_magic_lulingqi_change:addSkill(sfofl_henghui_buff)
+sfofl_magic_lulingqi_change:addSkill(sfofl_henghui_damage)
+sfofl_magic_lulingqi_change:addSkill(sfofl_henghui_clear)
+extension_e:insertRelatedSkills("sfofl_henghui", "#sfofl_henghui_buff")
+extension_e:insertRelatedSkills("sfofl_henghui", "#sfofl_henghui_damage")
+extension_e:insertRelatedSkills("sfofl_henghui", "#sfofl_henghui_clear")
+sfofl_magic_lulingqi_change:addSkill(sfofl_moqi_clear)
+sfofl_magic_lulingqi_change:addSkill(sfofl_moqi)
+extension_e:insertRelatedSkills("sfofl_moqi", "#sfofl_moqi_clear")
 
 sfofl_magic_dongwan = sgs.General(extension_e, "sfofl_magic_dongwan", "qun", 3, false)
 --[[
@@ -31339,9 +31774,34 @@ sfofl_magic_dongwan = sgs.General(extension_e, "sfofl_magic_dongwan", "qun", 3, 
 	引用：sfofl_moli_dongwan
 ]] --
 
+sfofl_moli_dongwan = sgs.CreateTriggerSkill{
+    name = "sfofl_moli_dongwan",
+    events = {sgs.CardsMoveOneTime, sgs.EventPhaseProceeding},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.CardsMoveOneTime then
+            local move = data:toMoveOneTime()
+            if move.to and move.to:objectName() == player:objectName()
+                and move.to_place == sgs.Player_PlaceHand and move.from_places:contains(sgs.Player_PlaceDraw) and player:getPhase() ~= sgs.Player_Draw then
+                if player:getMark("&sfofl_moli") < 5 then
+                    room:addPlayerMark(player, "&sfofl_moli")
+                end
+            end
+        elseif event == sgs.EventPhaseProceeding then
+            if player:getPhase() == sgs.Player_Finish and player:getMark("&sfofl_moli") >= 5 then
+                room:broadcastSkillInvoke(self:objectName(),2)
+                doHenshin(player, "sfofl_magic_dongwan")
+            end
+        end
+    end,
+}
 
 sfofl_magic_dongwan:addSkill("ny_10th_shengdu")
 sfofl_magic_dongwan:addSkill("ny_10th_jieling")
+sfofl_magic_dongwan:addSkill(sfofl_moli_dongwan)
+sfofl_magic_dongwan:addRelateSkill("sfofl_shengyan")
+sfofl_magic_dongwan:addRelateSkill("sfofl_gongming")
+
 
 sfofl_magic_dongwan_change = sgs.General(extension_e, "sfofl_magic_dongwan_change", "qun", 3, false, true)
 --[[
@@ -31350,6 +31810,27 @@ sfofl_magic_dongwan_change = sgs.General(extension_e, "sfofl_magic_dongwan_chang
 	技能描述：锁定技，你使用牌时额外结算一次，然后你消耗1点魔力或失去1点体力，对一名其他角色造成1点火焰伤害。
 	引用：sfofl_shengyan
 ]] --
+sfofl_shengyan = sgs.CreateTriggerSkill{
+    name = "sfofl_shengyan",
+    events = {sgs.CardFinished},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        local use = data:toCardUse()
+        if use.card and not use.card:isKindOf("SkillCard") then
+            room:broadcastSkillInvoke(self:objectName(),1)
+            use.card:use(room,use.from,use.to)
+            --造成火焰伤害
+            local choice = room:askForChoice(player, self:objectName(), "mana+hp")
+            if choice == "mana" then
+                costMana(player, 1, "sfofl_magic_dongwan")
+            else
+                room:loseHp(player, 1, nil, self:objectName())
+            end
+            local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "@sfofl_shengyan")
+            room:damage(sgs.DamageStruct(self:objectName(), player, target, 1, sgs.DamageStruct_Fire))
+        end
+    end,
+}
 
 
 --[[
@@ -31358,6 +31839,45 @@ sfofl_magic_dongwan_change = sgs.General(extension_e, "sfofl_magic_dongwan_chang
 	技能描述：当你消耗1点魔力后或失去1点体力后，你可以令称号与你相同的角色各摸X张牌（X为你本次变身此技能发动的次数）。
 	引用：sfofl_gongming
 ]] --
+sfofl_gongming = sgs.CreateTriggerSkill{
+    name = "sfofl_gongming",
+    events = {sgs.MarkChanged, sgs.HpLost},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.MarkChanged then
+            local mark = data:toMark()
+            if mark.name == "&sfofl_moli" and mark.gain < 0 then
+                if room:askForSkillInvoke(player, self:objectName(), data) then
+                    for _, p in sgs.qlist(room:getAllPlayers()) do
+                        if ((string.find(p:getGeneralName(), "_change") and string.find(p:getGeneralName(), "sfofl_")) or (string.find(p:getGeneral2Name(), "_change") and string.find(p:getGeneral2Name(), "sfofl_"))) then
+                            local x = player:getMark("&sfofl_gongming")
+                            room:broadcastSkillInvoke(self:objectName(),1)
+                            p:drawCards(x, self:objectName())
+                        end
+                    end
+                end
+            end
+        elseif event == sgs.HpLost then
+            local lose = data:toHpLost()
+            if lose.who and lose.who:objectName() == player:objectName() then
+                if room:askForSkillInvoke(player, self:objectName(), data) then
+                    for _, p in sgs.qlist(room:getAllPlayers()) do
+                        if ((string.find(p:getGeneralName(), "_change") and string.find(p:getGeneralName(), "sfofl_")) or (string.find(p:getGeneral2Name(), "_change") and string.find(p:getGeneral2Name(), "sfofl_"))) then
+                            local x = player:getMark("&sfofl_gongming")
+                            room:broadcastSkillInvoke(self:objectName(),1)
+                            p:drawCards(x, self:objectName())
+                        end
+                    end
+                end
+            end
+        end
+    end,
+}
+
+sfofl_magic_dongwan_change:addSkill(sfofl_shengyan)
+sfofl_magic_dongwan_change:addSkill(sfofl_gongming)
+
+
 
 sfofl_lord_goblin = sgs.General(extension_e, "sfofl_lord_goblin", "mo", 6)
 --[[
@@ -31465,6 +31985,43 @@ sfofl_kuangbao = sgs.CreateTriggerSkill{
 	技能描述：锁定技，每个回合结束时，若你受到过至少2点伤害，你减2点体力上限且本回合结束时进行一个额外的回合。
 	引用：sfofl_feisheng
 ]] --
+
+sfofl_feisheng = sgs.CreateTriggerSkill{
+    name = "sfofl_feisheng",
+    frequency = sgs.Skill_Compulsory,
+    events = {sgs.EventPhaseChanging, sgs.Damaged},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.Damaged then
+            local damage = data:toDamage()
+            if damage.to and damage.to:hasSkill(self:objectName()) then
+                room:addPlayerMark(player, "sfofl_feisheng-Clear", damage.damage)
+            end
+            return false
+        elseif event == sgs.EventPhaseChanging then
+            local change = data:toPhaseChange()
+            if change.to == sgs.Player_NotActive then
+                for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+                    if p:getMark("sfofl_feisheng-Clear") >= 2 then
+                        room:broadcastSkillInvoke(self:objectName(),1)
+                        room:sendCompulsoryTriggerLog(p, self:objectName())
+                        room:loseMaxHp(p, 2, self:objectName())
+                        p:gainAnExtraTurn()
+                    end
+                end
+            end
+        end
+        return false
+    end,
+    can_trigger = function(self, target)
+        return target
+    end,
+}
+
+sfofl_lord_goblin:addSkill(sfofl_yibao)
+sfofl_lord_goblin:addSkill(sfofl_rulin)
+sfofl_lord_goblin:addSkill(sfofl_kuangbao)
+sfofl_lord_goblin:addSkill(sfofl_feisheng)
 
 sfofl_goblin = sgs.General(extension_e, "sfofl_goblin", "mo", 4)
 --[[
