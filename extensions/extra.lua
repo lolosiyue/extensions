@@ -4758,6 +4758,152 @@ heg_jueyue = sgs.CreateTriggerSkill{
 
 heg_yujin:addSkill(heg_jueyue)
 
+heg_cuiyanmaojie = sgs.General(extension_hegquan, "heg_cuiyanmaojie", "wei", 3)
+	
+	-- ["heg_fengying"] = "奉迎",
+  	-- [":#heg_fengying"] = "限定技，出牌阶段，你可将所有手牌当【挟天子以令诸侯】（无视大势力限制）使用，然后所有与你势力相同的角色将手牌补至其体力上限。",
+
+heg_zhengbi_buff = sgs.CreateTargetModSkill{
+	name = "#heg_zhengbi_buff",
+	residue_func = function(self, from, card, to)
+		if from:hasSkill("heg_zhengbi") and to:getMark("heg_zhengbi"..from:objectName().."-Clear") > 0 then
+			return 1000
+		end
+		return 0
+	end,
+	distance_limit_func = function(self, from, card, to)
+		if from:hasSkill("heg_zhengbi") and to:getMark("heg_zhengbi"..from:objectName().."-Clear") > 0 then
+			return 1000
+		end
+		return 0
+	end,
+}
+
+heg_zhengbiDiscard = sgs.CreateViewAsSkill{
+	name = "#heg_zhengbiDiscard", 
+	n = 2, 
+	enabled_at_play = function(self, player)
+		return  false
+	end,
+	enabled_at_response = function(self, player, pattern)
+		return pattern == "@@zhengbidiscard!"
+	end,
+	view_filter = function(self, selected, to_select)
+		if #selected == 0 then
+			return to_select:isKindOf("BasicCard") or to_select:isKindOf("TrickCard")
+		elseif #selected == 1 then
+			if selected:first():getTypeId() == sgs.Card_TypeTrick then
+				return false
+			elseif selected:first():getTypeId() == sgs.Card_TypeBasic then
+				return to_select:getTypeId() == sgs.Card_TypeBasic
+			end
+		else 
+			return false
+		end
+	end, 
+	view_as = function(self, cards) 
+		local ok = false
+		if #cards == 1 then
+			ok = cards:first():getTypeId() == sgs.Card_TypeTrick 
+		elseif #cards == 2 then
+			ok = true
+			for _,c in sgs.qlist(cards) do
+				if c:getTypeId() == sgs.Card_TypeTrick then
+					ok = false
+				end
+			end
+		end
+		if not ok then
+			return nil
+		end
+		local dummy = sgs.Sanguosha:cloneCard("slash")
+		dummy:addSubcards(cards)
+		return dummy
+	end
+}
+
+heg_zhengbiCard = sgs.CreateSkillCard{
+	name = "heg_zhengbi",
+	will_throw = false,
+	filter = function(self, targets, to_select)
+		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	end,
+	on_effect = function(self, effect)
+		local room = effect.from:getRoom()
+		room:giveCard(effect.from,effect.to,self,"heg_zhengbi",true)
+		local prompt = string.format("@heg_zhengbi-receive:%s", effect.from:objectName())
+		local recv_card = room:askForCard(effect.to, "@@zhengbidiscard!", prompt)
+		if (not recv_card) then
+			for _, id in sgs.qlist(effect.to:getCards("he")) do
+				local card = sgs.Sanguosha:getCard(id)
+				if not card:isKindOf("BasicCard") then
+					recv_card:addSubcard(card)
+					break
+				end
+			end
+			if recv_card:subcardsLength() < 2 then
+				for _, id in sgs.qlist(effect.to:getCards("he")) do
+					local card = sgs.Sanguosha:getCard(id)
+					if card:isKindOf("BasicCard") and recv_card:subcardsLength() < 2 then
+						recv_card:addSubcard(card)
+					end
+				end
+			end
+		end
+		if recv_card then
+			room:obtainCard(effect.from, recv_card, true)
+		end
+	end
+}
+
+
+heg_zhengbiVS = sgs.CreateViewAsSkill{
+	name = "heg_zhengbi",
+	n = 1,
+	view_filter = function(self, selected, to_select)
+		return to_select:isKindOf("BasicCard")
+	end,
+	view_as = function(self, cards)
+		if #cards ~= 1 then return nil end
+		local skillcard = heg_zhengbiCard:clone()
+		skillcard:addSubcard(cards[1])
+		skillcard:setSkillName(self:objectName())
+		return skillcard
+	end,
+	enabled_at_play = function(self, player)
+		return false
+	end,
+	enabled_at_response = function(self, player, pattern)
+		return pattern == "@@heg_zhengbi"
+	end
+}
+
+heg_zhengbi = sgs.CreateTriggerSkill{
+	name = "heg_zhengbi",
+	events = {sgs.EventPhaseStart},
+	view_as_skill = heg_zhengbiVS,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if player:getPhase() == sgs.Player_Play and room:askForSkillInvoke(player, self:objectName(), data) then
+			local choice = room:askForChoice(player, self:objectName(), "heg_zhengbi_distance+heg_zhengbi_give+cancel")
+			if choice == "heg_zhengbi_distance" then
+				local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName(), "heg_zhengbi-distance", false, true)
+				room:broadcastSkillInvoke(self:objectName())
+				room:setPlayerMark(target, "heg_zhengbi"..player:objectName().."-Clear", 1)
+				room:setPlayerMark(target, "&heg_zhengbi+to+#"..player:objectName().."-Clear", 1)
+			elseif choice == "heg_zhengbi_give" then
+					room:askForUseCard(player, "@@heg_zhengbi", "@heg_zhengbi-give")
+			end
+		end
+	end
+}
+
+if not sgs.Sanguosha:getSkill("#heg_zhengbiDiscard") then skills:append(heg_zhengbiDiscard) end
+
+
+
+
+
 --[[
 	技能名：虎翼
 	技能描述：你使用【杀】对目标造成属性伤害时，你可以横置至多两名角色。
@@ -5473,7 +5619,7 @@ sgs.LoadTranslationTable{
     ["illustrator:heg_cuiyanmaojie"] = "兴游",	
 	["heg_zhengbi"] = "征辟",
 	[":heg_zhengbi"] = "出牌阶段开始时，你可选择一项：1.选择一名角色，直至此回合结束，你对其使用牌无距离与次数限制；2.将一张基本牌交给一名角色，然后其交给你一张非基本牌或两张基本牌。",
-	["#heg_fengying"] = "奉迎",
+	["heg_fengying"] = "奉迎",
   	[":#heg_fengying"] = "限定技，出牌阶段，你可将所有手牌当【挟天子以令诸侯】（无视大势力限制）使用，然后所有与你势力相同的角色将手牌补至其体力上限。",
 
 	["heg_wangping"] = "王平-国",

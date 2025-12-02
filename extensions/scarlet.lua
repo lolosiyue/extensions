@@ -1137,7 +1137,7 @@ local function calculatePoints(dueldata, log, room)
             end
         end
         
-        local extra = ":"..dueldata.toNum[dueldata.from:objectName()]..":"..dueldata.toNum[p:objectName()]..":"..fromCard..":"..tosCard
+        local extra = ":"..dueldata.toNum[dueldata.from:objectName()]..":"..dueldata.toNum[p:objectName()]..":".."0"..":"..fromCard..":"..tosCard
         local data = triggerDuelEvent(room, "s4_txbw_Cal", dueldata.from, dueldata.tos, p, extra)
         local event = parseDuelEvent(data)
         
@@ -1911,7 +1911,7 @@ s4_txbw_motian = sgs.CreateTriggerSkill {
                     local newData = duel.eventName..":"..duel.from..":"..
                                     table.concat(duel.tos, "+")..":"..
                                     fromPoints..":"..playerPoints..":"..bonusPoints..
-                                    ":".. duel[6]..":"..duel[7]
+                                    ":".. duel[7]..":"..duel[8]
                     data:setValue(newData)
                 end
             end
@@ -2105,8 +2105,8 @@ s4_txbw_yizhong_duel = sgs.CreateTriggerSkill {
                     -- Event data: [4]=fromPoints, [5]=playerPoints, [6]=fromCard, [7]=playerCard
                     local fromPoints = tonumber(duel[4])
                     local playerPoints = tonumber(duel[5])
-                    local fromCard = duel[6]  -- Card from the duel initiator
-                    local tosCard = duel[7]  -- This player's card
+                    local fromCard = duel[7]  -- Card from the duel initiator
+                    local tosCard = duel[8]  -- This player's card
                     
                     -- Determine which card to check (the opponent's card)
                     local opponentCard = nil
@@ -2424,7 +2424,7 @@ s4_txbw_wanpo = sgs.CreateTriggerSkill {
 
                         local newData = duel.eventName..":"..duel.from..":"..
                                        table.concat(duel.tos, "+")..":"..
-                                       duel[4]..":"..duel[5]..":"..bonusPoints ..":".. duel[6]..":"..duel[7]
+                                       duel[4]..":"..duel[5]..":"..bonusPoints ..":".. duel[7]..":"..duel[8]
                         data:setValue(newData)
                     end
                 end
@@ -2887,7 +2887,7 @@ s4_txbw_hongwu = sgs.CreateTriggerSkill {
                             local bonusPoints = add_point
                             local newData = duel.eventName..":"..duel.from..":"..
                                            table.concat(duel.tos, "+")..":"..
-                                           duel[4]..":"..duel[5]..":"..bonusPoints ..":".. duel[6]..":"..duel[7]
+                                           duel[4]..":"..duel[5]..":"..bonusPoints ..":".. duel[7]..":"..duel[8]
                             data:setValue(newData)
                         end
                     end
