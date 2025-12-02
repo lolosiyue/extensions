@@ -11118,6 +11118,236 @@ sgs.ai_skill_playerchosen.sfofl_yuanli = function(self, targets)
 end
 sgs.ai_playerchosen_intention.sfofl_yuanli = -40
 
+sgs.ai_skill_invoke.sfofl_moli_zhenji = function(self, data)
+	local id = data:toInt()
+	local card = sgs.Sanguosha:getCard(id)
+	if not card:isBlack() then return false end
+	return true
+end
+sgs.ai_skill_invoke.sfofl_jinghong = function(self, data)
+	local target = data:toPlayer()
+	if target and self:isFriend(target) and self:canDraw(target) then return true end
+	return false
+end
+sgs.ai_choicemade_filter.skillInvoke.sfofl_jinghong = function(self,player,promptlist)
+	if promptlist[#promptlist]=="yes" then
+		local target = self.room:findPlayerByObjectName(promptlist[#promptlist-1])
+		if target then sgs.updateIntention(player,target,-50) end
+	end
+end
+
+sgs.ai_canliegong_skill.sfofl_youlong = function(self, from, to)
+	return to:getMark("&sfofl_youlong-SelfClear") > 0
+end
+
+--TODO
+sgs.ai_skill_invoke.sfofl_haiyou = function(self, data)
+	local use = data:toCardUse()
+end
+
+sgs.ai_skill_invoke.sfofl_susheng = function(self, data)
+	local target = data:toDying().who
+	if target and self:isFriend(target) then return true end
+	return false
+end
+
+sgs.ai_choicemade_filter.skillInvoke.sfofl_susheng = function(self,player,promptlist)
+	if promptlist[#promptlist]=="yes" then
+		local target = self.room:getCurrentDyingPlayer()
+		if target then sgs.updateIntention(player,target,-50) end
+	end
+end
+
+sgs.ai_skill_choice.sfofl_susheng = function(self, choices, data)
+	local target = data:toDying().who
+	local items = choices:split("+")
+	if target and self:isFriend(target) then
+		for _, item in ipairs(items) do
+			local x = tonumber(item)
+			if x + target:getHp() >= 1 then
+				return item
+			end
+		end
+	end
+	return "1"
+end
+
+sgs.ai_skill_choice.sfofl_fengshou = function(self, choices)
+	local items = choices:split("+")
+	return items[1]
+end
+
+sgs.ai_playerschosen_intention.sfofl_fengshou = function(self, from, prompt)
+    local intention = 60
+    local tolist = prompt:split("+")
+    for _, dest in ipairs(tolist) do
+        local to = self.room:findPlayerByObjectName(dest)
+        sgs.updateIntention(from, to, intention)
+    end
+end
+
+sgs.ai_skill_playerschosen.sfofl_fengshou = function(self, targets, max, min)
+	local selected = sgs.SPlayerList()
+    local can_choose = sgs.QList2Table(targets)
+    self:sort(can_choose, "defense")
+	for _,target in ipairs(can_choose) do
+		if self:isEnemy(target) and not self:cantDamageMore(self.player, target) and self:canDamage(target, self.player, nil) and self:damageIsEffective(target,sgs.DamageStruct_Fire,self.player) then
+			selected:append(target)
+			if selected:length() >= max then break end
+		end
+	end
+    return selected
+end
+
+sgs.ai_skill_playerchosen.sfofl_fengshou = function(self, targets)
+	local target = nil
+	targets = sgs.QList2Table(targets)
+	for _, p in ipairs(targets) do
+		if p:hasFlag("sfofl_fengshou_target") then
+			target = p
+			break
+		end
+	end
+	if target then
+		local x = self:getNumBySeat(self.room:getCurrent(), target)
+		if not self:isFriend(target) then
+    		for _, p in ipairs(targets) do
+				if self:isFriend(p) and self:getNumBySeat(self.room:getCurrent(), p) > x then
+					return p
+				end
+			end
+		else
+			for _, p in ipairs(targets) do
+				if self:isEnemy(p) and self:getNumBySeat(self.room:getCurrent(), p) < x then
+					return p
+				end
+			end
+		end
+		return targets[1]
+	else
+		local nextalive = self.room:getNextAlive(self.room:getCurrent())
+		if self:isEnemy(nextalive) then
+			return nextalive
+		else
+			targets = sgs.QList2Table(targets)
+			for _, p in ipairs(targets) do
+				if self:isEnemy(p) and self:getNumBySeat(self.room:getCurrent(), p) <= 2 then
+					return p
+				end
+			end
+		end
+	end
+	return nil
+end
+
+addAiSkills("sfofl_shengcai").getTurnUseCard = function(self)
+	local cards = self.player:getCards("h")
+	cards = self:sortByKeepValue(cards,nil,true)
+	if #cards<1 then return end
+	local ids = {}
+   	local fs = dummyCard()
+	fs:setSkillName("sfofl_shengcai")
+  	for _,c in sgs.list(cards)do
+		if self:getKeepValue(c)>3 or #ids>=self.player:getMark("&sfofl_moli")
+		or #ids>=#cards/2 then continue end
+		table.insert(ids,c:getEffectiveId())
+		fs:addSubcard(c)
+	end
+	if #ids<1 and #cards>1
+	then
+		table.insert(ids,cards[1]:getEffectiveId())
+		fs:addSubcard(cards[1])
+	end
+	local dummy = self:aiUseCard(fs)
+	if fs:isAvailable(self.player)
+	and dummy.card
+	and dummy.to
+	and #ids>0
+  	then
+		self.olcb_to = dummy.to
+		ids = #ids>0 and table.concat(ids,"+") or "."
+		return sgs.Card_Parse("#sfofl_shengcai:"..ids..":")
+	end
+end
+
+sgs.ai_skill_use_func["#sfofl_shengcai"] = function(card,use,self)
+	use.card = card
+	use.to = self.olcb_to
+end
+
+sgs.ai_card_priority["sfofl_shengcai"] = 2.8
+
+sgs.ai_ajustdamage_from.sfofl_shengcai = function(self, from, to, card, nature)
+	if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "sfofl_shengcai")  then
+		return card:subcardsLength() - 1
+	end
+end
+
+sgs.ai_canliegong_skill.sfofl_guanghui = function(self, from, to)
+	return not ((string.find(to:getGeneralName(), "_change") and string.find(to:getGeneralName(), "sfofl_")) or (string.find(to:getGeneral2Name(), "_change") and string.find(to:getGeneral2Name(), "sfofl_")))
+end
+
+sgs.ai_fill_skill.sfofl_moqi = function(self)
+	if self:getAllPeachNum() == 0 then
+		return nil
+	end
+	local c = sgs.Card_Parse("@OLQimouCard=.")
+	local dummy_use = dummy()
+	self:useSkillCard(c,dummy_use)
+	if dummy_use.card then 
+		return sgs.Card_Parse("#sfofl_fenqi:.:")
+	end
+	return nil
+end
+
+sgs.ai_skill_use_func["#sfofl_fenqi"] = function(card,use,self)
+	use.card = card
+end
+
+sgs.ai_use_priority["sfofl_fenqi"] = 10
+
+sgs.ai_skill_choice.sfofl_henghui = function(self, choices, data)
+	local items = choices:split("+")
+	return items[math.random(1, #items)]
+end
+
+sgs.ai_ajustdamage_from.sfofl_henghui = function(self, from, to, card, nature)
+	if from:getMark("&sfofl_henghui_first") > 0 and card and card:isKindOf("Slash")  then
+		return 1
+	end
+end
+
+sgs.ai_skill_playerchosen.sfofl_shengyan = function(self,targets)
+	local targetlist = self:sort(targets,"hp")
+	return self:findPlayerToDamage(1,self.player,"F",targets,0,nil)[1]
+end
+
+sgs.ai_skill_invoke.sfofl_gongming = true
+
+sgs.ai_ajustdamage_from.sfofl_kuangbao = function(self, from, to, card, nature)
+	if from:getHandcardNum() > to:getHandcardNum()  then
+		return 1
+	end
+end
+sgs.ai_ajustdamage_to.sfofl_kuangbao = function(self, from, to, card, nature)
+	if from:getHandcardNum() > to:getHandcardNum()  then
+		return 1
+	end
+end
+
+sgs.ai_ajustdamage_from.sfofl_shiqiang = function(self, from, to, card, nature)
+	if from:getHandcardNum() > to:getHandcardNum()  then
+		return 1
+	end
+end
+sgs.ai_ajustdamage_to.sfofl_shiqiang = function(self, from, to, card, nature)
+	if from:getHandcardNum() > to:getHandcardNum()  then
+		return 1
+	end
+end
+
+
+
 
 
 
