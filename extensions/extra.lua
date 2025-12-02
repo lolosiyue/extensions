@@ -4856,7 +4856,6 @@ heg_zhengbiCard = sgs.CreateSkillCard{
 	end
 }
 
-
 heg_zhengbiVS = sgs.CreateViewAsSkill{
 	name = "heg_zhengbi",
 	n = 1,
@@ -4899,6 +4898,186 @@ heg_zhengbi = sgs.CreateTriggerSkill{
 }
 
 if not sgs.Sanguosha:getSkill("#heg_zhengbiDiscard") then skills:append(heg_zhengbiDiscard) end
+
+heg_wangping = sgs.General(extension_hegquan, "heg_wangping", "shu", 4)
+
+heg_jianglueCard = sgs.CreateSkillCard{
+	name = "heg_jianglue",
+	target_fixed = true,
+	on_use = function(self, room, source, targets)
+		room:removePlayerMark(source, "@heg_jianglue")
+		local command = startCommand(source, self:objectName())
+		local players = room:askForPlayersChosen(source, room:getAlivePlayers(), self:objectName(), 1, 999, "@heg_jianglue", true, true)
+		if players and players:length() > 0 then
+			local invoke_count = 0
+			local invoked_players = sgs.SPlayerList()
+			for _, to in sgs.qlist(players) do
+				local invoked = doCommand(to, self:objectName(), command, source)
+				if invoked then
+					invoked_players:append(to)
+				end
+			end
+			room:gainMaxHp(source, 1, self:objectName())
+			room:recover(source, sgs.RecoverStruct("heg_jianglue", source))
+			if invoked_players:length() > 0 then
+				room:broadcastSkillInvoke(self:objectName())
+				for _, to in sgs.qlist(invoked_players) do
+					room:gainMaxHp(to, 1, self:objectName())
+					room:recover(to, sgs.RecoverStruct("heg_jianglue", source))
+				end
+				source:drawCards(source:getMark("heg_jianglue-Clear"), self:objectName())
+			end
+		end
+	end
+}
+
+heg_jianglueVS = sgs.CreateViewAsSkill{
+	name = "heg_jianglue",
+	n = 0,
+	view_as = function(self, cards)
+		return heg_jianglueCard:clone()
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("@heg_jianglue") > 0
+	end
+}
+heg_jianglue = sgs.CreateTriggerSkill{
+	name = "heg_jianglue",
+	limit_mark = "@heg_jianglue",
+	frequency = sgs.Skill_Limited,
+	events = {sgs.HpRecover},
+	view_as_skill = heg_jianglueVS,
+	on_trigger = function(self, event, player, data)
+		local recover = data:toRecover()
+		if recover.reason == self:objectName() then
+			if recover.who and recover.who:hasSkill(self:objectName()) then
+				room:addPlayerMark(recover.who, "heg_jianglue-Clear")
+			end
+		end
+	end,
+	can_trigger = function(self, target)
+		return target
+	end
+}
+
+heg_wangping:addSkill(heg_jianglue)
+
+heg_fazheng = sgs.General(extension_hegquan, "heg_fazheng", "shu", 3)
+
+
+heg_xuanhuoCard = sgs.CreateSkillCard{
+	name = "heg_xuanhuo",
+	will_throw = false,
+	filter = function(self, targets, to_select)
+		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and to_select:hasSkill("heg_xuanhuo") and to_select:getMark("heg_xuanhuo"..sgs.Self:objectName().."-PlayClear") == 0
+	end,
+	on_use = function(self, room, source, targets)
+		local skill_list, players = {"tenyearwusheng", "heg_paoxiao", "heg_longdan", "heg_liegong", "tieji", "tenyearkuanggu"}, source:getSiblings()
+		players:append(source)
+		for _, sib in sgs.qlist(players) do
+		    for _, choice_list in ipairs(skill_list) do
+			    if sib:hasSkill(choice_list) then
+				    table.removeOne(skill_list, choice_list)
+			    end
+			end
+		end
+		if #skill_list > 0 then
+			local choice = room:askForChoice(source, self:objectName(), table.concat(skill_list, "+"))
+			room:acquireOneTurnSkills(source, "heg_xuanhuo",choice)
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), targets[1]:objectName(), self:objectName(), nil)
+			reason.m_playerId = targets[1]:objectName()
+			room:moveCardTo(self, source, targets[1], sgs.Player_PlaceHand, reason)
+			room:setPlayerMark(targets[1], "heg_xuanhuo"..source:objectName().."-PlayClear", 1)
+		end
+	end,
+}
+heg_xuanhuoAttach = sgs.CreateViewAsSkill{
+	name = "heg_xuanhuoAttach&",
+	n = 1,
+	view_filter = function(self, selected, to_select)
+		return not to_select:isEquipped()
+	end, 
+	view_as = function(self, cards) 
+		if #cards ~= 1 then return nil end
+		local vscard = heg_xuanhuoCard:clone()
+		for _, i in ipairs(cards) do
+			vscard:addSubcard(i)
+		end
+		return vscard
+	end,
+	enabled_at_play = function(self, player)
+		local skill_list, players = {"tenyearwusheng", "heg_paoxiao", "heg_longdan", "heg_liegong", "tieji", "tenyearkuanggu"}, player:getSiblings()
+		players:append(player)
+		for _, sib in sgs.qlist(players) do
+		    for _, choice_list in ipairs(skill_list) do
+			    if sib:hasSkill(choice_list) then
+				    table.removeOne(skill_list, choice_list)
+			    end
+			end
+		end
+		if #skill_list > 0 then
+			return not player:isKongcheng()
+		end
+	end,
+}
+heg_xuanhuo = sgs.CreateTriggerSkill{
+	name = "heg_xuanhuo",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.GameStart, sgs.EventAcquireSkill},
+	on_trigger = function(self, event, player, data, room)
+		if (event == sgs.EventAcquireSkill and data:toString() == self:objectName()) or event == sgs.GameStart then
+			if player:hasSkill("heg_xuanhuo") then    
+				for _,p in sgs.qlist(room:getAllPlayers()) do
+				    if not p:hasSkill("heg_xuanhuoAttach") then
+					    room:attachSkillToPlayer(p, "heg_xuanhuoAttach")
+					end
+				end
+			end
+		end
+	end,
+}
+
+heg_enyuan = sgs.CreateTriggerSkill{
+	name = "heg_enyuan",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.TargetConfirmed, sgs.Damaged},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.TargetConfirmed then
+			local use = data:toCardUse()
+			if use.card and use.card:isKindOf("Peach") and use.to:contains(player) and use.from and use.from:objectName() ~= player:objectName() then
+				room:broadcastSkillInvoke(self:objectName())
+				use.from:drawCards(1, self:objectName())
+			end
+		elseif event == sgs.Damaged then
+            local damage = data:toDamage()
+            local source = damage.from
+            if not source or source == player then return false end
+			if source:isAlive() and player:isAlive() then
+				room:broadcastSkillInvoke(objectName(), 2)
+				local card = nil
+				if not source:isKongcheng() then
+					source:setTag("enyuan_data", data)
+					card = room:askForExchange(source, objectName(), 1, 1, false, "EnyuanGive::" .. player:objectName(), true)
+					source:removeTag("enyuan_data")
+				
+				if (card) then
+					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), player:objectName(), self:objectName(), nil)
+					reason.m_playerId = player:objectName()
+					room:moveCardTo(card, source, player, sgs.Player_PlaceHand, reason)
+				else 
+					room:loseHp(source, 1, true, player,self:objectName())
+				end
+			end
+		end
+		return false
+	end
+}
+
+if not sgs.Sanguosha:getSkill("heg_xuanhuoAttach") then skills:append(heg_xuanhuoAttach) end
+heg_fazheng:addSkill(heg_xuanhuo)
+heg_fazheng:addSkill(heg_enyuan)
+
 
 
 
@@ -5620,7 +5799,7 @@ sgs.LoadTranslationTable{
 	["heg_zhengbi"] = "征辟",
 	[":heg_zhengbi"] = "出牌阶段开始时，你可选择一项：1.选择一名角色，直至此回合结束，你对其使用牌无距离与次数限制；2.将一张基本牌交给一名角色，然后其交给你一张非基本牌或两张基本牌。",
 	["heg_fengying"] = "奉迎",
-  	[":#heg_fengying"] = "限定技，出牌阶段，你可将所有手牌当【挟天子以令诸侯】（无视大势力限制）使用，然后所有与你势力相同的角色将手牌补至其体力上限。",
+  	[":heg_fengying"] = "限定技，出牌阶段，你可将所有手牌当【挟天子以令诸侯】（无视大势力限制）使用，然后所有与你势力相同的角色将手牌补至其体力上限。",
 
 	["heg_wangping"] = "王平-国",
     ["&heg_wangping"] = "王平",
@@ -5629,9 +5808,9 @@ sgs.LoadTranslationTable{
     ["designer:heg_wangping"] = "",
     ["cv:heg_wangping"] = "",
     ["illustrator:heg_wangping"] = "zoo",
+	["@heg_jianglue"] = "将略：请选择“军令”的目标",
 	["heg_jianglue"] = "将略",
   	[":heg_jianglue"] = "限定技，出牌阶段，你可选择一个“军令”。你对任意名角色发起此“军令”。你加1点体力上限，回复1点体力，所有执行“军令”的角色各加1点体力上限，回复1点体力。然后你摸X张牌（X为以此法回复体力的角色数）。",
-	--4
 
 	["heg_fazheng"] = "法正-国",
     ["&heg_fazheng"] = "法正",
@@ -5641,10 +5820,9 @@ sgs.LoadTranslationTable{
     ["cv:heg_fazheng"] = "",
     ["illustrator:heg_fazheng"] = "黑白画谱",
 	["heg_xuanhuo"] = "眩惑",
-  	[":heg_xuanhuo"] = "其他角色的出牌阶段限一次，其可交给你一张手牌，然后其弃置一张牌，选择下列技能中的一个：“武圣”“咆哮”“龙胆”“铁骑”“烈弓”“狂骨”（场上已有的技能无法选择）。其于此回合内或明置有其以此法选择的技能的武将牌之前拥有其以此法选择的技能。",
+  	[":heg_xuanhuo"] = "其他角色的出牌阶段限一次，其可交给你一张手牌，然后其弃置一张牌，选择下列技能中的一个：“武圣”“咆哮”“龙胆”“铁骑”“烈弓”“狂骨”（场上已有的技能无法选择）。其于此回合内拥有其以此法选择的技能。",
 	["heg_enyuan"] = "恩怨",
   	[":heg_enyuan"] = "锁定技，当你成为【桃】的目标后，若使用者不为你，其摸一张牌；当你受到伤害后，伤害来源需交给你一张手牌，否则失去1点体力。",
-	--3
 
 	["heg_lukang"] = "陆抗-国",
     ["&heg_lukang"] = "陆抗",
