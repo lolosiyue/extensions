@@ -1349,7 +1349,7 @@ sgs.LoadTranslationTable {
     退出变身状态：用原武将牌替换当前武将牌，两张武将牌的体力值互相单独计算。
 
     吟唱：你需念出武将牌下的引文，然后才能执行技能后续效果。]]
-
+    ["sfofl_moli"] = "魔力",
 
     ["sfofl_magic_zhenji"] = "甄姬[官盗]",
     ["&sfofl_magic_zhenji"] = "甄姬",
@@ -30984,7 +30984,7 @@ sfofl_moli_zhenji = sgs.CreateTriggerSkill{
         if event == sgs.CardsMoveOneTime then
             local move = data:toMoveOneTime()
             if move.to and move.to:objectName() == player:objectName()
-                and move.to_place == sgs.Player_PlaceHand and move.from_places:contains(sgs.Player_PlaceDraw) and player:getPhase() ~= sgs.Player_Draw then
+                and move.to_place == sgs.Player_PlaceHand and player:getPhase() ~= sgs.Player_Draw then
                 for i, id in sgs.qlist(move.card_ids) do
                     if room:askForSkillInvoke(player, self:objectName(), ToData(id)) then
                         room:showCard(player, id)
