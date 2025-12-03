@@ -5078,6 +5078,118 @@ if not sgs.Sanguosha:getSkill("heg_xuanhuoAttach") then skills:append(heg_xuanhu
 heg_fazheng:addSkill(heg_xuanhuo)
 heg_fazheng:addSkill(heg_enyuan)
 
+heg_lukang = sgs.General(extension_hegquan, "heg_lukang", "wu", 3)
+heg_keshouVS = sgs.CreateViewAsSkill{
+	name = "heg_keshou",
+	n = 2,
+	view_filter = function(self, selected, to_select)
+		if #selected < 2 then
+			if #selected > 0 then
+				return to_select:getColor() == selected[1]:getColor()
+			else
+				return true
+			end
+		else
+			return false
+		end
+	end,
+	view_as = function(self, cards)
+		if #cards ~= 2 then return nil end
+		local skillcard = DummyCard():clone()
+		for _, card in ipairs(cards) do
+			skillcard:addSubcard(card)
+		end
+		return skillcard
+	end,
+	enabled_at_play = function(self, player)
+		return false
+	end,
+	enabled_at_response = function(self, player, pattern)
+		return pattern == "@@heg_keshou"
+	end
+}
+
+heg_keshou = sgs.CreateTriggerSkill{
+	name = "heg_keshou",
+	events = {sgs.Damaged},
+	view_as_skill = heg_keshouVS,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.Damaged then
+			local damage = data:toDamage()
+			if damage.to and damage.to:objectName() == player:objectName() then
+				if player:getHandcardNum() + player:getEquips():length() < 2 then return false end
+				local cards = room:askForUseCard(player, "@@heg_keshou", "@heg_keshou-discard", -1, sgs.Card_MethodDiscard)
+				if cards and cards:subcardsLength() == 2 then
+					room:notifySkillInvoked(player, self:objectName())
+					player:damageRevises(data, -1)
+					local judge = sgs.JudgeStruct()
+					judge.who = player
+					judge.pattern = ".|red"
+					judge.good = true
+					judge.reason = self:objectName()
+					room:judge(judge)
+					if judge:isGood() then
+						player:drawCards(1, self:objectName())
+					end
+				end
+			end
+		end
+		return false
+	end
+}
+
+heg_zhuwei = sgs.CreateTriggerSkill{
+	name = "heg_zhuwei",
+	events = {sgs.FinishJudge},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local judge = data:toJudge()
+		local card = judge.card
+		local card_data = sgs.QVariant()
+		card_data:setValue(card)
+		if room:getCardPlace(card:getEffectiveId()) == sgs.Player_PlaceJudge and player:askForSkillInvoke(self:objectName(), card_data) then
+			player:obtainCard(card)
+			local current = room:getCurrent()
+			if current and current:isAlive() and player:askForSkillInvoke(self:objectName(), ToData(current)) then
+				room:broadcastSkillInvoke(self:objectName())
+				room:addSlashCishu(current, 1, true)
+				room:addMaxCards(current, 1, true)
+				room:addPlayerMark(current, "&heg_zhuwei+to+#"..player:objectName().."-Clear", 1)
+			end
+		end
+		return false
+	end
+}
+heg_lukang:addSkill(heg_keshou)
+heg_lukang:addSkill(heg_zhuwei)
+
+heg_wuguotai = sgs.General(extension_hegquan, "heg_wuguotai", "wu", 3, false)
+
+heg_buyi = sgs.CreateTriggerSkill{
+	name = "heg_buyi",
+	events = {sgs.QuitDying},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local dying = data:toDying()
+		local from = dying.who
+		if from and from:isAlive() and from:objectName() ~= player:objectName() then
+			if room:askForSkillInvoke(player, self:objectName(), data) then
+				room:broadcastSkillInvoke(self:objectName())
+				local invoked = askCommandTo(player, from, self:objectName(), true)
+				if not invoked then
+					room:recover(from, sgs.RecoverStruct(self:objectName(), player))
+				end
+			end
+		end
+		return false
+	end
+}
+heg_wuguotai:addSkill(heg_buyi)
+
+
+
+
 
 
 
@@ -5835,7 +5947,6 @@ sgs.LoadTranslationTable{
   	[":heg_keshou"] = "当你受到伤害时，你可弃置两张颜色相同的牌，令此伤害值-1，然后你判定，若结果为红色，你摸一张牌。",
 	["heg_zhuwei"] = "筑围",
   	[":heg_zhuwei"] = "当你的判定结果确定后，你可获得此判定牌，然后你可令当前回合角色手牌上限和使用【杀】的次数上限于此回合内+1。",
-	--3
 
 	["heg_wuguotai"] = "吴国太-国",
     ["&heg_wuguotai"] = "吴国太",
@@ -5846,7 +5957,6 @@ sgs.LoadTranslationTable{
     ["illustrator:heg_wuguotai"] = "李秀森",
 	["heg_buyi"] = "补益",
   	[":heg_buyi"] = "每回合限一次，当一名角色的濒死结算后，若其存活，你可对伤害来源发起“军令”。若来源不执行，则你令该角色回复1点体力。",
-	--3
 
 	["heg_yuanshu"] = "袁术-国",
     ["&heg_yuanshu"] = "袁术",
