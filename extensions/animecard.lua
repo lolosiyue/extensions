@@ -452,11 +452,12 @@ tacos = sgs.CreateBasicCard{
 			for i=0,n-1 do
 				cardslist:append(room:getDiscardPile():at(i))
 			end
-			local move = sgs.CardsMoveStruct()
-			move.card_ids=cardslist
-			move.to_place = sgs.Player_DrawPile
-			move.reason.m_reason=sgs.CardMoveReason_S_REASON_PUT
-			room:moveCardsAtomic(move,true)
+			-- local move = sgs.CardsMoveStruct()
+			-- move.card_ids=cardslist
+			-- move.to_place = sgs.Player_DrawPile
+			-- move.reason.m_reason=sgs.CardMoveReason_S_REASON_PUT
+			-- room:moveCardsAtomic(move,true)
+			room:shuffleIntoDrawPile(effect.to, cardslist, "tacos", false)
 			room:addPlayerMark(effect.to, "tacos-Clear")
 	end,
 }

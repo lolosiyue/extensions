@@ -2443,3 +2443,60 @@ sgs.ai_skill_askforag["twyj_liancai"] = function(self, card_ids)
 end
 
 sgs.ai_skill_invoke["twyj_liancai_turnover"] = true
+
+sgs.ai_skill_playerchosen.command1 = sgs.ai_skill_playerchosen.damage
+
+sgs.ai_skill_discard["command"] = function(self, discard_num, min_num, optional, include_equip)
+	local usable_cards = sgs.QList2Table(self.player:getCards("he"))
+	self:sortByKeepValue(usable_cards)
+	local to_discard = {}
+	for _,c in ipairs(usable_cards) do
+		if #to_discard < discard_num then
+			table.insert(to_discard, c:getEffectiveId())
+		end
+	end
+	return to_discard
+end
+
+sgs.ai_skill_use["@@command6!"] = function(self, prompt, method)
+	self:updatePlayers()
+	self:sort(self.enemies, "defense")
+	local ids = {}
+	local hand_discard = self.player:getHandcardNum() - 1
+	local equip_discard = self.player:getEquips():length() - 1
+	local cards = sgs.QList2Table(self.player:getCards("he"))
+	self:sortByKeepValue(cards)
+	for _,c in ipairs(cards) do
+		if c:isEquipped() then
+			if equip_discard > 0 then
+				equip_discard = equip_discard - 1
+				table.insert(ids, c:getEffectiveId())
+			end
+		else
+			if hand_discard > 0 then
+				hand_discard = hand_discard - 1
+				table.insert(ids, c:getEffectiveId())
+			end
+		end
+	end
+	if #ids == 0 then return "." end
+	return DummyCard:clone():objectName() .. ":"..table.concat(ids,"+") ..":"
+end
+
+sgs.ai_skill_cardask["@heg_jueyue"] = function(self, data, pattern, target, target2)
+	if sgs.ai_skill_playerchosen.heg_jueyue(self, self.room:getOtherPlayers(self.player)) ~= nil then
+		return true
+	end
+	return false
+end
+
+sgs.ai_skill_playerchosen.heg_jueyue = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	self:sort(targets, "defense")
+	for _,p in ipairs(targets) do
+		if self:isEnemy(p) then
+			return p
+		end
+	end
+	return nil
+end

@@ -300,6 +300,10 @@ function SmartAI:getGeneralDuelCard(player, cards)
 	cards = cards or player:getHandcards()
 	cards = sgs.QList2Table(cards)
 	if #cards<1 then return end
+    if player:hasSkill("s4_txbw_yishi") then
+        self:sortByUseValue(cards, true)
+        return cards[1]
+    end
 	local max_card,max_point = nil,0
 	for _,card in ipairs(cards)do
 		if player==self.player and self:isValuableCard(card) then continue end
@@ -342,33 +346,47 @@ sgs.ai_skill_use_func["#s4_txbw_general_duel_start"] = function(card,use,self)
     self:sort(self.enemies,"handcard")
     local max_card = self:getGeneralDuelCard()
     if not max_card then return end
+
+    local damage = sgs.DamageStruct()
+    damage.card = nil
+    damage.from = self.player
+    damage.reason = "s4_txbw_general_duel"
+    damage.damage = 1
+
     local max_point = self:getGeneralDuelPoint(self.player, max_card)
     for _,enemy in ipairs(self.enemies)do
-        if self:cantDamageMore(enemy, self.player) then
-            if self.player:getMark("&s4_txbw_luoyi") > 0 then 
-                continue
+        damage.to = enemy
+        if self:damageStruct(damage) then
+            if self:cantDamageMore(enemy, self.player) then
+                if self.player:getMark("&s4_txbw_luoyi") > 0 then 
+                    continue
+                end
+                if self.player:hasSkill("s4_txbw_wanpo") and not enemy:isWounded() then 
+                    continue
+                end
             end
-        end
-        local enemy_max_card = self:getGeneralDuelCard(enemy)
-        local enemy_max_point = enemy_max_card and self:getGeneralDuelPoint(enemy, enemy_max_card) or 100
-        if (enemy_max_card and (max_point>enemy_max_point))  then
-            self.s4_txbw_general_duel_start_card = max_card:getId()
-            use.card = card
-            use.to:append(enemy)
-            return
-        end
-		
+            local enemy_max_card = self:getGeneralDuelCard(enemy)
+            local enemy_max_point = enemy_max_card and self:getGeneralDuelPoint(enemy, enemy_max_card) or 100
+            if (enemy_max_card and (max_point>enemy_max_point))  then
+                self.s4_txbw_general_duel_start_card = max_card:getId()
+                use.card = card
+                use.to:append(enemy)
+                return
+            end
+		end
 	end
     for _,enemy in ipairs(self.enemies)do
-        local enemy_max_card = self:getGeneralDuelCard(enemy)
-        local enemy_max_point = enemy_max_card and self:getGeneralDuelPoint(enemy, enemy_max_card) or 100
-        if (enemy_max_card and (max_point>enemy_max_point)) or (max_point > 7) then
-            self.s4_txbw_general_duel_start_card = max_card:getId()
-            use.card = card
-            use.to:append(enemy)
-            return
-        end
-		
+        damage.to = enemy
+        if self:damageStruct(damage) then
+            local enemy_max_card = self:getGeneralDuelCard(enemy)
+            local enemy_max_point = enemy_max_card and self:getGeneralDuelPoint(enemy, enemy_max_card) or 100
+            if (enemy_max_card and (max_point>enemy_max_point)) or (max_point > 7) then
+                self.s4_txbw_general_duel_start_card = max_card:getId()
+                use.card = card
+                use.to:append(enemy)
+                return
+            end
+		end
 	end
 end
 
@@ -398,7 +416,8 @@ sgs.ai_skill_invoke.s4_txbw_feidang = function(self, data)
     if hand_weapon or self.player:getWeapon() then
         return true
     end
-    if self.player:getHp()>enemy:getHp() and self.player:getHp()>1 then
+    local enemy = data:toPlayer()
+    if enemy and self.player:getHp()>enemy:getHp() and self.player:getHp()>1 then
         return true
     end
     return false
@@ -444,7 +463,7 @@ sgs.ai_skill_use_func["#s4_txbw_zhenyue"] = function(card,use,self)
     end
 end
 
-sgs.ai_card_priority["s4_txbw_zhenyue"] = 5
+sgs.ai_card_priority["s4_txbw_zhenyue"] = 7
 
 sgs.ai_fill_skill.s4_txbw_huibian = function(self)
     return sgs.Card_Parse("#s4_txbw_huibian:.:")
@@ -533,7 +552,8 @@ sgs.ai_skill_choice.s4_txbw_yanglei = function(self, choices, data)
     else
         if ZishuEffect(target) <= 0 or not self:canDraw(target) then
             for _, skill in sgs.list(target:getVisibleSkillList()) do
-                if skill:hasEvent(sgs.DrawNCards) then
+                local s = sgs.Sanguosha:getTriggerSkill(skill:objectName())
+                if s and s:hasEvent(sgs.DrawNCards) then
                     return draw
                 end
             end
@@ -570,17 +590,14 @@ sgs.ai_cardsview_valuable.s4_txbw_chili = function(self, class_name, player)
 end
 
 
-
-
-sgs.ai_skill_invoke.s4_txbw_xiaoguo = function(self, data)
-    if self:getCardsNum("BasicCard") > 0 then
-        return false
+sgs.ai_skill_invoke.s4_txbw_yishi = function(self, data)
+    local card = self.player:getTag("s4_txbw_general_duel_card"):toCard()
+    if card and card:getNumber() <= 7 then
+        return true
     end
-    if player:getMaxHp() - player:getHandcardNum() < 1 then
-        return false
-    end
-    return true
+    return false
 end
+
 
 sgs.ai_fill_skill.s4_txbw_qiaobian = function(self)
     return sgs.Card_Parse("#s4_txbw_qiaobian:.:")
@@ -612,8 +629,19 @@ sgs.ai_skill_use_func["#s4_txbw_qiaobian"] = function(card,use,self)
             then target2 = target break end
         end
     end
+    if not target1 then
+        if self.player:isKongcheng() then return end
+        for _,target in sgs.list(self.room:getOtherPlayers(self.player))do
+            if target:getCards("h"):length()>0 and self:doDisCard(target, "h", true)
+            then 
+                target1 = self.player
+                target2 = target 
+                break 
+            end
+        end
+    end
     
-    if target1 and target2 then
+    if target1 and target2 and target1:objectName() ~= target2:objectName() then
         use.card = sgs.Card_Parse("#s4_txbw_qiaobian:.:")
         use.to:append(target1)
         use.to:append(target2)
@@ -626,6 +654,12 @@ sgs.ai_skill_cardchosen.s4_txbw_qiaobian = function(self,who,flags,method)
 		if id==self.peiqiData.cid
 		then return id end
 	end
+    if who:objectName() == self.player:objectName() then
+        local cards = self.player:getCards(flags)
+        cards = sgs.QList2Table(cards)
+        self:sortByKeepValue(cards)
+        return cards[1]:getEffectiveId()
+    end
 end
 
 sgs.ai_skill_cardask["@s4_txbw_hongwu"] = function(self, data, pattern, target)
@@ -633,7 +667,21 @@ sgs.ai_skill_cardask["@s4_txbw_hongwu"] = function(self, data, pattern, target)
     if self.player:objectName() == player:objectName() then
         return true
     end
+    if self:isFriend(player) then
+        return true
+    end
     return "."
+end
+
+
+sgs.ai_skill_invoke.s4_txbw_xiaoguo = function(self, data)
+    if self:getCardsNum("BasicCard") > 0 then
+        return false
+    end
+    if player:getMaxHp() - player:getHandcardNum() < 1 then
+        return false
+    end
+    return true
 end
 
 sgs.ai_skill_invoke.s4_txbw_shenwei = true
