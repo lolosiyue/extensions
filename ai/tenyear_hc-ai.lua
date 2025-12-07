@@ -682,13 +682,13 @@ end
 sgs.ai_skill_use["@@tenyearlingyin"] = function(self,prompt)
 	local valid = {}
     local cards1,cards2 = {},{}
-	for _,id in sgs.list(self.player:getPile("tyrjwywang"))do
+	for _,id in sgs.list(self.player:getPile("thrjwywang"))do
 		local c = sgs.Sanguosha:getCard(id)
 		if #cards1<1 or cards1[1]:getColor()==c:getColor()
 		then table.insert(cards1,c)
 		else table.insert(cards2,c) end
 	end
-	local n = self.player:getMark("tenyearlingyin_lun-PalyClear")
+	local n = self.player:getMark("tenyearlingyin_lun-PlayClear")
 	if #cards1<=n
 	then
 		for _,c in sgs.list(cards1)do

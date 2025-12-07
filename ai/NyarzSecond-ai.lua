@@ -3970,3 +3970,217 @@ sgs.ai_skill_choice.nyarz_ninge = function(self, choices, data)
     return items[math.random(1, #items)]
 end
 
+sgs.ai_card_priority.nyarz_piaopin = function(self,card,v)
+	if card:hasFlag("nyarz_piaopin")
+	then return 10 end
+end
+
+--神速
+
+local nyarz_shensu_skill={}
+nyarz_shensu_skill.name="nyarz_shensu"
+table.insert(sgs.ai_skills,nyarz_shensu_skill)
+nyarz_shensu_skill.getTurnUseCard=function(self,inclusive)
+    if (self.player:getMark("@nyarz_shensu_limit") == 0)
+    or (self.player:getMark("nyarz_shensu-Clear") == 0) then
+    else return end
+
+    local canuse = {"fire_slash", "thunder_slash", "slash"}
+    for _,pattern in ipairs(canuse) do
+        local card = sgs.Sanguosha:cloneCard(pattern, sgs.Card_SuitToBeDecided, -1)
+        card:setSkillName("nyarz_shensu")
+        card:deleteLater()
+        sgs.ai_use_priority.nyarz_shensu = sgs.ai_use_priority[card:getClassName()]
+        if (not card:isAvailable(self.player)) then continue end
+
+        local use = {isDummy=true,to=sgs.SPlayerList()}
+        --self:useCardByClassName(card, use)
+        self["useBasicCard"](self,card,use)
+        if use.card then
+            self.nyarz_shensu_to = use.to
+            return sgs.Card_Parse("#nyarz_shensu:.:"..pattern)
+        end
+    end
+end
+
+sgs.ai_skill_use_func["#nyarz_shensu"] = function(card, use, self)
+    use.card = card
+    if use.to then use.to = self.nyarz_shensu_to end
+end
+
+sgs.ai_skill_choice.nyarz_shensu = function(self, choices, data)
+    local items = choices:split("+")
+    if #items == 1 then return items[1] end
+    table.removeOne(items, "limit")
+    return items[math.random(1,#items)] 
+end
+
+sgs.ai_use_priority.nyarz_shensu = sgs.ai_use_priority.Slash - 0.1
+sgs.ai_use_value.nyarz_shensu = sgs.ai_use_value.Slash - 0.1
+
+--设变
+
+local nyarz_shebian_skill={}
+nyarz_shebian_skill.name="nyarz_shebian"
+table.insert(sgs.ai_skills,nyarz_shebian_skill)
+nyarz_shebian_skill.getTurnUseCard=function(self,inclusive)
+    if self.player:getMark("@nyarz_shebian_mark") == 0 then return end
+
+    local cant = true
+    for _,skill in sgs.qlist(self.player:getVisibleSkillList()) do
+        if (not skill:isAttachedLordSkill()) and skill:objectName() ~= "nyarz_shebian" then 
+            cant = false
+            break
+        end
+    end
+    if cant then return end
+    if self.player:hasSkill("nyarz_shensu") and self.player:getGeneralName() == "nyarz_xiahouyuan" then else return end
+
+    local buffs = {"noresponse", "damage", "limit"}
+    local choices = {}
+    for _,buff in ipairs(buffs) do
+        local mark = string.format("@nyarz_shensu_%s", buff)
+        if self.player:getMark(mark) == 0 then return end
+    end
+
+    return sgs.Card_Parse("#nyarz_shebian:.:")
+end
+
+sgs.ai_skill_use_func["#nyarz_shebian"] = function(card, use, self)
+    use.card = card
+end
+
+sgs.ai_skill_choice.nyarz_shebian = function(self, choices, data)
+    local items = choices:split("+")
+    if table.contains(items, "nyarz_shensu") then return "nyarz_shensu" end
+    return items[math.random(1,#items)] 
+end
+
+sgs.ai_skill_playerchosen.nyarz_shebian = function(self, targets)
+    if targets:contains(self.player) then return self.player end
+    return targets:at((math.random(1,targets:length()) - 1))
+end
+
+sgs.ai_use_priority.nyarz_shebian = 0
+
+--权计
+
+sgs.ai_skill_invoke.nyarz_quanji = true
+
+sgs.ai_skill_discard.nyarz_quanji_damaged = function(self,max,min)
+    if self.player:getPhase() == sgs.Player_Play then return {} end
+    if self.player:hasSkill("nyarz_zili") and self.player:getMark("nyarz_zili") == 0 then
+        if self.player:getPile("nyarz_quanji"):length() <  self.player:getMaxHp()  then
+            local need = math.min(self.player:getCards("he"):length() - 2, self.player:getMaxHp() - self.player:getPile("nyarz_quanji"):length())
+            if need <= 0 then return {} end
+            local cards = sgs.QList2Table(self.player:getCards("he"))
+            local discards = {}
+            self:sortByKeepValue(cards)
+            for i = 1, need, 1 do
+                table.insert(discards, cards[i]:getEffectiveId())
+            end
+            return discards
+        end
+    end
+    if self:isWeak() then return {} end
+    local need = math.random(0,2)
+    need = math.min(need, self.player:getCards("he"):length() - 2)
+    if need <= 0 then return {} end
+    local cards = sgs.QList2Table(self.player:getCards("he"))
+    local discards = {}
+    self:sortByKeepValue(cards)
+    for i = 1, need, 1 do
+        table.insert(discards, cards[i]:getEffectiveId())
+    end
+    return discards
+end
+
+sgs.ai_skill_discard.nyarz_quanji_end = function(self, max, min)
+    if self.player:getHandcardNum() < self.player:getMaxCards() then
+        if self.player:getHandcardNum() >= self.player:getHp() or math.random(1,2) == 1 then
+            local cards = sgs.QList2Table(self.player:getCards("h"))
+            self:sortByKeepValue(cards)
+            return {cards[1]:getEffectiveId()}
+        end
+    else
+        local need = (self.player:getHandcardNum() - self.player:getMaxCards())/2 + 1
+        local cards = sgs.QList2Table(self.player:getCards("h"))
+        self:sortByKeepValue(cards)
+        local discards = {}
+        for _,card in ipairs(cards) do
+            table.insert(discards, card:getEffectiveId())
+            need = need - 1
+            if need <= 0 then break end
+        end
+        return discards
+    end
+    return {}
+end
+
+--排异
+
+local nyarz_paiyi_skill = {}
+nyarz_paiyi_skill.name = "nyarz_paiyi"
+table.insert(sgs.ai_skills, nyarz_paiyi_skill)
+nyarz_paiyi_skill.getTurnUseCard = function(self, inclusive)
+    if self.player:getPile("nyarz_quanji"):length() <= 0 then return end
+    local choices = {"damage","draw"}
+    for _,choice in ipairs(choices) do
+        if self.player:getMark("nyarz_paiyi_tiansuan_remove_"..choice.."-PlayClear") == 0  then
+            return sgs.Card_Parse("#nyarz_paiyi:.:")
+        end
+    end
+end
+
+sgs.ai_skill_use_func["#nyarz_paiyi"] = function(card,use,self)
+    local card_ids = sgs.QList2Table(self.player:getPile("nyarz_quanji"))
+    if self.player:getMark("nyarz_paiyi_tiansuan_remove_damage-PlayClear") == 0 then
+        self:sort(self.enemies, "defense")
+        if #self.enemies < (self.player:getPile("nyarz_quanji"):length() / 2) then
+            if self.player:getMark("nyarz_paiyi_tiansuan_remove_draw-PlayClear") == 0 then
+                local num = self.player:getPile("nyarz_quanji"):length() - #self.enemies
+                local dis = {}
+                for i = 1, num, 1 do
+                    table.insert(dis, card_ids[i])
+                end
+                local card_str = string.format("#nyarz_paiyi:%s:draw",table.concat(dis, "+"))
+                local acard = sgs.Card_Parse(card_str)
+                use.card = acard
+                return
+            end
+        end
+
+        local dis = {}
+        local max = self.player:getPile("nyarz_quanji"):length()
+        if self.player:getMark("nyarz_paiyi_tiansuan_remove_draw-PlayClear") == 0 then
+            max = max - 1
+        end
+        if max > 0 then
+            local tos = sgs.SPlayerList()
+            for _,p in ipairs(self.enemies) do
+                tos:append(p)
+                max = max - 1
+                if max <= 0 then break end
+            end
+            local i = 0
+            while(#dis < tos:length() or (#dis < (self.player:getPile("nyarz_quanji"):length() / 2))) do
+                table.insert(dis, card_ids[i+1])
+                i = i + 1
+            end
+
+            local card_str = string.format("#nyarz_paiyi:%s:damage",table.concat(dis, "+"))
+            local acard = sgs.Card_Parse(card_str)
+            use.card = acard
+            if use.to then use.to = tos end
+            return
+        end
+    end
+    if self.player:getMark("nyarz_paiyi_tiansuan_remove_draw-PlayClear") == 0 then
+        local card_str = string.format("#nyarz_paiyi:%s:draw",table.concat(card_ids, "+"))
+        local acard = sgs.Card_Parse(card_str)
+        use.card = acard
+        return
+    end
+end
+
+sgs.ai_use_priority.nyarz_paiyi = 6.8

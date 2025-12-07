@@ -1396,10 +1396,12 @@ gsgusheCard = sgs.CreateSkillCard
 		    	pd_to_card[to:objectName()] = c:at(1)
 		    	pd_to_number[to:objectName()] = c:at(1):getNumber()
 		    elseif not pd.from_card then
-			    pd.from_card = room:askForPindian(source,source,self:objectName())
+			    --pd.from_card = room:askForPindian(source, source, to, self:objectName())
+                pd.from_card = room:askForPindian(source, to, self:objectName())
 			    pd.from_number = pd.from_card:getNumber()
 		    elseif not pd_to_card[to:objectName()] then
-			    pd_to_card[to:objectName()] = room:askForPindian(to,source,self:objectName())
+			    --pd_to_card[to:objectName()] = room:askForPindian(to, source, to, self:objectName())
+                pd_to_card[to:objectName()] = room:askForPindian(to, source, self:objectName())
 			    pd_to_number[to:objectName()] = pd_to_card[to:objectName()]:getNumber()
 		    end
     	end
@@ -1445,11 +1447,6 @@ gsgusheCard = sgs.CreateSkillCard
 		    pd.from_number = pd.from_card:getNumber()
 	    end
 	    pd.from_number = fn or pd.from_number
-        for c,to in ipairs(targets)do
-	    	c = pd_to_card[to:objectName()]
-	    	if not c then continue end
-    	end
-
         --比较拼点结果
         local will = true
         for c,to in ipairs(targets)do
@@ -10361,6 +10358,739 @@ nyarz_xurong:addSkill(nyarz_shajve_buff)
 extension:insertRelatedSkills("nyarz_shajve", "#nyarz_shajve_other")
 extension:insertRelatedSkills("nyarz_shajve", "#nyarz_shajve_buff")
 
+nyarz_dukui = sgs.General(extension, "nyarz_dukui", "wei", 3, true, true, true)
+
+nyarz_fanyinVS = sgs.CreateViewAsSkill
+{
+    name = "nyarz_fanyin",
+    response_pattern = "@@nyarz_fanyin",
+    n = 999,
+    expand_pile = "#nyarz_fanyin",
+    view_filter = function(self, selected, to_select)
+        return sgs.Self:getPile("#nyarz_fanyin"):contains(to_select:getEffectiveId())
+        and #selected < 1 and to_select:isAvailable(sgs.Self)
+    end,
+    view_as = function(self, cards)
+        if #cards == 1 then
+            local card = nyarz_fanyinCard:clone()
+            card:addSubcard(cards[1])
+            return card
+        end
+    end,
+    enabled_at_play = false,
+}
+
+nyarz_fanyinCard = sgs.CreateSkillCard
+{
+    name = "nyarz_fanyin",
+    will_throw = false,
+    filter = function(self, targets, to_select, player) 
+        local card = self:getSubcards():first()
+        card = sgs.Sanguosha:getCard(card)
+		if card and card:targetFixed() then
+			return false
+		end
+
+        local target = sgs.Self
+
+		local qtargets = sgs.PlayerList()
+		for _, p in ipairs(targets) do
+			qtargets:append(p)
+		end
+		if card and card:targetFilter(qtargets, to_select, target) and not target:isProhibited(to_select, card, qtargets) then
+            return true
+        end
+        return false 
+	end,
+    target_fixed = function(self)		
+		local card = self:getSubcards():first()
+        card = sgs.Sanguosha:getCard(card)
+        if card and card:targetFixed() then
+            return true
+        end
+        return false
+	end,
+	feasible = function(self, targets)	
+		local card = self:getSubcards():first()
+        card = sgs.Sanguosha:getCard(card)
+
+        local target = sgs.Self
+
+		local qtargets = sgs.PlayerList()
+		for _,p in ipairs(targets) do
+			qtargets:append(p)
+		end
+		if card and card:targetsFeasible(qtargets, target) then
+            return true
+        end
+        return false
+	end,
+    about_to_use = function(self,room,use)
+        room:broadcastSkillInvoke(self:objectName())
+        local source = use.from
+        local tos = {}
+        for _,to in sgs.qlist(use.to) do
+            table.insert(tos, to:objectName())
+        end
+        source:setTag("nyarz_fanyin_to", sgs.QVariant(table.concat(tos, "+")))
+    end,
+}
+
+nyarz_fanyin = sgs.CreateTriggerSkill{
+    name = "nyarz_fanyin",
+    events = {sgs.CardFinished},
+    frequency = sgs.Skill_NotFrequent,
+    view_as_skill = nyarz_fanyinVS,
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if player:isDead() then return false end
+        local use = data:toCardUse()
+        if (use.card) and (not use.card:isKindOf("SkillCard")) then else return false end
+        if use.card:getNumber() <= player:getMark("&nyarz_fanyin-Clear") then return false end
+        if use.card:hasFlag("nyarz_fanyin") then return false end
+        if room:askForSkillInvoke(player, self:objectName()) then
+            room:broadcastSkillInvoke(self:objectName())
+            room:setPlayerMark(player, "&nyarz_fanyin-Clear", use.card:getNumber())
+
+            local all_cards = {}
+            local names = {}
+            for _,id in sgs.qlist(room:getDrawPile()) do
+                local card = sgs.Sanguosha:getCard(id)
+                if (not card:isAvailable(player)) then continue end
+                if (not table.contains(names, card:objectName())) then
+                    if card:isKindOf("EquipCard") and (math.random(1,3) <= 2) then continue end
+                    table.insert(names, card:objectName())
+                    table.insert(all_cards, id)
+                end
+            end
+            if #all_cards <= 3 then
+                for _,id in sgs.qlist(room:getDrawPile()) do
+                    local card = sgs.Sanguosha:getCard(id)
+                    if (not card:isAvailable(player)) then continue end
+                    if (not table.contains(names, card:objectName())) then
+                        if card:isKindOf("EquipCard") and math.random(1,2) == 1 then continue end
+                        table.insert(names, card:objectName())
+                        table.insert(all_cards, id)
+                    end
+                end
+            end
+
+            if #all_cards <= 0 then return false end
+            local card_ids = sgs.IntList()
+            if #all_cards <= 3 then
+                for _,id in ipairs(all_cards) do
+                    card_ids:append(id)
+                end
+            else
+                for i = 1, 3, 1 do
+                    local id = all_cards[math.random(1,#all_cards)]
+                    table.removeOne(all_cards, id)
+                    card_ids:append(id)
+                end
+            end
+
+            room:setPlayerFlag(player, "nyarz_fanyin")
+            room:notifyMoveToPile(player, card_ids, "nyarz_fanyin", sgs.Player_DrawPile, true)
+            local use_card = room:askForUseCard(player, "@@nyarz_fanyin", "@nyarz_fanyin-use")
+            room:notifyMoveToPile(player, card_ids, "nyarz_fanyin", sgs.Player_DrawPile, false)
+            room:setPlayerFlag(player, "-nyarz_fanyin")
+
+            if (not use_card) then return false end
+            local real_card = sgs.Sanguosha:getCard(use_card:getSubcards():at(0))
+            room:setCardFlag(real_card, "RemoveFromHistory")
+            room:setCardFlag(real_card, "nyarz_fanyin")
+            local to = sgs.SPlayerList()
+            local tos = player:getTag("nyarz_fanyin_to"):toString():split("+")
+            for _,p in ipairs(tos) do
+                local tt = room:findPlayerByObjectName(p)
+                to:append(tt)
+            end
+            player:removeTag("nyarz_fanyin_to")
+            room:useCard(sgs.CardUseStruct(real_card, player, to))
+        end
+    end,
+    can_trigger = function(self, target)
+        return target and target:hasSkill(self:objectName())
+    end,
+}
+
+nyarz_fanyin_buff = sgs.CreateTargetModSkill{
+    name = "#nyarz_fanyin_buff",
+    pattern = ".",
+    residue_func = function(self, from, card)
+        if from:hasFlag("nyarz_fanyin") then return 1000 end
+        return 0
+    end,
+    distance_limit_func = function(self, from, card)
+        if from:hasFlag("nyarz_fanyin") then return 1000 end
+        return 0
+    end,
+}
+
+nyarz_dukui:addSkill(nyarz_fanyin)
+nyarz_dukui:addSkill(nyarz_fanyinVS)
+nyarz_dukui:addSkill(nyarz_fanyin_buff)
+extension:insertRelatedSkills("nyarz_fanyin", "#nyarz_fanyin_buff")
+
+nyarz_qinyilu = sgs.General(extension, "nyarz_qinyilu", "qun", 3, true, false, false)
+
+nyarz_piaopin = sgs.CreateTriggerSkill{
+    name = "nyarz_piaopin",
+    events = {sgs.EventPhaseStart,sgs.CardsMoveOneTime,sgs.CardUsed,sgs.CardResponded},
+    frequency = sgs.Skill_Compulsory,
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.EventPhaseStart then
+            if player:getPhase() == sgs.Player_Play then
+                if (not player:hasSkill(self:objectName())) then return false end
+                if player:isKongcheng() then return false end
+                local recast = sgs.IntList()
+                for _,card in sgs.qlist(player:getHandcards()) do
+                    if (not card:isAvailable(player)) then
+                        recast:append(card:getId())
+                    end
+                end
+                if recast:isEmpty() then return false end
+                room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
+                local log = sgs.LogMessage()
+                log.from = player
+                log.type = "$RecastCard"
+                log.card_str = table.concat(sgs.QList2Table(recast), "+")
+                room:sendLog(log)
+        
+                local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_RECAST, player:objectName(), self:objectName(), "")
+                local move = sgs.CardsMoveStruct(recast, nil, sgs.Player_DiscardPile, reason)
+                room:moveCardsAtomic(move, true)
+        
+                if player:isAlive() then player:drawCards(recast:length(), "recast") end
+            end
+            if player:getPhase() == sgs.Player_NotActive then
+                for _,p in sgs.qlist(room:getAlivePlayers()) do
+                    if p:isKongcheng() then continue end
+                    for _,card in sgs.qlist(p:getHandcards()) do
+                        if card:hasFlag("nyarz_piaopin") then
+                            room:setCardFlag(card, "-nyarz_piaopin")
+                            room:setCardTip(card:getEffectiveId(), "-nyarz_piaopin")
+                        end
+                    end
+                end
+            end
+        end
+        if event == sgs.CardsMoveOneTime then
+            if room:getTag("FirstRound"):toBool() then return false end
+            if (not player:hasSkill(self:objectName())) then return false end
+            local move = data:toMoveOneTime()
+            if move.to and move.to:objectName() == player:objectName()
+            and move.to_place == sgs.Player_PlaceHand then
+                for _,id in sgs.qlist(move.card_ids) do
+                    room:setCardFlag(sgs.Sanguosha:getCard(id), "nyarz_piaopin")
+                    room:setCardTip(id, "nyarz_piaopin")
+                end
+            end
+        end
+        if event == sgs.CardUsed or event == sgs.CardResponded then
+            if (not player:hasSkill(self:objectName())) then return false end
+            local card
+            if event == sgs.CardUsed then
+                card = data:toCardUse().card
+            else
+                card = data:toCardResponse().m_card
+            end
+            if (not card) or (card:isKindOf("SkillCard")) then return false end
+            if (not card:hasFlag("nyarz_piaopin")) then return false end
+            room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
+            player:drawCards(1, self:objectName())
+        end
+    end,
+    can_trigger = function(self, target)
+        return target and target:isAlive()
+    end,
+}
+
+nyarz_zhuili = sgs.CreateTriggerSkill{
+    name = "nyarz_zhuili",
+    events = {sgs.CardsMoveOneTime,sgs.Damaged},
+    frequency = sgs.Skill_Compulsory,
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.Damaged then
+            room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
+            local recast = sgs.IntList()
+            for _,card in sgs.qlist(player:getCards("hej")) do
+                recast:append(card:getId())
+            end
+            if (not recast:isEmpty()) then
+                local log = sgs.LogMessage()
+                log.from = player
+                log.type = "$RecastCard"
+                log.card_str = table.concat(sgs.QList2Table(recast), "+")
+                room:sendLog(log)
+    
+                local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_RECAST, player:objectName(), self:objectName(), "")
+                local move = sgs.CardsMoveStruct(recast, nil, sgs.Player_DiscardPile, reason)
+                room:moveCardsAtomic(move, true)
+
+                if player:isAlive() then player:drawCards(recast:length(), "recast") end
+            end
+            if player:isAlive() then player:drawCards(2, self:objectName()) end
+        end
+        if event == sgs.CardsMoveOneTime then
+            local move = data:toMoveOneTime()
+            if move.from and move.from:objectName() == player:objectName()
+            and move.from_places:contains(sgs.Player_PlaceEquip) 
+            and player:isWounded() then
+                room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
+                room:recover(player, sgs.RecoverStruct(self:objectName(), player, 1))
+            end
+        end
+    end,
+    can_trigger = function(self, target)
+        return target and target:hasSkill(self:objectName())
+        and target:isAlive()
+    end,
+}
+
+nyarz_qinyilu:addSkill(nyarz_piaopin)
+nyarz_qinyilu:addSkill(nyarz_zhuili)
+
+nyarz_xiahouyuan = sgs.General(extension, "nyarz_xiahouyuan", "wei", 4, true, false, false)
+
+nyarz_shensuVS = sgs.CreateZeroCardViewAsSkill
+{
+    name = "nyarz_shensu",
+    view_as = function(self)
+        return nyarz_shensuCard:clone()
+    end,
+    enabled_at_play = function(self, player)
+        return (player:getMark("@nyarz_shensu_limit") == 0)
+        or (player:getMark("nyarz_shensu-Clear") == 0)
+    end,
+    enabled_at_response = function(self, player, pattern)
+        if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then return false end
+        if string.find(pattern, "slash") or pattern == "Slash" then else return false end
+        return (player:getMark("@nyarz_shensu_limit") == 0)
+        or (player:getMark("nyarz_shensu-Clear") == 0)
+    end
+}
+
+nyarz_shensuCard = sgs.CreateSkillCard
+{
+    name = "nyarz_shensu",
+    filter = function(self, targets, to_select)
+		local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+		card:setSkillName(self:objectName())
+        card:deleteLater()
+
+		if card and card:targetFixed() then
+			return false
+		end
+		local qtargets = sgs.PlayerList()
+		for _, p in ipairs(targets) do
+			qtargets:append(p)
+		end
+		return card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+	end,
+	feasible = function(self, targets)
+		local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+		card:setSkillName(self:objectName())
+        card:deleteLater()
+
+        if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
+        and (not card:isAvailable(sgs.Self)) then return false end
+
+		local qtargets = sgs.PlayerList()
+		for _, p in ipairs(targets) do
+			qtargets:append(p)
+		end
+		if card and card:canRecast() and #targets == 0 then
+			return false
+		end
+		return card and card:targetsFeasible(qtargets, sgs.Self) --and card:isAvailable(sgs.Self)
+	end,
+	on_validate = function(self, card_use)
+		local player = card_use.from
+        local room = player:getRoom()
+        room:addPlayerMark(player, "nyarz_shensu-Clear", 1)
+
+        local log1 = sgs.LogMessage()
+        log1.type = "#InvokeSkill"
+        log1.from = player
+        log1.arg = self:objectName()
+        room:sendLog(log1)
+        room:broadcastSkillInvoke(self:objectName())
+
+        local pattern = self:getUserString()
+		if (not pattern) or pattern == "" then 
+            local all = {"slash", "fire_slash", "thunder_slash"}
+            pattern = room:askForChoice(player, "nyarz_shensu_slash", table.concat(all,"+"))
+        end
+
+        local card = sgs.Sanguosha:cloneCard(pattern, sgs.Card_SuitToBeDecided, -1)
+		card:setSkillName(self:objectName())
+        room:setCardFlag(card, "RemoveFromHistory")
+
+        local buffs = {"noresponse", "damage", "limit"}
+        local choices = {}
+        for _,buff in ipairs(buffs) do
+            local mark = string.format("@nyarz_shensu_%s", buff)
+            if player:getMark(mark) == 0 then table.insert(choices, buff) end
+        end
+        if #choices ~= 0 then
+            local choice = room:askForChoice(player, self:objectName(), table.concat(choices, "+"))
+            room:setPlayerMark(player, string.format("@nyarz_shensu_%s", choice), 1)
+            room:setCardFlag(card, string.format("nyarz_shensu_%s", choice))
+
+            local log = sgs.LogMessage()
+            log.type = "$nyarz_shensu_choose"
+            log.from = player
+            log.arg = string.format("nyarz_shensu_%s", choice)
+            room:sendLog(log)
+        end
+
+        player:drawCards(1, self:objectName())
+		return card
+	end,
+    on_validate_in_response = function(self, player)
+        local room = player:getRoom()
+        room:addPlayerMark(player, "nyarz_shensu-Clear", 1)
+
+        local log1 = sgs.LogMessage()
+        log1.type = "#InvokeSkill"
+        log1.from = player
+        log1.arg = self:objectName()
+        room:sendLog(log1)
+        room:broadcastSkillInvoke(self:objectName())
+
+        local pattern = self:getUserString()
+		if (not pattern) or pattern == "" then 
+            local all = {"slash", "fire_slash", "thunder_slash"}
+            pattern = room:askForChoice(player, "nyarz_shensu_slash", table.concat(all,"+"))
+        end
+
+        local card = sgs.Sanguosha:cloneCard(pattern, sgs.Card_SuitToBeDecided, -1)
+		card:setSkillName(self:objectName())
+        room:setCardFlag(card, "RemoveFromHistory")
+
+        local buffs = {"noresponse", "damage", "limit"}
+        local choices = {}
+        for _,buff in ipairs(buffs) do
+            local mark = string.format("@nyarz_shensu_%s", buff)
+            if player:getMark(mark) == 0 then table.insert(choices, buff) end
+        end
+        if #choices ~= 0 then
+            local choice = room:askForChoice(player, self:objectName(), table.concat(choices, "+"))
+            room:setPlayerMark(player, string.format("@nyarz_shensu_%s", choice), 1)
+            room:setCardFlag(card, string.format("nyarz_shensu_%s", choice))
+
+            local log = sgs.LogMessage()
+            log.type = "$nyarz_shensu_choose"
+            log.from = player
+            log.arg = string.format("nyarz_shensu_%s", choice)
+            room:sendLog(log)
+        end
+
+        player:drawCards(1, self:objectName())
+		return card
+    end
+}
+
+nyarz_shensu = sgs.CreateTriggerSkill{
+    name = "nyarz_shensu",
+    events = {sgs.DamageCaused,sgs.CardUsed,sgs.EventLoseSkill},
+    frequency = sgs.Skill_NotFrequent,
+    view_as_skill = nyarz_shensuVS,
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.DamageCaused then
+            local damage = data:toDamage()
+            if damage.card and damage.card:hasFlag("nyarz_shensu_damage") then
+                room:sendLog(CreateDamageLog(damage, 1, self:objectName(), true))
+                damage.damage = damage.damage + 1
+                data:setValue(damage)
+            end
+        end
+        if event == sgs.CardUsed then
+            local use = data:toCardUse()
+            if use.card and use.card:hasFlag("nyarz_shensu_noresponse") then
+                local no_respond_list = use.no_respond_list
+                table.insert(no_respond_list, "_ALL_TARGETS")
+                use.no_respond_list = no_respond_list
+                data:setValue(use)
+            end
+        end
+        if event == sgs.EventLoseSkill then
+            if data:toString() == self:objectName() then
+                local buffs = {"noresponse", "damage", "limit"}
+                for _,buff in ipairs(buffs) do
+                    local mark = string.format("@nyarz_shensu_%s", buff)
+                    room:setPlayerMark(player, mark, 0)
+                end
+            end
+        end
+    end,
+    can_trigger = function(self, target)
+        return target ~= nil
+    end,
+}
+
+nyarz_shensu_buff = sgs.CreateTargetModSkill{
+    name = "#nyarz_shensu_buff",
+    residue_func = function(self, from, card)
+        if card:getSkillName() == "nyarz_shensu" then return 1000 end
+        return 0
+    end,
+    distance_limit_func = function(self, from, card)
+        if card:getSkillName() == "nyarz_shensu" then return 1000 end
+        return 0
+    end,
+}
+
+nyarz_shebianVS = sgs.CreateZeroCardViewAsSkill
+{
+    name = "nyarz_shebian",
+    frequency = sgs.Skill_Limited,
+    limit_mark = "@nyarz_shebian_mark",
+    view_as = function(self)
+        return nyarz_shebianCard:clone()
+    end,
+    enabled_at_play = function(self, player)
+        if player:getMark("@nyarz_shebian_mark") == 0 then return false end
+        for _,skill in sgs.qlist(player:getVisibleSkillList()) do
+            if (not skill:isAttachedLordSkill()) and skill:objectName() ~= self:objectName() then return true end
+        end
+        return false 
+    end
+}
+
+nyarz_shebianCard = sgs.CreateSkillCard
+{
+    name = "nyarz_shebian",
+    target_fixed = true,
+    on_use = function(self, room, source, targets)
+        local room = source:getRoom()
+        local player = source
+        room:setPlayerMark(player, "@nyarz_shebian_mark", 0)
+
+        local choices = {}
+        for _,skill in sgs.qlist(player:getVisibleSkillList()) do
+            if (not skill:isAttachedLordSkill()) and skill:objectName() ~= self:objectName() then 
+                table.insert(choices, skill:objectName())
+            end
+        end
+        local choice = room:askForChoice(player, self:objectName(), table.concat(choices, "+"))
+        room:detachSkillFromPlayer(player, choice)
+        
+        local tos = sgs.SPlayerList()
+        for _,p in sgs.qlist(room:getAlivePlayers()) do
+            local name = p:getGeneralName()
+            local selected = sgs.Sanguosha:getGeneral(name)
+            local skills = selected:getVisibleSkillList()
+            for _,skill in sgs.qlist(skills) do
+                if (not player:hasSkill(skill:objectName())) then
+                    tos:append(p)
+                    break
+                end
+            end
+        end
+
+        if tos:isEmpty() then return false end
+        local to = room:askForPlayerChosen(player, tos, self:objectName(), "@nyarz_shebian", false, true)
+        choices = {}
+        local name = to:getGeneralName()
+        local selected = sgs.Sanguosha:getGeneral(name)
+        for _,skill in sgs.qlist(selected:getVisibleSkillList()) do
+            if (not skill:isAttachedLordSkill()) and (not player:hasSkill(skill:objectName())) then 
+                table.insert(choices, skill:objectName())
+            end
+        end
+        choice = room:askForChoice(player, self:objectName(), table.concat(choices, "+"))
+        room:acquireSkill(player, choice)
+    end
+}
+
+nyarz_shebian = sgs.CreateTriggerSkill{
+    name = "nyarz_shebian",
+    events = {sgs.EnterDying},
+    frequency = sgs.Skill_Limited,
+    limit_mark = "@nyarz_shebian_mark",
+    view_as_skill = nyarz_shebianVS,
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        local dying = data:toDying()
+        if dying.who and dying.who:objectName() == player:objectName()
+        and player:getMark("@nyarz_shebian_mark") == 0 then
+            room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
+            room:setPlayerMark(player, "@nyarz_shebian_mark", 1)
+        end
+    end,
+    can_trigger = function(self, target)
+        return target and target:hasSkill(self:objectName())
+    end,
+}
+
+nyarz_xiahouyuan:addSkill(nyarz_shensu)
+nyarz_xiahouyuan:addSkill(nyarz_shensuVS)
+nyarz_xiahouyuan:addSkill(nyarz_shensu_buff)
+nyarz_xiahouyuan:addSkill(nyarz_shebian)
+nyarz_xiahouyuan:addSkill(nyarz_shebianVS)
+extension:insertRelatedSkills("nyarz_shensu", "#nyarz_shensu_buff")
+
+nyarz_zhonghui = sgs.General(extension, "nyarz_zhonghui", "wei", 4, true, false, false)
+
+nyarz_quanji = sgs.CreateTriggerSkill{
+    name = "nyarz_quanji",
+    events = {sgs.Damaged,sgs.EventPhaseEnd},
+    frequency = sgs.Skill_NotFrequent,
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if player:isDead() then return false end
+        if event == sgs.Damaged then
+            local damage = data:toDamage()
+            for i = 1, damage.damage, 1 do
+                if player:isDead() then break end
+                if room:askForSkillInvoke(player, self:objectName()) then
+                    room:broadcastSkillInvoke(self:objectName())
+                    player:drawCards(2, self:objectName())
+                    if player:isAlive() and (not player:isNude()) then
+                        local cards = room:askForExchange(player, "nyarz_quanji_damaged", 9999, 0, true, "@nyarz_quanji-remove", true)
+                        if cards and (cards:subcardsLength() > 0) then
+                            player:addToPile("nyarz_quanji", cards:getSubcards())
+                        end
+                    end
+                end
+            end
+        end
+        if event == sgs.EventPhaseEnd then
+            if player:getPhase() ~= sgs.Player_Play then return false end
+            if room:askForSkillInvoke(player, self:objectName()) then
+                room:broadcastSkillInvoke(self:objectName())
+                player:drawCards(2, self:objectName())
+                if player:isAlive() and (not player:isNude()) then
+                    local cards = room:askForExchange(player, "nyarz_quanji_end", 9999, 0, true, "@nyarz_quanji-remove", true)
+                    if cards and (cards:subcardsLength() > 0) then
+                        player:addToPile("nyarz_quanji", cards:getSubcards())
+                    end
+                end
+            end
+        end
+    end,
+    can_trigger = function(self, target)
+        return target and target:hasSkill(self:objectName())
+    end,
+}
+
+nyarz_quanji_max = sgs.CreateMaxCardsSkill{
+    name = "#nyarz_quanji_max",
+    extra_func = function(self, target)
+        if target:hasSkill("nyarz_quanji") then return target:getPile("nyarz_quanji"):length() end
+        return 0
+    end,
+}
+
+nyarz_zili = sgs.CreateTriggerSkill{
+    name = "nyarz_zili",
+    events = {sgs.EventPhaseStart},
+    frequency = sgs.Skill_Wake,
+    waked_skills = "nyarz_paiyi",
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if player:getPhase() ~= sgs.Player_NotActive then return end
+        for _,p in sgs.qlist(room:getAlivePlayers()) do
+            if p:getMark(self:objectName()) > 0 then continue end
+            if p:getPile("nyarz_quanji"):length() >=  p:getMaxHp() 
+            or p:canWake(self:objectName()) then
+                room:setPlayerMark(p, self:objectName(), 1)
+                room:sendCompulsoryTriggerLog(p, self:objectName(), true, true)
+                room:doSuperLightbox(p, "nyarz_zili")
+                room:loseMaxHp(p, 1)
+                if p:isAlive() then
+                    room:acquireSkill(p, "nyarz_paiyi")
+                end
+                if p:isWounded() then
+                    room:recover(p, sgs.RecoverStruct(self:objectName(), p, p:getMaxHp() - p:getHp()))
+                end
+                if p:isAlive() then
+                    p:gainAnExtraTurn()
+                    return false
+                end
+            end
+        end
+    end,
+    can_trigger = function(self, target)
+        return target ~= nil
+    end,
+}
+
+nyarz_paiyi = sgs.CreateViewAsSkill
+{
+    name = "nyarz_paiyi",
+    n = 9999,
+    expand_pile = "nyarz_quanji",
+    tiansuan_type = "damage,draw",
+    view_filter = function(self, selected, to_select)
+        return sgs.Self:getPile("nyarz_quanji"):contains(to_select:getEffectiveId())
+    end,
+    view_as = function(self, cards)
+        if #cards == 0 then return end
+        if #cards >= (sgs.Self:getPile("nyarz_quanji"):length() / 2) then
+            local cc
+            local choice = sgs.Self:getTag("nyarz_paiyi"):toString()
+            cc =  nyarz_paiyiCard:clone()
+            cc:setUserString(choice)
+            for _,card in ipairs(cards) do
+                cc:addSubcard(card)
+            end
+            return cc
+        end
+    end,
+    enabled_at_play = function(self, player)
+        return player:getMark("nyarz_paiyi_tiansuan_remove_damage-PlayClear") == 0
+        or player:getMark("nyarz_paiyi_tiansuan_remove_draw-PlayClear") == 0
+    end
+}
+
+nyarz_paiyiCard = sgs.CreateSkillCard
+{
+    name = "nyarz_paiyi",
+    target_fixed = function(self)
+        return self:getUserString() == "draw"
+    end,
+    will_throw = true,
+    filter = function(self, targets, to_select)
+        if self:getUserString() == "draw" then return false end
+        return #targets < self:subcardsLength()
+    end,
+    feasible = function(self, targets)
+        return self:getUserString() == "draw" 
+        or #targets > 0
+    end,
+    on_use = function(self, room, source, targets)
+        if self:getUserString() == "draw" then
+            room:setPlayerMark(source, "nyarz_paiyi_tiansuan_remove_draw-PlayClear", 1)
+            --room:broadcastSkillInvoke("nyarz_paiyi")
+            source:drawCards(self:subcardsLength() + 2, "nyarz_paiyi")
+        else
+            for _,p in ipairs(targets) do
+                room:cardEffect(self, source, p)
+            end
+        end
+    end,
+    on_effect = function(self, effect)
+        local room = effect.from:getRoom()
+        if effect.from:isAlive() 
+        and effect.from:getMark("nyarz_paiyi_tiansuan_remove_damage-PlayClear") == 0 then
+            --room:broadcastSkillInvoke("nyarz_paiyi")
+            room:setPlayerMark(effect.from, "nyarz_paiyi_tiansuan_remove_damage-PlayClear", 1)
+        end
+        room:damage(sgs.DamageStruct("nyarz_paiyi", effect.from, effect.to, 1, sgs.DamageStruct_Normal))
+    end
+}
+
+nyarz_zhonghui:addSkill(nyarz_quanji)
+nyarz_zhonghui:addSkill(nyarz_quanji_max)
+nyarz_zhonghui:addSkill(nyarz_zili)
+extension:insertRelatedSkills("nyarz_quanji", "#nyarz_quanji_max")
+
 local skills = sgs.SkillList()
 
 if not sgs.Sanguosha:getSkill("dianshiwan") then skills:append(dianshiwan) end
@@ -10378,6 +11108,7 @@ if not sgs.Sanguosha:getSkill("nyarz_shenwei_god") then skills:append(nyarz_shen
 if not sgs.Sanguosha:getSkill("#nyarz_shenwei_god_max") then skills:append(nyarz_shenwei_god_max) end
 if not sgs.Sanguosha:getSkill("nyarz_duoshi_use") then skills:append(nyarz_duoshi_use) end
 if not sgs.Sanguosha:getSkill("nyarz_guanyu_win") then skills:append(nyarz_guanyu_win) end
+if not sgs.Sanguosha:getSkill("nyarz_paiyi") then skills:append(nyarz_paiyi) end
 
 sgs.Sanguosha:addSkills(skills)
 
@@ -11619,6 +12350,89 @@ sgs.LoadTranslationTable
     ["$nyarz_shajve2"] = "我欲雄立天下，弘武烈之士，逐四海之潮。",
     ["~nyarz_xurong"] = "为将死战，可得其所。",
 
+    --杜夔
+    ["nyarz_dukui"] = "群阴·杜夔",
+    ["&nyarz_dukui"] = "杜夔",
+    ["#nyarz_dukui"] = "洪吕涤音",
+    ["designer:nyarz_dukui"] = "Nyarz",
 
+    ["nyarz_fanyin"] = "泛音",
+    [":nyarz_fanyin"] = "你不以此法使用的牌结算后，若此牌点数大于你本回合上次发动此技能前使用的牌，你可以检视牌堆中三张不同牌名且可以使用的牌，然后可以使用其中一张（不计次数和距离）。",
+    ["@nyarz_fanyin-use"] = "你可以使用其中一张牌",
+    ["#nyarz_fanyin"] = "泛音",
+
+    --秦宜禄
+
+    ["nyarz_qinyilu"] = "群阴·秦宜禄",
+    ["&nyarz_qinyilu"] = "秦宜禄",
+    ["#nyarz_qinyilu"] = "尘垢粃糠",
+    ["designer:nyarz_qinyilu"] = "Nyarz",
+
+    ["nyarz_piaopin"] = "飘萍",
+    [":nyarz_piaopin"] = "锁定技，你使用或打出当前回合获得的牌时，摸一张牌。出牌阶段开始时，重铸你手牌中所有不能使用的牌。",
+    ["nyarz_zhuili"] = "惴栗",
+    [":nyarz_zhuili"] = "锁定技，你受到伤害后，重铸区域内的所有牌并摸两张牌。你失去装备区内的牌后回复一点体力。",
+
+    ["$nyarz_piaopin1"] = "奔波四处，前途未明。",
+    ["$nyarz_piaopin2"] = "辗转各地，功业难寻。",
+    ["$nyarz_zhuili1"] = "近况艰难，何不忧愁？",
+    ["$nyarz_zhuili2"] = "形势如此，惴惕难当。",
+    ["~nyarz_qinyilu"] = "我竟落得如此下场！",
+
+    --夏侯渊
+
+    ["nyarz_xiahouyuan"] = "群阴·夏侯渊",
+    ["&nyarz_xiahouyuan"] = "夏侯渊",
+    ["#nyarz_xiahouyuan"] = "果敢速战",
+    ["designer:nyarz_xiahouyuan"] = "Nyarz",
+
+    ["nyarz_shensu"] = "神速",
+    ["nyarz_shensu_slash"] = "神速",
+    [":nyarz_shensu"] = "你可以摸一张牌并视为使用一张不计距离和次数的【杀】，同时执行并移除一项：①此【杀】不可被响应；②此【杀】造成的伤害+1；③此技能改为每回合限一次。",
+    ["nyarz_shensu:noresponse"] = "此【杀】不可被响应",
+    ["nyarz_shensu:damage"] = "此【杀】造成的伤害+1",
+    ["nyarz_shensu:limit"] = "此技能改为每回合限一次",
+    ["$nyarz_shensu_choose"] = "%from 选择了 %arg",
+    ["nyarz_shensu_noresponse"] = "此【杀】不可被响应",
+    ["nyarz_shensu_damage"] = "此【杀】造成的伤害+1",
+    ["nyarz_shensu_limit"] = "此技能改为每回合限一次",
+    ["nyarz_shebian"] = "设变",
+    [":nyarz_shebian"] = "限定技，出牌阶段，你可以失去一个其他技能，然后选择一名角色，获得其武将牌上一个你未拥有的技能。你进入濒死状态后重置此技能。",
+    ["@nyarz_shebian"] = "请选择一名要获得其武将牌上的技能的角色",
+
+    ["$nyarz_shensu1"] = "已积跬步十万，今必一马当先。",
+    ["$nyarz_shensu2"] = "各方群英逐风，我必独占鳌头。",
+    ["$nyarz_shebian1"] = "虎贲束甲，与子同袍。",
+    ["$nyarz_shebian2"] = "用兵以决，谋变制胜。",
+    ["~nyarz_xiahouyuan"] = "居然有人比我快……",
+
+    --钟会·第二版
+
+    ["nyarz_zhonghui"] = "群阴·钟会·第二版",
+    ["&nyarz_zhonghui"] = "钟会",
+    ["#nyarz_zhonghui"] = "钟桂香蒲",
+    ["designer:nyarz_zhonghui"] = "Nyarz",
+
+    ["nyarz_quanji"] = "权计",
+    [":nyarz_quanji"] = "在你受到1点伤害或出牌阶段结束时，你可以摸两张牌，然后可以将任意张牌移出游戏。你的手牌上限+X（X为“权计”牌数量）。",
+    ["@nyarz_quanji-remove"] = "你可以将任意张牌移出游戏",
+    ["nyarz_quanji_end"] = "权计",
+    ["nyarz_quanji_damaged"] = "权计",
+    ["nyarz_zili"] = "自立",
+    [":nyarz_zili"] = "觉醒技，每个回合结束时，若你“权计”牌数量不小于你的体力上限，减一点体力上限并获得“排异”，将体力值回复至上限并于当前回合结束后执行一个额外回合。",
+    ["nyarz_paiyi"] = "排异",
+    [":nyarz_paiyi"] = "出牌阶段各限一次，你可以移去至少半数的“权计”牌，然后：①对至多等量名角色各造成1点伤害；②摸移去数量+2张牌。",
+    ["nyarz_paiyi:draw"] = "摸移去数量+2张牌",
+    ["nyarz_paiyi:damage"] = "对至多等量名角色各造成1点伤害",
+    ["nyarz_paiyi_damage"] = "排异",
+    ["nyarz_paiyi_draw"] = "排异",
+
+    ["$nyarz_quanji1"] = "月缺潜水中，月满照星河。",
+    ["$nyarz_quanji2"] = "祸福轮转，暂且退让。",
+    ["$nyarz_zili1"] = "独立身，划分界。",
+    ["$nyarz_zili2"] = "自立为主，闯荡一番。",
+    ["$nyarz_paiyi1"] = "哼，你才不是我的伙伴。",
+    ["$nyarz_paiyi2"] = "云泥之别，高下立判。",
+    ["~nyarz_zhonghui"] = "不能再与父亲，一起练字了。",
 }
 return packages

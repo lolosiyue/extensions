@@ -1490,19 +1490,21 @@ OnSkillTrigger = sgs.CreateTriggerSkill{
 					end
 				end
 				for _,pdn in ipairs(room:getTag("delayedPingdians"):toString():split("+"))do
-							local pd = p:getTag(pdn):toPindian()
-								local moves = sgs.CardsMoveList()
-								if pd.from_card and room:getCardPlace(pd.from_card:getEffectiveId())==sgs.Player_PlaceTable then
-									local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PINDIAN,pd.from:objectName(),pd.reason,"")
-									moves:append(sgs.CardsMoveStruct(pd.from_card:getEffectiveId(),nil,sgs.Player_DiscardPile,reason))
-								end
-								if pd.to_card and room:getCardPlace(pd.to_card:getEffectiveId())==sgs.Player_PlaceTable then
-									local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PINDIAN,pd.from:objectName(),pd.to:objectName(),pd.reason,"")
-									moves:append(sgs.CardsMoveStruct(pd.to_card:getEffectiveId(),nil,sgs.Player_DiscardPile,reason))
-								end
-					room:moveCardsAtomic(moves,true)
-							end
+					for _,p in sgs.qlist(room:getAllPlayers())do
+						local pd = p:getTag(pdn):toPindian()
+						local moves = sgs.CardsMoveList()
+						if pd.from_card and room:getCardPlace(pd.from_card:getEffectiveId())==sgs.Player_PlaceTable then
+							local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PINDIAN,pd.from:objectName(),pd.reason,"")
+							moves:append(sgs.CardsMoveStruct(pd.from_card:getEffectiveId(),nil,sgs.Player_DiscardPile,reason))
+						end
+						if pd.to_card and room:getCardPlace(pd.to_card:getEffectiveId())==sgs.Player_PlaceTable then
+							local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PINDIAN,pd.from:objectName(),pd.to:objectName(),pd.reason,"")
+							moves:append(sgs.CardsMoveStruct(pd.to_card:getEffectiveId(),nil,sgs.Player_DiscardPile,reason))
+						end
+						room:moveCardsAtomic(moves,true)
+					end
 				room:removeTag("delayedPingdians")
+			end
 			elseif change.from==sgs.Player_Discard then
 				for i=1,3 do
 					if player:getTag("zhengsu"..i):toBool() then

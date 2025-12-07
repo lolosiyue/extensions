@@ -7789,6 +7789,315 @@ sgs.ai_can_damagehp.tianxiang = function(self,from,card,to)
 	return sgs.ai_skill_use["@@tianxiang"](self,d,sgs.Card_MethodDiscard)~="."
 end
 
+-- 通用的有代价令牌无效技能判断函数
+-- 判断是否应该发动需要弃牌/失去体力来无效卡牌的技能
+-- @param use 卡牌使用结构
+-- @param need_discard 是否需要弃牌
+-- @param need_losehp 是否需要失去体力
+-- @param discard_num 需要弃牌数量
+-- @param target 受影响的目标，默认为self.player
+-- @return boolean 是否应该发动技能
+function SmartAI:shouldInvokeCostNullifySkill(use, need_discard, need_losehp, discard_num, target)
+	if not use or not use.from or use.from:isDead() then return false end
+	
+	target = target or self.player
+	discard_num = discard_num or 1
+	
+	-- 判断敌我关系（基于target和use.from）
+	local is_enemy_user = self:isEnemy(use.from)
+	local is_friend_user = self:isFriend(use.from)
+	local target_is_friend = self:isFriend(target)
+	local target_is_enemy = self:isEnemy(target)
+	
+	-- 检查代价是否可以承受
+	if need_losehp then
+		-- 需要失去体力的情况
+		if self.player:getHp() <= 1 and self:getAllPeachNum() < 1 then
+			-- 体力为1且无桃时，只在极端情况下发动
+			if not (is_enemy_user and use.card:isKindOf("Peach")) then
+				return false
+			end
+		end
+		-- 体力过低时谨慎
+		if self:isWeak() and not self:needToLoseHp(self.player, use.from, use.card) then
+			if self.player:getHp() - 1 <= 0 then
+				return false
+			end
+		end
+	end
+	
+	if need_discard then
+		-- 需要弃牌的情况
+		if not self.player:canDiscard(self.player, "he") then
+			return false
+		end
+		if self.player:getCardCount(true) < discard_num then
+			return false
+		end
+	end
+	
+	-- 基本情况：残局中与攻击者同阵营且目标濒死时的判断
+	if self.role == "rebel" and sgs.ai_role[use.from:objectName()] == "rebel" 
+		and hasJueqingEffect(use.from, target) and target:getHp() < 2 
+		and self:getAllPeachNum() < 1 and target_is_friend then 
+		return false 
+	end
+	
+	-- 判断是否应该为目标无效
+	-- 如果目标是友方，且使用者是敌人，应该发动
+	-- 如果目标是敌人，且使用者是友方（例如桃），不应该发动
+	local should_nullify = false
+	
+	if target_is_friend then
+		-- 目标是友方时
+		should_nullify = is_enemy_user 
+			or (is_friend_user and self.role == "loyalist" and not use.from:hasSkill("jueqing") 
+				and use.from:isLord() and target:getHp() < 2)
+	elseif target_is_enemy then
+		-- 目标是敌人时，通常不无效（除非是有益卡牌）
+		if use.card:isKindOf("Peach") or use.card:isKindOf("Analeptic") 
+			or use.card:isKindOf("GodSalvation") or use.card:isKindOf("ExNihilo") then
+			should_nullify = true
+		end
+	end
+	
+	if not should_nullify then return false end
+	
+	-- 通用判断逻辑：基于卡牌对目标的威胁程度
+	local card = use.card
+	local threat_level = 0  -- 威胁等级
+	
+	-- 1. 判断卡牌是否对目标有效
+	if not self:hasTrickEffective(card, target, use.from) then
+		return false
+	end
+	
+	-- 2. 判断伤害类卡牌
+	if card:isDamageCard() then
+		-- 检查伤害是否有效
+		local nature = sgs.DamageStruct_Normal
+		if card:isKindOf("FireSlash") or card:isKindOf("FireAttack") then
+			nature = sgs.DamageStruct_Fire
+		elseif card:isKindOf("ThunderSlash") then
+			nature = sgs.DamageStruct_Thunder
+		end
+		
+		if not self:damageIsEffective(target, nature, use.from) then
+			return false
+		end
+		
+		-- 计算预期伤害
+		local expected_damage = self:ajustDamage(use.from, target, 1, card)
+		
+		-- 高伤害直接发动
+		if expected_damage > 1 then
+			threat_level = threat_level + 3
+		elseif expected_damage > 0 then
+			threat_level = threat_level + 2
+		end
+		
+		-- 濒死状态下任何伤害都是高威胁
+		if self:isWeak(target) then
+			threat_level = threat_level + 3
+		end
+		
+		-- 属性杀连环判断
+		if card:isKindOf("NatureSlash") and target:isChained() then
+			if not self:isGoodChainTarget(target, card, use.from) then
+				threat_level = threat_level + 2
+			end
+		end
+		
+		-- 火攻特殊判断
+		if card:isKindOf("FireAttack") then
+			if target:hasArmorEffect("vine") or target:getMark("@gale") > 0 then
+				threat_level = threat_level + 2
+			end
+		end
+		
+		-- 检查目标是否有应对手段
+		if card:isKindOf("Slash") then
+			local jink_num = self:getExpectedJinkNum(use)
+			local target_jink = getCardsNum("Jink", target, self.player)
+			if target_jink < jink_num then
+				threat_level = threat_level + 2
+			end
+		elseif card:isKindOf("AOE") then
+			local response_card = card:isKindOf("SavageAssault") and "Slash" or "Jink"
+			if getCardsNum(response_card, target, self.player) == 0 then
+				threat_level = threat_level + 2
+			end
+		elseif card:isKindOf("Duel") then
+			if getCardsNum("Slash", target, self.player) == 0 then
+				threat_level = threat_level + 2
+			end
+		end
+		
+		-- 检查目标的受伤收益技能（降低威胁）
+		if self:canDamage(target,use.from,card) then
+			threat_level = threat_level - 2
+		end
+		
+	-- 3. 判断控制类卡牌
+	elseif card:isKindOf("Dismantlement") or card:isKindOf("Snatch") or card:isKindOf("Zhujinqiyuan") or card:isKindOf("xianzhencard") then
+		if not target:isAllNude() then
+			-- 检查目标是否有重要牌
+			if getCardsNum("Peach", target, self.player) > 0 and self:isWeak(target) then
+				threat_level = threat_level + 3
+			end
+			if getCardsNum("Analeptic", target, self.player) > 0 and self:isWeak(target) then
+				threat_level = threat_level + 2
+			end
+			-- 关键装备
+			if target:getWeapon() and target:getWeapon():isKindOf("Crossbow") 
+				and getCardsNum("Slash", target, self.player) > 1 then
+				threat_level = threat_level + 2
+			end
+			if target:getArmor() then
+				if target:getArmor():isKindOf("EightDiagram") 
+					or target:getArmor():isKindOf("Vine") 
+					or target:getArmor():isKindOf("RenwangShield") then
+					threat_level = threat_level + 2
+				else
+					threat_level = threat_level + 1
+				end
+			end
+			-- 判定区保护
+			if self:willSkipPlayPhase(target) or self:willSkipDrawPhase(target) then
+				threat_level = threat_level + 2
+			end
+			-- 基础威胁
+			threat_level = threat_level + 1
+		end
+		
+	-- 4. 判断延时锦囊
+	elseif card:isKindOf("Indulgence") or card:isKindOf("QhstandardIndulgence") then
+		if not self:willSkipPlayPhase(target) then
+			-- 出牌阶段重要性判断
+			if self:hasSkills("zhiheng|rende|nosrende|jizhi|nosjizhi|luoyi|nosluoyi", target) then
+				threat_level = threat_level + 3
+			end
+			if getCardsNum("Peach", target, self.player) > 0 and self:isWeak(target) then
+				threat_level = threat_level + 2
+			end
+			for _, skill in sgs.list(target:getVisibleSkillList()) do
+				if string.find(skill:getDescription(), "出牌阶段") or string.find(skill:getDescription(), "出牌阶段限一次") then
+					threat_level = threat_level + 2
+				end
+			end
+			threat_level = threat_level + 2
+		end
+		
+	elseif card:isKindOf("SupplyShortage") then
+		if not self:willSkipDrawPhase(target) then
+			-- 摸牌阶段重要性判断
+			if self:hasSkills("luoshen|yongsi|yinling", target) then
+				threat_level = threat_level + 3
+			end
+			if target:getHandcardNum() <= 1 then
+				threat_level = threat_level + 2
+			end
+			for _, skill in sgs.list(target:getVisibleSkillList()) do
+				if string.find(skill:getDescription(), "摸牌阶段") then
+					threat_level = threat_level + 2
+				end
+			end
+			threat_level = threat_level + 2
+		end
+		
+	elseif card:isKindOf("Lightning") then
+		-- 闪电判断
+		local can_retrial = self:hasSkills("guicai|guidao|nosguicai|jilve|huanshi", target)
+		if not can_retrial then
+			local enemy_retrial = false
+			for _, enemy in ipairs(self.enemies) do
+				if enemy:hasSkills("guicai|guidao|nosguicai|jilve") then
+					enemy_retrial = true
+					break
+				end
+			end
+			if enemy_retrial then
+				threat_level = threat_level + 2
+			else
+				threat_level = threat_level + 1
+			end
+		end
+		
+	-- 5. 判断借刀杀人
+	elseif card:isKindOf("Collateral") then
+		local victim = nil
+		for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+			if p:hasFlag("CollateralVictim") then
+				victim = p
+				break
+			end
+		end
+		if victim then
+			if self:isFriend(victim) then
+				threat_level = threat_level + 3
+			elseif not target:canSlash(victim, nil, false) then
+				threat_level = threat_level + 2
+			elseif getCardsNum("Slash", target, self.player) == 0 then
+				threat_level = threat_level + 2
+			else
+				threat_level = threat_level + 1
+			end
+		end
+	elseif card:isKindOf("quanxiang") then
+		threat_level = threat_level + 2
+	elseif card:isKindOf("together_go_die") then
+		threat_level = threat_level + 2
+	elseif card:isKindOf("Luojingxiashi") then
+		threat_level = threat_level + 2
+	elseif card:isKindOf("BearingDownBorder") then
+		threat_level = threat_level + 2
+	elseif card:isKindOf("GodFlower") then
+		if getCardsNum("Slash", target, self.player) == 0 then
+			threat_level = threat_level + 2
+		else
+			threat_level = threat_level + 1
+		end
+		
+	-- 6. 铁索连环
+	elseif card:isKindOf("IronChain") then
+		if not target:isChained() then
+			-- 将被横置
+			if not self:isWeak(target) then
+				threat_level = threat_level + 1
+			end
+		end
+		
+	-- 7. 有益卡牌的判断
+	elseif card:isKindOf("ExNihilo") or card:isKindOf("Peach") 
+		or card:isKindOf("Analeptic") or card:isKindOf("GodSalvation") 
+		or card:isKindOf("AmazingGrace") or card:isKindOf("Dongzhuxianji") or card:isKindOf("Lianjunshengyan") or card:isKindOf("GodNihilo") or card:isKindOf("rotenburo") or card:isKindOf("EXCard_YJJG") or card:isKindOf("Yuanjun") or card:isKindOf("Tunliang") or card:isKindOf("TacticalCombo") or card:isKindOf("Liangleichadao") or card:isKindOf("Xiongdiqixin") or card:isKindOf("Shengsiyugong") or card:isKindOf("Hongyundangtou") or card:isKindOf("Wutianwujie") or card:isKindOf("JingxiangGoldenage") or card:isKindOf("Zengbingjianzao") then
+		-- 如果目标是敌人，这些有益卡牌应该被无效
+		if target_is_enemy then
+			threat_level = threat_level + 2
+		else
+			return false
+		end
+	end
+	
+	-- 根据威胁等级和代价决定是否发动
+	local cost_value = 0
+	if need_losehp then
+		-- 失去体力的代价
+		if self.player:getHp() <= 2 then
+			cost_value = cost_value + 4
+		else
+			cost_value = cost_value + 2
+		end
+	end
+	if need_discard then
+		-- 弃牌的代价
+		cost_value = cost_value + discard_num * 1.5
+	end
+	
+	-- 威胁等级超过代价值时发动
+	return threat_level > cost_value
+end
+
 sgs.ai_guhuo_card.guhuo = function(self,cname,class_name)
 	local handcards = self:addHandPile("h")
 	if #handcards>0 then

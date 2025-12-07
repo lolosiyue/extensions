@@ -11122,10 +11122,16 @@ sgs.ai_skill_invoke.sfofl_moli_zhenji = function(self, data)
 	local id = data:toInt()
 	local card = sgs.Sanguosha:getCard(id)
 	if not card:isBlack() then return false end
-	return true
+	return self.player:getMark("&sfofl_moli") < 5
 end
 sgs.ai_skill_invoke.sfofl_jinghong = function(self, data)
 	local target = data:toPlayer()
+	if self.player:getMark("&sfofl_moli") <= 1 and self.player:getPhase() ~= sgs.Player_NotActive then
+		self:getTurnUse()
+		if #self.toUse > 2 then
+			return false
+		end
+	end
 	if target and self:isFriend(target) and self:canDraw(target) then return true end
 	return false
 end
@@ -11140,9 +11146,24 @@ sgs.ai_canliegong_skill.sfofl_youlong = function(self, from, to)
 	return to:getMark("&sfofl_youlong-SelfClear") > 0
 end
 
---TODO
 sgs.ai_skill_invoke.sfofl_haiyou = function(self, data)
 	local use = data:toCardUse()
+	local target
+	for _, p in sgs.qlist(use.to) do
+		if ((string.find(p:getGeneralName(), "_change") and string.find(p:getGeneralName(), "sfofl_")) or (string.find(p:getGeneral2Name(), "_change") and string.find(p:getGeneral2Name(), "sfofl_"))) then
+			target = p
+			break
+		end
+	end
+	if use.card:isKindOf("AOE") and use.from and self:isFriend(use.from) then
+		return false
+	end
+	return self:shouldInvokeCostNullifySkill(use, false, false, 0, target)
+end
+
+sgs.ai_use_revises.sfofl_moli_woguotai = function(self,card,use)
+	if card:isKindOf("EquipCard") and self:evaluateArmor(card)>-5
+	then use.card = card return true end
 end
 
 sgs.ai_skill_invoke.sfofl_susheng = function(self, data)
@@ -11161,6 +11182,9 @@ end
 sgs.ai_skill_choice.sfofl_susheng = function(self, choices, data)
 	local target = data:toDying().who
 	local items = choices:split("+")
+	if target and target:objectName() == self.player:objectName() then
+		return items[math.max(#items-1, 1)]
+	end
 	if target and self:isFriend(target) then
 		for _, item in ipairs(items) do
 			local x = tonumber(item)
@@ -11174,7 +11198,11 @@ end
 
 sgs.ai_skill_choice.sfofl_fengshou = function(self, choices)
 	local items = choices:split("+")
-	return items[1]
+	local x =sgs.ai_skill_playerschosen.sfofl_fengshou(self, self.room:getOtherPlayers(self.player), self.player:getMark("&sfofl_moli"), 1):length()
+	if x > 0 and table.contains(items, tostring(x)) then
+		return tostring(x)
+	end
+	return itmes[1]
 end
 
 sgs.ai_playerschosen_intention.sfofl_fengshou = function(self, from, prompt)
@@ -11225,14 +11253,11 @@ sgs.ai_skill_playerchosen.sfofl_fengshou = function(self, targets)
 		end
 		return targets[1]
 	else
-		local nextalive = self.room:getNextAlive(self.room:getCurrent())
-		if self:isEnemy(nextalive) then
-			return nextalive
-		else
-			targets = sgs.QList2Table(targets)
-			for _, p in ipairs(targets) do
-				if self:isEnemy(p) and self:getNumBySeat(self.room:getCurrent(), p) <= 2 then
-					return p
+		local nextalive = self.room:getCurrent():getNextAlive()
+		if self:isEnemy(nextalive) and #self.friends_noself > 0 then
+			for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+				if self.player:distanceTo(p) == 1 and self:isFriend(p) then
+					return nextalive
 				end
 			end
 		end
@@ -11264,22 +11289,13 @@ addAiSkills("sfofl_shengcai").getTurnUseCard = function(self)
 	and dummy.to
 	and #ids>0
   	then
-		self.olcb_to = dummy.to
-		ids = #ids>0 and table.concat(ids,"+") or "."
-		return sgs.Card_Parse("#sfofl_shengcai:"..ids..":")
+		return fs
 	end
 end
 
-sgs.ai_skill_use_func["#sfofl_shengcai"] = function(card,use,self)
-	use.card = card
-	use.to = self.olcb_to
-end
-
-sgs.ai_card_priority["sfofl_shengcai"] = 2.8
-
 sgs.ai_ajustdamage_from.sfofl_shengcai = function(self, from, to, card, nature)
 	if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "sfofl_shengcai")  then
-		return card:subcardsLength() - 1
+		return math.max(card:subcardsLength() - 1, 0)
 	end
 end
 
@@ -11288,26 +11304,32 @@ sgs.ai_canliegong_skill.sfofl_guanghui = function(self, from, to)
 end
 
 sgs.ai_fill_skill.sfofl_moqi = function(self)
-	if self:getAllPeachNum() == 0 then
+	if self:getCardsNum("Peach") + self:getCardsNum("Analeptic") == 0  then
+		return nil
+	end
+	if #self.enemies == 0 then
 		return nil
 	end
 	local c = sgs.Card_Parse("@OLQimouCard=.")
 	local dummy_use = dummy()
 	self:useSkillCard(c,dummy_use)
 	if dummy_use.card then 
-		return sgs.Card_Parse("#sfofl_fenqi:.:")
+		return sgs.Card_Parse("#sfofl_moqi:.:")
 	end
 	return nil
 end
 
-sgs.ai_skill_use_func["#sfofl_fenqi"] = function(card,use,self)
+sgs.ai_skill_use_func["#sfofl_moqi"] = function(card,use,self)
 	use.card = card
 end
 
-sgs.ai_use_priority["sfofl_fenqi"] = 10
+sgs.ai_use_priority["sfofl_moqi"] = 10
 
 sgs.ai_skill_choice.sfofl_henghui = function(self, choices, data)
 	local items = choices:split("+")
+	if self.player:getMark("&sfofl_moli") >= 4 then
+		table.removeOne(items, "cancel")
+	end
 	return items[math.random(1, #items)]
 end
 
