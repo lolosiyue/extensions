@@ -327,11 +327,9 @@ TH_Weapon_BailouLouguan_skill = sgs.CreateTriggerSkill{
 TH_Weapon_BailouLouguan:setParent(extension)
 TH_Weapon_BailouLouguanTMS = sgs.CreateTargetModSkill{
 	name = "TH_Weapon_BailouLouguanTMS",
-	pattern = "Slash,EXCard_ZJZB",
+	pattern = "Slash",
     extra_target_func = function(self, from, card)
 		if from:hasWeapon("TH_Weapon_BailouLouguan") and card:isKindOf("Slash") and (from:getGeneralName() == "KonpakuYoumu" or from:getGeneral2Name() == "KonpakuYoumu") then
-			return 1
-		elseif card:isKindOf("EXCard_ZJZB") then
 			return 1
 		end
 	end,

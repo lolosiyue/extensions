@@ -7,28 +7,6 @@ extension_young = sgs.Package("sfofl_young", sgs.Package_GeneralPack)
 extension_youngcard = sgs.Package("sfofl_youngCard", sgs.Package_CardPack)
 local hide_boss = false --隐藏Boss武将
 local skills = sgs.SkillList()
---借用大佬的 但找不到出處了
-function ChangeGeneral(room, player, skill_onwer_general_name)
-	local generals = {}
-	for _,name in ipairs(sgs.Sanguosha:getLimitedGeneralNames()) do
-		if not sgs.Sanguosha:isGeneralHidden(name) and not table.contains(generals, name) then
-			table.insert(generals, name)
-		end
-	end
-	for _,p in sgs.qlist(room:getAlivePlayers()) do
-		if table.contains(generals, p:getGeneralName()) then
-			table.removeOne(generals, p:getGeneralName())
-		end
-		if table.contains(generals, p:getGeneral2Name()) then
-			table.removeOne(generals, p:getGeneral2Name())
-		end
-	end
-	local x = player:getMaxHp()
-	local y = player:getHp()
-	room:changeHero(player, generals[math.random(1, #generals)], false, false, player:getGeneral2Name() and player:getGeneral2Name() == skill_onwer_general_name)
-	room:setPlayerProperty(player, "maxhp", sgs.QVariant(x))
-	room:setPlayerProperty(player, "hp", sgs.QVariant(y))
-end
 
 do
 	require "lua.config"

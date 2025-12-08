@@ -11237,14 +11237,171 @@ sgs.LoadTranslationTable {
 
 --https://zhuanlan.zhihu.com/p/100584130
 
+s4_jiangwei = sgs.General(extension, "s4_jiangwei", "shu", 4)
 
---[[
+s4_tiaoxinCard = sgs.CreateSkillCard{
+    name = "s4_tiaoxin",
+    target_fixed = false,
+    will_throw = false,
+    filter = function(self, targets, to_select, player)
+        return #targets == 0 and to_select:objectName() ~= player:objectName()
+    end,
+    on_use = function(self, room, source, targets)
+        local target = targets[1]
+        local slash = room:askForUseSlashTo(target, source, "@s4_tiaoxin:"..source:objectName(), false, false, false, source, nil, self:objectName())
+        if slash then
+        else
+            local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
+            duel:setSkillName(self:objectName())
+            duel:deleteLater()
+            room:setCardFlag(duel, self:objectName())
+            local use = sgs.CardUseStruct()
+            use.card = duel
+            use.from = target
+            use.to:append(source)
+            room:useCard(use)
+        end
+    end
+}
 
-挑衅 出牌阶段，你可以令一名其他角色选择一项：1.对你使用一张杀（无距离限制）；2.视为对你使用一张决斗。其因此对你造成伤害时，你弃置一张牌或令此技能本回合无效。
-复汉 使命技， /摸牌阶段，你可以失去/ 1点体力并/多摸两张牌，然后本回合你可以将一张非基本牌当杀使用或打出。 /
-成功﹔当你杀死一名角色时，你获得其所有牌并回复1点体力，然后获得仅保留下划线描述的复汉。
-失败：出牌阶段结束时，若你此阶段未造成过伤害，你回复1点体力或摸两张牌，然后获得困奋。
-]]
+s4_tiaoxinVS = sgs.CreateZeroCardViewAsSkill{
+    name = "s4_tiaoxin",
+    enabled_at_play = function(self, player)
+        return player:getMark("s4_tiaoxin-Clear") == 0
+    end,
+    view_as = function()
+        return s4_tiaoxinCard:clone()
+    end,
+}
+
+s4_tiaoxin = sgs.CreateTriggerSkill{
+    name = "s4_tiaoxin",
+    view_as_skill = s4_tiaoxinVS,
+    events = {sgs.DamageCaused},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        local damage = data:toDamage()
+        if damage.to and damage.to:isAlive() and damage.card and damage.card:hasFlag(self:objectName()) then
+            if room:askForDiscard(damage.to, self:objectName(), 1, 1, true, true, "@s4_tiaoxin-discard", "", self:objectName()) then
+            else
+                room:sendCompulsoryTriggerLog(player, self:objectName())
+                room:addPlayerMark(player, "s4_tiaoxin-Clear")
+            end
+        end
+        return false
+    end,
+}
+
+s4_fuhanVS = sgs.CreateOneCardViewAsSkill{
+    name = "s4_fuhan",
+    filter_pattern = "!BasicCard",
+    response_or_use = true,
+    view_as = function(self, card)
+        local slash = sgs.Sanguosha:cloneCard("slash", card:getSuit(), card:getNumber())
+        slash:setSkillName(self:objectName())
+        slash:addSubcard(card)
+        return slash
+    end,
+    enabled_at_play = function(self, player)
+        return player:getMark("&s4_fuhan-Clear") > 0 and sgs.Slash_IsAvailable(player)
+    end,
+    enabled_at_response = function(self, player, pattern)
+		for _,p in sgs.list(pattern:split("+"))do
+			local c = dummyCard(p)
+			if c and c:isKindOf("Slash") and player:getMark("&s4_fuhan-Clear")>0
+			then return true end
+		end
+    end,
+}
+
+s4_fuhan = sgs.CreateTriggerSkill{
+    name = "s4_fuhan",
+    shiming_skill = true,
+    events = {sgs.DrawNCards, sgs.Death, sgs.EventPhaseEnd},
+    waked_skills = "kunfen",
+    view_as_skill = s4_fuhanVS,
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.DrawNCards then
+            local draw = data:toDraw()
+            if draw.reason ~= "draw_phase" then return false end
+            if player:getMark("s4_fuhan_fail") > 0 then return false end
+            if player:askForSkillInvoke(self:objectName(), data) then
+                room:broadcastSkillInvoke(self:objectName())
+                room:sendCompulsoryTriggerLog(player, self:objectName())
+                if player:getMark("s4_fuhan_success") == 0 then
+                    room:loseHp(player, 1, true, player, self:objectName())
+                end
+                if player:isAlive() then
+                    local draw = data:toDraw()
+                    draw.num = draw.num + 2
+                    data:setValue(draw)
+                    room:setPlayerMark(player, "&s4_fuhan-Clear", 1)
+                end
+            end
+        elseif event == sgs.Death then
+            if player:getMark("s4_fuhan_success") > 0 or player:getMark("s4_fuhan_fail") > 0 then return end
+            local death = data:toDeath()
+            if death.damage and death.damage.from:objectName() == player:objectName() then
+                ShimingSkillDoAnimate(self,player, true)
+                room:addPlayerMark(player, "s4_fuhan_success")
+                local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+                local cards = death.who:getCards("he")
+                for _,card in sgs.qlist(cards) do
+                    dummy:addSubcard(card)
+                end
+                if cards:length() > 0 then
+                    local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_RECYCLE, player:objectName())
+                    room:obtainCard(player, dummy, reason, false)
+                end
+                dummy:deleteLater()
+                room:recover(player, sgs.RecoverStruct(self:objectName(), player, 1))
+            end
+        elseif event == sgs.EventPhaseEnd then
+            if player:getMark("s4_fuhan_success") > 0 or player:getMark("s4_fuhan_fail") > 0 then return end
+            if player:getPhase() == sgs.Player_Play and player:getMark("damage_point_play_phase") == 0 then
+                ShimingSkillDoAnimate(self,player, false)
+                room:addPlayerMark(player, "s4_fuhan_fail")
+                local choicelist = {}
+                table.insert(choicelist, "draw")
+                if player:isWounded() then
+                    table.insert(choicelist, "recover")
+                end
+                local choice = room:askForChoice(player, self:objectName(), table.concat(choicelist, "+"), data)
+                if choice == "draw" then
+                    player:drawCards(2, self:objectName())
+                elseif choice == "recover" then
+                    room:recover(player, sgs.RecoverStruct(self:objectName(), player, 1))
+                end
+                room:acquireSkill(player, "kunfen")
+            end
+        end
+        return false
+    end,
+}
+
+s4_jiangwei:addSkill(s4_tiaoxin)
+s4_jiangwei:addSkill(s4_fuhan)
+
+sgs.LoadTranslationTable {
+    ["s4_jiangwei"] = "姜维",
+    ["&s4_jiangwei"] = "姜维",
+    ["#s4_jiangwei"] = "",
+    ["~s4_jiangwei"] = "",
+    ["designer:s4_jiangwei"] = "",
+    ["cv:s4_jiangwei"] = "",
+    ["illustrator:s4_jiangwei"] = "",
+
+    ["s4_tiaoxin"] = "挑衅",
+    [":s4_tiaoxin"] = "出牌阶段，你可以令一名其他角色选择一项：1.对你使用一张【杀】（无距离限制）；2.视为对你使用一张【决斗】。其因此对你造成伤害时，你弃置一张牌或令此技能本回合无效。",
+    ["@s4_tiaoxin-discard"] = "请弃置一张牌，否则“挑衅”技能本回合无效",
+    ["@s4_tiaoxin"] = "挑衅：请对 %src 使用一张【杀】或视为对其使用一张【决斗】",
+
+    ["s4_fuhan"] = "复汉",
+    [":s4_fuhan"] = "使命技，<u>摸牌阶段，你可以</u>失去1点体力并<u>多摸两张牌，然后本回合你可以将一张非基本牌当【杀】使用或打出。</u>成功﹔当你杀死一名角色时，你获得其所有牌并回复1点体力，然后获得仅保留下划线描述的“复汉”。失败：出牌阶段结束时，若你此阶段未造成过伤害，你回复1点体力或摸两张牌，然后获得“困奋”。",
+    [":s4_fuhan2"] = "摸牌阶段，你可以多摸两张牌，然后本回合你可以将一张非基本牌当【杀】使用或打出。",
+
+}
 
 
 
