@@ -5,7 +5,7 @@ general_generator.py
 scarlet.txt
 sanguosha.i
 extra.lua
-src/*
+src/old/*
 fixandadd.lua
 jiangbao.lua
 whatever.lua
