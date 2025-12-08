@@ -4,6 +4,7 @@ extension_heg = sgs.Package("new_heg", sgs.Package_GeneralPack)
 extension_hegbian = sgs.Package("heg_bian", sgs.Package_GeneralPack)
 extension_hegquan = sgs.Package("heg_quan", sgs.Package_GeneralPack)
 extension_heglordex = sgs.Package("heg_lordex", sgs.Package_GeneralPack)
+extension_hegpurplecloud = sgs.Package("heg_purplecloud", sgs.Package_GeneralPack)
 extension_twyj = sgs.Package("fixandadd_twyj", sgs.Package_GeneralPack)
 local Guandu_event_only = false --OL官渡之战随机事件
 local Guandu_event_reward = false 
@@ -77,6 +78,71 @@ function ChoiceLog(player, choice, to)
 	player:getRoom():sendLog(log)
 end
 
+function IsBigKingdomPlayer(player)
+	-- 判断某个角色是否为大势力角色
+	-- 大势力定义: 某势力的存活角色数大于或等于2且为全场最多（或之一）
+	local room = player:getRoom()
+	local kingdom_count = {} -- 统计各势力存活角色数
+	
+	-- 遍历所有存活角色，统计各势力人数
+	for _, p in sgs.qlist(room:getAlivePlayers()) do
+		local kingdom = p:getKingdom()
+		if kingdom_count[kingdom] then
+			kingdom_count[kingdom] = kingdom_count[kingdom] + 1
+		else
+			kingdom_count[kingdom] = 1
+		end
+	end
+	
+	-- 找出最大势力人数
+	local max_count = 0
+	for _, count in pairs(kingdom_count) do
+		if count > max_count then
+			max_count = count
+		end
+	end
+	
+	-- 判断该角色所在势力是否为大势力
+	local player_kingdom = player:getKingdom()
+	local player_kingdom_count = kingdom_count[player_kingdom] or 0
+	
+	-- 大势力条件: 人数>=2 且 人数=最大人数
+	return player_kingdom_count >= 2 and player_kingdom_count == max_count
+end
+
+function IsBigKingdomPlayerClient(player)
+	-- 判断某个角色是否为大势力角色（不使用getRoom）
+	-- 大势力定义: 某势力的存活角色数大于或等于2且为全场最多（或之一）
+	local kingdom_count = {} -- 统计各势力存活角色数
+	
+	-- 遍历所有存活角色（包括自己），统计各势力人数
+	for _, p in sgs.qlist(player:getAliveSiblings(true)) do
+		local kingdom = p:getKingdom()
+		if kingdom_count[kingdom] then
+			kingdom_count[kingdom] = kingdom_count[kingdom] + 1
+		else
+			kingdom_count[kingdom] = 1
+		end
+	end
+	
+	-- 找出最大势力人数
+	local max_count = 0
+	for _, count in pairs(kingdom_count) do
+		if count > max_count then
+			max_count = count
+		end
+	end
+	
+	-- 判断该角色所在势力是否为大势力
+	local player_kingdom = player:getKingdom()
+	local player_kingdom_count = kingdom_count[player_kingdom] or 0
+	
+	-- 大势力条件: 人数>=2 且 人数=最大人数
+	return player_kingdom_count >= 2 and player_kingdom_count == max_count
+end
+
+
+
 card_used = sgs.CreateTriggerSkill{
 	name = "card_used",
 	events = {sgs.PreCardUsed, sgs.PreCardResponded},
@@ -100,6 +166,7 @@ card_used = sgs.CreateTriggerSkill{
 				room:addPlayerMark(player, "used-Clear")
 				if player:getPhase() == sgs.Player_Play then
 					room:addPlayerMark(player, "used-PlayClear")
+					room:addPlayerMark(player, "usedPlay-Clear")
 				end
 			end
 			room:addPlayerMark(player, "us-Clear")
@@ -5266,6 +5333,3038 @@ heg_congjian = sgs.CreateTriggerSkill{
 heg_zhangxiu:addSkill(heg_fudi)
 heg_zhangxiu:addSkill(heg_congjian)
 
+heg_mengda = sgs.General(extension_heglordex, "heg_mengda", "shu+wei", 4)
+
+heg_qiuan = sgs.CreateTriggerSkill{
+	name = "heg_qiuan",
+	events = {sgs.DamageInflicted},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local damage = data:toDamage()
+		
+		if player:getPile("heg_qiuan_han"):isEmpty() then
+			local ids = sgs.IntList()
+			if damage.card:isVirtualCard() then
+				ids = damage.card:getSubcards()
+			else
+				ids:append(damage.card:getEffectiveId())
+			end
+			if ids:isEmpty() then return end
+			for _, id in sgs.qlist(ids) do
+				if room:getCardPlace(id) ~= sgs.Player_PlaceTable then return end
+			end
+			if damage.card then
+				room:broadcastSkillInvoke(self:objectName())
+				room:addToPile(player, damage.card, "heg_qiuan_han", false)
+				damage.prevented = true
+				data:setValue(damage)
+				return true
+			end
+		end
+		return false
+	end
+}
+
+heg_liangfan = sgs.CreateTriggerSkill{
+	name = "heg_liangfan",
+	events = {sgs.EventPhaseStart, sgs.Damage},
+	frequency = sgs.Skill_Compulsory,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_Start then
+				if not player:getPile("heg_qiuan_han"):isEmpty() then
+					room:broadcastSkillInvoke(self:objectName())
+					local cards_ids = player:getPile("heg_qiuan_han")
+					local dummy = sgs.Sanguosha:cloneCard("slash")
+					dummy:addSubcards(player:getPile("heg_qiuan_han"))
+					dummy:deleteLater()
+					room:obtainCard(player, dummy)
+					for _, id in sgs.qlist(cards_ids) do
+						if room:getCardPlace(id) == sgs.Player_PlaceHand and room:getCardOwner(id):objectName() == player:objectName() then
+							room:setCardTip(player, id, "heg_liangfan-Clear")
+						end
+					end
+					room:loseHp(player, 1, true, self:objectName())
+				end
+			end
+		elseif event == sgs.Damage then
+			local damage = data:toDamage()
+			if damage.card and damage.card:hasTip("heg_liangfan-Clear") then
+				if not damage.to:isNude() then
+					local id = room:askForCardChosen(player, damage.to, "he", self:objectName())
+					local card = sgs.Sanguosha:getCard(id)
+					room:obtainCard(player, card, false)
+					room:broadcastSkillInvoke(self:objectName(), 2)
+				end
+			end
+		end
+		return false
+	end
+}
+
+heg_mengda:addSkill(heg_qiuan)
+heg_mengda:addSkill(heg_liangfan)
+
+heg_liuqi = sgs.General(extension_heglordex, "heg_liuqi", "shu+qun", 4)
+
+heg_wenji_buff = sgs.CreateTargetModSkill{
+	name = "#heg_wenji_buff",
+	residue_func = function(self, from, card, to)
+		if from:hasSkill("heg_wenji") and card and from:getMark("heg_wenji"..card:getEffectiveId().."-Clear") > 0 then
+			return 1000
+		end
+		return 0
+	end,
+	distance_limit_func = function(self, from, card, to)
+		if from:hasSkill("heg_wenji") and card and from:getMark("heg_wenji"..card:getEffectiveId().."-Clear") > 0 then
+			return 1000
+		end
+		return 0
+	end,
+}
+
+heg_wenji = sgs.CreateTriggerSkill{
+	name = "heg_wenji",
+	events = {sgs.EventPhaseStart, sgs.CardUsed},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_Play then
+				local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName(), "heg_wenji-invoke", true, true)
+				if target then
+					room:broadcastSkillInvoke(self:objectName())
+					local card = room:askForCard(target, "..!", "@heg_wenji:" .. player:objectName(), sgs.QVariant(), sgs.Card_MethodNone)
+					if card then
+						room:moveCardTo(card, player, sgs.Player_PlaceHand, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, target:objectName(), player:objectName(), self:objectName(), ""))
+						if room:askForSkillInvoke(target, self:objectName(), ToData(player)) then
+							room:setPlayerMark(player, "heg_wenji"..card:getEffectiveId().."-Clear", 1)
+							room:setCardTip(player, card:getEffectiveId(), "heg_wenji-Clear")
+						else
+							local disable = sgs.IntList()
+							disable:append(card:getEffectiveId())
+							local id = room:askForCardChosen(player, player, "he", self:objectName(), true, sgs.Card_MethodNone, disable, false)
+							if id > -1 then
+								local give_card = sgs.Sanguosha:getCard(id)
+								room:moveCardTo(give_card, target, sgs.Player_PlaceHand, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), target:objectName(), self:objectName(), ""))
+							end
+						end
+					end
+				end
+			end
+		elseif event == sgs.CardUsed then
+			local use = data:toCardUse()
+			if use.from and use.from:objectName() == player:objectName() then
+				local card = use.card
+				if player:getMark("heg_wenji"..card:getEffectiveId().."-Clear") > 0 then
+					use.m_addHistory = false
+					data:setValue(use)
+					local log = sgs.LogMessage()
+					log.type = "$NoRespond_All"
+					log.from = use.from
+					log.arg = self:objectName()
+					log.card_str = use.card:toString()
+					room:sendLog(log)
+					local use = data:toCardUse()
+					local no_respond_list = use.no_respond_list
+					table.insert(no_respond_list, "_ALL_TARGETS")
+					use.no_respond_list = no_respond_list
+					data:setValue(use)
+				end
+			end
+		end
+		return false
+	end
+}
+heg_tunjiang = sgs.CreateTriggerSkill{
+	name = "heg_tunjiang",
+	events = {sgs.CardUsed,sgs.EventPhaseStart},
+	can_trigger = function(self,player)
+		return player and player:isAlive()
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.CardUsed then
+			local use = data:toCardUse()
+			if use.card:isKindOf("SkillCard") or player:getPhase() ~= sgs.Player_Play then return false end
+			for _,p in sgs.qlist(use.to)do
+				if p~=player then
+					player:addMark("heg_tunjiang-Clear")
+					break
+				end
+			end
+		elseif player:getPhase() == sgs.Player_Finish and player:getMark("heg_tunjiang-Clear")<1 and player:hasSkill(self) and player:getMark("usedPlay-Clear") > 0 and player:askForSkillInvoke(self) then
+			player:peiyin("tunjiang")
+			local kingdoms = {}
+			for _,p in sgs.qlist(room:getAlivePlayers())do
+				local kingdom = p:getKingdom()
+				if not table.contains(kingdoms,kingdom) then
+					table.insert(kingdoms,kingdom)
+				end
+			end
+			player:drawCards(#kingdoms,self:objectName())
+		end
+		return false
+	end
+}
+
+
+
+
+heg_liuqi:addSkill(heg_wenji_buff)
+heg_liuqi:addSkill(heg_wenji)
+extension_heglordex:insertRelatedSkills("heg_wenji", "#heg_wenji_buff")
+heg_liuqi:addSkill(heg_tunjiang)
+
+heg_mifangfushiren = sgs.General(extension_heglordex,  "heg_mifangfushiren", "shu+wu", 4)
+
+heg_fengshih_buff = sgs.CreateTriggerSkill{
+	name = "#heg_fengshih_buff",
+	events = {sgs.DamageCaused},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local damage = data:toDamage()
+		if damage.card and damage.card:hasFlag("heg_fengshih") then
+			player:damageRevises(data, 1)
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end
+}
+
+heg_fengshih = sgs.CreateTriggerSkill{
+	name = "heg_fengshih",
+	events = { sgs.TargetConfirmed },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.TargetConfirmed then
+			local use = data:toCardUse()
+			if use.from and use.from:objectName() ~= use.to:first():objectName() and use.to:length() == 1 and (use.to:contains(player) or player:objectName() == use.from:objectName()) and not use.card:isKindOf("SkillCard") then
+				if use.from:objectName() == player:objectName() then
+					local target = use.to:first()
+					if (target:getHandcardNum() < player:getHandcardNum() and not target:isNude() and not player:isNude() and player:canDiscard(player, "he") and player:canDiscard(target, "he")) then
+							room:broadcastSkillInvoke(self:objectName(), 1)
+							local from_card = room:askForCard(player, "..", "@heg_fengshih:" .. target:objectName(), data, sgs.Card_MethodDiscard)
+							if from_card then
+								local id = room:askForCardChosen(player, target, "he", self:objectName(), false, sgs.Card_MethodDiscard)
+								room:throwCard(id, target, player)
+								room:setCardFlag(use.card, "heg_fengshih")
+							end
+						end
+					end
+				else
+					target = use.from
+					if (player:getHandcardNum() < target:getHandcardNum() and not target:isNude() and not player:isNude() and target:canDiscard(player, "he") and target:canDiscard(target, "he")) then
+						room:broadcastSkillInvoke(self:objectName(), 1)
+						local from_card = room:askForCard(target, "..", "@heg_fengshih:" .. player:objectName(), data, sgs.Card_MethodDiscard)
+						if from_card then
+							local id = room:askForCardChosen(target, player, "he", self:objectName(), false, sgs.Card_MethodDiscard)
+							room:throwCard(id, player, target)
+							room:setCardFlag(use.card, "heg_fengshih")
+						end
+					end
+				end
+			end
+		return false
+	end,
+}
+heg_mifangfushiren:addSkill(heg_fengshih_buff)
+heg_mifangfushiren:addSkill(heg_fengshih)
+extension_heglordex:insertRelatedSkills("heg_fengshih", "#heg_fengshih_buff")
+
+heg_zhanglu = sgs.General(extension_heglordex,  "heg_zhanglu", "qun+wei", 4)
+
+heg_bushi = sgs.CreateTriggerSkill{
+	name = "heg_bushi",
+	events = {sgs.Damaged, sgs.Damage},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.Damaged then
+			local damage = data:toDamage()
+			if damage.to and damage.to:objectName() == player:objectName() then
+				for i = 1, damage.damage do
+					local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName(), "heg_bushi-invoke", true, true)
+					if target then
+						target:drawCards(1, self:objectName())
+					else
+						break
+					end
+				end
+			end
+		elseif event == sgs.Damage then
+			local damage = data:toDamage()
+			if damage.from and damage.from:objectName() == player:objectName() then
+				local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName(), "heg_bushi-invoke", true, true)
+				if target then
+					room:broadcastSkillInvoke(self:objectName(), 2)
+					target:drawCards(1, self:objectName())
+				end
+			end
+		end
+		return false
+	end
+}
+
+heg_midao = sgs.CreateTriggerSkill{
+	name = "heg_midao",
+	events = {sgs.TargetConfirming, sgs.DamageCaused},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.TargetConfirming then
+			local use = data:toCardUse()
+			if use.from and use.from:getMark("heg_midao-PlayClear") == 0 and (use.card:isKindOf("Slash") or (use.card:isKindOf("TrickCard") and use.card:isDamageCard())) and use.to:length() > 0 then
+				local target = use.to:first()
+				local card = room:askForCard(use.from, "..", "@heg_midao-give:" .. player:objectName(), data, sgs.Card_MethodNone)
+				if card then
+					room:giveCard(use.from, player, card, self:objectName())
+					local suit = room:askForSuit(player, self:objectName())
+					local nature = room:askForChoice(player, self:objectName(), "fire+thunder+ice+normal")
+					use.card:setTag("heg_midao_suit", sgs.QVariant(sgs.Card_Suit2String(suit)))
+					use.card:setTag("heg_midao_nature", sgs.QVariant(nature))
+					room:setPlayerMark(use.from, "heg_midao-PlayClear", 1)
+				end
+			end
+		elseif event == sgs.DamageCaused then
+			local damage = data:toDamage()
+			if damage.card and damage.card:getTag("heg_midao_suit"):toString() ~= "" and damage.card:getTag("heg_midao_nature"):toString() ~= "" then
+				local suit = damage.card:getTag("heg_midao_suit"):toString()
+				local nature = damage.card:getTag("heg_midao_nature"):toString()
+				if sgs.Card_Suit2String(damage.card:getSuit()) ~= suit then
+					local log = sgs.LogMessage()
+					log.type = "#heg_midao_suit"
+					log.from = damage.from
+					log.to:append(damage.to)
+					log.arg  = self:objectName()
+					log.arg2 = suit
+					room:sendLog(log)
+					local wc = sgs.Sanguosha:getWrappedCard(damage.card:getEffectiveId())
+					wc:setSuit(suit)
+					room:broadcastUpdateCard(room:getPlayers(),wc:getEffectiveId(),wc)
+				end
+				damage.nature = sgs.DamageStruct_Normal
+				if nature == "fire" then
+					damage.nature = sgs.DamageStruct_Fire
+				elseif nature == "thunder" then
+					damage.nature = sgs.DamageStruct_Thunder
+				elseif nature == "ice" then
+					damage.nature = sgs.DamageStruct_Ice
+				end
+				data:setValue(damage)
+			end
+		end
+		return false
+	end
+}
+
+heg_zhanglu:addSkill(heg_bushi)
+heg_zhanglu:addSkill(heg_midao)
+
+heg_shixie = sgs.General(extension_heglordex,  "heg_shixie", "qun+wu", 4)
+
+heg_lixia = sgs.CreateTriggerSkill{
+	name = "heg_lixia",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.EventPhaseProceeding},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if player:getPhase() == sgs.Player_Start then
+			for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+				if not player:inMyAttackRange(p) then
+					local choieclist = {}
+					table.insert(choieclist, "draw")
+					if not p:getEquips():isEmpty() and player:canDiscard(p, "e") then
+						table.insert(choieclist, "discard")
+					end
+					local choice = room:askForChoice(player, self:objectName(), table.concat(choieclist, "+"), ToData(p))
+					if choice == "draw" then
+						room:broadcastSkillInvoke(self:objectName(), 1)
+						p:drawCards(1, self:objectName())
+					else
+						room:broadcastSkillInvoke(self:objectName(), 2)
+						if player:canDiscard(p, "e") then
+							local id = room:askForCardChosen(p, player, "e", self:objectName(), false, sgs.Card_MethodDiscard)
+							local card = sgs.Sanguosha:getCard(id)
+							room:throwCard(card, player, p)
+						end
+						room:loseHp(p, 1, true, player,self:objectName())
+					end
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end
+}
+
+heg_biluan = sgs.CreateDistanceSkill{
+	name = "heg_biluan",
+	correct_func = function(self, from, to)
+        if to:hasSkill("heg_biluan") then
+            return to:getEquips():length()
+        end
+	end
+}
+
+heg_shixie:addSkill(heg_lixia)
+heg_shixie:addSkill(heg_biluan)
+
+heg_nos_shixie = sgs.General(extension_heglordex,  "heg_nos_shixie", "qun+wu", 4)
+
+heg_nos_lixia = sgs.CreateTriggerSkill{
+	name = "heg_nos_lixia",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.EventPhaseProceeding},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if player:getPhase() == sgs.Player_Start then
+			for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+				if p:getEquips():length() > 0 and player:canDiscard(p, "e") then
+					if room:askForSkillInvoke(player, self:objectName(), ToData(p)) then
+						local id = room:askForCardChosen(p, player, "e", self:objectName(), false, sgs.Card_MethodDiscard, sgs.IntList(), true)
+						if id > -1 then
+							local card = sgs.Sanguosha:getCard(id)
+							room:throwCard(card, player, p)
+							local choieclist = {}
+							table.insert(choieclist, "draw")
+							if player:getCardCount(true) >= 2 then
+								table.insert(choieclist, "discard")
+							end
+							table.insert(choieclist, "losehp")
+							local choice = room:askForChoice(player, self:objectName(), table.concat(choieclist, "+"), ToData(p))
+							if choice == "draw" then
+								p:drawCards(2, self:objectName())
+							elseif choice == "discard" then
+								room:askForDiscard(player, self:objectName(), 2, 2, false, true)
+							elseif choice == "losehp" then
+								room:loseHp(player, 1, true, p,self:objectName())
+							end
+						end
+					end
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end
+}
+
+heg_nos_biluan = sgs.CreateDistanceSkill{
+	name = "heg_nos_biluan",
+	correct_func = function(self, from, to)
+        if to:hasSkill("heg_nos_biluan") then
+            return math.max(to:getEquips():length(), 1)
+        end
+	end
+}
+
+heg_nos_shixie:addSkill(heg_nos_lixia)
+heg_nos_shixie:addSkill(heg_nos_biluan)
+
+heg_tangzi = sgs.General(extension_heglordex,  "heg_tangzi", "wu+wei", 4)
+
+heg_xingzhao_buff = sgs.CreateMaxCardsSkill{
+	name = "#heg_xingzhao_buff",
+	extra_func = function(self, target)
+		if target:hasSkill("heg_xingzhao") then
+			local kingdoms = {}
+			for _,p in sgs.qlist(target:getAliveSiblings(true))do
+				local kingdom = p:getKingdom()
+				if not table.contains(kingdoms,kingdom) and p:isWounded() then
+					table.insert(kingdoms,kingdom)
+				end
+			end
+			if #kingdoms >=3 then
+				return 4
+			end
+		end
+		return 0
+	end
+}
+heg_xingzhao_clear = sgs.CreateTriggerSkill{
+	name = "#heg_xingzhao_clear",
+	events = {sgs.HpChanged, sgs.MaxHpChanged, sgs.Death, sgs.KingdomChanged, sgs.EventAcquireSkill, sgs.EventLoseSkill, },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.EventLoseSkill and data:toString() == "heg_xingzhao" then
+			local kingdoms = {}
+			for _,p in sgs.qlist(room:getAlivePlayers())do
+				local kingdom = p:getKingdom()
+				if not table.contains(kingdoms,kingdom) and p:isWounded() then
+					table.insert(kingdoms,kingdom)
+				end
+			end
+			if #kingdoms >=1 then
+				room:handleAcquireDetachSkills(player, "-xunxun", true)
+			end
+		else
+			local kingdoms = {}
+			for _,p in sgs.qlist(room:getAlivePlayers())do
+				local kingdom = p:getKingdom()
+				if not table.contains(kingdoms,kingdom) and p:isWounded() then
+					table.insert(kingdoms,kingdom)
+				end
+			end
+			if #kingdoms >=1 then
+				for _, p in sgs.qlist(room:findPlayerBySkillName("heg_xingzhao")) do
+					room:handleAcquireDetachSkills(p, "xunxun", true)
+				end
+			else
+				for _, p in sgs.qlist(room:findPlayerBySkillName("heg_xingzhao")) do
+					room:handleAcquireDetachSkills(p, "-xunxun", true)
+				end
+			end
+		end
+		
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end
+}
+
+heg_xingzhao = sgs.CreateTriggerSkill{
+	name = "heg_xingzhao",
+	waked_skills = "xunxun",
+	frequency = sgs.Skill_Compulsory,
+	events = { sgs.Damaged, sgs.CardsMoveOneTime },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.Damaged then
+			local damage = data:toDamage()
+			if damage.to and damage.to:objectName() == player:objectName() then
+				local kingdoms = {}
+				for _,p in sgs.qlist(room:getAlivePlayers())do
+					local kingdom = p:getKingdom()
+					if not table.contains(kingdoms,kingdom) and p:isWounded() then
+						table.insert(kingdoms,kingdom)
+					end
+				end
+				if #kingdoms >=2 then
+					local target
+					if damage.from and damage.from:isAlive() then
+						if damage.from:getHandcardNum() < player:getHandcardNum() then
+							target = damage.from
+						elseif player:getHandcardNum() < damage.from:getHandcardNum() then
+							target = player
+						end
+					else
+						target = player
+					end
+					if target then
+						room:broadcastSkillInvoke(self:objectName())
+						target:drawCards(1, self:objectName())
+					end
+				end
+			end
+		elseif event == sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			if move.from and move.from:objectName() == player:objectName() and move.from_places:contains(sgs.Player_PlaceEquip) then
+				local kingdoms = {}
+				for _,p in sgs.qlist(room:getAlivePlayers())do
+					local kingdom = p:getKingdom()
+					if not table.contains(kingdoms,kingdom) and p:isWounded() then
+						table.insert(kingdoms,kingdom)
+					end
+				end
+				if #kingdoms >=4 then
+					room:broadcastSkillInvoke(self:objectName())
+					player:drawCards(1, self:objectName())
+				end
+			end
+		end
+		return false
+	end
+}
+
+heg_tangzi:addSkill(heg_xingzhao_buff)
+heg_tangzi:addSkill(heg_xingzhao_clear)
+heg_tangzi:addSkill(heg_xingzhao)
+extension_heglordex:insertRelatedSkills("heg_xingzhao", "#heg_xingzhao_buff")
+extension_heglordex:insertRelatedSkills("heg_xingzhao", "#heg_xingzhao_clear")
+
+heg_dongzhao = sgs.General(extension_heglordex,  "heg_dongzhao", "wei", 4)
+
+heg_quanjinCard = sgs.CreateSkillCard{
+	name = "heg_quanjin",
+	target_fixed = false,
+	will_throw = false,
+	filter = function(self, targets, to_select)
+		if #targets == 0 then
+			return to_select:getMark("heg_quanjin-PlayClear") > 0 and to_select:objectName() ~= sgs.Self:objectName()
+		end
+		return false
+	end,
+	on_use = function(self, room, source, targets)
+		room:giveCard(source, targets[1], self, "heg_quanjin")
+		local target = targets[1]
+		local invoked = askCommandTo(player, target, "heg_quanjin")
+		if invoked then
+			source:drawCards(1, "heg_quanjin")
+		else
+			local max = 0
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:getHandcardNum() > max then
+					max = p:getHandcardNum()
+				end
+			end
+			local draw_num = math.min(5, max - source:getHandcardNum())
+			if draw_num > 0 then
+				source:drawCards(draw_num, "heg_quanjin")
+			end
+		end
+	end
+}
+
+heg_quanjinVS = sgs.CreateViewAsSkill{
+	name = "heg_quanjin",
+	n = 1,
+	view_filter = function(self, selected, to_select)
+		return not to_select:isEquipped()
+	end,
+	view_as = function(self, cards)
+		if #cards == 1 then
+			local card = heg_quanjinCard:clone()
+			card:addSubcard(cards[1])
+			return card
+		end
+		return nil
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("#heg_quanjin")
+	end
+}
+heg_quanjin = sgs.CreateTriggerSkill{
+	name = "heg_quanjin",
+	view_as_skill = heg_quanjinVS,
+	events = { sgs.Damaged },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local damage = data:toDamage()
+		if damage.to and damage.to:objectName() == player:objectName() then
+			room:setPlayerMark(player, "heg_quanjin-PlayClear", 1)
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end
+}
+
+heg_zaoyunCard = sgs.CreateSkillCard{
+	name = "heg_zaoyun",
+	target_fixed = false,
+	will_throw = true,
+	filter = function(self, targets, to_select)
+		if #targets == 0 then
+			local distance = sgs.Self:distanceTo(to_select)
+			return distance > 1 and self:subcardsLength() == distance -1
+		end
+		return false
+	end,
+	on_use = function(self, room, source, targets)
+		local target = targets[1]
+		room:setFixedDistance(source, target, 1)
+		room:addPlayerMark(target, "&heg_zaoyun+to+#" .. source:objectName() .. "-Clear", 1)
+		room:damage(sgs.DamageStruct("heg_zaoyun", source, target))
+	end
+}
+heg_zaoyunVS = sgs.CreateViewAsSkill{
+	name = "heg_zaoyun",
+	n = 999,
+	view_filter = function(self, selected, to_select)
+		return not to_select:isEquipped()
+	end,
+	view_as = function(self, cards)
+		if #cards > 0 then
+			local card = heg_zaoyunCard:clone()
+			for _, c in ipairs(cards) do
+				card:addSubcard(c)
+			end
+			return card
+		end
+		return nil
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("#heg_zaoyun")
+	end
+}
+
+heg_zaoyun = sgs.CreateTriggerSkill{
+	name = "heg_zaoyun",
+	view_as_skill = heg_zaoyunVS,
+	events = { sgs.EventPhaseChanging },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local change = data:toPhaseChange()
+		if change.to == sgs.Player_NotActive then
+			for _, p in sgs.qlist(room:getAllPlayers()) do
+				if p:getMark("&heg_zaoyun+to+#" .. player:objectName() .. "-Clear") > 0 then
+					room:removeFixedDistance(player, p, 1)
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end
+}
+
+heg_dongzhao:addSkill(heg_quanjin)
+heg_dongzhao:addSkill(heg_zaoyun)
+
+heg_xushu = sgs.General(extension_heglordex,  "heg_xushu", "shu", 4)
+
+heg_qiance = sgs.CreateTriggerSkill{
+	name = "heg_qiance",
+	events = { sgs.TargetConfirmed },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local use = data:toCardUse()
+		if use.from and use.card:isKindOf("TrickCard") then
+			local targets = sgs.SPlayerList()
+			for _, p in sgs.qlist(use.to) do
+				if IsBigKingdomPlayer(p) then
+					targets:append(p)
+				end
+			end
+			if not targets:isEmpty() then
+				if room:askForSkillInvoke(player, self:objectName(), data) then
+					room:broadcastSkillInvoke(self:objectName())
+					no_respond_list = use.no_respond_list
+					for _, p in sgs.qlist(targets) do
+						no_respond_list:append(p:objectName())
+					end
+					use.no_respond_list = no_respond_list
+					room:sendCompulsoryTriggerLog(player, self:objectName(), true)
+					data:setValue(use)
+					local log = sgs.LogMessage()
+					log.type = "$NoRespond"
+					log.from = use.from
+					log.to = targets
+					log.arg = self:objectName()
+					log.card_str = use.card:toString()
+					room:sendLog(log)
+				end
+			end
+		end
+		return false
+	end,
+}
+
+heg_jujian = sgs.CreateTriggerSkill{
+	name = "heg_jujian",
+	events = { sgs.EnterDying },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local dying = data:toDying()
+		if dying.who and dying.who:objectName() == player:objectName() then
+			for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+				if room:askForSkillInvoke(player, self:objectName(), data) then
+					room:broadcastSkillInvoke(self:objectName())
+					room:recover(player, sgs.RecoverStruct(p, nil, 1-player:getHp(), self:objectName()))
+					ChangeGeneral(room, player, "heg_xushu")
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end
+}
+
+heg_xushu:addSkill(heg_qiance)
+heg_xushu:addSkill(heg_jujian)
+
+heg_yanbaihu = sgs.General(extension_heglordex,  "heg_yanbaihu", "qun", 4)
+
+heg_zhidao_prohibit = sgs.CreateProhibitSkill{
+	name = "#heg_zhidao_prohibit",
+	is_prohibited = function(self, from, to, card)
+		if from and from:hasSkill("heg_zhidao") then
+			for _, p in sgs.qlist(from:getAliveSiblings()) do
+				local invoke = false
+				if p:getMark("&heg_zhidao+to+#" .. from:objectName() .. "-Clear") > 0 then
+					invoke = true
+				end
+			end
+			if invoke and to and to:objectName() ~= from:objectName() and to:getMark("&heg_zhidao+to+#" .. from:objectName() .. "-Clear") == 0 then
+				return true
+			end
+		end
+	end
+}
+
+heg_zhidao_Clear = sgs.CreateTriggerSkill{
+	name = "#heg_zhidao_Clear",
+	events = { sgs.EventPhaseChanging },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local change = data:toPhaseChange()
+		if change.to == sgs.Player_NotActive then
+			for _, p in sgs.qlist(room:getAllPlayers()) do
+				if p:getMark("&heg_zhidao+to+#" .. player:objectName() .. "-Clear") > 0 then
+					room:removeFixedDistance(player, p, 1)
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end
+}
+
+heg_zhidao = sgs.CreateTriggerSkill{
+	name = "heg_zhidao",
+	events = { sgs.EventPhaseStart, sgs.Damage },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_Play then
+				local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName(), "heg_zhidao-invoke", true, true)
+				if target then
+					room:addPlayerMark(target, "&heg_zhidao+to+#" .. player:objectName() .. "-Clear", 1)
+					room:setFixedDistance(player, target, 1)
+				end
+			end
+		elseif event == sgs.Damage then
+			local damage = data:toDamage()
+			if damage.to and damage.to:getMark("&heg_zhidao+to+#" .. player:objectName() .. "-Clear") > 0 and player:getMark("heg_zhidao-Clear") == 0 then
+				if not damage.to:isNude() then
+					local id = room:askForCardChosen(player, target, "he", self:objectName(), false, sgs.Card_MethodNone)
+					local card = sgs.Sanguosha:getCard(id)
+					room:obtainCard(player, card, false)
+				end
+				room:setPlayerMark(player, "heg_zhidao-Clear", 1)
+			end
+		end
+		return false
+	end,
+}
+
+heg_jilix_buff = sgs.CreateTriggerSkill{
+	name = "#heg_jilix_buff",
+	events = {sgs.CardFinished},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local use = data:toCardUse()
+		if use.card and use.card:hasFlag("heg_jilix") then
+			room:setCardFlag(use.card, "-heg_jilix")
+            if use.from:objectName() == player:objectName() then
+                local targets = sgs.SPlayerList()
+                for _,to in sgs.qlist(use.to) do
+                    if to:isAlive() then
+                        targets:append(to)
+                    end
+                end
+                if (not targets:isEmpty()) then
+                    local use_again = sgs.CardUseStruct(use.card,player,targets)
+				    room:setTag("UseHistory"..use.card:toString(),ToData(use_again))
+				    use.card:use(room,player,targets)
+                end
+            end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end
+}
+heg_jilix = sgs.CreateTriggerSkill{
+	name = "heg_jilix",
+	events = { sgs.TargetConfirmed, sgs.Damaged },
+	on_trigger = function(self, event, player, data)
+		if event == sgs.TargetConfirmed then
+			local room = player:getRoom()
+			local use = data:toCardUse()
+			if use.from and use.to:length() == 1 and use.to:contains(player) and use.card:isRed() and (use.card:isKindOf("BasicCard") or use.card:isNDTrick()) then
+				room:setCardFlag(use.card, "heg_jilix")
+			end
+		elseif event == sgs.Damaged then
+			local damage = data:toDamage()
+			if damage.to and damage.to:objectName() == player:objectName() then
+				room:addPlayerMark(player, "heg_jilix-Clear", 1)
+				if player:getMark("heg_jilix-Clear") >= 2 then
+					local log = sgs.LogMessage()
+					if player:getGeneralName() == "heg_yanbaihu" then
+						log.type = "#YHXiandao"
+						log.arg = player:getGeneralName()
+						log.from = player
+						room:sendLog(log)
+						room:changeHero(player, "", false, false, false, false)
+					elseif player:getGeneral2Name() == "heg_yanbaihu" then
+						log.type = "#YHXiandao2"
+						log.arg = player:getGeneral2Name()
+						log.from = player
+						room:sendLog(log)
+						room:changeHero(player, "", false, false, true, false)
+					else
+						room:handleAcquireDetachSkills(player, "-heg_zhidao")
+						room:handleAcquireDetachSkills(player, "-heg_jilix")
+					end
+					damage.prevented = true
+					data:setValue(damage)
+					return true
+				end
+			end
+		end
+		return false
+	end,
+}
+
+heg_yanbaihu:addSkill(heg_zhidao)
+heg_yanbaihu:addSkill(heg_zhidao_prohibit)
+heg_yanbaihu:addSkill(heg_zhidao_Clear)
+heg_yanbaihu:addSkill(heg_jilix)
+heg_yanbaihu:addSkill(heg_jilix_buff)
+extension_heglordex:insertRelatedSkills("heg_zhidao", "#heg_zhidao_prohibit")
+extension_heglordex:insertRelatedSkills("heg_zhidao", "#heg_zhidao_Clear")
+extension_heglordex:insertRelatedSkills("heg_jilix", "#heg_jilix_buff")
+
+heg_wenqin = sgs.General(extension_heglordex,  "heg_wenqin", "wei", 4)
+
+heg_jinfaCard = sgs.CreateSkillCard{
+	name = "heg_jinfa",
+	target_fixed = false,
+	will_throw = true,
+	filter = function(self, targets, to_select)
+		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isNude()
+	end,
+	on_use = function(self, room, source, targets)
+		local target = targets[1]
+		local give_card = room:askForCard(target, "EquipCard", "@heg_jinfa:"..source:objectName(), ToData(source), sgs.Card_MethodNone) 
+		if give_card then
+			room:giveCard(target, source, give_card, "heg_jinfa")
+			if give_card:getSuit() == sgs.Card_Spade then
+				local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+				slash:setSkillName("heg_jinfa")
+				slash:deleteLater()
+				local use = sgs.CardUseStruct()
+				use.card = slash
+				use.from = target
+				use.to:append(source)
+				room:useCard(use)
+			end
+		else
+			local id = room:askForCardChosen(source, target, "he", "heg_jinfa", false, sgs.Card_MethodNone)
+			local card = sgs.Sanguosha:getCard(id)
+			room:obtainCard(source, card, false)
+		end
+	end
+}
+
+heg_jinfa = sgs.CreateViewAsSkill{
+	name = "heg_jinfa",
+	n = 1,
+	view_filter = function(self, selected, to_select)
+		return true
+	end,
+	view_as = function(self, cards)
+		if #cards == 1 then
+			local card = heg_jinfaCard:clone()
+			card:addSubcard(cards[1])
+			return card
+		end
+		return nil
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("heg_jinfa")
+	end
+}
+
+heg_wenqin:addSkill(heg_jinfa)
+
+heg_xiahouba = sgs.General(extension_heglordex,  "heg_xiahouba", "shu", 4)
+
+heg_baolie_buff = sgs.CreateTargetModSkill{
+	name = "#heg_baolie_buff",
+	pattern = "Slash",
+	distance_limit_func = function(self, from, card, to)
+		if from:hasSkill("heg_baolie") and to:getHp() >= from:getHp() then
+			return 1000
+		end
+		return 0
+	end,
+	residue_func = function(self, from, card, to)
+		if from:hasSkill("heg_baolie") and to:getHp() >= from:getHp() then
+			return 1000
+		end
+		return 0
+	end
+}
+
+heg_baolie = sgs.CreateTriggerSkill{
+	name = "heg_baolie",
+	events = { sgs.EventPhaseStart },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if player:getPhase() == sgs.Player_Play then
+			local targets = sgs.SPlayerList()
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:inMyAttackRange(player) then
+					targets:append(p)
+				end
+			end
+			for _, target in sgs.qlist(targets) do
+				local use_slash = room:askForUseSlashTo(target,player,"@heg_baolie:"..player:objectName(),false)
+				if use_slash then
+				else
+					if player:canDiscard(target, "he") then
+						local id = room:askForCardChosen(player, target, "he", "heg_baolie", false, sgs.Card_MethodDiscard)
+						local card = sgs.Sanguosha:getCard(id)
+						room:throwCard(card, player, target)
+					end
+				end
+			end
+		end
+		return false
+	end,
+}
+
+heg_xiahouba:addSkill(heg_baolie_buff)
+heg_xiahouba:addSkill(heg_baolie)
+extension_heglordex:insertRelatedSkills("heg_baolie", "#heg_baolie_buff")
+
+heg_xuyou = sgs.General(extension_heglordex,  "heg_xuyou", "wei+qun", 3)
+
+heg_shicai = sgs.CreateTriggerSkill{
+	name = "heg_shicai",
+	frequency = sgs.Skill_Compulsory,
+	events = { sgs.Damaged },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local damage = data:toDamage()
+		
+		if damage.damage == 1 then
+			player:drawCards(1, self:objectName())
+		else
+			room:askForDiscard(player, self:objectName(), 2, 2, false, true)
+		end
+		return false
+	end,
+}
+
+heg_chenglue = sgs.CreateTriggerSkill{
+	name = "heg_chenglue",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.CardFinished, sgs.Damaged},
+	on_trigger = function(self, event, player, data, room)
+		if event == sgs.Damaged then
+			local damage = data:toDamage()
+			if damage.to and damage.to:objectName() == player:objectName() and player:hasSkill(self:objectName()) and damage.card then
+				room:setCardFlag(damage.card, "heg_chenglue".. player:objectName())
+			end
+			return false
+		end
+		local use = data:toCardUse()
+		if use.to:length() > 1 and not use.card:isKindOf("SkillCard") then
+			for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+				if use.from:isAlive() and room:askForSkillInvoke(p, self:objectName(), sgs.QVariant("to_draw:" .. use.from:objectName())) then
+					room:doAnimate(1, p:objectName(), use.from:objectName())
+					room:drawCards(use.from, 1, self:objectName())
+				end
+				if use.card:hasFlag("heg_chenglue".. p:objectName()) then
+					local target = room:askForPlayerChosen(p, room:getAlivePlayers(), self:objectName(), "heg_chenglue-invoke", true, true)
+					if target and use.card:hasFlag("heg_chenglue".. use.from:objectName()) and target:getMark("yin_yang_yu") == 0 then
+						room:broadcastSkillInvoke(self:objectName())
+						room:addPlayerMark(target, "yin_yang_yu")
+					end
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end
+}
+
+heg_sufei = sgs.General(extension_heglordex,  "heg_sufei", "wu", 4)
+
+heg_lianpian_record = sgs.CreateTriggerSkill{
+    name = "#heg_lianpian_record",
+	frequency = sgs.Skill_Frequent,
+	events = {sgs.CardsMoveOneTime},
+	on_trigger = function(self, event, player, data, room)
+		local move = data:toMoveOneTime()
+		local source = -1
+		local players = room:findPlayersBySkillName("heg_lianpian")
+		if players:isEmpty() then return false end
+		if move.from and move.reason.m_playerId and move.to_place == sgs.Player_DiscardPile and bit32.band(move.reason.m_reason,sgs.CardMoveReason_S_MASK_BASIC_REASON)==sgs.CardMoveReason_S_REASON_DISCARD then
+			local player = room:findPlayerByObjectName(move.reason.m_playerId)
+			if player and player:getPhase() ~= sgs.Player_NotActive then
+				room:addPlayerMark(player, "heg_lianpian-Clear", move.card_ids:length())
+			end
+		end
+	end
+}
+
+heg_lianpian = sgs.CreateTriggerSkill{
+	name = "heg_lianpian",
+	events = {sgs.EventPhaseProceeding},
+	on_trigger = function(self, event, player, data, room)
+		if player:getPhase() == sgs.Player_Finish then
+			if player:hasSkill(self:objectName()) then
+				local count = player:getMark("heg_lianpian-Clear")
+				if count > player:getHp() then
+					room:broadcastSkillInvoke(self:objectName())
+					local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName(), "heg_lianpian-invoke", true, true)
+					if target then
+						room:doAnimate(1, player:objectName(), target:objectName())
+						local max_hp = target:getMaxHp()
+						if target:getHandcardNum() < max_hp then
+							target:drawCards(max_hp - target:getHandcardNum(), self:objectName())
+						end
+					end
+				end
+			end
+			for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+				if p:objectName() ~= player:objectName() then
+					local count = player:getMark("heg_lianpian-Clear")
+					if count > p:getHp() then
+						room:broadcastSkillInvoke(self:objectName())
+						local choice = room:askForChoice(p, self:objectName(), "discard+recover+cancel", ToData(player))
+						if choice == "discard" then
+							if player:canDiscard(p, "he") then
+								local id = room:askForCardChosen(player, p, "he", self:objectName(), false, sgs.Card_MethodDiscard)
+								local card = sgs.Sanguosha:getCard(id)
+								room:throwCard(card, player, p)
+							end
+						elseif choice == "recover" then
+							room:recover(p, sgs.RecoverStruct(player, nil, 1, self:objectName()))
+						end
+					end
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end
+}
+heg_sufei:addSkill(heg_lianpian_record)
+heg_sufei:addSkill(heg_lianpian)
+extension_heglordex:insertRelatedSkills("heg_lianpian", "#heg_lianpian_record")
+
+heg_panjun = sgs.General(extension_heglordex,  "heg_panjun", "wu", 3)
+
+heg_congcha_buff = sgs.CreateTriggerSkill{
+	name = "#heg_congcha_buff",
+	events = {sgs.Damaged },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local damage = data:toDamage()
+		for _, p in sgs.qlist(room:findPlayersBySkillName("heg_congcha")) do
+			if player:getMark("&heg_congcha+to+#" .. p:objectName() .. "-"..sgs.Player_RoundStart.."Clear") > 0 then
+				if room:askForSkillInvoke(player, "heg_congcha_buff", ToData(p)) then
+					p:drawCards(2, "heg_congcha")
+					player:drawCards(2, "heg_congcha")
+				else
+					room:loseHp(player, 1, true, p,"heg_congcha")
+				end
+				room:removePlayerMark(player, "&heg_congcha+to+#" .. p:objectName() .. "-"..sgs.Player_RoundStart.."Clear")
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end
+}
+
+heg_congcha = sgs.CreateTriggerSkill{
+	name = "heg_congcha",
+	events = { sgs.EventPhaseProceeding, sgs.DrawNCards },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.EventPhaseProceeding then
+			if player:getPhase() == sgs.Player_Start then
+				local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "heg_congcha-invoke", true, true)
+				if target then
+					room:addPlayerMark(target, "&heg_congcha+to+#"..player:objectName().."-"..sgs.Player_RoundStart.."Clear", 1)
+					room:addPlayerMark(player, "heg_congcha-Clear")
+				end
+			end
+		elseif event == sgs.DrawNCards then
+			local draw = data:toDraw()
+			if draw.reason ~= "draw_phase" then return false end
+			if player:getMark("heg_congcha-Clear") ~= 0 then return false end
+			draw.num = draw.num + 2
+			data:setValue(draw)
+		end
+		return false
+	end,
+}
+
+heg_panjun:addSkill("gongqing")
+heg_panjun:addSkill(heg_congcha)
+heg_panjun:addSkill(heg_congcha_buff)
+extension_heglordex:insertRelatedSkills("heg_congcha", "#heg_congcha_buff")
+
+heg_pengyang = sgs.General(extension_heglordex,  "heg_pengyang", "shu", 3)
+
+heg_jinxian = sgs.CreateTriggerSkill{
+	name = "heg_jinxian",
+	events = { sgs.EventPhaseStart, sgs.Damaged },
+	frequency = sgs.Skill_Limited,
+	limit_mark = "@heg_jinxian",
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if (event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_RoundStart)
+		or (event == sgs.Damaged) then
+			if player:getPhase() == sgs.Player_RoundStart then
+				local targets = sgs.SPlayerList()
+				for _, p in sgs.qlist(room:getAlivePlayers()) do
+					if player:distanceTo(p) <= 1 then
+						targets:append(p)
+					end
+				end
+				if player:getMark("@heg_jinxian") > 0 and not targets:isEmpty() and room:askForSkillInvoke(player, self:objectName()) then
+					room:removePlayerMark(player, "@heg_jinxian")
+					room:broadcastSkillInvoke(self:objectName())
+					for _, p in sgs.qlist(targets) do
+						if p:canDiscard(p, "he") then
+							room:askForDiscard(p, self:objectName(), 2, 2, false, true)
+						end
+					end
+				end
+			end
+		end
+		return false
+	end,
+}
+
+heg_tongling_prohibit = sgs.CreateProhibitSkill{
+	name = "#heg_tongling_prohibit",
+	is_prohibited = function(self, from, to, card)
+		if from and from:hasFlag("heg_tongling_From") then
+			if to and not to:hasFlag("heg_tongling_To") then
+				return true
+			end
+		end
+	end
+}
+
+heg_tongling_buff = sgs.CreateTriggerSkill{
+	name = "#heg_tongling_buff",
+	events = {sgs.CardFinished},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local use = data:toCardUse()
+		if use.card and use.card:hasFlag("heg_tongling") then
+			if use.from:objectName() == player:objectName() then
+				if use.card:hasFlag("DamageDone") then
+					room:setPlayerFlag(player, "heg_tongling_damage")
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end
+}
+
+heg_tongling = sgs.CreateTriggerSkill{
+	name = "heg_tongling",
+	events = { sgs.Damage },
+	frequency = sgs.Skill_Frequent,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local damage = data:toDamage()
+		if player:getPhase() == sgs.Player_Play and damage.to and damage.to:objectName() ~= player:objectName() and damage.to:isAlive() and player:getMark("heg_tongling-PlayClear") == 0 then
+			local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName(), "heg_tongling-invoke", true, true)
+			if target then
+				room:setPlayerMark(player, "heg_tongling-PlayClear", 1)
+				room:setPlayerFlag(target, "heg_tongling_From")
+				room:setPlayerFlag(damage.to, "heg_tongling_To")
+				local pattern = {}
+				for _, p in sgs.qlist(room:getOtherPlayers(target)) do
+					if not sgs.Sanguosha:isProhibited(target, p, card) and card:isAvailable(target) then
+						table.insert(pattern, card:getEffectiveId())
+					end
+				end
+				if #pattern > 0 then
+					room:askForUseCard(target, table.concat(pattern, ","), "@heg_tongling:"..damage.to:objectName(), -1, sgs.Card_MethodUse, false, player, nil, "heg_tongling")
+					if target:hasFlag("heg_tongling_damage") then
+						room:setPlayerFlag(player, "-heg_tongling_damage")
+						if damage.to:isAlive() then
+							player:drawCards(2, self:objectName())
+							player:drawCards(2, self:objectName())
+						end
+					else
+						local ids = sgs.IntList()
+						if damage.card:isVirtualCard() then
+							ids = damage.card:getSubcards()
+						else
+							ids:append(damage.card:getEffectiveId())
+						end
+						if not ids:isEmpty() then
+							local invoke = true
+							for _, id in sgs.qlist(ids) do
+								if room:getCardPlace(id) ~= sgs.Player_PlaceTable then invoke = false break end
+							end
+							if invoke then
+								damage.to:obtainCard(damage.card)
+							end
+						end
+					end
+				end
+				room:setPlayerFlag(target, "-heg_tongling_From")
+				room:setPlayerFlag(damage.to, "-heg_tongling_To")
+			end
+		end
+	end
+}
+
+heg_pengyang:addSkill(heg_jinxian)
+heg_pengyang:addSkill(heg_tongling_prohibit)
+heg_pengyang:addSkill(heg_tongling)
+heg_pengyang:addSkill(heg_tongling_buff)
+extension_heglordex:insertRelatedSkills("heg_tongling", "#heg_tongling_prohibit")
+extension_heglordex:insertRelatedSkills("heg_tongling", "#heg_tongling_buff")
+
+heg_nos_pengyang = sgs.General(extension_heglordex,  "heg_nos_pengyang", "shu", 3)
+
+heg_nos_daming = sgs.CreateTriggerSkill{
+	name = "heg_nos_daming",
+	events = { sgs.EventPhaseStart },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if player:getPhase() == sgs.Player_Play then
+			for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+				room:broadcastSkillInvoke(self:objectName())
+				local card = room:askForCard(p, "TrickCard", "@heg_nos_daming", ToData(player), sgs.Card_MethodDiscard)
+				if card then
+					local targets = sgs.SPlayerList()
+					for _, p in sgs.qlist(room:getAlivePlayers()) do
+						if not p:isChained() then
+							targets:append(p)
+						end
+					end
+					local target = room:askForPlayerChosen(p, targets, self:objectName())
+					room:setPlayerChained(target)
+					local x = 0
+					local factions = {}
+					for _, p in sgs.qlist(room:getAllPlayers()) do
+						if p:isChained() then
+							if not table.contains(factions, p:getKingdom()) then
+								table.insert(factions, p:getKingdom())
+								x = x + 1
+							end
+						end
+					end
+					p:drawCards(x, self:objectName())
+					local choices = {}
+					local current = room:getCurrent()
+					local peach = sgs.Sanguosha:cloneCard("peach", sgs.Card_NoSuit, 0)
+					peach:setSkillName(self:objectName())
+					peach:deleteLater()
+					if not sgs.Sanguosha:isProhibited(p, current, peach) and peach:isAvailable(p) then
+						table.insert(choices, "peach")
+					end 
+					local thunder_slash = sgs.Sanguosha:cloneCard("thunder_slash", sgs.Card_NoSuit, 0)
+					thunder_slash:setSkillName(self:objectName())
+					thunder_slash:deleteLater()
+					for _, p in sgs.qlist(room:getOtherPlayers(current)) do
+						if not sgs.Sanguosha:isProhibited(current, p, thunder_slash) and thunder_slash:isAvailable(current) then
+							table.insert(pattern,"thunder_slash")
+							break
+						end
+					end
+					local choice = room:askForChoice(p, self:objectName(), table.concat(choices, "+"), ToData(player))
+					if choice == "peach" then
+						local use = sgs.CardUseStruct()
+						use.card = peach
+						use.from = player
+						use.to:append(current)
+						room:useCard(use)
+					elseif choice == "thunder_slash" then
+						local targets = sgs.SPlayerList()
+						for _, p in sgs.qlist(room:getOtherPlayers(current)) do
+							if CanToCard(thunder_slash, current, p) then
+								targets:append(p)
+							end
+						end
+						local use = sgs.CardUseStruct()
+						use.card = thunder_slash
+						use.from = current
+						local to = room:askForPlayerChosen(p, targets, self:objectName(), "@heg_nos_daming-thunder_slash", false, true)
+						if to then
+							use.to:append(to)
+							room:useCard(use)
+						end
+					end
+				end
+			end
+		end
+	end
+}
+
+heg_nos_xiaoni = sgs.CreateTriggerSkill{
+	name = "heg_nos_xiaoni",
+	events = { sgs.TargetConfirmed },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local use = data:toCardUse()
+		if (use.to:contains(player)) or (use.from:objectName() == player:objectName()) then
+
+			local same_faction = true
+			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+				if p:getKingdom() == player:getKingdom() then
+					if p:getHandcardNum() > player:getHandcardNum() then
+						same_faction = false
+						break
+					end
+				end
+			end
+			if same_faction then
+				room:sendCompulsoryTriggerLog(player, self:objectName())
+				local targets = sgs.SPlayerList()
+				local no_respond_list = use.no_respond_list
+				for _, p in sgs.qlist(use.to) do
+					targets:append(p)
+					table.insert(no_respond_list, p:objectName())
+				end
+				use.no_respond_list = no_respond_list
+				data:setValue(use)
+				if not targets:isEmpty() then
+					local log = sgs.LogMessage()
+					log.type = "$NoRespond"
+					log.from = use.from
+					log.to = targets
+					log.arg = self:objectName()
+					log.card_str = use.card:toString()
+					room:sendLog(log)
+				end
+			end
+			return false
+		end
+	end
+}
+
+heg_nos_pengyang:addSkill(heg_nos_daming)
+
+
+heg_liuba = sgs.General(extension_heglordex,  "heg_liuba", "shu", 3)
+
+heg_tongdu_record = sgs.CreateTriggerSkill{
+	name = "#heg_tongdu_record",
+	events = {sgs.CardsMoveOneTime},
+	on_trigger = function(self, event, player, data, room)
+		local move = data:toMoveOneTime()
+		if move.from and move.from:objectName() == player:objectName() and player:getPhase() == sgs.Player_Discard and move.to_place == sgs.Player_DiscardPile and bit32.band(move.reason.m_reason,sgs.CardMoveReason_S_MASK_BASIC_REASON)==sgs.CardMoveReason_S_REASON_DISCARD then
+			room:setPlayerMark(player, "heg_tongdu-Clear", player:getMark("heg_tongdu-Clear") + move.card_ids:length())
+		end
+	end
+}
+heg_tongdu = sgs.CreateTriggerSkill{
+	name = "heg_tongdu",
+	events = { sgs.EventPhaseProceeding },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if player:getPhase() == sgs.Player_Finish then
+			local x = math.min(3, player:getMark("heg_tongdu-Clear"))
+			if x > 0 then
+				for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+					if room:askForSkillInvoke(p, self:objectName(), ToData(player)) then
+						room:doAnimate(1, p:objectName(), player:objectName())
+						room:broadcastSkillInvoke(self:objectName())
+						player:drawCards(x, self:objectName())
+					end
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end
+}
+
+heg_qingyinCard = sgs.CreateSkillCard{
+	name = "heg_qingyin",
+	target_fixed = false,
+	filter = function(self, targets, to_select)
+		return to_select:isWounded()
+	end,
+	on_effect = function(self, effect)
+		local log = sgs.LogMessage()
+		if player:getGeneralName() == "heg_liuba" then
+			log.type = "#YHXiandao"
+			log.arg = player:getGeneralName()
+			log.from = player
+			room:sendLog(log)
+			room:changeHero(player, "", false, false, false, false)
+		elseif player:getGeneral2Name() == "heg_liuba" then
+			log.type = "#YHXiandao2"
+			log.arg = player:getGeneral2Name()
+			log.from = player
+			room:sendLog(log)
+			room:changeHero(player, "", false, false, true, false)
+		else
+			room:handleAcquireDetachSkills(player, "-heg_tongdu")
+			room:handleAcquireDetachSkills(player, "-heg_qingyin")
+		end
+		local recover = sgs.RecoverStruct()
+		recover.reason = self:objectName()
+		recover.who = effect.from
+		recover.recover = effect.to:getMaxHp() - effect.to:getHp()
+		effect.to:getRoom():recover(effect.to, recover)
+	end
+}
+
+heg_qingyinVS = sgs.CreateViewAsSkill{
+	name = "heg_qingyin",
+	n = 0,
+	view_as = function(self, cards)
+		local card = heg_qingyinCard:clone()
+		return card
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("heg_qingyin")
+	end
+}
+heg_qingyin = sgs.CreateTriggerSkill{
+	name = "heg_qingyin",
+	view_as_skill = heg_qingyinVS,
+	frequency = sgs.Skill_Limited,
+}
+heg_liuba:addSkill(heg_tongdu_record)
+heg_liuba:addSkill(heg_tongdu)
+extension_heglordex:insertRelatedSkills("heg_tongdu", "#heg_tongdu_record")
+heg_liuba:addSkill(heg_qingyin)
+
+heg_zhugeke = sgs.General(extension_heglordex,  "heg_zhugeke", "wu", 3)
+
+heg_duwuCard = sgs.CreateSkillCard{
+	name = "heg_duwu",
+	target_fixed = false,
+	filter = function(self, targets, to_select)
+		return sgs.Self:inMyAttackRange(to_select)
+	end,
+	on_use = function(self, room, source, targets)
+		room:removePlayerMark(source, "@heg_duwu")
+		local command = startCommand(source, self:objectName())
+		local invoke = false
+		for _, target in ipairs(targets) do
+			room:setPlayerFlag(target, "heg_duwu_target")
+			local invoke = doCommand(target, self:objectName(), command, source)
+			if not invoke then
+				local damage = sgs.DamageStruct()
+				damage.reason = self:objectName()
+				damage.from = source
+				damage.to = target
+				damage.damage = 1
+				room:damage(damage)
+				source:drawCards(1, self:objectName())
+			end
+			room:setPlayerFlag(target, "-heg_duwu_target")
+			if target:hasFlag("heg_duwu") then
+				room:setPlayerFlag(target, "-heg_duwu")
+				invoke = true
+			end
+		end
+		if invoke then
+			room:loseHp(source, 1, true, source, self:objectName())
+		end
+	end
+}
+
+heg_duwuVS = sgs.CreateViewAsSkill{
+	name = "heg_duwu",
+	n = 0,
+	view_as = function(self, cards)
+		local card = heg_duwuCard:clone()
+		return card
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("@heg_duwu") > 0
+	end
+}
+heg_duwu = sgs.CreateTriggerSkill{
+	name = "heg_duwu",
+	view_as_skill = heg_duwuVS,
+	frequency = sgs.Skill_Limited,
+	limit_mark = "@heg_duwu",
+	events = { sgs.QuitDying },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local dying = data:toDying()
+		if dying.who and dying.who:isAlive() and dying.damage and dying.damage.from then
+			room:setPlayerFlag(player, "heg_duwu")
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target and target:hasFlag("heg_duwu_target")
+	end
+}
+
+
+heg_zhugeke:addSkill("aocai")
+heg_zhugeke:addSkill(heg_duwu)
+
+
+heg_huangzu = sgs.General(extension_heglordex,  "heg_huangzu", "qun", 4)
+
+heg_xishe = sgs.CreateTriggerSkill{
+	name = "heg_xishe",
+	events = { sgs.EventPhaseProceeding, sgs.Death, sgs.EventPhaseChanging, sgs.CardUsed },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.EventPhaseProceeding then
+			if player:getPhase() == sgs.Player_Start then
+				for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+					local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+					slash:setSkillName(self:objectName())
+					slash:deleteLater()
+					if p:objectName() ~= player:objectName() and CanToCard(slash, p, player) then
+						while true do
+							local card = room:askForCard(p, ".|.|.|.|equipped", "@heg_xishe:"..player:objectName(), ToData(player), sgs.Card_MethodDiscard, nil, false, self:objectName()) 
+							if not card then break end
+							local use = sgs.CardUseStruct()
+							use.card = slash
+							use.from = p
+							use.to:append(player)
+							room:useCard(use)
+						end
+					end
+				end
+			end
+		elseif event == sgs.CardUsed then
+			local use = data:toCardUse()
+			if use.card and use.card:isKindOf("Slash") and table.contains(use.card:getSkillNames(), self:objectName()) and player:objectName() == use.from:objectName() and player:hasSkill(self:objectName()) then
+				local no_respond_list = use.no_respond_list
+                local targets = sgs.SPlayerList()
+                for _, p in sgs.qlist(use.to) do
+                    if p:getHp() < player:getHp() then
+                        table.insert(no_respond_list, p:objectName())
+                        targets:append(p)
+                    end
+                end
+                if not targets:isEmpty() then
+                    local log = sgs.LogMessage()
+                    log.type = "$NoRespond"
+                    log.from = use.from
+                    log.to = targets
+                    log.arg = self:objectName()
+                    log.card_str = use.card:toString()
+                    room:sendLog(log)
+                    use.no_respond_list = no_respond_list
+                    data:setValue(use)
+                end
+			end
+		elseif event == sgs.Death then
+			local death = data:toDeath()
+			if death.who and death.damage and death.damage.card and table.contains(death.damage.card:getSkillNames(), self:objectName()) then
+				room:addPlayerMark(death.damage.from, "heg_xishe_kill-Clear", 1)
+			end
+		elseif event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to == sgs.Player_NotActive then
+				for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+					if p:getMark("heg_xishe_kill-Clear") > 0 then
+						room:broadcastSkillInvoke(self:objectName())
+						if room:askForSkillInvoke(p, self:objectName()) then
+						local generals = {}
+						for _,name in ipairs(sgs.Sanguosha:getLimitedGeneralNames()) do
+							if not sgs.Sanguosha:isGeneralHidden(name) and not table.contains(generals, name) then
+								table.insert(generals, name)
+							end
+						end
+						for _,p in sgs.qlist(room:getAlivePlayers()) do
+							if table.contains(generals, p:getGeneralName()) then
+								table.removeOne(generals, p:getGeneralName())
+							end
+							if table.contains(generals, p:getGeneral2Name()) then
+								table.removeOne(generals, p:getGeneral2Name())
+							end
+						end
+						local x = player:getMaxHp()
+						local y = player:getHp()
+						local new_general = generals[math.random(1, #generals)]
+						room:setPlayerProperty(player, "yinni_general2", sgs.QVariant(new_general))
+						room:changeHero(player, "yinni_hide", false, false, true)
+						room:setPlayerProperty(player, "maxhp", sgs.QVariant(x))
+						room:setPlayerProperty(player, "hp", sgs.QVariant(y))
+					end
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end
+}
+
+heg_huangzu:addSkill(heg_xishe)
+
+heg_simazhao = sgs.General(extension_heglordex,  "heg_simazhao", "wei", 4)
+
+heg_suzhi_buff = sgs.CreateTargetModSkill{
+	name = "#heg_suzhi_buff",
+	pattern = "TrickCard",
+	distance_limit_func = function(self, from, card)
+		if from:hasSkill("heg_suzhi") and not card:isVirtualCard() and from:getMark("heg_suzhi-Clear") < 3 then
+			return 1000
+		end
+		return 0
+	end
+}
+
+heg_suzhi = sgs.CreateTriggerSkill{
+	name = "heg_suzhi",
+	events = { sgs.DamageCaused, sgs.CardUsed, sgs.CardsMoveOneTime, sgs.EventPhaseChanging },
+	waked_skills = "fankui",
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to == sgs.Player_NotActive then
+				room:acquireNextTurnSkills(player, "heg_suzhi", "fankui")
+			end
+		end
+		if player:getMark("heg_suzhi-Clear") >= 3 then
+			return false
+		end
+		if event == sgs.DamageCaused then
+			local damage = data:toDamage()
+			if damage.from:objectName() == player:objectName() then
+				if damage.card and (damage.card:isKindOf("Slash") or damage.card:isKindOf("Duel")) then
+					damage.damage = damage.damage + 1
+					local log = sgs.LogMessage()
+					log.type = "#skill_add_damage"
+					log.from = damage.from
+					log.to:append(damage.to)
+					log.arg  = self:objectName()
+					log.arg2 = damage.damage
+					room:sendLog(log)
+					data:setValue(damage)
+					room:broadcastSkillInvoke(self:objectName())
+					room:addPlayerMark(player, "heg_suzhi-Clear", 1)
+				end
+			end
+		elseif event == sgs.CardUsed then
+			local use = data:toCardUse()
+			if use.from:objectName() == player:objectName() then
+				if use.card and use.card:isKindOf("TrickCard") and not use.card:isKindOf("SkillCard") and not use.card:isVirtualCard() then
+					room:broadcastSkillInvoke(self:objectName())
+					player:drawCards(1, self:objectName())
+					room:addPlayerMark(player, "heg_suzhi-Clear", 1)
+				end
+			end
+		elseif event == sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			if move.from and move.from:objectName() ~= player:objectName() and move.to_place == sgs.Player_DiscardPile and bit32.band(move.reason.m_reason,sgs.CardMoveReason_S_MASK_BASIC_REASON)==sgs.CardMoveReason_S_REASON_DISCARD and move.reason.m_playerId then
+				local from = room:findPlayerByObjectName(move.from:objectName())
+				if from and not from:isNude() then
+					room:broadcastSkillInvoke(self:objectName())
+					local id = room:askForCardChosen(player, from, "he", self:objectName(), false, sgs.Card_MethodNone)
+					local card = sgs.Sanguosha:getCard(id)
+					player:obtainCard(card, false)
+					room:addPlayerMark(player, "heg_suzhi-Clear", 1)
+				end
+			end
+		end
+		return false
+	end,
+}
+
+
+heg_zhaoxin = sgs.CreateTriggerSkill{
+	name = "heg_zhaoxin",
+	events = { sgs.Damaged },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local damage = data:toDamage()
+		if not player:isKongcheng() and room:askForSkillInvoke(player, self:objectName()) then
+			room:broadcastSkillInvoke(self:objectName())
+			player:showAllCards(self:objectName())
+			local targets = sgs.SPlayerList()
+			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+				if p:getHandcardNum() <= player:getHandcardNum() then
+					targets:append(p)
+				end
+			end
+			if not targets:isEmpty() then
+				local target = room:askForPlayerChosen(player, targets, self:objectName(), "heg_zhaoxin-invoke", true, true)
+				if target then
+					room:doAnimate(1, player:objectName(), target:objectName())
+					local player_handcards = sgs.IntList()
+					local exchangeMove = sgs.CardsMoveList()
+					exchangeMove:append(sgs.CardsMoveStruct(player:handCards(), target, sgs.Player_PlaceHand, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_SWAP, player:objectName(), target:objectName(), self:objectName(), "")))
+					exchangeMove:append(sgs.CardsMoveStruct(target:handCards(), player, sgs.Player_PlaceHand, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_SWAP, target:objectName(), player:objectName(), self:objectName(), "")))
+					room:moveCardsAtomic(exchangeMove, false)
+				end
+			end
+		end
+		return false
+	end,
+}
+
+heg_simazhao:addSkill(heg_suzhi_buff)
+heg_simazhao:addSkill(heg_suzhi)
+heg_simazhao:addSkill(heg_zhaoxin)
+
+heg_zhonghui = sgs.General(extension_heglordex,  "heg_zhonghui", "wei", 4)
+
+heg_quanji_buff = sgs.CreateMaxCardsSkill{
+	name = "#heg_quanji_buff",
+	extra_func = function(self, target)
+		return target:getPile("heg_quanji"):length()
+	end
+}
+
+heg_quanji = sgs.CreateTriggerSkill{
+	name = "heg_quanji",
+	frequency = sgs.Skill_Frequent,
+	events = { sgs.Damaged, sgs.Damage },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local can_invoke = false
+		if event == sgs.Damaged then
+			local damage = data:toDamage()
+			if damage.to and damage.to:objectName() == player:objectName() and player:getMark("heg_quanji-Inflicted-Clear") == 0 then
+				can_invoke = true
+			end
+		elseif event == sgs.Damage then
+			local damage = data:toDamage()
+			if damage.from and damage.from:objectName() == player:objectName() and player:getMark("heg_quanji-Caused-Clear") == 0 then
+				can_invoke = true
+			end
+		end
+		if can_invoke and room:askForSkillInvoke(player, self:objectName()) then
+			room:broadcastSkillInvoke(self:objectName())
+			player:drawCards(1, self:objectName())
+			if not player:isKongcheng() then
+				local cards = room:askForExchange(player, self:objectName(), 1, 1, false, "QuanjiPush")
+				local card_ids = cards:getSubcards()
+				player:addToPile("heg_quanji", card_ids)
+			end
+			if event == sgs.Damaged then
+				room:addPlayerMark(player, "heg_quanji-Inflicted-Clear", 1)
+			elseif event == sgs.Damage then
+				room:addPlayerMark(player, "heg_quanji-Caused-Clear", 1)
+			end
+		end
+		return false
+	end,
+}
+
+heg_paiyiCard = sgs.CreateSkillCard{
+	name = "heg_paiyi",
+	target_fixed = false,
+	filter = function(self, targets, to_select)
+		return #targets == 0
+	end,
+	on_use = function(self, room, source, targets)
+		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", self:objectName(), "")
+		room:throwCard(self, reason, nil)
+		local target = targets[1]
+		local x = source:getPile("heg_quanji"):length()
+		if x > 7 then
+			x = 7
+		end
+		target:drawCards(x, "heg_paiyi")
+		if target:getHandcardNum() > source:getHandcardNum() then
+			local damage = sgs.DamageStruct()
+			damage.reason = "heg_paiyi"
+			damage.from = source
+			damage.to = target
+			damage.damage = 1
+			room:damage(damage)
+		end
+	end
+}
+heg_paiyi = sgs.CreateOneCardViewAsSkill{
+	name = "heg_paiyi",
+	expand_pile = "heg_quanji",
+	filter_pattern = ".|.|.|heg_quanji",
+	view_as = function(self, card)
+		local skill_card = heg_paiyiCard:clone()
+		skill_card:addSubcard(card)
+		return skill_card
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("heg_paiyi") and player:getPile("heg_quanji"):length() > 0
+	end
+}
+
+heg_zhonghui:addSkill(heg_quanji_buff)
+heg_zhonghui:addSkill(heg_quanji)
+extension_heglordex:insertRelatedSkills("heg_quanji", "#heg_quanji_buff")
+heg_zhonghui:addSkill(heg_paiyi)
+
+heg_nos_zhonghui = sgs.General(extension_heglordex,  "heg_nos_zhonghui", "wei", 4)
+
+heg_nos_quanji = sgs.CreateTriggerSkill{
+	name = "heg_nos_quanji",
+	frequency = sgs.Skill_Frequent,
+	events = { sgs.Damaged, sgs.Damage },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local can_invoke = false
+		if event == sgs.Damaged then
+			local damage = data:toDamage()
+			if damage.to and damage.to:objectName() == player:objectName() then
+				can_invoke = true
+			end
+		elseif event == sgs.Damage then
+			local damage = data:toDamage()
+			if damage.from and damage.from:objectName() == player:objectName() and damage.card and not damage.card:isKindOf("SkillCard") then
+				local use = room:getTag("UseHistory"..damage.card:toString()):toCardUse()
+				if use.to:length() == 1 and use.to:contains(damage.to) then
+					can_invoke = true
+				end
+			end
+		end
+		if can_invoke and room:askForSkillInvoke(player, self:objectName()) then
+			room:broadcastSkillInvoke(self:objectName())
+			player:drawCards(1, self:objectName())
+			if not player:isKongcheng() then
+				local cards = room:askForExchange(player, self:objectName(), 1, 1, false, "QuanjiPush")
+				local card_ids = cards:getSubcards()
+				player:addToPile("heg_quanji", card_ids)
+			end
+		end
+		return false
+	end,
+}
+heg_nos_zhonghui:addSkill(heg_nos_quanji)
+heg_nos_zhonghui:addSkill("heg_paiyi")
+
+heg_sunchen = sgs.General(extension_heglordex,  "heg_sunchen", "wu", 4)
+
+heg_shilus = sgs.CreateTriggerSkill{
+	name = "heg_shilus",
+	events = { sgs.Death, sgs.EventPhaseProceeding },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.Death then
+			local death = data:toDeath()
+			if death.who then
+				local general = death.who:getGeneralName()
+				local general_list = player:property("heg_shilus_generals"):toString():split("+")
+				if not table.contains(general_list, general) then
+					table.insert(general_list, general)
+					room:setPlayerProperty(player, "heg_shilus_generals", sgs.QVariant(table.concat(general_list, "+")))
+				end
+				if death.who:getGeneral2() then
+					if not table.contains(general_list,  death.who:getGeneral2Name()) then
+						table.insert(general_list, death.who:getGeneral2Name())
+						room:setPlayerProperty(player, "heg_shilus_generals", sgs.QVariant(table.concat(general_list, "+")))
+					end
+				end
+				room:setPlayerMark(player, "&heg_shilus", #general_list)
+				room:doAnimate(4, player:objectName(), general)
+				if death.damage and death.damage.from and death.damage.from:objectName() == player:objectName() then
+					local all_generals = sgs.Sanguosha:getLimitedGeneralNames()
+					for _, p in sgs.qlist(room:getAllPlayers(true)) do
+						if table.contains(all_generals, p:getGeneralName()) then
+							table.removeOne(all_generals, p:getGeneralName())
+						end
+					end
+					local new_general = all_generals[math.random(1, #all_generals)]
+					table.removeOne(all_generals, new_general)
+					if not table.contains(general_list, new_general) then
+						table.insert(general_list, new_general)
+						room:setPlayerProperty(player, "heg_shilus_generals", sgs.QVariant(table.concat(general_list, "+")))
+					end
+					local new_general2 = all_generals[math.random(1, #all_generals)]
+					if not table.contains(general_list, new_general2) then
+						table.insert(general_list, new_general2)
+						room:setPlayerProperty(player, "heg_shilus_generals", sgs.QVariant(table.concat(general_list, "+")))
+					end
+					room:setPlayerMark(player, "&heg_shilus", #general_list)
+					room:doAnimate(4, player:objectName(), general)
+					room:doAnimate(4, player:objectName(), general2)
+				end
+			end
+		elseif event == sgs.EventPhaseProceeding then
+			if player:getPhase() == sgs.Player_Start and room:askForSkillInvoke(player, self:objectName()) then
+				if player:getMark("&heg_shilus") > 0 then
+					local card = room:askForDiscard(player, self:objectName(), player:getMark("&heg_shilus"), 0, true, true, "@heg_shilus", "", self:objectName())
+					if card then
+						local x = card:subcardsLength()
+						room:broadcastSkillInvoke(self:objectName())
+						player:drawCards(x, self:objectName())
+					end
+				end
+			end
+		end
+		return false
+	end,
+}
+
+heg_xiongnve_buff = sgs.CreateTargetModSkill{
+	name = "#heg_xiongnve_buff",
+	residue_func = function(self, from, card)
+		if from:hasSkill("heg_xiongnve") and from:getMark("heg_xiongnve-Unlimit-Clear") > 0 and to then
+			local kingdom = from:property("heg_xiongnve"):toString()
+			if to:getKingdom() == kingdom then
+				return 1000
+			end
+		end
+		return 0
+	end
+}
+
+heg_xiongnve = sgs.CreateTriggerSkill{
+	name = "heg_xiongnve",
+	events = { sgs.EventPhaseStart, sgs.EventPhaseEnd, sgs.Damaged, sgs.DamageCaused },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_Play then
+				local general_list = player:property("heg_shilus_generals"):toString():split("+")
+				if #general_list > 0 and room:askForSkillInvoke(player, self:objectName()) then
+					local gn = room:askForGeneral(player, table.concat(general_list, "+"))
+					local general = sgs.Sanguosha:getGeneral(gn)
+					room:setPlayerProperty(player, "heg_xiongnve", sgs.QVariant(general:getKingdom()))
+					table.removeOne(general_list, gn)
+					room:setPlayerProperty(player, "heg_shilus_generals", sgs.QVariant(table.concat(general_list, "+")))
+					room:setPlayerMark(player, "&heg_shilus", #general_list)
+					room:addPlayerMark(player, "&heg_xiongnve+:+"..general:getKingdom().."-Clear", 1)
+					local choice = room:askForChoice(player, self:objectName(), "damage+obtain+unlimit")
+					if choice == "damage" then
+						room:addPlayerMark(player, "heg_xiongnve-Damage-Clear", 1)
+					elseif choice == "obtain" then
+						room:addPlayerMark(player, "heg_xiongnve-Obtain-Clear", 1)
+					elseif choice == "unlimit" then
+						room:addPlayerMark(player, "heg_xiongnve-Unlimit-Clear", 1)
+					end
+				end
+			end
+		elseif event == sgs.DamageCaused then
+			local damage = data:toDamage()
+			local kingdom = player:property("heg_xiongnve"):toString()
+			if damage.to:getKingdom() == kingdom then
+				if player:getMark("heg_xiongnve-Damage-Clear") > 0 then
+					room:broadcastSkillInvoke(self:objectName())
+					damage.damage = damage.damage + 1
+					local log = sgs.LogMessage()
+					log.type = "#skill_add_damage"
+					log.from = damage.from
+					log.to:append(damage.to)
+					log.arg  = self:objectName()
+					log.arg2 = damage.damage
+					room:sendLog(log)
+					data:setValue(damage)
+				end
+				if not damage.to:isNude() and player:getMark("heg_xiongnve-Obtain-Clear") > 0 then
+					local id = room:askForCardChosen(player, damage.to, "he", self:objectName(), false, sgs.Card_MethodNone)
+					local card = sgs.Sanguosha:getCard(id)
+					player:obtainCard(card, false)
+				end
+			end
+			
+		elseif event == sgs.EventPhaseEnd then
+			if player:getPhase() == sgs.Player_Play then
+				local general_list = player:property("heg_shilus_generals"):toString():split("+")
+				if #general_list > 1 and room:askForSkillInvoke(player, self:objectName()) then
+					local gn = room:askForGeneral(player, table.concat(general_list, "+"))
+					table.removeOne(general_list, gn)
+					local gn2 = room:askForGeneral(player, table.concat(general_list, "+"))
+					table.removeOne(general_list, gn2)
+					room:setPlayerProperty(player, "heg_shilus_generals", sgs.QVariant(table.concat(general_list, "+")))
+					room:setPlayerMark(player, "&heg_shilus", #general_list)
+					room:setPlayerMark(player, "heg_xiongnve_reduce-Self"..sgs.Player_RoundStart.."-Clear", 1)
+					room:setPlayerMark(player, "&heg_xiongnve-Self"..sgs.Player_RoundStart.."-Clear", 1)
+				end
+			end
+		elseif event == sgs.DamageInflicted then
+			local damage = data:toDamage()
+			if damage.from and damage.from:objectName() ~= player:objectName() and player:getMark("heg_xiongnve_reduce-Self"..sgs.Player_RoundStart.."-Clear") > 0 then
+				player:damageRevises(data, -1)
+				room:sendCompulsoryTriggerLog(player, self:objectName(), true)
+			end
+		end
+		return false
+	end,
+}
+
+heg_sunchen:addSkill(heg_shilus)
+heg_sunchen:addSkill(heg_xiongnve)
+heg_sunchen:addSkill(heg_xiongnve_buff)
+extension_heglordex:insertRelatedSkills("heg_xiongnve", "#heg_xiongnve_buff")
+
+heg_gongsunyuan = sgs.General(extension_heglordex,  "heg_gongsunyuan", "qun", 4)
+
+heg_huaiyiCard = sgs.CreateSkillCard{
+	name = "heg_huaiyi",
+	target_fixed = true,
+	on_use = function(self, room, source, targets)
+		room:showAllCards(source)
+		local red_cards = sgs.IntList()
+		local black_cards = sgs.IntList()
+		for _, c in sgs.qlist(source:getHandcards()) do
+			if c:isRed() then
+				red_cards:append(c:getId())
+			else
+				black_cards:append(c:getId())
+			end
+		end
+		if red_cards:isEmpty() or black_cards:isEmpty() then
+			return
+		end
+		local color = room:askForChoice(source, "heg_huaiyi", "red+black")
+		local to_discard = sgs.IntList()
+		if color == "red" then
+			to_discard = red_cards
+		else
+			to_discard = black_cards
+		end
+		local discard = sgs.CardList()
+		for _, id in sgs.qlist(to_discard) do
+			local card = sgs.Sanguosha:getCard(id)
+			discard:append(card)
+		end
+		room:throwCard(discard, source)
+		local x = discard:length()
+		local targets = sgs.SPlayerList()
+		for _, p in sgs.qlist(room:getOtherPlayers(source)) do
+			if targets:length() < x and not p:isNude() then
+				targets:append(p)
+			else
+				break
+			end
+		end
+		local victim = room:askForPlayersChosen(source, targets, self:objectName(), 1, x, "heg_huaiyi-invoke", true, true)
+		for _, p in sgs.qlist(victim) do
+			local id = room:askForCardChosen(source, p, "he", self:objectName(), false, sgs.Card_MethodNone)
+			local card = sgs.Sanguosha:getCard(id)
+			if card:isKindOf("EquipCard") then
+				source:addToPile("heg_zisui_yi", id)
+				room:sendCompulsoryTriggerLog(source, "heg_zisui", true)
+				room:broadcastSkillInvoke("heg_zisui")
+			else
+				source:obtainCard(card, false)
+			end
+		end
+	end
+}
+heg_huaiyi = sgs.CreateViewAsSkill{
+	name = "heg_huaiyi",
+	n = 0,
+	view_as = function(self, cards)
+		local skill_card = heg_huaiyiCard:clone()
+		return skill_card
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("heg_huaiyi") and not player:isKongcheng()
+	end
+}
+
+heg_zisui = sgs.CreateTriggerSkill{
+	name = "heg_zisui",
+	events = { sgs.DrawNCards, sgs.EventPhaseProceeding },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.DrawNCards then
+			local draw = data:toDraw()
+        	if draw.reason ~= "draw_phase" then return false end
+			local x = player:getPile("heg_zisui_yi"):length()
+			if x > 0 then
+				room:broadcastSkillInvoke(self:objectName())
+				draw.num = draw.num + x
+				data:setValue(draw)
+			end
+		elseif event == sgs.EventPhaseProceeding then
+			if player:getPhase() == sgs.Player_Finish then
+				local x = player:getPile("heg_zisui_yi"):length()
+				if x > player:getMaxHp() then
+					room:killPlayer(player)
+				end
+			end
+		end
+		return false
+	end,
+}
+
+heg_gongsunyuan:addSkill(heg_huaiyi)
+heg_gongsunyuan:addSkill(heg_zisui)
+
+heg_nos_gongsunyuan = sgs.General(extension_heglordex,  "heg_nos_gongsunyuan", "qun", 4)
+
+
+heg_nos_huaiyiCard = sgs.CreateSkillCard{
+	name = "heg_nos_huaiyi",
+	target_fixed = true,
+	on_use = function(self, room, source, targets)
+		room:showAllCards(source)
+		local red_cards = sgs.IntList()
+		local black_cards = sgs.IntList()
+		for _, c in sgs.qlist(source:getHandcards()) do
+			if c:isRed() then
+				red_cards:append(c:getId())
+			else
+				black_cards:append(c:getId())
+			end
+		end
+		if red_cards:isEmpty() or black_cards:isEmpty() then
+			return
+		end
+		local color = room:askForChoice(source, "heg_nos_huaiyi", "red+black")
+		local to_discard = sgs.IntList()
+		if color == "red" then
+			to_discard = red_cards
+		else
+			to_discard = black_cards
+		end
+		local discard = sgs.CardList()
+		for _, id in sgs.qlist(to_discard) do
+			local card = sgs.Sanguosha:getCard(id)
+			discard:append(card)
+		end
+		room:throwCard(discard, source)
+		local x = discard:length()
+		local targets = sgs.SPlayerList()
+		for _, p in sgs.qlist(room:getOtherPlayers(source)) do
+			if targets:length() < x and not p:isNude() then
+				targets:append(p)
+			else
+				break
+			end
+		end
+		local victim = room:askForPlayersChosen(source, targets, self:objectName(), 1, x, "heg_huaiyi-invoke", true, true)
+		for _, p in sgs.qlist(victim) do
+			local id = room:askForCardChosen(source, p, "he", self:objectName(), false, sgs.Card_MethodNone)
+			local card = sgs.Sanguosha:getCard(id)
+			if card:isKindOf("EquipCard") then
+				source:addToPile("&heg_nos_zisui_yi", id)
+				room:sendCompulsoryTriggerLog(source, "heg_nos_zisui", true)
+				room:broadcastSkillInvoke("heg_nos_zisui")
+			else
+				source:obtainCard(card, false)
+			end
+		end
+	end
+}
+heg_nos_huaiyi = sgs.CreateViewAsSkill{
+	name = "heg_nos_huaiyi",
+	n = 0,
+	view_as = function(self, cards)
+		local skill_card = heg_nos_huaiyiCard:clone()
+		return skill_card
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("heg_nos_huaiyi") and not player:isKongcheng()
+	end
+}
+
+
+heg_nos_zisui = sgs.CreateTriggerSkill{
+	name = "heg_nos_zisui",
+	events = { sgs.DrawNCards, sgs.EventPhaseProceeding },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.DrawNCards then
+			local draw = data:toDraw()
+        	if draw.reason ~= "draw_phase" then return false end
+			local x = player:getPile("&heg_nos_zisui_yi"):length()
+			if x > 0 then
+				room:broadcastSkillInvoke(self:objectName())
+				draw.num = draw.num + x
+				data:setValue(draw)
+			end
+		elseif event == sgs.EventPhaseProceeding then
+			if player:getPhase() == sgs.Player_Finish then
+				local x = player:getPile("&heg_nos_zisui_yi"):length()
+				if x > player:getMaxHp() then
+					room:killPlayer(player)
+				end
+			end
+		end
+		return false
+	end,
+}
+
+heg_nos_gongsunyuan:addSkill(heg_nos_huaiyi)
+heg_nos_gongsunyuan:addSkill(heg_nos_zisui)
+
+heg_zhangchunhua = sgs.General(extension_hegpurplecloud,  "heg_zhangchunhua", "jin", 3, false)
+
+heg_ejue = sgs.CreateTriggerSkill{
+	name = "heg_ejue",
+	events = { sgs.DamageCaused },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local damage = data:toDamage()n
+		if damage.card and damage.card:isKindOf("Slash") then
+			if damage.to:getKingdom() ~= player:getKingdom() then
+				room:broadcastSkillInvoke(self:objectName())
+				damage.damage = damage.damage + 1
+				local log = sgs.LogMessage()
+				log.type = "#skill_add_damage"
+				log.from = damage.from
+				log.to:append(damage.to)
+				log.arg  = self:objectName()
+				log.arg2 = damage.damage
+				room:sendLog(log)
+				data:setValue(damage)
+			end
+		end
+		return false
+	end,
+}
+
+heg_shangshi = sgs.CreateTriggerSkill{
+	name = "heg_shangshi",
+	events = { sgs.EventPhaseChanging },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local change = data:toPhaseChange()
+		if change.to == sgs.Player_NotActive then
+			for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+				if p:getLostHp() > 0 and p:getHandcardNum() < p:getLostHp() then
+					if room:askForSkillInvoke(p, self:objectName()) then
+						room:broadcastSkillInvoke(self:objectName())
+						p:drawCards(p:getLostHp() - p:getHandcardNum(), self:objectName())
+					end
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end,
+}
+
+heg_zhangchunhua:addSkill(heg_ejue)
+heg_zhangchunhua:addSkill(heg_shangshi)
+
+heg_simashi = sgs.General(extension_hegpurplecloud,  "heg_simashi", "jin", 4)
+
+heg_yimie_prohibit = sgs.CreateProhibitSkill{
+	name = "heg_yimie_prohibit",
+	is_prohibited = function(self, from, to, card)
+		if card and table.contains(card:getSkillNames(), "heg_yimie") then
+			if to and to:hasFlag("Global_Dying") then
+				local current
+				for _,p in sgs.qlist(sgs.Self:getAliveSiblings(true)) do 
+					if p:hasFlag("CurrentPlayer") then
+						current = p
+						break
+					end
+				end
+				if current:hasSkill("heg_yimie") then
+					return from:getKingdom() == to:getKingdom()
+				end		
+			end
+			return true
+		end
+	end
+}
+
+
+heg_yimie_attach = sgs.CreateViewAsSkill {
+    name = "heg_yimie_attach&",
+    n = 1,
+    view_filter = function(self, selected, to_select)
+        return to_select:getSuit() == sgs.Card_Heart
+    end,
+    view_as = function(self, cards)
+        if #cards ~= 1 then return nil end
+        local card = sgs.Sanguosha:cloneCard("peach", cards[1]:getSuit(), cards[1]:getNumber())
+		card:setSkillName("heg_yimie")
+        card:addSubcard(cards[1])
+        return card
+    end,
+    enabled_at_play = function(self, player)
+        return false
+    end,
+	enabled_at_response = function(self, player, pattern)
+		return pattern == "peach"
+	end,
+}
+heg_yimie_buff = sgs.CreateTriggerSkill{
+	name = "#heg_yimie_buff",
+	events = { sgs.EventAcquireSkill, sgs.GameStart },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.EventAcquireSkill and data:toString() == "heg_yimie" or event == sgs.GameStart then
+			for _, p in sgs.qlist(room:getAllPlayers()) do
+				room:attachSkillToPlayer(p, "heg_yimie_attach")
+			end
+		end
+		return false
+	end,
+}
+
+heg_yimie = sgs.CreateTriggerSkill{
+	name = "heg_yimie",
+	frequency = sgs.Skill_Compulsory,
+	events = { sgs.PreventPeach, sgs.AfterPreventPeach },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.PreventPeach then
+			local current = room:getCurrent()
+            local dying = data:toDying()
+            if (current and current:isAlive() and current:getPhase() ~= sgs.Player_NotActive and current:hasSkill("heg_yimie")) then
+                if (player ~= current and player ~= dying.who and player:getKingdom() ~= dying.who:getKingdom()) then
+                    player:setFlags("heg_yimie")
+                    room:addPlayerMark(player, "Global_PreventPeach")
+				end
+			end
+		elseif event == sgs.AfterPreventPeach then
+			if (player:hasFlag("heg_yimie") and player:getMark("Global_PreventPeach") > 0) then
+                player:setFlags("-heg_yimie")
+                room:removePlayerMark(player, "Global_PreventPeach")
+            end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end,
+}
+
+heg_ruilveCard = sgs.CreateSkillCard{
+	name = "heg_ruilve",
+	target_fixed = false,
+	filter = function(self, targets, to_select)
+		return #targets == 0 and to_select:hasSkill("heg_ruilve") and to_select:getMark("heg_ruilve-PlayClear") == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	end,
+	on_use = function(self, room, source, targets)
+		local target = targets[1]
+		room:showCard(target, self:getSubcards():first())
+		room:obtainCard(target, card, true)
+		source:drawCards(1, "heg_ruilve")
+		room:addPlayerMark(target, "heg_ruilve-PlayClear", 1)
+	end
+}
+
+heg_ruilve_attach = sgs.CreateViewAsSkill {
+    name = "heg_yimie_attach&",
+    n = 1,
+	view_filter = function(self, selected, to_select)
+		return to_select:isDamageCard()
+	end,
+	view_as = function(self, cards)
+		if #cards ~= 1 then return nil end
+		local card = heg_ruilveCard:clone()
+		card:addSubcard(cards[1])
+		return card
+	end,
+	enabled_at_play = function(self, player)
+		return not player:isKongcheng()
+	end,
+}
+heg_ruilve = sgs.CreateTriggerSkill{
+	name = "heg_ruilve",
+	events = { sgs.EventAcquireSkill, sgs.GameStart },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.EventAcquireSkill and data:toString() == "heg_ruilve" or event == sgs.GameStart then
+			for _, p in sgs.qlist(room:getAllPlayers()) do
+				room:attachSkillToPlayer(p, "heg_ruilve_attach")
+			end
+		end
+		return false
+	end,
+}
+
+heg_simashi:addSkill(heg_yimie_buff)
+heg_simashi:addSkill(heg_yimie)
+heg_simashi:addSkill(heg_ruilve)
+if not sgs.Sanguosha:getSkill("heg_yimie_attach&") then skills:append(heg_yimie_attach) end
+if not sgs.Sanguosha:getSkill("heg_ruilve_attach&") then skills:append(heg_ruilve_attach) end
+
+heg_simazhao = sgs.General(extension_hegpurplecloud,  "heg_simazhao", "jin", 4)
+
+heg_zhaoran = sgs.CreateTriggerSkill{
+	name = "heg_zhaoran",
+	events = { sgs.EventPhaseChanging },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local change = data:toPhaseChange()
+		if change.to == sgs.Player_Play then
+			room:broadcastSkillInvoke(self:objectName())
+			local x = 4 - getKingdoms(player)
+			if x > 0 then
+				player:drawCards(x, self:objectName())
+			end
+		end
+		return false
+	end,
+}
+
+heg_beiluan = sgs.CreateTriggerSkill{
+	name = "heg_beiluan",
+	events = { sgs.Damaged, sgs.EventPhaseChanging },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to ~= sgs.Player_NotActive then return false end
+			for _,p in sgs.qlist(room:getAlivePlayers())do
+				local hw = sgs.CardList()
+				for _,c in sgs.qlist(p:getHandcards())do
+					if c:getSkillName()==self:objectName() then
+						hw:append(c)
+					end
+				end
+				room:filterCards(p,hw,true)
+			end
+		elseif event == sgs.Damaged then
+			local damage = data:toDamage()
+			if damage.from and not damage.from:isKongcheng() and room:askForSkillInvoke(player, self:objectName(), data) then
+				room:broadcastSkillInvoke(self:objectName())
+				for _,h in sgs.qlist(damage.from:getHandcards())do
+					if not h:isKindOf("EquipCard") then
+						local toc = sgs.Sanguosha:cloneCard("slash",h:getSuit(),h:getNumber())
+						toc:setSkillName("heg_beiluan")
+						local wrap = sgs.Sanguosha:getWrappedCard(h:getEffectiveId())
+						wrap:takeOver(toc)
+						room:notifyUpdateCard(player,h:getEffectiveId(),wrap)
+					end
+				end
+			end
+		end
+		return false
+	end,
+}
+
+heg_simazhao:addSkill(heg_zhaoran)
+heg_simazhao:addSkill(heg_beiluan)
+
+heg_simazhou = sgs.General(extension_hegpurplecloud,  "heg_simazhou", "jin", 4)
+
+heg_pojingCard = sgs.CreateSkillCard{
+	name = "heg_pojing",
+	target_fixed = false,
+	filter = function(self, targets, to_select)
+		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	end,
+	on_use = function(self, room, source, targets)
+		local target = targets[1]
+		local choicelist = { "damage"}
+		if not target:isAllNude() then
+			table.insert(choicelist, "obtain")
+		end
+		local choice = room:askForChoice(target, "heg_pojing", table.concat(choicelist, "+"), ToData(target))
+		if choice == "obtain" then
+			room:broadcastSkillInvoke("heg_pojing", 1)
+			local id = room:askForCardChosen(source, target, "hej", "heg_pojing", false, sgs.Card_MethodNone)
+			local card = sgs.Sanguosha:getCard(id)
+			source:obtainCard(card, false)
+		else
+			local others = room:getOtherPlayers(target)
+			others:removeOne(source)
+			local damage = sgs.DamageStruct()
+			damage.from = source
+			damage.to = target
+			damage.damage = 1
+			for _, other in sgs.qlist(others) do
+				if room:askForSkillInvoke(other, "heg_pojing", ToData(target)) then
+					damage.damage = damage.damage + 1
+				end
+			end
+			room:broadcastSkillInvoke("heg_pojing", 2)
+			room:damage(damage)
+		end
+	end
+}
+heg_pojing = sgs.CreateViewAsSkill{
+	name = "heg_pojing",
+	n = 0,
+	view_as = function(self, cards)
+		local skill_card = heg_pojingCard:clone()
+		return skill_card
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("heg_pojing")
+	end
+}
+heg_simazhou:addSkill(heg_pojing)
+
+heg_simaliang = sgs.General(extension_hegpurplecloud,  "heg_simaliang", "jin", 4)
+
+heg_gongzhi = sgs.CreateTriggerSkill{
+	name = "heg_gongzhi",
+	events = { sgs.EventPhaseChanging },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local change = data:toPhaseChange()
+		if change.to == sgs.Player_Draw then
+			if room:askForSkillInvoke(player, self:objectName()) then
+				room:broadcastSkillInvoke(self:objectName())
+				local targets = room:askForPlayersChosen(player, room:getAlivePlayers(), self:objectName(), 0, 4, "@heg_gongzhi", true, true)
+				local x = 0
+				for _, p in sgs.qlist(targets) do
+					p:drawCards(1, self:objectName())
+					x = x + 1
+					if x >= 4 then
+						break
+					end
+				end
+				player:skip(sgs.Player_Draw)
+			end
+		end
+		return false
+	end,
+}
+
+heg_shejus = sgs.CreateTriggerSkill{
+	name = "heg_shejus",
+	events = { sgs.Damaged },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local damage = data:toDamage()
+		if damage.to and damage.to:canDiscard(damage.to, "h") then
+			for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+				if damage.to:getMark("heg_shejus"..p:objectName()) == 0 and p:isWounded() then
+					if room:askForSkillInvoke(damage.to, self:objectName(), ToData(p)) then
+						room:broadcastSkillInvoke(self:objectName())
+						room:recover(p, sgs.RecoverStruct(damage.to, nil, 1, self:objectName()))
+						damage.to:throwAllHandCards(self:objectName())
+						room:addPlayerMark(damage.to, "heg_shejus"..p:objectName(), 1)
+					end
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end,
+}
+
+heg_simaliang:addSkill(heg_gongzhi)
+heg_simaliang:addSkill(heg_shejus)
+
+heg_simalun = sgs.General(extension_hegpurplecloud,  "heg_simalun", "jin", 4)
+
+heg_zhulan = sgs.CreateTriggerSkill{
+	name = "heg_zhulan",
+	events = { sgs.DamageInflicted },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local damage = data:toDamage()
+		if damage.from and damage.from:getKingdom() == player:getKingdom() then
+			for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+				if p:canDiscard(p, "he") then
+					if room:askForCard(p, ".",  "@heg_zhulan", data, sgs.Card_MethodDiscard, nil, false, self:objectName(),	false, nil) then
+						room:broadcastSkillInvoke(self:objectName())
+						damage.damage = damage.damage + 1
+						local log = sgs.LogMessage()
+						log.type = "#skill_add_damage"
+						log.from = damage.from
+						log.to:append(damage.to)
+						log.arg  = self:objectName()
+						log.arg2 = damage.damage
+						room:sendLog(log)
+						data:setValue(damage)
+					end
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end,
+}
+
+heg_luanchang_record = sgs.CreateTriggerSkill{
+	name = "#heg_luanchang_record",
+	events = { sgs.Damaged },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		room:addPlayerMark(player, "heg_luanchang-Clear", 1)
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end,
+}
+
+heg_luanchang = sgs.CreateTriggerSkill{
+	name = "heg_luanchang",
+	events = { sgs.EventPhaseProceeding },
+	frequency = sgs.Skill_Limited,
+	limit_mark = "@heg_luanchang",
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local change = data:toPhaseChange()
+		if change.to == sgs.Player_NotActive and not player:isKongcheng() then
+			local invoke = false
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:getMark("heg_luanchang-Clear") > 0 then
+					invoke = true
+					break
+				end
+			end
+			if invoke then
+				for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+					if p:getMark("@heg_luanchang")
+						> 0 and room:askForSkillInvoke(p, self:objectName(), data) then
+						local current = room:getCurrent()
+						local card = sgs.Sanguosha:cloneCard("archery_attack", sgs.Card_NoSuit, 0)
+						card:setSkillName(self:objectName())
+						card:addSubcards(current:getHandcards())
+						local use = sgs.CardUseStruct()
+						use.card = card
+						use.from = current
+						room:useCard(use)
+						room:removePlayerMark(p, "@heg_luanchang", 1)
+						break
+					end
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end,
+}
+
+heg_simalun:addSkill(heg_zhulan)
+heg_simalun:addSkill(heg_luanchang_record)
+heg_simalun:addSkill(heg_luanchang)
+extension_hegpurplecloud:insertRelatedSkills("heg_luanchang", "#heg_luanchang_record")
+
+heg_shibao = sgs.General(extension_hegpurplecloud,  "heg_shibao", "jin", 4)
+
+heg_zhuosheng = sgs.CreateTriggerSkill {
+    name = "heg_zhuosheng",
+    frequency = sgs.Skill_Frequent,
+    events = { sgs.CardsMoveOneTime, sgs.DamageCaused, sgs.PreCardUsed },
+    on_trigger = function(self, event, player, data, room)
+        if event == sgs.CardsMoveOneTime then
+            local move = data:toMoveOneTime()
+            if not room:getTag("FirstRound"):toBool() and player:getPhase() ~= sgs.Player_NotActive and move.to and move.to:objectName() == player:objectName() then
+                local ids = sgs.IntList()
+                for _, id in sgs.qlist(move.card_ids) do
+                    if room:getCardOwner(id) == player and room:getCardPlace(id) == sgs.Player_PlaceHand then
+                        ids:append(id)
+                    end
+                end
+                if ids:isEmpty() then return false end
+                if room:askForSkillInvoke(player, self:objectName(), data) then
+                    room:setPlayerMark(player, "&heg_zhuosheng", 1)
+                end
+            end
+        elseif event == sgs.DamageCaused then
+            local damage = data:toDamage()
+            if damage.card and damage.card:hasFlag(self:objectName()) then
+                damage.damage = damage.damage + 1
+                data:setValue(damage)
+                local log = sgs.LogMessage()
+                log.type = "#skill_add_damage"
+                log.from = damage.from
+                log.to:append(damage.to)
+                log.arg  = self:objectName()
+                log.arg2 = damage.damage
+                room:sendLog(log)
+            end
+		 elseif event == sgs.PreCardUsed then
+            local use = data:toCardUse()
+            if use.card:isKindOf("SkillCard") then return false end
+            if player:getMark("&heg_zhuosheng") > 0 then
+                room:setCardFlag(use.card, self:objectName())
+			end
+        end
+        return false
+    end
+}
+
+heg_shibao:addSkill(heg_zhuosheng)
+
+heg_yanghuiyu = sgs.General(extension_hegpurplecloud,  "heg_yanghuiyu", "jin", 3, false)
+
+
+heg_ciwei_record = sgs.CreateTriggerSkill{
+	name = "#heg_ciwei_record",
+	events = { sgs.CardUsed, sgs.CardResponded },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local card
+		if event == sgs.CardUsed then
+			local use = data:toCardUse()
+			card = use.card
+		elseif event == sgs.CardResponded then
+			local resp = data:toCardResponse()
+			card = resp.m_card
+		end
+		if card then
+			local current = room:getCurrent()
+			if current and current:hasSkill("heg_ciwei") then
+				if player:objectName() ~= current:objectName() then
+					room:setPlayerMark(player, "heg_ciwei-Clear", 1)
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end,
+}
+
+heg_ciwei = sgs.CreateTriggerSkill{
+	name = "heg_ciwei",
+	events = { sgs.CardUsed },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local use = data:toCardUse()
+		local current = room:getCurrent()
+		if current and current:hasSkill(self:objectName()) and player:objectName() ~= current:objectName() then
+			local invoke = false
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:getMark("heg_ciwei-Clear") > 0 then
+					invoke = true
+					break
+				end
+			end
+			if invoke and current:canDiscard(current, "he") then
+				if room:askForCard(current, ".", "@heg_ciwei", data, sgs.Card_MethodDiscard, nil, false, self:objectName(),	false, nil) then
+					room:broadcastSkillInvoke(self:objectName())
+					local list = use.nullified_list
+					table.insert(list, "_ALL_TARGETS")
+					use.nullified_list = list
+					data:setValue(use)
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end,
+}
+
+heg_caiyuan = sgs.CreateTriggerSkill{
+	name = "heg_caiyuan",
+	frequency = sgs.Skill_Compulsory,
+	events = { sgs.EventPhaseStart, sgs.Damaged },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_RoundStart and player:getMark("&heg_caiyuan+fail-Self".. sgs.Player_Finish .. "Clear") == 0 then
+				room:broadcastSkillInvoke(self:objectName())
+				player:drawCards(2, self:objectName())
+			end
+		elseif event == sgs.Damaged then
+			room:setPlayerMark(player, "&heg_caiyuan+fail-Self".. sgs.Player_Finish .. "Clear", 1)
+		end
+		return false
+	end,
+}
+
+heg_caiyuan:addSkill(heg_ciwei_record)
+heg_caiyuan:addSkill(heg_ciwei)
+extension_hegpurplecloud:insertRelatedSkills("heg_ciwei", "#heg_ciwei_record")
+heg_caiyuan:addSkill(heg_caiyuan)
+
+heg_wangyuanji = sgs.General(extension_hegpurplecloud,  "heg_wangyuanji", "jin", 3, false)
+
+heg_yanxiCard = sgs.CreateSkillCard{
+	name = "heg_yanxi",
+	target_fixed = false,
+	filter = function(self, targets, to_select)
+		if #targets > 0 then
+			for i = 1, #targets, 1 do
+				target = targets[i]
+				if target:getKingdom() == to_select:getKingdom() then
+					return false
+				end
+			end
+		end
+		return #targets < 3 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng()
+	end,
+	on_use = function(self, room, source, targets)
+		local to_obtain = sgs.CardList()
+		local choices = patterns()
+		local choiceslist
+		for _, target in sgs.qlist(targets) do
+			local id = room:askForCardChosen(source, target, "h", "heg_yanxi", false, sgs.Card_MethodNone)
+			to_obtain:append(sgs.Sanguosha:getCard(id))
+			local choice = room:askForChoice(target, "heg_yanxi", table.concat(choices, "+"), ToData(source))
+			choiceslist[target:objectName()] = choice
+		end
+		for _, card in sgs.qlist(to_obtain) do
+			room:showCard(source, sgs.IntList{card:getId()})
+		end
+		room:fillAG(to_obtain, source)
+		local id = room:askForAG(source, to_obtain, false, self:objectName())
+		room:clearAG(source)
+		local from = room:getCardOwner(id)
+		local declared = choiceslist[from:objectName()]
+		local obtained_card = sgs.Sanguosha:getCard(id)
+		source:obtainCard(id)
+		if obtained_card:getClassName() ~= declared then
+			for _, card in sgs.qlist(to_obtain) do
+				if card:getId() ~= id then
+					source:obtainCard(card, false)
+				end
+			end
+		end
+	end
+}
+    
+heg_yanxiVS = sgs.CreateViewAsSkill{
+	name = "heg_yanxi",
+	n = 0,
+	view_as = function(self, cards)
+		local skill_card = heg_yanxiCard:clone()
+		return skill_card
+	end,
+	enabled_at_play = function(self, player)
+		return false
+	end,
+	enabled_at_response = function(self, player, pattern)
+		return pattern == "@@heg_yanxi"
+	end,
+}
+
+heg_yanxi = sgs.CreateTriggerSkill{
+	name = "heg_yanxi",
+	events = { sgs.EventPhaseStart },
+	view_as_skill = heg_yanxiVS,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if player:getPhase() == sgs.Player_Start then
+			room:askForUseCard(player, "@@heg_yanxi", "@heg_yanxi")
+		end
+		return false
+	end,
+}
+
+heg_shiren = sgs.CreateTriggerSkill{
+	name = "heg_shiren",
+	events = { sgs.Damaged },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local damage = data:toDamage()
+		for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+			if p:getMark("heg_shiren-Clear") == 0 and p:objectName() ~= damage.to:objectName() then
+				if room:askForSkillInvoke(p, self:objectName(), data) then
+					room:broadcastSkillInvoke(self:objectName())
+					local to_give = room:askForExchange(p, self:objectName(), 2, 2, false, "@heg_shiren-give", true)
+					damage.to:obtainCard(to_give)
+					p:drawCards(2, self:objectName())
+					room:addPlayerMark(p, "heg_shiren-Clear", 1)
+				end
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target
+	end,
+}
+
+heg_wangyuanji:addSkill(heg_yanxi)
+heg_wangyuanji:addSkill(heg_shiren)
+
+
+heg_jiachong = sgs.General(extension_hegpurplecloud,  "heg_wangyuanji", "jin", 3)
+
+heg_chujue_buff = sgs.CreateTargetModSkill{
+	name = "heg_chujue_buff",
+	residue_func = function(self, from, to)
+		if from:hasSkill("heg_chujue") and to then
+			for _, p in sgs.qlist(from:getSiblings(true)) do
+				if p:isDead() and p:getKingdom() == to:getKingdom() then
+					return 1000
+				end
+			end
+		end
+	end
+}
+heg_chujue = sgs.CreateTriggerSkill{
+	name = "heg_chujue",
+	events = { sgs.CardUsed },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local use = data:toCardUse()
+		if use.card and not use.card:isKindOf("SkillCard") then
+			local targets = sgs.SPlayerList()
+			local no_respond_list = use.no_respond_list
+			for _, to in sgs.qlist(use.to) do
+				for _, p in sgs.qlist(room:getAllPlayers(true)) do
+					if p:isDead() and p:getKingdom() == to:getKingdom() then
+						targets:append(to)
+						table.insert(no_respond_list, to:objectName())
+					end
+				end
+			end
+			use.no_respond_list = no_respond_list
+			data:setValue(use)
+			if not targets:isEmpty() then
+				local log = sgs.LogMessage()
+				log.type = "$NoRespond"
+				log.from = use.from
+				log.to = targets
+				log.arg = self:objectName()
+				log.card_str = use.card:toString()
+				room:sendLog(log)
+			end
+		end
+		return false
+	end,
+}
+
+heg_jianzhi_clear = sgs.CreateTriggerSkill{
+	name = "#heg_jianzhi_clear",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.BuryVictim},
+	on_trigger = function(self, event, player, data)
+		local death = data:toDeath()
+		local reason = death.damage
+		if reason then
+			local killer = reason.from
+			if killer and killer:getMark("&heg_jianzhi-Clear") > 0 then
+				local room = player:getRoom()
+				room:setTag("SkipNormalDeathProcess", sgs.QVariant(true))
+			else
+				room:setTag("SkipNormalDeathProcess", sgs.QVariant(false))
+			end
+		end
+	end,
+	can_trigger = function(self, target)
+		return target 
+	end,
+	priority = -1,
+ }
+heg_jianzhi = sgs.CreateTriggerSkill{
+	name = "heg_jianzhi",
+	events = { sgs.DamageCaused },
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.DamageCaused then
+			local damage = data:toDamage()
+			if damage.to and damage.to:isDead() and damage.to:getHp() <= 0 then
+				if player:canDiscard(player, "h") and room:askForSkillInvoke(player, self:objectName(), data) then
+					player:throwAllHandCards(self:objectName())
+					room:addPlayerMark(player, "&heg_jianzhi-Clear", 1)
+				end
+			end
+		end
+		return false
+	end,
+}
+
+
+	["heg_jianzhi"] = "奸志",
+  	[":heg_jianzhi"] = "当你造成致命伤害时，你可以弃置所有手牌（至少一张），然后本回合下次击杀奖励改为三倍。",
+
+
+
+
 
 
 --[[
@@ -5346,6 +8445,7 @@ sgs.LoadTranslationTable{
     ["heg_bian"] = "君临天下-变",
     ["heg_quan"] = "君临天下·权",
     ["heg_lordex"] = "君临天下·EX/不臣篇",
+    ["heg_purplecloud"] = "紫气东来",
     ["fixandadd_twyj"] = "台湾一将成名",
 
     ["guandu_xuyou"] = "许攸[官渡]",
@@ -5940,21 +9040,15 @@ sgs.LoadTranslationTable{
 					"3. 锁定技，出牌阶段开始时，若你有处于明置状态的武将牌，你使用无对应的实体牌的【知己知彼】。\n" ,
 
 
-					["EXCard_ZJZB"] = "知己知彼",
+	["EXCard_ZJZB"] = "知己知彼",
 	[":EXCard_ZJZB"] = "锦囊牌\
 	出牌时机：出牌阶段\
 	使用目标：一名其他角色\
 	作用效果：观看目标角色的身份牌或手牌。\
 	重铸：出牌阶段，你可将此牌置入弃牌堆，然后摸一张牌",
 	["ZJZB_showhandcards"] = "观看他手牌",
-	["ZJZB_showrole"] = "观看他身份牌",
-	["ZJZB_showrole_rebel"] = "他的身份是反贼",
-	["ZJZB_showrole_lord"] = "他的身份是主公",
-	["ZJZB_showrole_loyalist"] = "他的身份是忠臣",
-	["ZJZB_showrole_renegade"] = "他的身份是内奸",
 	["ZJZB_confirm"] = "没了",
 	["#ZJZB_showhandcards"] = "%from 选择观看 %to 的<font color = 'gold'><b>【手牌】</b></font>",
-	["#ZJZB_showrole"] = "%from 选择观看 %to 的<font color = 'gold'><b>【身份牌】</b></font>",
 
 		["lure_tiger"] = "调虎离山",
 	[":lure_tiger"] = "锦囊牌\n\n使用时机：出牌阶段。\n使用目标：一至两名其他角色。\n作用效果：目标对应的角色于此回合内不计入距离和座次的计算且不能使用牌且不是牌的合法目标且体力值不会改变。",
@@ -6020,6 +9114,7 @@ sgs.LoadTranslationTable{
 	[":heg_zhengbi"] = "出牌阶段开始时，你可选择一项：1.选择一名角色，直至此回合结束，你对其使用牌无距离与次数限制；2.将一张基本牌交给一名角色，然后其交给你一张非基本牌或两张基本牌。",
 	["heg_fengying"] = "奉迎",
   	[":heg_fengying"] = "限定技，出牌阶段，你可将所有手牌当【挟天子以令诸侯】（无视大势力限制）使用，然后所有与你势力相同的角色将手牌补至其体力上限。",
+	--TODO
 
 	["heg_wangping"] = "王平-国",
     ["&heg_wangping"] = "王平",
@@ -6078,6 +9173,7 @@ sgs.LoadTranslationTable{
     ["heg_weidi"] = "伪帝",
   	[":heg_weidi"] = "出牌阶段限一次，你可选择一名本回合从牌堆获得过牌的其他角色，对其发起“军令”。若其不执行，则你获得其所有手牌，然后交给其等量的牌。",
 	--4
+	--TODO
 
 	["heg_zhangxiu"] = "张绣-国",
     ["&heg_zhangxiu"] = "张绣",
@@ -6113,10 +9209,9 @@ sgs.LoadTranslationTable{
     ["illustrator:heg_liuqi"] = "绘聚艺堂",
 	["heg_wenji"] = "问计",
   	[":heg_wenji"] = "出牌阶段开始时，你可令一名角色交给你一张牌，然后其可以令你于此回合内使用此牌无距离与次数限制且不能被响应；否则，你交给其另一张牌。",
-	--[[
-	["tunjiang"] = "屯江",
-	[":tunjiang"] = "结束阶段开始时，若你于出牌阶段内使用过牌且未对其他角色使用过牌，你可摸X张牌（X为势力数）。",
-	]]
+	["heg_tunjiang"] = "屯江",
+  	[":heg_tunjiang"] = "结束阶段开始时，若你于出牌阶段内使用过牌且未对其他角色使用过牌，你可摸X张牌（X为势力数）。",
+
 	["heg_mifangfushiren"] = "糜芳傅士仁-国",
     ["&heg_mifangfushiren"] = "糜芳傅士仁",
     ["#heg_mifangfushiren"] = "逐驾迎尘",
@@ -6151,7 +9246,7 @@ sgs.LoadTranslationTable{
 	["heg_biluan"] = "避乱",
   	[":heg_biluan"] = "锁定技，其他角色计算与你的距离+X（X为你装备区内的牌数）。",
 
-	["heg_nos_shixie"] = "士燮-国",
+	["heg_nos_shixie"] = "士燮-国[旧]",
     ["&heg_nos_shixie"] = "士燮",
     ["#heg_nos_shixie"] = "百粤灵欹",
     ["~heg_nos_shixie"] = "",
@@ -6159,7 +9254,7 @@ sgs.LoadTranslationTable{
     ["cv:heg_nos_shixie"] = "",
     ["illustrator:heg_nos_shixie"] = "磐蒲",	
 	["heg_nos_lixia"] = "礼下",
-  	[":heg_nos_lixia"] = "其他角色的准备阶段，其可以你装备区内的一张牌，若你以此法被弃置过牌，其选择：1.弃置两张牌；2.失去1点体力；3.令你摸两张牌。",
+  	[":heg_nos_lixia"] = "其他角色的准备阶段，其可以弃置你装备区内的一张牌，若你以此法被弃置过牌，其选择：1.弃置两张牌；2.失去1点体力；3.令你摸两张牌。",
 	["heg_nos_biluan"] = "避乱",
   	[":heg_nos_biluan"] = "锁定技，其他角色计算与你的距离+X（X为你装备区内的牌数且最少为1）。",
 
@@ -6173,13 +9268,13 @@ sgs.LoadTranslationTable{
 	["heg_xingzhao"] = "兴棹",
   	[":heg_xingzhao"] = "锁定技，若场上受伤角色的势力数为：1个或以上，你拥有技能〖恂恂〗；2个或以上，你受到伤害后，你与伤害来源手牌数较少的角色摸一张牌；3个或以上，你的手牌上限+4；4个或以上，你失去装备区内的牌时，摸一张牌。",
 
-	["heg_tangzi"] = "董昭-国",
-    ["&heg_tangzi"] = "董昭",
-    ["#heg_tangzi"] = "移尊易鼎",
-    ["~heg_tangzi"] = "",
-    ["designer:heg_tangzi"] = "逍遥鱼叔",
-    ["cv:heg_tangzi"] = "",
-    ["illustrator:heg_tangzi"] = "小牛",
+	["heg_dongzhao"] = "董昭-国",
+    ["&heg_dongzhao"] = "董昭",
+    ["#heg_dongzhao"] = "移尊易鼎",
+    ["~heg_dongzhao"] = "",
+    ["designer:heg_dongzhao"] = "逍遥鱼叔",
+    ["cv:heg_dongzhao"] = "",
+    ["illustrator:heg_dongzhao"] = "小牛",
 	["heg_quanjin"] = "劝进",
   	[":heg_quanjin"] = "出牌阶段限一次，你可将一张手牌交给一名此阶段受到过伤害的角色，对其发起“军令”。若其执行，你摸一张牌；若其不执行，你将手牌摸至与手牌最多的角色相同（最多摸五张）。",
     ["heg_zaoyun"] = "凿运",
@@ -6193,9 +9288,9 @@ sgs.LoadTranslationTable{
     ["cv:heg_xushu"] = "",
     ["illustrator:heg_xushu"] = "YanBai",
 	["heg_qiance"] = "谦策",
-  	[":heg_qiance"] = "与你势力相同的角色使用锦囊牌指定目标后，其可令其中的大势力角色不能响应此牌。",
+  	[":heg_qiance"] = "一名角色使用锦囊牌指定目标后，你可令其中的大势力角色不能响应此牌。",
 	["heg_jujian"] = "举荐",
-  	[":heg_jujian"] = "锁定技，当与你势力相同的角色进入濒死阶段时，你令其将体力回复至1点，然后你变更副将。",
+  	[":heg_jujian"] = "一名角色进入濒死阶段时，你可令其将体力回复至1点，然后你变更副将。",
 
 	["heg_wujing"] = "吴景-国",
     ["&heg_wujing"] = "吴景",
@@ -6208,6 +9303,7 @@ sgs.LoadTranslationTable{
   	[":heg_diaogui"] = "出牌阶段限一次，你可将一张装备牌当【调虎离山】使用，然后若你的势力形成<a href='heg_formation'>队列</a>，则你摸X张牌（X为此队列中的角色数）。",
 	["heg_fengyang"] = "风扬",
   	[":heg_fengyang"] = "阵法技，与你处于同一<a href='heg_formation'>队列</a>的角色装备区内的牌被与你势力不同的角色弃置或获得时，取消之。",
+	--TODO
 	
 	["heg_yanbaihu"] = "严白虎-国",
     ["&heg_yanbaihu"] = "严白虎",
@@ -6249,7 +9345,7 @@ sgs.LoadTranslationTable{
     ["cv:heg_xuyou"] = "",
     ["illustrator:heg_xuyou"] = "猎枭",	
 	["heg_chenglue"] = "成略",
-  	[":heg_chenglue"] = "当一名角色使用多目标的牌结算后，你可令其摸一张牌。若你受到过此牌造成的伤害，你可令一名没有国战标记的角色获得一个“阴阳鱼”标记。",
+  	[":heg_chenglue"] = "当一名角色使用多目标的牌结算后，你可令其摸一张牌。若你受到过此牌造成的伤害，你可令一名没有国战标记的角色获得一个“阴阳鱼”标记。",--TODO
 	["heg_shicai"] = "恃才",
   	[":heg_shicai"] = "锁定技，当你受到伤害后，若此伤害为1点，你摸一张牌，否则你弃置两张牌。",
 
@@ -6271,8 +9367,7 @@ sgs.LoadTranslationTable{
     ["cv:heg_panjun"] = "",
     ["illustrator:heg_panjun"] = "Domi",
 	["heg_congcha"] = "聪察",
-  	[":heg_congcha"] = "①准备阶段，你可选择一名角色，然后直到你的下回合开始，其可以令你与其各摸两张牌；否則其失去1点体力。②摸牌阶段，你若沒有使用①，你可多摸两张牌。",
-	--gongqing
+  	[":heg_congcha"] = "①准备阶段，你可选择一名角色，然后直到你的下回合开始限一次，其受到伤害后，其可以令你与其各摸两张牌；否则其失去1点体力。②摸牌阶段，你若没有使用①，你可多摸两张牌。",
 
 	["heg_pengyang"] = "彭羕-国",
     ["&heg_pengyang"] = "彭羕",
@@ -6282,9 +9377,9 @@ sgs.LoadTranslationTable{
     ["cv:heg_pengyang"] = "",
     ["illustrator:heg_pengyang"] = "匠人绘-零一",	
 	["heg_jinxian"] = "近陷",
-  	[":heg_jinxian"] = "每局限一次，回合开始时或当你受伤时，你令所有你计算距离不大于1的角色执行：其弃置两张牌。",
+  	[":heg_jinxian"] = "限定技，回合开始时或当你受到伤害时，你可以令所有你计算距离不大于1的角色执行：其弃置两张牌。",
 	["heg_tongling"] = "通令",
-  	[":heg_tongling"] = "每阶段限一次，当你于出牌阶段内对其它势力角色造成伤害后，你可令一名与你势力相同的角色对其使用一张牌，然后若此牌：造成伤害，你与其各摸两张牌；未造成伤害，其获得你对其造成伤害的牌。",
+  	[":heg_tongling"] = "每阶段限一次，当你于出牌阶段内对其他角色造成伤害后，你可令一名角色对其使用一张牌，然后若此牌：造成伤害，你与其各摸两张牌；未造成伤害，其获得你对其造成伤害的牌。",
 	
 	["heg_nos_pengyang"] = "彭羕-国[旧]",
     ["&heg_nos_pengyang"] = "彭羕",
@@ -6309,6 +9404,7 @@ sgs.LoadTranslationTable{
   	[":heg_juejue"] = "①弃牌阶段开始时，你可失去1点体力，若如此做，此阶段结束时，若你于此阶段内弃置过牌，你令所有其他角色选择一项：1.将X张手牌置入弃牌堆；2.受到你造成的1点伤害（X为你于此阶段内弃置的牌数）。",
 	["heg_fangyuan"] = "方圆",
   	[":heg_fangyuan"] = "阵法技，①若你是围攻角色，此围攻关系中围攻角色手牌上限+1，被围攻角色手牌上限-1。②结束阶段，若你是被围攻角色，你视为对此围攻关系中一名围攻角色使用一张无距离限制的【杀】。",
+	--TODO
 
 	["heg_liuba"] = "刘巴-国",
     ["&heg_liuba"] = "刘巴",
@@ -6329,7 +9425,6 @@ sgs.LoadTranslationTable{
     ["designer:heg_zhugeke"] = "逍遥鱼叔",
     ["cv:heg_zhugeke"] = "",
     ["illustrator:heg_zhugeke"] = "猎枭",
-	--aocai
 	["heg_duwu"] = "黩武",
   	[":heg_duwu"] = "限定技，出牌阶段，你可以选择一个“军令”，你对你攻击范围内任意角色发起此“军令”，若其不执行，你对其造成1点伤害并摸一张牌。此“军令”结算后，若存在进入濒死状态被救回的角色，你失去1点体力。",
 
@@ -6410,6 +9505,8 @@ sgs.LoadTranslationTable{
     ["illustrator:heg_nos_gongsunyuan"] = "猎枭",
 	["heg_nos_huaiyi"] = "怀异",
   	[":heg_nos_huaiyi"] = "出牌阶段限一次，你可以展示所有手牌，若其中包含两种颜色，你弃置其中一种颜色的牌，然后获得至多等同于弃置牌数的其他角色各一张牌，将以此法获得的装备牌置于你的武将牌上，称为“异”。你可以将“异”如手牌般使用或打出。",
+	["heg_nos_zisui"] = "恣睢",
+  	[":heg_nos_zisui"] = "锁定技，①摸牌阶段，你多摸X张牌；②结束阶段，若X大于你的体力上限，你死亡。（X为“异”的数量）",
 
 	--紫气东来
 
@@ -6424,6 +9521,7 @@ sgs.LoadTranslationTable{
   	[":heg_yingshi"] = "出牌阶段开始时，你可以令一名角色视为对你指定的另一名角色使用一张【知己知彼】，然后若使用者不为你，你摸一张牌。",
 	["heg_shunfu"] = "瞬覆",
   	[":heg_shunfu"] = "限定技，出牌阶段，你可以令至多三名其他角色各摸两张牌，然后这些角色依次可以使用一张【杀】（无距离限制且不可被响应）。",
+	--TODO
 
 	["heg_zhangchunhua"] = "张春华-国",
     ["&heg_zhangchunhua"] = "张春华",
@@ -6439,7 +9537,7 @@ sgs.LoadTranslationTable{
 
 	["heg_simashi"] = "司马师-国",
     ["&heg_simashi"] = "司马师",
-    ["#heg_simashi"] = "睚眥侧目",
+    ["#heg_simashi"] = "睚眦侧目",
     ["~heg_simashi"] = "",
     ["designer:heg_simashi"] = "",
     ["cv:heg_simashi"] = "",
@@ -6513,7 +9611,7 @@ sgs.LoadTranslationTable{
     ["cv:heg_yanghuiyu"] = "",
     ["illustrator:heg_yanghuiyu"] = "Jzeo",
 	["heg_ciwei"] = "慈威",
-  	[":heg_ciwei"] = "你的回合内，当其他角色使用牌时，若场上有本回合使用或打出过牌且不与其势力相同的其他角色，你可以弃置一张牌令此牌无效（取消所有目标）。",
+  	[":heg_ciwei"] = "你的回合内，当其他角色使用牌时，若场上有本回合使用或打出过牌的其他角色，你可以弃置一张牌令此牌无效（取消所有目标）。",
 	["heg_caiyuan"] = "才媛",
   	[":heg_caiyuan"] = "锁定技，回合开始时，你摸两张牌；当你受到伤害后，此技能失效，直至你的下个结束阶段开始时。",
 
@@ -6540,6 +9638,7 @@ sgs.LoadTranslationTable{
   	[":heg_chengxi"] = "准备阶段，你可以令一名角色视为使用一张【以逸待劳】，结算结束后，若因此【以逸待劳】弃置的牌中包含非基本牌，此【以逸待劳】的使用者对目标各造成1点伤害。",
 	["heg_jiantong"] = "监统",
   	[":heg_jiantong"] = "当你受到伤害后，你可以观看一名角色的手牌，然后你可以用装备区内的一张牌交换其中至多两张牌。",
+	--TODO
 
 	["heg_jiachong"] = "贾充-国",
     ["&heg_jiachong"] = "贾充",
@@ -6867,4 +9966,4 @@ sgs.LoadTranslationTable{
 
 }
 
-return {extension, extension_heg, extension_hegbian, extension_hegquan, extension_heglordex,extension_guandu, extension_twyj}
+return {extension, extension_heg, extension_hegbian, extension_hegquan, extension_heglordex, extension_hegpurplecloud,extension_guandu, extension_twyj}
