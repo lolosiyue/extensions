@@ -2046,7 +2046,7 @@ s_w_juezhan = sgs.CreateTriggerSkill{
 				local can_invoke = false
 			local other_players = room:getOtherPlayers(player)
 			for _, q in sgs.qlist(other_players) do
-				if q:getHandcardNum() >= player:getHandcardNum() then
+				if not q:isKongcheng() then
 					can_invoke = true
 					break
 				end
