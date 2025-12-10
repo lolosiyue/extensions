@@ -15241,7 +15241,7 @@ luanyanguang = sgs.CreateZeroCardViewAsSkill {
 --辘首
 lualushou = sgs.CreateTriggerSkill {
 	name = "lualushou",
-	events = { sgs.PreCardUsed, sgs.TargetConfirmed, sgs.Damage, sgs.PreDamageDone },
+	events = { sgs.PreCardUsed, sgs.TargetConfirmed, sgs.Damage, sgs.PreDamage },
 	on_trigger = function(self, event, player, data)
 		if event == sgs.PreCardUsed then
 			local use = data:toCardUse()

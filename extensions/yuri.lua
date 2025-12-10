@@ -1775,7 +1775,7 @@ PoisonMaggots = sgs.CreateTriggerSkill{
 
 MaggotsShield = sgs.CreateTriggerSkill{ -- 蛆蟲抵制傷害
 	name = "#MaggotsShield",
-	events = {sgs.PreDamageDone},
+	events = {sgs.PreDamage},
 	
 	on_trigger = function(self, event, player, data)
 		local damage = data:toDamage()
@@ -10320,11 +10320,11 @@ cheerful = sgs.CreateTriggerSkill{
 	name = "cheerful",
 	frequency = sgs.Skill_Compulsory ,
 	-- events = {sgs.PreDamageDone, sgs.PreHpLost, sgs.FinishJudge, sgs.DrawNCards},
-	events = {sgs.PreDamageDone, sgs.PreHpLost},
+	events = {sgs.PreDamage, sgs.PreHpLost},
 	
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if event == sgs.PreDamageDone or event == sgs.PreHpLost then
+		if event == sgs.PreDamage or event == sgs.PreHpLost then
 			-- room:broadcastSkillInvoke("cheerful", math.random(1, 2))
 			if event == sgs.PreHpLost then
 				room:setEmotion(player, "armor/silver_lion")
@@ -15782,7 +15782,7 @@ hb_konoyaiba_uketemiyo = sgs.CreateTriggerSkill{
 nikuhei = sgs.CreateTriggerSkill{
 	name = "nikuhei",
 	frequency = sgs.Skill_Compulsory,
-	events = {sgs.PreDamageDone, sgs.DamageInflicted, sgs.EventPhaseEnd},
+	events = {sgs.PreDamage, sgs.DamageInflicted, sgs.EventPhaseEnd},
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.EventPhaseEnd and player:getPhase() == sgs.Player_Finish and player:getLostHp() > 1 and player:getMaxHp() > 3 then
@@ -15793,7 +15793,7 @@ nikuhei = sgs.CreateTriggerSkill{
 				room:getThread():delay(250)
 			end
 		end
-		if event == sgs.DamageInflicted or event == sgs.PreDamageDone then
+		if event == sgs.DamageInflicted or event == sgs.PreDamage then
 			local damage = data:toDamage()
 			if event == sgs.DamageInflicted then
 				if damage.damage > 0 and player:getHp() > damage.from:getHp() then damage.from:drawCards(1) end
@@ -15808,7 +15808,7 @@ nikuhei = sgs.CreateTriggerSkill{
 					return true
 				end
 			end
-			if event == sgs.PreDamageDone and ((damage.damage > 0 and damage.nature ~= sgs.DamageStruct_Normal) or damage.damage >= 2) then
+			if event == sgs.PreDamage and ((damage.damage > 0 and damage.nature ~= sgs.DamageStruct_Normal) or damage.damage >= 2) then
 				if player:getMark("@struggle") > 0 then
 					damage.damage = damage.damage + player:getMark("@struggle")
 					player:loseAllMarks("@struggle")
