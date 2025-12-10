@@ -12,7 +12,7 @@ local function readYearReviewData()
     local json = require "json"
     local file = io.open(year_review_data_file, "r")
     local data = {
-        PlayerStats = {},  -- 玩家统计数据
+        GameModes = {},    -- 按游戏模式分类的玩家统计数据 { mode_name = { PlayerStats = {} } }
         CurrentYear = os.date("%Y")  -- 当前年份
     }
     if file ~= nil then
@@ -58,22 +58,33 @@ local function initPlayerStats(player_name, year)
 end
 
 -- 获取或创建玩家年度统计数据
-local function getPlayerYearStats(data, player_name, year)
-    if not data.PlayerStats[player_name] then
-        data.PlayerStats[player_name] = {}
+local function getPlayerYearStats(data, player_name, year, game_mode)
+    game_mode = game_mode or "standard"  -- 默认模式
+    
+    if not data.GameModes[game_mode] then
+        data.GameModes[game_mode] = { PlayerStats = {} }
     end
-    if not data.PlayerStats[player_name][year] then
-        data.PlayerStats[player_name][year] = initPlayerStats(player_name, year)
+    
+    if not data.GameModes[game_mode].PlayerStats[player_name] then
+        data.GameModes[game_mode].PlayerStats[player_name] = {}
     end
-    return data.PlayerStats[player_name][year]
+    
+    if not data.GameModes[game_mode].PlayerStats[player_name][year] then
+        data.GameModes[game_mode].PlayerStats[player_name][year] = initPlayerStats(player_name, year)
+    end
+    
+    return data.GameModes[game_mode].PlayerStats[player_name][year]
 end
 
 -- 记录游戏开始时的数据
 local function recordGameStart(player)
+    local room = player:getRoom()
+    local game_mode = room:getMode()  -- 获取游戏模式
+    
     local data = readYearReviewData()
     local year = os.date("%Y")
     local player_name = player:objectName()
-    local stats = getPlayerYearStats(data, player_name, year)
+    local stats = getPlayerYearStats(data, player_name, year, game_mode)
     
     -- 记录总场次
     stats.total_games = stats.total_games + 1
@@ -105,10 +116,13 @@ end
 
 -- 记录游戏结束时的数据
 local function recordGameEnd(player, is_winner)
+    local room = player:getRoom()
+    local game_mode = room:getMode()
+    
     local data = readYearReviewData()
     local year = os.date("%Y")
     local player_name = player:objectName()
-    local stats = getPlayerYearStats(data, player_name, year)
+    local stats = getPlayerYearStats(data, player_name, year, game_mode)
     
     if is_winner then
         -- 记录胜利
@@ -139,10 +153,13 @@ end
 
 -- 记录技能使用
 local function recordSkillUsed(player, skill_name)
+    local room = player:getRoom()
+    local game_mode = room:getMode()
+    
     local data = readYearReviewData()
     local year = os.date("%Y")
     local player_name = player:objectName()
-    local stats = getPlayerYearStats(data, player_name, year)
+    local stats = getPlayerYearStats(data, player_name, year, game_mode)
     
     if not stats.skills_used[skill_name] then
         stats.skills_used[skill_name] = 0
@@ -154,10 +171,13 @@ end
 
 -- 记录卡牌使用
 local function recordCardUsed(player, card)
+    local room = player:getRoom()
+    local game_mode = room:getMode()
+    
     local data = readYearReviewData()
     local year = os.date("%Y")
     local player_name = player:objectName()
-    local stats = getPlayerYearStats(data, player_name, year)
+    local stats = getPlayerYearStats(data, player_name, year, game_mode)
     
     local card_name = card:objectName()
     if not stats.cards_used[card_name] then
@@ -170,10 +190,13 @@ end
 
 -- 记录伤害数据
 local function recordDamage(player, damage_value, is_source)
+    local room = player:getRoom()
+    local game_mode = room:getMode()
+    
     local data = readYearReviewData()
     local year = os.date("%Y")
     local player_name = player:objectName()
-    local stats = getPlayerYearStats(data, player_name, year)
+    local stats = getPlayerYearStats(data, player_name, year, game_mode)
     
     if is_source then
         stats.damage_dealt = stats.damage_dealt + damage_value
@@ -186,10 +209,13 @@ end
 
 -- 记录击杀/死亡
 local function recordKillOrDeath(player, is_kill)
+    local room = player:getRoom()
+    local game_mode = room:getMode()
+    
     local data = readYearReviewData()
     local year = os.date("%Y")
     local player_name = player:objectName()
-    local stats = getPlayerYearStats(data, player_name, year)
+    local stats = getPlayerYearStats(data, player_name, year, game_mode)
     
     if is_kill then
         stats.kills = stats.kills + 1
@@ -202,10 +228,13 @@ end
 
 -- 记录摸牌/弃牌
 local function recordCardMove(player, count, is_draw)
+    local room = player:getRoom()
+    local game_mode = room:getMode()
+    
     local data = readYearReviewData()
     local year = os.date("%Y")
     local player_name = player:objectName()
-    local stats = getPlayerYearStats(data, player_name, year)
+    local stats = getPlayerYearStats(data, player_name, year, game_mode)
     
     if is_draw then
         stats.card_drawn = stats.card_drawn + count

@@ -1,0 +1,46 @@
+游戏模式分类统计系统
+========================
+
+修改内容：
+年度回顾系统（year_review.lua）和武将统计系统（general_statistics.lua）现在支持
+按游戏模式分别统计数据，而不是只统计某一种模式或过滤特殊模式。
+
+数据结构：
+{
+    "GameModes": {
+        "2p_standard": { /* 2人身份局数据 */ },
+        "4p_standard": { /* 4人身份局数据 */ },
+        "8p_standard": { /* 8人身份局数据 */ },
+        "3v3": { /* 3v3模式数据 */ },
+        "1v3": { /* 1v3模式数据 */ },
+        "boss": { /* Boss模式数据 */ },
+        "defense": { /* 防守模式数据 */ },
+        ...
+    },
+    "CurrentYear": "2025",
+    "LastUpdate": "2025-12-10 ..."
+}
+
+支持的游戏模式映射：
+- 02p, 03p, 04p, 05p, 06p, 08p → 2p_standard, 3p_standard, 4p_standard...
+- 06_3v3 → 3v3
+- 06_XMode → 1v3
+- 04_boss → boss
+- 08_defense → defense
+- 其他模式 → 使用原始模式名称
+
+优点：
+✅ 所有游戏模式的数据都会被记录
+✅ 可以分别查看不同模式下的武将表现和玩家数据
+✅ 不同模式的数据互不干扰
+✅ 可以比较同一武将在不同模式下的表现差异
+
+查询方式：
+- 年度回顾：data.GameModes[mode_name].PlayerStats[player_name][year]
+- 武将统计：data.GameModes[mode_name].Generals[general_name]
+
+影响范围：
+✅ 年度回顾系统的所有7个触发器
+✅ 武将统计系统的所有9个触发器
+✅ 所有record函数都添加了game_mode参数支持
+
