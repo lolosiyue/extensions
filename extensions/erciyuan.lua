@@ -491,11 +491,11 @@ LuaWushuang = sgs.CreateTriggerSkill { --wushuang
 LuaKuanggu = sgs.CreateTriggerSkill { --狂骨
 	name = "LuaKuanggu",
 	frequency = sgs.Skill_Compulsory,
-	events = { sgs.Damage, sgs.PreDamageDone },
+	events = { sgs.Damage, sgs.PreDamage },
 	on_trigger = function(self, event, player, data)
 		local damage = data:toDamage()
 		local room = player:getRoom()
-		if (event == sgs.PreDamageDone) and damage.from and damage.from:hasSkill(self:objectName()) and damage.from:isAlive() then
+		if (event == sgs.PreDamage) and damage.from and damage.from:hasSkill(self:objectName()) and damage.from:isAlive() then
 			local weiyan = damage.from
 			weiyan:setTag("invokeLuaKuanggu", sgs.QVariant((weiyan:distanceTo(damage.to) <= 1)))
 		elseif (event == sgs.Damage) and player:hasSkill(self:objectName()) and player:isAlive() then

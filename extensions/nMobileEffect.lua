@@ -238,7 +238,7 @@ n_mvpexperience = sgs.CreateTriggerSkill {
 				return false
 			end
 			room:addPlayerMark(player,"mvpexp",move.card_ids:length() * x)
-		elseif triggerEvent == sgs.PreDamageDone then
+		elseif triggerEvent == sgs.PreDamage then
 			local damage = data:toDamage()
 			if damage.from then
 				room:addPlayerMark(damage.from,"mvpexp",damage.damage * 5 * x)

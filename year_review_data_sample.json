@@ -1,0 +1,272 @@
+{
+    "CurrentYear": "2024",
+    "PlayerStats": {
+        "示例玩家1": {
+            "2024": {
+                "year": "2024",
+                "player_name": "示例玩家1",
+                "total_games": 150,
+                "total_wins": 92,
+                "generals": {
+                    "caocao": {
+                        "play_count": 25,
+                        "win_count": 18
+                    },
+                    "liubei": {
+                        "play_count": 20,
+                        "win_count": 14
+                    },
+                    "sunquan": {
+                        "play_count": 18,
+                        "win_count": 12
+                    },
+                    "zhugeliang": {
+                        "play_count": 15,
+                        "win_count": 10
+                    },
+                    "lvbu": {
+                        "play_count": 12,
+                        "win_count": 8
+                    }
+                },
+                "skills_used": {
+                    "jianxiong": 256,
+                    "rende": 189,
+                    "zhiheng": 167,
+                    "guanxing": 145,
+                    "wushuang": 123,
+                    "longdan": 98,
+                    "tieqi": 87,
+                    "jizhi": 76,
+                    "qixi": 65,
+                    "keji": 54
+                },
+                "cards_used": {
+                    "slash": 567,
+                    "jink": 489,
+                    "peach": 123,
+                    "duel": 89,
+                    "dismantlement": 76,
+                    "snatch": 65,
+                    "lightning": 34,
+                    "nullification": 56,
+                    "god_salvation": 23,
+                    "amazing_grace": 45,
+                    "archery_attack": 38,
+                    "savage_assault": 41
+                },
+                "damage_dealt": 892,
+                "damage_taken": 567,
+                "kills": 134,
+                "deaths": 58,
+                "card_drawn": 2345,
+                "card_discarded": 1234,
+                "roles_stats": {
+                    "lord": {
+                        "play": 38,
+                        "win": 28
+                    },
+                    "loyalist": {
+                        "play": 37,
+                        "win": 22
+                    },
+                    "rebel": {
+                        "play": 38,
+                        "win": 21
+                    },
+                    "renegade": {
+                        "play": 37,
+                        "win": 21
+                    }
+                }
+            },
+            "2023": {
+                "year": "2023",
+                "player_name": "示例玩家1",
+                "total_games": 120,
+                "total_wins": 68,
+                "generals": {
+                    "caocao": {
+                        "play_count": 20,
+                        "win_count": 13
+                    },
+                    "zhangliao": {
+                        "play_count": 18,
+                        "win_count": 11
+                    }
+                },
+                "skills_used": {
+                    "jianxiong": 198,
+                    "tuxi": 145
+                },
+                "cards_used": {
+                    "slash": 456,
+                    "jink": 389
+                },
+                "damage_dealt": 678,
+                "damage_taken": 445,
+                "kills": 98,
+                "deaths": 52,
+                "card_drawn": 1890,
+                "card_discarded": 987,
+                "roles_stats": {
+                    "lord": {
+                        "play": 30,
+                        "win": 19
+                    },
+                    "loyalist": {
+                        "play": 30,
+                        "win": 17
+                    },
+                    "rebel": {
+                        "play": 30,
+                        "win": 16
+                    },
+                    "renegade": {
+                        "play": 30,
+                        "win": 16
+                    }
+                }
+            }
+        },
+        "示例玩家2": {
+            "2024": {
+                "year": "2024",
+                "player_name": "示例玩家2",
+                "total_games": 95,
+                "total_wins": 48,
+                "generals": {
+                    "zhangliao": {
+                        "play_count": 18,
+                        "win_count": 11
+                    },
+                    "guanyu": {
+                        "play_count": 15,
+                        "win_count": 9
+                    },
+                    "zhaoyun": {
+                        "play_count": 14,
+                        "win_count": 8
+                    },
+                    "huangyueying": {
+                        "play_count": 12,
+                        "win_count": 6
+                    },
+                    "diaochan": {
+                        "play_count": 10,
+                        "win_count": 5
+                    }
+                },
+                "skills_used": {
+                    "tuxi": 178,
+                    "longdan": 156,
+                    "jizhi": 134,
+                    "lijian": 89,
+                    "biyue": 76
+                },
+                "cards_used": {
+                    "slash": 398,
+                    "jink": 345,
+                    "peach": 87,
+                    "duel": 65,
+                    "dismantlement": 54
+                },
+                "damage_dealt": 567,
+                "damage_taken": 489,
+                "kills": 89,
+                "deaths": 47,
+                "card_drawn": 1567,
+                "card_discarded": 823,
+                "roles_stats": {
+                    "lord": {
+                        "play": 24,
+                        "win": 13
+                    },
+                    "loyalist": {
+                        "play": 24,
+                        "win": 12
+                    },
+                    "rebel": {
+                        "play": 24,
+                        "win": 12
+                    },
+                    "renegade": {
+                        "play": 23,
+                        "win": 11
+                    }
+                }
+            }
+        },
+        "示例玩家3": {
+            "2024": {
+                "year": "2024",
+                "player_name": "示例玩家3",
+                "total_games": 78,
+                "total_wins": 52,
+                "generals": {
+                    "simayi": {
+                        "play_count": 22,
+                        "win_count": 16
+                    },
+                    "zhugeliang": {
+                        "play_count": 19,
+                        "win_count": 14
+                    },
+                    "luxun": {
+                        "play_count": 16,
+                        "win_count": 11
+                    },
+                    "huangyueying": {
+                        "play_count": 12,
+                        "win_count": 7
+                    },
+                    "diaochan": {
+                        "play_count": 9,
+                        "win_count": 4
+                    }
+                },
+                "skills_used": {
+                    "guicai": 189,
+                    "fankui": 156,
+                    "guanxing": 134,
+                    "kongcheng": 112,
+                    "jizhi": 98,
+                    "qianxun": 87,
+                    "lianying": 76
+                },
+                "cards_used": {
+                    "nullification": 145,
+                    "slash": 289,
+                    "jink": 267,
+                    "peach": 76,
+                    "dismantlement": 65,
+                    "snatch": 54
+                },
+                "damage_dealt": 456,
+                "damage_taken": 378,
+                "kills": 67,
+                "deaths": 26,
+                "card_drawn": 1456,
+                "card_discarded": 678,
+                "roles_stats": {
+                    "lord": {
+                        "play": 20,
+                        "win": 15
+                    },
+                    "loyalist": {
+                        "play": 19,
+                        "win": 13
+                    },
+                    "rebel": {
+                        "play": 20,
+                        "win": 13
+                    },
+                    "renegade": {
+                        "play": 19,
+                        "win": 11
+                    }
+                }
+            }
+        }
+    }
+}
