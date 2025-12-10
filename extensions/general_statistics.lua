@@ -85,9 +85,7 @@ local function loadGeneralData()
     local json = require "json"
     local file = io.open(general_data_file, "r")
     local data = {
-        Generals = {},           -- 武将数据
-        GlobalAverages = {},     -- 全局平均值
-        FactionAverages = {},    -- 势力平均值
+        GameModes = {},          -- 按游戏模式分类的数据 { mode_name = { Generals = {}, GlobalAverages = {}, FactionAverages = {} } }
         LastUpdate = os.date("%Y-%m-%d %H:%M:%S")
     }
     if file then
@@ -201,18 +199,53 @@ local function initGeneralStats(general_name)
 end
 
 -- 获取或创建武将统计
-local function getGeneralStats(data, general_name)
-    if not data.Generals[general_name] then
-        data.Generals[general_name] = initGeneralStats(general_name)
+local function getGeneralStats(data, general_name, game_mode)
+    game_mode = game_mode or "standard"
+    
+    if not data.GameModes[game_mode] then
+        data.GameModes[game_mode] = {
+            Generals = {},
+            GlobalAverages = {},
+            FactionAverages = {}
+        }
     end
-    return data.Generals[general_name]
+    
+    if not data.GameModes[game_mode].Generals[general_name] then
+        data.GameModes[game_mode].Generals[general_name] = initGeneralStats(general_name)
+    end
+    
+    return data.GameModes[game_mode].Generals[general_name]
+end
+
+-- 获取游戏模式名称（标准化）
+local function getGameModeName(mode_string)
+    -- 标准身份局
+    if string.find(mode_string, "02p") then return "2p_standard"
+    elseif string.find(mode_string, "03p") then return "3p_standard"
+    elseif string.find(mode_string, "04p") then return "4p_standard"
+    elseif string.find(mode_string, "05p") then return "5p_standard"
+    elseif string.find(mode_string, "06p") then return "6p_standard"
+    elseif string.find(mode_string, "08p") then return "8p_standard"
+    -- 特殊模式
+    elseif mode_string == "06_3v3" then return "3v3"
+    elseif mode_string == "06_XMode" then return "1v3"
+    elseif mode_string == "04_boss" then return "boss"
+    elseif mode_string == "08_defense" then return "defense"
+    elseif mode_string == "02_mini_scene" then return "mini_scene"
+    else
+        -- 其他模式使用原始名称
+        return mode_string
+    end
 end
 
 -- 游戏开始时记录
 local function recordGameStart(player, game_data)
+    local room = player:getRoom()
+    local game_mode = getGameModeName(room:getMode())
+    
     local data = loadGeneralData()
     local general_name = player:getGeneralName()
-    local stats = getGeneralStats(data, general_name)
+    local stats = getGeneralStats(data, general_name, game_mode)
     
     stats.total_games = stats.total_games + 1
     
@@ -265,9 +298,12 @@ end
 
 -- 游戏结束时记录
 local function recordGameEnd(player, is_winner, is_mvp, total_rounds)
+    local room = player:getRoom()
+    local game_mode = getGameModeName(room:getMode())
+    
     local data = loadGeneralData()
     local general_name = player:getGeneralName()
-    local stats = getGeneralStats(data, general_name)
+    local stats = getGeneralStats(data, general_name, game_mode)
     
     if is_winner then
         stats.total_wins = stats.total_wins + 1
@@ -322,9 +358,12 @@ end
 
 -- 记录卡牌使用
 local function recordCardUsed(player, card, caused_damage)
+    local room = player:getRoom()
+    local game_mode = getGameModeName(room:getMode())
+    
     local data = loadGeneralData()
     local general_name = player:getGeneralName()
-    local stats = getGeneralStats(data, general_name)
+    local stats = getGeneralStats(data, general_name, game_mode)
     
     local card_name = card:objectName()
     if not stats.cards_used[card_name] then
@@ -366,9 +405,12 @@ end
 
 -- 记录技能使用
 local function recordSkillUsed(player, skill_name)
+    local room = player:getRoom()
+    local game_mode = getGameModeName(room:getMode())
+    
     local data = loadGeneralData()
     local general_name = player:getGeneralName()
-    local stats = getGeneralStats(data, general_name)
+    local stats = getGeneralStats(data, general_name, game_mode)
     
     if not stats.skills_used[skill_name] then
         stats.skills_used[skill_name] = 0
@@ -380,9 +422,12 @@ end
 
 -- 记录伤害
 local function recordDamage(player, damage_data, is_source)
+    local room = player:getRoom()
+    local game_mode = getGameModeName(room:getMode())
+    
     local data = loadGeneralData()
     local general_name = player:getGeneralName()
-    local stats = getGeneralStats(data, general_name)
+    local stats = getGeneralStats(data, general_name, game_mode)
     
     local damage_value = damage_data.damage
     local card = damage_data.card
@@ -445,9 +490,12 @@ end
 
 -- 记录受伤后收益
 local function recordDamageBenefit(player, benefit_type, value)
+    local room = player:getRoom()
+    local game_mode = getGameModeName(room:getMode())
+    
     local data = loadGeneralData()
     local general_name = player:getGeneralName()
-    local stats = getGeneralStats(data, general_name)
+    local stats = getGeneralStats(data, general_name, game_mode)
     
     local game_data = player:getTag("GeneralStatsGameData"):toTable() or {}
     local damage_taken_time = game_data.damage_taken_time or 0
@@ -641,9 +689,11 @@ GeneralStatsDamageRecorder = sgs.CreateTriggerSkill{
         elseif event == sgs.Damage then
             -- 记录卡牌造成的实际伤害
             if damage.from and damage.card then
+                local room = damage.from:getRoom()
+                local game_mode = getGameModeName(room:getMode())
                 local data_obj = loadGeneralData()
                 local general_name = damage.from:getGeneralName()
-                local stats = getGeneralStats(data_obj, general_name)
+                local stats = getGeneralStats(data_obj, general_name, game_mode)
                 local card_name = damage.card:objectName()
                 
                 if stats.cards_used[card_name] then
@@ -670,16 +720,17 @@ GeneralStatsDeathRecorder = sgs.CreateTriggerSkill{
     on_trigger = function(self, event, player, data)
         local death = data:toDeath()
         if death.who then
+            local room = death.who:getRoom()
+            local game_mode = getGameModeName(room:getMode())
             local data_obj = loadGeneralData()
             local general_name = death.who:getGeneralName()
-            local stats = getGeneralStats(data_obj, general_name)
+            local stats = getGeneralStats(data_obj, general_name, game_mode)
             
             stats.deaths = stats.deaths + 1
             
             -- 标记死亡
             local game_data = death.who:getTag("GeneralStatsGameData"):toTable() or {}
             game_data.is_alive = false
-            local room = death.who:getRoom()
             game_data.death_round = room:getTag("RoundCount"):toInt() or 0
             death.who:setTag("GeneralStatsGameData", sgs.QVariant(game_data))
             
@@ -687,7 +738,7 @@ GeneralStatsDeathRecorder = sgs.CreateTriggerSkill{
             if death.damage and death.damage.from then
                 local killer_general = death.damage.from:getGeneralName()
                 local killer_data = loadGeneralData()
-                local killer_stats = getGeneralStats(killer_data, killer_general)
+                local killer_stats = getGeneralStats(killer_data, killer_general, game_mode)
                 killer_stats.kills = killer_stats.kills + 1
                 saveGeneralData(killer_data)
             end
@@ -715,9 +766,11 @@ GeneralStatsCardMoveRecorder = sgs.CreateTriggerSkill{
         if move.to and move.to_place == sgs.Player_PlaceHand then
             local to_player = move.to
             if to_player then
+                local room = to_player:getRoom()
+                local game_mode = getGameModeName(room:getMode())
                 local data_obj = loadGeneralData()
                 local general_name = to_player:getGeneralName()
-                local stats = getGeneralStats(data_obj, general_name)
+                local stats = getGeneralStats(data_obj, general_name, game_mode)
                 stats.cards_drawn = stats.cards_drawn + move.card_ids:length()
                 
                 -- 检查是否为受伤后收益
@@ -732,9 +785,11 @@ GeneralStatsCardMoveRecorder = sgs.CreateTriggerSkill{
             and (move.to_place == sgs.Player_DiscardPile or move.reason.m_reason == sgs.CardMoveReason_S_REASON_DISCARD) then
             local from_player = move.from
             if from_player then
+                local room = from_player:getRoom()
+                local game_mode = getGameModeName(room:getMode())
                 local data_obj = loadGeneralData()
                 local general_name = from_player:getGeneralName()
-                local stats = getGeneralStats(data_obj, general_name)
+                local stats = getGeneralStats(data_obj, general_name, game_mode)
                 stats.cards_discarded = stats.cards_discarded + move.card_ids:length()
                 saveGeneralData(data_obj)
             end
@@ -754,10 +809,12 @@ GeneralStatsRecoverRecorder = sgs.CreateTriggerSkill{
         return player and player:isAlive()
     end,
     on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        local game_mode = getGameModeName(room:getMode())
         local recover = data:toRecover()
         local data_obj = loadGeneralData()
         local general_name = player:getGeneralName()
-        local stats = getGeneralStats(data_obj, general_name)
+        local stats = getGeneralStats(data_obj, general_name, game_mode)
         
         stats.hp_recovered = stats.hp_recovered + recover.recover
         
@@ -765,7 +822,7 @@ GeneralStatsRecoverRecorder = sgs.CreateTriggerSkill{
         if recover.who and recover.who:objectName() ~= player:objectName() then
             local healer_general = recover.who:getGeneralName()
             local healer_data = loadGeneralData()
-            local healer_stats = getGeneralStats(healer_data, healer_general)
+            local healer_stats = getGeneralStats(healer_data, healer_general, game_mode)
             healer_stats.hp_recovered_others = healer_stats.hp_recovered_others + recover.recover
             saveGeneralData(healer_data)
         end
