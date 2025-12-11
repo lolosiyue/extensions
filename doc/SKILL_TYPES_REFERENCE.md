@@ -2222,6 +2222,10 @@ local is_zhiheng = (table.contains(card:getSkillNames(), "zhiheng") or
                     table.contains(card:getSkillNames(), "nos_zhiheng"))
 ```
 
+#### 12. Function Reason
+room:loseHp(target, 1, true, player, self:objectName())
+room:loseMaxHp(source,1,self:getSkillName())
+
 ---
 
 ### AI Implementation Checklist
