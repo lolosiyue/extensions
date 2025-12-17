@@ -115,7 +115,7 @@ luanixi_tr = sgs.CreateTriggerSkill {
 				if draw.reason ~= "draw_phase" then return false end
 				-- room:loseHp(player, player:getHp()-1)
 				room:sendCompulsoryTriggerLog(player, "luanixi", true)
-				draw.num = draw.num + 1
+				draw.num = draw.num + 4
 				data:setValue(draw)
 				room:broadcastSkillInvoke("juejing")
 				
