@@ -309,14 +309,15 @@ function SmartAI:getGeneralDuelCard(player, cards)
 		if player==self.player and self:isValuableCard(card) then continue end
 		if self.player:canSeeHandcard(player) or card:hasFlag("visible")
 		or card:hasFlag("visible_"..self.player:objectName().."_"..player:objectName()) then
-			local point = card:getNumber()
+			local point = self:getGeneralDuelPoint(player, card)
+
 			--add
 			if point>max_point then max_point = point max_card = card end
 		end
 	end
 	if player==self.player and not max_card then
 		for _,card in ipairs(cards)do
-			local point = card:getNumber()
+			local point = self:getGeneralDuelPoint(player, card)
 			--add
 			if point>max_point then max_point = point max_card = card end
 		end
@@ -333,6 +334,15 @@ function SmartAI:getGeneralDuelPoint(player, card)
     local x = card:getNumber()
     if player:hasSkill("s4_txbw_motian") then
         x = x + player:getMark("TurnLengthCount")
+    end
+    if player:hasSkill("s4_txbw_yizhong") then
+        x = x + player:getHp() / 2
+    end
+    if player:hasSkill("s4_txbw_wanpo") then
+        x = x + 1
+    end
+    if player:hasSkill("s4_txbw_wusheng") and card:isRed() then
+        x = x + 2
     end
     return x
 end
@@ -380,7 +390,7 @@ sgs.ai_skill_use_func["#s4_txbw_general_duel_start"] = function(card,use,self)
         if self:damageStruct(damage) then
             local enemy_max_card = self:getGeneralDuelCard(enemy)
             local enemy_max_point = enemy_max_card and self:getGeneralDuelPoint(enemy, enemy_max_card) or 100
-            if (enemy_max_card and (max_point>enemy_max_point)) or (max_point > 7) then
+            if (enemy_max_card and (max_point>enemy_max_point)) or (max_point > 7) or self.player:hasSkill("s4_txbw_yishi") or self.player:hasSkill("s4_txbw_shenwei") then
                 self.s4_txbw_general_duel_start_card = max_card:getId()
                 use.card = card
                 use.to:append(enemy)
@@ -690,12 +700,34 @@ sgs.ai_skill_choice.s4_txbw_tianjian = sgs.ai_skill_choice.benghuai
 
 sgs.ai_skill_cardask["@s4_txbw_zhisun"] = function(self, data, pattern, target)
     local number = data:toInt()
-    local self_number = self.player:getTag("s4_txbw_general_duel_card"):toCard():getNumber()
+    local self_card = sgs.Sanguosha:getCard(self.player:getTag("s4_txbw_general_duel_card"):toInt())
+    local self_number = self_card:getNumber()
     if self_number < number then
         return true
+    elseif self_number >= number then
+        local cards = self.player:getCards("h")
+        for _, card in sgs.qlist(cards) do
+            if ((card:getNumber() == number and self_number == number) or (card:getNumber() > number and self_number >= number)) and self:getKeepValue(card) > self:getKeepValue(self_card) then
+                return card:getEffectiveId()
+            end
+        end
     end
     return "."
 end
+
+sgs.ai_skill_invoke.s4_txbw_yijue = function(self, data)
+    local target = data:toPlayer()
+    if not target then
+        return false
+    end
+    if target:getHp() >= self.player:getHp() then
+        return self:isEnemy(target)
+    else
+        return self:isFriend(target) and target:getHp() < self:getBestHp(target)
+    end
+    return false
+end
+
 
 
 
@@ -2934,4 +2966,47 @@ sgs.ai_ajustdamage_to.s4_s_yinghun = function(self, from, to, card, nature)
         return -99
     end
 end
+
+sgs.ai_skill_invoke.s4_fuhan = function(self,data)
+	if (not self:isWeak() and (self:getCardsNum("Peach")+self.player:getHp()>1 or hasZhaxiangEffect(self.player))) or self.player:getMark("s4_fuhan_success") > 0 then
+		return true
+	end
+end
+
+sgs.ai_view_as.s4_fuhan = function(card,player,card_place)
+	local suit = card:getSuitString()
+	local number = card:getNumberString()
+	local card_id = card:getEffectiveId()
+	if card_place~=sgs.Player_PlaceSpecial and not card:isKindOf("BasicCard") and not card:isKindOf("Peach") and not card:hasFlag("using") and player:getMark("&s4_fuhan-Clear") > 0 then
+		return ("slash:s4_fuhan[%s:%s]=%d"):format(suit,number,card_id)
+	end
+end
+
+-- sgs.ai_fill_skill.s4_tiaoxin
+
+local s4_fuhan_skill = {}
+s4_fuhan_skill.name = "s4_fuhan"
+table.insert(sgs.ai_skills,s4_fuhan_skill)
+s4_fuhan_skill.getTurnUseCard = function(self,inclusive)
+	local cards = self:addHandPile("he")
+	local use_card
+	self:sortByUseValue(cards,true)
+    if self.player:getMark("&s4_fuhan-Clear") == 0 then return nil end
+	for _,card in ipairs(cards)do
+		if not card:isKindOf("BasicCard")
+			and (self:getUseValue(card)<sgs.ai_use_value.Slash or inclusive or sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_Residue,self.player,dummyCard())>0) then
+			use_card = card
+			break
+		end
+	end
+	if use_card then
+		local suit = use_card:getSuitString()
+		local number = use_card:getNumberString()
+		local card_id = use_card:getEffectiveId()
+		return sgs.Card_Parse(("slash:s4_fuhan[%s:%s]=%d"):format(suit,number,card_id))
+	end
+end
+
+sgs.ai_cardneed.s4_fuhan = sgs.ai_cardneed.wusheng
+
 

@@ -16372,7 +16372,7 @@ s3_jxwj_zhoudao = sgs.CreateTriggerSkill{
 		if event == sgs.Damage then
 		local 	target = damage.to
 		if not target then return false end
-		if damage.card:isKindOf("Slash") then
+		if damage.card and damage.card:isKindOf("Slash") then
 			local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName(), "s3_jxwj_zhoudao-invoke", true, true)
 			if not target then return false end
 				local x = math.max(1, player:getLostHp())

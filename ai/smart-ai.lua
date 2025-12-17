@@ -1912,350 +1912,362 @@ function SmartAI:filterEvent(event,player,data)
 				file:close()
 			end
 		end
-	if event==sgs.Death then
-		local de = data:toDeath()
-		sgs.ai_role[de.who:objectName()] = de.who:getRole()
-		if de.damage and de.damage.from==player and sgs.turncount>1 then
-			local intention = 99
-			if de.damage.transfer or de.damage.chain then intention = intention/3 end
-			sgs.updateIntention(player,de.who,intention)
-		end
-	elseif event==sgs.BeforeGameOverJudge or event==sgs.Revived then
-		for i,p in sgs.qlist(self.room:getAlivePlayers())do
-			sgs.ais[p:objectName()]:updatePlayers(i<1)
-		end
-	--[[elseif event==sgs.AskForPeaches then
-		local dying = data:toDying()
-		if sgs.DebugMode_Niepan then endlessNiepan(dying.who) end]]
-	elseif event==sgs.TargetSpecified then
-		local struct = data:toCardUse()
-		if struct.card:objectName()~="collateral" then sgs.ai_collateral = false end
-		sgs.ai_collateral = struct.card:objectName()=="collateral"
-		if sgs.UsedData.card==struct.card and sgs.UsedData.from==player then
-			local suppress_intention = self:shouldSuppressIntention(struct)
+		if event==sgs.Death then
+			local de = data:toDeath()
+			sgs.ai_role[de.who:objectName()] = de.who:getRole()
+			if de.damage and de.damage.from==player and sgs.turncount>1 then
+				local intention = 99
+				if de.damage.transfer or de.damage.chain then intention = intention/3 end
+				sgs.updateIntention(player,de.who,intention)
+			end
+		elseif event==sgs.BeforeGameOverJudge or event==sgs.Revived then
+			for i,p in sgs.qlist(self.room:getAlivePlayers())do
+				sgs.ais[p:objectName()]:updatePlayers(i<1)
+			end
+		--[[elseif event==sgs.AskForPeaches then
+			local dying = data:toDying()
+			if sgs.DebugMode_Niepan then endlessNiepan(dying.who) end]]
+		elseif event==sgs.TargetSpecified then
+			local struct = data:toCardUse()
+			if struct.card:objectName()~="collateral" then sgs.ai_collateral = false end
+			sgs.ai_collateral = struct.card:objectName()=="collateral"
+			if sgs.UsedData.card==struct.card and sgs.UsedData.from==player then
+				local suppress_intention = self:shouldSuppressIntention(struct)
+				
+				if not suppress_intention then
+					local callback = sgs.ai_card_intention[struct.card:getClassName()]
+					if type(callback)=="function" then 
+						callback(self,struct.card,player,sgs.QList2Table(struct.to))
+					elseif type(callback)=="number" then 
+						sgs.updateIntentions(player,struct.to,callback) 
+					end
+					if struct.card:objectName()~="collateral" then sgs.ai_collateral = false end
+				end
+			end
 			
-			if not suppress_intention then
-				local callback = sgs.ai_card_intention[struct.card:getClassName()]
-				if type(callback)=="function" then 
-					callback(self,struct.card,player,sgs.QList2Table(struct.to))
-				elseif type(callback)=="number" then 
-					sgs.updateIntentions(player,struct.to,callback) 
+			if struct.card:isDamageCard() then
+				if sgs.ai_role[player:objectName()]=="rebel"
+				and not self:isFriend(player:getNextAlive()) then
+					for _,p in sgs.qlist(struct.to)do
+						if p:getHp()<2 and p:isKongcheng() and sgs.ai_role[p:objectName()]=="rebel"
+						and self:isFriend(p) and self:isGoodTarget(p,nil,struct.card) and getCardsNum("Peach,Analeptic",p,player)<1
+						and self:getEnemyNumBySeat(player,p)>0 then p:setFlags("AI_doNotSave") end
+					end
 				end
-				if struct.card:objectName()~="collateral" then sgs.ai_collateral = false end
-			end
-		end
-		
-		if struct.card:isDamageCard() then
-			if sgs.ai_role[player:objectName()]=="rebel"
-			and not self:isFriend(player:getNextAlive()) then
-				for _,p in sgs.qlist(struct.to)do
-					if p:getHp()<2 and p:isKongcheng() and sgs.ai_role[p:objectName()]=="rebel"
-					and self:isFriend(p) and self:isGoodTarget(p,nil,struct.card) and getCardsNum("Peach,Analeptic",p,player)<1
-					and self:getEnemyNumBySeat(player,p)>0 then p:setFlags("AI_doNotSave") end
+				if struct.card:isKindOf("AOE") then
+					self.aoeTos = struct.to
+					local lord = getLord(player)
+					if lord and lord:getHp()<2 and struct.to:contains(lord) and self:aoeIsEffective(struct.card,lord,player)
+					then sgs[struct.card:getClassName().."HasLord"] = true end
+					self.aoeTos = nil
 				end
 			end
-			if struct.card:isKindOf("AOE") then
-				self.aoeTos = struct.to
-				local lord = getLord(player)
-				if lord and lord:getHp()<2 and struct.to:contains(lord) and self:aoeIsEffective(struct.card,lord,player)
-				then sgs[struct.card:getClassName().."HasLord"] = true end
-				self.aoeTos = nil
-			end
-		end
-		-- sgs.ai_collateral = struct.card:objectName()=="collateral"
-		-- if struct.to:length()>0 and sgs.UsedData.card==struct.card and sgs.UsedData.from==player then
-		-- 	local callback = sgs.ai_card_intention[struct.card:getClassName()]
-		-- 	if callback then
-		-- 		if type(callback)=="number" then sgs.updateIntentions(player,struct.to,callback)
-		-- 		else callback(self,struct.card,player,sgs.QList2Table(struct.to)) end
-		-- 	end
-		-- end
-	elseif event==sgs.ChoiceMade then
-		local struct = data:toString()
-		if struct=="" then return end
-		local list = struct:split(":")
-		local call = sgs.ai_choicemade_filter[list[1]]
-		if type(call)=="table" then
-			local i = 2
-			if list[1]=="cardResponded"
-			or list[1]=="cardUsed" then i = 3 end
-			call = call[list[i]]
-			end
-		if type(call)=="function" then call(self,player,list) end
-		if struct:contains("fenxin:yes") then
-			for _,ap in sgs.qlist(self.room:getAlivePlayers())do
-				if ap:hasFlag("FenxinTarget") then
-					sgs.roleValue[player:objectName()] = sgs.roleValue[ap:objectName()]
-					sgs.ai_role[player:objectName()] = sgs.ai_role[ap:objectName()]
-					self:updatePlayers(false)
-					break
+			-- sgs.ai_collateral = struct.card:objectName()=="collateral"
+			-- if struct.to:length()>0 and sgs.UsedData.card==struct.card and sgs.UsedData.from==player then
+			-- 	local callback = sgs.ai_card_intention[struct.card:getClassName()]
+			-- 	if callback then
+			-- 		if type(callback)=="number" then sgs.updateIntentions(player,struct.to,callback)
+			-- 		else callback(self,struct.card,player,sgs.QList2Table(struct.to)) end
+			-- 	end
+			-- end
+		elseif event==sgs.ChoiceMade then
+			local struct = data:toString()
+			if struct=="" then return end
+			local list = struct:split(":")
+			local call = sgs.ai_choicemade_filter[list[1]]
+			if type(call)=="table" then
+				local i = 2
+				if list[1]=="cardResponded"
+				or list[1]=="cardUsed" then i = 3 end
+				call = call[list[i]]
 				end
-			end
-		elseif struct:contains("cardChosen") then
-			if list[5]=="visible" then
-				call = BeMan(self.room,list[4])
-				for _,h in sgs.qlist(call:getHandcards())do
-					self.room:setCardFlag(h,"visible_"..player:objectName().."_"..list[4])
+			if type(call)=="function" then call(self,player,list) end
+			if struct:contains("fenxin:yes") then
+				for _,ap in sgs.qlist(self.room:getAlivePlayers())do
+					if ap:hasFlag("FenxinTarget") then
+						sgs.roleValue[player:objectName()] = sgs.roleValue[ap:objectName()]
+						sgs.ai_role[player:objectName()] = sgs.ai_role[ap:objectName()]
+						self:updatePlayers(false)
+						break
+					end
 				end
-			end
-		end
-	elseif event==sgs.CardEffect then
-		local struct = data:toCardEffect()
-		if struct.card:isKindOf("AOE") and struct.to:getRole()=="lord"
-		then sgs[struct.card:getClassName().."HasLord"] = nil end
-		if sgs.cardEffect and sgs.cardEffect.card then sgs.cardEffect.card:deleteLater() end
-		struct.card = sgs.Sanguosha:cloneCard(struct.card:objectName(),struct.card:getSuit(),struct.card:getNumber())
-		sgs.cardEffect = struct
-	elseif event==sgs.DamageInflicted then
-		local damage = data:toDamage()
-		for _,p in sgs.qlist(self.room:getAlivePlayers())do
-			sgs.ai_NeedPeach[p:objectName()] = 0
-		end
-		if damage.nature~=sgs.DamageStruct_Normal
-		and not damage.chain and player:isChained() then
-			local n = 0
-			for _,p in sgs.qlist(player:getAliveSiblings())do
-				if p:isChained() then
-					sgs.ai_NeedPeach[p:objectName()] = damage.damage-p:getHp()
-					n = n+1
-				end
-			end
-			self.room:setTag("is_chained",ToData(n))
-		end
-		
-		local r = damage.reason
-		if damage.card then
-			sgs.card_damage_nature[damage.card:getClassName()] = damage.nature
-			if sgs.ai_card_intention[damage.card:getClassName()] then return end
-			if r=="" then r = damage.card:getSkillName() end
-		end
-		
-		-- Calculate intention value
-		local intention = self:calculateDamageIntention(damage)
-		local from = self.room:findPlayerBySkillName(r,true) or damage.from
-		
-		if r~="" then sgs.damageData[r] = (sgs.damageData[r] or 0)+damage.damage end
-		if from and intention ~= 0 then 
-			sgs.updateIntention(from,player,intention) 
-		end
-	elseif event==sgs.PreCardUsed then
-		local struct = data:toCardUse()
-		local sn = getLord(player)
-		if sn and struct.card:isKindOf("Duel") then sn:setFlags("-AIGlobal_NeedToWake") end
-		sn = struct.card:getSkillName()
-		if sn~="" and struct.card:getTypeId()>0 then sgs.convertData[sn] = (sgs.convertData[sn] or 0)+self:getUseValue(struct.card) end
-		if struct.whocard then sgs.aiResponse[struct.whocard:getClassName()] = struct.card:getClassName() end
-		if struct.m_reason==sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-			if struct.card:isKindOf("Slash") then struct.from:setFlags("hasUsedSlash")
-			else struct.from:setFlags("hasUsed"..struct.card:getClassName()) end
-		end
-		sgs.UsedData = struct
-		sn = struct.card:objectName()
-		sn = sgs.ai_choicemade_filter[sn=="" and struct.card:getClassName() or sn]
-		if type(sn)=="function" then sn(self,player,struct) end
-	elseif event==sgs.HpRecover then
-		local rec = data:toRecover()
-		local aci = rec.card and sgs.ai_card_intention[rec.card:getClassName()]
-		if type(aci)=="function" or type(aci)=="number" then return end
-		if rec.who then sgs.updateIntention(rec.who,player,-66*rec.recover) end
-	elseif event==sgs.ShowCards then
-		local struct = data:toString()
-		local lists = struct:split(":")
-		if #lists>1 then
-			for _,id in ipairs(lists[1]:split("+"))do
-				if player:handCards():contains(tonumber(id)) then
-					self.room:setCardFlag(tonumber(id),"visible_"..lists[2].."_"..player:objectName())
-				end
-			end
-		end
-	elseif event==sgs.CardsMoveOneTime then
-		local move = data:toMoveOneTime()
-		local mf = BeMan(self.room,move.from)
-		if move.reason.m_skillName=="fenji" then sgs.ai_fenji_target = mf end
-		for i,id in sgs.qlist(move.card_ids)do
-			local mp = move.from_places:at(i)
-			local mc = sgs.Sanguosha:getCard(id)
-			if mp==sgs.Player_PlaceHand and player==self.room:getCurrent() then
-				for _,f in ipairs(mc:getFlags())do
-					if f:contains("visible_") then
-						self.room:setCardFlag(mc,"-"..f)
+			elseif struct:contains("cardChosen") then
+				if list[5]=="visible" then
+					call = BeMan(self.room,list[4])
+					for _,h in sgs.qlist(call:getHandcards())do
+						self.room:setCardFlag(h,"visible_"..player:objectName().."_"..list[4])
 					end
 				end
 			end
-			if move.to_place==sgs.Player_PlaceHand and player:objectName()==move.to:objectName() then
-				if not mc:hasFlag("visible") then
-					if mp==sgs.Player_PlaceHand and player:handCards():contains(id) then
-						self.room:setCardFlag(mc,"visible_"..mf:objectName().."_"..player:objectName())
+		elseif event==sgs.CardEffect then
+			local struct = data:toCardEffect()
+			if struct.card:isKindOf("AOE") and struct.to:getRole()=="lord"
+			then sgs[struct.card:getClassName().."HasLord"] = nil end
+			if sgs.cardEffect and sgs.cardEffect.card then sgs.cardEffect.card:deleteLater() end
+			struct.card = sgs.Sanguosha:cloneCard(struct.card:objectName(),struct.card:getSuit(),struct.card:getNumber())
+			sgs.cardEffect = struct
+		elseif event==sgs.DamageInflicted then
+			local damage = data:toDamage()
+			for _,p in sgs.qlist(self.room:getAlivePlayers())do
+				sgs.ai_NeedPeach[p:objectName()] = 0
+			end
+			if damage.nature~=sgs.DamageStruct_Normal
+			and not damage.chain and player:isChained() then
+				local n = 0
+				for _,p in sgs.qlist(player:getAliveSiblings())do
+					if p:isChained() then
+						sgs.ai_NeedPeach[p:objectName()] = damage.damage-p:getHp()
+						n = n+1
+					end
+				end
+				self.room:setTag("is_chained",ToData(n))
+			end
+			
+			local r = damage.reason
+			if damage.card then
+				sgs.card_damage_nature[damage.card:getClassName()] = damage.nature
+				if sgs.ai_card_intention[damage.card:getClassName()] then return end
+				if r=="" then r = damage.card:getSkillName() end
+			end
+			
+			-- Calculate intention value
+			local intention = self:calculateDamageIntention(damage)
+			local from = self.room:findPlayerBySkillName(r,true) or damage.from
+			
+			if r~="" then sgs.damageData[r] = (sgs.damageData[r] or 0)+damage.damage end
+			if from and intention ~= 0 then 
+				sgs.updateIntention(from,player,intention) 
+			end
+		elseif event==sgs.PreCardUsed then
+			local struct = data:toCardUse()
+			local sn = getLord(player)
+			if sn and struct.card:isKindOf("Duel") then sn:setFlags("-AIGlobal_NeedToWake") end
+			sn = struct.card:getSkillName()
+			if sn~="" and struct.card:getTypeId()>0 then sgs.convertData[sn] = (sgs.convertData[sn] or 0)+self:getUseValue(struct.card) end
+			if struct.whocard then sgs.aiResponse[struct.whocard:getClassName()] = struct.card:getClassName() end
+			if struct.m_reason==sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+				if struct.card:isKindOf("Slash") then struct.from:setFlags("hasUsedSlash")
+				else struct.from:setFlags("hasUsed"..struct.card:getClassName()) end
+			end
+			sgs.UsedData = struct
+			sn = struct.card:objectName()
+			sn = sgs.ai_choicemade_filter[sn=="" and struct.card:getClassName() or sn]
+			if type(sn)=="function" then sn(self,player,struct) end
+		elseif event==sgs.HpRecover then
+			local rec = data:toRecover()
+			local aci = rec.card and sgs.ai_card_intention[rec.card:getClassName()]
+			if type(aci)=="function" or type(aci)=="number" then return end
+			if rec.who then sgs.updateIntention(rec.who,player,-66*rec.recover) end
+		elseif event==sgs.ShowCards then
+			local struct = data:toString()
+			local lists = struct:split(":")
+			if #lists>1 then
+				for _,id in ipairs(lists[1]:split("+"))do
+					if player:handCards():contains(tonumber(id)) then
+						self.room:setCardFlag(tonumber(id),"visible_"..lists[2].."_"..player:objectName())
 					end
 				end
 			end
-			if move.to and move.to:objectName()==player:objectName()
-			and (move.reason.m_reason==sgs.CardMoveReason_S_REASON_GIVE or move.to:getTag("PresentCard"):toString()==mc:toString()) then
-				local m_player = BeMan(self.room,move.reason.m_playerId)
-				if m_player then
-					local mpl = -33
-					if move.to_place~=sgs.Player_PlaceHand or mc:hasFlag("visible") then
-						if #self:poisonCards({mc})>0 then mpl = 33
-						else mpl = -self:getUseValue(mc)*2 end
+		elseif event==sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			local mf = BeMan(self.room,move.from)
+			if move.reason.m_skillName=="fenji" then sgs.ai_fenji_target = mf end
+			for i,id in sgs.qlist(move.card_ids)do
+				local mp = move.from_places:at(i)
+				local mc = sgs.Sanguosha:getCard(id)
+				if mp==sgs.Player_PlaceHand and player==self.room:getCurrent() then
+					for _,f in ipairs(mc:getFlags())do
+						if f:contains("visible_") then
+							self.room:setCardFlag(mc,"-"..f)
+						end
 					end
-					if move.reason.m_skillName=="zd_shengdongjixi"  then mpl = 0 end--add
-					if move.reason.m_skillName=="yj_tuixinzhifu"  then mpl = 0 end--add
-					if move.reason.m_skillName=="god_flower"  then mpl = 0 end--add
-					if move.reason.m_skillName=="_kecheng_tuixinzhifu"  then mpl = 0 end--add
-					if move.reason.m_skillName=="god_edict"  then mpl = 0 end--add
-					sgs.updateIntention(m_player,player,mpl)
 				end
-			end
-			if mf==nil then continue end
-			if bit32.band(move.reason.m_reason,sgs.CardMoveReason_S_MASK_BASIC_REASON)==sgs.CardMoveReason_S_REASON_DISCARD then
-				if move.reason.m_playerId~=player:objectName() then
-					if mf==player then
+				if move.to_place==sgs.Player_PlaceHand and player:objectName()==move.to:objectName() then
+					if not mc:hasFlag("visible") then
+						if mp==sgs.Player_PlaceHand and player:handCards():contains(id) then
+							self.room:setCardFlag(mc,"visible_"..mf:objectName().."_"..player:objectName())
+						end
+					end
+				end
+				if move.to and move.to:objectName()==player:objectName()
+				and (move.reason.m_reason==sgs.CardMoveReason_S_REASON_GIVE or move.to:getTag("PresentCard"):toString()==mc:toString()) then
 					local m_player = BeMan(self.room,move.reason.m_playerId)
 					if m_player then
-						if mp==sgs.Player_PlaceEquip and (sgs.ai_poison_card[mc:objectName()] or self:evaluateArmor(mc)<-5)
-						or mp==sgs.Player_PlaceDelayedTrick then mc = -55 else mc = 55 end
-						sgs.updateIntention(m_player,player,mc)
-					end
+						local mpl = -33
+						if move.to_place~=sgs.Player_PlaceHand or mc:hasFlag("visible") then
+							if #self:poisonCards({mc})>0 then mpl = 33
+							else mpl = -self:getUseValue(mc)*2 end
 						end
-				elseif move.reason.m_reason==sgs.CardMoveReason_S_REASON_RULEDISCARD
-				and mf:getPhase()<=sgs.Player_Discard then
-					if sgs.ai_role[mf:objectName()]=="neutral"
-					and not mf:isSkipped(sgs.Player_Play) and CanUpdateIntention(mf)
-					and not mf:hasSkill("baiyin",true) then
-						mp = isCard("DelayedTrick",mc,mf)
-						if mp and not mp:targetFixed() then
-							local zhanghe = self.room:findPlayerBySkillName("qiaobian")
-							for _,p in ipairs(self.enemies)do
-								if p==zhanghe or p:containsTrick("YanxiaoCard")
-								or zhanghe and self:playerGetRound(zhanghe)<=self:playerGetRound(p) and self:isFriend(zhanghe,p) then continue end
-								if mf:canUse(mp,p) then player:addMark("Intention"..mf:objectName(),35) break end
-							end
-						end
-						if mf:hasFlag("JiangchiInvoke")
-						or mf:hasFlag("hasUsed"..mc:getClassName())
-						or mc:isKindOf("Slash") and mf:hasFlag("hasUsedSlash") then
-						elseif mc:isDamageCard() or not mc:targetFixed() then
-							for _,p in ipairs(self.enemies)do
-								if mf:canUse(mc,p) and self:isGoodTarget(p,nil,mc)
-								then player:addMark("Intention"..mf:objectName(),35) break end
-							end
-							for _,p in ipairs(self.friends)do
-								if sgs.ai_role[p:objectName()]~="neutral" and mf:canUse(mc,p) and self:isGoodTarget(p,nil,mc)
-								then player:addMark("Intention"..mf:objectName(),-35) break end
-							end
-						end
+						if move.reason.m_skillName=="zd_shengdongjixi"  then mpl = 0 end--add
+						if move.reason.m_skillName=="yj_tuixinzhifu"  then mpl = 0 end--add
+						if move.reason.m_skillName=="god_flower"  then mpl = 0 end--add
+						if move.reason.m_skillName=="_kecheng_tuixinzhifu"  then mpl = 0 end--add
+						if move.reason.m_skillName=="god_edict"  then mpl = 0 end--add
+						sgs.updateIntention(m_player,player,mpl)
 					end
 				end
-			elseif move.reason.m_skillName:contains("qiaobian") and move.to and self.room:getCurrent()==player then
-				if #self:poisonCards({mc},mf)>0 then mp = -70 else mp = 70 end
-				sgs.updateIntention(player,mf,mp)
-				if #self:poisonCards({mc},move.to)>0 then mp = 70 else mp = -70 end
-				sgs.updateIntention(player,BeMan(self.room,move.to),mp)
-			end
-		end
-		if move.to_place==sgs.Player_PlaceHand and move.to:objectName()==player:objectName() then
-			local cstring = {}
-			if sgs.aiHandCardVisible
-			and player:getPhase()<=sgs.Player_Play then
-				for _,c in sgs.qlist(player:getHandcards())do
-					table.insert(cstring,sgs.Sanguosha:translate(c:objectName()).."["..sgs.Sanguosha:translate(c:getSuitString().."_char")..c:getNumberString().."]")
+				if mf==nil then continue end
+				if bit32.band(move.reason.m_reason,sgs.CardMoveReason_S_MASK_BASIC_REASON)==sgs.CardMoveReason_S_REASON_DISCARD then
+					if move.reason.m_playerId~=player:objectName() then
+						if mf==player then
+						local m_player = BeMan(self.room,move.reason.m_playerId)
+						if m_player then
+							if mp==sgs.Player_PlaceEquip and (sgs.ai_poison_card[mc:objectName()] or self:evaluateArmor(mc)<-5)
+							or mp==sgs.Player_PlaceDelayedTrick then mc = -55 else mc = 55 end
+							sgs.updateIntention(m_player,player,mc)
+						end
+							end
+					elseif move.reason.m_reason==sgs.CardMoveReason_S_REASON_RULEDISCARD
+					and mf:getPhase()<=sgs.Player_Discard then
+						if sgs.ai_role[mf:objectName()]=="neutral"
+						and not mf:isSkipped(sgs.Player_Play) and CanUpdateIntention(mf)
+						and not mf:hasSkill("baiyin",true) then
+							mp = isCard("DelayedTrick",mc,mf)
+							if mp and not mp:targetFixed() then
+								local zhanghe = self.room:findPlayerBySkillName("qiaobian")
+								for _,p in ipairs(self.enemies)do
+									if p==zhanghe or p:containsTrick("YanxiaoCard")
+									or zhanghe and self:playerGetRound(zhanghe)<=self:playerGetRound(p) and self:isFriend(zhanghe,p) then continue end
+									if mf:canUse(mp,p) then player:addMark("Intention"..mf:objectName(),35) break end
+								end
+							end
+							if mf:hasFlag("JiangchiInvoke")
+							or mf:hasFlag("hasUsed"..mc:getClassName())
+							or mc:isKindOf("Slash") and mf:hasFlag("hasUsedSlash") then
+							elseif mc:isDamageCard() or not mc:targetFixed() then
+								for _,p in ipairs(self.enemies)do
+									if mf:canUse(mc,p) and self:isGoodTarget(p,nil,mc)
+									then player:addMark("Intention"..mf:objectName(),35) break end
+								end
+								for _,p in ipairs(self.friends)do
+									if sgs.ai_role[p:objectName()]~="neutral" and mf:canUse(mc,p) and self:isGoodTarget(p,nil,mc)
+									then player:addMark("Intention"..mf:objectName(),-35) break end
+								end
+							end
+						end
+					end
+				elseif move.reason.m_skillName:contains("qiaobian") and move.to and self.room:getCurrent()==player then
+					if #self:poisonCards({mc},mf)>0 then mp = -70 else mp = 70 end
+					sgs.updateIntention(player,mf,mp)
+					if #self:poisonCards({mc},move.to)>0 then mp = 70 else mp = -70 end
+					sgs.updateIntention(player,BeMan(self.room,move.to),mp)
 				end
-				cstring = player:getLogName()..":HC="..table.concat(cstring,"、")
-				--self.room:writeToConsole(cstring)
-				local file = io.open("lua/ai/cstring", "r")
-				local _file = file:read("*all")
-				file:close()
-				file = io.open("lua/ai/cstring", "w")
-				file:write(_file.."\n"..cstring)
-				file:close()
 			end
-			cstring = move.reason.m_skillName
-			if cstring~="" then sgs.drawData[cstring] = (sgs.drawData[cstring] or 0)+move.card_ids:length() end
-			self:assignKeep(player:getPhase()<sgs.Player_Play)
-		elseif move.to_place==sgs.Player_PlaceEquip and move.to:objectName()==player:objectName() then
-			self:assignKeep()
-		end
-	elseif event==sgs.StartJudge then
-		local judge = data:toJudge()
-		if judge.reason:contains("beige") then
-			local caiwenji = self.room:findPlayerBySkillName(judge.reason)
-			sgs.updateIntention(caiwenji,player,-60)
-		end
-		sgs.ai_judgestring[judge.reason] = {judge.pattern,judge.good}
-		sgs.ai_judgeGood[judge.reason] = judge:isGood()
-		if judge:isGood() and math.random()<0.4 then
-			if self:speak(judge.reason.."IsGood") or judge.pattern=="."
-			or math.random()<0.4 then return end
-			self:speak("judgeIsGood")
-		end
-	elseif event==sgs.AskForRetrial then
-		local judge = data:toJudge()
-		local intention = sgs.ai_retrial_intention[judge.reason]
-		if type(intention)=="function" then intention = intention(self,judge,sgs.ai_judgeGood[judge.reason]) end
-		if type(intention)~="number" then
-			if sgs.ai_judgeGood[judge.reason]
-			then if judge:isBad() then intention = 30 end
-			elseif judge:isGood() then intention = -30 end
-		end
-		if type(intention)=="number" then sgs.updateIntention(player,judge.who,intention) end
-		sgs.ai_judgeGood[judge.reason] = judge:isGood()
-	elseif event==sgs.RoundStart then
-		if player==self.room:getCurrent() then
-			sgs.turncount = data:toInt()
-			if sgs.turncount<=1 then
-				local hc = 0
-				for _,ap in sgs.qlist(self.room:getPlayers())do
-					if ap:getState()~="robot" then hc = hc+1 end
-				end
-				self.room:setTag("humanCount",ToData(hc))
-				if sgs.aiHandCardVisible then
-					local file = io.open("lua/ai/cstring", "w")
-					file:write("humanCount:"..hc)
+			if move.to_place==sgs.Player_PlaceHand and move.to:objectName()==player:objectName() then
+				local cstring = {}
+				if sgs.aiHandCardVisible
+				and player:getPhase()<=sgs.Player_Play then
+					for _,c in sgs.qlist(player:getHandcards())do
+						table.insert(cstring,sgs.Sanguosha:translate(c:objectName()).."["..sgs.Sanguosha:translate(c:getSuitString().."_char")..c:getNumberString().."]")
+					end
+					cstring = player:getLogName()..":HC="..table.concat(cstring,"、")
+					--self.room:writeToConsole(cstring)
+					local file = io.open("lua/ai/cstring", "r")
+					local _file = file:read("*all")
+					file:close()
+					file = io.open("lua/ai/cstring", "w")
+					file:write(_file.."\n"..cstring)
 					file:close()
 				end
+				cstring = move.reason.m_skillName
+				if cstring~="" then sgs.drawData[cstring] = (sgs.drawData[cstring] or 0)+move.card_ids:length() end
+				self:assignKeep(player:getPhase()<sgs.Player_Play)
+			elseif move.to_place==sgs.Player_PlaceEquip and move.to:objectName()==player:objectName() then
+				self:assignKeep()
 			end
-			sgs.aiData = GetAiData() or sgs.aiData
-			saveItemData("drawData")
-			saveItemData("convertData")
-			saveItemData("damageData")
-			saveItemData("throwData")
-			if not sgs.aiData["aiResponse"] then sgs.aiData["aiResponse"] = {} end
-			for c,r in pairs(sgs.aiResponse)do
-				sgs.aiData["aiResponse"][c] = r
+		elseif event==sgs.StartJudge then
+			local judge = data:toJudge()
+			if judge.reason:contains("beige") then
+				local caiwenji = self.room:findPlayerBySkillName(judge.reason)
+				sgs.updateIntention(caiwenji,player,-60)
 			end
-			sgs.aiResponse = sgs.aiData["aiResponse"]
-			if not sgs.aiData["card_damage_nature"] then sgs.aiData["card_damage_nature"] = {} end
-			for c,n in pairs(sgs.card_damage_nature)do
-				sgs.aiData["card_damage_nature"][c] = n
+			sgs.ai_judgestring[judge.reason] = {judge.pattern,judge.good}
+			sgs.ai_judgeGood[judge.reason] = judge:isGood()
+			if judge:isGood() and math.random()<0.4 then
+				if self:speak(judge.reason.."IsGood") or judge.pattern=="."
+				or math.random()<0.4 then return end
+				self:speak("judgeIsGood")
 			end
-			sgs.card_damage_nature = sgs.aiData["card_damage_nature"]
-			SetAiData(sgs.aiData)--[[
-			if sgs.aiHandCardVisible then
-				local allp = sgs.Sanguosha:getSkillNames()--self.room:getTag("AllGenerals"):toStringList()
-				local ai_files = sgs.GetFileNames("audio/skill")
-				for _,g in sgs.list(ai_files)do
-					local has = false
-					for _,tg in sgs.list(allp)do
-						if g:startsWith(tg) then
-							has = true
-							break
-						end
+		elseif event==sgs.AskForRetrial then
+			local judge = data:toJudge()
+			local intention = sgs.ai_retrial_intention[judge.reason]
+			if type(intention)=="function" then intention = intention(self,judge,sgs.ai_judgeGood[judge.reason]) end
+			if type(intention)~="number" then
+				if sgs.ai_judgeGood[judge.reason]
+				then if judge:isBad() then intention = 30 end
+				elseif judge:isGood() then intention = -30 end
+			end
+			if type(intention)=="number" then sgs.updateIntention(player,judge.who,intention) end
+			sgs.ai_judgeGood[judge.reason] = judge:isGood()
+		elseif event==sgs.RoundStart then
+			if player==self.room:getCurrent() then
+				sgs.turncount = data:toInt()
+				if sgs.turncount<=1 then
+					local hc = 0
+					for _,ap in sgs.qlist(self.room:getPlayers())do
+						if ap:getState()~="robot" then hc = hc+1 end
 					end
-					if has then continue end
-					self.room:writeToConsole("noAudio-"..g)
+					self.room:setTag("humanCount",ToData(hc))
+					if sgs.aiHandCardVisible then
+						local file = io.open("lua/ai/cstring", "w")
+						file:write("humanCount:"..hc)
+						file:close()
+					end
 				end
-			end]]
-		elseif sgs.ai_humanized and math.random()<0.2-sgs.turncount*0.01
-		then player:addMark("roleRobot",math.random(1,11)) end
-	elseif event==sgs.GameReady and player:getRole()=="lord" then
-		sgs.debugmode = io.open("lua/ai/debug")
+				sgs.aiData = GetAiData() or sgs.aiData
+				saveItemData("drawData")
+				saveItemData("convertData")
+				saveItemData("damageData")
+				saveItemData("throwData")
+				if not sgs.aiData["aiResponse"] then sgs.aiData["aiResponse"] = {} end
+				for c,r in pairs(sgs.aiResponse)do
+					sgs.aiData["aiResponse"][c] = r
+				end
+				sgs.aiResponse = sgs.aiData["aiResponse"]
+				if not sgs.aiData["card_damage_nature"] then sgs.aiData["card_damage_nature"] = {} end
+				for c,n in pairs(sgs.card_damage_nature)do
+					sgs.aiData["card_damage_nature"][c] = n
+				end
+				sgs.card_damage_nature = sgs.aiData["card_damage_nature"]
+				SetAiData(sgs.aiData)--[[
+				if sgs.aiHandCardVisible then
+					local allp = sgs.Sanguosha:getSkillNames()--self.room:getTag("AllGenerals"):toStringList()
+					local ai_files = sgs.GetFileNames("audio/skill")
+					for _,g in sgs.list(ai_files)do
+						local has = false
+						for _,tg in sgs.list(allp)do
+							if g:startsWith(tg) then
+								has = true
+								break
+							end
+						end
+						if has then continue end
+						self.room:writeToConsole("noAudio-"..g)
+					end
+				end]]
+			elseif sgs.ai_humanized and math.random()<0.2-sgs.turncount*0.01
+			then player:addMark("roleRobot",math.random(1,11)) end
+		elseif event==sgs.GameReady and player:getRole()=="lord" then
+			sgs.debugmode = io.open("lua/ai/debug")
 		if sgs.debugmode then
 			sgs.debugmode:close()
 			logmsg("ai.html","<meta charset='utf-8'/>")
 		end
 	end
+	
+	end) -- End of pcall wrapper for filterEvent
+	
+	if not success and _G.AI_DEBUG_MODE then
+		logger:logError("SmartAI:filterEvent", error_msg, {
+			event = event,
+			player = player:getGeneralName(),
+			data_str = data:toString()
+		})
+		logger:logFunctionExit("SmartAI:filterEvent", nil, false)
+	elseif _G.AI_DEBUG_MODE then
+		logger:logFunctionExit("SmartAI:filterEvent", nil, true)
+	end
 end
-
 function SetAiData(td)
 	local file = io.open("lua/ai/data/AiData","w")
 	file:write(json.encode(td))
@@ -2307,20 +2319,6 @@ function saveItemData(dataName)
 				break
 			end
 		end
-	end
-end
-	
-	end) -- End of pcall wrapper for filterEvent
-	
-	if not success and _G.AI_DEBUG_MODE then
-		logger:logError("SmartAI:filterEvent", error_msg, {
-			event = event,
-			player = player:getGeneralName(),
-			data_str = data:toString()
-		})
-		logger:logFunctionExit("SmartAI:filterEvent", nil, false)
-	elseif _G.AI_DEBUG_MODE then
-		logger:logFunctionExit("SmartAI:filterEvent", nil, true)
 	end
 end
 

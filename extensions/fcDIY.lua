@@ -3917,7 +3917,7 @@ sp_guoguanzhanjiang = sgs.CreateTriggerSkill{
 					break
 				end
 			end
-			for _, p in sgs.qlist(room:getAllPlayers()) do
+			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:getMark("&LeVeL") > 0 then
 					can_invoke = false
 					break
@@ -8489,6 +8489,7 @@ fcj_jueyan = sgs.CreateTriggerSkill{
 	--frequency = sgs.Skill_Frequent,
 	events = {sgs.CardUsed, sgs.EventPhaseChanging},
 	view_as_skill = fcj_jueyanVS,
+	waked_skills = "tenyearjizhi",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.CardUsed then --废除宝物栏：本回合视为拥有“界集智”
