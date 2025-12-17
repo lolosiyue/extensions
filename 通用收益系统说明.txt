@@ -1,0 +1,320 @@
+通用收益计算系统
+====================
+
+概述
+----
+通用收益系统用于追踪三国杀游戏中各种技能触发带来的收益，如：
+- 受伤后摸牌/回血（反馈、英魂等）
+- 击杀后收益（神速、奸雄等）
+- 死亡时触发（遗计、崩坏等）
+- 出牌收益（英姿、集智等）
+- 弃牌收益（天妒、绝策等）
+- 回合外行动（鬼才、急救等）
+
+数据结构
+--------
+每个武将的收益数据存储在 stats.benefits 中：
+
+```lua
+benefits = {
+    -- 受伤收益
+    on_damaged = {
+        cards_drawn = 0,        -- 受伤后摸牌（如反馈）
+        damage_dealt = 0,       -- 受伤后造成伤害（如刚烈）
+        hp_recovered = 0,       -- 受伤后回血（罕见）
+        trigger_count = 0,      -- 受伤触发次数
+    },
+    
+    -- 击杀收益
+    on_kill = {
+        cards_drawn = 0,        -- 击杀后摸牌（如神速）
+        hp_recovered = 0,       -- 击杀后回血（如神速）
+        extra_turns = 0,        -- 击杀后额外回合（待实现）
+        trigger_count = 0,      -- 击杀触发次数
+    },
+    
+    -- 死亡收益（遗计类）
+    on_death = {
+        cards_given = 0,        -- 死亡时给牌（如遗计）
+        damage_dealt = 0,       -- 死亡时造成伤害（如崩坏）
+        effects_applied = 0,    -- 死亡时触发效果次数
+        trigger_count = 0,      -- 死亡触发次数
+    },
+    
+    -- 出牌收益
+    on_card_used = {
+        cards_drawn = 0,        -- 用牌后摸牌（如英姿、集智）
+        damage_bonus = 0,       -- 用牌伤害加成（待实现）
+        trigger_count = 0,      -- 用牌触发次数
+    },
+    
+    -- 弃牌收益
+    on_discard = {
+        cards_drawn = 0,        -- 弃牌后摸牌（如天妒）
+        damage_dealt = 0,       -- 弃牌后造成伤害（如绝策）
+        trigger_count = 0,      -- 弃牌触发次数
+    },
+    
+    -- 回合外收益
+    off_turn = {
+        cards_drawn = 0,        -- 回合外摸牌（如鬼才判定）
+        damage_dealt = 0,       -- 回合外造成伤害
+        trigger_count = 0,      -- 回合外触发次数
+    },
+}
+```
+
+核心函数
+--------
+
+### 1. recordBenefit(player, benefit_category, benefit_type, value)
+记录武将的收益
+
+参数：
+- player: 武将对象
+- benefit_category: 收益分类，可选值：
+  * "on_damaged" - 受伤收益
+  * "on_kill" - 击杀收益
+  * "on_death" - 死亡收益
+  * "on_card_used" - 出牌收益
+  * "on_discard" - 弃牌收益
+  * "off_turn" - 回合外收益
+- benefit_type: 收益类型，可选值：
+  * "cards_drawn" - 摸牌数
+  * "damage_dealt" - 造成伤害
+  * "hp_recovered" - 回血
+  * "cards_given" - 给牌
+  * "damage_bonus" - 伤害加成
+  * "extra_turns" - 额外回合
+  * "effects_applied" - 效果触发
+- value: 收益数值
+
+说明：
+此函数在事件结算链中自动调用，根据当前标记的收益类型记录收益。
+
+示例：
+```lua
+-- 在技能代码中记录受伤后摸的牌
+recordBenefit(player, "on_damaged", "cards_drawn", 2)
+
+-- 记录击杀后回的血
+recordBenefit(player, "on_kill", "hp_recovered", 1)
+
+-- 记录回合外摸牌
+recordBenefit(player, "off_turn", "cards_drawn", 1)
+```
+
+### 2. markBenefitTrigger(player, benefit_category, extra_data)
+标记收益触发事件的开始
+
+参数：
+- player: 武将对象
+- benefit_category: 收益分类（同上）
+- extra_data: 额外数据（可选），用于传递触发信息
+
+说明：
+此函数在事件触发时调用，标记当前进入某个收益结算链。
+系统会自动在以下时机调用：
+- 受伤时 (DamageInflicted)：markBenefitTrigger(player, "on_damaged")
+- 击杀时 (Death)：markBenefitTrigger(killer, "on_kill")
+- 死亡时 (Death)：markBenefitTrigger(victim, "on_death")
+- 出牌时 (PreCardUsed)：markBenefitTrigger(player, "on_card_used")
+- 弃牌时 (CardsMoveOneTime)：markBenefitTrigger(player, "on_discard")
+
+### 3. clearBenefitTrigger(player)
+清除收益触发标记
+
+说明：
+在事件结算完成后调用，结束收益结算链。
+系统会自动在以下时机调用：
+- 伤害结算完成 (DamageComplete)
+- 死亡结算完成 (BuryVictim)
+- 阶段结束 (EventPhaseEnd)
+
+### 4. isInBenefitChain(player, benefit_category)
+检查当前是否在某个收益触发链中
+
+返回值：
+- true: 当前在指定的收益链中
+- false: 不在该收益链中
+
+示例：
+```lua
+if isInBenefitChain(player, "on_damaged") then
+    -- 当前在受伤收益链中
+    recordBenefit(player, "on_damaged", "cards_drawn", 1)
+end
+```
+
+使用场景
+--------
+
+### 场景1：追踪反馈技能
+反馈：每当你受到一次伤害后，可以获得伤害来源的一张牌。
+
+系统会自动追踪：
+1. 受伤时标记触发时间
+2. 3秒内获得的牌计入 on_damaged.cards_drawn
+3. 统计该武将总共通过受伤获得多少牌
+
+### 场景2：追踪英姿技能
+英姿：每当你使用一张牌时，你可以摸一张牌。
+
+系统会自动追踪：
+1. 出牌时标记触发时间
+2. 2秒内摸的牌计入 on_card_used.cards_drawn
+3. 统计该武将总共通过出牌获得多少牌
+
+### 场景3：追踪神速技能
+神速：每当你击杀一名角色后，你可以回复1点体力或摸三张牌。
+
+系统会自动追踪：
+1. 击杀时标记触发时间
+2. 3秒内回的血计入 on_kill.hp_recovered
+3. 3秒内摸的牌计入 on_kill.cards_drawn
+
+事件结算链机制
+--------------
+本系统使用游戏事件结算链来追踪收益，而不是时间窗口：
+
+**核心原理：**
+1. 事件触发时标记收益类型（markBenefitTrigger）
+2. 在事件结算过程中，所有收益都关联到这个标记
+3. 事件结算完成后清除标记（clearBenefitTrigger）
+
+**事件结算顺序示例：**
+
+受伤收益：
+1. DamageInflicted - 标记 on_damaged
+2. Damage - 伤害造成
+3. [技能触发，如反馈] - 此时摸的牌记录到 on_damaged.cards_drawn
+4. DamageComplete - 清除标记
+
+击杀收益：
+1. Death - 标记 on_death (受害者) 和 on_kill (击杀者)
+2. [技能触发，如遗计、神速] - 收益记录到对应标记
+3. BuryVictim - 清除标记
+
+出牌收益：
+1. PreCardUsed - 标记 on_card_used
+2. [技能触发，如英姿、集智] - 摸牌记录到 on_card_used.cards_drawn
+3. EventPhaseEnd (Play阶段) - 清除标记
+
+弃牌收益：
+1. CardsMoveOneTime (弃牌) - 标记 on_discard
+2. [技能触发，如天妒] - 收益记录到 on_discard.cards_drawn
+3. EventPhaseEnd (Discard阶段) - 清除标记
+
+**优势：**
+- 完全基于游戏事件，不依赖时间
+- 准确追踪收益来源
+- 支持复杂的技能链
+- 不受服务器延迟影响
+
+数据分析
+--------
+通过收益数据可以分析：
+
+1. **收益效率**
+   - 场均受伤摸牌 = on_damaged.cards_drawn / total_games
+   - 击杀收益比 = on_kill.cards_drawn / kills
+
+2. **技能特征**
+   - 如果 on_damaged.cards_drawn 很高 → 反馈型武将
+   - 如果 on_kill.hp_recovered 很高 → 收割型武将
+   - 如果 on_card_used.cards_drawn 很高 → 循环型武将
+
+3. **武将风格**
+   - 受伤收益型（反馈、英魂）
+   - 击杀收割型（神速、暴虐）
+   - 出牌循环型（英姿、集智）
+   - 控场型（鬼才、急救等回合外行动）
+
+注意事项
+--------
+1. 系统基于游戏事件结算链，完全不依赖时间
+2. 多个技能可能同时触发，会累加到对应分类
+3. 标记和清除必须成对出现，否则可能导致收益错误归类
+4. 在技能代码中可以手动调用 recordBenefit 记录特殊收益
+5. 建议使用 isInBenefitChain 检查当前是否在目标收益链中
+
+常见问题：
+Q: 如何追踪自定义技能的收益？
+A: 在技能触发后，检查当前收益链并调用 recordBenefit
+
+Q: 多个技能连锁触发怎么办？
+A: 系统会自动累加所有在同一收益链中的收益
+
+Q: 如何处理复杂的技能组合？
+A: 使用 extra_data 参数传递详细信息，或使用 isInBenefitChain 判断
+
+副将系统
+--------
+系统支持双将模式，自动追踪主将和副将的配合效果：
+
+**数据结构：**
+```lua
+secondary_generals = {
+    [副将名称] = {
+        games = 0,              -- 配合场次
+        wins = 0,               -- 配合胜场
+        is_secondary = true,    -- true=本武将为主将，false=本武将为副将
+    }
+}
+
+best_secondary_combos = {
+    -- 自动排序的最佳副将组合列表（前10名）
+    { name, games, wins, win_rate, is_secondary }
+}
+```
+
+**使用方法：**
+
+1. 查看武将的最佳副将配搭：
+```lua
+local combos = GetBestSecondaryGenerals("张角", 10, 3)
+-- 参数：武将名，显示数量（默认10），最少场次（默认3）
+```
+
+2. 命令行显示：
+```lua
+ShowBestSecondaryGenerals("张角")
+-- 输出格式化的副将配搭列表
+```
+
+3. 在详细报告中自动包含：
+```lua
+GenerateGeneralReport("张角")
+-- 报告中会显示【最佳副将配搭】章节
+```
+
+**说明：**
+- 系统会自动追踪主将+副将的组合胜率
+- is_secondary 标记表示角色定位：
+  * true：本武将为主将，配搭的是副将
+  * false：本武将为副将，配搭的是主将
+- 每局游戏会同时更新两个武将的数据
+- 最少3局数据才会显示在最佳配搭列表中
+
+扩展支持
+--------
+如果需要支持新的收益类型：
+
+1. 在 initGeneralStats() 中添加新的收益分类
+2. 在对应的触发器中调用 markBenefitTrigger()
+3. 在收益产生时调用 recordBenefit()
+
+示例：
+```lua
+-- 添加新的收益分类：换牌收益
+benefits.on_exchange = {
+    cards_drawn = 0,
+    trigger_count = 0,
+}
+
+-- 在换牌时标记
+markBenefitTrigger(player, "on_exchange")
+
+-- 记录换牌后摸牌
+recordBenefit(player, "on_exchange", "cards_drawn", 2, 2)
+```

@@ -267,7 +267,6 @@ end
 end]]--broadcast after gamefinished
 
 function startHuaShen(player, generalName, skillName, secondGeneral)
-	if secondGeneral then return end --源码实现副将化身特效的条件是：主将名不是左慈且副将名是左慈，导致非左慈的副将不能享用化身特效（generic-cardcontainer-ui.cpp）
 	local room = player:getRoom()
 	local json = require ("json")
 	local general = sgs.Sanguosha:getGeneral(generalName)
@@ -277,6 +276,7 @@ function startHuaShen(player, generalName, skillName, secondGeneral)
 		player:objectName(),
 		general:objectName(),
 		skillName,
+		secondGeneral or false,
 	}	
 	room:doBroadcastNotify(sgs.CommandType.S_COMMAND_LOG_EVENT, json.encode(jsonValue))
 end

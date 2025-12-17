@@ -373,6 +373,47 @@ function ExportGeneralReportHTML(general_name, output_file)
             </div>
     ]]
     
+    -- 最佳副将配搭
+    if stats.best_secondary_combos and #stats.best_secondary_combos > 0 then
+        html = html .. [[
+            <div class="section">
+                <h2>🤝 最佳副将配搭</h2>
+                <table>
+                    <tr>
+                        <th>排名</th>
+                        <th>副将名称</th>
+                        <th>角色定位</th>
+                        <th>配合场次</th>
+                        <th>胜率</th>
+                    </tr>
+        ]]
+        
+        for i, combo in ipairs(stats.best_secondary_combos) do
+            local role_str = combo.is_secondary and "本武将为主将" or "本武将为副将"
+            local win_rate_color = "#38ef7d"
+            if combo.win_rate < 0.5 then
+                win_rate_color = "#f45c43"
+            elseif combo.win_rate < 0.55 then
+                win_rate_color = "#ffa502"
+            end
+            
+            html = html .. string.format([[
+                    <tr>
+                        <td><strong>%d</strong></td>
+                        <td><strong>%s</strong></td>
+                        <td>%s</td>
+                        <td>%d</td>
+                        <td style="color: %s;"><strong>%.1f%%</strong></td>
+                    </tr>
+            ]], i, combo.name, role_str, combo.games, win_rate_color, combo.win_rate * 100)
+        end
+        
+        html = html .. [[
+                </table>
+            </div>
+        ]]
+    end
+    
     -- 关键牌推荐
     if key_cards and #key_cards > 0 then
         html = html .. [[
@@ -684,9 +725,36 @@ function ShowGeneralRanking(sort_by, min_games)
     return rankings
 end
 
+function ShowBestSecondaryGenerals(general_name, top_n, min_games)
+    top_n = top_n or 10
+    min_games = min_games or 3
+    
+    local secondary_list = analysis.GetBestSecondaryGenerals(general_name, top_n, min_games)
+    if not secondary_list or #secondary_list == 0 then
+        print("没有找到该武将的副将配搭数据")
+        return nil
+    end
+    
+    print("========================================")
+    print(string.format("%s - 最佳副将配搭", general_name))
+    print("========================================")
+    print(string.format("%-4s %-20s %-10s %8s %10s", 
+        "排名", "副将名称", "角色定位", "场次", "胜率"))
+    print(string.rep("-", 60))
+    
+    for i, combo in ipairs(secondary_list) do
+        print(string.format("%-4d %-20s %-10s %8d %9.1f%%",
+            i, combo.name, combo.role_desc, combo.games, combo.win_rate * 100))
+    end
+    
+    print("========================================")
+    return secondary_list
+end
+
 return {
     ExportGeneralReportHTML = ExportGeneralReportHTML,
     ExportGeneralRankingHTML = ExportGeneralRankingHTML,
     ShowGeneralReport = ShowGeneralReport,
     ShowGeneralRanking = ShowGeneralRanking,
+    ShowBestSecondaryGenerals = ShowBestSecondaryGenerals,
 }

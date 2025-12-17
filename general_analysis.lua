@@ -504,6 +504,17 @@ function GenerateGeneralReport(general_name)
     end
     table.insert(report, "")
     
+    -- 最佳副将配搭
+    if stats.best_secondary_combos and #stats.best_secondary_combos > 0 then
+        table.insert(report, "【最佳副将配搭】")
+        for i, combo in ipairs(stats.best_secondary_combos) do
+            local role_str = combo.is_secondary and "（本武将为主将）" or "（本武将为副将）"
+            table.insert(report, string.format("%d. %s %s - 配合%d局, 胜率%.2f%%", 
+                i, combo.name, role_str, combo.games, combo.win_rate * 100))
+        end
+        table.insert(report, "")
+    end
+    
     -- 克制关系
     table.insert(report, "【克制关系】")
     local counters = GetCounterRelations(general_name, 5)
@@ -536,6 +547,47 @@ function GenerateCareerReview(general_name)
     return GenerateGeneralReport(general_name)
 end
 
+-- 获取最佳副将配搭
+function GetBestSecondaryGenerals(general_name, top_n, min_games)
+    top_n = top_n or 10
+    min_games = min_games or 3
+    
+    local data = loadData()
+    if not data or not data.Generals[general_name] then return nil end
+    
+    local stats = data.Generals[general_name]
+    local secondary_list = {}
+    
+    for secondary_name, secondary_data in pairs(stats.secondary_generals or {}) do
+        if secondary_data.games >= min_games then
+            local win_rate = secondary_data.wins / secondary_data.games
+            table.insert(secondary_list, {
+                name = secondary_name,
+                games = secondary_data.games,
+                wins = secondary_data.wins,
+                win_rate = win_rate,
+                is_secondary = secondary_data.is_secondary,
+                role_desc = secondary_data.is_secondary and "主将" or "副将"
+            })
+        end
+    end
+    
+    -- 按胜率排序
+    table.sort(secondary_list, function(a, b)
+        if a.win_rate == b.win_rate then
+            return a.games > b.games
+        end
+        return a.win_rate > b.win_rate
+    end)
+    
+    local result = {}
+    for i = 1, math.min(top_n, #secondary_list) do
+        table.insert(result, secondary_list[i])
+    end
+    
+    return result
+end
+
 -- 导出函数
 return {
     CalculateGlobalAverages = CalculateGlobalAverages,
@@ -547,4 +599,5 @@ return {
     GeneralWinRateRanking = GeneralWinRateRanking,
     GenerateGeneralReport = GenerateGeneralReport,
     GenerateCareerReview = GenerateCareerReview,
+    GetBestSecondaryGenerals = GetBestSecondaryGenerals,
 }
