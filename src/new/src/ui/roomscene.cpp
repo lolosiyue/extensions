@@ -502,8 +502,9 @@ void RoomScene::handleGameEvent(const QVariant &args)
 		ClientPlayer *player = ClientInstance->getPlayer(arg[1].toString());
 		QString huashenGeneral = arg[2].toString();
 		QString huashenSkill = arg[3].toString();
+		bool secondGeneral = (arg.length() > 4) ? arg[4].toBool() : false;
 		PlayerCardContainer *container = (PlayerCardContainer *)_getGenericCardContainer(Player::PlaceHand, player);
-		container->startHuaShen(huashenGeneral, huashenSkill);
+		container->startHuaShen(huashenGeneral, huashenSkill, secondGeneral);
 		break;
 	}
 	case S_GAME_EVENT_PLAY_EFFECT:
@@ -2477,7 +2478,7 @@ bool RoomScene::_processCardsMove(CardsMoveStruct &move, bool isLost)
 	if (!isLost && move.to_place == Player::PlaceTable && !move.to_pile_name.isEmpty() && move.to_pile_name != "ren_pile")
 	{
 		QString pile_name = move.to_pile_name;
-		
+
 		// Store cards in dynamic pile map
 		if (!m_namedPiles.contains(pile_name))
 			m_namedPiles[pile_name] = QList<int>();
@@ -2485,11 +2486,11 @@ bool RoomScene::_processCardsMove(CardsMoveStruct &move, bool isLost)
 
 		// Check if we can see the actual cards (not UNKNOWN_CARD_ID)
 		bool canSeeCards = !move.card_ids.isEmpty() && !move.card_ids.contains(Card::S_UNKNOWN_CARD_ID);
-		
+
 		// Create or update widget for this pile
 		QStringList cardNames;
 		int cardCount = 0;
-		
+
 		if (canSeeCards)
 		{
 			// We can see the actual cards
@@ -2537,13 +2538,13 @@ bool RoomScene::_processCardsMove(CardsMoveStruct &move, bool isLost)
 		widget->setVisible(true);
 		QPushButton *button = (QPushButton *)widget->widget();
 		button->setText(QString("%1(%2)").arg(pile_name).arg(cardCount));
-		
+
 		// Only show tooltip if we can see the cards
 		if (canSeeCards && !cardNames.isEmpty())
 			button->setToolTip(cardNames.join("<br/>"));
 		else
 			button->setToolTip(tr("%1 cards (hidden)").arg(cardCount));
-		
+
 		widget->setWidget(button);
 
 		QString length = QString::number(move.card_ids.length()), join = ListI2S(move.card_ids).join("+");
@@ -2615,7 +2616,7 @@ bool RoomScene::_processCardsMove(CardsMoveStruct &move, bool isLost)
 						QStringList cardNames;
 						int cardCount = 0;
 						bool hasUnknown = false;
-						
+
 						foreach (int id, m_namedPiles[pile_name])
 						{
 							if (id == Card::S_UNKNOWN_CARD_ID)
@@ -2633,16 +2634,16 @@ bool RoomScene::_processCardsMove(CardsMoveStruct &move, bool isLost)
 								}
 							}
 						}
-						
+
 						QPushButton *button = (QPushButton *)widget->widget();
 						button->setText(QString("%1(%2)").arg(pile_name).arg(cardCount));
-						
+
 						// Only show card details if there are no unknown cards
 						if (!hasUnknown && !cardNames.isEmpty())
 							button->setToolTip(cardNames.join("<br/>"));
 						else
 							button->setToolTip(tr("%1 cards (hidden)").arg(cardCount));
-						
+
 						widget->setWidget(button);
 					}
 				}

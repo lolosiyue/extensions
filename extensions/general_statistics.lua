@@ -142,6 +142,7 @@ local function initGeneralStats(general_name)
             slash_damage = 0,         -- 杀造成的伤害
             duel_damage = 0,          -- 决斗伤害
             aoe_damage = 0,           -- AOE伤害（南蛮、万箭等）
+            ndtrick_damage = 0,       -- NDTrick伤害
             skill_damage = 0,         -- 技能伤害
             equipment_damage = 0,     -- 装备伤害
         },
@@ -158,10 +159,47 @@ local function initGeneralStats(general_name)
         hp_recovered = 0,
         hp_recovered_others = 0,      -- 给他人回血
         
-        -- 受伤后收益
-        damage_taken_benefits = {
-            cards_drawn = 0,          -- 受伤后摸牌
-            damage_dealt = 0,         -- 受伤后造成伤害
+        -- 收益统计系统（通用）
+        benefits = {
+            -- 受伤收益
+            on_damaged = {
+                cards_drawn = 0,           -- 受伤后摸牌
+                damage_dealt = 0,          -- 受伤后造成伤害
+                hp_recovered = 0,          -- 受伤后回血
+                trigger_count = 0,         -- 受伤触发次数
+            },
+            -- 击杀收益
+            on_kill = {
+                cards_drawn = 0,           -- 击杀后摸牌
+                hp_recovered = 0,          -- 击杀后回血
+                extra_turns = 0,           -- 击杀后额外回合
+                trigger_count = 0,         -- 击杀触发次数
+            },
+            -- 死亡收益（遗计类）
+            on_death = {
+                cards_given = 0,           -- 死亡时给牌
+                damage_dealt = 0,          -- 死亡时造成伤害
+                effects_applied = 0,       -- 死亡时触发效果次数
+                trigger_count = 0,         -- 死亡触发次数
+            },
+            -- 出牌收益
+            on_card_used = {
+                cards_drawn = 0,           -- 用牌后摸牌
+                damage_bonus = 0,          -- 用牌伤害加成
+                trigger_count = 0,         -- 用牌触发次数
+            },
+            -- 弃牌收益
+            on_discard = {
+                cards_drawn = 0,           -- 弃牌后摸牌
+                damage_dealt = 0,          -- 弃牌后造成伤害
+                trigger_count = 0,         -- 弃牌触发次数
+            },
+            -- 回合外收益
+            off_turn = {
+                cards_drawn = 0,           -- 回合外摸牌
+                damage_dealt = 0,          -- 回合外造成伤害
+                trigger_count = 0,         -- 回合外触发次数
+            },
         },
         
         -- 单局最高记录
@@ -195,6 +233,10 @@ local function initGeneralStats(general_name)
         
         -- 队友统计（配合效果）
         teammates = {},               -- { teammate_general = { games, wins } }
+        
+        -- 副将统计（双将模式）
+        secondary_generals = {},      -- { secondary_general_name = { games, wins, is_secondary = true } }
+        best_secondary_combos = {},   -- 最高胜率副将组合列表（自动排序）
     }
 end
 
@@ -248,6 +290,23 @@ local function recordGameStart(player, game_data)
     local stats = getGeneralStats(data, general_name, game_mode)
     
     stats.total_games = stats.total_games + 1
+    
+    -- 记录副将（如果存在）
+    local general2_name = player:getGeneral2Name()
+    if general2_name and general2_name ~= "" then
+        if not stats.secondary_generals[general2_name] then
+            stats.secondary_generals[general2_name] = { games = 0, wins = 0, is_secondary = true }
+        end
+        stats.secondary_generals[general2_name].games = stats.secondary_generals[general2_name].games + 1
+        
+        -- 同时记录副将作为主将的数据
+        local stats2 = getGeneralStats(data, general2_name, game_mode)
+        stats2.total_games = stats2.total_games + 1
+        if not stats2.secondary_generals[general_name] then
+            stats2.secondary_generals[general_name] = { games = 0, wins = 0, is_secondary = false }
+        end
+        stats2.secondary_generals[general_name].games = stats2.secondary_generals[general_name].games + 1
+    end
     
     -- 记录身份
     local role = player:getRole()
@@ -308,6 +367,27 @@ local function recordGameEnd(player, is_winner, is_mvp, total_rounds)
     if is_winner then
         stats.total_wins = stats.total_wins + 1
         
+        -- 更新副将胜率（如果存在）
+        local general2_name = player:getGeneral2Name()
+        if general2_name and general2_name ~= "" then
+            if stats.secondary_generals[general2_name] then
+                stats.secondary_generals[general2_name].wins = stats.secondary_generals[general2_name].wins + 1
+            end
+            
+            -- 同时更新副将作为主将的数据
+            local stats2 = getGeneralStats(data, general2_name, game_mode)
+            stats2.total_wins = stats2.total_wins + 1
+            if stats2.secondary_generals[general_name] then
+                stats2.secondary_generals[general_name].wins = stats2.secondary_generals[general_name].wins + 1
+            end
+            
+            -- 更新副将的身份胜率
+            local role = player:getRole()
+            if stats2.roles[role] then
+                stats2.roles[role].wins = stats2.roles[role].wins + 1
+            end
+        end
+        
         -- 更新身份胜率
         local role = player:getRole()
         if stats.roles[role] then
@@ -353,7 +433,50 @@ local function recordGameEnd(player, is_winner, is_mvp, total_rounds)
         stats.total_action_rounds = stats.total_action_rounds + game_data.action_rounds
     end
     
+    -- 更新最佳副将组合
+    updateBestSecondaryCombos(data, general_name, game_mode)
+    local general2_name = player:getGeneral2Name()
+    if general2_name and general2_name ~= "" then
+        updateBestSecondaryCombos(data, general2_name, game_mode)
+    end
+    
     saveGeneralData(data)
+end
+
+-- 更新最佳副将组合列表
+local function updateBestSecondaryCombos(data, general_name, game_mode)
+    local stats = getGeneralStats(data, general_name, game_mode)
+    
+    -- 清空旧列表
+    stats.best_secondary_combos = {}
+    
+    -- 计算所有副将组合的胜率
+    local combos = {}
+    for secondary_name, secondary_data in pairs(stats.secondary_generals) do
+        if secondary_data.games >= 3 then  -- 至少3局才有参考价值
+            local win_rate = secondary_data.wins / secondary_data.games
+            table.insert(combos, {
+                name = secondary_name,
+                games = secondary_data.games,
+                wins = secondary_data.wins,
+                win_rate = win_rate,
+                is_secondary = secondary_data.is_secondary
+            })
+        end
+    end
+    
+    -- 按胜率降序排序
+    table.sort(combos, function(a, b)
+        if a.win_rate == b.win_rate then
+            return a.games > b.games  -- 胜率相同时，场次多的优先
+        end
+        return a.win_rate > b.win_rate
+    end)
+    
+    -- 保存前10个最佳组合
+    for i = 1, math.min(10, #combos) do
+        stats.best_secondary_combos[i] = combos[i]
+    end
 end
 
 -- 记录卡牌使用
@@ -405,17 +528,93 @@ end
 
 -- 记录技能使用
 local function recordSkillUsed(player, skill_name)
+    if not skill_name or skill_name == "" then
+        return
+    end
+    
     local room = player:getRoom()
     local game_mode = getGameModeName(room:getMode())
-    
     local data = loadGeneralData()
-    local general_name = player:getGeneralName()
-    local stats = getGeneralStats(data, general_name, game_mode)
     
-    if not stats.skills_used[skill_name] then
-        stats.skills_used[skill_name] = 0
+    -- 检查技能是否属于主将
+    local main_general = sgs.Sanguosha:getGeneral(player:getGeneralName())
+    local is_main_general_skill = false
+    
+    if main_general then
+        local visible_skills = main_general:getVisibleSkillList()
+        for i = 0, visible_skills:length() - 1 do
+            local skill = visible_skills:at(i)
+            if skill:objectName() == skill_name then
+                is_main_general_skill = true
+                break
+            end
+            
+            -- 检查相关技能
+            local related_skills = skill:getRelatedSkills()
+            for j = 0, related_skills:length() - 1 do
+                if related_skills:at(j) == skill_name then
+                    is_main_general_skill = true
+                    break
+                end
+            end
+            
+            if is_main_general_skill then
+                break
+            end
+        end
     end
-    stats.skills_used[skill_name] = stats.skills_used[skill_name] + 1
+    
+    -- 如果是主将技能，记录到主将
+    if is_main_general_skill then
+        local general_name = player:getGeneralName()
+        local stats = getGeneralStats(data, general_name, game_mode)
+        
+        if not stats.skills_used[skill_name] then
+            stats.skills_used[skill_name] = 0
+        end
+        stats.skills_used[skill_name] = stats.skills_used[skill_name] + 1
+    end
+    
+    -- 检查技能是否属于副将
+    local general2_name = player:getGeneral2Name()
+    if general2_name and general2_name ~= "" then
+        local secondary_general = sgs.Sanguosha:getGeneral(general2_name)
+        local is_secondary_general_skill = false
+        
+        if secondary_general then
+            local visible_skills = secondary_general:getVisibleSkillList()
+            for i = 0, visible_skills:length() - 1 do
+                local skill = visible_skills:at(i)
+                if skill:objectName() == skill_name then
+                    is_secondary_general_skill = true
+                    break
+                end
+                
+                -- 检查相关技能
+                local related_skills = skill:getRelatedSkills()
+                for j = 0, related_skills:length() - 1 do
+                    if related_skills:at(j) == skill_name then
+                        is_secondary_general_skill = true
+                        break
+                    end
+                end
+                
+                if is_secondary_general_skill then
+                    break
+                end
+            end
+        end
+        
+        -- 如果是副将技能，记录到副将的统计数据
+        if is_secondary_general_skill then
+            local stats2 = getGeneralStats(data, general2_name, game_mode)
+            
+            if not stats2.skills_used[skill_name] then
+                stats2.skills_used[skill_name] = 0
+            end
+            stats2.skills_used[skill_name] = stats2.skills_used[skill_name] + 1
+        end
+    end
     
     saveGeneralData(data)
 end
@@ -440,10 +639,12 @@ local function recordDamage(player, damage_data, is_source)
         if card then
             if card:isKindOf("Slash") then
                 stats.damage_stats.slash_damage = stats.damage_stats.slash_damage + damage_value
-            elseif card:objectName() == "duel" then
+            elseif card:isKindOf("Duel") then
                 stats.damage_stats.duel_damage = stats.damage_stats.duel_damage + damage_value
-            elseif card:objectName() == "savage_assault" or card:objectName() == "archery_attack" then
+            elseif card:isKindOf("AOE") then
                 stats.damage_stats.aoe_damage = stats.damage_stats.aoe_damage + damage_value
+            elseif card:isNDTrick() then
+                stats.damage_stats.ndtrick_damage = stats.damage_stats.ndtrick_damage + damage_value
             end
         else
             -- 技能或装备伤害
@@ -478,9 +679,11 @@ local function recordDamage(player, damage_data, is_source)
     else
         stats.damage_stats.total_taken = stats.damage_stats.total_taken + damage_value
         
-        -- 记录受伤前的状态
+        -- 标记受伤触发（用于收益计算）
+        markBenefitTrigger(player, "on_damaged")
+        
+        -- 记录受伤前的状态（保持兼容性）
         local game_data = player:getTag("GeneralStatsGameData"):toTable() or {}
-        game_data.damage_taken_time = os.time()
         game_data.hp_before_damage = player:getHp()
         player:setTag("GeneralStatsGameData", sgs.QVariant(game_data))
     end
@@ -488,8 +691,11 @@ local function recordDamage(player, damage_data, is_source)
     saveGeneralData(data)
 end
 
--- 记录受伤后收益
-local function recordDamageBenefit(player, benefit_type, value)
+-- 通用收益记录系统（基于事件结算链）
+-- benefit_category: "on_damaged", "on_kill", "on_death", "on_card_used", "on_discard", "off_turn"
+-- benefit_type: "cards_drawn", "damage_dealt", "hp_recovered", "cards_given", "damage_bonus", "extra_turns", "effects_applied"
+-- value: 数值
+local function recordBenefit(player, benefit_category, benefit_type, value)
     local room = player:getRoom()
     local game_mode = getGameModeName(room:getMode())
     
@@ -497,19 +703,84 @@ local function recordDamageBenefit(player, benefit_type, value)
     local general_name = player:getGeneralName()
     local stats = getGeneralStats(data, general_name, game_mode)
     
-    local game_data = player:getTag("GeneralStatsGameData"):toTable() or {}
-    local damage_taken_time = game_data.damage_taken_time or 0
-    
-    -- 只记录受伤后3秒内的收益
-    if os.time() - damage_taken_time <= 3 then
-        if benefit_type == "draw" then
-            stats.damage_taken_benefits.cards_drawn = stats.damage_taken_benefits.cards_drawn + value
-        elseif benefit_type == "damage" then
-            stats.damage_taken_benefits.damage_dealt = stats.damage_taken_benefits.damage_dealt + value
-        end
+    -- 确保收益分类存在
+    if not stats.benefits[benefit_category] then
+        return
     end
     
+    -- 确保收益类型存在
+    if not stats.benefits[benefit_category][benefit_type] then
+        return
+    end
+    
+    stats.benefits[benefit_category][benefit_type] = stats.benefits[benefit_category][benefit_type] + value
     saveGeneralData(data)
+end
+
+-- 标记收益触发事件（记录到tag供后续事件检查）
+local function markBenefitTrigger(player, benefit_category, extra_data)
+    local game_data = player:getTag("GeneralStatsGameData"):toTable() or {}
+    
+    -- 标记当前触发的收益类型
+    game_data.current_benefit_trigger = benefit_category
+    game_data.benefit_trigger_data = extra_data or {}
+    
+    -- 增加触发计数
+    local room = player:getRoom()
+    local game_mode = getGameModeName(room:getMode())
+    local data = loadGeneralData()
+    local general_name = player:getGeneralName()
+    local stats = getGeneralStats(data, general_name, game_mode)
+    
+    if stats.benefits[benefit_category] then
+        stats.benefits[benefit_category].trigger_count = stats.benefits[benefit_category].trigger_count + 1
+        saveGeneralData(data)
+    end
+    
+    player:setTag("GeneralStatsGameData", sgs.QVariant(game_data))
+end
+
+-- 清除收益触发标记（事件结算完成后）
+local function clearBenefitTrigger(player)
+    local game_data = player:getTag("GeneralStatsGameData"):toTable() or {}
+    game_data.current_benefit_trigger = nil
+    game_data.benefit_trigger_data = nil
+    player:setTag("GeneralStatsGameData", sgs.QVariant(game_data))
+end
+
+-- 检查当前是否在某个收益触发链中
+local function isInBenefitChain(player, benefit_category)
+    local game_data = player:getTag("GeneralStatsGameData"):toTable() or {}
+    return game_data.current_benefit_trigger == benefit_category
+end
+
+-- 根据CardMoveReason判断收益类型
+local function checkBenefitFromMoveReason(player, move_reason)
+    if not move_reason then return nil end
+    
+    local reason_str = move_reason.m_reason
+    local skill_name = move_reason.m_skillName or ""
+    
+    -- 根据原因判断收益类型
+    -- S_REASON_DRAW: 摸牌阶段摸牌
+    -- S_REASON_GOTCARD: 获得牌（可能是技能收益）
+    -- S_REASON_PREVIEWGIVE: 获得牌
+    
+    local game_data = player:getTag("GeneralStatsGameData"):toTable() or {}
+    
+    -- 检查当前是否有活跃的收益触发
+    if game_data.current_benefit_trigger then
+        return game_data.current_benefit_trigger
+    end
+    
+    -- 根据技能名称推断（如果有技能名）
+    if skill_name ~= "" then
+        -- 这里可以根据已知技能名称判断类型
+        -- 例如：反馈、英魂、遗计等
+        return "skill_triggered"  -- 技能触发的收益
+    end
+    
+    return nil
 end
 
 -- 游戏开始记录器
@@ -532,7 +803,7 @@ GeneralStatsGameStartRecorder = sgs.CreateTriggerSkill{
 -- 回合记录器
 GeneralStatsRoundRecorder = sgs.CreateTriggerSkill{
     name = "general_stats_round",
-    events = { sgs.EventPhaseStart, sgs.TurnStart },
+    events = { sgs.EventPhaseStart, sgs.EventPhaseEnd, sgs.TurnStart },
     global = true,
     priority = -20,
     can_trigger = function(self, player)
@@ -565,6 +836,16 @@ GeneralStatsRoundRecorder = sgs.CreateTriggerSkill{
             player:setTag("GeneralStatsGameData", sgs.QVariant(game_data))
         end
         
+        -- 在出牌阶段结束时清除出牌触发标记
+        if event == sgs.EventPhaseEnd then
+            if player:getPhase() == sgs.Player_Play then
+                clearBenefitTrigger(player)
+            elseif player:getPhase() == sgs.Player_Discard then
+                -- 弃牌阶段结束，清除弃牌触发标记
+                clearBenefitTrigger(player)
+            end
+        end
+        
         return false
     end
 }
@@ -580,8 +861,9 @@ GeneralStatsGameOverRecorder = sgs.CreateTriggerSkill{
     end,
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
-        local winner = data:toWinner()
-        if not winner then return false end
+        local death = data:toDeath()
+        local winner = getWinner(room,death.who)
+        if not winner then return end
         
         local total_rounds = room:getTag("RoundCount"):toInt() or 0
         
@@ -626,17 +908,29 @@ GeneralStatsGameOverRecorder = sgs.CreateTriggerSkill{
 -- 技能使用记录器
 GeneralStatsSkillRecorder = sgs.CreateTriggerSkill{
     name = "general_stats_skill",
-    events = { sgs.InvokeSkill },
+    events = { sgs.InvokeSkill, sgs.CardFinished },
     global = true,
     priority = -20,
     can_trigger = function(self, player)
         return player and player:isAlive()
     end,
     on_trigger = function(self, event, player, data)
-        local skill_name = data:toString()
-        if skill_name and skill_name ~= "" then
-            recordSkillUsed(player, skill_name)
+        if event == sgs.InvokeSkill then
+            local skill_name = data:toString()
+            if skill_name and skill_name ~= "" then
+                recordSkillUsed(player, skill_name)
+            end
+        elseif event == sgs.CardFinished then
+            local use = data:toCardUse()
+            local card = use.card
+            if card and card:isKindOf("SkillCard") then
+                local skill_name = card:getSkillName()
+                if skill_name and skill_name ~= "" then
+                    recordSkillUsed(player, skill_name)
+                end
+            end
         end
+        
         return false
     end
 }
@@ -662,6 +956,16 @@ GeneralStatsCardRecorder = sgs.CreateTriggerSkill{
         
         if card and not card:isKindOf("SkillCard") then
             recordCardUsed(player, card, nil)
+            
+            -- 标记出牌触发（用于出牌收益，如英姿、集智等）
+            markBenefitTrigger(player, "on_card_used")
+        end
+        if card and #card:getSkillNames() > 0 then
+            for _, skill_name in ipairs(card:getSkillNames()) do
+                if skill_name and skill_name ~= "" then
+                    recordSkillUsed(player, skill_name)
+                end
+            end
         end
         
         return false
@@ -671,7 +975,7 @@ GeneralStatsCardRecorder = sgs.CreateTriggerSkill{
 -- 伤害记录器
 GeneralStatsDamageRecorder = sgs.CreateTriggerSkill{
     name = "general_stats_damage",
-    events = { sgs.DamageCaused, sgs.DamageInflicted, sgs.Damage },
+    events = { sgs.DamageCaused, sgs.DamageInflicted, sgs.Damage, sgs.DamageComplete },
     global = true,
     priority = -20,
     can_trigger = function(self, player)
@@ -685,8 +989,10 @@ GeneralStatsDamageRecorder = sgs.CreateTriggerSkill{
                 recordDamage(damage.from, damage, true)
             end
         elseif event == sgs.DamageInflicted then
+            -- DamageInflicted：伤害即将造成，标记受伤触发
             recordDamage(player, damage, false)
         elseif event == sgs.Damage then
+            -- Damage：伤害已经造成，此时可能触发受伤收益技能
             -- 记录卡牌造成的实际伤害
             if damage.from and damage.card then
                 local room = damage.from:getRoom()
@@ -702,6 +1008,9 @@ GeneralStatsDamageRecorder = sgs.CreateTriggerSkill{
                 
                 saveGeneralData(data_obj)
             end
+        elseif event == sgs.DamageComplete then
+            -- DamageComplete：伤害结算完成，清除受伤触发标记
+            clearBenefitTrigger(damage.to)
         end
         
         return false
@@ -711,39 +1020,59 @@ GeneralStatsDamageRecorder = sgs.CreateTriggerSkill{
 -- 死亡记录器
 GeneralStatsDeathRecorder = sgs.CreateTriggerSkill{
     name = "general_stats_death",
-    events = { sgs.Death },
+    events = { sgs.Death, sgs.BuryVictim },
     global = true,
     priority = -20,
     can_trigger = function(self, player)
         return true
     end,
     on_trigger = function(self, event, player, data)
-        local death = data:toDeath()
-        if death.who then
-            local room = death.who:getRoom()
-            local game_mode = getGameModeName(room:getMode())
-            local data_obj = loadGeneralData()
-            local general_name = death.who:getGeneralName()
-            local stats = getGeneralStats(data_obj, general_name, game_mode)
-            
-            stats.deaths = stats.deaths + 1
-            
-            -- 标记死亡
-            local game_data = death.who:getTag("GeneralStatsGameData"):toTable() or {}
-            game_data.is_alive = false
-            game_data.death_round = room:getTag("RoundCount"):toInt() or 0
-            death.who:setTag("GeneralStatsGameData", sgs.QVariant(game_data))
-            
-            -- 记录击杀者
-            if death.damage and death.damage.from then
-                local killer_general = death.damage.from:getGeneralName()
-                local killer_data = loadGeneralData()
-                local killer_stats = getGeneralStats(killer_data, killer_general, game_mode)
-                killer_stats.kills = killer_stats.kills + 1
-                saveGeneralData(killer_data)
+        if event == sgs.Death then
+            local death = data:toDeath()
+            if death.who then
+                local room = death.who:getRoom()
+                local game_mode = getGameModeName(room:getMode())
+                local data_obj = loadGeneralData()
+                local general_name = death.who:getGeneralName()
+                local stats = getGeneralStats(data_obj, general_name, game_mode)
+                
+                stats.deaths = stats.deaths + 1
+                
+                -- 标记死亡触发（用于死亡收益，如遗计类技能）
+                markBenefitTrigger(death.who, "on_death")
+                
+                -- 标记死亡
+                local game_data = death.who:getTag("GeneralStatsGameData"):toTable() or {}
+                game_data.is_alive = false
+                game_data.death_round = room:getTag("RoundCount"):toInt() or 0
+                death.who:setTag("GeneralStatsGameData", sgs.QVariant(game_data))
+                
+                -- 记录击杀者
+                if death.damage and death.damage.from then
+                    local killer_general = death.damage.from:getGeneralName()
+                    local killer_data = loadGeneralData()
+                    local killer_stats = getGeneralStats(killer_data, killer_general, game_mode)
+                    killer_stats.kills = killer_stats.kills + 1
+                    
+                    -- 标记击杀触发（用于击杀收益）
+                    markBenefitTrigger(death.damage.from, "on_kill")
+                    
+                    saveGeneralData(killer_data)
+                end
+                
+                saveGeneralData(data_obj)
             end
-            
-            saveGeneralData(data_obj)
+        elseif event == sgs.BuryVictim then
+            -- BuryVictim：死亡结算完成，清除死亡和击杀触发标记
+            local death = data:toDeath()
+            if death.who then
+                clearBenefitTrigger(death.who)
+                
+                -- 清除击杀者的标记
+                if death.damage and death.damage.from then
+                    clearBenefitTrigger(death.damage.from)
+                end
+            end
         end
         
         return false
@@ -771,10 +1100,30 @@ GeneralStatsCardMoveRecorder = sgs.CreateTriggerSkill{
                 local data_obj = loadGeneralData()
                 local general_name = to_player:getGeneralName()
                 local stats = getGeneralStats(data_obj, general_name, game_mode)
-                stats.cards_drawn = stats.cards_drawn + move.card_ids:length()
+                local card_count = move.card_ids:length()
+                stats.cards_drawn = stats.cards_drawn + card_count
                 
-                -- 检查是否为受伤后收益
-                recordDamageBenefit(to_player, "draw", move.card_ids:length())
+                -- 根据当前事件链判断收益来源
+                local game_data = to_player:getTag("GeneralStatsGameData"):toTable() or {}
+                local benefit_trigger = game_data.current_benefit_trigger
+                
+                if benefit_trigger then
+                    -- 在收益触发链中，记录对应的收益
+                    recordBenefit(to_player, benefit_trigger, "cards_drawn", card_count)
+                else
+                    -- 不在收益触发链中，检查移动原因
+                    local reason = move.reason.m_reason
+                    
+                    -- 检查是否为回合外摸牌
+                    if to_player:getPhase() == sgs.Player_NotActive then
+                        -- 回合外摸牌
+                        if reason == sgs.CardMoveReason_S_REASON_DRAW then
+                            -- 正常摸牌阶段（不太可能在回合外）
+                        else
+                            recordBenefit(to_player, "off_turn", "cards_drawn", card_count)
+                        end
+                    end
+                end
                 
                 saveGeneralData(data_obj)
             end
@@ -791,6 +1140,10 @@ GeneralStatsCardMoveRecorder = sgs.CreateTriggerSkill{
                 local general_name = from_player:getGeneralName()
                 local stats = getGeneralStats(data_obj, general_name, game_mode)
                 stats.cards_discarded = stats.cards_discarded + move.card_ids:length()
+                
+                -- 标记弃牌触发（用于弃牌收益）
+                markBenefitTrigger(from_player, "on_discard")
+                
                 saveGeneralData(data_obj)
             end
         end
@@ -817,6 +1170,10 @@ GeneralStatsRecoverRecorder = sgs.CreateTriggerSkill{
         local stats = getGeneralStats(data_obj, general_name, game_mode)
         
         stats.hp_recovered = stats.hp_recovered + recover.recover
+        
+        -- 检查回血收益来源
+        recordBenefit(player, "on_damaged", "hp_recovered", recover.recover)    -- 受伤后回血（如反馈）
+        recordBenefit(player, "on_kill", "hp_recovered", recover.recover)       -- 击杀后回血（如神速）
         
         -- 如果是给他人回血
         if recover.who and recover.who:objectName() ~= player:objectName() then

@@ -1,23 +1,23 @@
 #ifndef _GENERAL_CARD_CONTAINER_UI_H
 #define _GENERAL_CARD_CONTAINER_UI_H
 
-//#include "carditem.h"
-//#include "player.h"
-//#include "qsan-selectable-item.h"
-//#include "timed-progressbar.h"
+// #include "carditem.h"
+// #include "player.h"
+// #include "qsan-selectable-item.h"
+// #include "timed-progressbar.h"
 #include "skin-bank.h"
-//#include "util.h"
+// #include "util.h"
 #include "protocol.h"
-//#include "rolecombobox.h"
+// #include "rolecombobox.h"
 
-//#include <QGraphicsScene>
-//#include <QGraphicsItem>
-//#include <QMutex>
+// #include <QGraphicsScene>
+// #include <QGraphicsItem>
+// #include <QMutex>
 
-//#include <qparallelanimationgroup.h>
-//#include <qgraphicseffect.h>
-//#include <qvariant.h>
-//#include <qlabel.h>
+// #include <qparallelanimationgroup.h>
+// #include <qgraphicseffect.h>
+// #include <qvariant.h>
+// #include <qlabel.h>
 
 class CardItem;
 struct CardsMoveStruct;
@@ -104,7 +104,7 @@ public:
     virtual void killPlayer();
     virtual void revivePlayer();
     virtual QGraphicsItem *getMouseClickReceiver() = 0;
-    virtual void startHuaShen(QString generalName, QString skillName);
+    virtual void startHuaShen(QString generalName, QString skillName, bool secondGeneral = false);
     virtual void stopHuaShen();
     virtual void updateAvatarTooltip();
 
@@ -271,8 +271,8 @@ private:
     bool _allZAdjusted;
 
     void showHeroSkinListHelper(const General *general,
-        GraphicsPixmapHoverItem *avatarIcon,
-        HeroSkinContainer *&heroSkinContainer);
+                                GraphicsPixmapHoverItem *avatarIcon,
+                                HeroSkinContainer *&heroSkinContainer);
 
 signals:
     void selected_changed();
