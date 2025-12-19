@@ -1680,6 +1680,13 @@ sfofl_shuangrenFilter = sgs.CreateFilterSkill {
 **System Mark**
 - End with "-Keep"
 
+**Guanxing**
+enum GuanxingType
+{
+    GuanxingUpOnly = 1, GuanxingBothSides = 0, GuanxingDownOnly = -1
+};
+
+
 ### Critical Maintenance Points for ViewAsSkill Family
 
 **Pattern Handling:**

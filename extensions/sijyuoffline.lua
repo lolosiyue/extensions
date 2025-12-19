@@ -16753,15 +16753,15 @@ sfofl_sixi = sgs.CreateTriggerSkill{
         if event == sgs.Pindian then
             local pindian = data:toPindian()
             for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-                local to_obatin = dummyCard()
+                local to_obtain = dummyCard()
                 if room:getCardPlace(pindian.from_card:getEffectiveId()) == sgs.Player_PlaceTable then
-                    to_obatin:addSubcard(pindian.from_card)
+                    to_obtain:addSubcard(pindian.from_card)
                 end
                 if room:getCardPlace(pindian.to_card:getEffectiveId()) == sgs.Player_PlaceTable then
-                    to_obatin:addSubcard(pindian.to_card)
+                    to_obtain:addSubcard(pindian.to_card)
                 end
-                if to_obatin:subcardsLength() > 0 and room:askForSkillInvoke(p, self:objectName(), data) then
-                    room:obtainCard(p, to_obatin)
+                if to_obtain:subcardsLength() > 0 and room:askForSkillInvoke(p, self:objectName(), data) then
+                    room:obtainCard(p, to_obtain)
                     break
                 end
             end
