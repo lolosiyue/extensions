@@ -4788,8 +4788,7 @@ sfofl_qixinglight_select = sgs.CreateSkillCard {
                 if poi:targetFixed() then
                     poi:setSkillName("sfofl_qixinglight")
                     poi:addSubcards(self:getSubcards())
-                    local nonetarget = sgs.SPlayerList()
-                    room:useCard(sgs.CardUseStruct(poi, source, nonetarget), true)
+                    room:useCard(sgs.CardUseStruct(poi, source, source), true)
                 else
                     local cdata = sgs.QVariant()
                     cdata:setValue(poi)
@@ -18027,7 +18026,7 @@ sfofl_chuce = sgs.CreateTriggerSkill{
                                 if poi:targetFixed() then
                                     poi:setSkillName("sfofl_chuce")
                                     if room:askForSkillInvoke(p, self:objectName().."use", data) then
-                                        room:useCard(sgs.CardUseStruct(poi, p, sgs.SPlayerList()), false)
+                                        room:useCard(sgs.CardUseStruct(poi, p, p), false)
                                     end
                                 end
                             else
@@ -30602,7 +30601,7 @@ sfofl_shanwu = sgs.CreateTriggerSkill {
             local use = data:toCardUse()
             if use.card and use.card:isKindOf("Slash") and not use.to:contains(player) then
                 for _, p in sgs.qlist(use.to) do
-                    if not p:isKongcheng() and room:askForCard(player, ".Jink", "@sfofl_shanwu::"..p:objectName(), data, sgs.Card_MethodDiscard) then
+                    if not p:isKongcheng() and room:askForCard(player, ".Jink", "@sfofl_shanwu:"..p:objectName(), data, sgs.Card_MethodDiscard) then
                         room:sendCompulsoryTriggerLog(player,self:objectName(),true)
                         use.to:removeOne(p)
                         data:setValue(use)

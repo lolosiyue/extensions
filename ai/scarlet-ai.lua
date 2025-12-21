@@ -2126,11 +2126,6 @@ sgs.ai_skill_cardchosen.s4_yuezhe = function(self,who,flags,method)
 		if id==self.s4_yuezheData.cid and (e:isKindOf("Horse") or e:isKindOf("DelayedTrick"))
 		then return id end
 	end
-    for _,e in sgs.list(who:getCards(flags))do
-        if self:doDisCard(who,e:getEffectiveId()) and (e:isKindOf("Horse") or e:isKindOf("DelayedTrick"))
-        then return e:getEffectiveId() end
-    end
-    return nil
 end
 
 sgs.ai_skill_playerschosen.s4_yuezhe = function(self, targets, max, min)
@@ -2982,7 +2977,35 @@ sgs.ai_view_as.s4_fuhan = function(card,player,card_place)
 	end
 end
 
--- sgs.ai_fill_skill.s4_tiaoxin
+sgs.ai_fill_skill.s4_tiaoxin = function(self)
+    return sgs.Card_Parse("#s4_tiaoxin:.:")
+end
+
+sgs.ai_skill_use_func["#s4_tiaoxin"] = function(card,use,self)
+    self:sort(self.enemies,"handcard")
+    local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
+    duel:setSkillName("_s4_tiaoxin")
+    duel:deleteLater()
+    local damage = sgs.DamageStruct()
+    damage.card = duel
+    damage.from = self.player
+    damage.damage = 1
+	for _,ep in sgs.list(self.enemies)do
+        damage.to = ep
+		if self:getCardsNum("Slash","h")+1>getCardsNum("Slash",ep,self.player)
+        and self:damageStruct(damage)
+		then
+			if self:getCardsNum("Jink","h")>0
+			or self.player:getHandcardNum()>ep:getHandcardNum()
+			then
+				use.card = card
+				use.to:append(ep)
+				return
+			end
+		end
+	end
+end
+sgs.ai_use_priority["s4_tiaoxin"] = 4.8
 
 local s4_fuhan_skill = {}
 s4_fuhan_skill.name = "s4_fuhan"
