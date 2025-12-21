@@ -1496,7 +1496,7 @@ Zhudao = sgs.CreateTriggerSkill {
 				end
 				local room = player:getRoom()
 				for i = 1, n, 1 do
-					if self:canMoveField("ej") and room:askForSkillInvoke(player, self:objectName()) then
+					if room:canMoveField("ej") and room:askForSkillInvoke(player, self:objectName()) then
 						room:broadcastSkillInvoke("Zhudao")
 						room:doLightbox("Zhudao$", 800)
 						room:moveField(player, self:objectName(), true, "ej")
@@ -1521,7 +1521,7 @@ Sixu = sgs.CreateTriggerSkill {
 		if player:isAlive() and player:hasSkill(self:objectName()) then
 			if player:getPhase() == sgs.Player_Play then
 				local room = player:getRoom()
-				if self:canMoveField("ej") and room:askForSkillInvoke(player, self:objectName()) then
+				if room:canMoveField("ej") and room:askForSkillInvoke(player, self:objectName()) then
 					room:broadcastSkillInvoke("Sixu")
 					room:moveField(player, self:objectName(), true, "ej")
 					room:moveField(player, self:objectName(), true, "ej")

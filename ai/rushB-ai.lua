@@ -99,7 +99,7 @@ rushB_zhiheng_skill.getTurnUseCard = function(self)
 	if not card then return nil end
 	local number = card:getNumberString()
 	local card_id = card:getEffectiveId()
-	local card_str = ("iron_chain:rushB_zhiheng[club:%s]=%d"):format(number,card_id)
+	local card_str = ("iron_chain:rushB_zhiheng[%s:%s]=%d"):format(number, card:getSuitString(),card_id)
 	local skillcard = sgs.Card_Parse(card_str)
 	assert(skillcard)
 	return skillcard

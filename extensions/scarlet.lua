@@ -11301,7 +11301,8 @@ s4_tiaoxinCard = sgs.CreateSkillCard{
     end,
     on_use = function(self, room, source, targets)
         local target = targets[1]
-        local slash = room:askForUseSlashTo(target, source, "@s4_tiaoxin:"..source:objectName(), false, false, false, source, nil, self:objectName())
+        room:setPlayerFlag(source, "s4_tiaoxinTarget_"..target:objectName())
+        local slash = room:askForUseSlashTo(target, source, "@s4_tiaoxin:"..source:objectName(), false, false, false, source, nil, "s4_tiaoxin")
         if slash then
         else
             local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
@@ -11314,6 +11315,7 @@ s4_tiaoxinCard = sgs.CreateSkillCard{
             use.to:append(source)
             room:useCard(use)
         end
+        room:setPlayerFlag(source, "-s4_tiaoxinTarget_"..target:objectName())
     end
 }
 
@@ -11334,14 +11336,17 @@ s4_tiaoxin = sgs.CreateTriggerSkill{
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
         local damage = data:toDamage()
-        if damage.to and damage.to:isAlive() and damage.card and damage.card:hasFlag(self:objectName()) then
+        if damage.to and damage.to:isAlive() and damage.card and damage.card:hasFlag(self:objectName()) and damage.to:hasSkill(self:objectName()) and damage.to:hasFlag("s4_tiaoxinTarget_"..player:objectName()) then
             if room:askForDiscard(damage.to, self:objectName(), 1, 1, true, true, "@s4_tiaoxin-discard", "", self:objectName()) then
             else
-                room:sendCompulsoryTriggerLog(player, self:objectName())
-                room:addPlayerMark(player, "s4_tiaoxin-Clear")
+                room:sendCompulsoryTriggerLog(damage.to, self:objectName())
+                room:addPlayerMark(damage.to, "s4_tiaoxin-Clear")
             end
         end
         return false
+    end,
+    can_trigger = function(self, target)
+        return target and target:isAlive()
     end,
 }
 
@@ -11440,7 +11445,7 @@ s4_jiangwei:addSkill(s4_fuhan)
 sgs.LoadTranslationTable {
     ["s4_jiangwei"] = "姜维",
     ["&s4_jiangwei"] = "姜维",
-    ["#s4_jiangwei"] = "",
+    ["#s4_jiangwei"] = "见危授命",
     ["~s4_jiangwei"] = "",
     ["designer:s4_jiangwei"] = "",
     ["cv:s4_jiangwei"] = "",
