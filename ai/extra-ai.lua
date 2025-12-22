@@ -2785,6 +2785,8 @@ sgs.ai_skill_use["@@heg_fk_bushi"] = function(self, prompt, method)
 	return "#heg_fk_bushi:"..cards[1]:getEffectiveId()..":->"..table.concat(targets,"+")
 end
 
+sgs.ai_card_intention["heg_fk_bushi"] = -50
+
 sgs.ai_skill_cardask["@heg_fk_bushi-put"] = function(self, data, pattern, target, target2)
 	if self:isFriend(target) then
 		local cards = sgs.QList2Table(self.player:getCards("he"))
@@ -2861,5 +2863,334 @@ sgs.ai_choicemade_filter.skillInvoke.heg_true_jiancai = function(self,player,pro
 	end
 end
 
+sgs.ai_skill_invoke.DragonPhoenix = function(self, data)
+	local target = data:toPlayer()
+	if room:getCurrentDyingPlayer() and room:getCurrentDyingPlayer():objectName() == target:objectName() then
+		return self:doDisCard(target, "he", true)
+	end
+	if target then
+		return self:doDisCard(target, "he")
+	end
+	return false
+end
+
+sgs.ai_view_as.heg_lord_shouyue_wusheng = function(card,player,card_place)
+	local suit = card:getSuitString()
+	local number = card:getNumberString()
+	local card_id = card:getEffectiveId()
+	if card_place~=sgs.Player_PlaceSpecial and not card:isKindOf("Peach") and not card:hasFlag("using") and player:getKingdom() == "shu" then
+		local skill_name = ""
+		for _,sk in sgs.list(player:getVisibleSkillList())do
+			if sk:isAttachedLordSkill() then continue end
+			if string.find(sk:objectName(), "wusheng") then
+				skill_name = sk:objectName()
+				break
+			end
+		end
+		if skill_name== "" then return nil end
+		local can_invoke = false
+		for _, p in sgs.qlist(player:getAliveSiblings()) do
+			if p:hasSkill("heg_lord_shouyue") then
+				can_invoke = true
+				break
+			end
+		end
+		if not can_invoke then return nil end
+		return ("slash:%s[%s:%s]=%d"):format(skill_name, suit,number,card_id)
+	end
+end
+
+sgs.ai_fill_skill.heg_lord_shouyue_wusheng = function(self)
+	local cards = self:addHandPile("he")
+	cards = self:sortByUseValue(cards,true)
+	if self.player:getKingdom() ~= "shu" then return nil end
+	local skill_name = ""
+	for _,sk in sgs.list(self.player:getVisibleSkillList())do
+		if sk:isAttachedLordSkill() then continue end
+		if string.find(sk:objectName(), "wusheng") then
+			skill_name = sk:objectName()
+			break
+		end
+	end
+	if skill_name== "" then return nil end
+	local can_invoke = false
+	for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+		if p:hasSkill("heg_lord_shouyue") then
+			can_invoke = true
+			break
+		end
+	end
+	if not can_invoke then return nil end
+	local use_card = {}
+	local useAll = false
+	self:sort(self.enemies,"defense")
+	for _,enemy in ipairs(self.enemies)do
+		if enemy:getHp()<2 and not enemy:hasArmorEffect("EightDiagram")
+		and self.player:distanceTo(enemy)<=self.player:getAttackRange() and self:isWeak(enemy)
+		and getCardsNum("Jink",enemy,self.player)+getCardsNum("Peach",enemy,self.player)+getCardsNum("Analeptic",enemy,self.player)<1
+		then useAll = true break end
+	end
+	local disCrossbow = false
+	if self:getCardsNum("Slash")<2
+	or self.player:hasSkills("paoxiao|tenyearpaoxiao|olpaoxiao")
+	then disCrossbow = true end
+	self:sort(self.enemies,"defense")
+
+	for _,card in ipairs(cards)do
+		if (not isCard("Peach",card,self.player) and not isCard("ExNihilo",card,self.player) and not useAll)
+		and (not isCard("Crossbow",card,self.player) or disCrossbow)
+		and (self:getUseValue(card)<sgs.ai_use_value.Slash or inclusive or sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_Residue,self.player,dummyCard())>0)
+		then table.insert(use_card,card) end
+	end
+
+	for _,card in ipairs(use_card)do
+		local slash = dummyCard("slash")
+		slash:addSubcard(card)
+		slash:setSkillName(skill_name)
+		if slash:isAvailable(self.player)
+		then return slash end
+	end
+end
+
+sgs.ai_skill_invoke.heg_lord_jizhao = sgs.ai_skill_invoke.niepan
+
+sgs.ai_canNiepan_skill.heg_lord_jizhao = function(player)
+	return player:getMark("heg_lord_jizhao_used") == 0
+end
+
+sgs.ai_ajustdamage_from.PeaceSpell = function(self, from, to, card, nature)
+	if nature ~= "N" and not IgnoreArmor(from,to) then
+		return -99
+	end
+end
+
+sgs.ai_skill_invoke.heg_lord_hongfa = true
+
+sgs.ai_cardsview["heg_lord_hongfa_Attach"] = function(self,class_name,player)
+	if class_name=="Slash" then
+		for _, p in sgs.qlist(self.room:findPlayersBySkillName("heg_lord_hongfa")) do
+			if not self:isEnemy(p) and p:getPile("heg_lord_hongfa"):length() > 0 and p:getKingdom() == player:getKingdom() then
+				return "#heg_lord_hongfa_Attach:.:"
+			end
+		end
+	end
+end
+
+function sgs.ai_cardsview_valuable.heg_lord_hongfa_Attach(self, class_name, player)
+	if not class_name=="Slash" then return end
+	for _, p in sgs.qlist(self.room:findPlayersBySkillName("heg_lord_hongfa")) do
+	if p:getPile("heg_lord_hongfa"):length() > 0 and self:isFriend(p) and p:getKingdom() == player:getKingdom() then return "#heg_lord_hongfa_Attach:.:" end
+	end
+end
+
+addAiSkills("heg_lord_hongfa_Attach").getTurnUseCard = function(self)
+	local dc = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+	dc:setSkillName("_heg_lord_hongfa")
+	dc:deleteLater()
+	local dummy = self:aiUseCard(dc)
+	if dummy.card then
+		self.heg_lord_hongfa_Attachdummy = dummy
+		for _, p in sgs.qlist(self.room:findPlayersBySkillName("heg_lord_hongfa")) do
+			if p:getPile("heg_lord_hongfa"):length() > 0 and self:isFriend(p) and sgs.Slash_IsAvailable(self.player) and p:getKingdom() == self.player:getKingdom() then return sgs.Card_Parse("#heg_lord_hongfa_Attach:.:") 
+			end
+		end
+	end
+end
+
+sgs.ai_skill_use_func["#heg_lord_hongfa_Attach"] = function(card,use,self)
+	use.card = card
+	use.to = self.heg_lord_hongfa_Attachdummy.to
+end
+
+sgs.ai_fill_skill.heg_lord_wendao = function(self)
+	local use_card
+    local cards = self.player:getCards("h")
+    cards = self:sortByUseValue(cards,true) -- 按保留值排序
+	if self.player:hasSkill("heg_lord_hongfa") and self.player:getPile("heg_lord_hongfa"):length() > 0 then
+		for i,h in sgs.list(cards)do
+			if h:isKindOf("PeaceSpell") then
+				use_card = h
+				break
+			end
+		end
+	end
+	if not use_card then
+		for i,h in sgs.list(cards)do
+			if h:isRed() then
+				use_card = h
+				break
+			end
+		end
+	end
+	if use_card then
+		return sgs.Card_Parse("#heg_lord_wendao:"..use_card:getEffectiveId()..":")
+	end
+end
+
+sgs.ai_skill_use_func["#heg_lord_wendao"] = function(card,use,self)
+	use.card = card
+	use.to:append(self.player)
+end
+
+sgs.ai_use_priority["heg_lord_wendao"] = 10
+
+sgs.ai_fill_skill.heg_lord_jiahe_Attach = function(self)
+	local cards = self.player:getCards("h")
+	cards = self:sortByUseValue(cards,true)
+	local use_card = nil
+	for _,c in ipairs(cards)do
+		if c:isKindOf("EquipCard") then
+			use_card = c
+			break
+		end
+	end
+	if use_card then
+		return sgs.Card_Parse("#heg_lord_jiahe_Attach:"..use_card:getEffectiveId()..":")
+	end
+	return nil
+end
+
+sgs.ai_skill_use_func["#heg_lord_jiahe_Attach"] = function(card,use,self)
+	for _, p in sgs.qlist(self.room:findPlayersBySkillName("heg_lord_jiahe")) do
+		if p:getPile("heg_lord_jiahe"):length() > 0 and self:isFriend(p) and p:getKingdom() == self.player:getKingdom() then
+			use.card = card
+			if use.to then use.to:append(p) end
+			return
+		end
+	end
+end
+
+sgs.ai_skill_invoke.heg_lord_jiahe = true
+
+sgs.ai_fill_skill.heg_zhiheng = function(self)
+	return sgs.Card_Parse("#heg_zhiheng:.:")
+end
+
+sgs.ai_skill_use_func["#heg_zhiheng"] = function(card,use,self)
+	local card = sgs.Card_Parse("@ZhihengCard=.")
+	local dummy_use = dummy()
+	self:useSkillCard(card,dummy_use)
+	if dummy_use.card then 
+		local str = dummy_use.card:toString()
+		str = string.gsub(str,"@ZhihengCard=","#heg_zhiheng:")
+		if self.player:getMark("LuminousPearl_zhiheng") == 0 then
+			str = "#heg_zhiheng:"
+			local use_cards = dummy_use.card:getSubcards()
+			local x = 0
+			for _,id in sgs.list(use_cards) do
+				str = str..id.."+"
+				x = x + 1
+				if x > self.player:getMaxHp() then break end
+			end
+		end
+		str = str..":"
+		use.card = sgs.Card_Parse(str)
+	end
+end
+
+sgs.ai_card_priority["heg_zhiheng"] = sgs.ai_card_priority.Zhiheng
+
+sgs.ai_fill_skill.heg_lord_lianzi = function(self)
+	local cards = self.player:getCards("h")
+	cards = self:sortByUseValue(cards,true)
+	if #cards > 0 then
+		return sgs.Card_Parse("#heg_lord_lianzi:"..cards[1]:getEffectiveId()..":")
+	end
+end
+
+sgs.ai_skill_use_func["#heg_lord_lianzi"] = function(card,use,self)
+	use.card = card
+end
+sgs.ai_card_priority["heg_lord_lianzi"] = sgs.ai_card_priority.Zhiheng + 1
 
 
+sgs.ai_skill_discard.heg_lord_jianan = function(self, discard_num, min_num, optional, include_equip)
+	local cards = sgs.QList2Table(self.player:getCards("he"))
+	self:sortByKeepValue(cards)
+	local to_discard = {}
+	if self.player:hasSkills(sgs.bad_skills) or math.random() < 0.3 then
+		for _,c in ipairs(cards) do
+			if #to_discard < discard_num then
+				table.insert(to_discard, c:getEffectiveId())
+			end
+		end
+		if #to_discard < min_num then
+			for _,c in ipairs(cards) do
+				if not table.contains(to_discard, c:getEffectiveId()) then
+					table.insert(to_discard, c:getEffectiveId())
+					if #to_discard >= min_num then break end
+				end
+			end
+		end
+	end
+	return to_discard
+end
+
+sgs.ai_skill_choice.heg_lord_jianan = function(self,choices)
+	choices = choices:split("+")
+	for _,choice in sgs.list(choices)do
+		if string.find(sgs.bad_skills,choice)
+		return choice
+		end
+	end
+	return choices[math.random(1,#choices)]
+end
+
+
+sgs.ai_fill_skill.heg_lord_huibian = function(self)
+    return sgs.Card_Parse("#heg_lord_huibian:.:")
+end
+
+sgs.ai_skill_use_func["#heg_lord_huibian"] = function(card,use,self)
+    self:sort(self.friends_noself, "hp")
+    local target1, target2
+    for _, friend in ipairs(self.friends_noself) do
+        if friend:getHp() > 1 and self:canDamage(friend,self.player, nil) and self:canDraw(friend) and friend:getKingdom() == "wei" then
+            target1 = friend
+            break
+        end
+    end
+    if not target1 then
+        for _, enemy in ipairs(self.enemies) do
+            if enemy:getHp() > 1 and self:canDamage(enemy,self.player, nil) and enemy:getKingdom() == "wei" then
+                target1 = enemy
+                break
+            end
+        end
+    end
+    if not target1 then return end
+    for i = #self.friends_noself, 1, -1 do
+        local friend = self.friends_noself[i]
+        if friend:isWounded() and friend:objectName() ~= target1:objectName() and friend:getKingdom() == "wei" then
+            target2 = friend
+            break
+        end
+    end
+    if target1 and target2 then
+        use.card = sgs.Card_Parse("#heg_lord_huibian:.:")
+        use.to:append(target1)
+        use.to:append(target2)
+        return
+    end
+end
+
+sgs.ai_fill_skill.heg_guikuang = function(self)
+	return sgs.Card_Parse("#heg_guikuang:.:")
+end
+
+sgs.ai_skill_use_func["#heg_guikuang"] = function(card,use,self)
+	self:sort(self.enemies,"handcard")
+	local target
+	local target2
+	for _,enemy in sgs.list(self.enemies)do
+		for _,enemy2 in sgs.list(self.enemies)do
+		if enemy:canPindian(enemy2) and enemy:objectName()~=enemy2:objectName() and enemy:getKingdom() ~= enemy2:getKingdom() and self:canDamage(enemy,enemy2,nil) and self:canDamage(enemy2,enemy,nil)
+		then target = enemy target2 = enemy2 break end
+	end
+	if target and target2 then
+		use.card = sgs.Card_Parse("#heg_guikuang:.:")
+		use.to:append(target)
+		use.to:append(target2)
+		return
+	end
+end
