@@ -285,11 +285,33 @@ universal_card_display_global = sgs.CreateTriggerSkill{
 
 function IsBigKingdomPlayer(player)
 	-- 判断某个角色是否为大势力角色
-	-- 大势力定义: 某势力的存活角色数大于或等于2且为全场最多（或之一）
+	-- 如果场上有人装备玉玺，则玉玺持有者为大势力，其他为小势力
+	-- 否则按势力人数判断（人数>=2且为最多）
 	local room = player:getRoom()
-	local kingdom_count = {} -- 统计各势力存活角色数
 	
-	-- 遍历所有存活角色，统计各势力人数
+	-- 检查场上是否有人装备玉玺
+	local jade_seal_owner = nil
+	local alive_count = 0
+	for _, p in sgs.qlist(room:getAlivePlayers()) do
+		alive_count = alive_count + 1
+		if p:hasTreasure("heg_jade_seal") then
+			jade_seal_owner = p
+			break
+		end
+	end
+	
+	-- 如果场上人数少于4人，没有大势力概念
+	if alive_count < 4 then
+		return false
+	end
+	
+	-- 如果有人装备玉玺，则只有玉玺持有者是大势力
+	if jade_seal_owner then
+		return player:objectName() == jade_seal_owner:objectName()
+	end
+	
+	-- 否则按势力人数判断
+	local kingdom_count = {}
 	for _, p in sgs.qlist(room:getAlivePlayers()) do
 		local kingdom = p:getKingdom()
 		if kingdom_count[kingdom] then
@@ -299,7 +321,6 @@ function IsBigKingdomPlayer(player)
 		end
 	end
 	
-	-- 找出最大势力人数
 	local max_count = 0
 	for _, count in pairs(kingdom_count) do
 		if count > max_count then
@@ -307,7 +328,6 @@ function IsBigKingdomPlayer(player)
 		end
 	end
 	
-	-- 判断该角色所在势力是否为大势力
 	local player_kingdom = player:getKingdom()
 	local player_kingdom_count = kingdom_count[player_kingdom] or 0
 	
@@ -317,10 +337,32 @@ end
 
 function IsBigKingdomPlayerClient(player)
 	-- 判断某个角色是否为大势力角色（不使用getRoom）
-	-- 大势力定义: 某势力的存活角色数大于或等于2且为全场最多（或之一）
-	local kingdom_count = {} -- 统计各势力存活角色数
+	-- 如果场上有人装备玉玺，则玉玺持有者为大势力，其他为小势力
+	-- 否则按势力人数判断（人数>=2且为最多）
 	
-	-- 遍历所有存活角色（包括自己），统计各势力人数
+	-- 检查场上是否有人装备玉玺
+	local jade_seal_owner = nil
+	local alive_count = 0
+	for _, p in sgs.qlist(player:getAliveSiblings(true)) do
+		alive_count = alive_count + 1
+		if p:hasTreasure("heg_jade_seal") then
+			jade_seal_owner = p
+			break
+		end
+	end
+	
+	-- 如果场上人数少于4人，没有大势力概念
+	if alive_count < 4 then
+		return false
+	end
+	
+	-- 如果有人装备玉玺，则只有玉玺持有者是大势力
+	if jade_seal_owner then
+		return player:objectName() == jade_seal_owner:objectName()
+	end
+	
+	-- 否则按势力人数判断
+	local kingdom_count = {}
 	for _, p in sgs.qlist(player:getAliveSiblings(true)) do
 		local kingdom = p:getKingdom()
 		if kingdom_count[kingdom] then
@@ -330,7 +372,6 @@ function IsBigKingdomPlayerClient(player)
 		end
 	end
 	
-	-- 找出最大势力人数
 	local max_count = 0
 	for _, count in pairs(kingdom_count) do
 		if count > max_count then
@@ -338,7 +379,6 @@ function IsBigKingdomPlayerClient(player)
 		end
 	end
 	
-	-- 判断该角色所在势力是否为大势力
 	local player_kingdom = player:getKingdom()
 	local player_kingdom_count = kingdom_count[player_kingdom] or 0
 	
@@ -14754,13 +14794,536 @@ bc2:setParent(extension_hegadvantagecard)
 local bc3 = heg_burning_camps:clone(3, 12)
 bc3:setParent(extension_hegadvantagecard)
 
-	["heg_fight_together"] = "勠力同心",
-  	[":heg_fight_together"] = "锦囊牌<br/><b>时机</b>：出牌阶段<br/><b>目标</b>：所有大势力角色或所有小势力角色<br/><b>效果</b>：若目标角色：不处于连环状态，其横置；处于连环状态，其摸一张牌。<br/><font color='grey'>操作提示：选择一名角色，若其为大势力角色，则目标为所有大势力角色；若其为小势力角色，则目标为所有小势力角色</font>",
-  	["#heg_fight_together_skill"] = "选择所有大势力角色或小势力角色，若这些角色处于/不处于连环状态，其摸一张牌/横置",
+-- 【勠力同心】Trick Card Implementation
+heg_fight_together = sgs.CreateTrickCard{
+	name = "heg_fight_together",
+	class_name = "heg_fight_together",
+	target_fixed = false,
+	can_recast = false,
+	subtype = "aoe_trick",
+	subclass = sgs.LuaTrickCard_TypeNormal,
+	filter = function(self, targets, to_select, player)
+		-- 选择一名角色作为势力代表，需要检查至少有一个同势力类型的角色不被禁止
+		if #targets > 0 then
+			return false
+		end
+		
+		-- 检查该势力类型是否有至少一个可以作为目标的角色
+		local is_big = IsBigKingdomPlayerClient(to_select)
+		local has_valid_target = false
+		
+		for _, p in sgs.qlist(player:getAliveSiblings(true)) do
+			local p_is_big = IsBigKingdomPlayerClient(p)
+			if is_big == p_is_big and not player:isProhibited(p, self) then
+				has_valid_target = true
+				break
+			end
+		end
+		
+		return has_valid_target
+	end,
+	feasible = function(self, targets)
+		-- 必须选择一名角色
+		return #targets == 1
+	end,
+	about_to_use = function(self, room, use)
+		-- 选择一名角色后，自动扩展目标为该势力的所有角色
+		if not use.to:isEmpty() then
+			local chosen = use.to:at(0)
+			local is_big = IsBigKingdomPlayer(chosen)
+			
+			-- 清空原有目标
+			use.to = sgs.SPlayerList()
+			
+			-- 添加所有符合条件的角色为目标（排除被禁止的角色）
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if is_big then
+					-- 如果选择的是大势力角色，目标为所有大势力角色
+					if IsBigKingdomPlayer(p) and not use.from:isProhibited(p, self) then
+						use.to:append(p)
+					end
+				else
+					-- 如果选择的是小势力角色，目标为所有小势力角色
+					if not IsBigKingdomPlayer(p) and not use.from:isProhibited(p, self) then
+						use.to:append(p)
+					end
+				end
+			end
+		end
+		self:cardOnUse(room, use)
+	end,
+	on_use = function(self, room, source, targets)
+		for _, t in ipairs(targets) do
+			room:cardEffect(self, source, t)
+		end
+	end,
+	on_effect = function(self, effect)
+		local room = effect.to:getRoom()
+		if effect.to:isChained() then
+			-- 处于连环状态，摸一张牌
+			effect.to:drawCards(1, "heg_fight_together")
+		else
+			-- 不处于连环状态，横置
+			room:setPlayerChained(effect.to)
+		end
+	end,
+}
+local ft1 = heg_fight_together:clone(1, 7)
+ft1:setParent(extension_hegadvantagecard)
+local ft2 = heg_fight_together:clone(2, 8)
+ft2:setParent(extension_hegadvantagecard)
 
-	["heg_alliance_feast"] = "联军盛宴",
-  	[":heg_alliance_feast"] = "锦囊牌<br/><b>时机</b>：出牌阶段<br/><b>目标</b>：有势力的你和除你的势力外的一个势力的所有角色<br/><b>效果</b>：若目标角色：为你，你摸X张牌，回复（Y-X）点体力（Y为该势力的角色数）（X为你选择的自然数且不大于Y）；不为你，其摸一张牌，重置。<br/><font color='grey'>操作提示：选择一名与你势力不同的角色，目标为你和该势力的所有角色</font>",
+-- 【联军盛宴】Trick Card Implementation
+heg_alliance_feast = sgs.CreateTrickCard{
+	name = "heg_alliance_feast",
+	class_name = "heg_alliance_feast",
+	target_fixed = false,
+	can_recast = false,
+	subtype = "aoe_trick",
+	subclass = sgs.LuaTrickCard_TypeNormal,
+	filter = function(self, targets, to_select, player)
+		-- 只能选择一名角色作为势力代表
+		if #targets > 0 then
+			return false
+		end
+		
+		-- 玩家必须有势力
+		local player_kingdom = player:getKingdom()
+		if not player_kingdom or player_kingdom == "" then
+			return false
+		end
+		
+		-- 被选择的角色必须势力与玩家不同
+		local target_kingdom = to_select:getKingdom()
+		if not target_kingdom or target_kingdom == "" or target_kingdom == player_kingdom then
+			return false
+		end
+		
+		-- 检查该势力是否有至少一个可以作为目标的角色
+		local has_valid_target = false
+		for _, p in sgs.qlist(player:getAliveSiblings(true)) do
+			if p:getKingdom() == target_kingdom and not player:isProhibited(p, self) then
+				has_valid_target = true
+				break
+			end
+		end
+		
+		return has_valid_target
+	end,
+	feasible = function(self, targets)
+		-- 必须选择一名角色
+		return #targets == 1
+	end,
+	about_to_use = function(self, room, use)
+		-- 选择一名角色后，自动扩展目标为使用者+该势力的所有角色
+		if not use.to:isEmpty() then
+			local chosen = use.to:at(0)
+			local chosen_kingdom = chosen:getKingdom()
+			
+			-- 存储选择的势力信息供effect阶段使用
+			room:setTag("heg_alliance_feast_kingdom", sgs.QVariant(chosen_kingdom))
+			
+			-- 清空原有目标
+			use.to = sgs.SPlayerList()
+			
+			-- 首先添加使用者
+			if not use.from:isProhibited(use.from, self) then
+				use.to:append(use.from)
+			end
+			
+			-- 添加所选势力的所有角色为目标
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:getKingdom() == chosen_kingdom and not use.from:isProhibited(p, self) then
+					use.to:append(p)
+				end
+			end
+		end
+		self:cardOnUse(room, use)
+	end,
+	on_use = function(self, room, source, targets)
+		for _, t in ipairs(targets) do
+			room:cardEffect(self, source, t)
+		end
+	end,
+	on_effect = function(self, effect)
+		local room = effect.to:getRoom()
+		
+		-- 如果目标角色是使用者
+		if effect.to:objectName() == effect.from:objectName() then
+			-- 获取选择的势力信息
+			local kingdom_tag = room:getTag("heg_alliance_feast_kingdom")
+			local target_kingdom = kingdom_tag:toString()
+			
+			if target_kingdom and target_kingdom ~= "" then
+				-- 计算该势力的角色数
+				local kingdom_count = 0
+				for _, p in sgs.qlist(room:getAlivePlayers()) do
+					if p:getKingdom() == target_kingdom then
+						kingdom_count = kingdom_count + 1
+					end
+				end
+				
+				if kingdom_count > 0 then
+					-- 让玩家选择X（摸牌数）
+					local choices = {}
+					for i = 1, kingdom_count do
+						table.insert(choices, tostring(i))
+					end
+					
+					local choice_str = room:askForChoice(effect.to, "heg_alliance_feast", table.concat(choices, "+"))
+					local draw_count = tonumber(choice_str)
+					local recover_count = kingdom_count - draw_count
+					
+					-- 摸X张牌
+					if draw_count > 0 then
+						effect.to:drawCards(draw_count, "heg_alliance_feast")
+					end
+					
+					-- 回复（Y-X）点体力
+					if recover_count > 0 then
+						local recover = sgs.RecoverStruct()
+						recover.who = effect.from
+						recover.recover = recover_count
+						recover.card = effect.card
+						room:recover(effect.to, recover)
+					end
+				end
+			end
+		else
+			-- 如果目标角色不是使用者
+			-- 摸一张牌
+			effect.to:drawCards(1, "heg_alliance_feast")
+			
+			-- 重置（解除横置）
+			if effect.to:isChained() then
+				room:setPlayerChained(effect.to, false)
+			end
+		end
+	end,
+}
+local af1 = heg_alliance_feast:clone(1, 9)
+af1:setParent(extension_hegadvantagecard)
+local af2 = heg_alliance_feast:clone(2, 10)
+af2:setParent(extension_hegadvantagecard)
 
+
+-- 青龙偃月刀 (Green Dragon Crescent Blade)
+heg_blade_Skill = sgs.CreateTriggerSkill{
+	name = "heg_blade_Skill",
+	events = {sgs.TargetSpecified, sgs.EventPhaseChanging},
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(self, target)
+		return target and target:isAlive() and target:hasWeapon("heg_blade")
+	end,
+	on_trigger = function(self, event, player, data, room)
+		if event == sgs.TargetSpecified then
+			local use = data:toCardUse()
+			if use.card and use.card:isKindOf("Slash") then
+				for _, to in sgs.qlist(use.to) do
+					-- Mark the target's skills as invalid until slash resolution ends
+					room:setPlayerMark(to, "heg_blade_invalid", 1)
+				end
+			end
+		elseif event == sgs.EventPhaseChanging then
+			-- Clear marks when phase changes
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:getMark("heg_blade_invalid") > 0 then
+					room:setPlayerMark(p, "heg_blade_invalid", 0)
+				end
+			end
+		end
+		return false
+	end
+}
+
+heg_blade_Invalidity = sgs.CreateInvaliditySkill{
+	name = "#heg_blade_invalidity",
+	is_skill_valid = function(self, player, skill)
+		return player:getMark("heg_blade_invalid") == 0
+	end
+}
+
+heg_blade = sgs.CreateWeapon{
+	name = "heg_blade",
+	class_name = "heg_blade",
+	suit = sgs.Card_Spade,
+	number = 5,
+	range = 3,
+	equip_skill = heg_blade_Skill,
+	on_install = function(self, player)
+		local room = player:getRoom()
+		local skill = sgs.Sanguosha:getTriggerSkill("heg_blade_Skill")
+		if skill then room:getThread():addTriggerSkill(skill) end
+	end,
+	on_uninstall = function(self, player)
+		local room = player:getRoom()
+		-- Clear marks when weapon is uninstalled
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+			if p:getMark("heg_blade_invalid") > 0 then
+				room:setPlayerMark(p, "heg_blade_invalid", 0)
+			end
+		end
+	end,
+}
+heg_blade:setParent(extension_hegcard)
+if not sgs.Sanguosha:getSkill("#heg_blade_invalidity") then skills:append(heg_blade_Invalidity) end
+
+-- 方天画戟 (Halberd of Heaven)
+heg_halberd_Card = sgs.CreateSkillCard{
+	name = "heg_halberd",
+	will_throw = false,
+	handling_method = sgs.Card_MethodNone,
+	filter = function(self, targets, to_select, player)
+		if not player:hasWeapon("heg_halberd") then return false end
+		local use = player:getTag("heg_halberd_use"):toCardUse()
+		if not use.card or not use.card:isKindOf("Slash") then return false end
+		
+		-- Check if to_select is already a target
+		for _, p in sgs.qlist(use.to) do
+			if p:objectName() == to_select:objectName() then return false end
+		end
+		
+		-- Check if to_select has different kingdom or no kingdom
+		local target_kingdom = to_select:getKingdom()
+		if target_kingdom == "" or target_kingdom == "god" then
+			return true
+		end
+		
+		-- Check if target's kingdom is different from all existing targets
+		for _, p in sgs.qlist(use.to) do
+			local p_kingdom = p:getKingdom()
+			if p_kingdom ~= "" and p_kingdom ~= "god" and p_kingdom == target_kingdom then
+				return false
+			end
+		end
+		
+		return true
+	end,
+	feasible = function(self, targets)
+		return true
+	end,
+	on_use = function(self, room, source, targets)
+		local use = source:getTag("heg_halberd_use"):toCardUse()
+		for _, target in ipairs(targets) do
+			use.to:append(target)
+		end
+		source:setTag("heg_halberd_use", sgs.QVariant_fromValue(use))
+	end
+}
+
+heg_halberd_Skill = sgs.CreateTriggerSkill{
+	name = "heg_halberd_Skill",
+	events = {sgs.TargetSpecified, sgs.SlashMissed},
+	can_trigger = function(self, target)
+		return target and target:isAlive() and target:hasWeapon("heg_halberd")
+	end,
+	on_trigger = function(self, event, player, data, room)
+		if event == sgs.TargetSpecified then
+			local use = data:toCardUse()
+			if use.card and use.card:isKindOf("Slash") then
+				player:setTag("heg_halberd_use", sgs.QVariant_fromValue(use))
+				room:askForUseCard(player, "@@heg_halberd", "@heg_halberd")
+				player:removeTag("heg_halberd_use")
+			end
+		elseif event == sgs.SlashMissed then
+			local effect = data:toSlashEffect()
+			if effect.slash and effect.slash:hasFlag("heg_halberd_jink") then
+				-- If jinked, nullify the slash for all targets
+				return true
+			end
+		end
+		return false
+	end
+}
+
+heg_halberd_Jink = sgs.CreateTriggerSkill{
+	name = "#heg_halberd_jink",
+	events = {sgs.SlashMissed},
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(self, target)
+		return target and target:hasWeapon("heg_halberd")
+	end,
+	on_trigger = function(self, event, player, data, room)
+		local effect = data:toSlashEffect()
+		if effect.slash then
+			room:setCardFlag(effect.slash, "heg_halberd_jink")
+		end
+		return false
+	end
+}
+
+heg_halberd = sgs.CreateWeapon{
+	name = "heg_halberd",
+	class_name = "heg_halberd",
+	suit = sgs.Card_Diamond,
+	number = 12,
+	range = 4,
+	equip_skill = heg_halberd_Skill,
+	on_install = function(self, player)
+		local room = player:getRoom()
+		local skill = sgs.Sanguosha:getTriggerSkill("heg_halberd_Skill")
+		if skill then room:getThread():addTriggerSkill(skill) end
+		local skill2 = sgs.Sanguosha:getTriggerSkill("#heg_halberd_jink")
+		if skill2 then room:getThread():addTriggerSkill(skill2) end
+	end,
+}
+heg_halberd:setParent(extension_hegcard)
+
+-- 护心镜 (Heart Protection Mirror)
+heg_breastplate_Skill = sgs.CreateTriggerSkill{
+	name = "heg_breastplate_Skill",
+	events = {sgs.DamageInflicted},
+	can_trigger = function(self, target)
+		return target and target:isAlive() and target:hasArmorEffect("heg_breastplate")
+	end,
+	on_trigger = function(self, event, player, data, room)
+		local damage = data:toDamage()
+		if damage.damage >= player:getHp() then
+			if room:askForSkillInvoke(player, self:objectName(), data) then
+				-- Discard the armor
+				if player:getArmor() then
+					room:throwCard(player:getArmor(), player)
+				end
+				-- Prevent the damage
+				return true
+			end
+		end
+		return false
+	end
+}
+
+heg_breastplate = sgs.CreateArmor{
+	name = "heg_breastplate",
+	class_name = "heg_breastplate",
+	suit = sgs.Card_Club,
+	number = 2,
+	equip_skill = heg_breastplate_Skill,
+	on_install = function(self, player)
+		local room = player:getRoom()
+		local skill = sgs.Sanguosha:getTriggerSkill("heg_breastplate_Skill")
+		if skill then room:getThread():addTriggerSkill(skill) end
+	end,
+}
+heg_breastplate:setParent(extension_hegcard)
+
+-- 明光铠 (Brilliant Armor)
+heg_iron_armor_Skill = sgs.CreateTriggerSkill{
+	name = "heg_iron_armor_Skill",
+	events = {sgs.TargetConfirming, sgs.BeforeChained},
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(self, target)
+		return target and target:isAlive() and target:hasArmorEffect("heg_iron_armor")
+	end,
+	on_trigger = function(self, event, player, data, room)
+		if event == sgs.TargetConfirming then
+			local use = data:toCardUse()
+			if use.card then
+				-- Cancel target for Fire Burning Camps, Fire Attack, or Fire Slash
+				if use.card:isKindOf("FireAttack") or use.card:isKindOf("BurningCamps") or
+				   (use.card:isKindOf("Slash") and use.card:isKindOf("FireSlash")) then
+					for i = 0, use.to:length() - 1 do
+						if use.to:at(i):objectName() == player:objectName() then
+							use.to:removeAt(i)
+							data = sgs.QVariant_fromValue(use)
+							return false
+						end
+					end
+				end
+			end
+		elseif event == sgs.BeforeChained then
+			-- Prevent chaining if small kingdom player
+			if not IsBigKingdomPlayer(player) then
+				return true
+			end
+		end
+		return false
+	end
+}
+
+heg_iron_armor = sgs.CreateArmor{
+	name = "heg_iron_armor",
+	class_name = "heg_iron_armor",
+	suit = sgs.Card_Heart,
+	number = 2,
+	equip_skill = heg_iron_armor_Skill,
+	on_install = function(self, player)
+		local room = player:getRoom()
+		local skill = sgs.Sanguosha:getTriggerSkill("heg_iron_armor_Skill")
+		if skill then room:getThread():addTriggerSkill(skill) end
+	end,
+}
+heg_iron_armor:setParent(extension_hegcard)
+
+-- 惊帆 (Alarming Sail)
+heg_jingfan = sgs.CreateOffensiveHorse{
+	name = "heg_jingfan",
+	class_name = "heg_jingfan",
+	suit = sgs.Card_Heart,
+	number = 3,
+}
+heg_jingfan:setParent(extension_hegcard)
+
+-- 玉玺 (Imperial Jade Seal)
+heg_jade_seal_Kingdom = sgs.CreateTriggerSkill{
+	name = "#heg_jade_seal_kingdom",
+	events = {},
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(self, target)
+		return target and target:hasArmorEffect("heg_jade_seal")
+	end,
+}
+
+heg_jade_seal_Draw = sgs.CreateTriggerSkill{
+	name = "#heg_jade_seal_draw",
+	events = {sgs.DrawNCards},
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(self, target)
+		return target and target:isAlive() and target:hasTreasure("heg_jade_seal")
+	end,
+	on_trigger = function(self, event, player, data, room)
+		local count = data:toInt()
+		data = sgs.QVariant(count + 1)
+		return false
+	end
+}
+
+heg_jade_seal_KnownBoth = sgs.CreateTriggerSkill{
+	name = "#heg_jade_seal_knownboth",
+	events = {sgs.EventPhaseStart},
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(self, target)
+		return target and target:isAlive() and target:hasTreasure("heg_jade_seal") and target:getPhase() == sgs.Player_Play
+	end,
+	on_trigger = function(self, event, player, data, room)
+		-- Use KnownBoth (知己知彼)
+		local knownboth = sgs.Sanguosha:cloneCard("known_both", sgs.Card_NoSuit, 0)
+		knownboth:setSkillName("heg_jade_seal")
+		if knownboth and not player:isLocked(knownboth) then
+			local use = sgs.CardUseStruct()
+			use.card = knownboth
+			use.from = player
+			room:useCard(use, false)
+		end
+		return false
+	end
+}
+
+heg_jade_seal = sgs.CreateTreasure{
+	name = "heg_jade_seal",
+	class_name = "heg_jade_seal",
+	suit = sgs.Card_Heart,
+	number = 1,
+	on_install = function(self, player)
+		local room = player:getRoom()
+		local skill1 = sgs.Sanguosha:getTriggerSkill("#heg_jade_seal_draw")
+		if skill1 then room:getThread():addTriggerSkill(skill1) end
+		local skill2 = sgs.Sanguosha:getTriggerSkill("#heg_jade_seal_knownboth")
+		if skill2 then room:getThread():addTriggerSkill(skill2) end
+	end,
+}
+heg_jade_seal:setParent(extension_hegcard)
+if not sgs.Sanguosha:getSkill("#heg_jade_seal_draw") then skills:append(heg_jade_seal_Draw) end
+if not sgs.Sanguosha:getSkill("#heg_jade_seal_knownboth") then skills:append(heg_jade_seal_KnownBoth) end
 
 
 
@@ -15506,10 +16069,10 @@ sgs.LoadTranslationTable{
   	[":heg_alliance_feast"] = "锦囊牌<br/><b>时机</b>：出牌阶段<br/><b>目标</b>：有势力的你和除你的势力外的一个势力的所有角色<br/><b>效果</b>：若目标角色：为你，你摸X张牌，回复（Y-X）点体力（Y为该势力的角色数）（X为你选择的自然数且不大于Y）；不为你，其摸一张牌，重置。<br/><font color='grey'>操作提示：选择一名与你势力不同的角色，目标为你和该势力的所有角色</font>",
 
 	["heg_blade"] = "青龙偃月刀",
-  	[":heg_blade"] = "装备牌·武器<br /><b>攻击范围</b>：３<br /><b>武器技能</b>：锁定技，当你使用【杀】时，此牌的使用结算结束之前，此【杀】的目标角色不能明置武将牌。",
+  	[":heg_blade"] = "装备牌·武器<br /><b>攻击范围</b>：３<br /><b>武器技能</b>：锁定技，当你使用【杀】时，此牌的使用结算结束之前，此【杀】的目标角色技能失效。",
 
 	["heg_halberd"] = "方天画戟",
-  	[":heg_halberd"] = "装备牌·武器<br /><b>攻击范围</b>：４<br /><b>武器技能</b>：当你使用【杀】选择目标后，可以令任意名{势力各不相同且与已选择的目标势力均不相同的}角色和任意名没有势力的角色也成为目标，当此【杀】被【闪】抵消后，此【杀】对所有目标均无效。",
+  	[":heg_halberd"] = "装备牌·武器<br /><b>攻击范围</b>：４<br /><b>武器技能</b>：当你使用【杀】选择目标后，可以令任意名势力各不相同且与已选择的目标势力均不相同的角色和任意名没有势力的角色也成为目标，当此【杀】被【闪】抵消后，此【杀】对所有目标均无效。",
 
 	["heg_breastplate"] = "护心镜",
   	[":heg_breastplate"] = "装备牌·防具<br/><b>防具技能</b>：当你受到伤害时，若此伤害大于或等于你当前的体力值，你可将装备区里的【护心镜】置入弃牌堆，然后防止此伤害。",

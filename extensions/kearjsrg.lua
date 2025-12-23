@@ -1011,7 +1011,15 @@ function askYishi(ysdata)
 			local colors = {}
 			for _,id in sgs.list(dc:getSubcards())do
 				local cs = sgs.Sanguosha:getCard(id):getColorString()
-				ysdata.color_num[cs] = (ysdata.color_num[cs] or 0)+1
+				local count = 1
+				-- 可扩展的议事颜色计数修改机制
+				local count_data = sgs.QVariant("yishi_color_count:"..ysdata.reason..":"..p:objectName()..":"..cs..":"..count)
+				room:getThread():trigger(sgs.EventForDiy,room,p,count_data)
+				local count_parts = count_data:toString():split(":")
+				if #count_parts >= 5 then
+					count = tonumber(count_parts[5]) or count
+				end
+				ysdata.color_num[cs] = (ysdata.color_num[cs] or 0)+count
 				table.insert(colors,cs)
 			end
 			ysdata.to2color[p:objectName()] = table.concat(colors,"|")
