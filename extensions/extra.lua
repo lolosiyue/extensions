@@ -10,6 +10,9 @@ extension_heglordex = sgs.Package("heg_lordex", sgs.Package_GeneralPack)
 extension_hegpurplecloud = sgs.Package("heg_purplecloud", sgs.Package_GeneralPack)
 extension_goldenseal = sgs.Package("heg_goldenseal", sgs.Package_GeneralPack)
 extension_twyj = sgs.Package("fixandadd_twyj", sgs.Package_GeneralPack)
+extension_hegcard = sgs.Package("hegemony_cards", sgs.Package_CardPack)
+extension_hegadvantagecard = sgs.Package("strategic_advantage", sgs.Package_CardPack)
+
 local Guandu_event_only = false --OL官渡之战随机事件
 local Guandu_event_reward = false 
 function ChangeGeneral(room, player, skill_onwer_general_name)
@@ -6020,9 +6023,6 @@ heg_jueyue = sgs.CreateTriggerSkill{
 heg_yujin:addSkill(heg_jueyue)
 
 heg_cuiyanmaojie = sgs.General(extension_hegquan, "heg_cuiyanmaojie", "wei", 3)
-	
-	-- ["heg_fengying"] = "奉迎",
-  	-- [":#heg_fengying"] = "限定技，出牌阶段，你可将所有手牌当【挟天子以令诸侯】（无视大势力限制）使用，然后所有与你势力相同的角色将手牌补至其体力上限。",
 
 heg_zhengbi_buff = sgs.CreateTargetModSkill{
 	name = "#heg_zhengbi_buff",
@@ -6157,6 +6157,44 @@ heg_zhengbi = sgs.CreateTriggerSkill{
 		end
 	end
 }
+
+heg_fengyingVS = sgs.CreateZeroCardViewAsSkill{
+	name = "heg_fengying",
+	view_as = function()
+		local skillcard = sgs.Sanguosha:cloneCard("threaten_emperor", sgs.Card_NoSuit, 0)
+		skillcard:setSkillName("heg_fengying")
+		skillcard:addSubcards(sgs.Self:handCards())
+		return skillcard
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("@heg_fengying") > 0 and not player:isKongcheng()
+	end
+}
+heg_fengying = sgs.CreateTriggerSkill{
+	name = "heg_fengying",
+	limit_mark = "@heg_fengying",
+	frequency = sgs.Skill_Limited,
+	events = {sgs.CardFinished},
+	view_as_skill = heg_fengyingVS,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local use = data:toCardUse()
+		if use.card and use.card:isKindOf("threaten_emperor") and use.card:getSkillName() == self:objectName() then
+			room:broadcastSkillInvoke(self:objectName())
+			local targets = room:askForPlayersChosen(player, room:getAllPlayers(), self:objectName(), 1, 99, "@heg_fengying", true, true)
+			for _, to in sgs.qlist(targets) do
+				room:doAnimate(1, player:objectName(), to:objectName())
+				to:drawCards(to:getMaxHp()-to:getHandcardNum(), self:objectName())
+			end
+		end
+	end
+}
+
+heg_cuiyanmaojie:addSkill(heg_zhengbi)
+heg_cuiyanmaojie:addSkill(heg_zhengbi_buff)
+extension_hegquan:insertRelatedSkills("heg_zhengbi", "#heg_zhengbi_buff")
+heg_cuiyanmaojie:addSkill(heg_fengying)
+
 
 if not sgs.Sanguosha:getSkill("#heg_zhengbiDiscard") then skills:append(heg_zhengbiDiscard) end
 
@@ -14176,6 +14214,557 @@ ol_god_sunquan:addSkill(ol_god_yuanlu)
 
 extension:insertRelatedSkills("ol_god_shengzhi", "#ol_god_shengzhi_prohibit")
 
+heg_known_both = sgs.CreateTrickCard{
+	name = "heg_known_both",
+	class_name = "heg_known_both",
+	suit = 1,
+	number = 1,
+	target_fixed = false,
+	can_recast = true,
+	subtype = "single_target_trick",
+	subclass = sgs.LuaTrickCard_TypeSingleTargetTrick,
+	available = function(self,player)
+    	for _,to in sgs.list(player:getAliveSiblings())do
+			if CanToCard(self,player,to)
+			then
+				return self:cardIsAvailable(player)
+			end
+		end
+    end,
+	filter = function(self,targets,to_select,source)
+		if source:isCardLimited(self,sgs.Card_MethodUse) then return #targets<1 end
+		local total_num = 1
+		if sgs.Self then
+			total_num = total_num + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, player, self)
+		end
+		return not to_select:isKongcheng() and to_select:objectName() ~= player:objectName() and #targets < total_num
+	end,
+	feasible = function(self,targets,from)
+		if from:isCardLimited(self,sgs.Card_MethodUse) then return #targets<1 end
+		return #targets >= 0
+	end,
+	is_cancelable = function(self, effect)
+		return true
+	end,
+	about_to_use = function(self, room, use)
+		if use.to:isEmpty() then
+			UseCardRecast(use.from, self, "heg_known_both")
+		else
+			self:cardOnUse(room, use)
+		end
+	end,
+	on_effect = function(self, effect)
+		local room = effect.from:getRoom()
+		room:showAllCards(effect.to, effect.from)
+		local log = sgs.LogMessage()
+		log.type = "#heg_showhandcards"
+		log.from = effect.from
+		log.to:append(effect.to)
+		room:sendLog(log)
+	end,
+}
+local zjzb = heg_known_both:clone(1, 3)
+zjzb:setParent(extension_hegcard)
+local zjzb = heg_known_both:clone(1, 4)
+zjzb:setParent(extension_hegcard)
+
+heg_befriend_attacking = sgs.CreateTrickCard{
+	name = "heg_befriend_attacking",
+	class_name = "heg_befriend_attacking",
+	suit = 2,
+	number = 9,
+	target_fixed = false,
+	can_recast = false,
+	subtype = "single_target_trick",
+	subclass = sgs.LuaTrickCard_TypeSingleTargetTrick,
+	filter = function(self, targets, to_select, player)
+		local total_num = 1
+		if sgs.Self then
+			total_num = total_num + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, player, self)
+		end
+		return to_select:objectName() ~= player:objectName() and #targets < total_num
+	end,
+	feasible = function(self, targets)
+		local total_num = 1
+		if sgs.Self then
+			total_num = total_num + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, sgs.Self, self)
+		end
+		return #targets <= total_num and #targets > 0
+	end,
+	available = function(self, player)
+		return player and player:isAlive() and not player:isCardLimited(self, sgs.Card_MethodUse, true)
+	end,
+	is_cancelable = function(self, effect)
+		return true
+	end,
+	on_effect = function(self, effect)
+		effect.to:drawCards(1)
+		effect.from:drawCards(2)
+	end,
+}
+
+heg_befriend_attacking:setParent(extension_hegcard)
+
+heg_await_exhausted = sgs.CreateTrickCard{
+	name = "heg_await_exhausted",
+	class_name = "heg_await_exhausted",
+	suit = 2,
+	number = 9,
+	target_fixed = false,
+	can_recast = false,
+	subtype = "multiple_target_trick",
+	subclass = sgs.LuaTrickCard_LuaTrickCard_TypeNormal,
+	available = function(self,player)
+    	for _,to in sgs.list(player:getAliveSiblings())do
+			if CanToCard(self,player,to)
+			then
+				return self:cardIsAvailable(player)
+			end
+		end
+    end,
+	filter = function(self,targets,to_select,source)
+		if source:isProhibited(to_select,self) then return end
+		return true
+	end,
+	feasible = function(self,targets,from)
+		return #targets>0
+	end,
+	is_cancelable = function(self, effect)
+		return true
+	end,
+	on_use = function(self, room, source, targets)
+		for _, t in ipairs(targets) do
+			room:cardEffect(self, source, t)
+		end
+		for _, t in ipairs(targets) do
+			if t:hasFlag("EXCard_YYDL_effected") and not t:isNude() then
+				local num = math.min(t:getCardCount(), 2)
+				room:askForDiscard(t, self:objectName(), num, num, false, true)
+			end
+		end
+		if room:getCardPlace(self:getEffectiveId()) == sgs.Player_PlaceTable then
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_USE, source:objectName(), "", self:getSkillName(), "")
+			room:moveCardTo(self, source, nil, sgs.Player_DiscardPile, reason, true)
+		end
+	end,
+	on_effect = function(self, effect)
+		effect.to:drawCards(2)
+		effect.to:setFlags("EXCard_YYDL_effected")
+	end,
+}
+
+local yydl = heg_await_exhausted:clone(3, 4)
+yydl:setParent(extension_hegcard)
+local yydl = heg_await_exhausted:clone(2, 11)
+yydl:setParent(extension_hegcard)
+
+
+heg_triblade_Skill = sgs.CreateTriggerSkill{
+	name = "heg_triblade_Skill",
+	events = { sgs.Damage },
+	can_trigger = function(self, target)
+		return target and target:isAlive() and target:hasWeapon("heg_triblade")
+	end,
+	on_trigger = function(self, event, player, data)
+		local damage = data:toDamage()
+		local room = player:getRoom()
+		if damage.card and damage.card:isKindOf("Slash") and damage.from and damage.from:objectName() == player:objectName()
+			and not player:isKongcheng() and not damage.chain and not damage.transfer and damage.by_user then
+			if room:askForDiscard(player, self:objectName(), 1, 1, true, false, "#heg_triblade_Skill_dis") then
+				local targets = sgs.SPlayerList()
+				for _, p in sgs.qlist(room:getOtherPlayers(damage.to)) do
+					if damage.to:distanceTo(p) == 1 then targets:append(p) end
+				end
+				if targets:isEmpty() then return end
+				local sb = room:askForPlayerChosen(player, targets, self:objectName(), "#heg_triblade_Skill_chosen", true)
+				if sb then
+					room:setEmotion(player, "/excard2014/EXCard_SJLRD")
+					room:damage(sgs.DamageStruct(self:objectName(), player, sb))
+				end
+			end
+		end
+	end
+}
+
+heg_triblade = sgs.CreateWeapon{
+	name = "heg_triblade",
+	class_name = "heg_triblade",
+	suit = sgs.Card_Diamond,
+	number = 12,
+	range = 3,
+	equip_skill = heg_triblade_Skill,
+	on_install = function(self, player)
+		local room = player:getRoom()
+		local skill = sgs.Sanguosha:getTriggerSkill("heg_triblade_Skill")
+		if skill then room:getThread():addTriggerSkill(skill) end
+	end,
+	on_uninstall = function(self, player)
+	end,
+}
+
+heg_triblade:setParent(extension_hegcard)
+
+heg_six_swordsCard = sgs.CreateSkillCard{
+	name = "heg_six_swords",
+	filter = function(self, targets, to_select)
+		return true
+	end,
+	feasible = function(self, targets)
+		return #targets > 0
+	end,
+	on_use = function(self, room, source, targets)
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+			p:loseAllMarks("@heg_six_swords")
+		end
+		for _, p in ipairs(targets) do
+			p:gainMark("@heg_six_swords")
+			room:setEmotion(p, "/excard2014/EXCard_WLJ")
+		end
+	end
+}
+heg_six_swords_Skill = sgs.CreateViewAsSkill{
+	name = "heg_six_swords_Skill",
+	view_as = function(self, cards)
+		return heg_six_swordsCard:clone()
+	end,
+	enabled_at_play = function(self, player)
+		return player:hasWeapon("heg_six_swords")
+	end,
+}
+heg_six_swords_buff = sgs.CreateTargetModSkill{
+	name = "heg_six_swords_buff",
+	pattern = "Slash",
+	distance_limit_func = function(self, from, card)
+		if from:getMark("@heg_six_swords") > 0 then return 1 end
+	end,
+}
+heg_six_swords = sgs.CreateWeapon{
+	name = "heg_six_swords",
+	class_name = "heg_six_swords",
+	suit = sgs.Card_Diamond,
+	number = 6,
+	range = 2,
+	equip_skill = heg_six_swords_Skill,
+	on_install = function(self, player)
+		local room = player:getRoom()
+		local skill = sgs.Sanguosha:getSkill(self:objectName())
+		if skill and skill:inherits("ViewAsSkill") then room:attachSkillToPlayer(player, skill:objectName()) end
+	end,
+	on_uninstall = function(self, player)
+		local room = player:getRoom()
+		local skill = sgs.Sanguosha:getSkill(self:objectName())
+		if skill and skill:inherits("ViewAsSkill") then room:detachSkillFromPlayer(player, skill:objectName(), true) end
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+			p:loseAllMarks("@heg_six_swords")
+		end
+	end,
+}
+
+heg_six_swords:setParent(extension_hegcard)
+if not sgs.Sanguosha:getSkill("heg_six_swords_buff") then skills:append(heg_six_swords_buff) end
+
+-- 【挟天子以令诸侯】Trick Card Implementation
+heg_threaten_emperor = sgs.CreateTrickCard{
+	name = "heg_threaten_emperor",
+	class_name = "ThreatenEmperor",
+	subclass = sgs.LuaTrickCard_TypeNormal,
+	target_fixed = true,
+	can_recast = false,
+	is_cancelable = false,
+	damage_card = false,
+	available = function(self, player)
+		-- 只有大势力角色才能使用
+		if not IsBigKingdomPlayer(player) then
+			return false
+		end
+		return self:cardIsAvailable(player)
+	end,
+	about_to_use = function(self, room, use)
+		-- 目标为自己
+		if use.to:isEmpty() then 
+			use.to:append(use.from) 
+		end
+		self:cardOnUse(room, use)
+	end,
+	on_effect = function(self, effect)
+		local room = effect.to:getRoom()
+		-- 设置标记，表示该角色受到【挟天子以令诸侯】影响
+		room:setPlayerMark(effect.to, "heg_threaten_emperor", 1)
+		return false
+	end,
+}
+
+-- 【挟天子以令诸侯】效果触发技能
+heg_threaten_emperor_effect = sgs.CreateTriggerSkill{
+	name = "#heg_threaten_emperor_effect",
+	events = {sgs.EventPhaseEnd},
+	global = true,
+	can_trigger = function(self, target)
+		return target and target:isAlive() and target:getMark("heg_threaten_emperor") > 0
+	end,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if player:getPhase() == sgs.Player_Discard then
+			room:setPlayerMark(player, "heg_threaten_emperor", 0)
+			-- 询问是否弃置一张手牌以获得额外回合
+			if not player:isKongcheng() then
+				if room:askForDiscard(player, "heg_threaten_emperor", 1, 1, true, false, "@heg_threaten_emperor") then
+					-- 设置标记用于在回合结束时授予额外回合
+					room:setTag("heg_threaten_emperor_extra_turn", sgs.QVariant(player))
+				end
+			end
+		end
+		return false
+	end,
+}
+
+-- 授予额外回合的技能
+heg_threaten_emperor_give = CreateExtraTurnGiveSkill(
+	"#heg_threaten_emperor_give",
+	"heg_threaten_emperor_extra_turn",
+	sgs.Player_NotActive,
+	1
+)
+
+-- 添加卡牌到扩展包
+heg_threaten_emperor:setParent(extension_hegadvantagecard)
+
+
+if not sgs.Sanguosha:getSkill("#heg_threaten_emperor_effect") then 
+	skills:append(heg_threaten_emperor_effect) 
+end
+if not sgs.Sanguosha:getSkill("#heg_threaten_emperor_give") then 
+	skills:append(heg_threaten_emperor_give) 
+end
+
+heg_lure_tiger = sgs.CreateTrickCard{
+	name = "heg_lure_tiger",
+	class_name = "heg_lure_tiger",
+	target_fixed = false,
+	can_recast = false,
+	subtype = "multiple_target_trick",
+	subclass = sgs.LuaTrickCard_TypeNormal,
+	available = function(self,player)
+		for _,to in sgs.list(player:getAliveSiblings())do
+			if CanToCard(self,player,to) then
+				return self:cardIsAvailable(player)
+			end
+		end
+		return false
+	end,
+	filter = function(self,targets,to_select,source)
+		if source:isProhibited(to_select,self) then return false end
+		local total_num = 2
+		if sgs.Self then
+			total_num = total_num + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, source, self)
+		end
+		return to_select:objectName() ~= source:objectName() and #targets < total_num
+	end,
+	feasible = function(self,targets,from)
+		local total_num = 2
+		if sgs.Self then
+			total_num = total_num + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, from, self)
+		end
+		return #targets <= total_num and #targets > 0
+	end,
+	is_cancelable = function(self, effect)
+		return true
+	end,
+	on_use = function(self, room, source, targets)
+		for _, t in ipairs(targets) do
+			room:cardEffect(self, source, t)
+		end
+	end,
+	on_effect = function(self, effect)
+		local room = effect.to:getRoom()
+		-- 禁止使用和打出牌
+		room:setPlayerCardLimitation(effect.to, "use,response", ".", true)
+		-- 设置标记表示受到调虎离山影响
+		room:addPlayerMark(effect.to, "&heg_lure_tiger-Clear")
+	end,
+}
+
+-- 【调虎离山】效果：防止体力值改变
+heg_lure_tiger_effect = sgs.CreateTriggerSkill{
+	name = "#heg_lure_tiger_effect",
+	events = {sgs.PreHpLost, sgs.Predamage, sgs.PreHpRecover},
+	global = true,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self, event, player, data)
+		if event == sgs.PreHpLost then
+			if player:getMark("&heg_lure_tiger-Clear") > 0 then
+				return true
+			end
+		elseif event == sgs.Predamage then
+			local damage = data:toDamage()
+			if damage.to and damage.to:getMark("&heg_lure_tiger-Clear") > 0 then
+				return true
+			end
+		elseif event == sgs.PreHpRecover then
+			local recover = data:toRecover()
+			if recover.who and recover.who:getMark("&heg_lure_tiger-Clear") > 0 then
+				return true
+			end
+		end
+		return false
+	end,
+}
+
+-- 【调虎离山】禁止技能：使受影响角色不是牌的合法目标
+heg_lure_tiger_prohibit = sgs.CreateProhibitSkill{
+	name = "#heg_lure_tiger_prohibit",
+	is_prohibited = function(self, from, to, card)
+		if to and to:getMark("&heg_lure_tiger-Clear") > 0 and not card:isKindOf("SkillCard") then
+			return true
+		end
+		return false
+	end,
+}
+
+-- 【调虎离山】距离技能：不计入距离和座次计算
+heg_lure_tiger_distance = sgs.CreateDistanceSkill{
+	name = "#heg_lure_tiger_distance",
+	correct_func = function(self, from, to)
+		-- 如果from或to自己有调虎离山标记，其他角色无法计算到他们的距离
+		if from:getMark("&heg_lure_tiger-Clear") > 0 or to:getMark("&heg_lure_tiger-Clear") > 0 then
+			return 998
+		end
+		
+		-- 计算from到to之间有多少被调虎离山影响的角色，将其从距离中减去
+		local affected_count = 0
+		local from_seat = from:getSeat()
+		local to_seat = to:getSeat()
+		
+		-- 计算顺时针和逆时针距离
+		local right = math.abs(from_seat - to_seat)
+		local left = from:aliveCount() - right
+		
+		-- 统计两个路径上有调虎离山标记的角色数量
+		local right_affected = 0
+		local left_affected = 0
+		
+		-- 遍历所有存活角色，计算他们是否在from到to的路径上
+		for _, p in sgs.qlist(from:getAliveSiblings()) do
+			if p:getMark("&heg_lure_tiger-Clear") > 0 then
+				local p_seat = p:getSeat()
+				
+				-- 判断p是否在from到to的顺时针路径上（右侧）
+				if from_seat < to_seat then
+					if p_seat > from_seat and p_seat < to_seat then
+						right_affected = right_affected + 1
+					else
+						left_affected = left_affected + 1
+					end
+				elseif from_seat > to_seat then
+					if p_seat > from_seat or p_seat < to_seat then
+						right_affected = right_affected + 1
+					else
+						left_affected = left_affected + 1
+					end
+				end
+			end
+		end
+		
+		-- 返回修正值：如果最短路径会穿过被影响的角色，减去这些角色的数量
+		if right <= left then
+			return -right_affected
+		else
+			return -left_affected
+		end
+	end
+}
+
+local dhls = heg_lure_tiger:clone(3, 2)
+dhls:setParent(extension_hegcard)
+local dhls = heg_lure_tiger:clone(4, 10)
+dhls:setParent(extension_hegcard)
+if not sgs.Sanguosha:getSkill("#heg_lure_tiger_effect") then 
+	skills:append(heg_lure_tiger_effect) 
+end
+if not sgs.Sanguosha:getSkill("#heg_lure_tiger_prohibit") then 
+	skills:append(heg_lure_tiger_prohibit) 
+end
+if not sgs.Sanguosha:getSkill("#heg_lure_tiger_distance") then 
+	skills:append(heg_lure_tiger_distance) 
+end
+
+-- 【火烧连营】Trick Card Implementation
+heg_burning_camps = sgs.CreateTrickCard{
+	name = "heg_burning_camps",
+	class_name = "heg_burning_camps",
+	target_fixed = true,
+	can_recast = false,
+	subtype = "aoe_trick",
+	subclass = sgs.LuaTrickCard_TypeNormal,
+	damage_card = true,
+	available = function(self, player)
+		return self:cardIsAvailable(player)
+	end,
+	about_to_use = function(self, room, use)
+		-- 自动选择目标：下家和其队列中的所有角色
+		local alive_count = room:alivePlayerCount()
+		if alive_count < 2 then
+			return
+		end
+		
+		-- 获取下家
+		local next_player = use.from:getNextAlive(1)
+		if not next_player then
+			return
+		end
+		
+		-- 添加下家为目标
+		use.to:append(next_player)
+		
+		-- 获取下家所在队列的其他成员
+		local queue = GetQueueMembers(next_player)
+		if #queue >= 2 then
+			for _, member in ipairs(queue) do
+				-- 添加队列中除了下家之外的所有角色
+				if member:objectName() ~= next_player:objectName() and not use.from:isProhibited(member, self) then
+					use.to:append(member)
+				end
+			end
+		end
+		
+		self:cardOnUse(room, use)
+	end,
+	on_use = function(self, room, source, targets)
+		for _, t in ipairs(targets) do
+			room:cardEffect(self, source, t)
+		end
+	end,
+	on_effect = function(self, effect)
+		local room = effect.to:getRoom()
+		local damage = sgs.DamageStruct()
+		damage.from = effect.from
+		damage.to = effect.to
+		damage.card = effect.card
+		damage.damage = 1
+		damage.nature = sgs.DamageStruct_Fire
+		room:damage(damage)
+	end,
+}
+local bc1 = heg_burning_camps:clone(1, 3)
+bc1:setParent(extension_hegadvantagecard)
+local bc2 = heg_burning_camps:clone(2, 11)
+bc2:setParent(extension_hegadvantagecard)
+local bc3 = heg_burning_camps:clone(3, 12)
+bc3:setParent(extension_hegadvantagecard)
+
+	["heg_fight_together"] = "勠力同心",
+  	[":heg_fight_together"] = "锦囊牌<br/><b>时机</b>：出牌阶段<br/><b>目标</b>：所有大势力角色或所有小势力角色<br/><b>效果</b>：若目标角色：不处于连环状态，其横置；处于连环状态，其摸一张牌。<br/><font color='grey'>操作提示：选择一名角色，若其为大势力角色，则目标为所有大势力角色；若其为小势力角色，则目标为所有小势力角色</font>",
+  	["#heg_fight_together_skill"] = "选择所有大势力角色或小势力角色，若这些角色处于/不处于连环状态，其摸一张牌/横置",
+
+	["heg_alliance_feast"] = "联军盛宴",
+  	[":heg_alliance_feast"] = "锦囊牌<br/><b>时机</b>：出牌阶段<br/><b>目标</b>：有势力的你和除你的势力外的一个势力的所有角色<br/><b>效果</b>：若目标角色：为你，你摸X张牌，回复（Y-X）点体力（Y为该势力的角色数）（X为你选择的自然数且不大于Y）；不为你，其摸一张牌，重置。<br/><font color='grey'>操作提示：选择一名与你势力不同的角色，目标为你和该势力的所有角色</font>",
+
+
+
+
+
 sgs.Sanguosha:addSkills(skills)
 
 sgs.LoadTranslationTable{
@@ -14190,6 +14779,8 @@ sgs.LoadTranslationTable{
     ["heg_purplecloud"] = "紫气东来",
     ["heg_goldenseal"] = "金印紫绶",
     ["fixandadd_twyj"] = "台湾一将成名",
+	["hegemony_cards"] = "国战标准版",
+	["strategic_advantage"] = "君临天下·势备篇",
 
 	["heg_xianqu"] = "先驱",
 	[":heg_xianqu"] = "出牌阶段，你可以弃置此标记，然后将手牌摸至四张并观看一名其他角色的手牌。",
@@ -14232,13 +14823,11 @@ sgs.LoadTranslationTable{
     ["&guandu_xinping"] = "辛评",
     ["#guandu_xinping"] = "全忠折节",
 	["~guandu_xinping"] = "老臣，尽力了……",
-
 	["guandu_fuyuan"] = "辅袁",
 	[":guandu_fuyuan"] = "当你在回合外使用或打出牌时，若当前回合的角色手牌数少于你的手牌数，你可令其摸1张牌；若当前回合的角色手牌数大于等于你，你可以摸1张牌。",
 
 	["guandu_zhongjie"] = "忠节",
 	[":guandu_zhongjie"] = "当你死亡时，你可以令一名其他角色增加1点体力上限，回复1点体力，并摸一张牌。",
-
 	["$guandu_fuyuan1"] = "袁门一体，休戚与共。",
 	["$guandu_fuyuan2"] = "袁氏荣光，俯仰唯卿。",
 	["$guandu_zhongjie1"] = "义士有忠节，可杀不可量！",
@@ -14250,12 +14839,10 @@ sgs.LoadTranslationTable{
     ["&guandu_hanmeng"] = "韩猛",
     ["#guandu_hanmeng"] = "锥锋不虞",
 	["~guandu_hanmeng"] = "曹操狡诈，防不胜防……",
-
 	["guandu_jieliang"] = "截粮",
 	[":guandu_jieliang"] = "其他角色的摸牌阶段开始时，你可以弃置一张牌，令其本回合的摸牌阶段摸牌数-1，本回合手牌上限-1。若如此做，若其本回合的弃牌阶段结束时有弃牌，你可以从其弃置的牌中选择一张获得。",
 	["guandu_quanjiu"] = "劝酒",
 	[":guandu_quanjiu"] = "锁定技，你的【酗酒】均视为【杀】，你使用【酗酒】转化的【杀】不计入【杀】的使用次数。",
-
 	["$guandu_jieliang1"] = "伏兵起，粮道绝！",
 	["$guandu_jieliang2"] = "粮草根本，截之破敌！",
 	["$guandu_quanjiu1"] = "大敌当前，怎可松懈畅饮？",
@@ -14265,7 +14852,6 @@ sgs.LoadTranslationTable{
     ["&guandu_chunyuqiong"] = "淳于琼",
     ["#guandu_chunyuqiong"] = "昔袍今臣",
 	["~guandu_chunyuqiong"] = "子远老贼，吾死当追汝之魂！",
-
 	["guandu_cangchu"] = "仓储",
 	[":guandu_cangchu"] = "锁定技，游戏开始时，你获得3枚「粮」；当你受到1点火焰伤害后，你弃1枚「粮」。",
 	-- ["guandu_sushou"] = "宿守",
@@ -14864,34 +15450,78 @@ sgs.LoadTranslationTable{
     ["cv:sijyuoffline_zhaoyun"] = "",
     ["illustrator:sijyuoffline_zhaoyun"] = "VINCENT",
 
-	--[[
-		["threaten_emperor"] = "挟天子以令诸侯",
-	[":threaten_emperor"] = "锦囊牌\n\n使用时机：出牌阶段。\n使用目标：为大势力角色的你。\n作用效果：目标对应的角色结束出牌阶段→当前回合的弃牌阶段结束时，其可弃置一张手牌▷其获得一个额外回合。",
-	["@threaten_emperor"] = "受到【挟天子以令诸侯】影响，你可以弃置一张牌，获得一个额外的回合",
-
-		["JadeSeal"] = "玉玺",
-	[":JadeSeal"] = "装备牌·宝物\n\n技能：\n" ..
-					"1. 锁定技，若你有势力，你的势力为大势力，除你的势力外的所有势力均为小势力。\n" ..
-					"2. 锁定技，摸牌阶段，若你有处于明置状态的武将牌，你令额定摸牌数+1。\n" ..
-					"3. 锁定技，出牌阶段开始时，若你有处于明置状态的武将牌，你使用无对应的实体牌的【知己知彼】。\n" ,
-
-
-	["EXCard_ZJZB"] = "知己知彼",
-	[":EXCard_ZJZB"] = "锦囊牌\
+	["heg_known_both"] = "知己知彼",
+	[":heg_known_both"] = "锦囊牌\
 	出牌时机：出牌阶段\
 	使用目标：一名其他角色\
-	作用效果：观看目标角色的身份牌或手牌。\
+	作用效果：观看目标角色的手牌。\
 	重铸：出牌阶段，你可将此牌置入弃牌堆，然后摸一张牌",
-	["ZJZB_showhandcards"] = "观看他手牌",
-	["ZJZB_confirm"] = "没了",
-	["#ZJZB_showhandcards"] = "%from 选择观看 %to 的<font color = 'gold'><b>【手牌】</b></font>",
+	["#heg_showhandcards"] = "%from 选择观看 %to 的<font color = 'gold'><b>【手牌】</b></font>",
 
-		["lure_tiger"] = "调虎离山",
-	[":lure_tiger"] = "锦囊牌\n\n使用时机：出牌阶段。\n使用目标：一至两名其他角色。\n作用效果：目标对应的角色于此回合内不计入距离和座次的计算且不能使用牌且不是牌的合法目标且体力值不会改变。",
-	["lure_tiger_effect"] = "调虎离山",
-	["#lure_tiger-prohibit"] = "调虎离山",
+	["heg_befriend_attacking"] = "远交近攻",
+	[":heg_befriend_attacking"] = "锦囊牌\
+	出牌时机：出牌阶段\
+	使用目标：一名其他角色\
+	作用效果：目标角色摸一张牌，然后你摸两张牌。",
 
-	]]
+	["heg_await_exhausted"] = "以逸待劳",
+	[":heg_await_exhausted"] = "锦囊牌\
+	出牌时机：出牌阶段\
+	使用目标：任意角色\
+	作用效果：目标角色摸两张牌，然后弃置两张牌。",
+
+	["heg_nullification"] = "无懈可击·国",
+	[":heg_nullification"] = "锦囊牌<br/><b>时机</b>：当锦囊牌对目标生效前<br/><b>目标</b>：此牌<br/><b>效果</b>：抵消此牌。你令对对应的角色为与其势力相同的角色的目标结算的此牌不是【无懈可击】的合法目标，当此牌对对应的角色为这些角色中的一名的目标生效前，抵消此牌。",
+	--TODO
+
+	["heg_triblade"] = "三尖两刃刀",
+	[":heg_triblade"] = "装备牌·武器\
+	攻击范围：3\
+	攻击效果：每当你使用【杀】对目标角色造成伤害后，可弃置一张手牌，并对该角色距离1的另一名角色造成1点伤害。",
+	["#heg_triblade_chosen"] = "【三尖两刃刀】你可以选择一角色，对其造成1点伤害。",
+	["#heg_triblade_Skill_dis"] = "【三尖两刃刀】你可以弃置一张手牌。",
+
+	["heg_six_swords"] = "吴六剑",
+	[":heg_six_swords"] = "装备牌·武器\
+	攻击范围：2\
+	攻击效果：出牌阶段，你可以选择任意数量的其他角色，使用【杀】与其他角色攻击范围+1。",
+	["@heg_six_swords"] = "吴六剑",
+
+	--势备篇
+	["heg_threaten_emperor"] = "挟天子以令诸侯",
+	[":heg_threaten_emperor"] = "锦囊牌\n\n使用时机：出牌阶段。\n使用目标：为大势力角色的你。\n作用效果：目标对应的角色结束出牌阶段→当前回合的弃牌阶段结束时，其可弃置一张手牌▷其获得一个额外回合。",
+	["@heg_threaten_emperor"] = "受到【挟天子以令诸侯】影响，你可以弃置一张牌，获得一个额外的回合",
+	
+	["heg_lure_tiger"] = "调虎离山",
+  	[":heg_lure_tiger"] = "锦囊牌<br/><b>时机</b>：出牌阶段<br/><b>目标</b>：一至两名其他角色<br/><b>效果</b>：目标角色于此回合内不计入距离和座次的计算，且不能使用牌，且不是牌的合法目标，且体力值不会改变。",
+	
+	["heg_burning_camps"] = "火烧连营",
+  	[":heg_burning_camps"] = "锦囊牌<br/><b>时机</b>：出牌阶段<br/><b>目标</b>：你的下家和除其外与其处于同一<a href='heg_formation'>队列</a>的所有角色<br/><b>效果</b>：目标角色受到你造成的1点火焰伤害。",
+
+	["heg_fight_together"] = "勠力同心",
+  	[":heg_fight_together"] = "锦囊牌<br/><b>时机</b>：出牌阶段<br/><b>目标</b>：所有大势力角色或所有小势力角色<br/><b>效果</b>：若目标角色：不处于连环状态，其横置；处于连环状态，其摸一张牌。<br/><font color='grey'>操作提示：选择一名角色，若其为大势力角色，则目标为所有大势力角色；若其为小势力角色，则目标为所有小势力角色</font>",
+  	["#heg_fight_together_skill"] = "选择所有大势力角色或小势力角色，若这些角色处于/不处于连环状态，其摸一张牌/横置",
+
+	["heg_alliance_feast"] = "联军盛宴",
+  	[":heg_alliance_feast"] = "锦囊牌<br/><b>时机</b>：出牌阶段<br/><b>目标</b>：有势力的你和除你的势力外的一个势力的所有角色<br/><b>效果</b>：若目标角色：为你，你摸X张牌，回复（Y-X）点体力（Y为该势力的角色数）（X为你选择的自然数且不大于Y）；不为你，其摸一张牌，重置。<br/><font color='grey'>操作提示：选择一名与你势力不同的角色，目标为你和该势力的所有角色</font>",
+
+	["heg_blade"] = "青龙偃月刀",
+  	[":heg_blade"] = "装备牌·武器<br /><b>攻击范围</b>：３<br /><b>武器技能</b>：锁定技，当你使用【杀】时，此牌的使用结算结束之前，此【杀】的目标角色不能明置武将牌。",
+
+	["heg_halberd"] = "方天画戟",
+  	[":heg_halberd"] = "装备牌·武器<br /><b>攻击范围</b>：４<br /><b>武器技能</b>：当你使用【杀】选择目标后，可以令任意名{势力各不相同且与已选择的目标势力均不相同的}角色和任意名没有势力的角色也成为目标，当此【杀】被【闪】抵消后，此【杀】对所有目标均无效。",
+
+	["heg_breastplate"] = "护心镜",
+  	[":heg_breastplate"] = "装备牌·防具<br/><b>防具技能</b>：当你受到伤害时，若此伤害大于或等于你当前的体力值，你可将装备区里的【护心镜】置入弃牌堆，然后防止此伤害。",
+
+	["heg_iron_armor"] = "明光铠",
+  	[":heg_iron_armor"] = "装备牌·防具<br/><b>防具技能</b>：锁定技，当你成为【火烧连营】、【火攻】或火【杀】的目标时，你取消此目标；当你横置前，若你是小势力角色，你防止此次横置。",
+
+	["heg_jingfan"] = "惊帆",
+  	[":heg_jingfan"] = "装备牌·坐骑<br /><b>坐骑技能</b>：你与其他角色的距离-1。",
+
+	["heg_jade_seal"] = "玉玺",
+  	[":heg_jade_seal"] = "装备牌·宝物<br/><b>宝物技能</b>：锁定技，你的势力为大势力，除你的势力外的所有势力均为小势力；摸牌阶段，你令额定摸牌数+1；出牌阶段开始时，你视为使用【知己知彼】。",
 
 	--君临天下·权
 	["command"] = "军令",
@@ -14949,8 +15579,7 @@ sgs.LoadTranslationTable{
 	["heg_zhengbi"] = "征辟",
 	[":heg_zhengbi"] = "出牌阶段开始时，你可选择一项：1.选择一名角色，直至此回合结束，你对其使用牌无距离与次数限制；2.将一张基本牌交给一名角色，然后其交给你一张非基本牌或两张基本牌。",
 	["heg_fengying"] = "奉迎",
-  	[":heg_fengying"] = "限定技，出牌阶段，你可将所有手牌当【挟天子以令诸侯】（无视大势力限制）使用，然后所有与你势力相同的角色将手牌补至其体力上限。",
-	--TODO
+  	[":heg_fengying"] = "限定技，出牌阶段，你可将所有手牌当【挟天子以令诸侯】（无视大势力限制）使用，然后你令任意名角色将手牌补至其体力上限。",
 
 	["heg_wangping"] = "王平-国",
     ["&heg_wangping"] = "王平",
@@ -16058,4 +16687,4 @@ sgs.LoadTranslationTable{
 
 
 
-return {extension, extension_heg, extension_hegbian, extension_hegquan, extension_heglordex, extension_hegpurplecloud, extension_goldenseal, extension_hegol, extension_hegmobile, extension_hegtenyear, extension_guandu, extension_twyj}
+return {extension, extension_heg, extension_hegbian, extension_hegquan, extension_heglordex, extension_hegpurplecloud, extension_goldenseal, extension_hegol, extension_hegmobile, extension_hegtenyear, extension_guandu, extension_twyj, extension_hegcard, extension_hegadvantagecard}
