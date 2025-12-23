@@ -2817,28 +2817,58 @@ sgs.ai_skill_cardask["@heg_fk_midao-card"] = function(self, data, pattern, targe
 end
 
 sgs.ai_skill_invoke.heg_true_pozhen = function(self, data)
-	local target = data:toPlayer()
-	if target and self:isEnemy(target) then
-		local x = 0
-		if IsEncircled(target) then
-			for _, q in sgs.list(GetEncirclers(target)) do
-				if self.player:doDisCard(q, "he") then
-					x = x + 1
+	local target = self.room:getCurrent()
+	if not target or not target:isAlive() or not self:isEnemy(target) then 
+		return false 
+	end
+	
+	-- Safety check: need at least 3 players for encirclement/queue mechanics
+	local aliveCount = self.room:alivePlayerCount()
+	if aliveCount < 2 then
+		return (target:getHandcardNum() > 3 and not self:willSkipPlayPhase(target)) or self:isWeak()
+	end
+	
+	local x = 0
+	
+	-- Check encirclement with safety
+	if aliveCount >= 3 and IsEncircled and type(IsEncircled) == "function" then
+		local success, isEncircled = pcall(IsEncircled, target)
+		if success and isEncircled then
+			local success2, encirclers = pcall(GetEncirclers, target)
+			if success2 and encirclers and type(encirclers) == "table" and #encirclers > 0 and #encirclers <= aliveCount then
+				local processed = {}
+				for _, q in ipairs(encirclers) do
+					if q and q:isAlive() and not processed[q:objectName()] then
+						processed[q:objectName()] = true
+						if self.player:doDisCard(q, "he") then
+							x = x + 1
+						end
+					end
 				end
 			end
-		end
-		if IsInQueue(target) then
-			for _, q in sgs.list(GetQueuers(target)) do
-				if self.player:doDisCard(q, "he") then
-					x = x + 1
-				end
-			end
-		end
-		if ((x >= 2 or target:getHandcardNum() > 2) and not self:willSkipPlayPhase(target)) or self:isWeak() then
-			return true
 		end
 	end
-	return false
+	
+	-- Check queue with safety  
+	if aliveCount >= 2 and IsInQueue and type(IsInQueue) == "function" then
+		local success, inQueue = pcall(IsInQueue, target)
+		if success and inQueue then
+			local success2, queuers = pcall(GetQueueMembers, target)
+			if success2 and queuers and type(queuers) == "table" and #queuers > 0 and #queuers <= aliveCount then
+				local processed = {}
+				for _, q in ipairs(queuers) do
+					if q and q:isAlive() and not processed[q:objectName()] then
+						processed[q:objectName()] = true
+						if self.player:doDisCard(q, "he") then
+							x = x + 1
+						end
+					end
+				end
+			end
+		end
+	end
+	
+	return (((x >= 2) or (target:getHandcardNum() > 3)) and not self:willSkipPlayPhase(target)) or self:isWeak()
 end
 
 sgs.ai_choicemade_filter.skillInvoke.heg_true_pozhen = function(self,player,promptlist)
@@ -2848,9 +2878,16 @@ sgs.ai_choicemade_filter.skillInvoke.heg_true_pozhen = function(self,player,prom
 	end
 end
 
-sgs.ai_skill_invoke.heg_true_jiancai = function(self, data)
-	local target = self.room:getCurrentDyingPlayer()
+sgs.ai_skill_invoke.heg_true_jiancai_change = function(self, data)
+	local target = data:toPlayer()
 	if target and self:isFriend(target) then
+		return true
+	end
+	return false
+end
+sgs.ai_skill_invoke.heg_true_jiancai = function(self, data)
+	local damage = data:toDamage()
+	if damage.to and self:isFriend(damage.to) then
 		return true
 	end
 	return false
@@ -3088,7 +3125,7 @@ sgs.ai_skill_use_func["#heg_zhiheng"] = function(card,use,self)
 	end
 end
 
-sgs.ai_card_priority["heg_zhiheng"] = sgs.ai_card_priority.Zhiheng
+sgs.ai_use_priority["heg_zhiheng"] = sgs.ai_use_priority.ZhihengCard
 
 sgs.ai_fill_skill.heg_lord_lianzi = function(self)
 	local cards = self.player:getCards("h")
@@ -3101,7 +3138,7 @@ end
 sgs.ai_skill_use_func["#heg_lord_lianzi"] = function(card,use,self)
 	use.card = card
 end
-sgs.ai_card_priority["heg_lord_lianzi"] = sgs.ai_card_priority.Zhiheng + 1
+sgs.ai_use_priority["heg_lord_lianzi"] = sgs.ai_use_priority.ZhihengCard + 1
 
 
 sgs.ai_skill_discard.heg_lord_jianan = function(self, discard_num, min_num, optional, include_equip)
@@ -3129,8 +3166,8 @@ end
 sgs.ai_skill_choice.heg_lord_jianan = function(self,choices)
 	choices = choices:split("+")
 	for _,choice in sgs.list(choices)do
-		if string.find(sgs.bad_skills,choice)
-		return choice
+		if string.find(sgs.bad_skills,choice) then
+			return choice
 		end
 	end
 	return choices[math.random(1,#choices)]
@@ -3184,8 +3221,9 @@ sgs.ai_skill_use_func["#heg_guikuang"] = function(card,use,self)
 	local target2
 	for _,enemy in sgs.list(self.enemies)do
 		for _,enemy2 in sgs.list(self.enemies)do
-		if enemy:canPindian(enemy2) and enemy:objectName()~=enemy2:objectName() and enemy:getKingdom() ~= enemy2:getKingdom() and self:canDamage(enemy,enemy2,nil) and self:canDamage(enemy2,enemy,nil)
-		then target = enemy target2 = enemy2 break end
+			if enemy:canPindian(enemy2) and enemy:objectName()~=enemy2:objectName() and enemy:getKingdom() ~= enemy2:getKingdom() and self:canDamage(enemy,enemy2,nil) and self:canDamage(enemy2,enemy,nil)
+			then target = enemy target2 = enemy2 break end
+		end
 	end
 	if target and target2 then
 		use.card = sgs.Card_Parse("#heg_guikuang:.:")
