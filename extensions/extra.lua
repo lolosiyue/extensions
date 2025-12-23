@@ -31,7 +31,7 @@ function ChangeGeneral(room, player, skill_onwer_general_name)
 	local y = player:getHp()
 	local num = 0
 	for _, p in sgs.qlist(room:findPlayersBySkillName("heg_true_jiancai")) do
-		if room:askForSkillInvoke(p, "heg_true_jiancai", ToData(player)) then
+		if room:askForSkillInvoke(p, "heg_true_jiancai_change", ToData(player)) then
 			num = num + 2
 		end
 	end
@@ -454,30 +454,53 @@ function GetQueueMembers(player)
 	local room = player:getRoom()
 	local alive_count = room:alivePlayerCount()
 	
-	if not IsInQueue(player) then
+	if alive_count < 2 or not IsInQueue(player) then
 		return {}
 	end
 	
 	local player_kingdom = player:getKingdom()
 	local queue = {}
+	local visited = {}
 	
 	-- 从当前玩家开始向前查找队列起点
 	local start = player
+	visited[player:objectName()] = true
 	local prev = start:getNextAlive(alive_count - 1)
-	while prev and prev:getKingdom() == player_kingdom and prev:objectName() ~= player:objectName() do
+	local count = 0
+	
+	while prev and count < alive_count do
+		if prev:objectName() == player:objectName() or visited[prev:objectName()] then
+			break
+		end
+		if prev:getKingdom() ~= player_kingdom then
+			break
+		end
+		visited[prev:objectName()] = true
 		start = prev
 		prev = start:getNextAlive(alive_count - 1)
+		count = count + 1
 	end
 	
 	-- 从起点开始向后收集所有同势力的连续角色
+	visited = {}
 	local current = start
 	table.insert(queue, current)
+	visited[current:objectName()] = true
 	local next = current:getNextAlive(1)
+	count = 0
 	
-	while next and next:getKingdom() == player_kingdom and next:objectName() ~= start:objectName() do
+	while next and count < alive_count do
+		if next:objectName() == start:objectName() or visited[next:objectName()] then
+			break
+		end
+		if next:getKingdom() ~= player_kingdom then
+			break
+		end
 		table.insert(queue, next)
+		visited[next:objectName()] = true
 		current = next
 		next = current:getNextAlive(1)
+		count = count + 1
 	end
 	
 	return queue
@@ -681,6 +704,7 @@ if not sgs.Sanguosha:getSkill("card_used") then skills:append(card_used) end
 if not sgs.Sanguosha:getSkill("damage_record") then skills:append(damage_record) end
 if not sgs.Sanguosha:getSkill("card_clear") then skills:append(card_clear) end
 if not sgs.Sanguosha:getSkill("RemoveFromHistoryAndIgnoreArmorLog") then skills:append(RemoveFromHistoryAndIgnoreArmorLog) end
+if not sgs.Sanguosha:getSkill("universal_card_display_global") then skills:append(universal_card_display_global) end
 
 -- 武将：许攸（官渡之战身份版） --
 guandu_xuyou = sgs.General(extension_guandu, "guandu_xuyou", "qun", "3", true)
@@ -1792,7 +1816,7 @@ hegMark = sgs.CreateTriggerSkill{
 	name = "hegMark",
 	events = {sgs.MarkChanged},
 	global = true,
-	on_trigger = function(self, event, player, data)
+	on_trigger = function(self, event, player, data, room)
 		local mark = data:toMark()
 		if mark.name=="@heg_xianqu" and mark.gain > 0 and not player:hasSkill("heg_xianqu",true) then
 			room:attachSkillToPlayer(player,"heg_xianqu")
@@ -12093,7 +12117,7 @@ heg_fk_zhanglu:addSkill(heg_fk_bushi)
 heg_fk_zhanglu:addSkill(heg_fk_midao)
 extension:insertRelatedSkills("heg_fk_bushi","#heg_fk_bushi_record")
 
-heg_true_xushu = sgs.General(extension_heg,  "heg_true_xushu", "shu", 4)
+heg_true_xushu = sgs.General(extension_heg,  "heg_true_xushu", "shu", 3)
 
 heg_true_zhuhai = sgs.CreateTriggerSkill{
   	name = "heg_true_zhuhai",
@@ -12123,7 +12147,7 @@ heg_true_pozhen = sgs.CreateTriggerSkill{
 		if event == sgs.EventPhaseStart then
 			if player:getPhase() == sgs.Player_RoundStart then
 				for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-					if p:getMark("@heg_true_pozhen") > 0 and p:objectName() ~= player:objectName() and room:askForSkillInvoke(p, self:objectName(), data) then
+					if p:getMark("@heg_true_pozhen") > 0 and p:objectName() ~= player:objectName() and room:askForSkillInvoke(p, self:objectName()) then
 						room:removePlayerMark(p, "@heg_true_pozhen")
 						room:setPlayerCardLimitation(player, "use,respond", ".|.|.|hand", true)
 						if IsEncircled(player) then
@@ -12135,7 +12159,7 @@ heg_true_pozhen = sgs.CreateTriggerSkill{
 							end
 						end
 						if IsInQueue(player) then
-							for _, q in sgs.list(GetQueuers(player)) do
+							for _, q in sgs.list(GetQueueMembers(player)) do
 								if p:canDiscard(q, "he") then
 									local id = room:askForCardChosen(p, q, "he", self:objectName())
 									room:throwCard(id, q, p)
@@ -12160,11 +12184,11 @@ heg_true_jiancai = sgs.CreateTriggerSkill{
   	on_trigger = function(self, event, player, data, room)
 		if event == sgs.DamageInflicted then
 			local damage = data:toDamage()
-			if damage.damage < damage.to:getHp() then return false end
+			if damage.damage < damage.to:getHp() + damage.to:getHujia() then return false end
 			for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
 				if p:getMark("@heg_true_jiancai") > 0 and room:askForSkillInvoke(p, self:objectName(), data) then
 					room:removePlayerMark(p, "@heg_true_jiancai")
-					ChangeGeneral(room, p, "heg_mobile_xushu")
+					ChangeGeneral(room, p)
 					damage.prevented = true
 					data:setValue(damage)
 					return true
@@ -13679,7 +13703,7 @@ heg_lord_simayi:addSkill(heg_guikuang)
 heg_lord_simayi:addSkill(heg_shujuan)
 
 -- God Sun Quan [OL]
-ol_god_sunquan = sgs.General(extension_heg, "ol_god_sunquan", "god", 4, true)
+ol_god_sunquan = sgs.General(extension, "ol_god_sunquan", "god", 4, true)
 
 -- Fate lines data structure
 local fate_lines = {
@@ -15948,8 +15972,9 @@ sgs.LoadTranslationTable{
 	[":heg_true_zhuhai"] = "一名其他角色的结束阶段开始时，若该角色本回合造成过伤害，你可以对其使用一张【杀】（无距离限制）。",
 	["heg_true_pozhen"] = "破阵",
   	[":heg_true_pozhen"] = "限定技，其他角色的回合开始时，你可以令其本回合不可使用、打出或重铸手牌；若其处于队列或围攻关系中，你可依次弃置此队列或参与围攻关系的其他角色的一张牌。",
+	["heg_true_jiancai_change"] = "荐才",
 	["heg_true_jiancai"] = "荐才",
-  	[":heg_true_jiancai"] = "限定技，一名角色即将受到伤害而进入濒死状态时，你可以防止此伤害，若如此做，你须变更副将；与你势力相同的角色变更副将时，你可令其额外获得两张备选武将牌。",
+  	[":heg_true_jiancai"] = "限定技，一名角色即将受到伤害而进入濒死状态时，你可以防止此伤害，若如此做，你须变更武将牌；与你势力相同的角色变更副将时，你可令其额外获得两张备选武将牌。",
 
 	-- God Sun Quan [OL]
 	["ol_god_sunquan"] = "神孙权[OL][旧]",
@@ -16031,7 +16056,6 @@ sgs.LoadTranslationTable{
 
 }
 
--- 将通用明置牌全局技能添加到主扩展包
-extension:addSkill(universal_card_display_global)
+
 
 return {extension, extension_heg, extension_hegbian, extension_hegquan, extension_heglordex, extension_hegpurplecloud, extension_goldenseal, extension_hegol, extension_hegmobile, extension_hegtenyear, extension_guandu, extension_twyj}
