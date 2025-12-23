@@ -443,7 +443,7 @@ ServerPlayer *RoomThread::findHulaoPassNext(ServerPlayer *shenlvbu, QList<Server
 		}
 	} else {
 		Q_ASSERT(stage == 2);
-		return current->getNextAlive();
+		return current->getNextGamePlayer();
 	}
 }
 
@@ -566,7 +566,7 @@ void RoomThread::_handleTurnBrokenNormal(GameRule *game_rule)
 	try {
 		ServerPlayer *player = room->getCurrent();
 		trigger(TurnBroken, room, player);
-		ServerPlayer *next = player->getNextAlive();
+		ServerPlayer *next = player->getNextGamePlayer();
 		if (player->getPhase() != Player::NotActive) {
 			game_rule->trigger(EventPhaseEnd, room, player);
 			player->changePhase(player->getPhase(), Player::NotActive);

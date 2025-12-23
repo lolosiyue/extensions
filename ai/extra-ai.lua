@@ -565,6 +565,47 @@ sgs.ai_getBestHp_skill.yinghun_po = function(owner)
 	return owner:getMaxHp() - 2
 end
 
+sgs.ai_fill_skill.heg_xianqu = function(self)
+	if #self.enemies == 0 then return nil end
+	if self.player:getHandcardNum() < 4 then 
+		return sgs.Card_Parse("#heg_xianqu:.::")
+	end
+	return nil
+end
+
+sgs.ai_skill_use_func["#heg_xianqu"] = function(card,use,self)
+	self:sort(self.enemies, "handcard")
+	for _,enemy in ipairs(self.enemies) do
+		if not enemy:isKongcheng() then
+			use.card = card
+			if use.to then
+				use.to:append(enemy)
+			end
+			return
+		end
+	end
+end
+
+sgs.ai_fill_skill.heg_yinyangyu = function(self)
+	if self:needBear() then return nil end
+	if self:isWeak() and self:getOverflow() <= 0 then 
+		return sgs.Card_Parse("#heg_yinyangyu:.::")
+	end
+	return nil
+end
+
+sgs.ai_skill_use_func["#heg_yinyangyu"] = function(card,use,self)
+	use.card = card
+end
+
+sgs.ai_use_priority["heg_yinyangyu"] = 10
+
+sgs.ai_skill_invoke.heg_yinyangyu = function(self, data)
+	if self:getOverflow() > 1 then
+		return true
+	end
+	return false
+end
 
 --已下複製OL解圍並做技能卡修改(去掉棄牌)
 sgs.ai_skill_use["@heg_mouduan"] = function(self, prompt, method)

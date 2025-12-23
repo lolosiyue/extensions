@@ -107,6 +107,7 @@ public:
     void setNext(ServerPlayer *next);
     ServerPlayer *getNext() const;
     ServerPlayer *getNextAlive(int n = 1) const;
+    ServerPlayer *getNextGamePlayer(int n = 1) const;
 
     // 3v3 methods
     void addToSelected(const QString &general);
