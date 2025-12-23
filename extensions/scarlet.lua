@@ -11464,5 +11464,576 @@ sgs.LoadTranslationTable {
 --https://tieba.baidu.com/p/8778135471?pid=149241176297&cid=#149241176297
 
 
+s4_fanyuanshao = sgs.General(extension, "s4_fanyuanshao", "qun", 4)
+
+s4_xiongjie_jizhouCard = sgs.CreateSkillCard{
+    name = "s4_xiongjie_jizhou",
+    target_fixed = true,
+    will_throw = false,
+    on_use = function(self, room, source, targets)
+        source:addToPile("s4_xiongjie", self)
+    end,
+}
+s4_xiongjie_jizhou = sgs.CreateOneCardViewAsSkill{
+    name = "s4_xiongjie_jizhou&",
+    view_filter = function(self, card)
+        local x = 0
+        for _, id in sgs.qlist(sgs.Self:getPile("s4_xiongjie")) do
+            local c = sgs.Sanguosha:getCard(id)
+            if c:getTypeId() == card:getTypeId() then
+                x = x + 1
+            end
+        end
+        if x < 4 then
+            return true
+        else
+            return false
+        end
+    end,
+    view_as = function(self, card)
+        local skill_card = s4_xiongjie_jizhouCard:clone()
+        skill_card:addSubcard(card)
+        return skill_card
+    end,
+}
+
+s4_xiongjie_qingzhou_buff = sgs.CreateTriggerSkill{
+	name = "#s4_xiongjie_qingzhou_buff",
+	events = {sgs.EventForDiy},
+	can_trigger = function(self,target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if (event == sgs.EventForDiy) then
+			local str = data:toString()
+			if str:startsWith("askyishicard:") then
+                local tid = player:getMark("s4_xiongjie_qingzhou")
+                if tid<1 then return end
+                tid = tid-1
+                data:setValue(str..":"..tid)
+			end
+		end
+	end ,
+}
+s4_xiongjie_qingzhou = sgs.CreateTriggerSkill{
+    name = "s4_xiongjie_qingzhou&",
+    frequency = sgs.Skill_Frequent,
+    events = {sgs.EventPhaseStart},
+    on_trigger = function(self, event, player, data)
+        if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Play then
+            local room = player:getRoom()
+            local card = room:askForCardShow(player, player, "s4_xiongjie_qingzhou")
+            room:showCard(player, card:getEffectiveId())
+            room:setPlayerMark(player, "s4_xiongjie_qingzhou",card:getEffectiveId()+1)
+            local ys = {}
+            ys.reason = self:objectName()
+            ys.from = player
+            ys.tos = {player}
+            for _,target in sgs.qlist(room:getOtherPlayers(player)) do
+                table.insert(ys.tos,target)
+            end
+            ys.effect = function(ys_data)
+                if ys_data.result=="red" then
+                    for i,pn in sgs.list(ys_data.tos)do
+                        if ys_data.to2color[pn]:match("black") then
+                            local to = room:findPlayerByObjectName(pn)
+                            local x = 0
+                            for i,pn in sgs.list(ys_data.tos)do
+                                if ys_data.to2color[pn]:match("red") then
+                                    x = x + 1
+                                end
+                            end
+                            if x > 0 then
+                                to:drawCards(x, self:objectName())
+                            end
+                        end
+                    end
+                elseif ys_data.result=="black" then
+                    for i,pn in sgs.list(ys_data.tos)do
+                        if ys_data.to2color[pn]:match("red") then
+                            local to = room:findPlayerByObjectName(pn)
+                            local x = 0
+                            for i,pn in sgs.list(ys_data.tos)do
+                                if ys_data.to2color[pn]:match("black") then
+                                    x = x + 1
+                                end
+                            end
+                            if x > 0 then
+                                to:drawCards(x, self:objectName())
+                            end
+                        end
+                    end
+                end
+            end
+            askYishi(ys)
+            room:setPlayerMark(player, "s4_xiongjie_qingzhou",0)
+        end
+        return false
+    end,
+}
+s4_xiongjie_qingzhou_clear = sgs.CreateTriggerSkill{
+	name = "#s4_xiongjie_qingzhou_clear",
+	frequency = sgs.Skill_Frequent,
+	events = {sgs.EventForDiy},
+	can_trigger = function(self,target)
+		return target~=nil
+	end,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if (event == sgs.EventForDiy) then
+			local ys = data:toString()
+			if ys:startsWith("yishiresult:") then
+				local sts = ys:split(":")
+				local tos = sts[4]:split("+")
+				local ids = sts[5]:split("+")
+				for i,pn in sgs.list(tos) do
+					local to = room:findPlayerByObjectName(pn)
+					if to:isAlive() and to:hasSkill("s4_xiongjie_qingzhou&") then
+						-- Parse colors from card string (may contain multiple cards like "$1234+$5678")
+						local card_str1 = ids[i]
+						local has_red1 = false
+						local has_black1 = false
+						if card_str1 then
+							local dc1 = sgs.Card_Parse(card_str1)
+							if dc1 then
+								for _,id in sgs.list(dc1:getSubcards()) do
+									local cs = sgs.Sanguosha:getCard(id):getColorString()
+									if cs == "red" then has_red1 = true end
+									if cs == "black" then has_black1 = true end
+								end
+							end
+						end
+						-- Check if player has mixed colors (red|black)
+						local is_mixed1 = has_red1 and has_black1
+						
+						local thesame = sgs.SPlayerList()
+						for n,qn in sgs.list(tos) do
+							local q = room:findPlayerByObjectName(qn)
+							if q:isAlive() then
+								-- Parse colors from card string
+								local card_str2 = ids[n]
+								local has_red2 = false
+								local has_black2 = false
+								if card_str2 then
+									local dc2 = sgs.Card_Parse(card_str2)
+									if dc2 then
+										for _,id in sgs.list(dc2:getSubcards()) do
+											local cs = sgs.Sanguosha:getCard(id):getColorString()
+											if cs == "red" then has_red2 = true end
+											if cs == "black" then has_black2 = true end
+										end
+									end
+								end
+								local can_choose = false
+								if is_mixed1 then
+									can_choose = true
+								elseif has_red1 and not has_black1 then
+									can_choose = has_black2
+								elseif has_black1 and not has_red1 then
+									can_choose = has_red2
+								end
+								
+								if can_choose then
+									room:addPlayerMark(q, "&s4_xiongjie+reduce+to+#"..to:objectName().."-Clear")
+                                else
+                                    room:addPlayerMark(q, "&s4_xiongjie+damage+to+#"..to:objectName().."-Clear")
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end,
+}
+s4_xiongjie_qingzhou_damage = sgs.CreateTriggerSkill{
+    name = "#s4_xiongjie_qingzhou_damage",
+    events = {sgs.DamageCaused},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if (event == sgs.DamageCaused) then
+            local damage = data:toDamage()
+            if damage.to and damage.to:isAlive() and damage.to:getMark("&s4_xiongjie+damage+to+#"..player:objectName().."-Clear") > 0 then
+                room:sendCompulsoryTriggerLog(player, "s4_xiongjie_qingzhou")
+                damage.damage = damage.damage + 1
+                data:setValue(damage)
+                room:removePlayerMark(damage.to, "&s4_xiongjie+damage+to+#"..player:objectName().."-Clear")
+            end
+            if damage.to and damage.to:isAlive() and damage.to:getMark("&s4_xiongjie+reduce+to+#"..player:objectName().."-Clear") > 0 then
+                room:sendCompulsoryTriggerLog(player, "s4_xiongjie_qingzhou")
+                damage.damage = damage.damage - 1
+                data:setValue(damage)
+                room:removePlayerMark(damage.to, "&s4_xiongjie+reduce+to+#"..player:objectName().."-Clear")
+            end
+        end
+    end,
+}
+
+s4_xiongjie_bingzhouCard = sgs.CreateSkillCard{
+    name = "s4_xiongjie_bingzhou",
+    target_fixed = false,
+    filter = function(self, targets, to_select, player)
+        return #targets == 0 and to_select:objectName() ~= player:objectName() and player:canPindian(to_select)
+    end,
+    on_use = function(self, room, source, targets)
+        local target = targets[1]
+        room:broadcastSkillInvoke("s4_xiongjie_bingzhou")
+        local success = source:pindian(target, "s4_xiongjie_bingzhou", nil)
+        if success then
+            local archery_attack = sgs.Sanguosha:cloneCard("archery_attack", sgs.Card_NoSuit, 0)
+            archery_attack:setSkillName("s4_xiongjie_bingzhou")
+            archery_attack:deleteLater()
+            local use = sgs.CardUseStruct()
+            use.card = archery_attack
+            use.from = source
+            room:useCard(use)
+        else
+            local tuixin = sgs.Sanguosha:cloneCard("yj_tuixinzhifu", sgs.Card_NoSuit, 0)
+            tuixin:setSkillName("s4_xiongjie_bingzhou")
+            tuixin:deleteLater()
+            local use = sgs.CardUseStruct()
+            use.card = tuixin
+            use.from = target
+            use.to:append(source)
+            room:useCard(use)
+        end
+    end,
+}
+s4_xiongjie_bingzhou = sgs.CreateZeroCardViewAsSkill{
+    name = "s4_xiongjie_bingzhou&",
+    enabled_at_play = function(self, player)
+        return not player:hasUsed("#s4_xiongjie_bingzhou")
+    end,
+    view_as = function()
+        return s4_xiongjie_bingzhouCard:clone()
+    end,
+}
+
+s4_xiongjie_youzhou = sgs.CreateMaxCardsSkill{
+    name = "s4_xiongjie_youzhou&",
+    extra_func = function(self, target)
+        if target:getPile("s4_xiongjie"):length() > 0 then
+            return target:getPile("s4_xiongjie"):length()
+        else
+            return 0
+        end
+    end,
+}
+
+s4_xiongjie = sgs.CreateTriggerSkill{
+    name = "s4_xiongjie",
+    frequency = sgs.Skill_Compulsory,
+    events = {sgs.GameStart},
+    on_trigger = function(self, event, player, data)
+        if event == sgs.GameStart then
+            room:attachSkillToPlayer(player, "s4_xiongjie_jizhou")
+            room:attachSkillToPlayer(player, "s4_xiongjie_qingzhou")
+            room:attachSkillToPlayer(player, "s4_xiongjie_bingzhou")
+            room:attachSkillToPlayer(player, "s4_xiongjie_youzhou")
+        end
+    end,
+}
+
+s4_suihuaiCard = sgs.CreateSkillCard{
+    name = "s4_suihuai",
+    target_fixed = true,
+    on_use = function(self, room, source, targets)
+        source:drawCards(1, self:objectName())
+    end,
+}
+s4_suihuai = sgs.CreateZeroCardViewAsSkill{
+    name = "s4_suihuai",
+    enabled_at_play = function(self, player)
+        return player:getHandcardNum() <= player:getPile("s4_xiongjie"):length()
+    end,
+    view_as = function()
+        return s4_suihuaiCard:clone()
+    end,
+}
+
+s4_neiji = sgs.CreateCardLimitSkill{
+    name = "s4_neiji",
+    pattern = ".|.|.|hand",
+    limit_list = function(self, player)
+        if player:hasSkill("s4_neiji") then 
+            return "use,response"
+        else
+            return ""
+        end
+    end,
+    limit_pattern = function(self, player, card)
+        return ".|.|1~".. player:getHandcardNum() .."|."
+    end,
+}
+
+s4_mingmen = sgs.CreateTriggerSkill{
+    name = "s4_mingmen",
+    frequency = sgs.Skill_Compulsory,
+    events = {sgs.PindianVerifying, sgs.EventForDiy},
+    on_trigger = function(self, event, player, data)
+        if event == sgs.PindianVerifying then
+            local pindian = data:toPindian()
+            if pindian.from and pindian.to and pindian.from:objectName() == player:objectName() then
+                pindian.from_card = sgs.Sanguosha:getCard(pindian.from_card:getEffectiveId())
+                pindian.from_card:setNumber(13)
+                data:setValue(pindian)
+            elseif pindian.from and pindian.to and pindian.to:objectName() == player:objectName() then
+                pindian.to_card = sgs.Sanguosha:getCard(pindian.to_card:getEffectiveId())
+                pindian.to_card:setNumber(13)
+                data:setValue(pindian)
+            end
+        elseif event == sgs.EventForDiy then
+            local str = data:toString()
+            -- 议事颜色计数倍率修改
+            if str:startsWith("yishi_color_count:") then
+                -- 格式: yishi_color_count:reason:player_name:color:current_count
+                local parts = str:split(":")
+                if #parts >= 5 and parts[3] == player:objectName() then
+                    -- s4_mingmen: 意见牌视为两张，返回计数倍率2
+                    local new_count = tonumber(parts[5]) * 2
+                    data:setValue("yishi_color_count:"..parts[2]..":"..parts[3]..":"..parts[4]..":"..new_count)
+                end
+            end
+        end
+        return false
+    end,
+}
+
+sgs.LoadTranslationTable {
+    ["s4_fanyuanshao"] = "繁袁绍",
+    ["&s4_fanyuanshao"] = "繁袁绍",
+    ["#s4_fanyuanshao"] = "兵势强盛",
+    ["~s4_fanyuanshao"] = "",
+    ["designer:s4_fanyuanshao"] = "",
+    ["cv:s4_fanyuanshao"] = "",
+    ["illustrator:s4_fanyuanshao"] = "",
+
+    ["s4_xiongjie"] = "雄杰",
+    [":s4_xiongjie"] = "游戏开始时，你获得“冀州”“青州”“并州”“幽州”各一张地域牌；你视为拥有地域牌的技能。",
+    ["s4_suihuai"] = "遂怀",
+    [":s4_suihuai"] = "出牌阶段，若你手牌数不大于地域牌上的牌数之和，你可以摸一张牌。",
+    ["s4_neiji"] = "内忌",
+    [":s4_neiji"] = "锁定技，你不能使用或打出点数小于你手牌数的牌。",
+    ["s4_mingmen"] = "名门",
+    [":s4_mingmen"] = "锁定技，你的意见/拼点牌视为两张/最大。",
+    ["s4_xiongjie_jizhou"] = "冀州",
+    [":s4_xiongjie_jizhou"] = "出牌阶段，你可以将一张手牌置于一张地域牌且类型不能与该地域牌上的牌相同。",
+    ["s4_xiongjie_qingzhou"] = "青州",
+    [":s4_xiongjie_qingzhou"] = "出牌阶段开始时，你可以展示一张手牌并令埸上所有角色参与议事，然后你以此牌参与议事。若结果为：红色，意见为黑色的角色摸等同于红色意见数的牌；黑色，意见为红色的角色摸等同于黑色意见数的牌。本阶段你对意见与你相同/不同的角色首次造成的伤害+1/-1。",
+    ["s4_xiongjie_bingzhou"] = "并州",
+    [":s4_xiongjie_bingzhou"] = "出牌阶段限一次，你可以与一名其他角色拼点，若你赢，则你视为使用一张【万箭齐发】 ；若你没赢，则其视为对你使用一张无距离限制的【推心置腹】。",
+    ["s4_xiongjie_youzhou"] = "幽州",
+    [":s4_xiongjie_youzhou"] = "锁定技，当地域牌上每有一张牌，则你的手牌上限+1。",
+
+
+}
+--https://tieba.baidu.com/p/10172478950?pid=152800174728&cid=0#152800174728
+
+s4_nvcaomao = sgs.General(extension, "s4_nvcaomao", "wei", 4, false, false, false, 3)
+
+-- Note: There are no getLeft() and getRight() methods in the engine
+-- We need to manually find adjacent players using getNextAlive() method
+local function getAdjacentPlayers(player)
+    local room = player:getRoom()
+    local alive_count = room:getAlivePlayers():length()
+    if alive_count <= 1 then return nil, nil end
+    
+    -- Get next alive player (right neighbor)
+    local right = player:getNextAlive()
+    
+    -- Get previous alive player (left neighbor)
+    local left = player:getNextAlive(alive_count - 1)
+    
+    return left, right
+end
+
+s4_renchen = sgs.CreateTriggerSkill{
+    name = "s4_renchen",
+    frequency = sgs.Skill_Compulsory,
+    events = {sgs.EventPhaseStart, sgs.EventPhaseChanging},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        if event == sgs.EventPhaseStart then
+            if player:getPhase() == sgs.Player_RoundStart then
+                local left, right = getAdjacentPlayers(player)
+                if left and right and (player:getHp() < left:getHp() or player:getHp() < right:getHp()) then
+                    room:broadcastSkillInvoke(self:objectName())
+                    room:sendCompulsoryTriggerLog(player, self:objectName())
+                    player:setMark("s4_renchen_trigger", 1)
+                end
+            end
+        elseif event == sgs.EventPhaseChanging then
+            local change = data:toPhaseChange()
+            if change.to == sgs.Player_Finish and player:getMark("s4_renchen_trigger") > 0 then
+                room:removePlayerMark(player, "s4_renchen_trigger")
+                local choice = room:askForChoice(player, self:objectName(), "s4_renchen_extra+s4_renchen_give", data)
+                if choice == "s4_renchen_extra" then
+                    local left, right = getAdjacentPlayers(player)
+                    local targets = sgs.SPlayerList()
+                    if left and player:getHp() < left:getHp() then
+                        targets:append(left)
+                    end
+                    if right and player:getHp() < right:getHp() then
+                        targets:append(right)
+                    end
+                    if not targets:isEmpty() then
+                        local target = room:askForPlayerChosen(player, targets, self:objectName(), "@s4_renchen-extra", true, true)
+                        if target then
+                            target:gainAnExtraTurn()
+                        end
+                    end
+                elseif choice == "s4_renchen_give" then
+                    local others = sgs.SPlayerList()
+                    for _,p in sgs.qlist(room:getOtherPlayers(player)) do
+                        if player:inMyAttackRange(p) then
+                            others:append(p)
+                        end
+                    end
+                    if not others:isEmpty() then
+                        local target = room:askForPlayerChosen(player, others, self:objectName(), "@s4_renchen-give", true, true)
+                        if target then
+                            local cards = player:getCards("he")
+                            room:obtainCard(target, cards, false)
+                        end
+                    end
+                end
+            end
+        end
+        return false
+    end,
+}
+
+s4_renchen:addRelateSkill("s4_renchen")
+s4_nvcaomao:addSkill(s4_renchen)
+
+s4_xingjue = sgs.CreateTriggerSkill{
+    name = "s4_xingjue",
+    events = {sgs.Damaged},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        local damage = data:toDamage()
+        local source = damage.from
+        if source and source:isAlive() and not player:isKongcheng() then
+            if room:askForSkillInvoke(player, self:objectName(), data) then
+                room:broadcastSkillInvoke(self:objectName())
+                -- Ask for card type to discard
+                local choice = room:askForChoice(player, self:objectName(), "basic+trick+equip", data)
+                local to_discard = sgs.IntList()
+                for _, id in sgs.qlist(source:handCards()) do
+                    local card = sgs.Sanguosha:getCard(id)
+                    if (choice == "basic" and card:isKindOf("BasicCard")) or
+                       (choice == "trick" and card:isKindOf("TrickCard")) or
+                       (choice == "equip" and card:isKindOf("EquipCard")) then
+                        to_discard:append(id)
+                    end
+                end
+                if not to_discard:isEmpty() then
+                    room:throwCard(to_discard, source, player)
+                end
+                
+                -- Adjust hand cards to max
+                local max_cards = 0
+                for _, p in sgs.qlist(room:getAllPlayers()) do
+                    if p:getHandcardNum() > max_cards then
+                        max_cards = p:getHandcardNum()
+                    end
+                end
+                local diff = max_cards - player:getHandcardNum()
+                if diff > 0 then
+                    room:drawCards(player, diff, self:objectName())
+                elseif diff < 0 then
+                    room:askForDiscard(player, self:objectName(), -diff, -diff, false, false)
+                end
+                
+                -- Check if hand card count is same as source
+                if player:getHandcardNum() == source:getHandcardNum() and source:isAlive() then
+                    local choices = {"s4_xingjue_damage", "s4_xingjue_recover"}
+                    local choice2 = room:askForChoice(player, self:objectName(), table.concat(choices, "+"), data)
+                    if choice2 == "s4_xingjue_damage" then
+                        room:damage(sgs.DamageStruct(self:objectName(), player, source, 1))
+                    else
+                        local recover = sgs.RecoverStruct()
+                        recover.who = player
+                        recover.recover = 1
+                        room:recover(player, recover)
+                    end
+                end
+            end
+        end
+        return false
+    end,
+}
+
+s4_nvcaomao:addSkill(s4_xingjue)
+
+s4_silie = sgs.CreateTriggerSkill{
+    name = "s4_silie$",
+    frequency = sgs.Skill_Compulsory,
+    events = {sgs.EventPhaseChanging},
+    on_trigger = function(self, event, player, data)
+        local room = player:getRoom()
+        local change = data:toPhaseChange()
+        if change.to == sgs.Player_NotActive then
+            local lord = nil
+            for _, p in sgs.qlist(room:getAllPlayers()) do
+                if p:hasLordSkill(self:objectName()) and p:isAlive() and p ~= player then
+                    lord = p
+                    break
+                end
+            end
+            if lord and player:getKingdom() == "wei" then
+                room:broadcastSkillInvoke(self:objectName())
+                room:sendCompulsoryTriggerLog(lord, self:objectName())
+                
+                -- Player chooses first
+                local choice1 = room:askForChoice(player, self:objectName(), "s4_silie_damage+s4_silie_draw", data)
+                if choice1 == "s4_silie_damage" then
+                    room:damage(sgs.DamageStruct(self:objectName(), player, lord, 1))
+                    -- Lord draws
+                    room:drawCards(lord, 1, self:objectName())
+                else
+                    -- Player draws
+                    room:drawCards(player, 1, self:objectName())
+                    -- Lord damages player
+                    room:damage(sgs.DamageStruct(self:objectName(), lord, player, 1))
+                end
+            end
+        end
+        return false
+    end,
+}
+
+s4_nvcaomao:addSkill(s4_silie)
+
+sgs.LoadTranslationTable {
+    ["s4_nvcaomao"] = "曹髦",
+    ["&s4_nvcaomao"] = "曹髦",
+    ["#s4_nvcaomao"] = "博举品物",
+    ["~s4_nvcaomao"] = "",
+    ["designer:s4_nvcaomao"] = "",
+    ["cv:s4_nvcaomao"] = "",
+    ["illustrator:s4_nvcaomao"] = "",
+    ["s4_renchen"] = "人臣",
+    [":s4_renchen"] = "锁定技，回合开始时，若你的体力值小于相邻角色，你于回合结束时执行一项：1.令一名相邻角色执行一个额外回合；2.交给一名攻击范围内的其他角色所有牌。",
+    ["s4_renchen_extra"] = "令相邻角色执行额外回合",
+    ["s4_renchen_give"] = "交给范围内角色所有牌",
+    ["@s4_renchen-extra"] = "人臣：请选择一名相邻角色执行额外回合",
+    ["@s4_renchen-give"] = "人臣：请选择一名攻击范围内的角色交给其所有牌",
+    ["s4_xingjue"] = "行决",
+    [":s4_xingjue"] = "当你受到伤害后，你可以弃置伤害来源一种类型的所有牌并将你的手牌数调整至全埸最大。若你与其手牌数因此相同，你可以对其造成1点伤害或回复1点体力。",
+    ["s4_xingjue_damage"] = "对其造成1点伤害",
+    ["s4_xingjue_recover"] = "回复1点体力",
+    ["s4_silie"] = "肆烈",
+    [":s4_silie"] = "主公技，锁定技，其他魏势力角色回合结束时，其与你依次分别执行一项：1.对对方造成1点伤害；2.摸一张牌。",
+    ["s4_silie_damage"] = "对主公造成1点伤害",
+    ["s4_silie_draw"] = "摸一张牌",
+
+
+}
+
+
+
+
 sgs.Sanguosha:addSkills(s4_skillList)
 return { extension, extension_soldier }
