@@ -30781,7 +30781,7 @@ sfofl_yaoli = sgs.CreateTriggerSkill {
 	can_trigger = function(self, target)
 		return target and target:getPhase() == sgs.Player_Play
 	end,
-	on_trigger = function(self, event, player, data)
+	on_trigger = function(self, event, player, data, room)
         local use = data:toCardUse()
         if use.card and use.card:isKindOf("Analeptic") then
             for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do

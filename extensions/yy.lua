@@ -89,7 +89,7 @@ luanixi = sgs.CreateAttackRangeSkill {
 luanixi_tr = sgs.CreateTriggerSkill {
 	name = "#luanixi_tr",
 	frequency = sgs.Skill_Compulsory,
-	events = { sgs.Damaged, sgs.DrawNCards, sgs.TurnStart },
+	events = { sgs.Damaged, sgs.DrawNCards, sgs.TurnStart, sgs.RoundStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.Damaged then
@@ -121,6 +121,8 @@ luanixi_tr = sgs.CreateTriggerSkill {
 				
 			end
 			--end
+		elseif event == sgs.RoundStart then
+			player:gainAnExtraTurn()
 		elseif event == sgs.TurnStart then
 			-- room:loseHp(player)
 			-- room:loseHp(player)
@@ -164,7 +166,7 @@ luanixi_tr = sgs.CreateTriggerSkill {
 			end
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				-- room:setPlayerChained(p, true)
-				-- room:setPlayerProperty(p, "kingdom", sgs.QVariant("wu"))
+				room:setPlayerProperty(p, "kingdom", sgs.QVariant("wei"))
 			end
 		end
 	end
@@ -277,6 +279,22 @@ gz_zhaoyun:addSkill("feiyang")
 -- gz_zhaoyun:addSkill("s_w_juling")
 
 extension:insertRelatedSkills("luanixi","#luanixi_Keep")
+
+debug_skill = sgs.CreateTriggerSkill{
+	name = "debug_skill",
+	events = {sgs.GameStart},
+	global = true,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.GameStart then
+			local owner = room:getOwner()
+			if owner and owner:isAlive() then
+				room:acquireSkill(owner, "bahu")
+				room:acquireSkill(owner, "feiyang")
+			end
+		end
+	end
+}
 
 
 

@@ -108,6 +108,12 @@ sgs.ai_skill_playerschosen =	{}
 sgs.ai_used_revises =			{}
 sgs.weapon_range = 				{}
 
+-- AI出牌隨機性配置
+-- 設置為0則完全按優先級排序（原始行為）
+-- 設置為1則使用默認隨機範圍（推薦）
+-- 可以設置更大的值來增加隨機性，但可能影響AI智能
+sgs.ai_card_randomness = 1
+
 
 for i=sgs.NonTrigger,sgs.EventForDiy do
 	sgs.ai_event_callback[i] = {}
@@ -988,10 +994,32 @@ function SmartAI:sortByKeepValue(cards,inverse,flags)
 		end
 	end
 	if #cards<2 then return cards end
+	
+	-- 检查是否有依赖明置牌的技能
+	local has_display_skills = hasDisplaySkills(self.player)
+	local display_cards = getDisplayCards(self.player, self.player)
+	local display_ids = {}
+	for _, dc in ipairs(display_cards) do
+		display_ids[dc:getEffectiveId()] = true
+	end
+	
 	for _,c in ipairs(cards)do
 		local v = self:getKeepValue(c)
 		if table.contains(self.toUse,c) then v = v+2 end
 		if self.player:isLocked(c) then v = v/2 end
+		
+		-- 明置牌的价值调整
+		local card_id = c:getEffectiveId()
+		if display_ids[card_id] then
+			if has_display_skills then
+				-- 有使用明置牌的技能：提高明置牌的保留价值（避免弃置/使用）
+				v = v + 1.5
+			else
+				-- 没有使用明置牌的技能：降低明置牌的保留价值（优先弃置/使用以避免泄露信息）
+				v = v - 1.5
+			end
+		end
+		
 		self.keepValue[c:toString()] = v
 	end
 	local function compare_func(a,b)
@@ -1010,9 +1038,32 @@ function SmartAI:sortByUseValue(cards,inverse,flags)
 		end
 	end
 	if #cards<2 then return cards end
+	
+	-- 检查是否有依赖明置牌的技能
+	local has_display_skills = hasDisplaySkills(self.player)
+	local display_cards = getDisplayCards(self.player, self.player)
+	local display_ids = {}
+	for _, dc in ipairs(display_cards) do
+		display_ids[dc:getEffectiveId()] = true
+	end
+	
 	local bcv = {}
 	for _,c in ipairs(cards)do
-		bcv[c:toString()] = self:getUseValue(c) or 0
+		local value = self:getUseValue(c) or 0
+		
+		-- 明置牌的使用优先级调整
+		local card_id = c:getEffectiveId()
+		if display_ids[card_id] then
+			if has_display_skills then
+				-- 有使用明置牌的技能：降低明置牌的使用价值（保留用于技能）
+				value = value - 2
+			else
+				-- 没有使用明置牌的技能：提高明置牌的使用价值（优先使用以避免泄露信息）
+				value = value + 2
+			end
+		end
+		
+		bcv[c:toString()] = value
 	end
 	local function compare_func(a,b)
 		if inverse then return bcv[a:toString()]<bcv[b:toString()] end
@@ -1031,8 +1082,23 @@ function SmartAI:sortByUsePriority(cards,inverse,flags)
 	end
 	if #cards<2 then return cards end
 	local bcv = {}
+	-- 添加隨機擾動值，範圍在 -0.3 到 0.3 之間
+	-- 這樣優先級相近的牌會被打亂，但差異大的牌順序仍會保持
+	local randomness = sgs.ai_card_randomness or 0  -- 預設為0，保持原始行為
 	for _,c in ipairs(cards)do
-		bcv[c:toString()] = self:getUsePriority(c) or 0
+		local base_priority = self:getUsePriority(c) or 0
+		-- 為避免改變關鍵順序（如酒、武器 vs 殺），只對非關鍵牌添加隨機性
+		local random_offset = 0
+		if randomness > 0 then
+			if not (c:isKindOf("Analeptic") or c:isKindOf("Weapon") or c:isKindOf("Armor")) then
+				-- 對於普通牌，添加小範圍隨機值
+				random_offset = (math.random() - 0.5) * 0.6 * randomness  -- 可調範圍
+			else
+				-- 對於關鍵裝備和酒，添加更小的隨機值以保持相對順序
+				random_offset = (math.random() - 0.5) * 0.2 * randomness
+			end
+		end
+		bcv[c:toString()] = base_priority + random_offset
 	end
 	local function compare_func(a,b)
 		if inverse then return bcv[a:toString()]<bcv[b:toString()] end
@@ -1051,8 +1117,19 @@ function SmartAI:sortByDynamicUsePriority(cards,inverse,flags)
 	end
 	if #cards<2 then return cards end
 	local bcv = {}
+	-- 同樣添加隨機擾動，保持動態優先級的基本邏輯
+	local randomness = sgs.ai_card_randomness or 0
 	for _,c in ipairs(cards)do
-		bcv[c:toString()] = self:getDynamicUsePriority(c) or 0
+		local base_priority = self:getDynamicUsePriority(c) or 0
+		local random_offset = 0
+		if randomness > 0 then
+			if not (c:isKindOf("Analeptic") or c:isKindOf("Weapon") or c:isKindOf("Armor")) then
+				random_offset = (math.random() - 0.5) * 0.6 * randomness
+			else
+				random_offset = (math.random() - 0.5) * 0.2 * randomness
+			end
+		end
+		bcv[c:toString()] = base_priority + random_offset
 	end
 	local function compare_func(a,b)
 		if inverse then return bcv[a:toString()]<bcv[b:toString()] end
@@ -2663,8 +2740,38 @@ function SmartAI:askForCardChosen(who,flags,reason,method)
 				then return id end
 			end
 		end
-		if flags:contains("h") and who:getHandcardNum()>0
-		then return self:getCardRandomly(who,"h",no_dis) end
+		if flags:contains("h") and who:getHandcardNum()>0 then
+			-- 如果是帮友方，检查明置牌，避免拿走valuable的牌（如果是获得的话）
+			if no_dis and flags:contains("h") then
+				local display_cards = getDisplayCards(who, self.player)
+				local display_count = #display_cards
+				local unknown_count = who:getHandcardNum() - display_count
+				
+				-- 如果有未知牌（暗牌），优先选择未知牌
+				if unknown_count > 0 then
+					return self:getCardRandomly(who, "h", no_dis)
+				end
+				
+				-- 如果都是明置牌，选择价值最低的（使用getKeepValue评估）
+				if display_count > 0 then
+					local low_value_cards = {}
+					for _, dc in ipairs(display_cards) do
+						local card_id = dc:getEffectiveId()
+						if not self.disabled_ids:contains(card_id) then
+							local value = sgs.ais[who:objectName()]:getKeepValue(dc)
+							table.insert(low_value_cards, {card_id = card_id, value = value})
+						end
+					end
+					
+					if #low_value_cards > 0 then
+						table.sort(low_value_cards, function(a, b) return a.value < b.value end)
+						return low_value_cards[1].card_id
+					end
+				end
+			end
+			
+			return self:getCardRandomly(who,"h",no_dis)
+		end
 	else
 		if flags:contains("e") then
 			cid = self:getDangerousCard(who)
@@ -2683,9 +2790,24 @@ function SmartAI:askForCardChosen(who,flags,reason,method)
 		and self:doDisCard(who,"h",no_dis) then
 			if who:hasSkills("jijiu|qingnang|qiaobian|jieyin|beige|buyi|manjuan")
 			then return self:getCardRandomly(who,"h",no_dis) end
-			for _,h in sgs.qlist(who:getHandcards())do
-				if (h:hasFlag("visible") or h:hasFlag("visible_"..self.player:objectName().."_"..who:objectName()))
-				and isCard("Peach,Analeptic",h,who) then return self:getCardRandomly(who,"h",no_dis) end
+			
+			-- 敌方手牌少，优先选择明置牌中价值高的（顺拆/过河时优先拆重要牌）
+			local display_cards = getDisplayCards(who, self.player)
+			if #display_cards > 0 then
+				local valuable_cards = {}
+				for _, dc in ipairs(display_cards) do
+					local card_id = dc:getEffectiveId()
+					if not self.disabled_ids:contains(card_id) then
+						local value = sgs.ais[who:objectName()]:getKeepValue(dc)
+						table.insert(valuable_cards, {card_id = card_id, value = value})
+					end
+				end
+				
+				if #valuable_cards > 0 then
+					-- 选择价值最高的明置牌
+					table.sort(valuable_cards, function(a, b) return a.value > b.value end)
+					return valuable_cards[1].card_id
+				end
 			end
 		end
 		if flags:contains("j") then
@@ -2699,6 +2821,34 @@ function SmartAI:askForCardChosen(who,flags,reason,method)
 			elseif yanxiao then return yanxiao end
 		end
 		if flags:contains("h") and self:doDisCard(who,"h",no_dis) then
+			-- 检查明置牌：如果是获得牌的情况(no_dis=true)，优先选择valuable的明置牌
+			-- 如果是弃牌的情况(no_dis=false)，优先弃掉valuable的明置牌
+			local display_cards = getDisplayCards(who, self.player)
+			if #display_cards > 0 then
+				local valuable_cards = {}
+				for _, dc in ipairs(display_cards) do
+					local card_id = dc:getEffectiveId()
+					if not self.disabled_ids:contains(card_id) then
+						-- 使用getKeepValue评估卡牌价值
+						local value = sgs.ais[who:objectName()]:getKeepValue(dc)
+						table.insert(valuable_cards, {card_id = card_id, value = value})
+					end
+				end
+				
+				if #valuable_cards > 0 then
+					-- 如果是获得牌(顺手牵羊)，选择最valuable的
+					if no_dis then
+						table.sort(valuable_cards, function(a, b) return a.value > b.value end)
+						return valuable_cards[1].card_id
+					-- 如果是弃牌(过河拆桥)，也优先拆valuable的
+					else
+						table.sort(valuable_cards, function(a, b) return a.value > b.value end)
+						return valuable_cards[1].card_id
+					end
+				end
+			end
+			
+			-- 原有逻辑
 			if who:getHandcardNum()<=2 or who:hasSkills(sgs.cardneed_skill)
 			or (who:getHandcardNum()==1 and who:getHp()<=2 and self:getDefenseSlash(who)<3)
 			then return self:getCardRandomly(who,"h",no_dis) end
@@ -3860,6 +4010,8 @@ function SmartAI:addHandPile(cards,player)
 end
 
 function SmartAI:getTurnUse()
+	if logger then logger:writeLog("DEBUG", "getTurnUse: Started") end
+	
 	local turnUse = {}
 	function canMethodUse(c)
 		if c:getTypeId()~=1 or c:hasFlag("AIGlobal_KillOff") then return c:isAvailable(self.player) end
@@ -3873,50 +4025,320 @@ function SmartAI:getTurnUse()
 		self.player:addHistory(cn,-n)
 		return canA
 	end
+	
+	if logger then logger:writeLog("DEBUG", "getTurnUse: Initializing use_to table") end
 	self.use_to = {}
-	for _,c in ipairs(self:sortByDynamicUsePriority(self:fillSkillCards(self:addHandPile())))do
-		if canMethodUse(c) then
-			if sgs.aiHandCardVisible then
-				local file = io.open("lua/ai/cstring", "r")
-				local _file = file:read("*all")
-				file:close()
-				file = io.open("lua/ai/cstring", "w")
-				if c:isVirtualCard() then file:write(_file.."\n"..c:toString())
-				else file:write(_file.."\n"..c:getFullName(true)) end
-				file:close()
+	
+	-- Step 1: Get and sort cards
+	if logger then logger:writeLog("DEBUG", "getTurnUse: Getting skill cards") end
+	local fillSuccess, skillCards = pcall(function()
+		return self:fillSkillCards(self:addHandPile())
+	end)
+	
+	if not fillSuccess then
+		if logger then logger:logError("getTurnUse:fillSkillCards", skillCards) end
+		self.toUse = {}
+		return {}
+	end
+	
+	if logger then logger:writeLog("DEBUG", "getTurnUse: Sorting cards", {cardCount = #skillCards}) end
+	local sortSuccess, sortedCards = pcall(function()
+		return self:sortByDynamicUsePriority(skillCards)
+	end)
+	
+	if not sortSuccess then
+		if logger then logger:logError("getTurnUse:sortByDynamicUsePriority", sortedCards) end
+		self.toUse = {}
+		return {}
+	end
+	
+	if logger then logger:writeLog("DEBUG", "getTurnUse: Sorting completed successfully") end
+	
+	-- Validate sorted cards
+	if not sortedCards then
+		if logger then logger:logError("getTurnUse:validation", "sortedCards is nil") end
+		self.toUse = {}
+		return {}
+	end
+	
+	if type(sortedCards) ~= "table" then
+		if logger then logger:logError("getTurnUse:validation", "sortedCards is not a table: " .. type(sortedCards)) end
+		self.toUse = {}
+		return {}
+	end
+	
+	if logger then logger:writeLog("DEBUG", "getTurnUse: Validated sortedCards", {
+		type = type(sortedCards),
+		count = #sortedCards
+	}) end
+	
+	-- Step 2: Process each card
+	if logger then logger:writeLog("DEBUG", "getTurnUse: Starting card iteration", {totalCards = #sortedCards}) end
+	
+	for idx, c in ipairs(sortedCards) do
+		-- Additional safety check
+		if c then
+			if logger and idx % 5 == 1 then -- Log every 5 cards to avoid spam
+				local cardStr = "unknown"
+				local cardStrSuccess, cardStrResult = pcall(function() return c:toString() end)
+				if cardStrSuccess then
+					cardStr = cardStrResult
+				else
+					if logger then logger:logError("getTurnUse:toString", cardStrResult, {index = idx}) end
+				end
+				
+				logger:writeLog("DEBUG", "getTurnUse: Processing card batch", {
+					currentIndex = idx,
+					totalCards = #sortedCards,
+					currentCard = cardStr
+				})
 			end
-			local d = self:aiUseCard(c,dummy(false))
-			if d.card then
-				if d.card~=c and self.player:isCardLimited(d.card,d.card:getHandlingMethod()) then continue end
-				self.use_to[d.card:toString()] = d.to
-				table.insert(turnUse,d.card)
-			elseif c:canRecast() and c:getTypeId()>0 then
-				if self.player:getHandPile():contains(c:getEffectiveId())
-				or self.player:isCardLimited(c,sgs.Card_MethodRecast) then continue end
-				self.use_to[c:toString()] = sgs.SPlayerList()
-				table.insert(turnUse,c)
+			
+			local canUseSuccess, canUse = pcall(canMethodUse, c)
+			if canUseSuccess and canUse then
+				-- Debug file writing
+				if sgs.aiHandCardVisible then
+					local fileSuccess, fileErr = pcall(function()
+						local file = io.open("lua/ai/cstring", "r")
+						local _file = file:read("*all")
+						file:close()
+						file = io.open("lua/ai/cstring", "w")
+						if c:isVirtualCard() then file:write(_file.."\n"..c:toString())
+						else file:write(_file.."\n"..c:getFullName(true)) end
+						file:close()
+					end)
+					
+					if not fileSuccess and logger then
+						logger:logError("getTurnUse:debug_file_write", fileErr)
+					end
+				end
+				
+				-- Try to use card
+				local useSuccess, d = pcall(function()
+					return self:aiUseCard(c, dummy(false))
+				end)
+				
+				if useSuccess then
+					if d and d.card then
+						if logger then 
+							logger:writeLog("DEBUG", "getTurnUse: Card can be used", {
+								originalCard = c:toString(),
+								resultCard = d.card:toString(),
+								index = idx
+							})
+						end
+						
+						-- Check if card is limited
+						local isLimited = false
+						local limitCheckSuccess, limitResult = pcall(function()
+							if d.card ~= c then
+								local handlingMethod = d.card:getHandlingMethod()
+								if logger then 
+									logger:writeLog("DEBUG", "getTurnUse: Checking card limit", {
+										card = d.card:toString(),
+										handlingMethod = handlingMethod
+									})
+								end
+								return self.player:isCardLimited(d.card, handlingMethod)
+							end
+							return false
+						end)
+						
+						if limitCheckSuccess then
+							isLimited = limitResult
+							if logger then 
+								logger:writeLog("DEBUG", "getTurnUse: Card limit check result", {
+									isLimited = isLimited
+								})
+							end
+						else
+							if logger then 
+								logger:logError("getTurnUse:cardLimitCheck", limitResult, {
+									card = d.card:toString(),
+									index = idx
+								})
+							end
+							-- Assume limited on error to be safe
+							isLimited = true
+						end
+						
+						if not isLimited then
+							if logger then logger:writeLog("DEBUG", "getTurnUse: Adding card to turnUse") end
+							
+							local addSuccess, addErr = pcall(function()
+								local cardKey = d.card:toString()
+								if logger then 
+									logger:writeLog("DEBUG", "getTurnUse: Card key", {key = cardKey})
+								end
+								
+								self.use_to[cardKey] = d.to
+								if logger then logger:writeLog("DEBUG", "getTurnUse: Set use_to") end
+								
+								table.insert(turnUse, d.card)
+								if logger then 
+									logger:writeLog("DEBUG", "getTurnUse: Inserted card", {
+										turnUseCount = #turnUse
+									})
+								end
+							end)
+							
+							if not addSuccess and logger then
+								logger:logError("getTurnUse:addCard", addErr, {
+									card = d.card:toString(),
+									index = idx
+								})
+							end
+							
+							if logger then logger:writeLog("DEBUG", "getTurnUse: After add card processing") end
+						else
+							if logger then logger:writeLog("DEBUG", "getTurnUse: Card is limited, skipping") end
+						end
+						
+						if logger then logger:writeLog("DEBUG", "getTurnUse: After d.card processing") end
+					elseif c:canRecast() and c:getTypeId()>0 then
+						if logger then logger:writeLog("DEBUG", "getTurnUse: Card can recast", {card = c:toString()}) end
+						
+						if not (self.player:getHandPile():contains(c:getEffectiveId())
+						or self.player:isCardLimited(c,sgs.Card_MethodRecast)) then
+							self.use_to[c:toString()] = sgs.SPlayerList()
+							table.insert(turnUse,c)
+						end
+					else
+						if logger then logger:writeLog("DEBUG", "getTurnUse: d exists but no card or recast") end
+					end
+					
+					if logger then logger:writeLog("DEBUG", "getTurnUse: After useSuccess branch") end
+				else
+					if logger then 
+						logger:logError("getTurnUse:aiUseCard", d, {
+							card = c:toString(),
+							index = idx
+						}) 
+					end
+				end
+				
+				if logger then logger:writeLog("DEBUG", "getTurnUse: Before turnUse count check", {currentCount = #turnUse}) end
+				
+				if #turnUse>9 then 
+					if logger then logger:writeLog("DEBUG", "getTurnUse: Reached max cards (10)") end
+					break 
+				end
+				
+				if logger then logger:writeLog("DEBUG", "getTurnUse: After turnUse count check, continuing loop") end
+			elseif not canUseSuccess and logger then
+				logger:logError("getTurnUse:canMethodUse", canUse, {
+					card = c:toString(),
+					index = idx
+				})
 			end
-			if #turnUse>9 then break end
+		else
+			if logger then logger:logError("getTurnUse:iteration", "Card is nil at index " .. idx) end
 		end
 	end
+	
+	if logger then logger:writeLog("DEBUG", "getTurnUse: Card iteration completed") end
+	
 	self.toUse = turnUse
+	
+	if logger then 
+		logger:writeLog("DEBUG", "getTurnUse: Completed", {
+			turnUseCount = #turnUse,
+			cards = table.concat(
+				(function()
+					local strs = {}
+					for _, card in ipairs(turnUse) do
+						table.insert(strs, card:toString())
+					end
+					return strs
+				end)(),
+				", "
+			)
+		})
+	end
+	
 	return turnUse
 end
 
 function SmartAI:activate(use)
+	-- Enhanced logging for crash debugging
+	if _G.AI_DEBUG_MODE and logger then
+		local stackIndex = logger:logFunctionEntry("SmartAI:activate", {
+			player = self.player:getGeneralName(),
+			playerName = self.player:objectName(),
+			phase = self.player:getPhase(),
+			hp = self.player:getHp(),
+			handcardNum = self.player:getHandcardNum()
+		})
+	end
+	
+	-- Step 1: Handle debug file writing
 	if sgs.aiHandCardVisible then
-		local file = io.open("lua/ai/cstring", "r")
-		local _file = file:read("*all")
-		file:close()
-		file = io.open("lua/ai/cstring", "w")
-		file:write(_file.."\nTurnUse：")
-		file:close()
+		if logger then logger:writeLog("DEBUG", "activate: Writing to debug file") end
+		
+		local success, err = pcall(function()
+			local file = io.open("lua/ai/cstring", "r")
+			local _file = file:read("*all")
+			file:close()
+			file = io.open("lua/ai/cstring", "w")
+			file:write(_file.."\nTurnUse：")
+			file:close()
+		end)
+		
+		if not success and logger then
+			logger:logError("activate:debug_file", err)
+		end
 		--self.room:writeToConsole("TurnUse：")
 	end
-	if #self.toUse<1 then self:getTurnUse() end
-	for _,c in ipairs(self:getTurnUse())do
-		use.to = self.use_to[c:toString()]
-		use.card = c
+	
+	-- Step 2: Get turn use cards
+	if logger then logger:writeLog("DEBUG", "activate: Getting turn use cards", {toUseCount = #self.toUse}) end
+	
+	if #self.toUse<1 then 
+		if logger then logger:writeLog("DEBUG", "activate: Calling getTurnUse()") end
+		
+		local success, err = pcall(function()
+			self:getTurnUse()
+		end)
+		
+		if not success then
+			if logger then logger:logError("activate:getTurnUse", err) end
+			return
+		end
+		
+		if logger then logger:writeLog("DEBUG", "activate: getTurnUse() completed", {toUseCount = #self.toUse}) end
+	end
+	
+	-- Step 3: Process cards
+	if logger then 
+		logger:writeLog("DEBUG", "activate: Processing cards", {
+			cardCount = #self:getTurnUse()
+		}) 
+	end
+	
+	local turnUse = self:getTurnUse()
+	if logger then logger:writeLog("DEBUG", "activate: Retrieved turn use list", {count = #turnUse}) end
+	
+	for i, c in ipairs(turnUse) do
+		if logger then 
+			logger:writeLog("DEBUG", "activate: Processing card", {
+				index = i,
+				cardString = c:toString(),
+				cardType = c:getClassName()
+			}) 
+		end
+		
+		local success, err = pcall(function()
+			use.to = self.use_to[c:toString()]
+			if logger then logger:writeLog("DEBUG", "activate: Set use.to") end
+			
+			use.card = c
+			if logger then logger:writeLog("DEBUG", "activate: Set use.card") end
+		end)
+		
+		if not success then
+			if logger then logger:logError("activate:card_processing", err, {index = i, card = c:toString()}) end
+		end
+		
 		--[[if c:isAvailable(self.player) then
 			if self:aiUseCard(c,use).card then break
 			elseif c:canRecast() then use.card = c break end
@@ -3924,6 +4346,13 @@ function SmartAI:activate(use)
 		break
 	end
 	
+	if logger then 
+		logger:writeLog("DEBUG", "activate: Completed", {
+			hasCard = use.card ~= nil,
+			cardString = use.card and use.card:toString() or "nil"
+		})
+		logger:logFunctionExit("SmartAI:activate", stackIndex, true)
+	end
 	
 end
 
@@ -4392,6 +4821,47 @@ function SmartAI:getMinCard(player,cards)
 		end
 	end
 	return min_card
+end
+
+-- 获取玩家的明置牌（通过property存储的牌）
+-- 这与getKnownCards不同，getKnownCards获取visible flag的牌
+-- 明置牌是通过UniversalCardDisplayMove机制创建的
+function getDisplayCards(player, from)
+	if type(player) ~= "userdata" then return {} end
+	from = from or global_room:getCurrent() or current_self.player
+	local cards = {}
+	
+	-- 只检查统一的display_cards property
+	local prop_value = player:property("display_cards"):toString()
+	if prop_value ~= "" then
+		local id_list = prop_value:split("+")
+		for _, id_str in pairs(id_list) do
+			if id_str ~= "" then
+				local card_id = tonumber(id_str)
+				local card = sgs.Sanguosha:getCard(card_id)
+				-- 确认卡牌还在手牌中
+				if card and player:handCards():contains(card_id) then
+					table.insert(cards, card)
+				end
+			end
+		end
+	end
+	
+	return cards
+end
+
+-- 检查玩家是否有依赖明置牌的技能
+-- 这些技能通常会将卡牌添加到pile中并依赖这些明置牌
+function hasDisplaySkills(player)
+	if type(player) ~= "userdata" then return false end
+	
+	-- 检查是否有display_cards property
+	local display_prop = player:property("display_cards"):toString()
+	if display_prop ~= "" then
+		return true
+	end
+	
+	return false
 end
 
 function SmartAI:getKnownNum(player)
@@ -4979,8 +5449,9 @@ end
 function SmartAI:hasTrickEffective(card,to,from)
 	from = from or self.room:getCurrent() or self.player
 	to = to or self.player
+	local nature = card and sgs.card_damage_nature[card:getClassName()]
 	if from:isProhibited(to,card)
-	or card:isDamageCard() and self:ajustDamage(from,to,1,card)==0 then return end
+	or card:isDamageCard() and self:ajustDamage(from,to,1,card,nature)==0 then return end
 	local use = {card=card,from=from,to=self.aoeTos or sgs.SPlayerList()}
 	if not use.to:contains(to) then use.to:append(to) end
 	for _,sk in ipairs(aiConnect(to))do
@@ -5231,7 +5702,8 @@ function SmartAI:needToLoseHp(to,from,card,passive,recover)
 		end
 	end
 
-	local n = self:ajustDamage(from,to,1,card)
+	local nature = card and sgs.card_damage_nature[card:getClassName()]
+	local n = self:ajustDamage(from,to,1,card,nature)
 	if hasJueqingEffect(from,to) or n<0 then
 		if to:hasSkills(sgs.masochism_skill)
 		then return end
@@ -5308,7 +5780,8 @@ function SmartAI:needToLoseHp(to,from,card,passive,recover)
 	end
 	
 
-	if self:ajustDamage(from,to,1,card)>=to:getHp() then return end
+	local nature = card and sgs.card_damage_nature[card:getClassName()]
+	if self:ajustDamage(from,to,1,card,nature)>=to:getHp() then return end
 	local bh = getBestHp(to)
 
 
@@ -5567,7 +6040,8 @@ function SmartAI:findPlayerToUseSlash(distance_limit, players, reason, slash, ex
 				end
 				if dummy_use and dummy_use.card and dummy_use.to and dummy_use.to:contains(fixed_target) then
 					if self:hasHeavyDamage(friend,slash,fixed_target) then
-						value = value + 15 * self:ajustDamage(friend,fixed_target,1,slash)
+						local nature = slash and sgs.card_damage_nature[slash:getClassName()]
+						value = value + 15 * self:ajustDamage(friend,fixed_target,1,slash,nature)
 					end
 					if slash and (slash:hasFlag("SlashIgnoreArmor") or slash:hasFlag("Qinggang")) then
 						value = value + 12
@@ -5584,7 +6058,8 @@ function SmartAI:findPlayerToUseSlash(distance_limit, players, reason, slash, ex
 				if dummy_use and dummy_use.card and dummy_use.to then
 					for _, p in sgs.qlist(dummy_use.to) do
 						if self:hasHeavyDamage(friend,slash,p) then
-							value = value + 15 * self:ajustDamage(friend,p,1,slash)
+							local nature = slash and sgs.card_damage_nature[slash:getClassName()]
+							value = value + 15 * self:ajustDamage(friend,p,1,slash,nature)
 						end
 					end
 					if slash and (slash:hasFlag("SlashIgnoreArmor") or slash:hasFlag("Qinggang")) then
@@ -7991,46 +8466,47 @@ function SmartAI:shouldInvokeCostNullifySkill(use, need_discard, need_losehp, di
 		end
 		
 		-- 计算预期伤害
-		local expected_damage = self:ajustDamage(use.from, target, 1, card)
-		
-		-- 高伤害直接发动
-		if expected_damage > 1 then
-			threat_level = threat_level + 3
-		elseif expected_damage > 0 then
+	local card_nature = nature or (card and sgs.card_damage_nature[card:getClassName()])
+	local expected_damage = self:ajustDamage(use.from, target, 1, card, card_nature)
+	
+	-- 高伤害直接发动
+	if expected_damage > 1 then
+		threat_level = threat_level + 3
+	elseif expected_damage > 0 then
+		threat_level = threat_level + 2
+	end
+	
+	-- 濒死状态下任何伤害都是高威胁
+	if self:isWeak(target) then
+		threat_level = threat_level + 3
+	end
+	
+	-- 属性杀连环判断
+	if card:isKindOf("NatureSlash") and target:isChained() then
+		if not self:isGoodChainTarget(target, card, use.from) then
 			threat_level = threat_level + 2
 		end
-		
-		-- 濒死状态下任何伤害都是高威胁
-		if self:isWeak(target) then
-			threat_level = threat_level + 3
+	end
+	
+	-- 火攻特殊判断
+	if card:isKindOf("FireAttack") then
+		if target:hasArmorEffect("vine") or target:getMark("@gale") > 0 then
+			threat_level = threat_level + 2
 		end
-		
-		-- 属性杀连环判断
-		if card:isKindOf("NatureSlash") and target:isChained() then
-			if not self:isGoodChainTarget(target, card, use.from) then
-				threat_level = threat_level + 2
-			end
+	end
+	
+	-- 检查目标是否有应对手段
+	if card:isKindOf("Slash") then
+		local jink_num = self:getExpectedJinkNum(use)
+		local target_jink = getCardsNum("Jink", target, self.player)
+		if target_jink < jink_num then
+			threat_level = threat_level + 2
 		end
-		
-		-- 火攻特殊判断
-		if card:isKindOf("FireAttack") then
-			if target:hasArmorEffect("vine") or target:getMark("@gale") > 0 then
-				threat_level = threat_level + 2
-			end
+	elseif card:isKindOf("AOE") then
+		local response_card = card:isKindOf("SavageAssault") and "Slash" or "Jink"
+		if getCardsNum(response_card, target, self.player) == 0 then
+			threat_level = threat_level + 2
 		end
-		
-		-- 检查目标是否有应对手段
-		if card:isKindOf("Slash") then
-			local jink_num = self:getExpectedJinkNum(use)
-			local target_jink = getCardsNum("Jink", target, self.player)
-			if target_jink < jink_num then
-				threat_level = threat_level + 2
-			end
-		elseif card:isKindOf("AOE") then
-			local response_card = card:isKindOf("SavageAssault") and "Slash" or "Jink"
-			if getCardsNum(response_card, target, self.player) == 0 then
-				threat_level = threat_level + 2
-			end
 		elseif card:isKindOf("Duel") then
 			if getCardsNum("Slash", target, self.player) == 0 then
 				threat_level = threat_level + 2
