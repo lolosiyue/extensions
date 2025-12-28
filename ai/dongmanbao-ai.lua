@@ -1858,19 +1858,16 @@ sgs.ai_use_value["se_shunshancard"]       = 8
 sgs.ai_use_priority["se_shunshancard"]    = 7
 
 sgs.ai_skill_playerchosen.se_shunshan     = function(self, targets)
-	local list = self.room:getAlivePlayers()
-	for _, player in sgs.qlist(list) do
-		if player:getNextAlive():objectName() == self.player:objectName() then
-			return player
-		end
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) and p:getMaxCards() > 0 then return p end
 	end
-	return
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) then return p end
+	end
+	return targets:first()
 end
 
-sgs.ai_playerchosen_intention.se_shunshan = function(from, to)
-	local intention = 100
-	sgs.updateIntention(from, to, intention)
-end
+sgs.ai_playerchosen_intention.se_shunshan = 100
 
 --[[
 sgs.ai_skill_invoke.se_shunshan_Another = function(self, data)

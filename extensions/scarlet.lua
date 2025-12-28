@@ -11767,8 +11767,8 @@ s4_neiji = sgs.CreateCardLimitSkill{
     end,
 }
 
-s4_mingmen = sgs.CreateTriggerSkill{
-    name = "s4_mingmen",
+s4_2_mingmen = sgs.CreateTriggerSkill{
+    name = "s4_2_mingmen",
     frequency = sgs.Skill_Compulsory,
     events = {sgs.PindianVerifying, sgs.EventForDiy},
     on_trigger = function(self, event, player, data)
@@ -11815,8 +11815,8 @@ sgs.LoadTranslationTable {
     [":s4_suihuai"] = "出牌阶段，若你手牌数不大于地域牌上的牌数之和，你可以摸一张牌。",
     ["s4_neiji"] = "内忌",
     [":s4_neiji"] = "锁定技，你不能使用或打出点数小于你手牌数的牌。",
-    ["s4_mingmen"] = "名门",
-    [":s4_mingmen"] = "锁定技，你的意见/拼点牌视为两张/最大。",
+    ["s4_2_mingmen"] = "名门",
+    [":s4_2_mingmen"] = "锁定技，你的意见/拼点牌视为两张/最大。",
     ["s4_xiongjie_jizhou"] = "冀州",
     [":s4_xiongjie_jizhou"] = "出牌阶段，你可以将一张手牌置于一张地域牌且类型不能与该地域牌上的牌相同。",
     ["s4_xiongjie_qingzhou"] = "青州",
@@ -11829,7 +11829,7 @@ sgs.LoadTranslationTable {
 
 }
 --https://tieba.baidu.com/p/10172478950?pid=152800174728&cid=0#152800174728
-
+--[[
 s4_nvcaomao = sgs.General(extension, "s4_nvcaomao", "wei", 4, false, false, false, 3)
 
 -- Note: There are no getLeft() and getRight() methods in the engine
@@ -11904,7 +11904,6 @@ s4_renchen = sgs.CreateTriggerSkill{
     end,
 }
 
-s4_renchen:addRelateSkill("s4_renchen")
 s4_nvcaomao:addSkill(s4_renchen)
 
 s4_xingjue = sgs.CreateTriggerSkill{
@@ -12032,7 +12031,7 @@ sgs.LoadTranslationTable {
 
 }
 
-
+]]
 
 
 sgs.Sanguosha:addSkills(s4_skillList)
