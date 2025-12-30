@@ -14058,7 +14058,6 @@ heg_lord_caocao:addSkill(heg_lord_jianan)
 heg_lord_caocao:addSkill(heg_lord_jianan_clear)
 heg_lord_caocao:addSkill(heg_lord_huibian)
 heg_lord_caocao:addSkill(heg_lord_zongyu)
-heg_lord_zongyu:setProperty("IgnoreInvalidity",ToData(true))
 extension_heg:insertRelatedSkills("heg_lord_jianan", "#heg_lord_jianan_clear")
 
 -- heg_lord_simayi
