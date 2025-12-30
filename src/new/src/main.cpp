@@ -4,19 +4,22 @@
 #include "settings.h"
 #include "banpair.h"
 #include "server.h"
-//#include "serverplayer.h"
+// #include "serverplayer.h"
 #include "engine.h"
 
 #ifdef ANDROID
 #include "android_assets.h"
 #endif
 
-#if defined(WIN32) && defined(VS2013)
+#if defined(WIN32) && defined(_MSC_VER)
 #include "breakpad/client/windows/handler/exception_handler.h"
 
 using namespace google_breakpad;
 
-static bool callback(const wchar_t *dump_path, const wchar_t *id, void *, EXCEPTION_POINTERS *, MDRawAssertionInfo *, bool succeeded){
+static ExceptionHandler *g_exceptionHandler = nullptr;
+
+static bool callback(const wchar_t *dump_path, const wchar_t *id, void *, EXCEPTION_POINTERS *, MDRawAssertionInfo *, bool succeeded)
+{
     if (succeeded)
         qWarning("Dump file created in %s, dump guid is %ws\n", dump_path, id);
     else
@@ -24,22 +27,40 @@ static bool callback(const wchar_t *dump_path, const wchar_t *id, void *, EXCEPT
     return succeeded;
 }
 
-int main(int argc, char *argv[]) {
-    ExceptionHandler eh(L"./dmp", nullptr, callback, nullptr, ExceptionHandler::HANDLER_ALL);
+int main(int argc, char *argv[])
+{
+    // 确保dump目录存在
+    QDir dumpDir("./dmp");
+    if (!dumpDir.exists())
+    {
+        dumpDir.mkpath(".");
+        qWarning("Created dump directory: ./dmp\n");
+    }
+
+    // 使用全局指针以确保ExceptionHandler在整个程序生命周期内有效
+    g_exceptionHandler = new ExceptionHandler(
+        L"./dmp",
+        nullptr,
+        callback,
+        nullptr,
+        ExceptionHandler::HANDLER_ALL);
+    qWarning("Breakpad exception handler initialized\n");
 #else
 int main(int argc, char *argv[])
 {
 #endif
 #ifdef ANDROID
-	AndroidAssets::copyAssetsToWritableLocation();
+    AndroidAssets::copyAssetsToWritableLocation();
 #endif
     if (argc > 1 && strcmp(argv[1], "-server") == 0)
         new QCoreApplication(argc, argv);
-    else if (argc > 1 && strcmp(argv[1], "-manual") == 0) {
+    else if (argc > 1 && strcmp(argv[1], "-manual") == 0)
+    {
         new QCoreApplication(argc, argv);
         Sanguosha = new Engine(true);
         return 0;
-    } else
+    }
+    else
         new QApplication(argc, argv);
 
     QCoreApplication::addLibraryPath(QCoreApplication::applicationDirPath() + "/plugins");
@@ -52,9 +73,11 @@ int main(int argc, char *argv[])
 
 #ifdef Q_OS_LINUX
     static QDir dir("lua");
-    if (dir.exists() && (dir.exists("config.lua"))) {
+    if (dir.exists() && (dir.exists("config.lua")))
+    {
         // things look good and use current dir
-    } else
+    }
+    else
         QDir::setCurrent(qApp->applicationFilePath().replace("games", "share"));
 #endif
 
@@ -73,13 +96,15 @@ int main(int argc, char *argv[])
     qApp->setFont(Config.AppFont);
     BanPair::loadBanPairs();
 
-    if (qApp->arguments().contains("-server")) {
+    if (qApp->arguments().contains("-server"))
+    {
         Server *server = new Server(qApp);
         printf("Server is starting on port %u\n", Config.ServerPort);
 
         if (server->listen())
             printf("Starting successfully\n");
-        else {
+        else
+        {
             delete server;
             printf("Starting failed!\n");
         }
@@ -88,7 +113,8 @@ int main(int argc, char *argv[])
     }
 
     static QFile file("qss/sanguosha.qss");
-    if (file.open(QIODevice::ReadOnly)) {
+    if (file.open(QIODevice::ReadOnly))
+    {
         QTextStream stream(&file);
         qApp->setStyleSheet(stream.readAll());
     }
@@ -99,15 +125,18 @@ int main(int argc, char *argv[])
 
 #ifdef AUDIO_SUPPORT
     Audio::init();
-	Config.FrontBGMVolume = Config.value("FrontBGMVolume", 1.0f).toFloat();
-	if (Config.FrontBGMVolume>0&&QFile::exists("audio/system/BGM/front-bgm.ogg")){
-		Audio::playBGM("audio/system/BGM/front-bgm.ogg");
-		Audio::setBGMVolume(Config.FrontBGMVolume);
-	}
+    Config.FrontBGMVolume = Config.value("FrontBGMVolume", 1.0f).toFloat();
+    if (Config.FrontBGMVolume > 0 && QFile::exists("audio/system/BGM/front-bgm.ogg"))
+    {
+        Audio::playBGM("audio/system/BGM/front-bgm.ogg");
+        Audio::setBGMVolume(Config.FrontBGMVolume);
+    }
 #endif
 
-    foreach (QString arg, qApp->arguments()) {
-        if (arg.startsWith("-connect:")) {
+    foreach (QString arg, qApp->arguments())
+    {
+        if (arg.startsWith("-connect:"))
+        {
             arg.remove("-connect:");
             Config.HostAddress = arg;
             Config.setValue("HostAddress", arg);

@@ -9,6 +9,9 @@ local AILogger = require "ai.ai-debug-logger"
 local logger = AILogger
 logger:init()
 
+-- AI Mistake System Integration
+require "ai.ai-mistake"
+
 -- Global error handler
 local original_error = error
 _G.AI_DEBUG_MODE = true -- Set to false to disable logging
@@ -123,6 +126,12 @@ do
 	sgs.playerRoles = {lord=0,loyalist=0,rebel=0,renegade=0}
 	sgs.aiData = {drawData={},convertData={},damageData={},throwData={}}
 	
+	-- Performance optimization: caching
+	sgs.qlist_cache = {}
+	sgs.qlist_cache_time = 0
+	sgs.defense_cache = {}
+	sgs.defense_cache_time = 0
+	
 	sgs.ai_type_name = {"SkillCard","BasicCard","TrickCard","EquipCard"}
 	
 	sgs.lose_equip_skill = "kofxiaoji|xiaoji|xuanfeng|nosxuanfeng|tenyearxuanfeng|mobilexuanfeng"
@@ -186,6 +195,18 @@ do
 	sgs.hit_skill = "wushuang|fuqi|tenyearfuqi|zhuandui|tieji|nostieji|dahe|olqianxi|qianxi|tenyearjianchu|oljianchu|"..
 					"wenji|tenyearbenxi|mobileliyong|olwushen|tenyearliegong|liegong|kofliegong|tenyearqingxi|wanglie|"..
 					"conqueror|zhaxiang|tenyearyijue|yijue|xiongluan|xiying|"
+		
+	-- Performance: Function to get pre-split skill list
+	function sgs.getSkillList(skill_string_name)
+		local cache_name = skill_string_name .. "_list"
+		if not sgs[cache_name] then
+			local skill_string = sgs[skill_string_name]
+			if skill_string then
+				sgs[cache_name] = skill_string:split("|")
+			end
+		end
+		return sgs[cache_name] or {}
+	end
 	
 	sgs.Friend_All = 0
 	sgs.Friend_Draw = 1
@@ -330,7 +351,47 @@ function SmartAI:initialize(player)
 	self:updatePlayers(false)
 end
 
+-- Performance: Cached qlist conversion
+function sgs.qlist_cached(qlist_obj, cache_key)
+	if not cache_key then
+		return sgs.QList2Table(qlist_obj)
+	end
+	
+	local current_time = os.time()
+	if sgs.qlist_cache_time ~= current_time then
+		-- Clear cache every second to avoid stale data
+		sgs.qlist_cache = {}
+		sgs.qlist_cache_time = current_time
+	end
+	
+	if not sgs.qlist_cache[cache_key] then
+		sgs.qlist_cache[cache_key] = sgs.QList2Table(qlist_obj)
+	end
+	return sgs.qlist_cache[cache_key]
+end
+
+-- Performance: Helper to get cached alive players for current room
+function sgs.getCachedAlivePlayers()
+	if not global_room then return {} end
+	return sgs.qlist_cached(global_room:getAlivePlayers(), "global_alive_players")
+end
+
+-- Performance: Helper to get cached all players for current room
+function sgs.getCachedAllPlayers()
+	if not global_room then return {} end
+	return sgs.qlist_cached(global_room:getPlayers(), "global_all_players")
+end
+
 function sgs.getPlayerSkillList(player)
+	-- Cache key for skill list
+	local cache_key = "skills_" .. player:objectName()
+	local current_time = os.time()
+	
+	-- Use cached result if available and fresh
+	if sgs.qlist_cache_time == current_time and sgs.qlist_cache[cache_key] then
+		return sgs.qlist_cache[cache_key]
+	end
+	
 	local skills = {}
 	for _,skill in sgs.qlist(player:getSkillList(true))do
 		if skill:isLordSkill() then if player:hasLordSkill(skill) then table.insert(skills,skill) end
@@ -344,6 +405,12 @@ function sgs.getPlayerSkillList(player)
 			end
 		end
 	end
+	
+	-- Cache the result
+	if sgs.qlist_cache_time == current_time then
+		sgs.qlist_cache[cache_key] = skills
+	end
+	
 	return skills
 end
 
@@ -377,6 +444,23 @@ function sgs.getDefense(player,start)--状态值
 	if start~=true or not sgs.ai_humanized or sgs.turncount<1 then
 		return sgs.getValue(player)+sgs.defense[player:objectName()]
 	end
+	
+	-- Performance: Use cache for defense calculation
+	local player_name = player:objectName()
+	local current_time = os.time()
+	local cache_key = player_name .. "_" .. sgs.turncount
+	
+	if sgs.defense_cache_time == current_time and sgs.defense_cache[cache_key] then
+		return sgs.defense_cache[cache_key]
+	end
+	
+	-- Clear cache if time changed
+	if sgs.defense_cache_time ~= current_time then
+		sgs.defense_cache = {}
+		sgs.defense_cache_time = current_time
+	end
+	
+	-- Pre-compute aggregated data once per call
 	local drawData = {}	
 	for t,st in pairs(sgs.aiData.drawData)do
 		drawData[t] = gdt(st)
@@ -425,11 +509,12 @@ function sgs.getDefense(player,start)--状态值
 			if c:getTypeId()<1 or c:isVirtualCard() then defense = defense-n break end
 		end
 	end
-	for _,masochism in ipairs(sgs.masochism_skill:split("|"))do
+	-- Performance: Use pre-split skill lists
+	for _,masochism in ipairs(sgs.getSkillList("masochism_skill"))do
 		if player:hasSkill(masochism) --and current_self:isGoodHp(player)
 		then defense = defense+1 end
 	end
-	for _,exclusive in ipairs(sgs.exclusive_skill:split("|"))do
+	for _,exclusive in ipairs(sgs.getSkillList("exclusive_skill"))do
 		if player:hasSkill(exclusive) --and current_self:isWeak(player)
 		then defense = defense+3 end
 	end
@@ -484,6 +569,12 @@ function sgs.getDefense(player,start)--状态值
 	if drawData then
 		defense = defense+(player:aliveCount()-(player:getSeat()-drawData:getSeat())%player:aliveCount())/4
 	end
+	
+	-- Cache the result
+	if sgs.defense_cache_time == current_time then
+		sgs.defense_cache[cache_key] = defense
+	end
+	
 	return defense
 end
 
@@ -1289,10 +1380,9 @@ function sgs.updateIntention(from,to,level)
 				end
 			end
 		end
-		for i,p in sgs.qlist(global_room:getAlivePlayers())do
-			sgs.ais[p:objectName()]:updatePlayers(i<1)
-		end
-		outputRoleValues(from,level)
+		-- Performance: Use cached alive players
+		local alive_players = sgs.getCachedAlivePlayers()
+		for i,p in ipairs(alive_players)do
 	end
 end
 
@@ -1303,7 +1393,9 @@ function sgs.updateIntentions(from,tos,intention)
 end
 
 function sgs.isLordHealthy()
-	for _,p in sgs.qlist(global_room:getAlivePlayers())do
+	-- Performance: Use cached alive players
+	local alive_players = sgs.getCachedAlivePlayers()
+	for _,p in ipairs(alive_players)do
 		if p:getRole()=="lord" then
 			local lord_hp = p:getHp()
 			if lord_hp>4 and p:hasSkill("benghuai") then lord_hp = 4 end
@@ -1314,7 +1406,9 @@ end
 end
 
 function sgs.isLordInDanger()
-	for _,p in sgs.qlist(global_room:getAlivePlayers())do
+	-- Performance: Use cached alive players
+	local alive_players = sgs.getCachedAlivePlayers()
+	for _,p in ipairs(alive_players)do
 		if p:getRole()=="lord" then
 			local lord_hp = p:getHp()
 			if lord_hp>4 and p:hasSkill("benghuai")
@@ -1339,7 +1433,9 @@ function sgs.gameProcess(arg,update)
 		else sgs.ai_gameProcess = "rebel" return "rebel" end
 	end
 	local diff = (sgs.playerRoles.loyalist+1-sgs.playerRoles.rebel)*3
-	for _,ap in sgs.qlist(global_room:getAlivePlayers())do
+	-- Performance: Use cached alive players
+	local alive_players = sgs.getCachedAlivePlayers()
+	for _,ap in ipairs(alive_players)do
 		local role = sgs.ai_role[ap:objectName()]--ap:getRole()
 		local hp = ap:getHp()
 		if hp>4 and ap:hasSkill("benghuai") then hp = 4 end
@@ -1593,7 +1689,9 @@ end
 function SmartAI:getFriends(player,no_self)
 	player = player or self.player
 	local friends = {}
-	for _,p in sgs.qlist(self.room:getAlivePlayers())do
+	-- Performance: Use cached alive players
+	local alive_players = sgs.qlist_cached(self.room:getAlivePlayers(), "alive_players_friends")
+	for _,p in ipairs(alive_players)do
 		if not(no_self and p~=player) and self:isFriend(p,player)
 		then table.insert(friends,p) end
 	end
@@ -1603,7 +1701,9 @@ end
 function SmartAI:getEnemies(player)
 	player = player or self.player
 	local enemies = {}
-	for _,p in sgs.qlist(self.room:getAlivePlayers())do
+	-- Performance: Use cached alive players
+	local alive_players = sgs.qlist_cached(self.room:getAlivePlayers(), "alive_players_enemies")
+	for _,p in ipairs(alive_players)do
 		if self:isEnemy(p,player) then table.insert(enemies,p) end
 	end
 	return enemies
@@ -1625,15 +1725,19 @@ function SmartAI:sortEnemies(players)
 end
 
 function updateAlivePlayerRoles()
-	for _,ap in sgs.qlist(global_room:getPlayers())do
+	-- Performance: Cache player lists
+	local all_players = sgs.qlist_cached(global_room:getPlayers(), "all_players")
+	local alive_players = sgs.qlist_cached(global_room:getAlivePlayers(), "alive_players")
+	
+	for _,ap in ipairs(all_players)do
 		sgs.playerRoles[ap:getRole()] = 0
 	end
-	for _,ap in sgs.qlist(global_room:getAlivePlayers())do
+	for _,ap in ipairs(alive_players)do
 		sgs.playerRoles[ap:getRole()] = sgs.playerRoles[ap:getRole()]+1
 	end
 end
 
-function SmartAI:updatePlayers(update)
+function SmartAI:updatePlayers(update)	
 	if self.role~=self.player:getRole() then
 		if self.player:getRole()~="lord" then
 			sgs.roleValue[self.player:objectName()]["loyalist"] = 0
@@ -1649,7 +1753,9 @@ function SmartAI:updatePlayers(update)
 	self.friends = {}
 	self.friends_noself = {}
 	if isRolePredictable(true) then
-		for _,p in sgs.qlist(self.room:getAlivePlayers())do
+		-- Performance: Use cached alive players
+		local alive_players = sgs.qlist_cached(self.room:getAlivePlayers(), "alive_players_" .. self.player:objectName())
+		for _,p in ipairs(alive_players)do
 			if self.lua_ai:isFriend(p) then
 				table.insert(self.friends,p)
 				if p~=self.player then table.insert(self.friends_noself,p) end
@@ -1669,7 +1775,8 @@ function SmartAI:updatePlayers(update)
 		elseif update~=false then evaluateAlivePlayersRole() end
 
 		local batch_size = 10  -- Define the batch size
-		local players = sgs.QList2Table(self.room:getAlivePlayers())
+		-- Performance: Use cached alive players
+		local players = sgs.qlist_cached(self.room:getAlivePlayers(), "alive_players_" .. self.player:objectName())
 
 		-- for i = 1, #players, batch_size do
 		-- 	local batch_end = math.min(i + batch_size - 1, #players)
@@ -1691,7 +1798,8 @@ function SmartAI:updatePlayers(update)
 		-- 	end
 		-- end
 		-- self.player:speak("UpdatePlayers:Crash")
-		for _,p in sgs.qlist(self.room:getAlivePlayers())do
+		-- Performance: Reuse already cached player list
+		for _,p in ipairs(players)do
 			local n = self:objectiveLevel(p)
 			if n<0 then
 				table.insert(self.friends,p)
@@ -1958,27 +2066,44 @@ sgs.ai_damage_from_flag_intention["ShenfenUsing"] = 10
 sgs.ai_damage_from_flag_intention["FenchengUsing"] = 10
 
 function SmartAI:filterEvent(event,player,data)
+	-- Validate input parameters to prevent crashes
+	if not event or not player or not data then
+		if _G.AI_DEBUG_MODE then
+			logger:logError("SmartAI:filterEvent", "Invalid parameters", {
+				event = event,
+				player = player and "valid" or "nil",
+				data = data and "valid" or "nil"
+			})
+		end
+		return
+	end
+	
 	-- Protect event filtering with error handling
 	if _G.AI_DEBUG_MODE then
+		local player_name_success, player_name = pcall(function() return player:getGeneralName() end)
+		local data_str_success, data_str = pcall(function() return data:toString() end)
 		local stackIndex = logger:logFunctionEntry("SmartAI:filterEvent", {
 			event = event,
-			player = player:getGeneralName(),
-			data = data:toString()
+			player = player_name_success and player_name or "unknown",
+			data = data_str_success and data_str or "unknown"
 		})
 	end
 	
 	-- Wrap the entire function body in pcall for safety
 	local success, error_msg = pcall(function()
 		sgs.filterData[event] = data
-		for _,callback in pairs(sgs.ai_event_callback[event])do
-			-- Protected callback execution
-			if type(callback) == "function" then
-				local cb_success, cb_error = pcall(callback, self, player, data)
-				if not cb_success and _G.AI_DEBUG_MODE then
-					logger:logError("Event Callback", cb_error, {
-						event = event,
-						player = player:getGeneralName()
-					})
+		-- Check if event callbacks exist before iterating
+		if sgs.ai_event_callback[event] and type(sgs.ai_event_callback[event]) == "table" then
+			for _,callback in pairs(sgs.ai_event_callback[event])do
+				-- Protected callback execution
+				if type(callback) == "function" then
+					local cb_success, cb_error = pcall(callback, self, player, data)
+					if not cb_success and _G.AI_DEBUG_MODE then
+						logger:logError("Event Callback", cb_error, {
+							event = event,
+							player = player:getGeneralName()
+						})
+					end
 				end
 			end
 		end
@@ -2335,10 +2460,15 @@ function SmartAI:filterEvent(event,player,data)
 	end) -- End of pcall wrapper for filterEvent
 	
 	if not success and _G.AI_DEBUG_MODE then
+		local player_name = "unknown"
+		local data_str = "unknown"
+		pcall(function() player_name = player:getGeneralName() end)
+		pcall(function() data_str = data:toString() end)
+		
 		logger:logError("SmartAI:filterEvent", error_msg, {
 			event = event,
-			player = player:getGeneralName(),
-			data_str = data:toString()
+			player = player_name,
+			data_str = data_str
 		})
 		logger:logFunctionExit("SmartAI:filterEvent", nil, false)
 	elseif _G.AI_DEBUG_MODE then
@@ -2415,6 +2545,17 @@ function SmartAI:askForSkillInvoke(skill_name,data)
 		invoke = sgs.Sanguosha:getSkill(skill_name)
 		invoke = invoke and invoke:getFrequency()==sgs.Skill_Frequent
 	end
+	
+	-- AI失误系统：可能跳过应该使用的技能
+	if invoke and self.mistakeSkipSkill then
+		invoke = self:mistakeSkipSkill(skill_name, invoke)
+	end
+	
+	-- AI失误系统：可能错误使用不该使用的技能
+	if not invoke and self.mistakeUseSkill then
+		invoke = self:mistakeUseSkill(skill_name, invoke)
+	end
+	
 	if sgs.jl_bingfen and math.random()>0.8 then
 		if jl_bingfen1 and math.random()>0.6
 		then self.player:speak(jl_bingfen1[math.random(1,#jl_bingfen1)]) end
@@ -2482,18 +2623,32 @@ function SmartAI:askForDiscard(reason,max_num,min_num,optional,equiped,pattern)
 			end
 		end
 		local temp = {}
-		for _,c in ipairs(self:sortByKeepValue(callback,nil,not exchange and "j"))do
-			if #to_discard>=min_num or table.contains(to_discard,c:getId()) then continue end
-			if sgs.Sanguosha:matchExpPattern(pattern,self.player,c) then
-				if self.player:hasEquip(c) and self:loseEquipEffect() or self:getUseValue(c)<6
-				then table.insert(to_discard,c:getId()) else table.insert(temp,c:getId()) end
+		local sorted_cards = self:sortByKeepValue(callback,nil,not exchange and "j")
+		
+		-- AI失误系统：可能弃错牌
+		if self.mistakeDiscardCards and min_num > 0 then
+			local mistake_cards = self:mistakeDiscardCards(sorted_cards, min_num - #to_discard)
+			for _, c in ipairs(mistake_cards) do
+				if #to_discard >= min_num then break end
+				if not table.contains(to_discard, c:getId()) then
+					table.insert(to_discard, c:getId())
+				end
 			end
-		end
+		else
+			-- 正常弃牌逻辑
+			for _,c in ipairs(sorted_cards)do
+				if #to_discard>=min_num or table.contains(to_discard,c:getId()) then continue end
+				if sgs.Sanguosha:matchExpPattern(pattern,self.player,c) then
+					if self.player:hasEquip(c) and self:loseEquipEffect() or self:getUseValue(c)<6
+					then table.insert(to_discard,c:getId()) else table.insert(temp,c:getId()) end
+				end
+			end
 			for _,id in ipairs(temp)do
 				if #to_discard>=min_num or table.contains(to_discard,id) then continue end
 				table.insert(to_discard,id)
 			end
 		end
+	end
 	return to_discard
 end
 
@@ -2567,6 +2722,12 @@ function SmartAI:askForNullification(trick,from,to,positive)
 	if trick:isDamageCard() and positive then
 		if self:needToLoseHp(to,from,trick)
 		or self:canDamageHp(from,trick,to) then
+			-- 检查队友失误：可能因失误而不为受益队友无懈
+			if self:isFriend(to) and self.mistakeFriendlyFire 
+			and not self:mistakeFriendlyFire(to, 1, trick) then
+				-- 失误触发：本应无懈保护受益队友，但失误了
+				return nil
+			end
 			if math.random()>=1/self.null_num
 			and from~=self.player and self:isEnemy(to)
 			and not self:isWeak(to) then
@@ -4078,6 +4239,14 @@ function SmartAI:getTurnUse()
 	for idx, c in ipairs(sortedCards) do
 		-- Additional safety check
 		if c then
+			-- AI失误：如果标记了跳过斩杀，且当前卡是杀，则跳过
+			if self.player:getMark("ai_skip_kill-Clear") > 0 and c:isKindOf("Slash") then
+				if logger then 
+					logger:writeLog("DEBUG", "getTurnUse: Skipping Slash due to miss lethal mistake") 
+				end
+				continue
+			end
+			
 			if logger and idx % 5 == 1 then -- Log every 5 cards to avoid spam
 				local cardStr = "unknown"
 				local cardStrSuccess, cardStrResult = pcall(function() return c:toString() end)
@@ -4271,6 +4440,29 @@ function SmartAI:activate(use)
 		})
 	end
 	
+	-- AI失误系统：检查是否故意错过斩杀机会
+	if self.shouldMakeSafeMistake and self.player:getMark("ai_skip_kill-Clear") == 0 then
+		for _, enemy in ipairs(self.enemies) do
+			-- 只检查敌人血量很低(<=2)且有杀牌的情况
+			if enemy:getHp() <= 2 and self:getCardsNum("Slash") > 0 then
+				for _,slash in ipairs(self:getCards("Slash"))do
+					-- 简单检查：杀有效且敌人血量低就有斩杀机会
+					if self:slashIsEffective(slash, enemy) and not self:slashProhibit(slash, enemy) and self:damageIsEffective(enemy,slash,self.player) then
+						-- 如果决定犯错，标记本回合跳过斩杀
+						if self:shouldMakeSafeMistake(sgs.ai_mistake_type.MISS_LETHAL) then
+							self.player:setMark("ai_skip_kill-Clear", 1)
+							if logAIMistake then
+								logAIMistake(self.player, sgs.ai_mistake_type.MISS_LETHAL, 
+									string.format("故意错过斩杀 %s", enemy:screenName()))
+							end
+						end
+						break
+					end
+				end
+			end
+		end
+	end
+	
 	-- Step 1: Handle debug file writing
 	if sgs.aiHandCardVisible then
 		if logger then logger:writeLog("DEBUG", "activate: Writing to debug file") end
@@ -4330,6 +4522,39 @@ function SmartAI:activate(use)
 		local success, err = pcall(function()
 			use.to = self.use_to[c:toString()]
 			if logger then logger:writeLog("DEBUG", "activate: Set use.to") end
+			
+			-- AI失误系统：可能修改用牌目标
+			if use.to and use.to:length() > 0 and self.shouldMakeSafeMistake then
+				if self:shouldMakeSafeMistake(sgs.ai_mistake_type.WRONG_TARGET) then
+					local original_target = use.to:first()
+					local all_valid_targets = sgs.SPlayerList()
+					
+					-- 收集所有合法目标
+					for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+						if p ~= self.player and not self.room:isProhibited(self.player, p, c) then
+							all_valid_targets:append(p)
+						end
+					end
+					
+					-- 尝试选择次优目标（会自动过滤同阵营、敌对真人等）
+					if all_valid_targets:length() > 1 then
+						local targets_table = {}
+						for _, p in sgs.qlist(all_valid_targets) do
+							table.insert(targets_table, p)
+						end
+						
+						local new_target = self:chooseSuboptimalTarget(original_target, targets_table, "card_use")
+						if new_target ~= original_target then
+							-- 修改目标
+							use.to = sgs.SPlayerList()
+							use.to:append(new_target)
+							if logger then 
+								logger:writeLog("DEBUG", "activate: Changed card target due to mistake") 
+							end
+						end
+					end
+				end
+			end
 			
 			use.card = c
 			if logger then logger:writeLog("DEBUG", "activate: Set use.card") end
@@ -6379,8 +6604,13 @@ function SmartAI:findPlayerToDamage(damage,player,nature,targets,base_value,card
 					return -999  -- Protected friend, don't damage
 				end
 				-- Only damage friends if they benefit from it
-				if not self:needToLoseHp(target,player,card,true) then
+				local need_lose = self:needToLoseHp(target,player,card,true)
+				if not need_lose then
 					return -999  -- Friend doesn't benefit from damage
+				end
+				-- 检查队友失误：即使队友受益，也可能因失误而打死队友
+				if self.mistakeFriendlyFire and not self:mistakeFriendlyFire(target, damage, card) then
+					return -999  -- 失误触发：为避免打死队友而不造成伤害
 				end
 			end
 		end
@@ -6467,6 +6697,23 @@ function SmartAI:findPlayerToDamage(damage,player,nature,targets,base_value,card
 		if bcv[p:objectName()]>base_value
 		then table.insert(result,p) end
 	end
+	
+	-- AI失误系统：可能选择次优目标
+	if #result > 1 and self.chooseSuboptimalTarget then
+		local optimal = result[1]
+		local chosen = self:chooseSuboptimalTarget(optimal, result, "damage_target")
+		if chosen ~= optimal then
+			-- 将选中的目标移到第一位
+			for i, p in ipairs(result) do
+				if p == chosen then
+					table.remove(result, i)
+					table.insert(result, 1, chosen)
+					break
+				end
+			end
+		end
+	end
+	
 	return result
 end
 
@@ -7080,7 +7327,16 @@ function SmartAI:canDamage(to,from,slash)
 	to = to or self.player
 	if not self:damageIsEffective(to,slash,from) then return false
 	elseif self:isEnemy(to) then return not(self:needToLoseHp(to,from,slash,true) or self:isFriend(from) and self:cantbeHurt(to,from))
-	elseif self:isFriend(to) then return self:needToLoseHp(to,from,slash,true) else return true end
+	elseif self:isFriend(to) then
+		-- 检查队友失误：可能因失误而伤害队友
+		local should_damage = self:needToLoseHp(to,from,slash,true)
+		if should_damage and self.mistakeFriendlyFire 
+		and not self:mistakeFriendlyFire(to, 1, slash) then
+			-- 失误触发：计算错误，可能打死队友
+			return false
+		end
+		return should_damage
+	else return true end
 end
 
 function SmartAI:findPlayerToLoseHp(must)
