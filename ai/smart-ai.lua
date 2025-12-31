@@ -131,7 +131,7 @@ do
 	sgs.qlist_cache_time = 0
 	sgs.defense_cache = {}
 	sgs.defense_cache_time = 0
-	
+
 	sgs.ai_type_name = {"SkillCard","BasicCard","TrickCard","EquipCard"}
 	
 	sgs.lose_equip_skill = "kofxiaoji|xiaoji|xuanfeng|nosxuanfeng|tenyearxuanfeng|mobilexuanfeng"
@@ -195,18 +195,6 @@ do
 	sgs.hit_skill = "wushuang|fuqi|tenyearfuqi|zhuandui|tieji|nostieji|dahe|olqianxi|qianxi|tenyearjianchu|oljianchu|"..
 					"wenji|tenyearbenxi|mobileliyong|olwushen|tenyearliegong|liegong|kofliegong|tenyearqingxi|wanglie|"..
 					"conqueror|zhaxiang|tenyearyijue|yijue|xiongluan|xiying|"
-		
-	-- Performance: Function to get pre-split skill list
-	function sgs.getSkillList(skill_string_name)
-		local cache_name = skill_string_name .. "_list"
-		if not sgs[cache_name] then
-			local skill_string = sgs[skill_string_name]
-			if skill_string then
-				sgs[cache_name] = skill_string:split("|")
-			end
-		end
-		return sgs[cache_name] or {}
-	end
 	
 	sgs.Friend_All = 0
 	sgs.Friend_Draw = 1
@@ -294,17 +282,6 @@ function SmartAI:initialize(player)
 		end
 	end
 	
-	-- Add helper method to list available methods for debugging
-	self.getAvailableMethods = function()
-		local methods = {}
-		for k, v in pairs(self) do
-			if type(v) == "function" then
-				table.insert(methods, k)
-			end
-		end
-		return methods
-	end
-	
 	if self.room:getTag("initialized"):toBool()~=true then
 		sgs.defense = {}
 		sgs.drawData = {}
@@ -351,7 +328,13 @@ function SmartAI:initialize(player)
 	self:updatePlayers(false)
 end
 
--- Performance: Cached qlist conversion
+	
+-- Function to invalidate qlist cache
+function sgs.invalidate_qlist_cache()
+	sgs.qlist_cache = {}
+	sgs.qlist_cache_time = 0
+end
+
 function sgs.qlist_cached(qlist_obj, cache_key)
 	if not cache_key then
 		return sgs.QList2Table(qlist_obj)
@@ -412,6 +395,18 @@ function sgs.getPlayerSkillList(player)
 	end
 	
 	return skills
+end
+
+-- Performance: Function to get pre-split skill list
+function sgs.getSkillList(skill_string_name)
+	local cache_name = skill_string_name .. "_list"
+	if not sgs[cache_name] then
+		local skill_string = sgs[skill_string_name]
+		if skill_string then
+			sgs[cache_name] = skill_string:split("|")
+		end
+	end
+	return sgs[cache_name] or {}
 end
 
 function sgs.getCardNumAtCertainPlace(card,place)
@@ -2122,6 +2117,8 @@ function SmartAI:filterEvent(event,player,data)
 				if de.damage.transfer or de.damage.chain then intention = intention/3 end
 				sgs.updateIntention(player,de.who,intention)
 			end
+			-- Invalidate qlist cache when player dies
+			sgs.invalidate_qlist_cache()
 		elseif event==sgs.BeforeGameOverJudge or event==sgs.Revived then
 			for i,p in sgs.qlist(self.room:getAlivePlayers())do
 				sgs.ais[p:objectName()]:updatePlayers(i<1)
