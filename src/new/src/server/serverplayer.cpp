@@ -32,14 +32,29 @@ ServerPlayer::ServerPlayer(Room *room)
 	onsole_owner = this;
 }
 
+// 析構函數修復
 ServerPlayer::~ServerPlayer()
 {
-	for (int i = 0; i < S_NUM_SEMAPHORES; i++)
-		delete semas[i];
-	delete[] semas;
-	delete trust_ai;
-}
+	if (semas)
+	{
+		for (int i = 0; i < S_NUM_SEMAPHORES; i++)
+		{
+			if (semas[i])
+				delete semas[i];
+		}
+		delete[] semas;
+		semas = nullptr; // 防止 double free
+	}
 
+	if (trust_ai)
+	{
+		delete trust_ai;
+		trust_ai = nullptr;
+	}
+
+	// socket 通常由父物件 (QObject) 管理，但如果是我們手動 new 的且沒有 parent，這裡要小心
+	// 您的 setSocket 代碼看起來有處理 deleteLater，這部分還好。
+}
 /*void ServerPlayer::drawCard(const Card *card)
 {
 	handcards << card;
@@ -323,6 +338,10 @@ qint64 ServerPlayer::endNetworkDelayTest()
 
 void ServerPlayer::startRecord()
 {
+	if (recorder)
+	{
+		delete recorder; // 刪除舊的
+	}
 	recorder = new Recorder(this);
 }
 
@@ -1070,6 +1089,13 @@ AI *ServerPlayer::getAI() const
 		return nullptr;
 	else if (!Config.EnableCheat && getState() == "trust")
 		return trust_ai;
+
+	// [新增] 檢查 ai 指標是否真的有效
+	if (ai == nullptr)
+	{
+		return trust_ai; // 如果 AI 為空，降級使用 trust_ai (託管AI) 防止崩潰
+	}
+
 	return ai;
 }
 
@@ -1511,28 +1537,28 @@ void ServerPlayer::addToNamedPile(QList<int> card_ids, const QString &pile_name,
 		pile << id;
 	}
 	room->setTag(pile_name, pile);
-	
+
 	CardsMoveStruct move2;
 	move2.card_ids = card_ids;
 	move2.to = nullptr;
 	move2.to_place = PlaceTable;
 	move2.reason = CardMoveReason(CardMoveReason::S_REASON_RECYCLE, objectName(), skill_name, "add" + pile_name);
 	move2.to_pile_name = pile_name;
-	
+
 	// Store display name in room tag for UI to use
 	room->setTag(pile_name + "_display", pile_display_name);
-	
+
 	QList<CardsMoveStruct> moves;
 	moves << move1;
 	moves << move2;
-	
+
 	// Send visible move to players who can see
 	if (!open_players.isEmpty() && open_players.length() < room->getAlivePlayers().length())
 	{
 		// Send to players who can see (with card details)
 		room->notifyMoveCards(true, moves, true, open_players);
 		room->notifyMoveCards(false, moves, true, open_players);
-		
+
 		// Send to players who cannot see (without card details)
 		QList<ServerPlayer *> blind_players;
 		foreach (ServerPlayer *p, room->getAlivePlayers())
@@ -1552,17 +1578,17 @@ void ServerPlayer::addToNamedPile(QList<int> card_ids, const QString &pile_name,
 		room->notifyMoveCards(true, moves, open);
 		room->notifyMoveCards(false, moves, open);
 	}
-	
+
 	// Trigger events manually since we're not using moveCardsAtomic
 	QVariant data = QVariant::fromValue(moves);
 	room->getThread()->trigger(BeforeCardsMove, room, this, data);
-	
+
 	// Actually move the cards
 	foreach (CardsMoveStruct &move, moves)
 	{
 		room->setCardTransferringPlace(move.card_ids, move.to_place);
 	}
-	
+
 	room->getThread()->trigger(CardsMoveOneTime, room, this, data);
 }
 
