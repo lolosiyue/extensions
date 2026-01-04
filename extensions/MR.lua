@@ -280,7 +280,6 @@ MR_simayi:addSkill(MR_jilveClear)
 MR_simayi:addSkill(MR_jilveMark)
 extension_MRmou:insertRelatedSkills("MR_jilve", "#MR_jilve-clear")
 extension_MRmou:insertRelatedSkills("MR_jilve", "#MR_jilveMark")
-if not sgs.Sanguosha:getSkill("MR_jilveMark") then skills:append(MR_jilveMark) end
 MR_simayi:addRelateSkill("tenyearjizhi")
 MR_simayi:addRelateSkill("guicai")
 MR_simayi:addRelateSkill("fangzhu")

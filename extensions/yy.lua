@@ -166,7 +166,7 @@ luanixi_tr = sgs.CreateTriggerSkill {
 			end
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				-- room:setPlayerChained(p, true)
-				room:setPlayerProperty(p, "kingdom", sgs.QVariant("wei"))
+				-- room:setPlayerProperty(p, "kingdom", sgs.QVariant("wei"))
 			end
 		end
 	end
@@ -295,7 +295,7 @@ debug_skill = sgs.CreateTriggerSkill{
 		end
 	end
 }
-
+extension:addSkills(debug_skill)
 
 
 sgs.LoadTranslationTable {

@@ -5225,8 +5225,8 @@ BYARLANT_C:addSkill(quzhu_clear)
 
 BANSHEE = sgs.General(extension, "BANSHEE", "EFSF", 4, false, false)
 
-mengshi = sgs.CreateTriggerSkill{
-	name = "mengshi",
+gaoda_mengshi = sgs.CreateTriggerSkill{
+	name = "gaoda_mengshi",
 	events = {sgs.TargetSpecified, sgs.EventPhaseStart},
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
@@ -5253,12 +5253,12 @@ mengshi = sgs.CreateTriggerSkill{
 	end
 }
 
-mengshislash = sgs.CreateTargetModSkill{
-	name = "#mengshislash",
+gaoda_mengshislash = sgs.CreateTargetModSkill{
+	name = "#gaoda_mengshislash",
 	pattern = "Slash",
 	residue_func = function(self, from)
-		if from:hasSkill("mengshi") then
-			return from:getMark("mengshi")
+		if from:hasSkill("gaoda_mengshi") then
+			return from:getMark("gaoda_mengshi")
 		else
 			return 0
 		end
@@ -5364,14 +5364,14 @@ baosang = sgs.CreateTriggerSkill{
 	end
 }
 
-BANSHEE:addSkill(mengshi)
-BANSHEE:addSkill(mengshislash)
+BANSHEE:addSkill(gaoda_mengshi)
+BANSHEE:addSkill(gaoda_mengshislash)
 BANSHEE:addSkill(NTD2)
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("baosang") then skills:append(baosang) end
 sgs.Sanguosha:addSkills(skills)
 BANSHEE:addRelateSkill("baosang")
-extension:insertRelatedSkills("mengshi", "#mengshislash")
+extension:insertRelatedSkills("gaoda_mengshi", "#gaoda_mengshislash")
 
 BANSHEE_NTD = sgs.General(extension, "BANSHEE_NTD", "EFSF", 4, false, true, true)
 
@@ -10188,9 +10188,9 @@ CFR:addSkill(liesha)
 
 PERFECT_STRIKE = sgs.General(extension, "PERFECT_STRIKE", "OMNI", 4, true, false)
 
-quanyu = sgs.CreateTriggerSkill
+gaoda_quanyu = sgs.CreateTriggerSkill
 {
-	name = "quanyu",
+	name = "gaoda_quanyu",
 	events = {sgs.EventPhaseStart, sgs.TargetSpecified, sgs.CardFinished},
 	can_trigger = function(self, player)
 		return player and player:isAlive() and player:hasSkill(self:objectName()) and player:getMark("@battery") > 0
@@ -10202,7 +10202,7 @@ quanyu = sgs.CreateTriggerSkill
 				room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
 				
 				local log = sgs.LogMessage()
-				log.type = "#quanyu_A"
+				log.type = "#gaoda_quanyu_A"
 				log.arg = self:objectName()
 				room:sendLog(log)
 				
@@ -10210,7 +10210,7 @@ quanyu = sgs.CreateTriggerSkill
 					player:loseMark("@battery")
 				end
 				player:drawCards(1)
-				if not room:askForUseCard(player, "slash", "@quanyu_A1") and not player:isKongcheng() then
+				if not room:askForUseCard(player, "slash", "@gaoda_quanyu_A1") and not player:isKongcheng() then
 					room:askForDiscard(player, self:objectName(), 1, 1, false, false)
 				end
 			end
@@ -10223,12 +10223,12 @@ quanyu = sgs.CreateTriggerSkill
 						
 						local _data = sgs.QVariant()
 						_data:setValue(p)
-						player:setTag("quanyu_S", _data)
+						player:setTag("gaoda_quanyu_S", _data)
 						
 						if p:isNude() then
-							choice = room:askForChoice(player, self:objectName(), "quanyu_S1+cancel", data)
+							choice = room:askForChoice(player, self:objectName(), "gaoda_quanyu_S1+cancel", data)
 						else
-							choice = room:askForChoice(player, self:objectName(), "quanyu_S1+quanyu_S2+cancel", data)
+							choice = room:askForChoice(player, self:objectName(), "gaoda_quanyu_S1+gaoda_quanyu_S2+cancel", data)
 						end
 						
 						if choice ~= "cancel" then
@@ -10248,14 +10248,14 @@ quanyu = sgs.CreateTriggerSkill
 						log.card_str = use.card:toString()
 						room:sendLog(log)
 						
-						player:setTag("quanyu_S", sgs.QVariant())
+						player:setTag("gaoda_quanyu_S", sgs.QVariant())
 						
-						if choice == "quanyu_S1" then
+						if choice == "gaoda_quanyu_S1" then
 							if player:hasSkill("dianhao") then
 								player:loseMark("@battery")
 							end
-							room:setCardFlag(use.card, "quanyu_S1: " .. p:objectName())
-						elseif choice == "quanyu_S2" then
+							room:setCardFlag(use.card, "gaoda_quanyu_S1: " .. p:objectName())
+						elseif choice == "gaoda_quanyu_S2" then
 							if player:hasSkill("dianhao") then
 								player:loseMark("@battery")
 							end
@@ -10267,12 +10267,12 @@ quanyu = sgs.CreateTriggerSkill
 			end
 		else
 			local use = data:toCardUse()
-			if use.card and use.card:isKindOf("EquipCard") and not player:hasFlag("quanyu_L1") and not player:hasFlag("quanyu_L2") and room:askForSkillInvoke(player, self:objectName(), sgs.QVariant("L")) then
+			if use.card and use.card:isKindOf("EquipCard") and not player:hasFlag("gaoda_quanyu_L1") and not player:hasFlag("gaoda_quanyu_L2") and room:askForSkillInvoke(player, self:objectName(), sgs.QVariant("L")) then
 				if player:hasSkill("dianhao") then
 					player:loseMark("@battery")
 				end
 				player:drawCards(1)
-				local choice = room:askForChoice(player, self:objectName(), "quanyu_L1+quanyu_L2", data)
+				local choice = room:askForChoice(player, self:objectName(), "gaoda_quanyu_L1+gaoda_quanyu_L2", data)
 				if choice then
 					room:broadcastSkillInvoke(self:objectName(), math.random(5, 6))
 				
@@ -10289,9 +10289,9 @@ quanyu = sgs.CreateTriggerSkill
 	end
 }
 
-quanyu_damage = sgs.CreateTriggerSkill
+gaoda_quanyu_damage = sgs.CreateTriggerSkill
 {
-	name = "#quanyu_damage",
+	name = "#gaoda_quanyu_damage",
 	events = {sgs.DamageCaused},
 	--global = true,
 	can_trigger = function(self, player)
@@ -10301,8 +10301,8 @@ quanyu_damage = sgs.CreateTriggerSkill
 		local room = player:getRoom()
 		local damage = data:toDamage()
 		if damage.chain or damage.transfer or (not damage.by_user) then return false end
-		if damage.card and damage.card:isKindOf("Slash") and damage.card:hasFlag("quanyu_S1: " .. damage.to:objectName()) then
-			room:sendCompulsoryTriggerLog(player, "quanyu")
+		if damage.card and damage.card:isKindOf("Slash") and damage.card:hasFlag("gaoda_quanyu_S1: " .. damage.to:objectName()) then
+			room:sendCompulsoryTriggerLog(player, "gaoda_quanyu")
 			local log = sgs.LogMessage()
 			log.type = "#tiexuedamage"
 			log.from = player
@@ -10317,19 +10317,19 @@ quanyu_damage = sgs.CreateTriggerSkill
 	end
 }
 
-quanyu_range = sgs.CreateAttackRangeSkill{
-	name = "#quanyu_range",
+gaoda_quanyu_range = sgs.CreateAttackRangeSkill{
+	name = "#gaoda_quanyu_range",
 	extra_func = function(self, player, include_weapon)
-		if player and player:hasFlag("quanyu_L1") then
+		if player and player:hasFlag("gaoda_quanyu_L1") then
 			return 1
 		end
 	end
 }
-quanyu_shoot = sgs.CreateTargetModSkill{
-	name = "#quanyu_shoot",
+gaoda_quanyu_shoot = sgs.CreateTargetModSkill{
+	name = "#gaoda_quanyu_shoot",
 	pattern = "Shoot,PierceShoot,SpreadShoot", -- 旧版："Slash",
 	residue_func = function(self, player)
-		if player and player:hasFlag("quanyu_L2") then
+		if player and player:hasFlag("gaoda_quanyu_L2") then
 			return 1
 		else
 			return 0
@@ -10355,12 +10355,12 @@ dianhao = sgs.CreateTriggerSkill{
 	end
 }
 
-PERFECT_STRIKE:addSkill(quanyu)
-PERFECT_STRIKE:addSkill(quanyu_damage)
-PERFECT_STRIKE:addSkill(quanyu_range)
-PERFECT_STRIKE:addSkill(quanyu_shoot)
+PERFECT_STRIKE:addSkill(gaoda_quanyu)
+PERFECT_STRIKE:addSkill(gaoda_quanyu_damage)
+PERFECT_STRIKE:addSkill(gaoda_quanyu_range)
+PERFECT_STRIKE:addSkill(gaoda_quanyu_shoot)
 PERFECT_STRIKE:addSkill(dianhao)
-extension:insertRelatedSkills("quanyu", "#quanyu_damage")
+extension:insertRelatedSkills("gaoda_quanyu", "#gaoda_quanyu_damage")
 
 PROVIDENCE = sgs.General(extension, "PROVIDENCE", "ZAFT", 4, true, false)
 
@@ -17826,9 +17826,9 @@ sgs.LoadTranslationTable{
 	["designer:BANSHEE"] = "wch5621628 & Sankies & NOS7IM",
 	["cv:BANSHEE"] = "普路十二",
 	["illustrator:BANSHEE"] = "wch5621628",
-	["mengshi"] = "猛狮",
-	[":mengshi"] = "当你使用一张<b>黑色</b>的【杀】指定一名角色为目标后，你可以将其装备区里的一张牌置于其手牌，若如此做，你于此阶段可额外使用一张【杀】。",
-	["#mengshislash"] = "猛狮",
+	["gaoda_mengshi"] = "猛狮",
+	[":gaoda_mengshi"] = "当你使用一张<b>黑色</b>的【杀】指定一名角色为目标后，你可以将其装备区里的一张牌置于其手牌，若如此做，你于此阶段可额外使用一张【杀】。",
+	["#gaoda_mengshislash"] = "猛狮",
 	["ntdtwo"] = "NT-D",
 	[":ntdtwo"] = "<img src=\"image/mark/@NTD2.png\"><b><font color='red'>限定技，</font></b>出牌阶段，你可以：减1点体力上限，展示你当前手牌，每有一张<b>黑色</b>牌，你可以视为使用一张【过河拆桥】，并获得技能<b>“报丧”</b>（当你成为一张非延时类锦囊牌的目标时，你可以将一张<b>黑色</b>手牌当【乐不思蜀】或【兵粮寸断】使用，并终止此牌结算）。",
 	["@NTD2"] = "NT-D",
@@ -17838,9 +17838,9 @@ sgs.LoadTranslationTable{
 	[":baosang"] = "当你成为一张非延时类锦囊牌的目标时，你可以将一张<b>黑色</b>手牌当【乐不思蜀】或【兵粮寸断】使用，并终止此牌结算。",
 	["@baosang"] = "请选择【%src】的目标角色",
 	["~baosang"] = "选择一张黑色手牌→选择目标→确定",
-	["$mengshi1"] = "敵は全て焼き払う",
-	["$mengshi2"] = "障害となる存在は破壊する",
-	["$mengshi3"] = "立ちはだかるつもりか!",
+	["$gaoda_mengshi1"] = "敵は全て焼き払う",
+	["$gaoda_mengshi2"] = "障害となる存在は破壊する",
+	["$gaoda_mengshi3"] = "立ちはだかるつもりか!",
 	["$ntdtwo1"] = "この光は、憎しみの光!",
 	["$ntdtwo2"] = "バンシィ…憎しみを流し込めぇ!!",
 	["$ntdtwo3"] = "私を救ってくれる光…誰にも奪わせはしない!",
@@ -18561,34 +18561,34 @@ sgs.LoadTranslationTable{
 	["designer:PERFECT_STRIKE"] = "高达杀制作组",
 	["cv:PERFECT_STRIKE"] = "穆·拉·弗拉加",
 	["illustrator:PERFECT_STRIKE"] = "wch5621628",
-	["quanyu"] = "全域",
-	[":quanyu"] = "若你拥有<b>“电池”</b>标记，你可发动以下效果：<br>\z
+	["gaoda_quanyu"] = "全域",
+	[":gaoda_quanyu"] = "若你拥有<b>“电池”</b>标记，你可发动以下效果：<br>\z
 <font color='#aa3845'>❶</font>准备或结束阶段开始时，你可以摸一张牌并选择一项：1.使用一张【杀】；2.弃置一张手牌。<font color='#aa3845'>&lt;翔翼&gt;</font><br>\z
 <font color='#6678c9'>❷</font>当你使用【杀】指定目标后，你可以选择一项：1.此【杀】对其造成的伤害+1；2.弃置其一张牌。<font color='#6678c9'>&lt;巨剑&gt;</font><br>\z
 <font color='#393f15'>❸</font>出牌阶段限一次，当你使用装备牌后，你可以摸一张牌并选择一项：1.此回合攻击范围+1；2.此阶段可额外使用一张【射击】。<font color='#393f15'>&lt;重砲&gt;</font>", -- 旧版：2.此阶段可额外使用一张【杀】。
-	["quanyu:A"] = "你想发动技能“全域” - <span style=\"background-color: white\"><font color='#aa3845'>&lt;翔翼&gt;</font></span>吗？",
-	["@quanyu_A1"] = "请使用一张【杀】，或点击取消以弃置一张手牌",
-	["quanyu:S"] = "你想对 %src 发动技能“全域” - <span style=\"background-color: white\"><font color='#6678c9'>&lt;巨剑&gt;</font></span>吗？",
-	["quanyu_S1"] = "此【杀】对其造成的伤害+1",
-	["quanyu_S2"] = "弃置其一张牌",
-	["quanyu:L"] = "你想发动技能“全域” - <span style=\"background-color: white\"><font color='#393f15'>&lt;重砲&gt;</font></span>吗？",
-	["quanyu_L1"] = "此回合攻击范围+1",
-	["quanyu_L2"] = "此阶段可额外使用一张【射击】", -- 旧版：此阶段可额外使用一张【杀】
+	["gaoda_quanyu:A"] = "你想发动技能“全域” - <span style=\"background-color: white\"><font color='#aa3845'>&lt;翔翼&gt;</font></span>吗？",
+	["@gaoda_quanyu_A1"] = "请使用一张【杀】，或点击取消以弃置一张手牌",
+	["gaoda_quanyu:S"] = "你想对 %src 发动技能“全域” - <span style=\"background-color: white\"><font color='#6678c9'>&lt;巨剑&gt;</font></span>吗？",
+	["gaoda_quanyu_S1"] = "此【杀】对其造成的伤害+1",
+	["gaoda_quanyu_S2"] = "弃置其一张牌",
+	["gaoda_quanyu:L"] = "你想发动技能“全域” - <span style=\"background-color: white\"><font color='#393f15'>&lt;重砲&gt;</font></span>吗？",
+	["gaoda_quanyu_L1"] = "此回合攻击范围+1",
+	["gaoda_quanyu_L2"] = "此阶段可额外使用一张【射击】", -- 旧版：此阶段可额外使用一张【杀】
 	["dianhao"] = "电耗",
 	[":dianhao"] = "<img src=\"image/mark/@battery.png\"><b><font color='blue'>锁定技，</font></b>游戏开始时，你获得5个<b>“电池”</b>标记；当你发动<b>“全域”</b>时，你失去1个<b>“电池”</b>；当你回复1点体力时，你获得1个<b>“电池”</b>（至多5个）。",
 	["@battery"] = "电池",
-	["#quanyu_A"] = "“%arg” - <span style=\"background-color: white\"><font color='#aa3845'>&lt;翔翼&gt;</font></span>",
-	["#quanyu_S1"] = "“%arg” - <span style=\"background-color: white\"><font color='#6678c9'>&lt;巨剑&gt;</font></span>：%card 对 %to 造成的伤害+1",
-	["#quanyu_S2"] = "“%arg” - <span style=\"background-color: white\"><font color='#6678c9'>&lt;巨剑&gt;</font></span>：%from 弃置 %to 一张牌",
-	["#quanyu_L1"] = "“%arg” - <span style=\"background-color: white\"><font color='#393f15'>&lt;重砲&gt;</font></span>：%from 此回合攻击范围+1",
-	["#quanyu_L2"] = "“%arg” - <span style=\"background-color: white\"><font color='#393f15'>&lt;重砲&gt;</font></span>：%from 此阶段可额外使用一张【射击】", -- 旧版：此阶段可额外使用一张【杀】
-	["$quanyu1"] = "呜→哮↗",
-	["$quanyu2"] = "我从未听过我会被打败。",
-	["$quanyu3"] = "你这家伙很难缠唷！",
-	["$quanyu4"] = "这就是你这家伙的目的吗！",
-	["$quanyu5"] = "我可是化不可能为可能的男人呢。",
-	["$quanyu6"] = "哦哦！真帅呢！",
-	["$quanyu7"] = "你这家伙……是劳·鲁·克鲁泽啊！",
+	["#gaoda_quanyu_A"] = "“%arg” - <span style=\"background-color: white\"><font color='#aa3845'>&lt;翔翼&gt;</font></span>",
+	["#gaoda_quanyu_S1"] = "“%arg” - <span style=\"background-color: white\"><font color='#6678c9'>&lt;巨剑&gt;</font></span>：%card 对 %to 造成的伤害+1",
+	["#gaoda_quanyu_S2"] = "“%arg” - <span style=\"background-color: white\"><font color='#6678c9'>&lt;巨剑&gt;</font></span>：%from 弃置 %to 一张牌",
+	["#gaoda_quanyu_L1"] = "“%arg” - <span style=\"background-color: white\"><font color='#393f15'>&lt;重砲&gt;</font></span>：%from 此回合攻击范围+1",
+	["#gaoda_quanyu_L2"] = "“%arg” - <span style=\"background-color: white\"><font color='#393f15'>&lt;重砲&gt;</font></span>：%from 此阶段可额外使用一张【射击】", -- 旧版：此阶段可额外使用一张【杀】
+	["$gaoda_quanyu1"] = "呜→哮↗",
+	["$gaoda_quanyu2"] = "我从未听过我会被打败。",
+	["$gaoda_quanyu3"] = "你这家伙很难缠唷！",
+	["$gaoda_quanyu4"] = "这就是你这家伙的目的吗！",
+	["$gaoda_quanyu5"] = "我可是化不可能为可能的男人呢。",
+	["$gaoda_quanyu6"] = "哦哦！真帅呢！",
+	["$gaoda_quanyu7"] = "你这家伙……是劳·鲁·克鲁泽啊！",
 	
 	["longqi"] = "龙骑",
 	["@longqi"] = "请观看一名其他角色的手牌并弃置其中一张<br>【闪】点数=%src<br>弃置点数%src的牌：对其造成1点伤害<br>弃置点数差为1的牌：重复此流程",
