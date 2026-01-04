@@ -30565,7 +30565,7 @@ sfofl_yanli = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local dying = data:toDying()
-		for _, p in sgs.qlist(room:findPlayerBySkillName(self:objectName())) do
+		for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
             if p:getMark("sfofl_yanli_lun") == 0 and p:getPhase() == sgs.Player_NotActive and room:askForSkillInvoke(p, self:objectName(), data) then
                 room:addPlayerMark(p, "sfofl_yanli_lun")
                 room:recover(player,sgs.RecoverStruct(self:objectName(),p, 1-player:getHp()))
@@ -30800,7 +30800,7 @@ sfofl_yaoli_buff = sgs.CreateTriggerSkill {
 	can_trigger = function(self, target)
 		return target and target:getMark("&sfofl_yaoli-Clear") > 0
 	end,
-	on_trigger = function(self, event, player, data)
+	on_trigger = function(self, event, player, data, room)
         local use = data:toCardUse()
         if use.card and use.card:isKindOf("Slash") then
             room:setPlayerMark(player, "&sfofl_yaoli-Clear", 0)

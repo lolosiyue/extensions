@@ -9,9 +9,6 @@ local AILogger = require "ai.ai-debug-logger"
 local logger = AILogger
 logger:init()
 
--- AI Mistake System Integration
-require "ai.ai-mistake"
-
 -- Global error handler
 local original_error = error
 _G.AI_DEBUG_MODE = true -- Set to false to disable logging
@@ -30,6 +27,9 @@ math.randomseed(os.time())
 
 -- SmartAI is the base class for all other specialized AI classes
 SmartAI = middleclass.class("SmartAI")
+
+-- AI Mistake System Integration
+require "ai.ai-mistake"
 
 local version = "QSanguosha AI 20141006 (V1.32 Alpha)"
 
@@ -1376,8 +1376,15 @@ function sgs.updateIntention(from,to,level)
 			end
 		end
 		-- Performance: Use cached alive players
+		-- Clear cache to ensure we have the latest alive player list
+		if sgs.qlist_cache then
+			sgs.qlist_cache["global_alive_players"] = nil
+		end
 		local alive_players = sgs.getCachedAlivePlayers()
 		for i,p in ipairs(alive_players)do
+			sgs.ais[p:objectName()]:updatePlayers(i<1)
+		end
+		outputRoleValues(from,level)
 	end
 end
 
@@ -1767,7 +1774,13 @@ function SmartAI:updatePlayers(update)
 		if sgs.GetConfig("RolePredictable",false) then
 			if sgs.ai_role[self.player:objectName()]~=self.player:getRole()
 			and self.player:getRole()~="lord" then self:adjustAIRole() end
-		elseif update~=false then evaluateAlivePlayersRole() end
+		elseif update~=false then 
+			-- Clear player cache before evaluating roles to ensure fresh data
+			if sgs.qlist_cache then
+				sgs.qlist_cache["alive_players_" .. self.player:objectName()] = nil
+			end
+			evaluateAlivePlayersRole() 
+		end
 
 		local batch_size = 10  -- Define the batch size
 		-- Performance: Use cached alive players
@@ -1817,41 +1830,104 @@ function evaluateAlivePlayersRole()
 	end
 	sgs.explicit_renegade = false
 	local rebel,loyalist,renegade = 0,0,0
-	local aps = sgs.QList2Table(global_room:getAlivePlayers())
+	-- Clear cache before getting fresh player list to ensure accurate role evaluation
+	if sgs.qlist_cache then
+		sgs.qlist_cache["global_alive_players"] = nil
+	end
+	local aps = sgs.getCachedAlivePlayers()
 	table.sort(aps,cmp)
+	
+	-- Debug: log playerRoles
+	global_room:writeToConsole("=== evaluateAlivePlayersRole Debug ===")
+	global_room:writeToConsole(string.format("playerRoles: loyalist=%d, rebel=%d, renegade=%d", 
+		sgs.playerRoles.loyalist or 0, sgs.playerRoles.rebel or 0, sgs.playerRoles.renegade or 0))
+	
+	-- First pass: assign roles to players who have shown their role
+	local shown_count = 0
 	for _,p in ipairs(aps)do
 		if p:hasShownRole() then
 			sgs.ai_role[p:objectName()] = p:getRole()
-			if p:getRole()=="lord" then sgs.ai_role[p:objectName()] = "loyalist" end
-		elseif sgs.playerRoles.rebel+sgs.playerRoles.loyalist<1 then
-			sgs.explicit_renegade = true
-			sgs.ai_role[p:objectName()] = "renegade"
-		elseif sgs.playerRoles.renegade+sgs.playerRoles.loyalist<1 then
-			sgs.ai_role[p:objectName()] = "rebel"
-			rebel = rebel+1
-		elseif sgs.roleValue[p:objectName()].loyalist>5
-		and sgs.playerRoles.loyalist>loyalist then
-			sgs.ai_role[p:objectName()] = "loyalist"
-			loyalist = loyalist+1
-		elseif sgs.playerRoles.renegade>renegade
-		and sgs.roleValue[p:objectName()].loyalist>-15
-		and sgs.roleValue[p:objectName()].renegade>10 then
-			sgs.explicit_renegade = sgs.roleValue[p:objectName()].renegade>(sgs.playerRoles.rebel<1 and 30 or 50)
-			sgs.ai_role[p:objectName()] = "renegade"
-			renegade = renegade+1
-		elseif sgs.roleValue[p:objectName()].loyalist<-10
-		and sgs.playerRoles.rebel>rebel then
-			sgs.ai_role[p:objectName()] = "rebel"
-			rebel = rebel+1
-		else
-			sgs.ai_role[p:objectName()] = "neutral"
-			if sgs.playerRoles.renegade>renegade and sgs.roleValue[p:objectName()].renegade>10 then
-				sgs.explicit_renegade = sgs.roleValue[p:objectName()].renegade>40
-				sgs.ai_role[p:objectName()] = "renegade"
+			if p:getRole()=="lord" then 
+				sgs.ai_role[p:objectName()] = "loyalist" 
+			elseif p:getRole()=="loyalist" then
+				loyalist = loyalist+1
+			elseif p:getRole()=="rebel" then
+				rebel = rebel+1
+			elseif p:getRole()=="renegade" then
 				renegade = renegade+1
 			end
+			shown_count = shown_count+1
+		else
+			sgs.ai_role[p:objectName()] = "neutral"
 		end
 	end
+	
+	global_room:writeToConsole(string.format("After 1st pass: loyalist=%d, rebel=%d, renegade=%d", loyalist, rebel, renegade))
+	
+	-- Second pass: assign roles based on roleValue for unknown players
+	for _,p in ipairs(aps)do
+		if p:hasShownRole() then continue end
+		
+		local loy_value = sgs.roleValue[p:objectName()].loyalist
+		local ren_value = sgs.roleValue[p:objectName()].renegade
+		
+		if sgs.playerRoles.rebel+sgs.playerRoles.loyalist<1 then
+			-- Only renegades left
+			sgs.explicit_renegade = true
+			sgs.ai_role[p:objectName()] = "renegade"
+			renegade = renegade+1
+			global_room:writeToConsole(p:getGeneralName().." -> renegade (only renegades left)")
+		elseif sgs.playerRoles.renegade+sgs.playerRoles.loyalist<1 then
+			-- Only rebels left
+			sgs.ai_role[p:objectName()] = "rebel"
+			rebel = rebel+1
+			global_room:writeToConsole(p:getGeneralName().." -> rebel (only rebels left)")
+		elseif loy_value>3 and sgs.playerRoles.loyalist>loyalist then
+			-- Clearly loyalist behavior
+			sgs.ai_role[p:objectName()] = "loyalist"
+			loyalist = loyalist+1
+			global_room:writeToConsole(p:getGeneralName().." -> loyalist (loy_value="..loy_value..")")
+		elseif loy_value<-5 and sgs.playerRoles.rebel>rebel then
+			-- Clearly rebel behavior
+			sgs.ai_role[p:objectName()] = "rebel"
+			rebel = rebel+1
+			global_room:writeToConsole(p:getGeneralName().." -> rebel (loy_value="..loy_value..")")
+		elseif sgs.playerRoles.renegade>renegade and loy_value>-15 and ren_value>8 then
+			-- Likely renegade behavior
+			sgs.explicit_renegade = ren_value>(sgs.playerRoles.rebel<1 and 25 or 40)
+			sgs.ai_role[p:objectName()] = "renegade"
+			renegade = renegade+1
+			global_room:writeToConsole(p:getGeneralName().." -> renegade (ren_value="..ren_value..")")
+		end
+	end
+	
+	global_room:writeToConsole(string.format("After 2nd pass: loyalist=%d, rebel=%d, renegade=%d", loyalist, rebel, renegade))
+	
+	-- Third pass: fill remaining slots based on relative values
+	for _,p in ipairs(aps)do
+		if sgs.ai_role[p:objectName()]~="neutral" or p:hasShownRole() then continue end
+		
+		local loy_value = sgs.roleValue[p:objectName()].loyalist
+		local ren_value = sgs.roleValue[p:objectName()].renegade
+		
+		if loyalist<sgs.playerRoles.loyalist and loy_value>0 then
+			sgs.ai_role[p:objectName()] = "loyalist"
+			loyalist = loyalist+1
+			global_room:writeToConsole(p:getGeneralName().." -> loyalist (3rd pass, loy_value="..loy_value..")")
+		elseif rebel<sgs.playerRoles.rebel and loy_value<0 then
+			sgs.ai_role[p:objectName()] = "rebel"
+			rebel = rebel+1
+			global_room:writeToConsole(p:getGeneralName().." -> rebel (3rd pass, loy_value="..loy_value..")")
+		elseif renegade<sgs.playerRoles.renegade and ren_value>5 then
+			sgs.ai_role[p:objectName()] = "renegade"
+			renegade = renegade+1
+			global_room:writeToConsole(p:getGeneralName().." -> renegade (3rd pass, ren_value="..ren_value..")")
+		end
+	end
+	
+	global_room:writeToConsole(string.format("After 3rd pass: loyalist=%d, rebel=%d, renegade=%d", loyalist, rebel, renegade))
+	global_room:writeToConsole("=== End evaluateAlivePlayersRole ===")
+
 	if rebel<sgs.playerRoles.rebel then
 		for _,p in ipairs(sgs.reverse(aps))do
 			if sgs.ai_role[p:objectName()]=="rebel"
@@ -2542,7 +2618,7 @@ function SmartAI:askForSkillInvoke(skill_name,data)
 		invoke = sgs.Sanguosha:getSkill(skill_name)
 		invoke = invoke and invoke:getFrequency()==sgs.Skill_Frequent
 	end
-	
+	--[[
 	-- AI失误系统：可能跳过应该使用的技能
 	if invoke and self.mistakeSkipSkill then
 		invoke = self:mistakeSkipSkill(skill_name, invoke)
@@ -2552,7 +2628,7 @@ function SmartAI:askForSkillInvoke(skill_name,data)
 	if not invoke and self.mistakeUseSkill then
 		invoke = self:mistakeUseSkill(skill_name, invoke)
 	end
-	
+	]]
 	if sgs.jl_bingfen and math.random()>0.8 then
 		if jl_bingfen1 and math.random()>0.6
 		then self.player:speak(jl_bingfen1[math.random(1,#jl_bingfen1)]) end
@@ -2621,7 +2697,7 @@ function SmartAI:askForDiscard(reason,max_num,min_num,optional,equiped,pattern)
 		end
 		local temp = {}
 		local sorted_cards = self:sortByKeepValue(callback,nil,not exchange and "j")
-		
+		--[[
 		-- AI失误系统：可能弃错牌
 		if self.mistakeDiscardCards and min_num > 0 then
 			local mistake_cards = self:mistakeDiscardCards(sorted_cards, min_num - #to_discard)
@@ -2644,6 +2720,18 @@ function SmartAI:askForDiscard(reason,max_num,min_num,optional,equiped,pattern)
 				if #to_discard>=min_num or table.contains(to_discard,id) then continue end
 				table.insert(to_discard,id)
 			end
+		end]]
+		-- 正常弃牌逻辑
+		for _,c in ipairs(sorted_cards)do
+			if #to_discard>=min_num or table.contains(to_discard,c:getId()) then continue end
+			if sgs.Sanguosha:matchExpPattern(pattern,self.player,c) then
+				if self.player:hasEquip(c) and self:loseEquipEffect() or self:getUseValue(c)<6
+				then table.insert(to_discard,c:getId()) else table.insert(temp,c:getId()) end
+			end
+		end
+		for _,id in ipairs(temp)do
+			if #to_discard>=min_num or table.contains(to_discard,id) then continue end
+			table.insert(to_discard,id)
 		end
 	end
 	return to_discard
@@ -2719,12 +2807,12 @@ function SmartAI:askForNullification(trick,from,to,positive)
 	if trick:isDamageCard() and positive then
 		if self:needToLoseHp(to,from,trick)
 		or self:canDamageHp(from,trick,to) then
-			-- 检查队友失误：可能因失误而不为受益队友无懈
+			--[[-- 检查队友失误：可能因失误而不为受益队友无懈
 			if self:isFriend(to) and self.mistakeFriendlyFire 
 			and not self:mistakeFriendlyFire(to, 1, trick) then
 				-- 失误触发：本应无懈保护受益队友，但失误了
 				return nil
-			end
+			end]]
 			if math.random()>=1/self.null_num
 			and from~=self.player and self:isEnemy(to)
 			and not self:isWeak(to) then
@@ -3208,8 +3296,20 @@ function SmartAI:askForCard(pattern,prompt,data,method)
 	end
 	if (method==sgs.Card_MethodUse or method==sgs.Card_MethodResponse)
 	and sgs.ai_skill_cardask.nullfilter(self,data,pattern,self.target)~="." then
+		local place_pattern = pattern:split("|")
+		local card_source = "he"
+		if #place_pattern >= 4 and place_pattern[4] then
+			local places = place_pattern[4]:split(",")
+			if #places == 1 then
+				if places[1] == "hand" then
+					card_source = "h"
+				elseif places[1] == "equipped" then
+					card_source = "e"
+				end
+			end
+		end
 		parsed = {}
-		for _,c in ipairs(self:addHandPile("he"))do
+		for _,c in ipairs(self:addHandPile(card_source))do
 			callback = c:isKindOf("Slash") and "Slash" or c:getClassName()
 			if table.contains(parsed,callback) then continue end
 			if pattern:contains(c:objectName()) or sgs.Sanguosha:matchPattern(pattern,self.player,c)
@@ -3240,7 +3340,19 @@ function SmartAI:askForCard(pattern,prompt,data,method)
 		end
 	end
 	if compulsive then
-		for _,c in ipairs(self:sortByKeepValue(self:addHandPile("he")))do
+		local place_pattern = pattern:split("|")
+		local card_source = "he"
+		if #place_pattern >= 4 and place_pattern[4] then
+			local places = place_pattern[4]:split(",")
+			if #places == 1 then
+				if places[1] == "hand" then
+					card_source = "h"
+				elseif places[1] == "equipped" then
+					card_source = "e"
+				end
+			end
+		end
+		for _,c in ipairs(self:sortByKeepValue(self:addHandPile(card_source)))do
 			if sgs.Sanguosha:matchPattern(pattern,self.player,c)
 			and not self.player:isCardLimited(c,method)
 			then return c:toString() end
@@ -4236,138 +4348,158 @@ function SmartAI:getTurnUse()
 	for idx, c in ipairs(sortedCards) do
 		-- Additional safety check
 		if c then
-			-- AI失误：如果标记了跳过斩杀，且当前卡是杀，则跳过
+			-- AI失誤：如果標記了跳過斬殺，且當前卡是殺，則跳過
 			if self.player:getMark("ai_skip_kill-Clear") > 0 and c:isKindOf("Slash") then
 				if logger then 
 					logger:writeLog("DEBUG", "getTurnUse: Skipping Slash due to miss lethal mistake") 
 				end
 				continue
-			end
-			
-			if logger and idx % 5 == 1 then -- Log every 5 cards to avoid spam
-				local cardStr = "unknown"
-				local cardStrSuccess, cardStrResult = pcall(function() return c:toString() end)
-				if cardStrSuccess then
-					cardStr = cardStrResult
-				else
-					if logger then logger:logError("getTurnUse:toString", cardStrResult, {index = idx}) end
+			else
+				if logger and idx % 5 == 1 then -- Log every 5 cards to avoid spam
+					local cardStr = "unknown"
+					local cardStrSuccess, cardStrResult = pcall(function() return c:toString() end)
+					if cardStrSuccess then
+						cardStr = cardStrResult
+					else
+						if logger then logger:logError("getTurnUse:toString", cardStrResult, {index = idx}) end
+					end
+					
+					logger:writeLog("DEBUG", "getTurnUse: Processing card batch", {
+						currentIndex = idx,
+						totalCards = #sortedCards,
+						currentCard = cardStr
+					})
 				end
 				
-				logger:writeLog("DEBUG", "getTurnUse: Processing card batch", {
-					currentIndex = idx,
-					totalCards = #sortedCards,
-					currentCard = cardStr
-				})
-			end
-			
-			local canUseSuccess, canUse = pcall(canMethodUse, c)
-			if canUseSuccess and canUse then
-				-- Debug file writing
-				if sgs.aiHandCardVisible then
-					local fileSuccess, fileErr = pcall(function()
-						local file = io.open("lua/ai/cstring", "r")
-						local _file = file:read("*all")
-						file:close()
-						file = io.open("lua/ai/cstring", "w")
-						if c:isVirtualCard() then file:write(_file.."\n"..c:toString())
-						else file:write(_file.."\n"..c:getFullName(true)) end
-						file:close()
+				local canUseSuccess, canUse = pcall(canMethodUse, c)
+				if canUseSuccess and canUse then
+					
+					-- Try to use card
+					local useSuccess, d = pcall(function()
+						return self:aiUseCard(c, dummy(false))
 					end)
 					
-					if not fileSuccess and logger then
-						logger:logError("getTurnUse:debug_file_write", fileErr)
-					end
-				end
-				
-				-- Try to use card
-				local useSuccess, d = pcall(function()
-					return self:aiUseCard(c, dummy(false))
-				end)
-				
-				if useSuccess then
-					if d and d.card then
-						if logger then 
-							logger:writeLog("DEBUG", "getTurnUse: Card can be used", {
-								originalCard = c:toString(),
-								resultCard = d.card:toString(),
-								index = idx
-							})
-						end
-						
-						-- Check if card is limited
-						local isLimited = false
-						local limitCheckSuccess, limitResult = pcall(function()
-							if d.card ~= c then
-								local handlingMethod = d.card:getHandlingMethod()
-								if logger then 
-									logger:writeLog("DEBUG", "getTurnUse: Checking card limit", {
-										card = d.card:toString(),
-										handlingMethod = handlingMethod
-									})
-								end
-								return self.player:isCardLimited(d.card, handlingMethod)
-							end
-							return false
-						end)
-						
-						if limitCheckSuccess then
-							isLimited = limitResult
+					if useSuccess then
+						if d and d.card then
 							if logger then 
-								logger:writeLog("DEBUG", "getTurnUse: Card limit check result", {
-									isLimited = isLimited
-								})
-							end
-						else
-							if logger then 
-								logger:logError("getTurnUse:cardLimitCheck", limitResult, {
-									card = d.card:toString(),
+								logger:writeLog("DEBUG", "getTurnUse: Card can be used", {
+									originalCard = c:toString(),
+									resultCard = d.card:toString(),
 									index = idx
 								})
 							end
-							-- Assume limited on error to be safe
-							isLimited = true
-						end
-						
-						if not isLimited then
-							if logger then logger:writeLog("DEBUG", "getTurnUse: Adding card to turnUse") end
 							
-							local addSuccess, addErr = pcall(function()
-								local cardKey = d.card:toString()
-								if logger then 
-									logger:writeLog("DEBUG", "getTurnUse: Card key", {key = cardKey})
+							-- Check if card is limited
+							local isLimited = false
+							local limitCheckSuccess, limitResult = pcall(function()
+								if d.card ~= c then
+									local handlingMethod = d.card:getHandlingMethod()
+									if logger then 
+										logger:writeLog("DEBUG", "getTurnUse: Checking card limit", {
+											card = d.card:toString(),
+											handlingMethod = handlingMethod
+										})
+									end
+									return self.player:isCardLimited(d.card, handlingMethod)
 								end
-								
-								self.use_to[cardKey] = d.to
-								if logger then logger:writeLog("DEBUG", "getTurnUse: Set use_to") end
-								
-								table.insert(turnUse, d.card)
-								if logger then 
-									logger:writeLog("DEBUG", "getTurnUse: Inserted card", {
-										turnUseCount = #turnUse
-									})
-								end
+								return false
 							end)
 							
-							if not addSuccess and logger then
-								logger:logError("getTurnUse:addCard", addErr, {
-									card = d.card:toString(),
-									index = idx
-								})
+							if limitCheckSuccess then
+								isLimited = limitResult
+								if logger then 
+									logger:writeLog("DEBUG", "getTurnUse: Card limit check result", {
+										isLimited = isLimited
+									})
+								end
+							else
+								if logger then 
+									logger:logError("getTurnUse:cardLimitCheck", limitResult, {
+										card = d.card:toString(),
+										index = idx
+									})
+								end
+								-- Assume limited on error to be safe
+								isLimited = true
 							end
 							
-							if logger then logger:writeLog("DEBUG", "getTurnUse: After add card processing") end
-						else
-							if logger then logger:writeLog("DEBUG", "getTurnUse: Card is limited, skipping") end
+							if not isLimited then
+								if logger then logger:writeLog("DEBUG", "getTurnUse: Adding card to turnUse") end
+								
+								local addSuccess, addErr = pcall(function()
+									local cardKey = d.card:toString()
+									if logger then 
+										logger:writeLog("DEBUG", "getTurnUse: Card key", {key = cardKey})
+									end
+									
+									self.use_to[cardKey] = d.to
+									if logger then logger:writeLog("DEBUG", "getTurnUse: Set use_to") end
+									
+									table.insert(turnUse, d.card)
+									if logger then 
+										logger:writeLog("DEBUG", "getTurnUse: Inserted card", {
+											turnUseCount = #turnUse
+										})
+									end
+									
+									-- Debug file writing: 只在真正添加到使用列表時才寫入日誌
+									if sgs.aiHandCardVisible then
+										local fileSuccess, fileErr = pcall(function()
+											local file = io.open("lua/ai/cstring", "r")
+											local _file = file:read("*all")
+											file:close()
+											file = io.open("lua/ai/cstring", "w")
+											if d.card:isVirtualCard() then 
+												file:write(_file.."\n"..d.card:toString())
+											else 
+												file:write(_file.."\n"..d.card:getFullName(true)) 
+											end
+											file:close()
+										end)
+										
+										if not fileSuccess and logger then
+											logger:logError("getTurnUse:debug_file_write", fileErr)
+										end
+									end
+								end)
+								
+								if not addSuccess and logger then
+									logger:logError("getTurnUse:addCard", addErr, {
+										card = d.card:toString(),
+										index = idx
+									})
+								end
+								
+								if logger then logger:writeLog("DEBUG", "getTurnUse: After add card processing") end
+							else
+								if logger then logger:writeLog("DEBUG", "getTurnUse: Card is limited, skipping") end
+							end
+							
+							if logger then logger:writeLog("DEBUG", "getTurnUse: After d.card processing") end
 						end
-						
-						if logger then logger:writeLog("DEBUG", "getTurnUse: After d.card processing") end
 					elseif c:canRecast() and c:getTypeId()>0 then
 						if logger then logger:writeLog("DEBUG", "getTurnUse: Card can recast", {card = c:toString()}) end
 						
-						if not (self.player:getHandPile():contains(c:getEffectiveId())
-						or self.player:isCardLimited(c,sgs.Card_MethodRecast)) then
-							self.use_to[c:toString()] = sgs.SPlayerList()
-							table.insert(turnUse,c)
+						table.insert(turnUse,c)
+						
+						-- Debug file writing: 重鑄卡牌也記錄日誌
+						if sgs.aiHandCardVisible then
+							local fileSuccess, fileErr = pcall(function()
+								local file = io.open("lua/ai/cstring", "r")
+								local _file = file:read("*all")
+								file:close()
+								file = io.open("lua/ai/cstring", "w")
+								if c:isVirtualCard() then 
+									file:write(_file.."\n"..c:toString())
+								else 
+									file:write(_file.."\n"..c:getFullName(true)) 
+								end
+								file:close()
+							end)
+							
+							if not fileSuccess and logger then
+								logger:logError("getTurnUse:debug_file_write", fileErr)
+							end
 						end
 					else
 						if logger then logger:writeLog("DEBUG", "getTurnUse: d exists but no card or recast") end
@@ -4375,8 +4507,8 @@ function SmartAI:getTurnUse()
 					
 					if logger then logger:writeLog("DEBUG", "getTurnUse: After useSuccess branch") end
 				else
-					if logger then 
-						logger:logError("getTurnUse:aiUseCard", d, {
+					if logger and not canUseSuccess then 
+						logger:logError("getTurnUse:canMethodUse", canUse, {
 							card = c:toString(),
 							index = idx
 						}) 
@@ -4391,11 +4523,6 @@ function SmartAI:getTurnUse()
 				end
 				
 				if logger then logger:writeLog("DEBUG", "getTurnUse: After turnUse count check, continuing loop") end
-			elseif not canUseSuccess and logger then
-				logger:logError("getTurnUse:canMethodUse", canUse, {
-					card = c:toString(),
-					index = idx
-				})
 			end
 		else
 			if logger then logger:logError("getTurnUse:iteration", "Card is nil at index " .. idx) end
@@ -4425,6 +4552,7 @@ function SmartAI:getTurnUse()
 	return turnUse
 end
 
+
 function SmartAI:activate(use)
 	-- Enhanced logging for crash debugging
 	if _G.AI_DEBUG_MODE and logger then
@@ -4436,7 +4564,7 @@ function SmartAI:activate(use)
 			handcardNum = self.player:getHandcardNum()
 		})
 	end
-	
+	--[[
 	-- AI失误系统：检查是否故意错过斩杀机会
 	if self.shouldMakeSafeMistake and self.player:getMark("ai_skip_kill-Clear") == 0 then
 		for _, enemy in ipairs(self.enemies) do
@@ -4459,7 +4587,7 @@ function SmartAI:activate(use)
 			end
 		end
 	end
-	
+	]]
 	-- Step 1: Handle debug file writing
 	if sgs.aiHandCardVisible then
 		if logger then logger:writeLog("DEBUG", "activate: Writing to debug file") end
@@ -4521,7 +4649,7 @@ function SmartAI:activate(use)
 			if logger then logger:writeLog("DEBUG", "activate: Set use.to") end
 			
 			-- AI失误系统：可能修改用牌目标
-			if use.to and use.to:length() > 0 and self.shouldMakeSafeMistake then
+			--[[if use.to and use.to:length() > 0 and self.shouldMakeSafeMistake then
 				if self:shouldMakeSafeMistake(sgs.ai_mistake_type.WRONG_TARGET) then
 					local original_target = use.to:first()
 					local all_valid_targets = sgs.SPlayerList()
@@ -4534,24 +4662,24 @@ function SmartAI:activate(use)
 					end
 					
 					-- 尝试选择次优目标（会自动过滤同阵营、敌对真人等）
-					if all_valid_targets:length() > 1 then
+					if all_valid_targets:length() > 1 and self.chooseSuboptimalTarget then
 						local targets_table = {}
 						for _, p in sgs.qlist(all_valid_targets) do
 							table.insert(targets_table, p)
 						end
 						
 						local new_target = self:chooseSuboptimalTarget(original_target, targets_table, "card_use")
-						if new_target ~= original_target then
+						if new_target and new_target ~= original_target then
 							-- 修改目标
 							use.to = sgs.SPlayerList()
 							use.to:append(new_target)
 							if logger then 
 								logger:writeLog("DEBUG", "activate: Changed card target due to mistake") 
 							end
-						end
+							end
 					end
 				end
-			end
+			end]]
 			
 			use.card = c
 			if logger then logger:writeLog("DEBUG", "activate: Set use.card") end
@@ -6699,7 +6827,7 @@ function SmartAI:findPlayerToDamage(damage,player,nature,targets,base_value,card
 	if #result > 1 and self.chooseSuboptimalTarget then
 		local optimal = result[1]
 		local chosen = self:chooseSuboptimalTarget(optimal, result, "damage_target")
-		if chosen ~= optimal then
+		if chosen and chosen ~= optimal then
 			-- 将选中的目标移到第一位
 			for i, p in ipairs(result) do
 				if p == chosen then
@@ -7549,6 +7677,10 @@ function SmartAI:ajustDamage(from,to,dmg,card,nature)
 	if from:hasSkill("sy_wushuang") and card and math.fmod(card:getNumber(), 2) ~= 0 then
 		dmg = 3
 	end
+	if card and card:getTag("heg_midao_nature"):toString() ~= "" then
+		local newnature = card:getTag("heg_midao_nature"):toString()
+		nature = na[newnature] or "N"
+	end
 
 	for _,s in ipairs(aiConnect(to))do
 		local ad = sgs.ai_ajustdamage_to[s]
@@ -7879,6 +8011,12 @@ function SmartAI:dontHurt(to,from)	--针对队友
 		return true
 	end
 	if to:hasSkill("s4_s_zhanchuan") and not to:getPile("s4_s_zhanchuan"):isEmpty() then
+		return true
+	end
+	if to:hasSkill("heg_qiuan") and to:getPile("heg_qiuan_han"):isEmpty() then
+		return true
+	end
+	if to:hasSkill("heg_jilix") then
 		return true
 	end
 	for _, mark in sgs.list(to:getMarkNames()) do

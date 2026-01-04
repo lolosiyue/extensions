@@ -1289,7 +1289,6 @@ end
 
 s_w_caocao:addSkill(s_w_jianxiong)
 s_w_caocao:addSkill(s_w_luopo)
-s_w_caocao:addSkill(s_w_qipao)
 s_w_caocao:addSkill("hujia")
 --http://tieba.baidu.com/p/3826540104
  sgs.LoadTranslationTable{

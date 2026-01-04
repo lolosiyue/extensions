@@ -8,6 +8,24 @@
 -- 4. 失误应该有明显的反馈（对话）
 -- 5. 随着游戏进行，AI应该越来越"熟练"
 
+-- 检查 SmartAI 是否已加载
+if not SmartAI then
+	print("[AI-Mistake] Warning: SmartAI not loaded, mistake system disabled")
+	-- 创建空的全局函数来避免调用错误
+	getAIMistakeRate = function() return 0 end
+	shouldMakeMistake = function() return false end
+	isCriticalSituation = function() return false end
+	shouldMakeSafeMistake = function() return false end
+	isHumanPlayer = function() return false end
+	isTeammateHuman = function() return false end
+	logAIMistake = function() end
+	getAIMistakeStats = function() return {} end
+	clearAIMistakeLog = function() end
+	printAIMistakeStats = function() end
+	setAIMistakeDifficulty = function() end
+	return
+end
+
 -- 失误配置
 sgs.ai_mistake_config = {
 	enabled = true,                    -- 是否启用失误系统
@@ -147,6 +165,10 @@ end
 
 -- 选择次优目标（用于目标选择失误）
 function SmartAI:chooseSuboptimalTarget(optimal_target, all_targets, reason)
+	-- 安全检查
+	if not optimal_target then
+		return nil
+	end
 	if not shouldMakeMistake() then
 		return optimal_target
 	end

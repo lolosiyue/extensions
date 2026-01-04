@@ -67,7 +67,7 @@ sgs.ai_event_callback[sgs.DamageForseen].kylin_bow = function(self,player,data)
 		player:speak(chat[math.random(1,#chat)])
 	end
 end
-
+--[[
 sgs.ai_event_callback[sgs.CardFinished].analeptic = function(self,player,data)
 	if not AIChat() then return end
 	local use = data:toCardUse()
@@ -573,7 +573,7 @@ sgs.ai_event_callback[sgs.StartJudge].isBad = function(self,player,data)
 		end
 	end
 end
-
+]]
 function SmartAI:speak(cardtype,isFemale)
 	if AIChat(self.player) then else return end
 	local ac = sgs.ai_chat[cardtype]
@@ -586,7 +586,7 @@ function SmartAI:speak(cardtype,isFemale)
 		return true
 	end
 end
-
+--[[
 sgs.ai_chat.blade={
 	"这把刀就是我爷爷传下来的，上斩逗比，下斩傻逼！",
 	"尚方宝刀，专戳贱逼!"
@@ -766,7 +766,7 @@ sgs.ai_chat.eight_diagramIsGood={
 	"判红",
 	"红色！！！"
 }
-
+]]
 sgs.ai_chat.judgeIsGood={
 	"献祭GK木琴换来的",
 	"这就是天意",
@@ -776,7 +776,7 @@ sgs.ai_chat.judgeIsGood={
 	"此天命不可违也，哈哈哈哈",
 	"好耶!"
 }
-
+--[[
 sgs.ai_chat.noJink={
 	"有桃么!有桃么？",
 	".......！",
@@ -1330,7 +1330,7 @@ sgs.ai_event_callback[sgs.CardResponded].multi_jink = function(self, player, dat
 		player:setMark("jink_count", 0)
 	end
 end
-
+--[[
 -- 新增事件：队友给力/坑爹
 sgs.ai_event_callback[sgs.CardFinished].teammate_evaluation = function(self, player, data)
 	if not AIChat() then return end
@@ -1340,7 +1340,7 @@ sgs.ai_event_callback[sgs.CardFinished].teammate_evaluation = function(self, pla
 	-- 评估队友的行为
 	for _, p in sgs.qlist(self.room:getAlivePlayers()) do
 		if p:getState() == "robot" and p:objectName() ~= player:objectName() then
-			if self:isFriend(p, player) and math.random() < 0.1 then
+			if self:isFriend(player, p) and math.random() < 0.1 then
 				-- 判断是好行为还是坏行为
 				if use.card:isKindOf("Peach") or use.card:isKindOf("Nullification") then
 					local chat = sgs.ai_chat.good_teammate
@@ -1357,12 +1357,9 @@ end
 -- 新增事件：游戏开始时的问候
 sgs.ai_event_callback[sgs.GameStart].greeting = function(self, player, data)
 	if not AIChat() then return end
-	
-	-- 随机让一些AI在游戏开始时说话
-	for _, p in sgs.qlist(self.room:getAlivePlayers()) do
-		if p:getState() == "robot" and math.random() < 0.2 then
-			p:speak(sgs.ai_chat.game_start[math.random(1, #sgs.ai_chat.game_start)])
-		end
+
+	if player:getState() == "robot" and math.random() < 0.2 then
+		self:speak("game_start")
 	end
 end
 
@@ -1629,7 +1626,7 @@ sgs.ai_event_callback[sgs.CardFinished].mistake_reaction = function(self, player
 			-- 其他玩家可能会嘲讽
 			for _, p in sgs.qlist(self.room:getOtherPlayers(player)) do
 				if p:getState() == "robot" and math.random() < 0.1 then
-					if self:isEnemy(p, player) then
+					if self:isEnemy(player, p) then
 						p:speak(sgs.ai_chat.enemy_mistake[math.random(1, #sgs.ai_chat.enemy_mistake)])
 					end
 					break
@@ -1933,14 +1930,6 @@ sgs.ai_event_callback[sgs.CardUsed].teammate_performance = function(self, player
 	end
 end
 
--- 观星技能触发
-sgs.ai_event_callback[sgs.AskForGuanxing].guanxing_skill = function(self, player, data)
-	if not AIChat(player) then return end
-	if player:getState() ~= "robot" or math.random() > 0.2 then return end
-	
-	self:speak("guanxing", player:isFemale())
-end
-
 -- 内奸可疑判断
 sgs.ai_event_callback[sgs.CardResponded].renegade_suspicious = function(self, player, data)
 	if not AIChat() then return end
@@ -2168,14 +2157,14 @@ sgs.ai_event_callback[sgs.CardFinished].clutch_save = function(self, player, dat
 	if not use.card or not use.from then return end
 	
 	-- 用桃或其他救命牌救队友
-	if use.card:isKindOf("Peach") or use.card:isKindOf("Analeptic") then
+	if use.card:isKindOf("Peach") then
 		for _, to in sgs.qlist(use.to) do
 			if to:getState() == "robot" and use.from:getState() == "robot" then
 				-- 检查是否救的是濒死队友
 				local ai = use.from:getAI()
 				if ai and ai:isFriend(to) and to:getMark("Global_Dying") > 0 then
 					if math.random() < 0.3 then
-						use.from:speak(sgs.ai_chat.clutch_save[math.random(1, #sgs.ai_chat.clutch_save)])
+						use.from:speak("clutch_save")
 					end
 					break
 				end
@@ -2265,3 +2254,4 @@ sgs.ai_event_callback[sgs.CardFinished].nice = function(self, player, data)
 	end
 end
 
+]]
