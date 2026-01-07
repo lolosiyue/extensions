@@ -3058,12 +3058,12 @@ sgs.ai_skill_invoke.heg_liangfan = function(self, data)
 	return false
 end
 
-sgs.ai_ajustdamage_from.heg_congjian = function(self, from, to, damage)
+sgs.ai_ajustdamage_from.heg_congjian = function(self, from, to, card, nature)
 	if from and from:getPhase() == sgs.Player_NotActive then
 		return 1
 	end
 end
-sgs.ai_ajustdamage_to.heg_congjian = function(self, from, to, damage)
+sgs.ai_ajustdamage_to.heg_congjian = function(self, from, to, card, nature)
 	if to:getPhase() ~= sgs.Player_NotActive then
 		return 1
 	end
@@ -3136,12 +3136,12 @@ sgs.ai_skill_cardask["@heg_fengshih"] = function(self, data, pattern, target, ta
 	end
 end
 
-sgs.ai_ajustdamage_from.heg_fengshih = function(self, from, to, damage)
+sgs.ai_ajustdamage_from.heg_fengshih = function(self, from, to, card, nature)
 	if card and card:hasFlag("heg_fengshih") then
 		return 1
 	end
 end
-sgs.ai_ajustdamage_to.heg_fengshih = function(self, from, to, damage)
+sgs.ai_ajustdamage_to.heg_fengshih = function(self, from, to, card, nature)
 	if card and card:hasFlag("heg_fengshih") then
 		return 1
 	end
@@ -3782,6 +3782,323 @@ end
 
 sgs.ai_card_intention["heg_duwu"] = 80
 sgs.ai_use_priority["heg_duwu"] = sgs.ai_use_priority.DuwuCard
+
+sgs.ai_skill_cardask["@heg_xishe"] = function(self, data, pattern, target, target2)
+	local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+	slash:setSkillName("_heg_xishe")
+	slash:deleteLater()
+	self.player:setFlags("InfinityAttackRange")
+	local dummy_use = self:aiUseCard(slash, dummy(true, 99, self.room:getOtherPlayers(target)))
+	self.player:setFlags("-InfinityAttackRange")
+	if dummy_use and dummy_use.card and not dummy_use.to:isEmpty() then
+		for _,p in sgs.qlist(dummy_use.to)do
+			if p:objectName() == target:objectName() then
+				return true
+			end
+		end
+	end
+	return "."
+end
+
+sgs.ai_skill_invoke.heg_xishe = function(self, data)
+	return math.random() < 0.5
+end
+
+sgs.ai_ajustdamage_from.heg_suzhi = function(self, from, to, card, nature)
+	if from:getMark("heg_suzhi-Clear") < 3 and card and (card:isKindOf("Slash") or card:isKindOf("Duel")) and from:getPhase() ~= sgs.Player_NotActive then
+		return -1
+	end
+end
+
+sgs.ai_card_priority.heg_suzhi = sgs.ai_card_priority.jizhi
+
+sgs.ai_skill_playerchosen.heg_zhaoxin = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	self:sort(targets, "defense")
+	for _, p in ipairs(targets) do
+		if p:getHandcardNum()>1 and self:isFriend(p) and (hasTuntianEffect(p) or self:hasLoseHandcardEffective(p)) then
+			return p
+		end
+	end
+	for _, p in ipairs(targets) do
+		if p:getHandcardNum()>1 and self:isFriend(p) then
+			return p
+		end
+	end
+	for _, p in ipairs(targets) do
+		if self:isEnemy(p) and p:getHandcardNum()>=1 and self:doDisCard(p, "h", true) then
+			return p
+		end
+	end
+end
+
+sgs.ai_can_damagehp.heg_quanji = function(self,from,card,to)
+	return to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>1
+	and self:canLoseHp(from,card,to)
+end
+
+sgs.ai_fill_skill.heg_paiyi = function(self)
+	if self.player:getPile("heg_quanji_power"):length()>0 then
+		return sgs.Card_Parse("#heg_paiyi:"..self.player:getPile("heg_quanji_power"):first()..":")
+	end
+end
+sgs.ai_skill_use_func["#heg_paiyi"] = function(card,use,self)
+	local target
+	local targets = self:findPlayerToDraw(true,self.player:getPile("heg_quanji_power"):length() - 1,true)
+	for _,p in ipairs(targets)do
+		if p:getHandcardNum()<2 and p:getHandcardNum()+self.player:getPile("heg_quanji_power"):length() - 1 <self.player:getHandcardNum() and self:isFriend(p) then
+			target = p
+		end
+		if target then break end
+	end
+	if not target then
+		if self.player:getHandcardNum()<self.player:getHp()+self.player:getPile("heg_quanji_power"):length()-1 and self:canDraw(self.player) then
+			target = self.player
+		end
+	end
+	
+	if not target then
+		self:sort(targets,"hp")
+		targets = sgs.reverse(targets)
+		for _,friend in ipairs(targets)do
+			if friend:getHandcardNum()+self.player:getPile("heg_quanji_power"):length() - 1>self.player:getHandcardNum()
+			and self:needToLoseHp(friend,self.player,nil,true) and self:isFriend(friend) then
+				target = friend
+			end
+			if target then break end
+		end
+	end
+	self:sort(self.enemies,"defense")
+	if not target and self.player:getPile("heg_quanji_power"):length() - 1 <= 2 then
+		for _,enemy in ipairs(self.enemies)do
+			if hasManjuanEffect(enemy) 
+			and self:canDamage(enemy, self.player, nil)
+			and self:damageIsEffective(enemy,sgs.DamageStruct_Normal,self.player)
+			and not self:needToLoseHp(enemy)
+			and enemy:getHandcardNum()>self.player:getHandcardNum() 
+			then target = enemy end
+			if target then break end
+		end
+		if not target then
+			for _,enemy in ipairs(self.enemies)do
+				if self:canDamage(enemy, self.player, nil)
+				and not enemy:hasSkills(sgs.cardneed_skill.."|jijiu|tianxiang|buyi")
+				and self:damageIsEffective(enemy,sgs.DamageStruct_Normal,self.player) and not self:cantbeHurt(enemy)
+				and not self:needToLoseHp(enemy)
+				and enemy:getHandcardNum()+self.player:getPile("heg_quanji_power"):length() - 1>self.player:getHandcardNum()
+				and not hasManjuanEffect(enemy) and ZishuEffect(enemy) <= 0
+				then target = enemy end
+				if target then break end
+			end
+		end
+	end
+
+	if target then
+		use.card = sgs.Card_Parse("#heg_paiyi:"..self.player:getPile("heg_quanji_power"):first()..":")
+		use.to:append(target)
+	end
+end
+
+sgs.ai_card_intention["heg_paiyi"] = sgs.ai_card_intention.PaiyiCard
+
+sgs.ai_skill_discard.heg_shilus = function(self, discard_num, min_num, optional, include_equip)
+	local card = sgs.Card_Parse("@ZhihengCard=.")
+	local dummy_use = dummy()
+	self:useSkillCard(card,dummy_use)
+	local to_discard = {}
+	if dummy_use.card then 
+		local use_cards = dummy_use.card:getSubcards()
+		for _,id in sgs.list(use_cards) do
+			table.insert(to_discard,id)
+			if #to_discard >= discard_num then break end
+		end
+	end
+	return to_discard
+end
+
+sgs.ai_ajustdamage_to.heg_xiongnve = function(self, from, to, card, nature)
+	if from and from:objectName() ~= to:objectName() and to:getMark("heg_xiongnve_reduce-Self"..sgs.Player_RoundStart.."-Clear") > 0 then
+		return -1
+	end
+end
+
+sgs.ai_ajustdamage_from.heg_xiongnve = function(self, from, to, card, nature)
+	local kingdom = from:property("heg_xiongnve"):toString()
+	if string.find(kingdom, to:getKingdom()) then
+		if from:getMark("heg_xiongnve-Damage-Clear") > 0 then
+			return 1
+		end
+	end
+end
+
+sgs.ai_skill_invoke.heg_xiongnve = function(self, data)
+	local event = data:toString()
+	if event == "start" then
+		local general_list = self.player:property("heg_shilus_generals"):toString():split("+")
+		if #self.toUse > 1 then
+		for _,c in sgs.list(self:sortByKeepValue(self.player:getHandcards()))do
+			if table.contains(self.toUse,c) then
+				local dummy_use = self:aiUseCard(c, dummy())
+				if dummy_use and dummy_use.card and not dummy_use.to:isEmpty() then
+					for _,p in sgs.qlist(dummy_use.to)do
+						if self:isEnemy(p) and self:canDamage(p,self.player) and table.contains(targets, p) then
+							for _,gn in ipairs(general_list) do
+								local general = sgs.Sanguosha:getGeneral(gn)
+								if general and string.find(general:getKingdoms(), p:getKingdom()) then
+									self.room:setPlayerFlag(self.player, "heg_xiongnve:" .. gn)
+									return true
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	if event == "end" then
+		return self:isWeak() and self:getAllPeachNum() == 0
+	end
+	return false
+end
+
+sgs.ai_fill_skill.heg_huaiyi = function(self)
+	local handcards = self.player:getHandcards()
+	local red,black = false,false
+	if #self.toUse > 0 then return end
+	for _,c in sgs.qlist(handcards)do
+		if c:isRed() and not red then
+			red = true
+			if black then
+				break
+			end
+		elseif c:isBlack() and not black then
+			black = true
+			if red then
+				break
+			end
+		end
+	end
+	if red and black then
+		return sgs.Card_Parse("#heg_huaiyi:.:")
+	end
+end
+
+sgs.ai_skill_use_func["#heg_huaiyi"] = function(card,use,self)
+	local handcards = self.player:getHandcards()
+    local reds,blacks = {},{}
+    for _,c in sgs.qlist(handcards)do
+        if c:isRed() then
+            table.insert(reds,c)
+        else
+            table.insert(blacks,c)
+        end
+    end
+    local targets = self:findPlayerToDiscard("he",false,true)
+    local n_reds,n_blacks,n_targets = #reds,#blacks,#targets
+	
+    if n_targets==0 then
+        return 
+    elseif n_reds-n_targets>=2 and n_blacks-n_targets>=2 and handcards:length()-n_targets>=5 then
+        return 
+    end
+    use.card = card
+end
+sgs.dynamic_value.benefit["heg_huaiyi"] = true
+
+sgs.ai_skill_choice.heg_huaiyi = function(self,choices,data)
+    return sgs.ai_skill_choice.huaiyi(self,choices,data)
+end
+
+sgs.ai_skill_playerschosen.heg_huaiyi = function(self, targets, max, min)
+	local selected = sgs.SPlayerList()
+	local can_choose = sgs.QList2Table(targets)
+	self:sort(can_choose, "defense")
+	local targets = self:findPlayerToDiscard("he",false,true)
+    for _,target in ipairs(targets)do
+		selected:append(target)
+		if selected:length() >= max then break end
+    end
+	return selected
+end
+
+sgs.ai_skill_cardchosen.heg_huaiyi = function(self, who, flags)
+    if not who:isKongcheng() then
+        local handcards = who:getHandcards()
+        local cards = sgs.QList2Table(handcards)
+        local display_cards = getDisplayCards(who, self.player)
+		local valuable_cards = {}
+		for _, dc in ipairs(display_cards) do
+			local card_id = dc:getEffectiveId()
+			if not self.disabled_ids:contains(card_id) then
+				local value = sgs.ais[who:objectName()]:getKeepValue(dc)
+				table.insert(valuable_cards, {card_id = card_id, value = value})
+			end
+		end
+		
+		if #valuable_cards > 0 then
+			-- 选择价值最高的明置牌
+			table.sort(valuable_cards, function(a, b) return a.value > b.value end)
+			return valuable_cards[1].card_id
+		end
+        if #cards > 0 then
+            return cards[math.random(1, #cards)]
+        end
+    end
+    return nil
+end
+
+
+sgs.ai_fill_skill.heg_nos_huaiyi = function(self)
+	local handcards = self.player:getHandcards()
+	local red,black = false,false
+	if #self.toUse > 0 then return end
+	for _,c in sgs.qlist(handcards)do
+		if c:isRed() and not red then
+			red = true
+			if black then
+				break
+			end
+		elseif c:isBlack() and not black then
+			black = true
+			if red then
+				break
+			end
+		end
+	end
+	if red and black then
+		return sgs.Card_Parse("#heg_nos_huaiyi:.:")
+	end
+end
+
+sgs.ai_skill_use_func["#heg_nos_huaiyi"] = function(card,use,self)
+	local handcards = self.player:getHandcards()
+    local reds,blacks = {},{}
+    for _,c in sgs.qlist(handcards)do
+        if c:isRed() then
+            table.insert(reds,c)
+        else
+            table.insert(blacks,c)
+        end
+    end
+    local targets = self:findPlayerToDiscard("he",false,true)
+    local n_reds,n_blacks,n_targets = #reds,#blacks,#targets
+	
+    if n_targets==0 then
+        return 
+    elseif n_reds-n_targets>=2 and n_blacks-n_targets>=2 and handcards:length()-n_targets>=5 then
+        return 
+    end
+    use.card = card
+end
+sgs.ai_skill_choice.heg_nos_huaiyi = sgs.ai_skill_choice.heg_huaiyi
+sgs.ai_skill_playerschosen.heg_nos_huaiyi = sgs.ai_skill_playerschosen.heg_huaiyi
+sgs.ai_skill_cardchosen.heg_nos_huaiyi = sgs.ai_skill_cardchosen.heg_huaiyi
+
+sgs.ai_ajustdamage_from.heg_ejue = function(self, from, to, card, nature)
+	if card and card:isKindOf("Slash") and from:getKingdom() ~= to:getKingdom() then
+		return 1
+	end
+end
 
 sgs.ai_skill_use["@@heg_fk_bushi"] = function(self, prompt, method)
 	local ids = self.player:getPile("heg_fk_rice")
