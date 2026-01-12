@@ -902,6 +902,7 @@ zl_zhulutianxia = sgs.CreateTrickCard{
 	subclass = sgs.LuaTrickCard_TypeGlobalEffect,
 	on_use = function(self,room,source,targets)
     	local dps = room:getDrawPile()
+		local eids = sgs.IntList()
 		for _,id in sgs.qlist(dps)do
 			if sgs.Sanguosha:getCard(id):isKindOf("EquipCard")
 			then eids:append(id) end

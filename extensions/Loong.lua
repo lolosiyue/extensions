@@ -2091,7 +2091,7 @@ lxtx_yishe = sgs.CreateTriggerSkill{
 		end
 	end,
 	can_trigger = function(self, target)
-		return target
+		return target and target:isAlive()
 	end,
 }
 lxtx_zhanglu:addSkill(lxtx_yishe)

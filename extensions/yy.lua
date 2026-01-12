@@ -289,8 +289,9 @@ debug_skill = sgs.CreateTriggerSkill{
 		if event == sgs.GameStart then
 			local owner = room:getOwner()
 			if owner and owner:isAlive() then
-				room:acquireSkill(owner, "bahu")
-				room:acquireSkill(owner, "feiyang")
+				-- room:acquireSkill(owner, "bahu")
+				-- room:acquireSkill(owner, "feiyang")
+				-- room:acquireSkill(owner, "#luanixi_tr")
 			end
 		end
 	end

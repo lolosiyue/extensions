@@ -8267,7 +8267,10 @@ sgs.ai_skill_invoke.cuixin = function(self,data)
 		d:setSkillName("cuixin")
 		local to = self.player:getNextAlive()
 		if items:match("shangjia") then to = self.player:getNextAlive(self.player:aliveCount()-1) end
-		return self:canCanmou(target,{from=self.player,card=d,to={}})
+		local use = sgs.CardUseStruct()
+		use.from = self.player
+		use.card = d
+		return self:canCanmou(target,use)
 	end
 end
 
