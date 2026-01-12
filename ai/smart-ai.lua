@@ -6408,7 +6408,7 @@ function SmartAI:findPlayerToUseSlash(distance_limit, players, reason, slash, ex
 		return candidates[1].player
 	end
 	
-	return nil, nil
+	return nil
 end
 
 function SmartAI:findPlayerToDiscard(flags,include_self,no_dis,players,reason)
@@ -7975,6 +7975,9 @@ function SmartAI:dontHurt(to,from)	--针对队友
 		return true
 	end
 	if to:hasSkill("heg_jilix") then
+		return true
+	end
+	if to:hasSkill("heg_caiyuan") and to:getMark("&heg_caiyuan+fail-Self".. sgs.Player_Finish .. "Clear") == 0 then
 		return true
 	end
 	for _, mark in sgs.list(to:getMarkNames()) do
