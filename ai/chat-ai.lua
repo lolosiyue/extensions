@@ -67,7 +67,7 @@ sgs.ai_event_callback[sgs.DamageForseen].kylin_bow = function(self,player,data)
 		player:speak(chat[math.random(1,#chat)])
 	end
 end
---[[
+
 sgs.ai_event_callback[sgs.CardFinished].analeptic = function(self,player,data)
 	if not AIChat() then return end
 	local use = data:toCardUse()
@@ -125,7 +125,9 @@ sgs.ai_event_callback[sgs.CardFinished].analeptic = function(self,player,data)
 			"AK来了~~",
 			"随机送走一位童鞋",
 			"看我反手掏出这大家伙",
-			"满手的杀哦"
+			"满手的杀哦",
+			"可以开始突突了",
+			"准备扫射"
 		}
 		if player:getState()=="robot"
 		and (self:getCardsNum("Slash")>1 or math.random()<0.4 and player:getHandcardNum()>1)
@@ -160,7 +162,7 @@ sgs.ai_event_callback[sgs.CardFinished].analeptic = function(self,player,data)
 			end
 		end
 	elseif use.card:isKindOf("Peach") then
-		for chat,p in sgs.qlist(use.to)do
+		for _,p in sgs.qlist(use.to)do
 			if p==use.from or p:getHp()<1
 			or p:getState()~="robot" then continue end
 			if use.from:isFemale() and math.random()<0.2
@@ -180,7 +182,9 @@ sgs.ai_event_callback[sgs.CardFinished].analeptic = function(self,player,data)
 					"差点无了.....",
 					"活下来了....",
 					"谢了.....",
-					"还好还好"
+					"还好还好",
+					"不好，这桃里有屎",
+					"你往这里面掺了什么？"
 				}
 				p:speak(chat[math.random(1,#chat)])
 			end
@@ -228,7 +232,11 @@ sgs.ai_event_callback[sgs.PreCardUsed].CardUse = function(self,player,data)
 		local chat = {
 			"我靠，AOE",
 			"喜闻乐见",
-			"蛤！"
+			"蛤！",
+			"又是群攻",
+			"躺枪",
+			"能不能别搞AOE",
+			"殃及池鱼"
 		}
 		self.aoeTos = use.to
 		for _,p in sgs.qlist(self.room:getOtherPlayers(use.from))do
@@ -322,6 +330,9 @@ sgs.ai_event_callback[sgs.EventPhaseStart].luanwu = function(self,player,data)
 		"没闪,忠内不要乱来",
 		"不爽，来啊！砍我啊",
 		"求杀求砍求蹂躏",
+		"我有闪我会到处乱说么？",
+		"你觉得我有木有闪啊",
+		"哈我有闪"
 	}
 	if player:getPhase()==sgs.Player_Finish and not player:isKongcheng()
 	and player:hasSkills("leiji|nosleiji|olleiji") and os.time()%10<4
@@ -351,7 +362,7 @@ sgs.ai_event_callback[sgs.EventPhaseStart].luanwu = function(self,player,data)
 					"我要杀出重围",
 					"我将不屈服",
 					"（苦笑）",
-					"哈哈哈，这是我最后的荣光了"
+					"哈哈哈，这是我最后的荣光了",
 				}
 			else
 				chat = {
@@ -431,7 +442,7 @@ sgs.ai_event_callback[sgs.EventPhaseStart].luanwu = function(self,player,data)
 			"装什么身份，跳啊",
 			"到底谁是内啊？",
 			"都在这装呢？",
-			"还在这装呢"
+			"还在这装呢",
 		}
 		local quick = {
 			"都快点，我还要去吃饭呢",
@@ -448,24 +459,28 @@ sgs.ai_event_callback[sgs.EventPhaseStart].luanwu = function(self,player,data)
 		}
 		local role1 = {
 			"孰忠孰反，吾早已明辨",
-			"都是反，怎么打！"
+			"都是反，怎么打！",
+			"别装了"
 		}
 		local role2 = {
 			"当忠臣嘛，个人能力要强",
 			"装个忠我容易嘛我",
 			"这主坑内，跳反了",
-			"这主坑内，投降算了"
+			"这主坑内，投降算了",
 		}
 		local role3 = {
 			"反贼都集火啊！集火！",
 			"我们根本没有输出",
 			"输出，加大输出啊！",
-			"对这种阵容，我已经没有希望了"
+			"对这种阵容，我已经没有希望了",
 		}
 		chat = {}
 		if friend_name then
 			table.insert(role1,"忠臣"..friend_name.."，你是在坑我吗？")
 			table.insert(role1,friend_name.."你不会是奸细吧？")
+			table.insert(role1,friend_name.."表现得很可疑啊")
+			table.insert(role1,"感觉"..friend_name.."有问题")
+			table.insert(role1,"到底"..friend_name.."是哪边的")
 		end
 		if enemy_name then
 			table.insert(chat1,enemy_name.."你小子怎么了啊")
@@ -543,7 +558,7 @@ sgs.ai_event_callback[sgs.StartJudge].isBad = function(self,player,data)
 			"我靠，天谴之子",
 			"竞是如此",
 			"蛤！炸了",
-			"劈哩批哩喽"
+			"劈哩批哩喽",
 		}
 		if player:getKingdom()=="wei" then
 			table.insert(chat,"大魏招雷术")
@@ -573,7 +588,7 @@ sgs.ai_event_callback[sgs.StartJudge].isBad = function(self,player,data)
 		end
 	end
 end
-]]
+
 function SmartAI:speak(cardtype,isFemale)
 	if AIChat(self.player) then else return end
 	local ac = sgs.ai_chat[cardtype]
@@ -586,10 +601,29 @@ function SmartAI:speak(cardtype,isFemale)
 		return true
 	end
 end
---[[
+
 sgs.ai_chat.blade={
 	"这把刀就是我爷爷传下来的，上斩逗比，下斩傻逼！",
 	"尚方宝刀，专戳贱逼!"
+}
+
+sgs.ai_chat.eight_diagram = {
+	"八卦阵",
+	"防御神器",
+	"有八卦，不慌"
+}
+
+sgs.ai_chat.kylin_bow = {
+	"麒麟弓",
+	"废马神器",
+	"专业拆马",
+	"马克星"
+}
+
+sgs.ai_chat.spear = {
+	"丈八蛇矛",
+	"化牌为杀",
+	"这下不缺杀了"
 }
 
 sgs.ai_chat.no_peach_female = {
@@ -656,31 +690,21 @@ sgs.ai_chat.zhujinqiyuan = sgs.ai_chat.snatch
 
 sgs.ai_chat.zhujinqiyuan_female = sgs.ai_chat.snatch_female
 
-sgs.ai_chat.respond_hostile={
-	"擦，小心菊花不保",
-	"内牛满面了",
-	"哎哟我去"
-}
-
-sgs.ai_chat.friendly={
-	"。。。"
-}
-
-sgs.ai_chat.respond_friendly={
-	"谢了。。。"
-}
 
 sgs.ai_chat.duel_female={
 	"不要拒绝哦",
 	"小女子我也要亲自上场了",
-	"哼哼哼，怕了吧"
+	"哼哼哼，怕了吧",
+	"决斗什么的最讨厌了",
 }
 
 sgs.ai_chat.duel={
 	"不要回避！",
 	"来直面挑战吧！",
 	"哈哈哈，我的杀一定比你多！",
-	"来吧！像个勇士一样决斗吧！"
+	"来吧！像个勇士一样决斗吧！",
+	"来就来，谁怕谁",
+	"手里一大把杀",
 }
 
 sgs.ai_chat.ex_nihilo={
@@ -727,6 +751,13 @@ sgs.ai_chat.supply_shortage={
 	"做个饿死鬼去吧！"
 }
 
+sgs.ai_chat.lightningIsGood={
+	"躲过去了",
+	"没劈到我",
+	"虚惊一场",
+	"好险",
+	"天佑我也"
+}
 sgs.ai_chat.supply_shortageIsGood={
 	"果然要天过",
 	"嚯~~~~",
@@ -766,7 +797,7 @@ sgs.ai_chat.eight_diagramIsGood={
 	"判红",
 	"红色！！！"
 }
-]]
+
 sgs.ai_chat.judgeIsGood={
 	"献祭GK木琴换来的",
 	"这就是天意",
@@ -776,7 +807,7 @@ sgs.ai_chat.judgeIsGood={
 	"此天命不可违也，哈哈哈哈",
 	"好耶!"
 }
---[[
+
 sgs.ai_chat.noJink={
 	"有桃么!有桃么？",
 	".......！",
@@ -839,12 +870,43 @@ sgs.ai_chat.indulgenceIsGood={
 	"此天助我也！"
 }
 
---leiji
-sgs.ai_chat.leiji_jink={
-	"我有闪我会到处乱说么？",
-	"你觉得我有木有闪啊",
-	"哈我有闪"
+
+-- 判定相关的额外聊天
+sgs.ai_chat.supply_shortageIsBad = {
+	"糟了，真的断粮了",
+	"这下没得摸了",
+	"完蛋，黑桃",
+	"兵粮寸断",
+	"我的摸牌啊"
 }
+
+sgs.ai_chat.indulgenceIsBad = {
+	"真的乐了",
+	"空过了",
+	"这回合白给",
+	"什么都干不了",
+	"我太难了"
+}
+
+sgs.ai_chat.indulgenceIsBad_female = {
+	"真的要休息了",
+	"妾身动不了了",
+	"乐不思蜀",
+	"呜呜呜"
+}
+
+-- 判定的聊天
+sgs.ai_event_callback[sgs.FinishJudge].delayed_trick = function(self, player, data)
+	if not AIChat(player) then return end
+	local judge = data:toJudge()
+	if player:getState() ~= "robot" or math.random() > 0.4 then return end
+	if judge:isBad() and math.random()<0.4 then
+		if self:speak(judge.reason.."IsBad", player:isFemale()) or judge.pattern=="."
+		or math.random()<0.4 then return end
+		self:speak("judgeIsBad")
+	end
+end
+
 
 --quhu
 sgs.ai_chat.quhu={
@@ -856,38 +918,6 @@ sgs.ai_chat.quhu={
 	"哟，拼点吧"
 }
 
---wusheng to yizhong
-sgs.ai_chat.wusheng_yizhong={
-	"诶你技能是啥来着？",
-	"在杀的颜色这个问题上咱是色盲",
-	"咦你的技能呢？"
-}
-
---salvageassault
-sgs.ai_chat.daxiang={
-	"好多大象！",
-	"擦，孟获你的宠物又调皮了",
-	"内牛满面啊敢不敢少来点AOE"
-}
-
---xiahoudun
-sgs.ai_chat.ganglie_death={
-	"菊花残，满地伤。。。"
-}
-
-sgs.ai_chat.guojia_weak={
-	"擦，再卖血会卖死的",
-	"虚了，已经虚了",
-	"不敢再卖了诶诶诶"
-}
-
-sgs.ai_chat.yuanshao_fire={
-	"谁去打119啊",
-	"别别别烧了别烧了。。。",
-	"又烧啊，饶了我吧。。。",
-	"救火啊，救一下啊"
-}
-
 --xuchu
 sgs.ai_chat.luoyi={
 	"不脱光衣服干不过你",
@@ -895,6 +925,15 @@ sgs.ai_chat.luoyi={
 	"脱了！",
 	"看我真正的实力",
 	"认真模式"
+}
+
+-- 观星聊天
+sgs.ai_chat.guanxing = {
+	"观星象，知天命",
+	"让我算算",
+	"天机不可泄露",
+	"卜算一番",
+	"天象如此..."
 }
 
 sgs.ai_chat.bianshi = {
@@ -909,11 +948,6 @@ sgs.ai_chat.bianshi_female = {
 	"对面是个美女你们慢点",
 	"人人有份，永不落空",
 	"美人，来香一个"
-}
-
-sgs.ai_chat.usepeach = {
-	"不好，这桃里有屎",
-	"你往这里面掺了什么？"
 }
 
 -- 连续杀同一目标
@@ -937,6 +971,27 @@ sgs.ai_chat.continuous_slash_female = {
 	"换个人打好不好",
 	"过分了啊"
 }
+-- 新增事件：连续被同一人杀
+sgs.ai_event_callback[sgs.TargetSpecified].continuous_slash = function(self, player, data)
+	if not AIChat(player) then return end
+	local use = data:toCardUse()
+	if not use.card:isKindOf("Slash") then return end
+	
+	for _, to in sgs.qlist(use.to) do
+		if to:getState() == "robot" and to:objectName() ~= use.from:objectName() then
+			self.room:addPlayerMark(to, "continuous_slash_count".. use.from:objectName() .."-Clear")
+			if to:getMark("continuous_slash_count".. use.from:objectName() .."-Clear") >= 2 and math.random() < 0.5 then
+				local chat = sgs.ai_chat.continuous_slash
+				if to:isFemale() then
+					chat = sgs.ai_chat.continuous_slash_female
+				end
+				to:speak(chat[math.random(1, #chat)])
+				self.room:setPlayerMark(to, "continuous_slash_count".. use.from:objectName() .."-Clear", 0)
+			end
+		end
+	end
+end
+
 
 -- 成功闪避多次攻击
 sgs.ai_chat.multi_jink = {
@@ -948,6 +1003,292 @@ sgs.ai_chat.multi_jink = {
 	"闪避大师就是我",
 	"我看你是在给我挠痒痒"
 }
+
+-- 新增事件：成功闪避多次
+sgs.ai_event_callback[sgs.CardOffset].multi_jink = function(self, player, data)
+	if not AIChat(player) then return end
+	local effect = data:toCardEffect()
+	if not effect.card or not effect.card:isKindOf("Slash") then return end
+	if not effect.to then return end
+	if not AIChat(effect.to) then return end
+	self.room:addPlayerMark(effect.to, "jink_count-Clear")
+	
+	if effect.to:getMark("jink_count-Clear") >= 2 and math.random() < 0.3 then
+		effect.to:speak(sgs.ai_chat.multi_jink[math.random(1, #sgs.ai_chat.multi_jink)])
+		self.room:setPlayerMark(effect.to, "jink_count-Clear", 0)
+	end
+end
+
+-- 残血反杀
+sgs.ai_chat.low_hp_kill = {
+	"反杀！",
+	"还有这种操作？",
+	"哈哈，没想到吧",
+	"绝地反击！",
+	"我还没倒下！",
+	"越残越强！",
+	"别小看我",
+	"最后的荣光"
+}
+
+sgs.ai_chat.low_hp_kill_female = {
+	"本宫不是好欺负的",
+	"看本姑娘的厉害",
+	"谁说女子不如男",
+	"反杀成功！",
+	"哼，大意了吧"
+}
+-- 新增事件：残血反杀
+sgs.ai_event_callback[sgs.Death].low_hp_kill = function(self, player, data)
+	local death = data:toDeath()
+	if not death.damage or not death.damage.from then return end
+	
+	local killer = death.damage.from
+	if not AIChat(killer) then return end
+	if killer:getState() == "robot" and killer:getHp() <= 1 and math.random() < 0.4 and player:objectName() == killer:objectName() then
+		local chat = sgs.ai_chat.low_hp_kill
+		if killer:isFemale() then
+			chat = sgs.ai_chat.low_hp_kill_female
+		end
+		killer:speak(chat[math.random(1, #chat)])
+	end
+end
+
+-- 游戏开始
+sgs.ai_chat.game_start = {
+	"开始了开始了",
+	"让我看看什么身份",
+	"这局好好打",
+	"准备就绪",
+	"来吧",
+	"出发！"
+}
+-- 新增事件：游戏开始时的问候
+sgs.ai_event_callback[sgs.GameStart].greeting = function(self, player, data)
+	if not AIChat() then return end
+
+	if player:getState() == "robot" and math.random() < 0.2 then
+		self:speak("game_start")
+	end
+end
+
+
+-- 回合开始/结束
+sgs.ai_chat.turn_start = {
+	"轮到我了",
+	"我的回合",
+	"看我表演",
+	"该我了",
+	"Draw！"
+}
+
+sgs.ai_chat.turn_start_female = {
+	"轮到我啰",
+	"我的回合呢",
+	"看我表现吧",
+	"该我上场了",
+	"抽牌！"
+}
+
+sgs.ai_chat.turn_end = {
+	"结束了",
+	"过了",
+	"下一位",
+	"完事",
+	"你的回合"
+}
+
+sgs.ai_chat.turn_end_female = {
+	"我这边结束啰",
+	"轮到你啦",
+	"该你上场了",
+	"我先收手啦",
+	"就到这里，换你"
+}
+-- 回合结束触发
+sgs.ai_event_callback[sgs.EventPhaseStart].turn_end = function(self, player, data)
+	if not AIChat(player) then return end
+	if player:getPhase() ~= sgs.Player_Finish then return end
+	if player:getState() ~= "robot" or math.random() > 0.1 then return end
+	
+	self:speak("turn_end", player:isFemale())
+end
+
+-- 回合开始触发
+sgs.ai_event_callback[sgs.EventPhaseStart].turn_start = function(self, player, data)
+	if not AIChat(player) then return end
+	if player:getPhase() ~= sgs.Player_Start then return end
+	if player:getState() ~= "robot" or math.random() > 0.1 then return end
+	
+	self:speak("turn_start", player:isFemale())
+end
+
+-- 成为主公
+sgs.ai_chat.become_lord = {
+	"主公之位，舍我其谁",
+	"众卿平身",
+	"朕即国家",
+	"效忠于我吧",
+	"替朕守好江山"
+}
+-- 主公身份相关
+sgs.ai_event_callback[sgs.GameStart].lord_identity = function(self, player, data)
+	if not AIChat(player) then return end
+	if not player:isLord() then return end
+	if player:getState() ~= "robot" or math.random() > 0.5 then return end
+	
+	self:speak("become_lord")
+end
+
+-- 满手牌
+sgs.ai_chat.full_hand = {
+	"牌太多了",
+	"手牌爆炸",
+	"选择困难症犯了",
+	"不知道出哪张",
+	"资源丰富",
+	"牌多任性"
+}
+-- 新增事件：满手牌
+sgs.ai_event_callback[sgs.EventPhaseStart].full_hand = function(self, player, data)
+	if not AIChat(player) then return end
+	if player:getState() ~= "robot" then return end
+	if player:getPhase() ~= sgs.Player_Draw then return end
+	if player:getHandcardNum() >= player:getMaxCards() + 2 and math.random() < 0.15 then
+		player:speak(sgs.ai_chat.full_hand[math.random(1, #sgs.ai_chat.full_hand)])
+	end
+end
+
+-- 拿到神装
+sgs.ai_chat.god_equip = {
+	"神装到手",
+	"装备齐全了",
+	"这波装备可以",
+	"满配了兄弟们",
+	"全副武装",
+	"来战！"
+}
+-- 新增事件：获得神装时
+sgs.ai_event_callback[sgs.CardsMoveOneTime].god_equip = function(self, player, data)
+	if not AIChat() then return end
+	local move = data:toMoveOneTime()
+	if move.to_place ~= sgs.Player_PlaceEquip then return end
+	if not move.to then return end
+	local to = self.room:findPlayerByObjectName(move.to:objectName())
+	if to:objectName() ~= player:objectName() then return end
+	if not to or to:getState() ~= "robot" then return end
+	
+	if to:getEquips():length() >= 5 and math.random() < 0.25 then
+		to:speak(sgs.ai_chat.god_equip[math.random(1, #sgs.ai_chat.god_equip)])
+	end
+end
+
+-- 主公被围攻
+sgs.ai_chat.lord_in_danger = {
+	"主公危险！",
+	"护驾！",
+	"保护主公",
+	"主公小心",
+	"忠臣何在",
+	"速速救驾"
+}
+-- 新增事件：主公被围攻时忠臣呼喊
+sgs.ai_event_callback[sgs.Damaged].lord_in_danger_call = function(self, player, data)
+	if not AIChat() then return end
+	local damage = data:toDamage()
+	if not damage.to or not damage.to:isLord() then return end
+	
+	if damage.to:getHp() <= 2 and math.random() < 0.3 then
+		for _, p in sgs.qlist(self.room:getOtherPlayers(damage.to)) do
+			if p:getState() == "robot" and self:isFriend(p, damage.to) and math.random() < 0.5 and sgs.playerRoles.loyalist>1 then
+				p:speak(sgs.ai_chat.lord_in_danger[math.random(1, #sgs.ai_chat.lord_in_danger)])
+				break
+			end
+		end
+	end
+end
+
+-- 装备被拆
+sgs.ai_chat.equip_removed = {
+	"我的装备！",
+	"还我宝贝",
+	"你给我等着",
+	"君子动口不动手啊",
+	"我记住你了",
+	"卑鄙！无耻！下流！"
+}
+
+sgs.ai_chat.equip_removed_female = {
+	"你抢女孩子东西算什么本事",
+	"还我！",
+	"我的宝贝装备",
+	"你好坏哦",
+	"欺负人！"
+}
+
+-- 新增事件：装备被拆除
+sgs.ai_event_callback[sgs.CardsMoveOneTime].equip_removed = function(self, player, data)
+	if not AIChat() then return end
+	local move = data:toMoveOneTime()
+	if move.to_place ~= sgs.Player_DiscardPile then return end
+	if not move.from_places:contains(sgs.Player_PlaceEquip) then return end
+	if not move.from then return end
+	local from = self.room:findPlayerByObjectName(move.from:objectName())
+	if not from or from:getState() ~= "robot" then return end
+	if from:objectName() ~= player:objectName() then return end
+	for i = 0, move.card_ids:length() - 1 do
+        -- 檢查第 i 張牌的來源是否為裝備區
+        if move.from_places:at(i) == sgs.Player_PlaceEquip then
+            local card_id = move.card_ids:at(i)
+            local card = sgs.Sanguosha:getCard(card_id)
+            
+            if card:isKindOf("EquipCard") then
+                if math.random() < 0.3 then
+                    local chat = sgs.ai_chat.equip_removed
+                    if from:isFemale() then
+                        chat = sgs.ai_chat.equip_removed_female
+                    end
+                    -- 增加非空檢查，防止 chat 表為空時報錯
+                    if chat and #chat > 0 then
+                        from:speak(chat[math.random(1, #chat)])
+                    end
+                end
+                break -- 只要有一張是裝備，說完話就跳出，避免刷屏
+            end
+        end
+    end
+end
+
+-- 弃牌相关
+sgs.ai_chat.discard_many = {
+	"弃这么多",
+	"手牌太多了",
+	"弃弃弃",
+	"牌多的烦恼",
+	"选择困难"
+}
+sgs.ai_event_callback[sgs.EventPhaseStart].discard_many = function(self, player, data)
+	if not AIChat(player) then return end
+	if player:getState() ~= "robot" then return end
+	if player:getPhase() ~= sgs.Player_Discard then return end
+	if player:getHandcardNum() >= player:getMaxCards() + 2 and math.random() < 0.15 then
+		player:speak(sgs.ai_chat.discard_many[math.random(1, #sgs.ai_chat.discard_many)])
+	end
+end
+
+--[[
+
+sgs.ai_chat.candamagehp_weak={
+	"擦，再卖血会卖死的",
+	"虚了，已经虚了",
+	"不敢再卖了诶诶诶"
+}
+
+
+
+
+
+
 
 -- 连续摸到好牌
 sgs.ai_chat.good_cards = {
@@ -980,23 +1321,7 @@ sgs.ai_chat.bad_cards = {
 	"这牌没法玩"
 }
 
--- 装备被拆
-sgs.ai_chat.equip_removed = {
-	"我的装备！",
-	"还我宝贝",
-	"你给我等着",
-	"君子动口不动手啊",
-	"我记住你了",
-	"卑鄙！无耻！下流！"
-}
 
-sgs.ai_chat.equip_removed_female = {
-	"你抢女孩子东西算什么本事",
-	"还我！",
-	"我的宝贝装备",
-	"你好坏哦",
-	"欺负人！"
-}
 
 -- 被多人集火
 sgs.ai_chat.focused_fire = {
@@ -1009,53 +1334,9 @@ sgs.ai_chat.focused_fire = {
 	"你们是商量好的吧"
 }
 
--- 残血反杀
-sgs.ai_chat.low_hp_kill = {
-	"反杀！",
-	"还有这种操作？",
-	"哈哈，没想到吧",
-	"绝地反击！",
-	"我还没倒下！",
-	"越残越强！",
-	"别小看我",
-	"最后的荣光"
-}
 
-sgs.ai_chat.low_hp_kill_female = {
-	"本宫不是好欺负的",
-	"看本姑娘的厉害",
-	"谁说女子不如男",
-	"反杀成功！",
-	"哼，大意了吧"
-}
 
--- 锦囊被无懈
-sgs.ai_chat.trick_nullified = {
-	"啊这...",
-	"被无懈了",
-	"怎么回事",
-	"被克制了",
-	"可恶",
-	"失算了",
-	"白出了"
-}
 
-sgs.ai_chat.trick_nullified_female = {
-	"呜呜被无懈了",
-	"白出了",
-	"可恶",
-	"哼"
-}
-
--- 拿到神装
-sgs.ai_chat.god_equip = {
-	"神装到手",
-	"装备齐全了",
-	"这波装备可以",
-	"满配了兄弟们",
-	"全副武装",
-	"来战！"
-}
 
 -- 空城状态
 sgs.ai_chat.empty_city = {
@@ -1067,54 +1348,11 @@ sgs.ai_chat.empty_city = {
 	"空空如也"
 }
 
--- 满手牌
-sgs.ai_chat.full_hand = {
-	"牌太多了",
-	"手牌爆炸",
-	"选择困难症犯了",
-	"不知道出哪张",
-	"资源丰富",
-	"牌多任性"
-}
 
--- 成为主公
-sgs.ai_chat.become_lord = {
-	"主公之位，舍我其谁",
-	"众卿平身",
-	"朕即国家",
-	"效忠于我吧",
-	"替朕守好江山"
-}
 
--- 主公被围攻
-sgs.ai_chat.lord_in_danger = {
-	"主公危险！",
-	"护驾！",
-	"保护主公",
-	"主公小心",
-	"忠臣何在",
-	"速速救驾"
-}
 
--- 反贼暴露
-sgs.ai_chat.rebel_exposed = {
-	"反贼现身了",
-	"抓住他！",
-	"看我不打死你",
-	"胆敢造反",
-	"大胆逆贼",
-	"拿下！"
-}
 
--- 内奸身份可疑
-sgs.ai_chat.renegade_suspicious = {
-	"你是不是内奸",
-	"表现得很可疑啊",
-	"我怀疑你",
-	"感觉你有问题",
-	"你到底是哪边的",
-	"别装了"
-}
+
 
 -- 队友给力
 sgs.ai_chat.good_teammate = {
@@ -1171,15 +1409,7 @@ sgs.ai_chat.self_mistake = {
 	"我的锅",
 }
 
--- 游戏开始
-sgs.ai_chat.game_start = {
-	"开始了开始了",
-	"让我看看什么身份",
-	"这局好好打",
-	"准备就绪",
-	"来吧",
-	"出发！"
-}
+
 
 -- 即将胜利
 sgs.ai_chat.near_victory = {
@@ -1216,71 +1446,10 @@ sgs.ai_chat.stalemate = {
 	"拉锯战"
 }
 
--- 新增事件：连续被同一人杀
-sgs.ai_event_callback[sgs.TargetConfirmed].continuous_slash = function(self, player, data)
-	if not AIChat(player) then return end
-	local use = data:toCardUse()
-	if not use.card:isKindOf("Slash") then return end
-	
-	for _, to in sgs.qlist(use.to) do
-		if to:getState() == "robot" and to:objectName() ~= use.from:objectName() then
-			-- 检查是否被同一人连续杀
-			if not to:getMark("last_slasher") then to:setMark("last_slasher", 0) end
-			if to:getMark("last_slasher") == use.from:objectName():toInt() then
-				to:addMark("continuous_slash_count")
-				if to:getMark("continuous_slash_count") >= 2 and math.random() < 0.5 then
-					local chat = sgs.ai_chat.continuous_slash
-					if to:isFemale() then
-						chat = sgs.ai_chat.continuous_slash_female
-					end
-					to:speak(chat[math.random(1, #chat)])
-					to:setMark("continuous_slash_count", 0)
-				end
-			else
-				to:setMark("last_slasher", use.from:objectName():toInt())
-				to:setMark("continuous_slash_count", 1)
-			end
-		end
-	end
-end
 
--- 新增事件：装备被拆除
-sgs.ai_event_callback[sgs.CardsMoveOneTime].equip_removed = function(self, player, data)
-	if not AIChat() then return end
-	local move = data:toMoveOneTime()
-	if move.to_place ~= sgs.Player_DiscardPile and move.to_place ~= sgs.Player_PlaceHand then return end
-	if not move.from or move.from:getState() ~= "robot" then return end
-	
-	for _, id in sgs.qlist(move.card_ids) do
-		local card = sgs.Sanguosha:getCard(id)
-		if card:isKindOf("EquipCard") and move.from_places:at(0) == sgs.Player_PlaceEquip then
-			if math.random() < 0.3 then
-				local chat = sgs.ai_chat.equip_removed
-				if move.from:isFemale() then
-					chat = sgs.ai_chat.equip_removed_female
-				end
-				move.from:speak(chat[math.random(1, #chat)])
-			end
-			break
-		end
-	end
-end
 
--- 新增事件：残血反杀
-sgs.ai_event_callback[sgs.Death].low_hp_kill = function(self, player, data)
-	if not AIChat() then return end
-	local death = data:toDeath()
-	if not death.damage or not death.damage.from then return end
-	
-	local killer = death.damage.from
-	if killer:getState() == "robot" and killer:getHp() <= 1 and math.random() < 0.4 then
-		local chat = sgs.ai_chat.low_hp_kill
-		if killer:isFemale() then
-			chat = sgs.ai_chat.low_hp_kill_female
-		end
-		killer:speak(chat[math.random(1, #chat)])
-	end
-end
+
+
 
 -- 新增事件：空城状态
 sgs.ai_event_callback[sgs.EventPhaseStart].empty_city = function(self, player, data)
@@ -1293,16 +1462,6 @@ sgs.ai_event_callback[sgs.EventPhaseStart].empty_city = function(self, player, d
 	end
 end
 
--- 新增事件：满手牌
-sgs.ai_event_callback[sgs.DrawNCards].full_hand = function(self, player, data)
-	if not AIChat(player) then return end
-	if player:getState() ~= "robot" then return end
-	
-	-- 延迟检查，在摸牌后
-	if player:getHandcardNum() >= player:getMaxCards() and math.random() < 0.15 then
-		player:speak(sgs.ai_chat.full_hand[math.random(1, #sgs.ai_chat.full_hand)])
-	end
-end
 
 -- 新增事件：被多人集火
 sgs.ai_event_callback[sgs.Damaged].focused_fire = function(self, player, data)
@@ -1315,21 +1474,6 @@ sgs.ai_event_callback[sgs.Damaged].focused_fire = function(self, player, data)
 	end
 end
 
--- 新增事件：成功闪避多次
-sgs.ai_event_callback[sgs.CardResponded].multi_jink = function(self, player, data)
-	if not AIChat(player) then return end
-	local response = data:toCardResponse()
-	if not response.m_card or not response.m_card:isKindOf("Jink") then return end
-	if player:getState() ~= "robot" then return end
-	
-	if not player:getMark("jink_count") then player:setMark("jink_count", 0) end
-	player:addMark("jink_count")
-	
-	if player:getMark("jink_count") >= 2 and math.random() < 0.3 then
-		player:speak(sgs.ai_chat.multi_jink[math.random(1, #sgs.ai_chat.multi_jink)])
-		player:setMark("jink_count", 0)
-	end
-end
 --[[
 -- 新增事件：队友给力/坑爹
 sgs.ai_event_callback[sgs.CardFinished].teammate_evaluation = function(self, player, data)
@@ -1354,49 +1498,9 @@ sgs.ai_event_callback[sgs.CardFinished].teammate_evaluation = function(self, pla
 	end
 end
 
--- 新增事件：游戏开始时的问候
-sgs.ai_event_callback[sgs.GameStart].greeting = function(self, player, data)
-	if not AIChat() then return end
 
-	if player:getState() == "robot" and math.random() < 0.2 then
-		self:speak("game_start")
-	end
-end
 
--- 新增事件：获得神装时
-sgs.ai_event_callback[sgs.CardsMoveOneTime].god_equip = function(self, player, data)
-	if not AIChat() then return end
-	local move = data:toMoveOneTime()
-	if not move.to or move.to:getState() ~= "robot" then return end
-	if move.to_place ~= sgs.Player_PlaceEquip then return end
-	
-	-- 检查装备栏是否满了
-	local equip_count = 0
-	if move.to:getWeapon() then equip_count = equip_count + 1 end
-	if move.to:getArmor() then equip_count = equip_count + 1 end
-	if move.to:getDefensiveHorse() then equip_count = equip_count + 1 end
-	if move.to:getOffensiveHorse() then equip_count = equip_count + 1 end
-	
-	if equip_count >= 3 and math.random() < 0.25 then
-		move.to:speak(sgs.ai_chat.god_equip[math.random(1, #sgs.ai_chat.god_equip)])
-	end
-end
 
--- 新增事件：主公被围攻时忠臣呼喊
-sgs.ai_event_callback[sgs.Damaged].lord_in_danger_call = function(self, player, data)
-	if not AIChat() then return end
-	local damage = data:toDamage()
-	if not damage.to or not damage.to:isLord() then return end
-	
-	if damage.to:getHp() <= 2 and math.random() < 0.3 then
-		for _, p in sgs.qlist(self.room:getOtherPlayers(damage.to)) do
-			if p:getState() == "robot" and self:isFriend(p, damage.to) and math.random() < 0.5 then
-				p:speak(sgs.ai_chat.lord_in_danger[math.random(1, #sgs.ai_chat.lord_in_danger)])
-				break
-			end
-		end
-	end
-end
 
 -- 特殊组合聊天
 sgs.ai_chat.combo_attack = {
@@ -1408,21 +1512,6 @@ sgs.ai_chat.combo_attack = {
 	"行云流水"
 }
 
-sgs.ai_chat.steal_kill = {
-	"抢人头！",
-	"这人头是我的",
-	"让我来收割",
-	"KS大师",
-	"我来终结他",
-	"补刀成功"
-}
-
-sgs.ai_chat.steal_kill_female = {
-	"让妾身来",
-	"这个人头归我",
-	"本宫来收尾",
-	"补刀~"
-}
 
 -- 特殊局势聊天
 sgs.ai_chat.comeback = {
@@ -1498,121 +1587,6 @@ sgs.ai_chat.nice = {
 	"太强了"
 }
 
--- 针对特定卡牌的反应
-sgs.ai_chat.see_duel = {
-	"又是决斗",
-	"来就来，谁怕谁",
-	"手里一大把杀",
-	"比杀是吧"
-}
-
-sgs.ai_chat.see_duel_female = {
-	"决斗什么的最讨厌了",
-	"欺负女孩子",
-	"不要啦",
-	"人家不想打架"
-}
-
-sgs.ai_chat.see_aoe = {
-	"又是群攻",
-	"躺枪",
-	"能不能别搞AOE",
-	"殃及池鱼"
-}
-
-sgs.ai_chat.see_lightning = {
-	"闪电！",
-	"快跑",
-	"天打雷劈",
-	"谁这么缺德",
-	"雷来了"
-}
-
-sgs.ai_chat.avoid_lightning = {
-	"躲过去了",
-	"没劈到我",
-	"虚惊一场",
-	"好险",
-	"天佑我也"
-}
-
-
--- 回合开始/结束
-sgs.ai_chat.turn_start = {
-	"轮到我了",
-	"我的回合",
-	"看我表演",
-	"该我了",
-	"Draw！"
-}
-
-sgs.ai_chat.turn_start_female = {
-	"轮到我啰",
-	"我的回合呢",
-	"看我表现吧",
-	"该我上场了",
-	"抽牌！"
-}
-
-sgs.ai_chat.turn_end = {
-	"结束了",
-	"过了",
-	"下一位",
-	"完事",
-	"你的回合"
-}
-
-sgs.ai_chat.turn_end_female = {
-	"我这边结束啰",
-	"轮到你啦",
-	"该你上场了",
-	"我先收手啦",
-	"就到这里，换你"
-}
-
--- 针对闪电的事件回调
-sgs.ai_event_callback[sgs.StartJudge].lightning_fear = function(self, player, data)
-	if not AIChat(player) then return end
-	local judge = data:toJudge()
-	if judge.reason == "lightning" and math.random() < 0.5 then
-		local chat = sgs.ai_chat.see_lightning
-		if player:getState() == "robot" then
-			player:speak(chat[math.random(1, #chat)])
-		end
-	end
-end
-
--- 决斗时的反应
-sgs.ai_event_callback[sgs.TargetConfirmed].duel_response = function(self, player, data)
-	if not AIChat() then return end
-	local use = data:toCardUse()
-	if not use.card:isKindOf("Duel") then return end
-	
-	for _, to in sgs.qlist(use.to) do
-		if to:getState() == "robot" and math.random() < 0.4 then
-			local chat = sgs.ai_chat.see_duel
-			if to:isFemale() then
-				chat = sgs.ai_chat.see_duel_female
-			end
-			to:speak(chat[math.random(1, #chat)])
-		end
-	end
-end
-
--- AOE的额外反应
-sgs.ai_event_callback[sgs.PreCardUsed].aoe_reaction = function(self, player, data)
-	if not AIChat() then return end
-	local use = data:toCardUse()
-	if use.card:isKindOf("ArcheryAttack") or use.card:isKindOf("SavageAssault") then
-		for _, p in sgs.qlist(self.room:getOtherPlayers(use.from)) do
-			if p:getState() == "robot" and use.to:contains(p) and math.random() < 0.2 then
-				p:speak(sgs.ai_chat.see_aoe[math.random(1, #sgs.ai_chat.see_aoe)])
-				break
-			end
-		end
-	end
-end
-
 -- 失误反应事件
 sgs.ai_event_callback[sgs.CardFinished].mistake_reaction = function(self, player, data)
 	if not AIChat() then return end
@@ -1636,132 +1610,12 @@ sgs.ai_event_callback[sgs.CardFinished].mistake_reaction = function(self, player
 	end
 end
 
--- 判定相关的额外聊天
-sgs.ai_chat.supply_shortageIsBad = {
-	"糟了，真的断粮了",
-	"这下没得摸了",
-	"完蛋，黑桃",
-	"兵粮寸断",
-	"我的摸牌啊"
-}
 
-sgs.ai_chat.indulgenceIsBad = {
-	"真的乐了",
-	"空过了",
-	"这回合白给",
-	"什么都干不了",
-	"我太难了"
-}
 
-sgs.ai_chat.indulgenceIsBad_female = {
-	"真的要休息了",
-	"妾身动不了了",
-	"乐不思蜀",
-	"呜呜呜"
-}
 
--- 装备特定聊天
-sgs.ai_chat.crossbow = {
-	"连弩到手",
-	"可以开始突突了",
-	"AK在手",
-	"准备扫射"
-}
 
-sgs.ai_chat.kylin_bow = {
-	"麒麟弓",
-	"废马神器",
-	"专业拆马",
-	"马克星"
-}
 
-sgs.ai_chat.blade = {
-	"青龙偃月刀",
-	"神兵到手",
-	"可以二连斩了"
-}
 
-sgs.ai_chat.spear = {
-	"丈八蛇矛",
-	"化牌为杀",
-	"这下不缺杀了"
-}
-
-sgs.ai_chat.eight_diagram = {
-	"八卦阵",
-	"防御神器",
-	"有八卦，不慌"
-}
-
--- 濒死相关
-sgs.ai_chat.dying = {
-	"救命...",
-	"快没了...",
-	"谁来救我",
-	"撑不住了",
-	"要死了"
-}
-
-sgs.ai_chat.dying_female = {
-	"救救妾身",
-	"要不行了",
-	"好难受",
-	"快来救我"
-}
-
-sgs.ai_chat.recover = {
-	"回血了",
-	"好多了",
-	"满状态",
-	"又能战斗了",
-	"活过来了"
-}
-
-sgs.ai_chat.recover_female = {
-	"妾身恢复了",
-	"好多了",
-	"谢谢治疗",
-	"血回来了"
-}
-
--- 摸牌相关
-sgs.ai_chat.draw_many = {
-	"摸好多牌",
-	"牌来了",
-	"资源爆炸",
-	"发财了",
-	"手牌丰富"
-}
-
--- 弃牌相关
-sgs.ai_chat.discard_many = {
-	"弃这么多",
-	"手牌太多了",
-	"弃弃弃",
-	"牌多的烦恼",
-	"选择困难"
-}
-
--- 观星聊天
-sgs.ai_chat.guanxing = {
-	"观星象，知天命",
-	"让我算算",
-	"天机不可泄露",
-	"卜算一番",
-	"天象如此..."
-}
-
--- 锦囊被无懈的回调
-sgs.ai_event_callback[sgs.CardFinished].trick_nullified = function(self, player, data)
-	if not AIChat(player) then return end
-	local use = data:toCardUse()
-	if not use.card:isKindOf("TrickCard") then return end
-	if not use.card:isKindOf("DelayedTrick") and use.nullified_list and use.nullified_list:length() > 0 then
-		if use.from and use.from:getState() == "robot" and math.random() < 0.3 then
-			self:speak("trick_nullified", use.from:isFemale())
-		end
-	end
-end
 
 -- 摸到好牌/烂牌的回调
 sgs.ai_event_callback[sgs.EventPhaseEnd].card_quality = function(self, player, data)
@@ -1788,52 +1642,7 @@ sgs.ai_event_callback[sgs.EventPhaseEnd].card_quality = function(self, player, d
 	end
 end
 
--- 使用装备时的聊天
-sgs.ai_event_callback[sgs.CardUsed].equip_chat = function(self, player, data)
-	if not AIChat(player) then return end
-	local use = data:toCardUse()
-	if player:getState() ~= "robot" or math.random() > 0.25 then return end
-	
-	if use.card:isKindOf("Crossbow") then
-		self:speak("crossbow", player:isFemale())
-	elseif use.card:isKindOf("Blade") then
-		self:speak("blade", player:isFemale())
-	elseif use.card:isKindOf("Spear") then
-		self:speak("spear", player:isFemale())
-	elseif use.card:isKindOf("EightDiagram") then
-		self:speak("eight_diagram", player:isFemale())
-	elseif use.card:isKindOf("KylinBow") then
-		self:speak("kylin_bow", player:isFemale())
-	end
-end
 
--- 判定的聊天
-sgs.ai_event_callback[sgs.FinishJudge].delayed_trick = function(self, player, data)
-	if not AIChat(player) then return end
-	local judge = data:toJudge()
-	if player:getState() ~= "robot" or math.random() > 0.4 then return end
-	
-	-- 兵粮寸断判定
-	if judge.reason == "supply_shortage" then
-		if judge:isGood() and math.random() < 0.5 then
-			self:speak("supply_shortageIsGood", player:isFemale())
-		elseif judge:isBad() and math.random() < 0.4 then
-			self:speak("supply_shortageIsBad", player:isFemale())
-		end
-	-- 乐不思蜀判定
-	elseif judge.reason == "indulgence" then
-		if judge:isGood() and math.random() < 0.5 then
-			self:speak("indulgenceIsGood", player:isFemale())
-		elseif judge:isBad() and math.random() < 0.4 then
-			self:speak("indulgenceIsBad", player:isFemale())
-		end
-	-- 八卦阵判定
-	elseif judge.reason == "eight_diagram" then
-		if judge:isGood() and math.random() < 0.6 then
-			self:speak("eight_diagramIsGood", player:isFemale())
-		end
-	end
-end
 
 -- 游戏局势判断
 sgs.ai_event_callback[sgs.EventPhaseStart].game_situation = function(self, player, data)
@@ -1874,40 +1683,6 @@ sgs.ai_event_callback[sgs.EventPhaseStart].game_situation = function(self, playe
 	end
 end
 
--- 主公身份相关
-sgs.ai_event_callback[sgs.GameStart].lord_identity = function(self, player, data)
-	if not AIChat(player) then return end
-	if not player:isLord() then return end
-	if player:getState() ~= "robot" or math.random() > 0.3 then return end
-	
-	self:speak("become_lord", player:isFemale())
-end
-
--- 反贼/内奸暴露
-sgs.ai_event_callback[sgs.CardUsed].identity_exposed = function(self, player, data)
-	if not AIChat() then return end
-	local use = data:toCardUse()
-	
-	-- 当有人攻击主公时
-	if use.card:isKindOf("Slash") or (use.card:isKindOf("Duel")) then
-		for _, to in sgs.qlist(use.to) do
-			if to:isLord() and use.from and use.from:getState() == "robot" then
-				-- 其他忠臣可能会说反贼暴露（仅当确实有反贼且没有内奸或内奸数量少时）
-				if sgs.playerRoles["rebel"] > 0 and sgs.playerRoles["renegade"] < 2 then
-					for _, p in sgs.qlist(self.room:getOtherPlayers(use.from)) do
-						if p:getState() == "robot" and self:isFriend(p, to) 
-							and not self:isFriend(p, use.from) and math.random() < 0.15 then
-							p:speak(sgs.ai_chat.rebel_exposed[math.random(1, #sgs.ai_chat.rebel_exposed)])
-							break
-						end
-					end
-				end
-				break
-			end
-		end
-	end
-end
-
 -- 队友表现判断
 sgs.ai_event_callback[sgs.CardUsed].teammate_performance = function(self, player, data)
 	if not AIChat() then return end
@@ -1928,107 +1703,6 @@ sgs.ai_event_callback[sgs.CardUsed].teammate_performance = function(self, player
 			end
 		end
 	end
-end
-
--- 内奸可疑判断
-sgs.ai_event_callback[sgs.CardResponded].renegade_suspicious = function(self, player, data)
-	if not AIChat() then return end
-	local response = data:toCardResponse()
-	
-	-- 当有人濒死时，其他人没有出桃救人，可能会被怀疑是内奸
-	if self.room:getCurrentDyingPlayer() then
-		local dying = self.room:getCurrentDyingPlayer()
-		if dying and dying:isLord() and not response.m_card then
-			-- 如果主公濒死，有人不救，且确实存在内奸，可能被怀疑
-			if sgs.playerRoles["renegade"] > 0 and player:getState() == "robot" and math.random() < 0.08 then
-				-- 其他人可能会怀疑
-				for _, p in sgs.qlist(self.room:getOtherPlayers(player)) do
-					if p:getState() == "robot" and p ~= dying 
-						and math.random() < 0.3 then
-						p:speak(sgs.ai_chat.renegade_suspicious[math.random(1, #sgs.ai_chat.renegade_suspicious)])
-						break
-					end
-				end
-			end
-		end
-	end
-end
-
--- 内奸可疑判断（基于出牌行为）
-sgs.ai_event_callback[sgs.CardUsed].suspicious_behavior = function(self, player, data)
-	if not AIChat() then return end
-	local use = data:toCardUse()
-	if not use.from or use.from:getState() ~= "robot" then return end
-	if math.random() > 0.05 then return end
-	
-	-- 在游戏中后期，如果有人行为暧昧（比如帮敌人）
-	if sgs.turncount < 5 then return end
-	
-	-- 检测可疑行为：用有益锦囊帮助敌人，或用伤害锦囊伤害队友
-	local lord = nil
-	for _, p in sgs.qlist(self.room:getAlivePlayers()) do
-		if p:isLord() then
-			lord = p
-			break
-		end
-	end
-	
-	if not lord then return end
-	
-	-- 如果用桃救了攻击过主公的人
-	if use.card:isKindOf("Peach") then
-		for _, to in sgs.qlist(use.to) do
-			if to ~= use.from and to ~= lord then
-				-- 检查这个人是否攻击过主公
-				local ai = use.from:getAI()
-				if ai and ai:isEnemy(to, lord) then
-					-- 其他人可能会怀疑
-					for _, p in sgs.qlist(self.room:getOtherPlayers(use.from)) do
-						if p:getState() == "robot" and p:isLord() and math.random() < 0.2 then
-							p:speak(sgs.ai_chat.renegade_suspicious[math.random(1, #sgs.ai_chat.renegade_suspicious)])
-							break
-						end
-					end
-				end
-			end
-		end
-	end
-	
-	-- 如果用伤害性锦囊打了看起来像队友的人
-	if use.card:isKindOf("Duel") or use.card:isKindOf("FireAttack") then
-		for _, to in sgs.qlist(use.to) do
-			if to:isLord() then
-				-- 打主公但不是明确的反贼，且存在内奸，可疑
-				if sgs.ai_role[use.from:objectName()] ~= "rebel" and sgs.playerRoles["renegade"] > 0 then
-					for _, p in sgs.qlist(self.room:getOtherPlayers(use.from)) do
-						if p:getState() == "robot" and not p:isLord() and math.random() < 0.15 then
-							p:speak(sgs.ai_chat.renegade_suspicious[math.random(1, #sgs.ai_chat.renegade_suspicious)])
-							break
-						end
-					end
-				end
-				break
-			end
-		end
-	end
-end
-
--- 回合结束触发
-sgs.ai_event_callback[sgs.EventPhaseStart].turn_end = function(self, player, data)
-	if not AIChat(player) then return end
-	if player:getPhase() ~= sgs.Player_Finish then return end
-	if player:getState() ~= "robot" or math.random() > 0.1 then return end
-	
-	self:speak("turn_end", player:isFemale())
-end
-
--- 回合开始触发
-sgs.ai_event_callback[sgs.EventPhaseStart].turn_start = function(self, player, data)
-	if not AIChat(player) then return end
-	if player:getPhase() ~= sgs.Player_Start then return end
-	if player:getState() ~= "robot" or math.random() > 0.1 then return end
-	
-	self:speak("turn_start", player:isFemale())
 end
 
 -- 记录被伤害事件
@@ -2068,24 +1742,7 @@ sgs.ai_event_callback[sgs.CardFinished].combo_attack = function(self, player, da
 	end
 end
 
--- steal_kill: 抢人头（击杀濒死敌人）
-sgs.ai_event_callback[sgs.Death].steal_kill = function(self, player, data)
-	if not AIChat() then return end
-	local death = data:toDeath()
-	if not death.damage or not death.damage.from then return end
-	
-	local killer = death.damage.from
-	if killer:getState() == "robot" and killer:objectName() ~= player:objectName() then
-		-- 检查死者血量是否很低
-		if math.random() < 0.25 then
-			local chat = sgs.ai_chat.steal_kill
-			if killer:isFemale() then
-				chat = sgs.ai_chat.steal_kill_female or chat
-			end
-			killer:speak(chat[math.random(1, #chat)])
-		end
-	end
-end
+
 
 -- comeback: 翻盘（从劣势到优势）
 sgs.ai_event_callback[sgs.EventPhaseStart].comeback = function(self, player, data)

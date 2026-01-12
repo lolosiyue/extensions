@@ -2019,7 +2019,7 @@ diy_k_fanghun = sgs.CreateTriggerSkill{
 					card = response.m_card
 				end
 			end
-			if card:getSkillName() == self:objectName() then
+			if card and card:getSkillName() == self:objectName() then
 			    player:loseMark("&diy_k_meiying")
 				player:drawCards(1)
 			end

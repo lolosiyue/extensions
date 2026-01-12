@@ -616,7 +616,9 @@ sgs.ai_skill_choice.zd_fenyue = function(self,choices,data)
 	if table.contains(items,"zd_fenyue2") then
 		local d = dummyCard()
 		d:setSkillName("_zd_fenyue")
-		local use = {card=d,from=self.player}
+		local use = sgs.CardUseStruct()
+		use.card = d
+		use.from = self.player
 		if self:canCanmou(target,use)
 		then
 			return "zd_fenyue2"

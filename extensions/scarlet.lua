@@ -600,7 +600,7 @@ s4_jiwu = sgs.CreateTriggerSkill {
                                 local log = sgs.LogMessage()
                                 log.type = "$NoRespond"
                                 log.from = use.from
-                                log.to = targets
+                                log.to = use.to
                                 log.arg = self:objectName()
                                 log.card_str = use.card:toString()
                                 room:sendLog(log)
@@ -7117,7 +7117,7 @@ s4_juxiang = sgs.CreateTriggerSkill {
                                 choicelist = string.format("%s+%s", choicelist, "obtain")
                             end
                             choicelist = string.format("%s+%s", choicelist, "cancel")
-                            local choice = room:askForChoice(player, self:objectName(), choicelist)
+                            local choice = room:askForChoice(player, self:objectName(), choicelist, ToData(target))
 				            if choice == "damage" then
                                 room:addPlayerMark(player, "s4_juxiang"..target:objectName()..use.card:getEffectiveId().."Card-SelfClear")
                             elseif choice == "obtain" then

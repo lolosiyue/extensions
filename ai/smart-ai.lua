@@ -1382,7 +1382,7 @@ function sgs.updateIntention(from,to,level)
 		end
 		local alive_players = sgs.getCachedAlivePlayers()
 		for i,p in ipairs(alive_players)do
-			sgs.ais[p:objectName()]:updatePlayers(i<1)
+			sgs.ais[p:objectName()]:updatePlayers(i==1)
 		end
 		outputRoleValues(from,level)
 	end
@@ -1786,26 +1786,6 @@ function SmartAI:updatePlayers(update)
 		-- Performance: Use cached alive players
 		local players = sgs.qlist_cached(self.room:getAlivePlayers(), "alive_players_" .. self.player:objectName())
 
-		-- for i = 1, #players, batch_size do
-		-- 	local batch_end = math.min(i + batch_size - 1, #players)
-		-- 	for j = i, batch_end do
-		-- 		local p = players[j]
-		-- 		local n = self:objectiveLevel(p)
-		-- 		p:speak("test:"..n)
-		-- 		if n < 0 then
-		-- 			p:speak("test:"..#self.friends)
-		-- 			table.insert(self.friends, p)
-		-- 			if p ~= self.player then p:speak("test:"..#self.friends_noself) table.insert(self.friends_noself, p) end
-		-- 		elseif n > 0 then
-		-- 			p:speak("test:"..#self.enemies)
-		-- 			table.insert(self.enemies, p)
-		-- 		else
-		-- 			p:speak("test:"..#neutrality)
-		-- 			table.insert(neutrality, p)
-		-- 		end
-		-- 	end
-		-- end
-		-- self.player:speak("UpdatePlayers:Crash")
 		-- Performance: Reuse already cached player list
 		for _,p in ipairs(players)do
 			local n = self:objectiveLevel(p)
@@ -1820,7 +1800,6 @@ function SmartAI:updatePlayers(update)
 			table.sort(neutrality,sgs.ai_compare_funcs.chaofeng)
 			table.insert(self.enemies,neutrality[#neutrality])
 		end
-		-- self.player:speak("UpdatePlayers:NoCrash")
 	end
 end
 
@@ -1836,11 +1815,6 @@ function evaluateAlivePlayersRole()
 	end
 	local aps = sgs.getCachedAlivePlayers()
 	table.sort(aps,cmp)
-	
-	-- Debug: log playerRoles
-	global_room:writeToConsole("=== evaluateAlivePlayersRole Debug ===")
-	global_room:writeToConsole(string.format("playerRoles: loyalist=%d, rebel=%d, renegade=%d", 
-		sgs.playerRoles.loyalist or 0, sgs.playerRoles.rebel or 0, sgs.playerRoles.renegade or 0))
 	
 	-- First pass: assign roles to players who have shown their role
 	local shown_count = 0
@@ -1861,9 +1835,6 @@ function evaluateAlivePlayersRole()
 			sgs.ai_role[p:objectName()] = "neutral"
 		end
 	end
-	
-	global_room:writeToConsole(string.format("After 1st pass: loyalist=%d, rebel=%d, renegade=%d", loyalist, rebel, renegade))
-	
 	-- Second pass: assign roles based on roleValue for unknown players
 	for _,p in ipairs(aps)do
 		if p:hasShownRole() then continue end
@@ -1876,32 +1847,26 @@ function evaluateAlivePlayersRole()
 			sgs.explicit_renegade = true
 			sgs.ai_role[p:objectName()] = "renegade"
 			renegade = renegade+1
-			global_room:writeToConsole(p:getGeneralName().." -> renegade (only renegades left)")
 		elseif sgs.playerRoles.renegade+sgs.playerRoles.loyalist<1 then
 			-- Only rebels left
 			sgs.ai_role[p:objectName()] = "rebel"
 			rebel = rebel+1
-			global_room:writeToConsole(p:getGeneralName().." -> rebel (only rebels left)")
 		elseif loy_value>3 and sgs.playerRoles.loyalist>loyalist then
 			-- Clearly loyalist behavior
 			sgs.ai_role[p:objectName()] = "loyalist"
 			loyalist = loyalist+1
-			global_room:writeToConsole(p:getGeneralName().." -> loyalist (loy_value="..loy_value..")")
 		elseif loy_value<-5 and sgs.playerRoles.rebel>rebel then
 			-- Clearly rebel behavior
 			sgs.ai_role[p:objectName()] = "rebel"
 			rebel = rebel+1
-			global_room:writeToConsole(p:getGeneralName().." -> rebel (loy_value="..loy_value..")")
 		elseif sgs.playerRoles.renegade>renegade and loy_value>-15 and ren_value>8 then
 			-- Likely renegade behavior
 			sgs.explicit_renegade = ren_value>(sgs.playerRoles.rebel<1 and 25 or 40)
 			sgs.ai_role[p:objectName()] = "renegade"
 			renegade = renegade+1
-			global_room:writeToConsole(p:getGeneralName().." -> renegade (ren_value="..ren_value..")")
 		end
 	end
 	
-	global_room:writeToConsole(string.format("After 2nd pass: loyalist=%d, rebel=%d, renegade=%d", loyalist, rebel, renegade))
 	
 	-- Third pass: fill remaining slots based on relative values
 	for _,p in ipairs(aps)do
@@ -1913,20 +1878,14 @@ function evaluateAlivePlayersRole()
 		if loyalist<sgs.playerRoles.loyalist and loy_value>0 then
 			sgs.ai_role[p:objectName()] = "loyalist"
 			loyalist = loyalist+1
-			global_room:writeToConsole(p:getGeneralName().." -> loyalist (3rd pass, loy_value="..loy_value..")")
 		elseif rebel<sgs.playerRoles.rebel and loy_value<0 then
 			sgs.ai_role[p:objectName()] = "rebel"
 			rebel = rebel+1
-			global_room:writeToConsole(p:getGeneralName().." -> rebel (3rd pass, loy_value="..loy_value..")")
 		elseif renegade<sgs.playerRoles.renegade and ren_value>5 then
 			sgs.ai_role[p:objectName()] = "renegade"
 			renegade = renegade+1
-			global_room:writeToConsole(p:getGeneralName().." -> renegade (3rd pass, ren_value="..ren_value..")")
 		end
 	end
-	
-	global_room:writeToConsole(string.format("After 3rd pass: loyalist=%d, rebel=%d, renegade=%d", loyalist, rebel, renegade))
-	global_room:writeToConsole("=== End evaluateAlivePlayersRole ===")
 
 	if rebel<sgs.playerRoles.rebel then
 		for _,p in ipairs(sgs.reverse(aps))do
@@ -1939,7 +1898,6 @@ function evaluateAlivePlayersRole()
 				sgs.ai_role[p:objectName()] = "rebel"
 				outputRoleValues(p,0)
 				rebel = rebel+1
-				global_room:writeToConsole("rebel:"..p:getGeneralName().." Modified Success!")
 				if rebel>=sgs.playerRoles.rebel then break end
 			end
 		end
@@ -4357,7 +4315,7 @@ function SmartAI:getTurnUse()
 			else
 				if logger and idx % 5 == 1 then -- Log every 5 cards to avoid spam
 					local cardStr = "unknown"
-					local cardStrSuccess, cardStrResult = pcall(function() return c:toString() end)
+					local cardStrSuccess, cardStrResult = pcall(function() return c:getLogName() end)
 					if cardStrSuccess then
 						cardStr = cardStrResult
 					else

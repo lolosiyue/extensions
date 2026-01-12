@@ -5590,11 +5590,10 @@ sgs.ai_skill_choice.sfofl_suibian = function(self, choices, data)
 	if self:isFriend(use.to:first()) and null then
 		local target = use.to:first()
 		if not use.from or use.from:isDead() then return draw end
-		if self.role == "rebel" and sgs.ai_role[use.from:objectName()] == "rebel" and not hasJueqingEffect(use.from, target, sgs.card_damage_nature[use.card:getClassName()])
-			and self.player:getHp() == 1 and self:getAllPeachNum() < 1 then
+		if self.role == "rebel" and sgs.ai_role[use.from:objectName()] == "rebel" and self.player:getHp() == 1 and self:getAllPeachNum() < 1 then
 			return draw
 		end
-		if self:isEnemy(use.from) or (self:isFriend(use.from) and self.role == "loyalist" and not hasJueqingEffect(use.from, target, sgs.card_damage_nature[use.card:getClassName()]) and use.from:isLord() and self.player:getHp() == 1) then
+		if self:isEnemy(use.from) or (self:isFriend(use.from) and self.role == "loyalist" and use.card:isDamageCard() and not self:needToLoseHp(target,use.from,use.card) and use.from:isLord() and self.player:getHp() == 1) then
 			if use.card:isKindOf("AOE") then
 				local from = use.from
 				if use.card:isKindOf("SavageAssault") then
@@ -5653,7 +5652,7 @@ sgs.ai_skill_choice.sfofl_suibian = function(self, choices, data)
 						end
 					end
 				elseif use.card:isKindOf("Slash") then
-					if self:ajustDamage(use.from,target,1,use.card)> 1 or self:ajustDamage(use.from,target,1,use.card)> target:getHp() then
+					if self:ajustDamage(use.from,target,1,use.card)> 1 or self:ajustDamage(use.from,target,1,use.card)>= target:getHp() then
 						if self.player:getHp() > 1 then
 							return null
 						end

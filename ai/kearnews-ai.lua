@@ -1784,7 +1784,7 @@ end
 sgs.ai_skill_playerchosen.kenewyuanli = function(self, targets)
 	targets = sgs.QList2Table(targets)
 	local slash = sgs.Sanguosha:cloneCard("fire_slash", sgs.Card_NoSuit, 0)
-	slash:setSkillName(self:objectName())
+	slash:setSkillName("kenewyuanli")
 	slash:deleteLater()
 	for _, p in ipairs(targets) do
 		if self:isEnemy(p) then
