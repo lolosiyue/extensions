@@ -4752,6 +4752,110 @@ sgs.ai_skill_playerschosen.heg_limeng = function(self, targets, max, min)
 	return selected
 end
 
+
+addAiSkills("heg_bingxin").getTurnUseCard = function(self)
+	if self.player:getHandcardNum() ~= self.player:getHp() then return nil end
+    for c, pn in sgs.list(RandomList(patterns())) do
+        c = dummyCard(pn)
+        if c and c:isKindOf("BasicCard") and self:getCardsNum(c) == 0 then
+			if self.player:getMark("heg_bingxin_guhuo_remove_"..c:objectName().."-Clear") == 0 then
+				c:setSkillName("heg_bingxin")
+				if c:isAvailable(self.player)
+					and self:aiUseCard(c).card
+				then
+					return c
+				end
+			end
+        end
+    end
+end
+
+sgs.ai_guhuo_card.heg_bingxin = function(self, toname, class_name)
+	if self.player:getHandcardNum() ~= self.player:getHp() then return end
+	local first_color = nil
+	for _,c in sgs.qlist(self.player:getHandcards())do
+		if first_color==nil then
+			first_color = c:getColor()
+		elseif first_color~=c:getColor() then
+			return
+		end
+	end
+    local c = dummyCard(toname)
+    c:setSkillName("heg_bingxin")
+    if (not c) or (not c:isKindOf("BasicCard")) then return end
+	if self.player:getMark("heg_bingxin_guhuo_remove_"..toname.."-Clear") > 0 then return end
+    if #to_use > 0 then
+        return "#heg_bingxin:.:"..toname
+    end
+end
+
+sgs.ai_fill_skill.heg_xiejian = function(self)
+	return sgs.Card_Parse("#heg_xiejian:.:")
+end
+sgs.ai_skill_use_func["#heg_xiejian"] = function(card,use,self)
+	self:sort(self.enemies, "defense")
+	for _,enemy in ipairs(self.enemies) do
+		use.card = card
+		use.to:append(enemy)
+		return
+	end
+end
+sgs.ai_use_priority["heg_xiejian"] = 4.8
+
+ 
+sgs.ai_fill_skill.heg_yinsha = function(self)
+    if self.player:getHandcardNum()>self.player:getHp()
+	or self.player:isKongcheng() or #self.toUse>1 then return end
+	local collateral = dummyCard("collateral")
+    collateral:addSubcards(self.player:getHandcards())
+    collateral:setSkillName("heg_yinsha")
+	return collateral
+end
+
+sgs.ai_fill_skill.heg_sanchen = function(self)
+	return sgs.Card_Parse("#heg_sanchen:.:")
+end
+sgs.ai_skill_use_func["#heg_sanchen"] = function(card,use,self)
+	self:sort(self.friends,"handcard")
+	self.friends = sgs.reverse(self.friends)
+	for _,p in sgs.list(self.friends)do
+		if self:doDisCard(p,"he") and p:getMark("heg_sanchen_target-PlayClear")==0 then
+			use.card = card
+			use.to:append(p)
+			return
+		end
+	end
+	for _,p in sgs.list(self.friends)do
+		if p:getMark("heg_sanchen_target-PlayClear")>0 then continue end
+		use.card = card
+		use.to:append(p)
+		return
+	end
+end
+sgs.ai_use_value["heg_sanchen"] = 10
+sgs.ai_card_intention["heg_sanchen"] = -50
+
+sgs.ai_skill_use["@@heg_pozhu"] = function(self, prompt)
+	local cards = sgs.QList2Table(self.player:getCards("h"))
+    self:sortByKeepValue(cards)
+    for _, c in ipairs(cards) do
+		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+		slash:addSubcard(c)
+		slash:setSkillName("heg_pozhu")
+		slash:deleteLater()
+		local dummy_use = self:aiUseCard(slash,dummy())
+		if dummy_use.card and dummy_use and dummy_use.to then
+			local tos = {}
+        for _,to in sgs.qlist(dummy_use.to) do
+            table.insert(tos, to:objectName())
+        end
+        return slash:toString().."->"..table.concat(tos, "+")
+		end
+	end
+    return "."
+end
+
+
 sgs.ai_skill_use["@@heg_fk_bushi"] = function(self, prompt, method)
 	local ids = self.player:getPile("heg_fk_rice")
     local cards = {}
@@ -5603,6 +5707,36 @@ sgs.ai_skill_choice.heg_ov_shigong = function(self,choices)
 	end
 	return choices[math.random(1,#choices)]
 end
+
+sgs.ai_skill_playerchosen.heg_ov_hongyuan = function(self, targets)
+	local target = self:findPlayerToDraw(false,1,false)
+	if target then
+		return target
+	end
+	return nil
+end
+
+sgs.ai_playerchosen_intention.heg_ov_hongyuan = -50
+
+sgs.ai_fill_skill.heg_ov_hongyuan = function(self)
+	return sgs.Card_Parse("#heg_ov_hongyuan:.:")
+end
+
+sgs.ai_skill_use_func["#heg_ov_hongyuan"] = function(card,use,self)
+	local card = "@TenyearRendeCard=."
+	local dummy_use = dummy()
+	self:useSkillCard(card,dummy_use)
+	if dummy_use.card then 
+		local use_cards = dummy_use.card:getSubcards()
+		for _,id in sgs.list(use_cards) do
+			if not CardIsHezong(id) then
+				use.card = sgs.Card_Parse("#heg_ov_hongyuan:"..id..":")
+				return
+			end
+		end
+	end
+end
+sgs.ai_use_priority.heg_ov_hongyuan = 1
 
 sgs.ai_skill_invoke.heg_tenyear_dechao = function(self, data)
 	local use = data:toCardUse()
