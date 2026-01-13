@@ -5546,6 +5546,115 @@ sgs.ai_skill_invoke.heg_mobile_tanfeng = function(self, data)
 	return false
 end
 
+sgs.ai_target_revises.heg_mobile_qianxun = function(to,card,self)
+	if card:isKindOf("TrickCard") and to:objectName() ~= self.player:objectName() and to:getPile("heg_mobile_jie") < 3
+	then return true end
+end
+
+sgs.ai_fill_skill.heg_mobile_duoshi = function(self)
+	if self.player:getPile("heg_mobile_jie"):length() >= 3 then
+		local ids = self.player:getPile("heg_mobile_jie")
+		local cards = {}
+		for _,id in sgs.list(ids)do
+			table.insert(cards,sgs.Sanguosha:getCard(id))
+			if #cards >= 3 then break end
+		end
+		if #cards == 3 then
+			local duoshipatterns = { "fire_slash", "fire_attack", "heg_burning_camps"}
+			for c, pn in sgs.list(RandomList(duoshipatterns)) do
+				c = dummyCard(pn)
+				c:clearSubcards()
+				c:setSkillName("heg_mobile_duoshi")
+				for _,id in sgs.list(ids)do
+					c:addSubcard(id)
+				end
+				local dummy_use = self:aiUseCard(c)
+				if c:isAvailable(self.player) and dummy_use.card and dummy_use.to then
+					return c
+				end
+			end
+		end
+	end
+	if sgs.turncount<=1 and #self.friends_noself==0 and not self:isWeak() and self:getOverflow()<=0 then return end
+		local cards = self:addHandPile("h")
+		cards = sgs.QList2Table(cards)
+
+		local red_card
+		if self.player:getHandcardNum()<=2 then return end
+		if self:needBear() then return end
+		self:sortByUseValue(cards,true)
+
+		for _,card in ipairs(cards)do
+			if card:isRed() then
+				if not self:willUse(self.player,card,false,false,true) and not card:isKindOf("Peach") then
+					red_card = card
+					break
+				end
+
+			end
+		end
+
+		if red_card then
+			local heg_await_exhausted = dummyCard("heg_await_exhausted")
+			heg_await_exhausted:addSubcard(red_card)
+			heg_await_exhausted:setSkillName(skill_name)
+			if heg_await_exhausted:isAvailable(self.player)
+			then return heg_await_exhausted end
+		end
+	end
+end
+
+sgs.ai_canliegong_skill.heg_mobile_liegong = function(self, from, to)
+	return from:getPhase() == sgs.Player_Play and (to:getHandcardNum() >= from:getHp() or to:getHandcardNum() <= from:getAttackRange())
+end
+
+sgs.ai_ajustdamage_from.heg_mobile_liegong = function(self, from, to, card, nature)
+	if card and card:isKindOf("Slash") and (card:hasFlag("heg_mobile_liegong"..to:objectName()) or (to:getHandcardNum() >= from:getHp() and to:getHandcardNum() <= from:getAttackRange())) then
+		return 1
+	end
+end
+
+sgs.ai_skill_playerchosen.heg_mobile_shushen = function(self,targets)
+	if #self.friends_noself==0 then return nil end
+	return self:findPlayerToDraw(false,1)
+end
+sgs.ai_playerchosen_intention.heg_mobile_shushen = -80
+
+
+sgs.ai_skill_invoke.heg_mobile_suishi = function(self,data)
+	local promptlist = data:toString():split(":")
+	local effect = promptlist[1]
+	local tianfeng = self.room:findPlayerByObjectName(promptlist[2])
+	if effect=="draw" then
+		return tianfeng and self:isFriend(tianfeng)
+	else
+		return tianfeng and self:isEnemy(tianfeng)
+	end
+	return false
+end
+
+sgs.ai_skill_choice.heg_mobile_suishi = function(self, choices, data)
+	choices = choices:split("+")
+	if table.contains(choices, "discardhandcard") then
+		if self:doDisCard(self.player, "h") then
+			return "discardhandcard"
+		end
+	end
+	return choices[math.random(1,#choices)]
+end
+
+sgs.ai_skill_invoke.heg_mobile_kuangfu = function(self, data)
+	local target = data:toPlayer()
+	if target and self:isEnemy(target) then
+		return self:doDisCard(target, "he", true)
+	end
+	return false
+end
+
+sgs.ai_skill_choice.heg_mobile_kuangfu = function(self, choices, data)
+	return "obtain"
+end
+
 sgs.ai_skill_invoke.heg_ov_zhenxi = function(self, data)
 	local target = data:toPlayer()
 	if target and self:isEnemy(target) then

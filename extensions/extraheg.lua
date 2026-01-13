@@ -7,6 +7,7 @@ extension_hegquan = sgs.Package("heg_quan", sgs.Package_GeneralPack)
 extension_heglordex = sgs.Package("heg_lordex", sgs.Package_GeneralPack)
 extension_hegpurplecloud = sgs.Package("heg_purplecloud", sgs.Package_GeneralPack)
 extension_goldenseal = sgs.Package("heg_goldenseal", sgs.Package_GeneralPack)
+extension_fakeoffline = sgs.Package("heg_fakeoffline", sgs.Package_GeneralPack)
 extension_hegcard = sgs.Package("hegemony_cards", sgs.Package_CardPack)
 extension_hegadvantagecard = sgs.Package("strategic_advantage", sgs.Package_CardPack)
 require "ExtraTurnUtils"
@@ -108,6 +109,14 @@ function ChoiceLog(player, choice, to)
 	player:getRoom():sendLog(log)
 end
 
+function HasBigKingdomPlayer(room)
+	for _, p in sgs.qlist(room:getAlivePlayers()) do
+		if IsBigKingdomPlayer(player) then
+			return true
+		end
+	end
+	return false
+end
 
 function IsBigKingdomPlayer(player)
 	-- 判断某个角色是否为大势力角色
@@ -10325,6 +10334,285 @@ heg_mobile_tanfeng = sgs.CreateTriggerSkill{
 }
 heg_mobile_xiahoushang:addSkill(heg_mobile_tanfeng)
 
+heg_mobile_luxun = sgs.General(extension_hegmobile,  "heg_mobile_luxun", "wu", 3)
+
+heg_mobile_qianxun = sgs.CreateTriggerSkill{
+	name = "heg_mobile_qianxun",
+	events = {sgs.TargetConfirming},
+	frequency = sgs.Skill_Compulsory,
+	on_trigger = function(self, event, player, data, room)
+		local use = data:toCardUse()
+		if not use.card then return false end
+		if not use.to:contains(player) then return false end
+		if use.to:length() ~= 1 then return false end
+		if not use.card:isKindOf("TrickCard") then return false end
+		if not use.from or use.from:objectName() == player:objectName() then return false end
+		
+		local jie_pile = player:getPile("heg_mobile_jie")
+		if jie_pile:length() < 3 then
+			room:broadcastSkillInvoke(self:objectName())
+			SendComLog(self, player)
+			use.to:removeOne(player)
+			data:setValue(use)
+			
+			player:addToPile("heg_mobile_jie", use.card:getEffectiveId())
+		end
+		return false
+	end,
+}
+
+heg_mobile_duoshiVS = sgs.CreateViewAsSkill{
+	name = "heg_mobile_duoshi",
+	n = 3,
+	expand_pile = "heg_mobile_jie",
+	view_filter = function(self, selected, to_select)
+		local jie_pile = sgs.Self:getPile("heg_mobile_jie")
+		local is_jie = jie_pile:contains(to_select:getEffectiveId())
+		
+		if is_jie then
+			-- Using Jie pile cards - need 3 cards
+			if #selected >= 3 then return false end
+			for _, c in ipairs(selected) do
+				if not jie_pile:contains(c:getEffectiveId()) then
+					return false
+				end
+			end
+			return true
+		else
+			-- Using hand card - need 1 red card
+			if #selected > 0 then return false end
+			return to_select:isRed() and not to_select:isEquipped()
+		end
+	end,
+	view_as = function(self, cards)
+		if #cards == 0 then return nil end
+		
+		local jie_pile = sgs.Self:getPile("heg_mobile_jie")
+		local is_jie = jie_pile:contains(cards[1]:getEffectiveId())
+		
+		if is_jie and #cards == 3 then
+			-- Using 3 Jie pile cards - can become fire damage cards
+			local dc = sgs.Self:getTag("heg_mobile_duoshi"):toCard()
+			if dc then
+				dc = sgs.Sanguosha:cloneCard(dc:objectName())
+				for _, c in ipairs(cards) do
+					dc:addSubcard(c)
+				end
+				dc:setSkillName("heg_mobile_duoshi")
+				return dc
+			end
+		elseif not is_jie and #cards == 1 then
+			-- Using 1 red hand card - becomes heg_await_exhausted
+			if cards[1]:isRed() then
+				local card = sgs.Sanguosha:cloneCard("heg_await_exhausted", cards[1]:getSuit(), cards[1]:getNumber())
+				card:addSubcard(cards[1])
+				card:setSkillName(self:objectName())
+				return card
+			end
+		end
+		return nil
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("heg_mobile_duoshi-PlayClear") == 0
+	end,
+}
+
+heg_mobile_duoshi = sgs.CreateTriggerSkill{
+	name = "heg_mobile_duoshi",
+	view_as_skill = heg_mobile_duoshiVS,
+	juguan_type = "fire_slash,fire_attack,heg_burning_camps",
+	events = {sgs.CardUsed},
+	on_trigger = function(self, event, player, data, room)
+		if event == sgs.CardUsed then
+			local use = data:toCardUse()
+			if use.card and use.card:getSkillName() == self:objectName() then
+				room:setPlayerMark(player, "heg_mobile_duoshi-PlayClear", 1)
+			end
+		end
+		return false
+	end,
+}
+
+heg_mobile_luxun:addSkill(heg_mobile_qianxun)
+heg_mobile_luxun:addSkill(heg_mobile_duoshi)
+
+heg_mobile_huangzhong = sgs.General(extension_hegmobile,  "heg_mobile_huangzhong", "shu", 4)
+heg_mobile_liegong = sgs.CreateTriggerSkill {
+	name = "heg_mobile_liegong",
+	events = { sgs.TargetConfirmed, sgs.ConfirmDamage },
+	on_trigger = function(self, event, player, data, room)
+		if event == sgs.TargetConfirmed then
+			local use = data:toCardUse()
+			if (player:objectName() ~= use.from:objectName()) or (player:getPhase() ~= sgs.Player_Play) or (not use.card:isKindOf("Slash")) then return false end
+			local jink_table = sgs.QList2Table(player:getTag("Jink_" .. use.card:toString()):toIntList())
+			local index = 1
+			for _, p in sgs.qlist(use.to) do
+				local handcardnum = p:getHandcardNum()
+				if (player:getHp() <= handcardnum) or (player:getAttackRange() >= handcardnum) then
+					local _data = sgs.QVariant()
+					_data:setValue(p)
+					if player:askForSkillInvoke(self:objectName(), _data) then
+						local log = sgs.LogMessage()
+						log.type = "#skill_cant_jink"
+						log.from = player
+						log.to:append(p)
+						log.arg = self:objectName()
+						room:sendLog(log)
+						jink_table[index] = 0
+						if (player:getHp() <= handcardnum) and (player:getAttackRange() >= handcardnum) then
+							room:setCardFlag(use.card, "heg_mobile_liegong"..p:objectName())
+						end
+					end
+				end
+				index = index + 1
+			end
+			local jink_data = sgs.QVariant()
+			jink_data:setValue(Table2IntList(jink_table))
+			player:setTag("Jink_" .. use.card:toString(), jink_data)
+			return false
+		elseif event == sgs.ConfirmDamage then
+			local damage = data:toDamage()
+			if damage.card and damage.card:hasFlag("heg_mobile_liegong"..damage.to:objectName()) then
+				damage.damage = damage.damage + 1
+				local log = sgs.LogMessage()
+				log.type = "#skill_add_damage"
+				log.from = damage.from
+				log.to:append(damage.to)
+				log.arg = self:objectName()
+				log.arg2 = damage.damage
+				room:sendLog(log)
+				data:setValue(damage)
+			end
+		end
+	end
+}
+
+heg_mobile_huangzhong:addSkill(heg_mobile_liegong)
+
+heg_mobile_ganfuren = sgs.General(extension_hegmobile,  "heg_mobile_ganfuren", "shu", 3, false)
+
+heg_mobile_shushen = sgs.CreateTriggerSkill{
+	name = "heg_mobile_shushen" ,
+	events = {sgs.HpRecover, sgs.CardsMoveOneTime}, ,
+	on_trigger = function(self, event, player, data)
+		if event == sgs.HpRecover then
+			local recover_struct = data:toRecover()
+			local recover = recover_struct.recover
+			local room = player:getRoom()
+			for i = 0, recover - 1, 1 do
+				local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "shushen-invoke", true, true)
+				if target then
+					target:drawCards(1)
+				else
+					break
+				end
+			end
+		elseif event == sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			if move.from and move.from:objectName() == player:objectName() and move.from_places:contains(sgs.Player_PlaceHand) or move.from_places:contains(sgs.Player_PlaceEquip) then
+				local count = 0
+				for i = 0, move.card_ids:length() - 1, 1 do
+					local from_place = move.from_places:at(i)
+					if from_place == sgs.Player_PlaceHand or from_place == sgs.Player_PlaceEquip then
+						count = count + 1
+					end
+				end
+				if count > player:getHp() then
+					local room = player:getRoom()
+					local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "shushen-invoke", true, true)
+					if target then
+						target:drawCards(1)
+					end
+				end
+			end
+		end
+		return false
+	end
+}
+
+heg_mobile_ganfuren:addSkill(heg_mobile_shushen)
+heg_mobile_ganfuren:addSkill("shenzhi")
+
+heg_mobile_tianfeng = sgs.General(extension_hegmobile,  "heg_mobile_tianfeng", "qun", 3)
+
+heg_mobile_suishi = sgs.CreateTriggerSkill{
+	name = "heg_mobile_suishi" ,
+	events = {sgs.Dying, sgs.Death} ,
+	on_trigger = function(self, event, player, data, room)
+		local target = nil
+		if event == sgs.Dying then
+			local dying = data:toDying()
+			if dying.damage and dying.damage.from then
+				target = dying.damage.from
+			end
+			if (dying.who:objectName() ~= player:objectName()) and target then
+				if room:askForSkillInvoke(target, self:objectName(), sgs.QVariant("draw:" .. player:objectName())) then
+					player:drawCards(1)
+				end
+			end
+		elseif event == sgs.Death then
+			local death = data:toDeath()
+			if death.damage and death.damage.from then
+				target = death.damage.from
+			end
+			if target then
+				if room:askForSkillInvoke(target, self:objectName(), "discard:" .. player:objectName()) then
+					local choicelist = {"losehp"}
+					if player:canDiscard(player, "h") then
+						table.insert(choicelist, "discardhandcard")
+					end
+					local choice = room:askForChoice(player, self:objectName(), table.concat(choicelist, "+"), ToData(player))
+					if choice == "discardhandcard" then
+						player:throwAllHandCards(self:objectName())
+					else
+						room:loseHp(player, 1, true, target, self:objectName())
+					end
+				end
+			end
+		end
+		return false
+	end
+}
+
+heg_mobile_tianfeng:addSkill(heg_mobile_suishi)
+heg_mobile_tianfeng:addSkill("sijian")
+
+heg_mobile_panfeng = sgs.General(extension_hegmobile,  "heg_mobile_panfeng", "qun", 4)
+
+heg_mobile_kuangfu = sgs.CreateTriggerSkill{
+	name = "heg_mobile_kuangfu",
+	events = {sgs.Damage},
+	on_trigger = function(self, event, player, data, room)
+		if event == sgs.Damage then
+			local use = data:toCardUse()
+			if (player:objectName() ~= use.from:objectName()) or (not use.card:isKindOf("Slash")) then return false end
+			if not damage.transfer and not damage.to:isNude() then
+				if player:askForSkillInvoke(self:objectName(), ToData(damage.to)) then
+					local id = room:askForCardChosen(player, damage.to, "he", self:objectName())
+					local choicelist = {"obtain"}
+					if player:canDiscard(damage.to, id) then
+					end
+						table.insert(choicelist, "discard")
+					end
+					local choice = room:askForChoice(player, self:objectName(), table.concat(choicelist, "+"), ToData(damage.to))
+					if choice == "discard" then
+						room:throwCard(id, damage.to, player)
+					else
+						room:obtainCard(player, id)
+					end
+				end
+			end
+		end
+	end
+}
+
+heg_mobile_panfeng:addSkill(heg_mobile_kuangfu)
+
+heg_mobile_xiahoudun = sgs.General(extension_hegmobile,  "heg_mobile_xiahoudun", "wei", 5)
+
+heg_mobile_xiahoudun:addSkill("nosganglie")
+
+
 heg_ov_tianyu = sgs.General(extension_heg,  "heg_ov_tianyu", "wei", 3)
 
 heg_ov_zhenxi = sgs.CreateTriggerSkill{
@@ -13536,30 +13824,36 @@ end
 heg_burning_camps = sgs.CreateTrickCard{
 	name = "heg_burning_camps",
 	class_name = "heg_burning_camps",
-	target_fixed = true,
+	target_fixed = false,
 	can_recast = false,
 	subtype = "aoe_trick",
 	subclass = sgs.LuaTrickCard_TypeNormal,
 	damage_card = true,
+	filter = function(self, targets, to_select, player)
+		if #targets > 0 then return false end
+		if to_select:objectName() == player:objectName() then return false end
+		if player:isProhibited(to_select, self) then return false end
+		
+		-- 判断是否是下家：下家的座位号应该是玩家座位号+1（考虑循环）
+		local player_seat = player:getSeat()
+		local to_seat = to_select:getSeat()
+		local alive_count = player:aliveCount()
+		
+		-- 计算下家座位号（循环处理）
+		local next_seat = (player_seat % alive_count) + 1
+		
+		return to_seat == next_seat
+	end,
 	available = function(self, player)
 		return self:cardIsAvailable(player)
 	end,
-	about_to_use = function(self, room, use)
-		-- 自动选择目标：下家和其队列中的所有角色
-		local alive_count = room:alivePlayerCount()
-		if alive_count < 2 then
-			return
-		end
-		
+	about_to_use = function(self, room, use)	
 		-- 获取下家
 		local next_player = use.from:getNextAlive(1)
 		if not next_player then
 			return
 		end
-		
-		-- 添加下家为目标
-		use.to:append(next_player)
-		
+				
 		-- 获取下家所在队列的其他成员
 		local queue = GetQueueMembers(next_player)
 		if #queue >= 2 then
@@ -13652,7 +13946,7 @@ heg_fight_together = sgs.CreateTrickCard{
 						end
 					else
 						-- 如果选择的是小势力角色，目标为所有小势力角色
-						if not IsBigKingdomPlayer(p) and not use.from:isProhibited(p, self) then
+						if not IsBigKingdomPlayer(p) and HasBigKingdomPlayer(room) and not use.from:isProhibited(p, self) then
 							use.to:append(p)
 						end
 					end
@@ -14048,7 +14342,7 @@ heg_iron_armor_Skill = sgs.CreateTriggerSkill{
 			end
 		elseif event == sgs.ChainStateChange then
 			-- Prevent chaining if small kingdom player
-			if not IsBigKingdomPlayer(player) then
+			if not IsBigKingdomPlayer(player) and HasBigKingdomPlayer(room) then
 				return true
 			end
 		end
@@ -14146,6 +14440,7 @@ sgs.LoadTranslationTable{
     ["heg_goldenseal"] = "金印紫绶",
 	["hegemony_cards"] = "国战标准版",
 	["strategic_advantage"] = "君临天下·势备篇",
+	["heg_fakeoffline"] = "线下官盗国战",
 		
 	-- 合纵机制
 	["hezong"] = "合纵",
@@ -15730,6 +16025,75 @@ sgs.LoadTranslationTable{
     ["heg_mobile_tanfeng"] = "探锋",
     [":heg_mobile_tanfeng"] = "准备阶段，你可以弃置一名其他角色区域内的一张牌，然后其可以受到你造成的1点火焰伤害，令你跳过一个阶段。",
 
+	["heg_mobile_luxun"] = "陆逊-国[手杀]",
+    ["&heg_mobile_luxun"] = "陆逊",
+    ["#heg_mobile_luxun"] = "擎天之柱",
+    ["~heg_mobile_luxun"] = "",
+    ["designer:heg_mobile_luxun"] = "",
+    ["cv:heg_mobile_luxun"] = "",
+    ["illustrator:heg_mobile_luxun"] = "",
+	["heg_mobile_qianxun"] = "谦逊",
+	[":heg_mobile_qianxun"] = "锁定技，当你成为其他角色使用锦囊牌的唯一目标时，若“节”的数量小于3，你取消之并将此牌置于武将牌上，称为“节”。",
+	["heg_mobile_jie"] = "节",
+	["heg_mobile_duoshi"] = "度势",
+	[":heg_mobile_duoshi"] = "出牌阶段限一次，你可以选择一项：1.将一张红色手牌当【以逸待劳】使用；2.移去三张“节”，视为使用一张火属性伤害牌。",
+	["@heg_mobile_duoshi"] = "度势：你可以移去三张“节”，视为使用一张火【杀】",
+	["~heg_mobile_duoshi"] = "选择一名角色→点击确定",
+
+	["heg_mobile_huangzhong"] = "黄忠-国[手杀]",
+    ["&heg_mobile_huangzhong"] = "黄忠",
+    ["#heg_mobile_huangzhong"] = "老当益壮",
+    ["~heg_mobile_huangzhong"] = "",
+    ["designer:heg_mobile_huangzhong"] = "",
+    ["cv:heg_mobile_huangzhong"] = "",
+    ["illustrator:heg_mobile_huangzhong"] = "",
+	["heg_mobile_liegong"] = "烈弓",
+	[":heg_mobile_liegong"] = "当你于出牌阶段内使用【杀】指定一名角色为目标后，若其手牌数不小于你的体力值或不大于你的攻击范围，你可以令其不能使用【闪】响应此【杀】。乘势：此【杀】对其造成的伤害+1。",
+	
+	["heg_mobile_ganfuren"] = "甘夫人-国[手杀]",
+    ["&heg_mobile_ganfuren"] = "甘夫人",
+    ["#heg_mobile_ganfuren"] = "昭烈皇后",
+    ["~heg_mobile_ganfuren"] = "",
+    ["designer:heg_mobile_ganfuren"] = "",
+    ["cv:heg_mobile_ganfuren"] = "",
+    ["illustrator:heg_mobile_ganfuren"] = "",
+	["heg_mobile_shushen"] = "淑慎",
+	[":heg_mobile_shushen"] = "当你回复1点体力或一次性失去大于X张牌后（X为你的体力值），你可以令一名其他角色摸一张牌。",
+
+	["heg_mobile_tianfeng"] = "田丰-国[手杀]",
+    ["&heg_mobile_tianfeng"] = "田丰",
+    ["#heg_mobile_tianfeng"] = "河北瑰杰",
+    ["~heg_mobile_tianfeng"] = "",
+    ["designer:heg_mobile_tianfeng"] = "",
+    ["cv:heg_mobile_tianfeng"] = "",
+    ["illustrator:heg_mobile_tianfeng"] = "",
+	["heg_mobile_suishi:discardhandcard"] = "弃置所有手牌",
+	["heg_mobile_suishi:losehp"] = "失去1点体力",
+	["heg_mobile_suishi:discard"] = "你可以发动“随势”，令%src选择一项：1.失去1点体力；2.弃置所有手牌",
+	["heg_mobile_suishi:draw"] = "你可以发动“随势”，令%src摸一张牌",
+	["heg_mobile_suishi"] = "随势",
+	[":heg_mobile_suishi"] = "当其他角色进入濒死状态时，伤害来源可以令你摸一张牌；当其他角色死亡时，伤害来源可以令你选择一项：1.失去1点体力；2.弃置所有手牌。",
+
+	["heg_mobile_panfeng"] = "潘凤-国[手杀]",
+    ["&heg_mobile_panfeng"] = "潘凤",
+    ["#heg_mobile_panfeng"] = "联军上将",
+    ["~heg_mobile_panfeng"] = "",
+    ["designer:heg_mobile_panfeng"] = "",
+    ["cv:heg_mobile_panfeng"] = "",
+    ["illustrator:heg_mobile_panfeng"] = "",
+	["heg_mobile_kuangfu:obtain"] = "获得其一张牌",
+	["heg_mobile_kuangfu:discard"] = "弃置其一张牌",
+	["heg_mobile_kuangfu"] = "狂斧",
+	[":heg_mobile_kuangfu"] = "当你使用【杀】对目标角色造成伤害后，你可以弃置或获得其一张牌。",
+
+	["heg_mobile_xiahoudun"] = "夏侯惇-国[手杀]",
+    ["&heg_mobile_xiahoudun"] = "夏侯惇",
+    ["#heg_mobile_xiahoudun"] = "独目的苍狼",
+    ["~heg_mobile_xiahoudun"] = "",
+    ["designer:heg_mobile_xiahoudun"] = "",
+    ["cv:heg_mobile_xiahoudun"] = "",
+    ["illustrator:heg_mobile_xiahoudun"] = "",
+
 	["heg_ov_tianyu"] = "田豫-国[海外]",
     ["&heg_ov_tianyu"] = "田豫",
     ["#heg_ov_tianyu"] = "规略明练",
@@ -15900,12 +16264,487 @@ sgs.LoadTranslationTable{
 	["heg_true_jiancai"] = "荐才",
   	[":heg_true_jiancai"] = "限定技，一名角色即将受到伤害而进入濒死状态时，你可以防止此伤害，若如此做，你须变更武将牌；与你势力相同的角色变更武将牌时，你可令其额外获得两张备选武将牌。",
 
+}
+
+heg_fofl_yuejin = sgs.General(extension_fakeoffline,  "heg_fofl_yuejin", "wei", 4)
+
+heg_fofl_xiaoguo = sgs.CreateTriggerSkill {
+	name = "heg_fofl_xiaoguo",
+	events = {sgs.EventPhaseProceeding},
+	on_trigger = function(self, event, player, data)
+		if player:getPhase() == sgs.Player_Start then
+			for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+				if p:objectName() ~= player:objectName() then
+					local card = room:askForDiscard(p, self:objectName(), 999, 1, false, "@heg_fofl_xiaoguo", true, "BasicCard")
+					if card then
+						local equips = player:getEquips():length()
+						local max = math.min(card:subcardsLength(), equips)
+						if p:canDiscard(player, "e") then
+							local remove = sgs.IntList()
+							local to_obtain = dummyCard()
+							for i = 1, max do--进行多次执行
+								local id = room:askForCardChosen(p, player, "e", self:objectName(),
+									false,--选择卡牌时手牌不可见
+									sgs.Card_MethodDiscard,--设置为弃置类型
+									remove,--将子卡表设置为不可选卡牌id表（保证每张卡只能被选择一次）
+									i>1)--只有执行过一次选择才可取消
+								if id < 0 then break end--如果卡牌id无效就结束多次执行
+								remove:append(id)--将选择的id添加到虚拟卡的子卡表
+								to_obtain:addSubcard(id)
+							end
+							if to_obtain:subcardsLength() > 0 then
+								room:throwCard(to_obtain, player, p)
+							end
+						end
+
+						if card:subcardsLength() > equips then
+							p:drawCards(1, self:objectName())
+							room:damage(sgs.DamageStruct(self:objectName(), p, player, 1, sgs.DamageStruct_Normal))
+						end
+					end
+				end
+			end
+		end
+	end,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end
+}
+
+heg_fofl_yuejin:addSkill(heg_fofl_xiaoguo)
+
+heg_fofl_dingfeng = sgs.General(extension_fakeoffline,  "heg_fofl_dingfeng", "wu", 4)
+
+heg_fofl_dingfeng:addSkill("olduanbing")
+heg_fofl_dingfeng:addSkill("fenxun")
+
+heg_fofl_dianwei = sgs.General(extension_fakeoffline,  "heg_fofl_dianwei", "wei", 5)
+
+heg_fofl_dianwei:addSkill("mobileqiangxi")
+
+heg_fofl_luxun = sgs.General(extension_fakeoffline,  "heg_fofl_luxun", "wu", 3)
+
+heg_fofl_duoshiCard = sgs.CreateSkillCard {
+	name = "heg_fofl_duoshi",
+	target_fixed = false,
+	will_throw = true,
+	filter = function(self, targets, to_select)
+		local heg_await_exhausted = dummyCard("heg_await_exhausted")
+		heg_await_exhausted:addSubcards(self:getSubcards())
+		heg_await_exhausted:setSkillName("heg_fofl_duoshi")
+		local qtargets = sgs.PlayerList()
+		for _, p in ipairs(targets) do
+			qtargets:append(p)
+		end
+		return heg_await_exhausted and heg_await_exhausted:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, heg_await_exhausted)
+	end,
+	on_validate = function(self, card_use)
+		local player = card_use.from
+        local room = player:getRoom()
+        local heg_await_exhausted = dummyCard("heg_await_exhausted")
+		heg_await_exhausted:addSubcards(self:getSubcards())
+		heg_await_exhausted:setSkillName("heg_fofl_duoshi")
+		local invoke = false
+		for _, p in sgs.qlist(room:findPlayersBySkillName("heg_fofl_duoshi")) do
+			if p:getMark("heg_fofl_duoshi_lun") == 0 and p:objectName() ~= player:objectName() and room:askForSkillInvoke(p, self:objectName(), ToData(player)) then
+				room:addPlayerMark(p, "heg_fofl_duoshi_lun")
+				invoke = true
+				break
+			end
+		end
+		if not invoke then room:addPlayerMark(player, "heg_fofl_duoshi-PlayClear") return nil end
+		return card
+	end,
+    on_validate_in_response = function(self, player)
+        local room = player:getRoom()
+        local heg_await_exhausted = dummyCard("heg_await_exhausted")
+		heg_await_exhausted:addSubcards(self:getSubcards())
+		heg_await_exhausted:setSkillName("heg_fofl_duoshi")
+        local invoke = false
+		for _, p in sgs.qlist(room:findPlayersBySkillName("heg_fofl_duoshi")) do
+			if p:getMark("heg_fofl_duoshi_lun") == 0 and p:objectName() ~= player:objectName() and room:askForSkillInvoke(p, self:objectName(), ToData(player)) then
+				room:addPlayerMark(p, "heg_fofl_duoshi_lun")
+				invoke = true
+				break
+			end
+		end
+		if not invoke then room:addPlayerMark(player, "heg_fofl_duoshi-PlayClear") return nil end
+        return card
+    end	
+}
+heg_fofl_duoshi_Attach = sgs.CreateOneCardViewAsSkill{
+	name = "heg_fofl_duoshi_Attach&",
+	filter_pattern = "red",
+	view_as = function(self, card)
+		local duoshi_card = heg_fofl_duoshiCard:clone()
+		duoshi_card:addSubcard(card)
+		return duoshi_card
+	end,
+	enabled_at_play = function(self, player)
+		local invoke = false
+		for _, p in sgs.qlist(player:getAliveSiblings()) do
+			if p:hasSkill("heg_fofl_duoshi") and p:getMark("heg_fofl_duoshi_lun") == 0 then
+				invoke = true
+				break
+			end
+		end
+		return invoke and player:getMark("heg_fofl_duoshi-PlayClear") == 0
+	end,
+}
+
+heg_fofl_duoshi_buff = sgs.CreateTriggerSkill {
+	name = "#heg_fofl_duoshi_buff",
+	events = {sgs.CardUsed},
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local use = data:toCardUse()
+		if use.card and table.contains(use.card:getSkillNames(), "heg_fofl_duoshi") and use.card:isKindOf("heg_burning_camps") then
+			local no_respond_list = use.no_respond_list
+			table.insert(no_respond_list, "_ALL_TARGETS")
+			use.no_respond_list = no_respond_list
+			data:setValue(use)
+			local log = sgs.LogMessage()
+			log.type = "$NoRespond"
+			log.from = use.from
+			log.to = use.to
+			log.arg = "heg_fofl_duoshi"
+			log.card_str = use.card:toString()
+			room:sendLog(log)
+		end
+	end,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end
+}
+
+heg_fofl_duoshi = sgs.CreateTriggerSkill {
+	name = "heg_fofl_duoshi",
+	events = {sgs.GameStart, sgs.EventAcquireSkill, sgs.CardFinished},
+	on_trigger = function(self, event, player, data)
+		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == self:objectName()) then
+			for _, p in sgs.qlist(player:getRoom():getAllPlayers()) do
+				player:getRoom():attachSkillToPlayer(p, "heg_fofl_duoshi_Attach")
+			end
+		elseif event == sgs.CardFinished then
+			local room = player:getRoom()
+			local use = data:toCardUse()
+			if not IsBigKingdomPlayer(player) and HasBigKingdomPlayer(room) then
+				if use.card and table.contains(use.card:getSkillNames(), self:objectName()) and use.card:isKindOf("heg_await_exhausted") then
+					local heg_burning_camps = dummyCard("heg_burning_camps")
+					heg_burning_camps:setSkillName(self:objectName())
+					local targets = sgs.SPlayerList()
+					for _, p in sgs.qlist(room:getAllPlayers()) do
+						local extra_target = room:getCardTargets(use.card, p)
+						if heg_burning_camps:isAvailable(p) and not extra_target:isEmpty() then
+							local x = 1
+
+							-- 获取下家所在队列的其他成员
+							local queue = GetQueueMembers(p:getNextAlive(1))
+							if #queue >= 2 then
+								for _, member in ipairs(queue) do
+									-- 添加队列中除了下家之外的所有角色
+									if member:objectName() ~= p:getNextAlive(1):objectName() and not p:isProhibited(member, heg_burning_camps) and member:objectName() ~= p:objectName() then
+										x = x + 1
+									end
+								end
+							end
+							if p:getHandcardNum() >= x then
+								targets:append(p)
+							end
+						end
+					end
+					if not targets:isEmpty() then
+						local target = room:askForPlayerChosen(player, targets,self:objectName(), "@heg_fofl_duoshi", true)
+						if target then
+							local x = 1
+
+							-- 获取下家所在队列的其他成员
+							local queue = GetQueueMembers(target:getNextAlive(1))
+							if #queue >= 2 then
+								for _, member in ipairs(queue) do
+									-- 添加队列中除了下家之外的所有角色
+									if member:objectName() ~= target:getNextAlive(1):objectName() and not target:isProhibited(member, heg_burning_camps) and member:objectName() ~= target:objectName() then
+										x = x + 1
+									end
+								end
+							end
+							local subcards = room:askForExchange(target, self:objectName(), x, x, false, "@heg_fofl_duoshi-discard:"..x, false)
+							heg_burning_camps:addSubcards(subcards)
+							local newuse = sgs.CardUseStruct()
+							newuse.from = target
+							newuse.card = heg_burning_camps
+							newuse.to:append(target:getNextAlive(1))
+							room:useCard(newuse)
+						end
+					end
+				end
+			end
+		end
+	end,
+}
 
 
+heg_fofl_luxun:addSkill("nosqianxun")
+heg_fofl_luxun:addSkill(heg_fofl_duoshi)
+heg_fofl_luxun:addSkill(heg_fofl_duoshi_buff)
+extension_fakeoffline:insertRelatedSkills("heg_fofl_duoshi", "#heg_fofl_duoshi_buff")
+if not sgs.Sanguosha:getSkill("heg_fofl_duoshi_Attach") then skills:append(heg_fofl_duoshi_Attach) end
+
+heg_fofl_taishici = sgs.General(extension_fakeoffline,  "heg_fofl_taishici", "wu", 4)
+
+heg_fofl_hanzhan = sgs.CreateTriggerSkill {
+    name = "heg_fofl_hanzhan",
+    frequency = sgs.Skill_Frequent,
+    events = { sgs.Pindian },
+    on_trigger = function(self, event, player, data, room)
+        local pindian = data:toPindian()
+        if pindian.from:hasSkill(self:objectName()) or pindian.to:hasSkill(self:objectName()) then
+            local loser = nil
+			local winner = nil
+			if pindian.from_card:getNumber() < pindian.to_card:getNumber() then
+				loser = pindian.from
+				winner = pindian.to
+			elseif pindian.from_card:getNumber() > pindian.to_card:getNumber() then
+				loser = pindian.to
+				winner = pindian.from
+			end
+			if loser and winner then
+				local equip_count = winner:getEquips():length()
+				if equip_count > 0 then
+					if loser:askForSkillInvoke(self:objectName(), data) then
+						local id = room:askForCardChosen(loser, winner, "e", self:objectName())
+						local card = sgs.Sanguosha:getCard(id)
+						room:obtainCard(loser, card, false)
+					end
+				end
+			end
+        end
+    end,
+    can_trigger = function(self, target)
+        return target -- 任何角色触发都能发动
+    end
+}
+
+heg_fofl_taishici:addSkill("tianyi")
+heg_fofl_taishici:addSkill(heg_fofl_hanzhan)
+
+heg_fofl_yanliangwenchou = sgs.General(extension_fakeoffline,  "heg_fofl_yanliangwenchou", "qun", 4)
+
+heg_fofl_shuangxiongVS = sgs.CreateViewAsSkill {
+    name = "heg_fofl_shuangxiong",
+    n = 1,
+    response_or_use = true,
+    view_filter = function(self,to_select)
+		if to_select:isEquipped() then return false end
+		if sgs.Self:getMark(self:objectName()..to_select:getSuitString().."-Clear") > 0 then
+			return to_select
+		end
+		return false
+	end,
+    view_as = function(self, card)
+		local duel = sgs.Sanguosha:cloneCard("duel", card:getSuit(), card:getNumber())
+		duel:addSubcard(card)
+		duel:setSkillName(self:objectName())
+		return duel
+	end,
+    enabled_at_play = function(self, player)
+    	for _, card in sgs.qlist(player:getHandcards()) do
+			if player:getMark(self:objectName()..card:getSuitString().."-Clear") >0  then
+				return true
+			end
+		end
+    end,
+}
+
+heg_fofl_shuangxiong = sgs.CreateTriggerSkill { -- 双雄 触发技
+    name = "heg_fofl_shuangxiong",
+    view_as_skill = heg_fofl_shuangxiongVS,
+    events = { sgs.EventPhaseStart, sgs.FinishJudge },
+    on_trigger = function(self, event, player, data, room)
+        if event == sgs.EventPhaseStart then
+            if player:getPhase() == sgs.Player_Draw then -- 摸牌阶段
+				if not room:askForSkillInvoke(player, self:objectName()) then
+					return false
+				end
+				room:broadcastSkillInvoke("shuangxiong")
+				local judge = sgs.JudgeStruct()
+				judge.who = player
+				judge.pattern = "."
+				judge.good = true
+				judge.reason = self:objectName()
+				room:judge(judge)
+				room:addPlayerMark(player, self:objectName()..judge.card:getSuitString().."-Clear", 1)
+				room:addPlayerMark(player, "&"..self:objectName()..":"..judge.card:getSuitString().."-Clear", 1)
+				return true
+            end
+		elseif event == sgs.FinishJudge then
+			local card = judge.card
+			if player:getPhase() ~= sgs.Player_NotActive and room:getCardPlace(card:getEffectiveId()) == sgs.Player_PlaceJudge then
+				player:obtainCard(card)
+				room:sendCompulsoryTriggerLog(player, self:objectName(), true)
+			end
+        end
+    end
+}
+
+heg_fofl_yanliangwenchou:addSkill(heg_fofl_shuangxiong)
+
+
+heg_fofl_caohong = sgs.General(extension_fakeoffline,  "heg_fofl_caohong", "wei", 4)
+
+heg_fofl_huyuanCard = sgs.CreateSkillCard{
+	name = "heg_fofl_huyuan",
+	will_throw = false,
+	handling_method = sgs.Card_MethodNone,
+	
+	filter = function(self, targets, to_select)
+		if not #targets == 0 then return false end
+		return true
+	end,
+	
+	on_effect = function(self, effect)
+		local caohong = effect.from
+		local room = caohong:getRoom()
+		local card = sgs.Sanguosha:getCard(self:getEffectiveId())
+		if card:isKindOf("EquipCard") then
+			local equip = card:getRealCard():toEquipCard()
+			local index = equip:location()
+			if effect.to:getEquip(index) == nil then
+				room:moveCardTo(self, caohong, effect.to, sgs.Player_PlaceEquip,sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PUT, caohong:objectName(), "heg_fofl_huyuan", ""))
+			end
+		end
+	end
+}
+heg_fofl_huyuanVS = sgs.CreateOneCardViewAsSkill{
+	name = "heg_fofl_huyuan",
+	filter_pattern = "EquipCard",
+	response_pattern = "@@heg_fofl_huyuan",
+	view_as = function(self, card)
+		local first = heg_fofl_huyuanCard:clone()
+		first:addSubcard(card:getId())
+		first:setSkillName(self:objectName())
+		return first
+	end,
+
+}
+heg_fofl_huyuan = sgs.CreateTriggerSkill{
+	name = "heg_fofl_huyuan",
+	events = {sgs.EventPhaseProceeding},
+	view_as_skill = heg_fofl_huyuanVS,
+	on_trigger = function(self, event, player, data)
+		local room = target:getRoom()
+		if event == sgs.EventPhaseProceeding then
+			if target:getPhase() == sgs.Player_Finish and not target:isNude() then
+				room:askForUseCard(target, "@@heg_fofl_huyuan", "@huyuan-equip", -1, sgs.Card_MethodNone)
+			end
+		elseif event == sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			if move.to_place ~= sgs.Player_PlaceEquip then return false end
+			if player:getPhase() == sgs.Player_NotActive then return false end
+			local to = room:findPlayerByObjectName(move.to:objectName())
+			if to then
+				for _, id in sgs.qlist(move.card_ids) do
+					local card = sgs.Sanguosha:getCard(id)
+					if card:isKindOf("EquipCard") then
+						local targets = sgs.SPlayerList()
+						for _,p in sgs.qlist(room:getAllPlayers()) do
+							if player:canDiscard(p, "hej") and to:distanceTo(p) <= 1 then
+								targets:append(p)
+							end
+						end
+						if not targets:isEmpty() then
+						local to_dismantle = room:askForPlayerChosen(player, targets, "heg_fofl_huyuan", "@huyuan-discard:" .. effect.to:objectName())
+						local card_id = room:askForCardChosen(player, to_dismantle, "he", "heg_fofl_huyuan", false,sgs.Card_MethodDiscard)
+							room:throwCard(sgs.Sanguosha:getCard(card_id), to_dismantle, player)
+						end
+					end
+				end
+			end
+		end
+	end
+}
+
+heg_fofl_caohong:addSkill(heg_fofl_huyuan)
+
+
+sgs.LoadTranslationTable{
+	["heg_fofl_yuejin"] = "乐进-国[官盗]",
+    ["&heg_fofl_yuejin"] = "乐进",
+    ["#heg_fofl_yuejin"] = "奋强突固",
+    ["~heg_fofl_yuejin"] = "",
+    ["designer:heg_fofl_yuejin"] = "",
+    ["cv:heg_fofl_yuejin"] = "",
+    ["illustrator:heg_fofl_yuejin"] = "巴萨小马",
+    ["information:heg_fofl_yuejin"] = "十年经典",
+	["heg_fofl_xiaoguo"] = "骁果",
+  	[":heg_fofl_xiaoguo"] = "其他角色的准备阶段，你可以弃置任意张基本牌，然后弃置其装备区等量的牌（不足全弃，无牌不弃），若你以此法弃置的基本牌多于装备牌，你摸一张牌并对其造成1点伤害。",
+	["@heg_fofl_xiaoguo"] = "骁果：你可以弃置任意张基本牌",
+
+	["heg_fofl_dingfeng"] = "丁奉-国[官盗]",
+    ["&heg_fofl_dingfeng"] = "丁奉",
+    ["#heg_fofl_dingfeng"] = "清侧重臣",
+    ["~heg_fofl_dingfeng"] = "",
+    ["designer:heg_fofl_dingfeng"] = "",
+    ["cv:heg_fofl_dingfeng"] = "",
+    ["illustrator:heg_fofl_dingfeng"] = "",
+    ["information:heg_fofl_dingfeng"] = "十年经典",
+
+	["heg_fofl_dianwei"] = "典韦-国[官盗]",
+    ["&heg_fofl_dianwei"] = "典韦",
+    ["#heg_fofl_dianwei"] = "古之恶来",
+    ["~heg_fofl_dianwei"] = "",
+    ["designer:heg_fofl_dianwei"] = "",
+    ["cv:heg_fofl_dianwei"] = "",
+    ["illustrator:heg_fofl_dianwei"] = "",
+    ["information:heg_fofl_dianwei"] = "十年经典",
+
+	["heg_fofl_luxun"] = "陆逊-国[官盗]",
+    ["&heg_fofl_luxun"] = "陆逊",
+    ["#heg_fofl_luxun"] = "擎天之柱",
+    ["~heg_fofl_luxun"] = "",
+    ["designer:heg_fofl_luxun"] = "",
+    ["cv:heg_fofl_luxun"] = "",
+    ["illustrator:heg_fofl_luxun"] = "",
+    ["information:heg_fofl_luxun"] = "十年经典",
+	["heg_fofl_duoshi"] = "度势",
+	[":heg_fofl_duoshi"] = "每轮限一次，一名角色的出牌阶段，其可以询问你，若你同意，其将一张红色手牌当【以逸待劳】使用，然后若你为小势力角色，你可以令一名角色将X张手牌当【火烧连营】使用（X为此牌的目标数），此牌不能被响应。",
+	["@heg_fofl_duoshi"] = "度势：你可以令一名角色将X张手牌当【火烧连营】使用",
+	["@heg_fofl_duoshi-discard"] = "度势：将%src张手牌当【火烧连营】使用",
+
+	["heg_fofl_taishici"] = "太史慈-国[官盗]",
+    ["&heg_fofl_taishici"] = "太史慈",
+    ["#heg_fofl_taishici"] = "笃烈之士",
+    ["~heg_fofl_taishici"] = "",
+    ["designer:heg_fofl_taishici"] = "",
+    ["cv:heg_fofl_taishici"] = "",
+    ["illustrator:heg_fofl_taishici"] = "",
+    ["information:heg_fofl_taishici"] = "十年经典",
+	["heg_fofl_hanzhan"] = "酣战",
+	[":heg_fofl_hanzhan"] = "当你拼点后，没赢的角色可以获得与其拼点的角色装备区里的一张牌。",
+
+	["heg_fofl_yanliangwenchou"] = "颜良＆文丑-国[官盗]",
+    ["&heg_fofl_yanliangwenchou"] = "颜良文丑",
+    ["#heg_fofl_yanliangwenchou"] = "虎狼兄弟",
+    ["~heg_fofl_yanliangwenchou"] = "",
+    ["designer:heg_fofl_yanliangwenchou"] = "",
+    ["cv:heg_fofl_yanliangwenchou"] = "",
+    ["illustrator:heg_fofl_yanliangwenchou"] = "",
+    ["information:heg_fofl_yanliangwenchou"] = "十年经典",
+	["heg_fofl_shuangxiong"] = "双雄",
+	[":heg_fofl_shuangxiong"] = "摸牌阶段，你可以改为进行判定。若如此做，本回合你可以将一张与判定结果颜色不同的手牌当决斗使用。当你的判定牌于回合内生效后，你获得之。",
+
+	["heg_fofl_caohong"] = "曹洪-国[官盗]",
+    ["&heg_fofl_caohong"] = "曹洪",
+    ["#heg_fofl_caohong"] = "魏之福将",
+    ["~heg_fofl_caohong"] = "",
+    ["designer:heg_fofl_caohong"] = "",
+    ["cv:heg_fofl_caohong"] = "",
+    ["illustrator:heg_fofl_caohong"] = "",
+    ["information:heg_fofl_caohong"] = "十年经典",
+	["heg_fofl_huyuan"] = "护援",
+	[":heg_fofl_huyuan"] = "你的回合内，当一张装备牌置入一名角色的装备区后，你可以弃置其距离1的另一名角色区域内的一张牌；结束阶段，你可以将一张装备牌置于一名角色的装备区。",
 
 
 }
 
-
-
-return {extension_heg, extension_hegbian, extension_hegquan, extension_heglordex, extension_hegpurplecloud, extension_goldenseal, extension_hegol, extension_hegmobile, extension_hegtenyear, extension_hegcard, extension_hegadvantagecard}
+return {extension_heg, extension_hegbian, extension_hegquan, extension_heglordex, extension_hegpurplecloud, extension_goldenseal, extension_hegol, extension_hegmobile, extension_hegtenyear, extension_fakeoffline, extension_hegcard, extension_hegadvantagecard}
