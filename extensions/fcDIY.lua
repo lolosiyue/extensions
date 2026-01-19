@@ -1459,13 +1459,7 @@ f_jieyi = sgs.CreateTriggerSkill{
 }
 hzw_shenliubei:addSkill(f_jieyi)
 hzw_shenliubei:addRelateSkill("jy_yizhi")
-jy_yizhi = sgs.CreateTriggerSkill{ --为了符合“义志”的“全局生效”而做出的空壳
-	name = "jy_yizhi",
-	frequency = sgs.Skill_Compulsory,
-	events = {},
-	on_trigger = function()
-	end,
-}
+
 yizhiDraw = sgs.CreateTriggerSkill{
 	name = "#yizhiDraw",
 	frequency = sgs.Skill_Frequent,
@@ -1507,8 +1501,8 @@ yizhiLoyalVS = sgs.CreateViewAsSkill{
 	end,
 	response_pattern = "@@yizhiLoyal",
 }
-yizhiLoyal = sgs.CreateTriggerSkill{
-    name = "#yizhiLoyal",
+jy_yizhi = sgs.CreateTriggerSkill{
+    name = "jy_yizhi",
 	events = {sgs.EventPhaseEnd},
 	view_as_skill = yizhiLoyalVS,
 	on_trigger = function(self, event, player, data)
@@ -1545,10 +1539,8 @@ yizhiRescue = sgs.CreateTriggerSkill{
 }
 if not sgs.Sanguosha:getSkill("jy_yizhi") then skills:append(jy_yizhi) end
 if not sgs.Sanguosha:getSkill("#yizhiDraw") then skills:append(yizhiDraw) end
-if not sgs.Sanguosha:getSkill("#yizhiLoyal") then skills:append(yizhiLoyal) end
 if not sgs.Sanguosha:getSkill("#yizhiRescue") then skills:append(yizhiRescue) end
 extension:insertRelatedSkills("jy_yizhi","#yizhiDraw")
-extension:insertRelatedSkills("jy_yizhi","#yizhiLoyal")
 extension:insertRelatedSkills("jy_yizhi","#yizhiRescue")
 
 f_renyiCard = sgs.CreateSkillCard{

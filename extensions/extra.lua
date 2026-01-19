@@ -50,11 +50,27 @@ function SendComLog(self, player, n, invoke)
 		player:getRoom():broadcastSkillInvoke(self:objectName(), n)
 	end
 end
-function ChoiceLog(player, choice, to)
+function ChoiceLog(player, choice, to, skillName)
 	local log = sgs.LogMessage()
 	log.type = "#choice"
 	log.from = player
-	log.arg = choice
+	
+	-- Don't translate in Lua (encoding issue), send the key and let C++ translate it
+	-- Check if skillName:choice translation exists
+	if skillName then
+		local full_key = skillName .. ":" .. choice
+		local full_translated = sgs.Sanguosha:translate(full_key)
+		-- If translation exists for skillName:choice, send the full key
+		if full_translated ~= full_key then
+			log.arg = full_key
+		else
+			-- Otherwise just send the choice
+			log.arg = choice
+		end
+	else
+		log.arg = choice
+	end
+	
 	if to then
 		log.to:append(to)
 	end

@@ -6,8 +6,9 @@ local middleclass = require "middleclass"
 
 -- AI Debug Logger Integration (Added 2025-11-18 for crash tracking)
 local AILogger = require "ai.ai-debug-logger"
-local logger = AILogger
-logger:init()
+local logger = nil  -- 禁用 AILogger 以提升性能和穩定性
+-- local logger = AILogger  -- 調試時取消註釋以啟用日誌
+if logger then logger:init() end
 
 -- Global error handler
 local original_error = error
@@ -15,7 +16,7 @@ _G.AI_DEBUG_MODE = true -- Set to false to disable logging
 
 -- Safe function wrapper utility
 local function safecall(funcName, func, ...)
-	if _G.AI_DEBUG_MODE then
+	if _G.AI_DEBUG_MODE and logger then
 		return logger:protect(funcName, func, ...)
 	else
 		return func(...)
@@ -233,22 +234,23 @@ function SmartAI:initialize(player)
 			current_self = self
 			
 			-- Wrap with logger if debug mode is enabled
-			if _G.AI_DEBUG_MODE then
-				local stackIndex = logger:logFunctionEntry("Callback:" .. method_name, {...})
-				local success, result1, result2 = pcall(method, self, ...)
-				
-				if success then
-					logger:logFunctionExit("Callback:" .. method_name, stackIndex, true, result1)
-					return result1, result2
-				else
-					-- Enhanced error logging
+		if _G.AI_DEBUG_MODE and logger then
+			local stackIndex = logger:logFunctionEntry("Callback:" .. method_name, {...})
+			local success, result1, result2 = pcall(method, self, ...)
+			
+			if success then
+				if logger then logger:logFunctionExit("Callback:" .. method_name, stackIndex, true, result1) end
+				return result1, result2
+			else
+				-- Enhanced error logging
+				if logger then
 					logger:logError("Callback:" .. method_name, result1, {
 						full_method = full_method_name,
 						args = {...},
 						player = player:getGeneralName(),
 						room_state = self.room:getTag("turncount"):toInt()
 					})
-					logger:logFunctionExit("Callback:" .. method_name, stackIndex, false, result1)
+				end
 					
 					self.room:writeToConsole("=== AI CRASH DETECTED ===")
 					self.room:writeToConsole("Method: " .. method_name)
@@ -274,7 +276,7 @@ function SmartAI:initialize(player)
 				end
 			end
 		else
-			if _G.AI_DEBUG_MODE then
+			if _G.AI_DEBUG_MODE and logger then
 				logger:writeLog("WARN", "Method not found: " .. method_name, {
 					full_method = full_method_name
 				})
@@ -2097,7 +2099,7 @@ sgs.ai_damage_from_flag_intention["FenchengUsing"] = 10
 function SmartAI:filterEvent(event,player,data)
 	-- Validate input parameters to prevent crashes
 	if not event or not player or not data then
-		if _G.AI_DEBUG_MODE then
+		if _G.AI_DEBUG_MODE and logger then
 			logger:logError("SmartAI:filterEvent", "Invalid parameters", {
 				event = event,
 				player = player and "valid" or "nil",
@@ -2108,7 +2110,7 @@ function SmartAI:filterEvent(event,player,data)
 	end
 	
 	-- Protect event filtering with error handling
-	if _G.AI_DEBUG_MODE then
+	if _G.AI_DEBUG_MODE and logger then
 		local player_name_success, player_name = pcall(function() return player:getGeneralName() end)
 		local data_str_success, data_str = pcall(function() return data:toString() end)
 		local stackIndex = logger:logFunctionEntry("SmartAI:filterEvent", {
@@ -2127,7 +2129,7 @@ function SmartAI:filterEvent(event,player,data)
 				-- Protected callback execution
 				if type(callback) == "function" then
 					local cb_success, cb_error = pcall(callback, self, player, data)
-					if not cb_success and _G.AI_DEBUG_MODE then
+					if not cb_success and _G.AI_DEBUG_MODE and logger then
 						logger:logError("Event Callback", cb_error, {
 							event = event,
 							player = player:getGeneralName()
@@ -2490,7 +2492,7 @@ function SmartAI:filterEvent(event,player,data)
 	
 	end) -- End of pcall wrapper for filterEvent
 	
-	if not success and _G.AI_DEBUG_MODE then
+	if not success and _G.AI_DEBUG_MODE and logger then
 		local player_name = "unknown"
 		local data_str = "unknown"
 		pcall(function() player_name = player:getGeneralName() end)
@@ -2502,7 +2504,7 @@ function SmartAI:filterEvent(event,player,data)
 			data_str = data_str
 		})
 		logger:logFunctionExit("SmartAI:filterEvent", nil, false)
-	elseif _G.AI_DEBUG_MODE then
+	elseif _G.AI_DEBUG_MODE and logger then
 		logger:logFunctionExit("SmartAI:filterEvent", nil, true)
 	end
 end
@@ -4237,22 +4239,24 @@ function SmartAI:addHandPile(cards,player)
 	return cards
 end
 
+function canMethodUse(ai_instance, c, turnUseList)
+	if c:getTypeId()~=1 or c:hasFlag("AIGlobal_KillOff") then return c:isAvailable(ai_instance.player) end
+	local cn = c:isKindOf("Slash") and "Slash" or c:getClassName()
+	local n = 0
+	for _,tc in ipairs(turnUseList)do
+		if tc:isKindOf(cn) then n = n+1 end
+	end
+	ai_instance.player:addHistory(cn,n)
+	local canA = c:isAvailable(ai_instance.player)
+	ai_instance.player:addHistory(cn,-n)
+	return canA
+end
+
 function SmartAI:getTurnUse()
 	if logger then logger:writeLog("DEBUG", "getTurnUse: Started") end
 	
 	local turnUse = {}
-	function canMethodUse(c)
-		if c:getTypeId()~=1 or c:hasFlag("AIGlobal_KillOff") then return c:isAvailable(self.player) end
-		local cn = c:isKindOf("Slash") and "Slash" or c:getClassName()
-		local n = 0
-		for _,tc in ipairs(turnUse)do
-			if tc:isKindOf(cn) then n = n+1 end
-		end
-		self.player:addHistory(cn,n)
-		local canA = c:isAvailable(self.player)
-		self.player:addHistory(cn,-n)
-		return canA
-	end
+
 	
 	if logger then logger:writeLog("DEBUG", "getTurnUse: Initializing use_to table") end
 	self.use_to = {}
@@ -4329,7 +4333,7 @@ function SmartAI:getTurnUse()
 					})
 				end
 				
-				local canUseSuccess, canUse = pcall(canMethodUse, c)
+				local canUseSuccess, canUse = pcall(canMethodUse, self, c, turnUse)
 				if canUseSuccess and canUse then
 					
 					-- Try to use card
@@ -4475,8 +4479,8 @@ function SmartAI:getTurnUse()
 				
 				if logger then logger:writeLog("DEBUG", "getTurnUse: Before turnUse count check", {currentCount = #turnUse}) end
 				
-				if #turnUse>9 then 
-					if logger then logger:writeLog("DEBUG", "getTurnUse: Reached max cards (10)") end
+				if #turnUse>3 then 
+					if logger then logger:writeLog("DEBUG", "getTurnUse: Reached max cards (3)") end
 					break 
 				end
 				
@@ -8353,9 +8357,11 @@ end
 
 function SmartAI:aiUseCard(card,use)
 	if type(card)~="userdata" then global_room:writeToConsole(debug.traceback()) return end
+	collectgarbage("stop")
 	use = use or dummy()
 	if card:getTypeId()<1 then
 		self:useSkillCard(card,use)
+		collectgarbage("restart")
 		return use
 	end
 	local ai_connect = aiConnect(self.player)
@@ -8367,7 +8373,7 @@ function SmartAI:aiUseCard(card,use)
 				if invoke then
 					if use.card then break end
 					self:useCardByClassName(card,use)
-				else return use end
+				else collectgarbage("restart") return use end
 			end
 		end
 	end
@@ -8380,7 +8386,7 @@ function SmartAI:aiUseCard(card,use)
 					if invoke then
 						if use.card then break end
 						self:useCardByClassName(card,use)
-					else return use end
+					else collectgarbage("restart") return use end
 				end
 			end
 		end
@@ -8392,7 +8398,7 @@ function SmartAI:aiUseCard(card,use)
 					if invoke then
 						if use.card then break end
 						self:useCardByClassName(card,use)
-					else return use end
+					else collectgarbage("restart") return use end
 				end
 			end
 		end
@@ -8411,6 +8417,7 @@ function SmartAI:aiUseCard(card,use)
 			end
 		end
 	end
+	collectgarbage("restart")
 	return use
 end
 
