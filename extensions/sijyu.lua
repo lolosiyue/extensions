@@ -21,17 +21,6 @@ function RIGHT(self, player)
 	if player and player:isAlive() and player:hasSkill(self:objectName()) then return true else return false end
 end
 
-function ChoiceLog(player, choice, to)
-    local log = sgs.LogMessage()
-    log.type = "#choice"
-    log.from = player
-    log.arg = choice
-    if to then
-        log.to:append(to)
-    end
-    player:getRoom():sendLog(log)
-end
-
 sgs.LoadTranslationTable {
     ["sijyu_guanyu"] = "关羽",
     ["&sijyu_guanyu"] = "关羽",

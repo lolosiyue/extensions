@@ -15945,7 +15945,7 @@ sfofl_podai = sgs.CreateTriggerSkill{
 sfofl_podaiInvalidity = sgs.CreateInvaliditySkill{
 	name = "#sfofl_podaiInvalidity",
 	skill_valid = function(self, player, skill)
-		if player:getMark("sfofl_podai"..skill:objectName()) >= 1 then
+		if skill and player and player:getMark("sfofl_podai"..skill:objectName()) >= 1 then
 			return false
 		else
 			return true

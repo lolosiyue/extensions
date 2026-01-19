@@ -100,7 +100,7 @@ luanixi_tr = sgs.CreateTriggerSkill {
 				local x = player:getLostHp()
 				if x > 0 then
 					room:sendCompulsoryTriggerLog(player, "luanixi", true)
-					player:drawCards(x)
+					-- player:drawCards(x)
 				end
 			end
 			for _, skill in sgs.qlist(player:getVisibleSkillList()) do
@@ -116,7 +116,7 @@ luanixi_tr = sgs.CreateTriggerSkill {
 				-- room:loseHp(player, player:getHp()-1)
 				room:sendCompulsoryTriggerLog(player, "luanixi", true)
 				draw.num = draw.num + 4
-				data:setValue(draw)
+				-- data:setValue(draw)
 				room:broadcastSkillInvoke("juejing")
 				
 			end
@@ -161,7 +161,7 @@ luanixi_tr = sgs.CreateTriggerSkill {
 				for _, id in sgs.qlist(ids) do
 					to_handcard_x:addSubcard(id)
 				end
-				player:obtainCard(to_handcard_x)
+				-- player:obtainCard(to_handcard_x)
 				to_handcard_x:deleteLater()
 			end
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
@@ -289,9 +289,9 @@ debug_skill = sgs.CreateTriggerSkill{
 		if event == sgs.GameStart then
 			local owner = room:getOwner()
 			if owner and owner:isAlive() then
-				-- room:acquireSkill(owner, "bahu")
-				-- room:acquireSkill(owner, "feiyang")
-				-- room:acquireSkill(owner, "#luanixi_tr")
+				room:acquireSkill(owner, "bahu")
+				room:acquireSkill(owner, "feiyang")
+				room:acquireSkill(owner, "#luanixi_tr")
 			end
 		end
 	end

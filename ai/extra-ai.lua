@@ -2860,6 +2860,15 @@ end
 
 sgs.ai_playerchosen_intention["heg_jieyue"] = 40
 
+sgs.ai_fill_skill.heg_fengying = function(self)
+	if #self.toUse > 1 then return nil end
+	local dc = sgs.Sanguosha:cloneCard("heg_threaten_emperor", sgs.Card_NoSuit, 0)
+	dc:setSkillName("heg_fengying")
+	dc:deleteLater()
+	dc:addSubcards(self.player:handCards())
+	return dc
+end
+
 sgs.ai_skill_playerschosen.heg_fengying = function(self, targets, max, min)
 	local selected = sgs.SPlayerList()
     local can_choose = sgs.QList2Table(targets)
@@ -2882,6 +2891,118 @@ sgs.ai_playerschosen_intention.heg_fengying = function(self, from, prompt)
     end
 end
 
+sgs.ai_skill_invoke.heg_zhengbi = true
+
+sgs.ai_skill_choice.heg_zhengbi = function(self, choices, data)
+	local items = choices:split("+")
+	if table.contains(items, "heg_zhengbi_give") and sgs.ai_skill_use["@@heg_zhengbi"](self, "") ~=  "." then
+		for _, friend in ipairs(self.friends_noself) do
+			if self:canDraw(friend, self.player) and self:doDisCard(friend, "he", true) then
+				return "heg_zhengbi_give"
+			end
+		end
+		if math.random() < 0.5 then
+			for _, enemy in ipairs(self.enemies) do
+				if self:doDisCard(enemy, "he", true) and enemy:getCardCount(true) > 1 then
+					return "heg_zhengbi_give"
+				end
+			end
+		end
+	end
+	return "heg_zhengbi_distance"
+end
+
+sgs.ai_skill_playerchosen.heg_zhengbi = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	self:sort(targets, "defense")
+	local cards = sgs.QList2Table(self.player:getCards("h"))
+	self:sortByUseValue(cards)
+	for _, c in ipairs(cards) do
+		if c:isKindOf("Slash") then
+			self.player:setFlags("InfinityAttackRange")
+			local dummy_use = self:aiUseCard(c,dummy())
+			self.player:setFlags("-InfinityAttackRange")
+			if dummy_use and dummy_use.to and dummy_use.card then
+				for _, p in sgs.qlist(dummy_use.to) do
+					return p
+				end
+			end
+		end
+	end
+	for _, p in ipairs(targets) do
+		if self:isEnemy(p) then
+			return p
+		end
+	end
+	return nil
+end
+
+sgs.ai_playerchosen_intention.heg_zhengbi = 40
+
+sgs.ai_skill_use["@@zhengbidiscard!"] = function(self, prompt, method)
+	local cards = self.player:getCards("he")
+	cards = sgs.QList2Table(cards)
+	self:sortByKeepValue(cards)
+	local basic = {}
+	local nonbasic = {}
+	local discard = {}
+	for _,card in ipairs(cards)do
+		if card:isKindOf("BasicCard") then
+			table.insert(basic,card)
+		else
+			table.insert(nonbasic,card)
+		end
+	end
+	if #cards<=2 then return "." end
+	if self:needToThrowArmor() and #basic>=2 then
+		table.insert(discard,self.player:getArmor())
+		if basic[1]~=discard[1] then
+			table.insert(discard,basic[1]:getEffectiveId())
+		else
+			table.insert(discard,basic[2]:getEffectiveId())
+		end
+	end
+	if #nonbasic==0 then
+		for _,card in ipairs(basic)do
+			table.insert(discard,card:getEffectiveId())
+			if #discard==2 or #discard==#basic then
+				break
+			end
+		end
+	end
+	if #basic==0 and #nonbasic>=1 then
+		table.insert(discard,nonbasic[1]:getEffectiveId())
+	end
+	if #discard>0 then
+		return "$"..table.concat(discard,"+")
+	end
+	return "."
+end
+
+sgs.ai_skill_use["@@heg_zhengbi"] = function(self, prompt, method)
+	local cards = sgs.QList2Table(self.player:getCards("h"))
+	self:sortByKeepValue(cards)
+	local use_card
+    for _, acard in ipairs(cards) do
+		if acard:isKindOf("BasicCard") then
+			use_card = acard
+			break
+		end
+	end
+	if use_card then
+		for _, friend in ipairs(self.friends_noself) do
+			if self:doDisCard(friend, "h", true) and friend:getCardCount(true) > 1 and self:canDraw(friend, self.player) then
+				return "#heg_zhengbi:"..use_card:getEffectiveId()..":->" .. friend:objectName()
+			end
+		end
+		for _, enemy in ipairs(self.enemies) do
+			if self:doDisCard(enemy, "h", true) and enemy:getCardCount(true) > 1 then
+				return "#heg_zhengbi:"..use_card:getEffectiveId()..":->" .. enemy:objectName()
+			end
+		end
+	end
+	return "."
+end
 
 sgs.ai_fill_skill.heg_jianglue = function(self)
 	if (sgs.turncount>1) or (self:isWeak()) then
@@ -3003,6 +3124,25 @@ sgs.ai_skill_invoke.heg_buyi = function(self, data)
 	end
 	return false
 end
+
+sgs.ai_fill_skill.heg_weidi = function(self)
+	return sgs.Card_Parse("#heg_weidi:.:")
+end
+
+sgs.ai_skill_use_func["#heg_weidi"] = function(card,use,self)
+	self:updatePlayers()
+	self:sort(self.enemies, "defense")
+	for _, enemy in ipairs(self.enemies) do
+		if not enemy:isKongcheng() and self:doDisCard(enemy, "h", true) and enemy:getMark("heg_weidi-Clear") > 0 then
+			use.card = card
+			if use.to then use.to:append(enemy) end
+			return
+		end
+	end
+end
+
+sgs.ai_use_priority["heg_weidi"] = 5.2
+sgs.ai_card_intention["heg_weidi"] = 80
 
 sgs.ai_can_damagehp.heg_fudi = function(self,from,card,to)
 	if from and to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
@@ -4118,9 +4258,10 @@ sgs.ai_skill_playerchosen.heg_yingshi = function(self, targets)
 			return p
 		end
 	end
+	return nil
 end
 
-sgs.ai_skill_playerschosen.heg_yingshi = function(self, targets, max, min)
+sgs.ai_skill_playerschosen.heg_yingshi_target = function(self, targets, max, min)
 	local known_both = sgs.Sanguosha:cloneCard("heg_known_both", sgs.Card_NoSuit, 0)
 	known_both:setSkillName("heg_yingshi")
 	known_both:deleteLater()
@@ -4164,11 +4305,24 @@ sgs.ai_skill_use_func["#heg_shunfu"] = function(card,use,self)
 	
 	for i = 1, 3 do
 		local target = self:findPlayerToUseSlash(false, friends, "heg_shunfu", nil, 0, nil)
-		if self:canDraw(target) then
+		if target and self:canDraw(target) then
 			table.insert(targets, target)
 			table.removeOne(friends, target)
 		end
+		local friend = self:findPlayerToDraw(false, 1)
+		if friend and not table.contains(targets, friend) then
+			table.insert(targets, friend)
+			table.removeOne(friends, friend)
+		end
 		if #friends == 0 then break end
+	end
+	if #targets < 3 then
+		for _, friend in ipairs(self.friends_noself) do
+			if not table.contains(targets, friend) and self:canDraw(friend) then
+				table.insert(targets, friend)
+			end
+			if #targets >= 3 then break end
+		end
 	end
 	if #targets == 0 then return end
 	self:sort(targets, "defense")
@@ -4187,7 +4341,7 @@ sgs.ai_ajustdamage_from.heg_ejue = function(self, from, to, card, nature)
 end
 
 sgs.ai_view_as.heg_yimie_attach = function(card,player,card_place)
-	if player:getHandPile():contains(card:getId()) and card:getSuit() == sgs.Card_Heart then
+	if card_place==sgs.Player_PlaceHand and card:getSuit() == sgs.Card_Heart then
 		return ("peach:heg_yimie[%s:%s]=%d"):format(card:getSuitString(),card:getNumberString(),card:getEffectiveId())
 	end
 end
@@ -4216,7 +4370,7 @@ sgs.ai_skill_use_func["#heg_ruilve"] = function(card,use,self)
 end
 
 sgs.ai_skill_invoke.heg_beiluan = function(self, data)
-	local target = data:toPlayer()
+	local target = data:toDamage().from
 	if target and self:isEnemy(target) and not self:hasCrossbowEffect(target) then
 		return true
 	end
@@ -4282,10 +4436,14 @@ end
 
 sgs.ai_skill_invoke.heg_pojing = function(self, data)
 	local target = data:toPlayer()
-	if target and self:canDamage(target, nil, self.player) and self:damageIsEffective(target, sgs.DamageStruct_Normal, self.player) then
+	if target and self:canDamage(target, self.player, nil) and self:damageIsEffective(target, sgs.DamageStruct_Normal, self.player) then
 		return true
 	end
 	return false
+end
+
+sgs.ai_skill_invoke.heg_gongzhi = function(self, data)
+	return sgs.ai_skill_playerschosen.heg_gongzhi(self, self.room:getAlivePlayers(), 0, 4):length() > 0
 end
 
 sgs.ai_skill_playerschosen.heg_gongzhi = function(self, targets, max, min)
@@ -4299,6 +4457,17 @@ sgs.ai_skill_playerschosen.heg_gongzhi = function(self, targets, max, min)
 		end
 	end
 	return selected
+end
+
+sgs.ai_playerschosen_intention.heg_gongzhi = function(self, from, prompt)
+    local intention = -30
+    local tolist = prompt:split("+")
+    for _, dest in ipairs(tolist) do
+        local to = self.room:findPlayerByObjectName(dest)
+		if to and self:canDraw(to) then
+        	sgs.updateIntention(from, to, intention)
+		end
+    end
 end
 
 sgs.ai_skill_invoke.heg_shejus = function(self, data)
@@ -4346,7 +4515,7 @@ end
 
 sgs.ai_ajustdamage_from.heg_zhuosheng = function(self, from, to, card, nature)
 	if card and (card:hasFlag("heg_zhuosheng") or from:getMark("&heg_zhuosheng-Clear") > 0) then
-		return -1
+		return 1
 	end
 end
 
@@ -4370,25 +4539,26 @@ sgs.ai_skill_use["@@heg_yanxi"] = function(self, prompt, method)
 	local targets = {}
 	for _,player in ipairs(players)do
 		if self:isFriend(player) and not table.contains(kingdoms,player:getKingdom()) then
-			table.insert(targets,player)
+			table.insert(targets,player:objectName())
 			table.insert(kingdoms,player:getKingdom())
 			if #targets >= 3 then break end
 		end
 	end
 	for _,player in ipairs(players)do
-		if not table.contains(targets,player,true) and not table.contains(kingdoms,player:getKingdom()) then
-			table.insert(targets,player)
+		if not table.contains(targets,player:objectName()) and not table.contains(kingdoms,player:getKingdom()) then
+			table.insert(targets,player:objectName())
 			table.insert(kingdoms,player:getKingdom())
 			if #targets >= 3 then break end
 		end
 	end
-	if #targets==0 then return end
+	if #targets==0 then return "." end
 	for _,p in ipairs(targets)do
-		local id = self:askForCardChosen(p,"h","dummyreason",sgs.Card_MethodDiscard)
+		local target = self.room:findPlayerByObjectName(p)
+		local id = self:askForCardChosen(target,"h","dummyreason",sgs.Card_MethodDiscard)
 		local chosen_card
 		if id then chosen_card = sgs.Sanguosha:getCard(id) end
-		if id and chosen_card and (self:isFriend(p) or not p:hasEquip(chosen_card) or sgs.Sanguosha:getCard(id):getSuit()~=sgs.Card_Spade) then
-			self.chuli_id_choice[p:objectName()] = id
+		if id and chosen_card and (self:isFriend(target) or not target:hasEquip(chosen_card) or sgs.Sanguosha:getCard(id):getSuit()~=sgs.Card_Spade) then
+			self.chuli_id_choice[target:objectName()] = id
 		end
 	end
 	if #targets > 0 then
@@ -4474,7 +4644,7 @@ sgs.ai_skill_playerschosen.heg_chengxi = function(self, targets, max, min)
 	local can_choose = sgs.QList2Table(targets)
 	self:sort(can_choose, "defense")
 	for _,target in ipairs(can_choose)do
-		if self:canDamage(target, nil, self.player) and self:doDisCard(target, "he") then
+		if self:canDamage(target, self.player, nil) and self:doDisCard(target, "he")  then
 			selected:append(target)
 			if selected:length() >= max then break end
 		end
@@ -4494,7 +4664,7 @@ sgs.ai_playerschosen_intention.heg_chengxi = function(self, from, prompt)
 end
 
 sgs.ai_canliegong_skill.heg_chujue = function(self, from, to)
-	for _, p in sgs.qlist(room:getAllPlayers(true)) do
+	for _, p in sgs.qlist(self.room:getAllPlayers(true)) do
 		if p:isDead() and p:getKingdom() == to:getKingdom() then
 			return true
 		end
@@ -4541,7 +4711,7 @@ end
 sgs.ai_skill_use_func["#heg_chengliu"] = function(card,use,self)
 	local targets = {}
 	for _, enemy in ipairs(self.enemies) do
-		if enemy:getEquips():length() < self.player:getEquips():length() and self:canDamage(enemy, nil, self.player) and self:damageIsEffectivee(enemy,sgs.DamageStruct_Normal,self.player) then
+		if enemy:getEquips():length() < self.player:getEquips():length() and self:canDamage(enemy, self.player, nil) and self:damageIsEffective(enemy,sgs.DamageStruct_Normal,self.player) then
 			table.insert(targets, enemy)
 		end
 	end
@@ -4565,6 +4735,11 @@ sgs.ai_skill_use["@@heg_chengliu"] = function(self, prompt, method)
 	return "."
 end
 
+sgs.ai_skill_invoke.heg_chengliu = function(self, data)
+	local target = data:toPlayer()
+	return self:doDisCard(target, "e", true)
+end
+
 sgs.ai_skill_playerschosen.heg_xunjim = function(self, targets, max, min)
 	local use = self.room:getTag("heg_xunjim"):toCardUse()
 	local dummy_use = self:aiUseCard(use.card, dummy(true, 2, use.to))
@@ -4583,7 +4758,7 @@ sgs.ai_skill_playerschosen.heg_xunjim = function(self, targets, max, min)
 end
 
 sgs.ai_skill_cardask["@heg_xijue-xiaoguo"] = function(self, data, pattern, target, target2)
-	if sgs.ai_skill_cardask["@xiaoguo-discard"](self, data) ~= "." and self.player:getCardCount(true) > 1 then
+	if sgs.ai_skill_cardask["@xiaoguo"](self, data) ~= "." and self.player:getCardCount(true) > 1 then
 		return true
 	end
 	return "."
@@ -4593,6 +4768,10 @@ sgs.ai_skill_cardask["@heg_xijue-tenyeartuxi"] = function(self, data, pattern, t
 	if tuxi_string == "." then
 		return "."
 	end
+	return true
+end
+
+sgs.ai_skill_cardask["@heg_yingwei"] = function(self, data, pattern, target, target2)
 	return true
 end
 
@@ -4642,6 +4821,7 @@ sgs.ai_skill_playerchosen.heg_neiji = function(self, targets)
 	targets = sgs.QList2Table(targets)
 	self:sort(targets, "handcard", true)
 	if self:getCardsNum("Slash") > 0 then
+		if sgs.ai_role[self.player:objectName()] == "neutral" then return nil end
 		for _, p in ipairs(targets) do
 			if self:isFriend(p) and self:canDraw(p) and (p:getHandcardNum() >= 3 or getKnownCard(p,self.player,"Slash")>0) then
 				return p
@@ -4717,10 +4897,18 @@ sgs.ai_skill_discard.heg_neiji = function(self, discard_num, min_num, optional, 
 	return to_discard
 end
 
+sgs.ai_suppress_intention.heg_neiji = true
+
 sgs.ai_view_as.heg_xiace = function(card,player,card_place)
-	local current = self.room:getCurrent()
+	local current
+	for _, p in sgs.list(player:getAliveSiblings(true)) do
+		if p:hasFlag("CurrentPlayer") then
+			current = p
+			break
+		end
+	end
 	if card_place~=sgs.Player_PlaceSpecial and current and sgs.Slash_IsAvailable(current) then
-		return ("nullification:heg_yimie[%s:%s]=%d"):format(card:getSuitString(),card:getNumberString(),card:getEffectiveId())
+		return ("nullification:heg_xiace[%s:%s]=%d"):format(card:getSuitString(),card:getNumberString(),card:getEffectiveId())
 	end
 end
 
@@ -4728,8 +4916,9 @@ sgs.ai_skill_invoke.heg_xiace = function(self, data)
 	return math.random() < 0.5
 end
 
-sgs.ai_skill_cardask["@heg_limeng"] = function(self, data, pattern, target, target2)
-	if sgs.ai_skill_playerschosen.heg_limeng(self, self.room:getAllPlayers(),2, 2):length() == 2 then
+sgs.ai_skill_cardask["@heg_limeng"] = function(self, data, pattern)
+	local selected = sgs.ai_skill_playerschosen.heg_limeng(self, self.room:getAllPlayers(),2, 2)
+	if selected and selected:length() == 2 then
 		return true
 	end
 	return "."
@@ -4741,53 +4930,29 @@ sgs.ai_skill_playerschosen.heg_limeng = function(self, targets, max, min)
 	self:sort(can_choose, "defense")
 	for _,target in ipairs(can_choose)do
 		for _,target2 in ipairs(can_choose)do
-			if target ~= target2 and self:canDamage(target, nil, target2) and self:canDamage(target2, nil, target) then
+			if target ~= target2 and self:canDamage(target, target2, nil) and self:canDamage(target2, target ,nil) then
 				selected:append(target)
 				selected:append(target2)
 				break 
 			end
 		end
-		if selected:length() >= max then break
+		if selected:length() >= max then break end
 	end
 	return selected
 end
 
-
-addAiSkills("heg_bingxin").getTurnUseCard = function(self)
-	if self.player:getHandcardNum() ~= self.player:getHp() then return nil end
-    for c, pn in sgs.list(RandomList(patterns())) do
-        c = dummyCard(pn)
-        if c and c:isKindOf("BasicCard") and self:getCardsNum(c) == 0 then
-			if self.player:getMark("heg_bingxin_guhuo_remove_"..c:objectName().."-Clear") == 0 then
-				c:setSkillName("heg_bingxin")
-				if c:isAvailable(self.player)
-					and self:aiUseCard(c).card
-				then
-					return c
-				end
-			end
-        end
-    end
-end
-
-sgs.ai_guhuo_card.heg_bingxin = function(self, toname, class_name)
-	if self.player:getHandcardNum() ~= self.player:getHp() then return end
-	local first_color = nil
-	for _,c in sgs.qlist(self.player:getHandcards())do
-		if first_color==nil then
-			first_color = c:getColor()
-		elseif first_color~=c:getColor() then
-			return
+sgs.ai_playerschosen_intention.heg_limeng = function(self, from, prompt)
+    local intention = 40
+    local tolist = prompt:split("+")
+    for _, dest in ipairs(tolist) do
+        local to = self.room:findPlayerByObjectName(dest)
+		if not self:needToLoseHp(to) then
+        	sgs.updateIntention(from, to, intention)
 		end
-	end
-    local c = dummyCard(toname)
-    c:setSkillName("heg_bingxin")
-    if (not c) or (not c:isKindOf("BasicCard")) then return end
-	if self.player:getMark("heg_bingxin_guhuo_remove_"..toname.."-Clear") > 0 then return end
-    if #to_use > 0 then
-        return "#heg_bingxin:.:"..toname
     end
 end
+
+sgs.ai_damage_reason_suppress_intention.heg_limeng = true
 
 sgs.ai_fill_skill.heg_xiejian = function(self)
 	return sgs.Card_Parse("#heg_xiejian:.:")
@@ -4811,6 +4976,8 @@ sgs.ai_fill_skill.heg_yinsha = function(self)
     collateral:setSkillName("heg_yinsha")
 	return collateral
 end
+
+sgs.ai_suppress_intention.heg_yinsha = true
 
 sgs.ai_fill_skill.heg_sanchen = function(self)
 	return sgs.Card_Parse("#heg_sanchen:.:")
@@ -4836,7 +5003,7 @@ sgs.ai_use_value["heg_sanchen"] = 10
 sgs.ai_card_intention["heg_sanchen"] = -50
 
 sgs.ai_skill_use["@@heg_pozhu"] = function(self, prompt)
-	local cards = sgs.QList2Table(self.player:getCards("h"))
+	local cards = sgs.QList2Table(self:addHandPile("he"))
     self:sortByKeepValue(cards)
     for _, c in ipairs(cards) do
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
@@ -4846,10 +5013,10 @@ sgs.ai_skill_use["@@heg_pozhu"] = function(self, prompt)
 		local dummy_use = self:aiUseCard(slash,dummy())
 		if dummy_use.card and dummy_use and dummy_use.to then
 			local tos = {}
-        for _,to in sgs.qlist(dummy_use.to) do
-            table.insert(tos, to:objectName())
-        end
-        return slash:toString().."->"..table.concat(tos, "+")
+        	for _,to in sgs.qlist(dummy_use.to) do
+				table.insert(tos, to:objectName())
+			end
+        	return slash:toString().."->"..table.concat(tos, "+")
 		end
 	end
     return "."
@@ -5344,6 +5511,23 @@ end
 
 sgs.ai_skill_invoke.heg_lord_zongyu = true
 
+
+sgs.ai_fill_skill.heg_jiaping_Attach = function(self)
+	if (self:isWeak()) then
+		return sgs.Card_Parse("#heg_jiaping_Attach:.:")
+	end
+end
+
+sgs.ai_skill_use_func["#heg_jiaping_Attach"] = function(card,use,self)
+	for _, p in sgs.qlist(self.room:findPlayersBySkillName("heg_jiaping")) do
+		if p:getMark("heg_jiaping_lun") == 0 then
+			use.card = card
+			if use.to then use.to:append(p) end
+			return
+		end
+	end
+end
+
 sgs.ai_fill_skill.heg_guikuang = function(self)
 	return sgs.Card_Parse("#heg_guikuang:.:")
 end
@@ -5365,6 +5549,10 @@ sgs.ai_skill_use_func["#heg_guikuang"] = function(card,use,self)
 		return
 	end
 end
+
+sgs.ai_card_intention["heg_guikuang"] = 50
+
+sgs.ai_damage_reason_suppress_intention.heg_guikuang = true
 
 sgs.ai_skill_invoke.heg_mobile_bushi = function(self, data)
 	local target = data:toPlayer()
@@ -5546,8 +5734,9 @@ sgs.ai_skill_invoke.heg_mobile_tanfeng = function(self, data)
 	return false
 end
 
+
 sgs.ai_target_revises.heg_mobile_qianxun = function(to,card,self)
-	if card:isKindOf("TrickCard") and to:objectName() ~= self.player:objectName() and to:getPile("heg_mobile_jie") < 3
+	if card:isKindOf("TrickCard") and card:isSingleTargetCard() and to:objectName() ~= self.player:objectName() and to:getPile("heg_mobile_jie"):length() < 3
 	then return true end
 end
 
@@ -5576,31 +5765,30 @@ sgs.ai_fill_skill.heg_mobile_duoshi = function(self)
 		end
 	end
 	if sgs.turncount<=1 and #self.friends_noself==0 and not self:isWeak() and self:getOverflow()<=0 then return end
-		local cards = self:addHandPile("h")
-		cards = sgs.QList2Table(cards)
+	local cards = self:addHandPile("h")
+	cards = sgs.QList2Table(cards)
 
-		local red_card
-		if self.player:getHandcardNum()<=2 then return end
-		if self:needBear() then return end
-		self:sortByUseValue(cards,true)
+	local red_card
+	if self.player:getHandcardNum()<=2 then return end
+	if self:needBear() then return end
+	self:sortByUseValue(cards,true)
 
-		for _,card in ipairs(cards)do
-			if card:isRed() then
-				if not self:willUse(self.player,card,false,false,true) and not card:isKindOf("Peach") then
-					red_card = card
-					break
-				end
-
+	for _,card in ipairs(cards)do
+		if card:isRed() then
+			if not self:willUse(self.player,card,false,false,true) and not card:isKindOf("Peach") then
+				red_card = card
+				break
 			end
-		end
 
-		if red_card then
-			local heg_await_exhausted = dummyCard("heg_await_exhausted")
-			heg_await_exhausted:addSubcard(red_card)
-			heg_await_exhausted:setSkillName(skill_name)
-			if heg_await_exhausted:isAvailable(self.player)
-			then return heg_await_exhausted end
 		end
+	end
+
+	if red_card then
+		local heg_await_exhausted = dummyCard("heg_await_exhausted")
+		heg_await_exhausted:addSubcard(red_card)
+		heg_await_exhausted:setSkillName("heg_mobile_duoshi")
+		if heg_await_exhausted:isAvailable(self.player)
+		then return heg_await_exhausted end
 	end
 end
 
@@ -5614,6 +5802,8 @@ sgs.ai_ajustdamage_from.heg_mobile_liegong = function(self, from, to, card, natu
 	end
 end
 
+sgs.ai_skill_invoke.heg_mobile_liegong = sgs.ai_skill_invoke.liegong
+
 sgs.ai_skill_playerchosen.heg_mobile_shushen = function(self,targets)
 	if #self.friends_noself==0 then return nil end
 	return self:findPlayerToDraw(false,1)
@@ -5626,7 +5816,7 @@ sgs.ai_skill_invoke.heg_mobile_suishi = function(self,data)
 	local effect = promptlist[1]
 	local tianfeng = self.room:findPlayerByObjectName(promptlist[2])
 	if effect=="draw" then
-		return tianfeng and self:isFriend(tianfeng)
+		return tianfeng and self:isFriend(tianfeng) and self:canDraw(tianfeng)
 	else
 		return tianfeng and self:isEnemy(tianfeng)
 	end
@@ -5645,7 +5835,7 @@ end
 
 sgs.ai_skill_invoke.heg_mobile_kuangfu = function(self, data)
 	local target = data:toPlayer()
-	if target and self:isEnemy(target) then
+	if target then
 		return self:doDisCard(target, "he", true)
 	end
 	return false
@@ -5832,7 +6022,7 @@ sgs.ai_fill_skill.heg_ov_hongyuan = function(self)
 end
 
 sgs.ai_skill_use_func["#heg_ov_hongyuan"] = function(card,use,self)
-	local card = "@TenyearRendeCard=."
+	local card = sgs.Card_Parse("@TenyearRendeCard=.")
 	local dummy_use = dummy()
 	self:useSkillCard(card,dummy_use)
 	if dummy_use.card then 
@@ -6300,8 +6490,7 @@ end
 function SmartAI:useCardheg_threaten_emperor(card, use)
 	if self.player:getMark("heg_threaten_emperor_lun") > 0 then return end
 	if not card:isAvailable(self.player) then return end
-	local cardPlace = self.room:getCardPlace(card:getEffectiveId())--修改后无法使用装备，考虑手牌区
-	if self.player:getCardCount(false) < 1 + (cardPlace == sgs.Player_PlaceHand and 1 or 0) then return end
+	if self.player:getHandcardNum() - 1 <= 0 then return end
 	if not self:hasTrickEffective(card, self.player, self.player) then return end
 	use.card = card
 end
@@ -6322,12 +6511,8 @@ sgs.ai_skill_cardask["@heg_threaten_emperor"] = function(self)
 	if self.player:isKongcheng() then return "." end
 	local cards = sgs.QList2Table(self.player:getCards("h"))
 	self:sortByUseValue(cards,true)
-	if self.player:getHandcardNum() > 1 then
-		for _, card in ipairs(cards) do
-			if not card:isKindOf("heg_threaten_emperor") then--如果可以连着挟天子
-				return card:getEffectiveId()
-			end
-		end
+	if self.player:getHandcardNum() > 0 then
+		return true
 	end
 	return cards[1]:getEffectiveId()
 end
@@ -6375,6 +6560,7 @@ function SmartAI:useCardheg_burning_camps(card, use)
 	end
 	if shouldUse then
 		use.card = card
+		use.to:append(target)
 	end
 end
 
@@ -6737,6 +6923,7 @@ end
 
 sgs.ai_use_value.heg_transfer = 5.4
 sgs.ai_use_priority.heg_transfer = 0.8
+sgs.dynamic_value.benefit.heg_transfer = true
 
 
 
