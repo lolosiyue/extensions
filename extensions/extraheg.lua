@@ -17193,6 +17193,113 @@ heg_fofl_zuoci:addSkill(heg_fofl_jihun)
 extension_fakeoffline:insertRelatedSkills("heg_fofl_yigui", "#heg_fofl_yigui_prohibit")
 
 sgs.LoadTranslationTable{
+
+	["heg_fofl_duyu"] = "杜预-国[官盗]",
+    ["&heg_fofl_duyu"] = "杜预",
+	["#heg_fofl_duyu"] = "文成武德",
+	["illustrator:heg_fofl_duyu"] = "",
+	["~heg_fofl_duyu"] = "",
+	["information:heg_fofl_duyu"] = "应变晋国战",
+	["heg_fofl_sanchen"] = "三陈",
+	[":heg_fofl_sanchen"] = "出牌阶段限一次，你可令一名角色摸三张牌然后弃置三张牌，若其未以此法弃置类别相同的牌，其摸一张牌并重置此技能的发动次数（不能再选择相同的角色）。",
+	["heg_fofl_pozhu"] = "破竹",
+	[":heg_fofl_pozhu"] = "出牌阶段限X次（X为本回合三陈重置次数），你可以将一张手牌当【出其不意】使用。",
+
+	["heg_fofl_shibao"] = "石苞-国[官盗]",
+    ["&heg_fofl_shibao"] = "石苞",
+	["#heg_fofl_shibao"] = "乐陵郡公",
+	["illustrator:heg_fofl_shibao"] = "",
+	["~heg_fofl_shibao"] = "",
+	["information:heg_fofl_shibao"] = "应变晋国战",
+	["heg_fofl_zhuosheng"] = "擢升",
+	[":heg_fofl_zhuosheng"] = "每回合每种牌名限一次，你可以将至少两张手牌当任意一种基本牌使用，若包含带强化效果的牌，此牌无视条件获得相同的强化效果。",
+	["heg_fofl_juhou"] = "拒后",
+	[":heg_fofl_juhou"] = "与你处于同一队列的角色成为【杀】或普通锦囊牌的目标后，其可以将任意张牌扣置于武将牌上，此牌结算后获得之。",
+
+	["heg_fofl_yangzhi"] = "杨芷-国[官盗]",
+    ["&heg_fofl_yangzhi"] = "杨芷",
+	["#heg_fofl_yangzhi"] = "武悼皇后",
+	["illustrator:heg_fofl_yangzhi"] = "",
+	["~heg_fofl_yangzhi"] = "",
+	["information:heg_fofl_yangzhi"] = "应变晋国战",
+	["heg_fofl_wanyi"] = "婉嫕",
+	[":heg_fofl_wanyi"] = "出牌阶段每种牌名限一次，你可以将一张带强化效果的手牌当【遂近弃远】、【出其不意】、【水淹七军】或【洞烛先机】使用。",
+	["heg_fofl_maihuo"] = "埋祸",
+	[":heg_fofl_maihuo"] = "每回合每名角色限一次，一名角色成为非虚拟【杀】的目标后，你可以获得1枚祸并令此【杀】对其无效；其他角色出牌阶段开始时，你移去所有祸并令其依次视为对你使用等量的【杀】（目标需合法），其他角色以此法对你造成伤害时，你移除副将并防止此伤害。",
+
+	["heg_fofl_yangzhi"] = "杨艳-国[官盗]",
+    ["&heg_fofl_yangzhi"] = "杨艳",
+	["#heg_fofl_yangzhi"] = "武元皇后",
+	["illustrator:heg_fofl_yangzhi"] = "",
+	["~heg_fofl_yangzhi"] = "",
+	["information:heg_fofl_yangzhi"] = "应变晋国战",
+	["heg_fofl_xuanbei"] = "选备",
+	[":heg_fofl_xuanbei"] = "限定技，出牌阶段，你可以摸两张牌，本回合你使用带强化的牌无视条件强化之；每回合限一次，你使用带强化的牌结算结束后，你可以将此牌交给一名其他角色；你死亡时，你可以令一名其他角色变更副将。",
+	--娴婉
+
+	["heg_fofl_simazhou"] = "司马伷-国[官盗]",
+    ["&heg_fofl_simazhou"] = "司马伷",
+	["#heg_fofl_simazhou"] = "琅琊武王",
+	["illustrator:heg_fofl_simazhou"] = "",
+	["~heg_fofl_simazhou"] = "",
+	["information:heg_fofl_simazhou"] = "应变晋国战",
+	["heg_fofl_caiwang"] = "才望",
+	[":heg_fofl_caiwang"] = "你可以“助战”自己；每回合各限一次，当你“助战”后，若你弃置牌与被强化的牌颜色：不同，你摸一张牌；相同，你可以弃置其他角色的一张牌。",
+	["heg_fofl_naxiang"] = "纳降",
+	[":heg_fofl_naxiang"] = "锁定技，当你对其他角色造成伤害，或受到其他角色的伤害后，你对其发起“军令”，若其不执行，直到你下回合开始，你“助战”无类别限制，你带强化效果的牌条件均视为“助战”。",
+
+	["heg_fofl_jinsimayi"] = "司马懿-国[官盗]",
+    ["&heg_fofl_jinsimayi"] = "司马懿",
+	["#heg_fofl_jinsimayi"] = "通达权变",
+	["illustrator:heg_fofl_jinsimayi"] = "",
+	["~heg_fofl_jinsimayi"] = "",
+	["information:heg_fofl_jinsimayi"] = "应变晋国战",
+	["heg_fofl_quanbian"] = "权变",
+	[":heg_fofl_quanbian"] = "出牌阶段，当你使用或打出每种花色的第一张手牌时，你可以获得牌堆顶X张牌中的一张牌并展示之（X为你的体力上限），若此牌与你使用或打出的牌花色相同，本回合此技能失效。",
+	["heg_fofl_xiongzhi"] = "雄志",
+	[":heg_fofl_xiongzhi"] = "限定技，出牌阶段，你可以依次使用牌堆顶X张牌（X为你的体力上限），使用这些牌无距离限制。",
+	--jinyingshi 
+
+	["heg_fofl_yanghuiyu"] = "羊徽瑜-国[官盗]",
+    ["&heg_fofl_yanghuiyu"] = "羊徽瑜",
+	["#heg_fofl_yanghuiyu"] = "景献皇后",
+	["illustrator:heg_fofl_yanghuiyu"] = "",
+	["~heg_fofl_yanghuiyu"] = "",
+	["information:heg_fofl_yanghuiyu"] = "应变晋国战",
+	--慈威
+	["heg_fofl_caiyuan"] = "才媛",
+	[":heg_fofl_caiyuan"] = "锁定技，回合结束时，若你的手牌数大于等于你于此回合开始时的手牌数，你摸两张牌或回复1点体力。",
+
+	["heg_fofl_zuofen"] = "左棻-国[官盗]",
+    ["&heg_fofl_zuofen"] = "左棻",
+	["#heg_fofl_zuofen"] = "无宠的才女",
+	["illustrator:heg_fofl_zuofen"] = "",
+	["~heg_fofl_zuofen"] = "",
+	["information:heg_fofl_zuofen"] = "应变晋国战",
+	["heg_fofl_zhaosong"] = "诏颂",
+	[":heg_fofl_zhaosong"] = "每局每项限一次：1.一名角色进入濒死状态时，你可令其回复体力至2点并摸一张牌；2.出牌阶段，你可观看一名角色手牌，然后可获得其区域内一张牌；3.一名角色使用杀指定唯一目标时，你可为此【杀】增加至多两个目标。",
+	["heg_fofl_lisi"] = "离思",
+	[":heg_fofl_lisi"] = "其他角色死亡时，其可以令“诏颂”中的一项视为未发动过。",
+
+	["heg_fofl_zongyu"] = "宗预-国[官盗]",
+    ["&heg_fofl_zongyu"] = "宗预",
+	["#heg_fofl_zongyu"] = "九酝鸿胪",
+	["illustrator:heg_fofl_zongyu"] = "",
+	["~heg_fofl_zongyu"] = "",
+	["information:heg_fofl_zongyu"] = "应变晋国战",
+	--气傲
+	["heg_fofl_chengshang"] = "承赏",
+	[":heg_fofl_chengshang"] = "出牌阶段限一次，你使用指定其他角色为目标的牌后，若此牌未造成伤害，你可以获得弃牌堆中与此牌花色点数均相同的所有牌（若你未以此法获得牌，此技能视为未发动过）。",
+
+
+	["heg_fofl_zongyu"] = "宗预-国[官盗]",
+    ["&heg_fofl_zongyu"] = "宗预",
+	["#heg_fofl_zongyu"] = "九酝鸿胪",
+	["illustrator:heg_fofl_zongyu"] = "",
+	["~heg_fofl_zongyu"] = "",
+	["information:heg_fofl_zongyu"] = "群雄割据",
+	
+
 	["heg_fofl_yuejin"] = "乐进-国[官盗]",
     ["&heg_fofl_yuejin"] = "乐进",
     ["#heg_fofl_yuejin"] = "奋强突固",
@@ -17256,7 +17363,7 @@ sgs.LoadTranslationTable{
     ["illustrator:heg_fofl_yanliangwenchou"] = "",
     ["information:heg_fofl_yanliangwenchou"] = "十年经典",
 	["heg_fofl_shuangxiong"] = "双雄",
-	[":heg_fofl_shuangxiong"] = "摸牌阶段，你可以改为进行判定。若如此做，本回合你可以将一张与判定结果颜色不同的手牌当决斗使用。当你的判定牌于回合内生效后，你获得之。",
+	[":heg_fofl_shuangxiong"] = "摸牌阶段，你可以改为进行判定。若如此做，本回合你可以将一张与判定结果颜色不同的手牌当【决斗】使用。当你的判定牌于回合内生效后，你获得之。",
 
 	["heg_fofl_caohong"] = "曹洪-国[官盗]",
     ["&heg_fofl_caohong"] = "曹洪",
@@ -17361,6 +17468,17 @@ sgs.LoadTranslationTable{
 	[":heg_fofl_tunchu"] = "摸牌阶段，可以额外摸两张牌，然后你將一至兩張手牌置于武将牌上，称为“粮”，若如此做，你本回合不能使用殺。",
 	["heg_fofl_shuliang"] = "输粮",
 	[":heg_fofl_shuliang"] = "一名角色的结束阶段，若你計算與其的距離小於等於X（X為糧數），你可以移去一張糧，令其摸兩張牌。",
+
+
+	["heg_fofl_sunchen"] = "孙綝-国[官盗]",
+    ["&heg_fofl_sunchen"] = "孙綝",
+	["#heg_fofl_sunchen"] = "食髓的朝堂客",
+	["illustrator:heg_fofl_sunchen"] = "",
+	["~heg_fofl_sunchen"] = "",
+	["information:heg_fofl_sunchen"] = "十年经典",
+
+
+
 
 }
 
