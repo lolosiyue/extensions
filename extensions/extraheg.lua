@@ -17291,14 +17291,27 @@ sgs.LoadTranslationTable{
 	["heg_fofl_chengshang"] = "承赏",
 	[":heg_fofl_chengshang"] = "出牌阶段限一次，你使用指定其他角色为目标的牌后，若此牌未造成伤害，你可以获得弃牌堆中与此牌花色点数均相同的所有牌（若你未以此法获得牌，此技能视为未发动过）。",
 
+	["heg_fofl_chengong"] = "陈宫-国[官盗]",
+    ["&heg_fofl_chengong"] = "陈宫",
+	["#heg_fofl_chengong"] = "",
+	["illustrator:heg_fofl_chengong"] = "",
+	["~heg_fofl_chengong"] = "",
+	["information:heg_fofl_chengong"] = "群雄割据",
+	["heg_fofl_yinpan"] = "引叛",
+	[":heg_fofl_yinpan"] = "出牌阶段限一次，你可以选择一名其他角色，然后令场上其他角色依次选择是否对其使用一张无距离次数限制的【杀】，该角色以此法受到1点伤害后，于其下回合使用【杀】的次数+1，结算完成后，若其未以此法受到伤害，其回复1点体力。",
+	["heg_fofl_yumou"] = "与谋",
+	[":heg_fofl_yumou"] = "锁定技，你杀死其他角色或其他角色杀死你均不执行惩奖。其他角色因执行惩奖而摸牌时，你摸一张牌。"
 
-	["heg_fofl_zongyu"] = "宗预-国[官盗]",
-    ["&heg_fofl_zongyu"] = "宗预",
-	["#heg_fofl_zongyu"] = "九酝鸿胪",
-	["illustrator:heg_fofl_zongyu"] = "",
-	["~heg_fofl_zongyu"] = "",
-	["information:heg_fofl_zongyu"] = "群雄割据",
-	
+	["heg_fofl_xugong"] = "许贡-国[官盗]",
+    ["&heg_fofl_xugong"] = "许贡",
+	["#heg_fofl_xugong"] = "",
+	["illustrator:heg_fofl_xugong"] = "",
+	["~heg_fofl_xugong"] = "",
+	["information:heg_fofl_xugong"] = "群雄割据",
+	["heg_fofl_biaozhao"] = "表召",
+	[":heg_fofl_biaozhao"] = "出牌阶段限一次，你可以选择两名其他角色，视为对其中一名角色使用一张【知己知彼】，然后将一张牌交给另一名角色，若如此做，你摸一张牌。"
+	["heg_fofl_yechou"] = "业仇",
+	[":heg_fofl_yechou"] = "锁定技，你死亡时，视为对杀死你的角色依次使用三张无距离限制的【杀】，其中：第一张不能被响应，第二张无视目标角色的防具，第三张造成的伤害+1。若其以此法进入濒死状态，其他角色不能对其使用【桃】。"
 
 	["heg_fofl_yuejin"] = "乐进-国[官盗]",
     ["&heg_fofl_yuejin"] = "乐进",
