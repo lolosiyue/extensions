@@ -3033,3 +3033,233 @@ end
 sgs.ai_cardneed.s4_fuhan = sgs.ai_cardneed.wusheng
 
 
+sgs.ai_fill_skill.s4_suihuai = function(self)
+    return sgs.Card_Parse("#s4_suihuai:.:")
+end
+
+sgs.ai_skill_use_func["#s4_suihuai"] = function(card,use,self)
+    if self.player:hasSkill("s4_neiji") then
+        if self.player:getHandcardNum() > 6 then return end
+    end
+    use.card = card
+    return
+end
+sgs.bad_skills = sgs.bad_skills .. "|s4_neiji"
+
+sgs.ai_fill_skill.s4_xiongjie_bingzhou = function(self)
+    return sgs.Card_Parse("#s4_xiongjie_bingzhou:.:")
+end
+
+sgs.ai_skill_use_func["#s4_xiongjie_bingzhou"] = function(card,use,self)
+    local max_card = self:getMaxCard()
+    if not max_card then return end
+    local max_point = max_card:getNumber()
+    if self.player:hasSkill("s4_2_mingmen") then 
+        max_point = 13
+    end
+    local archery_attack = sgs.Sanguosha:cloneCard("archery_attack", sgs.Card_NoSuit, 0)
+    archery_attack:setSkillName("s4_xiongjie_bingzhou")
+    archery_attack:deleteLater()
+    local dummy_use = self:aiUseCard(archery_attack, dummy())
+    if not dummy_use.card then return end
+    sgs.ai_use_priority["s4_xiongjie_bingzhou"] = sgs.ai_use_priority.ArcheryAttack
+
+    local targets = {}
+    self:sort(self.enemies,"defense")
+    for _,enemy in sgs.list(self.enemies)do
+        if self.player:canPindian(enemy) then
+            local enemy_max_card = self:getMaxCard(enemy)
+            local allknown = 0
+            if self:getKnownNum(enemy)==enemy:getHandcardNum() then
+                allknown = allknown+1
+            end
+            if (enemy_max_card and max_point>enemy_max_card:getNumber() and allknown>0)
+                or (enemy_max_card and max_point>enemy_max_card:getNumber() and allknown<1 and max_point>10)
+                or (not enemy_max_card and max_point>10) and self:objectiveLevel(enemy)>3 then
+                self.s4_xiongjie_bingzhou_card = max_card:getEffectiveId()
+                use.card = sgs.Card_Parse("#s4_xiongjie_bingzhou:.:")
+                use.to:append(enemy)
+                return
+                
+            end
+        end
+    end
+end
+
+sgs.ai_ajustdamage_from.s4_xiongjie_qingzhou = function(self, from, to, card, nature)
+    if to:getMark("&s4_xiongjie+damage+to+#"..from:objectName().."-Clear") > 0 then
+        return 1
+    end
+    if to:getMark("&s4_xiongjie+reduce+to+#"..from:objectName().."-Clear") > 0 then
+        return -1
+    end
+end
+
+sgs.ai_fill_skill.s4_xiongjie_jizhou = function(self)
+    return sgs.Card_Parse("#s4_xiongjie_jizhou:.:")
+end
+
+sgs.ai_skill_use_func["#s4_xiongjie_jizhou"] = function(card,use,self)
+    local card = sgs.Card_Parse("@ZhihengCard=.")
+	local dummy_use = dummy()
+	self:useSkillCard(card,dummy_use)
+	if dummy_use.card then 
+        local use_cards = dummy_use.card:getSubcards()
+       
+        
+        str = "#s4_xiongjie_jizhou:"
+        for _,id in sgs.list(use_cards) do
+            if self.room:getCardPlace(id) ~= sgs.Player_PlaceHand then continue end
+            local x = 0
+            for _, xiongjie in sgs.qlist(self.player:getPile("s4_xiongjie")) do
+                local c = sgs.Sanguosha:getCard(xiongjie)
+                if c:getTypeId() == sgs.Sanguosha:getCard(id):getTypeId() then
+                    x = x + 1
+                end
+            end
+            if x < 4 then
+                str = str..id.."+"
+                str = str..":"
+                use.card = sgs.Card_Parse(str)
+                return
+            end
+        end
+	end
+end
+
+sgs.ai_skill_choice.s4_renchen = function(self, choices, data)
+    local items = choices:split("+")
+    if table.contains(items, "s4_renchen_extra") then
+        for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+            if p:isAdjacentTo(self.player) and self:isFriend(p) then
+                return "s4_renchen_extra"
+            end
+        end
+    end
+    if table.contains(items, "s4_renchen_give") then
+        for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+            if self.player:inMyAttackRange(p) and self:isFriend(p) and self:canDraw(p, self.player) then
+                return "s4_renchen_give"
+            end
+        end
+    end
+    return items[math.random(1, #items)]
+end
+
+sgs.ai_skill_playerchosen.s4_renchen = function(self, targets)
+    local target_list = sgs.QList2Table(targets)
+    self:sort(target_list, "defense")
+    for _, target in ipairs(target_list) do
+        if self:isFriend(target) and self:canDraw(target, self.player) then
+            return target
+        end
+    end
+    for _, target in ipairs(target_list) do
+        if self:isFriend(target) then
+            return target
+        end
+    end
+    return target_list[1]
+end
+
+sgs.ai_playerchosen_intention.s4_renchen = -20
+
+sgs.ai_skill_invoke.s4_xingjue = function(self, data)
+    local damage = data:toDamage()
+    local source = damage.from
+    if not source or not source:isAlive() then return false end
+    
+    -- 如果是隊友，一般不發動（除非能幫助調整手牌數）
+    if self:isFriend(source) then
+        local max_cards = 0
+        for _, p in sgs.list(self.room:getAlivePlayers()) do
+            if p:getHandcardNum() > max_cards then
+                max_cards = p:getHandcardNum()
+            end
+        end
+        -- 只有當能明顯增加手牌時才對隊友發動
+        return self.player:getHandcardNum() + 2 < max_cards
+    end
+    
+    -- 對敵人，如果能棄置其手牌或調整手牌數則發動
+    local x = 0
+    for _, p in sgs.list(self.room:getAlivePlayers()) do
+        if p:getHandcardNum() > x then
+            x = p:getHandcardNum()
+        end
+    end
+    return self:doDisCard(source, "h") or self.player:getHandcardNum() < x
+end
+
+sgs.ai_skill_choice.s4_xingjue = function(self, choices, data)
+    local items = choices:split("+")
+    
+    -- 處理棄置牌類型選擇
+    if table.contains(items, "basic") and table.contains(items, "trick") and table.contains(items, "equip") then
+        local damage = data:toDamage()
+        local source = damage.from
+        if not source then return items[1] end
+        
+        -- 如果是隊友，選擇其沒有的牌型（避免棄置）
+        if self:isFriend(source) then
+            local has_basic, has_trick, has_equip = false, false, false
+            
+            for _, card in sgs.qlist(getKnownCards(source,self.player)) do
+                if card:isKindOf("BasicCard") then has_basic = true end
+                if card:isKindOf("TrickCard") then has_trick = true end
+                if card:isKindOf("EquipCard") then has_equip = true end
+            end
+            
+            -- 優先選擇隊友沒有的牌型
+            if not has_equip then return "equip" end
+            if not has_trick then return "trick" end
+            if not has_basic then return "basic" end
+            return "equip" -- 都有則選裝備（通常最少）
+        end
+        
+        -- 如果是敵人，分析棄置哪種牌型最有價值
+        local basic_count, trick_count, equip_count = 0, 0, 0
+        local basic_value, trick_value, equip_value = 0, 0, 0
+
+         for _, card in sgs.qlist(getKnownCards(source,self.player)) do
+            if card:isKindOf("BasicCard") then basic_count = basic_count + 1 end
+            if card:isKindOf("TrickCard") then trick_count = trick_count + 1 end
+            if card:isKindOf("EquipCard") then equip_count = equip_count + 1 end
+        end
+                
+        -- 如果沒有已知牌，根據手牌數和身份猜測
+        if basic_count + trick_count + equip_count == 0 then
+            -- 優先棄基本牌（通常殺、閃、桃較多）
+            if source:getHandcardNum() >= 3 then return "basic" end
+            return "trick"
+        end
+        
+        -- 未知情況下選擇數量最多的
+        if basic_count >= trick_count and basic_count >= equip_count then return "basic" end
+        if trick_count >= equip_count then return "trick" end
+        return "equip"
+    end
+    
+    -- 處理傷害/回復選擇
+    local damage = data:toDamage()
+    local target = damage.from
+    if table.contains(items, "s4_xingjue_damage") then
+        if self:canDamage(target, self.player, nil) and self:damageIsEffective(target, sgs.DamageStruct_Normal, self.player) then
+            return "s4_xingjue_damage"
+        end
+    end
+    if table.contains(items, "s4_xingjue_recover") then
+        return "s4_xingjue_recover"
+    end
+    
+    return items[math.random(1, #items)]
+end
+
+sgs.ai_skill_choice.s4_silie = function(self, choices, data)
+    local items = choices:split("+")
+    local lord = self.room:getLord()
+    if table.contains(items, "s4_silie_damage") then
+
+    end
+    return items[math.random(1, #items)]
+end

@@ -6009,7 +6009,7 @@ end
 
 sgs.ai_skill_playerchosen.heg_ov_hongyuan = function(self, targets)
 	local target = self:findPlayerToDraw(false,1,false)
-	if target then
+	if target and self:getOverflow() > 0 then
 		return target
 	end
 	return nil
@@ -6891,20 +6891,27 @@ sgs.ai_fill_skill.heg_transfer = function(self)
 	sgs.ai_use_priority.heg_transfer = 0.8
 	self.yjzy_to = nil
 	local use_cards = {}
-  	for _,c in sgs.list(self:sortByKeepValue(self.player:getHandcards()))do
+	local cards = self.player:getCards("h")
+	self:sortByKeepValue(cards)
+  	for _,c in sgs.list(cards)do
 		if CardIsHezong(c) then
-			if table.contains(self.toUse,c) then continue end
-			local card,player = self:getCardNeedPlayer({c:getEffectiveId()},true)
-			if card and player then
+			local card,player = self:getCardNeedPlayer({c},false)
+			if card and player and self:canDraw(player, self.player) and player:getKingdom() ~= self.player:getKingdom() then
 				self.yjzy_to = player
 				table.insert(use_cards, c:getEffectiveId())
-				continue
 			end
-			for _, friend in ipairs(self.friends_noself) do
-				if self:canDraw(friend) then
-					self.yjzy_to = friend
-					table.insert(use_cards, c:getEffectiveId())
-					break
+			if #use_cards >= 3 then break end
+		end
+	end
+  	for _,c in sgs.list(cards)do
+		if CardIsHezong(c) then
+			if not table.contains(use_cards, c:getEffectiveId()) then
+				for _, friend in ipairs(self.friends_noself) do
+					if self:canDraw(friend, self.player) and friend:getKingdom() ~= self.player:getKingdom() then
+						self.yjzy_to = friend
+						table.insert(use_cards, c:getEffectiveId())
+						break
+					end
 				end
 			end
 			if #use_cards >= 3 then break end
@@ -6918,13 +6925,21 @@ sgs.ai_skill_use_func["#heg_transfer"] = function(card,use,self)
 	if self.yjzy_to then
 		use.card = card
 		use.to:append(self.yjzy_to)
+		return
+	end
+	for _, friend in ipairs(self.friends_noself) do
+		if self:canDraw(friend, self.player) and friend:getKingdom() ~= self.player:getKingdom() then
+			use.card = card
+			use.to:append(friend)
+			return
+		end
 	end
 end
 
 sgs.ai_use_value.heg_transfer = 5.4
-sgs.ai_use_priority.heg_transfer = 0.8
+sgs.ai_use_priority.heg_transfer = 0.5
 sgs.dynamic_value.benefit.heg_transfer = true
-
+sgs.ai_card_intention.heg_transfer = -40
 
 
 
