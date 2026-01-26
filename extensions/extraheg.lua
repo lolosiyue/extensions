@@ -16231,6 +16231,352 @@ sgs.LoadTranslationTable{
 
 }
 
+heg_fofl_duyu = sgs.General(extension_fakeoffline,  "heg_fofl_duyu", "jin", 3)
+
+heg_fofl_sanchenCard = sgs.CreateSkillCard{
+	name = "heg_fofl_sanchen",
+	target_fixed = false,
+	filter = function(self, targets, to_select)
+		return #targets == 0 and to_select:getMark("heg_fofl_sanchen_target-PlayClear") == 0
+	end,
+	on_effect = function(self, effect)
+		local room = effect.from:getRoom()
+		room:addPlayerMark(effect.to, "heg_fofl_sanchen_target-PlayClear")
+		room:drawCards(effect.to, 3, "heg_fofl_sanchen")
+		local sc_cards = room:askForDiscard(effect.to, "heg_fofl_sanchen", 3, 3, false, true)
+		if sc_cards then
+			local b, t, e = 0, 0, 0
+			for _, id in sgs.qlist(sc_cards:getSubcards()) do
+				local cd = sgs.Sanguosha:getCard(id)
+				if cd:isKindOf("BasicCard") then
+					b = b + 1
+				elseif cd:isKindOf("TrickCard") then
+					t = t + 1
+				elseif cd:isKindOf("EquipCard") then
+					e = e + 1
+				end
+			end
+			if b < 2 and t < 2 and e < 2 then
+				effect.to:drawCards(1, "heg_fofl_sanchen")
+				room:addPlayerMark(effect.from, "heg_fofl_sanchen_reset-Clear")
+			else
+				room:addPlayerMark(effect.from, "heg_fofl_sanchen-PlayClear")
+			end
+		end
+	end,
+}
+heg_fofl_sanchen = sgs.CreateZeroCardViewAsSkill{
+	name = "heg_fofl_sanchen",
+	view_as = function()
+		return heg_fofl_sanchenCard:clone()
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("heg_fofl_sanchen-PlayClear") == 0
+	end,
+}
+
+heg_fofl_pozhuVS = sgs.CreateOneCardViewAsSkill {
+	name = "heg_fofl_pozhu",
+	filter_pattern = ".|.|.|hand",
+	response_or_use = true,
+	view_as = function(slef, card)
+		local slash = sgs.Sanguosha:cloneCard("chuqibuyi", sgs.Card_SuitToBeDecided, -1)
+		slash:addSubcard(card)
+		slash:setSkillName("heg_fofl_pozhu")
+		return slash
+	end,
+	enabled_at_play = function(self, player)
+		return player:getMark("heg_fofl_sanchen_reset-Clear") > 0
+	end
+}
+heg_fofl_pozhu = sgs.CreateTriggerSkill {
+	name = "heg_fofl_pozhu",
+	events = {sgs.CardUsed},
+	view_as_skill = heg_fofl_pozhuVS,
+	on_trigger = function(self, event, player, data)
+		local use = data:toCardUse()
+		if use.card and table.contains(use.card:getSkillNames(), self:objectName()) then
+			player:getRoom():removePlayerMark(player, "heg_fofl_sanchen_reset-Clear")
+		end
+	end
+}
+
+heg_fofl_duyu:addSkill(heg_fofl_sanchen)
+heg_fofl_duyu:addSkill(heg_fofl_pozhu)
+
+heg_fofl_shibao = sgs.General(extension_fakeoffline,  "heg_fofl_shibao", "jin", 4)
+
+
+heg_fofl_zhuoshengCard = sgs.CreateSkillCard{
+	name = "heg_fofl_zhuosheng",
+	will_throw = false,
+	filter = function(self, targets, to_select)
+		local plist = sgs.PlayerList()
+		for i = 1, #targets do plist:append(targets[i]) end
+		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			local card, user_str = nil, self:getUserString()
+			if user_str ~= "" then
+				local us = user_str:split("+")
+				card = sgs.Sanguosha:cloneCard(us[1])
+			end
+			return card and card:targetFilter(plist, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, plist)
+				and (card:isKindOf("Slash") and sgs.Self:canSlash(to_select, true))
+		elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
+			return false
+		end
+		local card = sgs.Self:getTag("heg_fofl_zhuosheng"):toCard()
+		return card and card:targetFilter(plist, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, plist)
+			and (card:isKindOf("Slash") and sgs.Self:canSlash(to_select, true))
+	end,
+	target_fixed = function(self)
+		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			local card, user_str = nil, self:getUserString()
+			if user_str ~= "" then
+				local us = user_str:split("+")
+				card = sgs.Sanguosha:cloneCard(us[1])
+			end
+			return card and card:targetFixed()
+		elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
+			return true
+		end
+		local card = sgs.Self:getTag("heg_fofl_zhuosheng"):toCard()
+		return card and card:targetFixed()
+	end,
+	feasible = function(self, targets)
+		local plist = sgs.PlayerList()
+		for i = 1, #targets do plist:append(targets[i]) end
+		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			local card, user_str = nil, self:getUserString()
+			if user_str ~= "" then
+				local us = user_str:split("+")
+				card = sgs.Sanguosha:cloneCard(us[1])
+			end
+			return card and card:targetsFeasible(plist, sgs.Self)
+		elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
+			return true
+		end
+		local card = sgs.Self:getTag("heg_fofl_zhuosheng"):toCard()
+		return card and card:targetsFeasible(plist, sgs.Self)
+	end,
+	on_validate = function(self, card_use)
+		local player = card_use.from
+		local room, to_xin_zhayi_jiben = player:getRoom(), self:getUserString()
+		if self:getUserString() == "slash" and sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			local xin_zhayi_jiben_list = {}
+			table.insert(xin_zhayi_jiben_list, "slash")
+			if not (Set(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
+				table.insert(xin_zhayi_jiben_list, "normal_slash")
+				table.insert(xin_zhayi_jiben_list, "thunder_slash")
+				table.insert(xin_zhayi_jiben_list, "fire_slash")
+			end
+			to_xin_zhayi_jiben = room:askForChoice(player, "heg_fofl_zhuosheng_slash", table.concat(xin_zhayi_jiben_list, "+"))
+		end
+		local card = nil
+		if self:subcardsLength() == 1 then card = sgs.Sanguosha:cloneCard(sgs.Sanguosha:getCard(self:getSubcards():first())) end
+		local user_str
+		if to_xin_zhayi_jiben == "slash" then
+			if card and card:isKindOf("Slash") then
+				user_str = card:objectName()
+			else
+				user_str = "slash"
+			end
+		elseif to_xin_zhayi_jiben == "normal_slash" then
+			user_str = "slash"
+		else
+			user_str = to_xin_zhayi_jiben
+		end
+        room:addPlayerMark(player, "heg_fofl_zhuosheng"..user_str.."-Clear")
+		local use_card = sgs.Sanguosha:cloneCard(user_str, card and card:getSuit() or sgs.Card_SuitToBeDecided, card and card:getNumber() or -1)
+		use_card:setSkillName("heg_fofl_zhuosheng")
+		use_card:addSubcards(self:getSubcards())
+		use_card:deleteLater()
+
+		-- 收集所有应变效果
+		local yingbian_effects = {}
+		for _, id in sgs.qlist(self:getSubcards()) do
+			local yingbian = sgs.Sanguosha:getEngineCard(id):property("YingBianEffects"):toString()
+            if yingbian ~= "" then
+				table.insert(yingbian_effects, yingbian)
+			end
+		end
+		-- 如果有应变效果，使用通用系统处理
+		if #yingbian_effects > 0 then
+			local card_ids = {}
+			for _, id in sgs.qlist(self:getSubcards()) do
+				table.insert(card_ids, id)
+			end
+			setYingBianEffectsForCard(player, room, use_card, card_ids)
+		end
+
+
+		return use_card
+	end,
+	on_validate_in_response = function(self, user)
+		local room, user_str = user:getRoom(), self:getUserString()
+		local to_xin_zhayi_jiben
+		if user_str == "peach+analeptic" then
+			local xin_zhayi_jiben_list = {}
+			table.insert(xin_zhayi_jiben_list, "peach")
+			if not (Set(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
+				table.insert(xin_zhayi_jiben_list, "analeptic")
+			end
+			to_xin_zhayi_jiben = room:askForChoice(user, "heg_fofl_zhuosheng_saveself", table.concat(xin_zhayi_jiben_list, "+"))
+		elseif user_str == "slash" then
+			local xin_zhayi_jiben_list = {}
+			table.insert(xin_zhayi_jiben_list, "slash")
+			if not (Set(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
+				table.insert(xin_zhayi_jiben_list, "normal_slash")
+				table.insert(xin_zhayi_jiben_list, "thunder_slash")
+				table.insert(xin_zhayi_jiben_list, "fire_slash")
+			end
+			to_xin_zhayi_jiben = room:askForChoice(user, "heg_fofl_zhuosheng_slash", table.concat(xin_zhayi_jiben_list, "+"))
+		else
+			to_xin_zhayi_jiben = user_str
+		end
+		local card = nil
+		if self:subcardsLength() == 1 then card = sgs.Sanguosha:cloneCard(sgs.Sanguosha:getCard(self:getSubcards():first())) end
+		local user_str
+		if to_xin_zhayi_jiben == "slash" then
+			if card and card:isKindOf("Slash") then
+				user_str = card:objectName()
+			else
+				user_str = "slash"
+			end
+		elseif to_xin_zhayi_jiben == "normal_slash" then
+			user_str = "slash"
+		else
+			user_str = to_xin_zhayi_jiben
+		end
+        room:addPlayerMark(user, "heg_fofl_zhuosheng"..user_str.."-Clear")
+		
+		
+		-- 创建转化牌
+		local use_card = sgs.Sanguosha:cloneCard(user_str, card and card:getSuit() or sgs.Card_SuitToBeDecided, card and card:getNumber() or -1)
+		use_card:setSkillName("heg_fofl_zhuosheng")
+		use_card:addSubcards(self:getSubcards())
+		
+		-- 收集所有应变效果
+		local yingbian_effects = {}
+		for _, id in sgs.qlist(self:getSubcards()) do
+			local yingbian = sgs.Sanguosha:getEngineCard(id):property("YingBianEffects"):toString()
+            if yingbian ~= "" then
+				table.insert(yingbian_effects, yingbian)
+			end
+		end
+		-- 如果有应变效果，使用通用系统处理
+		if #yingbian_effects > 1 then
+			local card_ids = {}
+			for _, id in sgs.qlist(self:getSubcards()) do
+				table.insert(card_ids, id)
+			end
+			setYingBianEffectsForCard(user, room, use_card, card_ids)
+		end
+		
+		use_card:deleteLater()
+		return use_card
+	end
+}
+heg_fofl_zhuosheng = sgs.CreateViewAsSkill {
+	name = "heg_fofl_zhuosheng",
+	n = 999,
+	view_filter = function(self, selected, to_select)
+		return not to_select:isEquipped()
+	end,
+	view_as = function(self, cards)
+		if #cards < 2 then return nil end
+		local skillcard = heg_fofl_zhuoshengCard:clone()
+		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			skillcard:setUserString(sgs.Sanguosha:getCurrentCardUsePattern())
+			for _, card in ipairs(cards) do
+				skillcard:addSubcard(card)
+			end
+			return skillcard
+		elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+			local c = sgs.Self:getTag("heg_fofl_zhuosheng"):toCard()
+			if c then
+				skillcard:setUserString(c:objectName())
+				for _, card in ipairs(cards) do
+					skillcard:addSubcard(card)
+				end
+				return skillcard
+			else
+				return nil
+			end
+		else
+			return nil
+		end
+	end,
+	enabled_at_play = function(self, player)
+		for _,patt in ipairs(patterns())do
+			local dc = dummyCard(patt)
+			if dc and dc:isKindOf("BasicCard") and player:getMark("heg_fofl_zhuosheng"..dc:objectName().."-Clear") == 0 then
+				dc:setSkillName(self:objectName())
+				if dc:isAvailable(player)
+				then return true end
+			end
+		end
+		return false
+	end,
+	enabled_at_response = function(self, player, pattern)
+        for _,pt in sgs.list(pattern:split("+"))do
+			local dc = dummyCard(pt)
+			if dc and dc:isKindOf("BasicCard") and player:getMark("heg_fofl_zhuosheng"..dc:objectName().."-Clear") == 0 then
+				return true
+			end
+		end
+	end
+}
+
+heg_fofl_juhou = sgs.CreateTriggerSkill {
+	name = "heg_fofl_juhou",
+	events = {sgs.TargetConfirming, sgs.CardFinished},
+	on_trigger = function(self, event, player, data, room)
+		if event == sgs.TargetConfirming then
+			local use = data:toCardUse()
+			if not use.card then return false end
+			if not (use.card:isKindOf("Slash") or (use.card:isKindOf("TrickCard") and not use.card:isKindOf("DelayedTrick"))) then return false end
+			if not use.to:contains(player) then return false end
+			if not IsInQueue(player) then return false end
+			-- Find skill owners in the same formation as the target
+			for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+				if GetQueueMembers(p):contains(player) and player:askForSkillInvoke(self:objectName(), data) then
+					room:notifySkillInvoked(p, self:objectName())
+					local cards = room:askForExchange(player, self:objectName(), 999, 0, "@heg_fofl_juhou", "", ".")
+					if cards:length() > 0 then
+						local card_ids = sgs.IntList()
+						for i = 0, cards:length() - 1 do
+							card_ids:append(cards:at(i))
+						end
+						player:addToPile("heg_fofl_juhou", card_ids, true)
+						player:setTag(self:objectName() .. use.card:toString(), ToData(card_ids))
+					end
+				end
+			end
+		elseif event == sgs.CardFinished then
+			local use = data:toCardUse()
+			if not use.card then return false end
+			
+			if player:getPile("heg_fofl_juhou"):length() > 0 then
+				local card_ids = player:getTag(self:objectName() .. use.card:toString()):toIntList()
+				if card_ids and card_ids:length() > 0 then
+					room:obtainCard(player, "heg_fofl_juhou")
+				end
+				player:removeTag(self:objectName() .. use.card:toString())
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end
+}
+
+
+
+heg_fofl_shibao:addSkill(heg_fofl_zhuosheng)
+heg_fofl_shibao:addSkill(heg_fofl_juhou)
+
+
 heg_fofl_yuejin = sgs.General(extension_fakeoffline,  "heg_fofl_yuejin", "wei", 4)
 
 heg_fofl_xiaoguo = sgs.CreateTriggerSkill {
