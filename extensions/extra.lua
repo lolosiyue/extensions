@@ -689,6 +689,9 @@ end
 local YingBianEffectHandlers = {
 	-- 附加效果（手牌数最多时触发）
 	["yb_fujia1"] = function(player, use, room, directly)
+		if getYingBianExtension(player, "all_as_zhuzhan") then
+			return false
+		end
 		if directly or isMaxHandcard(player, room) then
 			-- 此牌无法被目标角色响应
 			use.no_respond_list = sgs.SPlayerList()
@@ -702,6 +705,9 @@ local YingBianEffectHandlers = {
 	end,
 	
 	["yb_fujia2"] = function(player, use, room, directly)
+		if getYingBianExtension(player, "all_as_zhuzhan") then
+			return false
+		end
 		if directly or isMaxHandcard(player, room) then
 			-- 减少一个目标
 			if use.to:length() > 1 then
@@ -719,6 +725,9 @@ local YingBianEffectHandlers = {
 	
 	-- 空城效果（无手牌时触发）
 	["yb_kongchao1"] = function(player, use, room, directly)
+		if getYingBianExtension(player, "all_as_zhuzhan") then
+			return false
+		end
 		if directly or player:isKongcheng() then
 			-- 摸一张牌
 			player:drawCards(1, "yb_kongchao1")
@@ -729,6 +738,9 @@ local YingBianEffectHandlers = {
 	end,
 	
 	["yb_kongchao2"] = function(player, use, room, directly)
+		if getYingBianExtension(player, "all_as_zhuzhan") then
+			return false
+		end
 		if directly or player:isKongcheng() then
 			-- 此牌结算后你获得之
 			use.card:setFlags("yb_kongchao2_obtain")
@@ -739,6 +751,9 @@ local YingBianEffectHandlers = {
 	end,
 	
 	["yb_kongchao3"] = function(player, use, room, directly)
+		if getYingBianExtension(player, "all_as_zhuzhan") then
+			return false
+		end
 		if directly or player:isKongcheng() then
 			-- 为此牌增加一个目标
 			local targets = sgs.SPlayerList()
@@ -763,6 +778,9 @@ local YingBianEffectHandlers = {
 	
 	-- 残躯效果（体力为1时触发）
 	["yb_canqu1"] = function(player, use, room, directly)
+		if getYingBianExtension(player, "all_as_zhuzhan") then
+			return false
+		end
 		if directly or player:getHp() == 1 then
 			-- 此牌伤害+1
 			use.card:setFlags("yb_canqu1_add_damage")
@@ -773,6 +791,9 @@ local YingBianEffectHandlers = {
 	end,
 	
 	["yb_canqu2"] = function(player, use, room, directly)
+		if getYingBianExtension(player, "all_as_zhuzhan") then
+			return false
+		end
 		if directly or player:getHp() == 1 then
 			-- 为此牌增加一个目标
 			local targets = sgs.SPlayerList()
@@ -798,9 +819,6 @@ local YingBianEffectHandlers = {
 	-- 助战效果（其他角色弃牌或无条件）
 	["yb_zhuzhan1"] = function(player, use, room, directly)
 		-- 检查扩展选项：所有应变效果都视为助战
-		if getYingBianExtension(player, "all_as_zhuzhan") then
-			directly = true
-		end
 		
 		local triggered = directly
 		if not triggered then
@@ -843,10 +861,6 @@ local YingBianEffectHandlers = {
 	end,
 	
 	["yb_zhuzhan2"] = function(player, use, room, directly)
-		-- 检查扩展选项：所有应变效果都视为助战
-		if getYingBianExtension(player, "all_as_zhuzhan") then
-			directly = true
-		end
 		
 		local triggered = directly
 		if not triggered then
@@ -917,7 +931,7 @@ end
 function processYingBianEffects(player, data, room)
 	local use = data:toCardUse()
 	-- 检查是否有YingBianDirectlyEffective标记
-	local directly = player:getMark("YingBianDirectlyEffective") > 0
+	local directly = player:getMark("YingBianDirectlyEffective") > 0 or player:getMark("YingBianDirectlyEffective"..use.card:objectName()) > 0
 	
 	-- 收集所有应变效果（通用Tag名称）
 	local effects = {}
@@ -956,8 +970,6 @@ function processYingBianEffects(player, data, room)
 		
 		-- 更新data
 		data:setValue(use)
-		-- 清理标记
-		player:removeTag("YingBian_Effects_" .. use_card:toString())
 	end
 end
 
@@ -1002,6 +1014,11 @@ YingBianEffect_Global = sgs.CreateTriggerSkill {
 			-- 清理应变标记
 			if player:getMark("YingBianDirectlyEffective"..use_card:objectName()) > 0 then
 				room:removePlayerMark(player, "YingBianDirectlyEffective"..use_card:objectName())
+			end
+			-- 清理标记
+			local effects_str = player:getTag("YingBian_Effects_" .. use:card():toString()):toString()
+			if effects_str and effects_str ~= "" then
+				player:removeTag("YingBian_Effects_" .. use_card:toString())
 			end
 		end
 		return false
