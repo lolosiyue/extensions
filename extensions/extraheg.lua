@@ -19577,8 +19577,166 @@ extension_fakeoffline:insertRelatedSkills("heg_fofl_huanjia", "#heg_fofl_huanjia
 extension_fakeoffline:insertRelatedSkills("heg_fofl_huanjia", "#heg_fofl_huanjia_armor")
 extension_fakeoffline:insertRelatedSkills("heg_fofl_huanjia", "#heg_fofl_huanjia_weapon")
 
+heg_fofl_jiachong = sgs.General(extension_fakeoffline,  "heg_fofl_jiachong", "jin", 3)
+
+heg_fofl_xiongshu_buff =  = sgs.CreateTriggerSkill{
+	name = "#heg_fofl_xiongshu_buff",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.DamageCaused},
+	on_trigger = function(self, event, player, data, room)
+		local damage = data:toDamage()
+		if damage.card and (damage.card:isKindOf("Slash") or (damage.card:isDamageCard() and damage.card:isKindOf("TrickCard"))) then
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				if p:getMark("heg_fofl_xiongshu"..damage.card:getEffectiveId().."-Clear") > 0 then
+					damage.from = p
+					data:setValue(damage)
+				end
+			end
+		end
+	end,
+	can_trigger = function(self, target)
+		return target and target:isAlive()
+	end
+}
+
+heg_fofl_xiongshu = sgs.CreateTriggerSkill{
+	name = "heg_fofl_xiongshu",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.TargetConfirmed},
+	on_trigger = function(self, event, player, data, room)
+		local use = data:toCardUse()
+		if not player:hasTurn() then return end
+		if (use.card:isKindOf("Slash") or (use.card:isDamageCard() and use.card:isKindOf("TrickCard"))) then
+			for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+				if p:getMark("heg_fofl_xiongshu-Clear") == 0 then
+					if use.from and use.from:objectName() == p:objectName() then
+						local target = room:askForPlayerChosen(p, room:getOtherPlayers(p), self:objectName(), "@heg_fofl_xiongshu", true, true)
+						if target then
+							room:addPlayerMark(p, "heg_fofl_xiongshu-Clear")
+							room:addPlayerMark(target, "heg_fofl_xiongshu"..use.card:getEffectiveId().."-Clear")
+						end
+					elseif  use.from and use.from:objectName() ~= p:objectName() and p:canDisCard(p, "he") then
+						if room:askForDiscard(p, "heg_fofl_xiongshu", 1, 1, true, true) then
+							room:addPlayerMark(p, "heg_fofl_xiongshu-Clear")
+							room:addPlayerMark(p, "heg_fofl_xiongshu"..use.card:getEffectiveId().."-Clear")
+						end
+					end
+				end
+			end
+		end
+	end
+}
 
 
+heg_fofl_jianhui = sgs.CreateTriggerSkill{
+	name = "heg_fofl_jianhui",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.Damage},
+	on_trigger = function(self, event, player, data, room)
+		local damage = data:toDamage()
+		if damage.from and damage.to and damage.from:objectName() ~= damage.to:objectName() and damage.from:isAlive() and damage.to:isAlive() then
+			for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+				local targets = sgs.SPlayerList()
+				if p:canDiscard(damage.from, "he") then
+					targets:append(damage.to)
+				end
+				if p:canDiscard(damage.to, "he") then
+					targets:append(damage.from)
+				end
+				if not targets:isEmpty() then
+					local target = room:askForPlayerChosen(p, targets, self:objectName(), "@heg_fofl_jianhui", true, true)
+					if target then
+						
+						target:drawCards(1, self:objectName())
+						local to_discard = damage.from
+						if target:objectName() == damage.from:objectName() then
+							to_discard = damage.to
+						end
+						local card = room:askForCardChosen(p, to_discard, "he", self:objectName(), false, sgs.Card_MethodDiscard)
+						if card then
+							room:throwCard(card, to_discard, p)
+						end
+					end
+				end
+			end
+		end
+	end
+}
+
+heg_fofl_jiachong:addSkill(heg_fofl_xiongshu)
+heg_fofl_jiachong:addSkill(heg_fofl_jianhui)
+heg_fofl_jiachong:addSkill(heg_fofl_xiongshu_buff)
+extension_fakeoffline:insertRelatedSkills("heg_fofl_xiongshu", "#heg_fofl_xiongshu_buff")
+
+heg_fofl_yanghu = sgs.General(extension_fakeoffline,  "heg_fofl_yanghu", "jin", 4)
+
+heg_fofl_suixinCard = sgs.CreateSkillCard{
+	name = "heg_fofl_suixin",
+	target_fixed = false,
+	will_throw = false,
+	filter = function(self, targets, to_select, player)
+		if #targets > 0 then return false end
+		local card = sgs.Sanguosha:getCard("heg_await_exhausted", sgs.Card_NoSuit, 0)
+		card:deleteLater()
+		return to_select:objectName() ~= sgs.Self:objectName() and CanToCard(self,player,to_select)
+	end,
+	on_use = function(self, room, source, targets)
+		local card = sgs.Sanguosha:cloneCard("heg_await_exhausted", sgs.Card_NoSuit, 0)
+		card:setSkillName("heg_fofl_suixin")
+		if targets[1]:isAlive() then
+			local use = sgs.CardUseStruct()
+			use.card = card
+			use.from = source
+			use.to:append(source)
+			use.to:append(targets[1])
+			room:useCard(use)
+		end
+	end
+}
+heg_fofl_suixin = sgs.CreateZeroCardViewAsSkill{
+	name = "heg_fofl_suixin",
+	view_as = function(self, cards)
+		return heg_fofl_suixinCard:clone()
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("#heg_fofl_suixin")
+	end
+}
+
+heg_fofl_weirongCard = sgs.CreateSkillCard{
+	name = "heg_fofl_weirong",
+	target_fixed = true,
+	will_throw = true,
+	on_use = function(self, room, source, targets)
+		local x = math.max(1, math.min(source:getMark("&heg_fofl_weirong"), source:getMaxHp()))
+		if source:getChangeSkillState("heg_fofl_weirong") == 1 then
+			room:setChangeSkillState(player,self:objectName(),2)
+			room:setPlayerMark(source, "heg_fofl_weirong_effect_lun", 1)
+			room:addPlayerMark(source, "heg_fofl_weirong_discard_lun", self:subcardsLength())
+			room:setPlayerMark(source, "&heg_fofl_weirong+heg_fofl_weirong_effect_1_lun", 1)
+		else
+			room:setChangeSkillState(player,self:objectName(),1)
+			room:setPlayerMark(source, "heg_fofl_weirong_effect_lun", 2)
+			source:drawCards(x, self:objectName())
+			room:addPlayerMark(source, "heg_fofl_weirong_draw_lun", x)
+			room:setPlayerMark(source, "&heg_fofl_weirong+heg_fofl_weirong_effect_2_lun", 1)
+		end
+	end
+}
+heg_fofl_weirongVS = sgs.CreateViewAsSkill{
+	name = "heg_fofl_weirong",
+	n = 999,
+	view_filter = function(self, to_select)
+		return true,
+	end,
+	view_as = function(self, cards)
+
+
+heg_fofl_yanghu:addSkill(heg_fofl_suixin)
+
+
+	["heg_fofl_weirong"] = "卫戎",
+	[":heg_fofl_weirong"] = "转换技，每轮限一次，出牌阶段，你可以①弃X张牌，本轮你不以此法获得牌后摸一张牌。②摸X张牌，本轮你不以此法失去牌后弃一张牌（X为你上轮以此法摸和弃的牌数之差，至少为1，至多为你的体力上限）。",
 
 
 
@@ -19931,7 +20089,7 @@ sgs.LoadTranslationTable{
 	["~heg_fofl_yanyan"] = "",
 	["information:heg_fofl_yanyan"] = "十年经典",
 	["heg_fofl_juzhan"] = "拒战",
-	[":heg_fofl_juzhan"] = "转换技，当你成为【杀】的目标后，你可以与使用者各摸X张牌，然后你可以令其一个技能本回合失效。当你使用【杀】指定目标后，你可以获得其X张牌（X为此【杀】使用者已损失的体力值且至少为1），然后本回合此技能失效。",
+	[":heg_fofl_juzhan"] = "转换技，①当你成为【杀】的目标后，你可以与使用者各摸X张牌，然后你可以令其一个技能本回合失效。②当你使用【杀】指定目标后，你可以获得其X张牌（X为此【杀】使用者已损失的体力值且至少为1），然后本回合此技能失效。",
 
 	["heg_fofl_zhuran"] = "朱然-国[官盗]",
     ["&heg_fofl_zhuran"] = "朱然",
@@ -19973,7 +20131,7 @@ sgs.LoadTranslationTable{
 	["heg_fofl_suixin"] = "祟信",
 	[":heg_fofl_suixin"] = "出牌阶段限一次，你可以选择一名其他角色，视为使用一张仅以你与其为目标的【以逸待劳】。",
 	["heg_fofl_weirong"] = "卫戎",
-	[":heg_fofl_weirong"] = "转换技，每轮限一次，出牌阶段，你可以弃X张牌，本轮你不以此法获得牌后摸一张牌。摸X张牌，本轮你不以此法失去牌后弃一张牌（X为你上轮以此法摸和弃的牌数之差，至少为1，至多为你的体力上限）。",
+	[":heg_fofl_weirong"] = "转换技，每轮限一次，出牌阶段，你可以①弃X张牌，本轮你不以此法获得牌后摸一张牌。②摸X张牌，本轮你不以此法失去牌后弃一张牌（X为你上轮以此法摸和弃的牌数之差，至少为1，至多为你的体力上限）。",
 
 	["heg_fofl_2_wuqiujian"] = "毌丘俭-国[官盗]",
     ["&heg_fofl_2_wuqiujian"] = "毌丘俭",

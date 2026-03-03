@@ -4260,7 +4260,26 @@ function SmartAI:getTurnUse()
 	
 	if logger then logger:writeLog("DEBUG", "getTurnUse: Initializing use_to table") end
 	self.use_to = {}
-	
+
+	-- =========================================================
+    -- Step 1: 狀態預判 (O(1) - 只做一次)
+    -- =========================================================
+    local limit_left, has_penalty = self:getUsageState()
+    
+    -- 判斷是否進入「限制模式」
+    local restricted_mode = (limit_left <= 1) or has_penalty
+    
+    -- 設定價值閾值
+    -- 正常模式：0 (所有有用牌)
+    -- 限制模式：5.5 (過濾掉大部分裝備和普通錦囊，保留 殺(>5)、桃(>6)、無中(>7))
+    local value_threshold = restricted_mode and 5.5 or -10 
+    
+    -- 特殊處理止息棄牌代價
+    local zhixi_cost = self.player:hasSkill("zhixi")
+    local hand_num = self.player:getHandcardNum()
+	-- =========================================================
+    -- Step 3: 技能卡轉換與排序 (O(N log N))
+    -- =========================================================
 	-- Step 1: Get and sort cards
 	if logger then logger:writeLog("DEBUG", "getTurnUse: Getting skill cards") end
 	local fillSuccess, skillCards = pcall(function()
@@ -4273,7 +4292,7 @@ function SmartAI:getTurnUse()
 		return {}
 	end
 	
-	if logger then logger:writeLog("DEBUG", "getTurnUse: Sorting cards", {cardCount = #skillCards}) end
+    if logger then logger:writeLog("DEBUG", "getTurnUse: Sorting cards", {cardCount = #skillCards}) end
 	local sortSuccess, sortedCards = pcall(function()
 		return self:sortByDynamicUsePriority(skillCards)
 	end)
@@ -4283,6 +4302,9 @@ function SmartAI:getTurnUse()
 		self.toUse = {}
 		return {}
 	end
+    -- =========================================================
+    -- Step 4: 循環處理 (優化後)
+    -- =========================================================
 	
 	if logger then logger:writeLog("DEBUG", "getTurnUse: Sorting completed successfully") end
 	
@@ -4316,7 +4338,14 @@ function SmartAI:getTurnUse()
 					logger:writeLog("DEBUG", "getTurnUse: Skipping Slash due to miss lethal mistake") 
 				end
 				continue
+			-- 3. [極速過濾] 價值檢查 (替代 Hardcode)
+            -- getUseValue 是查表操作，速度極快
+            -- 如果限制模式開啟，且這張牌價值低 (如裝備)，直接 continue，不進行後續昂貴計算
+        
+			elseif restricted_mode and self:getUseValue(c) < value_threshold then
+                continue
 			else
+				
 				if logger and idx % 5 == 1 then -- Log every 5 cards to avoid spam
 					local cardStr = "unknown"
 					local cardStrSuccess, cardStrResult = pcall(function() return c:getLogName() end)
@@ -4386,44 +4415,50 @@ function SmartAI:getTurnUse()
 							end
 							
 							if not isLimited then
-								if logger then logger:writeLog("DEBUG", "getTurnUse: Adding card to turnUse") end
-								
-								local addSuccess, addErr = pcall(function()
-									local cardKey = d.card:toString()
-									if logger then 
-										logger:writeLog("DEBUG", "getTurnUse: Card key", {key = cardKey})
-									end
+ 								local worthwhile = true
+                    			if has_penalty then
+									worthwhile = d.card:isDamageCard() or d.card:isKindOf("Peach") or math.random() < 0.5 -- 50%機率保留一些其他牌，增加多樣性
+								end
+								if worthwhile then
+									if logger then logger:writeLog("DEBUG", "getTurnUse: Adding card to turnUse") end
 									
-									self.use_to[cardKey] = d.to
-									if logger then logger:writeLog("DEBUG", "getTurnUse: Set use_to") end
-									
-									table.insert(turnUse, d.card)
-									if logger then 
-										logger:writeLog("DEBUG", "getTurnUse: Inserted card", {
-											turnUseCount = #turnUse
-										})
-									end
-									
-									-- Debug file writing: 只在真正添加到使用列表時才寫入日誌
-									if sgs.aiHandCardVisible then
-										local fileSuccess, fileErr = pcall(function()
-											local file = io.open("lua/ai/cstring", "r")
-											local _file = file:read("*all")
-											file:close()
-											file = io.open("lua/ai/cstring", "w")
-											if d.card:isVirtualCard() then 
-												file:write(_file.."\n"..d.card:toString())
-											else 
-												file:write(_file.."\n"..d.card:getFullName(true)) 
-											end
-											file:close()
-										end)
-										
-										if not fileSuccess and logger then
-											logger:logError("getTurnUse:debug_file_write", fileErr)
+									local addSuccess, addErr = pcall(function()
+										local cardKey = d.card:toString()
+										if logger then 
+											logger:writeLog("DEBUG", "getTurnUse: Card key", {key = cardKey})
 										end
-									end
-								end)
+										
+										self.use_to[cardKey] = d.to
+										if logger then logger:writeLog("DEBUG", "getTurnUse: Set use_to") end
+										
+										table.insert(turnUse, d.card)
+										if logger then 
+											logger:writeLog("DEBUG", "getTurnUse: Inserted card", {
+												turnUseCount = #turnUse
+											})
+										end
+										
+										-- Debug file writing: 只在真正添加到使用列表時才寫入日誌
+										if sgs.aiHandCardVisible then
+											local fileSuccess, fileErr = pcall(function()
+												local file = io.open("lua/ai/cstring", "r")
+												local _file = file:read("*all")
+												file:close()
+												file = io.open("lua/ai/cstring", "w")
+												if d.card:isVirtualCard() then 
+													file:write(_file.."\n"..d.card:toString())
+												else 
+													file:write(_file.."\n"..d.card:getFullName(true)) 
+												end
+												file:close()
+											end)
+											
+											if not fileSuccess and logger then
+												logger:logError("getTurnUse:debug_file_write", fileErr)
+											end
+										end
+									end)
+								end
 								
 								if not addSuccess and logger then
 									logger:logError("getTurnUse:addCard", addErr, {
@@ -4512,6 +4547,42 @@ function SmartAI:getTurnUse()
 	end
 	
 	return turnUse
+end
+
+
+function SmartAI:getUsageState()
+    local min_limit = 999
+    local has_penalty = false
+    local self_player = self.player
+
+    for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+
+        for _, ac in ipairs(aiConnect(p)) do
+            
+            -- 1. 檢查硬限制規則 (Limit)
+            local limit_func = sgs.ai_card_usage_limit[ac]
+            if limit_func then
+                -- 參數: (AI實例, 技能來源 p, 當前行動者 self.player)
+                local limit = limit_func(self, p, self_player)
+                if type(limit) == "number" and limit < min_limit then
+                    min_limit = limit
+                end
+            end
+
+            -- 2. 檢查軟限制/懲罰規則 (Penalty)
+            -- 如果尚未發現懲罰，則繼續檢查
+            if not has_penalty then
+                local penalty_func = sgs.ai_card_usage_penalty[ac]
+                if penalty_func then
+                    if penalty_func(self, p, self_player) then
+                        has_penalty = true
+                    end
+                end
+            end
+        end
+    end
+    
+    return min_limit, has_penalty
 end
 
 

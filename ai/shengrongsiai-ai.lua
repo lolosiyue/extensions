@@ -88,6 +88,27 @@ end
 
 sgs.ai_damage_reason_suppress_intention["luaRduxian"] = true
 
+
+sgs.ai_card_usage_penalty["duxian"] = function(self, source, target)
+    if source:objectName() == target:objectName() then 
+        return false 
+    end
+    
+    for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+        if p:getHp() < 1 or p:hasFlag("Global_Dying") then return false end
+    end
+
+    local used_count = target:getMark("luaRduxian-PlayClear") + 1 -- 預判下一張
+    
+    -- 如果用牌數超過了妒賢擁有者的體力，則觸發懲罰
+    if used_count > source:getHp() then
+        return true
+    end
+    
+    return false
+end
+
+
 sgs.ai_skill_playerchosen.luaRcaiyi = function(self,targets)
 	self:sort(self.enemies,"handcard")
 	self:sort(self.friends_noself,"defense")
