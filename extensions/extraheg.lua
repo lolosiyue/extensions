@@ -20797,17 +20797,219 @@ heg_fofl_weiyan:addSkill(heg_fofl_kuanggu)
 
 heg_fofl_yuanshu = sgs.General(extension_fakeoffline,  "heg_fofl_yuanshu", "qun", 3)
 
-	["heg_fofl_yongsi"] = "庸肆",
-  	[":heg_fofl_yongsi"] = "摸牌阶段，你可以多摸X张牌（X为小势力角色数）。出牌阶段限一次，你可以获得两名其他角色各一张牌，然后若你本回合未造成过伤害，你弃置两张牌，失去1点体力。",
-	["heg_fofl_weidi"] = "伪帝",
-  	[":heg_fofl_weidi"] = "锁定技，若你的宝物栏空置，且埸上没有【玉玺】，你视为装备着【玉玺】。",
+heg_fofl_yongsiCard = sgs.CreateSkillCard{
+	name = "heg_fofl_yongsi",
+	target_fixed = false,
+	will_throw = false,
+	filter = function(self, targets, to_select)
+		return #targets < 2 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isNude()
+	end,
+	feasible = function(self, targets)
+		return #targets == 2
+	end,
+	on_use = function(self, room, source, targets)
+		room:obtainCard(source, room:askForCardChosen(source, targets[1], "he", self:objectName()), false)
+		room:obtainCard(source, room:askForCardChosen(source, targets[2], "he", self:objectName()), false)
+	end,
+}
+heg_fofl_yongsiVS = sgs.CreateViewAsSkill{
+	name = "heg_fofl_yongsi",
+	n = 0,
+	view_as = function()
+		return heg_fofl_yongsiCard:clone()
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("#heg_fofl_yongsi")
+	end,
+}
+
+heg_fofl_yongsi = sgs.CreateTriggerSkill{
+	name = "heg_fofl_yongsi",
+	view_as_skill = heg_fofl_yongsiVS,
+	events = {sgs.DrawNCards, sgs.EventPhaseChanging},
+	on_trigger = function(self, event, player, data, room)
+		if event == sgs.DrawNCards and HasBigKingdomPlayer(room) then
+			local draw = data:toDraw()
+			if draw.reason ~= "draw_phase" then return false end
+			
+			if HasBigKingdomPlayer(room) and room:askForSkillInvoke(player, self:objectName()) then
+				local x = 0
+				for _, p in sgs.qlist(room:getAlivePlayers()) do
+					if IsBigKingdomPlayer(p) then
+						x = x + 1
+					end
+				end
+				draw.num = draw.num + x
+				data:setValue(draw)
+			end
+		elseif event == sgs.EventPhaseChanging and data:toPhaseChange().to == sgs.Player_NotActive and player:getMark("damage_record-Clear") < 1 and player:hasUsed("#heg_fofl_yongsi") then
+			room:askForDisCard(player, self:objectName(), 2, 2, false, true)
+			room:loseHp(player, 1, true, player, self:objectName())
+		end
+		return false
+	end
+}
+
+heg_fofl_weidi = sgs.CreateViewAsEquipSkill{
+	name = "heg_fofl_weidi",
+	view_as_equip = function(self, player)
+		local can_invoke = true
+		for _, p in sgs.qlist(player:getAliveSiblings()) do
+			if p:getEquip(4) ~= nil and p:hasTreasure("heg_jade_seal") then
+				can_invoke = false
+				break
+			end
+		end
+		if can_invoke and player:hasSkill("heg_fofl_weidi") then
+			return "heg_jade_seal"
+		end
+	end
+}
+
+heg_fofl_yuanshu:addSkill(heg_fofl_yongsi)
+heg_fofl_yuanshu:addSkill(heg_fofl_weidi)
+
+heg_fofl_zhugedan = sgs.General(extension_fakeoffline,  "heg_fofl_zhugedan", "wei", 4)
+heg_fofl_gongao = sgs.CreateTriggerSkill{
+	name = "heg_fofl_gongao",
+	events = {sgs.Death, sgs.EventPhaseProceeding},
+	frequency = sgs.Skill_Compulsory,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.Death then
+			local death = data:toDeath()
+			if death.who:objectName() == player:objectName() then return false end
+			room:gainMaxHp(player, 1, self:objectName())
+			local recover = sgs.RecoverStruct()
+			recover.who = player
+			recover.reason = self:objectName()
+			room:recover(player, recover, true)
+			return false
+		elseif event == sgs.EventPhaseProceeding and player:getPhase() == sgs.Player_Start then
+			local x = player:getMaxHp() - player:getHandcardNum()
+			if x > 0 then
+				room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
+				player:drawCards(player:getMaxHp() - player:getHandcardNum(), self:objectName())
+			end
+		end
+	end
+}
+
+heg_fofl_zhugedan:addSkill(heg_fofl_gongao)
 
 
+heg_fofl_lvbu = sgs.General(extension_fakeoffline,  "heg_fofl_lvbu", "qun", 5)
+
+heg_fofl_wuchangVS = sgs.CreateOneCardViewAsSkill{
+	name = "heg_fofl_wuchang",
+	filter_pattern = ".|.|.|.",
+	response_pattern = "@@heg_fofl_wuchang",
+	response_or_use = true,
+	view_as = function(self, card)
+		local wuchang_card = sgs.Sanguosha:cloneCard("chuqibuyi", card:getSuit(), card:getNumber())
+		wuchang_card:addSubcard(card)
+		wuchang_card:setSkillName(self:objectName())
+		return wuchang_card
+	end,
+	enabled_at_play = function(self, player)
+		return false
+	end,
+}
+
+heg_fofl_wuchang = sgs.CreateTriggerSkill{
+	name = "heg_fofl_wuchang" ,
+	events = {sgs.CardsMoveOneTime, sgs.DamageCaused, sgs.Death}, ,
+	view_as_skill = heg_fofl_wuchangVS,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if event == sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			if move.to_place==sgs.Player_PlaceHand and move.to:objectName() == player:objectName() and move.from and (move.from_places:contains(sgs.Player_PlaceHand) or move.from_places:contains(sgs.Player_PlaceEquip)) then
+				local from = room:findPlayerByObjectName(move.from:objectName())
+				if from and from:isAlive() and from:objectName() ~= player:objectName() then
+					room:addPlayerMark(from, "&heg_fofl_wuchang+to+#"..player:objectName().."-Clear")
+				end
+			end
+		elseif event == sgs.DamageCaused then
+			local damage = data:toDamage()
+			if damage.to:getMark("&heg_fofl_wuchang+to+#"..damage.from:objectName().."-Clear") > 0 then
+				room:sendCompulsoryTriggerLog(damage.from, self)
+				damage.damage = damage.damage + 1
+				data:setValue(damage)
+			end
+		elseif event == sgs.Death then
+			local death = data:toDeath()
+			if death.who:objectName() ~= player:objectName() then
+				local use = room:askForUseCard(player, "@@heg_fofl_wuchang", "@heg_fofl_wuchang")
+				if use then
+				else
+					player:drawCards(2, self:objectName())
+				end
+			end
+		end
+	end
+}
+
+heg_fofl_liyu_buff = sgs.CreateTargetModSkill{
+	name = "#heg_fofl_liyu_buff",
+	pattern = "Slash",
+	residue_func = function(self, player, card)
+		if player:hasSkill("heg_fofl_liyu") then
+			return player:getEquips():length()
+		end
+		return 0
+	end,
+}
+
+heg_fofl_liyu = sgs.CreateTriggerSkill{
+	name = "heg_fofl_liyu",
+	events = {sgs.EventPhaseStart, sgs.TargetSpecifing},
+	frequency = sgs.Skill_Frequent,
+	on_trigger = function(self, event, player, data, room)
+		if event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_Play and room:canMoveField("ej") then
+				local targets = sgs.SPlayerList()
+				for _, p in sgs.qlist(room:getAlivePlayers()) do
+					if p:getEquipsId():length() > 0 or p:getJudgingArea():length() > 0 then
+						targets:append(p)
+					end
+				end
+				if targets:isEmpty() then return false end
+				local to_obtain = room:askForPlayerChosen(player, targets, self:objectName(), "@heg_fofl_liyu", true, true)
+				if to_obtain then
+					room:obtainCard(player, to_obtain, false)
+					to_obtain:drawCards(1, self:objectName())
+				end
+			end
+		elseif event == sgs.TargetSpecifing then
+			local use = data:toCardUse()
+            if not use.from or (player:objectName() ~= use.from:objectName()) or not use.card:isKindOf("Slash") then
+                return false
+            end
+			if player:getEquips():length() == 0 then return false end
+			local x = player:getEquips():length()
+            local jink_table = sgs.QList2Table(player:getTag("Jink_" .. use.card:toString()):toIntList())
+            local index = 1
+            for _, p in sgs.qlist(use.to) do
+                if p:getHandcardNum() >= player:getHp() or p:getHandcardNum() <= player:getAttackRange() then
+                    jink_table[index] = jink_table[index] + x
+                end
+                index = index + 1
+            end
+            local jink_data = sgs.QVariant()
+            jink_data:setValue(Table2IntList(jink_table))
+            player:setTag("Jink_" .. use.card:toString(), jink_data)
+            return false
+		end
+		return false
+	end,
+}
 
 
-
-
-
+heg_fofl_liyu:addSkill(heg_fofl_wuchang)
+heg_fofl_liyu:addSkill(heg_fofl_liyu)
+heg_fofl_liyu:addSkill(heg_fofl_liyu_buff)
+extension_fakeoffline:insertRelatedSkills("heg_fofl_liyu", "#heg_fofl_liyu_buff")
 
 
 
