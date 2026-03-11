@@ -626,14 +626,23 @@ function SmartAI:assignKeep(start)
 		and enemy:distanceTo(self.player)==1
 		then self.keepdata.Jink = 6 end
 	end
+	self._keep_skill_eval_cache = {}
 	self.keepValue = {}
 	for _,c in sgs.qlist(self.player:getCards("he"))do
 		self.keepValue[c:toString()] = self:getKeepValue(c,true)
 	end
-	local kept = {}
-	for _,h in ipairs(self:sortByKeepValue(self.player:getHandcards(),true))do
-		self.keepValue[h:toString()] = self:getKeepValue(h,kept)
+	local kept, kept_count = {}, {}
+	for i,h in ipairs(self:sortByKeepValue(self.player:getHandcards(),true))do
+		if i>20 then break end
+		self.keepValue[h:toString()] = self:getKeepValue(h,{list=kept,count=kept_count})
 		table.insert(kept,h)
+		local owner = self.room:getCardOwner(h:getEffectiveId()) or self.player
+		local owner_name = owner:objectName()
+		kept_count[owner_name] = kept_count[owner_name] or {}
+		kept_count[owner_name][h:getClassName()] = (kept_count[owner_name][h:getClassName()] or 0)+1
+		if h:isKindOf("Slash") then
+			kept_count[owner_name].Slash = (kept_count[owner_name].Slash or 0)+1
+		end
 	end
 end
 
@@ -648,9 +657,15 @@ function SmartAI:getKeepValue(card,kept)
 	local x = self.keepdata[class] or sgs.ai_keep_value[class] or 0
 	if type(kept)=="table" then
 		x = self.keepValue[card:toString()] or x
-		for _,kc in ipairs(kept)do
-			if card:isKindOf("Slash") and isCard("Slash",kc,owner)
-			or isCard(class,kc,owner) then x = x-1.1 end
+		if kept.count then
+			local owner_count = kept.count[owner:objectName()] or {}
+			local dup = card:isKindOf("Slash") and (owner_count.Slash or 0) or (owner_count[class] or 0)
+			x = x-1.1*dup
+		else
+			for _,kc in ipairs(kept)do
+				if card:isKindOf("Slash") and isCard("Slash",kc,owner)
+				or isCard(class,kc,owner) then x = x-1.1 end
+			end
 		end
 		return x
 	end
@@ -674,44 +689,64 @@ function SmartAI:getKeepValue(card,kept)
 		else x = x+1.8 end
 		return x+3
 	end
-	local si,ni,ci,vs,vn = 0,0,0,0,0
-	for _,sk in sgs.qlist(owner:getVisibleSkillList(true))do
-		class = sgs[sk:objectName().."_suit_value"]
-		if class then
-			class = class[card:getSuitString()]
-			if type(class)=="number" then
-				vs = vs+class
-				si = si+1
+	local owner_name = owner:objectName()
+	self._keep_skill_eval_cache = self._keep_skill_eval_cache or {}
+	self._keep_skill_eval_cache[owner_name] = self._keep_skill_eval_cache[owner_name] or {}
+	local card_key = table.concat({
+		card:getSuitString(),
+		card:getNumberString(),
+		card:getClassName(),
+		card:objectName(),
+		card:getColorString(),
+		tostring(card:getType())
+	},"|")
+	local eval = self._keep_skill_eval_cache[owner_name][card_key]
+	if not eval then
+		local si,ni,ci,vs,vn,cvsum = 0,0,0,0,0,0
+		for _,sk in sgs.qlist(owner:getVisibleSkillList(true))do
+			class = sgs[sk:objectName().."_suit_value"]
+			if class then
+				class = class[card:getSuitString()]
+				if type(class)=="number" then
+					vs = vs+class
+					si = si+1
+				end
+			end
+			class = sgs[sk:objectName().."_number_value"]
+			if class then
+				class = class[card:getNumberString()]
+				if type(class)=="number" then
+					vn = vn+class
+					ni = ni+1
+				end
+			end
+			class = sgs.card_value[sk:objectName()]
+			if class then
+				local cv = class[card:getSuitString()]
+				if type(cv)=="number" then cvsum = cvsum+cv end
+				cv = class[card:getNumberString()]
+				if type(cv)=="number" then cvsum = cvsum+cv end
+				cv = class[card:getClassName()]
+				if type(cv)=="number" then cvsum = cvsum+cv end
+				cv = class[card:objectName()]
+				if type(cv)=="number" then cvsum = cvsum+cv end
+				cv = class[card:getColorString()]
+				if type(cv)=="number" then cvsum = cvsum+cv end
+				cv = class[card:getType()]
+				if type(cv)=="number" then cvsum = cvsum+cv end
+				ci = ci+1
 			end
 		end
-		class = sgs[sk:objectName().."_number_value"]
-		if class then
-			class = class[card:getNumberString()]
-			if type(class)=="number" then
-				vn = vn+class
-				ni = ni+1
-			end
-		end
-		class = sgs.card_value[sk:objectName()]
-		if class then
-			local cv = class[card:getSuitString()]
-			if type(cv)=="number" then x = x+cv end
-			cv = class[card:getNumberString()]
-			if type(cv)=="number" then x = x+cv end
-			cv = class[card:getClassName()]
-			if type(cv)=="number" then x = x+cv end
-			cv = class[card:objectName()]
-			if type(cv)=="number" then x = x+cv end
-			cv = class[card:getColorString()]
-			if type(cv)=="number" then x = x+cv end
-			cv = class[card:getType()]
-			if type(cv)=="number" then x = x+cv end
-			ci = ci+1
-		end
+		eval = {
+			ci = ci,
+			cvsum = cvsum,
+			suit_add = si>0 and (vs/si) or 0,
+			number_add = ni>0 and (vn/ni) or 0
+		}
+		self._keep_skill_eval_cache[owner_name][card_key] = eval
 	end
-	if ci>0 then x = x/ci end
-	if si>0 then x = x+vs/si end
-	if ni>0 then x = x+vn/ni end
+	if eval.ci>0 then x = (x+eval.cvsum)/eval.ci end
+	x = x+eval.suit_add+eval.number_add
 
 	if card:isKindOf("Slash") then
 		if card:isKindOf("NatureSlash") then x = x+0.03 end
@@ -2097,6 +2132,9 @@ sgs.ai_damage_from_flag_intention["ShenfenUsing"] = 10
 sgs.ai_damage_from_flag_intention["FenchengUsing"] = 10
 
 function SmartAI:filterEvent(event,player,data)
+	-- Flush cards that CardFilter cloned in the PREVIOUS filterEvent cycle.
+	-- This is the earliest safe point: all callers from last cycle are done.
+	sgs.flushDeferredDeleteCards()
 	-- Validate input parameters to prevent crashes
 	if not event or not player or not data then
 		if _G.AI_DEBUG_MODE and logger then
@@ -4549,7 +4587,8 @@ function SmartAI:getTurnUse()
 	return turnUse
 end
 
-
+sgs.ai_card_usage_limit = {}
+sgs.ai_card_usage_penalty = {}
 function SmartAI:getUsageState()
     local min_limit = 999
     local has_penalty = false
@@ -5006,6 +5045,18 @@ function SmartAI:getRetrialCardId(cards,judge,self_card,exchange)
 	return -1
 end
 
+-- Cards cloned by CardFilter must not be deleted while callers still hold
+-- references.  We collect them here and call deleteLater() only at the
+-- START of the next filterEvent cycle, which is the first safe boundary.
+sgs._deferred_delete_cards = sgs._deferred_delete_cards or {}
+
+function sgs.flushDeferredDeleteCards()
+	for _,card in ipairs(sgs._deferred_delete_cards) do
+		pcall(function() card:deleteLater() end)
+	end
+	sgs._deferred_delete_cards = {}
+end
+
 function CardFilter(cid,owner,place)
 	local gc,tc = cid,nil
 	if type(cid)=="userdata" then cid = cid:getEffectiveId()
@@ -5018,13 +5069,18 @@ function CardFilter(cid,owner,place)
 			local co,cl = global_room:getCardOwner(cid),sgs.CardList()
 			global_room:setCardMapping(cid,owner,place or sgs.Player_PlaceJudge)
 			local vas = sgs.Sanguosha:getViewAsSkill(s:objectName())
-			if vas:viewFilter(cl,gc) then
+			-- vas must be non-nil; FilterSkill always has a ViewAsSkill supertype,
+			-- but guard defensively in case of unexpected skill configurations.
+			if vas and vas:viewFilter(cl,gc) then
 				cl:append(gc)
 				tc = vas:viewAs(cl)
 				if tc then
 					tc = sgs.Sanguosha:cloneCard(tc)
 					tc:setId(-1)
-					tc:deleteLater()
+					-- Defer deletion: calling deleteLater() here is unsafe because
+					-- (1) the caller still uses tc, and (2) Qt may process the
+					-- deferred-delete event before we return, corrupting the Lua heap.
+					table.insert(sgs._deferred_delete_cards, tc)
 				end
 			end
 			global_room:setCardMapping(cid,co,cp)
