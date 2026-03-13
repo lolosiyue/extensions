@@ -423,7 +423,7 @@ sgs.ai_use_value["#keguijiehuoCard"] = 8
 sgs.ai_use_priority["#keguijiehuoCard"] = 9.5
 sgs.ai_use_priority.keguijiehuoCard = 9.5
 
-sgs.ai_skill_choice["shenji-ask"] = function(self, choices, data)
+sgs.ai_skill_choice["kexianjishi-ask"] = function(self, choices, data)
 	local items = choices:split("+")
 	for _, p_name in ipairs(items) do
 		for _,p in sgs.qlist(self.room:getPlayers()) do

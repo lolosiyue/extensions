@@ -467,10 +467,10 @@ local function will_discard_zhaolie(self,nobasic)
 	end
 	if not spliubei:hasSkill("jueqing") and self.player:hasSkill("wuhun") and self.role=="rebel" then
 		local mark = 0
-                local spmark = spliubei:isLord() and spliubei:getMark("&nightmare") or 0
+		local spmark = spliubei:isLord() and spliubei:getMark("&nightmare") or 0
 		for _,ap in sgs.qlist(self.room:getOtherPlayers(spliubei))do
-                        if ap:getMark("&nightmare")>mark then
-                                mark = ap:getMark("&nightmare")
+			if ap:getMark("&nightmare")>mark then
+				mark = ap:getMark("&nightmare")
 			end
 		end
 		if mark==0 and spliubei:isLord() then return false end
@@ -514,12 +514,11 @@ end
 local function will_invoke_shichou(self)
 	local shu,enemynum = 0,0
 	local first = self.player:hasFlag("Global_FirstRound")
-	local players = self.room:getOtherPlayers(self.player)
 	local shenguanyu = self.room:findPlayerBySkillName("wuhun");
 	if shenguanyu~=nil then
 		if shenguanyu:getKingdom()=="shu" then return true end
 	end
-	for _,player in sgs.qlist(players)do
+	for _,player in sgs.qlist(self.room:getOtherPlayers(self.player))do
 		if player:getKingdom()=="shu" then
 			shu = shu+1
 			if self:isEnemy(player) then
