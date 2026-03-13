@@ -3293,6 +3293,7 @@ function sgs.ai_cardsview.kezhuanmanjuan(self,class_name,player)
 	if self.player:isKongcheng() then
 		for i=0,sgs.Sanguosha:getCardCount()-1 do
 			local c = sgs.Sanguosha:getCard(i)
+			self.kezhuanmanjuan_id = i
 			if player:getMark(i.."manjuanPile-Clear")>0
 			and player:getMark(c:getNumber().."manjuanNumber-Clear")<1
 			and not player:isLocked(c) and c:isKindOf(class_name)
@@ -3301,6 +3302,13 @@ function sgs.ai_cardsview.kezhuanmanjuan(self,class_name,player)
 	end
 end
 
+sgs.ai_skill_askforag.kezhuanmanjuan = function(self,card_ids)
+	for _,id in sgs.list(card_ids) do
+		if id==self.kezhuanmanjuan_id then
+			return id
+		end
+	end
+end
 
 --范疆张达
 
@@ -3522,7 +3530,7 @@ function sgs.ai_cardsview.kehewentian(self, class_name, player)
 		dc:addSubcard(id)
 		dc:setSkillName("kehewentian")
 		if self.player:getMark("usedkehewentian-Clear")>0 then
-			return sgs.Sanguosha:getCard(id):isBlack() and dc
+			return sgs.Sanguosha:getCard(id):isBlack() and dc:toString()
 		end
 		return dc:toString()
 	end

@@ -1,5 +1,7 @@
 
 function SmartAI:useCardPoison(card,use)
+	if not table.contains(self.player:property("PoisonUse"):toString():split(","),card:toString())
+	then return end
 	self:sort(self.enemies)
 	for i,ep in sgs.list(self.enemies)do
 		if i>#self.enemies/2 and CanToCard(card,self.player,ep,use.to) then
@@ -101,10 +103,10 @@ sgs.ai_card_intention.Guaguliaodu = -33
 
 sgs.ai_nullification.Guaguliaodu = function(self,trick,from,to,positive)
 	if positive then
-		return self:isEnemy(to)
+		return self:isEnemy(to) and to:isWounded()
 		and (self:isWeak(to) or self:getCardsNum("Nullification")>1)
 	else
-		return self:isFriend(to)
+		return self:isFriend(to) and to:isWounded()
 		and (self:isWeak(to) or self:getCardsNum("Nullification")>1)
 	end 
 end
@@ -159,45 +161,45 @@ function SmartAI:useCardTuixinzhifu(card,use)
 	self:sort(self.friends_noself,"hp")
 	local extraTarget = sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget,self.player,card)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
-	for _,ep in sgs.list(self.friends_noself)do
-		if isCurrent(use,ep) then continue end
-		if CanToCard(card,self.player,ep)
-		and self:doDisCard(ep,"ej") then
+	for _,p in sgs.list(self.friends_noself)do
+		if isCurrent(use,p) or use.to:contains(p) then continue end
+		if CanToCard(card,self.player,p)
+		and self:doDisCard(p,"ej") then
 	    	use.card = card
-			use.to:append(ep)
+			use.to:append(p)
 	    	if use.to:length()>extraTarget
 			then return end
 		end
 	end
 	self:sort(self.enemies,"hp")
-	for _,ep in sgs.list(self.enemies)do
-		if isCurrent(use,ep) then continue end
-		if CanToCard(card,self.player,ep)
-		and self:doDisCard(ep,"ej") then
+	for _,p in sgs.list(self.enemies)do
+		if isCurrent(use,p) or use.to:contains(p) then continue end
+		if CanToCard(card,self.player,p)
+		and self:doDisCard(p,"ej") then
 	    	use.card = card
-			use.to:append(ep)
+			use.to:append(p)
 	    	if use.to:length()>extraTarget
 			then return end
 		end
 	end
-	for _,ep in sgs.list(self.enemies)do
-		if isCurrent(use,ep) then continue end
-		if CanToCard(card,self.player,ep)
-		and self:doDisCard(ep,"hej") then
+	for _,p in sgs.list(self.enemies)do
+		if isCurrent(use,p) or use.to:contains(p) then continue end
+		if CanToCard(card,self.player,p)
+		and self:doDisCard(p,"hej") then
 	    	use.card = card
-			use.to:append(ep)
+			use.to:append(p)
 	    	if use.to:length()>extraTarget
 			then return end
 		end
 	end
 	local tos = self.room:getAlivePlayers()
 	tos = self:sort(tos,"card",true)
-	for _,ep in sgs.list(tos)do
-		if isCurrent(use,ep) then continue end
-		if CanToCard(card,self.player,ep)
-		and ep:getCardCount()>1 then
+	for _,p in sgs.list(tos)do
+		if isCurrent(use,p) or use.to:contains(p) then continue end
+		if CanToCard(card,self.player,p)
+		and p:getCardCount()>1 then
 	    	use.card = card
-			use.to:append(ep)
+			use.to:append(p)
 	    	if use.to:length()>extraTarget
 			then return end
 		end
@@ -755,7 +757,15 @@ function SmartAI:useCardCaomujiebing(card,use)
 		and not ep:containsTrick("supply_shortage") then
 	    	use.card = card
 	    	use.to:append(ep)
-			break
+			return
+		end
+	end
+	for _,ep in sgs.list(self.enemies)do
+		if isCurrent(use,ep) then continue end
+		if CanToCard(card,self.player,ep) then
+	    	use.card = card
+	    	use.to:append(ep)
+			return
 		end
 	end
 end
