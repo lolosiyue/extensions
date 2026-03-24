@@ -5536,3 +5536,20 @@ end
 sgs.ai_playerchosen_intention.yajiao = function(self,from,to)
 	if not self:needKongcheng(to,true) and not hasManjuanEffect(to) then sgs.updateIntention(from,to,-50) end
 end
+
+-- 反饋：受到傷害後，拆攻擊者一張牌
+sgs.ai_target_recommend["fankui"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("fankui") then
+		return 0
+	end
+	if not self:checkIsDamageCard(card) then
+		return 0
+	end
+	if from:getCardCount(true) <= 1 then
+		return -2
+	end
+	if from:getHp() <= 2 and (from:getWeapon() or from:getDefensiveHorse()) then
+		return -2
+	end
+	return 0
+end
