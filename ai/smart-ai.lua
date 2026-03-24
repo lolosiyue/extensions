@@ -112,6 +112,14 @@ sgs.ai_skill_playerschosen =	{}
 sgs.ai_used_revises =			{}
 sgs.weapon_range = 				{}
 sgs.ai_nullification_threat_table = {}
+sgs.ai_target_recommend =		{}  -- 目標推薦邏輯
+sgs.drawSkillsList =			{}  -- 給牌類技能列表，用於checkIsDrawCard判斷
+sgs.damageSkillsList =			{}  -- 傷害類技能列表，用於checkIsDamageCard判斷
+sgs.buffSkillsList =			{}  -- 增益類技能列表，用於checkIsBuff判斷
+sgs.debuffSkillsList =			{}  -- 減益類技能列表，用於checkIsDebuff判斷
+sgs.recoverSkillsList =			{}  -- 回復類技能列表，用於checkIsRecover判斷
+sgs.decreaseSkillsList =		{}  -- 減少手牌/裝備類技能列表，用於checkIsDecreaseCard判斷
+sgs.turnOverSkillsList =		{}  -- 翻面類技能列表，用於checkIsTurnOver判斷
 
 -- AI出牌隨機性配置
 -- 設置為0則完全按優先級排序（原始行為）
@@ -1201,47 +1209,47 @@ function SmartAI:sortByUseValue(cards,inverse,flags)
 end
 
 function applyRandomPrioritySort(self, cards, inverse, flags, priority_func_name)
-    cards = sgs.QList2Table(cards)
+	cards = sgs.QList2Table(cards)
     
     if flags == "j" then
         for i = #cards, 1, -1 do
             if self.player:isJilei(cards[i]) then table.remove(cards, i) end
-        end
-    end
+		end
+	end
     
     if #cards < 2 then return cards end
     
-    local bcv = {}
+	local bcv = {}
     local randomness = sgs.ai_card_randomness or 0
     
     for _, c in ipairs(cards) do
         -- 動態呼叫對應的優先級獲取函數 (getDynamicUsePriority 或 getUsePriority)
         local base_priority = self[priority_func_name](self, c) or 0
-        local random_offset = 0
+		local random_offset = 0
         
-        if randomness > 0 then
+		if randomness > 0 then
             -- 使用 EquipCard 涵蓋所有裝備(武器、防具、馬匹、寶物)
             if not (c:isKindOf("Analeptic") or c:isKindOf("EquipCard")) then
                 -- 擴大一般卡牌的擾動半徑，確保能跨越優先級差值
                 random_offset = (math.random() - 0.5) * 1.2 * randomness
-            else
+			else
                 -- 關鍵卡牌保持極小擾動
-                random_offset = (math.random() - 0.5) * 0.2 * randomness
-            end
-        end
+				random_offset = (math.random() - 0.5) * 0.2 * randomness
+			end
+		end
         
-        bcv[c:toString()] = base_priority + random_offset
-    end
+		bcv[c:toString()] = base_priority + random_offset
+	end
     
     local function compare_func(a, b)
         if inverse then 
             return bcv[a:toString()] < bcv[b:toString()] 
         end
         return bcv[a:toString()] > bcv[b:toString()]
-    end
+	end
     
     table.sort(cards, compare_func)
-    return cards
+	return cards
 end
 
 function SmartAI:sortByDynamicUsePriority(cards, inverse, flags)
@@ -8980,8 +8988,8 @@ function SmartAI:shouldInvokeCostNullifySkill(use, need_discard, need_losehp, di
 		end
 		
 		-- 计算预期伤害
-		local card_nature = nature or (card and sgs.card_damage_nature[card:getClassName()])
-		local expected_damage = self:ajustDamage(use.from, target, 1, card, card_nature)
+	local card_nature = nature or (card and sgs.card_damage_nature[card:getClassName()])
+	local expected_damage = self:ajustDamage(use.from, target, 1, card, card_nature)
 	
 	-- 高伤害直接发动
 	if expected_damage > 1 then
@@ -9176,14 +9184,14 @@ function SmartAI:shouldInvokeCostNullifySkill(use, need_discard, need_losehp, di
     if threat_level < 0 then return false end 
     
     -- 2. 計算沉沒成本與代價 (Cost Calculation)
-    local cost_value = 0
-    if need_losehp then
+	local cost_value = 0
+	if need_losehp then
         cost_value = cost_value + (self.player:getHp() <= 2 and 4 or 2)
-    end
-    if need_discard then
+	end
+	if need_discard then
         cost_value = cost_value + (discard_num * 1.5)
-    end
-    return threat_level > cost_value
+	end
+	return threat_level > cost_value
 end
 
 
@@ -10013,6 +10021,847 @@ sgs.ai_use_revises.tiaoxin = function(self,card,use)
 end
 
 end
+
+
+
+-- ============================================
+-- 新 API：getBestTarget（積分制目標選擇）
+-- ============================================
+
+--[[
+	輔助函數：檢查卡牌是否為傷害類卡牌
+	參數：card: 可以是 nil、卡牌對象 或字符串 "damage"
+	返回值：true - 是傷害牌, false - 不是傷害牌
+	用途：在 ai_target_recommend 中判斷是否需要考慮賣血技能
+]]
+function SmartAI:checkIsDamageCard(card)
+	if type(card) == "string" then
+		if card == "damage" then
+			return true
+		end
+		if table.contains(sgs.damageSkillsList, card) then
+			return true
+		end
+		return false
+	elseif card and type(card) ~= "string" then
+		return card:isDamageCard()
+	end
+	return false
+end
+
+--[[
+	輔助函數：檢查是否為讓別人獲得牌的行為
+	參數：card: 可以是 nil、卡牌對象 或字符串 "draw"
+	返回值：true - 是獲得牌的行為, false - 不是
+	用途：在 ai_target_recommend 中判斷是否需要考慮獲得牌相關技能
+]]
+function SmartAI:checkIsDrawCard(card)
+	if type(card) == "string" then
+		if card == "draw" then
+			return true
+		end
+		if table.contains(sgs.drawSkillsList, card) then
+			return true
+		end
+		return false
+	elseif card and type(card) ~= "string" then
+		if card:isKindOf("ExNihilo")
+		or card:isKindOf("AmazingGrace")
+		or card:isKindOf("IronChain")
+		or card:isKindOf("Dongzhuxianji")
+		then
+			return true
+		end
+		return false
+	end
+	return false
+end
+
+--[[
+	輔助函數：檢查是否為增益效果
+	參數：card: 可以是 nil、卡牌對象 或字符串 "buff"
+	用途：在 ai_target_recommend 中判斷是否需要考慮增益相關技能
+]]
+function SmartAI:checkIsBuff(card)
+	if type(card) == "string" then
+		if card == "buff" then
+			return true
+		end
+		if table.contains(sgs.buffSkillsList, card) then
+			return true
+		end
+		return false
+	elseif card and type(card) ~= "string" then
+		if card:isKindOf("Peach") then
+			return true
+		end
+		return false
+	end
+	return false
+end
+
+--[[
+	輔助函數：檢查是否為減益效果
+	參數：card: 可以是 nil、卡牌對象 或字符串 "debuff"
+	用途：在 ai_target_recommend 中判斷是否需要考慮減益相關技能
+]]
+function SmartAI:checkIsDebuff(card)
+	if type(card) == "string" then
+		if card == "debuff" then
+			return true
+		end
+		if table.contains(sgs.debuffSkillsList, card) then
+			return true
+		end
+		return false
+	elseif card and type(card) ~= "string" then
+		if card:isKindOf("Dismantlement")
+		or card:isKindOf("Snatch")
+		or card:isKindOf("Indulgence")
+		or card:isKindOf("SupplyShortage")
+		or card:isKindOf("IronChain")
+		or card:isDamageCard()
+		then
+			return true
+		end
+		return false
+	end
+	return false
+end
+
+--[[
+	輔助函數：檢查是否為回復效果
+	參數：card: 可以是 nil、卡牌對象 或字符串 "recover"
+	用途：在 ai_target_recommend 中判斷是否需要考慮回復相關技能
+]]
+function SmartAI:checkIsRecover(card)
+	if type(card) == "string" then
+		if card == "recover" then
+			return true
+		end
+		if table.contains(sgs.recoverSkillsList, card) then
+			return true
+		end
+		if sgs.recover_skill and sgs.recover_skill:match(card) then
+			return true
+		end
+		if sgs.recover_hp_skill and sgs.recover_hp_skill:match(card) then
+			return true
+		end
+		if sgs.save_skill and sgs.save_skill:match(card) then
+			return true
+		end
+		return false
+	elseif card and type(card) ~= "string" then
+		if card:isKindOf("Peach")
+		or card:isKindOf("Analeptic")
+		or card:isKindOf("GodSalvation")
+		then
+			return true
+		end
+		return false
+	end
+	return false
+end
+
+--[[
+	輔助函數：檢查是否為翻面效果
+	參數：card: 可以是 nil、卡牌對象 或字符串 "turnOver"
+	用途：在 AI 決策中判斷是否涉及翻面行為
+]]
+function SmartAI:checkIsTurnOver(card)
+	if type(card) == "string" then
+		if card == "turnOver" then
+			return true
+		end
+		if table.contains(sgs.turnOverSkillsList, card) then
+			return true
+		end
+		return false
+	elseif card and type(card) ~= "string" then
+		return false
+	end
+	return false
+end
+
+--[[
+	輔助函數：檢查是否為減少手牌/裝備的卡牌
+	參數：card: 可以是 nil、卡牌對象 或字符串 "decrease"
+	用途：在 ai_target_recommend 中判斷是否需要考慮失去牌相關技能
+]]
+function SmartAI:checkIsDecreaseCard(card)
+	if type(card) == "string" then
+		if card == "decrease" then
+			return true
+		end
+		if table.contains(sgs.decreaseSkillsList, card) then
+			return true
+		end
+		return false
+	elseif card and type(card) ~= "string" then
+		if card:isKindOf("Dismantlement")
+		or card:isKindOf("Snatch")
+		or card:isKindOf("Collateral")
+		then
+			return true
+		end
+		return false
+	end
+	return false
+end
+
+-- 判斷角色是否擁有翻面類技能
+function SmartAI:hasTurnOverSkill(player)
+	if not player then return false end
+	local skills
+	if player.getVisibleSkillList then
+		skills = player:getVisibleSkillList(true)
+	else
+		skills = player:getVisibleSkills()
+	end
+	for _, skill in sgs.qlist(skills) do
+		if self:checkIsTurnOver(skill:objectName()) then
+			return true
+		end
+	end
+	return false
+end
+
+-- 判斷角色是否擁有回復類技能
+function SmartAI:hasRecoverSkill(player)
+	if not player then return false end
+	local skills
+	if player.getVisibleSkillList then
+		skills = player:getVisibleSkillList(true)
+	elseif player.getSkillList then
+		skills = player:getSkillList()
+	else
+		return false
+	end
+	for _, skill in sgs.qlist(skills) do
+		if self:checkIsRecover(skill:objectName()) then
+			return true
+		end
+	end
+	return false
+end
+
+-- 判斷角色是否擁有救人類技能（瀕死時救人）
+function SmartAI:hasSaveSkill(player)
+	if not player then return false end
+	local skills
+	if player.getVisibleSkillList then
+		skills = player:getVisibleSkillList(true)
+	elseif player.getSkillList then
+		skills = player:getSkillList()
+	else
+		return false
+	end
+	for _, skill in sgs.qlist(skills) do
+		local skill_name = skill:objectName()
+		if sgs.save_skill and sgs.save_skill:match(skill_name) then
+			return true
+		end
+	end
+	return false
+end
+
+--[[
+	函數名：getBestTarget
+	功能：從目標列表中選出目標（加權隨機制）
+	
+	分數 > 0 的目標按分數比例進行加權隨機選擇
+	（類似 Pokémon Run and Bun 的選擇機制）
+	分數 <= 0 的目標完全排除
+	
+	參數：
+		targets: 候選目標列表（數組）
+		card:    將要使用的卡牌
+		from:    攻擊來源（默認 self.player）
+	
+	返回值：
+		選中的目標（ServerPlayer），如果沒有合適目標則返回 nil
+]]
+function SmartAI:getBestTarget(targets, card, from)
+	if not targets or #targets == 0 then
+		return nil
+	end
+	
+	from = from or self.player
+	
+	-- 【第1步】對每個目標計算分數
+	local scored_targets = {}
+	
+	for _, target in ipairs(targets) do
+		local base_score = self:getTargetBaseScore(target, card, from)
+		local score = base_score
+		
+		-- 【第2步】遍歷全場所有技能，累加 recommend 修正
+		for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+			for _, skill in sgs.qlist(p:getVisibleSkillList(true)) do
+				local recommend = sgs.ai_target_recommend[skill:objectName()]
+				if type(recommend) == "function" then
+					local adjust = recommend(self, from, target, card, p)
+					if type(adjust) == "number" then
+						score = score + adjust
+					elseif adjust == false then -- 一票否決制度
+						score = -100
+						break
+					end
+				end
+			end
+		end
+		
+		table.insert(scored_targets, {
+			target = target,
+			score = score,
+			base_score = base_score
+		})
+	end
+	
+	-- 【第3步】過濾掉分數 <= 0 的目標
+	local valid_targets = {}
+	for _, st in ipairs(scored_targets) do
+		if st.score > 0 then
+			table.insert(valid_targets, st)
+		end
+	end
+	
+	if #valid_targets == 0 then
+		return nil
+	end
+	
+	-- 【第4步】加權隨機選擇（Pokémon Run and Bun 風格）
+	-- 每個目標被選中的概率 = 該目標的分數 / 所有有效目標的分數總和
+	local total_score = 0
+	for _, st in ipairs(valid_targets) do
+		total_score = total_score + st.score
+	end
+	
+	local rand = math.random() * total_score
+	local cumulative = 0
+	for _, st in ipairs(valid_targets) do
+		cumulative = cumulative + st.score
+		if rand <= cumulative then
+			return st.target
+		end
+	end
+	
+	-- 兜底（理論上不會到這裡）
+	return valid_targets[#valid_targets].target
+end
+
+--[[
+	函數名：getTargetBaseScore
+	功能：計算目標的基礎評分（不包含 recommend 修正）
+	
+	參數：
+		target: 要評分的目標
+		card:   將要使用的卡牌
+		from:   攻擊來源
+	
+	返回值：
+		基礎分（數值，越高越優先）
+	
+	【基礎分數體系】（基礎分 = 0）
+	1. 傷害類/減益類牌：敵人 +2，友方 -3
+	2. 威脅等級修正（僅敵人）：objectiveLevel > 3 → +1 ~ +2
+	3. 血量修正（僅敵人）：瀕死 +3，低血量 +1 ~ +2
+	4. 增益類牌：友方 +3，敵人 -3
+]]
+function SmartAI:getTargetBaseScore(target, card, from)
+	from = from or self.player
+	local isFriend = self:isFriend(target, from)
+	local isEnemy = self:isEnemy(target, from)
+	
+	local score = 0
+	
+	-- 【第1部分：牌性基礎分】
+	if self:checkIsDebuff(card) then
+		if isEnemy then
+			score = score + 2
+		elseif isFriend then
+			score = score - 3
+		end
+	end
+
+	if self:checkIsTurnOver(card) then
+		if isEnemy then
+			score = score + 2
+		elseif isFriend then
+			score = score - 3
+		end
+	end
+	
+	if self:checkIsBuff(card) or self:checkIsRecover(card) or self:checkIsDrawCard(card) then
+		if isFriend then
+			score = score + 3
+		elseif isEnemy then
+			score = score - 3
+		end
+	end
+
+	-- 【第2部分：身份修正】
+	if target:isLord() then
+		if isEnemy then
+			score = score + 1
+		elseif isFriend then
+			score = score + 1
+		end
+	end
+	
+	-- 【第3部分：威脅等級修正】
+	if isEnemy then
+		local objLevel = self:objectiveLevel(target)
+		if objLevel > 3 then
+			score = score + math.min(objLevel - 3, 2)
+		end
+	end
+	
+	-- 【第4部分：血量修正】
+	if self:checkIsDamageCard(card) and isEnemy then
+		local hp = target:getHp()
+		local damage = 1
+		if type(card) == "string" and card == "damage" then
+			damage = 1
+		elseif card and type(card) ~= "string" then
+			damage = self:ajustDamage(from, target, 1, card)
+		end
+		
+		if damage > 0 and hp <= damage then
+			score = score + 3
+		elseif hp <= 2 then
+			score = score + (3 - hp)
+		end
+	end
+	
+	return score
+end
+
+--[[============================================
+	目標推薦系統（ai_target_recommend）
+	
+	用於各技能對目標選擇的影響評估
+	返回值：分數修正（-5 ~ +5）
+		-5：極度不推薦（嚴重危險）
+		-3：中度不推薦（較強反制）
+		-2：輕度不推薦（普通反制）
+		0：中性
+		+2：輕度推薦
+		+3：中度推薦
+		+5：強烈推薦
+============================================]]
+
+-- 輔助函數：檢查攻擊者是否會使目標的受到傷害技能失效
+local function checkMasochismInvalid(from, to, card)
+	if not from then
+		return false
+	end
+	
+	-- 絕情：傷害視為失去體力
+	if from:hasSkill("jueqing") or from:hasSkill("tenyearjueqing") then
+		return true
+	end
+	
+	-- 潛襲：距離為1時，非鎖定技失效（僅對殺有效）
+	if to and from:hasSkill("nosqianxi") and from:distanceTo(to) == 1 and card and card:isKindOf("Slash") then
+		return true
+	end
+	
+	-- 通用判斷：遍歷攻擊者的所有技能，檢查技能描述
+	local general = from:getGeneral()
+	if general then
+		local desc = general:getSkillDescription(true) or ""
+		if string.find(desc, "技能失效") or string.find(desc, "技失效") then
+			return true
+		end
+	end
+	
+	local general2 = from:getGeneral2()
+	if general2 then
+		local desc2 = general2:getSkillDescription(true) or ""
+		if string.find(desc2, "技能失效") or string.find(desc2, "技失效") then
+			return true
+		end
+	end
+	
+	return false
+end
+
+-- 剛烈（新版）
+sgs.ai_target_recommend["ganglie"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("ganglie") then
+		return 0
+	end
+	if not self:checkIsDamageCard(card) then
+		return 0
+	end
+	if checkMasochismInvalid(from, to, card) then
+		return 3
+	end
+	if from:getHp() < 2 then
+		return -3
+	end
+	return 0
+end
+
+-- nosganglie（舊版剛烈）
+sgs.ai_target_recommend["nosganglie"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("nosganglie") then
+		return 0
+	end
+	if not self:checkIsDamageCard(card) then
+		return 0
+	end
+	if checkMasochismInvalid(from, to, card) then
+		return 2
+	end
+	if from:getHp() < 2 then
+		return -2
+	end
+	return 0
+end
+
+-- 節命
+sgs.ai_target_recommend["jieming"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("jieming") then
+		return 0
+	end
+	if not self:checkIsDamageCard(card) then
+		return 0
+	end
+	if checkMasochismInvalid(from, to, card) then
+		return 2
+	end
+	local apn = self:getAllPeachNum(to)
+	local damageNum = self:ajustDamage(from, to, 1, card)
+	if apn + to:getHp() > damageNum then
+		if self.getJiemingChaofeng and self:getJiemingChaofeng(to) > -4 then
+			return -2
+		end
+	end
+	return 0
+end
+
+-- 遺計
+sgs.ai_target_recommend["yiji"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("yiji") then
+		return 0
+	end
+	if not self:checkIsDamageCard(card) then
+		return 0
+	end
+	if checkMasochismInvalid(from, to, card) then
+		return 2
+	end
+	local apn = self:getAllPeachNum(to)
+	local damageNum = self:ajustDamage(from, to, 1, card)
+	if apn + to:getHp() > damageNum then
+		if self.findFriendsByType and not self:findFriendsByType(sgs.Friend_Draw, to) then
+			return -2
+		end
+	end
+	return 0
+end
+
+-- 秘計
+sgs.ai_target_recommend["miji"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("miji") then
+		return 0
+	end
+	if not self:checkIsDamageCard(card) then
+		return 0
+	end
+	if checkMasochismInvalid(from, to, card) then
+		return 2
+	end
+	return -2
+end
+
+sgs.ai_target_recommend["nosmiji"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("nosmiji") then
+		return 0
+	end
+	if not self:checkIsDamageCard(card) then
+		return 0
+	end
+	if checkMasochismInvalid(from, to, card) then
+		return 2
+	end
+	return -2
+end
+
+-- 歸心
+sgs.ai_target_recommend["guixin"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("guixin") then
+		return 0
+	end
+	if not self:checkIsDamageCard(card) then
+		return 0
+	end
+	if checkMasochismInvalid(from, to, card) then
+		return 2
+	end
+	if to:aliveCount() > 2 then
+		return -2
+	end
+	return 0
+end
+
+-- 放逐
+sgs.ai_target_recommend["fangzhu"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("fangzhu") then
+		return 0
+	end
+	if not self:checkIsDamageCard(card) then
+		return 0
+	end
+	if checkMasochismInvalid(from, to, card) then
+		return 4
+	end
+	local apn = self:getAllPeachNum(to)
+	local damageNum = self:ajustDamage(from, to, 1, card)
+	if (to:getLostHp() < 2 or (apn + to:getHp() > damageNum and #self:getFriends(to) > 1)) then
+		return -4
+	end
+	return 0
+end
+
+-- 揮淚
+sgs.ai_target_recommend["huilei"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("huilei") then
+		return 0
+	end
+	if not self:checkIsDamageCard(card) then
+		return 0
+	end
+	if checkMasochismInvalid(from, to, card) then
+		return 3
+	end
+	local damageNum = self:ajustDamage(from, to, 1, card)
+	if not to:isLord() and to:getHp() <= damageNum then
+		if from:getHandcardNum() >= 4 then
+			return -3
+		end
+		if self.compareRoleEvaluation and self:compareRoleEvaluation(to, "rebel", "loyalist") == "rebel" then
+			return 0
+		else
+			return -2
+		end
+	end
+	return 0
+end
+
+-- 天香
+sgs.ai_target_recommend["tianxiang"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("tianxiang") then
+		return 0
+	end
+	if not self:checkIsDamageCard(card) then
+		return 0
+	end
+	if checkMasochismInvalid(from, to, card) then
+		return 2
+	end
+	if getKnownCard and getKnownCard(to, from, "diamond,club") < to:getHandcardNum() then
+		local damageNum = self:ajustDamage(from, to, 1, card)
+		for _, friend in ipairs(self.friends or {}) do
+			if friend:getHp() + self:getCardsNum("Peach") - damageNum < 2 then
+				return -2
+			end
+		end
+	end
+	return 0
+end
+
+-- 武魂
+sgs.ai_target_recommend["wuhun"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("wuhun") then
+		return 0
+	end
+	if not self:checkIsDamageCard(card) then
+		return 0
+	end
+	if checkMasochismInvalid(from, to, card) then
+		return 5
+	end
+	if not to:isLord() and #self:getFriends(to, true) > 0 then
+		local maxfriendmark, maxenemymark = 0, 0
+		for _, friend in ipairs(self.friends or {}) do
+			local friendmark = friend:getMark("&nightmare+#" .. to:objectName())
+			if friendmark > maxfriendmark then
+				maxfriendmark = friendmark
+			end
+		end
+		for _, enemy in ipairs(self.enemies or {}) do
+			local enemymark = enemy:getMark("&nightmare+#" .. to:objectName())
+			if enemymark > maxenemymark and enemy ~= to then
+				maxenemymark = enemymark
+			end
+		end
+		local damageNum = self:ajustDamage(from, to, 1, card)
+		if self:isEnemy(to) then
+			if maxfriendmark + damageNum - to:getHp() / 2 >= maxenemymark then
+				if not (#self.enemies == 1 and #self.friends + #self.enemies == self.room:alivePlayerCount()) then
+					return -5
+				end
+			end
+		else
+			if maxfriendmark + damageNum - to:getHp() / 2 > maxenemymark then
+				return -5
+			end
+		end
+	end
+	return 0
+end
+
+-- 斷腸
+sgs.ai_target_recommend["duanchang"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("duanchang") then
+		return 0
+	end
+	if not self:checkIsDamageCard(card) then
+		return 0
+	end
+	local damageNum = self:ajustDamage(from, to, 1, card)
+	if to:getHp() <= damageNum and from:getMaxHp() < 6 and not to:isLord() and #self:getFriends(to, true) > 0 then
+		if not (from:getMaxHp() >= 3 and from:getArmor() and from:getDefensiveHorse()) then
+			if from:isLord() and self:isWeak() or (self.room:getLord() and from:getRole() == "renegade") then
+				return -5
+			end
+		end
+	end
+	return 0
+end
+
+-- 雪恨/血集/新剛烈
+sgs.ai_target_recommend["xuehen"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("xuehen") then
+		return 0
+	end
+	if not self:checkIsDamageCard(card) then
+		return 0
+	end
+	if self.isWeak and self:isWeak(self.friends) then
+		return -2
+	end
+	return 0
+end
+
+sgs.ai_target_recommend["xueji"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("xueji") then
+		return 0
+	end
+	return sgs.ai_target_recommend["xuehen"](self, from, to, card, skill_owner)
+end
+
+sgs.ai_target_recommend["neoganglie"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("neoganglie") then
+		return 0
+	end
+	return sgs.ai_target_recommend["xuehen"](self, from, to, card, skill_owner)
+end
+
+-- 魂姿
+sgs.ai_target_recommend["hunzi"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("hunzi") then
+		return 0
+	end
+	if not self:checkIsDamageCard(card) then
+		return 0
+	end
+	if self:isFriend(from, to) and to:getHp() == 2 and to:getMark("hunzi") < 1 then
+		local damageNum = self:ajustDamage(from, to, 1, card)
+		if math.abs(damageNum) == 1 and card:isKindOf("Slash") and card:getSkillName() ~= "lihuo" then
+			return 10
+		end
+	end
+	if to:getMark("hunzi") < 1 and to:isLord() and to:getHp() >= 2 then
+		local damageNum = self:ajustDamage(from, to, 1, card)
+		if math.abs(damageNum) == 1 and sgs.playerRoles and sgs.playerRoles["loyalist"] and sgs.playerRoles["loyalist"] > 0 then
+			return -2
+		end
+	end
+	return 0
+end
+
+-- 固穀
+sgs.ai_target_recommend["guagu"] = function(self, from, to, card, skill_owner)
+	if not card or not card:isKindOf("Slash") then
+		return 0
+	end
+	if to:isLord() and from:hasSkill("guagu") then
+		if to:getLostHp() >= 1 and getCardsNum("Jink", to, from) < 1 then
+			if self:isFriend(from, to) then
+				local damageNum = self:ajustDamage(from, to, 1, card)
+				if math.abs(damageNum) == 1 and card:getSkillName() ~= "lihuo" then
+					return 10
+				end
+			end
+		end
+	end
+	return 0
+end
+
+-- 連鎖配合
+sgs.ai_target_recommend["chain_slash_friend"] = function(self, from, to, card, skill_owner)
+	if not card or not card:isKindOf("NatureSlash") then
+		return 0
+	end
+	if self:isFriend(from, to) and hasChainEffect(to, from) then
+		if self:isGoodChainTarget(to, card, from) then
+			return 10
+		end
+	end
+	return 0
+end
+
+-- 求援效果
+sgs.ai_target_recommend["qiuyuan_effect"] = function(self, from, to, card, skill_owner)
+	if not card or not card:isKindOf("Slash") then
+		return 0
+	end
+	if self:hasQiuyuanEffect(from, to) then
+		return 10
+	end
+	return 0
+end
+
+-- 雷擊配合
+sgs.ai_target_recommend["leiji_slash_friend"] = function(self, from, to, card, skill_owner)
+	if not card or not card:isKindOf("Slash") then
+		return 0
+	end
+	if self:isFriend(from, to) then
+		if (to:isWounded() and self:findLeijiTarget(to, 50, from, 1))
+		   or self:findLeijiTarget(to, 50, from, -1) then
+			local damageNum = self:ajustDamage(from, to, 1, card)
+			if math.abs(damageNum) == 1 and card:getSkillName() ~= "lihuo" then
+				return 10
+			end
+		end
+	end
+	return 0
+end
+
+-- 激昂
+sgs.ai_target_recommend["jiang"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("jiang") then
+		return 0
+	end
+	if not card then
+		return 0
+	end
+	local is_duel = card:isKindOf("Duel")
+	local is_red_slash = card:isKindOf("Slash") and card:isRed()
+	if is_duel or is_red_slash then
+		return -1
+	end
+	return 0
+end
+
+
+
 
 
 dofile"lua/ai/debug-ai.lua"
