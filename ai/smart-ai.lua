@@ -111,6 +111,7 @@ sgs.ai_poison_card =			{}
 sgs.ai_skill_playerschosen =	{}
 sgs.ai_used_revises =			{}
 sgs.weapon_range = 				{}
+sgs.ai_nullification_threat_table = {}
 
 -- AI出牌隨機性配置
 -- 設置為0則完全按優先級排序（原始行為）
@@ -902,10 +903,6 @@ function SmartAI:getDynamicUsePriority(card)
 	if card:hasFlag("AIGlobal_KillOff") then return 15
 	elseif card:isKindOf("DelayedTrick") and #card:getSkillName()>0
 	then return (sgs.ai_use_priority[card:getClassName()] or 0.1)-0.1
-	elseif card:isKindOf("Duel") then
-		if self:hasCrossbowEffect()
-		or self.player:canSlashWithoutCrossbow()
-		then return sgs.ai_use_priority.Slash-0.1 end
 	end
 	local value = self:getUsePriority(card)
 	if card:isKindOf("Weapon") and #self.enemies>0
@@ -921,6 +918,13 @@ function SmartAI:getDynamicUsePriority(card)
 			else dv = dv+((p:getHandcardNum()+p:getHp())/p:getHp())*dv end
 		end
 		value = value+dv
+	elseif card:isKindOf("Duel") then
+		if self.player:getHp() <= 1 and self:getCardsNum("Slash") == 0 then
+            value = value - 3.0
+        else
+		if self:hasCrossbowEffect() and self:getCardsNum("Slash") > 0 then
+			value = sgs.ai_use_priority.Slash + 0.5 
+		end
 	end
 	return value
 end
@@ -1161,70 +1165,56 @@ function SmartAI:sortByUseValue(cards,inverse,flags)
 	return cards
 end
 
-function SmartAI:sortByUsePriority(cards,inverse,flags)
-	cards = sgs.QList2Table(cards)
-	if flags=="j" then
-		for i=#cards,1,-1 do
-			if self.player:isJilei(cards[i]) then table.remove(cards,i) end
-		end
-	end
-	if #cards<2 then return cards end
-	local bcv = {}
-	-- 添加隨機擾動值，範圍在 -0.3 到 0.3 之間
-	-- 這樣優先級相近的牌會被打亂，但差異大的牌順序仍會保持
-	local randomness = sgs.ai_card_randomness or 0  -- 預設為0，保持原始行為
-	for _,c in ipairs(cards)do
-		local base_priority = self:getUsePriority(c) or 0
-		-- 為避免改變關鍵順序（如酒、武器 vs 殺），只對非關鍵牌添加隨機性
-		local random_offset = 0
-		if randomness > 0 then
-			if not (c:isKindOf("Analeptic") or c:isKindOf("Weapon") or c:isKindOf("Armor")) then
-				-- 對於普通牌，添加小範圍隨機值
-				random_offset = (math.random() - 0.5) * 0.6 * randomness  -- 可調範圍
-			else
-				-- 對於關鍵裝備和酒，添加更小的隨機值以保持相對順序
-				random_offset = (math.random() - 0.5) * 0.2 * randomness
-			end
-		end
-		bcv[c:toString()] = base_priority + random_offset
-	end
-	local function compare_func(a,b)
-		if inverse then return bcv[a:toString()]<bcv[b:toString()] end
-		return bcv[a:toString()]>bcv[b:toString()]
-	end
-	table.sort(cards,compare_func)
-	return cards
+function applyRandomPrioritySort(self, cards, inverse, flags, priority_func_name)
+    cards = sgs.QList2Table(cards)
+    
+    if flags == "j" then
+        for i = #cards, 1, -1 do
+            if self.player:isJilei(cards[i]) then table.remove(cards, i) end
+        end
+    end
+    
+    if #cards < 2 then return cards end
+    
+    local bcv = {}
+    local randomness = sgs.ai_card_randomness or 0
+    
+    for _, c in ipairs(cards) do
+        -- 動態呼叫對應的優先級獲取函數 (getDynamicUsePriority 或 getUsePriority)
+        local base_priority = self[priority_func_name](self, c) or 0
+        local random_offset = 0
+        
+        if randomness > 0 then
+            -- 使用 EquipCard 涵蓋所有裝備(武器、防具、馬匹、寶物)
+            if not (c:isKindOf("Analeptic") or c:isKindOf("EquipCard")) then
+                -- 擴大一般卡牌的擾動半徑，確保能跨越優先級差值
+                random_offset = (math.random() - 0.5) * 1.2 * randomness
+            else
+                -- 關鍵卡牌保持極小擾動
+                random_offset = (math.random() - 0.5) * 0.2 * randomness
+            end
+        end
+        
+        bcv[c:toString()] = base_priority + random_offset
+    end
+    
+    local function compare_func(a, b)
+        if inverse then 
+            return bcv[a:toString()] < bcv[b:toString()] 
+        end
+        return bcv[a:toString()] > bcv[b:toString()]
+    end
+    
+    table.sort(cards, compare_func)
+    return cards
 end
 
-function SmartAI:sortByDynamicUsePriority(cards,inverse,flags)
-	cards = sgs.QList2Table(cards)
-	if flags=="j" then
-		for i=#cards,1,-1 do
-			if self.player:isJilei(cards[i]) then table.remove(cards,i) end
-		end
-	end
-	if #cards<2 then return cards end
-	local bcv = {}
-	-- 同樣添加隨機擾動，保持動態優先級的基本邏輯
-	local randomness = sgs.ai_card_randomness or 0
-	for _,c in ipairs(cards)do
-		local base_priority = self:getDynamicUsePriority(c) or 0
-		local random_offset = 0
-		if randomness > 0 then
-			if not (c:isKindOf("Analeptic") or c:isKindOf("Weapon") or c:isKindOf("Armor")) then
-				random_offset = (math.random() - 0.5) * 0.6 * randomness
-			else
-				random_offset = (math.random() - 0.5) * 0.2 * randomness
-			end
-		end
-		bcv[c:toString()] = base_priority + random_offset
-	end
-	local function compare_func(a,b)
-		if inverse then return bcv[a:toString()]<bcv[b:toString()] end
-		return bcv[a:toString()]>bcv[b:toString()]
-	end
-	table.sort(cards,compare_func)
-	return cards
+function SmartAI:sortByDynamicUsePriority(cards, inverse, flags)
+    return applyRandomPrioritySort(self, cards, inverse, flags, "getDynamicUsePriority")
+end
+
+function SmartAI:sortByUsePriority(cards, inverse, flags)
+    return applyRandomPrioritySort(self, cards, inverse, flags, "getUsePriority")
 end
 
 function SmartAI:sortByCardNeed(cards,inverse,flags)
@@ -8798,6 +8788,44 @@ sgs.ai_can_damagehp.tianxiang = function(self,from,card,to)
 	return sgs.ai_skill_use["@@tianxiang"](self,d,sgs.Card_MethodDiscard)~="."
 end
 
+--evaluateCardThreat新卡牌判定表
+function SmartAI:evaluateCardThreat(use, target)
+    local card = use.card
+    local card_class = card:getClassName()
+    local threat_level = 0
+    
+    -- O(1) 查表 (Table Lookup)
+    local rule = sgs.ai_nullification_threat_table[card_class]
+    
+    if rule then
+        -- 命中註冊表：注入上下文並執行專屬閉包
+        threat_level = threat_level + (rule.base or 0)
+        if type(rule.eval) == "function" then
+            threat_level = rule.eval(self, use, target, threat_level)
+        end
+    else
+        -- 兜底邏輯 (Fallback)：處理未註冊的自定義/新擴展卡牌
+        local is_trick = card:getTypeId() == sgs.Card_TypeTrick
+        local is_damage = card:isDamageCard()
+        local use_value = sgs.ai_use_value[card_class] or 0
+        
+        if is_damage then
+            threat_level = threat_level + 1
+            if self:isWeak(target) then threat_level = threat_level + 2 end
+        elseif is_trick then
+            threat_level = threat_level + (use_value >= 5 and 2 or 1)
+        end
+    end
+    
+    -- 通用修飾器：目標擁有受傷收益技能時降低威脅
+    if card:isDamageCard() and self:canDamage(target, use.from, card) then
+        threat_level = threat_level - 2
+    end
+    
+    return threat_level
+end
+
+
 -- 通用的有代价令牌无效技能判断函数
 -- 判断是否应该发动需要弃牌/失去体力来无效卡牌的技能
 -- @param use 卡牌使用结构
@@ -8874,7 +8902,7 @@ function SmartAI:shouldInvokeCostNullifySkill(use, need_discard, need_losehp, di
 	
 	-- 通用判断逻辑：基于卡牌对目标的威胁程度
 	local card = use.card
-	local threat_level = 0  -- 威胁等级
+	local threat_level = self:evaluateCardThreat(use, target)  -- 威胁等级
 	
 	-- 1. 判断卡牌是否对目标有效
 	if not self:hasTrickEffective(card, target, use.from) then
@@ -8896,8 +8924,8 @@ function SmartAI:shouldInvokeCostNullifySkill(use, need_discard, need_losehp, di
 		end
 		
 		-- 计算预期伤害
-	local card_nature = nature or (card and sgs.card_damage_nature[card:getClassName()])
-	local expected_damage = self:ajustDamage(use.from, target, 1, card, card_nature)
+		local card_nature = nature or (card and sgs.card_damage_nature[card:getClassName()])
+		local expected_damage = self:ajustDamage(use.from, target, 1, card, card_nature)
 	
 	-- 高伤害直接发动
 	if expected_damage > 1 then
@@ -9089,24 +9117,20 @@ function SmartAI:shouldInvokeCostNullifySkill(use, need_discard, need_losehp, di
 		end
 	end
 	
-	-- 根据威胁等级和代价决定是否发动
-	local cost_value = 0
-	if need_losehp then
-		-- 失去体力的代价
-		if self.player:getHp() <= 2 then
-			cost_value = cost_value + 4
-		else
-			cost_value = cost_value + 2
-		end
-	end
-	if need_discard then
-		-- 弃牌的代价
-		cost_value = cost_value + discard_num * 1.5
-	end
-	
-	-- 威胁等级超过代价值时发动
-	return threat_level > cost_value
+    if threat_level < 0 then return false end 
+    
+    -- 2. 計算沉沒成本與代價 (Cost Calculation)
+    local cost_value = 0
+    if need_losehp then
+        cost_value = cost_value + (self.player:getHp() <= 2 and 4 or 2)
+    end
+    if need_discard then
+        cost_value = cost_value + (discard_num * 1.5)
+    end
+    return threat_level > cost_value
 end
+
+
 
 sgs.ai_guhuo_card.guhuo = function(self,cname,class_name)
 	local handcards = self:addHandPile("h")
