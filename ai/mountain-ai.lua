@@ -448,7 +448,7 @@ sgs.ai_skill_invoke.fangquan = function(self,data)
 	for _,enemy in ipairs(self.enemies)do
 		for _,slash in ipairs(slashs)do
 			if hasCrossbow and self:getCardsNum("Slash")>1 and self:slashIsEffective(slash,enemy)
-				and self.player:canSlash(enemy,slash,true,range_fix) then
+			and self.player:canSlash(enemy,slash,true,range_fix) then
 				shouldUse = shouldUse+2
 				hasCrossbow = false
 				break
@@ -502,7 +502,7 @@ sgs.ai_skill_invoke.fangquan = function(self,data)
 		self.friends_noself = sgs.reverse(self.friends_noself)
 		for _,target in ipairs(self.friends_noself)do
 			if not target:hasSkill("dawu") and target:hasSkills("yongsi|zhiheng|"..sgs.priority_skill.."|shensu")
-				and (not self:willSkipPlayPhase(target) or target:hasSkill("shensu")) then
+			and (not self:willSkipPlayPhase(target) or target:hasSkill("shensu")) then
 				return true
 			end
 		end
@@ -569,11 +569,11 @@ function SmartAI:isTiaoxinTarget(enemy)
 	if not enemy then self.room:writeToConsole(debug.traceback()) return end
 	if getCardsNum("Slash",enemy)<1 and self.player:getHp()>1 and not self:canHit(self.player,enemy)
 	and not (enemy:hasWeapon("DoubleSword") and self.player:getGender()~=enemy:getGender())
-		then return true end
+	then return true end
 	if getCardsNum("Slash",enemy)<1
-		or self:needLeiji(self.player,enemy)
-		or self:needToLoseHp(self.player,enemy,dummyCard())
-		then return true end
+	or self:needLeiji(self.player,enemy)
+	or self:needToLoseHp(self.player,enemy,dummyCard())
+	then return true end
 	return self:getOverflow()>0 and self:getCardsNum("Jink")>1
 end
 
@@ -1387,8 +1387,7 @@ end
 
 sgs.ai_use_revises.renjie = function(self,card)
 	if self.player:hasSkill("baiyin")
-	and not self.player:hasSkill("jilve") and self.player:getMark("&bear")<4
-	then
+	and not self.player:hasSkill("jilve") and self.player:getMark("&bear")<4 then
 		if (card:isKindOf("Peach") or card:isKindOf("Armor")) and self.player:getLostHp()>1
 		or card:isKindOf("TrickCard") and (card:targetFixed() and not card:isDamageCard() or card:canRecast() or ("snatch|collateral"):match(card:objectName()))
 		then return end
@@ -1420,10 +1419,10 @@ end
 
 sgs.ai_skill_choice._jilve = function(self,choices)
 	choices = choices:split("+")
-	if table.contains(choices,"jilve_tenyearjizhi") then return "jilve_tenyearjizhi" end
-	if table.contains(choices,"jilve_mobilefangzhu") then
+	if table.contains(choices,"tenyearjizhi") then return "tenyearjizhi" end
+	if table.contains(choices,"mobilefangzhu") then
 		if sgs.ai_skill_playerchosen.mobilefangzhu(self,self.room:getOtherPlayers(self.player))~=nil then
-			return "jilve_mobilefangzhu"
+			return "mobilefangzhu"
 		end
 		return "fangzhu"
 	end
@@ -1434,21 +1433,18 @@ local jilve_skill = {}
 jilve_skill.name = "jilve"
 table.insert(sgs.ai_skills,jilve_skill)
 jilve_skill.getTurnUseCard = function(self)
-	if not(self.player:hasFlag("JilveWansha") or self.player:hasSkills("wansha|olwansha"))
-	then
+	if not(self.player:hasFlag("JilveWansha") or self.player:hasSkills("wansha|olwansha")) then
 		for _,enemy in sgs.list(self.enemies)do
 			if self.player:canSlash(enemy) and self:isWeak(enemy)
-			and self:damageMinusHp(enemy,1)>0 and #self.enemies>1
-			then
+			and self:damageMinusHp(enemy,1)>0 and #self.enemies>1 then
 				sgs.ai_use_priority.JilveCard = 8
-				sgs.ai_skill_choice.jilve = sgs.Sanguosha:getSkill("olwansha") and "jilve_olwansha" or "wansha"
+				sgs.ai_skill_choice.jilve = sgs.Sanguosha:getSkill("olwansha") and "olwansha" or "wansha"
 				return sgs.Card_Parse("@JilveCard=.")
 			end
 		end
 	end
-	if not self.player:hasFlag("JilveZhiheng")
-	then
-		sgs.ai_skill_choice.jilve = "jilve_tenyearzhiheng"
+	if not self.player:hasFlag("JilveZhiheng") then
+		sgs.ai_skill_choice.jilve = "tenyearzhiheng"
 		sgs.ai_use_priority.JilveCard = sgs.ai_use_priority.TenyearZhihengCard
 		local card = sgs.Card_Parse("@TenyearZhihengCard=.")
 		local dummy_use = dummy()
@@ -1461,7 +1457,7 @@ sgs.ai_skill_use_func.JilveCard=function(card,use,self)
 	use.card = card
 end
 
-sgs.ai_skill_use["@zhiheng"]=function(self,prompt)
+sgs.ai_skill_use["@@zhiheng"]=function(self,prompt)
 	local card=sgs.Card_Parse("@ZhihengCard=.")
 	local dummy_use = dummy()
 	self:useSkillCard(card,dummy_use)
@@ -1469,8 +1465,16 @@ sgs.ai_skill_use["@zhiheng"]=function(self,prompt)
 	return "."
 end
 
-sgs.ai_skill_use["@tenyearzhiheng"]=function(self,prompt)
+sgs.ai_skill_use["@@tenyearzhiheng"]=function(self,prompt)
 	local card=sgs.Card_Parse("@TenyearZhihengCard=.")
+	local dummy_use = dummy()
+	self:useSkillCard(card,dummy_use)
+	if dummy_use.card then return dummy_use.card:toString() end
+	return "."
+end
+
+sgs.ai_skill_use["@@jiudingmouzhiheng"]=function(self,prompt)
+	local card=sgs.Card_Parse("#jiudingmouzhihengCard:.:")
 	local dummy_use = dummy()
 	self:useSkillCard(card,dummy_use)
 	if dummy_use.card then return dummy_use.card:toString() end
@@ -1580,3 +1584,22 @@ sgs.ai_skill_choice.mobilejilve = function(self,choices)
 	end
 	return choices[#choices]
 end
+
+sgs.ai_skill_invoke.guzheng = function(self,data)
+	local ids = self.player:getTag("GuzhengToGet"):toIntList()
+	return self:canDraw() and (self:isFriend(data:toPlayer()) or ids:length()>2)
+end
+
+sgs.ai_skill_askforag.guzheng = function(self,card_ids)
+	local cards = {}
+	for _,id in sgs.list(card_ids)do
+		table.insert(cards,sgs.Sanguosha:getCard(id))
+	end
+	self:sortByKeepValue(cards)
+	if self:isFriend(self.room:getCurrent()) then
+		return cards[#cards]:getId()
+	else
+		return cards[1]:getId()
+	end
+end
+

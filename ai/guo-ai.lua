@@ -10,11 +10,13 @@ sgs.ai_skill_playerchosen.jintuishi = function(self,targets)
 			return p
 		end
 	end
+	
 	for _,p in sgs.list(targets)do
 		if self:isFriend(from,p) and self:slashIsEffective(slash,p,from) then
 			return p
 		end
 	end
+	
 	for _,p in sgs.list(targets)do
 		if self:isFriend(from,p) then
 			return p
@@ -122,8 +124,8 @@ sgs.ai_skill_use_func.JinYanxiCard = function(card,use,self)
 		if self:doDisCard(p,"h",true) then
 			use.card = card
 			use.to:append(p)
-		break
-	end
+			break
+		end
 	end
 end
 

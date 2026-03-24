@@ -556,7 +556,7 @@ mobilezhimiewu.name = "mobilezhimiewu"
 table.insert(sgs.ai_skills,mobilezhimiewu)
 mobilezhimiewu.getTurnUseCard = function(self)
     local cards = self:addHandPile("he")
-    cards = self:sortByKeepValue(cards,nil,"l") -- 按保留值排序
+    cards = self:sortByKeepValue(cards,nil,"l")--按保留值排序
 	if #cards<1 then return end
     for _,name in sgs.list(patterns())do
         local card = dummyCard(name)
@@ -594,11 +594,11 @@ sgs.ai_skill_use_func.MobileZhiMiewuCard = function(card,use,self)
 	use.to = self.Miewudummy.to
 end
 
-sgs.ai_guhuo_card.mobilezhimiewu = function(self,toname,class_name)
+sgs.ai_guhuo_card.mobilezhimiewu = function(self,card_name,class_name)
     local cards = self:addHandPile("he")
-    cards = self:sortByKeepValue(cards,nil,true) -- 按保留值排序
+    cards = self:sortByKeepValue(cards,nil,true)--按保留值排序
 	if #cards<1 or self:getCardsNum(class_name)>0 and #cards>1 then return end
-   	return "@MobileZhiMiewuCard="..cards[1]:getEffectiveId()..":"..toname
+   	return "@MobileZhiMiewuCard="..cards[1]:getEffectiveId()..":"..card_name
 end
 
 sgs.ai_use_revises.mobilezhimiewu = function(self,card,use)
@@ -725,7 +725,7 @@ table.insert(sgs.ai_skills,mobilexinmouli)
 mobilexinmouli.getTurnUseCard = function(self)
     local cards = self.player:getCards("h")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)--按保留值排序
 	if #cards<1 then return end
 	return sgs.Card_Parse("@MobileXinMouliCard="..cards[1]:getEffectiveId())
 end
@@ -860,7 +860,7 @@ end
 sgs.ai_skill_cardask["@mobilexinmingfa-show"] = function(self,data,pattern)
 	local cards = self.player:getCards("he")
 	cards = sgs.QList2Table(cards)
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)--按保留值排序
    	for _,c in sgs.list(cards)do
     	if c:getNumber()>8
 		then return c:getEffectiveId() end
@@ -947,7 +947,7 @@ sgs.ai_skill_discard["@mobilerensheyi-give"] = function(self,x,n)
 	local cards = {}
 	local damage = self.player:getTag("mobilerensheyi_data"):toDamage()
     local handcards = sgs.QList2Table(self.player:getCards("he"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
    	for _,h in sgs.list(handcards)do
 		if #cards>=n then break end
 		if #handcards>n and self:isWeak(damage.to) and self:isFriend(damage.to)
@@ -1056,8 +1056,7 @@ end
 
 sgs.ai_target_revises.mobilerenyaohu = function(to,card,self)
 	if card:isDamageCard() and self:isEnemy(to)
-	and self.player:getMark("mobilerenyaohu_"..to:objectName().."-PlayClear")>0
-	then
+	and self.player:getMark("mobilerenyaohu_"..to:objectName().."-PlayClear")>0 then
 		local ds = self:askForDiscard("yaohu",2,2,false,true)
 		if #ds<2 or self:getUseValue(card)<self:getKeepValue(sgs.Sanguosha:getCard(ds[1]))+self:getKeepValue(sgs.Sanguosha:getCard(ds[2]))
 		then return true end
@@ -1067,7 +1066,7 @@ end
 sgs.ai_skill_discard["mobilerenyaohu"] = function(self,x,n)
 	local cards = {}
     local hcards = sgs.QList2Table(self.player:getCards("he"))
-    self:sortByKeepValue(hcards) -- 按保留值排序
+    self:sortByKeepValue(hcards)--按保留值排序
    	for _,h in sgs.list(hcards)do
 		if #cards>=n then break end
 		table.insert(cards,h:getEffectiveId())
@@ -1083,7 +1082,7 @@ sgs.ai_skill_discard.mobileyongxizhan = function(self)
    	local target = self.room:getCurrent()
 	local cards = {}
     local handcards = sgs.QList2Table(self.player:getCards("he"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
    	for _,h in sgs.list(handcards)do
 		if self:isFriend(target)
 		then
@@ -1167,7 +1166,7 @@ sgs.ai_skill_use["@@mobileyanyajun1"] = function(self,prompt)
 	end
     local cards = self.player:getCards("he")
     cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)--按保留值排序
 	local strs = self.player:property("MobileYanYajunIds"):toString():split("+")
 	for _,h in sgs.list(cards)do
 		if table.contains(strs,h:toString()) and h:getNumber()>9 and valid
@@ -1207,7 +1206,7 @@ sgs.ai_card_intention.MobileYanZundiCard = -44
 sgs.ai_skill_discard.mobileyandifei = function(self)
 	local cards = {}
     local handcards = sgs.QList2Table(self.player:getCards("h"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
    	for _,h in sgs.list(handcards)do
 --		table.insert(cards,h:getEffectiveId())
 	end
@@ -1727,7 +1726,7 @@ sgs.ai_skill_use["@@mobilemoushipo"] = function(self,prompt)
     	then to = p:objectName() break end
 	end
     local cards = self.player:getCards("he")
-    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    cards = self:sortByKeepValue(cards)--按保留值排序
 	local List = self.player:property("mobilemoushipo_card_ids"):toString():split("+")
 	for _,h in sgs.list(cards)do
 		if #valid>1 then break end
@@ -1756,35 +1755,36 @@ end
 
 
 sgs.ai_skill_use_func.MobileMouXingshangCard = function(card,use,self)
-	self:sort(self.friends,"handcard")
-	local n = 0
-	for _, p in sgs.qlist(self.room:getAllPlayers(true)) do
-		if p:isDead() then
-			n = n + 1
-		end
-	end
-	local x = math.max(math.min(n, 5), 2)
-	for _, friend in ipairs(self.friends) do
-		if (self:canDraw(friend, self.player) and not self:willSkipPlayPhase(friend) and (x > 2 or self.player:getMark("&mobilemouxingshang_song") > 4)) or (not friend:faceUp() and self:toTurnOver(friend,x,"mobilemouxingshang")) then
-			use.card = sgs.Card_Parse("@MobileMouXingshangCard=.")
-			use.to:append(friend)
-			return
-		end
-	end
-	if self.player:getMark("&mobilemouxingshang_song") > 4 then
+	self:sort(self.friends)
+	if self.player:getMark("&mobilemouxingshang_song") > 1 then
 		for _, friend in ipairs(self.friends) do
-			if self:hasSkills(sgs.need_maxhp_skill, friend) and friend:getMaxHp() < 9 then
-				use.card = sgs.Card_Parse("@MobileMouXingshangCard=.")
+			if self:canDraw(friend) and not friend:faceUp() then
+				use.card = card
 				use.to:append(friend)
 				return
 			end
 		end
-		if (n > 0 and math.random() < 0.5) or (self.player:getMark("&mobilemouxingshang_song") > 8 and n == 0) then
-			use.card = sgs.Card_Parse("@MobileMouXingshangCard=.")
-			use.to:append(self.player)
+		for _, friend in ipairs(self.friends) do
+			if self:canDraw(friend) and friend:isChained() then
+				use.card = card
+				use.to:append(friend)
+				return
+			end
 		end
 	end
-
+	if self.player:getMark("&mobilemouxingshang_song") > 2 then
+		for _, friend in ipairs(self.friends) do
+			if self:isWeak(friend) and friend:getMaxHp()<=9 then
+				use.card = card
+				use.to:append(friend)
+				return
+			end
+		end
+	end
+	if self.player:getMark("&mobilemouxingshang_song") > 3 and #self.friends<#self.enemies/2 then
+		use.card = card
+		use.to:append(self.player)
+	end
 end
 
 sgs.ai_use_priority.MobileMouXingshangCard = 2
@@ -1794,22 +1794,12 @@ sgs.ai_card_intention.MobileMouXingshangCard = -40
 sgs.ai_skill_choice.mobilemouxingshang = function(self,choices,data)
 	local items = choices:split("+")
 	local target = data:toPlayer()
-	local choice1 = getChoice(choices, "2mobilemouxingshang")
-	if choice1 then
-		local n = 0
-		for _, p in sgs.qlist(self.room:getAllPlayers(true)) do
-			if p:isDead() then
-				n = n + 1
-			end
-		end
-		local x = math.max(math.min(n, 5), 2)
-		if target and self:isFriend(target) and (not target:faceUp() and self:toTurnOver(target,x,"mobilemouxingshang")) then
-			return choice1
-		end
+	if self:isFriend(target) and not target:faceUp() then
+		return items[1]
 	end
-	if table.contains(items, "5mobilemouxingshang") then
-		if target == self.player and (self.player:getMark("&mobilemouxingshang_song") > 5 or sgs.turncount < 3) then
-			table.removeOne(items, "5mobilemouxingshang")
+	if #items==3 then
+		if (self.player:getMark("&mobilemouxingshang_song") > 5 or sgs.turncount < 3) then
+			table.removeOne(items, items[3])
 		end
 	end
 	return items[math.random(1, #items)]
@@ -1817,20 +1807,16 @@ end
 
 sgs.ai_skill_choice.mobilemouxingshangZhuisi = function(self,choices,data)
 	local items = choices:split("+")
-	local filtereditems = choices:split("+")
 	for _, p in sgs.qlist(self.room:getAllPlayers(true)) do
-		if p:isDead() then
-			if table.contains(filtereditems, "ZhuisiPlayer="..p:objectName()) then
-				if self:hasSkills(sgs.bad_skills, p) then
-					table.removeOne(filtereditems, "ZhuisiPlayer="..p:objectName())
-				end
+		if table.contains(items, "ZhuisiPlayer="..p:objectName()) then
+			if self:hasSkills(sgs.bad_skills, p) then
+				table.removeOne(items, "ZhuisiPlayer="..p:objectName())
 			end
 		end
 	end
-	if #filtereditems > 0 then
-		return filtereditems[math.random(1, #filtereditems)]	
+	if #items > 0 then
+		return items[math.random(1, #items)]	
 	end
-	return items[math.random(1, #items)]
 end
 
 addAiSkills("mobilemoufangzhu").getTurnUseCard = function(self)
@@ -1841,7 +1827,6 @@ end
 
 sgs.ai_skill_use_func.MobileMouFangzhuCard = function(card,use,self)
 
-	if #self.enemies==0 then return end
 	self:sort(self.enemies,"handcard")
 
 	for _, enemy in ipairs(self.enemies) do
@@ -1853,10 +1838,10 @@ end
 
 sgs.ai_skill_choice.mobilemoufangzhu = function(self,choices,data)
 	local items = choices:split("+")
-	local target = data:toPlayer()
-	if table.contains(items, "3") then
-        if not target:faceUp() then table.removeOne(items, "3") end
+	if #items>3 then
+        if not data:toPlayer():faceUp() then table.removeOne(items, items[4]) end
     end
+	table.removeOne(items, items[2])
 	return items[math.random(1, #items)]
 end
 
@@ -2068,7 +2053,7 @@ end
 sgs.ai_skill_discard.mobilemouxiayuan = function(self)
 	local cards = {}
     local handcards = sgs.QList2Table(self.player:getCards("h"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
    	local target = self.room:getCurrent()
    	for _,h in sgs.list(handcards)do
 		if #cards>1 then break end
@@ -2293,14 +2278,13 @@ sgs.ai_use_priority.MobileMouGangLieCard = 3
 
 sgs.ai_can_damagehp.mobilemouganglie = function(self,from,card,to)
 	if from and to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
-	and self:canLoseHp(from,card,to)
-	then
+	and self:canLoseHp(from,card,to) then
 		return self:isEnemy(from) and from:getMark("MobileMouGangLieDamaged"..to:objectName()) == 0 and from:getMark("MobileMouGangLieDamage"..to:objectName()) == 0
 	end
 end
 
 sgs.ai_skill_askforyiji.mobilemouqingjian = function(self,card_ids,tos)
-	return sgs.ai_skill_askforyiji.mobilemouqingjian(self,card_ids,tos)
+	return sgs.ai_skill_askforyiji.nosyiji(self,card_ids,tos)
 end
 
 --end
@@ -2453,7 +2437,7 @@ sgs.ai_skill_playerschosen.mobilemouhongyuan = function(self, targets, max, min)
     local can_choose = sgs.QList2Table(targets)
     self:sort(can_choose, "defense")
     for _,target in ipairs(can_choose) do
-        if self:isFriend(target) and self:canDraw(target, self.player) then
+        if selected:length()<max and self:isFriend(target) and self:canDraw(target, self.player) then
             selected:append(target)
         end
     end
@@ -2546,7 +2530,7 @@ end
 
 addAiSkills("qishe").getTurnUseCard = function(self)
 	local cards = sgs.QList2Table(self.player:getCards("he"))
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)--按保留值排序
    	for _,c in sgs.list(cards)do
 		if c:isKindOf("EquipCard") then
 			local dc = dummyCard("analeptic")
@@ -2561,7 +2545,7 @@ end
 
 function sgs.ai_cardsview.qishe(self,class_name,player)
 	local cards = sgs.QList2Table(player:getCards("he"))
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)--按保留值排序
    	for _,c in sgs.list(cards)do
 		if c:isKindOf("EquipCard") then
 			local dc = dummyCard("analeptic")
@@ -2641,7 +2625,7 @@ sgs.ai_card_intention.ZuoyouCard = -66
 sgs.ai_skill_use["@@qlqingzheng"] = function(self,prompt)
 	local ids = {}
 	local handcards = sgs.QList2Table(self.player:getCards("h"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
 	local function compare_func(a,b)
 		local na,nb = 0,0
 		for _,h in sgs.list(handcards)do
@@ -2866,7 +2850,7 @@ function sgs.ai_cardsview.zhujin(self,class_name,player)
 			return
 		end
 	end
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)--按保留值排序
    	for _,c in sgs.list(cards)do
 		if c:isKindOf("BasicCard") then
 			local dc = dummyCard(patterns(class_name))
@@ -2886,7 +2870,7 @@ addAiSkills("zhujin").getTurnUseCard = function(self)
 			return
 		end
 	end
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)--按保留值排序
    	for _,c in sgs.list(cards)do
 		if c:isKindOf("BasicCard") then
 			local dc = dummyCard()
@@ -3044,7 +3028,7 @@ sgs.ai_skill_use["@@csxiaolu!"] = function(self,prompt)
     	then to = p:objectName() break end
 	end
     local cards = self.player:getCards("he")
-    cards = self:sortByUseValue(cards,false) -- 按保留值排序
+    cards = self:sortByUseValue(cards,false)--按保留值排序
 	for i,h in sgs.list(cards)do
 		if #valid>1 then break end
 		table.insert(valid,h:getEffectiveId())
@@ -3530,7 +3514,7 @@ sgs.ai_skill_cardask["@mobilexinheji-use"] = function(self,data,pattern)
 	if self:isEnemy(use.to:at(0)) then
 		local cards = self.player:getCards("h")
 		cards = sgs.QList2Table(cards)
-		self:sortByKeepValue(cards) -- 按保留值排序
+		self:sortByKeepValue(cards)--按保留值排序
 		for _,c in sgs.list(cards)do
 			if c:isKindOf("Slash") and self:slashIsEffective(c,use.to:at(0)) then
 				return c:getEffectiveId()
@@ -3698,14 +3682,14 @@ sgs.ai_skill_playerchosen.guimou1 = function(self,players,reason)
 end
 
 sgs.ai_skill_discard.zhouxian = function(self,x,n,can,e,pattern)
-    local use = sgs.filterData[sgs.TargetSpecifying]:toCardUse()
+    local use = self.player:getTag("zhouxianUse"):toCardUse()
 	for _,p in sgs.list(use.to)do
 		if p:hasSkill("zhouxian") and self:isFriend(p) then
 			return {}
 		end
 	end
 	local handcards = sgs.QList2Table(self.player:getCards("he"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
    	for _,h in sgs.list(handcards)do
 		if pattern:contains(h:getType()) then return {h:getEffectiveId()} end
 	end
@@ -3815,7 +3799,7 @@ end
 sgs.ai_skill_discard.naxue = function(self,x,n,can,e,pattern)
     local ids = {}
 	local handcards = sgs.QList2Table(self.player:getCards("he"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
    	for _,h in sgs.list(handcards)do
 		if #ids<#handcards/2 and self:doDisCard(self.player,h:getId())
 		then table.insert(ids,h:getId()) end
@@ -3830,7 +3814,7 @@ end
 sgs.ai_skill_use["@@naxue"] = function(self,prompt)
 	local valid,ids = {},{}
 	local handcards = sgs.QList2Table(self.player:getCards("he"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
 	local tos = self.room:getOtherPlayers(self.player)
    	for _,h in sgs.list(handcards)do
 		if #valid<2 then
@@ -4001,7 +3985,7 @@ end
 
 addAiSkills("quchong").getTurnUseCard = function(self)
 	local handcards = sgs.QList2Table(self.player:getCards("he"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
    	for _,h in sgs.list(handcards)do
 		if h:isKindOf("EquipCard") and not self.player:isCardLimited(h,sgs.Card_MethodRecast) then
 			if h:objectName():contains("dagongche") and self:isWeak() then continue end
@@ -4067,7 +4051,7 @@ end
 sgs.ai_skill_use["@@baoxi1"] = function(self,prompt)
 	if self.player:getLostHp()<1 then return end
 	local handcards = sgs.QList2Table(self.player:getCards("h"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
    	for _,h in sgs.list(handcards)do
 		local dc = dummyCard("duel")
 		dc:setSkillName("baoxi")
@@ -4088,7 +4072,7 @@ end
 sgs.ai_skill_use["@@baoxi2"] = function(self,prompt)
 	if self.player:getLostHp()<1 then return end
 	local handcards = sgs.QList2Table(self.player:getCards("h"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
    	for _,h in sgs.list(handcards)do
 		local dc = dummyCard()
 		dc:setSkillName("baoxi")
@@ -4108,7 +4092,7 @@ end
 
 addAiSkills("mobilejiyu").getTurnUseCard = function(self)
 	local handcards = sgs.QList2Table(self.player:getCards("h"))
-    self:sortByKeepValue(handcards,nil,"j") -- 按保留值排序
+    self:sortByKeepValue(handcards,nil,"j")--按保留值排序
    	for _,h in sgs.list(handcards)do
 		if self:getKeepValue(h)<7 then
 			return sgs.Card_Parse("@MobileJiyuCard="..h:toString())
@@ -4212,7 +4196,7 @@ end
 sgs.ai_skill_use["@@yinda"] = function(self,prompt)
 	if self.player:getLostHp()<1 then return end
 	local handcards = sgs.QList2Table(self.player:getCards("he"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
    	for i,h1 in sgs.list(handcards)do
 		local ids = {h1:toString()}
 		for x,h2 in sgs.list(handcards)do
@@ -4297,7 +4281,7 @@ sgs.ai_use_priority.MobileKuangxiangCard = -0.8
 
 addAiSkills("ganjue").getTurnUseCard = function(self)
 	local handcards = sgs.QList2Table(self.player:getCards("e"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
    	for _,h in sgs.list(handcards)do
 		if self:getKeepValue(h)<7 then
 			local dc = dummyCard()
@@ -4322,7 +4306,7 @@ sgs.ai_use_priority.GanjueCard = 1.8
 sgs.ai_skill_cardask["mobilezhuji0"] = function(self,data,pattern)
     local cards = self.player:getCards("h")
 	cards = sgs.QList2Table(cards)
-	self:sortByKeepValue(cards) -- 按保留值排序
+	self:sortByKeepValue(cards)--按保留值排序
 	for _,c in sgs.list(cards)do
 		if self:getKeepValue(c)<7 then
 			return c:toString()
@@ -4424,7 +4408,7 @@ end
 
 addAiSkills("_xuanjian").getTurnUseCard = function(self)
 	local handcards = sgs.QList2Table(self.player:getCards("h"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
    	for _,h in sgs.list(handcards)do
 		if self:getKeepValue(h)<7 then
 			local dc = dummyCard()
@@ -4446,7 +4430,7 @@ end
 
 function sgs.ai_cardsview._xuanjian(self,class_name,player)
 	local handcards = sgs.QList2Table(player:getCards("h"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
    	for _,h in sgs.list(handcards)do
 		if self:getKeepValue(h)<7 then
 			local dc = dummyCard()
@@ -4467,7 +4451,7 @@ end
 
 addAiSkills("qinying").getTurnUseCard = function(self)
 	local handcards = sgs.QList2Table(self.player:getCards("he"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
 	local ids = {}
    	for i,h in sgs.list(handcards)do
 		if self:getKeepValue(h)>6 or table.contains(self.toUse,h) then continue end
@@ -4498,7 +4482,7 @@ end
 sgs.ai_skill_cardask["lunxiong0"] = function(self,data,pattern)
     local cards = self.player:getCards("h")
 	cards = sgs.QList2Table(cards)
-	self:sortByKeepValue(cards) -- 按保留值排序
+	self:sortByKeepValue(cards)--按保留值排序
 	for _,c in sgs.list(cards)do
 		if self:getKeepValue(c)<7 and pattern==c:toString() and (c:getNumber()<9 or self:isWeak()) then
 			return c:toString()
@@ -4620,7 +4604,7 @@ end
 sgs.ai_skill_cardask["zhanlie30"] = function(self,data,pattern)
     local cards = self.player:getCards("he")
 	cards = sgs.QList2Table(cards)
-	self:sortByKeepValue(cards) -- 按保留值排序
+	self:sortByKeepValue(cards)--按保留值排序
 	for _,c in sgs.list(cards)do
 		if self:getKeepValue(c)<7 or self:isWeak() then
 			return c:toString()
@@ -4648,7 +4632,7 @@ end
 
 sgs.ai_skill_use_func["FujiCard"] = function(card,use,self)
 	local handcards = sgs.QList2Table(self.player:getCards("he"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
 	local ids = {}
    	for i,h in sgs.list(handcards)do
 		if self:getKeepValue(h)>6 or table.contains(self.toUse,h) then continue end
@@ -4674,7 +4658,7 @@ sgs.ai_use_priority.FujiCard = 3.8
 
 addAiSkills("daozhuan").getTurnUseCard = function(self)
 	local handcards = sgs.QList2Table(self.player:getCards("he"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
 	local ids = {}
    	for i,pc in sgs.list(RandomList(patterns()))do
 		if self.player:getMark("daozhuan_guhuo_remove_"..pc.."_lun")>0 then continue end
@@ -4895,7 +4879,7 @@ sgs.ai_use_priority.XiongtuCard = 4.8
 
 addAiSkills("feijing").getTurnUseCard = function(self)
 	local handcards = sgs.QList2Table(self.player:getCards("he"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
    	for i,h in sgs.list(handcards)do
 		if h:isDamageCard() then
 			local dc = dummyCard(nil,"feijing")
@@ -4957,14 +4941,741 @@ sgs.ai_skill_choice.zhuangshi = function(self,choices)
 	return items[1]
 end
 
+sgs.ai_skill_askforag.caiqiu = function(self,card_ids)
+   	if math.random()<0.3 then return -1 end
+	local cards = {}
+	for _,id in sgs.list(card_ids)do
+		table.insert(cards,sgs.Sanguosha:getCard(id))
+	end
+	self:sortByUseValue(cards)
+	return cards[#cards]:getId()
+end
 
+addAiSkills("weizhuang").getTurnUseCard = function(self)
+	local handcards = sgs.QList2Table(self.player:getCards("he"))
+	local suits = {}
+	for _,c in sgs.list(handcards)do
+		if table.contains(suits,c:getSuit()) then continue end
+		table.insert(suits,c:getSuit())
+	end
+    self:sortByKeepValue(handcards)--按保留值排序
+	for _,c in sgs.list(handcards)do
+		if #suits~=4 and self.player:isJilei(c) then continue end
+		if c:isKindOf("OffensiveHorse") then
+			local dc = dummyCard("analeptic","weizhuang")
+			if dc:isAvailable(dc) then
+				local d = self:aiUseCard(dc)
+				if d.card then
+					self.weizhuang_to = d.to
+					sgs.ai_use_priority.WeizhuangCard = sgs.ai_use_priority[dc:getClassName()]
+					return sgs.Card_Parse("@WeizhuangCard="..c:toString()..":"..dc:objectName())
+				end
+			end
+		elseif c:isKindOf("Weapon") then
+			local dc = dummyCard("slash","weizhuang")
+			if dc:isAvailable(dc) then
+				local d = self:aiUseCard(dc)
+				if d.card then
+					self.weizhuang_to = d.to
+					sgs.ai_use_priority.WeizhuangCard = sgs.ai_use_priority[dc:getClassName()]
+					return sgs.Card_Parse("@WeizhuangCard="..c:toString()..":"..dc:objectName())
+				end
+			end
+		elseif c:isKindOf("DefensiveHorse") then
+			local dc = dummyCard("peach","weizhuang")
+			if dc:isAvailable(dc) then
+				local d = self:aiUseCard(dc)
+				if d.card then
+					self.weizhuang_to = d.to
+					sgs.ai_use_priority.WeizhuangCard = sgs.ai_use_priority[dc:getClassName()]
+					return sgs.Card_Parse("@WeizhuangCard="..c:toString()..":"..dc:objectName())
+				end
+			end
+		end
+	end
+end
 
+sgs.ai_skill_use_func["WeizhuangCard"] = function(card,use,self)
+	use.card = card
+	use.to = self.weizhuang_to
+end
 
+sgs.ai_use_value.WeizhuangCard = 4.4
+sgs.ai_use_priority.WeizhuangCard = 4.8
 
+function sgs.ai_cardsview.weizhuang(self,class_name,player)
+	local handcards = sgs.QList2Table(self.player:getCards("he"))
+	local suits = {}
+	for _,c in sgs.list(handcards)do
+		if table.contains(suits,c:getSuit()) then continue end
+		table.insert(suits,c:getSuit())
+	end
+    self:sortByKeepValue(handcards)--按保留值排序
+	for _,c in sgs.list(handcards)do
+		if #suits~=4 and self.player:isJilei(c) then continue end
+		if c:isKindOf("OffensiveHorse") then
+			if class_name=="Analeptic" then
+				return "@WeizhuangCard="..c:toString()..":analeptic"
+			end
+		elseif c:isKindOf("Weapon") then
+			if class_name=="Slash" then
+				return "@WeizhuangCard="..c:toString()..":slash"
+			end
+		elseif c:isKindOf("DefensiveHorse") then
+			if class_name=="Peach" then
+				return "@WeizhuangCard="..c:toString()..":peach"
+			end
+		elseif c:isKindOf("OffensiveHorse") then
+			if class_name=="Jink" then
+				return "@WeizhuangCard="..c:toString()..":jink"
+			end
+		end
+	end
+end
 
+sgs.ai_skill_playerchosen.dongjiao3 = function(self,players)
+	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	self:sort(destlist)
+    for _,p in sgs.list(destlist)do
+		if self:isFriend(p) and self:canDraw(p)
+		then return p end
+	end
+    for _,p in sgs.list(destlist)do
+		if self:isFriend(p)
+		then return p end
+	end
+end
 
+sgs.ai_skill_playerchosen.dongjiao2 = function(self,players)
+	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	self:sort(destlist)
+    for _,p in sgs.list(destlist)do
+		if self:doDisCard(p,"he",true)
+		then return p end
+	end
+end
 
+sgs.ai_skill_invoke.guidian = function(self,data)
+	return true
+end
 
+sgs.ai_skill_invoke.mobilegeyuan = function(self,data)
+	return true
+end
+
+addAiSkills("chongcha").getTurnUseCard = function(self)
+	local n = -1
+	for _,m in sgs.list(self.player:getMarkNames())do
+		if m:startsWith("&mobilegeyuan+:+") then
+			local ms = m:split(":")
+			n = tonumber(ms[#ms])
+		end
+	end
+	if n<0 then return end
+	local cards = {}
+	local handcards = sgs.QList2Table(self.player:getCards("he"))
+	for _,c in sgs.list(handcards)do
+		if self.player:hasEquip(c) then continue end
+		if c:isAvailable(self.player) and self:aiUseCard(c).card then
+			if c:getNumber()==n then return end
+			table.insert(cards,c)
+		end
+	end
+    self:sortByKeepValue(handcards)--按保留值排序
+	for _,c in sgs.list(handcards)do
+		if table.contains(cards,c) or self.player:isJilei(c) then continue end
+		return sgs.Card_Parse("@ChongchaCard="..c:toString())
+	end
+end
+
+sgs.ai_skill_use_func["ChongchaCard"] = function(card,use,self)
+	use.card = card
+end
+
+sgs.ai_use_value.ChongchaCard = 4.4
+sgs.ai_use_priority.ChongchaCard = 9.8
+
+sgs.ai_skill_cardask["duohui0"] = function(self,data,pattern)
+    local tp = data:toPlayer()
+	if not self:isEnemy(tp) or self:getOverflow()>0 then
+		return true
+	end
+    return "."
+end
+
+sgs.ai_skill_cardask["duohui1"] = function(self,data,pattern)
+    local tp = data:toPlayer()
+	if self:isFriend(tp) then
+		return true
+	end
+    return "."
+end
+
+addAiSkills("yueyuan").getTurnUseCard = function(self)
+	return sgs.Card_Parse("@YueyuanCard=.")
+end
+
+sgs.ai_skill_use_func["YueyuanCard"] = function(card,use,self)
+	use.card = card
+end
+
+sgs.ai_use_value.YueyuanCard = 4.4
+sgs.ai_use_priority.YueyuanCard = 2.8
+
+sgs.ai_skill_cardask["cangjia0"] = function(self,data,pattern)
+    local use = data:toCardUse()
+	if self:isEnemy(use.to:last()) or self:isFriend(use.to:last()) and use.to:length()==1 then
+		return true
+	end
+    return "."
+end
+
+sgs.ai_target_revises.cangjia = function(to,card,self)
+    if card:getTypeId()>0 and self.player~=to then
+		for _,m in sgs.list(to:getMarkNames())do
+			if m:startsWith("&cangjia+") then
+				if m:contains(card:getSuitString()) then return end
+				if card:isDamageCard() and self:isEnemy(to) and self:getOverflow()>=0
+				then return end
+				return true
+			end
+		end
+	end
+end
+
+sgs.ai_skill_invoke.kuangwu = function(self,data)
+	local tp = data:toPlayer()
+	if self:isEnemy(tp) then
+		return self:getOverflow()>=0
+	end
+	return not self:isFriend(tp) and self.player:getHandcardNum()<tp:getHandcardNum()
+end
+
+sgs.ai_skill_invoke.futu = function(self,data)
+	return true
+end
+
+addAiSkills("jingtu").getTurnUseCard = function(self)
+	local cards = {}
+	local r,b = 0,0
+	for _,id in sgs.qlist(self.player:getPile("futu_yue"))do
+		local c = sgs.Sanguosha:getCard(id)
+		table.insert(cards,c)
+		if c:isRed() then r = r+1
+		elseif c:isBlack() then b = b+1 end
+	end
+	local ids = {}
+    self:sortByUseValue(cards)--按保留值排序
+	for _,c in sgs.list(cards)do
+		if r==b then
+			if r>1 then table.insert(ids,c:toString()) end
+		elseif r>b then
+			if c:isRed() then
+				table.insert(ids,c:toString())
+			end
+		elseif r<b then
+			if c:isBlack() then
+				table.insert(ids,c:toString())
+			end
+		end
+	end
+	return #ids>2
+	and sgs.Card_Parse("@JingtuCard="..table.concat(ids,"+"))
+end
+
+sgs.ai_skill_use_func["JingtuCard"] = function(card,use,self)
+	self:sort(self.friends)
+	self:sort(self.enemies)
+	if card:isRed() then
+		for _,p in sgs.list(self.friends)do
+			use.card = card
+			use.to:append(p)
+			break
+		end
+	elseif card:isBlack() then
+		for _,p in sgs.list(self.enemies)do
+			if self:damageIsEffective(p) and p:getHp()>=card:subcardsLength() then
+				use.card = card
+				use.to:append(p)
+				break
+			end
+		end
+	else
+		for _,p in sgs.list(self.friends)do
+			use.to:append(p)
+			break
+		end
+		for _,p in sgs.list(self.enemies)do
+			if use.to:length()==1 and self:damageIsEffective(p) and p:getHp()>=card:subcardsLength()/2 then
+				use.card = card
+				use.to:append(p)
+				break
+			end
+		end
+	end
+end
+
+sgs.ai_use_value.JingtuCard = 4.4
+sgs.ai_use_priority.JingtuCard = 9.8
+
+sgs.ai_skill_use["@@jiebian"] = function(self,prompt)
+	local mc = self:getMaxCard()
+   	for _,id in sgs.qlist(self.player:getPile("futu_yue"))do
+		local c = sgs.Sanguosha:getCard(id)
+		if mc then
+			if mc:getNumber()<c:getNumber() then
+				mc = c
+			end
+		else
+			mc = c
+		end
+	end
+	local n = 999
+	local destlist = sgs.QList2Table(self.room:getAlivePlayers()) -- 将列表转换为表
+    for _,p in sgs.list(destlist)do
+		n = math.min(n,p:getHp())
+	end
+	self:sort(destlist)
+    for _,p in sgs.list(destlist)do
+		if (self:isEnemy(p) or self:isWeak(p) and self:isFriend(p))
+		and self.player:canPindian(p) and (p:getHp()<=n or p:hasFlag("CurrentPlayer")) and mc then
+			sgs.ai_skill_choice.jiebian = "jiebian1"
+			if self:isEnemy(p) then
+				sgs.ai_skill_choice.jiebian = "jiebian2"
+			end
+			return "@JiebianCard="..mc:toString().."->"..p:objectName()
+		end
+	end
+end
+
+sgs.ai_skill_cardask["shishu0"] = function(self,data,pattern)
+    local move = data:toMoveOneTime()
+	if not self:isFriend(BeMan(self.room,move.to)) then
+		return true
+	end
+	local handcards = sgs.QList2Table(self.player:getCards("he"))
+    self:sortByKeepValue(handcards)--按保留值排序
+	for i,c in sgs.list(handcards)do
+		if i<#handcards/2 and sgs.Sanguosha:matchPattern(pattern,self.player,c) then
+			return c:toString()
+		end
+	end
+    return "."
+end
+
+sgs.ai_skill_invoke.mobilejili = function(self,data)
+	local tp = data:toPlayer()
+	return not self:isFriend(tp)
+end
+
+sgs.ai_skill_playerchosen.bsgongmou = function(self,players)
+	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	self:sort(destlist,nil,true)
+    for _,p in sgs.list(destlist)do
+		if self:isFriend(p)
+		then return p end
+	end
+    for _,p in sgs.list(destlist)do
+		if not self:isEnemy(p)
+		then return p end
+	end
+end
+
+addAiSkills("zhengshuo").getTurnUseCard = function(self)
+	return sgs.Card_Parse("@ZhengshuoCard=.")
+end
+
+sgs.ai_skill_use_func["ZhengshuoCard"] = function(card,use,self)
+	local n = 0
+    for _,p in sgs.qlist(self.room:getAlivePlayers())do
+		if self:isFriend(p) then n = n+4-p:getCardCount()
+		else n = n-(4-p:getCardCount()) end
+	end
+	if n>0 then
+		use.card = card
+	end
+end
+
+sgs.ai_use_value.ZhengshuoCard = 4.4
+sgs.ai_use_priority.ZhengshuoCard = 8.8
+
+addAiSkills("bsrunwei").getTurnUseCard = function(self)
+	return sgs.Card_Parse("@BsRunweiCard=.")
+end
+
+sgs.ai_skill_use_func["BsRunweiCard"] = function(card,use,self)
+	self:sort(self.friends)
+    for _,p in sgs.list(self.friends)do
+		if p:getMark(self.player:objectName().."bsrunweiTo-Clear")<1 and self:canDraw(p) then
+			use.to:append(p)
+			use.card = card
+			return
+		end
+	end
+    for _,p in sgs.list(self.friends)do
+		if p:getMark(self.player:objectName().."bsrunweiTo-Clear")<1 then
+			use.to:append(p)
+			use.card = card
+			return
+		end
+	end
+
+end
+
+sgs.ai_use_value.BsRunweiCard = 4.4
+sgs.ai_use_priority.BsRunweiCard = 8.8
+
+sgs.ai_skill_invoke.shuanghuai = function(self,data)
+	local tp = data:toPlayer()
+	return self:isFriend(tp)
+end
+
+addAiSkills("ganggeng").getTurnUseCard = function(self)
+	if self:getOverflow()<2 then return end
+	local ids = {}
+	local handcards = sgs.QList2Table(self.player:getCards("h"))
+    self:sortByKeepValue(handcards)--按保留值排序
+	for _,c in sgs.list(handcards)do
+		table.insert(ids,c:toString())
+		if #ids>1 then
+			return sgs.Card_Parse("@GanggengCard="..table.concat(ids,"+"))
+		end
+	end
+end
+
+sgs.ai_skill_use_func["GanggengCard"] = function(card,use,self)
+	self:sort(self.friends_noself,nil,true)
+    for _,p in sgs.list(self.friends_noself)do
+		if p:getHandcardNum()>=self.player:getHandcardNum() then
+			use.to:append(p)
+			use.card = card
+			break
+		end
+	end
+end
+
+sgs.ai_use_value.GanggengCard = 4.4
+sgs.ai_use_priority.GanggengCard = 0.8
+
+sgs.ai_skill_invoke.bssijian = function(self,data)
+	return true
+end
+
+sgs.ai_skill_choice.bssijian = function(self,choices)
+	if self:isFriend(self.room:getCurrent()) then return "bssijian2" end
+	for _,p in sgs.list(self.enemies)do
+		if p:getMark("&bssijian+1")<1 then
+			return "bssijian1"
+		end
+	end
+	local items = choices:split("+")
+	if table.contains(items,"beishui") and self.player:getMark("bssijian_beishui")<self.player:getHp() then
+		return "beishui"
+	end
+	return items[1]
+end
+
+sgs.ai_skill_playerchosen.renxing = function(self,players)
+	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	self:sort(destlist)
+    for _,p in sgs.list(destlist)do
+		if self:doDisCard(p,"he")
+		then return p end
+	end
+end
+
+sgs.ai_skill_invoke.renxing = function(self,data)
+	return true
+end
+
+addAiSkills("jiejievs").getTurnUseCard = function(self)
+	return sgs.Card_Parse("@JiejieCard=.")
+end
+
+sgs.ai_skill_use_func["JiejieCard"] = function(card,use,self)
+	self:sort(self.friends)
+    for _,p in sgs.list(self.friends)do
+		if p:hasSkill("jiejie") then
+			use.to:append(p)
+			use.card = card
+			return
+		end
+	end
+end
+
+sgs.ai_use_value.JiejieCard = 4.4
+sgs.ai_use_priority.JiejieCard = 8.8
+
+sgs.ai_skill_choice.jiejie = function(self,choices,data)
+	local items = choices:split("+")
+	local tp = data:toPlayer()
+	if self:isFriend(tp) then
+		local s2n = {}
+		local m = 0
+		for _,c in sgs.list(getKnownCards(tp,self.player,"h"))do
+			if c:isKindOf("Slash") then
+				s2n[c:getSuitString()] = (s2n[c:getSuitString()] or 0)+1
+				m = math.max(m,s2n[c:getSuitString()])
+			end
+		end
+		for s,n in pairs(s2n)do
+			if n>=m then
+				return s
+			end
+		end
+	end
+	--return items[1]
+end
+
+sgs.ai_skill_playerchosen.bsqingshi = function(self,players)
+	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	self:sort(destlist)
+    for _,p in sgs.list(destlist)do
+		if self:isFriend(p) and self:canDraw(p)
+		then return p end
+	end
+    for _,p in sgs.list(destlist)do
+		if self:isEnemy(p) and self:doDisCard(p,"he")
+		then return p end
+	end
+end
+
+sgs.ai_skill_invoke.qingdao = function(self,data)
+	return true
+end
+
+sgs.ai_skill_playerchosen.qingdao = function(self,players)
+	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	self:sort(destlist)
+    for _,p in sgs.list(destlist)do
+		if self:doDisCard(p,"ej")
+		then return p end
+	end
+    for _,p in sgs.list(destlist)do
+		if self:isEnemy(p) and self:doDisCard(p,"h") and p:getHandcardNum()==1 and self:isWeak(p)
+		then return p end
+	end
+end
+
+sgs.ai_skill_playerschosen.xiugeng = function(self,players)
+	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	self:sort(destlist)
+	local tps = {}
+    for _,p in sgs.list(destlist)do
+		if #tps<2 and self:isFriend(p)
+		then table.insert(tps,p) end
+	end
+    return tps
+end
+
+sgs.ai_skill_invoke.chenshe = function(self,data)
+	return self:isFriend(data:toPlayer())
+end
+
+addAiSkills("bstuntian").getTurnUseCard = function(self)
+	return sgs.Card_Parse("@BsTuntianCard=.")
+end
+
+sgs.ai_skill_use_func["BsTuntianCard"] = function(card,use,self)
+	self:sort(self.friends)
+    for _,p in sgs.list(self.friends)do
+		if #self:poisonCards("e",p)>0 then
+			use.to:append(p)
+			use.card = card
+			return
+		end
+	end
+	self:sort(self.enemies)
+    for _,p in sgs.list(self.enemies)do
+		if #self:poisonCards("e",p)<1 and p:getCardCount()>0 then
+			use.to:append(p)
+			use.card = card
+			return
+		end
+	end
+end
+
+sgs.ai_use_value.BsTuntianCard = 4.4
+sgs.ai_use_priority.BsTuntianCard = 7.8
+
+addAiSkills("bsjixi").getTurnUseCard = function(self)
+    local cards = {}
+	for _,id in sgs.qlist(self.player:getPile("bstun_tian"))do
+		table.insert(cards,sgs.Sanguosha:getCard(id))
+	end
+	return cards
+end
+
+function sgs.ai_cardsview.bsjixi(self,class_name,player)
+	for _,id in sgs.qlist(player:getPile("bstun_tian"))do
+		if sgs.Sanguosha:getCard(id):isKindOf(class_name) then
+			return id
+		end
+	end
+end
+
+sgs.ai_guhuo_card.bsqingyan = function(self,card_name,class_name)
+    if self:getCardsNum(class_name)<1 then
+		local ids = {}
+		local handcards = sgs.QList2Table(self.player:getCards("h"))
+		self:sortByKeepValue(handcards)--按保留值排序
+		for _,c in sgs.list(handcards)do
+			table.insert(ids,c:toString())
+			if #ids>self.player:getMark("&bsqingyan_lun") then
+				return "@BsQingyanCard="..table.concat(ids,"+")..":"..card_name
+			end
+		end
+	end
+end
+
+addAiSkills("ceduan").getTurnUseCard = function(self)
+	return sgs.Card_Parse("@CeduanCard=.")
+end
+
+sgs.ai_skill_use_func["CeduanCard"] = function(card,use,self)
+	self:sort(self.enemies)
+    for _,p in sgs.list(self.enemies)do
+		if p:inMyAttackRange(self.player) and self:slashIsEffective(dummyCard(),p) then
+			use.to:append(p)
+			use.card = card
+			return
+		end
+	end
+end
+
+sgs.ai_use_value.CeduanCard = 4.4
+sgs.ai_use_priority.CeduanCard = 1.8
+
+sgs.ai_skill_invoke.guxuan = function(self,data)
+	if self.player:canDiscard("h") then
+		local n = 0
+		for _,p in sgs.qlist(self.room:getOtherPlayers(self.player))do
+			if self:doDisCard(p,"h") then n = n+1 end
+		end
+		sgs.ai_skill_choice.guxuan = "guxuan0=hand_area"
+		if n>self.player:getHandcardNum()/2 then
+			return true
+		end
+	end
+	if self.player:canDiscard("e") then
+		local n = 0
+		for _,p in sgs.qlist(self.room:getOtherPlayers(self.player))do
+			if self:doDisCard(p,"e") then n = n+1 end
+		end
+		sgs.ai_skill_choice.guxuan = "guxuan0=equip_area"
+		if n>self.player:getEquips():length()/2 then
+			return true
+		end
+	end
+	if self.player:canDiscard("j") then
+		local n = 0
+		for _,p in sgs.qlist(self.room:getOtherPlayers(self.player))do
+			if self:doDisCard(p,"j") then n = n+1 end
+		end
+		sgs.ai_skill_choice.guxuan = "guxuan0=judge_area"
+		if n>self.player:getJudgingArea():length()/2 then
+			return true
+		end
+	end
+end
+
+sgs.ai_skill_playerschosen.guxuan = function(self,players,m)
+	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	self:sort(destlist)
+	local tps = {}
+    for _,p in sgs.list(destlist)do
+		if #tps<m and self:doDisCard(p,string.sub(sgs.ai_skill_choice.guxuan,9,9))
+		then table.insert(tps,p) end
+	end
+    return tps
+end
+
+sgs.ai_skill_invoke.juejin = function(self,data)
+	return self:getAllPeachNum()+self.player:getHp()<1
+end
+
+sgs.ai_skill_choice.juejin = function(self,choices,data)
+	local items = choices:split("+")
+	return items[1]
+end
+
+sgs.ai_skill_playerchosen.juejin = function(self,players)
+	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	self:sort(destlist)
+    for _,p in sgs.list(destlist)do
+		if self:isEnemy(p) and self:damageIsEffective(p,"F",self.player)
+		then return p end
+	end
+    for _,p in sgs.list(destlist)do
+		if self:isEnemy(p)
+		then return p end
+	end
+end
+
+sgs.ai_skill_invoke.huitian = function(self,data)
+	return self:isWeak() and #self.friends<=#self.enemies/2
+end
+
+addAiSkills("xingzhen").getTurnUseCard = function(self)
+    local cards = {}
+	for _,id in sgs.qlist(self.room:getDrawPile())do
+		table.insert(cards,sgs.Sanguosha:getCard(id))
+		if #cards>6 then break end
+	end
+	self:sortByDynamicUsePriority(cards)
+    for _,c in sgs.list(cards)do
+		if self.player:hasFlag("CurrentPlayer") then
+			if c:getTypeId()~=2 then continue end
+		else
+			if c:getTypeId()~=1 then continue end
+		end
+		if c:isAvailable(self.player) then
+			self.xingzhen_use = self:aiUseCard(c)
+			if self.xingzhen_use.card then
+				if c:canRecast() and self.xingzhen_use.to:isEmpty() then continue end
+				self.xingzhen_id = c:getId()
+				sgs.ai_use_priority.XingzhenCard = sgs.ai_use_priority[c:getClassName()]
+				return sgs.Card_Parse("@XingzhenCard=.")
+			end
+		end
+	end
+end
+
+sgs.ai_skill_use_func["XingzhenCard"] = function(card,use,self)
+	use.card = card
+end
+
+sgs.ai_use_value.XingzhenCard = 9.4
+sgs.ai_use_priority.XingzhenCard = 9.8
+
+function sgs.ai_cardsview.xingzhen(self,class_name,player)
+	for i,id in sgs.qlist(self.room:getDrawPile())do
+		if i<7 and sgs.Sanguosha:getCard(id):isKindOf(class_name) then
+			self.xingzhen_id = id
+			return "@XingzhenCard=.:"..sgs.Sanguosha:getCard(id):objectName()
+		end
+	end
+end
+
+sgs.ai_skill_askforag.xingzhen = function(self,card_ids)
+	for i,id in sgs.list(card_ids)do
+		if self.xingzhen_id==id then
+			return id
+		end
+	end
+	return card_ids[1] or -1
+end
+
+sgs.ai_skill_use["@@xingzhen!"] = function(self,prompt)
+	local d = self.xingzhen_use
+	if d.card then
+		local tos = {}
+		for _,p in sgs.qlist(d.to)do
+			table.insert(tos,p:objectName())
+		end
+		return d.card:toString().."->"..table.concat(tos,"+")
+	end
+end
 
 
 
