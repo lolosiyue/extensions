@@ -80,12 +80,11 @@ sgs.ai_skill_invoke.zuhuanghan = function(self,data)
 end
 
 sgs.ai_fill_skill.zuguangu = function(self)
-    return sgs.Card_Parse("#zuguanguCard::")
+    return sgs.Card_Parse("#zuguanguCard:.:")
 end
 
 sgs.ai_skill_use_func["#zuguanguCard"] = function(card,use,self)
-	local n = self.player:getChangeSkillState("zuguangu")
-	if n==1 then
+	if self.player:getChangeSkillState("zuguangu")==1 then
 		use.card = card
 	else
 		self:sort(self.enemies,"handcard",true)
@@ -145,13 +144,13 @@ sgs.ai_skill_use["@@zuguangu"] = function(self,prompt)
 			local dummy = self:aiUseCard(c)
 			if dummy.card then
 				if c:canRecast() and dummy.to:isEmpty() then continue end
-      	local tos = {}
-       	for _,p in sgs.list(dummy.to)do
-       		table.insert(tos,p:objectName())
-       	end
+				local tos = {}
+				for _,p in sgs.list(dummy.to)do
+					table.insert(tos,p:objectName())
+				end
 				return c:toString().."->"..table.concat(tos,"+")
-    end
-end
+			end
+		end
 	end
 end
 
@@ -243,12 +242,12 @@ sgs.ai_skill_use_func["#zulianzhuCard"] = function(card,use,self)
 					end
 				end
 			else
-				self.zulianzhuFrom = p
 				for _,ep in sgs.list(self.enemies)do
 					if self.player:canSlash(ep,nil,false)
 					and p:canSlash(ep,nil,false) then
 						use.card = card
 						use.to:append(p)
+						self.zulianzhuEp= ep
 						return
 					end
 				end
@@ -272,12 +271,12 @@ sgs.ai_skill_use_func["#zulianzhuCard"] = function(card,use,self)
 					end
 				end
 			else
-				self.zulianzhuFrom = p
 				for _,ep in sgs.list(self.enemies)do
 					if self.player:canSlash(ep,nil,false)
 					and p~=ep then
 						use.card = card
 						use.to:append(p)
+						self.zulianzhuEp = ep
 						return
 					end
 				end
@@ -290,16 +289,16 @@ sgs.ai_use_value.zulianzhuCard = 3.4
 sgs.ai_use_priority.zulianzhuCard = 5.2
 
 sgs.ai_skill_playerchosen.zulianzhu = function(self,players)
-    local from = self.zulianzhuFrom
-	if self:isFriend(from) then
-		for _,target in sgs.qlist(players) do
+    local ep = self.zulianzhuEp
+	if ep and self:isFriend(ep) then
+		for _,target in sgs.list(players)do
 			if self:isEnemy(target)
 			and self.player:canSlash(target,nil,false)
-			and from:canSlash(target,nil,false)
+			and ep:canSlash(target,nil,false)
 			then return target end
 		end
 	end
-    for _,target in sgs.qlist(players) do
+    for _,target in sgs.list(players)do
 		if not self:isFriend(target)
 		then return target end
 	end
@@ -308,7 +307,7 @@ end
 sgs.ai_skill_cardask["@zuqiajue-invoke"] = function(self,data,pattern)
 	local cards = self.player:getCards("he")
 	cards = sgs.QList2Table(cards)
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)--按保留值排序
 	local n = 0
    	for _,c in sgs.list(cards)do
 		n = n+c:getNumber()
@@ -371,11 +370,11 @@ end
 sgs.ai_skill_use["@@ny_shenjun"] = function(self,prompt)
 	local n = self.player:getMark("ny_shenjun")
     local cards = self.player:getCards("h")
-    cards = sgs.QList2Table(cards) -- 将列表转换为表
+    cards = sgs.QList2Table(cards)--将列表转换为表
 	if n>#cards/2 then return end
     local dc = self.player:property("ny_shenjun"):toString()
 	dc = dummyCard(dc)
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)--按保留值排序
 	for _,h in sgs.list(cards)do
     	dc:addSubcard(h)
 		if dc:subcardsLength()>=n then break end
@@ -527,7 +526,7 @@ sgs.ai_skill_choice["kezulieshi"] = function(self, choices, data)
 end
 
 sgs.ai_skill_playerchosen.kezulieshi = function(self, players)
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	local destlist = sgs.QList2Table(players)--将列表转换为表
 	self:sort(destlist,"handcard",true)
     for _,target in sgs.list(destlist)do
 		if self:isEnemy(target)
@@ -540,7 +539,7 @@ sgs.ai_skill_playerchosen.kezulieshi = function(self, players)
 end
 
 sgs.ai_skill_playerchosen.kezufangzhen = function(self, players)
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	local destlist = sgs.QList2Table(players)--将列表转换为表
 	self:sort(destlist,"hp")
     for _,target in sgs.list(destlist)do
 		if self:isFriend(target)
@@ -564,11 +563,11 @@ end
 
 sgs.ai_skill_playerchosen.kezuliuju = function(self, players)
     local cards = self.player:getCards("h")
-    cards = sgs.QList2Table(cards) -- 将列表转换为表
+    cards = sgs.QList2Table(cards)--将列表转换为表
 	if #cards<2 then return end
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)--按保留值排序
 	self.kezuliuju_card = cards[1]
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	local destlist = sgs.QList2Table(players)--将列表转换为表
 	self:sort(destlist,"handcard")
     for _,target in sgs.list(destlist)do
 		if self:isEnemy(target)
@@ -585,7 +584,7 @@ sgs.ai_skill_use["@@kezuliuju"] = function(self,prompt)
 	for _,id in sgs.list(self.player:getTag("kezuliujuIds"):toIntList())do
     	table.insert(dcs,sgs.Sanguosha:getCard(id))
 	end
-    self:sortByKeepValue(dcs,true) -- 按保留值排序
+    self:sortByKeepValue(dcs,true)--按保留值排序
 	for _,c in sgs.list(dcs)do
 		if c:isAvailable(self.player) then
 			local dummy = self:aiUseCard(c)
@@ -607,8 +606,8 @@ end
 
 sgs.ai_skill_use_func["#kezuxuminCard"] = function(card,use,self)
     local cards = self.player:getCards("he")
-    cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    cards = sgs.QList2Table(cards)--将列表转换为表
+    self:sortByKeepValue(cards)--按保留值排序
 	for _,h in sgs.list(cards)do
 		local wgfd = sgs.Sanguosha:cloneCard("amazing_grace")
 		wgfd:setSkillName("kezuxumin")
@@ -634,7 +633,7 @@ sgs.ai_use_value.kezuxuminCard = 3.4
 sgs.ai_use_priority.kezuxuminCard = 4.2
 
 sgs.ai_skill_playerschosen.kezulianhe = function(self,players,x,n)
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	local destlist = sgs.QList2Table(players)--将列表转换为表
 	self:sort(destlist,"handcard")
 	local tos = {}
     for _,p in sgs.list(destlist)do
@@ -665,7 +664,7 @@ sgs.ai_skill_discard.kezulianhe = function(self,n,x)
 		if #cards>=n then break end
 	end
     local handcards = sgs.QList2Table(self.player:getCards("he"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
+    self:sortByKeepValue(handcards)--按保留值排序
    	for _,h in sgs.list(handcards)do
 		if self:isFriend(from) and #cards<1 or #cards>=n
 		or table.contains(cards,h:getEffectiveId()) then continue end
@@ -683,11 +682,11 @@ end
 
 sgs.ai_skill_playerchosen.kezuhuanjia = function(self, players)
     local cards = self.player:getCards("h")
-    cards = sgs.QList2Table(cards) -- 将列表转换为表
+    cards = sgs.QList2Table(cards)--将列表转换为表
 	if #cards<2 then return end
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)--按保留值排序
 	self.kezuliuju_card = cards[1]
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	local destlist = sgs.QList2Table(players)--将列表转换为表
 	self:sort(destlist,"handcard")
     for _,target in sgs.list(destlist)do
 		if self:isEnemy(target)
@@ -704,7 +703,7 @@ sgs.ai_skill_use["@@kezuhuanjia"] = function(self,prompt)
 	for _,id in sgs.list(self.player:getTag("kezuhuanjiaIds"):toIntList())do
     	table.insert(dcs,sgs.Sanguosha:getCard(id))
 	end
-    self:sortByKeepValue(dcs,true) -- 按保留值排序
+    self:sortByKeepValue(dcs,true)--按保留值排序
 	for _,c in sgs.list(dcs)do
 		if c:isAvailable(self.player) then
 			local dummy = self:aiUseCard(c)
@@ -732,7 +731,7 @@ sgs.ai_fill_skill.kezujiexuan = function(self)
 		end
 		if can then
 			local cards = sgs.QList2Table(self.player:getCards("he"))
-			self:sortByKeepValue(cards) -- 按保留值排序
+			self:sortByKeepValue(cards)--按保留值排序
 			for _,c in sgs.list(cards)do
 				if c:getEffectiveId()==can:getEffectiveId() then continue end
 				local dc = dummyCard("snatch")
@@ -753,7 +752,7 @@ sgs.ai_fill_skill.kezujiexuan = function(self)
 			then return dc end
 		end
 		local cards = sgs.QList2Table(self.player:getCards("e"))
-		self:sortByKeepValue(cards) -- 按保留值排序
+		self:sortByKeepValue(cards)--按保留值排序
 		for _,e in sgs.list(cards)do
 			local dc = dummyCard("snatch")
 			dc:addSubcard(e)
@@ -771,7 +770,7 @@ sgs.ai_fill_skill.kezujiexuan = function(self)
 		end
 		if can then
 			local cards = sgs.QList2Table(self.player:getCards("he"))
-			self:sortByKeepValue(cards) -- 按保留值排序
+			self:sortByKeepValue(cards)--按保留值排序
 			for _,c in sgs.list(cards)do
 				if c:getEffectiveId()==can:getEffectiveId() then continue end
 				local dc = dummyCard("dismantlement")
@@ -792,7 +791,7 @@ sgs.ai_fill_skill.kezujiexuan = function(self)
 			then return dc end
 		end
 		local cards = sgs.QList2Table(self.player:getCards("e"))
-		self:sortByKeepValue(cards) -- 按保留值排序
+		self:sortByKeepValue(cards)--按保留值排序
 		for _,e in sgs.list(cards)do
 			local dc = dummyCard("dismantlement")
 			dc:addSubcard(e)
@@ -923,9 +922,9 @@ sgs.ai_skill_use_func["#kezufuxunCard"] = function(card,use,self)
 		if p:getMark("&kezufuxunmove-PlayClear")<1
 		and p:getHandcardNum()-self.player:getHandcardNum()==-2 then
 			local cards = self.player:getCards("h")
-			cards = sgs.QList2Table(cards) -- 将列表转换为表
+			cards = sgs.QList2Table(cards)--将列表转换为表
 			if #cards<2 then continue end
-			self:sortByKeepValue(cards) -- 按保留值排序
+			self:sortByKeepValue(cards)--按保留值排序
 			card:addSubcard(cards[1])
 			use.to:append(p)
 			use.card = card
@@ -936,9 +935,9 @@ sgs.ai_skill_use_func["#kezufuxunCard"] = function(card,use,self)
 		if p:getMark("&kezufuxunmove-PlayClear")<1
 		and p:getHandcardNum()-self.player:getHandcardNum()==-2 then
 			local cards = self.player:getCards("h")
-			cards = sgs.QList2Table(cards) -- 将列表转换为表
+			cards = sgs.QList2Table(cards)--将列表转换为表
 			if #cards<3 then continue end
-			self:sortByKeepValue(cards) -- 按保留值排序
+			self:sortByKeepValue(cards)--按保留值排序
 			card:addSubcard(cards[1])
 			use.to:append(p)
 			use.card = card
@@ -964,8 +963,8 @@ sgs.ai_skill_askforag.kezufuxun = function(self,card_ids)
 	end
 	self:sortByUseValue(to_cards)
 	local cards = self.player:getCards("he")
-	cards = sgs.QList2Table(cards) -- 将列表转换为表
-	self:sortByKeepValue(cards) -- 按保留值排序
+	cards = sgs.QList2Table(cards)--将列表转换为表
+	self:sortByKeepValue(cards)--按保留值排序
 	for _,c in sgs.list(to_cards)do
 		for i,h in sgs.list(cards)do
 			local dc = dummyCard(c:objectName())
@@ -1003,8 +1002,8 @@ end
 sgs.ai_skill_use["@@kezuchenyacz"] = function(self,prompt)
 	local valid = {}
     local cards = self.player:getCards("he")
-    cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    cards = sgs.QList2Table(cards)--将列表转换为表
+    self:sortByKeepValue(cards)--按保留值排序
 	for i,h in sgs.list(cards)do
 		if i>#cards/2 or self.player:isCardLimited(h,sgs.Card_MethodRecast)
 		or h:nameLength()~=self.player:getHandcardNum() then continue end
@@ -1018,7 +1017,7 @@ end
 sgs.ai_fill_skill.kezulilun = function(self)
 	local dc = sgs.Card_Parse("#kezulilunCard:.:")
     local cards = self.player:getCards("he")
-    cards = sgs.QList2Table(cards) -- 将列表转换为表
+    cards = sgs.QList2Table(cards)--将列表转换为表
     self:sortByDynamicUsePriority(cards)
 	local cs = {}
 	for _,h in sgs.list(cards)do
@@ -1037,7 +1036,7 @@ sgs.ai_fill_skill.kezulilun = function(self)
 			end
 		end
 	end
-    self:sortByKeepValue(cards) -- 按保留值排序
+    self:sortByKeepValue(cards)--按保留值排序
 	for i,h in sgs.list(cards)do
 		if i>#cards/2 or table.contains(self.toUse,h)
 		or self.player:isCardLimited(h,sgs.Card_MethodRecast) then continue end
@@ -1171,8 +1170,8 @@ end
 sgs.ai_skill_use["@@kezujianyuancz"] = function(self,prompt)
 	local valid = {}
     local cards = self.player:getCards("he")
-    cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    cards = sgs.QList2Table(cards)--将列表转换为表
+    self:sortByKeepValue(cards)--按保留值排序
 	for i,h in sgs.list(cards)do
 		if i>#cards/2 or self.player:isCardLimited(h,sgs.Card_MethodRecast)
 		or h:nameLength()~=self.player:getMark("sgsjianyuantimes-PlayClear") then continue end
@@ -1197,8 +1196,8 @@ sgs.ai_fill_skill.zuchengqi = function(self)
 				local m = dc:nameLength()
 				dc:setSkillName("zuchengqi")
 				local cards = self.player:getCards("h")
-				cards = sgs.QList2Table(cards) -- 将列表转换为表
-				self:sortByKeepValue(cards) -- 按保留值排序
+				cards = sgs.QList2Table(cards)--将列表转换为表
+				self:sortByKeepValue(cards)--按保留值排序
 				for _,h in sgs.list(cards)do
 					local x = h:nameLength()
 					for _,c in sgs.list(cards)do
@@ -1230,8 +1229,8 @@ sgs.ai_fill_skill.zuchengqi = function(self)
 				local m = dc:nameLength()
 				dc:setSkillName("zuchengqi")
 				local cards = self.player:getCards("h")
-				cards = sgs.QList2Table(cards) -- 将列表转换为表
-				self:sortByKeepValue(cards) -- 按保留值排序
+				cards = sgs.QList2Table(cards)--将列表转换为表
+				self:sortByKeepValue(cards)--按保留值排序
 				for _,h in sgs.list(cards)do
 					local x = h:nameLength()
 					for _,c in sgs.list(cards)do
@@ -1283,8 +1282,8 @@ sgs.ai_guhuo_card.zuchengqi = function(self,toname,class_name)
 		local m = dc:nameLength()
 		dc:setSkillName("zuchengqi")
 		local cards = self.player:getCards("h")
-		cards = sgs.QList2Table(cards) -- 将列表转换为表
-		self:sortByKeepValue(cards) -- 按保留值排序
+		cards = sgs.QList2Table(cards)--将列表转换为表
+		self:sortByKeepValue(cards)--按保留值排序
 		for _,h in sgs.list(cards)do
 			local x = h:nameLength()
 			for _,c in sgs.list(cards)do
@@ -1303,7 +1302,7 @@ sgs.ai_guhuo_card.zuchengqi = function(self,toname,class_name)
 end
 
 sgs.ai_skill_playerchosen.zuchengqi = function(self, players)
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	local destlist = sgs.QList2Table(players)--将列表转换为表
 	self:sort(destlist,"handcard")
     for _,target in sgs.list(destlist)do
 		if self:isFriend(target)
@@ -1316,7 +1315,7 @@ sgs.ai_skill_playerchosen.zuchengqi = function(self, players)
 end
 
 sgs.ai_skill_playerchosen.zujieli = function(self, players)
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	local destlist = sgs.QList2Table(players)--将列表转换为表
 	self:sort(destlist)
     for _,target in sgs.list(destlist)do
 		self.zujieliTo = target
@@ -1341,8 +1340,8 @@ sgs.ai_skill_use["@@zujieli"] = function(self,prompt)
 		table.insert(cns,sgs.Sanguosha:getCard(id))
 	end
 	local to = self.zujieliTo
-    self:sortByKeepValue(cards,self:isEnemy(to)) -- 按保留值排序
-    self:sortByKeepValue(cns,self:isFriend(to)) -- 按保留值排序
+    self:sortByKeepValue(cards,self:isEnemy(to))--按保留值排序
+    self:sortByKeepValue(cns,self:isFriend(to))--按保留值排序
 	for _,h in sgs.list(cards)do
 		for _,c in sgs.list(cns)do
 			if table.contains(valid,c:getEffectiveId())
@@ -1365,7 +1364,7 @@ sgs.ai_skill_use["@@zujieli"] = function(self,prompt)
 end
 
 sgs.ai_skill_playerchosen.kezutanque = function(self, players)
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	local destlist = sgs.QList2Table(players)--将列表转换为表
 	self:sort(destlist)
     for _,target in sgs.list(destlist)do
 		if self:isEnemy(target)
@@ -1399,7 +1398,7 @@ end
 
 sgs.ai_skill_use_func["#kezushengmoCard"] = function(card,use,self)
 	local ut = self.kezushengmoUse
-	if ut and ut.card then
+	if ut.card then
 		use.card = card
 		use.to = ut.to
 	end
@@ -1412,14 +1411,14 @@ sgs.ai_guhuo_card.kezushengmo = function(self,toname,class_name)
     if self.player:getMark("kezushengmo_guhuo_remove_"..toname)>0
 	or self:getCardsNum(class_name)>0 then return end
 	return "#kezushengmoCard:.:"..toname
-	end
+end
 
 sgs.ai_fill_skill.zukaiji = function(self)
 	if self.player:getMark("sgszukaijiTo_lun")<1 then
 		for _,h in sgs.list(self.player:getHandcards())do
 			if h:isAvailable(self.player) and self:aiUseCard(h).card then
 				return sgs.Card_Parse("#zukaijiCard:.:")
-end
+			end
 		end
 	end
 	return self:getOverflow()>0
@@ -1476,7 +1475,7 @@ sgs.ai_skill_invoke.zuanran = function(self,data)
 end
 
 sgs.ai_skill_playerschosen.zuanran = function(self, players,x,n)
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	local destlist = sgs.QList2Table(players)--将列表转换为表
 	self:sort(destlist)
 	local tos = {}
     for _,p in sgs.list(destlist)do
@@ -1526,7 +1525,7 @@ sgs.ai_skill_invoke.zuqieyi = function(self,data)
 end
 
 sgs.ai_skill_playerchosen.zuquhuo = function(self, players)
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	local destlist = sgs.QList2Table(players)--将列表转换为表
 	self:sort(destlist)
     for _,target in sgs.list(destlist)do
 		if self:isFriend(target)
@@ -1540,7 +1539,7 @@ sgs.ai_skill_playerchosen.zuquhuo = function(self, players)
 end
 
 sgs.ai_skill_playerchosen.zujiewu = function(self, players)
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	local destlist = sgs.QList2Table(players)--将列表转换为表
 	self:sort(destlist,nil,true)
     for _,target in sgs.list(destlist)do
 		if not self:isFriend(target)
@@ -1627,8 +1626,8 @@ end
 sgs.ai_skill_use["@@zujuetu!"] = function(self,prompt)
 	local valid = {}
     local cards = self.player:getCards("h")
-    cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
+    cards = sgs.QList2Table(cards)--将列表转换为表
+    self:sortByKeepValue(cards)--按保留值排序
 	local suits = {}
 	for i,h in sgs.list(cards)do
 		if table.contains(suits,h:getSuit()) then continue end
@@ -1640,7 +1639,7 @@ sgs.ai_skill_use["@@zujuetu!"] = function(self,prompt)
 end
 
 sgs.ai_skill_playerchosen.zujuetu = function(self, players)
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	local destlist = sgs.QList2Table(players)--将列表转换为表
 	self:sort(destlist)
     for _,p in sgs.list(destlist)do
 		if self:isEnemy(p)
@@ -1680,8 +1679,8 @@ end
 
 sgs.ai_fill_skill.zukudu = function(self)
     local cards = self.player:getCards("he")
-    cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards,nil,"j") -- 按保留值排序
+    cards = sgs.QList2Table(cards)--将列表转换为表
+    self:sortByKeepValue(cards,nil,"j")--按保留值排序
 	local ids = {}
 	for _,c1 in sgs.list(cards)do
 		if table.contains(self.toUse,c1)
@@ -1710,7 +1709,7 @@ sgs.ai_skill_invoke.zujiannan = function(self,data)
 end
 
 sgs.ai_skill_playerchosen.zujiannan = function(self, players)
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	local destlist = sgs.QList2Table(players)--将列表转换为表
 	self:sort(destlist)
     for _,p in sgs.list(destlist)do
 		if self.player:getMark("zujiannan2-Clear")<1
@@ -1743,7 +1742,7 @@ sgs.ai_skill_cardask.zujiannan4 = function(self,data,pattern)
 end
 
 sgs.ai_skill_playerchosen.zuyichi = function(self, players)
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	local destlist = sgs.QList2Table(players)--将列表转换为表
 	self:sort(destlist)
     for _,p in sgs.list(destlist)do
 		if self:isEnemy(p)
@@ -1757,7 +1756,7 @@ sgs.ai_skill_playerchosen.zuyichi = function(self, players)
 end
 
 sgs.ai_skill_playerschosen.zufennu = function(self, players,x,n)
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	local destlist = sgs.QList2Table(players)--将列表转换为表
 	self:sort(destlist)
 	local tos = {}
     for _,p in sgs.list(destlist)do
@@ -1765,14 +1764,13 @@ sgs.ai_skill_playerschosen.zufennu = function(self, players,x,n)
 	end
     for _,p in sgs.list(destlist)do
 		if #tos<x and not self:isFriend(p) and #self.enemies>0
-		and not table.contains(tos,p)
-		then table.insert(tos,p) end
+		and not table.contains(tos,p) then table.insert(tos,p) end
 	end
 	return tos
 end
 
 sgs.ai_skill_playerchosen.zuzelie = function(self, players)
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
+	local destlist = sgs.QList2Table(players)--将列表转换为表
 	self:sort(destlist)
     for _,p in sgs.list(destlist)do
 		sgs.ai_skill_choice.zuzelie = "zuzelie1"
@@ -1834,8 +1832,174 @@ sgs.ai_skill_cardask.zujuewei0 = function(self,data,pattern)
 	return "."
 end
 
+sgs.ai_skill_playerschosen.zudingan = function(self, players)
+	local destlist = sgs.QList2Table(players)--将列表转换为表
+	self:sort(destlist)
+	local tps = {}
+    for i,p in sgs.list(destlist)do
+		if i==#destlist or self:isFriend(p) and self:canDraw(p)
+		then table.insert(tps,p) end
+	end
+	return tps
+end
 
+sgs.ai_skill_use["@@zufuning"] = function(self,prompt)
+    local cards = self.player:getCards("he")
+    cards = sgs.QList2Table(cards)--将列表转换为表
+    self:sortByKeepValue(cards)--按保留值排序
+	local valid = {}
+	for i,h in sgs.list(cards)do
+    	if #valid>0 and self:isWeak() then
+			if h:getColor()~=sgs.Sanguosha:getCard(valid[1]):getColor() then continue end
+		end
+		table.insert(valid,h:getId())
+		if #valid>self.player:getMark("zufuningDoneNum-Clear")
+		or #valid>#cards/2 then break end
+	end
+	if #valid<1 then return end
+	self:sort(self.friends_noself)
+	for i,p in sgs.list(self.friends_noself)do
+		if self:canDraw(p) then
+			return "#zufuningCard:"..table.concat(valid,"+")..":->"..p:objectName()
+		end
+	end
+end
 
+sgs.ai_skill_invoke.zuheta = function(self,data)
+	for i,c in sgs.list(self:getTurnUse())do
+		if c:isKindOf("BasicCard") or c:isNDTrick() then
+			return true
+		end
+	end
+end
+
+sgs.ai_skill_playerschosen.zuheta = function(self, players)
+	local destlist = sgs.QList2Table(players)--将列表转换为表
+	self:sort(destlist)
+	local tps = {}
+	local use = self.player:getTag("zuheta_data"):toCardUse()
+    for i,p in sgs.list(destlist)do
+		if use.to:contains(p) then
+			if use.card:isDamageCard() then
+				if self:isFriend(p) and self:isWeak(p) then
+					table.insert(tps,p)
+				end
+			end
+		elseif self:canCanmou(p,use) then
+			table.insert(tps,p)
+		end
+	end
+	return tps
+end
+
+sgs.ai_skill_invoke.zuyingxiang = function(self,data)
+	return true
+end
+
+sgs.ai_skill_use["@@zuyingxiang!"] = function(self,prompt)
+	local dc = dummyCard(self.player:property("zuyingxiangCn"):toString(),"_zuyingxiang")
+	local dummy = self:aiUseCard(dc)
+	if dummy.card then
+		local tos = {}
+		for _,p in sgs.list(dummy.to)do
+			table.insert(tos,p:objectName())
+		end
+		return dc:toString().."->"..table.concat(tos,"+")
+	end
+    for _,p in sgs.qlist(self.room:getAlivePlayers())do
+		if self.player:canUse(dc,p) then return dc:toString().."->"..p:objectName() end
+	end
+end
+
+sgs.ai_skill_choice["zuyingxiang"] = function(self, choices, data)
+	local items = choices:split("+")
+	for _,s in sgs.list(items)do
+		if self.player:hasSkill(s,true) then
+			return items[#items]
+		end
+	end
+end
+
+sgs.ai_skill_invoke.zugezhi = function(self,data)
+	local damage = data:toDamage()
+	return self:doDisCard(damage.to,"he")
+end
+
+sgs.ai_skill_use["@@zugezhi"] = function(self,prompt)
+    local cards = {}
+	for i,id in sgs.qlist(self.player:getTag("zugezhiForAI"):toIntList())do
+    	table.insert(cards,sgs.Sanguosha:getCard(id))
+	end
+	local tps = {}
+	local valid = {}
+	for i=0,2 do
+		local c,p = self:getCardNeedPlayer(cards,true)
+		if c and p then
+			table.removeOne(cards,c)
+			table.insert(valid,c:getId())
+			if table.contains(tps,p:objectName()) then continue end
+			table.insert(tps,p:objectName())
+		end
+	end
+	if #valid<1 then return end
+	return "#zugezhiCard:"..table.concat(valid,"+")..":->"..table.concat(tps,"+")
+end
+
+sgs.ai_skill_use["@@zumingdian"] = function(self,prompt)
+    local cards = self.player:getCards("he")
+    cards = sgs.QList2Table(cards)--将列表转换为表
+    self:sortByKeepValue(cards)--按保留值排序
+	local valid = {}
+	for i,h in sgs.list(cards)do
+    	if h:getTypeId()~=1 or self.player:getMark(h:objectName().."zumingdianRecast_lun")>0
+		or self.player:isCardLimited(h,sgs.Card_MethodRecast) then continue end
+		table.insert(valid,h:getId())
+		if #valid>=#cards/2 then break end
+	end
+	if #valid<1 then return end
+	return "#zumingdianCard:"..table.concat(valid,"+")..":"
+end
+
+sgs.ai_fill_skill.zumingdian = function(self)
+    local cards = self.player:getCards("he")
+    cards = sgs.QList2Table(cards)--将列表转换为表
+    self:sortByKeepValue(cards)--按保留值排序
+	local valid = {}
+	for i,h in sgs.list(cards)do
+    	if h:getTypeId()~=1 or self.player:getMark(h:objectName().."zumingdianRecast_lun")>0
+		or table.contains(self.toUse,h) or self.player:isCardLimited(h,sgs.Card_MethodRecast) then continue end
+		table.insert(valid,h:getId())
+		if #valid>=#cards/2
+		then break end
+	end
+	if #valid<1 then return end
+	return sgs.Card_Parse("#zumingdianCard:"..table.concat(valid,"+")..":")
+end
+
+sgs.ai_skill_use_func["#zumingdianCard"] = function(card,use,self)
+	use.card = card
+end
+
+sgs.ai_use_value.zumingdianCard = 3.4
+sgs.ai_use_priority.zumingdianCard = 2.8
+
+sgs.ai_skill_playerchosen.zushize = function(self, players)
+	local destlist = sgs.QList2Table(players)--将列表转换为表
+	self:sort(destlist,nil,true)
+    for _,p in sgs.list(destlist)do
+		if self:isFriend(p)
+		then return p end
+	end
+end
+
+sgs.ai_skill_choice.zujianzhi = function(self,choices)
+	local items = choices:split("+")
+	if not self:isWeak() then return items[#items] end
+end
+
+sgs.ai_skill_askforyiji.zujianzhi = function(self,card_ids,tos)
+    return sgs.ai_skill_askforyiji.nosyiji(self,card_ids,tos)
+end
 
 
 

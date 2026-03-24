@@ -427,6 +427,7 @@ function SmartAI:useCardIronChain(card,use)
 		if isCurrent(use,friend) then continue end
 		if CanToCard(card,self.player,friend) then
 			use.to:append(friend)
+			use.card = card
 			if use.to:length()>extraTarget
 			then return end
 		end
@@ -438,6 +439,7 @@ function SmartAI:useCardIronChain(card,use)
 		and not(enemy:isChained() or self:needToLoseHp(enemy))
 		and self:isGoodTarget(enemy,self.enemies) then
 			use.to:append(enemy)
+			use.card = card
 			if use.to:length()>extraTarget
 			then return end
 		end
@@ -445,20 +447,24 @@ function SmartAI:useCardIronChain(card,use)
 	if not isCurrent(use,self.player)
 	and use.to:length()>0 and not use.to:contains(self.player) and CanToCard(card,self.player,self.player)
 	and self:needToLoseHp(self.player) and not(self.player:isChained() or hasJueqingEffect(self.player))
-	and (self:getCard("NatureSlash") or self:getCard("FireAttack") and self.player:getHandcardNum()>2)
-	then use.to:append(self.player) if use.to:length()>extraTarget then return end end
+	and (self:getCard("NatureSlash") or self:getCard("FireAttack") and self.player:getHandcardNum()>2) then
+		use.to:append(self.player)
+		use.card = card
+		if use.to:length()>extraTarget
+		then return end
+	end
 	for _,friend in ipairs(otherfriends)do
 		if isCurrent(use,friend) then continue end
 		if not use.to:contains(friend)
 		and CanToCard(card,self.player,friend)
 		and self:hasHuangenEffect(friend) then
 			use.to:append(friend)
+			use.card = card
 			if use.to:length()>extraTarget
 			then return end
 		end
 	end
-	if use.to:length()<2 then use.to:clear()
-	else use.card = card end
+	if use.to:length()<2 then use.to:clear() end
 end
 
 sgs.ai_card_intention.IronChain = function(self,card,from,tos)

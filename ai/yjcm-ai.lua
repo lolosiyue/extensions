@@ -29,6 +29,14 @@ sgs.ai_skill_askforag.luoying = function(self,card_ids)
 	return -1
 end
 
+sgs.ai_skill_invoke.olluoying = function(self,data)
+	local move = data:toMoveOneTime()
+	if #self:poisonCards(move.card_ids)>move.card_ids:length()/2 then
+		return false
+	end
+	return not self:needKongcheng(self.player,true)
+end
+
 sgs.ai_skill_use["@@jujian"] = function(self,prompt,method)
 	local needfriend = 0
 	local nobasiccard = -1

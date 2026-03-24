@@ -1926,26 +1926,26 @@ addAiSkills("mobileyaoming").getTurnUseCard = function(self)
 end
 
 sgs.ai_skill_use_func["MobileYaomingCard"] = function(card,use,self)
-	for _,ep in sgs.list(self.friends_noself)do
-		if ep:getHandcardNum()>=self.player:getHandcardNum() and self:doDisCard(ep,"he") then
+	self:sort(self.friends_noself)
+	for _,p in sgs.list(self.friends_noself)do
+		if p:getHandcardNum()>=self.player:getHandcardNum() and self:doDisCard(p,"he") then
 			use.card = card
-			use.to:append(ep)
+			use.to:append(p)
 			return
 		end
 	end
 	self:sort(self.enemies)
-	for _,ep in sgs.list(self.enemies)do
-		if ep:getHandcardNum()>=self.player:getHandcardNum() and self:doDisCard(ep,"he") then
+	for _,p in sgs.list(self.enemies)do
+		if p:getHandcardNum()>=self.player:getHandcardNum() and self:doDisCard(p,"he") then
 			use.card = card
-			use.to:append(ep)
+			use.to:append(p)
 			return
 		end
 	end
-	self:sort(self.friends_noself)
-	for _,ep in sgs.list(self.friends_noself)do
-		if ep:getHandcardNum()<=self.player:getHandcardNum() and self:canDraw(ep) and self:getOverflow(ep)<1 then
+	for _,p in sgs.list(self.friends_noself)do
+		if p:getHandcardNum()<=self.player:getHandcardNum() and self:canDraw(p) and self:getOverflow(p)<1 then
 			use.card = card
-			use.to:append(ep)
+			use.to:append(p)
 			return
 		end
 	end
@@ -1955,21 +1955,21 @@ sgs.ai_use_value.MobileYaomingCard = 9.4
 sgs.ai_use_priority.MobileYaomingCard = 5.8
 
 sgs.ai_skill_use["@@mobileyaoming"] = function(self,prompt)
-	for _,ep in sgs.list(self.friends_noself)do
-		if ep:getHandcardNum()>=self.player:getHandcardNum() and self:doDisCard(ep,"he") then
-			return string.format("@MobileYaomingCard=.->%s",ep:objectName())
+	self:sort(self.friends_noself)
+	for _,p in sgs.list(self.friends_noself)do
+		if p:getHandcardNum()>=self.player:getHandcardNum() and self:doDisCard(p,"he") then
+			return string.format("@MobileYaomingCard=.->%s",p:objectName())
 		end
 	end
 	self:sort(self.enemies)
-	for _,ep in sgs.list(self.enemies)do
-		if ep:getHandcardNum()>=self.player:getHandcardNum() and self:doDisCard(ep,"he") then
-			return string.format("@MobileYaomingCard=.->%s",ep:objectName())
+	for _,p in sgs.list(self.enemies)do
+		if p:getHandcardNum()>=self.player:getHandcardNum() and self:doDisCard(p,"he") then
+			return string.format("@MobileYaomingCard=.->%s",p:objectName())
 		end
 	end
-	self:sort(self.friends_noself)
-	for _,ep in sgs.list(self.friends_noself)do
-		if ep:getHandcardNum()<=self.player:getHandcardNum() and self:canDraw(ep) and self:getOverflow(ep)<1 then
-			return string.format("@MobileYaomingCard=.->%s",ep:objectName())
+	for _,p in sgs.list(self.friends_noself)do
+		if p:getHandcardNum()<=self.player:getHandcardNum() and self:canDraw(p) and self:getOverflow(p)<1 then
+			return string.format("@MobileYaomingCard=.->%s",p:objectName())
 		end
 	end
 end
