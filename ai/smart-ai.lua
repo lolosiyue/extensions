@@ -8439,6 +8439,7 @@ function SmartAI:useCardByClassName(card,use)
 	-- 没有技能接管，执行通用决策
 	local usefunc = self["useCard"..card:getClassName()]
 	if usefunc then 
+		self.aiUsing = card:getSubcards()
 		return usefunc(self,card,use)
 	end
 end
