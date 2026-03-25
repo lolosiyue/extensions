@@ -120,6 +120,7 @@ sgs.debuffSkillsList =			{}  -- 減益類技能列表，用於checkIsDebuff判�
 sgs.recoverSkillsList =			{}  -- 回復類技能列表，用於checkIsRecover判斷
 sgs.decreaseSkillsList =		{}  -- 減少手牌/裝備類技能列表，用於checkIsDecreaseCard判斷
 sgs.turnOverSkillsList =		{}  -- 翻面類技能列表，用於checkIsTurnOver判斷
+sgs.ai_skill_carduse =			{}
 
 -- AI出牌隨機性配置
 -- 設置為0則完全按優先級排序（原始行為）
@@ -8420,10 +8421,24 @@ function addAiSkills(sk)
 	return ai_sk
 end
 
+
 function SmartAI:useCardByClassName(card,use)
+	-- 【通用技能接管系统】检查技能是否要接管卡牌决策
+	for _, skill in ipairs(sgs.getPlayerSkillList(self.player)) do
+		local strategy = sgs.ai_skill_carduse[skill:objectName()]
+		if type(strategy) == "function" then
+			local result = strategy(self, card, use)
+			if result == true then
+				-- 技能接管决策，不执行通用逻辑
+				return true
+			end
+			-- result == false 或 nil，继续检查其他技能
+		end
+	end
+	
+	-- 没有技能接管，执行通用决策
 	local usefunc = self["useCard"..card:getClassName()]
-	if usefunc then
-		self.aiUsing = card:getSubcards()
+	if usefunc then 
 		return usefunc(self,card,use)
 	end
 end
