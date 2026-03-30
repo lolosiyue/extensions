@@ -409,6 +409,19 @@ function ArmorNotNullified(target)
 	and target:getMark("Equips_Nullified_to_Yourself")<1
 end
 
+function throwCardFromPile(player, card_id, skillName)
+    local room = player:getRoom()
+    local reason = sgs.CardMoveReason(
+        sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE,
+        player:objectName(),
+        nil,
+        skillName,
+        ""
+    )
+    room:throwCard(card_id, reason, nil)
+end
+
+
 sgs.LoadTranslationTable{
 	["$TransferMark"] = "%from 将 %arg2 枚 %arg 转移给 %to",
 	["$ToSkillInvoke2"] = "%from 发动 %arg2 的“%arg”",
