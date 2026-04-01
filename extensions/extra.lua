@@ -2388,72 +2388,6 @@ sunjian_po:addSkill(yinghun_po)
 
 
 
-sijyuoffline_zhaoyun = sgs.General(extension, "sijyuoffline_zhaoyun", "shu", 3, true)
-
-sijyuoffline_zhaoyun:addSkill("longdan")
-sijyuoffline_zhaoyun:addSkill("chongzhen")
-
---[[
-	技能名：虎翼
-	技能描述：你使用【杀】对目标造成属性伤害时，你可以横置至多两名角色。
-	引用：sfofl_yice
-
-    --徐荣礼盒
-]] --
-
-sijyuoffline_huyi_skill = sgs.CreateTriggerSkill{
-    name = "sijyuoffline_huyi", --一般的话，技能的objectName()和武器的objectName(）用一样的名字
-    frequency = sgs.Skill_Compulsory,
-    events = { sgs.DamageCaused },
-    can_trigger = function(self, target)
-        return target and target:hasWeapon(self:objectName())
-    end,
-    on_trigger = function(self, event, player, data)
-        local damage = data:toDamage()
-        local room = player:getRoom()
-        if damage.card and damage.card:isKindOf("Slash") and damage.card:isKindOf("NatureSlash") and not damage.transfer and not damage.chain then
-            if damage.from:objectName() == player:objectName() then
-                local others = room:askForPlayersChosen(player, room:getAlivePlayers(), self:objectName(), 0, 2, "@sijyuoffline_huyi", true, true)
-                if others and others:length() > 0 then
-                    for _,enemy in sgs.qlist(others) do
-                        if not enemy:isChained() then
-                        room:setPlayerChained(enemy)
-                        end
-                    end
-                end
-            end
-        end
-        return false
-    end
-}
-sijyuoffline_huyi = sgs.CreateWeapon{
-    name = "sijyuoffline_huyi",
-    class_name = "Huyi",
-    suit = sgs.Card_Spade,
-    number = 11,
-    range = 3,
-    equip_skill = sijyuoffline_huyi_skill,
-    on_install = function(self, player)
-        local room = player:getRoom()
-        local skill = sgs.Sanguosha:getSkill(self:objectName())
-        if skill then
-            if skill:inherits("ViewAsSkill") then
-                room:attachSkillToPlayer(player, self:objectName())
-            elseif skill:inherits("TriggerSkill") then
-                local tirggerskill = sgs.Sanguosha:getTriggerSkill(self:objectName())
-                room:getThread():addTriggerSkill(tirggerskill)
-            end
-        end
-        end,
-    on_uninstall = function(self, player) --卸下时移除技能
-        local room = player:getRoom()
-        local skill = sgs.Sanguosha:getSkill(self:objectName())
-        if skill and skill:inherits("ViewAsSkill") then
-            room:detachSkillFromPlayer(player, self:objectName(), true)
-        end
-    end,
-}
-sijyuoffline_huyi:setParent(extension)
 
 
 
@@ -3110,19 +3044,6 @@ sgs.LoadTranslationTable{
 	["$yinghun_po2"] = "乱世清君侧，挥师复江山",
 	["~sunjian_po"] = "呃...空留余恨哪！",
 
-	["sijyuoffline_zhaoyun"] = "赵云[联想]",
-    ["&sijyuoffline_zhaoyun"] = "赵云",
-    ["#sijyuoffline_zhaoyun"] = "白马先锋",
-    ["~sijyuoffline_zhaoyun"] = "",
-    ["designer:sijyuoffline_zhaoyun"] = "",
-    ["cv:sijyuoffline_zhaoyun"] = "",
-    ["illustrator:sijyuoffline_zhaoyun"] = "VINCENT",
-
-	["sijyuoffline_huyi"] = "虎翼",
-    [":sijyuoffline_huyi"] = "装备牌·武器\
-	攻击范围：3\
-	攻击效果：你使用【杀】对目标造成属性伤害时，你可以横置至多两名角色。",
-    ["@sijyuoffline_huyi"] = "虎翼：你可以横置至多两名角色",
 
 	-- God Sun Quan [OL]
 	["ol_god_sunquan"] = "神孙权[OL][旧]",
