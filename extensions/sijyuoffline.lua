@@ -19879,8 +19879,11 @@ sfofl_ducaiInvalidity = sgs.CreateInvaliditySkill{
 	name = "#sfofl_ducaiInvalidity",
 	skill_valid = function(self, player, skill)
         for _, p in sgs.qlist(player:getAliveSiblings()) do
-			if p:hasSkill("sfofl_ducai") and p:hasFlag("CurrentPlayer") then
-                return false
+            if p:hasFlag("CurrentPlayer") then
+                if p:hasSkill("sfofl_ducai", true)  then
+                    return false
+                end
+                break
             end
 		end
         return true
@@ -19890,16 +19893,22 @@ sfofl_ducai_limit = sgs.CreateCardLimitSkill{
     name = "#sfofl_ducai_limit",
     limit_list = function(self, player)
         for _, p in sgs.qlist(player:getAliveSiblings()) do
-			if p:hasSkill("sfofl_ducai") and p:hasFlag("CurrentPlayer") then
-                return "use"
+            if p:hasFlag("CurrentPlayer") then
+                if p:hasSkill("sfofl_ducai") then
+                    return "use"
+                end
+                break
             end
         end
         return ""
     end,
     limit_pattern = function(self, player)
         for _, p in sgs.qlist(player:getAliveSiblings()) do
-			if p:hasSkill("sfofl_ducai") and p:hasFlag("CurrentPlayer") then
-                return ".|.|.|."
+            if p:hasFlag("CurrentPlayer") then
+                if p:hasSkill("sfofl_ducai") then
+                    return ".|.|.|."
+                end
+                break
             end
         end
         return ""
