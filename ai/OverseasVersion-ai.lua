@@ -6636,6 +6636,36 @@ sgs.ai_skill_invoke.ov_jixin = function(self,data)
 	return self:canDraw()
 end
 
+-----------------------------------
+-- 武将自身的选将策略
+-----------------------------------
+
+-- 侠鲁肃：内奸不推荐
+sgs.ai_general_choice["ov_lusu"] = function(ai, lord, role)
+	if role == "renegade" then
+		return -1
+	end
+	return 0
+end
+
+-- 赵娥：小人数局不推荐；忠臣推荐；内奸不推荐
+sgs.ai_general_choice["ov_zhaoe"] = function(ai, lord, role)
+	local player_count = ai.room:getAlivePlayers():length()
+	if player_count <= 3 then
+		return -1
+	end
+
+	if role == "loyalist" then
+		return 1
+	end
+
+	if role == "renegade" then
+		return -1
+	end
+
+	return 0
+end
+
 
 
 

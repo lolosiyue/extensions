@@ -11069,5 +11069,55 @@ sgs.ai_skill_invoke.secondquanfeng = function(self,data)
 	return true
 end
 
+-----------------------------------
+-- 武将自身的选将策略
+-----------------------------------
+
+-- 戏志才：忠臣位在卖血主公局更适配
+sgs.ai_general_choice["xizhicai"] = function(ai, lord, role)
+	if not lord then return 0 end
+
+	if role == "loyalist" then
+		local lord_general = lord:getGeneral()
+		if lord_general then
+			local desc = lord_general:getSkillDescription(true) or ""
+			if string.find(desc, "受到伤害") or string.find(desc, "体力流失")
+				or (string.find(desc, "失去") and string.find(desc, "体力")) then
+				return 1
+			end
+		end
+	end
+
+	return 0
+end
+
+-- SP马超：反贼遇主公技能含"受到伤害"推荐
+sgs.ai_general_choice["sp_machao"] = function(ai, lord, role)
+	if not lord then return 0 end
+
+	if role == "rebel" then
+		local desc = lord:getGeneral():getSkillDescription(true) or ""
+		if string.find(desc, "受到伤害") then
+			return 1
+		end
+	end
+
+	return 0
+end
+
+-- TW马超：反贼遇主公技能含"受到伤害"推荐
+sgs.ai_general_choice["tw_machao"] = function(ai, lord, role)
+	if not lord then return 0 end
+
+	if role == "rebel" then
+		local desc = lord:getGeneral():getSkillDescription(true) or ""
+		if string.find(desc, "受到伤害") then
+			return 1
+		end
+	end
+
+	return 0
+end
+
 
 
