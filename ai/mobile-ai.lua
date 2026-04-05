@@ -5677,6 +5677,62 @@ sgs.ai_skill_use["@@xingzhen!"] = function(self,prompt)
 	end
 end
 
+-----------------------------------
+-- 武将自身的选将策略
+-----------------------------------
+
+-- 谋马超：反贼遇主公技能含"受到伤害"推荐（铁骑配合）
+sgs.ai_general_choice["mobilemou_machao"] = function(ai, lord, role)
+	if not lord then return 0 end
+
+	if role == "rebel" then
+		local desc = lord:getGeneral():getSkillDescription(true) or ""
+		if string.find(desc, "受到伤害") then
+			return 1
+		end
+	end
+
+	return 0
+end
+
+-- 谋吕蒙：内奸/平民更适配；若主公是明显体力流失体系则不推荐
+sgs.ai_general_choice["mobilemou_lvmeng"] = function(ai, lord, role)
+	if role == "renegade" or role == "villager" then
+		return 1
+	end
+
+	if lord then
+		local lord_general = lord:getGeneral()
+		if lord_general then
+			local desc = lord_general:getSkillDescription(true) or ""
+			if string.find(desc, "失去") and string.find(desc, "体力") then
+				return -1
+			end
+			if string.find(desc, "体力流失") then
+				return -1
+			end
+		end
+	end
+
+	return 0
+end
+
+-- 谋曹仁：忠臣位不推荐
+sgs.ai_general_choice["mobilemou_caoren"] = function(ai, lord, role)
+	if role == "loyalist" then
+		return -1
+	end
+	return 0
+end
+
+-- 谋高顺：反贼位偏进攻，推荐
+sgs.ai_general_choice["mobilemou_gaoshun"] = function(ai, lord, role)
+	if role == "rebel" then
+		return 1
+	end
+	return 0
+end
+
 
 
 

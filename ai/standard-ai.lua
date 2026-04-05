@@ -5553,3 +5553,262 @@ sgs.ai_target_recommend["fankui"] = function(self, from, to, card, skill_owner)
 	end
 	return 0
 end
+
+-- 针对特定主公的选将策略
+
+local function caocao_lord_strategy(ai, generals, default_choice, lord)
+	local role = ai.player:getRole()
+	local general_scores = {}
+	for _, general_name in ipairs(generals) do
+		local score = 0
+		local general = sgs.Sanguosha:getGeneral(general_name)
+
+		if general then
+			local kingdom = general:getKingdom()
+			local desc = general:getSkillDescription(true) or ""
+
+			if role == "loyalist" then
+				if kingdom == "wei" then score = score + 5 end
+				if string.find(desc, "造成过") then score = score + 3 end
+				if string.find(desc, "万箭齐发") or string.find(desc, "南蛮入侵") then score = score + 3 end
+			elseif role == "rebel" then
+				if string.find(desc, "失效") then score = score + 5 end
+				if string.find(desc, "乐不思蜀") then score = score + 3 end
+			end
+
+			local strategy_func = sgs.ai_general_choice[general_name]
+			if type(strategy_func) == "function" then
+				local recommend = strategy_func(ai, lord, role)
+				if recommend == 1 then
+					score = score + 10
+				elseif recommend == -1 then
+					score = score - 10
+				end
+			end
+		end
+
+		table.insert(general_scores, {name = general_name, score = score})
+	end
+
+	table.sort(general_scores, function(a, b) return a.score > b.score end)
+	local best_score = general_scores[1] and general_scores[1].score or 0
+	local best_generals = {}
+	for _, gs in ipairs(general_scores) do
+		if gs.score == best_score then
+			table.insert(best_generals, gs.name)
+		else
+			break
+		end
+	end
+
+	if #best_generals > 0 then
+		return best_generals[math.random(1, #best_generals)]
+	end
+
+	return #generals > 0 and generals[math.random(1, #generals)] or default_choice
+end
+
+sgs.ai_general_choice_for_lord["caocao"] = caocao_lord_strategy
+sgs.ai_general_choice_for_lord["nos_caocao"] = caocao_lord_strategy
+sgs.ai_general_choice_for_lord["double_fuck"] = caocao_lord_strategy
+
+sgs.ai_general_choice_for_lord["nos_liubei"] = function(ai, generals, default_choice, lord)
+	local role = ai.player:getRole()
+	local general_scores = {}
+	for _, general_name in ipairs(generals) do
+		local score = 0
+		local general = sgs.Sanguosha:getGeneral(general_name)
+
+		if general then
+			local kingdom = general:getKingdom()
+			local desc = general:getSkillDescription(true) or ""
+
+			if role == "loyalist" and kingdom == "shu" then
+				score = score + 5
+				if string.find(desc, "杀") then score = score + 3 end
+			end
+
+			local strategy_func = sgs.ai_general_choice[general_name]
+			if type(strategy_func) == "function" then
+				local recommend = strategy_func(ai, lord, role)
+				if recommend == 1 then
+					score = score + 10
+				elseif recommend == -1 then
+					score = score - 10
+				end
+			end
+		end
+
+		table.insert(general_scores, {name = general_name, score = score})
+	end
+
+	table.sort(general_scores, function(a, b) return a.score > b.score end)
+	local best_score = general_scores[1] and general_scores[1].score or 0
+	local best_generals = {}
+	for _, gs in ipairs(general_scores) do
+		if gs.score == best_score then
+			table.insert(best_generals, gs.name)
+		else
+			break
+		end
+	end
+
+	if #best_generals > 0 then
+		return best_generals[math.random(1, #best_generals)]
+	end
+
+	return #generals > 0 and generals[math.random(1, #generals)] or default_choice
+end
+
+sgs.ai_general_choice_for_lord["guojia"] = function(ai, generals, default_choice, lord)
+	local scores = hp_loss_lord_strategy_scores(ai, generals, lord, false)
+	return select_best_general(scores, default_choice)
+end
+
+sgs.ai_general_choice_for_lord["nos_guojia"] = function(ai, generals, default_choice, lord)
+	local scores = hp_loss_lord_strategy_scores(ai, generals, lord, false)
+	return select_best_general(scores, default_choice)
+end
+
+sgs.ai_general_choice_for_lord["simayi"] = function(ai, generals, default_choice, lord)
+	local scores = hp_loss_lord_strategy_scores(ai, generals, lord, false)
+	return select_best_general(scores, default_choice)
+end
+
+sgs.ai_general_choice_for_lord["nos_simayi"] = function(ai, generals, default_choice, lord)
+	local scores = hp_loss_lord_strategy_scores(ai, generals, lord, false)
+	return select_best_general(scores, default_choice)
+end
+
+sgs.ai_general_choice_for_lord["xiahoudun"] = function(ai, generals, default_choice, lord)
+	local scores = hp_loss_lord_strategy_scores(ai, generals, lord, false)
+	return select_best_general(scores, default_choice)
+end
+
+sgs.ai_general_choice_for_lord["nos_xiahoudun"] = function(ai, generals, default_choice, lord)
+	local scores = hp_loss_lord_strategy_scores(ai, generals, lord, false)
+	return select_best_general(scores, default_choice)
+end
+
+sgs.ai_general_choice_for_lord["keolmou_yuanshao"] = function(ai, generals, default_choice, lord)
+	local role = ai.player:getRole()
+	local general_scores = {}
+	for _, general_name in ipairs(generals) do
+		local score = 0
+		local general = sgs.Sanguosha:getGeneral(general_name)
+
+		if general then
+			local desc = general:getSkillDescription(true) or ""
+			local hp = general:getMaxHp()
+
+			if role == "loyalist" then
+				if string.find(desc, "闪") then score = score + 3 end
+				if string.find(desc, "受到伤害") and string.find(desc, "摸") then score = score + 5 end
+				if hp >= 4 then score = score + 3 end
+			else
+				if string.find(desc, "受到伤害") then score = score + 5 end
+			end
+
+			local strategy_func = sgs.ai_general_choice[general_name]
+			if type(strategy_func) == "function" then
+				local recommend = strategy_func(ai, lord, role)
+				if recommend == 1 then
+					score = score + 10
+				elseif recommend == -1 then
+					score = score - 10
+				end
+			end
+		end
+
+		table.insert(general_scores, {name = general_name, score = score})
+	end
+
+	table.sort(general_scores, function(a, b) return a.score > b.score end)
+	local best_score = general_scores[1] and general_scores[1].score or 0
+	local best_generals = {}
+	for _, gs in ipairs(general_scores) do
+		if gs.score == best_score then
+			table.insert(best_generals, gs.name)
+		else
+			break
+		end
+	end
+
+	if #best_generals > 0 then
+		return best_generals[math.random(1, #best_generals)]
+	end
+
+	return #generals > 0 and generals[math.random(1, #generals)] or default_choice
+end
+
+-- 武将自身的选将策略示例
+sgs.ai_general_choice["nos_xiahoudun"] = function(ai, lord, role)
+	if role == "loyalist" then return -1 end
+	return 0
+end
+
+sgs.ai_general_choice["nos_huanggai"] = function(ai, lord, role)
+	local seat = ai.player:getSeat()
+	if seat > 4 then return -1 end
+	return 0
+end
+
+sgs.ai_general_choice["liubei"] = function(ai, lord, role)
+	if role == "renegade" then return -1 end
+	return 0
+end
+
+sgs.ai_general_choice["nos_liubei"] = function(ai, lord, role)
+	if role == "renegade" then return -1 end
+	return 0
+end
+
+local function caopi_lord_strategy(ai, generals, default_choice, lord)
+	local role = ai.player:getRole()
+	local general_scores = {}
+	for _, general_name in ipairs(generals) do
+		local score = 0
+		local general = sgs.Sanguosha:getGeneral(general_name)
+
+		if general then
+			local kingdom = general:getKingdom()
+			local desc = general:getSkillDescription(true) or ""
+			if role == "loyalist" or role == "renegade" or role == "villager" then
+				if kingdom == "wei" and string.find(desc, "判定") then score = score + 3 end
+				if string.find(desc, "万箭齐发") then score = score + 6 end
+			end
+
+			local strategy_func = sgs.ai_general_choice[general_name]
+			if type(strategy_func) == "function" then
+				local recommend = strategy_func(ai, lord, role)
+				if recommend == 1 then
+					score = score + 10
+				elseif recommend == -1 then
+					score = score - 10
+				end
+			end
+		end
+
+		table.insert(general_scores, {name = general_name, score = score})
+	end
+
+	table.sort(general_scores, function(a, b) return a.score > b.score end)
+	local best_score = general_scores[1] and general_scores[1].score or 0
+	local best_generals = {}
+	for _, gs in ipairs(general_scores) do
+		if gs.score == best_score then
+			table.insert(best_generals, gs.name)
+		else
+			break
+		end
+	end
+
+	if #best_generals > 0 then
+		return best_generals[math.random(1, #best_generals)]
+	end
+
+	return #generals > 0 and generals[math.random(1, #generals)] or default_choice
+end
+
+sgs.ai_general_choice_for_lord["caopi"] = caopi_lord_strategy
+sgs.ai_general_choice_for_lord["mobile_caopi"] = caopi_lord_strategy

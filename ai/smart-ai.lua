@@ -61,6 +61,8 @@ sgs.ai_skill_invoke =			{}
 sgs.ai_skill_suit =		 		{}
 sgs.ai_skill_cardask =			{}
 sgs.ai_skill_choice =			{}
+sgs.ai_general_choice =			{}  -- 通用选将策略（按 reason 或武将名索引）
+sgs.ai_general_choice_for_lord =	{}  -- 主公开局选将专用策略
 sgs.ai_skill_askforag =	 		{}
 sgs.ai_skill_askforyiji =		{}
 sgs.ai_skill_pindian =			{}
@@ -2642,6 +2644,173 @@ function SmartAI:askForChoice(skill_name,choices,data)
 	choice = choices:split("+")
 	table.removeOne(choice,"benghuai")
 	return choice[math.random(1,#choice)]
+end
+
+function SmartAI:askForGeneral(generals, default_choice, reason)
+	local selectable_generals = {}
+	for _, general in ipairs(generals) do
+		if not string.match(general, "^~") then
+			table.insert(selectable_generals, general)
+		end
+	end
+
+	if #selectable_generals == 0 then
+		return default_choice or "caocao"
+	end
+
+	if reason == "for_lord" then
+		return self:askforgeneralforlord(selectable_generals, default_choice)
+	end
+
+	local choice = sgs.ai_general_choice[reason]
+	if type(choice) == "function" then
+		choice = choice(self, selectable_generals, default_choice)
+	end
+	if type(choice) == "string" and choice ~= "" and table.contains(selectable_generals, choice) then
+		return choice
+	end
+
+	if default_choice and default_choice ~= "" and table.contains(selectable_generals, default_choice) then
+		return default_choice
+	end
+
+	return selectable_generals[math.random(1, #selectable_generals)]
+end
+
+function SmartAI:askforgeneralforlord(generals, default_choice)
+	local lord = self.room:getLord()
+	if not lord then
+		if #generals > 0 then
+			return generals[math.random(1, #generals)]
+		end
+		return default_choice or "caocao"
+	end
+
+	local lord_name = lord:getGeneralName()
+	if lord_name and sgs.ai_general_choice_for_lord and sgs.ai_general_choice_for_lord[lord_name] then
+		local choice = sgs.ai_general_choice_for_lord[lord_name]
+		if type(choice) == "function" then
+			choice = choice(self, generals, default_choice, lord)
+		end
+		if type(choice) == "string" and choice ~= "" and table.contains(generals, choice) then
+			return choice
+		end
+	end
+
+	local role = self.player:getRole()
+	local lord_kingdom = lord:getGeneral() and lord:getGeneral():getKingdom() or ""
+	local best_general, best_score = nil, -10000
+
+	for _, general_name in ipairs(generals) do
+		local score = 0
+		local general = sgs.Sanguosha:getGeneral(general_name)
+
+		if general then
+			local kingdom = general:getKingdom()
+			if role == "loyalist" and lord_kingdom ~= "" and (kingdom == lord_kingdom or kingdom == "god") then
+				score = score + 5
+			end
+
+			local strategy_func = sgs.ai_general_choice[general_name]
+			if type(strategy_func) == "function" then
+				local recommend = strategy_func(self, lord, role)
+				if recommend == 1 then
+					score = score + 10
+				elseif recommend == -1 then
+					score = score - 10
+				end
+			end
+		end
+
+		if score > best_score then
+			best_score = score
+			best_general = general_name
+		end
+	end
+
+	if best_general then
+		return best_general
+	end
+
+	if default_choice and default_choice ~= "" and table.contains(generals, default_choice) then
+		return default_choice
+	end
+
+	if #generals > 0 then
+		return generals[math.random(1, #generals)]
+	end
+
+	return "caocao"
+end
+
+-- 通用卖血主公策略评分（供各包的主公选将策略复用）
+function hp_loss_lord_strategy_scores(ai, generals, lord, prefer_same_kingdom)
+	local role = ai.player:getRole()
+	local lord_kingdom = lord and lord:getGeneral() and lord:getGeneral():getKingdom() or ""
+	local general_scores = {}
+
+	for _, general_name in ipairs(generals) do
+		local score = 0
+		local general = sgs.Sanguosha:getGeneral(general_name)
+
+		if general then
+			local kingdom = general:getKingdom()
+			local desc = general:getSkillDescription(true) or ""
+
+			if role == "rebel" then
+				if string.find(desc, "体力流失") then score = score + 8 end
+				if string.find(desc, "失去") and string.find(desc, "体力") then score = score + 6 end
+			elseif role == "loyalist" then
+				if string.find(desc, "回复") and string.find(desc, "体力") then score = score + 8 end
+				if string.find(desc, "造成过") then score = score + 5 end
+				if string.find(desc, "桃") then score = score + 4 end
+				if string.find(desc, "受到伤害") then score = score - 6 end
+			end
+
+			if prefer_same_kingdom and (kingdom == lord_kingdom or kingdom == "god") and role == "loyalist" then
+				score = score + 5
+			end
+
+			local strategy_func = sgs.ai_general_choice[general_name]
+			if type(strategy_func) == "function" then
+				local recommend = strategy_func(ai, lord, role)
+				if recommend == 1 then
+					score = score + 12
+				elseif recommend == -1 then
+					score = score - 12
+				end
+			end
+		end
+
+		table.insert(general_scores, {name = general_name, score = score})
+	end
+
+	return general_scores
+end
+
+-- 从评分表中选择分数最高的武将（同分随机）
+function select_best_general(general_scores, default_choice)
+	if not general_scores or #general_scores == 0 then
+		return default_choice
+	end
+
+	table.sort(general_scores, function(a, b) return a.score > b.score end)
+
+	local best_score = general_scores[1] and general_scores[1].score or 0
+	local best_generals = {}
+	for _, gs in ipairs(general_scores) do
+		if gs.score == best_score then
+			table.insert(best_generals, gs.name)
+		else
+			break
+		end
+	end
+
+	if #best_generals > 0 then
+		return best_generals[math.random(1, #best_generals)]
+	end
+
+	return default_choice
 end
 
 function getChoice(choices,choice_name,n)
@@ -8421,7 +8590,6 @@ function addAiSkills(sk)
 	return ai_sk
 end
 
-
 function SmartAI:useCardByClassName(card,use)
 	-- 【通用技能接管系统】检查技能是否要接管卡牌决策
 	for _, skill in ipairs(sgs.getPlayerSkillList(self.player)) do
@@ -8438,7 +8606,7 @@ function SmartAI:useCardByClassName(card,use)
 	
 	-- 没有技能接管，执行通用决策
 	local usefunc = self["useCard"..card:getClassName()]
-	if usefunc then 
+	if usefunc then
 		self.aiUsing = card:getSubcards()
 		return usefunc(self,card,use)
 	end

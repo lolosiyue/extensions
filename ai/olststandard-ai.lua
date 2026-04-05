@@ -2230,6 +2230,60 @@ sgs.ai_skill_invoke.oljiejingce = function(self,data)
 	return self:canDraw()
 end
 
+-- 袁绍主公选将策略（OL版本）
+sgs.ai_general_choice_for_lord["ol_yuanshao"] = function(ai, generals, default_choice, lord)
+	local role = ai.player:getRole()
+	local general_scores = {}
+	for _, general_name in ipairs(generals) do
+		local score = 0
+		local general = sgs.Sanguosha:getGeneral(general_name)
+
+		if general then
+			local desc = general:getSkillDescription(true) or ""
+			local hp = general:getMaxHp()
+
+			if role == "loyalist" then
+				if string.find(desc, "闪") then score = score + 3 end
+				if string.find(desc, "受到伤害") and string.find(desc, "摸") then score = score + 5 end
+				if hp >= 4 then score = score + 3 end
+			else
+				if string.find(desc, "受到伤害") then score = score + 5 end
+			end
+
+			local strategy_func = sgs.ai_general_choice[general_name]
+			if type(strategy_func) == "function" then
+				local recommend = strategy_func(ai, lord, role)
+				if recommend == 1 then
+					score = score + 10
+				elseif recommend == -1 then
+					score = score - 10
+				end
+			end
+		end
+
+		table.insert(general_scores, {name = general_name, score = score})
+	end
+
+	table.sort(general_scores, function(a, b) return a.score > b.score end)
+	local best_score = general_scores[1] and general_scores[1].score or 0
+	local best_generals = {}
+	for _, gs in ipairs(general_scores) do
+		if gs.score == best_score then
+			table.insert(best_generals, gs.name)
+		else
+			break
+		end
+	end
+
+	if #best_generals > 0 then
+		return best_generals[math.random(1, #best_generals)]
+	end
+
+	return #generals > 0 and generals[math.random(1, #generals)] or default_choice
+end
+
+sgs.ai_general_choice_for_lord["second_ol_yuanshao"] = sgs.ai_general_choice_for_lord["ol_yuanshao"]
+
 
 
 

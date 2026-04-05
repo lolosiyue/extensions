@@ -1038,3 +1038,27 @@ sgs.ai_guhuo_card.tenyeartaoluan = function(self,toname,class_name)
 	end
 end
 
+-----------------------------------
+-- 武将自身的选将策略
+-----------------------------------
+
+-- 岑昏：内奸推荐；忠臣在火焰体系主公下推荐
+sgs.ai_general_choice["cenhun"] = function(ai, lord, role)
+	if role == "renegade" then
+		return 1
+	end
+
+	if role == "loyalist" and lord then
+		local lord_general = lord:getGeneral()
+		if lord_general then
+			local skill_desc = lord_general:getSkillDescription(true) or ""
+			if string.find(skill_desc, "火焰") or string.find(skill_desc, "火攻")
+				or string.find(skill_desc, "火计") or string.find(skill_desc, "火属性") then
+				return 1
+			end
+		end
+	end
+
+	return 0
+end
+
