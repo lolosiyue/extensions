@@ -6281,7 +6281,7 @@ fansheTM = sgs.CreateTargetModSkill{
 		end
 	end,
 	extra_target_func = function(self, player, card)
-		if player:hasSkill("fanshe") and player:hasUsed("#fanshe") then
+		if player and player:hasSkill("fanshe") and player:hasUsed("#fanshe") then
 			for _,p in sgs.qlist(player:getAliveSiblings()) do
 				if p:getPile("INCOM"):length() > 0 then
 					return sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, p, card)

@@ -100,7 +100,7 @@ luanixi_tr = sgs.CreateTriggerSkill {
 				local x = player:getLostHp()
 				if x > 0 then
 					room:sendCompulsoryTriggerLog(player, "luanixi", true)
-					-- player:drawCards(x)
+					player:drawCards(x)
 				end
 			end
 			for _, skill in sgs.qlist(player:getVisibleSkillList()) do
@@ -128,7 +128,9 @@ luanixi_tr = sgs.CreateTriggerSkill {
 			-- room:loseHp(player)
 			--room:killPlayer(player)
 			--room:playMovie(player,"image/fullskin/generals/full/sunshangxiang.png.gif", 0)
-			room:doAnimate(2,"skill=Dynamic:yo")
+			-- room:doAnimate(2,"skill=Dynamic:yo")
+			room:doLightbox("spine=test/XingXiang", 3000, 0)
+			player:gainMark("@testing", 1)
 			for _, skill in sgs.qlist(player:getVisibleSkillList()) do
 				if skill:getFrequency(player) == sgs.Skill_Wake then
 					player:setCanWake(skill:objectName(), skill:objectName())
@@ -183,26 +185,6 @@ luanixi_Keep = sgs.CreateMaxCardsSkill {
 	end
 }
 
-jibian = sgs.CreateTriggerSkill {
-	name = "jibian",
-	frequency = sgs.Skill_Compulsory,
-	events = { sgs.HpChanged },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		--if not room:askForSkillInvoke(player,self:objectName(),data) then return end
-		--if player:getHandcardNum()>player:getHp() then
-		--	player:drawCards(1)
-		--	room:askForDiscard(player,self:objectName(),1,1,false,false)
-		--else
-		--	local x=math.min(7,player:getMaxHp()-player:getHandcardNum())	
-		--	player:drawCards(x)
-		--end
-		if player:getHandcardNum() < player:getHp() then
-			local x = math.min(7, player:getMaxHp() - player:getHandcardNum())
-			player:drawCards(x)
-		end
-	end
-}
 
 function getQhGeneral()
     local new_generaltable = {}
@@ -256,7 +238,6 @@ debugchangehero = sgs.CreateTriggerSkill {
     end
 }
 
---gz_zhaoyun:addSkill(jibian)
 -- gz_zhaoyun:addSkill(Qinggang)
 -- gz_zhaoyun:addSkill(debugchangehero)
 gz_zhaoyun:addSkill(Qinggangex)
@@ -296,7 +277,7 @@ debug_skill = sgs.CreateTriggerSkill{
 		end
 	end
 }
-extension:addSkills(debug_skill)
+--extension:addSkills(debug_skill)
 
 
 sgs.LoadTranslationTable {
@@ -308,7 +289,5 @@ sgs.LoadTranslationTable {
 	["fenyong_y"] = "勇",
 	["luanixi"] = "逆袭",
 	[":luanixi"] = "<font color=\"blue\"><b>锁定技，</b></font>摸牌阶段额外摸X张牌.你每受到1点伤害，你摸X张牌(X为你已损体力值)，同时你获得1枚勇标记，每有1枚勇标记，你的攻击范围+1，手牌上限+1。",
-	["jibian"] = "机变",
-	[":jibian"] = "当你的体力值发生变动时，若手牌数小于你的当前体力值，你可令手牌补将手牌补至X张（X为你的体力上限）。",
 }
 return { extension }

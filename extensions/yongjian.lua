@@ -38,7 +38,7 @@ yj_poison = sgs.CreateBasicCard{
 	end,
 	about_to_use = function(self,room,use)
 		use.from:broadcastSkillInvoke(self)
-		for _,to in sgs.list(use.to)do
+		for _,to in sgs.qlist(use.to)do
 			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE,use.from:objectName(),to:objectName(),"yj_poison","")
 			Log_message("#yj_poison",use.from,use.to,self:toString(),"yj_poison")
 			use.from:addMark("BanPoisonEffect")
@@ -175,7 +175,7 @@ yj_chenhuodajie = sgs.CreateTrickCard{
 	is_cancelable = true,
 	damage_card = true,
     available = function(self,player)
-    	for _,to in sgs.list(player:getAliveSiblings())do
+    	for _,to in sgs.qlist(player:getAliveSiblings())do
 			if CanToCard(self,player,to) then
 				return self:cardIsAvailable(player)
 			end
@@ -213,18 +213,15 @@ yj_guaguliaodu = sgs.CreateTrickCard{
 	is_cancelable = true,
 --	damage_card = true,
     available = function(self,player)
-    	local tos = player:getAliveSiblings()
-		tos:append(player)
-		for _,to in sgs.list(tos)do
+		for _,to in sgs.qlist(player:getAliveSiblings(true))do
 			if CanToCard(self,player,to) then
 				return self:cardIsAvailable(player)
 			end
 		end
     end,
 	filter = function(self,targets,to_select,source)
-	    return to_select:isWounded()
+	    return to_select:isWounded() and not source:isProhibited(to_select,self)
 		and #targets<=sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget,source,self,to_select)
-		and not source:isProhibited(to_select,self)
 	end,
 	feasible = function(self,targets,from)
 		return #targets>0 or from:isWounded() and not from:isProhibited(from,self)
@@ -290,7 +287,7 @@ yj_tuixinzhifu = sgs.CreateTrickCard{
 	is_cancelable = true,
 --	damage_card = true,
     available = function(self,player)
-    	for _,to in sgs.list(player:getAliveSiblings())do
+    	for _,to in sgs.qlist(player:getAliveSiblings())do
 			if CanToCard(self,player,to) then
 				return self:cardIsAvailable(player)
 			end
@@ -551,6 +548,7 @@ yj_zheji = sgs.CreateWeapon{
 	name = "yj_zheji",
 	class_name = "Zheji",
 	range = 0,
+	is_gift = true,
     available = function(self,player)
     	return (self:getEffectiveId()<0 or sgs.Sanguosha:getEngineCard(self:getEffectiveId()):getPackage()~="zhulu")
 		and self:cardIsAvailable(player)
@@ -564,8 +562,8 @@ function CardIsPresent(id)
 	if type(id)~="number" then id = id:getId() end
 	if id>=0 then
 		local ec = sgs.Sanguosha:getEngineCard(id)
-		return ec:getClassName()==sgs.Sanguosha:getCard(id):getClassName()
-		and table.contains(ec:property("CharTag"):toStringList(),"present_card")
+		return ec:objectName()==sgs.Sanguosha:getCard(id):objectName()
+		and ec:isGift()--table.contains(ec:property("CharTag"):toStringList(),"present_card")
 	end
 end
 
@@ -591,7 +589,7 @@ yj_zhengyuCard = sgs.CreateSkillCard{
 			for n,id in sgs.list(self:getSubcards())do
 				if i~=n then continue end
 				local c = sgs.Sanguosha:getCard(id)
-				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE,use.from:objectName(),to:objectName(),"yj_zhengyu","")
+				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_RECYCLE,use.from:objectName(),to:objectName(),"yj_zhengyu","")
 				reason.m_useStruct = sgs.CardUseStruct(c,use.from,to)
 				local move1 = sgs.CardsMoveStruct(id,to,sgs.Player_PlaceHand,reason)
 				if c:isKindOf("EquipCard") then
@@ -665,8 +663,8 @@ yj_on_trigger = sgs.CreateTriggerSkill{
 					if c then table.removeOne(ids,c:getEffectiveId())
 					else break end
 					for i=#ids,1,-1 do
-						if player:handCards():contains(ids[i])
-						then else table.remove(ids,i) end
+						if player:handCards():contains(ids[i]) then continue end
+						table.remove(ids,i)
 				end
 				end
 			elseif move.from_places:contains(sgs.Player_PlaceHand)
@@ -858,18 +856,15 @@ zl_jiejiaguitian = sgs.CreateTrickCard{
 	suit = 1,
 	number = 3,
     available = function(self,player)
-    	local tos = player:getAliveSiblings()
-		tos:append(player)
-		for _,to in sgs.list(tos)do
+		for _,to in sgs.qlist(player:getAliveSiblings(true))do
 			if CanToCard(self,player,to) then
 				return self:cardIsAvailable(player)
 			end
 		end
     end,
 	filter = function(self,targets,to_select,source)
-	    return to_select:hasEquip()
+	    return to_select:hasEquip() and not source:isProhibited(to_select,self)
 		and #targets<=sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget,source,self,to_select)
-		and not source:isProhibited(to_select,self)
 	end,
 	feasible = function(self,targets,from)
 		return #targets>0 or from:hasEquip() and not from:isProhibited(from,self)
@@ -901,8 +896,8 @@ zl_zhulutianxia = sgs.CreateTrickCard{
 	number = 9,
 	subclass = sgs.LuaTrickCard_TypeGlobalEffect,
 	on_use = function(self,room,source,targets)
-    	local dps = room:getDrawPile()
 		local eids = sgs.IntList()
+    	local dps = room:getDrawPile()
 		for _,id in sgs.qlist(dps)do
 			if sgs.Sanguosha:getCard(id):isKindOf("EquipCard")
 			then eids:append(id) end
@@ -930,11 +925,6 @@ zl_zhulutianxia = sgs.CreateTrickCard{
 				local n = sgs.Sanguosha:getCard(id):getRealCard():toEquipCard():location()
 				if to:hasEquipArea(n) then canids:append(id) end
 			end
-			if canids:isEmpty() then
-				room:setEmotion(to,"skill_nullify")
-				continue
-			end
-			room:setTag("Zhulutianxia"..self:toString(),ToData(canids))
 			local effect = sgs.CardEffectStruct()
 			effect.from = source
 			effect.card = self
@@ -943,14 +933,20 @@ zl_zhulutianxia = sgs.CreateTrickCard{
 			effect.no_offset = table.contains(use.no_offset_list,"_ALL_TARGETS") or table.contains(use.no_offset_list,to:objectName())
 			effect.no_respond = table.contains(use.no_respond_list,"_ALL_TARGETS") or table.contains(use.no_respond_list,to:objectName())
 			effect.nullified = table.contains(use.nullified_list,"_ALL_TARGETS") or table.contains(use.nullified_list,to:objectName())
+			if canids:isEmpty() or effect.nullified then
+				room:setEmotion(to,"skill_nullify")
+				continue
+			end
+			room:setTag("Zhulutianxia"..self:toString(),ToData(canids))
 			room:cardEffect(effect)
         end
 		room:getThread():delay()
 		room:clearAG()
 		ids = room:getTag("ZhulutianxiaIds"..self:toString()):toIntList()
 		if ids:isEmpty() then return end
-       	use = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER,nil,self:objectName(),nil)
-    	room:throwCard(ids,use,nil)--弃牌
+       	dps = dummyCard()
+		dps:addSubcards(ids)
+    	room:throwCard(dps,sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER,nil,self:objectName(),nil),nil)--弃牌
 	end,
 	on_effect = function(self,effect)
 		local room = effect.to:getRoom()
@@ -1059,7 +1055,6 @@ zl_yexingyi:setParent(zhulu)
 
 local zlzheji = yj_zheji:clone(1,5)
 zlzheji:addCharTag("present_card")
-zlzheji:setGift(true)
 zlzheji:setParent(zhulu)
 
 zl_jinheCard = sgs.CreateSkillCard{
@@ -1207,7 +1202,6 @@ zl_yajiaoqiangTr = sgs.CreateTriggerSkill{
 				player:addMark("zl_yajiaoqiang-Clear")
 				if res.m_card:getEffectiveId()>=0 and not room:getCardOwner(res.m_card:getEffectiveId())
 				and player:askForSkillInvoke(self,data,false) then
-					ToSkillInvoke(self,player,true)
 					room:obtainCard(player,res.m_card)
 				end
 			end
@@ -1217,8 +1211,7 @@ zl_yajiaoqiangTr = sgs.CreateTriggerSkill{
 			and use.card:getEffectiveId()>=0 then
 				player:removeTag("Yajiaoqiang")
 				if not room:getCardOwner(use.card:getEffectiveId())
-				and player:askForSkillInvoke(self,data,false) then
-					ToSkillInvoke(self,player,true)
+				and player:askForSkillInvoke(self,data) then
 					room:obtainCard(player,use.card)
 				end
 			end
@@ -1496,7 +1489,7 @@ zd_yawang = sgs.CreateTriggerSkill{
 }
 cuiyan:addSkill(zd_yawang)
 
-huangfusong = sgs.General(Zhongdan,"huangfusong","qun")
+zd_huangfusong = sgs.General(Zhongdan,"zd_huangfusong","qun")
 zd_fenyueCard = sgs.CreateSkillCard{
 	name = "zd_fenyueCard",
 	will_throw = false,
@@ -1535,17 +1528,15 @@ zd_fenyue = sgs.CreateOneCardViewAsSkill{
 		return skillcard
 	end,
 	enabled_at_play = function(self,player)
-    	local tos = player:getAliveSiblings()
-		tos:append(player)
 		local n = 0
-		for _,p in sgs.list(tos)do
+		for _,p in sgs.qlist(player:getAliveSiblings(true))do
 			if p:getRole()=="loyalist"
 			then n = n+1 end
 		end
 		return player:usedTimes("#zd_fenyueCard") < n
 	end
 }
-huangfusong:addSkill(zd_fenyue)
+zd_huangfusong:addSkill(zd_fenyue)
 
 ZhongdanCard = sgs.Package("ZhongdanCard",sgs.Package_CardPack)
 
@@ -1560,11 +1551,8 @@ zd_shengdongjixi = sgs.CreateTrickCard{
 	suit = 0,
 	number = 3,
     available = function(self,player)
-    	local tos = player:getAliveSiblings()
-		tos:append(player)
-		for _,to in sgs.list(tos)do
-			if CanToCard(self,player,to)
-			then
+		for _,to in sgs.qlist(player:getAliveSiblings(true))do
+			if CanToCard(self,player,to) then
 				return self:cardIsAvailable(player)
 			end
 		end
@@ -1622,13 +1610,17 @@ zd_shengdongjixi = sgs.CreateTrickCard{
 			local effect = sgs.CardEffectStruct()
 			effect.from = source
 			effect.card = self
-			effect.multiple = #targets>1
 			effect.to = to
+			effect.multiple = #targets>1
 			effect.no_offset = table.contains(use.no_offset_list,"_ALL_TARGETS") or table.contains(use.no_offset_list,to:objectName())
 			effect.no_respond = table.contains(use.no_respond_list,"_ALL_TARGETS") or table.contains(use.no_respond_list,to:objectName())
 			effect.nullified = table.contains(use.nullified_list,"_ALL_TARGETS") or table.contains(use.nullified_list,to:objectName())
+	    	if effect.nullified then
+				room:setEmotion(to,"skill_nullify")
+			else
 	    	room:cardEffect(effect)
-			to:removeTag("attachTarget");
+			end
+			to:removeTag("attachTarget")
         end
 	end,
 	on_effect = function(self,effect)
@@ -1663,7 +1655,7 @@ zd_caomujiebing = sgs.CreateTrickCard{--锦囊牌
 	suit = 0,
 	number = 10,
     available = function(self,player)
-    	for _,to in sgs.list(player:getAliveSiblings())do
+    	for _,to in sgs.qlist(player:getAliveSiblings())do
 			if CanToCard(self,player,to) then
 				return self:cardIsAvailable(player)
 			end
@@ -1745,9 +1737,7 @@ zd_zengbingjianzao = sgs.CreateTrickCard{
 	suit = 2,
 	number = 3,
     available = function(self,player)
-    	local tos = player:getAliveSiblings()
-		tos:append(player)
-		for _,to in sgs.list(tos)do
+		for _,to in sgs.qlist(player:getAliveSiblings(true))do
 			if CanToCard(self,player,to) then
 				return self:cardIsAvailable(player)
 			end
@@ -1791,7 +1781,7 @@ zd_qijiayebing = sgs.CreateTrickCard{
 	suit = 1,
 	number = 12,
     available = function(self,player)
-		for _,to in sgs.list(player:getAliveSiblings())do
+		for _,to in sgs.qlist(player:getAliveSiblings())do
 			if CanToCard(self,player,to) then
 				return self:cardIsAvailable(player)
 			end
@@ -1909,8 +1899,8 @@ zd_fulei = sgs.CreateTrickCard{--锦囊牌
 		if judge:isBad() then
 	       	log = room:getTag("Fulei"..self:toString()):toInt()
 			log = log+1
-			room:damage(sgs.DamageStruct(self,nil,effect.to,log,sgs.DamageStruct_Thunder))
 			room:setTag("Fulei"..self:toString(),ToData(log))
+			room:damage(sgs.DamageStruct(self,nil,effect.to,log,sgs.DamageStruct_Thunder))
 		end
 		if room:getCardPlace(self:getEffectiveId())~=sgs.Player_PlaceTable
 		then room:removeTag("Fulei"..self:toString())
@@ -1924,6 +1914,7 @@ zd_fulei:clone(2,12):setParent(ZhongdanCard)
 zd_lanyinjiaTrVS = sgs.CreateViewAsSkill{
 	name = "zd_lanyinjia",
 	n = 1,
+	response_or_use = true,
 	view_filter = function(self,selected,to_select)
        	return not to_select:isEquipped()
 	end,
@@ -2071,7 +2062,7 @@ zd_zhungangshuoTr = sgs.CreateTriggerSkill{
 			and use.from==player then
 				for _,to in sgs.list(use.to)do
     	           	if player:getHandcardNum()>0
-					and ToSkillInvoke(self,player,to) then
+					and player:askForSkillInvoke(self,to) then
 						room:setEmotion(player,"weapon/zd_zhungangshuo")
 						local id = room:askForCardChosen(to,player,"h","zd_zhungangshuo")
 						room:throwCard(id,player,to)
@@ -3030,16 +3021,16 @@ sgs.LoadTranslationTable{
 	["$zd_xunzhi1"] = "春秋大业，自在我心！",
 	["$zd_xunzhi2"] = "成大义者，这点儿牺牲，算不得什么！",
 	["~cuiyan"] = "尔等，尽是欺世盗名之辈......",
-	["huangfusong"] = "皇甫嵩",
-	["#huangfusong"] = "志定雪霜",
-	["illustrator:huangfusong"] = "秋呆呆",
+	["zd_huangfusong"] = "皇甫嵩",
+	["#zd_huangfusong"] = "志定雪霜",
+	["illustrator:zd_huangfusong"] = "秋呆呆",
 	["zd_fenyue"] = "奋钺",
 	[":zd_fenyue"] = "<font color=\"green\"><b>出牌阶段限X次，</b></font>你可以与一名角色拼点：若你赢，你选择视为对其使用【杀】或令其于此回合内不能使用或打出手牌；若你没赢后，你结束此阶段。（X为忠臣数）",
 	["zd_fenyue1"] = "其于此回合内不能使用或打出手牌",
 	["zd_fenyue2"] = "视为对其使用【杀】",
 	["$zd_fenyue1"] = "逆贼势大，且扎营寨，击其懈怠。",
 	["$zd_fenyue2"] = "兵有其变，不在众寡。",
-	["~huangfusong"] = "只恨黄巾未除，不能报效朝廷。",
+	["~zd_huangfusong"] = "只恨黄巾未除，不能报效朝廷。",
 	["zd_shengdongjixi"] = "声东击西",
 	[":zd_shengdongjixi"] = "锦囊牌·单目标锦囊<br/><font color=\"#bab8ba\"><b>（替换【顺手牵羊】）</b></font><br/><b>时机</b>：出牌阶段，对距离为1的一名角色使用并指定另一名角色<br/><b>效果</b>：你交给目标一张手牌，然后其将两张牌交给指定的角色。",
 	["zd_shengdongjixi0"] = "声东击西：请选择将一张手牌交给%src",
