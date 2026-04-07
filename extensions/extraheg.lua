@@ -18735,6 +18735,16 @@ heg_fofl_paiyiCard = sgs.CreateSkillCard{
 		end
 	end
 }
+heg_fofl_paiyi = sgs.CreateViewAsSkill{
+	name = "heg_fofl_paiyi",
+	n = 0,
+	view_as = function(self, cards)
+		return heg_fofl_paiyiCard:clone()
+	end,
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("#heg_fofl_paiyi")
+	end,
+}
 
 heg_fofl_zhonghui:addSkill("heg_quanji")
 heg_fofl_zhonghui:addSkill(heg_fofl_paiyi)
@@ -18743,7 +18753,7 @@ heg_fofl_sunchen = sgs.General(extension_fakeoffline,  "heg_fofl_sunchen", "wu",
 
 heg_fofl_shiluClear = sgs.CreateTriggerSkill{
 	name = "#heg_fofl_shiluClear",
-	events = {sgs.ChoiceMade}
+	events = {sgs.ChoiceMade},
 	on_trigger = function(self,event,player,data)
 	    local room = player:getRoom()
 		local str = data:toString()
@@ -18762,7 +18772,7 @@ heg_fofl_shiluClear = sgs.CreateTriggerSkill{
 
 heg_fofl_shilu = sgs.CreateTriggerSkill{
 	name = "heg_fofl_shilu",
-	events = {sgs.EventPhaseEnd, sgs.ChoiceMade, sgs.EventPhaseProceeding}
+	events = {sgs.EventPhaseEnd, sgs.ChoiceMade, sgs.EventPhaseProceeding},
 	frequency = sgs.Skill_Compulsory,
 	on_trigger = function(self,event,player,data)
 	    local room = player:getRoom()
@@ -19123,8 +19133,8 @@ heg_fofl_tunchu = sgs.CreateTriggerSkill{
 	end
 }
 
-heg_fofl_lifengCard = sgs.CreateSkillCard{
-	name = "heg_fofl_lifeng",
+heg_fofl_shuliangCard = sgs.CreateSkillCard{
+	name = "heg_fofl_shuliang",
 	will_throw = false,
 	filter = function(self,targets,to_select,source)
 		if #targets>0 or to_select==source then return false end
@@ -19132,17 +19142,17 @@ heg_fofl_lifengCard = sgs.CreateSkillCard{
 	end,
 	on_effect = function(self,effect)
 		local room = effect.from:getRoom()
-		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, nil, "heg_fofl_lifeng", nil)
+		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, nil, "heg_fofl_shuliang", nil)
         room:throwCard(self, reason, nil)
-		room:broadcastSkillInvoke("heg_fofl_lifeng")
-		effect.to:drawCards(2, "heg_fofl_lifeng")
+		room:broadcastSkillInvoke("heg_fofl_shuliang")
+		effect.to:drawCards(2, "heg_fofl_shuliang")
 	end
 }
-heg_fofl_lifengVS = sgs.CreateOneCardViewAsSkill{
-	name = "heg_fofl_lifeng",
+heg_fofl_shuliangVS = sgs.CreateOneCardViewAsSkill{
+	name = "heg_fofl_shuliang",
 	filter_pattern = ".|.|.|heg_fofl_tunchu_liang",
 	view_as = function(self, card)
-		local skillcard = heg_fofl_lifengCard:clone()
+		local skillcard = heg_fofl_shuliangCard:clone()
 		skillcard:addSubcard(card)
 		return skillcard
 	end,
@@ -19150,18 +19160,18 @@ heg_fofl_lifengVS = sgs.CreateOneCardViewAsSkill{
 		return false
 	end,
 	enabled_at_response = function(self, player, pattern)
-		return pattern == "@@heg_fofl_lifeng"
+		return pattern == "@@heg_fofl_shuliang"
 	end
 }
-heg_fofl_lifeng = sgs.CreateTriggerSkill{
-	name = "heg_fofl_lifeng",
+heg_fofl_shuliang = sgs.CreateTriggerSkill{
+	name = "heg_fofl_shuliang",
 	events = {sgs.EventPhaseProceeding},
-	view_as_skill = heg_fofl_lifengVS,
+	view_as_skill = heg_fofl_shuliangVS,
 	on_trigger = function(self, event, player, data)
 		if player:getPhase() == sgs.Player_Finish then
 			for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
 				if p:getPile("heg_fofl_tunchu_liang"):length() > 0 and p:distanceTo(player) <= p:getPile("heg_fofl_tunchu_liang"):length() then
-					if room:askForUseCard(p, "@@heg_fofl_lifeng", "@heg_fofl_lifeng-use", -1, sgs.Card_MethodNone) then
+					if room:askForUseCard(p, "@@heg_fofl_shuliang", "@heg_fofl_shuliang-use", -1, sgs.Card_MethodNone) then
 					end
 				end
 			end
@@ -19174,7 +19184,7 @@ heg_fofl_lifeng = sgs.CreateTriggerSkill{
 }
 
 heg_fofl_lifeng:addSkill(heg_fofl_tunchu)
-heg_fofl_lifeng:addSkill(heg_fofl_lifeng)
+heg_fofl_lifeng:addSkill(heg_fofl_shuliang)
 
 -- heg_fofl_2_duyu = sgs.General(extension_fakeoffline,  "heg_fofl_lifeng", "qun", 4)
 
@@ -19582,7 +19592,7 @@ extension_fakeoffline:insertRelatedSkills("heg_fofl_huanjia", "#heg_fofl_huanjia
 
 heg_fofl_jiachong = sgs.General(extension_fakeoffline,  "heg_fofl_jiachong", "jin", 3)
 
-heg_fofl_xiongshu_buff =  = sgs.CreateTriggerSkill{
+heg_fofl_xiongshu_buff = sgs.CreateTriggerSkill{
 	name = "#heg_fofl_xiongshu_buff",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.DamageCaused},
@@ -19730,7 +19740,7 @@ heg_fofl_weirongVS = sgs.CreateViewAsSkill{
 	name = "heg_fofl_weirong",
 	n = 999,
 	view_filter = function(self, to_select)
-		return true,
+		return true
 	end,
 	view_as = function(self, cards)
 		local card = heg_fofl_weirongCard:clone()
@@ -20602,7 +20612,7 @@ heg_fofl_duorui_record = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data, room)
 		local damage = data:toDamage()
 		room:addPlayerMark(damage.to, "heg_fofl_duorui_damage-Clear")
-	end
+	end,
 	can_trigger = function(self, target)
 		return target
 	end,
@@ -20918,7 +20928,7 @@ heg_fofl_wuchangVS = sgs.CreateOneCardViewAsSkill{
 
 heg_fofl_wuchang = sgs.CreateTriggerSkill{
 	name = "heg_fofl_wuchang" ,
-	events = {sgs.CardsMoveOneTime, sgs.DamageCaused, sgs.Death}, ,
+	events = {sgs.CardsMoveOneTime, sgs.DamageCaused, sgs.Death},
 	view_as_skill = heg_fofl_wuchangVS,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
@@ -21006,9 +21016,9 @@ heg_fofl_liyu = sgs.CreateTriggerSkill{
 }
 
 
-heg_fofl_liyu:addSkill(heg_fofl_wuchang)
-heg_fofl_liyu:addSkill(heg_fofl_liyu)
-heg_fofl_liyu:addSkill(heg_fofl_liyu_buff)
+heg_fofl_lvbu:addSkill(heg_fofl_wuchang)
+heg_fofl_lvbu:addSkill(heg_fofl_liyu)
+heg_fofl_lvbu:addSkill(heg_fofl_liyu_buff)
 extension_fakeoffline:insertRelatedSkills("heg_fofl_liyu", "#heg_fofl_liyu_buff")
 
 heg_fofl_shichangshi = sgs.General(extension_fakeoffline,  "heg_fofl_shichangshi", "qun", 1)
