@@ -246,24 +246,24 @@ function SmartAI:initialize(player)
 			current_self = self
 			
 			-- Wrap with logger if debug mode is enabled
-		if _G.AI_DEBUG_MODE and logger then
-			local stackIndex = logger:logFunctionEntry("Callback:" .. method_name, {...})
-			local success, result1, result2 = pcall(method, self, ...)
-			
-			if success then
-				if logger then logger:logFunctionExit("Callback:" .. method_name, stackIndex, true, result1) end
-				return result1, result2
-			else
-				-- Enhanced error logging
-				if logger then
-					logger:logError("Callback:" .. method_name, result1, {
-						full_method = full_method_name,
-						args = {...},
-						player = player:getGeneralName(),
-						room_state = self.room:getTag("turncount"):toInt()
-					})
-				end
-					
+			if _G.AI_DEBUG_MODE and logger then
+				local stackIndex = logger:logFunctionEntry("Callback:" .. method_name, {...})
+				local success, result1, result2 = pcall(method, self, ...)
+				
+				if success then
+					if logger then logger:logFunctionExit("Callback:" .. method_name, stackIndex, true, result1) end
+					return result1, result2
+				else
+					-- Enhanced error logging
+					if logger then
+						logger:logError("Callback:" .. method_name, result1, {
+							full_method = full_method_name,
+							args = {...},
+							player = player:getGeneralName(),
+							room_state = self.room:getTag("turncount"):toInt()
+						})
+					end
+						
 					self.room:writeToConsole("=== AI CRASH DETECTED ===")
 					self.room:writeToConsole("Method: " .. method_name)
 					self.room:writeToConsole("Error: " .. tostring(result1))
@@ -286,12 +286,6 @@ function SmartAI:initialize(player)
 						if type(w) == "string" then self.room:writeToConsole(w) end
 					end
 				end
-			end
-		else
-			if _G.AI_DEBUG_MODE and logger then
-				logger:writeLog("WARN", "Method not found: " .. method_name, {
-					full_method = full_method_name
-				})
 			end
 		end
 	end
@@ -968,8 +962,9 @@ function SmartAI:getDynamicUsePriority(card)
 		if self.player:getHp() <= 1 and self:getCardsNum("Slash") == 0 then
             value = value - 3.0
         else
-		if self:hasCrossbowEffect() and self:getCardsNum("Slash") > 0 then
-			value = sgs.ai_use_priority.Slash + 0.5 
+			if self:hasCrossbowEffect() and self:getCardsNum("Slash") > 0 then
+				value = sgs.ai_use_priority.Slash + 0.5 
+			end
 		end
 	end
 	return value

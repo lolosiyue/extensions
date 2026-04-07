@@ -1006,19 +1006,19 @@ YingBianEffect_Global = sgs.CreateTriggerSkill {
 		end
 		if event == sgs.PreCardUsed then
 			-- 检查是否有应变效果需要处理
-			local effects_str = player:getTag("YingBian_Effects_" .. use:card():toString()):toString()
+			local effects_str = player:getTag("YingBian_Effects_" .. use.card:toString()):toString()
 			if effects_str and effects_str ~= "" then
 				processYingBianEffects(player, data, room)
 			end
 		elseif event == sgs.CardFinished then
 			-- 清理应变标记
-			if player:getMark("YingBianDirectlyEffective"..use_card:objectName()) > 0 then
-				room:removePlayerMark(player, "YingBianDirectlyEffective"..use_card:objectName())
+			if player:getMark("YingBianDirectlyEffective"..use.card:objectName()) > 0 then
+				room:removePlayerMark(player, "YingBianDirectlyEffective"..use.card:objectName())
 			end
 			-- 清理标记
-			local effects_str = player:getTag("YingBian_Effects_" .. use:card():toString()):toString()
+			local effects_str = player:getTag("YingBian_Effects_" .. use.card:toString()):toString()
 			if effects_str and effects_str ~= "" then
-				player:removeTag("YingBian_Effects_" .. use_card:toString())
+				player:removeTag("YingBian_Effects_" .. use.card:toString())
 			end
 		end
 		return false
