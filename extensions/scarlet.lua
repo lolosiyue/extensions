@@ -11930,6 +11930,7 @@ s4_renchen = sgs.CreateTriggerSkill{
                     room:broadcastSkillInvoke(self:objectName())
                     room:sendCompulsoryTriggerLog(player, self:objectName())
                     room:setPlayerMark(player, "s4_renchen_trigger", 1)
+                    room:setPlayerMark(player, "&s4_renchen+sys_+-Clear", 1)
                 end
             end
         elseif event == sgs.EventPhaseChanging then
@@ -12054,18 +12055,18 @@ s4_silie = sgs.CreateTriggerSkill{
             local lord = nil
             for _, p in sgs.qlist(room:getAllPlayers()) do
                 if p:hasLordSkill(self:objectName()) and p:isAlive() and p ~= player then
-                    if p and player:getKingdom() == "wei" then
+                    if p and player:hasLordSkillKingdom("wei") then
                         room:broadcastSkillInvoke(self:objectName())
                         room:sendCompulsoryTriggerLog(p, self:objectName())
                         
                         -- Player chooses first
-                        local choice1 = room:askForChoice(player, self:objectName(), "s4_silie_damage+s4_silie_draw", data)
+                        local choice1 = room:askForChoice(player, self:objectName(), "s4_silie_damage+s4_silie_draw", ToData(p))
                         if choice1 == "s4_silie_damage" then
                             room:damage(sgs.DamageStruct(self:objectName(), player, p, 1))
                         else
                             player:drawCards(1, self:objectName())
                         end
-                        local choice2 = room:askForChoice(p, self:objectName(), "s4_silie_damage+s4_silie_draw", data)
+                        local choice2 = room:askForChoice(p, self:objectName(), "s4_silie_damage+s4_silie_draw", ToData(player))
                         if choice2 == "s4_silie_damage" then
                             room:damage(sgs.DamageStruct(self:objectName(), p, player, 1))
                         else
@@ -12078,6 +12079,9 @@ s4_silie = sgs.CreateTriggerSkill{
         end
         return false
     end,
+    can_trigger = function(self,target)
+		return target~=nil
+	end,
 }
 
 s4_nvcaomao:addSkill(s4_silie)
@@ -12228,7 +12232,7 @@ s4_jieyi = sgs.CreateTriggerSkill{
         elseif event == sgs.EventPhaseEnd and player:getPhase() == sgs.Player_Judge and player:hasSkill(self) then
             local x = player:getMark("s4_jieyi-Clear")
             if x > 0 then
-                local targets = room:askforPlayersChosen(player, room:getAlivePlayers(), self:objectName(), 0, x, "@s4_jieyi". true, true)
+                local targets = room:askforPlayersChosen(player, room:getAlivePlayers(), self:objectName(), 0, x, "@s4_jieyi", true, true)
                 for _, target in sgs.qlist(targets) do
                     room:damage(sgs.DamageStruct(self:objectName(), player, target, 1))
                 end
@@ -12240,7 +12244,7 @@ s4_jieyi = sgs.CreateTriggerSkill{
 }
 
 s4_moubeivs = sgs.CreateViewAsSkill{
-	name = "s4_moubei",
+	name = "s4_moubeivs",
 	n = 1,
 	view_filter = function(self,selected,to_select)
 		return true
