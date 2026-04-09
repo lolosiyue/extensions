@@ -3191,6 +3191,18 @@ sgs.ai_skill_invoke.s4_xingjue = function(self, data)
     return self:doDisCard(source, "h") or self.player:getHandcardNum() < x
 end
 
+sgs.ai_can_damagehp.s4_xingjue = function(self,from,card,to)
+    if from and self:isFriend(from) then return false end
+    local x = 0
+    for _, p in sgs.list(self.room:getAlivePlayers()) do
+        if p:getHandcardNum() > x then
+            x = p:getHandcardNum()
+        end
+    end
+	return to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
+	and self:canLoseHp(from,card,to) and from and self:doDisCard(from, "h") and self:isEnemy(from) and self.player:getHandcardNum() - x >= 2
+end
+
 sgs.ai_skill_choice.s4_xingjue = function(self, choices, data)
     local items = choices:split("+")
     
@@ -3257,9 +3269,11 @@ end
 
 sgs.ai_skill_choice.s4_silie = function(self, choices, data)
     local items = choices:split("+")
-    local lord = self.room:getLord()
+    local target = data:toPlayer()
     if table.contains(items, "s4_silie_damage") then
-
+        if self:canDamage(target, self.player, nil) and self:damageIsEffective(target, sgs.DamageStruct_Normal, self.player) then
+            return "s4_silie_damage"
+        end
     end
-    return items[math.random(1, #items)]
+    return "s4_silie_draw"
 end
