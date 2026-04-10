@@ -1,72 +1,80 @@
 --===============================--
-extension = sgs.Package("extendeffects",sgs.Package_GeneralPack)
+extension = sgs.Package("extendeffects", sgs.Package_GeneralPack)
 --===============================--
-sgs.LoadTranslationTable{
-	["extendeffects"] = "特效",	
+sgs.LoadTranslationTable {
+	["extendeffects"] = "特效",
 }
 --================================--
 ENABLE_LV5_EFFECT = true
 --================================--
 TexiaoAnjiang = sgs.General(extension, "TexiaoAnjiang", "god", 5, true, true, true)
-LuaTexiao = sgs.CreateTriggerSkill{
+LuaTexiao = sgs.CreateTriggerSkill {
 	name = "#LuaTexiao",
-	events = {sgs.FinishJudge},
+	events = { sgs.FinishJudge },
 	global = true,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local judge = data:toJudge()
 		local shadiao = judge.who
-		if judge:isGood() then return end
+		if judge:isGood() then
+			return
+		end
 		if judge.reason == "indulgence" then
-			room:setEmotion(shadiao,"indulgence")
-		elseif judge.reason == "supply_shortage"  then
-			room:setEmotion(shadiao,"supply_shortage")
-		elseif judge.reason == "lightning"  then
-			room:setEmotion(shadiao,"lightning")
+			room:setEmotion(shadiao, "indulgence")
+		elseif judge.reason == "supply_shortage" then
+			room:setEmotion(shadiao, "supply_shortage")
+		elseif judge.reason == "lightning" then
+			room:setEmotion(shadiao, "lightning")
 		end
 	end,
 }
 --=============================--
-LuaTexiaoWujie = sgs.CreateTriggerSkill{
+LuaTexiaoWujie = sgs.CreateTriggerSkill {
 	name = "#LuaTexiaoWujie",
-	events = {sgs.CardUsed,sgs.CardResponded},
+	events = { sgs.CardUsed, sgs.CardResponded },
 	global = true,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local card_star
-		if event == sgs.CardUsed then 
+		if event == sgs.CardUsed then
 			card_star = data:toCardUse().card
-		else 
+		else
 			card_star = data:toCardResponse().m_card
 		end
-		if card_star:isKindOf("EquipCard") then return end
-		room:setEmotion(player,"wujie/"..card_star:objectName())
+		if card_star:isKindOf("EquipCard") then
+			return
+		end
+		room:setEmotion(player, "wujie/" .. card_star:objectName())
 	end,
 }
-function contains(splist,role) --using in getWinner func
-     for _,p in sgs.qlist(splist) do
-     	if p:getRoleEnum()==role then return true end				
-     end
-	 return false
+function contains(splist, role) --using in getWinner func
+	for _, p in sgs.qlist(splist) do
+		if p:getRoleEnum() == role then
+			return true
+		end
+	end
+	return false
 end
 
-function getWinner(room,victim)    
-	local r = victim:getRoleEnum() 
-    local sp = room:getOtherPlayers(victim)					
-    if r == sgs.Player_Lord then
-        if(sp:length() == 1 and sp:first():getRole() == "renegade") then                    
+function getWinner(room, victim)
+	local r = victim:getRoleEnum()
+	local sp = room:getOtherPlayers(victim)
+	if r == sgs.Player_Lord then
+		if sp:length() == 1 and sp:first():getRole() == "renegade" then
 			return sp:first():objectName()
-        else                   
+		else
 			return "rebel"
-        end
-    else
-        if(not contains(sp,sgs.Player_Rebel) and not contains(sp,sgs.Player_Renegade))then               
+		end
+	else
+		if not contains(sp, sgs.Player_Rebel) and not contains(sp, sgs.Player_Renegade) then
 			return "lord+loyalist"
-        elseif(victim:getRole() == "renegade" and not contains(sp,sgs.Player_Loyalist))
-           then room:setTag("RenegadeInFinalPK", sgs.QVariant(true))
+		elseif victim:getRole() == "renegade" and not contains(sp, sgs.Player_Loyalist) then
+			room:setTag("RenegadeInFinalPK", sgs.QVariant(true))
 			return nil
-		else return nil end							
-    end 	
+		else
+			return nil
+		end
+	end
 end
 
 -- mvpexperience = sgs.CreateTriggerSkill {
@@ -167,9 +175,11 @@ end
 --===========================--
 TexiaoAnjiang:addSkill(LuaTexiao)
 -- TexiaoAnjiang:addSkill(lianpoeffect)
-if ENABLE_LV5_EFFECT then TexiaoAnjiang:addSkill(LuaTexiaoWujie) end
+if ENABLE_LV5_EFFECT then
+	TexiaoAnjiang:addSkill(LuaTexiaoWujie)
+end
 -- TexiaoAnjiang:addSkill(mvpexperience)
-sgs.LoadTranslationTable{
+sgs.LoadTranslationTable {
 	["#mvpeffect"] = "全场最佳：",
 }
 --=============================--

@@ -9,9 +9,11 @@ lualilian = sgs.CreateTriggerSkill { --新神杀已实现
 	events = { sgs.Damaged },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		local damage = data:toDamage()                                       --获取伤害结构体
-		if (not room:askForSkillInvoke(player, "lualilian")) then return false end --
-		room:broadcastSkillInvoke("lualilian")                               --音效 OK 				
+		local damage = data:toDamage() --获取伤害结构体
+		if not room:askForSkillInvoke(player, "lualilian") then
+			return false
+		end --
+		room:broadcastSkillInvoke("lualilian") --音效 OK
 		for var = 1, damage.damage, 1 do
 			local choice = room:askForChoice(player, self:objectName(), "luayihengmopai+luayihengturn")
 			if choice == "luayihengmopai" then --选择1
@@ -27,7 +29,7 @@ lualilian = sgs.CreateTriggerSkill { --新神杀已实现
 			end
 			return false
 		end
-	end
+	end,
 }
 luawu_card = sgs.CreateSkillCard { --限定技,新神杀已实现
 	name = "luawu",
@@ -43,9 +45,13 @@ luawu_card = sgs.CreateSkillCard { --限定技,新神杀已实现
 			local cd_t = sgs.Sanguosha:getCard(id_t)
 			room:moveCardTo(cd_t, selfplayer, sgs.Player_DiscardPile, true)
 			room:throwCard(cd_t, selfplayer)
-			if not cd_t:isBlack() then b = false end
+			if not cd_t:isBlack() then
+				b = false
+			end
 		end
-		if not b then return false end
+		if not b then
+			return false
+		end
 		for _, p in sgs.qlist(room:getOtherPlayers(selfplayer)) do
 			room:broadcastSkillInvoke("luawu_trs") --音效  OK
 			if p:getHp() <= 1 then
@@ -70,7 +76,9 @@ luawu_vs = sgs.CreateViewAsSkill {
 	--return true
 	--end,
 	view_as = function(self, cards)
-		if #cards ~= 0 then return nil end
+		if #cards ~= 0 then
+			return nil
+		end
 		local a_luawu_card = luawu_card:clone()
 		--a!!_card:addSubcard(cards[1])
 		a_luawu_card:setSkillName(self:objectName())
@@ -81,7 +89,7 @@ luawu_vs = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_response = function(self, player, pattern)
 		return false
-	end
+	end,
 }
 
 luawu_trs = sgs.CreateTriggerSkill {
@@ -91,9 +99,7 @@ luawu_trs = sgs.CreateTriggerSkill {
 	frequency = sgs.Skill_Limited,
 	limit_mark = "@luawu_mark",
 	waked_skills = "wansha",
-	on_trigger = function(self, event, player, data)
-	end,
-
+	on_trigger = function(self, event, player, data) end,
 }
 luajuemou = sgs.CreateTriggerSkill { --觉醒 可实现
 	name = "luajuemou",
@@ -125,8 +131,12 @@ luajuemou = sgs.CreateTriggerSkill { --觉醒 可实现
 		end
 	end,
 	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
+		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then
+			return false
+		end
+		if player:canWake(self:objectName()) then
+			return true
+		end
 		return player:isWounded()
 	end,
 }
@@ -173,7 +183,7 @@ lualveji_card = sgs.CreateSkillCard { --略计
 				end
 			end
 		end
-	end
+	end,
 }
 
 lualveji_vs = sgs.CreateViewAsSkill {
@@ -183,7 +193,9 @@ lualveji_vs = sgs.CreateViewAsSkill {
 	--return true
 	--end,
 	view_as = function(self, cards)
-		if #cards ~= 0 then return nil end
+		if #cards ~= 0 then
+			return nil
+		end
 		local a_lualveji_card = lualveji_card:clone()
 		--a!!_card:addSubcard(cards[1])
 		a_lualveji_card:setSkillName(self:objectName())
@@ -194,7 +206,7 @@ lualveji_vs = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_response = function(self, player, pattern)
 		return false
-	end
+	end,
 }
 local skill = sgs.Sanguosha:getSkill("lualveji_vs")
 if not skill then
@@ -207,7 +219,6 @@ luayiheng:addSkill(luawu_trs)
 luayiheng:addSkill(luajuemou)
 sgs.LoadTranslationTable {
 	["luayiheng"] = "伊衡",
-
 
 	["lualvejiFZ"] = "放置于卡牌堆顶",
 	["lualvejiQZ"] = "加入于你的手牌",
@@ -224,7 +235,7 @@ sgs.LoadTranslationTable {
 	["@luawu_mark"] = "鶩",
 	["luawu"] = "鶩群",
 	[":lualilian"] = "每当你受到一次伤害你可以选择一项：1.选择一名其他角色，其翻面 2.发动“遗计”。 ",
-	[":lualveji_vs"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以失去一点体力，然后观看牌堆顶的三张牌并以任意顺序将其置于牌堆顶或加入手牌。",
+	[":lualveji_vs"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以失去一点体力，然后观看牌堆顶的三张牌并以任意顺序将其置于牌堆顶或加入手牌。',
 	["luawu_trs"] = "鶩群",
 	["lualilian"] = "搦略",
 
@@ -233,8 +244,8 @@ sgs.LoadTranslationTable {
 	["luajuemouHp"] = "回复1点体力",
 	["luajuemouCd"] = "摸两张牌",
 
-	[":luajuemou"] = "<font color=\"purple\"><b>觉醒技，</b></font>回合开始阶段，若你已受伤，你选择一项：1．回复1点体力；2．摸两张牌。然后获得“略计”。",
-	[":luawu_trs"] = "<font color=\"red\"><b>限定技，</b></font>出牌阶段，你可以亮出牌堆顶2张牌，若皆为黑色则所有其他角色：若其的体力值不大于1，则其翻面，然后进入濒死状态，在此时视为你拥有技能“完杀”；若其的体力值大于1：其减去1点体力上限，然后流失一点体力。",
+	[":luajuemou"] = '<font color="purple"><b>觉醒技，</b></font>回合开始阶段，若你已受伤，你选择一项：1．回复1点体力；2．摸两张牌。然后获得“略计”。',
+	[":luawu_trs"] = '<font color="red"><b>限定技，</b></font>出牌阶段，你可以亮出牌堆顶2张牌，若皆为黑色则所有其他角色：若其的体力值不大于1，则其翻面，然后进入濒死状态，在此时视为你拥有技能“完杀”；若其的体力值大于1：其减去1点体力上限，然后流失一点体力。',
 	["~luayiheng"] = "听潮而圆，听信而既矣",
 	["#luayiheng"] = "谋定而动",
 	["designer:luayiheng"] = "程春阳",
@@ -247,20 +258,19 @@ luafan = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local jink
 		if event == sgs.CardResponded then
-            local card = data:toCardResponse().m_card
-            if card and card:isKindOf("Jink") then
+			local card = data:toCardResponse().m_card
+			if card and card:isKindOf("Jink") then
 				jink = card
 			end
 		elseif event == sgs.CardUsed then
 			local card = data:toCardUse().card
-            if card and card:isKindOf("Jink") then
+			if card and card:isKindOf("Jink") then
 				jink = card
 			end
 		end
 		local room = player:getRoom()
 		if jink then
-			local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName(), "luafan-invoke",
-				true, true)
+			local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName(), "luafan-invoke", true, true)
 			if target then
 				room:broadcastSkillInvoke("luafan")
 				local judge = sgs.JudgeStruct()
@@ -278,11 +288,8 @@ luafan = sgs.CreateTriggerSkill {
 			end
 		end
 		return false
-	end
+	end,
 }
-
-
-
 
 luaqiyi = sgs.CreateViewAsSkill {
 	name = "luaqiyi",
@@ -305,7 +312,7 @@ luaqiyi = sgs.CreateViewAsSkill {
 			local cardA = cards[1]
 			local cardB = cards[2]
 			local suit = cardA:getSuit()
-			local aa = sgs.Sanguosha:cloneCard("jink", suit, 0);
+			local aa = sgs.Sanguosha:cloneCard("jink", suit, 0)
 			aa:addSubcard(cardA)
 			aa:addSubcard(cardB)
 			aa:setSkillName(self:objectName())
@@ -317,10 +324,8 @@ luaqiyi = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_response = function(self, target, pattern)
 		return (pattern == "jink")
-	end
+	end,
 }
-
-
 
 luaguidao = sgs.CreateTriggerSkill {
 	name = "luaguidao",
@@ -332,7 +337,7 @@ luaguidao = sgs.CreateTriggerSkill {
 			judge.who:objectName(),
 			self:objectName(),
 			judge.reason,
-			string.format("%d", judge.card:getEffectiveId())
+			string.format("%d", judge.card:getEffectiveId()),
 		}
 		local prompt = table.concat(prompt_list, ":")
 		local room = player:getRoom()
@@ -367,16 +372,20 @@ luaxumou = sgs.CreateTriggerSkill { --蓄谋 实现
 		return false
 	end,
 	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
+		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then
+			return false
+		end
+		if player:canWake(self:objectName()) then
+			return true
+		end
 		for _, p in sgs.qlist(room:getAlivePlayers()) do
-			if p:getHp() < player:getHp() then return false end
+			if p:getHp() < player:getHp() then
+				return false
+			end
 		end
 		return true
 	end,
 }
-
-
 
 local skill = sgs.Sanguosha:getSkill("luaqiyi")
 if not skill then
@@ -410,12 +419,11 @@ sgs.LoadTranslationTable {
 	["#luaxumou"] = "%from 体力值为全场最小，触发了觉醒技<font color='yellow'>【天公】</font>\
 %from 增加了一点体力上限",
 
-
 	[":luaqiyi"] = "你可以将两张相同花色的手牌当【闪】使用或打出。",
 	[":luaguidao"] = "任意判定牌生效前你可以用你的一张牌替换之",
 	["~luaguidao"] = "任意判定牌生效前你可以用你的一张牌替换之",
 	["@luaguidao"] = "请选择一张牌",
-	[":luaxumou"] = "<font color=\"purple\"><b>觉醒技，</b></font>准备阶段开始时，若你的体力值为场上最少（或之一），你加1点体力上限，然后摸两张牌，获得“天道”和“起义”",
+	[":luaxumou"] = '<font color="purple"><b>觉醒技，</b></font>准备阶段开始时，若你的体力值为场上最少（或之一），你加1点体力上限，然后摸两张牌，获得“天道”和“起义”',
 	[":luafan"] = "当你使用或打出【闪】时，你可以令一名其他角色判定，若结果为♠2-9，你对该角色造成2点雷电伤害，否则你可以获得你所使用或打出的【闪】。",
 	[":@luafan"] = "是否对一名角色进行判定？",
 	["luafan-invoke"] = "你可以发动“天雷”<br> <b>操作提示</b>: 选择一名其他角色→点击确定<br/>",
@@ -430,9 +438,13 @@ luajiejiangcard = sgs.CreateSkillCard {
 	will_throw = false,
 
 	filter = function(self, targets, to_select)
-		if (#targets > 1) then return false end
+		if #targets > 1 then
+			return false
+		end
 
-		if (to_select == self) then return false end
+		if to_select == self then
+			return false
+		end
 
 		return not to_select:isAllNude()
 	end,
@@ -451,25 +463,22 @@ luajiejiangcard = sgs.CreateSkillCard {
 	end,
 }
 
-luajiejiangVS = sgs.CreateViewAsSkill
-	{
-		name = "luajiejiang",
-		n = 0,
+luajiejiangVS = sgs.CreateViewAsSkill {
+	name = "luajiejiang",
+	n = 0,
 
-		view_as = function()
-			return luajiejiangcard:clone()
-		end,
+	view_as = function()
+		return luajiejiangcard:clone()
+	end,
 
-		enabled_at_play = function()
-			return false
-		end,
+	enabled_at_play = function()
+		return false
+	end,
 
-		enabled_at_response = function(self, player, pattern)
-			return pattern == "@@luajiejiang"
-		end
-	}
-
-
+	enabled_at_response = function(self, player, pattern)
+		return pattern == "@@luajiejiang"
+	end,
+}
 
 luajiejiang = sgs.CreateTriggerSkill { --溃袭
 	name = "luajiejiang",
@@ -478,25 +487,26 @@ luajiejiang = sgs.CreateTriggerSkill { --溃袭
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if player:getPhase() == sgs.Player_Draw then
-			if not (room:askForSkillInvoke(player, "luajiejiang", data)) then return false end
+			if not (room:askForSkillInvoke(player, "luajiejiang", data)) then
+				return false
+			end
 			local judge = sgs.JudgeStruct()
 			judge.pattern = "."
 			judge.good = true
 			judge.reason = self:objectName()
 			judge.who = player
 			room:judge(judge)
-			if (judge:isGood()) then
+			if judge:isGood() then
 				player:obtainCard(judge.card)
 				room:broadcastSkillInvoke("luajiejiang") --音效  ok
 
 				if judge.card:isRed() then
 					local cd_t = room:askForUseCard(player, "@@luajiejiang", "@luajiejiang2_card")
 				else
-					local to = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(),
-						"luajiejiang-invoke")
+					local to = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "luajiejiang-invoke")
 					if to then
 						to:turnOver()
-						if (to:getHandcardNum() >= player:getHp()) then
+						if to:getHandcardNum() >= player:getHp() then
 							room:loseHp(to, 1, true, player, self:objectName())
 						end
 					end
@@ -506,7 +516,6 @@ luajiejiang = sgs.CreateTriggerSkill { --溃袭
 		end
 	end,
 }
-
 
 luaqiqi:addSkill(luajiejiang)
 sgs.LoadTranslationTable {
@@ -532,7 +541,7 @@ luaxiuyang = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.GameStart then
-			if (player:getHp() > 0) then
+			if player:getHp() > 0 then
 				room:broadcastSkillInvoke("luaxiuyang") --音效  ok
 				room:setPlayerMark(player, "&luaxiuyang+kongcheng+kanpo", 1)
 				room:handleAcquireDetachSkills(player, "kongcheng")
@@ -540,7 +549,7 @@ luaxiuyang = sgs.CreateTriggerSkill {
 			end
 		end
 		if event == sgs.TurnedOver then
-			if player:faceUp() then         --正面朝上
+			if player:faceUp() then --正面朝上
 				room:broadcastSkillInvoke("luaxiuyang") --音效  ok
 
 				room:handleAcquireDetachSkills(player, "-wuyan")
@@ -549,7 +558,7 @@ luaxiuyang = sgs.CreateTriggerSkill {
 				room:handleAcquireDetachSkills(player, "kongcheng")
 				room:setPlayerMark(player, "&luaxiuyang+kongcheng+kanpo", 1)
 				room:setPlayerMark(player, "&luaxiuyang+wuyan+bazhen", 0)
-			else                            --背面朝上
+			else --背面朝上
 				room:broadcastSkillInvoke("luaxiuyang") --音效
 				room:setPlayerMark(player, "&luaxiuyang+kongcheng+kanpo", 0)
 				room:setPlayerMark(player, "&luaxiuyang+wuyan+bazhen", 1)
@@ -559,7 +568,7 @@ luaxiuyang = sgs.CreateTriggerSkill {
 				room:handleAcquireDetachSkills(player, "bazhen")
 			end
 		end
-	end
+	end,
 }
 luamoucecard = sgs.CreateSkillCard { --实现
 	name = "luamouce",
@@ -603,14 +612,18 @@ luaJC = sgs.CreateTriggerSkill {
 	events = { sgs.Dying },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if not player:hasSkill(self:objectName()) then return false end
+		if not player:hasSkill(self:objectName()) then
+			return false
+		end
 		local dying = data:toDying()
 		if dying.who and dying.who:objectName() ~= player:objectName() then
 			return false
 		end
-		if not room:askForSkillInvoke(player, self:objectName()) then return false end
+		if not room:askForSkillInvoke(player, self:objectName()) then
+			return false
+		end
 
-		room:broadcastSkillInvoke("luaJC") --音效  	ok	
+		room:broadcastSkillInvoke("luaJC") --音效  	ok
 
 		local target1 = room:askForPlayerChosen(player, room:getOtherPlayers(player), "ask_1")
 		--target1:gainMark("@distance_from")
@@ -619,10 +632,9 @@ luaJC = sgs.CreateTriggerSkill {
 		local target2 = room:askForPlayerChosen(player, room:getOtherPlayers(target1), "ask_2")
 		--target2:gainMark("@distance")
 		room:addPlayerMark(target2, "&luaJC_target")
-		room:setFixedDistance(target1, target2, 1);
+		room:setFixedDistance(target1, target2, 1)
 		room:killPlayer(player)
-	end
-
+	end,
 }
 
 luazg:addSkill(luamouce)
@@ -644,98 +656,95 @@ sgs.LoadTranslationTable {
 	["luaJC_target"] = "遗托目标",
 	["luaJC"] = "遗托",
 	["Distance"] = "遗托from",
-	[":luamouce"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以弃置一名已受伤的其他角色区域内的一张牌，然后该角色流失2点体力，若如此做你需将你的武将牌翻面。",
+	[":luamouce"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以弃置一名已受伤的其他角色区域内的一张牌，然后该角色流失2点体力，若如此做你需将你的武将牌翻面。',
 	["$luamouce"] = "巧变制敌，谋定而动",
 	["$luaxiuyang"] = "我，永不背弃!",
 	["$luaJC"] = "知天易,逆天难。",
-	[":luaxiuyang"] = "<font color=\"blue\"><b>锁定技，</b></font>当你的武将正面朝上时你拥有“空城”“看破”，背面朝上时你拥有“无言”“八阵”。",
-	[":luaJC"] = "<font color=\"red\"><b>限定技，</b></font>当你处于濒死状态时，你可以放弃求桃，然后指定两名角色则:第一名角色摸两张牌，第一名角色和第二名角色的距离始终为1。",
+	[":luaxiuyang"] = '<font color="blue"><b>锁定技，</b></font>当你的武将正面朝上时你拥有“空城”“看破”，背面朝上时你拥有“无言”“八阵”。',
+	[":luaJC"] = '<font color="red"><b>限定技，</b></font>当你处于濒死状态时，你可以放弃求桃，然后指定两名角色则:第一名角色摸两张牌，第一名角色和第二名角色的距离始终为1。',
 	["~luazg"] = "天命有旋转，地星而应之。",
 	["#luazg"] = "迟暮的丞相",
 	["designer:luazg"] = "程春阳",
 }
 luaguanyu = sgs.General(extension, "luaguanyu", "shu", 4, true) --实现
-luaqinglong = sgs.CreateTriggerSkill
-	{
-		name = "luaqinglong",
-		events = { sgs.EventPhaseStart, sgs.Damage },
-		frequency = sgs.Skill_Compulsory,
-		--view_as_skill = luaqinglong,
-		on_trigger = function(self, event, player, data)
-			local room = player:getRoom()
-			local damage = data:toDamage()
-			local card = damage.card
-			if player:getPhase() == sgs.Player_Start then
-				local blade = nil
-				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-					for _, cd in sgs.qlist(p:getCards("hej")) do
-						if cd:isKindOf("Blade") then
-							blade = cd
-							break
-						end
+luaqinglong = sgs.CreateTriggerSkill {
+	name = "luaqinglong",
+	events = { sgs.EventPhaseStart, sgs.Damage },
+	frequency = sgs.Skill_Compulsory,
+	--view_as_skill = luaqinglong,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		local damage = data:toDamage()
+		local card = damage.card
+		if player:getPhase() == sgs.Player_Start then
+			local blade = nil
+			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+				for _, cd in sgs.qlist(p:getCards("hej")) do
+					if cd:isKindOf("Blade") then
+						blade = cd
+						break
 					end
 				end
-				if blade ~= nil then
-					room:broadcastSkillInvoke("luaqinglong") --音效
-
-					room:moveCardTo(blade, player, sgs.Player_PlaceHand, true)
-				end
-			elseif (event == sgs.Damage and player:hasWeapon("Blade") and card:isKindOf("Slash") and (not damage.chain) and (not damage.transfer)) then
+			end
+			if blade ~= nil then
 				room:broadcastSkillInvoke("luaqinglong") --音效
 
-				local x = player:getLostHp()
-				player:drawCards(x)
-				room:loseHp(damage.to, 1, true, player, self:objectName())
-				return false
+				room:moveCardTo(blade, player, sgs.Player_PlaceHand, true)
 			end
-		end,
-	}
+		elseif event == sgs.Damage and player:hasWeapon("Blade") and card:isKindOf("Slash") and not damage.chain and not damage.transfer then
+			room:broadcastSkillInvoke("luaqinglong") --音效
+
+			local x = player:getLostHp()
+			player:drawCards(x)
+			room:loseHp(damage.to, 1, true, player, self:objectName())
+			return false
+		end
+	end,
+}
 luawuwu = sgs.CreateProhibitSkill { --无误
 	name = "luawuwu",
 	is_prohibited = function(self, from, to, card)
-		if (to:hasSkill(self:objectName())) then
+		if to:hasSkill(self:objectName()) then
 			return (card:isKindOf("Snatch") or card:isKindOf("Dismantlement") or card:isKindOf("Collateral"))
 		end
 	end,
 }
 
-chitunew = sgs.CreateDistanceSkill
-	{
-		name = "chitunew",
-		correct_func = function(self, from, to)
-			if from:hasSkill("Chitu") then return -1 end
-		end,
-	}
-
-
-luaxiaoyong = sgs.CreateTriggerSkill
-	{
-		name = "luaxiaoyong",
-		events = { sgs.EventPhaseStart, sgs.GameStart },
-		frequency = sgs.Skill_Compulsory,
-		view_as_skill = luaxiaoyong,
-		on_trigger = function(self, event, player, data)
-			local room = player:getRoom()
-			if ((event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Finish) or (event == sgs.GameStart)) then
-				room:broadcastSkillInvoke("luaxiaoyong") --音效  ok
-
-				room:handleAcquireDetachSkills(player, "luawuwu")
-				room:handleAcquireDetachSkills(player, "-wusheng")
-				room:handleAcquireDetachSkills(player, "-chitunew")
-				room:setPlayerMark(player, "&luaxiaoyong+wusheng+chitunew", 0)
-				room:setPlayerMark(player, "&luaxiaoyong+luawuwu", 1)
-			elseif (event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Start) then
-				room:broadcastSkillInvoke("luaxiaoyong") --音效  ok
-				room:setPlayerMark(player, "&luaxiaoyong+luawuwu", 0)
-				room:setPlayerMark(player, "&luaxiaoyong+wusheng+chitunew", 1)
-				room:handleAcquireDetachSkills(player, "-luawuwu")
-				room:handleAcquireDetachSkills(player, "wusheng")
-				room:handleAcquireDetachSkills(player, "chitunew")
-				return false
-			end
+chitunew = sgs.CreateDistanceSkill {
+	name = "chitunew",
+	correct_func = function(self, from, to)
+		if from:hasSkill("Chitu") then
+			return -1
 		end
+	end,
+}
 
-	}
+luaxiaoyong = sgs.CreateTriggerSkill {
+	name = "luaxiaoyong",
+	events = { sgs.EventPhaseStart, sgs.GameStart },
+	frequency = sgs.Skill_Compulsory,
+	view_as_skill = luaxiaoyong,
+	on_trigger = function(self, event, player, data)
+		local room = player:getRoom()
+		if (event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Finish) or (event == sgs.GameStart) then
+			room:broadcastSkillInvoke("luaxiaoyong") --音效  ok
+
+			room:handleAcquireDetachSkills(player, "luawuwu")
+			room:handleAcquireDetachSkills(player, "-wusheng")
+			room:handleAcquireDetachSkills(player, "-chitunew")
+			room:setPlayerMark(player, "&luaxiaoyong+wusheng+chitunew", 0)
+			room:setPlayerMark(player, "&luaxiaoyong+luawuwu", 1)
+		elseif event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Start then
+			room:broadcastSkillInvoke("luaxiaoyong") --音效  ok
+			room:setPlayerMark(player, "&luaxiaoyong+luawuwu", 0)
+			room:setPlayerMark(player, "&luaxiaoyong+wusheng+chitunew", 1)
+			room:handleAcquireDetachSkills(player, "-luawuwu")
+			room:handleAcquireDetachSkills(player, "wusheng")
+			room:handleAcquireDetachSkills(player, "chitunew")
+			return false
+		end
+	end,
+}
 
 local skill = sgs.Sanguosha:getSkill("luawuwu")
 if not skill then
@@ -757,12 +766,12 @@ luaguanyu:addRelateSkill("chitunew")
 luaguanyu:addRelateSkill("luawuwu")
 sgs.LoadTranslationTable {
 	["luaguanyu"] = "☆关羽",
-	[":luaqinglong"] = "<font color=\"blue\"><b>锁定技，</b></font>回合开始阶段，若场上有 <font color=\"green\"><b>【青龙偃月刀】</b></font>，你获得之，当你拥有<font color=\"green\"><b>【青龙偃月刀】</b></font>你使用【杀】对目标角色造成伤害后，其流失1点体力，然后你摸X张牌(x为你的已损体力值)。\
-★只要<font color=\"green\"><b>【青龙偃月刀】</b></font>出现在某个玩家都手中，或出现在其他角色的判定区／装备区里你都可以在回合开始阶段加入你的手牌。",
-	[":luaxiaoyong"] = "<font color=\"blue\"><b>锁定技，</b></font>在你的回合內你拥有“武圣”和“赤兔”；在你的回合外，你拥有技能“无误”，直到你的下一个回合开始阶段。",
-	[":luawuwu"] = "<font color=\"blue\"><b>锁定技，</b></font>你不能成为【顺手牵羊】【过河拆桥】【借刀杀人】的目标。",
-	[":chitunew"] = "【赤兔】 装备牌·坐骑\
-坐骑效果：<font color=\"blue\"><b>锁定技，</b></font>你计算的与其他角色的距离-1。",
+	[":luaqinglong"] = '<font color="blue"><b>锁定技，</b></font>回合开始阶段，若场上有 <font color="green"><b>【青龙偃月刀】</b></font>，你获得之，当你拥有<font color="green"><b>【青龙偃月刀】</b></font>你使用【杀】对目标角色造成伤害后，其流失1点体力，然后你摸X张牌(x为你的已损体力值)。\
+★只要<font color="green"><b>【青龙偃月刀】</b></font>出现在某个玩家都手中，或出现在其他角色的判定区／装备区里你都可以在回合开始阶段加入你的手牌。',
+	[":luaxiaoyong"] = '<font color="blue"><b>锁定技，</b></font>在你的回合內你拥有“武圣”和“赤兔”；在你的回合外，你拥有技能“无误”，直到你的下一个回合开始阶段。',
+	[":luawuwu"] = '<font color="blue"><b>锁定技，</b></font>你不能成为【顺手牵羊】【过河拆桥】【借刀杀人】的目标。',
+	[":chitunew"] = '【赤兔】 装备牌·坐骑\
+坐骑效果：<font color="blue"><b>锁定技，</b></font>你计算的与其他角色的距离-1。',
 	["luaqinglong"] = "青龙",
 	["chitunew"] = "赤兔",
 	["$luaqinglong"] = "取汝狗头，有如探囊取物！",
@@ -774,7 +783,7 @@ sgs.LoadTranslationTable {
 	["#luaguanyu"] = "过关斩将",
 }
 luachenggeng = sgs.General(extension, "luachenggeng", "shu", 4, true) --实现
-luazhenshe = sgs.CreateTriggerSkill {                                 --震慑
+luazhenshe = sgs.CreateTriggerSkill { --震慑
 	name = "luazhenshe",
 	events = { sgs.Damage },
 	on_trigger = function(self, event, player, data)
@@ -789,8 +798,9 @@ luazhenshe = sgs.CreateTriggerSkill {                                 --震慑
 						return
 					end
 
-
-					if not room:askForSkillInvoke(player, self:objectName(), data) then return end
+					if not room:askForSkillInvoke(player, self:objectName(), data) then
+						return
+					end
 					room:broadcastSkillInvoke("luazhenshe") --音效  ok
 					local log1 = sgs.LogMessage()
 					log1.type = "$luazhenshe1"
@@ -816,7 +826,7 @@ luazhenshe = sgs.CreateTriggerSkill {                                 --震慑
 				end
 			end
 		end
-	end
+	end,
 }
 
 luazhensheDouble = sgs.CreateTriggerSkill {
@@ -827,7 +837,9 @@ luazhensheDouble = sgs.CreateTriggerSkill {
 	end,
 	on_trigger = function(self, event, player, data, room)
 		local use = data:toCardUse()
-		if not use.card:hasFlag("luazhenshe_double") then return false end
+		if not use.card:hasFlag("luazhenshe_double") then
+			return false
+		end
 		room:setCardFlag(use.card, "-luazhenshe_double")
 		--if use.card:hasPreAction() then end
 		if use.card:isKindOf("Slash") then --【杀】需要单独处理
@@ -861,15 +873,12 @@ luazhensheDouble = sgs.CreateTriggerSkill {
 			-- 		room:slashEffect(se)
 			-- 	end
 			-- end
-			use.card:use(room,use.from,use.to)
+			use.card:use(room, use.from, use.to)
 			player:drawCards(1)
 		end
 		return false
-	end
+	end,
 }
-
-
-
 
 luaqibing = sgs.CreateTriggerSkill {
 	name = "luaqibing",
@@ -877,16 +886,24 @@ luaqibing = sgs.CreateTriggerSkill {
 	priority = 2,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		--local siyeliuyue=room:findPlayerBySkillName(self:objectName())		
+		--local siyeliuyue=room:findPlayerBySkillName(self:objectName())
 		local log = sgs.LogMessage()
 		log.from = player
 		if (event == sgs.CardFinished) and (player:getPhase() == sgs.Player_Play) then
 			local use = data:toCardUse()
 			local card = use.card
-			if use.from:objectName() ~= player:objectName() then return false end
-			if player:getPile("luaqibingcards"):length() == 3 then return false end
-			if player:hasFlag("luaqibing_source") then return false end
-			if (room:askForSkillInvoke(player, "@luaqibing", data) ~= true) then return false end
+			if use.from:objectName() ~= player:objectName() then
+				return false
+			end
+			if player:getPile("luaqibingcards"):length() == 3 then
+				return false
+			end
+			if player:hasFlag("luaqibing_source") then
+				return false
+			end
+			if room:askForSkillInvoke(player, "@luaqibing", data) ~= true then
+				return false
+			end
 			--room:setPlayerFlag(player,"luaqibing_source")
 			local x = 0
 			if card:isVirtualCard() then
@@ -909,10 +926,12 @@ luaqibing = sgs.CreateTriggerSkill {
 				log.from = player
 				room:sendLog(log)
 			end
-			--return true		
+			--return true
 		elseif event == sgs.Predamage then
 			local damage = data:toDamage()
-			if not damage.card:isKindOf("Slash") then return false end
+			if not damage.card:isKindOf("Slash") then
+				return false
+			end
 			if not player:getPile("luaqibingcards"):isEmpty() and room:askForSkillInvoke(player, "luaqibing", data) then
 				room:broadcastSkillInvoke("luaqibing") --音效  ok
 				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", self:objectName(), "")
@@ -959,73 +978,72 @@ sgs.LoadTranslationTable {
 }
 
 luajiaxu = sgs.General(extension, "luajiaxu", "qun", 3, true) --贾诩
-luahuntian_card = sgs.CreateSkillCard
-	{                                                         --弃掉4张花色牌，让--1个玩家执行效果
-		name = "luahuntian",
-		target_fixed = false,
-		will_throw = true,
+luahuntian_card = sgs.CreateSkillCard { --弃掉4张花色牌，让--1个玩家执行效果
+	name = "luahuntian",
+	target_fixed = false,
+	will_throw = true,
 
-		filter = function(self, targets, to_select)
-			return (#targets < 998)
-		end,
+	filter = function(self, targets, to_select)
+		return (#targets < 998)
+	end,
 
-		on_effect = function(self, effect)
-			local from = effect.from
-			local to = effect.to --
-			local room = to:getRoom()
+	on_effect = function(self, effect)
+		local from = effect.from
+		local to = effect.to --
+		local room = to:getRoom()
 
-			room:broadcastSkillInvoke("luahuntian") --音效 ok
+		room:broadcastSkillInvoke("luahuntian") --音效 ok
 
-
-			if (to:getHp() > 1) then
-				room:setPlayerFlag(from, "@LHT_used")
-				local damage = sgs.DamageStruct()
-				damage.from = from
-				damage.to = effect.to
-				damage.nature = sgs.DamageStruct_Fire
-				room:damage(damage)
-				if from:canDiscard(to, "he") then
-					local to_throw = room:askForCardChosen(from, to, "he", self:objectName())
-					local card = sgs.Sanguosha:getCard(to_throw)
-					room:throwCard(card, to, from);
-				end
-			else
-				room:loseHp(to, 1, true, from, self:objectName())
-				to:throwAllEquips()
-				return false
+		if to:getHp() > 1 then
+			room:setPlayerFlag(from, "@LHT_used")
+			local damage = sgs.DamageStruct()
+			damage.from = from
+			damage.to = effect.to
+			damage.nature = sgs.DamageStruct_Fire
+			room:damage(damage)
+			if from:canDiscard(to, "he") then
+				local to_throw = room:askForCardChosen(from, to, "he", self:objectName())
+				local card = sgs.Sanguosha:getCard(to_throw)
+				room:throwCard(card, to, from)
 			end
-		end,
-	}
-
-luahuntian = sgs.CreateViewAsSkill
-	{
-		name = "luahuntian",
-		n = 5, --
-
-		view_filter = function(self, selected, to_select)
-			return (#selected < 5) and (to_select:getSuit() == sgs.Card_Spade)
-		end,
-
-		view_as = function(self, cards)
-			if #cards ~= 5 then return false end
-			new_card = luahuntian_card:clone()
-			new_card:addSubcard(cards[1]:getId())
-			new_card:addSubcard(cards[2]:getId())
-			new_card:addSubcard(cards[3]:getId())
-			new_card:addSubcard(cards[4]:getId())
-			new_card:addSubcard(cards[5]:getId())
-			new_card:setSkillName("luahuntian")
-			return new_card
-		end,
-
-		enabled_at_play = function(self, player)
-			return not player:hasUsed("#luahuntian")
-		end,
-
-		enabled_at_response = function()
+		else
+			room:loseHp(to, 1, true, from, self:objectName())
+			to:throwAllEquips()
 			return false
 		end
-	}
+	end,
+}
+
+luahuntian = sgs.CreateViewAsSkill {
+	name = "luahuntian",
+	n = 5, --
+
+	view_filter = function(self, selected, to_select)
+		return (#selected < 5) and (to_select:getSuit() == sgs.Card_Spade)
+	end,
+
+	view_as = function(self, cards)
+		if #cards ~= 5 then
+			return false
+		end
+		new_card = luahuntian_card:clone()
+		new_card:addSubcard(cards[1]:getId())
+		new_card:addSubcard(cards[2]:getId())
+		new_card:addSubcard(cards[3]:getId())
+		new_card:addSubcard(cards[4]:getId())
+		new_card:addSubcard(cards[5]:getId())
+		new_card:setSkillName("luahuntian")
+		return new_card
+	end,
+
+	enabled_at_play = function(self, player)
+		return not player:hasUsed("#luahuntian")
+	end,
+
+	enabled_at_response = function()
+		return false
+	end,
+}
 luajiaodi = sgs.CreateTriggerSkill {
 	name = "luajiaodi",
 	events = { sgs.Damaged },
@@ -1035,8 +1053,12 @@ luajiaodi = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if event == sgs.Damaged then
 			local damage = data:toDamage()
-			if not damage.to:hasSkill(self:objectName()) then return false end
-			if not room:askForSkillInvoke(player, "luajiaodi") then return false end
+			if not damage.to:hasSkill(self:objectName()) then
+				return false
+			end
+			if not room:askForSkillInvoke(player, "luajiaodi") then
+				return false
+			end
 			room:broadcastSkillInvoke("luajiaodi") --音效
 			local x = 3 * damage.damage
 			--[[for i=1,x*3,1 do
@@ -1055,8 +1077,7 @@ luajiaodi = sgs.CreateTriggerSkill {
 			move.card_ids = ids
 			move.to = player
 			move.to_place = sgs.Player_PlaceTable
-			move.reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TURNOVER, player:objectName(), self:objectName(),
-				nil)
+			move.reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TURNOVER, player:objectName(), self:objectName(), nil)
 			room:moveCardsAtomic(move, true)
 			local card_to_throw = {}
 			local card_to_gotback = {}
@@ -1099,15 +1120,14 @@ luajiaodi = sgs.CreateTriggerSkill {
 				dummy:deleteLater()
 			end
 		end
-	end
+	end,
 }
 
 luajilue = sgs.CreateTriggerSkill {
 	name = "luajilue",
 	events = { sgs.Damaged },
 	can_trigger = function(self, target)
-		return target and target:isAlive() and target:hasSkill(self:objectName()) and
-			target:getPile("luamou"):length() > 0
+		return target and target:isAlive() and target:hasSkill(self:objectName()) and target:getPile("luamou"):length() > 0
 	end,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
@@ -1138,8 +1158,7 @@ luajilue = sgs.CreateTriggerSkill {
 						card_id = room:askForAG(player, luamous, false, "luamou")
 						room:clearAG()
 					end
-					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", self:objectName(),
-						"")
+					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", self:objectName(), "")
 					room:throwCard(sgs.Sanguosha:getCard(card_id), reason, nil)
 					--room:throwCard(card_id,player)
 					skill:trigger(event, room, player, data)
@@ -1147,9 +1166,8 @@ luajilue = sgs.CreateTriggerSkill {
 			end
 		end
 		return false
-	end
+	end,
 }
-
 
 luaguiwei = sgs.CreateTriggerSkill {
 	name = "luaguiwei",
@@ -1158,14 +1176,15 @@ luaguiwei = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.GameStart then
-			if not room:askForSkillInvoke(player, "luaguiwei") then return false end
-			room:changeHero(player, "luahuatuo", true, false, player:getGeneral2Name()=="luajiaxu", true)
+			if not room:askForSkillInvoke(player, "luaguiwei") then
+				return false
+			end
+			room:changeHero(player, "luahuatuo", true, false, player:getGeneral2Name() == "luajiaxu", true)
 			-- for _,p in sgs.qlist(room:getAlivePlayers()) do
-			--  p:invoke("animate", "lightbox:$luaguiwei")				
+			--  p:invoke("animate", "lightbox:$luaguiwei")
 			--       end
 		end
 	end,
-
 }
 luajiaxu:addSkill(luajilue)
 luajiaxu:addSkill(luahuntian)
@@ -1185,22 +1204,21 @@ sgs.LoadTranslationTable {
 	["c3"] = "放逐",
 	["c4"] = "遗计",
 	["c5"] = "不发动",
-	[":luahuntian"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以弃置5张♠牌，然后对任意名角色造成以下效果:1.若其体力值大于1，你对其造成1点火焰伤害，并且你弃置其一张牌. 2.若体力值小于等于1，则其失去一点体力，然后弃置所有装备牌。",
+	[":luahuntian"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以弃置5张♠牌，然后对任意名角色造成以下效果:1.若其体力值大于1，你对其造成1点火焰伤害，并且你弃置其一张牌. 2.若体力值小于等于1，则其失去一点体力，然后弃置所有装备牌。',
 	[":luajiaodi"] = "每当你受到1点伤害后，你可以亮出牌堆顶的三张牌，获得其中的黑桃牌并将其余的牌置于武将牌上，称为“谋”，若“谋”数不小于8，你将体力上限减为1，失去“搅地”和“极略”，获得“完杀”，然后你获得所有“谋”。",
 	[":luajilue"] = "每当你受到1点伤害后，你可以将“谋”置入弃牌堆，发动下列技能之一：“反馈”、“放逐”、“节命”、“遗计”",
-	[":luaguiwei"] = "<font color=\"red\"><b>限定技，</b></font>游戏开始时，你可以选择变身为SP贾文和，势力为魏。",
+	[":luaguiwei"] = '<font color="red"><b>限定技，</b></font>游戏开始时，你可以选择变身为SP贾文和，势力为魏。',
 	["~luajiaxu"] = "我的时辰…也…到…了……",
 	["#luajiaxu"] = "算无遗策",
 	["designer:luajiaxu"] = "程春阳",
 	["$luahuntian"] = "让这熊熊业火，焚尽你的罪恶！", --配音
 	["$luajilue"] = "天意如何，我命由我。", --配音
 	["$luajiaodi"] = "你奈我何？", --配音
-
 }
 luahuatuo = sgs.General(extension, "luahuatuo", "wei", "3", true, true, false) --隐藏武将(变身将)
 
-luafentian_card = sgs.CreateSkillCard
-	{ --<b>限定技</b>,出牌阶段,你可以选择弃掉1张黑桃牌选择对若干名角色造成1点火焰伤害然后让对方弃掉一张牌(以此法照成的伤害没有伤害来源)。
+luafentian_card =
+	sgs.CreateSkillCard { --<b>限定技</b>,出牌阶段,你可以选择弃掉1张黑桃牌选择对若干名角色造成1点火焰伤害然后让对方弃掉一张牌(以此法照成的伤害没有伤害来源)。
 		name = "luafentian",
 		target_fixed = false,
 		will_throw = true,
@@ -1215,7 +1233,7 @@ luafentian_card = sgs.CreateSkillCard
 			local room = from:getRoom()
 			from:loseMark("@fentian_mark")
 			room:broadcastSkillInvoke("luafentian_trs") --音效
-			if (to:isAlive()) then
+			if to:isAlive() then
 				local damage = sgs.DamageStruct()
 				damage.card = nil
 				damage.damage = 1
@@ -1230,30 +1248,31 @@ luafentian_card = sgs.CreateSkillCard
 			end
 		end,
 	}
-luafentianVS = sgs.CreateViewAsSkill
-	{
-		name = "luafentian",
-		n = 1, --
+luafentianVS = sgs.CreateViewAsSkill {
+	name = "luafentian",
+	n = 1, --
 
-		view_filter = function(self, selected, to_select)
-			return (#selected < 1) and (to_select:getSuit() == sgs.Card_Spade)
-		end,
+	view_filter = function(self, selected, to_select)
+		return (#selected < 1) and (to_select:getSuit() == sgs.Card_Spade)
+	end,
 
-		view_as = function(self, cards)
-			if #cards ~= 1 then return false end
-			new_card = luafentian_card:clone()
-			new_card:addSubcard(cards[1]:getId())
-			new_card:setSkillName("luafentian")
-			return new_card
-		end,
-
-		enabled_at_play = function(self, player)
-			return player:getMark("@fentian_mark") > 0
-		end,
-		enabled_at_response = function(self, player, pattern)
+	view_as = function(self, cards)
+		if #cards ~= 1 then
 			return false
 		end
-	}
+		new_card = luafentian_card:clone()
+		new_card:addSubcard(cards[1]:getId())
+		new_card:setSkillName("luafentian")
+		return new_card
+	end,
+
+	enabled_at_play = function(self, player)
+		return player:getMark("@fentian_mark") > 0
+	end,
+	enabled_at_response = function(self, player, pattern)
+		return false
+	end,
+}
 luafentian = sgs.CreateTriggerSkill {
 	name = "luafentian",
 	view_as_skill = luafentianVS,
@@ -1261,20 +1280,13 @@ luafentian = sgs.CreateTriggerSkill {
 	frequency = sgs.Skill_Limited,
 	limit_mark = "@fentian_mark",
 	--priority
-	on_trigger = function(self, event, player, data)
-	end,
-
+	on_trigger = function(self, event, player, data) end,
 }
 
-
-
-
-
-
-
-
 function strcontain(a, b)
-	if a == "" then return false end
+	if a == "" then
+		return false
+	end
 	local c = a:split("+")
 	local k = false
 	for i = 1, #c, 1 do
@@ -1325,7 +1337,7 @@ lualianji = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target
-	end
+	end,
 }
 lualianjiGet = sgs.CreateTriggerSkill {
 	name = "#lualianjiGet",
@@ -1347,7 +1359,9 @@ lualianjiGet = sgs.CreateTriggerSkill {
 			local cards = sgs.IntList()
 			for i = 1, #guzheng_cardsToGet, 1 do
 				local card_data = guzheng_cardsToGet[i]
-				if card_data == nil then return false end
+				if card_data == nil then
+					return false
+				end
 				if card_data ~= "" then --弃牌阶段没弃牌则字符串为""
 					local card_id = tonumber(card_data)
 					if room:getCardPlace(card_id) == sgs.Player_DiscardPile then
@@ -1366,9 +1380,9 @@ lualianjiGet = sgs.CreateTriggerSkill {
 						local backcard = sgs.Sanguosha:getCard(to_back)
 						--player:obtainCard(backcard)
 						room:clearAG(erzhang)
-						local log    = sgs.LogMessage()
-						log.from     = erzhang
-						log.type     = "$luoying"
+						local log = sgs.LogMessage()
+						log.from = erzhang
+						log.type = "$luoying"
 						log.card_str = sgs.Sanguosha:getCard(to_back):toString()
 						room:sendLog(log)
 						erzhang:addToPile("Plianji", sgs.Sanguosha:getCard(to_back))
@@ -1386,11 +1400,8 @@ lualianjiGet = sgs.CreateTriggerSkill {
 			return target:getPhase() == sgs.Player_Discard
 		end
 		return false
-	end
+	end,
 }
-
-
-
 
 --[[
 lualianji = sgs.CreateTriggerSkill
@@ -1447,21 +1458,27 @@ lualianji_result = sgs.CreateTriggerSkill { --敛计延伸技1
 		local x = player:getPile("Plianji"):length()
 		if event == sgs.DrawNCards then
 			local draw = data:toDraw()
-			if draw.reason ~= "draw_phase" then return false end
+			if draw.reason ~= "draw_phase" then
+				return false
+			end
 			room:sendCompulsoryTriggerLog(player, "lualianji", true)
 			draw.num = draw.num + x / 3
 			data:setValue(draw)
 		end
-	end
+	end,
 }
 lualianji_result_2 = sgs.CreateDistanceSkill { --敛计延伸技2
 	name = "#lualianji_result_2",
 	correct_func = function(self, from, to)
 		local x = to:getPile("Plianji"):length()
 		local y = from:getPile("Plianji"):length()
-		if to:hasSkill("lualianji") then return x / 2 end
-		if from:hasSkill("lualianji") then return 0 - y / 2 end
-	end
+		if to:hasSkill("lualianji") then
+			return x / 2
+		end
+		if from:hasSkill("lualianji") then
+			return 0 - y / 2
+		end
+	end,
 }
 --[[lualianji_result_3=sgs.CreateTriggerSkill--敛计延伸技3
 {
@@ -1486,9 +1503,10 @@ lualianji_result_3 = sgs.CreateMaxCardsSkill {
 		if target:hasSkill("lualianji") then
 			return target:getPile("Plianji"):length()
 		end
-	end
+	end,
 }
-lualianji_result_4 = sgs.CreateTriggerSkill --敛计延伸技4
+lualianji_result_4 = sgs
+	.CreateTriggerSkill --敛计延伸技4
 	{
 		name = "#lualianji_result_4",
 		events = { sgs.EventPhaseStart },
@@ -1497,7 +1515,7 @@ lualianji_result_4 = sgs.CreateTriggerSkill --敛计延伸技4
 			local room = player:getRoom()
 			--local x =player:getMark("@MAXH_mark")
 			local x = player:getPile("Plianji"):length()
-			if (player:getPhase() == sgs.Player_Finish) then
+			if player:getPhase() == sgs.Player_Finish then
 				if x >= 7 then
 					room:handleAcquireDetachSkills(player, "weimu")
 					room:handleAcquireDetachSkills(player, "wansha")
@@ -1511,19 +1529,24 @@ lualianji_result_4 = sgs.CreateTriggerSkill --敛计延伸技4
 			end
 		end,
 	}
-luajice_card = sgs.CreateSkillCard --‘计’使用技能
+luajice_card = sgs
+	.CreateSkillCard --‘计’使用技能
 	{
 		name = "luajice",
 		once = true,
 		filter = function(self, targets, to_select, player)
-			if #targets > 0 then return false end
+			if #targets > 0 then
+				return false
+			end
 			return not to_select:isKongcheng()
 		end,
 
 		on_use = function(self, room, luajiaxu, targets)
 			local target = targets[1]
 			local Plianjis = luajiaxu:getPile("Plianji")
-			if Plianjis:isEmpty() then return end
+			if Plianjis:isEmpty() then
+				return
+			end
 			room:fillAG(Plianjis, luajiaxu)
 			card_id = room:askForAG(luajiaxu, Plianjis, true, "luajiece_vs")
 			room:clearAG(luajiaxu)
@@ -1536,7 +1559,7 @@ luajice_card = sgs.CreateSkillCard --‘计’使用技能
 				local card2 = sgs.Sanguosha:getCard(card_id2)
 				room:showCard(luajiaxu, card1:getEffectiveId())
 				room:showCard(target, card2:getEffectiveId())
-				if (card1:getSuit() == card2:getSuit()) then
+				if card1:getSuit() == card2:getSuit() then
 					local damage = sgs.DamageStruct()
 					damage.card = card1
 					damage.damage = 1
@@ -1544,8 +1567,7 @@ luajice_card = sgs.CreateSkillCard --‘计’使用技能
 					damage.to = target
 					room:damage(damage)
 					--room:throwCard(card_id,luajiaxu)
-					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", self:objectName(),
-						"")
+					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", self:objectName(), "")
 					room:throwCard(sgs.Sanguosha:getCard(card_id), reason, nil)
 					luajiaxu:addToPile("Plianji", card2)
 				else
@@ -1557,18 +1579,17 @@ luajice_card = sgs.CreateSkillCard --‘计’使用技能
 			end
 		end,
 	}
-luajice = sgs.CreateViewAsSkill
-	{
-		name = "luajice",
-		n = 0,
-		view_as = function(self, cards)
-			return luajice_card:clone()
-		end,
+luajice = sgs.CreateViewAsSkill {
+	name = "luajice",
+	n = 0,
+	view_as = function(self, cards)
+		return luajice_card:clone()
+	end,
 
-		enabled_at_play = function(self, player)
-			return not player:getPile("Plianji"):isEmpty() and not player:hasUsed("#luajice")
-		end,
-	}
+	enabled_at_play = function(self, player)
+		return not player:getPile("Plianji"):isEmpty() and not player:hasUsed("#luajice")
+	end,
+}
 luahuatuo:addSkill(lualianji_result_4)
 luahuatuo:addSkill(lualianji_result_3)
 luahuatuo:addSkill(lualianji_result_2)
@@ -1592,7 +1613,7 @@ sgs.LoadTranslationTable {
 	["luafentian_card"] = "焚天",
 	["luafentian"] = "焚天",
 	["@fentian_mark"] = "焚天",
-	[":luafentian"] = "<font color=\"red\"><b>限定技，</b></font>出牌阶段，你可以弃置1张黑桃牌，令任意名角色受到1点没有伤害来源的火焰伤害，然后令其弃置一张牌。",
+	[":luafentian"] = '<font color="red"><b>限定技，</b></font>出牌阶段，你可以弃置1张黑桃牌，令任意名角色受到1点没有伤害来源的火焰伤害，然后令其弃置一张牌。',
 	[":lualianji"] = "当其他角色的牌于弃牌阶段置入弃牌堆时，你可以选择1张置于武将牌上称之为'计'，\
 	1.每有3张'计':摸牌阶段，你额外摸1张牌,\
 	2.每有2张'计'其他角色与你计算距离+1,你与其他角色计算距离-1，\
@@ -1611,6 +1632,6 @@ sgs.LoadTranslationTable {
 	["~luahuatuo"] = "我的时辰…也…到…了……",
 	["$luafentian"] = "哭喊吧！哀求吧！挣扎吧！然后死吧！", --配音
 	["$lualianji"] = "你奈我何？", --配音
-	["$luajice"] = "巧变制敌，谋定而动", --配音	
+	["$luajice"] = "巧变制敌，谋定而动", --配音
 }
 return { extension }

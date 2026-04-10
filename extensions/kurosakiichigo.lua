@@ -4,7 +4,6 @@ extension = sgs.Package("lingbao")
 kurosakiichigo = sgs.General(extension, "kurosakiichigo", "qun", 4)
 kurosakiichigoex = sgs.General(extension, "kurosakiichigoex", "qun", 4, true, true, true)
 
-
 krskitgzhanyue = sgs.CreateFilterSkill {
 	name = "krskitgzhanyue",
 	view_filter = function(self, to_select)
@@ -18,16 +17,17 @@ krskitgzhanyue = sgs.CreateFilterSkill {
 		local card = sgs.Sanguosha:getWrappedCard(originalCard:getId())
 		card:takeOver(slash)
 		return card
-	end
+	end,
 }
-
 
 krskitgtiansuo = sgs.CreateDistanceSkill {
 	name = "krskitgtiansuo",
 	correct_func = function(self, from, to)
-		if from:hasSkill(self:objectName()) then return -1 end
+		if from:hasSkill(self:objectName()) then
+			return -1
+		end
 		return 0
-	end
+	end,
 }
 
 krskitgxuhua = sgs.CreateTriggerSkill {
@@ -72,22 +72,29 @@ krskitgxuhua = sgs.CreateTriggerSkill {
 		end
 	end,
 	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
+		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then
+			return false
+		end
+		if player:canWake(self:objectName()) then
+			return true
+		end
 		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-			if p:getHp() < player:getHp() then return false end
+			if p:getHp() < player:getHp() then
+				return false
+			end
 		end
 		return true
 	end,
 }
-
 
 krskitgjiamianVS = sgs.CreateViewAsSkill {
 	name = "krskitgjiamian",
 	n = 1,
 	response_or_use = true,
 	view_filter = function(self, selected, to_select)
-		if #selected > 0 then return false end
+		if #selected > 0 then
+			return false
+		end
 		local card = to_select
 		local usereason = sgs.Sanguosha:getCurrentCardUseReason()
 		if usereason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
@@ -104,7 +111,9 @@ krskitgjiamianVS = sgs.CreateViewAsSkill {
 		end
 	end,
 	view_as = function(self, cards)
-		if #cards ~= 1 then return nil end
+		if #cards ~= 1 then
+			return nil
+		end
 		local originalCard = cards[1]
 		if originalCard:isKindOf("Slash") then
 			local jink = sgs.Sanguosha:cloneCard("jink", originalCard:getSuit(), originalCard:getNumber())
@@ -125,7 +134,7 @@ krskitgjiamianVS = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_response = function(self, target, pattern)
 		return (pattern == "slash") or (pattern == "jink")
-	end
+	end,
 }
 krskitgjiamian = sgs.CreateTriggerSkill {
 	name = "krskitgjiamian",
@@ -133,35 +142,45 @@ krskitgjiamian = sgs.CreateTriggerSkill {
 	events = { sgs.CardUsed, sgs.CardResponded },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if not player:isKongcheng() then return false end
+		if not player:isKongcheng() then
+			return false
+		end
 		if event == sgs.CardUsed then
 			local use = data:toCardUse()
-			if use.card:getSkillName() ~= "krskitgjiamian" then return false end
+			if use.card:getSkillName() ~= "krskitgjiamian" then
+				return false
+			end
 			local splist = sgs.SPlayerList()
 			for _, sp in sgs.qlist(room:getAlivePlayers()) do
 				if not sp:isKongcheng() then
 					splist:append(sp)
 				end
 			end
-			if splist:isEmpty() or not room:askForSkillInvoke(player, self:objectName()) then return false end
+			if splist:isEmpty() or not room:askForSkillInvoke(player, self:objectName()) then
+				return false
+			end
 			local target = room:askForPlayerChosen(player, splist, self:objectName())
 			local cdid = room:askForCardChosen(player, target, "h", self:objectName())
 			room:obtainCard(player, cdid, false)
 		elseif event == sgs.CardResponded then
 			local response = data:toCardResponse()
-			if response.m_card:getSkillName() ~= "krskitgjiamian" then return false end
+			if response.m_card:getSkillName() ~= "krskitgjiamian" then
+				return false
+			end
 			local splist = sgs.SPlayerList()
 			for _, sp in sgs.qlist(room:getAlivePlayers()) do
 				if not sp:isKongcheng() then
 					splist:append(sp)
 				end
 			end
-			if splist:isEmpty() or not room:askForSkillInvoke(player, self:objectName()) then return false end
+			if splist:isEmpty() or not room:askForSkillInvoke(player, self:objectName()) then
+				return false
+			end
 			local target = room:askForPlayerChosen(player, splist, self:objectName())
 			local cdid = room:askForCardChosen(player, target, "h", self:objectName())
 			room:obtainCard(player, cdid, false)
 		end
-	end
+	end,
 }
 
 krskitgwuyue = sgs.CreateTargetModSkill {
@@ -172,7 +191,7 @@ krskitgwuyue = sgs.CreateTargetModSkill {
 		else
 			return 0
 		end
-	end
+	end,
 }
 
 kurosakiichigo:addSkill(krskitgzhanyue)
@@ -182,7 +201,6 @@ kurosakiichigoex:addSkill(krskitgwuyue)
 kurosakiichigoex:addSkill(krskitgtiansuo)
 kurosakiichigoex:addSkill(krskitgjiamian)
 
-
 sgs.LoadTranslationTable {
 	["lingbao"] = "灵包",
 
@@ -190,11 +208,11 @@ sgs.LoadTranslationTable {
 	["kurosakiichigo"] = "黑崎一护",
 	["kurosakiichigoex"] = "黑崎一护",
 	["krskitgzhanyue"] = "斩月",
-	[":krskitgzhanyue"] = "<font color=\"blue\"><b>锁定技，</b></font>你的【杀】视为火【杀】。",
+	[":krskitgzhanyue"] = '<font color="blue"><b>锁定技，</b></font>你的【杀】视为火【杀】。',
 	["krskitgtiansuo"] = "天锁",
-	[":krskitgtiansuo"] = "<font color=\"blue\"><b>锁定技，</b></font>你计算的与其他角色的距离时，始终-1。",
+	[":krskitgtiansuo"] = '<font color="blue"><b>锁定技，</b></font>你计算的与其他角色的距离时，始终-1。',
 	["krskitgxuhua"] = "虚化",
-	[":krskitgxuhua"] = "<font color=\"purple\"><b>觉醒技，</b></font>回合开始阶段开始时，若你的体力全场最小(或之一)，你须永久失去【斩月】并回愎至體力上限，获得【假面】你可以将一张[杀]当[闪]，一张[闪]当[杀]使用或打出，且若你的手牌数小于1时,在完成转化后,你可以选择获得一名角色的一张手牌。【无月】若你的装备区没有武器牌时，你使用的[杀]可以额外选择至多两个目标。",
+	[":krskitgxuhua"] = '<font color="purple"><b>觉醒技，</b></font>回合开始阶段开始时，若你的体力全场最小(或之一)，你须永久失去【斩月】并回愎至體力上限，获得【假面】你可以将一张[杀]当[闪]，一张[闪]当[杀]使用或打出，且若你的手牌数小于1时,在完成转化后,你可以选择获得一名角色的一张手牌。【无月】若你的装备区没有武器牌时，你使用的[杀]可以额外选择至多两个目标。',
 	["$krskitgxuhua"] = "忘记那恐惧，看着前面；\
 前进吧，呼喊吧，斩月！",
 	["krskitgjiamian"] = "假面",

@@ -21,7 +21,7 @@ sgs.LoadTranslationTable {
 	["illustrator:ZhouYu_Five"] = "略  模板设计:赛宁",
 
 	["FiveFanjian"] = "反间",
-	[":FiveFanjian"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以将一张红桃手牌交给一名其他角色，令该角色与你指定的另一名有手牌的角色拼点，视为拼点赢的角色对没赢的角色使用一张【杀】。",
+	[":FiveFanjian"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以将一张红桃手牌交给一名其他角色，令该角色与你指定的另一名有手牌的角色拼点，视为拼点赢的角色对没赢的角色使用一张【杀】。',
 	["FiveFanjian_Card"] = "反间",
 	["fivefanjian_"] = "反间",
 
@@ -46,11 +46,11 @@ sgs.LoadTranslationTable {
 	["dao"] = "道",
 
 	["FiveHuangtianA"] = "黄天",
-	[":FiveHuangtianA"] = "主公技，<font color=\"green\"><b>其他群势力角色的出牌阶段限一次，</b></font> 其可以交给你一张红色手牌。",
+	[":FiveHuangtianA"] = '主公技，<font color="green"><b>其他群势力角色的出牌阶段限一次，</b></font> 其可以交给你一张红色手牌。',
 	["FiveHuangtianA_Card"] = "黄天送牌",
 	["fivehuangtiana_"] = "黄天送牌",
 	["FiveHuangtianA_Qun"] = "黄天送牌",
-	[":FiveHuangtianA_Qun"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以交给张角一张红色手牌。",
+	[":FiveHuangtianA_Qun"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以交给张角一张红色手牌。',
 	----------------------------------------------------------------------------------------------------
 	["ZhangJiaoB_Five"] = "5.0旧张角3",
 	["&ZhangJiaoB_Five"] = "旧张角",
@@ -74,8 +74,6 @@ sgs.LoadTranslationTable {
 
 	["FiveHuangtianB"] = "黄天",
 	[":FiveHuangtianB"] = "主公技，其他群雄角色的回合结束阶段开始时，若其处于连环状态，该角色可以令你摸一张牌。",
-
-
 
 	--------------------------------------------4.0武将-------------------------------------------------
 	-----------------------------------------------魏---------------------------------------------------
@@ -155,7 +153,7 @@ sgs.LoadTranslationTable {
 	["illustrator:WoLongZhuGeLiang_Four"] = "北  模板设计:赛宁",
 
 	["FourHuoji"] = "火计",
-	[":FourHuoji"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以展示一张红色手牌并指定一名角色，然后视为你对其使用一张【火攻】。",
+	[":FourHuoji"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以展示一张红色手牌并指定一名角色，然后视为你对其使用一张【火攻】。',
 	["FourHuoji_Card"] = "火计",
 	["fourhuoji_"] = "火计",
 	----------------------------------------------------------------------------------------------------
@@ -190,7 +188,7 @@ sgs.LoadTranslationTable {
 	["~FourYingzi"] = "",
 
 	["FourFanjian"] = "反间",
-	[":FourFanjian"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以选择一张手牌，令一名其他角色选择一种花色后展示并获得之，若此牌与所选花色不同，则该角色流失1点体力。",
+	[":FourFanjian"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以选择一张手牌，令一名其他角色选择一种花色后展示并获得之，若此牌与所选花色不同，则该角色流失1点体力。',
 	["FourFanjian_Card"] = "反间",
 	["fourfanjian_"] = "反间",
 	----------------------------------------------------------------------------------------------------
@@ -202,9 +200,9 @@ sgs.LoadTranslationTable {
 	["illustrator:GanNing_Four"] = "略  模板设计:赛宁",
 
 	["FourQixi"] = "奇袭",
-	[":FourQixi"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以将一张黑色牌当【过河拆桥】使用。",
+	[":FourQixi"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以将一张黑色牌当【过河拆桥】使用。',
 	["FourJinfan"] = "锦帆",
-	[":FourJinfan"] = "若你使用【过河拆桥】弃置一名角色装备区里的牌，在该装备牌置入弃牌堆时，你可以用一张红色手牌替换之，<font color=\"green\"><b>每阶段限一次</b></font>",
+	[":FourJinfan"] = '若你使用【过河拆桥】弃置一名角色装备区里的牌，在该装备牌置入弃牌堆时，你可以用一张红色手牌替换之，<font color="green"><b>每阶段限一次</b></font>',
 	["@FourJinfan_prompt"] = "你可以用一张红色手牌替换被弃置的牌",
 	----------------------------------------------------------------------------------------------------
 	["GanNingA_Four"] = "4.0甘宁1",
@@ -242,7 +240,7 @@ sgs.LoadTranslationTable {
 	["illustrator:XiaoQiaoA_Four"] = "略  模板设计:赛宁",
 
 	["FourTianxiang"] = "天香",
-	[":FourTianxiang"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以指定一名其他角色并选择一项：1.弃置一张红桃手牌，对其造成1点伤害，然后该角色摸X张牌（X为该角色当前已损失的体力值）。2.交给该角色一张红桃手牌，然后你回复1点体力。",
+	[":FourTianxiang"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以指定一名其他角色并选择一项：1.弃置一张红桃手牌，对其造成1点伤害，然后该角色摸X张牌（X为该角色当前已损失的体力值）。2.交给该角色一张红桃手牌，然后你回复1点体力。',
 	["FourTianxiang_Damage"] = "弃置此牌，对其造成1点伤害，然后该角色摸X张牌（X为该角色当前已损失的体力值）",
 	["FourTianxiang_Recover"] = "将此牌交给该角色，然后回复1点体力",
 	["FourTianxiang_Card"] = "天香",
@@ -276,12 +274,10 @@ sgs.LoadTranslationTable {
 	["illustrator:YuJi_Four"] = "略  模板设计:赛宁",
 
 	["FourTaiping"] = "太平",
-	[":FourTaiping"] = "<font color=\"green\"><b>其他角色的出牌阶段限一次，</b></font>其可以交给你一张红桃手牌。",
+	[":FourTaiping"] = '<font color="green"><b>其他角色的出牌阶段限一次，</b></font>其可以交给你一张红桃手牌。',
 	["FourTaiping_Card"] = "太平送牌",
 	["FourTaiping_Others"] = "太平送牌",
-	[":FourTaiping_Others"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以交给于吉一张红桃手牌。",
-
-
+	[":FourTaiping_Others"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以交给于吉一张红桃手牌。',
 
 	--------------------------------------------DIY武将-------------------------------------------------
 	----------------------------------------------5.0---------------------------------------------------
@@ -298,13 +294,13 @@ sgs.LoadTranslationTable {
 	["turn"] = "变",
 
 	["DiyBaobian"] = "豹变",
-	[":DiyBaobian"] = "觉醒技，当你发动“疾速”判定结束后，若“变”的数量达到3或更多，你须减1点体力上限，失去技能“疾速”，将势力改为蜀，并获得技能“挑衅”、“咆哮”和“棘途”（<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以将一张“变”置入弃牌堆，然后观看一名其他角色的手牌）。",
+	[":DiyBaobian"] = '觉醒技，当你发动“疾速”判定结束后，若“变”的数量达到3或更多，你须减1点体力上限，失去技能“疾速”，将势力改为蜀，并获得技能“挑衅”、“咆哮”和“棘途”（<font color="green"><b>出牌阶段限一次，</b></font>你可以将一张“变”置入弃牌堆，然后观看一名其他角色的手牌）。',
 	["#DiyBaobian"] = "%from 的变的数量达到 %arg 个，触发“%arg2”",
 	["$DiyBaobian"] = "技能 豹变 的觉醒台词（求建议）",
 	["#DiyBaobian_Kingdom"] = "%from 将势力改为 %arg",
 
 	["DiyXX"] = "棘途",
-	[":DiyXX"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以将一张“变”置入弃牌堆，然后观看一名其他角色的手牌。",
+	[":DiyXX"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以将一张“变”置入弃牌堆，然后观看一名其他角色的手牌。',
 	["DiyXX_Card"] = "棘途",
 	["diyxx_"] = "棘途",
 
@@ -321,16 +317,13 @@ sgs.LoadTranslationTable {
 --                                             魏
 ----------------------------------------------------------------------------------------------------
 
-
 ----------------------------------------------------------------------------------------------------
 --                                             蜀
 ----------------------------------------------------------------------------------------------------
 
-
 ----------------------------------------------------------------------------------------------------
 --                                             吴
 ----------------------------------------------------------------------------------------------------
-
 
 --[[ WU 002 旧周瑜（5.0旧版）
 	武将：ZhouYu_Five
@@ -345,7 +338,7 @@ sgs.LoadTranslationTable {
 	技能设计：锦衣祭司
 	状态：验证通过
 ]]
-   --
+--
 
 ZhouYu_Five = sgs.General(extension, "ZhouYu_Five", "wu", 4, true)
 
@@ -355,7 +348,7 @@ ZhouYu_Five = sgs.General(extension, "ZhouYu_Five", "wu", 4, true)
 	描述：摸牌阶段摸牌时，你可以额外摸一张牌。
 	状态：原有技能
 ]]
-   --
+--
 ZhouYu_Five:addSkill("yingzi")
 
 --[[
@@ -365,7 +358,7 @@ ZhouYu_Five:addSkill("yingzi")
 	描述：觉醒技，回合结束阶段开始时，若你此回合内曾造成火焰伤害（以你为伤害来源），你须减1点体力上限，并获得技能“反间”（出牌阶段，你可以将一张红桃手牌交给一名其他角色，令该角色与你指定的另一名有手牌的角色拼点，视为拼点赢的角色对没赢的角色使用一张【杀】。每阶段限一次）。
 	状态：验证通过
 ]]
-   --
+--
 FiveYingzhan_Count = sgs.CreateTriggerSkill {
 	name = "#FiveYingzhan_Count",
 	frequency = sgs.Skill_Frequent,
@@ -388,7 +381,7 @@ FiveYingzhan_Count = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target
-	end
+	end,
 }
 FiveYingzhan = sgs.CreateTriggerSkill {
 	name = "FiveYingzhan",
@@ -421,7 +414,7 @@ FiveYingzhan = sgs.CreateTriggerSkill {
 			return true
 		end
 		return false
-	end
+	end,
 }
 
 ZhouYu_Five:addSkill(FiveYingzhan)
@@ -434,7 +427,7 @@ extension:insertRelatedSkills("FiveYingzhan", "#FiveYingzhan_Count")
 	描述：出牌阶段，你可以将一张红桃手牌交给一名其他角色，令该角色与你指定的另一名有手牌的角色拼点，视为拼点赢的角色对没赢的角色使用一张【杀】。每阶段限一次。
 	状态：验证通过
 ]]
-   --
+--
 FiveFanjian_Card = sgs.CreateSkillCard {
 	name = "FiveFanjian_Card",
 	target_fixed = false,
@@ -484,7 +477,7 @@ FiveFanjian_Card = sgs.CreateSkillCard {
 				end
 			end
 		end
-	end
+	end,
 }
 FiveFanjian_VS = sgs.CreateViewAsSkill {
 	name = "FiveFanjian",
@@ -504,7 +497,7 @@ FiveFanjian_VS = sgs.CreateViewAsSkill {
 			return not player:hasUsed("#FiveFanjian_Card")
 		end
 		return false
-	end
+	end,
 }
 FiveFanjian = sgs.CreateTriggerSkill {
 	name = "FiveFanjian",
@@ -536,7 +529,7 @@ FiveFanjian = sgs.CreateTriggerSkill {
 	can_trigger = function(self, target)
 		return target
 	end,
-	priority = -1
+	priority = -1,
 }
 local skill = sgs.Sanguosha:getSkill("FiveFanjian")
 if not skill then
@@ -545,11 +538,9 @@ if not skill then
 	sgs.Sanguosha:addSkills(skillList)
 end
 
-
 ----------------------------------------------------------------------------------------------------
 --                                             群
 ----------------------------------------------------------------------------------------------------
-
 
 --[[ QUN 004 旧张角2（5.0征稿落选，战地129）
 	武将：ZhangJiaoA_Five
@@ -563,7 +554,7 @@ end
 	技能设计：战地129
 	状态：验证通过
 ]]
-   --
+--
 
 ZhangJiaoA_Five = sgs.General(extension, "ZhangJiaoA_Five$", "qun", 4, true)
 
@@ -573,7 +564,7 @@ ZhangJiaoA_Five = sgs.General(extension, "ZhangJiaoA_Five$", "qun", 4, true)
 	描述：你的回合外，当你失去牌时，你可以摸一张牌并将此牌置于你的武将牌上，称为“道”，你以此法失去的牌不能发动“鬼道”，且你的武将牌上最多可以有五张“道”；出牌阶段，你可以将三张“道”置入弃牌堆，对一名角色造成2点雷电伤害。
 	状态：验证通过
 ]]
-   --
+--
 FiveGuidaoA_Card = sgs.CreateSkillCard {
 	name = "FiveGuidaoA_Card",
 	target_fixed = false,
@@ -605,7 +596,7 @@ FiveGuidaoA_Card = sgs.CreateSkillCard {
 		damage.to = target
 		damage.nature = sgs.DamageStruct_Thunder
 		room:damage(damage)
-	end
+	end,
 }
 FiveGuidaoA_VS = sgs.CreateViewAsSkill {
 	name = "FiveGuidaoA",
@@ -629,7 +620,7 @@ FiveGuidaoA_VS = sgs.CreateViewAsSkill {
 	enabled_at_play = function(self, player)
 		local daos = player:getPile("dao")
 		return daos:length() >= 3
-	end
+	end,
 }
 FiveGuidaoA = sgs.CreateTriggerSkill {
 	name = "FiveGuidaoA",
@@ -676,7 +667,7 @@ FiveGuidaoA = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target
-	end
+	end,
 }
 ZhangJiaoA_Five:addSkill(FiveGuidaoA)
 
@@ -687,7 +678,7 @@ ZhangJiaoA_Five:addSkill(FiveGuidaoA)
 	描述：主公技，其他群雄角色可以在他们各自的出牌阶段交给你一张红色手牌。每阶段限一次。
 	状态：验证通过
 ]]
-   --
+--
 FiveHuangtianA_Card = sgs.CreateSkillCard {
 	name = "FiveHuangtianA_Card",
 	target_fixed = false,
@@ -725,7 +716,7 @@ FiveHuangtianA_Card = sgs.CreateSkillCard {
 				room:setPlayerFlag(source, "ForbidFiveHuangtianA")
 			end
 		end
-	end
+	end,
 }
 FiveHuangtianA_Qun = sgs.CreateViewAsSkill {
 	name = "FiveHuangtianA_Qun",
@@ -745,7 +736,7 @@ FiveHuangtianA_Qun = sgs.CreateViewAsSkill {
 			return not player:hasFlag("ForbidFiveHuangtianA")
 		end
 		return false
-	end
+	end,
 }
 FiveHuangtianA = sgs.CreateTriggerSkill {
 	name = "FiveHuangtianA$",
@@ -778,7 +769,7 @@ FiveHuangtianA = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target
-	end
+	end,
 }
 ZhangJiaoA_Five:addSkill(FiveHuangtianA)
 local skill = sgs.Sanguosha:getSkill("FiveHuangtianA_Qun")
@@ -803,7 +794,7 @@ end
 	技能设计：与他一勃
 	状态：尚未完成
 ]]
-   --
+--
 
 ZhangJiaoB_Five = sgs.General(extension, "ZhangJiaoB_Five$", "qun", 3, true)
 
@@ -813,7 +804,7 @@ ZhangJiaoB_Five = sgs.General(extension, "ZhangJiaoB_Five$", "qun", 3, true)
 	描述：其他角色的回合开始阶段开始时，你可以令该角色横置或重置其武将牌，然后该角色可以弃置你的一张手牌。
 	状态：验证通过
 ]]
-   --
+--
 FiveGuidaoB = sgs.CreateTriggerSkill {
 	name = "FiveGuidaoB",
 	frequency = sgs.Skill_NotFrequent,
@@ -825,8 +816,7 @@ FiveGuidaoB = sgs.CreateTriggerSkill {
 			for _, zhangjiao in sgs.qlist(zhangjiaos) do
 				if zhangjiao and zhangjiao:objectName() ~= player:objectName() then
 					if room:askForSkillInvoke(zhangjiao, self:objectName(), data) then
-						local choice = room:askForChoice(zhangjiao, self:objectName(),
-							"FiveGuidaoB_Chain+FiveGuidaoB_Reset")
+						local choice = room:askForChoice(zhangjiao, self:objectName(), "FiveGuidaoB_Chain+FiveGuidaoB_Reset")
 						local msg = sgs.LogMessage()
 						msg.type = "#FiveGuidaoB"
 						msg.from = zhangjiao
@@ -854,7 +844,7 @@ FiveGuidaoB = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target
-	end
+	end,
 }
 ZhangJiaoB_Five:addSkill(FiveGuidaoB)
 
@@ -864,7 +854,7 @@ ZhangJiaoB_Five:addSkill(FiveGuidaoB)
 	描述：你的回合外，当你失去牌时，你可以令一名角色摸一张牌，然后你对其造成1点雷电伤害。
 	状态：验证通过
 ]]
-   --
+--
 FiveLeiji_Card = sgs.CreateSkillCard {
 	name = "FiveLeiji_Card",
 	target_fixed = false,
@@ -882,7 +872,7 @@ FiveLeiji_Card = sgs.CreateSkillCard {
 		damage.to = target
 		damage.nature = sgs.DamageStruct_Thunder
 		room:damage(damage)
-	end
+	end,
 }
 FiveLeiji_VS = sgs.CreateViewAsSkill {
 	name = "FiveLeiji_VS",
@@ -895,7 +885,7 @@ FiveLeiji_VS = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_response = function(self, player, pattern)
 		return pattern == "@FiveLeiji"
-	end
+	end,
 }
 FiveLeiji = sgs.CreateTriggerSkill {
 	name = "FiveLeiji",
@@ -915,7 +905,7 @@ FiveLeiji = sgs.CreateTriggerSkill {
 			end
 		end
 		return false
-	end
+	end,
 }
 ZhangJiaoB_Five:addSkill(FiveLeiji)
 
@@ -925,7 +915,7 @@ ZhangJiaoB_Five:addSkill(FiveLeiji)
 	描述：主公技，其他群雄角色的回合结束阶段开始时，若其处于连环状态，该角色可以令你摸一张牌。
 	状态：验证通过
 ]]
-   --
+--
 FiveHuangtianB = sgs.CreateTriggerSkill {
 	name = "FiveHuangtianB$",
 	frequency = sgs.Skill_NotFrequent,
@@ -946,8 +936,7 @@ FiveHuangtianB = sgs.CreateTriggerSkill {
 				while not zhangjiaos:isEmpty() and flag do
 					flag = false
 					--if room:askForSkillInvoke(player, self:objectName()) then
-					target = room:askForPlayerChosen(player, zhangjiaos, self:objectName(), "FiveHuangtianB-invoke", true,
-						true)
+					target = room:askForPlayerChosen(player, zhangjiaos, self:objectName(), "FiveHuangtianB-invoke", true, true)
 					if target then
 						local msg = sgs.LogMessage()
 						msg.type = "#InvokeOthersSkill"
@@ -979,11 +968,9 @@ FiveHuangtianB = sgs.CreateTriggerSkill {
 			return target:getKingdom() == "qun"
 		end
 		return false
-	end
+	end,
 }
 ZhangJiaoB_Five:addSkill(FiveHuangtianB)
-
-
 
 ----------------------------------------------------------------------------------------------------
 
@@ -994,7 +981,6 @@ ZhangJiaoB_Five:addSkill(FiveHuangtianB)
 ----------------------------------------------------------------------------------------------------
 --                                             魏
 ----------------------------------------------------------------------------------------------------
-
 
 --[[ WEI 001 曹操（4.0）
 	武将：CaoCao_Four
@@ -1009,7 +995,7 @@ ZhangJiaoB_Five:addSkill(FiveHuangtianB)
 	技能设计：锦衣祭司
 	状态：验证通过
 ]]
-   --
+--
 
 CaoCao_Four = sgs.General(extension, "CaoCao_Four$", "wei", 4, true)
 
@@ -1019,7 +1005,7 @@ CaoCao_Four = sgs.General(extension, "CaoCao_Four$", "wei", 4, true)
 	描述：每当你受到一次伤害后，你可以选择一项：1.获得对你造成伤害的牌。2.弃置一张牌（无牌则不弃），然后摸X张牌（X为你已损失的体力值）。你即将造成伤害时，可以弃置一张黑桃手牌并指定一名其他角色，然后视为由该角色造成此伤害。
 	状态：验证通过
 ]]
-   --
+--
 FourJianxiong_Card = sgs.CreateSkillCard {
 	name = "FourJianxiong_Card",
 	target_fixed = false,
@@ -1063,7 +1049,7 @@ FourJianxiong_VS = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_response = function(self, player, pattern)
 		return pattern == "@FourJianxiong"
-	end
+	end,
 }
 FourJianxiong = sgs.CreateTriggerSkill {
 	name = "FourJianxiong",
@@ -1128,7 +1114,7 @@ FourJianxiong = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target
-	end
+	end,
 }
 CaoCao_Four:addSkill(FourJianxiong)
 
@@ -1142,7 +1128,7 @@ CaoCao_Four:addSkill(FourJianxiong)
 		若主公为玩家添加的其他lua，有主公技且为觉醒技，获得之后觉醒会获得激将。
 	（由于此技能过于奇葩，且日神杀对主公技的支持有某些问题，所以测试还不太全面，谢谢大家帮忙找BUG哈~）
 ]]
-   --
+--
 FourJiaozhao_Card = sgs.CreateSkillCard {
 	name = "FourJiaozhao_Card",
 	target_fixed = false,
@@ -1207,11 +1193,10 @@ FourJiaozhao_VS = sgs.CreateViewAsSkill {
 FourJiaozhao = sgs.CreateTriggerSkill {
 	name = "FourJiaozhao",
 	frequency = sgs.Skill_Limited,
-	events = { },
+	events = {},
 	limit_mark = "@jiaozhao",
 	view_as_skill = FourJiaozhao_VS,
-	on_trigger = function(self, event, player, data)
-	end,
+	on_trigger = function(self, event, player, data) end,
 }
 
 CaoCao_Four:addSkill(FourJiaozhao)
@@ -1222,7 +1207,7 @@ CaoCao_Four:addSkill(FourJiaozhao)
 	描述：主公技，当你需要使用或打出一张【闪】时，你可令其他魏势力角色打出一张【闪】（视为由你使用或打出）。
 	状态：原有技能
 ]]
-   --
+--
 CaoCao_Four:addSkill("hujia")
 
 ----------------------------------------------------------------------------------------------------
@@ -1239,7 +1224,7 @@ CaoCao_Four:addSkill("hujia")
 	技能设计：小A
 	状态：验证通过
 ]]
-   --
+--
 
 XiaHouDun_Four = sgs.General(extension, "XiaHouDun_Four", "wei", 4, true)
 
@@ -1249,7 +1234,7 @@ XiaHouDun_Four = sgs.General(extension, "XiaHouDun_Four", "wei", 4, true)
 	描述：锁定技，每当你受到一次伤害后，你须将你的武将牌翻至背面朝上。当你的武将牌背面朝上时，防止你受到的所有伤害。
 	状态：验证通过
 ]]
-   --
+--
 FourFenyong = sgs.CreateTriggerSkill {
 	name = "FourFenyong",
 	frequency = sgs.Skill_Compulsory,
@@ -1288,7 +1273,7 @@ XiaHouDun_Four:addSkill(FourFenyong)
 	注：关于未确定细节，等待FAQ中：
 		1.空城诸葛的回合结束阶段开始时，是否能发动雪恨：目前暂定为可以，能够翻面并摸牌，但是不能使用杀。
 ]]
-   --
+--
 FourXuehen = sgs.CreateTriggerSkill {
 	name = "FourXuehen",
 	frequency = sgs.Skill_NotFrequent,
@@ -1320,7 +1305,7 @@ FourXuehen = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target
-	end
+	end,
 }
 XiaHouDun_Four:addSkill(FourXuehen)
 
@@ -1337,7 +1322,7 @@ XiaHouDun_Four:addSkill(FourXuehen)
 	技能设计：锦衣祭司
 	状态：验证通过
 ]]
-   --
+--
 
 --XuHuang_Four = sgs.General(extension, "XuHuang_Four", "wei", 4, true)
 
@@ -1348,7 +1333,7 @@ XiaHouDun_Four:addSkill(FourXuehen)
 	描述：出牌阶段，你可以将一张黑色牌当【兵粮寸断】使用，此牌必须为基本牌或装备牌；你可以对距离2以内的一名其他角色使用【兵粮寸断】；在与你距离2以内的一名其他角色的【兵粮寸断】判定牌生效后，若此牌不为梅花，你可以摸一张牌然后弃一张牌。
 	状态：验证通过
 ]]
-   --
+--
 --[[FourDuanliang = sgs.CreateViewAsSkill{
 	name = "FourDuanliang",
 	n = 1,
@@ -1416,7 +1401,6 @@ XuHuang_Four:addSkill(FourDuanliang_Get)
 --                                             蜀
 ----------------------------------------------------------------------------------------------------
 
-
 --[[ SHU 003 关羽（4.0）
 	武将：GuanYu_Four
 	武将名：关羽
@@ -1429,7 +1413,7 @@ XuHuang_Four:addSkill(FourDuanliang_Get)
 	技能设计：锦衣祭司
 	状态：验证通过
 ]]
-   --
+--
 
 GuanYu_Four = sgs.General(extension, "GuanYu_Four", "shu", 4, true)
 
@@ -1439,7 +1423,7 @@ GuanYu_Four = sgs.General(extension, "GuanYu_Four", "shu", 4, true)
 	描述：你可以将一张红色牌当【杀】使用或打出，将一张黑色牌当【酒】使用。
 	状态：验证通过
 ]]
-   --
+--
 sgs.FourWusheng_State = { "" }
 FourWusheng = sgs.CreateViewAsSkill {
 	name = "FourWusheng",
@@ -1506,7 +1490,7 @@ GuanYu_Four:addSkill(FourWusheng)
 	状态：验证通过
 	注：小型场景模式下，关羽开局摸牌时会要求弃牌。
 ]]
-   --
+--
 FourYijue = sgs.CreateTriggerSkill {
 	name = "FourYijue",
 	frequency = sgs.Skill_Compulsory,
@@ -1568,7 +1552,7 @@ FourYijue = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-	end
+	end,
 }
 GuanYu_Four:addSkill(FourYijue)
 
@@ -1587,7 +1571,7 @@ GuanYu_Four:addSkill(FourYijue)
 	技能设计：锦衣祭司
 	状态：验证通过
 ]]
-   --
+--
 
 WoLongZhuGeLiang_Four = sgs.General(extension, "WoLongZhuGeLiang_Four", "shu", 3, true)
 
@@ -1597,7 +1581,7 @@ WoLongZhuGeLiang_Four = sgs.General(extension, "WoLongZhuGeLiang_Four", "shu", 3
 	描述：你可以将一张黑色手牌当【无懈可击】使用。
 	状态：原有技能
 ]]
-   --
+--
 WoLongZhuGeLiang_Four:addSkill("kanpo")
 
 --[[
@@ -1606,7 +1590,7 @@ WoLongZhuGeLiang_Four:addSkill("kanpo")
 	描述：出牌阶段，你可以展示一张红色手牌并指定一名角色，然后视为你对其使用一张【火攻】。每阶段限一次。
 	状态：验证通过
 ]]
-   --
+--
 FourHuoji_Card = sgs.CreateSkillCard {
 	name = "FourHuoji_Card",
 	target_fixed = false,
@@ -1635,7 +1619,7 @@ FourHuoji_Card = sgs.CreateSkillCard {
 		use.from = source
 		use.to:append(target)
 		room:useCard(use)
-	end
+	end,
 }
 FourHuoji = sgs.CreateViewAsSkill {
 	name = "FourHuoji",
@@ -1655,7 +1639,7 @@ FourHuoji = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_play = function(self, player)
 		return not player:hasUsed("#FourHuoji_Card")
-	end
+	end,
 }
 WoLongZhuGeLiang_Four:addSkill(FourHuoji)
 
@@ -1665,7 +1649,7 @@ WoLongZhuGeLiang_Four:addSkill(FourHuoji)
 	描述：锁定技，若你的装备区没有防具牌，视为你装备着【八卦阵】。
 	状态：原有技能
 ]]
-   --
+--
 WoLongZhuGeLiang_Four:addSkill("bazhen")
 
 ----------------------------------------------------------------------------------------------------
@@ -1682,7 +1666,7 @@ WoLongZhuGeLiang_Four:addSkill("bazhen")
 	技能设计：玉面
 	状态：验证通过
 ]]
-   --
+--
 
 PangTong_Four = sgs.General(extension, "PangTong_Four", "shu", 3, true)
 
@@ -1692,7 +1676,7 @@ PangTong_Four = sgs.General(extension, "PangTong_Four", "shu", 3, true)
 	描述：你可以将一张梅花手牌当【铁索连环】使用或重铸。
 	状态：原有技能
 ]]
-   --
+--
 PangTong_Four:addSkill("lianhuan")
 
 --[[
@@ -1701,7 +1685,7 @@ PangTong_Four:addSkill("lianhuan")
 	描述：限定技，当你处于濒死状态时，你可以：弃置你区域里所有的牌，然后将你的武将牌翻至正面朝上并重置之，再摸三张牌且体力回复至体力上限。然后你可以对一名处于连环状态的角色造成1点火属性伤害。
 	状态：验证通过
 ]]
-   --
+--
 FourNiepan_Card = sgs.CreateSkillCard {
 	name = "FourNiepan_Card",
 	target_fixed = false,
@@ -1723,7 +1707,7 @@ FourNiepan_Card = sgs.CreateSkillCard {
 		damage.to = target
 		damage.nature = sgs.DamageStruct_Fire
 		room:damage(damage)
-	end
+	end,
 }
 FourNiepan_VS = sgs.CreateViewAsSkill {
 	name = "FourNiepan_VS",
@@ -1736,7 +1720,7 @@ FourNiepan_VS = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_response = function(self, player, pattern)
 		return pattern == "@FourNiepan"
-	end
+	end,
 }
 FourNiepan = sgs.CreateTriggerSkill {
 	name = "FourNiepan",
@@ -1780,17 +1764,14 @@ FourNiepan = sgs.CreateTriggerSkill {
 			end
 		end
 		return false
-	end
+	end,
 }
 
 PangTong_Four:addSkill(FourNiepan)
 
-
-
 ----------------------------------------------------------------------------------------------------
 --                                             吴
 ----------------------------------------------------------------------------------------------------
-
 
 --[[ WU 002 周瑜（4.0）
 	武将：ZhouYu_Four
@@ -1804,7 +1785,7 @@ PangTong_Four:addSkill(FourNiepan)
 	技能设计：玉面
 	状态：验证通过
 ]]
-   --
+--
 
 ZhouYu_Four = sgs.General(extension, "ZhouYu_Four", "wu", 3, true)
 
@@ -1819,7 +1800,7 @@ ZhouYu_Four = sgs.General(extension, "ZhouYu_Four", "wu", 3, true)
 	注：个别时候英姿按钮会弹起，下次摸牌阶段时会询问是否发动英姿而不是自动发动；
 		周瑜/神周瑜双将，弃置2张牌后琴音失去体力，然后如果手牌数为体力值+1，不能弃1张牌。（再次成为锁定技，不过估计没人这样）
 ]]
-   --
+--
 --[[
 FourYingzi_DummyCard = sgs.CreateSkillCard{
 	name = "FourYingzi_DummyCard",
@@ -1966,14 +1947,18 @@ FourYingzi = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data, room)
 		if event == sgs.DrawNCards then
 			local draw = data:toDraw()
-			if draw.reason ~= "draw_phase" then return false end
+			if draw.reason ~= "draw_phase" then
+				return false
+			end
 			if room:askForSkillInvoke(player, self:objectName(), data) then
 				draw.num = draw.num + 1
 				data:setValue(draw)
 			end
 		elseif event == sgs.EventPhaseChanging then
 			local change = data:toPhaseChange()
-			if change.to ~= sgs.Player_Discard then return false end
+			if change.to ~= sgs.Player_Discard then
+				return false
+			end
 			room:addMaxCards(player, 1, true)
 		end
 		return false
@@ -1981,14 +1966,13 @@ FourYingzi = sgs.CreateTriggerSkill {
 }
 ZhouYu_Four:addSkill(FourYingzi)
 
-
 --[[
 	技能：FourFanjian
 	技能名：反间
 	描述：出牌阶段，你可以选择一张手牌，令一名其他角色选择一种花色后展示并获得之，若此牌与所选花色不同，则该角色流失1点体力。每阶段限一次。
 	状态：验证通过
 ]]
-   --
+--
 FourFanjian_Card = sgs.CreateSkillCard {
 	name = "FourFanjian_Card",
 	target_fixed = false,
@@ -2020,7 +2004,7 @@ FourFanjian_Card = sgs.CreateSkillCard {
 		if card:getSuit() ~= suit then
 			room:loseHp(target, 1, true, source, self:objectName())
 		end
-	end
+	end,
 }
 FourFanjian = sgs.CreateViewAsSkill {
 	name = "FourFanjian",
@@ -2040,7 +2024,7 @@ FourFanjian = sgs.CreateViewAsSkill {
 			return not player:hasUsed("#FourFanjian_Card")
 		end
 		return false
-	end
+	end,
 }
 ZhouYu_Four:addSkill(FourFanjian)
 
@@ -2058,7 +2042,7 @@ ZhouYu_Four:addSkill(FourFanjian)
 	技能设计：小A
 	状态：验证通过
 ]]
-   --
+--
 
 GanNing_Four = sgs.General(extension, "GanNing_Four", "wu", 4, true)
 
@@ -2068,7 +2052,7 @@ GanNing_Four = sgs.General(extension, "GanNing_Four", "wu", 4, true)
 	描述：出牌阶段，你可以将一张黑色牌当【过河拆桥】使用。每阶段限一次。
 	状态：验证通过
 ]]
-   --
+--
 FourQixi_VS = sgs.CreateViewAsSkill {
 	name = "FourQixi",
 	n = 1,
@@ -2089,7 +2073,7 @@ FourQixi_VS = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_play = function(self, player)
 		return not player:hasFlag("FourQixi_used")
-	end
+	end,
 }
 FourQixi = sgs.CreateTriggerSkill {
 	name = "FourQixi",
@@ -2112,7 +2096,7 @@ FourQixi = sgs.CreateTriggerSkill {
 			end
 		end
 		return false
-	end
+	end,
 }
 GanNing_Four:addSkill(FourQixi)
 
@@ -2122,7 +2106,7 @@ GanNing_Four:addSkill(FourQixi)
 	描述：若你使用【过河拆桥】弃置一名角色装备区里的牌，在该装备牌置入弃牌堆时，你可以用一张红色手牌替换之。每阶段限一次。
 	状态：验证通过
 ]]
-   --
+--
 --[[FourJinfan = sgs.CreateTriggerSkill{
 	name = "FourJinfan",
 	frequency = sgs.Skill_NotFrequent,
@@ -2179,7 +2163,9 @@ GanNing_Four:addSkill(FourQixi)
 listIndexOf = function(theqlist, theitem)
 	local index = 0
 	for _, item in sgs.qlist(theqlist) do
-		if item == theitem then return index end
+		if item == theitem then
+			return index
+		end
 		index = index + 1
 	end
 end
@@ -2210,16 +2196,14 @@ FourJinfan = sgs.CreateTriggerSkill {
 									local card = sgs.Sanguosha:getCard(card_id)
 									if card:isKindOf("EquipCard") then
 										if move.from_places:contains(sgs.Player_PlaceEquip) then
-											local replace = room:askForCard(player, ".red", "@FourJinfan_prompt", data,
-												sgs.Card_MethodDiscard)
+											local replace = room:askForCard(player, ".red", "@FourJinfan_prompt", data, sgs.Card_MethodDiscard)
 											if replace then
 												room:setPlayerFlag(player, "FourJinfan_used")
 												local move2 = sgs.CardsMoveStruct()
 												move2.card_ids:append(card_id)
 												move2.to = player
 												move2.to_place = sgs.Player_PlaceHand
-												move2.reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_OVERRIDE,
-													player:objectName())
+												move2.reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_OVERRIDE, player:objectName())
 												local moves = sgs.CardsMoveList()
 												moves:append(move2)
 												room:moveCardsAtomic(moves, true)
@@ -2245,10 +2229,8 @@ FourJinfan = sgs.CreateTriggerSkill {
 			end
 		end
 		return false
-	end
+	end,
 }
-
-
 
 GanNing_Four:addSkill(FourJinfan)
 
@@ -2265,7 +2247,7 @@ GanNing_Four:addSkill(FourJinfan)
 	技能设计：玉面
 	状态：验证通过
 ]]
-   --
+--
 
 GanNingA_Four = sgs.General(extension, "GanNingA_Four", "wu", 4, true)
 
@@ -2275,7 +2257,7 @@ GanNingA_Four = sgs.General(extension, "GanNingA_Four", "wu", 4, true)
 	描述：你的回合外，当你因使用、打出或弃置而失去一张红色牌时，你可以摸一张牌，然后可以将一张黑色牌置于你的武将牌上，称为“骑”，你的武将牌上最多可以有四张“骑”；出牌阶段，你可以将一张“骑”当【过河拆桥】使用。
 	状态：验证通过
 ]]
-   --
+--
 --[[
 FourQixiA_Card = sgs.CreateSkillCard{
 	name = "FourQixiA_Card",
@@ -2336,7 +2318,7 @@ FourQixiA_VS = sgs.CreateOneCardViewAsSkill {
 	end,
 	enabled_at_play = function(self, player)
 		return not player:getPile("horseA"):isEmpty()
-	end
+	end,
 }
 
 --[[
@@ -2422,7 +2404,7 @@ GanNingA_Four:addSkill(FourQixiA)
 	技能设计：玉面
 	状态：验证通过
 ]]
-   --
+--
 
 GanNingB_Four = sgs.General(extension, "GanNingB_Four", "wu", 4, true)
 
@@ -2435,7 +2417,7 @@ GanNingB_Four = sgs.General(extension, "GanNingB_Four", "wu", 4, true)
 		然后你可以将一张黑色牌置于你的武将牌上（此牌不能为装备牌），称为“骑”，你的武将牌上最多可以有四张“骑”；出牌阶段，你可以将一张“骑”当【过河拆桥】使用。
 	状态：验证通过
 ]]
-   --
+--
 --[[
 FourQixiB_Card = sgs.CreateSkillCard{
 	name = "FourQixiB_Card",
@@ -2506,7 +2488,7 @@ FourQixiB_VS = sgs.CreateOneCardViewAsSkill {
 	end,
 	enabled_at_play = function(self, player)
 		return not player:getPile("horseB"):isEmpty()
-	end
+	end,
 }
 
 GetHorseB = function(ganning)
@@ -2517,8 +2499,7 @@ GetHorseB = function(ganning)
 			if not ganning:isKongcheng() then
 				local card_id = -1
 				local prompt = string.format("@FourQixiB_Exchange:::%d", 1)
-				local card = room:askForCard(ganning, "BasicCard,TrickCard|.|.|.|black", prompt, sgs.QVariant(),
-					sgs.Card_MethodNone)
+				local card = room:askForCard(ganning, "BasicCard,TrickCard|.|.|.|black", prompt, sgs.QVariant(), sgs.Card_MethodNone)
 				if card then
 					card_id = card:getEffectiveId()
 					ganning:addToPile("horseB", card_id)
@@ -2559,7 +2540,7 @@ FourQixiB = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-	end
+	end,
 }
 GanNingB_Four:addSkill(FourQixiB)
 
@@ -2577,7 +2558,7 @@ GanNingB_Four:addSkill(FourQixiB)
 	技能设计：吹风奈奈
 	状态：验证通过
 ]]
-   --
+--
 
 XiaoQiaoA_Four = sgs.General(extension, "XiaoQiaoA_Four", "wu", 3, false)
 
@@ -2587,7 +2568,7 @@ XiaoQiaoA_Four = sgs.General(extension, "XiaoQiaoA_Four", "wu", 3, false)
 	描述：出牌阶段，你可以指定一名其他角色并选择一项：1.弃置一张红桃手牌，对其造成1点伤害，然后该角色摸X张牌（X为该角色当前已损失的体力值）。2.交给该角色一张红桃手牌，然后你回复1点体力。每阶段限一次。
 	状态：验证通过
 ]]
-   --
+--
 FourTianxiang_Card = sgs.CreateSkillCard {
 	name = "FourTianxiang_Card",
 	target_fixed = false,
@@ -2623,7 +2604,7 @@ FourTianxiang_Card = sgs.CreateSkillCard {
 			recover.who = source
 			room:recover(source, recover)
 		end
-	end
+	end,
 }
 FourTianxiang = sgs.CreateViewAsSkill {
 	name = "FourTianxiang",
@@ -2643,7 +2624,7 @@ FourTianxiang = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_play = function(self, player)
 		return not player:hasUsed("#FourTianxiang_Card")
-	end
+	end,
 }
 XiaoQiaoA_Four:addSkill(FourTianxiang)
 
@@ -2653,14 +2634,12 @@ XiaoQiaoA_Four:addSkill(FourTianxiang)
 	描述：锁定技，你的黑桃牌均视为红桃牌。
 	状态：原有技能
 ]]
-   --
+--
 XiaoQiaoA_Four:addSkill("hongyan")
-
 
 ----------------------------------------------------------------------------------------------------
 --                                             群
 ----------------------------------------------------------------------------------------------------
-
 
 --[[ QUN 004 张角（4.0）
 	武将：ZhangJiao_Four
@@ -2675,7 +2654,7 @@ XiaoQiaoA_Four:addSkill("hongyan")
 	技能设计：玉面
 	状态：验证通过
 ]]
-   --
+--
 
 ZhangJiao_Four = sgs.General(extension, "ZhangJiao_Four$", "qun", 4, true)
 
@@ -2686,7 +2665,7 @@ ZhangJiao_Four = sgs.General(extension, "ZhangJiao_Four$", "qun", 4, true)
 	状态：验证通过
 	注：若判定中出现嵌套判定，在判定牌生效后的效果发动时机会不准确。
 ]]
-   --
+--
 FourGuidao_Card = sgs.CreateSkillCard {
 	name = "FourGuidao_Card",
 	target_fixed = true,
@@ -2714,7 +2693,7 @@ FourGuidao_VS = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_response = function(self, player, pattern)
 		return pattern == "@FourGuidao"
-	end
+	end,
 }
 FourGuidao = sgs.CreateTriggerSkill {
 	name = "FourGuidao",
@@ -2727,8 +2706,7 @@ FourGuidao = sgs.CreateTriggerSkill {
 			if player:isAlive() and player:hasSkill(self:objectName()) then
 				if not player:isNude() then
 					local judge = data:toJudge()
-					local prompt = string.format("@FourGuidao-card:%s:%s:%s", judge.who:objectName(), self:objectName(),
-						judge.reason)
+					local prompt = string.format("@FourGuidao-card:%s:%s:%s", judge.who:objectName(), self:objectName(), judge.reason)
 					local card = room:askForCard(player, "@FourGuidao", prompt, data, sgs.Card_MethodResponse, nil, true)
 					if card then
 						room:setPlayerFlag(player, "FourGuidao_Retrial")
@@ -2748,8 +2726,7 @@ FourGuidao = sgs.CreateTriggerSkill {
 						move.card_ids = ids
 						move.to = zhangjiao
 						move.to_place = sgs.Player_PlaceTable
-						move.reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TURNOVER, zhangjiao:objectName(),
-							self:objectName(), nil)
+						move.reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TURNOVER, zhangjiao:objectName(), self:objectName(), nil)
 						room:moveCardsAtomic(move, true)
 						room:getThread():delay()
 						local id = ids:first()
@@ -2796,7 +2773,7 @@ FourGuidao = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target
-	end
+	end,
 }
 ZhangJiao_Four:addSkill(FourGuidao)
 
@@ -2806,7 +2783,7 @@ ZhangJiao_Four:addSkill(FourGuidao)
 	描述：觉醒技，回合开始阶段开始时，若“符”的数量达到3，你须减1点体力上限，并获得技能“雷击”。
 	状态：验证通过
 ]]
-   --
+--
 FourDedao = sgs.CreateTriggerSkill {
 	name = "FourDedao",
 	frequency = sgs.Skill_Wake,
@@ -2823,7 +2800,7 @@ FourDedao = sgs.CreateTriggerSkill {
 		room:broadcastInvoke("animate", "lightbox:$FourDedao:3000")
 		room:getThread():delay(4000)
 
-		if room:changeMaxHpForAwakenSkill(player,-1, self:objectName()) then
+		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 			room:setPlayerMark(player, "FourDedao", 1)
 			room:handleAcquireDetachSkills(player, "leiji")
 		end
@@ -2841,7 +2818,7 @@ FourDedao = sgs.CreateTriggerSkill {
 			return true
 		end
 		return false
-	end
+	end,
 }
 ZhangJiao_Four:addSkill(FourDedao)
 
@@ -2851,9 +2828,8 @@ ZhangJiao_Four:addSkill(FourDedao)
 	描述：主公技，群雄角色可以在他们各自的出牌阶段交给你一张【闪】或【闪电】。每阶段限一次。
 	状态：原有技能
 ]]
-   --
+--
 ZhangJiao_Four:addSkill("huangtian")
-
 
 ----------------------------------------------------------------------------------------------------
 
@@ -2869,7 +2845,7 @@ ZhangJiao_Four:addSkill("huangtian")
 	技能设计：锦衣祭司
 	状态：验证通过
 ]]
-   --
+--
 
 --YuJi_Four = sgs.General(extension, "YuJi_Four", "qun", 3, true)
 
@@ -2879,7 +2855,7 @@ ZhangJiao_Four:addSkill("huangtian")
 	描述：你可以说出任何一种基本牌或非延时类锦囊牌，并正面朝下使用或打出一张手牌。若无人质疑，则该牌按你所述之牌结算。若有人质疑则亮出验明：若为真，质疑者各失去1点体力：若为假，质疑者各摸一张牌。除非被质疑的牌为红桃且为真时，该牌仍然可以进行结算，否则无论真假，将该牌置入弃牌堆。
 	状态：原有技能
 ]]
-   --
+--
 --YuJi_Four:addSkill("guhuo")
 
 --[[
@@ -2888,7 +2864,7 @@ ZhangJiao_Four:addSkill("huangtian")
 	描述：其他角色可以在他们各自的出牌阶段交给你一张红桃手牌。每阶段限一次。
 	状态：验证通过
 ]]
-   --
+--
 FourTaiping_Card = sgs.CreateSkillCard {
 	name = "FourTaiping_Card",
 	target_fixed = false,
@@ -2926,7 +2902,7 @@ FourTaiping_Card = sgs.CreateSkillCard {
 				room:setPlayerFlag(source, "ForbidFourTaiping")
 			end
 		end
-	end
+	end,
 }
 FourTaiping_Others = sgs.CreateViewAsSkill {
 	name = "FourTaiping_Others",
@@ -2943,7 +2919,7 @@ FourTaiping_Others = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_play = function(self, player)
 		return not player:hasFlag("ForbidFourTaiping")
-	end
+	end,
 }
 FourTaiping = sgs.CreateTriggerSkill {
 	name = "FourTaiping",
@@ -2976,7 +2952,7 @@ FourTaiping = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target
-	end
+	end,
 }
 --YuJi_Four:addSkill(FourTaiping)
 local skill = sgs.Sanguosha:getSkill("FourTaiping_Others")
@@ -2985,8 +2961,6 @@ if not skill then
 	skillList:append(FourTaiping_Others)
 	sgs.Sanguosha:addSkills(skillList)
 end
-
-
 
 ----------------------------------------------------------------------------------------------------
 
@@ -2997,7 +2971,6 @@ end
 ----------------------------------------------------------------------------------------------------
 --                                            5.0
 ----------------------------------------------------------------------------------------------------
-
 
 --[[ DIY 501 夏侯霸（4.0）
 	武将：XiaHouBa_Diy
@@ -3012,7 +2985,7 @@ end
 	技能设计：一品海之蓝
 	状态：验证通过
 ]]
-   --
+--
 
 XiaHouBa_Diy = sgs.General(extension, "XiaHouBa_Diy", "wei", 4, true)
 
@@ -3025,7 +2998,7 @@ XiaHouBa_Diy = sgs.General(extension, "XiaHouBa_Diy", "wei", 4, true)
 	注：夏侯霸/原版夏侯渊双将判定为黑色后，回合结束阶段会失去神速；
 		
 ]]
-   --
+--
 --[[
 DiyJisu_Card = sgs.CreateSkillCard{
 	name = "DiyJisu_Card",
@@ -3088,10 +3061,8 @@ DiyJisu_VS = sgs.CreateOneCardViewAsSkill {
 	end,
 	enabled_at_response = function(self, player, pattern)
 		return player:getPile("turn"):length() > 0 and string.find(pattern, "analeptic")
-	end
+	end,
 }
-
-
 
 DiyJisu = sgs.CreateTriggerSkill {
 	name = "DiyJisu",
@@ -3122,7 +3093,7 @@ DiyJisu = sgs.CreateTriggerSkill {
 			end
 		end
 		return false
-	end
+	end,
 }
 DiyJisu_Get = sgs.CreateTriggerSkill { --与主技能分开，是为了保证发动豹变后第二次判定依然有效
 	name = "#DiyJisu_Get",
@@ -3142,7 +3113,7 @@ DiyJisu_Get = sgs.CreateTriggerSkill { --与主技能分开，是为了保证发
 			end
 		end
 		return false
-	end
+	end,
 }
 DiyJisu_Clear = sgs.CreateTriggerSkill { --与主技能分开，是为了在发动豹变后失去最后一次获得的神速
 	name = "#DiyJisu_Clear",
@@ -3165,7 +3136,7 @@ DiyJisu_Clear = sgs.CreateTriggerSkill { --与主技能分开，是为了在发�
 			end
 		end
 		return false
-	end
+	end,
 }
 XiaHouBa_Diy:addSkill(DiyJisu)
 XiaHouBa_Diy:addSkill(DiyJisu_Get)
@@ -3180,7 +3151,7 @@ extension:insertRelatedSkills("DiyJisu", "#DiyJisu_Clear")
 	描述：觉醒技，当你发动“疾速”判定结束后，若“变”的数量达到3或更多，你须减1点体力上限，失去技能“疾速”，将势力改为蜀，并获得技能“挑衅”、“咆哮”和“XX”（出牌阶段，你可以将一张“变”置入弃牌堆，然后观看一名其他角色的手牌。每阶段限一次）。
 	状态：验证通过
 ]]
-   --
+--
 DiyBaobian = sgs.CreateTriggerSkill {
 	name = "DiyBaobian",
 	frequency = sgs.Skill_Wake,
@@ -3229,7 +3200,7 @@ DiyBaobian = sgs.CreateTriggerSkill {
 			return true
 		end
 		return false
-	end
+	end,
 }
 DiyBaobian_Clear = sgs.CreateTriggerSkill {
 	name = "#DiyBaobian_Clear",
@@ -3249,7 +3220,7 @@ DiyBaobian_Clear = sgs.CreateTriggerSkill {
 			end
 		end
 		return false
-	end
+	end,
 }
 XiaHouBa_Diy:addSkill(DiyBaobian)
 XiaHouBa_Diy:addSkill(DiyBaobian_Clear)
@@ -3261,7 +3232,7 @@ extension:insertRelatedSkills("DiyBaobian", "#DiyBaobian_Clear")
 	描述：出牌阶段，你可以将一张“变”置入弃牌堆，然后观看一名其他角色的手牌。每阶段限一次。
 	状态：验证通过
 ]]
-   --
+--
 DiyXX_Card = sgs.CreateSkillCard {
 	name = "DiyXX_Card",
 	target_fixed = false,
@@ -3298,7 +3269,7 @@ DiyXX_Card = sgs.CreateSkillCard {
 		room:throwCard(self, reason, nil)
 		room:showAllCards(targets[1], source)
 		room:addPlayerMark(target, "DiyXX_Play")
-	end
+	end,
 }
 --[[
 DiyXX = sgs.CreateViewAsSkill{
@@ -3331,11 +3302,8 @@ DiyXX = sgs.CreateOneCardViewAsSkill {
 	end,
 	enabled_at_response = function(self, player, pattern)
 		return false
-	end
+	end,
 }
-
-
-
 
 local skill = sgs.Sanguosha:getSkill("DiyXX")
 if not skill then
@@ -3344,13 +3312,9 @@ if not skill then
 	sgs.Sanguosha:addSkills(skillList)
 end
 
-
-
 ----------------------------------------------------------------------------------------------------
 --                                            4.0
 ----------------------------------------------------------------------------------------------------
-
-
 
 ----------------------------------------------------------------------------------------------------
 --[[灵雎

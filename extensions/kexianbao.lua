@@ -18,12 +18,13 @@ kexianxiuzhenex = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseChanging },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if (event == sgs.EventPhaseChanging) then
+		if event == sgs.EventPhaseChanging then
 			local change = data:toPhaseChange()
-			if (change.to == sgs.Player_Draw) and (player:isAlive())
-				and ((player:getMark("&kexianmabimopai") > 0)
-					or (player:getMark("&kejiexianmabimp") > 0)
-					or (player:getMark("&kexianguiyimopai") > 0)) then
+			if
+				(change.to == sgs.Player_Draw)
+				and (player:isAlive())
+				and ((player:getMark("&kexianmabimopai") > 0) or (player:getMark("&kejiexianmabimp") > 0) or (player:getMark("&kexianguiyimopai") > 0))
+			then
 				room:setPlayerMark(player, "&kexianmabimopai", 0)
 				room:setPlayerMark(player, "&kexianguiyimopai", 0)
 				room:setPlayerMark(player, "&kejiexianmabimp", 0)
@@ -32,7 +33,7 @@ kexianxiuzhenex = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-		if (event == sgs.EventPhaseChanging) then
+		if event == sgs.EventPhaseChanging then
 			local change = data:toPhaseChange()
 			if (change.to == sgs.Player_Play) and (player:isAlive()) and (player:getMark("&kejiexianmabicp") > 0) then
 				room:setPlayerMark(player, "&kejiexianmabicp", 0)
@@ -41,7 +42,7 @@ kexianxiuzhenex = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-		if (event == sgs.EventPhaseChanging) then
+		if event == sgs.EventPhaseChanging then
 			local change = data:toPhaseChange()
 			if (change.to == sgs.Player_Discard) and (player:isAlive()) and (player:getMark("&kexianguiyiqipai") > 0) then
 				room:setPlayerMark(player, "&kexianguiyiqipai", 0)
@@ -57,9 +58,11 @@ kexianxiuzhenex = sgs.CreateTriggerSkill {
 			or (target:getMark("&kejiexianmabicp") > 0)
 			or (target:getMark("&kexianguiyimopai") > 0)
 			or (target:getMark("&kexianguiyiqipai") > 0)
-	end
+	end,
 }
-if not sgs.Sanguosha:getSkill("kexianxiuzhenex") then skills:append(kexianxiuzhenex) end
+if not sgs.Sanguosha:getSkill("kexianxiuzhenex") then
+	skills:append(kexianxiuzhenex)
+end
 
 xianchangetupo = sgs.CreateTriggerSkill {
 	name = "xianchangetupo",
@@ -68,41 +71,42 @@ xianchangetupo = sgs.CreateTriggerSkill {
 	events = { sgs.GameStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if (player:hasSkill("kexianhuoqi")) then
+		if player:hasSkill("kexianhuoqi") then
 			if room:askForSkillInvoke(player, self:objectName(), data) then
-				room:changeHero(player, "kejiexiannanhualaoxian", false, true, player:getGeneral2Name()=="kexiannanhualaoxian", false)
+				room:changeHero(player, "kejiexiannanhualaoxian", false, true, player:getGeneral2Name() == "kexiannanhualaoxian", false)
 			end
 		end
-		if (player:hasSkill("kexianchanxin")) then
+		if player:hasSkill("kexianchanxin") then
 			if room:askForSkillInvoke(player, self:objectName(), data) then
-				room:changeHero(player, "kejiexianpujing", false, true, player:getGeneral2Name()=="kexianpujing", false)
+				room:changeHero(player, "kejiexianpujing", false, true, player:getGeneral2Name() == "kexianpujing", false)
 			end
 		end
-		if (player:hasSkill("kexianlunhui")) then
+		if player:hasSkill("kexianlunhui") then
 			if room:askForSkillInvoke(player, self:objectName(), data) then
-				room:changeHero(player, "kejiexianzuoci", false, true, player:getGeneral2Name()=="kexianzuoci", false)
+				room:changeHero(player, "kejiexianzuoci", false, true, player:getGeneral2Name() == "kexianzuoci", false)
 			end
 		end
-		if (player:hasSkill("kexianmabi")) then
+		if player:hasSkill("kexianmabi") then
 			if room:askForSkillInvoke(player, self:objectName(), data) then
-				room:changeHero(player, "kejiexianyuji", false, true, player:getGeneral2Name()=="kexianyuji", false)
+				room:changeHero(player, "kejiexianyuji", false, true, player:getGeneral2Name() == "kexianyuji", false)
 			end
 		end
-		if (player:hasSkill("kexianhanyan")) then
+		if player:hasSkill("kexianhanyan") then
 			if room:askForSkillInvoke(player, self:objectName(), data) then
-				room:changeHero(player, "kejiexianmasu", false, true, player:getGeneral2Name()=="kexianmasu", false)
+				room:changeHero(player, "kejiexianmasu", false, true, player:getGeneral2Name() == "kexianmasu", false)
 			end
 		end
-		if (player:hasSkill("kexianbenxi")) then
+		if player:hasSkill("kexianbenxi") then
 			if room:askForSkillInvoke(player, self:objectName(), data) then
-				room:changeHero(player, "kejiexianzhanghe", false, true, player:getGeneral2Name()=="kexianzhanghe", false)
+				room:changeHero(player, "kejiexianzhanghe", false, true, player:getGeneral2Name() == "kexianzhanghe", false)
 			end
 		end
 	end,
 	priority = 5,
 }
-if not sgs.Sanguosha:getSkill("xianchangetupo") then skills:append(xianchangetupo) end
-
+if not sgs.Sanguosha:getSkill("xianchangetupo") then
+	skills:append(xianchangetupo)
+end
 
 kexiannanhualaoxian = sgs.General(extension, "kexiannanhualaoxian", "kexian", 3)
 
@@ -117,7 +121,12 @@ kexianhuoqi = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if event == sgs.CardsMoveOneTime then
 			local move = data:toMoveOneTime()
-			if player:getPhase() == sgs.Player_Discard and move.from and move.from:objectName() == player:objectName() and (bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD) then
+			if
+				player:getPhase() == sgs.Player_Discard
+				and move.from
+				and move.from:objectName() == player:objectName()
+				and (bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD)
+			then
 				player:addMark("kexianhuoqi", move.card_ids:length())
 			end
 		elseif event == sgs.EventPhaseEnd and player:getPhase() == sgs.Player_Discard and player:getMark("kexianhuoqi") >= 2 and (player:hasSkill(self:objectName())) then
@@ -141,8 +150,7 @@ kexianhuoqi = sgs.CreateTriggerSkill {
 					recover.who = player
 					room:recover(player, recover)
 				elseif result == "pindian" then
-					local pdplayers = room:askForPlayersChosen(player, players, self:objectName(), 2, 2, "nhlxpd-ask",
-						false, false)
+					local pdplayers = room:askForPlayersChosen(player, players, self:objectName(), 2, 2, "nhlxpd-ask", false, false)
 					local fq = pdplayers:at(0)
 					local bfq = pdplayers:at(1)
 					if fq and bfq and fq:canPindian(bfq) then
@@ -183,7 +191,7 @@ kexianhuoqi = sgs.CreateTriggerSkill {
 			end
 		end
 		return false
-	end
+	end,
 }
 kexiannanhualaoxian:addSkill(kexianhuoqi)
 
@@ -213,7 +221,7 @@ kexianyuli = sgs.CreateTriggerSkill {
 		end
 		return false
 	end,
-	priority = -1
+	priority = -1,
 }
 kexiannanhualaoxian:addSkill(kexianyuli)
 
@@ -242,10 +250,11 @@ kexianyuliclear = sgs.CreateTriggerSkill {
 		end
 		return false
 	end,
-	priority = -2
+	priority = -2,
 }
-if not sgs.Sanguosha:getSkill("kexianyuliclear") then skills:append(kexianyuliclear) end
-
+if not sgs.Sanguosha:getSkill("kexianyuliclear") then
+	skills:append(kexianyuliclear)
+end
 
 kexiantianbian_DummyCard = sgs.CreateSkillCard {
 	name = "kexiantianbian_DummyCard",
@@ -295,7 +304,7 @@ kexiantianbianVS = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_response = function(self, player, pattern)
 		return pattern == "@kexiantianbian"
-	end
+	end,
 }
 kexiantianbian = sgs.CreateTriggerSkill {
 	name = "kexiantianbian",
@@ -347,8 +356,7 @@ kexiantianbian = sgs.CreateTriggerSkill {
 							move2.card_ids:append(oldcard:getEffectiveId())
 							move2.to = zhangjiao
 							move2.to_place = sgs.Player_PlaceHand
-							move2.reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_OVERRIDE,
-								zhangjiao:objectName())
+							move2.reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_OVERRIDE, zhangjiao:objectName())
 							local moves = sgs.CardsMoveList()
 							moves:append(move)
 							moves:append(move2)
@@ -384,9 +392,6 @@ kexiantianbian = sgs.CreateTriggerSkill {
 }
 kexiannanhualaoxian:addSkill(kexiantianbian)
 
-
-
-
 kexianpujing = sgs.General(extension, "kexianpujing", "kexian", 3)
 
 kexianchanxinCard = sgs.CreateSkillCard {
@@ -400,7 +405,7 @@ kexianchanxinCard = sgs.CreateSkillCard {
 			local mopai = count
 			room:drawCards(source, mopai)
 		end
-	end
+	end,
 }
 kexianchanxin = sgs.CreateViewAsSkill {
 	name = "kexianchanxin",
@@ -420,7 +425,6 @@ kexianchanxin = sgs.CreateViewAsSkill {
 	end,
 }
 kexianpujing:addSkill(kexianchanxin)
-
 
 function xiangetCardList(intlist)
 	local ids = sgs.CardList()
@@ -463,9 +467,14 @@ kexianhuiyan = sgs.CreateTriggerSkill {
 				room:clearAG()
 
 				judge.card = judgeone
-				room:moveCardTo(judge.card, nil, judge.who, sgs.Player_PlaceJudge,
-					sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_JUDGE, judge.who:objectName(), self:objectName(), "",
-						judge.reason), true)
+				room:moveCardTo(
+					judge.card,
+					nil,
+					judge.who,
+					sgs.Player_PlaceJudge,
+					sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_JUDGE, judge.who:objectName(), self:objectName(), "", judge.reason),
+					true
+				)
 				judge:updateResult()
 				room:setTag("SkipGameRule", sgs.QVariant(tonumber(event)))
 			end
@@ -473,10 +482,9 @@ kexianhuiyan = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target:hasSkill(self:objectName())
-	end
+	end,
 }
 kexianpujing:addSkill(kexianhuiyan)
-
 
 kexianguiyi = sgs.CreateTriggerSkill {
 	name = "kexianguiyi",
@@ -494,8 +502,7 @@ kexianguiyi = sgs.CreateTriggerSkill {
 			if (not players:isEmpty()) and player:canPindian() then
 				if room:askForSkillInvoke(player, self:objectName(), data) then
 					room:broadcastSkillInvoke(self:objectName())
-					local target = room:askForPlayerChosen(player, players, self:objectName(), "xianguiyi-ask", true,
-						true)
+					local target = room:askForPlayerChosen(player, players, self:objectName(), "xianguiyi-ask", true, true)
 					if target ~= nil then
 						local success = player:pindian(target, self:objectName(), nil)
 						if success then
@@ -507,12 +514,9 @@ kexianguiyi = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-	end
+	end,
 }
 kexianpujing:addSkill(kexianguiyi)
-
-
-
 
 kexianzuoci = sgs.General(extension, "kexianzuoci", "kexian", 3)
 
@@ -543,7 +547,9 @@ kexianlunhui = sgs.CreateTriggerSkill {
 			room:removePlayerMark(player, "usexianlunhui", 1)
 		end
 		if change.to == sgs.Player_NotActive then
-			if player:getMark("kexianlunhui") <= 0 then return false end
+			if player:getMark("kexianlunhui") <= 0 then
+				return false
+			end
 			room:setPlayerMark(player, "kexianlunhui", 0)
 			local log = sgs.LogMessage()
 			log.type = "$kexianlunhui_ex"
@@ -555,14 +561,12 @@ kexianlunhui = sgs.CreateTriggerSkill {
 }
 kexianzuoci:addSkill(kexianlunhui)
 
-
-
 kexianfenshenCard = sgs.CreateSkillCard {
 	name = "kexianfenshenCard",
 	target_fixed = true,
 	on_use = function(self, room, source, targets)
 		source:gainMark("&kexianfenshen")
-	end
+	end,
 }
 kexianfenshenVS = sgs.CreateViewAsSkill {
 	name = "kexianfenshen",
@@ -571,7 +575,9 @@ kexianfenshenVS = sgs.CreateViewAsSkill {
 		return not sgs.Self:isJilei(to_select)
 	end,
 	view_as = function(self, cards)
-		if #cards ~= 1 then return nil end
+		if #cards ~= 1 then
+			return nil
+		end
 		local card = kexianfenshenCard:clone()
 		card:addSubcard(cards[1])
 		card:setSkillName(self:objectName())
@@ -579,7 +585,7 @@ kexianfenshenVS = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_play = function(self, player)
 		return (player:getMark("&xianzuociji") > 0) and not (player:hasUsed("#kexianfenshenCard"))
-	end
+	end,
 }
 
 kexianfenshen = sgs.CreateTriggerSkill {
@@ -590,7 +596,7 @@ kexianfenshen = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if (event == sgs.EventPhaseStart) and player:hasSkill(self:objectName()) then
 			if (player:getPhase() == sgs.Player_RoundStart) and player:faceUp() then
-				if (player:getMark("kexianzuociturn") == 0) then
+				if player:getMark("kexianzuociturn") == 0 then
 					room:setPlayerMark(player, "kexianzuociturn", 1)
 					local already = 0
 					if (player:getMark("&xianzuociji") <= 0) and (player:getMark("&xianzuociou") <= 0) then
@@ -612,7 +618,7 @@ kexianfenshen = sgs.CreateTriggerSkill {
 		if (event == sgs.EventPhaseEnd) and player:hasSkill(self:objectName()) and (player:getPhase() == sgs.Player_Start) then
 			room:setPlayerMark(player, "kexianzuociturn", 0)
 		end
-		if (event == sgs.DamageInflicted) then
+		if event == sgs.DamageInflicted then
 			local damage = data:toDamage()
 			local hurt = damage.damage
 			if player:getMark("&kexianfenshen") > 0 then
@@ -641,7 +647,7 @@ kexianfenshen = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, player)
 		return true
-	end
+	end,
 }
 kexianzuoci:addSkill(kexianfenshen)
 
@@ -651,9 +657,9 @@ kexianfeijian = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart, sgs.EventPhaseEnd },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if (event == sgs.EventPhaseStart) then
+		if event == sgs.EventPhaseStart then
 			if (player:getPhase() == sgs.Player_RoundStart) and player:faceUp() then
-				if (player:getMark("kexianzuociturn") == 0) then
+				if player:getMark("kexianzuociturn") == 0 then
 					room:setPlayerMark(player, "kexianzuociturn", 1)
 					local already = 0
 					if (player:getMark("&xianzuociji") <= 0) and (player:getMark("&xianzuociou") <= 0) then
@@ -687,7 +693,6 @@ kexianfeijian = sgs.CreateTriggerSkill {
 	end,
 }
 kexianzuoci:addSkill(kexianfeijian)
-
 
 kexianyuji = sgs.General(extension, "kexianyuji", "kexian", 3)
 
@@ -755,13 +760,9 @@ kexianxiuzhen = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-	end
+	end,
 }
 kexianyuji:addSkill(kexianxiuzhen)
-
-
-
-
 
 kexianmasu = sgs.General(extension, "kexianmasu", "shu", 4)
 
@@ -774,7 +775,7 @@ kexianhanyan = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if event == sgs.CardUsed then
 			if (use.from:objectName() == player:objectName()) and (player:getPhase() == sgs.Player_Play) and not (use.card:isKindOf("SkillCard")) then
-				if (player:getHandcardNum() <= player:getAttackRange()) then
+				if player:getHandcardNum() <= player:getAttackRange() then
 					local players = sgs.SPlayerList()
 					for _, p in sgs.qlist(room:getAllPlayers()) do
 						if player:inMyAttackRange(p) then
@@ -782,8 +783,7 @@ kexianhanyan = sgs.CreateTriggerSkill {
 						end
 					end
 					if not players:isEmpty() then
-						local eny = room:askForPlayerChosen(player, players, self:objectName(), "kexianhanyan-ask", true,
-							true)
+						local eny = room:askForPlayerChosen(player, players, self:objectName(), "kexianhanyan-ask", true, true)
 						if eny and (eny:getCardCount() > 0) then
 							room:broadcastSkillInvoke(self:objectName())
 							room:askForDiscard(eny, self:objectName(), 1, 1, false, true, "kexianhanyan-dis")
@@ -801,8 +801,7 @@ kexianhanyan = sgs.CreateTriggerSkill {
 					end
 				end
 				if not players:isEmpty() then
-					local eny = room:askForPlayerChosen(player, players, self:objectName(), "kexianhanyan-ask", true,
-						true)
+					local eny = room:askForPlayerChosen(player, players, self:objectName(), "kexianhanyan-ask", true, true)
 					if eny and (eny:getCardCount() > 0) then
 						room:broadcastSkillInvoke(self:objectName())
 						room:askForDiscard(eny, self:objectName(), 1, 1, false, true, "kexianhanyan-dis")
@@ -815,7 +814,6 @@ kexianhanyan = sgs.CreateTriggerSkill {
 
 kexianmasu:addSkill(kexianhanyan)
 
-
 kexianxiaocai = sgs.CreateTriggerSkill {
 	name = "kexianxiaocai",
 	events = { sgs.CardsMoveOneTime, sgs.EventPhaseStart },
@@ -827,30 +825,34 @@ kexianxiaocai = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if event == sgs.CardsMoveOneTime then
 			local move = data:toMoveOneTime()
-			if player:getPhase() == sgs.Player_Discard and move.from and move.from:objectName() == player:objectName() and (bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD) then
+			if
+				player:getPhase() == sgs.Player_Discard
+				and move.from
+				and move.from:objectName() == player:objectName()
+				and (bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD)
+			then
 				local ok = true
 				for _, id in sgs.qlist(move.card_ids) do
 					local card = sgs.Sanguosha:getCard(id)
 					for _, id2 in sgs.qlist(move.card_ids) do
 						local card2 = sgs.Sanguosha:getCard(id2)
 						if card:getSuit() ~= card2:getSuit() then
-							ok = false 
+							ok = false
 							break
 						end
 					end
-
 				end
-				if (move.card_ids:length() < 2) then
+				if move.card_ids:length() < 2 then
 					ok = false
 				end
-				if (ok) then
+				if ok then
 					room:setPlayerMark(player, "xiaocaimopai-Clear", 1)
 				end
 			end
 		end
 		if event == sgs.EventPhaseStart then
 			if player:getPhase() == sgs.Player_Finish then
-				if (player:getMark("xiaocaimopai-Clear") > 0) then
+				if player:getMark("xiaocaimopai-Clear") > 0 then
 					if room:askForSkillInvoke(player, self:objectName(), data) then
 						room:broadcastSkillInvoke(self:objectName())
 						player:drawCards(1)
@@ -860,10 +862,9 @@ kexianxiaocai = sgs.CreateTriggerSkill {
 		end
 
 		return false
-	end
+	end,
 }
 kexianmasu:addSkill(kexianxiaocai)
-
 
 kexianmoyong = sgs.CreateCardLimitSkill {
 	name = "kexianmoyong",
@@ -880,12 +881,9 @@ kexianmoyong = sgs.CreateCardLimitSkill {
 		else
 			return ""
 		end
-	end
+	end,
 }
 kexianmasu:addSkill(kexianmoyong)
-
-
-
 
 kexianzhanghe = sgs.General(extension, "kexianzhanghe", "wei", 4)
 
@@ -895,7 +893,7 @@ kexianbenxi = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart, sgs.ConfirmDamage },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if (event == sgs.ConfirmDamage) then
+		if event == sgs.ConfirmDamage then
 			local damage = data:toDamage()
 			if damage.from and (damage.from:getMark("&kexianbenxi-PlayClear") > 0) and damage.card and damage.card:isKindOf("Slash") then
 				local hurt = damage.damage
@@ -912,8 +910,7 @@ kexianbenxi = sgs.CreateTriggerSkill {
 				end
 			end
 			if not players:isEmpty() and player:askForSkillInvoke(self:objectName()) then
-				local target = room:askForPlayerChosen(player, players, self:objectName(), "kexianbenxi-ask", true,
-					true)
+				local target = room:askForPlayerChosen(player, players, self:objectName(), "kexianbenxi-ask", true, true)
 				if target then
 					room:broadcastSkillInvoke(self:objectName())
 					room:showAllCards(target, player)
@@ -923,7 +920,6 @@ kexianbenxi = sgs.CreateTriggerSkill {
 			end
 		end
 	end,
-
 }
 kexianzhanghe:addSkill(kexianbenxi)
 
@@ -937,10 +933,9 @@ kexianbenxijl = sgs.CreateTargetModSkill {
 		end
 	end,
 }
-if not sgs.Sanguosha:getSkill("kexianbenxijl") then skills:append(kexianbenxijl) end
-
-
-
+if not sgs.Sanguosha:getSkill("kexianbenxijl") then
+	skills:append(kexianbenxijl)
+end
 
 --仙神华佗
 kexianhuatuo = sgs.General(extension, "kexianhuatuo", "kexian", 3)
@@ -977,7 +972,7 @@ kexianjishiCard = sgs.CreateSkillCard {
 				end
 			end
 		end
-	end
+	end,
 }
 
 kexianjishiVS = sgs.CreateViewAsSkill {
@@ -988,12 +983,16 @@ kexianjishiVS = sgs.CreateViewAsSkill {
 			return false
 		end
 		for _, ca in sgs.list(selected) do
-			if ca:getSuit() == to_select:getSuit() then return false end
+			if ca:getSuit() == to_select:getSuit() then
+				return false
+			end
 		end
 		return true
 	end,
 	view_as = function(self, cards)
-		if #cards ~= 4 then return nil end
+		if #cards ~= 4 then
+			return nil
+		end
 		local jsCard = kexianjishiCard:clone()
 		for _, card in ipairs(cards) do
 			jsCard:addSubcard(card)
@@ -1002,7 +1001,7 @@ kexianjishiVS = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_play = function(self, player)
 		return (player:getMark("@xianjishi") > 0) and (player:getMark("canjishi") > 0)
-	end
+	end,
 }
 kexianjishi = sgs.CreateTriggerSkill {
 	name = "kexianjishi",
@@ -1016,7 +1015,7 @@ kexianjishi = sgs.CreateTriggerSkill {
 		local xhts = room:findPlayersBySkillName("kexianjishi")
 		if not xhts:isEmpty() then
 			for _, xht in sgs.qlist(xhts) do
-				if (xht:getMark("@xianjishi") > 0) then
+				if xht:getMark("@xianjishi") > 0 then
 					room:setPlayerMark(xht, "canjishi", 1)
 				end
 			end
@@ -1027,7 +1026,6 @@ kexianjishi = sgs.CreateTriggerSkill {
 	end,
 }
 kexianhuatuo:addSkill(kexianjishi)
-
 
 kexianwuqin = sgs.CreateTriggerSkill {
 	name = "kexianwuqin",
@@ -1059,10 +1057,8 @@ kexianwuqin = sgs.CreateTriggerSkill {
 							if not room:askForUseCard(p, pattern, prompt, -1, sgs.Card_MethodUse) then
 								if not p:isKongcheng() then
 									local card_id = room:askForCardChosen(player, p, "h", self:objectName())
-									local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION,
-										player:objectName())
-									room:obtainCard(player, sgs.Sanguosha:getCard(card_id), reason,
-										room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
+									local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName())
+									room:obtainCard(player, sgs.Sanguosha:getCard(card_id), reason, room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
 								end
 							end
 						end
@@ -1082,8 +1078,6 @@ kexianwuqin = sgs.CreateTriggerSkill {
 }
 kexianhuatuo:addSkill(kexianwuqin)
 
-
-
 kexianbencao = sgs.CreateTriggerSkill {
 	name = "kexianbencao",
 	events = { sgs.CardUsed },
@@ -1096,7 +1090,7 @@ kexianbencao = sgs.CreateTriggerSkill {
 			if use.card:isKindOf("Peach") then
 				local hts = room:findPlayersBySkillName(self:objectName())
 				for _, ht in sgs.qlist(hts) do
-					if (use.from:objectName() ~= ht:objectName()) then
+					if use.from:objectName() ~= ht:objectName() then
 						room:broadcastSkillInvoke("kexianjishi")
 						room:recover(ht, sgs.RecoverStruct())
 						local log = sgs.LogMessage()
@@ -1114,9 +1108,6 @@ kexianbencao = sgs.CreateTriggerSkill {
 }
 kexianhuatuo:addSkill(kexianbencao)
 
-
-
-
 kejiexiannanhualaoxian = sgs.General(extension, "kejiexiannanhualaoxian", "kexian", 3)
 
 kejiexianhuoqi = sgs.CreateTriggerSkill {
@@ -1130,7 +1121,12 @@ kejiexianhuoqi = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if event == sgs.CardsMoveOneTime then
 			local move = data:toMoveOneTime()
-			if player:getPhase() == sgs.Player_Discard and move.from and move.from:objectName() == player:objectName() and (bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD) then
+			if
+				player:getPhase() == sgs.Player_Discard
+				and move.from
+				and move.from:objectName() == player:objectName()
+				and (bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD)
+			then
 				player:addMark("kejiexianhuoqi", move.card_ids:length())
 			end
 		elseif event == sgs.EventPhaseEnd and player:getPhase() == sgs.Player_Discard and (player:getMark("kejiexianhuoqi") >= 1) and (player:hasSkill(self:objectName())) then
@@ -1154,8 +1150,7 @@ kejiexianhuoqi = sgs.CreateTriggerSkill {
 					recover.who = player
 					room:recover(player, recover)
 				elseif result == "pindian" then
-					local pdplayers = room:askForPlayersChosen(player, players, self:objectName(), 2, 2, "nhlxpd-ask",
-						false, false)
+					local pdplayers = room:askForPlayersChosen(player, players, self:objectName(), 2, 2, "nhlxpd-ask", false, false)
 					local fq = pdplayers:at(0)
 					local bfq = pdplayers:at(1)
 					if fq and bfq and fq:canPindian(bfq) then
@@ -1189,10 +1184,8 @@ kejiexianhuoqi = sgs.CreateTriggerSkill {
 						if xuanze == "qipai" then
 							if loser:getCardCount() > 0 then
 								local card_id = room:askForCardChosen(current, loser, "he", self:objectName())
-								local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION,
-									current:objectName())
-								room:obtainCard(current, sgs.Sanguosha:getCard(card_id), reason,
-									room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
+								local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, current:objectName())
+								room:obtainCard(current, sgs.Sanguosha:getCard(card_id), reason, room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
 							end
 						end
 					end
@@ -1200,7 +1193,7 @@ kejiexianhuoqi = sgs.CreateTriggerSkill {
 			end
 		end
 		return false
-	end
+	end,
 }
 kejiexiannanhualaoxian:addSkill(kejiexianhuoqi)
 
@@ -1230,7 +1223,7 @@ kejiexianyuli = sgs.CreateTriggerSkill {
 		end
 		return false
 	end,
-	priority = -1
+	priority = -1,
 }
 kejiexiannanhualaoxian:addSkill(kejiexianyuli)
 
@@ -1282,7 +1275,7 @@ kejiexiantianbianVS = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_response = function(self, player, pattern)
 		return pattern == "@kejiexiantianbian"
-	end
+	end,
 }
 kejiexiantianbian = sgs.CreateTriggerSkill {
 	name = "kejiexiantianbian",
@@ -1320,8 +1313,10 @@ kejiexiantianbian = sgs.CreateTriggerSkill {
 							pindian.from_card = card
 							pindian.from_number = card:getNumber()
 							room:setPlayerFlag(source, "-kejiexiantianbian_Modify")
-							if (card:getNumber() > pindian.to_number and oldcard:getNumber() < pindian.to_number)
-								or (card:getNumber() < pindian.to_number and oldcard:getNumber() > pindian.to_number) then
+							if
+								(card:getNumber() > pindian.to_number and oldcard:getNumber() < pindian.to_number)
+								or (card:getNumber() < pindian.to_number and oldcard:getNumber() > pindian.to_number)
+							then
 								can_use = true
 							end
 						elseif target:hasFlag("kejiexiantianbian_Modify") then
@@ -1330,8 +1325,10 @@ kejiexiantianbian = sgs.CreateTriggerSkill {
 							pindian.to_card = card
 							pindian.to_number = card:getNumber()
 							room:setPlayerFlag(target, "-kejiexiantianbian_Modify")
-							if (card:getNumber() > pindian.from_number and oldcard:getNumber() < pindian.from_number)
-								or (card:getNumber() < pindian.from_number and oldcard:getNumber() > pindian.from_number) then
+							if
+								(card:getNumber() > pindian.from_number and oldcard:getNumber() < pindian.from_number)
+								or (card:getNumber() < pindian.from_number and oldcard:getNumber() > pindian.from_number)
+							then
 								can_use = true
 							end
 						end
@@ -1346,8 +1343,7 @@ kejiexiantianbian = sgs.CreateTriggerSkill {
 							move2.card_ids:append(oldcard:getEffectiveId())
 							move2.to = zhangjiao
 							move2.to_place = sgs.Player_PlaceHand
-							move2.reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_OVERRIDE,
-								zhangjiao:objectName())
+							move2.reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_OVERRIDE, zhangjiao:objectName())
 							local moves = sgs.CardsMoveList()
 							moves:append(move)
 							moves:append(move2)
@@ -1386,9 +1382,11 @@ kejiexiantianbian = sgs.CreateTriggerSkill {
 				end
 			end
 		elseif event == sgs.EventPhaseStart and (player:getMark("tianbianatyou") > 0) then
-			if player:getPhase() ~= sgs.Player_NotActive then return false end
+			if player:getPhase() ~= sgs.Player_NotActive then
+				return false
+			end
 			for _, p in sgs.qlist(room:getAllPlayers()) do
-				if (p:getMark("tianbianexplay") > 0) then
+				if p:getMark("tianbianexplay") > 0 then
 					local log = sgs.LogMessage()
 					log.type = "$xiantianbianexplaylog"
 					log.from = p
@@ -1416,8 +1414,6 @@ kejiexiantianbian = sgs.CreateTriggerSkill {
 }
 kejiexiannanhualaoxian:addSkill(kejiexiantianbian)
 
-
-
 --界仙普净
 kejiexianpujing = sgs.General(extension, "kejiexianpujing", "kexian", 3)
 
@@ -1440,15 +1436,14 @@ kejiexianchanxinCard = sgs.CreateSkillCard {
 				room:recover(source, recover)
 			end
 			if count >= 3 then
-				local eny = room:askForPlayerChosen(source, room:getOtherPlayers(source), self:objectName(),
-					"kejiexianchanxin-ask", true, true)
+				local eny = room:askForPlayerChosen(source, room:getOtherPlayers(source), self:objectName(), "kejiexianchanxin-ask", true, true)
 				if eny and (eny:getCardCount() > 0) then
 					local qizhi = math.min(count, eny:getCardCount())
 					room:askForDiscard(eny, self:objectName(), qizhi, qizhi, false, true, "kejiexianchanxin-dis")
 				end
 			end
 		end
-	end
+	end,
 }
 kejiexianchanxin = sgs.CreateViewAsSkill {
 	name = "kejiexianchanxin",
@@ -1471,7 +1466,6 @@ kejiexianchanxin = sgs.CreateViewAsSkill {
 	end,
 }
 kejiexianpujing:addSkill(kejiexianchanxin)
-
 
 kejiexianhuiyan = sgs.CreateTriggerSkill {
 	name = "kejiexianhuiyan",
@@ -1509,9 +1503,14 @@ kejiexianhuiyan = sgs.CreateTriggerSkill {
 					room:clearAG()
 
 					judge.card = judgeone
-					room:moveCardTo(judge.card, nil, judge.who, sgs.Player_PlaceJudge,
-						sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_JUDGE, judge.who:objectName(), self:objectName(),
-							"", judge.reason), true)
+					room:moveCardTo(
+						judge.card,
+						nil,
+						judge.who,
+						sgs.Player_PlaceJudge,
+						sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_JUDGE, judge.who:objectName(), self:objectName(), "", judge.reason),
+						true
+					)
 					judge:updateResult()
 					room:setTag("SkipGameRule", sgs.QVariant(tonumber(event)))
 				end
@@ -1520,10 +1519,9 @@ kejiexianhuiyan = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target
-	end
+	end,
 }
 kejiexianpujing:addSkill(kejiexianhuiyan)
-
 
 kejiexianguiyi = sgs.CreateTriggerSkill {
 	name = "kejiexianguiyi",
@@ -1546,7 +1544,7 @@ kejiexianguiyi = sgs.CreateTriggerSkill {
 					da_cards:append(c:getId())
 				end
 			end
-			if (guess == "have") then
+			if guess == "have" then
 				local log = sgs.LogMessage()
 				log.type = "$kejiexianguiyi-caiyou"
 				log.from = player
@@ -1568,13 +1566,12 @@ kejiexianguiyi = sgs.CreateTriggerSkill {
 					room:sendLog(log)
 					local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 					dummy:addSubcards(xiangetCardList(da_cards))
-					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, from:objectName(),
-						self:objectName(), "")
+					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, from:objectName(), self:objectName(), "")
 					room:throwCard(dummy, reason, nil)
 					dummy:deleteLater()
 				end
 			end
-			if (guess == "nothave") then
+			if guess == "nothave" then
 				local log = sgs.LogMessage()
 				log.type = "$kejiexianguiyi-caimeiyou"
 				log.from = player
@@ -1601,17 +1598,9 @@ kejiexianguiyi = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-	end
+	end,
 }
 kejiexianpujing:addSkill(kejiexianguiyi)
-
-
-
-
-
-
-
-
 
 kejiexianzuoci = sgs.General(extension, "kejiexianzuoci", "kexian", 3)
 
@@ -1622,7 +1611,7 @@ kejiexianlunhui = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local change = data:toPhaseChange()
-		if (change.to == sgs.Player_Finish) then
+		if change.to == sgs.Player_Finish then
 			if player:getMark("usejiexianlunhui") <= 0 then
 				if room:askForSkillInvoke(player, self:objectName(), data) then
 					room:broadcastSkillInvoke(self:objectName())
@@ -1646,8 +1635,10 @@ kejiexianlunhui = sgs.CreateTriggerSkill {
 			end
 			room:removePlayerMark(player, "usejiexianlunhui", 1)
 		end
-		if (change.to == sgs.Player_NotActive) then
-			if player:getMark("kejiexianlunhui") <= 0 then return false end
+		if change.to == sgs.Player_NotActive then
+			if player:getMark("kejiexianlunhui") <= 0 then
+				return false
+			end
 			room:setPlayerMark(player, "kejiexianlunhui", 0)
 			local log = sgs.LogMessage()
 			log.type = "$kexianlunhui_ex"
@@ -1659,13 +1650,12 @@ kejiexianlunhui = sgs.CreateTriggerSkill {
 }
 kejiexianzuoci:addSkill(kejiexianlunhui)
 
-
 kejiexianfenshenCard = sgs.CreateSkillCard {
 	name = "kejiexianfenshenCard",
 	target_fixed = true,
 	on_use = function(self, room, source, targets)
 		source:gainMark("&kexianfenshen")
-	end
+	end,
 }
 kejiexianfenshenVS = sgs.CreateViewAsSkill {
 	name = "kejiexianfenshen",
@@ -1674,16 +1664,17 @@ kejiexianfenshenVS = sgs.CreateViewAsSkill {
 		return not sgs.Self:isJilei(to_select)
 	end,
 	view_as = function(self, cards)
-		if #cards ~= 1 then return nil end
+		if #cards ~= 1 then
+			return nil
+		end
 		local card = kejiexianfenshenCard:clone()
 		card:addSubcard(cards[1])
 		card:setSkillName(self:objectName())
 		return card
 	end,
 	enabled_at_play = function(self, player)
-		return (player:getMark("&jiexianzuociji") > 0) and (player:getMark("&kexianfenshen") < 3) and
-			not (player:hasUsed("#kejiexianfenshenCard"))
-	end
+		return (player:getMark("&jiexianzuociji") > 0) and (player:getMark("&kexianfenshen") < 3) and not (player:hasUsed("#kejiexianfenshenCard"))
+	end,
 }
 
 kejiexianfenshen = sgs.CreateTriggerSkill {
@@ -1694,7 +1685,7 @@ kejiexianfenshen = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if (event == sgs.EventPhaseStart) and player:hasSkill(self:objectName()) then
 			if (player:getPhase() == sgs.Player_RoundStart) and player:faceUp() then
-				if (player:getMark("kejiexianzuociturn") == 0) then
+				if player:getMark("kejiexianzuociturn") == 0 then
 					room:setPlayerMark(player, "kejiexianzuociturn", 1)
 					local already = 0
 					if (player:getMark("&jiexianzuociji") <= 0) and (player:getMark("&jiexianzuociou") <= 0) then
@@ -1716,7 +1707,7 @@ kejiexianfenshen = sgs.CreateTriggerSkill {
 		if (event == sgs.EventPhaseEnd) and player:hasSkill(self:objectName()) and (player:getPhase() == sgs.Player_RoundStart) then
 			room:setPlayerMark(player, "kejiexianzuociturn", 0)
 		end
-		if (event == sgs.DamageInflicted) then
+		if event == sgs.DamageInflicted then
 			local damage = data:toDamage()
 			local hurt = damage.damage
 			if player:getMark("&kexianfenshen") > 0 then
@@ -1743,10 +1734,9 @@ kejiexianfenshen = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, player)
 		return true
-	end
+	end,
 }
 kejiexianzuoci:addSkill(kejiexianfenshen)
-
 
 kejiexianfeijian = sgs.CreateTriggerSkill {
 	name = "kejiexianfeijian",
@@ -1754,9 +1744,9 @@ kejiexianfeijian = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart, sgs.EventPhaseEnd },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if (event == sgs.EventPhaseStart) then
+		if event == sgs.EventPhaseStart then
 			if (player:getPhase() == sgs.Player_RoundStart) and player:faceUp() then
-				if (player:getMark("kejiexianzuociturn") == 0) then
+				if player:getMark("kejiexianzuociturn") == 0 then
 					room:setPlayerMark(player, "kejiexianzuociturn", 1)
 					local already = 0
 					if (player:getMark("&jiexianzuociji") <= 0) and (player:getMark("&jiexianzuociou") <= 0) then
@@ -1778,7 +1768,7 @@ kejiexianfeijian = sgs.CreateTriggerSkill {
 		if (event == sgs.EventPhaseEnd) and player:hasSkill(self:objectName()) and (player:getPhase() == sgs.Player_RoundStart) then
 			room:setPlayerMark(player, "kejiexianzuociturn", 0)
 		end
-		if (event == sgs.EventPhaseStart) then
+		if event == sgs.EventPhaseStart then
 			if (player:getPhase() == sgs.Player_Play) and (player:getMark("&jiexianzuociou") > 0) then
 				local num = player:getMark("&kexianfenshen")
 				local log = sgs.LogMessage()
@@ -1787,7 +1777,7 @@ kejiexianfeijian = sgs.CreateTriggerSkill {
 				room:sendLog(log)
 				room:broadcastSkillInvoke(self:objectName())
 				room:addSlashCishu(player, num, true)
-				if (player:getMark("&kexianfenshen") > 0) then
+				if player:getMark("&kexianfenshen") > 0 then
 					local players = sgs.SPlayerList()
 					for _, pp in sgs.qlist(room:getAllPlayers()) do
 						if player:canSlash(pp) then
@@ -1796,8 +1786,7 @@ kejiexianfeijian = sgs.CreateTriggerSkill {
 					end
 					if not players:isEmpty() then
 						if room:askForSkillInvoke(player, self:objectName(), data) then
-							local eny = room:askForPlayerChosen(player, players, self:objectName(),
-								"kejiexianfeijian-ask", true, true)
+							local eny = room:askForPlayerChosen(player, players, self:objectName(), "kejiexianfeijian-ask", true, true)
 							if eny then
 								room:removePlayerMark(player, "&kexianfenshen", 1)
 								local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
@@ -1819,7 +1808,6 @@ kejiexianfeijian = sgs.CreateTriggerSkill {
 }
 kejiexianzuoci:addSkill(kejiexianfeijian)
 
-
 kejiexianyuji = sgs.General(extension, "kejiexianyuji", "kexian", 3)
 
 kejiexianmabi = sgs.CreateTriggerSkill {
@@ -1827,7 +1815,7 @@ kejiexianmabi = sgs.CreateTriggerSkill {
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.DamageCaused, sgs.EventPhaseChanging },
 	on_trigger = function(self, event, player, data)
-		if (event == sgs.DamageCaused) then
+		if event == sgs.DamageCaused then
 			local damage = data:toDamage()
 			local room = player:getRoom()
 			if player:hasSkill(self:objectName()) then
@@ -1848,7 +1836,7 @@ kejiexianmabi = sgs.CreateTriggerSkill {
 					if judge.card:isRed() then
 						room:setPlayerMark(eny, "&kejiexianmabicp", 1)
 					end
-					if (hurt == 1) then
+					if hurt == 1 then
 						return true
 					end
 					if hurt > 1 then
@@ -1865,9 +1853,6 @@ kejiexianmabi = sgs.CreateTriggerSkill {
 	end,
 }
 kejiexianyuji:addSkill(kejiexianmabi)
-
-
-
 
 kejiexianxiuzhen = sgs.CreateTriggerSkill {
 	name = "kejiexianxiuzhen",
@@ -1892,8 +1877,7 @@ kejiexianxiuzhen = sgs.CreateTriggerSkill {
 			local judge = data:toJudge()
 			local st = judge.card:getSuit()
 			if st == sgs.Card_Spade then
-				local target = room:askForPlayerChosen(player, room:getAllPlayers(), self:objectName(),
-					"xiuzhenspade-ask", true, true)
+				local target = room:askForPlayerChosen(player, room:getAllPlayers(), self:objectName(), "xiuzhenspade-ask", true, true)
 				if target then
 					room:damage(sgs.DamageStruct(self:objectName(), nil, target, 1, sgs.DamageStruct_Thunder))
 				end
@@ -1908,8 +1892,7 @@ kejiexianxiuzhen = sgs.CreateTriggerSkill {
 				player:drawCards(2)
 			end
 			if st == sgs.Card_Heart then
-				local target = room:askForPlayerChosen(player, room:getAllPlayers(), self:objectName() .. "dis",
-					"xiuzhenheart-ask", true, true)
+				local target = room:askForPlayerChosen(player, room:getAllPlayers(), self:objectName() .. "dis", "xiuzhenheart-ask", true, true)
 				if target then
 					local color = room:askForChoice(player, self:objectName(), "black+red+cancel")
 
@@ -1924,8 +1907,7 @@ kejiexianxiuzhen = sgs.CreateTriggerSkill {
 						for _, id in sgs.qlist(to_throw) do
 							dummy:addSubcard(id)
 						end
-						local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER,
-							player:objectName(), self:objectName(), nil)
+						local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, player:objectName(), self:objectName(), nil)
 						room:throwCard(dummy, reason, target)
 						dummy:deleteLater()
 					end
@@ -1935,9 +1917,6 @@ kejiexianxiuzhen = sgs.CreateTriggerSkill {
 	end,
 }
 kejiexianyuji:addSkill(kejiexianxiuzhen)
-
-
-
 
 kejiexianmasu = sgs.General(extension, "kejiexianmasu", "shu", 4)
 
@@ -1963,7 +1942,7 @@ kejiexianjuao = sgs.CreateTriggerSkill {
 		--武器牌使用
 		local weapons = sgs.IntList()
 		for _, id in sgs.qlist(room:getDrawPile()) do
-			if (sgs.Sanguosha:getCard(id):isKindOf("Weapon")) then
+			if sgs.Sanguosha:getCard(id):isKindOf("Weapon") then
 				weapons:append(id)
 			end
 		end
@@ -1974,7 +1953,7 @@ kejiexianjuao = sgs.CreateTriggerSkill {
 		-- -1马使用
 		local offensivehorses = sgs.IntList()
 		for _, id in sgs.qlist(room:getDrawPile()) do
-			if (sgs.Sanguosha:getCard(id):isKindOf("OffensiveHorse")) then
+			if sgs.Sanguosha:getCard(id):isKindOf("OffensiveHorse") then
 				offensivehorses:append(id)
 			end
 		end
@@ -1992,8 +1971,7 @@ kejiexianjuaoex = sgs.CreateFilterSkill {
 	view_filter = function(self, to_select)
 		local room = sgs.Sanguosha:currentRoom()
 		local place = room:getCardPlace(to_select:getEffectiveId())
-		return ((to_select:isKindOf("Armor")) or (to_select:isKindOf("DefensiveHorse"))) and
-			(place == sgs.Player_PlaceHand)
+		return ((to_select:isKindOf("Armor")) or (to_select:isKindOf("DefensiveHorse"))) and (place == sgs.Player_PlaceHand)
 	end,
 	view_as = function(self, originalCard)
 		local slash = sgs.Sanguosha:cloneCard("slash", originalCard:getSuit(), originalCard:getNumber())
@@ -2001,7 +1979,7 @@ kejiexianjuaoex = sgs.CreateFilterSkill {
 		local card = sgs.Sanguosha:getWrappedCard(originalCard:getId())
 		card:takeOver(slash)
 		return card
-	end
+	end,
 }
 kejiexianmasu:addSkill(kejiexianjuaoex)
 
@@ -2021,8 +1999,9 @@ kejiexianjuaoexget = sgs.CreateTriggerSkill {
 		return target
 	end,
 }
-if not sgs.Sanguosha:getSkill("kejiexianjuaoexget") then skills:append(kejiexianjuaoexget) end
-
+if not sgs.Sanguosha:getSkill("kejiexianjuaoexget") then
+	skills:append(kejiexianjuaoexget)
+end
 
 kejiexianliwei = sgs.CreateTriggerSkill {
 	name = "kejiexianliwei",
@@ -2031,26 +2010,25 @@ kejiexianliwei = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local use = data:toCardUse()
 		local room = player:getRoom()
-		if (event == sgs.CardFinished) then
+		if event == sgs.CardFinished then
 			if (use.from:objectName() == player:objectName()) and (player:hasSkill(self:objectName())) and not (use.card:isKindOf("SkillCard")) then
 				if player:getMark("&kejiexianliwei") >= player:getHp() then
 					--if player:askForSkillInvoke(self:objectName(), data) then
-						local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(),
-							"kejiexianliwei-ask", true, true)
-						if target ~= nil then
-							room:broadcastSkillInvoke(self:objectName())
-							if target:canDiscard(target, "he") then
-								local to_throw = room:askForCardChosen(player, target, "he", self:objectName())
-								local card = sgs.Sanguosha:getCard(to_throw)
-								room:throwCard(card, target, player);
-							end
+					local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "kejiexianliwei-ask", true, true)
+					if target ~= nil then
+						room:broadcastSkillInvoke(self:objectName())
+						if target:canDiscard(target, "he") then
+							local to_throw = room:askForCardChosen(player, target, "he", self:objectName())
+							local card = sgs.Sanguosha:getCard(to_throw)
+							room:throwCard(card, target, player)
 						end
+					end
 					--end
 				end
 			end
 		end
 		if event == sgs.CardUsed then
-			if (use.from:objectName() == player:objectName()) and (player:hasSkill(self:objectName())) and not ((use.card:isKindOf("SkillCard"))) then
+			if (use.from:objectName() == player:objectName()) and (player:hasSkill(self:objectName())) and not (use.card:isKindOf("SkillCard")) then
 				if not player:hasFlag("masustart") then
 					room:addPlayerMark(player, "&kejiexianliwei", 1)
 				end
@@ -2070,7 +2048,6 @@ kejiexianliwei = sgs.CreateTriggerSkill {
 	end,
 }
 kejiexianmasu:addSkill(kejiexianliwei)
-
 
 kejiexianaoce = sgs.CreateTriggerSkill {
 	name = "kejiexianaoce",
@@ -2108,9 +2085,7 @@ kejiexianaoce = sgs.CreateTriggerSkill {
 }
 kejiexianmasu:addSkill(kejiexianaoce)
 
-
 kejiexianzhanghe = sgs.General(extension, "kejiexianzhanghe", "wei", 4)
-
 
 kejiexianjibian = sgs.CreateTriggerSkill {
 	name = "kejiexianjibian",
@@ -2118,7 +2093,7 @@ kejiexianjibian = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart, sgs.ConfirmDamage },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if (event == sgs.ConfirmDamage) then
+		if event == sgs.ConfirmDamage then
 			local damage = data:toDamage()
 			if (damage.from:getMark("&kejiexianjibianda-PlayClear") > 0) and damage.card and damage.card:isKindOf("Slash") and (player:getPhase() == sgs.Player_Play) then
 				local hurt = damage.damage
@@ -2142,35 +2117,33 @@ kejiexianjibian = sgs.CreateTriggerSkill {
 					table.insert(choices, "benxifour")
 					for i = 0, num - 1, 1 do
 						local choice = room:askForChoice(player, self:objectName(), table.concat(choices, "+"))
-						if (choice == "benxione") then
+						if choice == "benxione" then
 							num = num - 1
 							table.removeOne(choices, "benxione")
 							player:drawCards(1)
 						end
-						if (choice == "benxitwo") then
+						if choice == "benxitwo" then
 							num = num - 1
 							table.removeOne(choices, "benxitwo")
-							local eny = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(),
-								"kejiexianjibian-ask", true, true)
+							local eny = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "kejiexianjibian-ask", true, true)
 							if eny then
-								if (not eny:isKongcheng()) then
+								if not eny:isKongcheng() then
 									local ids = sgs.IntList()
 									for _, card in sgs.qlist(eny:getHandcards()) do
 										ids:append(card:getEffectiveId())
 									end
 									local card_id = room:doGongxin(player, eny, ids)
-									local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_DISMANTLE,
-										player:objectName(), nil, self:objectName(), nil)
+									local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_DISMANTLE, player:objectName(), nil, self:objectName(), nil)
 									room:throwCard(sgs.Sanguosha:getCard(card_id), reason, eny, player)
 								end
 							end
 						end
-						if (choice == "benxithree") then
+						if choice == "benxithree" then
 							num = num - 1
 							table.removeOne(choices, "benxithree")
 							room:addPlayerMark(player, "&kejiexianjibianda-PlayClear")
 						end
-						if (choice == "benxifour") then
+						if choice == "benxifour" then
 							num = num - 1
 							table.removeOne(choices, "benxifour")
 							room:addPlayerMark(player, "&kejiexianjibianjl-PlayClear")
@@ -2186,21 +2159,19 @@ kejiexianjibian = sgs.CreateTriggerSkill {
 }
 kejiexianzhanghe:addSkill(kejiexianjibian)
 
-
 kejiexianjibianjlex = sgs.CreateTargetModSkill {
 	name = "kejiexianjibianjlex",
 	distance_limit_func = function(self, from, card)
-		if (from:getMark("&kejiexianjibianjl-PlayClear") > 0) then
+		if from:getMark("&kejiexianjibianjl-PlayClear") > 0 then
 			return 1000
 		else
 			return 0
 		end
 	end,
 }
-if not sgs.Sanguosha:getSkill("kejiexianjibianjlex") then skills:append(kejiexianjibianjlex) end
-
-
-
+if not sgs.Sanguosha:getSkill("kejiexianjibianjlex") then
+	skills:append(kejiexianjibianjlex)
+end
 
 sgs.Sanguosha:addSkills(skills)
 sgs.LoadTranslationTable {
@@ -2223,9 +2194,7 @@ sgs.LoadTranslationTable {
 	["nhlxloser:qipai"] = "弃置两张牌",
 	["nhlxpd-ask"] = "请选择拼点的角色（第一个选择的为发起者）",
 
-
 	[":kexianhuoqi"] = "<font color='green'><b>弃牌阶段结束时，</b></font>若你于此阶段内弃置过你的至少两张牌，则你可以选择一项：1.回复1点体力；2.令两名角色拼点，然后拼点没赢的角色选择一项：受到拼点赢的角色造成的1点伤害，或弃置两张牌。",
-
 
 	["kexianyuli"] = "渔利",
 	["changepindian-ask"] = "请选择一张牌用于更换拼点牌",
@@ -2242,13 +2211,11 @@ sgs.LoadTranslationTable {
 
 	["$xiantianbian"] = "%from 发动了“<font color='yellow'><b>天变</b></font>”，%to 的拼点牌被改为 %card。",
 
-
 	["$kexianhuoqi1"] = "福祸与共，业山可移。",
 	["$kexianhuoqi2"] = "修行退智，遂之道也。",
 	["$kexiantianbian1"] = "大哉乾元，万物资始。",
 	["$kexiantianbian2"] = "无极之外，复无无极。",
 	["~kexiannanhualaoxian"] = "道亦有穷时！",
-
 
 	--界仙南华老仙
 	["kejiexiannanhualaoxian"] = "界仙南华老仙",
@@ -2265,9 +2232,7 @@ sgs.LoadTranslationTable {
 	["jienhlxloser:damage"] = "拼点赢的角色对拼点没赢的角色造成1点伤害",
 	["jienhlxloser:qipai"] = "你获得拼点没赢的角色的一张牌",
 
-
 	[":kejiexianhuoqi"] = "<font color='green'><b>弃牌阶段结束时，</b></font>若你于此阶段弃置了你的至少一张牌，你可以选择一项：1.回复1点体力；2.选择两名角色拼点，若有角色赢，你选择一项：拼点赢的角色对拼点没赢的角色造成1点伤害，或你获得拼点没赢的角色的一张牌。",
-
 
 	["kejiexianyuli"] = "渔利",
 	[":kejiexianyuli"] = "每当一次拼点结束后，你可以摸一张牌。",
@@ -2285,7 +2250,6 @@ sgs.LoadTranslationTable {
 	["$kejiexiantianbian2"] = "无极之外，复无无极。",
 	["~kejiexiannanhualaoxian"] = "道亦有穷时！",
 
-
 	--仙普净
 	["kexianpujing"] = "仙普净",
 	["&kexianpujing"] = "仙普净",
@@ -2300,7 +2264,6 @@ sgs.LoadTranslationTable {
 	["kexianhuiyan"] = "慧眼",
 	["kexianhuiyan-choice"] = "请选择一张牌作为判定牌",
 	[":kexianhuiyan"] = "当你需要判定时，你可以观看牌堆顶的两张牌并选择其中一张，你获得另一张牌，并将你选择的牌作为判定牌。",
-
 
 	["kexianguiyi"] = "皈依",
 	["xianguiyi-ask"] = "请选择发动“皈依”拼点的角色",
@@ -2318,7 +2281,6 @@ sgs.LoadTranslationTable {
 	["$kexianguiyi2"] = "心生，种种魔生；心灭，种种魔灭。",
 
 	["~kexianpujing"] = "凡身虽陨,信念长存。",
-
 
 	--仙左慈
 	["kexianzuoci"] = "仙左慈",
@@ -2344,7 +2306,6 @@ sgs.LoadTranslationTable {
 	["xianzuociou"] = "偶数次",
 	["$kexianfenshen_hujia"] = "%from 的 “<font color='yellow'><b>分身</b></font>” 被触发，本次伤害被减少！",
 	["$kexianlunhui_ex"] = "%from 因 “<font color='yellow'><b>轮回</b></font>” 获得了一个额外的回合！",
-
 
 	["$kexianlunhui1"] = "幻幻无穷，生生不息。",
 	["$kexianlunhui2"] = "吐故纳新，师法天地。",
@@ -2378,7 +2339,6 @@ sgs.LoadTranslationTable {
 
 	["~kexianyuji"] = "道法玄机，竟被参破...",
 
-
 	--马谡
 	["kexianmasu"] = "马谡",
 	["&kexianmasu"] = "马谡",
@@ -2405,7 +2365,6 @@ sgs.LoadTranslationTable {
 	["$kexianxiaocai2"] = "兵法谙熟于心，取胜千里之外！",
 
 	["~kexianmasu"] = "丞相视某如子，某以丞相为父！",
-
 
 	--界仙左慈
 	["kejiexianzuoci"] = "界仙左慈",
@@ -2467,7 +2426,6 @@ sgs.LoadTranslationTable {
 
 	--["xianmasuani"] = "image=image/animate/kejiexianmasuani.png",
 
-
 	--张郃
 	["kexianzhanghe"] = "张郃",
 	["&kexianzhanghe"] = "张郃",
@@ -2527,7 +2485,6 @@ sgs.LoadTranslationTable {
 	["$kejiexianguiyi2"] = "心生，种种魔生；心灭，种种魔灭。",
 	["~kejiexianpujing"] = "凡身虽陨,信念长存。",
 
-
 	--界张郃
 	["kejiexianzhanghe"] = "界张郃",
 	["&kejiexianzhanghe"] = "界张郃",
@@ -2549,7 +2506,6 @@ sgs.LoadTranslationTable {
 	["$kejiexianjibian1"] = "兵无常势，水无常形。",
 	["$kejiexianjibian2"] = "用兵之道，变化万千。",
 	["~kejiexianzhanghe"] = "膝盖中箭了...",
-
 
 	--界仙于吉
 	["kejiexianyuji"] = "界仙于吉",
@@ -2584,7 +2540,6 @@ sgs.LoadTranslationTable {
 	["~kejiexianyuji"] = "道法玄机，竟被参破...",
 
 	["$kejiexianmabida"] = "%from 本次造成的伤害-1！",
-
 
 	--神华佗
 	["kexianhuatuo"] = "仙华佗",
@@ -2629,8 +2584,6 @@ sgs.LoadTranslationTable {
 	["kexianmengshi"] = "梦噬",
 	[":kexianmengshi"] = "锁定技，回合结束时或当你脱离濒死状态时，若你的“噩梦”数大于你的体力值，你移去所有“噩梦”并视为对你使用一张【杀】。",
 
-
-
 	--南宫珂
 	["kexianxiaokejiang"] = "南宫珂",
 	["&kexianxiaokejiang"] = "南宫珂",
@@ -2659,6 +2612,5 @@ sgs.LoadTranslationTable {
 	["kexianjianshan-ask"] = "剑闪：为此【杀】选择额外目标",
 	["kexianyidaoslash-ask"] = "请选择使用【杀】的目标",
 	["kexianjianshan-choice"] = "请选择额外目标",
-
 }
 return { extension }
