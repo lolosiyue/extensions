@@ -1,4 +1,4 @@
-extension = sgs.Package("olClan")
+extension = sgs.Package("olclan")
 
 local ol_clans = {}
 function isSameClan(first, second)
@@ -132,7 +132,7 @@ zu_zhong_baozu = sgs.CreateTriggerSkill{
 }
 zu_zhonghui:addSkill(zu_zhong_baozu)
 sgs.LoadTranslationTable{
-    ["olClan"] = "门阀士族", 
+    ["olclan"] = "门阀士族",
 
 	["zu_zhong_baozu"] = "保族", --<颍川·钟氏>专属宗族技
     [":zu_zhong_baozu"] = "宗族技，限定技，当同族角色进入濒死状态时，你可以令其横置并恢复1点体力。",
@@ -158,7 +158,6 @@ sgs.LoadTranslationTable{
 	["zu_zhonghui"] = "族钟会",
 	["#zu_zhonghui"] = "百巧惎",
 	["designer:zu_zhonghui"] = "玄蝶既白",
-	["cv:zu_zhonghui"] = "官方",
 	["illustrator:zu_zhonghui"] = "官方",
 	["information:zu_zhonghui"] = "宗族：[颍川·钟氏]",
 	["zuyuzhi"] = "迂志",
@@ -236,7 +235,6 @@ sgs.LoadTranslationTable{
 	["zu_zhongyu"] = "族钟毓",
 	["#zu_zhongyu"] = "础润殷忧",
 	["designer:zu_zhongyu"] = "玄蝶既白",
-	["cv:zu_zhongyu"] = "官方",
 	["illustrator:zu_zhongyu"] = "匠人绘",
 	["information:zu_zhongyu"] = "宗族：[颍川·钟氏]",
 	["zujiejian"] = "捷谏",
@@ -294,7 +292,7 @@ zuguanguvs = sgs.CreateViewAsSkill{
 	n = 1,
 	view_filter = function(self,selected,to_select)
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
-		return pattern=="@@zuguangu" and sgs.Self:getPileName(to_select:getEffectiveId())=="#zuguangu"
+		return pattern=="@@zuguangu" and sgs.Self:getPileName(to_select:getId())=="#zuguangu"
 		and to_select:isAvailable(sgs.Self)
 	end,
 	view_as = function(self,cards)
@@ -323,6 +321,7 @@ zuxiaoyong = sgs.CreateTriggerSkill{
 	name = "zuxiaoyong",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.CardUsed},
+	global = true,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local use = data:toCardUse()
@@ -343,7 +342,6 @@ sgs.LoadTranslationTable{
 	["zu_zhongyan"] = "族钟琰",
 	["#zu_zhongyan"] = "紫闼飞莺",
 	["designer:zu_zhongyan"] = "玄蝶既白",
-	["cv:zu_zhongyan"] = "官方",
 	["illustrator:zu_zhongyan"] = "凡果",
 	["information:zu_zhongyan"] = "宗族：[颍川·钟氏]",
 	["zuguangu"] = "观骨",
@@ -448,6 +446,7 @@ zuchengqiCard = sgs.CreateSkillCard{
 zuchengqiVS = sgs.CreateViewAsSkill{
 	name = "zuchengqi",
 	n = 998,
+	response_or_use = true,
 	view_filter = function(self, selected, to_select)
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		return pattern~="@@zuchengqi" and not to_select:isEquipped()
@@ -636,7 +635,6 @@ sgs.LoadTranslationTable{
 	["zu_zhongyao"] = "族钟繇",
 	["#zu_zhongyao"] = "开达理干",
 	--["designer:zu_zhongyao"] = "玄蝶既白",
-	["cv:zu_zhongyao"] = "官方",
 	--["illustrator:zu_zhongyao"] = "凡果",
 	["information:zu_zhongyao"] = "宗族：[颍川·钟氏]",
 	["zuchengqi"] = "承启",
@@ -661,14 +659,13 @@ sgs.LoadTranslationTable{
 ---------------------------------
 --==陈留·吴氏==--
 
-
 --族吴班
 ol_clans.chenliu_wu = {"wuban","wulan"}
 zu_wuban = sgs.General(extension, "zu_wuban", "shu", 4, true)
 zuzhandingVS = sgs.CreateViewAsSkill{
 	name = "zuzhanding",
 	n = 999,
-	response_or_use = false,
+	response_or_use = true,
 	view_filter = function(self, selected, to_select)
 		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local slash = sgs.Sanguosha:cloneCard("slash")
@@ -915,9 +912,7 @@ zulianzhuvs = sgs.CreateViewAsSkill{
 		return lzvs_card
 	end,
 	enabled_at_play = function(self, player)
-		local tos = player:getAliveSiblings()
-		tos:append(player)
-		for _, p in sgs.qlist(tos) do
+		for _,p in sgs.qlist(player:getAliveSiblings(true)) do
 			if p:hasSkill("zulianzhu") then
 				return not player:hasUsed("#zulianzhuCard")
 			end
@@ -956,16 +951,10 @@ zuqiajue = sgs.CreateTriggerSkill{
 				for _, c in sgs.qlist(player:getHandcards()) do
 					num = num + c:getNumber()
 				end
-				if num > 30 then room:addMaxCards(player, -2, false)
+				if num > 30 then
+					room:addMaxCards(player,-2,false)
 				else
-					player:setPhase(sgs.Player_Draw)
-					room:broadcastProperty(player, "phase")
-					if not room:getThread():trigger(sgs.EventPhaseStart,room,player) then
-						room:getThread():trigger(sgs.EventPhaseProceeding,room,player)
-					end
-					room:getThread():trigger(sgs.EventPhaseEnd,room,player)
-					player:setPhase(sgs.Player_Draw)
-					room:broadcastProperty(player, "phase")
+					player:insertPhase(sgs.Player_Draw)
 				end
 			end
 		end
@@ -992,7 +981,6 @@ sgs.LoadTranslationTable{
 	["zu_wuban"] = "族吴班",
 	["#zu_wuban"] = "豪侠督进",
 	["designer:zu_wuban"] = "大宝",
-	["cv:zu_wuban"] = "官方",
 	["illustrator:zu_wuban"] = "匠人绘",
 	["information:zu_wuban"] = "宗族：[陈留·吴氏]",
 	--斩钉
@@ -1008,7 +996,6 @@ sgs.LoadTranslationTable{
 	["zu_wuxian"] = "族吴苋",
 	["#zu_wuxian"] = "庄姝晏晏",
 	["designer:zu_wuxian"] = "玄蝶既白",
-	["cv:zu_wuxian"] = "官方",
 	["illustrator:zu_wuxian"] = "君桓文化",
 	["information:zu_wuxian"] = "宗族：[陈留·吴氏]",
 	  --移荣
@@ -1030,7 +1017,6 @@ sgs.LoadTranslationTable{
 	["zu_wukuang"] = "族吴匡",
 	["#zu_wukuang"] = "诛绝宦竖",
 	["designer:zu_wukuang"] = "玄蝶既白",
-	["cv:zu_wukuang"] = "官方",
 	["illustrator:zu_wukuang"] = "匠人绘",
 	["information:zu_wukuang"] = "宗族：[陈留·吴氏]",
 	--联诛
@@ -1056,7 +1042,6 @@ sgs.LoadTranslationTable{
 	["zu_wuqiao"] = "族吴乔",
 	["#zu_wuqiao"] = "孤节卅岁",
 	["designer:zu_wuqiao"] = "玄蝶既白",
-	["cv:zu_wuqiao"] = "官方",
 	["illustrator:zu_wuqiao"] = "官方",
 	["information:zu_wuqiao"] = "宗族：[陈留·吴氏]",
 	  --跒倔
@@ -1142,6 +1127,7 @@ ny_balong = sgs.CreateTriggerSkill{
 ny_shenjunVS = sgs.CreateViewAsSkill{
     name = "ny_shenjun",
     n = 999,
+	response_or_use = true,
     response_pattern = "@@ny_shenjun",
     view_filter = function(self, selected, to_select)
         return #selected < sgs.Self:getMark("ny_shenjun")
@@ -1286,25 +1272,39 @@ nyzu_xunshu:addSkill(ny_balong)
 nyzu_xunshu:addSkill(ny_balongVS)
 kezudaojie = sgs.CreateTriggerSkill{
     name = "kezudaojie",
-    events = {sgs.CardFinished},
+    events = {sgs.CardFinished,sgs.CardUsed},
     frequency = sgs.Skill_Compulsory,
-    on_trigger = function(self, event, player, data)
-        local room = player:getRoom()
-        if player:getMark("kezudaojie-Clear") > 0 then return false end
+	global = true,
+    on_trigger = function(self,event,player,data,room)
         local use = data:toCardUse()
-        if use.card:isKindOf("TrickCard")
-        and (not use.card:isDamageCard()) then
-            room:addPlayerMark(player, "kezudaojie-Clear")
+        if event==sgs.CardUsed then
+			if use.card:isKindOf("TrickCard") and not use.card:isDamageCard() then
+				player:addMark("kezudaojie-Clear")
+				if player:getMark("kezudaojie-Clear")==1 then
+					room:setCardFlag(use.card,"kezudaojieBf")
+				end
+			end
+			return false
+		end
+        if use.card:hasFlag("kezudaojieBf") and player:isAlive() and player:hasSkill(self) then
 			if room:getCardOwner(use.card:getEffectiveId()) then return false end
             local n = math.random(1,2)
 			if player:getGeneralName():endsWith("xunchen")
-			or player:getGeneral2Name():endsWith("xunchen") then n = n+2
+			or player:getGeneral2Name():endsWith("xunchen") then
+				n = n+2
 			elseif player:getGeneralName():endsWith("xunyou")
-			or player:getGeneral2Name():endsWith("xunyou") then n = n+4
+			or player:getGeneral2Name():endsWith("xunyou") then
+				n = n+4
 			elseif player:getGeneralName():endsWith("xuncan")
-			or player:getGeneral2Name():endsWith("xuncan") then n = n+6
+			or player:getGeneral2Name():endsWith("xuncan") then
+				n = n+6
 			elseif player:getGeneralName():endsWith("xuncai")
-			or player:getGeneral2Name():endsWith("xuncai") then n = n+8 end
+			or player:getGeneral2Name():endsWith("xuncai") then
+				n = n+8
+			elseif player:getGeneralName():endsWith("xunshuang")
+			or player:getGeneral2Name():endsWith("xunshuang") then
+				n = n+10
+			end
             room:sendCompulsoryTriggerLog(player, self, n)
 			local choice = {"hp"}
 			for _,skill in sgs.qlist(player:getVisibleSkillList()) do
@@ -1342,18 +1342,23 @@ nyzu_xunchen = sgs.General(extension, "nyzu_xunchen", "qun", 3, true, false, fal
 
 ny_sankuang = sgs.CreateTriggerSkill{
     name = "ny_sankuang",
-    events = {sgs.CardFinished},
+    events = {sgs.CardFinished,sgs.CardUsed},
     frequency = sgs.Skill_Compulsory,
-    on_trigger = function(self, event, player, data)
-        local room = player:getRoom()
+    on_trigger = function(self,event,player,data,room)
         local use = data:toCardUse()
-        if player:getMark(use.card:getType().."ny_sankuang_lun")>0
-		or use.card:getTypeId()<1 then return false end
-        room:addPlayerMark(player, use.card:getType().."ny_sankuang_lun")
-        room:sendCompulsoryTriggerLog(player, self)
+		if event==sgs.CardUsed then
+			if use.card:getTypeId()>0
+			and player:getMark(use.card:getType().."ny_sankuang_lun")<1 then
+				player:addMark(use.card:getType().."ny_sankuang_lun")
+				room:setCardFlag(use.card,"ny_sankuangBf")
+			end
+			return false
+		end
+		if not use.card:hasFlag("ny_sankuangBf")
+		then return false end
         player:setTag("ny_sankuang_use", data)
         local prompt = string.format("@ny_sankuang:%s:", use.card:objectName())
-        local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), prompt, false, true)
+        local target = room:askForPlayerChosen(player,room:getOtherPlayers(player),self:objectName().."$-1",prompt,false,true)
         if player:getMark("ny_beishi_used")<1 then
             room:setPlayerMark(player, "ny_beishi_used", 1)
             local viewers = sgs.SPlayerList()
@@ -1786,14 +1791,16 @@ kezudianzhan = sgs.CreateTriggerSkill{
 	name = "kezudianzhan",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.CardFinished},
+	global = true,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if (event == sgs.CardFinished) then
 			local use = data:toCardUse()
 			if use.card:getTypeId()>0 and player:getMark(use.card:getSuitString().."dianzhan_lun")<1 then
-				room:broadcastSkillInvoke(self:objectName())
 				player:addMark(use.card:getSuitString().."dianzhan_lun")
+				if player:isDead() or not player:hasSkill(self) then return end
 				MarkRevises(player,"&kezudianzhan_lun",use.card:getSuitString().."_char")
+				room:broadcastSkillInvoke(self:objectName())
 				local chain = 0
 				if (use.to:length() == 1) then
 					if not use.to:at(0):isChained() then
@@ -1864,13 +1871,14 @@ sgs.LoadTranslationTable{
     ["$kezudaojie8"] = "[荀粲] 我心慕鸳，从一而终。",
 	["$kezudaojie9"] = "[荀采] 女子有节，宁死蹈之。",
     ["$kezudaojie10"] = "[荀采] 荀氏三纲，死不贰嫁。",
+	["$kezudaojie11"] = "[荀爽] 君子固穷，心如石，不可转",
+    ["$kezudaojie12"] = "[荀爽] 志节不屈，为玉碎，不为瓦全",
 
     --族荀淑
 
     ["nyzu_xunshu"] = "族荀淑",
     ["#nyzu_xunshu"] = "长儒赡宗",
 	["designer:nyzu_xunshu"] = "玄蝶既白",
-	["cv:nyzu_xunshu"] = "官方",
 	["illustrator:nyzu_xunshu"] = "凡果",
 	["information:nyzu_xunshu"] = "宗族：[颍川·荀氏]",
 
@@ -1895,7 +1903,6 @@ sgs.LoadTranslationTable{
     ["nyzu_xunchen"] = "族荀谌",
     ["#nyzu_xunchen"] = "栖木之择",
 	["designer:nyzu_xunchen"] = "玄蝶既白",
-	["cv:nyzu_xunchen"] = "官方",
 	["illustrator:nyzu_xunchen"] = "凡果",
 	["information:nyzu_xunchen"] = "宗族：[颍川·荀氏]",
 
@@ -1921,7 +1928,6 @@ sgs.LoadTranslationTable{
     ["nyzu_xunyou"] = "族荀攸",
     ["#nyzu_xunyou"] = "挥智千军",
 	["designer:nyzu_xunyou"] = "玄蝶既白",
-	["cv:nyzu_xunyou"] = "官方",
 	["illustrator:nyzu_xunyou"] = "错落宇宙",
 	["information:nyzu_xunyou"] = "宗族：[颍川·荀氏]",
 
@@ -1945,7 +1951,6 @@ sgs.LoadTranslationTable{
 	["kezu_xuncai"] = "族荀采",
 	["#kezu_xuncai"] = "怀刃自誓",
 	["designer:kezu_xuncai"] = "玄蝶既白",
-	["cv:kezu_xuncai"] = "官方",
 	["illustrator:kezu_xuncai"] = "凡果",
 	["information:kezu_xuncai"] = "宗族：[颍川·荀氏]",
 
@@ -1979,7 +1984,6 @@ sgs.LoadTranslationTable{
 	["kezu_xuncan"] = "族荀粲",
 	["#kezu_xuncan"] = "分钗断带",
 	["designer:kezu_xuncan"] = "玄蝶既白",
-	["cv:kezu_xuncan"] = "官方",
 	["illustrator:kezu_xuncan"] = "凡果",
 	["information:kezu_xuncan"] = "宗族：[颍川·荀氏]",
 
@@ -2146,7 +2150,6 @@ sgs.LoadTranslationTable{
 	["zu_xunshuang"] = "族荀爽",
 	["#zu_xunshuang"] = "分投急所",
 	--["designer:zu_xunshuang"] = "玄蝶既白",
-	--["cv:zu_xunshuang"] = "官方",
 	--["illustrator:zu_xunshuang"] = "鬼画府",
 	["information:zu_xunshuang"] = "宗族：[颍川·荀氏]",
 
@@ -2161,16 +2164,187 @@ sgs.LoadTranslationTable{
 
 	["zuyangji0"] = "佯疾：请使用手牌中的黑色牌",
 
-	--["$zuyangji1"] = "百姓罹灾，当施粮以赈。",
-	--["$zuyangji2"] = "开仓放粮，以赈灾民。",
-	--["$zudandao1"] = "当逐千里之驹，情深可留嬴城。",
-	--["$zudandao2"] = "乡老十里相送，此驹可彰吾情。",
-	--["$zuqingli1"] = "[韩韶] 民者居野而多艰，不可不恤。",
-	--["$zuqingli2"] = "[韩韶] 天下之本，上为君，下为民。",
+	["$zuyangji1"] = "吾女性烈，非力可强，唯情可欺",
+	["$zuyangji2"] = "此身病弱，难当社稷之重",
+	["$zudandao1"] = "吾志在学，不在仕",
+	["$zudandao2"] = "愿为学海之舟，耻为樊笼之雀",
+	["$zuqingli1"] = "身在红尘心自远，独揖孤舟钓寒秋",
+	["$zuqingli2"] = "吾心向明月，世俗于我，如浮云尔",
 
-	--["~zu_xunshuang"] = "天地不仁，万物何辜……",
+	["~zu_xunshuang"] = "父不知子贤，子不知父愚",
 
 }
+
+zu_xunyu = sgs.General(extension,"zu_xunyu","qun",3,true,false,false)
+zudingan = sgs.CreateTriggerSkill{
+	name = "zudingan",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.CardFinished,sgs.CardUsed},
+	global = true,
+	on_trigger = function(self,event,player,data,room)
+		if (event == sgs.CardFinished) then
+			local use = data:toCardUse()
+			if use.card:hasFlag("zudinganUse") and player:isAlive() and player:hasSkill(self) then
+				local tps = sgs.SPlayerList()
+				for _,p in sgs.qlist(room:getOtherPlayers(player)) do
+					if use.to:contains(p) then continue end
+					tps:append(p)
+				end
+				tps = room:askForPlayersChosen(player,tps,self:objectName().."$-1",1,9,"zudingan0",true,false)
+				if tps:length()>0 then
+					tps:append(player)
+					room:sortByActionOrder(tps)
+					room:drawCards(tps,1,self:objectName())
+					local x = 0
+					for _,p in sgs.qlist(tps)do
+						if p==player then continue end
+						x = math.max(x,p:getHandcardNum())
+					end
+					local aps = sgs.SPlayerList()
+					for _,p in sgs.qlist(tps)do
+						if p:getHandcardNum()>=x and p~=player
+						then aps:append(p) end
+					end
+					local choice = room:askForChoice(player,self:objectName(),"zudingan1+zudingan2")
+					for _,p in sgs.qlist(aps)do
+						if p:isAlive() then
+							if choice=="zudingan2" then
+								local n2x = {}
+								local x = 0
+								for _,h in sgs.qlist(p:getHandcards()) do
+									n2x[h:objectName()] = (n2x[h:objectName()] or 0)+1
+									x = math.max(x,n2x[h:objectName()])
+								end
+								for o,n in pairs(n2x)do
+									if n>=x then
+										local ids = sgs.IntList()
+										for _,h in sgs.qlist(p:getHandcards()) do
+											if h:objectName()==o and p:canDiscard(h:getId())
+											then ids:append(h:getId()) end
+										end
+										room:throwCard(ids,self:objectName(),p)
+										break
+									end
+								end
+							else
+								room:damage(sgs.DamageStruct(self:objectName(),player,p))
+							end
+						end
+					end
+				end
+			end
+		else
+			local use = data:toCardUse()
+			if use.card:getTypeId()>0 then
+				for _,p in sgs.qlist(room:getAlivePlayers()) do
+					if player:getMark(use.card:objectName().."zudinganUse_lun")>0 then break end
+					if p:getMark(use.card:objectName().."zudinganUse-Clear")>0 then
+						player:addMark(use.card:objectName().."zudinganUse_lun")
+						room:setCardFlag(use.card,"zudinganUse")
+					end
+				end
+				player:addMark(use.card:objectName().."zudinganUse-Clear")
+			end
+		end
+	end,
+}
+zu_xunyu:addSkill(zudingan)
+zufuningCard = sgs.CreateSkillCard{
+	name = "zufuningCard",
+	target_fixed = false,
+	will_throw = false,
+	filter = function(self,targets,to_select,from)
+		return #targets<1 and to_select~=from
+	end,
+	on_use = function(self,room,source,targets)
+		local color = self:getColorString()
+		for _,p in sgs.list(targets) do
+			room:giveCard(source,p,self,"zufuning")
+			if source:isDead() then break end
+			if color~="no_color" then
+				room:recover(source,sgs.RecoverStruct("zufuning",source))
+			end
+			if self:subcardsLength()>source:getMark("zufuningDoneNum-Clear") then
+				local n = source:getHandcardNum()-source:getMaxHp()
+				if n>0 then
+					room:askForDiscard(source,"zufuning",n,n)
+				elseif n<0 then
+					source:drawCards(-n,"zufuning")
+				end
+			end
+		end
+	end,
+}
+zufuningvs = sgs.CreateViewAsSkill{
+	name = "zufuning",
+	n = 999,
+	response_pattern = "@@zufuning",
+	view_filter = function(self,selected,to_select)
+		return #selected<sgs.Self:getLostHp()
+	end,
+	view_as = function(self,cards)
+		if #cards<sgs.Self:getLostHp() then return nil end
+		local sc = zufuningCard:clone()
+		for _,c in ipairs(cards) do
+			sc:addSubcard(c)
+		end
+		return sc
+	end,
+}
+zufuning = sgs.CreateTriggerSkill{
+	name = "zufuning",
+	view_as_skill = zufuningvs,
+	events = {sgs.HpChanged,sgs.DamageDone},
+	can_trigger = function(self,player)
+		return player and player:isAlive()
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if (event == sgs.DamageDone) then
+			if player:getMark("zufuningDone-Clear")<1 then
+				player:addMark("zufuningDone-Clear")
+				for _,p in sgs.qlist(room:getAlivePlayers()) do
+					p:addMark("zufuningDoneNum-Clear")
+				end
+			end
+		elseif (event == sgs.HpChanged) then
+			player:addMark("zufuningHp-Clear")
+			if player:getMark("zufuningHp-Clear")<2 and player:hasSkill(self) and player:getLostHp()>0 then
+				room:askForUseCard(player,"@@zufuning","zufuning0:"..player:getLostHp())
+			end
+		end
+	end,
+}
+zu_xunyu:addSkill(zufuning)
+zu_xunyu:addSkill("kezudaojie")
+sgs.LoadTranslationTable{
+	["zu_xunyu"] = "族荀彧",
+	--["#zu_xunyu"] = "分投急所",
+	--["designer:zu_xunyu"] = "玄蝶既白",
+	--["illustrator:zu_xunyu"] = "鬼画府",
+	["information:zu_xunyu"] = "宗族：[颍川·荀氏]",
+
+	["zudingan"] = "定安",
+	[":zudingan"] = "锁定技，你使用牌后，若本回合有角色使用过同名牌（每轮每个牌名限一次），你选择与任意名不为目标的角色各摸一张牌。然后你选择一项令其他角色中手牌最多的角色执行：1.受到你造成的1点伤害；2.随机弃置手牌中最多的同名牌。",
+	["zudingan0"] = "定安：请选择任意名角色共同摸牌",
+	["zudingan1"] = "受到你的1点伤害",
+	["zudingan2"] = "随机弃置手牌中最多的同名牌",
+
+	["zufuning"] = "抚宁",
+	[":zufuning"] = "每回合你的体力值首次变化后，你可将至少X张牌交给一名角色（X为你已损失体力值）。若你交给的牌：颜色均相同，你回复1点体力；数量大于本回合受到过伤害的角色数，你将手牌调整至体力上限。",
+	["zufuning0"] = "你可以发动“抚宁”将%src张牌交给一名其他角色",
+
+--[[
+	["$zudingan1"] = "",
+	["$zudingan2"] = "",
+	["$zufuning1"] = "",
+	["$zufuning2"] = "",
+
+	["~zu_xunyu"] = "",]]
+
+}
+
+
+
 
 
 --颍川韩氏
@@ -2298,20 +2472,25 @@ kezuxuminCard = sgs.CreateSkillCard{
 	end,
 	on_use = function(self, room, source, targets)
 		room:removePlayerMark(source,"@kezuxumin")
+		local n = math.random(1,2)
+		if source:getGeneralName():endsWith("hanrong")
+		or source:getGeneral2Name():endsWith("hanrong") then
+			n = n+2
+		elseif source:getGeneralName():endsWith("hanfu")
+		or source:getGeneral2Name():endsWith("hanfu") then
+			n = n+4
+		end
+		room:broadcastSkillInvoke("kezuxumin",n,source)
 		room:doSuperLightbox(source,"kezuxumin")
 		local wgfd = sgs.Sanguosha:cloneCard("amazing_grace")
 		wgfd:setSkillName("_kezuxumin")
 		wgfd:addSubcard(self)
-		wgfd:deleteLater()
-		local n = math.random(1,2)
-		if source:getGeneralName():endsWith("hanrong")
-		or source:getGeneral2Name():endsWith("hanrong") then n = n+2 end
-		room:broadcastSkillInvoke("kezuxumin",n,source)
 		local use = sgs.CardUseStruct(wgfd,source)
 		for _, p in ipairs(targets)do
 			use.to:append(p)
 		end
 		room:useCard(use, true)
+		wgfd:deleteLater()
 	end
 }
 kezuxumin = sgs.CreateViewAsSkill{
@@ -2319,6 +2498,7 @@ kezuxumin = sgs.CreateViewAsSkill{
 	frequency = sgs.Skill_Limited,
 	limit_mark = "@kezuxumin",
 	n = 1,
+	response_or_use = true,
 	view_filter = function(self, selected, to_select)
 		local wgfd = sgs.Sanguosha:cloneCard("amazing_grace")
 		wgfd:setSkillName("kezuxumin")
@@ -2345,7 +2525,6 @@ sgs.LoadTranslationTable{
 	["kezu_hanshao"] = "族韩韶",
 	["#kezu_hanshao"] = "分投急所",
 	["designer:kezu_hanshao"] = "玄蝶既白",
-	["cv:kezu_hanshao"] = "官方",
 	["illustrator:kezu_hanshao"] = "鬼画府",
 	["information:kezu_hanshao"] = "宗族：[颍川·韩氏]",
 
@@ -2491,7 +2670,7 @@ kezuhuanjia = sgs.CreateTriggerSkill{
 		if event == sgs.EventPhaseEnd and player:getPhase() == sgs.Player_Play
 		and player:hasSkill(self) then
 			local targets = sgs.SPlayerList()
-			for _, p in sgs.list(room:getOtherPlayers(player))do
+			for _,p in sgs.qlist(room:getOtherPlayers(player))do
 				if player:canPindian(p) then targets:append(p) end
 			end
 			if targets:length() > 0 then
@@ -2537,7 +2716,6 @@ sgs.LoadTranslationTable{
 	["kezu_hanrong"] = "族韩融",
 	["#kezu_hanrong"] = "虎口扳渡",
 	["designer:kezu_hanrong"] = "玄蝶既白",
-	["cv:kezu_hanrong"] = "官方",
 	["illustrator:kezu_hanrong"] = "鬼画府",
 	["information:kezu_hanrong"] = "宗族：[颍川·韩氏]",
 	
@@ -2569,6 +2747,168 @@ sgs.LoadTranslationTable{
 
 }
 
+zu_hanfu = sgs.General(extension,"zu_hanfu","qun",4,true,false,false,3)
+
+zuheta = sgs.CreateTriggerSkill{
+	name = "zuheta",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.EventPhaseStart,sgs.CardUsed},
+	on_trigger = function(self,event,player,data)
+		local room = player:getRoom()
+		if event == sgs.CardUsed then
+			local use = data:toCardUse()
+			if use.card:getTypeId()>0 and use.to:length()>0 then
+				for _,p in sgs.qlist(use.to)do
+					player:setMark(p:objectName().."zuhetaTo-Clear",1)
+				end
+				if (use.card:isKindOf("BasicCard") or use.card:isNDTrick())
+				and player:isChained() and player:getMark("&zuheta-Clear")>0 then
+					local aps = sgs.SPlayerList()
+					for _,p in sgs.qlist(room:getAlivePlayers())do
+						if player:getMark(p:objectName().."zuhetaTo-Clear")<1 then continue end
+						if use.to:contains(p) or player:canUse(use.card,p) then aps:append(p) end
+					end
+					player:setTag("zuheta_data",data)
+					aps = room:askForPlayersChosen(player,aps,self:objectName().."$-1",0,9,"zuheta0:"..use.card:objectName(),true)
+					if aps:length()>0 then
+						room:setPlayerChained(player)
+						for _,p in sgs.qlist(aps)do
+							if use.to:contains(p) then
+								use.to:removeOne(p)
+							else
+								use.to:append(p)
+							end
+						end
+						room:sortByActionOrder(use.to)
+						data:setValue(use)
+					end
+				end
+			end
+		elseif event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Play and not player:isChained()
+		and player:hasSkill(self:objectName()) and player:askForSkillInvoke(self:objectName().."$-1") then
+			room:setPlayerMark(player,"&zuheta-Clear",1)
+			room:setPlayerChained(player)
+		end
+	end,
+	can_trigger = function(self,player)
+		return player and player:isAlive()
+	end,
+}
+zu_hanfu:addSkill(zuheta)
+zuyingxiangvs = sgs.CreateViewAsSkill{
+	name = "zuyingxiang",
+	response_pattern = "@@zuyingxiang!",
+	view_as = function(self,cards)
+		local dc = sgs.Sanguosha:cloneCard(sgs.Self:property("zuyingxiangCn"):toString())
+		dc:setSkillName("_zuyingxiang")
+		return dc
+	end,
+}
+zuyingxiang = sgs.CreateTriggerSkill{
+	name = "zuyingxiang",
+	view_as_skill = kezukezuyingxiangvs,
+	events = {sgs.EventPhaseEnd},
+	on_trigger = function(self,event,player,data,room)
+		if player:getPhase() == sgs.Player_Play and player:canPindian() then
+			local cns = {}
+			for _,cn in sgs.list(patterns())do
+				local dc = dummyCard(cn)
+				if dc:isKindOf("BasicCard") or dc:isNDTrick() and dc:isSingleTargetCard() then
+					for _,p in sgs.qlist(room:getAlivePlayers())do
+						if dc:isAvailable(p) then
+							table.insert(cns,cn)
+							break
+						end
+					end
+				end
+			end
+			if #cns>0 and player:askForSkillInvoke(self:objectName().."$-1") then
+				local cn = room:askForChoice(player,self:objectName(),table.concat(cns,"+"))
+				local log = sgs.LogMessage()
+				log.type = "$zuyingxiangLog"
+				log.from = player
+				log.arg = cn
+				room:sendLog(log)
+				cns = sgs.SPlayerList()
+				for _,p in sgs.qlist(room:getOtherPlayers(player))do
+					if player:canPindian(p) then cns:append(p) end
+				end
+				local tp = room:askForPlayerChosen(player,cns,self:objectName(),"zuyingxiang0")
+				if tp then
+					local owner = nil
+					room:doAnimate(1,player:objectName(),tp:objectName())
+					local pd = player:PinDian(tp,self:objectName())
+					if pd.from_number>pd.to_number then owner = player
+					elseif pd.from_number<pd.to_number then owner = tp end
+					if owner and owner:isAlive() and dummyCard(cn):isAvailable(owner) then
+						room:setPlayerProperty(owner,"zuyingxiangCn",ToData(cn))
+						room:askForUseCard(owner,"@@zuyingxiang!","zuyingxiang1:"..cn)
+					end
+					if pd.from_card:objectName()==cn or pd.to_card:objectName()==cn then
+						if player:hasSkill("kezuxumin",true) and player:getMark("@kezuxumin")<1 then
+							room:addPlayerMark(player,"@kezuxumin")
+						end
+					elseif player:isAlive() then
+						local dc = dummyCard()
+						if room:getCardOwner(pd.from_card:getEffectiveId())==nil
+						then dc:addSubcard(pd.from_card) end
+						if room:getCardOwner(pd.to_card:getEffectiveId())==nil
+						then dc:addSubcard(pd.to_card) end
+						player:obtainCard(dc)
+						cns = {}
+						for _,s in sgs.qlist(player:getVisibleSkillList())do
+							if s:isAttachedLordSkill() then continue end
+							table.insert(cns,s:objectName())
+						end
+						cn = room:askForChoice(player,self:objectName(),table.concat(cns,"+"))
+						room:detachSkillFromPlayer(player,cn)
+					end
+				end
+			end
+		end
+	end,
+}
+zu_hanfu:addSkill(zuyingxiang)
+zu_hanfu:addSkill("kezuxumin")
+
+sgs.LoadTranslationTable{
+	["zu_hanfu"] = "族韩馥",
+	["#zu_hanfu"] = "扎钉守角",
+	--["designer:zu_hanfu"] = "玄蝶既白",
+	--["illustrator:zu_hanfu"] = "鬼画府",
+	["information:zu_hanfu"] = "宗族：[颍川·韩氏]",
+	
+	["zuheta"] = "和他",
+	[":zuheta"] = "出牌阶段开始时，你可以横置，若如此做，本回合你使用牌时，你可以重置，然后额外指定或取消任意名本回合成为过你使用牌的目标的角色。",
+	["zuheta0"] = "和他：你可以选择角色为【%src】增加或取消目标",
+
+	["zuyingxiang"] = "迎乡",
+	[":zuyingxiang"] = "出牌阶段结束时，你可以声明一种基本牌或单目标普通锦囊牌并进行拼点：赢的角色视为使用你声明的牌，若此牌与任意拼点牌：同牌名，你视为未发动过宗族技；牌名均不同，你获得所有拼点牌并失去一个技能。",
+	["zuyingxiang0"] = "迎乡：请选择拼点目标",
+	["zuyingxiang1"] = "迎乡：请视为使用【%src】",
+
+	["$kezuxumin5"] = "[韩馥] 不恤袁门恩举，馥无以至今日，况牧一州之民乎？",
+	["$kezuxumin6"] = "[韩馥] 民尽主兴袁氏，我又怎能不恤此民意？",
+	["$zuheta1"] = "兵者不可为首，待他州发动再和之不迟",
+	["$zuheta2"] = "学从袁，职自董，当助袁氏乎？当助董氏乎？",
+	["$zuyingxiang1"] = "颖川冲要，不捍大难，冀州虽鄙，堪留余谷",
+	["$zuyingxiang2"] = "西山冷冷，众卿莫怀守土依依",
+	["$zuyingxiang3"] = "遣骑迎乡人，则韩氏不来唯荀姓独往",
+
+	["~zu_hanfu"] = "动则门生，行必故吏，此馥何主也",
+
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 --太原王氏
@@ -2578,6 +2918,7 @@ kezu_wangyun = sgs.General(extension, "kezu_wangyun", "qun", 3, true, false, fal
 kezujiexuanVS = sgs.CreateViewAsSkill{
 	name = "kezujiexuan",
 	n = 1,
+	response_or_use = true,
 	view_filter = function(self, selected, to_select)
 		local n = sgs.Self:getChangeSkillState("kezujiexuan")
 		return (to_select:isRed() and n == 1)
@@ -2763,7 +3104,11 @@ kezuzhongliu = sgs.CreateTriggerSkill{
 				elseif player:getGeneralName():endsWith("wangchang")
 				or player:getGeneral2Name():endsWith("wangchang") then n = n+8
 				elseif player:getGeneralName():endsWith("wangshen")
-				or player:getGeneral2Name():endsWith("wangshen") then n = n+10 end
+				or player:getGeneral2Name():endsWith("wangshen") then n = n+10
+				elseif player:getGeneralName():endsWith("wangguang")
+				or player:getGeneral2Name():endsWith("wangguang") then n = n+12
+				elseif player:getGeneralName():endsWith("wangmingshan")
+				or player:getGeneral2Name():endsWith("wangmingshan") then n = n+14 end
 				room:broadcastSkillInvoke(self:objectName(),n,player)
 				local sks = {}
 				for _,sk in sgs.qlist(player:getVisibleSkillList()) do
@@ -2825,7 +3170,6 @@ sgs.LoadTranslationTable{
 	["kezu_wangyun"] = "族王允",
 	["#kezu_wangyun"] = "曷丧偕亡",
 	["designer:kezu_wangyun"] = "玄蝶既白",
-	["cv:kezu_wangyun"] = "官方",
 	["illustrator:kezu_wangyun"] = "官方",
 	["information:kezu_wangyun"] = "宗族：[太原·王氏]",
 
@@ -2910,7 +3254,6 @@ sgs.LoadTranslationTable{
 	["kezu_wangling"] = "族王凌",
 	["#kezu_wangling"] = "荧惑守斗",
 	["designer:kezu_wangling"] = "玄蝶既白",
-	["cv:kezu_wangling"] = "官方",
 	["illustrator:kezu_wangling"] = "官方",
 	["information:kezu_wangling"] = "宗族：[太原·王氏]",
 	
@@ -2988,11 +3331,13 @@ kezufuxun = sgs.CreateTriggerSkill{
 		if (event == sgs.CardsMoveOneTime) then
 			local move = data:toMoveOneTime()
 			if (player:getPhase() == sgs.Player_Play) then
-				if move.to_place == sgs.Player_PlaceHand and player:objectName() ~= move.to:objectName() then
+				if move.to_place == sgs.Player_PlaceHand and move.to:isAlive()
+				and player:objectName() ~= move.to:objectName() then
 					local to = room:findPlayerByObjectName(move.to:objectName())
 					room:setPlayerMark(to,"&kezufuxunmove-PlayClear",1)
 				end
-				if move.from_places:contains(sgs.Player_PlaceHand) and player:objectName() ~= move.from:objectName() then
+				if move.from_places:contains(sgs.Player_PlaceHand) and move.from:isAlive()
+				and player:objectName() ~= move.from:objectName() then
 					local from = room:findPlayerByObjectName(move.from:objectName())
 					room:setPlayerMark(from,"&kezufuxunmove-PlayClear",1)
 				end
@@ -3005,6 +3350,7 @@ kezu_wanghun:addSkill(kezufuxun)
 kezufuxunbasic = sgs.CreateViewAsSkill{
 	name = "kezufuxunbasic",
 	n = 1,
+	response_or_use = true,
 	response_pattern = "@@kezufuxunbasic",
 	view_filter = function(self, selected, to_select)
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
@@ -3013,15 +3359,11 @@ kezufuxunbasic = sgs.CreateViewAsSkill{
 	end,
 	view_as = function(self, cards)
 		if #cards<1 then return end
-		local id = sgs.Self:getMark("kezufuxunbasic")
-		local c = sgs.Sanguosha:getCard(id)
+		local c = sgs.Sanguosha:getCard(sgs.Self:getMark("kezufuxunbasic"))
 		c = sgs.Sanguosha:cloneCard(c:objectName())
 		c:setSkillName("_kezufuxun")
 		c:addSubcard(cards[1])
 		return c
-	end,
-	enabled_at_play = function(self, player)
-		return false
 	end, 
 }
 extension:addSkills(kezufuxunbasic)
@@ -3126,7 +3468,6 @@ sgs.LoadTranslationTable{
 	["kezu_wanghun"] = "族王浑",
 	["#kezu_wanghun"] = "献捷横江",
 	["designer:kezu_wanghun"] = "玄蝶既白",
-	["cv:kezu_wanghun"] = "官方",
 	["illustrator:kezu_wanghun"] = "官方",
 	["information:kezu_wanghun"] = "宗族：[太原·王氏]",
 
@@ -3357,7 +3698,6 @@ sgs.LoadTranslationTable{
 	["kezu_wanglun"] = "族王沦",
 	["#kezu_wanglun"] = "半缘修道",
 	["designer:kezu_wanglun"] = "玄蝶既白",
-	["cv:kezu_wanglun"] = "官方",
 	["illustrator:kezu_wanglun"] = "官方",
 	["information:kezu_wanglun"] = "宗族：[太原·王氏]",
 
@@ -3441,9 +3781,6 @@ kezu_wangguang:addSkill(kezulilun)
 kezulilunuse = sgs.CreateZeroCardViewAsSkill{
 	name = "kezulilunuse",
 	response_pattern = "@@kezulilunuse",
-	enabled_at_play = function(self, player)
-		return false
-	end,
 	view_as = function()
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		if (pattern == "@@kezulilunuse") then
@@ -3501,6 +3838,7 @@ kezujianji = sgs.CreateTriggerSkill{
 	view_as_skill = kezujianjiVS,
 	frequency = sgs.Skill_Limited,
 	limit_mark = "@kezujianji",
+	global = true,
 	events = {sgs.EventPhaseChanging,sgs.CardUsed,sgs.CardResponded,sgs.TargetConfirmed},
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
@@ -3509,15 +3847,16 @@ kezujianji = sgs.CreateTriggerSkill{
 			if (change.to == sgs.Player_NotActive) then
 				for _, wg in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
 					if (wg:getMark("@kezujianji") > 0) then
-						if (player:getMark("&kezujianjiuse-Clear") == 0) then
+						if (player:getMark("kezujianjiuse-Clear")<1) then
 							if wg:askForSkillInvoke(self,ToData("kezujianji01:"..player:objectName())) then
-								wg:peiyin(self)
 								room:removePlayerMark(wg,"@kezujianji")
-								wg:drawCards(1,self:objectName())
-								player:drawCards(1,self:objectName())
+								wg:peiyin(self)
+								local aps = SPlayerList(wg,player)
+								room:sortByActionOrder(aps)
+								room:drawCards(aps,1,self:objectName())
 							end
 						end
-						if (player:getMark("&kezujianjitar-Clear") == 0) then
+						if (player:getMark("kezujianjitar-Clear")<1) then
 							room:askForUseCard(wg, "@@kezujianji", "kezujianji02")
 						end
 					end
@@ -3529,12 +3868,7 @@ kezujianji = sgs.CreateTriggerSkill{
 			if use.card:getTypeId()>0 then
 				local cur = room:getCurrent()
 				if use.from ~= cur and cur:isAdjacentTo(use.from) then
-					for _, p in sgs.qlist(room:getAlivePlayers()) do
-						if p:hasSkill(self,true) then
-							room:setPlayerMark(cur,"&kezujianjiuse-Clear",1)
-							break
-						end
-					end
+					cur:setMark("kezujianjiuse-Clear",1)
 				end
 				if table.contains(use.card:getSkillNames(),self:objectName()) then
 					room:removePlayerMark(use.from,"@kezujianji")
@@ -3546,31 +3880,18 @@ kezujianji = sgs.CreateTriggerSkill{
 			if response.m_isUse and response.m_card:getTypeId()>0 then
 				local cur = room:getCurrent()
 				if player~=cur and cur:isAdjacentTo(player) then
-					for _, p in sgs.qlist(room:getAlivePlayers()) do
-						if p:hasSkill(self,true) then
-							room:setPlayerMark(cur,"&kezujianjiuse-Clear",1)
-							break
-						end
-					end
+					cur:setMark("kezujianjiuse-Clear",1)
 				end
 			end
 		end
 		if (event == sgs.TargetConfirmed) then
 			local use = data:toCardUse()
 			local cur = room:getCurrent()
-			if use.card:getTypeId()>0 and use.to:contains(player)
+			if (use.card:isKindOf("Slash") or use.card:isKindOf("Duel")) and use.to:contains(player)
 			and player ~= cur and cur:isAdjacentTo(player) then
-				for _, p in sgs.qlist(room:getAlivePlayers()) do
-					if p:hasSkill(self,true) then
-						room:setPlayerMark(cur,"&kezujianjitar-Clear",1)
-						break
+				cur:setMark("kezujianjitar-Clear",1)
 					end
 				end
-			end
-		end
-	end,
-	can_trigger = function(self, player)
-	    return player and player:isAlive()
 	end,
 }
 kezu_wangguang:addSkill(kezujianji)
@@ -3580,7 +3901,6 @@ sgs.LoadTranslationTable{
 	["kezu_wangguang"] = "族王广",
 	["#kezu_wangguang"] = "才性离异",
 	["designer:kezu_wangguang"] = "玄蝶既白",
-	["cv:kezu_wangguang"] = "官方",
 	["illustrator:kezu_wangguang"] = "官方",
 	["information:kezu_wangguang"] = "宗族：[太原·王氏]",
 
@@ -3594,16 +3914,16 @@ sgs.LoadTranslationTable{
 	["kezujianji02"] = "你可以发动“见机”视为使用一张【杀】",
 	["kezujianjitar"] = "见机已指定目标",
 	["kezujianjiuse"] = "见机已使用牌",
-	[":kezujianji"] = "限定技，一名角色的回合结束时，若与其相邻的角色于此回合：没有使用过牌，你可以与其各摸一张牌；没有成为过牌的目标，你可以视为使用一张【杀】。",
+	[":kezujianji"] = "限定技，一名角色的回合结束时，若与其相邻的角色于此回合：没有使用过牌，你可以与其各摸一张牌；没有成为过【杀】或【决斗】的目标，你可以视为使用一张【杀】。",
 
-	["$kezulilun1"] = "",
-	["$kezulilun2"] = "",
-	["$kezujianji1"] = "",
-	["$kezujianji2"] = "",
-	--["$kezuzhongliu9"] = "[王广] ",
-	--["$kezuzhongliu10"] = "[王广] ",
+	["$kezulilun1"] = "明胆异气，不能相生",
+	["$kezulilun2"] = "心之与声，明为二物",
+	["$kezujianji1"] = "夫谋大事者，非见利而行",
+	["$kezujianji2"] = "爽咎由自取，民心自失尔",
+	["$kezuzhongliu13"] = "[王广] 潮有信，民有心，当依大势而为",
+	["$kezuzhongliu14"] = "[王广] 中流之水不可逆，唯顺尔",
 
-	["~kezu_wangguang"] = "",
+	["~kezu_wangguang"] = "父过盈渊，子愿代父偿……",
 
 }
 
@@ -3614,26 +3934,30 @@ kezutanque = sgs.CreateTriggerSkill{
 	name = "kezutanque",
 	frequency = sgs.Skill_NotFrequent,
 	events = {sgs.CardFinished},
+	global = true,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.CardFinished then
 			local use = data:toCardUse()
-			if use.card:getNumber()>0 and use.card:getTypeId()>0 and player:getMark("kezutanque-Clear")<1 then
-				local cha = use.card:getNumber() - player:getMark("&kezutanque")
-				if cha < 0 then cha = -cha end
+			if use.card:getNumber()>0 and use.card:getTypeId()>0 then
+				if player:getMark("kezutanque-Clear")<1 and player:isAlive()
+				and player:hasTurn() and player:hasSkill(self) then
+					local cha = math.abs(use.card:getNumber()-player:getMark("kezutanqueNum"))
 				local players = sgs.SPlayerList()
 				for _,p in sgs.qlist(room:getAlivePlayers()) do
-					if p:getHp() == cha and player:getMark("&kezutanque")>0 then
-						players:append(p)
-					end
+						if p:getHp()==cha then players:append(p) end
 				end
 				local eny = room:askForPlayerChosen(player, players, self:objectName(), "kezutanque-ask",true,true)
 			    if eny then
+						player:addMark("kezutanque-Clear")
 					room:broadcastSkillInvoke(self:objectName())
-					room:addPlayerMark(player,"kezutanque-Clear")
 					room:damage(sgs.DamageStruct(self:objectName(), player, eny))
 				end
-				room:setPlayerMark(player,"&kezutanque",use.card:getNumber())
+				end
+				player:setMark("kezutanqueNum",use.card:getNumber())
+				if player:isAlive() and player:hasSkill(self,true) then
+					player:setMark("&kezutanque",use.card:getNumber())
+				end
 			end
 		end
 	end,
@@ -3841,7 +4165,6 @@ sgs.LoadTranslationTable{
 	["kezu_wangmingshan"] = "族王明山",
 	["#kezu_wangmingshan"] = "擅书多艺",
 	["designer:kezu_wangmingshan"] = "玄蝶既白",
-	["cv:kezu_wangmingshan"] = "官方",
 	["illustrator:kezu_wangmingshan"] = "官方",
 	["information:kezu_wangmingshan"] = "宗族：[太原·王氏]",
 
@@ -3853,14 +4176,14 @@ sgs.LoadTranslationTable{
 	[":kezushengmo"] = "你可以获得一张当前回合置入弃牌堆中的点数不是最大且不是最小的牌，视为使用一张本局游戏你未以此法使用过的基本牌。",
 	["kezushengmoask"] = "剩墨：你可以获得一张牌",
 
-	["$kezutanque1"] = "",
-	["$kezutanque2"] = "",
-	["$kezushengmo1"] = "",
-	["$kezushengmo2"] = "",
-	["$kezuzhongliu11"] = "[王明山] ",
-	["$kezuzhongliu12"] = "[王明山] ",
+	["$kezutanque1"] = "挽弓射莺雀，势惊执刀人",
+	["$kezutanque2"] = "吾可射落山雀，亦可毙汝性命",
+	["$kezushengmo1"] = "挥毫纵墨，诸君可见砚底之春秋",
+	["$kezushengmo2"] = "余墨染青衫，墨尽颜色存",
+	["$kezuzhongliu15"] = "[王明山] 既敢居于中流，何惧水漫之厄",
+	["$kezuzhongliu16"] = "[王明山] 往昔门庭若鸿，府内俱藏乾坤",
 
-	["~kezu_wangmingshan"] = "",
+	["~kezu_wangmingshan"] = "一人之罪，王门何辜?",
 
 }
 
@@ -3926,7 +4249,6 @@ sgs.LoadTranslationTable{
 	["zu_wangchang"] = "族王昶",
 	["#zu_wangchang"] = "治论识度",
 	--["designer:zu_wangchang"] = "玄蝶既白",
-	--["cv:zu_wangchang"] = "官方",
 	--["illustrator:zu_wangchang"] = "官方",
 	["information:zu_wangchang"] = "宗族：[太原·王氏]",
 
@@ -4020,6 +4342,7 @@ zugaobianvs = sgs.CreateViewAsSkill{
 }
 zugaobian = sgs.CreateTriggerSkill{
 	name = "zugaobian",
+	global = true,
 	view_as_skill = zugaobianvs,
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.EventPhaseChanging,sgs.CardsMoveOneTime,sgs.DamageDone},
@@ -4030,9 +4353,9 @@ zugaobian = sgs.CreateTriggerSkill{
 			if (change.to == sgs.Player_NotActive) then
 				local dps = room:getTag("zugaobianDamage"):toString():split("+")
 				if #dps~=1 then return end
-				for _,p in sgs.list(room:getAlivePlayers())do
+				for _,p in sgs.qlist(room:getAlivePlayers())do
 					if p:objectName()==dps[1] then
-						for _,q in sgs.list(room:findPlayersBySkillName(self:objectName()))do
+						for _,q in sgs.qlist(room:findPlayersBySkillName(self:objectName()))do
 							if q==player then continue end
 							room:sendCompulsoryTriggerLog(q,self)
 							local ids = sgs.IntList()
@@ -4077,7 +4400,6 @@ sgs.LoadTranslationTable{
 	["zu_wangshen"] = "族王沈",
 	["#zu_wangshen"] = "崇虎田光",
 	--["designer:zu_wangshen"] = "玄蝶既白",
-	--["cv:zu_wangshen"] = "官方",
 	--["illustrator:zu_wangshen"] = "官方",
 	["information:zu_wangshen"] = "宗族：[太原·王氏]",
 
@@ -4111,21 +4433,20 @@ zuqieyi = sgs.CreateTriggerSkill{
 	on_trigger = function(self,event,player,data,room)
 		if event == sgs.EventPhaseStart then
 			if player:getPhase()~=sgs.Player_Play then return end
-			if player:askForSkillInvoke(self,data) then
-				player:peiyin(self)
+			if player:askForSkillInvoke(self:objectName().."$-1",data) then
 				local ids = room:getNCards(2)
 				room:fillAG(ids,player)
 				room:askForAG(player,ids,true,self:objectName())
 				room:clearAG(player)
-				player:addMark("zuqieyi-Clear")
+				player:addMark("zuqieyiUse-Clear")
 				room:returnToTopDrawPile(ids)
 			end
 		elseif event == sgs.CardFinished then
 			local use = data:toCardUse()
-			if use.card:getTypeId()>0 and player:getMark("zuqieyi-Clear")>0 then
+			if use.card:getTypeId()>0 and player:getMark("zuqieyiUse-Clear")>0 then
 				player:addMark(use.card:getSuitString().."zuqieyiSuit-Clear")
 				if player:getMark(use.card:getSuitString().."zuqieyiSuit-Clear")==1 then
-					player:addMark("zuqieyi-Clear")
+					player:addMark("zuqieyiUse-Clear")
 					local ids = room:showDrawPile(player,1,self:objectName(),false)
 					local c = sgs.Sanguosha:getCard(ids:first())
 					if c:getColor()==use.card:getColor() or c:getType()==use.card:getType() then
@@ -4153,7 +4474,7 @@ zujianzhi = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if (event == sgs.EventPhaseStart) then
 			if player:getPhase()~=sgs.Player_Finish then return end
-			local n = player:getMark("zuqieyi-Clear")
+			local n = player:getMark("zuqieyiUse-Clear")
 			if n>0 and player:hasSkill(self) then
 				room:sendCompulsoryTriggerLog(player,self)
 				local choices = {}
@@ -4162,8 +4483,8 @@ zujianzhi = sgs.CreateTriggerSkill{
 				end
 				local x = room:askForChoice(player,self:objectName(),table.concat(choices,"+"),data)
 				choices = {}
-				for _,m in sgs.list(player:getMarkNames())do
-					if m:contains("_zujianzhiSuit-Clear") and player:getMark(m)>0 then
+				for _,m in ipairs(player:getMarkNames())do
+					if m:contains("_zujianzhiSuit") and player:getMark(m)>0 then
 						local ms = m:split("_")
 						table.insert(choices,ms[1])
 					end
@@ -4176,19 +4497,17 @@ zujianzhi = sgs.CreateTriggerSkill{
 					judge.reason = self:objectName()
 					judge.who = player
 					room:judge(judge)
+					if player:isDead() then return false end
 					if judge:isGood() then
 						if room:getCardOwner(judge.card:getEffectiveId())==nil
 						then ids:append(judge.card:getEffectiveId()) end
 					else
-						n = -1
+						n = 0
 					end
-					if player:isDead() then return false end
 				end
-				if n<0 then
+				player:assignmentCards(ids,"zujianzhi|zujianzhi0",room:getAlivePlayers(),ids:length(),ids:length())
+				if n==0 and player:isAlive() then
 					room:damage(sgs.DamageStruct(self:objectName(),nil,player,1,sgs.DamageStruct_Thunder))
-				end
-				if player:isAlive() then
-					player:assignmentCards(ids,"zujianzhi|zujianzhi0",room:getAlivePlayers(),ids:length(),ids:length())
 				end
 			end
 		elseif (event == sgs.CardUsed) then
@@ -4202,12 +4521,13 @@ zujianzhi = sgs.CreateTriggerSkill{
 zu_yangci:addSkill(zujianzhi)
 zuquhuo = sgs.CreateTriggerSkill{
 	name = "zuquhuo",
+	global = true,
 	events = {sgs.CardsMoveOneTime},
 	on_trigger = function(self,event,player,data,room)
 		if (event == sgs.CardsMoveOneTime) then
 			local move = data:toMoveOneTime()
-			if move.from_places:contains(sgs.Player_PlaceHand)
-			and move.from:objectName()==player:objectName() and player:getMark("zuquhuo-Clear")<1 then
+			if move.from_places:contains(sgs.Player_PlaceHand) and player:isAlive()
+			and move.from:objectName()==player:objectName() and player:getMark("zuquhuoUse-Clear")<1 then
 				if move.reason.m_reason==sgs.CardMoveReason_S_REASON_USE or move.reason.m_reason==sgs.CardMoveReason_S_REASON_RESPONSE
 				or bit32.band(move.reason.m_reason,sgs.CardMoveReason_S_MASK_BASIC_REASON)==sgs.CardMoveReason_S_REASON_DISCARD
 				then return false end
@@ -4215,21 +4535,29 @@ zuquhuo = sgs.CreateTriggerSkill{
 					if move.from_places:at(i)==sgs.Player_PlaceHand then
 						local c = sgs.Sanguosha:getCard(id)
 						if c:isKindOf("Analeptic") or c:isKindOf("EquipCard") then
-							player:addMark("zuquhuo-Clear")
+							player:addMark("zuquhuoUse-Clear")
+							if not player:hasSkill(self) then break end
 							local tps = sgs.SPlayerList()
 							for _,p in sgs.list(room:getAlivePlayers())do
 								if p:isWounded() and isSameClan(player,p)
 								then tps:append(p) end
 							end
-							local tp = room:askForPlayerChosen(player,tps,self:objectName(),"zuquhuo0",true,true)
-							if tp then
 								local n = math.random(1,2)
 								if player:getGeneralName():endsWith("yangxiu")
-								or player:getGeneral2Name():endsWith("yangxiu")
-								then n = n+2 end
-								player:peiyin(self,n)
+							or player:getGeneral2Name():endsWith("yangxiu") then
+								n = n+2
+							elseif player:getGeneralName():endsWith("yangbiao")
+							or player:getGeneral2Name():endsWith("yangbiao") then
+								n = n+4
+							elseif player:getGeneralName():endsWith("yangzhong")
+							or player:getGeneral2Name():endsWith("yangzhong") then
+								n = n+6
+							end
+							local tp = room:askForPlayerChosen(player,tps,self:objectName().."$"..n,"zuquhuo0",true,true)
+							if tp then
 								room:recover(tp,sgs.RecoverStruct(self:objectName(),player))
 							end
+							break
 						end
 					end
 				end
@@ -4243,7 +4571,6 @@ sgs.LoadTranslationTable{
 	["zu_yangci"] = "族杨赐",
 	["#zu_yangci"] = "固世笃忠贞",
 	--["designer:zu_yangci"] = "玄蝶既白",
-	--["cv:zu_yangci"] = "官方",
 	--["illustrator:zu_yangci"] = "官方",
 	["information:zu_yangci"] = "宗族：[弘农·杨氏]",
 
@@ -4392,7 +4719,6 @@ sgs.LoadTranslationTable{
 	["zu_yangxiu"] = "族杨修",
 	["#zu_yangxiu"] = "皓首邀终始",
 	--["designer:zu_yangxiu"] = "玄蝶既白",
-	--["cv:zu_yangxiu"] = "官方",
 	--["illustrator:zu_yangxiu"] = "官方",
 	["information:zu_yangxiu"] = "宗族：[弘农·杨氏]",
 
@@ -4591,7 +4917,6 @@ sgs.LoadTranslationTable{
 	["zu_yangzhong"] = "族杨众",
 	["#zu_yangzhong"] = "同舟而济",
 	--["designer:zu_yangzhong"] = "玄蝶既白",
-	--["cv:zu_yangzhong"] = "官方",
 	--["illustrator:zu_yangzhong"] = "官方",
 	["information:zu_yangzhong"] = "宗族：[弘农·杨氏]",
 
@@ -4602,7 +4927,14 @@ sgs.LoadTranslationTable{
 	["zujuetu0"] = "绝途：请选择保留的各花色牌",
 	["zujuetu1"] = "绝途：请选择令一名角色展示牌",
 	["zujuetu2"] = "绝途：请选择【过河拆桥】使用目标",
+	["$zujuetu1"] = "此天子銮驾，尔可有异心耶？",
+	["$zujuetu2"] = "断途绝路，莫使凉州人追来！",
+	["$zukudu1"] = "大河汤汤，行路艰难辛苦",
+	["$zukudu2"] = "羁途苦旅，终见月明花开",
+	["$zuquhuo7"] = "[杨众]莫愁前路漫漫，脚下便是归途",
+	["$zuquhuo8"] = "[杨众]多疑离情无用，长歌可以当哭",
 
+	["~zu_yangzhong"] = "为之奈何，为之奈何！",
 
 }
 
@@ -4719,7 +5051,6 @@ sgs.LoadTranslationTable{
 	["zu_yangbiao"] = "族杨彪",
 	["#zu_yangbiao"] = "负荷履崎岖",
 	--["designer:zu_yangbiao"] = "玄蝶既白",
-	--["cv:zu_yangbiao"] = "官方",
 	--["illustrator:zu_yangbiao"] = "官方",
 	["information:zu_yangbiao"] = "宗族：[弘农·杨氏]",
 
@@ -4742,11 +5073,6 @@ sgs.LoadTranslationTable{
 
 
 }
-
-
-
-
-
 
 
 zuhuntianyiTr = sgs.CreateTriggerSkill{
@@ -4803,6 +5129,12 @@ zuhuntianyi:clone(3,3):setParent(extension)
 zuhuntianyi:clone(3,10):setParent(extension)
 zuhuntianyi:clone(3,12):setParent(extension)
 
+
+
+
+
+
+
 --吴郡陆氏
 ol_clans.wujun_lu = {"luxun","lumao","luji","luyusheng","lukai"}
 zu_luji = sgs.General(extension,"zu_luji","wu",3)
@@ -4853,26 +5185,21 @@ zufennu = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		if (event == sgs.EventPhaseStart) then
 			if player:getPhase()==sgs.Player_Play and player:getHp()>0 then
-				local tps = room:askForPlayersChosen(player,room:getAlivePlayers(),self:objectName(),0,player:getHp(),"zufennu0:"..player:getHp(),true,true)
-				if tps:length()>0 then
-					player:peiyin(self)
+				local tps = room:askForPlayersChosen(player,room:getAlivePlayers(),self:objectName().."$-1",0,player:getHp(),"zufennu0:"..player:getHp(),true,true)
 					for _,p in sgs.qlist(tps)do
 						local dc = room:askForDiscard(p,self:objectName(),1,1,false,true)
 						if dc==nil or room:getCardOwner(dc:getEffectiveId()) then continue end
 						player:addToPile("zufennu_yi",dc)
 					end
-				end
 			elseif player:getPhase()==sgs.Player_Start then
-				local ids = player:getPile("zufennu_yi")
-				if ids:isEmpty() then return end
 				local n = 0
-				for _,id in sgs.qlist(ids)do
+				for _,id in sgs.qlist(player:getPile("zufennu_yi"))do
 					n = n+sgs.Sanguosha:getCard(id):getNumber()
 				end
 				if player:getMark("&zufennu")>n then
 					room:setPlayerMark(player,"&zufennu",0)
 					n = dummyCard()
-					n:addSubcards(ids)
+					n:addSubcards(player:getPile("zufennu_yi"))
 					player:obtainCard(n)
 				end
 			end
@@ -4895,21 +5222,27 @@ zuzelie = sgs.CreateTriggerSkill{
 			if bit32.band(move.reason.m_reason,sgs.CardMoveReason_S_MASK_BASIC_REASON)==sgs.CardMoveReason_S_REASON_DISCARD then
 				if move.from and move.from:getMark("&zuzelie2Bf-Clear")>0 then
 					local from = BeMan(room,move.from)
-					room:setPlayerMark(from,"&zuzelie2Bf-Clear",1)
+					room:setPlayerMark(from,"&zuzelie2Bf-Clear",0)
 					room:askForDiscard(from,self:objectName(),1,1,false,true)
 				end
 			elseif move.reason.m_reason==sgs.CardMoveReason_S_REASON_DRAW then
-				if move.from and move.from:getMark("&zuzelie1Bf-Clear")>0 then
-					local from = BeMan(room,move.from)
-					room:setPlayerMark(from,"&zuzelie1Bf-Clear",1)
-					from:drawCards(1,self:objectName())
+				if move.to and move.to:getMark("&zuzelie1Bf-Clear")>0 then
+					local to = BeMan(room,move.to)
+					room:setPlayerMark(to,"&zuzelie1Bf-Clear",0)
+					to:drawCards(1,self:objectName())
 				end
 			end
 			if move.from_places:contains(sgs.Player_PlaceEquip)
 			or move.from_places:contains(sgs.Player_PlaceDelayedTrick) then
-				if move.from:getCards("ej"):isEmpty() and isSameClan(player,move.from) then
+				if move.from:getEquips():isEmpty() and move.from:getJudgingArea():isEmpty() and isSameClan(player,move.from) then
 					local tp = room:askForPlayerChosen(player,room:getAlivePlayers(),self:objectName(),"zuzelie0",true,true)
 					if tp then
+						local n = math.random(1,2)
+						if player:getGeneralName():endsWith("lujing")
+						or player:getGeneral2Name():endsWith("lujing") then
+							n = n+2
+						end
+						player:peiyin(self,n)
 						if room:askForChoice(player,self:objectName(),"zuzelie1+zuzelie2",data)=="zuzelie1" then
 							room:setPlayerMark(tp,"&zuzelie1Bf-Clear",1)
 						else
@@ -4925,9 +5258,8 @@ zu_luji:addSkill(zuzelie)
 
 sgs.LoadTranslationTable{
 	["zu_luji"] = "族陆绩",
-	["#zu_luji"] = "浑天玄意",
+	["#zu_luji"] = "探赜执道",
 	--["designer:zu_luji"] = "玄蝶既白",
-	--["cv:zu_luji"] = "官方",
 	--["illustrator:zu_luji"] = "官方",
 	["information:zu_luji"] = "宗族：[吴郡·陆氏]",
 
@@ -4944,6 +5276,13 @@ sgs.LoadTranslationTable{
 	["zuzelie2"] = "其本回合下次弃牌后再弃一张牌",
 	["zuzelie1Bf"] = "泽烈摸牌",
 	["zuzelie2Bf"] = "泽烈弃牌",
+	["$zugailan1"] = "春秋几梦聃周事，遘难而今注子云",
+	["$zugailan2"] = "顽石哪比经籍重，满船学问压川河",
+	["$zufennu1"] = "殚意儒学，功在不舍",
+	["$zufennu2"] = "驽牛致远，驽马逸足，赖凤雏之前翱",
+	["$zuzelie1"] = "[陆绩]遍览日月星辰，泽其光，沐其烈",
+	["$zuzelie2"] = "[陆绩]为政以德，如北宸之烈烈",
+	["~zu_luji"] = "郁林远花开正茂，何日魂归吴郡家……",
 
 	["_zuhuntianyi"] = "浑天仪",
 	[":_zuhuntianyi"] = "装备牌/宝物<br/><b>宝物技能</b>：锁定技，当你从装备区失去【浑天仪】时，从牌堆获得两张与此牌点数相同的锦囊牌；当你受到伤害时，你销毁此牌并防止此伤害。",
@@ -5040,12 +5379,12 @@ zujuewei = sgs.CreateTriggerSkill{
 		else
 			local use = data:toCardUse()
 			if event==sgs.TargetConfirmed and not use.to:contains(player) then return end
-			if use.card:isDamageCard() and player:getCardCount()>0
+			if use.card:isDamageCard() and player:getCardCount()>0 and player:hasTurn()
 			and player:getMark("zujueweiUse-Clear")<1 and player:hasSkill(self) then
 				local sc = room:askForCard(player,"EquipCard","zujuewei0",data,sgs.Card_MethodNone)
 				if sc then
 					local choices = {}
-					if not player:isCardLimited(sc,sgs.Card_MethodRecast())
+					if not player:isCardLimited(sc,sgs.Card_MethodRecast)
 					then table.insert(choices,"zujuewei1") end
 					if player:canDiscard(player,sc:getEffectiveId())
 					then table.insert(choices,"zujuewei2") end
@@ -5077,7 +5416,6 @@ sgs.LoadTranslationTable{
 	["zu_lujing"] = "族陆景",
 	["#zu_lujing"] = "毗陵侯",
 	--["designer:zu_lujing"] = "玄蝶既白",
-	--["cv:zu_lujing"] = "官方",
 	--["illustrator:zu_lujing"] = "官方",
 	["information:zu_lujing"] = "宗族：[吴郡·陆氏]",
 
@@ -5091,6 +5429,260 @@ sgs.LoadTranslationTable{
 	["zujuewei3"] = "绝围：请选择此【%src】使用目标",
 
 }
+
+
+--颖川陈氏
+ol_clans.yingchuan_chen = {"chenqun","chentai","chenshi","chenji","chenchen","chenzhong","chenzuo","chentan"}
+zu_chenqun = sgs.General(extension,"zu_chenqun","wei",3)
+zugezhiCard = sgs.CreateSkillCard{
+	name = "zugezhiCard",
+	--target_fixed = true,
+	filter = function(self,targets,to_select,from,x)
+		return #targets<self:subcardsLength()
+	end,
+	feasible = function(self,targets,from)
+		return #targets<=self:subcardsLength()
+	end,
+    about_to_use = function(self,room,use)
+		if use.to:length()<self:subcardsLength() then
+			room:giveCard(use.from,use.to:last(),self,"zugezhi")
+		else
+			for i,id in sgs.qlist(self:getSubcards())do
+				room:giveCard(use.from,use.to:at(i),sgs.Sanguosha:getCard(id),"zugezhi")
+			end
+		end
+	end,
+}
+zugezhivs = sgs.CreateViewAsSkill{
+	name = "zugezhi",
+	expand_pile = "#zugezhi",
+	response_pattern = "@@zugezhi",
+	n = 2,
+	view_filter = function(self,selected,to_select)
+		return sgs.Self:getPileName(to_select:getId())=="#zugezhi"
+	end,
+	view_as = function(self,cards)
+		if #cards<2 then return end
+		local sc = zugezhiCard:clone()
+		for _,c in sgs.list(cards)do
+			sc:addSubcard(c)
+		end
+		return sc
+	end,
+}
+zugezhi = sgs.CreateTriggerSkill{
+	name = "zugezhi",
+	events = {sgs.Damaged},
+	view_as_skill = zugezhivs,
+	can_trigger = function(self,target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if (event == sgs.Damaged) then
+			local damage = data:toDamage()
+			if damage.from and damage.from:isAlive() then
+				for _,p in sgs.qlist(room:getOtherPlayers(damage.from))do
+					if p:isAlive() and p:hasSkill(self) and (player==p or p:inMyAttackRange(player))
+					and p:getMark("zugezhiUse-Clear")<1 and p:hasTurn() and p:askForSkillInvoke(self:objectName().."$-1",data) then
+						p:addMark("zugezhiUse-Clear")
+						local ids = sgs.IntList()
+						if p:canDiscard("he") then
+							local dc = room:askForDiscard(p,self:objectName(),1,1,true)
+							if dc and room:getCardOwner(dc:getEffectiveId())==nil
+							then ids = dc:getSubcards() end
+						end
+						if p:canDiscard("he",damage.from) then
+							local id = room:askForCardChosen(p,damage.from,"he",self:objectName(),false,sgs.Card_MethodDiscard)
+							if id>=0 then
+								room:throwCard(id,self:objectName(),damage.from,p)
+								if room:getCardOwner(id)==nil then ids:append(id) end
+							end
+						end
+						if ids:isEmpty() then return end
+						local ctypes = {"zugezhiCan"}
+						local has = false
+						for _,id in sgs.qlist(ids)do
+							local ctype = sgs.Sanguosha:getCard(id):getType()
+							if ctype~=sgs.Sanguosha:getCard(ids:last()):getType() then has = true end
+							table.insert(ctypes,ctype)
+						end
+						if has then
+							has = table.concat(ctypes,"+").."-Clear"
+							room:setPlayerMark(p,has,1)
+							room:setPlayerMark(damage.from,has,1)
+						end
+						if p:isAlive() then
+							room:notifyMoveToPile(p,ids,"zugezhi")
+							room:askForUseCard(p,"@@zugezhi","zugezhi0")
+						end
+					end
+				end
+			end
+		end
+	end,
+}
+zu_chenqun:addSkill(zugezhi)
+zugezhibf = sgs.CreateCardLimitSkill{
+	name = "#zugezhibf" ,
+	limit_list = function(self,player)
+		return "use"
+	end,
+	limit_pattern = function(self,player,card)
+		if card:getTypeId()<1 then
+			return ""
+		end
+		local has = false
+		for _,m in ipairs(player:getMarkNames())do
+			if string.find(m,"zugezhiCan+") then
+				if string.find(m,card:getType()) then
+					return ""
+				end
+				has = true
+			end
+		end
+		if has then
+			return card:toString()
+		end
+	end
+}
+zu_chenqun:addSkill(zugezhibf)
+zumingdianCard = sgs.CreateSkillCard{
+	name = "zumingdianCard",
+	will_throw = false,
+	target_fixed = true,
+	handling_method = sgs.Card_MethodRecast,
+	on_use = function(self,room,player,targets)
+		local has = false
+		for i,id in sgs.qlist(self:getSubcards())do
+			local cn = sgs.Sanguosha:getCard(id):objectName()
+			room:addPlayerMark(player,cn.."zumingdianRecast_lun")
+			if player:addMark(cn.."zumingdianUse-Clear")
+			then has = true end
+		end
+		UseCardRecast(player,self,"zumingdian",self:subcardsLength())
+		if has and player:isAlive() then
+			has = {}
+			for i,h in sgs.qlist(player:getHandcards())do
+				table.insert(has,h:objectName())
+			end
+			local ids = room:getDiscardPile()
+			for i,id in sgs.qlist(room:getDrawPile())do
+				ids:append(id)
+			end
+			RandomList(ids)
+			for i,id in sgs.qlist(ids)do
+				local c = sgs.Sanguosha:getCard(id)
+				if c:getTypeId()>0 or table.contains(has,c:objectName())
+				then continue end
+				player:obtainCard(c)
+				break
+			end
+		end
+	end,
+}
+zumingdianvs = sgs.CreateViewAsSkill{
+	name = "zumingdian",
+	n = 998,
+	response_pattern = "@@zumingdian",
+	view_filter = function(self,selected,to_select)
+		return to_select:isKindOf("BasicCard")
+		and sgs.Self:getMark(to_select:objectName().."zumingdianRecast_lun")<1
+		and not sgs.Self:isCardLimited(to_select,sgs.Card_MethodRecast)
+	end,
+	view_as = function(self,cards)
+		if #cards > 0 then
+			local card = zumingdianCard:clone()
+			for _,c in ipairs(cards) do
+				card:addSubcard(c)
+			end
+			return card
+		end
+	end,
+	enabled_at_play = function(self,player)
+		return player:getHandcardNum()>0
+	end, 
+}
+zumingdian = sgs.CreateTriggerSkill{
+	name = "zumingdian",
+	view_as_skill = zumingdianvs,
+	events = {sgs.CardUsed,sgs.Damaged},
+	on_trigger = function(self,event,player,data,room)
+		if (event == sgs.CardUsed) then
+			local use = data:toCardUse()
+			if use.card:getTypeId()>0 then
+				player:addMark(use.card:objectName().."zumingdianUse-Clear")
+			end
+		elseif player:getHandcardNum()>0 and player:hasSkill(self) then
+			room:askForUseCard(player,"@@zumingdian","zumingdian0",-1,sgs.Card_MethodRecast)
+		end
+	end,
+	can_trigger = function(self,target)
+		return target and target:isAlive()
+	end
+}
+zu_chenqun:addSkill(zumingdian)
+zushize = sgs.CreateTriggerSkill{
+	name = "zushize",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.CardUsed,sgs.DamageDone},
+	waked_skills = "#zushizenf",
+	on_trigger = function(self,event,player,data,room)
+		if (event == sgs.CardUsed) then
+			local use = data:toCardUse()
+			if use.card:getTypeId()>0 and use.whocard then
+				use = room:getUseStruct(use.whocard)
+				if use.from and use.from:isAlive() then
+					use.from:addMark("zushizeNum-Clear")
+					if use.from:getMark("zushizeNum-Clear")<2 and use.from:hasSkill(self) then
+						local tps = sgs.SPlayerList()
+						for i,p in sgs.qlist(room:getAlivePlayers())do
+							if isSameClan(use.from,p) then
+								tps:append(p)
+							end
+						end
+						local n = math.random(1,2)
+						local tp = room:askForPlayerChosen(use.from,tps,self:objectName().."$"..n,"zushize0",false,true)
+						if tp then room:addPlayerMark(tp,"&zushize") end
+					end
+				end
+			end
+		elseif player:getMark("&zushize")>0 then
+			room:setPlayerMark(player,"&zushize",0)
+		end
+	end,
+	can_trigger = function(self,target)
+		return target and target:isAlive()
+	end
+}
+zu_chenqun:addSkill(zushize)
+zushizenf = sgs.CreateAttackRangeSkill{
+	name = "#zushizenf",
+    extra_func = function(self,target)
+		return target:getMark("&zushize")
+	end,
+}
+zu_chenqun:addSkill(zushizenf)
+
+sgs.LoadTranslationTable{
+	["zu_chenqun"] = "族陈群",
+	--["#zu_chenqun"] = "毗陵侯",
+	--["designer:zu_chenqun"] = "玄蝶既白",
+	--["illustrator:zu_chenqun"] = "官方",
+	["information:zu_chenqun"] = "宗族：[颍川·陈氏]",
+
+	["zugezhi"] = "革制",
+	[":zugezhi"] = "每回合限一次，当你或你攻击范围内的角色受到伤害后，若伤害来源不为你，你可弃置你与伤害来源各一张牌，且可分配这些牌。若因此弃置牌的类别不同，你与伤害来源本回合只能使用这些类别的牌。",
+	["zumingdian"] = "明典",
+	[":zumingdian"] = "出牌阶段或当你受到伤害后，你可重铸任意张基本牌（每轮每个牌名限一次）。若你重铸了你本回合使用过的牌名，你获得一张手牌中未拥有牌名的基本牌。",
+	["zushize"] = "士则",
+	[":zushize"] = "宗族技，锁定技，你于回合内使用牌首次被响应后，你令一名同族角色攻击范围+1，直到其下次受到伤害。",
+	["#zugezhi"] = "革制",
+	["zugezhi0"] = "革制：你可以分配这些牌",
+	["zumingdian0"] = "你可以发动“明典”重铸任意张基本牌",
+	["zushize0"] = "士则：请选择令一名同族角色攻击范围+1",
+
+}
+
 
 
 

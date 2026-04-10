@@ -1,4 +1,4 @@
-﻿--==《新武将》==--
+--==《新武将》==--
 extension_lq = sgs.Package("kearlqxf", sgs.Package_GeneralPack)
 
 --buff集中
@@ -6,7 +6,7 @@ kelqxfslashmore = sgs.CreateTargetModSkill{
 	name = "kelqxfslashmore",
 	pattern = ".",
 	residue_func = function(self, from, card, to)
-		if table.contains(card:getSkillNames(), "kelqjuesui")
+		if card:getSkillName()=="kelqjuesui"
 		then return 999 end
 		if to and to:getHandcardNum()<1 and from:hasSkill("tyzhuiling")
 		then return 999 end
@@ -26,14 +26,14 @@ kelqxfslashmore = sgs.CreateTargetModSkill{
 			then return 999 end
 			if from:getMark("tylengjianUse2-Clear")<1 and from:hasSkill("tylengjian")
 			and not from:inMyAttackRange(to) then return 999 end
-			if table.contains(card:getSkillNames(), "tyxingsha")
+			if card:getSkillName() == "tyxingsha"
 			then return 999 end
 		end
-		if to and to:getMark("&ty2chengshi+#"..from:objectName().."_lun")>1
+		if to:getMark("&ty2chengshi+#"..from:objectName().."_lun")>1
 		then return 999 end
-		if to and to:getHandcardNum()<1 and from:hasSkill("tyzhuiling")
+		if to:getHandcardNum()<1 and from:hasSkill("tyzhuiling")
 		then return 999 end
-		if from:hasSkill("tyxiongren") and to and to:distanceTo(from)<=1
+		if from:hasSkill("tyxiongren") and to:distanceTo(from)<=1
 		then return 999 end
 		return 0
 	end
@@ -94,7 +94,7 @@ kelqchaojue = sgs.CreateTriggerSkill{
 					local todis = room:askForExchange(p, "kelqchaojue_show", 1, 1, false, "kelqchaojue_show:"..player:objectName().."::"..discid:getSuitString(),true, ".|"..discid:getSuitString())
 					if todis then
 						room:showCard(p,todis:getEffectiveId())
-						room:giveCard(p,player,todis,self:objectName())
+						room:giveCard(p,player,todis,self:objectName(),true)
 					else
 						room:addPlayerMark(p,player:objectName().."kelqchaojue-Clear")
 						room:addPlayerMark(p,"@skill_invalidity")
@@ -177,8 +177,6 @@ sgs.LoadTranslationTable{
 	[":kelqjunshen"] = "你可以将一张红色牌当【杀】使用或打出，当你以此法使用的【杀】对一名角色造成伤害时，其选择一项：1.弃置装备区里的所有牌；2.令此伤害+1。你使用的♦【杀】无距离限制、♥【杀】的目标数限制+1。",
 	["kelqjunshen:qizhi"] = "弃置装备区的所有牌",
 	["kelqjunshen:jiashang"] = "此伤害+1",
-	[":kelqjunshen"] = "你可以将一张红色牌当【杀】使用或打出，当你以此法使用的【杀】对一名角色造成伤害时，其选择一项：1.弃置装备区里的所有牌；2.令此伤害+1。你使用的♦【杀】无距离限制、♥【杀】的目标数限制+1。",
-
 
 	["$kelqchaojue1"] = "逃归君父，振古通义。",
 	["$kelqchaojue2"] = "同休等戚，祸福共之。",
@@ -233,10 +231,13 @@ kelqlizhongcard = sgs.CreateSkillCard{
 				end
 			else
 				room:setPlayerMark(source,"kelqlizhong1",2)
-				to:drawCards(1,self:getSkillName())
 				room:addMaxCards(to,2,false)
 				room:attachSkillToPlayer(to,"kelqlizhongUse")
 			end
+		end
+		if self:subcardsLength()<1 then
+			room:sortByActionOrder(use.to)
+			room:drawCards(use.to,1,self:getSkillName())
 		end
 	end,
 }
@@ -293,6 +294,7 @@ kelqcaoren:addSkill(kelqlizhong)
 kelqlizhongUse = sgs.CreateViewAsSkill{
 	name = "kelqlizhongUse&",
 	n = 1,
+	response_or_use = true,
 	view_filter = function(self,selected,to_select)
 		return to_select:isEquipped()
 	end,
@@ -337,6 +339,7 @@ kelqcaoren:addSkill(kelqjuesui)
 kelqjuesuiUse = sgs.CreateViewAsSkill{
 	name = "kelqjuesuiUse&",
 	n = 1,
+	response_or_use = true,
 	view_filter = function(self,selected,to_select)
 		return to_select:getTypeId()>1 and to_select:isBlack()
 	end,
@@ -357,7 +360,6 @@ kelqjuesuiUse = sgs.CreateViewAsSkill{
 	end,
 }
 extension_lq:addSkills(kelqjuesuiUse)
-
 
 sgs.LoadTranslationTable{
 
@@ -542,6 +544,146 @@ sgs.LoadTranslationTable{
 }
 
 
+
+
+--[[lq_guansuo = sgs.General(extension_lq,"lq_guansuo","shu",4)
+
+lqmoxiaovs = sgs.CreateViewAsSkill{
+	name = "lqmoxiao",
+	view_as = function(self,cards)
+		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
+		if pattern=="" then
+			local c = sgs.Self:getTag("lqmoxiao"):toCard()
+			if c==nil then return nil end
+			pattern = c:objectName()
+		end
+		for _,p in sgs.list(pattern:split("+")) do
+			local dc = sgs.Sanguosha:cloneCard(p)
+			dc:setSkillName("lqmoxiao")
+			if sgs.Self:isLocked(dc) then
+				dc:deleteLater()
+				continue
+			end
+			return dc
+		end
+	end,
+	enabled_at_response = function(self,player,pattern)
+		if player:getMark("lqmoxiaoUse-Clear")>0 then return end
+		for _,p in sgs.list(pattern:split("+")) do
+			local dc = dummyCard(p,"lqmoxiao")
+			if dc and dc:getTypeId()==1 then
+				return true
+			end
+		end
+	end,
+	enabled_at_play = function(self,player)
+		return player:getMark("lqmoxiaoUse-Clear")<1
+	end,
+}
+lqmoxiao = sgs.CreateTriggerSkill{
+	name = "lqmoxiao",
+	guhuo_type = "l",
+	view_as_skill = lqmoxiaovs,
+	events = {sgs.CardUsed,sgs.RoundEnd},
+	can_trigger = function(self,target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self,event,player,data)
+		local room = player:getRoom()
+		if event == sgs.CardUsed then
+			local use = data:toCardUse()
+			if table.contains(use.card:getSkillNames(),self:objectName()) then
+				room:addPlayerMark(player,"lqmoxiaoUse-Clear")
+				player:drawCards(3,self:objectName())
+				for _,p in sgs.list(use.to) do
+					if p:isFemale() then
+						room:gainMaxHp(p,1,self:objectName())
+					end
+				end
+			end
+		end
+	end,
+}
+lq_guansuo:addSkill(lqmoxiao)
+
+lqchengyuan = sgs.CreateTriggerSkill{
+	name = "lqchengyuan",
+	frequency = sgs.Skill_Limited,
+	limit_mark = "@lqchengyuan",
+	events = {sgs.Dying},
+	on_trigger = function(self,event,player,data)
+		local room = player:getRoom()
+		if event == sgs.Dying and player:getMark("@lqchengyuan")>0 then
+			local dy = data:toDying()
+			if dy.who == player or dy.who:isFemale() then
+				if dy.who:getHp()<1 and player:askForSkillInvoke(self,dy.who) then
+					room:removePlayerMark(player,"@tychengming")
+					room:doSuperLightbox(player,self:objectName())
+					room:recover(dy.who,sgs.RecoverStruct(self:objectName(),player,dy.who:getMaxHp()-dy.who:getHp()))
+				end
+			end
+		end
+	end,
+}
+lq_guansuo:addSkill(lqchengyuan)
+
+lqyuxian = sgs.CreateTriggerSkill{
+	name = "lqyuxian",
+	waked_skills = "lqyinglong,lqxiefang",
+	events = {sgs.HpRecover,sgs.EventPhaseStart,sgs.Dying},
+	can_trigger = function(self,target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self,event,player,data)
+		local room = player:getRoom()
+		if event == sgs.HpRecover then
+			player:addMark("lqyuxianHpRecover")
+		elseif event == sgs.EventPhaseStart then
+			if player:getPhase()==sgs.Player_NotActive then
+				for _,p in sgs.qlist(room:getAllPlayers()) do
+					if player:getMark("lqyuxianHpRecover")>0 or p:addMark("lqyuxianHpRecover")>0 then
+						if p:getMark("lqyuxianUse_lun")<1 and p:isAlive() and p:getMark("lqyuxian")<1
+						and p:hasSkill(self) and p:askForSkillInvoke(self) then
+							p:addMark("lqyuxianUse_lun")
+							p:gainAnExtraTurn()
+						end
+					end
+				end
+				player:setMark("lqyuxianHpRecover",0)
+			elseif player:getPhase()==sgs.Player_Start then
+				if player:getMark("lqyuxianTurn")>3 and player:getMark("lqyuxian")<1 and player:hasSkill(self) then
+					room:addPlayerMark(player,self:objectName())
+					ShimingSkillDoAnimate(self,player,true)
+					room:handleAcquireDetachSkills(player,"lqyinglong|lqxiefang")
+				end
+				player:addMark("lqyuxianTurn")
+			end
+		else
+			local dy = data:toDying()
+			if dy.who == player and player:getMark("lqyuxian")<1 and player:hasSkill(self) then
+				if dy.damage and dy.damage.from and dy.damage.from:isFemale() then
+					room:addPlayerMark(player,self:objectName())
+					ShimingSkillDoAnimate(self,player,false)
+				end
+			end
+		end	
+	end,
+}
+lq_guansuo:addSkill(lqyuxian)]]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 extension_ty = sgs.Package("taoyuanwange", sgs.Package_GeneralPack)
 
 
@@ -610,7 +752,7 @@ tychengshi = sgs.CreateTriggerSkill{
 				use.m_addHistory = false
 				data:setValue(use)
 			end
-		elseif player:getMark("tychengshiUse-Clear")<1 then
+		elseif player:getMark("tychengshiUse-Clear")<1 and player:hasTurn() then
 			local damage = data:toDamage()
 			if damage.card and damage.card:isRed() and damage.card:isKindOf("Slash") then
 				player:addMark("tychengshiUse-Clear")
@@ -637,8 +779,9 @@ tyfuwei = sgs.CreateTriggerSkill{
 			local damage = data:toDamage()
 			if player:isLord() or player:getGeneralName():contains("liubei") then
 				for _, p in sgs.qlist(room:getAllPlayers()) do
-					if p:hasSkill(self) and p:getMark("tyfuwei-Clear")<1 then
+					if p:hasSkill(self) and p:getMark("tyfuwei-Clear")<1 and p:hasTurn() then
 						if p~=player then
+							p:setTag("tyfuweiDamage",data)
 							local dc = room:askForExchange(p,self:objectName(),damage.damage,1,true,"tyfuwei0:"..player:objectName()..":"..damage.damage,true)
 							if dc then p:addMark("tyfuwei-Clear") room:giveCard(p,player,dc,self:objectName()) end
 						end
@@ -736,7 +879,7 @@ tychendeCard = sgs.CreateSkillCard{
 	on_use = function(self,room,source,targets)
 		room:showCard(source,self:getSubcards())
 		for i,to in sgs.list(targets)do
-			room:giveCard(source,to,self,self:getSkillName())
+			room:giveCard(source,to,self,self:getSkillName(),true)
 		end
 		local ids = sgs.IntList()
 		for i,id in sgs.list(self:getSubcards())do
@@ -985,7 +1128,7 @@ tyxingshavs = sgs.CreateViewAsSkill{
 		return pattern=="@@tyxingsha"
 	end,
 	enabled_at_play = function(self,player)
-		return player:getCardCount()>1
+		return player:getCardCount()>1 and player:hasTurn()
 		and player:getMark("tyxingshaUse-Clear")<1
 	end,
 }
@@ -1028,24 +1171,14 @@ tyxiezhan = sgs.CreateTriggerSkill{
 		if event == sgs.GameStart then
 			room:sendCompulsoryTriggerLog(player, self)
 			local gn = room:askForGeneral(player,"ty_fanjiang+ty_zhangda")
-			if player:getGeneral2Name()=="ty_fanjiang" or player:getGeneral2Name()=="ty_zhangda" then
-				room:changeHero(player,gn,false,false, true)
-			else
 				room:changeHero(player,gn,false,false)
-			end
-			
 		elseif event == sgs.EventPhaseStart then
 			if player:getPhase()==sgs.Player_Play then
 		    	room:sendCompulsoryTriggerLog(player, self)
 				if player:getGeneralName()=="ty_fanjiang" then
 					room:changeHero(player,"ty_zhangda",false,false)
-				elseif player:getGeneralName()=="ty_zhangda" then
+				else
 					room:changeHero(player,"ty_fanjiang",false,false)
-				end
-				if player:getGeneral2Name()=="ty_fanjiang" then
-					room:changeHero(player,"ty_zhangda",false,false, true)
-				elseif player:getGeneral2Name()=="ty_zhangda" then
-					room:changeHero(player,"ty_fanjiang",false,false, true)
 				end
 			end
 		end
@@ -1082,7 +1215,7 @@ tybianwo = sgs.CreateTriggerSkill{
 			local use = data:toCardUse()
 			if use.card:isDamageCard() and use.to:contains(player) and player:getMark("tybianwoUse-Clear")<1
 			and use.card:getEffectiveId()>0 and room:getCardOwner(use.card:getEffectiveId())==nil
-			and player:askForSkillInvoke(self,data) then
+			and player:hasTurn() and player:askForSkillInvoke(self,data) then
 				player:addMark("tybianwoUse-Clear")
 				player:addToPile("tyyuan",use.card)
 			end
@@ -1352,7 +1485,7 @@ tyyuantao = sgs.CreateTriggerSkill{
 			if use.card:getTypeId()==1 then
 				for _,p in sgs.list(room:getAllPlayers())do
 					if p:hasSkill(self) and p:getMark("tyyuantaoUse-Clear")<1
-					and p:askForSkillInvoke(self,data) then
+					and p:hasTurn() and p:askForSkillInvoke(self,data) then
 						use.card:addMark("tyyuantaoBf")
 						p:addMark("tyyuantaoUse-Clear")
 					end
@@ -1471,7 +1604,7 @@ ty2chengshivs = sgs.CreateViewAsSkill{
 		for _,p in sgs.list(player:getAliveSiblings())do
 			if p:getMark("&ty2chengshi+#"..player:objectName().."_lun")>0 then
 				return player:getCardCount()>0 and pattern:contains("slash")
-				and sgs.Sanguosha:getCurrentCardUseReason()==sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE
+				and sgs.Sanguosha:getCurrentCardUseReason()~=sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
 			end
 		end
 	end,
@@ -1515,8 +1648,7 @@ tyqianshou = sgs.CreateTriggerSkill{
 			if change.from==sgs.Player_NotActive then
 				for _,p in sgs.list(room:getOtherPlayers(player))do
 					if p:hasSkill(self) and (player:getHp()>p:getHp() or not player:isChained()) then
-						local n = p:getChangeSkillState(self:objectName())
-						if n<2 then
+						if p:getChangeSkillState(self:objectName())<2 then
 							local c = room:askForCard(p,".|red","tyqianshou0:"..player:objectName(),ToData(player),sgs.Card_MethodNone)
 							if c then
 								p:skillInvoked(self)
@@ -1524,8 +1656,8 @@ tyqianshou = sgs.CreateTriggerSkill{
 								room:showCard(p,c:getEffectiveId())
 								room:giveCard(p,player,c,self:objectName(),true)
 								room:setPlayerCardLimitation(p,"use",".|.|.|hand",false)
-								room:setPlayerMark(p,"&tyqianshou-Clear",1)
 								room:setPlayerMark(player,"&tyqianshou-Clear",1)
+								room:setPlayerMark(p,"&tyqianshou-Clear",1)
 							end
 						else
 							if player:getCardCount()>0 and p:askForSkillInvoke(self,player) then
@@ -1542,7 +1674,7 @@ tyqianshou = sgs.CreateTriggerSkill{
 					end
 				end
 			elseif change.from==sgs.Player_NotActive then
-				for _,p in sgs.list(room:getOtherPlayers(player))do
+				for _,p in sgs.qlist(room:getOtherPlayers(player))do
 					if p:getMark("&tyqianshou-Clear")>0 then
 						room:removePlayerCardLimitation(p,"use",".|.|.|hand")
 					end
@@ -1766,7 +1898,9 @@ tyqingshi = sgs.CreateTriggerSkill{
 						for i,pn in sgs.list(ys_data.tos)do
 							if ys_data.to2color[pn]:match("red") then
 								local to = room:findPlayerByObjectName(pn)
+								if to then
 								room:setPlayerMark(to,"&tyqingshi_lun",1)
+								end
 							end
 						end
 					elseif ys_data.result=="black" then
@@ -1774,8 +1908,10 @@ tyqingshi = sgs.CreateTriggerSkill{
 						for i,pn in sgs.list(ys_data.tos)do
 							if ys_data.to2color[pn]:match("black") then
 								local to = room:findPlayerByObjectName(pn)
+								if to then
 								room:setPlayerFlag(to,"tyqingshiBlack")
 								n = n+1
+								end
 							end
 						end
 						player:drawCards(n,self:objectName())
@@ -1783,7 +1919,9 @@ tyqingshi = sgs.CreateTriggerSkill{
 						for i,pn in sgs.list(ys_data.tos)do
 							if ys_data.to2color[pn]:match("black") then
 								local to = room:findPlayerByObjectName(pn)
+								if to then
 								room:setPlayerFlag(to,"-tyqingshiBlack")
+								end
 							end
 						end
 					end
@@ -2348,14 +2486,6 @@ tyxianqi = sgs.CreateTriggerSkill{
 }
 ty_anying:addSkill(tyxianqi)
 
-
-
-
-
-
-
-
-
 sgs.LoadTranslationTable{
 	["taoyuanwange"] = "桃园挽歌", 
 
@@ -2451,7 +2581,7 @@ sgs.LoadTranslationTable{
 	[":tyqianshou1"] = "转换技，其他角色回合开始时，若其体力值大于你或其未处于横置状态，①你可以展示并交给其一张红色牌，本回合你不能使用手牌且你与其不能成为牌的目标<font color=\"#01A5AF\"><s>②你可以令其展示一张牌并交给你，若此牌不为黑色，你失去1点体力</s></font>。",
 	[":tyqianshou2"] = "转换技，其他角色回合开始时，若其体力值大于你或其未处于横置状态，<font color=\"#01A5AF\"><s>①你可以展示并交给其一张红色牌，本回合你不能使用手牌且你与其不能成为牌的目标</s></font>②你可以令其展示一张牌并交给你，若此牌不为黑色，你失去1点体力。",
 	["tytanlong"] = "探龙",
-	[":tytanlong"] = "出牌阶段限X+1次，你可以与一名其他角色拼点。赢的角色可以获得对方拼点牌，然后视为对自己使用一张【铁索连环】（X为场上横置角色数）。",
+	[":tytanlong"] = "出牌阶段限X+1次，你可以拼点。赢的角色可以获得对方拼点牌，然后视为对自己使用一张【铁索连环】（X为场上横置角色数）。",
 	["tyxibei"] = "袭惫",
 	[":tyxibei"] = "当其他角色从牌堆外获得牌后，你可以摸一张牌，若此时为你的出牌阶段，你可以展示一张锦囊牌，然后此牌本回合内视为【火烧连营】直到离开你的手牌。",
 	["tyqianshou0"] = "你可以发动“谦守”展示并交给%src一张红色牌",
