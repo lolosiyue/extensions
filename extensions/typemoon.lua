@@ -348,13 +348,6 @@ jisha = sgs.CreateZeroCardViewAsSkill {
 	end,
 }
 
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 jishamod = sgs.CreateTriggerSkill {
 	name = "#jishamod",
 	frequency = sgs.Skill_NotFrequent,

@@ -5,12 +5,6 @@ sgs.LoadTranslationTable{
 	["sk"] = "极略三国SK包",
 }
 
-function Set(list)
-	local set = {}
-	for _, l in ipairs(list) do set[l] = true end
-	return set
-end
-
 sk_chaohuangSlash = sgs.CreateTriggerSkill{
     name = "sk_chaohuangSlash",
 	events = {},

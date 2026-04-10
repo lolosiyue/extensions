@@ -12,16 +12,6 @@ sgs.LoadTranslationTable{
 	["hunlie"] = "极略魂烈",
 }
 
-
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
-
-
 --全局配置类技能
 cuifeng_slash = sgs.CreateTriggerSkill{
 	name = "cuifeng_slash",
@@ -3740,7 +3730,7 @@ function acquireGenerals(zuoci, n)
 	zuoci:setTag("absense_generals_record", sgs.QVariant(table.concat(Huashens, "+")))
 end
 
-function getZhitianSkill(zuoci)
+local function getZhitianSkill(zuoci)
 	local room = zuoci:getRoom()
 	Hs_String = zuoci:getTag("absense_generals_record"):toString()
 	local zhitian_skills = {}
@@ -5296,7 +5286,7 @@ sgkgodxiaoqiao = sgs.General(extension, "sgkgodxiaoqiao", "sy_god", 3, false)
 	获得/失去一个与其性别不同/相同的武将技能。
 	引用：sgkgodxingwu
 ]]--
-function getGenderSkills(gender, is_same, n)
+local function getGenderSkills(gender, is_same, n)
 	local gender_sk = {}  --初始化存放技能的table容器
 	local room = sgs.Sanguosha:currentRoom()  --读取本局游戏的房间
 	local all = sgs.Sanguosha:getLimitedGeneralNames()  --读取本游戏所有武将名称
@@ -5356,7 +5346,7 @@ function getGenderSkills(gender, is_same, n)
 	end
 end
 
-function getTargetGenderSkills(target)
+local function getTargetGenderSkills(target)
 	local target_skills = {}
 	local all = sgs.Sanguosha:getLimitedGeneralNames()
 	local same_skills = {}
@@ -5799,7 +5789,7 @@ function randomGetN(table, count)
 	return new
 end
 
-function getDengjiLordSkills(skill_num)
+local function getDengjiLordSkills(skill_num)
 	local skills = {}
 	local to_names = {}
 	local room = sgs.Sanguosha:currentRoom()
@@ -5977,7 +5967,7 @@ sgkgodpangtong:addSkill(sgkgodqifeng)
 	技能描述：轮次开始时，你可以令一名角色获得一项计策。当任意角色完成计策后，你加1点体力上限并修改“栖凤”。
 	引用：sgkgodlunce, sgkgodluncexia, sgkgodluncezhong, sgkgodlunceshang
 ]]--
-function getLunceCondition(level)
+local function getLunceCondition(level)
 	local s1, s2, s3 = {"lunce_shang_suit", "lunce_shang_type"}, {"lunce_shang_acquireskill", "lunce_shang_loseskill"}, {"lunce_shang_causedying", "lunce_shang_dying"}
 	local z1, z2, z3 = {"lunce_zhong_2spade", "lunce_zhong_2heart"}, {"lunce_zhong_slash2dmg", "lunce_zhong_trick2dmg"}, {"lunce_zhong_2nature", "lunce_zhong_2rec"}
 	local x1, x2, x3 = {"lunce_xia_blackcard", "lunce_xia_redcard"}, {"lunce_xia_slash", "lunce_xia_trick"}, {"lunce_xia_damage", "lunce_xia_recover"}
@@ -5998,7 +5988,7 @@ function getLunceCondition(level)
 	return condition
 end
 
-function getLunceEffect(level)  --备注：上中下三策的执行效果的第三条总是负面效果，第二条有50%概率为负面效果
+local function getLunceEffect(level)  --备注：上中下三策的执行效果的第三条总是负面效果，第二条有50%概率为负面效果
 	local s = {"lunce_shang_gainsamekingdomskill", "lunce_shang_1maxhp1recover", "lunce_shang_loserandomskill", "lunce_shang_throwallcards"}
 	local z = {"lunce_zhong_drawphase", "lunce_zhong_slashtime", "lunce_zhong_turnover", "lunce_zhong_losemaxhp"}
 	local x = {"lunce_xia_draw2", "lunce_xia_recover1", "lunce_xia_throw2", "lunce_xia_firedamage"}
@@ -6022,7 +6012,7 @@ function getLunceEffect(level)  --备注：上中下三策的执行效果的第�
 	return l_effect
 end
 
-function lunceVoice(strategy)
+local function lunceVoice(strategy)
 	if strategy == "sgkgodshangce" then
 		return 3
 	elseif strategy == "sgkgodzhognce" then
@@ -6032,7 +6022,7 @@ function lunceVoice(strategy)
 	end
 end
 
-function updateLunce(player)
+local function updateLunce(player)
 	local room = sgs.Sanguosha:currentRoom()
 	local worst, mid, best = {}, {}, {}
 	for _, pe in sgs.qlist(room:getAlivePlayers()) do
@@ -6074,7 +6064,7 @@ function updateLunce(player)
 	room:changeTranslation(player, "sgkgodlunce")
 end
 
-function updateQifeng(pangtong)
+local function updateQifeng(pangtong)
 	local room = sgs.Sanguosha:currentRoom()
 	local qifeng_draw = pangtong:getTag("qifeng_draw"):toInt()  --完成下策，“栖凤”复活后摸牌数+1
 	local qifeng_rec = pangtong:getTag("qifeng_rec"):toInt()  --完成中策，“栖凤”复活后回复体力量+1
@@ -6127,7 +6117,7 @@ function getOneKingdomSkills(kingdom, n)
 	end
 end
 
-function doLunceEffect(target, effect)
+local function doLunceEffect(target, effect)
 	local room = sgs.Sanguosha:currentRoom()
 	if effect == "lunce_xia_draw2" then
 		room:setPlayerMark(target, "&sgkgodxiace", 0)
@@ -6195,7 +6185,7 @@ function doLunceEffect(target, effect)
 	end
 end
 
-function finishStrategy(player, strategy)
+local function finishStrategy(player, strategy)
 	local room = sgs.Sanguosha:currentRoom()
 	local str = player:getTag(strategy):toString():split("+")
 	room:broadcastSkillInvoke("sgkgodlunce", lunceVoice(strategy))

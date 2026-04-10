@@ -8,13 +8,6 @@ sgs.LoadTranslationTable{
 	["legends_card"] = "英雄联盟",
 }
 local skills = sgs.SkillList()  --定义非列表技能表
-Table2IntList = function(theTable)  --杀不能闪的前提
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 
 --英雄
 --德玛西亚皇子·嘉文四世

@@ -48,16 +48,6 @@ do
     cfg.kingdom_colors["qh"] = "#91ffb2"
 end
 
-----------------定义函数----------------
-
-Table2IntList = function(theTable)
-    local result = sgs.IntList()
-    for i = 1, #theTable, 1 do
-        result:append(theTable[i])
-    end
-    return result
-end
-
 ----------------创建卡牌----------------
 
 -- 乐不思蜀-强化

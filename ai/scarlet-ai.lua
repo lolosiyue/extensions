@@ -3277,3 +3277,132 @@ sgs.ai_skill_choice.s4_silie = function(self, choices, data)
     end
     return "s4_silie_draw"
 end
+
+sgs.ai_skill_invoke.s4_jieyi = function(self, data)
+	local str = data:toString()
+	local strs = str:split(":")
+	local tos = strs[4]:split("+")
+	local ids = strs[5]:split("+")
+	local cc
+	for i,pt in sgs.list(tos) do
+		local p = self.room:findPlayerByObjectName(pt)
+		if p == self.player then
+			cc = sgs.Card_Parse(ids[i])
+			if cc==nil then
+				continue
+			end
+			cc = cc:getColorString()
+		end
+	end
+	for n,pr in sgs.list(tos) do
+		local tc = sgs.Card_Parse(ids[n])
+		if tc==nil then
+			continue
+		end
+		tc = tc:getColorString()
+		if pr~=self.player and cc~=tc then
+			local q = self.room:findPlayerByObjectName(pr)
+			if q and self:doDisCard(q, "h", true) then
+				return true
+			end
+		end
+	end
+end
+
+sgs.ai_skill_playerschosen.s4_jieyi = function(self, targets, max, min)
+	local selected = sgs.SPlayerList()
+	local can_choose = sgs.QList2Table(targets)
+	self:sort(can_choose, "defense")
+	for _,target in ipairs(can_choose)do
+		if self:canDamage(target, self.player, nil) then
+			selected:append(target)
+			if selected:length() >= max then break end
+		end
+	end
+	return selected
+end
+
+sgs.ai_fill_skill.s4_moubei = function(self)
+	return sgs.Card_Parse("#s4_moubei:.:")
+end
+
+sgs.ai_skill_use_func["#s4_moubei"] = function(card, use, self)
+	use.card = card
+end
+
+sgs.ai_use_value.s4_moubei = 8.5
+sgs.ai_use_priority.s4_moubei = 9.5
+
+sgs.ai_skill_use["@@s4_moubei"] = function(self, prompt)
+	local cards = self:addHandPile("he")
+	cards = self:sortByUseValue(cards,true)
+	for _,card in ipairs(cards)do
+		local slash = dummyCard("yj_stabs_slash")
+		slash:setSkillName("_s4_moubei")
+		slash:addSubcard(card)
+		local d = self:aiUseCard(slash)
+		if d.card and d.to
+		then
+			local tos = {}
+			for _,p in sgs.list(d.to)do
+				table.insert(tos,p:objectName())
+			end
+			return slash:toString() .. "->" .. table.concat(tos,"+")
+		end
+	end
+    return "."
+end
+
+sgs.ai_skill_discard.s4_moubei = function(self, discard_num, min_num, optional, include_equip, pattern)
+	local cards = sgs.QList2Table(self.player:getCards("h"))
+	if #cards == 0 then return {} end
+
+    self:sortByKeepValue(cards)
+    local source = self.room:getCurrent()
+    local moubei_card
+    if source and source:isAlive() then
+        moubei_card = source:getTag("s4_moubei_card"):toCard()
+    end
+	if not moubei_card then return {cards[1]:getEffectiveId()} end
+
+    local same_color, diff_color = {}, {}
+    for _, c in ipairs(cards) do
+        if moubei_card and c:getColor() == moubei_card:getColor() then
+            table.insert(same_color, c)
+        else
+            table.insert(diff_color, c)
+        end
+    end
+
+    local prefer_diff_color = false
+    if #same_color > 0 and #cards >= 4 and (self:getOverflow() > 0 or self.player:getHandcardNum() >= self.player:getHp() + 2) then
+        for _, c in ipairs(same_color) do
+            local slash = dummyCard("yj_stabs_slash")
+            slash:setSkillName("_s4_moubei")
+            slash:addSubcard(c)
+            local d = self:aiUseCard(slash)
+            if d.card and d.to and d.to:length() > 0 then
+                prefer_diff_color = true
+                break
+            end
+        end
+    end
+
+    local pick = nil
+    if prefer_diff_color and #diff_color > 0 then
+        pick = diff_color
+    elseif #same_color > 0 then
+        pick = same_color
+    else
+        pick = diff_color
+    end
+
+    if source and source:isAlive() and source:objectName() ~= self.player:objectName() and self:isFriend(source) then
+        pick = sgs.reverse(pick)
+    end
+	if #pick > 0 then
+		return {pick[1]:getEffectiveId()}
+	end
+    return { }
+end
+

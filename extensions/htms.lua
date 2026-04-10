@@ -5419,12 +5419,6 @@ wnlz = sgs.CreateTriggerSkill {
 	end,
 }
 
-function Set(list)
-	local set = {}
-	for _, l in ipairs(list) do set[l] = true end
-	return set
-end
-
 hxssVS = sgs.CreateOneCardViewAsSkill {
 	name = "hxss",
 	filter_pattern = "BasicCard",
@@ -9391,14 +9385,6 @@ JihangGlobalClear = sgs.CreateTriggerSkill {
 		room:setPlayerProperty(player, "JihnagTargets", sgs.QVariant(""))
 	end
 }
-
-function Table2IntList(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 
 jiaoxingVS = sgs.CreateOneCardViewAsSkill {
 	name = "jiaoxing",
@@ -18950,26 +18936,6 @@ s_yueqian = sgs.CreateTriggerSkill {
 	end,
 }
 --新人类
-function generateAllCardObjectNameTablePatterns()
-	local patterns = {}
-	for i = 0, 10000 do
-		local card = sgs.Sanguosha:getEngineCard(i)
-		if card == nil then break end
-		if (card:isKindOf("BasicCard") or card:isKindOf("TrickCard")) and not table.contains(patterns, card:objectName()) then
-			table.insert(patterns, card:objectName())
-		end
-	end
-	return patterns
-end
-
-function getPos(table, value)
-	for i, v in ipairs(table) do
-		if v == value then
-			return i
-		end
-	end
-	return 0
-end
 
 local pos = 0
 s_newtype_select = sgs.CreateSkillCard {

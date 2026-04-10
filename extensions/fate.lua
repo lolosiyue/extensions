@@ -2350,15 +2350,6 @@ fatebimie=sgs.CreateTriggerSkill{
 	end,
 }
 
-
-
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 --Chulainn Lancer
 --突刺 当你使用【杀】指定一名角色为目标后，你可以弃一张手牌使此【杀】伤害+1且强制命中。
 fatetuci=sgs.CreateTriggerSkill{

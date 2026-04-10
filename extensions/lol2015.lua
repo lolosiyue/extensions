@@ -1077,11 +1077,6 @@ sgs.LoadTranslationTable{
 }
 
 lol_xlnw = sgs.General(extension, "lol_xlnw", "god", 3, false)
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do result:append(theTable[i]) end
-	return result
-end
 lol_xlnw_t = sgs.CreateTriggerSkill{
 	name = "lol_xlnw_t",
 	frequency = sgs.Skill_Compulsory,

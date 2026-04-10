@@ -1,7 +1,12 @@
 ﻿module("extensions.AnimationCardpack",package.seeall)
 extension = sgs.Package("AnimationCardpack", sgs.Package_CardPack)
 
-
+--- 檢查特定玩家的判定區內是否含有【修學旅行】
+--- 
+--- **功能描述**：
+--- 用於判定該玩家是否受到【修學旅行】的負面（或保護）效果影響。
+---@param player sgs.ServerPlayer 待檢查的玩家
+---@return boolean 是否含有該延時錦囊
 function hasRemoved(player)
 	if player:containsTrick("shuugakulyukou") then
 		return true
@@ -10,6 +15,12 @@ function hasRemoved(player)
 	end
 end
 
+--- 檢查全場存活角色中，是否至少有一人的判定區內含有【修學旅行】
+--- 
+--- **用途**：
+--- 用於優化全局距離計算或 AOE 目標過濾。如果此函數回傳 `false`，則可以跳過複雜的距離重算邏輯。
+---@param room sgs.Room 房間對象
+---@return boolean 全場是否存在受影響的角色
 function existSomeoneRemove(room)
 	local players = room:getAlivePlayers()
 	local exist = true
@@ -106,13 +117,6 @@ Elucidator_fu = sgs.CreateTriggerSkill{	--阐释者的全局效果
 	end
 }
 
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 htms_rishi = sgs.CreateTriggerSkill{
 	name = "htms_rishi",
 	events = {sgs.TargetConfirmed},
@@ -1024,7 +1028,18 @@ rotenburo = sgs.CreateTrickCard{
 	together_go_die1:setSuit(3)
 
 	sgs.Sanguosha:cloneCard("jink", 3, 10):setParent(extension)
-	
+
+--- 執行卡牌的「整理」虛擬移動（全場玩家可見） UI上放到結算區
+--- 
+--- **機制描述**：
+--- 1. **全場可見**：與 HeavenMove 不同，此函數將移動封包發送給全體玩家 (`room:getPlayers()`)。
+--- 2. **虛擬牌堆**：使用以 `&` 開頭的專屬牌堆 `&arrangement`，通常用於顯示某些特定的遊戲流程（特殊的亮牌流程）。
+---
+--- **注意**：如果調用後不進行物理移動或設置 Tag 追蹤，這僅會造成客戶端顯示上的變化。
+---
+---@param ids sgs.IntList | sgs.QList 要移動的卡牌 ID 列表
+---@param movein boolean `true` 為移入整理牌堆；`false` 為移出
+---@param player sgs.ServerPlayer 卡牌所屬的玩家
 function arrangementMove(ids, movein, player)
 	local room = player:getRoom()
 	if movein then
@@ -1090,17 +1105,18 @@ end
 	    local room = effect.from:getRoom()
         local card = room:askForExchange(effect.to, self:objectName(), 4, 1, false, "bunkasai_arrange", true)
 		if card then
-		local ids = card:getSubcards()
-		local suits = {}
-		room:setPlayerMark(effect.to, "arrange", 2)
-        for _,id in sgs.qlist(ids) do
-            local acard = sgs.Sanguosha:getCard(id)
-			if not table.contains(suits, acard:getSuit()) then
-				table.insert(suits, id)
-				room:addPlayerMark(effect.to, "arrange", 1)
+			local ids = card:getSubcards()
+			local suits = {}
+			room:setPlayerMark(effect.to, "arrange", 2)
+			for _,id in sgs.qlist(ids) do
+				local acard = sgs.Sanguosha:getCard(id)
+				if not table.contains(suits, acard:getSuit()) then
+					table.insert(suits, id)
+					room:addPlayerMark(effect.to, "arrange", 1)
+				end
 			end
-		end
-		arrangementMove(ids, false, effect.to)
+			arrangementMove(ids, false, effect.to)
+			room:showCard(effect.to, ids)
 		else
 		    room:setPlayerMark(effect.to, "arrange", 1)
 		end

@@ -32,14 +32,6 @@ function checkLength(check_table) --检测table是否为空并返回对应值
 	return #check_table > 0 and table.concat(check_table, ",") or "NULL"
 end
 
-Table2IntList = function(theTable) --表转数组
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
-
 function useEquip(player, pattern) --随机使用牌堆中的武器牌
 	if pattern == nil then
 		pattern = "EquipCard"

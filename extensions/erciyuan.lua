@@ -395,13 +395,7 @@ LuaPaoxiao = sgs.CreateTargetModSkill { --咆哮
 		end
 	end,
 }
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
+
 LuaWushuang = sgs.CreateTriggerSkill { --wushuang
 	name = "LuaWushuang",
 	frequency = sgs.Skill_Compulsory,
@@ -2796,13 +2790,6 @@ suipian = sgs.CreateTriggerSkill
 		end
 	}
 --------------------------------------------------------------圣枪@hibiki
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 LuaGungnir = sgs.CreateTriggerSkill {
 	name = "LuaGungnir",
 	events = { sgs.TargetSpecified, sgs.ConfirmDamage, sgs.CardUsed, sgs.EventPhaseStart },

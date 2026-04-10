@@ -4541,13 +4541,6 @@ SE_Juji_Start = sgs.CreateTriggerSkill {
 		end
 	end
 }
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 SE_Juji = sgs.CreateTriggerSkill {
 	name = "SE_Juji",
 	frequency = sgs.Skill_Compulsory,
@@ -8520,13 +8513,6 @@ sgs.LoadTranslationTable {
 
 --巴斯克维尔-雷姬
 
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 SE_Juji_Reki = sgs.CreateTriggerSkill {
 	name = "SE_Juji_Reki",
 	frequency = sgs.Skill_Compulsory,
@@ -10510,28 +10496,6 @@ sgs.LoadTranslationTable {
 }
 
 --死灵法师
-
-function generateAllCardObjectNameTablePatterns()
-	local patterns = {}
-	for i = 0, 10000 do
-		local card = sgs.Sanguosha:getEngineCard(i)
-		if card == nil then break end
-		if (card:isKindOf("BasicCard") or card:isKindOf("TrickCard")) and not table.contains(patterns, card:objectName()) then
-			table.insert(patterns, card:objectName())
-		end
-	end
-	return patterns
-end
-
-function getPos(table, value)
-	for i, v in ipairs(table) do
-		if v == value then
-			return i
-		end
-	end
-	return 0
-end
-
 local pos = 0
 se_chenyan_select = sgs.CreateSkillCard {
 	name = "se_chenyan",
@@ -12385,14 +12349,6 @@ sgs.LoadTranslationTable {
 
 }
 
-
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 
 
 SE_Wuwei = sgs.CreateTriggerSkill {

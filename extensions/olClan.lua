@@ -1,6 +1,19 @@
 extension = sgs.Package("olclan")
 
 local ol_clans = {}
+--- 判斷兩名玩家是否屬於同一宗族 (Clan)
+--- 
+--- **判定邏輯**：
+--- 1. **身分一致性**：若兩者為同一名玩家物件，回傳 `true`。
+--- 2. **宗族表比對**：遍歷 `ol_clans` 全域表。
+--- 3. **後綴匹配**：利用 `endsWith` 檢查武將主將名（GeneralName）。
+---    - 若 `first` 匹配到某宗族 A 的成員後綴，則檢查 `second` 是否也匹配該宗族 A 的成員後綴。
+---
+--- **注意**：此函數極度依賴全域變數 `ol_clans` 的結構（預期為 `table<string, string[]>`）。
+---
+---@param first ServerPlayer 第一名待檢查的玩家
+---@param second ServerPlayer 第二名待檢查的玩家
+---@return boolean 是否屬於同一宗族
 function isSameClan(first, second)
 	if first:objectName() == second:objectName() then
 		return true
@@ -22,6 +35,15 @@ end
 
 --==颍川·钟氏==--
 
+--- 內部輔助函數：根據 UTF-8 首位元組判定字元佔用的位元組數
+--- 
+--- **判定標準**：
+--- - 1 byte (0-191): ASCII 或後續位元組
+--- - 2 bytes (192-224): 多位元組字元起始
+--- - 3 bytes (225-240): 中文字元常用區間
+--- - 4 bytes (>240): 極少數特殊字元
+---@param tmp integer|nil 位元組的數值 (0-255)
+---@return integer bytes 該字元佔用的位元組長度
 local function chsize(tmp)
 	if not tmp then
 		return 0
@@ -35,6 +57,17 @@ local function chsize(tmp)
 		return 1
 	end
 end
+
+--- 計算 UTF-8 字串的真實字元長度（而非位元組數）
+--- 
+--- **功能描述**：
+--- 1. **自動轉換**：若傳入的是 `sgs` 物件，則自動翻譯為對應的 objectName。
+--- 2. **字元掃描**：透過位元組特徵識別多位元組字元（如中文），精確計算視覺上的字數。
+---
+--- **使用場景**：用於 UI 佈局計算、字數限制（如自定義技能名或日誌格式化）。
+---
+---@param str string|any 要計算長度的字串或可翻譯的 sgs 物件
+---@return integer length 真實字元總數
 function utf8len(str)
 	if type(str) ~= "string" then
 		str = sgs.Sanguosha:translate(str:objectName())

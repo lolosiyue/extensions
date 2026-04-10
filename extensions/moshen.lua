@@ -1365,13 +1365,6 @@ extension:insertRelatedSkills("ms_huangwei", "#ms_huangweimax")
 	引用：ms_shawei, ms_shaweislash
 ]]
 --
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 
 function isShaweiPattern(card)
 	if card:isKindOf("Slash") then

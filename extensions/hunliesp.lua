@@ -458,9 +458,6 @@ sgkgodspzhuge = sgs.General(extension, "sgkgodspzhuge", "sy_god", 7)
 
 
 local json = require ("json")
-function isNormalGameMode(mode_name)
-	return mode_name:endsWith("p") or mode_name:endsWith("pd") or mode_name:endsWith("pz")
-end
 function getAllSkills()
 	local room = sgs.Sanguosha:currentRoom()
 	local Huashens = {}
@@ -1265,7 +1262,7 @@ sgs.Sanguosha:addSkills(zhangjiao_yinyangskills)
 	技能描述：锁定技，若你的体力值：多于已损失体力，你拥有“极阳”；少于已损失体力，你拥有“极阴”；等于已损失体力，你拥有“相生”。
 	引用：sgkgodyinyang
 ]]--
-function getYinyangState(player)
+local function getYinyangState(player)
 	if player:getHp() > player:getLostHp() then  --体力值大于损失体力，阳
 		return "hp_Yang"
 	end
@@ -1277,7 +1274,7 @@ function getYinyangState(player)
 	end
 end
 
-function YinyangChange(room, player, yinyang_flag, skill_name)
+local function YinyangChange(room, player, yinyang_flag, skill_name)
 	local spyinyang_skills = player:getTag("SPYinyangSkills"):toString():split("+")
 	if not player:isAlive() then return false end
 	if getYinyangState(player) == yinyang_flag then
@@ -1333,7 +1330,7 @@ sgkgodspzhangjiao:addSkill(sgkgodyinyang)
 	交换形式：多体力与少损失体力交换，流失差额体力；少体力与多损失体力交换，回复差额体力。
 	引用：sgkgoddingming
 ]]--
-function exchangeYinYang(from, target)  --“交换”一名角色的体力与损失体力
+local function exchangeYinYang(from, target)  --“交换”一名角色的体力与损失体力
 	local room = from:getRoom()
 	local x = math.abs(target:getHp() - target:getLostHp())  --先计算目标体力与已损失体力的差（取绝对值）
 	if x > 0 then
@@ -2147,7 +2144,7 @@ extension:insertRelatedSkills("sgkgodyingshi", "#sgkgodyingshiRob")
 	技能描述：每种牌名限一次，游戏开始时/当你使用手牌里的非延时锦囊牌时，你可以将任一种非延时锦囊牌的牌名/此牌名称标记为“狼”。当你使用手牌里的非延时锦囊牌后，你可视为对其中任意个目标依次使用所有“狼”。
 	引用：sgkgodlangxi
 ]]--
-function prepareLangxiRecord(player, langxi_str)
+local function prepareLangxiRecord(player, langxi_str)
 	local room = player:getRoom()
 	local langxi_names = player:property(langxi_str):toString():split("+")
 	local lx = sgs.IntList()
@@ -2298,6 +2295,19 @@ sgkgodspsimayi:addSkill(sgkgodlangxi)
 	状态或失去此技能后，你可移去所有“神隐”标记，将你回溯至记录状态，并摸2X张牌（X为你移去的“神隐”标记数）。
 	引用：sgkgodshenyin
 ]]--
+
+--- 獲取當前遊戲中所有的卡牌 ID 列表
+--- 
+--- **掃描範圍**：
+--- 1. **摸牌堆** (`getDrawPile`)
+--- 2. **棄牌堆** (`getDiscardPile`)
+--- 3. **所有存活玩家** (`getAlivePlayers`)：包含手牌 (h)、裝備區 (e) 與判定區 (j)。
+---
+--- **注意**：
+--- - 此函數不包含「遊戲外」的牌（如置於武將牌上的「標記牌」或 `Special` 牌堆）。
+--- - 使用 `getEffectiveId()` 以確保獲取的是卡牌在引擎中的真實唯一識別碼。
+---
+---@return sgs.IntList allInts 包含全場卡牌 ID 的列表
 function getAllCardIds()
 	local room = sgs.Sanguosha:currentRoom()
 	local allInts = sgs.IntList()
@@ -2315,7 +2325,7 @@ function getAllCardIds()
 	return allInts
 end
 
-function shenyinRecord(player)
+local function shenyinRecord(player)
 	local room = sgs.Sanguosha:currentRoom()
 	local shenyin_data = {"shenyin_hp", "shenyin_maxhp", "shenyin_skills", "shenyin_yingshi", "shenyin_langxi"}  --前两项记录体力、体力上限
 	--记录生命值
@@ -2339,7 +2349,7 @@ function shenyinRecord(player)
 	room:setPlayerProperty(player, "shenyin_data", sgs.QVariant(table.concat(shenyin_data, "+")))
 end
 
-function shenyinRewrite(player)
+local function shenyinRewrite(player)
 	local room = sgs.Sanguosha:currentRoom()
 	local shenyin_data = player:property("shenyin_data"):toString():split("+")
 	local rec_hp_data, rec_maxhp_data, rec_skills_data, rec_yingshi_data, rec_langxi_data, X = shenyin_data[1], shenyin_data[2], shenyin_data[3], shenyin_data[4], shenyin_data[5], player:getMark("&sgkgodshenyin")
@@ -2512,7 +2522,7 @@ sgkgodspzhaoyun = sgs.General(extension, "sgkgodspzhaoyun", "sy_god", 1)
 	的负面效果前，你可以将此效果随机改为另一种负面效果。
 	引用：sgkgodqianyuan
 ]]--
-function qy_debuffs()
+local function qy_debuffs()
 	return {"qianyuan_damaged", "qianyuan_losehp", "qianyuan_losemaxhp", "qianyuan_discard", 
 	"qianyuan_loseskill", "qianyuan_invalidskill", "qianyuan_chained", "qianyuan_turnover"}
 	--【潜渊】定义的8种负面效果：受到伤害、失去体力、减少体力上限、弃置牌、失去技能、技能被无效、被横置、被翻至背面。其中前4项需要记录对应数值
@@ -4708,7 +4718,7 @@ end
 
 
 --做好机关之后，需要赋予其描述
-function updateSchemeSkill(player, scheme_tag)
+local function updateSchemeSkill(player, scheme_tag)
     local room = sgs.Sanguosha:currentRoom()
     local scheme = room:getTag(scheme_tag):toString():split("+")  --机关技能组装后包含5条信息，分别是机关技能名，时机，发动目标，执行效果，限制次数
     local scheme_name, new_timing, new_targets, new_effect, limit_time = scheme[1], scheme[2], scheme[3], scheme[4], tonumber(scheme[5])
@@ -4719,7 +4729,7 @@ function updateSchemeSkill(player, scheme_tag)
 end
 
 --机关命名，开始组装机关
-function schemeName(player)
+local function schemeName(player)
 	local room = player:getRoom()
 	local first = {"sgkgodjiguan_jia", "sgkgodjiguan_yi", "sgkgodjiguan_bing", "sgkgodjiguan_ding", "sgkgodjiguan_wu",
 	"sgkgodjiguan_ji", "sgkgodjiguan_geng", "sgkgodjiguan_xin", "sgkgodjiguan_ren", "sgkgodjiguan_gui"}
@@ -4770,7 +4780,7 @@ function schemeName(player)
 end
 
 --统计【机关】技能个数，等于7个禁止发动
-function countSchemeNum(room)
+local function countSchemeNum(room)
 	local sum = 0
 	for _, pe in sgs.qlist(room:getAlivePlayers()) do
 		for _, skill in sgs.qlist(pe:getVisibleSkillList()) do
@@ -4783,7 +4793,7 @@ function countSchemeNum(room)
 end
 
 --判断某角色是否有【机关】技能
-function hasSchemeSkill(target)
+local function hasSchemeSkill(target)
 	local has = false
 	for _, skill in sgs.qlist(target:getVisibleSkillList()) do
 		if string.find(skill:objectName(), "sgkgodjiguan_") then
