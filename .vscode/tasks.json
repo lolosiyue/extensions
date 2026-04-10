@@ -1,0 +1,34 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Format extensions Lua",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/scripts/format-extensions.ps1"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Check extensions Lua format",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/scripts/format-extensions.ps1",
+                "-Check"
+            ],
+            "group": "test",
+            "problemMatcher": []
+        }
+    ]
+}

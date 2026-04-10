@@ -1,5 +1,5 @@
 module("extensions.dmptouhou", package.seeall) --游戏包
-extension = sgs.Package("dmptouhou")           --增加拓展包
+extension = sgs.Package("dmptouhou") --增加拓展包
 
 --势力
 
@@ -38,14 +38,26 @@ se_mingqie = sgs.CreateTriggerSkill {
 		local targets = use.to
 		local card = use.card
 		local room = player:getRoom()
-		if use.to:length() > 1 or use.to:length() == 0 then return end
-		if not use.from or not use.from:hasSkill(self:objectName()) then return end
-		if use.to:contains(use.from) then return end
+		if use.to:length() > 1 or use.to:length() == 0 then
+			return
+		end
+		if not use.from or not use.from:hasSkill(self:objectName()) then
+			return
+		end
+		if use.to:contains(use.from) then
+			return
+		end
 		local to = use.to:at(0)
 		local from = use.from
-		if to:getEquips():length() == 0 then return end
-		if to:hasFlag("se_mingqie_used") then return end
-		if not from:askForSkillInvoke(self:objectName(), data) then return end
+		if to:getEquips():length() == 0 then
+			return
+		end
+		if to:hasFlag("se_mingqie_used") then
+			return
+		end
+		if not from:askForSkillInvoke(self:objectName(), data) then
+			return
+		end
 		room:broadcastSkillInvoke(self:objectName())
 		local id = room:askForCardChosen(from, to, "he", self:objectName())
 		room:obtainCard(from, id)
@@ -53,7 +65,7 @@ se_mingqie = sgs.CreateTriggerSkill {
 		if sgs.Sanguosha:getCard(id):isBlack() then
 			from:gainMark("@p_point")
 		end
-	end
+	end,
 }
 
 se_mingqie_filter = sgs.CreateFilterSkill {
@@ -80,7 +92,7 @@ se_mingqie_target_mod = sgs.CreateTargetModSkill {
 		else
 			return 0
 		end
-	end
+	end,
 }
 
 --魔炮
@@ -94,14 +106,16 @@ se_mopaocard = sgs.CreateSkillCard {
 	on_use = function(self, room, source, targets)
 		local target = targets[1]
 		local count = source:getMark("@p_point")
-		if count < 4 then return end
+		if count < 4 then
+			return
+		end
 		source:loseMark("@p_point", 4)
 		local direction = room:askForChoice(source, self:objectName(), "left+right")
 		local damage = sgs.DamageStruct()
 		damage.from = source
 		if direction == "right" then
 			local next_man = source:getNextAlive()
-			while (next_man:objectName() ~= target:objectName()) do
+			while next_man:objectName() ~= target:objectName() do
 				damage.to = next_man
 				room:damage(damage)
 				next_man = next_man:getNextAlive()
@@ -126,7 +140,6 @@ se_mopaocard = sgs.CreateSkillCard {
 				damage.to = tos:at(j)
 				room:damage(damage)
 			end
-
 
 			damage.to = target
 			if target:getEquips():length() == 0 then
@@ -161,7 +174,7 @@ se_wushi = sgs.CreateDistanceSkill {
 			return 99
 		end
 		return 0
-	end
+	end,
 }
 
 --无识
@@ -181,23 +194,28 @@ se_wuyi = sgs.CreateTriggerSkill {
 			if wore < maxhp then
 				room:loseMaxHp(player, maxhp - wore)
 				local target = room:askForPlayerChosen(player, room:getAlivePlayers(), "se_wuyi_losehp", "se_wuyi_losehp")
-				if target then room:loseHp(target, 1, true, player, self:objectName()) end
+				if target then
+					room:loseHp(target, 1, true, player, self:objectName())
+				end
 				if player:getHp() < hp then
 					local x = 2 * (hp - player:getHp())
 					room:setPlayerMark(player, "se_wuyi-draw", x)
 					target = room:askForPlayerChosen(player, room:getAlivePlayers(), "se_wuyi_draw", "se_wuyi_draw")
-					if target then target:drawCards(2 * (hp - player:getHp())) end
+					if target then
+						target:drawCards(2 * (hp - player:getHp()))
+					end
 				end
 			elseif wore > maxhp then
 				room:setPlayerProperty(player, "maxhp", sgs.QVariant(wore))
-				local target = room:askForPlayerChosen(player, room:getAlivePlayers(), "se_wuyi_recover",
-					"se_wuyi_recover")
+				local target = room:askForPlayerChosen(player, room:getAlivePlayers(), "se_wuyi_recover", "se_wuyi_recover")
 				local re = sgs.RecoverStruct()
 				re.who = target
-				if target then room:recover(target, re, true) end
+				if target then
+					room:recover(target, re, true)
+				end
 			end
 		end
-	end
+	end,
 }
 
 --窥心
@@ -214,7 +232,7 @@ se_kuixincard = sgs.CreateSkillCard {
 			room:showAllCards(effect.to, effect.from)
 			room:setPlayerFlag(effect.to, "se_kuixin_used")
 		end
-	end
+	end,
 }
 se_kuixin = sgs.CreateZeroCardViewAsSkill {
 	name = "se_kuixin",
@@ -223,7 +241,7 @@ se_kuixin = sgs.CreateZeroCardViewAsSkill {
 	end,
 	enabled_at_play = function(self, target)
 		return true
-	end
+	end,
 }
 
 --回想
@@ -239,11 +257,10 @@ se_huixiangCard = sgs.CreateSkillCard {
 			for _, cd in sgs.qlist(source:getPile("satori_memory")) do
 				dummy:addSubcard(cd)
 			end
-			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", nil, self:objectName(),
-				"")
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", nil, self:objectName(), "")
 			room:throwCard(dummy, reason, nil)
 		end
-	end
+	end,
 }
 se_huixiangVS = sgs.CreateViewAsSkill {
 	name = "se_huixiang",
@@ -271,8 +288,7 @@ se_huixiangVS = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_response = function(self, player, pattern)
 		return pattern == "@@se_huixiang"
-	end
-
+	end,
 }
 se_huixiang = sgs.CreateTriggerSkill {
 	name = "se_huixiang",
@@ -284,7 +300,9 @@ se_huixiang = sgs.CreateTriggerSkill {
 		if event == sgs.EventPhaseStart then
 			if player:getPhase() == sgs.Player_Start and player:hasSkill(self:objectName()) and player:getPile("satori_memory"):length() > 0 then
 				local max = math.ceil(player:getHp() / 2)
-				if max <= 0 then return end
+				if max <= 0 then
+					return
+				end
 				local prompt = string.format("@se_huixiang:%s", max)
 				if room:askForUseCard(player, "@@se_huixiang", prompt) then
 					room:broadcastSkillInvoke(self:objectName())
@@ -310,12 +328,20 @@ se_huixiang = sgs.CreateTriggerSkill {
 			end
 		elseif event == sgs.CardFinished then
 			local use = data:toCardUse()
-			if not use.card then return end
-			if not use.card:isKindOf("BasicCard") and not use.card:isNDTrick() then return end
+			if not use.card then
+				return
+			end
+			if not use.card:isKindOf("BasicCard") and not use.card:isNDTrick() then
+				return
+			end
 
 			for _, satori in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-				if satori:getPhase() ~= sgs.Player_NotActive then continue end
-				if satori:objectName() == player:objectName() then continue end
+				if satori:getPhase() ~= sgs.Player_NotActive then
+					continue
+				end
+				if satori:objectName() == player:objectName() then
+					continue
+				end
 
 				local id
 				if use.card:getSubcards():length() > 0 then
@@ -329,9 +355,15 @@ se_huixiang = sgs.CreateTriggerSkill {
 				else
 					id = use.card:getEffectiveId()
 
-					if id == -1 then return end
-					if use.card:isVirtualCard() then return end
-					if room:getCardPlace(use.card:getEffectiveId()) ~= sgs.Player_DiscardPile then return end
+					if id == -1 then
+						return
+					end
+					if use.card:isVirtualCard() then
+						return
+					end
+					if room:getCardPlace(use.card:getEffectiveId()) ~= sgs.Player_DiscardPile then
+						return
+					end
 					--	if not satori:askForSkillInvoke(self:objectName(), data) then return end
 					room:broadcastSkillInvoke(self:objectName())
 					satori:addToPile("satori_memory", id)
@@ -339,14 +371,25 @@ se_huixiang = sgs.CreateTriggerSkill {
 			end
 		elseif event == sgs.CardResponded then
 			local use = data:toCardResponse()
-			if not use.m_card then return end
-			if use.m_card:isVirtualCard() then return end
-			if room:getCardPlace(use.m_card:getEffectiveId()) ~= sgs.Player_PlaceTable then return end
-			if not use.m_card:isKindOf("BasicCard") and not use.m_card:isKindOf("TrickCard") then return end
+			if not use.m_card then
+				return
+			end
+			if use.m_card:isVirtualCard() then
+				return
+			end
+			if room:getCardPlace(use.m_card:getEffectiveId()) ~= sgs.Player_PlaceTable then
+				return
+			end
+			if not use.m_card:isKindOf("BasicCard") and not use.m_card:isKindOf("TrickCard") then
+				return
+			end
 			for _, satori in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-				if satori:getPhase() ~= sgs.Player_NotActive then continue end
-				if satori:objectName() == player:objectName() then continue end
-
+				if satori:getPhase() ~= sgs.Player_NotActive then
+					continue
+				end
+				if satori:objectName() == player:objectName() then
+					continue
+				end
 
 				--	if not satori:askForSkillInvoke(self:objectName(), data) then return end
 				room:broadcastSkillInvoke(self:objectName())
@@ -356,7 +399,7 @@ se_huixiang = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target ~= nil
-	end
+	end,
 }
 
 se_fuzhi = sgs.CreateTriggerSkill {
@@ -367,9 +410,13 @@ se_fuzhi = sgs.CreateTriggerSkill {
 		local change = data:toPhaseChange()
 		if change.to == sgs.Player_Play then
 			local invoked = false
-			if player:isSkipped(sgs.Player_Play) then return false end
+			if player:isSkipped(sgs.Player_Play) then
+				return false
+			end
 			local lieges = room:getLieges("touhou", player)
-			if lieges:length() == 0 then return end
+			if lieges:length() == 0 then
+				return
+			end
 			if player:getHandcardNum() > player:getHp() then
 				local target = room:askForPlayerChosen(player, lieges, self:objectName(), "se_fuzhi-invoke", true, true)
 				if target then
@@ -377,7 +424,9 @@ se_fuzhi = sgs.CreateTriggerSkill {
 					local x = player:getHandcardNum() - player:getHp()
 					local prompt = string.format("se_fuzhi-card:%s:%s", target:objectName(), x)
 					local to_obtain = room:askForExchange(player, "se_fuzhi", x, x, false, prompt, false)
-					if not to_obtain then return end
+					if not to_obtain then
+						return
+					end
 					room:moveCardTo(to_obtain, target, sgs.Player_PlaceHand, false)
 					player:setFlags("se_fuzhi")
 					target:setFlags("se_fuzhi_target")
@@ -404,7 +453,7 @@ se_fuzhi = sgs.CreateTriggerSkill {
 			return player:hasLordSkill(self:objectName())
 		end
 		return false
-	end
+	end,
 }
 se_fuzhi_give = sgs.CreateTriggerSkill {
 	name = "#se_fuzhi-give$",
@@ -434,7 +483,7 @@ se_fuzhi_give = sgs.CreateTriggerSkill {
 	can_trigger = function(self, target)
 		return target and (target:getPhase() == sgs.Player_NotActive)
 	end,
-	priority = 1
+	priority = 1,
 }
 
 Marisa = sgs.General(extension, "Marisa", "touhou", 4, false, false, false)
@@ -465,7 +514,7 @@ sgs.LoadTranslationTable {
 
 	["se_mopao"] = "魔炮「终极火花」",
 	["$se_mopao"] = "",
-	[":se_mopao"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>失去4个P点，指定方向和座位，对该路线上的所有角色造成1点伤害。若指定座位的角色装备区没有牌，额外造成2点伤害并将你的武将牌翻面。",
+	[":se_mopao"] = '<font color="green"><b>出牌阶段限一次，</b></font>失去4个P点，指定方向和座位，对该路线上的所有角色造成1点伤害。若指定座位的角色装备区没有牌，额外造成2点伤害并将你的武将牌翻面。',
 	["se_mopaocard"] = "魔炮「前方高能反应」",
 	["se_mopao$"] = "image=image/animate/se_mopao.png",
 	["left"] = "左侧",
@@ -482,11 +531,11 @@ sgs.LoadTranslationTable {
 
 	["se_wushi"] = "遗忘「完全遗忘的存在」",
 	["$se_wushi"] = "",
-	[":se_wushi"] = "<font color=\"blue\"><b>锁定技,</b></font>你与其他角色计算距离时+99，其他角色与你计算距离时+99。",
+	[":se_wushi"] = '<font color="blue"><b>锁定技,</b></font>你与其他角色计算距离时+99，其他角色与你计算距离时+99。',
 
 	["se_wuyi"] = "无意「无意识的花火」",
 	["$se_wuyi"] = "",
-	[":se_wuyi"] = "<font color=\"blue\"><b>锁定技,</b></font>回合结束时你的最大血量随机变为2-10，以此法失去体力时，你令一名角色摸等同于失去的体力值*2的牌。以此法失去体力上限时，你令一名角色失去一点体力；以此法增长体力上限时，你令一名角色回复一点体力。",
+	[":se_wuyi"] = '<font color="blue"><b>锁定技,</b></font>回合结束时你的最大血量随机变为2-10，以此法失去体力时，你令一名角色摸等同于失去的体力值*2的牌。以此法失去体力上限时，你令一名角色失去一点体力；以此法增长体力上限时，你令一名角色回复一点体力。',
 	["se_wuyi_losehp"] = "选择一名角色失去一点体力",
 	["se_wuyi_draw"] = "选择一名角色摸牌",
 	["se_wuyi_recover"] = "选择一名角色回复一点体力",
@@ -512,7 +561,7 @@ sgs.LoadTranslationTable {
 	["$se_fuzhi"] = "",
 	["se_fuzhi-invoke"] = "你可以发动“赋职”<br/> <b>操作提示</b>: 选择一名其他东方势力角色→点击确定<br/>",
 	["se_fuzhi-card"] = "选择 %dest 张手牌交给 %src →点击确定<br/>",
-	[":se_fuzhi"] = "<font color=\"orange\"><b>主公技，</b></font>若你手牌数大于你当前体力值，你可以跳过你的出牌阶段，你可指定一名其他东方势力角色，将手牌数与体力值之差的手牌交给该角色。若如此做，回合结束时，该角色执行一个额外的出牌阶段。",
+	[":se_fuzhi"] = '<font color="orange"><b>主公技，</b></font>若你手牌数大于你当前体力值，你可以跳过你的出牌阶段，你可指定一名其他东方势力角色，将手牌数与体力值之差的手牌交给该角色。若如此做，回合结束时，该角色执行一个额外的出牌阶段。',
 
 	["Koishi"] = "古明地恋こいし",
 	["&Koishi"] = "古明地恋",

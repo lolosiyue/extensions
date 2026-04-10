@@ -1,7 +1,7 @@
 module("extensions.gaodaexcard", package.seeall)
 extension = sgs.Package("gaodaexcard", sgs.Package_CardPack)
 
-final_vent = sgs.CreateTrickCard{
+final_vent = sgs.CreateTrickCard {
 	name = "final_vent",
 	class_name = "FinalVent",
 	suit = 1,
@@ -34,14 +34,14 @@ final_vent = sgs.CreateTrickCard{
 			log.card_str = self:toString()
 			log.arg = "single_target_trick"
 			room:sendLog(log)
-			
+
 			--移动至PlaceUnknown，在服务器层面上移出游戏，防止AI把隐形牌用作视为技（如 隐形“武圣”【杀】），但再次获得此牌时会闪退（如 作弊卡牌一览）
 			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_USE, source:objectName(), "", self:getSkillName(), "")
 			room:moveCardTo(self, source, nil, sgs.Player_PlaceUnknown, reason, true)
 		end
-		
+
 		room:getThread():delay(1000)
-		
+
 		local nullified_list = room:getTag("CardUseNullifiedList"):toStringList()
 		local all_nullified = table.contains(nullified_list, "_ALL_TARGETS")
 		for _, t in ipairs(targets) do
@@ -54,21 +54,21 @@ final_vent = sgs.CreateTrickCard{
 		end
 	end,
 	on_effect = function(self, effect)
-		local room = effect.from:getRoom()		
+		local room = effect.from:getRoom()
 		local x = 1
-		for _,card in sgs.qlist(effect.from:getEquips()) do
+		for _, card in sgs.qlist(effect.from:getEquips()) do
 			if card:isKindOf("Horse") and card:isRed() then
 				x = x + 1
 				break
 			end
 		end
 		room:damage(sgs.DamageStruct(self, effect.from, effect.to, x, sgs.DamageStruct_Fire))
-	end
+	end,
 }
 
 final_vent:clone(2, 13):setParent(extension)
 
-decade = sgs.CreateTrickCard{
+decade = sgs.CreateTrickCard {
 	name = "decade",
 	class_name = "Decade",
 	suit = 0,
@@ -101,14 +101,14 @@ decade = sgs.CreateTrickCard{
 			log.card_str = self:toString()
 			log.arg = "single_target_trick"
 			room:sendLog(log)
-			
+
 			--移动至PlaceUnknown，在服务器层面上移出游戏，防止AI把隐形牌用作视为技（如 隐形“武圣”【杀】），但再次获得此牌时会闪退（如 作弊卡牌一览）
 			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_USE, source:objectName(), "", self:getSkillName(), "")
 			room:moveCardTo(self, source, nil, sgs.Player_PlaceUnknown, reason, true)
 		end
-		
+
 		room:getThread():delay(1700)
-		
+
 		local nullified_list = room:getTag("CardUseNullifiedList"):toStringList()
 		local all_nullified = table.contains(nullified_list, "_ALL_TARGETS")
 		for _, t in ipairs(targets) do
@@ -121,7 +121,7 @@ decade = sgs.CreateTrickCard{
 		end
 	end,
 	on_effect = function(self, effect)
-		local room = effect.from:getRoom()		
+		local room = effect.from:getRoom()
 		local x = 2
 		for i = 1, 9, 1 do
 			local ids = room:getNCards(1, false)
@@ -139,15 +139,15 @@ decade = sgs.CreateTrickCard{
 			room:getThread():delay(0100)
 		end
 		room:damage(sgs.DamageStruct(self, effect.from, effect.to, x))
-	end
+	end,
 }
 
 decade:clone(0, 10):setParent(extension)
 
 --防止作弊卡牌一览获得移出游戏的牌
-gaodaexcard_skill = sgs.CreateTriggerSkill{
+gaodaexcard_skill = sgs.CreateTriggerSkill {
 	name = "gaodaexcard_skill",
-	events = {sgs.BeforeCardsMove},
+	events = { sgs.BeforeCardsMove },
 	global = true,
 	priority = 3,
 	can_trigger = function(self, target)
@@ -159,7 +159,7 @@ gaodaexcard_skill = sgs.CreateTriggerSkill{
 		if move.to and move.to:objectName() == player:objectName() then
 			for _, id in sgs.qlist(move.card_ids) do
 				local card = sgs.Sanguosha:getCard(id)
-				if table.contains({"final_vent", "decade"}, card:objectName()) and room:getCardPlace(id) == sgs.Player_PlaceUnknown then
+				if table.contains({ "final_vent", "decade" }, card:objectName()) and room:getCardPlace(id) == sgs.Player_PlaceUnknown then
 					--移出游戏就不能再拿回来，不然会闪退
 					move.card_ids:removeOne(id)
 				else
@@ -168,14 +168,16 @@ gaodaexcard_skill = sgs.CreateTriggerSkill{
 			end
 			data:setValue(move)
 		end
-	end
+	end,
 }
 
 local skills = sgs.SkillList()
-if not sgs.Sanguosha:getSkill("gaodaexcard_skill") then skills:append(gaodaexcard_skill) end
+if not sgs.Sanguosha:getSkill("gaodaexcard_skill") then
+	skills:append(gaodaexcard_skill)
+end
 sgs.Sanguosha:addSkills(skills)
 
-sgs.LoadTranslationTable{
+sgs.LoadTranslationTable {
 	["gaodaexcard"] = "高达杀乱入卡",
 
 	["final_vent"] = "龙骑最终降临",

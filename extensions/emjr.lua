@@ -87,7 +87,7 @@ efushaCard = sgs.CreateSkillCard {
 			room:setTag(keystr, tag)
 			target:addToPile("efusha", id, false)
 		end
-	end
+	end,
 }
 efushaVS = sgs.CreateViewAsSkill {
 	name = "efusha",
@@ -107,7 +107,7 @@ efushaVS = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_play = function(self, player)
 		return not player:hasUsed("#efusha")
-	end
+	end,
 }
 efusha = sgs.CreateTriggerSkill {
 	name = "efusha",
@@ -138,8 +138,7 @@ efusha = sgs.CreateTriggerSkill {
 					log.arg = self:objectName()
 					log.arg2 = suit_str[suit + 1]
 					room:sendLog(log)
-					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", self:objectName(),
-						"")
+					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", self:objectName(), "")
 					room:throwCard(cd, reason, nil)
 					if cd:getSuit() ~= suit then
 						if chengyu:canSlash(player, nil, false) then
@@ -163,13 +162,13 @@ efusha = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target
-	end
+	end,
 }
 --程昱【危城】
 --每当你成为其他角色使用的【杀】或非延时类锦囊牌的目标后，若你有手牌，
 --你可以依次弃置该角色的X张牌（X为你已损失的体力值且至少为1）。
 eweichengDummyCard = sgs.CreateSkillCard {
-	name = "eweichengDummyCard"
+	name = "eweichengDummyCard",
 }
 eweicheng = sgs.CreateTriggerSkill {
 	name = "eweicheng",
@@ -196,10 +195,10 @@ eweicheng = sgs.CreateTriggerSkill {
 								end
 								local losthp = math.max(chengyu:getLostHp(), 1)
 								local count = 0
-								while (count < losthp and chengyu:canDiscard(source, "he")) do
+								while count < losthp and chengyu:canDiscard(source, "he") do
 									local to_throw = room:askForCardChosen(chengyu, source, "he", self:objectName(), false, sgs.Card_MethodDiscard)
 									local card = sgs.Sanguosha:getCard(to_throw)
-									room:throwCard(card, source, chengyu);
+									room:throwCard(card, source, chengyu)
 									count = count + 1
 								end
 							end
@@ -208,7 +207,7 @@ eweicheng = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-	end
+	end,
 }
 echengyu:addSkill(efusha)
 echengyu:addSkill(eweicheng)
@@ -259,7 +258,7 @@ eqiehu = sgs.CreateTriggerSkill {
 			return not target:hasSkill(self:objectName())
 		end
 		return false
-	end
+	end,
 }
 elidian:addSkill(eqiehu)
 
@@ -309,15 +308,14 @@ ehuwu = sgs.CreateTriggerSkill {
 							local id = card:getEffectiveId()
 							local choice
 							if not (room:getCardPlace(id) ~= sgs.Player_DiscardPile or player:isDead()) then
-								choice = room:askForChoice(zhoucang, self:objectName(),
-									"ehuwu1=" .. card:objectName() .. "+ehuwu2=" .. player:objectName(), data)
+								choice = room:askForChoice(zhoucang, self:objectName(), "ehuwu1=" .. card:objectName() .. "+ehuwu2=" .. player:objectName(), data)
 							elseif player:isDead() then
 								choice = "ehuwu1=" .. card:objectName()
 							else
 								choice = "ehuwu2=" .. player:objectName()
 							end
 							if choice:startsWith("ehuwu1") then
-								zhoucang:obtainCard(card);
+								zhoucang:obtainCard(card)
 							elseif choice:startsWith("ehuwu2") then
 								player:drawCards(1)
 							end
@@ -329,7 +327,7 @@ ehuwu = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return not target:hasSkill(self:objectName())
-	end
+	end,
 }
 ezhoucang:addSkill(ehuwu)
 
@@ -351,13 +349,19 @@ echineiGive = sgs.CreateTriggerSkill {
 			room:fillAG(card_ids)
 			local to_give = sgs.IntList()
 			while true do
-				if card_ids:isEmpty() then break end
+				if card_ids:isEmpty() then
+					break
+				end
 				local card_id = room:askForAG(player, card_ids, true, "echinei")
-				if card_id == -1 then break end
+				if card_id == -1 then
+					break
+				end
 				card_ids:removeOne(card_id)
 				to_give:append(card_id)
 				room:takeAG(player, card_id, false)
-				if card_ids:isEmpty() then break end
+				if card_ids:isEmpty() then
+					break
+				end
 			end
 			local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 			if not to_give:isEmpty() then
@@ -377,7 +381,7 @@ echineiGive = sgs.CreateTriggerSkill {
 			dummy:deleteLater()
 			room:clearAG()
 		end
-	end
+	end,
 }
 echinei = sgs.CreateTriggerSkill {
 	name = "echinei",
@@ -388,7 +392,9 @@ echinei = sgs.CreateTriggerSkill {
 		if player:isWounded() then
 			local room = player:getRoom()
 			local draw = data:toDraw()
-			if draw.reason~="draw_phase" then return end
+			if draw.reason ~= "draw_phase" then
+				return
+			end
 			if draw.num > 0 then
 				if room:askForSkillInvoke(player, self:objectName()) then
 					room:broadcastSkillInvoke(self:objectName())
@@ -398,7 +404,7 @@ echinei = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-	end
+	end,
 }
 --张星彩【攘外】
 --一名角色的结束阶段开始时，若该角色于此回合内未使用过基本牌和锦囊牌，
@@ -420,8 +426,7 @@ erangwaiCard = sgs.CreateSkillCard {
 		slash:setSkillName("erangwai")
 		local extra = sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, player, slash) + 1
 		slash:deleteLater()
-		return sgs.Self:canSlash(to_select, slash, false) and #targets < extra and
-			current:distanceTo(to_select) <= current:getAttackRange() and current:distanceTo(to_select) > 0
+		return sgs.Self:canSlash(to_select, slash, false) and #targets < extra and current:distanceTo(to_select) <= current:getAttackRange() and current:distanceTo(to_select) > 0
 	end,
 	on_use = function(self, room, source, targets)
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
@@ -493,7 +498,7 @@ erangwai = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target
-	end
+	end,
 }
 ezhangxingcai:addSkill(echinei)
 ezhangxingcai:addSkill(echineiGive)
@@ -517,7 +522,7 @@ eyanshouCard = sgs.CreateSkillCard {
 		local x = equips:length()
 		target:throwAllEquips()
 		target:drawCards(x + 1)
-	end
+	end,
 }
 eyanshou = sgs.CreateViewAsSkill {
 	name = "eyanshou",
@@ -556,7 +561,7 @@ ekegou = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-	end
+	end,
 }
 elukang:addSkill(eyanshou)
 elukang:addSkill(ekegou)
@@ -613,8 +618,8 @@ ejisiVS = sgs.CreateViewAsSkill {
 		return false
 	end,
 	enabled_at_response = function(self, player, pattern)
-		for _,target in sgs.list(player:getAliveSiblings())do
-			if target:hasFlag("CurrentPlayer") and target:getPhase() ~= sgs.Player_NotActive then 
+		for _, target in sgs.list(player:getAliveSiblings()) do
+			if target:hasFlag("CurrentPlayer") and target:getPhase() ~= sgs.Player_NotActive then
 				if player:canPindian(target) then
 					if target:objectName() ~= player:objectName() then
 						return not player:hasFlag("ejisiUsed") and pattern == "nullification"
@@ -627,14 +632,16 @@ ejisiVS = sgs.CreateViewAsSkill {
 	enabled_at_nullification = function(self, player)
 		local room = player:getRoom()
 		local target = room:getCurrent()
-		if not target or target:isDead() or target:getPhase() == sgs.Player_NotActive then return false end
+		if not target or target:isDead() or target:getPhase() == sgs.Player_NotActive then
+			return false
+		end
 		if player:canPindian(target) then
 			if target:objectName() ~= player:objectName() then
 				return not player:hasFlag("ejisiUsed")
 			end
 		end
 		return false
-	end
+	end,
 }
 ejisi = sgs.CreateTriggerSkill {
 	name = "ejisi",
@@ -654,7 +661,7 @@ ejisi = sgs.CreateTriggerSkill {
 			end
 		end
 		return false
-	end
+	end,
 }
 --诸葛恪【强辩】
 --锁定技，每当你与一名角色拼点时，你令该角色用你选择的其一张手牌拼点。
@@ -674,33 +681,45 @@ eqiangbian = sgs.CreateTriggerSkill {
 		if event == sgs.AskforPindianCard then
 			local pindian = data:toPindian()
 			for _, p in sgs.qlist(room:getAlivePlayers()) do
-				if ((pindian.from:objectName() ~= p:objectName()) and (pindian.to:objectName() ~= p:objectName())) then continue end
-				if not p:hasSkill(self) then continue end
-				if (pindian.from:objectName() == p:objectName()) then
-					if pindian.to_card then continue end
-					if pindian.to:isDead() or pindian.to:isKongcheng() then continue end
-					if not p:askForSkillInvoke(self, pindian.to) then continue end
-					room:sendCompulsoryTriggerLog(p, self:objectName())
-					pindian.to_card = pindian.to:getRandomHandCard();
+				if (pindian.from:objectName() ~= p:objectName()) and (pindian.to:objectName() ~= p:objectName()) then
+					continue
 				end
-				if (pindian.to:objectName() == p:objectName()) then
-					if pindian.from_card then continue end
-					if pindian.from:isDead() or pindian.from:isKongcheng() then continue end
-					if not p:askForSkillInvoke(self, pindian.from) then continue end
+				if not p:hasSkill(self) then
+					continue
+				end
+				if pindian.from:objectName() == p:objectName() then
+					if pindian.to_card then
+						continue
+					end
+					if pindian.to:isDead() or pindian.to:isKongcheng() then
+						continue
+					end
+					if not p:askForSkillInvoke(self, pindian.to) then
+						continue
+					end
 					room:sendCompulsoryTriggerLog(p, self:objectName())
-					pindian.from_card = pindian.from:getRandomHandCard();
+					pindian.to_card = pindian.to:getRandomHandCard()
+				end
+				if pindian.to:objectName() == p:objectName() then
+					if pindian.from_card then
+						continue
+					end
+					if pindian.from:isDead() or pindian.from:isKongcheng() then
+						continue
+					end
+					if not p:askForSkillInvoke(self, pindian.from) then
+						continue
+					end
+					room:sendCompulsoryTriggerLog(p, self:objectName())
+					pindian.from_card = pindian.from:getRandomHandCard()
 				end
 			end
 		end
 	end,
 	can_trigger = function(self, target)
 		return target and target:isAlive()
-	end
+	end,
 }
-
-
-
-
 
 --诸葛恪【傲才】
 --限定技，回合结束时，你可以令手牌比你多的所有角色各选择一项：1.交给你一张牌；2.弃置两张牌。然后你获得技能“专权”（其他角色的弃牌阶段开始时，你可以弃置该角色的X张手牌（X为其超过手牌上限的手牌张数））。
@@ -758,7 +777,7 @@ eaocai = sgs.CreateTriggerSkill {
 			end
 		end
 		return false
-	end
+	end,
 }
 --[[
 eaocaiStart = sgs.CreateTriggerSkill{
@@ -772,7 +791,7 @@ eaocaiStart = sgs.CreateTriggerSkill{
 --诸葛恪【专权】
 --其他角色的弃牌阶段开始时，你可以弃置其X张手牌（X为其超过手牌上限的手牌张数）。
 ezhuanquanDummyCard = sgs.CreateSkillCard {
-	name = "ezhuanquanDummyCard"
+	name = "ezhuanquanDummyCard",
 }
 ezhuanquan = sgs.CreateTriggerSkill {
 	name = "ezhuanquan",
@@ -822,7 +841,7 @@ ezhuanquan = sgs.CreateTriggerSkill {
 			return not target:hasSkill(self:objectName())
 		end
 		return false
-	end
+	end,
 }
 ezhuanquanAvoidTriggeringCardsMove = sgs.CreateTriggerSkill {
 	name = "#ezhuanquanAvoidTriggeringCardsMove",
@@ -841,7 +860,7 @@ ezhuanquanAvoidTriggeringCardsMove = sgs.CreateTriggerSkill {
 	can_trigger = function(self, target)
 		return target
 	end,
-	priority = 10
+	priority = 10,
 }
 ezhugeke:addSkill(ejisi)
 ezhugeke:addSkill(eqiangbian)
@@ -910,7 +929,7 @@ etushou = sgs.CreateTriggerSkill {
 				elseif choice == "etushou2" then
 					room:addPlayerMark(player, "&" .. self:objectName() .. "+etushou_damageInflicte-Clear")
 					room:broadcastSkillInvoke(self:objectName(), 2)
-					room:askForDiscard(player, self:objectName(), 2, 2, false, true);
+					room:askForDiscard(player, self:objectName(), 2, 2, false, true)
 					local recover = sgs.RecoverStruct()
 					recover.who = player
 					room:recover(player, recover)
@@ -918,7 +937,7 @@ etushou = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-	end
+	end,
 }
 etushouEffect = sgs.CreateTriggerSkill {
 	name = "#etushouEffect",
@@ -952,7 +971,7 @@ etushouEffect = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target
-	end
+	end,
 }
 --刘璋【宗室】
 --锁定技，你的手牌上限+X（X为现存势力数）。
@@ -1011,15 +1030,15 @@ etiaoboCard = sgs.CreateSkillCard {
 					card_use.from = from
 					card_use.to:append(to)
 					card_use.card = slash
-					room:setPlayerFlag(from, "ZenhuiUser_"..slash:toString())
+					room:setPlayerFlag(from, "ZenhuiUser_" .. slash:toString())
 					room:useCard(card_use, false)
-					room:setPlayerFlag(from, "-ZenhuiUser_"..slash:toString())
+					room:setPlayerFlag(from, "-ZenhuiUser_" .. slash:toString())
 				end
 			end
 		else
 			room:loseHp(source, 1, true, source, self:objectName())
 		end
-	end
+	end,
 }
 etiaobo = sgs.CreateViewAsSkill {
 	name = "etiaobo",
@@ -1045,7 +1064,7 @@ echizhong = sgs.CreateTriggerSkill {
 			room:broadcastSkillInvoke(self:objectName())
 			room:drawCards(player, 1, "echizhong")
 		end
-	end
+	end,
 }
 ewangyun:addSkill(etiaobo)
 ewangyun:addSkill(echizhong)
@@ -1061,7 +1080,7 @@ sgs.LoadTranslationTable {
 	["cv:echengyu"] = "NeoSpeech Liang",
 	["illustrator:echengyu"] = "三国在线",
 	["efusha"] = "伏杀",
-	[":efusha"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以将一张手牌背面朝上移出游戏并选择一名其他角色，若如此做，该角色的回合开始时，其选择一种花色后将此牌置入弃牌堆，若此牌的花色与其所选的不同，你视为对其使用一张【杀】。",
+	[":efusha"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以将一张手牌背面朝上移出游戏并选择一名其他角色，若如此做，该角色的回合开始时，其选择一种花色后将此牌置入弃牌堆，若此牌的花色与其所选的不同，你视为对其使用一张【杀】。',
 	["#efusha"] = "%from执行了“%arg”的效果，选择了花色%arg2",
 	["eweicheng"] = "危城",
 	[":eweicheng"] = "每当你成为其他角色使用的【杀】或非延时类锦囊牌的目标后，若你有手牌，你可以依次弃置该角色的X张牌（X为你已损失的体力值且至少为1）。",
@@ -1129,7 +1148,7 @@ sgs.LoadTranslationTable {
 	["cv:elukang"] = "NeoSpeech Liang",
 	["illustrator:elukang"] = "三国志12",
 	["eyanshou"] = "堰守",
-	[":eyanshou"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以令一名角色弃置其装备区里的所有牌，然后该角色摸X+1张牌（X为其以此法弃置的装备牌数量）。",
+	[":eyanshou"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以令一名角色弃置其装备区里的所有牌，然后该角色摸X+1张牌（X为其以此法弃置的装备牌数量）。',
 	["ekegou"] = "克构",
 	[":ekegou"] = "若有其他角色手牌不比你少，你可以跳过你的弃牌阶段。",
 	-- ["$eyanshou1"] = "筑此堰，可淹敌军。",
@@ -1154,9 +1173,9 @@ sgs.LoadTranslationTable {
 	["ejisi"] = "急思",
 	[":ejisi"] = "每当你需要使用【无懈可击】时，你可以与当前回合角色拼点，若你赢，你视为使用一张【无懈可击】。每回合限一次。",
 	["eqiangbian"] = "强辩",
-	[":eqiangbian"] = "<font color=\"blue\"><b>锁定技，</b></font>每当你与一名角色拼点时，你令该角色用你选择的其一张手牌拼点。",
+	[":eqiangbian"] = '<font color="blue"><b>锁定技，</b></font>每当你与一名角色拼点时，你令该角色用你选择的其一张手牌拼点。',
 	["eaocai"] = "傲才",
-	[":eaocai"] = "<font color=\"red\"><b>限定技，</b></font>回合结束时，你可以令手牌比你多的所有角色各选择一项：1.交给你一张牌；2.弃置两张手牌。然后你获得技能“专权”（其他角色的弃牌阶段开始时，你可以弃置其X张手牌（X为其超过手牌上限的手牌张数））。",
+	[":eaocai"] = '<font color="red"><b>限定技，</b></font>回合结束时，你可以令手牌比你多的所有角色各选择一项：1.交给你一张牌；2.弃置两张手牌。然后你获得技能“专权”（其他角色的弃牌阶段开始时，你可以弃置其X张手牌（X为其超过手牌上限的手牌张数））。',
 	["@talent"] = "傲才",
 	["ezhuanquan"] = "专权",
 	[":ezhuanquan"] = "其他角色的弃牌阶段开始时，你可以弃置其X张手牌（X为其超过手牌上限的手牌张数）。",
@@ -1194,7 +1213,7 @@ sgs.LoadTranslationTable {
 	["cv:ewangyun"] = "NeoSpeech Liang",
 	["illustrator:ewangyun"] = "三国志12",
 	["etiaobo"] = "挑拨",
-	[":etiaobo"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以令两名其他角色同时展示一张手牌。若花色不同，其中手牌少的角色视为对手牌多的角色使用一张【杀】；若花色相同，你失去1点体力。",
+	[":etiaobo"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以令两名其他角色同时展示一张手牌。若花色不同，其中手牌少的角色视为对手牌多的角色使用一张【杀】；若花色相同，你失去1点体力。',
 	["echizhong"] = "持重",
 	[":echizhong"] = "每当你扣减或回复体力后，你可以摸一张牌。",
 	-- ["$etiaobo1"] = "此计可化百姓倒悬之危，解君臣累卵之急。",

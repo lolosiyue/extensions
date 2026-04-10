@@ -12,7 +12,7 @@ do
 	config.kingdom_colors["kexian"] = "#96943D"
 end
 
-sgs.LoadTranslationTable{
+sgs.LoadTranslationTable {
 	["kegui"] = "鬼",
 	["keyao"] = "妖",
 	["kesheng"] = "圣",

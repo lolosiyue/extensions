@@ -21,7 +21,7 @@ shikistart = sgs.CreateTriggerSkill {
 				player:addToPile("femaleshiki", sgs.Sanguosha:getCard(id), false)
 			until player:getPile("femaleshiki"):length() >= 4
 		end
-	end
+	end,
 }
 
 yinyang = sgs.CreateTriggerSkill {
@@ -31,8 +31,7 @@ yinyang = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		if player:getPhase() == sgs.Player_Start then
 			local room = player:getRoom()
-			local counter = player:getPile("femaleshiki"):length() + player:getPile("maleshiki"):length() +
-			player:getHandcardNum()
+			local counter = player:getPile("femaleshiki"):length() + player:getPile("maleshiki"):length() + player:getHandcardNum()
 			if player:isFemale() and counter > 0 then
 				if player:askForSkillInvoke(self:objectName(), data) then
 					room:broadcastSkillInvoke(self:objectName())
@@ -42,8 +41,7 @@ yinyang = sgs.CreateTriggerSkill {
 					end
 					if not player:getPile("maleshiki"):isEmpty() then
 						local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, player:objectName())
-						local move = sgs.CardsMoveStruct(player:getPile("maleshiki"), player, sgs.Player_PlaceHand,
-							reason)
+						local move = sgs.CardsMoveStruct(player:getPile("maleshiki"), player, sgs.Player_PlaceHand, reason)
 						room:moveCardsAtomic(move, false)
 					end
 				end
@@ -57,15 +55,14 @@ yinyang = sgs.CreateTriggerSkill {
 						end
 						if not player:getPile("femaleshiki"):isEmpty() then
 							local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, player:objectName())
-							local move = sgs.CardsMoveStruct(player:getPile("femaleshiki"), player, sgs.Player_PlaceHand,
-								reason)
+							local move = sgs.CardsMoveStruct(player:getPile("femaleshiki"), player, sgs.Player_PlaceHand, reason)
 							room:moveCardsAtomic(move, false)
 						end
 					end
 				end
 			end
 		end
-	end
+	end,
 }
 
 yinyangDetach = sgs.CreateTriggerSkill {
@@ -86,9 +83,8 @@ yinyangDetach = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-	end
+	end,
 }
-
 
 shayi = sgs.CreateTriggerSkill {
 	name = "shayi",
@@ -105,9 +101,8 @@ shayi = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target and target:hasSkill(self:objectName())
-	end
+	end,
 }
-
 
 JiuziCard = sgs.CreateSkillCard {
 	name = "JiuziCard",
@@ -121,7 +116,7 @@ JiuziCard = sgs.CreateSkillCard {
 		local room = effect.from:getRoom()
 		room:removePlayerMark(effect.from, "@jianding")
 		room:useCard(sgs.CardUseStruct(slash, effect.from, effect.to))
-	end
+	end,
 }
 
 Jiuzivs = sgs.CreateZeroCardViewAsSkill {
@@ -132,7 +127,7 @@ Jiuzivs = sgs.CreateZeroCardViewAsSkill {
 	enabled_at_play = function(self, player)
 		local used = player:usedTimes("#JiuziCard")
 		return (player:getMark("@jianding") >= 1) and (used < player:getHp())
-	end
+	end,
 }
 
 Jiuzi = sgs.CreateTriggerSkill {
@@ -142,7 +137,7 @@ Jiuzi = sgs.CreateTriggerSkill {
 	view_as_skill = Jiuzivs,
 	on_trigger = function(self, event, player, data)
 		player:getRoom():addPlayerMark(player, "@jianding", 9)
-	end
+	end,
 }
 
 sinzhisi = sgs.CreateTriggerSkill {
@@ -163,14 +158,14 @@ sinzhisi = sgs.CreateTriggerSkill {
 			end
 		end
 		return false
-	end
+	end,
 }
 
-
 local skillList = sgs.SkillList()
-if not sgs.Sanguosha:getSkill("sinzhisi") then skillList:append(sinzhisi) end
+if not sgs.Sanguosha:getSkill("sinzhisi") then
+	skillList:append(sinzhisi)
+end
 sgs.Sanguosha:addSkills(skillList)
-
 
 jialan = sgs.CreateTriggerSkill {
 	name = "jialan",
@@ -200,14 +195,12 @@ jialan = sgs.CreateTriggerSkill {
 			room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 			room:addPlayerMark(player, "jialan")
 			room:handleAcquireDetachSkills(player, "sinzhisi")
-
 		end
 		return false
 	end,
 	can_trigger = function(self, target)
-		return (target and target:isAlive() and target:hasSkill(self:objectName()))
-			and (target:getMark("jialan") == 0)
-	end
+		return (target and target:isAlive() and target:hasSkill(self:objectName())) and (target:getMark("jialan") == 0)
+	end,
 }
 
 Ryougi_Shiki:addSkill(shayi)
@@ -250,7 +243,6 @@ sgs.LoadTranslationTable {
 	["$jialanAnimate"] = "image=image/animate/Ryougi_Shiki.png",
 }
 
-
 Tohno_Shiki = sgs.General(extension, "Tohno_Shiki", "god", 3, true, true)
 
 Tohnozhisi = sgs.CreateTriggerSkill {
@@ -271,7 +263,7 @@ Tohnozhisi = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target and target:hasSkill(self:objectName())
-	end
+	end,
 }
 
 zhisimod = sgs.CreateTriggerSkill {
@@ -294,7 +286,7 @@ zhisimod = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target and target:hasSkill(self:objectName())
-	end
+	end,
 }
 
 pinxue = sgs.CreateTriggerSkill {
@@ -314,7 +306,7 @@ pinxue = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target and target:hasSkill(self:objectName())
-	end
+	end,
 }
 
 Tohno_Shiki:addSkill(zhisimod)
@@ -328,8 +320,7 @@ jishaCard = sgs.CreateSkillCard {
 	name = "jishaCard",
 	skill_name = "jisha",
 	filter = function(self, targets, to_select)
-		return (#targets == 0) and (to_select:objectName() ~= sgs.Self:objectName()) and
-		to_select:getPile("ren"):length() == 0
+		return (#targets == 0) and (to_select:objectName() ~= sgs.Self:objectName()) and to_select:getPile("ren"):length() == 0
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -344,7 +335,7 @@ jishaCard = sgs.CreateSkillCard {
 			effect.to:addToPile("ren", judge.card, true)
 			room:setFixedDistance(effect.from, effect.to, 1)
 		end
-	end
+	end,
 }
 
 jisha = sgs.CreateZeroCardViewAsSkill {
@@ -354,9 +345,8 @@ jisha = sgs.CreateZeroCardViewAsSkill {
 	end,
 	enabled_at_play = function(self, player)
 		return not player:hasUsed("#jishaCard")
-	end
+	end,
 }
-
 
 Table2IntList = function(theTable)
 	local result = sgs.IntList()
@@ -372,7 +362,9 @@ jishamod = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local use = data:toCardUse()
-		if (player:objectName() ~= use.from:objectName()) or (not use.card:isKindOf("Slash")) then return false end
+		if (player:objectName() ~= use.from:objectName()) or (not use.card:isKindOf("Slash")) then
+			return false
+		end
 		local jink_table = sgs.QList2Table(player:getTag("Jink_" .. use.card:toString()):toIntList())
 		local index = 1
 		for _, p in sgs.qlist(use.to) do
@@ -394,7 +386,7 @@ jishamod = sgs.CreateTriggerSkill {
 		jink_data:setValue(Table2IntList(jink_table))
 		player:setTag("Jink_" .. use.card:toString(), jink_data)
 		return false
-	end
+	end,
 }
 
 jishaDetach = sgs.CreateTriggerSkill {
@@ -415,7 +407,7 @@ jishaDetach = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-	end
+	end,
 }
 
 Nanaya_Shiki:addSkill(jisha)
@@ -443,13 +435,13 @@ kaiyan = sgs.CreateTriggerSkill {
 			player:gainMark("@yanjing", 1)
 			room:setPlayerFlag(player, "-Global_Dying")
 			local currentdying = room:getTag("CurrentDying"):toStringList()
-			table.removeOne(currentdying,player:objectName())
+			table.removeOne(currentdying, player:objectName())
 			room:setTag("CurrentDying", sgs.QVariant(table.concat(currentdying, "|")))
 		end
 	end,
 	can_trigger = function(self, target)
 		return (target and target:isAlive() and target:hasSkill(self:objectName()))
-	end
+	end,
 }
 
 fanzhuan = sgs.CreateTriggerSkill {
@@ -468,7 +460,7 @@ fanzhuan = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target and target:hasSkill(self:objectName())
-	end
+	end,
 }
 
 shiki:addSkill(kaiyan)

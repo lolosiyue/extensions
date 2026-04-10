@@ -2,18 +2,37 @@ extension = sgs.Package("RAFTOM", sgs.Package_GeneralPack)
 
 --==============================================全局变量及函数区==============================================--
 local GER, winTimes = "GER.lua", "winTimes.txt"
-local ban_marks = {"@clock_time", "@qizhi-Clear", "@puppet", "@nightmare", "@benxi", "@biluan", "@brutal", "@ChangeSkill1", "@ChangeSkill2", "@ChangeSkill3"}  --禁记录mark表
-local difficulty_marks = {"easy", "normal", "insane"}
-local ban_piles = {"reward"}  --禁记录pile表
-local translation = ""  --暂时无用
-local reward_types = {"re_type1", "re_type2", "re_type3", "re_type4", "re_type5", "re_type6", "re_type7", "re_type8", "re_type9", "re_type10", "re_type11", "re_type12"
-					  , "re_type13", "re_type14", "re_type15", "re_type16", "re_type17", "re_type18", "re_type19"}  --奖励类型
+local ban_marks = { "@clock_time", "@qizhi-Clear", "@puppet", "@nightmare", "@benxi", "@biluan", "@brutal", "@ChangeSkill1", "@ChangeSkill2", "@ChangeSkill3" } --禁记录mark表
+local difficulty_marks = { "easy", "normal", "insane" }
+local ban_piles = { "reward" } --禁记录pile表
+local translation = "" --暂时无用
+local reward_types = {
+	"re_type1",
+	"re_type2",
+	"re_type3",
+	"re_type4",
+	"re_type5",
+	"re_type6",
+	"re_type7",
+	"re_type8",
+	"re_type9",
+	"re_type10",
+	"re_type11",
+	"re_type12",
+	"re_type13",
+	"re_type14",
+	"re_type15",
+	"re_type16",
+	"re_type17",
+	"re_type18",
+	"re_type19",
+} --奖励类型
 
-function checkLength(check_table)  --检测table是否为空并返回对应值
+function checkLength(check_table) --检测table是否为空并返回对应值
 	return #check_table > 0 and table.concat(check_table, ",") or "NULL"
 end
 
-Table2IntList = function(theTable)  --表转数组
+Table2IntList = function(theTable) --表转数组
 	local result = sgs.IntList()
 	for i = 1, #theTable, 1 do
 		result:append(theTable[i])
@@ -21,8 +40,10 @@ Table2IntList = function(theTable)  --表转数组
 	return result
 end
 
-function useEquip(player, pattern)        			  --随机使用牌堆中的武器牌
-	if pattern == nil then pattern = "EquipCard" end  --参数[ServerPlayer *player：武器使用者; QString pattern：使用的装备牌样式，默认值为“EquipCard”;]
+function useEquip(player, pattern) --随机使用牌堆中的武器牌
+	if pattern == nil then
+		pattern = "EquipCard"
+	end --参数[ServerPlayer *player：武器使用者; QString pattern：使用的装备牌样式，默认值为“EquipCard”;]
 	local room = player:getRoom()
 	local equips = sgs.CardList()
 	for _, id in sgs.qlist(room:getDrawPile()) do
@@ -37,8 +58,12 @@ function useEquip(player, pattern)        			  --随机使用牌堆中的武器�
 end
 
 function gainCardRandomly(player, pattern, num)
-	if pattern == nil then pattern = "BasicCard" end
-	if num == nil then num = 1 end
+	if pattern == nil then
+		pattern = "BasicCard"
+	end
+	if num == nil then
+		num = 1
+	end
 	local room = player:getRoom()
 	local card_ids = sgs.IntList()
 	for _, id in sgs.qlist(room:getDrawPile()) do
@@ -49,7 +74,9 @@ function gainCardRandomly(player, pattern, num)
 	if not card_ids:isEmpty() then
 		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		for i = 1, num do
-			if card_ids:isEmpty() then break end
+			if card_ids:isEmpty() then
+				break
+			end
 			local card_id = card_ids:at(math.random(0, card_ids:length() - 1))
 			dummy:addSubcard(card_id)
 			card_ids:removeOne(card_id)
@@ -60,7 +87,9 @@ function gainCardRandomly(player, pattern, num)
 end
 
 function judgeHp(player, general_name, fixed)
-	if fixed == nil then fixed = 0 end
+	if fixed == nil then
+		fixed = 0
+	end
 	local room = player:getRoom()
 	local startingHp = player:getMaxHp()
 	if general_name == "shenganning" then
@@ -69,14 +98,20 @@ function judgeHp(player, general_name, fixed)
 	room:setPlayerProperty(player, "hp", sgs.QVariant(startingHp))
 end
 
-function selectHero(player, changer, num, ban_general)  --选择武将函数 [参数：player-选择玩家; changer-变更武将玩家; num-选择武将数; ban_general-应移除武将（可以为空）]
+function selectHero(player, changer, num, ban_general) --选择武将函数 [参数：player-选择玩家; changer-变更武将玩家; num-选择武将数; ban_general-应移除武将（可以为空）]
 	local room = player:getRoom()
-	if num == nil or num < 1 then num = 1 end
+	if num == nil or num < 1 then
+		num = 1
+	end
 	local generals = sgs.Sanguosha:getLimitedGeneralNames()
-	if ban_general then table.removeOne(generals, ban_general) end
+	if ban_general then
+		table.removeOne(generals, ban_general)
+	end
 	local choiceList = {}
 	for i = 1, num do
-		if #generals == 0 then break end
+		if #generals == 0 then
+			break
+		end
 		local general = generals[math.random(1, #generals)]
 		table.insert(choiceList, general)
 		table.removeOne(generals, general)
@@ -86,7 +121,7 @@ function selectHero(player, changer, num, ban_general)  --选择武将函数 [�
 	judgeHp(changer, general)
 end
 
-function reward(player, enemy, reward_type)  --奖励函数：用于进行奖励结算 [参数：player-受奖励者/玩家, enemy-敌方, reward_type-奖励类型]
+function reward(player, enemy, reward_type) --奖励函数：用于进行奖励结算 [参数：player-受奖励者/玩家, enemy-敌方, reward_type-奖励类型]
 	local room = player:getRoom()
 	if reward_type == "re_type1" then
 		if player:isWounded() then
@@ -158,7 +193,7 @@ function reward(player, enemy, reward_type)  --奖励函数：用于进行奖励
 	end
 end
 
-function enemyBuff(enemy, level)  --敌方加成函数：用于结算敌方加成 [参数：enemy-敌方, level-关卡数]
+function enemyBuff(enemy, level) --敌方加成函数：用于结算敌方加成 [参数：enemy-敌方, level-关卡数]
 	local room = enemy:getRoom()
 	local fixed = 0
 	if level == 2 then
@@ -182,14 +217,18 @@ function enemyBuff(enemy, level)  --敌方加成函数：用于结算敌方加�
 end
 
 --==============================================全局技能区==============================================--
-GameEndRecording = sgs.CreateTriggerSkill{  --游戏结束时记录玩家各种状态
+GameEndRecording = sgs.CreateTriggerSkill { --游戏结束时记录玩家各种状态
 	name = "GameEndRecording",
 	global = true,
-	events = {sgs.GameOverJudge},
+	events = { sgs.GameOverJudge },
 	on_trigger = function(self, event, splayer, data, room)
-		if not room:getTag("InRAFTOM"):toBool() then return false end
+		if not room:getTag("InRAFTOM"):toBool() then
+			return false
+		end
 		for _, p in sgs.qlist(room:getAllPlayers(true)) do
-			if not p:getTag("RAFTOM"):toBool() then continue end
+			if not p:getTag("RAFTOM"):toBool() then
+				continue
+			end
 			local recordFile = assert(io.open(GER, "r"))
 			local level = recordFile:read("*l"):split("=")
 			level = tonumber(level[2])
@@ -207,9 +246,12 @@ GameEndRecording = sgs.CreateTriggerSkill{  --游戏结束时记录玩家各种�
 						winRecord:write("1")
 					else
 						local chance = 0
-						if p:getMark("easy") > 0 then chance = 40
-						elseif p:getMark("normal") > 0 then chance = 70
-						elseif p:getMark("insane") > 0 then chance = 100
+						if p:getMark("easy") > 0 then
+							chance = 40
+						elseif p:getMark("normal") > 0 then
+							chance = 70
+						elseif p:getMark("insane") > 0 then
+							chance = 100
 						end
 						if math.random(1, 100) <= chance then
 							local count = math.min(3, (tonumber(win_count) + 1))
@@ -253,8 +295,12 @@ GameEndRecording = sgs.CreateTriggerSkill{  --游戏结束时记录玩家各种�
 			record:write("faceDown=" .. faceDown .. "\n")
 			local mark_table, mark_num = {}, {}
 			for _, mark in sgs.list(p:getMarkNames()) do
-				if (table.contains(ban_marks, mark) or not (string.startsWith(mark, "@") or (p:hasSkill(mark) and
-					sgs.Sanguosha:getSkill(mark):getFrequency() == sgs.Skill_Wake))) and not table.contains(difficulty_marks, mark) then continue end
+				if
+					(table.contains(ban_marks, mark) or not (string.startsWith(mark, "@") or (p:hasSkill(mark) and sgs.Sanguosha:getSkill(mark):getFrequency() == sgs.Skill_Wake)))
+					and not table.contains(difficulty_marks, mark)
+				then
+					continue
+				end
 				local n = p:getMark(mark)
 				if n > 0 then
 					table.insert(mark_table, mark)
@@ -266,9 +312,13 @@ GameEndRecording = sgs.CreateTriggerSkill{  --游戏结束时记录玩家各种�
 			local pile_names, pile_cards = p:getPileNames(), sgs.IntList()
 			if #pile_names > 0 then
 				for i = 1, #pile_names do
-					if table.contains(ban_piles, pile_names[i]) then continue end
+					if table.contains(ban_piles, pile_names[i]) then
+						continue
+					end
 					pile_cards = p:getPile(pile_names[i])
-					if pile_cards:length() == 0 then continue end
+					if pile_cards:length() == 0 then
+						continue
+					end
 					record:write(pile_names[i] .. "=" .. checkLength(sgs.QList2Table(pile_cards)) .. "\n")
 				end
 			end
@@ -276,11 +326,11 @@ GameEndRecording = sgs.CreateTriggerSkill{  --游戏结束时记录玩家各种�
 			break
 		end
 		return false
-	end
+	end,
 }
 
-rewardExtraTurn = sgs.CreatePhaseChangeSkill{
-	name = "rewardExtraTurn", 
+rewardExtraTurn = sgs.CreatePhaseChangeSkill {
+	name = "rewardExtraTurn",
 	global = true,
 	priority = 0,
 	on_phasechange = function(self, splayer)
@@ -291,12 +341,12 @@ rewardExtraTurn = sgs.CreatePhaseChangeSkill{
 			player:gainAnExtraTurn()
 		end
 		return false
-	end
+	end,
 }
 
-heroesNeverDie = sgs.CreateTriggerSkill{
+heroesNeverDie = sgs.CreateTriggerSkill {
 	name = "heroesNeverDie",
-	events = {sgs.AskForPeachesDone},
+	events = { sgs.AskForPeachesDone },
 	global = true,
 	priority = 0,
 	on_trigger = function(self, event, splayer, data, room)
@@ -314,12 +364,12 @@ heroesNeverDie = sgs.CreateTriggerSkill{
 			end
 		end
 		return false
-	end
+	end,
 }
 
-RAFTOM_start = sgs.CreateTriggerSkill{  --用于使“千里走单骑”模式开始
+RAFTOM_start = sgs.CreateTriggerSkill { --用于使“千里走单骑”模式开始
 	name = "#RAFTOM_start",
-	events = {sgs.GameStart, sgs.TurnStart, sgs.DrawNCards, sgs.AfterDrawNCards},
+	events = { sgs.GameStart, sgs.TurnStart, sgs.DrawNCards, sgs.AfterDrawNCards },
 	global = true,
 	priority = 10,
 	on_trigger = function(self, event, splayer, data, room)
@@ -376,14 +426,26 @@ RAFTOM_start = sgs.CreateTriggerSkill{  --用于使“千里走单骑”模式�
 						local equip_ids = rf[5]:split("=")[2]
 						local moves = sgs.CardsMoveList()
 						if equip_ids ~= "NULL" then
-							local move_e = sgs.CardsMoveStruct(Table2IntList(equip_ids:split(",")), nil, player, sgs.Player_DrawPile, sgs.Player_PlaceEquip,
-								sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, player:objectName(), self:objectName(), ""))
+							local move_e = sgs.CardsMoveStruct(
+								Table2IntList(equip_ids:split(",")),
+								nil,
+								player,
+								sgs.Player_DrawPile,
+								sgs.Player_PlaceEquip,
+								sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, player:objectName(), self:objectName(), "")
+							)
 							moves:append(move_e)
 						end
 						local hand_ids = rf[6]:split("=")[2]
 						if hand_ids ~= "NULL" then
-							local move_h = sgs.CardsMoveStruct(Table2IntList(hand_ids:split(",")), nil, player, sgs.Player_DrawPile, sgs.Player_PlaceHand,
-								sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, player:objectName(), self:objectName(), ""))
+							local move_h = sgs.CardsMoveStruct(
+								Table2IntList(hand_ids:split(",")),
+								nil,
+								player,
+								sgs.Player_DrawPile,
+								sgs.Player_PlaceHand,
+								sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, player:objectName(), self:objectName(), "")
+							)
 							moves:append(move_h)
 						end
 						local isChained = rf[7]:split("=")[2]
@@ -430,7 +492,9 @@ RAFTOM_start = sgs.CreateTriggerSkill{  --用于使“千里走单骑”模式�
 						end
 						math.random()
 						for i = 1, 3 do
-							if #types == 0 then break end
+							if #types == 0 then
+								break
+							end
 							local reward_type = types[math.random(1, #types)]
 							table.insert(choiceList, reward_type)
 							table.removeOne(types, reward_type)
@@ -476,7 +540,9 @@ RAFTOM_start = sgs.CreateTriggerSkill{  --用于使“千里走单骑”模式�
 			end
 		elseif event == sgs.DrawNCards then
 			local draw = data:toDraw()
-			if draw.reason ~= "InitialHandCards" then return false end
+			if draw.reason ~= "InitialHandCards" then
+				return false
+			end
 			local recordFile = assert(io.open(GER, "r"))
 			local level = recordFile:read("*l"):split("=")
 			level = tonumber(level[2])
@@ -489,7 +555,9 @@ RAFTOM_start = sgs.CreateTriggerSkill{  --用于使“千里走单骑”模式�
 			end
 		else
 			local draw = data:toDraw()
-			if draw.reason ~= "InitialHandCards" then return false end
+			if draw.reason ~= "InitialHandCards" then
+				return false
+			end
 			local reward_type = splayer:getTag("reward_type"):toString()
 			if reward_type ~= "" and table.contains(reward_types, reward_type) then
 				reward(splayer:getNextAlive(), splayer, reward_type)
@@ -497,44 +565,58 @@ RAFTOM_start = sgs.CreateTriggerSkill{  --用于使“千里走单骑”模式�
 			end
 		end
 		return false
-	end
+	end,
 }
 
 local skills = sgs.SkillList()
-if not sgs.Sanguosha:getSkill("GameEndRecording") then skills:append(GameEndRecording) end
-if not sgs.Sanguosha:getSkill("rewardExtraTurn") then skills:append(rewardExtraTurn) end
-if not sgs.Sanguosha:getSkill("heroesNeverDie") then skills:append(heroesNeverDie) end
-if not sgs.Sanguosha:getSkill("#RAFTOM_start") then skills:append(RAFTOM_start) end
+if not sgs.Sanguosha:getSkill("GameEndRecording") then
+	skills:append(GameEndRecording)
+end
+if not sgs.Sanguosha:getSkill("rewardExtraTurn") then
+	skills:append(rewardExtraTurn)
+end
+if not sgs.Sanguosha:getSkill("heroesNeverDie") then
+	skills:append(heroesNeverDie)
+end
+if not sgs.Sanguosha:getSkill("#RAFTOM_start") then
+	skills:append(RAFTOM_start)
+end
 
 --==============================================技能区==============================================--
 RA_caiyang = sgs.General(extension, "RA_caiyang", "wei", 1, true, true)
-yinka = sgs.CreateTriggerSkill{
+yinka = sgs.CreateTriggerSkill {
 	name = "#yinka",
-	events = {sgs.DrawNCards, sgs.AfterDrawNCards},
+	events = { sgs.DrawNCards, sgs.AfterDrawNCards },
 	priority = 10,
 	on_trigger = function(self, event, player, data, room)
 		if event == sgs.DrawNCards then
 			local draw = data:toDraw()
-			if draw.reason ~= "InitialHandCards" then return false end
+			if draw.reason ~= "InitialHandCards" then
+				return false
+			end
 			draw.num = 0
 			data:setValue(draw)
 		else
 			local draw = data:toDraw()
-			if draw.reason ~= "InitialHandCards" then return false end
+			if draw.reason ~= "InitialHandCards" then
+				return false
+			end
 			local perfect_cards = {}
 			local opponent = player:getNextAlive()
 			if opponent:getHp() <= 2 and opponent:getArmor() and not opponent:getArmor():isKindOf("SiverLion") and opponent:hasSkill("buqu") then
-				perfect_cards = {"analeptic", "axe", "fire_slash", "vine"}
+				perfect_cards = { "analeptic", "axe", "fire_slash", "vine" }
 			elseif math.abs(opponent:getHandcardNum() - opponent:getMaxCards()) > 0 then
-				perfect_cards = {"indulgence", "dismentlement", "jink", "vine"}
+				perfect_cards = { "indulgence", "dismentlement", "jink", "vine" }
 			elseif player:inMyAttackRange(opponent, -1) then
-				perfect_cards = {"jueying", "dismentlement", "jink", "fire_slash"}
+				perfect_cards = { "jueying", "dismentlement", "jink", "fire_slash" }
 			else
-				perfect_cards = {"vine", "dismentlement", "jink", "fire_slash"}
+				perfect_cards = { "vine", "dismentlement", "jink", "fire_slash" }
 			end
 			local dummy = sgs.Sanguosha:cloneCard("slash")
 			for _, id in sgs.qlist(room:getDrawPile()) do
-				if next(perfect_cards) == nil then break end
+				if next(perfect_cards) == nil then
+					break
+				end
 				local name = sgs.Sanguosha:getCard(id):objectName()
 				if table.contains(perfect_cards, name) then
 					dummy:addSubcard(id)
@@ -548,22 +630,22 @@ yinka = sgs.CreateTriggerSkill{
 			end
 		end
 		return false
-	end
+	end,
 }
 RA_caiyang:addSkill(yinka)
 
 sgs.Sanguosha:addSkills(skills)
 
-sgs.LoadTranslationTable{
-	
+sgs.LoadTranslationTable {
+
 	["RAFTOM"] = "千里走单骑",
-	
+
 	["reward"] = "奖励",
 	["$WelcomeToRAFTOM"] = "千里走单骑",
 	["#RAFTOMStart"] = "欢迎进入“千里走单骑”模式！",
 	["#showWinCount"] = "恭喜你获得一次复活机会，当前拥有 %arg 次复活机会",
 	["RAFTOM_start:RA_start"] = "是否进入“千里走单骑”模式？（当前为第 %src 关卡）",
-	
+
 	["re_type1"] = "回复1点体力，并摸一张牌",
 	["re_type2"] = "摸三张牌",
 	["re_type3"] = "随机装备一个防具牌，并摸一张牌",
@@ -583,16 +665,15 @@ sgs.LoadTranslationTable{
 	["re_type17"] = "失去1点体力，并摸五张牌",
 	["re_type18"] = "失去体力至1点，然后摸七张牌",
 	["re_type19"] = "弃置一张牌，并对敌方造成2点伤害",
-	
+
 	["heroesNeverDie:HND"] = "你是否选择复活？（你还有 %src 次复活机会）",
-	
+
 	["select_dif"] = "难度",
 	["easy"] = "简单（+2体力上限和体力）",
 	["normal"] = "普通（+1体力上限和体力）",
 	["insane"] = "疯狂（一无所有者）",
-	
+
 	["RA_caiyang"] = "蔡阳",
-	
 }
 
-return {extension}
+return { extension }

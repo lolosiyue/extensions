@@ -1,5 +1,5 @@
 module("extensions.dmpdiva", package.seeall) --游戏包
-extension = sgs.Package("dmpdiva")           --增加拓展包
+extension = sgs.Package("dmpdiva") --增加拓展包
 
 --势力
 
@@ -21,7 +21,9 @@ se_nitian = sgs.CreateTriggerSkill {
 			local judge = data:toJudge()
 			local room = player:getRoom()
 			for _, honoka in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-				if judge.who:getHp() >= judge.who:getMaxHp() then return end
+				if judge.who:getHp() >= judge.who:getMaxHp() then
+					return
+				end
 				if honoka:canDiscard(honoka, "h") then
 					local prompt = string.format("se_nitian_dis:%s", judge.who:objectName())
 					room:setTag("se_nitian_judge", data)
@@ -43,9 +45,13 @@ se_nitian = sgs.CreateTriggerSkill {
 		elseif event == sgs.CardsMoveOneTime then
 			local room = player:getRoom()
 			local move = data:toMoveOneTime()
-			if move.to_place ~= sgs.Player_DiscardPile then return end
+			if move.to_place ~= sgs.Player_DiscardPile then
+				return
+			end
 			for _, honoka in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-				if player:objectName() ~= honoka:objectName() then continue end
+				if player:objectName() ~= honoka:objectName() then
+					continue
+				end
 
 				local newMove = sgs.CardsMoveStruct()
 				for _, id in sgs.qlist(move.card_ids) do
@@ -77,7 +83,7 @@ se_nitian = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target ~= nil
-	end
+	end,
 }
 
 --鼓舞
@@ -117,7 +123,7 @@ se_guwu = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target ~= nil
-	end
+	end,
 }
 
 --抢镜
@@ -128,11 +134,17 @@ se_qiangjing = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local move = data:toMoveOneTime()
-		if not move.from_places:contains(sgs.Player_DrawPile) or move.from then return end
-		if room:getTag("FirstRound"):toBool() then return false end
+		if not move.from_places:contains(sgs.Player_DrawPile) or move.from then
+			return
+		end
+		if room:getTag("FirstRound"):toBool() then
+			return false
+		end
 		for _, kotori in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
 			if move.to_place == sgs.Player_PlaceHand and move.to:objectName() ~= kotori:objectName() and move.to:getPhase() ~= sgs.Player_Draw then
-				if not kotori:askForSkillInvoke(self:objectName(), data) then continue end
+				if not kotori:askForSkillInvoke(self:objectName(), data) then
+					continue
+				end
 				local judge = sgs.JudgeStruct()
 				judge.pattern = ".|heart"
 				judge.reason = self:objectName()
@@ -145,20 +157,27 @@ se_qiangjing = sgs.CreateTriggerSkill {
 					room:doLightbox("se_qiangjing$", 500)
 					local ran = math.random(1, 100)
 					local num = 1
-					if ran > 70 then num = 2 end
-					if ran > 92 then num = 4 end
-					if ran > 96 then num = 8 end
-					if ran > 99 then num = 20 end
+					if ran > 70 then
+						num = 2
+					end
+					if ran > 92 then
+						num = 4
+					end
+					if ran > 96 then
+						num = 8
+					end
+					if ran > 99 then
+						num = 20
+					end
 					kotori:drawCards(num)
 				end
 			end
 		end
 		return false
-	end
+	end,
 }
 
 --制服
-
 
 se_zhifucard = sgs.CreateSkillCard {
 	name = "se_zhifucard",
@@ -191,11 +210,15 @@ se_zhifucard = sgs.CreateSkillCard {
 				end
 			end
 		end
-		if not choices then return end
+		if not choices then
+			return
+		end
 		local dest = sgs.QVariant()
 		dest:setValue(targets[1])
 		local choice = room:askForChoice(source, self:objectName(), choices, dest)
-		if not choice then return end
+		if not choice then
+			return
+		end
 		room:broadcastSkillInvoke("se_zhifu")
 		local target = targets[1]
 
@@ -225,7 +248,7 @@ se_zhifucard = sgs.CreateSkillCard {
 		msg.from = target
 		msg.arg = choice
 		room:sendLog(msg)
-	end
+	end,
 }
 
 se_zhifu = sgs.CreateViewAsSkill {
@@ -247,15 +270,13 @@ se_zhifu = sgs.CreateViewAsSkill {
 	end,
 }
 
-
 --nico
 se_nikecard = sgs.CreateSkillCard {
 	name = "se_nikecard",
 	target_fixed = false,
 	will_throw = true,
 	filter = function(self, targets, to_select)
-		return to_select:objectName() ~= sgs.Self:objectName() and
-			#targets < (sgs.Self:getHandcardNum() + sgs.Self:getEquips():length()) * 2
+		return to_select:objectName() ~= sgs.Self:objectName() and #targets < (sgs.Self:getHandcardNum() + sgs.Self:getEquips():length()) * 2
 	end,
 	feasible = function(self, targets)
 		return true
@@ -271,7 +292,7 @@ se_nikecard = sgs.CreateSkillCard {
 			re.who = p
 			room:recover(p, re, true)
 		end
-	end
+	end,
 }
 
 se_nike = sgs.CreateViewAsSkill {
@@ -286,7 +307,6 @@ se_nike = sgs.CreateViewAsSkill {
 		return not player:hasUsed("#se_nikecard") and not player:isNude()
 	end,
 }
-
 
 se_yanyi = sgs.CreateTriggerSkill {
 	name = "se_yanyi",
@@ -304,7 +324,20 @@ se_yanyi = sgs.CreateTriggerSkill {
 					local sks = {}
 					local all_generals = sgs.Sanguosha:getLimitedGeneralNames()
 					for i = 1, #all_generals do
-						if all_generals[i] == "Tukasa" or all_generals[i] == "mianma" or all_generals[i] == "Sakura" or all_generals[i] == "Riko" or all_generals[i] == "Nanami" or all_generals[i] == "Koishi" or all_generals[i] == "Mikoto" or all_generals[i] == "Natsume_Rin" or all_generals[i] == "Kazehaya" or all_generals[i] == "AiAstin" or all_generals[i] == "Reimu" or all_generals[i] == "Louise" then
+						if
+							all_generals[i] == "Tukasa"
+							or all_generals[i] == "mianma"
+							or all_generals[i] == "Sakura"
+							or all_generals[i] == "Riko"
+							or all_generals[i] == "Nanami"
+							or all_generals[i] == "Koishi"
+							or all_generals[i] == "Mikoto"
+							or all_generals[i] == "Natsume_Rin"
+							or all_generals[i] == "Kazehaya"
+							or all_generals[i] == "AiAstin"
+							or all_generals[i] == "Reimu"
+							or all_generals[i] == "Louise"
+						then
 							table.remove(all_generals, i)
 							i = i - 1
 						end
@@ -323,11 +356,15 @@ se_yanyi = sgs.CreateTriggerSkill {
 
 					for _, pl in sgs.qlist(players) do
 						for _, ske in sgs.qlist(pl:getVisibleSkillList()) do
-							if table.contains(sks, ske:objectName()) then table.removeOne(sks, ske:objectName()) end
+							if table.contains(sks, ske:objectName()) then
+								table.removeOne(sks, ske:objectName())
+							end
 						end
 					end
 
-					if #sks == 0 then return end
+					if #sks == 0 then
+						return
+					end
 					local ran = math.random(1, #sks)
 					skill_name = sks[ran]
 					room:handleAcquireDetachSkills(damage.to, skill_name)
@@ -351,19 +388,18 @@ se_yanyi = sgs.CreateTriggerSkill {
 					end
 				end
 				local skl = room:askForChoice(re.who, self:objectName(), table.concat(choices, "+"))
-				if not skl then skl = self:objectName() end
+				if not skl then
+					skl = self:objectName()
+				end
 				room:detachSkillFromPlayer(re.who, skl)
 			end
 		end
-	end
+	end,
 }
-
-
 
 Honoka = sgs.General(extension, "Honoka", "diva", 3, false, false, false)
 MKotori = sgs.General(extension, "MKotori", "diva", 3, false, false, false)
 Nico = sgs.General(extension, "Nico", "diva", 3, false, false, false)
-
 
 Honoka:addSkill(se_nitian)
 Honoka:addSkill(se_guwu)
@@ -394,12 +430,11 @@ sgs.LoadTranslationTable {
 	["se_guwu$"] = "image=image/animate/se_guwu.png",
 	[":se_guwu"] = "每当一名角色离开濒死阶段时，你可以令其进行一次判定。若为红色，其回复一点体力，否则你和其各摸一张牌。",
 
-
 	["se_qiangjing"] = "抢镜「抢镜头的大头小鸟」",
 	["$se_qiangjing1"] = "哇，吓我一跳…",
 	["$se_qiangjing2"] = "耶耶哦",
 	["se_qiangjing$"] = "image=image/animate/se_qiangjing.png",
-	[":se_qiangjing"] = "其他角色在摸牌阶段外摸牌时，你可以进行一次判定：若为<font color=\"red\"><b>♥</b></font>，摸1~?（非平均且有大奖）张牌。",
+	[":se_qiangjing"] = '其他角色在摸牌阶段外摸牌时，你可以进行一次判定：若为<font color="red"><b>♥</b></font>，摸1~?（非平均且有大奖）张牌。',
 
 	["se_zhifu"] = "制服 「服装制作」",
 	["$se_zhifu1"] = "其实我的手还是非常巧的，所以也在做μ'ｓ的服装。",
@@ -413,7 +448,7 @@ sgs.LoadTranslationTable {
 	["$se_nike1"] = "niconiconi~",
 	["$se_nike2"] = "大家的偶像妮可来了哦～妮可妮可妮~",
 	["$se_nike3"] = "好了，粉丝都在等着妮可♪",
-	[":se_nike"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>指定包括你在内的任意名角色各弃置X张牌，并回复一点体力。X为你指定的人数/2（向下取整）。",
+	[":se_nike"] = '<font color="green"><b>出牌阶段限一次，</b></font>指定包括你在内的任意名角色各弃置X张牌，并回复一点体力。X为你指定的人数/2（向下取整）。',
 	["se_nike$"] = "image=image/animate/se_nike.png",
 
 	["se_yanyi"] = "颜艺 「恶意卖萌」",
@@ -421,7 +456,7 @@ sgs.LoadTranslationTable {
 	["$se_yanyi2"] = "努力加油♪",
 	["$se_yanyi3"] = "主人，你是在叫我吗？",
 	["$se_yanyi4"] = "来吧，让全世界都知道妮可的可爱！",
-	[":se_yanyi"] = "<font color=\"blue\"><b>锁定技,</b></font>你每受到一点伤害后，需随机获得一个场上不存在的技能。你回复体力时，需选择一个技能失去。",
+	[":se_yanyi"] = '<font color="blue"><b>锁定技,</b></font>你每受到一点伤害后，需随机获得一个场上不存在的技能。你回复体力时，需选择一个技能失去。',
 	["se_yanyi1$"] = "image=image/animate/se_yanyi1.png",
 	["se_yanyi2$"] = "image=image/animate/se_yanyi2.png",
 	["se_yanyi3$"] = "image=image/animate/se_yanyi3.png",

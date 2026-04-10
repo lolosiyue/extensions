@@ -31,7 +31,7 @@ extension = sgs.Package("LuaOldEnemy", sgs.Package_CardPack)
 3.隐者角色以“主动方”身份建立宿敌关系时，须展示所有手牌。
 4.隐者角色死亡时可将所有手牌交给一名其他角色。
 ]]
-   --
+--
 
 require "luaoldenemy_lib"
 
@@ -65,9 +65,15 @@ LuaOldEnemy = sgs.CreateTriggerSkill {
 		end
 		if event == sgs.DamageInflicted then
 			local damage = data:toDamage()
-			if not damage.from or damage.from:objectName() == damage.to:objectName() then return false end
-			if findMyOE(damage.from) or findMyOE(damage.to) then return false end
-			if damage.from:getMark("@LuaPublicEnemy") > 0 or damage.to:getMark("@LuaPublicEnemy") > 0 then return false end
+			if not damage.from or damage.from:objectName() == damage.to:objectName() then
+				return false
+			end
+			if findMyOE(damage.from) or findMyOE(damage.to) then
+				return false
+			end
+			if damage.from:getMark("@LuaPublicEnemy") > 0 or damage.to:getMark("@LuaPublicEnemy") > 0 then
+				return false
+			end
 			if damage.from:getMark("@LuaOldEnemyHermit") > 0 then --隐者主动方展示手牌
 				room:showAllCards(damage.from)
 			end
@@ -88,30 +94,36 @@ LuaOldEnemy = sgs.CreateTriggerSkill {
 		end
 		if event == sgs.Death then
 			local death = data:toDeath()
-			if death.who:objectName() ~= player:objectName() then return false end
+			if death.who:objectName() ~= player:objectName() then
+				return false
+			end
 			local OldEnemy = findMyOE(death.who, room)
 			if OldEnemy then
 				relieveOE(room, death.who)
 				room:addPlayerMark(OldEnemy, "OEs", 1)
 			end
 			if death.who:getMark("@LuaOldEnemyHermit") > 0 and not death.who:isKongcheng() then --隐者被杀给牌
-				local target = room:askForPlayerChosen(death.who, room:getOtherPlayers(death.who), "LuaOldEnemyHermit",
-					"@LuaOldEnemyHermit-invoke", true)
+				local target = room:askForPlayerChosen(death.who, room:getOtherPlayers(death.who), "LuaOldEnemyHermit", "@LuaOldEnemyHermit-invoke", true)
 				local dummy = sgs.Sanguosha:cloneCard("jink")
 				local cards = death.who:getHandcards()
-				for _, card in sgs.qlist(cards) do dummy:addSubcard(card) end
-				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, death.who:objectName(),
-					target:objectName(), "LuaOldEnemyHermit", "")
+				for _, card in sgs.qlist(cards) do
+					dummy:addSubcard(card)
+				end
+				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, death.who:objectName(), target:objectName(), "LuaOldEnemyHermit", "")
 				room:moveCardTo(dummy, target, sgs.Player_PlaceHand, reason)
 				dummy:deleteLater()
 			end
 			if death.damage and death.damage.from then
 				if OldEnemy and death.damage.from:objectName() == OldEnemy:objectName() then --杀死宿敌回血
-					if OldEnemy:isWounded() then room:recover(OldEnemy, sgs.RecoverStruct()) end
+					if OldEnemy:isWounded() then
+						room:recover(OldEnemy, sgs.RecoverStruct())
+					end
 				end
 				if death.who:getMark("@LuaPublicEnemy") > 0 then --杀死公敌摸牌
 					death.damage.from:drawCards(2)
-					if death.damage.from:isWounded() then room:recover(death.damage.from, sgs.RecoverStruct()) end
+					if death.damage.from:isWounded() then
+						room:recover(death.damage.from, sgs.RecoverStruct())
+					end
 				end
 				if death.damage.from:getMark("@LuaPublicEnemy") > 0 then --公敌杀人拿装备
 					if death.who:getEquips():length() > 0 then
@@ -122,7 +134,9 @@ LuaOldEnemy = sgs.CreateTriggerSkill {
 					end
 				end
 			end
-			if OldEnemy and OldEnemy:getMark("OEs") >= 2 then setPublicEnemy(room, OldEnemy) end --设置公敌
+			if OldEnemy and OldEnemy:getMark("OEs") >= 2 then
+				setPublicEnemy(room, OldEnemy)
+			end --设置公敌
 			return false
 		end
 	end,
@@ -132,26 +146,44 @@ LuaOldEnemy = sgs.CreateTriggerSkill {
 	end,
 }
 
-if not sgs.Sanguosha:getSkill("#LuaOldEnemy") then skilllist:append(LuaOldEnemy) end
+if not sgs.Sanguosha:getSkill("#LuaOldEnemy") then
+	skilllist:append(LuaOldEnemy)
+end
 
 LuaOldEnemyDistance = sgs.CreateDistanceSkill {
 	name = "#LuaOldEnemyDistance",
 	correct_func = function(self, from, to)
-		if table.contains(sgs.Sanguosha:getBanPackages(), "LuaOldEnemy") then return 0 end
-		if findMyOE(from) and findMyOE(from):objectName() == to:objectName() then return -1 end
-		if to:getMark("@LuaPublicEnemy") > 0 then return -1 end
+		if table.contains(sgs.Sanguosha:getBanPackages(), "LuaOldEnemy") then
+			return 0
+		end
+		if findMyOE(from) and findMyOE(from):objectName() == to:objectName() then
+			return -1
+		end
+		if to:getMark("@LuaPublicEnemy") > 0 then
+			return -1
+		end
 	end,
 }
 
-if not sgs.Sanguosha:getSkill("#LuaOldEnemyDistance") then skilllist:append(LuaOldEnemyDistance) end
+if not sgs.Sanguosha:getSkill("#LuaOldEnemyDistance") then
+	skilllist:append(LuaOldEnemyDistance)
+end
 
 sgs.Sanguosha:addSkills(skilllist)
-
 
 sgs.LoadTranslationTable {
 	["LuaOldEnemy"] = "宿敌规则",
 	["#LuaOldEnemy"] = "宿敌规则",
-	["@LuaOldEnemy0"] = "宿敌", ["@LuaOldEnemy1"] = "宿敌", ["@LuaOldEnemy2"] = "宿敌", ["@LuaOldEnemy3"] = "宿敌", ["@LuaOldEnemy4"] = "宿敌", ["@LuaOldEnemy5"] = "宿敌", ["@LuaOldEnemy6"] = "宿敌", ["@LuaOldEnemy7"] = "宿敌", ["@LuaOldEnemy8"] = "宿敌", ["@LuaOldEnemy9"] = "宿敌",
+	["@LuaOldEnemy0"] = "宿敌",
+	["@LuaOldEnemy1"] = "宿敌",
+	["@LuaOldEnemy2"] = "宿敌",
+	["@LuaOldEnemy3"] = "宿敌",
+	["@LuaOldEnemy4"] = "宿敌",
+	["@LuaOldEnemy5"] = "宿敌",
+	["@LuaOldEnemy6"] = "宿敌",
+	["@LuaOldEnemy7"] = "宿敌",
+	["@LuaOldEnemy8"] = "宿敌",
+	["@LuaOldEnemy9"] = "宿敌",
 	["@LuaPublicEnemy"] = "公敌",
 	["LuaPublicEnemy"] = "公敌规则",
 	["LuaPublicEnemy:PublicEnemy_getEquip"] = "是否获得 %src 装备区一张牌？",

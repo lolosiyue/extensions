@@ -42,7 +42,7 @@ lalongCard = sgs.CreateSkillCard {
 			slash:deleteLater()
 		end
 		return false
-	end
+	end,
 }
 lalong = sgs.CreateViewAsSkill {
 	name = "lalong",
@@ -59,7 +59,7 @@ lalong = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_play = function(self, player)
 		return not player:isNude() and not player:hasUsed("#lalongCard")
-	end
+	end,
 }
 fuhei = sgs.CreateFilterSkill {
 	name = "fuhei",
@@ -73,7 +73,7 @@ fuhei = sgs.CreateFilterSkill {
 		new_card:setSuit(sgs.Card_Spade)
 		new_card:setModified(true)
 		return new_card
-	end
+	end,
 }
 renzha = sgs.CreateTriggerSkill {
 	name = "renzha$",
@@ -94,8 +94,7 @@ renzha = sgs.CreateTriggerSkill {
 				if liubei then
 					room:broadcastSkillInvoke(self:objectName())
 					local card_id = room:askForCardChosen(liubei, player, "hej", self:objectName())
-					room:obtainCard(liubei, sgs.Sanguosha:getCard(card_id),
-						room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
+					room:obtainCard(liubei, sgs.Sanguosha:getCard(card_id), room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
 					liubeis:removeOne(liubei)
 				else
 					break
@@ -106,7 +105,7 @@ renzha = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target and (target:getKingdom() == "shu")
-	end
+	end,
 }
 langliubei:addSkill(lalong)
 langliubei:addSkill(fuhei)
@@ -127,8 +126,12 @@ suzhan = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local damage = data:toDamage()
-		if damage.chain or damage.transfer or not damage.by_user then return false end
-		if not (damage.card and damage.card:isKindOf("Slash")) then return false end
+		if damage.chain or damage.transfer or not damage.by_user then
+			return false
+		end
+		if not (damage.card and damage.card:isKindOf("Slash")) then
+			return false
+		end
 		if damage.from and damage.to:getEquips():isEmpty() then
 			room:broadcastSkillInvoke(self:objectName())
 			damage.damage = damage.damage + 1
@@ -137,11 +140,11 @@ suzhan = sgs.CreateTriggerSkill {
 			log.type = "#skill_add_damage"
 			log.from = damage.from
 			log.to:append(damage.to)
-			log.arg  = self:objectName()
+			log.arg = self:objectName()
 			log.arg2 = damage.damage
 			room:sendLog(log)
 		end
-	end
+	end,
 }
 shuiyanCard = sgs.CreateSkillCard {
 	name = "shuiyanCard",
@@ -166,13 +169,15 @@ shuiyanCard = sgs.CreateSkillCard {
 			end
 		end
 		return false
-	end
+	end,
 }
 shuiyan = sgs.CreateViewAsSkill {
 	name = "shuiyan",
 	n = 3,
 	view_filter = function(self, selected, to_select)
-		if #selected >= 3 then return false end
+		if #selected >= 3 then
+			return false
+		end
 		if #selected == 1 then
 			return to_select:getSuit() ~= selected[1]:getSuit()
 		elseif #selected == 2 then
@@ -191,7 +196,7 @@ shuiyan = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_play = function(self, player)
 		return (not player:hasUsed("#shuiyanCard")) and player:getCardCount(true) >= 3
-	end
+	end,
 }
 langguanyu:addSkill(suzhan)
 langguanyu:addSkill(suzhandis)
@@ -225,7 +230,7 @@ chenmu = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-	end
+	end,
 }
 chenmuMod = sgs.CreateTargetModSkill {
 	name = "#chenmuMod",
@@ -244,7 +249,7 @@ chenmuMod = sgs.CreateTargetModSkill {
 		else
 			return 0
 		end
-	end
+	end,
 }
 duanqiao = sgs.CreateTriggerSkill {
 	name = "duanqiao",
@@ -272,7 +277,7 @@ duanqiao = sgs.CreateTriggerSkill {
 	end,
 	can_trigger = function(self, target)
 		return target
-	end
+	end,
 }
 langzhangfei:addSkill(chenmu)
 langzhangfei:addSkill(chenmuMod)
@@ -290,7 +295,9 @@ shengui = sgs.CreateTriggerSkill {
 			if use.card:isKindOf("Slash") and player:objectName() == use.from:objectName() and player:isAlive() and player:hasSkill(self:objectName()) then
 				local list = use.nullified_list
 				for _, p in sgs.qlist(use.to) do
-					if p:isKongcheng() then return false end
+					if p:isKongcheng() then
+						return false
+					end
 					local dest = sgs.QVariant()
 					dest:setValue(p)
 					if player:askForSkillInvoke(self:objectName(), dest) then
@@ -334,7 +341,7 @@ shejiCard = sgs.CreateSkillCard {
 		slash:setSkillName("sheji")
 		room:useCard(sgs.CardUseStruct(slash, source, target))
 		slash:deleteLater()
-	end
+	end,
 }
 shejiVS = sgs.CreateZeroCardViewAsSkill {
 	name = "sheji",
@@ -348,7 +355,7 @@ shejiVS = sgs.CreateZeroCardViewAsSkill {
 	end,
 	enabled_at_response = function(self, player, pattern)
 		return pattern == "@@sheji"
-	end
+	end,
 }
 sheji = sgs.CreateTriggerSkill {
 	name = "sheji",
@@ -356,12 +363,16 @@ sheji = sgs.CreateTriggerSkill {
 	view_as_skill = shejiVS,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if player:getPhase() ~= sgs.Player_Play then return false end
-		if player:isKongcheng() then return false end
+		if player:getPhase() ~= sgs.Player_Play then
+			return false
+		end
+		if player:isKongcheng() then
+			return false
+		end
 		if room:askForUseCard(player, "@@sheji", "@sheji-card") then
 		end
 		return false
-	end
+	end,
 }
 feijiang = sgs.CreateDistanceSkill {
 	name = "feijiang$",
@@ -378,7 +389,7 @@ feijiang = sgs.CreateDistanceSkill {
 		if from:hasLordSkill(self:objectName()) then
 			return distance
 		end
-	end
+	end,
 }
 langlvbu:addSkill(shengui)
 langlvbu:addSkill(sheji)
@@ -418,15 +429,15 @@ sgs.LoadTranslationTable {
 	["lalong"] = "拉拢",
 	["$lalong1"] = "蜀将何在？",
 	["$lalong2"] = "尔等敢应战否？",
-	[":lalong"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以将一张黑桃牌交给一名其他角色并摸一张牌，然后视为该角色对另一名由你指定的同时在你与该角色攻击范围内的角色使用一张【杀】。",
+	[":lalong"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以将一张黑桃牌交给一名其他角色并摸一张牌，然后视为该角色对另一名由你指定的同时在你与该角色攻击范围内的角色使用一张【杀】。',
 	["fuhei"] = "腹黑",
-	[":fuhei"] = "<font color=\"blue\"><b>锁定技，</b></font>你的红桃牌均视为黑桃牌。",
+	[":fuhei"] = '<font color="blue"><b>锁定技，</b></font>你的红桃牌均视为黑桃牌。',
 	["renzha"] = "仁诈",
-	[":renzha"] = "<font color=\"orange\"><b>主公技，</b></font>一名其他蜀势力角色回合开始时，其可以令你获得其区域内一张牌。",
+	[":renzha"] = '<font color="orange"><b>主公技，</b></font>一名其他蜀势力角色回合开始时，其可以令你获得其区域内一张牌。',
 	["@renzha-to"] = "请选择“仁诈”的目标角色",
 
 	["suzhan"] = "速斩",
-	[":suzhan"] = "<font color=\"blue\"><b>锁定技，</b></font>你与装备区没有牌的角色距离为1，你使用【杀】对装备区没有牌的角色造成的伤害+1。",
+	[":suzhan"] = '<font color="blue"><b>锁定技，</b></font>你与装备区没有牌的角色距离为1，你使用【杀】对装备区没有牌的角色造成的伤害+1。',
 	["$suzhan1"] = "关羽在此，尔等受死！",
 	["$suzhan2"] = "看尔乃插标卖首！",
 
@@ -434,7 +445,7 @@ sgs.LoadTranslationTable {
 	["$shuiyan"] = "全都去死吧﹗",
 	["be_lost"] = "失去一点体力",
 	["throw_equips"] = "弃置装备区内所有装备",
-	[":shuiyan"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以弃置三张不同花色的牌，令所有其他角色依次选择一项：弃置所有装备区的所有装备牌（至少一张），或失去一点体力。",
+	[":shuiyan"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以弃置三张不同花色的牌，令所有其他角色依次选择一项：弃置所有装备区的所有装备牌（至少一张），或失去一点体力。',
 	["chenmu"] = "瞋目",
 	["$chenmu"] = "受死吧！",
 	[":chenmu"] = "出牌阶段开始时，你可以进行一次判定并获得对应锁定技，直到回合结束：若点数小于7，你使用【杀】无数量限制；若点数大于7，你使用【杀】无距离限制；若点数等于7，你使用【杀】无距离数量限制。",
@@ -454,11 +465,8 @@ sgs.LoadTranslationTable {
 	["~sheji"] = "選擇所有手牌→選擇一名其他角色",
 	["@sheji-card"] = "你可以将所有手牌（至少一张）交给一名其他角色，视为对其使用一张【杀】。",
 	["feijiang"] = "飞将",
-	[":feijiang"] = "<font color=\"orange\"><b>主公技，</b></font><font color=\"blue\"><b>锁定技，</b></font>你与其他角色的距离-X。（X为其他群雄角色的数量）",
+	[":feijiang"] = '<font color="orange"><b>主公技，</b></font><font color="blue"><b>锁定技，</b></font>你与其他角色的距离-X。（X为其他群雄角色的数量）',
 }
-
-
-
 
 langmateng = sgs.General(extension, "langmateng", "qun", 4)
 langmachao = sgs.General(extension, "langmachao", "qun", 4)
@@ -478,15 +486,19 @@ tengxun = sgs.CreateTriggerSkill {
 				end
 			end
 
-			if targets:isEmpty() then return false end
-			room:setPlayerFlag(player, "LuaXDuanzhi_InTempMoving");
+			if targets:isEmpty() then
+				return false
+			end
+			room:setPlayerFlag(player, "LuaXDuanzhi_InTempMoving")
 			local target = room:askForPlayerChosen(player, targets, self:objectName(), nil, true, true)
 			if target then
 				local dummy = sgs.Sanguosha:cloneCard("slash") --没办法了，暂时用你代替DummyCard吧……
 				local card_ids = sgs.IntList()
 				local original_places = sgs.PlaceList()
 				for i = 1, 2, 1 do
-					if not player:canDiscard(target, "h") then break end
+					if not player:canDiscard(target, "h") then
+						break
+					end
 					card_ids:append(room:askForCardChosen(player, target, "h", self:objectName()))
 					original_places:append(room:getCardPlace(card_ids:at(i - 1)))
 					dummy:addSubcard(card_ids:at(i - 1))
@@ -494,8 +506,7 @@ tengxun = sgs.CreateTriggerSkill {
 				end
 				if dummy:subcardsLength() > 0 then
 					for i = 1, dummy:subcardsLength(), 1 do
-						room:moveCardTo(sgs.Sanguosha:getCard(card_ids:at(i - 1)), target, original_places:at(i - 1),
-							false)
+						room:moveCardTo(sgs.Sanguosha:getCard(card_ids:at(i - 1)), target, original_places:at(i - 1), false)
 					end
 				end
 				room:setPlayerFlag(player, "-LuaXDuanzhi_InTempMoving")
@@ -506,7 +517,7 @@ tengxun = sgs.CreateTriggerSkill {
 			end
 		end
 		return false
-	end
+	end,
 }
 wolfchichengCard = sgs.CreateSkillCard {
 	name = "wolfchichengCard",
@@ -534,7 +545,7 @@ wolfchichengCard = sgs.CreateSkillCard {
 		for _, p in ipairs(targets) do
 			p:drawCards(x)
 		end
-	end
+	end,
 }
 wolfchichengVS = sgs.CreateViewAsSkill {
 	name = "wolfchicheng",
@@ -543,7 +554,7 @@ wolfchichengVS = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_play = function(self, player)
 		return player:getMark("@chicheng") >= 1 and player:isWounded()
-	end
+	end,
 }
 wolfchicheng = sgs.CreateTriggerSkill {
 	name = "wolfchicheng",
@@ -551,8 +562,7 @@ wolfchicheng = sgs.CreateTriggerSkill {
 	events = { sgs.GameStart },
 	limit_mark = "@chicheng",
 	view_as_skill = wolfchichengVS,
-	on_trigger = function()
-	end
+	on_trigger = function() end,
 }
 langmateng:addSkill(tengxun)
 langmateng:addSkill(wolfchicheng)
@@ -572,14 +582,16 @@ xionglie = sgs.CreateTriggerSkill {
 				judge.who = player
 				judge.play_animation = true
 				room:judge(judge)
-				if (judge:isGood()) then
+				if judge:isGood() then
 					local targets = sgs.SPlayerList()
 					for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 						if player:distanceTo(p) == 1 then
 							targets:append(p)
 						end
 					end
-					if targets:isEmpty() then return false end
+					if targets:isEmpty() then
+						return false
+					end
 					local target = room:askForPlayerChosen(player, targets, self:objectName())
 					if not target:isKongcheng() then
 						target:addToPile("xionglie_lie", target:handCards(), false)
@@ -597,7 +609,7 @@ xionglie = sgs.CreateTriggerSkill {
 			end
 		end
 		return false
-	end
+	end,
 }
 langmachao:addSkill(xionglie)
 langmachao:addSkill("mashu")
@@ -620,7 +632,7 @@ jieffan = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-	end
+	end,
 }
 langmadai:addSkill(jieffan)
 langmadai:addSkill("mashu")
@@ -634,7 +646,7 @@ tietiCard = sgs.CreateSkillCard {
 	end,
 	on_use = function(self, room, source, targets)
 		room:damage(sgs.DamageStruct("tieti", source, targets[1]))
-	end
+	end,
 }
 tieti = sgs.CreateViewAsSkill {
 	name = "tieti",
@@ -653,7 +665,7 @@ tieti = sgs.CreateViewAsSkill {
 	end,
 	enabled_at_play = function(self, player)
 		return not player:hasUsed("#tietiCard")
-	end
+	end,
 }
 langmaxiumatie:addSkill(tieti)
 langmaxiumatie:addSkill("mashu")
@@ -688,20 +700,15 @@ sgs.LoadTranslationTable {
 	[":tengxun"] = "结束阶段开始时，你可以弃置一名手牌数大于你的角色两张手牌。",
 	["wolfchicheng"] = "驰骋",
 	["$wolfchicheng"] = "西涼鐵騎 所向披靡 ",
-	[":wolfchicheng"] = "<font color=\"red\"><b>限定技，</b></font>出牌阶段，你可以令最多三名角色各摸X张牌（X为你已损失的体力值）。",
+	[":wolfchicheng"] = '<font color="red"><b>限定技，</b></font>出牌阶段，你可以令最多三名角色各摸X张牌（X为你已损失的体力值）。',
 	["xionglie"] = "雄烈",
 	["$xionglie"] = "目标敌阵，全军突击！",
 	[":xionglie"] = "准备阶段开始时，你可以进行一次判定，若结果不为红桃，你令一名距离为1的角色将所有手牌置于其武将牌上，结束阶段开始时移回手牌。",
 	["jieffan"] = "截返",
 	[":jieffan"] = "每当一名角色进入濒死状态时，若其在你攻击范围内，你可以弃置一张锦囊牌，视为你杀死该角色。",
 	["tieti"] = "铁蹄",
-	[":tieti"] = "<font color=\"green\"><b>出牌阶段限一次，</b></font>你可以弃置两张黑色牌，对一名距离为1的角色造成一点伤害。",
+	[":tieti"] = '<font color="green"><b>出牌阶段限一次，</b></font>你可以弃置两张黑色牌，对一名距离为1的角色造成一点伤害。',
 	["xionglie_lie"] = "雄烈",
-
-
 }
-
-
-
 
 return { extension }
