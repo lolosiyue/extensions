@@ -11948,7 +11948,7 @@ s4_renchen = sgs.CreateTriggerSkill{
                     if not targets:isEmpty() then
                         local target = room:askForPlayerChosen(player, targets, self:objectName(), "@s4_renchen-extra")
                         if target then
-                            target:gainAnExtraTurn()
+                            room:setTag("heg_threaten_emperor_extra_turn", ToData(target))
                         end
                     end
                 elseif choice == "s4_renchen_give" then
@@ -11981,7 +11981,15 @@ s4_renchen = sgs.CreateTriggerSkill{
     end,
 }
 
+s4_renchen_give = CreateExtraTurnGiveSkill(
+	"#s4_renchen_give",
+	"s4_renchen_extra_turn",
+	sgs.Player_NotActive,
+	1
+)
 s4_nvcaomao:addSkill(s4_renchen)
+s4_nvcaomao:addSkill(s4_renchen_give)
+extension:insertRelatedSkills("s4_renchen", "#s4_renchen_give")
 
 s4_xingjue = sgs.CreateTriggerSkill{
     name = "s4_xingjue",
