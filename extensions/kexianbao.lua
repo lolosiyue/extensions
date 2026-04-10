@@ -961,7 +961,7 @@ kexianjishiCard = sgs.CreateSkillCard {
 		if yes == 1 then
 			table.insert(choices, "cancel")
 			--玩家选择一名死亡的角色
-			local choice = room:askForChoice(source, "shenji-ask", table.concat(choices, "+"))
+			local choice = room:askForChoice(source, "kexianjishi-ask", table.concat(choices, "+"))
 			if not (choice == "cancel") then
 				for _, pp in sgs.qlist(room:getAllPlayers(true)) do
 					--判断死亡的人的名字，跟选择的人是否符合，令其复活
