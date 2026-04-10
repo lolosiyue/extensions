@@ -2,13 +2,27 @@
 local packages = {}
 table.insert(packages, extension)
 
+--- 動態註冊新的勢力名稱與對應的代表顏色
+--- 
+--- **機制描述**：
+--- 1. **配置注入**：加載 `lua.config` 並向 `config.kingdoms` 表中插入新勢力名。
+--- 2. **顏色賦值**：將介面顯示顏色寫入 `config.kingdom_colors`。
+--- 3. **去重檢查**：若勢力已存在則不會重複添加。
+---
+--- **注意**：
+--- - `color` 參數通常接受十六進位顏色字串（如 `"#RRGGBB"`）。
+--- - 此操作會修改全域 `config` 變數，影響後續所有角色的勢力判定與 UI 渲染。
+---
+---@param name string 勢力名稱（內部標識符，如 "god", "qun", "custom"）
+---@param color string 勢力的代表顏色（CSS 風格字串）
+---@return boolean success 是否成功添加了新勢力（若已存在則回傳 false）
 function addNewKingdom(name, color)
     assert(type(name)=="string")
     assert(type(color)=="string")
     require "lua.config"
     if not table.contains(config.kingdoms, name) then
         table.insert(config.kingdoms, name)
-        config.kingdom_colors.ling = color
+        config.kingdom_colors[name] = color
         return true
     else
         return false

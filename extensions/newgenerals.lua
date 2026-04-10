@@ -7527,7 +7527,8 @@ lingce = sgs.CreateTriggerSkill {
 			end
 			local names = p:property("SkillDescriptionRecord_dinghan"):toString():split("+")
 			if
-				use.card:isZhinangCard() --use.card:isKindOf("Dismantlement") or use.card:isKindOf("Nullification") or use.card:isKindOf("Qizhengxiangsheng") or
+				use.card:isZhinangCard() --use.card:isKindOf("Dismantlement") or use.card:isKindOf("Nullification") or use.card:isKindOf("Qizhengxiangsheng") or
+
 				or (p:hasSkill("dinghan", true) and table.contains(names, use.card:objectName()))
 			then
 				room:sendCompulsoryTriggerLog(p, self)
@@ -9983,7 +9984,7 @@ qianmeng = sgs.CreateTriggerSkill {
 }
 caoxiancaohua:addSkill(qianmeng)
 --良缘
-function canLyUse(from, cn)
+local function canLyUse(from, cn)
 	local ct = { analeptic = "ercao_lingshan", peach = "ercao_yushu" }
 	local dc = dummyCard(cn)
 	dc:setSkillName("liangyuan")
@@ -11413,7 +11414,26 @@ moulongdan = sgs.CreateTriggerSkill {
 }
 mobilemou_zhaoyun:addSkill(moulongdan)
 
+--- 協力任務選項列表
+--- - `XL_tongchou`: 同仇（傷害任務）
+--- - `XL_bingjin`: 並進（摸牌任務）
+--- - `XL_shucai`: 疏財（棄牌任務）
+--- - `XL_luli`: 戮力（打出牌任務）
+---@type string[]
 local Xlchoices = { "XL_tongchou", "XL_bingjin", "XL_shucai", "XL_luli" }
+
+--- 啟動兩名角色之間的「協力」效果
+--- 
+--- **機制描述**：
+--- 1. **視覺標記**：為雙方設置以 `&` 開頭的 Mark，使客戶端顯示協力圖示與文字。
+--- 2. **身份綁定**：
+---    - `xl .. "from"`: 標記發起者身份。
+---    - `xl .. "XLto" .. to:objectName()`: 記錄目標對象，用於後續結算比對。
+--- 3. **衝突處理**：執行前自動調用 `removeXLeffect` 清除舊有協力，防止任務疊加導致邏輯錯誤。
+---
+---@param from ServerPlayer 協力發起者
+---@param to ServerPlayer 協力協助者
+---@param xl "XL_tongchou"|"XL_bingjin"|"XL_shucai"|"XL_luli" 協力任務類型
 function setXLeffect(from, to, xl)
 	local room = from:getRoom()
 	removeXLeffect(from, to, xl)
@@ -11422,6 +11442,17 @@ function setXLeffect(from, to, xl)
 	room:setPlayerMark(from, xl .. "XLto" .. to:objectName(), 1)
 	room:setPlayerMark(to, "&" .. xl, 1)
 end
+
+--- 移除兩名角色之間的「協力」效果並重置狀態
+--- 
+--- **功能**：
+--- 1. 清除雙方的視覺標記。
+--- 2. 重置成功標記 `&XL_success`。
+--- 3. **清理數據**：移除存儲在 Room 中的協力進度 Tag。
+---
+---@param from ServerPlayer 協力發起者
+---@param to ServerPlayer 協力協助者
+---@param xl string 協力任務類型
 function removeXLeffect(from, to, xl)
 	local room = from:getRoom()
 	room:setPlayerMark(from, "&" .. xl, 0)
@@ -20277,7 +20308,7 @@ olmorumo = sgs.CreateTriggerSkill {
 }
 olmo_simayi:addSkill(olmorumo)
 local olmoDamageSks = {}
-function getOLmoDamageSks()
+local function getOLmoDamageSks()
 	if #olmoDamageSks < 1 then
 		for _, gn in sgs.list(sgs.Sanguosha:getLimitedGeneralNames()) do
 			for _, sk in sgs.list(sgs.Sanguosha:getGeneral(gn):getVisibleSkillList()) do

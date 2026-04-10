@@ -12,33 +12,6 @@ extension_hegcard = sgs.Package("hegemony_cards", sgs.Package_CardPack)
 extension_hegadvantagecard = sgs.Package("strategic_advantage", sgs.Package_CardPack)
 require "ExtraTurnUtils"
 
-function ChoiceLog(player, choice, to, skillName)
-	local log = sgs.LogMessage()
-	log.type = "#choice"
-	log.from = player
-	
-	-- Don't translate in Lua (encoding issue), send the key and let C++ translate it
-	-- Check if skillName:choice translation exists
-	if skillName then
-		local full_key = skillName .. ":" .. choice
-		local full_translated = sgs.Sanguosha:translate(full_key)
-		-- If translation exists for skillName:choice, send the full key
-		if full_translated ~= full_key then
-			log.arg = full_key
-		else
-			-- Otherwise just send the choice
-			log.arg = choice
-		end
-	else
-		log.arg = choice
-	end
-	
-	if to then
-		log.to:append(to)
-	end
-	player:getRoom():sendLog(log)
-end
-
 function ChangeGeneral(room, player, skill_onwer_general_name, kingdom)
 	local generals = {}
 	for _,name in ipairs(sgs.Sanguosha:getLimitedGeneralNames()) do
@@ -108,14 +81,6 @@ function HeavenMove(player, id, movein, private_pile_name)  --将卡牌伪移动
 		room:notifyMoveCards(false, moves, false, _xuyou)
 		room:removePlayerCardLimitation(player, "use,response", "" .. id .. "$1")
 	end
-end
-
-function Table2IntList(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
 end
 
 function SendComLog(self, player, n, invoke)

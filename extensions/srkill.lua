@@ -4940,12 +4940,6 @@ sgs.LoadTranslationTable{
 --SR夏侯惇
 sr_xiahoudun = sgs.General(extension,"sr_xiahoudun","wei",4,true)
 
-function Set(list)
-	local set = {}
-	for _, l in ipairs(list) do set[l] = true end
-	return set
-end
-
 local patterns = {"slash", "jink", "peach", "analeptic"}
 if not (Set(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
 	table.insert(patterns, 2, "thunder_slash")
@@ -6116,13 +6110,7 @@ sr_shejitm = sgs.CreateTargetModSkill{
 sr_lvbu:addSkill(sr_shejitm)
 extension:insertRelatedSkills("sr_sheji", "#sr_shejitm")
 --获得武器牌时机
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
+
 sr_shejiget = sgs.CreateTriggerSkill{
 	name = "#sr_shejiget", 
 	frequency = sgs.Skill_NotFrequent, 

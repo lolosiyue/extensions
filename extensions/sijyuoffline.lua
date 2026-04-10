@@ -19,14 +19,6 @@ sgs.LoadTranslationTable {
 }
 
 
-
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 sgs.LoadTranslationTable {
     ["sfofl_e"] = "线下官盗E系列",
     ["sfofl_s"] = "线下官盗S系列",
@@ -3820,35 +3812,7 @@ sfofl_zhaoyun:addSkill(sfofl_qijin)
 	技能描述：每名其他角色的回合限一次，当你需要使用或打出一张基本牌时，你可以观看牌堆顶的两张牌，然后可以使用或打出其中一张相应的基本牌。
 	引用：sfofl_qichu
 ]] --
-function view(room, player, ids, enabled, disabled)
-    local result = -1;
-    room:notifySkillInvoked(player, "sfofl_qichu")
-    local log = sgs.LogMessage()
-    log.type = "$ViewDrawPile"
-    log.from = player
-    log.card_str = table.concat(sgs.QList2Table(ids), "+")
-    room:sendLog(log, player)
 
-        
-    if enabled:isEmpty() then
-        
-    else
-        room:fillAG(ids, player, disabled)
-        local id = room:askForAG(player, enabled, true, "sfofl_qichu");
-        if id ~= -1 then
-            ids:removeOne(id)
-            result = id
-        end
-        room:clearAG(player)
-    end
-    room:returnToTopDrawPile(ids)--用这个函数将牌放回牌堆顶
-    if result == -1 then
-        room:setPlayerFlag(player, "Global_sfofl_qichuFailed")
-    else
-        room:addPlayerMark(player, "&sfofl_qichu-Clear")
-    end
-    return result
-end
 sfofl_qichuVS = sgs.CreateZeroCardViewAsSkill{
     name = "sfofl_qichu",
     enabled_at_play = function()
@@ -3896,7 +3860,7 @@ sfofl_qichu = sgs.CreateTriggerSkill{
                     disabled:append(id)
                 end
             end
-            local id = view(room, player, ids, enabled, disabled)
+            local id = askForViewAndChoose(room, player, 2, self:objectName(), true)
             if id ~= -1 then
                 local card = sgs.Sanguosha:getCard(id)
                 room:provide(card)
@@ -3951,7 +3915,7 @@ sfofl_qichuCard = sgs.CreateSkillCard{
                 disabled:append(id)
             end
         end
-        local id = view(room, user, ids, enabled, disabled)
+        local id = askForViewAndChoose(room, user, 2, self:objectName(), true)
         return sgs.Sanguosha:getCard(id)
     end,
     on_validate = function(self, cardUse)
@@ -3973,7 +3937,7 @@ sfofl_qichuCard = sgs.CreateSkillCard{
                 disabled:append(id)
             end
         end
-        local id = view(room, user, ids, enabled, disabled)
+        local id = askForViewAndChoose(room, user, 2, self:objectName(), true)
         return sgs.Sanguosha:getCard(id)
     end
 }
@@ -10256,7 +10220,7 @@ sfofl_gongsunzan:addSkill(sfofl_whitehorse_change)
     sfofl_whitehorse_distance
     sfofl_whitehorse_weaponTr
 ]] --
-function getWhiteHorse(player)
+local function getWhiteHorse(player)
     local x = 0
     -- for _, e in sgs.qlist(player:getEquips()) do
     --     if e:isKindOf("WhiteHorse")
@@ -15854,7 +15818,7 @@ sfofl_shice = sgs.CreateTriggerSkill{
 ]] --
 
 
-function PodaiNames(player)
+local function PodaiNames(player)
     local basic = {}
     for id=0,sgs.Sanguosha:getCardCount()-1 do
 		local c = sgs.Sanguosha:getEngineCard(id)
@@ -22086,7 +22050,7 @@ sfofl_xingbian_treasure = sgs.CreateTreasure{
 		player:getRoom():detachSkillFromPlayer(player,"_sfofl_xingbian",true,true)
 	end,
 }
-function getxingbian(player)
+local function getxingbian(player)
     local x = 0
     if player:hasWeapon("_sfofl_xingbian_weapon") then
         x = x + 1
@@ -29339,7 +29303,7 @@ sfofl_n_weishui_gain = sgs.CreateTriggerSkill{
 sfofl_n_weishui_gain:setProperty("IgnoreInvalidity",ToData(true))
 
 
-function weishuiSkills(player)
+local function weishuiSkills(player)
 	local sk = {}
 	for _,n in sgs.list(player:property("weishuiGenerals"):toString():split("+"))do
 		for _,s in sgs.list(sgs.Sanguosha:getGeneral(n):getVisibleSkillList())do

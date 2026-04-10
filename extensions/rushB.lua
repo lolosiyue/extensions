@@ -3922,13 +3922,6 @@ sgs.LoadTranslationTable{
 }
 ---------------------------------
 rushB_lvbu = sgs.General(extension, "rushB_lvbu", "qun")
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 rushB_wushuang = sgs.CreateTriggerSkill{
 	name = "rushB_wushuang",
 	events = {sgs.CardUsed, sgs.CardFinished, sgs.CardEffected, sgs.TargetSpecified, sgs.CardResponded},

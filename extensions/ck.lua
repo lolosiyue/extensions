@@ -775,13 +775,6 @@ sgs.LoadTranslationTable {
 
 kanzaki = sgs.General(extension, "kanzaki", "magic", 4, false)
 
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 ckqishan = sgs.CreateTriggerSkill {
 	name = "ckqishan",
 	events = { sgs.TargetConfirmed },

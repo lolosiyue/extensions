@@ -1507,6 +1507,38 @@ function patterns(class)
 	return cardNames
 end
 
+--- 通用觀看並選擇牌堆頂卡牌函數
+---@param room Room
+---@param player ServerPlayer 執行玩家
+---@param count integer 觀看張數
+---@param skill_name string 技能名稱（用於日誌和 AG 視窗標題）
+---@param can_cancel boolean 是否可以不選（取消）
+---@return integer id 返回選中的卡牌 ID，若未選則返回 -1
+function askForViewAndChoose(room, player, count, skill_name, can_cancel)
+    -- 1. 獲取牌堆頂卡牌
+    local ids = room:getNCards(count, false)
+    
+    -- 2. 發送日誌 (僅限該玩家可見)
+    local log = sgs.LogMessage()
+    log.type = "$ViewDrawPile" -- 需確保語言包有此配置
+    log.from = player
+    log.card_str = table.concat(sgs.QList2Table(ids), "+")
+    room:sendLog(log, player)
+
+    -- 3. 呼叫 AG (AskGeneral) 視窗
+    room:fillAG(ids, player)
+    local id = room:askForAG(player, ids, can_cancel, skill_name)
+    room:clearAG(player)
+
+    -- 4. 處理剩餘卡牌（放回牌堆頂）
+    if id ~= -1 then
+        ids:removeOne(id)
+    end
+    room:returnToTopDrawPile(ids)
+
+    return id
+end
+
 local hcv = io.open("lua/ai/cstring")
 if hcv then
 	hcv:close()

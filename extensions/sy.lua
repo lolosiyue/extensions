@@ -62,83 +62,50 @@ sgs.LoadTranslationTable{
 -- 	return flag
 -- end
 
-function is2ndBossMode(who)
-    if who:getGeneralName() == "sy_lvbu2" then return true end
-    if who:getGeneralName() == "sy_dongzhuo2" then return true end
-    if who:getGeneralName() == "sy_zhangjiao2" then return true end
-    if who:getGeneralName() == "sy_zhangrang2" then return true end
-    if who:getGeneralName() == "sy_weiyan2" then return true end
-    if who:getGeneralName() == "sy_sunhao2" then return true end
-    if who:getGeneralName() == "sy_sunhao3" then return true end
-    if who:getGeneralName() == "sy_caifuren2" then return true end
-    if who:getGeneralName() == "sy_simayi2" then return true end
-    if who:getGeneralName() == "sy_miku2" then return true end
-    if who:getGeneralName() == "sy_simashi2" then return true end
-    if who:getGeneralName() == "sy_zhaoyun2" then return true end
-    if who:getGeneralName() == "sy_zhangfei2" then return true end
-    if who:getGeneralName() == "sy_sakura2" then return true end
-	if who:getGeneralName() == "sy_xusheng2" then return true end
-	if who:getGeneralName() == "sy_yuanshao2" then return true end
-	if who:getGeneralName() == "berserk_miku2" then return true end
-	return false
+local boss_2nd_set = {
+    sy_lvbu2 = true, sy_dongzhuo2 = true, sy_zhangjiao2 = true,
+    sy_zhangrang2 = true, sy_weiyan2 = true, sy_sunhao2 = true,
+    sy_sunhao3 = true, sy_caifuren2 = true, sy_simayi2 = true,
+    sy_miku2 = true, sy_simashi2 = true, sy_zhaoyun2 = true,
+    sy_zhangfei2 = true, sy_sakura2 = true, sy_xusheng2 = true,
+    sy_yuanshao2 = true, berserk_miku2 = true
+}
+local function is2ndBossMode(who)
+    return boss_2nd_set[who:getGeneralName()] == true or (who:getGeneral2() and boss_2nd_set[who:getGeneral2Name()] == true)
 end
 
 
-function isSanyingBoss(who)
+local function isSanyingBoss(who)
     if who:getGeneral() and (string.find(who:getGeneralName(), "sy_") or string.find(who:getGeneralName(), "berserk_")) then return true end
+    if who:getGeneral2() and (string.find(who:getGeneral2Name(), "sy_") or string.find(who:getGeneral2Name(), "berserk_")) then return true end
 	return false
 end
 
 
-function canSanyingBianshen(who)
+local function canSanyingBianshen(who)
     if who:getGeneral() and (string.find(who:getGeneralName(), "sy_") or string.find(who:getGeneralName(), "berserk_")) and string.find(who:getGeneralName(), "1") then return true end
+    if who:getGeneral2() and (string.find(who:getGeneral2Name(), "sy_") or string.find(who:getGeneral2Name(), "berserk_")) and string.find(who:getGeneral2Name(), "1") then return true end
 	return false
 end
 
 
-function isEntireSanyingBoss(who)
-	if canSanyingBianshen(who) and who:getGeneral2() and (string.find(who:getGeneral2Name(), "sy_") or string.find(who:getGeneral2Name(), "berserk_")) and string.find(who:getGeneral2Name(), "1") then return true end
+local function isEntireSanyingBoss(who)
+	if canSanyingBianshen(who) then return true end
 	return false
 end
 
-
--- function countLackedEquips(player)
--- 	local n = 0
--- 	if player:getWeapon() == nil then n = n + 1 end
--- 	if player:getArmor() == nil then n = n + 1 end
--- 	if player:getOffensiveHorse() == nil then n = n + 1 end
--- 	if player:getDefensiveHorse() == nil then n = n + 1 end
--- 	if player:getTreasure() == nil then n = n + 1 end
--- 	return n
--- end
-
--- function lackedEquipAreaNum(target)
--- 	local n = 5
--- 	for i = 0, 4 do
--- 		if target:hasEquipArea(i) then n = n - 1 end
--- 	end
--- 	return n
--- end
-
--- function throwRandomEquip(target)
--- 	local area = {}
--- 	local room = sgs.Sanguosha:currentRoom()
--- 	for i = 0, 4 do
--- 		if target:hasEquipArea(i) then table.insert(area, "EquipItem_"..i) end
--- 	end
--- 	if target:hasEquipArea() then
--- 		local area_str = area[math.random(1, #area)]
--- 		local x = tonumber(string.sub(area_str, string.len(area_str), string.len(area_str)))
--- 		target:throwEquipArea(x)
--- 		local msg = sgs.LogMessage()
--- 		msg.to:append(target)
--- 		msg.type = "#AreaBroken"
--- 		msg.arg = area_str
--- 		room:sendLog(msg)
--- 	end
--- end
-
-
+--- 檢查玩家是否擁有名稱包含指定字串的技能
+--- 
+--- **機制描述**：
+--- 1. 獲取玩家當前所有可見技能 (`getVisibleSkillList`)。
+--- 2. 將技能名以 `|` 符號拼接成一個長字串。
+--- 3. 使用 `string.find` 進行模糊搜索。
+---
+--- **注意**：這會匹配到部分包含的名稱（例如搜索 "ji" 會匹配到 "jizhi" 和 "jishi"），若需精確匹配請使用原生 `player:hasSkill(name)`。
+---
+---@param player sgs.ServerPlayer 待檢查的玩家
+---@param name string 要搜索的技能名稱關鍵字
+---@return boolean 是否存在符合條件的技能
 function hasSameNameSkill(player, name)
 	local skill_table = {}
 	for _, sk in sgs.qlist(player:getVisibleSkillList()) do
@@ -152,7 +119,16 @@ function hasSameNameSkill(player, name)
 	end
 end
 
-
+--- 從摸牌堆與棄牌堆中檢索所有符合指定類型的卡牌 ID
+--- 
+--- **檢索範圍**：
+--- 1. `room:getDrawPile()` (摸牌堆)
+--- 2. `room:getDiscardPile()` (棄牌堆)
+---
+--- **使用場景**：用於「從牌堆中隨機獲得一張 XXX 牌」。
+---
+---@param pattern string 卡牌類型或名稱 (如 "Slash", "BasicCard", "Peach")
+---@return sgs.IntList ids 符合條件的卡牌 ID 列表（若無匹配則回傳空的 IntList）
 function getOnePatternIds(pattern)
 	local room = sgs.Sanguosha:currentRoom()
 	local ids = sgs.IntList()
@@ -1458,6 +1434,19 @@ sy_zhangrang2:addSkill("#W_recast")
 	一张牌。
 	引用：sy_chanxian
 ]]--
+--- 判定目標角色的卡牌（手牌/裝備/判定牌）是否可以移動至其他角色處
+--- 
+--- **判定邏輯**：
+--- 1. **手牌**：若目標不為空城，則視為可移動（通常手牌移動不需檢查特定欄位）。
+--- 2. **判定牌**：檢查場上是否有其他存活角色（Sibling）滿足：
+---    - 不在該角色的禁令牌清單內 (`isProhibited`)。
+---    - 該角色判定區內尚未擁有同名的延時錦囊。
+--- 3. **裝備牌**：檢查其他存活角色是否具備對應的裝備欄位 (`hasEquipArea`)。
+---
+--- **注意**：這是一個「存在性檢查」，只要有一張牌能移動到任何一個合法目標處，即回傳 `true`。
+---
+---@param target ClientPlayer 待檢查的可移動來源角色
+---@return boolean 是否存在至少一個合法的移動目標或卡牌
 function canMoveCard(target)
 	if not target:isKongcheng() then return true end
 	local others = target:getAliveSiblings()
@@ -3189,7 +3178,7 @@ sy_miku2:addSkill("#W_recast")
 
 
 --统计目标有几个【绝望者】技能
-function countJuewangSkills(target)
+local function countJuewangSkills(target)
 	local n = 0
 	if target:hasSkill("jw_chunbai") then n = n + 1 end
 	if target:hasSkill("jw_heiyang") then n = n + 1 end
@@ -3202,7 +3191,7 @@ end
 
 
 --失去一定数量的【绝望者】技能
-function detachNJuewangSkills(room, target, n)
+local function detachNJuewangSkills(room, target, n)
 	local jw_list = {}
 	local detach_list = {}
 	for _, skill in sgs.qlist(target:getVisibleSkillList()) do
@@ -3223,7 +3212,7 @@ function detachNJuewangSkills(room, target, n)
 end
 
 --获得一定数量的【绝望者】技能
-function acquireNJuewangSkills(room, target, n)
+local function acquireNJuewangSkills(room, target, n)
 	local jw_list = {"jw_chunbai", "jw_heiyang", "jw_ruanruo", "jw_shenglang", "jw_shenchao", "jw_canmeng"}
 	local acquire_list = {}
 	for _, skill in sgs.qlist(target:getVisibleSkillList()) do
@@ -4789,14 +4778,6 @@ sy_longnuVS = sgs.CreateViewAsSkill{
 		return player:getPile("Angers"):length() >= 2
 	end
 }
-
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 
 sy_longnu = sgs.CreateTriggerSkill{
 	name = "sy_longnu",

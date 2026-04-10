@@ -2702,21 +2702,7 @@ XuChu_Plus = sgs.General(extension, "XuChu_Plus", "wei", 4, true)
 	描述：你可以跳过你的摸牌阶段，然后获得以下技能直到回合结束：你可以将装备区里的一张牌当【决斗】或【杀】使用或打出；若你的装备区里没有牌，你使用的【杀】或【决斗】（你为伤害来源时）造成的伤害+1。
 	状态：验证通过
 ]]
-function Set(list)
-	local set = {}
-	for _, l in ipairs(list) do set[l] = true end
-	return set
-end
-
 local patterns = { "slash", "duel" }
-function getPos(table, value)
-	for i, v in ipairs(table) do
-		if v == value then
-			return i
-		end
-	end
-	return 0
-end
 
 local pos = 0
 PlusLuoyi_select = sgs.CreateSkillCard {
@@ -5043,13 +5029,6 @@ MaChao_Plus:addSkill("mashu")
 	状态：验证通过
 ]]
 --
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 PlusTieji = sgs.CreateTriggerSkill {
 	name = "PlusTieji",
 	frequency = sgs.Skill_NotFrequent,

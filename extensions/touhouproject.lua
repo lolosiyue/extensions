@@ -1285,13 +1285,7 @@ TH_LunaClock=sgs.CreateTriggerSkill{--月时计
 }
 
 ---------------------------------------------------------
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
+
 TH_huanzang=sgs.CreateTriggerSkill{--幻葬
 	name = "TH_huanzang",
 	events = {sgs.TargetConfirmed},

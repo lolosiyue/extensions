@@ -6,9 +6,22 @@ require "ExtraTurnUtils"
 local Guandu_event_only = false --OL官渡之战随机事件
 local Guandu_event_reward = false 
 
+--- 執行卡牌的「偽移動」至私人牌堆（僅對自己可見）
+--- 
+--- **核心機制**：
+--- 1. **客戶端隔離**：利用 `&` 開頭的牌堆名（如 `&talent`），僅向 `player` 發送 `notifyMoveCards` 封包。
+--- 2. **狀態限制**：移動進入時自動執行 `setPlayerCardLimitation`，防止玩家直接使用或打出該虛擬牌堆中的卡牌。
+--- 3. **標記存儲**：移動進入時會設置 `HeavenMove` Tag 存儲卡牌 ID。
+---
+--- **注意**：這只是視覺上的移動，卡牌在伺服器端的物理位置（Place）通常仍需配合其他邏輯處理。
+---
+---@param player ServerPlayer 要操作的玩家（牌堆對其可見）
+---@param id integer 要移動的卡牌 ID
+---@param movein boolean `true` 為移入私人牌堆；`false` 為移出並恢復正常狀態
+---@param private_pile_name? string (可選) 私人牌堆名稱，必須以 `&` 開頭，預設為 `&talent`
 function HeavenMove(player, id, movein, private_pile_name)  --将卡牌伪移动至&开头的私人牌堆中并限制使用或打出，以达到牌对你可见的效果
 	local room = player:getRoom()		 --参数[ServerPlayer *player：可见角色; int id：伪移动卡牌id; bool movein：值true为进入私人牌堆，值false为移出私人牌堆; private_pile_name：私人牌堆名]
-	pile_name = private_pile_name or "&talent"
+	local pile_name = private_pile_name or "&talent"
 	if movein then
 		local move = sgs.CardsMoveStruct(id, nil, player, sgs.Player_PlaceTable, sgs.Player_PlaceSpecial,
 		sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PUT, player:objectName(), "guandu_shicai", ""))
@@ -35,6 +48,11 @@ function HeavenMove(player, id, movein, private_pile_name)  --将卡牌伪移动
 	end
 end
 
+--- 將 Lua Table (數組) 轉換為 C++ 的 sgs.IntList
+--- 
+--- **用途**：當底層 C++ 函數要求傳入 `IntList` 而非 Lua 原生 Table 時使用。
+---@param theTable integer[] 包含整數 ID 的 Lua 陣列
+---@return sgs.IntList result 轉換後的 C++ IntList 對象
 function Table2IntList(theTable)
 	local result = sgs.IntList()
 	for i = 1, #theTable, 1 do
@@ -43,6 +61,15 @@ function Table2IntList(theTable)
 	return result
 end
 
+--- 發送鎖定技（強制觸發）的提示日誌與語音
+--- 
+--- **功能**：
+--- 1. 在遊戲日誌欄顯示「[技能名] 觸發」的特效。
+--- 2. 播放對應技能的第 n 個語音。
+---@param self sgs.Skill|sgs.TriggerSkill 技能對象
+---@param player ServerPlayer 觸發技能的玩家
+---@param n integer 語音索引編號 (通常為 1, 2...)
+---@param invoke? boolean 是否執行（可選），預設為 true。若為 false 則不發送日誌與語音
 function SendComLog(self, player, n, invoke)
 	if invoke == nil then invoke = true end
 	if invoke then
@@ -50,6 +77,16 @@ function SendComLog(self, player, n, invoke)
 		player:getRoom():broadcastSkillInvoke(self:objectName(), n)
 	end
 end
+
+--- 發送玩家選項日誌 (#choice)
+--- 
+--- **機制**：
+--- 1. 自動處理翻譯 Key：優先嘗試使用 `skillName:choice` 進行翻譯對接。
+--- 2. 避免編碼衝突：透過傳送 Key 值交由 C++ 端進行翻譯，防止 Lua 層出現亂碼。
+---@param player ServerPlayer 做出選擇的玩家
+---@param choice string 選擇的選項 Key（如 "draw", "discard"）
+---@param to? ServerPlayer (可選) 該選擇指向的目標玩家
+---@param skillName? string (可選) 關聯的技能名稱，用於精確匹配翻譯文件
 function ChoiceLog(player, choice, to, skillName)
 	local log = sgs.LogMessage()
 	log.type = "#choice"
@@ -77,23 +114,65 @@ function ChoiceLog(player, choice, to, skillName)
 	player:getRoom():sendLog(log)
 end
 
--- 通用明置牌机制 (Universal Card Display Mechanism)
--- 用于将手牌明置为可见的虚拟牌堆，所有玩家可见可查看，但不进行真实的卡牌移动
--- 
--- 使用方法示例:
---   1. 明置手牌: UniversalCardDisplayMove(ids_list, true, player, "myskill")
---   2. 取消明置: UniversalCardDisplayMove(ids_list, false, player, "myskill")
---
--- 注意: 
---   - property_name固定为"display_cards"，所有明置牌统一使用此property存储
---   - 不要在调用后手动setPlayerProperty，函数内部已自动处理
---   - 必须配合universal_card_display_global触发器使用，自动清理离开手牌的卡牌
---
--- 参数:
---   ids: sgs.IntList 或 QList，要明置/取消明置的卡牌ID列表
---   movein: bool，true=显示为pile，false=取消显示
---   player: ServerPlayer，卡牌所属玩家
---   pile_name: string (可选)，显示牌堆名称，默认"cardshow"，建议用技能名
+--- 將列表 (List) 轉換為集合 (Set) 結構
+--- 
+--- **用途**：用於快速查找（將查詢複雜度從 O(n) 降至 O(1)）。
+---@param list any[] 輸入的陣列/列表
+---@return table<any, boolean> set 以元素值為鍵、值為 true 的表
+function Set(list)
+	local set = {}
+	for _, l in ipairs(list) do set[l] = true end
+	return set
+end
+
+--- 獲取數組中指定值的索引位置 (Index)
+---
+--- **邏輯**：從索引 1 開始查找，若找不到則回傳 0。
+---@param table any[] 要搜索的陣列
+---@param value any 要尋找的值
+---@return integer index 返回索引位置（1-based），找不到則返回 0
+function getPos(table, value)
+	for i, v in ipairs(table) do
+		if v == value then
+			return i
+		end
+	end
+	return 0
+end
+
+--- 遍歷遊戲引擎，生成所有基本牌與錦囊牌的物件名稱列表
+--- 
+--- **機制**：
+--- 1. 自動遍歷 Card ID 0 至 10000。
+--- 2. 僅篩選 `BasicCard` (基本牌) 與 `TrickCard` (錦囊牌)。
+--- 3. 自動去重 (Unique)。
+---@return string[] patterns 包含所有符合條件的卡牌 objectName 的字串陣列
+function generateAllCardObjectNameTablePatterns()
+	local patterns = {}
+	for i = 0, 10000 do
+		local card = sgs.Sanguosha:getEngineCard(i)
+		if card == nil then break end
+		if (card:isKindOf("BasicCard") or card:isKindOf("TrickCard")) and not table.contains(patterns, card:objectName()) then
+			table.insert(patterns, card:objectName())
+		end
+	end
+	return patterns
+end
+
+--- 通用明置牌機制 (Universal Card Display Mechanism)
+--- 
+--- **功能描述**：
+--- 將玩家手牌虛擬地顯示在名為 `displayed` 的牌堆中。
+--- 1. **邏輯歸屬**：卡牌物理位置仍屬於「手牌 (Hand)」，但客戶端會額外渲染一個虛擬牌堆。
+--- 2. **自動清理**：必須配合 `universal_card_display_global` 觸發器使用，否則卡牌離開手牌時虛擬顯示不會消失。
+--- 3. **數據存儲**：所有數據存儲於玩家的 `display_cards` 屬性中（格式為 ID+ID）。
+---
+---
+---@param ids sgs.IntList | sgs.QList 要進行明置或取消明置的卡牌 ID 列表
+---@param movein boolean `true` 則明置並加入虛擬牌堆；`false` 則取消明置並從牌堆移除
+---@param player ServerPlayer 執行此操作的玩家（卡牌持有者）
+---@param pile_name? string (可選) 顯示在卡牌懸停提示 (CardTip) 中的名稱（建議傳入技能名稱），默認為 "cardshow"
+---@return void
 function UniversalCardDisplayMove(ids, movein, player, pile_name)
 	local room = player:getRoom()
 	pile_name = pile_name or "cardshow"  -- 技能名，仅用于cardTip
@@ -240,7 +319,9 @@ function UniversalCardDisplayMove(ids, movein, player, pile_name)
 			local clear_move = sgs.CardsMoveStruct(old_ids, player, nil, sgs.Player_PlaceSpecial, sgs.Player_PlaceTable,
 				sgs.CardMoveReason(sgs.CardMoveReason_S_MASK_BASIC_REASON, player:objectName()))
 				clear_move.from_pile_name = unified_pile_name
-			room:notifyMoveCards(false, clear_moves, false, all_players)
+			local clear_moves_list = sgs.CardsMoveList() -- 建立 List 容器
+        	clear_moves_list:append(clear_move)
+			room:notifyMoveCards(false, clear_moves_list, false, all_players)
 			
 			-- 清除被移除卡牌的tip
 			for _, id in sgs.qlist(ids) do
@@ -610,7 +691,7 @@ RemoveFromHistoryAndIgnoreArmorLog = sgs.CreateTriggerSkill{
 		end
 		for _, skill_name in sgs.qlist(use.card:getSkillNames()) do
 			if string.find(skill_name, "RemoveFromHistory") then
-				local name = skill_names:split("_")[1]
+				local name = skill_name:split("_")[1]
 				use.card:setSkillName(name)
 				use.m_addHistory = false
 				data:setValue(use)
@@ -669,7 +750,13 @@ local YingBianExtensions = {
 	["@yb_fujia2-reduce"] = "附加：你可以减少%dest的一个目标",
 ]]
 
--- 设置应变效果扩展选项
+--- 設置應變效果的擴展行為開關
+---@param player ServerPlayer 操作目標
+---@param extension_name "all_as_zhuzhan"|"zhuzhan_no_type"|"zhuzhan_self" 擴展名：
+--- - `all_as_zhuzhan`: 所有應變視為助戰
+--- - `zhuzhan_no_type`: 助戰不限制牌類別
+--- - `zhuzhan_self`: 可以助戰自己
+---@param value boolean 是否開啟
 function setYingBianExtension(player, extension_name, value)
 	if YingBianExtensions[extension_name] ~= nil then
 		local key = "YingBian_Ext_" .. extension_name
@@ -677,7 +764,10 @@ function setYingBianExtension(player, extension_name, value)
 	end
 end
 
--- 获取应变效果扩展选项
+--- 獲取當前應變擴展行為的開啟狀態
+---@param player ServerPlayer 查詢目標
+---@param extension_name string 擴展選項名稱
+---@return boolean 是否開啟
 function getYingBianExtension(player, extension_name)
 	local key = "YingBian_Ext_" .. extension_name
 	local mark = player:getMark(key)
@@ -916,7 +1006,10 @@ local YingBianEffectHandlers = {
 	end,
 }
 
--- 辅助函数：判断是否手牌数最多
+--- 判斷目標玩家是否為當前場上手牌數最多的人（並列第一亦算）
+---@param player ServerPlayer 檢查目標
+---@param room Room 房間對象
+---@return boolean 是否為手牌最多
 function isMaxHandcard(player, room)
 	local max_handcard = 0
 	for _, p in sgs.qlist(room:getAlivePlayers()) do
@@ -927,7 +1020,16 @@ function isMaxHandcard(player, room)
 	return player:getHandcardNum() >= max_handcard
 end
 
--- 通用应变效果处理函数（任何技能都可以调用）
+--- 通用應變效果處理入口
+--- 
+--- **流程描述**：
+--- 1. 從玩家 Tag `YingBian_Effects_卡牌名稱` 中提取效果列表。
+--- 2. 檢查 `YingBianDirectlyEffective` 標記判定是否強制觸發。
+--- 3. 依照「殘軀 > 空城 > 附加 > 助戰」的優先級順序調用 Handler。
+--- 4. 最終更新 `data` 中的 CardUseStruct。
+---@param player ServerPlayer 使用牌的玩家
+---@param data sgs.QVariant 指向 CardUseStruct 的數據封裝
+---@param room Room 房間對象
 function processYingBianEffects(player, data, room)
 	local use = data:toCardUse()
 	-- 检查是否有YingBianDirectlyEffective标记
@@ -973,7 +1075,17 @@ function processYingBianEffects(player, data, room)
 	end
 end
 
--- 设置应变效果（通用接口，任何技能都可调用） --多於一種
+--- 為特定卡牌註冊應變效果（多用於轉換技或複合效果）
+--- 
+--- **機制**：
+--- - 遍歷 `card_ids` 獲取引擎卡牌屬性中的 `YingBianEffects` 字串。
+--- - 將組合後的效果字串存入 `YingBian_Effects_` Tag。
+--- - 為該卡牌設置 `YingBianDirectlyEffective[卡牌名]` 標記。
+---@param player ServerPlayer 使用牌的玩家
+---@param room Room 房間對象
+---@param use_card sgs.Card 實際使用的卡牌對象
+---@param card_ids integer[] 組成此牌的原始卡牌 ID 列表
+---@return boolean 是否成功設置了任何應變效果
 function setYingBianEffectsForCard(player, room, use_card, card_ids)
 	local yingbian_effects = {}
 	for _, id in ipairs(card_ids) do

@@ -3349,13 +3349,6 @@ bs_ohb = sgs.CreateTargetModSkill{--or (from:isMale() and from:hasSkill("changes
 		-- end
 	end
 }
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 
 bs_ohjon = sgs.CreateTriggerSkill{
 	name = "#bs_ohjon" ,
@@ -3731,17 +3724,6 @@ semeruki = sgs.CreateTriggerSkill{
 }
 
 --捷拳：將裝備卡至於額外卡組，額外卡組的卡可以回應殺、酒、閃、無懈可擊，不可直接使用。
-
-
--- local patterns = {"slash", "jink", "analeptic", "nullification"}
--- function getPos(table, value)
-	-- for i, v in ipairs(table) do
-		-- if v == value then
-			-- return i
-		-- end
-	-- end
-	-- return 0
--- end
 
 clearthemeridianscard = sgs.CreateSkillCard{
 	name = "clearthemeridians",

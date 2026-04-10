@@ -469,13 +469,6 @@ s_seven_moment = sgs.CreateWeapon{
 
 s_addCards(s_seven_moment, {sgs.Card_Heart, 1})
 
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 s_seven_momentSkill = sgs.CreateTriggerSkill{
 	name = "s_seven_moment" ,
 	frequency = sgs.Skill_Compulsory ,
@@ -1516,13 +1509,6 @@ sgs.LoadTranslationTable{
 
 s_w_2_lubu = sgs.General(extension,"s_w_2_lubu","qun","7")
 
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 s_w_shenyong = sgs.CreateTriggerSkill{
 	name = "s_w_shenyong" ,
 	events = {sgs.TargetSpecified, sgs.EventPhaseEnd} ,
@@ -1989,15 +1975,6 @@ s_w_fanji = sgs.CreateTriggerSkill{
 	end
 }
 
-
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
-
 s_w_juezhan = sgs.CreateTriggerSkill{
 	name = "s_w_juezhan",
 	waked_skills = "wushuang,buqu,tenyeartuxi",
@@ -2405,14 +2382,6 @@ sgs.LoadTranslationTable{
 
 s_w_godlubu =  sgs.General(extension,"s_w_godlubu","god","5")
 
-
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 s_w_huaji = sgs.CreateTriggerSkill{
 	name = "s_w_huaji" ,
 	frequency = sgs.Skill_Compulsory ,
@@ -2893,13 +2862,6 @@ sgs.LoadTranslationTable{
 } 
 
 s2_godzhaoyun = sgs.General(extension_jx,"s2_godzhaoyun","god","2")
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 
 function chadian(sponsor, first,second, skill_name)	
 	local room = sponsor:getRoom()

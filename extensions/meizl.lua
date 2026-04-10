@@ -2884,13 +2884,7 @@ meizljianwuskill = sgs.CreateViewAsSkill {
 		return not player:hasUsed("#meizljianwucard")
 	end,
 }
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
+
 meizljianwu = sgs.CreateTriggerSkill {
 	name = "meizljianwu",
 	frequency = sgs.Skill_NotFrequent,
@@ -7276,13 +7270,6 @@ meizlsebihui       = sgs.CreateTargetModSkill {
 	end,
 }
 --君王（魔界七将‧别西卜‧吕玲琦）
-Table2IntList      = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 meizlsejunwang     = sgs.CreateTriggerSkill {
 	name = "meizlsejunwang",
 	frequency = sgs.Skill_Compulsory,

@@ -2,6 +2,15 @@
 local ZhongdanEvent = false
 local ZhongdanEvent_reward = false
 local Wenhe_event_only = false --文和乱武随机事件
+
+--- 基於現有卡牌物件克隆並創建「禮物牌」
+--- 
+--- **區別**：與 `AddCloneCard` 不同，此函數接受一個已存在的 `sgs.Card` 物件作為模板。
+---@param c Card 作為模板的卡牌物件
+---@param suit sgs.Card_Suit 花色
+---@param number integer 點數
+---@param is_gift boolean 是否啟動禮物牌屬性
+---@param revise? string (可選) 修正後的物件名稱
 function AddPresentCard(c,suit,number,is_gift,revise)
 	local pc = c:clone(suit,number)
 		if is_gift then
@@ -10,8 +19,21 @@ function AddPresentCard(c,suit,number,is_gift,revise)
 		end
 	if revise then pc:setObjectName(revise) end
 	pc:setParent(yongjian)
-	end
+end
 
+--- 克隆並創建一個具有「禮物牌」屬性的新卡牌（基於名稱）
+--- 
+--- **機制描述**：
+--- 1. 透過 `cloneCard` 建立實體。
+--- 2. **禮物化**：添加 `present_card` 標籤並設為 `Gift`。
+--- 3. **別名擴充**：可透過 `revise` 參數強制修改物件名稱 (ObjectName)。
+--- 4. **生命週期管理**：將 Parent 設為 `yongjian`（通常是擴充包的全局容器，防止內存溢出）。
+---
+---@param name string 卡牌名稱 (如 "slash")
+---@param suit sgs.Card_Suit 花色 (如 sgs.Card_Heart)
+---@param number integer 點數 (1-13)
+---@param is_gift boolean 是否啟動禮物牌屬性
+---@param revise? string (可選) 修正後的物件名稱
 function AddCloneCard(name,suit,number,is_gift,revise)
 	local nc = sgs.Sanguosha:cloneCard(name,suit,number)
 	if nc then
@@ -558,6 +580,13 @@ yj_zheji = sgs.CreateWeapon{
 }
 AddPresentCard(yj_zheji,1,1,true)
 
+--- 檢查指定卡牌是否為有效的「禮物牌 (Present Card)」
+--- 
+--- **判定標準**：
+--- 1. 引擎卡牌 (`EngineCard`) 與當前卡牌物件名稱一致。
+--- 2. 卡牌具有 `Gift` 屬性（底層標記為禮物牌）。
+---@param id integer|Card 卡牌 ID 或卡牌物件
+---@return boolean 是否為有效的禮物牌
 function CardIsPresent(id)
 	if type(id)~="number" then id = id:getId() end
 	if id>=0 then

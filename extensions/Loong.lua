@@ -850,13 +850,7 @@ lxtx_shouyue_longdan = sgs.CreateOneCardViewAsSkill{
 		return (pattern == "slash" or pattern == "jink")
 	end,
 }
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
+
 lxtx_shouyue_liegong = sgs.CreateTriggerSkill{
 	name = "lxtx_shouyue_liegong&",
 	events = {sgs.TargetSpecified},

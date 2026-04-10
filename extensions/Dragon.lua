@@ -1457,13 +1457,6 @@ sgs.LoadTranslationTable{
 
 Dragon_lvbu = sgs.General(extension, "Dragon_lvbu", "qun", "4")
 
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 Dragon_wushuang = sgs.CreateTriggerSkill{
 	name = "Dragon_wushuang", 
 	frequency = sgs.Skill_Compulsory , 
@@ -2774,13 +2767,6 @@ Promote_mashu = sgs.CreateDistanceSkill{
 	end, 
 }
 
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 Promote_tieji = sgs.CreateTriggerSkill{
 	name = "Promote_tieji" ,
 	events = {sgs.TargetSpecified} ,

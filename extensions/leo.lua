@@ -1763,13 +1763,6 @@ sgs.LoadTranslationTable {
 leowenyang = sgs.General(extension, "leowenyang", "wei", "4", true)
 
 --骁猛
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 
 luaxiaomeng = sgs.CreateTriggerSkill {
 	name = "luaxiaomeng",
@@ -2700,11 +2693,6 @@ sgs.LoadTranslationTable {
 
 
 guanyuzy = sgs.General(extension, "guanyuzy", "shu", "4", true)
-function Set(list)
-	local set = {}
-	for _, l in ipairs(list) do set[l] = true end
-	return set
-end
 
 local patterns = { "slash", "jink", "peach", "analeptic" }
 if not (Set(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
@@ -2713,14 +2701,6 @@ if not (Set(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
 	table.insert(patterns, 2, "normal_slash")
 end
 local slash_patterns = { "slash", "normal_slash", "thunder_slash", "fire_slash" }
-function getPos(table, value)
-	for i, v in ipairs(table) do
-		if v == value then
-			return i
-		end
-	end
-	return 0
-end
 
 local pos = 0
 luazhiyong_select = sgs.CreateSkillCard {

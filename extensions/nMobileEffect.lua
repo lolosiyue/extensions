@@ -173,29 +173,6 @@ n_mobile_effect = sgs.CreateTriggerSkill{
 }
 n_anjiang:addSkill(n_mobile_effect)
 
-function getWinner(room,victim)    
-	--if not string.find(room:getMode(),"p") then return nil end
-	local function contains(plist,role)
-		for _,p in sgs.qlist(plist)do
-			if p:getRoleEnum() == role then return true end
-		end
-		return false
-	end
-	local r = victim:getRoleEnum() 
-    local sp = room:getOtherPlayers(victim)					
-    if r == sgs.Player_Lord then
-        if(sp:length() == 1 and sp:first():getRole() == "renegade") then                    
-			return "renegade"
-        else                   
-			return "rebel"
-        end
-    else
-        if(not contains(sp,sgs.Player_Rebel) and not contains(sp,sgs.Player_Renegade))then               
-			return "lord+loyalist"
-		else return nil end							
-    end 	
-end
-
 n_mvpexperience = sgs.CreateTriggerSkill {
 	name = "#n_mvpexperience",
 	events = { sgs.PreCardUsed,sgs.CardResponded,sgs.CardsMoveOneTime,sgs.PreDamageDone,
@@ -267,7 +244,7 @@ n_mvpexperience = sgs.CreateTriggerSkill {
 					room:addPlayerMark(damage.from,"mvpexp",5 * x)
 				end
 			end
-			local t = getWinner(room,death.who)
+			local t = getWinner(death.who)
 			if not t then return end
 			--room:getLord():speak(t)
 			local players = sgs.QList2Table(room:getAlivePlayers())
