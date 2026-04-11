@@ -1229,7 +1229,7 @@ kejieguijingmubuff = sgs.CreateTriggerSkill {
 		end
 	end,
 	can_trigger = function(self, player)
-		return true
+		return player ~= nil
 	end,
 }
 if not sgs.Sanguosha:getSkill("kejieguijingmubuff") then

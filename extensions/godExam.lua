@@ -870,7 +870,6 @@ ge_zaoyibf = sgs.CreateTriggerSkill{
 				room:loseHp(tos,tos:getHp(),true,player,"ge_zaoyi")
 			end
 			return false
-		end
 		elseif player:getMark("ge_zaoyibf")<1 then
 			for _,p in sgs.qlist(player:getAliveSiblings()) do
 				if p:getGeneralName()=="ge_gonggong"
