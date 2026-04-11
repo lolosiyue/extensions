@@ -5672,6 +5672,16 @@ for i = 0, 16 do
 	card:setNumber(1)
 	card:setParent(extension_zhuan)
 end
+
+local function kezhuandestroyEquip(room, ids)
+	local log = sgs.LogMessage()
+	log.type = "$kezhuandestroyEquip"
+	log.card_str = table.concat(sgs.QList2Table(ids), "+")
+	room:sendLog(log)
+	local move1 = sgs.CardsMoveStruct(ids, nil, sgs.Player_PlaceTable, sgs.CardMoveReason(sgs.CardMoveReason_S_MASK_BASIC_REASON, "", "BreakCard", ""))
+	room:moveCardsAtomic(move1, true)
+end
+
 kezhuanYing = sgs.CreateTriggerSkill {
 	name = "#kezhuanYing",
 	frequency = sgs.Skill_Compulsory,
@@ -5699,15 +5709,6 @@ kezhuanYing = sgs.CreateTriggerSkill {
 extension_zhuan:addSkills(kezhuanYing)
 
 kezhuanzhangren = sgs.General(extension_zhuan, "kezhuanzhangren", "qun", 4)
-
-local function kezhuandestroyEquip(room, ids)
-	local log = sgs.LogMessage()
-	log.type = "$kezhuandestroyEquip"
-	log.card_str = table.concat(sgs.QList2Table(ids), "+")
-	room:sendLog(log)
-	local move1 = sgs.CardsMoveStruct(ids, nil, sgs.Player_PlaceTable, sgs.CardMoveReason(sgs.CardMoveReason_S_MASK_BASIC_REASON, "", "BreakCard", ""))
-	room:moveCardsAtomic(move1, true)
-end
 
 kezhuanfuni = sgs.CreateTriggerSkill {
 	name = "kezhuanfuni",

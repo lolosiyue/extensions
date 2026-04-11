@@ -12102,14 +12102,14 @@ s4_zhonghui = sgs.General(extension, "s4_zhonghui", "wei", 4)
 s4_zongzi_buff = sgs.CreateTargetModSkill{
     name = "#s4_zongzi_buff",
     distance_limit_func = function(self, player, card)
-        if player:getMark("&s4_zongzi-Clear") > 0 then
+        if player:getMark("&s4_zongzi+sys_-Clear") > 0 then
             return 1000
         else
             return 0
         end
     end,
     residue_func = function(self, player)
-        if player:getMark("&s4_zongzi-Clear") > 0 then
+        if player:getMark("&s4_zongzi+sys_-Clear") > 0 then
             return 1000
         else
             return 0
@@ -12125,27 +12125,26 @@ s4_zongzi = sgs.CreateTriggerSkill{
         if event == sgs.EventPhaseProceeding and player:getPhase() == sgs.Player_Start then
             if room:askForSkillInvoke(player, self:objectName(), data) then
                 room:broadcastSkillInvoke(self:objectName())
-                local x = math.max(1, player:getJudgeArea():length())
+                local x = math.max(1, player:getJudgingArea():length())
                 player:drawCards(x, self:objectName())
-                room:addPlayerMark(player, "&s4_zongzi-Clear", x)
+                room:addPlayerMark(player, "&s4_zongzi+sys_-Clear", x)
                 room:addMaxCards(player, -x, true, self:objectName())
             end
         elseif event == sgs.CardUsed then
             local use = data:toCardUse()
-            if use.from and use.from:objectName() == player:objectName() and player:getMark("&s4_zongzi-Clear") > 0 and player:getPhase() == sgs.Player_Play then
+            if use.from and use.from:objectName() == player:objectName() and player:getMark("&s4_zongzi+sys_-Clear") > 0 and player:getPhase() == sgs.Player_Play and not use.card:isKindOf("SkillCard") then
                 local no_respond_list = use.no_respond_list
                 table.insert(no_respond_list, "_ALL_TARGETS")
                 use.no_respond_list = no_respond_list
                 use.m_addHistory = false
                 data:setValue(use)
                 local log = sgs.LogMessage()
-                log.type = "$NoRespond"
+                log.type = "$s4_zongzi_NoRespond_All"
                 log.from = use.from
-                log.to = use.to
                 log.arg = self:objectName()
-                log.card_str = use.card:toString()
+                log.arg2 = use.card:objectName()
                 room:sendLog(log)
-                room:removePlayerMark(player, "&s4_zongzi-Clear", 1)
+                room:removePlayerMark(player, "&s4_zongzi+sys_-Clear", 1)
             end
         end
         return false
@@ -12154,7 +12153,7 @@ s4_zongzi = sgs.CreateTriggerSkill{
 
 s4_jieyi = sgs.CreateTriggerSkill{
     name = "s4_jieyi",
-    frequency = sgs.Skill_Frequent,
+    frequency = sgs.Skill_NotFrequent,
     events = { sgs.EventForDiy, sgs.EventPhaseEnd, sgs.CardsMoveOneTime },
     can_trigger = function(self,target)
         return target~=nil
@@ -12168,7 +12167,7 @@ s4_jieyi = sgs.CreateTriggerSkill{
 				local ids = strs[5]:split("+")
 				for i,pt in sgs.list(tos) do
 					local p = room:findPlayerByObjectName(pt)
-					if p:hasSkill(self) then
+					if p and p:hasSkill(self) then
 						local cc = sgs.Card_Parse(ids[i])
 						if cc==nil then
 							continue
@@ -12211,12 +12210,12 @@ s4_jieyi = sgs.CreateTriggerSkill{
         elseif event == sgs.CardsMoveOneTime and player:getPhase() == sgs.Player_Judge and player:hasSkill(self) then
             local move = data:toMoveOneTime()
             if move.from and move.from:objectName() == player:objectName() and move.from_places:contains(sgs.Player_PlaceDelayedTrick) and move.to_place == sgs.Player_DiscardPile and move.reason.m_reason == sgs.CardMoveReason_S_REASON_THROW and move.reason.m_skillName == "#kehexumou" then
-                room:addPlayerMark(player, "s4_jieyi-Clear", 1)
+                room:addPlayerMark(player, "s4_jieyi+sys_-Clear", move.card_ids:length())
             end
         elseif event == sgs.EventPhaseEnd and player:getPhase() == sgs.Player_Judge and player:hasSkill(self) then
-            local x = player:getMark("s4_jieyi-Clear")
+            local x = player:getMark("s4_jieyi+sys_-Clear")
             if x > 0 then
-                local targets = room:askforPlayersChosen(player, room:getAlivePlayers(), self:objectName(), 0, x, "@s4_jieyi:"..x, true, true)
+                local targets = room:askForPlayersChosen(player, room:getAlivePlayers(), self:objectName(), 0, x, "@s4_jieyi:"..x, true, true)
                 for _, target in sgs.qlist(targets) do
                     room:damage(sgs.DamageStruct(self:objectName(), player, target, 1))
                 end
@@ -12230,13 +12229,14 @@ s4_jieyi = sgs.CreateTriggerSkill{
 s4_moubeivs = sgs.CreateViewAsSkill{
 	name = "s4_moubeivs",
 	n = 1,
+    response_or_use = true,
 	view_filter = function(self,selected,to_select)
 		return true
 	end,
 	view_as = function(self,cards)
 		if #cards<1 then return end
 		local dc = sgs.Sanguosha:cloneCard("yj_stabs_slash")
-		dc:setSkillName("s4_moubei")
+		dc:setSkillName("_s4_moubei")
 		dc:addSubcard(cards[1])
 		return dc
 	end,
@@ -12252,7 +12252,7 @@ s4_moubeiCard = sgs.CreateSkillCard{
     target_fixed = true,
     on_use = function(self, room, source, targets)
         local ids = room:showDrawPile(source, 1, self:objectName(), true)
-        local card = sgs.Sanguosha:getCard(ids[1])
+        local card = sgs.Sanguosha:getCard(ids:first())
 		source:setTag("s4_moubei_card", ToData(card))
         local ys = {}
         ys.reason = self:objectName()
@@ -12279,17 +12279,17 @@ s4_moubeiCard = sgs.CreateSkillCard{
 				end
                 local target = room:askForPlayerChosen(source, room:getAlivePlayers(), self:objectName())
                 if target then
-                    room:giveCard(source,target,dummy,self:objectName(), "@s4_moubei-give")
+                    room:giveCard(source,target,dummy,self:objectName())
                     source:skip(sgs.Player_Discard)
                 end
             elseif (ys_data.result ~= card:getColorString()) then
                 for i,pn in sgs.list(ys_data.tos)do
                     local p = room:findPlayerByObjectName(pn)
-                    if p:isAlive() and not p:isNude() then
+                    if p and p:isAlive() and not p:isNude() then
                         if room:askForUseCard(p,"@@s4_moubei","@s4_moubei:"..source:objectName()) then
                         else
-                            local cards = room:askforExchange(p, self:objectName().."_discard", 1, 1, false, "@s4_moubei-discard:"..source:objectName())
-                            if #cards > 0 then
+                            local cards = room:askForExchange(p, self:objectName().."_discard", 1, 1, false, "@s4_moubei-discard:"..source:objectName())
+                            if cards:subcardsLength() > 0 then
                                 room:giveCard(p,source,cards,self:objectName())
                             end
                         end
@@ -12297,7 +12297,7 @@ s4_moubeiCard = sgs.CreateSkillCard{
                 end
             end
         end
-        askyishi(ys)
+        askYishi(ys)
 		source:removeTag("s4_moubei_card")
     end,
 }
@@ -12337,8 +12337,11 @@ sgs.LoadTranslationTable {
 	["@s4_moubei-give"] = "谋悖：请选择一名角色获得两张影",
 	["@s4_moubei"] = "谋悖：将一张牌当【刺杀】使用，否则交给%src 一张牌",
 	["@s4_moubei-discard"] = "谋悖：将一张牌交给%src ",
+    ["s4_moubeivs"] = "谋悖",
+    ["$s4_zongzi_NoRespond_All"] = "%from 的\"%arg\"效果被触发，%arg2 不能被响应",
 
 }
+--https://tieba.baidu.com/p/8873883414
 
 
 sgs.Sanguosha:addSkills(s4_skillList)
