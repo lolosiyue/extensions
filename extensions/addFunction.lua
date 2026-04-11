@@ -337,6 +337,107 @@ function throwCardFromPile(player, card_id, skillName)
 	room:throwCard(card_id, reason, nil)
 end
 
+
+--- 判斷當前角色死亡後，是否觸發遊戲結束並回傳勝利陣營。
+---@param victim ServerPlayer 陣亡角色
+---@return string winner 勝利陣營字串 (如 "rebel", "lord+loyalist")，若遊戲未結束則回傳空字串 ""
+function getWinner(victim)
+    if type(victim) ~= "userdata" then return "" end
+    
+    local room = victim:getRoom()
+    local winner = ""
+    local mode = room:getMode()
+
+    -- 1. 3v3 模式
+    if mode == "06_3v3" then
+        local role = victim:getRoleEnum()
+        if role == sgs.Player_Lord then
+            winner = "renegade+rebel"
+        elseif role == sgs.Player_Renegade then
+            winner = "lord+loyalist"
+        end
+
+    -- 2. 血戰到底 (XMode)
+    elseif mode == "06_XMode" then
+        local role = victim:getRole()
+        local leader = victim:getTag("XModeLeader"):toPlayer()
+        if leader and leader:getTag("XModeBackup"):toStringList():isEmpty() then
+            winner = role:startsWith("r") and "lord+loyalist" or "renegade+rebel"
+        end
+
+    -- 3. 守衛模式 (Defense)
+    elseif mode == "08_defense" then
+        local alive_roles = room:aliveRoles(victim)
+        if not table.contains(alive_roles, "loyalist") then
+            winner = "rebel"
+        elseif not table.contains(alive_roles, "rebel") then
+            winner = "loyalist"
+        end
+
+    -- 4. 國戰模式 (Hegemony)
+    elseif sgs.GetConfig("EnableHegemony", true) then
+        local has_anjiang, has_diff_kingdoms = false, false
+        local init_kingdom = ""
+        
+        for _, p in sgs.qlist(room:getAlivePlayers()) do
+            if p:property("basara_generals"):toString() ~= "" then
+                has_anjiang = true
+            end
+            if init_kingdom == "" then
+                init_kingdom = p:getKingdom()
+            elseif init_kingdom ~= p:getKingdom() then
+                has_diff_kingdoms = true
+            end
+        end
+
+        if not has_anjiang and not has_diff_kingdoms then
+            local winners = {}
+            local aliveKingdom = room:getAlivePlayers():first():getKingdom()
+            
+            for _, p in sgs.qlist(room:getPlayers()) do
+                if p:isAlive() then
+                    table.insert(winners, p:objectName())
+                end
+                
+                if p:getKingdom() == aliveKingdom then
+                    local generals = p:property("basara_generals"):toString():split("+")
+                    local has_second_gen = sgs.GetConfig("Enable2ndGeneral", false)
+                    -- 若啟用了雙將且未明置，或主將數量大於1，則略過
+                    if not (#generals > 0 and has_second_gen) and #generals <= 1 then
+                        -- 如果某人死前明置了勢力，且其勢力最終存活，也視為勝利者
+                        if not table.contains(winners, p:objectName()) then
+                            table.insert(winners, p:objectName())
+                        end
+                    end
+                end
+            end
+            winner = table.concat(winners, "+")
+        end
+
+    -- 5. 標準身份局 (Standard Mode)
+    else
+        local alive_roles = room:aliveRoles(victim)
+        local role = victim:getRoleEnum()
+        
+        if role == sgs.Player_Lord then
+            -- 主公陣亡：若全場僅剩一名角色且為內奸，則內奸單獨獲勝 (回傳物件名稱)，否則反賊獲勝
+            if #alive_roles == 1 and alive_roles[1] == "renegade" then
+                winner = room:getAlivePlayers():first():objectName()
+            else
+                winner = "rebel"
+            end
+        elseif role == sgs.Player_Rebel or role == sgs.Player_Renegade then
+            -- 反賊或內奸陣亡：檢查場上是否還有反賊或內奸
+            if not table.contains(alive_roles, "rebel") and not table.contains(alive_roles, "renegade") then
+                winner = "lord+loyalist"
+            end
+        end
+    end
+
+    return winner
+end
+
+
 sgs.LoadTranslationTable {
 	["$TransferMark"] = "%from 将 %arg2 枚 %arg 转移给 %to",
 	["$DamageRevises1"] = "%from 受到的 %arg 点伤害%arg3至 %arg2 点",

@@ -244,52 +244,54 @@ n_mvpexperience = sgs.CreateTriggerSkill {
 					room:addPlayerMark(damage.from,"mvpexp",5 * x)
 				end
 			end
-			local t = getWinner(death.who)
-			if not t then return end
-			--room:getLord():speak(t)
-			local players = sgs.QList2Table(room:getAlivePlayers())
-			local function loser(p)
-				local tt = t:split("+")
-				if not table.contains(tt,p:getRole()) then return true end
-				return false
-			end
-			for _,p in ipairs(players)do
-				if loser(p) then 
-					table.removeOne(players,p)
+			local winner = getWinner(death.who)
+			if winner ~= "" then
+				local t = winner
+				--room:getLord():speak(winner)
+				local players = sgs.QList2Table(room:getAlivePlayers())
+				local function loser(p)
+					local tt = t:split("+")
+					if not table.contains(tt,p:getRole()) then return true end
+					return false
 				end
+				for _,p in ipairs(players)do
+					if loser(p) then 
+						table.removeOne(players,p)
+					end
+				end
+				local comp = function(a,b)
+					return a:getMark("mvpexp") > b:getMark("mvpexp")
+				end
+				if #players > 1 then
+					-- for _,p in ipairs(players)do
+					-- 	if (swig_type(p)~="ServerPlayer *") then
+					-- 		table.removeOne(players,p)
+					-- 	end
+					-- end
+					table.sort(players,comp)
+				end
+				local str = players[1]:getGeneralName()
+				local str2 = players[1]:screenName()
+				--room:doAnimate(2,"skill=MvpAnim:"..str,str)
+				local skills = players[1]:getGeneral():getVisibleSkillList()
+				local skill = nil
+				local word = ""
+				local index = -1
+				if not skills:isEmpty() then
+					skill = skills:at(math.random(1,skills:length())-1)
+					local sources = skill:getSources()
+					if #sources > 1 then index = math.random(1,#sources) end
+					word = "$" .. skill:objectName() .. (index == -1 and "" or tostring(index))
+				end
+				room:doAnimate(2,"skill=MobileMvp:"..str..":"..str2..":"..math.random(0,11),word)
+				room:broadcastSkillInvoke("n_mobile_effect",12)
+				local thread = room:getThread()
+				--thread:delay(1080)
+				thread:delay(1100)
+				--local skills = players[1]:getGeneral():getVisibleSkillList()
+				if skill then room:broadcastSkillInvoke(skill:objectName(),index) end
+				thread:delay(2900)
 			end
-			local comp = function(a,b)
-				return a:getMark("mvpexp") > b:getMark("mvpexp")
-			end
-			if #players > 1 then
-				-- for _,p in ipairs(players)do
-				-- 	if (swig_type(p)~="ServerPlayer *") then
-				-- 		table.removeOne(players,p)
-				-- 	end
-				-- end
-                table.sort(players,comp)
-			end
-			local str = players[1]:getGeneralName()
-			local str2 = players[1]:screenName()
-			--room:doAnimate(2,"skill=MvpAnim:"..str,str)
-			local skills = players[1]:getGeneral():getVisibleSkillList()
-			local skill = nil
-			local word = ""
-			local index = -1
-			if not skills:isEmpty() then
-				skill = skills:at(math.random(1,skills:length())-1)
-				local sources = skill:getSources()
-				if #sources > 1 then index = math.random(1,#sources) end
-				word = "$" .. skill:objectName() .. (index == -1 and "" or tostring(index))
-			end
-			room:doAnimate(2,"skill=MobileMvp:"..str..":"..str2..":"..math.random(0,11),word)
-			room:broadcastSkillInvoke("n_mobile_effect",12)
-			local thread = room:getThread()
-			--thread:delay(1080)
-			thread:delay(1100)
-			--local skills = players[1]:getGeneral():getVisibleSkillList()
-			if skill then room:broadcastSkillInvoke(skill:objectName(),index) end
-			thread:delay(2900)
 		end
 		return false
 	end

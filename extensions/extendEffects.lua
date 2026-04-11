@@ -56,26 +56,6 @@ function contains(splist, role) --using in getWinner func
 	return false
 end
 
-function getWinner(room, victim)
-	local r = victim:getRoleEnum()
-	local sp = room:getOtherPlayers(victim)
-	if r == sgs.Player_Lord then
-		if sp:length() == 1 and sp:first():getRole() == "renegade" then
-			return sp:first():objectName()
-		else
-			return "rebel"
-		end
-	else
-		if not contains(sp, sgs.Player_Rebel) and not contains(sp, sgs.Player_Renegade) then
-			return "lord+loyalist"
-		elseif victim:getRole() == "renegade" and not contains(sp, sgs.Player_Loyalist) then
-			room:setTag("RenegadeInFinalPK", sgs.QVariant(true))
-			return nil
-		else
-			return nil
-		end
-	end
-end
 
 -- mvpexperience = sgs.CreateTriggerSkill {
 -- 	name = "#mvpexperience",
