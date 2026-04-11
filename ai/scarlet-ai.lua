@@ -3406,3 +3406,11 @@ sgs.ai_skill_discard.s4_moubei = function(self, discard_num, min_num, optional, 
     return { }
 end
 
+
+sgs.ai_skill_playerchosen.s4_moubei = function(self, targets)
+    local target = self:findPlayerToDraw(true, 2)
+    if target then return target end
+    return self.player
+end
+
+sgs.ai_playerchosen_intention.s4_moubei = -30
