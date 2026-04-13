@@ -28,6 +28,19 @@ kntsubasa = sgs.General(extension, "kntsubasa", "magic", 4, false, false)      -
 khntmiku = sgs.General(extension, "khntmiku", "magic", 3, false, false)        --小日向未来
 yukinechris = sgs.General(extension, "yukinechris", "magic", 3, false, false)  --雪音クリス
 ------------------------------------------------------------------------特殊代码区
+------ 獲取「萌戰」參戰角色列表（萌戰技通用工具）
+--- 
+--- **邏輯流程**：
+--- 1. 將發起者 `player` 自動加入參戰列表。
+--- 2. 遍歷其他存活玩家，檢查是否帶有特定的 `taipu` (類型) 標記。
+--- 3. 若有標記，詢問其是否發動技能 `moesenskill` 響應。
+--- 4. 將玩家分類為兩個列表：參戰者 (ResPlayers) 與 其他目標 (targets)。
+---
+---@param room Room 房間對象
+---@param player ServerPlayer 萌戰發起者
+---@param taipu string 標記名稱，用於篩選具備參戰資格的角色
+---@return sgs.PlayerList ResPlayers 最終參戰的角色列表（包含發起者）
+---@return sgs.PlayerList targets 未參戰的角色列表（排除發起者與參戰者
 getmoesenlist = function(room, player, taipu)                                  --OmnisReen --作用：萌战技通用、得出参战角色list
 	local ResPlayers = sgs.SPlayerList()
 	local targets = room:getAlivePlayers()
@@ -44,23 +57,6 @@ getmoesenlist = function(room, player, taipu)                                  -
 	end
 	targets:removeOne(player)
 	return ResPlayers, targets
-end
-
-player2serverplayer = function(room, player) --啦啦SLG (OTZ--ORZ--Orz) --作用：将currentplayer转换成serverplayer
-	local players = room:getPlayers()
-	for _, p in sgs.qlist(players) do
-		if p:objectName() == player:objectName() then
-			return p
-		end
-	end
-end
-qstring2serverplayer = function(room, qstring) --改编版本 --作用：将qstring类型转换成serverplayer
-	local players = room:getPlayers()
-	for _, p in sgs.qlist(players) do
-		if p:objectName() == qstring then
-			return p
-		end
-	end
 end
 ------------------------------------------------------------------------武器技能区 By独孤安河（OTZ--ORZ--orz）
 GuanchuanDummyCard = sgs.CreateSkillCard {

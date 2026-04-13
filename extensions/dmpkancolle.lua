@@ -11,7 +11,7 @@ do
 	config.color_de = "#9AC0CD"
 end
 
-isFire = function(player)
+local isFire = function(player)
 	if player:getMark("@FireCaused") > 0 then
 		return true
 	else

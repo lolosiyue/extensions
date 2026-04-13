@@ -2859,13 +2859,6 @@ extension:insertRelatedSkills("f_jiutian","#f_jiutianContinue")
 --13 FC神吕蒙
 fc_shenlvmeng = sgs.General(extension, "fc_shenlvmeng", "god", 3, true)
 
-function getCardList(intlist)
-	local ids = sgs.CardList()
-	for _, id in sgs.qlist(intlist) do
-		ids:append(sgs.Sanguosha:getCard(id))
-	end
-	return ids
-end
 fcshelie = sgs.CreateTriggerSkill{
 	name = "fcshelie",
 	frequency = sgs.Skill_Frequent,
@@ -14194,13 +14187,6 @@ ahmoukuangfu = sgs.CreateTriggerSkill{
 }
 ah_mou_zhugeliang:addSkill(ahmoukuangfu)
 
-function getCardList(intlist)
-	local ids = sgs.CardList()
-	for _, id in sgs.qlist(intlist) do
-		ids:append(sgs.Sanguosha:getCard(id))
-	end
-	return ids
-end
 ahmoushizhi_shiCard = sgs.CreateSkillCard{
 	name = "ahmoushizhi_shiCard",
 	target_fixed = false,

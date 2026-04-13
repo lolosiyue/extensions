@@ -494,14 +494,6 @@ if not sgs.Sanguosha:getSkill("keshengqizuoclear") then
 	skills:append(keshengqizuoclear)
 end
 
-function keshenggetCardList(intlist)
-	local ids = sgs.CardList()
-	for _, id in sgs.qlist(intlist) do
-		ids:append(sgs.Sanguosha:getCard(id))
-	end
-	return ids
-end
-
 keshengxiangzhi = sgs.CreateTriggerSkill {
 	name = "keshengxiangzhi",
 	events = { sgs.EventPhaseStart },
@@ -558,7 +550,7 @@ keshengxiangzhi = sgs.CreateTriggerSkill {
 			end
 			local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 			if not to_get:isEmpty() then
-				dummy:addSubcards(keshenggetCardList(to_get))
+				dummy:addSubcards(getCardList(to_get))
 				player:obtainCard(dummy)
 			end
 			dummy:clearSubcards()
@@ -766,7 +758,7 @@ kejieshengxionglve = sgs.CreateTriggerSkill {
 						end
 						local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 						if not to_get:isEmpty() then
-							dummy:addSubcards(keshenggetCardList(to_get))
+							dummy:addSubcards(getCardList(to_get))
 							player:obtainCard(dummy)
 						end
 						dummy:clearSubcards()
@@ -1358,8 +1350,8 @@ kejieshengxiangzhi = sgs.CreateTriggerSkill {
 		end
 		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		if not to_get:isEmpty() then
-			dummy:addSubcards(keshenggetCardList(to_get))
-			--dummy:addSubcards(keshenggetCardList(to_throw))
+			dummy:addSubcards(getCardList(to_get))
+			--dummy:addSubcards(getCardList(to_throw))
 			player:obtainCard(dummy)
 		end
 		dummy:clearSubcards()

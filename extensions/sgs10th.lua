@@ -65,28 +65,6 @@ local function cardsChosen(room, player, target, reason, flag, num)
 	return chosen
 end
 
-local function CreateDamageLog(damage, changenum, reason, up)
-	local log = sgs.LogMessage()
-	if damage.from then
-		log.type = "$nyarzdamagechange"
-		log.from = damage.from
-		log.arg5 = damage.to:getGeneralName()
-	else
-		log.type = "$nyarzdamagechangenofrom"
-		log.from = damage.to
-	end
-	log.arg = reason
-	log.arg2 = damage.damage
-	if up ~= false then
-		log.arg3 = "nyarzdamageup"
-		log.arg4 = damage.damage + changenum
-	else
-		log.arg3 = "nyarzdamagedown"
-		log.arg4 = damage.damage - changenum
-	end
-	return log
-end
-
 ny_10th_xujing = sgs.General(extension, "ny_10th_xujing", "shu", 3, true, false, false)
 
 ny_10th_caixia = sgs.CreateTriggerSkill {
@@ -4294,14 +4272,6 @@ ny_10th_jxxiantu = sgs.CreateTriggerSkill {
 		return target:getPhase() == sgs.Player_Play
 	end,
 }
-
-local function getTypeString(card)
-	for _, p in ipairs({ "BasicCard", "TrickCard", "EquipCard" }) do
-		if card:isKindOf(p) then
-			return p
-		end
-	end
-end
 
 ny_10th_jxqiangzhi = sgs.CreateTriggerSkill {
 	name = "ny_10th_jxqiangzhi",
@@ -12078,31 +12048,6 @@ ny_10th_fuli = sgs.CreateZeroCardViewAsSkill {
 		return (not player:isKongcheng()) and (not player:hasUsed("#ny_10th_fuli"))
 	end,
 }
-
-local function chsize(tmp)
-	if not tmp then
-		return 0
-	elseif tmp > 240 then
-		return 4
-	elseif tmp > 225 then
-		return 3
-	elseif tmp > 192 then
-		return 2
-	else
-		return 1
-	end
-end
-
-local function utf8len(str)
-	local length = 0
-	local currentIndex = 1
-	while currentIndex <= #str do
-		local tmp = string.byte(str, currentIndex)
-		currentIndex = currentIndex + chsize(tmp)
-		length = length + 1
-	end
-	return length
-end
 
 ny_10th_fuliCard = sgs.CreateSkillCard {
 	name = "ny_10th_fuli",

@@ -185,22 +185,6 @@ luanixi_Keep = sgs.CreateMaxCardsSkill {
 	end,
 }
 
-function getQhGeneral()
-	local new_generaltable = {}
-	local n = 0
-	for i = 1, 30 do
-		local name = general_table[math.random(1, #general_table)]
-		if not table.contains(new_generaltable, name) then -- 不包含
-			table.insert(new_generaltable, name)
-			n = n + 1 -- 计数
-			if n == 7 then
-				break -- 终止循环
-			end
-		end
-	end
-	return new_generaltable
-end
-
 debugchangehero = sgs.CreateTriggerSkill {
 	name = "debugchangehero",
 	frequency = sgs.Skill_Compulsory,

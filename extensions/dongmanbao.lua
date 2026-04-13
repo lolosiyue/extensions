@@ -61,16 +61,6 @@ local function doLog(logtype, logfrom, logarg, logto, logarg2)
 	room:sendLog(alog)
 end
 
-local function touhou_shuffle(atable)
-	local count = #atable
-	for i = 1, count do
-		local j = math.random(1, count)
-		atable[j], atable[i] = atable[i], atable[j]
-	end
-	return atable
-end
-
-
 local function anime_playersbyskillname(roomplayer, skillname)
 	if not skillname then
 		roomplayer:speak("anime_playersbyskillname-skillname is nil")
@@ -3427,13 +3417,6 @@ Zizhu = sgs.CreateTriggerSkill {
 	end
 }
 
-listIndexOf = function(theqlist, theitem)
-	local index = 0
-	for _, item in sgs.qlist(theqlist) do
-		if item == theitem then return index end
-		index = index + 1
-	end
-end
 Keai = sgs.CreateTriggerSkill {
 	name = "Keai",
 	frequency = sgs.Skill_Frequent,
@@ -8324,6 +8307,19 @@ local function getBaskervillesNum(room)
 	return num
 end
 
+--- 獲取「萌戰」參戰角色列表（萌戰技通用工具）
+--- 
+--- **邏輯流程**：
+--- 1. 將發起者 `player` 自動加入參戰列表。
+--- 2. 遍歷其他存活玩家，檢查是否帶有特定的 `taipu` (類型) 標記。
+--- 3. 若有標記，詢問其是否發動技能 `moesenskill` 響應。
+--- 4. 將玩家分類為兩個列表：參戰者 (ResPlayers) 與 其他目標 (targets)。
+---
+---@param room sgs.Room 房間對象
+---@param player sgs.ServerPlayer 萌戰發起者
+---@param taipu string 標記名稱，用於篩選具備參戰資格的角色
+---@return sgs.PlayerList ResPlayers 最終參戰的角色列表（包含發起者）
+---@return sgs.PlayerList targets 未參戰的角色列表（排除發起者與參戰者
 getmoesenlist = function(room, player, taipu) --OmnisReen --作用：萌战技通用、得出参战角色list
 	local ResPlayers = sgs.SPlayerList()
 	local targets = room:getAlivePlayers()

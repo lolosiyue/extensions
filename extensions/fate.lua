@@ -900,19 +900,6 @@ fateshilian=sgs.CreateTriggerSkill{
 		end
    	end
 }
-local function getCardDamageNature(from, to, card)
-    local nature = sgs.DamageStruct_Normal
-    if card then
-        if card:isKindOf("FireSlash") then
-            nature = sgs.DamageStruct_Fire
-        elseif card:isKindOf("ThunderSlash") then
-            nature = sgs.DamageStruct_Thunder
-        elseif card:isKindOf("IceSlash") then
-            nature = sgs.DamageStruct_Ice
-        end
-    end
-    return nature
-end
 --巨力 锁定技，当你使用【杀】指定一名角色为目标后，该角色需连续使用一张【杀】和一张【闪】才能抵消。
 fatejuli = sgs.CreateTriggerSkill {
 	name = "fatejuli",
@@ -952,7 +939,7 @@ fatejuli = sgs.CreateTriggerSkill {
 				effect.offset_card = nil
 				data:setValue(effect)
 				room:getThread():trigger(sgs.CardOnEffect,room,effect.to,data)
-				room:damage(sgs.DamageStruct(effect.card, effect.from, effect.to, 1, getCardDamageNature(effect.from, effect.to, effect.card)))
+				room:damage(sgs.DamageStruct(effect.card, effect.from, effect.to, 1))
 				return true
 			end		
 		end

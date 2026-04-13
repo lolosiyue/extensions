@@ -13378,13 +13378,6 @@ wangquan = sgs.CreateTriggerSkill {
 extension:insertRelatedSkills("wangwei", "#wangquan")
 
 --祈祷
-listIndexOf = function(theqlist, theitem)
-	local index = 0
-	for _, item in sgs.qlist(theqlist) do
-		if item == theitem then return index end
-		index = index + 1
-	end
-end
 qidao = sgs.CreateTriggerSkill {
 	name = "qidao",
 	events = { sgs.BeforeCardsMove },

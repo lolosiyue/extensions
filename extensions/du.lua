@@ -2,15 +2,6 @@ extension = sgs.Package("du", sgs.Package_GeneralPack)
 
 duGanning = sgs.General(extension, "duGanning", "wu", 4)
 
-listIndexOf = function(theqlist, theitem)
-	local index = 0
-	for _, item in sgs.qlist(theqlist) do
-		if item == theitem then
-			return index
-		end
-		index = index + 1
-	end
-end
 jinfan = sgs.CreateTriggerSkill {
 	name = "jinfan",
 	frequency = sgs.Skill_NotFrequent,

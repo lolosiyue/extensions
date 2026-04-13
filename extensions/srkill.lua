@@ -1556,12 +1556,6 @@ sgs.LoadTranslationTable{
 --SR赵云
 sr_zhaoyun = sgs.General(extension,"sr_zhaoyun","shu")
 
-function canCauseDamage(card)
-	if card:isKindOf("EquipCard") then return false end
-	return card:isKindOf("Slash") or card:isKindOf("FireAttack") or card:isKindOf("Duel") or 
-	card:isKindOf("SavageAssault") or card:isKindOf("ArcheryAttack") or card:isKindOf("Drowning")
-end
-
 -- sr_jiuzhu = sgs.CreateTriggerSkill{
 -- 	name = "sr_jiuzhu",
 -- 	events = {sgs.CardsMoveOneTime},

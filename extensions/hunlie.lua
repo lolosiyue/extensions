@@ -6368,12 +6368,6 @@ sgkgodpangtong:addSkill(sgkgodluncezhong)
 extension:insertRelatedSkills("sgkgodlunce", "#sgkgodluncezhong")
 
 --论策·上策:使用不同花色的牌各一张，使用不同类型的牌各一张，获得技能，失去技能，令一名角色进入濒死状态，进入濒死状态
-function getTypeString(card)
-	if card:isKindOf("BasicCard") then return "basic" end
-	if card:isKindOf("TrickCard") then return "trick" end
-	if card:isKindOf("EquipCard") then return "equip" end
-end
-
 sgkgodlunceshang = sgs.CreateTriggerSkill{
 	name = "#sgkgodlunceshang",
 	frequency = sgs.Skill_Compulsory,

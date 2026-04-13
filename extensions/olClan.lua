@@ -35,52 +35,6 @@ end
 
 --==颍川·钟氏==--
 
---- 內部輔助函數：根據 UTF-8 首位元組判定字元佔用的位元組數
---- 
---- **判定標準**：
---- - 1 byte (0-191): ASCII 或後續位元組
---- - 2 bytes (192-224): 多位元組字元起始
---- - 3 bytes (225-240): 中文字元常用區間
---- - 4 bytes (>240): 極少數特殊字元
----@param tmp integer|nil 位元組的數值 (0-255)
----@return integer bytes 該字元佔用的位元組長度
-local function chsize(tmp)
-	if not tmp then
-		return 0
-	elseif tmp > 240 then
-		return 4
-	elseif tmp > 225 then
-		return 3
-	elseif tmp > 192 then
-		return 2
-	else
-		return 1
-	end
-end
-
---- 計算 UTF-8 字串的真實字元長度（而非位元組數）
---- 
---- **功能描述**：
---- 1. **自動轉換**：若傳入的是 `sgs` 物件，則自動翻譯為對應的 objectName。
---- 2. **字元掃描**：透過位元組特徵識別多位元組字元（如中文），精確計算視覺上的字數。
----
---- **使用場景**：用於 UI 佈局計算、字數限制（如自定義技能名或日誌格式化）。
----
----@param str string|any 要計算長度的字串或可翻譯的 sgs 物件
----@return integer length 真實字元總數
-function utf8len(str)
-	if type(str) ~= "string" then
-		str = sgs.Sanguosha:translate(str:objectName())
-	end
-	local length, currentIndex = 0, 1
-	while currentIndex <= #str do
-		local tmp = string.byte(str, currentIndex)
-		currentIndex = currentIndex + chsize(tmp)
-		length = length + 1
-	end
-	return length
-end
-
 ol_clans.yingchuan_zhong = { "zhonghui" }
 zu_zhonghui = sgs.General(extension, "zu_zhonghui", "wei", 4, true, false, false, 3)
 zuyuzhi = sgs.CreateTriggerSkill {

@@ -3,13 +3,6 @@ extension = sgs.Package("kexianbao", sgs.Package_GeneralPack)
 local skills = sgs.SkillList()
 
 --跳过阶段合集
-function jiexiangetCardList(intlist)
-	local ids = sgs.CardList()
-	for _, id in sgs.qlist(intlist) do
-		ids:append(sgs.Sanguosha:getCard(id))
-	end
-	return ids
-end
 
 kexianxiuzhenex = sgs.CreateTriggerSkill {
 	name = "kexianxiuzhenex",
@@ -426,14 +419,6 @@ kexianchanxin = sgs.CreateViewAsSkill {
 }
 kexianpujing:addSkill(kexianchanxin)
 
-function xiangetCardList(intlist)
-	local ids = sgs.CardList()
-	for _, id in sgs.qlist(intlist) do
-		ids:append(sgs.Sanguosha:getCard(id))
-	end
-	return ids
-end
-
 kexianhuiyan = sgs.CreateTriggerSkill {
 	name = "kexianhuiyan",
 	frequency = sgs.Skill_NotFrequent,
@@ -460,7 +445,7 @@ kexianhuiyan = sgs.CreateTriggerSkill {
 				end
 				local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 				if not to_get:isEmpty() then
-					dummy:addSubcards(xiangetCardList(to_get))
+					dummy:addSubcards(getCardList(to_get))
 					player:obtainCard(dummy)
 				end
 				dummy:deleteLater()
@@ -1496,7 +1481,7 @@ kejiexianhuiyan = sgs.CreateTriggerSkill {
 					end
 					local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 					if not to_get:isEmpty() then
-						dummy:addSubcards(jiexiangetCardList(to_get))
+						dummy:addSubcards(getCardList(to_get))
 						pj:obtainCard(dummy)
 					end
 					dummy:deleteLater()
@@ -1565,7 +1550,7 @@ kejiexianguiyi = sgs.CreateTriggerSkill {
 					log.to:append(from)
 					room:sendLog(log)
 					local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-					dummy:addSubcards(xiangetCardList(da_cards))
+					dummy:addSubcards(getCardList(da_cards))
 					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, from:objectName(), self:objectName(), "")
 					room:throwCard(dummy, reason, nil)
 					dummy:deleteLater()

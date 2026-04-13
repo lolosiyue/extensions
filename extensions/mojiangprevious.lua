@@ -240,16 +240,9 @@ sy_old_shenwei = sgs.CreateTriggerSkill{
 	技能描述：准备阶段，若你的判定区内有牌，则你可以弃置一张牌，然后弃置判定区内一张与该牌花色相同的牌。你可以重复此流程。
 	引用：sy_old_xiuluo
 ]]--
-hasDelayedTrickXiuluo = function(target)
+local hasDelayedTrickXiuluo = function(target)
 	for _, card in sgs.qlist(target:getJudgingArea()) do
 		if not card:isKindOf("SkillCard") then return true end
-	end
-	return false
-end
-
-containsTable = function(t, tar)
-	for _, i in ipairs(t) do
-		if i == tar then return true end
 	end
 	return false
 end

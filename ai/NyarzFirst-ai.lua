@@ -2766,17 +2766,6 @@ sgs.ai_ajustdamage_to["&jfjifeng"] = function(self, from, to, card, nature)
 end
 
 --月隐
-local function getTypeString(card)
-    local cardtype = nil
-    local types = {"BasicCard","TrickCard","EquipCard"}
-    for _,p in ipairs(types) do
-        if card:isKindOf(p) then
-            cardtype = p
-            break
-        end
-    end
-    return cardtype
-end
 sgs.ai_ajustdamage_to.jfyueyin = function(self, from, to, card, nature)
 	local can_invoke = false
 	if (not card) or (card and card:isKindOf("SkillCard")) then can_invoke = true end
@@ -2928,31 +2917,6 @@ sgs.ai_playerchosen_intention.cqchangqu = function(self, from, to)
 end
 
 --迂志
-
-local function chsize(tmp)
-	if not tmp then
-		return 0
-    elseif tmp > 240 then
-        return 4
-    elseif tmp > 225 then
-        return 3
-    elseif tmp > 192 then
-        return 2
-    else
-        return 1
-    end
-end
-
-local function utf8len(str)
-	local length = 0
-	local currentIndex = 1
-	while currentIndex <= #str do
-		local tmp = string.byte(str, currentIndex)
-		currentIndex  = currentIndex + chsize(tmp)
-		length = length + 1
-	end
-	return length
-end
 
 sgs.ai_skill_discard.yzyuzhi = function(self,max,min)
 	local cards = self.player:getHandcards()

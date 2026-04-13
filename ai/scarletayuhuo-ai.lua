@@ -2219,7 +2219,7 @@ table.insert(sgs.ai_skills, s2_longwei_skill)
 s2_longwei_skill.getTurnUseCard = function(self, inclusive)
 	self:updatePlayers()
 	local patterns = {"slash", "jink", "analeptic", "nullification", "snatch", "dismantlement", "collateral", "duel", "fire_attack", "amazing_grace", "savage_assault", "archery_attack", "god_salvation", "iron_chain"}
-	if not (Setlw(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
+	if not (Set(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
 		table.insert(patterns, 2, "thunder_slash")
 		table.insert(patterns, 2, "fire_slash")
 		table.insert(patterns, 2, "normal_slash")

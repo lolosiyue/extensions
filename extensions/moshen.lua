@@ -20,7 +20,7 @@ sgs.LoadTranslationTable{
 }
 ]]
 
-function getExceptionDrawpileIds(except_pattern)
+local function getExceptionDrawpileIds(except_pattern)
 	local room = sgs.Sanguosha:currentRoom()
 	local ids = sgs.IntList()
 	for _, id in sgs.qlist(room:getDrawPile()) do
@@ -1420,13 +1420,6 @@ shenyingzheng:addSkill(ms_shawei)
 	引用：ms_xianshu
 ]]
 --
-function getCardList(intlist)
-	local ids = sgs.CardList()
-	for _, id in sgs.qlist(intlist) do
-		ids:append(sgs.Sanguosha:getCard(id))
-	end
-	return ids
-end
 
 ms_xianshu = sgs.CreateTriggerSkill {
 	name = "ms_xianshu",
@@ -1493,7 +1486,7 @@ shensimashi = sgs.General(extension, "shensimashi", "sy_god", 4)
 	引用：ms_jinshu
 ]]
 --
-function can_reset(player)
+local function can_reset(player)
 	if not player:faceUp() then
 		return true
 	end
@@ -1503,7 +1496,7 @@ function can_reset(player)
 	return false
 end
 
-function resetPlayer(player)
+local function resetPlayer(player)
 	local room = player:getRoom()
 	if not player:faceUp() then
 		player:turnOver()

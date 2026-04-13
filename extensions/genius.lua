@@ -1,6 +1,6 @@
 ﻿extension_f = sgs.Package("FCGod", sgs.Package_GeneralPack)
 newgodsCard = sgs.Package("newgodsCard", sgs.Package_CardPack)
-function f_Invoke(player, skill) --发动技能的信息发送
+local function f_Invoke(player, skill) --发动技能的信息发送
 	local room = player:getRoom()
 	local log = sgs.LogMessage()
 	log.type = "#f_Invoke"

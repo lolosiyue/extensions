@@ -1239,14 +1239,6 @@ end
 --界鬼张飞
 kejieguizhangfei = sgs.General(extension, "kejieguizhangfei", "kegui", 4, true)
 
-function getCardListgui(intlist)
-	local ids = sgs.CardList()
-	for _, id in sgs.qlist(intlist) do
-		ids:append(sgs.Sanguosha:getCard(id))
-	end
-	return ids
-end
-
 kejieguilongyin = sgs.CreateTriggerSkill {
 	name = "kejieguilongyin",
 	frequency = sgs.Skill_NotFrequent,
@@ -1338,7 +1330,7 @@ kejieguilongyin = sgs.CreateTriggerSkill {
 							--[[if not to_get:isEmpty() then
 							    local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 
-								dummy:addSubcards(getCardListgui(to_get))
+								dummy:addSubcards(getCardList(to_get))
 								--dummy:addSubcards(getCardList(to_throw))
 								player:obtainCard(dummy)
 								dummy:deleteLater()

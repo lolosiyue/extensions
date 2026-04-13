@@ -6658,13 +6658,6 @@ GanNing_Plus = sgs.General(extension, "GanNing_Plus", "wu", 4, true)
 	注：若甘宁与能够修改过河拆桥目标个数的武将（例如李儒；简雍需等待三将正式公布，因为目前虫妹的lua中是先CardUsed再修改目标个数的）组成双将，梅花的第二个效果无法实现。
 ]]
 --
-listIndexOf = function(theqlist, theitem)
-	local index = 0
-	for _, item in sgs.qlist(theqlist) do
-		if item == theitem then return index end
-		index = index + 1
-	end
-end
 PlusQixiVS = sgs.CreateViewAsSkill {
 	name = "PlusQixi",
 	n = 1,
@@ -7743,7 +7736,7 @@ ZhouTai_Plus = sgs.General(extension, "ZhouTai_Plus", "wu", 4, true)
 	状态：验证通过
 ]]
 --
-function Remove(SP)
+local function Remove(SP)
 	local room = SP:getRoom()
 	local card_ids = SP:getPile("Plushurt")
 	local re = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", "PlusBuqu", "")
@@ -15179,138 +15172,5 @@ XuShaoXuQian_Seven:addSkill(SevenFengPing)
 XuShaoXuQian_Seven:addSkill(SevenYueDan)
 XuShaoXuQian_Seven:addSkill(SevenYueDanback)
 extension_six:insertRelatedSkills("SevenYueDan", "#SevenYueDanback")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-----------------------------------------------------------------------------------------------------
---                                            其他
-----------------------------------------------------------------------------------------------------
-
--- 变身
---BUG：SP武将无法发动；--（已修复，但是需要验证）开局时标记会获得2个。
---[[
-dofile "lua/config.lua"
-local change_table = {}
-function initTable()  --变身列表
-	table.insert(change_table, {"caocao", "CaoCao_Plus"})					--WEI001 曹操
-	table.insert(change_table, {"ass_caocao", "CaoCao_Plus"})
-	table.insert(change_table, {"simayi", "SiMaYi_Plus"})					--WEI002 司马懿
-	table.insert(change_table, {"guojia", "GuoJia_Plus"})					--WEI003 郭嘉
-	table.insert(change_table, {"xiahoudun", "XiaHouDun_Plus"})				--WEI004 夏侯惇
-	table.insert(change_table, {"zhangliao", "ZhangLiao_Plus"})				--WEI005 张辽
-	table.insert(change_table, {"xuchu", "XuChu_Plus"})						--WEI006 许褚
-	table.insert(change_table, {"xiahouyuan", "XiaHouYuan_Plus"})			--WEI008 夏侯渊
-	table.insert(change_table, {"caoren", "CaoRen_Plus"})					--WEI009 曹仁
-	table.insert(change_table, {"yujin", "YuJin_Plus"})						--WEI010 于禁
-	table.insert(change_table, {"yangxiu", "YangXiu_Plus"})					--WEI011 杨修
-
-	table.insert(change_table, {"liubei", "LiuBei_Plus"})					--SHU001 刘备
-	table.insert(change_table, {"zhugeliang", "ZhuGeLiang_Plus"})			--SHU002 诸葛亮
-	table.insert(change_table, {"heg_zhugeliang", "ZhuGeLiang_Plus"})
-	table.insert(change_table, {"guanyu", "GuanYu_Plus"})					--SHU003 关羽
-	table.insert(change_table, {"sp_guanyu", "GuanYu_Plus"})
-	table.insert(change_table, {"zhangfei", "ZhangFei_Plus"})				--SHU004 张飞
-	table.insert(change_table, {"zhaoyun", "ZhaoYun_Plus"})					--SHU005 赵云
-	table.insert(change_table, {"machao", "MaChao_Plus"})					--SHU006 马超
-	table.insert(change_table, {"sp_machao", "MaChao_Plus"})
-	table.insert(change_table, {"huangyueying", "HuangYueYing_Plus"})		--SHU007 黄月英
-	table.insert(change_table, {"heg_huangyueying", "HuangYueYing_Plus"})
-	table.insert(change_table, {"huangzhong", "HuangZhong_Plus"})			--SHU008 黄忠
-	table.insert(change_table, {"weiyan", "WeiYan_Plus"})					--SHU009 魏延
-	table.insert(change_table, {"menghuo", "MengHuo_Plus"})					--SHU010 孟获
-	table.insert(change_table, {"masu", "MaSu_Plus"})						--SHU011 马谡
-
-	table.insert(change_table, {"sunquan", "SunQuan_Plus"})					--WU001 孙权
-	table.insert(change_table, {"zhouyu", "ZhouYu_Plus"})					--WU002 周瑜
-	table.insert(change_table, {"heg_zhouyu", "ZhouYu_Plus"})
-	table.insert(change_table, {"sp_heg_zhouyu", "ZhouYu_Plus"})
-	table.insert(change_table, {"lvmeng", "LvMeng_Plus"})					--WU003 吕蒙
-	table.insert(change_table, {"luxun", "LuXun_Plus"})						--WU004 陆逊
-	table.insert(change_table, {"ganning", "GanNing_Plus"})					--WU005 甘宁
-	table.insert(change_table, {"huanggai", "HuangGai_Plus"})				--WU006 黄盖
-	table.insert(change_table, {"daqiao", "DaQiao_Plus"})					--WU007 大乔
-	table.insert(change_table, {"sunshangxiang", "SunShangXiang_Plus"})		--WU008 孙尚香
-	table.insert(change_table, {"sp_sunshangxiang", "SunShangXiang_Plus"})
-	table.insert(change_table, {"xiaoqiao", "XiaoQiao_Plus"})				--WU009 小乔
-	table.insert(change_table, {"heg_xiaoqiao", "XiaoQiao_Plus"})
-	table.insert(change_table, {"zhoutai", "ZhouTai_Plus"})					--WU010 周泰
-	table.insert(change_table, {"sunjian", "SunJian_Plus"})					--WU011 孙坚
-
-	table.insert(change_table, {"lvbu", "LvBu_Plus"})						--QUN001 吕布
-	table.insert(change_table, {"heg_lvbu", "LvBu_Plus"})
-	table.insert(change_table, {"huatuo", "HuaTuo_Plus"})					--QUN003 华佗
-	table.insert(change_table, {"zhangjiao", "ZhangJiao_Plus"})				--QUN004 张角
-	table.insert(change_table, {"yuji", "YuJi_Plus"})						--QUN005 于吉
-	table.insert(change_table, {"gongsunzan", "GongSunZan_Plus"})			--QUN006 公孙瓒
-	table.insert(change_table, {"huaxiong", "HuaXiong_Plus"})				--QUN007 华雄
-	table.insert(change_table, {"hanxiandi", "LiuXie_Plus"})				--QUN008 刘协
-end
-ChangeToPlus = sgs.CreateTriggerSkill{
-	name = "#ChangeToPlus",
-	frequency = sgs.Skill_NotFrequent,
-	events ={sgs.GameStart},
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		local name = player:getGeneralName()
-		local can_list = {}
-		for _,group in ipairs(change_table) do
-			if group[1] == name then
-				table.insert(can_list, group[2])
-			end
-		end
-		if #can_list ~= 0 then
-			if room:askForSkillInvoke(player, self:objectName()) then
-				local new_general = room:askForChoice(player, self:objectName(), table.concat(can_list, "+"))
-				room:changeHero(player, new_general, true, false, false, true)
-			end
-		end
-	end,
-	priority = 6
-}
-function initChange()
-	local generalnames=sgs.Sanguosha:getLimitedGeneralNames()
-	for _, generalname in ipairs(generalnames) do
-		local general = sgs.Sanguosha:getGeneral(generalname)
-		if general then
-			general:addSkill("#ChangeToPlus")			
-		end
-	end
-end
-local skill = sgs.Sanguosha:getSkill("#ChangeToPlus")
-if not skill then
-	local skillList = sgs.SkillList()
-	skillList:append(ChangeToPlus)
-	sgs.Sanguosha:addSkills(skillList)
-end
-initTable()
-initChange()]]
 
 return { extension, extension_six }

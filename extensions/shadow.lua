@@ -2358,7 +2358,7 @@ y_mingjian = sgs.CreateTriggerSkill
 		end
 	}
 
-function FanjinMove(ids, movein, player)
+local function FanjinMove(ids, movein, player)
 	local room = player:getRoom()
 	if movein then
 		local move = sgs.CardsMoveStruct(ids, nil, player, sgs.Player_PlaceTable, sgs.Player_PlaceSpecial,

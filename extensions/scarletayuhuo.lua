@@ -859,7 +859,7 @@ s_biaoqiSlashCard = sgs.CreateSkillCard{
 		end
 	end,
 }
-function canSlashLiufeng (player)
+local function canSlashMachao (player)
 	local liufeng = nil;
 	for _,p in sgs.qlist(player:getAliveSiblings()) do
 		if (p:getPile("s_yong"):length() > 0) then
@@ -890,11 +890,11 @@ s_biaoqiSlash = sgs.CreateOneCardViewAsSkill{
 		return false 
 	end,
 	enabled_at_play = function(self, player)
-		return sgs.Slash_IsAvailable(player) and canSlashLiufeng(player)
+		return sgs.Slash_IsAvailable(player) and canSlashMachao(player)
 	end, 
 	enabled_at_response = function(self, player, pattern)
 		return  pattern == "slash"and sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE
-			   and canSlashLiufeng(player)
+			   and canSlashMachao(player)
 	end,
 }
 
@@ -2863,6 +2863,22 @@ sgs.LoadTranslationTable{
 
 s2_godzhaoyun = sgs.General(extension_jx,"s2_godzhaoyun","god","2")
 
+--- 執行「查點」三人拼點邏輯
+--- 
+--- **判定規則**：
+--- 1. 三人各出一張手牌（不進入拼點視窗，而是透過 `askForCard` 選擇）。
+--- 2. 比較點數：若發起者 (Sponsor) 的點數介於 First 和 Second 之間（不包含相等），則視為成功。
+--- 3. 牌移動：所有參與拼點的牌都會進入棄牌堆。
+---
+--- **注意**：
+--- - 此函數回傳的是字串 `"success"` 或 `"false"`，而非 Lua 布林值。
+--- - 只要有一人空城，查點便無法發動並回傳 `"false"`。
+---
+---@param sponsor ServerPlayer 查點發起者
+---@param first ServerPlayer 第一名被拼點者
+---@param second ServerPlayer 第二名被拼點者
+---@param skill_name string 關聯技能名稱
+---@return "success"|"false" 查點結果
 function chadian(sponsor, first,second, skill_name)	
 	local room = sponsor:getRoom()
 	if sponsor:isKongcheng() or first:isKongcheng() or second:isKongcheng() then 
@@ -2916,102 +2932,6 @@ return "false"
 end	
 end
 
-listIndexOf = function(theqlist, theitem)
-	local index = 0
-	for _, item in sgs.qlist(theqlist) do
-		if item == theitem then return index end
-		index = index + 1
-	end
-end
-player2serverplayer = function(room, player) --啦啦SLG (OTZ--ORZ--Orz) --作用：将currentplayer转换成serverplayer
-	local players = room:getPlayers()
-	for _,p in sgs.qlist(players) do
-		if p:objectName() == player:objectName() then
-			return p
-		end
-	end
-end
-qstring2serverplayer = function(room, qstring) --改编版本 --作用：将qstring类型转换成serverplayer
-	local players = room:getPlayers()
-	for _,p in sgs.qlist(players) do
-		if p:objectName() == qstring then
-			return p
-		end
-	end
-end
-
-
---思路: COS C= ture S= false
-function equipEXtra(owner, original_equip, added_equip, skill_name)
-	local room = owner:getRoom()
-
-end
-function canExtraEquip(owner, which_equip)
-	local room = owner:getRoom()
-	if owner:getMark("ExtraEquip") > 0 then
-	if owner:getMark("ExtraEquip"..which_equip) > 0  then
-	return true 
-	end
-else 
-return false 	
-	end
-end
---[[
-s2_equipEXtra = sgs.CreateTriggerSkill{
-	name = "s2_equipEXtra",
-	events = {sgs.BeforeCardsMove},
-	global = true,
-	can_trigger = function(self, player)
-	    return true
-	end,
-	on_trigger = function(self, event, player, data)
-	    local room = player:getRoom()
-		math.random()
-	if event == sgs.BeforeCardsMove then
-	local move = data:toMoveOneTime()
-		if move.from and (move.from:objectName() == player:objectName()) then 
-			if (move.to_place == sgs.Player_PlaceEquip) and move.card_ids:length()==1  then
-			for _, id in sgs.qlist(move.card_ids) do
-			local card = sgs.Sanguosha:getCard(id)
-				if card:isKindOf("EquipCard") then
-				local cardtype = ""
-					if card:isKindOf("Weapon") and player:getWeapon() and canExtraEquip(player2serverplayer(room,move.from), "weapon") then
-					cardtype = "Weapon"
-					elseif  card:isKindOf("Armor") and player:getArmor() and canExtraEquip(player2serverplayer(room,move.from), "armor") then
-					cardtype = "Armor"
-					elseif card:isKindOf("OffensiveHorse") and player:getOffensiveHorse() and canExtraEquip(player2serverplayer(room,move.from), "offensive_horse") then
-					cardtype = "OffensiveHorse"
-					elseif card:isKindOf("DefensiveHorse") and player:getDefensiveHorse() and canExtraEquip(player2serverplayer(room,move.from), "defensive_horse") then
-					cardtype = "DefensiveHorse"
-					end
-					if cardtype ~= "" and (player:getTag("equipEXtra_COS"):toBool() or  room:askForSkillInvoke(player,player:getTag("equipEXtra"):toString()) )then
-						player:addToPile("extra_"..cardtype, card, true)
-						move.card_ids:removeOne(id)
-							data:setValue(move)
-							room:setTag("s2_equipEXtraCard"..move.from:objectName(), sgs.QVariant(move.card_ids:first()))
-					end
-					end
-					end
-					end
-					end
-	if move.from and (move.from:objectName() == player:objectName()) and (move.to_place ~= sgs.Player_PlaceEquip)  then
-	for _, id in sgs.qlist(move.card_ids) do
-	local extra_card = room:getTag("s2_equipEXtraCard"..move.from:objectName()):toInt()
-				if sgs.Sanguosha:getCard(id) == sgs.Sanguosha:getCard(extra_card) then
-				player:gainMark("@2")
-						move.card_ids:removeOne(id)
-						data:setValue(move)
-						room:setTag("s2_equipEXtraCard"..move.from:objectName(), sgs.QVariant())
-						end
-				end
-	end
-	end
-	end,
-}
-if not sgs.Sanguosha:getSkill("s2_equipEXtra") then
-	s_skillList:append(s2_equipEXtra)
-end
-]]
 xiangle_anim = sgs.CreateTriggerSkill{
 	name = "xiangle_anim",
 	events = {sgs.TargetConfirming},
@@ -5614,30 +5534,13 @@ sgs.LoadTranslationTable{
 
 s2_2_godzhaoyun = sgs.General(extension_jx,"s2_2_godzhaoyun","god","1")
 
-
-
-function Setlw(list)
-	local set = {}
-	for _, l in ipairs(list) do set[l] = true end
-	return set
-end
-
 local patternslw = {"slash", "jink", "analeptic", "nullification", "snatch", "dismantlement", "collateral", "duel", "fire_attack", "amazing_grace", "savage_assault", "archery_attack", "god_salvation", "iron_chain"}
-if not (Setlw(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
+if not (Set(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
 	table.insert(patternslw, 2, "thunder_slash")
 	table.insert(patternslw, 2, "fire_slash")
 	table.insert(patternslw, 2, "normal_slash")
 end
 local slash_patternslw = {"slash", "normal_slash", "thunder_slash", "fire_slash"}
-function getPoslw(table, value)
-	for i, v in ipairs(table) do
-		if v == value then
-			return i
-		end
-	end
-	return 0
-end
-local poslw = 0
 s2_longwei_select = sgs.CreateSkillCard {
 	name = "s2_longwei_select",
 	will_throw = false,
@@ -5682,10 +5585,10 @@ s2_longwei_select = sgs.CreateSkillCard {
 		local pattern = room:askForChoice(source, "s2_longwei-new", table.concat(choices, "+"))
 		if pattern then
 			if string.sub(pattern, -5, -1) == "slash" then
-				pos = getPoslw(slash_patternslw, pattern)
+				pos = getPos(slash_patternslw, pattern)
 				room:setPlayerMark(source, "s2_longweiSlashPos", pos)
 			end
-			pos = getPoslw(patternslw, pattern)
+			pos = getPos(patternslw, pattern)
 			room:setPlayerMark(source, "s2_longweiPos", pos)
 			local prompt = string.format("@@s2_longwei:%s:%s", pattern, yo)
 			room:setPlayerFlag(source, yo)
@@ -5781,13 +5684,13 @@ s2_longweiCard = sgs.CreateSkillCard {
 		if to_guhuo == "slash" and sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE and sgs.Sanguosha:getCurrentCardUsePattern() ~= "@s2_longwei" then
 			local guhuo_list = {}
 			table.insert(guhuo_list, "slash")
-			if not (Setlw(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
+			if not (Set(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
 				table.insert(guhuo_list, "normal_slash")
 				table.insert(guhuo_list, "thunder_slash")
 				table.insert(guhuo_list, "fire_slash")
 			end
 			to_guhuo = room:askForChoice(yuji, "s2_longwei_slash", table.concat(guhuo_list, "+"))
-			pos = getPoslw(slash_patternslw, to_guhuo)
+			pos = getPos(slash_patternslw, to_guhuo)
 			room:setPlayerMark(yuji, "s2_longweiSlashPos", pos)
 		end	
 			local subcards = self:getSubcards()
@@ -5815,20 +5718,20 @@ s2_longweiCard = sgs.CreateSkillCard {
 		local to_guhuo
 		if self:getUserString() == "analeptic" then
 			local guhuo_list = {}
-			if not (Setlw(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
+			if not (Set(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
 				table.insert(guhuo_list, "analeptic")
 			end
 			to_guhuo = room:askForChoice(yuji, "guhuo_saveself", table.concat(guhuo_list, "+"))
 		elseif self:getUserString() == "slash" then
 			local guhuo_list = {}
 			table.insert(guhuo_list, "slash")
-			if not (Setlw(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
+			if not (Set(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
 				table.insert(guhuo_list, "normal_slash")
 				table.insert(guhuo_list, "thunder_slash")
 				table.insert(guhuo_list, "fire_slash")
 			end
 			to_guhuo = room:askForChoice(yuji, "s2_longwei_slash", table.concat(guhuo_list, "+"))
-			pos = getPoslw(slash_patternslw, to_guhuo)
+			pos = getPos(slash_patternslw, to_guhuo)
 			room:setPlayerMark(yuji, "s2_longweiSlashPos", pos)
 		else
 			to_guhuo = self:getUserString()
@@ -9771,13 +9674,6 @@ s2_duanjia = sgs.CreateTriggerSkill{
 	end
 }
 
-function getCardList(intlist)
-	local ids = sgs.CardList()
-	for _, id in sgs.qlist(intlist) do
-		ids:append(sgs.Sanguosha:getCard(id))
-	end
-	return ids
-end
 s2_guantian = sgs.CreateTriggerSkill{
 	name = "s2_guantian",
 	events = {sgs.EventPhaseStart},
@@ -14830,7 +14726,7 @@ s3_fans_pianji = sgs.CreateTriggerSkill {
 				effect.offset_card = nil
 				data:setValue(effect)
 				room:getThread():trigger(sgs.CardOnEffect,room,effect.to,data)
-				room:damage(sgs.DamageStruct(effect.card, effect.from, effect.to, 1, getCardDamageNature(effect.from, effect.to, effect.card)))
+				room:damage(sgs.DamageStruct(effect.card, effect.from, effect.to))
 				return true
 			end		
 		end

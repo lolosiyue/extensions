@@ -2938,13 +2938,6 @@ Sizhanfort = sgs.CreateTriggerSkill{
 		return target
 	end
 }
-listIndexOf = function(theqlist, theitem)
-	local index = 0
-	for _, item in sgs.qlist(theqlist) do
-		if item == theitem then return index end
-		index = index + 1
-	end
-end
 S2izhanfort = sgs.CreateTriggerSkill{
 	name = "#S2izhanfort",
 	frequency = sgs.Skill_Compulsory,
@@ -3028,13 +3021,6 @@ removeEquipArea = function(player, name)
 		log.from = player
 		log.arg = name
 		room:sendLog(log)
-	end
-end
-
-removeWholeEquipArea = function(player)
-	local equips = {"weapon", "armor", "defensive_horse", "offensive_horse", "treasure"}
-	for _,equip in ipairs(equips) do
-		removeEquipArea(player, equip)
 	end
 end
 
@@ -4431,108 +4417,6 @@ goldentear = sgs.CreateViewAsSkill{
 		-- return false
 	end
 }
-
---【萌妹纸动画】
-gdsvoice = sgs.CreateTriggerSkill{
-	name = "gdsvoice",
-	events = {sgs.AfterDrawInitialCards},
-	-- events = {sgs.AfterDrawInitialCards, sgs.EventPhaseStart, sgs.ChoiceMade}, --妹子好吵，關起來。只要把綠色重新解放，即可重新召喚妹子
-	global = true,
-	can_trigger = function(self, player)
-	    return true
-	end,
-	on_trigger = function(self, event, player, data)
-	    local room = player:getRoom()
-	if event == sgs.AfterDrawInitialCards then
-	    -- if player:getState() ~= "robot" then
-			-- room:setPlayerFlag(player, "skip_anime")
-			-- room:setPlayerMark(player, "For_sence_anime", 1)
-			-- room:setPlayerProperty(player, "emotion", sgs.QVariant("yuudachi"))
-			-- local emotion = player:property("emotion"):toString()
-			-- if player:hasSkill("crushingimpact") then
-				-- room:broadcastSkillInvoke("gdsvoice", 6)
-			-- else
-				-- room:broadcastSkillInvoke("gdsvoice", 3)
-			-- end
-			-- local json = require("json")
-			-- local jsonValue = {
-			-- player:objectName(),
-			-- emotion
-			-- }
-			-- local wholist = sgs.SPlayerList()
-            -- wholist:append(player)
-			-- room:doBroadcastNotify(wholist,sgs.CommandType.S_COMMAND_SET_EMOTION, json.encode(jsonValue))
-
-			if room:askForSkillInvoke(player, "allknow", data) then --詢問是否要看全身分
-				local list = room:getAlivePlayers()
-				for _,t in sgs.qlist(list) do
-					local log = sgs.LogMessage()
-					log.type = "#allknow_log"
-					log.from = t
-					log.arg = t:getRole()
-					room:sendLog(log)
-				end
-			end
-			
-        -- end
-	end
-	-- if event == sgs.EventPhaseStart then
-	    -- if player:getPhase() == sgs.Player_Start then
-			-- if player:getState() ~= "robot" and player:getMark("For_sence_anime") <= 0 then
-				-- room:setPlayerFlag(player, "skip_anime")
-				-- room:setPlayerMark(player, "For_sence_anime", 1)
-				-- room:setPlayerProperty(player, "emotion", sgs.QVariant("yuudachi"))
-				-- local emotion = player:property("emotion"):toString()
-				-- if player:hasSkill("crushingimpact") then
-					-- room:broadcastSkillInvoke("gdsvoice", 6)
-				-- else
-					-- room:broadcastSkillInvoke("gdsvoice", 3)
-				-- end
-				-- local json = require("json")
-				-- local jsonValue = {
-				-- player:objectName(),
-				-- emotion
-				-- }
-				-- local wholist = sgs.SPlayerList()
-				-- wholist:append(player)
-				-- room:doBroadcastNotify(wholist,sgs.CommandType.S_COMMAND_SET_EMOTION, json.encode(jsonValue))
-				-- return false
-			-- end
-			-- room:setEmotion(player,"light")
-    	    -- if player:getState() ~= "robot" and math.random(1,10) <= 2 and not player:hasFlag("skip_anime") then
-			    -- local emotion = player:property("emotion"):toString()
-				-- room:broadcastSkillInvoke("gdsvoice",math.random(1,2))
-			    -- local json = require("json")
-				-- local jsonValue = {
-				-- player:objectName(),
-				-- emotion
-				-- }
-				-- local wholist = sgs.SPlayerList()
-				-- wholist:append(player)
-				-- room:doBroadcastNotify(wholist,sgs.CommandType.S_COMMAND_SET_EMOTION, json.encode(jsonValue))
-            -- end
-		-- end
-		-- if player:getPhase() == sgs.Player_Finish then
-		    -- room:setEmotion(player,"dark")
-		-- end
-	-- end
-	-- if event == sgs.ChoiceMade then
-	    -- if player:getState() ~= "robot" and math.random(1,25) == 1 then
-		    -- local emotion = player:property("emotion"):toString()
-			-- room:broadcastSkillInvoke("gdsvoice",math.random(4,5))
-			-- local json = require("json")
-			-- local jsonValue = {
-			-- player:objectName(),
-			-- emotion
-			-- }
-			-- local wholist = sgs.SPlayerList()
-			-- wholist:append(player)
-			-- room:doBroadcastNotify(wholist,sgs.CommandType.S_COMMAND_SET_EMOTION, json.encode(jsonValue))
-        -- end
-	-- end
-	end,
-}
---【↑萌妹纸动画】
 
 healingwaterCard = sgs.CreateSkillCard{
 	name = "healingwaterCard" ,
@@ -16706,7 +16590,6 @@ end
 if not sgs.Sanguosha:getSkill("#maxCardSkill") then 
 	sgskills:append(maxCardSkill) 
 end
-if not sgs.Sanguosha:getSkill("gdsvoice") then sgskills:append(gdsvoice) end
 if not sgs.Sanguosha:getSkill("godbow") then sgskills:append(godbow) end
 if not sgs.Sanguosha:getSkill("bloodfight") then sgskills:append(bloodfight) end
 if not sgs.Sanguosha:getSkill("#optimisticps") then sgskills:append(optimisticps) end

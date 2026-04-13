@@ -1,6 +1,19 @@
 ﻿module("extensions.gaodacard", package.seeall)
 extension = sgs.Package("gaodacard", sgs.Package_CardPack)
 
+--- 執行「射擊」卡牌的使用邏輯（命中判定與效果發起）
+--- 
+--- **核心機制**：
+--- 1. **命中率判定**：區分「普通射擊」與「散射」。
+---    - 普通：攻擊範圍內必中，範圍外機率命中（受 ShootHitRate 影響）。
+---    - 散射：全體判定機率，目標越多命中率越低。
+--- 2. **效果分發**：對命中的目標發起 CardEffect，並處理無偏移、不可響應等標記。
+---
+---@param self Card 射擊牌物件
+---@param room Room 房間對象
+---@param source ServerPlayer 使用者
+---@param targets ServerPlayer[] 目標列表
+---@param isSpreadShoot? boolean 是否為散射（預設為 false）
 shootUse = function(self, room, source, targets, isSpreadShoot)
 	if isSpreadShoot == nil then isSpreadShoot = false end
 	
@@ -88,7 +101,11 @@ shootEffect = function(self, effect)
 
 end
 ]]
-
+--- 處理「射擊」最終的結算結果（傷害與表情）
+--- 
+---@param self Card 射擊牌物件
+---@param effect sgs.CardEffectStruct 卡牌效果結構體
+---@param jink Card|nil 玩家響應的「閃」（若為 nil 則代表未閃避，觸發傷害）
 shootResult = function(self, effect, jink)
 	local source = effect.from
 	local target = effect.to
@@ -105,6 +122,15 @@ shootResult = function(self, effect, jink)
 	end
 end
 
+--- 執行「射擊」對單個目標的效果結算
+--- 
+--- **機制描述**：
+--- 1. **讀取消耗**：從 Tag 中讀取該目標需要使用的「閃」的數量（Jink Num）。
+--- 2. **響應詢問**：若需要多張「閃」，循環詢問玩家直至達成數量或放棄。
+--- 3. **結果分發**：調用 shootResult 處理後續傷害或閃避。
+---
+---@param self sgs.Card 射擊牌物件
+---@param effect sgs.CardEffectStruct 卡牌效果結構體
 shootEffect = function(self, effect)
 	local source = effect.from
 	local target = effect.to

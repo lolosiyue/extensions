@@ -12921,6 +12921,19 @@ mouhuoshou = sgs.CreateTriggerSkill {
 }
 mobilemou_menghuo:addSkill(mouhuoshou)
 
+--- 計算玩家當前所有蓄力技的總蓄力上限 (Y)
+--- 
+--- **規則對接**：
+--- 1. 遍歷玩家所有「可見技能」。
+--- 2. 檢索技能屬性中的 `ChargeNum` 字串（格式預期為 "X/Y"）。
+--- 3. 提取 `/` 後的數值並進行全局累加。
+--- 
+--- **注意**：
+--- - 若角色不再擁有任何「蓄力技」標籤的技能，此函數將返回 0。
+--- - 根據規則，若上限之和為 0，玩家將無法獲得任何「蓄力」標記。
+---
+---@param player ServerPlayer 待檢查的玩家
+---@return integer n 總蓄力上限之和
 function xuLiMax(player)
 	local n = 0
 	for _, sk in sgs.qlist(player:getVisibleSkillList()) do
@@ -20921,7 +20934,7 @@ chenzhi = sgs.CreateTriggerSkill {
 }
 chenshou:addSkill(chenzhi)
 local dianmoSks = {}
-function getdianmoSks()
+local function getdianmoSks()
 	if #dianmoSks < 1 then
 		for _, gn in sgs.list(sgs.Sanguosha:getLimitedGeneralNames()) do
 			for _, sk in sgs.list(sgs.Sanguosha:getGeneral(gn):getVisibleSkillList()) do
