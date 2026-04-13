@@ -6353,29 +6353,25 @@ PlusDujiang = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		local msg = sgs.LogMessage()
-		msg.type = "#PlusDujiang"
-		msg.from = player
-		msg.arg = player:getPile("slack"):length()
-		msg.arg2 = self:objectName()
-		room:sendLog(msg)
-		room:broadcastInvoke("animate", "lightbox:$PlusDujiang_Animation:3000")
-		room:getThread():delay(4000)
-		room:setPlayerMark(player, "PlusDujiang", 1)
-		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-			room:drawCards(player, 2, self:objectName())
-			room:handleAcquireDetachSkills(player, "PlusDuocheng")
+		if player:getPile("slack"):length() >= 4 or player:canWake(self:objectName()) then
+			local msg = sgs.LogMessage()
+			msg.type = "#PlusDujiang"
+			msg.from = player
+			msg.arg = player:getPile("slack"):length()
+			msg.arg2 = self:objectName()
+			room:sendLog(msg)
+			room:broadcastInvoke("animate", "lightbox:$PlusDujiang_Animation:3000")
+			room:getThread():delay(4000)
+			room:setPlayerMark(player, "PlusDujiang", 1)
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				room:drawCards(player, 2, self:objectName())
+				room:handleAcquireDetachSkills(player, "PlusDuocheng")
+			end
 		end
 		return false
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		local slack = player:getPile("slack"):length()
-		if slack < 4 then
-			return false
-		end
-		return true
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_RoundStart and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 LvMeng_Plus:addSkill(PlusDujiang)

@@ -224,29 +224,21 @@ du_jieying = sgs.CreateTriggerSkill {
 	waked_skills = "qixi",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		local hp = player:getHp()
-		room:broadcastSkillInvoke(self:objectName())
-		local theRecover = sgs.RecoverStruct()
-		theRecover.recover = 1
-		theRecover.who = player
-		room:recover(player, theRecover)
-		room:addPlayerMark(player, self:objectName())
-		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-			room:handleAcquireDetachSkills(player, "qixi")
+		if player:getPile("du_jin") >= 3 or player:canWake(self:objectName()) then
+			local hp = player:getHp()
+			room:broadcastSkillInvoke(self:objectName())
+			local theRecover = sgs.RecoverStruct()
+			theRecover.recover = 1
+			theRecover.who = player
+			room:recover(player, theRecover)
+			room:addPlayerMark(player, self:objectName())
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				room:handleAcquireDetachSkills(player, "qixi")
+			end
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then
-			return false
-		end
-		if player:canWake(self:objectName()) then
-			return true
-		end
-		local jin = player:getPile("du_jin")
-		if jin:length() >= 3 then
-			return true
-		end
-		return false
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 
@@ -427,6 +419,24 @@ duWuhun = sgs.CreateTriggerSkill {
 	frequency = sgs.Skill_Wake,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
+		if player:canWake(self:objectName()) then
+			player:addMark("Blade", 1)
+			player:addMark("ChiTu", 1)
+		end
+		local weapon = player:getWeapon()
+		if weapon then
+			if weapon:isKindOf("Blade") and player:getMark("Blade") == 0 and player:getMark("BladeUsed") == 0 then
+				player:addMark("Blade", 1)
+			end
+		end
+		local horse = player:getOffensiveHorse()
+		if horse then
+			local horseName = horse:objectName()
+			if horseName == "chitu" and player:getMark("ChiTu") == 0 then
+				player:addMark("ChiTu", 1)
+			end
+		end
+
 
 		if player:getMark("Blade") == 1 and player:getMark("BladeUsed") == 0 then
 			room:setPlayerMark(player, "Blade", 0)
@@ -450,37 +460,8 @@ duWuhun = sgs.CreateTriggerSkill {
 		end
 	end,
 
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then
-			return false
-		end
-		if player:canWake(self:objectName()) then
-			player:addMark("Blade", 1)
-			player:addMark("ChiTu", 1)
-			return true
-		end
-		local weapon = player:getWeapon()
-		if weapon then
-			if weapon:isKindOf("Blade") and player:getMark("Blade") == 0 and player:getMark("BladeUsed") == 0 then
-				player:addMark("Blade", 1)
-			end
-		end
-		local horse = player:getOffensiveHorse()
-		if horse then
-			local horseName = horse:objectName()
-			if horseName == "chitu" and player:getMark("ChiTu") == 0 then
-				player:addMark("ChiTu", 1)
-			end
-		end
-
-		if player:getMark("ChiTu") == 1 and player:getMark("ChiTuUsed") == 0 then
-			return true
-		end
-		if player:getMark("Blade") == 1 and player:getMark("BladeUsed") == 0 then
-			return true
-		end
-
-		return false
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 duoDaoAndMa = sgs.CreateTriggerSkill {

@@ -1683,46 +1683,39 @@ nydengxian = sgs.CreateTriggerSkill{
     waked_skills = "nyjinghong",
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
-        room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
-        room:setPlayerMark(player, "nydengxian_wake", 1)
-        room:setPlayerMark(player, "nydengxian", 1)
-        for _,id in sgs.qlist(room:getDrawPile()) do
-            local card = sgs.Sanguosha:getCard(id)
-            if card:isKindOf("EquipCard") then
-                local n = -1
-                if card:isKindOf("Weapon") then
-                    n = 0
-                elseif card:isKindOf("Armor") then
-                    n = 1
-                elseif card:isKindOf("DefensiveHorse") then
-                    n = 2
-                elseif card:isKindOf("OffensiveHorse") then
-                    n = 3
-                elseif card:isKindOf("Treasure") then
-                    n = 4
-                end
-                if player:canUse(card, player, true) and (not player:getEquip(n)) then
-                    can = false
-                    local use = sgs.CardUseStruct(card, player, player)
-                    room:useCard(use)
-                    room:getThread():delay(800)
-                end
-            end
-        end
-        room:acquireSkill(player, "nyjinghong")
-    end,
-    can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Finish or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		if player:getMaxCards() == 0 then
-			return true
+		if player:getMaxCards() == 0 or player:canWake(self:objectName()) then
+			room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
+			room:setPlayerMark(player, "nydengxian_wake", 1)
+			room:setPlayerMark(player, "nydengxian", 1)
+			for _,id in sgs.qlist(room:getDrawPile()) do
+				local card = sgs.Sanguosha:getCard(id)
+				if card:isKindOf("EquipCard") then
+					local n = -1
+					if card:isKindOf("Weapon") then
+						n = 0
+					elseif card:isKindOf("Armor") then
+						n = 1
+					elseif card:isKindOf("DefensiveHorse") then
+						n = 2
+					elseif card:isKindOf("OffensiveHorse") then
+						n = 3
+					elseif card:isKindOf("Treasure") then
+						n = 4
+					end
+					if player:canUse(card, player, true) and (not player:getEquip(n)) then
+						can = false
+						local use = sgs.CardUseStruct(card, player, player)
+						room:useCard(use)
+						room:getThread():delay(800)
+					end
+				end
+			end
+			room:acquireSkill(player, "nyjinghong")
 		end
-		return false
+    end,
+    can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Finish and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
-    -- can_trigger = function(self, target)
-    --     return target and target:hasSkill(self:objectName()) and (target:getMaxCards() == 0 or target:canWake(self:objectName()))
-    --     and target:getPhase() == sgs.Player_Finish and target:getMark("nydengxian_wake") == 0
-    -- end,
 }
 
 nyjinghong = sgs.CreateTriggerSkill{

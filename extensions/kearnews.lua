@@ -1582,29 +1582,26 @@ kezaoxian = sgs.CreatePhaseChangeSkill {
 	waked_skills = "kezhuxian",
 	on_phasechange = function(self, player)
 		local room = player:getRoom()
-		room:notifySkillInvoked(player, self:objectName())
-		room:broadcastSkillInvoke(self:objectName())
-		room:doSuperLightbox("kenewdengai", "kezaoxian")
-		room:setPlayerMark(player, self:objectName(), 1)
-		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-			if player:isWounded() and room:askForChoice(player, self:objectName(), "recover+draw") == "recover" then
-				room:recover(player, sgs.RecoverStruct(player))
-			else
-				room:drawCards(player, 2)
-			end
-			if (player:getMark(self:objectName()) == 1) then
-				room:acquireSkill(player, "kezhuxian")
+		if player:getMark("&ketian") >= 5 or player:canWake(self:objectName()) then
+			room:notifySkillInvoked(player, self:objectName())
+			room:broadcastSkillInvoke(self:objectName())
+			room:doSuperLightbox("kenewdengai", "kezaoxian")
+			room:setPlayerMark(player, self:objectName(), 1)
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				if player:isWounded() and room:askForChoice(player, self:objectName(), "recover+draw") == "recover" then
+					room:recover(player, sgs.RecoverStruct(player))
+				else
+					room:drawCards(player, 2)
+				end
+				if (player:getMark(self:objectName()) == 1) then
+					room:acquireSkill(player, "kezhuxian")
+				end
 			end
 		end
 		return false
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		if player:getMark("&ketian") < 5 then
-			return false
-		end
-		return true
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 kenewdengai:addSkill(kezaoxian)
@@ -1757,29 +1754,28 @@ kezhiji = sgs.CreateTriggerSkill {
 	frequency = sgs.Skill_Wake,
 	waked_skills = "kejwkuitian",
 	on_trigger = function(self, event, player, data, room)
-		room:notifySkillInvoked(player, self:objectName())
-		room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
-		room:doSuperLightbox("kenewjiangwei", "kezhiji")
-		room:setPlayerMark(player, self:objectName(), 1)
-		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-			if player:isWounded() and room:askForChoice(player, self:objectName(), "recover+draw") == "recover" then
-				room:recover(player, sgs.RecoverStruct(player))
-			else
-				room:drawCards(player, 2)
-			end
-			if player:getMark(self:objectName()) == 1 then
-				room:acquireSkill(player, "kejwkuitian")
-				if not player:hasSkill("kezhijiex") then
-					room:acquireSkill(player, "kezhijiex")
+		if player:getHandcardNum() <= 1 or player:canWake(self:objectName()) then
+			room:notifySkillInvoked(player, self:objectName())
+			room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
+			room:doSuperLightbox("kenewjiangwei", "kezhiji")
+			room:setPlayerMark(player, self:objectName(), 1)
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				if player:isWounded() and room:askForChoice(player, self:objectName(), "recover+draw") == "recover" then
+					room:recover(player, sgs.RecoverStruct(player))
+				else
+					room:drawCards(player, 2)
+				end
+				if player:getMark(self:objectName()) == 1 then
+					room:acquireSkill(player, "kejwkuitian")
+					if not player:hasSkill("kezhijiex") then
+						room:acquireSkill(player, "kezhijiex")
+					end
 				end
 			end
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		if player:getHandcardNum() <= 1  then return true end
-		return false
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 kenewjiangwei:addSkill(kezhiji)
@@ -3638,33 +3634,32 @@ kepingpiao = sgs.CreateTriggerSkill {
 	waked_skills = "kedianzhen",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		room:broadcastSkillInvoke(self:objectName())
-		room:doSuperLightbox("kenewxushu", "kepingpiao")
-		room:addPlayerMark(player, "kepingpiao")
-		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-			--if player:isWounded() and room:askForChoice(player, self:objectName(), "recover+draw") == "recover" then
-			local recover = sgs.RecoverStruct()
-			recover.who = player
-			recover.recover = 1
-			room:recover(player, recover)
-			room:drawCards(player, 2)
-			room:handleAcquireDetachSkills(player, "kedianzhen")
-			room:detachSkillFromPlayer(player, "kexiajue", true)
-			room:handleAcquireDetachSkills(player, "kexiajuetwo")
+		local can_invoke = true
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+			if player:getHp() > p:getHp() then
+				can_invoke = false
+				break
+			end
+		end
+		if can_invoke or player:canWake(self:objectName()) then
+			room:broadcastSkillInvoke(self:objectName())
+			room:doSuperLightbox("kenewxushu", "kepingpiao")
+			room:addPlayerMark(player, "kepingpiao")
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				--if player:isWounded() and room:askForChoice(player, self:objectName(), "recover+draw") == "recover" then
+				local recover = sgs.RecoverStruct()
+				recover.who = player
+				recover.recover = 1
+				room:recover(player, recover)
+				room:drawCards(player, 2)
+				room:handleAcquireDetachSkills(player, "kedianzhen")
+				room:detachSkillFromPlayer(player, "kexiajue", true)
+				room:handleAcquireDetachSkills(player, "kexiajuetwo")
+			end
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getMark(self:objectName()) > 0 then return false end
-		if player:getPhase() == sgs.Player_Finish or (player:getPhase() == sgs.Player_Start) then
-			if player:canWake(self:objectName()) then return true end
-			for _, p in sgs.qlist(room:getAlivePlayers()) do
-				if player:getHp() > p:getHp() then
-					return false
-				end
-			end
-			return true
-		end
-		return false
+	can_trigger = function(self, player)
+		return player and (player:getPhase() == sgs.Player_Start or player:getPhase() == sgs.Player_Finish) and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 kenewxushu:addSkill(kepingpiao)
@@ -4604,39 +4599,36 @@ kezili = sgs.CreatePhaseChangeSkill {
 	waked_skills = "kesuni",
 	on_phasechange = function(self, player)
 		local room = player:getRoom()
-		room:notifySkillInvoked(player, self:objectName())
-		if (player:getMark("zhpynt") > 0) then
-			room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
-			room:doSuperLightbox("kenewzhonghui", "kezili")
-		end
-		if (player:getMark("zhtjbb") > 0) then
-			room:broadcastSkillInvoke(self:objectName(), math.random(3, 4))
-			room:doSuperLightbox("kenewzhonghuitj", "kezili")
-		end
-		if (player:getMark("zhzgxp") > 0) then
-			room:broadcastSkillInvoke(self:objectName(), math.random(5, 6))
-			room:doSuperLightbox("kenewzhonghuizg", "kezili")
-		end
-		room:setPlayerMark(player, self:objectName(), 1)
-		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-			if player:isWounded() and room:askForChoice(player, self:objectName(), "recover+draw") == "recover" then
-				room:recover(player, sgs.RecoverStruct(player))
-			else
-				room:drawCards(player, 2)
+		if player:getMark("&kegong") >= 3 or player:canWake(self:objectName()) then
+			room:notifySkillInvoked(player, self:objectName())
+			if (player:getMark("zhpynt") > 0) then
+				room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
+				room:doSuperLightbox("kenewzhonghui", "kezili")
 			end
-			if player:getMark(self:objectName()) == 1 then
-				room:acquireSkill(player, "kesuni")
+			if (player:getMark("zhtjbb") > 0) then
+				room:broadcastSkillInvoke(self:objectName(), math.random(3, 4))
+				room:doSuperLightbox("kenewzhonghuitj", "kezili")
+			end
+			if (player:getMark("zhzgxp") > 0) then
+				room:broadcastSkillInvoke(self:objectName(), math.random(5, 6))
+				room:doSuperLightbox("kenewzhonghuizg", "kezili")
+			end
+			room:setPlayerMark(player, self:objectName(), 1)
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				if player:isWounded() and room:askForChoice(player, self:objectName(), "recover+draw") == "recover" then
+					room:recover(player, sgs.RecoverStruct(player))
+				else
+					room:drawCards(player, 2)
+				end
+				if player:getMark(self:objectName()) == 1 then
+					room:acquireSkill(player, "kesuni")
+				end
 			end
 		end
 		return false
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		if player:getMark("&kegong") >= 3 then
-			return true
-		end
-		return false
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 kenewzhonghui:addSkill(kezili)

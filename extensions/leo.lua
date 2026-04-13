@@ -1703,30 +1703,31 @@ luajiye = sgs.CreateTriggerSkill {
 	frequency = sgs.Skill_Wake,
 	waked_skills = "fankui,lianpo",
 	events = { sgs.EventPhaseStart },
-	--[[can_trigger = function(self,target)
-  return target:hasSkill("luajiye") and (target:getMark("luajiye") == 0)
-end,]]
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
+	on_trigger = function(self, event, player, data)
+		if player:getPhase() ~= sgs.Player_Start then return false end
+		local can_invoke = false
 		local x = 999
 		for _, p in sgs.qlist(room:getAlivePlayers()) do
 			x = math.min(x, p:getHp())
 		end
-		if player:getHp() <= x then return true end
-		return false
-	end,
-	on_trigger = function(self, event, player, data)
-		if player:getPhase() ~= sgs.Player_Start then return false end
-		local room = player:getRoom()
-		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-			player:drawCards(2)
-			room:handleAcquireDetachSkills(player, "fankui")
-			room:handleAcquireDetachSkills(player, "lianpo")
-			room:addPlayerMark(player, "luajiye")
-			return false
+		if player:getHp() <= x then
+			can_invoke = true
+		end
+		if can_invoke or player:canWake(self:objectName()) then
+			local room = player:getRoom()
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				player:drawCards(2)
+				room:handleAcquireDetachSkills(player, "fankui")
+				room:handleAcquireDetachSkills(player, "lianpo")
+				room:addPlayerMark(player, "luajiye")
+				return false
+			end
 		end
 	end,
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
+	end,
+	
 }
 
 
@@ -1815,22 +1816,25 @@ luatuwei = sgs.CreateTriggerSkill {
 	frequency = sgs.Skill_Wake,
 	waked_skills = "mashu",
 	events = { sgs.EventPhaseStart },
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
+	on_trigger = function(self, event, player, data, room)
+		local can_invoke = false
 		local x = 999
 		for _, p in sgs.qlist(room:getAlivePlayers()) do
 			x = math.min(x, p:getHp())
 		end
-		if player:getHp() <= x then return true end
-		return false
-	end,
-	on_trigger = function(self, event, player, data, room)
-		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-			room:handleAcquireDetachSkills(player, "mashu")
-			room:addPlayerMark(player, "luatuwei")
-			return false
+		if player:getHp() <= x then
+			can_invoke = true
 		end
+		if can_invoke or player:canWake(self:objectName()) then
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				room:handleAcquireDetachSkills(player, "mashu")
+				room:addPlayerMark(player, "luatuwei")
+				return false
+			end
+		end
+	end,
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 
@@ -3414,40 +3418,34 @@ luatianming = sgs.CreateTriggerSkill{
 	waked_skills = "bazhen,kanpo,jizhi",
 	on_trigger = function(self, event, player, data) 
 		local room = player:getRoom()
-		room:setPlayerMark(player, "luatianming", 1)
-		room:broadcastSkillInvoke("qixing",2)
+		if player:getMark("&luarangxingRX") >= 7 or player:canWake(self:objectName()) then
 		
-		while player:getHp()<1 do
-			local recover = sgs.RecoverStruct()
-			recover.who = player
-			room:recover(player, recover)
+			room:setPlayerMark(player, "luatianming", 1)
+			room:broadcastSkillInvoke("qixing",2)
+			
+			while player:getHp()<1 do
+				local recover = sgs.RecoverStruct()
+				recover.who = player
+				room:recover(player, recover)
+			end
+			
+			--while player:getMaxHp()>1 do
+			--	room:loseMaxHp(player)
+			--end
+			
+			local count = player:getMark("&luarangxingRX")
+			player:drawCards(count)
+			room:addMaxCards(player, count, false)
+			room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) 
+			room:acquireSkill(player, "bazhen")
+			room:acquireSkill(player, "kanpo")
+			room:acquireSkill(player, "jizhi")
+			room:detachSkillFromPlayer(player,"luarangxing")
 		end
-		
-		--while player:getMaxHp()>1 do
-		--	room:loseMaxHp(player)
-		--end
-		
-		local count = player:getMark("&luarangxingRX")
-		player:drawCards(count)
-		room:addMaxCards(player, count, false)
-		room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) 
-		room:acquireSkill(player, "bazhen")
-		room:acquireSkill(player, "kanpo")
-		room:acquireSkill(player, "jizhi")
-		room:detachSkillFromPlayer(player,"luarangxing")
 		return false
 	end, 
-	can_wake = function(self, event, player, data, room)
-		if player:getMark(self:objectName()) > 0 then return false end
-		if event == sgs.AskForPeaches then
-			local dying = data:toDying()
-			if dying.who:objectName() ~= player:objectName() then return false end
-			if player:canWake(self:objectName()) then return true end
-			if player:getMark("&luarangxingRX") < 7 then
-				return false
-			end
-			return true
-		end
+	can_trigger = function(self, player)
+		return player and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 

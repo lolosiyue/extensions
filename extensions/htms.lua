@@ -6400,20 +6400,6 @@ ye = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		-- local playerlist = room:getAlivePlayers()
-		-- for _,aplayer in sgs.qlist(playerlist) do
-		-- 	if aplayer:getHp() < player:getHp() then return false end
-		-- end
-		room:sendCompulsoryTriggerLog(player, self:objectName())
-		room:setPlayerMark(player, self:objectName(), 1)
-		room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
-		room:recover(player, sgs.RecoverStruct(player))
-		room:broadcastSkillInvoke(self:objectName(), 1)
-		room:handleAcquireDetachSkills(player, "guichan")
-	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
 		local can_invoke = true
 		for _, p in sgs.qlist(room:getAllPlayers()) do
 			if player:getHp() > p:getHp() then
@@ -6422,8 +6408,17 @@ ye = sgs.CreateTriggerSkill {
 			end
 		end
 
-		if can_invoke then return true end
-		return false
+		if can_invoke or player:canWake(self:objectName()) then
+			room:sendCompulsoryTriggerLog(player, self:objectName())
+			room:setPlayerMark(player, self:objectName(), 1)
+			room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
+			room:recover(player, sgs.RecoverStruct(player))
+			room:broadcastSkillInvoke(self:objectName(), 1)
+			room:handleAcquireDetachSkills(player, "guichan")
+		end
+	end,
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 --鬼缠
@@ -7153,19 +7148,6 @@ jssg = sgs.CreateTriggerSkill {
 	waked_skills = "feils2",
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data, room)
-		room:sendCompulsoryTriggerLog(player, self:objectName())
-		if player:getHp() < player:getMaxHp() then
-			room:recover(player, sgs.RecoverStruct(player, nil, 1))
-		end
-		room:setPlayerMark(player, self:objectName(), 1)
-		room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
-		room:acquireSkill(player, "feils2")
-		return false
-	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getMark(self:objectName()) > 0 then return false end
-		if player:getPhase() ~= sgs.Player_Start then return false end
-		if player:canWake(self:objectName()) then return true end
 		local can_invoke = true
 		for _, p in sgs.qlist(room:getAllPlayers()) do
 			if player:getHp() > p:getHp() then
@@ -7173,9 +7155,19 @@ jssg = sgs.CreateTriggerSkill {
 				break
 			end
 		end
-
-		if can_invoke then return true end
+		if can_invoke or player:canWake(self:objectName()) then
+			room:sendCompulsoryTriggerLog(player, self:objectName())
+			if player:getHp() < player:getMaxHp() then
+				room:recover(player, sgs.RecoverStruct(player, nil, 1))
+			end
+			room:setPlayerMark(player, self:objectName(), 1)
+			room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
+			room:acquireSkill(player, "feils2")
+		end
 		return false
+	end,
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 
 }
@@ -7741,15 +7733,10 @@ zuihoudefanji = sgs.CreateTriggerSkill
 			end
 			return false
 		end,
-		can_wake = function(self, event, player, data, room)
-			if not player:hasSkill(self:objectName()) then return false end
-			local dying = data:toDying()
-			if dying.who:objectName() ~= player:objectName() then return false end
-			if player:getMark("fanji_waked") > 0 then return false end
-			if player:canWake(self:objectName()) then return true end
-			return true
-		end,
-	}
+		can_trigger = function(self, player)
+		return player and player:getMark("fanji_waked") < 1 and player:hasSkill(self)
+	end,
+}
 --不死鸟
 businiao = sgs.CreateTriggerSkill {
 	name = "businiao",
@@ -8566,27 +8553,20 @@ wuduan = sgs.CreateTriggerSkill {
 	waked_skills = "tisheng",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		local msg = sgs.LogMessage()
-		room:setPlayerMark(player, "wuduan", 1)
-		if room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) then
-			room:loseHp(player, 1, true, player, self:objectName())
-			room:acquireSkill(player, "tisheng")
-			room:broadcastSkillInvoke("wuduan")
-			return false
+		if player:getMark("@jinhua") >= player:getHp() or player:canWake(self:objectName()) then
+			local msg = sgs.LogMessage()
+			room:setPlayerMark(player, "wuduan", 1)
+			if room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) then
+				room:loseHp(player, 1, true, player, self:objectName())
+				room:acquireSkill(player, "tisheng")
+				room:broadcastSkillInvoke("wuduan")
+				return false
+			end
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then
-			return false
-		end
-		if player:canWake(self:objectName()) then
-			return true
-		end
-		if player:getMark("@jinhua") >= player:getHp() then
-			return true
-		end
-		return false
-	end
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
+	end,
 }
 
 --提升
@@ -11840,11 +11820,8 @@ jichengzhe = sgs.CreateTriggerSkill {
 		end
 		return false
 	end,
-	can_wake = function(self, event, player, data)
-		if player:getMark("zhejc_waked") > 0 then return false end
-		if player:getMark("fanji_waked") > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		return true
+	can_trigger = function(self, player)
+		return player and player:getMark("zhejc_waked") < 1 and player:getMark("fanji_waked") < 1 and player:hasSkill(self)
 	end,
 }
 jichengzhe1 = sgs.CreateTriggerSkill {
@@ -15850,7 +15827,7 @@ ujzhongshi = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if event == sgs.MarkChanged then
 			local mark = data:toMark()
-			if (mark.name == "@shengyong") and (mark.gain > 0) then
+			if (mark.name == "@shengyong") and (mark.gain > 0) and (player:getMark("@shengyong") >= 11 or player:canWake(self:objectName())) then
 				if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
 					room:broadcastSkillInvoke("ujlianji", math.random(1, 3))
 					room:handleAcquireDetachSkills(player, "ujlianjig")
@@ -15860,12 +15837,9 @@ ujzhongshi = sgs.CreateTriggerSkill {
 			end
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		if player:getMark("@shengyong") >= 11 then return true end
-		return false
-	end
+	can_trigger = function(self, player)
+		return player and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
+	end,
 }
 
 --扶危

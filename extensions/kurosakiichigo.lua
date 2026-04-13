@@ -37,53 +37,50 @@ krskitgxuhua = sgs.CreateTriggerSkill {
 	waked_skills = "krskitgjiamian+krskitgwuyue",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-
-		room:broadcastSkillInvoke(self:objectName())
-		room:doLightbox("$krskitgxuhua", 3000)
-		room:getThread():delay(4500)
-
-		local log = sgs.LogMessage()
-		log.type = "#RuoyuWake"
-		log.from = player
-		log.arg = player:getHp()
-		log.arg2 = self:objectName()
-		room:sendLog(log)
-
-		room:setPlayerMark(player, "krskitgxuhua", 1)
-		if player:isWounded() then
-			room:recover(player, sgs.RecoverStruct(player, nil, player:getLostHp()))
+		local can_invoke = true
+		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+			if p:getHp() < player:getHp() then
+				can_invoke = false
+				break
+			end
 		end
-		if room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) then
-			if player:getGeneralName() == "kurosakiichigo" then
-				room:changeHero(player, "kurosakiichigoex", true, false, false, true)
-				room:handleAcquireDetachSkills(player, "-krskitgzhanyue")
-				room:handleAcquireDetachSkills(player, "krskitgjiamian")
-				room:handleAcquireDetachSkills(player, "krskitgwuyue")
-			elseif player:getGeneral2Name() == "kurosakiichigo" then
-				room:changeHero(player, "kurosakiichigoex", true, false, true, true)
-				room:handleAcquireDetachSkills(player, "-krskitgzhanyue")
-				room:handleAcquireDetachSkills(player, "krskitgjiamian")
-				room:handleAcquireDetachSkills(player, "krskitgwuyue")
-			else
-				room:handleAcquireDetachSkills(player, "-krskitgzhanyue")
-				room:handleAcquireDetachSkills(player, "krskitgjiamian")
-				room:handleAcquireDetachSkills(player, "krskitgwuyue")
+		if can_invoke or player:canWake(self:objectName()) then
+			room:broadcastSkillInvoke(self:objectName())
+			room:doLightbox("$krskitgxuhua", 3000)
+			room:getThread():delay(4500)
+
+			local log = sgs.LogMessage()
+			log.type = "#RuoyuWake"
+			log.from = player
+			log.arg = player:getHp()
+			log.arg2 = self:objectName()
+			room:sendLog(log)
+
+			room:setPlayerMark(player, "krskitgxuhua", 1)
+			if player:isWounded() then
+				room:recover(player, sgs.RecoverStruct(player, nil, player:getLostHp()))
+			end
+			if room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) then
+				if player:getGeneralName() == "kurosakiichigo" then
+					room:changeHero(player, "kurosakiichigoex", true, false, false, true)
+					room:handleAcquireDetachSkills(player, "-krskitgzhanyue")
+					room:handleAcquireDetachSkills(player, "krskitgjiamian")
+					room:handleAcquireDetachSkills(player, "krskitgwuyue")
+				elseif player:getGeneral2Name() == "kurosakiichigo" then
+					room:changeHero(player, "kurosakiichigoex", true, false, true, true)
+					room:handleAcquireDetachSkills(player, "-krskitgzhanyue")
+					room:handleAcquireDetachSkills(player, "krskitgjiamian")
+					room:handleAcquireDetachSkills(player, "krskitgwuyue")
+				else
+					room:handleAcquireDetachSkills(player, "-krskitgzhanyue")
+					room:handleAcquireDetachSkills(player, "krskitgjiamian")
+					room:handleAcquireDetachSkills(player, "krskitgwuyue")
+				end
 			end
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then
-			return false
-		end
-		if player:canWake(self:objectName()) then
-			return true
-		end
-		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-			if p:getHp() < player:getHp() then
-				return false
-			end
-		end
-		return true
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 

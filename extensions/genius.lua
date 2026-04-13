@@ -266,25 +266,20 @@ f_sandao = sgs.CreateTriggerSkill{
 	frequency = sgs.Skill_Wake,
 	events = {sgs.EventPhaseStart},
 	waked_skills = "f_sandaoEX",
-	can_wake = function(self, event, player, data)
-		local room = player:getRoom()
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end 
-		if player:getMark("f_sandaoUaR") < 3 then return false end
-		return true
-	end,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		room:broadcastSkillInvoke(self:objectName())
-		room:doSuperLightbox("WEhaveLSD", self:objectName())
-		room:addPlayerMark(player, self:objectName())
-		room:addPlayerMark(player, "f_sandao_using")
-		room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
-		room:attachSkillToPlayer(player, "f_sandaoEX")
-		room:addPlayerMark(player, "@f_sandaoEX")
+		if player:getMark("f_sandaoUaR") >= 3 or player:canWake(self:objectName()) then
+			room:broadcastSkillInvoke(self:objectName())
+			room:doSuperLightbox("WEhaveLSD", self:objectName())
+			room:addPlayerMark(player, self:objectName())
+			room:addPlayerMark(player, "f_sandao_using")
+			room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
+			room:attachSkillToPlayer(player, "f_sandaoEX")
+			room:addPlayerMark(player, "@f_sandaoEX")
+		end
 	end,
 	can_trigger = function(self, player)
-		return player and player:hasSkill(self:objectName()) and player:isAlive()
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 f_three:addSkill(f_sandao)
@@ -3117,38 +3112,33 @@ f_diyun = sgs.CreateTriggerSkill{
 	frequency = sgs.Skill_Wake,
 	events = {sgs.EventPhaseProceeding},
 	waked_skills = "dy_shemi,f_shensimayan_sktc",
-	can_wake = function(self, event, player, data)
-		local room = player:getRoom()
-		local phase = player:getPhase()
-		if phase ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		if player:getMark("&fZHENG") < 3 and player:getMark("&fZHENGf") < 3 then return false end
-		return true
-	end,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if math.random() <= 0.5 then room:doLightbox("$f_diyun1")
-		else room:doLightbox("$f_diyun2") end
-		room:doSuperLightbox("f_shensimayan", self:objectName())
-		room:addPlayerMark(player, self:objectName())
-		room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
-		if player:isWounded() then
-			if room:askForChoice(player, self:objectName(), "rec+drw") == "rec" then
-				local recover = sgs.RecoverStruct()
-				recover.who = player
-				room:recover(player, recover)
+		if player:getMark("&fZHENG") >= 3 or player:getMark("&fZHENGf") >= 3 or player:canWake(self:objectName()) then
+			
+			if math.random() <= 0.5 then room:doLightbox("$f_diyun1")
+			else room:doLightbox("$f_diyun2") end
+			room:doSuperLightbox("f_shensimayan", self:objectName())
+			room:addPlayerMark(player, self:objectName())
+			room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
+			if player:isWounded() then
+				if room:askForChoice(player, self:objectName(), "rec+drw") == "rec" then
+					local recover = sgs.RecoverStruct()
+					recover.who = player
+					room:recover(player, recover)
+				else
+					room:drawCards(player, 2, self:objectName())
+				end
 			else
 				room:drawCards(player, 2, self:objectName())
 			end
-		else
-			room:drawCards(player, 2, self:objectName())
-		end
-		if not player:hasSkill("dy_shemi") then
-			room:acquireSkill(player, "dy_shemi")
+			if not player:hasSkill("dy_shemi") then
+				room:acquireSkill(player, "dy_shemi")
+			end
 		end
 	end,
 	can_trigger = function(self, player)
-	    return player and player:isAlive() and player:hasSkill(self:objectName())
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 dy_shemi = sgs.CreateTriggerSkill{
@@ -3434,16 +3424,10 @@ f_handi = sgs.CreateTriggerSkill{
 	frequency = sgs.Skill_Wake,
 	events = {sgs.Death},
 	waked_skills = "luanji,tushe",
-	can_wake = function(self, event, player, data)
-		local room = player:getRoom()
-		local death = data:toDeath()
-		if player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		if death.who:getMark("&f_Xtz") == 0 then return false end
-		return true
-	end,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
+		local death = data:toDeath()
+		if death.who:getMark("&f_Xtz") == 0 then return false end
 		room:broadcastSkillInvoke(self:objectName())
 		room:doSuperLightbox("f_shenliuxie_handi", self:objectName())
 		room:addPlayerMark(player, self:objectName())
@@ -3465,7 +3449,7 @@ f_handi = sgs.CreateTriggerSkill{
 		end
 	end,
 	can_trigger = function(self, player)
-	    return player and player:isAlive() and player:hasSkill(self:objectName())
+		return player and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 f_shenliuxie:addSkill(f_handi)
@@ -4184,47 +4168,43 @@ f_mingmen = sgs.CreateTriggerSkill{
 	name = "f_mingmen",
 	frequency = sgs.Skill_Wake,
 	events = {sgs.MarkChanged},
-	can_wake = function(self, event, player, data)
+	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local mark = data:toMark()
 		if mark.name ~= "&fUnited" or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		if player:getMark("&fUnited") < 18 then return false end
-		return true
-	end,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		room:broadcastSkillInvoke(self:objectName())
-		room:doSuperLightbox("f_shenyuanshao_if", self:objectName())
-		local isTCB = false --判断此游戏版本是不是《天才包》
-		local tcb = sgs.GetConfig("BanPackages", "")
-		if string.find(tcb, "goood") then
-			isTCB = true
-		else
-			for _, szs in ipairs(sgs.Sanguosha:getLimitedGeneralNames()) do
-				if szs == "szs_guanyu" then
-					isTCB = true
-					break
+		if player:getMark("&fUnited") >= 18 or player:canWake(self:objectName()) then
+			room:broadcastSkillInvoke(self:objectName())
+			room:doSuperLightbox("f_shenyuanshao_if", self:objectName())
+			local isTCB = false --判断此游戏版本是不是《天才包》
+			local tcb = sgs.GetConfig("BanPackages", "")
+			if string.find(tcb, "goood") then
+				isTCB = true
+			else
+				for _, szs in ipairs(sgs.Sanguosha:getLimitedGeneralNames()) do
+					if szs == "szs_guanyu" then
+						isTCB = true
+						break
+					end
 				end
 			end
+			if isTCB then
+				sgs.Sanguosha:changeBGMEffect("audio/skill/f_shenyuanshao_if.ogg") --切换为神袁绍-江山如梦专属BGM
+			end
+			room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
+			room:addPlayerMark(player, self:objectName())
+			if player:hasSkill("f_yourou") then
+				room:detachSkillFromPlayer(player, "f_yourou")
+			end
+			if player:hasSkill("f_guaduan") then
+				room:detachSkillFromPlayer(player, "f_guaduan")
+			end
+			room:setPlayerMark(player, "f_luanji_used-PlayClear", 0)
+			room:changeTranslation(player, "f_luanji", 11)
+			room:changeTranslation(player, "f_huimeng", 11)
 		end
-		if isTCB then
-			sgs.Sanguosha:changeBGMEffect("audio/skill/f_shenyuanshao_if.ogg") --切换为神袁绍-江山如梦专属BGM
-		end
-		room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
-		room:addPlayerMark(player, self:objectName())
-		if player:hasSkill("f_yourou") then
-			room:detachSkillFromPlayer(player, "f_yourou")
-		end
-		if player:hasSkill("f_guaduan") then
-			room:detachSkillFromPlayer(player, "f_guaduan")
-		end
-		room:setPlayerMark(player, "f_luanji_used-PlayClear", 0)
-		room:changeTranslation(player, "f_luanji", 11)
-		room:changeTranslation(player, "f_huimeng", 11)
 	end,
 	can_trigger = function(self, player)
-	    return player and player:isAlive() and player:hasSkill(self:objectName())
+		return player and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 f_shenyuanshao_if:addSkill(f_mingmen)

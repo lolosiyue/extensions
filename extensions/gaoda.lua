@@ -3553,6 +3553,7 @@ quanwu = sgs.CreateTriggerSkill
 	waked_skills = "zhonggong,qingzhuang,linguang",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
+		if player:getMark("@NTD") > 0 and player:getEquips():length() >= 3  or player:canWake(self:objectName()) then
 			room:broadcastSkillInvoke(self:objectName())
 			room:doLightbox("image=image/animate/quanwu.png", 1500)
 			room:sendCompulsoryTriggerLog(player, self:objectName())
@@ -3565,14 +3566,10 @@ quanwu = sgs.CreateTriggerSkill
 			if g_skin then
 				room:attachSkillToPlayer(player, "skin")
 			end
-	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		if player:getMark("@NTD") > 0 and player:getEquips():length() >= 3 then
-			return true
 		end
-		return false
+	end,
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 
@@ -5536,8 +5533,7 @@ xuanguang = sgs.CreateTriggerSkill
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local dying = data:toDying()
-		if dying.who:objectName() == player:objectName() then
-		-- if dying.who:objectName() == player:objectName() and player:getHp() < 1 and player:getMark("@xuanguang") == 0 and player:getMark("@NTD3") == 0 then
+		if dying.who:objectName() == player:objectName() and player:getMark("@xuanguang") == 0 and ((player:getHp() < 1 and player:getMark("@NTD3") == 0) or player:canWake(self:objectName())) then
 			room:broadcastSkillInvoke("xuanguang")
 			room:doLightbox("image=image/animate/xuanguang.png", 1500)
 			room:sendCompulsoryTriggerLog(player, self:objectName())
@@ -5551,13 +5547,8 @@ xuanguang = sgs.CreateTriggerSkill
 			startHuaShen(player, "NORN_NTD", "xuanguang", not player:getGeneral():hasSkill(self:objectName()))
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		if player:getHp() < 1 and player:getMark("@NTD3") == 0 then
-			return true
-		end
-		return false
+	can_trigger = function(self, player)
+		return player and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 
@@ -15092,45 +15083,32 @@ gaoda_tonghua = sgs.CreateTriggerSkill{
 	frequency = sgs.Skill_Wake,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		-- if player:getPhase() == sgs.Player_Start and player:getMark("@gaoda_tonghua") == 0 then
-		-- 	local quanfa = player:getPile("quanfa")
-		-- 	if quanfa:isEmpty() then return false end
-		-- 	local red = 0
-		-- 	for _,id in sgs.qlist(quanfa) do
-		-- 		local card = sgs.Sanguosha:getCard(id)
-		-- 		if card:isRed() then
-		-- 			red = red + 1
-		-- 			if red >= 3 then break end
-		-- 		end
-		-- 	end
-		-- 	if red < 3 then return false end
-			room:setPlayerFlag(player, "skip_anime")
-			room:sendCompulsoryTriggerLog(player, self:objectName())
-			room:broadcastSkillInvoke(self:objectName())
-			room:setEmotion(player, "gaoda_tonghua")
-			room:getThread():delay(4500)
-			player:gainMark("@gaoda_tonghua")
-			room:setPlayerMark(player, "gaoda_tonghua", 1)
-			room:loseMaxHp(player)
-			player:drawCards(2, self:objectName())
-			room:changeTranslation(player, "ciyuanbawangliu", 2)
-		-- end
-	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		local quanfa = player:getPile("quanfa")
-		if quanfa:isEmpty() then return false end
-		local red = 0
-		for _,id in sgs.qlist(quanfa) do
-			local card = sgs.Sanguosha:getCard(id)
-			if card:isRed() then
-				red = red + 1
-				if red >= 3 then break end
+		if player:getPhase() == sgs.Player_Start and player:getMark("@gaoda_tonghua") == 0 then
+			local quanfa = player:getPile("quanfa")
+			local red = 0
+			for _,id in sgs.qlist(quanfa) do
+				local card = sgs.Sanguosha:getCard(id)
+				if card:isRed() then
+					red = red + 1
+					if red >= 3 then break end
+				end
+			end
+			if red >= 3 or player:canWake(self:objectName()) then
+				room:setPlayerFlag(player, "skip_anime")
+				room:sendCompulsoryTriggerLog(player, self:objectName())
+				room:broadcastSkillInvoke(self:objectName())
+				room:setEmotion(player, "gaoda_tonghua")
+				room:getThread():delay(4500)
+				player:gainMark("@gaoda_tonghua")
+				room:setPlayerMark(player, "gaoda_tonghua", 1)
+				room:loseMaxHp(player)
+				player:drawCards(2, self:objectName())
+				room:changeTranslation(player, "ciyuanbawangliu", 2)
 			end
 		end
-		if red >= 3 then return true end
-		return false
+	end,
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 

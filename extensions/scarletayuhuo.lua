@@ -1622,16 +1622,16 @@ s_w_longnu = sgs.CreateTriggerSkill{
 	waked_skills = "longdan,chongzhen,mashu,feiying",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		room:addPlayerMark(player, "s_w_longnu")
-		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-			room:handleAcquireDetachSkills(player, "longdan|chongzhen|mashu|feiying")
+		if player:isKongcheng() or player:canWake(self:objectName()) then
+			room:addPlayerMark(player, "s_w_longnu")
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				room:handleAcquireDetachSkills(player, "longdan|chongzhen|mashu|feiying")
+			end
 		end
 		return false
 	end ,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		return player:isKongcheng()
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 
@@ -1955,24 +1955,17 @@ s_w_fanji = sgs.CreateTriggerSkill{
 	events = {sgs.EventPhaseStart} ,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		room:addPlayerMark(player, "s_w_fanji")
-		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-			room:handleAcquireDetachSkills(player, "s_w_juezhan")
+		if player:getMark("&s_w_yong") >= 3 or player:canWake(self:objectName()) then
+			room:addPlayerMark(player, "s_w_fanji")
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				room:handleAcquireDetachSkills(player, "s_w_juezhan")
+			end
 		end
 		return false
 	end ,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then
-			return false
-		end
-		if player:canWake(self:objectName()) then
-			return true
-		end
-		if player:getMark("&s_w_yong") >= 3 then
-			return true
-		end
-		return false
-	end
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
+	end,
 }
 
 s_w_juezhan = sgs.CreateTriggerSkill{

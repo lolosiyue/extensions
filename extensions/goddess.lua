@@ -27,23 +27,13 @@ LuaDanji = sgs.CreateTriggerSkill{
 	frequency = sgs.Skill_Wake,
 	waked_skills = "mashu",
 	events = {sgs.EventPhaseStart},
-	-- can_trigger = function(self, target)
-	-- 	return target:isAlive() and target:hasSkill(self:objectName()) and target:getPhase() == sgs.Player_Start
-	-- 		and target:getMark("danji") == 0 and target:getHandcardNum() > target:getHp()
-	-- end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		local lord = room:getLord()
-		if lord and (string.find(lord:getGeneralName(), "caocao") or string.find(lord:getGeneral2Name(), "caocao")) and player:getHandcardNum() > player:getHp() then
-			return true
-		end
-		return false
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		-- local lord = room:getLord()
-		--if lord and (string.find(lord:getGeneralName(), "caocao") or string.find(lord:getGeneral2Name(), "caocao")) then
+		local lord = room:getLord()
+		if (lord and (string.find(lord:getGeneralName(), "caocao") or string.find(lord:getGeneral2Name(), "caocao"))) or player:canWake(self:objectName()) then
 			room:broadcastSkillInvoke(self:objectName())
 			room:notifySkillInvoked(player, self:objectName())
 			local choicelist = "loseonehp"
@@ -65,7 +55,7 @@ LuaDanji = sgs.CreateTriggerSkill{
 			room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
 			room:setPlayerMark(player, "LuaDanji", 1)
 			room:setPlayerMark(player, "danji", 1)
-		-- end
+		end
 	end,
 }
 LuaSP_guanyu:addSkill(LuaDanji)
