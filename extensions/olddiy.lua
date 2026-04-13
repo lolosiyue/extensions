@@ -804,30 +804,31 @@ guishu = sgs.CreateTriggerSkill{
 	waked_skills = "longdan,dangqian",
 	on_trigger = function(self, event, player, data)
         local room = player:getRoom()
-        player:setMark("guishu", 1)
-        local room = player:getRoom()
-        if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-            room:setPlayerProperty(player,"kingdom",sgs.QVariant("shu")) 
-            room:handleAcquireDetachSkills(player, "longdan")
-            room:handleAcquireDetachSkills(player, "dangqian")
-            room:handleAcquireDetachSkills(player,"-fjsp_youlong")
-            room:handleAcquireDetachSkills(player,"-#youlong_return")
-            room:doLightbox("$guishu") 
-        end			
-		return false
-	end ,
-    can_wake = function(self, event, player, data, room)
-	if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-	if player:canWake(self:objectName()) then return true end
-	local lord = room:getLord()
+		local can_invoke = false
+		local lord = room:getLord()
 		if lord then
 			if (string.find(lord:getGeneralName(),"liubei") or string.find(lord:getGeneral2Name(),"liubei"))
 			or (string.find(lord:getGeneralName(),"liushan") or string.find(lord:getGeneral2Name(),"liushan"))  then
-                return true
+                can_invoke = true
             end
         end
-	return false
-end,
+		if can_invoke or player:canWake(self:objectName()) then
+			player:setMark("guishu", 1)
+			local room = player:getRoom()
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				room:setPlayerProperty(player,"kingdom",sgs.QVariant("shu")) 
+				room:handleAcquireDetachSkills(player, "longdan")
+				room:handleAcquireDetachSkills(player, "dangqian")
+				room:handleAcquireDetachSkills(player,"-fjsp_youlong")
+				room:handleAcquireDetachSkills(player,"-#youlong_return")
+				room:doLightbox("$guishu") 
+			end
+		end
+		return false
+	end ,
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
+	end,
 }
 Nzhaoyun:addSkill(fjsp_youlong)
 Nzhaoyun:addSkill(fjsp_youlong_return)

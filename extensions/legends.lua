@@ -441,21 +441,6 @@ pokong = sgs.CreateTriggerSkill{
 	waked_skills = "jianwu",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		room:doLightbox("$pokongQP")
-		local msg = sgs.LogMessage()
-		msg.type = "#pokong"
-		msg.from = player
-		room:sendLog(msg)
-		room:broadcastSkillInvoke("pokong")
-		room:setPlayerMark(player, "pokong", 1)
-		room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
-		room:acquireSkill(player, "jianwu")
-		room:acquireSkill(player, "#jianwuMod")		
-		return false
-	end, 
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
 		local can_invoke = true
 		local list = room:getOtherPlayers(player)
 		for _,p in sgs.qlist(list) do
@@ -464,10 +449,22 @@ pokong = sgs.CreateTriggerSkill{
 				break
 			end
 		end
-		if can_invoke then
-			return true
+		if can_invoke or player:canWake(self:objectName()) then
+			room:doLightbox("$pokongQP")
+			local msg = sgs.LogMessage()
+			msg.type = "#pokong"
+			msg.from = player
+			room:sendLog(msg)
+			room:broadcastSkillInvoke("pokong")
+			room:setPlayerMark(player, "pokong", 1)
+			room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
+			room:acquireSkill(player, "jianwu")
+			room:acquireSkill(player, "#jianwuMod")
 		end
 		return false
+	end,
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 jianwu = sgs.CreateTriggerSkill{
@@ -763,20 +760,6 @@ zhizun = sgs.CreateTriggerSkill{
 	waked_skills = "lol_liren",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		room:doLightbox("$zhizunQP")
-		local msg = sgs.LogMessage()
-		msg.type = "#zhizun"
-		msg.from = player
-		room:sendLog(msg)
-		room:broadcastSkillInvoke("zhizun")
-		room:setPlayerMark(player, "zhizun", 1)
-		room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
-		room:acquireSkill(player, "lol_liren")
-		return false
-	end, 
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
 		local can_invoke = true
 		local list = room:getOtherPlayers(player)
 		for _,p in sgs.qlist(list) do
@@ -785,10 +768,21 @@ zhizun = sgs.CreateTriggerSkill{
 				break
 			end
 		end
-		if can_invoke then
-			return true
+		if can_invoke or player:canWake(self:objectName()) then
+			room:doLightbox("$zhizunQP")
+			local msg = sgs.LogMessage()
+			msg.type = "#zhizun"
+			msg.from = player
+			room:sendLog(msg)
+			room:broadcastSkillInvoke("zhizun")
+			room:setPlayerMark(player, "zhizun", 1)
+			room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
+			room:acquireSkill(player, "lol_liren")
 		end
 		return false
+	end, 
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 lol_lirenCard = sgs.CreateSkillCard{

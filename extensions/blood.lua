@@ -165,17 +165,8 @@ blood_hunzi = sgs.CreateTriggerSkill {
 		end
 		return false
 	end,
-	can_wake = function(self, event, player, data, room)
-		if not player:hasLordSkill(self:objectName()) then
-			return false
-		end
-		if player:getMark("blood_hunzi") > 0 then
-			return false
-		end
-		if player:canWake(self:objectName()) then
-			return true
-		end
-		return true
+	can_trigger = function(self, player)
+		return player and player:getMark(self:objectName()) < 1 and player:hasLordSkill(self)
 	end,
 }
 

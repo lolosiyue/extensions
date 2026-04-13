@@ -5836,24 +5836,11 @@ sgkgoddengji = sgs.CreateTriggerSkill{
 	frequency = sgs.Skill_Wake,
 	waked_skills = "sgkgodrenzheng,sgkgodjiquan",
 	events = {sgs.EventPhaseStart},
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		--if player:canWake(self:objectName()) then return true end
-		local counts = player:getPile("sgkgodchu"):length()
-		if counts < 5 then
-			return false
-		end
-		if player:getPile("sgkgodchu"):length() % 2 ~= 1 then
-			return false
-		end
-		return true
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
-	-- can_trigger = function(self, target)
-	-- 	return target and target:isAlive() and target:hasSkill(self:objectName()) and target:getPile("sgkgodchu"):length() % 2 == 1
-	-- 		and target:getPile("sgkgodchu"):length() >= 5
-	-- end,
 	on_trigger = function(self, event, player, data, room)
-		-- if player:getPhase() == sgs.Player_Start then
+		if (player:getPile("sgkgodchu"):length() % 2 == 1 and player:getPile("sgkgodchu"):length() >= 5) or player:canWake(self:objectName()) then
 			room:broadcastSkillInvoke(self:objectName())
 			local msg = sgs.LogMessage()
 			msg.from = player
@@ -5888,7 +5875,7 @@ sgkgoddengji = sgs.CreateTriggerSkill{
 				room:handleAcquireDetachSkills(player, table.concat(lord_skills, "|"))
 			end
 		end
-	-- end
+	end
 }
 
 

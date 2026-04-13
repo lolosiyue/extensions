@@ -1631,31 +1631,28 @@ ziliex = sgs.CreateTriggerSkill{
     waked_skills = "paiyiex",
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
-        room:sendCompulsoryTriggerLog(player, self:objectName())
-        room:broadcastSkillInvoke(self:objectName())
-        room:setPlayerMark(player, "ziliex", 1)
-        room:loseMaxHp(player, 1)
-        room:acquireSkill(player, "paiyiex", true)
-        local choices = {"draw"}
-        if player:isWounded() then
-            table.insert(choices,"recover")
-        end
-        local choice = room:askForChoice(player, self:objectName(), table.concat(choices,"+"))
-        if choice == "draw" then
-            player:drawCards(2)
-        else
-            local rec = sgs.RecoverStruct(player, nil, 1)
-            room:recover(player, rec)
-        end
+		if (player:getPile("exquan"):length() >= 3 and player:isWounded()) or player:canWake(self:objectName()) then
+			room:sendCompulsoryTriggerLog(player, self:objectName())
+			room:broadcastSkillInvoke(self:objectName())
+			room:setPlayerMark(player, "ziliex", 1)
+			room:loseMaxHp(player, 1)
+			room:acquireSkill(player, "paiyiex", true)
+			local choices = {"draw"}
+			if player:isWounded() then
+				table.insert(choices,"recover")
+			end
+			local choice = room:askForChoice(player, self:objectName(), table.concat(choices,"+"))
+			if choice == "draw" then
+				player:drawCards(2)
+			else
+				local rec = sgs.RecoverStruct(player, nil, 1)
+				room:recover(player, rec)
+			end
+		end
     end,
-    can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		local x = player:getPile("exquan"):length()
-
-		if x >= 3 and player:isWounded() then return true end
-		return false
-	end
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
+	end,
 }
 
 paiyiex = sgs.CreateViewAsSkill
@@ -3556,29 +3553,22 @@ spbaiyin = sgs.CreateTriggerSkill{
     waked_skills = "spjilve",
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
-        room:setPlayerMark(player, "spbaiyin", 1)
-        room:sendCompulsoryTriggerLog(player, self:objectName())
-        room:broadcastSkillInvoke(self:objectName())
-        room:loseMaxHp(player, 1)
-        room:setPlayerMark(player, "&spren", player:getMark("&spren")+2)
-        room:acquireSkill(player, "spjilve", true)
-        if player:getJudgingArea():length() > 0 then
-            local card = room:askForCardChosen(player, player, "j", self:objectName())
-            room:throwCard(card, nil, player)
-        end
+		if player:getMark("&spren") >= 4 or player:canWake(self:objectName()) then
+			room:setPlayerMark(player, "spbaiyin", 1)
+			room:sendCompulsoryTriggerLog(player, self:objectName())
+			room:broadcastSkillInvoke(self:objectName())
+			room:loseMaxHp(player, 1)
+			room:setPlayerMark(player, "&spren", player:getMark("&spren")+2)
+			room:acquireSkill(player, "spjilve", true)
+			if player:getJudgingArea():length() > 0 then
+				local card = room:askForCardChosen(player, player, "j", self:objectName())
+				room:throwCard(card, nil, player)
+			end
+		end
     end,
-    can_wake = function(self, event, player, data, room)
-		if player:getMark("spbaiyin") > 0 then return false end
-        if player:getPhase() == sgs.Player_Start or player:getPhase() == sgs.Player_Finish then
-            if player:canWake(self:objectName()) then return true end
-            return player:getMark("&spren") >= 4 
-        end
-        return false
+    can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
-    -- can_trigger = function(self, target)
-    --     return target and target:hasSkill(self:objectName()) 
-    --     and (target:getPhase() == sgs.Player_Start or target:getPhase() == sgs.Player_Finish) and target:getMark("&spren") >= 4 and target:getMark("spbaiyin") == 0
-    -- end,
 }
 
 spjilve = sgs.CreateZeroCardViewAsSkill

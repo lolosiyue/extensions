@@ -216,21 +216,18 @@ Dianci = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-			room:addPlayerMark(player, self:objectName())
-			room:handleAcquireDetachSkills(player, "se_paoji", true)
-			room:broadcastSkillInvoke("Dianci")
-			room:doLightbox("Dianci$", 3000)
-			return false
+		if player:getMark("@se_ying") >= 2 or player:canWake(self:objectName()) then
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				room:addPlayerMark(player, self:objectName())
+				room:handleAcquireDetachSkills(player, "se_paoji", true)
+				room:broadcastSkillInvoke("Dianci")
+				room:doLightbox("Dianci$", 3000)
+				return false
+			end
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Draw or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		local x = player:getMark("@se_ying")
-
-		if x >= 2 then return true end
-		return false
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Draw and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 
@@ -5103,32 +5100,28 @@ SE_Chengzhang = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		local maxhp = player:getMaxHp()
-		room:broadcastSkillInvoke("SE_Chengzhang")
-		room:addPlayerMark(player, self:objectName())
-		local x = 0
-		if player:getMaxHp() < 100 then
-			x = player:getMaxHp() - 3
-		else
-			x = 96
-		end
-		if room:changeMaxHpForAwakenSkill(player, -x, self:objectName()) then
-			room:doLightbox("SE_Chengzhang$", 3000)
-			room:detachSkillFromPlayer(player, "SE_Pasheng")
-			room:detachSkillFromPlayer(player, "SE_Maoqun")
-			room:handleAcquireDetachSkills(player, "se_zhiling")
-			room:handleAcquireDetachSkills(player, "SE_Zhixing")
-			return false
+		if player:getPile("Neko"):length() >= 12 or player:canWake(self:objectName()) then
+			local maxhp = player:getMaxHp()
+			room:broadcastSkillInvoke("SE_Chengzhang")
+			room:addPlayerMark(player, self:objectName())
+			local x = 0
+			if player:getMaxHp() < 100 then
+				x = player:getMaxHp() - 3
+			else
+				x = 96
+			end
+			if room:changeMaxHpForAwakenSkill(player, -x, self:objectName()) then
+				room:doLightbox("SE_Chengzhang$", 3000)
+				room:detachSkillFromPlayer(player, "SE_Pasheng")
+				room:detachSkillFromPlayer(player, "SE_Maoqun")
+				room:handleAcquireDetachSkills(player, "se_zhiling")
+				room:handleAcquireDetachSkills(player, "SE_Zhixing")
+				return false
+			end
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		local counts = player:getPile("Neko"):length()
-		if counts < 12 then
-			return false
-		end
-		return true
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 
@@ -6584,25 +6577,27 @@ SE_Heiyang = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-			room:handleAcquireDetachSkills(player, "SE_Chaopin")
-			room:handleAcquireDetachSkills(player, "qingguo")
-			room:broadcastSkillInvoke("SE_Heiyang")
-			room:doLightbox("SE_Heiyang$", 3000)
-			player:drawCards(2)
-			room:addPlayerMark(player, "SE_Heiyang", 1)
-			return false
-		end
-	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
+		local can_invoke = false
 		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 			if p:getMark("@waked") == 1 or p:getHp() == 1 then
-				return true
+				can_invoke = true
+				break
 			end
 		end
-		return false
+		if can_invoke or player:canWake(self:objectName()) then
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				room:handleAcquireDetachSkills(player, "SE_Chaopin")
+				room:handleAcquireDetachSkills(player, "qingguo")
+				room:broadcastSkillInvoke("SE_Heiyang")
+				room:doLightbox("SE_Heiyang$", 3000)
+				player:drawCards(2)
+				room:addPlayerMark(player, "SE_Heiyang", 1)
+				return false
+			end
+		end
+	end,
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 
@@ -10345,29 +10340,26 @@ SE_Poxiao = sgs.CreateTriggerSkill {
 	waked_skills = "se_mipa",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if room:changeMaxHpForAwakenSkill(player, 1, self:objectName()) then
-			room:broadcastSkillInvoke("SE_Poxiao")
-			room:doLightbox("SE_Poxiao$", 3000)
-			room:addPlayerMark(player, "SE_Poxiao")
-			if player:hasSkill("suipian") then
-				room:detachSkillFromPlayer(player, "suipian")
+		if player:getPile("Fragments"):length() > player:getHandcardNum() or player:canWake(self:objectName()) then
+			if room:changeMaxHpForAwakenSkill(player, 1, self:objectName()) then
+				room:broadcastSkillInvoke("SE_Poxiao")
+				room:doLightbox("SE_Poxiao$", 3000)
+				room:addPlayerMark(player, "SE_Poxiao")
+				if player:hasSkill("suipian") then
+					room:detachSkillFromPlayer(player, "suipian")
+				end
+				if player:hasSkill("erciyuan_qiji") then
+					room:detachSkillFromPlayer(player, "erciyuan_qiji")
+				end
+				if player:hasSkill("SE_Shenghua") then
+					room:detachSkillFromPlayer(player, "SE_Shenghua")
+				end
+				room:handleAcquireDetachSkills(player, "se_mipa")
 			end
-			if player:hasSkill("erciyuan_qiji") then
-				room:detachSkillFromPlayer(player, "erciyuan_qiji")
-			end
-			if player:hasSkill("SE_Shenghua") then
-				room:detachSkillFromPlayer(player, "SE_Shenghua")
-			end
-			room:handleAcquireDetachSkills(player, "se_mipa")
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-		if player:getPile("Fragments"):length() <= player:getHandcardNum() then
-			return false
-		end
-		return true
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 

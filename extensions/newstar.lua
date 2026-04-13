@@ -769,13 +769,6 @@ LuaGuishen = sgs.CreateViewAsSkill {
 	end
 }
 
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 LuaWushuang = sgs.CreateTriggerSkill {
 	name = "#LuaWushuang",
 	frequency = sgs.Skill_Compulsory,
@@ -1066,6 +1059,36 @@ extension:insertRelatedSkills("LuaShenyong", "#LuaXDuojian")
 mubanXlubu = sgs.General(extension, "mubanXlubu", "qun", 4, true, true, true)
 
 
+local Exchange1 = function(xinglvbu)
+	local wrath = xinglvbu:getPile("wrath")
+	if wrath:length() > 0 then
+		local room = xinglvbu:getRoom()
+		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+		for _, cd in sgs.qlist(xinglvbu:getPile("wrath")) do
+			dummy:addSubcard(cd)
+		end
+		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", nil, "LuaBaonu", "")
+		room:throwCard(dummy, reason, nil)
+		dummy:deleteLater()
+
+		room:broadcastSkillInvoke("LuaBaonu")
+		if xinglvbu:hasSkill("xingLuashenji") then
+			if room:changeMaxHpForAwakenSkill(xinglvbu, -1, self:objectName()) then
+				room:addMaxCards(xinglvbu, 1, false)
+				room:handleAcquireDetachSkills(xinglvbu, "exshenji")
+				room:handleAcquireDetachSkills(xinglvbu, "-LuaBaonu")
+				room:handleAcquireDetachSkills(xinglvbu, "-LuaHuaji")
+			end
+		else
+			if room:changeMaxHpForAwakenSkill(xinglvbu, -1, self:objectName()) then
+				room:addMaxCards(xinglvbu, 1, false)
+				room:handleAcquireDetachSkills(xinglvbu, "xingLuashenji")
+			end
+		end
+	end
+end
+
+
 exshenji = sgs.CreateTriggerSkill {
 	name = "exshenji",
 	frequency = sgs.Skill_Frequent,
@@ -1086,22 +1109,15 @@ xingLuashenji = sgs.CreateTriggerSkill {
 	waked_skills = "exshenji",
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data, room)
-		if event == sgs.EventPhaseStart then
+		if player:getPile("wrath"):length() > 2 or player:canWake(self:objectName()) then
 			if player:hasSkill(self:objectName()) then
 				Exchange1(player)
 				room:addPlayerMark(player, self:objectName())
 			end
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getMark(self:objectName()) > 0 then return false end
-		if player:getPhase() == sgs.Player_Start or player:getPhase() == sgs.Player_Finish then
-			if player:canWake(self:objectName()) then return true end
-			if player:getPile("wrath"):length() > 2 then return true end
-		end
-
-
-		return false
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 mubanXlubu:addSkill(exshenji)
@@ -1120,13 +1136,6 @@ LuaMashu = sgs.CreateDistanceSkill {
 }
 
 --赤兔
-Table2IntList = function(theTable)
-	local result = sgs.IntList()
-	for i = 1, #theTable, 1 do
-		result:append(theTable[i])
-	end
-	return result
-end
 os_chitu = sgs.CreateTriggerSkill {
 	name = "os_chitu",
 	frequency = sgs.Skill_Compulsory,
@@ -1197,57 +1206,21 @@ LuaHuaji = sgs.CreateTriggerSkill {
 
 
 
-local Exchange1 = function(xinglvbu)
-	local wrath = xinglvbu:getPile("wrath")
-	if wrath:length() > 0 then
-		local room = xinglvbu:getRoom()
-		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-		for _, cd in sgs.qlist(xinglvbu:getPile("wrath")) do
-			dummy:addSubcard(cd)
-		end
-		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", nil, "LuaBaonu", "")
-		room:throwCard(dummy, reason, nil)
-		dummy:deleteLater()
-
-		room:broadcastSkillInvoke("LuaBaonu")
-		if xinglvbu:hasSkill("xingLuashenji") then
-			if room:changeMaxHpForAwakenSkill(xinglvbu, -1, self:objectName()) then
-				room:addMaxCards(xinglvbu, 1, false)
-				room:handleAcquireDetachSkills(xinglvbu, "exshenji")
-				room:handleAcquireDetachSkills(xinglvbu, "-LuaBaonu")
-				room:handleAcquireDetachSkills(xinglvbu, "-LuaHuaji")
-			end
-		else
-			if room:changeMaxHpForAwakenSkill(xinglvbu, -1, self:objectName()) then
-				room:addMaxCards(xinglvbu, 1, false)
-				room:handleAcquireDetachSkills(xinglvbu, "xingLuashenji")
-			end
-		end
-	end
-end
-
 LuaBaonu = sgs.CreateTriggerSkill {
 	name = "LuaBaonu",
 	frequency = sgs.Skill_Wake,
 	waked_skills = "xingLuashenji",
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data, room)
-		if event == sgs.EventPhaseStart then
+		if player:getPile("wrath"):length() > 2 or player:canWake(self:objectName()) then
 			if player:hasSkill(self:objectName()) then
 				Exchange1(player)
 				room:addPlayerMark(player, self:objectName())
 			end
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getMark(self:objectName()) > 0 then return false end
-		if player:getPhase() == sgs.Player_Start or player:getPhase() == sgs.Player_Finish then
-			if player:canWake(self:objectName()) then return true end
-			if player:getPile("wrath"):length() > 2 then return true end
-		end
-
-
-		return false
+	can_trigger = function(self, player)
+		return player and (player:getPhase() == sgs.Player_Start or player:getPhase() == sgs.Player_Finish) and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 

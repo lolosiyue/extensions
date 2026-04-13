@@ -762,40 +762,38 @@ TH_huanyue = sgs.CreateTriggerSkill{--幻月
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		room:setPlayerMark(player, "TH_huanyue", 1)
-		player:removeMark("TH_huanyue_wake")
-		room:notifySkillInvoked(player, "TH_huanyue")
-		room:broadcastSkillInvoke(self:objectName())
-		room:setPlayerProperty(player, "chained", sgs.QVariant(false))
-		if player:getJudgingArea():length() > 0 then
-			local move = sgs.CardsMoveStruct()
-			for _, trick in sgs.qlist(player:getJudgingArea()) do
-				move.card_ids:append(trick:getEffectiveId())
+		if player:getMark("TH_huanyue_wake") >= 1 or player:canWake(self:objectName()) then
+			room:setPlayerMark(player, "TH_huanyue", 1)
+			player:removeMark("TH_huanyue_wake")
+			room:notifySkillInvoked(player, "TH_huanyue")
+			room:broadcastSkillInvoke(self:objectName())
+			room:setPlayerProperty(player, "chained", sgs.QVariant(false))
+			if player:getJudgingArea():length() > 0 then
+				local move = sgs.CardsMoveStruct()
+				for _, trick in sgs.qlist(player:getJudgingArea()) do
+					move.card_ids:append(trick:getEffectiveId())
+				end
+				move.reason.m_reason = sgs.CardMoveReason_S_REASON_NATURAL_ENTER
+				move.to_place = sgs.Player_DiscardPile
+				room:moveCardsAtomic(move, true)
 			end
-			move.reason.m_reason = sgs.CardMoveReason_S_REASON_NATURAL_ENTER
-			move.to_place = sgs.Player_DiscardPile
-			room:moveCardsAtomic(move, true)
+			room:setEmotion(player,"FlandreScarlet_Nos")
+			room:getThread():delay()
+			room:acquireSkill(player, "TH_Laevatein")
+			room:acquireSkill(player, "TH_qed")
+			room:acquireSkill(player, "TH_huaidiao")
+			-- room:setPlayerProperty(player, "maxhp", sgs.QVariant(player:getMaxHp() + 3))
+			local recover=sgs.RecoverStruct()
+			recover.who=player
+			recover.recover=player:getLostHp()
+			room:recover(player,recover,true)
+			room:detachSkillFromPlayer(player, "TH_sichongcunzai")
+			room:detachSkillFromPlayer(player, "TH_cranberry")
+			-- room:detachSkillFromPlayer(player, "TH_mingke")
 		end
-		room:setEmotion(player,"FlandreScarlet_Nos")
-		room:getThread():delay()
-		room:acquireSkill(player, "TH_Laevatein")
-		room:acquireSkill(player, "TH_qed")
-		room:acquireSkill(player, "TH_huaidiao")
-		-- room:setPlayerProperty(player, "maxhp", sgs.QVariant(player:getMaxHp() + 3))
-		local recover=sgs.RecoverStruct()
-		recover.who=player
-		recover.recover=player:getLostHp()
-		room:recover(player,recover,true)
-		room:detachSkillFromPlayer(player, "TH_sichongcunzai")
-		room:detachSkillFromPlayer(player, "TH_cranberry")
-		-- room:detachSkillFromPlayer(player, "TH_mingke")
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_RoundStart or player:getMark(self:objectName()) > 0 then return false end
-		if player:canWake(self:objectName()) then return true end
-
-		if player:getMark("TH_huanyue_wake") >= 1 then return true end
-		return false
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_RoundStart and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 

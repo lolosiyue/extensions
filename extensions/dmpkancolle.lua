@@ -315,47 +315,40 @@ se_emeng = sgs.CreateTriggerSkill {
 	waked_skills = "poi_yingzi,poi_paoxiao,se_chongzhuang",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-			room:broadcastSkillInvoke(self:objectName())
-			room:doLightbox("se_suo$", 500)
-			room:doLightbox("se_luo$", 500)
-			room:doLightbox("se_men$", 1000)
-			room:doLightbox("se_wo$", 300)
-			room:doLightbox("se_you$", 300)
-			room:doLightbox("se_hui$", 300)
-			room:doLightbox("se_lai$", 300)
-			room:doLightbox("se_le$", 300)
-			room:doLightbox("se_a$", 1000)
-			room:doLightbox("se_emeng$", 2000)
-			if player:getGeneralName() == "Yuudachi" then
-				room:changeHero(player, "poi_kai2", false, false, false, false)
-			elseif player:getGeneral2Name() == "Yuudachi" then
-				room:changeHero(player, "poi_kai2", false, false, true, false)
-			else
-				room:handleAcquireDetachSkills(player, "poi_yingzi")
-				room:handleAcquireDetachSkills(player, "poi_paoxiao")
-				room:handleAcquireDetachSkills(player, "se_chongzhuang")
-			end
-			room:addPlayerMark(player, "se_emeng")
-			local list = room:getAlivePlayers()
-			for _, p in sgs.qlist(list) do
-				room:setFixedDistance(player, p, 1)
-				room:setFixedDistance(p, player, 1)
+		if player:getHp() <= 1 or player:canWake(self:objectName()) then
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				room:broadcastSkillInvoke(self:objectName())
+				room:doLightbox("se_suo$", 500)
+				room:doLightbox("se_luo$", 500)
+				room:doLightbox("se_men$", 1000)
+				room:doLightbox("se_wo$", 300)
+				room:doLightbox("se_you$", 300)
+				room:doLightbox("se_hui$", 300)
+				room:doLightbox("se_lai$", 300)
+				room:doLightbox("se_le$", 300)
+				room:doLightbox("se_a$", 1000)
+				room:doLightbox("se_emeng$", 2000)
+				if player:getGeneralName() == "Yuudachi" then
+					room:changeHero(player, "poi_kai2", false, false, false, false)
+				elseif player:getGeneral2Name() == "Yuudachi" then
+					room:changeHero(player, "poi_kai2", false, false, true, false)
+				else
+					room:handleAcquireDetachSkills(player, "poi_yingzi")
+					room:handleAcquireDetachSkills(player, "poi_paoxiao")
+					room:handleAcquireDetachSkills(player, "se_chongzhuang")
+				end
+				room:addPlayerMark(player, "se_emeng")
+				local list = room:getAlivePlayers()
+				for _, p in sgs.qlist(list) do
+					room:setFixedDistance(player, p, 1)
+					room:setFixedDistance(p, player, 1)
+				end
 			end
 		end
 		return false
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then
-			return false
-		end
-		if player:canWake(self:objectName()) then
-			return true
-		end
-		if player:getHp() <= 1 then
-			return true
-		end
-		return false
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 --狂犬

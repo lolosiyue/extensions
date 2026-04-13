@@ -390,30 +390,23 @@ FiveYingzhan = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		local msg = sgs.LogMessage()
-		msg.type = "#FiveYingzhan"
-		msg.from = player
-		msg.arg = self:objectName()
-		room:sendLog(msg)
-		room:broadcastInvoke("animate", "lightbox:$FiveYingzhan:3000")
-		room:getThread():delay(4000)
-		player:addMark("FiveYingzhan")
-		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-			room:handleAcquireDetachSkills(player, "FiveFanjian")
+		if player:hasFlag("FiveYingzhan_Damage") or player:canWake(self:objectName()) then
+			local msg = sgs.LogMessage()
+			msg.type = "#FiveYingzhan"
+			msg.from = player
+			msg.arg = self:objectName()
+			room:sendLog(msg)
+			room:broadcastInvoke("animate", "lightbox:$FiveYingzhan:3000")
+			room:getThread():delay(4000)
+			player:addMark("FiveYingzhan")
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				room:handleAcquireDetachSkills(player, "FiveFanjian")
+			end
 		end
 		return false
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Finish or player:getMark(self:objectName()) > 0 then
-			return false
-		end
-		if player:canWake(self:objectName()) then
-			return true
-		end
-		if player:hasFlag("FiveYingzhan_Damage") then
-			return true
-		end
-		return false
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Finish and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 
@@ -2782,34 +2775,27 @@ FourDedao = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		local msg = sgs.LogMessage()
-		msg.type = "#FourDedao"
-		msg.from = player
-		msg.arg = player:getPile("symbol"):length()
-		msg.arg2 = self:objectName()
-		room:sendLog(msg)
-		room:broadcastInvoke("animate", "lightbox:$FourDedao:3000")
-		room:getThread():delay(4000)
+		if player:getPile("symbol") >= 3 or player:canWake(self:objectName()) then
+			local msg = sgs.LogMessage()
+			msg.type = "#FourDedao"
+			msg.from = player
+			msg.arg = player:getPile("symbol"):length()
+			msg.arg2 = self:objectName()
+			room:sendLog(msg)
+			room:broadcastInvoke("animate", "lightbox:$FourDedao:3000")
+			room:getThread():delay(4000)
 
-		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-			room:setPlayerMark(player, "FourDedao", 1)
-			room:handleAcquireDetachSkills(player, "leiji")
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				room:setPlayerMark(player, "FourDedao", 1)
+				room:handleAcquireDetachSkills(player, "leiji")
+			end
 		end
 		return false
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then
-			return false
-		end
-		if player:canWake(self:objectName()) then
-			return true
-		end
-		local symbol = player:getPile("symbol")
-		if symbol:length() >= 3 then
-			return true
-		end
-		return false
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_RoundStart and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
+	
 }
 ZhangJiao_Four:addSkill(FourDedao)
 
@@ -3151,46 +3137,37 @@ DiyBaobian = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local judge = data:toJudge()
-		if judge.reason == "DiyJisu" then
-			local msg = sgs.LogMessage()
-			msg.type = "#DiyBaobian"
-			msg.from = player
-			msg.arg = player:getPile("turn"):length()
-			msg.arg2 = self:objectName()
-			room:sendLog(msg)
-			room:broadcastInvoke("animate", "lightbox:$DiyBaobian:3000")
-			room:getThread():delay(4000)
-			room:setPlayerMark(player, "DiyBaobian", 1)
-			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-				room:setPlayerFlag(player, "DiyBaobian_Process") --防止失去疾速时失去神速
-				room:handleAcquireDetachSkills(player, "-DiyJisu")
-				room:setPlayerFlag(player, "-DiyBaobian_Process")
+		if player:getPile("turn"):length() >= 3 or player:canWake(self:objectName()) then
+			if judge.reason == "DiyJisu" then
 				local msg = sgs.LogMessage()
-				msg.type = "#DiyBaobian_Kingdom"
+				msg.type = "#DiyBaobian"
 				msg.from = player
-				msg.arg = "shu"
+				msg.arg = player:getPile("turn"):length()
+				msg.arg2 = self:objectName()
 				room:sendLog(msg)
-				room:setPlayerProperty(player, "kingdom", sgs.QVariant("shu"))
-				room:handleAcquireDetachSkills(player, "tiaoxin")
-				room:handleAcquireDetachSkills(player, "paoxiao")
-				room:handleAcquireDetachSkills(player, "DiyXX")
+				room:broadcastInvoke("animate", "lightbox:$DiyBaobian:3000")
+				room:getThread():delay(4000)
+				room:setPlayerMark(player, "DiyBaobian", 1)
+				if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+					room:setPlayerFlag(player, "DiyBaobian_Process") --防止失去疾速时失去神速
+					room:handleAcquireDetachSkills(player, "-DiyJisu")
+					room:setPlayerFlag(player, "-DiyBaobian_Process")
+					local msg = sgs.LogMessage()
+					msg.type = "#DiyBaobian_Kingdom"
+					msg.from = player
+					msg.arg = "shu"
+					room:sendLog(msg)
+					room:setPlayerProperty(player, "kingdom", sgs.QVariant("shu"))
+					room:handleAcquireDetachSkills(player, "tiaoxin")
+					room:handleAcquireDetachSkills(player, "paoxiao")
+					room:handleAcquireDetachSkills(player, "DiyXX")
+				end
 			end
-
 			return false
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getMark(self:objectName()) > 0 then
-			return false
-		end
-		if player:canWake(self:objectName()) then
-			return true
-		end
-		local turn = player:getPile("turn")
-		if turn:length() >= 3 then
-			return true
-		end
-		return false
+	can_trigger = function(self, player)
+		return player and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 DiyBaobian_Clear = sgs.CreateTriggerSkill {

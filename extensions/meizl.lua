@@ -3844,6 +3844,18 @@ meizlshangwu = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Start then
+			if (player:getHp() == 2 and player:getMark("meizlshangwu1") == 0) or (player:getHp() == 1 and player:getMark("meizlshangwu2") == 0)  then
+				if player:getHp() == 2 and player:getMark("meizlshangwu1") == 0 then
+					room:addPlayerMark(player, "meizlshangwu_canWake1")
+				end
+				if player:getHp() == 1 and player:getMark("meizlshangwu2") == 0 then
+					room:addPlayerMark(player, "meizlshangwu_canWake2")
+				end
+			end
+			if player:canWake(self:objectName()) then
+				room:addPlayerMark(player, "meizlshangwu_canWake1")
+				room:addPlayerMark(player, "meizlshangwu_canWake2")
+			end
 			if player:getMark("meizlshangwu_canWake1") > 0 and player:getMark("meizlshangwu1") == 0 then
 				room:changeMaxHpForAwakenSkill(player, -1, self:objectName())
 				player:addMark("meizlshangwu1")
@@ -3870,26 +3882,8 @@ meizlshangwu = sgs.CreateTriggerSkill {
 			player:addMark("meizlshangwu")
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if (event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Start) then
-			if player:canWake(self:objectName()) then
-				room:addPlayerMark(player, "meizlshangwu_canWake1")
-				room:addPlayerMark(player, "meizlshangwu_canWake2")
-				return true
-			end
-			if (player:getHp() == 2 and player:getMark("meizlshangwu1") == 0) or (player:getHp() == 1 and player:getMark("meizlshangwu2") == 0) then
-				if player:getHp() == 2 and player:getMark("meizlshangwu1") == 0 then
-					room:addPlayerMark(player, "meizlshangwu_canWake1")
-				end
-				if player:getHp() == 1 and player:getMark("meizlshangwu2") == 0 then
-					room:addPlayerMark(player, "meizlshangwu_canWake2")
-				end
-				return true
-			end
-		elseif event == sgs.Damage then
-			return true
-		end
-		return false
+	can_trigger = function(self, player)
+		return player and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 

@@ -107,37 +107,30 @@ luajuemou = sgs.CreateTriggerSkill { --觉醒 可实现
 	waked_skills = "lualveji_vs",
 	priority = 3,
 	events = { sgs.EventPhaseStart },
-	--[[can_trigger=function(self,player)
-                return player:hasSkill(self:objectName()) and (player:getMark("luajuemou")==0) and player:getPhase() == sgs.Player_Start and player:isWounded()
-        end,]]
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		local log = sgs.LogMessage()
-		log.from = player
-		log.type = "#luaxiaoxi"
-		room:sendLog(log)
-		room:broadcastSkillInvoke("luajuemou") --音效  ok
-		local choice = room:askForChoice(player, self:objectName(), "luajuemouHp+luajuemouCd")
-		if choice == "luajuemouHp" then
-			room:recover(player, sgs.RecoverStruct(player))
-		end
-		if choice == "luajuemouCd" then
-			player:drawCards(2)
-		end
-		if room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) then
-			room:addPlayerMark(player, self:objectName())
-			room:handleAcquireDetachSkills(player, "lualveji_vs")
-			return false
+		if player:isWounded() or player:canWake(self:objectName()) then
+			local log = sgs.LogMessage()
+			log.from = player
+			log.type = "#luaxiaoxi"
+			room:sendLog(log)
+			room:broadcastSkillInvoke("luajuemou") --音效  ok
+			local choice = room:askForChoice(player, self:objectName(), "luajuemouHp+luajuemouCd")
+			if choice == "luajuemouHp" then
+				room:recover(player, sgs.RecoverStruct(player))
+			end
+			if choice == "luajuemouCd" then
+				player:drawCards(2)
+			end
+			if room:changeMaxHpForAwakenSkill(player, 0, self:objectName()) then
+				room:addPlayerMark(player, self:objectName())
+				room:handleAcquireDetachSkills(player, "lualveji_vs")
+				return false
+			end
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then
-			return false
-		end
-		if player:canWake(self:objectName()) then
-			return true
-		end
-		return player:isWounded()
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 lualveji_card = sgs.CreateSkillCard { --略计
@@ -356,34 +349,31 @@ luaxumou = sgs.CreateTriggerSkill { --蓄谋 实现
 
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		local log = sgs.LogMessage()
-		log.from = player
-		log.type = "#luaxumou"
-		room:sendLog(log)
-
-		room:broadcastSkillInvoke("luaxumou") --音效  ok
-		room:addPlayerMark(player, "luaxumou")
-		if room:changeMaxHpForAwakenSkill(player, 1, self:objectName()) then
-			player:drawCards(2)
-			room:handleAcquireDetachSkills(player, "luaguidao")
-			room:handleAcquireDetachSkills(player, "luaqiyi")
-		end
-
-		return false
-	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Start or player:getMark(self:objectName()) > 0 then
-			return false
-		end
-		if player:canWake(self:objectName()) then
-			return true
-		end
+		local can_invoke = true
 		for _, p in sgs.qlist(room:getAlivePlayers()) do
 			if p:getHp() < player:getHp() then
-				return false
+				can_invoke = false
+				break
 			end
 		end
-		return true
+		if can_invoke or player:canWake(self:objectName()) then
+			local log = sgs.LogMessage()
+			log.from = player
+			log.type = "#luaxumou"
+			room:sendLog(log)
+
+			room:broadcastSkillInvoke("luaxumou") --音效  ok
+			room:addPlayerMark(player, "luaxumou")
+			if room:changeMaxHpForAwakenSkill(player, 1, self:objectName()) then
+				player:drawCards(2)
+				room:handleAcquireDetachSkills(player, "luaguidao")
+				room:handleAcquireDetachSkills(player, "luaqiyi")
+			end
+		end
+		return false
+	end,
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 

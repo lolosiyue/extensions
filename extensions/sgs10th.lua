@@ -2980,19 +2980,17 @@ ny_10th_zili = sgs.CreateTriggerSkill {
 	waked_skills = "ny_10th_paiyi",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
-		room:setPlayerMark(player, "ny_10th_zili_waked", 1)
-		room:recover(player, sgs.RecoverStruct(player, nil, 1))
-		player:drawCards(2, self:objectName())
-		room:loseMaxHp(player, 1)
-		room:acquireSkill(player, "ny_10th_paiyi")
-	end,
-	can_wake = function(self, event, player, data, room)
-		local room = player:getRoom()
-		if player:canWake(self:objectName()) then
-			return true
+		if player:getPile("ny_10th_quan"):length() >= 3 or player:canWake(self:objectName()) then
+			room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
+			room:setPlayerMark(player, "ny_10th_zili", 1)
+			room:recover(player, sgs.RecoverStruct(player, nil, 1))
+			player:drawCards(2, self:objectName())
+			room:loseMaxHp(player, 1)
+			room:acquireSkill(player, "ny_10th_paiyi")
 		end
-		return player:getMark("ny_10th_zili_waked") == 0 and player:getPile("ny_10th_quan"):length() >= 3 and player:getPhase() == sgs.Player_Start
+	end,
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 
@@ -3445,80 +3443,72 @@ ny_10th_ligong = sgs.CreateTriggerSkill {
 	priority = 4,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
-		room:setPlayerMark(player, "ny_10th_ligong_waked", 1)
-		room:gainMaxHp(player, 1, self:objectName())
-		room:recover(player, sgs.RecoverStruct(player, nil, 1))
-		room:detachSkillFromPlayer(player, "ny_10th_yishu")
-		local names = {}
-		local all = sgs.Sanguosha:getLimitedGeneralNames("wu")
-		local count = 1000
-		local find = 4
-		while find > 0 do
-			local name = all[math.random(1, #all)]
-			local selected = sgs.Sanguosha:getGeneral(name)
-			if selected:isFemale() then
-				local skill = selected:getVisibleSkillList()
-				local get = false
-				for _, p in sgs.qlist(skill) do
-					local na = p:objectName()
-					if not player:hasSkill(na) then
-						get = true
-						table.insert(names, name)
-						break
+		if player:getMark("SkillDescriptionArg1_ny_tenth_huishu") >= 5 or player:getMark("SkillDescriptionArg2_ny_tenth_huishu") >= 5 or player:getMark("SkillDescriptionArg3_ny_tenth_huishu") >= 5 or player:canWake(self:objectName()) then
+			room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
+			room:setPlayerMark(player, "ny_10th_ligong", 1)
+			room:gainMaxHp(player, 1, self:objectName())
+			room:recover(player, sgs.RecoverStruct(player, nil, 1))
+			room:detachSkillFromPlayer(player, "ny_10th_yishu")
+			local names = {}
+			local all = sgs.Sanguosha:getLimitedGeneralNames("wu")
+			local count = 1000
+			local find = 4
+			while find > 0 do
+				local name = all[math.random(1, #all)]
+				local selected = sgs.Sanguosha:getGeneral(name)
+				if selected:isFemale() then
+					local skill = selected:getVisibleSkillList()
+					local get = false
+					for _, p in sgs.qlist(skill) do
+						local na = p:objectName()
+						if not player:hasSkill(na) then
+							get = true
+							table.insert(names, name)
+							break
+						end
+					end
+					if get then
+						find = find - 1
 					end
 				end
-				if get then
-					find = find - 1
+				count = count - 1
+				if count <= 0 then
+					break
 				end
 			end
-			count = count - 1
-			if count <= 0 then
-				break
-			end
-		end
-		if #names == 0 then
-			player:drawCards(3, self:objectName())
-			return false
-		end
-		for i = 1, 2, 1 do
-			local hero = sgs.Sanguosha:getGeneral(room:askForGeneral(player, table.concat(names, "+")))
-			local skills = hero:getVisibleSkillList()
-			local skillnames = {}
-			for _, s in sgs.qlist(skills) do
-				local skillname = s:objectName()
-				if not player:hasSkill(skillname) then
-					table.insert(skillnames, skillname)
-				end
-			end
-			table.insert(skillnames, "cancel")
-			local choices = table.concat(skillnames, "+")
-			local skill = room:askForChoice(player, self:objectName(), choices)
-			if skill == "cancel" then
-				if i == 1 then
-					player:drawCards(3, self:objectName())
-				end
+			if #names == 0 then
+				player:drawCards(3, self:objectName())
 				return false
-			else
-				if i == 1 then
-					room:detachSkillFromPlayer(player, "ny_tenth_huishu")
+			end
+			for i = 1, 2, 1 do
+				local hero = sgs.Sanguosha:getGeneral(room:askForGeneral(player, table.concat(names, "+")))
+				local skills = hero:getVisibleSkillList()
+				local skillnames = {}
+				for _, s in sgs.qlist(skills) do
+					local skillname = s:objectName()
+					if not player:hasSkill(skillname) then
+						table.insert(skillnames, skillname)
+					end
 				end
-				room:acquireSkill(player, skill)
+				table.insert(skillnames, "cancel")
+				local choices = table.concat(skillnames, "+")
+				local skill = room:askForChoice(player, self:objectName(), choices)
+				if skill == "cancel" then
+					if i == 1 then
+						player:drawCards(3, self:objectName())
+					end
+					return false
+				else
+					if i == 1 then
+						room:detachSkillFromPlayer(player, "ny_tenth_huishu")
+					end
+					room:acquireSkill(player, skill)
+				end
 			end
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		local room = player:getRoom()
-		if player:canWake(self:objectName()) then
-			return true
-		end
-		if not player:hasSkill("ny_tenth_huishu") then
-			return false
-		end
-		if player:getMark("SkillDescriptionArg1_ny_tenth_huishu") < 5 and player:getMark("SkillDescriptionArg2_ny_tenth_huishu") < 5 and player:getMark("SkillDescriptionArg3_ny_tenth_huishu") < 5 then
-			return false
-		end
-		return player:getMark("ny_10th_ligong_waked") == 0 and player:getPhase() == sgs.Player_Start
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
 }
 

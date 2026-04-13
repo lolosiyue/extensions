@@ -1767,37 +1767,29 @@ LuaJianzhi = sgs.CreateTriggerSkill {
 	waked_skills = "luajianyu,LuaChitian",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-			room:doLightbox("LuaJianzhi$", 2500)
-			room:broadcastSkillInvoke("LuaJianzhi")
-			room:handleAcquireDetachSkills(player, "luajianyu")
-			room:handleAcquireDetachSkills(player, "LuaChitian")
-			room:addPlayerMark(player, "LuaJianzhi")
-			local targets = room:getOtherPlayers(player)
-			for _, t in sgs.qlist(targets) do
-				if not t:isKongcheng() then
-					local id = room:askForCardChosen(player, t, "h", "LuaJianzhi")
-					player:addToPile("yong", id)
+		if player:getPile("yong"):length() >= 2 or player:canWake(self:objectName()) then
+			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
+				room:doLightbox("LuaJianzhi$", 2500)
+				room:broadcastSkillInvoke("LuaJianzhi")
+				room:handleAcquireDetachSkills(player, "luajianyu")
+				room:handleAcquireDetachSkills(player, "LuaChitian")
+				room:addPlayerMark(player, "LuaJianzhi")
+				local targets = room:getOtherPlayers(player)
+				for _, t in sgs.qlist(targets) do
+					if not t:isKongcheng() then
+						local id = room:askForCardChosen(player, t, "h", "LuaJianzhi")
+						player:addToPile("yong", id)
+					end
 				end
+				local playerdata = sgs.QVariant()
+				playerdata:setValue(player)
+				room:setTag("LuaJianzhiTarget", playerdata)
 			end
-			local playerdata = sgs.QVariant()
-			playerdata:setValue(player)
-			room:setTag("LuaJianzhiTarget", playerdata)
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Finish or player:getMark(self:objectName()) > 0 then
-			return false
-		end
-		if player:canWake(self:objectName()) then
-			return true
-		end
-		if player:getPile("yong"):length() >= 2 then
-			return true
-		end
-		return false
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Finish and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
 	end,
-
 }
 LuaJianzhiGive = sgs.CreateTriggerSkill {
 	name = "#LuaJianzhiGive",
@@ -1906,45 +1898,38 @@ LuaRedoWake = sgs.CreateTriggerSkill {
 	events = { sgs.EventPhaseStart },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
-		player:loseAllMarks("@Chamber")
-		room:addPlayerMark(player, "LuaRedoWake")
-		local wakercv = sgs.RecoverStruct()
-		wakercv.recover = 1
-		wakercv.who = player
-		room:recover(player, wakercv)
-		local targets = room:getOtherPlayers(player)
-		local dest = room:askForPlayerChosen(player, targets, self:objectName())
-		local qbd = sgs.DamageStruct()
-		qbd.from = player
-		qbd.to = dest
-		qbd.damage = 3
-		qbd.nature = sgs.DamageStruct_Thunder
-		room:broadcastSkillInvoke("LuaRedoWake")
-		room:doLightbox("$LuaRedoWake", 3600)
-		room:damage(qbd)
-		if player:hasSkill("LuaGaoxiao") then
-			room:detachSkillFromPlayer(player, "LuaGaoxiao")
-		end
-		if player:hasSkill("LuaGaokang") then
-			room:detachSkillFromPlayer(player, "LuaGaokang")
-		end
-		if player:hasSkill("LuaJiguangAsk") then
-			room:detachSkillFromPlayer(player, "LuaJiguangAsk")
+		if player:getHp() == 1 or player:canWake(self:objectName()) then
+			room:changeMaxHpForAwakenSkill(player, 0, self:objectName())
+			player:loseAllMarks("@Chamber")
+			room:addPlayerMark(player, "LuaRedoWake")
+			local wakercv = sgs.RecoverStruct()
+			wakercv.recover = 1
+			wakercv.who = player
+			room:recover(player, wakercv)
+			local targets = room:getOtherPlayers(player)
+			local dest = room:askForPlayerChosen(player, targets, self:objectName())
+			local qbd = sgs.DamageStruct()
+			qbd.from = player
+			qbd.to = dest
+			qbd.damage = 3
+			qbd.nature = sgs.DamageStruct_Thunder
+			room:broadcastSkillInvoke("LuaRedoWake")
+			room:doLightbox("$LuaRedoWake", 3600)
+			room:damage(qbd)
+			if player:hasSkill("LuaGaoxiao") then
+				room:detachSkillFromPlayer(player, "LuaGaoxiao")
+			end
+			if player:hasSkill("LuaGaokang") then
+				room:detachSkillFromPlayer(player, "LuaGaokang")
+			end
+			if player:hasSkill("LuaJiguangAsk") then
+				room:detachSkillFromPlayer(player, "LuaJiguangAsk")
+			end
 		end
 	end,
-	can_wake = function(self, event, player, data, room)
-		if player:getPhase() ~= sgs.Player_Play or player:getMark(self:objectName()) > 0 then
-			return false
-		end
-		if player:canWake(self:objectName()) then
-			return true
-		end
-		if player:getHp() == 1 then
-			return true
-		end
-		return false
-	end
+	can_trigger = function(self, player)
+		return player and player:getPhase() == sgs.Player_Play and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
+	end,
 }
 --------------------------------------------------------------钱伯@redo
 LuaChamberStart = sgs.CreateTriggerSkill {
