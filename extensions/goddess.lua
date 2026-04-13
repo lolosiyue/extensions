@@ -1706,7 +1706,7 @@ RemoveGeneral_Skill = sgs.CreateTriggerSkill{
 				msg.type = "#RemoveGeneralBack"
 				msg.from = player
 				room:sendLog(msg)
-				return true
+				-- return true
 			end
 		end
 	end,

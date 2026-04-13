@@ -12117,9 +12117,20 @@ s4_zongzi_buff = sgs.CreateTargetModSkill{
     end,
 }
 
+s4_zongzi_cardmax = sgs.CreateMaxCardsSkill{
+    name = "#s4_zongzi_cardmax",
+    extra_func = function(self, target)
+        if target and target:hasSkill("s4_zongzi") and target:getMark("s4_zongzi+cardmax+sys_-Clear") > 0 then
+            return -target:getMark("s4_zongzi+cardmax+sys_-Clear")
+        else
+            return 0
+        end
+    end,
+}
+
 s4_zongzi = sgs.CreateTriggerSkill{
     name = "s4_zongzi",
-    frequency = sgs.Skill_Frequent,
+    frequency = sgs.Skill_NotFrequent,
     events = {sgs.EventPhaseProceeding, sgs.CardUsed},
     on_trigger = function(self, event, player, data, room)
         if event == sgs.EventPhaseProceeding and player:getPhase() == sgs.Player_Start then
@@ -12128,7 +12139,7 @@ s4_zongzi = sgs.CreateTriggerSkill{
                 local x = math.max(1, player:getJudgingArea():length())
                 player:drawCards(x, self:objectName())
                 room:addPlayerMark(player, "&s4_zongzi+sys_-Clear", x)
-                room:addMaxCards(player, -x, true, self:objectName())
+                room:addPlayerMark(player, "s4_zongzi+cardmax+sys_-Clear", x)
             end
         elseif event == sgs.CardUsed then
             local use = data:toCardUse()
@@ -12313,12 +12324,14 @@ s4_moubei = sgs.CreateZeroCardViewAsSkill{
 }
 
 s4_zhonghui:addSkill(s4_zongzi)
+s4_zhonghui:addSkill(s4_zongzi_cardmax)
 s4_zhonghui:addSkill(s4_zongzi_buff)
 extension:insertRelatedSkills("s4_zongzi", "#s4_zongzi_buff")
+extension:insertRelatedSkills("s4_zongzi", "#s4_zongzi_cardmax")
 s4_zhonghui:addSkill(s4_jieyi)
 s4_zhonghui:addSkill(s4_moubei)
 if not sgs.Sanguosha:getSkill("s4_moubeivs") then s4_skillList:append(s4_moubeivs) end
-    
+sgs.Sanguosha:addResourceAlias("generals", "s4_zhonghui", "heg_zhonghui")
 
 sgs.LoadTranslationTable {
     ["s4_zhonghui"] = "钟会",
@@ -12327,6 +12340,9 @@ sgs.LoadTranslationTable {
     ["~s4_zhonghui"] = "",
     ["s4_zongzi"] = "纵恣",
     [":s4_zongzi"] = "准备阶段，你可以摸X张牌，若如此做，本回合的出牌阶段你使用前X张牌无距离和次数限制且不能被响应，手牌上限-X（X为你判定区里的牌数且至少为1）。",
+    [":&s4_zongzi"] = "本回合的出牌阶段你使用前 %src 张牌无距离和次数限制且不能被响应，手牌上限- %src",
+    ["#s4_zongzi_cardmax"] = "纵恣",
+    
     ["s4_jieyi"] = "讦异",
     [":s4_jieyi"] = "你参与议事结束后，你可以用与你意见不同的角色的各一张手牌蓄谋；判定阶段结束时，你可以对至多X名角色各造成1点伤害（X为本阶段不因使用而置入弃置堆的蓄谋牌数）。",
 	["@s4_jieyi"] = "讦异：请选择至多%src名角色各造成1点伤害",

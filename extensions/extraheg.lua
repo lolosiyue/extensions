@@ -560,7 +560,7 @@ hezong_on_trigger = sgs.CreateTriggerSkill{
 				for _,id in sgs.qlist(move.card_ids)do
 					if player:handCards():contains(id) then
 						if player:getPhase()==sgs.Player_Play
-						and CardIsHezong(id) and not player:hasSkill("heg_transfer",true)
+						and CardIsHezong(id) and not player:hasSkill("heg_transfer")
 						then 
 							room:attachSkillToPlayer(player,"heg_transfer")
 							break
@@ -572,7 +572,7 @@ hezong_on_trigger = sgs.CreateTriggerSkill{
 			-- 出牌阶段开始时检查是否有合纵牌
 			if player:getPhase()==sgs.Player_Play then
 				for _,c in sgs.qlist(player:getHandcards())do
-					if CardIsHezong(c) and not player:hasSkill("heg_transfer",true)
+					if CardIsHezong(c) and not player:hasSkill("heg_transfer")
 					then 
 						room:attachSkillToPlayer(player,"heg_transfer")
 						break
@@ -581,7 +581,7 @@ hezong_on_trigger = sgs.CreateTriggerSkill{
 			end
 		elseif event==sgs.EventPhaseEnd then
 			-- 回合结束时移除合纵技能
-			if player:hasSkill("heg_transfer",true) then
+			if player:hasSkill("heg_transfer") then
 				room:detachSkillFromPlayer(player,"heg_transfer",true,true)
 			end
 		end

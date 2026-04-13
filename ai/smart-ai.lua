@@ -118,6 +118,7 @@ sgs.ai_target_recommend =		{}  -- 目標推薦邏輯
 sgs.drawSkillsList =			{}  -- 給牌類技能列表，用於checkIsDrawCard判斷
 sgs.damageSkillsList =			{}  -- 傷害類技能列表，用於checkIsDamageCard判斷
 sgs.buffSkillsList =			{}  -- 增益類技能列表，用於checkIsBuff判斷
+sgs.ai_voluntary_give_skills =	{}  -- 可自行選擇給牌的技能名白名單（不會更新仇恨）
 sgs.debuffSkillsList =			{}  -- 減益類技能列表，用於checkIsDebuff判斷
 sgs.recoverSkillsList =			{}  -- 回復類技能列表，用於checkIsRecover判斷
 sgs.decreaseSkillsList =		{}  -- 減少手牌/裝備類技能列表，用於checkIsDecreaseCard判斷
@@ -208,6 +209,23 @@ do
 	sgs.hit_skill = "wushuang|fuqi|tenyearfuqi|zhuandui|tieji|nostieji|dahe|olqianxi|qianxi|tenyearjianchu|oljianchu|"..
 					"wenji|tenyearbenxi|mobileliyong|olwushen|tenyearliegong|liegong|kofliegong|tenyearqingxi|wanglie|"..
 					"conqueror|zhaxiang|tenyearyijue|yijue|xiongluan|xiying|"
+
+	-- 翻面类技能列表
+	sgs.turnOverSkillsList = {
+		"jushou", "nosjushou", "neojushou", "super_jushou",
+		"fangzhu", "mobilefangzhu", "mobilemoufangzhu", "jilve_mobilefangzhu",
+		"jiushi", "mobilejiushi", "qljiushi", "oljiushi",
+		"junxing", "mobilejunxing",
+		"olxingwu", "lulve", "caiyi", "daili", "shisuan", "jiusi",
+		"mobilexincunsi", "mobilexinguixiu",
+		"mobilemoushensu", "mobileshensu",
+		"guixin", "newguixin", "shenfen", "szfscliu",
+		"olshebian", "olrenxin", "nosrenxin",
+		"olfuli", "mobilefuli", "mobilebeige",
+		"biejun", "pojun", "cangni",
+		"jghuodi", "jgdidong", "jgdixian", "jglingyu", "bossdidong", "boss_xushi",
+		"mobilemouqiaomeng", "fuji", "zhanlie"
+	}
 	
 	sgs.Friend_All = 0
 	sgs.Friend_Draw = 1
@@ -434,8 +452,9 @@ function sgs.getValue(player)
 	return player:getHp()*2+player:getHandcardNum()+player:getHandPile():length()
 end
 
-local function gdt(di)
+function gdt(di)
 	local n = 0
+	if #di==0 then return 0 end
 	for _,x in ipairs(di)do
 		n = n+x
 	end
@@ -2358,21 +2377,22 @@ function SmartAI:filterEvent(event,player,data)
 						end
 					end
 				end
+				local give_by_reason = bit32.band(move.reason.m_reason,sgs.CardMoveReason_S_MASK_BASIC_REASON)==sgs.CardMoveReason_S_REASON_GIVE
+				local give_by_present = move.to and move.to:getTag("PresentCard"):toString()==mc:toString()
 				if move.to and move.to:objectName()==player:objectName()
-				and (move.reason.m_reason==sgs.CardMoveReason_S_REASON_GIVE or move.to:getTag("PresentCard"):toString()==mc:toString()) then
-					local m_player = BeMan(self.room,move.reason.m_playerId)
-					if m_player then
-						local mpl = -33
-						if move.to_place~=sgs.Player_PlaceHand or mc:hasFlag("visible") then
-							if #self:poisonCards({mc})>0 then mpl = 33
-							else mpl = -self:getUseValue(mc)*2 end
+				and (give_by_reason or give_by_present) then
+					local skill_name = move.reason.m_skillName
+					local can_update_intention = give_by_present or (give_by_reason and (skill_name=="" or not table.contains(sgs.ai_voluntary_give_skills,skill_name)))
+					if can_update_intention then
+						local m_player = BeMan(self.room,move.reason.m_playerId)
+						if m_player then
+							local mpl = -33
+							if move.to_place~=sgs.Player_PlaceHand or mc:hasFlag("visible") then
+								if #self:poisonCards({mc})>0 then mpl = 33
+								else mpl = -self:getUseValue(mc)*2 end
+							end
+							sgs.updateIntention(m_player,player,mpl)
 						end
-						if move.reason.m_skillName=="zd_shengdongjixi"  then mpl = 0 end--add
-						if move.reason.m_skillName=="yj_tuixinzhifu"  then mpl = 0 end--add
-						if move.reason.m_skillName=="god_flower"  then mpl = 0 end--add
-						if move.reason.m_skillName=="_kecheng_tuixinzhifu"  then mpl = 0 end--add
-						if move.reason.m_skillName=="god_edict"  then mpl = 0 end--add
-						sgs.updateIntention(m_player,player,mpl)
 					end
 				end
 				if mf==nil then continue end

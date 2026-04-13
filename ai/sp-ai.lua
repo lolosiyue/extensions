@@ -5534,6 +5534,68 @@ sgs.ai_use_revises.jili = function(self,card,use)
 	end
 end
 
+
+-- 蒺藜：调整打牌优先级，让AI更好地触发技能
+sgs.ai_card_priority.jili = function(self, card, v)
+	local mark = self.player:getMark("jili-Clear")  -- 已出牌数
+	
+	-- 调试信息
+	--self.room:writeToConsole("=== 蒺藜AI调试 ===")
+	--self.room:writeToConsole("当前牌: " .. card:objectName())
+	--self.room:writeToConsole("已出牌数: " .. mark)
+	--self.room:writeToConsole("原优先级: " .. v)
+	
+	-- 只对武器牌进行优先级调整
+	if card:isKindOf("Weapon") then
+		local r = card:getRealCard():toWeapon():getRange()  -- 武器攻击范围
+		--self.room:writeToConsole("武器攻击范围: " .. r)
+		
+		-- 如果出这张武器后，再出一张就触发蒺藜（已出牌+2 == 武器攻击范围）
+		-- 说明这是"倒数第二张"，应该优先出
+		if mark + 2 == r then
+			--self.room:writeToConsole("【触发】出这张武器后再出一张就触发蒺藜，优先级设为最高(99)")
+			return 99  -- 拉到最高优先级
+		end
+	end
+	
+	--self.room:writeToConsole("不触发蒺藜优先级调整，保持原优先级")
+	return v
+end
+
+-- 蒺藜：卡牌使用策略 - 完整接管武器装备决策
+sgs.ai_skill_carduse.jili = function(self, card, use)
+	if not card:isKindOf("Weapon") then
+		return false  -- 只处理武器，其他牌用通用逻辑
+	end
+	
+	local mark = self.player:getMark("jili-Clear")
+	local r = card:getRealCard():toWeapon():getRange()
+	local same = self:getSameEquip(card)
+	local gof = self:getOverflow()
+	
+	--self.room:writeToConsole(">>> 【蒺藜卡牌策略】处理武器: " .. card:objectName())
+	--self.room:writeToConsole("    已出牌: " .. mark .. ", 武器范围: " .. r .. ", 溢出: " .. gof)
+	
+	-- 如果换武器后再出一张就触发蒺藜
+	if mark + 2 == r then
+		--self.room:writeToConsole("    ★ 换武器后再出一张就触发蒺藜！")
+		
+		if gof > 0 then  -- 至少有溢出牌可以出
+			-- 触发蒺藜的收益远大于武器强度差异，直接换！
+			--self.room:writeToConsole("    ✓ 为触发蒺藜换武器（接管决策）")
+			use.card = card
+			return true  -- 接管，强制换武器
+		else
+			--self.room:writeToConsole("    × 没有溢出牌，即使换了也无法触发（接管决策）")
+			return true  -- 接管，决定不换
+		end
+	end
+	
+	--self.room:writeToConsole("    不满足蒺藜特殊条件，使用通用逻辑")
+	return false  -- 不接管，用通用的useEquipCard逻辑
+end
+
+
 --翊赞
 local yizan_skill = {}
 yizan_skill.name = "yizan"
@@ -9680,6 +9742,77 @@ sgs.ai_use_revises.limu = function(self,card,use)
 		end
 	end
 end
+
+-- 立牧：武器装备策略
+sgs.ai_skill_carduse.limu = function(self, card, use)
+	if not card:isKindOf("Weapon") then
+		return false  -- 只处理武器
+	end
+	
+	local has_xuanjian = self.player:hasWeapon("_xuanjian")
+	local has_spear = self.player:hasWeapon("spear")
+	
+	--self.room:writeToConsole(">>> 【立牧】武器策略: " .. card:objectName())
+	--self.room:writeToConsole("    当前武器: 玄剑=" .. (has_xuanjian and "是" or "否") .. ", 丈八=" .. (has_spear and "是" or "否"))
+	
+	-- 1. 装备玄剑时，不换其他武器
+	if has_xuanjian then
+		--self.room:writeToConsole("    × 已装备玄剑，不换武器")
+		return true  -- 接管决策（不换）
+	end
+	
+	-- 2. 装备丈八时，只能换玄剑
+	if has_spear then
+		if card:objectName() == "_xuanjian" then
+			--self.room:writeToConsole("    ✓ 从丈八换成玄剑")
+			use.card = card
+			return true  -- 接管（换成玄剑）
+		else
+			--self.room:writeToConsole("    × 已装备丈八，只能换玄剑")
+			return true  -- 接管（不换其他武器）
+		end
+	end
+	
+	-- 3. 优先装备玄剑或丈八
+	if card:objectName() == "_xuanjian" or card:objectName() == "spear" then
+		--self.room:writeToConsole("    ✓ 装备玄剑/丈八")
+		use.card = card
+		return true  -- 接管（强制装备）
+	end
+	
+	return false  -- 不接管，用通用逻辑
+end
+
+-- 立牧：卡牌优先级调整
+sgs.ai_card_priority.limu = function(self, card, v)
+	-- 当有玄剑或丈八时，提高它们的优先级
+	if card:objectName() == "_xuanjian" then
+		--self.room:writeToConsole(">>> 【立牧】玄剑优先级提高")
+		return v + 5
+	end
+	
+	if card:objectName() == "spear" then
+		--self.room:writeToConsole(">>> 【立牧】丈八优先级提高")
+		return v + 4
+	end
+	
+	-- 当装备玄剑或丈八时，杀的优先级提高（无限次数）
+	if self.player:hasWeapon("_xuanjian") or self.player:hasWeapon("spear") then
+		if card:isKindOf("Slash") then
+			return v + 3
+		end
+	end
+	
+	-- 当有玄剑或丈八时，立牧能用就用（方片优先级提高）
+	if (self.player:hasWeapon("_xuanjian") or self.player:hasWeapon("spear")) 
+	   and card:getSuit() == sgs.Card_Diamond then
+		--self.room:writeToConsole(">>> 【立牧】有核心武器，方片优先级提高")
+		return v + 2
+	end
+	
+	return v
+end
+
 
 --力激
 local liji_skill = {}
