@@ -487,6 +487,8 @@ function SmartAI:useCardSlash(card,use)
 		end
 		if use.to:length()>extraTarget then return true end
 		if CanToCard(use.card or card,self.player,target)
+		and not self:slashProhibit(use.card or card,target,self.player)
+		and self:slashIsEffective(use.card or card,target,self.player)
 		and self:ajustDamage(self.player,target,1,use.card or card)~=0 then
 			if card:isKindOf("NatureSlash")
 			and hasChainEffect(target,self.player) then

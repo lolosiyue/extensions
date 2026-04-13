@@ -103,7 +103,7 @@ end
 ---
 --- **注意**：這會匹配到部分包含的名稱（例如搜索 "ji" 會匹配到 "jizhi" 和 "jishi"），若需精確匹配請使用原生 `player:hasSkill(name)`。
 ---
----@param player sgs.ServerPlayer 待檢查的玩家
+---@param player ServerPlayer 待檢查的玩家
 ---@param name string 要搜索的技能名稱關鍵字
 ---@return boolean 是否存在符合條件的技能
 function hasSameNameSkill(player, name)

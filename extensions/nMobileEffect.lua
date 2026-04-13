@@ -38,8 +38,8 @@ n_trig = sgs.CreateTriggerSkill{
 			end
 		elseif event == sgs.GameOverJudge then
 			local current = room:getCurrent()
-			room:addPlayerMark(current,"havekilled",1)
-			local x = current:getMark("havekilled")
+			room:addPlayerMark(current,"havekilled-Clear",1)
+			local x = current:getMark("havekilled-Clear")
 			if room:getAllPlayers(true):length()-room:alivePlayerCount()==1
 			then sgs.Sanguosha:playSystemAudioEffect("yipo") end
 			if x>1 and x<8 then
@@ -48,7 +48,7 @@ n_trig = sgs.CreateTriggerSkill{
 			end
 		elseif event == sgs.EventPhaseStart then
 			if player:getPhase() == sgs.Player_NotActive then
-				room:setPlayerMark(player,"havekilled",0)
+				room:setPlayerMark(player,"havekilled-Clear",0)
 				for _,p in sgs.qlist(room:getAlivePlayers())do
 					room:setPlayerMark(p,"healed",0)
 					room:setPlayerMark(p,"Nohealed",0)
@@ -119,8 +119,8 @@ n_mobile_effect = sgs.CreateTriggerSkill{
 			if damage.from then room:setPlayerMark(damage.from,"mobile_damage",0) end
         elseif event == sgs.GameOverJudge then
             local current = room:getCurrent()
-			room:addPlayerMark(current,"havekilled",1)
-			local x = current:getMark("havekilled")
+			room:addPlayerMark(current,"havekilled-Clear",1)
+			local x = current:getMark("havekilled-Clear")
 			if not room:getTag("FirstBlood"):toBool() then
                 room:setTag("FirstBlood",sgs.QVariant(true))
 				room:doAnimate(2,"skill=FirstBlood:mbjs","")

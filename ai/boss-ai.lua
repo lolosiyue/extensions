@@ -36,6 +36,13 @@ sgs.ai_skill_playerchosen.bossxiaoshou = function(self,targets)
 	end
 end
 
+if not table.contains(sgs.ai_voluntary_give_skills,"god_edict") then
+	table.insert(sgs.ai_voluntary_give_skills,"god_edict")
+end
+if not table.contains(sgs.ai_voluntary_give_skills,"god_flower") then
+	table.insert(sgs.ai_voluntary_give_skills,"god_flower")
+end
+
 sgs.ai_armor_value.bossmanjia = function(player,self,card)
 	if not card then return sgs.ai_armor_value.vine(player,self) end
 end

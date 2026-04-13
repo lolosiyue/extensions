@@ -5,7 +5,7 @@ extension = sgs.Package("AnimationCardpack", sgs.Package_CardPack)
 --- 
 --- **功能描述**：
 --- 用於判定該玩家是否受到【修學旅行】的負面（或保護）效果影響。
----@param player sgs.ServerPlayer 待檢查的玩家
+---@param player ServerPlayer 待檢查的玩家
 ---@return boolean 是否含有該延時錦囊
 function hasRemoved(player)
 	if player:containsTrick("shuugakulyukou") then
@@ -1039,7 +1039,7 @@ rotenburo = sgs.CreateTrickCard{
 ---
 ---@param ids sgs.IntList | sgs.QList 要移動的卡牌 ID 列表
 ---@param movein boolean `true` 為移入整理牌堆；`false` 為移出
----@param player sgs.ServerPlayer 卡牌所屬的玩家
+---@param player ServerPlayer 卡牌所屬的玩家
 function arrangementMove(ids, movein, player)
 	local room = player:getRoom()
 	if movein then

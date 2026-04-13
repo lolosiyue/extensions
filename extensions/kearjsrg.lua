@@ -960,7 +960,7 @@ keqimingshi = sgs.CreateTriggerSkill {
 keqikongrong:addSkill(keqimingshi)
 
 ---@class YishiData
----@field from sgs.ServerPlayer 議事的發起者
+---@field from ServerPlayer 議事的發起者
 ---@field tos string[]|sgs.PlayerList 參與議事的目標角色
 ---@field reason string 議事的緣由/技能名
 ---@field effect fun(data: YishiData) 議事結束後執行的回呼函數
@@ -9317,7 +9317,7 @@ kehexumouuse = sgs.CreateTriggerSkill {
 extension_he:addSkills(kehexumouuse)
 
 ---將一張手牌扣置於判定區內作為「蓄謀牌」
----@param player sgs.ServerPlayer 執行蓄謀的角色
+---@param player ServerPlayer 執行蓄謀的角色
 ---@param card sgs.Card 要蓄謀的卡牌
 ---@return boolean 是否成功執行蓄謀
 function xumouCard(player, card)

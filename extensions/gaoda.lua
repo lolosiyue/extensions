@@ -1195,6 +1195,7 @@ burstrecord = sgs.CreateTriggerSkill{
 		return burst_system == true
 	end,
 	on_trigger = function(self, event, player, data)
+		if not player then return false end
 		local room = player:getRoom()
 		local damage = data:toDamage()
 		if (event == sgs.Damage and damage.from and damage.from:objectName() == player:objectName()) or

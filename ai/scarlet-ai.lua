@@ -3278,6 +3278,15 @@ sgs.ai_skill_choice.s4_silie = function(self, choices, data)
     return "s4_silie_draw"
 end
 
+sgs.ai_skill_invoke.s4_zongzi = function(self, data)
+    return not self:willSkipPlayPhase(self.player)
+end
+
+sgs.ai_card_priority.s4_zongzi = function(self,card,v)
+	if card:isDamageCard() and self.player:getMark("&s4_zongzi+sys_-Clear") > 0
+	then return 5 end
+end
+
 sgs.ai_skill_invoke.s4_jieyi = function(self, data)
 	local str = data:toString()
 	local strs = str:split(":")
@@ -3414,3 +3423,8 @@ sgs.ai_skill_playerchosen.s4_moubei = function(self, targets)
 end
 
 sgs.ai_playerchosen_intention.s4_moubei = -30
+
+if not table.contains(sgs.ai_voluntary_give_skills,"s4_moubei") then
+	table.insert(sgs.ai_voluntary_give_skills,"s4_moubei")
+end
+

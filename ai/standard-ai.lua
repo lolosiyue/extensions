@@ -2882,6 +2882,28 @@ end
 
 sgs.dynamic_value.benefit.RendeCard = true
 
+
+-- 仁德：有rende技能的角色，给他牌后他可以给回来（相当于帮他凑仁德回血）
+-- 适用场景：其他角色给牌时，优先考虑有rende且需要回血的友方
+sgs.ai_target_recommend["rende"] = function(self, from, to, card, skill_owner)
+	-- 只对摸牌行为生效
+	if not self:checkIsDrawCard(card) then
+		return 0
+	end
+	
+	-- to必须有rende技能
+	if not to:hasSkill("rende") then
+		return 0
+	end
+	
+	-- to已受伤，给他牌可以帮他凑仁德回血（不管这回合用没用完，下回合也能给回来）
+	if to:isWounded() then
+		return 2  -- 推荐
+	end
+	
+	return 0
+end
+
 sgs.ai_skill_use["@@rende"] = function(self,prompt)
 	local cards = {}
 	for _,h in sgs.list(self.player:getHandcards())do

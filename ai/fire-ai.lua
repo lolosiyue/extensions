@@ -72,6 +72,8 @@ sgs.ai_playerchosen_intention.quhu = 80
 sgs.ai_card_intention.QuhuCard = 0
 sgs.dynamic_value.control_card.QuhuCard = true
 
+table.insert(sgs.damageSkillsList, "quhu")
+
 sgs.ai_skill_playerchosen.jieming = function(self,targets)
 	local friends = {}
 	for _,player in sgs.list(self.friends)do
@@ -156,6 +158,7 @@ sgs.ai_can_damagehp.jieming = function(self,from,card,to)
 	end
 end
 
+table.insert(sgs.drawSkillsList, "jieming")
 
 local qiangxi_skill = {}
 qiangxi_skill.name= "qiangxi"

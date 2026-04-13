@@ -165,6 +165,8 @@ sgs.ai_playerchosen_intention.mobilejieming = function(self,from,to)
 	end
 end
 
+table.insert(sgs.drawSkillsList, "mobilejieming")
+
 --涅槃
 sgs.ai_skill_invoke.mobileniepan = function(self,data)
 	return sgs.ai_skill_invoke.niepan(self,data)
