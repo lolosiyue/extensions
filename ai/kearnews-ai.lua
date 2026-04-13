@@ -1295,29 +1295,6 @@ end
 
 sgs.ai_playerchosen_intention["kejwkuitian"] = 50
 
-local function chsize(tmp)
-	if not tmp then
-		return 0
-    elseif tmp > 240 then
-        return 4
-    elseif tmp > 225 then
-        return 3
-    elseif tmp > 192 then
-        return 2
-    else
-        return 1
-    end
-end
-local function utf8len(str)
-	local length = 0
-	local currentIndex = 1
-	while currentIndex <= #str do
-		local tmp = string.byte(str, currentIndex)
-		currentIndex  = currentIndex + chsize(tmp)
-		length = length + 1
-	end
-	return length
-end
 sgs.ai_card_priority.kemingding = function(self,card,v)
 	if (self.player:getMark("&kemingding-Clear") + 1 == utf8len(sgs.Sanguosha:translate(card:objectName()))) then return 10 end
 end

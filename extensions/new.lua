@@ -1283,21 +1283,6 @@ luafentian = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data) end,
 }
 
-function strcontain(a, b)
-	if a == "" then
-		return false
-	end
-	local c = a:split("+")
-	local k = false
-	for i = 1, #c, 1 do
-		if a[i] == b then
-			k = true
-			break
-		end
-	end
-	return k
-end
-
 lualianji = sgs.CreateTriggerSkill {
 	name = "lualianji",
 	frequency = sgs.Skill_NotFrequent,

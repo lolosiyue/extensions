@@ -28,10 +28,19 @@ local reward_types = {
 	"re_type19",
 } --奖励类型
 
-function checkLength(check_table) --检测table是否为空并返回对应值
+local function checkLength(check_table) --检测table是否为空并返回对应值
 	return #check_table > 0 and table.concat(check_table, ",") or "NULL"
 end
 
+--- 從摸牌堆中隨機選擇一張指定類型的裝備牌並直接使用（裝備）
+--- 
+--- **機制描述**：
+--- 1. 遍歷當前摸牌堆 (`getDrawPile`)。
+--- 2. 過濾出符合 `pattern` 的卡牌。
+--- 3. 隨機抽取一張，並由玩家發動 `useCard`。
+--- 
+---@param player ServerPlayer 使用裝備的玩家
+---@param pattern? string (可選) 卡牌類型標識符（如 "Weapon", "Armor", "Horse"），預設為 "EquipCard"
 function useEquip(player, pattern) --随机使用牌堆中的武器牌
 	if pattern == nil then
 		pattern = "EquipCard"
@@ -49,6 +58,13 @@ function useEquip(player, pattern) --随机使用牌堆中的武器牌
 	end
 end
 
+--- **核心技巧**：
+--- 使用了 `DummyCard` 策略。將隨機抽取的卡牌 ID 作為子卡 (`addSubcard`) 放入一個虛擬牌中，
+--- 透過一次性 `obtainCard` 將所有子卡移入玩家手牌，並銷毀虛擬牌。
+--- 
+---@param player ServerPlayer 獲得卡牌的玩家
+---@param pattern? string (可選) 卡牌類型（如 "Slash", "TrickCard"），預設為 "BasicCard"
+---@param num? integer (可選) 獲得的數量，預設為 1
 function gainCardRandomly(player, pattern, num)
 	if pattern == nil then
 		pattern = "BasicCard"
@@ -78,19 +94,28 @@ function gainCardRandomly(player, pattern, num)
 	end
 end
 
-function judgeHp(player, general_name, fixed)
+local function judgeHp(player, general_name, fixed)
 	if fixed == nil then
 		fixed = 0
 	end
 	local room = player:getRoom()
-	local startingHp = player:getMaxHp()
-	if general_name == "shenganning" then
-		startingHp = 3 + fixed
-	end
+	local startingHp = player:getGeneralStartHp() + fixed
 	room:setPlayerProperty(player, "hp", sgs.QVariant(startingHp))
 end
 
-function selectHero(player, changer, num, ban_general) --选择武将函数 [参数：player-选择玩家; changer-变更武将玩家; num-选择武将数; ban_general-应移除武将（可以为空）]
+--- 執行隨機選將並變更武將的流程
+--- 
+--- **流程描述**：
+--- 1. 從全武將池中隨機抽取 `num` 名武將。
+--- 2. 透過 `askForGeneral` 彈出對話框供玩家 `player` 選擇。
+--- 3. 執行 `changeHero` 將目標 `changer` 更換為選中的武將。
+--- 4. 自動調用 `judgeHp` 重置體力狀態。
+---
+---@param player ServerPlayer 負責操作選擇介面的玩家
+---@param changer ServerPlayer 實際被更換武將的角色
+---@param num? integer (可選) 候選武將張數，預設為 1
+---@param ban_general? string (可選) 禁選/排除的武將名稱
+local function selectHero(player, changer, num, ban_general) --选择武将函数 [参数：player-选择玩家; changer-变更武将玩家; num-选择武将数; ban_general-应移除武将（可以为空）]
 	local room = player:getRoom()
 	if num == nil or num < 1 then
 		num = 1
@@ -113,7 +138,7 @@ function selectHero(player, changer, num, ban_general) --选择武将函数 [参
 	judgeHp(changer, general)
 end
 
-function reward(player, enemy, reward_type) --奖励函数：用于进行奖励结算 [参数：player-受奖励者/玩家, enemy-敌方, reward_type-奖励类型]
+local function RAFTOMreward(player, enemy, reward_type) --奖励函数：用于进行奖励结算 [参数：player-受奖励者/玩家, enemy-敌方, reward_type-奖励类型]
 	local room = player:getRoom()
 	if reward_type == "re_type1" then
 		if player:isWounded() then
@@ -147,7 +172,7 @@ function reward(player, enemy, reward_type) --奖励函数：用于进行奖励�
 		useEquip(player, "Weapon")
 	elseif reward_type == "re_type10" then
 		player:throwAllHandCards()
-		if not player:hasSkill(self:objectName()) then
+		if not player:hasSkill("niepan") then
 			room:acquireSkill(player, "niepan")
 			player:setTag("niepan_thisGame", sgs.QVariant(true))
 		end
@@ -185,7 +210,7 @@ function reward(player, enemy, reward_type) --奖励函数：用于进行奖励�
 	end
 end
 
-function enemyBuff(enemy, level) --敌方加成函数：用于结算敌方加成 [参数：enemy-敌方, level-关卡数]
+local function enemyBuff(enemy, level) --敌方加成函数：用于结算敌方加成 [参数：enemy-敌方, level-关卡数]
 	local room = enemy:getRoom()
 	local fixed = 0
 	if level == 2 then
@@ -552,7 +577,7 @@ RAFTOM_start = sgs.CreateTriggerSkill { --用于使“千里走单骑”模式�
 			end
 			local reward_type = splayer:getTag("reward_type"):toString()
 			if reward_type ~= "" and table.contains(reward_types, reward_type) then
-				reward(splayer:getNextAlive(), splayer, reward_type)
+				RAFTOMreward(splayer:getNextAlive(), splayer, reward_type)
 				splayer:removeTag("reward_type")
 			end
 		end

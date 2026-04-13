@@ -2,38 +2,6 @@ extension = sgs.Package("NyarzThird", sgs.Package_GeneralPack)
 local packages = {}
 table.insert(packages, extension)
 
-local function CreateDamageLog(damage, changenum, reason, up)
-	if up == nil then
-		up = true
-	end
-	local log = sgs.LogMessage()
-	if damage.from then
-		log.type = "$nyarzdamagechange"
-		log.from = damage.from
-		log.arg5 = damage.to:getGeneralName()
-	else
-		log.type = "$nyarzdamagechangenofrom"
-		log.from = damage.to
-	end
-	log.arg = reason
-	log.arg2 = damage.damage
-	if up then
-		log.arg3 = "nyarzdamageup"
-		log.arg4 = damage.damage + changenum
-	else
-		log.arg3 = "nyarzdamagedown"
-		log.arg4 = damage.damage - changenum
-	end
-	return log
-end
-
-sgs.LoadTranslationTable {
-	["$nyarzdamagechange"] = "%from 对 %arg5 造成的伤害因 %arg 的效果由 %arg2 点 %arg3 到了 %arg4 点。",
-	["$nyarzdamagechangenofrom"] = "%from 受到的伤害因 %arg 的效果由 %arg2 点 %arg3 到了 %arg4 点。",
-	["nyarzdamageup"] = "增加",
-	["nyarzdamagedown"] = "减少",
-}
-
 nyarz_sunquan = sgs.General(extension, "nyarz_sunquan", "wu", 4, true, false, false)
 
 nyarz_yuheng = sgs.CreateTriggerSkill {

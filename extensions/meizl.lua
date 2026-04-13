@@ -150,13 +150,6 @@ meizlchongyuan = sgs.CreateTriggerSkill {
 	end
 }
 
-listIndexOf = function(theqlist, theitem)
-	local index = 0
-	for _, item in sgs.qlist(theqlist) do
-		if item == theitem then return index end
-		index = index + 1
-	end
-end
 --淑懿（步练师）
 meizlshuyi = sgs.CreateTriggerSkill {
 	name = "meizlshuyi",
@@ -2183,13 +2176,6 @@ meizlyaorao = sgs.CreateTriggerSkill {
 		end
 	end
 }
-listIndexOf = function(theqlist, theitem)
-	local index = 0
-	for _, item in sgs.qlist(theqlist) do
-		if item == theitem then return index end
-		index = index + 1
-	end
-end
 meizlyaoraoskill = sgs.CreateTriggerSkill {
 	name = "#meizlyaoraoskill",
 	frequency = sgs.Skill_Limited,

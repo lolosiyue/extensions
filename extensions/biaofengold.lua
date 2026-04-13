@@ -2160,15 +2160,6 @@ GanNing_Four:addSkill(FourQixi)
 	end
 }
 ]]
-listIndexOf = function(theqlist, theitem)
-	local index = 0
-	for _, item in sgs.qlist(theqlist) do
-		if item == theitem then
-			return index
-		end
-		index = index + 1
-	end
-end
 FourJinfan = sgs.CreateTriggerSkill {
 	name = "FourJinfan",
 	frequency = sgs.Skill_NotFrequent,

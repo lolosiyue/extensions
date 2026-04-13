@@ -3,19 +3,6 @@
 local packages = {}
 table.insert(packages, extension)
 
-local function getTypeString(card)
-    local cardtype = nil
-    local types = {"BasicCard","TrickCard","EquipCard"}
-    for _,p in ipairs(types) do
-        if card:isKindOf(p) then
-            cardtype = p
-            break
-        end
-    end
-    return cardtype
-end
-
-
 Dcaocao = sgs.General(extension, "Dcaocao", "wei", 4, true, false, false)
 
 Djianxiong = sgs.CreateTriggerSkill{
@@ -5322,27 +5309,6 @@ dmwumeibuff = sgs.CreateTriggerSkill{
     end,
 }
 
-local function JudgeDamageCard(card)
-    if card:isKindOf("BasicCard") then
-        if card:isKindOf("Slash") then 
-            return true
-        else
-            return false
-        end
-    elseif card:isKindOf("TrickCard") then
-        local damagecards = {"duel", "fire_attack", "savage_assault", "archery_attack"}
-        for _,p in ipairs(damagecards) do
-            if card:objectName() == p then
-                return true
-            end
-        end
-        return false
-    elseif card:isKindOf("EquipCard") then
-        return false
-    end
-    return false
-end
-
 dmzhanmeng = sgs.CreateTriggerSkill{
     name = "dmzhanmeng",
     events = {sgs.CardUsed,sgs.CardResponded},
@@ -5408,10 +5374,10 @@ dmzhanmeng = sgs.CreateTriggerSkill{
             local get = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
             for _,id in sgs.qlist(room:getDrawPile()) do
                 local cc = sgs.Sanguosha:getCard(id)
-                if (JudgeDamageCard(cc) and yes)then
+                if (cc:isDamageCard() and yes)then
                     get:addSubcard(cc)
                     yes = false
-                elseif (not JudgeDamageCard(cc)) and no then
+                elseif (not cc:isDamageCard()) and no then
                     get:addSubcard(cc)
                     no = false
                 end
@@ -6902,31 +6868,6 @@ extension:insertRelatedSkills("cqtieji", "#cqtiejibuff")
 extension:insertRelatedSkills("cqtieji", "#cqtiejiclears")
 
 yzzhonghui = sgs.General(extension, "yzzhonghui", "wei", 4, true, false, false, 3)
-
-local function chsize(tmp)
-	if not tmp then
-		return 0
-    elseif tmp > 240 then
-        return 4
-    elseif tmp > 225 then
-        return 3
-    elseif tmp > 192 then
-        return 2
-    else
-        return 1
-    end
-end
-
-local function utf8len(str)
-	local length = 0
-	local currentIndex = 1
-	while currentIndex <= #str do
-		local tmp = string.byte(str, currentIndex)
-		currentIndex  = currentIndex + chsize(tmp)
-		length = length + 1
-	end
-	return length
-end
 
 yzyuzhi = sgs.CreateTriggerSkill{
     name = "yzyuzhi",

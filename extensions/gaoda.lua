@@ -122,7 +122,7 @@ do
 	-- }
 end
 
-function canObtain(room, card) --判定卡牌是否还在处理区，用作奸雄获得牌；个人新增条件：在弃牌堆的牌也视为可以获得（如 闪避爆发的打出闪）
+local function canObtain(room, card) --判定卡牌是否还在处理区，用作奸雄获得牌；个人新增条件：在弃牌堆的牌也视为可以获得（如 闪避爆发的打出闪）
 	if not card then return false end
 	local ids = sgs.IntList()
 	if card:isVirtualCard() then
@@ -137,21 +137,16 @@ function canObtain(room, card) --判定卡牌是否还在处理区，用作奸�
 	return true
 end
 
---[[function getWinRate(name)
-	require("g")
-	local f = loadstring("return "..name)
-	local rate = f()
-	if tostring(rate) == "-1.#IND" then
-		return "未知"
-	end
-	local round = function(num, idp)
-		local mult = 10^(idp or 0)
-		return math.floor(num * mult + 0.5) / mult
-	end
-	rate = round(rate*100)
-	return rate
-end]]--broadcast after gamefinished
-
+--- 向所有客戶端廣播並開啟「化身」視覺特效
+--- 
+--- **協議解析**：
+--- 透過 `S_COMMAND_LOG_EVENT` 發送一個 JSON 陣列，其首位為 10 (S_GAME_EVENT_HUASHEN)。
+--- 客戶端接收後會在該玩家頭像處渲染指定武將的縮影。
+---
+---@param player ServerPlayer 發動化身的玩家
+---@param generalName string 化身目標武將的物件名稱
+---@param skillName string 關聯的技能名稱
+---@param secondGeneral? boolean 是否為副將化身（預設為 false/nil）
 function startHuaShen(player, generalName, skillName, secondGeneral)
 	local room = player:getRoom()
 	local json = require ("json")
@@ -167,6 +162,14 @@ function startHuaShen(player, generalName, skillName, secondGeneral)
 	room:doBroadcastNotify(sgs.CommandType.S_COMMAND_LOG_EVENT, json.encode(jsonValue))
 end
 
+--- 重新恢復化身特效（BUG 修復工具）
+--- 
+--- **核心用途**：
+--- 解決「玩家失去任意技能後，化身特效會自動消失」的引擎底層 Bug。
+--- 此函數根據玩家當前的技能（如毁滅、報喪、奇蹟等）與武將前綴（如 UNICORN, PHENEX 等），
+--- 自動尋找並重新發送正確的化身 JSON 封包。
+---
+---@param player ServerPlayer 待修復特效的玩家
 function resumeHuaShen(player)--BUG Resolver (玩家失去任意技能后，化身特效会自动消失)
 	local room = player:getRoom()
 	local json = require ("json")
@@ -191,6 +194,11 @@ function resumeHuaShen(player)--BUG Resolver (玩家失去任意技能后，化�
 	--end
 end
 
+--- 停止並移除該玩家的化身視覺特效
+--- 
+--- **原理**：
+--- 發送一個 Code 為 4 的事件給客戶端，強制解構當前的化身渲染層。
+---@param player ServerPlayer
 function stopHuashen(player)--Assume player does not have skill "huashen"
 	local room = player:getRoom()
 	local json = require ("json")
@@ -201,98 +209,6 @@ function stopHuashen(player)--Assume player does not have skill "huashen"
 	}
 	room:doBroadcastNotify(sgs.CommandType.S_COMMAND_LOG_EVENT, json.encode(jsonValue))
 end
-
---[[function CardList2IntList(cards)
-	local ids = sgs.IntList()
-	for _,card in sgs.qlist(cards) do
-		ids:append(card:getId())
-	end
-	return ids
-end
-
-function IntList2CardList(ids)
-	local cards = sgs.CardList()
-	for _,id in sgs.qlist(ids) do
-		cards:append(sgs.Sanguosha:getCard(id))
-	end
-	return cards
-end]]-- Useful functions
-
---===============↓↓For FA_UNICORN Use↓↓===============--
-hasEquipArea = function(player, name)
-	if (name == "treasure" and (Set(sgs.Sanguosha:getBanPackages()))["limitation_broken"] and (Set(sgs.Sanguosha:getBanPackages()))["gundamcard"])
-	or player:getMark(name.."AreaRemoved") > 0 then
-		return false
-	end
-	return true
-end
-
-removeEquipArea = function(player, name)
-	if hasEquipArea(player, name) then
-		local room = player:getRoom()
-		room:setPlayerMark(player, name.."AreaRemoved", 1)
-		local classname
-		if name == "defensive_horse" then classname = "DefensiveHorse"
-		elseif name == "offensive_horse" then classname = "OffensiveHorse"
-		else classname = name:gsub("^%l", string.upper) end
-		room:setPlayerCardLimitation(player, "use", classname.."$0", false)
-		local equips = {"weapon", "armor", "defensive_horse", "offensive_horse", "treasure"}
-		for i = 1, 5, 1 do
-			if name == equips[i] and player:getEquip(i-1) then
-				room:throwCard(player:getEquip(i-1), nil)
-				break
-			end
-		end
-		local log = sgs.LogMessage()
-		log.type = "#RemoveEquipArea"
-		log.from = player
-		log.arg = name
-		room:sendLog(log)
-	end
-end
-
-removeWholeEquipArea = function(player)
-	local equips = {"weapon", "armor", "defensive_horse", "offensive_horse", "treasure"}
-	for _,equip in ipairs(equips) do
-		removeEquipArea(player, equip)
-	end
-end
-
-blankEquipArea = function(player)
-	if hasEquipArea(player, "weapon") or hasEquipArea(player, "armor") or hasEquipArea(player, "defensive_horse")
-	or hasEquipArea(player, "offensive_horse") or hasEquipArea(player, "treasure") then
-		return false
-	end
-	return true
-end
-
-equipprohibit = sgs.CreateProhibitSkill
-{
-	name = "#equipprohibit",
-	is_prohibited = function(self, from, to, card)
-		if to and card:isKindOf("EquipCard") and (not hasEquipArea(to, card:getSubtype()))  then
-			return true
-		end
-	end
-}
-
-equipwo = sgs.CreateTriggerSkill{
-	name = "equipwo",
-	events = {sgs.BeforeCardsMove},
-	global = true,
-	can_trigger = function(self, player)
-		return true
-	end,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		local move = data:toMoveOneTime()
-		if move.to and move.to:objectName() == player:objectName() and not hasEquipArea(move.to, "treasure") and move.reason.m_skillName == "wooden_ox" then
-			move.card_ids = sgs.IntList()
-			data:setValue(move)
-		end
-	end
-}
---===============↑↑For FA_UNICORN Use↑↑===============--
 
 --【阵亡特效】
 gdsrule = sgs.CreateTriggerSkill{
@@ -348,7 +264,7 @@ gdsrule = sgs.CreateTriggerSkill{
 }
 
 --播放萌妹纸语音
-GdsVoice = function(player, start)
+local GdsVoice = function(player, start)
 	local room = player:getRoom()
 	local emotion = player:property("emotion"):toString()
 	if emotion == "seshia" then
@@ -429,11 +345,11 @@ gdsvoice = sgs.CreateTriggerSkill{
 }
 
 --【自动切换BGM】
-changeBGM = function(name)
+local changeBGM = function(name)
 	sgs.SetConfig("BackgroundMusic", "audio/system/"..name..".ogg")
 end
 
-generalName2BGM = function(name)
+local generalName2BGM = function(name)
 	math.random()
 	local bgms = {
 		{"BGM0", "IIVS"},
@@ -611,7 +527,7 @@ if opening then
 end
 
 --【武将解锁系统】
-readData = function(section)
+local readData = function(section)
 	local json = require "json"
 	local record = io.open(gdata, "r")
 	local t = {[section] = {}}
@@ -626,7 +542,7 @@ readData = function(section)
 	return t
 end
 
-writeData = function(t)
+local writeData = function(t)
 	local record = assert(io.open(gdata, "w"))
 	local order = {"Record", "Item", "Zabing", "Skin", "Unlock", "Daily", "GameTimes"}
 	setmetatable(order, { __index = table})
@@ -644,7 +560,7 @@ writeData = function(t)
 	record:close()
 end
 
-saveRecord = function(player, record_type) --record_type: 0. +1 gameplay , 1. +1 win , 2. +1 win & +1 gameplay
+local saveRecord = function(player, record_type) --record_type: 0. +1 gameplay , 1. +1 win , 2. +1 win & +1 gameplay
 	assert(record_type >= 0 and record_type <= 2, "record_type should be 0, 1 or 2")
 	
 	local t = readData("Record")
@@ -2097,7 +2013,7 @@ luckyrecord = sgs.CreateTriggerSkill{
 --text: 展示文字
 --speech: 朗读文字（填"poi"则朗读"poi"；填""则不朗读；nil则朗读text）
 --startup_voice：是否播放高达杀启动音（true播放）
-function printCmdPrompt(text, speech, startup_voice)
+local function printCmdPrompt(text, speech, startup_voice)
 	local speak_text = speech or string.gsub(text, "\n", ",")
 	text = string.gsub(text, "\n", "& echo.")
 
@@ -2494,8 +2410,6 @@ local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("gdsrule") then skills:append(gdsrule) end
 if not sgs.Sanguosha:getSkill("gdsvoice") then skills:append(gdsvoice) end
 if not sgs.Sanguosha:getSkill("gdsbgm") then skills:append(gdsbgm) end
-if not sgs.Sanguosha:getSkill("#equipprohibit") then skills:append(equipprohibit) end
-if not sgs.Sanguosha:getSkill("equipwo") then skills:append(equipwo) end
 if not sgs.Sanguosha:getSkill("gdsrecord") then skills:append(gdsrecord) end
 if not sgs.Sanguosha:getSkill("map") then skills:append(map) end
 if not sgs.Sanguosha:getSkill("maprecord") then skills:append(maprecord) end
@@ -3682,14 +3596,6 @@ zhonggongcard = sgs.CreateSkillCard{
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
-		-- local choices = {}
-		-- if hasEquipArea(effect.from, "weapon") then table.insert(choices, "weapon") end
-		-- if hasEquipArea(effect.from, "armor") then table.insert(choices, "armor") end
-		-- if hasEquipArea(effect.from, "defensive_horse") then table.insert(choices, "defensive_horse") end
-		-- if hasEquipArea(effect.from, "offensive_horse") then table.insert(choices, "offensive_horse") end
-		-- if hasEquipArea(effect.from, "treasure") then table.insert(choices, "treasure") end
-		-- local choice = room:askForChoice(effect.from, "zhonggong", table.concat(choices, "+"), sgs.QVariant())
-		-- removeEquipArea(effect.from, choice)
 		ThrowEquipArea(self,effect.from,nil,nil)
 		room:damage(sgs.DamageStruct(self:objectName(), effect.from, effect.to))
 	end
@@ -3703,7 +3609,6 @@ zhonggong = sgs.CreateZeroCardViewAsSkill{
 		return acard
 	end,
 	enabled_at_play = function(self, player)
-		-- return (not player:hasUsed("#zhonggong")) and (not blankEquipArea(player))
 		return (not player:hasUsed("#zhonggong")) and (player:hasEquipArea())
 	end,
 	enabled_at_response = function(self, player, pattern)
@@ -3718,7 +3623,6 @@ qingzhuang = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local effect = data:toCardEffect()
-		-- if blankEquipArea(player) and effect.card:isRed() and effect.card:isKindOf("Slash") then
 		if not player:hasEquipArea() and effect.card:isRed() and effect.card:isKindOf("Slash") then
 			room:broadcastSkillInvoke("qingzhuang")
 			room:setEmotion(player, "skill_nullify")
@@ -3736,7 +3640,6 @@ qingzhuang = sgs.CreateTriggerSkill{
 qingzhuangdistance = sgs.CreateDistanceSkill{
 	name = "#qingzhuangdistance",
 	correct_func = function(self, from, to)
-		-- if from:hasSkill("qingzhuang") and blankEquipArea(from) then
 		if from:hasSkill("qingzhuang") and not from:hasEquipArea() then
 			return -2
 		end
@@ -3754,7 +3657,6 @@ linguangcard = sgs.CreateSkillCard{
 		for _,p in sgs.qlist(room:getOtherPlayers(source)) do
 			p:turnOver()
 		end
-		-- removeWholeEquipArea(source)
 		source:throwEquipArea()
 		room:acquireSkill(source, "#linguangfilter", false)
 		room:filterCards(source, source:getCards("he"), false)
@@ -4499,7 +4401,7 @@ xiezhancard = sgs.CreateSkillCard{
 		local card = sgs.Sanguosha:getCard(card_id)
 		local equip = card:getRealCard():toEquipCard()
 		local equip_index = equip:location()
-		return to_select:getEquip(equip_index) == nil and player:distanceTo(to_select, range_fix) <= player:getAttackRange() and sgs.Slash_IsAvailable(to_select) and hasEquipArea(to_select, card:getSubtype())
+		return to_select:getEquip(equip_index) == nil and player:distanceTo(to_select, range_fix) <= player:getAttackRange() and sgs.Slash_IsAvailable(to_select) and not to_select:isProhibited(to_select, card) and to_select:hasEquipArea(equip_index) 
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -5641,7 +5543,6 @@ xuanguang = sgs.CreateTriggerSkill
 			room:sendCompulsoryTriggerLog(player, self:objectName())
 			room:setPlayerMark(player, "xuanguang", 1)
 			player:gainMark("@xuanguang")
-			-- removeWholeEquipArea(player)
 			player:throwEquipArea()
 			room:handleAcquireDetachSkills(player, "-gaoda_zuzhou|#xuanguangfilter|#xuanguangdefense")
 			room:recover(player, sgs.RecoverStruct(player, nil, 1 - player:getHp()))
@@ -8530,15 +8431,17 @@ shuanglongcard = sgs.CreateSkillCard{
 			if from then
 				local card_id = room:askForCardChosen(effect.from, from, "e", self:objectName())
 				local card = sgs.Sanguosha:getCard(card_id)
+				local i = card:getRealCard():toEquipCard():location()
 				local place = room:getCardPlace(card_id)
 				local tos = sgs.SPlayerList()
 				local list = room:getAlivePlayers()
+
 				for _,p in sgs.qlist(list) do
 					if ((card:isKindOf("Weapon") and p:getWeapon() == nil) or
 					(card:isKindOf("Armor") and p:getArmor() == nil) or
 					(card:isKindOf("DefensiveHorse") and p:getDefensiveHorse() == nil) or
 					(card:isKindOf("OffensiveHorse") and p:getOffensiveHorse() == nil) or
-					(card:isKindOf("Treasure") and p:getTreasure() == nil)) and hasEquipArea(p, card:getSubtype()) then
+					(card:isKindOf("Treasure") and p:getTreasure() == nil)) and p:hasEquipArea(i) then
 						tos:append(p)
 					end
 				end

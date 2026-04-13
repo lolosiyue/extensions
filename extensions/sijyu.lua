@@ -17,10 +17,6 @@ sgs.LoadTranslationTable {
     ["#ChooseSkill"] = "%from 的技能 %arg 选择了 %arg2",
 
 }
-function RIGHT(self, player)
-	if player and player:isAlive() and player:hasSkill(self:objectName()) then return true else return false end
-end
-
 sgs.LoadTranslationTable {
     ["sijyu_guanyu"] = "关羽",
     ["&sijyu_guanyu"] = "关羽",

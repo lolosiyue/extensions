@@ -20,20 +20,6 @@ kenewslashmore = sgs.CreateTargetModSkill {
 }
 if not sgs.Sanguosha:getSkill("kenewslashmore") then skills:append(kenewslashmore) end
 
-
-function KeToData(self)
-	local data = sgs.QVariant()
-	if type(self) == "string"
-		or type(self) == "boolean"
-		or type(self) == "number"
-	then
-		data = sgs.QVariant(self)
-	elseif self ~= nil then
-		data:setValue(self)
-	end
-	return data
-end
-
 kenewcaocao = sgs.General(extension, "kenewcaocao$", "wei", 4)
 
 --要不是为了ai,这个视为技可以不用写
@@ -1282,14 +1268,6 @@ if not sgs.Sanguosha:getSkill("xiaxingmieslash") then skills:append(xiaxingmiesl
 
 kenewcaoren = sgs.General(extension, "kenewcaoren", "wei", 4, true, false, false, 3, 2)
 
-function kenewgetCardList(intlist)
-	local ids = sgs.CardList()
-	for _, id in sgs.qlist(intlist) do
-		ids:append(sgs.Sanguosha:getCard(id))
-	end
-	return ids
-end
-
 --[[
 keyugongCard = sgs.CreateSkillCard{
 	name = "keyugongCard",
@@ -1310,7 +1288,7 @@ keyugongCard = sgs.CreateSkillCard{
 			if not to_all:isEmpty() then
 				local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 				if not to_all:isEmpty() then
-					dummy:addSubcards(kenewgetCardList(to_all))
+					dummy:addSubcards(getCardList(to_all))
 					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, source:objectName(), self:objectName(),"")
 					room:throwCard(dummy, reason, nil)
 				end
@@ -1330,7 +1308,7 @@ keyugongCard = sgs.CreateSkillCard{
 						end
 					end
 				end
-				dummy:addSubcards(kenewgetCardList(damagecards))
+				dummy:addSubcards(getCardList(damagecards))
 				source:obtainCard(dummy)
 				room:addPlayerMark(source,"&keyugongslashcishu-Clear",1)
 			end
@@ -1348,7 +1326,7 @@ keyugongCard = sgs.CreateSkillCard{
 			if not to_all:isEmpty() then
 				local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 				if not to_all:isEmpty() then
-					dummy:addSubcards(kenewgetCardList(to_all))
+					dummy:addSubcards(getCardList(to_all))
 					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, source:objectName(), self:objectName(),"")
 					room:throwCard(dummy, reason, nil)
 				end
@@ -1368,7 +1346,7 @@ keyugongCard = sgs.CreateSkillCard{
 						end
 					end
 				end
-				dummy:addSubcards(kenewgetCardList(nodamagecards))
+				dummy:addSubcards(getCardList(nodamagecards))
 				source:obtainCard(dummy)
 				room:addPlayerMark(source,"&keyugongmax-Clear",1)
 			end
@@ -1409,7 +1387,7 @@ keyugongCard = sgs.CreateSkillCard {
 				end
 			end
 			local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-			dummy:addSubcards(kenewgetCardList(getdamagecards))
+			dummy:addSubcards(getCardList(getdamagecards))
 			source:obtainCard(dummy)
 			dummy:deleteLater()
 			room:addPlayerMark(source, "&keyugongslashcishu-Clear", 1)
@@ -1438,7 +1416,7 @@ keyugongCard = sgs.CreateSkillCard {
 				end
 			end
 			local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-			dummy:addSubcards(kenewgetCardList(getnotdamagecards))
+			dummy:addSubcards(getCardList(getnotdamagecards))
 			source:obtainCard(dummy)
 			dummy:deleteLater()
 			room:addPlayerMark(source, "&keyugongmax-Clear", 1)
@@ -1891,32 +1869,6 @@ if not sgs.Sanguosha:getSkill("kejwkuitian") then skills:append(kejwkuitian) end
 kenewcaozhi = sgs.General(extension, "kenewcaozhi", "wei", 3, true)
 kenewcaozhiylqh = sgs.General(extension, "kenewcaozhiylqh", "wei", 3, true, true, true)
 
-
-local function kechsize(tmp)
-	if not tmp then
-		return 0
-	elseif tmp > 240 then
-		return 4
-	elseif tmp > 225 then
-		return 3
-	elseif tmp > 192 then
-		return 2
-	else
-		return 1
-	end
-end
-
-local function keutf8len(str)
-	local length = 0
-	local currentIndex = 1
-	while currentIndex <= #str do
-		local tmp    = string.byte(str, currentIndex)
-		currentIndex = currentIndex + kechsize(tmp)
-		length       = length + 1
-	end
-	return length
-end
-
 kenewcaozhichange = sgs.CreateTriggerSkill {
 	name = "#kenewcaozhichange",
 	frequency = sgs.Skill_NotFrequent,
@@ -1948,7 +1900,7 @@ kemingding = sgs.CreateTriggerSkill {
 			local room = player:getRoom()
 			local use = data:toCardUse()
 			room:addPlayerMark(player, "&kemingding-Clear")
-			if (player:getMark("&kemingding-Clear") == keutf8len(sgs.Sanguosha:translate(use.card:objectName()))) then
+			if (player:getMark("&kemingding-Clear") == utf8len(sgs.Sanguosha:translate(use.card:objectName()))) then
 				if (player:getMark("czqbjz") == 1) then
 					local num = math.random(1, 2)
 					if (num == 1) then
@@ -1975,7 +1927,7 @@ kemingding = sgs.CreateTriggerSkill {
 			local response = data:toCardResponse()
 			local room = player:getRoom()
 			room:addPlayerMark(player, "&kemingding-Clear")
-			if (player:getMark("&kemingding-Clear") == keutf8len(sgs.Sanguosha:translate(response.m_card:objectName()))) then
+			if (player:getMark("&kemingding-Clear") == utf8len(sgs.Sanguosha:translate(response.m_card:objectName()))) then
 				if (player:getMark("czqbjz") == 1) then
 					local num = math.random(1, 2)
 					if (num == 1) then
@@ -6123,7 +6075,7 @@ kenewwangmiuCard = sgs.CreateSkillCard {
 			viewcard:setSkillName("kenewwangmiuCard")
 			local card_use = sgs.CardUseStruct()
 			card_use.from = source
-			local choosenum = keutf8len(sgs.Sanguosha:translate(precard:objectName()))
+			local choosenum = utf8len(sgs.Sanguosha:translate(precard:objectName()))
 			room:setPlayerMark(source, "kenewwangmiu", precard:getEffectiveId())
 			card_use.to = room:askForPlayersChosen(source, room:getAllPlayers(), "kenewwangmiu", 0, choosenum,
 					"kenewwangmiu-ask:" .. precard:objectName(), false, true)
@@ -6786,7 +6738,7 @@ xiajianxin = sgs.CreateTriggerSkill {
 								:getSubcards():first()
 							local thecard = sgs.Sanguosha:getCard(theid)
 							if not thecard:isDamageCard() then
-								if xk:hasSkill("xiaqiqiaocixu") and xk:askForSkillInvoke(self, KeToData("jianxin-cixu:" .. use.from:objectName())) then --xk:askForSkillInvoke(self,_data )then
+								if xk:hasSkill("xiaqiqiaocixu") and xk:askForSkillInvoke(self, ToData("jianxin-cixu:" .. use.from:objectName())) then --xk:askForSkillInvoke(self,_data )then
 									local log = sgs.LogMessage()
 									log.type = "$xiacixulog"
 									log.from = xk
@@ -6803,7 +6755,7 @@ xiajianxin = sgs.CreateTriggerSkill {
 							room:setPlayerFlag(xk, "-canjxred")
 
 							if xk:hasFlag("jianxinhit") and xk:hasSkill("xiaqiqiaosuifeng") then
-								if xk:askForSkillInvoke(self, KeToData("jianxin-cancelalltarget:" .. use.from:objectName() .. ":" .. use.card:objectName())) then
+								if xk:askForSkillInvoke(self, ToData("jianxin-cancelalltarget:" .. use.from:objectName() .. ":" .. use.card:objectName())) then
 									room:broadcastSkillInvoke(self:objectName(), math.random(7, 8))
 									if not (use.card:isKindOf("Jink") or use.card:isKindOf("Nullification")) then
 										local log = sgs.LogMessage()
@@ -6858,7 +6810,7 @@ xiajianxin = sgs.CreateTriggerSkill {
 								:getSubcards():first()
 							local thecard = sgs.Sanguosha:getCard(theid)
 							if not thecard:isDamageCard() then
-								if xk:hasSkill("xiaqiqiaocixu") and xk:askForSkillInvoke(self, KeToData("jianxin-cixu:" .. use.from:objectName())) then
+								if xk:hasSkill("xiaqiqiaocixu") and xk:askForSkillInvoke(self, ToData("jianxin-cixu:" .. use.from:objectName())) then
 									local log = sgs.LogMessage()
 									log.type = "$xiacixulog"
 									log.from = xk
@@ -6874,7 +6826,7 @@ xiajianxin = sgs.CreateTriggerSkill {
 							room:setPlayerFlag(xk, "-canjxred")
 
 							if xk:hasFlag("jianxinhit") and xk:hasSkill("xiaqiqiaosuifeng") then
-								if xk:askForSkillInvoke(self, KeToData("jianxin-cancelalltarget:" .. res.m_card:objectName())) then
+								if xk:askForSkillInvoke(self, ToData("jianxin-cancelalltarget:" .. res.m_card:objectName())) then
 									room:broadcastSkillInvoke(self:objectName(), math.random(7, 8))
 									if res.m_card:isKindOf("Jink") then
 										room:setPlayerFlag(res.m_who, "jianxinnojink")

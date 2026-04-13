@@ -3754,13 +3754,6 @@ sfofl_zhaoyun = sgs.General(extension_s, "sfofl_zhaoyun", "shu", 4, true)
 	技能描述：摸牌阶段，你可以改为亮出牌堆顶的七张牌，然后获得其中一种颜色的所有牌。
 	引用：sfofl_qijin
 ]] --
-local function getCardList(intlist)
-    local ids = sgs.CardList()
-    for _, id in sgs.qlist(intlist) do
-        ids:append(sgs.Sanguosha:getCard(id))
-    end
-    return ids
-end
 sfofl_qijin = sgs.CreateTriggerSkill{
     name = "sfofl_qijin",
     events = {sgs.EventPhaseStart},
@@ -9251,31 +9244,6 @@ sfofl_fuli = sgs.CreateZeroCardViewAsSkill
         return (not player:isKongcheng()) and (not player:hasUsed("#sfofl_fuli"))
     end,
 }
-
-local function chsize(tmp)
-	if not tmp then
-		return 0
-    elseif tmp > 240 then
-        return 4
-    elseif tmp > 225 then
-        return 3
-    elseif tmp > 192 then
-        return 2
-    else
-        return 1
-    end
-end
-
-local function utf8len(str)
-	local length = 0
-	local currentIndex = 1
-	while currentIndex <= #str do
-		local tmp = string.byte(str, currentIndex)
-		currentIndex  = currentIndex + chsize(tmp)
-		length = length + 1
-	end
-	return length
-end
 
 sfofl_fuliCard = sgs.CreateSkillCard{
     name = "sfofl_fuli",

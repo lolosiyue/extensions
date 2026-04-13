@@ -12,6 +12,18 @@ extension_hegcard = sgs.Package("hegemony_cards", sgs.Package_CardPack)
 extension_hegadvantagecard = sgs.Package("strategic_advantage", sgs.Package_CardPack)
 require "ExtraTurnUtils"
 
+--- 執行更換武將流程，並支援特定技能的連鎖增益
+--- 
+--- **邏輯亮點**：
+--- 1. **池過濾**：自動排除隱藏武將與場上已存在的武將（主/副）。
+--- 2. **勢力篩選**：可選定特定勢力 (`kingdom`) 的武將池。
+--- 3. **技能聯動**：檢索場上擁有 `heg_true_jiancai` 的角色，每有一人發動，選將數增加 2 名。
+--- 4. **狀態保持**：更換後強制還原原有的 HP 與 MaxHP。
+---
+---@param room Room
+---@param player ServerPlayer 變更目標
+---@param skill_onwer_general_name string 判斷是否更換副將的基準武將名
+---@param kingdom? string (可選) 限定的勢力（如 "wei", "shu"）
 function ChangeGeneral(room, player, skill_onwer_general_name, kingdom)
 	local generals = {}
 	for _,name in ipairs(sgs.Sanguosha:getLimitedGeneralNames()) do
@@ -54,35 +66,6 @@ function ChangeGeneral(room, player, skill_onwer_general_name, kingdom)
 	room:setPlayerProperty(player, "hp", sgs.QVariant(y))
 end
 
-function HeavenMove(player, id, movein, private_pile_name)  --将卡牌伪移动至&开头的私人牌堆中并限制使用或打出，以达到牌对你可见的效果
-	local room = player:getRoom()		 --参数[ServerPlayer *player：可见角色; int id：伪移动卡牌id; bool movein：值true为进入私人牌堆，值false为移出私人牌堆; private_pile_name：私人牌堆名]
-	pile_name = private_pile_name or "&talent"
-	if movein then
-		local move = sgs.CardsMoveStruct(id, nil, player, sgs.Player_PlaceTable, sgs.Player_PlaceSpecial,
-		sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PUT, player:objectName(), "guandu_shicai", ""))
-		move.to_pile_name = pile_name
-		local moves = sgs.CardsMoveList()
-		moves:append(move)
-		local _xuyou = sgs.SPlayerList()
-		_xuyou:append(player)
-		room:notifyMoveCards(true, moves, false, _xuyou)
-		room:notifyMoveCards(false, moves, false, _xuyou)
-		room:setPlayerCardLimitation(player, "use,response", "" .. id, true)
-		player:setTag("HeavenMove", sgs.QVariant(id))
-	else
-		local move = sgs.CardsMoveStruct(id, player, nil, sgs.Player_PlaceSpecial, sgs.Player_PlaceTable,
-		sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PUT, player:objectName(), "guandu_shicai", ""))
-		move.from_pile_name = pile_name
-		local moves = sgs.CardsMoveList()
-		moves:append(move)
-		local _xuyou = sgs.SPlayerList()
-		_xuyou:append(player)
-		room:notifyMoveCards(true, moves, false, _xuyou)
-		room:notifyMoveCards(false, moves, false, _xuyou)
-		room:removePlayerCardLimitation(player, "use,response", "" .. id .. "$1")
-	end
-end
-
 function SendComLog(self, player, n, invoke)
 	if invoke == nil then invoke = true end
 	if invoke then
@@ -91,7 +74,9 @@ function SendComLog(self, player, n, invoke)
 	end
 end
 
-
+--- 判定場上是否存在大勢力角色
+---@param room Room
+---@return boolean
 function HasBigKingdomPlayer(room)
 	for _, p in sgs.qlist(room:getAlivePlayers()) do
 		if IsBigKingdomPlayer(player) then
@@ -101,6 +86,15 @@ function HasBigKingdomPlayer(room)
 	return false
 end
 
+--- 判定目標是否為「大勢力」角色（服務端邏輯）
+--- 
+--- **判定優先級**：
+--- 1. **人數門檻**：存活人數 < 4 時，不存在大勢力。
+--- 2. **玉璽規則**：若有人裝備【玉璽】，則僅該裝備者為大勢力。
+--- 3. **勢力人數**：若無玉璽，則「勢力人數 >= 2」且「人數為全場最多」的角色為大勢力。
+---
+---@param player ServerPlayer
+---@return boolean
 function IsBigKingdomPlayer(player)
 	-- 判断某个角色是否为大势力角色
 	-- 如果场上有人装备玉玺，则玉玺持有者为大势力，其他为小势力
@@ -153,6 +147,13 @@ function IsBigKingdomPlayer(player)
 	return player_kingdom_count >= 2 and player_kingdom_count == max_count
 end
 
+--- 判定目標是否為「大勢力」角色（客戶端/UI介面邏輯）
+--- 
+--- **開發備註**：
+--- 不使用 `getRoom()`，改用 `getAliveSiblings(true)` 獲取同場玩家，適用於客戶端技能提示或 UI 渲染。
+---
+---@param player Player
+---@return boolean
 function IsBigKingdomPlayerClient(player)
 	-- 判断某个角色是否为大势力角色（不使用getRoom）
 	-- 如果场上有人装备玉玺，则玉玺持有者为大势力，其他为小势力
@@ -204,6 +205,12 @@ function IsBigKingdomPlayerClient(player)
 	return player_kingdom_count >= 2 and player_kingdom_count == max_count
 end
 
+--- 判定目標是否處於「被圍攻」狀態
+--- 
+--- **圍攻定義**：
+--- 一名角色的上家與下家勢力相同，且該勢力與該角色不同。
+---@param player ServerPlayer 待檢查的角色
+---@return boolean 是否被圍攻
 function IsEncircled(player)
 	-- 判断某个角色是否处于围攻关系中（被围攻角色）
 	-- 围攻定义: 一名角色的上家与下家势力相同且与该角色不同
@@ -225,6 +232,9 @@ function IsEncircled(player)
 	return prev_kingdom == next_kingdom and prev_kingdom ~= player_kingdom
 end
 
+--- 獲取圍攻目標角色的所有圍攻者（上家和下家）
+---@param player ServerPlayer
+---@return ServerPlayer[] encirclers 圍攻者列表
 function GetEncirclers(player)
 	-- 获取围攻某个角色的所有围攻角色
 	-- 返回围攻角色列表（上家和下家）
@@ -302,6 +312,11 @@ function GetEncirclersClient(player)
 	return encirclers
 end
 
+--- 獲取一名角色正在參與圍攻的所有對象
+--- 
+--- **規則**：一名角色可能同時圍攻其上家（與其上家的上家配合）和下家（與其下家的下家配合）。
+---@param player ServerPlayer
+---@return ServerPlayer[] encircled 被該玩家圍攻的角色列表
 function GetEncircledPlayers(player)
 	-- 获取某个角色参与围攻的所有被围攻角色
 	-- 一名角色可以同时围攻其上家和下家（如果满足条件）
@@ -339,19 +354,30 @@ function GetEncircledPlayers(player)
 	return encircled
 end
 
+--- 獲取全場所有的圍攻關係清單
+---@param room Room
+---@return table relations {encircled = Player, encirclers = {Player, Player}}
 function GetAllEncirclementRelations(room)
 	-- 获取场上所有的围攻关系
 	-- 返回一个表，每个元素包含 {encircled = 被围攻角色, encirclers = {围攻角色列表}}
 	local relations = {}
 	
 	for _, p in sgs.qlist(room:getAlivePlayers()) do
-		if IsEncircled(p) then
-			local encirclers = GetEncirclers(p)
-		end
-	end
+        if IsEncircled(p) then
+            table.insert(relations, {
+                encircled = p,
+                encirclers = GetEncirclers(p)
+            })
+        end
+    end
 	return relations
 end
 
+--- 判定目標是否處於某個「隊列」中
+--- 
+--- **隊列定義**：連續相鄰的至少 2 名勢力相同的角色。
+---@param player ServerPlayer
+---@return boolean 是否處於隊列中
 function IsInQueue(player)
 	-- 判断某个角色是否处于队列中
 	-- 队列定义: 连续相邻的若干名（至少2名）势力相同的角色
@@ -369,6 +395,13 @@ function IsInQueue(player)
 	       (next_player and next_player:getKingdom() == player_kingdom)
 end
 
+--- 獲取目標角色所在隊列的所有成員
+--- 
+--- **算法描述**：
+--- 1. 逆時針遍歷直到勢力斷開，找到隊列「起點」。
+--- 2. 從起點順時針遍歷，收集所有連續的同勢力角色。
+---@param player ServerPlayer
+---@return ServerPlayer[] queue 隊列成員清單（含自己）
 function GetQueueMembers(player)
 	-- 获取某个角色所在队列的所有成员（包括自己）
 	-- 返回队列成员列表
@@ -427,6 +460,9 @@ function GetQueueMembers(player)
 	return queue
 end
 
+--- 獲取場上所有的隊列分布情況
+---@param room Room
+---@return table queues 包含多個隊列成員表的嵌套表
 function GetAllQueues(room)
 	-- 获取场上所有的队列
 	-- 返回一个表，每个元素是一个队列（成员列表）
@@ -456,6 +492,10 @@ function GetQueueSize(player)
 	return #queue
 end
 
+--- 判定兩名角色是否處於同一個隊列
+---@param player1 ServerPlayer
+---@param player2 ServerPlayer
+---@return boolean
 function AreInSameQueue(player1, player2)
 	-- 判断两个角色是否在同一个队列中
 	if player1:getKingdom() ~= player2:getKingdom() then
@@ -476,6 +516,18 @@ end
 
 
 -- 合纵机制
+--- 判定指定卡牌是否帶有「合縱」標識
+--- 
+--- **判定邏輯**：
+--- 1. **靜態屬性**：檢查卡牌在引擎定義中的 `CharTag` 屬性是否包含 `transfer_card`。
+--- 2. **動態標記**：檢查卡牌在遊戲運行中是否被賦予了 `heg_transfer_card` 標記。
+---
+--- **注意**：
+--- - 支援傳入卡牌 ID (number) 或卡牌物件 (Card)。
+--- - 「合縱」牌通常用於執行「交給異勢力角色並補牌」的特殊操作。
+---
+---@param id integer|Card 卡牌 ID 或卡牌物件
+---@return boolean 是否帶有「合縱」標識
 function CardIsHezong(id)
 	if type(id)~="number" then id = id:getId() end
 	if id>=0 then
@@ -706,7 +758,7 @@ heg_ol_sunce:addSkill("yingyang")
 --		return false
 --	end
 --}
-function hunshangChange(room, player, hp, skill_name)
+local function hunshangChange(room, player, hp, skill_name)
 	local hunshang_skills = player:getTag("Hunshangskills"):toString():split("+")
 	if player:getHp() <= hp then
 		if not table.contains(hunshang_skills, skill_name) then

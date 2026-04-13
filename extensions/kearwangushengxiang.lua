@@ -20,16 +20,6 @@ kenewgirlniangslashmore = sgs.CreateTargetModSkill{
 }
 if not sgs.Sanguosha:getSkill("kenewgirlniangslashmore") then skills:append(kenewgirlniangslashmore) end
 
-function KeToData(self)
-	local data = sgs.QVariant()
-	if type(self)=="string"
-	or type(self)=="boolean"
-	or type(self)=="number"
-	then data = sgs.QVariant(self)
-	elseif self~=nil then data:setValue(self) end
-	return data
-end
-
 kenewgirlhuamulan = sgs.General(extension, "kenewgirlhuamulan", "qun", 3, false)
 kenewgirlhuamulantwo = sgs.General(extension, "kenewgirlhuamulantwo", "qun", 3, false,true,true)
 -- kenewgirlhuamulan:addSkill("hongyan")
@@ -147,7 +137,7 @@ kenewgirlcongrong = sgs.CreateTriggerSkill{
 							to_get:append(c:getEffectiveId())
 						end
 						local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-						dummy:addSubcards(kenewgetCardList(to_get))
+						dummy:addSubcards(getCardList(to_get))
 						ml:obtainCard(dummy)
 						ml:gainHujia(to_get:length())
 						--room:recover(ml, sgs.RecoverStruct())	
@@ -1096,7 +1086,7 @@ kenewgirlganglv = sgs.CreateTriggerSkill{
 							end
 						end
 					else
-						if player:askForSkillInvoke(self,KeToData("kenewgirlganglv-ask")) then
+						if player:askForSkillInvoke(self,ToData("kenewgirlganglv-ask")) then
 							room:broadcastSkillInvoke(self:objectName())
 							room:setPlayerMark(player,"&kenewgirlganglv-Clear",1)
 							room:setPlayerMark(player,"bankenewgirlganglv-Clear",1)
@@ -1104,7 +1094,7 @@ kenewgirlganglv = sgs.CreateTriggerSkill{
 						end
 					end
 				else
-					if player:askForSkillInvoke(self,KeToData("kenewgirlganglv-ask")) then
+					if player:askForSkillInvoke(self,ToData("kenewgirlganglv-ask")) then
 						room:broadcastSkillInvoke(self:objectName())
 						room:setPlayerMark(player,"&kenewgirlganglv-Clear",1)
 						room:setPlayerMark(player,"bankenewgirlganglv-Clear",1)
@@ -1617,7 +1607,7 @@ kenewgirlchenjiCard = sgs.CreateSkillCard{
 		end
 		--room:askForGuanxing(player,todis,1)
 		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-		dummy:addSubcards(kenewgetCardList(todis))
+		dummy:addSubcards(getCardList(todis))
 		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, player:objectName(), "kenewgirlchenji","")
 		--room:moveCardTo(dummy, nil, sgs.Player_DrawPile,reason)
 		--room:moveCardsInToDrawpile(player,dummy)
@@ -1847,7 +1837,7 @@ kenewgirlscshixieCard = sgs.CreateSkillCard{
 		end
 		if not to_dis:isEmpty() then
 			local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-			dummy:addSubcards(kenewgetCardList(to_dis))
+			dummy:addSubcards(getCardList(to_dis))
 			--local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, source:objectName(), self:objectName(),"")
 			room:throwCard(dummy, target, player)
 			dummy:deleteLater()

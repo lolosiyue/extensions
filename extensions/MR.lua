@@ -962,13 +962,6 @@ sgs.LoadTranslationTable{
 ---------------------------------
 --神吕蒙
 MR_shenlvmeng = sgs.General(extension_MRmou, "MR_shenlvmeng", "god", 3)
-function getCardList(intlist)
-	local ids = sgs.CardList()
-	for _, id in sgs.qlist(intlist) do
-		ids:append(sgs.Sanguosha:getCard(id))
-	end
-	return ids
-end
 MR_shelie = sgs.CreateTriggerSkill{
 	name = "MR_shelie",
 	frequency = sgs.Skill_Compulsory,

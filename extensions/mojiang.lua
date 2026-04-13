@@ -776,7 +776,7 @@ mo_caocao:addSkill(sy_weiwu)
 	引用：sy_duzun
 ]]
 --
-function updateMCCvalue(mcc, mcc_skill)
+local function updateMCCvalue(mcc, mcc_skill)
 	local room = sgs.Sanguosha:currentRoom()
 	local s, d, m = Nil2Int(mcc:getTag("mcc_defaultslash_num"):toInt()), Nil2Int(mcc:getTag("mcc_phasedraw_num"):toInt()), mcc:getMaxHp()
 	if s == 0 then
@@ -1645,7 +1645,7 @@ function activateAllSkills(vic)
 	room:setPlayerMark(vic, "Equips_Nullified_to_Yourself", 0)
 end
 
-function doMoshouTiger(vic)
+local function doMoshouTiger(vic)
 	local room = vic:getRoom()
 	room:addPlayerMark(vic, "moshou_tiger_invalid")
 	local skill_list = {}

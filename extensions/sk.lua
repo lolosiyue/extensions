@@ -794,14 +794,6 @@ sk_zhaoxin = sgs.CreateTriggerSkill{
 
 
 --制合
-function getCardList(intlist)
-	local ids = sgs.CardList()
-	for _, id in sgs.qlist(intlist) do
-		ids:append(sgs.Sanguosha:getCard(id))
-	end
-	return ids
-end
-
 sk_zhiheCard = sgs.CreateSkillCard{
     name = "sk_zhiheCard",
 	target_fixed = true,

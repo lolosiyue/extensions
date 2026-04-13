@@ -1348,11 +1348,6 @@ sy_yaohuo = sgs.CreateTriggerSkill{
 	技能描述：每当你使用3种不同类型的牌后，你可令所有其他角色获得1个“太平”标记。
 	引用：sy_sanzhi
 ]]--
-function getTypeString(card)
-	if card:isKindOf("BasicCard") then return "basic" end
-	if card:isKindOf("TrickCard") then return "trick" end
-	if card:isKindOf("EquipCard") then return "equip" end
-end
 sy_sanzhi = sgs.CreateTriggerSkill{
 	name = "sy_sanzhi",
 	events = {sgs.CardFinished, sgs.EventLoseSkill},

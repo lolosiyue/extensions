@@ -278,6 +278,19 @@ function ToData(self)
 	data:setValue(self or "")
 	return data
 end
+
+--- 執行「遺計」風格的卡牌預覽（高度自定義化）
+--- 
+--- **核心功能**：
+--- 1. **偽移動控制**：透過 `bool` 參數決定是「將牌從手牌移出預覽」還是「將桌面上的牌移入手牌預覽」。
+--- 2. **位置校驗**：在預覽前檢查卡牌是否已在桌面或摸牌堆，避免重複移動導致的 UI 錯誤。
+--- 3. **隱私控制**：僅對 `player` 本人發送 `notifyMoveCards` 訊息。
+---
+---@param self any 技能對象或名稱
+---@param player ServerPlayer 操作玩家
+---@param cards sgs.IntList 待預覽的卡牌 ID 列表
+---@param bool boolean 預覽方向切換（true: 移入手牌預覽；false: 移出手牌預覽）
+---@param reason? integer (可選) 移動理由，預設為 S_REASON_PREVIEW
 function YijiPreview(self, player, cards, bool, reason)
 	reason = reason or sgs.CardMoveReason_S_REASON_PREVIEW
 	self = type(self) == "string" and self or self:objectName()
@@ -331,6 +344,16 @@ function Skill_msg(self, player, num)
 	msg.arg = self
 	room:sendLog(msg)
 end
+
+--- 將指定的武將牌堆 (Pile) 卡牌棄置
+--- 
+--- **機制描述**：
+--- 使用 `S_REASON_REMOVE_FROM_PILE` 理由將卡牌移入棄牌堆。
+--- 這通常用於處理如武將牌堆 (Pile) 卡牌標記被消耗並棄置的時機。
+---
+---@param player ServerPlayer 擁有該牌堆的角色
+---@param card_id integer 要棄置的卡牌 ID
+---@param skillName string 關聯的技能名稱
 function throwCardFromPile(player, card_id, skillName)
 	local room = player:getRoom()
 	local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, player:objectName(), nil, skillName, "")
@@ -764,6 +787,18 @@ function PatternsCard(name, islist, derivative)
 	end
 	return islist and cards
 end
+
+--- 修正或替換玩家身上的動態標記名稱
+--- 
+--- **邏輯核心**：
+--- 1. **後綴處理**：支援 `_lun`（輪次標記）與 `-`（狀態標記）兩種命名規則。
+--- 2. **動態更換**：遍歷玩家標記，尋找與 `mark1` 前綴相同的標記，將其舊標籤替換為包含 `mark2` 的新標籤，同時保持標記數量 `n` 不變。
+--- 3. **用途**：例如將「蓄力+等級1」修正為「蓄力+等級2」。
+---
+---@param player ServerPlayer 
+---@param mark1 string 舊標記前綴或範本
+---@param mark2 string 要插入的新標籤內容
+---@return boolean 是否成功執行
 function MarkRevises(player, mark1, mark2)
 	local room = player:getRoom()
 	if mark1:endsWith("_lun") then
@@ -809,6 +844,17 @@ function MarkRevises(player, mark1, mark2)
 	room:addPlayerMark(player, c_m)
 	return true
 end
+
+--- 在兩名玩家之間轉移指定數量的標記
+--- 
+--- **處理細節**：
+--- - **自動限額**：轉移數量 `n` 不會超過玩家持有的總數。
+--- - **日誌優化**：自動處理包含 `&`（私有）或 `+`（複合）符號的標記名，使日誌顯示更美觀。
+---
+---@param player ServerPlayer 轉出者
+---@param target ServerPlayer 轉入者
+---@param name string 標記名稱
+---@param n? integer 轉移數量（預設為 1）
 function TransferMark(player, target, name, n)
 	n = math.min(n or 1, player:getMark(name))
 	if n < 1 then
@@ -831,6 +877,21 @@ function TransferMark(player, target, name, n)
 	room:removePlayerMark(player, name, n)
 	room:addPlayerMark(target, name, n)
 end
+
+--- 執行「武將牌堆」與「手牌」的精準交換
+--- 
+--- **視覺邏輯**：
+--- 1. 使用 `S_REASON_PREVIEW` 偽移動：讓牌堆牌暫時在 UI 上呈現為玩家手牌（僅自己可見）。
+--- 2. 呼叫 `askForExchange` 進行選擇。
+--- 3. 結算：選中的手牌進入武將牌堆，選中的牌堆牌真正進入手牌（獲得）。
+---
+---@param self any 技能對象或名稱
+---@param player ServerPlayer 操作玩家
+---@param name string 武將牌堆名稱 (如 "field")
+---@param n integer 交換的張數
+---@param can_equipped? boolean 是否包含裝備區（預設 false）
+---@param will? boolean 是否可少於 n 張（預設 false）
+---@param compulsory? boolean 是否強制發動
 function ExchangePileCard(self, player, name, n, can_equipped, will, compulsory)
 	local can_equipped, compulsory = can_equipped or false, compulsory or false
 	if can_equipped and player:getCardCount() < 1 or player:getHandcardNum() < 1 then
@@ -880,6 +941,19 @@ function ExchangePileCard(self, player, name, n, can_equipped, will, compulsory)
 		end
 	end
 end
+
+--- 執行「特定卡牌集」的預覽並選擇
+--- 
+--- **用途**：讓玩家查看一組牌（如底牌、他人手牌、判定牌），並決定棄置或交換。
+---@param self any 技能名稱
+---@param player ServerPlayer
+---@param cards sgs.IntList 待預覽的卡牌 ID 列表
+---@param x integer 最小選擇張數
+---@param n integer 最大選擇張數
+---@param optional? boolean 是否可跳過（預設 false）
+---@param prompt? string 提示語
+---@param throw? boolean 是否為棄置（true 呼叫 askForDiscard；false 呼叫 askForExchange）
+---@return Card|nil 返回選中的虛擬卡牌物件
 function PreviewCards(self, player, cards, x, n, optional, prompt, throw)
 	if cards:length() < 1 then
 		return
@@ -932,6 +1006,16 @@ function CardVisible(player, id, special)
 		return place:pileOpen(place:getPileName(id), player:objectName())
 	end
 end
+--- 移除（拋棄）玩家指定區域的所有卡牌
+--- 
+--- **區域編號 n**：
+--- 1. **手牌區**：拋棄所有手牌，並設定 `ThrowArea_1` 標記與 `@Handlose` 視覺標記。
+--- 2. **判定區**：拋棄所有判定牌。
+--- 3. **裝備區**：拋棄所有裝備牌。
+---
+---@param player ServerPlayer 目標玩家
+---@param n integer 區域編號 (1:手牌, 2:判定, 3:裝備)
+---@return boolean 是否成功執行
 function ThrowArea(player, n)
 	if n == 1 then
 		local room = player:getRoom()
@@ -954,6 +1038,15 @@ function ThrowArea(player, n)
 		return true
 	end
 end
+--- 恢復（啟用）玩家指定區域（主要用於清除移除標記）
+--- 
+--- **邏輯特點**：
+--- - 對於手牌區 (n=1)，此函數會清除移除標記，代表該區域「恢復正常」。
+--- - 對於判定區與裝備區，調用底層的 `obtain` 系列函數。
+---
+---@param player ServerPlayer 目標玩家
+---@param n integer 區域編號 (1:手牌, 2:判定, 3:裝備)
+---@return boolean 是否成功執行
 function ObtainArea(player, n)
 	if n == 1 then
 		local room = player:getRoom()
@@ -995,9 +1088,25 @@ function GetStringLength(inputstr)
 	end
 	return n
 end
+
 function string:stringLength()
 	return GetStringLength(self)
 end
+
+--- 執行「整肅」任務選擇流程
+--- 
+--- **任務類型**：
+--- 1. **擂進 (zhengsu1)**：出牌階段使用至少 3 張牌，點數嚴格遞增。
+--- 2. **變陣 (zhengsu2)**：出牌階段使用至少 2 張牌，花色相同。
+--- 3. **鳴止 (zhengsu3)**：棄牌階段棄置至少 2 張牌，花色均不同。
+--- 
+--- **函數邏輯**：
+--- - 自動過濾掉該玩家在本回合（或特定標記下）已選擇過的任務。
+--- - 透過 `askForChoice` 讓玩家進行三選一。
+--- - 設定 `Tag` 記錄任務進度，並顯示視覺標記 `&zhengsu+-+zhengsuX`。
+---
+---@param player ServerPlayer 發動整肅的角色
+---@return integer task_id 返回選擇的任務編號 (1, 2, 3)，若無可選則返回 -1
 function ZhengsuChoice(player)
 	local choices = {}
 	for i = 1, 3 do
@@ -1016,6 +1125,21 @@ function ZhengsuChoice(player)
 	room:setPlayerMark(player, "&zhengsu+-+" .. choices, 1)
 	return tonumber(string.sub(choices, 8, 8))
 end
+
+--- 設置並初始化一個「施法」技能的狀態
+--- 
+--- **機制規則**：
+--- 1. **發動選擇**：詢問玩家選擇 1-3 之間的數字 $X$（代表延遲的回合數）。
+--- 2. **狀態初始化**：
+---    - `x`：初始設定的延遲值（固定）。
+---    - `m`：當前的倒數計時器（會隨著回合遞減）。
+--- 3. **全局存儲**：將施法數據存入 `sgs.shifa_skills` 列表中。
+--- 4. **視覺標記**：設置 `&技能名+-+shifa` 標記，顯示當前的剩餘回合數。
+---
+---@param self any 技能對象或名稱
+---@param player ServerPlayer 發動施法的玩家
+---@param x? integer|string (可選) 初始數值。若為 nil，則通過 askForChoice 詢問。
+---@return table shifa 包含 {name, x, m, playerId} 的數據表
 function SetShifa(self, player, x)
 	local room = player:getRoom()
 	if self and type(self) ~= "string" then
@@ -1043,6 +1167,17 @@ function SetShifa(self, player, x)
 	return shifa
 end
 sgs.ZhinangClassName = { "ExNihilo", "Dismantlement", "Nullification", "Qizhengxiangsheng", "Mantianguohai", "Tiaojiyanmei", "Binglinchengxia" }
+
+--- 調整玩家的「暴虐值」數量
+--- 
+--- **機制規則**：
+--- 1. **獲取 (n > 0)**：增加暴虐值，上限固定為 5。若已達上限則不再增加。
+--- 2. **消耗 (n < 0)**：減少暴虐值，下限為 0。
+--- 3. **數據同步**：
+---    - `Tag "ov_baonieNum"`：用於邏輯運算與持久化存儲。
+---    - `Mark "@ov_baonieNum"`：用於 UI 介面顯示（帶有 @ 符號的標記通常顯示在頭像旁）。
+---@param target ServerPlayer 目標玩家
+---@param n integer 調整數額（正數為獲得，負數為消耗）
 function GainOvBaonieNum(target, n)
 	n = tonumber(n)
 	if n > 0 then
@@ -1065,6 +1200,20 @@ function GainOvBaonieNum(target, n)
 		target:getRoom():setPlayerMark(target, "@ov_baonieNum", m)
 	end
 end
+
+--- 設置並存儲技能的「妄行」數值 (X)
+--- 
+--- **機制描述**：
+--- 1. **數值選擇**：若未傳入 `x`，則彈出介面讓玩家在 1-4 之間選擇。
+--- 2. **狀態持久化**：
+---    - 將數值存入全域表 `sgs.wangxing_skills`，並關聯技能名與玩家 ID。
+---    - 同時在玩家身上設置一個帶有技能名的特殊標記 (`&...-Clear`) 以便 UI 顯示。
+--- 3. **日誌記錄**：發送特定日誌 `$wangxing` 通知全場玩家該技能的 $X$ 取值。
+---
+---@param self any 技能對象或名稱
+---@param player ServerPlayer 發動技能的角色
+---@param x? integer (可選) 妄行數值。若為 nil，則詢問玩家。
+---@return table wangxing 包含技能名、數值與玩家 ID 的數據表
 function SetWangxing(self, player, x)
 	local room = player:getRoom()
 	if self and type(self) ~= "string" then
@@ -1084,6 +1233,25 @@ function SetWangxing(self, player, x)
 	Log_message("$wangxing", player, nil, nil, "wangxing", x, self)
 	return wangxing
 end
+--- 執行「多人拼點」邏輯
+--- 
+--- **判定規則**：
+--- 1. **選牌階段**：發起者出一張牌，所有目標各出一張牌。
+--- 2. **點數校驗**：觸發 `PindianVerifying` 事件（允許技能改點）。
+--- 3. **勝負判定**：
+---    - 找出全場最高點數。
+---    - 若最高點數由**多人同時打出**（平局），則全場無贏家。
+---    - 若最高點數**唯一**，則該點數打出者為 `success_owner`。
+--- 4. **事件觸發**：對每一名參與者觸發標準 `Pindian` 事件。
+---
+---@param self any 技能對象或名稱
+---@param player ServerPlayer 發起者
+---@param targets ServerPlayer[] | sgs.SPlayerList 目標列表
+---@return table pd_ 返回自定義拼點結果表：
+--- - `success_owner`: 最終贏家（ServerPlayer 或 nil）
+--- - `from_number`: 發起者點數
+--- - `to_card`: 所有目標出的牌 (CardList)
+--- - `to_number`: 所有目標的點數 (IntList)
 function targetsPindian(self, player, targets)
 	if self and type(self) ~= "string" then
 		self = self:objectName()
@@ -1247,6 +1415,19 @@ function targetsPindian(self, player, targets)
 	room:getThread():delay()
 	return pd_
 end
+
+--- 為指定目標「安裝」裝備（支援自動替換）
+--- 
+--- **邏輯特點**：
+--- 1. **自動檢索**：支援傳入 ID 或 Card 物件。
+--- 2. **欄位檢索**：自動獲取裝備對應的槽位 (Location)。
+--- 3. **原子化移動**：若目標槽位已有裝備，則在同一原子操作中執行「棄置舊裝備」與「移入新裝備」。
+---
+---@param eid integer|Card 要安裝的裝備 ID 或物件
+---@param player ServerPlayer 操作發起者
+---@param self any 關聯技能物件或名稱
+---@param to? ServerPlayer 安裝目標（預設為 player）
+---@return boolean 是否安裝成功
 function InstallEquip(eid, player, self, to)
 	local e = eid
 	if type(eid) ~= "number" then
@@ -1276,6 +1457,21 @@ function InstallEquip(eid, player, self, to)
 	player:getRoom():moveCardsAtomic(moves, true)
 	return true
 end
+
+--- 執行場上卡牌（裝備/判定牌）的移動流程（互動版）
+--- 
+--- **流程描述**：
+--- 1. **選取來源**：詢問操作者從誰身上移動牌。
+--- 2. **過濾卡牌**：根據 `flags` (ej) 自動排除目標無法獲得的牌（例如目標已有同名判定牌或裝備欄已滿）。
+--- 3. **選取目標**：詢問將牌移動給誰。
+--- 4. **執行移動**：使用 `S_REASON_TRANSFER` 理由執行卡牌轉移。
+---
+---@param self any 技能對象或名稱
+---@param player ServerPlayer 當前操作者
+---@param flags? string 移動範圍（預設 "ej" 代表裝備與判定牌）
+---@param froms? sgs.PlayerList 可選來源列表
+---@param tos? sgs.PlayerList 可選目標列表
+---@return table|nil mfc 包含移動資訊的 Table (reason, owner, flags, from, to, card, to_place)
 function MoveFieldCard(self, player, flags, froms, tos)
 	local room = player:getRoom()
 	if self and type(self) ~= "string" then
@@ -1355,6 +1551,18 @@ function string:contains(substr)
 	return string.find(self, substr) ~= nil
 end
 
+--- 發起一個「延時拼點」
+--- 
+--- **機制描述**：
+--- 1. 雙方選牌後，牌會移動到 `PlaceTable` 並進入 `delayedPingdians` 標記列表。
+--- 2. 此時不發送結果日誌，不執行 `Pindian` 事件觸發。
+--- 3. 牌將扣置於場上，直到呼叫 `verifyPindian`。
+---
+---@param self any 技能對象或技能名稱
+---@param player ServerPlayer 發起者
+---@param target ServerPlayer 目標
+---@param from_card? Card (可選) 發起者指定的拼點牌
+---@return sgs.PindianStruct pd 拼點結構體（包含初步數據）
 function delayedPingdian(self, player, target, from_card)
 	if self and type(self) ~= "string" then
 		self = self:objectName()
@@ -1413,6 +1621,16 @@ function delayedPingdian(self, player, target, from_card)
 	return pd
 end
 
+--- 核對並結算「延時拼點」的結果
+--- 
+--- **機制描述**：
+--- 1. 從 Tag 中移除該拼點記錄。
+--- 2. 公佈雙方點數，發送 `#PindianSuccess` 或 `#PindianFailure` 日誌。
+--- 3. 觸發標準 `sgs.Pindian` 事件，執行後續獎懲邏輯。
+--- 4. 將場上的拼點牌移入棄牌堆。
+---
+---@param pd sgs.PindianStruct 待核對的拼點結構體
+---@return sgs.PindianStruct pd 最終結算後的結構體
 function verifyPindian(pd)
 	if pd == nil then
 		return
@@ -1638,6 +1856,166 @@ function askForViewAndChoose(room, player, count, skill_name, can_cancel)
     room:returnToTopDrawPile(ids)
 
     return id
+end
+
+function getCardList(intlist)
+	local ids = sgs.CardList()
+	for _, id in sgs.qlist(intlist) do
+		ids:append(sgs.Sanguosha:getCard(id))
+	end
+	return ids
+end
+
+--- 獲取指定元素在 sgs.QList 中的索引位置
+--- 
+--- **機制描述**：
+--- 1. 使用 `sgs.qlist()` 將 C++ 容器轉換為 Lua 可迭代對象。
+--- 2. 遍歷列表並比對元素 `item == theitem`。
+--- 3. 返回從 **0** 開始的索引（符合 C++/Qt 的索引習慣）。
+---
+--- **注意**：若列表中不存在該元素，函數將返回 `nil`。
+---
+---@param theqlist any 待查詢的 sgs.QList 對象（如 PlayerList, CardList 等）
+---@param theitem any 要查找的目標元素
+---@return integer|nil index 元素的索引位置（從 0 開始），若未找到則返回 nil
+function listIndexOf(theqlist, theitem)
+	local index = 0
+	for _, item in sgs.qlist(theqlist) do
+		if item == theitem then return index end
+		index = index + 1
+	end
+end
+
+--- 將基礎 Player 物件轉換為完整的 ServerPlayer 物件
+--- 
+--- **機制描述**：
+--- 透過比對 `objectName`，從當前房間的所有玩家列表中檢索出對應的 `ServerPlayer` 實體。
+--- 
+---@param room Room 房間對象
+---@param player Player|any 待轉換的玩家對象
+---@return ServerPlayer|nil 轉換後的伺服器端玩家對象，若未找到則返回 nil
+player2serverplayer = function(room, player) --啦啦SLG (OTZ--ORZ--Orz) --作用：将currentplayer转换成serverplayer
+	local players = room:getPlayers()
+	for _, p in sgs.qlist(players) do
+		if p:objectName() == player:objectName() then
+			return p
+		end
+	end
+end
+
+--- 將玩家名稱字串 (QString) 轉換為 ServerPlayer 物件
+--- 
+--- **使用場景**：
+--- 當你從 `room:getTag()` 或某些字串訊息中取得玩家 ID（objectName）時，用此函數找回玩家物件。
+--- 
+---@param room Room 房間對象
+---@param qstring string 玩家的物件名稱 (objectName)
+---@return ServerPlayer|nil 對應名稱的玩家對象，若未找到則返回 nil
+qstring2serverplayer = function(room, qstring) --改编版本 --作用：将qstring类型转换成serverplayer
+	local players = room:getPlayers()
+	for _, p in sgs.qlist(players) do
+		if p:objectName() == qstring then
+			return p
+		end
+	end
+end
+
+--- 內部輔助函數：根據 UTF-8 首位元組判定字元佔用的位元組數
+--- 
+--- **判定標準**：
+--- - 1 byte (0-191): ASCII 或後續位元組
+--- - 2 bytes (192-224): 多位元組字元起始
+--- - 3 bytes (225-240): 中文字元常用區間
+--- - 4 bytes (>240): 極少數特殊字元
+---@param tmp integer|nil 位元組的數值 (0-255)
+---@return integer bytes 該字元佔用的位元組長度
+function chsize(tmp)
+	if not tmp then
+		return 0
+	elseif tmp > 240 then
+		return 4
+	elseif tmp > 225 then
+		return 3
+	elseif tmp > 192 then
+		return 2
+	else
+		return 1
+	end
+end
+
+--- 計算 UTF-8 字串的真實字元長度（而非位元組數）
+--- 
+--- **功能描述**：
+--- 1. **自動轉換**：若傳入的是 `sgs` 物件，則自動翻譯為對應的 objectName。
+--- 2. **字元掃描**：透過位元組特徵識別多位元組字元（如中文），精確計算視覺上的字數。
+---
+--- **使用場景**：用於 UI 佈局計算、字數限制（如自定義技能名或日誌格式化）。
+---
+---@param str string|any 要計算長度的字串或可翻譯的 sgs 物件
+---@return integer length 真實字元總數
+function utf8len(str)
+	if type(str) ~= "string" then
+		str = sgs.Sanguosha:translate(str:objectName())
+	end
+	local length, currentIndex = 0, 1
+	while currentIndex <= #str do
+		local tmp = string.byte(str, currentIndex)
+		currentIndex = currentIndex + chsize(tmp)
+		length = length + 1
+	end
+	return length
+end
+
+
+function getTypeString(card)
+    local cardtype = nil
+    local types = {"BasicCard","TrickCard","EquipCard"}
+    for _,p in ipairs(types) do
+        if card:isKindOf(p) then
+            cardtype = p
+            break
+        end
+    end
+    return cardtype
+end
+
+function CreateDamageLog(damage, changenum, reason, up)
+    if up == nil then up = true end
+    local log = sgs.LogMessage()
+    if damage.from then
+        log.type = "$nyarzdamagechange"
+        log.from = damage.from
+        log.arg5 = damage.to:getGeneralName()
+    else
+        log.type = "$nyarzdamagechangenofrom"
+        log.from = damage.to
+    end
+    log.arg = reason
+    log.arg2 = damage.damage
+    if up then
+        log.arg3 = "nyarzdamageup"
+        log.arg4 = damage.damage + changenum
+    else
+        log.arg3 = "nyarzdamagedown"
+        log.arg4 = damage.damage - changenum
+    end
+    return log
+end
+
+sgs.LoadTranslationTable 
+{
+    ["$nyarzdamagechange"] = "%from 对 %arg5 造成的伤害因 %arg 的效果由 %arg2 点 %arg3 到了 %arg4 点。",
+    ["$nyarzdamagechangenofrom"] = "%from 受到的伤害因 %arg 的效果由 %arg2 点 %arg3 到了 %arg4 点。",
+    ["nyarzdamageup"] = "增加",
+    ["nyarzdamagedown"] = "减少",
+}
+
+
+containsTable = function(t, tar)
+	for _, i in ipairs(t) do
+		if i == tar then return true end
+	end
+	return false
 end
 
 local hcv = io.open("lua/ai/cstring")

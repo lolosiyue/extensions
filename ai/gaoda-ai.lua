@@ -1072,27 +1072,10 @@ function Set(list)
 	return set
 end
 
-hasEquipArea = function(player, name)
-	if (name == "treasure" and (Set(sgs.Sanguosha:getBanPackages()))["limitation_broken"] and (Set(sgs.Sanguosha:getBanPackages()))["gundamcard"])
-	or player:getMark(name.."AreaRemoved") > 0 then
-		return false
-	end
-	return true
-end
-
-blankEquipArea = function(player)
-	if hasEquipArea(player, "weapon") or hasEquipArea(player, "armor") or hasEquipArea(player, "defensive_horse")
-	or hasEquipArea(player, "offensive_horse") or hasEquipArea(player, "treasure") then
-		return false
-	end
-	return true
-end
-
 local zhonggong_skill = {}
 zhonggong_skill.name = "zhonggong"
 table.insert(sgs.ai_skills, zhonggong_skill)
 zhonggong_skill.getTurnUseCard = function(self, inclusive)
-	-- if (not self.player:hasUsed("#zhonggong")) and (not blankEquipArea(self.player)) then
 	if (not self.player:hasUsed("#zhonggong")) and self.player:hasEquipArea() then
 		return sgs.Card_Parse("#zhonggong:.:")
 	end
@@ -1134,7 +1117,6 @@ linguang_skill.name = "linguang"
 table.insert(sgs.ai_skills, linguang_skill)
 linguang_skill.getTurnUseCard = function(self, inclusive)
 	if self.player:getMark("@linguang") > 0 and self.player:isWounded() then
-		-- if (self.player:getHp() > 1 and blankEquipArea(self.player)) or self.player:getHp() == 1 then
 		if (self.player:getHp() > 1 and not self.player:hasEquipArea()) or self.player:getHp() == 1 then
 			return sgs.Card_Parse("#linguang:.:")
 		end
@@ -1354,12 +1336,13 @@ sgs.ai_skill_use_func["#xiezhan"] = function(card, use, self)
 			elseif self.player:getOffensiveHorse() and self.player:getOffensiveHorse():getId() == card_id then
 				range_fix = range_fix + 1
 			end
+			local i = card:getRealCard():toEquipCard():location()
 			if ((card:isKindOf("Weapon") and friend:getWeapon() == nil) or
 				(card:isKindOf("Armor") and friend:getArmor() == nil) or
 				(card:isKindOf("DefensiveHorse") and friend:getDefensiveHorse() == nil) or
 				(card:isKindOf("OffensiveHorse") and friend:getOffensiveHorse() == nil) or
 				(card:isKindOf("Treasure") and friend:getTreasure() == nil)) and
-				self.player:distanceTo(friend, range_fix) <= self.player:getAttackRange() and sgs.Slash_IsAvailable(friend) and hasEquipArea(friend, card:getSubtype()) then
+				self.player:distanceTo(friend, range_fix) <= self.player:getAttackRange() and sgs.Slash_IsAvailable(friend) and friend:hasEquipArea(i) then
 				use.card = sgs.Card_Parse("#xiezhan:"..card_id..":")
 				if use.to then use.to:append(friend) end
 				return

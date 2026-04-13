@@ -1332,31 +1332,6 @@ end
 
 --观骨
 
-local function chsize(tmp)
-	if not tmp then
-		return 0
-    elseif tmp > 240 then
-        return 4
-    elseif tmp > 225 then
-        return 3
-    elseif tmp > 192 then
-        return 2
-    else
-        return 1
-    end
-end
-
-local function utf8len(str)
-	local length = 0
-	local currentIndex = 1
-	while currentIndex <= #str do
-		local tmp = string.byte(str, currentIndex)
-		currentIndex  = currentIndex + chsize(tmp)
-		length = length + 1
-	end
-	return length
-end
-
 local nyarz_guangu_skill = {}
 nyarz_guangu_skill.name = "nyarz_guangu"
 table.insert(sgs.ai_skills, nyarz_guangu_skill)

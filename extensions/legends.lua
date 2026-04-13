@@ -687,7 +687,7 @@ recheng = sgs.CreateProhibitSkill{
 		end
 	end
 }
-function ChangeToVSCard(skillcard) --自定义函数，用于根据技能卡的子卡构成产生视为的卡牌，参数skillcard为技能卡
+local function ChangeToVSCard(skillcard) --自定义函数，用于根据技能卡的子卡构成产生视为的卡牌，参数skillcard为技能卡
 	local subcards = skillcard:getSubcards() --获取此技能卡的子卡列表
 	local id = subcards:first() --第一张子卡的编号（其实此技能卡只有此一张子卡）
 	local card = sgs.Sanguosha:getCard(id) --根据子卡编号找到用于发动技能的子卡卡牌

@@ -264,7 +264,7 @@ local general_table = { "qhstandardcaocao", "qhstandardsimayi", "qhstandardxiaho
     "qhfiredianwei", "qhfirexunyu", "qhfirepangtong", "qhfirewolong", "qhfiretaishici",
     "qhfireyuanshao", "qhfireyanliangwenchou", "qhfirepangde", "qhfireshenzhouyu", "qhfireshenzhugeliang"
 }
-function getQhGeneral()
+local function getQhGeneral()
     local new_generaltable = {}
     local n = 0
     for i = 1, 30 do

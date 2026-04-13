@@ -933,15 +933,6 @@ LuaXDuojian = sgs.CreateTriggerSkill {
 	end
 }
 
-
-
-listIndexOf = function(theqlist, theitem)
-	local index = 0
-	for _, item in sgs.qlist(theqlist) do
-		if item == theitem then return index end
-		index = index + 1
-	end
-end
 LuaLongwei = sgs.CreateTriggerSkill {
 	name = "LuaLongwei",
 	frequency = sgs.Skill_Frequent,
@@ -1206,7 +1197,7 @@ LuaHuaji = sgs.CreateTriggerSkill {
 
 
 
-Exchange1 = function(xinglvbu)
+local Exchange1 = function(xinglvbu)
 	local wrath = xinglvbu:getPile("wrath")
 	if wrath:length() > 0 then
 		local room = xinglvbu:getRoom()
