@@ -628,3 +628,34 @@ sgs.ai_card_intention.FireAttack = 80
 
 sgs.dynamic_value.damage_card.FireAttack = true
 
+sgs.ai_card_combo_use.FireAttack = function(self, card, use)
+    -- 1. 優先：空城的敵方 (火攻對空城絕對無效)
+    for _, enemy in ipairs(self.enemies) do
+        if not enemy:isKongcheng() and not self.room:isProhibited(self.player, enemy, card) then
+            use.card = card
+            if use.to then use.to:append(enemy) end
+            return true
+        end
+    end
+
+    -- 2. 其次：狀態好且有賣血技能的友方
+    self:sort(self.friends_noself, "hp")
+    for _, friend in ipairs(self.friends_noself) do
+        if not friend:isKongcheng() and not self:isWeak(friend) and self:canDamageHp(self.player, card, friend) and not self.room:isProhibited(self.player, friend, card) then
+            use.card = card
+            if use.to then use.to:append(friend) end
+            return true
+        end
+    end
+
+    -- 3. 兜底：狀態好的友方
+    for _, friend in ipairs(self.friends_noself) do
+        if not friend:isKongcheng() and not self:isWeak(friend) and not self.room:isProhibited(self.player, friend, card) then
+            use.card = card
+            if use.to then use.to:append(friend) end
+            return true
+        end
+    end
+
+    return false
+end

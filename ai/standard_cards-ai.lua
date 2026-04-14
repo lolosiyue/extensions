@@ -367,6 +367,36 @@ function SmartAI:isPriorFriendOfSlash(friend,card,source)
 	then return true end
 end
 
+sgs.ai_card_combo_use.Slash = function(self, card, use)
+    -- 1. 優先：狀態好且有賣血技能的友方
+    self:sort(self.friends_noself, "hp")
+    for _, friend in ipairs(self.friends_noself) do
+        if not self:isWeak(friend) and self:canDamageHp(self.player, card, friend) and self.player:canSlash(friend, card, true) and not self:slashProhibit(card, friend, self.player) then
+            use.card = card
+            if use.to then use.to:append(friend) end
+            return true
+        end
+    end
+    self:sort(self.enemies, "defense")
+    for _, enemy in ipairs(self.enemies) do
+        if self.player:canSlash(enemy, card, true) and not self:slashProhibit(card, enemy, self.player) then
+			use.card = card
+			if use.to then use.to:append(enemy) end
+			return true
+        end
+    end
+
+    for _, friend in ipairs(self.friends_noself) do
+        if not self:isWeak(friend) and self.player:canSlash(friend, card, true) and not self:slashProhibit(card, friend, self.player) then
+            use.card = card
+            if use.to then use.to:append(friend) end
+            return true
+        end
+    end
+
+    return false
+end
+
 sgs.ai_use_revises.qingnang = function(self,card,use)
 	if card:isKindOf("Slash") and self:isWeak()
 	and self:getOverflow()<=0
@@ -1773,6 +1803,27 @@ sgs.ai_skill_cardask["duel-slash"] = function(self,data,pattern,target)
 	return "."
 end
 
+sgs.ai_card_combo_use.Duel = function(self, card, use)
+    self:sort(self.friends_noself, "hp")
+    for _, friend in ipairs(self.friends_noself) do
+        if not self:isWeak(friend) and self:canDamageHp(self.player, card, friend) and not self.room:isProhibited(self.player, friend, card) then
+            use.card = card
+            if use.to then use.to:append(friend) end
+            return true
+        end
+    end
+
+    for _, friend in ipairs(self.friends_noself) do
+        if not self:isWeak(friend) and not self.room:isProhibited(self.player, friend, card) then
+            use.card = card
+            if use.to then use.to:append(friend) end
+            return true
+        end
+    end
+
+    return false
+end
+
 function SmartAI:useCardExNihilo(card,use)
 	local xiahou = self:hasSkills("yanyu",self.enemies)
 	if xiahou and xiahou:getMark("YanyuDiscard2")>0 then return end
@@ -2131,6 +2182,44 @@ sgs.ai_choicemade_filter.cardChosen.snatch = function(self,player,promptlist)
 end
 
 sgs.ai_choicemade_filter.cardChosen.dismantlement = sgs.ai_choicemade_filter.cardChosen.snatch
+
+local function combo_snatch_dismantlement(self, card, use)
+	local is_snatch = card:isKindOf("Snatch")
+    
+    local function can_target(target)
+        if target:isAllNude() then return false end
+        if self.room:isProhibited(self.player, target, card) then return false end
+        -- 順手牽羊距離限制
+        if is_snatch and self.player:distanceTo(target) > 1 and not CanToCard(card, self.player, target) then 
+            return false 
+        end
+        return true
+    end
+
+    -- 1. 優先：狀態好的友方
+    self:sort(self.friends_noself, "hp")
+    for _, friend in ipairs(self.friends_noself) do
+        if not self:isWeak(friend) and can_target(friend) then
+            use.card = card
+            if use.to then use.to:append(friend) end
+            return true
+        end
+    end
+
+    -- 2. 兜底：狀態差的友方
+    for _, friend in ipairs(self.friends_noself) do
+        if self:isWeak(friend) and can_target(friend) then
+            use.card = card
+            if use.to then use.to:append(friend) end
+            return true
+        end
+    end
+
+    return false
+end
+
+sgs.ai_card_combo_use.Dismantlement = combo_snatch_dismantlement
+sgs.ai_card_combo_use.Snatch = combo_snatch_dismantlement
 
 function SmartAI:useCardCollateral(card,use)
 	local fromList = sgs.QList2Table(self.room:getOtherPlayers(self.player))

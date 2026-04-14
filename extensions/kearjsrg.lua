@@ -9,9 +9,6 @@ keslashmore = sgs.CreateTargetModSkill {
 		if to and (to:getMark("&keqilue") > 0) and from:hasSkill("keqizhenglue") then
 			return 999
 		end
-		if from:getJudgingArea():length() > 0 and to and from:inMyAttackRange(to) and from:hasSkill("keqilimu") then
-			return 999
-		end
 		if to and from:getMark("&kechengbiaozhaofrom+#" .. to:objectName()) > 0 then
 			return 999
 		end
@@ -53,9 +50,6 @@ keslashmore = sgs.CreateTargetModSkill {
 	end,
 	distance_limit_func = function(self, from, card, to)
 		if to and to:getMark("&keqilue") > 0 and from:hasSkill("keqizhenglue") then
-			return 999
-		end
-		if from:getJudgingArea():length() > 0 and to and from:inMyAttackRange(to) and from:hasSkill("keqilimu") then
 			return 999
 		end
 		if to and from:getMark("&kechengbiaozhaofrom+#" .. to:objectName()) > 0 then
@@ -2830,9 +2824,6 @@ sgs.LoadTranslationTable {
 	["designer:keqiliuyan"] = "官方",
 	["cv:keqiliuyan"] = "官方",
 	["illustrator:keqiliuyan"] = "心中一凛",
-
-	["keqilimu"] = "立牧",
-	[":keqilimu"] = "出牌阶段，你可以将一张♦牌当【乐不思蜀】对自己使用并回复1点体力；若你的判定区里有牌，你对攻击范围内的角色使用牌无距离和次数限制。",
 
 	["keqitushe"] = "图射",
 	[":keqitushe"] = "当你使用非装备牌指定目标后，你可以展示所有手牌，若其中没有基本牌，你摸X张牌（X为此牌指定的目标数）。",

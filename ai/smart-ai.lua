@@ -124,6 +124,10 @@ sgs.recoverSkillsList =			{}  -- 回復類技能列表，用於checkIsRecover判
 sgs.decreaseSkillsList =		{}  -- 減少手牌/裝備類技能列表，用於checkIsDecreaseCard判斷
 sgs.turnOverSkillsList =		{}  -- 翻面類技能列表，用於checkIsTurnOver判斷
 sgs.ai_skill_carduse =			{}
+sgs.ai_damage_reason_suppress_intention = {}
+sgs.ai_damage_from_flag_intention = {}
+sgs.ai_card_combo_use = {}
+sgs.ai_card_usage_incentive = {}	--出牌激勵
 
 -- AI出牌隨機性配置
 -- 設置為0則完全按優先級排序（原始行為）
@@ -855,6 +859,10 @@ function SmartAI:getUseValue(card)
 		self.useValue = true
 		v = self:adjustUsePriority(card,v)
 		self.useValue = false
+	end
+	if self.player:getPhase()==sgs.Player_Play then
+		local bonus = self:getUsageIncentive(card)
+		v = v + bonus
 	end
 	self.room:setPlayerFlag(self.player, "-stack_overflow_UseValue")
 	return v
@@ -2043,6 +2051,9 @@ function SmartAI:shouldSuppressIntention(struct)
 	local to = sgs.QList2Table(struct.to)
 	local card = struct.card
 	local from = struct.from
+	if card:hasFlag("AIGlobal_ComboFallback") then
+        return true
+    end
 	
 	-- Check for special skill-based suppression (spjili - 寄籬不更新仇恨值)
 	if not card:isKindOf("GlobalEffect") and not card:isKindOf("AOE") then
@@ -2103,9 +2114,10 @@ function SmartAI:shouldSuppressIntention(struct)
 	return false
 end
 
-sgs.ai_damage_reason_suppress_intention = {}
-sgs.ai_damage_from_flag_intention = {}
 function SmartAI:calculateDamageIntention(damage)
+	if damage.card and damage.card:hasFlag("AIGlobal_ComboFallback") then
+        return 0
+    end
 	local from = damage.from
 	local reason = damage.reason or ""
 	local intention = damage.damage * 40
@@ -2147,6 +2159,7 @@ sgs.ai_damage_from_flag_intention["ShenfenUsing"] = 10
 sgs.ai_damage_from_flag_intention["FenchengUsing"] = 10
 
 function SmartAI:filterEvent(event,player,data)
+	self._ai_connect_cache = nil
 	-- Flush cards that CardFilter cloned in the PREVIOUS filterEvent cycle.
 	-- This is the earliest safe point: all callers from last cycle are done.
 	sgs.flushDeferredDeleteCards()
@@ -2928,27 +2941,78 @@ sgs.ai_skill_discard.gamerule = function(self,x,n)
 	return discard
 end
 
+SmartAI._ai_connect_cache = {}
+SmartAI._ai_connect_cache_time = 0
 function aiConnect(owner)
-	local cts = {}
-	for _,s in ipairs(sgs.getPlayerSkillList(owner))do
-		table.insert(cts,s:objectName())
-		if s:inherits("ViewAsEquipSkill") then
-			local va = sgs.Sanguosha:getViewAsEquipSkill(cts[#cts]):viewAsEquip(owner)
-			if va=="" then continue end
-			for _,en in ipairs(va:split(","))do
-				table.insert(cts,en)
-			end
-		end
-	end
-	for _,m in ipairs(owner:getMarkNames())do
-		if m:startsWith("&") or m:startsWith("@")
-		then table.insert(cts,m:split("+")[1]) end
-	end
-	for _,pn in ipairs(owner:getPileNames())do
-		if table.contains(cts,pn) then continue end
-		table.insert(cts,pn)
-	end
-	return cts
+    if not current_self then return {} end
+    
+    local p_name = owner:objectName()
+    
+    -- 1. O(1) 極速命中：只要在同一個決策週期內，直接回傳快取表
+    if current_self._ai_connect_cache and current_self._ai_connect_cache[p_name] then
+        return current_self._ai_connect_cache[p_name]
+    end
+
+    -- 2. 快取未命中：代表這是本週期第一次查詢該玩家，執行一次完整提取
+    local connects = {}
+    local connects_set = {} 
+
+    -- 技能與虛擬裝備
+    for _, s in sgs.qlist(owner:getVisibleSkillList(true)) do
+        local sn = s:objectName()
+        if not connects_set[sn] then
+            table.insert(connects, sn)
+            connects_set[sn] = true
+        end
+        if s:inherits("ViewAsEquipSkill") then
+            local va_skill = sgs.Sanguosha:getViewAsEquipSkill(sn)
+            if va_skill then
+                local va_str = va_skill:viewAsEquip(owner)
+                if va_str and va_str ~= "" then
+                    for en in string.gmatch(va_str, "[^,]+") do
+                        if not connects_set[en] then
+                            table.insert(connects, en)
+                            connects_set[en] = true
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- 標記
+    for _, m in ipairs(owner:getMarkNames()) do
+        if owner:getMark(m) > 0 and (string.find(m, "&", 1, true) or string.find(m, "@", 1, true)) then
+            local plus_idx = string.find(m, "+", 1, true)
+            local clean_m = plus_idx and string.sub(m, 1, plus_idx - 1) or m
+            if not connects_set[clean_m] then
+                table.insert(connects, clean_m)
+                connects_set[clean_m] = true
+            end
+        end
+    end
+
+    -- 牌堆與實體裝備
+    for _, pn in ipairs(owner:getPileNames()) do
+        if string.sub(pn, 1, 1) ~= "#" and not owner:getPile(pn):isEmpty() then
+            if not connects_set[pn] then
+                table.insert(connects, pn)
+                connects_set[pn] = true
+            end
+        end
+    end
+    for _, e in sgs.qlist(owner:getEquips()) do
+        local en = e:objectName()
+        if not connects_set[en] then
+            table.insert(connects, en)
+            connects_set[en] = true
+        end
+    end
+
+    -- 3. 寫入該決策週期的快取
+    current_self._ai_connect_cache = current_self._ai_connect_cache or {}
+    current_self._ai_connect_cache[p_name] = connects
+    return connects
 end
 
 function dummy(is_dummy,et,ct)
@@ -4563,7 +4627,7 @@ function SmartAI:getTurnUse()
             -- getUseValue 是查表操作，速度極快
             -- 如果限制模式開啟，且這張牌價值低 (如裝備)，直接 continue，不進行後續昂貴計算
         
-			elseif restricted_mode and self:getUseValue(c) < value_threshold then
+			elseif restricted_mode and (self:getUseValue(c) < value_threshold and not c:isDamageCard()) then
                 continue
 			else
 				
@@ -4807,6 +4871,48 @@ function SmartAI:getUsageState()
     return min_limit, has_penalty
 end
 
+-- 激勵值
+function SmartAI:getUsageIncentive(card)
+    local bonus = 0
+    local connects = aiConnect(self.player) 
+    
+    for _, ac in ipairs(connects) do
+        local incentive_func = sgs.ai_card_usage_incentive[ac]
+        if type(incentive_func) == "function" then
+            local b = incentive_func(self, card, self.player)
+            if type(b) == "number" then
+                bonus = bonus + b
+            end
+        end
+    end
+    
+    return bonus
+end
+
+-- 通用刷牌/墊牌邏輯：尋找「合法但低收益/無收益」的目標，只為消耗卡牌
+-- 通用刷牌/墊牌邏輯：尋找「合法但低收益/無收益」的目標，只為消耗卡牌
+function SmartAI:useCardForCombo(card, use)
+    if not card then return false end
+    
+    local class_name = card:getClassName()
+    local is_combo_used = false
+    
+    local strategy = sgs.ai_card_combo_use[class_name]
+    if type(strategy) == "function" then
+        is_combo_used = strategy(self, card, use)
+    elseif card:isKindOf("EquipCard") then
+        use.card = card
+        is_combo_used = true
+    end
+
+    -- 「免除仇恨」
+    if is_combo_used and use.card then
+        use.card:setFlags("AIGlobal_ComboFallback")
+        return true
+    end
+
+    return false
+end
 
 function SmartAI:activate(use)
 	-- Enhanced logging for crash debugging
@@ -6610,33 +6716,40 @@ end
 
 -- 主函數：尋找最適合輔助使用殺的角色
 function SmartAI:findPlayerToUseSlash(distance_limit, players, reason, slash, extra_targets, fixed_target)
-	-- distance_limit: 距離限制(未使用)
-	-- players: 可選的玩家列表(若為nil則檢查所有友方)
-	-- reason: 原因字符串(未使用)
-	-- slash: 預想使用的殺牌
-	
-	local friends = players or self.friends_noself
-	local candidates = {}
-	local slash = slash or dummyCard()
-	extra_targets = extra_targets or 0
+    -- distance_limit: 距離限制 (若為 false，則模擬無距離限制)
+    -- players: 可選的玩家列表 (若為 nil 則檢查所有友方)
+    -- reason: 原因字符串 (附加到技能名上)
+    -- slash: 預想使用的殺牌
+    -- extra_targets: 允許的額外目標數
+    -- fixed_target: 指定的攻擊目標
+    
+    local friends = players or self.friends_noself
+    local candidates = {}
+    
+    -- 若沒有傳入 slash，動態生成一張虛擬殺用於評估
+    local dummy_slash = slash or dummyCard("slash")
+    extra_targets = extra_targets or 0
 	fixed_target = fixed_target or nil
-	if reason then
-		slash:setSkillName(reason)
-	end
-	
-	-- 評估每個友方角色使用殺的價值
-	for _, friend in ipairs(friends) do
-		if friend:isAlive() and not friend:isKongcheng() then
-			local total_value = 0
-			local all_benefits = {}
-			
-			-- 遍歷所有杀增益評估函數
+    if reason then
+        dummy_slash:setSkillName(reason)
+    end
+    
+    -- 緩存殺的屬性，避免在迴圈內重複獲取
+    local nature = sgs.card_damage_nature[dummy_slash:getClassName()] or sgs.DamageStruct_Normal
+    
+    -- 評估每個友方角色使用殺的價值
+    for _, friend in ipairs(friends) do
+		local total_value = 0
+		local all_benefits = {}
+		
+		-- 1. 遍歷所有殺增益評估函數 O(1) 查表
+		if sgs.ai_slash_benefit then
 			for benefit_type, benefit_func in pairs(sgs.ai_slash_benefit) do
 				if type(benefit_func) == "function" then
-					local result = benefit_func(self, friend, slash)
+					local result = benefit_func(self, friend, dummy_slash)
 					if result and result.value then
 						total_value = total_value + result.value
-						-- 合併增益信息
+						-- 合併增益信息 (可供後續擴展或 Debug 使用)
 						for k, v in pairs(result) do
 							if k ~= "value" then
 								if type(v) == "table" then
@@ -6652,56 +6765,80 @@ function SmartAI:findPlayerToUseSlash(distance_limit, players, reason, slash, ex
 					end
 				end
 			end
+		end
+		
+		-- 【完美結合點】：輕量級構建 dummy_use，精準觸發 ai_use_revises
+		local dummy_use = { isDummy = true, from = friend, to = sgs.SPlayerList(), card = dummy_slash }
+		
+		-- 記下原始狀態，防止 Flag 污染下一個隊友
+		local had_qinggang = dummy_slash:hasFlag("Qinggang") 
+		
+		-- 調用我們優化後的 O(1) aiConnect 緩存
+		local connects = aiConnect(friend) 
+		for _, ac in ipairs(connects) do
+			local invoke = sgs.ai_use_revises[ac]
+			if type(invoke) == "function" then
+				invoke(self, dummy_slash, dummy_use)
+			end
+		end
+		if dummy_use.card then
+			local ignore_armor = dummy_slash:hasFlag("Qinggang") or dummy_slash:hasFlag("SlashIgnoreArmor")
+		
+			-- 3. 靜態評估目標威脅與傷害收益 (取代高成本的 aiUseCard 模擬)
+			local valid_targets_count = 0
+			
 			if fixed_target then
-				if not distance_limit then
-					friend:setFlags("slashNoDistanceLimit")
-				end
-				local dummy_use = self:aiUseCard(slash, dummy(true, 99, self.room:getOtherPlayers(fixed_target)))
-				if not distance_limit then
-					friend:setFlags("-slashNoDistanceLimit")
-				end
-				if dummy_use and dummy_use.card and dummy_use.to and dummy_use.to:contains(fixed_target) then
-					if self:hasHeavyDamage(friend,slash,fixed_target) then
-						local nature = slash and sgs.card_damage_nature[slash:getClassName()]
-						value = value + 15 * self:ajustDamage(friend,fixed_target,1,slash,nature)
-					end
-					if slash and (slash:hasFlag("SlashIgnoreArmor") or slash:hasFlag("Qinggang")) then
-						value = value + 12
+				-- 針對指定目標進行評估
+				if (not distance_limit or friend:inMyAttackRange(fixed_target)) 
+					and not self:slashProhibit(dummy_slash, fixed_target, friend) 
+					and self:slashIsEffective(dummy_slash, fixed_target, friend, ignore_armor) then
+					
+					local expected_damage = self:ajustDamage(friend, fixed_target, 1, dummy_slash, nature)
+					if expected_damage > 0 then
+						total_value = total_value + (expected_damage * 15)
+						valid_targets_count = 1
+						
+						-- 額外計算無視防具的收益
+						if dummy_slash:hasFlag("SlashIgnoreArmor") or ignore_armor then
+							total_value = total_value + 12
+						end
 					end
 				end
 			else
-				if not distance_limit then
-					friend:setFlags("slashNoDistanceLimit")
-				end
-				local dummy_use = self:aiUseCard(slash, dummy(true, extra_targets))
-				if not distance_limit then
-					friend:setFlags("-slashNoDistanceLimit")
-				end
-				if dummy_use and dummy_use.card and dummy_use.to then
-					for _, p in sgs.qlist(dummy_use.to) do
-						if self:hasHeavyDamage(friend,slash,p) then
-							local nature = slash and sgs.card_damage_nature[slash:getClassName()]
-							value = value + 15 * self:ajustDamage(friend,p,1,slash,nature)
+				-- 尋找隊友攻擊範圍內的敵人
+				for _, enemy in ipairs(self.enemies) do
+					if (not distance_limit or friend:inMyAttackRange(enemy)) 
+						and not self:slashProhibit(dummy_slash, enemy, friend)
+						and self:slashIsEffective(dummy_slash, enemy, friend, ignore_armor) then
+						
+						local expected_damage = self:ajustDamage(friend, enemy, 1, dummy_slash, nature)
+						if expected_damage > 0 then
+							valid_targets_count = valid_targets_count + 1
+							total_value = total_value + (expected_damage * 15)
+							
+							if dummy_slash:hasFlag("SlashIgnoreArmor") or ignore_armor then
+								total_value = total_value + 12
+							end
+							
+							-- 若已滿足殺的額外目標上限，停止尋找更多目標
+							if valid_targets_count >= (1 + extra_targets) then
+								break
+							end
 						end
-					end
-					if slash and (slash:hasFlag("SlashIgnoreArmor") or slash:hasFlag("Qinggang")) then
-						value = value + 12
 					end
 				end
 			end
-			
-			-- 比較攻擊範圍內的敵人數量
+			-- 4. 比較攻擊範圍內的敵人數量 (提供基礎威懾價值)
 			local enemies_in_range = 0
 			for _, enemy in ipairs(self.enemies) do
-				if friend:inMyAttackRange(enemy) then
+				if (not distance_limit or friend:inMyAttackRange(enemy)) then
 					enemies_in_range = enemies_in_range + 1
 				end
 			end
-			-- 攻擊範圍內敵人越多，價值越高
 			total_value = total_value + enemies_in_range * 3
 			
-			-- 儲存候選人資料
-			if total_value > 0 then
+			-- 儲存候選人資料 (必須要有真實的輸出收益或範圍內有敵人才算有效)
+			if total_value > 0 and (valid_targets_count > 0 or enemies_in_range > 0) then
 				table.insert(candidates, {
 					player = friend,
 					value = total_value,
@@ -6710,19 +6847,27 @@ function SmartAI:findPlayerToUseSlash(distance_limit, players, reason, slash, ex
 				})
 			end
 		end
-	end
-	
-	-- 按價值排序
-	table.sort(candidates, function(a, b)
-		return a.value > b.value
-	end)
-	
-	-- 返回最佳候選人
-	if #candidates > 0 then
-		return candidates[1].player
-	end
-	
-	return nil
+		if not had_qinggang and dummy_slash:hasFlag("Qinggang") then
+			dummy_slash:setFlags("-Qinggang")
+		end
+    end
+    
+    -- 若 dummy_slash 是我們自己 clone 的虛擬卡牌，使用完畢後清理以防內存洩漏
+    if not slash and dummy_slash:isVirtualCard() then
+        table.insert(sgs._deferred_delete_cards, dummy_slash)
+    end
+    
+    -- 按價值降序排序
+    table.sort(candidates, function(a, b)
+        return a.value > b.value
+    end)
+    
+    -- 返回最佳候選人
+    if #candidates > 0 then
+        return candidates[1].player
+    end
+    
+    return nil
 end
 
 function SmartAI:findPlayerToDiscard(flags,include_self,no_dis,players,reason)
@@ -8606,18 +8751,17 @@ function addAiSkills(sk)
 end
 
 function SmartAI:useCardByClassName(card,use)
-	-- 【通用技能接管系统】检查技能是否要接管卡牌决策
-	for _, skill in ipairs(sgs.getPlayerSkillList(self.player)) do
-		local strategy = sgs.ai_skill_carduse[skill:objectName()]
-		if type(strategy) == "function" then
-			local result = strategy(self, card, use)
-			if result == true then
-				-- 技能接管决策，不执行通用逻辑
-				return true
-			end
-			-- result == false 或 nil，继续检查其他技能
-		end
-	end
+	local connects = aiConnect(self.player)
+	for _,ac in ipairs(connects)do
+		local strategy = sgs.ai_skill_carduse[ac]
+        if type(strategy) == "function" then
+            local result = strategy(self, card, use)
+            if result == true then
+                -- 技能接管决策，不执行通用逻辑
+                return true
+            end
+        end
+    end
 	
 	-- 没有技能接管，执行通用决策
 	local usefunc = self["useCard"..card:getClassName()]
@@ -10412,14 +10556,9 @@ end
 -- 判斷角色是否擁有翻面類技能
 function SmartAI:hasTurnOverSkill(player)
 	if not player then return false end
-	local skills
-	if player.getVisibleSkillList then
-		skills = player:getVisibleSkillList(true)
-	else
-		skills = player:getVisibleSkills()
-	end
-	for _, skill in sgs.qlist(skills) do
-		if self:checkIsTurnOver(skill:objectName()) then
+	
+	for _,ac in ipairs(aiConnect(player))do
+		if self:checkIsTurnOver(ac:objectName()) then
 			return true
 		end
 	end
