@@ -825,14 +825,6 @@ sgs.ai_ajustdamage_to.leij = function(self, from, to, card, nature)
 		return -99
 	end
 end
--- leij_damageeffect = function(self, to, nature, from)
--- 	if to:hasSkill("leij") and nature == sgs.DamageStruct_Thunder then return false end
--- 	return true
--- end
-
-
--- table.insert(sgs.ai_damage_effect, leij_damageeffect)
-
 
 sgs.ai_use_value["diancp"] = 9
 sgs.ai_use_priority["diancp"] = sgs.ai_use_priority.Slash + 0.1

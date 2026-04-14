@@ -3399,7 +3399,11 @@ sgs.ai_skill_discard.s4_moubei = function(self, discard_num, min_num, optional, 
 
     local pick = nil
     if prefer_diff_color and #diff_color > 0 then
-        pick = diff_color
+		if source and self:isFriend(source) and self:getOverflow(source) > 0 then
+			pick = same_color
+		else
+        	pick = diff_color
+		end
     elseif #same_color > 0 then
         pick = same_color
     else
@@ -3412,7 +3416,7 @@ sgs.ai_skill_discard.s4_moubei = function(self, discard_num, min_num, optional, 
 	if #pick > 0 then
 		return {pick[1]:getEffectiveId()}
 	end
-    return { }
+    return {cards[1]:getEffectiveId()}
 end
 
 
@@ -3424,7 +3428,5 @@ end
 
 sgs.ai_playerchosen_intention.s4_moubei = -30
 
-if not table.contains(sgs.ai_voluntary_give_skills,"s4_moubei") then
-	table.insert(sgs.ai_voluntary_give_skills,"s4_moubei")
-end
+table.insert(sgs.ai_voluntary_give_skills,"s4_moubei")
 

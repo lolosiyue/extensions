@@ -85,9 +85,8 @@ sgs.ai_skill_playerchosen.keqijishan = function(self, targets)
 	return nil
 end
 
-if not table.contains(sgs.ai_voluntary_give_skills,"_kecheng_tuixinzhifu") then
-	table.insert(sgs.ai_voluntary_give_skills,"_kecheng_tuixinzhifu")
-end
+table.insert(sgs.ai_voluntary_give_skills,"_kecheng_tuixinzhifu")
+
 
 sgs.ai_skill_invoke.keqijishan = function(self, data)
 	local damage = data:toDamage()

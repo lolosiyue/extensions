@@ -2,10 +2,6 @@ if not sgs.ai_nullification then
 	sgs.ai_nullification = {}
 end
 
-if not sgs.ai_damage_effect then
-	sgs.ai_damage_effect = {}
-end
-
 ------------
 function SmartAI:useCardEXCard_WWJZ(card, use)
 	if self.player:aliveCount() <= 2 or #self.friends == 0 and sgs.turncount > 1 then
@@ -228,11 +224,10 @@ function sgs.ai_armor_value.EXCard_TPYS(player, self)
 	return 3.5
 end
 
-EXCard_TPYS_damageeffect = function(self, to, nature, from)
-	if to:hasArmorEffect("EXCard_TPYS") and nature ~= sgs.DamageStruct_Normal then return false end
-	return true
+sgs.ai_ajustdamage_to.EXCard_TPYS = function(self,from,to,card,nature)
+	if nature~="N" and not IgnoreArmor(from,to)
+	then return -99 end
 end
-table.insert(sgs.ai_damage_effect, EXCard_TPYS_damageeffect)
 
 -------------------------------
 
