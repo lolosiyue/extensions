@@ -414,6 +414,45 @@ sgs.ai_skill_use["@@secondmobilezhizuici"] = function(self,prompt)
 	return "."
 end
 
+sgs.ai_card_usage_incentive["MobileZhiQinzheng"] = function(self, card, player)
+    local used_count = player:getMark("&mobilezhiqinzheng") 
+    local next_count = used_count + 1
+
+    if next_count == 3 then
+        return 4.0
+    elseif next_count == 5 then
+        return 6.0
+    elseif next_count == 8 then
+        return 8.0
+    end
+    if next_count == 2 or next_count == 4 or next_count == 7 then
+        return 2.0 
+    end
+    return 0
+end
+
+sgs.ai_skill_carduse.MobileZhiQinzheng = function(self, card, use)
+	if self.player:getPhase()~=sgs.Player_Play then return false end
+	local current_count = self.player:getMark("&mobilezhiqinzheng")
+    local next_count = current_count + 1
+
+    local need_combo = (next_count % 15 == 0) or (next_count % 24 == 0) or (next_count % 40 == 0)
+
+    if not need_combo then return false end 
+
+    local dummy_use = { isDummy = true, to = sgs.SPlayerList() }
+    local use_func = self["useCard" .. card:getClassName()]
+    if use_func then 
+        use_func(self, card, dummy_use) 
+    end
+    
+    if dummy_use.card and (dummy_use.to:isEmpty() or dummy_use.to:length() > 0) then
+        return false 
+    end
+    
+    return self:useCardForCombo(card, use)
+end
+
 --夺冀
 local mobilezhiduoji_skill = {}
 mobilezhiduoji_skill.name = "mobilezhiduoji"

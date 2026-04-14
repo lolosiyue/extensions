@@ -494,6 +494,48 @@ end
 sgs.ai_use_priority.Dlimu = 7
 sgs.double_slash_skill = sgs.double_slash_skill .. "|Dlimu"
 
+sgs.ai_card_priority.Dlimu = function(self, card, v)
+	if card:objectName() == "_xuanjian" then
+		return v + 5
+	end
+	
+	if card:objectName() == "spear" then
+		return v + 4
+	end
+	
+	if self.player:hasWeapon("_xuanjian") or self.player:hasWeapon("spear") then
+		if card:isKindOf("Slash") then
+			return v + 3
+		end
+	end
+	
+	if (self.player:hasWeapon("_xuanjian") or self.player:hasWeapon("spear")) 
+	   and (card:isKindOf("Dlimu") or table.contains(card:getSkillNames(), "Dlimu")) then
+		return v + 2
+	end
+	
+	return v
+end
+
+sgs.ai_skill_carduse.Dlimu = sgs.ai_skill_carduse.limu
+
+sgs.ai_use_revises.Dlimu = function(self,card,use)
+	if self.player:hasWeapon("spear")
+	and card:isKindOf("Weapon")
+	then return false end
+	if card:objectName()=="spear"
+	then
+		use.card = card
+		return true
+	end
+	if self:getCardsNum("BasicCard","h")<1
+	then
+		local ge = self:getCard("GlobalEffect") or self:getCard("AOE")
+		if ge and ge:isAvailable(self.player)
+		then use.card = ge return true end
+	end
+end
+
 --夺锐
 
 sgs.ai_skill_invoke.spduorui = function(self, data)
