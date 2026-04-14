@@ -5570,28 +5570,18 @@ sgs.ai_skill_carduse.jili = function(self, card, use)
 	
 	local mark = self.player:getMark("jili-Clear")
 	local r = card:getRealCard():toWeapon():getRange()
-	local same = self:getSameEquip(card)
-	local gof = self:getOverflow()
-	
-	--self.room:writeToConsole(">>> 【蒺藜卡牌策略】处理武器: " .. card:objectName())
-	--self.room:writeToConsole("    已出牌: " .. mark .. ", 武器范围: " .. r .. ", 溢出: " .. gof)
 	
 	-- 如果换武器后再出一张就触发蒺藜
 	if mark + 2 == r then
-		--self.room:writeToConsole("    ★ 换武器后再出一张就触发蒺藜！")
 		
-		if gof > 0 then  -- 至少有溢出牌可以出
+		if #self.toUse > 0 then  -- 至少有溢出牌可以出
 			-- 触发蒺藜的收益远大于武器强度差异，直接换！
-			--self.room:writeToConsole("    ✓ 为触发蒺藜换武器（接管决策）")
 			use.card = card
 			return true  -- 接管，强制换武器
 		else
-			--self.room:writeToConsole("    × 没有溢出牌，即使换了也无法触发（接管决策）")
 			return true  -- 接管，决定不换
 		end
 	end
-	
-	--self.room:writeToConsole("    不满足蒺藜特殊条件，使用通用逻辑")
 	return false  -- 不接管，用通用的useEquipCard逻辑
 end
 

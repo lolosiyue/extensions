@@ -89,7 +89,7 @@ end
 sgs.ai_damage_reason_suppress_intention["luaRduxian"] = true
 
 
-sgs.ai_card_usage_penalty["duxian"] = function(self, source, target)
+sgs.ai_card_usage_penalty["luaRduxian"] = function(self, source, target)
     if source:objectName() == target:objectName() then 
         return false 
     end

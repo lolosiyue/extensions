@@ -25,12 +25,10 @@ sgs.ai_use_value.Poison = 1.7
 --ai会优先将负面卡牌给对手，五谷选择牌时也不会优先选择这些牌
 sgs.ai_poison_card.yj_poison = true
 
-if not table.contains(sgs.ai_voluntary_give_skills,"yj_tuixinzhifu") then
-	table.insert(sgs.ai_voluntary_give_skills,"yj_tuixinzhifu")
-end
-if not table.contains(sgs.ai_voluntary_give_skills,"zd_shengdongjixi") then
-	table.insert(sgs.ai_voluntary_give_skills,"zd_shengdongjixi")
-end
+table.insert(sgs.ai_voluntary_give_skills,"yj_tuixinzhifu")
+
+table.insert(sgs.ai_voluntary_give_skills,"zd_shengdongjixi")
+
 
 sgs.ai_skill_discard.yj_stabs_slash = function(self,max,min)
 	local to_cards = {}

@@ -1,8 +1,3 @@
-if not sgs.ai_damage_effect then
-	sgs.ai_damage_effect = {}
-end
-
-
 --
 sgs.ai_skill_invoke.fateyezhan = function(self, data)
 	return true
@@ -898,15 +893,6 @@ sgs.ai_can_damagehp.fateshenghai = function(self, from, card, to)
 	end
 end
 
-fateshenghai_damageeffect = function(self, to, nature, from)
-	if to:hasSkill("fateshenghai") and to:getMark("@fateshenghai") > 0 then return false end
-	return true
-end
-table.insert(sgs.ai_damage_effect, fateshenghai_damageeffect)
-
---Kirei �ڼ� ������ڳ��ƽ׶ν�һ�ź�ɫ���ƣ�ÿ�غ���һ�Σ���������ɫ����ʱ�����ĺ�ɫ����������佫���ϣ���Ϊ����������ÿӵ��һ�š��������������ޱ�+1��
---���ܵ��˺�ʱ����������һ�š�����ʹ�˺�-1������˺�ʱ����������һ�š�����ʹ�˺�+1�������ֻ��ͬʱӵ�����š�������
-
 local fateheijian_skill={}
 fateheijian_skill.name="fateheijian"
 table.insert(sgs.ai_skills,fateheijian_skill)
@@ -1490,11 +1476,6 @@ sgs.ai_use_priority.fateyaoshucard4 = 3.0
 sgs.ai_card_intention.fateyaoshucard1 = -150
 sgs.ai_card_intention.fateyaoshucard3 = 70
 
-fatefapao_damageeffect = function(self, to, nature, from)
-	if to:hasSkill("fatefapao") and nature ~= sgs.DamageStruct_Normal then return false end
-	return true
-end
-table.insert(sgs.ai_damage_effect, fatefapao_damageeffect)
 sgs.ai_ajustdamage_to.fatefapao = function(self, from, to, card, nature)
 	if nature ~= "N"
 	then
