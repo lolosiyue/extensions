@@ -314,8 +314,8 @@ function SmartAI:slashIsEffective(slash,to,from,ignore_armor)
     if from:isProhibited(to,slash) then return end
 	local use = {card=slash,from=from,to=sgs.SPlayerList()}
 	use.to:append(to)
-	ignore_armor = ignore_armor or slash:hasFlag("Qinggang") or not to:hasArmorEffect(nil)
-	for _,sk in sgs.list(aiConnect(to))do
+	ignore_armor = ignore_armor or slash:hasFlag("Qinggang") or IgnoreArmor(from, to)
+	for _,sk in ipairs(aiConnect(to))do
 		if ignore_armor and sgs.armorName[sk] then continue end
 		local tr = sgs.ai_target_revises[sk]
        	if type(tr)=="function" and tr(to,slash,self,use)
@@ -511,6 +511,7 @@ function SmartAI:useCardSlash(card,use)
 	function slashNoTarget(target)
 		if isCurrent(use,target)
 		or use.to:contains(target) then return end
+		if target:property("aiNoTo"):toBool() then return end
 		if use.card and use.card~=card then
 			extraTarget = sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget,self.player,use.card)
 			if use.extra_target then extraTarget = extraTarget+use.extra_target end
@@ -667,7 +668,8 @@ sgs.ai_skill_use.slash = function(self,prompt)
 end
 
 sgs.ai_skill_playerchosen.slash_extra_targets = function(self,targets)
-	local slash = dummyCard()
+	local slash_str = self.room:getTag("AI_ExtraTargetSlash"):toString()
+    local slash = (slash_str ~= "") and sgs.Card_Parse(slash_str) or dummyCard()
 	targets = sgs.QList2Table(targets)
 	self:sort(targets,"defenseSlash")
 	for _,target in sgs.list(targets)do
@@ -681,7 +683,8 @@ sgs.ai_skill_playerchosen.slash_extra_targets = function(self,targets)
 end
 
 sgs.ai_skill_playerschosen.slash_extra_targets = function(self,targets,x,n)
-	local slash = dummyCard()
+	local slash_str = self.room:getTag("AI_ExtraTargetSlash"):toString()
+    local slash = (slash_str ~= "") and sgs.Card_Parse(slash_str) or dummyCard()
 	targets = sgs.QList2Table(targets)
 	self:sort(targets,"defenseSlash")
 	local tos = {}
@@ -696,7 +699,8 @@ sgs.ai_skill_playerschosen.slash_extra_targets = function(self,targets,x,n)
 end
 
 sgs.ai_skill_playerchosen.zero_card_as_slash = function(self,targets)
-	local slash = dummyCard()
+	local slash_str = self.room:getTag("AI_ExtraTargetSlash"):toString()
+    local slash = (slash_str ~= "") and sgs.Card_Parse(slash_str) or dummyCard()
 	local targetlist = sgs.QList2Table(targets)
 	--add
 	function finalChecking(player)
@@ -1015,6 +1019,38 @@ sgs.ai_use_revises.ganlu = function(self,card,use)
 end
 
 function SmartAI:useCardPeach(card,use)
+	if self.role == "loyalist" then
+		local lord = getLord(self.player)
+		if lord and lord:objectName() ~= self.player:objectName() then
+			if self:isWeak(lord) and self.player:getHp() > 1 then
+				local myDefense = sgs.getDefense(self.player)
+				local lordDefense = sgs.getDefense(lord)
+				local myOverflow = self:getOverflow()
+				local myPeachNum = self:getCardsNum("Peach")
+				
+				-- lordDefense 越小越危急（危急程度 = -Defense）
+				-- 如果 lord 比 self 更危急，則保留桃子
+				local defenseDiff = lordDefense - myDefense
+				
+				-- 主公危急程度較高（lordDefense < myDefense）
+				if defenseDiff < 0 then
+					-- 根據差距和 getOverflow 決定
+					-- getOverflow >= 2 表示手牌過多
+					if myOverflow >= 2 then
+						-- 手牌過多，即使主公危急也可以吃桃自救
+					elseif myPeachNum > 1 then
+						-- 自己有多張桃，可以吃一張留一張
+					else
+						-- 只有一張桃，根據危急程度差距隨機決定
+						local probability = math.min(0.3 + math.abs(defenseDiff) * 0.1, 0.8)
+						if math.random() < probability then
+							return  -- 保留桃
+						end
+					end
+				end
+			end
+		end
+	end
 	for _,enemy in sgs.list(self.enemies)do
 		if self.player:getHandcardNum()<3 and enemy:hasSkills(sgs.drawpeach_skill
 		or getCardsNum("Dismantlement",enemy)>0
