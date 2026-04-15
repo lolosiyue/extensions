@@ -29,9 +29,6 @@ math.randomseed(os.time())
 -- SmartAI is the base class for all other specialized AI classes
 SmartAI = middleclass.class("SmartAI")
 
--- AI Mistake System Integration
-require "ai.ai-mistake"
-
 local version = "QSanguosha AI 20141006 (V1.32 Alpha)"
 
 -- checkout https://github.com/haveatry823/QSanguoshaAI for details
@@ -76,7 +73,7 @@ sgs.ai_skill_use =				{}
 sgs.ai_cardneed =				{}
 sgs.ai_skill_use_func =	 		{}
 sgs.ai_skills =			 		{}
-sgs.ai_slash_weaponfilter = 	{}
+sgs.ai_slash_weaponfilter = 	{}	-- 如果要用武器牌 攻擊範圍內敵方角色有什麼特點 武器會更有利 (空城古錠刀)
 sgs.ai_slash_prohibit =	 		{}
 sgs.ai_view_as =				{}
 sgs.ai_cardsview =				{}
@@ -99,7 +96,6 @@ sgs.ai_choicemade_filter =		{
 sgs.ai_need_damaged =			{}
 sgs.ai_event_callback =	 		{}
 sgs.ai_NeedPeach =				{}
-sgs.ai_damage_effect =			{}
 sgs.ai_judgeGood =				{}
 sgs.ai_need_retrial_func =		{}
 sgs.ai_use_revises =			{}
@@ -113,27 +109,106 @@ sgs.ai_poison_card =			{}
 sgs.ai_skill_playerschosen =	{}
 sgs.ai_used_revises =			{}
 sgs.weapon_range = 				{}
-sgs.ai_nullification_threat_table = {}
-sgs.ai_target_recommend =		{}  -- 目標推薦邏輯
+sgs.ai_nullification_threat_table = {}	--有成本無效牌列表
+sgs.ai_target_recommend =		{}  -- 目標推薦邏輯 全場技能列表，需判斷是否有技能
 sgs.drawSkillsList =			{}  -- 給牌類技能列表，用於checkIsDrawCard判斷
 sgs.damageSkillsList =			{}  -- 傷害類技能列表，用於checkIsDamageCard判斷
 sgs.buffSkillsList =			{}  -- 增益類技能列表，用於checkIsBuff判斷
-sgs.ai_voluntary_give_skills =	{}  -- 可自行選擇給牌的技能名白名單（不會更新仇恨）
 sgs.debuffSkillsList =			{}  -- 減益類技能列表，用於checkIsDebuff判斷
 sgs.recoverSkillsList =			{}  -- 回復類技能列表，用於checkIsRecover判斷
 sgs.decreaseSkillsList =		{}  -- 減少手牌/裝備類技能列表，用於checkIsDecreaseCard判斷
 sgs.turnOverSkillsList =		{}  -- 翻面類技能列表，用於checkIsTurnOver判斷
 sgs.ai_skill_carduse =			{}
-sgs.ai_damage_reason_suppress_intention = {}
-sgs.ai_damage_from_flag_intention = {}
-sgs.ai_card_combo_use = {}
-sgs.ai_card_usage_incentive = {}	--出牌激勵
+sgs.ai_damage_reason_suppress_intention = {}	--技能牌/技能傷害（不會更新仇恨）
+sgs.ai_damage_from_flag_intention = {}	--傷害來源flag（指定更新仇恨）
+sgs.ai_voluntary_give_skills =	{}  -- 可自行選擇給牌的技能名白名單（不會更新仇恨）
+sgs.ai_card_combo_use = 		{}	-- 用牌摸牌系技能
+sgs.ai_card_usage_incentive = 	{}	-- 出牌激勵
+sgs.ai_dont_hurt_from = {} 			-- 攻擊方免傷觸發註冊表 (涵蓋技能、標記、牌堆)
+sgs.ai_dont_hurt_to = {}			-- 防守方免傷觸發註冊表 (涵蓋技能、標記、牌堆)
+sgs.ai_hasBuquEffect_skill = {}
+sgs.ai_canNiepan_skill = {}
+sgs.ai_hasTuntianEffect_skill = {}
+sgs.ai_getLeastHandcardNum_skill = {}
+sgs.ai_getBestHp_skill = {}
+sgs.ai_canliegong_skill = {}
+
 
 -- AI出牌隨機性配置
 -- 設置為0則完全按優先級排序（原始行為）
 -- 設置為1則使用默認隨機範圍（推薦）
 -- 可以設置更大的值來增加隨機性，但可能影響AI智能
 sgs.ai_card_randomness = 1
+
+
+function dumpGameState(room, card)
+    local log_table = {}
+    table.insert(log_table, "==================================================")
+    table.insert(log_table, "TIME: " .. os.date("%Y-%m-%d %H:%M:%S"))
+    
+    -- [1] 記錄當前卡牌資訊
+    if card then
+        table.insert(log_table, ">>> [Target Card Info] <<<")
+        table.insert(log_table, string.format("Card: %s [%s %s] (ID: %d)", 
+            card:getClassName(), card:getSuitString(), card:getNumberString(), card:getEffectiveId()))
+        
+        local c_flags = {}
+        for _, f in ipairs(card:getFlags()) do table.insert(c_flags, f) end
+        table.insert(log_table, "Card Flags: " .. table.concat(c_flags, ", "))
+    end
+
+    -- [2] 記錄全場角色資訊
+    table.insert(log_table, "\n>>> [Global Players Info] <<<")
+    for _, p in sgs.qlist(room:getAlivePlayers()) do
+        -- 基礎資訊
+        table.insert(log_table, string.format("\n[%s] %s | Real Role: %s | AI Role: %s", 
+            p:objectName(), p:getGeneralName(), p:getRole(), sgs.ai_role[p:objectName()] or "unknown"))
+        table.insert(log_table, string.format("HP: %d/%d | Handcards: %d (Max: %d) | AtkRange: %d", 
+            p:getHp(), p:getMaxHp(), p:getHandcardNum(), p:getMaxCards(), p:getAttackRange()))
+
+        -- 技能
+        local skills = {}
+        for _, sk in sgs.qlist(p:getVisibleSkillList(true)) do table.insert(skills, sk:objectName()) end
+        table.insert(log_table, "Skills: " .. table.concat(skills, ", "))
+
+        -- 標記 (Marks)
+        local marks = {}
+        for _, m in ipairs(p:getMarkNames()) do
+            if p:getMark(m) > 0 then table.insert(marks, m .. ":" .. p:getMark(m)) end
+        end
+        if #marks > 0 then table.insert(log_table, "Marks: " .. table.concat(marks, ", ")) end
+
+        -- 牌堆 (Piles)
+        local piles = {}
+        for _, pn in ipairs(p:getPileNames()) do
+            local pile = p:getPile(pn)
+            if pile:length() > 0 then table.insert(piles, pn .. ":" .. pile:length()) end
+        end
+        if #piles > 0 then table.insert(log_table, "Piles: " .. table.concat(piles, ", ")) end
+
+        -- 狀態 Flag
+        local flags = {}
+        for _, f in ipairs(p:getFlags()) do table.insert(flags, f) end
+        if #flags > 0 then table.insert(log_table, "Flags: " .. table.concat(flags, ", ")) end
+
+        -- 距離矩陣
+        local dists = {}
+        for _, other in sgs.qlist(room:getAlivePlayers()) do
+            if p:objectName() ~= other:objectName() then
+                table.insert(dists, other:getGeneralName() .. ":" .. p:distanceTo(other))
+            end
+        end
+        table.insert(log_table, "DistTo: {" .. table.concat(dists, ", ") .. "}")
+    end
+    table.insert(log_table, "==================================================\n")
+
+    -- 執行寫入
+    local file = io.open("lua/ai/state_dump.log", "a")
+    if file then
+        file:write(table.concat(log_table, "\n"))
+        file:close()
+    end
+end
 
 
 for i=sgs.NonTrigger,sgs.EventForDiy do
@@ -952,17 +1027,6 @@ function SmartAI:adjustUsePriority(card,v)
 	end
 
 	return v+(13-card:getNumber())/100
-end
-function generateAllCardObjectNameTablePatterns()
-	local patterns = {}
-	for i = 0, 10000 do
-		local card = sgs.Sanguosha:getEngineCard(i)
-		if card == nil then break end
-		if (card:isKindOf("BasicCard") or card:isKindOf("TrickCard")) and not table.contains(patterns, card:objectName()) then
-			table.insert(patterns, card:objectName())
-		end
-	end
-	return patterns
 end
 
 function SmartAI:getDynamicUsePriority(card)
@@ -2645,17 +2709,6 @@ function SmartAI:askForSkillInvoke(skill_name,data)
 		invoke = sgs.Sanguosha:getSkill(skill_name)
 		invoke = invoke and invoke:getFrequency()==sgs.Skill_Frequent
 	end
-	--[[
-	-- AI失误系统：可能跳过应该使用的技能
-	if invoke and self.mistakeSkipSkill then
-		invoke = self:mistakeSkipSkill(skill_name, invoke)
-	end
-	
-	-- AI失误系统：可能错误使用不该使用的技能
-	if not invoke and self.mistakeUseSkill then
-		invoke = self:mistakeUseSkill(skill_name, invoke)
-	end
-	]]
 	if sgs.jl_bingfen and math.random()>0.8 then
 		if jl_bingfen1 and math.random()>0.6
 		then self.player:speak(jl_bingfen1[math.random(1,#jl_bingfen1)]) end
@@ -2891,30 +2944,6 @@ function SmartAI:askForDiscard(reason,max_num,min_num,optional,equiped,pattern)
 		end
 		local temp = {}
 		local sorted_cards = self:sortByKeepValue(callback,nil,not exchange and "j")
-		--[[
-		-- AI失误系统：可能弃错牌
-		if self.mistakeDiscardCards and min_num > 0 then
-			local mistake_cards = self:mistakeDiscardCards(sorted_cards, min_num - #to_discard)
-			for _, c in ipairs(mistake_cards) do
-				if #to_discard >= min_num then break end
-				if not table.contains(to_discard, c:getId()) then
-					table.insert(to_discard, c:getId())
-				end
-			end
-		else
-			-- 正常弃牌逻辑
-			for _,c in ipairs(sorted_cards)do
-				if #to_discard>=min_num or table.contains(to_discard,c:getId()) then continue end
-				if sgs.Sanguosha:matchExpPattern(pattern,self.player,c) then
-					if self.player:hasEquip(c) and self:loseEquipEffect() or self:getUseValue(c)<6
-					then table.insert(to_discard,c:getId()) else table.insert(temp,c:getId()) end
-				end
-			end
-			for _,id in ipairs(temp)do
-				if #to_discard>=min_num or table.contains(to_discard,id) then continue end
-				table.insert(to_discard,id)
-			end
-		end]]
 		-- 正常弃牌逻辑
 		for _,c in ipairs(sorted_cards)do
 			if #to_discard>=min_num or table.contains(to_discard,c:getId()) then continue end
@@ -3020,26 +3049,6 @@ function dummy(is_dummy,et,ct)
 end
 
 
-
-
-
---ai：谋攻篇
---更新Lua教程--将旧写法改为新写法，现有的lua技能加入其中，
---剧情模式不更新角色Flags
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ---询问无懈可击--
 function SmartAI:askForNullification(trick,from,to,positive)
 	if from and from:isDead() or to:isDead() or to:hasFlag("AIGlobal_NeedToWake")
@@ -3052,12 +3061,6 @@ function SmartAI:askForNullification(trick,from,to,positive)
 	if trick:isDamageCard() and positive then
 		if self:needToLoseHp(to,from,trick)
 		or self:canDamageHp(from,trick,to) then
-			--[[-- 检查队友失误：可能因失误而不为受益队友无懈
-			if self:isFriend(to) and self.mistakeFriendlyFire 
-			and not self:mistakeFriendlyFire(to, 1, trick) then
-				-- 失误触发：本应无懈保护受益队友，但失误了
-				return nil
-			end]]
 			if math.random()>=1/self.null_num
 			and from~=self.player and self:isEnemy(to)
 			and not self:isWeak(to) then
@@ -3894,7 +3897,7 @@ function SmartAI:needToThrowLastHandcard(player,handnum)
 end
 
 
-sgs.ai_getLeastHandcardNum_skill = {}
+
 function SmartAI:getLeastHandcardNum(player)
 	local least = 0
 	player = player or self.player
@@ -4396,6 +4399,34 @@ end
 
 function SmartAI:askForSinglePeach(dying)
 	if self:needDeath(dying) then return "." end
+
+	local lord = getLord(self.player)
+ 
+	-- 忠臣為主公留桃的核心戰略審計
+	if self.role == "loyalist" and lord and dying:objectName() ~= lord:objectName() then
+		-- 當主公處於虛弱狀態（血量 <= 2）時
+		if self:isWeak(lord) then
+			local peach_num = self:getCardsNum("Peach")
+			
+			-- 如果桃子數量稀少（只有 1 張）
+			if peach_num <= 1 then
+				-- 判定瀕死者是否為「重要隊友」：
+				-- 1. 也是忠臣 2. 且該隊友擁有關鍵技能（如：救援、改判、給牌）
+				local is_important_friend = self:isFriend(dying) and 
+										(dying:getRole() == "loyalist" or self:hasSkills(sgs.priority_skill, dying)) and self.player == dying.who
+				
+				-- 判定「資源富餘」：自己手上有無懈可擊，可以防止主公被錦囊斬殺
+				local resource_rich = self:getCardsNum("Nullification") > 0
+				
+				-- 核心邏輯補全：
+				-- 除非瀕死者極其重要且我有無懈保主，否則拒絕出桃，留給主公
+				if not (is_important_friend and resource_rich) then
+					return "." 
+				end
+			end
+		end
+	end
+
 	local peach_str
 	function usePeachTo(str)
 		if peach_str then return peach_str end
@@ -4617,17 +4648,7 @@ function SmartAI:getTurnUse()
 	for idx, c in ipairs(sortedCards) do
 		-- Additional safety check
 		if c then
-			-- AI失誤：如果標記了跳過斬殺，且當前卡是殺，則跳過
-			if self.player:getMark("ai_skip_kill-Clear") > 0 and c:isKindOf("Slash") then
-				if logger then 
-					logger:writeLog("DEBUG", "getTurnUse: Skipping Slash due to miss lethal mistake") 
-				end
-				continue
-			-- 3. [極速過濾] 價值檢查 (替代 Hardcode)
-            -- getUseValue 是查表操作，速度極快
-            -- 如果限制模式開啟，且這張牌價值低 (如裝備)，直接 continue，不進行後續昂貴計算
-        
-			elseif restricted_mode and (self:getUseValue(c) < value_threshold and not c:isDamageCard()) then
+			if restricted_mode and (self:getUseValue(c) < value_threshold and not c:isDamageCard()) then
                 continue
 			else
 				
@@ -4874,9 +4895,8 @@ end
 -- 激勵值
 function SmartAI:getUsageIncentive(card)
     local bonus = 0
-    local connects = aiConnect(self.player) 
     
-    for _, ac in ipairs(connects) do
+    for _, ac in ipairs(aiConnect(self.player) ) do
         local incentive_func = sgs.ai_card_usage_incentive[ac]
         if type(incentive_func) == "function" then
             local b = incentive_func(self, card, self.player)
@@ -4889,7 +4909,6 @@ function SmartAI:getUsageIncentive(card)
     return bonus
 end
 
--- 通用刷牌/墊牌邏輯：尋找「合法但低收益/無收益」的目標，只為消耗卡牌
 -- 通用刷牌/墊牌邏輯：尋找「合法但低收益/無收益」的目標，只為消耗卡牌
 function SmartAI:useCardForCombo(card, use)
     if not card then return false end
@@ -4925,30 +4944,7 @@ function SmartAI:activate(use)
 			handcardNum = self.player:getHandcardNum()
 		})
 	end
-	--[[
-	-- AI失误系统：检查是否故意错过斩杀机会
-	if self.shouldMakeSafeMistake and self.player:getMark("ai_skip_kill-Clear") == 0 then
-		for _, enemy in ipairs(self.enemies) do
-			-- 只检查敌人血量很低(<=2)且有杀牌的情况
-			if enemy:getHp() <= 2 and self:getCardsNum("Slash") > 0 then
-				for _,slash in ipairs(self:getCards("Slash"))do
-					-- 简单检查：杀有效且敌人血量低就有斩杀机会
-					if self:slashIsEffective(slash, enemy) and not self:slashProhibit(slash, enemy) and self:damageIsEffective(enemy,slash,self.player) then
-						-- 如果决定犯错，标记本回合跳过斩杀
-						if self:shouldMakeSafeMistake(sgs.ai_mistake_type.MISS_LETHAL) then
-							self.player:setMark("ai_skip_kill-Clear", 1)
-							if logAIMistake then
-								logAIMistake(self.player, sgs.ai_mistake_type.MISS_LETHAL, 
-									string.format("故意错过斩杀 %s", enemy:screenName()))
-							end
-						end
-						break
-					end
-				end
-			end
-		end
-	end
-	]]
+
 	-- Step 1: Handle debug file writing
 	if sgs.aiHandCardVisible then
 		if logger then logger:writeLog("DEBUG", "activate: Writing to debug file") end
@@ -5008,40 +5004,7 @@ function SmartAI:activate(use)
 		local success, err = pcall(function()
 			use.to = self.use_to[c:toString()]
 			if logger then logger:writeLog("DEBUG", "activate: Set use.to") end
-			
-			-- AI失误系统：可能修改用牌目标
-			--[[if use.to and use.to:length() > 0 and self.shouldMakeSafeMistake then
-				if self:shouldMakeSafeMistake(sgs.ai_mistake_type.WRONG_TARGET) then
-					local original_target = use.to:first()
-					local all_valid_targets = sgs.SPlayerList()
-					
-					-- 收集所有合法目标
-					for _, p in sgs.qlist(self.room:getAlivePlayers()) do
-						if p ~= self.player and not self.room:isProhibited(self.player, p, c) then
-							all_valid_targets:append(p)
-						end
-					end
-					
-					-- 尝试选择次优目标（会自动过滤同阵营、敌对真人等）
-					if all_valid_targets:length() > 1 and self.chooseSuboptimalTarget then
-						local targets_table = {}
-						for _, p in sgs.qlist(all_valid_targets) do
-							table.insert(targets_table, p)
-						end
 						
-						local new_target = self:chooseSuboptimalTarget(original_target, targets_table, "card_use")
-						if new_target and new_target ~= original_target then
-							-- 修改目标
-							use.to = sgs.SPlayerList()
-							use.to:append(new_target)
-							if logger then 
-								logger:writeLog("DEBUG", "activate: Changed card target due to mistake") 
-							end
-							end
-					end
-				end
-			end]]
-			
 			use.card = c
 			if logger then logger:writeLog("DEBUG", "activate: Set use.card") end
 		end)
@@ -6314,7 +6277,7 @@ function SmartAI:damageMinusHp(enemy,type)
 	return -10
 end
 
-sgs.ai_getBestHp_skill = {}
+
 function getBestHp(owner)
 	-- Core getBestHp logic (before --add)
 	if owner:getCardCount()>2 and owner:hasSkill("longhun") then return 1 end
@@ -6612,7 +6575,6 @@ end
 -- 每個技能函數返回 {value = 數值, benefit = 增益描述表} 或 nil
 -- 強命系
 sgs.ai_slash_benefit = {}
-sgs.ai_canliegong_skill = {}
 
 -- 強命系技能評估 (使對手不能閃或需要多閃)
 sgs.ai_slash_benefit.unblockable = function(self, player, slash)
@@ -7150,10 +7112,6 @@ function SmartAI:findPlayerToDamage(damage,player,nature,targets,base_value,card
 				if not need_lose then
 					return -999  -- Friend doesn't benefit from damage
 				end
-				-- 检查队友失误：即使队友受益，也可能因失误而打死队友
-				if self.mistakeFriendlyFire and not self:mistakeFriendlyFire(target, damage, card) then
-					return -999  -- 失误触发：为避免打死队友而不造成伤害
-				end
 			end
 		end
 		
@@ -7239,23 +7197,7 @@ function SmartAI:findPlayerToDamage(damage,player,nature,targets,base_value,card
 		if bcv[p:objectName()]>base_value
 		then table.insert(result,p) end
 	end
-	
-	-- AI失误系统：可能选择次优目标
-	if #result > 1 and self.chooseSuboptimalTarget then
-		local optimal = result[1]
-		local chosen = self:chooseSuboptimalTarget(optimal, result, "damage_target")
-		if chosen and chosen ~= optimal then
-			-- 将选中的目标移到第一位
-			for i, p in ipairs(result) do
-				if p == chosen then
-					table.remove(result, i)
-					table.insert(result, 1, chosen)
-					break
-				end
-			end
-		end
-	end
-	
+		
 	return result
 end
 
@@ -7563,7 +7505,7 @@ function SmartAI:willSkipDiscardPhase(player)
 	return false
 end
 
-sgs.ai_hasBuquEffect_skill = {}
+
 function hasBuquEffect(player)
 	if player:hasSkill("buqu") and player:getPile("buqu"):length()<=4 then return true end
 	if player:hasSkill("nosbuqu") and player:getPile("nosbuqu"):length()<=4 then return true end
@@ -7577,7 +7519,7 @@ function hasBuquEffect(player)
 	return false
 end
 
-sgs.ai_canNiepan_skill = {}
+
 function canNiepan(player)
 	if player:hasSkill("niepan") and player:getMark("@nirvana")>0 then return true end
 	if player:hasSkill("mobileniepan") and player:getMark("@mobileniepanMark")>0 then return true end
@@ -7618,7 +7560,7 @@ function hasWulingEffect(element)
 	end
 end
 
-sgs.ai_hasTuntianEffect_skill = {}
+
 function hasTuntianEffect(to,need_zaoxian)
 	if to:hasSkills("tuntian|mobiletuntian|oltuntian") and to:getPhase()==sgs.Player_NotActive then
 		return not need_zaoxian or to:hasSkills("zaoxian|olzaoxian")
@@ -7869,15 +7811,6 @@ function SmartAI:canDamage(to,from,slash)
 	to = to or self.player
 	if not self:damageIsEffective(to,slash,from) then return false
 	elseif self:isEnemy(to) then return not(self:needToLoseHp(to,from,slash,true) or self:isFriend(from) and self:cantbeHurt(to,from))
-	elseif self:isFriend(to) then
-		-- 检查队友失误：可能因失误而伤害队友
-		local should_damage = self:needToLoseHp(to,from,slash,true)
-		if should_damage and self.mistakeFriendlyFire 
-		and not self:mistakeFriendlyFire(to, 1, slash) then
-			-- 失误触发：计算错误，可能打死队友
-			return false
-		end
-		return should_damage
 	else return true end
 end
 
@@ -7977,7 +7910,8 @@ end
 sgs.ai_ajustdamage_to = {}
 sgs.ai_ajustdamage_from = {}
 
-function SmartAI:ajustDamage(from,to,dmg,card,nature)
+function SmartAI:ajustDamage(from,to,dmg,card,nature,depth)
+	depth = depth or 0
 	from = from or self.room:getCurrent() or self.player
 	to = to or self.player
 	dmg = dmg or 1
@@ -8176,6 +8110,46 @@ function SmartAI:ajustDamage(from,to,dmg,card,nature)
 		dmg = dmg / 2
 	end
 
+	-- 核心修改：處理鐵索傳導感知、深度控制與 KillLord 判斷
+    -- 僅在 depth == 0 時計算傳導，避免無限遞迴
+    if depth == 0 and nature ~= "N" and to:isChained() then
+        local friends_hurt = 0
+        local enemies_hurt = 0
+        local lord = getLord(from) -- 獲取主公判定點
+
+        -- 遍歷場上其他所有連環角色
+        for _, p in sgs.qlist(self.room:getOtherPlayers(to)) do
+            if p:isChained() and self:damageIsEffective(p, nature, from) then
+                -- 遞迴調用時 depth 設為 1，計算該目標受到的修正傷害
+                local p_dmg = self:ajustDamage(from, p, dmg, card, nature, 1) 
+                
+                if self:isFriend(p, from) then
+                    friends_hurt = friends_hurt + p_dmg
+                    
+                    -- KillLord 判斷：若傷害會傳死主公或重要隊友，視為極大負收益
+                    local hp_left = p:getHp() + p:getHujia()
+                    if p_dmg >= hp_left then
+                        -- 如果是主公受致命傳導，絕對禁止該行為
+                        if lord and p:objectName() == lord:objectName() then
+                            return -100
+                        end
+                        -- 若是一般隊友且 AI 處於保護模式，大幅降低收益
+                        friends_hurt = friends_hurt + 10 
+                    end
+                elseif self:isEnemy(p, from) then
+                    enemies_hurt = enemies_hurt + p_dmg
+                    -- 若能連環傳死敵人，額外加分
+                    if p_dmg >= (p:getHp() + p:getHujia()) then
+                        enemies_hurt = enemies_hurt + 2
+                    end
+                end
+            end
+        end
+        
+        -- 最終傳導收益修正
+        dmg = dmg + (enemies_hurt * 1.2) - (friends_hurt * 2.5)
+    end
+
 	return dmg<-10 and 0 or dmg
 end
 
@@ -8321,127 +8295,137 @@ function SmartAI:moveField(player,flag,froms,tos)
 	end
 end
 
+sgs.ai_dont_hurt_to["@Kekkai"] = true
+sgs.ai_dont_hurt_to["@jujiman"] = true
+sgs.ai_dont_hurt_to["@TH_exileddoll"] = true
+sgs.ai_dont_hurt_to["@TH_terriblesouvenir"] = true
+sgs.ai_dont_hurt_to["@mark_zhanshan"] = true
+sgs.ai_dont_hurt_to["&KunPeng"] = true
+sgs.ai_dont_hurt_to["sizhan"] = true
+sgs.ai_dont_hurt_to["lixun"] = true
+sgs.ai_dont_hurt_to["kehezhendan"] = true
+sgs.ai_dont_hurt_to["Jianqiao"] = true
+sgs.ai_dont_hurt_to["se_Fanshe"] = true
+sgs.ai_dont_hurt_to["se_shenglong"] = true
+sgs.ai_dont_hurt_to["keqinji"] = true
+sgs.ai_dont_hurt_to["yuri_sizhan"] = true
+sgs.ai_dont_hurt_to["heg_jilix"] = true
+sgs.ai_dont_hurt_to["lol_hudun"] = true
+
+sgs.ai_dont_hurt_from["TH_IllusionaryDominance"] = true
+sgs.ai_dont_hurt_from["LuaRevenge"] = true
+
+sgs.ai_dont_hurt_to["meispliwu"] = function(to, from)
+	return to:getMark("@meispliwuprevent") > 0
+end
+
+sgs.ai_dont_hurt_to["&beketinghu"] = true
+
+sgs.ai_dont_hurt_to["meispshliwu"] = function(to, from)
+    return to:getMark("@meispshliwuprevent") > 0
+end
+
+sgs.ai_dont_hurt_to["meispshfengdan"] = function(to, from)
+    return to:getMark("@meispshfeng") > 0
+end
+
+sgs.ai_dont_hurt_to["meispshengguangjiahu"] = function(to, from)
+    return to:getMark("@meispniangzhaoyunmark") >= 2
+end
+
+sgs.ai_dont_hurt_to["kejieguiqideng"] = function(to, from)
+    return to:getMark("@kedeng") > 0
+end
+
+sgs.ai_dont_hurt_to["kexianfenshen"] = function(to, from)
+    return to:getMark("&kexianfenshen") > 0
+end
+
+sgs.ai_dont_hurt_to["kejiexianfenshen"] = function(to, from)
+    return to:getMark("&kexianfenshen") > 0
+end
+
+sgs.ai_dont_hurt_to["SE_Wuwei"] = function(to, from)
+    return to:getMark("@Wuwei") >= 2
+end
+
+sgs.ai_dont_hurt_to["fateheijian"] = function(to, from)
+    return not to:getPile("fateheijiancards"):isEmpty()
+end
+
+sgs.ai_dont_hurt_to["betacheater"] = function(to, from)
+    return not to:getPile("hide"):isEmpty()
+end
+
+sgs.ai_dont_hurt_to["sandun"] = function(to, from)
+    return to:getEquips():isEmpty() and to:getHandcardNum() > 2
+end
+
+sgs.ai_dont_hurt_to["ckshengyu"] = function(to, from)
+    return to:getMark("ckshengyu-Clear") == 0
+end
+
+sgs.ai_dont_hurt_to["danyind"] = function(to, from)
+    return to:hasSkill("miyund") and to:getMark("danyind-Clear") == 1
+end
+
+sgs.ai_dont_hurt_to["langke"] = function(to, from)
+    return to:getMark("@langke") >= 4
+end
+
+sgs.ai_dont_hurt_to["tieren"] = function(to, from)
+    return to:getMark("@tie") > 0
+end
+
+sgs.ai_dont_hurt_to["machiko"] = function(to, from)
+    return to:getMark("@waked") == 0
+end
+
+sgs.ai_dont_hurt_to["s4_s_zhanchuan"] = function(to, from)
+    return not to:getPile("s4_s_zhanchuan"):isEmpty()
+end
+
+sgs.ai_dont_hurt_to["heg_qiuan"] = function(to, from)
+    return to:getPile("heg_qiuan_han"):isEmpty()
+end
+
+sgs.ai_dont_hurt_to["heg_caiyuan"] = function(to, from)
+    return to:getMark("&heg_caiyuan+fail-Self" .. sgs.Player_Finish .. "Clear") == 0
+end
+
+sgs.ai_dont_hurt_to["TH_guilty"] = function(to, from)
+    return from:getMark("@TH_Guilty") > 0
+end
+
 function SmartAI:dontHurt(to,from)	--针对队友
 	if hasJueqingEffect(from,to)
 	or hasOrangeEffect(to)
 	then return true end
-	if to:hasSkills("sizhan|lixun")
-	then return true end
-	if to:hasSkill("kehezhendan")
-	then return true end
-	--add
-	if to:hasSkill("meispliwu") and to:getMark("@meispliwuprevent") > 0
-	then
-		return true
+
+    if from then
+		local from_states = aiConnect(from)
+		for _, state in ipairs(from_states) do
+			local rule = sgs.ai_dont_hurt_from[state]
+			if rule then
+				if type(rule) == "function" then
+					if rule(self, to, from) then return true end
+				else
+					return true
+				end
+			end
+		end
 	end
-	if to:hasSkill("meispshliwu") and to:getMark("@meispshliwuprevent") > 0
-	then
-		return true
-	end
-	if to:hasSkill("meispshfengdan") and to:getMark("@meispshfeng") > 0
-	then
-		return true
-	end
-	if to:hasSkill("meispshengguangjiahu") and to:getMark("@meispniangzhaoyunmark") >= 2
-	then
-		return true
-	end
-	if to:hasSkill("kejieguiqideng") and to:getMark("@kedeng") > 0 then
-		return true
-	end
-	if to:hasSkill("kexianfenshen") and to:getMark("&kexianfenshen") > 0 then
-		return true
-	end
-	if to:hasSkill("kejiexianfenshen") and to:getMark("&kexianfenshen") > 0 then
-		return true
-	end
-	if to:hasSkill("Jianqiao") then
-		return true
-	end
-	if to:hasSkill("se_Fanshe") then
-		return true
-	end
-	if to:getMark("@Kekkai") > 0 then
-		return true
-	end
-	if to:hasSkill("SE_Wuwei") and to:getMark("@Wuwei") >= 2 then
-		return true
-	end
-	if to:hasSkill("se_shenglong") then
-		return true
-	end
-	if to:hasSkill("fateheijian") and to:getPile("fateheijiancards"):length() > 0 then
-		return true
-	end
-	if to:hasSkill("betacheater") and to:getPile("hide"):length() > 0 then
-		return true
-	end
-	if to:getPile("lol_hudun"):length() > 0 then
-		return true
-	end
-	if to:hasSkill("sandun") and to:getEquips():length() == 0 and to:getHandcardNum() > 2 then
-		return true
-	end
-	if to:getMark("@jujiman") > 0 then
-		return true
-	end
-	if to:hasSkill("ckshengyu") and to:getMark("ckshengyu-Clear") == 0 then
-		return true
-	end
-	if to:hasSkill("TH_guilty") and from:getMark("@TH_Guilty") > 0 then
-		return true
-	end
-	if from:hasSkill("TH_IllusionaryDominance") then
-		return true
-	end
-	if to:getMark("@TH_exileddoll") > 0 then
-		return true
-	end
-	if to:getMark("@TH_terriblesouvenir") > 0 then
-		return
-	end
-	if to:hasSkill("danyind") and to:hasSkill("miyund") and to:getMark("danyind-Clear") == 1 then
-		return true
-	end
-	if to:hasSkill("keqinji") then
-		return true
-	end
-	if to:hasSkill("langke") and to:getMark("@langke") >= 4 then
-		return true
-	end
-	if to:hasSkill("tieren") and to:getMark("@tie") > 0 then
-		return true
-	end
-	if to:getMark("&mark_zhanshan") > 0 then
-		return true
-	end
-	if to:getMark("&KunPeng") > 0 then
-		return true
-	end
-	if from:hasSkill("LuaRevenge") then
-		return true
-	end
-	if to:hasSkill("machiko") and to:getMark("@waked") == 0 then
-		return true
-	end
-	if to:hasSkill("yuri_sizhan") then
-		return true
-	end
-	if to:hasSkill("s4_s_zhanchuan") and not to:getPile("s4_s_zhanchuan"):isEmpty() then
-		return true
-	end
-	if to:hasSkill("heg_qiuan") and to:getPile("heg_qiuan_han"):isEmpty() then
-		return true
-	end
-	if to:hasSkill("heg_jilix") then
-		return true
-	end
-	if to:hasSkill("heg_caiyuan") and to:getMark("&heg_caiyuan+fail-Self".. sgs.Player_Finish .. "Clear") == 0 then
-		return true
-	end
-	for _, mark in sgs.list(to:getMarkNames()) do
-		if string.find(mark, "&beketinghu") and to:getMark(mark) > 0 then
-			return true
+	if to then
+		local to_states = aiConnect(to)
+		for _, state in ipairs(to_states) do
+			local rule = sgs.ai_dont_hurt_to[state]
+			if rule then
+				if type(rule) == "function" then
+					if rule(self, to, from) then return true end
+				else
+					return true
+				end
+			end
 		end
 	end
 
@@ -8845,7 +8829,7 @@ function SmartAI:aiUseCard(card,use)
 			end
 		end
 	end
-	for _,p in sgs.qlist(self.room:getAlivePlayers())do
+	for _,p in sgs.qlist(sgs.getCachedAlivePlayers())do
 		for _,ac in sgs.list(aiConnect(p))do
 			local invoke = sgs.ai_useto_revises[ac]
 			if type(invoke)=="function" then
@@ -9471,7 +9455,7 @@ function SmartAI:shouldInvokeCostNullifySkill(use, need_discard, need_losehp, di
 	-- 5. 判断借刀杀人
 	elseif card:isKindOf("Collateral") then
 		local victim = nil
-		for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+		for _, p in sgs.qlist(sgs.getCachedAlivePlayers()) do
 			if p:hasFlag("CollateralVictim") then
 				victim = p
 				break
@@ -10568,15 +10552,7 @@ end
 -- 判斷角色是否擁有回復類技能
 function SmartAI:hasRecoverSkill(player)
 	if not player then return false end
-	local skills
-	if player.getVisibleSkillList then
-		skills = player:getVisibleSkillList(true)
-	elseif player.getSkillList then
-		skills = player:getSkillList()
-	else
-		return false
-	end
-	for _, skill in sgs.qlist(skills) do
+	for _, skill in sgs.qlist(aiConnect(player)) do
 		if self:checkIsRecover(skill:objectName()) then
 			return true
 		end
@@ -10587,15 +10563,7 @@ end
 -- 判斷角色是否擁有救人類技能（瀕死時救人）
 function SmartAI:hasSaveSkill(player)
 	if not player then return false end
-	local skills
-	if player.getVisibleSkillList then
-		skills = player:getVisibleSkillList(true)
-	elseif player.getSkillList then
-		skills = player:getSkillList()
-	else
-		return false
-	end
-	for _, skill in sgs.qlist(skills) do
+	for _, skill in sgs.qlist(aiConnect(player)) do
 		local skill_name = skill:objectName()
 		if sgs.save_skill and sgs.save_skill:match(skill_name) then
 			return true
@@ -10610,7 +10578,8 @@ end
 	
 	分數 > 0 的目標按分數比例進行加權隨機選擇
 	（類似 Pokémon Run and Bun 的選擇機制）
-	分數 <= 0 的目標完全排除
+	分數 <= 0 的目標完全排除 /由 findPlayerToDamage 剃除 -999 目標並提供物理排序
+	效能防線：外層建立 ctx 緩存，避免迴圈內重複
 	
 	參數：
 		targets: 候選目標列表（數組）
@@ -10621,74 +10590,105 @@ end
 		選中的目標（ServerPlayer），如果沒有合適目標則返回 nil
 ]]
 function SmartAI:getBestTarget(targets, card, from)
-	if not targets or #targets == 0 then
-		return nil
-	end
-	
-	from = from or self.player
-	
-	-- 【第1步】對每個目標計算分數
-	local scored_targets = {}
-	
-	for _, target in ipairs(targets) do
-		local base_score = self:getTargetBaseScore(target, card, from)
-		local score = base_score
-		
-		-- 【第2步】遍歷全場所有技能，累加 recommend 修正
-		for _, p in sgs.qlist(self.room:getAlivePlayers()) do
-			for _, skill in sgs.qlist(p:getVisibleSkillList(true)) do
-				local recommend = sgs.ai_target_recommend[skill:objectName()]
-				if type(recommend) == "function" then
-					local adjust = recommend(self, from, target, card, p)
-					if type(adjust) == "number" then
-						score = score + adjust
-					elseif adjust == false then -- 一票否決制度
-						score = -100
-						break
-					end
-				end
-			end
-		end
-		
-		table.insert(scored_targets, {
-			target = target,
-			score = score,
-			base_score = base_score
-		})
-	end
-	
-	-- 【第3步】過濾掉分數 <= 0 的目標
-	local valid_targets = {}
-	for _, st in ipairs(scored_targets) do
-		if st.score > 0 then
-			table.insert(valid_targets, st)
-		end
-	end
-	
-	if #valid_targets == 0 then
-		return nil
-	end
-	
-	-- 【第4步】加權隨機選擇（Pokémon Run and Bun 風格）
-	-- 每個目標被選中的概率 = 該目標的分數 / 所有有效目標的分數總和
-	local total_score = 0
-	for _, st in ipairs(valid_targets) do
-		total_score = total_score + st.score
-	end
-	
-	local rand = math.random() * total_score
-	local cumulative = 0
-	for _, st in ipairs(valid_targets) do
-		cumulative = cumulative + st.score
-		if rand <= cumulative then
-			return st.target
-		end
-	end
-	
-	-- 兜底（理論上不會到這裡）
-	return valid_targets[#valid_targets].target
-end
+    if not targets or #targets == 0 then return nil end
+    from = from or self.player
+    
+    local ctx = {
+        isDamage = self:checkIsDamageCard(card),
+        isDebuff = self:checkIsDebuff(card),
+        isTurnOver = self:checkIsTurnOver(card),
+		isRecovery = self:checkIsRecover(card),
+		isDraw = self:checkIsDrawCard(card),
+		isBuff = self:checkIsBuff(card),
+		isDecrease = self:checkIsDecreaseCard(card),
+    }
+    
+    local target_list = targets
+    local rank_map = {}
+    
+    -- [2] 路由分支：傷害牌走核心精算引擎
+    if ctx.isDamage then
+        -- 獲取過濾與排序後的目標陣列
+        target_list = self:findPlayerToDamage(1, from, nil, targets, 0, card)
+        if not target_list or #target_list == 0 then return nil end
+        
+        -- 預先計算排名分數映射
+        local max_rank = #target_list
+        for index, target in ipairs(target_list) do
+            local score = 1
+            if max_rank > 1 then
+                score = 1 + (max_rank - index) * (4 / (max_rank - 1))
+            else
+                score = 5
+            end
+            rank_map[target:objectName()] = score
+        end
+    end
 
+	local active_recommends = {}
+    local all_players = sgs.qlist(sgs.getCachedAlivePlayers())
+    
+    for _, p in ipairs(all_players) do
+        for _, skill_name in ipairs(aiConnect(p)) do
+            local func = sgs.ai_target_recommend[skill_name]
+            if func then
+                table.insert(active_recommends, {
+                    owner = p,
+                    eval = func
+                })
+            end
+        end
+    end
+    
+    local scored_targets = {}
+    for _, target in ipairs(target_list) do
+        local final_score = 0
+        
+        if ctx.isDamage then
+            final_score = rank_map[target:objectName()] or 0
+        else
+            final_score = self:getTargetBaseScore(target, card, from)
+        end
+
+        if ctx.isDamage or final_score > 0 then
+            
+            -- O(K) 遍歷：僅執行場上實際存在的 recommend 邏輯
+            for _, rec in ipairs(active_recommends) do
+                local adjust = rec.eval(self, from, target, card, rec.owner, ctx)
+                if type(adjust) == "number" then
+                    final_score = final_score + adjust
+                elseif adjust == false then
+                    final_score = -100 -- 一票否決 (Veto)
+                    break
+                end
+            end
+            
+            if final_score > 0 then
+                table.insert(scored_targets, { target = target, score = final_score })
+            end
+            
+        end
+    end
+    
+    -- [4] 容錯與加權隨機 (Weighted Random)
+    if #scored_targets == 0 then 
+        return target_list[1] 
+    end
+    
+    local total_score = 0
+    for _, st in ipairs(scored_targets) do
+        total_score = total_score + st.score
+    end
+    
+    local rand = math.random() * total_score
+    local cumulative = 0
+    for _, st in ipairs(scored_targets) do
+        cumulative = cumulative + st.score
+        if rand <= cumulative then return st.target end
+    end
+    
+    return scored_targets[#scored_targets].target
+end
 --[[
 	函數名：getTargetBaseScore
 	功能：計算目標的基礎評分（不包含 recommend 修正）
@@ -10709,71 +10709,57 @@ end
 ]]
 function SmartAI:getTargetBaseScore(target, card, from)
 	from = from or self.player
-	local isFriend = self:isFriend(target, from)
-	local isEnemy = self:isEnemy(target, from)
-	
-	local score = 0
-	
-	-- 【第1部分：牌性基礎分】
-	if self:checkIsDebuff(card) then
-		if isEnemy then
-			score = score + 2
-		elseif isFriend then
-			score = score - 3
-		end
-	end
+    
+    -- [1] 狀態預取 (State Pre-fetching)
+    local isFriend = self:isFriend(target, from)
+    local isEnemy  = self:isEnemy(target, from)
+    local score    = 0
 
-	if self:checkIsTurnOver(card) then
-		if isEnemy then
-			score = score + 2
-		elseif isFriend then
-			score = score - 3
-		end
-	end
-	
-	if self:checkIsBuff(card) or self:checkIsRecover(card) or self:checkIsDrawCard(card) then
-		if isFriend then
-			score = score + 3
-		elseif isEnemy then
-			score = score - 3
-		end
-	end
+    -- 若目標既非友軍也非敵人 (例如未明身份)，基礎分不增減
+    if not (isFriend or isEnemy) then return 0 end
 
-	-- 【第2部分：身份修正】
-	if target:isLord() then
-		if isEnemy then
-			score = score + 1
-		elseif isFriend then
-			score = score + 1
-		end
-	end
-	
-	-- 【第3部分：威脅等級修正】
-	if isEnemy then
-		local objLevel = self:objectiveLevel(target)
-		if objLevel > 3 then
-			score = score + math.min(objLevel - 3, 2)
-		end
-	end
-	
-	-- 【第4部分：血量修正】
-	if self:checkIsDamageCard(card) and isEnemy then
-		local hp = target:getHp()
-		local damage = 1
-		if type(card) == "string" and card == "damage" then
-			damage = 1
-		elseif card and type(card) ~= "string" then
-			damage = self:ajustDamage(from, target, 1, card)
-		end
-		
-		if damage > 0 and hp <= damage then
-			score = score + 3
-		elseif hp <= 2 then
-			score = score + (3 - hp)
-		end
-	end
-	
-	return score
+    -- [2] 牌性基礎分 (Card Nature Score)
+    local isNegativeCard = self:checkIsDebuff(card) or self:checkIsTurnOver(card)
+    local isPositiveCard = self:checkIsBuff(card) or self:checkIsRecover(card) or self:checkIsDrawCard(card)
+
+    if isNegativeCard then
+        score = score + (isEnemy and 2 or -3)
+    elseif isPositiveCard then
+        score = score + (isFriend and 3 or -3)
+    end
+
+    -- [3] 身份與威脅修正 (Identity & Threat Adjustment)
+    -- 主公戰略價值修正
+    if target:isLord() then
+        score = score + 1
+    end
+    
+    -- 敵人威脅等級 (Objective Level) 修正
+    if isEnemy then
+        local objLevel = self:objectiveLevel(target)
+        if objLevel > 3 then
+            score = score + math.min(objLevel - 3, 2)
+        end
+    end
+    
+    -- [4] 血量與斬殺修正 (HP & Execution Adjustment)
+    if isEnemy and self:checkIsDamageCard(card) then
+        local hp = target:getHp()
+        local damage = 1
+        
+        -- 類型安全檢查 (Type Safety Check)
+        if type(card) ~= "string" and card ~= nil then
+            damage = self:ajustDamage(from, target, 1, card)
+        end
+        
+        if damage > 0 and hp <= damage then
+            score = score + 3        -- 斬殺線 (Lethal Range)
+        elseif hp <= 2 then
+            score = score + (3 - hp) -- 殘血壓制 (Low HP Suppression)
+        end
+    end
+    
+    return score
 end
 
 --[[============================================
@@ -10791,16 +10777,16 @@ end
 ============================================]]
 
 -- 輔助函數：檢查攻擊者是否會使目標的受到傷害技能失效
-local function checkMasochismInvalid(from, to, card)
+function checkMasochismInvalid(from, to, card)
 	if not from then
 		return false
 	end
 	
 	-- 絕情：傷害視為失去體力
-	if from:hasSkill("jueqing") or from:hasSkill("tenyearjueqing") then
+	if hasJueqingEffect(from,to, card and sgs.card_damage_nature[card:getClassName()] or nil) then
 		return true
 	end
-	
+
 	-- 潛襲：距離為1時，非鎖定技失效（僅對殺有效）
 	if to and from:hasSkill("nosqianxi") and from:distanceTo(to) == 1 and card and card:isKindOf("Slash") then
 		return true
@@ -11197,9 +11183,6 @@ sgs.ai_target_recommend["jiang"] = function(self, from, to, card, skill_owner)
 	end
 	return 0
 end
-
-
-
 
 
 dofile"lua/ai/debug-ai.lua"
