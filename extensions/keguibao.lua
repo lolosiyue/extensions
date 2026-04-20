@@ -1342,9 +1342,6 @@ kejieguilongyin = sgs.CreateTriggerSkill {
 			end
 		end
 	end,
-	can_trigger = function(self, player)
-		return player:hasSkill(self:objectName())
-	end,
 }
 kejieguizhangfei:addSkill(kejieguilongyin)
 
@@ -1430,9 +1427,6 @@ kejieguixiaoyinexex = sgs.CreateTriggerSkill {
 			recover.who = player
 			room:recover(player, recover)
 		end
-	end,
-	can_trigger = function(self, player)
-		return player:hasSkill(self:objectName())
 	end,
 }
 kejieguizhangfei:addSkill(kejieguixiaoyinexex)
@@ -1784,9 +1778,6 @@ kejieguilifeng = sgs.CreateTriggerSkill {
 				room:setPlayerMark(player, "&lfyesdamage", 1)
 			end
 		end
-	end,
-	can_trigger = function(self, player)
-		return player:hasSkill(self:objectName())
 	end,
 }
 kejieguihuaxiongtwo:addSkill(kejieguilifeng)

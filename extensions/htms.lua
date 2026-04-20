@@ -12346,7 +12346,7 @@ weituo       = sgs.CreateTriggerSkill {
 		if event == sgs.Damaged then
 			local damage = data:toDamage()
 			for _, yma in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-				if damage.to ~= damage.from and damage.from:isAlive() and damage.to:isAlive() and damage.to ~= yma and damage.from ~= yma then
+				if damage.from and damage.to ~= damage.from and damage.from:isAlive() and damage.to:isAlive() and damage.to ~= yma and damage.from ~= yma then
 					for _, x in sgs.qlist(room:getAlivePlayers()) do
 						if x:getMark("@weituozhe") == 1 then
 							return false

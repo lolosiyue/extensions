@@ -299,11 +299,12 @@ sgs.ai_use_priority.fire_shot = 2.5
 sgs.ai_skill_cardask["shot-jink"] = function(self,data,pattern,target)
 	local slash = dummyCard()
 	local effect = data:toCardEffect()
-	if type(data)=="userdata" then slash = data:toCardEffect().card end
-	if not target or sgs.ai_skill_cardask.nullfilter(self,data,pattern,target)=="."
-	or (slash:isKindOf("fire_shot") or slash:isKindOf("thunder_shot")) and self.player:isChained() and self:isGoodChainTarget(self.player,slash,target)then return "." end
-	local n = self:ajustDamage(effect.from,effect.to,1,effect.card)
-	if self:needToLoseHp(self.player,target,slash) and n==1
+	if type(data)=="userdata" and effect and effect.card then slash = effect.card end
+	local source = target or (effect and effect.from)
+	if not source or sgs.ai_skill_cardask.nullfilter(self,data,pattern,source)=="."
+	or (slash:isKindOf("fire_shot") or slash:isKindOf("thunder_shot")) and self.player:isChained() and self:isGoodChainTarget(self.player,slash,source)then return "." end
+	local n = self:ajustDamage(source,self.player,1,(effect and effect.card) or slash)
+	if self:needToLoseHp(self.player,source,slash) and n==1
 	then return "." end
 	function getJink()
 		if #self.friends_noself>0 and self:getCardsNum("Peach,Analeptic")<1
@@ -313,11 +314,11 @@ sgs.ai_skill_cardask["shot-jink"] = function(self,data,pattern,target)
 		end
 		return "."
 	end
-	if self:isFriend(target) then
-		if self.player:getLostHp()==0 and self.player:isMale() and target:hasSkill("jieyin") then return "." end
-		if not hasJueqingEffect(target,self.player) then
-			if (target:hasSkill("nosrende") or target:hasSkill("rende") and not target:hasUsed("RendeCard")) and self.player:hasSkill("jieming")
-			or target:hasSkill("pojun") and not self.player:faceUp()
+	if self:isFriend(source) then
+		if self.player:getLostHp()==0 and self.player:isMale() and source:hasSkill("jieyin") then return "." end
+		if not hasJueqingEffect(source,self.player) then
+			if (source:hasSkill("nosrende") or source:hasSkill("rende") and not source:hasUsed("RendeCard")) and self.player:hasSkill("jieming")
+			or source:hasSkill("pojun") and not self.player:faceUp()
 			then return "." end
 		end
 	else
@@ -331,9 +332,9 @@ sgs.ai_skill_cardask["shot-jink"] = function(self,data,pattern,target)
 		end
 		if self.player:getHandcardNum()==1 and self:needKongcheng()
 		or not(self:hasLoseHandcardEffective() or self.player:isKongcheng()) then return getJink() end
-		if self.player:getHp()>1 and getKnownCard(target,self.player,"Slash")>0
-		and getKnownCard(target,self.player,"Analeptic")>0 and self:getCardsNum("Jink")<=1
-		and (target:getPhase()<=sgs.Player_Play or self:slashIsAvailable(target) and target:canSlash(self.player))
+		if self.player:getHp()>1 and getKnownCard(source,self.player,"Slash")>0
+		and getKnownCard(source,self.player,"Analeptic")>0 and self:getCardsNum("Jink")<=1
+		and (source:getPhase()<=sgs.Player_Play or self:slashIsAvailable(source) and source:canSlash(self.player))
 		then return "." end
 	end
 	return getJink()

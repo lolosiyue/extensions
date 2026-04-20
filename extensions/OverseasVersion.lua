@@ -5470,7 +5470,7 @@ ov_yuhua = sgs.CreateTriggerSkill {
 				and (move.to ~= move.from or move.to_place ~= sgs.Player_PlaceHand and move.to_place ~= sgs.Player_PlaceEquip)
 			then
 				local n = 0
-				for _, id in sgs.qlist(move.card_ids) do
+				for i, id in sgs.qlist(move.card_ids) do
 					if move.from_places:at(i) == sgs.Player_PlaceHand or move.from_places:at(i) == sgs.Player_PlaceEquip then
 						if sgs.Sanguosha:getCard(id):getTypeId() > 1 then
 							n = n + 1
@@ -16978,7 +16978,7 @@ ov_fushuCard = sgs.CreateSkillCard {
 		room:getThread():delay()
 		moves = sgs.CardsMoveList()
 		if room:getCardOwner(self:getEffectiveId()) == nil then
-			moves:append(sgs.CardsMoveStruct(self:getEffectiveId(), nil, sgs.Player_DiscardPile, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PINDIAN, use.from:objectName(), "ov_fushu", "")))
+			moves:append(sgs.CardsMoveStruct(self:getEffectiveId(), nil, sgs.Player_DiscardPile, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PINDIAN, yuji:objectName(), "ov_fushu", "")))
 		end
 		if room:getCardOwner(ids:first()) == nil then
 			moves:append(sgs.CardsMoveStruct(ids:first(), nil, sgs.Player_DiscardPile, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PINDIAN, "drawPile", "ov_fushu", "")))

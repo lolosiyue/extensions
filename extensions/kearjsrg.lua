@@ -265,7 +265,7 @@ keqijishan = sgs.CreateTriggerSkill {
 		if event == sgs.DamageInflicted then
 			local damage = data:toDamage()
 			for _, lb in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-				if lb:getMark("banjishan-Clear") < 1 and lb:askForSkillInvoke(self, damage.to) then
+				if lb:getMark("banjishan-Clear") < 1 and lb:askForSkillInvoke(self, data) then
 					room:broadcastSkillInvoke(self:objectName())
 					room:setPlayerMark(lb, "banjishan-Clear", 1)
 					room:setPlayerMark(damage.to, "&keqijishan", 1)

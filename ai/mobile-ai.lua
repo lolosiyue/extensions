@@ -414,24 +414,6 @@ sgs.ai_skill_use["@@secondmobilezhizuici"] = function(self,prompt)
 	return "."
 end
 
-sgs.ai_card_usage_incentive["MobileZhiQinzheng"] = function(self, card, player)
-	if card:isKindOf("SkillCard") then return 0 end
-    local used_count = player:getMark("&mobilezhiqinzheng") 
-    local next_count = used_count + 1
-
-    if next_count == 3 then
-        return 4.0
-    elseif next_count == 5 then
-        return 6.0
-    elseif next_count == 8 then
-        return 8.0
-    end
-    if next_count == 2 or next_count == 4 or next_count == 7 then
-        return 2.0 
-    end
-    return 0
-end
-
 sgs.ai_skill_carduse.MobileZhiQinzheng = function(self, card, use)
 	if self.player:getPhase()~=sgs.Player_Play then return false end
 	local current_count = self.player:getMark("&mobilezhiqinzheng")
@@ -2992,24 +2974,6 @@ end
 sgs.ai_skill_invoke.cschiyan = function(self,data)
 	local tp = data:toPlayer()
 	return self:isEnemy(tp) or not self:isFriend(tp) and #self.enemies<1
-end
-
-sgs.ai_card_usage_incentive["cszimou"] = function(self, card, player)
-	if card:isKindOf("SkillCard") then return 0 end
-    local used_count = player:getMark("&cszimou-PlayClear") 
-    local next_count = used_count + 1
-
-    if next_count == 2 then
-        return 4.0
-    elseif next_count == 4 then
-        return 6.0
-    elseif next_count == 6 then
-        return 8.0
-    end
-    if next_count == 1 or next_count == 3 or next_count == 5 then
-        return 2.0 
-    end
-    return 0
 end
 
 addAiSkills("cspicai").getTurnUseCard = function(self)
