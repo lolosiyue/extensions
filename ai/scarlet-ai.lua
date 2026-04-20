@@ -3430,3 +3430,74 @@ sgs.ai_playerchosen_intention.s4_moubei = -30
 
 table.insert(sgs.ai_voluntary_give_skills,"s4_moubei")
 
+sgs.ai_skill_choice.s4_zemou = function(self, choices, data)
+	local items = choices:split("+")
+	if table.contains(items, "s4_zemou_beishui") and sgs.ai_skill_invoke.jigong(self) then
+		return "s4_zemou_beishui"
+	end
+	if table.contains(items, "s4_zemou_jianying") then
+		self:getTurnUse()
+		if #self.toUse > 0 then
+			local x = 0
+			for _,c in sgs.list(self.toUse)do
+				for _,c2 in sgs.list(self.toUse)do
+					if c ~= c2 and (c:getNumber() == c2:getNumber() or c:getSuit() == c2:getSuit()) then
+						x = x + 1
+						if x >= 2 then
+							break
+						end
+					end
+				end
+			end
+			if x >= 2 then
+				return "s4_zemou_jianying"
+			end
+		end
+	end
+	return items[math.random(1, #items)]
+end
+
+
+sgs.ai_fill_skill.s4_zhimeng = function(self)
+	if self.player:isKongcheng() then return nil end
+	return sgs.Card_Parse("#s4_zhimeng:.:")
+end
+
+sgs.ai_skill_use_func["#s4_zhimeng"] = function(card, use, self)
+	local good = 2
+	for _, friend in sgs.list(self.friends_noself) do
+		if friend:getHandcardNum() >= self.player:getHandcardNum() then
+			good = good + 1
+		end
+	end
+	for _, enemy in sgs.list(self.enemies) do
+		if enemy:getHandcardNum() >= self.player:getHandcardNum() then
+			good = good - 1
+		end
+	end
+	if good <= 0 then return end
+	use.card = card
+end
+
+sgs.ai_use_value.s4_zhimeng = 6
+sgs.ai_use_priority.s4_zhimeng = 4
+
+sgs.ai_skill_discard.s4_zhimeng = function(self, discard_num, min_num, optional, include_equip, pattern)
+	local cards = sgs.QList2Table(self.player:getCards("h"))
+	if #cards == 0 then return {} end
+	self:sortByKeepValue(cards)
+	if self:isWeak() then
+		local red_color = {}
+		for _, c in ipairs(cards) do
+			if c:isRed() then
+				table.insert(red_color, c)
+			end
+		end
+		if #red_color > 0 then
+			return {red_color[1]:getEffectiveId()}
+		end
+	end
+	return {cards[1]:getEffectiveId()}
+end
+
+
