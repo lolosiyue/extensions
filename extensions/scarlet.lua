@@ -12445,6 +12445,7 @@ s4_zemou = sgs.CreateTriggerSkill{
 	name = "s4_zemou",
 	view_as_skill = s4_zemouVS,
 	events = {sgs.EventPhaseStart},
+	waked_skills = "chenglve+jianying+jigong",
 	on_trigger = function(self, event, player, data, room)
 		if player:getPhase() == sgs.Player_Play then
 			room:broadcastSkillInvoke(self:objectName())
