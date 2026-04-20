@@ -581,7 +581,7 @@ sgkgodshendao=sgs.CreateTriggerSkill{
 				card = room:askForCard(player,  "." , prompt, data, sgs.Card_MethodResponse, judge.who, true)
 			else
 				if (not player:isKongcheng()) and non_nude_count ~= 0 then  --一般情况下，自己有手牌，并且场上也有牌
-					local choice = room:askForChoice(player, self:objectName(), "shendao_selfhandcard+shendao_wholearea")
+					local choice = room:askForChoice(player, self:objectName(), "shendao_selfhandcard+shendao_wholearea", data)
 					if choice == "shendao_selfhandcard" then
 						local prompt = "@shendao-card:"..judge.who:objectName()..":"..self:objectName()..
 						":"..judge.reason..":"..judge.card:getEffectiveId()

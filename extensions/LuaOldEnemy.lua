@@ -104,14 +104,16 @@ LuaOldEnemy = sgs.CreateTriggerSkill {
 			end
 			if death.who:getMark("@LuaOldEnemyHermit") > 0 and not death.who:isKongcheng() then --隐者被杀给牌
 				local target = room:askForPlayerChosen(death.who, room:getOtherPlayers(death.who), "LuaOldEnemyHermit", "@LuaOldEnemyHermit-invoke", true)
-				local dummy = sgs.Sanguosha:cloneCard("jink")
-				local cards = death.who:getHandcards()
-				for _, card in sgs.qlist(cards) do
-					dummy:addSubcard(card)
+				if target then
+					local dummy = sgs.Sanguosha:cloneCard("jink")
+					local cards = death.who:getHandcards()
+					for _, card in sgs.qlist(cards) do
+						dummy:addSubcard(card)
+					end
+					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, death.who:objectName(), target:objectName(), "LuaOldEnemyHermit", "")
+					room:moveCardTo(dummy, target, sgs.Player_PlaceHand, reason)
+					dummy:deleteLater()
 				end
-				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, death.who:objectName(), target:objectName(), "LuaOldEnemyHermit", "")
-				room:moveCardTo(dummy, target, sgs.Player_PlaceHand, reason)
-				dummy:deleteLater()
 			end
 			if death.damage and death.damage.from then
 				if OldEnemy and death.damage.from:objectName() == OldEnemy:objectName() then --杀死宿敌回血

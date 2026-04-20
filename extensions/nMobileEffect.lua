@@ -251,11 +251,11 @@ n_mvpexperience = sgs.CreateTriggerSkill {
 				local players = sgs.QList2Table(room:getAlivePlayers())
 				local function loser(p)
 					local tt = t:split("+")
-					if not table.contains(tt,p:getRole()) then return true end
+					if not table.contains(tt,p:getRole()) and not table.contains(tt,p:objectName()) then return true end
 					return false
 				end
 				for _,p in ipairs(players)do
-					if loser(p) then 
+					if loser(p) then
 						table.removeOne(players,p)
 					end
 				end

@@ -123,7 +123,6 @@ sgs.ai_damage_reason_suppress_intention = {}	--技能牌/技能傷害（不會�
 sgs.ai_damage_from_flag_intention = {}	--傷害來源flag（指定更新仇恨）
 sgs.ai_voluntary_give_skills =	{}  -- 可自行選擇給牌的技能名白名單（不會更新仇恨）
 sgs.ai_card_combo_use = 		{}	-- 用牌摸牌系技能
-sgs.ai_card_usage_incentive = 	{}	-- 出牌激勵
 sgs.ai_dont_hurt_from = {} 			-- 攻擊方免傷觸發註冊表 (涵蓋技能、標記、牌堆)
 sgs.ai_dont_hurt_to = {}			-- 防守方免傷觸發註冊表 (涵蓋技能、標記、牌堆)
 sgs.ai_hasBuquEffect_skill = {}
@@ -551,15 +550,15 @@ function sgs.getDefense(player,start)--状态值
 	local current_time = os.time()
 	local cache_key = player_name .. "_" .. sgs.turncount
 	
-	if sgs.defense_cache_time == current_time and sgs.defense_cache[cache_key] then
-		return sgs.defense_cache[cache_key]
-	end
-	
-	-- Clear cache if time changed
-	if sgs.defense_cache_time ~= current_time then
-		sgs.defense_cache = {}
-		sgs.defense_cache_time = current_time
-	end
+    if sgs.defense_cache_time ~= current_time then
+        sgs.defense_cache = {}
+        sgs.defense_cache_time = current_time
+    end
+	if sgs.defense_cache[cache_key] then
+        return sgs.defense_cache[cache_key]
+    end
+	sgs.defense_cache[cache_key] = sgs.getValue(player) + (sgs.defense[player_name] or 0)
+
 	
 	-- Pre-compute aggregated data once per call
 	local drawData = {}	
@@ -605,8 +604,9 @@ function sgs.getDefense(player,start)--状态值
 		if type(invoke)=="number"
 		then defense = defense-invoke end
 	end
+	local ai_player_name = sgs.ais[player:objectName()]
 	for k,n in pairs(current_self.keepdata)do
-		for _,c in ipairs(sgs.ais[player:objectName()]:getCard(k,true))do
+		for _,c in ipairs(ai_player_name:getCard(k,true))do
 			if c:getTypeId()<1 or c:isVirtualCard() then defense = defense-n break end
 		end
 	end
@@ -671,10 +671,7 @@ function sgs.getDefense(player,start)--状态值
 		defense = defense+(player:aliveCount()-(player:getSeat()-drawData:getSeat())%player:aliveCount())/4
 	end
 	
-	-- Cache the result
-	if sgs.defense_cache_time == current_time then
-		sgs.defense_cache[cache_key] = defense
-	end
+	sgs.defense_cache[cache_key] = defense
 	
 	return defense
 end
@@ -935,10 +932,6 @@ function SmartAI:getUseValue(card)
 		v = self:adjustUsePriority(card,v)
 		self.useValue = false
 	end
-	if self.player:getPhase()==sgs.Player_Play then
-		local bonus = self:getUsageIncentive(card)
-		v = v + bonus
-	end
 	self.room:setPlayerFlag(self.player, "-stack_overflow_UseValue")
 	return v
 end
@@ -1025,7 +1018,6 @@ function SmartAI:adjustUsePriority(card,v)
 			end
 		end
 	end
-
 	return v+(13-card:getNumber())/100
 end
 
@@ -2224,6 +2216,7 @@ sgs.ai_damage_from_flag_intention["FenchengUsing"] = 10
 
 function SmartAI:filterEvent(event,player,data)
 	self._ai_connect_cache = nil
+	self._active_recommends_cache = nil
 	-- Flush cards that CardFilter cloned in the PREVIOUS filterEvent cycle.
 	-- This is the earliest safe point: all callers from last cycle are done.
 	sgs.flushDeferredDeleteCards()
@@ -2971,7 +2964,6 @@ sgs.ai_skill_discard.gamerule = function(self,x,n)
 end
 
 SmartAI._ai_connect_cache = {}
-SmartAI._ai_connect_cache_time = 0
 function aiConnect(owner)
     if not current_self then return {} end
     
@@ -4862,7 +4854,7 @@ function SmartAI:getUsageState()
     local has_penalty = false
     local self_player = self.player
 
-    for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+    for _, p in sgs.qlist(sgs.getCachedAlivePlayers()) do
 
         for _, ac in ipairs(aiConnect(p)) do
             
@@ -4890,23 +4882,6 @@ function SmartAI:getUsageState()
     end
     
     return min_limit, has_penalty
-end
-
--- 激勵值
-function SmartAI:getUsageIncentive(card)
-    local bonus = 0
-    
-    for _, ac in ipairs(aiConnect(self.player) ) do
-        local incentive_func = sgs.ai_card_usage_incentive[ac]
-        if type(incentive_func) == "function" then
-            local b = incentive_func(self, card, self.player)
-            if type(b) == "number" then
-                bonus = bonus + b
-            end
-        end
-    end
-    
-    return bonus
 end
 
 -- 通用刷牌/墊牌邏輯：尋找「合法但低收益/無收益」的目標，只為消耗卡牌
@@ -5260,7 +5235,7 @@ function SmartAI:getRetrialCardId(cards,judge,self_card,exchange)
 				end
 			end
 		elseif (self:isFriend(judge.who) and judge:isGood(x) or self:isEnemy(judge.who) and not judge:isGood(x))
-		and not(self_card~=false and (self:getFinalRetrial(nil,judge.reason)>1 or self:dontRespondPeachInJudge(judge)) and isCard("Peach",c,self.player) and not self:isWeak(self.friends))
+		and not(self_card~=false and isCard("Peach",c,self.player) and (self:getFinalRetrial(nil,judge.reason)>1 or self:dontRespondPeachInJudge(judge)) and not self:isWeak(self.friends))
 		then table.insert(can_use,c) end
 	end
 	if not hasSpade and #other_suit>0
@@ -6237,6 +6212,16 @@ end
 function SmartAI:getSameEquip(card,owner)
 	if card and card:isKindOf("EquipCard") then
 		owner = owner or self.player
+		local equipCard = card:getRealCard():toEquipCard()
+		if equipCard then
+			local occupy = equipCard:getOccupyLocations()
+			if occupy and not occupy:isEmpty() then
+				for _, slot in sgs.qlist(occupy) do
+					local equip = owner:getEquip(slot)
+					if equip then return equip end
+				end
+			end
+		end
 		return owner:getEquip(card:getRealCard():toEquipCard():location())
 	end
 end
@@ -7222,9 +7207,11 @@ function SmartAI:dontRespondPeachInJudge(judge)
 	if peach_num<1 then return false end
 	if self:willSkipPlayPhase() and peach_num>self:getOverflow(self.player,true) then return false end
 	local card = self:getCard("Peach")
-	local dummy = dummy()
-	self:useBasicCard(card,dummy)
-	if dummy.card then return true end
+	if card then
+		local dummy_use = dummy()
+		self:useCardPeach(card,dummy_use)
+		if dummy_use.card and dummy_use.card:isKindOf("Peach") then return true end
+	end
 	if peach_num<=self.player:getLostHp()
 	or self:isWeak(self.friends)
 	then return true end
@@ -8115,38 +8102,32 @@ function SmartAI:ajustDamage(from,to,dmg,card,nature,depth)
     if depth == 0 and nature ~= "N" and to:isChained() then
         local friends_hurt = 0
         local enemies_hurt = 0
-        local lord = getLord(from) -- 獲取主公判定點
+        local lord = getLord(from)
 
-        -- 遍歷場上其他所有連環角色
         for _, p in sgs.qlist(self.room:getOtherPlayers(to)) do
-            if p:isChained() and self:damageIsEffective(p, nature, from) then
-                -- 遞迴調用時 depth 設為 1，計算該目標受到的修正傷害
-                local p_dmg = self:ajustDamage(from, p, dmg, card, nature, 1) 
-                
-                if self:isFriend(p, from) then
-                    friends_hurt = friends_hurt + p_dmg
-                    
-                    -- KillLord 判斷：若傷害會傳死主公或重要隊友，視為極大負收益
-                    local hp_left = p:getHp() + p:getHujia()
-                    if p_dmg >= hp_left then
-                        -- 如果是主公受致命傳導，絕對禁止該行為
-                        if lord and p:objectName() == lord:objectName() then
-                            return -100
+            if p:isChained() then
+                -- 這裡不能再調用 damageIsEffective，否則會重新進入 ajustDamage(depth=0) 造成遞迴爆棧
+                local p_dmg = self:ajustDamage(from, p, dmg, card, nature, 1)
+                if p_dmg > 0 then
+                    if self:isFriend(p, from) then
+                        friends_hurt = friends_hurt + p_dmg
+                        local hp_left = p:getHp() + p:getHujia()
+                        if p_dmg >= hp_left then
+                            if lord and p:objectName() == lord:objectName() then
+                                return -100
+                            end
+                            friends_hurt = friends_hurt + 10
                         end
-                        -- 若是一般隊友且 AI 處於保護模式，大幅降低收益
-                        friends_hurt = friends_hurt + 10 
-                    end
-                elseif self:isEnemy(p, from) then
-                    enemies_hurt = enemies_hurt + p_dmg
-                    -- 若能連環傳死敵人，額外加分
-                    if p_dmg >= (p:getHp() + p:getHujia()) then
-                        enemies_hurt = enemies_hurt + 2
+                    elseif self:isEnemy(p, from) then
+                        enemies_hurt = enemies_hurt + p_dmg
+                        if p_dmg >= (p:getHp() + p:getHujia()) then
+                            enemies_hurt = enemies_hurt + 2
+                        end
                     end
                 end
             end
         end
-        
-        -- 最終傳導收益修正
+
         dmg = dmg + (enemies_hurt * 1.2) - (friends_hurt * 2.5)
     end
 
@@ -8164,20 +8145,15 @@ end
 
 function hasJueqingEffect(from,to, nature)
 	if from and from:hasSkills("jueqing|gangzhi") then return true end
-	if from and from:hasSkill("tenyearjueqing") and from:getMark("tenyearjueqing")>0 then return true end
+	if from and from:hasSkill("tenyearjueqing") and from:getMark("tenyearjueqing") > 0 then return true end
 	if to and to:hasSkill("gangzhi") then return true end
 
-	--add
 	nature = nature or sgs.DamageStruct_Normal
-	if from and from:hasSkills("meizlwuqing") and from:isWounded() and nature == sgs.DamageStruct_Normal then
+	if from and from:hasSkill("meizlwuqing") and from:isWounded() and nature == sgs.DamageStruct_Normal then
 		return true
 	end
-	if from and from:hasSkills("MeowJueqing") then
-		return true
-	end
-	if from and from:hasSkills("exjueqing") then
-		return true
-	end
+	if from and from:hasSkill("MeowJueqing") then return true end
+	if from and from:hasSkill("exjueqing") then return true end
 	if to and to:hasSkill("nyarz_shibei") and to:getMark("nyarz_shibei-Clear") > 1 then return true end
 	if to and to:hasSkill("xinnian") then return true end
 	if from and from:getPile("sp_ss"):length() > 0 then return true end
@@ -8185,7 +8161,7 @@ function hasJueqingEffect(from,to, nature)
 	if to and to:hasSkill("sy_xushu") then return true end
 	if to and to:hasSkill("s3_yijue") then return true end
 	if from and to and from:hasSkill("bffeedingpoisoning") and ((from:distanceTo(to) == 1) or (to:distanceTo(from) == 1)) and not beFriend(to, from) then return true end
-	
+
 	return false
 end
 
@@ -8788,7 +8764,7 @@ function SmartAI:targetRevises(use)
 				if tx and sgs.armorName[ac] then continue end
 				local tr = sgs.ai_target_revises[ac]
 				if type(tr)=="function" and tr(to,use.card,self,use)
-				and (not sgs.ai_humanized or math.random()<0.95)
+				--and (not sgs.ai_humanized or math.random()<0.95)
 				then table.insert(utr,to) break end
 				if use.card~=uc then return end
 			end
@@ -9526,7 +9502,7 @@ end
 sgs.ai_guhuo_card.guhuo = function(self,cname,class_name)
 	local handcards = self:addHandPile("h")
 	if #handcards>0 then
-		handcards = self:sortByKeepValue(handcards) -- 按保留值排序
+		handcards = self:sortByUseValue(handcards) -- 按保留值排序
 		local hc,fake,question = {},{},#self.enemies
 		local all = sgs.getMode=="_mini_48"
 		for _,enemy in sgs.list(self.enemies)do
@@ -9572,7 +9548,7 @@ sgs.ai_guhuo_card.nosguhuo = function(self,cname,class_name)
 	if self.player:hasFlag(cname.."nosguhuoFailed") then return end
 	local handcards = self:addHandPile("h")
 	if #handcards>0 then
-		handcards = self:sortByKeepValue(handcards) -- 按保留值排序
+		handcards = self:sortByUseValue(handcards) -- 按保留值排序
 		local hc,fake,question = {},{},#self.enemies
 		for _,enemy in sgs.list(self.enemies)do
 			if enemy:getHp()<2 then question = question-1 end
@@ -9614,7 +9590,7 @@ end
 sgs.ai_guhuo_card.taoluan = function(self,cname,class_name)
 	if self:getCardsNum(class_name)<1 and self.player:getCardCount()>0 then
 		local he = self.player:getCards("he")
-		he = self:sortByKeepValue(he,nil,"l") -- 按保留值排序
+		he = self:sortByUseValue(he,nil,"l") -- 按保留值排序
 	 	self:sort(self.friends_noself,"card",true)
 		if #self.friends_noself>0 and self.friends_noself[1]:getCardCount()>1 or self.player:getHp()>1
 		then return "@TaoluanCard="..he[1]:getEffectiveId()..":"..cname end
@@ -10589,6 +10565,7 @@ end
 	返回值：
 		選中的目標（ServerPlayer），如果沒有合適目標則返回 nil
 ]]
+SmartAI._ai_connect_cache = {}
 function SmartAI:getBestTarget(targets, card, from)
     if not targets or #targets == 0 then return nil end
     from = from or self.player
@@ -10625,19 +10602,26 @@ function SmartAI:getBestTarget(targets, card, from)
         end
     end
 
-	local active_recommends = {}
-    local all_players = sgs.qlist(sgs.getCachedAlivePlayers())
-    
-    for _, p in ipairs(all_players) do
-        for _, skill_name in ipairs(aiConnect(p)) do
-            local func = sgs.ai_target_recommend[skill_name]
-            if func then
-                table.insert(active_recommends, {
-                    owner = p,
-                    eval = func
-                })
+	local active_recommends
+    if self._active_recommends_cache then
+        active_recommends = self._active_recommends_cache
+    else
+        active_recommends = {}
+        local all_players = sgs.qlist(sgs.getCachedAlivePlayers())
+        
+        for _, p in ipairs(all_players) do
+            for _, skill_name in ipairs(aiConnect(p)) do
+                local func = sgs.ai_target_recommend[skill_name]
+                if func then
+                    table.insert(active_recommends, {
+                        owner = p,
+                        eval = func
+                    })
+                end
             end
         end
+        
+        self._active_recommends_cache = active_recommends
     end
     
     local scored_targets = {}
@@ -10650,7 +10634,7 @@ function SmartAI:getBestTarget(targets, card, from)
             final_score = self:getTargetBaseScore(target, card, from)
         end
 
-        if ctx.isDamage or final_score > 0 then
+        if final_score > 0 then
             
             -- O(K) 遍歷：僅執行場上實際存在的 recommend 邏輯
             for _, rec in ipairs(active_recommends) do
@@ -10671,9 +10655,14 @@ function SmartAI:getBestTarget(targets, card, from)
     end
     
     -- [4] 容錯與加權隨機 (Weighted Random)
-    if #scored_targets == 0 then 
-        return target_list[1] 
+
+    if #scored_targets == 1 then 
+        return scored_targets[1].target
     end
+	if #scored_targets == 0 then 
+        return nil
+    end
+
     
     local total_score = 0
     for _, st in ipairs(scored_targets) do

@@ -134,7 +134,6 @@ local function GuanXing(self,cards)
 		local judge_str = sgs.ai_judgestring[jc:objectName()]
 		if type(judge_str)=="string" then judge_str = {judge_str,true}
 		elseif type(judge_str)~="table" then
-				self.room:writeToConsole(debug.traceback())
 				judge_str = {".|"..jc:getSuitString(),true}
 			end
 		for _,c in ipairs(table.copyFrom(bottom))do
@@ -199,7 +198,6 @@ local function XinZhan(self,cards)
 		local judge_str = sgs.ai_judgestring[j:objectName()]
 		if type(judge_str)=="string" then judge_str = {judge_str,true}
 		elseif type(judge_str)~="table" then
-				self.room:writeToConsole(debug.traceback())
 				judge_str = {".|"..j:getSuitString(),true}
 			end
 		local index = 1
