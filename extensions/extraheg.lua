@@ -12710,7 +12710,7 @@ SixDragons_Skill = sgs.CreateTriggerSkill{
 	events = {sgs.BeforeCardsMove},
 	frequency = sgs.Skill_Compulsory,
 	can_trigger = function(self,target)
-		return target and target:hasDefensiveHorse("SixDragons")
+		return target and (target:hasDefensiveHorse("SixDragons") or target:hasOffensiveHorse("SixDragons"))
 	end,
 	on_trigger = function(self,event,player,data,room)
 		if event==sgs.BeforeCardsMove then
@@ -12736,49 +12736,11 @@ SixDragons_Skill = sgs.CreateTriggerSkill{
 		return false
 	end
 }
-SixDragons_2_Skill = sgs.CreateTriggerSkill{
-	name = "#SixDragons_2_Skill",
-	events = {sgs.CardsMoveOneTime},
-	frequency = sgs.Skill_Compulsory,
-	can_trigger = function(self,target)
-		return target 
-	end,
-	on_trigger = function(self,event,player,data,room)
-		if event == sgs.CardsMoveOneTime then
-			local move = data:toMoveOneTime()
-			if move.from and player:objectName()==move.from:objectName() and move.from_places:contains(sgs.Player_PlaceEquip) then
-				local ids = sgs.IntList()
-				for _,id in sgs.list(move.card_ids)do
-					local card = sgs.Sanguosha:getCard(id)
-					if card:isKindOf("SixDragons") then
-						ids:append(id)
-					end
-				end
-				if not ids:isEmpty() then
-					player:obtainEquipArea(2)
-				end
-			end
-			if move.to and player:objectName()==move.to:objectName() and move.to_place==sgs.Player_PlaceEquip then
-				local ids = sgs.IntList()
-				for _,id in sgs.list(move.card_ids)do
-					local card = sgs.Sanguosha:getCard(id)
-					if card:isKindOf("SixDragons") then
-						ids:append(id)
-					end
-				end
-				if not ids:isEmpty() then
-					player:throwEquipArea(2)
-				end
-			end
-		end
-		return false
-	end
-}
 
 SixDragons_DistanceSkill = sgs.CreateDistanceSkill{
 	name = "SixDragons_Distance",
 	correct_func = function(self, from, to)
-		if to:hasOffensiveHorse("SixDragons") then
+		if to:hasOffensiveHorse("SixDragons") or to:hasDefensiveHorse("SixDragons") then
 			return 1
 		end
 		return 0
@@ -12805,20 +12767,22 @@ SixDragons = sgs.CreateOffensiveHorse{
 	on_install = function(self,player)
 		local room = player:getRoom()
 		room:acquireSkill(player,SixDragons_Skill,true,true,false)
-		room:acquireSkill(player,SixDragons_2_Skill,true,true,false)
 		return false
 	end,
 	on_uninstall = function(self,player)
 		local room = player:getRoom()
 		room:detachSkillFromPlayer(player,"SixDragons_Skill",true,true)
-		room:detachSkillFromPlayer(player,"SixDragons_2_Skill",true,true)
 	end,
 }
+
+local SixDragons_list = sgs.IntList()
+SixDragons_list:append(2)
+SixDragons_list:append(3)
+SixDragons:setOccupyLocations(SixDragons_list)
 
 SixDragons:setParent(extension_heg)
 
 if not sgs.Sanguosha:getSkill("#SixDragons_Skill") then skills:append(SixDragons_Skill) end
-if not sgs.Sanguosha:getSkill("#SixDragons_2_Skill") then skills:append(SixDragons_2_Skill) end
 if not sgs.Sanguosha:getSkill("SixDragons_Distance") then skills:append(SixDragons_DistanceSkill) end
 if not sgs.Sanguosha:getSkill("SixDragons_Prohibit") then skills:append(SixDragons_ProhibitSkill) end
 
@@ -12972,17 +12936,14 @@ heg_lord_zongyu = sgs.CreateTriggerSkill{
 				for _, id in sgs.qlist(move.card_ids) do
 					local card = sgs.Sanguosha:getCard(id)
 					if card:isKindOf("SixDragons") and player:hasSkill(self:objectName()) then
-						local has_horse = false
-						if player:getOffensiveHorse() or player:getDefensiveHorse() then
-							has_horse = true
-						end
+						local has_horse = not player:getOffensiveHorses():isEmpty() or not player:getDefensiveHorses():isEmpty()
 						if has_horse and room:askForSkillInvoke(player, self:objectName(), data) then
 							local to_exchange = sgs.IntList()
-							if player:getOffensiveHorse() then
-								to_exchange:append(player:getOffensiveHorse():getEffectiveId())
+							for _, horse in sgs.qlist(player:getOffensiveHorses()) do
+								to_exchange:append(horse:getEffectiveId())
 							end
-							if player:getDefensiveHorse() then
-								to_exchange:append(player:getDefensiveHorse():getEffectiveId())
+							for _, horse in sgs.qlist(player:getDefensiveHorses()) do
+								to_exchange:append(horse:getEffectiveId())
 							end
 							if move.to:isAlive() then
 								room:findPlayerByObjectName(move.to:objectName()):obtainEquipArea(2)
@@ -13034,16 +12995,22 @@ heg_lord_zongyu = sgs.CreateTriggerSkill{
 				local sixdragons_id = -1
 				-- Check on field
 				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-					if p:getOffensiveHorse() and p:getOffensiveHorse():isKindOf("SixDragons") then
-						has_sixdragons = true
-						sixdragons_id = p:getOffensiveHorse():getEffectiveId()
-						break
+					for _, horse in sgs.qlist(p:getOffensiveHorses()) do
+						if horse:isKindOf("SixDragons") then
+							has_sixdragons = true
+							sixdragons_id = horse:getEffectiveId()
+							break
+						end
 					end
-					if p:getDefensiveHorse() and p:getDefensiveHorse():isKindOf("SixDragons") then
-						has_sixdragons = true
-						sixdragons_id = p:getDefensiveHorse():getEffectiveId()
-						break
+					if has_sixdragons then break end
+					for _, horse in sgs.qlist(p:getDefensiveHorses()) do
+						if horse:isKindOf("SixDragons") then
+							has_sixdragons = true
+							sixdragons_id = horse:getEffectiveId()
+							break
+						end
 					end
+					if has_sixdragons then break end
 				end
 				-- Check in discard pile
 				if not has_sixdragons then
@@ -13059,17 +13026,8 @@ heg_lord_zongyu = sgs.CreateTriggerSkill{
 				if has_sixdragons then
 					local sixdragons = sgs.Sanguosha:getCard(sixdragons_id)
 					if sixdragons then
-						if player:getOffensiveHorse() then
-							local ids = sgs.IntList()
-                            ids:append(player:getOffensiveHorse():getId())
-                            local move2 = sgs.CardsMoveStruct()
-                            move2.card_ids = ids
-                            move2.to = nil
-                            move2.to_place = sgs.Player_DiscardPile
-                            move2.reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_CHANGE_EQUIP, player:objectName())
-                            room:moveCardsAtomic(move2, true)
-						end
-						room:moveCardTo(sixdragons, player, sgs.Player_PlaceEquip, true)
+						-- installEquip will auto discard old equip, no need manual discard
+						room:installEquip(player, "SixDragons")
 					end
 				end
 			end
@@ -16856,6 +16814,7 @@ heg_fofl_naxiang_buff = sgs.CreateTriggerSkill{
 	events = {sgs.PreCardUsed},
 	on_trigger = function(self, event, player, data, room)
 		if event == sgs.PreCardUsed then
+			local use = data:toCardUse()
 			local yingbian = sgs.Sanguosha:getEngineCard(use.card:getEffectiveId()):property("YingBianEffects"):toString()
 			if not string.startsWith(yingbian, "yb_zhuzhan") then
 				use.card:setSkillName("heg_fofl_naxiang")
