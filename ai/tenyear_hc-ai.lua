@@ -2286,8 +2286,21 @@ sgs.ai_skill_invoke.peiqi = function(self,data)
 						self.peiqiData.to = fp
 						if ej:getTypeId()==3 then
 							local n = ej:getRealCard():toEquipCard():location()
-							if not fp:getEquip(n) and fp:hasEquipArea(n)
-							then return true end
+							local occupy = ej:getOccupyLocations()
+							local all_available = true
+							if occupy and not occupy:isEmpty() then
+								for _, slot in sgs.qlist(occupy) do
+									if fp:getEquip(slot) or not fp:hasEquipArea(slot) then
+										all_available = false
+										break
+									end
+								end
+							else
+								if fp:getEquip(n) or not fp:hasEquipArea(n) then
+									all_available = false
+								end
+							end
+							if all_available then return true end
 						else
 							if self.player:canUse(ej,fp,true)
 							then return true end
@@ -2310,8 +2323,21 @@ sgs.ai_skill_invoke.peiqi = function(self,data)
 						self.peiqiData.to = fp
 						if ej:getTypeId()==3 then
 							local n = ej:getRealCard():toEquipCard():location()
-							if not fp:getEquip(n) and fp:hasEquipArea(n)
-							then return true end
+							local occupy = ej:getOccupyLocations()
+							local all_available = true
+							if occupy and not occupy:isEmpty() then
+								for _, slot in sgs.qlist(occupy) do
+									if fp:getEquip(slot) or not fp:hasEquipArea(slot) then
+										all_available = false
+										break
+									end
+								end
+							else
+								if fp:getEquip(n) or not fp:hasEquipArea(n) then
+									all_available = false
+								end
+							end
+							if all_available then return true end
 						else
 							if self.player:canUse(ej,fp,true)
 							then return true end
@@ -2334,8 +2360,21 @@ sgs.ai_skill_invoke.peiqi = function(self,data)
 						self.peiqiData.to = fp
 						if ej:getTypeId()==3 then
 							local n = ej:getRealCard():toEquipCard():location()
-							if not fp:getEquip(n) and fp:hasEquipArea(n)
-							then return true end
+							local occupy = ej:getOccupyLocations()
+							local all_available = true
+							if occupy and not occupy:isEmpty() then
+								for _, slot in sgs.qlist(occupy) do
+									if fp:getEquip(slot) or not fp:hasEquipArea(slot) then
+										all_available = false
+										break
+									end
+								end
+							else
+								if fp:getEquip(n) or not fp:hasEquipArea(n) then
+									all_available = false
+								end
+							end
+							if all_available then return true end
 						else
 							if not fp:containsTrick(ej:objectName())
 							and self.player:canUse(ej,fp,true)
