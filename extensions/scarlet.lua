@@ -6174,7 +6174,295 @@ sgs.LoadTranslationTable {
 
 --https://tieba.baidu.com/p/9681042164
 
+s4_2_liubei = sgs.General(extension, "s4_2_liubei$", "shu", 4)
 
+
+s4_beirenbasicCard = sgs.CreateSkillCard
+{
+    name = "s4_beirenbasic",
+    will_throw = false,
+    filter = function(self, targets, to_select)
+        local pattern = self:getUserString()
+		if pattern == "normal_slash" then pattern = "slash" end
+
+		local card = sgs.Sanguosha:cloneCard(pattern, sgs.Card_SuitToBeDecided, -1)
+		card:setSkillName("s4_beiren")
+        card:deleteLater()
+
+		if card and card:targetFixed() then
+			return false
+		end
+		local qtargets = sgs.PlayerList()
+		for _, p in ipairs(targets) do
+			qtargets:append(p)
+		end
+		return card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+	end,
+	feasible = function(self, targets)
+		local pattern = self:getUserString()
+		if pattern=="normal_slash" then pattern = "slash" end
+
+		local card = sgs.Sanguosha:cloneCard(pattern, sgs.Card_SuitToBeDecided, -1)
+		card:setSkillName("s4_beiren")
+        card:deleteLater()
+
+		local qtargets = sgs.PlayerList()
+		for _, p in ipairs(targets) do
+			qtargets:append(p)
+		end
+		if card and card:canRecast() and #targets == 0 then
+			return false
+		end
+		return card and card:targetsFeasible(qtargets, sgs.Self)
+	end,
+	on_validate = function(self, card_use)
+		local player = card_use.from
+        local room = player:getRoom()
+
+        local pattern = self:getUserString()
+		if pattern=="normal_slash" then pattern = "slash" end
+
+		while player:getMark("&s4_beiren+sys_") < 2 do
+			local card = room:askForUseCard(player, "@@s4_beiren", "@s4_beiren")
+			if not card then return nil end
+			if player:getMark("&s4_beiren+sys_") >= 2 then break end
+		end
+        room:removePlayerMark(player, "&s4_beiren+sys_", 2)
+
+		local card = sgs.Sanguosha:cloneCard(pattern, sgs.Card_SuitToBeDecided, -1)
+		card:setSkillName("s4_beiren")
+		return card
+	end,
+    on_validate_in_response = function(self, player)
+        local room = player:getRoom()
+
+        local pattern = self:getUserString()
+		if pattern=="normal_slash" then pattern = "slash" end
+		while player:getMark("&s4_beiren+sys_") < 2 do
+			local card = room:askForUseCard(player, "@@s4_beiren", "@s4_beiren")
+			if not card then return nil end
+			if player:getMark("&s4_beiren+sys_") >= 2 then break end
+		end
+        room:removePlayerMark(player, "&s4_beiren+sys_", 2)
+
+		local card = sgs.Sanguosha:cloneCard(pattern, sgs.Card_SuitToBeDecided, -1)
+		card:setSkillName("s4_beiren")
+		return card
+    end
+}
+
+s4_beirenCard = sgs.CreateSkillCard{
+    name = "s4_beiren",
+    will_throw = false,
+    filter = function(self, targets, to_select)
+        return #targets < 1 and to_select:objectName() ~= sgs.Self:objectName()
+    end,
+    on_effect = function(self, effect)
+        local room = effect.from:getRoom()
+        room:addPlayerMark(effect.from, "&s4_beiren+sys_", 1)
+        room:obtainCard(effect.to, self, false)
+    end,
+}
+s4_beiren = sgs.CreateViewAsSkill{
+    name = "s4_beiren",
+    n = 1,
+    view_filter = function(self, selected, to_select)
+        return not to_select:isEquipped()
+    end,
+    view_as = function(self, cards)
+		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
+		if pattern == "@@s4_beiren" then
+			if #cards >= 1 then
+				local card = s4_beirenCard:clone()
+				for _,cc in ipairs(cards) do
+					card:addSubcard(cc)
+				end
+				return card
+			end
+		else
+			if sgs.Sanguosha:getCurrentCardUseReason()==sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+				local card = sgs.Self:getTag("s4_beiren"):toCard()
+				pattern = card:objectName()
+			end
+			local card = s4_beirenbasicCard:clone()
+			local names = pattern:split("+")
+			if #names ~= 1 then pattern = names[1] end
+			card:setUserString(pattern)
+			return card
+		end
+    end,
+	enabled_at_play = function(self, player)
+		for _, patt in ipairs(patterns()) do
+			local dc = dummyCard(patt)
+			if dc and dc:isKindOf("BasicCard") then
+				dc:setSkillName(self:objectName())
+				if dc:isAvailable(player)
+				then return true end
+			end
+		end
+	end,
+	enabled_at_response = function(self, player, pattern)
+		for _, p in sgs.list(pattern:split("+")) do
+			local dc = dummyCard(p)
+			if dc and dc:isKindOf("BasicCard") and player:getMark("&s4_beiren+sys_") + player:getHandcardNum() >= 2
+			then return true end
+		end
+		return pattern == "@@s4_beiren"
+	end,
+
+}
+
+s4_beiren:setGuhuoDialog("l")
+
+s4_shijiang = sgs.CreateTriggerSkill{
+	name = "s4_shijiang",
+	events = {sgs.GameStart, sgs.EventAcquireSkill, sgs.EventLoseSkill, sgs.CardsMoveOneTime},
+	frequency = sgs.Skill_Compulsory,
+	on_trigger = function(self,event,player,data)
+		local room = player:getRoom()
+		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == self:objectName()) then
+			for _, p in sgs.qlist(room:getLieges("shu", player)) do
+				if p:objectName() ~= player:objectName() then
+					room:addPlayerMark(player, "HandcardVisible_" .. p:objectName().."_s4_shijiang", 1)
+				end
+			end
+		elseif event == sgs.EventLoseSkill and data:toString() == self:objectName() then
+			for _, p in sgs.qlist(room:getLieges("shu", player)) do
+				if p:objectName() ~= player:objectName() then
+					room:setPlayerMark(player, "HandcardVisible_" .. p:objectName().."_s4_shijiang", 0)
+				end
+			end
+		elseif event == sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			if move.from and move.from_places:contains(sgs.Player_PlaceHand) and move.is_last_handcard then
+				local from = room:findPlayerByObjectName(move.from:objectName())
+				if from and from:hasLordSkillKingdom("shu") then
+					for _, p in sgs.qlist(room:findPlayersBySkillName("s4_shijiang")) do
+						room:addPlayerMark(p, "&s4_beiren+sys_", 1)
+					end
+				end
+			end
+		end
+	end,
+}
+s4_shijiangClear = sgs.CreateTriggerSkill{
+	name = "#s4_shijiangClear",
+	events = {sgs.KingdomChanged},
+	frequency = sgs.Skill_Compulsory,
+	on_trigger = function(self,event,player,data)
+		local room = player:getRoom()
+		if event == sgs.KingdomChanged and data:toString() == self:objectName() then
+			for _, lord in sgs.qlist(room:findPlayersBySkillName("s4_shijiang")) do
+				for _, p in sgs.qlist(room:getAlivePlayers()) do
+					if p:objectName() ~= lord:objectName() then
+						room:setPlayerMark(lord, "HandcardVisible_" .. p:objectName().."_s4_shijiang", 0)
+					end
+				end
+				for _, p in sgs.qlist(room:getLieges("shu", lord)) do
+					if p:objectName() ~= lord:objectName() then
+						room:setPlayerMark(lord, "HandcardVisible_" .. p:objectName().."_s4_shijiang", 1)
+					end
+				end
+			end
+		end
+	end,
+	can_trigger = function(self, target)
+		return target ~= nil
+	end,
+}
+
+s4_2_liubei:addSkill(s4_beiren)
+s4_2_liubei:addSkill(s4_shijiang)
+s4_2_liubei:addSkill(s4_shijiangClear)
+extension:insertRelatedSkills("s4_shijiang","#s4_shijiangClear")
+
+sgs.LoadTranslationTable {
+    ["s4_2_liubei"] = "刘备",
+    ["&s4_2_liubei"] = "刘备",
+    ["#s4_2_liubei"] = "蜀汉君主",
+    ["~s4_2_liubei"] = "",
+    ["designer:s4_2_liubei"] = "阿尔德法咒",
+    ["cv:s4_2_liubei"] = "",
+    ["illustrator:s4_2_liubei"] = "",
+
+	["s4_beiren"] = "备仁",
+	[":s4_beiren"] = "记录你以此法分配的牌数。当你需要使用或打出一张基本牌时，你可以减去2个记录数视为使用或打出之。若记录数不足以发动“备仁”，你可以将任意张手牌分配给至多等量名其他角色以满足。",
+	["s4_shijiang"] = "识将",
+	[":s4_shijiang"] = "锁定技，其他蜀势力角色的手牌对你可见。当蜀势力角色失去最后的手牌后，你“备仁”记录数+1。",
+
+}
+--https://tieba.baidu.com/p/9695778309
+
+s4_xiahouyuan = sgs.General(extension, "s4_xiahouyuan", "wei", 4)
+
+s4_zhuidao = sgs.CreateTargetModSkill{
+	name = "s4_zhuidao",
+	residue_func = function(self, player)
+		if player:hasSkill("s4_zhuidao") then
+			return 1
+		end
+		return 0
+	end,
+}
+
+s4_duansha = sgs.CreateTriggerSkill{
+	name = "s4_duansha",
+	events = {sgs.TargetConfirmed, sgs.Dying},
+	frequency = sgs.Skill_NotFrequent,
+	waked_skills = "feiying",
+	on_trigger = function(self, event, player, data, room)
+		if event == sgs.TargetConfirmed then
+			local use = data:toCardUse()
+			if use.card and use.card:isKindOf("Slash") and use.from:objectName() == player:objectName() and player:getMark("s4_duansha-Clear") == 0 then
+				if not player:isKongcheng() and room:askForSkillInvoke(player, self:objectName(), data) then
+					room:setPlayerMark(player, "s4_duansha-Clear", 1)
+					room:showAllCards(player, self:objectName())
+					local slash_num = 0
+					for _, card_id in sgs.qlist(player:handCards()) do
+						local card = sgs.Sanguosha:getCard(card_id)
+						if card:isKindOf("Slash") then
+							slash_num = slash_num + 1
+						end
+					end
+					if slash_num == 0 then return false end
+					room:setCardFlag(use.card, "s4_duansha")
+					use.extra_use = use.extra_use + slash_num
+					data:setValue(use)
+				end
+			end
+		elseif event == sgs.Dying then
+			local dying = data:toDying()
+			if dying.damage and dying.damage.card and dying.damage.card:hasFlag("s4_duansha") then
+				local killer = dying.damage.from
+				if killer and killer:objectName() == player:objectName() then
+					room:setPlayerMark(player, "s4_duansha-Clear", 0)
+					room:detachSkillFromPlayer(player, "s4_duansha")
+					room:acquireSkill(player, "feiying")
+				end
+			end
+		end
+	end,
+}
+
+s4_xiahouyuan:addSkill(s4_zhuidao)
+s4_xiahouyuan:addSkill(s4_duansha)
+
+sgs.LoadTranslationTable {
+    ["s4_xiahouyuan"] = "夏侯渊",
+    ["&s4_xiahouyuan"] = "夏侯渊",
+    ["#s4_xiahouyuan"] = "小猎豹",
+    ["~s4_xiahouyuan"] = "",
+    ["designer:s4_xiahouyuan"] = "阿尔德法咒",
+    ["cv:s4_xiahouyuan"] = "",
+    ["illustrator:s4_xiahouyuan"] = "",
+
+	["s4_zhuidao"] = "追刀",
+	[":s4_zhuidao"] = "锁定技，你使用【杀】的次数+1。",
+	["s4_duansha"] = "锻杀",
+	[":s4_duansha"] = "每回合限一次，当你指定【杀】的目标后，你可以展示所有【杀】以令此【杀】额外结算等量次。若有目标因此进入濒死状态，你失去“锻杀”并获得“飞影”。",
+
+}
+--https://tieba.baidu.com/p/9691202275
 
 s4_zujiangwei = sgs.General(extension, "s4_zujiangwei", "shu", 4)
 
