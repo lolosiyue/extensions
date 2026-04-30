@@ -1537,6 +1537,21 @@ end
 	return false
 end
 
+function sgs.getLordHealthLevel()
+	local alive_players = sgs.getCachedAlivePlayers()
+	for _,p in ipairs(alive_players)do
+		if p:getRole()=="lord" then
+			local lord_hp = p:getHp()
+			if lord_hp>4 and p:hasSkill("benghuai") then lord_hp = 4 end
+			if lord_hp <= 1 then return 0
+			elseif lord_hp == 2 then return 1
+			elseif lord_hp == 3 then return 2
+			else return 3 end
+		end
+	end
+	return 3
+end
+
 function sgs.gameProcess(arg,update)
 	if not update then
 		if arg then
@@ -1610,6 +1625,10 @@ function SmartAI:objectiveLevel(to)
 	if self.role=="renegade" then
 		if to:getRole()=="lord" and sgs.getMode~="couple" and to:hasFlag("Global_Dying")
 		and not sgs.GetConfig("EnableHegemony",false) then return -2  end
+		local lord = self.room:getLord()
+		local lord_hp = lord and lord:getHp() or 4
+		local lord_max_hp = lord and lord:getMaxHp() or 4
+		local lord_lost_hp = lord_max_hp - lord_hp
 		if sgs.playerRoles.loyalist<1 or sgs.playerRoles.rebel<1 then
 			if sgs.playerRoles.rebel>0 then
 				if sgs.playerRoles.rebel>1 then
@@ -1647,33 +1666,71 @@ function SmartAI:objectiveLevel(to)
 			end
 			return 5
 		end
-		if process=="neutral"
-		or sgs.turncount<2 and sgs.isLordHealthy() then
-			if process~="neutral" then
-				if sgs.playerRoles.renegade>1 or self:getOverflow()<0 then return 0 end
-				if sgs.ai_role[to:objectName()]=="loyalist" and to:getRole()~="lord" and sgs.playerRoles.loyalist+1>=sgs.playerRoles.rebel then return 3.5
-				elseif sgs.ai_role[to:objectName()]=="rebel" and sgs.playerRoles.loyalist+1<sgs.playerRoles.rebel then return 3.5 end
+		if to:getRole()=="lord" then
+			if lord_hp <= 1 then return -3
+			elseif sgs.isLordInDanger() then return -2
+			elseif lord_lost_hp >= 2 then
+				if process:match("rebel") then return -2 else return -1 end
+			elseif lord_lost_hp == 1 then
+				if process:match("rebel") then return -1 else return 0 end
+			else
+				if sgs.isLordHealthy() then
+					if process=="loyalist" or process=="loyalish" then return 1 end
+				end
+				return 0
 			end
-			if to:getRole()=="lord" then return -1 end
-			for _,p in ipairs(players)do
-				if p:getRole()~="lord"
-				and p:hasSkills("buqu|nosbuqu|"..sgs.priority_skill.."|"..sgs.save_skill.."|"..sgs.recover_skill.."|"..sgs.drawpeach_skill)
-				then return 5 end
-			end
-			return self:getOverflow()>0 and 3 or 0
-		elseif process:contains("rebel") then
-			return sgs.ai_role[to:objectName()]=="rebel" and 5
-			or sgs.ai_role[to:objectName()]=="neutral" and 0 or -1
-		elseif process=="dilemma" then
-			if to:getRole()=="lord" then return -2
-			elseif sgs.ai_role[to:objectName()]=="neutral"
-			or sgs.ai_role[to:objectName()]=="rebel" then return 5 end
+		end
+		if target_role=="renegade" and sgs.playerRoles.renegade>1 then
+			return 2
+		end
+		local rebel_hostility = 3
+		local loyalist_hostility = 3
+		if process=="rebel" then
+			rebel_hostility = 5
+			loyalist_hostility = 1
+		elseif process=="rebelish" then
+			rebel_hostility = 4
+			loyalist_hostility = 2
+		elseif process=="loyalist" then
+			rebel_hostility = 1
+			loyalist_hostility = 5
 		elseif process=="loyalish" then
-			if sgs.ai_role[to:objectName()]~="neutral" and sgs.playerRoles.loyalist+1>=sgs.playerRoles.rebel and to:getRole()~="lord"
-			then return 3.5 end
+			rebel_hostility = 2
+			loyalist_hostility = 4
+		elseif process=="dilemma" then
+			rebel_hostility = 5
+			loyalist_hostility = 0
 		else
-			if to:getRole()=="lord" or sgs.ai_role[to:objectName()]=="renegade" then return 0 end
-			return sgs.ai_role[to:objectName()]=="rebel" and -2 or 5
+			local power_diff = sgs.playerRoles.loyalist - sgs.playerRoles.rebel
+			if power_diff > 0 then
+				rebel_hostility = 2
+				loyalist_hostility = 3
+			elseif power_diff < 0 then
+				rebel_hostility = 3
+				loyalist_hostility = 2
+			else
+				rebel_hostility = 3
+				loyalist_hostility = 3
+			end
+		end
+		if lord_hp <= 2 then
+			rebel_hostility = math.min(rebel_hostility + 2, 5)
+			loyalist_hostility = math.max(loyalist_hostility - 1, 0)
+		elseif lord_lost_hp >= 2 then
+			rebel_hostility = math.min(rebel_hostility + 1, 5)
+		end
+		if sgs.turncount<2 and sgs.isLordHealthy() then
+			rebel_hostility = math.max(rebel_hostility - 1, 1)
+			loyalist_hostility = math.max(loyalist_hostility - 1, 1)
+		end
+		if target_role=="rebel" then
+			return rebel_hostility
+		elseif target_role=="loyalist" then
+			return loyalist_hostility
+		else
+			if process:match("rebel") then return 2
+			elseif process:match("loyal") then return 2
+			else return self:getOverflow()>0 and 2 or 0 end
 		end
 	elseif self.player:getRole()=="lord" or self.role=="loyalist" then
 		if to:getRole()=="lord" then return -2 end
@@ -2965,8 +3022,46 @@ end
 
 SmartAI._ai_connect_cache = {}
 function aiConnect(owner)
-    if not current_self then return {} end
-    
+    if not current_self then
+        global_room:writeToConsole("aiConnect called without current_self, using fallback")
+        local connects = {}
+        local connects_set = {}
+        for _, s in sgs.qlist(owner:getVisibleSkillList(true)) do
+            local sn = s:objectName()
+            if not connects_set[sn] then
+                table.insert(connects, sn)
+                connects_set[sn] = true
+            end
+        end
+        for _, m in ipairs(owner:getMarkNames()) do
+            if owner:getMark(m) > 0 and (string.find(m, "&", 1, true) or string.find(m, "@", 1, true)) then
+                local plus_idx = string.find(m, "+", 1, true)
+                local clean_m = plus_idx and string.sub(m, 1, plus_idx - 1) or m
+                if not connects_set[clean_m] then
+                    table.insert(connects, clean_m)
+                    connects_set[clean_m] = true
+                end
+            end
+        end
+        for _, pn in ipairs(owner:getPileNames()) do
+            if string.sub(pn, 1, 1) ~= "#" and not owner:getPile(pn):isEmpty() then
+                if not connects_set[pn] then
+                    table.insert(connects, pn)
+                    connects_set[pn] = true
+                end
+            end
+        end
+        for _, e in sgs.qlist(owner:getEquips()) do
+            local en = e:objectName()
+            if not connects_set[en] then
+                table.insert(connects, en)
+                connects_set[en] = true
+            end
+        end
+        return connects
+    end
+
+
     local p_name = owner:objectName()
     
     -- 1. O(1) 極速命中：只要在同一個決策週期內，直接回傳快取表
@@ -8744,7 +8839,7 @@ function SmartAI:targetRevises(use)
 		end
 	elseif use.to:length()>0 then
 		for _,p in sgs.qlist(use.to)do
-			table.insert(tos,p)
+			if p and p:isAlive() then table.insert(tos,p) end
 		end
 	elseif use.card:targetFixed()
 	then tos = {self.player} end
@@ -8772,7 +8867,9 @@ function SmartAI:targetRevises(use)
 	end
 	if #utr<1 then return end
 	for _,p in ipairs(utr)do
-		p:setProperty("aiNoTo",sgs.QVariant(true))
+		if p and p:isAlive() then
+			p:setProperty("aiNoTo",sgs.QVariant(true))
+		end
 	end
 	use.card = nil
 	use.to = sgs.SPlayerList()
