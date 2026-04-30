@@ -1881,7 +1881,7 @@ end
 sgs.ai_skill_use["@@jianman"] = function(self,prompt)
 	local valid = {}
 	local d = self.jianmanUse
-	if d.card then
+	if d and d.card then
 		for _,to in sgs.list(d.to)do
 			table.insert(valid,to:objectName())
 		end
