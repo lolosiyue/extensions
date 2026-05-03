@@ -1861,6 +1861,74 @@ function SmartAI:isEnemy(other,another)
 	return table.contains(self.enemies,other,true)--self:objectiveLevel(other)>0
 end
 
+function SmartAI:getActualController(player)
+	if not player then return nil end
+
+	local visited = {}
+	local current = player
+	while current do
+		local object_name = current:objectName()
+		if visited[object_name] then
+			current:removeTag("Controller_Name")
+			return current
+		end
+
+		visited[object_name] = true
+		local controller_name = current:getTag("Controller_Name"):toString()
+		if controller_name == "" then return current end
+
+		local next_player = self.room:findPlayerByObjectName(controller_name)
+		if not next_player then return current end
+		current = next_player
+	end
+
+	return player
+end
+
+function SmartAI:isDualControlLinked(first, second)
+	if not first or not second then return false end
+
+	local first_controller = self:getActualController(first)
+	local second_controller = self:getActualController(second)
+	if not first_controller or not second_controller then return false end
+
+	if first_controller:objectName() == second:objectName() then return true end
+	if second_controller:objectName() == first:objectName() then return true end
+	return first_controller:objectName() == second_controller:objectName()
+end
+
+local _smartai_objectiveLevel = SmartAI.objectiveLevel
+function SmartAI:objectiveLevel(to)
+	if to then
+		local actual_controller = self:getActualController(self.player)
+		if actual_controller and actual_controller:objectName() == to:objectName()
+		and to:objectName() ~= self.player:objectName() then
+			return -2
+		end
+	end
+	return _smartai_objectiveLevel(self, to)
+end
+
+local _smartai_isFriend = SmartAI.isFriend
+function SmartAI:isFriend(other,another)
+	if another then
+		if self:isDualControlLinked(other, another) then return true end
+		return self:isFriend(other) == self:isFriend(another)
+	end
+	if self:isDualControlLinked(self.player, other) then return true end
+	return _smartai_isFriend(self, other)
+end
+
+local _smartai_isEnemy = SmartAI.isEnemy
+function SmartAI:isEnemy(other,another)
+	if another then
+		if self:isDualControlLinked(other, another) then return false end
+		return self:isFriend(other) == self:isEnemy(another)
+	end
+	if self:isDualControlLinked(self.player, other) then return false end
+	return _smartai_isEnemy(self, other)
+end
+
 function SmartAI:getFriends(player,no_self)
 	player = player or self.player
 	local friends = {}
