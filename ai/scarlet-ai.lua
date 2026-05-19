@@ -1324,6 +1324,48 @@ sgs.ai_skill_invoke.s4_songwei = function(self, data)
     return false
 end
 
+sgs.ai_skill_playerchosen.s4_cangzhuo = function(self, targets)
+    local target = self:findPlayerToDraw(false,1)
+    if target then
+        return target
+    end
+	for _,friend in ipairs(self.friends_noself) do
+		if self:canDraw(friend, self.player) then
+        	return friend
+		end
+    end
+	return targets:first()
+end
+
+
+sgs.ai_skill_playerchosen.s4_kuiwei = function(self, targets)
+    local target = self:findPlayerToDiscard("h", true, false, targets, "")[1]
+    if target and self:isEnemy(target) then
+        return target
+    end
+    if target then
+        return target
+    end
+	return nil
+end
+
+sgs.ai_choicemade_filter.cardChosen.s4_kuiwei = sgs.ai_choicemade_filter.cardChosen.snatch
+
+sgs.ai_skill_playerschosen.s4_lizhan = function(self, targets, max, min)
+    local selected = sgs.SPlayerList()
+    local can_choose = sgs.QList2Table(targets)
+    self:sort(can_choose, "handcard")
+    for _, target in ipairs(can_choose) do
+        if self:isFriend(target) and self:canDraw(target, self.player) then
+            selected:append(target)
+			if selected:length() >= max then break end
+        end
+    end
+    return selected
+end
+
+
+
 sgs.ai_skill_playerschosen.s4_zhaotao = function(self, targets, max, min)
     local selected = sgs.SPlayerList()
     local can_choose = sgs.QList2Table(targets)

@@ -7122,6 +7122,281 @@ sgs.LoadTranslationTable {
     ["#s4_songwei_change"] = "%from 修改了议事结果，颜色由 %arg 变为 %arg2",
 
 }
+s4_jiewolong = sgs.General(extension, "s4_jiewolong", "shu", 3)
+
+getYing = function(to)
+	local room = to:getRoom()
+	local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+	dummy:deleteLater()
+	for _, cid in sgs.qlist(sgs.Sanguosha:getRandomCards(true)) do
+		local c = sgs.Sanguosha:getEngineCard(cid)
+		if c and c:isKindOf("Ying") and room:getCardOwner(cid) == nil then
+			dummy:addSubcard(cid)
+			break
+		end
+	end
+	if dummy:subcardsLength() > 0 then
+		to:obtainCard(dummy)
+	end
+end
+
+s4_cangzhuo = sgs.CreateTriggerV2Skill{
+    name = "s4_cangzhuo",
+    events = {sgs.CardsMoveOneTime},
+    frequency = sgs.Skill_Frequent,
+    base_amount = 1,
+    can_trigger = function(skill, event, room, player, data)
+        if not player:hasSkill("s4_cangzhuo") then return false end
+        
+        local move = data:toMoveOneTime()
+        if not move.from or move.from:objectName() ~= player:objectName() then 
+            return false 
+        end
+        
+        for i, id in sgs.list(move.card_ids) do
+            local from_place = move.from_places:at(i)
+            if (from_place == sgs.Player_PlaceHand and move.open:at(i)) or 
+               from_place == sgs.Player_PlaceDelayedTrick or 
+               from_place == sgs.Player_PlaceEquip then
+                local card = sgs.Sanguosha:getCard(id)
+                if card and card:isKindOf("TrickCard") then
+                    return "s4_cangzhuo"
+                end
+            end
+        end
+        return false
+    end,
+    
+    on_cost = function(skill, event, room, player, data)
+        local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), 
+            "s4_cangzhuo", "s4_cangzhuo-invoke", true, true)
+        if target then
+            local ctx = data:toSkillContext()
+            ctx.targets:append(target)
+			data:setValue(ctx)
+            return true
+        end
+        return false
+    end,
+    
+    on_effect = function(skill, event, room, player, data)
+        local ctx = data:toSkillContext()
+        local amount = skill:getEffectiveAmount(ctx)
+        local targets = sgs.SPlayerList()
+        targets:append(player)
+        for _, t in sgs.qlist(ctx.targets) do
+            targets:append(t)
+        end
+        room:sortByActionOrder(targets)
+        
+        for _, p in sgs.qlist(targets) do
+			if skill:skillEffect(p) then
+				for i = 1, amount do
+					getYing(p)
+				end
+			end
+        end
+		ctx.manual_effect = true
+		data:setValue(ctx)
+        return false
+    end,
+}
+
+
+s4_jiewolong:addSkill("bazhen")
+s4_jiewolong:addSkill("olhuoji")
+s4_jiewolong:addSkill("olkanpo")
+s4_jiewolong:addSkill(s4_cangzhuo)
+
+
+sgs.LoadTranslationTable {
+    ["s4_jiewolong"] = "界卧龙诸葛",
+    ["&s4_jiewolong"] = "界卧龙诸葛",
+    ["#s4_jiewolong"] = "卧龙",
+    ["~s4_jiewolong"] = "",
+    ["designer:s4_jiewolong"] = "TwinkleYellow",
+    ["cv:s4_jiewolong"] = "",
+    ["illustrator:s4_jiewolong"] = "",
+
+	["s4_cangzhuo"] = "藏拙",
+	[":s4_cangzhuo"] = "当一张锦囊牌正面向上离开你的区域后，你可以令一名其他角色与你各获得一张​​【影】。",
+	["s4_cangzhuo-invoke"] = "你可以发动“藏拙”<br/> <b>操作提示</b>: 选择一名角色→点击确定<br/>",
+
+}
+--https://tieba.baidu.com/p/9754526107
+
+s4_caoren = sgs.General(extension, "s4_caoren", "wei", 4)
+
+s4_kuiwei = sgs.CreateTriggerV2Skill{
+    name = "s4_kuiwei",
+    events = {sgs.EventPhaseProceeding, sgs.EventPhaseChanging},
+    frequency = sgs.Skill_Frequent,
+    
+    on_record = function(skill, event, room, player, data)
+        -- 清理 Tag
+        if event == sgs.EventPhaseChanging then
+            local change = data:toPhaseChange()
+            if change.from == sgs.Player_Finish then
+                player:removeTag("s4_kuiwei_discarded")
+            end
+        end
+    end,
+    
+    can_trigger = function(skill, event, room, player, data)
+        if event == sgs.EventPhaseProceeding then
+            if not player:hasSkill("s4_kuiwei") then return false end
+            if player:getPhase() ~= sgs.Player_Finish then return false end
+            
+            local targets = sgs.SPlayerList()
+            for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+                if p:distanceTo(player) <= p:getAttackRange() and player:canDiscard(p) then
+                    targets:append(p)
+                end
+            end
+            if targets:isEmpty() then return false end
+            
+            return "s4_kuiwei"
+        end
+        return false
+    end,
+    
+    on_cost = function(skill, event, room, player, data)
+        local targets = sgs.SPlayerList()
+        for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+            if p:distanceTo(player) <= p:getAttackRange() and player:canDiscard(p, "h") then
+                targets:append(p)
+            end
+        end
+        if targets:isEmpty() then return false end
+        
+        local target = room:askForPlayerChosen(player, targets, "s4_kuiwei", "@s4_kuiwei-choose", true, true)
+        if not target then return false end
+        
+        local ctx = data:toSkillContext()
+        ctx.targets:append(target)
+        return true
+    end,
+    
+    on_effect = function(skill, event, room, player, data)
+        local ctx = data:toSkillContext()
+        local target = ctx.targets:first()
+        
+        local discarded_cards = player:getTag("s4_kuiwei_discarded"):toStringList()
+        
+        while target do
+            local card_id = room:askForCardChosen(player, target, "h", "s4_kuiwei", false, sgs.Card_MethodDiscard)
+            local card = sgs.Sanguosha:getCard(card_id)
+            
+            local current_color = card:isRed() and "red" or "black"
+            table.insert(discarded_cards, current_color)
+            player:setTag("s4_kuiwei_discarded", sgs.QVariant(table.concat(discarded_cards, "+")))
+            
+            room:throwCard(card_id, target, player)
+            
+            local all_same = true
+            for i, c in ipairs(discarded_cards) do
+                if c ~= discarded_cards[1] then
+                    all_same = false
+                    break
+                end
+            end
+            
+            if not all_same then
+                room:loseHp(player, 1, true, player, skill:objectName())
+                break
+            end
+            
+            target = nil
+            local targets = sgs.SPlayerList()
+            for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+                if p:distanceTo(player) <= p:getAttackRange() and player:canDiscard(p, "h") then
+                    targets:append(p)
+                end
+            end
+            if not targets:isEmpty() then
+                target = room:askForPlayerChosen(player, targets, "s4_kuiwei", "@s4_kuiwei-choose", true, true)
+            end
+        end
+        
+        return false
+    end,
+}
+s4_lizhan = sgs.CreateTriggerV2Skill{
+    name = "s4_lizhan",
+    events = {sgs.Damaged},
+    frequency = sgs.Skill_Frequent,
+    
+    can_trigger = function(skill, event, room, player, data)
+        if not player:hasSkill("s4_lizhan") then return false end
+        local damage = data:toDamage()
+        if not damage or damage.damage < 1 then return false end
+        return "s4_lizhan*" .. damage.damage
+    end,
+    
+    on_cost = function(skill, event, room, player, data)
+        local targets = sgs.SPlayerList()
+        for _, p in sgs.qlist(room:getAlivePlayers()) do
+            if p:isWounded() then
+                targets:append(p)
+            end
+        end
+        if targets:isEmpty() then return false end
+        
+        local chosen_players = room:askForPlayersChosen(player, targets, "s4_lizhan", "@s4_lizhan-choose")
+        if chosen_players:isEmpty() then return false end
+        
+        local ctx = data:toSkillContext()
+        for _, p in sgs.qlist(chosen_players) do
+            ctx.targets:append(p)
+        end
+		data:setValue(ctx)
+        return true
+    end,
+    
+    on_effect = function(skill, event, room, player, data)
+        local ctx = data:toSkillContext()
+        local chosen_players = ctx.targets
+        local draw_num = chosen_players:length()
+        player:drawCards(draw_num, "s4_lizhan")
+        room:sortByActionOrder(chosen_players)
+        for _, p in sgs.qlist(chosen_players) do
+            if player:isKongcheng() then break end
+            local card = room:askForCard(player, ".!", "@s4_lizhan-give::"..p:objectName(), ToData(p), sgs.Card_MethodNone)
+            if card then
+				if skill:skillEffect(p) then
+					room:giveCard(p,player,card,skill:objectName())
+				end
+            end
+        end
+        return false
+    end,
+}
+
+s4_caoren:addSkill(s4_kuiwei)
+s4_caoren:addSkill(s4_lizhan)
+
+sgs.LoadTranslationTable {
+	["s4_caoren"] = "曹仁",
+	["&s4_caoren"] = "曹仁",
+	["#s4_caoren"] = "险不辞难",
+	["~s4_caoren"] = "",
+	["designer:s4_caoren"] = "",
+	["cv:s4_caoren"] = "",
+	["illustrator:s4_caoren"] = "",
+
+	["s4_kuiwei"] = "溃围",
+	[":s4_kuiwei"] = "结束阶段，你可以弃置攻击范围内包含你的一名其他角色的一张手牌，然后若此阶段以此法弃置的牌：颜色有不同，你受到1点伤害；颜色均相同，你可以重复此流程。",
+	["@s4_kuiwei-choose"] = "请选择一名攻击范围内包含你的角色，弃置其一张手牌",
+	["s4_lizhan"] = "励战",
+	[":s4_lizhan"] = "当你受到1点伤害后，你可以选择任意名已受伤的角色，摸等量张牌，然后交给这些角色各一张。",
+	["@s4_lizhan-choose"] = "请选择一名已受伤的角色",
+	["@s4_lizhan-choose-more"] = "请选择更多已受伤的角色（或点击取消结束）",
+	["@s4_lizhan-give"] = "请交给 %dest 一张牌",
+
+}
+--https://tieba.baidu.com/p/10154679637
+
+
 
 
 s4_yuanshao = sgs.General(extension, "s4_yuanshao", "qun", 4)
