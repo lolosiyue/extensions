@@ -13653,8 +13653,8 @@ heg_lure_tiger = sgs.CreateTrickCard{
 		local room = effect.to:getRoom()
 		-- 禁止使用和打出牌
 		room:setPlayerCardLimitation(effect.to, "use,response", ".", true)
-		-- 设置标记表示受到调虎离山影响
-		room:addPlayerMark(effect.to, "&heg_lure_tiger-Clear")
+		-- 设置移除状态表示受到调虎离山影响
+		effect.to:setRemoved(true)
 	end,
 }
 
@@ -13668,17 +13668,17 @@ heg_lure_tiger_effect = sgs.CreateTriggerSkill{
 	end,
 	on_trigger = function(self, event, player, data)
 		if event == sgs.PreHpLost then
-			if player:getMark("&heg_lure_tiger-Clear") > 0 then
+			if player:isRemoved() then
 				return true
 			end
 		elseif event == sgs.Predamage then
 			local damage = data:toDamage()
-			if damage.to and damage.to:getMark("&heg_lure_tiger-Clear") > 0 then
+			if damage.to and damage.to:isRemoved() then
 				return true
 			end
 		elseif event == sgs.PreHpRecover then
 			local recover = data:toRecover()
-			if recover.who and recover.who:getMark("&heg_lure_tiger-Clear") > 0 then
+			if recover.who and recover.who:isRemoved() then
 				return true
 			end
 		end
@@ -13690,7 +13690,7 @@ heg_lure_tiger_effect = sgs.CreateTriggerSkill{
 heg_lure_tiger_prohibit = sgs.CreateProhibitSkill{
 	name = "#heg_lure_tiger_prohibit",
 	is_prohibited = function(self, from, to, card)
-		if to and to:getMark("&heg_lure_tiger-Clear") > 0 and not card:isKindOf("SkillCard") then
+		if to and to:isRemoved() and not card:isKindOf("SkillCard") then
 			return true
 		end
 		return false
@@ -13701,12 +13701,12 @@ heg_lure_tiger_prohibit = sgs.CreateProhibitSkill{
 heg_lure_tiger_distance = sgs.CreateDistanceSkill{
 	name = "#heg_lure_tiger_distance",
 	correct_func = function(self, from, to)
-		-- 如果from或to自己有调虎离山标记，其他角色无法计算到他们的距离
-		if from:getMark("&heg_lure_tiger-Clear") > 0 or to:getMark("&heg_lure_tiger-Clear") > 0 then
+		-- 如果from或to自己被移除，其他角色无法计算到他们的距离
+		if from:isRemoved() or to:isRemoved() then
 			return 998
 		end
 		
-		-- 计算from到to之间有多少被调虎离山影响的角色，将其从距离中减去
+		-- 计算from到to之间有多少被移除的角色，将其从距离中减去
 		local affected_count = 0
 		local from_seat = from:getSeat()
 		local to_seat = to:getSeat()
@@ -13715,13 +13715,13 @@ heg_lure_tiger_distance = sgs.CreateDistanceSkill{
 		local right = math.abs(from_seat - to_seat)
 		local left = from:aliveCount() - right
 		
-		-- 统计两个路径上有调虎离山标记的角色数量
+		-- 统计两个路径上被移除的角色数量
 		local right_affected = 0
 		local left_affected = 0
 		
 		-- 遍历所有存活角色，计算他们是否在from到to的路径上
 		for _, p in sgs.qlist(from:getAliveSiblings()) do
-			if p:getMark("&heg_lure_tiger-Clear") > 0 then
+			if p:isRemoved() then
 				local p_seat = p:getSeat()
 				
 				-- 判断p是否在from到to的顺时针路径上（右侧）
@@ -13741,7 +13741,7 @@ heg_lure_tiger_distance = sgs.CreateDistanceSkill{
 			end
 		end
 		
-		-- 返回修正值：如果最短路径会穿过被影响的角色，减去这些角色的数量
+		-- 返回修正值：如果最短路径会穿过被移除的角色，减去这些角色的数量
 		if right <= left then
 			return -right_affected
 		else
