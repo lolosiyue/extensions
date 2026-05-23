@@ -7147,7 +7147,6 @@ s4_cangzhuo = sgs.CreateTriggerV2Skill{
     base_amount = 1,
     can_trigger = function(skill, event, room, player, data)
         if not player:hasSkill("s4_cangzhuo") then return false end
-        
         local move = data:toMoveOneTime()
         if not move.from or move.from:objectName() ~= player:objectName() then 
             return false 
@@ -7167,20 +7166,18 @@ s4_cangzhuo = sgs.CreateTriggerV2Skill{
         return false
     end,
     
-    on_cost = function(skill, event, room, player, data)
+    on_cost = function(skill, event, room, player, ctx)
         local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), 
             "s4_cangzhuo", "s4_cangzhuo-invoke", true, true)
         if target then
-            local ctx = data:toSkillContext()
             ctx.targets:append(target)
-			data:setValue(ctx)
             return true
         end
         return false
     end,
     
-    on_effect = function(skill, event, room, player, data)
-        local ctx = data:toSkillContext()
+    on_effect = function(skill, event, room, player, ctx)
+        ctx.manual_effect = true
         local amount = skill:getEffectiveAmount(ctx)
         local targets = sgs.SPlayerList()
         targets:append(player)
@@ -7188,17 +7185,18 @@ s4_cangzhuo = sgs.CreateTriggerV2Skill{
             targets:append(t)
         end
         room:sortByActionOrder(targets)
-        
         for _, p in sgs.qlist(targets) do
-			if skill:skillEffect(p) then
-				for i = 1, amount do
-					getYing(p)
-				end
-			end
+            skill:skillEffect(event, room, player, ctx, p)
         end
-		ctx.manual_effect = true
-		data:setValue(ctx)
         return false
+    end,
+
+    on_effect_target = function(skill, event, room, player, ctx, target)
+        local amount = skill:getEffectiveAmount(ctx)
+        for i = 1, amount do
+            getYing(target)
+        end
+        return true
     end,
 }
 
@@ -12999,7 +12997,7 @@ s4_zemou_cardmax = sgs.CreateMaxCardsSkill{
 		if target and target:hasSkill("s4_zemou") and target:getMark("&s4_zemou+beishui+sys_+-Clear") > 0 then
 			return target:getMark("damage_point_play_phase")
 		else
-			return 0
+			return -1
 		end
 	end,
 }
