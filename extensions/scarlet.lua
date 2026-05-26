@@ -7380,7 +7380,7 @@ sgs.LoadTranslationTable {
 	["&s4_caoren"] = "曹仁",
 	["#s4_caoren"] = "险不辞难",
 	["~s4_caoren"] = "",
-	["designer:s4_caoren"] = "",
+	["designer:s4_caoren"] = "TwinkleYellow",
 	["cv:s4_caoren"] = "",
 	["illustrator:s4_caoren"] = "",
 
@@ -7396,8 +7396,152 @@ sgs.LoadTranslationTable {
 }
 --https://tieba.baidu.com/p/10154679637
 
+s4_2_jiangwei = sgs.General(extension, "s4_2_jiangwei", "shu", 4)
 
+s4_zhiji = sgs.CreateTriggerV2Skill{
+    name = "s4_zhiji",
+    events = {sgs.EventPhaseProceeding},
+    frequency = sgs.Skill_Compulsory,
+	waked_skills = "guanxing,kanpo",
+    
+    can_trigger = function(skill, event, room, player, data)
+        if not player:hasSkill("s4_zhiji") then return false end
+        if player:getPhase() ~= sgs.Player_Start then return false end
+        return "s4_zhiji"
+    end,
+    
+    on_effect = function(skill, event, room, player, data)
+        local choices = {"s4_zhiji_guanxing", "s4_zhiji_kanpo", "beishui"}
+        local choice = room:askForChoice(player, "s4_zhiji", table.concat(choices, "+"), data)
+        
+        room:sendCompulsoryTriggerLog(player, "s4_zhiji")
+        room:broadcastSkillInvoke("s4_zhiji")
+        
+        if choice == "s4_zhiji_guanxing" then
+            room:acquireNextTurnSkills(player, "s4_zhiji", "guanxing")
+        elseif choice == "s4_zhiji_kanpo" then
+            room:acquireNextTurnSkills(player, "s4_zhiji", "kanpo")
+        elseif choice == "beishui" then
+            room:acquireNextTurnSkills(player, "s4_zhiji", "guanxing")
+            room:acquireNextTurnSkills(player, "s4_zhiji", "kanpo")
+			local damage = sgs.DamageStruct()
+			damage.from = player
+			damage.to = player
+			damage.damage = 1
+			room:damage(damage)
+        end
+        
+        return false
+    end,
+}
 
+s4_banjiang = sgs.CreateTriggerV2Skill{
+    name = "s4_banjiang",
+    events = {sgs.Damaged, sgs.DrawNCards, sgs.ChangeSlash},
+    frequency = sgs.Skill_Compulsory,
+        
+    can_trigger = function(skill, event, room, player, data)
+        if not player:hasSkill("s4_banjiang") then return false end
+        
+        if event == sgs.Damaged then
+            local damage = data:toDamage()
+            if damage and damage.damage > 0 then
+                return "s4_banjiang*" .. damage.damage
+            end
+        elseif event == sgs.DrawNCards then
+			local draw = data:toDraw()
+            if draw.reason == "draw_phase" then
+				if player:getMark("s4_banjiang_draw-SelfdrawClear") > 0 then
+					return "s4_banjiang"
+				end
+			end
+        elseif event == sgs.ChangeSlash then
+            if player:getPhase() == sgs.Player_Play and player:getMark("s4_banjiang_slash-SelfPlayClear") > 0 then
+                return "s4_banjiang"
+            end
+        end
+        
+        return false
+    end,
+    
+    on_effect = function(skill, event, room, player, data)
+        if event == sgs.Damaged then
+            local ctx = data:toSkillContext()
+            local damage_amount = ctx.trigger_count or 1
+            
+            room:sendCompulsoryTriggerLog(player, "s4_banjiang")
+            room:broadcastSkillInvoke("s4_banjiang")
+            
+            room:addPlayerMark(player, "s4_banjiang_draw-SelfdrawClear", damage_amount)
+            room:addPlayerMark(player, "s4_banjiang_slash-SelfPlayClear", damage_amount)
+            room:addPlayerMark(player, "&s4_banjiang+sys_-SelfClear", damage_amount)
+            
+        elseif event == sgs.DrawNCards then
+            local draw = data:toDraw()
+            if draw.reason == "draw_phase" then
+                local bonus = player:getMark("s4_banjiang_draw-SelfdrawClear")
+                if bonus > 0 then
+                    room:sendCompulsoryTriggerLog(player, "s4_banjiang")
+                    draw.num = draw.num + bonus
+                    data:setValue(draw)
+                end
+            end
+            
+        elseif event == sgs.ChangeSlash then
+            local use = data:toCardUse()
+            if use.card and use.card:isKindOf("Slash") and use.from:objectName() == player:objectName() then
+                room:sendCompulsoryTriggerLog(player, "s4_banjiang")
+                -- 將殺轉換為冰殺
+                local ice_slash = sgs.Sanguosha:cloneCard("ice_slash", use.card:getSuit(), use.card:getNumber())
+                ice_slash:addSubcards(use.card:getSubcards())
+                ice_slash:setSkillName("s4_banjiang")
+                use:changeCard(ice_slash)
+                data:setValue(use)
+            end
+        end
+        
+        return false
+    end,
+}
+
+s4_banjiang_buff = sgs.CreateTargetModSkill{
+    name = "#s4_banjiang_buff",
+    pattern = "Slash",
+    residue_func = function(self, player, card, to)
+        if player:hasSkill("s4_banjiang") then
+            local bonus = player:getMark("s4_banjiang_slash-SelfPlayClear")
+            if bonus > 0 then
+                return bonus
+            end
+        end
+        return 0
+    end,
+}
+
+s4_2_jiangwei:addSkill(s4_zhiji)
+s4_2_jiangwei:addSkill(s4_banjiang)
+s4_2_jiangwei:addSkill(s4_banjiang_buff)
+extension:insertRelatedSkills("s4_banjiang", "#s4_banjiang_buff")
+
+sgs.LoadTranslationTable{
+    ["s4_2_jiangwei"] = "姜维",
+    ["&s4_2_jiangwei"] = "姜维",
+    ["#s4_2_jiangwei"] = "蜀汉恃赖",
+    ["~s4_2_jiangwei"] = "",
+    ["designer:s4_2_jiangwei"] = "TwinkleYellow",
+    ["cv:s4_2_jiangwei"] = "",
+    ["illustrator:s4_2_jiangwei"] = "",
+    
+    ["s4_zhiji"] = "志继",
+    [":s4_zhiji"] = "锁定技，准备阶段，你选择一项直到你的下回合开始：1.获得“观星”；2.获得“看破”；背水：对自己造成1点伤害。",
+    ["s4_zhiji_guanxing"] = "获得“观星”",
+    ["s4_zhiji_kanpo"] = "获得“看破”",
+    ["s4_zhiji:beishui"] = "背水：获得“观星”和“看破”，对自己造成1点伤害",
+    
+    ["s4_banjiang"] = "伴降",
+    [":s4_banjiang"] = "锁定技，你每受到1点伤害，你的下个摸牌阶段就多摸一张牌，下个出牌阶段就可以多使用一张杀，且你使用的【杀】均视为冰【杀】。",
+}
+--https://tieba.baidu.com/p/8998288125
 
 s4_yuanshao = sgs.General(extension, "s4_yuanshao", "qun", 4)
 
