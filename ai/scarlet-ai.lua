@@ -1364,6 +1364,119 @@ sgs.ai_skill_playerschosen.s4_lizhan = function(self, targets, max, min)
     return selected
 end
 
+sgs.ai_playerschosen_intention.s4_lizhan = function(self, from, prompt)
+    local intention = -40
+    local tolist = prompt:split("+")
+    for _, dest in ipairs(tolist) do
+        local to = self.room:findPlayerByObjectName(dest)
+		if self:canDraw(to) then
+        	sgs.updateIntention(from, to, intention)
+		end
+    end
+end
+
+sgs.ai_skill_choice.s4_zhiji = function(self, choices, data)
+    local items = choices:split("+")
+    
+    local black_count = 0
+    local handcards = self:addHandPile("he")
+    for _, card in sgs.list(handcards) do
+        if card:isBlack() then
+            black_count = black_count + 1
+        end
+    end
+    
+    local has_judge = not self.player:getJudgingArea():isEmpty()
+    
+    -- 背水選項
+    if table.contains(items, "beishui") then
+        if self:canDamage(self.player, self.player, nil) then
+            if (has_judge or self.player:getHandcardNum() <= 2) and math.random() < 0.4 then
+                return "beishui"
+            end
+            if math.random() < 0.2 then
+                return "beishui"
+            end
+        end
+    end
+    
+    if table.contains(items, "s4_zhiji_kanpo") and black_count >= 2 then
+        if math.random() < 0.6 then
+            return "s4_zhiji_kanpo"
+        end
+    end
+    
+    if table.contains(items, "s4_zhiji_guanxing") and has_judge then
+        if math.random() < 0.7 then
+            return "s4_zhiji_guanxing"
+        end
+    end
+    
+    local valid_items = {}
+    for _, item in ipairs(items) do
+        if table.contains({"s4_zhiji_guanxing", "s4_zhiji_kanpo"}, item) then
+            table.insert(valid_items, item)
+        end
+    end
+    
+    if #valid_items > 0 then
+        return valid_items[math.random(1, #valid_items)]
+    end
+    
+    return items[1]
+end
+
+sgs.ai_cardneed.s4_banjiang = function(to, card)
+    if to:getMark("s4_banjiang_slash-SelfPlayClear") > 0 then
+        return card:isKindOf("Slash")
+    end
+    return false
+end
+
+sgs.ai_can_damagehp.s4_banjiang = function(self, from, card, to)
+    if to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
+	and self:canLoseHp(from,card,to) then
+        if to:getHandcardNum() <= 2 then
+            return true
+        end
+        local slash_count = self:getCardsNum("Slash", to)
+        if slash_count > 0 then
+            return true
+        end
+        if math.random() < 0.3 then
+            return true
+        end
+    end
+    
+    return false
+end
+
+sgs.ai_target_recommend["s4_banjiang"] = function(self, from, to, card, skill_owner)
+    if not to:hasSkill("s4_banjiang") then
+        return 0
+    end
+    
+    -- 只對傷害牌有感
+    if not self:checkIsDamageCard(card) then
+        return 0
+    end
+    
+    -- 檢查技能是否失效
+    if checkMasochismInvalid and checkMasochismInvalid(from, to, card) then
+        return 0
+    end
+    
+    if self:canLoseHp(from,card,to) then
+        if self:isEnemy(to, from) then
+            return -1
+        end
+        if self:isFriend(to, from) then
+            return 1
+        end
+    end
+    
+    return 0
+end
 
 
 sgs.ai_skill_playerschosen.s4_zhaotao = function(self, targets, max, min)
