@@ -7498,7 +7498,6 @@ s4_banjiang = sgs.CreateTriggerV2Skill{
             local use = data:toCardUse()
             if use.card and use.card:isKindOf("Slash") and use.from:objectName() == player:objectName() then
                 room:sendCompulsoryTriggerLog(player, "s4_banjiang")
-                -- 將殺轉換為冰殺
                 local ice_slash = sgs.Sanguosha:cloneCard("ice_slash", use.card:getSuit(), use.card:getNumber())
                 ice_slash:addSubcards(use.card:getSubcards())
                 ice_slash:setSkillName("s4_banjiang")
@@ -7529,6 +7528,10 @@ s4_2_jiangwei:addSkill(s4_zhiji)
 s4_2_jiangwei:addSkill(s4_banjiang)
 s4_2_jiangwei:addSkill(s4_banjiang_buff)
 extension:insertRelatedSkills("s4_banjiang", "#s4_banjiang_buff")
+sgs.Sanguosha:addResourceAlias("generals", "s4_2_jiangwei", "kehejiangwei")
+sgs.Sanguosha:addResourceAlias("audios", "s4_zhiji", "zhiji")
+sgs.Sanguosha:addResourceAlias("audios", "s4_banjiang", "zhaxiang")
+sgs.Sanguosha:setAudioType("s4_2_jiangwei", "zhaxiang", "3,4")
 
 sgs.LoadTranslationTable{
     ["s4_2_jiangwei"] = "姜维",
