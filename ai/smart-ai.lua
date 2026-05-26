@@ -10731,7 +10731,7 @@ end
 		選中的目標（ServerPlayer），如果沒有合適目標則返回 nil
 ]]
 SmartAI._ai_connect_cache = {}
-function SmartAI:getBestTarget(targets, card, from)
+function SmartAI:getBestTarget(targets, card, from, flags)
     if not targets or #targets == 0 then return nil end
     from = from or self.player
     
@@ -10743,6 +10743,7 @@ function SmartAI:getBestTarget(targets, card, from)
 		isDraw = self:checkIsDrawCard(card),
 		isBuff = self:checkIsBuff(card),
 		isDecrease = self:checkIsDecreaseCard(card),
+		flags = flags
     }
     
     local target_list = targets
@@ -10772,7 +10773,7 @@ function SmartAI:getBestTarget(targets, card, from)
         active_recommends = self._active_recommends_cache
     else
         active_recommends = {}
-        local all_players = sgs.qlist(sgs.getCachedAlivePlayers())
+        local all_players = sgs.getCachedAlivePlayers()
         
         for _, p in ipairs(all_players) do
             for _, skill_name in ipairs(aiConnect(p)) do
@@ -10796,7 +10797,7 @@ function SmartAI:getBestTarget(targets, card, from)
         if ctx.isDamage then
             final_score = rank_map[target:objectName()] or 0
         else
-            final_score = self:getTargetBaseScore(target, card, from)
+            final_score = self:getTargetBaseScore(target, card, from, flags)
         end
 
         if final_score > 0 then
@@ -10861,58 +10862,99 @@ end
 	3. 血量修正（僅敵人）：瀕死 +3，低血量 +1 ~ +2
 	4. 增益類牌：友方 +3，敵人 -3
 ]]
-function SmartAI:getTargetBaseScore(target, card, from)
-	from = from or self.player
-    
-    -- [1] 狀態預取 (State Pre-fetching)
+function SmartAI:getTargetBaseScore(target, card, from, flags)
+    from = from or self.player
+    local score = 0
     local isFriend = self:isFriend(target, from)
-    local isEnemy  = self:isEnemy(target, from)
-    local score    = 0
-
-    -- 若目標既非友軍也非敵人 (例如未明身份)，基礎分不增減
+    local isEnemy = self:isEnemy(target, from)
+    
     if not (isFriend or isEnemy) then return 0 end
 
-    -- [2] 牌性基礎分 (Card Nature Score)
-    local isNegativeCard = self:checkIsDebuff(card) or self:checkIsTurnOver(card)
-    local isPositiveCard = self:checkIsBuff(card) or self:checkIsRecover(card) or self:checkIsDrawCard(card)
-
-    if isNegativeCard then
-        score = score + (isEnemy and 2 or -3)
-    elseif isPositiveCard then
-        score = score + (isFriend and 3 or -3)
+    -- [1] 傷害牌評分
+    if self:checkIsDamageCard(card) then
+        if self:damageIsEffective(target, card, from) then
+            local damage = self:ajustDamage(from, target, 1, card)
+            if damage > 0 then
+                if isEnemy then
+                    if not self:needToLoseHp(target, from, card) then
+                        score = score + 2
+                        if target:getHp() <= damage then
+                            score = score + 3  -- 斬殺
+                        elseif self:isWeak(target) then
+                            score = score + 1
+                        end
+                    end
+                else
+                    if not self:needToLoseHp(target, from, card) then
+                        score = score - 3
+                    end
+                end
+            end
+        end
     end
 
-    -- [3] 身份與威脅修正 (Identity & Threat Adjustment)
-    -- 主公戰略價值修正
-    if target:isLord() then
-        score = score + 1
+    -- [2] 回復牌評分
+    if self:checkIsRecover(card) then
+        if target:isWounded() then
+            score = score + (isFriend and 2 or -2)
+        end
+		if self:hasRecoverSkill(target) or self:hasSaveSkill(target) then
+			score = score + (isFriend and 2 or -2)
+		end
     end
-    
-    -- 敵人威脅等級 (Objective Level) 修正
+
+    -- [3] 摸牌類評分
+    if self:checkIsDrawCard(card) then
+        if self:canDraw(target, from) then
+            if not self:needKongcheng(target) then
+                score = score + (isFriend and 2 or -2)
+            end
+			if self:needDraw(to,notDraw) then
+				score = score + (isFriend and 2 or -2)
+			end
+        else
+            score = score - 1  -- 無效目標扣分
+        end
+    end
+
+    -- [4] 棄牌/破壞類評分
+    if self:checkIsDecreaseCard(card) then
+		if not player:canDiscard(target, flags) then
+			return -5  -- 無效目標
+		end
+		
+		-- 判定是拆牌(不獲得)還是順牌(獲得)
+		local isObtain = card and card:isKindOf("Snatch")
+		
+		if isEnemy then
+			if self:doDisCard(target, flags, isObtain) then
+				local dangerous = self:getDangerousCard(target)
+				local valuable = self:getValuableCard(target)
+				score = score + 2  -- 基礎分
+				if dangerous then score = score + 2 end
+				if valuable then score = score + 1 end
+			else
+				score = score - 1  -- 不適合棄牌
+			end
+		elseif isFriend then
+			if self:doDisCard(target, flags, isObtain) then
+				score = score + 1  -- 友軍需要棄牌
+			else
+				score = score - 2  -- 友軍不想被棄牌
+			end
+		end
+	end
+	
+
+    -- [5] 身份與威脅修正
+    if target:isLord() then score = score + 1 end
     if isEnemy then
         local objLevel = self:objectiveLevel(target)
         if objLevel > 3 then
             score = score + math.min(objLevel - 3, 2)
         end
     end
-    
-    -- [4] 血量與斬殺修正 (HP & Execution Adjustment)
-    if isEnemy and self:checkIsDamageCard(card) then
-        local hp = target:getHp()
-        local damage = 1
-        
-        -- 類型安全檢查 (Type Safety Check)
-        if type(card) ~= "string" and card ~= nil then
-            damage = self:ajustDamage(from, target, 1, card)
-        end
-        
-        if damage > 0 and hp <= damage then
-            score = score + 3        -- 斬殺線 (Lethal Range)
-        elseif hp <= 2 then
-            score = score + (3 - hp) -- 殘血壓制 (Low HP Suppression)
-        end
-    end
-    
+
     return score
 end
 
