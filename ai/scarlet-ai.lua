@@ -1389,6 +1389,32 @@ sgs.ai_playerschosen_intention.s4_lizhan = function(self, from, prompt)
     end
 end
 
+
+sgs.ai_skill_cardask["@s4_lizhan-give"] = function(self, data)
+    local target = data:toPlayer()
+    local cards = sgs.QList2Table(self:addHandPile("he"))
+    self:sortByUseValue(cards, self:isEnemy(target))
+    return "$" .. cards[1]:getEffectiveId()
+end
+
+sgs.ai_can_damagehp.s4_lizhan = function(self,from,card,to)
+	if not self:isWeak()
+	and self:canLoseHp(from,card,to)
+	and to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
+	then
+        local x = 0
+		for _,fp in sgs.list(self.friends)do
+			if fp:isWounded()
+			then x = x + 1 end
+        end
+        if x >= 2 then
+            return true
+		end
+	end
+end
+
+table.insert(sgs.drawSkillsList, "s4_lizhan")
+
 sgs.ai_skill_choice.s4_zhiji = function(self, choices, data)
     local items = choices:split("+")
     
@@ -1492,30 +1518,6 @@ sgs.ai_target_recommend["s4_banjiang"] = function(self, from, to, card, skill_ow
     return 0
 end
 
-sgs.ai_skill_cardask["@s4_lizhan-give"] = function(self, data)
-    local target = data:toPlayer()
-    local cards = sgs.QList2Table(self:addHandPile("he"))
-    self:sortByUseValue(cards, self:isEnemy(target))
-    return "$" .. cards[1]:getEffectiveId()
-end
-
-sgs.ai_can_damagehp.s4_lizhan = function(self,from,card,to)
-	if not self:isWeak()
-	and self:canLoseHp(from,card,to)
-	and to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
-	then
-        local x = 0
-		for _,fp in sgs.list(self.friends)do
-			if fp:isWounded()
-			then x = x + 1 end
-        end
-        if x >= 2 then
-            return true
-		end
-	end
-end
-
-table.insert(sgs.drawSkillsList, "s4_lizhan")
 
 sgs.ai_skill_playerschosen.s4_zhaotao = function(self, targets, max, min)
     local selected = sgs.SPlayerList()
