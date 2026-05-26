@@ -2286,7 +2286,8 @@ sgs.ai_skill_invoke.peiqi = function(self,data)
 						self.peiqiData.to = fp
 						if ej:getTypeId()==3 then
 							local n = ej:getRealCard():toEquipCard():location()
-							local occupy = ej:getOccupyLocations()
+							local equipCard = ej:getRealCard():toEquipCard()
+							local occupy = equipCard and equipCard:getOccupyLocations()
 							local all_available = true
 							if occupy and not occupy:isEmpty() then
 								for _, slot in sgs.qlist(occupy) do
@@ -2323,7 +2324,8 @@ sgs.ai_skill_invoke.peiqi = function(self,data)
 						self.peiqiData.to = fp
 						if ej:getTypeId()==3 then
 							local n = ej:getRealCard():toEquipCard():location()
-							local occupy = ej:getOccupyLocations()
+							local equipCard = ej:getRealCard():toEquipCard()
+							local occupy = equipCard and equipCard:getOccupyLocations()
 							local all_available = true
 							if occupy and not occupy:isEmpty() then
 								for _, slot in sgs.qlist(occupy) do
@@ -2360,7 +2362,8 @@ sgs.ai_skill_invoke.peiqi = function(self,data)
 						self.peiqiData.to = fp
 						if ej:getTypeId()==3 then
 							local n = ej:getRealCard():toEquipCard():location()
-							local occupy = ej:getOccupyLocations()
+							local equipCard = ej:getRealCard():toEquipCard()
+							local occupy = equipCard and equipCard:getOccupyLocations()
 							local all_available = true
 							if occupy and not occupy:isEmpty() then
 								for _, slot in sgs.qlist(occupy) do

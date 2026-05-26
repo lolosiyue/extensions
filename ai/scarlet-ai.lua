@@ -1325,7 +1325,12 @@ sgs.ai_skill_invoke.s4_songwei = function(self, data)
 end
 
 sgs.ai_skill_playerchosen.s4_cangzhuo = function(self, targets)
-    local target = self:findPlayerToDraw(false,1)
+    local victims = sgs.QList2Table(targets)
+    local target = self:getBestTarget(victims, "s4_cangzhuo", self.player)
+    if target then
+        return target
+    end
+    target = self:findPlayerToDraw(false,1)
     if target then
         return target
     end
@@ -1337,12 +1342,19 @@ sgs.ai_skill_playerchosen.s4_cangzhuo = function(self, targets)
 	return targets:first()
 end
 
+sgs.ai_playerchosen_intention.s4_cangzhuo = -40
+
+table.insert(sgs.drawSkillsList, "s4_cangzhuo")
+
+sgs.ai_cardneed.s4_cangzhuo = sgs.ai_cardneed.jizhi
 
 sgs.ai_skill_playerchosen.s4_kuiwei = function(self, targets)
-    local target = self:findPlayerToDiscard("h", true, false, targets, "")[1]
-    if target and self:isEnemy(target) then
+    local victims = sgs.QList2Table(targets)
+    local target = self:getBestTarget(victims, "s4_kuiwei", self.player)
+    if target then
         return target
     end
+    target = self:findPlayerToDiscard("h", true, false, targets, "")[1]
     if target then
         return target
     end
@@ -1350,6 +1362,8 @@ sgs.ai_skill_playerchosen.s4_kuiwei = function(self, targets)
 end
 
 sgs.ai_choicemade_filter.cardChosen.s4_kuiwei = sgs.ai_choicemade_filter.cardChosen.snatch
+
+table.insert(sgs.decreaseSkillsList, "s4_kuiwei")
 
 sgs.ai_skill_playerschosen.s4_lizhan = function(self, targets, max, min)
     local selected = sgs.SPlayerList()
@@ -1478,6 +1492,30 @@ sgs.ai_target_recommend["s4_banjiang"] = function(self, from, to, card, skill_ow
     return 0
 end
 
+sgs.ai_skill_cardask["@s4_lizhan-give"] = function(self, data)
+    local target = data:toPlayer()
+    local cards = sgs.QList2Table(self:addHandPile("he"))
+    self:sortByUseValue(cards, self:isEnemy(target))
+    return "$" .. cards[1]:getEffectiveId()
+end
+
+sgs.ai_can_damagehp.s4_lizhan = function(self,from,card,to)
+	if not self:isWeak()
+	and self:canLoseHp(from,card,to)
+	and to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
+	then
+        local x = 0
+		for _,fp in sgs.list(self.friends)do
+			if fp:isWounded()
+			then x = x + 1 end
+        end
+        if x >= 2 then
+            return true
+		end
+	end
+end
+
+table.insert(sgs.drawSkillsList, "s4_lizhan")
 
 sgs.ai_skill_playerschosen.s4_zhaotao = function(self, targets, max, min)
     local selected = sgs.SPlayerList()

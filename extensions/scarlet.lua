@@ -7124,7 +7124,7 @@ sgs.LoadTranslationTable {
 }
 s4_jiewolong = sgs.General(extension, "s4_jiewolong", "shu", 3)
 
-getYing = function(to)
+getYing = function(to, skillname)
 	local room = to:getRoom()
 	local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 	dummy:deleteLater()
@@ -7136,7 +7136,9 @@ getYing = function(to)
 		end
 	end
 	if dummy:subcardsLength() > 0 then
-		to:obtainCard(dummy)
+		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, to:objectName(), "", skillname, "")
+        local move = sgs.CardsMoveStruct(dummy:getSubcards(), nil, to, sgs.Player_PlaceUnknown, sgs.Player_PlaceHand, reason)
+        room:moveCardsAtomic(move, true)
 	end
 end
 
@@ -7147,7 +7149,6 @@ s4_cangzhuo = sgs.CreateTriggerV2Skill{
     base_amount = 1,
     can_trigger = function(skill, event, room, player, data)
         if not player:hasSkill("s4_cangzhuo") then return false end
-        
         local move = data:toMoveOneTime()
         if not move.from or move.from:objectName() ~= player:objectName() then 
             return false 
@@ -7167,20 +7168,19 @@ s4_cangzhuo = sgs.CreateTriggerV2Skill{
         return false
     end,
     
-    on_cost = function(skill, event, room, player, data)
+    on_cost = function(skill, event, room, player, ctx)
         local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), 
             "s4_cangzhuo", "s4_cangzhuo-invoke", true, true)
         if target then
-            local ctx = data:toSkillContext()
             ctx.targets:append(target)
-			data:setValue(ctx)
             return true
         end
         return false
     end,
     
-    on_effect = function(skill, event, room, player, data)
-        local ctx = data:toSkillContext()
+    on_effect = function(skill, event, room, player, ctx)
+        room:broadcastSkillInvoke("s4_cangzhuo")
+        ctx.manual_effect = true
         local amount = skill:getEffectiveAmount(ctx)
         local targets = sgs.SPlayerList()
         targets:append(player)
@@ -7188,16 +7188,17 @@ s4_cangzhuo = sgs.CreateTriggerV2Skill{
             targets:append(t)
         end
         room:sortByActionOrder(targets)
-        
         for _, p in sgs.qlist(targets) do
-			if skill:skillEffect(p) then
-				for i = 1, amount do
-					getYing(p)
-				end
-			end
+            skill:skillEffect(event, room, player, ctx, p)
         end
-		ctx.manual_effect = true
-		data:setValue(ctx)
+        return false
+    end,
+
+    on_effect_target = function(skill, event, room, player, ctx, target)
+        local amount = skill:getEffectiveAmount(ctx)
+        for i = 1, amount do
+            getYing(target, skill:objectName())
+        end
         return false
     end,
 }
@@ -7208,6 +7209,7 @@ s4_jiewolong:addSkill("olhuoji")
 s4_jiewolong:addSkill("olkanpo")
 s4_jiewolong:addSkill(s4_cangzhuo)
 
+sgs.Sanguosha:addResourceAlias("audios", "s4_cangzhuo", "olcangzhuo")
 
 sgs.LoadTranslationTable {
     ["s4_jiewolong"] = "界卧龙诸葛",
@@ -7232,8 +7234,7 @@ s4_kuiwei = sgs.CreateTriggerV2Skill{
     events = {sgs.EventPhaseProceeding, sgs.EventPhaseChanging},
     frequency = sgs.Skill_Frequent,
     
-    on_record = function(skill, event, room, player, data)
-        -- 清理 Tag
+    on_record = function(skill, event, room, player, data, owner)
         if event == sgs.EventPhaseChanging then
             local change = data:toPhaseChange()
             if change.from == sgs.Player_Finish then
@@ -7249,7 +7250,7 @@ s4_kuiwei = sgs.CreateTriggerV2Skill{
             
             local targets = sgs.SPlayerList()
             for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-                if p:distanceTo(player) <= p:getAttackRange() and player:canDiscard(p) then
+                if p:distanceTo(player) <= p:getAttackRange() and player:canDiscard(p, "h") then
                     targets:append(p)
                 end
             end
@@ -7260,7 +7261,7 @@ s4_kuiwei = sgs.CreateTriggerV2Skill{
         return false
     end,
     
-    on_cost = function(skill, event, room, player, data)
+    on_cost = function(skill, event, room, player, ctx)
         local targets = sgs.SPlayerList()
         for _, p in sgs.qlist(room:getOtherPlayers(player)) do
             if p:distanceTo(player) <= p:getAttackRange() and player:canDiscard(p, "h") then
@@ -7272,13 +7273,11 @@ s4_kuiwei = sgs.CreateTriggerV2Skill{
         local target = room:askForPlayerChosen(player, targets, "s4_kuiwei", "@s4_kuiwei-choose", true, true)
         if not target then return false end
         
-        local ctx = data:toSkillContext()
         ctx.targets:append(target)
         return true
     end,
     
-    on_effect = function(skill, event, room, player, data)
-        local ctx = data:toSkillContext()
+    on_effect = function(skill, event, room, player, ctx)
         local target = ctx.targets:first()
         
         local discarded_cards = player:getTag("s4_kuiwei_discarded"):toStringList()
@@ -7302,7 +7301,11 @@ s4_kuiwei = sgs.CreateTriggerV2Skill{
             end
             
             if not all_same then
-                room:loseHp(player, 1, true, player, skill:objectName())
+                local damage = sgs.DamageStruct()
+                damage.reason = skill:objectName()
+                damage.to = player
+                damage.damage = 1
+                room:damage(damage)
                 break
             end
             
@@ -7327,13 +7330,14 @@ s4_lizhan = sgs.CreateTriggerV2Skill{
     frequency = sgs.Skill_Frequent,
     
     can_trigger = function(skill, event, room, player, data)
+        if not player:isAlive() then return false end
         if not player:hasSkill("s4_lizhan") then return false end
         local damage = data:toDamage()
         if not damage or damage.damage < 1 then return false end
         return "s4_lizhan*" .. damage.damage
     end,
     
-    on_cost = function(skill, event, room, player, data)
+    on_cost = function(skill, event, room, player, ctx)
         local targets = sgs.SPlayerList()
         for _, p in sgs.qlist(room:getAlivePlayers()) do
             if p:isWounded() then
@@ -7342,31 +7346,32 @@ s4_lizhan = sgs.CreateTriggerV2Skill{
         end
         if targets:isEmpty() then return false end
         
-        local chosen_players = room:askForPlayersChosen(player, targets, "s4_lizhan", "@s4_lizhan-choose")
+        local chosen_players = room:askForPlayersChosen(player, targets, "s4_lizhan", 0, targets:length(), "@s4_lizhan-choose", true, true)
         if chosen_players:isEmpty() then return false end
         
-        local ctx = data:toSkillContext()
         for _, p in sgs.qlist(chosen_players) do
             ctx.targets:append(p)
         end
-		data:setValue(ctx)
         return true
     end,
     
-    on_effect = function(skill, event, room, player, data)
-        local ctx = data:toSkillContext()
+    on_effect = function(skill, event, room, player, ctx)
         local chosen_players = ctx.targets
         local draw_num = chosen_players:length()
         player:drawCards(draw_num, "s4_lizhan")
         room:sortByActionOrder(chosen_players)
-        for _, p in sgs.qlist(chosen_players) do
-            if player:isKongcheng() then break end
-            local card = room:askForCard(player, ".!", "@s4_lizhan-give::"..p:objectName(), ToData(p), sgs.Card_MethodNone)
-            if card then
-				if skill:skillEffect(p) then
-					room:giveCard(p,player,card,skill:objectName())
-				end
-            end
+        -- for _, p in sgs.qlist(chosen_players) do
+        --     skill:skillEffect(event, room, player, ctx, p)
+        -- end
+        return false
+    end,
+    on_effect_target = function(skill, event, room, player, ctx, target)
+        if player:isKongcheng() or player:objectName() == target:objectName() or not player:isAlive() or not target:isAlive() then return false end
+    
+        local card = room:askForCard(player, ".!", "@s4_lizhan-give::"..target:objectName(), ToData(target), sgs.Card_MethodNone)
+        player:gainMark("@5")
+        if card then
+            room:giveCard(player, target, card, skill:objectName())
         end
         return false
     end,
@@ -7374,6 +7379,9 @@ s4_lizhan = sgs.CreateTriggerV2Skill{
 
 s4_caoren:addSkill(s4_kuiwei)
 s4_caoren:addSkill(s4_lizhan)
+sgs.Sanguosha:addResourceAlias("generals", "s4_caoren", "bgm_caoren")
+sgs.Sanguosha:addResourceAlias("audios", "s4_kuiwei", "kuiwei")
+sgs.Sanguosha:addResourceAlias("audios", "s4_lizhan", "lizhan")
 
 sgs.LoadTranslationTable {
 	["s4_caoren"] = "曹仁",
@@ -7389,8 +7397,7 @@ sgs.LoadTranslationTable {
 	["@s4_kuiwei-choose"] = "请选择一名攻击范围内包含你的角色，弃置其一张手牌",
 	["s4_lizhan"] = "励战",
 	[":s4_lizhan"] = "当你受到1点伤害后，你可以选择任意名已受伤的角色，摸等量张牌，然后交给这些角色各一张。",
-	["@s4_lizhan-choose"] = "请选择一名已受伤的角色",
-	["@s4_lizhan-choose-more"] = "请选择更多已受伤的角色（或点击取消结束）",
+	["@s4_lizhan-choose"] = "励战:请选择任意名已受伤的角色",
 	["@s4_lizhan-give"] = "请交给 %dest 一张牌",
 
 }
@@ -13143,7 +13150,7 @@ s4_zemou_cardmax = sgs.CreateMaxCardsSkill{
 		if target and target:hasSkill("s4_zemou") and target:getMark("&s4_zemou+beishui+sys_+-Clear") > 0 then
 			return target:getMark("damage_point_play_phase")
 		else
-			return 0
+			return -1
 		end
 	end,
 }
