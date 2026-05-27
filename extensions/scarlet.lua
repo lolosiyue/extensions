@@ -7716,6 +7716,7 @@ sgs.LoadTranslationTable{
     ["@s4_xishe-invoke"] = "你可以对 %src 发动「袭射」，弃置其装备区一张牌并视为使用一张杀",
     ["#s4_xishe_charge"] = "%from 的「激昂」条件满足，「袭射」已重置",
 }
+--https://tieba.baidu.com/p/10542173142
 
 s4_yuanshao = sgs.General(extension, "s4_yuanshao", "qun", 4)
 
