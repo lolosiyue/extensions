@@ -7181,7 +7181,6 @@ s4_cangzhuo = sgs.CreateTriggerV2Skill{
     on_effect = function(skill, event, room, player, ctx)
         room:broadcastSkillInvoke("s4_cangzhuo")
         ctx.manual_effect = true
-        local amount = skill:getEffectiveAmount(ctx)
         local targets = sgs.SPlayerList()
         targets:append(player)
         for _, t in sgs.qlist(ctx.targets) do
@@ -7233,7 +7232,7 @@ s4_kuiwei = sgs.CreateTriggerV2Skill{
     name = "s4_kuiwei",
     events = {sgs.EventPhaseProceeding, sgs.EventPhaseChanging},
     frequency = sgs.Skill_Frequent,
-    
+    base_amount = 1,
     on_record = function(skill, event, room, player, data, owner)
         if event == sgs.EventPhaseChanging then
             local change = data:toPhaseChange()
@@ -7279,18 +7278,22 @@ s4_kuiwei = sgs.CreateTriggerV2Skill{
     
     on_effect = function(skill, event, room, player, ctx)
         local target = ctx.targets:first()
-        
+        local amount = skill:getEffectiveAmount(ctx)
         local discarded_cards = player:getTag("s4_kuiwei_discarded"):toStringList()
         
         while target do
-            local card_id = room:askForCardChosen(player, target, "h", "s4_kuiwei", false, sgs.Card_MethodDiscard)
-            local card = sgs.Sanguosha:getCard(card_id)
-            
-            local current_color = card:isRed() and "red" or "black"
-            table.insert(discarded_cards, current_color)
-            player:setTag("s4_kuiwei_discarded", sgs.QVariant(table.concat(discarded_cards, "+")))
-            
-            room:throwCard(card_id, target, player)
+			for i = 1, amount do
+				if player:canDiscard(target, "h") then
+					local card_id = room:askForCardChosen(player, target, "h", "s4_kuiwei", false, sgs.Card_MethodDiscard)
+					local card = sgs.Sanguosha:getCard(card_id)
+					
+					local current_color = card:isRed() and "red" or "black"
+					table.insert(discarded_cards, current_color)
+					player:setTag("s4_kuiwei_discarded", sgs.QVariant(table.concat(discarded_cards, "+")))
+					
+					room:throwCard(card_id, target, player)
+				end
+			end
             
             local all_same = true
             for i, c in ipairs(discarded_cards) do
@@ -7328,7 +7331,7 @@ s4_lizhan = sgs.CreateTriggerV2Skill{
     name = "s4_lizhan",
     events = {sgs.Damaged},
     frequency = sgs.Skill_Frequent,
-    
+    base_amount = 0,
     can_trigger = function(skill, event, room, player, data)
         if not player:isAlive() then return false end
         if not player:hasSkill("s4_lizhan") then return false end
@@ -7347,29 +7350,25 @@ s4_lizhan = sgs.CreateTriggerV2Skill{
         if targets:isEmpty() then return false end
         
         local chosen_players = room:askForPlayersChosen(player, targets, "s4_lizhan", 0, targets:length(), "@s4_lizhan-choose", true, true)
-        if chosen_players:isEmpty() then return false end
+        if not chosen_players or chosen_players:isEmpty() then return false end
         
         for _, p in sgs.qlist(chosen_players) do
             ctx.targets:append(p)
         end
+		ctx.modified_amount = ctx.targets:length()
         return true
     end,
     
     on_effect = function(skill, event, room, player, ctx)
-        local chosen_players = ctx.targets
-        local draw_num = chosen_players:length()
+		local amount = skill:getEffectiveAmount(ctx)
+        local draw_num = amount
         player:drawCards(draw_num, "s4_lizhan")
-        room:sortByActionOrder(chosen_players)
-        -- for _, p in sgs.qlist(chosen_players) do
-        --     skill:skillEffect(event, room, player, ctx, p)
-        -- end
         return false
     end,
     on_effect_target = function(skill, event, room, player, ctx, target)
         if player:isKongcheng() or player:objectName() == target:objectName() or not player:isAlive() or not target:isAlive() then return false end
     
         local card = room:askForCard(player, ".!", "@s4_lizhan-give::"..target:objectName(), ToData(target), sgs.Card_MethodNone)
-        player:gainMark("@5")
         if card then
             room:giveCard(player, target, card, skill:objectName())
         end
@@ -7409,33 +7408,45 @@ s4_zhiji = sgs.CreateTriggerV2Skill{
     name = "s4_zhiji",
     events = {sgs.EventPhaseProceeding},
     frequency = sgs.Skill_Compulsory,
-	waked_skills = "guanxing,kanpo",
-    
+	waked_skills = "guanxing+kanpo",
+    base_amount = 1,
     can_trigger = function(skill, event, room, player, data)
         if not player:hasSkill("s4_zhiji") then return false end
         if player:getPhase() ~= sgs.Player_Start then return false end
         return "s4_zhiji"
     end,
-    
-    on_effect = function(skill, event, room, player, data)
-        local choices = {"s4_zhiji_guanxing", "s4_zhiji_kanpo", "beishui"}
-        local choice = room:askForChoice(player, "s4_zhiji", table.concat(choices, "+"), data)
-        
-        room:sendCompulsoryTriggerLog(player, "s4_zhiji")
-        room:broadcastSkillInvoke("s4_zhiji")
-        
-        if choice == "s4_zhiji_guanxing" then
-            room:acquireNextTurnSkills(player, "s4_zhiji", "guanxing")
-        elseif choice == "s4_zhiji_kanpo" then
-            room:acquireNextTurnSkills(player, "s4_zhiji", "kanpo")
-        elseif choice == "beishui" then
-            room:acquireNextTurnSkills(player, "s4_zhiji", "guanxing")
-            room:acquireNextTurnSkills(player, "s4_zhiji", "kanpo")
+	on_cost = function(skill, event, room, player, ctx)
+		local choices = {"s4_zhiji_guanxing", "s4_zhiji_kanpo", "beishui"}
+        local choice = room:askForChoice(player, "s4_zhiji", table.concat(choices, "+"), ctx.original_data)
+		ctx.choice = choice
+		return true
+	end,
+    on_pay = function(skill, event, room, player, ctx)
+		if ctx.choice == "beishui" then
+			local amount = skill:getEffectiveAmount(ctx)
 			local damage = sgs.DamageStruct()
 			damage.from = player
 			damage.to = player
-			damage.damage = 1
+			damage.damage = amount
 			room:damage(damage)
+			if not player:isAlive() then
+				return false
+			end
+		end
+		return true
+	end,
+    on_effect = function(skill, event, room, player, ctx)
+
+        room:sendCompulsoryTriggerLog(player, "s4_zhiji")
+        room:broadcastSkillInvoke("s4_zhiji")
+        
+        if ctx.choice == "s4_zhiji_guanxing" then
+            room:acquireNextTurnSkills(player, "s4_zhiji", "guanxing")
+        elseif ctx.choice == "s4_zhiji_kanpo" then
+            room:acquireNextTurnSkills(player, "s4_zhiji", "kanpo")
+        elseif ctx.choice == "beishui" then
+            room:acquireNextTurnSkills(player, "s4_zhiji", "guanxing")
+            room:acquireNextTurnSkills(player, "s4_zhiji", "kanpo")
         end
         
         return false
@@ -7446,7 +7457,7 @@ s4_banjiang = sgs.CreateTriggerV2Skill{
     name = "s4_banjiang",
     events = {sgs.Damaged, sgs.DrawNCards, sgs.ChangeSlash},
     frequency = sgs.Skill_Compulsory,
-        
+	base_amount = 1,
     can_trigger = function(skill, event, room, player, data)
         if not player:hasSkill("s4_banjiang") then return false end
         
@@ -7471,10 +7482,10 @@ s4_banjiang = sgs.CreateTriggerV2Skill{
         return false
     end,
     
-    on_effect = function(skill, event, room, player, data)
+    on_effect = function(skill, event, room, player, ctx)
         if event == sgs.Damaged then
-            local ctx = data:toSkillContext()
-            local damage_amount = ctx.trigger_count or 1
+			local amount = skill:getEffectiveAmount(ctx)
+            local damage_amount = amount
             
             room:sendCompulsoryTriggerLog(player, "s4_banjiang")
             room:broadcastSkillInvoke("s4_banjiang")
@@ -7484,25 +7495,25 @@ s4_banjiang = sgs.CreateTriggerV2Skill{
             room:addPlayerMark(player, "&s4_banjiang+sys_-SelfClear", damage_amount)
             
         elseif event == sgs.DrawNCards then
-            local draw = data:toDraw()
+            local draw = ctx.original_data:toDraw()
             if draw.reason == "draw_phase" then
                 local bonus = player:getMark("s4_banjiang_draw-SelfdrawClear")
                 if bonus > 0 then
                     room:sendCompulsoryTriggerLog(player, "s4_banjiang")
                     draw.num = draw.num + bonus
-                    data:setValue(draw)
+                    ctx.original_data:setValue(draw)
                 end
             end
             
         elseif event == sgs.ChangeSlash then
-            local use = data:toCardUse()
+            local use = ctx.original_data:toCardUse()
             if use.card and use.card:isKindOf("Slash") and use.from:objectName() == player:objectName() then
                 room:sendCompulsoryTriggerLog(player, "s4_banjiang")
                 local ice_slash = sgs.Sanguosha:cloneCard("ice_slash", use.card:getSuit(), use.card:getNumber())
                 ice_slash:addSubcards(use.card:getSubcards())
                 ice_slash:setSkillName("s4_banjiang")
                 use:changeCard(ice_slash)
-                data:setValue(use)
+                ctx.original_data:setValue(use)
             end
         end
         
