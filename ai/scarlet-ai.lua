@@ -1518,6 +1518,25 @@ sgs.ai_target_recommend["s4_banjiang"] = function(self, from, to, card, skill_ow
     return 0
 end
 
+sgs.ai_skill_invoke.s4_xishe = function(self, data)
+    local target = data:toPlayer()
+    if not target or self:isFriend(target) then return false end
+    if target:getEquips():length() > 0 and (self:doDisCard(target, "e") or self:isWeak(target)) then
+		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+		slash:deleteLater()
+		slash:setSkillName("s4_xishe")
+		
+		local dummy_use = self:aiUseCard(slash, dummy(true, 99, self.room:getOtherPlayers(target)))
+		
+		if dummy_use and dummy_use.card then
+			if table.contains(dummy_use.to, target) then
+				return true
+			end
+		end
+	end
+    
+    return false
+end
 
 sgs.ai_skill_playerschosen.s4_zhaotao = function(self, targets, max, min)
     local selected = sgs.SPlayerList()
