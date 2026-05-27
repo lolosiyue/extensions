@@ -7714,10 +7714,375 @@ sgs.LoadTranslationTable{
     
     ["s4_xishe"] = "袭射",
     [":s4_xishe"] = "<b>昂扬技，</b>其他角色的准备阶段，你可以弃置其装备区里的一张牌，视为对其使用一张杀。<b>激昂</b>：你受到伤害，或你一次性弃置至少两张手牌。",
-    ["@s4_xishe-invoke"] = "你可以对 %src 发动「袭射」，弃置其装备区一张牌并视为使用一张杀",
     ["#s4_xishe_charge"] = "%from 的「激昂」条件满足，「袭射」已重置",
 }
 --https://tieba.baidu.com/p/10542173142
+
+s4_mouxiahoudun = sgs.General(sgs.Sanguosha, "s4_mouxiahoudun", "wei", 4, true, false, false, 3, 1)
+
+
+local function getChargeMax(player)
+    local n = 0
+    for _, skill in sgs.qlist(player:getVisibleSkillList()) do
+        local cn = skill:property("ChargeNum"):toString()
+        if cn:match("/") then
+            n = n + tonumber(cn:split("/")[2])
+        end
+    end
+    return n
+end
+
+s4_ganglie = sgs.CreateTriggerV2Skill{
+    name = "s4_ganglie",
+    events = {sgs.Damaged, sgs.Death},
+    shiming_skill = true,
+	base_amount = 1,
+	dynamic_frequency = function(skill, player)
+        if player:getMark("s4_ganglie+sys_+_force") > 0 then
+            return sgs.Skill_Compulsory
+        end
+        return sgs.Skill_NotFrequent
+    end,
+    can_trigger = function(skill, event, room, player, data)
+        if event == sgs.Damaged then
+			local damage = data:toDamage()
+            if damage and damage.damage > 0 then
+                return "s4_ganglie*" .. damage.damage
+            end
+        end
+        
+		if event == sgs.Death then
+			local death = data:toDeath()
+			
+			if death.damage and death.damage.from and death.damage.from ~= death.who then
+				local killer = death.damage.from
+				if killer:isAlive() and killer:hasSkill(skill:objectName()) 
+				and death.who:getMark("s4_ganglie_damage_" .. killer:objectName()) > 0 then
+					room:addPlayerMark(killer, "s4_ganglie+sys_+_force")
+					return skill:objectName(), killer
+				end
+			end
+			
+			if death.who:hasSkill(skill:objectName()) then
+				room:addPlayerMark(death.who, "s4_ganglie+sys_+_force")
+				return skill:objectName(), death.who
+			end
+			
+			return false
+		end
+        
+        return false
+    end,
+    on_record = function(skill, event, room, player, data, owner)
+        if event == sgs.Damaged then
+            local damage = data:toDamage()
+            if damage.from and damage.from:isAlive() and damage.to and damage.to:hasSkill("s4_ganglie") then
+                room:addPlayerMark(damage.from, "s4_ganglie_damage_" .. player:objectName())
+            end
+        end
+    end,
+    
+    on_cost = function(skill, event, room, player, ctx)
+        if event == sgs.Damaged then
+            if not player:hasSkill(skill:objectName()) then return false end
+            local damage = ctx.original_data:toDamage()
+			if damage.from and damage.from:isAlive() then
+				local choices = {"damage="..damage.from:objectName()}
+				local except_options = {}
+				if player:canDiscard(damage.from, "he") then
+					table.insert(choices, "discard="..damage.from:objectName())
+					if player:getMark("&charge_num") > 0 then
+						table.insert(choices, "beishui")
+					else
+						table.insert(except_options, "beishui")
+					end
+				else
+					table.insert(except_options, "discard="..damage.from:objectName())
+					table.insert(except_options, "beishui")
+				end
+				table.insert(choices, "cancel")
+				local choice = room:askForChoice(player, skill:objectName(), table.concat(choices, "+"), ctx.original_data,table.concat(except_options, "+"), "tip")
+				if choice == "cancel" then
+					return false
+				else
+					ctx.choice = choice
+					ctx.targets:append(damage.from)
+					return true
+				end
+			end
+        end
+        
+        if event == sgs.Death then
+			room:setPlayerMark(player, "s4_ganglie+sys_+_force", 0)
+            return true
+        end
+                
+        return false
+    end,
+    
+    on_pay = function(self, event, player, data, room, ctx)
+        if event == sgs.Damaged then
+            if ctx.choice == "beishui" then
+				if player:getMark("&charge_num") > 0 then
+                	player:loseMark("&charge_num", 1)
+					return true
+				else
+					return false
+				end
+            end
+        end
+        return true
+    end,
+    
+    on_effect = function(skill, event, room, player, ctx)
+		if event == sgs.Damaged then
+			return false
+		end
+    
+		if event == sgs.Death then
+			local death = ctx.original_data:toDeath()
+			local is_success = false
+			local is_fail = false
+			
+			if death.damage and death.damage.from and death.damage.from == player then
+				if death.who ~= player and death.who:getMark("s4_ganglie_damage_" .. player:objectName()) > 0 then
+					is_success = true
+				end
+			end
+			
+			if death.who == player then
+				is_fail = true
+			end
+			
+			if is_success then
+				room:setShimingStatus(player, skill:objectName(), 1)
+			end
+			
+			if is_fail then
+				room:setShimingStatus(player, skill:objectName(), 2)
+			end
+			
+			return false
+		end
+		
+		return false
+	end,
+	on_shiming_success = function(skill, room, player)
+        ShimingSkillDoAnimate(skill, player, true)
+		room:broadcastSkillInvoke(skill:objectName())
+		player:gainHujia(1)
+		
+		local current_charge = player:getMark("&charge_num")
+		local max_charge = getChargeMax(player)
+		if current_charge < max_charge then
+			player:gainMark("&charge_num", max_charge - current_charge)
+		end
+		
+		for _, p in sgs.qlist(room:getAllPlayers()) do
+			room:setPlayerMark(p, "s4_ganglie_damage_" .. player:objectName(), 0)
+		end
+    end,
+    
+    on_shiming_fail = function(skill, room, player)
+        ShimingSkillDoAnimate(skill, player, false)
+		local ren_cards = room:getTag("ren_pile"):toIntList()
+		
+		if ren_cards:length() > 0 then
+			local target = room:askForPlayerChosen(player, room:getAlivePlayers(), skill:objectName(), "s4_ganglie-invoke", false, false)
+			if target then
+				room:doAnimate(1, player:objectName(), target:objectName())
+				local dummy = sgs.Sanguosha:cloneCard("slash")
+				dummy:deleteLater()
+				for _, id in sgs.qlist(ren_cards) do
+					dummy:addSubcard(id)
+				end
+				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, 
+					player:objectName(), target:objectName(), skill:objectName(), "")
+				room:obtainCard(target, dummy, reason, false)
+			end
+		end
+    end,
+	on_effect_target = function(skill, event, room, player, ctx, target)
+		local amount = skill:getEffectiveAmount(ctx)
+		if event == sgs.Damaged then
+			for i = 1, amount do
+				local damage = ctx.original_data:toDamage()
+				local choice = ctx.choice or ""
+				
+				room:broadcastSkillInvoke(skill:objectName())
+				room:notifySkillInvoked(player, skill:objectName())
+				
+				if string.startsWith(choice, "damage") or choice == "beishui" then
+					if target and target:isAlive() then
+						room:doAnimate(1, player:objectName(), target:objectName())
+						room:damage(sgs.DamageStruct(skill:objectName(), player, target, 1))
+					end
+				end
+				
+				if string.startsWith(choice, "discard") or choice == "beishui" then
+					if target and target:isAlive() and player:canDiscard(target, "he") then
+						local card_id = room:askForCardChosen(player, target, "he", skill:objectName(), false, sgs.Card_MethodDiscard)
+						room:throwCard(card_id, skill:objectName(), target, player)
+					end
+				end
+			end
+		end
+	end
+}
+
+s4_ganglie:setProperty("ChargeNum", "3/3")
+
+s4_qingjian = sgs.CreateTriggerV2Skill{
+    name = "s4_qingjian",
+    events = {sgs.CardsMoveOneTime, sgs.EventPhaseProceeding},
+    base_amount = 1,
+    can_trigger = function(skill, event, room, player, data)
+        if not player:hasSkill(skill:objectName()) then return false end
+		if not player:isAlive() then return false end
+		
+		if event == sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			if move.to_place ~= sgs.Player_DiscardPile then return false end
+			local card_ids = room:getTag(skill:objectName() .. "_cards"):toIntList()
+			if card_ids:isEmpty() then return false end
+			local reason = move.reason.m_reason
+			if (reason & sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_USE then
+				return false
+			end
+			return skill:objectName()
+		end
+		
+		if event == sgs.EventPhaseProceeding then
+			if player:getPhase() ~= sgs.Player_Finish then return false end
+			local ren_cards = room:getTag("ren_pile"):toIntList()
+			if ren_cards:isEmpty() then return false end
+			room:addPlayerMark(player, "s4_qingjian+sys_+_force")
+			return skill:objectName()
+		end
+		
+		return false
+    end,
+    dynamic_frequency = function(skill, player)
+        if player:getMark("s4_qingjian+sys_+_force") > 0 then
+            return sgs.Skill_Compulsory
+        end
+        return sgs.Skill_NotFrequent
+    end,
+    on_record = function(skill, event, room, player, data, owner)
+        if event == sgs.CardsMoveOneTime then
+            if not player:hasSkill(skill:objectName()) then return end
+            
+            local move = data:toMoveOneTime()
+            if move.to_place ~= sgs.Player_DiscardPile then return end
+            
+            local reason = move.reason.m_reason
+            if (reason & sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_USE then
+                return
+            end
+
+            local card_ids = {}
+            for _, id in sgs.qlist(move.card_ids) do
+                if room:getCardPlace(id) == sgs.Player_DiscardPile then
+                    table.insert(card_ids, id)
+                end
+            end
+            
+            if #card_ids > 0 then
+                local variant_list = sgs.QVariantList()
+                for _, id in ipairs(card_ids) do
+                    variant_list:append(sgs.QVariant(id))
+                end
+                room:setTag(skill:objectName() .. "_cards", sgs.QVariant(variant_list))
+            end
+        end
+    end,
+    
+    on_cost = function(skill, event, room, player, ctx)
+        if event == sgs.CardsMoveOneTime then
+            return player:askForSkillInvoke(skill:objectName(), ctx.original_data)
+        end
+        
+        if event == sgs.EventPhaseProceeding then
+            if player:getPhase() ~= sgs.Player_Finish then return false end
+            if not player:hasSkill(skill:objectName()) then return false end
+            room:setPlayerMark(player, "s4_qingjian+sys_+_force", 0)
+           	local ren_cards = room:getTag("ren_pile"):toIntList()
+            if ren_cards:isEmpty() then return false end
+            
+            local x = math.max(1, player:getHp())
+            if x <= 0 then return false end
+			ctx.modified_amount = x
+            return true
+        end
+        
+        return false
+    end,
+    
+    on_effect = function(skill, event, room, player, ctx)
+        if event == sgs.CardsMoveOneTime then
+            room:broadcastSkillInvoke(skill:objectName())
+            room:notifySkillInvoked(player, skill:objectName())
+            
+            local card_ids = room:getTag(skill:objectName() .. "_cards"):toIntList()
+        
+			for _, id in sgs.qlist(card_ids) do
+				room:addToRenPile(id, skill:objectName())
+			end
+			
+			room:removeTag(skill:objectName() .. "_cards")
+			return false
+        end
+        
+        if event == sgs.EventPhaseProceeding then
+            local ren_cards = room:getTag("ren_pile"):toIntList()
+            if ren_cards:isEmpty() then return false end
+            local amount = skill:getEffectiveAmount(ctx)
+			local x = math.max(1, amount)
+			local max_cards = math.min(x, ren_cards:length())
+			
+			local card_ids = sgs.QList_int()
+			for _, id in sgs.qlist(ren_cards) do
+				card_ids:append(id)
+			end
+			player:assignmentCards(card_ids, skill:objectName(), room:getAlivePlayers(), max_cards, 1)
+            return false
+        end
+        
+        return false
+    end,
+}
+
+
+
+s4_ganglie:setProperty("ChargeNum", "3/3")
+s4_mouxiahoudun:addSkill(s4_ganglie)
+s4_mouxiahoudun:addSkill(s4_qingjian)
+
+sgs.LoadTranslationTable{
+	["s4_mouxiahoudun"] = "谋夏侯惇",
+    ["&s4_mouxiahoudun"] = "谋夏侯惇",
+    ["#s4_mouxiahoudun"] = "噬骨苍狼",
+    ["~s4_mouxiahoudun"] = "",
+    ["designer:s4_mouxiahoudun"] = "TwinkleYellow",
+    ["cv:s4_mouxiahoudun"] = "",
+    ["illustrator:s4_mouxiahoudun"] = "",
+
+	["s4_ganglie"] = "剛烈",
+    [":s4_ganglie"] = "使命技，蓄力技(3/3)，当你受到1点伤害后，你可以选择一项：1.对伤害来源造成1点伤害；2.弃置伤害来源一张牌；背水：你减1点蓄力值。\
+	成功：若你杀死一名对你造成过伤害的角色，你获得1点护甲，然后获得“刚烈”。\
+	失败：若你死亡，你令一名角色获得“仁”区中所有牌。",
+    ["s4_ganglie:damage"] = "对 %src 造成1点伤害",
+    ["s4_ganglie:discard"] = "弃置 %src 一张牌",
+    ["s4_ganglie:beishui"] = "背水：減1点蓄力值",
+    ["s4_ganglie:tip"] = "对伤害来源使用“剛烈”",
+    ["s4_ganglie-invoke"] = "选择一名角色获得“仁”区中所有牌",
+    
+    ["s4_qingjian"] = "清儉",
+    [":s4_qingjian"] = "当一张牌非因使用而进入弃牌堆时，你可将之置入“仁”区；结束阶段，你将“仁”区中的至多X张牌分配给任意名角色（X为你的体力值）。",
+
+
+}
+
 
 s4_yuanshao = sgs.General(extension, "s4_yuanshao", "qun", 4)
 

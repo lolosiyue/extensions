@@ -1538,6 +1538,10 @@ sgs.ai_skill_invoke.s4_xishe = function(self, data)
     return false
 end
 
+
+
+sgs.ai_skill_invoke.s4_qingjian = true
+
 sgs.ai_skill_playerschosen.s4_zhaotao = function(self, targets, max, min)
     local selected = sgs.SPlayerList()
     local can_choose = sgs.QList2Table(targets)
