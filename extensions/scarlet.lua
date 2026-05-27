@@ -7416,8 +7416,8 @@ s4_zhiji = sgs.CreateTriggerV2Skill{
         return "s4_zhiji"
     end,
 	on_cost = function(skill, event, room, player, ctx)
-		local choices = {"s4_zhiji_guanxing", "s4_zhiji_kanpo", "beishui"}
-        local choice = room:askForChoice(player, "s4_zhiji", table.concat(choices, "+"), ctx.original_data)
+		local choices = {"guanxing", "kanpo", "beishui"}
+        local choice = room:askForChoice(player, "s4_zhiji", table.concat(choices, "+"), ctx.original_data, "", "tip")
 		ctx.choice = choice
 		return true
 	end,
@@ -7440,9 +7440,9 @@ s4_zhiji = sgs.CreateTriggerV2Skill{
         room:sendCompulsoryTriggerLog(player, "s4_zhiji")
         room:broadcastSkillInvoke("s4_zhiji")
         
-        if ctx.choice == "s4_zhiji_guanxing" then
+        if ctx.choice == "guanxing" then
             room:acquireNextTurnSkills(player, "s4_zhiji", "guanxing")
-        elseif ctx.choice == "s4_zhiji_kanpo" then
+        elseif ctx.choice == "kanpo" then
             room:acquireNextTurnSkills(player, "s4_zhiji", "kanpo")
         elseif ctx.choice == "beishui" then
             room:acquireNextTurnSkills(player, "s4_zhiji", "guanxing")
@@ -7555,9 +7555,10 @@ sgs.LoadTranslationTable{
     
     ["s4_zhiji"] = "志继",
     [":s4_zhiji"] = "锁定技，准备阶段，你选择一项直到你的下回合开始：1.获得“观星”；2.获得“看破”；背水：对自己造成1点伤害。",
-    ["s4_zhiji_guanxing"] = "获得“观星”",
-    ["s4_zhiji_kanpo"] = "获得“看破”",
+    ["s4_zhiji:guanxing"] = "获得“观星”",
+    ["s4_zhiji:kanpo"] = "获得“看破”",
     ["s4_zhiji:beishui"] = "背水：获得“观星”和“看破”，对自己造成1点伤害",
+	["s4_zhiji:tip"] = "你选择一项获得直到你的下回合开始",
     
     ["s4_banjiang"] = "伴降",
     [":s4_banjiang"] = "锁定技，你每受到1点伤害，你的下个摸牌阶段就多摸一张牌，下个出牌阶段就可以多使用一张杀，且你使用的【杀】均视为冰【杀】。",
