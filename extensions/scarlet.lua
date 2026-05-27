@@ -7564,6 +7564,159 @@ sgs.LoadTranslationTable{
 }
 --https://tieba.baidu.com/p/8998288125
 
+
+s4_huangzu = sgs.General(extension, "s4_huangzu", "qun", 4)
+
+s4_xishe = sgs.CreateTriggerV2Skill{
+    name = "s4_xishe",
+    events = {sgs.EventPhaseProceeding, sgs.Damaged, sgs.CardsMoveOneTime},
+    frequency = sgs.Skill_NotFrequent,
+    limit_scope = sgs.Limit_Game,
+    max_usage_limit = 1,
+    base_amount = 1,
+    on_record = function(skill, event, room, player, data)
+        if event == sgs.Damaged then
+            local damage = data:toDamage()
+            if damage.to and damage.to:hasSkill("s4_xishe") and damage.to:isAlive() then
+                local owner = damage.to
+				local ctx = sgs.SkillContext()
+				ctx.invoker = owner
+				ctx.owner = owner
+				ctx.instanceID = skill:getInstanceId()
+				if not skill:isUsable(ctx) then
+					skill:resetUsage(ctx)	
+					local log = sgs.LogMessage()
+					log.type = "#s4_xishe_charge"
+					log.from = owner
+					room:sendLog(log)
+				end
+            end
+        end
+        
+        if event == sgs.CardsMoveOneTime then
+            local move = data:toMoveOneTime()
+            if move.from and move.from:hasSkill("s4_xishe") and move.from:isAlive() then
+                if bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) 
+                   == sgs.CardMoveReason_S_REASON_DISCARD then
+                    local hand_discard = 0
+                    for _, place in sgs.qlist(move.from_places) do
+                        if place == sgs.Player_PlaceHand then
+                            hand_discard = hand_discard + 1
+                        end
+                    end
+                    if hand_discard >= 2 then
+                        local owner = room:findPlayerByObjectName(move.from:objectName())
+						local ctx = sgs.SkillContext()
+						ctx.invoker = owner
+						ctx.owner = owner
+						ctx.instanceID = skill:getInstanceId()
+						if not skill:isUsable(ctx) then
+							skill:resetUsage(ctx)
+							local log = sgs.LogMessage()
+							log.type = "#s4_xishe_charge"
+							log.from = owner
+							room:sendLog(log)
+						end
+                    end
+                end
+            end
+        end
+    end,
+    
+    can_trigger = function(skill, event, room, player, data)
+        if event == sgs.EventPhaseProceeding then
+            if player:getPhase() ~= sgs.Player_Start then return false end
+            
+            for _, owner in sgs.qlist(room:findPlayersBySkillName("s4_xishe")) do
+                if owner:objectName() ~= player:objectName() 
+                   and owner:isAlive()
+                   and player:getEquips():length() > 0 and owner:canDiscard(player, "e") then
+                    local ctx = sgs.SkillContext()
+                    ctx.invoker = owner
+                    ctx.owner = owner
+                    ctx.instanceID = skill:getInstanceId()
+                    if skill:isUsable(ctx) then
+                        return owner, "s4_xishe"
+                    end
+                end
+            end
+        end
+        
+        return false
+    end,
+    
+    on_cost = function(skill, event, room, player, ctx)
+        local target = room:getCurrent()
+        if not target or target:objectName() == player:objectName() then 
+            return false 
+        end
+        if target:getEquips():isEmpty() then return false end
+		if not player:canDiscard(target, "e") then return false end
+        if room:askForSkillInvoke(player, "s4_xishe", ToData(target)) then
+            ctx.targets:append(target)
+            return true
+        end
+        
+        return false
+    end,
+    
+    on_pay = function(skill, event, room, player, ctx)
+        local target = ctx.targets[1]
+        if not target or target:getEquips():isEmpty() then
+            return false
+        end
+		if not player:canDiscard(target, "e") then return false end
+        
+        local card_id = room:askForCardChosen(player, target, "e", "s4_xishe", false, sgs.Card_MethodDiscard)
+        if card_id ~= -1 then
+            room:throwCard(card_id, target, player, "s4_xishe")
+            ctx.extra_data = card_id
+            return true
+        end
+        return false
+    end,
+
+    on_effect = function(skill, event, room, player, ctx)
+        return false
+    end,
+	on_effect_target = function(skill, event, room, player, ctx, target)
+		local amount = skill:getEffectiveAmount(ctx)
+		for i = 1, amount do
+			if target and target:isAlive() then
+				local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+				slash:setSkillName("s4_xishe")
+				slash:deleteLater()
+				if player:canSlash(target, slash, false) then
+					local use = sgs.CardUseStruct()
+					use.card = slash
+					use.from = player
+					use.to:append(target)
+					room:useCard(use)
+				end
+			end
+		end
+	end
+}
+
+s4_huangzu:addSkill(s4_xishe)
+
+sgs.Sanguosha:addResourceAlias("generals", "s4_huangzu", "heg_huangzu")
+sgs.Sanguosha:addResourceAlias("audios", "s4_xishe", "heg_xishe")
+sgs.LoadTranslationTable{
+	["s4_huangzu"] = "黄祖",
+    ["&s4_huangzu"] = "黄祖",
+    ["#s4_huangzu"] = "遮江扼山",
+    ["~s4_huangzu"] = "",
+    ["designer:s4_huangzu"] = "TwinkleYellow",
+    ["cv:s4_huangzu"] = "",
+    ["illustrator:s4_huangzu"] = "",
+    
+    ["s4_xishe"] = "袭射",
+    [":s4_xishe"] = "<b>昂扬技，</b>其他角色的准备阶段，你可以弃置其装备区里的一张牌，视为对其使用一张杀。<b>激昂</b>：你受到伤害，或你一次性弃置至少两张手牌。",
+    ["@s4_xishe-invoke"] = "你可以对 %src 发动「袭射」，弃置其装备区一张牌并视为使用一张杀",
+    ["#s4_xishe_charge"] = "%from 的「激昂」条件满足，「袭射」已重置",
+}
+
 s4_yuanshao = sgs.General(extension, "s4_yuanshao", "qun", 4)
 
 s4_mingmen_cardmax = sgs.CreateMaxCardsSkill{
