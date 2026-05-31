@@ -135,6 +135,7 @@ function SmartAI:useCardAnaleptic(card,use)
 				else
 					local da = self:ajustDamage(self.player,to,2,d.card)
 					-- if da==0 or da==1 then return end
+					if da==0 then return end
 				end
 				n = getKnownCard(to,self.player,"Jink",true,"he")
 				if to:isFemale() and self.player:hasSkill("roulin")

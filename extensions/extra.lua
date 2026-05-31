@@ -81,37 +81,53 @@ end
 --- 發送玩家選項日誌 (#choice)
 --- 
 --- **機制**：
---- 1. 自動處理翻譯 Key：優先嘗試使用 `skillName:choice` 進行翻譯對接。
---- 2. 避免編碼衝突：透過傳送 Key 值交由 C++ 端進行翻譯，防止 Lua 層出現亂碼。
+--- 1. 自動處理翻譯 Key：優先嘗試使用 `skillName:choiceKey` 進行翻譯對接。
+--- 2. 支持動態 choice：自動解析 `choice=target` 格式，使用 #ChoiceWithTarget 日誌格式。
+--- 3. 避免編碼衝突：透過傳送 Key 值交由 C++ 端進行翻譯，防止 Lua 層出現亂碼。
 ---@param player ServerPlayer 做出選擇的玩家
----@param choice string 選擇的選項 Key（如 "draw", "discard"）
----@param to? ServerPlayer (可選) 該選擇指向的目標玩家
+---@param choice string 選擇的選項 Key（如 "draw", "discard" 或 "damage=PlayerA")
+---@param to? ServerPlayer (可選) 該選擇指向的目標玩家（若 choice 已包含目標則忽略）
 ---@param skillName? string (可選) 關聯的技能名稱，用於精確匹配翻譯文件
 function ChoiceLog(player, choice, to, skillName)
-	local log = sgs.LogMessage()
-	log.type = "#choice"
-	log.from = player
-	
-	-- Don't translate in Lua (encoding issue), send the key and let C++ translate it
-	-- Check if skillName:choice translation exists
-	if skillName then
-		local full_key = skillName .. ":" .. choice
-		local full_translated = sgs.Sanguosha:translate(full_key)
-		-- If translation exists for skillName:choice, send the full key
-		if full_translated ~= full_key then
-			log.arg = full_key
-		else
-			-- Otherwise just send the choice
-			log.arg = choice
-		end
-	else
-		log.arg = choice
-	end
-	
-	if to then
-		log.to:append(to)
-	end
-	player:getRoom():sendLog(log)
+    local log = sgs.LogMessage()
+    local choiceKey = choice
+    local targetPlayer = to
+	local room = player:getRoom()
+    
+    -- 解析動態 choice 格式（如 "damage=PlayerA"）
+    if choice:find("=") then
+        local parts = choice:split("=")
+        choiceKey = parts[1]
+        local targetName = parts[2]
+        if targetName and not targetPlayer then
+            targetPlayer = room:findPlayerByObjectName(targetName)
+        end
+    end
+    
+    -- 設定日誌格式
+    if targetPlayer then
+        log.type = "#ChoiceWithTarget"
+        log.to:append(targetPlayer)
+    else
+        log.type = "#choice"
+    end
+    
+    log.from = player
+    
+    -- 翻譯處理：只用 choiceKey 查找翻譯
+    if skillName then
+        local full_key = skillName .. ":" .. choiceKey
+        local full_translated = sgs.Sanguosha:translate(full_key)
+        if full_translated ~= full_key then
+            log.arg = full_key
+        else
+            log.arg = choiceKey
+        end
+    else
+        log.arg = choiceKey
+    end
+    
+    room:sendLog(log)
 end
 
 --- 將列表 (List) 轉換為集合 (Set) 結構

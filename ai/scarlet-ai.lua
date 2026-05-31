@@ -1427,10 +1427,8 @@ sgs.ai_skill_choice.s4_zhiji = function(self, choices, data)
     end
     
     local has_judge = not self.player:getJudgingArea():isEmpty()
-    
-    -- 背水選項
     if table.contains(items, "beishui") then
-        if self:canDamage(self.player, self.player, nil) then
+        if self:canDamage(self.player, self.player, nil) and self:canLoseHp(self.player, nil, self.player) and self.player:getHp()+self:getAllPeachNum()-self:ajustDamage(self.player,self.player,1,nil)>0 then
             if (has_judge or self.player:getHandcardNum() <= 2) and math.random() < 0.4 then
                 return "beishui"
             end
@@ -1440,21 +1438,21 @@ sgs.ai_skill_choice.s4_zhiji = function(self, choices, data)
         end
     end
     
-    if table.contains(items, "s4_zhiji_kanpo") and black_count >= 2 then
+    if table.contains(items, "kanpo") and black_count >= 2 then
         if math.random() < 0.6 then
-            return "s4_zhiji_kanpo"
+            return "kanpo"
         end
     end
     
-    if table.contains(items, "s4_zhiji_guanxing") and has_judge then
+    if table.contains(items, "guanxing") and has_judge then
         if math.random() < 0.7 then
-            return "s4_zhiji_guanxing"
+            return "guanxing"
         end
     end
     
     local valid_items = {}
     for _, item in ipairs(items) do
-        if table.contains({"s4_zhiji_guanxing", "s4_zhiji_kanpo"}, item) then
+        if table.contains({"guanxing", "kanpo"}, item) then
             table.insert(valid_items, item)
         end
     end
@@ -1495,14 +1493,13 @@ sgs.ai_target_recommend["s4_banjiang"] = function(self, from, to, card, skill_ow
     if not to:hasSkill("s4_banjiang") then
         return 0
     end
-    
-    -- 只對傷害牌有感
+
     if not self:checkIsDamageCard(card) then
         return 0
     end
     
     -- 檢查技能是否失效
-    if checkMasochismInvalid and checkMasochismInvalid(from, to, card) then
+    if checkMasochismInvalid(from, to, card) then
         return 0
     end
     
@@ -1525,22 +1522,214 @@ sgs.ai_skill_invoke.s4_xishe = function(self, data)
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		slash:deleteLater()
 		slash:setSkillName("s4_xishe")
-		
+		self.player:setFlags("InfinityAttackRange")
 		local dummy_use = self:aiUseCard(slash, dummy(true, 99, self.room:getOtherPlayers(target)))
-		
-		if dummy_use and dummy_use.card then
-			if table.contains(dummy_use.to, target) then
-				return true
-			end
-		end
+        self.player:setFlags("-InfinityAttackRange")
+        if dummy_use.card and dummy_use and dummy_use.to and dummy_use.to:contains(target) then
+            return true
+        end
 	end
     
     return false
 end
 
 
+sgs.ai_can_damagehp.s4_ganglie = function(self,from,card,to)
+	if from and to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
+	and self:canLoseHp(from,card,to) then
+		return self:isEnemy(from) and (self:isWeak(from) or self:doDisCard(from, "he"))
+	end
+end
+
+table.insert(sgs.drawSkillsList, "s4_ganglie")
+
+sgs.ai_choicemade_filter.cardChosen.s4_ganglie = sgs.ai_choicemade_filter.cardChosen.snatch
+
+sgs.ai_slash_prohibit.s4_ganglie = sgs.ai_slash_prohibit.ganglie
+
+sgs.ai_need_damaged.s4_ganglie = function(self,attacker,player)
+	if not attacker then return end
+	if not attacker:hasSkill("s4_ganglie") and self:needToLoseHp(attacker,player)
+	then return self:isFriend(attacker,player) end
+	if self:isEnemy(attacker) and attacker:getHp()+attacker:getHandcardNum()<=3
+	and not(attacker:hasSkills(sgs.need_kongcheng.."|buqu") and attacker:getHandcardNum()>1)
+	and self:isGoodTarget(attacker,self:getEnemies(attacker))
+	then return true end
+	return false
+end
+
+sgs.ai_skill_choice.s4_ganglie = function(self, choices, data)
+    local damage = data:toDamage()
+    local source = damage.from
+    if not source or not source:isAlive() then return "cancel" end
+    
+    local damageChoice = getChoice(choices, "damage")
+    local discardChoice = getChoice(choices, "discard")
+    local beishuiChoice = getChoice(choices, "beishui")
+    
+    local isEnemy = self:isEnemy(source)
+    local isFriend = self:isFriend(source)
+
+    if isFriend then
+        if self:needToLoseHp(source, self.player, nil) and damageChoice then
+            return damageChoice
+        end
+        if self:doDisCard(source, "he") and discardChoice then
+            return discardChoice
+        end
+        return "cancel"
+    end
+    
+    local canDamage = self:canDamage(source, self.player, nil) 
+    local canDiscard = self:doDisCard(source, "he")
+  
+    local chargeNum = self.player:getMark("&charge_num")
+    local beishuiCondition = beishuiChoice and chargeNum > 0 
+        and canDamage and canDiscard
+        and source:getHp() <= 2 
+    
+    if beishuiCondition then
+        if source:getHandcardNum() <= 2 and source:getHp() <= 1 then
+            return beishuiChoice
+        end
+        if math.random() < 0.3 then
+            return beishuiChoice
+        end
+    end
+    
+    if canDamage and damageChoice then
+        if source:getHp() <= 2 or self:isWeak(source) then
+            return damageChoice
+        end
+        if canDiscard and discardChoice and source:getCardCount() <= 2 then
+            return discardChoice
+        end
+        return damageChoice
+    end
+    if canDiscard and discardChoice then
+        return discardChoice
+    end
+    if damageChoice and canDamage then
+        return damageChoice
+    end
+    
+    return "cancel"
+end
+
+sgs.ai_choicemade_filter.skillChoice.s4_ganglie = function(self, player, promptlist)
+    local choice = promptlist[#promptlist]
+    if choice == "cancel" then return end
+    
+    local damage = self.room:getTag("CurrentDamageStruct"):toDamage()
+    if not damage or not damage.from then return end
+    
+    local source = damage.from
+    if string.startsWith(choice, "beishui") then
+        sgs.updateIntention(player, source, 50)
+    end
+    if not self:needToLoseHp(source, player, damage.card) and string.startsWith(choice, "damage") then
+        sgs.updateIntention(player, source, 50)
+    end
+end
+
+sgs.ai_target_recommend["s4_ganglie"] = function(self, from, to, card, skill_owner)
+	if not to:hasSkill("s4_ganglie") then
+		return 0
+	end
+	if not self:checkIsDamageCard(card) then
+		return 0
+	end
+	if checkMasochismInvalid(from, to, card) then
+		return 3
+	end
+	if from:getHp() < 2 then
+		return -3
+	end
+	return 0
+end
+
+sgs.ai_skill_playerchosen.s4_ganglie = function(self, targets)
+    local ren_cards = self.room:getTag("ren_pile"):toIntList()
+    if ren_cards:isEmpty() then return nil end
+
+    local cardIds = {}
+    for _, id in sgs.qlist(ren_cards) do
+        table.insert(cardIds, id)
+    end
+    
+    local cards = {}
+    for _, id in ipairs(cardIds) do
+        local card = sgs.Sanguosha:getCard(id)
+        if card then table.insert(cards, card) end
+    end
+    
+    if #cards > 0 then
+        local _, friend = self:getCardNeedPlayer(cards, true)
+        if friend then return friend end
+    end
+    
+    -- 其次找需要摸牌的隊友
+    local target = self:findPlayerToDraw(true, ren_cards:length())
+    if target then return target end
+
+    if #cards > 0 then
+        local target_list = sgs.QList2Table(targets)
+        local best = self:getBestTarget(target_list, "s4_ganglie", self.player)
+        if best then return best end
+    end
+    
+    -- 最後選擇最佳隊友
+    self:sort(self.friends_noself, "handcard")
+    for _, friend in ipairs(self.friends_noself) do
+        if friend:isAlive() and self:canDraw(friend) then
+            return friend
+        end
+    end
+        
+    return targets:first()
+end
+
+sgs.ai_playerchosen_intention.s4_ganglie = -40
+
+sgs.ai_skill_askforyiji.s4_qingjian = function(self, card_ids, tos)
+    local cards = {}
+    for _, id in ipairs(card_ids) do
+        table.insert(cards, sgs.Sanguosha:getCard(id))
+    end
+    
+    local card, friend = self:getCardNeedPlayer(cards, false, tos)
+    if card and friend and self:canDraw(friend) then
+        return friend, card:getId()
+    end
+    
+    local available = {}
+    for _, p in sgs.list(tos) do
+        if self:isFriend(p) and self:canDraw(p) then
+            table.insert(available, p)
+        end
+    end
+    
+    if #available > 0 then
+        self:sort(available, "defense")
+        self:sortByKeepValue(cards, true)
+        sgs.updateIntention(self.player, available[1], -20)
+        return available[1], cards[1]:getId()
+    end
+
+    local best = self:getBestTarget(sgs.QList2Table(tos), "s4_qingjian", self.player)
+    if best then
+        self:sortByKeepValue(cards, true)
+        sgs.updateIntention(self.player, best, -20)
+        return best, cards[1]:getId()
+    end
+        
+    self:sortByKeepValue(cards, true)
+    return self.player, cards[1]:getId()
+end
 
 sgs.ai_skill_invoke.s4_qingjian = true
+
+table.insert(sgs.drawSkillsList, "s4_qingjian")
 
 sgs.ai_skill_playerschosen.s4_zhaotao = function(self, targets, max, min)
     local selected = sgs.SPlayerList()

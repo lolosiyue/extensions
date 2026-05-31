@@ -5393,7 +5393,7 @@ PlusQimou_Target = sgs.CreateTargetModSkill {
 	name = "#PlusQimou_Target",
 	pattern = "Slash",
 	residue_func = function(self, player)
-		if player:hasSkill("PlusQimou") then
+		if player and player:hasSkill("PlusQimou") then
 			return player:getMark("PlusQimou_Extra")
 		end
 	end,
@@ -8203,8 +8203,7 @@ PlusQiaojian = sgs.CreateTriggerSkill {
 	name = "PlusQiaojian",
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.EventPhaseStart },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	on_trigger = function(self, event, player, data, room)
 		if player:getPhase() == sgs.Player_Start and not player:isKongcheng() then
 			local guyongs = room:findPlayersBySkillName(self:objectName())
 			for _, guyong in sgs.qlist(guyongs) do

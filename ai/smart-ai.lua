@@ -10919,7 +10919,7 @@ function SmartAI:getTargetBaseScore(target, card, from, flags)
 
     -- [4] 棄牌/破壞類評分
     if self:checkIsDecreaseCard(card) then
-		if not player:canDiscard(target, flags) then
+		if not from:canDiscard(target, flags) then
 			return -5  -- 無效目標
 		end
 		
