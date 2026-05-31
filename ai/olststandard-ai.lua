@@ -878,14 +878,9 @@ end
 
 sgs.ai_skill_cardask["olhuoji0"] = function(self,data,pattern)
 	local effect = data:toCardEffect()
-    local cards = self.player:getCards("h")
-    cards = sgs.QList2Table(cards) -- 将列表转换为表
-    self:sortByKeepValue(cards) -- 按保留值排序
-	for _,h in sgs.list(cards)do
-		if sgs.Sanguosha:matchExpPattern(pattern,self.player,h)
-		and (not self:isFriend(effect.to) or effect.to:isChained())
+	if (not self:isFriend(effect.to) or effect.to:isChained())
 		and self:damageIsEffective(effect.to,effect.card)
-    	then return h:getEffectiveId() end
+    	then return true 
 	end
     return "."
 end
