@@ -7967,6 +7967,7 @@ s4_qingjian = sgs.CreateTriggerV2Skill{
 			local card_ids_str = room:getTag(skill:objectName() .. "_cards"):toString()
             if card_ids_str == "" then return false end
 			local reason = move.reason.m_reason
+            if move.reason.m_eventName == "removeRenPile" then return false end
 			if move.reason.m_reason == sgs.CardMoveReason_S_REASON_USE then
 				return false
 			end
@@ -8004,17 +8005,8 @@ s4_qingjian = sgs.CreateTriggerV2Skill{
             end
             
             if #card_ids > 0 then
-                local card_ids = {}
-                for _, id in sgs.qlist(move.card_ids) do
-                    if room:getCardPlace(id) == sgs.Player_DiscardPile then
-                        table.insert(card_ids, id)
-                    end
-                end
-                
-                if #card_ids > 0 then
-                    local card_id_str = table.concat(card_ids, "+")
-                    room:setTag(skill:objectName() .. "_cards", sgs.QVariant(card_id_str))
-                end
+                local card_id_str = table.concat(card_ids, "+")
+                room:setTag(skill:objectName() .. "_cards", sgs.QVariant(card_id_str))
             end
         end
     end,
@@ -8046,14 +8038,52 @@ s4_qingjian = sgs.CreateTriggerV2Skill{
             room:notifySkillInvoked(player, skill:objectName())
             
             local card_ids_str = room:getTag(skill:objectName() .. "_cards"):toString()
+            room:removeTag(skill:objectName() .. "_cards")
+            
+            if card_ids_str == "" then return false end
+            
             local card_ids = {}
-            if card_ids_str ~= "" then
-                for _, id in ipairs(card_ids_str:split("+")) do
+            for _, id in ipairs(card_ids_str:split("+")) do
+                table.insert(card_ids, tonumber(id))
+            end
+            
+            local ren_cards = room:getTag("ren_pile"):toIntList()
+            local available_slots = 6 - ren_cards:length()
+            
+            if #card_ids <= available_slots then
+                for _, id in ipairs(card_ids) do
                     player:addToRenPile(id, skill:objectName())
                 end
+            else
+                if #card_ids > available_slots then
+                    local all_ids = sgs.IntList()
+                    for _, id in ipairs(card_ids) do
+                        all_ids:append(id)
+                    end
+                    
+                    local selected = sgs.IntList()
+                    local remaining = sgs.IntList()
+                    for _, id in sgs.qlist(all_ids) do
+                        remaining:append(id)
+                    end
+                    for i = 1, #card_ids do
+                        if remaining:isEmpty() then break end
+                        
+                        room:fillAG(all_ids, player, selected)
+                        local id = room:askForAG(player, remaining, true, skill:objectName(), "@s4_qingjian")
+                        room:clearAG(player)
+                        
+                        if id == -1 then break end
+                        
+                        selected:append(id)
+                        remaining:removeOne(id)
+                    end
+                    
+                    for _, id in sgs.qlist(selected) do
+                        player:addToRenPile(id, skill:objectName())
+                    end
+                end
             end
-        			
-			room:removeTag(skill:objectName() .. "_cards")
 			return false
         end
         
@@ -8070,6 +8100,22 @@ s4_qingjian = sgs.CreateTriggerV2Skill{
                 remaining:append(id)
             end
             
+            local preview_move = sgs.CardsMoveStruct(
+                ren_cards,
+                nil,
+                player,
+                sgs.Player_PlaceTable,
+                sgs.Player_PlaceHand,
+                sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PREVIEW, 
+                    player:objectName(), skill:objectName(), "", "")
+            )
+            local preview_moves = sgs.CardsMoveList()
+            preview_moves:append(preview_move)
+            local _player = sgs.SPlayerList()
+            _player:append(player)
+            room:notifyMoveCards(true, preview_moves, false, _player)
+            room:notifyMoveCards(false, preview_moves, false, _player)
+            
             local moves = sgs.CardsMoveList()
             local given = 0
             
@@ -8079,14 +8125,14 @@ s4_qingjian = sgs.CreateTriggerV2Skill{
                     remaining, 
                     skill:objectName(), 
                     true,   -- is_preview
-                    false,  -- visible
-                    true,   -- optional = true (允許取消)
+                    true,  -- visible
+                    true,   -- optional
                     1,      -- max_num
                     room:getAlivePlayers(), 
                     sgs.CardMoveReason(), 
                     "@s4_qingjian-give", 
                     false,  -- notify_skill
-                    false   -- get = false
+                    false   -- get
                 )
                 
                 if not move or not move.to or move.card_ids:length() == 0 then
@@ -8103,12 +8149,30 @@ s4_qingjian = sgs.CreateTriggerV2Skill{
                     move.to,
                     sgs.Player_PlaceTable,
                     sgs.Player_PlaceHand,
-                    sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, 
+                    sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PREVIEWGIVE, 
                         player:objectName(), move.to:objectName(), skill:objectName(), "")
                 )
                 actual_move.from_pile_name = "ren_pile"
                 moves:append(actual_move)
                 given = given + 1
+            end
+            
+            -- 預覽結束：將剩餘卡牌移回 PlaceTable
+            if not remaining:isEmpty() then
+                local revert_move = sgs.CardsMoveStruct(
+                    remaining,
+                    player,
+                    nil,
+                    sgs.Player_PlaceHand,
+                    sgs.Player_PlaceTable,
+                    sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PREVIEW, 
+                        player:objectName(), skill:objectName(), "", "")
+                )
+                revert_move.to_pile_name = "ren_pile"
+                local revert_moves = sgs.CardsMoveList()
+                revert_moves:append(revert_move)
+                room:notifyMoveCards(true, revert_moves, false, _player)
+                room:notifyMoveCards(false, revert_moves, false, _player)
             end
             
             if moves:length() > 0 then
@@ -8152,8 +8216,30 @@ sgs.LoadTranslationTable{
     ["s4_qingjian"] = "清儉",
     [":s4_qingjian"] = "当一张牌非因使用而进入弃牌堆时，你可将之置入“仁”区；结束阶段，你将“仁”区中的至多X张牌分配给任意名角色（X为你的体力值）。",
     ["@s4_qingjian-give"] = "清儉: 请将一张“仁”牌分配给一名角色",
+    ["@s4_qingjian"] = "清儉: 将一张牌置入“仁”区",
 }
 --https://tieba.baidu.com/p/9048737692
+
+
+sgs.LoadTranslationTable{
+    ["s4_mousunce"] = "谋孙策",
+    ["&s4_mousunce"] = "谋孙策",
+    ["#s4_mousunce"] = "江东小霸王",
+    
+    ["s4_jiyang"] = "激昂",
+    [":s4_jiyang"] = "当你使用【决斗】或红色【杀】指定目标后，或成为【决斗】或红色【杀】的目标后，你可以摸一张牌。出牌阶段限一次，你可以与一名其他角色拼点，拼点赢的角色视为对没赢的角色使用一张【决斗】。",
+    
+    ["s4_hunzi"] = "魂姿",
+    [":s4_hunzi"] = "觉醒技，当你脱离濒死状态后，你减1点体力上限，获得1点护甲，摸两张牌，然后获得英姿和英魂。",
+    
+    ["s4_zhiba"] = "制霸",
+    [":s4_zhiba"] = "主公技，当你的拼点牌亮出后，你可以令此牌点数+3或-3。出牌阶段限一次，你可以与任意名吴势力角色逐鹿，若你：赢，你获得所有拼点牌；没赢，你对一名拼点牌点数不小于的角色造成1点伤害。",
+}
+
+
+
+
+
 
 s4_yuanshao = sgs.General(extension, "s4_yuanshao", "qun", 4)
 
