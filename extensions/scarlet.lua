@@ -8094,6 +8094,7 @@ s4_qingjian = sgs.CreateTriggerV2Skill{
             local amount = skill:getEffectiveAmount(ctx)
             local x = math.max(1, amount)
             local max_cards = math.min(x, ren_cards:length())
+            if max_cards == 0 then return false end
             
             local remaining = sgs.IntList()
             for _, id in sgs.qlist(ren_cards) do
@@ -8127,7 +8128,7 @@ s4_qingjian = sgs.CreateTriggerV2Skill{
                     true,   -- is_preview
                     true,  -- visible
                     true,   -- optional
-                    1,      -- max_num
+                    math.min(remaining:length(), max_cards - given),      -- max_num
                     room:getAlivePlayers(), 
                     sgs.CardMoveReason(), 
                     "@s4_qingjian-give", 
@@ -8154,27 +8155,27 @@ s4_qingjian = sgs.CreateTriggerV2Skill{
                 )
                 actual_move.from_pile_name = "ren_pile"
                 moves:append(actual_move)
-                given = given + 1
+                given = given + move.card_ids:length()
             end
             
-            -- 預覽結束：將剩餘卡牌移回 PlaceTable
-            if not remaining:isEmpty() then
+            -- 預覽結束：將未分配的牌從 dashboard 移回仁區（PlaceHand → PlaceTable）
+            if not ren_cards:isEmpty() then
                 local revert_move = sgs.CardsMoveStruct(
-                    remaining,
-                    player,
-                    nil,
-                    sgs.Player_PlaceHand,
-                    sgs.Player_PlaceTable,
+                    ren_cards,
+                    player, nil,  -- from=player, to=nil
+                    sgs.Player_PlaceHand, sgs.Player_PlaceTable,  -- 反向
                     sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PREVIEW, 
-                        player:objectName(), skill:objectName(), "", "")
+                        player:objectName(), skill:objectName(), "")
                 )
-                revert_move.to_pile_name = "ren_pile"
+                revert_move.to_pile_name = "ren_pile"  -- 回到仁區
+                
                 local revert_moves = sgs.CardsMoveList()
                 revert_moves:append(revert_move)
                 room:notifyMoveCards(true, revert_moves, false, _player)
                 room:notifyMoveCards(false, revert_moves, false, _player)
             end
-            
+
+            -- 執行實際移牌（一次性執行所有分配）
             if moves:length() > 0 then
                 room:moveCardsAtomic(moves, true)
             end

@@ -1691,6 +1691,34 @@ end
 
 sgs.ai_playerchosen_intention.s4_ganglie = -40
 
+sgs.ai_skill_askforag["s4_qingjian"] = function(self, card_ids)
+    local ren_pile = self.room:getTag("ren_pile"):toIntList()
+    local ren_cards = {}
+    for _, id in sgs.qlist(ren_pile) do
+        table.insert(ren_cards, sgs.Sanguosha:getCard(id))
+    end
+    
+    local min_ren_value = 999
+    if #ren_cards > 0 then
+        self:sortByUseValue(ren_cards)
+        min_ren_value = self:getUseValue(ren_cards[1])
+    end
+    
+    local cards = {}
+    for _, card_id in ipairs(card_ids) do
+        table.insert(cards, sgs.Sanguosha:getCard(card_id))
+    end
+    self:sortByUseValue(cards, true)
+    
+    for _, card in ipairs(cards) do
+        if self:getUseValue(card) > min_ren_value then
+            return card:getEffectiveId()
+        end
+    end
+    
+    return -1
+end
+
 sgs.ai_skill_askforyiji.s4_qingjian = function(self, card_ids, tos)
     local cards = {}
     for _, id in ipairs(card_ids) do
