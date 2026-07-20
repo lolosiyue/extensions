@@ -8222,6 +8222,251 @@ sgs.LoadTranslationTable{
 --https://tieba.baidu.com/p/9048737692
 
 
+
+s4_mousunce = sgs.General(extension, "s4_mousunce$", "wu", 4)
+
+-- ====== s4_mousunce (谋孙策) ======
+
+s4_jiyangCard = sgs.CreateSkillCard{
+    name = "s4_jiyang",
+    target_fixed = false,
+    will_throw = true,
+    skill_name = "s4_jiyang",
+    filter = function(self, selected, to_select, player)
+        if #selected > 0 then return false end
+        if to_select:objectName() == player:objectName() then return false end
+        return player:canPindian(to_select)
+    end,
+    on_use = function(self, room, source, targets)
+        local target = targets[1]
+        local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
+        duel:setSkillName("_s4_jiyang")
+        duel:deleteLater()
+
+        for _, p in sgs.list(targets) do
+            local use = sgs.CardUseStruct()
+            use.card = duel
+            local n = source:pindianInt(p, self:getSkillName())
+            if n == 0 then
+                continue
+            end
+            local to, from = p, source
+            if n < 0 then
+                to = source
+                from = p
+            end
+            use.to:append(to)
+            use.from = from
+            room:useCard(use)
+        end
+    end,
+}
+
+s4_jiyangVS = sgs.CreateZeroCardViewAsSkill{
+    name = "s4_jiyang",
+    view_as = function(self)
+        local card = s4_jiyangCard:clone()
+        card:setSkillName(self:objectName())
+        return card
+    end,
+    enabled_at_play = function(self, player)
+        return not player:hasUsed("#s4_jiyang") and not player:isKongcheng()
+    end,
+    enabled_at_response = function(self, player, pattern)
+        return false
+    end,
+}
+
+s4_jiyang = sgs.CreateTriggerV2Skill{
+    name = "s4_jiyang",
+    events = { sgs.CardUsed, sgs.TargetConfirmed },
+    view_as_skill = s4_jiyangVS,
+    base_amount = 1,
+    can_trigger = function(skill, event, room, player, data)
+        if event == sgs.CardUsed then
+            local use = data:toCardUse()
+            if use.from and use.from:objectName() == player:objectName() then
+                local card = use.card
+                if card:isKindOf("Duel") or (card:isKindOf("Slash") and card:isRed()) then
+                    return skill:objectName()
+                end
+            end
+        elseif event == sgs.TargetConfirmed then
+            local use = data:toCardUse()
+            if use.to:contains(player) then
+                local card = use.card
+                if card:isKindOf("Duel") or (card:isKindOf("Slash") and card:isRed()) then
+                    return skill:objectName()
+                end
+            end
+        end
+        return false
+    end,
+    on_cost = function(skill, event, room, player, ctx)
+        return player:askForSkillInvoke(skill:objectName(), ctx.original_data)
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        local amount = skill:getEffectiveAmount(ctx)
+        player:drawCards(amount, skill:objectName())
+        return false
+    end,
+}
+
+-- 魂姿 - 覺醒技
+s4_hunzi = sgs.CreateTriggerV2Skill{
+    name = "s4_hunzi",
+    events = { sgs.QuitDying },
+    frequency = sgs.Skill_Wake,
+    limit_scope = sgs.Skill_Limit_Game,
+    max_usage_limit = 1,
+    waked_skills = "mouyingzi,yinghun",
+    base_amount = 1,
+    can_trigger = function(skill, event, room, player, data)
+        if not player:hasSkill(skill:objectName()) then return false end
+        local ctx = sgs.SkillContext()
+        ctx.invoker = player
+        ctx.instanceID = skill:getInstanceId()
+        if not skill:isUsable(ctx) then return false end
+        local dying = data:toDying()
+        if dying.who ~= player then return false end
+        if player:isDead() then return false end
+        if player:getHp() <= 0 then return false end
+        return skill:objectName()
+    end,
+    on_cost = function(skill, event, room, player, ctx)
+        return true
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        local amount = skill:getEffectiveAmount(ctx)
+        local usageCtx = sgs.SkillContext()
+        usageCtx.invoker = player
+        usageCtx.owner = player
+        usageCtx.instanceID = skill:getInstanceId()
+        skill:addUsage(usageCtx)
+        room:changeMaxHpForAwakenSkill(player, -1, skill:objectName())
+        player:gainHujia(amount)
+        room:drawCards(player, 2*amount, skill:objectName())
+        room:handleAcquireDetachSkills(player, "mouyingzi,yinghun")
+        return false
+    end,
+}
+-- 制霸·逐鹿 - 主公技，逐鹿拼點
+s4_zhibaCard = sgs.CreateSkillCard{
+    name = "s4_zhiba",
+    target_fixed = false,
+    will_throw = true,
+    filter = function(self, selected, to_select, player)
+        return to_select:hasLordSkillKingdom("wu", player) and to_select:objectName() ~= player:objectName() and player:canPindian(to_select)
+    end,
+    feasible = function(self, targets)
+        return #targets >= 1
+    end,
+    on_use = function(self, room, source, targets)
+    local pd_ = targetsPindian(self:getSkillName(), source, targets)
+    if not pd_ or not pd_.from then return end
+
+    if pd_.success then
+        -- 贏：獲得所有拼點牌
+        local card_ids = {}
+        if pd_.from_card and room:getCardPlace(pd_.from_card:getEffectiveId()) == sgs.Player_PlaceTable then
+            table.insert(card_ids, pd_.from_card:getEffectiveId())
+        end
+        for _, c in sgs.qlist(pd_.to_card) do
+            if c and room:getCardPlace(c:getEffectiveId()) == sgs.Player_PlaceTable then
+                table.insert(card_ids, c:getEffectiveId())
+            end
+        end
+        if #card_ids > 0 then
+            local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTBACK, source:objectName(), "s4_zhiba")
+            room:obtainCard(source, sgs.CardsMoveStruct(card_ids, source, sgs.Player_PlaceHand, reason))
+        end
+    else
+        -- 沒贏：對一名拼點牌點數不小於 source 的角色造成 1 點傷害
+        local candidates = {}
+        local i = 0
+        for _, t in sgs.qlist(pd_.to) do
+            i = i + 1
+            if pd_.to_number:at(i - 1) >= pd_.from_number then
+                table.insert(candidates, t)
+            end
+        end
+        if #candidates > 0 then
+            local target = room:askForPlayerChosen(source, candidates, "s4_zhiba", "@s4_zhiba_damage", false, true)
+            if target then
+                local dmg = sgs.DamageStruct()
+                dmg.from = source; dmg.to = target; dmg.damage = 1; dmg.reason = "s4_zhiba"
+                room:damage(dmg)
+            end
+        end
+    end
+end,
+}
+
+s4_zhibaVS = sgs.CreateZeroCardViewAsSkill{
+    name = "s4_zhiba",
+    view_as = function(self)
+        local card = s4_zhiba_card:clone()
+        card:setSkillName(self:objectName())
+        return card
+    end,
+    enabled_at_play = function(self, player)
+        return not player:hasUsed("#s4_zhiba") and not player:isKongcheng()
+    end,
+    enabled_at_response = function(self, player, pattern)
+        return false
+    end,
+}
+s4_zhiba = sgs.CreateTriggerV2Skill{
+    name = "s4_zhiba$",
+    view_as_skill = s4_zhibaVS,
+    events = { sgs.PindianVerifying },
+    base_amount = 3,
+    can_trigger = function(skill, event, room, player, data)
+        if not player:hasLordSkill(self:objectName()) then return false end
+        local pindian = data:toPindian()
+        if not pindian then return false end
+        if pindian.from ~= player and pindian.to ~= player then return false end
+        return skill:objectName()
+    end,
+    on_cost = function(skill, event, room, player, ctx)
+        local amount = skill:getEffectiveAmount(ctx)
+        local choice = room:askForChoice(player, skill:objectName(), "up="..amount.."+down="..amount.."+cancel", ctx.original_data, "tip")
+        if choice == "cancel" then
+            return false
+        else
+            ctx.choice = choice
+            return true
+        end
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        local pindian = ctx.original_data:toPindian()
+        local amount = skill:getEffectiveAmount(ctx)
+
+        if pindian.from == player then
+            if ctx.choice == "up" then
+                pindian.from_number = math.min(pindian.from_number + amount, 13)
+            else
+                pindian.from_number = math.max(pindian.from_number - amount, 1)
+            end
+        else
+            if ctx.choice == "up" then
+                pindian.to_number = math.min(pindian.to_number + amount, 13)
+            else
+                pindian.to_number = math.max(pindian.to_number - amount, 1)
+            end
+        end
+        ctx.original_data:setValue(pindian)
+        return false
+    end,
+}
+
+
+
+
+s4_mousunce:addSkill(s4_jiyang)
+s4_mousunce:addSkill(s4_hunzi)
+s4_mousunce:addSkill(s4_zhiba)
+
 sgs.LoadTranslationTable{
     ["s4_mousunce"] = "谋孙策",
     ["&s4_mousunce"] = "谋孙策",
@@ -8231,11 +8476,16 @@ sgs.LoadTranslationTable{
     [":s4_jiyang"] = "当你使用【决斗】或红色【杀】指定目标后，或成为【决斗】或红色【杀】的目标后，你可以摸一张牌。出牌阶段限一次，你可以与一名其他角色拼点，拼点赢的角色视为对没赢的角色使用一张【决斗】。",
     
     ["s4_hunzi"] = "魂姿",
-    [":s4_hunzi"] = "觉醒技，当你脱离濒死状态后，你减1点体力上限，获得1点护甲，摸两张牌，然后获得英姿和英魂。",
+    [":s4_hunzi"] = "觉醒技，当你脱离濒死状态后，你减1点体力上限，获得1点护甲，摸两张牌，然后获得“英姿”和“英魂”。",
     
     ["s4_zhiba"] = "制霸",
-    [":s4_zhiba"] = "主公技，当你的拼点牌亮出后，你可以令此牌点数+3或-3。出牌阶段限一次，你可以与任意名吴势力角色逐鹿，若你：赢，你获得所有拼点牌；没赢，你对一名拼点牌点数不小于的角色造成1点伤害。",
+    [":s4_zhiba"] = "主公技，当你的拼点牌亮出后，你可以令此牌点数+3或-3。出牌阶段限一次，你可以与任意名吴势力角色逐鹿，若你：赢，你获得所有拼点牌；没赢，你对一名拼点牌点数不小于你的角色造成1点伤害。",
+    ["@s4_zhiba_damage"] = "制霸：你对一名拼点牌点数不小于的你角色造成1点伤害",
+    ["s4_zhiba:up"] = "拼点牌数+ %src",
+    ["s4_zhiba:down"] = "拼点牌数- %src",
+    ["s4_zhiba:tip"] = "制霸：你可以拼点牌数+3或-3",
 }
+--https://tieba.baidu.com/p/9435738349
 
 
 
