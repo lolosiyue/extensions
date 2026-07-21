@@ -1325,45 +1325,35 @@ sgs.ai_skill_invoke.s4_songwei = function(self, data)
 end
 
 sgs.ai_skill_playerchosen.s4_cangzhuo = function(self, targets)
-    local victims = sgs.QList2Table(targets)
-    local target = self:getBestTarget(victims, "s4_cangzhuo", self.player)
-    if target then
-        return target
-    end
-    target = self:findPlayerToDraw(false,1)
-    if target then
-        return target
-    end
-	for _,friend in ipairs(self.friends_noself) do
-		if self:canDraw(friend, self.player) then
-        	return friend
-		end
-    end
-	return targets:first()
+    return self:getBestTargetOr(targets, "s4_cangzhuo", self.player, function(self)
+        local target = self:findPlayerToDraw(false,1)
+        if target then
+            return target
+        end
+        for _,friend in ipairs(self.friends_noself) do
+            if self:canDraw(friend, self.player) then
+                return friend
+            end
+        end
+        return targets:first()
+    end)
 end
 
 sgs.ai_playerchosen_intention.s4_cangzhuo = -40
 
-table.insert(sgs.drawSkillsList, "s4_cangzhuo")
+sgs.registerSkillCardType("s4_cangzhuo", "draw")
 
 sgs.ai_cardneed.s4_cangzhuo = sgs.ai_cardneed.jizhi
 
 sgs.ai_skill_playerchosen.s4_kuiwei = function(self, targets)
-    local victims = sgs.QList2Table(targets)
-    local target = self:getBestTarget(victims, "s4_kuiwei", self.player)
-    if target then
-        return target
-    end
-    target = self:findPlayerToDiscard("h", true, false, targets, "")[1]
-    if target then
-        return target
-    end
-	return nil
+    return self:getBestTargetOr(targets, "s4_kuiwei", self.player, function(self)
+        return self:findPlayerToDiscard("h", true, false, targets, "")[1]
+    end)
 end
 
 sgs.ai_choicemade_filter.cardChosen.s4_kuiwei = sgs.ai_choicemade_filter.cardChosen.snatch
 
-table.insert(sgs.decreaseSkillsList, "s4_kuiwei")
+sgs.registerSkillCardType("s4_kuiwei", "decrease")
 
 sgs.ai_skill_playerschosen.s4_lizhan = function(self, targets, max, min)
     local selected = sgs.SPlayerList()
@@ -1413,7 +1403,7 @@ sgs.ai_can_damagehp.s4_lizhan = function(self,from,card,to)
 	end
 end
 
-table.insert(sgs.drawSkillsList, "s4_lizhan")
+sgs.registerSkillCardType("s4_lizhan", "draw")
 
 sgs.ai_skill_choice.s4_zhiji = function(self, choices, data)
     local items = choices:split("+")
@@ -1489,20 +1479,16 @@ sgs.ai_can_damagehp.s4_banjiang = function(self, from, card, to)
     return false
 end
 
-sgs.ai_target_recommend["s4_banjiang"] = function(self, from, to, card, skill_owner)
-    if not to:hasSkill("s4_banjiang") then
+sgs.registerTargetRecommend("s4_banjiang", function(self, from, to, card, skill_owner, ctx)
+    if not ctx.isDamage then
         return 0
     end
 
-    if not self:checkIsDamageCard(card) then
-        return 0
-    end
-    
     -- 檢查技能是否失效
     if checkMasochismInvalid(from, to, card) then
         return 0
     end
-    
+
     if self:canLoseHp(from,card,to) then
         if self:isEnemy(to, from) then
             return -1
@@ -1511,9 +1497,9 @@ sgs.ai_target_recommend["s4_banjiang"] = function(self, from, to, card, skill_ow
             return 1
         end
     end
-    
+
     return 0
-end
+end)
 
 sgs.ai_skill_invoke.s4_xishe = function(self, data)
     local target = data:toPlayer()
@@ -1541,7 +1527,7 @@ sgs.ai_can_damagehp.s4_ganglie = function(self,from,card,to)
 	end
 end
 
-table.insert(sgs.drawSkillsList, "s4_ganglie")
+sgs.registerSkillCardType("s4_ganglie", "draw")
 
 sgs.ai_choicemade_filter.cardChosen.s4_ganglie = sgs.ai_choicemade_filter.cardChosen.snatch
 
@@ -1632,11 +1618,8 @@ sgs.ai_choicemade_filter.skillChoice.s4_ganglie = function(self, player, promptl
     end
 end
 
-sgs.ai_target_recommend["s4_ganglie"] = function(self, from, to, card, skill_owner)
-	if not to:hasSkill("s4_ganglie") then
-		return 0
-	end
-	if not self:checkIsDamageCard(card) then
+sgs.registerTargetRecommend("s4_ganglie", function(self, from, to, card, skill_owner, ctx)
+	if not ctx.isDamage then
 		return 0
 	end
 	if checkMasochismInvalid(from, to, card) then
@@ -1646,7 +1629,7 @@ sgs.ai_target_recommend["s4_ganglie"] = function(self, from, to, card, skill_own
 		return -3
 	end
 	return 0
-end
+end)
 
 sgs.ai_skill_playerchosen.s4_ganglie = function(self, targets)
     local ren_cards = self.room:getTag("ren_pile"):toIntList()
@@ -1757,7 +1740,7 @@ end
 
 sgs.ai_skill_invoke.s4_qingjian = true
 
-table.insert(sgs.drawSkillsList, "s4_qingjian")
+sgs.registerSkillCardType("s4_qingjian", "draw")
 
 sgs.ai_card_priority.s4_jiyang = function(self, card, v)
     if card:isKindOf("Duel") then
@@ -1765,6 +1748,8 @@ sgs.ai_card_priority.s4_jiyang = function(self, card, v)
     elseif card:isKindOf("Slash") and card:isRed() then
         return 2
     end
+	if not self:willSkipPlayPhase(self.player) and self:getUseValue(card)<6
+	then return card:getNumber()>10 end
 end
 
 sgs.ai_skill_invoke.s4_jiyang = true
@@ -1806,11 +1791,27 @@ sgs.ai_skill_pindian.s4_jiyang = function(minusecard, self, requestor, maxcard, 
     return self:getPindianMaxCard(self.player, ctx)
 end
 
+
 sgs.ai_damage_reason_suppress_intention["_s4_jiyang"] = true
 
 sgs.ai_skill_defense.s4_jiyang = function(self, to)
     return 1.5
 end
+
+sgs.registerTargetRecommend("s4_hunzi", function(self, from, to, card, skill_owner, ctx)
+    local mark = to:getMark("s4_hunzi"..to:getSkillInstanceId("s4_hunzi"))
+    if mark > 0 then return 0 end  -- already awakened
+    if not ctx.isDamage then return 0 end
+    -- ally decision: help trigger wake
+    if self:isFriend(from, to) and to:getHp() == 1 and to:getLostHp() >= 2 then
+        return 5
+    end
+    -- enemy decision: avoid triggering wake when enemy is low
+    if self:isEnemy(from, to) and to:getHp() <= 1 and to:getLostHp() <= 1 then
+        return -3
+    end
+    return 0
+end)
 
 sgs.ai_getBestHp_skill.s4_hunzi = function(owner)
     if owner:getMark("s4_hunzi"..owner:getSkillInstanceId("s4_hunzi")) == 0 then
@@ -1847,6 +1848,8 @@ sgs.ai_skill_choice.s4_zhiba = function(self, choices, data)
     end
     return cancel_choice or items[1]
 end
+
+sgs.registerSkillCardType("s4_zhiba", "damage")
 
 -- 制霸·逐鹿 — 出牌階段與吳勢力角色逐鹿
 sgs.ai_active_skill.s4_zhiba = function(self, request)
@@ -1896,6 +1899,8 @@ sgs.ai_skill_playerchosen.s4_zhiba = function(self, targets)
 end
 
 sgs.ai_playerchosen_intention.s4_zhiba = 80
+
+sgs.ai_card_priority.s4_zhiba = sgs.ai_cardneed.bignumber
 
 
 
