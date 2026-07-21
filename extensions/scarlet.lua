@@ -8225,55 +8225,81 @@ sgs.LoadTranslationTable{
 
 s4_mousunce = sgs.General(extension, "s4_mousunce$", "wu", 4)
 
--- ====== s4_mousunce (谋孙策) ======
-
-s4_jiyangCard = sgs.CreateSkillCard{
+s4_jiyangVS = sgs.CreateViewAsSkillV2 {
     name = "s4_jiyang",
-    target_fixed = false,
-    will_throw = true,
-    skill_name = "s4_jiyang",
-    filter = function(self, selected, to_select, player)
-        if #selected > 0 then return false end
-        if to_select:objectName() == player:objectName() then return false end
-        return player:canPindian(to_select)
-    end,
-    on_use = function(self, room, source, targets)
-        local target = targets[1]
-        local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
-        duel:setSkillName("_s4_jiyang")
-        duel:deleteLater()
+    n = 0,
+    target_mode = sgs.ViewAsSkillV2_SelectTargets,
+    target_effect_mode = sgs.ViewAsSkillV2_EachTarget,
+    limit_scope = sgs.Skill_Limit_Phase,
+    max_usage_limit = 1,
+    phase_name = "Play",
+    base_amount = 1,
 
-        for _, p in sgs.list(targets) do
+    can_activate = function(skill, request)
+        local player = request:getInitiator()
+        return player
+            and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
+            and not player:isKongcheng()
+    end,
+
+    can_select_target = function(skill, request, selected, candidate)
+        local player = request:getInitiator()
+
+        return player
+            and candidate
+            and #selected == 0
+            and candidate:objectName() ~= player:objectName()
+            and player:canPindian(candidate)
+    end,
+
+    targets_feasible = function(skill, request, selected)
+        return #selected == 1
+    end,
+
+    on_effect_target = function(skill, ctx, target)
+        local source = ctx.invoker
+        if not source or not target then return end
+        if not source:isAlive() or not target:isAlive() then return end
+
+        if not source:canPindian(target) then return end
+
+        local room = source:getRoom()
+        local result = source:pindianInt(target, skill:objectName())
+
+        -- 0：點數相同，沒有後續效果。
+        if result == 0 then return end
+
+        local from = source
+        local to = target
+
+        -- result < 0：source 拼點失敗，由 target 對 source 使用決鬥。
+        if result < 0 then
+            from = target
+            to = source
+        end
+
+        local amount = skill:getEffectiveAmount(ctx)
+
+        for i = 1, amount do
+            if not from:isAlive() or not to:isAlive() then break end
+
+            local duel = sgs.Sanguosha:cloneCard(
+                "duel",
+                sgs.Card_NoSuit,
+                0
+            )
+            if not duel then break end
+
+            duel:setSkillName("_s4_jiyang")
+            duel:deleteLater()
+
             local use = sgs.CardUseStruct()
             use.card = duel
-            local n = source:pindianInt(p, self:getSkillName())
-            if n == 0 then
-                continue
-            end
-            local to, from = p, source
-            if n < 0 then
-                to = source
-                from = p
-            end
-            use.to:append(to)
             use.from = from
+            use.to:append(to)
+
             room:useCard(use)
         end
-    end,
-}
-
-s4_jiyangVS = sgs.CreateZeroCardViewAsSkill{
-    name = "s4_jiyang",
-    view_as = function(self)
-        local card = s4_jiyangCard:clone()
-        card:setSkillName(self:objectName())
-        return card
-    end,
-    enabled_at_play = function(self, player)
-        return not player:hasUsed("#s4_jiyang") and not player:isKongcheng()
-    end,
-    enabled_at_response = function(self, player, pattern)
-        return false
     end,
 }
 
@@ -8347,86 +8373,134 @@ s4_hunzi = sgs.CreateTriggerV2Skill{
         player:gainHujia(amount)
         room:drawCards(player, 2*amount, skill:objectName())
         room:handleAcquireDetachSkills(player, "mouyingzi,yinghun")
+        room:addPlayerMark(player, skill:objectName()..skill:getInstanceId())
         return false
     end,
 }
--- 制霸·逐鹿 - 主公技，逐鹿拼點
-s4_zhibaCard = sgs.CreateSkillCard{
-    name = "s4_zhiba",
-    target_fixed = false,
-    will_throw = true,
-    filter = function(self, selected, to_select, player)
-        return to_select:hasLordSkillKingdom("wu", player) and to_select:objectName() ~= player:objectName() and player:canPindian(to_select)
-    end,
-    feasible = function(self, targets)
-        return #targets >= 1
-    end,
-    on_use = function(self, room, source, targets)
-    local pd_ = targetsPindian(self:getSkillName(), source, targets)
-    if not pd_ or not pd_.from then return end
 
-    if pd_.success then
-        -- 贏：獲得所有拼點牌
-        local card_ids = {}
-        if pd_.from_card and room:getCardPlace(pd_.from_card:getEffectiveId()) == sgs.Player_PlaceTable then
-            table.insert(card_ids, pd_.from_card:getEffectiveId())
-        end
-        for _, c in sgs.qlist(pd_.to_card) do
-            if c and room:getCardPlace(c:getEffectiveId()) == sgs.Player_PlaceTable then
-                table.insert(card_ids, c:getEffectiveId())
+s4_zhibaVS = sgs.CreateViewAsSkillV2 {
+    name = "s4_zhiba",
+    n = 0,
+    target_mode = sgs.ViewAsSkillV2_SelectTargets,
+    target_effect_mode = sgs.ViewAsSkillV2_WholeTargetGroup,
+    limit_scope = sgs.Skill_Limit_Phase,
+    max_usage_limit = 1,
+    phase_name = "Play",
+    base_amount = 1,
+
+    can_activate = function(skill, request)
+        local player = request:getInitiator()
+        return player
+            and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
+            and not player:isKongcheng()
+    end,
+
+    can_select_target = function(skill, request, selected, candidate)
+        local player = request:getInitiator()
+        return player
+            and candidate
+            and candidate:hasLordSkillKingdom("wu", player)
+            and candidate:objectName() ~= player:objectName()
+            and player:canPindian(candidate)
+    end,
+
+    targets_feasible = function(skill, request, selected)
+        return #selected >= 1
+    end,
+
+    on_effect_target_group = function(skill, ctx, targets)
+        local source = ctx.invoker
+        if not source or not source:isAlive() then return end
+
+        local room = source:getRoom()
+        local pd_ = targetsPindian(skill:objectName(), source, targets)
+        if not pd_ or not pd_.from then return end
+
+        if pd_.success then
+            local card_ids = {}
+            if pd_.from_card
+                and room:getCardPlace(pd_.from_card:getEffectiveId()) == sgs.Player_DiscardPile then
+                table.insert(card_ids, pd_.from_card:getEffectiveId())
+            end
+            for _, c in sgs.qlist(pd_.to_card) do
+                if c and room:getCardPlace(c:getEffectiveId()) == sgs.Player_DiscardPile then
+                    table.insert(card_ids, c:getEffectiveId())
+                end
+            end
+            if #card_ids > 0 then
+                local reason = sgs.CardMoveReason(
+                    sgs.CardMoveReason_S_REASON_GOTBACK,
+                    source:objectName(),
+                    skill:objectName(),
+                    ""
+                )
+                local dummy = sgs.DummyCard()
+                for _, id in ipairs(card_ids) do
+                    dummy:addSubcard(id)
+                end
+                room:obtainCard(source, dummy, reason, true)
+                dummy:deleteLater()
+            end
+        else
+            local candidates = sgs.SPlayerList()
+            local i = 0
+            for _, t in sgs.qlist(pd_.to) do
+                i = i + 1
+                if t:isAlive() and pd_.to_number:at(i - 1) >= pd_.from_number then
+                    candidates:append(t)
+                end
+            end
+            if not candidates:isEmpty() then
+                local target = room:askForPlayerChosen(
+                    source,
+                    candidates,
+                    skill:objectName(),
+                    "@s4_zhiba_damage",
+                    false,
+                    true
+                )
+                if target then
+                    local amount = skill:getEffectiveAmount(ctx)
+                    local dmg = sgs.DamageStruct()
+                    dmg.from = source
+                    dmg.to = target
+                    dmg.damage = amount
+                    dmg.reason = skill:objectName()
+                    room:damage(dmg)
+                end
             end
         end
-        if #card_ids > 0 then
-            local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTBACK, source:objectName(), "s4_zhiba")
-            room:obtainCard(source, sgs.CardsMoveStruct(card_ids, source, sgs.Player_PlaceHand, reason))
-        end
-    else
-        -- 沒贏：對一名拼點牌點數不小於 source 的角色造成 1 點傷害
-        local candidates = {}
-        local i = 0
-        for _, t in sgs.qlist(pd_.to) do
-            i = i + 1
-            if pd_.to_number:at(i - 1) >= pd_.from_number then
-                table.insert(candidates, t)
-            end
-        end
-        if #candidates > 0 then
-            local target = room:askForPlayerChosen(source, candidates, "s4_zhiba", "@s4_zhiba_damage", false, true)
-            if target then
-                local dmg = sgs.DamageStruct()
-                dmg.from = source; dmg.to = target; dmg.damage = 1; dmg.reason = "s4_zhiba"
-                room:damage(dmg)
-            end
-        end
-    end
-end,
+    end,
 }
 
-s4_zhibaVS = sgs.CreateZeroCardViewAsSkill{
-    name = "s4_zhiba",
-    view_as = function(self)
-        local card = s4_zhiba_card:clone()
-        card:setSkillName(self:objectName())
-        return card
-    end,
-    enabled_at_play = function(self, player)
-        return not player:hasUsed("#s4_zhiba") and not player:isKongcheng()
-    end,
-    enabled_at_response = function(self, player, pattern)
-        return false
-    end,
-}
 s4_zhiba = sgs.CreateTriggerV2Skill{
     name = "s4_zhiba$",
     view_as_skill = s4_zhibaVS,
     events = { sgs.PindianVerifying },
     base_amount = 3,
-    can_trigger = function(skill, event, room, player, data)
-        if not player:hasLordSkill(self:objectName()) then return false end
+    can_trigger = function(skill, event, room, event_player, data)
         local pindian = data:toPindian()
         if not pindian then return false end
-        if pindian.from ~= player and pindian.to ~= player then return false end
-        return skill:objectName()
+
+        local skill_names = {}
+        local owner_names = {}
+
+        local function addOwner(owner)
+            if owner and owner:hasLordSkill(skill:objectName()) then
+                table.insert(skill_names, skill:objectName())
+                table.insert(owner_names, owner:objectName())
+            end
+        end
+
+        addOwner(pindian.from)
+        addOwner(pindian.to)
+
+        if #skill_names == 0 then
+            return false
+        end
+
+        return table.concat(skill_names, "|"),
+            table.concat(owner_names, "|")
     end,
     on_cost = function(skill, event, room, player, ctx)
         local amount = skill:getEffectiveAmount(ctx)
@@ -8443,13 +8517,13 @@ s4_zhiba = sgs.CreateTriggerV2Skill{
         local amount = skill:getEffectiveAmount(ctx)
 
         if pindian.from == player then
-            if ctx.choice == "up" then
+            if ctx.choice:startsWith("up") then
                 pindian.from_number = math.min(pindian.from_number + amount, 13)
             else
                 pindian.from_number = math.max(pindian.from_number - amount, 1)
             end
         else
-            if ctx.choice == "up" then
+            if ctx.choice:startsWith("up") then
                 pindian.to_number = math.min(pindian.to_number + amount, 13)
             else
                 pindian.to_number = math.max(pindian.to_number - amount, 1)
@@ -8459,9 +8533,6 @@ s4_zhiba = sgs.CreateTriggerV2Skill{
         return false
     end,
 }
-
-
-
 
 s4_mousunce:addSkill(s4_jiyang)
 s4_mousunce:addSkill(s4_hunzi)

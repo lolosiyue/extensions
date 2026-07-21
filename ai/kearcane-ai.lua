@@ -553,7 +553,7 @@ sgs.ai_skill_use_func["#keguangfuCard"] = function(card, use, self)
 			if self.player:canPindian(enemy) then
 				local enemy_max_card = self:getMaxCard(enemy)
 				local enemy_max_point = enemy_max_card and enemy_max_card:getNumber() or 100
-				if enemy_max_card then enemy_max_point = math.min(enemy_max_point+3,13) end
+				if enemy_max_card and enemy:hasSkill("yingyang") then enemy_max_point = math.min(enemy_max_point+3,13) end
 				if max_point>enemy_max_point or max_point>10 then
 					use.card = card
 					if use.to then use.to:append(enemy) end
