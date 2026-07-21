@@ -111,6 +111,7 @@ sgs.ai_used_revises =			{}
 sgs.weapon_range = 				{}
 sgs.ai_nullification_threat_table = {}	--有成本無效牌列表
 sgs.ai_target_recommend =		{}  -- 目標推薦邏輯 全場技能列表，需判斷是否有技能
+sgs.ai_target_recommend_global = {}  -- 全局目標推薦邏輯（不依賴技能持有，固定對所有目標執行）元素：{ name = 名稱, eval = 函數 }
 sgs.drawSkillsList =			{}  -- 給牌類技能列表，用於checkIsDrawCard判斷
 sgs.damageSkillsList =			{}  -- 傷害類技能列表，用於checkIsDamageCard判斷
 sgs.buffSkillsList =			{}  -- 增益類技能列表，用於checkIsBuff判斷
@@ -8078,7 +8079,7 @@ function SmartAI:ajustDamage(from,to,dmg,card,nature,depth)
 	if getSpecialMark("&tiansuan1",to)>0 then return 0 end
 	if type(nature)~="string" then
 		if type(nature)~="number" then
-			nature = card and sgs.card_damage_nature[card:getClassName()] or sgs.DamageStruct_Normal
+			nature = card and type(card) ~= "string" and sgs.card_damage_nature[card:getClassName()] or sgs.DamageStruct_Normal
 		end
 		local na = {
 			[sgs.DamageStruct_Normal]="N",
@@ -10722,6 +10723,29 @@ function SmartAI:hasSaveSkill(player)
 end
 
 --[[
+	函數名：buildTargetRecommendContext
+	功能：建立目標推薦系統的卡牌上下文（ctx），供 ai_target_recommend 評估函數使用
+	參數：
+		card:  卡牌對象 或 技能名字符串（虛擬牌上下文）
+		flags: 可選標記（如棄牌判定的 "he" 等）
+	返回值：ctx 表，欄位：
+		isDamage / isDebuff / isTurnOver / isRecovery / isDraw / isBuff / isDecrease / flags
+]]
+function SmartAI:buildTargetRecommendContext(card, flags)
+	return {
+		isDamage = self:checkIsDamageCard(card),
+		isDebuff = self:checkIsDebuff(card),
+		isTurnOver = self:checkIsTurnOver(card),
+		isRecovery = self:checkIsRecover(card),
+		isDraw = self:checkIsDrawCard(card),
+		isBuff = self:checkIsBuff(card),
+		isDecrease = self:checkIsDecreaseCard(card),
+		isVirtual = type(card) == "string",
+		flags = flags
+	}
+end
+
+--[[
 	函數名：getBestTarget
 	功能：從目標列表中選出目標（加權隨機制）
 	
@@ -10738,21 +10762,11 @@ end
 	返回值：
 		選中的目標（ServerPlayer），如果沒有合適目標則返回 nil
 ]]
-SmartAI._ai_connect_cache = {}
 function SmartAI:getBestTarget(targets, card, from, flags)
     if not targets or #targets == 0 then return nil end
     from = from or self.player
     
-    local ctx = {
-        isDamage = self:checkIsDamageCard(card),
-        isDebuff = self:checkIsDebuff(card),
-        isTurnOver = self:checkIsTurnOver(card),
-		isRecovery = self:checkIsRecover(card),
-		isDraw = self:checkIsDrawCard(card),
-		isBuff = self:checkIsBuff(card),
-		isDecrease = self:checkIsDecreaseCard(card),
-		flags = flags
-    }
+    local ctx = self:buildTargetRecommendContext(card, flags)
     
     local target_list = targets
     local rank_map = {}
@@ -10809,6 +10823,7 @@ function SmartAI:getBestTarget(targets, card, from, flags)
         end
 
         if final_score > 0 then
+            local vetoed = false
             
             -- O(K) 遍歷：僅執行場上實際存在的 recommend 邏輯
             for _, rec in ipairs(active_recommends) do
@@ -10816,11 +10831,25 @@ function SmartAI:getBestTarget(targets, card, from, flags)
                 if type(adjust) == "number" then
                     final_score = final_score + adjust
                 elseif adjust == false then
-                    final_score = -100 -- 一票否決 (Veto)
+                    vetoed = true -- 一票否決 (Veto)
                     break
                 end
             end
             
+            -- 全局 recommend：不依賴技能持有，固定執行
+            if not vetoed then
+                for _, rec in ipairs(sgs.ai_target_recommend_global) do
+                    local adjust = rec.eval(self, from, target, card, nil, ctx)
+                    if type(adjust) == "number" then
+                        final_score = final_score + adjust
+                    elseif adjust == false then
+                        vetoed = true -- 一票否決 (Veto)
+                        break
+                    end
+                end
+            end
+            
+            if vetoed then final_score = -100 end
             if final_score > 0 then
                 table.insert(scored_targets, { target = target, score = final_score })
             end
@@ -10852,6 +10881,36 @@ function SmartAI:getBestTarget(targets, card, from, flags)
     
     return scored_targets[#scored_targets].target
 end
+
+--[[
+	函數名：getBestTargetOr（opt-in 適配器）
+	功能：getBestTarget 的封裝 — 推薦系統無結果時執行 fallback
+	用途：讓 ai_skill_playerchosen 等選人回調一行接入目標推薦系統
+	參數：
+		targets:  候選目標（數組或 QList，QList 會自動轉換）
+		card:     卡牌對象 或 技能名字符串（虛擬牌上下文）
+		from:     來源（默認 self.player）
+		fallback: 可選函數 function(self, targets, card, from)，無推薦結果時調用
+	返回值：選中的目標（ServerPlayer），無合適目標且無 fallback 時返回 nil
+	示例：
+		sgs.ai_skill_playerchosen.some_skill = function(self, targets)
+			return self:getBestTargetOr(targets, "some_skill", self.player, function(self, victims)
+				return victims[1]
+			end)
+		end
+]]
+function SmartAI:getBestTargetOr(targets, card, from, fallback)
+    if targets and type(targets) ~= "table" then
+        targets = sgs.QList2Table(targets)
+    end
+    local target = self:getBestTarget(targets, card, from)
+    if target then return target end
+    if type(fallback) == "function" then
+        return fallback(self, targets, card, from)
+    end
+    return nil
+end
+
 --[[
 	函數名：getTargetBaseScore
 	功能：計算目標的基礎評分（不包含 recommend 修正）
@@ -10968,17 +11027,89 @@ end
 
 --[[============================================
 	目標推薦系統（ai_target_recommend）
-	
-	用於各技能對目標選擇的影響評估
-	返回值：分數修正（-5 ~ +5）
-		-5：極度不推薦（嚴重危險）
-		-3：中度不推薦（較強反制）
-		-2：輕度不推薦（普通反制）
-		0：中性
-		+2：輕度推薦
-		+3：中度推薦
-		+5：強烈推薦
+
+	用於各技能對目標選擇的影響評估，由 SmartAI:getBestTarget 驅動（加權隨機選擇）
+
+	【註冊方式】
+	1. 技能持有型（目標持有該技能時才生效，helper 已自動處理 to:hasSkill 樣板）：
+		sgs.registerTargetRecommend("skill_name", function(self, from, to, card, skill_owner, ctx)
+			...
+		end)
+		（特殊邏輯可直接賦值 sgs.ai_target_recommend[name]，如 guagu 判斷 from 持有技能）
+	2. 全局型（不依賴技能持有，固定對所有目標執行，如鐵索/求援配合）：
+		sgs.registerGlobalTargetRecommend("name", function(self, from, to, card, skill_owner, ctx)
+			...
+		end)
+
+	【評估函數參數】
+		self:        SmartAI 實例
+		from:        行動來源
+		to:          被評估的目標
+		card:        卡牌對象 或 技能名字符串（虛擬牌上下文）
+		skill_owner: 技能持有者（全局型為 nil）
+		ctx:         buildTargetRecommendContext 的結果，欄位：
+		             isDamage / isDebuff / isTurnOver / isRecovery / isDraw / isBuff / isDecrease / flags
+
+	【返回值協議】
+		數值修正（-5 ~ +5）：
+			-5：極度不推薦（嚴重危險）
+			-3：中度不推薦（較強反制）
+			-2：輕度不推薦（普通反制）
+			0： 中性
+			+2：輕度推薦
+			+3：中度推薦
+			+5：強烈推薦
+		false：一票否決（Veto），目標直接排除
+
+	【使用方式（opt-in）】
+		在 ai_skill_playerchosen 等選人回調中：
+			return self:getBestTargetOr(targets, "skill_name", self.player, fallback_fn)
+		若技能以字符串作為虛擬牌上下文，需先用 sgs.registerSkillCardType 登記類型：
+			sgs.registerSkillCardType("skill_name", "draw")
+			（可選類型：damage / draw / buff / debuff / recover / decrease / turnOver）
 ============================================]]
+
+-- 技能類型登記表（供 sgs.registerSkillCardType 使用）
+local skill_card_type_lists = {
+	damage = sgs.damageSkillsList,
+	draw = sgs.drawSkillsList,
+	buff = sgs.buffSkillsList,
+	debuff = sgs.debuffSkillsList,
+	recover = sgs.recoverSkillsList,
+	decrease = sgs.decreaseSkillsList,
+	turnOver = sgs.turnOverSkillsList,
+}
+
+-- 登記技能的卡牌類型（虛擬牌上下文用），防重複
+function sgs.registerSkillCardType(skill_name, type_name)
+	local list = skill_card_type_lists[type_name]
+	assert(list, "sgs.registerSkillCardType: unknown type " .. tostring(type_name))
+	if not table.contains(list, skill_name) then
+		table.insert(list, skill_name)
+	end
+end
+
+-- 註冊技能持有型目標推薦（自動處理 to:hasSkill 樣板與 ctx 補全）
+function sgs.registerTargetRecommend(skill_name, fn)
+	sgs.ai_target_recommend[skill_name] = function(self, from, to, card, skill_owner, ctx)
+		if not to or not to:hasSkill(skill_name) then
+			return 0
+		end
+		ctx = ctx or self:buildTargetRecommendContext(card)
+		return fn(self, from, to, card, skill_owner, ctx)
+	end
+end
+
+-- 註冊全局目標推薦（不依賴技能持有，固定對所有目標執行），同名重複註冊會覆蓋
+function sgs.registerGlobalTargetRecommend(name, fn)
+	for _, entry in ipairs(sgs.ai_target_recommend_global) do
+		if entry.name == name then
+			entry.eval = fn
+			return
+		end
+	end
+	table.insert(sgs.ai_target_recommend_global, { name = name, eval = fn })
+end
 
 -- 輔助函數：檢查攻擊者是否會使目標的受到傷害技能失效
 function checkMasochismInvalid(from, to, card)
@@ -10987,12 +11118,12 @@ function checkMasochismInvalid(from, to, card)
 	end
 	
 	-- 絕情：傷害視為失去體力
-	if hasJueqingEffect(from,to, card and sgs.card_damage_nature[card:getClassName()] or nil) then
+	if hasJueqingEffect(from,to, type(card) ~= "string" and card and sgs.card_damage_nature[card:getClassName()] or nil) then
 		return true
 	end
 
 	-- 潛襲：距離為1時，非鎖定技失效（僅對殺有效）
-	if to and from:hasSkill("nosqianxi") and from:distanceTo(to) == 1 and card and card:isKindOf("Slash") then
+	if to and from:hasSkill("nosqianxi") and from:distanceTo(to) == 1 and type(card) ~= "string" and card and card:isKindOf("Slash") then
 		return true
 	end
 	
@@ -11017,11 +11148,8 @@ function checkMasochismInvalid(from, to, card)
 end
 
 -- 剛烈（新版）
-sgs.ai_target_recommend["ganglie"] = function(self, from, to, card, skill_owner)
-	if not to:hasSkill("ganglie") then
-		return 0
-	end
-	if not self:checkIsDamageCard(card) then
+sgs.registerTargetRecommend("ganglie", function(self, from, to, card, skill_owner, ctx)
+	if not ctx.isDamage then
 		return 0
 	end
 	if checkMasochismInvalid(from, to, card) then
@@ -11031,14 +11159,11 @@ sgs.ai_target_recommend["ganglie"] = function(self, from, to, card, skill_owner)
 		return -3
 	end
 	return 0
-end
+end)
 
 -- nosganglie（舊版剛烈）
-sgs.ai_target_recommend["nosganglie"] = function(self, from, to, card, skill_owner)
-	if not to:hasSkill("nosganglie") then
-		return 0
-	end
-	if not self:checkIsDamageCard(card) then
+sgs.registerTargetRecommend("nosganglie", function(self, from, to, card, skill_owner, ctx)
+	if not ctx.isDamage then
 		return 0
 	end
 	if checkMasochismInvalid(from, to, card) then
@@ -11048,14 +11173,11 @@ sgs.ai_target_recommend["nosganglie"] = function(self, from, to, card, skill_own
 		return -2
 	end
 	return 0
-end
+end)
 
 -- 節命
-sgs.ai_target_recommend["jieming"] = function(self, from, to, card, skill_owner)
-	if not to:hasSkill("jieming") then
-		return 0
-	end
-	if not self:checkIsDamageCard(card) then
+sgs.registerTargetRecommend("jieming", function(self, from, to, card, skill_owner, ctx)
+	if not ctx.isDamage then
 		return 0
 	end
 	if checkMasochismInvalid(from, to, card) then
@@ -11069,14 +11191,11 @@ sgs.ai_target_recommend["jieming"] = function(self, from, to, card, skill_owner)
 		end
 	end
 	return 0
-end
+end)
 
 -- 遺計
-sgs.ai_target_recommend["yiji"] = function(self, from, to, card, skill_owner)
-	if not to:hasSkill("yiji") then
-		return 0
-	end
-	if not self:checkIsDamageCard(card) then
+sgs.registerTargetRecommend("yiji", function(self, from, to, card, skill_owner, ctx)
+	if not ctx.isDamage then
 		return 0
 	end
 	if checkMasochismInvalid(from, to, card) then
@@ -11090,41 +11209,32 @@ sgs.ai_target_recommend["yiji"] = function(self, from, to, card, skill_owner)
 		end
 	end
 	return 0
-end
+end)
 
 -- 秘計
-sgs.ai_target_recommend["miji"] = function(self, from, to, card, skill_owner)
-	if not to:hasSkill("miji") then
-		return 0
-	end
-	if not self:checkIsDamageCard(card) then
+sgs.registerTargetRecommend("miji", function(self, from, to, card, skill_owner, ctx)
+	if not ctx.isDamage then
 		return 0
 	end
 	if checkMasochismInvalid(from, to, card) then
 		return 2
 	end
 	return -2
-end
+end)
 
-sgs.ai_target_recommend["nosmiji"] = function(self, from, to, card, skill_owner)
-	if not to:hasSkill("nosmiji") then
-		return 0
-	end
-	if not self:checkIsDamageCard(card) then
+sgs.registerTargetRecommend("nosmiji", function(self, from, to, card, skill_owner, ctx)
+	if not ctx.isDamage then
 		return 0
 	end
 	if checkMasochismInvalid(from, to, card) then
 		return 2
 	end
 	return -2
-end
+end)
 
 -- 歸心
-sgs.ai_target_recommend["guixin"] = function(self, from, to, card, skill_owner)
-	if not to:hasSkill("guixin") then
-		return 0
-	end
-	if not self:checkIsDamageCard(card) then
+sgs.registerTargetRecommend("guixin", function(self, from, to, card, skill_owner, ctx)
+	if not ctx.isDamage then
 		return 0
 	end
 	if checkMasochismInvalid(from, to, card) then
@@ -11134,14 +11244,11 @@ sgs.ai_target_recommend["guixin"] = function(self, from, to, card, skill_owner)
 		return -2
 	end
 	return 0
-end
+end)
 
 -- 放逐
-sgs.ai_target_recommend["fangzhu"] = function(self, from, to, card, skill_owner)
-	if not to:hasSkill("fangzhu") then
-		return 0
-	end
-	if not self:checkIsDamageCard(card) then
+sgs.registerTargetRecommend("fangzhu", function(self, from, to, card, skill_owner, ctx)
+	if not ctx.isDamage then
 		return 0
 	end
 	if checkMasochismInvalid(from, to, card) then
@@ -11153,14 +11260,11 @@ sgs.ai_target_recommend["fangzhu"] = function(self, from, to, card, skill_owner)
 		return -4
 	end
 	return 0
-end
+end)
 
 -- 揮淚
-sgs.ai_target_recommend["huilei"] = function(self, from, to, card, skill_owner)
-	if not to:hasSkill("huilei") then
-		return 0
-	end
-	if not self:checkIsDamageCard(card) then
+sgs.registerTargetRecommend("huilei", function(self, from, to, card, skill_owner, ctx)
+	if not ctx.isDamage then
 		return 0
 	end
 	if checkMasochismInvalid(from, to, card) then
@@ -11178,14 +11282,11 @@ sgs.ai_target_recommend["huilei"] = function(self, from, to, card, skill_owner)
 		end
 	end
 	return 0
-end
+end)
 
 -- 天香
-sgs.ai_target_recommend["tianxiang"] = function(self, from, to, card, skill_owner)
-	if not to:hasSkill("tianxiang") then
-		return 0
-	end
-	if not self:checkIsDamageCard(card) then
+sgs.registerTargetRecommend("tianxiang", function(self, from, to, card, skill_owner, ctx)
+	if not ctx.isDamage then
 		return 0
 	end
 	if checkMasochismInvalid(from, to, card) then
@@ -11200,14 +11301,11 @@ sgs.ai_target_recommend["tianxiang"] = function(self, from, to, card, skill_owne
 		end
 	end
 	return 0
-end
+end)
 
 -- 武魂
-sgs.ai_target_recommend["wuhun"] = function(self, from, to, card, skill_owner)
-	if not to:hasSkill("wuhun") then
-		return 0
-	end
-	if not self:checkIsDamageCard(card) then
+sgs.registerTargetRecommend("wuhun", function(self, from, to, card, skill_owner, ctx)
+	if not ctx.isDamage then
 		return 0
 	end
 	if checkMasochismInvalid(from, to, card) then
@@ -11241,14 +11339,11 @@ sgs.ai_target_recommend["wuhun"] = function(self, from, to, card, skill_owner)
 		end
 	end
 	return 0
-end
+end)
 
 -- 斷腸
-sgs.ai_target_recommend["duanchang"] = function(self, from, to, card, skill_owner)
-	if not to:hasSkill("duanchang") then
-		return 0
-	end
-	if not self:checkIsDamageCard(card) then
+sgs.registerTargetRecommend("duanchang", function(self, from, to, card, skill_owner, ctx)
+	if not ctx.isDamage then
 		return 0
 	end
 	local damageNum = self:ajustDamage(from, to, 1, card)
@@ -11260,47 +11355,41 @@ sgs.ai_target_recommend["duanchang"] = function(self, from, to, card, skill_owne
 		end
 	end
 	return 0
-end
+end)
 
 -- 雪恨/血集/新剛烈
-sgs.ai_target_recommend["xuehen"] = function(self, from, to, card, skill_owner)
-	if not to:hasSkill("xuehen") then
-		return 0
-	end
-	if not self:checkIsDamageCard(card) then
+sgs.registerTargetRecommend("xuehen", function(self, from, to, card, skill_owner, ctx)
+	if not ctx.isDamage then
 		return 0
 	end
 	if self.isWeak and self:isWeak(self.friends) then
 		return -2
 	end
 	return 0
-end
+end)
 
-sgs.ai_target_recommend["xueji"] = function(self, from, to, card, skill_owner)
+sgs.ai_target_recommend["xueji"] = function(self, from, to, card, skill_owner, ctx)
 	if not to:hasSkill("xueji") then
 		return 0
 	end
-	return sgs.ai_target_recommend["xuehen"](self, from, to, card, skill_owner)
+	return sgs.ai_target_recommend["xuehen"](self, from, to, card, skill_owner, ctx)
 end
 
-sgs.ai_target_recommend["neoganglie"] = function(self, from, to, card, skill_owner)
+sgs.ai_target_recommend["neoganglie"] = function(self, from, to, card, skill_owner, ctx)
 	if not to:hasSkill("neoganglie") then
 		return 0
 	end
-	return sgs.ai_target_recommend["xuehen"](self, from, to, card, skill_owner)
+	return sgs.ai_target_recommend["xuehen"](self, from, to, card, skill_owner, ctx)
 end
 
 -- 魂姿
-sgs.ai_target_recommend["hunzi"] = function(self, from, to, card, skill_owner)
-	if not to:hasSkill("hunzi") then
-		return 0
-	end
-	if not self:checkIsDamageCard(card) then
+sgs.registerTargetRecommend("hunzi", function(self, from, to, card, skill_owner, ctx)
+	if not ctx.isDamage then
 		return 0
 	end
 	if self:isFriend(from, to) and to:getHp() == 2 and to:getMark("hunzi") < 1 then
 		local damageNum = self:ajustDamage(from, to, 1, card)
-		if math.abs(damageNum) == 1 and card:isKindOf("Slash") and card:getSkillName() ~= "lihuo" then
+		if math.abs(damageNum) == 1 and not ctx.isVirtual and card:isKindOf("Slash") and card:getSkillName() ~= "lihuo" then
 			return 10
 		end
 	end
@@ -11311,11 +11400,11 @@ sgs.ai_target_recommend["hunzi"] = function(self, from, to, card, skill_owner)
 		end
 	end
 	return 0
-end
+end)
 
--- 固穀
-sgs.ai_target_recommend["guagu"] = function(self, from, to, card, skill_owner)
-	if not card or not card:isKindOf("Slash") then
+-- 固穀（特殊：判斷 from 持有技能，直接賦值）
+sgs.ai_target_recommend["guagu"] = function(self, from, to, card, skill_owner, ctx)
+	if not card or ctx.isVirtual or not card:isKindOf("Slash") then
 		return 0
 	end
 	if to:isLord() and from:hasSkill("guagu") then
@@ -11331,9 +11420,9 @@ sgs.ai_target_recommend["guagu"] = function(self, from, to, card, skill_owner)
 	return 0
 end
 
--- 連鎖配合
-sgs.ai_target_recommend["chain_slash_friend"] = function(self, from, to, card, skill_owner)
-	if not card or not card:isKindOf("NatureSlash") then
+-- 連鎖配合（全局型）
+sgs.registerGlobalTargetRecommend("chain_slash_friend", function(self, from, to, card, skill_owner, ctx)
+	if not card or ctx.isVirtual or not card:isKindOf("NatureSlash") then
 		return 0
 	end
 	if self:isFriend(from, to) and hasChainEffect(to, from) then
@@ -11342,22 +11431,22 @@ sgs.ai_target_recommend["chain_slash_friend"] = function(self, from, to, card, s
 		end
 	end
 	return 0
-end
+end)
 
--- 求援效果
-sgs.ai_target_recommend["qiuyuan_effect"] = function(self, from, to, card, skill_owner)
-	if not card or not card:isKindOf("Slash") then
+-- 求援效果（全局型）
+sgs.registerGlobalTargetRecommend("qiuyuan_effect", function(self, from, to, card, skill_owner, ctx)
+	if not card or ctx.isVirtual or not card:isKindOf("Slash") then
 		return 0
 	end
 	if self:hasQiuyuanEffect(from, to) then
 		return 10
 	end
 	return 0
-end
+end)
 
--- 雷擊配合
-sgs.ai_target_recommend["leiji_slash_friend"] = function(self, from, to, card, skill_owner)
-	if not card or not card:isKindOf("Slash") then
+-- 雷擊配合（全局型）
+sgs.registerGlobalTargetRecommend("leiji_slash_friend", function(self, from, to, card, skill_owner, ctx)
+	if not card or ctx.isVirtual or not card:isKindOf("Slash") then
 		return 0
 	end
 	if self:isFriend(from, to) then
@@ -11370,14 +11459,11 @@ sgs.ai_target_recommend["leiji_slash_friend"] = function(self, from, to, card, s
 		end
 	end
 	return 0
-end
+end)
 
 -- 激昂
-sgs.ai_target_recommend["jiang"] = function(self, from, to, card, skill_owner)
-	if not to:hasSkill("jiang") then
-		return 0
-	end
-	if not card then
+sgs.registerTargetRecommend("jiang", function(self, from, to, card, skill_owner, ctx)
+	if not card or ctx.isVirtual then
 		return 0
 	end
 	local is_duel = card:isKindOf("Duel")
@@ -11386,7 +11472,7 @@ sgs.ai_target_recommend["jiang"] = function(self, from, to, card, skill_owner)
 		return -1
 	end
 	return 0
-end
+end)
 
 
 dofile"lua/ai/debug-ai.lua"
