@@ -1618,18 +1618,12 @@ sgs.ai_choicemade_filter.skillChoice.s4_ganglie = function(self, player, promptl
     end
 end
 
-sgs.registerTargetRecommend("s4_ganglie", function(self, from, to, card, skill_owner, ctx)
-	if not ctx.isDamage then
-		return 0
-	end
-	if checkMasochismInvalid(from, to, card) then
-		return 3
-	end
-	if from:getHp() < 2 then
-		return -3
-	end
-	return 0
-end)
+sgs.registerMasochismRecommend("s4_ganglie", {
+	invalid = 3,
+	rules = {
+		{ when = function(self, from, to, card) return from:getHp() < 2 end, score = -3 },
+	},
+})
 
 sgs.ai_skill_playerchosen.s4_ganglie = function(self, targets)
     local ren_cards = self.room:getTag("ren_pile"):toIntList()
