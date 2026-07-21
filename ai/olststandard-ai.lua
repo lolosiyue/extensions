@@ -1146,7 +1146,7 @@ sgs.ai_skill_use_func.OLZhibaCard = function(card,use,self)
 		
 		local enemy_max_card = self:getMaxCard(p)
 		if not enemy_max_card then continue end
-		local enemy_point = max_card:getNumber()
+		local enemy_point = enemy_max_card:getNumber()
 		if p:hasSkill("tianbian") and enemy_max_card:getSuit()==sgs.Card_Heart then enemy_point = 13 end
 
 		if point>10 and point>enemy_point then

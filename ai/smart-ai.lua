@@ -5642,8 +5642,16 @@ function SmartAI:getMinCard(player,cards)
 	if #cards<1 then return end
 	local min_card,min_point = nil,14
 	for _,card in ipairs(cards)do
+		if player==self.player and self:isValuableCard(card) then continue end
 		if card:hasFlag("visible") or self.player:canSeeHandcard(player)
 		or card:hasFlag("visible_"..self.player:objectName().."_"..player:objectName()) then
+			local point = card:getNumber()
+			if card:getSuit()==sgs.Card_Heart and player:hasSkill("tianbian") then point = 13 end
+			if point<min_point then min_point = point min_card = card end
+		end
+	end
+	if player==self.player and not min_card then
+		for _,card in ipairs(cards)do
 			local point = card:getNumber()
 			if card:getSuit()==sgs.Card_Heart and player:hasSkill("tianbian") then point = 13 end
 			if point<min_point then min_point = point min_card = card end
@@ -11393,6 +11401,7 @@ dofile"lua/ai/hegemony-ai.lua"
 dofile"lua/ai/hulaoguan-ai.lua"
 dofile"lua/ai/jiange-defense-ai.lua"
 dofile"lua/ai/boss-ai.lua"
+dofile"lua/ai/pindian-ai.lua"
 
 local loaded = "standard|standard_cards|maneuvering|sp"
 
