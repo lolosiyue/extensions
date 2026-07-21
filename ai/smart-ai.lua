@@ -11111,6 +11111,30 @@ function sgs.registerGlobalTargetRecommend(name, fn)
 	table.insert(sgs.ai_target_recommend_global, { name = name, eval = fn })
 end
 
+-- 註冊賣血/受傷害反應型 recommend（自動處理 ctx.isDamage 與 checkMasochismInvalid）
+-- spec:
+--   invalid: 數字，可選 — 賣血技被失效（絕情/潛襲）時的分數；不設則跳過此檢查
+--   rules:   數組，可選 — { when = function(self, from, to, card) return bool end, score = 數字 }
+--            按順序評估，第一個成立的返回其分數；全不成立返回 0
+function sgs.registerMasochismRecommend(skill_name, spec)
+	sgs.registerTargetRecommend(skill_name, function(self, from, to, card, skill_owner, ctx)
+		if not ctx.isDamage then
+			return 0
+		end
+		if spec.invalid ~= nil and checkMasochismInvalid(from, to, card) then
+			return spec.invalid
+		end
+		if spec.rules then
+			for _, rule in ipairs(spec.rules) do
+				if rule.when(self, from, to, card) then
+					return rule.score
+				end
+			end
+		end
+		return 0
+	end)
+end
+
 -- 輔助函數：檢查攻擊者是否會使目標的受到傷害技能失效
 function checkMasochismInvalid(from, to, card)
 	if not from then
@@ -11148,198 +11172,170 @@ function checkMasochismInvalid(from, to, card)
 end
 
 -- 剛烈（新版）
-sgs.registerTargetRecommend("ganglie", function(self, from, to, card, skill_owner, ctx)
-	if not ctx.isDamage then
-		return 0
-	end
-	if checkMasochismInvalid(from, to, card) then
-		return 3
-	end
-	if from:getHp() < 2 then
-		return -3
-	end
-	return 0
-end)
+sgs.registerMasochismRecommend("ganglie", {
+	invalid = 3,
+	rules = {
+		{ when = function(self, from, to, card) return from:getHp() < 2 end, score = -3 },
+	},
+})
 
 -- nosganglie（舊版剛烈）
-sgs.registerTargetRecommend("nosganglie", function(self, from, to, card, skill_owner, ctx)
-	if not ctx.isDamage then
-		return 0
-	end
-	if checkMasochismInvalid(from, to, card) then
-		return 2
-	end
-	if from:getHp() < 2 then
-		return -2
-	end
-	return 0
-end)
+sgs.registerMasochismRecommend("nosganglie", {
+	invalid = 2,
+	rules = {
+		{ when = function(self, from, to, card) return from:getHp() < 2 end, score = -2 },
+	},
+})
 
 -- 節命
-sgs.registerTargetRecommend("jieming", function(self, from, to, card, skill_owner, ctx)
-	if not ctx.isDamage then
-		return 0
-	end
-	if checkMasochismInvalid(from, to, card) then
-		return 2
-	end
-	local apn = self:getAllPeachNum(to)
-	local damageNum = self:ajustDamage(from, to, 1, card)
-	if apn + to:getHp() > damageNum then
-		if self.getJiemingChaofeng and self:getJiemingChaofeng(to) > -4 then
-			return -2
-		end
-	end
-	return 0
-end)
+sgs.registerMasochismRecommend("jieming", {
+	invalid = 2,
+	rules = {
+		{
+			when = function(self, from, to, card)
+				local apn = self:getAllPeachNum(to)
+				local damageNum = self:ajustDamage(from, to, 1, card)
+				return apn + to:getHp() > damageNum
+					and self.getJiemingChaofeng and self:getJiemingChaofeng(to) > -4
+			end,
+			score = -2
+		},
+	},
+})
 
 -- 遺計
-sgs.registerTargetRecommend("yiji", function(self, from, to, card, skill_owner, ctx)
-	if not ctx.isDamage then
-		return 0
-	end
-	if checkMasochismInvalid(from, to, card) then
-		return 2
-	end
-	local apn = self:getAllPeachNum(to)
-	local damageNum = self:ajustDamage(from, to, 1, card)
-	if apn + to:getHp() > damageNum then
-		if self.findFriendsByType and not self:findFriendsByType(sgs.Friend_Draw, to) then
-			return -2
-		end
-	end
-	return 0
-end)
+sgs.registerMasochismRecommend("yiji", {
+	invalid = 2,
+	rules = {
+		{
+			when = function(self, from, to, card)
+				local apn = self:getAllPeachNum(to)
+				local damageNum = self:ajustDamage(from, to, 1, card)
+				return apn + to:getHp() > damageNum
+					and self.findFriendsByType and not self:findFriendsByType(sgs.Friend_Draw, to)
+			end,
+			score = -2
+		},
+	},
+})
 
 -- 秘計
-sgs.registerTargetRecommend("miji", function(self, from, to, card, skill_owner, ctx)
-	if not ctx.isDamage then
-		return 0
-	end
-	if checkMasochismInvalid(from, to, card) then
-		return 2
-	end
-	return -2
-end)
+sgs.registerMasochismRecommend("miji", {
+	invalid = 2,
+	rules = {
+		{ when = function() return true end, score = -2 },
+	},
+})
 
-sgs.registerTargetRecommend("nosmiji", function(self, from, to, card, skill_owner, ctx)
-	if not ctx.isDamage then
-		return 0
-	end
-	if checkMasochismInvalid(from, to, card) then
-		return 2
-	end
-	return -2
-end)
+sgs.registerMasochismRecommend("nosmiji", {
+	invalid = 2,
+	rules = {
+		{ when = function() return true end, score = -2 },
+	},
+})
 
 -- 歸心
-sgs.registerTargetRecommend("guixin", function(self, from, to, card, skill_owner, ctx)
-	if not ctx.isDamage then
-		return 0
-	end
-	if checkMasochismInvalid(from, to, card) then
-		return 2
-	end
-	if to:aliveCount() > 2 then
-		return -2
-	end
-	return 0
-end)
+sgs.registerMasochismRecommend("guixin", {
+	invalid = 2,
+	rules = {
+		{ when = function(self, from, to, card) return to:aliveCount() > 2 end, score = -2 },
+	},
+})
 
 -- 放逐
-sgs.registerTargetRecommend("fangzhu", function(self, from, to, card, skill_owner, ctx)
-	if not ctx.isDamage then
-		return 0
-	end
-	if checkMasochismInvalid(from, to, card) then
-		return 4
-	end
-	local apn = self:getAllPeachNum(to)
-	local damageNum = self:ajustDamage(from, to, 1, card)
-	if (to:getLostHp() < 2 or (apn + to:getHp() > damageNum and #self:getFriends(to) > 1)) then
-		return -4
-	end
-	return 0
-end)
+sgs.registerMasochismRecommend("fangzhu", {
+	invalid = 4,
+	rules = {
+		{
+			when = function(self, from, to, card)
+				local apn = self:getAllPeachNum(to)
+				local damageNum = self:ajustDamage(from, to, 1, card)
+				return to:getLostHp() < 2 or (apn + to:getHp() > damageNum and #self:getFriends(to) > 1)
+			end,
+			score = -4
+		},
+	},
+})
 
 -- 揮淚
-sgs.registerTargetRecommend("huilei", function(self, from, to, card, skill_owner, ctx)
-	if not ctx.isDamage then
-		return 0
-	end
-	if checkMasochismInvalid(from, to, card) then
-		return 3
-	end
-	local damageNum = self:ajustDamage(from, to, 1, card)
-	if not to:isLord() and to:getHp() <= damageNum then
-		if from:getHandcardNum() >= 4 then
-			return -3
-		end
-		if self.compareRoleEvaluation and self:compareRoleEvaluation(to, "rebel", "loyalist") == "rebel" then
-			return 0
-		else
-			return -2
-		end
-	end
-	return 0
-end)
+sgs.registerMasochismRecommend("huilei", {
+	invalid = 3,
+	rules = {
+		{
+			when = function(self, from, to, card)
+				local damageNum = self:ajustDamage(from, to, 1, card)
+				return not to:isLord() and to:getHp() <= damageNum and from:getHandcardNum() >= 4
+			end,
+			score = -3
+		},
+		{
+			when = function(self, from, to, card)
+				local damageNum = self:ajustDamage(from, to, 1, card)
+				return not to:isLord() and to:getHp() <= damageNum
+					and self.compareRoleEvaluation and self:compareRoleEvaluation(to, "rebel", "loyalist") == "rebel"
+			end,
+			score = 0
+		},
+		{
+			when = function(self, from, to, card)
+				local damageNum = self:ajustDamage(from, to, 1, card)
+				return not to:isLord() and to:getHp() <= damageNum
+			end,
+			score = -2
+		},
+	},
+})
 
 -- 天香
-sgs.registerTargetRecommend("tianxiang", function(self, from, to, card, skill_owner, ctx)
-	if not ctx.isDamage then
-		return 0
-	end
-	if checkMasochismInvalid(from, to, card) then
-		return 2
-	end
-	if getKnownCard and getKnownCard(to, from, "diamond,club") < to:getHandcardNum() then
-		local damageNum = self:ajustDamage(from, to, 1, card)
-		for _, friend in ipairs(self.friends or {}) do
-			if friend:getHp() + self:getCardsNum("Peach") - damageNum < 2 then
-				return -2
-			end
-		end
-	end
-	return 0
-end)
+sgs.registerMasochismRecommend("tianxiang", {
+	invalid = 2,
+	rules = {
+		{
+			when = function(self, from, to, card)
+				if not getKnownCard or getKnownCard(to, from, "diamond,club") >= to:getHandcardNum() then
+					return false
+				end
+				local damageNum = self:ajustDamage(from, to, 1, card)
+				for _, friend in ipairs(self.friends or {}) do
+					if friend:getHp() + self:getCardsNum("Peach") - damageNum < 2 then
+						return true
+					end
+				end
+				return false
+			end,
+			score = -2
+		},
+	},
+})
 
 -- 武魂
-sgs.registerTargetRecommend("wuhun", function(self, from, to, card, skill_owner, ctx)
-	if not ctx.isDamage then
-		return 0
-	end
-	if checkMasochismInvalid(from, to, card) then
-		return 5
-	end
-	if not to:isLord() and #self:getFriends(to, true) > 0 then
-		local maxfriendmark, maxenemymark = 0, 0
-		for _, friend in ipairs(self.friends or {}) do
-			local friendmark = friend:getMark("&nightmare+#" .. to:objectName())
-			if friendmark > maxfriendmark then
-				maxfriendmark = friendmark
-			end
-		end
-		for _, enemy in ipairs(self.enemies or {}) do
-			local enemymark = enemy:getMark("&nightmare+#" .. to:objectName())
-			if enemymark > maxenemymark and enemy ~= to then
-				maxenemymark = enemymark
-			end
-		end
-		local damageNum = self:ajustDamage(from, to, 1, card)
-		if self:isEnemy(to) then
-			if maxfriendmark + damageNum - to:getHp() / 2 >= maxenemymark then
-				if not (#self.enemies == 1 and #self.friends + #self.enemies == self.room:alivePlayerCount()) then
-					return -5
+sgs.registerMasochismRecommend("wuhun", {
+	invalid = 5,
+	rules = {
+		{
+			when = function(self, from, to, card)
+				if to:isLord() or #self:getFriends(to, true) == 0 then return false end
+				local maxfriendmark, maxenemymark = 0, 0
+				for _, friend in ipairs(self.friends or {}) do
+					local friendmark = friend:getMark("&nightmare+#" .. to:objectName())
+					if friendmark > maxfriendmark then maxfriendmark = friendmark end
 				end
-			end
-		else
-			if maxfriendmark + damageNum - to:getHp() / 2 > maxenemymark then
-				return -5
-			end
-		end
-	end
-	return 0
-end)
+				for _, enemy in ipairs(self.enemies or {}) do
+					local enemymark = enemy:getMark("&nightmare+#" .. to:objectName())
+					if enemymark > maxenemymark and enemy ~= to then maxenemymark = enemymark end
+				end
+				local damageNum = self:ajustDamage(from, to, 1, card)
+				if self:isEnemy(to) then
+					return maxfriendmark + damageNum - to:getHp() / 2 >= maxenemymark
+						and not (#self.enemies == 1 and #self.friends + #self.enemies == self.room:alivePlayerCount())
+				else
+					return maxfriendmark + damageNum - to:getHp() / 2 > maxenemymark
+				end
+			end,
+			score = -5
+		},
+	},
+})
 
 -- 斷腸
 sgs.registerTargetRecommend("duanchang", function(self, from, to, card, skill_owner, ctx)
