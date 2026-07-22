@@ -1736,6 +1736,35 @@ sgs.ai_skill_invoke.s4_qingjian = true
 
 sgs.registerSkillCardType("s4_qingjian", "draw")
 
+sgs.ai_general_choice_for_lord["s4_mousunce"] = function(ai, generals, default_choice, lord)
+    local role = ai.player:getRole()
+    local general_scores = {}
+    for _, general_name in ipairs(generals) do
+        local score = 0
+        local general = sgs.Sanguosha:getGeneral(general_name)
+        if general then
+            local desc = general:getSkillDescription(true) or ""
+            local kingdom = general:getKingdom()
+            if role == "loyalist" then
+                if kingdom == "wu" then score = score + 1 end
+                if string.find(desc, "回复") or string.find(desc, "摸") then score = score + 3 end
+            else
+				if kingdom == "wu" then if string.find(desc, "受到伤害") then score = score + 5 end score = score - 3 end
+				if string.find(desc, "跳过濒死") or string.find(desc, "伤害+1") then score = score + 5 end
+            end
+        end
+        table.insert(general_scores, {name = general_name, score = score})
+    end
+    table.sort(general_scores, function(a, b) return a.score > b.score end)
+    local best = general_scores[1] and general_scores[1].score or 0
+    local top = {}
+    for _, gs in ipairs(general_scores) do
+        if gs.score == best then table.insert(top, gs.name) else break end
+    end
+    return #top > 0 and top[math.random(1, #top)] or (#generals > 0 and generals[1] or default_choice)
+end
+
+
 sgs.ai_card_priority.s4_jiyang = function(self, card, v)
     if card:isKindOf("Duel") then
         return 3
