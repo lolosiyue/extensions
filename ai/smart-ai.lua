@@ -70,6 +70,7 @@ sgs.ai_cardshow =				{}
 sgs.ai_nullification =			{}
 sgs.ai_skill_cardchosen =		{}
 sgs.ai_skill_use =				{}
+sgs.ai_active_skill =			{}
 sgs.ai_cardneed =				{}
 sgs.ai_skill_use_func =	 		{}
 sgs.ai_skills =			 		{}
@@ -882,7 +883,9 @@ function SmartAI:getUseValue(card)
 		self.room:setPlayerFlag(self.player, "stack_overflow_UseValue")
 	end
 	local v = sgs.ai_use_value[card:getClassName()] or 0
-	if card:isKindOf("LuaSkillCard")
+	if card:isKindOf("ActiveSkillCard") then
+		v = sgs.ai_use_value[card:getSkillName()] or v
+	elseif card:isKindOf("LuaSkillCard")
 	then v = sgs.ai_use_value[card:objectName()] or v
 	elseif card:isKindOf("EquipCard") then
 		if self.player:hasEquip(card) then
@@ -948,11 +951,21 @@ function SmartAI:getUsePriority(card)
 		elseif card:isKindOf("OffensiveHorse") then upv = upv+2.5 end
 		if self:loseEquipEffect() then upv = upv+6 end
 	elseif card:getTypeId()<1 then
-		if card:isKindOf("LuaSkillCard")
+		if card:isKindOf("ActiveSkillCard") then
+			upv = sgs.ai_use_priority[card:getSkillName()] or upv
+		elseif card:isKindOf("LuaSkillCard")
 		then upv = sgs.ai_use_priority[card:objectName()] or upv end
 		return upv
 	end
 	return self:adjustUsePriority(card,upv)
+end
+
+local function aiCardKey(card)
+	local key = card:toString()
+	if card:isKindOf("ActiveSkillCard") then
+		key = key.."|"..card:getSkillName()..":"..card:getSkillInstanceID()
+	end
+	return key
 end
 
 function SmartAI:adjustUsePriority(card,v)
@@ -1280,11 +1293,11 @@ function SmartAI:sortByUseValue(cards,inverse,flags)
 			end
 		end
 		
-		bcv[c:toString()] = value
+		bcv[aiCardKey(c)] = value
 	end
 	local function compare_func(a,b)
-		if inverse then return bcv[a:toString()]<bcv[b:toString()] end
-		return bcv[a:toString()]>bcv[b:toString()]
+		if inverse then return bcv[aiCardKey(a)]<bcv[aiCardKey(b)] end
+		return bcv[aiCardKey(a)]>bcv[aiCardKey(b)]
 	end
 	table.sort(cards,compare_func)
 	return cards
@@ -1320,14 +1333,14 @@ function applyRandomPrioritySort(self, cards, inverse, flags, priority_func_name
 			end
 		end
         
-		bcv[c:toString()] = base_priority + random_offset
+		bcv[aiCardKey(c)] = base_priority + random_offset
 	end
     
     local function compare_func(a, b)
         if inverse then 
-            return bcv[a:toString()] < bcv[b:toString()] 
+            return bcv[aiCardKey(a)] < bcv[aiCardKey(b)] 
         end
-        return bcv[a:toString()] > bcv[b:toString()]
+        return bcv[aiCardKey(a)] > bcv[aiCardKey(b)]
 	end
     
     table.sort(cards, compare_func)
@@ -1352,11 +1365,11 @@ function SmartAI:sortByCardNeed(cards,inverse,flags)
 	if #cards<2 then return cards end
 	local bcv = {}
 	for _,c in ipairs(cards)do
-		bcv[c:toString()] = self:cardNeed(c) or 0
+		bcv[aiCardKey(c)] = self:cardNeed(c) or 0
 	end
 	local function compare_func(a,b)
-		if inverse then return bcv[a:toString()]>bcv[b:toString()] end
-		return bcv[a:toString()]<bcv[b:toString()]
+		if inverse then return bcv[aiCardKey(a)]>bcv[aiCardKey(b)] end
+		return bcv[aiCardKey(a)]<bcv[aiCardKey(b)]
 	end
 	table.sort(cards,compare_func)
 	return cards
@@ -1850,6 +1863,15 @@ function SmartAI:objectiveLevel(to)
 		end
 	end
 	return 0
+end
+
+local function getCardIntention(card)
+	if not card then return end
+	local intention = sgs.ai_card_intention[card:getClassName()]
+	if card:isKindOf("ActiveSkillCard") then
+		intention = sgs.ai_card_intention[card:getSkillName()] or intention
+	end
+	return intention
 end
 
 function SmartAI:isFriend(other,another)
@@ -2419,7 +2441,7 @@ function SmartAI:filterEvent(event,player,data)
 				local suppress_intention = self:shouldSuppressIntention(struct)
 				
 				if not suppress_intention then
-					local callback = sgs.ai_card_intention[struct.card:getClassName()]
+					local callback = getCardIntention(struct.card)
 					if type(callback)=="function" then 
 						callback(self,struct.card,player,sgs.QList2Table(struct.to))
 					elseif type(callback)=="number" then 
@@ -2510,7 +2532,7 @@ function SmartAI:filterEvent(event,player,data)
 			local r = damage.reason
 			if damage.card then
 				sgs.card_damage_nature[damage.card:getClassName()] = damage.nature
-				if sgs.ai_card_intention[damage.card:getClassName()] then return end
+				if getCardIntention(damage.card) then return end
 				if r=="" then r = damage.card:getSkillName() end
 			end
 			
@@ -2539,7 +2561,7 @@ function SmartAI:filterEvent(event,player,data)
 			if type(sn)=="function" then sn(self,player,struct) end
 		elseif event==sgs.HpRecover then
 			local rec = data:toRecover()
-			local aci = rec.card and sgs.ai_card_intention[rec.card:getClassName()]
+			local aci = getCardIntention(rec.card)
 			if type(aci)=="function" or type(aci)=="number" then return end
 			if rec.who then sgs.updateIntention(rec.who,player,-66*rec.recover) end
 		elseif event==sgs.ShowCards then
@@ -3910,6 +3932,21 @@ function SmartAI:askForUseCard(pattern,prompt,method)
 	return "."
 end
 
+-- ViewAsSkillV2 主動技使用決策。
+-- activation skill 優先；attached 入口沒有專屬 AI 時回退 root source skill。
+function SmartAI:askForActiveSkill(request)
+	if not request then return end
+	local skill_name = request:getActivationSkillName()
+	local callback = sgs.ai_active_skill[skill_name]
+	if type(callback)~="function" then
+		skill_name = request:getSourceSkillName()
+		callback = sgs.ai_active_skill[skill_name]
+	end
+	if type(callback)=="function" then
+		return callback(self,request)
+	end
+end
+
 function SmartAI:askForAG(card_ids,refusable,reason)
 	if #card_ids<1 then return -1 end
 	local cardchosen = sgs.ai_skill_askforag[string.gsub(reason,"%-","_")]
@@ -4885,7 +4922,7 @@ function SmartAI:getTurnUse()
 									if logger then logger:writeLog("DEBUG", "getTurnUse: Adding card to turnUse") end
 									
 									local addSuccess, addErr = pcall(function()
-										local cardKey = d.card:toString()
+										local cardKey = aiCardKey(d.card)
 										if logger then 
 											logger:writeLog("DEBUG", "getTurnUse: Card key", {key = cardKey})
 										end
@@ -5141,7 +5178,7 @@ function SmartAI:activate(use)
 		end
 		
 		local success, err = pcall(function()
-			use.to = self.use_to[c:toString()]
+			use.to = self.use_to[aiCardKey(c)]
 			if logger then logger:writeLog("DEBUG", "activate: Set use.to") end
 						
 			use.card = c
@@ -5643,16 +5680,8 @@ function SmartAI:getMinCard(player,cards)
 	if #cards<1 then return end
 	local min_card,min_point = nil,14
 	for _,card in ipairs(cards)do
-		if player==self.player and self:isValuableCard(card) then continue end
 		if card:hasFlag("visible") or self.player:canSeeHandcard(player)
 		or card:hasFlag("visible_"..self.player:objectName().."_"..player:objectName()) then
-			local point = card:getNumber()
-			if card:getSuit()==sgs.Card_Heart and player:hasSkill("tianbian") then point = 13 end
-			if point<min_point then min_point = point min_card = card end
-		end
-	end
-	if player==self.player and not min_card then
-		for _,card in ipairs(cards)do
 			local point = card:getNumber()
 			if card:getSuit()==sgs.Card_Heart and player:hasSkill("tianbian") then point = 13 end
 			if point<min_point then min_point = point min_card = card end
@@ -5997,6 +6026,16 @@ end
 
 sgs.ai_fill_skill = {}
 
+local function insertAIFillCards(cards,filled,instance_id)
+	if type(filled)~="table" then filled = {filled} end
+	for _,card in ipairs(filled)do
+		if type(card)=="userdata" then
+			if instance_id>0 and card:isVirtualCard() then card:setSkillInstanceID(instance_id) end
+			table.insert(cards,card)
+		end
+	end
+end
+
 function SmartAI:fillSkillCards(cards)
 	--[[
 	for _,skill in ipairs(sgs.ai_skills)do
@@ -6008,18 +6047,13 @@ function SmartAI:fillSkillCards(cards)
 		end
 	end--]]
 	for _,skill in ipairs(sgs.getPlayerSkillList(self.player))do
-		local fs = sgs.ai_fill_skill[skill:objectName()]
+		local skill_name = skill:objectName()
+		local fs = sgs.ai_fill_skill[skill_name]
 		if type(fs)=="function" then
-			local vs = sgs.Sanguosha:getViewAsSkill(skill:objectName())
-			if vs==nil or vs:isEnabledAtPlay(self.player) then
-				vs = fs(self,#cards<1)
-				if type(vs)=="userdata"
-				then table.insert(cards,vs)
-				elseif type(vs)=="table" then
-					for _,c in ipairs(vs)do
-						table.insert(cards,c)
-					end
-				end
+			local vs = sgs.Sanguosha:getViewAsSkill(skill_name)
+			local instance_id = self.room:getActiveSkillAIInstanceId(self.player,skill_name)
+			if instance_id>=0 and (vs==nil or vs:isEnabledAtPlay(self.player)) then
+				insertAIFillCards(cards,fs(self,#cards<1),instance_id)
 			end
 		end
 	end
@@ -6030,15 +6064,9 @@ function SmartAI:fillSkillCards(cards)
 			local fs = sgs.ai_fill_skill[m]
 			if type(fs)=="function" then
 				local vs = sgs.Sanguosha:getViewAsSkill(m)
-				if vs==nil or vs:isEnabledAtPlay(self.player) then
-					vs = fs(self,#cards<1)
-					if type(vs)=="userdata"
-					then table.insert(cards,vs)
-					elseif type(vs)=="table" then
-						for _,c in ipairs(vs)do
-							table.insert(cards,c)
-						end
-					end
+				local instance_id = self.room:getActiveSkillAIInstanceId(self.player,m)
+				if instance_id>=0 and (vs==nil or vs:isEnabledAtPlay(self.player)) then
+					insertAIFillCards(cards,fs(self,#cards<1),instance_id)
 				end
 			end
 		end
@@ -6048,7 +6076,9 @@ end
 
 function SmartAI:useSkillCard(card,use)
 	local name = card:getClassName()
-	if card:isKindOf("LuaSkillCard")
+	if card:isKindOf("ActiveSkillCard") then
+		name = card:getSkillName()
+	elseif card:isKindOf("LuaSkillCard")
 	then name = "#"..card:objectName() end
 	local invoke = sgs.ai_skill_use_func[name]
 	if type(invoke)=="function"
@@ -8079,7 +8109,7 @@ function SmartAI:ajustDamage(from,to,dmg,card,nature,depth)
 	if getSpecialMark("&tiansuan1",to)>0 then return 0 end
 	if type(nature)~="string" then
 		if type(nature)~="number" then
-			nature = card and type(card) ~= "string" and sgs.card_damage_nature[card:getClassName()] or sgs.DamageStruct_Normal
+			nature = card and sgs.card_damage_nature[card:getClassName()] or sgs.DamageStruct_Normal
 		end
 		local na = {
 			[sgs.DamageStruct_Normal]="N",
@@ -11027,7 +11057,7 @@ end
 
 --[[============================================
 	目標推薦系統（ai_target_recommend）
-
+	
 	用於各技能對目標選擇的影響評估，由 SmartAI:getBestTarget 驅動（加權隨機選擇）
 
 	【註冊方式】
@@ -11052,13 +11082,13 @@ end
 
 	【返回值協議】
 		數值修正（-5 ~ +5）：
-			-5：極度不推薦（嚴重危險）
-			-3：中度不推薦（較強反制）
-			-2：輕度不推薦（普通反制）
+		-5：極度不推薦（嚴重危險）
+		-3：中度不推薦（較強反制）
+		-2：輕度不推薦（普通反制）
 			0： 中性
-			+2：輕度推薦
-			+3：中度推薦
-			+5：強烈推薦
+		+2：輕度推薦
+		+3：中度推薦
+		+5：強烈推薦
 		false：一票否決（Veto），目標直接排除
 
 	【使用方式（opt-in）】
@@ -11193,8 +11223,8 @@ sgs.registerMasochismRecommend("jieming", {
 	rules = {
 		{
 			when = function(self, from, to, card)
-				local apn = self:getAllPeachNum(to)
-				local damageNum = self:ajustDamage(from, to, 1, card)
+	local apn = self:getAllPeachNum(to)
+	local damageNum = self:ajustDamage(from, to, 1, card)
 				return apn + to:getHp() > damageNum
 					and self.getJiemingChaofeng and self:getJiemingChaofeng(to) > -4
 			end,
@@ -11209,8 +11239,8 @@ sgs.registerMasochismRecommend("yiji", {
 	rules = {
 		{
 			when = function(self, from, to, card)
-				local apn = self:getAllPeachNum(to)
-				local damageNum = self:ajustDamage(from, to, 1, card)
+	local apn = self:getAllPeachNum(to)
+	local damageNum = self:ajustDamage(from, to, 1, card)
 				return apn + to:getHp() > damageNum
 					and self.findFriendsByType and not self:findFriendsByType(sgs.Friend_Draw, to)
 			end,
@@ -11248,8 +11278,8 @@ sgs.registerMasochismRecommend("fangzhu", {
 	rules = {
 		{
 			when = function(self, from, to, card)
-				local apn = self:getAllPeachNum(to)
-				local damageNum = self:ajustDamage(from, to, 1, card)
+	local apn = self:getAllPeachNum(to)
+	local damageNum = self:ajustDamage(from, to, 1, card)
 				return to:getLostHp() < 2 or (apn + to:getHp() > damageNum and #self:getFriends(to) > 1)
 			end,
 			score = -4
@@ -11263,7 +11293,7 @@ sgs.registerMasochismRecommend("huilei", {
 	rules = {
 		{
 			when = function(self, from, to, card)
-				local damageNum = self:ajustDamage(from, to, 1, card)
+	local damageNum = self:ajustDamage(from, to, 1, card)
 				return not to:isLord() and to:getHp() <= damageNum and from:getHandcardNum() >= 4
 			end,
 			score = -3
@@ -11295,12 +11325,12 @@ sgs.registerMasochismRecommend("tianxiang", {
 				if not getKnownCard or getKnownCard(to, from, "diamond,club") >= to:getHandcardNum() then
 					return false
 				end
-				local damageNum = self:ajustDamage(from, to, 1, card)
-				for _, friend in ipairs(self.friends or {}) do
-					if friend:getHp() + self:getCardsNum("Peach") - damageNum < 2 then
+		local damageNum = self:ajustDamage(from, to, 1, card)
+		for _, friend in ipairs(self.friends or {}) do
+			if friend:getHp() + self:getCardsNum("Peach") - damageNum < 2 then
 						return true
-					end
-				end
+			end
+		end
 				return false
 			end,
 			score = -2
@@ -11315,22 +11345,22 @@ sgs.registerMasochismRecommend("wuhun", {
 		{
 			when = function(self, from, to, card)
 				if to:isLord() or #self:getFriends(to, true) == 0 then return false end
-				local maxfriendmark, maxenemymark = 0, 0
-				for _, friend in ipairs(self.friends or {}) do
-					local friendmark = friend:getMark("&nightmare+#" .. to:objectName())
+		local maxfriendmark, maxenemymark = 0, 0
+		for _, friend in ipairs(self.friends or {}) do
+			local friendmark = friend:getMark("&nightmare+#" .. to:objectName())
 					if friendmark > maxfriendmark then maxfriendmark = friendmark end
-				end
-				for _, enemy in ipairs(self.enemies or {}) do
-					local enemymark = enemy:getMark("&nightmare+#" .. to:objectName())
+		end
+		for _, enemy in ipairs(self.enemies or {}) do
+			local enemymark = enemy:getMark("&nightmare+#" .. to:objectName())
 					if enemymark > maxenemymark and enemy ~= to then maxenemymark = enemymark end
-				end
-				local damageNum = self:ajustDamage(from, to, 1, card)
-				if self:isEnemy(to) then
+		end
+		local damageNum = self:ajustDamage(from, to, 1, card)
+		if self:isEnemy(to) then
 					return maxfriendmark + damageNum - to:getHp() / 2 >= maxenemymark
 						and not (#self.enemies == 1 and #self.friends + #self.enemies == self.room:alivePlayerCount())
 				else
 					return maxfriendmark + damageNum - to:getHp() / 2 > maxenemymark
-				end
+			end
 			end,
 			score = -5
 		},
