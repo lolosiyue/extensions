@@ -1327,15 +1327,15 @@ end
 sgs.ai_skill_playerchosen.s4_cangzhuo = function(self, targets)
     return self:getBestTargetOr(targets, "s4_cangzhuo", self.player, function(self)
         local target = self:findPlayerToDraw(false,1)
-        if target then
-            return target
-        end
-        for _,friend in ipairs(self.friends_noself) do
-            if self:canDraw(friend, self.player) then
-                return friend
-            end
-        end
-        return targets:first()
+    if target then
+        return target
+    end
+	for _,friend in ipairs(self.friends_noself) do
+		if self:canDraw(friend, self.player) then
+        	return friend
+		end
+    end
+	return targets:first()
     end)
 end
 
@@ -1483,12 +1483,12 @@ sgs.registerTargetRecommend("s4_banjiang", function(self, from, to, card, skill_
     if not ctx.isDamage then
         return 0
     end
-
+    
     -- 檢查技能是否失效
     if checkMasochismInvalid(from, to, card) then
         return 0
     end
-
+    
     if self:canLoseHp(from,card,to) then
         if self:isEnemy(to, from) then
             return -1
@@ -1497,7 +1497,7 @@ sgs.registerTargetRecommend("s4_banjiang", function(self, from, to, card, skill_
             return 1
         end
     end
-
+    
     return 0
 end)
 
@@ -4103,4 +4103,138 @@ sgs.ai_skill_discard.s4_zhimeng = function(self, discard_num, min_num, optional,
 	return {cards[1]:getEffectiveId()}
 end
 
+-- ====== s4_mousunce (謀孫策) AI ======
 
+local function s4_mousuncePindianPoint(player, card)
+    if not player or not card then return 0 end
+    local point = card:getNumber()
+    if player:hasSkill("tianbian") and card:getSuit() == sgs.Card_Heart then
+        point = 13
+    end
+    if player:hasLordSkill("s4_zhiba") then
+        point = math.min(point + 3, 13)
+    end
+    return point
+end
+
+-- 激昂 — 摸牌沒有負面代價，總是發動
+sgs.ai_skill_invoke.s4_jiyang = true
+
+-- 激昂·主動 — 拼點→決鬥
+sgs.ai_fill_skill.s4_jiyang = function(self)
+	local card = sgs.ActiveSkillCard()
+	card:setSkillName("s4_jiyang")
+	return card
+end
+
+sgs.ai_skill_use_func.s4_jiyang = function(card, use, self)
+	local max_card = self:getMaxCard()
+	if not max_card then return end
+
+    local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
+    duel:setSkillName("_s4_jiyang")
+    duel:deleteLater()
+    local dummy_use = self:aiUseCard(duel)
+    if not dummy_use.card then return end
+
+    local max_point = s4_mousuncePindianPoint(self.player, max_card)
+    for _, enemy in sgs.list(dummy_use.to) do
+        if self.player:canPindian(enemy) then
+            local enemy_max = self:getMaxCard(enemy)
+            local enemy_point = s4_mousuncePindianPoint(enemy, enemy_max)
+			if enemy_max and max_point > enemy_point or not enemy_max and max_point >= 10 then
+				-- askForPindian 的發起者分支會讀取 <reason>_card。
+				self.s4_jiyang_card = max_card
+				use.card = card
+				use.to:append(enemy)
+				return
+			end
+		end
+    end
+end
+
+sgs.ai_skill_pindian.s4_jiyang = function(minusecard, self, requestor, maxcard, mincard)
+    if self:isFriend(requestor) then return mincard or minusecard end
+    return maxcard or minusecard
+end
+
+-- 制霸 — 拼點牌點數 +/-3
+sgs.ai_skill_choice.s4_zhiba = function(self, choices, data)
+    local items = choices:split("+")
+    local pindian = data:toPindian()
+    local up_choice = getChoice(choices, "up")
+    local down_choice = getChoice(choices, "down")
+    local cancel_choice = getChoice(choices, "cancel")
+    
+    if not pindian or not pindian.from or not pindian.to then
+        return cancel_choice or items[1]
+    end
+
+    local opponent, own_number
+    if pindian.from:objectName() == self.player:objectName() then
+        opponent = pindian.to
+        own_number = pindian.from_number
+    elseif pindian.to:objectName() == self.player:objectName() then
+        opponent = pindian.from
+        own_number = pindian.to_number
+    else
+        return cancel_choice or items[1]
+    end
+
+    if self:isFriend(opponent) then
+        if own_number > 1 and down_choice then return down_choice end
+    elseif own_number < 13 and up_choice then
+        return up_choice
+    end
+    return cancel_choice or items[1]
+end
+
+-- 制霸·逐鹿 — 出牌階段與吳勢力角色逐鹿
+sgs.ai_fill_skill.s4_zhiba = function(self)
+	local card = sgs.ActiveSkillCard()
+	card:setSkillName("s4_zhiba")
+	return card
+end
+
+sgs.ai_skill_use_func.s4_zhiba = function(card, use, self)
+	local max_card = self:getMaxCard()
+	if not max_card then return end
+    local max_point = s4_mousuncePindianPoint(self.player, max_card)
+    if max_point < 10 then return end
+
+    local targets = {}
+    for _, enemy in ipairs(self.enemies) do
+        if enemy:hasLordSkillKingdom("wu", self.player)
+            and self.player:canPindian(enemy) then
+			local enemy_max = self:getMaxCard(enemy)
+			local enemy_point = s4_mousuncePindianPoint(enemy, enemy_max)
+			if enemy_max and max_point > enemy_point or not enemy_max and max_point == 13 then
+				table.insert(targets, enemy)
+            end
+        end
+    end
+	if #targets == 0 then return end
+
+	self.s4_zhiba_card = max_card
+	use.card = card
+	for _, target in ipairs(targets) do
+		use.to:append(target)
+	end
+end
+
+sgs.ai_skill_pindian.s4_zhiba = function(minusecard, self, requestor, maxcard, mincard)
+    if self:isFriend(requestor) then return mincard or minusecard end
+    return maxcard or minusecard
+end
+
+sgs.ai_skill_playerchosen.s4_zhiba = function(self, targets)
+    local target_list = sgs.QList2Table(targets)
+    local damage_targets = self:findPlayerToDamage(1, self.player, "N", target_list)
+    for _, target in ipairs(damage_targets) do
+        if self:isEnemy(target) then return target end
+    end
+    self:sort(target_list, "defense")
+    return target_list[1]
+end
+
+sgs.ai_playerchosen_intention.s4_zhiba = 80
