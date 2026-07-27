@@ -1363,7 +1363,8 @@ function targetsPindian(self, player, targets)
 		pd_.success_owner = player
 		room:setEmotion(player, "success")
 	end
-	pd.success = player == pd_.success_owner
+	pd_.success = player == pd_.success_owner
+	pd.success = pd_.success
 	for _, t in sgs.qlist(log.to) do
 		if pd_to_card[t:objectName()] then
 			if numbers[1] ~= numbers[2] and pd_to_number[t:objectName()] == numbers[1] then
