@@ -8558,10 +8558,154 @@ sgs.LoadTranslationTable{
 }
 --https://tieba.baidu.com/p/9435738349
 
+s4_zhanghe = sgs.General(extension, "s4_zhanghe", "wei", 4)
 
+-- 巧變 (s4_qiaobian)
+s4_qiaobian = sgs.CreateTriggerV2Skill{
+    name = "s4_qiaobian",
+    frequency = sgs.Skill_NotFrequent,
+    events = { sgs.EventPhaseChanging },
+	base_amount = 1,
+    can_trigger = function(skill, event, room, player, data)
+		if not player:hasSkill(skill:objectName()) then return false end
+        local change = data:toPhaseChange()
+		if player == sgs.Player_RoundStart or player == sgs.Player_NotActive then
+			return false
+		end
+		if not player:isSkipped(change.to) then
+			return skill:objectName()
+		end
+        return false
+    end,
 
+    on_record = function(skill, event, room, player, data, owner)
+    end,
 
+    on_cost = function(skill, event, room, player, ctx)
+        local change = ctx.original_data:toPhaseChange()
+        local card = room:askForCard(player, ".|.|.|hand", "@" .. skill:objectName() .. "-ask", ctx.original_data, sgs.Card_MethodNone, nil, false,skill:objectName())
+        if card then
+            if xumouCard(player, card) then
+				if change.to == sgs.Player_Finish then
+            		local x = math.min(player:getJudgingArea():length(), player:getHp())
+					ctx.modified_amount = x
+				elseif change.to == sgs.Player_Draw then
+					local others = sgs.SPlayerList()
+                    for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+                        if p:canMove(p, "h") then
+                            others:append(p)
+                        end
+                    end
+                    if not others:isEmpty() then
+                        local targets = room:askForPlayersChosen(player, others, skill:objectName(), 0, 2, "@" .. skill:objectName() .. "-draw", true, true)
+                        for _, t in sgs.qlist(targets) do
+                            ctx.targets:append(t)
+                        end
+                    end
+				end
+				return true 
+			end
+        end
+        return false
+    end,
 
+    on_effect = function(skill, event, room, player, ctx)
+        local phase = ctx.original_data:toPhaseChange().to
+        player:skip(phase, true)
+        if phase == sgs.Player_Finish then
+            local x = skill:getEffectiveAmount(ctx)
+            if x > 0 then
+                local cards = room:getNCards(x)
+                room:askForGuanxing(player, cards, sgs.Room_GuanxingBothSides)
+            end
+		elseif phase == sgs.Player_Play then
+			local amount = skill:getEffectiveAmount(ctx)
+			for i = 1, amount do
+				if not room:moveField(player, skill:objectName(), true, "ej") then break end
+			end
+        end
+        return false
+    end,
+	on_effect_target = function(skill, event, room, player, ctx, target)
+		local change = ctx.original_data:toPhaseChange()
+		local phase = change.to
+
+		if phase == sgs.Player_Draw then
+			local amount = skill:getEffectiveAmount(ctx)
+			for i = 1, amount do
+				if not target:isKongcheng() then
+					local card_id = room:askForCardChosen(player, target, "h", skill:objectName())
+					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), skill:objectName(), "")
+					room:obtainCard(player, sgs.Sanguosha:getCard(card_id), reason)
+				end
+			end
+
+		end
+	end,
+}
+
+-- 急旋 (s4_jixuan)
+s4_jixuan = sgs.CreateTriggerV2Skill{
+    name = "s4_jixuan",
+    frequency = sgs.Skill_Compulsory,
+    events = { sgs.Damaged },
+	base_amount = 1,
+    can_trigger = function(skill, event, room, player, data)
+		if not player:hasSkill(skill:objectName()) then return false end
+        for _, c in sgs.qlist(player:getJudgingArea()) do
+            if c:getClassName() == "Xumou" then
+                return skill:objectName()
+            end
+        end
+        return false
+    end,
+
+    on_record = function(skill, event, room, player, data, owner)
+    end,
+
+    on_cost = function(skill, event, room, player, ctx)
+        return true
+    end,
+
+    on_effect = function(skill, event, room, player, ctx)
+        room:sendCompulsoryTriggerLog(player, skill:objectName())
+        room:broadcastSkillInvoke(skill:objectName())
+        local disabled = sgs.IntList()
+		for _, c in sgs.qlist(player:getJudgingArea()) do
+			if c:getClassName() ~= "Xumou" then
+				disabled:append(c:getId())
+			end
+		end
+		if disabled:isEmpty() then return false end
+		local card_id = room:askForCardChosen(player, player, "j", skill:objectName(), false, sgs.Card_MethodDiscard, disabled)
+		room:throwCard(card_id, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_THROW, player:objectName(), skill:objectName(), ""), player, nil)
+		local amount = skill:getEffectiveAmount(ctx)
+        player:drawCards(amount, skill:objectName())
+        return false
+    end,
+}
+
+s4_zhanghe:addSkill(s4_qiaobian)
+s4_zhanghe:addSkill(s4_jixuan)
+
+sgs.LoadTranslationTable {
+-- s4_zhanghe 張郃
+	["s4_zhanghe"] = "张郃",
+	["&s4_zhanghe"] = "张郃",
+	["#s4_zhanghe"] = "料敌机先",
+
+	["s4_qiaobian"] = "巧变",
+	[":s4_qiaobian"] = "你可以蓄谋一张手牌并跳过你的一个阶段，若以此法跳过：摸牌阶段，你可以获得至多两名其他角色各一张手牌；出牌阶段，你可以移动场上的一张牌；结束阶段，你卜算X（X为你判定区里的牌数且不大于你的体力值）。",
+	["@s4_qiaobian-ask"] = "请选择一张手牌蓄谋",
+	["@s4_qiaobian-draw"] = "选择至多两名角色获得其手牌",
+	["@s4_qiaobian-move-from"] = "选择要移动牌的来源角色",
+	["@s4_qiaobian-move-to"] = "选择要移动到的目标角色",
+
+	["s4_jixuan"] = "急旋",
+	[":s4_jixuan"] = "锁定技，当你受到1点伤害后，若你的区域里有蓄谋牌，你弃置一张蓄谋牌，然后摸一张牌。",
+
+}
+--https://tieba.baidu.com/p/9435738349
 
 s4_yuanshao = sgs.General(extension, "s4_yuanshao", "qun", 4)
 
