@@ -1777,35 +1777,6 @@ end
 
 sgs.ai_skill_invoke.s4_jiyang = true
 
-sgs.ai_active_skill.s4_jiyang = function(self, request)
-    if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return end
-
-    local max_card = self:getMaxCard()
-    if not max_card then return end
-
-    local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
-    duel:setSkillName("_s4_jiyang")
-    duel:deleteLater()
-    local dummy_use = self:aiUseCard(duel)
-    if not dummy_use.card then return end
-
-    local max_point = sgs.getPindianNumber(max_card, self.player, { ai = self, mode = "max", reason = "s4_jiyang" })
-    for _, enemy in sgs.list(dummy_use.to) do
-        if self.player:canPindian(enemy) then
-            local enemy_max = self:getMaxCard(enemy)
-            local enemy_point = sgs.getPindianNumber(enemy_max, enemy, { ai = self, mode = "max", opponent = self.player, reason = "s4_jiyang" })
-            if enemy_max and max_point > enemy_point or not enemy_max and max_point >= 10 then
-                -- askForPindian 的發起者分支會讀取 <reason>_card。
-                self.s4_jiyang_card = max_card
-                return {
-                    cards = {},
-                    targets = { enemy:objectName() }
-                }
-            end
-        end
-    end
-end
-
 sgs.ai_skill_pindian.s4_jiyang = function(minusecard, self, requestor, maxcard, mincard)
     local ctx = { opponent = requestor, ai = self, reason = "s4_jiyang" }
     if self:isFriend(requestor) then
@@ -1873,35 +1844,6 @@ sgs.ai_skill_choice.s4_zhiba = function(self, choices, data)
 end
 
 sgs.registerSkillCardType("s4_zhiba", "damage")
-
--- 制霸·逐鹿 — 出牌階段與吳勢力角色逐鹿
-sgs.ai_active_skill.s4_zhiba = function(self, request)
-    if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return end
-
-    local max_card = self:getMaxCard()
-    if not max_card then return end
-    local max_point = sgs.getPindianNumber(max_card, self.player, { ai = self, mode = "max", reason = "s4_zhiba" })
-    if max_point < 10 then return end
-
-    local targets = {}
-    for _, enemy in ipairs(self.enemies) do
-        if enemy:hasLordSkillKingdom("wu", self.player)
-            and self.player:canPindian(enemy) then
-            local enemy_max = self:getMaxCard(enemy)
-            local enemy_point = sgs.getPindianNumber(enemy_max, enemy, { ai = self, mode = "max", opponent = self.player, reason = "s4_zhiba" })
-            if enemy_max and max_point > enemy_point or not enemy_max and max_point == 13 then
-                table.insert(targets, enemy:objectName())
-            end
-        end
-    end
-    if #targets == 0 then return end
-
-    self.s4_zhiba_card = max_card
-    return {
-        cards = {},
-        targets = targets
-    }
-end
 
 sgs.ai_skill_pindian.s4_zhiba = function(minusecard, self, requestor, maxcard, mincard)
     local ctx = { opponent = requestor, ai = self, reason = "s4_zhiba" }
@@ -4121,13 +4063,13 @@ end
 sgs.ai_skill_invoke.s4_jiyang = true
 
 -- 激昂·主動 — 拼點→決鬥
-sgs.ai_fill_skill.s4_jiyang = function(self)
+sgs.ai_fill_skill.s4_jiyang = function(self, inclusive, request)
 	local card = sgs.ActiveSkillCard()
 	card:setSkillName("s4_jiyang")
 	return card
 end
 
-sgs.ai_skill_use_func.s4_jiyang = function(card, use, self)
+sgs.ai_skill_use_func.s4_jiyang = function(card, use, self, request)
 	local max_card = self:getMaxCard()
 	if not max_card then return end
 
@@ -4190,13 +4132,13 @@ sgs.ai_skill_choice.s4_zhiba = function(self, choices, data)
 end
 
 -- 制霸·逐鹿 — 出牌階段與吳勢力角色逐鹿
-sgs.ai_fill_skill.s4_zhiba = function(self)
+sgs.ai_fill_skill.s4_zhiba = function(self, inclusive, request)
 	local card = sgs.ActiveSkillCard()
 	card:setSkillName("s4_zhiba")
 	return card
 end
 
-sgs.ai_skill_use_func.s4_zhiba = function(card, use, self)
+sgs.ai_skill_use_func.s4_zhiba = function(card, use, self, request)
 	local max_card = self:getMaxCard()
 	if not max_card then return end
     local max_point = s4_mousuncePindianPoint(self.player, max_card)

@@ -70,7 +70,6 @@ sgs.ai_cardshow =				{}
 sgs.ai_nullification =			{}
 sgs.ai_skill_cardchosen =		{}
 sgs.ai_skill_use =				{}
-sgs.ai_active_skill =			{}
 sgs.ai_cardneed =				{}
 sgs.ai_skill_use_func =	 		{}
 sgs.ai_skills =			 		{}
@@ -884,7 +883,8 @@ function SmartAI:getUseValue(card)
 	end
 	local v = sgs.ai_use_value[card:getClassName()] or 0
 	if card:isKindOf("ActiveSkillCard") then
-		v = sgs.ai_use_value[card:getSkillName()] or v
+		v = sgs.ai_use_value[card:getSkillName()]
+			or sgs.ai_use_value[card:getSourceSkillName()] or v
 	elseif card:isKindOf("LuaSkillCard")
 	then v = sgs.ai_use_value[card:objectName()] or v
 	elseif card:isKindOf("EquipCard") then
@@ -952,7 +952,8 @@ function SmartAI:getUsePriority(card)
 		if self:loseEquipEffect() then upv = upv+6 end
 	elseif card:getTypeId()<1 then
 		if card:isKindOf("ActiveSkillCard") then
-			upv = sgs.ai_use_priority[card:getSkillName()] or upv
+			upv = sgs.ai_use_priority[card:getSkillName()]
+				or sgs.ai_use_priority[card:getSourceSkillName()] or upv
 		elseif card:isKindOf("LuaSkillCard")
 		then upv = sgs.ai_use_priority[card:objectName()] or upv end
 		return upv
@@ -1869,7 +1870,8 @@ local function getCardIntention(card)
 	if not card then return end
 	local intention = sgs.ai_card_intention[card:getClassName()]
 	if card:isKindOf("ActiveSkillCard") then
-		intention = sgs.ai_card_intention[card:getSkillName()] or intention
+		intention = sgs.ai_card_intention[card:getSkillName()]
+			or sgs.ai_card_intention[card:getSourceSkillName()] or intention
 	end
 	return intention
 end
@@ -3932,18 +3934,34 @@ function SmartAI:askForUseCard(pattern,prompt,method)
 	return "."
 end
 
--- ViewAsSkillV2 主動技使用決策。
--- activation skill 優先；attached 入口沒有專屬 AI 時回退 root source skill。
+-- ViewAsSkillV2 的 askForUseCard 橋接沿用既有 ai_skill_use。
+-- 新 callback 可讀取第五個 request 並回傳結構化 table；舊字串回傳維持不變。
 function SmartAI:askForActiveSkill(request)
-	if not request then return end
-	local skill_name = request:getActivationSkillName()
-	local callback = sgs.ai_active_skill[skill_name]
-	if type(callback)~="function" then
-		skill_name = request:getSourceSkillName()
-		callback = sgs.ai_active_skill[skill_name]
-	end
+	if not request or not request:isValid() then return end
+	local pattern = request:getPattern()
+	local prompt = request:getPrompt()
+	local method = request:getHandlingMethod()
+	local callback = sgs.ai_skill_use[pattern]
+	local compulsive = pattern:endsWith("!")
+	if compulsive then pattern = string.sub(pattern,1,-2) end
 	if type(callback)=="function" then
-		return callback(self,request)
+		local result = callback(self,prompt,method,pattern,request)
+		if type(result)=="table"
+		or type(result)=="string" and not(compulsive and result==".")
+		then return result end
+	end
+	if sgs.cardEffect and not(compulsive or pattern:startsWith("@")) then
+		local effect = sgs.cardEffect
+		if effect.card and string.find(prompt,effect.card:objectName()) and effect.card:isDamageCard()
+		and effect.from and effect.to==self.player and self:canDamageHp(effect.from,effect.card)
+		then return "." end
+	end
+	callback = sgs.ai_skill_use[prompt:split(":")[1]]
+	if type(callback)=="function" then
+		local result = callback(self,prompt,method,pattern,request)
+		if type(result)=="table"
+		or type(result)=="string" and not(compulsive and result==".")
+		then return result end
 	end
 end
 
@@ -4769,6 +4787,7 @@ function SmartAI:getTurnUse()
 	
 	if logger then logger:writeLog("DEBUG", "getTurnUse: Initializing use_to table") end
 	self.use_to = {}
+	self.active_skill_requests = {}
 
 	-- =========================================================
     -- Step 1: 狀態預判 (O(1) - 只做一次)
@@ -6026,14 +6045,36 @@ end
 
 sgs.ai_fill_skill = {}
 
-local function insertAIFillCards(cards,filled,instance_id)
+local function insertAIFillCards(self,cards,filled,instance_id,request,skill_name)
 	if type(filled)~="table" then filled = {filled} end
 	for _,card in ipairs(filled)do
 		if type(card)=="userdata" then
-			if instance_id>0 and card:isVirtualCard() then card:setSkillInstanceID(instance_id) end
+			if instance_id>0 and card:isVirtualCard() then
+				card:setSkillInstanceID(instance_id)
+				card:setActivationSkill(request:getActivationSkillName(),request:getActivationInstanceID())
+				card:setSourceSkill(request:getSourceSkillName(),request:getSourceInstanceID())
+				if card:isKindOf("ActiveSkillCard") then card:setSkillName(skill_name) end
+			end
+			if request then
+				self.active_skill_requests = self.active_skill_requests or {}
+				self.active_skill_requests[aiCardKey(card)] = request
+			end
 			table.insert(cards,card)
 		end
 	end
+end
+
+local function getAIFillSkill(self,skill_name,instance_id)
+	local request
+	if instance_id>0 then
+		request = self.room:getActiveSkillAIRequest(self.player,skill_name)
+		if not request or not request:isValid() then return end
+	end
+	local callback = sgs.ai_fill_skill[skill_name]
+	if type(callback)~="function" and request then
+		callback = sgs.ai_fill_skill[request:getSourceSkillName()]
+	end
+	if type(callback)=="function" then return callback,request end
 end
 
 function SmartAI:fillSkillCards(cards)
@@ -6048,26 +6089,22 @@ function SmartAI:fillSkillCards(cards)
 	end--]]
 	for _,skill in ipairs(sgs.getPlayerSkillList(self.player))do
 		local skill_name = skill:objectName()
-		local fs = sgs.ai_fill_skill[skill_name]
-		if type(fs)=="function" then
-			local vs = sgs.Sanguosha:getViewAsSkill(skill_name)
-			local instance_id = self.room:getActiveSkillAIInstanceId(self.player,skill_name)
-			if instance_id>=0 and (vs==nil or vs:isEnabledAtPlay(self.player)) then
-				insertAIFillCards(cards,fs(self,#cards<1),instance_id)
-			end
+		local vs = sgs.Sanguosha:getViewAsSkill(skill_name)
+		local instance_id = self.room:getActiveSkillAIInstanceId(self.player,skill_name)
+		local fs,request = getAIFillSkill(self,skill_name,instance_id)
+		if fs and instance_id>=0 and (vs==nil or vs:isEnabledAtPlay(self.player)) then
+			insertAIFillCards(self,cards,fs(self,#cards<1,request),instance_id,request,skill_name)
 		end
 	end
 	for _,m in ipairs(self.player:getMarkNames())do
 		if self.player:getMark(m)>0 and m:startsWith("ViewAsSkill_") then
 			m = string.gsub(m,"ViewAsSkill_","")
 			m = string.gsub(m,"Effect","")
-			local fs = sgs.ai_fill_skill[m]
-			if type(fs)=="function" then
-				local vs = sgs.Sanguosha:getViewAsSkill(m)
-				local instance_id = self.room:getActiveSkillAIInstanceId(self.player,m)
-				if instance_id>=0 and (vs==nil or vs:isEnabledAtPlay(self.player)) then
-					insertAIFillCards(cards,fs(self,#cards<1),instance_id)
-				end
+			local vs = sgs.Sanguosha:getViewAsSkill(m)
+			local instance_id = self.room:getActiveSkillAIInstanceId(self.player,m)
+			local fs,request = getAIFillSkill(self,m,instance_id)
+			if fs and instance_id>=0 and (vs==nil or vs:isEnabledAtPlay(self.player)) then
+				insertAIFillCards(self,cards,fs(self,#cards<1,request),instance_id,request,m)
 			end
 		end
 	end
@@ -6076,13 +6113,20 @@ end
 
 function SmartAI:useSkillCard(card,use)
 	local name = card:getClassName()
+	local request
 	if card:isKindOf("ActiveSkillCard") then
 		name = card:getSkillName()
+		request = self.active_skill_requests and self.active_skill_requests[aiCardKey(card)]
 	elseif card:isKindOf("LuaSkillCard")
 	then name = "#"..card:objectName() end
 	local invoke = sgs.ai_skill_use_func[name]
+	if type(invoke)~="function" and request then
+		invoke = sgs.ai_skill_use_func[request:getSourceSkillName()]
+	elseif type(invoke)~="function" and card:isKindOf("ActiveSkillCard") then
+		invoke = sgs.ai_skill_use_func[card:getSourceSkillName()]
+	end
 	if type(invoke)=="function"
-	then invoke(card,use,self)
+	then invoke(card,use,self,request)
 	else
 		invoke = self["useCard"..name]
 		if invoke then invoke(self,card,use) end
