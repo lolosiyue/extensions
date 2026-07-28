@@ -34,119 +34,194 @@ end
 
 s4_cloud_zhangliao = sgs.General(extension, "s4_cloud_zhangliao", "wei", 4, false, false, false, 3)
 
-s4_cloud_tuxi = sgs.CreateTriggerSkill {
+s4_cloud_tuxi = sgs.CreateTriggerV2Skill{
     name = "s4_cloud_tuxi",
     events = { sgs.EventPhaseStart },
-    -- events = { sgs.EventPhaseStart, sgs.CardFinished },
     frequency = sgs.Skill_NotFrequent,
-    on_trigger = function(self, event, player, data, room)
-        local room = player:getRoom()
-        for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-            if p and p:objectName() ~= player:objectName() and
-                room:askForSkillInvoke(p, self:objectName(), ToData(player)) then
-                room:broadcastSkillInvoke(self:objectName())
-                if room:askForDiscard(p, self:objectName(), 999, 1, true, true, "@s4_cloud_tuxi:" .. player:objectName()) then
-                else
-                    local lose_num = {}
-                    for i = 1, p:getHp() do
-                        table.insert(lose_num, tostring(i))
-                    end
-                    local choice = room:askForChoice(p, "s4_cloud_tuxi", table.concat(lose_num, "+"))
-                    room:loseHp(p, tonumber(choice), true, p, self:objectName())
-                end
-                if p:isAlive() then
-                    if player:getHandcardNum() >= p:getHandcardNum() and not player:isKongcheng() then
-                        local card_id = room:askForCardChosen(p, player, "h", self:objectName())
-                        room:obtainCard(p, card_id)
-                    end
-                    if player:getEquips():length() >= p:getEquips():length() and p:canDiscard(player, "he") then
-                        local card_id = room:askForCardChosen(p, player, "he", self:objectName())
-                        room:throwCard(sgs.Sanguosha:getCard(card_id), player, p)
-                    end
-                    if player:getHp() >= p:getHp() then
-                        p:gainHujia(1)
-                        local damage = sgs.DamageStruct()
-                        damage.from = p
-                        damage.to = player
-                        room:damage(damage)
-                    end
-                end
+    base_amount = 1,
+    can_trigger = function(skill, event, room, player, data)
+        if player:getPhase() ~= sgs.Player_Play or not player:isAlive() then
+            return false
+        end
+        local trigger_list_skill, trigger_list_who = {}, {}
+        for _, owner in sgs.qlist(room:findPlayersBySkillName("s4_cloud_tuxi")) do
+            if owner:objectName() ~= player:objectName() and owner:isAlive() then
+                table.insert(trigger_list_skill, "s4_cloud_tuxi")
+                table.insert(trigger_list_who, owner:objectName())
             end
         end
-    end,
-    can_trigger = function(self, target)
-        return target and target:getPhase() == sgs.Player_Play and target:isAlive()
-    end
-}
-
-s4_cloud_yongqian = sgs.CreateTriggerSkill {
-    name = "s4_cloud_yongqian",
-    events = { sgs.DrawNCards, sgs.TargetConfirmed },
-    on_trigger = function(self, event, player, data)
-        local room = player:getRoom()
-        if event == sgs.DrawNCards then
-            local draw = data:toDraw()
-            if draw.reason ~= "draw_phase" then return false end
-            local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(),
-                "s4_cloud_yongqian-invoke", true, true)
-            if target then
-                room:broadcastSkillInvoke(self:objectName())
-                draw.num = draw.num - 1
-                data:setValue(draw)
-                room:setFixedDistance(player, target, 1);
-                room:setPlayerMark(player, self:objectName() .. target:objectName(), 1)
-                room:addPlayerMark(target, "&" .. self:objectName() .. "+to+#" .. player:objectName())
-            end
-        elseif event == sgs.TargetConfirmed then
-            local use = data:toCardUse()
-            if use.card and not use.card:isKindOf("SkillCard") and use.to:contains(player) and player:objectName() ~= use.from:objectName() and player:getMark(self:objectName() .. use.from:objectName()) > 0 then
-                if room:askForSkillInvoke(player, self:objectName()) then
-                    player:drawCards(1, self:objectName())
-                    room:broadcastSkillInvoke(self:objectName())
-                end
-            end
-        end
-    end,
-}
-
-s4_cloud_yongqianClear = sgs.CreateTriggerSkill {
-    name = "#s4_cloud_yongqianClear",
-    events = { sgs.EventPhaseChanging },
-    on_trigger = function(self, event, player, data, room)
-        if event == sgs.EventPhaseChanging then
-            if data:toPhaseChange().to == sgs.Player_Start then
-                for _, p in sgs.qlist(room:getAllPlayers()) do
-                    if player:getMark("s4_cloud_yongqian" .. p:objectName()) > 0 then
-                        room:removeFixedDistance(player, p, 1)
-                        room:setPlayerMark(player, "s4_cloud_yongqian" .. p:objectName(), 0)
-                        room:setPlayerMark(p, "&s4_cloud_yongqian+to+#" .. player:objectName(), 0)
-                    end
-                end
-            end
+        if #trigger_list_skill > 0 then
+            return table.concat(trigger_list_skill, "|"), table.concat(trigger_list_who, "|")
         end
         return false
     end,
-    can_trigger = function(self, target)
-        return target
-    end
+    on_cost = function(skill, event, room, player, ctx)
+        local target = room:getCurrent()
+        if not room:askForSkillInvoke(player, "s4_cloud_tuxi", ToData(target)) then
+            return false
+        end
+        if room:askForDiscard(player, "s4_cloud_tuxi", 999, 1, true, true, "@s4_cloud_tuxi:" .. target:objectName()) then
+        else
+            local lose_num = {}
+            for i = 1, player:getHp() do
+                table.insert(lose_num, tostring(i))
+            end
+            local choice = room:askForChoice(player, "s4_cloud_tuxi", table.concat(lose_num, "+"))
+            room:loseHp(player, tonumber(choice), true, player, "s4_cloud_tuxi")
+        end
+        if not player:isAlive() then return false end
+        ctx.targets:append(target)
+        return true
+    end,
+    on_effect_target = function(skill, event, room, player, ctx, target)
+		local amount = skill:getEffectiveAmount(ctx)
+		
+		if target:getHandcardNum() >= player:getHandcardNum() then
+			for i = 1, amount do
+				if player:canMove(target, "h") then
+					local card_id = room:askForCardChosen(player, target, "h", "s4_cloud_tuxi")
+					room:obtainCard(player, card_id)
+				end
+			end
+		end
+		if target:getEquips():length() >= player:getEquips():length() then
+			for i = 1, amount do
+				if player:canDiscard(target, "he") then
+					local card_id = room:askForCardChosen(player, target, "he", "s4_cloud_tuxi")
+					room:throwCard(sgs.Sanguosha:getCard(card_id), target, player)
+				end
+			end
+		end
+        if target:getHp() >= player:getHp() then
+            player:gainHujia(amount)
+            local damage = sgs.DamageStruct()
+            damage.from = player
+            damage.to = target
+			damage.damage = amount
+            room:damage(damage)
+        end
+        return false
+    end,
 }
-s4_cloud_yongqian_buff = sgs.CreateTargetModSkill{
+
+s4_cloud_yongqian = sgs.CreateTriggerV2Skill {
+    name = "s4_cloud_yongqian",
+    events = { sgs.DrawNCards, sgs.TargetConfirmed, sgs.EventPhaseChanging, sgs.EventLoseSkill },
+	base_amount = 1,
+    on_record = function(skill, event, room, player, data)
+		local shouldClean = false
+		local instId = skill:getInstanceId()
+		if event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to == sgs.Player_Start then
+				shouldClean = true
+			end
+		elseif event == sgs.EventLoseSkill then
+			local change = data:toSkillChange()
+			if change.skillName == skill:objectName() and change.instanceID == instId then
+				shouldClean = true
+			end
+		end
+        if shouldClean then
+			for _, p in sgs.qlist(room:getAllPlayers()) do
+				if p:objectName() ~= player:objectName() then
+					local markName = skill:objectName() .. "#" .. instId .. p:objectName() .. "-SelfStartClear"
+					if player:getMark(markName) > 0 then
+						room:setPlayerMark(player, markName, 0)
+						room:removePlayerMark(player, "s4_cloud_yongqian_buff" .. p:objectName() .. "-SelfStartClear", 1)
+						room:setPlayerMark(p, "&" .. skill:objectName() .. "+sys_+to+#" .. player:objectName(), 0)
+						if player:getMark("s4_cloud_yongqian_buff" .. p:objectName().. "-SelfStartClear") == 0 then
+							room:removeFixedDistance(player, p, 1)
+						end
+					end
+				end
+			end
+        end
+    end,
+
+    can_trigger = function(skill, event, room, player, data)
+        if not player:hasSkill(skill:objectName()) then return false end
+        if event == sgs.DrawNCards then
+            local draw = data:toDraw()
+            if draw.reason ~= "draw_phase" then return false end
+            local hasTarget = false
+            for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+                if p:isAlive() then hasTarget = true; break end
+            end
+            if not hasTarget then return false end
+            return skill:objectName()
+        elseif event == sgs.TargetConfirmed then
+            local use = data:toCardUse()
+            if not use.card or use.card:isKindOf("SkillCard") then return false end
+            if not use.to:contains(player) then return false end
+            if not use.from or player:objectName() == use.from:objectName() then return false end
+            local instId = skill:getInstanceId()
+            local markName = skill:objectName() .. "#" .. instId .. use.from:objectName() .. "-SelfStartClear"
+            if player:getMark(markName) <= 0 then return false end
+            return skill:objectName()
+        end
+        return false
+    end,
+
+    on_cost = function(skill, event, room, player, ctx)
+        if event == sgs.DrawNCards then
+            local target = room:askForPlayerChosen(player, room:getOtherPlayers(player),
+                skill:objectName(), "s4_cloud_yongqian-invoke", true, true)
+            if target then
+                ctx.targets:append(target)
+                return true
+            end
+            return false
+        elseif event == sgs.TargetConfirmed then
+            return room:askForSkillInvoke(player, skill:objectName())
+        end
+        return false
+    end,
+
+    on_effect = function(skill, event, room, player, ctx)
+        if event == sgs.DrawNCards then
+            room:broadcastSkillInvoke(skill:objectName())
+            local draw = ctx.original_data:toDraw()
+            draw.num = draw.num - 1
+            ctx.original_data:setValue(draw)
+            local target = ctx.targets:first()
+            local instId = skill:getInstanceId()
+            room:setPlayerMark(player, skill:objectName() .. "#" .. instId .. target:objectName() .. "-SelfStartClear", 1)
+            room:addPlayerMark(player, "s4_cloud_yongqian_buff" .. target:objectName() .. "-SelfStartClear", 1)
+            room:addPlayerMark(target, "&" .. skill:objectName() .. "+sys_+to+#" .. player:objectName())
+            room:setFixedDistance(player, target, 1)
+        elseif event == sgs.TargetConfirmed then
+			local amount = skill:getEffectiveAmount(ctx)
+            room:broadcastSkillInvoke(skill:objectName())
+            player:drawCards(amount, skill:objectName())
+        end
+        return false
+    end,
+}
+
+s4_cloud_yongqian_buff = sgs.CreateTargetModSkillV2 {
     name = "#s4_cloud_yongqian_buff",
     pattern = ".",
-    residue_func = function(self, from, card, to)
-        if from:hasSkill("s4_cloud_yongqian") and to and from:getMark("s4_cloud_yongqian" .. to:objectName()) > 0 then return 1000 end
-        return 0
-    end,
-    distance_limit_func = function(self, from, card, to)
-        if from:hasSkill("s4_cloud_yongqian") and to and from:getMark("s4_cloud_yongqian" .. to:objectName()) > 0 then return 1000 end
-        return 0
+    base_amount = 1,
+    correct_func = function(skill, ctx)
+        local modType = ctx:getModType()
+        if modType ~= 0 and modType ~= 1 then return nil end
+        local from = ctx:getPrimary()
+        local to = ctx:getSecondary()
+      	 if from and to and from:hasSkill("s4_cloud_yongqian")
+           and from:getMark("s4_cloud_yongqian_buff" .. to:objectName() .. "-SelfStartClear") > 0 then
+            if modType == 0 then
+                return -1
+            else
+                return 1000
+            end
+        end
+        return nil
     end,
 }
 s4_cloud_zhangliao:addSkill(s4_cloud_tuxi)
 s4_cloud_zhangliao:addSkill(s4_cloud_yongqian)
-s4_cloud_zhangliao:addSkill(s4_cloud_yongqianClear)
 s4_cloud_zhangliao:addSkill(s4_cloud_yongqian_buff)
-extension:insertRelatedSkills("s4_cloud_yongqian", "#s4_cloud_yongqianClear")
 extension:insertRelatedSkills("s4_cloud_yongqian", "#s4_cloud_yongqian_buff")
 
 sgs.LoadTranslationTable {
@@ -8602,7 +8677,7 @@ s4_qiaobian = sgs.CreateTriggerV2Skill{
 				elseif change.to == sgs.Player_Draw then
 					local others = sgs.SPlayerList()
                     for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-                        if p:canMove(p, "h") then
+                        if player:canMove(p, "h") then
                             others:append(p)
                         end
                     end
