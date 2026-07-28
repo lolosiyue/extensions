@@ -8560,7 +8560,6 @@ sgs.LoadTranslationTable{
 
 s4_zhanghe = sgs.General(extension, "s4_zhanghe", "wei", 4)
 
--- 巧變 (s4_qiaobian)
 s4_qiaobian = sgs.CreateTriggerV2Skill{
     name = "s4_qiaobian",
     frequency = sgs.Skill_NotFrequent,
@@ -8583,7 +8582,18 @@ s4_qiaobian = sgs.CreateTriggerV2Skill{
 
     on_cost = function(skill, event, room, player, ctx)
         local change = ctx.original_data:toPhaseChange()
-        local card = room:askForCard(player, ".|.|.|hand", "@" .. skill:objectName() .. "-ask", ctx.original_data, sgs.Card_MethodNone, nil, false,skill:objectName())
+		local index = 0
+		if change.to == sgs.Player_Judge then
+			index = 1
+		elseif change.to == sgs.Player_Draw then
+			index = 2
+		elseif change.to == sgs.Player_Play then
+			index = 3
+		elseif change.to == sgs.Player_Discard then
+			index = 4
+		end
+		local prompt = string.format("@" .. skill:objectName() .. "-ask-%d", index)
+        local card = room:askForCard(player, ".|.|.|hand", prompt, ctx.original_data, sgs.Card_MethodNone, nil, false, skill:objectName())
         if card then
             if xumouCard(player, card) then
 				if change.to == sgs.Player_Finish then
@@ -8644,7 +8654,6 @@ s4_qiaobian = sgs.CreateTriggerV2Skill{
 	end,
 }
 
--- 急旋 (s4_jixuan)
 s4_jixuan = sgs.CreateTriggerV2Skill{
     name = "s4_jixuan",
     frequency = sgs.Skill_Compulsory,
@@ -8696,7 +8705,10 @@ sgs.LoadTranslationTable {
 
 	["s4_qiaobian"] = "巧变",
 	[":s4_qiaobian"] = "你可以蓄谋一张手牌并跳过你的一个阶段，若以此法跳过：摸牌阶段，你可以获得至多两名其他角色各一张手牌；出牌阶段，你可以移动场上的一张牌；结束阶段，你卜算X（X为你判定区里的牌数且不大于你的体力值）。",
-	["@s4_qiaobian-ask"] = "巧变：你可以蓄谋一张手牌并跳过你的",
+	["@s4_qiaobian-ask-1"] = "巧变：你可以蓄谋一张手牌并跳过你的判定阶段",
+	["@s4_qiaobian-ask-2"] = "巧变：你可以蓄谋一张手牌并跳过你的摸牌阶段",
+	["@s4_qiaobian-ask-3"] = "巧变：你可以蓄谋一张手牌并跳过你的出牌阶段",
+	["@s4_qiaobian-ask-4"] = "巧变：你可以蓄谋一张手牌并跳过你的弃牌阶段",
 	["@s4_qiaobian-draw"] = "巧变：选择至多两名角色获得其手牌",
 
 	["s4_jixuan"] = "急旋",
