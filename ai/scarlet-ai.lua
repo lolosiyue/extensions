@@ -1938,6 +1938,159 @@ end
 
 sgs.ai_use_priority.s4_zhiba = sgs.ai_use_priority.Dismantlement
 
+sgs.ai_skill_cardask["@s4_qiaobian-ask"] = function(self, data, pattern, target)
+	if self.player:isKongcheng() then return "." end
+	local change = data:toPhaseChange()
+	local phase = change.to
+	local discard_num = self:getOverflow()
+	local cards = sgs.QList2Table(self.player:getCards("h"))
+	self:sortByKeepValue(cards)
+
+	if phase == sgs.Player_Discard then
+		if discard_num > 0 then
+			return cards[1]:getEffectiveId()
+		end
+		return "."
+	end
+
+	if phase == sgs.Player_Play then
+		self:getTurnUse()
+		if #self.toUse > 1 and math.random() < 0.5 then return "." end
+		if self.room:canMoveField("ej") then
+			if sgs.ai_skill_invoke.peiqi(self) then
+				return cards[1]:getEffectiveId()
+			end
+		end
+		return "."
+	end
+
+	if phase == sgs.Player_Draw then
+		if self.room:canMoveField("ej") then
+			if sgs.ai_skill_invoke.peiqi(self) then
+				return "."
+			end
+		end
+		for _, e in ipairs(self.enemies) do
+			if self:doDisCard(e, "h", true) then
+				return cards[1]:getEffectiveId()
+			end
+		end
+		return "."
+	end
+
+	if phase == sgs.Player_Judge then
+		local has_bad = false
+		for _, c in sgs.qlist(self.player:getJudgingArea()) do
+			if self:doDisCard(self.player, c:getEffectiveId(), true) then
+				has_bad = true
+				break
+			end
+		end
+		if not has_bad then return "." end
+		if discard_num > 0 then return "." end
+		if self.room:canMoveField("ej") and sgs.ai_skill_invoke.peiqi(self) then return "." end
+		for _, e in ipairs(self.enemies) do
+			if not e:isKongcheng() then return "." end
+		end
+		return cards[1]:getEffectiveId()
+	end
+
+	if phase == sgs.Player_Finish then
+		if self.player:getJudgingArea():length() > 0 and self.player:getHp() > 1 then
+			return cards[1]:getEffectiveId()
+		end
+		return "."
+	end
+
+	return "."
+end
+
+sgs.ai_skill_playerschosen.s4_qiaobian = function(self, targets, max, min)
+	local selected = sgs.SPlayerList()
+	local can_choose = sgs.QList2Table(targets)
+	self:sort(can_choose, "handcard")
+	for _, target in ipairs(can_choose) do
+		if self:isEnemy(target) and self:doDisCard(target, "h", true) then
+			selected:append(target)
+			if selected:length() >= max then break end
+		end
+	end
+	if selected:length() < max then
+		for _, target in ipairs(can_choose) do
+			if not selected:contains(target) and self:doDisCard(target, "h", true) then
+				selected:append(target)
+				if selected:length() >= max then break end
+			end
+		end
+	end
+	return selected
+end
+
+sgs.ai_playerschosen_intention.s4_qiaobian = function(self, from, prompt)
+	local tolist = prompt:split("+")
+	for _, dest in ipairs(tolist) do
+		local to = self.room:findPlayerByObjectName(dest)
+		if to and not self:needToThrowCard(to,"h") then
+			sgs.updateIntention(from, to, 40)
+		end
+	end
+end
+
+-- moveField: 来源角色
+sgs.ai_skill_playerchosen.s4_qiaobian_from = function(self, players)
+	if sgs.ai_skill_invoke.peiqi(self) then
+		for _, target in sgs.list(players) do
+			if target:objectName() == self.peiqiData.from:objectName() then
+				return target
+			end
+		end
+	end
+	return false
+end
+
+-- moveField: 目标角色
+sgs.ai_skill_playerchosen.s4_qiaobian_to = function(self, players)
+	for _, target in sgs.list(players) do
+		if target:objectName() == self.peiqiData.to:objectName() then
+			return target
+		end
+	end
+end
+
+sgs.ai_skill_cardchosen.s4_qiaobian = function(self, who, flags, method)
+	if flags ~= "h" then
+		for _, c in sgs.qlist(who:getCards(flags)) do
+			local id = c:getEffectiveId()
+			if id == self.peiqiData.cid then
+				return id
+			end
+		end
+	end
+	local cards = who:getCards(flags)
+	cards = sgs.QList2Table(cards)
+	self:sortByKeepValue(cards, true)
+	return cards[1]:getEffectiveId()
+end
+
+sgs.ai_choicemade_filter.cardChosen.s4_qiaobian = function(self, player, promptlist)
+	sgs.ai_choicemade_filter.cardChosen.snatch(self, nil, promptlist)
+end
+
+sgs.registerSkillCardType("s4_qiaobian", "decrease")
+
+sgs.registerTargetRecommend("s4_qiaobian", function(self, from, to, card, skill_owner, ctx)
+	if ctx.isDraw and self:isFriend(from, to) and to:hasSkill("s4_qiaobian") then
+		return 2
+	end
+	if ctx.isDecrease and self:isEnemy(from, to) and to:hasSkill("s4_qiaobian") then
+		if self:doDisCard(to, "h") then
+			return 1
+		end
+	end
+	return 0
+end)
+
+
 sgs.ai_skill_playerschosen.s4_zhaotao = function(self, targets, max, min)
     local selected = sgs.SPlayerList()
     local can_choose = sgs.QList2Table(targets)

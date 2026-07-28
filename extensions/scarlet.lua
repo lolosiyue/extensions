@@ -8616,7 +8616,7 @@ s4_qiaobian = sgs.CreateTriggerV2Skill{
             local x = skill:getEffectiveAmount(ctx)
             if x > 0 then
                 local cards = room:getNCards(x)
-                room:askForGuanxing(player, cards, sgs.Room_GuanxingBothSides)
+                room:askForGuanxing(player, cards)
             end
 		elseif phase == sgs.Player_Play then
 			local amount = skill:getEffectiveAmount(ctx)
@@ -8696,10 +8696,8 @@ sgs.LoadTranslationTable {
 
 	["s4_qiaobian"] = "巧变",
 	[":s4_qiaobian"] = "你可以蓄谋一张手牌并跳过你的一个阶段，若以此法跳过：摸牌阶段，你可以获得至多两名其他角色各一张手牌；出牌阶段，你可以移动场上的一张牌；结束阶段，你卜算X（X为你判定区里的牌数且不大于你的体力值）。",
-	["@s4_qiaobian-ask"] = "请选择一张手牌蓄谋",
-	["@s4_qiaobian-draw"] = "选择至多两名角色获得其手牌",
-	["@s4_qiaobian-move-from"] = "选择要移动牌的来源角色",
-	["@s4_qiaobian-move-to"] = "选择要移动到的目标角色",
+	["@s4_qiaobian-ask"] = "巧变：你可以蓄谋一张手牌并跳过你的",
+	["@s4_qiaobian-draw"] = "巧变：选择至多两名角色获得其手牌",
 
 	["s4_jixuan"] = "急旋",
 	[":s4_jixuan"] = "锁定技，当你受到1点伤害后，若你的区域里有蓄谋牌，你弃置一张蓄谋牌，然后摸一张牌。",
