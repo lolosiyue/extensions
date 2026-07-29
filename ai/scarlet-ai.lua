@@ -87,80 +87,263 @@ sgs.ai_canliegong_skill.s4_cloud_liegong = function(self, from, to)
 	return to:getHandcardNum() >= from:getHp() or to:getHandcardNum() <= from:getAttackRange()
 end
 
-sgs.ai_use_revises.s4_cloud_yongyi = function(self, card, use)
-    local record = self.player:property("s4_cloud_yongyiRecords"):toString()
-    local suit = card:getSuitString()
-    local records
-    if (record) then
-        records = record:split(",")
+local function s4_cloud_yongyi_ai_parse_records(raw)
+    local records = {}
+
+    if not raw or raw == "" then
+        return records
     end
-    if records and (not table.contains(records, suit) or not card:hasSuit())
-        and card and card:getClassName() and sgs.ai_use_priority[card:getClassName()] then
-        sgs.ai_use_priority[card:getClassName()] = sgs.ai_use_priority[card:getClassName()] + 5
+
+    for _, suit in ipairs(raw:split(",")) do
+        if suit
+            and suit ~= ""
+            and suit ~= "no_suit"
+            and not table.contains(
+                records,
+                suit
+            ) then
+            table.insert(
+                records,
+                suit
+            )
+        end
     end
+
+    return records
+end
+
+
+local function s4_cloud_yongyi_ai_get_records(
+    player,
+    instance_id
+)
+    if not player
+        or not instance_id
+        or instance_id <= 0 then
+        return {}
+    end
+
+    local value =
+        player:getSkillInstanceCorrectStateValue(
+            "s4_cloud_yongyi",
+            instance_id,
+            "records",
+            sgs.QVariant("")
+        )
+
+    return s4_cloud_yongyi_ai_parse_records(
+        value:toString()
+    )
+end
+
+
+local function s4_cloud_yongyi_ai_valid_instance_ids(
+    player
+)
+    local ids = {}
+
+    if not player then
+        return ids
+    end
+
+    for _, instance_id in sgs.list(
+        player:getSkillInstanceIdsForName(
+            "s4_cloud_yongyi"
+        )
+    ) do
+        if instance_id > 0
+            and player:hasSkillInstance(
+                "s4_cloud_yongyi",
+                instance_id
+            )
+            and not player:isSkillInvalid(
+                "s4_cloud_yongyi",
+                instance_id
+            ) then
+            table.insert(
+                ids,
+                instance_id
+            )
+        end
+    end
+
+    return ids
+end
+
+
+local function s4_cloud_yongyi_ai_has_records(
+    player
+)
+    for _, instance_id in ipairs(
+        s4_cloud_yongyi_ai_valid_instance_ids(
+            player
+        )
+    ) do
+        if #s4_cloud_yongyi_ai_get_records(
+            player,
+            instance_id
+        ) > 0 then
+            return true
+        end
+    end
+
+    return false
+end
+
+
+-- 檢查目前 V2 request，並取得它對應 instance 的記錄。
+local function s4_cloud_yongyi_ai_request_records(
+    self,
+    request
+)
+    if not request
+        or not request:isValid() then
+        return nil, 0, nil
+    end
+
+    if request:getActivationSkillName()
+        ~= "s4_cloud_yongyi" then
+        return nil, 0, nil
+    end
+
+    if not request:isActivationQuotaAvailable() then
+        return nil, 0, nil
+    end
+
+    local player =
+        request:getInitiator()
+
+    local instance_id =
+        request:getActivationInstanceID()
+
+    if not player
+        or player:objectName()
+            ~= self.player:objectName()
+        or instance_id <= 0 then
+        return nil, 0, nil
+    end
+
+    local records =
+        s4_cloud_yongyi_ai_get_records(
+            player,
+            instance_id
+        )
+
+    if #records == 0 then
+        return nil, 0, nil
+    end
+
+    return player, instance_id, records
 end
 
 sgs.ai_skill_invoke.s4_cloud_yongyi = function(self, data)
-    local card = data:toCard()
-    local record = self.player:property("s4_cloud_yongyiRecords"):toString()
-    local records
-    if (record) then
-        records = record:split(",")
+    local max_records = 0
+    for _, instance_id in ipairs(s4_cloud_yongyi_ai_valid_instance_ids(self.player)) do
+        local count = #s4_cloud_yongyi_ai_get_records(self.player, instance_id)
+        if count > max_records then
+            max_records = count
+        end
     end
-    if self:isWeak() and #records <= 2 then
+    if self:isWeak() and max_records <= 2 then
         return false
     end
     return true
 end
 
-local s4_cloud_yongyi_skill = {}
-s4_cloud_yongyi_skill.name = "s4_cloud_yongyi"
-table.insert(sgs.ai_skills, s4_cloud_yongyi_skill)
-s4_cloud_yongyi_skill.getTurnUseCard = function(self)
-    if self.player:getMark("s4_cloud_yongyi_used-Clear") == 0 then
-        return sgs.Card_Parse("#s4_cloud_yongyi:.:analeptic")
-    end
-    return nil
+
+sgs.ai_card_priority.s4_cloud_yongyi = function(self, card, current_priority)
+	if not card	or card:isKindOf("SkillCard") then
+		return 0
+	end
+	local suit = card:getSuitString()
+	for _, instance_id in ipairs(s4_cloud_yongyi_ai_valid_instance_ids(self.player)) do
+		local records =	s4_cloud_yongyi_ai_get_records(self.player,instance_id)
+
+		if not card:hasSuit() or not table.contains(records, suit) then
+			return 5
+		end
+	end
+
+	return 0
 end
 
-sgs.ai_skill_use_func["#s4_cloud_yongyi"] = function(card, use, self)
-    local record = self.player:property("s4_cloud_yongyiRecords"):toString()
-    local records
-
-    if (record) then
-        records = record:split(",")
-    end
-    local fs = sgs.Sanguosha:cloneCard("analeptic")
-    fs:deleteLater()
-    if fs then
-        fs:setSkillName("s4_cloud_yongyi")
-        local d = self:aiUseCard(fs)
-        if fs:isAvailable(self.player) and #records > 0 and d.card and use.to then
-            sgs.ai_use_priority.s4_cloud_yongyi = sgs.ai_use_priority.Analeptic
-            use.card = sgs.Card_Parse("#s4_cloud_yongyi:.:analeptic")
-            return
-        end
-    end
-end
-sgs.ai_use_priority["#s4_cloud_yongyi"] = sgs.ai_use_priority.Analeptic
-sgs.ai_use_priority["s4_cloud_yongyi"] = sgs.ai_use_priority.Analeptic
-sgs.ai_use_value["#s4_cloud_yongyi"] = 5
-
-sgs.ai_guhuo_card.s4_cloud_yongyi = function(self, toname, class_name)
-    if (class_name == "Analeptic") and sgs.Sanguosha:getCurrentCardUseReason() ==
-        sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
-        return "#s4_cloud_yongyi:.:" .. toname
-    end
+sgs.ai_fill_skill.s4_cloud_yongyi = function(self, inclusive, request)
+	local player = s4_cloud_yongyi_ai_request_records(self,	request)
+	if not player then
+		return nil
+	end
+	if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+		return nil
+	end
+	local card = sgs.ActiveSkillCard()
+	card:setSkillName("s4_cloud_yongyi")
+	return card
 end
 
-sgs.card_value.s4_cloud_yongyi = {
-    Analeptic = 4.9,
-    Slash = 7.2
-}
+sgs.ai_skill_use_func.s4_cloud_yongyi = function(card, use, self, request)
+	if not card then
+		return
+	end
+
+	local player, instance_id =	s4_cloud_yongyi_ai_request_records(	self, request)
+
+	if not player then
+		return
+	end
+
+	if request:getReason()	~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+		return
+	end
+
+	-- 建立測試用【酒】，
+	-- 交給現有 Analeptic AI 判斷是否值得使用。
+	local analeptic = sgs.Sanguosha:cloneCard("analeptic", sgs.Card_NoSuit,	0)
+	analeptic:deleteLater()
+	analeptic:setSkillName("s4_cloud_yongyi")
+
+	-- 設定權威 activation/source 資料，
+	-- 讓勇毅的 TargetModSkillV2 識別此【酒】。
+	analeptic:setActivationSkill(
+		request:getActivationSkillName(),
+		request:getActivationInstanceID()
+	)
+
+	analeptic:setSourceSkill(
+		request:getSourceSkillName(),
+		request:getSourceInstanceID()
+	)
+
+	local dummy_use = self:aiUseCard(analeptic, dummy())
+	local should_use = analeptic:isAvailable(player) and dummy_use and dummy_use.card
+	
+	if not should_use then
+		return
+	end
+	use.card = card
+end
+
+sgs.ai_cardsview_valuable.s4_cloud_yongyi =
+function(self, class_name, player, request)
+    if class_name ~= "Analeptic" then return end
+    if not request or not request:isValid() then return end
+
+    return "analeptic:s4_cloud_yongyi[no_suit:0]=."
+end
+
+
+sgs.ai_use_priority.s4_cloud_yongyi = sgs.ai_use_priority.Analeptic + 1
 
 sgs.ai_skill_defense.s4_cloud_yongyi = function(self, to)
-    return #to:property("s4_cloud_yongyiRecords"):toString():split(",")
+    local max_records = 0
+    for _, instance_id in ipairs(s4_cloud_yongyi_ai_valid_instance_ids(to)) do
+        local count = #s4_cloud_yongyi_ai_get_records(to, instance_id)
+        if count > max_records then
+            max_records = count
+        end
+    end
+    return max_records
 end
+
 
 sgs.hit_skill = sgs.hit_skill .. "|s4_cloud_yongyi"
 
