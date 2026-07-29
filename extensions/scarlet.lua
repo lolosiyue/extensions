@@ -55,24 +55,29 @@ s4_cloud_tuxi = sgs.CreateTriggerV2Skill{
         end
         return false
     end,
-    on_cost = function(skill, event, room, player, ctx)
-        local target = room:getCurrent()
-        if not room:askForSkillInvoke(player, "s4_cloud_tuxi", ToData(target)) then
-            return false
-        end
-        if room:askForDiscard(player, "s4_cloud_tuxi", 999, 1, true, true, "@s4_cloud_tuxi:" .. target:objectName()) then
-        else
-            local lose_num = {}
-            for i = 1, player:getHp() do
-                table.insert(lose_num, tostring(i))
-            end
-            local choice = room:askForChoice(player, "s4_cloud_tuxi", table.concat(lose_num, "+"))
-            room:loseHp(player, tonumber(choice), true, player, "s4_cloud_tuxi")
-        end
-        if not player:isAlive() then return false end
-        ctx.targets:append(target)
-        return true
-    end,
+	on_cost = function(skill, event, room, player, ctx)
+		local target = room:getCurrent()
+		if not room:askForSkillInvoke(player, "s4_cloud_tuxi", ToData(target)) then
+			return false
+		end
+		ctx.targets:append(target)
+		return true
+	end,
+    on_pay = function(skill, event, room, player, ctx)
+		local target = ctx.targets:first()
+		if not target or not target:isAlive() then return false end
+		if not room:askForDiscard(player, "s4_cloud_tuxi", 999, 1, true, true, "@s4_cloud_tuxi:" .. target:objectName()) then
+			local lose_num = {}
+			for i = 1, player:getHp() do
+				table.insert(lose_num, tostring(i))
+			end
+			local choice = room:askForChoice(player, "s4_cloud_tuxi", table.concat(lose_num, "+"))
+			room:loseHp(player, tonumber(choice), true, player, "s4_cloud_tuxi")
+		end
+		if not player:isAlive() then return false end
+		
+		return true
+	end,
     on_effect_target = function(skill, event, room, player, ctx, target)
 		local amount = skill:getEffectiveAmount(ctx)
 		
@@ -777,187 +782,219 @@ sgs.LoadTranslationTable {
 ----------------------------------------------------------------
 
 s4_lubu = sgs.General(extension, "s4_lubu", "qun", 5)
-s4_xianfeng = sgs.CreateTriggerSkill {
+
+s4_xianfeng = sgs.CreateTriggerV2Skill{
     name = "s4_xianfeng",
-    events = { sgs.TargetSpecified },
-    on_trigger = function(self, event, player, data, room)
-        if event == sgs.TargetSpecified then
-            local use = data:toCardUse()
-            if use.card and use.card:isKindOf("Slash") then
-                local invoke = false
-                for _, to in sgs.qlist(use.to) do
-                    if player:distanceTo(to) <= 1 then
-                        invoke = true
-                        break
-                    end
-                end
-                if invoke then
-                    room:broadcastSkillInvoke(self:objectName())
-                    room:sendCompulsoryTriggerLog(player, self:objectName())
-                    room:addPlayerHistory(player, use.card:getClassName(), -1)
+    events = {sgs.TargetSpecified},
+    frequency = sgs.Skill_Compulsory,
+    can_trigger = function(skill, event, room, player, data)
+        local use = data:toCardUse()
+        if use.card and use.card:isKindOf("Slash") then
+            for _, to in sgs.qlist(use.to) do
+                if player:distanceTo(to) <= 1 then
+                    return skill:objectName()
                 end
             end
         end
         return false
-    end
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        room:broadcastSkillInvoke(skill:objectName())
+        room:sendCompulsoryTriggerLog(player, skill:objectName())
+        return false
+    end,
 }
-s4_xianfeng_TM = sgs.CreateTargetModSkill {
-    name = "#s4_xianfeng_TM",
+s4_xianfeng_buff = sgs.CreateTargetModSkillV2{
+    name = "#s4_xianfeng_buff",
     pattern = "Slash",
-    residue_func = function(self, from, card, to)
-        local n = 0
-        if from:hasSkill("s4_xianfeng") and to and from:distanceTo(to) <= 1 then
-            n = 999
+    correct_func = function(skill, ctx)
+        if ctx:getModType() ~= sgs.TargetModSkill_Residue then
+            return false
         end
-        return n
-    end
-}
-s4_xianfeng_D = sgs.CreateDistanceSkill {
-    name = "#s4_xianfeng_D",
-    correct_func = function(self, from, to)
-        if from:hasSkill("s4_xianfeng") then
-            return -1
+        local from = ctx:getPrimary()
+        local to = ctx:getSecondary()
+        if to and from:distanceTo(to) <= 1 then
+            return -1  -- 无限次数
         end
-    end
+        return false
+    end,
 }
 
-s4_jiwu = sgs.CreateTriggerSkill {
+s4_xianfeng_distance = sgs.CreateDistanceSkillV2{
+    name = "#s4_xianfeng_distance",
+    base_amount = -1,
+    correct_func = function(skill, ctx)
+        return true
+    end,
+}
+
+s4_jiwu = sgs.CreateTriggerV2Skill{
     name = "s4_jiwu",
-    events = { sgs.TargetConfirmed, sgs.CardFinished },
-    on_trigger = function(self, event, player, data, room)
-        if event == sgs.TargetConfirmed then
-            local use = data:toCardUse()
-            if use.from and use.from:isAlive() and use.card and
-                (use.card:isKindOf("Slash") or use.card:isKindOf("Duel")) and use.from:objectName() ==
-                player:objectName() then
-                for _, lubu in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-                    if lubu and lubu:distanceTo(use.from) <= 1 then
-                        local choicelist = {}
-                        table.insert(choicelist, "s4_jiwu_no_respond_list")
-                        table.insert(choicelist, "s4_jiwu_draw")
+    events = { sgs.TargetConfirmed },
+	base_amount = 2,
+    can_trigger = function(skill, event, room, player, data)
+        if event == sgs.EventPhaseStart then return false end
+        local use = data:toCardUse()
+        if not use.from or not use.from:isAlive() then return false end
+        if not use.card or not (use.card:isKindOf("Slash") or use.card:isKindOf("Duel"))
+            then return false end
 
-                        if lubu:getMark("&s4_jiwu_used+analeptic") == 0 then
-                            table.insert(choicelist, "s4_jiwu_nullified")
-                        end
-                        table.insert(choicelist, "cancel")
-                        room:setTag("CurrentUseStruct", data)
-                        local x = 0
-                        while #choicelist > 1 do
-                            local choice = room:askForChoice(lubu, self:objectName(), table.concat(choicelist, "+"),
-                                data)
-                            if choice == "cancel" then
-                                break
-                            end
-                            x = x + 1
-                            if choice == "s4_jiwu_no_respond_list" then
-                                local no_respond_list = use.no_respond_list
-                                table.insert(no_respond_list, "_ALL_TARGETS")
-                                use.no_respond_list = no_respond_list
-                                room:setCardFlag(use.card, "s4_jiwu_no_respond")
-                                table.removeOne(choicelist, "s4_jiwu_no_respond_list")
-                                room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
-                                local log= sgs.LogMessage()
-                                log.type = "#skill_add_damage_byother1"
-                                log.from = lubu
-                                log.arg = self:objectName()
-                                room:sendLog(log)
-                                local log = sgs.LogMessage()
-                                log.type = "$NoRespond"
-                                log.from = use.from
-                                log.to = use.to
-                                log.arg = self:objectName()
-                                log.card_str = use.card:toString()
-                                room:sendLog(log)
-                            elseif choice == "s4_jiwu_draw" then
-                                room:setCardFlag(use.card, self:objectName())
-                                room:setPlayerMark(lubu, "s4_jiwu_" .. use.card:getEffectiveId(), 1)
-                                table.removeOne(choicelist, "s4_jiwu_draw")
-                                room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
-                                lubu:drawCards(2, self:objectName())
-                            elseif choice == "s4_jiwu_nullified" then
-                                room:broadcastSkillInvoke(self:objectName(), 3)
-                                local nullified_list = use.nullified_list
-                                table.insert(nullified_list, "_ALL_TARGETS")
-                                use.nullified_list = nullified_list
-                                room:addPlayerMark(lubu, "&s4_jiwu_used+analeptic")
-                                table.removeOne(choicelist, "s4_jiwu_nullified")
-                                local analeptic = sgs.Sanguosha:cloneCard("analeptic")
-                                analeptic:setSkillName(self:objectName())
-                                analeptic:deleteLater()
-                                local useEX = sgs.CardUseStruct()
-                                useEX.from = lubu
-                                useEX.card = analeptic
-                                room:useCard(useEX, false)
-                                useEX.from = use.from
-                                room:useCard(useEX, false)
-                                room:setCardFlag(use.card, "s4_jiwu_nullified")
-                                local log= sgs.LogMessage()
-                                log.type = "#skill_add_damage_byother1"
-                                log.from = lubu
-                                log.arg = self:objectName()
-                                room:sendLog(log)
-                            end
-                            local log = sgs.LogMessage()
-                            log.type = "#ChooseSkill"
-                            log.from = lubu
-                            log.arg = self:objectName()
-                            log.arg2 = choice
-                            room:sendLog(log)
-                        end
-                        if x > 0 then
-                            local card = room:askForDiscard(lubu, "s4_jiwu_invoke", x, x, true, true, "@s4_jiwu:" .. x)
-                            if card then
-                            else
-                                room:loseHp(lubu, 1, true, lubu, self:objectName())
-                            end
-                        end
-                        data:setValue(use)
-                        room:notifySkillInvoked(player, self:objectName())
-                        room:removeTag("CurrentUseStruct")
-                    end
-                end
+        local trigger_list_skill, trigger_list_who = {}, {}
+        for _, lubu in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+            if lubu and lubu:isAlive() and lubu:distanceTo(use.from) <= 1 then
+                table.insert(trigger_list_skill, skill:objectName())
+                table.insert(trigger_list_who, lubu:objectName())
             end
+        end
+        if #trigger_list_skill > 0 then
+            return table.concat(trigger_list_skill, "|"), table.concat(trigger_list_who, "|")
         end
         return false
     end,
-    can_trigger = function(self, target)
-        return target
-    end
+    on_cost = function(skill, event, room, player, ctx)
+        room:setTag("CurrentUseStruct", ctx.original_data)
+
+        local choicelist = {}
+        table.insert(choicelist, "s4_jiwu_no_respond_list")
+        table.insert(choicelist, "s4_jiwu_draw")
+        if player:getMark("s4_jiwu_analeptic#" .. skill:getInstanceId() .. "-SelfStartClear") == 0 then
+            table.insert(choicelist, "s4_jiwu_nullified")
+        end
+        table.insert(choicelist, "cancel")
+
+        local selected = {}
+        while #choicelist > 1 do
+            local choice = room:askForChoice(player, skill:objectName(),
+                table.concat(choicelist, "+"), ctx.original_data)
+            if choice == "cancel" then break end
+            table.insert(selected, choice)
+            table.removeOne(choicelist, choice)
+        end
+
+        room:removeTag("CurrentUseStruct")
+
+        if #selected == 0 then return false end
+        ctx.extra_data:setValue(table.concat(selected, "+"))
+        return true
+    end,
+    on_pay = function(skill, event, room, player, ctx)
+        local choices = ctx.extra_data:toString():split("+")
+        local card = room:askForDiscard(player, "s4_jiwu_invoke", #choices, #choices, true, true, "@s4_jiwu:" .. #choices)
+        if not card then
+            room:loseHp(player, 1, true, player, skill:objectName())
+        end
+        return true
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        local use = ctx.original_data:toCardUse()
+        local choices = ctx.extra_data:toString():split("+")
+
+        for _, choice in ipairs(choices) do
+			local log = sgs.LogMessage()
+            log.type = "#ChooseSkill"
+            log.from = player
+            log.arg = skill:objectName()
+            log.arg2 = choice
+            room:sendLog(log)
+            if choice == "s4_jiwu_no_respond_list" then
+                local no_respond_list = use.no_respond_list
+                table.insert(no_respond_list, "_ALL_TARGETS")
+                use.no_respond_list = no_respond_list
+                room:setCardFlag(use.card, "s4_jiwu_no_respond")
+                room:broadcastSkillInvoke(skill:objectName(), math.random(1, 2))
+                local log = sgs.LogMessage()
+                log.type = "#skill_add_damage_byother1"
+                log.from = player
+                log.arg = skill:objectName()
+                room:sendLog(log)
+                log = sgs.LogMessage()
+                log.type = "$NoRespond"
+                log.from = use.from
+                log.to = use.to
+                log.arg = skill:objectName()
+                log.card_str = use.card:toString()
+                room:sendLog(log)
+            elseif choice == "s4_jiwu_draw" then
+                room:setCardFlag(use.card, skill:objectName())
+                room:setPlayerMark(player, "s4_jiwu_" .. use.card:getEffectiveId(), 1)
+                room:broadcastSkillInvoke(skill:objectName(), math.random(1, 2))
+				local amount = skill:getEffectiveAmount(ctx)
+				if amount > 0 then
+                	player:drawCards(amount, skill:objectName())
+				end
+            elseif choice == "s4_jiwu_nullified" then
+                room:broadcastSkillInvoke(skill:objectName(), 3)
+                local nullified_list = use.nullified_list
+                table.insert(nullified_list, "_ALL_TARGETS")
+                use.nullified_list = nullified_list
+                room:addPlayerMark(player, "s4_jiwu_analeptic#" .. skill:getInstanceId() .. "-SelfStartClear")
+                room:addPlayerMark(player, "&s4_jiwu+used+analeptic".."-SelfStartClear")
+                local analeptic = sgs.Sanguosha:cloneCard("analeptic")
+                analeptic:setSkillName(skill:objectName())
+                analeptic:deleteLater()
+                local useEX = sgs.CardUseStruct()
+                useEX.from = player
+                useEX.card = analeptic
+                room:useCard(useEX, false)
+                useEX.from = use.from
+                room:useCard(useEX, false)
+                room:setCardFlag(use.card, "s4_jiwu_nullified")
+                local log = sgs.LogMessage()
+                log.type = "#skill_add_damage_byother1"
+                log.from = player
+                log.arg = skill:objectName()
+                room:sendLog(log)
+            end
+        end
+
+        ctx.original_data:setValue(use)
+        room:notifySkillInvoked(player, skill:objectName())
+        return false
+    end,
 }
-s4_jiwuClear = sgs.CreateTriggerSkill {
+
+s4_jiwuClear = sgs.CreateTriggerV2Skill{
     name = "#s4_jiwuClear",
-    events = { sgs.EventPhaseStart, sgs.CardOffset },
-    can_trigger = function(self, target)
-        return target
-    end,
-    on_trigger = function(self, event, player, data, room)
-        if event == sgs.EventPhaseStart then
-            if player:getPhase() == sgs.Player_Start and player:hasSkill("s4_jiwu") then
-                if player:getMark("&s4_jiwu_used+analeptic") > 0 then
-                    room:setPlayerMark(player, "&s4_jiwu_used+analeptic", 0)
-                end
-            end
-        elseif event == sgs.CardOffset then
-            local effect = data:toCardEffect()
-            if effect.card and (effect.card:isKindOf("Slash") or effect.card:isKindOf("Duel")) and effect.card:hasFlag("s4_jiwu") then
-                for _, lubu in sgs.qlist(room:findPlayersBySkillName("s4_jiwu")) do
-                    if lubu and lubu:getMark("s4_jiwu_" .. effect.card:getEffectiveId()) > 0 then
-                        room:setPlayerMark(lubu, "s4_jiwu_" .. effect.card:getEffectiveId(), 0)
-                        room:sendCompulsoryTriggerLog(lubu, "s4_jiwu")
-                        room:askForDiscard(lubu, "s4_jiwu", 2, 2, false, true)
-                        room:broadcastSkillInvoke("s4_jiwu", 4)
-                    end
-                end
+    events = { sgs.CardOffset },
+    frequency = sgs.Skill_Compulsory,
+    can_trigger = function(skill, event, room, player, data)
+        local effect = data:toCardEffect()
+        if not (effect.card and (effect.card:isKindOf("Slash") or effect.card:isKindOf("Duel"))
+            and effect.card:hasFlag("s4_jiwu")) then
+            return false
+        end
+
+        local trigger_list_skill, trigger_list_who = {}, {}
+        for _, lubu in sgs.qlist(room:findPlayersBySkillName("s4_jiwu")) do
+            if lubu and lubu:getMark("s4_jiwu_" .. effect.card:getEffectiveId()) > 0 then
+                table.insert(trigger_list_skill, skill:objectName())
+                table.insert(trigger_list_who, lubu:objectName())
             end
         end
+        if #trigger_list_skill > 0 then
+            return table.concat(trigger_list_skill, "|"), table.concat(trigger_list_who, "|")
+        end
         return false
-    end
+    end,
+    on_cost = function(skill, event, room, player, ctx)
+        return true
+    end,
+	on_effect = function(skill, event, room, player, ctx)
+        local effect = ctx.original_data:toCardEffect()
+        room:setPlayerMark(player, "s4_jiwu_" .. effect.card:getEffectiveId(), 0)
+        room:sendCompulsoryTriggerLog(player, "s4_jiwu")
+        room:askForDiscard(player, "s4_jiwu", 2, 2, false, true)
+        room:broadcastSkillInvoke("s4_jiwu", 4)
+        return false
+    end,
 }
+
+
 s4_lubu:addSkill(s4_xianfeng)
-s4_lubu:addSkill(s4_xianfeng_TM)
-s4_lubu:addSkill(s4_xianfeng_D)
-extension:insertRelatedSkills("s4_xianfeng", "#s4_xianfeng_TM")
-extension:insertRelatedSkills("s4_xianfeng", "#s4_xianfeng_D")
+s4_lubu:addSkill(s4_xianfeng_buff)
+s4_lubu:addSkill(s4_xianfeng_distance)
+extension:insertRelatedSkills("s4_xianfeng", "#s4_xianfeng_buff")
+extension:insertRelatedSkills("s4_xianfeng", "#s4_xianfeng_distance")
 s4_lubu:addSkill(s4_jiwu)
 s4_lubu:addSkill(s4_jiwuClear)
 extension:insertRelatedSkills("s4_jiwu", "#s4_jiwuClear")
@@ -971,7 +1008,7 @@ sgs.LoadTranslationTable {
     ["illustrator:s4_lubu"] = "",
 
     ["s4_xianfeng"] = "陷锋",
-    ["#s4_xianfeng_D"] = "陷锋",
+    ["#s4_xianfeng_distance"] = "陷锋",
     [":s4_xianfeng"] = "锁定技，你计算与其他角色的距离-1；你对距离1以内的角色使用【杀】不计入限制的次数且无次数限制。",
     ["$s4_xianfeng1"] = "",
     ["$s4_xianfeng2"] = "",
