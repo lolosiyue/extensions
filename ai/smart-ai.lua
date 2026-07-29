@@ -3642,9 +3642,19 @@ function sgs.ai_skill_cardask.nullfilter(self,data,pattern,target)
 end
 end
 
+
 function SmartAI:askForCard(pattern,prompt,data,method)
+	local request_pattern = pattern
 	local compulsive,parsed = pattern:endsWith("!"),prompt:split(":")
 	if compulsive then pattern = string.sub(pattern,1,-2) end
+	local cardsview_context = {
+		reason = method==sgs.Card_MethodResponse
+			and sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+			or sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE,
+		pattern = request_pattern,
+		prompt = prompt,
+		method = method
+	}
 	local callback = type(data)=="userdata" and data:toCardEffect()
 	if callback and callback.from and not compulsive and callback.card:isDamageCard()
 	and self:canDamageHp(callback.from,callback.card) then return "." end
@@ -3752,7 +3762,7 @@ function SmartAI:askForCard(pattern,prompt,data,method)
 			end
 		end
 		for _,cn in ipairs(parsed)do
-			for _,c in ipairs(self:getCard(cn,true))do
+			for _,c in ipairs(self:getCard(cn,true,cardsview_context))do
 				callback = c
 				if c:getTypeId()<1 then
 					callback = dummyCard(cn)
@@ -3762,8 +3772,10 @@ function SmartAI:askForCard(pattern,prompt,data,method)
 						if self.player:isCardLimited(callback,method) then continue end
 					else continue end
 					end
-				if sgs.Sanguosha:matchPattern(pattern,self.player,callback)
-				then return c:toString() end
+				if sgs.Sanguosha:matchPattern(pattern,self.player,callback) then
+					local request = self.cardsview_requests and self.cardsview_requests[c]
+					return c:toString(),request
+				end
 			end
 		end
 	end
@@ -5559,44 +5571,79 @@ function prohibitUseDirectly(card,player)
 	return player:isCardLimited(card,card:getHandlingMethod())
 end
 
-function SmartAI:cardsView(class_name)
+local function getCardsViewAIRequest(self,skill_name,card_name,cardsview_context)
+	local reason = cardsview_context and cardsview_context.reason
+		or sgs.Sanguosha:getCurrentCardUseReason()
+	local pattern = cardsview_context and cardsview_context.pattern
+		or sgs.Sanguosha:getCurrentCardUsePattern()
+	local prompt = cardsview_context and cardsview_context.prompt or ""
+	local contexts = {}
+	if reason==sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+	or reason==sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+		table.insert(contexts,{reason,pattern~="" and pattern or card_name,
+			reason==sgs.CardUseStruct_CARD_USE_REASON_RESPONSE and sgs.Card_MethodResponse or sgs.Card_MethodUse})
+	else
+		-- cardsView 本質上列舉回應轉化；離開實際詢問時依序探測 pure response 與 response-use。
+		table.insert(contexts,{sgs.CardUseStruct_CARD_USE_REASON_RESPONSE,card_name,sgs.Card_MethodResponse})
+		table.insert(contexts,{sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE,card_name,sgs.Card_MethodUse})
+	end
+	for _,context in ipairs(contexts)do
+		local request = self.room:getActiveSkillAIRequest(self.player,skill_name,
+			context[1],context[2],prompt,context[3])
+		if request and request:isValid() then return request end
+	end
+end
+
+local function insertCardsViewResult(self,cvs,result,request)
+	if type(result)~="table" then result = {result} end
+	for _,answer in ipairs(result)do
+		if request then
+			local card = type(answer)=="userdata" and answer
+				or type(answer)=="string" and sgs.Card_Parse(answer)
+			if card then
+				-- Card 字串不序列化 provenance；先把 activation 名寫進 skillName，
+				-- 讓 LuaAI::askForCard() 可按同一 response request 還原精確 instance。
+				card:setSkillName(request:getActivationSkillName())
+				card:setActivationSkill(request:getActivationSkillName(),request:getActivationInstanceID())
+				card:setSourceSkill(request:getSourceSkillName(),request:getSourceInstanceID())
+				self.cardsview_requests = self.cardsview_requests
+					or setmetatable({}, {__mode="k"})
+				self.cardsview_requests[card] = request
+				table.insert(cvs,card)
+			end
+		elseif type(answer)=="string" or type(answer)=="userdata" then
+			table.insert(cvs,answer)
+		end
+	end
+end
+
+local function runCardsViewCallback(self,cvs,registry,skill_name,class_name,request)
+	local callback = registry[skill_name]
+	if type(callback)~="function" and request then
+		callback = registry[request:getSourceSkillName()]
+	end
+	if type(callback)=="function" then
+		-- Lua 5.2 會忽略舊三參數 callback 未宣告的第 4 個 request。
+		insertCardsViewResult(self,cvs,callback(self,class_name,self.player,request),request)
+	end
+end
+
+function SmartAI:cardsView(class_name,cardsview_context)
 	local card_name = patterns(class_name)
 	if (class_name=="Peach" or class_name=="Analeptic")
 	and global_room:getCurrentDyingPlayer()==self.player
 	then card_name = "peach+analeptic" end
 	local cvs = {}
 	for _,s in ipairs(sgs.getPlayerSkillList(self.player))do
-		local cv = sgs.ai_cardsview_valuable[s:objectName()]
-		if type(cv)=="function" then
-			local vs = sgs.Sanguosha:getViewAsSkill(s:objectName())
-			if vs and vs:isEnabledAtResponse(self.player,card_name) then
-				vs = cv(self,class_name,self.player)
-				if vs then
-					if type(vs)=="table" then
-						for _,c in ipairs(vs)do
-							table.insert(cvs,c)
-						end
-					else
-						table.insert(cvs,vs)
-					end
-				end
-			end
-		end
-		cv = sgs.ai_cardsview[s:objectName()]
-		if type(cv)=="function" then
-			local vs = sgs.Sanguosha:getViewAsSkill(s:objectName())
-			if vs and vs:isEnabledAtResponse(self.player,card_name) then
-				vs = cv(self,class_name,self.player)
-				if vs then
-					if type(vs)=="table" then
-						for _,c in ipairs(vs)do
-							table.insert(cvs,c)
-						end
-					else
-						table.insert(cvs,vs)
-					end
-				end
-			end
+		local skill_name = s:objectName()
+		local vs = sgs.Sanguosha:getViewAsSkill(skill_name)
+		if not vs then continue end
+		local request = getCardsViewAIRequest(self,skill_name,card_name,cardsview_context)
+		if request or vs:isEnabledAtResponse(self.player,card_name) then
+			runCardsViewCallback(self,cvs,sgs.ai_cardsview_valuable,
+				skill_name,class_name,request)
+			runCardsViewCallback(self,cvs,sgs.ai_cardsview,
+				skill_name,class_name,request)
 		end
 	end
 	return cvs
@@ -5811,13 +5858,13 @@ function getKnownCards(player,from,flags)
 	return cards
 end
 
-function SmartAI:getCard(class_name,islist)
+function SmartAI:getCard(class_name,islist,cardsview_context)
 	if type(class_name)~="string" then return islist and {} end
 	local cardArrs = {}
 	if class_name:contains(",") then
 		sgs.isSplit = 1
 		for _,cn in ipairs(class_name:split(","))do
-			table.insertTable(cardArrs,self:getCard(cn,true))
+			table.insertTable(cardArrs,self:getCard(cn,true,cardsview_context))
 		end
 		sgs.isSplit = 0
 		self:sortByUsePriority(cardArrs)
@@ -5826,8 +5873,9 @@ function SmartAI:getCard(class_name,islist)
 	for _,cs in ipairs(self:getGuhuoCard(class_name))do
 		table.insert(cardArrs,sgs.Card_Parse(cs))
 	end
-	for _,cs in ipairs(self:cardsView(class_name))do
-		table.insert(cardArrs,sgs.Card_Parse(cs))
+	for _,cs in ipairs(self:cardsView(class_name,cardsview_context))do
+		local card = type(cs)=="userdata" and cs or sgs.Card_Parse(cs)
+		if card then table.insert(cardArrs,card) end
 	end
 	local cards = self.player:getCards("he")
 	local handp = self.player:getHandPile()
@@ -5918,7 +5966,8 @@ function SmartAI:getCards(class_name,flags,acards)
 		end
 	end
 	for _,cs in ipairs(self:cardsView(class_name))do
-		table.insert(cards,sgs.Card_Parse(cs))
+		local card = type(cs)=="userdata" and cs or sgs.Card_Parse(cs)
+		if card then table.insert(cards,card) end
 	end
 	if acards then
 		for _,c in sgs.list(acards)do
