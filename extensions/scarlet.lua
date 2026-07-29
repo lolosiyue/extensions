@@ -723,31 +723,37 @@ sgs.LoadTranslationTable {
 
 s4_cloud_sunquan = sgs.General(extension, "s4_cloud_sunquan", "wu", 3, false)
 
-s4_cloud_yingzi = sgs.CreateTriggerSkill {
+s4_cloud_yingzi = sgs.CreateTriggerV2Skill {
     name = "s4_cloud_yingzi",
     frequency = sgs.Skill_Compulsory,
     events = { sgs.DrawNCards },
-    on_trigger = function(self, event, player, data)
-        local room = player:getRoom()
+	base_amount = 0,
+    can_trigger = function(skill, event, room, player, data)
+        if not player:hasSkill(skill:objectName()) then return false end
         local draw = data:toDraw()
         if draw.reason ~= "draw_phase" then return false end
+        return "s4_cloud_yingzi"
+    end,
+
+    on_cost = function(skill, event, room, player, ctx)
         local x = 0
-        if player:getHandcardNum() >= 2 then
-            x = x + 1
-        end
-        if player:getHp() >= 2 then
-            x = x + 1
-        end
-        if player:getEquips():length() >= 1 then
-            x = x + 1
-        end
+        if player:getHandcardNum() >= 2 then x = x + 1 end
+        if player:getHp() >= 2 then x = x + 1 end
+        if player:getEquips():length() >= 1 then x = x + 1 end
         if x > 0 then
-            room:sendCompulsoryTriggerLog(player, self:objectName(), true)
-            draw.num = draw.num + x
-            data:setValue(draw)
-            room:addMaxCards(player, x, true)
-            room:addPlayerMark(player, "&s4_cloud_yingzi-Clear", x)
+            ctx.modified_amount = x
         end
+        return true
+    end,
+
+    on_effect = function(skill, event, room, player, ctx)
+        local amount = skill:getEffectiveAmount(ctx)
+        if amount > 0 then
+            room:sendCompulsoryTriggerLog(player, skill:objectName(), true)
+            room:addMaxCards(player, amount, true, skill:objectName(), player)
+            room:addPlayerMark(player, "&s4_cloud_yingzi-Clear", amount)
+        end
+        return false
     end
 }
 
