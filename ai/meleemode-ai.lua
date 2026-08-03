@@ -34,3 +34,5 @@ sgs.ai_cardsview.melee_peach = function(self, class_name, player)
     end
 end
 
+sgs.ai_use_value.MeleeSlashJink = sgs.ai_use_value.Slash
+sgs.ai_keep_value.MeleeSlashJink = sgs.ai_keep_value.Slash
