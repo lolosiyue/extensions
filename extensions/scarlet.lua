@@ -64,7 +64,7 @@ s4_cloud_tuxi = sgs.CreateTriggerV2Skill{
 		return true
 	end,
     on_pay = function(skill, event, room, player, ctx)
-		local target = ctx.targets:first()
+		local target = ctx.invoker
 		if not target or not target:isAlive() then return false end
 		if not room:askForDiscard(player, "s4_cloud_tuxi", 999, 1, true, true, "@s4_cloud_tuxi:" .. target:objectName()) then
 			local lose_num = {}
@@ -83,17 +83,17 @@ s4_cloud_tuxi = sgs.CreateTriggerV2Skill{
 		
 		if target:getHandcardNum() >= player:getHandcardNum() then
 			for i = 1, amount do
-				if player:canMove(target, "h") then
-					local card_id = room:askForCardChosen(player, target, "h", "s4_cloud_tuxi")
-					room:obtainCard(player, card_id)
+				if player:canGet(target, "h") then
+					local card_id = room:askForCardChosen(player, target, "h", "s4_cloud_tuxi", false, sgs.Card_MethodGet)
+					room:obtainCard(player, card_id, skill:objectName(),false)
 				end
 			end
 		end
 		if target:getEquips():length() >= player:getEquips():length() then
 			for i = 1, amount do
 				if player:canDiscard(target, "he") then
-					local card_id = room:askForCardChosen(player, target, "he", "s4_cloud_tuxi")
-					room:throwCard(sgs.Sanguosha:getCard(card_id), target, player)
+					local card_id = room:askForCardChosen(player, target, "he", "s4_cloud_tuxi", false, sgs.Card_MethodDiscard)
+					room:throwCard(sgs.Sanguosha:getCard(card_id), skill:objectName(), target, player)
 				end
 			end
 		end
@@ -119,7 +119,7 @@ s4_cloud_yongqian = sgs.CreateTriggerV2Skill {
 		local data = ctx.original_data
 		if event == sgs.EventPhaseChanging then
 			local change = data:toPhaseChange()
-			if change.to == sgs.Player_Start then
+			if change.to == sgs.Player_Start and player:hasSkill("s4_cloud_yongqian") then
 				shouldClean = true
 			end
 		elseif event == sgs.EventLoseSkill then
@@ -135,9 +135,8 @@ s4_cloud_yongqian = sgs.CreateTriggerV2Skill {
 					if player:getMark(markName) > 0 then
 						room:setPlayerMark(player, markName, 0)
 						room:removePlayerMark(player, "s4_cloud_yongqian_buff" .. p:objectName() .. "-SelfStartClear", 1)
-						room:setPlayerMark(p, "&" .. skill:objectName() .. "+sys_+to+#" .. player:objectName(), 0)
 						if player:getMark("s4_cloud_yongqian_buff" .. p:objectName().. "-SelfStartClear") == 0 then
-							room:removeFixedDistance(player, p, 1)
+							room:setPlayerMark(p, "&" .. skill:objectName() .. "+sys_+to+#" .. player:objectName(), 0)
 						end
 					end
 				end
@@ -190,12 +189,6 @@ s4_cloud_yongqian = sgs.CreateTriggerV2Skill {
             local draw = ctx.original_data:toDraw()
             draw.num = draw.num - 1
             ctx.original_data:setValue(draw)
-            local target = ctx.targets:first()
-            local instId = skill:getInstanceId()
-            room:setPlayerMark(player, skill:objectName() .. "#" .. instId .. target:objectName() .. "-SelfStartClear", 1)
-            room:addPlayerMark(player, "s4_cloud_yongqian_buff" .. target:objectName() .. "-SelfStartClear", 1)
-            room:addPlayerMark(target, "&" .. skill:objectName() .. "+sys_+to+#" .. player:objectName())
-            room:setFixedDistance(player, target, 1)
         elseif event == sgs.TargetConfirmed then
 			local amount = skill:getEffectiveAmount(ctx)
             room:broadcastSkillInvoke(skill:objectName())
@@ -203,6 +196,15 @@ s4_cloud_yongqian = sgs.CreateTriggerV2Skill {
         end
         return false
     end,
+	on_effect_target = function(skill, event, room, player, ctx, target)
+		if event == sgs.DrawNCards then
+			local instId = skill:getInstanceId()
+            room:setPlayerMark(player, skill:objectName() .. "#" .. instId .. target:objectName() .. "-SelfStartClear", 1)
+            room:addPlayerMark(player, "s4_cloud_yongqian_buff" .. target:objectName() .. "-SelfStartClear", 1)
+            room:addPlayerMark(target, "&" .. skill:objectName() .. "+sys_+to+#" .. player:objectName())
+		end
+		return false
+	end,
 }
 
 s4_cloud_yongqian_buff = sgs.CreateTargetModSkillV2 {
@@ -293,22 +295,28 @@ s4_cloud_liegong = sgs.CreateTriggerV2Skill {
             return not ctx.targets:isEmpty()
         elseif event == sgs.DamageCaused then
             local damage = ctx.original_data:toDamage()
-            return player:askForSkillInvoke(skill:objectName(), ToData(damage.to))
+			if player:askForSkillInvoke(skill:objectName(), ToData(damage.to)) then
+				ctx.targets:append(damage.to)
+			end
+            return not ctx.targets:isEmpty()
         end
         return false
     end,
     on_effect = function(skill, event, room, player, ctx)
-        if event == sgs.TargetConfirmed then
-            local use = ctx.original_data:toCardUse()
-            local jink_table = sgs.QList2Table(player:getTag("Jink_" .. use.card:toString()):toIntList())
+        return false
+    end,
+	on_effect_target = function(skill, event, room, player, ctx, target)
+		if event == sgs.TargetConfirmed then
+			local use = ctx.original_data:toCardUse()
+			local jink_table = sgs.QList2Table(player:getTag("Jink_" .. use.card:toString()):toIntList())
             local index = 1
             for _, p in sgs.qlist(use.to) do
-                if ctx.targets:contains(p) then
+                if p:objectName() == target:objectName() then
                     room:broadcastSkillInvoke(skill:objectName())
                     local log = sgs.LogMessage()
                     log.type = "#skill_cant_jink"
                     log.from = player
-                    log.to:append(p)
+                    log.to:append(target)
                     log.arg = skill:objectName()
                     room:sendLog(log)
                     jink_table[index] = 0
@@ -319,22 +327,23 @@ s4_cloud_liegong = sgs.CreateTriggerV2Skill {
             jink_data:setValue(Table2IntList(jink_table))
             player:setTag("Jink_" .. use.card:toString(), jink_data)
             return false
-        elseif event == sgs.DamageCaused then
-			local amount = skill:getEffectiveAmount(ctx)
-            local damage = ctx.original_data:toDamage()
-            room:broadcastSkillInvoke(skill:objectName())
-            damage.damage = damage.damage + amount
-            local log = sgs.LogMessage()
-            log.type = "#skill_add_damage"
-            log.from = damage.from
-            log.to:append(damage.to)
-            log.arg = skill:objectName()
-            log.arg2 = damage.damage
-            room:sendLog(log)
-            ctx.original_data:setValue(damage)
-        end
-        return false
-    end,
+		elseif event == sgs.DamageCaused then
+			local damage = ctx.original_data:toDamage()
+			if target and target:objectName() == damage.to:objectName() then
+				room:broadcastSkillInvoke(skill:objectName())
+				damage.damage = damage.damage + skill:getEffectiveAmount(ctx)
+				local log = sgs.LogMessage()
+				log.type = "#skill_add_damage"
+				log.from = damage.from
+				log.to:append(target)
+				log.arg = skill:objectName()
+				log.arg2 = damage.damage
+				room:sendLog(log)
+				ctx.original_data:setValue(damage)
+			end
+		end
+		return false
+	end,
 }
 
 local function s4_cloud_yongyiParseRecords(raw)
@@ -345,8 +354,7 @@ local function s4_cloud_yongyiParseRecords(raw)
     end
 
     for _, suit in ipairs(raw:split(",")) do
-        if suit
-            and suit ~= ""
+        if suit ~= ""
             and suit ~= "no_suit"
             and not table.contains(records, suit) then
             table.insert(records, suit)
@@ -356,57 +364,56 @@ local function s4_cloud_yongyiParseRecords(raw)
     return records
 end
 
-
-local function s4_cloud_yongyiRootRef(player, instance_id)
-    return sgs.SkillInstanceRef(
-        player:objectName(),
-        sgs.SkillInstanceKey(
-            "s4_cloud_yongyi",
-            instance_id
-        )
-    )
-end
-
-
 local function s4_cloud_yongyiGetRecords(player, instance_id)
-    if not player
-        or not instance_id
-        or instance_id <= 0 then
+    if not player or instance_id <= 0 then
         return {}
     end
 
-    local value =
-        player:getSkillInstanceCorrectStateValue(
-            "s4_cloud_yongyi",
-            instance_id,
-            "records",
-            sgs.QVariant("")
-        )
-
-    return s4_cloud_yongyiParseRecords(
-        value:toString()
+    local value = player:getSkillInstanceStateValue(
+        "s4_cloud_yongyi",
+        instance_id,
+        "records",
+        sgs.QVariant("")
     )
+
+    return s4_cloud_yongyiParseRecords(value:toString())
 end
 
 
--- 把指定勇毅 instance 的記錄寫入 correctState。
---
--- 同時同步至該 instance 所屬的攻擊範圍 helper。
--- 讓 helper 可以辨認自己對應哪一個勇毅 instance。
-local function s4_cloud_yongyiSetRecords(room, player, instance_id,records)
-    if not room or not player or not instance_id or instance_id <= 0 then
+local function s4_cloud_yongyiSetRecords(room, player, instance_id, records)
+    if not room or not player or instance_id <= 0 then
         return false
     end
 
-    local root_ref = s4_cloud_yongyiRootRef(player, instance_id)
-    local raw = table.concat(records, ",")
-    room:setSkillInstanceCorrectState(player, root_ref, "records", sgs.QVariant(raw))
+    -- 完整記錄只保存在主技能的伺服器私有 state。
+    player:setSkillInstanceStateValue(
+        "s4_cloud_yongyi",
+        instance_id,
+        "records",
+        sgs.QVariant(table.concat(records, ","))
+    )
 
-    for _, child_key in sgs.list(player:getChildSkillInstanceKeys(root_ref.key)) do
+    -- 攻擊範圍 helper 只需要知道記錄數量。
+    local root_key = sgs.SkillInstanceKey(
+        "s4_cloud_yongyi",
+        instance_id
+    )
+
+    for _, child_key in sgs.list(
+        player:getChildSkillInstanceKeys(root_key)
+    ) do
         if child_key.skillName == "#s4_cloud_yongyiAttackRange" then
-            local child_ref = sgs.SkillInstanceRef( player:objectName(),child_key)
-            room:setSkillInstanceCorrectState(player, child_ref,
-                "records", sgs.QVariant(raw))
+            local child_ref = sgs.SkillInstanceRef(
+                player:objectName(),
+                child_key
+            )
+
+            room:setSkillInstanceCorrectState(
+                player,
+                child_ref,
+                "count",
+                sgs.QVariant(#records)
+            )
         end
     end
 
@@ -468,9 +475,16 @@ s4_cloud_yongyiAttackRange = sgs.CreateAttackRangeSkillV2 {
 	base_amount = 1,
 	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
-		local records =	s4_cloud_yongyiParseRecords(ctx:getStateValue("records", sgs.QVariant("")):toString())
-		return math.max(#records, ctx:getCurrentAmount())
-	end,
+        local count = ctx:getStateValue(
+            "count",
+            sgs.QVariant(0)
+        ):toInt()
+
+        return math.max(
+            count,
+            ctx:getCurrentAmount()
+        )
+    end,
 }
 
 s4_cloud_yongyiAnaleptic = sgs.CreateTargetModSkillV2 {
@@ -596,42 +610,64 @@ s4_cloud_yongyi = sgs.CreateTriggerV2Skill {
 	on_record = function(skill, event, room, player, ctx)
 		local owner = ctx.owner
 		local instance_id = ctx.instanceID
+	
 		if not owner or instance_id <= 0 then
 			return
 		end
-		-- 每個事件開始時先清除上一事件的臨時標記。
-		owner:setSkillInstanceStateValue(
-			"s4_cloud_yongyi", 
-			instance_id,
-			"just_recorded_suit", 
-			sgs.QVariant("")
-		)
-		-- 勇毅只處理技能持有者自己的相關事件。
-		if not player or owner:objectName() ~= player:objectName() then
-			return
-		end
-		if owner:isSkillInvalid("s4_cloud_yongyi", instance_id) then
-			return
-		end
-		local card = s4_cloud_yongyiEventCard(event, owner,	ctx.original_data)
-		if not card	or not card:hasSuit() or card:isKindOf("SkillCard") then
-			return
-		end
-		local suit = card:getSuitString()
-		local records =	s4_cloud_yongyiGetRecords(owner, instance_id)
-		if table.contains(records, suit) then
-			return
-		end
-		table.insert(records, suit)
-		s4_cloud_yongyiSetRecords(room,	owner, instance_id,	records)
-
-		-- 告訴稍後的 can_trigger：
-		-- 這個花色是本事件剛剛加入的。
+	
+		-- 每次事件開始先重設。
 		owner:setSkillInstanceStateValue(
 			"s4_cloud_yongyi",
 			instance_id,
-			"just_recorded_suit",
-			sgs.QVariant(suit)
+			"just_recorded",
+			sgs.QVariant(false)
+		)
+	
+		if not player
+			or owner:objectName() ~= player:objectName()
+			or owner:isSkillInvalid(
+				"s4_cloud_yongyi",
+				instance_id
+			) then
+			return
+		end
+	
+		local card = s4_cloud_yongyiEventCard(
+			event,
+			owner,
+			ctx.original_data
+		)
+	
+		if not card
+			or not card:hasSuit()
+			or card:isKindOf("SkillCard") then
+			return
+		end
+	
+		local suit = card:getSuitString()
+		local records = s4_cloud_yongyiGetRecords(
+			owner,
+			instance_id
+		)
+	
+		if table.contains(records, suit) then
+			return
+		end
+	
+		table.insert(records, suit)
+	
+		s4_cloud_yongyiSetRecords(
+			room,
+			owner,
+			instance_id,
+			records
+		)
+	
+		owner:setSkillInstanceStateValue(
+			"s4_cloud_yongyi",
+			instance_id,
+			"just_recorded",
+			sgs.QVariant(true)
 		)
 	end,
 
@@ -653,16 +689,10 @@ s4_cloud_yongyi = sgs.CreateTriggerV2Skill {
                     "s4_cloud_yongyi",
                     instance_id,
                     "just_recorded_suit",
-                    sgs.QVariant("")
-                ):toString()
-				 -- 無花色：可以摸牌。
-				if not card:hasSuit() then
-					table.insert(trigger_names,	"s4_cloud_yongyi#" .. tostring(instance_id))
-				-- 已有記錄，而且不是本事件剛加入：
-				-- 可以摸牌並移除記錄。
-				elseif table.contains(records, suit)
-					and just_recorded_suit ~= suit then
-					table.insert(trigger_names,	"s4_cloud_yongyi#" .. tostring(instance_id))
+                    sgs.QVariant(false)
+                ):toBool()
+				if not card:hasSuit() or (table.contains(records, suit) and not just_recorded_suit) then
+					table.insert(trigger_names, "s4_cloud_yongyi#" .. tostring(instance_id))
 				end
 			end
 		end
@@ -683,18 +713,15 @@ s4_cloud_yongyi = sgs.CreateTriggerV2Skill {
 		end
 		local records =	s4_cloud_yongyiGetRecords(player, instance_id)
 		ctx.choice = card:getSuitString()
-		ctx.modified_amount = (math.max(#records, 1))
+		ctx:setModifiedAmount(math.max(#records, 1))
 		return true
 	end,
 	on_pay = function(skill, event, room, player, ctx)
-		local instance_id =	ctx.instanceID
-		local card = s4_cloud_yongyiEventCard(event, player, ctx.original_data)
-		local records =	s4_cloud_yongyiGetRecords(player, instance_id)
-		if card:hasSuit() and table.contains(records, ctx.choice) then
+		local records = s4_cloud_yongyiGetRecords(player, ctx.instanceID)
+		if ctx.choice ~= "" and table.contains(records, ctx.choice) then
 			table.removeOne(records, ctx.choice)
 		end
-		s4_cloud_yongyiSetRecords(room, player, instance_id, records)
-		return true
+		return s4_cloud_yongyiSetRecords(room, player, ctx.instanceID, records)
 	end,
 
 	on_effect = function(skill, event, room, player, ctx)
@@ -747,7 +774,7 @@ s4_cloud_yingzi = sgs.CreateTriggerV2Skill {
         if player:getHp() >= 2 then x = x + 1 end
         if player:getEquips():length() >= 1 then x = x + 1 end
         if x > 0 then
-            ctx.modified_amount = x
+            ctx:setModifiedAmount(x)
         end
         return true
     end,
@@ -831,8 +858,14 @@ s4_xianfeng_distance = sgs.CreateDistanceSkillV2{
 
 s4_jiwu = sgs.CreateTriggerV2Skill{
     name = "s4_jiwu",
-    events = { sgs.TargetConfirmed },
+    events = { sgs.TargetConfirmed, sgs.EventPhaseStart },
 	base_amount = 2,
+	on_record = function(skill, event, room, player, ctx)
+        if event ~= sgs.EventPhaseStart then return end
+		if player:getPhase() ~= sgs.Player_RoundStart then return end
+        if not ctx.owner or player ~= ctx.owner then return end
+        player:removeSkillInstanceStateValue(skill:objectName(), ctx.instanceID, "record/disabled_choices")
+    end,
     can_trigger = function(skill, event, room, player, data)
         if event == sgs.EventPhaseStart then return false end
         local use = data:toCardUse()
@@ -858,9 +891,18 @@ s4_jiwu = sgs.CreateTriggerV2Skill{
         local choicelist = {}
         table.insert(choicelist, "s4_jiwu_no_respond_list")
         table.insert(choicelist, "s4_jiwu_draw")
-        if player:getMark("s4_jiwu_analeptic#" .. skill:getInstanceId() .. "-SelfStartClear") == 0 then
-            table.insert(choicelist, "s4_jiwu_nullified")
-        end
+
+		local disabled_choices = player:getSkillInstanceStateValue(skill:objectName(), ctx.instanceID, "record/disabled_choices", sgs.QVariant()):toStringList()
+		local nullified_disabled = false
+		for _, disabled_choice in sgs.qlist(disabled_choices) do
+			if tostring(disabled_choice) == "s4_jiwu_nullified" then
+				nullified_disabled = true
+				break
+			end
+		end
+		if not nullified_disabled then
+			table.insert(choicelist, "s4_jiwu_nullified")
+		end
         table.insert(choicelist, "cancel")
 
         local selected = {}
@@ -928,8 +970,31 @@ s4_jiwu = sgs.CreateTriggerV2Skill{
                 local nullified_list = use.nullified_list
                 table.insert(nullified_list, "_ALL_TARGETS")
                 use.nullified_list = nullified_list
-                room:addPlayerMark(player, "s4_jiwu_analeptic#" .. skill:getInstanceId() .. "-SelfStartClear")
-                room:addPlayerMark(player, "&s4_jiwu+used+analeptic".."-SelfStartClear")
+                room:addPlayerMark(player, "&s4_jiwu+used+analeptic+sys_".."-SelfStartClear")
+				local disabled_choices = player:getSkillInstanceStateValue(skill:objectName(), ctx.instanceID, "record/disabled_choices", sgs.QVariant()):toStringList()
+				local disabled_choice_table = {}
+				local already_disabled = false
+
+				for _, disabled_choice in sgs.qlist(disabled_choices) do
+					local choice_name = tostring(disabled_choice)
+
+					if choice_name ~= "" then
+						table.insert(disabled_choice_table, choice_name)
+					end
+
+					if choice_name == "s4_jiwu_nullified" then
+						already_disabled = true
+					end
+				end
+				if not already_disabled then
+					table.insert(disabled_choice_table, "s4_jiwu_nullified")
+				
+					local state_value = sgs.QVariant()
+					state_value:setStringList(table.concat(disabled_choice_table, "|"))
+					player:setSkillInstanceStateValue(skill:objectName(), ctx.instanceID, "record/disabled_choices", state_value)
+				end
+
+
                 local analeptic = sgs.Sanguosha:cloneCard("analeptic")
                 analeptic:setSkillName(skill:objectName())
                 analeptic:deleteLater()
@@ -1047,6 +1112,10 @@ s4_jiuzhu = sgs.CreateTriggerV2Skill{
         local current = room:getCurrent()
         if not current or current:getPhase() == sgs.Player_NotActive then return false end
         if player:getMark("s4_jiuzhu-using") > 0 then return false end
+		local ctx = sgs.SkillContext()
+        ctx.invoker = player
+        ctx.instanceID = skill:getInstanceId()
+        if not skill:isUsable(ctx) then return false end
         local move = data:toMoveOneTime()
         if move.to_place ~= sgs.Player_DiscardPile then return false end
         for _, id in sgs.qlist(move.card_ids) do
@@ -1089,7 +1158,7 @@ s4_jiuzhu = sgs.CreateTriggerV2Skill{
         player:setMark("s4_jiuzhu_card_id", card_id)
         ctx.targets:append(target)
 		if player:getPhase() ~= sgs.Player_NotActive then
-			ctx.modified_amount = 2
+			ctx:setModifiedAmount(2)
 		end
         return true
     end,
@@ -1107,11 +1176,13 @@ s4_jiuzhu = sgs.CreateTriggerV2Skill{
 
     on_effect = function(skill, event, room, player, ctx)
         local amount = skill:getEffectiveAmount(ctx)
-        local card_id = player:getMark("s4_jiuzhu_card_id")
+		local usageCtx = sgs.SkillContext()
+        usageCtx.invoker = player
+        usageCtx.owner = player
+        usageCtx.instanceID = skill:getInstanceId()
+        skill:addUsage(usageCtx)
         local target = ctx.targets:first()
-        local card = sgs.Sanguosha:getCard(card_id)
-        local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_RECYCLE,  target:objectName(), skill:objectName(), "")
-		room:obtainCard(target, card, reason, true)
+		skill:skillEffect(event, room, player, ctx, target)
         if player:getPhase() ~= sgs.Player_NotActive then
             if room:askForSkillInvoke(player, skill:objectName()) then
 				if amount > 0 then
@@ -1121,25 +1192,38 @@ s4_jiuzhu = sgs.CreateTriggerV2Skill{
         else
             local current = room:getCurrent()
 			for i = 1, amount do
-				if current and player:canMove(current) then
+				if current and player:canGet(current, "he") then
 					local targets = sgs.SPlayerList()
 					targets:append(current)
 					room:setPlayerFlag(player, "s4_jiuzhu_current")
 					local chosen = room:askForPlayerChosen(player, targets, skill:objectName(), "s4_jiuzhu-invoke", true, true)
 					room:setPlayerFlag(player, "-s4_jiuzhu_current")
 					if chosen then
-						local id = room:askForCardChosen(player, current, "he", skill:objectName())
-						if id ~= -1 then
-							room:obtainCard(player, id, skill:objectName(),false)
-						end
+						ctx.extra_data:setValue(ToData(chosen))
+						skill:skillEffect(event, room, player, ctx, chosen)
 					end
 				end
 			end
         end
 		room:setPlayerMark(player, "s4_jiuzhu-using", 0)
-
+		ctx.manual_effect = true
         return false
     end,
+	on_effect_target = function(skill, event, room, player, ctx, target)
+		local obtain_target = ctx.extra_data:toPlayer()
+		if obtain_target and obtain_target:objectName() == target:objectName() then
+			local id = room:askForCardChosen(player, obtain_target, "he", skill:objectName(), false, sgs.Card_MethodGet)
+			if id ~= -1 then
+				room:obtainCard(player, id, skill:objectName(),false)
+			end
+		else
+			local card_id = player:getMark("s4_jiuzhu_card_id")
+			local card = sgs.Sanguosha:getCard(card_id)
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_RECYCLE,  target:objectName(), skill:objectName(), "")
+			room:obtainCard(target, card, reason, true)
+		end
+		return false
+	end,
 }
 
 s4_zhaoyun:addSkill(s4_jiuzhu)
@@ -1271,8 +1355,6 @@ s4_beizhen = sgs.CreateTriggerV2Skill{
             if choice == "cancel" then return false end
             ctx.choice = choice
             return true
-        elseif event == sgs.DamageInflicted then
-            return true
         end
         return false
     end,
@@ -1304,60 +1386,23 @@ s4_beizhen = sgs.CreateTriggerV2Skill{
     end,
 }
 
-s4_fani = sgs.CreateTriggerSkill{
-	name = "s4_fani",  
-	frequency = sgs.Skill_Frequent, 
-	events = {sgs.TargetSpecified, sgs.Death}, 
-	on_trigger = function(self, event, player, data) 
-		local room = player:getRoom()
-		if event == sgs.TargetSpecified then
-			local use = data:toCardUse()
-			if use.card and use.card:isDamageCard() and player:getMark("s4_fani-Clear") == 0 then
-                for _,p in sgs.qlist(use.to) do
-                    if p:getHp() > player:getHp() then
-                        local choicelist = {}
-                        table.insert(choicelist, "cancel")
-                        table.insert(choicelist, "draw")
-                        if player:canDiscard(p, "he") then
-                            table.insert(choicelist, "discard")
-                            table.insert(choicelist, "bieshui")
-                        end
-                        local choice = room:askForChoice(player, self:objectName(), table.concat(choicelist, "+"), ToData(p))
-                        if choice ~= "cancel" then
-                            if choice == "draw" or choice == "bieshui" then
-                                player:drawCards(1, self:objectName())
-                            end
-                            if choice == "discard" or choice == "bieshui" then
-                                local id = room:askForCardChosen(player,p, "he", self:objectName())
-                                local card = sgs.Sanguosha:getCard(id)
-                                room:throwCard(card, player, p)
-                            end
-                            if choice == "bieshui" then
-                                room:addPlayerMark(player, "s4_fani-Clear")
-                                room:addPlayerMark(player, "&s4_fani-Clear")
-                                use.m_addHistory = false
-                                data:setValue(use)
-                            end
-                        end
-                    end
-				end
-			end
-        elseif event == sgs.Death then
-            local death = data:toDeath()
-            if death.who:objectName() ~= player:objectName() then return false end
-            local killer
-            if death.damage then
-                killer = death.damage.from
-            else
-                killer = nil
-            end
-            if killer and killer:objectName() == player:objectName() then
-                room:setPlayerMark(player, "s4_fani-Clear", 0)
-                room:setPlayerMark(player, "&s4_fani-Clear", 0)
-            end
+local function s4_fani_get_target_choice(choice_data, target)
+	if not choice_data or choice_data == "" or not target then
+		return nil
+	end
+
+	local target_name = target:objectName()
+
+	for item in string.gmatch(choice_data, "[^|]+") do
+		local name, choice = string.match(item, "^([^=]+)=(.+)$")
+		if name == target_name then
+			return choice
 		end
-	end,
-}
+	end
+
+	return nil
+end
+
 s4_fani = sgs.CreateTriggerSkillV2{
 	name = "s4_fani",
 	events = {sgs.TargetSpecified, sgs.Death, sgs.EventPhaseChanging},
@@ -1365,17 +1410,18 @@ s4_fani = sgs.CreateTriggerSkillV2{
 	base_amount = 1,
 
 	on_record = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.EventPhaseChanging then
 			local change = data:toPhaseChange()
 			if change.to == sgs.Player_NotActive then
-				room:removeSkillInvalidity(player, "s4_fani", player:objectName(), "s4_fani")
+				room:removeSkillInvalidity(player, "s4_fani", player:objectName(), "s4_fani", ctx.instanceID)
 			end
 		elseif event == sgs.Death then
 			local death = data:toDeath()
 			if death.who:objectName() == ctx.owner:objectName() then return end
 			local killer = death.damage and death.damage.from
 			if killer and killer:objectName() == ctx.owner:objectName() then
-				room:removeSkillInvalidity(ctx.owner, "s4_fani", ctx.owner:objectName(), "s4_fani")
+				room:removeSkillInvalidity(ctx.owner, "s4_fani", ctx.owner:objectName(), "s4_fani", ctx.instanceID)
 			end
 		end
 	end,
@@ -1395,7 +1441,7 @@ s4_fani = sgs.CreateTriggerSkillV2{
 	on_cost = function(skill, event, room, player, ctx)
 		if event ~= sgs.TargetSpecified then return false end
 		local use = ctx.original_data:toCardUse()
-		local parts = {}
+		local selected  = {}
 		for _, p in sgs.qlist(use.to) do
 			if p:getHp() > player:getHp() then
 				local choicelist = {"cancel", "draw"}
@@ -1406,26 +1452,29 @@ s4_fani = sgs.CreateTriggerSkillV2{
 				local choice = room:askForChoice(player, skill:objectName(),
 					table.concat(choicelist, "+"), ctx.original_data)
 				if choice ~= "cancel" then
-					table.insert(parts, p:objectName() .. "=" .. choice)
+					ctx.targets:append(p)
+					table.insert(selected , p:objectName() .. "=" .. choice)
 				end
 			end
 		end
-		if #parts == 0 then return false end
-		ctx.extra_data = table.concat(parts, "|")
+		if #selected == 0 then return false end
+		ctx.extra_data = table.concat(selected , "|")
 		return true
 	end,
 
 	on_effect = function(skill, event, room, player, ctx)
 		if event ~= sgs.TargetSpecified then return false end
 		local has_bieshui = false
-		for c in ctx.choice:gmatch("[^|]+") do
-			if c == "bieshui" then
+
+		for item in string.gmatch(ctx.choice or "", "[^|]+") do
+			local _, choice = string.match(item, "^([^=]+)=(.+)$")
+			if choice == "bieshui" then
 				has_bieshui = true
 				break
 			end
 		end
 		if has_bieshui then
-			room:addSkillInvalidity(player, "s4_fani", player:objectName(), "s4_fani")
+			room:addSkillInvalidity(player, "s4_fani", player:objectName(), "s4_fani", ctx.instanceID)
 			local use = ctx.original_data:toCardUse()
 			use.m_addHistory = false
 			ctx.original_data:setValue(use)
@@ -1435,26 +1484,23 @@ s4_fani = sgs.CreateTriggerSkillV2{
 
 	on_effect_target = function(skill, event, room, player, ctx, target)
 		if event ~= sgs.TargetSpecified then return false end
-		local idx = 0
-		for i = 0, ctx.targets:length() - 1 do
-			if ctx.targets:at(i):objectName() == target:objectName() then
-				idx = i
-				break
-			end
+		local choice = s4_fani_get_target_choice(ctx.choice, target)
+
+		if not choice then
+			return false
 		end
-		local choices = {}
-		for c in ctx.choice:gmatch("[^|]+") do
-			table.insert(choices, c)
-		end
-		local choice = choices[idx + 1]
-		if not choice then return false end
+		local amount = skill:getEffectiveAmount(ctx)
 		if choice == "draw" or choice == "bieshui" then
-			player:drawCards(1, skill:objectName())
+			player:drawCards(amount, skill:objectName())
 		end
 		if choice == "discard" or choice == "bieshui" then
-			local id = room:askForCardChosen(player, target, "he", skill:objectName())
-			local card = sgs.Sanguosha:getCard(id)
-			room:throwCard(card, player, target)
+			for i = 1, amount do
+				if player:canDiscard(target, "he") then
+					local id = room:askForCardChosen(player, target, "he", skill:objectName(), false, sgs.Card_MethodDiscard)
+					local card = sgs.Sanguosha:getCard(id)
+					room:throwCard(card, skill:objectName(), player, target)
+				end
+			end
 		end
 		return false
 	end,
@@ -7726,8 +7772,9 @@ s4_kuiwei = sgs.CreateTriggerV2Skill{
     events = {sgs.EventPhaseProceeding, sgs.EventPhaseChanging},
     frequency = sgs.Skill_Frequent,
     base_amount = 1,
-    on_record = function(skill, event, room, player, data)
+    on_record = function(skill, event, room, player, ctx)
         if event == sgs.EventPhaseChanging then
+			local data = ctx.original_data
             local change = data:toPhaseChange()
             if change.from == sgs.Player_Finish then
                 player:removeTag("s4_kuiwei_discarded")
@@ -7848,7 +7895,7 @@ s4_lizhan = sgs.CreateTriggerV2Skill{
         for _, p in sgs.qlist(chosen_players) do
             ctx.targets:append(p)
         end
-		ctx.modified_amount = ctx.targets:length()
+		ctx:setModifiedAmount(ctx.targets:length())
         return true
     end,
     
@@ -8077,7 +8124,8 @@ s4_xishe = sgs.CreateTriggerV2Skill{
     limit_scope = sgs.Skill_Limit_Game,
     max_usage_limit = 1,
     base_amount = 1,
-    on_record = function(skill, event, room, player, data)
+    on_record = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
         if event == sgs.Damaged then
             local damage = data:toDamage()
             if damage.to and damage.to:hasSkill("s4_xishe") and damage.to:isAlive() then
@@ -8277,7 +8325,8 @@ s4_ganglie = sgs.CreateTriggerV2Skill{
         
         return false
     end,
-    on_record = function(skill, event, room, player, data)
+    on_record = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
         if event == sgs.Damaged then
             local damage = data:toDamage()
             if damage.from and damage.from:isAlive() and damage.to and damage.to:hasSkill("s4_ganglie") and damage.from:getMark("s4_ganglie_damage_" .. damage.to:objectName()) == 0 then
@@ -8477,7 +8526,8 @@ s4_qingjian = sgs.CreateTriggerV2Skill{
 		
 		return false
     end,
-    on_record = function(skill, event, room, player, data)
+    on_record = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
         if event == sgs.CardsMoveOneTime then
             local move = data:toMoveOneTime()
             if move.to_place ~= sgs.Player_DiscardPile then return end
@@ -8518,7 +8568,7 @@ s4_qingjian = sgs.CreateTriggerV2Skill{
             
             local x = math.max(1, player:getHp())
             if x <= 0 then return false end
-			ctx.modified_amount = x
+			ctx:setModifiedAmount(x)
             return true
         end
         
@@ -9070,7 +9120,7 @@ s4_qiaobian = sgs.CreateTriggerV2Skill{
         return false
     end,
 
-    on_record = function(skill, event, room, player, data, owner)
+    on_record = function(skill, event, room, player, ctx)
     end,
 
     on_cost = function(skill, event, room, player, ctx)
@@ -9091,7 +9141,7 @@ s4_qiaobian = sgs.CreateTriggerV2Skill{
             if xumouCard(player, card) then
 				if change.to == sgs.Player_Finish then
             		local x = math.min(player:getJudgingArea():length(), player:getHp())
-					ctx.modified_amount = x
+					ctx:setModifiedAmount(x)
 				elseif change.to == sgs.Player_Draw then
 					local others = sgs.SPlayerList()
                     for _, p in sgs.qlist(room:getOtherPlayers(player)) do
@@ -9162,7 +9212,7 @@ s4_jixuan = sgs.CreateTriggerV2Skill{
         return false
     end,
 
-    on_record = function(skill, event, room, player, data, owner)
+    on_record = function(skill, event, room, player, ctx)
     end,
 
     on_cost = function(skill, event, room, player, ctx)
