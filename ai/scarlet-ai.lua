@@ -63,6 +63,8 @@ sgs.ai_choicemade_filter.skillInvoke.s4_cloud_tuxi = function(self, player, prom
 end
 sgs.drawpeach_skill = sgs.drawpeach_skill .. "|s4_cloud_tuxi"
 
+sgs.dont_kongcheng_skill = sgs.dont_kongcheng_skill .. "|s4_cloud_tuxi"
+
 sgs.ai_skill_invoke.s4_cloud_liegong = function(self, data)
     return sgs.ai_skill_invoke.liegong(self, data)
 end
