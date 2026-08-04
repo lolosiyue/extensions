@@ -1,7 +1,6 @@
 ﻿extension = sgs.Package("extra", sgs.Package_GeneralPack)
 extension_guandu = sgs.Package("fixandadd_guandu", sgs.Package_GeneralPack)
 extension_twyj = sgs.Package("fixandadd_twyj", sgs.Package_GeneralPack)
-require "ExtraTurnUtils"
 
 local Guandu_event_only = false --OL官渡之战随机事件
 local Guandu_event_reward = false 
@@ -2209,8 +2208,8 @@ twyj_huzhuCard = sgs.CreateSkillCard{
 	name = "twyj_huzhu",
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName() and not to_select:isKongcheng()
 	end,
 	on_use = function(self, room, source, targets)
 		local card = room:askForCard(targets[1], ".|.|.|hand!", "@twyj_huzhu:" .. source:objectName(), sgs.QVariant(), sgs.Card_MethodNone)

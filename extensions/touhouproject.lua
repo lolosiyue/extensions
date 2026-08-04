@@ -454,8 +454,8 @@ TH_ForbiddenFruitsVS = sgs.CreateViewAsSkill{--禁忌·禁果
 TH_ForbiddenFruitsCARD = sgs.CreateSkillCard{
 	name = "TH_ForbiddenFruitsCARD",
 	skill_name = "TH_ForbiddenFruits",
-	filter = function(self, targets, to_select)
-		return #targets < 3 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isAllNude()
+	filter = function(self, targets, to_select, player)
+		return #targets < 3 and to_select:objectName() ~= player:objectName() and not to_select:isAllNude()
 	end,
 	feasible = function(self, targets)
 		return #targets > 0

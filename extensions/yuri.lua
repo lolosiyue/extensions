@@ -3154,7 +3154,7 @@ bsClear = sgs.CreateTriggerSkill{
 	events = {sgs.EventLoseSkill} ,
 	on_trigger = function(self, event, player, data)
 
-		if data:toString() == "breakingSeal" then
+		if data:toSkillChange().skillName == "breakingSeal" then
 			local room = player:getRoom()
 			for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 				-- p:loseAllMarks("Armor_Nullified")
@@ -3654,7 +3654,7 @@ SAEClear = sgs.CreateTriggerSkill{ -- can_trigger標示 target的技能不能當
 	name = "#SAEClear" ,
 	events = {sgs.EventLoseSkill} ,
 	on_trigger = function(self, event, player, data)
-		if data:toString() == "sexualadvantage" then
+		if data:toSkillChange().skillName == "sexualadvantage" then
 			local room = player:getRoom()
 			for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:hasFlag("SAEflag") then
@@ -3885,7 +3885,7 @@ ctrClear = sgs.CreateTriggerSkill{
 	events = {sgs.EventLoseSkill} ,
 	on_trigger = function(self, event, player, data)
 		if event == sgs.EventLoseSkill then
-			if data:toString() == "clearthemeridians" then
+			if data:toSkillChange().skillName == "clearthemeridians" then
 				local room = player:getRoom()
 				player:removePileByName("pulsepile")
 				player:loseAllMarks("@pulse")
@@ -3970,7 +3970,7 @@ goodatwepClear = sgs.CreateTriggerSkill{
 				end
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == "goodatwep" then
+			if data:toSkillChange().skillName == "goodatwep" then
 				-- local room = player:getRoom()
 				for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 					if not p:getPile("goodatwepile"):isEmpty() then
@@ -4246,7 +4246,7 @@ LuaMouduanClear = sgs.CreateTriggerSkill{
 	name = "#LuaMouduan-clear" ,
 	events = {sgs.EventLoseSkill} ,
 	on_trigger = function(self, event, player, data)
-		if data:toString() == "LuaMouduan" then
+		if data:toSkillChange().skillName == "LuaMouduan" then
 			local room = player:getRoom()
 			if player:getMark("@wu") > 0 then
 				room:detachSkillFromPlayer(player, "jiang")
@@ -4832,7 +4832,7 @@ warlikeClear = sgs.CreateTriggerSkill{
 	name = "#warlikeClear" ,
 	events = {sgs.EventLoseSkill} ,
 	on_trigger = function(self, event, player, data)
-		if data:toString() == "warlike" and player:hasSkill("bloodfight") then
+		if data:toSkillChange().skillName == "warlike" and player:hasSkill("bloodfight") then
 			local room = player:getRoom()
 			room:detachSkillFromPlayer(player, "bloodfight")
 			local list = room:getAlivePlayers()
@@ -5798,13 +5798,13 @@ events = {sgs.PreCardUsed},
 --與共：你的殺、桃或非延時錦囊牌(借刀殺人、無懈可擊除外)可以額外指定至多X名目標，同時減少至多X名目標。X為某標記數量。回合結束時你失去所有某標記。
 flexibleCard = sgs.CreateSkillCard{
 	name = "flexible", 
-	filter = function(self, targets, to_select)
-		if sgs.Self:getMark("@defensive_distance_test") > sgs.Self:getMark("fake_flexible") then
-			return #targets < sgs.Self:getMark("@defensive_distance_test")
-		elseif sgs.Self:getMark("@defensive_distance_test") < sgs.Self:getMark("fake_flexible") then
-			return #targets < sgs.Self:getMark("fake_flexible")
+	filter = function(self, targets, to_select, player)
+		if player:getMark("@defensive_distance_test") > player:getMark("fake_flexible") then
+			return #targets < player:getMark("@defensive_distance_test")
+		elseif player:getMark("@defensive_distance_test") < player:getMark("fake_flexible") then
+			return #targets < player:getMark("fake_flexible")
 		else
-			return #targets < sgs.Self:getMark("@defensive_distance_test")
+			return #targets < player:getMark("@defensive_distance_test")
 		end
 		-- return #targets < sgs.Self:getMark("@luanz") and to_select:getMark(self:objectName()) == 0
 	end, 
@@ -6148,7 +6148,7 @@ clever = sgs.CreateTriggerSkill{
 			room:setPlayerMark(player, "@cleverkon", 1)
 			player:clearOnePrivatePile("clevercards")
 		end
-		if event == sgs.EventLoseSkill and data:toString() == "clever" then
+		if event == sgs.EventLoseSkill and data:toSkillChange().skillName == "clever" then
 			player:clearOnePrivatePile("clevercards")
 		end
 		return false
@@ -7515,7 +7515,7 @@ deepforestClear = sgs.CreateTriggerSkill{
 				end
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == "deepforest" then
+			if data:toSkillChange().skillName == "deepforest" then
 				if not player:getPile("wooden_ox"):isEmpty() and not (player:getTreasure() and player:getTreasure():isKindOf("wooden_ox")) then
 					-- player:clearOnePrivatePile("tobenaturecards")
 					player:clearOnePrivatePile("wooden_ox")
@@ -8929,7 +8929,7 @@ sweetsis = sgs.CreateTriggerSkill{
 	-- on_trigger = function(self, event, player, data)
 		-- local room = player:getRoom()
 		-- if event == sgs.EventLoseSkill then
-			-- if data:toString() == "sweetsis" then
+			-- if data:toSkillChange().skillName == "sweetsis" then
 				-- if not player:getPile("hightention"):isEmpty() then
 					-- player:clearOnePrivatePile("hightention")
 				-- end
@@ -9670,7 +9670,7 @@ LSEClear = sgs.CreateTriggerSkill{ -- can_trigger標示 target的技能不能當
 	name = "#LSEClear" ,
 	events = {sgs.EventLoseSkill} ,
 	on_trigger = function(self, event, player, data)
-		if data:toString() == "fightingclimax" then
+		if data:toSkillChange().skillName == "fightingclimax" then
 			local room = player:getRoom()
 			for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:getMark("@all_skill_invalidity") > 0 then
@@ -11034,7 +11034,7 @@ BDEClear = sgs.CreateTriggerSkill{ -- can_trigger標示 target的技能不能當
 	name = "#BDEClear" ,
 	events = {sgs.EventLoseSkill} ,
 	on_trigger = function(self, event, player, data)
-		if data:toString() == "blooddry" then
+		if data:toSkillChange().skillName == "blooddry" then
 			local room = player:getRoom()
 			for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:hasFlag("BDEflag") then
@@ -13555,7 +13555,7 @@ haigu = sgs.CreateTriggerSkill{
 			-- end
 		end
 		if event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				-- player:removePileByName("haigu_pile") --新版似乎沒有此寫法
 				for _, card_id in sgs.qlist(player:getPile("haigu_pile")) do
 					room:throwCard(sgs.Sanguosha:getCard(card_id), nil)
@@ -16311,7 +16311,7 @@ kaeriuchi = sgs.CreateTriggerSkill{
 	priority = -998,
 	on_trigger = function(self,event,player,data,room)
 		if player:getGeneralName() ~= "asukatoyuu" then return false end
-		local skillget = data:toString()
+		local skillget = data:toSkillChange().skillName
 		if event == sgs.EventAcquireSkill then
 			if player:hasSkill(self:objectName()) then
 				if skillget == "#kaeriuchi" or skillget == "wisdom_s" or skillget == "chikuwasama" then return false end

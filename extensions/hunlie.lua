@@ -827,7 +827,7 @@ sgkgodjuejing = sgs.CreateTriggerSkill{
 				room:loseHp(player, player:getHp() - 1, true, player, self:objectName())
 			end
 		elseif event == sgs.EventAcquireSkill then
-			if data:toString() == self:objectName() and player:getHp() >= 1 then
+			if data:toSkillChange().skillName == self:objectName() and player:getHp() >= 1 then
 				room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
 				room:loseHp(player, player:getHp() - 1, true, player, self:objectName())
 			end
@@ -1008,7 +1008,7 @@ sgkgodnizhan = sgs.CreateTriggerSkill{
 				end
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				for _,p in sgs.qlist(room:getAllPlayers()) do
 					if p:getMark("&nizhan")>0 then p:loseAllMarks("&nizhan") end
 				end
@@ -1052,7 +1052,7 @@ sgkgodcuifengCard = sgs.CreateSkillCard{
 	name = "sgkgodcuifengCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select, Self)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			return to_select:getMark("&nizhan") > 0
 		end
@@ -1184,7 +1184,7 @@ sgkgodweizhen = sgs.CreateTriggerSkill{
 				end
 			end
 		elseif event == sgs.EventAcquireSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				for _, pe in sgs.qlist(room:getAlivePlayers()) do
 					if pe:getMark("&nizhan") >= 4 and pe:getMark(self:objectName()) == 0 then
 						--room:doAnimate(1, zhangliao:objectName(), pe:objectName())
@@ -1194,7 +1194,7 @@ sgkgodweizhen = sgs.CreateTriggerSkill{
 				end
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				for _, pe in sgs.qlist(room:getAlivePlayers()) do
 					if pe:getMark(self:objectName()) > 0 then
 						room:setPlayerMark(pe, self:objectName(), 0)
@@ -2442,7 +2442,7 @@ sgkgodqixingClear = sgs.CreateTriggerSkill{
 				p:loseAllMarks("&dawu")
 			end
 			player:removeTag("sgkgodqixing_user")
-		elseif event == sgs.EventLoseSkill and data:toString() == "sgkgodqixing" then
+		elseif event == sgs.EventLoseSkill and data:toSkillChange().skillName == "sgkgodqixing" then
 			player:clearOnePrivatePile("xing")
 			local players = room:getAllPlayers()
 			for _,p in sgs.qlist(players) do
@@ -2743,7 +2743,7 @@ sgkgodyeyanCard = sgs.CreateSkillCard{
 		for _, id in sgs.qlist(self:getSubcards()) do
 			if sgs.Sanguosha:getCard(id):isBlack() then x = x + 1 end
 		end
-		return to_select:objectName() ~= sgs.Self:objectName() and #targets < x + 1
+		return to_select:objectName() ~= player:objectName() and #targets < x + 1
 	end,
 	feasible = function(self, targets)
 	    local x = 0
@@ -3368,7 +3368,7 @@ sgkgodmeixin = sgs.CreateTriggerSkill{
 				end
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				if room:findPlayersBySkillName(self:objectName()):isEmpty() then
 					for _, pe in sgs.qlist(room:getAlivePlayers()) do
 						pe:loseAllMarks("&"..self:objectName())
@@ -7710,11 +7710,11 @@ jlsgyuanhua = sgs.CreateTriggerSkill{
 		if event == sgs.GameStart and player:hasSkill(self:objectName()) then --防止手气卡刷桃卡BUG
 			room:setPlayerMark(player, self:objectName(), 1)
 		elseif event == sgs.EventAcquireSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				room:setPlayerMark(player, self:objectName(), 1)
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				room:setPlayerMark(player, self:objectName(), 0)
 			end
 		elseif event == sgs.CardsMoveOneTime then

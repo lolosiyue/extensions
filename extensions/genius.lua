@@ -5445,8 +5445,8 @@ tc_zuoxingCard = sgs.CreateSkillCard{
 	name = "tc_zuoxing",
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, targets, to_select)
-		local card = sgs.Self:getTag("tc_zuoxing"):toCard()
+	filter = function(self, targets, to_select, player)
+		local card = player:getTag("tc_zuoxing"):toCard()
 		card:setSkillName(self:objectName())
 		if card and card:targetFixed() then
 			return false
@@ -5455,11 +5455,11 @@ tc_zuoxingCard = sgs.CreateSkillCard{
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self)
-		and not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player)
+		and not player:isProhibited(to_select, card, qtargets)
 	end,
-	feasible = function(self, targets)
-		local card = sgs.Self:getTag("tc_zuoxing"):toCard()
+	feasible = function(self, targets, player)
+		local card = player:getTag("tc_zuoxing"):toCard()
 		card:setSkillName(self:objectName())
 		local qtargets = sgs.PlayerList()
 		for _, p in ipairs(targets) do
@@ -5468,7 +5468,7 @@ tc_zuoxingCard = sgs.CreateSkillCard{
 		if card and card:canRecast() and #targets == 0 then
 			return false
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self)
+		return card and card:targetsFeasible(qtargets, player)
 	end,	
 	on_validate = function(self, card_use)
 		local player = card_use.from

@@ -4282,9 +4282,9 @@ keyanzhuCard = sgs.CreateSkillCard {
 	name = "keyanzhuCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return (#targets < math.max(1, sgs.Self:getLostHp())) and
-			(to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return (#targets < math.max(1, player:getLostHp())) and
+			(to_select:objectName() ~= player:objectName())
 	end,
 	on_use = function(self, room, player, targets)
 		for _, p in ipairs(targets) do

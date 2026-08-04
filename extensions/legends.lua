@@ -3083,7 +3083,7 @@ zhimang = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local damage = data:toDamage()
-		if damage.card:isKindOf("Slash") and damage.to:isAlive() then
+		if damage.card and damage.card:isKindOf("Slash") and damage.to:isAlive() then
 			if room:askForSkillInvoke(player, self:objectName(), data) then
 				room:broadcastSkillInvoke("zhimang", math.random(1, 2))
 				room:setPlayerCardLimitation(damage.to, "use", "Slash", false)

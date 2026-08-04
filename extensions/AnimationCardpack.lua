@@ -1091,10 +1091,10 @@ end
 		    table.insert(marks, count)
 		end
 		for _, t in ipairs(targets) do
-			if t:getMark("arrange") == math.max(table.unpack(marks)) then
+			if #marks > 0 and t:getMark("arrange") == math.max(table.unpack(marks)) then
 				t:drawCards(1)
 			end
-			if t:getMark("arrange") == math.min(table.unpack(marks)) then
+			if #marks > 0 and t:getMark("arrange") == math.min(table.unpack(marks)) then
 			    room:damage(sgs.DamageStruct(self, source, t))
 			end
 			room:setPlayerMark(t, "arrange", 0)
@@ -1115,6 +1115,9 @@ end
 					room:addPlayerMark(effect.to, "arrange", 1)
 				end
 			end
+			-- 先移入 &arrangement 再移出: 只做「移出」會讓 client 對不存在的 pile
+			-- 執行空 QList removeAt(0) -> 記憶體損壞 -> memcpy 崩潰 (0x1137D)
+			arrangementMove(ids, true, effect.to)
 			arrangementMove(ids, false, effect.to)
 			room:showCard(effect.to, ids)
 		else
