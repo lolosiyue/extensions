@@ -34,7 +34,7 @@ end
 
 s4_cloud_zhangliao = sgs.General(extension, "s4_cloud_zhangliao", "wei", 4, false, false, false, 3)
 
-s4_cloud_tuxi = sgs.CreateTriggerV2Skill{
+s4_cloud_tuxi = sgs.CreateTriggerSkillV2{
     name = "s4_cloud_tuxi",
     events = { sgs.EventPhaseStart },
     frequency = sgs.Skill_NotFrequent,
@@ -115,7 +115,7 @@ s4_cloud_yongqian = sgs.CreateTriggerSkillV2{
 	base_amount = 1,
     on_record = function(skill, event, room, player, ctx)
 		local shouldClean = false
-		local instId = skill:getInstanceId()
+		local instId = ctx.instanceID
 		local data = ctx.original_data
 		if event == sgs.EventPhaseChanging then
 			local change = data:toPhaseChange()
@@ -160,7 +160,7 @@ s4_cloud_yongqian = sgs.CreateTriggerSkillV2{
             if not use.card or use.card:isKindOf("SkillCard") then return false end
             if not use.to:contains(player) then return false end
             if not use.from or player:objectName() == use.from:objectName() then return false end
-            local instId = skill:getInstanceId()
+            local instId = ctx.instanceID
             local markName = skill:objectName() .. "#" .. instId .. use.from:objectName() .. "-SelfStartClear"
             if player:getMark(markName) <= 0 then return false end
             return skill:objectName()
@@ -198,7 +198,7 @@ s4_cloud_yongqian = sgs.CreateTriggerSkillV2{
     end,
 	on_effect_target = function(skill, event, room, player, ctx, target)
 		if event == sgs.DrawNCards then
-			local instId = skill:getInstanceId()
+			local instId = ctx.instanceID
             room:setPlayerMark(player, skill:objectName() .. "#" .. instId .. target:objectName() .. "-SelfStartClear", 1)
             room:addPlayerMark(player, "s4_cloud_yongqian_buff" .. target:objectName() .. "-SelfStartClear", 1)
             room:addPlayerMark(target, "&" .. skill:objectName() .. "+sys_+to+#" .. player:objectName())
@@ -816,7 +816,7 @@ sgs.LoadTranslationTable {
 
 s4_lubu = sgs.General(extension, "s4_lubu", "qun", 5)
 
-s4_xianfeng = sgs.CreateTriggerV2Skill{
+s4_xianfeng = sgs.CreateTriggerSkillV2{
     name = "s4_xianfeng",
     events = {sgs.TargetSpecified},
     frequency = sgs.Skill_Compulsory,
@@ -861,7 +861,7 @@ s4_xianfeng_distance = sgs.CreateDistanceSkillV2{
     end,
 }
 
-s4_jiwu = sgs.CreateTriggerV2Skill{
+s4_jiwu = sgs.CreateTriggerSkillV2{
     name = "s4_jiwu",
     events = { sgs.TargetConfirmed, sgs.EventPhaseStart },
 	base_amount = 2,
@@ -1028,7 +1028,7 @@ s4_jiwu = sgs.CreateTriggerV2Skill{
     end,
 }
 
-s4_jiwuClear = sgs.CreateTriggerV2Skill{
+s4_jiwuClear = sgs.CreateTriggerSkillV2{
     name = "#s4_jiwuClear",
     events = { sgs.CardOffset },
     frequency = sgs.Skill_Compulsory,
@@ -1109,7 +1109,7 @@ sgs.LoadTranslationTable {
 
 s4_zhaoyun = sgs.General(extension, "s4_zhaoyun", "shu", 4)
 
-s4_jiuzhu = sgs.CreateTriggerV2Skill{
+s4_jiuzhu = sgs.CreateTriggerSkillV2{
     name = "s4_jiuzhu",
     events = {sgs.CardsMoveOneTime},
     frequency = sgs.Skill_Frequent,
@@ -1122,10 +1122,13 @@ s4_jiuzhu = sgs.CreateTriggerV2Skill{
         local current = room:getCurrent()
         if not current or current:getPhase() == sgs.Player_NotActive then return false end
         if player:getMark("s4_jiuzhu-using") > 0 then return false end
-		local ctx = sgs.SkillContext()
-        ctx.invoker = player
-        ctx.instanceID = skill:getInstanceId()
-        if not skill:isUsable(ctx) then return false end
+		local usable = false
+		for _, iid in sgs.list(player:getSkillInstanceIds(skill:objectName())) do
+			local c = sgs.SkillContext()
+			c.invoker = player; c.owner = player; c.instanceID = iid
+			if skill:isUsable(c) then usable = true; break end
+		end
+		if not usable then return false end
         local move = data:toMoveOneTime()
         if move.to_place ~= sgs.Player_DiscardPile then return false end
         for _, id in sgs.qlist(move.card_ids) do
@@ -1189,7 +1192,7 @@ s4_jiuzhu = sgs.CreateTriggerV2Skill{
 		local usageCtx = sgs.SkillContext()
         usageCtx.invoker = player
         usageCtx.owner = player
-        usageCtx.instanceID = skill:getInstanceId()
+        usageCtx.instanceID = ctx.instanceID
         skill:addUsage(usageCtx)
         local target = ctx.targets:first()
 		skill:skillEffect(event, room, player, ctx, target)
@@ -1303,7 +1306,7 @@ s4_beizhenVS = sgs.CreateViewAsSkillV2{
         end
     end,
 }
-s4_beizhen = sgs.CreateTriggerV2Skill{
+s4_beizhen = sgs.CreateTriggerSkillV2{
     name = "s4_beizhen",
     events = {sgs.EventPhaseStart, sgs.DamageInflicted},
     view_as_skill = s4_beizhenVS,
@@ -7959,7 +7962,7 @@ getYing = function(to, skillname)
 	end
 end
 
-s4_cangzhuo = sgs.CreateTriggerV2Skill{
+s4_cangzhuo = sgs.CreateTriggerSkillV2{
     name = "s4_cangzhuo",
     events = {sgs.CardsMoveOneTime},
     frequency = sgs.Skill_Frequent,
@@ -8045,7 +8048,7 @@ sgs.LoadTranslationTable {
 
 s4_caoren = sgs.General(extension, "s4_caoren", "wei", 4)
 
-s4_kuiwei = sgs.CreateTriggerV2Skill{
+s4_kuiwei = sgs.CreateTriggerSkillV2{
     name = "s4_kuiwei",
     events = {sgs.EventPhaseProceeding, sgs.EventPhaseChanging},
     frequency = sgs.Skill_Frequent,
@@ -8145,7 +8148,7 @@ s4_kuiwei = sgs.CreateTriggerV2Skill{
         return false
     end,
 }
-s4_lizhan = sgs.CreateTriggerV2Skill{
+s4_lizhan = sgs.CreateTriggerSkillV2{
     name = "s4_lizhan",
     events = {sgs.Damaged},
     frequency = sgs.Skill_Frequent,
@@ -8222,7 +8225,7 @@ sgs.LoadTranslationTable {
 
 s4_2_jiangwei = sgs.General(extension, "s4_2_jiangwei", "shu", 4)
 
-s4_zhiji = sgs.CreateTriggerV2Skill{
+s4_zhiji = sgs.CreateTriggerSkillV2{
     name = "s4_zhiji",
     events = {sgs.EventPhaseProceeding},
     frequency = sgs.Skill_Compulsory,
@@ -8279,7 +8282,7 @@ s4_zhiji = sgs.CreateTriggerV2Skill{
     end,
 }
 
-s4_banjiang = sgs.CreateTriggerV2Skill{
+s4_banjiang = sgs.CreateTriggerSkillV2{
     name = "s4_banjiang",
     events = {sgs.Damaged, sgs.DrawNCards, sgs.ChangeSlash},
     frequency = sgs.Skill_Compulsory,
@@ -8395,7 +8398,7 @@ sgs.LoadTranslationTable{
 
 s4_huangzu = sgs.General(extension, "s4_huangzu", "qun", 4)
 
-s4_xishe = sgs.CreateTriggerV2Skill{
+s4_xishe = sgs.CreateTriggerSkillV2{
     name = "s4_xishe",
     events = {sgs.EventPhaseProceeding, sgs.Damaged, sgs.CardsMoveOneTime},
     frequency = sgs.Skill_NotFrequent,
@@ -8568,7 +8571,7 @@ local function getChargeMax(player)
     return n
 end
 
-s4_ganglie = sgs.CreateTriggerV2Skill{
+s4_ganglie = sgs.CreateTriggerSkillV2{
     name = "s4_ganglie",
     events = {sgs.Damaged, sgs.Death},
     shiming_skill = true,
@@ -8772,7 +8775,7 @@ s4_ganglie = sgs.CreateTriggerV2Skill{
 	end
 }
 
-s4_qingjian = sgs.CreateTriggerV2Skill{
+s4_qingjian = sgs.CreateTriggerSkillV2{
     name = "s4_qingjian",
     events = {sgs.CardsMoveOneTime, sgs.EventPhaseProceeding},
     base_amount = 1,
@@ -9124,7 +9127,7 @@ s4_jiyangVS = sgs.CreateViewAsSkillV2 {
     end,
 }
 
-s4_jiyang = sgs.CreateTriggerV2Skill{
+s4_jiyang = sgs.CreateTriggerSkillV2{
     name = "s4_jiyang",
     events = { sgs.CardUsed, sgs.TargetConfirmed },
     view_as_skill = s4_jiyangVS,
@@ -9160,7 +9163,7 @@ s4_jiyang = sgs.CreateTriggerV2Skill{
 }
 
 -- 魂姿 - 覺醒技
-s4_hunzi = sgs.CreateTriggerV2Skill{
+s4_hunzi = sgs.CreateTriggerSkillV2{
     name = "s4_hunzi",
     events = { sgs.QuitDying },
     frequency = sgs.Skill_Wake,
@@ -9170,10 +9173,13 @@ s4_hunzi = sgs.CreateTriggerV2Skill{
     base_amount = 1,
     can_trigger = function(skill, event, room, player, data)
         if not player:hasSkill(skill:objectName()) then return false end
-        local ctx = sgs.SkillContext()
-        ctx.invoker = player
-        ctx.instanceID = skill:getInstanceId()
-        if not skill:isUsable(ctx) then return false end
+       local usable = false
+		for _, iid in sgs.list(player:getSkillInstanceIds(skill:objectName())) do
+			local c = sgs.SkillContext()
+			c.invoker = player; c.owner = player; c.instanceID = iid
+			if skill:isUsable(c) then usable = true; break end
+		end
+		if not usable then return false end
         local dying = data:toDying()
         if dying.who ~= player then return false end
         if player:isDead() then return false end
@@ -9188,13 +9194,13 @@ s4_hunzi = sgs.CreateTriggerV2Skill{
         local usageCtx = sgs.SkillContext()
         usageCtx.invoker = player
         usageCtx.owner = player
-        usageCtx.instanceID = skill:getInstanceId()
+        usageCtx.instanceID = ctx.instanceID
         skill:addUsage(usageCtx)
         room:changeMaxHpForAwakenSkill(player, -1, skill:objectName())
         player:gainHujia(amount)
         room:drawCards(player, 2*amount, skill:objectName())
         room:handleAcquireDetachSkills(player, "mouyingzi,yinghun")
-        room:addPlayerMark(player, skill:objectName()..skill:getInstanceId())
+        room:addPlayerMark(player, skill:objectName()..ctx.instanceID)
         return false
     end,
 }
@@ -9294,7 +9300,7 @@ s4_zhibaVS = sgs.CreateViewAsSkillV2 {
     end,
 }
 
-s4_zhiba = sgs.CreateTriggerV2Skill{
+s4_zhiba = sgs.CreateTriggerSkillV2{
     name = "s4_zhiba$",
     view_as_skill = s4_zhibaVS,
     events = { sgs.PindianVerifying },
@@ -9381,7 +9387,7 @@ sgs.LoadTranslationTable{
 
 s4_zhanghe = sgs.General(extension, "s4_zhanghe", "wei", 4)
 
-s4_qiaobian = sgs.CreateTriggerV2Skill{
+s4_qiaobian = sgs.CreateTriggerSkillV2{
     name = "s4_qiaobian",
     frequency = sgs.Skill_NotFrequent,
     events = { sgs.EventPhaseChanging },
@@ -9475,7 +9481,7 @@ s4_qiaobian = sgs.CreateTriggerV2Skill{
 	end,
 }
 
-s4_jixuan = sgs.CreateTriggerV2Skill{
+s4_jixuan = sgs.CreateTriggerSkillV2{
     name = "s4_jixuan",
     frequency = sgs.Skill_Compulsory,
     events = { sgs.Damaged },
