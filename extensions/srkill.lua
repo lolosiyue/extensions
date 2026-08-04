@@ -973,7 +973,7 @@ sr_wenjiu = sgs.CreateTriggerSkill{
 				end
 			end
 		-- elseif event == sgs.EventLoseSkill then
-		-- 	if data:toString() == "sr_wenjiu" then
+		-- 	if data:toSkillChange().skillName == "sr_wenjiu" then
 		-- 		player:clearOnePrivatePile("@srjiu")
 		-- 	end
 		end
@@ -5576,7 +5576,7 @@ sr_diaochan = sgs.General(extension,"sr_diaochan","qun",3,false)
 --离间
 sr_lijiancard = sgs.CreateSkillCard{
 	name = "sr_lijiancard" ,
-	filter = function(self, targets, to_select, Self)
+	filter = function(self, targets, to_select, player)
 		if not to_select:isMale() then
 			return false
 		end
@@ -5589,9 +5589,9 @@ sr_lijiancard = sgs.CreateSkillCard{
 			return false
 		end
 		
-		return (#targets < 2) and (to_select:objectName() ~= Self:objectName())
+		return (#targets < 2) and (to_select:objectName() ~= player:objectName())
 	end ,
-	feasible = function(self, targets, Self)
+	feasible = function(self, targets, player)
 		return #targets == 2 --离间牌可以使用的前提只有目标数为2
 	end ,
 	about_to_use = function(self, room, cardUse) 
@@ -5786,9 +5786,9 @@ sr_xingyicard = sgs.CreateSkillCard{
 	name = "sr_xingyicard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng() 
+			return to_select:objectName() ~= player:objectName() and not to_select:isKongcheng() 
 			and to_select:isWounded()		
 		end
 		return false

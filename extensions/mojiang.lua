@@ -53,7 +53,7 @@ sy_old_clear = sgs.CreateTriggerSkill {
 				end
 			end
 		elseif event == sgs.EventLoseSkill then
-			local sk = data:toString()
+			local sk = data:toSkillChange().skillName
 			if sk == "sy_tianyou" then
 				for _, pe in sgs.qlist(room:getAlivePlayers()) do
 					if not pe:getPile("you"):isEmpty() then
@@ -882,7 +882,7 @@ sy_duzun = sgs.CreateTriggerSkill {
 				end
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				for _, cc in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
 					if player:getSeat() == cc:getSeat() then
 						for _, pe in sgs.qlist(room:getAllPlayers(true)) do
@@ -1147,7 +1147,7 @@ sy_yinzi = sgs.CreateTriggerSkill {
 				end
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				for _, pe in sgs.qlist(room:getAlivePlayers()) do
 					pe:removeTag("yinzi_obtaincard")
 					pe:removeTag("yinzi_hprecover")
@@ -1348,8 +1348,8 @@ sy_quanqingCard = sgs.CreateSkillCard {
 	name = "sy_quanqingCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and to_select:getMark("sy_quanqingTarget-PlayClear") == 0
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName() and to_select:getMark("sy_quanqingTarget-PlayClear") == 0
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -1876,10 +1876,10 @@ sy_moshouBuff_bear = sgs.CreateTriggerSkill {
 				msg.from = player
 				msg.arg = "sy_moshou"
 				msg.type = "#MoshouBearPreventLoseSkill"
-				msg.arg2 = data:toString()
+				msg.arg2 = data:toSkillChange().skillName
 				room:sendLog(msg)
 				player:setTag("hunliesp_global_resistSkill", sgs.QVariant(true))
-				room:addPlayerMark(player, data:toString() .. "_temp_skill")
+				room:addPlayerMark(player, data:toSkillChange().skillName .. "_temp_skill")
 				room:handleAcquireDetachSkills(player, data:toString())
 				room:setPlayerMark(player, data:toString() .. "_temp_skill", 0)
 			end

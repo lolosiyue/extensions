@@ -3441,12 +3441,17 @@ keolzenrun = sgs.CreateTriggerSkill {
 					end
 				end
 				local eny = room:askForPlayerChosen(player, canchoose, self:objectName(), "keolzenrunask:" .. n, true, true)
-				if eny then
-					room:broadcastSkillInvoke(self:objectName())
-					room:addPlayerMark(player, "bankeolzenrunuse-Clear")
-					move:removeCardIds(move.card_ids)
-					data:setValue(move)
-					room:returnToTopDrawPile(move.card_ids)
+			if eny then
+				room:broadcastSkillInvoke(self:objectName())
+				room:addPlayerMark(player, "bankeolzenrunuse-Clear")
+				-- 先複製牌 ID 再移除，避免 removeCardIds 清空 move.card_ids 影響後續回頂
+				local ids = sgs.IntList()
+				for _, id in sgs.qlist(move.card_ids) do
+					ids:append(id)
+				end
+				move:removeCardIds(ids)
+				data:setValue(move)
+				room:returnToTopDrawPile(ids)
 					local dc = dummyCard()
 					for i = 1, n do
 						if dc:subcardsLength() >= eny:getCardCount() then
@@ -5921,7 +5926,7 @@ mobiledaming = sgs.CreateTriggerSkill {
 			end
 		elseif event == sgs.EventPhaseEnd and player:getPhase() == sgs.Player_Play then
 			room:detachSkillFromPlayer(player, "mobiledamingvs", true)
-		elseif event == sgs.EventAcquireSkill and data:toString() == self:objectName() then
+		elseif event == sgs.EventAcquireSkill and data:toSkillChange().skillName == self:objectName() then
 			for _, p in sgs.list(room:getOtherPlayers(player)) do
 				if p:getPhase() == sgs.Player_Play then
 					room:attachSkillToPlayer(p, "mobiledamingvs")
@@ -11395,7 +11400,7 @@ moulongdan = sgs.CreateTriggerSkill {
 				room:setPlayerMark(player, "&moulongdanLast", 1)
 			end
 		elseif event == sgs.EventAcquireSkill then
-			if data:toString() == "moulongdan" then
+			if data:toSkillChange().skillName == "moulongdan" then
 				room:setPlayerMark(player, "&moulongdanLast", 1)
 			end
 		else
@@ -19001,7 +19006,7 @@ hedao = sgs.CreateTriggerSkill {
 	end,
 	on_trigger = function(self, event, player, data, room)
 		if event == sgs.EventAcquireSkill then
-			if data:toString():startsWith("qingshu_tianshu") then
+			if data:toSkillChange().skillName:startsWith("qingshu_tianshu") then
 				local n = player:getTag("TianshuSkillNum"):toInt()
 				if n < 1 then
 					n = 1

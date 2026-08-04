@@ -1445,7 +1445,7 @@ sk_yaoming = sgs.CreateTriggerSkill{
 		    end
 		end
 		if event == sgs.EventAcquireSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				player:setMark("yaoming_suit", 0)
 				suits = {"spade", "heart", "club", "diamond"}
 				room:setPlayerFlag(player, "-yaoming1_done")
@@ -1455,7 +1455,7 @@ sk_yaoming = sgs.CreateTriggerSkill{
 				player:setTag("yaoming_suits", sgs.QVariant(table.concat(suits, "+")))
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				player:setMark("yaoming_suit", 0)
 				room:setPlayerFlag(player, "-yaoming1_done")
 				room:setPlayerFlag(player, "-yaoming2_done")
@@ -1559,9 +1559,9 @@ sk_chaochenCard = sgs.CreateSkillCard{
 	target_fixed = false,
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
         if #targets == 0 then
-		    return to_select:objectName() ~= sgs.Self:objectName()
+		    return to_select:objectName() ~= player:objectName()
 		end
 		return false
 	end,

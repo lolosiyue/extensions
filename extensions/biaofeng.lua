@@ -2949,7 +2949,7 @@ PlusLuoyi_Clear = sgs.CreateTriggerSkill {
 	events = { sgs.EventLoseSkill },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if data:toString() == "PlusLuoyi" then
+		if data:toSkillChange().skillName == "PlusLuoyi" then
 			room:setPlayerFlag(player, "-PlusLuoyi")
 		end
 		return false
@@ -4037,7 +4037,7 @@ PlusRende = sgs.CreateTriggerSkill {
 	view_as_skill = PlusRendeVS,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == self:objectName()) then
+		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == self:objectName()) then
 			player:gainMark("@rende")
 		elseif event == sgs.EventPhaseStart then
 			if player:getPhase() == sgs.Player_NotActive then
@@ -4543,7 +4543,7 @@ PlusPaoxiao = sgs.CreateTriggerSkill {
 				room:setPlayerMark(player, "PlusPaoxiao2", 0)
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				room:setPlayerMark(player, "PlusPaoxiao1", 0)
 				room:setPlayerMark(player, "PlusPaoxiao2", 0)
 			end
@@ -5407,7 +5407,7 @@ PlusQimou_Remove = sgs.CreateTriggerSkill {
 		local flag = false
 		if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_NotActive then
 			flag = true
-		elseif event == sgs.EventLoseSkill and data:toString() == "PlusQimou" then
+		elseif event == sgs.EventLoseSkill and data:toSkillChange().skillName == "PlusQimou" then
 			flag = true
 		end
 		if flag then
@@ -5877,8 +5877,8 @@ PlusChenggui_Card = sgs.CreateSkillCard {
 	name = "PlusChenggui",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		local target = targets[1]
@@ -7184,7 +7184,7 @@ PlusLiangyuan_Clear = sgs.CreateTriggerSkill {
 	events = { sgs.EventLoseSkill, sgs.Death },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if (event == sgs.Death and data:toDeath().who:objectName() == player:objectName()) or (event == sgs.EventLoseSkill and data:toString() == "PlusLiangyuan") then
+		if (event == sgs.Death and data:toDeath().who:objectName() == player:objectName()) or (event == sgs.EventLoseSkill and data:toSkillChange().skillName == "PlusLiangyuan") then
 			if player:hasSkill("PlusJieyin") then
 				room:detachSkillFromPlayer(player, "PlusJieyin")
 			end
@@ -7872,7 +7872,7 @@ PlusBuqu_Remove = sgs.CreateTriggerSkill {
 				end
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == "PlusBuqu" then
+			if data:toSkillChange().skillName == "PlusBuqu" then
 				player:removePileByName("PlusBuqu")
 				if player:getHp() <= 0 then
 					room:enterDying(player, nil)
@@ -9825,7 +9825,7 @@ PlusZhengtong = sgs.CreateTriggerSkill {
 				end
 			end
 		elseif event == sgs.EventLoseSkill then
-			local name = data:toString()
+			local name = data:toSkillChange().skillName
 			if name == self:objectName() then
 				local old_skill = player:getTag("PlusZhengtong_Skill"):toString()
 				if old_skill and player:hasSkill(old_skill) then
@@ -10520,7 +10520,7 @@ SixWulveRemove = sgs.CreateTriggerSkill {
 	frequency = sgs.Skill_Frequent,
 	events = { sgs.EventLoseSkill },
 	on_trigger = function(self, event, player, data)
-		local name = data:toString()
+		local name = data:toSkillChange().skillName
 		if name == "SixWulve" then
 			player:removePileByName("strategy")
 		end

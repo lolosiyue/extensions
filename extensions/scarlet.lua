@@ -681,7 +681,7 @@ s4_cloud_yongyi = sgs.CreateTriggerSkillV2{
 			return false
 		end
 		local trigger_names = {}
-		for _, instance_id in sgs.list(player:getSkillInstanceIdsForName("s4_cloud_yongyi")) do
+		for _, instance_id in sgs.list(player:getSkillInstanceIds("s4_cloud_yongyi")) do
 			if not player:isSkillInvalid("s4_cloud_yongyi", instance_id) then
 				local records =	s4_cloud_yongyiGetRecords(player, instance_id)
 				local suit = card:getSuitString()
@@ -1266,8 +1266,9 @@ s4_beizhen_cardmax = sgs.CreateMaxCardsSkillV2{
     name = "#s4_beizhen_cardmax",
     base_amount = 1,
     fixed_func = function(skill, ctx)
-        if ctx.holder:hasSkill("s4_beizhen") then
-            return ctx.holder:getMaxHp()
+        local holder = ctx:getHolder()
+        if holder and holder:hasSkill("s4_beizhen") then
+            return holder:getMaxHp()
         end
         return false
     end
@@ -1864,6 +1865,7 @@ s4_jiezhan = sgs.CreateTriggerSkillV2{
                 player:peiyin(skill)
                 player:drawCards(amount, skill:objectName())
             end
+		end
         return false
     end,
 	on_effect_target = function(skill, event, room, player, ctx, target)
