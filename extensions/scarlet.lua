@@ -111,7 +111,7 @@ s4_cloud_tuxi = sgs.CreateTriggerSkillV2{
 
 s4_cloud_yongqian = sgs.CreateTriggerSkillV2{
     name = "s4_cloud_yongqian",
-    events = { sgs.DrawNCards, sgs.TargetConfirmed, sgs.EventPhaseChanging, sgs.EventLoseSkill },
+    events = { sgs.DrawNCards, sgs.TargetConfirmed, sgs.EventPhaseChanging, sgs.EventLoseSkill, sgs.Death },
 	base_amount = 1,
     on_record = function(skill, event, room, player, ctx)
 		local shouldClean = false
@@ -126,6 +126,25 @@ s4_cloud_yongqian = sgs.CreateTriggerSkillV2{
 			local change = data:toSkillChange()
 			if change.skillName == skill:objectName() and change.instanceID == instId then
 				shouldClean = true
+			end
+        elseif event == sgs.Death then
+			local who = data:toDeath().who
+			-- Death 對每位玩家各呼叫一次 on_record；只在 player 是死者時動作
+			if who:objectName() == player:objectName() then
+				if ctx.owner:objectName() == player:objectName() then
+					-- 死者 = 技能持有者：走下方全清迴圈
+					shouldClean = true
+				else
+					-- 死者 = 被標記目標：只清與死者相關的 mark（refcount 遞減）
+					local markName = skill:objectName() .. "#" .. instId .. player:objectName() .. "-SelfStartClear"
+					if ctx.owner:getMark(markName) > 0 then
+						room:setPlayerMark(ctx.owner, markName, 0)
+						room:removePlayerMark(ctx.owner, "s4_cloud_yongqian_buff" .. player:objectName() .. "-SelfStartClear", 1)
+						if ctx.owner:getMark("s4_cloud_yongqian_buff" .. player:objectName() .. "-SelfStartClear") == 0 then
+							room:setPlayerMark(player, "&" .. skill:objectName() .. "+sys_+to+#" .. ctx.owner:objectName(), 0)
+						end
+					end
+				end
 			end
 		end
         if shouldClean then
@@ -160,10 +179,10 @@ s4_cloud_yongqian = sgs.CreateTriggerSkillV2{
             if not use.card or use.card:isKindOf("SkillCard") then return false end
             if not use.to:contains(player) then return false end
             if not use.from or player:objectName() == use.from:objectName() then return false end
-            local instId = ctx.instanceID
-            local markName = skill:objectName() .. "#" .. instId .. use.from:objectName() .. "-SelfStartClear"
-            if player:getMark(markName) <= 0 then return false end
-            return skill:objectName()
+            for _, iid in sgs.list(player:getSkillInstanceIds(skill:objectName())) do
+                local markName = skill:objectName() .. "#" .. iid .. use.from:objectName() .. "-SelfStartClear"
+                if player:getMark(markName) > 0 then return skill:objectName() end
+            end
         end
         return false
     end,
@@ -365,6 +384,59 @@ local function s4_cloud_yongyiParseRecords(raw)
     return records
 end
 
+-- 顯示用 & mark：格式 &s4_cloud_yongyi+#record+<instId段>+<花色>_char...
+-- 同一技能僅一個實例時 instId 段為 sys_<id>（UI 忽略 sys_ 段不顯示）；多於一個實例才顯示數字區分 button。
+-- 清除一律掃描 mark 名前綴：EventLoseSkill 時 instance state 已被框架清除，不能靠 state 推回舊名。
+local function s4_cloud_yongyiDisplayMarkPrefixes(instance_id)
+    local id = tostring(instance_id)
+    return {
+        "&s4_cloud_yongyi+#record+" .. id .. "+",
+        "&s4_cloud_yongyi+#record+sys_" .. id .. "+",
+    }
+end
+
+local function s4_cloud_yongyiClearDisplayMarks(room, player, instance_id)
+    if not room or not player or instance_id <= 0 then
+        return
+    end
+
+    for _, prefix in ipairs(s4_cloud_yongyiDisplayMarkPrefixes(instance_id)) do
+        for _, mark in sgs.list(player:getMarkNames()) do
+            if string.startsWith(mark, prefix) and player:getMark(mark) > 0 then
+                room:setPlayerMark(player, mark, 0)
+            end
+        end
+    end
+end
+
+local function s4_cloud_yongyiSyncDisplayMarks(room, player, instance_id, records)
+    if not room or not player or instance_id <= 0 then
+        return
+    end
+
+    s4_cloud_yongyiClearDisplayMarks(room, player, instance_id)
+
+    if not records or #records == 0 then
+        return
+    end
+
+    local id = tostring(instance_id)
+    local instance_count = 0
+    for _ in sgs.list(player:getSkillInstanceIds("s4_cloud_yongyi")) do
+        instance_count = instance_count + 1
+        if instance_count > 1 then
+            break
+        end
+    end
+
+    local mark = "&s4_cloud_yongyi+#record+"
+        .. (instance_count > 1 and id or ("sys_" .. id))
+    for _, suit in ipairs(records) do
+        mark = mark .. "+" .. suit .. "_char"
+    end
+    room:setPlayerMark(player, mark, 1)
+end
+
 local function s4_cloud_yongyiGetRecords(player, instance_id)
     if not player or instance_id <= 0 then
         return {}
@@ -418,10 +490,12 @@ local function s4_cloud_yongyiSetRecords(room, player, instance_id, records)
         end
     end
 
+    s4_cloud_yongyiSyncDisplayMarks(room, player, instance_id, records)
+
     return true
 end
 
-local function s4_cloud_yongyiGetActivationInstanceID(ctx,request)
+local function s4_cloud_yongyiGetActivationInstanceId(ctx,request)
     if ctx then
         local ref = ctx:getActivationRef()
 
@@ -431,7 +505,7 @@ local function s4_cloud_yongyiGetActivationInstanceID(ctx,request)
     end
 
     if request then
-        return request:getActivationInstanceID()
+        return request:getActivationInstanceId()
     end
 
     return 0
@@ -515,7 +589,7 @@ s4_cloud_yongyiVS = sgs.CreateViewAsSkillV2 {
 	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
-		local instance_id =	request:getActivationInstanceID()
+		local instance_id =	request:getActivationInstanceId()
 		if not player or instance_id <= 0 
 			or not player:hasSkillInstance(
 				"s4_cloud_yongyi",
@@ -551,7 +625,7 @@ s4_cloud_yongyiVS = sgs.CreateViewAsSkillV2 {
 	end,
 
 	create_card = function(skill, request)
-		local instance_id =	request:getActivationInstanceID()
+		local instance_id =	request:getActivationInstanceId()
 		if instance_id <= 0 then
 			return nil
 		end
@@ -567,7 +641,7 @@ s4_cloud_yongyiVS = sgs.CreateViewAsSkillV2 {
 
 	cost = function(skill, room, ctx, request)
 		local source = ctx.invoker or ctx.initiator
-		local instance_id =	s4_cloud_yongyiGetActivationInstanceID(ctx, request)
+		local instance_id =	s4_cloud_yongyiGetActivationInstanceId(ctx, request)
 		if not source or instance_id <= 0 then
 			return false
 		end
@@ -585,7 +659,7 @@ s4_cloud_yongyiVS = sgs.CreateViewAsSkillV2 {
 
 	pay = function(	skill, room, ctx, request)
 		local source = ctx.invoker or ctx.initiator
-		local instance_id =	s4_cloud_yongyiGetActivationInstanceID(ctx, request)
+		local instance_id =	s4_cloud_yongyiGetActivationInstanceId(ctx, request)
 		if not source or instance_id <= 0 then
 			return false
 		end
@@ -606,13 +680,21 @@ s4_cloud_yongyi = sgs.CreateTriggerSkillV2{
 	name = "s4_cloud_yongyi",
 	view_as_skill =	s4_cloud_yongyiVS,
 	base_amount = 0,
-	events = {sgs.CardUsed,	sgs.CardResponded, sgs.TargetConfirmed},
+	events = {sgs.CardUsed,	sgs.CardResponded, sgs.TargetConfirmed, sgs.EventLoseSkill},
 
 	on_record = function(skill, event, room, player, ctx)
 		local owner = ctx.owner
 		local instance_id = ctx.instanceID
 	
 		if not owner or instance_id <= 0 then
+			return
+		end
+	
+		if event == sgs.EventLoseSkill then
+			local change = ctx.original_data:toSkillChange()
+			if change.skillName == skill:objectName() and change.instanceID == instance_id then
+				s4_cloud_yongyiClearDisplayMarks(room, owner, instance_id)
+			end
 			return
 		end
 	
