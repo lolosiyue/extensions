@@ -125,8 +125,10 @@ local function s4_cloud_yongyi_ai_get_records(
         return {}
     end
 
+    -- 必須與 scarlet.lua s4_cloud_yongyiGetRecords 同一 API：
+    -- records 寫在主技能 SkillInstanceState，不是 CorrectSkill state。
     local value =
-        player:getSkillInstanceCorrectStateValue(
+        player:getSkillInstanceStateValue(
             "s4_cloud_yongyi",
             instance_id,
             "records",
@@ -148,20 +150,10 @@ local function s4_cloud_yongyi_ai_valid_instance_ids(
         return ids
     end
 
-    for _, instance_id in sgs.list(
-        player:getSkillInstanceIdsForName(
-            "s4_cloud_yongyi"
-        )
-    ) do
+    for _, instance_id in sgs.list(player:getSkillInstanceIds("s4_cloud_yongyi")) do
         if instance_id > 0
-            and player:hasSkillInstance(
-                "s4_cloud_yongyi",
-                instance_id
-            )
-            and not player:isSkillInvalid(
-                "s4_cloud_yongyi",
-                instance_id
-            ) then
+            and player:hasSkillInstance("s4_cloud_yongyi", instance_id)
+            and not player:isSkillInvalid("s4_cloud_yongyi", instance_id) then
             table.insert(
                 ids,
                 instance_id
@@ -216,7 +208,7 @@ local function s4_cloud_yongyi_ai_request_records(
         request:getInitiator()
 
     local instance_id =
-        request:getActivationInstanceID()
+        request:getActivationInstanceId()
 
     if not player
         or player:objectName()
@@ -297,19 +289,15 @@ sgs.ai_skill_use_func.s4_cloud_yongyi = function(card, use, self, request)
 		return
 	end
 
-	-- 建立測試用【酒】，
-	-- 交給現有 Analeptic AI 判斷是否值得使用。
+	-- 建立【酒】並帶齊 activation／instance，供 server resolve + pay 移花色。
+	-- 真正交給 use.card 的實體不可提前 deleteLater（否則 activate→useCard UAF）。
 	local analeptic = sgs.Sanguosha:cloneCard("analeptic", sgs.Card_NoSuit,	0)
-	analeptic:deleteLater()
 	analeptic:setSkillName("s4_cloud_yongyi")
-
-	-- 設定權威 activation/source 資料，
-	-- 讓勇毅的 TargetModSkillV2 識別此【酒】。
+	analeptic:setSkillInstanceId(instance_id)
 	analeptic:setActivationSkill(
 		request:getActivationSkillName(),
-		request:getActivationInstanceID()
+		request:getActivationInstanceId()
 	)
-
 	analeptic:setSourceSkill(
 		request:getSourceSkillName(),
 		request:getSourceInstanceID()
@@ -317,19 +305,27 @@ sgs.ai_skill_use_func.s4_cloud_yongyi = function(card, use, self, request)
 
 	local dummy_use = self:aiUseCard(analeptic, dummy())
 	local should_use = analeptic:isAvailable(player) and dummy_use and dummy_use.card
-	
 	if not should_use then
+		analeptic:deleteLater()
 		return
 	end
-	use.card = card
+	use.card = analeptic
+	-- NoTarget：use.to 必須為空
+	if use.to then use.to = sgs.SPlayerList() end
 end
 
 sgs.ai_cardsview_valuable.s4_cloud_yongyi =
 function(self, class_name, player, request)
-    if class_name ~= "Analeptic" then return end
+    -- 瀕死 getCard("Peach,Analeptic") 會分別以 Peach／Analeptic 列舉；兩者都要能視為酒
+    if class_name ~= "Analeptic" and class_name ~= "Peach" then return end
     if not request or not request:isValid() then return end
 
-    return "analeptic:s4_cloud_yongyi[no_suit:0]=."
+    local instance_id = request:getActivationInstanceId()
+    local skill_mark = "s4_cloud_yongyi"
+    if instance_id and instance_id > 0 then
+        skill_mark = skill_mark .. "#" .. tostring(instance_id)
+    end
+    return "analeptic:" .. skill_mark .. "[no_suit:0]=."
 end
 
 
