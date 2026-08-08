@@ -964,7 +964,7 @@ end
 local function aiCardKey(card)
 	local key = card:toString()
 	if card:isKindOf("ActiveSkillCard") then
-		key = key.."|"..card:getSkillName()..":"..card:getSkillInstanceID()
+		key = key.."|"..card:getSkillName()..":"..card:getSkillInstanceId()
 	end
 	return key
 end
@@ -2671,12 +2671,18 @@ function SmartAI:filterEvent(event,player,data)
 					end
 					cstring = player:getLogName()..":HC="..table.concat(cstring,"、")
 					--self.room:writeToConsole(cstring)
+					-- 快取檔可能不存在/被其他 process 鎖住, 讀寫皆防 nil (失敗跳過不中斷)
 					local file = io.open("lua/ai/cstring", "r")
-					local _file = file:read("*all")
-					file:close()
+					local _file = ""
+					if file then
+						_file = file:read("*all")
+						file:close()
+					end
 					file = io.open("lua/ai/cstring", "w")
-					file:write(_file.."\n"..cstring)
-					file:close()
+					if file then
+						file:write(_file.."\n"..cstring)
+						file:close()
+					end
 				end
 				cstring = move.reason.m_skillName
 				if cstring~="" then sgs.drawData[cstring] = (sgs.drawData[cstring] or 0)+move.card_ids:length() end
@@ -2719,8 +2725,10 @@ function SmartAI:filterEvent(event,player,data)
 					self.room:setTag("humanCount",ToData(hc))
 					if sgs.aiHandCardVisible then
 						local file = io.open("lua/ai/cstring", "w")
-						file:write("humanCount:"..hc)
-						file:close()
+						if file then
+							file:write("humanCount:"..hc)
+							file:close()
+						end
 					end
 				end
 				sgs.aiData = GetAiData() or sgs.aiData
@@ -2783,7 +2791,9 @@ function SmartAI:filterEvent(event,player,data)
 	end
 end
 function SetAiData(td)
+	-- 多 process 並發時 io.open("w") 可能失敗; 快取可丟, 失敗直接跳過不中斷
 	local file = io.open("lua/ai/data/AiData","w")
+	if not file then return end
 	file:write(json.encode(td))
 	file:close()
 end
@@ -2793,32 +2803,42 @@ function GetAiData()
 	if file then
 		local _file = file:read("*all")
 		file:close()
-		return json.decode(_file)
+		-- 殘留/半寫的 AiData (taskkill 截斷或並發交錯) 會讓 json.decode 失敗/拋錯,
+		-- 快取可丟, 失敗回 nil (呼叫端有 or sgs.aiData fallback)
+		local ok, data = pcall(json.decode, _file)
+		if ok and type(data)=="table" then return data end
+		return nil
 	else
-		local td = {}
-		for _,item in ipairs({"drawData","convertData","damageData","throwData"})do
-			td[item] = {}
-			local st = io.open("lua/ai/data/"..item,"r")
-			if st==nil then continue end
-			local _st = st:read("*all"):split("\n")
-			st:close()
-			for _,tm in ipairs(_st)do
-				if tm=="" then continue end
-				local t = tm:split(":")
-				td[item][t[1]] = {}
-				for _,t2 in ipairs(t[2]:split(","))do
-					if t2=="" then continue end
-					table.insert(td[item][t[1]],t2)
+		-- 舊格式遷移; 資料檔殘留損壞時整段捨棄, 不影響 AI 啟動
+		local ok, td = pcall(function()
+			local td = {}
+			for _,item in ipairs({"drawData","convertData","damageData","throwData"})do
+				td[item] = {}
+				local st = io.open("lua/ai/data/"..item,"r")
+				if st==nil then continue end
+				local _st = st:read("*all"):split("\n")
+				st:close()
+				for _,tm in ipairs(_st)do
+					if tm=="" then continue end
+					local t = tm:split(":")
+					if not t[2] then continue end
+					td[item][t[1]] = {}
+					for _,t2 in ipairs(t[2]:split(","))do
+						if t2=="" then continue end
+						table.insert(td[item][t[1]],t2)
+					end
 				end
+				st = io.open("lua/ai/data/"..item,"w")
+				if st then st:write(); st:close() end
 			end
-			st = io.open("lua/ai/data/"..item,"w")
-			st:write()
-			st:close()
+			return td
+		end)
+		if ok and type(td)=="table" then
+			local f = io.open("lua/ai/data/AiData","w")
+			if f then f:write(json.encode(td)); f:close() end
+			return td
 		end
-		file = io.open("lua/ai/data/AiData","w")
-		file:write(json.encode(td))
-		file:close()
-		return td
+		return nil
 	end
 end
 
@@ -5604,7 +5624,7 @@ local function insertCardsViewResult(self,cvs,result,request)
 				-- Card 字串不序列化 provenance；先把 activation 名寫進 skillName，
 				-- 讓 LuaAI::askForCard() 可按同一 response request 還原精確 instance。
 				card:setSkillName(request:getActivationSkillName())
-				card:setActivationSkill(request:getActivationSkillName(),request:getActivationInstanceID())
+				card:setActivationSkill(request:getActivationSkillName(),request:getActivationInstanceId())
 				card:setSourceSkill(request:getSourceSkillName(),request:getSourceInstanceID())
 				self.cardsview_requests = self.cardsview_requests
 					or setmetatable({}, {__mode="k"})
@@ -6099,8 +6119,8 @@ local function insertAIFillCards(self,cards,filled,instance_id,request,skill_nam
 	for _,card in ipairs(filled)do
 		if type(card)=="userdata" then
 			if instance_id>0 and card:isVirtualCard() then
-				card:setSkillInstanceID(instance_id)
-				card:setActivationSkill(request:getActivationSkillName(),request:getActivationInstanceID())
+				card:setSkillInstanceId(instance_id)
+				card:setActivationSkill(request:getActivationSkillName(),request:getActivationInstanceId())
 				card:setSourceSkill(request:getSourceSkillName(),request:getSourceInstanceID())
 				if card:isKindOf("ActiveSkillCard") then card:setSkillName(skill_name) end
 			end
@@ -11617,7 +11637,13 @@ for _,aextension in ipairs(sgs.Sanguosha:getExtensions())do
 	local sl = string.lower(aextension).."-ai.lua"
 	for _,ai_file in ipairs(ai_files)do
 		if sl==string.lower(ai_file)
-		then dofile("lua/ai/"..sl) break end
+		then
+			-- 單一套件 AI 檔載入失敗 (檔案損壞/半寫) 只跳過該套件,
+			-- 不讓整個 smart-ai 載入失敗 (否則 Room 的 m_lua 會被清空)
+			local ok, err = pcall(dofile, "lua/ai/"..sl)
+			if not ok then print("AI script load failed: "..tostring(err)) end
+			break
+		end
 	end
 end
 
@@ -11629,7 +11655,11 @@ for _,ascenario in ipairs(sgs.Sanguosha:getModScenarioNames())do
 	local sl = string.lower(ascenario).."-ai.lua"
 	for _,ai_file in ipairs(ai_files)do
 		if sl==string.lower(ai_file)
-		then dofile("lua/ai/"..sl) break end
+		then
+			local ok, err = pcall(dofile, "lua/ai/"..sl)
+			if not ok then print("Scenario AI load failed: "..tostring(err)) end
+			break
+		end
 	end
 end
 

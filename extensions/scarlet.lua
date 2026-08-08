@@ -437,11 +437,27 @@ local function s4_cloud_yongyiSyncDisplayMarks(room, player, instance_id, record
     room:setPlayerMark(player, mark, 1)
 end
 
+-- Client can_activate 專用：State 不同步，只看已廣播的 & display mark 是否有記錄。
+local function s4_cloud_yongyiHasDisplayRecords(player, instance_id)
+    if not player or instance_id <= 0 then
+        return false
+    end
+    for _, prefix in ipairs(s4_cloud_yongyiDisplayMarkPrefixes(instance_id)) do
+        for _, mark in sgs.list(player:getMarkNames()) do
+            if string.startsWith(mark, prefix) and player:getMark(mark) > 0 then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 local function s4_cloud_yongyiGetRecords(player, instance_id)
     if not player or instance_id <= 0 then
         return {}
     end
 
+    -- 伺服器權威：SkillInstanceState（cost/pay 只在 server 跑）
     local value = player:getSkillInstanceStateValue(
         "s4_cloud_yongyi",
         instance_id,
@@ -466,6 +482,9 @@ local function s4_cloud_yongyiSetRecords(room, player, instance_id, records)
         sgs.QVariant(table.concat(records, ","))
     )
 
+    -- 先同步 & mark（client can_activate 讀），再寫 count 觸發 updateSkillButtons
+    s4_cloud_yongyiSyncDisplayMarks(room, player, instance_id, records)
+
     -- 攻擊範圍 helper 只需要知道記錄數量。
     local root_key = sgs.SkillInstanceKey(
         "s4_cloud_yongyi",
@@ -489,8 +508,6 @@ local function s4_cloud_yongyiSetRecords(room, player, instance_id, records)
             )
         end
     end
-
-    s4_cloud_yongyiSyncDisplayMarks(room, player, instance_id, records)
 
     return true
 end
@@ -585,11 +602,16 @@ s4_cloud_yongyiAnaleptic = sgs.CreateTargetModSkillV2 {
 s4_cloud_yongyiVS = sgs.CreateViewAsSkillV2 {
 	name = "s4_cloud_yongyi",
 	n = 0,
+	-- 視為酒：選牌 0、目標由 Analeptic 自身處理；勿用預設 SelectTargets（空 to 會令 resolve 失敗）
+	target_mode = sgs.ViewAsSkillV2_NoTarget,
 	limit_scope = sgs.Skill_Limit_Turn,
 	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		local instance_id =	request:getActivationInstanceId()
+		-- records：server 用 State；client 用 & display mark（State 不同步）
+		local has_records = #s4_cloud_yongyiGetRecords(player, instance_id) > 0
+			or s4_cloud_yongyiHasDisplayRecords(player, instance_id)
 		if not player or instance_id <= 0 
 			or not player:hasSkillInstance(
 				"s4_cloud_yongyi",
@@ -599,10 +621,7 @@ s4_cloud_yongyiVS = sgs.CreateViewAsSkillV2 {
 				"s4_cloud_yongyi",
 				instance_id
 			)
-			or #s4_cloud_yongyiGetRecords(
-				player,
-				instance_id
-			) == 0 then
+			or not has_records then
 			return false
 		end
 
