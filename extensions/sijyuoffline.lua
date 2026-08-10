@@ -4741,17 +4741,18 @@ sfofl_qixinglight_select = sgs.CreateSkillCard {
             local pattern = room:askForChoice(source, "sfofl_qixinglight", table.concat(choices, "+"))
             if pattern and pattern ~= "cancel" then
                 local poi = sgs.Sanguosha:cloneCard(pattern, sgs.Card_NoSuit, -1)
-                poi:deleteLater()
                 if poi:targetFixed() then
                     poi:setSkillName("sfofl_qixinglight")
                     poi:addSubcards(self:getSubcards())
                     room:useCard(sgs.CardUseStruct(poi, source, source), true)
+                    poi:deleteLater()
                 else
                     local cdata = sgs.QVariant()
                     cdata:setValue(poi)
                     room:setPlayerProperty(source,"sfofl_qixinglight",sgs.QVariant(tostring(poi:objectName())))
                     room:askForUseCard(source, "@@sfofl_qixinglight", "@sfofl_qixinglight:" .. pattern) --%src
                     room:setPlayerProperty(source,"sfofl_qixinglight",sgs.QVariant())
+                    poi:deleteLater()
                 end
             end
         end
@@ -6445,7 +6446,7 @@ sfofl_jiufa_pingxiang = sgs.CreateTriggerSkill{
 				end
 			end
 		end
-        if event == sgs.EventLoseSkill and data:toString() == "sfofl_jiufa" then
+        if event == sgs.EventLoseSkill and data:toSkillChange().skillName == "sfofl_jiufa" then
             player:clearOnePrivatePile("sfofl_jiufa")
         end
 	end,
@@ -8198,7 +8199,7 @@ sfofl_boss_feijunClear = sgs.CreateTriggerSkill {
     events = { sgs.EventLoseSkill, sgs.EventPhaseChanging },
     on_trigger = function(self, event, player, data, room)
         if event == sgs.EventLoseSkill then
-            if data:toString() == "sfofl_boss_feijun" then
+            if data:toSkillChange().skillName == "sfofl_boss_feijun" then
                 local records = {}
                 room:setPlayerProperty(player, "sfofl_boss_feijunRecords", sgs.QVariant(table.concat(records, ",")));
             end
@@ -9475,7 +9476,7 @@ sfofl_dehua_lose = sgs.CreateTriggerSkill{
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
         if event == sgs.EventLoseSkill then
-            if data:toString() == "sfofl_dehua" then
+            if data:toSkillChange().skillName == "sfofl_dehua" then
                 local unable = player:getTag("sfofl_dehua_used"):toString():split("+")
                 if (not unable) or (#unable <= 0) then unable = {} end
                 player:removeTag("sfofl_dehua_used")
@@ -9930,7 +9931,7 @@ sfofl_linzhen = sgs.CreateTriggerSkill {
     frequency = sgs.Skill_Compulsory,
     events = { sgs.GameStart, sgs.EventAcquireSkill, sgs.EventLoseSkill },
     on_trigger = function(self, event, player, data, room)
-        if event == sgs.EventAcquireSkill and data:toString() == self:objectName() or event == sgs.GameStart then
+        if event == sgs.EventAcquireSkill and data:toSkillChange().skillName == self:objectName() or event == sgs.GameStart then
             local kingdoms = player:property("inMyAttackRangeKingdoms"):toString()
             local _kingdoms
                 _kingdoms = kingdoms:split("+")
@@ -9939,7 +9940,7 @@ sfofl_linzhen = sgs.CreateTriggerSkill {
                 end
                 table.insert(_kingdoms, "qun")
                 room:setPlayerProperty(player, "inMyAttackRangeKingdoms", sgs.QVariant(table.concat(_kingdoms, "+")))
-        elseif event == sgs.EventLoseSkill and data:toString() == self:objectName() then
+        elseif event == sgs.EventLoseSkill and data:toSkillChange().skillName == self:objectName() then
             local kingdoms = player:property("inMyAttackRangeKingdoms"):toString()
             local _kingdoms
                 _kingdoms = kingdoms:split("+")
@@ -11257,7 +11258,7 @@ sfofl_qibian = sgs.CreateTriggerSkill{
         elseif event == sgs.RoundEnd then
             player:clearOnePrivatePile("&sfofl_qibian_talent")
             player:clearOnePrivatePile("sfofl_qibian_talent")
-        elseif event == sgs.EventAcquireSkill and data:toString() == "sfofl_cailue" then
+        elseif event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "sfofl_cailue" then
             if player:getPile("sfofl_qibian_talent"):length() > 0 then
                 local obtain = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
                 obtain:addSubcards(player:getPile("sfofl_qibian_talent"))
@@ -11266,7 +11267,7 @@ sfofl_qibian = sgs.CreateTriggerSkill{
                 players:append(player)
                 player:addToPile("&sfofl_qibian_talent", obtain, false, players)
             end
-        elseif event == sgs.EventLoseSkill and data:toString() == "sfofl_cailue" then
+        elseif event == sgs.EventLoseSkill and data:toSkillChange().skillName == "sfofl_cailue" then
             if player:getPile("&sfofl_qibian_talent"):length() > 0 then
                 local obtain = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
                 obtain:addSubcards(player:getPile("&sfofl_qibian_talent"))
@@ -13606,7 +13607,7 @@ sfofl_xiongshi = sgs.CreateTriggerSkill {
 	events = { sgs.GameStart, sgs.EventAcquireSkill,sgs.EventPhaseChanging },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if (event == sgs.GameStart or event == sgs.EventAcquireSkill and data:toString() == "sfofl_xiongshi") and player:hasSkill(self:objectName()) then
+		if (event == sgs.GameStart or event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "sfofl_xiongshi") and player:hasSkill(self:objectName()) then
 			for _, p in sgs.qlist(room:getAllPlayers()) do
 				if not p:hasSkill("sfofl_xiongshiAttach") then
 					room:attachSkillToPlayer(p, "sfofl_xiongshiAttach")
@@ -14708,7 +14709,6 @@ sfofl_houyingCard = sgs.CreateSkillCard{
 		if #targets > 0 then
 			local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 			card:setSkillName(self:objectName())
-			card:deleteLater()
 			local use = sgs.CardUseStruct()
 			use.from = source
 			for _,target in ipairs(targets) do
@@ -14716,6 +14716,7 @@ sfofl_houyingCard = sgs.CreateSkillCard{
 			end
 			use.card = card
 			room:useCard(use, false)
+			card:deleteLater()
 		end
 	end,
 }
@@ -14860,7 +14861,6 @@ sfofl_qianhuCard = sgs.CreateSkillCard{
 		if #targets > 0 then
 			local card = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
 			card:setSkillName(self:objectName())
-			card:deleteLater()
 			local use = sgs.CardUseStruct()
 			use.from = source
 			for _,target in ipairs(targets) do
@@ -14871,6 +14871,7 @@ sfofl_qianhuCard = sgs.CreateSkillCard{
             if use.card:hasFlag("DamageDone") then
                 source:drawCards(1, self:objectName())
             end
+            card:deleteLater()
 		end
 	end,
 }
@@ -18938,7 +18939,7 @@ sfofl_2_xiongju = sgs.CreateTriggerSkill{
     waked_skills = "sfofl_2_xiongju_mashu",
 	on_trigger = function(self, event, player, data)
 	    local room = player:getRoom()
-        if player:hasLordSkill(self:objectName()) and (event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == "sfofl_2_xiongju")) then
+        if player:hasLordSkill(self:objectName()) and (event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "sfofl_2_xiongju")) then
 		--游戏开始时或获得技能时，每个人发一个技能
             for _, p in sgs.qlist(room:getLieges(player:getKingdom(), player)) do
                 if not p:hasSkill("sfofl_2_xiongju_mashu") then
@@ -22944,7 +22945,7 @@ sfofl_xiaolu = sgs.CreateTriggerSkill {
 	events = { sgs.GameStart, sgs.EventAcquireSkill },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if (event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == "sfofl_xiaolu")) and player:hasSkill(self:objectName()) then
+		if (event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "sfofl_xiaolu")) and player:hasSkill(self:objectName()) then
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				if not p:hasSkill("sfofl_xiaoluAttach") then
 					room:attachSkillToPlayer(p, "sfofl_xiaoluAttach")
@@ -26156,7 +26157,7 @@ sfofl_nujian = sgs.CreateTriggerSkill {
 	events = { sgs.GameStart, sgs.EventAcquireSkill },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if (event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == "sfofl_nujian")) and player:hasSkill(self:objectName()) then
+		if (event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "sfofl_nujian")) and player:hasSkill(self:objectName()) then
 			for _, p in sgs.qlist(room:getAllPlayers()) do
 				if not p:hasSkill("sfofl_nujianAttach") then
 					room:attachSkillToPlayer(p, "sfofl_nujianAttach")
@@ -28326,7 +28327,7 @@ sfofl_n_poshi = sgs.CreateTriggerSkill{
             end
            
         elseif event == sgs.EventLoseSkill then
-            if data:toString() == "sfofl_n_poshi" then
+            if data:toSkillChange().skillName == "sfofl_n_poshi" then
                 for _,p in sgs.qlist(room:getOtherPlayers(player)) do
                     if p:getEquips():length() > player:getEquips():length() then
                         room:removeFixedDistance(player, p, 1)
@@ -28335,7 +28336,7 @@ sfofl_n_poshi = sgs.CreateTriggerSkill{
                 end
             end
         elseif event == sgs.EventAcquireSkill then
-            if data:toString() == "sfofl_n_poshi" then
+            if data:toSkillChange().skillName == "sfofl_n_poshi" then
                 for _,p in sgs.qlist(room:getOtherPlayers(player)) do
                     if p:getEquips():length() > player:getEquips():length() then
                         room:setFixedDistance(player, p, 1)
@@ -28954,7 +28955,7 @@ sfofl_n_juezhan = sgs.CreateTriggerSkill {
 	events = { sgs.GameStart, sgs.EventAcquireSkill },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if (event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == "sfofl_n_juezhan")) and player:hasSkill(self:objectName()) then
+		if (event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "sfofl_n_juezhan")) and player:hasSkill(self:objectName()) then
 			room:attachSkillToPlayer(player, "sfofl_n_juezhanAttach")
         end
     end

@@ -17,6 +17,17 @@ extension = sgs.Package("gaodacard", sgs.Package_CardPack)
 shootUse = function(self, room, source, targets, isSpreadShoot)
 	if isSpreadShoot == nil then isSpreadShoot = false end
 	
+	-- 以最終目標集重建 Jink_ tag：shoot_skill 在 CardUsed 時 use.to 可能已被
+	-- TargetConfirming 技能（如 bachi）修改，導致 tag 目標數少於實際命中數，
+	-- 造成 shootEffect 讀到空 list 崩潰（0xC0000005）
+	local jink_list = sgs.IntList()
+	for _ in ipairs(targets) do
+		jink_list:append(1)
+	end
+	local jink_data = sgs.QVariant()
+	jink_data:setValue(jink_list)
+	source:setTag("Jink_" .. self:toString(), jink_data)
+	
 	if self:objectName() ~= "shoot" then
 		room:addPlayerHistory(source, "Shoot")
 	end
@@ -137,14 +148,18 @@ shootEffect = function(self, effect)
 	local room = source:getRoom()
 	
 	local jink_list = source:getTag("Jink_" .. self:toString()):toIntList()
-	local jink_num = jink_list:first()
-	jink_list:removeAt(0)
-	if jink_list:isEmpty() then
-		source:removeTag("Jink_" .. self:toString())
-	else
-		local jink_data = sgs.QVariant()
-		jink_data:setValue(jink_list)
-		source:setTag("Jink_" .. self:toString(), jink_data)
+	-- 防衛：tag 缺失/耗盡時預設 1 張閃（shoot 每目標即 1 張），
+	-- 避免空 list 呼叫 first()/removeAt(0) 造成 Release 記憶體損壞
+	local jink_num = jink_list:isEmpty() and 1 or jink_list:first()
+	if not jink_list:isEmpty() then
+		jink_list:removeAt(0)
+		if jink_list:isEmpty() then
+			source:removeTag("Jink_" .. self:toString())
+		else
+			local jink_data = sgs.QVariant()
+			jink_data:setValue(jink_list)
+			source:setTag("Jink_" .. self:toString(), jink_data)
+		end
 	end
 	
 	local data = sgs.QVariant()

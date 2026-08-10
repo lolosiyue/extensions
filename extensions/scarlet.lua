@@ -11333,13 +11333,13 @@ s4_gonggengCard = sgs.CreateSkillCard {
         local card = sgs.Sanguosha:cloneCard("ex_nihilo", sgs.Card_SuitToBeDecided, -1)
         card:addSubcards(self:getSubcards())
         card:setSkillName("s4_gonggeng")
-        card:deleteLater()
         local use = sgs.CardUseStruct()
         use.from = source
         use.card = card
         use.to = sgs.SPlayerList()
         use.to:append(targets[1])
         room:useCard(use, false)
+        card:deleteLater()
     end,
 }
 

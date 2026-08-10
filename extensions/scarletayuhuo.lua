@@ -82,7 +82,6 @@ s_anrencard = sgs.CreateSkillCard{
 		if #targets > 0 then
 			local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 			card:setSkillName(self:objectName())
-			card:deleteLater()
 			card:addSubcard(self:getSubcards():first())
 			local use = sgs.CardUseStruct()
 			use.from = source
@@ -91,6 +90,7 @@ s_anrencard = sgs.CreateSkillCard{
 			end
 			use.card = card
 			room:useCard(use, false)
+			card:deleteLater()
 		end
 	end,
 }
@@ -810,14 +810,14 @@ s_biaoqiAttach = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		local source = room:findPlayerBySkillName("s_biaoqi")
 		if event == sgs.TurnStart then
-			if (event == sgs.TurnStart and source and source:isAlive()) or (event == sgs.EventAcquireSkill and data:toString() == "s_biaoqi") then
+			if (event == sgs.TurnStart and source and source:isAlive()) or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "s_biaoqi") then
 				for _,p in sgs.qlist(room:getOtherPlayers(source))do
 					if not p:hasSkill("s_biaoqiSlash&") then
 						room:attachSkillToPlayer(p,"s_biaoqiSlash&")
 					end
 				end
 			end
-		elseif event == sgs.EventLoseSkill and data:toString() == "s_biaoqi"then
+		elseif event == sgs.EventLoseSkill and data:toSkillChange().skillName == "s_biaoqi"then
 			for _,p in sgs.qlist(room:getOtherPlayers(player))do
 				if p:hasSkill("s_biaoqiSlash&") then
 					room:detachSkillFromPlayer(p, "s_biaoqiSlash&", true)
@@ -989,7 +989,7 @@ s_w_yongjinWork = sgs.CreateTriggerSkill{
 					end
 				end
 			end
-		elseif (event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == "s_w_yongjin") and player:getMark("s_w_yongjinDone") == 0) then 
+		elseif (event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "s_w_yongjin") and player:getMark("s_w_yongjinDone") == 0) then 
 		player:gainMark("&s_w_yongjin", 7) 
 		room:setPlayerMark(player,"s_w_yongjinDone",1)
 		end
@@ -1013,7 +1013,7 @@ s_w_zhituiWork = sgs.CreateTriggerSkill{
 				player:loseMark("&s_w_zhitui", 1)
 				end
 			end
-		elseif (event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == "s_w_zhitui") and player:getMark("s_w_zhituiDone") == 0) then 
+		elseif (event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "s_w_zhitui") and player:getMark("s_w_zhituiDone") == 0) then 
 		player:gainMark("&s_w_zhitui", 7) 
 		room:setPlayerMark(player,"s_w_zhituiDone",1)
 		elseif event == sgs.TargetConfirmed then
@@ -2500,7 +2500,7 @@ s_w_juese = sgs.CreateTriggerSkill{
 	events = {sgs.GameStart, sgs.EventPhaseStart, sgs.EventAcquireSkill, sgs.Death } ,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == self:objectName()) or event == sgs.Death then 
+		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == self:objectName()) or event == sgs.Death then 
 			local can_invoke = true
 			for  _,p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:getMark("s_w_juese_target"..player:objectName()) > 0  then
@@ -4454,11 +4454,11 @@ s2_jianzu = sgs.CreateTriggerSkill{
 		on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.EventLoseSkill then
-			if data:toString()=="s2_jianzu" then
+			if data:toSkillChange().skillName=="s2_jianzu" then
 				 room:handleAcquireDetachSkills(player, "-luanji", true)
 			player:setMark("s2_jianzu_luanji", 0)
 			end
-		elseif ((event == sgs.EventAcquireSkill and data:toString()=="s2_jianzu") or event == sgs.GameStart ) then
+		elseif ((event == sgs.EventAcquireSkill and data:toSkillChange().skillName=="s2_jianzu") or event == sgs.GameStart ) then
 			if player:hasWeapon("crossbow") or 
 			player:hasWeapon("kylin_bow") then 			
 				 room:handleAcquireDetachSkills(player, "luanji", true)
@@ -6037,7 +6037,7 @@ s2_shanxian = sgs.CreateTriggerSkill{
 			room:addPlayerMark(player, "&s2_shanxian+to+#"..bianfuren:objectName().."-"..player:getPhase().."Clear")
 				end
 				end
-				elseif event == sgs.EventPhaseEnd or (event == sgs.EventLoseSkill and data:toString() == "s2_shanxian") then  
+				elseif event == sgs.EventPhaseEnd or (event == sgs.EventLoseSkill and data:toSkillChange().skillName == "s2_shanxian") then  
 				for _, p in sgs.qlist(room:getAlivePlayers()) do
 				room:detachSkillFromPlayer(p, "s2_shanxianOther")
 				end
@@ -6211,7 +6211,7 @@ s2_taolue = sgs.CreateTriggerSkill{
 				room:handleAcquireDetachSkills(player, "secondtenyearjiangchi|-mobilejiushi")
 				end
 			elseif event == sgs.EventAcquireSkill  then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 			if  player and (player and player:isAlive() and player:hasSkill(self:objectName()))  then
 					if player:faceUp() and player:getHp() ~= 1 then 
 				player:gainMark("@s2_wu")
@@ -6230,7 +6230,7 @@ s2_taolueClear = sgs.CreateTriggerSkill{
 	name = "#s2_taolue-clear" ,
 	events = {sgs.EventLoseSkill} ,
 	on_trigger = function(self, event, player, data)
-		if data:toString() == "s2_taolue" then
+		if data:toSkillChange().skillName == "s2_taolue" then
 			local room = player:getRoom()
 			if player:getMark("@s2_wu") > 0 then
 				room:detachSkillFromPlayer(player, "secondtenyearjiangchi")
@@ -6307,7 +6307,7 @@ s2_baye = sgs.CreateTriggerSkill{
 	on_trigger = function(self, triggerEvent, player, data)
 		local room = player:getRoom()
 		local lords = room:findPlayersBySkillName(self:objectName())
-		if (triggerEvent == sgs.TurnStart)or(triggerEvent == sgs.EventAcquireSkill and data:toString() == "s2_baye") then 
+		if (triggerEvent == sgs.TurnStart)or(triggerEvent == sgs.EventAcquireSkill and data:toSkillChange().skillName == "s2_baye") then 
 			if lords:isEmpty() then return false end
 			local players
 			if lords:length() > 1 then
@@ -6322,7 +6322,7 @@ s2_baye = sgs.CreateTriggerSkill{
 				end
 				end
 			end
-		elseif triggerEvent == sgs.EventLoseSkill and data:toString() == "s2_baye" then
+		elseif triggerEvent == sgs.EventLoseSkill and data:toSkillChange().skillName == "s2_baye" then
 			if lords:length() > 2 then return false end
 			local players
 			if lords:isEmpty() then
@@ -9924,7 +9924,7 @@ s2_yushu = sgs.CreateTriggerSkill{
 	frequency = sgs.Skill_Compulsory,
 	on_trigger = function(self,event,player,data)
 		local room = player:getRoom()
-		if event == sgs.GameStart or ( event == sgs.GameStart and data:toString() == self:objectName() ) then 
+		if event == sgs.GameStart or ( event == sgs.GameStart and data:toSkillChange().skillName == self:objectName() ) then 
 		player:setTag("equipEXtra_COS", sgs.QVariant(false))
 		player:setTag("equipEXtra", sgs.QVariant(self:objectName()))
 		room:setPlayerMark(player,"ExtraEquip",1)
@@ -10951,9 +10951,9 @@ s3_jiangzhi = sgs.CreateTriggerSkill{
 			room:moveCardsAtomic(move, true)
 						player:addToPile("s3_jiangzhi", ids)
 				end
-		elseif event == sgs.EventLoseSkill and data:toString() == self:objectName() then
+		elseif event == sgs.EventLoseSkill and data:toSkillChange().skillName == self:objectName() then
 			room:handleAcquireDetachSkills(player,"-s3_jiangyong|-s3_zhijue",true)
-		elseif event == sgs.EventAcquireSkill and data:toString() == self:objectName() then
+		elseif event == sgs.EventAcquireSkill and data:toSkillChange().skillName == self:objectName() then
 			if not player:getPile("s3_jiangzhi"):isEmpty() then
 				room:notifySkillInvoked(player,self:objectName())
 				if sgs.Sanguosha:getCard(player:getPile("s3_jiangzhi"):first()):isRed() then
@@ -12134,7 +12134,7 @@ s3_xiaoyong = sgs.CreateTriggerSkill{
 		local lubu = room:findPlayerBySkillName(self:objectName())
 			if not lubu then return false end
 		end
-		if event == sgs.EventLoseSkill and data:toString() == self:objectName() then
+		if event == sgs.EventLoseSkill and data:toSkillChange().skillName == self:objectName() then
 				lose = true
 		end
 		if event == sgs.CardUsed then
@@ -13381,7 +13381,7 @@ s3_yt_tongnan = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 	local room = player:getRoom()
 	if event == sgs.EventLoseSkill then
-		if data:toString() == self:objectName() then
+		if data:toSkillChange().skillName == self:objectName() then
 			room:setPlayerFlag(player, "-s3_yt_tongnan_success")
 			room:setPlayerMark(player, "@s3_yt_tongnan", 0)
 		end

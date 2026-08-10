@@ -2624,7 +2624,6 @@ shilian = sgs.CreateTriggerSkill {
 		local damage = data:toDamage()
 		if not damage.from then return false end
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-		slash:deleteLater()
 		slash:setSkillName(self:objectName())
 		if not player:canSlash(damage.from, slash, false) then return false end
 		if not room:askForSkillInvoke(player, self:objectName(), data) then return false end
@@ -2634,6 +2633,7 @@ shilian = sgs.CreateTriggerSkill {
 		use.from = player
 		use.to:append(damage.from)
 		room:useCard(use)
+		slash:deleteLater()
 	end,
 }
 --试炼EX
@@ -2927,9 +2927,9 @@ wangzheCard = sgs.CreateSkillCard {
 		room:setPlayerMark(source, "wangzhe_used", 1)
 		local slash = sgs.Sanguosha:cloneCard("Slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName(self:objectName())
-		slash:deleteLater()
 		local use = sgs.CardUseStruct(slash, source, Table2SPlayerlist(targets), false)
 		room:useCard(use, false)
+		slash:deleteLater()
 	end,
 }
 wangzheVS = sgs.CreateViewAsSkill {

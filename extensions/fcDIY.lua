@@ -6271,14 +6271,14 @@ sp_zhuangbingg = sgs.CreateTriggerSkill{
 				room:removePlayerCardLimitation(player, "use,response", ".|.|.|hand")
 			end
 		elseif event == sgs.EventLoseSkill then --若期间失去“装病”，武将牌为背面时的效果不再生效
-			if data:toString() == "sp_zhuangbing" then
+			if data:toSkillChange().skillName == "sp_zhuangbing" then
 				if not player:faceUp() then
 					room:removePlayerCardLimitation(player, "use,response", ".|.|.|hand")
 					room:addPlayerMark(player, "sp_zhuangbingLose") --“防伪”标记
 				end
 			end
 		elseif event == sgs.EventAcquireSkill then --若期间重新获得“装病”，武将牌为背面时的效果再度生效
-			if data:toString() == "sp_zhuangbing" and player:getMark("sp_zhuangbingLose") > 0 then
+			if data:toSkillChange().skillName == "sp_zhuangbing" and player:getMark("sp_zhuangbingLose") > 0 then
 				if not player:faceUp() then
 					room:setPlayerCardLimitation(player, "use,response", ".|.|.|hand", false)
 					room:removePlayerMark(player, "sp_zhuangbingLose")
@@ -9091,7 +9091,7 @@ fczhizheFCB = sgs.CreateTriggerSkill{
 				end
 			end
 		elseif event == sgs.EventLoseSkill then --防老六
-			if data:toString() == "fczhizhe_vs" then
+			if data:toSkillChange().skillName == "fczhizhe_vs" then
 				room:attachSkillToPlayer(player, "fczhizhe_vs")
 			end
 		elseif event == sgs.EventPhaseChanging then
@@ -10834,7 +10834,7 @@ fcbshenwu = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		local lords = room:findPlayersBySkillName(self:objectName())
-		if event == sgs.TurnStart or (event == sgs.EventAcquireSkill and data:toString() == "fcbshenwu") then 
+		if event == sgs.TurnStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "fcbshenwu") then 
 			if lords:isEmpty() then return false end
 			local players
 			if lords:length() > 1 then
@@ -10847,7 +10847,7 @@ fcbshenwu = sgs.CreateTriggerSkill{
 					room:attachSkillToPlayer(p, "fcbshenwuVS")
 				end
 			end
-		elseif event == sgs.EventLoseSkill and data:toString() == "fcbshenwu" then
+		elseif event == sgs.EventLoseSkill and data:toSkillChange().skillName == "fcbshenwu" then
 			if lords:length() > 2 then return false end
 			local players
 			if lords:isEmpty() then
@@ -11776,7 +11776,7 @@ tyjuanjiaGMS = sgs.CreateTriggerSkill{
 				room:attachSkillToPlayer(player, "tyjuanjia_equiparea")
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == "tyjuanjia_equiparea" and player:getMark("@tyjuanjia_equiparea") > 0 then
+			if data:toSkillChange().skillName == "tyjuanjia_equiparea" and player:getMark("@tyjuanjia_equiparea") > 0 then
 				room:attachSkillToPlayer(player, "tyjuanjia_equiparea")
 			end
 		end
@@ -12999,11 +12999,11 @@ mouduanlianggCard = sgs.CreateSkillCard{
 				local id = room:getNCards(1, false)
 				local card = sgs.Sanguosha:getCard(id:first())
 				local shortage = sgs.Sanguosha:cloneCard("supply_shortage", card:getSuit(), card:getNumber())
-				shortage:setSkillName("mouduanliangv") --防止乱播报语音
+				shortage:setSkillName("mouduanliangv") --����?��??��
 				shortage:addSubcard(card)
-				shortage:deleteLater()
 				if not effect.from:isProhibited(effect.to, shortage) then
 					room:useCard(sgs.CardUseStruct(shortage, effect.from, effect.to))
+					shortage:deleteLater()
 				else
 					shortage:deleteLater()
 				end
@@ -13484,12 +13484,12 @@ fcmzj_yaozhi = sgs.CreateTriggerSkill{
 			local yaozhi_gained = {}
 			player:setTag("yaozhi_gained", sgs.QVariant(table.concat(yaozhi_gained, "+")))
 		elseif event == sgs.EventAcquireSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				local yaozhi_gained = {}
 				player:setTag("yaozhi_gained", sgs.QVariant(table.concat(yaozhi_gained, "+")))
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				player:removeTag("yaozhi_gained")
 				player:removeTag("fcmzj_yaozhi_temp_skill")
 			end
