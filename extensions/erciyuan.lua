@@ -1636,7 +1636,7 @@ luatouyingClear = sgs.CreateTriggerSkill {
 				end
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				local lose = player:property("weaponskilltoget"):toString()
 				if lose ~= "" then
 					room:setPlayerProperty(player, "weaponskilltoget", sgs.QVariant())
@@ -2541,7 +2541,7 @@ slyanhuo = sgs.CreateTriggerSkill
 		events = { sgs.GameStart, sgs.EventAcquireSkill, sgs.Damaged },
 		on_trigger = function(self, event, player, data)
 			local room = player:getRoom()
-			if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == self:objectName()) then
+			if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == self:objectName()) then
 				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 					if not p:hasSkill("yanhuoacquire") then
 						room:attachSkillToPlayer(p, "yanhuoacquire")
@@ -3182,9 +3182,9 @@ luasaoshecard = sgs.CreateSkillCard {
 		end
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName("luasaoshe")
-		slash:deleteLater()
 		room:useCard(sgs.CardUseStruct(slash, source, target))
 		room:addPlayerHistory(source, slash:getClassName(), -1)
+		slash:deleteLater()
 	end
 }
 luasaosheVS = sgs.CreateViewAsSkill {

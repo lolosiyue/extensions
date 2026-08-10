@@ -1025,7 +1025,6 @@ etiaoboCard = sgs.CreateSkillCard {
 				if from:canSlash(to, nil, false) then
 					local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 					slash:setSkillName("_etiaobo")
-					slash:deleteLater()
 					local card_use = sgs.CardUseStruct()
 					card_use.from = from
 					card_use.to:append(to)
@@ -1033,6 +1032,7 @@ etiaoboCard = sgs.CreateSkillCard {
 					room:setPlayerFlag(from, "ZenhuiUser_" .. slash:toString())
 					room:useCard(card_use, false)
 					room:setPlayerFlag(from, "-ZenhuiUser_" .. slash:toString())
+					slash:deleteLater()
 				end
 			end
 		else
