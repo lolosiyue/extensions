@@ -9742,22 +9742,22 @@ xieyancard = sgs.CreateSkillCard {
 		return sgs.Sanguosha:getCard(self:getSubcards():first()):targetFixed()
 	end,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local plist = sgs.PlayerList()
 		for i = 1, #targets do plist:append(targets[i]) end
 		local card = sgs.Sanguosha:getCard(self:getSubcards():first())
-		if card and card:targetFixed() and card:isAvailable(sgs.Self) then
+		if card and card:targetFixed() and card:isAvailable(player) then
 			return false
 		else
-			return card and card:targetFilter(plist, to_select, sgs.Self) and
-			not sgs.Self:isProhibited(to_select, card, plist) and card:isAvailable(sgs.Self)
+			return card and card:targetFilter(plist, to_select, player) and
+			not player:isProhibited(to_select, card, plist) and card:isAvailable(player)
 		end
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local plist = sgs.PlayerList()
 		for i = 1, #targets do plist:append(targets[i]) end
 		local card = sgs.Sanguosha:getCard(self:getSubcards():first())
-		return card and card:targetsFeasible(plist, sgs.Self) and card:isAvailable(sgs.Self)
+		return card and card:targetsFeasible(plist, player) and card:isAvailable(player)
 	end,
 	on_validate = function(self, card_use)
 		local room = card_use.from:getRoom()
@@ -14139,8 +14139,8 @@ zhongerhxCard   = sgs.CreateSkillCard {
 	name = "zhongerhx",
 	will_throw = false,
 	--handling_method = sgs.Card_MethodNone,
-	filter = function(self, targets, to_select)
-		local card = sgs.Self:getMark("zhongerhuan") - 1
+	filter = function(self, targets, to_select, player)
+		local card = player:getMark("zhongerhuan") - 1
 		card = sgs.Sanguosha:getCard(card)
 		card:setSkillName(self:objectName())
 		if card and card:targetFixed() then
@@ -14152,11 +14152,11 @@ zhongerhxCard   = sgs.CreateSkillCard {
 			qtargets:append(p)
 		end
 
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) and
-		not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) and
+		not player:isProhibited(to_select, card, qtargets)
 	end,
-	feasible = function(self, targets)
-		local card = sgs.Self:getMark("zhongerhuan") - 1
+	feasible = function(self, targets, player)
+		local card = player:getMark("zhongerhuan") - 1
 		card = sgs.Sanguosha:getCard(card)
 		card:setSkillName(self:objectName())
 		--if response then return true end
@@ -14164,7 +14164,7 @@ zhongerhxCard   = sgs.CreateSkillCard {
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self)
+		return card and card:targetsFeasible(qtargets, player)
 	end,
 	on_validate = function(self, card_use)
 		local card = card_use.from:getMark("zhongerhuan") - 1
@@ -15163,7 +15163,7 @@ luanizhuan = sgs.CreateTriggerSkill {
 --眼光
 yanguangCard = sgs.CreateSkillCard {
 	name = "luanyanguang",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local targets_list = sgs.PlayerList()
 		for _, target in ipairs(targets) do
 			targets_list:append(target)
@@ -15171,8 +15171,8 @@ yanguangCard = sgs.CreateSkillCard {
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName("luanyanguang")
 		slash:deleteLater()
-		return (#targets < 1) and slash:targetFilter(targets_list, to_select, sgs.Self) and
-		sgs.Self:canSlash(to_select, false)
+		return (#targets < 1) and slash:targetFilter(targets_list, to_select, player) and
+		player:canSlash(to_select, false)
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -17049,7 +17049,7 @@ dalunb_xx = sgs.CreateSkillCard {
 	name = "dalunb",
 	will_throw = true,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local name = ""
 		local card
 		local plist = sgs.PlayerList()
@@ -17063,8 +17063,8 @@ dalunb_xx = sgs.CreateSkillCard {
 			if card and card:targetFixed() then
 				return false
 			else
-				return card and card:targetFilter(plist, to_select, sgs.Self) and
-				not sgs.Self:isProhibited(to_select, card, plist)
+				return card and card:targetFilter(plist, to_select, player) and
+				not player:isProhibited(to_select, card, plist)
 			end
 		end
 		return true
@@ -17081,7 +17081,7 @@ dalunb_xx = sgs.CreateSkillCard {
 		card:addSubcard(self:getSubcards():first())
 		return card and card:targetFixed()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local name = ""
 		local card
 		local plist = sgs.PlayerList()
@@ -17093,7 +17093,7 @@ dalunb_xx = sgs.CreateSkillCard {
 			card = sgs.Sanguosha:cloneCard(name, sgs.Card_NoSuit, -1)
 		end
 		card:addSubcard(self:getSubcards():first())
-		return card and card:targetsFeasible(plist, sgs.Self)
+		return card and card:targetsFeasible(plist, player)
 	end,
 
 	on_use = function(self, room, source, targets)
@@ -19050,7 +19050,7 @@ s_newtype = sgs.CreateTriggerSkill
 s_newtypeOtherCard = sgs.CreateSkillCard {
 	name = "s_newtypeOther",
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local name = ""
 		local card
 		local plist = sgs.PlayerList()
@@ -19063,8 +19063,8 @@ s_newtypeOtherCard = sgs.CreateSkillCard {
 			if card and card:targetFixed() then
 				return false
 			else
-				return card and card:targetFilter(plist, to_select, sgs.Self) and
-				not sgs.Self:isProhibited(to_select, card, plist)
+				return card and card:targetFilter(plist, to_select, player) and
+				not player:isProhibited(to_select, card, plist)
 			end
 		end
 		return true
@@ -19080,7 +19080,7 @@ s_newtypeOtherCard = sgs.CreateSkillCard {
 		end
 		return card and card:targetFixed()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local name = ""
 		local card
 		local plist = sgs.PlayerList()
@@ -19091,7 +19091,7 @@ s_newtypeOtherCard = sgs.CreateSkillCard {
 			name = uses[1]
 			card = sgs.Sanguosha:cloneCard(name, sgs.Card_NoSuit, -1)
 		end
-		return card and card:targetsFeasible(plist, sgs.Self)
+		return card and card:targetsFeasible(plist, player)
 	end,
 	on_validate_in_response = function(self, user)
 		local room = user:getRoom()

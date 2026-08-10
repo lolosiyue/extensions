@@ -5868,7 +5868,7 @@ s4_txbw_cangying_select = sgs.CreateSkillCard {
 s4_txbw_cangyingCard = sgs.CreateSkillCard {
 	name = "s4_txbw_cangyingCard",
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local name = ""
 		local card
 		local plist = sgs.PlayerList()
@@ -5881,8 +5881,8 @@ s4_txbw_cangyingCard = sgs.CreateSkillCard {
 			if card and card:targetFixed() then
 				return false
 			else
-				return card and card:targetFilter(plist, to_select, sgs.Self) and
-					not sgs.Self:isProhibited(to_select, card, plist)
+				return card and card:targetFilter(plist, to_select, player) and
+					not player:isProhibited(to_select, card, plist)
 			end
 		end
 		return true
@@ -5898,7 +5898,7 @@ s4_txbw_cangyingCard = sgs.CreateSkillCard {
 		end
 		return card and card:targetFixed()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local name = ""
 		local card
 		local plist = sgs.PlayerList()
@@ -5909,7 +5909,7 @@ s4_txbw_cangyingCard = sgs.CreateSkillCard {
 			name = uses[1]
 			card = sgs.Sanguosha:cloneCard(name, sgs.Card_NoSuit, -1)
 		end
-		return card and card:targetsFeasible(plist, sgs.Self)
+		return card and card:targetsFeasible(plist, player)
 	end,
 	on_validate_in_response = function(self, user)
 		local room = user:getRoom()

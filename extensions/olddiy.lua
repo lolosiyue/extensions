@@ -443,7 +443,7 @@ spmengyan=sgs.CreateTriggerSkill{
 			room:broadcastSkillInvoke(self:objectName())
 			target:gainMark("@spnightmare",damage.damage)
 		end
-		if event==sgs.EventLoseSkill and data:toString()==self:objectName() then
+		if event==sgs.EventLoseSkill and data:toSkillChange().skillName==self:objectName() then
 			for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:getMark("@spnightmare")>0 then
 					p:loseAllMarks("@spnightmare")
@@ -1906,8 +1906,8 @@ bu_stwo_guicaiCard = sgs.CreateSkillCard
 {
     name = "bu_stwo_guicai",
     will_throw = false,
-    filter = function(self, targets, to_select)
-        local card = sgs.Sanguosha:getCard(sgs.Self:getMark("bu_stwo_guicai"))
+    filter = function(self, targets, to_select, player)
+        local card = sgs.Sanguosha:getCard(player:getMark("bu_stwo_guicai"))
 
 		if card and card:targetFixed() then
 			return false
@@ -1916,13 +1916,13 @@ bu_stwo_guicaiCard = sgs.CreateSkillCard
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets)
 	end,
-	feasible = function(self, targets)
-		local card = sgs.Sanguosha:getCard(sgs.Self:getMark("bu_stwo_guicai"))
+	feasible = function(self, targets, player)
+		local card = sgs.Sanguosha:getCard(player:getMark("bu_stwo_guicai"))
 
         if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-        and (not card:isAvailable(sgs.Self)) then return false end
+        and (not card:isAvailable(player)) then return false end
 
 		local qtargets = sgs.PlayerList()
 		for _, p in ipairs(targets) do
@@ -1931,7 +1931,7 @@ bu_stwo_guicaiCard = sgs.CreateSkillCard
 		if card and card:canRecast() and #targets == 0 then
 			return false
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self) --and card:isAvailable(sgs.Self)
+		return card and card:targetsFeasible(qtargets, player) --and card:isAvailable(player)
 	end,
 	on_validate = function(self, card_use)
 		local player = card_use.from

@@ -391,14 +391,14 @@ jjjijinCard = sgs.CreateSkillCard {
 			qtargets:append(p)
 		end
         card:deleteLater()
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets)
 	end,
 	target_fixed = function(self)		
 		local pattern = self:getUserString()
 		local card = sgs.Sanguosha:cloneCard(pattern, sgs.Card_SuitToBeDecided, -1)
 		return card and card:targetFixed()
 	end,
-	feasible = function(self, targets)		
+	feasible = function(self, targets, player)		
 		local pattern = self:getUserString()
 		local card = sgs.Sanguosha:cloneCard(pattern, sgs.Card_SuitToBeDecided, -1)
 		card:setSkillName("jjjijin")
@@ -406,7 +406,7 @@ jjjijinCard = sgs.CreateSkillCard {
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self)
+		return card and card:targetsFeasible(qtargets, player)
 	end,
 	on_validate = function(self, card_use)
 		local source = card_use.from
@@ -4654,7 +4654,7 @@ nyarz_rendebasicCard = sgs.CreateSkillCard
 {
     name = "nyarz_rendebasic",
     will_throw = false,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         local pattern = self:getUserString()
 		if pattern == "normal_slash" then pattern = "slash" end
 
@@ -4669,9 +4669,9 @@ nyarz_rendebasicCard = sgs.CreateSkillCard
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local pattern = self:getUserString()
 		if pattern=="normal_slash" then pattern = "slash" end
 
@@ -4686,7 +4686,7 @@ nyarz_rendebasicCard = sgs.CreateSkillCard
 		if card and card:canRecast() and #targets == 0 then
 			return false
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self) --and card:isAvailable(sgs.Self)
+		return card and card:targetsFeasible(qtargets, player) --and card:isAvailable(sgs.Self)
 	end,
 	on_validate = function(self, card_use)
 		local player = card_use.from
@@ -6442,7 +6442,7 @@ nyarz_youlongCard = sgs.CreateSkillCard
 {
     name = "nyarz_youlong",
     will_throw = false,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         local pattern = self:getUserString()
 		if pattern == "Slash" then pattern = "slash" end
 
@@ -6457,9 +6457,9 @@ nyarz_youlongCard = sgs.CreateSkillCard
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local pattern = self:getUserString()
 		if pattern == "Slash" then pattern = "slash" end
 
@@ -6474,7 +6474,7 @@ nyarz_youlongCard = sgs.CreateSkillCard
 		if card and card:canRecast() and #targets == 0 then
 			return false
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self) --and card:isAvailable(sgs.Self)
+		return card and card:targetsFeasible(qtargets, player) --and card:isAvailable(sgs.Self)
 	end,
 	on_validate = function(self, card_use)
 		local player = card_use.from
@@ -6750,7 +6750,7 @@ nyarz_wuqian_godCard = sgs.CreateSkillCard
 {
     name = "nyarz_wuqian_god",
     will_throw = false,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         local pattern = self:getUserString()
 
 		local card = sgs.Sanguosha:cloneCard(pattern, sgs.Card_SuitToBeDecided, -1)
@@ -6764,9 +6764,9 @@ nyarz_wuqian_godCard = sgs.CreateSkillCard
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local pattern = self:getUserString()
 
 		local card = sgs.Sanguosha:cloneCard(pattern, sgs.Card_SuitToBeDecided, -1)
@@ -6780,7 +6780,7 @@ nyarz_wuqian_godCard = sgs.CreateSkillCard
 		if card and card:canRecast() and #targets == 0 then
 			return false
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self) --and card:isAvailable(sgs.Self)
+		return card and card:targetsFeasible(qtargets, player) --and card:isAvailable(sgs.Self)
 	end,
 	on_validate = function(self, card_use)
 		local player = card_use.from
@@ -7443,7 +7443,7 @@ nyarz_longhun_godCard = sgs.CreateSkillCard
 {
     name = "nyarz_longhun_god",
     will_throw = false,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         local pattern = self:getUserString()
 
 		local card = sgs.Sanguosha:cloneCard(pattern, sgs.Card_SuitToBeDecided, -1)
@@ -7457,9 +7457,9 @@ nyarz_longhun_godCard = sgs.CreateSkillCard
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local pattern = self:getUserString()
 
 		local card = sgs.Sanguosha:cloneCard(pattern, sgs.Card_SuitToBeDecided, -1)
@@ -7467,7 +7467,7 @@ nyarz_longhun_godCard = sgs.CreateSkillCard
         card:deleteLater()
 
         if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-            if (not card:isAvailable(sgs.Self)) then return false end
+            if (not card:isAvailable(player)) then return false end
         end
 
 		local qtargets = sgs.PlayerList()
@@ -7477,7 +7477,7 @@ nyarz_longhun_godCard = sgs.CreateSkillCard
 		if card and card:canRecast() and #targets == 0 then
 			return false
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self) 
+		return card and card:targetsFeasible(qtargets, player) 
 	end,
 	on_validate = function(self, card_use)
 		local player = card_use.from
@@ -7898,7 +7898,7 @@ nyarz_bixinCard = sgs.CreateSkillCard
 {
     name = "nyarz_bixin",
     will_throw = false,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         local pattern = self:getUserString()
 		if pattern == "normal_slash" then pattern = "slash" end
         if pattern == "Slash" then pattern = "slash" end
@@ -7916,9 +7916,9 @@ nyarz_bixinCard = sgs.CreateSkillCard
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local pattern = self:getUserString()
 		if pattern == "normal_slash" then pattern = "slash" end
         if pattern == "Slash" then pattern = "slash" end
@@ -7940,7 +7940,7 @@ nyarz_bixinCard = sgs.CreateSkillCard
         if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
         and (not card:isAvailable(sgs.Self)) then return false end
 
-		return card and card:targetsFeasible(qtargets, sgs.Self) --and card:isAvailable(sgs.Self)
+		return card and card:targetsFeasible(qtargets, player) --and card:isAvailable(sgs.Self)
 	end,
 	on_validate = function(self, card_use)
 		local player = card_use.from
@@ -8165,7 +8165,7 @@ nyarz_wushengCard = sgs.CreateSkillCard
 {
     name = "nyarz_wusheng",
     will_throw = false,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         local pattern = self:getUserString()
 		if pattern == "Slash" then pattern = "slash" end
 
@@ -8181,9 +8181,9 @@ nyarz_wushengCard = sgs.CreateSkillCard
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local pattern = self:getUserString()
 		if pattern == "Slash" then pattern = "slash" end
 
@@ -8193,7 +8193,7 @@ nyarz_wushengCard = sgs.CreateSkillCard
         card:deleteLater()
 
         if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-        and (not card:isAvailable(sgs.Self)) then return false end
+        and (not card:isAvailable(player)) then return false end
 
 		local qtargets = sgs.PlayerList()
 		for _, p in ipairs(targets) do
@@ -8202,7 +8202,7 @@ nyarz_wushengCard = sgs.CreateSkillCard
 		if card and card:canRecast() and #targets == 0 then
 			return false
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self) --and card:isAvailable(sgs.Self)
+		return card and card:targetsFeasible(qtargets, player) --and card:isAvailable(player)
 	end,
 	on_validate = function(self, card_use)
 		local player = card_use.from
@@ -8462,7 +8462,7 @@ nyarz_longdanCard = sgs.CreateSkillCard
 {
     name = "nyarz_longdan",
     will_throw = false,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         local pattern = self:getUserString()
 		if pattern == "Slash" then pattern = "slash" end
 
@@ -8477,9 +8477,9 @@ nyarz_longdanCard = sgs.CreateSkillCard
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local pattern = self:getUserString()
 		if pattern == "Slash" then pattern = "slash" end
 
@@ -8488,7 +8488,7 @@ nyarz_longdanCard = sgs.CreateSkillCard
         card:deleteLater()
 
         if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-        and (not card:isAvailable(sgs.Self)) then return false end
+        and (not card:isAvailable(player)) then return false end
 
 		local qtargets = sgs.PlayerList()
 		for _, p in ipairs(targets) do
@@ -8497,7 +8497,7 @@ nyarz_longdanCard = sgs.CreateSkillCard
 		if card and card:canRecast() and #targets == 0 then
 			return false
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self) --and card:isAvailable(sgs.Self)
+		return card and card:targetsFeasible(qtargets, player) --and card:isAvailable(player)
 	end,
 	on_validate = function(self, card_use)
 		local player = card_use.from
@@ -9491,7 +9491,7 @@ nyarz_luanzhengCard = sgs.CreateSkillCard
 {
     name = "nyarz_luanzheng",
     will_throw = false,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         local pattern = self:getUserString()
 		if pattern == "normal_slash" then pattern = "slash" end
         if pattern == "Slash" then pattern = "slash" end
@@ -9509,9 +9509,9 @@ nyarz_luanzhengCard = sgs.CreateSkillCard
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local pattern = self:getUserString()
 		if pattern == "normal_slash" then pattern = "slash" end
         if pattern == "Slash" then pattern = "slash" end
@@ -9533,7 +9533,7 @@ nyarz_luanzhengCard = sgs.CreateSkillCard
         if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
         and (not card:isAvailable(sgs.Self)) then return false end
 
-		return card and card:targetsFeasible(qtargets, sgs.Self) --and card:isAvailable(sgs.Self)
+		return card and card:targetsFeasible(qtargets, player) --and card:isAvailable(sgs.Self)
 	end,
 	on_validate = function(self, card_use)
 		local player = card_use.from
@@ -10611,7 +10611,7 @@ nyarz_shensuVS = sgs.CreateZeroCardViewAsSkill
 nyarz_shensuCard = sgs.CreateSkillCard
 {
     name = "nyarz_shensu",
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
 		local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
 		card:setSkillName(self:objectName())
         card:deleteLater()
@@ -10623,15 +10623,15 @@ nyarz_shensuCard = sgs.CreateSkillCard
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
 		card:setSkillName(self:objectName())
         card:deleteLater()
 
         if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-        and (not card:isAvailable(sgs.Self)) then return false end
+        and (not card:isAvailable(player)) then return false end
 
 		local qtargets = sgs.PlayerList()
 		for _, p in ipairs(targets) do
@@ -10640,7 +10640,7 @@ nyarz_shensuCard = sgs.CreateSkillCard
 		if card and card:canRecast() and #targets == 0 then
 			return false
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self) --and card:isAvailable(sgs.Self)
+		return card and card:targetsFeasible(qtargets, player) --and card:isAvailable(player)
 	end,
 	on_validate = function(self, card_use)
 		local player = card_use.from

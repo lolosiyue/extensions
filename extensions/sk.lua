@@ -1141,10 +1141,10 @@ sk_chaohuangCard = sgs.CreateSkillCard{
     name = "sk_chaohuangCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-	    if to_select:getSeat() == sgs.Self:getSeat() then return false end
+	filter = function(self, targets, to_select, player)
+	    if to_select:getSeat() == player:getSeat() then return false end
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-		return sgs.Self:inMyAttackRange(to_select) and (not sgs.Sanguosha:isProhibited(sgs.Self, to_select, slash)) and (not sgs.Self:isJilei(slash, true))
+		return player:inMyAttackRange(to_select) and (not sgs.Sanguosha:isProhibited(player, to_select, slash)) and (not player:isJilei(slash, true))
 	end,
 	feasible = function(self, targets)
 	    return #targets > 0

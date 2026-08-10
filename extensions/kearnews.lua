@@ -3669,10 +3669,10 @@ kexiajuetwoCard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = false,
 	mute = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 1
-			and (to_select:objectName() ~= sgs.Self:objectName())
-			and (sgs.Self:canSlash(to_select, nil, false)) and (to_select:canSlash(sgs.Self, nil, false))
+			and (to_select:objectName() ~= player:objectName())
+			and (player:canSlash(to_select, nil, false)) and (to_select:canSlash(player, nil, false))
 	end,
 	on_use = function(self, room, player, targets)
 		room:broadcastSkillInvoke("kexiajue")
