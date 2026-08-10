@@ -9,8 +9,8 @@ guanyuZHCMT = sgs.General(extension, "guanyuZHCMT", "shu", 4, true)
 shenjiZHCMTCard = sgs.CreateSkillCard {
 	name = "shenjiZHCMTCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and (sgs.Slash_IsAvailable(sgs.Self) or sgs.Self:hasSkill("binuZHCMT"))
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and (sgs.Slash_IsAvailable(player) or player:hasSkill("binuZHCMT"))
 	end,
 	on_use = function(self, room, source, targets)
 		local skill_list = {}

@@ -152,7 +152,7 @@ zhuanshan = sgs.CreateTriggerSkill{
                 local death = data:toDeath()
                 if death.who:objectName() ~= player:objectName() then return false end
             elseif event == sgs.EventLoseSkill then
-                if data:toString() ~= self:objectName() then return false end
+                if data:toSkillChange().skillName ~= self:objectName() then return false end
             end
             for _,p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
                 if p:getMark("zhuanshan") > 0 then
@@ -197,7 +197,7 @@ qishibusiyutushou = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		local lostall = false
 		if event == sgs.EventLoseSkill then
-			if data:toString() ~= self:objectName() then return false end
+			if data:toSkillChange().skillName ~= self:objectName() then return false end
 			lostall = true
 		elseif player:getWeapon() then
 			lostall = true
@@ -249,7 +249,7 @@ qishibusiyutushou = sgs.CreateTriggerSkill{
 			if event == sgs.EventAcquireSkill or event == sgs.CardsMoveOneTime then
 				if not player:isAlive() or not player:hasSkill(self:objectName(), true) then return false end
 				if event == sgs.EventAcquireSkill then
-					if data:toString() ~= self:objectName() then return false end
+					if data:toSkillChange().skillName ~= self:objectName() then return false end
 				elseif event == sgs.CardsMoveOneTime then
 					local move = data:toMoveOneTime()
 					if move.to_place ~= sgs.Player_PlaceEquip and not move.from_places:contains(sgs.Player_PlaceEquip) then return false end
@@ -288,7 +288,7 @@ qishibusiyutushouEquips = sgs.CreateViewAsEquipSkill{
 wuqiongdewulianCard = sgs.CreateSkillCard{
 	name = "wuqiongdewulian",
 	will_throw = false ,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE or sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 		local name = ""
 		local card
@@ -301,12 +301,12 @@ wuqiongdewulianCard = sgs.CreateSkillCard{
 			card = sgs.Sanguosha:cloneCard(name)
             card:deleteLater()
 		end
-		return card and card:targetFilter(plist, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, plist)
+		return card and card:targetFilter(plist, to_select, player) and not player:isProhibited(to_select, card, plist)
 		elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
 			return false
 			end
 	end ,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 	if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE or sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 		local name = ""
 		local card
@@ -319,7 +319,7 @@ wuqiongdewulianCard = sgs.CreateSkillCard{
 			card = sgs.Sanguosha:cloneCard(name)
             card:deleteLater()
 		end
-		return card and card:targetsFeasible(plist, sgs.Self)
+		return card and card:targetsFeasible(plist, player)
 		elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
 			return false
 			end
@@ -512,7 +512,7 @@ BabylonCard = sgs.CreateSkillCard{
 	name = "Babylon",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select) --必须
+	filter = function(self, targets, to_select, player) --必须
 	local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
     card:deleteLater()
 	card:setSkillName(self:objectName())
@@ -520,8 +520,8 @@ BabylonCard = sgs.CreateSkillCard{
 			for _, p in ipairs(targets) do
 				qtargets:append(p)
 			end
-		if to_select:objectName() ~= sgs.Self:objectName() and sgs.Self:canSlash(to_select, card,false) then
-			return card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+		if to_select:objectName() ~= player:objectName() and player:canSlash(to_select, card,false) then
+			return card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets)
 		end
 	end,
 	on_validate = function(self,carduse)
@@ -714,8 +714,8 @@ fengbujue=sgs.General(extension,"fengbujue","real",4,true,false)
 
 zhiluanCard = sgs.CreateSkillCard{
     name = "zhiluanCard" ,
-    filter = function(self, targets, to_select)
-        return (#targets == 0) and (to_select:objectName() ~= sgs.Self:objectName()) and not to_select:isNude()
+    filter = function(self, targets, to_select, player)
+        return (#targets == 0) and (to_select:objectName() ~= player:objectName()) and not to_select:isNude()
         end ,
     on_use = function(self, room, source, targets)
         local target = targets[1]
@@ -789,12 +789,12 @@ yibanyouyu=sgs.General(extension,"yibanyouyu","real",4,true,false)
 caoduoCard = sgs.CreateSkillCard{
     name = "caoduoCard" ,
     will_throw = false,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         if #targets > 0 then
             if #targets == 2 then return false end
             return targets[1]:canSlash(to_select)
         else
-            if to_select:objectName() == sgs.Self:objectName() then
+            if to_select:objectName() == player:objectName() then
                 return false
             end
             for _,p in sgs.qlist(to_select:getAliveSiblings()) do
@@ -973,7 +973,7 @@ shengkongCard = sgs.CreateSkillCard{
     name = "shengkongCard",
     will_throw = false ,
     handling_method = sgs.Card_MethodNone,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         local name = ""
         local card
         local plist = sgs.PlayerList()
@@ -988,9 +988,9 @@ shengkongCard = sgs.CreateSkillCard{
         if card and card:targetFixed() then
             return false
         end
-        return card and card:targetFilter(plist, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, plist)
+        return card and card:targetFilter(plist, to_select, player) and not player:isProhibited(to_select, card, plist)
     end ,
-    feasible = function(self, targets)
+    feasible = function(self, targets, player)
         local name = ""
         local card
         local plist = sgs.PlayerList()
@@ -1002,7 +1002,7 @@ shengkongCard = sgs.CreateSkillCard{
             card = sgs.Sanguosha:cloneCard(name)
             card:deleteLater()
         end
-        return card and card:targetsFeasible(plist, sgs.Self)
+        return card and card:targetsFeasible(plist, player)
     end,
     on_validate_in_response = function(self, user)
         local room = user:getRoom()
@@ -1208,10 +1208,10 @@ lingbianCard = sgs.CreateSkillCard{
     name = "lingbianCard",
     will_throw = false,
     handling_method = sgs.Card_MethodNone,
-    filter = function(self, targets, to_select)
-        local card = sgs.Self:getTag("lingbian"):toCard()
+    filter = function(self, targets, to_select, player)
+        local card = player:getTag("lingbian"):toCard()
         if card:isKindOf("Peach") then card = sgs.Sanguosha:cloneCard("ExNihilo") end
-        card:addSubcards(sgs.Self:getHandcards())
+        card:addSubcards(player:getHandcards())
         card:setSkillName("lingbian")
         if card and card:targetFixed() then
             return false
@@ -1220,13 +1220,13 @@ lingbianCard = sgs.CreateSkillCard{
         for _, p in ipairs(targets) do
             qtargets:append(p)
         end
-        return card and card:targetFilter(qtargets, to_select, sgs.Self) 
-            and not sgs.Self:isProhibited(to_select, card, qtargets)
+        return card and card:targetFilter(qtargets, to_select, player) 
+            and not player:isProhibited(to_select, card, qtargets)
     end,
-    feasible = function(self, targets)
-        local card = sgs.Self:getTag("lingbian"):toCard()
+    feasible = function(self, targets, player)
+        local card = player:getTag("lingbian"):toCard()
         if card:isKindOf("Peach") then card = sgs.Sanguosha:cloneCard("ExNihilo") end
-        card:addSubcards(sgs.Self:getHandcards())
+        card:addSubcards(player:getHandcards())
         card:setSkillName("lingbian")
         local qtargets = sgs.PlayerList()
         for _, p in ipairs(targets) do
@@ -1235,7 +1235,7 @@ lingbianCard = sgs.CreateSkillCard{
         if card and card:canRecast() and #targets == 0 then
             return false
         end
-        return card and card:targetsFeasible(qtargets, sgs.Self)
+        return card and card:targetsFeasible(qtargets, player)
     end,    
     on_validate = function(self, card_use)
         local xunyou = card_use.from
@@ -1612,8 +1612,8 @@ dongxiCard = sgs.CreateSkillCard{
     name = "dongxi" ,
     will_throw = false ,
     handling_method = sgs.Card_MethodNone ,
-    filter = function(self, targets, to_select)
-        return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+    filter = function(self, targets, to_select, player)
+        return #targets == 0 and to_select:objectName() ~= player:objectName()
     end,
     on_use = function(self, room, source, targets)
         targets[1]:obtainCard(self)
@@ -1803,7 +1803,7 @@ sgs.LoadTranslationTable{
 
 luahuojianzhuixiCard = sgs.CreateSkillCard{
 	name = "luahuojianzhuixiCard",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local targets_list = sgs.PlayerList()
 		for _, target in ipairs(targets) do
 			targets_list:append(target)
@@ -1811,7 +1811,7 @@ luahuojianzhuixiCard = sgs.CreateSkillCard{
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName("luahuojianzhuixi")
 		slash:deleteLater()
-		return slash:targetFilter(targets_list, to_select, sgs.Self)
+		return slash:targetFilter(targets_list, to_select, player)
 	end,
 	on_use = function(self, room, source, targets)
 		room:removePlayerMark(source, "@luahuojianzhuixi")
@@ -2645,10 +2645,10 @@ DuriNokocard = sgs.CreateSkillCard{
 name = "DuriNokocard",
 target_fixed = false,
 will_throw = true,
-filter = function(self, targets, to_select)
-if sgs.Self:objectName() == to_select:objectName() then return false end
+filter = function(self, targets, to_select, player)
+if player:objectName() == to_select:objectName() then return false end
 if to_select:isAllNude() then return false end
-return sgs.Self:distanceTo(to_select) <= 1 
+return player:distanceTo(to_select) <= 1 
 end,
 feasible = function(self, targets)
 return #targets >= 1 

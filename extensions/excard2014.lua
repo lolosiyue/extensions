@@ -478,10 +478,10 @@ if TrickCard_zjzb == 1 then
 			end
 			return not to_select:isKongcheng() and to_select:objectName() ~= player:objectName() and #targets < total_num
 		end,
-		feasible = function(self, targets)
+		feasible = function(self, targets, player)
 			local total_num = 1
-			if sgs.Self then
-				total_num = total_num + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, sgs.Self, self)
+			if player then
+				total_num = total_num + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, player, self)
 			end
 			return #targets >= 0 and #targets <= total_num
 		end,
@@ -552,10 +552,10 @@ if TrickCard_yjjg == 1 then
 			end
 			return to_select:objectName() ~= player:objectName() and #targets < total_num
 		end,
-		feasible = function(self, targets)
+		feasible = function(self, targets, player)
 			local total_num = 1
-			if sgs.Self then
-				total_num = total_num + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, sgs.Self, self)
+			if player then
+				total_num = total_num + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, player, self)
 			end
 			return #targets <= total_num and #targets > 0
 		end,

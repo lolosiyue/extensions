@@ -3144,14 +3144,14 @@ luasaoshecard = sgs.CreateSkillCard {
 	name = "luasaoshecard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets < 1 then
-			if to_select:objectName() ~= sgs.Self:objectName() then
+			if to_select:objectName() ~= player:objectName() then
 				local noneslash = sgs.Sanguosha:cloneCard("Slash")
 				if to_select:isCardLimited(noneslash, sgs.Card_MethodUse) then return false end
-				if to_select:isProhibited(sgs.Self, noneslash, sgs.Self:getSiblings()) then return false end
+				if to_select:isProhibited(player, noneslash, player:getSiblings()) then return false end
 				if to_select:getMark("SaosheX") > 1 then return false end
-				return sgs.Self:distanceTo(to_select) <= sgs.Self:getAttackRange()
+				return player:distanceTo(to_select) <= player:getAttackRange()
 			end
 		end
 		return false

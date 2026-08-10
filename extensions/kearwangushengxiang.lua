@@ -1001,11 +1001,11 @@ kenewgirlganglvCard = sgs.CreateSkillCard{
 		for _, t in sgs.list(targets) do lists:append(t) end
 		return card:targetFilter(lists, to_select, player) and not player:isProhibited(to_select, card, lists)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local card = sgs.Sanguosha:getCard(self:getSubcards():at(0))
 		local lists = sgs.PlayerList()
 		for _, t in sgs.list(targets) do lists:append(t) end
-		return card:targetsFeasible(lists, sgs.Self)
+		return card:targetsFeasible(lists, player)
 	end,
 	about_to_use = function(self, room, use)
 		local source = use.from

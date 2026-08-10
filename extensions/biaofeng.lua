@@ -3054,8 +3054,8 @@ PlusShensu_Card = sgs.CreateSkillCard {
 	filter = function(self, targets, to_select, player)
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName("PlusShensu")
-		local extra = sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, sgs.Self, slash) + 1
-		return sgs.Self:canSlash(to_select, slash, false) and #targets < extra
+		local extra = sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, player, slash) + 1
+		return player:canSlash(to_select, slash, false) and #targets < extra
 	end,
 	on_use = function(self, room, source, targets)
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
