@@ -1281,7 +1281,11 @@ function targetsPindian(self, player, targets)
 		pd.to_card = nil
 		data:setValue(pd)
 		room:getThread():trigger(sgs.AskforPindianCard, room, player, data)
-		pd = data:toPindian()
+		-- toPindian() 回傳不 OWN 的 userdata；不得重新賦值 pd（原 OWN userdata
+		-- 失去引用會被 Lua GC delete，使 QVariant 內指標懸垂 → objectName AV）
+		local pd_ = data:toPindian()
+		pd.to_card = pd_.to_card
+		pd.from_card = pd_.from_card
 		pd_to_card[t:objectName()] = pd.to_card
 	end
 	local pd_to_number = {}
@@ -1335,7 +1339,9 @@ function targetsPindian(self, player, targets)
 		pd.to = t
 		data:setValue(pd)
 		room:getThread():trigger(sgs.PindianVerifying, room, player, data)
-		pd = data:toPindian()
+		local pd_ = data:toPindian()
+		pd.to_number = pd_.to_number
+		pd.from_number = pd_.from_number
 		pd_to_number[t:objectName()] = pd.to_number
 		table.insert(numbers, pd.to_number)
 		if t ~= log.to:last() then
@@ -1584,7 +1590,9 @@ function delayedPingdian(self, player, target, from_card)
 	data:setValue(pd)
 	if pd.from_card == nil then
 		room:getThread():trigger(sgs.AskforPindianCard, room, player, data)
-		pd = data:toPindian()
+		local pd_ = data:toPindian()
+		pd.to_card = pd_.to_card
+		pd.from_card = pd_.from_card
 	end
 	if not pd.to_card and not pd.from_card then
 		local cs = room:askForPindianRace(player, pd.to, self)
@@ -1652,7 +1660,9 @@ function verifyPindian(pd)
 	local data = sgs.QVariant()
 	data:setValue(pd)
 	room:getThread():trigger(sgs.PindianVerifying, room, pd.from, data)
-	pd = data:toPindian()
+	local pd_ = data:toPindian()
+	pd.from_number = pd_.from_number
+	pd.to_number = pd_.to_number
 	pd.success = pd.from_number > pd.to_number--[[
 	if pd.success then room:setEmotion(pd.from,"success")
 	else room:setEmotion(pd.from,"no-success") end

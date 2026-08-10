@@ -1337,7 +1337,10 @@ gsgusheCard = sgs.CreateSkillCard
 		    data = sgs.QVariant()
             data:setValue(pd)
 		    room:getThread():trigger(sgs.AskforPindianCard,room,source,data)
-		    pd = data:toPindian()
+		    -- 不重新賦值 pd：原 OWN userdata 被 GC delete 會使 QVariant 指標懸垂
+		    local pd_ = data:toPindian()
+		    pd.to_card = pd_.to_card
+		    pd.from_card = pd_.from_card
 		    if pd.to_card then
 			    pd_to_card[to:objectName()]=pd.to_card
 		    end
@@ -1398,9 +1401,9 @@ gsgusheCard = sgs.CreateSkillCard
 		    data = sgs.QVariant()
             data:setValue(pd)
 		    room:getThread():trigger(sgs.PindianVerifying,room,source,data)
-		    pd = data:toPindian()
-		    fn = fn or pd.from_number
-		    pd_to_number[to:objectName()] = pd.to_number
+		    local pd_ = data:toPindian()
+		    fn = fn or pd_.from_number
+		    pd_to_number[to:objectName()] = pd_.to_number
 		    pd.from_number = pd.from_card:getNumber()
 	    end
 	    pd.from_number = fn or pd.from_number
@@ -10058,7 +10061,7 @@ nyarz_qiangxiCard = sgs.CreateSkillCard
 {
     name = "nyarz_qiangxi",
     filter = function(self, targets, to_select)
-        return #targets < 1 and to_select:getMark("nyarz_qiangxi_damaged-PlayClear") == 0
+        return #targets < 1 and to_select:isAlive() and to_select:getMark("nyarz_qiangxi_damaged-PlayClear") == 0
     end,
     on_effect = function(self, effect)
         local room = effect.from:getRoom()
