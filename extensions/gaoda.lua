@@ -2014,6 +2014,8 @@ luckyrecord = sgs.CreateTriggerSkill{
 --speech: 朗读文字（填"poi"则朗读"poi"；填""则不朗读；nil则朗读text）
 --startup_voice：是否播放高达杀启动音（true播放）
 local function printCmdPrompt(text, speech, startup_voice)
+	--headless（server/自动测试/CI）不弹 cmd 窗口，仅玩家正常 GUI 启动触发
+	if sgs.IsHeadless and sgs.IsHeadless() then return end
 	local speak_text = speech or string.gsub(text, "\n", ",")
 	text = string.gsub(text, "\n", "& echo.")
 
@@ -2145,12 +2147,12 @@ if lucky_card and sgs.Sanguosha:translate("gaoda") ~= "高达杀" then
 				file2:write(line)
 				file2:close()
 			end
-		--[[else
+		else
 			--Remove temp bat files
 			local fname = "_temp20150926.bat"
 			local sppname = "_tempspplayer.bat"
 			if file_exists(fname) then os.remove(fname) end
-			if file_exists(sppname) then os.remove(sppname) end]]
+			if file_exists(sppname) then os.remove(sppname) end
 		end
 	end
 end
@@ -10677,7 +10679,7 @@ xinniana = sgs.CreateTriggerSkill
 		local room = player:getRoom()
 		if event == sgs.EventAcquireSkill then
 			local current = room:getCurrent()
-			local name = data:toString()
+			local name = data:toSkillChange().skillName
 			if current and current:hasSkill("xinnian") and current:objectName() ~= player:objectName() then
 				local skill = sgs.Sanguosha:getSkill(name)
 				if not skill:isAttachedLordSkill() and skill:getFrequency() ~= sgs.Skill_Wake then
@@ -10714,7 +10716,7 @@ xinniana = sgs.CreateTriggerSkill
 			end
 		else
 			if player:getPhase() == sgs.Player_NotActive then return false end
-			if (event == sgs.EventLoseSkill and data:toString() == "xinnian")
+			if (event == sgs.EventLoseSkill and data:toSkillChange().skillName == "xinnian")
 				or (event == sgs.Death and data:toDeath().who:objectName() == player:objectName() and player:hasSkill("xinnian")) then
 				for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 					local record = p:getTag("xinnian_record"):toString()
@@ -12441,7 +12443,7 @@ huantongc = sgs.CreateTriggerSkill
 				end
 			end
 		elseif event == sgs.EventAcquireSkill then
-			if data:toString() == "huantong" then
+			if data:toSkillChange().skillName == "huantong" then
 				for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 					if p:isChained() then
 						room:insertAttackRangePair(player, p)
