@@ -747,14 +747,14 @@ XiansiZHCMTAttach = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		local source = room:findPlayerBySkillName("XiansiZHCMT")
 		if event == sgs.GameStart then
-			if (event == sgs.GameStart and source and source:isAlive()) or (event == sgs.EventAcquireSkill and data:toString() == "XiansiZHCMT") then
+			if (event == sgs.GameStart and source and source:isAlive()) or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "XiansiZHCMT") then
 				for _, p in sgs.qlist(room:getOtherPlayers(source)) do
 					if not p:hasSkill("XiansiZHCMTSlash") then
 						room:attachSkillToPlayer(p, "XiansiZHCMTSlash")
 					end
 				end
 			end
-		elseif event == sgs.EventLoseSkill and data:toString() == "XiansiZHCMT" then
+		elseif event == sgs.EventLoseSkill and data:toSkillChange().skillName == "XiansiZHCMT" then
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:hasSkill("XiansiZHCMTSlash") then
 					room:detachSkillFromPlayer(p, "XiansiZHCMTSlash")
@@ -940,7 +940,7 @@ dangzhengZHCMT = sgs.CreateTriggerSkill {
 	on_trigger = function(self, triggerEvent, player, data)
 		local room = player:getRoom()
 		local lords = room:findPlayersBySkillName(self:objectName())
-		if player:isLord() and (triggerEvent == sgs.GameStart) or (triggerEvent == sgs.EventAcquireSkill and data:toString() == "dangzhengZHCMT") then
+		if player:isLord() and (triggerEvent == sgs.GameStart) or (triggerEvent == sgs.EventAcquireSkill and data:toSkillChange().skillName == "dangzhengZHCMT") then
 			if lords:isEmpty() then
 				return false
 			end
@@ -955,7 +955,7 @@ dangzhengZHCMT = sgs.CreateTriggerSkill {
 					room:attachSkillToPlayer(p, "dangzhengZHCMTVS")
 				end
 			end
-		elseif triggerEvent == sgs.EventLoseSkill and data:toString() == "dangzhengZHCMT" then
+		elseif triggerEvent == sgs.EventLoseSkill and data:toSkillChange().skillName == "dangzhengZHCMT" then
 			if lords:length() > 2 then
 				return false
 			end
@@ -1110,7 +1110,7 @@ jieyingZHCMT = sgs.CreateTriggerSkill {
 	frequency = sgs.Skill_Compulsory,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if event == sgs.GameStart or event == sgs.Debut or event == sgs.Revived or (event == sgs.EventAcquireSkill and data:toString() == self:objectName()) then
+		if event == sgs.GameStart or event == sgs.Debut or event == sgs.Revived or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == self:objectName()) then
 			if player:isChained() then
 				return false
 			end
@@ -1414,18 +1414,20 @@ dengshenZHCMT = sgs.CreateTriggerSkill {
 	events = { sgs.CardsMoveOneTime, sgs.Damage, sgs.Damaged },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if event == sgs.CardsMoveOneTime and data:toMoveOneTime().from:objectName() ~= player:objectName() and data:toMoveOneTime().reason.m_playerId == player:objectName() then
-			room:broadcastSkillInvoke("dengshenZHCMT")
-			room:sendCompulsoryTriggerLog(player, "dengshenZHCMT")
+		if event == sgs.CardsMoveOneTime then
 			local move = data:toMoveOneTime()
-			for _, id in sgs.qlist(move.card_ids) do
-				local slash = sgs.Sanguosha:cloneCard("slash")
-				slash:addSubcard(id)
-				slash:setSkillName(self:objectName())
-				slash:deleteLater()
-				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-					if p:objectName() == move.from:objectName() then
-						room:useCard(sgs.CardUseStruct(slash, player, p))
+			if move.from and move.from:objectName() ~= player:objectName() and move.reason.m_playerId == player:objectName() then
+				room:broadcastSkillInvoke("dengshenZHCMT")
+				room:sendCompulsoryTriggerLog(player, "dengshenZHCMT")
+				for _, id in sgs.qlist(move.card_ids) do
+					local slash = sgs.Sanguosha:cloneCard("slash")
+					slash:addSubcard(id)
+					slash:setSkillName(self:objectName())
+					slash:deleteLater()
+					for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+						if p:objectName() == move.from:objectName() then
+							room:useCard(sgs.CardUseStruct(slash, player, p))
+						end
 					end
 				end
 			end

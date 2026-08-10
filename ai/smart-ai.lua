@@ -4978,7 +4978,15 @@ function SmartAI:getTurnUse()
 											logger:writeLog("DEBUG", "getTurnUse: Card key", {key = cardKey})
 										end
 										
-										self.use_to[cardKey] = d.to
+										-- 不保存 SWIG userdata（d.to 指向 C++ QList，跨回合懸垂會 AV）；
+										-- 改存純 Lua 字串表（玩家 objectName），activate 回寫時重建
+										local saved = {}
+										if d.to then
+											for _, p in sgs.qlist(d.to) do
+												saved[#saved + 1] = p:objectName()
+											end
+										end
+										self.use_to[cardKey] = saved
 										if logger then logger:writeLog("DEBUG", "getTurnUse: Set use_to") end
 										
 										table.insert(turnUse, d.card)
@@ -5229,7 +5237,17 @@ function SmartAI:activate(use)
 		end
 		
 		local success, err = pcall(function()
-			use.to = self.use_to[aiCardKey(c)]
+			-- use_to 存的是 objectName 字串表（見 getTurnUse），回寫時重建全新 SPlayerList，
+			-- 避免把跨回合保存的 SWIG userdata 直接賦值（懸垂 → QList copy assign AV）
+			local saved = self.use_to[aiCardKey(c)]
+			local toList = sgs.SPlayerList()
+			if saved then
+				for _, name in ipairs(saved) do
+					local p = self.room:findPlayerByObjectName(name)
+					if p then toList:append(p) end
+				end
+			end
+			use.to = toList
 			if logger then logger:writeLog("DEBUG", "activate: Set use.to") end
 						
 			use.card = c
