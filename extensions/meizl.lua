@@ -437,12 +437,12 @@ meizlfeiren = sgs.CreateTriggerSkill {
 					player:addToPile("meizlfeiren", cd, true)
 					if player:getPile("meizlfeiren"):length() == 3 then
 						local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-						dummy:deleteLater()
 						for _, id in sgs.qlist(player:getPile("meizlfeiren")) do
 							local cdq = sgs.Sanguosha:getCard(id)
 							dummy:addSubcard(cdq)
 						end
 						room:obtainCard(player, dummy)
+						dummy:deleteLater()
 						local damage = sgs.DamageStruct()
 						damage.damage = 1
 						damage.from = player
@@ -2512,7 +2512,6 @@ meizlyoulong = sgs.CreateTriggerSkill {
 				elseif card:isRed() then
 					local x = 0
 					local dummy = sgs.Sanguosha:cloneCard("slash")
-					dummy:deleteLater()
 					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXCHANGE_FROM_PILE, player:objectName(),
 						"meizlyoulong", "");
 					for _, p in sgs.qlist(player:getPile("meizlyoulong")) do
@@ -2521,6 +2520,7 @@ meizlyoulong = sgs.CreateTriggerSkill {
 						--room:obtainCard(player,sgs.Sanguosha:getCard(p),true)
 					end
 					room:obtainCard(player, dummy, reason, false)
+					dummy:deleteLater()
 					if x >= 3 then
 						local recover = sgs.RecoverStruct()
 						recover.who = player
@@ -4272,12 +4272,12 @@ meizlhuhuncard = sgs.CreateSkillCard {
 			local slash = sgs.Sanguosha:cloneCard("slash", card:getSuit(), card:getNumber())
 			slash:setSkillName("meizlhuhun")
 			slash:addSubcard(card)
-			slash:deleteLater()
 			local use = sgs.CardUseStruct()
 			use.from = source
 			use.to:append(targets[1])
 			use.card = slash
 			room:useCard(use, false)
+			slash:deleteLater()
 			if (source:getMark("meizlhuhunslash") == 0) or (not targets[1]:isAlive()) or (source:getMark("meizlhuhunFail") == 1) then
 				break
 			end
@@ -4353,7 +4353,6 @@ meizlxuechou = sgs.CreateTriggerSkill {
 		local idlistA = sgs.IntList()
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, 0)
 		slash:setSkillName(self:objectName())
-		slash:deleteLater()
 		for _, card in sgs.qlist(death.who:getHandcards()) do
 			idlistA:append(card:getId())
 			slash:addSubcard(card)
@@ -4370,6 +4369,7 @@ meizlxuechou = sgs.CreateTriggerSkill {
 			use.card = slash
 			room:useCard(use, false)
 		end
+		slash:deleteLater()
 	end
 }
 
@@ -5868,7 +5868,6 @@ meispxiaojicard = sgs.CreateSkillCard {
 			dummy:deleteLater()
 			room:setPlayerFlag(source, "LuaXDuanzhi_InTempMoving");
 			local dummy_card = sgs.Sanguosha:cloneCard("jink")
-			dummy_card:deleteLater()
 			local card_ids = sgs.IntList()
 			local original_places = sgs.PlaceList()
 			for i = 1, count, 1 do
@@ -5888,6 +5887,7 @@ meispxiaojicard = sgs.CreateSkillCard {
 			if dummy_card:subcardsLength() > 0 then
 				room:obtainCard(source, dummy_card)
 			end
+			dummy_card:deleteLater()
 		else
 			local ids = self:getSubcards()
 			for _, id in sgs.qlist(ids) do
@@ -6592,7 +6592,6 @@ meizlselianyucard  = sgs.CreateSkillCard {
 	on_use = function(self, room, source, targets)
 		source:loseMark("@meizlselianyu")
 		local slash = sgs.Sanguosha:cloneCard("fire_slash", sgs.Card_NoSuit, 0)
-		slash:deleteLater()
 		slash:setSkillName("meizlselianyu")
 		local card_use = sgs.CardUseStruct()
 		card_use.from = source
@@ -6603,6 +6602,7 @@ meizlselianyucard  = sgs.CreateSkillCard {
 		end
 		card_use.card = slash
 		room:useCard(card_use, true)
+		slash:deleteLater()
 	end
 }
 meizlselianyuskill = sgs.CreateViewAsSkill {
@@ -11604,7 +11604,6 @@ meispzlbhbaiyue = sgs.CreateTriggerSkill
 						player:turnOver()
 						local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 						slash:setSkillName("meispzlbhbaiyue")
-						slash:deleteLater()
 						local card_use = sgs.CardUseStruct()
 						card_use.from = player
 						for _, p in sgs.qlist(room:getOtherPlayers(player)) do
@@ -11615,6 +11614,7 @@ meispzlbhbaiyue = sgs.CreateTriggerSkill
 						end
 						card_use.card = slash
 						room:useCard(card_use, true)
+						slash:deleteLater()
 						player:drawCards(x)
 					end
 				end
@@ -11736,9 +11736,9 @@ meizl_o_yuxiang = sgs.CreateTriggerSkill {
 				savage_assault:setSkillName(self:objectName())
 				local use = sgs.CardUseStruct()
 				use.card = savage_assault
-				savage_assault:deleteLater()
 				use.from = player
 				room:useCard(use, false)
+				savage_assault:deleteLater()
 			end
 		end
 	end
@@ -12038,8 +12038,8 @@ luoshenjh = sgs.CreateTriggerSkill
 					for _, id in ipairs(card_to_gotback) do
 						dummy2:addSubcard(id)
 					end
-					dummy2:deleteLater()
 					room:obtainCard(player, dummy2)
+					dummy2:deleteLater()
 				end
 			end
 		end

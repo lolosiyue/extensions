@@ -798,7 +798,6 @@ sr_yaozhancard = sgs.CreateSkillCard{
 		if success then			
 			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 			slash:setSkillName("sr_yaozhancard")
-			slash:deleteLater()
 			if source:canSlash(targets[1],slash,false) then
 				local card_use = sgs.CardUseStruct()
 				card_use.card = slash
@@ -806,6 +805,7 @@ sr_yaozhancard = sgs.CreateSkillCard{
 				card_use.to:append(targets[1])
 				room:useCard(card_use, false)
 			end
+			slash:deleteLater()
 		else
 			if targets[1]:canSlash(source,false) then
 				room:askForUseSlashTo(targets[1], source, "@slash_can")
@@ -1620,7 +1620,6 @@ sr_jiuzhu = sgs.CreateTriggerSkill{
 						if zhaoyun:getPhase() == sgs.Player_NotActive then
 							local current = room:getCurrent()
 							local slash = sgs.Sanguosha:cloneCard("slash",sgs.Card_NoSuit,0)
-							slash:deleteLater()
 							slash:setSkillName(self:objectName())									
 							if zhaoyun:isProhibited(current,slash) then return false end
 							if current and current:isAlive() then
@@ -1635,6 +1634,7 @@ sr_jiuzhu = sgs.CreateTriggerSkill{
 									room:sendLog(log)			
 									room:useCard(sgs.CardUseStruct(slash,zhaoyun,current))
 								end
+							slash:deleteLater()
 							end
 						end
 						break
@@ -1838,7 +1838,6 @@ sr_quanheng_slashCard = sgs.CreateSkillCard{
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		slash:addSubcards(self:getSubcards())
 		slash:setSkillName("sr_quanheng")
-		slash:deleteLater()
 		local use = sgs.CardUseStruct()
 		use.card = slash
 		use.from = source
@@ -1846,6 +1845,7 @@ sr_quanheng_slashCard = sgs.CreateSkillCard{
 			use.to:append(p)
 		end
 		room:useCard(use)
+		slash:deleteLater()
 		room:addPlayerHistory(source, use.card:getClassName())
 	end
 }
@@ -1886,8 +1886,8 @@ sr_quanheng_ex_nihiloCard = sgs.CreateSkillCard{
 		local ex_nihilo = sgs.Sanguosha:cloneCard("ex_nihilo", sgs.Card_NoSuit, 0)
 		ex_nihilo:addSubcards(self:getSubcards())
 		ex_nihilo:setSkillName("sr_quanheng")
-		ex_nihilo:deleteLater()
 		room:useCard(sgs.CardUseStruct(ex_nihilo, source, source, false))
+		ex_nihilo:deleteLater()
 	end
 }
 
@@ -3190,12 +3190,12 @@ sr_jiexi = sgs.CreateTriggerSkill{
 						room:notifySkillInvoked(pindian.from, "sr_jiexi")						
 						local dismantlement = sgs.Sanguosha:cloneCard("dismantlement", sgs.Card_NoSuit, 0)
 						dismantlement:setSkillName("sr_jiexi")
-						dismantlement:deleteLater()
 						local use = sgs.CardUseStruct()
 						use.card = dismantlement
 						use.from = pindian.from
 						use.to:append(pindian.to)
 						room:useCard(use)
+						dismantlement:deleteLater()
 					end
 				end
 			end
@@ -3337,12 +3337,12 @@ sr_zhouyancard = sgs.CreateSkillCard{
 			dest:drawCards(1)
 			local fireattack = sgs.Sanguosha:cloneCard("FireAttack", sgs.Card_NoSuit, 0)
 			fireattack:setSkillName("sr_zhouyan")
-			fireattack:deleteLater()
 			local use = sgs.CardUseStruct()
 			use.card = fireattack
 			use.from = source
 			use.to:append(dest)
 			room:useCard(use)
+			fireattack:deleteLater()
 		end
 	end
 }
@@ -3465,12 +3465,12 @@ sr_zhaxiangcard = sgs.CreateSkillCard{
 			if card:isKindOf("Slash") then
 				local slash = sgs.Sanguosha:cloneCard("fire_slash", sgs.Card_NoSuit, 0)
 				slash:setSkillName("sr_zhaxiang")
-				slash:deleteLater()
 				local use = sgs.CardUseStruct()
 				use.card = slash
 				use.from = source
 				use.to:append(dest)
 				room:useCard(use,false)
+				slash:deleteLater()
 			end
 		end
 	end
@@ -3833,8 +3833,8 @@ sr_jueliecard = sgs.CreateSkillCard{
 		if choice == "srslash" then
 			local slash = sgs.Sanguosha:cloneCard("slash",sgs.Card_NoSuit,0)
 			slash:setSkillName("sr_juelie")
-			slash:deleteLater()
 			room:useCard(sgs.CardUseStruct(slash,source,targets[1]),false)
+			slash:deleteLater()
 		elseif choice == "srkeepsame" then
 			local snum = source:getHandcardNum()
 			local tnum = targets[1]:getHandcardNum()
@@ -4318,7 +4318,6 @@ sr_aozhanCard = sgs.CreateSkillCard{
 	on_use = function(self, room, source, targets)
 		local cards = source:getPile("@srzhan")		
 		local dummycard = sgs.Sanguosha:cloneCard("jink")
-		dummycard:deleteLater()
 		for _,card_id in sgs.qlist(cards) do
 			dummycard:addSubcard(card_id)
 		end		
@@ -4331,6 +4330,7 @@ sr_aozhanCard = sgs.CreateSkillCard{
 			room:throwCard(dummycard, nil,source)
 			source:drawCards(count, "sr_aozhan")
 		end
+		dummycard:deleteLater()
 	end
 }
 sr_aozhanVS = sgs.CreateZeroCardViewAsSkill{
@@ -5001,8 +5001,8 @@ sr_xiahoucard = sgs.CreateSkillCard{
 					if c == "srcancel" then return end
 					room:loseHp(xiahou, 1, true, xiahou, "sr_xiahou")
 					local slash = sgs.Sanguosha:cloneCard(choice,sgs.Card_NoSuit,0)
-					slash:deleteLater()
 					room:useCard(sgs.CardUseStruct(slash,source,player))
+					slash:deleteLater()
 					return
 				end
 			elseif choice == "peach" then
@@ -5017,8 +5017,8 @@ sr_xiahoucard = sgs.CreateSkillCard{
 				if c == "srcancel" then return end
 				room:loseHp(xiahou, 1, true, xiahou, "sr_xiahou")
 				local peach = sgs.Sanguosha:cloneCard(choice,sgs.Card_NoSuit,0)
-				peach:deleteLater()
 				room:useCard(sgs.CardUseStruct(peach,source,source))
+				peach:deleteLater()
 				return
 			elseif choice == "analeptic" then
 				local msg = sgs.LogMessage()
@@ -5032,8 +5032,8 @@ sr_xiahoucard = sgs.CreateSkillCard{
 				if c == "srcancel" then return end
 				room:loseHp(xiahou, 1, true, xiahou, "sr_xiahou")
 				local analeptic = sgs.Sanguosha:cloneCard(choice,sgs.Card_NoSuit,0)
-				analeptic:deleteLater()
 				room:useCard(sgs.CardUseStruct(analeptic,source,source))
+				analeptic:deleteLater()
 				return
 			end
 		else									
@@ -5096,8 +5096,8 @@ sr_xiahoucard = sgs.CreateSkillCard{
 					if c == "srcancel" then return end
 					room:loseHp(xiahou, 1, true, xiahou, "sr_xiahou")
 					local peach = sgs.Sanguosha:cloneCard(choice,sgs.Card_NoSuit,0)
-					peach:deleteLater()
 					room:useCard(sgs.CardUseStruct(peach,source,room:getCurrentDyingPlayer()))
+					peach:deleteLater()
 					return
 				end
 			end
@@ -5422,7 +5422,6 @@ sr_wuwei = sgs.CreateTriggerSkill{
 			for i = 1,slashs:length(),1 do
 				local slash = sgs.Sanguosha:cloneCard("slash",sgs.Card_NoSuit,0)
 				slash:setSkillName("sr_wuwei")
-				slash:deleteLater()
 				local victims = sgs.SPlayerList()
 				for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 					if player:canSlash(p,slash,false) then
@@ -5433,7 +5432,9 @@ sr_wuwei = sgs.CreateTriggerSkill{
 				local target = room:askForPlayerChosen(player,victims,"sr_wuwei","#sr_wuwei",true,true)
 				if target then
 					room:useCard(sgs.CardUseStruct(slash,player,target),false)
+					slash:deleteLater()
 				else
+					slash:deleteLater()
 					break
 				end
 			end
@@ -5446,14 +5447,14 @@ sr_wuwei = sgs.CreateTriggerSkill{
 		end				
 		if not last:isEmpty() then
 			local dummycard = sgs.Sanguosha:cloneCard("slash",sgs.Card_NoSuit,0)
-			dummycard:deleteLater()			
 			for _,id in sgs.qlist(last) do
 				local card = sgs.Sanguosha:getCard(id)
  				dummycard:addSubcard(card)
  			end
  			if player:isAlive() then
  				player:obtainCard(dummycard)
- 			end			
+ 			end
+			dummycard:deleteLater()	
 		end
 		return true
 	end
@@ -5674,7 +5675,6 @@ sr_manwucard = sgs.CreateSkillCard{
 		room:getThread():delay()
 		if card:getSuit() == sgs.Card_Diamond then
 			local indulgence = sgs.Sanguosha:cloneCard("indulgence",card:getSuit(),card:getNumber())
-			indulgence:deleteLater()	    	
 			if not source:isProhibited(dest, indulgence) and not dest:containsTrick("indulgence") then
 				indulgence:addSubcard(card)
 				indulgence:setSkillName("sr_manwu")
@@ -5684,6 +5684,7 @@ sr_manwucard = sgs.CreateSkillCard{
 				use.to:append(dest)
 				room:useCard(use)
 			end
+			indulgence:deleteLater()
 		else
 			room:obtainCard(source, card, true)
 		end

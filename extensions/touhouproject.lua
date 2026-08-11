@@ -2780,9 +2780,9 @@ TH_wenwenxinwenCARD = sgs.CreateSkillCard{---文文新闻
 			room:setPlayerMark(targets[1], "&TH_wenwenxinwen+to+#"..source:objectName(),1)
 			local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 			card:setSkillName("TH_wenwenxinwen")
-			card:deleteLater()
 			if sgs.Sanguosha:isProhibited(source, targets[1], card) then return end
 			room:useCard(sgs.CardUseStruct(card, source, targets[1]), false)
+			card:deleteLater()
 		else
 			local damage = sgs.DamageStruct()
 			damage.from = source

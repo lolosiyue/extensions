@@ -750,7 +750,6 @@ sy_weiwu = sgs.CreateTriggerSkill {
 					end
 					player:obtainCard(damage.card)
 					local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
-					dummy:deleteLater()
 					if not room:getDiscardPile():isEmpty() then
 						for _, id in sgs.qlist(room:getDiscardPile()) do
 							if sgs.Sanguosha:getCard(id):objectName() == damage.card:objectName() then
@@ -761,6 +760,7 @@ sy_weiwu = sgs.CreateTriggerSkill {
 					if dummy:subcardsLength() > 0 then
 						player:obtainCard(dummy)
 					end
+					dummy:deleteLater()
 				end
 			end
 		end
@@ -1393,7 +1393,6 @@ sy_quanqingCard = sgs.CreateSkillCard {
 			local name = sgs.Sanguosha:getEngineCard(use_id):objectName()
 			local qq_card = sgs.Sanguosha:cloneCard(name, sgs.Card_NoSuit, 0)
 			qq_card:setSkillName("sy_quanqing_USECARD")
-			qq_card:deleteLater()
 			if qq_card:targetFixed() then
 				room:useCard(sgs.CardUseStruct(qq_card, effect.to, getFixedTargets(effect.to, qq_card)))
 			else
@@ -1416,6 +1415,7 @@ sy_quanqingCard = sgs.CreateSkillCard {
 					end
 				end
 			end
+			qq_card:deleteLater()
 			effect.from:removeTag("sy_quanqing_target")
 			if effect.from:isWounded() then
 				room:recover(effect.from, sgs.RecoverStruct(effect.from), true)
@@ -2015,7 +2015,6 @@ sy_ejueCard = sgs.CreateSkillCard {
 				room:doAnimate(1, source:objectName(), p:objectName())
 			end
 			local dummy1 = sgs.Sanguosha:cloneCard("slash")
-			dummy1:deleteLater()
 			for _, p in sgs.qlist(room:getOtherPlayers(source)) do
 				local dummy2 = sgs.Sanguosha:cloneCard("jink")
 				dummy2:deleteLater()
@@ -2041,6 +2040,7 @@ sy_ejueCard = sgs.CreateSkillCard {
 			if dummy1:subcardsLength() > 0 then
 				source:obtainCard(dummy1)
 			end
+			dummy1:deleteLater()
 		else
 			room:broadcastSkillInvoke("sy_ejue")
 			source:drawCards(2, "sy_ejue")

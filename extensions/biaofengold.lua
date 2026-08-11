@@ -460,13 +460,13 @@ FiveFanjian_Card = sgs.CreateSkillCard {
 				end
 				if winner:canSlash(loser, nil, false) then
 					local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-					slash:deleteLater()
 					slash:setSkillName("FiveFanjian")
 					local card_use = sgs.CardUseStruct()
 					card_use.from = winner
 					card_use.to:append(loser)
 					card_use.card = slash
 					room:useCard(card_use, false)
+					slash:deleteLater()
 				end
 			end
 		end
@@ -1282,13 +1282,13 @@ FourXuehen = sgs.CreateTriggerSkill {
 						room:drawCards(xiahou, 1, self:objectName())
 						if xiahou:canSlash(player, nil, false) then
 							local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-							slash:deleteLater()
 							slash:setSkillName(self:objectName())
 							local card_use = sgs.CardUseStruct()
 							card_use.from = xiahou
 							card_use.to:append(player)
 							card_use.card = slash
 							room:useCard(card_use, false)
+							slash:deleteLater()
 						end
 					end
 				end
@@ -1605,13 +1605,13 @@ FourHuoji_Card = sgs.CreateSkillCard {
 		local card_id = effect.card:getEffectiveId()
 		room:showCard(source, card_id)
 		local fireattack = sgs.Sanguosha:cloneCard("FireAttack", sgs.Card_NoSuit, 0)
-		fireattack:deleteLater()
 		fireattack:setSkillName("FourHuoji")
 		local use = sgs.CardUseStruct()
 		use.card = fireattack
 		use.from = source
 		use.to:append(target)
 		room:useCard(use)
+		fireattack:deleteLater()
 	end,
 }
 FourHuoji = sgs.CreateViewAsSkill {

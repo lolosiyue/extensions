@@ -124,9 +124,9 @@ luaRshijiCard = sgs.CreateSkillCard {
 		end
 		if targets_list:length() > 0 then
 			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-			slash:deleteLater()
 			slash:setSkillName("luaRshiji")
 			room:useCard(sgs.CardUseStruct(slash, source, targets_list))
+			slash:deleteLater()
 		end
 	end,
 }
@@ -286,7 +286,6 @@ luaRcaiyi = sgs.CreatePhaseChangeSkill {
 					end
 					local choices = { "luaRcaiyi1" }
 					local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-					dummy:deleteLater()
 					if not list:isEmpty() then
 						table.insert(choices, "luaRcaiyi2")
 						dummy:addSubcards(list)
@@ -298,6 +297,7 @@ luaRcaiyi = sgs.CreatePhaseChangeSkill {
 					else
 						room:obtainCard(player, dummy, false)
 					end
+					dummy:deleteLater()
 				end
 			end
 		end
@@ -384,9 +384,9 @@ luaRsihuCard = sgs.CreateSkillCard {
 		end
 		if effect.to:canSlash(temp, nil, false) then
 			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-			slash:deleteLater()
 			slash:setSkillName("_luaRsihu")
 			room:useCard(sgs.CardUseStruct(slash, effect.to, temp), false)
+			slash:deleteLater()
 		end
 	end,
 }
@@ -565,7 +565,6 @@ luaRyaowu = sgs.CreateTriggerSkill {
 		end
 		local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
 		duel:setSkillName(self:objectName())
-		duel:deleteLater()
 		if effect.to:isAlive() and player:canUse(duel, effect.to) then
 			local use = sgs.CardUseStruct()
 			use.card = duel
@@ -574,6 +573,7 @@ luaRyaowu = sgs.CreateTriggerSkill {
 			use.to:append(dest)
 			room:useCard(use)
 		end
+		duel:deleteLater()
 	end,
 }
 

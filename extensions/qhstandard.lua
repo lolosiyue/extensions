@@ -6663,9 +6663,9 @@ mythshuangjia = sgs.CreateTriggerSkill {
                 end
                 room:clearAG()
                 local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0) -- 虚拟卡
-                dummy:deleteLater()
                 dummy:addSubcards(cards)
                 player:obtainCard(dummy, false)
+                dummy:deleteLater()
                 room:setPlayerProperty(player, "mythhujia", sgs.QVariant(4))
                 for i = 0, 3, 1 do
                     local card = cards:at(i)
@@ -7534,9 +7534,9 @@ mythmumu = sgs.CreateTriggerSkill {
                     end
                     target:setFlags("-qh_InTempMoving")
                     local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0) -- 虚拟卡
-                    dummy:deleteLater()
                     dummy:addSubcards(ids)
                     room:obtainCard(player, dummy, false) -- 获得
+                    dummy:deleteLater()
                 end
                 room:setPlayerMark(player, "&mythmumu-Clear", 1)
             elseif choice == "mopai" then
@@ -7622,9 +7622,9 @@ mythxialei = sgs.CreateTriggerSkill {
                         room:clearAG()
                     end
                     local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0) -- 虚拟卡
-                    dummy:deleteLater()
                     dummy:addSubcards(cards)
                     player:obtainCard(dummy, false)
+                    dummy:deleteLater()
                     if player:isDead() then
                         room:returnToTopDrawPile(card_ids) --放回摸牌堆
                     else
@@ -7680,9 +7680,9 @@ mythxialei = sgs.CreateTriggerSkill {
                 end
             end
             local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0) -- 虚拟卡
-            dummy:deleteLater()
             dummy:addSubcards(cards)
             player:obtainCard(dummy, false)
+            dummy:deleteLater()
         end
     end
 }
@@ -7742,9 +7742,9 @@ mythanzhiCARD = sgs.CreateSkillCard {    -- 暗织 技能卡
                     room:clearAG()
                 end
                 local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0) -- 虚拟卡
-                dummy:deleteLater()
                 dummy:addSubcards(cards)
                 target:obtainCard(dummy)
+                dummy:deleteLater()
             end
             room:addPlayerMark(source, "&mythanzhi-Clear", 1)
         else

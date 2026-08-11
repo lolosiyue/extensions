@@ -2036,7 +2036,6 @@ GuanduOnTrigger = sgs.CreateTriggerSkill{
 				if sj=="gd_zhanyanliangzhuwenchou" then
 					local card = sgs.Sanguosha:cloneCard("Duel", sgs.Card_NoSuit, 0)
 					card:setSkillName("gd_zhanyanliangzhuwenchou")
-					card:deleteLater()
 					local targets = sgs.SPlayerList()
 					for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 						if not player:isCardLimited(card, sgs.Card_MethodUse) and not player:isProhibited(p, card) then
@@ -2054,6 +2053,7 @@ GuanduOnTrigger = sgs.CreateTriggerSkill{
 					else
 						room:loseHp(player, 1, true, nil, "gd_zhanyanliangzhuwenchou")
 					end
+					card:deleteLater()
 				end
 			end
         elseif event==sgs.EventPhaseChanging then

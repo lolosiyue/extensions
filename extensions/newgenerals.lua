@@ -2214,7 +2214,6 @@ jizhanw = sgs.CreatePhaseChangeSkill {
 		end
 
 		local slash = sgs.Sanguosha:cloneCard("slash")
-		slash:deleteLater()
 		for _, id in sgs.qlist(gets) do
 			if room:getCardPlace(id) ~= sgs.Player_PlaceTable then
 				continue
@@ -2230,6 +2229,7 @@ jizhanw = sgs.CreatePhaseChangeSkill {
 			end
 			room:obtainCard(player, slash)
 		end
+		slash:deleteLater()
 		return true
 	end,
 }
@@ -4020,10 +4020,10 @@ keolzhenyingCard = sgs.CreateSkillCard {
 		table.sort(aps, compare_func)
 		local duel = sgs.Sanguosha:cloneCard("duel")
 		duel:setSkillName("_keolzhenying")
-		duel:deleteLater()
 		if aps[1]:getHandcardNum() < aps[#aps]:getHandcardNum() and aps[1]:canUse(duel, aps[#aps]) then
 			room:useCard(sgs.CardUseStruct(duel, aps[1], aps[#aps]))
 		end
+		duel:deleteLater()
 	end,
 }
 --主技能
@@ -7118,7 +7118,6 @@ nosjinxuanbei = sgs.CreateTriggerSkill {
 			end
 			room:sendCompulsoryTriggerLog(player, self)
 			local slash = sgs.Sanguosha:cloneCard("slash")
-			slash:deleteLater()
 			for i = 1, 2 do
 				if ids:isEmpty() then
 					break
@@ -7131,6 +7130,7 @@ nosjinxuanbei = sgs.CreateTriggerSkill {
 				return false
 			end
 			room:obtainCard(player, slash)
+			slash:deleteLater()
 		else
 			if not room:hasCurrent() or player:getMark("nosjinxuanbei_Used-Clear") > 0 then
 				return false
@@ -8771,7 +8771,6 @@ secondjielie = sgs.CreateTriggerSkill {
 			end
 			if not list:isEmpty() then
 				local slash = sgs.Sanguosha:cloneCard("slash")
-				slash:deleteLater()
 				for i = 1, damage.damage do
 					if list:isEmpty() then
 						break
@@ -8783,6 +8782,7 @@ secondjielie = sgs.CreateTriggerSkill {
 				if slash:subcardsLength() > 0 then
 					room:obtainCard(p, slash)
 				end
+				slash:deleteLater()
 			end
 		end
 		return true
@@ -17906,12 +17906,12 @@ keolyangkuang = sgs.CreateTriggerSkill {
 		if event == sgs.HpRecover then
 			local jiu = sgs.Sanguosha:cloneCard("analeptic")
 			jiu:setSkillName("_" .. self:objectName())
-			jiu:deleteLater()
 			if player:getLostHp() < 1 and player:canUse(jiu, player) and player:askForSkillInvoke(self, data) then
 				room:useCard(sgs.CardUseStruct(jiu, player, player), true)
 				local aps = SPlayerList(room:getCurrent(), player)
 				room:drawCards(aps, 1, self:objectName())
 			end
+			jiu:deleteLater()
 		end
 	end,
 	--[[can_trigger = function(self,target)

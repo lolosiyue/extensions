@@ -457,7 +457,6 @@ function throwRandomCards(random_bool, thrower, victim, n, flag, skill)  --éšæœ
 	local room = sgs.Sanguosha:currentRoom()
 	local x = victim:getCards(flag):length()
 	local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
-	dummy:deleteLater()
 	if random_bool == true then
 		local include_equip = false
 		if string.find(flag, "e") then include_equip = true end
@@ -482,6 +481,7 @@ function throwRandomCards(random_bool, thrower, victim, n, flag, skill)  --éšæœ
 			room:throwCard(dummy, reason, victim, thrower)
 		end
 	end
+	dummy:deleteLater()
 end
 
 --[[
@@ -960,10 +960,10 @@ sy_zongyu = sgs.CreateTriggerSkill{
 			if use.card:isKindOf("TrickCard") then
 				local analeptic = sgs.Sanguosha:cloneCard("analeptic", sgs.Card_NoSuit, 0)
 				analeptic:setSkillName(self:objectName())
-				analeptic:deleteLater()
 				room:sendCompulsoryTriggerLog(player, self:objectName())
 				room:broadcastSkillInvoke("analeptic")
 				room:useCard(sgs.CardUseStruct(analeptic, player, sgs.SPlayerList(), true))
+				analeptic:deleteLater()
 			end
 		end
 	end
@@ -1027,7 +1027,6 @@ sy_baozheng = sgs.CreateTriggerSkill{
 			    else
 					local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 					slash:setSkillName(self:objectName())
-					slash:deleteLater()
 					if not s:isProhibited(player, slash) then
 						room:sendCompulsoryTriggerLog(s, self:objectName())
 						room:notifySkillInvoked(s, "sy_baozheng")
@@ -1038,6 +1037,7 @@ sy_baozheng = sgs.CreateTriggerSkill{
 						use.card = slash
 						room:useCard(use, false)
 					end
+					slash:deleteLater()
 				end
 			end
 		end
@@ -1068,7 +1068,6 @@ sy_nishi = sgs.CreateTriggerSkill{
 		if damage.from:getCards("e"):isEmpty() then table.removeOne(choices, "clearEquipArea") end
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName(self:objectName())
-		slash:deleteLater()
 		if player:isProhibited(damage.from, slash) then table.removeOne(choices, "ViewAsUseSlash="..player:objectName()) end
 		if #choices > 0 then
 			local item = room:askForChoice(damage.from, self:objectName(), table.concat(choices, "+"))
@@ -1086,6 +1085,7 @@ sy_nishi = sgs.CreateTriggerSkill{
 				room:useCard(use, false)
 			end
 		end
+		slash:deleteLater()
 	end
 }
 
@@ -1491,7 +1491,6 @@ sy_chanxianCard = sgs.CreateSkillCard{
 		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TRANSFER, source:objectName(), "sy_chanxian", nil)
 		local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
 		duel:setSkillName("sy_chanxian")
-		duel:deleteLater()
 		room:setPlayerFlag(source, "sy_chanxian")
 		if place == sgs.Player_PlaceHand then
 			local _to = room:askForPlayerChosen(source, room:getOtherPlayers(from), "sy_chanxian", "@chanxian_to:"..card:objectName()..":"..card:getSuitString().."_char"..":"..card:getNumberString())
@@ -1534,7 +1533,7 @@ sy_chanxianCard = sgs.CreateSkillCard{
 			if (not from:isCardLimited(duel, sgs.Card_MethodUse)) and (not from:isProhibited(_to, duel)) and from:isAlive() and _to:isAlive() then
 				room:useCard(sgs.CardUseStruct(duel, from, _to))
 			end
-		
+		duel:deleteLater()
 		end
 		room:setPlayerFlag(source, "-sy_chanxian")
 	end
@@ -1834,7 +1833,6 @@ sy_kuangxi = sgs.CreateTriggerSkill{
 				if player:askForSkillInvoke(self:objectName(), data) then
 					local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 					slash:setSkillName(self:objectName())
-					slash:deleteLater()
 					room:notifySkillInvoked(player, "sy_kuangxi")
 					local to = sgs.SPlayerList()
 					for _,p in sgs.qlist(use.to) do
@@ -1846,6 +1844,7 @@ sy_kuangxi = sgs.CreateTriggerSkill{
 					use.card = slash
 					use.m_addHistory = false
 					slash:onUse(room, use)
+					slash:deleteLater()
 				end
 			end
 			if use.card and use.card:getSkillName() == self:objectName() and player:getMark(self:objectName()) == 0 then
@@ -2049,7 +2048,6 @@ sy_zuijiuNormalSlashCard = sgs.CreateSkillCard{
 	on_use = function(self, room, source, targets)
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName("sy_zuijiu")
-		slash:deleteLater()
 		local use = sgs.CardUseStruct()
 		use.card = slash
 		use.from = source
@@ -2057,6 +2055,7 @@ sy_zuijiuNormalSlashCard = sgs.CreateSkillCard{
 			use.to:append(p)
 		end
 		room:useCard(use, false)
+		slash:deleteLater()
 	end,
 }
 
@@ -2333,13 +2332,13 @@ sy_luansi = sgs.CreateTriggerSkill{
 				for _, l in sgs.qlist(losers) do
 					if not l:isNude() then
 						local jink = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
-						jink:deleteLater()
 						for i = 1, math.max(1, l:getCards("he"):length()) do
 							if l:isNude() then break end
 							local c = room:askForCardChosen(cfr, l, "he", "sy_luansi", false, sgs.Card_MethodDiscard, jink:getSubcards())
 							jink:addSubcard(c)
 						end
 						room:throwCard(jink, l, cfr)
+						jink:deleteLater()
 					end
 				end
 				if winner == nil then
@@ -2379,7 +2378,6 @@ sy_huoxin = sgs.CreateTriggerSkill{
 				local choice = room:askForChoice(damage.from, self:objectName(), table.concat(choices, "+"))
 				if choice == "obtain_onebyone" then
 				    local dummy = sgs.Sanguosha:cloneCard("slash")
-					dummy:deleteLater()
 					local flags = {}
 					if damage.from:getCards("h"):length() > 0 then table.insert(flags, "h") end
 					if damage.from:getCards("e"):length() > 0 then table.insert(flags, "e") end
@@ -2390,6 +2388,7 @@ sy_huoxin = sgs.CreateTriggerSkill{
 						if id < 0 then break end
 					end
 					if dummy:subcardsLength() > 0 then room:obtainCard(player, dummy, false) end
+					dummy:deleteLater()
 				else
 				    room:loseHp(damage.from, 1, true, player, self:objectName())
 					return true
@@ -2748,13 +2747,13 @@ sy_mojian = sgs.CreateTriggerSkill{
 				if player:getPhase() == sgs.Player_Finish then room:setPlayerMark(player, "&mojian_jink", 0) end
 				local aa = sgs.Sanguosha:cloneCard("archery_attack", sgs.Card_NoSuit, 0)
 				aa:setSkillName(self:objectName())
-				aa:deleteLater()
 				room:sendCompulsoryTriggerLog(player, self:objectName())
 				local use = sgs.CardUseStruct()
 				use.card = aa
 				use.from = player
 				use.to = room:getOtherPlayers(player)
 				room:useCard(use)
+				aa:deleteLater()
 			end
 		elseif event == sgs.CardResponded then
 			if data:toCardResponse().m_toCard and table.contains(data:toCardResponse().m_toCard:getSkillNames(), "sy_mojian") then
@@ -4325,7 +4324,6 @@ sy_fengzhan = sgs.CreateTriggerSkill{
 		end
 		if targets:isEmpty() then
 		    player:obtainCard(judge.card)
-			slash:deleteLater()
 		end
 		local to = room:askForPlayerChosen(player, targets, self:objectName())
 		if to then
@@ -4335,6 +4333,7 @@ sy_fengzhan = sgs.CreateTriggerSkill{
 			card_use.to:append(to)
 			room:useCard(card_use, false)
 		else
+			slash:deleteLater()
 		    return false
 		end
 		slash:deleteLater()

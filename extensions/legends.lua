@@ -323,12 +323,12 @@ wuwei = sgs.CreateTriggerSkill{
 					room:broadcastSkillInvoke("wuwei", math.random(1, 2))
 					local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
 					duel:setSkillName(self:objectName())
-					duel:deleteLater()
 					local use = sgs.CardUseStruct()
 					use.card = duel
 					use.from = player
 					use.to:append(target)
 					room:useCard(use)
+					duel:deleteLater()
 				end
 			end
 		end
@@ -1421,7 +1421,6 @@ huanyinCard = sgs.CreateSkillCard{
 			ucard = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
 		end
 		ucard:setSkillName(self:objectName())
-		ucard:deleteLater()
 		local use = sgs.CardUseStruct()
 		use.card = ucard
 		use.from = source
@@ -1429,6 +1428,7 @@ huanyinCard = sgs.CreateSkillCard{
 			use.to:append(p)
 		end
 		room:useCard(use)
+		ucard:deleteLater()
 		room:broadcastSkillInvoke("huanyin", math.random(1,2))
 		source:loseMark("@huanyin")
 	end
@@ -2236,13 +2236,13 @@ manheng = sgs.CreateTriggerSkill{
 								if target:isAlive() then
 									player:addMark("manhengslash")
 									local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-									slash:deleteLater()
 									slash:setSkillName(self:objectName())
 									local use = sgs.CardUseStruct()
 									use.card = slash
 									use.from = player
 									use.to:append(target)
 									room:useCard(use)
+									slash:deleteLater()
 								end
 							end
 						end
@@ -3632,9 +3632,9 @@ liusha = sgs.CreateTriggerSkill{
 			end
 			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE,"",self:objectName(),"")
 			room:throwCard(slash, reason, nil)
-			slash:deleteLater()
 			room:damage(sgs.DamageStruct("liusha", player, target))
 			target:turnOver()
+			slash:deleteLater()
 		end
 		return false
 	end,

@@ -570,10 +570,10 @@ laplace_box_skill = sgs.CreateTriggerSkill{
 				local use = sgs.CardUseStruct()
 				local card = sgs.Sanguosha:cloneCard("amazing_grace", sgs.Card_NoSuit, 0)
 				card:setSkillName("laplace_box")
-				card:deleteLater()
 				use.card = card
 				use.from = player
 				room:useCard(use)
+				card:deleteLater()
 			end
 		else
 			local damage = data:toDamage()

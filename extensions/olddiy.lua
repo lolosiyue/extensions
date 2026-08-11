@@ -374,7 +374,6 @@ spwushen=sgs.CreateTriggerSkill{
 		end
 		if card and card:getSuit()==sgs.Card_Heart and player:hasSkill("spwushen") and not player:hasFlag("spwushen") then
 			local card=sgs.Sanguosha:cloneCard("fire_slash",sgs.Card_Heart,0)
-			card:deleteLater()
 			card:setSkillName("spwushen")
 			local players=sgs.SPlayerList()
 			room:setPlayerFlag(player, "InfinityAttackRange")
@@ -393,6 +392,7 @@ spwushen=sgs.CreateTriggerSkill{
 				room:useCard(use,false)
 				room:setPlayerFlag(player,"-spwushen")	
 			end
+			card:deleteLater()
 			room:setPlayerFlag(player, "-InfinityAttackRange")
 		end
 	end,
@@ -674,7 +674,6 @@ fjsp_youlong = sgs.CreateTriggerSkill{
 			local damage = data:toDamage()
 			local slash = sgs.Sanguosha:cloneCard("slash",sgs.Card_NoSuit,0)
         	slash:setSkillName(self:objectName())
-			slash:deleteLater()
             local targets = sgs.SPlayerList()
 			if zhaoyun:canSlash(damage.from, slash, false) then
 				targets:append(damage.from)
@@ -693,6 +692,7 @@ fjsp_youlong = sgs.CreateTriggerSkill{
         		room:useCard(use)    
                 room:setPlayerMark(zhaoyun, self:objectName().."using", 0)
         	end
+			slash:deleteLater()
          end
       end
     elseif event == sgs.Damage then 
@@ -1386,8 +1386,8 @@ qingyue = sgs.CreateTriggerSkill {
 						for _, card in sgs.qlist(cards) do
 							allcard:addSubcard(card)
 						end
-						allcard:deleteLater()
 						player:getRoom():obtainCard(player, allcard, false)
+						allcard:deleteLater()
 						player:getRoom():broadcastSkillInvoke("qingyue", math.random(2))
 					end
 				end

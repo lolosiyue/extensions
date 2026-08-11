@@ -583,10 +583,10 @@ keqilianzhuCard = sgs.CreateSkillCard {
 			if p:getKingdom() == target:getKingdom() then
 				local dismantlement = sgs.Sanguosha:cloneCard("dismantlement")
 				dismantlement:setSkillName("_keqilianzhu")
-				dismantlement:deleteLater()
 				if source:canUse(dismantlement, p) then
 					room:useCard(sgs.CardUseStruct(dismantlement, source, p))
 				end
+				dismantlement:deleteLater()
 			end
 		end
 	end,
@@ -2162,7 +2162,6 @@ keqijuxiang = sgs.CreateTriggerSkill {
 				and player:hasSkill(self:objectName())
 			then
 				local dummy = sgs.Sanguosha:cloneCard("slash")
-				dummy:deleteLater()
 				for _, id in sgs.qlist(move.card_ids) do
 					if player:handCards():contains(id) then
 						dummy:addSubcard(id)
@@ -2186,6 +2185,7 @@ keqijuxiang = sgs.CreateTriggerSkill {
 					room:addSlashCishu(log.from, #ss, true)
 					room:sendLog(log)
 				end
+				dummy:deleteLater()
 			end
 		end
 	end,
@@ -2447,7 +2447,6 @@ keqijizhanw = sgs.CreatePhaseChangeSkill {
 		end
 
 		local slash = sgs.Sanguosha:cloneCard("slash")
-		slash:deleteLater()
 		for _, id in sgs.qlist(gets) do
 			if room:getCardPlace(id) ~= sgs.Player_PlaceTable then
 				continue
@@ -2463,6 +2462,7 @@ keqijizhanw = sgs.CreatePhaseChangeSkill {
 			end
 			room:obtainCard(player, slash)
 		end
+		slash:deleteLater()
 		return true
 	end,
 }
@@ -3041,7 +3041,6 @@ kechengduxingCard = sgs.CreateSkillCard {
 	about_to_use = function(self, room, use)
 		local duel = sgs.Sanguosha:cloneCard("duel")
 		duel:setSkillName("kechengduxing")
-		duel:deleteLater()
 		use.card = duel
 		for _, p in sgs.qlist(use.to) do
 			for _, h in sgs.qlist(p:getHandcards()) do
@@ -3062,6 +3061,7 @@ kechengduxingCard = sgs.CreateSkillCard {
 			end
 			room:filterCards(p, cs, true)
 		end
+		duel:deleteLater()
 	end,
 }
 --主技能
@@ -3965,10 +3965,10 @@ kechengqingxiCard = sgs.CreateSkillCard {
 		room:setPlayerMark(target, "beusekechengqingxi-PlayClear", 1)
 		local slash = sgs.Sanguosha:cloneCard("yj_stabs_slash")
 		slash:setSkillName("kechengqingxi")
-		slash:deleteLater()
 		if player:canSlash(target, slash, false) then
 			room:useCard(sgs.CardUseStruct(slash, player, target), true)
 		end
+		slash:deleteLater()
 	end,
 }
 --主技能
@@ -4037,7 +4037,6 @@ kechengjinmie = sgs.CreateTriggerSkill {
 				if cha > 0 then
 					--room:broadcastSkillInvoke(self:objectName())
 					local dc = sgs.Sanguosha:cloneCard("slash")
-					dc:deleteLater()
 					for i = 1, cha do
 						local id = room:askForCardChosen(damage.from, damage.to, "h", self:objectName(), false, sgs.Card_MethodDiscard, dc:getSubcards())
 						if id >= 0 then
@@ -4047,6 +4046,7 @@ kechengjinmie = sgs.CreateTriggerSkill {
 						end
 					end
 					room:throwCard(dc, damage.to, damage.from)
+					dc:deleteLater()
 				end
 			end
 		end
@@ -4143,10 +4143,10 @@ kechengqongtu = sgs.CreateTriggerSkill {
 						room:changeKingdom(owner, "wei")
 						local dummy = sgs.Sanguosha:cloneCard("slash")
 						dummy:addSubcards(owner:getPile("kechengqongtu"))
-						dummy:deleteLater()
 						if dummy:subcardsLength() > 0 then
 							owner:obtainCard(dummy)
 						end
+						dummy:deleteLater()
 					end
 				end
 			end
@@ -4973,8 +4973,8 @@ kechengyirang = sgs.CreateTriggerSkill {
 							dummy:addSubcard(card:getId())
 						end
 					end
-					dummy:deleteLater()
 					if dummy:subcardsLength() < 1 then
+						dummy:deleteLater()
 						return false
 					end
 					local one = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "kechengyirang-ask", false, true)
@@ -4987,6 +4987,7 @@ kechengyirang = sgs.CreateTriggerSkill {
 						end
 						room:recover(player, sgs.RecoverStruct(self:objectName(), player, dummy:subcardsLength()))
 					end
+					dummy:deleteLater()
 				end
 			end
 		end
@@ -5493,10 +5494,10 @@ kezhuandingce = sgs.CreateTriggerSkill {
 				if #cs > 1 and cs[1] == cs[2] and player:isAlive() then
 					local dzxj = sgs.Sanguosha:cloneCard("dongzhuxianji")
 					dzxj:setSkillName("_kezhuandingce")
-					dzxj:deleteLater()
 					if player:canUse(dzxj, player) then
 						room:useCard(sgs.CardUseStruct(dzxj, player, player), true)
 					end
+					dzxj:deleteLater()
 				end
 			end
 		end
@@ -6056,10 +6057,10 @@ kezhuanxushiCard = sgs.CreateSkillCard {
 				end
 			end
 		end
-		dummy:deleteLater()
 		if dummy:subcardsLength() > 0 then
 			player:obtainCard(dummy)
 		end
+		dummy:deleteLater()
 	end,
 }
 
@@ -6334,10 +6335,10 @@ kezhuanjiaohao = sgs.CreateTriggerSkill {
 						end
 					end
 				end
-				dummy:deleteLater()
 				if dummy:subcardsLength() > 0 then
 					player:obtainCard(dummy)
 				end
+				dummy:deleteLater()
 			end
 		end
 	end,
@@ -8170,7 +8171,6 @@ kehejinfaCard = sgs.CreateSkillCard {
 				end
 			else
 				local dummy = sgs.Sanguosha:cloneCard("slash")
-				dummy:deleteLater()
 				for _, id in sgs.qlist(sgs.Sanguosha:getRandomCards(true)) do
 					if sgs.Sanguosha:getEngineCard(id):isKindOf("Ying") and room:getCardOwner(id) == nil then
 						dummy:addSubcard(id)
@@ -8180,6 +8180,7 @@ kehejinfaCard = sgs.CreateSkillCard {
 						end
 					end
 				end
+				dummy:deleteLater()
 			end
 		end
 		askYishi(ys)
@@ -9716,7 +9717,6 @@ kehechiyingCard = sgs.CreateSkillCard {
 					dummy:addSubcard(id)
 				end
 			end
-			dummy:deleteLater()
 			if dummy:subcardsLength() <= target:getHp() then
 				alldis = dummy:getSubcards()
 				dummy:clearSubcards()
@@ -9727,6 +9727,7 @@ kehechiyingCard = sgs.CreateSkillCard {
 				end
 				target:obtainCard(dummy)
 			end
+			dummy:deleteLater()
 		end
 	end,
 }

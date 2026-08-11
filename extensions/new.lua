@@ -1090,11 +1090,11 @@ luajiaodi = sgs.CreateTriggerSkill {
 			end
 			if #card_to_gotback > 0 then
 				local dummy2 = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-				dummy2:deleteLater()
 				for _, id in ipairs(card_to_gotback) do
 					dummy2:addSubcard(id)
 				end
 				room:obtainCard(player, dummy2)
+				dummy2:deleteLater()
 			end
 
 			if player:getPile("luamou"):length() >= 8 then

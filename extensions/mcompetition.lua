@@ -2184,7 +2184,6 @@ on_use = function(self, room, player, targets)
 local victim = targets[1]
 local card = sgs.Sanguosha:getCard(self:getSubcards():first())
 local slash = sgs.Sanguosha:cloneCard("slash", card:getSuit(), card:getNumber())
-slash:deleteLater()
 slash:addSubcard(card) 
 slash:setSkillName("feitianshuangzhan")
 local use = sgs.CardUseStruct()
@@ -2192,6 +2191,7 @@ use.card = slash
 use.from = player
 use.to:append(victim)
 room:useCard(use)
+slash:deleteLater()
 end
 }
 feitianshuangzhan = sgs.CreateViewAsSkill{

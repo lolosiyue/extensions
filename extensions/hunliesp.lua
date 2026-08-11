@@ -101,7 +101,6 @@ function throwRandomCards(random_bool, thrower, victim, n, flag, skill)  --随�
 	local room = sgs.Sanguosha:currentRoom()
 	local x = victim:getCards(flag):length()
 	local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
-	dummy:deleteLater()
 	if random_bool == true then
 		local include_equip = false
 		if string.find(flag, "e") then include_equip = true end
@@ -118,13 +117,13 @@ function throwRandomCards(random_bool, thrower, victim, n, flag, skill)  --随�
 		if thrower:objectName() == victim:objectName() then
 			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_THROW, thrower:objectName(), skill, "")
 			room:throwCard(dummy, reason, nil)
-			dummy:deleteLater()
 			card_ids = sgs.IntList()
 		else
 			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_DISMANTLE, thrower:objectName(), nil, skill, nil)
 			room:throwCard(dummy, reason, victim, thrower)
 		end
 	end
+	dummy:deleteLater()
 end
 
 --是不是机关技能
@@ -175,7 +174,6 @@ yinyang_lose = sgs.CreateTriggerSkill{
 					end
 				end
 				local dummy = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
-				dummy:deleteLater()
 				for i = 1, x do
 					local j = math.random(1, #red_cards)
 					dummy:addSubcard(red_cards[j])
@@ -183,6 +181,7 @@ yinyang_lose = sgs.CreateTriggerSkill{
 					if #red_cards == 0 then break end
 				end
 				if dummy:subcardsLength() > 0 then room:obtainCard(player, dummy, false) end
+				dummy:deleteLater()
 			end
 		end
 		if data:toString() == "sgkgodjiyin" then
@@ -197,7 +196,6 @@ yinyang_lose = sgs.CreateTriggerSkill{
 					end
 				end
 				local dummy = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
-				dummy:deleteLater()
 				for i = 1, x do
 					local j = math.random(1, #black_cards)
 					dummy:addSubcard(black_cards[j])
@@ -205,6 +203,7 @@ yinyang_lose = sgs.CreateTriggerSkill{
 					if #black_cards == 0 then break end
 				end
 				if dummy:subcardsLength() > 0 then room:obtainCard(player, dummy, false) end
+				dummy:deleteLater()
 			end
 		end
 		if data:toString() == "sgkgodxiangsheng" then
@@ -937,7 +936,6 @@ sgkgodshajueCard = sgs.CreateSkillCard{
 					local random_slash = sgs.Sanguosha:cloneCard(random_nature(), sgs.Card_SuitToBeDecided, -1)
 					random_slash:addSubcard(inicards[t])
 					random_slash:setSkillName("shajue_slash")
-					random_slash:deleteLater()
 					table.removeOne(inicards, inicards[t])
 					vic:addQinggangTag(random_slash)
 					local use = sgs.CardUseStruct()
@@ -950,6 +948,7 @@ sgkgodshajueCard = sgs.CreateSkillCard{
 					log.card_str = use.card:toString()
 					room:sendLog(log)
 					room:useCard(use, false)
+					random_slash:deleteLater()
 				end
 				if #inicards == 0 then break end
 			end
@@ -1468,7 +1467,6 @@ sgkgodfengying = sgs.CreateTriggerSkill{
 			if player:getMark("fengying_thunderslash-Clear") >= 4 then return false end
 			local thunder_slash = sgs.Sanguosha:cloneCard("thunder_slash", sgs.Card_NoSuit, 0)
 			thunder_slash:setSkillName(self:objectName())
-			thunder_slash:deleteLater()
 			local k = move.card_ids:length()
 			for _, id in sgs.qlist(move.card_ids) do
 				local targets = sgs.SPlayerList()
@@ -1493,6 +1491,7 @@ sgkgodfengying = sgs.CreateTriggerSkill{
 					end
 				end
 			end
+			thunder_slash:deleteLater()
 			if player:getMark("fengying_tempcount") > 0 then
 				local final_ids = sgs.IntList()
 				local x = k - player:getMark("fengying_tempcount")
@@ -2097,7 +2096,6 @@ sgkgodyingshiRob = sgs.CreateTriggerSkill{
 			local change = data:toPhaseChange()
 			if change.to == sgs.Player_NotActive then
 				local yingshi = sgs.Sanguosha:cloneCard("jink", sgs.Card_NoSuit, 0)
-				yingshi:deleteLater()
 				--1. 统计牌堆和弃牌堆
 				if not room:getDrawPile():isEmpty() then
 					for _, id in sgs.qlist(room:getDrawPile()) do
@@ -2127,6 +2125,7 @@ sgkgodyingshiRob = sgs.CreateTriggerSkill{
 				for _, pe in sgs.qlist(room:getPlayers()) do
 					if pe:getMark("jlyingshi_moved") > 0 then room:setPlayerMark(pe, "jlyingshi_moved", 0) end
 				end
+				yingshi:deleteLater()
 			end
 		end
 	end
@@ -2259,7 +2258,6 @@ sgkgodlangxi = sgs.CreateTriggerSkill{
 						for _, _name in ipairs(langxi_names) do
 							local langxi_card = sgs.Sanguosha:cloneCard(_name, sgs.Card_NoSuit, 0)
 							langxi_card:setSkillName("_sgkgodlangxi")
-							langxi_card:deleteLater()
 							local langxi_to = sgs.SPlayerList()
 							for i = 1, #targets, 1 do
 								if targets[i]:isAlive() then langxi_to:append(targets[i]) end
@@ -2271,6 +2269,7 @@ sgkgodlangxi = sgs.CreateTriggerSkill{
 								use.card = langxi_card
 								room:useCard(use, false)
 							end
+							langxi_card:deleteLater()
 						end
 					end
 					room:clearAG(player)
@@ -4161,12 +4160,12 @@ end
 
 TG_Effect["shandianpanding"] = function(self, room, player, source)  --进行【闪电】判定
 	local lightning = sgs.Sanguosha:cloneCard("lightning", sgs.Card_NoSuit, 0)
-	lightning:deleteLater()
 	local effect = sgs.CardEffectStruct()
 	effect.from = nil
 	effect.to = player
 	effect.card = lightning
 	lightning:onEffect(effect)
+	lightning:deleteLater()
 end
 
 TG_Effect["shoupaishangxianjiayi"] = function(self, room, player, source)  --手牌上限+1
@@ -4230,92 +4229,92 @@ end
 TG_Effect["view_as_nanmanruqin"] = function(self, room, player, source)  --视为使用【南蛮入侵】
 	local acard = sgs.Sanguosha:cloneCard("savage_assault", sgs.Card_NoSuit, 0)
 	acard:setSkillName(self:objectName())
-	acard:deleteLater()
 	room:useCard(sgs.CardUseStruct(acard, player, room:getOtherPlayers(player)))
+	acard:deleteLater()
 end
 
 TG_Effect["view_as_taoyuanjieyi"] = function(self, room, player, source)  --视为使用【桃园结义】
 	local acard = sgs.Sanguosha:cloneCard("god_salvation", sgs.Card_NoSuit, 0)
 	acard:setSkillName(self:objectName())
-	acard:deleteLater()
 	room:useCard(sgs.CardUseStruct(acard, player, room:getAlivePlayers()))
+	acard:deleteLater()
 end
 
 TG_Effect["view_as_wugufengdeng"] = function(self, room, player, source)  --视为使用【五谷丰登】
 	local acard = sgs.Sanguosha:cloneCard("amazing_grace", sgs.Card_NoSuit, 0)
 	acard:setSkillName(self:objectName())
-	acard:deleteLater()
 	room:useCard(sgs.CardUseStruct(acard, player, room:getAlivePlayers()))
+	acard:deleteLater()
 end
 
 TG_Effect["view_as_wuzhongshengyou"] = function(self, room, player, source)  --视为使用【无中生有】
 	local acard = sgs.Sanguosha:cloneCard("ex_nihilo", sgs.Card_NoSuit, 0)
 	acard:setSkillName(self:objectName())
-	acard:deleteLater()
 	room:useCard(sgs.CardUseStruct(acard, player, player))
+	acard:deleteLater()
 end
 
 TG_Effect["view_as_wanjianqifa"] = function(self, room, player, source)  --视为使用【万箭齐发】
 	local acard = sgs.Sanguosha:cloneCard("archery_attack", sgs.Card_NoSuit, 0)
 	acard:setSkillName(self:objectName())
-	acard:deleteLater()
 	room:useCard(sgs.CardUseStruct(acard, player, room:getOtherPlayers(player)))
+	acard:deleteLater()
 end
 
 TG_Effect["view_as_peach"] = function(self, room, player, source)  --视为使用【桃】
 	local acard = sgs.Sanguosha:cloneCard("peach", sgs.Card_NoSuit, 0)
 	acard:setSkillName(self:objectName())
-	acard:deleteLater()
 	room:useCard(sgs.CardUseStruct(acard, player, player))
+	acard:deleteLater()
 end
 
 TG_Effect["view_as_otherslash"] = function(self, room, player, source)  --视为对所有其他角色使用【杀】
 	local acard = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 	acard:setSkillName(self:objectName())
-	acard:deleteLater()
 	room:useCard(sgs.CardUseStruct(acard, player, room:getOtherPlayers(player)))
+	acard:deleteLater()
 end
 
 TG_Effect["view_as_otherfireslash"] = function(self, room, player, source)  --视为对所有其他角色使用【火杀】
 	local acard = sgs.Sanguosha:cloneCard("fire_slash", sgs.Card_NoSuit, 0)
 	acard:setSkillName(self:objectName())
-	acard:deleteLater()
 	room:useCard(sgs.CardUseStruct(acard, player, room:getOtherPlayers(player)))
+	acard:deleteLater()
 end
 
 TG_Effect["view_as_otherthunderslash"] = function(self, room, player, source)  --视为对所有其他角色使用【雷杀】
 	local acard = sgs.Sanguosha:cloneCard("thunder_slash", sgs.Card_NoSuit, 0)
 	acard:setSkillName(self:objectName())
-	acard:deleteLater()
 	room:useCard(sgs.CardUseStruct(acard, player, room:getOtherPlayers(player)))
+	acard:deleteLater()
 end
 
 TG_Effect["view_as_othericeslash"] = function(self, room, player, source)  --视为对所有其他角色使用【冰杀】
 	local acard = sgs.Sanguosha:cloneCard("ice_slash", sgs.Card_NoSuit, 0)
 	acard:setSkillName(self:objectName())
-	acard:deleteLater()
 	room:useCard(sgs.CardUseStruct(acard, player, room:getOtherPlayers(player)))
+	acard:deleteLater()
 end
 
 TG_Effect["view_as_otherBigSlash"] = function(self, room, player, source)  --视为对所有其他角色使用【刺杀】
 	local acard = sgs.Sanguosha:cloneCard("Slash", sgs.Card_NoSuit, 0)
 	acard:setSkillName(self:objectName())
-	acard:deleteLater()
 	room:useCard(sgs.CardUseStruct(acard, player, room:getOtherPlayers(player)))
+	acard:deleteLater()
 end
 
 TG_Effect["view_as_otherduel"] = function(self, room, player, source)  --视为对所有其他角色使用【决斗】
 	local acard = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
 	acard:setSkillName(self:objectName())
-	acard:deleteLater()
 	room:useCard(sgs.CardUseStruct(acard, player, room:getOtherPlayers(player)))
+	acard:deleteLater()
 end
 
 TG_Effect["view_as_othersnatch"] = function(self, room, player, source)  --视为对所有其他角色使用【顺手牵羊】
 	local acard = sgs.Sanguosha:cloneCard("snatch", sgs.Card_NoSuit, 0)
 	acard:setSkillName(self:objectName())
-	acard:deleteLater()
 	room:useCard(sgs.CardUseStruct(acard, player, room:getOtherPlayers(player)))
+	acard:deleteLater()
 end
 
 TG_Effect["suijitwored"] = function(self, room, player, source)  --随机从牌堆或弃牌堆中获得两张红色牌
@@ -4335,11 +4334,11 @@ TG_Effect["suijitwored"] = function(self, room, player, source)  --随机从牌�
 	cards = sgs.QList2Table(cards)
 	local rcards = randomGetN(cards, 2)
 	local dummy = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
-	dummy:deleteLater()
 	for i = 1, #rcards do
 		dummy:addSubcard(rcards[i])
 	end
 	player:obtainCard(dummy, false)
+	dummy:deleteLater()
 end
 
 TG_Effect["suijitwoblack"] = function(self, room, player, source)  --随机从牌堆或弃牌堆中获得两张黑色牌
@@ -4359,11 +4358,11 @@ TG_Effect["suijitwoblack"] = function(self, room, player, source)  --随机从�
 	cards = sgs.QList2Table(cards)
 	local rcards = randomGetN(cards, 2)
 	local dummy = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
-	dummy:deleteLater()
 	for i = 1, #rcards do
 		dummy:addSubcard(rcards[i])
 	end
 	player:obtainCard(dummy, false)
+	dummy:deleteLater()
 end
 
 TG_Effect["suijitwobasic"] = function(self, room, player, source)  --随机从牌堆或弃牌堆中获得两张基本牌
@@ -4383,11 +4382,11 @@ TG_Effect["suijitwobasic"] = function(self, room, player, source)  --随机从�
 	cards = sgs.QList2Table(cards)
 	local rcards = randomGetN(cards, 2)
 	local dummy = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
-	dummy:deleteLater()
 	for i = 1, #rcards do
 		dummy:addSubcard(rcards[i])
 	end
 	player:obtainCard(dummy, false)
+	dummy:deleteLater()
 end
 
 TG_Effect["suijitwotrick"] = function(self, room, player, source)  --随机从牌堆或弃牌堆中获得两张锦囊牌
@@ -4407,11 +4406,11 @@ TG_Effect["suijitwotrick"] = function(self, room, player, source)  --随机从�
 	cards = sgs.QList2Table(cards)
 	local rcards = randomGetN(cards, 2)
 	local dummy = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
-	dummy:deleteLater()
 	for i = 1, #rcards do
 		dummy:addSubcard(rcards[i])
 	end
 	player:obtainCard(dummy, false)
+	dummy:deleteLater()
 end
 
 TG_Effect["suijitwoequip"] = function(self, room, player, source)  --随机从牌堆或弃牌堆中获得两张装备牌
@@ -4431,11 +4430,11 @@ TG_Effect["suijitwoequip"] = function(self, room, player, source)  --随机从�
 	cards = sgs.QList2Table(cards)
 	local rcards = randomGetN(cards, 2)
 	local dummy = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
-	dummy:deleteLater()
 	for i = 1, #rcards do
 		dummy:addSubcard(rcards[i])
 	end
 	player:obtainCard(dummy, false)
+	dummy:deleteLater()
 end
 
 TG_Effect["onedamage"] = function(self, room, player, source)  --受到1点伤害
@@ -5544,12 +5543,12 @@ sgkgodfengtian = sgs.CreateTriggerSkill{
 					room:sendCompulsoryTriggerLog(gy, self:objectName(), true, true)
 					local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 					slash:setSkillName("_sgkgodfengtian")
-					slash:deleteLater()
 					local use = sgs.CardUseStruct()
 					use.from = gy
 					use.to:append(player)
 					use.card = slash
 					room:useCard(use, false)
+					slash:deleteLater()
 				end
 			end
 		elseif event == sgs.CardsMoveOneTime then
@@ -5563,12 +5562,12 @@ sgkgodfengtian = sgs.CreateTriggerSkill{
 						room:sendCompulsoryTriggerLog(gy, self:objectName(), true, true)
 						local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 						slash:setSkillName("_sgkgodfengtian")
-						slash:deleteLater()
 						local use = sgs.CardUseStruct()
 						use.from = gy
 						use.to:append(player)
 						use.card = slash
 						room:useCard(use, false)
+						slash:deleteLater()
 					end
 				end
 			end
@@ -5584,12 +5583,12 @@ sgkgodfengtian = sgs.CreateTriggerSkill{
 					room:sendCompulsoryTriggerLog(gy, self:objectName(), true, true)
 					local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 					slash:setSkillName("_sgkgodfengtian")
-					slash:deleteLater()
 					local use = sgs.CardUseStruct()
 					use.from = gy
 					use.to:append(player)
 					use.card = slash
 					room:useCard(use, false)
+					slash:deleteLater()
 				end
 			end
 		elseif event == sgs.Damage then

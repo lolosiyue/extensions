@@ -268,9 +268,9 @@ fateqiuzhan_card = sgs.CreateSkillCard
 		if (not slash) then
 			local duel = sgs.Sanguosha:cloneCard("duel",sgs.Card_NoSuit, 0)
 			duel:setSkillName("fateqiuzhan_card")
-			duel:deleteLater()
 			local use = sgs.CardUseStruct()
   			use.card = duel
+  			duel:deleteLater()
 			use.to : append(to)
 			use.from = from
 			room:useCard(use,false)
@@ -1238,12 +1238,12 @@ on_trigger=function(self,event,player,data)
 	while(i<x+1 and slashto:isAlive()) do
 		local slash = sgs.Sanguosha:cloneCard("slash",sgs.Card_NoSuit, 0)
 		slash:setSkillName("fatechuanxin_trs")
-		slash:deleteLater()
 		local slashuse = sgs.CardUseStruct()
 		slashuse.from = from
 		slashuse.to:append(slashto)
 		slashuse.card = slash
 		room:useCard(slashuse, false)
+		slash:deleteLater()
 		i=i+1
 	end
 end,
@@ -1278,15 +1278,15 @@ fatetiangong_card = sgs.CreateSkillCard
 	end ,
 	on_use = function(self, room, source, targets)		
 			local slash = sgs.Sanguosha:cloneCard("fire_slash",sgs.Card_NoSuit, 0)
-			slash:deleteLater()
 		    slash:setSkillName("fatetiangong_card")
 			local use = sgs.CardUseStruct()
 			use.from = source
 			for _, p in ipairs(targets) do
-			use.to:append(p)
-		end
+				use.to:append(p)
+			end
 			use.card = slash
 			room:useCard(use, false)
+			slash:deleteLater()
 	end,
 }
 
@@ -1383,12 +1383,12 @@ on_trigger=function(self,event,player,data)
 				local slashto=room:askForPlayerChosen(player, targets, "@fatejianzhong2")
 				local slash = sgs.Sanguosha:cloneCard("slash",sgs.Card_NoSuit, 0)
 				slash:setSkillName("fatejianzhong")
-				slash:deleteLater()
 				local slashuse = sgs.CardUseStruct()
 				slashuse.from = player
 				slashuse.to:append(slashto)
 				slashuse.card = slash
 				room:useCard(slashuse, false)
+				slash:deleteLater()
 			end
 		end
 		return true
@@ -2410,12 +2410,12 @@ fatesiji_card = sgs.CreateSkillCard
 		if to:isAlive() and from:canSlash(to,nil,false ) then 		
 			local slash = sgs.Sanguosha:cloneCard("slash",sgs.Card_NoSuit, 0)
 		    slash:setSkillName("fatesiji_card")
-			slash:deleteLater()
 			local use = sgs.CardUseStruct()
 			use.from = from
 			use.to:append(to)
 			use.card = slash
 			room:useCard(use, false)
+			slash:deleteLater()
 		end
 	end,
 }

@@ -116,8 +116,8 @@ if ElucidatorUse then
 			if effect.card and effect.card:isKindOf("Slash") and effect.from:objectName() == player:objectName() and room:getCurrent():objectName() == player:objectName() then
 				if effect.to and effect.to:isAlive() then
 					local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
-					duel:deleteLater()
 					if effect.to:isProhibited(player, duel) then
+						duel:deleteLater()
 						return
 					end
 					if room:askForSkillInvoke(player, self:objectName(), data) then
@@ -125,6 +125,7 @@ if ElucidatorUse then
 						duel:setSkillName(self:objectName())
 						room:useCard(sgs.CardUseStruct(duel, player, effect.to, false))
 					end
+					duel:deleteLater()
 				end
 			end
 			return false

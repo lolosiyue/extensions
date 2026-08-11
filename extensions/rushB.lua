@@ -650,8 +650,8 @@ diy_f_pojun = sgs.CreateTriggerSkill{
 				    if not p:getPile("diy_f_pojun"):isEmpty() then
 					    local dummy = sgs.Sanguosha:cloneCard("slash")
 					    dummy:addSubcards(p:getPile("diy_f_pojun"))
-						dummy:deleteLater()
 					    room:obtainCard(p, dummy, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXCHANGE_FROM_PILE, p:objectName(), self:objectName(), ""), false)
+					    dummy:deleteLater()
 				    end
 			    end
 		    end
@@ -731,7 +731,6 @@ diy_k_qixiCard = sgs.CreateSkillCard{
 	end,
 	on_use = function(self, room, source, targets)
 		local dummy = sgs.Sanguosha:cloneCard("slash")
-		dummy:deleteLater()
 		for _, card in sgs.qlist(targets[1]:getHandcards()) do
 			dummy:addSubcard(card)
 		end
@@ -739,6 +738,7 @@ diy_k_qixiCard = sgs.CreateSkillCard{
 			dummy:addSubcard(cards)
 		end
 		room:obtainCard(source, dummy)
+		dummy:deleteLater()
 	end,
 }
 diy_k_qixi = sgs.CreateOneCardViewAsSkill{
@@ -2441,13 +2441,13 @@ diy_m_chuifengCard = sgs.CreateSkillCard{
 			local choice = room:askForChoice(source, self:objectName(), "duel+slash+thunder_slash+ice_slash+fire_slash")
 			local card = sgs.Sanguosha:cloneCard(choice)
 			card:setSkillName("_diy_m_chuifengg")
-			card:deleteLater()
 			room:broadcastSkillInvoke("diy_m_chuifeng")
 			room:addPlayerMark(targets[1], "Armor_Nullified");
 			for _,skill in sgs.qlist(targets[1]:getVisibleSkillList()) do
 				room:addPlayerMark(targets[1], "Qingcheng"..skill:objectName())
 			end
 			room:useCard(sgs.CardUseStruct(card, source, targets[1]), false)
+			card:deleteLater()
 			room:removePlayerMark(targets[1], "Armor_Nullified");
 			for _,skill in sgs.qlist(targets[1]:getVisibleSkillList()) do
 				room:removePlayerMark(targets[1], "Qingcheng"..skill:objectName())
@@ -2455,9 +2455,9 @@ diy_m_chuifengCard = sgs.CreateSkillCard{
 		else
 			local card = sgs.Sanguosha:cloneCard("analeptic")
 			card:setSkillName("_diy_m_chuifengg")
-			card:deleteLater()
 			room:broadcastSkillInvoke("diy_m_chuifeng")
 			room:useCard(sgs.CardUseStruct(card, source, source), false)
+			card:deleteLater()
 		end
 	end,
 }
@@ -2597,12 +2597,12 @@ diy_m_choujue = sgs.CreateTriggerSkill{
 			if math.abs(p:getHandcardNum() - p:getHp()) < 3 or p:objectName() == player:objectName() then continue end
 			local card = sgs.Sanguosha:cloneCard("slash")
 			card:setSkillName("_diy_m_choujue")
-			card:deleteLater()
 			room:addPlayerMark(player, "Armor_Nullified");
 			for _,skill in sgs.qlist(player:getVisibleSkillList()) do
 				room:addPlayerMark(player, "Qingcheng"..skill:objectName())
 			end
 			room:useCard(sgs.CardUseStruct(card, p, player), false)
+			card:deleteLater()
 			room:removePlayerMark(player, "Armor_Nullified");
 			for _,skill in sgs.qlist(player:getVisibleSkillList()) do
 				room:removePlayerMark(player, "Qingcheng"..skill:objectName())
@@ -3194,8 +3194,8 @@ rushB_baobian_shensuCard = sgs.CreateSkillCard{
 		if targets_list:length() > 0 then
 			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 			slash:setSkillName(self:objectName())
-			slash:deleteLater()
 			room:useCard(sgs.CardUseStruct(slash, source, targets_list))
+			slash:deleteLater()
 		end
 	end,
 }
@@ -3459,10 +3459,10 @@ rushB_dimeng = sgs.CreateTriggerSkill{
 				room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
 				dummy:addSubcards(players:first():getPile("dimeng"))
 				dummi:addSubcards(players:last():getPile("dimeng"))
-				dummy:deleteLater()
-				dummi:deleteLater()
 				room:obtainCard(players:first(), dummy, false)
 				room:obtainCard(players:last(), dummi, false)
+				dummy:deleteLater()
+				dummi:deleteLater()
 				if player:isKongcheng() or n == x then return false end
 				local m = math.abs(n - x)
 				if player:getHandcardNum() >= m then
@@ -4285,12 +4285,12 @@ rushB_tongboCard = sgs.CreateSkillCard{
 		if to_pile:length() == 0 or to_handcard:length() ~= to_pile:length() then return end
 		source:addToPile("bookpile", to_pile, false)
 		local to_handcard_x = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-		to_handcard_x:deleteLater()
 		for _,id in sgs.qlist(to_handcard) do
 			to_handcard_x:addSubcard(id)
 		end
 		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXCHANGE_FROM_PILE, source:objectName())
 		room:obtainCard(source, to_handcard_x, reason, false)
+		to_handcard_x:deleteLater()
 		local choices = {}
 		local choice = nil
 		local invoke = nil

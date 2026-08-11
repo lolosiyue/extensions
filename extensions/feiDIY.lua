@@ -50,7 +50,6 @@ feilianyingCard = sgs.CreateSkillCard {
                 p:drawCards(1)
             end
             local fire_attack = sgs.Sanguosha:cloneCard("fire_attack", sgs.Card_NoSuit, 0)
-            fire_attack:deleteLater()
             fire_attack:setSkillName("feilianying")
             local to_choose = sgs.SPlayerList()
             for _, p in sgs.qlist(room:getOtherPlayers(source)) do
@@ -68,6 +67,7 @@ feilianyingCard = sgs.CreateSkillCard {
                 room:useCard(card_use, false)
                 fire_attack:deleteLater()
             end
+			fire_attack:deleteLater()
         elseif choice == "Chain" then
             for _, p in pairs(targets) do
                 room:setPlayerChained(p, true)
