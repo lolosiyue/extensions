@@ -248,13 +248,13 @@ luaqingqi_card = sgs.CreateSkillCard
 			if (choice == "luaqingqi1") then
 				room:broadcastSkillInvoke("shensu", 2)
 				local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-				slash:deleteLater()
 				slash:setSkillName(self:objectName())
 				local use_card = sgs.CardUseStruct()
 				use_card.from = effect.from
 				use_card.to:append(effect.to)
 				use_card.card = slash
 				room:useCard(use_card, false)
+				slash:deleteLater()
 			elseif (choice == "luaqingqi2") then
 				local card_id = room:askForCardChosen(effect.from, effect.to, "hej", "luaqingqi")
 				room:broadcastSkillInvoke("xianzhen", 2)
@@ -2421,12 +2421,12 @@ luafanfu_card = sgs.CreateSkillCard
 			else
 				local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 				slash:setSkillName(self:objectName())
-				slash:deleteLater()
 				local use_card = sgs.CardUseStruct()
 				use_card.from = from
 				use_card.to:append(to)
 				use_card.card = slash
 				room:useCard(use_card, false)
+				slash:deleteLater()
 				local kd = sgs.Sanguosha:getKingdoms()
 				table.removeOne(kd,from:getKingdom())
 				if #kd<1 then return end
@@ -3264,10 +3264,10 @@ luabazhen_club = sgs.CreateSkillCard
 			use_card.to:append(targets[2])
 		end
 		local card = sgs.Sanguosha:cloneCard("iron_chain",sgs.Card_NoSuit,0)
-		card:deleteLater()
 		card:setSkillName("luaspbazhen")
 		use_card.card = card
 		room:useCard(use_card,false)
+		card:deleteLater()
 	end
 
 }
@@ -3365,8 +3365,8 @@ luaspbazhen = sgs.CreateTriggerSkill {
 										local fire_attack = sgs.Sanguosha:cloneCard("fire_attack",sgs.Card_NoSuit,0)
 										fire_attack:setSkillName("luaspbazhen")
 										use_card.card = fire_attack
-										fire_attack:deleteLater()
 										room:useCard(use_card,false)
+										fire_attack:deleteLater()
 									end
 								end
 							end

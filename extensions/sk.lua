@@ -1153,7 +1153,6 @@ sk_chaohuangCard = sgs.CreateSkillCard{
 	    room:loseHp(source, 1, true, source, "sk_chaohuang")
 	    local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName("sk_chaohuangSlash")
-		slash:deleteLater()
 		for _, target in ipairs(targets) do
 		    local card_use = sgs.CardUseStruct()
 			card_use.from = source
@@ -1161,6 +1160,7 @@ sk_chaohuangCard = sgs.CreateSkillCard{
 			card_use.to:append(target)
 			room:useCard(card_use, false)
 		end
+		slash:deleteLater()
 	end
 }
 
@@ -2324,12 +2324,12 @@ sk_shejianCard = sgs.CreateSkillCard{
 			if choice ~= "cancel" then
 			    local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 				slash:setSkillName("shejian_slash")
-				slash:deleteLater()
 				local card_use = sgs.CardUseStruct()
 			    card_use.from = target
 			    card_use.card = slash
 			    card_use.to:append(source)
 			    room:useCard(card_use, false)
+			    slash:deleteLater()
 			end
 		end
 	end
@@ -3325,7 +3325,6 @@ sk_hubu = sgs.CreateTriggerSkill{
 				local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
 				duel:setSkillName(self:objectName())
 				duel:toTrick():setCancelable(false)
-				duel:deleteLater()
 				for _, pe in sgs.qlist(room:getOtherPlayers(player)) do
 					if not sgs.Sanguosha:isProhibited(player, pe, duel) then tos:append(pe) end
 				end
@@ -3343,6 +3342,7 @@ sk_hubu = sgs.CreateTriggerSkill{
 						if judge:isGood() then room:useCard(sgs.CardUseStruct(duel, player, to), false) end
 					end
 				end
+				duel:deleteLater()
 			end
 		elseif event == sgs.Damaged then
 			local damage = data:toDamage()
@@ -3351,7 +3351,6 @@ sk_hubu = sgs.CreateTriggerSkill{
 				local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
 				duel:setSkillName(self:objectName())
 				duel:toTrick():setCancelable(false)
-				duel:deleteLater()
 				for _, pe in sgs.qlist(room:getOtherPlayers(player)) do
 					if not sgs.Sanguosha:isProhibited(player, pe, duel) then tos:append(pe) end
 				end
@@ -3369,6 +3368,7 @@ sk_hubu = sgs.CreateTriggerSkill{
 						if judge:isGood() then room:useCard(sgs.CardUseStruct(duel, player, to), false) end
 					end
 				end
+				duel:deleteLater()
 			end
 		end
 	end
@@ -3725,12 +3725,12 @@ sk_caijie = sgs.CreateTriggerSkill{
 				else
 					local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 					slash:setSkillName("caijie_slash")
-					slash:deleteLater()
 					local use = sgs.CardUseStruct()
 					use.from = player
 					use.to:append(yangxiu)
 					use.card = slash
 					room:useCard(use, false)
+					slash:deleteLater()
 				end
 			end
 			end
@@ -4510,7 +4510,6 @@ sk_yingbing = sgs.CreateTriggerSkill{
 				if judge.who and judge.who:getSeat() ~= zhangbao:getSeat() and judge.card:isBlack() then
 					local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 					slash:setSkillName(self:objectName())
-					slash:deleteLater()
 					if not sgs.Sanguosha:isProhibited(zhangbao, player, slash) and zhangbao:getMark("yingbing_currentturn") <= 0 then
 						local _data = sgs.QVariant()
 						_data:setValue(judge.who)
@@ -4523,6 +4522,7 @@ sk_yingbing = sgs.CreateTriggerSkill{
 							room:useCard(use, false)
 						end
 					end
+					slash:deleteLater()
 				end
 			end
 		elseif event == sgs.EventPhaseChanging then

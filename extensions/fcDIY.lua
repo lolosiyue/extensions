@@ -4235,7 +4235,6 @@ sp_guamuCard = sgs.CreateSkillCard{
 			end
 		end
 		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-		dummy:deleteLater()
 		if not to_get:isEmpty() then
 			for _, id in sgs.qlist(to_get) do
 				dummy:addSubcard(id)
@@ -4287,6 +4286,7 @@ sp_guamuCard = sgs.CreateSkillCard{
 			room:acquireOneTurnSkills(source, "sp_guamu", "gongxin")
 		end
 		room:removePlayerMark(source, "&sp_guamu", n)
+		dummy:deleteLater()
 	end,
 }
 sp_guamu = sgs.CreateZeroCardViewAsSkill{
@@ -4996,9 +4996,9 @@ sp_zhujiu = sgs.CreateTriggerSkill{
 				end
 				if fromNumber > toNumber then
 					local ana = sgs.Sanguosha:cloneCard("analeptic", sgs.Card_NoSuit, 0)
-					ana:deleteLater()
 					ana:setSkillName("sp_zhujiu")
 					room:useCard(sgs.CardUseStruct(ana, player, player, false))
+					ana:deleteLater()
 					if (player:getMark("&sp_zhujiuFQC") <= 10 and player:getMark("@duangexing") > 0) then
 					room:addPlayerMark(player, "&sp_zhujiuFQC") end
 					room:broadcastSkillInvoke("sp_zhujiu")
@@ -5246,9 +5246,9 @@ sp_feijiangCard = sgs.CreateSkillCard{
 				room:setPlayerFlag(effect.from, "-drank")
 			end
 			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-			slash:deleteLater()
 			slash:setSkillName("sp_feijiang")
 			room:useCard(sgs.CardUseStruct(slash, effect.from, effect.to), false)
+			slash:deleteLater()
 		else
 			if not effect.to:isAllNude() then
 				local card = room:askForCardChosen(effect.from, effect.to, "hej", "sp_feijiang")
@@ -6376,7 +6376,6 @@ sp_shenmouCard = sgs.CreateSkillCard{
 			end
 		end
 		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-		dummy:deleteLater()
 		if not tricks:isEmpty() then
 			room:fillAG(right, source, non_tricks)
 			local id1 = room:askForAG(source, tricks, true, "sp_shenmou")
@@ -6388,6 +6387,7 @@ sp_shenmouCard = sgs.CreateSkillCard{
 		if dummy:subcardsLength() > 0 then
 			source:obtainCard(dummy, false)
 		end
+		dummy:deleteLater()
 		room:askForGuanxing(source, right, sgs.Room_GuanxingUpOnly)
 	end,
 }
@@ -8078,13 +8078,13 @@ fcj_yunxing = sgs.CreateTriggerSkill{
 				end
 			end
 			local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-			dummy:deleteLater()
 			for _, id in ipairs(fcj_yunxing_cards) do
 				dummy:addSubcard(id)
 			end
 			room:sendCompulsoryTriggerLog(player, self:objectName())
 			room:broadcastSkillInvoke(self:objectName())
 			room:obtainCard(player, dummy, false)
+			dummy:deleteLater()
 		elseif event == sgs.CardUsed or event == sgs.CardResponded then
 			local card
 			if event == sgs.CardUsed then
@@ -8109,13 +8109,13 @@ fcj_yunxing = sgs.CreateTriggerSkill{
 				end
 			end
 			local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-			dummy:deleteLater()
 			for _, id in ipairs(fcj_yunxing_cards) do
 				dummy:addSubcard(id)
 			end
 			room:sendCompulsoryTriggerLog(player, self:objectName())
 			room:broadcastSkillInvoke(self:objectName())
 			room:obtainCard(player, dummy, false)
+			dummy:deleteLater()
 			room:setPlayerMark(player, "&fcj_yunxing", 0)
 		elseif event == sgs.EventPhaseChanging then
 			local change = data:toPhaseChange()
@@ -8131,13 +8131,13 @@ fcj_yunxing = sgs.CreateTriggerSkill{
 				end
 			end
 			local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-			dummy:deleteLater()
 			for _, id in ipairs(fcj_yunxing_cards) do
 				dummy:addSubcard(id)
 			end
 			room:sendCompulsoryTriggerLog(player, self:objectName())
 			room:broadcastSkillInvoke(self:objectName())
 			room:obtainCard(player, dummy, false)
+			dummy:deleteLater()
 			room:setPlayerMark(player, "&fcj_yunxing", 0)
 		end
 	end,
@@ -8346,8 +8346,8 @@ fcj_qinguoCard = sgs.CreateSkillCard{
 			room:broadcastSkillInvoke("fcj_qinguo")
 			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 			slash:setSkillName("fcj_qinguo")
-			slash:deleteLater()
 			room:useCard(sgs.CardUseStruct(slash, source, targets_list), false)
+			slash:deleteLater()
 		end
 	end,
 }
@@ -13017,10 +13017,10 @@ mouduanlianggCard = sgs.CreateSkillCard{
 			room:broadcastSkillInvoke(self:objectName(), 3)
 			local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
 			duel:setSkillName("mouduanliangv")
-			duel:deleteLater()
 			if not effect.from:isProhibited(effect.to, duel) then
 				room:useCard(sgs.CardUseStruct(duel, effect.from, effect.to))
 			end
+			duel:deleteLater()
 		else
 			--“谋弈”失败
 			local log = sgs.LogMessage()
@@ -13177,7 +13177,6 @@ kjmoushifengCard = sgs.CreateSkillCard{
 	on_use = function(self, room, source, targets)
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName("kjmoushifeng")
-		slash:deleteLater()
 		local use = sgs.CardUseStruct()
 		use.card = slash
 		use.from = source
@@ -13185,6 +13184,7 @@ kjmoushifengCard = sgs.CreateSkillCard{
 			use.to:append(p)
 		end
 		room:useCard(use)
+		slash:deleteLater()
 	end,
 }
 kjmoushifengVS = sgs.CreateZeroCardViewAsSkill{
@@ -13328,12 +13328,12 @@ kjmoulijin = sgs.CreateTriggerSkill{
 					end
 				end
 				local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-				dummy:deleteLater()
 				for _, id in ipairs(kjmoulijin_PlaySlash_cards) do
 					dummy:addSubcard(id)
 				end
 				room:broadcastSkillInvoke(self:objectName(), 3)
 				room:obtainCard(player, dummy, false)
+				dummy:deleteLater()
 				player:setPhase(sgs.Player_Play)
 				room:broadcastProperty(player, "phase")
 				local thread = room:getThread()
@@ -14639,9 +14639,9 @@ fcmoukongchengMY = sgs.CreateTriggerSkill{
 						room:setPlayerFlag(use.from, "fcmoukongchengMY_trcjTo")
 						if not use.from:isKongcheng() then
 							local chuqibuyi = sgs.Sanguosha:cloneCard("chuqibuyi", sgs.Card_NoSuit, 0)
-							chuqibuyi:deleteLater()
 							chuqibuyi:setSkillName("fcmoukongcheng")
 							room:useCard(sgs.CardUseStruct(chuqibuyi, player, use.from), false)
+							chuqibuyi:deleteLater()
 						else
 							room:damage(sgs.DamageStruct("fcmoukongcheng", player, use.from))
 						end
@@ -14650,8 +14650,8 @@ fcmoukongchengMY = sgs.CreateTriggerSkill{
 								room:broadcastSkillInvoke("fcmoukongcheng", 4)
 								local fj_slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 								fj_slash:setSkillName("fcmoukongcheng")
-								fj_slash:deleteLater()
 								room:useCard(sgs.CardUseStruct(fj_slash, use.from, player), false)
+								fj_slash:deleteLater()
 							end
 						end
 						room:setPlayerFlag(player, "-fcmoukongchengMY_trcjFrom")
@@ -15845,8 +15845,8 @@ f_pojunReturn = sgs.CreateTriggerSkill{
 				if not p:getPile("f_pojun"):isEmpty() then
 					local dummy = sgs.Sanguosha:cloneCard("slash")
 					dummy:addSubcards(p:getPile("f_pojun"))
-					dummy:deleteLater()
 					room:obtainCard(p, dummy, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXCHANGE_FROM_PILE, p:objectName(), self:objectName(), ""), false)
+					dummy:deleteLater()
 				end
 			end
 		end

@@ -1101,13 +1101,13 @@ s4_jiwu = sgs.CreateTriggerSkillV2{
 
                 local analeptic = sgs.Sanguosha:cloneCard("analeptic")
                 analeptic:setSkillName("_"..skill:objectName())
-                analeptic:deleteLater()
                 local useEX = sgs.CardUseStruct()
                 useEX.from = player
                 useEX.card = analeptic
                 room:useCard(useEX, false)
                 useEX.from = use.from
                 room:useCard(useEX, false)
+                analeptic:deleteLater()
                 room:setCardFlag(use.card, "s4_jiwu_nullified")
                 local log = sgs.LogMessage()
                 log.type = "#skill_add_damage_byother1"
@@ -1968,11 +1968,11 @@ s4_jiezhan = sgs.CreateTriggerSkillV2{
 		if string.startsWith(choice, "draw") or string.startsWith(choice, "bieshui") then
 			if player:isAlive() and target:isAlive()  then
 				local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-				slash:deleteLater()
 				slash:setSkillName("_" .. skill:objectName())
 				if target:canSlash(player, slash, false) then
 					room:useCard(sgs.CardUseStruct(slash, target, player), true)
 				end
+				slash:deleteLater()
 			end
 		elseif string.startsWith(choice, "slash") or string.startsWith(choice, "bieshui") then
 			if player:isAlive() and target:isAlive() then
@@ -2750,13 +2750,13 @@ s4_tiaoxinCard = sgs.CreateSkillCard{
         else
             local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
             duel:setSkillName(self:objectName())
-            duel:deleteLater()
             room:setCardFlag(duel, self:objectName())
             local use = sgs.CardUseStruct()
             use.card = duel
             use.from = target
             use.to:append(source)
             room:useCard(use)
+            duel:deleteLater()
         end
         room:setPlayerFlag(source, "-s4_tiaoxinTarget_"..target:objectName())
     end
@@ -4637,8 +4637,8 @@ s4_txbw_yanglei = sgs.CreateTriggerSkill {
                                 card:getNumber())
                             supply_shortage:addSubcard(card)
                             supply_shortage:setSkillName("s4_txbw_yanglei")
-                            supply_shortage:deleteLater()
                             room:useCard(sgs.CardUseStruct(supply_shortage, p, damage.from))
+                            supply_shortage:deleteLater()
                         end
                     end
                 end
@@ -7468,7 +7468,6 @@ s4_xinggu = sgs.CreateTriggerSkill{
             room:removeTag("s4_xinggu")
             if card then
                 local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-                dummy:deleteLater()
                 for _,id in sgs.qlist(card:getSubcards()) do
                     if room:getCardPlace(id) == sgs.Player_DiscardPile then
                         dummy:addSubcard(sgs.Sanguosha:getCard(id))
@@ -7483,6 +7482,7 @@ s4_xinggu = sgs.CreateTriggerSkill{
                 else
                     player:drawCards(1, self:objectName())
                 end
+				dummy:deleteLater()
             else
                 player:drawCards(1, self:objectName())
             end
@@ -8622,7 +8622,6 @@ s4_xishe = sgs.CreateTriggerSkillV2{
 			if target and target:isAlive() then
 				local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 				slash:setSkillName("s4_xishe")
-				slash:deleteLater()
 				if player:canSlash(target, slash, false) then
 					local use = sgs.CardUseStruct()
 					use.card = slash
@@ -8630,6 +8629,7 @@ s4_xishe = sgs.CreateTriggerSkillV2{
 					use.to:append(target)
 					room:useCard(use)
 				end
+				slash:deleteLater()
 			end
 		end
 	end
@@ -9211,7 +9211,6 @@ s4_jiyangVS = sgs.CreateViewAsSkillV2 {
             if not duel then break end
 
             duel:setSkillName("_s4_jiyang")
-            duel:deleteLater()
 
             local use = sgs.CardUseStruct()
             use.card = duel
@@ -9219,6 +9218,7 @@ s4_jiyangVS = sgs.CreateViewAsSkillV2 {
             use.to:append(to)
 
             room:useCard(use)
+            duel:deleteLater()
         end
     end,
 }
@@ -11118,7 +11118,6 @@ s4_yuezhe = sgs.CreateTriggerSkill{
                             local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
                             slash:addSubcard(id)
                             slash:setSkillName(self:objectName())
-                            slash:deleteLater()
                             local extra_targets = room:getCardTargets(player, slash)
                             if extra_targets:isEmpty() then return false end
                             room:setPlayerMark(player, "s4_yuezhe", id)
@@ -11136,6 +11135,7 @@ s4_yuezhe = sgs.CreateTriggerSkill{
                             else
                                 break
                             end
+							slash:deleteLater()
                         else
                             break
                         end
@@ -11659,7 +11659,6 @@ s4_zhaowu = sgs.CreateTriggerSkill {
                                 if target then
                                     local slash = sgs.Sanguosha:cloneCard("thunder_slash", sgs.Card_NoSuit, 0)
                                     slash:setSkillName(self:objectName())
-                                    slash:deleteLater()
                                     local extra_targets = room:getCardTargets(target, slash)
                                     if extra_targets:isEmpty() then return false end
                                     local others = room:askForPlayersChosen(target, extra_targets, self:objectName(), 1, 1+sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget,target,slash), "@s4_zhaowu", true, true)
@@ -11673,6 +11672,7 @@ s4_zhaowu = sgs.CreateTriggerSkill {
                                         end
                                         room:useCard(use, false)
                                     end
+									slash:deleteLater()
                                 end
                             end
                             break
@@ -11945,11 +11945,11 @@ s4_s_yuanshe = sgs.CreateTriggerSkill{
                     player:skip(sgs.Player_Draw)
                     local card = sgs.Sanguosha:cloneCard("archery_attack", sgs.Card_NoSuit, 0)
                     card:setSkillName(self:objectName())
-                    card:deleteLater()
                     local use = sgs.CardUseStruct()
                     use.card = card
                     use.from = player
                     room:useCard(use)
+                    card:deleteLater()
                 end
             end
         elseif event == sgs.DamageCaused then
@@ -12156,11 +12156,11 @@ s4_s_ruqin = sgs.CreateTriggerSkill{
                     local SavageAssault = sgs.Sanguosha:cloneCard("SavageAssault", card:getSuit(), card:getNumber())
                     SavageAssault:setSkillName(self:objectName())
                     SavageAssault:addSubcard(card)
-                    SavageAssault:deleteLater()
                     local use = sgs.CardUseStruct()
                     use.card = SavageAssault
                     use.from = player
                     room:useCard(use)
+                    SavageAssault:deleteLater()
                 end
             end
         elseif event == sgs.CardUsed then
@@ -14436,20 +14436,20 @@ s4_xiongjie_bingzhouCard = sgs.CreateSkillCard{
         if success then
             local archery_attack = sgs.Sanguosha:cloneCard("archery_attack", sgs.Card_NoSuit, 0)
             archery_attack:setSkillName("s4_xiongjie_bingzhou")
-            archery_attack:deleteLater()
             local use = sgs.CardUseStruct()
             use.card = archery_attack
             use.from = source
             room:useCard(use)
+			archery_attack:deleteLater()
         else
             local tuixin = sgs.Sanguosha:cloneCard("yj_tuixinzhifu", sgs.Card_NoSuit, 0)
             tuixin:setSkillName("s4_xiongjie_bingzhou")
-            tuixin:deleteLater()
             local use = sgs.CardUseStruct()
             use.card = tuixin
             use.from = target
             use.to:append(source)
             room:useCard(use)
+            tuixin:deleteLater()
         end
     end,
 }
@@ -14997,10 +14997,10 @@ s4_moubeiCard = sgs.CreateSkillCard{
 						if dummy:subcardsLength()>=2 then break end
 					end
 				end
-				dummy:deleteLater()
 				if dummy:subcardsLength()>0 then
 					source:obtainCard(dummy)
 				end
+				dummy:deleteLater()
                 local target = room:askForPlayerChosen(source, room:getAlivePlayers(), self:objectName())
                 if target then
                     room:giveCard(source,target,dummy,self:objectName())

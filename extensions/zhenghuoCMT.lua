@@ -1423,12 +1423,12 @@ dengshenZHCMT = sgs.CreateTriggerSkill {
 					local slash = sgs.Sanguosha:cloneCard("slash")
 					slash:addSubcard(id)
 					slash:setSkillName(self:objectName())
-					slash:deleteLater()
 					for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 						if p:objectName() == move.from:objectName() then
 							room:useCard(sgs.CardUseStruct(slash, player, p))
 						end
 					end
+					slash:deleteLater()
 				end
 			end
 		elseif event == sgs.Damage or event == sgs.Damaged then

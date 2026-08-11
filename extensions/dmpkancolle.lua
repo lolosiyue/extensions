@@ -537,7 +537,6 @@ se_qianlei = sgs.CreateTriggerSkill {
 				room:doLightbox("se_qianlei1$", 1200)
 				room:obtainCard(der, cardid)
 				local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-				card:deleteLater()
 				card:setSkillName(self:objectName())
 				if damage.from then
 					local use = sgs.CardUseStruct()
@@ -546,6 +545,7 @@ se_qianlei = sgs.CreateTriggerSkill {
 					use.card = card
 					room:useCard(use, false)
 				end
+				card:deleteLater()
 			elseif choice:startsWith("se_qianlei_second") then
 				if der:getHandcardNum() == 0 then continue end
 				room:broadcastSkillInvoke("se_qianlei", math.random(4, 5))
@@ -656,7 +656,6 @@ se_hongzhacard = sgs.CreateSkillCard {
 	on_use = function(self, room, source, targets)
 		if #targets > 0 then
 			local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-			card:deleteLater()
 			card:setSkillName(self:objectName())
 			card:addSubcard(self:getSubcards():first())
 			local use = sgs.CardUseStruct()
@@ -666,6 +665,7 @@ se_hongzhacard = sgs.CreateSkillCard {
 			end
 			use.card = card
 			room:useCard(use, true)
+			card:deleteLater()
 		end
 	end,
 }
@@ -907,7 +907,6 @@ eryu = sgs.CreateTriggerSkill {
 			end
 			if (not move.to) or (move.to:objectName() ~= move.from:objectName()) then
 				local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-				dummy:deleteLater()
 				if move.from:objectName() == player:objectName() then
 					for _, id in sgs.qlist(move.card_ids) do
 						if id ~= -1 and not sgs.Sanguosha:getCard(id):isKindOf("Nullification") and (sgs.Sanguosha:getCard(id):isKindOf("BasicCard") or (sgs.Sanguosha:getCard(id):isKindOf("TrickCard") and sgs.Sanguosha:getCard(id):isNDTrick())) then
@@ -929,6 +928,7 @@ eryu = sgs.CreateTriggerSkill {
 						player:obtainCard(dummy)
 					end
 				end
+				dummy:deleteLater()
 				return true
 			end
 		end
@@ -1107,7 +1107,6 @@ nuequcard = sgs.CreateSkillCard {
 	on_use = function(self, room, source, targets)
 		if #targets > 0 then
 			local card = sgs.Sanguosha:cloneCard("fire_slash", sgs.Card_NoSuit, 0)
-			card:deleteLater()
 			card:setSkillName(self:objectName())
 			card:addSubcard(self:getSubcards():first())
 			local use = sgs.CardUseStruct()
@@ -1117,6 +1116,7 @@ nuequcard = sgs.CreateSkillCard {
 			end
 			use.card = card
 			room:useCard(use, false)
+			card:deleteLater()
 		end
 	end,
 }

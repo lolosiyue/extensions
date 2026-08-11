@@ -444,8 +444,8 @@ erangwaiCard = sgs.CreateSkillCard {
 		else
 			room:broadcastSkillInvoke("erangwai", math.random(1, 2))
 		end
-		slash:deleteLater()
 		room:useCard(use)
+		slash:deleteLater()
 	end,
 }
 erangwaiVS = sgs.CreateViewAsSkill {

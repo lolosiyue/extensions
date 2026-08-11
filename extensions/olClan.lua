@@ -1563,7 +1563,6 @@ kezuyunshenCard = sgs.CreateSkillCard {
 		room:recover(target, sgs.RecoverStruct(self:getSkillName(), player))
 		local slash = sgs.Sanguosha:cloneCard("ice_slash")
 		slash:setSkillName("_kezuyunshen")
-		slash:deleteLater()
 		if room:askForChoice(player, "kezuyunshen", "self+he") == "self" then
 			if target:canSlash(player, slash, false) then
 				room:useCard(sgs.CardUseStruct(slash, target, player), true)
@@ -1573,6 +1572,7 @@ kezuyunshenCard = sgs.CreateSkillCard {
 				room:useCard(sgs.CardUseStruct(slash, player, target), true)
 			end
 		end
+		slash:deleteLater()
 	end,
 }
 
@@ -3687,10 +3687,10 @@ kezuqiuxin = sgs.CreateTriggerSkill {
 						local c = sgs.Sanguosha:getCard(id)
 						local dc = sgs.Sanguosha:cloneCard(c:objectName())
 						dc:setSkillName("_kezuqiuxin")
-						dc:deleteLater()
 						if player:canUse(dc, p) then
 							room:useCard(sgs.CardUseStruct(dc, player, p))
 						end
+						dc:deleteLater()
 					end
 				end
 			end

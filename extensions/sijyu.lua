@@ -1027,7 +1027,6 @@ sijyu_zhuluanCard = sgs.CreateSkillCard {
             if discard then
                 local use_card = sgs.Sanguosha:cloneCard("archery_attack", sgs.Card_NoSuit, 0)
                 use_card:setSkillName("sijyu_zhuluan")
-                use_card:deleteLater()
                 local players = sgs.SPlayerList()
                 for _, p in sgs.qlist(room:getOtherPlayers(player)) do
                     if not player:isProhibited(p, use_card) then
@@ -1041,6 +1040,7 @@ sijyu_zhuluanCard = sgs.CreateSkillCard {
                     card_use.card = use_card
                     room:useCard(card_use, true)
                 end
+				use_card:deleteLater()
             end
         end
     end
@@ -1430,7 +1430,6 @@ sijyu_zhizhi = sgs.CreateTriggerSkill {
                 if #card_to_gotback > 0 then
                     for _, suit in ipairs(show_suit) do
                         local dummy2 = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-                        dummy2:deleteLater()
                         for _, id in ipairs(card_to_gotback) do
                             local card = sgs.Sanguosha:getCard(id)
                             if card:getSuitString() == suit then
@@ -1448,6 +1447,7 @@ sijyu_zhizhi = sgs.CreateTriggerSkill {
                                 end
                             end
                         end
+						dummy2:deleteLater()
                     end
                 end
                 for _, p in sgs.qlist(room:getAlivePlayers()) do
@@ -1869,11 +1869,11 @@ sijyu_qixing = sgs.CreateTriggerSkill {
             "sijyu_qixing-invoke", false, true)
         local dummy = sgs.Sanguosha:cloneCard("slash")
         dummy:addSubcards(player:getPile("sijyu_xing"))
-        dummy:deleteLater()
         if dummy:subcardsLength() > 0 then
             target:obtainCard(dummy)
         end
         local exchange_card = room:askForExchange(target, "sijyu_qixing", dummy:subcardsLength(), dummy:subcardsLength())
+        dummy:deleteLater()
         local players = sgs.SPlayerList()
         players:append(player)
         player:addToPile("sijyu_xing", exchange_card:getSubcards(), false, players)
@@ -1990,10 +1990,10 @@ sijyu_fabei = sgs.CreateTriggerSkill {
                     if p:objectName() ~= player:objectName() and p:getPile("sijyu_fa"):length() > 0 then
                         local dummy = sgs.Sanguosha:cloneCard("slash")
                         dummy:addSubcards(p:getPile("sijyu_fa"))
-                        dummy:deleteLater()
                         if dummy:subcardsLength() > 0 then
                             p:obtainCard(dummy)
                         end
+						dummy:deleteLater()
                         room:loseHp(p, 1, true, p, self:objectName())
                         room:broadcastSkillInvoke("sijyu_fabei")
                         if p:isAlive() then
@@ -2080,10 +2080,10 @@ sijyu_fengyi = sgs.CreateTriggerSkill {
                         room:broadcastSkillInvoke("sijyu_fengyi", 3)
                         local dummy = sgs.Sanguosha:cloneCard("slash")
                         dummy:addSubcards(player:getPile("sijyu_xing"))
-                        dummy:deleteLater()
                         if dummy:subcardsLength() > 0 then
                             target:obtainCard(dummy)
                         end
+						dummy:deleteLater()
                         target:turnOver()
                     end
                 end

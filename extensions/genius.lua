@@ -498,8 +498,8 @@ f_xiongyan = sgs.CreateTriggerSkill{
 					room:broadcastSkillInvoke(self:objectName(), 2)
 					local analeptic = sgs.Sanguosha:cloneCard("Analeptic", sgs.Card_NoSuit, 0)
 					analeptic:setSkillName("f_xiongyann") --防止乱播报语音
-					analeptic:deleteLater()
 					room:useCard(sgs.CardUseStruct(analeptic, player, player, false))
+					analeptic:deleteLater()
 					if player:isWounded() then room:recover(player, sgs.RecoverStruct(player)) end
 				else --最终点名到别人
 					room:broadcastSkillInvoke(self:objectName(), 3)
@@ -1025,10 +1025,10 @@ f_leji = sgs.CreateTriggerSkill{
 					local Indulgence = sgs.Sanguosha:cloneCard("indulgence", IdgCard:getSuit(), IdgCard:getNumber())
 					Indulgence:setSkillName(self:objectName())
 					Indulgence:addSubcard(IdgCard)
-					Indulgence:deleteLater()
 					if not player:isProhibited(player, Indulgence) then
 						room:useCard(sgs.CardUseStruct(Indulgence, player, player))
 					end
+					Indulgence:deleteLater()
 				else
 					if targets:length() > 0 then
 						local BSS = room:askForPlayerChosen(player, targets, self:objectName(), "f_lejiIndulgenceMove",true, true)
@@ -3077,8 +3077,8 @@ f_zhengmie_f = sgs.CreateTriggerSkill{
 						local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 						slash:setSkillName(self:objectName())
 						room:setPlayerFlag(player, "ZenhuiUser_" .. slash:toString())
-						slash:deleteLater()
 						room:useCard(sgs.CardUseStruct(slash, player, zmto), false)
+						slash:deleteLater()
 					end
 				end
 			end
@@ -3244,8 +3244,8 @@ f_skyssonCard = sgs.CreateSkillCard{
 			if source:canSlash(from, nil, false) then
 				local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 				slash:setSkillName("f_skysson")
-				slash:deleteLater()
 				room:useCard(sgs.CardUseStruct(slash, source, from))
+				slash:deleteLater()
 			end
 		end
 	end,
@@ -4241,9 +4241,9 @@ tc_juxiang_stsh = sgs.CreateTriggerSkill{
 			if not player:hasSkill(self:objectName()) then return false end
 			room:sendCompulsoryTriggerLog(player, self:objectName())
 			local slash = sgs.Sanguosha:cloneCard("savage_assault", sgs.Card_SuitToBeDecided, -1)
-			slash:deleteLater()
 		    slash:setSkillName("_"..self:objectName())
 			room:useCard(sgs.CardUseStruct(slash, player, room:getOtherPlayers(player)), false)
+			slash:deleteLater()
 		elseif event == sgs.BeforeCardsMove then
 		    if player and player:isAlive() and player:hasSkill(self:objectName()) then
 			    local move = data:toMoveOneTime()
@@ -5576,12 +5576,12 @@ tc_dingzhouCard = sgs.CreateSkillCard{
 			list:append(card:getEffectiveId())
 		end
 		local dummy = sgs.Sanguosha:cloneCard("slash")
-		dummy:deleteLater()
 		dummy:addSubcards(list)
 		room:obtainCard(source, dummy, false)
 		local n, dingzhou = math.min(x, source:getEquips():length() + source:getHandcardNum()), false
 		local card_id = room:askForExchange(source, self:objectName(), n, n, true, "", false)
 		room:obtainCard(targets[1], card_id, false)
+		dummy:deleteLater()
 	end,
 }
 tc_dingzhou = sgs.CreateViewAsSkill{

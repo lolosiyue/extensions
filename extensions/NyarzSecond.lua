@@ -6148,7 +6148,6 @@ nyarz_yiji = sgs.CreateTriggerSkill{
             if target then
                 room:broadcastSkillInvoke(self:objectName())
                 local give = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
-                give:deleteLater()
                 for _,card in sgs.qlist(player:getHandcards()) do
                     give:addSubcard(card)
                 end
@@ -6159,6 +6158,7 @@ nyarz_yiji = sgs.CreateTriggerSkill{
                     give:addSubcard(delay)
                 end
                 room:obtainCard(target, give, false)
+                give:deleteLater()
             end
         end
     end,
@@ -8987,9 +8987,9 @@ nyarz_tongwei_buff = sgs.CreateTriggerSkill{
                     end
                     local card = sgs.Sanguosha:cloneCard(pattern, sgs.Card_SuitToBeDecided, -1)
                     card:setSkillName("_nyarz_tongwei")
-                    card:deleteLater()
                     room:setCardFlag(card, "nyarz_tongwei+"..player:objectName())
                     room:useCard(sgs.CardUseStruct(card, p, player))
+                    card:deleteLater()
                 else
                     room:broadcastSkillInvoke("nyarz_tongwei")
                 end

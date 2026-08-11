@@ -1639,12 +1639,12 @@ se_erdaocard = sgs.CreateSkillCard {
 				card = sgs.Sanguosha:cloneCard("thunder_slash", sgs.Card_NoSuit, 0)
 			end
 			card:setSkillName(self:objectName())
-			card:deleteLater()
 			local use = sgs.CardUseStruct()
 			use.from = source
 			use.to:append(dest)
 			use.card = card
 			room:useCard(use, false)
+			card:deleteLater()
 		end
 	end
 }
@@ -4583,7 +4583,6 @@ se_jianyucard = sgs.CreateSkillCard {
 		room:doLightbox("se_jianyu$", 800)
 		if #targets > 0 then
 			local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-			card:deleteLater()
 			card:setSkillName(self:objectName())
 			local use = sgs.CardUseStruct()
 			use.from = source
@@ -4592,6 +4591,7 @@ se_jianyucard = sgs.CreateSkillCard {
 			end
 			use.card = card
 			room:useCard(use, false)
+			card:deleteLater()
 		end
 	end,
 }
@@ -6203,12 +6203,12 @@ SE_Minatsu = sgs.CreateTriggerSkill {
 									room:doLightbox("SE_Minatsu$", 800)
 									local card1 = sgs.Sanguosha:cloneCard("fire_slash", sgs.Card_NoSuit, 0)
 									card1:setSkillName(self:objectName())
-									card1:deleteLater()
 									local use = sgs.CardUseStruct()
 									use.from = player
 									use.to:append(target)
 									use.card = card1
 									room:useCard(use, false)
+									card1:deleteLater()
 								end
 							end
 						end
@@ -6493,11 +6493,11 @@ se_xunyucard = sgs.CreateSkillCard {
 		local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		local hp = target:getHp()
 		card:setSkillName(self:objectName())
-		card:deleteLater()
 		use.from = source
 		use.to:append(target)
 		use.card = card
 		room:useCard(use, false)
+		card:deleteLater()
 		if source:getMark("@SE_Chaopin_Red") > 0 then
 			if not target:inMyAttackRange(source) and target:isAlive() then
 				room:loseHp(target, 1, true, source, self:objectName())
@@ -9704,12 +9704,12 @@ SE_Shidan = sgs.CreateTriggerSkill {
 					else
 						local use = sgs.CardUseStruct()
 						local card = sgs.Sanguosha:cloneCard("fire_slash", sgs.Card_NoSuit, 0)
-						card:deleteLater()
 						card:setSkillName(self:objectName())
 						use.from = player
 						use.to:append(target)
 						use.card = card
 						room:useCard(use, false)
+						card:deleteLater()
 					end
 					if not player:isSkipped(sgs.Player_Judge) then
 						player:skip(sgs.Player_Judge)
@@ -10517,7 +10517,6 @@ se_chenyan_select = sgs.CreateSkillCard {
 			local pattern = room:askForChoice(source, "se_chenyan", table.concat(choices, "+"))
 			if pattern and pattern ~= "cancel" then
 				local poi = sgs.Sanguosha:cloneCard(pattern, sgs.Card_NoSuit, -1)
-				poi:deleteLater()
 				if poi:targetFixed() then
 					poi:setSkillName("se_chenyan")
 					if self:subcardsLength() == 2 then
@@ -10526,6 +10525,7 @@ se_chenyan_select = sgs.CreateSkillCard {
 					end
 					local nonetarget = sgs.SPlayerList()
 					room:useCard(sgs.CardUseStruct(poi, source, nonetarget), true)
+					poi:deleteLater()
 				else
 					pos = getPos(patterns, pattern)
 					room:setPlayerMark(source, "se_chenyanpos", pos)
@@ -13581,13 +13581,13 @@ se_fupao = sgs.CreateTriggerSkill {
 						room:setTag("se_fupao_tag", ap)
 						local ncard = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 						ncard:setSkillName("se_fupao")
-						ncard:deleteLater()
 						room:setPlayerFlag(p, "se_fupao_using")
 						local nuse = sgs.CardUseStruct()
 						nuse.from = p
 						nuse.to = use.to
 						nuse.card = ncard
 						room:useCard(nuse, false)
+						ncard:deleteLater()
 						room:setPlayerFlag(p, "-se_fupao_using")
 						for _, q in sgs.qlist(use.to) do
 							if q:isDead() then

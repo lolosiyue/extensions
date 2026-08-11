@@ -2085,7 +2085,6 @@ ms_mimouCard = sgs.CreateSkillCard {
 				source:drawCards(2, self:objectName())
 				local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 				slash:setSkillName(self:objectName())
-				slash:deleteLater()
 				local to = sgs.SPlayerList()
 				to:append(target)
 				local use = sgs.CardUseStruct()
@@ -2093,6 +2092,7 @@ ms_mimouCard = sgs.CreateSkillCard {
 				use.to = to
 				use.card = slash
 				room:useCard(use, false)
+				slash:deleteLater()
 			end
 		end
 	end,

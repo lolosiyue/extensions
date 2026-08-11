@@ -996,7 +996,6 @@ sy_old_shiao = sgs.CreateTriggerSkill{
 			local players = sgs.SPlayerList()
 			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 			slash:setSkillName("sy_old_shiao")
-			slash:deleteLater()
 			for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:getHandcardNum() < player:getHandcardNum() then
 					if not sgs.Sanguosha:isProhibited(player, p, slash) then
@@ -1019,11 +1018,11 @@ sy_old_shiao = sgs.CreateTriggerSkill{
 				use.card = slash
 				room:useCard(use, false)
 			end
+			slash:deleteLater()
 		elseif player:getPhase() == sgs.Player_Finish then
 			local players = sgs.SPlayerList()
 			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 			slash:setSkillName("sy_old_shiao")
-			slash:deleteLater()
 			for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:getHandcardNum() > player:getHandcardNum() then
 					if not sgs.Sanguosha:isProhibited(player, p, slash) then
@@ -1046,6 +1045,7 @@ sy_old_shiao = sgs.CreateTriggerSkill{
 				use.card = slash
 				room:useCard(use, false)
 			end
+			slash:deleteLater()
 		end
 	end
 }
@@ -1496,24 +1496,24 @@ sy_old_luansiCard = sgs.CreateSkillCard{
 		if success then
 		    if not targets[2]:isNude() then
 				local jink = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
-				jink:deleteLater()
 			    for i = 1, math.max(1, targets[2]:getCards("he"):length()) do
 					if targets[2]:isNude() then break end
 					local c = room:askForCardChosen(source, targets[2], "he", "sy_old_luansi", true, sgs.Card_MethodDiscard, jink:getSubcards())
 			        jink:addSubcard(c)
 				end
 				room:throwCard(jink, targets[2], source)
+				jink:deleteLater()
 			end
 		else
 		    if not targets[1]:isNude() then
 				local jink = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
-				jink:deleteLater()
 			    for i = 1, math.max(1, targets[1]:getCards("he"):length()) do
 				    if targets[1]:isNude() then break end
 					local c = room:askForCardChosen(source, targets[1], "he", "sy_old_luansi", true, sgs.Card_MethodDiscard, jink:getSubcards())
 			        jink:addSubcard(c)
 				end
 				room:throwCard(jink, targets[1], source)
+				jink:deleteLater()
 			end
 		end
 	end

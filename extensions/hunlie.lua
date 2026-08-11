@@ -81,7 +81,6 @@ function throwRandomCards(random_bool, thrower, victim, n, flag, skill)  --éšæœ
 	local room = sgs.Sanguosha:currentRoom()
 	local x = victim:getCards(flag):length()
 	local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
-	dummy:deleteLater()
 	if random_bool == true then
 		local include_equip = false
 		if string.find(flag, "e") then include_equip = true end
@@ -105,6 +104,7 @@ function throwRandomCards(random_bool, thrower, victim, n, flag, skill)  --éšæœ
 			room:throwCard(dummy, reason, victim, thrower)
 		end
 	end
+	dummy:deleteLater()
 end
 
 
@@ -695,7 +695,6 @@ sgkgodshelie = sgs.CreateTriggerSkill{
 					elseif use.card:isKindOf("TrickCard") then all_types = {"BasicCard", "EquipCard"}
 					elseif use.card:isKindOf("EquipCard") then all_types = {"BasicCard", "TrickCard"} end
 					local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
-					dummy:deleteLater()
 					local ids1, ids2 = sgs.IntList(), sgs.IntList()
 					for _, id in sgs.qlist(room:getDrawPile()) do
 						if sgs.Sanguosha:getCard(id):isKindOf(all_types[1]) and not ids1:contains(id) then ids1:append(id) end
@@ -716,6 +715,7 @@ sgkgodshelie = sgs.CreateTriggerSkill{
 						room:sendCompulsoryTriggerLog(use.from, self:objectName(), true, true)
 						room:obtainCard(use.from, dummy, false)
 					end
+					dummy:deleteLater()
 				end
 			end
 		end
@@ -1069,7 +1069,6 @@ sgkgodcuifengCard = sgs.CreateSkillCard{
 			t:gainMark("&nizhan")
 			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 			slash:setSkillName("cuifeng_slash")
-			slash:deleteLater()
 			if not sgs.Sanguosha:isProhibited(target, t, slash) then
 				local use = sgs.CardUseStruct()
 				use.from = target
@@ -1077,6 +1076,7 @@ sgkgodcuifengCard = sgs.CreateSkillCard{
 				use.card = slash
 				room:useCard(use, false)
 			end
+			slash:deleteLater()
 		end
 	end
 }
@@ -3857,7 +3857,6 @@ sgkgodluezhen = sgs.CreateTriggerSkill{
 			luezhen:deleteLater()
 			if a > 0 then
 				local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
-				dummy:deleteLater()
 			    for i = 1, math.max(a, t:getCards("he"):length()) do
 				    if t:isNude() then break end
 					local id = room:askForCardChosen(player, t, "he", self:objectName(), true, sgs.Card_MethodDiscard, dummy:getSubcards())
@@ -5496,13 +5495,13 @@ sgkgodchenyu = sgs.CreateTriggerSkill{
 			end
 			for _, h in sgs.qlist(hearts) do
 				local jink = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
-				jink:deleteLater()
 				if not h:isKongcheng() then
 					for _, c in sgs.qlist(h:getHandcards()) do
 						if c:getSuit() == sgs.Card_Heart then jink:addSubcard(c) end
 					end
 				end
 				if jink:subcardsLength() > 0 then player:obtainCard(jink, false) end
+				jink:deleteLater()
 			end
 		end
 	end
@@ -5568,7 +5567,6 @@ sgkgodbamen = sgs.CreateTriggerSkill{
 			end
 			local bamen_names = {}
 			local bamen = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
-			bamen:deleteLater()
 			if not room:getDrawPile():isEmpty() then
 				for _, id in sgs.qlist(room:getDrawPile()) do
 					local card = sgs.Sanguosha:getCard(id)
@@ -5580,6 +5578,7 @@ sgkgodbamen = sgs.CreateTriggerSkill{
 				end
 			end
 			player:obtainCard(bamen)
+			bamen:deleteLater()
 			if #bamen_names < 8 then
 				local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "@bamen-tar:"..tostring(8-#bamen_names), true, true)
 				if target then
@@ -5853,7 +5852,6 @@ sgkgoddengji = sgs.CreateTriggerSkill{
 			room:addPlayerMark(player, "Qingchengsgkgodchuyuan")
 			room:doSuperLightbox("sgkgodcaopi", "sgkgoddengji")
 			local redc, blackc, dummy = 0, 0, sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
-			dummy:deleteLater()
 			for _, id in sgs.qlist(player:getPile("sgkgodchu")) do
 				local card = sgs.Sanguosha:getCard(id)
 				if card:isBlack() then
@@ -5874,6 +5872,7 @@ sgkgoddengji = sgs.CreateTriggerSkill{
 				end
 				room:handleAcquireDetachSkills(player, table.concat(lord_skills, "|"))
 			end
+			dummy:deleteLater()
 		end
 	end
 }
@@ -7641,8 +7640,8 @@ jlsgyanlieCard = sgs.CreateSkillCard{
 		end
 		local iron_chain = sgs.Sanguosha:cloneCard("iron_chain", sgs.Card_NoSuit, 0)
 		iron_chain:setSkillName("jlsgyanlie")
-		iron_chain:deleteLater()
 		room:useCard(sgs.CardUseStruct(iron_chain, source, useto), false)
+		iron_chain:deleteLater()
 		local yanlieTargets = sgs.SPlayerList()
 		for _, p in sgs.qlist(room:getAllPlayers()) do
 			if p:isChained() then

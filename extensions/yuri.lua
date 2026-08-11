@@ -9705,7 +9705,6 @@ new_againstdisCard = sgs.CreateSkillCard{
         end
 		if not list:isEmpty() then
 			local slash = sgs.Sanguosha:cloneCard("slash")
-			slash:deleteLater()
 			local x = 1
 			if source:getMark("@SuperLimitBreak") > 0 and source:isWounded() then x=2 end
 			for i = 1,x,1 do
@@ -9717,6 +9716,7 @@ new_againstdisCard = sgs.CreateSkillCard{
 			if slash:subcardsLength() > 0 then
 				room:obtainCard(source, slash)
 			end
+			slash:deleteLater()
 		end
 	end
 }
@@ -10780,7 +10780,6 @@ ys_xiongluanCard = sgs.CreateSkillCard{
 			use.from = source
 			use.to:append(p)
 			room:useCard(use)
-			slash:deleteLater()
 		end
 		source:drawCards(1)
 		local cards = source:getCards("ej")
@@ -13117,7 +13116,6 @@ genjutsu = sgs.CreateTriggerSkill{
 							slash:addSubcard(card)
 							slash:setSkillName("genjutsuslash")
 							room:setCardFlag(slash, "SlashIgnoreArmor")
-							slash:deleteLater()
 							local list = room:getOtherPlayers(player)
 							local guys = sgs.SPlayerList()
 							for _,t in sgs.qlist(list) do
@@ -13133,6 +13131,7 @@ genjutsu = sgs.CreateTriggerSkill{
 							else
 								room:throwCard(card, nil)
 							end
+							slash:deleteLater()
 						end
 					end
 				end
@@ -13806,8 +13805,8 @@ kirisou = sgs.CreateTriggerSkill{
 						-- player:gainMark("&"..use.card:objectName())
 						local c = sgs.Sanguosha:cloneCard(use.card:objectName(), sgs.Card_NoSuit, 0)
 						c:setSkillName(self:objectName())
-						c:deleteLater()
 						room:useCard(sgs.CardUseStruct(c, player, p), false)
+						c:deleteLater()
 					end
 					if choice == "kirisou_ea" then
 						local num = player:getHandcardNum()
@@ -14355,7 +14354,6 @@ hunnshin = sgs.CreateTriggerSkill
 				if num >= 10 then break end
 			end
 			local slash = sgs.Sanguosha:cloneCard("slash")
-			slash:deleteLater()
 			local cardtothrow = sgs.Sanguosha:cloneCard("slash")
 			cardtothrow:deleteLater()
 			-- if not e_ids:isEmpty() then
@@ -14398,6 +14396,7 @@ hunnshin = sgs.CreateTriggerSkill
 			if needDraw > 0 then
 				player:drawCards(needDraw)
 			end
+			slash:deleteLater()
 		end
 		if event == sgs.EventPhaseEnd and player:getPhase() == sgs.Player_Play and not player:isKongcheng() then
 			room:askForUseCard(player, "@@hunnshin", "@hunnshin")
@@ -14482,10 +14481,10 @@ hunnmei = sgs.CreateTriggerSkill
 							tars:append(p)
 						end
 					end
-					slash:deleteLater()
 					if tars:length() > 0 then
 						local p = room:askForPlayerChosen(user, tars, self:objectName(), "hunnmei_choiceplayer")
 						room:useCard(sgs.CardUseStruct(slash, user, p), true)
+						slash:deleteLater()
 					end
 				end
 			end
@@ -14855,12 +14854,12 @@ yurimicard = sgs.CreateSkillCard{
 		room:notifySkillInvoked(source, "yurimi")
 		source:addToPile("yurimipile", to_pile, false)
 		local to_handcard_x = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-		to_handcard_x:deleteLater()
 		for _,id in sgs.qlist(to_handcard) do
 			to_handcard_x:addSubcard(id)
 		end
 		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXCHANGE_FROM_PILE, source:objectName())
 		room:obtainCard(source, to_handcard_x, reason, false)
+		to_handcard_x:deleteLater()
 	end,
 }
 
