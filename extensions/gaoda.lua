@@ -531,15 +531,21 @@ end
 --【武将解锁系统】
 local readData = function(section)
 	local json = require "json"
-	local record = io.open(gdata, "r")
-	local t = {[section] = {}}
-	if record ~= nil then
+	local t = nil
+	local function try_load(path)
+		local record = io.open(path, "r")
+		if record == nil then return nil end
 		local content = record:read("*all")
-		t = json.decode(content) or t
-		if t[section] == nil and section ~= "*" then
-			t[section] = {}
-		end
 		record:close()
+		return json.decode(content)
+	end
+	t = try_load(gdata)
+	if t == nil then
+		t = try_load(gbackup)
+	end
+	if t == nil then t = {} end
+	if t[section] == nil and section ~= "*" then
+		t[section] = {}
 	end
 	return t
 end
@@ -2899,7 +2905,9 @@ huixing = sgs.CreateTriggerSkill{
 			end]]
 		elseif event == sgs.CardResponded then
 			local resp = data:toCardResponse()
-			local subcard = sgs.Sanguosha:getCard(resp.m_card:getSubcards():first())
+			local subcards = resp.m_card:getSubcards()
+			if subcards:length() == 0 then return false end
+			local subcard = sgs.Sanguosha:getCard(subcards:first())
 			if resp.m_card:isKindOf("Jink") and table.contains(resp.m_card:getSkillNames(), "xiaya") and subcard:isKindOf("Slash") and room:askForSkillInvoke(player, self:objectName(), data) then
 				player:drawCards(1, self:objectName())
 				if resp.m_who then
@@ -2909,7 +2917,9 @@ huixing = sgs.CreateTriggerSkill{
 			end
 		elseif event == sgs.CardUsed then
 			local use = data:toCardUse()
-			local subcard = sgs.Sanguosha:getCard(use.card:getSubcards():first())
+			local subcards = use.card:getSubcards()
+			if subcards:length() == 0 then return false end
+			local subcard = sgs.Sanguosha:getCard(subcards:first())
 			if use.card:isKindOf("Jink") and table.contains(use.card:getSkillNames(), "xiaya") and subcard:isKindOf("Slash") and room:askForSkillInvoke(player, self:objectName(), data) then
 				player:drawCards(1, self:objectName())
 				if use.who then
@@ -19570,20 +19580,22 @@ lucky_translate = function(refresh) --动态描述
 			local t = readData("*")
 			
 			--Item
+			local g2_item = t["Item"] or {}
+			local g2_zabing = t["Zabing"] or {}
 			local g2_property = "<br><img src=\"image/mark/@coin.png\" height=\"25\" width=\"25\">G币 = "
-			g2_property = g2_property .. (t["Item"]["Coin"] or 0) .. "<br>"
+			g2_property = g2_property .. (g2_item["Coin"] or 0) .. "<br>"
 			g2_property = g2_property .. "<img src=\"image/mark/@fragment.png\" height=\"25\" width=\"25\">" .. sgs.Sanguosha:translate("fragment") .. " = "
-			g2_property = g2_property .. (t["Item"]["fragment"] or 0) .. "<br>"
+			g2_property = g2_property .. (g2_item["fragment"] or 0) .. "<br>"
 			for i = 3, #item_list do
 				local it = item_list[i]
 				g2_property = g2_property .. "<img src=\"image/mark/@" .. it .. ".png\" height=\"25\" width=\"25\">" .. sgs.Sanguosha:translate(it) .. " = "
-				g2_property = g2_property .. math.min(t["Item"][it] or 0, item_max[it]) .. " / " .. item_max[it] .. "<br>"
+				g2_property = g2_property .. math.min(g2_item[it] or 0, item_max[it]) .. " / " .. item_max[it] .. "<br>"
 			end
 			
 			--Zabing
 			g2_property = g2_property .. "<br><b>支援机使用权(35%×1, 25%×3)</b>:<br>"
 			for _,zb in pairs(zb_list) do
-				g2_property = g2_property .. sgs.Sanguosha:translate(zb) .. " = " .. t["Zabing"][zb]
+				g2_property = g2_property .. sgs.Sanguosha:translate(zb) .. " = " .. g2_zabing[zb]
 				g2_property = g2_property .. "<br>"
 			end
 			
