@@ -191,11 +191,11 @@ yongqi = sgs.CreateTriggerSkill{
 }
 lol_zhengyiCard = sgs.CreateSkillCard{
 	name = "lol_zhengyiCard",
-	filter = function(self, targets, to_select)
-		if to_select:objectName() == sgs.Self:objectName() or (#targets == 1) then
+	filter = function(self, targets, to_select, player)
+		if to_select:objectName() == player:objectName() or (#targets == 1) then
 			return false
 		end
-		return sgs.Self:inMyAttackRange(to_select)
+		return player:inMyAttackRange(to_select)
 	end,
 	on_use = function(self, room, source, targets)
 		room:doLightbox("$lol_zhengyiQP")
@@ -540,8 +540,8 @@ sgs.LoadTranslationTable{
 Soraka = sgs.General(extension, "Soraka", "shu", "3", false, false, false)
 lol_jiushuCard = sgs.CreateSkillCard{
 	name = "lol_jiushuCard",
-	filter = function(self, targets, to_select)
-		if to_select:objectName() == sgs.Self:objectName() or (#targets == 1) then
+	filter = function(self, targets, to_select, player)
+		if to_select:objectName() == player:objectName() or (#targets == 1) then
 			return false
 		end
 		return to_select:isWounded()
@@ -569,8 +569,8 @@ guanzhuCard = sgs.CreateSkillCard{
 	name = "guanzhuCard", 
 	target_fixed = false, 
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		if to_select:objectName() == sgs.Self:objectName() then
+	filter = function(self, targets, to_select, player)
+		if to_select:objectName() == player:objectName() then
 			return false
 		end
 		return #targets == 0
@@ -617,7 +617,7 @@ guanzhu = sgs.CreateViewAsSkill{
 }
 lol_qiyuanCard = sgs.CreateSkillCard{
 	name = "lol_qiyuanCard",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return to_select:isWounded()
 	end,
 	on_use = function(self, room, source, targets)
@@ -706,27 +706,27 @@ junhengCard = sgs.CreateSkillCard{ --技能卡
 	name = "junhengCard", --技能卡的名字
 	target_fixed = false, --技能卡是否不需要指定目标（乐不思蜀和兵粮寸断都需要指定一名角色作为目标，所以这里填false）
 	will_throw = false, --技能卡使用后是否置入弃牌堆（因为子卡将被视为延时性锦囊进入目标角色的判定区，所以填false）
-	filter = function(self, targets, to_select) --判断一名角色to_select是否可以作为此技能卡self的目标
+	filter = function(self, targets, to_select, player)
 		local card = ChangeToVSCard(self) --利用自定义函数产生视为的卡牌（可能是乐不思蜀也可能是兵粮寸断）
 		if card then --如果成功产生了视为的卡牌
-			if to_select:getHp() >= sgs.Self:getHp() then --如果待判断的角色to_select的体力值不少于自己sgs.Self的体力值
+			if to_select:getHp() >= player:getHp() then --如果待判断的角色to_select的体力值不少于自己player的体力值
 				local selected = sgs.PlayerList() --以下四行，将table类型的targets转化为sgs.PlayerList类型，
 				for _,p in ipairs(targets) do --因为接下来需要利用targetFilter判断to_select是否可以作为card的目标，
 					selected:append(p) --要提前做好准备。
 				end
-				return card:targetFilter(selected, to_select, sgs.Self) --交给card进行具体的判断
+				return card:targetFilter(selected, to_select, player) --交给card进行具体的判断
 			end
 		end
 		return false
 	end,
-	feasible = function(self, targets) --判断技能卡self的使用目标是否已经选择完毕
+	feasible = function(self, targets, player)
 		local card = ChangeToVSCard(self) --同上，利用自定义函数产生视为的卡牌
 		if card then
 			local selected = sgs.PlayerList() --同上，以下四行，将table类型的targets转化为sgs.PlayerList类型
 			for _,p in ipairs(targets) do
 				selected:append(p)
 			end
-			return card:targetsFeasible(selected, sgs.Self) --交给card进行具体的判断
+			return card:targetsFeasible(selected, player) --交给card进行具体的判断
 		end
 		return false
 	end,
@@ -789,7 +789,7 @@ lol_lirenCard = sgs.CreateSkillCard{
 	name = "lol_lirenCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -1217,7 +1217,7 @@ xielidestCard = sgs.CreateSkillCard {
 	name = "xielidestCard",
 	will_throw = false,
 
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local name = ""
 		local card
 		local plist = sgs.PlayerList()
@@ -1228,8 +1228,8 @@ xielidestCard = sgs.CreateSkillCard {
 			name = uses[1]
 			card = sgs.Sanguosha:cloneCard(name)
 		end
-		return card and card:targetFilter(plist, to_select, sgs.Self) and
-			not sgs.Self:isProhibited(to_select, card, plist)
+		return card and card:targetFilter(plist, to_select, player) and
+			not player:isProhibited(to_select, card, plist)
 	end,
 	feasible = function(self, targets, from)
 		local name = ""
@@ -1404,8 +1404,8 @@ cangfei = sgs.CreateTriggerSkill{
 }
 huanyinCard = sgs.CreateSkillCard{
 	name = "huanyinCard",
-	filter = function(self, targets, to_select)
-		if to_select:objectName() == sgs.Self:objectName() or (#targets == 1) then
+	filter = function(self, targets, to_select, player)
+		if to_select:objectName() == player:objectName() or (#targets == 1) then
 			return false
 		end
 		return true
@@ -1506,11 +1506,11 @@ zhican = sgs.CreateTriggerSkill{
 }
 duantouCard = sgs.CreateSkillCard{
 	name = "duantouCard",
-	filter = function(self, targets, to_select)
-		if to_select:objectName() == sgs.Self:objectName() or (#targets == 1) then
+	filter = function(self, targets, to_select, player)
+		if to_select:objectName() == player:objectName() or (#targets == 1) then
 			return false
 		end
-		return sgs.Self:inMyAttackRange(to_select)
+		return player:inMyAttackRange(to_select)
 	end,
 	on_use = function(self, room, source, targets)
 		room:doLightbox("$duantouQP")
@@ -1805,11 +1805,11 @@ gehouCard = sgs.CreateSkillCard{
 	name = "gehouCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			if to_select:isKongcheng() then
 				return false
-			elseif to_select:objectName() == sgs.Self:objectName() then
+			elseif to_select:objectName() == player:objectName() then
 				return false
 			end
 			return true
@@ -1963,11 +1963,11 @@ shixueCard = sgs.CreateSkillCard{
 	name = "shixueCard", 
 	target_fixed = false, 
 	will_throw = true,
-	filter = function(self, targets, to_select) 
-		if to_select:objectName() == sgs.Self:objectName() or (#targets == 1) then
+	filter = function(self, targets, to_select, player)
+		if to_select:objectName() == player:objectName() or (#targets == 1) then
 			return false
 		end
-		return sgs.Self:distanceTo(to_select) <= 1
+		return player:distanceTo(to_select) <= 1
 	end,
 	on_use = function(self, room, source, targets)
 		for _,p in pairs(targets) do
@@ -2066,11 +2066,11 @@ ningshi = sgs.CreateTriggerSkill{
 }
 yongbaoCard = sgs.CreateSkillCard{
 	name = "yongbaoCard",
-	filter = function(self, targets, to_select)
-		if to_select:objectName() == sgs.Self:objectName() or (#targets == 1) then
+	filter = function(self, targets, to_select, player)
+		if to_select:objectName() == player:objectName() or (#targets == 1) then
 			return false
 		end
-		return sgs.Self:inMyAttackRange(to_select)
+		return player:inMyAttackRange(to_select)
 	end,
 	on_use = function(self, room, source, targets)
 		local hurt = source:getMark("@yongbao")
@@ -2488,10 +2488,10 @@ yingyanCard = sgs.CreateSkillCard{
 	name = "yingyanCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if to_select:isKongcheng() then
 			return false
-		elseif to_select:objectName() == sgs.Self:objectName() then
+		elseif to_select:objectName() == player:objectName() then
 			return false
 		end
 		return true
@@ -2746,11 +2746,11 @@ sgs.LoadTranslationTable{
 Olaf = sgs.General(extension, "Olaf", "wu", "4", true, false, false)
 lumangCard = sgs.CreateSkillCard{
 	name = "lumangCard", 
-	filter = function(self, targets, to_select) 
-		if to_select:objectName() == sgs.Self:objectName() or (#targets == 1) then
+	filter = function(self, targets, to_select, player)
+		if to_select:objectName() == player:objectName() or (#targets == 1) then
 			return false
 		end
-		return sgs.Self:inMyAttackRange(to_select)
+		return player:inMyAttackRange(to_select)
 	end,
 	on_use = function(self, room, source, targets)
 		for _,p in pairs(targets) do
@@ -3251,7 +3251,7 @@ ZhongliCard = sgs.CreateSkillCard{
 	name = "ZhongliCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -3422,7 +3422,7 @@ jinjunCard = sgs.CreateSkillCard {
 	name = "jinjunCard",
 	will_throw = false,
 
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local name = ""
 		local card
 		local plist = sgs.PlayerList()
@@ -3433,8 +3433,8 @@ jinjunCard = sgs.CreateSkillCard {
 			name = uses[1]
 			card = sgs.Sanguosha:cloneCard(name)
 		end
-		return card and card:targetFilter(plist, to_select, sgs.Self) and
-			not sgs.Self:isProhibited(to_select, card, plist)
+		return card and card:targetFilter(plist, to_select, player) and
+			not player:isProhibited(to_select, card, plist)
 	end,
 	feasible = function(self, targets, from)
 		local name = ""
@@ -3932,7 +3932,7 @@ bihuCard = sgs.CreateSkillCard{
 	name = "bihuCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -4072,8 +4072,8 @@ juewang = sgs.CreateTriggerSkill{
 }
 zhouchuCard = sgs.CreateSkillCard{
 	name = "zhouchuCard" ,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and sgs.Self:canSlash(to_select,nil,false) and sgs.Self:inMyAttackRange(to_select)
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and player:canSlash(to_select,nil,false) and player:inMyAttackRange(to_select)
 	end,
 	on_effect = function(self, effect)
 		local slash = sgs.Sanguosha:cloneCard("slash",sgs.Card_NoSuit,0)
@@ -5075,11 +5075,11 @@ moyingCard = sgs.CreateSkillCard{
 	name = "moyingCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			if to_select:isKongcheng() then
 				return false
-			elseif to_select:objectName() == sgs.Self:objectName() then
+			elseif to_select:objectName() == player:objectName() then
 				return false
 			end
 			return true
@@ -5278,7 +5278,7 @@ QinraoCard = sgs.CreateSkillCard{
 	name = "QinraoCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			return to_select:getMark("@Yisun") == 0
 		end
@@ -5360,10 +5360,10 @@ GanzhiCard = sgs.CreateSkillCard{
 	name = "GanzhiCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if to_select:isKongcheng() then
 			return false
-		elseif to_select:objectName() == sgs.Self:objectName() then
+		elseif to_select:objectName() == player:objectName() then
 			return false
 		end
 		return true

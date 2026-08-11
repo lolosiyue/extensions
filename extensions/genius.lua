@@ -16,8 +16,8 @@ f_shensimashi = sgs.General(extension_f, "f_shensimashi", "god", 5, true, false,
 f_henjueCard = sgs.CreateSkillCard{
     name = "f_henjueCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-	    return #targets == 0 and to_select:hasEquipArea() and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+	    return #targets == 0 and to_select:hasEquipArea() and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		local choices = {}
@@ -107,9 +107,9 @@ f_three = sgs.General(extension_f, "f_three", "god", 4, true)
 --“三刀”升级版
 f_sandaoEXSlashCard = sgs.CreateSkillCard{
 	name = "f_sandaoEXSlashCard",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return sgs.Self:canSlash(to_select, nil, false)
+			return player:canSlash(to_select, nil, false)
 		end
 		return false
 	end,
@@ -545,8 +545,8 @@ f_shendongzhuo:addSkill(f_xiongyan)
 f_qianduCard = sgs.CreateSkillCard{
 	name = "f_qianduCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 	    room:removePlayerMark(source, "@f_qiandu")
@@ -1338,10 +1338,10 @@ f_yonghunSlashCard = sgs.CreateSkillCard{
 	name = "f_yonghunSlashCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return sgs.Self:canSlash(to_select, nil, false) --无距离限制
-			and to_select:objectName() ~= sgs.Self:objectName()
+			return player:canSlash(to_select, nil, false) --无距离限制
+			and to_select:objectName() ~= player:objectName()
 		end
 		return false
 	end,
@@ -1489,8 +1489,8 @@ f_jianyuangiveCard = sgs.CreateSkillCard{
 	name = "f_jianyuangiveCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and (to_select:hasFlag("f_JYuan") or to_select:objectName() == sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and (to_select:hasFlag("f_JYuan") or to_select:objectName() == player:objectName())
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -1952,7 +1952,7 @@ f_shenpanCard = sgs.CreateSkillCard{
 	name = "f_shenpanCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and to_select:getMark("f_shenpan-PlayClear") == 0
 	end,
 	on_effect = function(self, effect)
@@ -2683,7 +2683,7 @@ f_shenjiangCard = sgs.CreateSkillCard{
 	target_fixed = false,
 	will_throw = true,
 	mute = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_effect = function(self, effect)
@@ -2908,7 +2908,7 @@ f_shenmajun:addSkill(f_yanfa)
 f_jishenCard = sgs.CreateSkillCard{
 	name = "f_jishenCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and to_select:hasEquipArea()
 	end,
 	on_use = function(self, room, source, targets)
@@ -3213,10 +3213,10 @@ f_skyssonCard = sgs.CreateSkillCard{
 	name = "f_skyssonCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 2
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 2
 	end,
 	on_use = function(self, room, source, targets)
@@ -4342,10 +4342,10 @@ tc_liefeng_spwd = sgs.CreateTriggerSkill{
 }
 tc_changbiao_sqrhCard = sgs.CreateSkillCard{
 	name = "tc_changbiao_sqrh",
-	filter = function(self, targets, to_select)
-		return to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return to_select:objectName() ~= player:objectName()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -4435,8 +4435,8 @@ diy_k_meihunCard = sgs.CreateSkillCard{
 	name = "diy_k_meihun",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 --	feasible = function(self, targets)
 --	    return #targets == 1
@@ -5564,10 +5564,10 @@ tc_dingzhouCard = sgs.CreateSkillCard{
 	name = "tc_dingzhou",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return to_select:objectName() ~= sgs.Self:objectName() and #targets < 1 and (to_select:getJudgingArea():length() > 0 or not to_select:getEquips():isEmpty())
+	filter = function(self, targets, to_select, player)
+		return to_select:objectName() ~= player:objectName() and #targets < 1 and (to_select:getJudgingArea():length() > 0 or not to_select:getEquips():isEmpty())
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)

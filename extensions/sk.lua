@@ -386,13 +386,13 @@ sk_ziguoCard = sgs.CreateSkillCard{
     name = "sk_ziguoCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
         if #targets == 0 then
 		    return to_select:isWounded()
 		end
 		return false
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 	    return #targets == 1 and targets[1]:isWounded()
 	end,
 	on_use = function(self, room, source, targets)
@@ -544,14 +544,14 @@ sk_yisheCard = sgs.CreateSkillCard{
     name = "sk_yisheCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
         if #targets == 0 then
-		    return to_select:objectName() ~= sgs.Self:objectName() and to_select:getHandcardNum() <= sgs.Self:getHandcardNum()
+		    return to_select:objectName() ~= player:objectName() and to_select:getHandcardNum() <= player:getHandcardNum()
 		end
 		return false
 	end,
-	feasible = function(self, targets)
-	    return #targets == 1 and targets[1]:getHandcardNum() <= sgs.Self:getHandcardNum()
+	feasible = function(self, targets, player)
+	    return #targets == 1 and targets[1]:getHandcardNum() <= player:getHandcardNum()
 	end,
 	on_use = function(self, room, source, targets)
 	    local exchangeMove = sgs.CardsMoveList()
@@ -900,9 +900,9 @@ sk_baoliCard = sgs.CreateSkillCard{
     name = "sk_baoliCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    if #targets == 0 then
-		    return to_select:objectName() ~= sgs.Self:objectName() and (to_select:getEquips():isEmpty() or (not to_select:getJudgingArea():isEmpty()))
+		    return to_select:objectName() ~= player:objectName() and (to_select:getEquips():isEmpty() or (not to_select:getJudgingArea():isEmpty()))
 		end
 		return false
 	end,
@@ -1100,9 +1100,9 @@ sk_huaqiangCard = sgs.CreateSkillCard{
     name = "sk_huaqiangCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    if #targets == 0 then
-		    return to_select:objectName() ~= sgs.Self:objectName()
+		    return to_select:objectName() ~= player:objectName()
 		end
 		return false
 	end,
@@ -1146,7 +1146,7 @@ sk_chaohuangCard = sgs.CreateSkillCard{
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		return player:inMyAttackRange(to_select) and (not sgs.Sanguosha:isProhibited(player, to_select, slash)) and (not player:isJilei(slash, true))
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 	    return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -2304,13 +2304,13 @@ sk_shejianCard = sgs.CreateSkillCard{
     name = "sk_shejianCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    if #targets == 0 then
-		    return to_select:objectName() ~= sgs.Self:objectName() and (not to_select:hasFlag("shejian_used")) and (not to_select:isNude())
+		    return to_select:objectName() ~= player:objectName() and (not to_select:hasFlag("shejian_used")) and (not to_select:isNude())
 		end
 		return false
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 	    return #targets == 1 and (not targets[1]:hasFlag("shejian_used"))
 	end,
 	on_use = function(self, room, source, targets)
@@ -2634,15 +2634,15 @@ extension:insertRelatedSkills("sk_cangshu", "#sk_cangshu")
 sk_kanwuCard = sgs.CreateSkillCard{
 	name = "sk_kanwu",
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local plist = sgs.PlayerList()
 		for i = 1, #targets do plist:append(targets[i]) end
 		local rangefix = 0
-		if not self:getSubcards():isEmpty() and sgs.Self:getWeapon() and sgs.Self:getWeapon():getId() == self:getSubcards():first() then
-			local card = sgs.Self:getWeapon():getRealCard():toWeapon()
-			rangefix = rangefix + card:getRange() - sgs.Self:getAttackRange(false)
+		if not self:getSubcards():isEmpty() and player:getWeapon() and player:getWeapon():getId() == self:getSubcards():first() then
+			local card = player:getWeapon():getRealCard():toWeapon()
+			rangefix = rangefix + card:getRange() - player:getAttackRange(false)
 		end
-		if not self:getSubcards():isEmpty() and sgs.Self:getOffensiveHorse() and sgs.Self:getOffensiveHorse():getId() == self:getSubcards():first() then
+		if not self:getSubcards():isEmpty() and player:getOffensiveHorse() and player:getOffensiveHorse():getId() == self:getSubcards():first() then
 			rangefix = rangefix + 1
 		end
 		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -2651,14 +2651,14 @@ sk_kanwuCard = sgs.CreateSkillCard{
 				local us = user_str:split("+")
 				card = sgs.Sanguosha:cloneCard(us[1])
 			end
-			return card and card:targetFilter(plist, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, plist)
-				and (card:isKindOf("Slash") and sgs.Self:canSlash(to_select, true, rangefix))
+			return card and card:targetFilter(plist, to_select, player) and not player:isProhibited(to_select, card, plist)
+				and (card:isKindOf("Slash") and player:canSlash(to_select, true, rangefix))
 		elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
 			return false
 		end
-		local card = sgs.Self:getTag("sk_kanwu"):toCard()
-		return card and card:targetFilter(plist, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, plist)
-			and (card:isKindOf("Slash") and sgs.Self:canSlash(to_select, true, rangefix))
+		local card = player:getTag("sk_kanwu"):toCard()
+		return card and card:targetFilter(plist, to_select, player) and not player:isProhibited(to_select, card, plist)
+			and (card:isKindOf("Slash") and player:canSlash(to_select, true, rangefix))
 	end,
 	target_fixed = function(self)
 		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -2674,7 +2674,7 @@ sk_kanwuCard = sgs.CreateSkillCard{
 		local card = sgs.Self:getTag("sk_kanwu"):toCard()
 		return card and card:targetFixed()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local plist = sgs.PlayerList()
 		for i = 1, #targets do plist:append(targets[i]) end
 		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -2683,12 +2683,12 @@ sk_kanwuCard = sgs.CreateSkillCard{
 				local us = user_str:split("+")
 				card = sgs.Sanguosha:cloneCard(us[1])
 			end
-			return card and card:targetsFeasible(plist, sgs.Self)
+			return card and card:targetsFeasible(plist, player)
 		elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
 			return true
 		end
-		local card = sgs.Self:getTag("sk_kanwu"):toCard()
-		return card and card:targetsFeasible(plist, sgs.Self)
+		local card = player:getTag("sk_kanwu"):toCard()
+		return card and card:targetsFeasible(plist, player)
 	end,
 	on_validate = function(self, card_use)
 		local player = card_use.from
@@ -3408,9 +3408,9 @@ sk_huilianCard = sgs.CreateSkillCard{
 	name = "sk_huilian",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
          if #targets == 0 then
-		    return to_select:getSeat() ~= sgs.Self:getSeat()
+		    return to_select:getSeat() ~= player:getSeat()
 		end
 		return false
 	end,
@@ -3874,15 +3874,15 @@ end
 sk_zhengyiCard = sgs.CreateSkillCard{
 	name = "sk_zhengyi",
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local plist = sgs.PlayerList()
 		for i = 1, #targets do plist:append(targets[i]) end
 		local rangefix = 0
-		if not self:getSubcards():isEmpty() and sgs.Self:getWeapon() and sgs.Self:getWeapon():getId() == self:getSubcards():first() then
-			local card = sgs.Self:getWeapon():getRealCard():toWeapon()
-			rangefix = rangefix + card:getRange() - sgs.Self:getAttackRange(false)
+		if not self:getSubcards():isEmpty() and player:getWeapon() and player:getWeapon():getId() == self:getSubcards():first() then
+			local card = player:getWeapon():getRealCard():toWeapon()
+			rangefix = rangefix + card:getRange() - player:getAttackRange(false)
 		end
-		if not self:getSubcards():isEmpty() and sgs.Self:getOffensiveHorse() and sgs.Self:getOffensiveHorse():getId() == self:getSubcards():first() then
+		if not self:getSubcards():isEmpty() and player:getOffensiveHorse() and player:getOffensiveHorse():getId() == self:getSubcards():first() then
 			rangefix = rangefix + 1
 		end
 		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -3891,14 +3891,14 @@ sk_zhengyiCard = sgs.CreateSkillCard{
 				local us = user_str:split("+")
 				card = sgs.Sanguosha:cloneCard(us[1])
 			end
-			return card and card:targetFilter(plist, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, plist)
-				and (card:isKindOf("Slash") and sgs.Self:canSlash(to_select, true, rangefix))
+			return card and card:targetFilter(plist, to_select, player) and not player:isProhibited(to_select, card, plist)
+				and (card:isKindOf("Slash") and player:canSlash(to_select, true, rangefix))
 		elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
 			return false
 		end
-		local card = sgs.Self:getTag("sk_zhengyi"):toCard()
-		return card and card:targetFilter(plist, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, plist)
-			and (card:isKindOf("Slash") and sgs.Self:canSlash(to_select, true, rangefix))
+		local card = player:getTag("sk_zhengyi"):toCard()
+		return card and card:targetFilter(plist, to_select, player) and not player:isProhibited(to_select, card, plist)
+			and (card:isKindOf("Slash") and player:canSlash(to_select, true, rangefix))
 	end,
 	target_fixed = function(self)
 		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -3914,7 +3914,7 @@ sk_zhengyiCard = sgs.CreateSkillCard{
 		local card = sgs.Self:getTag("sk_zhengyi"):toCard()
 		return card and card:targetFixed()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local plist = sgs.PlayerList()
 		for i = 1, #targets do plist:append(targets[i]) end
 		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -3923,12 +3923,12 @@ sk_zhengyiCard = sgs.CreateSkillCard{
 				local us = user_str:split("+")
 				card = sgs.Sanguosha:cloneCard(us[1])
 			end
-			return card and card:targetsFeasible(plist, sgs.Self)
+			return card and card:targetsFeasible(plist, player)
 		elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
 			return true
 		end
-		local card = sgs.Self:getTag("sk_zhengyi"):toCard()
-		return card and card:targetsFeasible(plist, sgs.Self)
+		local card = player:getTag("sk_zhengyi"):toCard()
+		return card and card:targetsFeasible(plist, player)
 	end,
 	on_validate = function(self, card_use)
 		local player = card_use.from

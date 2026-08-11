@@ -718,7 +718,7 @@ keqiguanhuoCard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = false,
 	mute = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return (#targets < 1) and (not to_select:isKongcheng())
 	end,
 	on_use = function(self, room, player, targets)
@@ -3278,7 +3278,7 @@ kechenglunshiCard = sgs.CreateSkillCard {
 	name = "kechenglunshiCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return (#targets == 0)
 	end,
 	on_use = function(self, room, player, targets)
@@ -6024,7 +6024,7 @@ kezhuanxushiCard = sgs.CreateSkillCard {
 	filter = function(self, targets, to_select, player)
 		return #targets < self:subcardsLength() and (to_select:objectName() ~= player:objectName())
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == self:subcardsLength()
 	end,
 	about_to_use = function(self, room, use)
@@ -6989,7 +6989,7 @@ kezhuanninghan = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-		if (event == sgs.EventLoseSkill) and data:toString() == "kezhuanninghan" then
+		if (event == sgs.EventLoseSkill) and data:toSkillChange().skillName == "kezhuanninghan" then
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:hasSkill(self, true) then
 					return false
@@ -7890,7 +7890,7 @@ kehexumou = sgs.CreateTrickCard {
 	can_recast = false,
 	is_cancelable = false,
 	movable = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 1 and not to_select:containsTrick(self:objectName())
 	end,
 	on_effect = function(self, effect)
@@ -9694,7 +9694,7 @@ kehechiyingCard = sgs.CreateSkillCard {
 	name = "kehechiyingCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return (#targets < 1)
 	end,
 	on_use = function(self, room, player, targets)
@@ -10358,7 +10358,7 @@ kehexiejuCard = sgs.CreateSkillCard {
 	name = "kehexiejuCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return (to_select:getMark("kehexiejutar-Clear") > 0)
 	end,
 	on_use = function(self, room, player, targets)
@@ -11629,7 +11629,7 @@ keshuaisaojianCard = sgs.CreateSkillCard {
 	name = "keshuaisaojianCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return (#targets < 1) and not to_select:isKongcheng()
 	end,
 	on_use = function(self, room, player, targets)
@@ -12299,7 +12299,7 @@ keshuaiqiluanCard = sgs.CreateSkillCard {
 		end
 		return slash:targetFilter(plist, to_select, player)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local pattern = self:getUserString()
 		local slash = dummyCard(pattern)
 		return slash and (slash:targetFixed() or #targets > 0)
@@ -12775,7 +12775,7 @@ xingdangyi = sgs.CreateTriggerSkill {
 				player:damageRevises(data, 1)
 			end
 		elseif event == sgs.EventAcquireSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				room:setPlayerMark(player, "&xingdangyi", player:getLostHp() + 1)
 			end
 		end
@@ -13008,7 +13008,7 @@ xingxunjiCard = sgs.CreateSkillCard {
 	filter = function(self, targets, to_select, player)
 		return #targets < self:subcardsLength()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == self:subcardsLength()
 	end,
 	about_to_use = function(self, room, use)

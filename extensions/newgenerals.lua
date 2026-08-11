@@ -2603,7 +2603,7 @@ keolzhubiCard = sgs.CreateSkillCard {
 	name = "keolzhubiCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return (#targets < 1) and (not to_select:isNude())
 	end,
 	on_use = function(self, room, player, targets)
@@ -3145,7 +3145,7 @@ keolxiejuCard = sgs.CreateSkillCard {
 	name = "keolxiejuCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return (to_select:getMark("keolxiejutar-Clear") > 0)
 	end,
 	on_use = function(self, room, player, targets)
@@ -3239,7 +3239,7 @@ keolshandaoCard = sgs.CreateSkillCard {
 	name = "keolshandaoCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return not to_select:isNude()
 	end,
 	on_use = function(self, room, player, targets)
@@ -4210,7 +4210,7 @@ keolbixinCard = sgs.CreateSkillCard {
 		end
 		return use_card:targetFilter(plist, to_select, from)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local pattern = self:getUserString()
 		local use_card = dummyCard(pattern:split("+")[1])
 		local qtargets = sgs.PlayerList()
@@ -7323,7 +7323,7 @@ godtianyiRecord = sgs.CreateTriggerSkill {
 
 huishiiCard = sgs.CreateSkillCard {
 	name = "huishii",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_effect = function(self, effect)
@@ -8850,7 +8850,7 @@ jingheCard = sgs.CreateSkillCard {
 	name = "jinghe",
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < self:subcardsLength()
 	end,
 	feasible = function(self, targets, player)
@@ -9269,7 +9269,7 @@ kehuiyaoCard = sgs.CreateSkillCard {
 		end
 		return #targets < 1 and to_select ~= player
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 1
 	end,
 	about_to_use = function(self, room, use)
@@ -10785,7 +10785,7 @@ keolweilinCard = sgs.CreateSkillCard {
 		slash:deleteLater()
 		return source:canSlash(to_select, slash, false)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets >= 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -13742,7 +13742,7 @@ moujijiangCard = sgs.CreateSkillCard {
 		end
 		return #targets < 1
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 1
 	end,
 	about_to_use = function(self, room, use)
@@ -14135,7 +14135,7 @@ mobilemou_daqiao = sgs.General(mobilemouzhi, "mobilemou_daqiao", "wu", 3, false)
 mouguoseCard = sgs.CreateSkillCard {
 	name = "mouguoseCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 1 and to_select:containsTrick("indulgence")
 	end,
 	on_effect = function(self, effect)
@@ -14357,10 +14357,10 @@ moufenweiCard = sgs.CreateSkillCard { --选择牌和目标
 	name = "moufenweiCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < self:subcardsLength()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == self:subcardsLength() and #targets > 0
 	end,
 	about_to_use = function(self, room, use)
@@ -14655,7 +14655,7 @@ moulijianCard = sgs.CreateSkillCard {
 		end
 		return to_select:objectName() ~= source:objectName()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == self:subcardsLength() + 1
 	end,
 	on_use = function(self, room, source, targets)
@@ -20050,7 +20050,7 @@ sgs.Sanguosha:setPackage(exclusive_cards)
 lijueguosi = sgs.General(miscellaneous, "lijueguosi", "qun", 4)
 xiongsuanCard = sgs.CreateSkillCard {
 	name = "xiongsuanCard",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 1
 	end,
 	on_use = function(self, room, source, targets)

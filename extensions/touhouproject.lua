@@ -457,7 +457,7 @@ TH_ForbiddenFruitsCARD = sgs.CreateSkillCard{
 	filter = function(self, targets, to_select, player)
 		return #targets < 3 and to_select:objectName() ~= player:objectName() and not to_select:isAllNude()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -606,8 +606,8 @@ TH_SositeVS = sgs.CreateViewAsSkill{--秘弹·之后就一个人都没有了吗�
 TH_SositeCARD = sgs.CreateSkillCard{
 	name = "TH_SositeCARD",
 	skill_name = "TH_Sosite",
-	filter = function(self, targets, to_select)
-		return #targets < 1 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isNude()
+	filter = function(self, targets, to_select, player)
+		return #targets < 1 and to_select:objectName() ~= player:objectName() and not to_select:isNude()
 	end,
 	on_use = function(self, room, source, targets)
 		local sb = targets[1]
@@ -933,10 +933,10 @@ TH_HeartBreak_effect = sgs.CreateTriggerSkill{
 TH_ScarletShootCARD = sgs.CreateSkillCard{--绯红之击
 	name = "TH_ScarletShootCARD",
 	skill_name = "TH_ScarletShoot",
-	filter = function(self, targets, to_select)
-		return #targets < 1 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng()
+	filter = function(self, targets, to_select, player)
+		return #targets < 1 and to_select:objectName() ~= player:objectName() and not to_select:isKongcheng()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 	on_use = function(self, room, source, targets)
@@ -1096,7 +1096,7 @@ TH_xixue=sgs.CreateTriggerSkill{--吸血
 TH_SpearTheGungnirCARD = sgs.CreateSkillCard{--神枪
 	name = "TH_SpearTheGungnirCARD",
 	skill_name = "TH_SpearTheGungnir",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets<1 and not to_select:hasSkill("TH_SpearTheGungnir")
 	end,
 	on_use = function(self, room, source, targets)
@@ -1460,7 +1460,7 @@ TH_wugufengdengCARD = sgs.CreateSkillCard{--五谷丰登
 	name = "TH_wugufengdengCARD",
 	skill_name = "TH_wugufengdeng",
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 5
 	end,
 	on_use = function(self, room, source, targets)
@@ -1500,7 +1500,7 @@ TH_Wonder_NwOBNSVS = sgs.CreateViewAsSkill{--奇迹-辉煌
 TH_Wonder_NwOBNSCARD = sgs.CreateSkillCard{--奇迹-辉煌
 	name = "TH_Wonder_NwOBNSCARD",
 	skill_name = "TH_Wonder_NwOBNS",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and to_select:getMark("@TH_nwobns") == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -1576,7 +1576,7 @@ TH_Miracle_GodsWindVS = sgs.CreateViewAsSkill{--奇迹-风
 TH_Miracle_GodsWindCARD = sgs.CreateSkillCard{--奇迹-风
 	name = "TH_Miracle_GodsWindCARD",
 	skill_name = "TH_Miracle_GodsWind",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and to_select:getMark("@TH_godswind") == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -1842,7 +1842,7 @@ TH_renguiVS = sgs.CreateViewAsSkill{--人鬼未来永劫斩
 TH_renguiCARD = sgs.CreateSkillCard{--人鬼未来永劫斩
 	name = "TH_renguiCARD",
 	skill_name = "TH_rengui",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 --and not to_select:isLord()
 	end,
 	on_use = function(self, room, source, targets)
@@ -1900,8 +1900,8 @@ TH_erdaoliuCARD = sgs.CreateSkillCard{--二刀流
 	name = "TH_erdaoliuCARD",
 	skill_name = "TH_erdaoliu",
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return sgs.Self:canSlash(to_select) and #targets == 0
+	filter = function(self, targets, to_select, player)
+		return player:canSlash(to_select) and #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
 		local slash = sgs.Sanguosha:cloneCard("thunder_slash", sgs.Card_SuitToBeDecided, -1)
@@ -2119,8 +2119,8 @@ TH_nanti= sgs.CreateViewAsSkill{--难题
 TH_nantiCARD = sgs.CreateSkillCard{----难题
 	name = "TH_nantiCARD",
 	skill_name = "TH_nanti",
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:getCardCount(true)>0 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:getCardCount(true)>0 and to_select:objectName() ~= player:objectName() and not to_select:isKongcheng()
 	end,
 	on_use = function(self, room, source, targets)
 		local target = targets[1]
@@ -2306,7 +2306,7 @@ TH_penglaizhiyaoVS = sgs.CreateViewAsSkill{----蓬莱之药
 TH_penglaizhiyaoCARD = sgs.CreateSkillCard{----蓬莱之药
 	name = "TH_penglaizhiyaoCARD",
 	skill_name = "TH_penglaizhiyao",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -2770,8 +2770,8 @@ TH_wenwenxinwenCARD = sgs.CreateSkillCard{---文文新闻
 	will_throw = false,
 	target_fixed = false,
 	handling_method = sgs.Card_MethodPindian,
-	filter = function(self, targets, to_select)
-		return #targets < 1 and not to_select:isKongcheng() and to_select:objectName() ~= sgs.Self:objectName() and to_select:getMark("@TH_wenwenxinwen") < 1
+	filter = function(self, targets, to_select, player)
+		return #targets < 1 and not to_select:isKongcheng() and to_select:objectName() ~= player:objectName() and to_select:getMark("@TH_wenwenxinwen") < 1
 	end,
 	on_use = function(self, room, source, targets)
 		if source:pindian(targets[1], "TH_wenwenxinwen", self) then
@@ -3013,10 +3013,10 @@ TH_huaniaofengyue = sgs.CreateTriggerSkill{---------花鸟风月，啸风弄月
 TH_YuukaSamaCARD = sgs.CreateSkillCard{---------S
 	name = "TH_YuukaSamaCARD",
 	skill_name = "TH_YuukaSama",
-	filter = function(self, targets, to_select)
-		return #targets < 2 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets < 2 and to_select:objectName() ~= player:objectName()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1 or #targets== 2
 	end,
 	on_use = function(self, room, source, targets)
@@ -3406,7 +3406,7 @@ TH_brokencharm = sgs.CreateTriggerSkill{------疵痕-损坏的护身符
 TH_ExiledDollCARD = sgs.CreateSkillCard{--创符-流刑人偶
 	name = "TH_ExiledDollCARD",
 	skill_name = "TH_ExiledDoll",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and to_select:getHp() == 1
 	end,
 	on_use = function(self, room, source, targets)
@@ -3483,7 +3483,7 @@ TH_MiracleofOtensui = sgs.CreateViewAsSkill{------天流-天水奇迹
 TH_MiracleofOtensuiCARD = sgs.CreateSkillCard{--天流-天水奇迹
 	name = "TH_MiracleofOtensuiCARD",
 	skill_name = "TH_MiracleofOtensui",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -3520,13 +3520,13 @@ TH_UnrememberedCropCARD = sgs.CreateSkillCard{----------遗忘之谷
 	filter = function(self,targets,to_select,player)
 		if to_select:objectName() == player:objectName() then return false end
 		if to_select:hasSkill("TH_UnrememberedCrop") then return false end
-		if sgs.Self:getMark("TH_SanaeBuff1_on") < 1 then
+		if player:getMark("TH_SanaeBuff1_on") < 1 then
 			return #targets < 1 and to_select:getHp() > 3 - self:subcardsLength()
-		elseif sgs.Self:getMark("TH_SanaeBuff1_on") == 1 then
+		elseif player:getMark("TH_SanaeBuff1_on") == 1 then
 			return to_select:getHp() > 2 - self:subcardsLength() and #targets < 1
 		end
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 	on_use = function(self, room, source, targets)
@@ -3756,11 +3756,11 @@ TH_bianshen_MaribelHearn = sgs.CreateTriggerSkill{
 TH_shengyusiCARD = sgs.CreateSkillCard{----生与死的境界
 	name = "TH_shengyusiCARD",
 	skill_name = "TH_shengyusi",
-	filter = function(self, targets, to_select)
-		if sgs.Self:getMark("TH_shengyusi_max") == 1 then
-			return #targets == 0 and to_select:getSeat() ~= 1 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		if player:getMark("TH_shengyusi_max") == 1 then
+			return #targets == 0 and to_select:getSeat() ~= 1 and to_select:objectName() ~= player:objectName()
 		else
-			return #targets == 0 and to_select:getSeat() ~= sgs.Self:getSeat() + 1 and to_select:objectName() ~= sgs.Self:objectName()
+			return #targets == 0 and to_select:getSeat() ~= player:getSeat() + 1 and to_select:objectName() ~= player:objectName()
 		end
 	end,
 	on_use = function(self, room, source, targets)
@@ -3935,11 +3935,11 @@ end,
 TH_menghuanpaoyingCARD = sgs.CreateSkillCard{------梦幻泡影
 	name = "TH_menghuanpaoyingCARD",
 	skill_name = "TH_menghuanpaoying",
-	filter = function(self, targets, to_select)
-		return #targets<sgs.Self:getHandcardNum() and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets<player:getHandcardNum() and to_select:objectName() ~= player:objectName()
 	end,
-	feasible=function(self, targets)
-		return #targets <= sgs.Self:getHandcardNum() and #targets > 0
+	feasible = function(self, targets, player)
+		return #targets <= player:getHandcardNum() and #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
 		local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
@@ -4203,8 +4203,8 @@ TH_allbaka = sgs.CreateTriggerSkill{----------笨蛋
 TH_TerribleSouvenirCARD = sgs.CreateSkillCard{
 	name = "TH_TerribleSouvenirCARD",
 	skill_name = "TH_TerribleSouvenir",
-	filter = function(self, targets, to_select)
-		return #targets<1 and to_select:objectName()~=sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets<1 and to_select:objectName()~=player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		targets[1]:gainMark("@TH_terriblesouvenir")
@@ -4544,11 +4544,11 @@ TH_DNA = sgs.CreateTriggerSkill{-----------DNA的瑕疵
 TH_liandemaihuoCARD = sgs.CreateSkillCard{-------恋的埋火
 	name = "TH_liandemaihuoCARD",
 	skill_name = "TH_liandemaihuo",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if to_select:getCardCount(true) == 0 then return false end
 		return #targets < 2
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 2
 	end,
 	on_use = function(self, room, source, targets)
@@ -5136,10 +5136,10 @@ TH_GreatestCaution=sgs.CreateViewAsSkill{--灰暗警告冲击波
 TH_GalacticIllusionCARD = sgs.CreateSkillCard{--宇宙大幻觉
 	name = "TH_GalacticIllusionCARD",
 	skill_name = "TH_GalacticIllusion",
-	filter = function(self, targets, to_select)
-		return #targets < 2 and to_select:objectName()~=sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets < 2 and to_select:objectName()~=player:objectName()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 2
 	end,
 	on_use = function(self, room, source, targets)
@@ -5168,8 +5168,8 @@ TH_GalacticIllusion=sgs.CreateViewAsSkill{--宇宙大幻觉
 TH_CosmicMarionnetteCARD = sgs.CreateSkillCard{----星辰傀儡线
 	name = "TH_CosmicMarionnetteCARD",
 	skill_name = "TH_CosmicMarionnette",
-	filter = function(self, targets, to_select)
-		return to_select:getMark("TH_CosmicMarionnette_target")< 1 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return to_select:getMark("TH_CosmicMarionnette_target")< 1 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		room:setPlayerMark(targets[1],"TH_CosmicMarionnette_target",2)
@@ -5538,11 +5538,11 @@ TH_guanglongzhitanxiCARD = sgs.CreateSkillCard{---光龙
 	name = "TH_guanglongzhitanxiCARD",
 	skill_name = "TH_guanglongzhitanxi",
 	target_fixed = false,
-	feasible = function(self, targets)
-		return sgs.Self:getMark("@TH_yuyi") >= sgs.Self:aliveCount() - 1 and #targets <= 5 and #targets > 0
+	feasible = function(self, targets, player)
+		return player:getMark("@TH_yuyi") >= player:aliveCount() - 1 and #targets <= 5 and #targets > 0
 	end,
-	filter = function(self, targets, to_select)
-		return sgs.Self:getMark("@TH_yuyi") >= sgs.Self:aliveCount() - 1 and #targets < 5 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return player:getMark("@TH_yuyi") >= player:aliveCount() - 1 and #targets < 5 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		if #targets == 0 then return end
@@ -5597,7 +5597,7 @@ TH_longshendeshandianCARD = sgs.CreateSkillCard{
 	name = "TH_longshendeshandianCARD",
 	skill_name = "TH_longshendeshandian",
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 1 and not to_select:containsTrick("lightning")
 	end,
 	on_use = function(self, room, source, targets)
@@ -5708,9 +5708,9 @@ TH_hengongCARD = sgs.CreateSkillCard{
 	name = "TH_hengongCARD",
 	skill_name = "TH_hengong",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 1 and sgs.Sanguosha:getCard(self:getSubcards():at(0)):getNumber() <= to_select:getHp()
-			and to_select:objectName() ~= sgs.Self:objectName()
+			and to_select:objectName() ~= player:objectName()
 	end,
 	on_use= function(self, room, source, targets)
 		room:setPlayerFlag(source, "TH_hengong_used")
@@ -5827,8 +5827,8 @@ TH_UndefinedUFOCARD = sgs.CreateSkillCard{
 	name = "TH_UndefinedUFOCARD",
 	skill_name = "TH_UndefinedUFO",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-		return #targets<1 and to_select:objectName()~=sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets<1 and to_select:objectName()~=player:objectName()
 	end,
 	on_use= function(self, room, source, targets)
 		if targets[1]:getNext():objectName() == source:objectName() then
@@ -6574,8 +6574,8 @@ TH_ScienceCARD = sgs.CreateSkillCard{--科学
 	name = "TH_ScienceCARD",
 	skill_name = "TH_Science",
 	will_throw = false,
-	filter = function(self, selected, to_select)
-		return #selected < 1 and not to_select:isKongcheng() and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, selected, to_select, player)
+		return #selected < 1 and not to_select:isKongcheng() and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		local cardid = self:getSubcards():first()
@@ -6614,8 +6614,8 @@ TH_UnscientificCARD = sgs.CreateSkillCard{--这不科学
 	name = "TH_UnscientificCARD",
 	skill_name = "TH_Unscientific",
 	will_throw = false,
-	filter = function(self, selected, to_select)
-		return #selected < 1 and not to_select:isKongcheng() and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, selected, to_select, player)
+		return #selected < 1 and not to_select:isKongcheng() and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		local cardid = self:getSubcards():first()
@@ -6663,8 +6663,8 @@ TH_Unscientific = sgs.CreateTriggerSkill{--这不科学
 TH_MoreUnscientificCARD = sgs.CreateSkillCard{--这更不科学
 	name = "TH_MoreUnscientificCARD",
 	skill_name = "TH_MoreUnscientific",
-	filter = function(self, targets, to_select)
-		return #targets < 1 and not to_select:isKongcheng() and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets < 1 and not to_select:isKongcheng() and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		local move = sgs.CardsMoveStruct()
@@ -7013,7 +7013,7 @@ TH_shenlingdayuzhou = sgs.CreateTriggerSkill{
 TH_shenjiCARD = sgs.CreateSkillCard{
 	name = "TH_shenjiCARD",
 	skill_name = "TH_shenji",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return to_select:getCardCount(true) > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -7061,7 +7061,7 @@ TH_shenji = sgs.CreateTriggerSkill{
 TH_huanghuoCARD = sgs.CreateSkillCard{
 	name = "TH_huanghuoCARD",
 	skill_name = "TH_huanghuo",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 1
 	end,
 	on_use = function(self, room, source, targets)
@@ -7176,21 +7176,21 @@ TH_lordskill_subCARD = sgs.CreateSkillCard{
 	skill_name = "TH_lordskill_sub",
 	target_fixed = false,
 	will_throw = true,
-	feasible = function(self, targets)
-		if sgs.Self:getKingdom() == "wei" or sgs.Self:getKingdom() == "shu" then
+	feasible = function(self, targets, player)
+		if player:getKingdom() == "wei" or player:getKingdom() == "shu" then
 			return #targets == 1
-		elseif sgs.Self:getKingdom() == "wu" then
+		elseif player:getKingdom() == "wu" then
 			return #targets == 0
 		else
 			return #targets == 0
 		end
 	end,
-	filter = function(self, targets, to_select)
-		if sgs.Self:getKingdom() == "wei" then
-			return #targets < 1 and not to_select:isLord() and to_select:objectName() ~= sgs.Self:objectName()
-		elseif sgs.Self:getKingdom() == "shu" then
-			return #targets < 1 and to_select:getCardCount(true) > 0 and not to_select:isLord() and to_select:objectName() ~= sgs.Self:objectName()
-		elseif sgs.Self:getKingdom() == "wu" or sgs.Self:getKingdom() == "qun" then
+	filter = function(self, targets, to_select, player)
+		if player:getKingdom() == "wei" then
+			return #targets < 1 and not to_select:isLord() and to_select:objectName() ~= player:objectName()
+		elseif player:getKingdom() == "shu" then
+			return #targets < 1 and to_select:getCardCount(true) > 0 and not to_select:isLord() and to_select:objectName() ~= player:objectName()
+		elseif player:getKingdom() == "wu" or player:getKingdom() == "qun" then
 			return false
 		else
 			return false

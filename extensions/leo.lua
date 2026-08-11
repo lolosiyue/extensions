@@ -43,21 +43,21 @@ luajuesii_card = sgs.CreateSkillCard {
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) and
-			not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) and
+			not player:isProhibited(to_select, card, qtargets)
 	end,
 	target_fixed = function(self)
 		local card = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
 		return card and card:targetFixed()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local card = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
 		card:setSkillName("luajuesii")
 		local qtargets = sgs.PlayerList()
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self)
+		return card and card:targetsFeasible(qtargets, player)
 	end,
 	on_validate = function(self, card_use)
 		local source = card_use.from
@@ -110,7 +110,7 @@ luatuxiex_card = sgs.CreateSkillCard
 	{
 		name = "luatuxiex_card",
 		filter = function(self, targets, to_select, player)
-			return not to_select:isNude() and to_select:objectName() ~= sgs.Self:objectName() and #targets < 1
+			return not to_select:isNude() and to_select:objectName() ~= player:objectName() and #targets < 1
 		end,
 		on_effect = function(self, effect)
 			local room = effect.from:getRoom()
@@ -230,8 +230,8 @@ luaqingqi_card = sgs.CreateSkillCard
 			for _, p in ipairs(targets) do
 				qtargets:append(p)
 			end
-			return (not to_select:isAllNude() and to_select:objectName() ~= sgs.Self:objectName() and #targets < 1) or
-				(card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets))
+			return (not to_select:isAllNude() and to_select:objectName() ~= player:objectName() and #targets < 1) or
+				(card and card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets))
 		end,
 		on_effect = function(self, effect)
 			local room = effect.from:getRoom()
@@ -578,7 +578,7 @@ luayuanlue_card = sgs.CreateSkillCard
 		name = "luayuanlue",
 
 
-		filter = function(self, targets, to_select)
+		filter = function(self, targets, to_select, player)
 			if #targets > 0 then return false end
 			local handcardnum = to_select:getHandcardNum()
 			local hp = to_select:getHp()
@@ -2178,13 +2178,13 @@ luafeijiang = sgs.CreateTriggerSkill {
 	events = { sgs.GameStart, sgs.EventAcquireSkill, sgs.EventLoseSkill },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if ((event == sgs.GameStart) or (event == sgs.EventAcquireSkill and data:toString() == "luafeijiang")) then
+		if ((event == sgs.GameStart) or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "luafeijiang")) then
 			local list = room:getAlivePlayers()
 			for _, p in sgs.qlist(list) do
 				room:setFixedDistance(player, p, 1)
 			end
 			room:sendCompulsoryTriggerLog(player, "luafeijiang", true)
-		elseif event == sgs.EventLoseSkill and data:toString() == "luafeijiang" then
+		elseif event == sgs.EventLoseSkill and data:toSkillChange().skillName == "luafeijiang" then
 			local list = room:getAlivePlayers()
 			for _, p in sgs.qlist(list) do
 				room:removeFixedDistance(player, p, 1)
@@ -2993,7 +2993,7 @@ luazhiyong = sgs.CreateTriggerSkill
 luayijuedestCard = sgs.CreateSkillCard {
 	name = "luayijuedestCard",
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local name = ""
 		local card
 		local plist = sgs.PlayerList()
@@ -3004,8 +3004,8 @@ luayijuedestCard = sgs.CreateSkillCard {
 			name = uses[1]
 			card = sgs.Sanguosha:cloneCard(name)
 		end
-		return card and card:targetFilter(plist, to_select, sgs.Self) and
-			not sgs.Self:isProhibited(to_select, card, plist)
+		return card and card:targetFilter(plist, to_select, player) and
+			not player:isProhibited(to_select, card, plist)
 	end,
 	feasible = function(self, targets, from)
 		local name = ""
@@ -3252,7 +3252,7 @@ leo_luaweiwo = sgs.CreateTriggerSkill
 luabazhen_club = sgs.CreateSkillCard
 {
 	name = "luabazhen_club",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets > 1 then return false end
 		return true
 	end,

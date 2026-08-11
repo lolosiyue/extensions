@@ -39,7 +39,7 @@ feichengpu = sgs.General(extension, "feichengpu", "wu", "4", true)
 feilianyingCard = sgs.CreateSkillCard {
     name = "feilianyingCard",
     filter = function(self, targets, to_select, erzhang)
-        return #targets < sgs.Self:getMark("feilianying") and #targets < 5
+        return #targets < erzhang:getMark("feilianying") and #targets < 5
     end,
     on_use = function(self, room, source, targets)
         local room = source:getRoom()
@@ -117,7 +117,7 @@ feiqianxuncard = sgs.CreateSkillCard {
     filter = function(self, targets, to_select, player)
         return #targets < player:getHandcardNum() and #targets < 5
     end,
-    feasible = function(self, targets)
+    feasible = function(self, targets, player)
         return #targets ~= 0
     end,
     on_use = function(self, room, source, targets)
@@ -365,8 +365,8 @@ feihujueCard = sgs.CreateSkillCard {
     name = "feihujueCard",
     target_fixed = false,
     will_throw = false,
-    filter = function(self, targets, to_select)
-        return (#targets == 0) and (to_select:objectName() ~= sgs.Self:objectName())
+    filter = function(self, targets, to_select, player)
+        return (#targets == 0) and (to_select:objectName() ~= player:objectName())
     end,
     on_use = function(self, room, source, targets)
         local tiger = targets[1]
@@ -444,8 +444,8 @@ feilangduoCard = sgs.CreateSkillCard {
     name = "feilangduoCard",
     target_fixed = false,
     will_throw = false,
-    filter = function(self, targets, to_select)
-        return (#targets == 0) and (not to_select:isKongcheng()) and (to_select:objectName() ~= sgs.Self:objectName())
+    filter = function(self, targets, to_select, player)
+        return (#targets == 0) and (not to_select:isKongcheng()) and (to_select:objectName() ~= player:objectName())
     end,
     on_use = function(self, room, source, targets)
         local tiger = targets[1]
@@ -590,7 +590,7 @@ feishejiCard = sgs.CreateSkillCard {
     filter = function(self, targets, to_select, player)
         return #targets == 0 and (player:inMyAttackRange(to_select) or to_select:hasEquip())
     end,
-    feasible = function(self, targets)
+    feasible = function(self, targets, player)
         return #targets ~= 0
     end,
     on_effect = function(self, effect)
@@ -830,7 +830,7 @@ feizuijiaoCard = sgs.CreateSkillCard {
     filter = function(self, targets, to_select, player)
         return #targets == 0 and not to_select:isKongcheng() and to_select:objectName() ~= player:objectName()
     end,
-    feasible = function(self, targets)
+    feasible = function(self, targets, player)
         return #targets == 1
     end,
     on_effect = function(self, effect)
@@ -957,7 +957,7 @@ feiyanjunCard = sgs.CreateSkillCard {
     filter = function(self, targets, to_select, player)
         return #targets == 0
     end,
-    feasible = function(self, targets)
+    feasible = function(self, targets, player)
         return #targets ~= 0
     end,
     on_effect = function(self, effect)
@@ -1106,8 +1106,8 @@ feilianhuanCard = sgs.CreateSkillCard {
     name = "feilianhuanCard",
     target_fixed = false,
     will_throw = false,
-    filter = function(self, targets, to_select)
-        return (#targets == 0) and (sgs.Self:canPindian(to_select)) and (to_select:objectName() ~= sgs.Self:objectName())
+    filter = function(self, targets, to_select, player)
+        return (#targets == 0) and (player:canPindian(to_select)) and (to_select:objectName() ~= player:objectName())
     end,
     on_use = function(self, room, source, targets)
         local tiger = targets[1]

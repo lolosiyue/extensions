@@ -65,7 +65,7 @@ ov_lingbaoCard = sgs.CreateSkillCard {
 			return #targets < 1
 		end
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local r, b = 0, 0
 		for c, id in sgs.list(self:getSubcards()) do
 			c = sgs.Sanguosha:getCard(id)
@@ -1108,7 +1108,7 @@ ov_yanhuoCard = sgs.CreateSkillCard {
 	filter = function(self, targets, to_select, source)
 		return #targets < source:getCardCount()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -1437,7 +1437,7 @@ ov_yujue = sgs.CreateTriggerSkill {
 				end
 			end
 		elseif event == sgs.EventAcquireSkill then
-			if data:toString() ~= self:objectName() then
+			if data:toSkillChange().skillName ~= self:objectName() then
 				return
 			end
 			for _, p in sgs.list(room:getOtherPlayers(player)) do
@@ -5601,9 +5601,9 @@ ov_pingting = sgs.CreateTriggerSkill {
 	events = { sgs.CardsMoveOneTime, sgs.EventAcquireSkill, sgs.EventLoseSkill, sgs.RoundStart, sgs.Dying },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if event == sgs.EventLoseSkill and data:toString() == self:objectName() then
+		if event == sgs.EventLoseSkill and data:toSkillChange().skillName == self:objectName() then
 			room:handleAcquireDetachSkills(player, "-tianxiang|-liuli", true)
-		elseif event == sgs.EventAcquireSkill and data:toString() == self:objectName() then
+		elseif event == sgs.EventAcquireSkill and data:toSkillChange().skillName == self:objectName() then
 			if player:getPile("ov_xingwu"):length() > 0 then
 				room:sendCompulsoryTriggerLog(player, "ov_pingting")
 				room:handleAcquireDetachSkills(player, "tianxiang|liuli")
@@ -9102,7 +9102,7 @@ ov_wushen = sgs.CreateTriggerSkill {
 				player:addMark("ov_wushenbf-PlayClear")
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == "ov_wushen" then
+			if data:toSkillChange().skillName == "ov_wushen" then
 				local hw = sgs.CardList()
 				for _, c in sgs.list(player:getHandcards()) do
 					if c:getSuit() == 2 or c:getSkillName() == "ov_wushen" then
@@ -9956,7 +9956,7 @@ ov_sunshao:addSkill(ov_zuici)
 ov_fubiCard = sgs.CreateSkillCard {
 	name = "ov_fubiCard",
 	handling_method = sgs.Card_MethodDiscard,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		for i = 1, 4 do
 			if to_select:getMark("&ov_dingyi" .. i) > 0 then
 				return #targets < 1
@@ -10361,7 +10361,7 @@ ov_luanchouCard = sgs.CreateSkillCard {
 	filter = function(self, targets, to_select, from)
 		return #targets < 2
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 1
 	end,
 	on_use = function(self, room, source, targets)
@@ -12881,7 +12881,7 @@ ov_kaizeng = sgs.CreateTriggerSkill {
 	end,
 	on_trigger = function(self, event, player, data, room)
 		if event == sgs.EventAcquireSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 					if p:getPhase() ~= sgs.Player_Play or p:hasSkill("ov_kaizengvs", true) then
 						continue

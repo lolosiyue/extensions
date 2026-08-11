@@ -594,7 +594,7 @@ rotenburo = sgs.CreateTrickCard{
 		if source:isProhibited(to_select,self) then return end
 		return #targets < 1 and not hasRemoved(to_select)
 	end,
-    feasible = function(self, targets)
+    feasible = function(self, targets, player)
 	    return #targets == 1
     end,
 	available = function(self, player)
@@ -1159,8 +1159,8 @@ if gaokao_special then
 		name = "heikeji_test_card",
 		will_throw = false,
 		handling_method = sgs.Card_MethodNone,
-		filter = function(self, targets, to_select)
-			local card = sgs.Self:getTag("heikeji_test"):toCard()
+		filter = function(self, targets, to_select, player)
+			local card = player:getTag("heikeji_test"):toCard()
 			card:addSubcard(self:getSubcards():first())
 			card:setSkillName(self:objectName())
 			if card and card:targetFixed() then
@@ -1170,11 +1170,11 @@ if gaokao_special then
 			for _, p in ipairs(targets) do
 				qtargets:append(p)
 			end
-			return card and card:targetFilter(qtargets, to_select, sgs.Self) 
-				and not sgs.Self:isProhibited(to_select, card, qtargets)
+			return card and card:targetFilter(qtargets, to_select, player) 
+				and not player:isProhibited(to_select, card, qtargets)
 		end,
-		feasible = function(self, targets)
-			local card = sgs.Self:getTag("heikeji_test"):toCard()
+		feasible = function(self, targets, player)
+			local card = player:getTag("heikeji_test"):toCard()
 			card:addSubcard(self:getSubcards():first())
 			card:setSkillName(self:objectName())
 			local qtargets = sgs.PlayerList()
@@ -1184,7 +1184,7 @@ if gaokao_special then
 			if card and card:canRecast() and #targets == 0 then
 				return false
 			end
-			return card and card:targetsFeasible(qtargets, sgs.Self)
+			return card and card:targetsFeasible(qtargets, player)
 		end,	
 		on_validate = function(self, card_use)
 			local xunyou = card_use.from
@@ -1274,10 +1274,10 @@ heikeji_test_vs_skill:setGuhuoDialog("r")
 	available = true,
 	can_recast = false,
 	target_fixed = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 1
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 	on_use = function(self, room, source, targets)

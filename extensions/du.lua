@@ -48,7 +48,7 @@ jfTakeCard = sgs.CreateSkillCard {
 	name = "jfTakeCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return to_select:hasSkill("jinfan") and to_select:getPile("du_jin"):length() > 0
 	end,
 	on_effect = function(self, effect)
@@ -93,7 +93,7 @@ jinfanStart = sgs.CreateTriggerSkill {
 	events = { sgs.GameStart, sgs.EventAcquireSkill },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if (event == sgs.GameStart) or (event == sgs.EventAcquireSkill and data:toString() == "jinfan") then
+		if (event == sgs.GameStart) or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "jinfan") then
 			local lieges = room:getLieges("wu", player)
 			if player:getKingdom() == "wu" then
 				room:attachSkillToPlayer(player, "jinfanTake")
@@ -113,7 +113,7 @@ jinfanEnd = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.EventLoseSkill then
-			local name = data:toString()
+			local name = data:toSkillChange().skillName
 			if name == "jinfan" then
 				local lieges = room:getLieges("wu", player)
 				for _, p in sgs.qlist(lieges) do
@@ -142,13 +142,13 @@ duYinlingCard = sgs.CreateSkillCard {
 	name = "duYinlingCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		if to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng() then
+	filter = function(self, targets, to_select, player)
+		if to_select:objectName() ~= player:objectName() and not to_select:isKongcheng() then
 			return #targets < 1
 		end
 		return false
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 
@@ -293,13 +293,13 @@ du_zhouxuanCard = sgs.CreateSkillCard {
 	name = "du_zhouxuanCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		if to_select:isMale() or to_select:objectName() == sgs.Self:objectName() then
+	filter = function(self, targets, to_select, player)
+		if to_select:isMale() or to_select:objectName() == player:objectName() then
 			return #targets < 2
 		end
 		return false
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 2
 	end,
 	on_use = function(self, room, source, targets)
@@ -741,7 +741,7 @@ duSunjian = sgs.General(extension, "duSunjian", "wu", 4)
 tongpaodestCard = sgs.CreateSkillCard {
 	name = "tongpaodestCard",
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local name = ""
 		local card
 		local plist = sgs.PlayerList()
@@ -757,7 +757,7 @@ tongpaodestCard = sgs.CreateSkillCard {
 			name = uses[1]
 			card = sgs.Sanguosha:cloneCard(name)
 		end
-		return card and card:targetFilter(plist, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, plist)
+		return card and card:targetFilter(plist, to_select, player) and not player:isProhibited(to_select, card, plist)
 	end,
 	feasible = function(self, targets, from)
 		local name = ""

@@ -319,7 +319,7 @@ kesxtiaoheCard = sgs.CreateSkillCard {
 		end
 		return #targets < 2
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 2
 	end,
 	about_to_use = function(self, room, use)
@@ -769,7 +769,7 @@ kesxmateng = sgs.General(kearmsxfyzhen, "kesxmateng$", "qun", 4, true)
 kesxxiongyiCard = sgs.CreateSkillCard {
 	name = "kesxxiongyiCard",
 	will_throw = false,
-	filter = function(self, selected, to_select)
+	filter = function(self, selected, to_select, player)
 		return (#selected < 99)
 	end,
 	on_use = function(self, room, source, targets)
@@ -840,7 +840,7 @@ kesxyouqiCard = sgs.CreateSkillCard {
 				or targets[1]:getDefensiveHorse() and not to_select:getDefensiveHorse() and to_select:hasDefensiveHorseArea()
 		end
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 2
 	end,
 	about_to_use = function(self, room, use)
@@ -1094,7 +1094,7 @@ kesxyanghu = sgs.General(kearmsxfyzhen, "kesxyanghu", "wei", 4, true)
 
 kesxmingfaCard = sgs.CreateSkillCard {
 	name = "kesxmingfaCard",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return (#targets < 1) and (to_select:getHp() > 1)
 	end,
 	on_use = function(self, room, player, targets)
@@ -1288,7 +1288,7 @@ kesxxiongxiaCard = sgs.CreateSkillCard {
 		duel:deleteLater()
 		return #targets < 2 and duel:targetFilter(sgs.PlayerList(), to_select, source)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 2
 	end,
 	about_to_use = function(self, room, use)
@@ -3782,7 +3782,7 @@ sxmizhaoCard = sgs.CreateSkillCard {
 		end
 		return #targets < 2
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 2
 	end,
 	about_to_use = function(self, room, use)
@@ -4575,7 +4575,7 @@ sxqijianCard = sgs.CreateSkillCard {
 	filter = function(self, targets, to_select, source)
 		return #targets < 1 or #targets < 2 and targets[1]:getHandcardNum() == to_select:getHandcardNum()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 2
 	end,
 	on_use = function(self, room, player, targets)

@@ -216,7 +216,7 @@ kelqlizhongcard = sgs.CreateSkillCard {
 			end
 		end
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		if self:subcardsLength() > 0 then
 			return self:subcardsLength() == #targets
 		else
@@ -447,7 +447,7 @@ kelqshouxiangcard = sgs.CreateSkillCard {
 	filter = function(self, targets, to_selec, source)
 		return to_selec ~= source and #targets < source:getMark("kelqshouxiangNum")
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return self:subcardsLength() == #targets
 	end,
 	about_to_use = function(self, room, use)
@@ -1912,7 +1912,7 @@ tyqingshiCard = sgs.CreateSkillCard {
 	filter = function(self, targets, to_selec, source)
 		return #targets < self:subcardsLength() and to_selec:hasFlag("tyqingshiBlack") and to_selec ~= source
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == self:subcardsLength()
 	end,
 	about_to_use = function(self, room, use)

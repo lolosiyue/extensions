@@ -803,7 +803,7 @@ caoduoCard = sgs.CreateSkillCard{
         end
         return false
     end ,
-    feasible = function(self, targets)
+    feasible = function(self, targets, player)
         return #targets == 2
     end ,
     on_validate = function(self,card_use)
@@ -1429,10 +1429,10 @@ pomouCard = sgs.CreateSkillCard{
     name = "pomou",
     will_throw = false ,
     target_fixed = true,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         return false
     end ,
-    feasible = function(self, targets)
+    feasible = function(self, targets, player)
         return false
     end,
     on_validate_in_response = function(self, user)
@@ -1688,7 +1688,7 @@ tomorinao=sgs.General(extension,"tomorinao","real",3,false,false)
 
 zzy_weimianCard = sgs.CreateSkillCard{
 	name = "zzy_weimianCard" ,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end ,
 	on_effect = function(self, effect)
@@ -2073,12 +2073,12 @@ zhanmeiqiyuecard = sgs.CreateSkillCard{
     name = "zhanmeiqiyuecard",
     target_fixed = false,
     will_throw = true,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         if #targets ~= 0 then return false end
         if not to_select:isFemale() then return false end
         return true
     end,
-    feasible = function(self, targets)
+    feasible = function(self, targets, player)
         return #targets == 1 
     end,
     on_use = function(self, room, source, targets)
@@ -2174,10 +2174,10 @@ feitianshuangzhancard = sgs.CreateSkillCard{
 name = "feitianshuangzhancard",
 target_fixed = false,
 will_throw = false,
-filter = function(self, targets, to_select)
+filter = function(self, targets, to_select, player)
 return #targets == 0
 end,
-feasible = function(self, targets)
+feasible = function(self, targets, player)
 return #targets == 1 
 end,
 on_use = function(self, room, player, targets)
@@ -2486,10 +2486,10 @@ lingyincard = sgs.CreateSkillCard{
 name = "lingyincard",
 target_fixed = false,
 will_throw = true,
-filter = function(self, targets, to_select)
+filter = function(self, targets, to_select, player)
 return #targets <= 0 
 end,
-feasible = function(self, targets)
+feasible = function(self, targets, player)
 return #targets == 1
 end,
 on_use = function(self, room, source, targets)
@@ -2650,7 +2650,7 @@ if player:objectName() == to_select:objectName() then return false end
 if to_select:isAllNude() then return false end
 return player:distanceTo(to_select) <= 1 
 end,
-feasible = function(self, targets)
+feasible = function(self, targets, player)
 return #targets >= 1 
 end,
 on_use = function(self, room, source, targets)

@@ -740,7 +740,7 @@ y_huanshicard = sgs.CreateSkillCard
 			return #targets < 2 and to_select:getSeat() ~= player:getSeat() and not to_select:isKongcheng()
 		end,
 
-		feasible = function(self, targets)
+		feasible = function(self, targets, player)
 			return #targets == 2
 		end,
 
@@ -767,7 +767,7 @@ y_yangzhengcard = sgs.CreateSkillCard
 		once = false,
 
 		filter = function(self, targets, to_select, player)
-			return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+			return #targets == 0 and to_select:objectName() ~= player:objectName()
 		end,
 
 		on_use = function(self, room, source, targets)
@@ -2227,7 +2227,7 @@ y_lianzhucard = sgs.CreateSkillCard
 			return #targets < self:subcardsLength()
 		end,
 
-		feasible = function(self, targets)
+		feasible = function(self, targets, player)
 			return #targets == self:subcardsLength()
 		end,
 

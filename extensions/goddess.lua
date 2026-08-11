@@ -750,7 +750,7 @@ shot = sgs.CreateBasicCard{
 		if source:isProhibited(to_select,self) then return end
 		return to_select:objectName() ~= source:objectName() and #targets == 0
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 	available = function(self, player)
@@ -808,7 +808,7 @@ thunder_shot = sgs.CreateBasicCard{
 		if source:isProhibited(to_select,self) then return end
 		return to_select:objectName() ~= source:objectName() and #targets == 0
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 	available = function(self, player)
@@ -860,7 +860,7 @@ fire_shot = sgs.CreateBasicCard{
 		if source:isProhibited(to_select,self) then return end
 		return to_select:objectName() ~= source:objectName() and #targets == 0
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 	available = function(self, player)
@@ -906,7 +906,7 @@ Kai = sgs.CreateBasicCard{
 	subtype = "defense_card",
 	target_fixed = true,
 	can_recast = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return false
 	end,
 	available = function(self, player)
@@ -1070,7 +1070,7 @@ Weikai = sgs.CreateBasicCard{
 	number = 9,
 	target_fixed = true,
 	can_recast = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return false
 	end,
 	available = function(self, player)
@@ -1294,7 +1294,7 @@ Su = sgs.CreateBasicCard{
 		if source:isProhibited(to_select,self) then return end
 		return to_select:getHp() < to_select:getMaxHp() and #targets < 2
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0 and #targets < 3
 	end,
 	available = function(self, player)
@@ -1421,7 +1421,7 @@ manbing = sgs.CreateTrickCard{
 		if source:isProhibited(to_select,self) then return end
 		return to_select:objectName() ~= source:objectName() and #targets == 0
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 	available = function(self, player)
@@ -1471,7 +1471,7 @@ quanxiang = sgs.CreateTrickCard{
 		if source:isProhibited(to_select,self) then return end
 		return to_select:objectName() ~= source:objectName() and to_select:getHandcardNum()<source:getHandcardNum() and to_select:getHandcardNum()>0 and to_select:getMark("@RemoveGeneral") == 0 and #targets == 0
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 	available = function(self, player)
@@ -1529,7 +1529,7 @@ shuigong = sgs.CreateTrickCard{
 		if source:isProhibited(to_select,self) then return end
 		return to_select:objectName() ~= source:objectName() and #targets == 0
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 	available = function(self, player)
@@ -1583,10 +1583,10 @@ boyidujiang = sgs.CreateTrickCard{
 	number = 11,
 	target_fixed = false,
 	can_recast = true,	
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return sgs.self:distanceTo(targets)>=3 and #targets == 0
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 	available = function(self, player)

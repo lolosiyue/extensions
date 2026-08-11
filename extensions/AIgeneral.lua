@@ -415,7 +415,7 @@ tieba_zhiliCard = sgs.CreateSkillCard {
 	name = "tieba_zhiliCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -899,7 +899,7 @@ tongyiTQDY = sgs.CreateTriggerSkill {
 	events = { sgs.GameStart, sgs.EventAcquireSkill },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == "tongyiAIWJ") then
+		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "tongyiAIWJ") then
 			for _, p in sgs.qlist(room:getAllPlayers()) do
 				if not p:hasSkill("tongyiTQ") then
 					room:attachSkillToPlayer(p, "tongyiTQ")
@@ -1209,7 +1209,7 @@ tiaojiaoCMTCard = sgs.CreateSkillCard {
 	name = "tiaojiaoCMTCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)

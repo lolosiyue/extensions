@@ -113,7 +113,7 @@ luaRshijiCard = sgs.CreateSkillCard {
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName("luaRshiji")
 		slash:deleteLater()
-		return slash:targetFilter(targets_list, to_select, sgs.Self) and #targets == 0
+		return slash:targetFilter(targets_list, to_select, player) and #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
 		local targets_list = sgs.SPlayerList()

@@ -1334,7 +1334,7 @@ ny_10th_jianguo = sgs.CreateZeroCardViewAsSkill {
 
 ny_10th_jianguoCard = sgs.CreateSkillCard {
 	name = "ny_10th_jianguo",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_effect = function(self, effect)
@@ -1632,7 +1632,7 @@ ny_10th_huiling_record = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		local marks = { "&ny_10th_huiling_red", "&ny_10th_huiling_black", "&ny_10th_huiling_same" }
 		if event == sgs.EventLoseSkill then
-			if data:toString() == "ny_10th_huiling" then
+			if data:toSkillChange().skillName == "ny_10th_huiling" then
 				for _, mark in ipairs(marks) do
 					room:setPlayerMark(player, mark, 0)
 				end
@@ -3579,7 +3579,7 @@ ny_10th_linglong = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() and player:getMark("ny_10th_linglong_qicai") > 0 then
+			if data:toSkillChange().skillName == self:objectName() and player:getMark("ny_10th_linglong_qicai") > 0 then
 				player:setMark("ny_10th_linglong_qicai", 0)
 				room:detachSkillFromPlayer(player, "qicai")
 			end
@@ -4809,7 +4809,7 @@ ny_10th_huace_record = sgs.CreateTriggerSkill {
 		end
 		if event == sgs.GameStart or event == sgs.EventAcquireSkill then
 			if event == sgs.EventAcquireSkill then
-				if data:toString() ~= "ny_10th_huace" then
+				if data:toSkillChange().skillName ~= "ny_10th_huace" then
 					return false
 				end
 			end
@@ -4892,7 +4892,7 @@ ny_10th_jijiao = sgs.CreateZeroCardViewAsSkill {
 
 ny_10th_jijiaoCard = sgs.CreateSkillCard {
 	name = "ny_10th_jijiao",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 1
 	end,
 	on_effect = function(self, effect)
@@ -5341,7 +5341,7 @@ ny_10th_zhaowen_clear = sgs.CreateTriggerSkill {
 		--给ai认牌的
 		if event == sgs.GameStart or event == sgs.EventAcquireSkill then
 			if event == sgs.EventAcquireSkill then
-				if data:toString() ~= "ny_10th_zhaowen" then
+				if data:toSkillChange().skillName ~= "ny_10th_zhaowen" then
 					return false
 				end
 			end
@@ -6264,7 +6264,7 @@ ny_10th_beini = sgs.CreateZeroCardViewAsSkill {
 
 ny_10th_beiniCard = sgs.CreateSkillCard {
 	name = "ny_10th_beini",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 2
 	end,
 	feasible = function(self, targets, player)
@@ -7935,13 +7935,13 @@ ny_10th_qiongying = sgs.CreateZeroCardViewAsSkill {
 
 ny_10th_qiongyingCard = sgs.CreateSkillCard {
 	name = "ny_10th_qiongying",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets >= 1 then
 			return false
 		end
 		return (not to_select:getEquips():isEmpty()) or (not to_select:getJudgingArea():isEmpty())
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		if #targets <= 0 then
 			return false
 		end
@@ -9075,13 +9075,13 @@ ny_tenth_wencan = sgs.CreateViewAsSkill {
 
 ny_tenth_wencanCard = sgs.CreateSkillCard {
 	name = "ny_tenth_wencan",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		for _, p in ipairs(targets) do
 			if to_select:getHp() == p:getHp() then
 				return false
 			end
 		end
-		return #targets < 2 and to_select:objectName() ~= sgs.Self:objectName()
+		return #targets < 2 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -10112,8 +10112,8 @@ ny_10th_weiwan = sgs.CreateViewAsSkill {
 ny_10th_weiwanCard = sgs.CreateSkillCard {
 	name = "ny_10th_weiwan",
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets < 1 and to_select:objectName() ~= sgs.Self:objectName() and (not to_select:isAllNude())
+	filter = function(self, targets, to_select, player)
+		return #targets < 1 and to_select:objectName() ~= player:objectName() and (not to_select:isAllNude())
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -10211,7 +10211,7 @@ ny_tenth_silunCard = sgs.CreateSkillCard {
 	name = "ny_tenth_silun",
 	mute = true,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets >= 1 then
 			return false
 		end
@@ -11996,7 +11996,7 @@ ny_tenth_dehua_lose = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.EventLoseSkill then
-			if data:toString() == "ny_tenth_dehua" then
+			if data:toSkillChange().skillName == "ny_tenth_dehua" then
 				local unable = player:getTag("ny_tenth_dehua_used"):toString():split("+")
 				if (not unable) or (#unable <= 0) then
 					unable = {}
@@ -12450,7 +12450,7 @@ ny_tenth_yanjiaoCard = sgs.CreateSkillCard {
 ny_tenth_yanjiao_usingCard = sgs.CreateSkillCard {
 	name = "ny_tenth_yanjiao_using",
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 1 and to_select:getMark("ny_tenth_yanjiao_target") > 0
 	end,
 	feasible = function(self, targets, player)
@@ -12982,7 +12982,7 @@ ny_10th_jianguo_second = sgs.CreateZeroCardViewAsSkill {
 
 ny_10th_jianguo_secondCard = sgs.CreateSkillCard {
 	name = "ny_10th_jianguo_second",
-	filter = function(self, selected, to_select)
+	filter = function(self, selected, to_select, player)
 		return #selected < 1 and (self:getUserString() ~= "dis" or (not to_select:isNude()))
 	end,
 	on_effect = function(self, effect)
@@ -13161,7 +13161,7 @@ ny_tenth_wuyou_other = sgs.CreateViewAsSkill {
 ny_tenth_wuyouCard = sgs.CreateSkillCard {
 	name = "ny_tenth_wuyou",
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return to_select:hasSkill("ny_tenth_wuyou") and #targets < 1
 	end,
 	on_effect = function(self, effect)
@@ -13224,7 +13224,7 @@ ny_tenth_wuyou = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.EventAcquireSkill then
-			if data:toString() ~= self:objectName() then
+			if data:toSkillChange().skillName ~= self:objectName() then
 				return false
 			end
 		end
@@ -13371,6 +13371,7 @@ ny_tenth_jvewuVS = sgs.CreateViewAsSkill {
 	end,
 }
 
+
 ny_tenth_jvewu_selectCard = sgs.CreateSkillCard {
 	name = "ny_tenth_jvewu_select",
 	will_throw = false,
@@ -13414,7 +13415,7 @@ ny_tenth_jvewu_selectCard = sgs.CreateSkillCard {
 		end
 		room:setPlayerProperty(player, "ny_tenth_jvewu_card", sgs.QVariant(pattern))
 		room:askForUseCard(player, "@@ny_tenth_jvewu", "@ny_tenth_jvewu:" .. pattern)
-	end,
+	end
 }
 
 ny_tenth_jvewuCard = sgs.CreateSkillCard {
@@ -13827,7 +13828,7 @@ ny_10th_wuweiCard = sgs.CreateSkillCard {
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets)
 	end,
 	target_fixed = function(self)
 		local pattern = "slash"
@@ -13835,7 +13836,7 @@ ny_10th_wuweiCard = sgs.CreateSkillCard {
 		card:setSkillName(self:objectName())
 		return card and card:targetFixed()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local pattern = "slash"
 		local card = sgs.Sanguosha:cloneCard(pattern, sgs.Card_SuitToBeDecided, -1)
 		card:setSkillName(self:objectName())
@@ -13843,7 +13844,7 @@ ny_10th_wuweiCard = sgs.CreateSkillCard {
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self)
+		return card and card:targetsFeasible(qtargets, player)
 	end,
 	on_validate = function(self, card_use)
 		local player = card_use.from
@@ -13993,7 +13994,7 @@ ny_10th_wuwei_clear = sgs.CreateTriggerSkill {
 			end
 		end
 		if event == sgs.EventAcquireSkill then
-			if data:toString() == "ny_10th_wuwei" and player:getPhase() == sgs.Player_Play then
+			if data:toSkillChange().skillName == "ny_10th_wuwei" and player:getPhase() == sgs.Player_Play then
 				room:addPlayerMark(player, "&ny_10th_wuwei_can-PlayClear", 1)
 			end
 		end
@@ -14116,8 +14117,8 @@ ny_10th_kongwu = sgs.CreateViewAsSkill {
 ny_10th_kongwuCard = sgs.CreateSkillCard {
 	name = "ny_10th_kongwu",
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets < 1 and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return #targets < 1 and (to_select:objectName() ~= player:objectName())
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -14331,7 +14332,7 @@ end
 
 ny_10th_huijiCard = sgs.CreateSkillCard {
 	name = "ny_10th_huiji",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 1
 	end,
 	on_effect = function(self, effect)

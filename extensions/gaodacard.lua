@@ -203,7 +203,7 @@ shoot = sgs.CreateBasicCard{
 		return to_select:objectName() ~= player:objectName()
 			and #targets < 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, player, self)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	available = function(self, player)
@@ -249,7 +249,7 @@ pierce_shoot = sgs.CreateBasicCard{
 		return to_select:objectName() ~= player:objectName()
 			and #targets < 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, player, self)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	available = function(self, player)
@@ -291,7 +291,7 @@ spread_shoot = sgs.CreateBasicCard{
 		return to_select:objectName() ~= player:objectName()
 			and #targets < 2 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, player, self)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	available = function(self, player)
@@ -512,10 +512,10 @@ tactical_combo = sgs.CreateTrickCard{
 	can_recast = false,
 	subtype = "multiple_target_trick",
 	subclass = sgs.LuaTrickCard_LuaTrickCard_TypeNormal,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 2
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	available = function(self, player)

@@ -12,8 +12,8 @@ dl_chajuCard = sgs.CreateSkillCard{
 	name = "dl_chaju",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName() and not to_select:isKongcheng()
 	end,
 	on_use = function(self, room, player, targets)
 		local to = targets[1] 
@@ -364,10 +364,10 @@ dl_yanxiao = sgs.CreateTriggerSkill{
 dl_liuliCard = sgs.CreateSkillCard{
 	name = "dl_liuli",
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and to_select:getMark("dl_liuli_usefrom") < 1 and sgs.Self:distanceTo(to_select) <= sgs.Self:getAttackRange()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName() and to_select:getMark("dl_liuli_usefrom") < 1 and player:distanceTo(to_select) <= player:getAttackRange()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 	on_use = function(self, room, source, targets)

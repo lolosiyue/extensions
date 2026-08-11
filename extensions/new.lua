@@ -427,7 +427,7 @@ luajiejiangcard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = false,
 
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets > 1 then
 			return false
 		end
@@ -973,7 +973,7 @@ luahuntian_card = sgs.CreateSkillCard { --弃掉4张花色牌，让--1个玩家�
 	target_fixed = false,
 	will_throw = true,
 
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return (#targets < 998)
 	end,
 
@@ -1213,7 +1213,7 @@ luafentian_card =
 		target_fixed = false,
 		will_throw = true,
 
-		filter = function(self, targets, to_select)
+		filter = function(self, targets, to_select, player)
 			return (#targets < 998) --若干名角色
 		end,
 

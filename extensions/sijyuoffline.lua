@@ -3194,11 +3194,11 @@ sfofl_longyiCard = sgs.CreateSkillCard {
         local plist = sgs.PlayerList()
         for i = 1, #targets do plist:append(targets[i]) end
         local rangefix = 0
-        if not self:getSubcards():isEmpty() and sgs.Self:getWeapon() and sgs.Self:getWeapon():getId() == self:getSubcards():first() then
-            local card = sgs.Self:getWeapon():getRealCard():toWeapon()
-            rangefix = rangefix + card:getRange() - sgs.Self:getAttackRange(false)
+        if not self:getSubcards():isEmpty() and player:getWeapon() and player:getWeapon():getId() == self:getSubcards():first() then
+            local card = player:getWeapon():getRealCard():toWeapon()
+            rangefix = rangefix + card:getRange() - player:getAttackRange(false)
         end
-        if not self:getSubcards():isEmpty() and sgs.Self:getOffensiveHorse() and sgs.Self:getOffensiveHorse():getId() == self:getSubcards():first() then
+        if not self:getSubcards():isEmpty() and player:getOffensiveHorse() and player:getOffensiveHorse():getId() == self:getSubcards():first() then
             rangefix = rangefix + 1
         end
         if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -3207,19 +3207,19 @@ sfofl_longyiCard = sgs.CreateSkillCard {
                 local us = user_str:split("+")
                 card = sgs.Sanguosha:cloneCard(us[1])
             end
-            return card and card:targetFilter(plist, to_select, sgs.Self) and
-                not sgs.Self:isProhibited(to_select, card, plist)
+            return card and card:targetFilter(plist, to_select, player) and
+                not player:isProhibited(to_select, card, plist)
                 and (card:isKindOf("Slash") and
-                    (sgs.Self:canSlash(to_select, true, rangefix)))
+                    (player:canSlash(to_select, true, rangefix)))
         elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
             return false
         end
-        local card = sgs.Self:getTag("sfofl_longyi"):toCard()
-        return card and card:targetFilter(plist, to_select, sgs.Self) and
-            not sgs.Self:isProhibited(to_select, card, plist)
-            and (card:isKindOf("Slash") and sgs.Self:canSlash(to_select, true, rangefix))
+        local card = player:getTag("sfofl_longyi"):toCard()
+        return card and card:targetFilter(plist, to_select, player) and
+            not player:isProhibited(to_select, card, plist)
+            and (card:isKindOf("Slash") and player:canSlash(to_select, true, rangefix))
     end,
-    feasible = function(self, targets)
+    feasible = function(self, targets, player)
         local plist = sgs.PlayerList()
         for i = 1, #targets do plist:append(targets[i]) end
         if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -3228,12 +3228,12 @@ sfofl_longyiCard = sgs.CreateSkillCard {
                 local us = user_str:split("+")
                 card = sgs.Sanguosha:cloneCard(us[1])
             end
-            return card and card:targetsFeasible(plist, sgs.Self)
+            return card and card:targetsFeasible(plist, player)
         elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
             return true
         end
-        local card = sgs.Self:getTag("sfofl_longyi"):toCard()
-        return card and card:targetsFeasible(plist, sgs.Self)
+        local card = player:getTag("sfofl_longyi"):toCard()
+        return card and card:targetsFeasible(plist, player)
     end,
     on_validate = function(self, use)
         local yuji = use.from
@@ -3865,7 +3865,7 @@ sfofl_qichu = sgs.CreateTriggerSkill{
 sfofl_qichuCard = sgs.CreateSkillCard{
     name = "sfofl_qichuCard",
     will_throw = false ,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         local name = ""
         local card
         local plist = sgs.PlayerList()
@@ -3876,9 +3876,9 @@ sfofl_qichuCard = sgs.CreateSkillCard{
             name = uses[1]
             card = sgs.Sanguosha:cloneCard(name)
         end
-        return card and card:targetFilter(plist, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, plist)
+        return card and card:targetFilter(plist, to_select, player) and not player:isProhibited(to_select, card, plist)
     end ,
-    feasible = function(self, targets)
+    feasible = function(self, targets, player)
         local name = ""
         local card
         local plist = sgs.PlayerList()
@@ -3889,7 +3889,7 @@ sfofl_qichuCard = sgs.CreateSkillCard{
             name = uses[1]
             card = sgs.Sanguosha:cloneCard(name)
         end
-        return card and card:targetsFeasible(plist, sgs.Self)
+        return card and card:targetsFeasible(plist, player)
     end,
     on_validate_in_response = function(self, user)
         local room = user:getRoom()
@@ -4432,9 +4432,9 @@ sfofl_qupoCard = sgs.CreateSkillCard {
     name = "sfofl_qupo",
     target_fixed = false,
     will_throw = false,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
 		if (#targets ~= 0) then return false end
-		return (to_select:objectName() ~= sgs.Self:objectName()) and not to_select:hasFlag("sfofl_qupo")
+		return (to_select:objectName() ~= player:objectName()) and not to_select:hasFlag("sfofl_qupo")
 	end,
 	on_use = function(self, room, player, targets)
 		local target = targets[1]
@@ -4770,16 +4770,16 @@ sfofl_qixinglightCard = sgs.CreateSkillCard {
                 local us = user_str:split("+")
                 card = sgs.Sanguosha:cloneCard(us[1])
             end
-            return card and card:targetFilter(plist, to_select, sgs.Self) and
-                not sgs.Self:isProhibited(to_select, card, plist)
+            return card and card:targetFilter(plist, to_select, player) and
+                not player:isProhibited(to_select, card, plist)
         elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
             return false
         end
-        local card = sgs.Sanguosha:cloneCard(sgs.Self:property("sfofl_qixinglight"):toString(), sgs.Card_SuitToBeDecided, -1)
-        return card and card:targetFilter(plist, to_select, sgs.Self) and
-            not sgs.Self:isProhibited(to_select, card, plist)
+        local card = sgs.Sanguosha:cloneCard(player:property("sfofl_qixinglight"):toString(), sgs.Card_SuitToBeDecided, -1)
+        return card and card:targetFilter(plist, to_select, player) and
+            not player:isProhibited(to_select, card, plist)
     end,
-    feasible = function(self, targets)
+    feasible = function(self, targets, player)
         local plist = sgs.PlayerList()
         for i = 1, #targets do plist:append(targets[i]) end
         if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -4788,12 +4788,12 @@ sfofl_qixinglightCard = sgs.CreateSkillCard {
                 local us = user_str:split("+")
                 card = sgs.Sanguosha:cloneCard(us[1])
             end
-            return card and card:targetsFeasible(plist, sgs.Self)
+            return card and card:targetsFeasible(plist, player)
         elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
             return true
         end
-        local card = sgs.Sanguosha:cloneCard(sgs.Self:property("sfofl_qixinglight"):toString(), sgs.Card_SuitToBeDecided, -1)
-        return card and card:targetsFeasible(plist, sgs.Self)
+        local card = sgs.Sanguosha:cloneCard(player:property("sfofl_qixinglight"):toString(), sgs.Card_SuitToBeDecided, -1)
+        return card and card:targetsFeasible(plist, player)
     end,
     on_validate = function(self, use)
         local yuji = use.from
@@ -5323,8 +5323,8 @@ sfofl_2_guanyu = sgs.General(extension_s, "sfofl_2_guanyu", "shu+wei", 4, true)
 ]] --
 sfofl_nuchenCard = sgs.CreateSkillCard{
     name = "sfofl_nuchen" ,
-    filter = function(self, targets, to_select)
-        return (#targets == 0) and (to_select:objectName() ~= sgs.Self:objectName()) and not to_select:isKongcheng()
+    filter = function(self, targets, to_select, player)
+        return (#targets == 0) and (to_select:objectName() ~= player:objectName()) and not to_select:isKongcheng()
     end,
     on_effect = function(self, effect)
         local room = effect.to:getRoom()
@@ -5363,8 +5363,8 @@ sfofl_nuchen = sgs.CreateViewAsSkill{
 ]] --
 sfofl_yijueCard = sgs.CreateSkillCard{
     name = "sfofl_yijue" ,
-    filter = function(self, targets, to_select)
-        return (#targets == 0) and (to_select:objectName() ~= sgs.Self:objectName()) and sgs.Self:canPindian(to_select)
+    filter = function(self, targets, to_select, player)
+        return (#targets == 0) and (to_select:objectName() ~= player:objectName()) and player:canPindian(to_select)
     end,
     on_effect = function(self, effect)
         local room = effect.to:getRoom()
@@ -5472,7 +5472,7 @@ sfofl_2_zhugeliang = sgs.General(extension_s, "sfofl_2_zhugeliang", "shu", 3, tr
 sfofl_zhijiCard = sgs.CreateSkillCard{
     name = "sfofl_zhiji",
     target_fixed = false,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
 		if #targets == 1 then
 			return to_select:getKingdom() ~= #targets[1]:getKingdom()
 		end
@@ -5804,8 +5804,8 @@ sfofl_longyinCard = sgs.CreateSkillCard {
             if self:getUserString() and self:getUserString() ~= "" then
                 card = sgs.Sanguosha:cloneCard(self:getUserString():split("+")[1])
                 card:deleteLater()
-                return card and card:targetFilter(players, to_select, sgs.Self) and
-                    not sgs.Self:isProhibited(to_select, card, players)
+                return card and card:targetFilter(players, to_select, player) and
+                    not player:isProhibited(to_select, card, players)
             end
         elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
             return false
@@ -5817,10 +5817,10 @@ sfofl_longyinCard = sgs.CreateSkillCard {
         local card = sgs.Sanguosha:cloneCard(_card)
         card:setCanRecast(false)
         card:deleteLater()
-        return card and card:targetFilter(players, to_select, sgs.Self) and
-            not sgs.Self:isProhibited(to_select, card, players)
+        return card and card:targetFilter(players, to_select, player) and
+            not player:isProhibited(to_select, card, players)
     end,
-    feasible = function(self, targets)
+    feasible = function(self, targets, player)
         local players = sgs.PlayerList()
         for i = 1, #targets do
             players:append(targets[i])
@@ -5829,19 +5829,19 @@ sfofl_longyinCard = sgs.CreateSkillCard {
             local card = nil
             if self:getUserString() and self:getUserString() ~= "" then
                 card = sgs.Sanguosha:cloneCard(self:getUserString():split("+")[1])
-                return card and card:targetsFeasible(players, sgs.Self)
+                return card and card:targetsFeasible(players, player)
             end
         elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
             return true
         end
-        local _card = sgs.Self:getTag("sfofl_longyin"):toCard()
+        local _card = player:getTag("sfofl_longyin"):toCard()
         if _card == nil then
             return false
         end
         local card = sgs.Sanguosha:cloneCard(_card)
         card:setCanRecast(false)
         card:deleteLater()
-        return card and card:targetsFeasible(players, sgs.Self)
+        return card and card:targetsFeasible(players, player)
     end,
     on_validate = function(self, card_use)
         local yuji = card_use.from
@@ -6941,8 +6941,8 @@ sfofl_daoheCard = sgs.CreateSkillCard{
     name = "sfofl_daohe",
     will_throw = false,
     handling_method = sgs.Card_MethodNone,
-    filter = function(self, targets, to_select)
-        return #targets == 0 and not to_select:isKongcheng() and to_select:objectName() ~= sgs.Self:objectName()
+    filter = function(self, targets, to_select, player)
+        return #targets == 0 and not to_select:isKongcheng() and to_select:objectName() ~= player:objectName()
     end,
     on_effect = function(self, effect)
         local source = effect.from
@@ -6977,7 +6977,7 @@ sfofl_zhiyizCard = sgs.CreateSkillCard{
     name = "sfofl_zhiyiz",
     will_throw = false,
     handling_method = sgs.Card_MethodNone,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         return #targets == 0
     end,
     on_effect = function(self, effect)
@@ -10089,8 +10089,8 @@ sfofl_mujunCard = sgs.CreateSkillCard {
     name = "sfofl_mujun",
     target_fixed = false,
     will_throw = false,
-    filter = function(self, targets, to_select)
-        return (#targets == 0) and (to_select:objectName() ~= sgs.Self:objectName()) and to_select:getKingdom() == "qun"
+    filter = function(self, targets, to_select, player)
+        return (#targets == 0) and (to_select:objectName() ~= player:objectName()) and to_select:getKingdom() == "qun"
     end,
     on_use = function(self, room, player, targets)
         room:removePlayerMark(player, "@sfofl_mujun")
@@ -10342,10 +10342,10 @@ sfofl_xuanshiCard = sgs.CreateSkillCard{
 	name = "sfofl_xuanshi",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			if not to_select:isNude() then
-				return to_select:objectName() ~= sgs.Self:objectName()
+				return to_select:objectName() ~= player:objectName()
 			end
 		end
 		return false
@@ -10740,7 +10740,7 @@ sfofl_jieqiao:addSkill(sfofl_jieqiao_skill)
 sfofl_jieqiao_quyiCard = sgs.CreateSkillCard{
     name = "sfofl_jieqiao_quyi",
     will_throw = false,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         local pattern = self:getUserString()
 		if pattern == "normal_slash" then pattern = "slash" end
 
@@ -10755,9 +10755,9 @@ sfofl_jieqiao_quyiCard = sgs.CreateSkillCard{
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local pattern = self:getUserString()
 		if pattern=="normal_slash" then pattern = "slash" end
 
@@ -10772,7 +10772,7 @@ sfofl_jieqiao_quyiCard = sgs.CreateSkillCard{
 		if card and card:canRecast() and #targets == 0 then
 			return false
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self) --and card:isAvailable(sgs.Self)
+		return card and card:targetsFeasible(qtargets, player) --and card:isAvailable(player)
 	end,
 	on_validate = function(self, card_use)
 		local player = card_use.from
@@ -11899,7 +11899,7 @@ sfofl_liluCard = sgs.CreateSkillCard
 	target_fixed = false,	
 	will_throw = false,		
 	filter = function(self, targets, to_select, player)
-	    return #targets == 0 and to_select:objectName()~= sgs.Self:objectName()
+	    return #targets == 0 and to_select:objectName()~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		local x=source:getMark("&sfofl_lilu")
@@ -13555,7 +13555,7 @@ sfofl_xiongshiCard = sgs.CreateSkillCard {
 	name = "sfofl_xiongshi",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			if to_select:hasSkill("sfofl_xiongshi") then
 				return not to_select:hasFlag("sfofl_xiongshiInvoked")
@@ -13749,7 +13749,7 @@ sfofl_deshiCard = sgs.CreateSkillCard {
 	name = "sfofl_deshi",
 	target_fixed = false,
     will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local targets_list = sgs.PlayerList()
 		for _, target in ipairs(targets) do
 			targets_list:append(target)
@@ -13758,7 +13758,7 @@ sfofl_deshiCard = sgs.CreateSkillCard {
 		slash:setSkillName("sfofl_deshi")
 		slash:deleteLater()
         slash:addSubcards(self:getSubcards())
-		return slash:targetFilter(targets_list, to_select, sgs.Self)
+		return slash:targetFilter(targets_list, to_select, player)
 	end ,
 	on_use = function(self, room, source, targets)
 		local targets_list = sgs.SPlayerList()
@@ -14061,9 +14061,9 @@ sfofl_qianjunCard = sgs.CreateSkillCard {
 	name = "sfofl_qianjun",
 	target_fixed = false,
     will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return to_select:objectName() ~= sgs.Self:objectName()
+			return to_select:objectName() ~= player:objectName()
 		end
         return false
 	end ,
@@ -14340,9 +14340,9 @@ sfofl_jukouCard = sgs.CreateSkillCard {
 	name = "sfofl_jukou",
 	target_fixed = false,
     will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return to_select:objectName() ~= sgs.Self:objectName()
+			return to_select:objectName() ~= player:objectName()
 		end
         return false
 	end ,
@@ -14398,7 +14398,7 @@ sfofl_shupanCard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = true,
 	filter = function(self, targets, to_select, player)
-		return to_select:objectName() ~= sgs.Self:objectName() and #targets <= 2
+		return to_select:objectName() ~= player:objectName() and #targets <= 2
 	end,
 	feasible = function(self, targets, player)
 		return #targets == 2
@@ -14693,7 +14693,7 @@ sfofl_houyingCard = sgs.CreateSkillCard{
 	name = "sfofl_houying",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select) --必须
+	filter = function(self, targets, to_select, player)
 	local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
 	card:deleteLater()
 	card:setSkillName(self:objectName())
@@ -14701,8 +14701,8 @@ sfofl_houyingCard = sgs.CreateSkillCard{
 			for _, p in ipairs(targets) do
 				qtargets:append(p)
 			end
-		if to_select:objectName() ~= sgs.Self:objectName() and sgs.Self:canSlash(to_select, card,false) then
-			return card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+		if to_select:objectName() ~= player:objectName() and player:canSlash(to_select, card,false) then
+			return card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets)
 		end
 	end,
 	on_use = function(self, room, source, targets) 
@@ -14845,7 +14845,7 @@ sfofl_qianhuCard = sgs.CreateSkillCard{
 	name = "sfofl_qianhu",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select) --必须
+	filter = function(self, targets, to_select, player)
 	local card = sgs.Sanguosha:cloneCard("duel", sgs.Card_SuitToBeDecided, -1)
 	card:deleteLater()
 	card:setSkillName(self:objectName())
@@ -14853,8 +14853,8 @@ sfofl_qianhuCard = sgs.CreateSkillCard{
 			for _, p in ipairs(targets) do
 				qtargets:append(p)
 			end
-		if to_select:objectName() ~= sgs.Self:objectName() then
-			return card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets)
+		if to_select:objectName() ~= player:objectName() then
+			return card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets)
 		end
 	end,
 	on_use = function(self, room, source, targets) 
@@ -15383,9 +15383,9 @@ sfofl_zhouyuanCard = sgs.CreateSkillCard {
 	name = "sfofl_zhouyuan",
 	target_fixed = false,
     will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng()
+			return to_select:objectName() ~= player:objectName() and not to_select:isKongcheng()
 		end
         return false
 	end ,
@@ -15579,8 +15579,8 @@ sfofl_jijun = sgs.CreateTriggerSkill{
 sfofl_fangtongCard = sgs.CreateSkillCard{
 	name = "sfofl_fangtong",
     will_throw = false,
-	filter = function(self, targets, to_select)
-        if (#targets >= 1) or (to_select:objectName() == sgs.Self:objectName()) then return false end
+	filter = function(self, targets, to_select, player)
+        if (#targets >= 1) or (to_select:objectName() == player:objectName()) then return false end
 		return true
 	end,
 	on_effect = function(self, effect)
@@ -16243,9 +16243,9 @@ sfofl_chejiCard = sgs.CreateSkillCard{
 	name = "sfofl_cheji",
 	target_fixed = false,
 	will_throw = false,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
 		if (#targets ~= 0) then return false end
-		return (to_select:objectName() ~= sgs.Self:objectName()) and not to_select:isKongcheng()
+		return (to_select:objectName() ~= player:objectName()) and not to_select:isKongcheng()
 	end,
 	on_use = function(self, room, source, targets)
 		for _,id in sgs.qlist(self:getSubcards()) do
@@ -17225,9 +17225,9 @@ sfofl_lianjiCard = sgs.CreateSkillCard {
 	name = "sfofl_lianji",
 	target_fixed = false,
     will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return to_select:objectName() ~= sgs.Self:objectName()
+			return to_select:objectName() ~= player:objectName()
 		end
         return false
 	end ,
@@ -17751,7 +17751,7 @@ sfofl_shibaoCard = sgs.CreateSkillCard {
 	name = "sfofl_shibao",
 	target_fixed = false,
     will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			return string.find(to_select:getGeneralName(), "zombie") or string.find(to_select:getGeneral2Name(), "zombie")
 		end
@@ -19019,9 +19019,9 @@ sfofl_chiyuanCard = sgs.CreateSkillCard {
 	name = "sfofl_chiyuan",
 	target_fixed = false,
     will_throw = false,
-	filter = function(self, targets, to_select)
-		if #targets < sgs.Self:getMark("&sfofl_zhuying") then
-			return to_select:getMark("&sfofl_zhuying+to+#"..sgs.Self:objectName()) == 0
+	filter = function(self, targets, to_select, player)
+		if #targets < player:getMark("&sfofl_zhuying") then
+			return to_select:getMark("&sfofl_zhuying+to+#"..player:objectName()) == 0
 		end
         return false
 	end ,
@@ -19192,14 +19192,14 @@ sfofl_dutanCard = sgs.CreateSkillCard{
 	name = "sfofl_dutan",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select) --必须
+	filter = function(self, targets, to_select, player)
         local card = sgs.Sanguosha:cloneCard("duel", sgs.Card_SuitToBeDecided, -1)
         card:deleteLater()
         card:setSkillName(self:objectName())
         card:deleteLater()
 	    local qtargets = sgs.PlayerList()
-		if to_select:objectName() ~= sgs.Self:objectName() then
-			return not sgs.Self:isProhibited(to_select, card, qtargets)
+		if to_select:objectName() ~= player:objectName() then
+			return not player:isProhibited(to_select, card, qtargets)
 		end
 	end,
 	on_use = function(self, room, source, targets) 
@@ -22599,11 +22599,11 @@ sfofl_kuijiVS = sgs.CreateViewAsSkill{
 
 sfofl_kuijiCard = sgs.CreateSkillCard{
     name = "sfofl_kuiji",
-    filter = function(self, targets, to_select)
-        if not sgs.Self:hasFlag("sfofl_kuiji") then
-		    return #targets < 1 and to_select:objectName() ~= sgs.Self:objectName() and (not to_select:isKongcheng())
+    filter = function(self, targets, to_select, player)
+        if not player:hasFlag("sfofl_kuiji") then
+		    return #targets < 1 and to_select:objectName() ~= player:objectName() and (not to_select:isKongcheng())
         else 
-            return to_select:objectName() == sgs.Self:objectName()
+            return to_select:objectName() == player:objectName()
         end
 	end,
 	on_effect = function(self, effect)
@@ -23055,9 +23055,9 @@ sfofl_zhaoyuanCard = sgs.CreateSkillCard{
 	name = "sfofl_zhaoyuan",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return to_select:objectName() ~= sgs.Self:objectName()
+			return to_select:objectName() ~= player:objectName()
 		end
 		return false
 	end,
@@ -24536,8 +24536,7 @@ sfofl_miaojingCard = sgs.CreateSkillCard{
 		end
 		return card:targetsFeasible(qtargets, player)
 	end,
-    filter = function(self, targets, to_select)
-        local player = sgs.Self
+    filter = function(self, targets, to_select, player)
         local qtargets = sgs.PlayerList()
         for _,p in ipairs(targets) do
             qtargets:append(p)
@@ -24661,8 +24660,8 @@ sfofl_liuyou = sgs.General(extension_gai, "sfofl_liuyou", "qun", 4)
 sfofl_kannanCard = sgs.CreateSkillCard{
 	name = "sfofl_kannan",
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and sgs.Self:canPindian(to_select) and to_select:getMark(self:objectName()..sgs.Self:objectName().."-PlayClear") == 0
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and player:canPindian(to_select) and to_select:getMark(self:objectName()..player:objectName().."-PlayClear") == 0
 	end,
 	on_use = function(self, room, source, targets)
 		room:addPlayerMark(targets[1], self:objectName()..source:objectName().."-PlayClear", 1)
@@ -24885,8 +24884,8 @@ sfofl_huangquan = sgs.General(extension_gai, "sfofl_huangquan", "shu", 3)
 
 sfofl_jianjiCard = sgs.CreateSkillCard{
 	name = "sfofl_jianji",
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
         local ids = targets[1]:drawCardsList(1, self:objectName())
@@ -25012,8 +25011,8 @@ sfofl_liyan = sgs.General(extension_gai, "sfofl_liyan", "shu", 3)
 ]] --
 sfofl_duliangCard = sgs.CreateSkillCard{
 	name = "sfofl_duliang",
-	filter = function(self, targets, to_select)
-		return #targets == 0 and not to_select:isKongcheng() and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and not to_select:isKongcheng() and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
         local card = sgs.Sanguosha:getCard(room:askForCardChosen(source, targets[1], "h", self:objectName()))
@@ -26783,8 +26782,8 @@ sfofl_rende_basicCard = sgs.CreateSkillCard{
 	name = "sfofl_rende_basic",
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, targets, to_select)
-		local card =  sgs.Sanguosha:cloneCard(sgs.Self:property("sfofl_rende"):toString(), sgs.Card_NoSuit, 0)
+	filter = function(self, targets, to_select, player)
+		local card =  sgs.Sanguosha:cloneCard(player:property("sfofl_rende"):toString(), sgs.Card_NoSuit, 0)
 		card:deleteLater()
 		card:setSkillName("_"..self:objectName())
 		if card and card:targetFixed() then
@@ -26794,11 +26793,11 @@ sfofl_rende_basicCard = sgs.CreateSkillCard{
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) 
-			and not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) 
+			and not player:isProhibited(to_select, card, qtargets)
 	end,
-	feasible = function(self, targets)
-		local card =  sgs.Sanguosha:cloneCard(sgs.Self:property("sfofl_rende"):toString(), sgs.Card_NoSuit, 0)
+	feasible = function(self, targets, player)
+		local card =  sgs.Sanguosha:cloneCard(player:property("sfofl_rende"):toString(), sgs.Card_NoSuit, 0)
 		card:deleteLater()
 		card:setSkillName("_"..self:objectName())
 		local qtargets = sgs.PlayerList()
@@ -26808,7 +26807,7 @@ sfofl_rende_basicCard = sgs.CreateSkillCard{
 		if card and card:canRecast() and #targets == 0 then
 			return false
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self)
+		return card and card:targetsFeasible(qtargets, player)
 	end,	
 	on_validate = function(self, card_use)
 		local player = card_use.from
@@ -26833,8 +26832,8 @@ sfofl_rendeCard = sgs.CreateSkillCard{
 	name = "sfofl_rende",
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, selected, to_select)
-		return (#selected == 0) and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, selected, to_select, player)
+		return (#selected == 0) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_use = function(self, room, source, targets)
 		room:obtainCard(targets[1], self, false)
@@ -27071,7 +27070,7 @@ sfofl_shoufan = sgs.CreateTriggerSkill{
 ]] -- 
 sfofl_dunjiCard = sgs.CreateSkillCard{
 	name = "sfofl_dunji",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local targets_list = sgs.PlayerList()
 		for _, target in ipairs(targets) do
 			targets_list:append(target)
@@ -27079,7 +27078,7 @@ sfofl_dunjiCard = sgs.CreateSkillCard{
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName("_"..self:objectName())
 		slash:deleteLater()
-		return slash:targetFilter(targets_list, to_select, sgs.Self)
+		return slash:targetFilter(targets_list, to_select, player)
 	end,
 	on_use = function(self, room, source, targets)
 		local targets_list = sgs.SPlayerList()
@@ -28453,7 +28452,7 @@ sfofl_nw_shencaocao = sgs.General(extension_war, "sfofl_nw_shencaocao", "god", 4
 sfofl_n_hujiaCard = sgs.CreateSkillCard {
 	name = "sfofl_n_hujia",
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local name = ""
 		local card
 		local plist = sgs.PlayerList()
@@ -28467,8 +28466,8 @@ sfofl_n_hujiaCard = sgs.CreateSkillCard {
 			name = uses[1]
 			card = sgs.Sanguosha:cloneCard(name)
 		end
-		return card and card:targetFilter(plist, to_select, sgs.Self) and
-			not sgs.Self:isProhibited(to_select, card, plist)
+		return card and card:targetFilter(plist, to_select, player) and
+			not player:isProhibited(to_select, card, plist)
 	end,
 	feasible = function(self, targets, from)
 		local name = ""
@@ -29593,8 +29592,8 @@ sfofl_n_2_shiqi = sgs.CreateTriggerSkill{
 ]] --
 sfofl_n_luozhanCard = sgs.CreateSkillCard{
 	name = "sfofl_n_luozhan", 
-	filter = function(self, targets, to_select) 
-		if #targets ~= 0 or to_select:objectName() == sgs.Self:objectName() then return false end
+	filter = function(self, targets, to_select, player)
+		if #targets ~= 0 or to_select:objectName() == player:objectName() then return false end
         return true
 	end,
 	on_effect = function(self, effect)

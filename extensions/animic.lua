@@ -82,7 +82,7 @@ jiela=sgs.General(extension,"jiela","magic",3,false,false)
 huayuanCard = sgs.CreateSkillCard{
 	name = "huayuanCard", 
 	target_fixed = false,
-	filter = function(self, targets, to_select) 
+	filter = function(self, targets, to_select, player)
 		return #targets < 2 and not to_select:isChained()
 	end,
 	on_effect = function(self, effect) 
@@ -386,7 +386,7 @@ caiduanCard = sgs.CreateSkillCard{
 	name = "caiduanCard",
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local card_id = self:getSubcards():first()
 		local card = sgs.Sanguosha:getCard(card_id)
 		if card and card:targetFixed() then
@@ -394,8 +394,8 @@ caiduanCard = sgs.CreateSkillCard{
 		end
 		--if sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, sgs.Self, card) == 0 then return false end
 		local nakamura = nil
-		for _, p in sgs.qlist(sgs.Self:getAliveSiblings()) do
-			if sgs.Self:hasFlag("caiduan"..p:objectName()) then
+		for _, p in sgs.qlist(player:getAliveSiblings()) do
+			if player:hasFlag("caiduan"..p:objectName()) then
 				nakamura = p
 				break
 			end
@@ -406,16 +406,16 @@ caiduanCard = sgs.CreateSkillCard{
 		end
 		if #targets == 0 and to_select:objectName() == nakamura:objectName()
 			or #targets > 0 and (table.contains(targets,nakamura) or to_select:objectName() == nakamura:objectName()) then
-			return card and card:targetFilter(qtargets, to_select, sgs.Self) 
-			and not sgs.Self:isProhibited(to_select, card, qtargets)
+			return card and card:targetFilter(qtargets, to_select, player) 
+			and not player:isProhibited(to_select, card, qtargets)
 		end
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local card_id = self:getSubcards():first()
 		local card = sgs.Sanguosha:getCard(card_id)
 		local nakamura = nil
-		for _, p in sgs.qlist(sgs.Self:getAliveSiblings()) do
-			if sgs.Self:hasFlag("caiduan"..p:objectName()) then
+		for _, p in sgs.qlist(player:getAliveSiblings()) do
+			if player:hasFlag("caiduan"..p:objectName()) then
 				nakamura = p
 				break
 			end
@@ -427,7 +427,7 @@ caiduanCard = sgs.CreateSkillCard{
 		if card and card:canRecast() and #targets == 0 then
 			return false
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self) and (card:targetFixed() or table.contains(targets,nakamura))
+		return card and card:targetsFeasible(qtargets, player) and (card:targetFixed() or table.contains(targets,nakamura))
 	end,	
 	on_validate = function(self, card_use)
 		local card_id = self:getSubcards():first()

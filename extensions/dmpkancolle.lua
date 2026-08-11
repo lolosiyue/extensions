@@ -641,16 +641,16 @@ se_hongzhacard = sgs.CreateSkillCard {
 	name = "se_hongzha",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select) --必须
+	filter = function(self, targets, to_select, player)
 		local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
 		card:setSkillName(self:objectName())
 		local qtargets = sgs.PlayerList()
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		if to_select:objectName() ~= sgs.Self:objectName() and sgs.Self:canSlash(to_select, card, false) then
-			return card:targetFilter(qtargets, to_select, sgs.Self) and
-				not sgs.Self:isProhibited(to_select, card, qtargets)
+		if to_select:objectName() ~= player:objectName() and player:canSlash(to_select, card, false) then
+			return card:targetFilter(qtargets, to_select, player) and
+				not player:isProhibited(to_select, card, qtargets)
 		end
 	end,
 	on_use = function(self, room, source, targets)
@@ -694,8 +694,8 @@ se_weishiCard = sgs.CreateSkillCard {
 	name = "se_weishi",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and (#to_select:getPileNames() > 0 or to_select:objectName() == sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and (#to_select:getPileNames() > 0 or to_select:objectName() == player:objectName())
 	end,
 	on_effect = function(self, effect)
 		local source = effect.from
@@ -860,8 +860,8 @@ Buyu = sgs.CreateTriggerSkill {
 
 eryuCard = sgs.CreateSkillCard {
 	name = "eryu",
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:isFemale() and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:isFemale() and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		room:broadcastSkillInvoke("eryu", 1)
@@ -946,7 +946,7 @@ eryuClear = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.EventLoseSkill then
-			if data:toString() == "eryu" then
+			if data:toSkillChange().skillName == "eryu" then
 				for _, p in sgs.qlist(room:getAlivePlayers()) do
 					if p:getMark("@EryuMark") > 0 then
 						p:loseAllMarks("@EryuMark")
@@ -1088,7 +1088,7 @@ nuequcard = sgs.CreateSkillCard {
 	name = "nuequ",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select) --必须
+	filter = function(self, targets, to_select, player)
 		local card = sgs.Sanguosha:cloneCard("fire_slash", sgs.Card_SuitToBeDecided, -1)
 		card:setSkillName(self:objectName())
 		local min_hp = 999
@@ -1096,12 +1096,12 @@ nuequcard = sgs.CreateSkillCard {
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		for _, p in sgs.qlist(sgs.Self:getAliveSiblings()) do
+		for _, p in sgs.qlist(player:getAliveSiblings()) do
 			min_hp = math.min(min_hp, p:getHp())
 		end
-		if to_select:objectName() ~= sgs.Self:objectName() and sgs.Self:canSlash(to_select, card, false) then
-			return card:targetFilter(qtargets, to_select, sgs.Self) and
-				not sgs.Self:isProhibited(to_select, card, qtargets) and to_select:getHp() == min_hp
+		if to_select:objectName() ~= player:objectName() and player:canSlash(to_select, card, false) then
+			return card:targetFilter(qtargets, to_select, player) and
+				not player:isProhibited(to_select, card, qtargets) and to_select:getHp() == min_hp
 		end
 	end,
 	on_use = function(self, room, source, targets)

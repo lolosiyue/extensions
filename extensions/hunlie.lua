@@ -212,10 +212,10 @@ sgkgodlonghunBuff = sgs.CreateTriggerSkill{
 sgkgodrenzhengCard = sgs.CreateSkillCard{
 	name = "sgkgodrenzhengCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-	    return to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+	    return to_select:objectName() ~= player:objectName()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 	    return #targets == 1
 	end,
 	on_use = function(self, room, source, targets)
@@ -301,11 +301,11 @@ sgkgodrenzheng = sgs.CreateZeroCardViewAsSkill{
 ]]--
 sgkgodjiquanCard = sgs.CreateSkillCard{
 	name = "sgkgodjiquanCard",
-	filter = function(self, targets, to_select)
-	    return to_select:objectName() ~= sgs.Self:objectName() and (to_select:getHandcardNum() + to_select:getEquips():length() >= to_select:getMark("sgkgodjiquan_times") + 1 
+	filter = function(self, targets, to_select, player)
+	    return to_select:objectName() ~= player:objectName() and (to_select:getHandcardNum() + to_select:getEquips():length() >= to_select:getMark("sgkgodjiquan_times") + 1 
 		or to_select:getVisibleSkillList():length() > 0)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 	    return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -733,8 +733,8 @@ sgkgodshelie = sgs.CreateTriggerSkill{
 ]]--
 sgkgodgongxinCard = sgs.CreateSkillCard{
     name = "sgkgodgongxinCard",
-	filter = function(self, targets, to_select)
-	    return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng()
+	filter = function(self, targets, to_select, player)
+	    return #targets == 0 and to_select:objectName() ~= player:objectName() and not to_select:isKongcheng()
 	end,
 	on_effect = function(self, effect)
 	    local room = effect.from:getRoom()
@@ -1402,7 +1402,7 @@ sgkgodtianqiCard = sgs.CreateSkillCard{
 		card:deleteLater()
 		return card and card:targetFilter(players, to_select, player) and not player:isProhibited(to_select, card, players)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local players = sgs.PlayerList()
 		for i = 1 , #targets do
 			players:append(targets[i])
@@ -1411,18 +1411,18 @@ sgkgodtianqiCard = sgs.CreateSkillCard{
 			local card = nil
 			if self:getUserString() and self:getUserString() ~= "" then
 				card = sgs.Sanguosha:cloneCard(self:getUserString():split("+")[1])
-				return card and card:targetsFeasible(players, sgs.Self)
+				return card and card:targetsFeasible(players, player)
 			end
 		elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
 			return true
 		end
-		local _card = sgs.Self:getTag("sgkgodtianqi"):toCard()
+		local _card = player:getTag("sgkgodtianqi"):toCard()
 		if _card == nil then
 			return false
 		end
 		local card = sgs.Sanguosha:cloneCard(_card)
 		card:deleteLater()
-		return card and card:targetsFeasible(players, sgs.Self)
+		return card and card:targetsFeasible(players, player)
 	end ,
 	on_validate = function(self, card_use)
 		local guojia = card_use.from
@@ -2745,7 +2745,7 @@ sgkgodyeyanCard = sgs.CreateSkillCard{
 		end
 		return to_select:objectName() ~= player:objectName() and #targets < x + 1
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 	    local x = 0
 		for _, id in sgs.qlist(self:getSubcards()) do
 			if sgs.Sanguosha:getCard(id):isBlack() then x = x + 1 end
@@ -2871,9 +2871,9 @@ sgkgodjizhaoCard = sgs.CreateSkillCard{
     name = "sgkgodjizhaoCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select) 
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			if to_select:objectName() ~= sgs.Self:objectName() then
+			if to_select:objectName() ~= player:objectName() then
 				return to_select:getMark("&zhao") == 0
 			end
 		end
@@ -3007,11 +3007,11 @@ sgkgodyanmieCard = sgs.CreateSkillCard{
     name = "sgkgodyanmieCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    return (not to_select:hasSkill(self:objectName())) and (not to_select:isNude())
 	end,
-	feasible = function(self, targets)
-	    return #targets == 1 and targets[1]:objectName() ~= sgs.Self:objectName()
+	feasible = function(self, targets, player)
+	    return #targets == 1 and targets[1]:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 	    local target = targets[1]
@@ -3177,8 +3177,8 @@ sgkgodhuju = sgs.CreateTriggerSkill{
 sgkgodhufuCard = sgs.CreateSkillCard{
     name = "sgkgodhufuCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-        return (#targets == 0) and (to_select:objectName() ~= sgs.Self:objectName()) and (to_select:getEquips():length() > 0)
+	filter = function(self, targets, to_select, player)
+        return (#targets == 0) and (to_select:objectName() ~= player:objectName()) and (to_select:getEquips():length() > 0)
     end,
 	on_use = function(self, room, source, targets)
 	    local target = targets[1]
@@ -3267,9 +3267,9 @@ sgkgodmeixinCard = sgs.CreateSkillCard{
     name = "sgkgodmeixinCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    if #targets == 0 then
-		    return to_select:objectName() ~= sgs.Self:objectName() and to_select:isMale() and to_select:isAlive() and to_select:getMark("&sgkgodmeixin") == 0
+		    return to_select:objectName() ~= player:objectName() and to_select:isMale() and to_select:isAlive() and to_select:getMark("&sgkgodmeixin") == 0
 		end
 		return false
 	end,
@@ -3965,10 +3965,10 @@ sgkgodzhijiCard = sgs.CreateSkillCard{
 	target_fixed = false,
 	will_throw = true,
 	mute = true,
-	filter = function(self, targets, to_select)
-		return to_select:getSeat() ~= sgs.Self:getSeat() and #targets < self:subcardsLength()
+	filter = function(self, targets, to_select, player)
+		return to_select:getSeat() ~= player:getSeat() and #targets < self:subcardsLength()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 	    return #targets > 0 and #targets <= self:subcardsLength()
 	end,
 	on_use = function(self, room, source, targets)
@@ -4169,9 +4169,9 @@ sgkgodzhonghunCard = sgs.CreateSkillCard{
 	name = "sgkgodzhonghunCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-		    return to_select:objectName() ~= sgs.Self:objectName() and to_select:getMark("&sgkgodzhonghun") == 0
+		    return to_select:objectName() ~= player:objectName() and to_select:getMark("&sgkgodzhonghun") == 0
 		end
 		return false
 	end,
@@ -4344,9 +4344,9 @@ sgkgodliangyuanCard = sgs.CreateSkillCard{
 	name = "sgkgodliangyuanCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    if #targets == 0 then
-		    return to_select:objectName() ~= sgs.Self:objectName() and to_select:isMale() and to_select:isAlive()
+		    return to_select:objectName() ~= player:objectName() and to_select:isMale() and to_select:isAlive()
 		end
 		return false
 	end,
@@ -4474,18 +4474,18 @@ sgkgodqianqiCard = sgs.CreateSkillCard{
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) and 
-			not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) and 
+			not player:isProhibited(to_select, card, qtargets)
 	end,
 	target_fixed = false,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		card:setSkillName("qianqi_slash")
 		local qtargets = sgs.PlayerList()
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self)
+		return card and card:targetsFeasible(qtargets, player)
 	end,
 	on_validate = function(self, card_use)
 		local machao = card_use.from
@@ -6748,8 +6748,8 @@ nos_sgkgodshelie = sgs.CreateTriggerSkill{
 --攻心
 nos_sgkgodgongxinCard = sgs.CreateSkillCard{
     name = "nos_sgkgodgongxinCard",
-	filter = function(self, targets, to_select)
-	    return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng()
+	filter = function(self, targets, to_select, player)
+	    return #targets == 0 and to_select:objectName() ~= player:objectName() and not to_select:isKongcheng()
 	end,
 	on_effect = function(self, effect)
 	    local room = effect.from:getRoom()
@@ -7626,12 +7626,12 @@ jlsgyanlieCard = sgs.CreateSkillCard{
 	name = "jlsgyanlieCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local n = self:subcardsLength()
 		if #targets == n then return false end
-		return to_select:objectName() ~= sgs.Self:objectName()
+		return to_select:objectName() ~= player:objectName()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == self:subcardsLength()
 	end,
 	on_use = function(self, room, source, targets)

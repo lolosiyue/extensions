@@ -101,8 +101,8 @@ lol_jwyh_qCard = sgs.CreateSkillCard{
 	name = "lol_jwyh_qCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -197,8 +197,8 @@ lol_jwyh_eCard = sgs.CreateSkillCard{
 	name = "lol_jwyh_eCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:getHandcardNum() >= sgs.Self:getHandcardNum() and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:getHandcardNum() >= player:getHandcardNum() and to_select:objectName() ~= player:objectName()
 	end,	
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -460,7 +460,7 @@ lol_hbss_eCard = sgs.CreateSkillCard{
 	name = "lol_hbss_eCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select) 
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and not to_select:isKongcheng()
 	end,
 	on_use = function(self, room, player, targets)
@@ -645,8 +645,8 @@ lol_mzzw_wCard = sgs.CreateSkillCard{
 	name = "lol_mzzw_wCard" ,
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return not to_select:isKongcheng() and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return not to_select:isKongcheng() and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)	
 	    local room = effect.from:getRoom()
@@ -891,8 +891,8 @@ lol_tqz_wCard = sgs.CreateSkillCard{
 	name = "lol_tqz_wCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName() and not to_select:isKongcheng()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -945,7 +945,7 @@ lol_tqz_eCard = sgs.CreateSkillCard{
 	name = "lol_tqz_eCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_effect = function(self, effect)
@@ -1166,8 +1166,8 @@ lol_xlnw_wCard = sgs.CreateSkillCard{
 	name = "lol_xlnw_wCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -1227,8 +1227,8 @@ lol_xlnw_eCard = sgs.CreateSkillCard{
 	name = "lol_xlnw_eCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:getGeneral2Name() ~= "lol_xlnw_pks" and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:getGeneral2Name() ~= "lol_xlnw_pks" and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -1312,7 +1312,7 @@ lol_xlnw_rCard = sgs.CreateSkillCard{
 	name = "lol_xlnw_rCard" ,
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and to_select:getHp() == self:getSubcards():length()
 	end,
 	on_effect = function(self, effect)
@@ -1464,8 +1464,8 @@ lol_smss_wCard = sgs.CreateSkillCard{
 	name = "lol_smss_wCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -1494,8 +1494,8 @@ lol_smss_eCard = sgs.CreateSkillCard{
 	name = "lol_smss_eCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -1530,8 +1530,8 @@ lol_smss_rCard = sgs.CreateSkillCard{
 	name = "lol_smss_rCard" ,
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:getHp() == self:getSubcards():length() and to_select:objectName() == sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:getHp() == self:getSubcards():length() and to_select:objectName() == player:objectName()
 	end,
 	on_use = function(self, room, player, targets)
 	    local room = player:getRoom()
@@ -1851,8 +1851,8 @@ lol_bjfh_qCard = sgs.CreateSkillCard{
 	name = "lol_bjfh_qCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -1914,12 +1914,12 @@ lol_bjfh_q = sgs.CreateTriggerSkill{
 }
 lol_bjfh_wCard = sgs.CreateSkillCard{
 	name = "lol_bjfh_wCard", 
-	filter = function(self, targets, to_select) 
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then 
-		    return to_select:objectName() ~= sgs.Self:objectName()
+		    return to_select:objectName() ~= player:objectName()
 		elseif #targets == 1 then
 			local last
-			for _,p in sgs.qlist(sgs.Self:getAliveSiblings()) do
+			for _,p in sgs.qlist(player:getAliveSiblings()) do
 				if last and to_select:objectName() == last:objectName() and targets[1]:objectName() == p:objectName() then return true
 				elseif last and to_select:objectName() == p:objectName() and targets[1]:objectName() == last:objectName() then return true
 				end
@@ -1927,7 +1927,7 @@ lol_bjfh_wCard = sgs.CreateSkillCard{
 			end
 	    end
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 2
 	end,
 	on_use = function(self, room,source,targets)
@@ -2003,8 +2003,8 @@ lol_bjfh_eCard = sgs.CreateSkillCard{
 	name = "lol_bjfh_eCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -2048,8 +2048,8 @@ lol_bjfh_rCard = sgs.CreateSkillCard{
 	name = "lol_bjfh_rCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets >= 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets >= 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -2266,8 +2266,8 @@ lol_sxls_rCard = sgs.CreateSkillCard{
 	name = "lol_sxls_rCard" ,
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 	    local room = effect.from:getRoom()
@@ -2718,8 +2718,8 @@ lol_kpds_rCard = sgs.CreateSkillCard{
 	name = "lol_kpds_rCard" ,
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 	    local room = effect.from:getRoom()

@@ -13,7 +13,7 @@ final_vent = sgs.CreateTrickCard {
 	filter = function(self, targets, to_select, player)
 		return to_select:objectName() ~= player:objectName() and #targets < 1
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	available = function(self, player)
@@ -80,7 +80,7 @@ decade = sgs.CreateTrickCard {
 	filter = function(self, targets, to_select, player)
 		return to_select:objectName() ~= player:objectName() and #targets < 1
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	available = function(self, player)

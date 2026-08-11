@@ -202,7 +202,7 @@ Yingbi = sgs.CreateTriggerSkill {
 				data:setValue(draw)
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				player:loseAllMarks("@se_ying")
 			end
 		end
@@ -235,8 +235,8 @@ se_paojicard = sgs.CreateSkillCard {
 	name = "se_paojicard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		local target = targets[1]
@@ -574,7 +574,7 @@ se_cairencard = sgs.CreateSkillCard {
 	name = "se_cairencard",
 	target_fixed = true,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return true
 	end,
 	on_use = function(self, room, source, targets)
@@ -753,7 +753,7 @@ se_hengsaocard = sgs.CreateSkillCard {
 			return to_select:objectName() ~= player:objectName()
 		end
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -909,7 +909,7 @@ se_jiushu = sgs.CreateTriggerSkill {
 				end
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				player:loseAllMarks("@tsubasa")
 			end
 		end
@@ -1779,7 +1779,7 @@ se_yekongcard = sgs.CreateSkillCard {
 	name = "se_yekongcard",
 	target_fixed = true,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return true
 	end,
 	on_use = function(self, room, source, targets)
@@ -2528,7 +2528,7 @@ se_jieshucard = sgs.CreateSkillCard {
 	name = "se_jieshucard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and to_select:getMark("@Stop") > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -2838,7 +2838,7 @@ se_tianmingWore = sgs.CreateTriggerSkill {
 					player:loseMark("@Tianming", 17)
 				end
 			end
-		elseif event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == "se_tianming") then
+		elseif event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "se_tianming") then
 			player:loseAllMarks("@Tianming")
 			player:gainMark("@Tianming", 72)
 		end
@@ -2869,7 +2869,7 @@ se_jianwucard = sgs.CreateSkillCard {
 			return to_select:objectName() ~= player:objectName()
 		end
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -2918,7 +2918,7 @@ se_kanhucard = sgs.CreateSkillCard {
 	name = "se_kanhucard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select) --必须
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -3658,7 +3658,7 @@ se_shengjiancard = sgs.CreateSkillCard {
 	name = "se_shengjiancard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select) --必须
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
@@ -4015,7 +4015,7 @@ se_diangong = sgs.CreateTriggerSkill {
 	events = { sgs.EventAcquireSkill },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if data:toString() == self:objectName() then
+		if data:toSkillChange().skillName == self:objectName() then
 			for i = 1, 3, 1 do
 				local targets = sgs.SPlayerList()
 				for _, other in sgs.qlist(room:getAlivePlayers()) do
@@ -4090,7 +4090,7 @@ Shouyang = sgs.CreateTriggerSkill {
 				end
 			end
 		elseif event == sgs.EventAcquireSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				local list = room:getAlivePlayers()
 				local targets = sgs.SPlayerList()
 				local emptylist = sgs.PlayerList()
@@ -4574,7 +4574,7 @@ se_jianyucard = sgs.CreateSkillCard {
 			return to_select:objectName() ~= player:objectName()
 		end
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -4899,7 +4899,7 @@ se_liaolicard = sgs.CreateSkillCard {
 	name = "se_liaolicard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and to_select:getMark("@se_liaoli") == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -5149,7 +5149,7 @@ se_zhilingcard = sgs.CreateSkillCard {
 	name = "se_zhilingcard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and
 			((to_select:getMark("@Neko_S") == 0 and sgs.Sanguosha:getCard(self:getSubcards():first()):getSuit() == sgs.Card_Spade) or
 				(to_select:getMark("@Neko_C") == 0 and sgs.Sanguosha:getCard(self:getSubcards():first()):getSuit() == sgs.Card_Club) or
@@ -5489,7 +5489,7 @@ SE_GeassCard = sgs.CreateSkillCard {
 	name = "SE_GeassCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select) --必须
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and to_select:getMark("@Geass") == 0 and to_select:getRole() ~= "lord"
 	end,
 	on_use = function(self, room, source, targets)
@@ -5886,7 +5886,7 @@ SE_Nagong = sgs.CreateTriggerSkill {
 	on_trigger = function(self, triggerEvent, player, data)
 		local room = player:getRoom()
 		local lords = room:findPlayersBySkillName(self:objectName())
-		if (triggerEvent == sgs.TurnStart) or (triggerEvent == sgs.EventAcquireSkill and data:toString() == "SE_Nagong") or (triggerEvent == sgs.GameStart) then
+		if (triggerEvent == sgs.TurnStart) or (triggerEvent == sgs.EventAcquireSkill and data:toSkillChange().skillName == "SE_Nagong") or (triggerEvent == sgs.GameStart) then
 			if lords:isEmpty() then return false end
 			local players
 			if lords:length() > 1 then
@@ -5897,7 +5897,7 @@ SE_Nagong = sgs.CreateTriggerSkill {
 			for _, p in sgs.qlist(players) do
 				room:attachSkillToPlayer(p, "SE_Nagong_Geiqian")
 			end
-		elseif triggerEvent == sgs.EventLoseSkill and data:toString() == "SE_Nagong" then
+		elseif triggerEvent == sgs.EventLoseSkill and data:toSkillChange().skillName == "SE_Nagong" then
 			if lords:length() > 2 then return false end
 			local players
 			if lords:isEmpty() then
@@ -6021,7 +6021,7 @@ se_dushecard = sgs.CreateSkillCard {
 	name = "se_dushecard",
 	target_fixed = true,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and not to_select:isKongcheng()
 	end,
 	on_use = function(self, room, source, targets)
@@ -7125,7 +7125,7 @@ se_gaobaicard = sgs.CreateSkillCard {
 	name = "se_gaobaicard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and to_select:isMale()
 	end,
 	on_use = function(self, room, source, targets)
@@ -7522,7 +7522,7 @@ se_huanyuan = sgs.CreateViewAsSkill {
 se_huanyuancard = sgs.CreateSkillCard {
 	name = "se_huanyuancard",
 	will_throw = true,
-	filter = function(self, selected, to_select)
+	filter = function(self, selected, to_select, player)
 		return #selected < 1
 			and ((to_select:getHp() < to_select:getMark("se_huanyuan_Pre_Hp")) or
 				(to_select:getMaxHp() < to_select:getMark("se_huanyuan_Pre_MaxHp")) or
@@ -7572,10 +7572,10 @@ se_chenglingcard = sgs.CreateSkillCard {
 	name = "se_chenglingcard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets < 2 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets < 2 and to_select:objectName() ~= player:objectName()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -8016,7 +8016,7 @@ se_jiejiecard = sgs.CreateSkillCard {
 	name = "se_jiejiecard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select) --必须
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and to_select:getMark("@Kekkai") == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -8130,12 +8130,12 @@ se_jianguicard = sgs.CreateSkillCard {
 	name = "se_jianguicard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets < 10 then
-			return to_select:objectName() ~= sgs.Self:objectName()
+			return to_select:objectName() ~= player:objectName()
 		end
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -9206,8 +9206,8 @@ se_zhanjingcard = sgs.CreateSkillCard {
 	name = "se_zhanjingcard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		if #targets > 1 then return end
@@ -9524,7 +9524,7 @@ SE_Yirong = sgs.CreateTriggerSkill {
 			end
 		elseif event == sgs.EventLoseSkill then
 			local old_skill = player:getTag("SE_YirongSkill"):toString()
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				if old_skill and player:hasSkill(old_skill) then
 					room:detachSkillFromPlayer(player, old_skill)
 				end
@@ -9557,8 +9557,8 @@ se_youhuo = sgs.CreateViewAsSkill {
 se_youhuocard = sgs.CreateSkillCard {
 	name = "se_youhuocard",
 	will_throw = true,
-	filter = function(self, selected, to_select)
-		return #selected < 1 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, selected, to_select, player)
+		return #selected < 1 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		local target = targets[1]
@@ -9672,7 +9672,7 @@ SE_Qidan = sgs.CreateTriggerSkill {
 				player:gainMark("@Ten")
 			end
 		elseif event == sgs.EventAcquireSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				player:gainMark("@Seven")
 			end
 		end
@@ -10383,7 +10383,7 @@ se_mipacard = sgs.CreateSkillCard {
 	name = "se_mipacard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and (to_select:getMark("@mipa_basic") == 0 or to_select:getMark("@mipa_notbasic") == 0)
 	end,
 	on_use = function(self, room, source, targets)
@@ -10545,7 +10545,7 @@ se_chenyan_select = sgs.CreateSkillCard {
 se_chenyanCard = sgs.CreateSkillCard {
 	name = "se_chenyanCard",
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local name = ""
 		local card
 		local plist = sgs.PlayerList()
@@ -10562,8 +10562,8 @@ se_chenyanCard = sgs.CreateSkillCard {
 			if card and card:targetFixed() then
 				return false
 			else
-				return card and card:targetFilter(plist, to_select, sgs.Self) and
-					not sgs.Self:isProhibited(to_select, card, plist)
+				return card and card:targetFilter(plist, to_select, player) and
+					not player:isProhibited(to_select, card, plist)
 			end
 		end
 		return true
@@ -10583,7 +10583,7 @@ se_chenyanCard = sgs.CreateSkillCard {
 		end
 		return card and card:targetFixed()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local name = ""
 		local card
 		local plist = sgs.PlayerList()
@@ -10598,7 +10598,7 @@ se_chenyanCard = sgs.CreateSkillCard {
 			card:addSubcard(self:getSubcards():first())
 			card:addSubcard(self:getSubcards():last())
 		end
-		return card and card:targetsFeasible(plist, sgs.Self)
+		return card and card:targetsFeasible(plist, player)
 	end,
 	on_validate_in_response = function(self, user)
 		local room = user:getRoom()
@@ -11616,7 +11616,7 @@ se_jianshicard = sgs.CreateSkillCard {
 	name = "se_jianshicard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and to_select:getMark("@surveillance") == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -12558,8 +12558,8 @@ se_gatecard = sgs.CreateSkillCard {
 	name = "se_gatecard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		if sgs.Self:getPile("pika_gob"):contains(self:getSubcards():first()) then
+	filter = function(self, targets, to_select, player)
+		if player:getPile("pika_gob"):contains(self:getSubcards():first()) then
 			local targets_list = sgs.PlayerList()
 			for _, target in ipairs(targets) do
 				targets_list:append(target)
@@ -12567,9 +12567,9 @@ se_gatecard = sgs.CreateSkillCard {
 			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 			slash:setSkillName("se_gate")
 			slash:deleteLater()
-			return slash:targetFilter(targets_list, to_select, sgs.Self)
+			return slash:targetFilter(targets_list, to_select, player)
 		else
-			return to_select:objectName() == sgs.Self:objectName()
+			return to_select:objectName() == player:objectName()
 		end
 	end,
 	on_validate = function(self, carduse)
@@ -12845,8 +12845,8 @@ se_bilingvscard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = true,
 	mute = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		room:broadcastSkillInvoke("se_biling", math.random(1, 3))
@@ -13025,9 +13025,9 @@ se_banyuncard = sgs.CreateSkillCard {
 	name = "se_banyuncard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets < 1 then
-			return to_select:objectName() ~= sgs.Self:objectName() and sgs.Self:distanceTo(to_select) == 1
+			return to_select:objectName() ~= player:objectName() and player:distanceTo(to_select) == 1
 		end
 	end,
 	on_use = function(self, room, source, targets)
@@ -13082,7 +13082,7 @@ se_jianxicard = sgs.CreateSkillCard {
 	name = "se_jianxicard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 2
 	end,
 	on_use = function(self, room, source, targets)
@@ -13237,7 +13237,7 @@ se_zhiyan_Trigger = sgs.CreateTriggerSkill {
 				end
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				player:loseAllMarks("@Yukino_shifeng")
 				player:loseAllMarks("@yukino_zhiyan")
 			end
@@ -13552,7 +13552,7 @@ se_zhenfen = sgs.CreateTriggerSkill {
 					player:loseAllMarks("@zhenfen_carduse")
 				end
 			elseif event == sgs.EventLoseSkill then
-				if data:toString() == self:objectName() then
+				if data:toSkillChange().skillName == self:objectName() then
 					player:loseAllMarks("@zhenfen_carduse")
 				end
 			end

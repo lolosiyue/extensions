@@ -275,9 +275,9 @@ keyaoquwuCard = sgs.CreateSkillCard {
 	name = "keyaoquwuCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return (#targets == 0) and (to_select:objectName() ~= sgs.Self:objectName()) and
-			(sgs.Self:inMyAttackRange(to_select))
+	filter = function(self, targets, to_select, player)
+		return (#targets == 0) and (to_select:objectName() ~= player:objectName()) and
+			(player:inMyAttackRange(to_select))
 	end,
 	on_use = function(self, room, player, targets)
 		local target = targets[1]
@@ -499,10 +499,10 @@ keyaoshiduCard = sgs.CreateSkillCard {
 	name = "keyaoshiduCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if (#targets ~= 0) then return false end
-		return (to_select:objectName() ~= sgs.Self:objectName()) and
-			(to_select:getMark("keyaoshidu" .. sgs.Self:objectName()) == 0)
+		return (to_select:objectName() ~= player:objectName()) and
+			(to_select:getMark("keyaoshidu" .. player:objectName()) == 0)
 	end,
 	on_use = function(self, room, player, targets)
 		local target = targets[1]
@@ -1060,7 +1060,7 @@ kejieyaofenwei = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-		if (event == sgs.EventAcquireSkill) and (data:toString() == "kejieyaobuhui") then
+		if (event == sgs.EventAcquireSkill) and (data:toSkillChange().skillName == "kejieyaobuhui") then
 			local yzts = room:findPlayersBySkillName("kejieyaofenwei")
 			for _, yzt in sgs.qlist(yzts) do
 				local dest = sgs.QVariant()
@@ -1087,8 +1087,8 @@ kejieyaoquwuCard = sgs.CreateSkillCard {
 	name = "kejieyaoquwuCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return (#targets == 0) and (to_select:objectName() ~= sgs.Self:objectName()) and
+	filter = function(self, targets, to_select, player)
+		return (#targets == 0) and (to_select:objectName() ~= player:objectName()) and
 			(to_select:getMark("&kejieyaoquwu") == 0)
 	end,
 	on_use = function(self, room, player, targets)
@@ -1344,9 +1344,9 @@ kejieyaoshiduCard = sgs.CreateSkillCard {
 	name = "kejieyaoshiduCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if (#targets ~= 0) then return false end
-		return (to_select:objectName() ~= sgs.Self:objectName()) and (to_select:getMark("&keyaoshidu") == 0)
+		return (to_select:objectName() ~= player:objectName()) and (to_select:getMark("&keyaoshidu") == 0)
 	end,
 	on_use = function(self, room, player, targets)
 		local target = targets[1]

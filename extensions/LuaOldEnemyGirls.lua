@@ -42,7 +42,7 @@ LuaFengxiCard = sgs.CreateSkillCard {
 		return #targets == 0 and not to_select:isNude() and getOEList(player):contains(to_select)
 	end,
 
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 
@@ -124,7 +124,7 @@ LuaLinluCard = sgs.CreateSkillCard {
 		return #targets == 0
 	end,
 
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 
@@ -194,7 +194,7 @@ LuaHuoweiCard = sgs.CreateSkillCard {
 		return #selected == 0 and getOEList(player):contains(to_select)
 	end,
 
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 
@@ -374,7 +374,7 @@ LuaDuanjianCard = sgs.CreateSkillCard {
 		if #targets == 1 then return to_select:objectName() == findMyOE(targets[1]):objectName() end
 	end,
 
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 2
 	end,
 

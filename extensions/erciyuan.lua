@@ -687,9 +687,9 @@ luagongluecard = sgs.CreateSkillCard {
 	name = "luagongluecard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng()
+			return to_select:objectName() ~= player:objectName() and not to_select:isKongcheng()
 		end
 		return false
 	end,
@@ -884,9 +884,9 @@ luablackflamecard = sgs.CreateSkillCard {
 	name = "luablackflamecard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return to_select:objectName() ~= sgs.Self:objectName()
+			return to_select:objectName() ~= player:objectName()
 		end
 		return false
 	end,
@@ -980,9 +980,9 @@ luatiaojiaocard = sgs.CreateSkillCard {
 	name = "luatiaojiaocard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return to_select:objectName() ~= sgs.Self:objectName()
+			return to_select:objectName() ~= player:objectName()
 		end
 		return false
 	end,
@@ -1094,8 +1094,8 @@ luaboxuecard = sgs.CreateSkillCard {
 	name = "luaboxuecard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		local num = sgs.Self:aliveCount()
+	filter = function(self, targets, to_select, player)
+		local num = player:aliveCount()
 		return #targets <= num and not to_select:isNude()
 	end,
 	on_use = function(self, room, source, targets)
@@ -2463,9 +2463,9 @@ end
 yanhuoacquirecard = sgs.CreateSkillCard
 	{
 		name = "yanhuoacquirecard",
-		filter = function(self, selected, to_select)
+		filter = function(self, selected, to_select, player)
 			return #selected == 0 and to_select:hasSkill("slyanhuo") and not to_select:getPile("confuse"):isEmpty() and
-				to_select:objectName() ~= sgs.Self:objectName()
+				to_select:objectName() ~= player:objectName()
 		end,
 		on_effect = function(self, effect)
 			local room = effect.from:getRoom()

@@ -872,7 +872,7 @@ zulianzhuCard = sgs.CreateSkillCard {
 	name = "zulianzhuCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			if self:subcardsLength() > 0 then --阳
 				return to_select:hasSkill("zulianzhu") and to_select:getChangeSkillState("zulianzhu") == 1 and to_select:getCardCount() > 0
@@ -3075,7 +3075,7 @@ kezumingjieCard = sgs.CreateSkillCard {
 	name = "kezumingjieCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
