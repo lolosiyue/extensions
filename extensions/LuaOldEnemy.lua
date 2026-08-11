@@ -33,7 +33,7 @@ extension = sgs.Package("LuaOldEnemy", sgs.Package_CardPack)
 ]]
 --
 
-require "luaoldenemy_lib"
+require "lua.luaoldenemy_lib"
 
 local skilllist = sgs.SkillList()
 
