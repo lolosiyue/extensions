@@ -2178,8 +2178,10 @@ for i = 1, 998, 1 do
 	end
 end
 
-sgs.SetConfig("BackgroundImage", "image/system/backdrop/" .. math.random(1, n) .. ".jpg")
-sgs.SetConfig("TableBgImage", "image/system/backdrop/" .. math.random(1, n) .. ".jpg")
+if n > 0 then
+	sgs.SetConfig("BackgroundImage", "image/system/backdrop/" .. math.random(1, n) .. ".jpg")
+	sgs.SetConfig("TableBgImage", "image/system/backdrop/" .. math.random(1, n) .. ".jpg")
+end
 
 --信息发送
 function printTable(t, k, v)
