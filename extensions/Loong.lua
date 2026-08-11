@@ -347,10 +347,10 @@ lxtx_zhengpiCard = sgs.CreateSkillCard{
 	name = "lxtx_zhengpi",
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, targets, to_select)
-		return #targets < 1 and not to_select:isKongcheng() and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets < 1 and not to_select:isKongcheng() and to_select:objectName() ~= player:objectName()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 	on_use = function(self, room, source, targets)
@@ -639,7 +639,7 @@ lxtx_shouyue = sgs.CreateTriggerSkill{
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.GameStart, sgs.EventAcquireSkill},
 	on_trigger = function(self, event, player, data, room)
-		if (event == sgs.EventAcquireSkill and data:toString() == self:objectName()) or event == sgs.GameStart then
+		if (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == self:objectName()) or event == sgs.GameStart then
 			room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
 			if not player:hasSkill("lxtx_shouyue_wusheng") then
 				room:acquireSkill(player, "lxtx_shouyue_wusheng")
@@ -670,7 +670,7 @@ lxtx_shouyue_skill = sgs.CreateTriggerSkill{
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.EventLoseSkill then
-			if data:toString() == "lxtx_shouyue" then
+			if data:toSkillChange().skillName == "lxtx_shouyue" then
 				if player:hasSkill("lxtx_shouyue_wusheng") then
 					room:detachSkillFromPlayer(player, "lxtx_shouyue_wusheng", false, true)
 				end
@@ -916,8 +916,8 @@ lxtx_rende_basicCard = sgs.CreateSkillCard{
 	name = "lxtx_rende_basic",
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, targets, to_select)
-		local card =  sgs.Sanguosha:cloneCard(sgs.Self:property("lxtx_rende"):toString(), sgs.Card_NoSuit, 0)
+	filter = function(self, targets, to_select, player)
+		local card =  sgs.Sanguosha:cloneCard(player:property("lxtx_rende"):toString(), sgs.Card_NoSuit, 0)
 		card:deleteLater()
 		card:setSkillName("_"..self:objectName())
 		if card and card:targetFixed() then
@@ -927,11 +927,11 @@ lxtx_rende_basicCard = sgs.CreateSkillCard{
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return card and card:targetFilter(qtargets, to_select, sgs.Self) 
-			and not sgs.Self:isProhibited(to_select, card, qtargets)
+		return card and card:targetFilter(qtargets, to_select, player) 
+			and not player:isProhibited(to_select, card, qtargets)
 	end,
-	feasible = function(self, targets)
-		local card =  sgs.Sanguosha:cloneCard(sgs.Self:property("lxtx_rende"):toString(), sgs.Card_NoSuit, 0)
+	feasible = function(self, targets, player)
+		local card =  sgs.Sanguosha:cloneCard(player:property("lxtx_rende"):toString(), sgs.Card_NoSuit, 0)
 		card:deleteLater()
 		card:setSkillName("_"..self:objectName())
 		local qtargets = sgs.PlayerList()
@@ -941,7 +941,7 @@ lxtx_rende_basicCard = sgs.CreateSkillCard{
 		if card and card:canRecast() and #targets == 0 then
 			return false
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self)
+		return card and card:targetsFeasible(qtargets, player)
 	end,	
 	on_validate = function(self, card_use)
 		local player = card_use.from
@@ -966,8 +966,8 @@ lxtx_rendeCard = sgs.CreateSkillCard{
 	name = "lxtx_rende",
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, selected, to_select)
-		return (#selected == 0) and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, selected, to_select, player)
+		return (#selected == 0) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_use = function(self, room, source, targets)
 		room:obtainCard(targets[1], self, false)
@@ -1480,10 +1480,10 @@ lxtx_manjuan = sgs.CreateTriggerSkill{
 lxtx_lianhengCard = sgs.CreateSkillCard{
 	name = "lxtx_lianheng",
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and not to_select:objectName() ~= sgs.Self:objectName() and not to_select:isChained()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and not to_select:objectName() ~= player:objectName() and not to_select:isChained()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -1634,7 +1634,7 @@ lxtx_xianzhenCard = sgs.CreateSkillCard{
 		return #targets < 1 + player:getMark("lxtx_xianzhenDrew-Clear") and not to_select:isKongcheng() and to_select:objectName() ~= player:objectName()
 		and player:canPindian(to_select)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -1922,10 +1922,10 @@ lxtx_shichouCard = sgs.CreateSkillCard{
 	name = "lxtx_shichou",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return to_select:objectName() ~= sgs.Self:objectName() and not to_select:hasFlag("shichou") and #targets < math.max(1, sgs.Self:getLostHp())
+	filter = function(self, targets, to_select, player)
+		return to_select:objectName() ~= player:objectName() and not to_select:hasFlag("shichou") and #targets < math.max(1, player:getLostHp())
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -2180,9 +2180,9 @@ lxtx_fushiCard = sgs.CreateSkillCard{
 	name = "lxtx_fushi",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		if sgs.Self:isLord() then
-		    return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		if player:isLord() then
+		    return #targets == 0 and to_select:objectName() ~= player:objectName()
 		else
 		    return #targets == 0 and to_select:isLord()
 		end
@@ -2243,10 +2243,10 @@ lxtx_yanpoCard = sgs.CreateSkillCard{
 	name = "lxtx_yanpo",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return #targets < 1 and not to_select:isKongcheng() and sgs.Self:objectName() ~= to_select:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets < 1 and not to_select:isKongcheng() and player:objectName() ~= to_select:objectName()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)

@@ -173,8 +173,8 @@ if not sgs.Sanguosha:getSkill("kejianxiongjl") then skills:append(kejianxiongjl)
 
 newhujiaaCard = sgs.CreateSkillCard {
 	name = "newhujiaaCard",
-	filter = function(self, selected, to_select)
-		return #selected == 0 and to_select:getKingdom() == "wei" and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, selected, to_select, player)
+		return #selected == 0 and to_select:getKingdom() == "wei" and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.to:getRoom()
@@ -229,8 +229,8 @@ kechazhengCard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = false,
 	mute = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and (to_select:objectName() ~= player:objectName())
 	end,
 	on_use = function(self, room, source, targets)
 		local target = targets[1]
@@ -479,10 +479,10 @@ kenewsangzhiCard = sgs.CreateSkillCard {
 	name = "kenewsangzhiCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and (to_select:getMark("beselectsangzhi") <= 0)
 			and
-			(((to_select:getHp() > sgs.Self:getHp()) and (sgs.Self:isWounded())) or (to_select:getHandcardNum() > sgs.Self:getHandcardNum()))
+			(((to_select:getHp() > player:getHp()) and (player:isWounded())) or (to_select:getHandcardNum() > player:getHandcardNum()))
 	end,
 	on_use = function(self, room, player, targets)
 		local target = targets[1]
@@ -1656,8 +1656,8 @@ kenewjiangwei = sgs.General(extension, "kenewjiangwei", "shu", 4, true)
 
 ketiaoxinCard = sgs.CreateSkillCard {
 	name = "ketiaoxinCard",
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName() and
 			(to_select:getCardCount(true, true) > 0)
 	end,
 	on_effect = function(self, effect)
@@ -2014,7 +2014,7 @@ kenewliuchen = sgs.General(extension, "kenewliuchen$", "shu", 4, true)
 kenewwenxiangCard = sgs.CreateSkillCard {
 	name = "kenewwenxiangCard",
 	will_throw = false,
-	filter = function(self, selected, to_select)
+	filter = function(self, selected, to_select, player)
 		return (#selected == 0) and (to_select:getMark("usedkenewwenxiang-PlayClear") == 0)
 	end,
 	on_use = function(self, room, source, targets)
@@ -2677,7 +2677,7 @@ kexihuoCard = sgs.CreateSkillCard {
 	name = "kexihuoCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return (#targets == 0)
 	end,
 	on_use = function(self, room, player, targets)
@@ -2753,8 +2753,8 @@ keliezhenCard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = false,
 	mute = true,
-	filter = function(self, targets, to_select)
-		return (#targets == 0) and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return (#targets == 0) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_use = function(self, room, player, targets)
 		local room = player:getRoom()
@@ -3411,8 +3411,8 @@ kequshangCard = sgs.CreateSkillCard {
 	name = "kequshangCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return ((#targets == 0) and (to_select:objectName() ~= sgs.Self:objectName()))
+	filter = function(self, targets, to_select, player)
+		return ((#targets == 0) and (to_select:objectName() ~= player:objectName()))
 	end,
 	on_use = function(self, room, player, targets)
 		local target = targets[1]
@@ -3907,11 +3907,11 @@ keguoseCard = sgs.CreateSkillCard {
 	name = "keguoseCard",
 	will_throw = false,
 	mute = true,
-	filter = function(self, targets, to_select)
-		return ((#targets < 1) and (self:subcardsLength() == 1) and (sgs.Self:getMark("useliulilbss-Clear") == 0) and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return ((#targets < 1) and (self:subcardsLength() == 1) and (player:getMark("useliulilbss-Clear") == 0) and (to_select:objectName() ~= player:objectName())
 				and not ((to_select:containsTrick("Indulgence"))))
 			or
-			((#targets < 1) and (self:subcardsLength() == 0) and (sgs.Self:getMark("useliuliqzpdq-Clear") == 0) and (to_select:objectName() ~= sgs.Self:objectName()))
+			((#targets < 1) and (self:subcardsLength() == 0) and (player:getMark("useliuliqzpdq-Clear") == 0) and (to_select:objectName() ~= player:objectName()))
 	end,
 	on_use = function(self, room, source, targets)
 		local target = targets[1]
@@ -4351,8 +4351,8 @@ kezhaofuCard = sgs.CreateSkillCard {
 	name = "kezhaofuCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return (#targets == 0) and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return (#targets == 0) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_use = function(self, room, player, targets)
 		room:removePlayerMark(player, "@kezhaofu")
@@ -4642,8 +4642,8 @@ kesuniCard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = false,
 	mute = true,
-	filter = function(self, targets, to_select)
-		return (#targets < 1) and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return (#targets < 1) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_use = function(self, room, player, targets)
 		if (player:getMark("zhpynt") > 0) then
@@ -4770,10 +4770,10 @@ kenewchengxiangCard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = false,
 	mute = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 99
-			and (to_select:objectName() ~= sgs.Self:objectName())
-			and ((to_select:getHp() >= sgs.Self:getHp()) or (to_select:getHandcardNum() >= sgs.Self:getHandcardNum()))
+			and (to_select:objectName() ~= player:objectName())
+			and ((to_select:getHp() >= player:getHp()) or (to_select:getHandcardNum() >= player:getHandcardNum()))
 			and not to_select:isKongcheng()
 	end,
 	on_use = function(self, room, player, targets)
@@ -5167,8 +5167,8 @@ kemingjianCard = sgs.CreateSkillCard {
 	name = "kemingjianCard",
 	will_throw = false,
 	mute = true,
-	filter = function(self, targets, to_select)
-		return (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return (to_select:objectName() ~= player:objectName())
 	end,
 	on_use = function(self, room, source, targets)
 		if (source:getMark("cryqmm") == 1) then
@@ -5431,7 +5431,7 @@ kenewsunluyu:addSkill(keraoxi)
 kemumuCard = sgs.CreateSkillCard {
 	name = "kemumuCard",
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return (#targets == 0) and (to_select:getCardCount(true, true) ~= 0)
 	end,
 	on_use = function(self, room, source, targets)
@@ -6054,8 +6054,8 @@ kenewzhangrangex = sgs.General(extension, "kenewzhangrangex", "qun", 1, true, tr
 kenewwangmiuCard = sgs.CreateSkillCard {
 	name = "kenewwangmiuCard",
 	will_throw = false,
-	filter = function(self, selected, to_select)
-		return (#selected == 0) and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, selected, to_select, player)
+		return (#selected == 0) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_use = function(self, room, source, targets)
 		local target = targets[1]
@@ -6171,9 +6171,9 @@ kenewqieshuiCard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = false,
 	mute = true,
-	filter = function(self, targets, to_select)
-		return #targets < sgs.Self:getMark("sunzhanglunci")
-			and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return #targets < player:getMark("sunzhanglunci")
+			and (to_select:objectName() ~= player:objectName())
 			--and ((to_select:getHp() >= sgs.Self:getHp()) or (to_select:getHandcardNum() >= sgs.Self:getHandcardNum()))
 			and not to_select:isNude()
 	end,

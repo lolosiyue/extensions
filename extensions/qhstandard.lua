@@ -4003,11 +4003,11 @@ qhstandardjieyinCARD = sgs.CreateSkillCard {            -- 结姻 技能卡
     filter = function(self, targets, to_select, player) -- 使用对象的约束条件
         return #targets == 0 and to_select:isWounded()  -- 没有选择目标且目标非满血
     end,
-    feasible = function(self, targets)                  -- 技能卡可以使用的约束条件
+    feasible = function(self, targets, player)
         if #targets == 1 then
             return targets[1]:isWounded()
         end
-        return #targets == 0 and sgs.Self:isWounded()
+        return #targets == 0 and player:isWounded()
     end,
     on_use = function(self, room, source, targets)
         local target = targets[1] or source
@@ -4685,11 +4685,11 @@ qhstandardqingnangCARD = sgs.CreateSkillCard {          -- 青囊 技能卡
     filter = function(self, targets, to_select, player) -- 使用对象的约束条件
         return #targets == 0 and to_select:isWounded()  -- 没有选择目标且目标非满血
     end,
-    feasible = function(self, targets)                  -- 技能卡可以使用的约束条件
+    feasible = function(self, targets, player)
         if #targets == 1 then
             return targets[1]:isWounded()
         end
-        return #targets == 0 and sgs.Self:isWounded()
+        return #targets == 0 and player:isWounded()
     end,
     on_use = function(self, room, source, targets)
         local target = targets[1] or source
@@ -4979,7 +4979,7 @@ qhstandardLijian = sgs.CreateViewAsSkill { -- 离间 视为技
 
 qhstandardLijianCARD = sgs.CreateSkillCard { -- 离间 技能卡
     name = "qhstandardLijianCARD",
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
         duel:deleteLater()
         if #targets == 0 and to_select:isProhibited(to_select, duel) then
@@ -4989,7 +4989,7 @@ qhstandardLijianCARD = sgs.CreateSkillCard { -- 离间 技能卡
         end
         return #targets < 2
     end,
-    feasible = function(self, targets)
+    feasible = function(self, targets, player)
         return #targets == 2
     end,
     about_to_use = function(self, room, card_use)
@@ -5384,11 +5384,11 @@ qhwindhuangtianVSCARD = sgs.CreateSkillCard { -- 黄天 技能卡
     target_fixed = false,                     -- 选择目标
     will_throw = false,                       -- 不立即丢弃
     handling_method = sgs.Card_MethodNone,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         if #targets > 0 then
             return false
         end
-        if to_select:hasLordSkill("qhwindhuangtian") and to_select:objectName() ~= sgs.Self:objectName() then
+        if to_select:hasLordSkill("qhwindhuangtian") and to_select:objectName() ~= player:objectName() then
             return true
         end
     end,
@@ -5411,7 +5411,7 @@ qhwindhuangtian = sgs.CreateTriggerSkill { -- 黄天 触发技
     on_trigger = function(self, event, player, data, room)
         local lords = room:findPlayersBySkillName(self:objectName())
         if (event == sgs.GameStart or event == sgs.TurnStart or
-                (event == sgs.EventAcquireSkill and data:toString() == "qhwindhuangtian")) then
+                (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "qhwindhuangtian")) then
             if lords:isEmpty() then
                 return false
             end
@@ -5427,7 +5427,7 @@ qhwindhuangtian = sgs.CreateTriggerSkill { -- 黄天 触发技
                 end
             end
         end
-        if event == sgs.EventLoseSkill and data:toString() == "qhwindhuangtian" then
+        if event == sgs.EventLoseSkill and data:toSkillChange().skillName == "qhwindhuangtian" then
             if lords:length() > 2 then
                 return false
             end
@@ -5451,7 +5451,7 @@ qhwindguhuoCard = sgs.CreateSkillCard {
     name = "qhwindguhuoCard",
     will_throw = false,
     handling_method = sgs.Card_MethodNone,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         local players = sgs.PlayerList()
         for i = 1, #targets do
             players:append(targets[i])
@@ -5460,23 +5460,23 @@ qhwindguhuoCard = sgs.CreateSkillCard {
             local card = nil
             if self:getUserString() and self:getUserString() ~= "" then
                 card = sgs.Sanguosha:cloneCard(self:getUserString():split("+")[1])
-                return card and card:targetFilter(players, to_select, sgs.Self) and
-                    not sgs.Self:isProhibited(to_select, card, players)
+                return card and card:targetFilter(players, to_select, player) and
+                    not player:isProhibited(to_select, card, players)
             end
         elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
             return false
         end
-        local _card = sgs.Self:getTag("qhwindguhuo"):toCard()
+        local _card = player:getTag("qhwindguhuo"):toCard()
         if _card == nil then
             return false
         end
         local card = sgs.Sanguosha:cloneCard(_card)
         card:setCanRecast(false)
         card:deleteLater()
-        return card and card:targetFilter(players, to_select, sgs.Self) and
-            not sgs.Self:isProhibited(to_select, card, players)
+        return card and card:targetFilter(players, to_select, player) and
+            not player:isProhibited(to_select, card, players)
     end,
-    feasible = function(self, targets)
+    feasible = function(self, targets, player)
         local players = sgs.PlayerList()
         for i = 1, #targets do
             players:append(targets[i])
@@ -5485,19 +5485,19 @@ qhwindguhuoCard = sgs.CreateSkillCard {
             local card = nil
             if self:getUserString() and self:getUserString() ~= "" then
                 card = sgs.Sanguosha:cloneCard(self:getUserString():split("+")[1])
-                return card and card:targetsFeasible(players, sgs.Self)
+                return card and card:targetsFeasible(players, player)
             end
         elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
             return true
         end
-        local _card = sgs.Self:getTag("qhwindguhuo"):toCard()
+        local _card = player:getTag("qhwindguhuo"):toCard()
         if _card == nil then
             return false
         end
         local card = sgs.Sanguosha:cloneCard(_card)
         card:setCanRecast(false)
         card:deleteLater()
-        return card and card:targetsFeasible(players, sgs.Self)
+        return card and card:targetsFeasible(players, player)
     end,
     on_validate = function(self, card_use)
         local yuji = card_use.from
@@ -6126,7 +6126,7 @@ qhfiredawuCARD = sgs.CreateSkillCard { -- 大雾 技能卡
     filter = function(self, targets, to_select, player) -- 使用对象的约束条件
         return #targets < self:subcardsLength()
     end,
-    feasible = function(self, targets) -- 技能卡可以使用的约束条件
+    feasible = function(self, targets, player)
         return #targets == self:subcardsLength()
     end,
     on_effect = function(self, effect)
@@ -6400,8 +6400,8 @@ mythqicai = sgs.CreateTriggerSkill {
 mythjiqiaoCard = sgs.CreateSkillCard {
     name = "mythjiqiaoCard",
     target_fixed = false,
-    filter = function(self, targets, to_select)
-        local card = sgs.Self:getTag("mythjiqiao"):toCard()
+    filter = function(self, targets, to_select, player)
+        local card = player:getTag("mythjiqiao"):toCard()
         if not card then
             return false
         end
@@ -6417,14 +6417,14 @@ mythjiqiaoCard = sgs.CreateSkillCard {
         _card:deleteLater()
 
         if _card and _card:targetFixed() then -- 因源码bug，不得已而为之
-            return #targets == 0 and to_select:objectName() == sgs.Self:objectName() and
-                not sgs.Self:isProhibited(to_select, _card, new_targets)
+            return #targets == 0 and to_select:objectName() == player:objectName() and
+                not player:isProhibited(to_select, _card, new_targets)
         end
-        return _card and _card:targetFilter(new_targets, to_select, sgs.Self) and
-            not sgs.Self:isProhibited(to_select, _card, new_targets)
+        return _card and _card:targetFilter(new_targets, to_select, player) and
+            not player:isProhibited(to_select, _card, new_targets)
     end,
-    feasible = function(self, targets)
-        local card = sgs.Self:getTag("mythjiqiao"):toCard()
+    feasible = function(self, targets, player)
+        local card = player:getTag("mythjiqiao"):toCard()
         if not card then
             return false
         end
@@ -6438,7 +6438,7 @@ mythjiqiaoCard = sgs.CreateSkillCard {
         _card:setCanRecast(false)
         _card:setSkillName("mythjiqiao")
         _card:deleteLater()
-        return _card and _card:targetsFeasible(new_targets, sgs.Self)
+        return _card and _card:targetsFeasible(new_targets, player)
     end,
     on_validate = function(self, card_use)
         local user_string = self:getUserString()

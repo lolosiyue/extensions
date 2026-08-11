@@ -10,11 +10,11 @@ kehuisuanCard = sgs.CreateSkillCard {
 	name = "kehuisuanCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return (#targets == 0)
-			and ((to_select:getHp() >= sgs.Self:getHp()) or (to_select:getHandcardNum() >= sgs.Self:getHandcardNum()))
+			and ((to_select:getHp() >= player:getHp()) or (to_select:getHandcardNum() >= player:getHandcardNum()))
 			and (not to_select:isKongcheng())
-			and (to_select:objectName() ~= sgs.Self:objectName())
+			and (to_select:objectName() ~= player:objectName())
 	end,
 	on_use = function(self, room, player, targets)
 		local target = targets[1]
@@ -309,7 +309,7 @@ keguojia:addSkill(keyijideath)
 
 keshilunCard = sgs.CreateSkillCard {
 	name = "keshilun",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)

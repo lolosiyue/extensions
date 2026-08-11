@@ -102,10 +102,10 @@ fateqiangyun = sgs.CreateMaxCardsSkill{
 fatewangzheCard = sgs.CreateSkillCard{
 	name = "fatewangzhe",
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 0
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -250,7 +250,7 @@ fateqiuzhan_card = sgs.CreateSkillCard
 	once = true,
 	will_throw = true,
 	filter=function(self,targets,to_select,player)
-		return (#targets < 1) and to_select:objectName() ~= sgs.Self:objectName()
+		return (#targets < 1) and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect=function(self,effect)
 		local from = effect.from
@@ -302,8 +302,8 @@ fateshenjian_card = sgs.CreateSkillCard
 	name = "fateshenjian_card",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self,targets,to_select)
-		return (#targets < 2) and sgs.Self:inMyAttackRange(to_select)
+	filter = function(self, targets, to_select, player)
+		return (#targets < 2) and player:inMyAttackRange(to_select)
 	end,
 	on_effect = function(self,effect)
 		local from = effect.from
@@ -810,8 +810,8 @@ end,
 fatebumo_card = sgs.CreateSkillCard
 {
 	name = "fatebumo_card",
-	filter = function(self,targets,to_select)
-		return (#targets < 1) and (to_select:getLostHp()>0 or to_select:getHandcardNum() < to_select:getMaxHp()) and (to_select:getGender()~=sgs.Self:getGender())
+	filter = function(self, targets, to_select, player)
+		return (#targets < 1) and (to_select:getLostHp()>0 or to_select:getHandcardNum() < to_select:getMaxHp()) and (to_select:getGender()~=player:getGender())
 	end,
 	on_effect = function(self,effect)
 		local from = effect.from
@@ -959,7 +959,7 @@ fateyaoshucard = sgs.CreateSkillCard
 	name = "fateyaoshu",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self,targets,to_select)
+	filter = function(self, targets, to_select, player)
 	local suit = sgs.Sanguosha:getCard(self:getSubcards():first()):getSuit()
 	if suit == sgs.Card_Heart then
 		return (#targets < 1) and to_select:isWounded()
@@ -1074,7 +1074,7 @@ fatechuyi_card = sgs.CreateSkillCard
 	name = "fatechuyi_card",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self,targets,to_select)
+	filter = function(self, targets, to_select, player)
 		return (#targets < 1) and (to_select:hasSkill("fatechuyi_vs")==false) --这样的写法在双将中会出问题
 	end,
 	on_effect = function(self,effect)
@@ -1257,7 +1257,7 @@ fatetiangong_card = sgs.CreateSkillCard
 	name = "fatetiangong_card",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	if #targets ==0 then
 		local targets_list = sgs.PlayerList()
 		for _, target in ipairs(targets) do
@@ -1266,13 +1266,13 @@ fatetiangong_card = sgs.CreateSkillCard
 		local slash = sgs.Sanguosha:cloneCard("fire_slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName("fatetiangong_card")
 		slash:deleteLater()
-		return sgs.Self:canSlash(to_select,slash, false)
+		return player:canSlash(to_select,slash, false)
 	elseif #targets ==1 then
-			if sgs.Self:distanceTo(targets[1]) == 1 then 
+			if player:distanceTo(targets[1]) == 1 then 
 			local slash = sgs.Sanguosha:cloneCard("fire_slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName("fatetiangong_card")
 		slash:deleteLater()
-			return sgs.Self:distanceTo(to_select) == 1 and sgs.Self:canSlash(to_select,slash, false)
+			return player:distanceTo(to_select) == 1 and player:canSlash(to_select,slash, false)
 			end
 		end
 	end ,
@@ -1442,7 +1442,7 @@ fateloli_card = sgs.CreateSkillCard
 	once = true,
 	will_throw = true,
 	filter=function(self,targets,to_select,player)
-		return (#targets < 1) and (to_select:isKongcheng()==false) and to_select:objectName() ~= sgs.Self:objectName()
+		return (#targets < 1) and (to_select:isKongcheng()==false) and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect=function(self,effect)
 		local from = effect.from
@@ -1641,7 +1641,7 @@ fatefanshi_card = sgs.CreateSkillCard
 	once = true,
 	will_throw = true,
 	filter=function(self,targets,to_select,player)
-		return (#targets < 1) and sgs.Self:inMyAttackRange(to_select)
+		return (#targets < 1) and player:inMyAttackRange(to_select)
 	end,
 	on_effect=function(self,effect)
 		local from = effect.from
@@ -2123,8 +2123,8 @@ fatejuntuan_card = sgs.CreateSkillCard
 	name = "fatejuntuan_card",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self,targets,to_select)
-		return (#targets < 2) and (sgs.Self:distanceTo(to_select) < 2)
+	filter = function(self, targets, to_select, player)
+		return (#targets < 2) and (player:distanceTo(to_select) < 2)
 	end,
 	on_effect = function(self,effect)
 		local from = effect.from
@@ -2388,8 +2388,8 @@ fatesiji_card = sgs.CreateSkillCard
 	name = "fatesiji_card",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self,targets,to_select)
-		return (#targets < 1) and (sgs.Self:distanceTo(to_select) < 3)
+	filter = function(self, targets, to_select, player)
+		return (#targets < 1) and (player:distanceTo(to_select) < 3)
 		
 	end,
 	on_effect = function(self,effect)
@@ -2527,7 +2527,7 @@ fatechongshu_card = sgs.CreateSkillCard
 	once = true,
 	will_throw = true,
 	filter=function(self,targets,to_select,player)
-		return (#targets < 1) and to_select:getSeat()~=sgs.Self:getSeat()
+		return (#targets < 1) and to_select:getSeat()~=player:getSeat()
 	end,
 	on_effect=function(self,effect)
 		local from = effect.from

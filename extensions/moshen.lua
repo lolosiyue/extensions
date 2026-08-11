@@ -697,7 +697,7 @@ ms_moren = sgs.CreateTriggerSkill {
 				room:setPlayerMark(player, "moren_atk", 0)
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				room:setPlayerMark(player, "moren_losthp", 0)
 				room:setPlayerMark(player, "moren_atk", 0)
 			end
@@ -1788,13 +1788,13 @@ ms_yonghengCard = sgs.CreateSkillCard {
 	name = "ms_yonghengCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			return true
 		end
 		return false
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 	on_use = function(self, room, source, targets)
@@ -2040,9 +2040,9 @@ ms_mimouCard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return to_select:objectName() ~= sgs.Self:objectName()
+			return to_select:objectName() ~= player:objectName()
 		end
 		return false
 	end,

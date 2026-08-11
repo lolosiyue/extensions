@@ -2240,7 +2240,7 @@ fcmk_jlsg_meihuoCard = sgs.CreateSkillCard {
 	name = "fcmk_jlsg_meihuoCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and to_select:isMale()
 	end,
 	on_effect = function(self, effect)

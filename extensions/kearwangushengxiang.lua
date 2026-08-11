@@ -28,7 +28,7 @@ kenewgirlshixieCard = sgs.CreateSkillCard{
 	name = "kenewgirlshixieCard",
 	will_throw = false,
 	mute = true,
-	filter = function(self, selected, to_select)
+	filter = function(self, selected, to_select, player)
 		return (#selected == 0) 
 		and (
 			(to_select:getMark("banshixie-Clear") == 0)
@@ -472,8 +472,8 @@ kenewgirljingmuCard = sgs.CreateSkillCard{
 	name = "kenewgirljingmuCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return (#targets < 1) and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return (#targets < 1) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_use = function(self, room, player, targets)
 		local target = targets[1]
@@ -1316,7 +1316,7 @@ kenewgirljuzhongCard = sgs.CreateSkillCard{
 	name = "kenewgirljuzhongCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local themin = to_select
 		local yes = 1
 		local yes2 = 1
@@ -1332,8 +1332,8 @@ kenewgirljuzhongCard = sgs.CreateSkillCard{
 				break
 			end
 		end
-		return ((yes == 1) and (sgs.Self:getMark("usejuzhongmo-PlayClear") < 2))
-		or ((yes2 == 1) and (sgs.Self:getMark("usejuzhongqi-PlayClear") < 2))
+		return ((yes == 1) and (player:getMark("usejuzhongmo-PlayClear") < 2))
+		or ((yes2 == 1) and (player:getMark("usejuzhongqi-PlayClear") < 2))
 	end,
 	on_use = function(self, room, player, targets)
 		local target = targets[1]
@@ -1527,7 +1527,7 @@ kenewgirlchenjiCard = sgs.CreateSkillCard{
 	name = "kenewgirlchenjiCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 1
 		--and (to_select:objectName() ~= sgs.Self:objectName()) 
 	end,
@@ -1820,8 +1820,8 @@ kenewgirlscshixieCard = sgs.CreateSkillCard{
 	name = "kenewgirlscshixieCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return (#targets < 1) and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return (#targets < 1) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_use = function(self, room, player, targets)
 		local target = targets[1]

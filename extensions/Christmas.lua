@@ -13,7 +13,7 @@ RLiwaCard = sgs.CreateSkillCard {
 	filter = function(self, targets, to_select, player)
 		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end,
 	on_use = function(self, room, source, targets)

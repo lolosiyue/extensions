@@ -68,11 +68,11 @@ efushaCard = sgs.CreateSkillCard {
 	name = "efusha",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			local efushalist = to_select:getPile("efusha")
 			if efushalist:isEmpty() then
-				return to_select:objectName() ~= sgs.Self:objectName()
+				return to_select:objectName() ~= player:objectName()
 			end
 		end
 		return false
@@ -411,8 +411,7 @@ echinei = sgs.CreateTriggerSkill {
 --你可以弃置一张基本牌，视为对其攻击范围内的另一名其他角色使用一张【杀】。
 erangwaiCard = sgs.CreateSkillCard {
 	name = "erangwaiCard",
-	filter = function(self, targets, to_select)
-		local player = sgs.Self
+	filter = function(self, targets, to_select, player)
 		local players = player:getSiblings()
 		local current
 		players:append(player)
@@ -426,7 +425,7 @@ erangwaiCard = sgs.CreateSkillCard {
 		slash:setSkillName("erangwai")
 		local extra = sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, player, slash) + 1
 		slash:deleteLater()
-		return sgs.Self:canSlash(to_select, slash, false) and #targets < extra and current:distanceTo(to_select) <= current:getAttackRange() and current:distanceTo(to_select) > 0
+		return player:canSlash(to_select, slash, false) and #targets < extra and current:distanceTo(to_select) <= current:getAttackRange() and current:distanceTo(to_select) > 0
 	end,
 	on_use = function(self, room, source, targets)
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
@@ -513,7 +512,7 @@ eyanshouCard = sgs.CreateSkillCard {
 	name = "eyanshouCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 1
 	end,
 	on_effect = function(self, effect)
@@ -989,9 +988,9 @@ etiaoboCard = sgs.CreateSkillCard {
 	name = "etiaoboCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets < 2 then
-			if to_select:objectName() ~= sgs.Self:objectName() then
+			if to_select:objectName() ~= player:objectName() then
 				if not to_select:isKongcheng() then
 					return true
 				end
@@ -999,7 +998,7 @@ etiaoboCard = sgs.CreateSkillCard {
 		end
 		return false
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 2
 	end,
 	on_use = function(self, room, source, targets)

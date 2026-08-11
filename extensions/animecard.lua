@@ -199,7 +199,7 @@ if SenjyutsuRinkUse then
 		can_recast = false,
 		subtype = "single_target_trick",
 		subclass = sgs.LuaTrickCard_TypeSingleTargetTrick,
-		filter = function(self, targets, to_select)
+		filter = function(self, targets, to_select, player)
 			for i = 1, 5 do
 				if to_select:getMark(string.format("@SenjyutsuGroup" .. i)) > 0 then
 					return false
@@ -300,7 +300,7 @@ if SenjyutsuRinkUse then
 		can_recast = false,
 		subtype = "single_target_trick",
 		subclass = sgs.LuaTrickCard_TypeSingleTargetTrick,
-		filter = function(self, targets, to_select)
+		filter = function(self, targets, to_select, player)
 			for i = 1, 5 do
 				if to_select:getMark(string.format("@SenjyutsuGroup" .. i)) > 0 then
 					return false

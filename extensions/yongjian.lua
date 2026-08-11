@@ -1602,7 +1602,7 @@ zd_shengdongjixi = sgs.CreateTrickCard{
 		then return x end
 		return 0
 	end,
-	feasible = function(self,targets)
+	feasible = function(self, targets, player)
 		return #targets%2==0 and #targets>0
 	end,
 	about_to_use = function(self,room,use)

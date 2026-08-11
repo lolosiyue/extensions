@@ -425,9 +425,9 @@ FiveFanjian_Card = sgs.CreateSkillCard {
 	name = "FiveFanjian_Card",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return to_select:objectName() ~= sgs.Self:objectName()
+			return to_select:objectName() ~= player:objectName()
 		end
 		return false
 	end,
@@ -562,7 +562,7 @@ FiveGuidaoA_Card = sgs.CreateSkillCard {
 	name = "FiveGuidaoA_Card",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -652,7 +652,7 @@ FiveGuidaoA = sgs.CreateTriggerSkill {
 			end
 		end
 		if event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				player:removePileByName("dao")
 			end
 		end
@@ -676,10 +676,10 @@ FiveHuangtianA_Card = sgs.CreateSkillCard {
 	name = "FiveHuangtianA_Card",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			if to_select:hasLordSkill("FiveHuangtianA") then
-				if to_select:objectName() ~= sgs.Self:objectName() then
+				if to_select:objectName() ~= player:objectName() then
 					return not to_select:hasFlag("FiveHuangtianAInvoked")
 				end
 			end
@@ -852,7 +852,7 @@ FiveLeiji_Card = sgs.CreateSkillCard {
 	name = "FiveLeiji_Card",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -1003,8 +1003,8 @@ FourJianxiong_Card = sgs.CreateSkillCard {
 	name = "FourJianxiong_Card",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		if to_select:objectName() ~= sgs.Self:objectName() then
+	filter = function(self, targets, to_select, player)
+		if to_select:objectName() ~= player:objectName() then
 			return #targets == 0
 		end
 		return false
@@ -1126,7 +1126,7 @@ FourJiaozhao_Card = sgs.CreateSkillCard {
 	name = "FourJiaozhao_Card",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if to_select:getRole() ~= "lord" then
 			return false
 		end
@@ -1588,12 +1588,12 @@ FourHuoji_Card = sgs.CreateSkillCard {
 	name = "FourHuoji_Card",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			if not to_select:isKongcheng() then
 				local fire_attack = sgs.Sanguosha:cloneCard("FireAttack", sgs.Card_NoSuit, 0)
 				fire_attack:deleteLater()
-				return not sgs.Self:isProhibited(to_select, fire_attack)
+				return not player:isProhibited(to_select, fire_attack)
 			end
 		end
 		return false
@@ -1683,7 +1683,7 @@ FourNiepan_Card = sgs.CreateSkillCard {
 	name = "FourNiepan_Card",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			return to_select:isChained()
 		end
@@ -2557,9 +2557,9 @@ FourTianxiang_Card = sgs.CreateSkillCard {
 	name = "FourTianxiang_Card",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return to_select:objectName() ~= sgs.Self:objectName()
+			return to_select:objectName() ~= player:objectName()
 		end
 		return false
 	end,
@@ -2846,10 +2846,10 @@ FourTaiping_Card = sgs.CreateSkillCard {
 	name = "FourTaiping_Card",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			if to_select:hasSkill("FourTaiping") then
-				if to_select:objectName() ~= sgs.Self:objectName() then
+				if to_select:objectName() ~= player:objectName() then
 					return not to_select:hasFlag("FourTaipingInvoked")
 				end
 			end
@@ -3107,7 +3107,7 @@ DiyJisu_Clear = sgs.CreateTriggerSkill { --与主技能分开，是为了在发�
 				end
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == "DiyJisu" and not player:hasFlag("DiyBaobian_Process") then
+			if data:toSkillChange().skillName == "DiyJisu" and not player:hasFlag("DiyBaobian_Process") then
 				room:detachSkillFromPlayer(player, "shensu")
 				player:removeMark("DiyJisu_Success")
 			end
@@ -3176,7 +3176,7 @@ DiyBaobian_Clear = sgs.CreateTriggerSkill {
 	events = { sgs.EventLoseSkill },
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		if data:toString() == "DiyBaobian" then
+		if data:toSkillChange().skillName == "DiyBaobian" then
 			if player:hasSkill("DiyXX") then
 				room:detachSkillFromPlayer(player, "DiyXX")
 			end
@@ -3205,7 +3205,7 @@ DiyXX_Card = sgs.CreateSkillCard {
 	name = "DiyXX_Card",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)

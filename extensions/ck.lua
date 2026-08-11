@@ -40,7 +40,7 @@ ckleiti = sgs.CreateTriggerSkill {
 
 ckdianjicard = sgs.CreateSkillCard {
 	name = "ckdianjicard",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_effect = function(self, effect)
@@ -204,7 +204,7 @@ ckbaihecard = sgs.CreateSkillCard {
 	name = "ckbaihecard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return (#targets == 0) and to_select:hasEquip() and to_select:isFemale()
 	end,
 	on_effect = function(self, effect)
@@ -881,7 +881,7 @@ ckweishan = sgs.CreateTriggerSkill {
 ckjinjieCard = sgs.CreateSkillCard {
 	name = "ckjinjieCard",
 	will_throw = true,
-	filter = function(self, selected, to_select)
+	filter = function(self, selected, to_select, player)
 		if #selected >= 3 then
 			return false
 		end

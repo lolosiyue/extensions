@@ -630,7 +630,7 @@ kefanmaoCard = sgs.CreateSkillCard{
 	target_fixed = false,
 	will_throw = false,
 	mute = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return (#targets == 0)  and (to_select:getMark("&keflydoor") > 0) --and (to_select:objectName() ~= sgs.Self:objectName())
 	end,
 	on_use = function(self, room, player, targets)
@@ -966,8 +966,8 @@ kejieyanCard = sgs.CreateSkillCard{
 	name = "kejieyanCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return  (to_select:getMark("&keflydoor") > 0) and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return  (to_select:getMark("&keflydoor") > 0) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_use = function(self, room, player, targets)
 		local room = player:getRoom()
@@ -1320,8 +1320,8 @@ keyujiCard = sgs.CreateSkillCard{
 	target_fixed = false,
 	will_throw = false,
 	mute = true,
-	filter = function(self, targets, to_select)
-		return (#targets == 0) and ( to_select:objectName() ~= sgs.Self:objectName()) and (not to_select:hasFlag("yujichosen")) and (sgs.Self:inMyAttackRange(to_select))
+	filter = function(self, targets, to_select, player)
+		return (#targets == 0) and ( to_select:objectName() ~= player:objectName()) and (not to_select:hasFlag("yujichosen")) and (player:inMyAttackRange(to_select))
 	end,
 	on_use = function(self, room, player, targets)
 		local target = targets[1]
@@ -1713,8 +1713,8 @@ ketinghuCard = sgs.CreateSkillCard{
 	target_fixed = false,
 	will_throw = true,
 	mute = true,
-	filter = function(self, targets, to_select)
-		if ((#targets > sgs.Self:getMaxHp() - 1) or (#targets > 3) )then return false end		
+	filter = function(self, targets, to_select, player)
+		if ((#targets > player:getMaxHp() - 1) or (#targets > 3) )then return false end		
 		return true 
 	end,
 	on_use = function(self, room, player, targets)
@@ -1980,9 +1980,9 @@ killaroundCard = sgs.CreateSkillCard{
 	target_fixed = false,
 	will_throw = true,
 	mute = true,
-	filter = function(self, targets, to_select)
-		if (#targets > sgs.Self:getLostHp() - 1) then return false end		
-		return (to_select:objectName() ~= sgs.Self:objectName()) 
+	filter = function(self, targets, to_select, player)
+		if (#targets > player:getLostHp() - 1) then return false end		
+		return (to_select:objectName() ~= player:objectName()) 
 	end,
 	on_use = function(self, room, player, targets)
 		local room = player:getRoom()
@@ -2057,9 +2057,9 @@ keduantouCard = sgs.CreateSkillCard{
 	target_fixed = false,
 	will_throw = true,
 	mute = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	if (#targets ~= 0)  then return false end		
-	return ( (sgs.Self:distanceTo(to_select) <= 1) and (to_select:objectName() ~= sgs.Self:objectName()))
+	return ( (player:distanceTo(to_select) <= 1) and (to_select:objectName() ~= player:objectName()))
 	end,
 	on_use = function(self, room, player, targets)
 		local target = targets[1]
@@ -2244,7 +2244,7 @@ kebeilianCard = sgs.CreateSkillCard{
 	name = "kebeilianCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return  (to_select:getMark("@shixue") > 0)
 	end,
 	on_use = function(self, room, player, targets)
@@ -2652,8 +2652,8 @@ keguangfuCard = sgs.CreateSkillCard{
 	target_fixed = false,
 	will_throw = false,
 	mute = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and (not to_select:isKongcheng()) and (to_select:objectName() ~= sgs.Self:objectName()) and (sgs.Self:canPindian(to_select, true))
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and (not to_select:isKongcheng()) and (to_select:objectName() ~= player:objectName()) and (player:canPindian(to_select, true))
 	end,
 	on_use = function(self, room, player, targets)
 		local target = targets[1]
@@ -3089,7 +3089,7 @@ playmovesoldierCard = sgs.CreateSkillCard{
 	name = "playmovesoldierCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return (#targets == 0) and  ( to_select:getMark("@sandsoldier") == 0 )
 	end,
 	on_use = function(self, room, player, targets)

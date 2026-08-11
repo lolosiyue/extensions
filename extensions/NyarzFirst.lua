@@ -307,8 +307,8 @@ dlimuCard = sgs.CreateSkillCard
 {
     name = "Dlimu",
     will_throw = false,
-    filter = function(self, targets, to_select)
-        return to_select:objectName() == sgs.Self:objectName()
+    filter = function(self, targets, to_select, player)
+        return to_select:objectName() == player:objectName()
     end,
     on_validate = function(self, cardUse)
         local source = cardUse.from
@@ -649,11 +649,11 @@ Godpoxi = sgs.CreateViewAsSkill
 GodpoxiCard = sgs.CreateSkillCard
 {
     name = "Godpoxi",
-    filter = function(self, targets, to_select)
-        if not sgs.Self:hasFlag("godpoxi") then
-		    return #targets < 1 and to_select:objectName() ~= sgs.Self:objectName() and (not to_select:isKongcheng())
+    filter = function(self, targets, to_select, player)
+        if not player:hasFlag("godpoxi") then
+		    return #targets < 1 and to_select:objectName() ~= player:objectName() and (not to_select:isKongcheng())
         else 
-            return to_select:objectName() == sgs.Self:objectName()
+            return to_select:objectName() == player:objectName()
         end
 	end,
 	on_effect = function(self, effect)
@@ -840,8 +840,8 @@ Diylijisum = sgs.CreateTriggerSkill{
 DiylijiCard = sgs.CreateSkillCard
 {   
     name = "DiylijiCard",
-    filter = function(self, targets, to_select)
-        if (#targets >= 1) or (to_select:objectName() == sgs.Self:objectName()) then return false end
+    filter = function(self, targets, to_select, player)
+        if (#targets >= 1) or (to_select:objectName() == player:objectName()) then return false end
         return true
     end,
     on_effect = function(self, effect)
@@ -961,8 +961,8 @@ exfangtongVS = sgs.CreateViewAsSkill
 exfangtongCard = sgs.CreateSkillCard{
 	name = "exfangtongCard",
     will_throw = true,
-	filter = function(self, targets, to_select)
-        if (#targets >= 1) or (to_select:objectName() == sgs.Self:objectName()) then return false end
+	filter = function(self, targets, to_select, player)
+        if (#targets >= 1) or (to_select:objectName() == player:objectName()) then return false end
 		return true
 	end,
 	on_effect = function(self, effect)
@@ -1142,8 +1142,8 @@ godgongxin = sgs.CreateViewAsSkill
 godgongxinCard = sgs.CreateSkillCard
 {
     name = "godgongxin",
-    filter = function(self, targets, to_select)
-		return #targets < 1 and to_select:objectName() ~= sgs.Self:objectName() and (not to_select:isKongcheng())
+    filter = function(self, targets, to_select, player)
+		return #targets < 1 and to_select:objectName() ~= player:objectName() and (not to_select:isKongcheng())
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -1680,7 +1680,7 @@ paiyiexCard = sgs.CreateSkillCard
 {
     name = "paiyiex",
     will_throw = true,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         return #targets < 1 
     end,
     on_effect = function(self, effect)
@@ -1809,7 +1809,7 @@ spzhihengstart = sgs.CreateTriggerSkill{
     frequency = sgs.Skill_NotFrequent,
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
-        if event == sgs.EventAcquireSkill and (data:toString() ~= "spzhiheng" ) then return false end
+        if event == sgs.EventAcquireSkill and (data:toSkillChange().skillName ~= "spzhiheng" ) then return false end
         room:setPlayerMark(player, "spzhenghengstart", 1)
         if player:getHandcardNum() == 0 then 
             room:sendCompulsoryTriggerLog(player, "spzhiheng", true, true)
@@ -1921,7 +1921,7 @@ exshangshi = sgs.CreateTriggerSkill{
     on_trigger = function(self, event, player, data)
         local room = player:getRoom()
         if event == sgs.EventAcquireSkill then
-            if data:toString() ~= self:objectName() then return false end
+            if data:toSkillChange().skillName ~= self:objectName() then return false end
         end
         if not room:askForSkillInvoke(player, self:objectName()) then return false end
         room:broadcastSkillInvoke(self:objectName())
@@ -2013,9 +2013,8 @@ renchou = sgs.CreateZeroCardViewAsSkill
 renchouCard = sgs.CreateSkillCard
 {
     name = "renchou",
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         local ta = to_select
-        local player = sgs.Self
         if #targets >= 1 then return false end
         if (ta:getHandcardNum() == player:getHandcardNum()) and (ta:getHp() == player:getHp()) then
             return false
@@ -2122,8 +2121,8 @@ dyuyuanCard = sgs.CreateSkillCard
 {
     name = "dyuyuan",
     will_throw = false,
-    filter = function(self, targets, to_select)
-        if  (#targets >= 1) or (to_select:objectName() == sgs.Self:objectName()) then return false end
+    filter = function(self, targets, to_select, player)
+        if  (#targets >= 1) or (to_select:objectName() == player:objectName()) then return false end
 		if to_select:getMark("dyuyuan") > 0 then return false end
         return true
     end,
@@ -3154,11 +3153,11 @@ jitongxinCard = sgs.CreateSkillCard
 {
     name = "jitongxin",
     will_throw = false,
-    filter = function(self, targets, to_select)
-        if sgs.Self:getChangeSkillState(self:objectName()) <= 1 then 
-            return to_select:getHandcardNum() > 0 and #targets < 1 and to_select:objectName() ~= sgs.Self:objectName()
+    filter = function(self, targets, to_select, player)
+        if player:getChangeSkillState(self:objectName()) <= 1 then 
+            return to_select:getHandcardNum() > 0 and #targets < 1 and to_select:objectName() ~= player:objectName()
         end
-        return #targets < 1 and to_select:objectName() ~= sgs.Self:objectName()
+        return #targets < 1 and to_select:objectName() ~= player:objectName()
     end,
     on_effect = function(self, effect)
         local room = effect.from:getRoom()
@@ -3948,7 +3947,7 @@ spjiufaCard = sgs.CreateSkillCard
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		if card and card:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card, qtargets) then
+		if card and card:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, card, qtargets) then
             return true
         end
         return false 
@@ -3964,7 +3963,7 @@ spjiufaCard = sgs.CreateSkillCard
         end
         return false
 	end,
-	feasible = function(self, targets)	
+	feasible = function(self, targets, player)
 		local ids = self:getSubcards()
         local card = nil
 		for _,id in sgs.qlist(ids) do
@@ -3974,7 +3973,7 @@ spjiufaCard = sgs.CreateSkillCard
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		if card and card:targetsFeasible(qtargets, sgs.Self) then
+		if card and card:targetsFeasible(qtargets, player) then
             return true
         end
         return false
@@ -4576,8 +4575,8 @@ dyizheng = sgs.CreateZeroCardViewAsSkill
 dyizhengCard = sgs.CreateSkillCard
 {
     name = "dyizheng",
-    filter = function(self, targets, to_select)
-		return #targets == 0 and (not to_select:isKongcheng()) and to_select:objectName() ~= sgs.Self:objectName()
+    filter = function(self, targets, to_select, player)
+		return #targets == 0 and (not to_select:isKongcheng()) and to_select:objectName() ~= player:objectName()
 	end,
     on_effect = function(self, effect)
         local room = effect.from:getRoom()
@@ -4918,10 +4917,10 @@ dwqingshiVS = sgs.CreateZeroCardViewAsSkill
 dwqingshiCard = sgs.CreateSkillCard
 {
     name = "dwqingshi",
-    filter = function(self, targets, to_select)
-        if sgs.Self:hasFlag("dwqingshidrawall") then
+    filter = function(self, targets, to_select, player)
+        if player:hasFlag("dwqingshidrawall") then
             return true
-        elseif sgs.Self:hasFlag("dwqingshidamage") then
+        elseif player:hasFlag("dwqingshidamage") then
             return to_select:hasFlag("dwqingshiupcan")
         end
     end,
@@ -5661,7 +5660,7 @@ godjieyin = sgs.CreateTriggerSkill{
         if event == sgs.GameStart or event == sgs.EventAcquireSkill then
             if player:isChained() then return false end
             if event == sgs.EventAcquireSkill then
-                if data:toString() ~= self:objectName() then return false end
+                if data:toSkillChange().skillName ~= self:objectName() then return false end
             end
             room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
             room:setPlayerChained(player)
@@ -6957,7 +6956,7 @@ yzxieshuCard = sgs.CreateSkillCard
 {
     name = "yzxieshu",
     will_throw = false,
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         return #targets < 1
     end,
     on_effect = function(self, effect)

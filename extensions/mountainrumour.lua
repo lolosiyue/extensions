@@ -807,11 +807,11 @@ luazhaoxucard = sgs.CreateSkillCard {
 	name = "luazhaoxucard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, selected, to_select)
+	filter = function(self, selected, to_select, player)
 		local targets = self:subcardsLength()
 		return #selected + 1 < targets and to_select:isMale()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return self:subcardsLength() == #targets + 1 and #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -1423,7 +1423,7 @@ function CreateShishengResSkillCard(sc_details, tf)
 		name = "shisheng_sc_re" .. name_addition .. sc_details.i,
 		target_fixed = tf,
 		will_throw = false,
-		filter = function(self, selected, to_select)
+		filter = function(self, selected, to_select, player)
 			local pattern = self:getUserString()
 			if pattern == "slash" then
 				pattern = "slash+thunder_slash+fire_slash"
@@ -1459,7 +1459,7 @@ function CreateShishengResSkillCard(sc_details, tf)
 				for _, p in pairs(selected) do
 					targetlist:append(p)
 				end
-				return card:targetFilter(targetlist, to_select, sgs.Self)
+				return card:targetFilter(targetlist, to_select, player)
 			end
 			return false
 		end,
@@ -1968,7 +1968,7 @@ luaskillalmr = sgs
 		on_trigger = function(self, event, player, data)
 			local room = player:getRoom()
 			if event == sgs.EventAcquireSkill then
-				local name = data:toString()
+				local name = data:toSkillChange().skillName
 				if name == "shisheng" or name == "luahujiamr" or name == "luafendao" then
 					if name == "luafendao" then
 						if player:getMark("@fendao") == 0 then

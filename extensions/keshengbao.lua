@@ -226,7 +226,7 @@ keshenghuixueCard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = false,
 	--mute = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and (to_select:getGender() == sgs.General_Male)
 	end,
 	on_use = function(self, room, player, targets)
@@ -943,7 +943,7 @@ kejieshenghuixueCard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = false,
 	--mute = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, player, targets)

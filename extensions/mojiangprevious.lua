@@ -143,7 +143,7 @@ sy_old_clear = sgs.CreateTriggerSkill{
 				end
 			end
 		elseif event == sgs.EventLoseSkill then
-			local sk = data:toString()
+			local sk = data:toSkillChange().skillName
 			if sk == "sy_old_taiping" then
 				for _, pe in sgs.qlist(room:getAlivePlayers()) do
 					pe:loseAllMarks("@ping")
@@ -587,10 +587,10 @@ sy_old_yaohuoCard = sgs.CreateSkillCard{
 	name = "sy_old_yaohuoCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    if #targets == 0 then
-		    return to_select:getHandcardNum() > 0 and to_select:objectName() ~= sgs.Self:objectName() 
-			and sgs.Self:getHandcardNum() + sgs.Self:getEquips():length() >= to_select:getHandcardNum()
+		    return to_select:getHandcardNum() > 0 and to_select:objectName() ~= player:objectName() 
+			and player:getHandcardNum() + player:getEquips():length() >= to_select:getHandcardNum()
 		end
 		return false
 	end,
@@ -665,7 +665,7 @@ sy_old_yaohuo = sgs.CreateTriggerSkill{
 				end
 			end
 		elseif event == sgs.EventLoseSkill then
-			if data:toString() == self:objectName() then
+			if data:toSkillChange().skillName == self:objectName() then
 				local skills = player:getTag("Skills"):toString():split("+")
 				room:handleAcquireDetachSkills(player, "-"..table.concat(skills, "|-"))
 				for _,p in sgs.qlist(room:getOtherPlayers(player)) do
@@ -690,9 +690,9 @@ sy_old_sanzhiCard = sgs.CreateSkillCard{
 	name = "sy_old_sanzhiCard",
 	will_throw = true,
 	filter = function(self, targets, to_select, player)
-		return to_select:objectName() ~= sgs.Self:objectName() and #targets < self:subcardsLength()
+		return to_select:objectName() ~= player:objectName() and #targets < self:subcardsLength()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 	    return #targets == self:subcardsLength() and #targets > 0
 	end,
 	on_effect = function(self, effect)
@@ -781,9 +781,9 @@ sy_old_chanxianCard = sgs.CreateSkillCard{
 	target_fixed = false,
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
         if #targets == 0 then
-		    return to_select:objectName() ~= sgs.Self:objectName()
+		    return to_select:objectName() ~= player:objectName()
 		end
 		return false
 	end,
@@ -1434,14 +1434,14 @@ mo_caifuren_old = sgs.General(extension, "mo_caifuren_old", "sgk_magic", 4, fals
 ]]--
 sy_old_dihuiCard = sgs.CreateSkillCard{
     name = "sy_old_dihuiCard",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			local players = sgs.Self:getAliveSiblings()
+			local players = player:getAliveSiblings()
 			local _max = -1000
 			for _, t in sgs.qlist(players) do
 			    _max = math.max(_max, t:getHp())
 			end
-			return to_select:getHp() == _max and to_select:objectName() ~= sgs.Self:objectName()
+			return to_select:getHp() == _max and to_select:objectName() ~= player:objectName()
 		end
 		return false
 	end,
@@ -1478,8 +1478,8 @@ sy_old_dihui = sgs.CreateZeroCardViewAsSkill{
 sy_old_luansiCard = sgs.CreateSkillCard{
     name = "sy_old_luansiCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-	    if to_select:objectName() == sgs.Self:objectName() or to_select:isKongcheng() then return false end
+	filter = function(self, targets, to_select, player)
+	    if to_select:objectName() == player:objectName() or to_select:isKongcheng() then return false end
 		if #targets == 0 then
 		    return true
 		elseif #targets == 1 then
@@ -1488,8 +1488,8 @@ sy_old_luansiCard = sgs.CreateSkillCard{
 		    return false
 		end
 	end,
-	feasible = function(self, targets)
-		return #targets == 2 and (not targets[1]:isKongcheng()) and (not targets[2]:isKongcheng()) and targets[1]:objectName() ~= sgs.Self:objectName() and targets[2]:objectName() ~= sgs.Self:objectName()
+	feasible = function(self, targets, player)
+		return #targets == 2 and (not targets[1]:isKongcheng()) and (not targets[2]:isKongcheng()) and targets[1]:objectName() ~= player:objectName() and targets[2]:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		local success = targets[1]:pindian(targets[2], "sy_old_luansi", nil)

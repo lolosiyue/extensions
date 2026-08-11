@@ -10,9 +10,9 @@ lalongCard = sgs.CreateSkillCard {
 	name = "lalongCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return to_select:objectName() ~= sgs.Self:objectName()
+			return to_select:objectName() ~= player:objectName()
 		end
 		return false
 	end,
@@ -329,8 +329,8 @@ shejiCard = sgs.CreateSkillCard {
 	name = "shejiCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return to_select:objectName() ~= sgs.Self:objectName() and #targets == 0
+	filter = function(self, targets, to_select, player)
+		return to_select:objectName() ~= player:objectName() and #targets == 0
 	end,
 	on_effect = function(self, effect)
 		local source = effect.from
@@ -524,10 +524,10 @@ wolfchichengCard = sgs.CreateSkillCard {
 	mute = true,
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 3
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return true
 	end,
 	about_to_use = function(self, room, cardUse)
@@ -641,8 +641,8 @@ tietiCard = sgs.CreateSkillCard {
 	name = "tietiCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and sgs.Self:distanceTo(to_select) <= 1
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName() and player:distanceTo(to_select) <= 1
 	end,
 	on_use = function(self, room, source, targets)
 		room:damage(sgs.DamageStruct("tieti", source, targets[1]))

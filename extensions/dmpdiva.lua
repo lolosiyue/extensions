@@ -182,7 +182,7 @@ se_qiangjing = sgs.CreateTriggerSkill {
 se_zhifucard = sgs.CreateSkillCard {
 	name = "se_zhifucard",
 	will_throw = true,
-	filter = function(self, selected, to_select)
+	filter = function(self, selected, to_select, player)
 		return #selected < 1
 	end,
 	on_use = function(self, room, source, targets)
@@ -275,10 +275,10 @@ se_nikecard = sgs.CreateSkillCard {
 	name = "se_nikecard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return to_select:objectName() ~= sgs.Self:objectName() and #targets < (sgs.Self:getHandcardNum() + sgs.Self:getEquips():length()) * 2
+	filter = function(self, targets, to_select, player)
+		return to_select:objectName() ~= player:objectName() and #targets < (player:getHandcardNum() + player:getEquips():length()) * 2
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return true
 	end,
 	on_use = function(self, room, source, targets)

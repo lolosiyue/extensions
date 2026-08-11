@@ -258,7 +258,7 @@ kexiantianbian_Card = sgs.CreateSkillCard {
 	name = "kexiantianbian_Card",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			return to_select:hasFlag("kexiantianbian_Source") or to_select:hasFlag("kexiantianbian_Target")
 		end
@@ -1221,7 +1221,7 @@ kejiexiantianbian_Card = sgs.CreateSkillCard {
 	name = "kejiexiantianbian_Card",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			return to_select:hasFlag("kejiexiantianbian_Source") or to_select:hasFlag("kejiexiantianbian_Target")
 		end
@@ -1973,10 +1973,10 @@ kejiexianjuaoexget = sgs.CreateTriggerSkill {
 	events = { sgs.EventAcquireSkill, sgs.EventLoseSkill },
 	global = true,
 	on_trigger = function(self, event, player, data, room)
-		if event == sgs.EventAcquireSkill and data:toString() == "kejiexianjuao" then
+		if event == sgs.EventAcquireSkill and data:toSkillChange().skillName == "kejiexianjuao" then
 			room:attachSkillToPlayer(player, "kejiexianjuaoex")
 		end
-		if event == sgs.EventLoseSkill and data:toString() == "kejiexianjuao" then
+		if event == sgs.EventLoseSkill and data:toSkillChange().skillName == "kejiexianjuao" then
 			room:detachSkillFromPlayer(player, "kejiexianjuaoex")
 		end
 	end,

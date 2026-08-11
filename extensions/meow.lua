@@ -175,7 +175,7 @@ MeowlijianCard = sgs.CreateSkillCard {
 		if not player:hasSkill(Meowdoumiao) then
 			n = n + 1
 		end
-		return to_select:objectName() ~= sgs.Self:objectName() and #targets <= n
+		return to_select:objectName() ~= player:objectName() and #targets <= n
 	end,
 	feasible = function(self, targets, player)
 		local n = player:getHandcardNum() + player:getEquips():length()
@@ -413,11 +413,11 @@ MeowxianzhouCard = sgs.CreateSkillCard {
 		if #targets ~= 0 then
 			return false
 		end
-		return to_select:objectName() ~= sgs.Self:objectName()
+		return to_select:objectName() ~= player:objectName()
 	end,
-	feasible = function(self, targets)
-		if sgs.Self:hasFlag("Meowxianzhou_target") then
-			return #targets <= sgs.Self:getMark("Meowxianzhou_count")
+	feasible = function(self, targets, player)
+		if player:hasFlag("Meowxianzhou_target") then
+			return #targets <= player:getMark("Meowxianzhou_count")
 		end
 		return #targets == 1
 	end,
@@ -710,7 +710,7 @@ MeowLierenCard = sgs.CreateSkillCard {
 		end
 		if to_select:isKongcheng() then
 			return false
-		elseif to_select:objectName() == sgs.Self:objectName() then
+		elseif to_select:objectName() == player:objectName() then
 			return false
 		end
 		return true
@@ -895,7 +895,7 @@ extension:insertRelatedSkills("MeowQicai", "#MeowQicaiLimit")
 MeowGuoseCard = sgs.CreateSkillCard {
 	name = "MeowGuoseCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			for _, j in sgs.qlist(to_select:getJudgingArea()) do
 				if j:isKindOf("Indulgence") then
@@ -932,7 +932,7 @@ MeowGuoseCard2 = sgs.CreateSkillCard {
 	name = "MeowGuoseCard2",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			return true
 		end
@@ -1012,29 +1012,29 @@ MeowLiuliCard = sgs.CreateSkillCard {
 		if #targets > n then
 			return false
 		end
-		if to_select:hasFlag("MeowLiuliSlashSource") or (to_select:objectName() == sgs.Self:objectName()) then
+		if to_select:hasFlag("MeowLiuliSlashSource") or (to_select:objectName() == player:objectName()) then
 			return false
 		end
 		local from
-		for _, p in sgs.qlist(sgs.Self:getSiblings()) do
+		for _, p in sgs.qlist(player:getSiblings()) do
 			if p:hasFlag("MeowLiuliSlashSource") then
 				from = p
 				break
 			end
 		end
-		local slash = sgs.Card_Parse(sgs.Self:property("MeowLiuli"):toString())
+		local slash = sgs.Card_Parse(player:property("MeowLiuli"):toString())
 		if from and (not from:canSlash(to_select, slash, false)) then
 			return false
 		end
 		local card_id = self:getSubcards():first()
 		local range_fix = 0
-		if sgs.Self:getWeapon() and (sgs.Self:getWeapon():getId() == card_id) then
-			local weapon = sgs.Self:getWeapon():getRealCard():toWeapon()
+		if player:getWeapon() and (player:getWeapon():getId() == card_id) then
+			local weapon = player:getWeapon():getRealCard():toWeapon()
 			range_fix = range_fix + weapon:getRange() - 1
-		elseif sgs.Self:getOffensiveHorse() and (sgs.Self:getOffensiveHorse():getId() == card_id) then
+		elseif player:getOffensiveHorse() and (player:getOffensiveHorse():getId() == card_id) then
 			range_fix = range_fix + 1
 		end
-		return sgs.Self:distanceTo(to_select, range_fix) <= sgs.Self:getAttackRange()
+		return player:distanceTo(to_select, range_fix) <= player:getAttackRange()
 	end,
 	on_effect = function(self, effect)
 		effect.to:setFlags("MeowLiuliTarget")
@@ -1101,8 +1101,8 @@ MeowDaqiao:addSkill(MeowLiuli)
 MeowTianxiangCard = sgs.CreateSkillCard {
 	name = "MeowTianxiangCard",
 	will_throw = false,
-	filter = function(self, selected, to_select)
-		return (#selected == 0) and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, selected, to_select, player)
+		return (#selected == 0) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_effect = function(self, effect)
 		local room = effect.to:getRoom()
@@ -1213,7 +1213,7 @@ MeowJieyiCard = sgs.CreateSkillCard {
 	name = "MeowJieyiCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets ~= 0 then
 			return false
 		end
@@ -1232,7 +1232,7 @@ MeowJieyiCard = sgs.CreateSkillCard {
 				return false
 			end
 		end
-		return to_select:objectName() ~= sgs.Self:objectName()
+		return to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -1520,8 +1520,8 @@ MeowMijiCard = sgs.CreateSkillCard {
 	name = "MeowMijiCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return (#targets == 0) and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return (#targets == 0) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()

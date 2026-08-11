@@ -12,8 +12,8 @@ Dragon_rendeCard = sgs.CreateSkillCard{
 	name = "Dragon_rendeCard", 
 	will_throw = false, 
 	handling_method = sgs.Card_MethodNone, 
-	filter = function(self, selected, to_select)
-		return (#selected == 0) and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, selected, to_select, player)
+		return (#selected == 0) and (to_select:objectName() ~= player:objectName())
 	end, 
 	on_use = function(self, room, source, targets)
 		local target = targets[1]
@@ -86,13 +86,13 @@ Dragon_rende = sgs.CreateTriggerSkill{
 -- 仁德 由 myetyet 修改
 Dragon_jijiangCard = sgs.CreateSkillCard{
 	name = "Dragon_jijiangCard" ,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		local plist = sgs.PlayerList()
 		for i = 1, #targets, 1 do
 			plist:append(targets[i])
 		end
-		return slash:targetFilter(plist, to_select, sgs.Self)
+		return slash:targetFilter(plist, to_select, player)
 	end ,
 	on_use = function(self, room, source, targets)
 		local slash = nil
@@ -196,15 +196,15 @@ Dragon_guanyu = sgs.General(extension, "Dragon_guanyu", "shu", "4")
 Dragon_wushengCard = sgs.CreateBasicCard{
 	name = "slash",
 	class_name = "Slash",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, 0)
 		local qtargets = sgs.PlayerList()
 		for _, p in ipairs(targets) do
 			qtargets:append(p)
 		end
-		return slash and slash:targetFilter(qtargets, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, slash, qtargets)
+		return slash and slash:targetFilter(qtargets, to_select, player) and not player:isProhibited(to_select, slash, qtargets)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, 0)
 		card:addSubcards(self:getSubcards())
 		card:setSkillName(self:objectName())
@@ -215,7 +215,7 @@ Dragon_wushengCard = sgs.CreateBasicCard{
 		if card and card:canRecast() and #targets == 0 then
 			return false
 		end
-		return card and card:targetsFeasible(qtargets, sgs.Self)
+		return card and card:targetsFeasible(qtargets, player)
 	end,
 	on_validate = function(self, card_use)
 		local xunyou = card_use.from
@@ -517,10 +517,10 @@ Dragon_fuyuanCard = sgs.CreateSkillCard{
 	name = "Dragon_fuyuanCard", 
 	target_fixed = false, 
 	will_throw = false, 
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			if to_select:hasLordSkill("Dragon_fuyuan") then
-				if to_select:objectName() ~= sgs.Self:objectName() then
+				if to_select:objectName() ~= player:objectName() then
 					return not to_select:hasFlag("Dragon_fuyuanInvoked")
 				end
 			end
@@ -583,13 +583,13 @@ Dragon_fuyuan = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		local skill_exist = false
 		if player:hasLordSkill(self:objectName()) then skill_exist = true end
-		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == self:objectName()) then
+		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == self:objectName()) then
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:getKingdom() == "wu" and not p:hasSkill("Dragon_fuyuanVS") then
 					room:attachSkillToPlayer(p, "Dragon_fuyuanVS")
 				end
 			end
-		elseif ((event == sgs.EventLoseSkill and data:toString() == self:objectName()) or event == sgs.Death ) and not skill_exist then
+		elseif ((event == sgs.EventLoseSkill and data:toSkillChange().skillName == self:objectName()) or event == sgs.Death ) and not skill_exist then
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:hasSkill("Dragon_fuyuanVS") then
 					room:detachSkillFromPlayer(p, "Dragon_fuyuanVS")
@@ -1033,8 +1033,8 @@ sgs.Sanguosha:addSkills(skills)
 
 Dragon_jiedaoCard = sgs.CreateSkillCard{
 	name = "Dragon_jiedaoCard", 
-	filter = function(self, targets, to_select) 
-		return #targets == 0 and to_select:getWeapon() and to_select:objectName() ~= sgs.Self:objectName() 
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:getWeapon() and to_select:objectName() ~= player:objectName() 
 	end,
 	--[[available = function(self, player)
 	    local canUse = false
@@ -1538,9 +1538,9 @@ Dragon_qiankun = sgs.CreateTriggerSkill{
 		if room:getLord():getKingdom() == "shu" then
 			room:setPlayerProperty(player, "kingdom", sgs.QVariant("shu"))
 		end
-		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == self:objectName()) then
+		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == self:objectName()) then
 			room:setPlayerMark(player, "Equips_of_Others_Nullified_to_You", 1)
-		elseif (event == sgs.EventLoseSkill and data:toString() == self:objectName()) or event == sgs.Death then
+		elseif (event == sgs.EventLoseSkill and data:toSkillChange().skillName == self:objectName()) or event == sgs.Death then
 			room:setPlayerMark(player, "Equips_of_Others_Nullified_to_You", 0)
 		end
 	end, 
@@ -1571,7 +1571,7 @@ Dragon_qiankunWeapon = sgs.CreateTriggerSkill{
 			end
 		else 
 			if event == sgs.EventLoseSkill then 
-				if data:toString() ~= "Dragon_qiankun" then return false end
+				if data:toSkillChange().skillName ~= "Dragon_qiankun" then return false end
 			end
 			if event == sgs.Death then 
 				if data:toDeath().who:objectName() ~= player:objectName() or (not player:hasSkill("Dragon_qiankun")) then return false end
@@ -1612,7 +1612,7 @@ Dragon_qiankunArmor = sgs.CreateTriggerSkill{
 			end
 		else 
 			if event == sgs.EventLoseSkill then 
-				if data:toString() ~= "Dragon_qiankun" then return false end
+				if data:toSkillChange().skillName ~= "Dragon_qiankun" then return false end
 			end
 			if event == sgs.Death then 
 				if data:toDeath().who:objectName() ~= player:objectName() or (not player:hasSkill("Dragon_qiankun")) then return false end
@@ -1773,13 +1773,13 @@ Dragon_peach = sgs.CreateBasicCard{
 	can_recast = false, 
 	suit = 2, 
 	number = 3, 
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE or sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
 			return true
 		end
 		return #targets == 0 and to_select:isWounded()
 	end, 
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE or sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
 			return #targets == 0
 		else
@@ -2432,7 +2432,7 @@ Dragon_dismantlement = sgs.CreateTrickCard{
 	can_recast = false, 
 	suit = 0, 
 	number = 3, 
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and not to_select:isAllNude()
 	end, 
 	on_effect = function(self, effect)
@@ -2559,7 +2559,7 @@ Dragon_indulgence = sgs.CreateTrickCard{
 	target_fixed = false, 
 	can_recast = false, 
 	subclass = sgs.LuaTrickCard_TypeDelayedTrick, 
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and not to_select:isLord()
 	end, 
 	on_effect = function(self, effect)
@@ -2881,9 +2881,9 @@ Promote_jiuyuanCard = sgs.CreateBasicCard{
 	class_name = "Peach", 
 	subtype = "recover_card", 
 	can_recast = false, 
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return to_select:isWounded() and to_select:hasLordSkill("Promote_jiuyuan") and self:isAvailable(to_select) and not sgs.Self:isProhibited(to_select, self)
+			return to_select:isWounded() and to_select:hasLordSkill("Promote_jiuyuan") and self:isAvailable(to_select) and not player:isProhibited(to_select, self)
 		end
 	end, 
 	on_use = function(self, room, source, targets)
@@ -2941,13 +2941,13 @@ Promote_jiuyuan = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		local skill_exist = false
 		if player:hasLordSkill(self:objectName()) then skill_exist = true end
-		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toString() == self:objectName()) then
+		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == self:objectName()) then
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:getKingdom() == "wu" and not p:hasSkill("Promote_jiuyuanVS") then
 					room:attachSkillToPlayer(p, "Promote_jiuyuanVS")
 				end
 			end
-		elseif ((event == sgs.EventLoseSkill and data:toString() == self:objectName()) or event == sgs.Death ) and not skill_exist then
+		elseif ((event == sgs.EventLoseSkill and data:toSkillChange().skillName == self:objectName()) or event == sgs.Death ) and not skill_exist then
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:hasSkill("Promote_jiuyuanVS") then
 					room:detachSkillFromPlayer(p, "Promote_jiuyuanVS")

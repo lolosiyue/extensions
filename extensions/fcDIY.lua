@@ -57,11 +57,11 @@ f_huoxinCard = sgs.CreateSkillCard{ --选择拼点牌
     name = "f_huoxinCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    if #targets == 2 then return false end
-		return to_select:objectName() ~= sgs.Self:objectName()
+		return to_select:objectName() ~= player:objectName()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 2
 	end,
 	on_use = function(self, room, source, targets)
@@ -83,8 +83,8 @@ f_huoxinGPCCard = sgs.CreateSkillCard{ --给出拼点牌
     name = "f_huoxinGPCCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:hasFlag("f_huoxin_pindiantargets") and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:hasFlag("f_huoxin_pindiantargets") and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		targets[1]:obtainCard(self, true)
@@ -343,11 +343,11 @@ f_yaoshuCard = sgs.CreateSkillCard{
 	name = "f_yaoshuCard",
 	skill_name = "f_yaoshu",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-	    if to_select:objectName() == sgs.Self:objectName() then return false end
+	filter = function(self, targets, to_select, player)
+	    if to_select:objectName() == player:objectName() then return false end
 		return #targets < 3
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -383,7 +383,7 @@ f_luoleiCard = sgs.CreateSkillCard{
 	name = "f_luoleiCard",
 	skill_name = "f_luolei",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -646,8 +646,8 @@ f_shenmachao:addSkill(f_shenqi)
 
 f_shenlinCard = sgs.CreateSkillCard{
 	name = "f_shenlinCard",
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.to:getRoom()
@@ -871,8 +871,8 @@ f_shenjiangwei = sgs.General(extension, "f_shenjiangwei", "god", 7, true, false,
 
 f_beifaCard = sgs.CreateSkillCard{
 	name = "f_beifaCard",
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.to:getRoom()
@@ -1144,7 +1144,7 @@ mx_hanhunCard = sgs.CreateSkillCard{
 	name = "mx_hanhunCard",
 	will_throw = true,
 	target_fixed = false,
-	 filter = function(self, targets, to_select)
+	 filter = function(self, targets, to_select, player)
 	    return #targets == 0 and (not to_select:isLord())
 	end,
 	on_use = function(self, room, source, targets)
@@ -1316,8 +1316,8 @@ f_zhanshan_GMS = sgs.CreateTriggerSkill{
 f_zhanshanCard = sgs.CreateSkillCard{
     name = "f_zhanshanCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-	    return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+	    return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 	    local num = source:getMark("&mark_zhanshan")
@@ -1399,11 +1399,11 @@ f_jieyiCard = sgs.CreateSkillCard{
 	name = "f_jieyiCard",
 	skill_name = "f_jieyi",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-	    if to_select:objectName() == sgs.Self:objectName() then return false end
+	filter = function(self, targets, to_select, player)
+	    if to_select:objectName() == player:objectName() then return false end
 		return #targets < 2
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 2
 	end,
 	on_use = function(self, room, source, targets)
@@ -1465,8 +1465,8 @@ yizhiLoyalCard = sgs.CreateSkillCard{
     name = "yizhiLoyalCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-	    return #targets == 0 and to_select:getMark("&XD") > 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+	    return #targets == 0 and to_select:getMark("&XD") > 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 	    targets[1]:obtainCard(self, false)
@@ -1569,8 +1569,8 @@ f_renyiXCard = sgs.CreateSkillCard{
     name = "f_renyiXCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-	    return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+	    return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 	    targets[1]:obtainCard(self, false)
@@ -1676,8 +1676,8 @@ extension:insertRelatedSkills("f_chengwang","#f_chengwang_DamageRecord")
 f_hanzhongwangCard = sgs.CreateSkillCard{
     name = "f_hanzhongwangCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-	    return to_select:getKingdom() == "shu" and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isAllNude()
+	filter = function(self, targets, to_select, player)
+	    return to_select:getKingdom() == "shu" and to_select:objectName() ~= player:objectName() and not to_select:isAllNude()
 	end,
 	on_effect = function(self, effect)
 	    local room = effect.from:getRoom()
@@ -2223,7 +2223,7 @@ f_shenxiangyu = sgs.General(extension, "f_shenxiangyu", "god", 4, true)
 f_bawangCard = sgs.CreateSkillCard{
     name = "f_bawangCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    if #targets == 1 then return false
 		else return true
 		end
@@ -2409,7 +2409,7 @@ f_shensunwukong:addSkill(f_bianhua)
 f_doufaCard = sgs.CreateSkillCard{
     name = "f_doufaCard",
     target_fixed = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    if #targets == 1 then return false
 		else return true
 		end
@@ -2668,7 +2668,7 @@ f_kunpeng = sgs.General(extension, "f_kunpeng", "god", 24, true, false, false, 6
 f_juxingCard = sgs.CreateSkillCard{
     name = "f_juxingCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    return #targets == 0 and to_select:getMark("&KunPeng") == 0 and not to_select:hasSkill("f_juxing")
 	end,
 	on_use = function(self, room, source, targets)
@@ -2902,8 +2902,8 @@ fc_shenlvmeng:addSkill(fcshelie)
 
 fcgongxinCard = sgs.CreateSkillCard{
 	name = "fcgongxinCard",
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -3724,8 +3724,8 @@ extension:insertRelatedSkills("f_gengzhong","#f_gengzhongNTGet")
 f_gongkangCard = sgs.CreateSkillCard{
 	name = "f_gongkangCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-		return #targets < 1 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets < 1 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -4132,10 +4132,10 @@ extension:insertRelatedSkills("sp_weizhen","#sp_weizhen_limited")
 sp_xianshengCard = sgs.CreateSkillCard{
     name = "sp_xianshengCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-		return #targets < 3 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets < 3 and to_select:objectName() ~= player:objectName()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -4177,7 +4177,7 @@ sp_shenlvmeng = sgs.General(extension_G, "sp_shenlvmeng", "god", 4, true)
 sp_guamuCard = sgs.CreateSkillCard{
 	name = "sp_guamuCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -4304,8 +4304,8 @@ sp_dujiangCard = sgs.CreateSkillCard{
 	name = "sp_dujiangCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-	    return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+	    return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 	    local room = effect.to:getRoom()
@@ -4638,8 +4638,8 @@ sp_zhengshenGCCard = sgs.CreateSkillCard{
     name = "sp_zhengshenGCCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-	    return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+	    return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 	    targets[1]:obtainCard(self, false)
@@ -5235,8 +5235,8 @@ extension:insertRelatedSkills("sp_wuji", "#sp_wujiChoice")
 sp_feijiangCard = sgs.CreateSkillCard{
     name = "sp_feijiangCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName() and not to_select:isKongcheng()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -5482,7 +5482,7 @@ sp_qijinCard = sgs.CreateSkillCard{
 		card:deleteLater()
 		return card and card:targetFilter(players, to_select, player) and not player:isProhibited(to_select, card, players)
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local players = sgs.PlayerList()
 		for i = 1, #targets do
 			players:append(targets[i])
@@ -5491,19 +5491,19 @@ sp_qijinCard = sgs.CreateSkillCard{
 			local card = nil
 			if self:getUserString() and self:getUserString() ~= "" then
 				card = sgs.Sanguosha:cloneCard(self:getUserString():split("+")[1])
-				return card and card:targetsFeasible(players, sgs.Self)
+				return card and card:targetsFeasible(players, player)
 			end
 		elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
 			return true
 		end
-		local _card = sgs.Self:getTag("sp_qijin"):toCard()
+		local _card = player:getTag("sp_qijin"):toCard()
 		if _card == nil then
 			return false
 		end
 		local card = sgs.Sanguosha:cloneCard(_card)
 		card:setCanRecast(false)
 		card:deleteLater()
-		return card and card:targetsFeasible(players, sgs.Self)
+		return card and card:targetsFeasible(players, player)
 	end,
 	on_validate = function(self, card_use)
 		local spszy = card_use.from
@@ -6127,8 +6127,8 @@ sp_gudanCard = sgs.CreateSkillCard{
     name = "sp_gudanCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-	    return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+	    return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		targets[1]:obtainCard(self, false)
@@ -6743,8 +6743,8 @@ sp_shenliubei = sgs.General(extension_G, "sp_shenliubei", "god", 3, true)
 sp_yingjieCard = sgs.CreateSkillCard{
     name = "sp_yingjieCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 	    targets[1]:obtainCard(self, false)
@@ -6818,8 +6818,8 @@ sp_shenliubei:addSkill(sp_yingjie)
 sp_yuanzhiCard = sgs.CreateSkillCard{
 	name = "sp_yuanzhiCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and not to_select:isKongcheng() and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and not to_select:isKongcheng() and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		local success = source:pindian(targets[1], "sp_yuanzhi", nil)
@@ -7067,7 +7067,7 @@ sp_fenyingCard = sgs.CreateSkillCard{
 	name = "sp_fenyingCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    return #targets < self:subcardsLength()
 	end,
 	on_use = function(self, room, source, targets)
@@ -7166,8 +7166,8 @@ sp_shenzhangliao = sgs.General(extension_G, "sp_shenzhangliao", "god", 4, true)
 
 sp_qiangxiCard = sgs.CreateSkillCard{
 	name = "sp_qiangxiCard",
-	filter = function(self, targets, to_select)
-		if #targets >= sgs.Self:getMark("sp_qiangxi") or to_select:objectName() == sgs.Self:objectName() then return false end
+	filter = function(self, targets, to_select, player)
+		if #targets >= player:getMark("sp_qiangxi") or to_select:objectName() == player:objectName() then return false end
 		return not to_select:isNude()
 	end,
 	on_effect = function(self, effect)
@@ -7477,8 +7477,8 @@ extension:insertRelatedSkills("sp_lvezhen", "#sp_lvezhen_SSQY_moredistance")
 sp_xiyingCard = sgs.CreateSkillCard{
 	name = "sp_xiyingCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-		return #targets < 1 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets < 1 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.to:getRoom()
@@ -7596,8 +7596,8 @@ fcj_liuyao = sgs.General(extension_J, "fcj_liuyao", "qun", 4, true)
 fcj_kannanCard = sgs.CreateSkillCard{
 	name = "fcj_kannanCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:hasFlag("fcj_kannanSelected") and not to_select:isKongcheng()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName() and not to_select:hasFlag("fcj_kannanSelected") and not to_select:isKongcheng()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -7831,10 +7831,10 @@ fcj_pangdegong:addSkill(fcj_pingcai)
 fcj_pingcaiWolongCard = sgs.CreateSkillCard{
 	name = "fcj_pingcaiWolongCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 2
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -7849,10 +7849,10 @@ fcj_pingcaiWolongCard = sgs.CreateSkillCard{
 fcj_pingcaiFengchuCard = sgs.CreateSkillCard{
 	name = "fcj_pingcaiFengchuCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 4
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -7867,7 +7867,7 @@ fcj_pingcaiFengchuCard = sgs.CreateSkillCard{
 fcj_pingcaiShuijingCard = sgs.CreateSkillCard{
 	name = "fcj_pingcaiShuijingCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and to_select:getEquips():length() > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -7909,7 +7909,7 @@ fcj_pingcaiShuijingCard = sgs.CreateSkillCard{
 fcj_pingcaiXuanjianCard = sgs.CreateSkillCard{
 	name = "fcj_pingcaiXuanjianCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -8664,7 +8664,7 @@ fcj_jianjieCard = sgs.CreateSkillCard{
 	name = "fcj_jianjieCard",
 	target_fixed = false,
 	mute = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and (to_select:getMark("&fcj_Loong") > 0 or to_select:getMark("&fcj_Phoenix") > 0)
 	end,
 	on_use = function(self, room, source, targets)
@@ -12359,10 +12359,10 @@ wxtianzuiEXCard = sgs.CreateSkillCard{
 	target_fixed = false,
 	mute = true,
 	filter = function(self, targets, to_select, player)
-		return #targets < sgs.Self:getMark("&exZUI") and to_select:objectName() ~= sgs.Self:objectName()
+		return #targets < player:getMark("&exZUI") and to_select:objectName() ~= player:objectName()
 		and not to_select:isAllNude() and player:canDiscard(to_select, "hej")
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -12405,10 +12405,10 @@ wxtianfaEXCard = sgs.CreateSkillCard{
 	name = "wxtianfaEXCard",
 	target_fixed = false,
 	mute = true,
-	filter = function(self, targets, to_select)
-		return #targets < sgs.Self:getMark("&exFA") and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets < player:getMark("&exFA") and to_select:objectName() ~= player:objectName()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -12747,8 +12747,8 @@ fcmouyijueCard = sgs.CreateSkillCard{
 	name = "fcmouyijueCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.to:getRoom()
@@ -12964,8 +12964,8 @@ mouduanlianggCard = sgs.CreateSkillCard{
     name = "mouduanlianggCard",
 	target_fixed = false,
 	--mute = true, --防止技能卡牌乱报语音（然而实测整个技能卡都沉默了）
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -13168,9 +13168,9 @@ kj_mou_xiahouba = sgs.General(extension_M, "kj_mou_xiahouba", "wei", 4, true)
 
 kjmoushifengCard = sgs.CreateSkillCard{
 	name = "kjmoushifengCard",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return sgs.Self:canSlash(to_select, nil, false)
+			return player:canSlash(to_select, nil, false)
 		end
 		return false
 	end,
@@ -13368,9 +13368,9 @@ fc_mou_jiangwei = sgs.General(extension_M, "fc_mou_jiangwei", "shu", 4, true)
 
 fcmoutiaoxinCard = sgs.CreateSkillCard{
 	name = "fcmoutiaoxinCard",
-	filter = function(self, targets, to_select)
-		local n = sgs.Self:getMark("&charge_num")
-		return #targets < n and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		local n = player:getMark("&charge_num")
+		return #targets < n and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		room:setPlayerFlag(source, "fcmxt_getbazhen")
@@ -13967,8 +13967,8 @@ fcmouzhibaCard = sgs.CreateSkillCard{
 	name = "fcmouzhibaCard",
 	target_fixed = false,
 	mute = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName() and not to_select:isKongcheng()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -14143,10 +14143,10 @@ ah_mou_zhugeliang:addSkill(ahmoukuangfu)
 ahmoushizhi_shiCard = sgs.CreateSkillCard{
 	name = "ahmoushizhi_shiCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-		return #targets < 4 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets < 4 and to_select:objectName() ~= player:objectName()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets >= 2
 	end,
 	on_use = function(self, room, source, targets)
@@ -14282,10 +14282,10 @@ ahmoushizhi_shiCard = sgs.CreateSkillCard{
 ahmoushizhi_zhiCard = sgs.CreateSkillCard{
 	name = "ahmoushizhi_zhiCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 2
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets > 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -14852,7 +14852,7 @@ fcmoumingceCard = sgs.CreateSkillCard{
 	will_throw = false,
 	mute = true,
 	filter = function(self, targets, to_select, player)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:hasFlag("fcmoumingced")
+		return #targets == 0 and to_select:objectName() ~= player:objectName() and not to_select:hasFlag("fcmoumingced")
 	end,
 	on_effect = function(self, effect)
 		local room = effect.to:getRoom()
@@ -15206,8 +15206,8 @@ f_shenhuanggai:addSkill(f_kuzha)
 f_shenxianshizuCard = sgs.CreateSkillCard{
 	name = "f_shenxianshizuCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-		return #targets < 1 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets < 1 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 	    local room = effect.to:getRoom()
@@ -15282,7 +15282,7 @@ f_liaoduCard = sgs.CreateSkillCard{
     name = "f_liaoduCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -15326,7 +15326,7 @@ f_mafeiCard = sgs.CreateSkillCard{
     name = "f_mafeiCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -15394,7 +15394,7 @@ f_wuqinCard = sgs.CreateSkillCard{
     name = "f_wuqinCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 	    return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -16577,12 +16577,12 @@ f_mieshiSBCard = sgs.CreateSkillCard{
 	name = "f_mieshiSBCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local mssb = sgs.Sanguosha:getCard(self:getSubcards():first())
 		if mssb:isKindOf("Fchixieren") then
-			return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and sgs.Self:distanceTo(to_select) == 1
+			return #targets == 0 and to_select:objectName() ~= player:objectName() and player:distanceTo(to_select) == 1
 		elseif mssb:isKindOf("Fmorigong") then
-			return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+			return #targets == 0 and to_select:objectName() ~= player:objectName()
 		end
 	end,
 	on_effect = function(self, effect)

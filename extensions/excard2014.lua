@@ -82,10 +82,10 @@ if EquipCard_wlj == 1 then
 	EXCard_WLJ_SkillCARD = sgs.CreateSkillCard{
 		name = "EXCard_WLJ_SkillCARD",
 		skill_name = "EXCard_WLJ",
-		filter = function(self, targets, to_select)
+		filter = function(self, targets, to_select, player)
 			return true
 		end,
-		feasible = function(self, targets)
+		feasible = function(self, targets, player)
 			return #targets > 0
 		end,
 		on_use = function(self, room, source, targets)
@@ -407,7 +407,7 @@ if TrickCard_wwjz == 1 then
 		filter = function(self, targets, to_select, player)
 			return sgs.Sanguosha:getCurrentCardUsePattern() == self:objectName() and to_select:hasFlag("EXCard_WWJZ_Wei") and to_select:objectName() ~= player:objectName()
 		end,
-		feasible = function(self, targets)
+		feasible = function(self, targets, player)
 			return #targets == (sgs.Sanguosha:getCurrentCardUsePattern() == self:objectName() and 1 or 0)
 		end,
 		available = function(self, player)
@@ -473,7 +473,7 @@ if TrickCard_zjzb == 1 then
 		subclass = sgs.LuaTrickCard_TypeSingleTargetTrick,
 		filter = function(self, targets, to_select, player)
 			local total_num = 1
-			if sgs.Self then
+			if player then
 				total_num = total_num + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, player, self)
 			end
 			return not to_select:isKongcheng() and to_select:objectName() ~= player:objectName() and #targets < total_num
@@ -547,7 +547,7 @@ if TrickCard_yjjg == 1 then
 		subclass = sgs.LuaTrickCard_TypeSingleTargetTrick,
 		filter = function(self, targets, to_select, player)
 			local total_num = 1
-			if sgs.Self then
+			if player then
 				total_num = total_num + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget, player, self)
 			end
 			return to_select:objectName() ~= player:objectName() and #targets < total_num
@@ -585,10 +585,10 @@ if TrickCard_yydl == 1 then
 		can_recast = false,
 		subtype = "multiple_target_trick",
 		subclass = sgs.LuaTrickCard_LuaTrickCard_TypeNormal,
-		filter = function(self, targets, to_select)
+		filter = function(self, targets, to_select, player)
 			return true
 		end,
-		feasible = function(self, targets)
+		feasible = function(self, targets, player)
 			return #targets > 0
 		end,
 		available = function(self, player)
@@ -637,7 +637,7 @@ if TrickCard_dhls == 1 then
 		filter = function(self, targets, to_select, player)
 			return to_select:objectName() ~= player:objectName() and #targets < 2
 		end,
-		feasible = function(self, targets)
+		feasible = function(self, targets, player)
 			return #targets == 2 or #targets == 0
 		end,
 		available = function(self, player)

@@ -134,7 +134,7 @@ machaoZHCMT = sgs.General(extension, "machaoZHCMT", "qun", 4, true)
 
 zhuiluZHCMTCard = sgs.CreateSkillCard {
 	name = "zhuiluZHCMTCard",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0 and (to_select:hasSkill("mashu") or to_select:getMark("&mashu") > 0)
 	end,
 	on_use = function(self, room, source, targets)
@@ -636,8 +636,8 @@ sunquanZHCMT = sgs.General(extension, "sunquanZHCMT$", "wu", 4, true)
 XiansiZHCMTCard = sgs.CreateSkillCard {
 	name = "XiansiZHCMTCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-		if to_select:objectName() == sgs.Self:objectName() then
+	filter = function(self, targets, to_select, player)
+		if to_select:objectName() == player:objectName() then
 			return false
 		end
 		return #targets < 2 and not to_select:isNude()
@@ -770,8 +770,8 @@ XiansiZHCMTAttach = sgs.CreateTriggerSkill {
 XiansiZHCMTSlashCard = sgs.CreateSkillCard {
 	name = "XiansiZHCMTSlashCard",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
-		return to_select:hasSkill("XiansiZHCMT") and to_select:getPile("counter"):length() > 1 and sgs.Self:canSlash(to_select, nil)
+	filter = function(self, targets, to_select, player)
+		return to_select:hasSkill("XiansiZHCMT") and to_select:getPile("counter"):length() > 1 and player:canSlash(to_select, nil)
 	end,
 	on_validate = function(self, carduse)
 		local source = carduse.from
@@ -838,8 +838,8 @@ dangzhengZHCMTCard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:hasSkill("dangzhengZHCMT") and to_select:objectName() ~= sgs.Self:objectName() and not to_select:hasFlag("dangzhengZHCMTInvoked")
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:hasSkill("dangzhengZHCMT") and to_select:objectName() ~= player:objectName() and not to_select:hasFlag("dangzhengZHCMTInvoked")
 	end,
 	on_use = function(self, room, source, targets)
 		local sq = targets[1]
@@ -1000,7 +1000,7 @@ zhengsiZHCMTCard = sgs.CreateSkillCard {
 		return to_select:objectName() ~= player:objectName() and not to_select:isKongcheng()
 	end,
 
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 2
 	end,
 

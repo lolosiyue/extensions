@@ -1352,9 +1352,9 @@ LuaZhenlie = sgs.CreateTriggerSkill{
 									room:obtainCard(player, id)
 								end
 								local slash = sgs.Sanguosha:cloneCard("fire_slash", sgs.Card_NoSuit, 0)
-								slash:deleteLater()
 								slash:setSkillName(self:objectName())
-								room:useCard(sgs.CardUseStruct(slash, player, current), false)					
+								room:useCard(sgs.CardUseStruct(slash, player, current), false)
+								slash:deleteLater()					
 							else
 								if player:canDiscard(use.from, "he") then
 									local id = room:askForCardChosen(player, use.from, "he", self:objectName(), false, sgs.Card_MethodDiscard)
@@ -1595,11 +1595,11 @@ PoisonMaggotsCard = sgs.CreateSkillCard{
 	name = "PoisonMaggotsCard", 
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select) 
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			local bifalist = to_select:getPile("Maggots")
 			if (bifalist:isEmpty()) or (bifalist:length() + self:getSubcards():length() <= 2) then
-				return (to_select:objectName() ~= sgs.Self:objectName())
+				return (to_select:objectName() ~= player:objectName())
 				-- return (sgs.Self:inMyAttackRange(to_select))
 			end
 		end
@@ -2060,11 +2060,11 @@ maggotschagelifeCard = sgs.CreateSkillCard{ -- self:getSubcards():length() and (
 	name = "maggotschagelifeCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select) 
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			local bifalist = to_select:getPile("Maggots")
-			if (bifalist:length() == 2) and (self:getSubcards():length() >= 2) and (to_select:getMark("@beam") == 0) and sgs.Self:distanceTo(to_select) <= 1 then
-				return (to_select:objectName() ~= sgs.Self:objectName())
+			if (bifalist:length() == 2) and (self:getSubcards():length() >= 2) and (to_select:getMark("@beam") == 0) and player:distanceTo(to_select) <= 1 then
+				return (to_select:objectName() ~= player:objectName())
 				-- return (sgs.Self:inMyAttackRange(to_select))
 			end
 		end
@@ -2472,8 +2472,8 @@ LuaQingnangCard = sgs.CreateSkillCard{
 	name = "LuaQingnangCard",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return (to_select:objectName() ~= player:objectName())
 	end,
 	on_use = function(self, room, source, targets)
 	    local room = source:getRoom()
@@ -2615,13 +2615,13 @@ LuaLuoying = sgs.CreateTriggerSkill{ -- @beam
 
 magictrickcard = sgs.CreateSkillCard{ -- 出牌阶段，若你的手牌上限大于0，你可以摸一张牌，若如此做，你与此回合内手牌上限-1；结束阶段开始时，若你没有手牌，你可以横置至多X名角色（X为你的体力值）。
 	name = "magictrickcard", 
-	filter = function(self, targets, to_select)
-		if sgs.Self:getPhase() == sgs.Player_Finish or sgs.Self:getPhase() == sgs.Player_Start then
-			if sgs.Self:getMark("FatalChain") ~= 0 then
+	filter = function(self, targets, to_select, player)
+		if player:getPhase() == sgs.Player_Finish or player:getPhase() == sgs.Player_Start then
+			if player:getMark("FatalChain") ~= 0 then
 				return #targets < 6
-			elseif sgs.Self:getMark("HealingWave") ~= 0 then 
+			elseif player:getMark("HealingWave") ~= 0 then 
 				return to_select:isWounded() and #targets < 3
-			elseif sgs.Self:getMark("ChainLightning") ~= 0 then
+			elseif player:getMark("ChainLightning") ~= 0 then
 				return #targets < 1
 			else
 				return #targets < 1 and not to_select:hasSkill("magictrick")
@@ -2631,12 +2631,12 @@ magictrickcard = sgs.CreateSkillCard{ -- 出牌阶段，若你的手牌上限大
 		end
 		return false
 	end, 
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		-- if sgs.Self:getPhase() == sgs.Player_Discard then
-		if sgs.Self:getPhase() == sgs.Player_Finish or sgs.Self:getPhase() == sgs.Player_Start then
-			if sgs.Self:getMark("FatalChain") ~= 0 then
+		if player:getPhase() == sgs.Player_Finish or player:getPhase() == sgs.Player_Start then
+			if player:getMark("FatalChain") ~= 0 then
 				return #targets <= 6
-			elseif sgs.Self:getMark("HealingWave") ~= 0 then 
+			elseif player:getMark("HealingWave") ~= 0 then 
 				return #targets <= 3
 			else
 				return #targets <= 1
@@ -3417,8 +3417,8 @@ changesexualCard = sgs.CreateSkillCard{
 	name = "changesexual",
 	-- target_fixed = false,
 	-- will_throw = true,
-	filter = function(self, targets, to_select)
-			return to_select:objectName() == sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+			return to_select:objectName() == player:objectName()
 		end,
 		
 	on_use = function(self, room, source, targets)
@@ -3903,8 +3903,8 @@ goodatwepCard = sgs.CreateSkillCard{
 	name = "goodatwep",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-			return to_select:objectName() ~= sgs.Self:objectName() and sgs.Self:inMyAttackRange(to_select) and to_select:getPile("goodatwepile"):isEmpty() and not (to_select:isAllNude() or to_select:getMark("GoodatwepMark") > 0)
+	filter = function(self, targets, to_select, player)
+			return to_select:objectName() ~= player:objectName() and player:inMyAttackRange(to_select) and to_select:getPile("goodatwepile"):isEmpty() and not (to_select:isAllNude() or to_select:getMark("GoodatwepMark") > 0)
 		end,
 		
 	on_use = function(self, room, source, targets)
@@ -4002,8 +4002,8 @@ helptheweakCard = sgs.CreateSkillCard{ -- table.insert(hplist, p:getHp())
 	name = "helptheweak",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return to_select:isWounded() and sgs.Self:getHp() >= to_select:getHp() and sgs.Self:getHandcardNum() >= to_select:getHandcardNum()
+	filter = function(self, targets, to_select, player)
+		return to_select:isWounded() and player:getHp() >= to_select:getHp() and player:getHandcardNum() >= to_select:getHandcardNum()
 	end,
 	on_use = function(self,room,player,targets)
 		-- local who = room:getCurrentDyingPlayer()
@@ -4423,10 +4423,10 @@ healingwaterCard = sgs.CreateSkillCard{
 	-- target_fixed = true ,
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets < 2 and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return #targets < 2 and (to_select:objectName() ~= player:objectName())
 	end, 
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets <= 2
 	end, 
 	on_use = function(self, room, source, targets)
@@ -4616,7 +4616,7 @@ peekingCard = sgs.CreateSkillCard
 	-- once = false,
 	will_throw = false,
 	filter = function(self,targets,to_select,player)
-		return (#targets < 1) and (to_select:isKongcheng() == false) and (to_select:objectName() ~= sgs.Self:objectName())
+		return (#targets < 1) and (to_select:isKongcheng() == false) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_effect = function(self,effect)
 		local from = effect.from
@@ -5303,11 +5303,11 @@ trapCard = sgs.CreateSkillCard{
 	name = "trapva", 
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select) 
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
 			local bifalist = to_select:getPile("trappile")
 			if (bifalist:isEmpty()) or (bifalist:length() + self:getSubcards():length() <= 3) then
-				return to_select:objectName() ~= sgs.Self:objectName()
+				return to_select:objectName() ~= player:objectName()
 			end
 		end
 		return false
@@ -5497,7 +5497,7 @@ sincerecard = sgs.CreateSkillCard
 	target_fixed = false,
 	will_throw = true,
 	filter = function(self,targets,to_select,player)
-		return (#targets < 1) and (to_select:objectName() ~= sgs.Self:objectName())
+		return (#targets < 1) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_effect = function(self,effect)
 		local from = effect.from
@@ -6384,7 +6384,7 @@ phantomcard = sgs.CreateSkillCard
 	-- once = false,
 	will_throw = true,
 	filter = function(self,targets,to_select,player)
-		return (#targets < 1) and (to_select:getMark("@meiying") > 0) and (to_select:objectName() ~= sgs.Self:objectName())
+		return (#targets < 1) and (to_select:getMark("@meiying") > 0) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_effect = function(self,effect)
 		local from = effect.from
@@ -6803,10 +6803,10 @@ purgatoryfireCard = sgs.CreateSkillCard{
 	name = "purgatoryfireCard" ,
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets < 1 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets < 1 and to_select:objectName() ~= player:objectName()
 	end, 
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 1
 	end, 
 	on_use = function(self, room, source, targets)
@@ -7532,15 +7532,15 @@ deepforestClear = sgs.CreateTriggerSkill{
 --新自然：階段技， 你指定一名目標(在深林的效果發動期間，你可以指定任意數量的目標。令其將牌至於你的武將牌上視為木牛流馬牌，或令其摸牌。若其摸的牌超過你當前生命值且你已受傷，改為其摸一张牌，你恢復一點體力。
 tobenatureCard = sgs.CreateSkillCard{
 	name = "tobenature" ,
-	filter = function(self, targets, to_select)
-		if sgs.Self:getMark("Intheforest") > 0 then
-			return #targets < 10 and (to_select:objectName() ~= sgs.Self:objectName()) and to_select:getHandcardNum() ~= sgs.Self:getHandcardNum()
+	filter = function(self, targets, to_select, player)
+		if player:getMark("Intheforest") > 0 then
+			return #targets < 10 and (to_select:objectName() ~= player:objectName()) and to_select:getHandcardNum() ~= player:getHandcardNum()
 		else
-			return #targets == 0 and (to_select:objectName() ~= sgs.Self:objectName()) and to_select:getHandcardNum() ~= sgs.Self:getHandcardNum()
+			return #targets == 0 and (to_select:objectName() ~= player:objectName()) and to_select:getHandcardNum() ~= player:getHandcardNum()
 		end
 	end ,
-	feasible = function(self, targets)
-		if sgs.Self:getMark("Intheforest") > 0 then
+	feasible = function(self, targets, player)
+		if player:getMark("Intheforest") > 0 then
 			return #targets <= 10
 		else
 			return #targets <= 1
@@ -8079,9 +8079,9 @@ wannawinCard = sgs.CreateSkillCard{
 	name = "wannawin",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			return to_select:objectName() ~= sgs.Self:objectName() and not (to_select:isKongcheng() or to_select:getMark("Wannawinmark") > 0)
+			return to_select:objectName() ~= player:objectName() and not (to_select:isKongcheng() or to_select:getMark("Wannawinmark") > 0)
 		end
 		return false
 	end,
@@ -8403,7 +8403,7 @@ actingcard = sgs.CreateSkillCard
 	target_fixed = false,
 	will_throw = true,
 	filter = function(self,targets,to_select,player)
-		return (#targets < 1) and (to_select:objectName() ~= sgs.Self:objectName())
+		return (#targets < 1) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_effect = function(self,effect)
 		local from = effect.from
@@ -9052,7 +9052,7 @@ dressingcard = sgs.CreateSkillCard{
     target_fixed = false,
     filter = function(self,targets,to_select,player)
         if #targets == 0 then
-			return (to_select:objectName() ~= sgs.Self:objectName()) and to_select:getEquips():length() > 0 and to_select:getEquips():length() >= self:getSubcards():length()
+			return (to_select:objectName() ~= player:objectName()) and to_select:getEquips():length() > 0 and to_select:getEquips():length() >= self:getSubcards():length()
 		end
 		return false
     end,
@@ -9783,10 +9783,10 @@ wittyCard = sgs.CreateSkillCard{
 	name = "witty" ,
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return true
 	end, 
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return true
 	end, 
 	on_use = function(self, room, source, targets)
@@ -10120,7 +10120,7 @@ LuaJTiejiClear = sgs.CreateTriggerSkill{
 --偶劇
 thedollsCard = sgs.CreateSkillCard{
 	name = "thedolls", 
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 3 and to_select:getMark("@thedollsmark") > 0 and not to_select:isAllNude()
 		-- return #targets < sgs.Self:getMark("@luanz") and to_select:getMark(self:objectName()) == 0
 	end, 
@@ -10216,8 +10216,8 @@ cheerful = sgs.CreateTriggerSkill{
 
 yuri_xuejiCard = sgs.CreateSkillCard{
 	name = "yuri_xueji" ,
-	filter = function(self, targets, to_select)
-		return #targets < math.max(sgs.Self:getLostHp()+1, 2)
+	filter = function(self, targets, to_select, player)
+		return #targets < math.max(player:getLostHp()+1, 2)
 	end,
 	-- about_to_use = function(self, room, use)
 		-- local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_THROW, use.from:objectName(), "", self:objectName(), "")
@@ -11624,8 +11624,8 @@ marriedCard = sgs.CreateSkillCard{ -- table.insert(hplist, p:getHp())
 	name = "married",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self,room,player,targets)
 		local room = player:getRoom()
@@ -12013,8 +12013,8 @@ tacitunderstanding = sgs.CreateTriggerSkill {
 
 weareidleCard = sgs.CreateSkillCard{
 	name = "weareidle",
-	filter = function(self, targets, to_select)
-		if #targets >= 2 or to_select:objectName() == sgs.Self:objectName() then return false end
+	filter = function(self, targets, to_select, player)
+		if #targets >= 2 or to_select:objectName() == player:objectName() then return false end
 		return not to_select:isAllNude()
 	end,
 	on_use = function(self, room, source, targets)
@@ -12476,8 +12476,8 @@ hononozoukiCard = sgs.CreateSkillCard{
 	name = "hononozouki",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-			return to_select:objectName() ~= sgs.Self:objectName() and to_select:getMark("hononozouki_used") < 1
+	filter = function(self, targets, to_select, player)
+			return to_select:objectName() ~= player:objectName() and to_select:getMark("hononozouki_used") < 1
 		end,
 		
 	on_use = function(self, room, source, targets)
@@ -12739,8 +12739,8 @@ yochi = sgs.CreateTriggerSkill{
 -- 預見：你的回合中，你可以觀看任一角色的手牌。
 yomiCard = sgs.CreateSkillCard{
 	name = "yomi",
-	filter = function(self, targets, to_select)
-		if to_select:objectName() ~= sgs.Self:objectName() and (#targets == 0) then
+	filter = function(self, targets, to_select, player)
+		if to_select:objectName() ~= player:objectName() and (#targets == 0) then
 			return not to_select:isKongcheng()
 		end
 	end,
@@ -12769,8 +12769,8 @@ yomi = sgs.CreateZeroCardViewAsSkill{
 
 kanchiCard = sgs.CreateSkillCard{
 	name = "kanchi",
-	filter = function(self, targets, to_select)
-		if to_select:objectName() ~= sgs.Self:objectName() and (#targets == 0) then
+	filter = function(self, targets, to_select, player)
+		if to_select:objectName() ~= player:objectName() and (#targets == 0) then
 			return to_select:getMark("@cant_use_tb") == 0
 		end
 	end,
@@ -12910,9 +12910,9 @@ okanemochi = sgs.CreatePhaseChangeSkill{
 -- 謀策：轉換技。你可以棄置一張牌，輪流發動以下效果：@ChangeSkill1 1.令一名目標受到一點傷害摸一张牌。2.令一名目標恢復一點體力棄置兩張牌。3.對自己造成一點傷害摸三張牌。
 barakurosakuCard = sgs.CreateSkillCard{
 	name = "barakurosaku", 
-	filter = function(self, targets, to_select) 
-		if sgs.Self:getMark("@ChangeSkill3") > 0 then
-			return to_select:objectName() == sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		if player:getMark("@ChangeSkill3") > 0 then
+			return to_select:objectName() == player:objectName()
 		else
 			return #targets == 0
 		end
@@ -13386,7 +13386,7 @@ buuzetsu = sgs.CreateTriggerSkill{
 
 zurunoonkaeshiCard = sgs.CreateSkillCard{
 	name = "zurunoonkaeshi", 
-	filter = function(self, targets, to_select) 
+	filter = function(self, targets, to_select, player)
 		return #targets < 1 and to_select:isWounded()
 	end,
 	on_effect = function(self, effect)
@@ -13447,7 +13447,7 @@ zurunoonkaeshi = sgs.CreateViewAsSkill{
 haiguCard = sgs.CreateSkillCard{
 	name = "haigu", 
 	mute = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 5
 	end, 
 	on_effect = function(self, effect)
@@ -13716,10 +13716,10 @@ gopuguCard = sgs.CreateSkillCard{
 	name = "gopugu" ,
 	target_fixed = true,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return to_select:objectName() == sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return to_select:objectName() == player:objectName()
 	end, 
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return true
 	end, 
 	on_use = function(self, room, source, targets)
@@ -13882,7 +13882,7 @@ genshunoYURICard = sgs.CreateSkillCard {
 		card:deleteLater()
 		return card and card:targetFilter(players, to_select, player) and not player:isProhibited(to_select, card, players)
 	end ,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local players = sgs.PlayerList()
 		for i = 1 , #targets do
 			players:append(targets[i])
@@ -13892,19 +13892,19 @@ genshunoYURICard = sgs.CreateSkillCard {
 			if self:getUserString() and self:getUserString() ~= "" then
 				card = sgs.Sanguosha:cloneCard(self:getUserString():split("+")[1])
 				card:deleteLater()
-				return card and card:targetsFeasible(players, sgs.Self)
+				return card and card:targetsFeasible(players, player)
 			end
 		elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
 			return true
 		end
-		local _card = sgs.Self:getTag("genshunoYURI"):toCard()
+		local _card = player:getTag("genshunoYURI"):toCard()
 		if _card == nil then
 			return false
 		end
 		local card = sgs.Sanguosha:cloneCard(_card)
 		card:setCanRecast(false)
 		card:deleteLater()
-		return card and card:targetsFeasible(players, sgs.Self)
+		return card and card:targetsFeasible(players, player)
 	end ,
 	on_validate = function(self, card_use)
 		local yuji = card_use.from
@@ -14270,7 +14270,7 @@ hunnshinCard = sgs.CreateSkillCard{
 	name = "hunnshin",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		-- return #targets == self:subcardsLength()
 		if #targets < self:subcardsLength() then
 			return to_select:getPile("MWCreate"):isEmpty()
@@ -15518,7 +15518,7 @@ gomaokuCard = sgs.CreateSkillCard{
 	will_throw = true,
 	target_fixed = true,
 	-- mute = true,
-	filter = function(self, targets, to_select) 
+	filter = function(self, targets, to_select, player)
 		return #targets < 1
 	end,
 	on_use = function(self, room, source, targets)

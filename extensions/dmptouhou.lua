@@ -100,7 +100,7 @@ se_mopaocard = sgs.CreateSkillCard {
 	name = "se_mopaocard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -221,8 +221,8 @@ se_wuyi = sgs.CreateTriggerSkill {
 --窥心
 se_kuixincard = sgs.CreateSkillCard {
 	name = "se_kuixincard",
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and sgs.Self:distanceTo(to_select) == 1
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName() and player:distanceTo(to_select) == 1
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()

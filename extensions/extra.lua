@@ -1260,15 +1260,15 @@ guandu_xuyou:addSkill(chenggong)
 ]]--
 gd_zezhuCard = sgs.CreateSkillCard{
 	name = "gd_zezhu",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets == 0 then
-			if sgs.Self:isLord() then
-				return to_select:objectName() ~= sgs.Self:objectName()
+			if player:isLord() then
+				return to_select:objectName() ~= player:objectName()
 			else
 				return to_select:isLord()
 			end
 		elseif #targets == 1 then
-			return to_select:objectName() ~= sgs.Self:objectName()
+			return to_select:objectName() ~= player:objectName()
 		end
 		return false
 	end,
@@ -1390,8 +1390,8 @@ guandu_zhanghe = sgs.General(extension_guandu, "guandu_zhanghe", "qun", "4", tru
 guandu_yuanlueCard = sgs.CreateSkillCard{
 	name = "guandu_yuanlue" ,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end ,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -1730,7 +1730,7 @@ gd_yuanjun = sgs.CreateTrickCard{
 			end
 		end
     end,
-	feasible = function(self,targets)
+	feasible = function(self, targets, player)
 		return #targets<=2 and #targets>0
 	end,
 	filter = function(self,targets,to_select,source)
@@ -1766,7 +1766,7 @@ gd_tunliang = sgs.CreateTrickCard{
 			end
 		end
     end,
-	feasible = function(self,targets)
+	feasible = function(self, targets, player)
 		return #targets<=3 and #targets>0
 	end,
 	filter = function(self,targets,to_select,source)
@@ -2282,16 +2282,16 @@ twyj_dingfeng = sgs.General(extension_twyj, "twyj_dingfeng", "wu", 4, true)
 twyj_qijiaCard = sgs.CreateSkillCard{
 	name = "twyj_qijia",
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local rangefix = 0
-		if not self:getSubcards():isEmpty() and sgs.Self:getWeapon() and sgs.Self:getWeapon():getId() == self:getSubcards():first() then
-			local card = sgs.Self:getWeapon():getRealCard():toWeapon()
-			rangefix = rangefix + card:getRange() - sgs.Self:getAttackRange(false)
+		if not self:getSubcards():isEmpty() and player:getWeapon() and player:getWeapon():getId() == self:getSubcards():first() then
+			local card = player:getWeapon():getRealCard():toWeapon()
+			rangefix = rangefix + card:getRange() - player:getAttackRange(false)
 		end
-		if not self:getSubcards():isEmpty() and sgs.Self:getOffensiveHorse() and sgs.Self:getOffensiveHorse():getId() == self:getSubcards():first() then
+		if not self:getSubcards():isEmpty() and player:getOffensiveHorse() and player:getOffensiveHorse():getId() == self:getSubcards():first() then
 			rangefix = rangefix + 1
 		end
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and sgs.Self:inMyAttackRange(to_select) and sgs.Self:canSlash(to_select, true, rangefix)
+		return #targets == 0 and to_select:objectName() ~= player:objectName() and player:inMyAttackRange(to_select) and player:canSlash(to_select, true, rangefix)
 	end,
 	about_to_use = function(self, room, use)
 		local id = self:getSubcards():first()
@@ -2326,8 +2326,8 @@ twyj_dingfeng:addSkill(twyj_qijia)
 twyj_zhuchenCard = sgs.CreateSkillCard{
 	name = "twyj_zhuchen",
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		room:setPlayerFlag(targets[1], "twyj_zhuchen_dis_fix")
@@ -2351,21 +2351,21 @@ twyj_dingfeng:addSkill(twyj_zhuchen)
 twyj_maliang = sgs.General(extension_twyj, "twyj_maliang", "shu", 3, true)
 twyj_rangyiUseCard = sgs.CreateSkillCard{
 	name = "twyj_rangyiUse",
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		local targets_list = sgs.PlayerList()
 		for _, target in ipairs(targets) do
 			targets_list:append(target)
 		end
 		local card = sgs.Sanguosha:getCard(self:getSubcards():first())
-		return card and not card:targetFixed() and card:targetFilter(targets_list, to_select, sgs.Self) and not sgs.Self:isProhibited(to_select, card)
+		return card and not card:targetFixed() and card:targetFilter(targets_list, to_select, player) and not player:isProhibited(to_select, card)
 	end, 
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		local targets_list = sgs.PlayerList()
 		for _, target in ipairs(targets) do
 			targets_list:append(target)
 		end
 		local card = sgs.Sanguosha:getCard(self:getSubcards():first())
-		return card and card:targetsFeasible(targets_list, sgs.Self)
+		return card and card:targetsFeasible(targets_list, player)
 	end,
 	about_to_use = function(self, room, use)
 		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
@@ -2394,8 +2394,8 @@ twyj_rangyiCard = sgs.CreateSkillCard{
 	name = "twyj_rangyi",
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		room:setPlayerMark(source, "twyj_rangyi_source", 1)

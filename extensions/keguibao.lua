@@ -120,8 +120,8 @@ keguixianjiCard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:hasSkill("keguixianji") and to_select:objectName() ~= sgs.Self:objectName() and not to_select:hasFlag("keguixianjiInvoked")
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:hasSkill("keguixianji") and to_select:objectName() ~= player:objectName() and not to_select:hasFlag("keguixianjiInvoked")
 	end,
 	on_use = function(self, room, source, targets)
 		local caocao = targets[1]
@@ -163,7 +163,7 @@ keguixianji = sgs.CreateTriggerSkill {
 	on_trigger = function(self, triggerEvent, player, data)
 		local room = player:getRoom()
 		local lords = room:findPlayersBySkillName(self:objectName())
-		if (triggerEvent == sgs.TurnStart) or (triggerEvent == sgs.EventAcquireSkill and data:toString() == "keguixianji") then
+		if (triggerEvent == sgs.TurnStart) or (triggerEvent == sgs.EventAcquireSkill and data:toSkillChange().skillName == "keguixianji") then
 			if lords:isEmpty() then
 				return false
 			end
@@ -178,7 +178,7 @@ keguixianji = sgs.CreateTriggerSkill {
 					room:attachSkillToPlayer(p, "keguixianjiVS")
 				end
 			end
-		elseif triggerEvent == sgs.EventLoseSkill and data:toString() == "keguixianji" then
+		elseif triggerEvent == sgs.EventLoseSkill and data:toSkillChange().skillName == "keguixianji" then
 			if lords:length() > 2 then
 				return false
 			end
@@ -481,8 +481,8 @@ keguitiqiCard = sgs.CreateSkillCard {
 	name = "keguitiqiCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
-		return (#targets < self:subcardsLength()) and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return (#targets < self:subcardsLength()) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_use = function(self, room, player, targets)
 		room:loseHp(player, 1, true, player, self:objectName())
@@ -558,7 +558,7 @@ keguishouyeCard = sgs.CreateSkillCard {
 	name = "keguishouyeCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, player, targets)
@@ -803,8 +803,8 @@ kejieguixianjiCard = sgs.CreateSkillCard {
 	target_fixed = false,
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:hasSkill("kejieguixianji") and to_select:objectName() ~= sgs.Self:objectName() and not to_select:hasFlag("kejieguixianjiInvoked")
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:hasSkill("kejieguixianji") and to_select:objectName() ~= player:objectName() and not to_select:hasFlag("kejieguixianjiInvoked")
 	end,
 	on_use = function(self, room, source, targets)
 		local caocao = targets[1]
@@ -853,7 +853,7 @@ kejieguixianji = sgs.CreateTriggerSkill {
 	on_trigger = function(self, triggerEvent, player, data)
 		local room = player:getRoom()
 		local lords = room:findPlayersBySkillName(self:objectName())
-		if (triggerEvent == sgs.TurnStart) or (triggerEvent == sgs.EventAcquireSkill and data:toString() == "kejieguixianji") then
+		if (triggerEvent == sgs.TurnStart) or (triggerEvent == sgs.EventAcquireSkill and data:toSkillChange().skillName == "kejieguixianji") then
 			if lords:isEmpty() then
 				return false
 			end
@@ -868,7 +868,7 @@ kejieguixianji = sgs.CreateTriggerSkill {
 					room:attachSkillToPlayer(p, "kejieguixianjiVS")
 				end
 			end
-		elseif triggerEvent == sgs.EventLoseSkill and data:toString() == "kejieguixianji" then
+		elseif triggerEvent == sgs.EventLoseSkill and data:toSkillChange().skillName == "kejieguixianji" then
 			if lords:length() > 2 then
 				return false
 			end
@@ -1112,8 +1112,8 @@ end
 
 kejieguizhashiCard = sgs.CreateSkillCard {
 	name = "kejieguizhashiCard",
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -2007,7 +2007,7 @@ kejieguishouyeCard = sgs.CreateSkillCard {
 	name = "kejieguishouyeCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, player, targets)

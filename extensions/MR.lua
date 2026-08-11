@@ -28,14 +28,14 @@ MR_guojia = sgs.General(extension_MRmou, "MR_guojia", "wei", 3)
 MR_yijiCard = sgs.CreateSkillCard{
 	name = "MR_yiji",
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if self:getSubcards():length() == 1 then
 		    return #targets < 1
 		elseif self:getSubcards():length() == 2 then
 		    return #targets < 2
 		end
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		if self:getSubcards():length() == 1 then
 		    return #targets == 1
 		elseif self:getSubcards():length() == 2 then
@@ -98,7 +98,7 @@ MR_yiji = sgs.CreateTriggerSkill {
 MR_huishiCard = sgs.CreateSkillCard{
 	name = "MR_huishi",
 	target_fixed = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
@@ -527,7 +527,7 @@ MR_xuanhuo = sgs.CreateTriggerSkill{
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.GameStart, sgs.EventAcquireSkill},
 	on_trigger = function(self, event, player, data, room)
-		if (event == sgs.EventAcquireSkill and data:toString() == self:objectName()) or event == sgs.GameStart then
+		if (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == self:objectName()) or event == sgs.GameStart then
 			if player:hasSkill("MR_xuanhuo") then    
 				for _,p in sgs.qlist(room:getAllPlayers()) do
 				    if not p:hasSkill("MR_xuanhuoTag") then
@@ -752,10 +752,10 @@ MR_quhuCard = sgs.CreateSkillCard{
 	name = "MR_quhu",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		return #targets < 2 and not to_select:isKongcheng()
 	end,
-	feasible = function(self, targets)
+	feasible = function(self, targets, player)
 		return #targets == 2
 	end,
 	on_use = function(self, room, source, targets)
@@ -1015,8 +1015,8 @@ MR_shelie = sgs.CreateTriggerSkill{
 }
 MR_gongxinCard = sgs.CreateSkillCard{
 	name = "MR_gongxin",
-	filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()

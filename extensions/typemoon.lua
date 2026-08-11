@@ -71,7 +71,7 @@ yinyangDetach = sgs.CreateTriggerSkill {
 	frequency = sgs.Skill_NotFrequent,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
-		local skill_name = data:toString()
+		local skill_name = data:toSkillChange().skillName
 		if skill_name == "yinyang" then
 			if player:isMale() then
 				player:setGender(sgs.General_Female)
@@ -107,8 +107,8 @@ shayi = sgs.CreateTriggerSkill {
 JiuziCard = sgs.CreateSkillCard {
 	name = "JiuziCard",
 	skill_name = "Jiuzi",
-	filter = function(self, targets, to_select)
-		return (#targets == 0) and (to_select:objectName() ~= sgs.Self:objectName())
+	filter = function(self, targets, to_select, player)
+		return (#targets == 0) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_effect = function(self, effect)
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, -1)
@@ -319,8 +319,8 @@ Nanaya_Shiki = sgs.General(extension, "Nanaya_Shiki", "god", 4, true, true)
 jishaCard = sgs.CreateSkillCard {
 	name = "jishaCard",
 	skill_name = "jisha",
-	filter = function(self, targets, to_select)
-		return (#targets == 0) and (to_select:objectName() ~= sgs.Self:objectName()) and to_select:getPile("ren"):length() == 0
+	filter = function(self, targets, to_select, player)
+		return (#targets == 0) and (to_select:objectName() ~= player:objectName()) and to_select:getPile("ren"):length() == 0
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()

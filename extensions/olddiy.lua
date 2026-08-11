@@ -8,9 +8,9 @@ luajuaocard = sgs.CreateSkillCard{
 	will_throw = false,
 	target_fixed = false,
 	once = true,
-	filter = function(self, targets, to_select)
+	filter = function(self, targets, to_select, player)
 		if #targets > 0 then return false end
-		return sgs.Self:objectName() ~= to_select:objectName()
+		return player:objectName() ~= to_select:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		if(#targets ~= 1) then return end
@@ -737,11 +737,10 @@ dangqianCard = sgs.CreateSkillCard{
 	name = "dangqianCard",
 	target_fixed = false,
 	will_throw = true,
-	filter = function(self,targets,to_select)
-    local player = sgs.Self 	
+	filter = function(self, targets, to_select, player)
     return #targets < player:getHp() and player:canDisCard(to_select, "he")
     end,
-	feasible = function(self,targets)
+	feasible = function(self, targets, player)
 	return #targets > 0
 	end,
 	on_effect = function(self,effect)
@@ -1844,8 +1843,8 @@ bu_s2_benxiVS = sgs.CreateZeroCardViewAsSkill
 bu_s2_benxiCard = sgs.CreateSkillCard
 {
     name = "bu_s2_benxi",
-    filter = function(self, targets, to_select)
-        return #targets < 1 and to_select:objectName() ~= sgs.Self:objectName()
+    filter = function(self, targets, to_select, player)
+        return #targets < 1 and to_select:objectName() ~= player:objectName()
         and (not to_select:isNude())
     end,
     on_effect = function(self, effect)

@@ -82,8 +82,8 @@ blood_hjcard = sgs.CreateSkillCard {
 	name = "blood_hj",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and sgs.Self:canPindian(to_select) and to_select:objectName() ~= sgs.Self:objectName()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and player:canPindian(to_select) and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
 		local tiger = targets[1]
@@ -197,11 +197,11 @@ neo_sunce = sgs.General(extension, "neo_sunce$", "qun", "4")
 
 luaxiongfengCard = sgs.CreateSkillCard {
 	name = "luaxiongfeng",
-	filter = function(self, targets, to_select)
-		return #targets < math.max(sgs.Self:getMark(self:objectName()), 1)
+	filter = function(self, targets, to_select, player)
+		return #targets < math.max(player:getMark(self:objectName()), 1)
 	end,
-	feasible = function(self, targets)
-		return (#targets == 1 or #targets == sgs.Self:getMark(self:objectName())) and #targets ~= 0
+	feasible = function(self, targets, player)
+		return (#targets == 1 or #targets == player:getMark(self:objectName())) and #targets ~= 0
 	end,
 	on_use = function(self, room, source, targets)
 		local x = source:getMark(self:objectName())
