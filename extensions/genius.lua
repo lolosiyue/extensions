@@ -5658,8 +5658,10 @@ tc_zhimeng = sgs.CreateTriggerSkill{
 			        if target then
 					    room:broadcastSkillInvoke(self:objectName())
 			            local dummi, dummy = room:askForExchange(player, self:objectName(), player:getHandcardNum(), 1, false, "", false), room:askForExchange(target, self:objectName(), target:getHandcardNum(), 1, false, "", false)
-						room:obtainCard(player, dummy, false)
-			            room:obtainCard(target, dummi, false)
+						if dummi and dummy then
+							room:obtainCard(player, dummy, false)
+							room:obtainCard(target, dummi, false)
+						end
 			        end
 		        end
 		    end
@@ -6910,5 +6912,4 @@ sgs.LoadTranslationTable {
 sgs.Sanguosha:addSkills(skills)
 
 return {extension_f, extension_tc, newgodsCard}
-
 
