@@ -1007,20 +1007,25 @@ s4_jiwu = sgs.CreateTriggerSkillV2{
 		end
         table.insert(choicelist, "cancel")
 
-		
+		local use = ctx.original_data:toCardUse()
         local selected = {}
         while #choicelist > 1 do
             local choice = room:askForChoice(player, skill:objectName(),
                 table.concat(choicelist, "+"), ctx.original_data, table.concat(disabled, "+"), "tip")
             if choice == "cancel" then break end
             table.insert(selected, choice)
+			if choice == "s4_jiwu_no_respond_list" then
+                room:setCardFlag(use.card, "s4_jiwu_no_respond")
+            elseif choice == "s4_jiwu_draw" then
+                room:setCardFlag(use.card, "s4_jiwu")
+            end
             table.removeOne(choicelist, choice)
         end
 
         room:removeTag("CurrentUseStruct")
 
         if #selected == 0 then return false end
-        room:notifySkillInvoked(player, skill:objectName())
+        NotifySkillInvoked(skill, player)
         ctx.extra_data:setValue(table.concat(selected, "+"))
         return true
     end,
@@ -1029,6 +1034,7 @@ s4_jiwu = sgs.CreateTriggerSkillV2{
         local card = room:askForDiscard(player, "s4_jiwu_invoke", #choices, #choices, true, true, "@s4_jiwu:" .. #choices)
         if not card then
             room:loseHp(player, 1, true, player, skill:objectName())
+			if not player:isAlive() then return false end
         end
         return true
     end,
@@ -1047,7 +1053,6 @@ s4_jiwu = sgs.CreateTriggerSkillV2{
                 local no_respond_list = use.no_respond_list
                 table.insert(no_respond_list, "_ALL_TARGETS")
                 use.no_respond_list = no_respond_list
-                room:setCardFlag(use.card, "s4_jiwu_no_respond")
                 room:broadcastSkillInvoke(skill:objectName(), math.random(1, 2))
                 local log = sgs.LogMessage()
                 log.type = "#skill_add_damage_byother1"
@@ -1062,7 +1067,6 @@ s4_jiwu = sgs.CreateTriggerSkillV2{
                 log.card_str = use.card:toString()
                 room:sendLog(log)
             elseif choice == "s4_jiwu_draw" then
-                room:setCardFlag(use.card, skill:objectName())
                 room:setPlayerMark(player, "s4_jiwu_" .. use.card:getEffectiveId(), 1)
                 room:broadcastSkillInvoke(skill:objectName(), math.random(1, 2))
 				local amount = skill:getEffectiveAmount(ctx)
