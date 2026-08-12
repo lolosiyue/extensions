@@ -12233,12 +12233,12 @@ imwatching = sgs.CreateTriggerSkill{
 				local n = player:getHandcardNum()+player:getEquips():length()
 				-- if owner:getMark("@SuperLimitBreak") > 0 and n > 0 then
 				if n > 0 then
-					local gbnum = math.max(n-player:getMark("&imwatching"), 0)
-					local excard = room:askForExchange(player,self:objectName(),n,n,true)
-					room:obtainCard(owner, excard, false)
-					excard = room:askForExchange(owner,self:objectName(),n,gbnum,true)
-					room:obtainCard(player, excard, false)
-				else
+				local gbnum = math.max(n-player:getMark("&imwatching"), 0)
+				local excard = room:askForExchange(player,self:objectName(),n,n,true)
+				if excard then room:obtainCard(owner, excard, false) end
+				excard = room:askForExchange(owner,self:objectName(),n,gbnum,true)
+				if excard then room:obtainCard(player, excard, false) end
+			else
 					owner:drawCards(player:getMark("&imwatching"))
 				end
 				if player:isAlive() then room:setPlayerMark(player, "&imwatching", 0) end

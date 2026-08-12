@@ -4405,7 +4405,7 @@ rushB_tongboVS = sgs.CreateViewAsSkill{
 		return not player:getPile("bookpile"):isEmpty() and not player:hasFlag("rushB_tongbo")
 	end,
 	enabled_at_response = function(self,player,pattern)
-		return string.find(pattern, "@@rushB_tongbo")
+		return string.find(pattern, "@@rushB_tongbo") and not player:getPile("bookpile"):isEmpty()
 	end,
 }
 rushB_tongbo = sgs.CreateTriggerSkill {
@@ -4417,8 +4417,10 @@ rushB_tongbo = sgs.CreateTriggerSkill {
 		if event == sgs.PreCardUsed then
 			local use = data:toCardUse()
 			if use.card and table.contains(use.card:getSkillNames(), "rushB_tongbo") and not use.card:isKindOf("SkillCard") then
-				use.card:addSubcard(player:getPile("bookpile"):first())
-				data:setValue(use)
+				if not player:getPile("bookpile"):isEmpty() then
+					use.card:addSubcard(player:getPile("bookpile"):first())
+					data:setValue(use)
+				end
 			end
 		end
 	end

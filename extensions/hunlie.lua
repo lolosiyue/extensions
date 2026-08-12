@@ -754,8 +754,10 @@ sgkgodgongxinCard = sgs.CreateSkillCard{
 				local id2 = room:askForCardChosen(effect.from, effect.to, "h", "sgkgodgongxin", true, sgs.Card_MethodNone, same_suit)
 				local card2 = sgs.Sanguosha:getCard(id2)
 				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_DISMANTLE, effect.from:objectName(), nil, "sgkgodgongxin", nil)
-				room:throwCard(card2, reason, effect.to, effect.from)
-				table.removeOne(patterns, card2:getSuitString())
+				if card2 then
+					room:throwCard(card2, reason, effect.to, effect.from)
+					table.removeOne(patterns, card2:getSuitString())
+				end
 				if #patterns == 2 then
 					room:setPlayerCardLimitation(effect.to, "use,response", ".|"..table.concat(patterns, ",").."|.|hand", true)
 					local msg = sgs.LogMessage()

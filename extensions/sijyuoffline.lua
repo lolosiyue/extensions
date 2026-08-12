@@ -12548,7 +12548,7 @@ sfofl_fenqiCard = sgs.CreateSkillCard{
             local nmrq = sgs.Sanguosha:getEngineCard(id)
             if room:getCardOwner(id) then continue end
             if not nmrq:isKindOf("Yiguzuoqi") then continue end
-            room:obtainCard(player,nmrq)
+            room:obtainCard(source,nmrq)
             break
         end
         
