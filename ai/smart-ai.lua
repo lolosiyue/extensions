@@ -4,25 +4,6 @@
 -- more information see: https://github.com/kikito/middleclass
 local middleclass = require "middleclass"
 
--- AI Debug Logger Integration (Added 2025-11-18 for crash tracking)
-local AILogger = require "ai.ai-debug-logger"
-local logger = nil  -- 禁用 AILogger 以提升性能和穩定性
--- local logger = AILogger  -- 調試時取消註釋以啟用日誌
-if logger then logger:init() end
-
--- Global error handler
-local original_error = error
-_G.AI_DEBUG_MODE = true -- Set to false to disable logging
-
--- Safe function wrapper utility
-local function safecall(funcName, func, ...)
-	if _G.AI_DEBUG_MODE and logger then
-		return logger:protect(funcName, func, ...)
-	else
-		return func(...)
-	end
-end
-
 -- initialize the random seed for later use
 math.randomseed(os.time())
 
@@ -39,6 +20,43 @@ local version = "QSanguosha AI 20141006 (V1.32 Alpha)"
 -- @return The AI object
 function CloneAI(player)
 	return SmartAI(player).lua_ai
+end
+
+if type(patterns) ~= "function" then
+	local cached_ban_packages = {}
+	local card_names = {}
+	local class_to_name = {}
+	equip_patterns = equip_patterns or {}
+
+	function patterns(class)
+		if type(class) == "string" then
+			return class_to_name[class] or class
+		end
+		local ban_packages = sgs.Sanguosha:getBanPackages()
+		if ban_packages ~= cached_ban_packages then
+			cached_ban_packages = ban_packages
+			card_names = {}
+			equip_patterns = {}
+			for id = 0, sgs.Sanguosha:getCardCount() - 1 do
+				local card = sgs.Sanguosha:getEngineCard(id)
+				if not table.contains(card_names, card:objectName()) then
+					class_to_name[card:getClassName()] = card:objectName()
+					if string.sub(card:objectName(), 1, 1) ~= "_"
+					and not table.contains(ban_packages, card:getPackage()) then
+						if card:getTypeId() < 3 then
+							table.insert(card_names, card:objectName())
+						else
+							table.insert(equip_patterns, card:objectName())
+						end
+					end
+				end
+			end
+		end
+		if class == true then
+			return class_to_name
+		end
+		return card_names
+	end
 end
 
 sgs.ais =				 		{}
@@ -322,9 +340,6 @@ function SmartAI:initialize(player)
 	self.role = player:getRole()
 	self.lua_ai = sgs.LuaAI(player)
 	self.lua_ai.callback = function(full_method_name,...)
-		-- Enhanced error tracking with AI Debug Logger
-		local callback_start = os.clock()
-		
 		--[[if self.room:getTag("callback"):toBool() then
 			self.room:removeTag("callback")
 			sgs.callback_time = os.time()
@@ -342,46 +357,15 @@ function SmartAI:initialize(player)
 		if method then
 			current_self = self
 			
-			-- Wrap with logger if debug mode is enabled
-			if _G.AI_DEBUG_MODE and logger then
-				local stackIndex = logger:logFunctionEntry("Callback:" .. method_name, {...})
-				local success, result1, result2 = pcall(method, self, ...)
-				
-				if success then
-					if logger then logger:logFunctionExit("Callback:" .. method_name, stackIndex, true, result1) end
-					return result1, result2
-				else
-					-- Enhanced error logging
-					if logger then
-						logger:logError("Callback:" .. method_name, result1, {
-							full_method = full_method_name,
-							args = {...},
-							player = player:getGeneralName(),
-							room_state = self.room:getTag("turncount"):toInt()
-						})
-					end
-						
-					self.room:writeToConsole("=== AI CRASH DETECTED ===")
-					self.room:writeToConsole("Method: " .. method_name)
-					self.room:writeToConsole("Error: " .. tostring(result1))
-					self.room:outputEventStack()
-					for _, w in ipairs({...}) do
-						if type(w) == "string" then self.room:writeToConsole(w) end
-					end
-					self.room:writeToConsole("Check logs at: lua/ai/logs/")
-				end
+			local success, result1, result2 = pcall(method, self, ...)
+			if success then 
+				return result1, result2
 			else
-				-- Original behavior without logging
-				local success, result1, result2 = pcall(method, self, ...)
-				if success then 
-					return result1, result2
-				else
-					self.room:writeToConsole(method_name)
-					self.room:writeToConsole(result1)
-					self.room:outputEventStack()
-					for _, w in ipairs({...}) do
-						if type(w) == "string" then self.room:writeToConsole(w) end
-					end
+				self.room:writeToConsole(method_name)
+				self.room:writeToConsole(result1)
+				self.room:outputEventStack()
+				for _, w in ipairs({...}) do
+					if type(w) == "string" then self.room:writeToConsole(w) end
 				end
 			end
 		end
@@ -2372,29 +2356,11 @@ function SmartAI:filterEvent(event,player,data)
 	sgs.flushDeferredDeleteCards()
 	-- Validate input parameters to prevent crashes
 	if not event or not player or not data then
-		if _G.AI_DEBUG_MODE and logger then
-			logger:logError("SmartAI:filterEvent", "Invalid parameters", {
-				event = event,
-				player = player and "valid" or "nil",
-				data = data and "valid" or "nil"
-			})
-		end
 		return
 	end
 	
-	-- Protect event filtering with error handling
-	if _G.AI_DEBUG_MODE and logger then
-		local player_name_success, player_name = pcall(function() return player:getGeneralName() end)
-		local data_str_success, data_str = pcall(function() return data:toString() end)
-		local stackIndex = logger:logFunctionEntry("SmartAI:filterEvent", {
-			event = event,
-			player = player_name_success and player_name or "unknown",
-			data = data_str_success and data_str or "unknown"
-		})
-	end
-	
 	-- Wrap the entire function body in pcall for safety
-	local success, error_msg = pcall(function()
+	pcall(function()
 		sgs.filterData[event] = data
 		-- Check if event callbacks exist before iterating
 		if sgs.ai_event_callback[event] and type(sgs.ai_event_callback[event]) == "table" then
@@ -2402,12 +2368,6 @@ function SmartAI:filterEvent(event,player,data)
 				-- Protected callback execution
 				if type(callback) == "function" then
 					local cb_success, cb_error = pcall(callback, self, player, data)
-					if not cb_success and _G.AI_DEBUG_MODE and logger then
-						logger:logError("Event Callback", cb_error, {
-							event = event,
-							player = player:getGeneralName()
-						})
-					end
 				end
 			end
 		end
@@ -2773,22 +2733,6 @@ function SmartAI:filterEvent(event,player,data)
 	end
 	
 	end) -- End of pcall wrapper for filterEvent
-	
-	if not success and _G.AI_DEBUG_MODE and logger then
-		local player_name = "unknown"
-		local data_str = "unknown"
-		pcall(function() player_name = player:getGeneralName() end)
-		pcall(function() data_str = data:toString() end)
-		
-		logger:logError("SmartAI:filterEvent", error_msg, {
-			event = event,
-			player = player_name,
-			data_str = data_str
-		})
-		logger:logFunctionExit("SmartAI:filterEvent", nil, false)
-	elseif _G.AI_DEBUG_MODE and logger then
-		logger:logFunctionExit("SmartAI:filterEvent", nil, true)
-	end
 end
 function SetAiData(td)
 	-- 多 process 並發時 io.open("w") 可能失敗; 快取可丟, 失敗直接跳過不中斷
@@ -2799,10 +2743,8 @@ function SetAiData(td)
 end
 
 function GetAiData()
-	local file = io.open("lua/ai/data/AiData","r")
-	if file then
-		local _file = file:read("*all")
-		file:close()
+	local _file = sgs.Sanguosha:getAiData()
+	if _file and _file~="" then
 		-- 殘留/半寫的 AiData (taskkill 截斷或並發交錯) 會讓 json.decode 失敗/拋錯,
 		-- 快取可丟, 失敗回 nil (呼叫端有 or sgs.aiData fallback)
 		local ok, data = pcall(json.decode, _file)
@@ -3901,13 +3843,15 @@ for id=0,sgs.Sanguosha:getCardCount()-1 do
 	end
 end
 
-function SmartAI:askForUseCard(pattern,prompt,method)
+function SmartAI:askForUseCard(pattern,prompt,method,request)
+	if request and not request:isValid() then return end
 	local func = sgs.ai_skill_use[pattern]
 	local compulsive = pattern:endsWith("!")
 	if compulsive then pattern = string.sub(pattern,1,-2) end
 	if type(func)=="function" then
-		local tofunc = func(self,prompt,method,pattern)
-		if type(tofunc)=="string" and not(compulsive and tofunc==".")
+		local tofunc = func(self,prompt,method,pattern,request)
+		if request and type(tofunc)=="table"
+		or type(tofunc)=="string" and not(compulsive and tofunc==".")
 		then return tofunc end
 	end
 	if sgs.cardEffect and not(compulsive or pattern:startsWith("@")) then
@@ -3918,10 +3862,12 @@ function SmartAI:askForUseCard(pattern,prompt,method)
 	end
 	func = sgs.ai_skill_use[prompt:split(":")[1]]
 	if type(func)=="function" then
-		local tofunc = func(self,prompt,method,pattern)
-		if type(tofunc)=="string" and not(compulsive and tofunc==".")
+		local tofunc = func(self,prompt,method,pattern,request)
+		if request and type(tofunc)=="table"
+		or type(tofunc)=="string" and not(compulsive and tofunc==".")
 		then return tofunc end
 	end
+	if request then return end
 	if pattern:startsWith("@") or method~=sgs.Card_MethodUse then return "." end
 	local cns = {}
 	for _,c in ipairs(self:addHandPile("he"))do
@@ -3964,37 +3910,6 @@ function SmartAI:askForUseCard(pattern,prompt,method)
 		end
 	end
 	return "."
-end
-
--- ViewAsSkillV2 的 askForUseCard 橋接沿用既有 ai_skill_use。
--- 新 callback 可讀取第五個 request 並回傳結構化 table；舊字串回傳維持不變。
-function SmartAI:askForActiveSkill(request)
-	if not request or not request:isValid() then return end
-	local pattern = request:getPattern()
-	local prompt = request:getPrompt()
-	local method = request:getHandlingMethod()
-	local callback = sgs.ai_skill_use[pattern]
-	local compulsive = pattern:endsWith("!")
-	if compulsive then pattern = string.sub(pattern,1,-2) end
-	if type(callback)=="function" then
-		local result = callback(self,prompt,method,pattern,request)
-		if type(result)=="table"
-		or type(result)=="string" and not(compulsive and result==".")
-		then return result end
-	end
-	if sgs.cardEffect and not(compulsive or pattern:startsWith("@")) then
-		local effect = sgs.cardEffect
-		if effect.card and string.find(prompt,effect.card:objectName()) and effect.card:isDamageCard()
-		and effect.from and effect.to==self.player and self:canDamageHp(effect.from,effect.card)
-		then return "." end
-	end
-	callback = sgs.ai_skill_use[prompt:split(":")[1]]
-	if type(callback)=="function" then
-		local result = callback(self,prompt,method,pattern,request)
-		if type(result)=="table"
-		or type(result)=="string" and not(compulsive and result==".")
-		then return result end
-	end
 end
 
 function SmartAI:askForAG(card_ids,refusable,reason)
@@ -4812,12 +4727,8 @@ function canMethodUse(ai_instance, c, turnUseList)
 end
 
 function SmartAI:getTurnUse()
-	if logger then logger:writeLog("DEBUG", "getTurnUse: Started") end
-	
 	local turnUse = {}
 
-	
-	if logger then logger:writeLog("DEBUG", "getTurnUse: Initializing use_to table") end
 	self.use_to = {}
 	self.active_skill_requests = {}
 
@@ -4841,53 +4752,38 @@ function SmartAI:getTurnUse()
     -- Step 3: 技能卡轉換與排序 (O(N log N))
     -- =========================================================
 	-- Step 1: Get and sort cards
-	if logger then logger:writeLog("DEBUG", "getTurnUse: Getting skill cards") end
 	local fillSuccess, skillCards = pcall(function()
 		return self:fillSkillCards(self:addHandPile())
 	end)
 	
 	if not fillSuccess then
-		if logger then logger:logError("getTurnUse:fillSkillCards", skillCards) end
 		self.toUse = {}
 		return {}
 	end
 	
-    if logger then logger:writeLog("DEBUG", "getTurnUse: Sorting cards", {cardCount = #skillCards}) end
 	local sortSuccess, sortedCards = pcall(function()
 		return self:sortByDynamicUsePriority(skillCards)
 	end)
 	
 	if not sortSuccess then
-		if logger then logger:logError("getTurnUse:sortByDynamicUsePriority", sortedCards) end
 		self.toUse = {}
 		return {}
 	end
     -- =========================================================
     -- Step 4: 循環處理 (優化後)
     -- =========================================================
-	
-	if logger then logger:writeLog("DEBUG", "getTurnUse: Sorting completed successfully") end
-	
 	-- Validate sorted cards
 	if not sortedCards then
-		if logger then logger:logError("getTurnUse:validation", "sortedCards is nil") end
 		self.toUse = {}
 		return {}
 	end
 	
 	if type(sortedCards) ~= "table" then
-		if logger then logger:logError("getTurnUse:validation", "sortedCards is not a table: " .. type(sortedCards)) end
 		self.toUse = {}
 		return {}
 	end
 	
-	if logger then logger:writeLog("DEBUG", "getTurnUse: Validated sortedCards", {
-		type = type(sortedCards),
-		count = #sortedCards
-	}) end
-	
 	-- Step 2: Process each card
-	if logger then logger:writeLog("DEBUG", "getTurnUse: Starting card iteration", {totalCards = #sortedCards}) end
 	
 	for idx, c in ipairs(sortedCards) do
 		-- Additional safety check
@@ -4895,23 +4791,6 @@ function SmartAI:getTurnUse()
 			if restricted_mode and (self:getUseValue(c) < value_threshold and not c:isDamageCard()) then
                 continue
 			else
-				
-				if logger and idx % 5 == 1 then -- Log every 5 cards to avoid spam
-					local cardStr = "unknown"
-					local cardStrSuccess, cardStrResult = pcall(function() return c:getLogName() end)
-					if cardStrSuccess then
-						cardStr = cardStrResult
-					else
-						if logger then logger:logError("getTurnUse:toString", cardStrResult, {index = idx}) end
-					end
-					
-					logger:writeLog("DEBUG", "getTurnUse: Processing card batch", {
-						currentIndex = idx,
-						totalCards = #sortedCards,
-						currentCard = cardStr
-					})
-				end
-				
 				local canUseSuccess, canUse = pcall(canMethodUse, self, c, turnUse)
 				if canUseSuccess and canUse then
 					
@@ -4922,25 +4801,11 @@ function SmartAI:getTurnUse()
 					
 					if useSuccess then
 						if d and d.card then
-							if logger then 
-								logger:writeLog("DEBUG", "getTurnUse: Card can be used", {
-									originalCard = c:toString(),
-									resultCard = d.card:toString(),
-									index = idx
-								})
-							end
-							
 							-- Check if card is limited
 							local isLimited = false
 							local limitCheckSuccess, limitResult = pcall(function()
 								if d.card ~= c then
 									local handlingMethod = d.card:getHandlingMethod()
-									if logger then 
-										logger:writeLog("DEBUG", "getTurnUse: Checking card limit", {
-											card = d.card:toString(),
-											handlingMethod = handlingMethod
-										})
-									end
 									return self.player:isCardLimited(d.card, handlingMethod)
 								end
 								return false
@@ -4948,18 +4813,7 @@ function SmartAI:getTurnUse()
 							
 							if limitCheckSuccess then
 								isLimited = limitResult
-								if logger then 
-									logger:writeLog("DEBUG", "getTurnUse: Card limit check result", {
-										isLimited = isLimited
-									})
-								end
 							else
-								if logger then 
-									logger:logError("getTurnUse:cardLimitCheck", limitResult, {
-										card = d.card:toString(),
-										index = idx
-									})
-								end
 								-- Assume limited on error to be safe
 								isLimited = true
 							end
@@ -4970,14 +4824,8 @@ function SmartAI:getTurnUse()
 									worthwhile = d.card:isDamageCard() or d.card:isKindOf("Peach") or math.random() < 0.5 -- 50%機率保留一些其他牌，增加多樣性
 								end
 								if worthwhile then
-									if logger then logger:writeLog("DEBUG", "getTurnUse: Adding card to turnUse") end
-									
 									local addSuccess, addErr = pcall(function()
 										local cardKey = aiCardKey(d.card)
-										if logger then 
-											logger:writeLog("DEBUG", "getTurnUse: Card key", {key = cardKey})
-										end
-										
 										-- 不保存 SWIG userdata（d.to 指向 C++ QList，跨回合懸垂會 AV）；
 										-- 改存純 Lua 字串表（玩家 objectName），activate 回寫時重建
 										local saved = {}
@@ -4987,14 +4835,8 @@ function SmartAI:getTurnUse()
 											end
 										end
 										self.use_to[cardKey] = saved
-										if logger then logger:writeLog("DEBUG", "getTurnUse: Set use_to") end
 										
 										table.insert(turnUse, d.card)
-										if logger then 
-											logger:writeLog("DEBUG", "getTurnUse: Inserted card", {
-												turnUseCount = #turnUse
-											})
-										end
 										
 										-- Debug file writing: 只在真正添加到使用列表時才寫入日誌
 										if sgs.aiHandCardVisible then
@@ -5011,30 +4853,13 @@ function SmartAI:getTurnUse()
 												file:close()
 											end)
 											
-											if not fileSuccess and logger then
-												logger:logError("getTurnUse:debug_file_write", fileErr)
-											end
 										end
 									end)
 								end
 								
-								if not addSuccess and logger then
-									logger:logError("getTurnUse:addCard", addErr, {
-										card = d.card:toString(),
-										index = idx
-									})
-								end
-								
-								if logger then logger:writeLog("DEBUG", "getTurnUse: After add card processing") end
-							else
-								if logger then logger:writeLog("DEBUG", "getTurnUse: Card is limited, skipping") end
 							end
-							
-							if logger then logger:writeLog("DEBUG", "getTurnUse: After d.card processing") end
 						end
 					elseif c:canRecast() and c:getTypeId()>0 then
-						if logger then logger:writeLog("DEBUG", "getTurnUse: Card can recast", {card = c:toString()}) end
-						
 						table.insert(turnUse,c)
 						
 						-- Debug file writing: 重鑄卡牌也記錄日誌
@@ -5052,57 +4877,18 @@ function SmartAI:getTurnUse()
 								file:close()
 							end)
 							
-							if not fileSuccess and logger then
-								logger:logError("getTurnUse:debug_file_write", fileErr)
-							end
 						end
-					else
-						if logger then logger:writeLog("DEBUG", "getTurnUse: d exists but no card or recast") end
-					end
-					
-					if logger then logger:writeLog("DEBUG", "getTurnUse: After useSuccess branch") end
-				else
-					if logger and not canUseSuccess then 
-						logger:logError("getTurnUse:canMethodUse", canUse, {
-							card = c:toString(),
-							index = idx
-						}) 
 					end
 				end
-				
-				if logger then logger:writeLog("DEBUG", "getTurnUse: Before turnUse count check", {currentCount = #turnUse}) end
 				
 				if #turnUse>3 then 
-					if logger then logger:writeLog("DEBUG", "getTurnUse: Reached max cards (3)") end
 					break 
 				end
-				
-				if logger then logger:writeLog("DEBUG", "getTurnUse: After turnUse count check, continuing loop") end
 			end
-		else
-			if logger then logger:logError("getTurnUse:iteration", "Card is nil at index " .. idx) end
 		end
 	end
 	
-	if logger then logger:writeLog("DEBUG", "getTurnUse: Card iteration completed") end
-	
 	self.toUse = turnUse
-	
-	if logger then 
-		logger:writeLog("DEBUG", "getTurnUse: Completed", {
-			turnUseCount = #turnUse,
-			cards = table.concat(
-				(function()
-					local strs = {}
-					for _, card in ipairs(turnUse) do
-						table.insert(strs, card:toString())
-					end
-					return strs
-				end)(),
-				", "
-			)
-		})
-	end
 	
 	return turnUse
 end
@@ -5169,22 +4955,9 @@ function SmartAI:useCardForCombo(card, use)
 end
 
 function SmartAI:activate(use)
-	-- Enhanced logging for crash debugging
-	if _G.AI_DEBUG_MODE and logger then
-		local stackIndex = logger:logFunctionEntry("SmartAI:activate", {
-			player = self.player:getGeneralName(),
-			playerName = self.player:objectName(),
-			phase = self.player:getPhase(),
-			hp = self.player:getHp(),
-			handcardNum = self.player:getHandcardNum()
-		})
-	end
-
 	-- Step 1: Handle debug file writing
 	if sgs.aiHandCardVisible then
-		if logger then logger:writeLog("DEBUG", "activate: Writing to debug file") end
-		
-		local success, err = pcall(function()
+		pcall(function()
 			local file = io.open("lua/ai/cstring", "r")
 			local _file = file:read("*all")
 			file:close()
@@ -5192,51 +4965,25 @@ function SmartAI:activate(use)
 			file:write(_file.."\nTurnUse：")
 			file:close()
 		end)
-		
-		if not success and logger then
-			logger:logError("activate:debug_file", err)
-		end
 		--self.room:writeToConsole("TurnUse：")
 	end
 	
 	-- Step 2: Get turn use cards
-	if logger then logger:writeLog("DEBUG", "activate: Getting turn use cards", {toUseCount = #self.toUse}) end
-	
 	if #self.toUse<1 then 
-		if logger then logger:writeLog("DEBUG", "activate: Calling getTurnUse()") end
-		
-		local success, err = pcall(function()
+		local success = pcall(function()
 			self:getTurnUse()
 		end)
 		
 		if not success then
-			if logger then logger:logError("activate:getTurnUse", err) end
 			return
 		end
-		
-		if logger then logger:writeLog("DEBUG", "activate: getTurnUse() completed", {toUseCount = #self.toUse}) end
 	end
 	
 	-- Step 3: Process cards
-	if logger then 
-		logger:writeLog("DEBUG", "activate: Processing cards", {
-			cardCount = #self:getTurnUse()
-		}) 
-	end
-	
 	local turnUse = self:getTurnUse()
-	if logger then logger:writeLog("DEBUG", "activate: Retrieved turn use list", {count = #turnUse}) end
 	
 	for i, c in ipairs(turnUse) do
-		if logger then 
-			logger:writeLog("DEBUG", "activate: Processing card", {
-				index = i,
-				cardString = c:toString(),
-				cardType = c:getClassName()
-			}) 
-		end
-		
-		local success, err = pcall(function()
+		pcall(function()
 			-- use_to 存的是 objectName 字串表（見 getTurnUse），回寫時重建全新 SPlayerList，
 			-- 避免把跨回合保存的 SWIG userdata 直接賦值（懸垂 → QList copy assign AV）
 			local saved = self.use_to[aiCardKey(c)]
@@ -5248,15 +4995,9 @@ function SmartAI:activate(use)
 				end
 			end
 			use.to = toList
-			if logger then logger:writeLog("DEBUG", "activate: Set use.to") end
 						
 			use.card = c
-			if logger then logger:writeLog("DEBUG", "activate: Set use.card") end
 		end)
-		
-		if not success then
-			if logger then logger:logError("activate:card_processing", err, {index = i, card = c:toString()}) end
-		end
 		
 		--[[if c:isAvailable(self.player) then
 			if self:aiUseCard(c,use).card then break
@@ -5264,15 +5005,6 @@ function SmartAI:activate(use)
 		end--]]
 		break
 	end
-	
-	if logger then 
-		logger:writeLog("DEBUG", "activate: Completed", {
-			hasCard = use.card ~= nil,
-			cardString = use.card and use.card:toString() or "nil"
-		})
-		logger:logFunctionExit("SmartAI:activate", stackIndex, true)
-	end
-	
 end
 
 function SmartAI:getOverflow(player,isMax)
@@ -5626,7 +5358,7 @@ local function getCardsViewAIRequest(self,skill_name,card_name,cardsview_context
 		table.insert(contexts,{sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE,card_name,sgs.Card_MethodUse})
 	end
 	for _,context in ipairs(contexts)do
-		local request = self.room:getActiveSkillAIRequest(self.player,skill_name,
+		local request = self.room:getAiSkillActionContext(self.player,skill_name,
 			context[1],context[2],prompt,context[3])
 		if request and request:isValid() then return request end
 	end
@@ -6154,7 +5886,7 @@ end
 local function getAIFillSkill(self,skill_name,instance_id)
 	local request
 	if instance_id>0 then
-		request = self.room:getActiveSkillAIRequest(self.player,skill_name)
+		request = self.room:getAiSkillActionContext(self.player,skill_name)
 		if not request or not request:isValid() then return end
 	end
 	local callback = sgs.ai_fill_skill[skill_name]
@@ -6177,7 +5909,7 @@ function SmartAI:fillSkillCards(cards)
 	for _,skill in ipairs(sgs.getPlayerSkillList(self.player))do
 		local skill_name = skill:objectName()
 		local vs = sgs.Sanguosha:getViewAsSkill(skill_name)
-		local instance_id = self.room:getActiveSkillAIInstanceId(self.player,skill_name)
+		local instance_id = self.room:getAiSkillActionInstanceId(self.player,skill_name)
 		local fs,request = getAIFillSkill(self,skill_name,instance_id)
 		if fs and instance_id>=0 and (vs==nil or vs:isEnabledAtPlay(self.player)) then
 			insertAIFillCards(self,cards,fs(self,#cards<1,request),instance_id,request,skill_name)
@@ -6188,7 +5920,7 @@ function SmartAI:fillSkillCards(cards)
 			m = string.gsub(m,"ViewAsSkill_","")
 			m = string.gsub(m,"Effect","")
 			local vs = sgs.Sanguosha:getViewAsSkill(m)
-			local instance_id = self.room:getActiveSkillAIInstanceId(self.player,m)
+			local instance_id = self.room:getAiSkillActionInstanceId(self.player,m)
 			local fs,request = getAIFillSkill(self,m,instance_id)
 			if fs and instance_id>=0 and (vs==nil or vs:isEnabledAtPlay(self.player)) then
 				insertAIFillCards(self,cards,fs(self,#cards<1,request),instance_id,request,m)
@@ -9120,11 +8852,9 @@ end
 
 function SmartAI:aiUseCard(card,use)
 	if type(card)~="userdata" then global_room:writeToConsole(debug.traceback()) return end
-	collectgarbage("stop")
 	use = use or dummy()
 	if card:getTypeId()<1 then
 		self:useSkillCard(card,use)
-		collectgarbage("restart")
 		return use
 	end
 	local ai_connect = aiConnect(self.player)
@@ -9136,7 +8866,7 @@ function SmartAI:aiUseCard(card,use)
 				if invoke then
 					if use.card then break end
 					self:useCardByClassName(card,use)
-				else collectgarbage("restart") return use end
+				else return use end
 			end
 		end
 	end
@@ -9149,7 +8879,7 @@ function SmartAI:aiUseCard(card,use)
 					if invoke then
 						if use.card then break end
 						self:useCardByClassName(card,use)
-					else collectgarbage("restart") return use end
+					else return use end
 				end
 			end
 		end
@@ -9161,7 +8891,7 @@ function SmartAI:aiUseCard(card,use)
 					if invoke then
 						if use.card then break end
 						self:useCardByClassName(card,use)
-					else collectgarbage("restart") return use end
+					else return use end
 				end
 			end
 		end
@@ -9180,7 +8910,6 @@ function SmartAI:aiUseCard(card,use)
 			end
 		end
 	end
-	collectgarbage("restart")
 	return use
 end
 
