@@ -1108,8 +1108,12 @@ s4_jiwu = sgs.CreateTriggerSkillV2{
                 local useEX = sgs.CardUseStruct()
                 useEX.from = player
                 useEX.card = analeptic
+                useEX.to = sgs.SPlayerList()
+                useEX.to:append(player)
                 room:useCard(useEX, false)
                 useEX.from = use.from
+                useEX.to = sgs.SPlayerList()
+                useEX.to:append(use.from)
                 room:useCard(useEX, false)
                 analeptic:deleteLater()
                 room:setCardFlag(use.card, "s4_jiwu_nullified")

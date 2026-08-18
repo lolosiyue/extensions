@@ -8624,85 +8624,85 @@ sgs.ai_dont_hurt_to["lol_hudun"] = true
 sgs.ai_dont_hurt_from["TH_IllusionaryDominance"] = true
 sgs.ai_dont_hurt_from["LuaRevenge"] = true
 
-sgs.ai_dont_hurt_to["meispliwu"] = function(to, from)
+sgs.ai_dont_hurt_to["meispliwu"] = function(self, to, from)
 	return to:getMark("@meispliwuprevent") > 0
 end
 
 sgs.ai_dont_hurt_to["&beketinghu"] = true
 
-sgs.ai_dont_hurt_to["meispshliwu"] = function(to, from)
+sgs.ai_dont_hurt_to["meispshliwu"] = function(self, to, from)
     return to:getMark("@meispshliwuprevent") > 0
 end
 
-sgs.ai_dont_hurt_to["meispshfengdan"] = function(to, from)
+sgs.ai_dont_hurt_to["meispshfengdan"] = function(self, to, from)
     return to:getMark("@meispshfeng") > 0
 end
 
-sgs.ai_dont_hurt_to["meispshengguangjiahu"] = function(to, from)
+sgs.ai_dont_hurt_to["meispshengguangjiahu"] = function(self, to, from)
     return to:getMark("@meispniangzhaoyunmark") >= 2
 end
 
-sgs.ai_dont_hurt_to["kejieguiqideng"] = function(to, from)
+sgs.ai_dont_hurt_to["kejieguiqideng"] = function(self, to, from)
     return to:getMark("@kedeng") > 0
 end
 
-sgs.ai_dont_hurt_to["kexianfenshen"] = function(to, from)
+sgs.ai_dont_hurt_to["kexianfenshen"] = function(self, to, from)
     return to:getMark("&kexianfenshen") > 0
 end
 
-sgs.ai_dont_hurt_to["kejiexianfenshen"] = function(to, from)
+sgs.ai_dont_hurt_to["kejiexianfenshen"] = function(self, to, from)
     return to:getMark("&kexianfenshen") > 0
 end
 
-sgs.ai_dont_hurt_to["SE_Wuwei"] = function(to, from)
+sgs.ai_dont_hurt_to["SE_Wuwei"] = function(self, to, from)
     return to:getMark("@Wuwei") >= 2
 end
 
-sgs.ai_dont_hurt_to["fateheijian"] = function(to, from)
+sgs.ai_dont_hurt_to["fateheijian"] = function(self, to, from)
     return not to:getPile("fateheijiancards"):isEmpty()
 end
 
-sgs.ai_dont_hurt_to["betacheater"] = function(to, from)
+sgs.ai_dont_hurt_to["betacheater"] = function(self, to, from)
     return not to:getPile("hide"):isEmpty()
 end
 
-sgs.ai_dont_hurt_to["sandun"] = function(to, from)
+sgs.ai_dont_hurt_to["sandun"] = function(self, to, from)
     return to:getEquips():isEmpty() and to:getHandcardNum() > 2
 end
 
-sgs.ai_dont_hurt_to["ckshengyu"] = function(to, from)
+sgs.ai_dont_hurt_to["ckshengyu"] = function(self, to, from)
     return to:getMark("ckshengyu-Clear") == 0
 end
 
-sgs.ai_dont_hurt_to["danyind"] = function(to, from)
+sgs.ai_dont_hurt_to["danyind"] = function(self, to, from)
     return to:hasSkill("miyund") and to:getMark("danyind-Clear") == 1
 end
 
-sgs.ai_dont_hurt_to["langke"] = function(to, from)
+sgs.ai_dont_hurt_to["langke"] = function(self, to, from)
     return to:getMark("@langke") >= 4
 end
 
-sgs.ai_dont_hurt_to["tieren"] = function(to, from)
+sgs.ai_dont_hurt_to["tieren"] = function(self, to, from)
     return to:getMark("@tie") > 0
 end
 
-sgs.ai_dont_hurt_to["machiko"] = function(to, from)
+sgs.ai_dont_hurt_to["machiko"] = function(self, to, from)
     return to:getMark("@waked") == 0
 end
 
-sgs.ai_dont_hurt_to["s4_s_zhanchuan"] = function(to, from)
+sgs.ai_dont_hurt_to["s4_s_zhanchuan"] = function(self, to, from)
     return not to:getPile("s4_s_zhanchuan"):isEmpty()
 end
 
-sgs.ai_dont_hurt_to["heg_qiuan"] = function(to, from)
+sgs.ai_dont_hurt_to["heg_qiuan"] = function(self, to, from)
     return to:getPile("heg_qiuan_han"):isEmpty()
 end
 
-sgs.ai_dont_hurt_to["heg_caiyuan"] = function(to, from)
+sgs.ai_dont_hurt_to["heg_caiyuan"] = function(self, to, from)
     return to:getMark("&heg_caiyuan+fail-Self" .. sgs.Player_Finish .. "Clear") == 0
 end
 
-sgs.ai_dont_hurt_to["TH_guilty"] = function(to, from)
+sgs.ai_dont_hurt_to["TH_guilty"] = function(self, to, from)
     return from:getMark("@TH_Guilty") > 0
 end
 
