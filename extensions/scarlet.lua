@@ -1314,7 +1314,7 @@ s4_jiuzhu = sgs.CreateTriggerSkillV2{
 					local chosen = room:askForPlayerChosen(player, targets, skill:objectName(), "s4_jiuzhu-invoke", true, true)
 					room:setPlayerFlag(player, "-s4_jiuzhu_current")
 					if chosen then
-						ctx.extra_data:setValue(ToData(chosen))
+						ctx.extra_data:setValue(chosen)
 						skill:skillEffect(event, room, player, ctx, chosen)
 					end
 				end
@@ -1354,6 +1354,7 @@ sgs.LoadTranslationTable {
     ["s4_jiuzhu-invoke"] = "你可以发动“救主”<br/> <b>操作提示</b>: 选择当前回合角色→点击确定<br/>",
     ["@s4_jiuzhu"] = "你可以发动“救主”弃置一张牌或失去1点体力",
     ["s4_jiuzhu"] = "救主",
+    ["s4_jiuzhu_invoke"] = "救主",
     [":s4_jiuzhu"] = "每回合限一次，当一张基本牌进入弃牌堆后，你可以弃置一张牌或失去1点体力，令一名角色获得此基本牌。然后若此时是你的回合，你可以摸两张牌；若不是，你可以获得当前回合角色一张牌。",
     ["$s4_jiuzhu1"] = "",
     ["$s4_jiuzhu2"] = "",

@@ -82,36 +82,43 @@ if EquipCard_wlj == 1 then
 	EXCard_WLJ_SkillCARD = sgs.CreateSkillCard{
 		name = "EXCard_WLJ_SkillCARD",
 		skill_name = "EXCard_WLJ",
+		will_throw = false,
 		filter = function(self, targets, to_select, player)
-			return true
+			return to_select and to_select:isAlive()
 		end,
 		feasible = function(self, targets, player)
 			return #targets > 0
 		end,
 		on_use = function(self, room, source, targets)
+			if not room then return end
 			for _, p in sgs.qlist(room:getAlivePlayers()) do
-				p:loseAllMarks("@EXCard_WLJ")
+				if p and p:getMark("@EXCard_WLJ") > 0 then
+					p:loseAllMarks("@EXCard_WLJ")
+				end
 			end
 			for _, p in ipairs(targets) do
-				p:gainMark("@EXCard_WLJ")
-				room:setEmotion(p, "/excard2014/EXCard_WLJ")
+				if p and p:isAlive() then
+					p:gainMark("@EXCard_WLJ")
+					room:setEmotion(p, "excard2014/EXCard_WLJ")
+				end
 			end
 		end
 	}
-	EXCard_WLJ_Skill = sgs.CreateViewAsSkill{
+	EXCard_WLJ_Skill = sgs.CreateZeroCardViewAsSkill{
 		name = "EXCard_WLJ",
-		view_as = function(self, cards)
+		view_as = function(self)
 			return EXCard_WLJ_SkillCARD:clone()
 		end,
 		enabled_at_play = function(self, player)
-			return player:hasWeapon("EXCard_WLJ")
+			return player and player:hasWeapon("EXCard_WLJ")
 		end,
 	}
 	EXCard_WLJ_SkillTM = sgs.CreateTargetModSkill{
 		name = "EXCard_WLJ_SkillTM",
 		pattern = "Slash",
 		distance_limit_func = function(self, from, card)
-			if from:getMark("@EXCard_WLJ") > 0 then return 1 end
+			if from and from:getMark("@EXCard_WLJ") > 0 then return 1 end
+			return 0
 		end,
 	}
 	EXCard_WLJ = sgs.CreateWeapon{
@@ -121,16 +128,20 @@ if EquipCard_wlj == 1 then
 		number = 6,
 		range = 2,
 		on_install = function(self, player)
-			local room = player:getRoom()
+			local room = player and player:getRoom()
+			if not room then return end
 			local skill = sgs.Sanguosha:getSkill(self:objectName())
 			if skill and skill:inherits("ViewAsSkill") then room:attachSkillToPlayer(player, skill:objectName()) end
 		end,
 		on_uninstall = function(self, player)
-			local room = player:getRoom()
+			local room = player and player:getRoom()
+			if not room then return end
 			local skill = sgs.Sanguosha:getSkill(self:objectName())
 			if skill and skill:inherits("ViewAsSkill") then room:detachSkillFromPlayer(player, skill:objectName(), true) end
 			for _, p in sgs.qlist(room:getAlivePlayers()) do
-				p:loseAllMarks("@EXCard_WLJ")
+				if p and p:getMark("@EXCard_WLJ") > 0 then
+					p:loseAllMarks("@EXCard_WLJ")
+				end
 			end
 		end,
 	}

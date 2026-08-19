@@ -2429,7 +2429,7 @@ kezhuanzhenfeng.name="kezhuanzhenfeng"
 table.insert(sgs.ai_skills,kezhuanzhenfeng)
 kezhuanzhenfeng.getTurnUseCard = function(self)
 	for _,p in sgs.list(zhuanJfNames(self.player))do
-		local dc = zhuandummyCard(p)
+		local dc = dummyCard(p)
 		dc:setSkillName("kezhuanzhenfeng")
 		if dc:isKindOf("Dongzhuxianji") and self.player:hasSkill("kezhuandingce",true)
 		and self:isWeak() or not dc:isAvailable(self.player) then continue end
@@ -2482,7 +2482,7 @@ sgs.ai_skill_use["@@kezhuanchuanxin"] = function(self,prompt)
     cards = sgs.QList2Table(cards) -- 将列表转换为表
     self:sortByKeepValue(cards) -- 按保留值排序
 	for _,h in sgs.list(cards)do
-    	local c = zhuandummyCard()
+    	local c = dummyCard()
 		c:setSkillName("kezhuanchuanxin")
 		c:addSubcard(h)
 		if self.player:isLocked(c) then continue end
@@ -2905,7 +2905,7 @@ kezhuancuifeng.getTurnUseCard = function(self)
 		table.insert(ss,c:getSuit())
 	end
 	if #ss>2 then
-		local dc = zhuandummyCard("fire_attack")
+		local dc = dummyCard("fire_attack")
 		dc:setSkillName("kezhuancuifeng")
 		local d = self:aiUseCard(dc)
 		if d.card and dc:isAvailable(self.player) then
@@ -2920,7 +2920,7 @@ kezhuancuifeng.getTurnUseCard = function(self)
 		end
 	end
 	for _,pn in sgs.list(patterns())do
-		local dc = zhuandummyCard(pn)
+		local dc = dummyCard(pn)
 		if dc:isDamageCard() and dc:isSingleTargetCard()
 		and self:getCardsNum(dc:getClassName())<1 then
 			dc:setSkillName("kezhuancuifeng")
@@ -2940,7 +2940,7 @@ kezhuancuifeng.getTurnUseCard = function(self)
 		end
 	end
 	for _,pn in sgs.list(patterns())do
-		local dc = zhuandummyCard(pn)
+		local dc = dummyCard(pn)
 		if dc:isDamageCard() and dc:isSingleTargetCard()
 		and self:getCardsNum(dc:getClassName())<1 then
 			dc:setSkillName("kezhuancuifeng")
@@ -2984,7 +2984,7 @@ kezhuandengnan.name="kezhuandengnan"
 table.insert(sgs.ai_skills,kezhuandengnan)
 kezhuandengnan.getTurnUseCard = function(self)
 	if self.player:getMark("@kezhuancuifeng")>0 and #self.enemies>1 then
-		local dc = zhuandummyCard("iron_chain")
+		local dc = dummyCard("iron_chain")
 		dc:setSkillName("kezhuandengnan")
 		local d = self:aiUseCard(dc)
 		if d.card and dc:isAvailable(self.player) then
@@ -3003,7 +3003,7 @@ kezhuandengnan.getTurnUseCard = function(self)
 	end
 	local choices = {}
 	for _,pn in sgs.list(patterns()) do
-		local dc = zhuandummyCard(pn)
+		local dc = dummyCard(pn)
 		if not dc:isDamageCard() and dc:isNDTrick()
 		and self:getCardsNum(dc:getClassName())<1 then
 			dc:setSkillName("kezhuandengnan")
@@ -3117,7 +3117,7 @@ sgs.ai_skill_use_func["#kezhuanhuozhongCard"] = function(card,use,self)
 	end
 	for _,c in ipairs(cards)do
 		if not c:isBlack() or c:getTypeId()==2 then continue end
-		local dc = zhuandummyCard("supply_shortage")
+		local dc = dummyCard("supply_shortage")
 		dc:setSkillName("kezhuanhuozhong")
 		dc:addSubcard(c)
 		if not self.player:containsTrick("supply_shortage") and self.player:hasJudgeArea()
