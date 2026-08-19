@@ -469,12 +469,24 @@ sgs.ai_skill_discard.s4_jiuzhu_invoke = function(self, discard_num, min_num, opt
     end
     return {}
 end
-sgs.ai_skill_invoke.s4_jiuzhu = true
+sgs.ai_skill_invoke.s4_jiuzhu = function(self, data)
+	if self:isWeak() and not self.player:canDiscard(self.player, "he") then
+		return false
+	end
+	return true
+end
 
 sgs.ai_choicemade_filter.cardChosen.s4_jiuzhu = sgs.ai_choicemade_filter.cardChosen.snatch
 sgs.notActive_cardneed_skill = sgs.notActive_cardneed_skill .. "|s4_jiuzhu"
 sgs.dont_kongcheng_skill = sgs.dont_kongcheng_skill .. "|s4_jiuzhu"
 
+sgs.ai_playerchosen_intention.s4_jiuzhu = function(self,from,to)
+	if self.player:hasFlag("s4_jiuzhu_current") then
+		sgs.updateIntention(from,to,40)
+	else
+		sgs.updateIntention(from,to,-40)
+	end
+end
 
 function SmartAI:getGeneralDuelCard(player, cards)
     player = player or self.player
