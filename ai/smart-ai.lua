@@ -11387,7 +11387,8 @@ for _,aextension in ipairs(sgs.Sanguosha:getExtensions())do
 		then
 			-- 單一套件 AI 檔載入失敗 (檔案損壞/半寫) 只跳過該套件,
 			-- 不讓整個 smart-ai 載入失敗 (否則 Room 的 m_lua 會被清空)
-			local ok, err = pcall(dofile, "lua/ai/"..sl)
+			-- 用磁碟實際檔名 ai_file (而非全小寫 sl) 以相容 case-sensitive 檔案系統
+			local ok, err = pcall(dofile, "lua/ai/"..ai_file)
 			if not ok then print("AI script load failed: "..tostring(err)) end
 			break
 		end
@@ -11403,7 +11404,7 @@ for _,ascenario in ipairs(sgs.Sanguosha:getModScenarioNames())do
 	for _,ai_file in ipairs(ai_files)do
 		if sl==string.lower(ai_file)
 		then
-			local ok, err = pcall(dofile, "lua/ai/"..sl)
+			local ok, err = pcall(dofile, "lua/ai/"..ai_file)
 			if not ok then print("Scenario AI load failed: "..tostring(err)) end
 			break
 		end
