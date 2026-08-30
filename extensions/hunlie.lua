@@ -1295,7 +1295,7 @@ sgkgodfenying = sgs.CreateTriggerSkill{
 		local s = room:findPlayerBySkillName(self:objectName())
 		if not damage.to:isAlive() then return false end
 		if damage.nature ~= sgs.DamageStruct_Fire then return false end
-		if damage.damage <= 0then return false end
+		if damage.damage <= 0 then return false end
 		local n = damage.damage
 		if s:askForSkillInvoke(self:objectName(), data) then
 			room:notifySkillInvoked(s, self:objectName())

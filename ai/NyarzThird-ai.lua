@@ -107,7 +107,7 @@ sgs.ai_skill_discard.nyarz_yuheng = function(self, max, min)
         for _,pl in sgs.qlist(self.room:getOtherPlayers(self.player)) do
             table.insert(num,pl:getHandcardNum())
         end
-        if self.player:getHandcardNum() > (math.max(unpack(num)) + 5) then
+        if self.player:getHandcardNum() > (math.max(table.unpack(num)) + 5) then
             if self.player:getPhase() == sgs.Player_NotActive then
                 if self:isEnemy(target) then
                     bestNum = math.min(3,target:getHandcardNum())
