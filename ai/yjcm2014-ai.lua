@@ -16,7 +16,7 @@ sgs.ai_skill_use_func.DingpinCard = function(card,use,self)
 	local cards = {}
 	local cardType = {}
 	for _,card in sgs.qlist(self.player:getHandcards())do
-		--if bit32.band(self.player:getMark("dingpin"),bit32.lshift(1,card:getTypeId()))==0 then
+		--if (self.player:getMark("dingpin") & (1 << card:getTypeId()))==0 then
 		if self.player:canDiscard(self.player,card:getEffectiveId()) and self.player:getMark("dingpin_"..card:getType().."-Clear")==0 then
 			table.insert(cards,card)
 			if not table.contains(cardType,card:getTypeId()) then table.insert(cardType,card:getTypeId()) end
@@ -24,7 +24,7 @@ sgs.ai_skill_use_func.DingpinCard = function(card,use,self)
 	end
 	--[[for _,id in sgs.qlist(self.player:getPile("wooden_ox"))do
 		local card = sgs.Sanguosha:getCard(id)
-		if bit32.band(self.player:getMark("dingpin"),bit32.lshift(1,card:getTypeId()))==0 then
+		if (self.player:getMark("dingpin") & (1 << card:getTypeId()))==0 then
 			table.insert(cards,card)
 			if not table.contains(cardType,card:getTypeId()) then table.insert(cardType,card:getTypeId()) end
 		end

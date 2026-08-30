@@ -328,7 +328,7 @@ function AILogger:protect(funcName, func, ...)
 	
 	if success then
 		self:logFunctionExit(funcName, stackIndex, true)
-		return unpack(results)
+		return table.unpack(results)
 	else
 		self:logError(funcName, results[1], {args = args})
 		self:logFunctionExit(funcName, stackIndex, false)
