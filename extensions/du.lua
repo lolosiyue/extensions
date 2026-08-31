@@ -645,9 +645,9 @@ du_tongque = sgs.CreateTriggerSkill {
 
 duDongzhuo = sgs.General(extension, "duDongzhuo$", "qun", 4)
 
-xixing = sgs.CreateTriggerSkill {
+du_xixing = sgs.CreateTriggerSkill {
 
-	name = "xixing",
+	name = "du_xixing",
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.Damaged },
 	on_trigger = function(self, event, player, data)
@@ -661,7 +661,7 @@ xixing = sgs.CreateTriggerSkill {
 		end
 		local dest = sgs.QVariant()
 		dest:setValue(damage.from)
-		if room:askForSkillInvoke(player, "xixing", dest) then
+		if room:askForSkillInvoke(player, "du_xixing", dest) then
 			player:obtainCard(damage.from:wholeHandCards(), false)
 			room:broadcastSkillInvoke(self:objectName())
 		end
@@ -965,7 +965,7 @@ extension:insertRelatedSkills("duWuhun", "#duoDaoAndMa")
 duCaocao:addSkill(jieyou)
 duCaocao:addSkill(jiuwei)
 duCaocao:addSkill(du_tongque)
-duDongzhuo:addSkill(xixing)
+duDongzhuo:addSkill(du_xixing)
 duDongzhuo:addSkill(du_jiyu)
 duDongzhuo:addSkill(duBaonue)
 duDiaochan:addSkill(du_zhouxuan)
@@ -1089,10 +1089,10 @@ sgs.LoadTranslationTable {
 	["$jiuwei1"] = "孤，好梦中杀人！",
 	["$jiuwei2"] = "宁教我负天下人，休教天下人负我！",
 
-	["xixing"] = "庸纳",
-	[":xixing"] = "每当你受到伤害后，你可以获得伤害来源的全部手牌。",
-	["$xixing1"] = "敲骨吸髓，不亦乐乎。",
-	["$xixing2"] = "强取豪夺，乃真豪杰。",
+	["du_xixing"] = "庸纳",
+	[":du_xixing"] = "每当你受到伤害后，你可以获得伤害来源的全部手牌。",
+	["$du_xixing1"] = "敲骨吸髓，不亦乐乎。",
+	["$du_xixing2"] = "强取豪夺，乃真豪杰。",
 
 	["du_jiyu"] = "积郁",
 	[":du_jiyu"] = "回合开始阶段，若你的手牌数量大于手牌上限，你失去一点体力上限。",
@@ -1111,7 +1111,7 @@ sgs.LoadTranslationTable {
 	["$jiushen2_tril"] = "酒神现世",
 	["$juli_tril"] = "汇天地之灵气",
 	["$gudan_tril"] = "孤胆英雄",
-	["$xixing_tril"] = "孤胆英雄",
+	["$du_xixing_tril"] = "孤胆英雄",
 	["$jiyu_tril"] = "孤胆英雄",
 	["$jiuwei_tril"] = "孤胆英雄",
 	["$duHujia_tril"] = "孤胆英雄",
