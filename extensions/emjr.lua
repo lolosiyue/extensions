@@ -741,7 +741,7 @@ eaocai = sgs.CreateTriggerSkill {
 					end
 				end
 				room:broadcastSkillInvoke(self:objectName())
-				room:broadcastInvoke("animate", "lightbox:$eaocai:5000")
+				room:doLightbox("$eaocai", 5000)
 				player:loseMark("@talent")
 				for _, p in sgs.qlist(targets) do
 					local choice

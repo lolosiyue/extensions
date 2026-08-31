@@ -2432,8 +2432,7 @@ qhstandardguanxing = sgs.CreateTriggerSkill { -- 观星 触发技
                         local name = player:objectName()
                         if source:property("qhstandardguanxing_target"):toString() == name then         -- 为目标
                             room:broadcastSkillInvoke("guanxing", 1)                                    -- 播放配音
-                            room:broadcastInvoke("animate",
-                                "indicate:" .. source:objectName() .. ":" .. player:objectName())       -- 指示线动画
+                            room:doAnimate(1, source:objectName(), player:objectName())               -- 指示线动画
                             room:getThread():delay(700)                                                 -- 等待
                             local cards = room:getNCards(7, false)                                      -- 获取摸牌堆顶 7 张牌，不更新摸牌堆
                             room:askForGuanxing(source, cards)                                          -- 观星

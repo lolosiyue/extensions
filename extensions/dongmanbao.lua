@@ -2011,7 +2011,7 @@ se_erdao_oldCard = sgs.CreateSkillCard {
 			return
 		end
 		room:broadcastSkillInvoke("se_erdao_old")
-		room:broadcastInvoke("animate", "lightbox:$se_erdao_old")
+		room:doLightbox("$se_erdao_old")
 		local damage = sgs.DamageStruct()
 		damage.from = source
 		damage.to = dest
