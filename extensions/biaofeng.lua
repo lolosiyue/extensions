@@ -4089,7 +4089,7 @@ PlusRende = sgs.CreateTriggerSkill {
 							msg.from = player
 							msg.arg = self:objectName()
 							room:sendLog(msg)
-							room:broadcastInvoke("animate", "lightbox:$PlusRende_Animation:3000")
+							room:doLightbox("$PlusRende_Animation", 3000)
 							room:getThread():delay(4000)
 							player:loseMark("@rende")
 							local card = sgs.Sanguosha:cloneCard("god_salvation", sgs.Card_NoSuit, 0)
@@ -5340,7 +5340,7 @@ PlusQimou_Card = sgs.CreateSkillCard {
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
-		room:broadcastInvoke("animate", "lightbox:$PlusQimou_Animation:3000")
+		room:doLightbox("$PlusQimou_Animation", 3000)
 		room:getThread():delay(4000)
 		source:loseMark("@stratagem")
 		room:addPlayerMark(source, "&PlusQimou-Clear")
@@ -6360,7 +6360,7 @@ PlusDujiang = sgs.CreateTriggerSkill {
 			msg.arg = player:getPile("slack"):length()
 			msg.arg2 = self:objectName()
 			room:sendLog(msg)
-			room:broadcastInvoke("animate", "lightbox:$PlusDujiang_Animation:3000")
+			room:doLightbox("$PlusDujiang_Animation", 3000)
 			room:getThread():delay(4000)
 			room:setPlayerMark(player, "PlusDujiang", 1)
 			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
@@ -6866,7 +6866,7 @@ PlusZhaxiang_Card = sgs.CreateSkillCard {
 	target_fixed = true,
 	will_throw = true,
 	on_use = function(self, room, source, targets)
-		room:broadcastInvoke("animate", "lightbox:$PlusZhaxiang_Animation:3000")
+		room:doLightbox("$PlusZhaxiang_Animation", 3000)
 		room:getThread():delay(4000)
 		source:loseMark("@surrender")
 		if not source:isChained() then
@@ -7113,7 +7113,7 @@ PlusLiangyuan_Card = sgs.CreateSkillCard {
 	end,
 	on_use = function(self, room, source, targets)
 		if #targets == 1 then
-			room:broadcastInvoke("animate", "lightbox:$PlusLiangyuan_Animation:3000")
+			room:doLightbox("$PlusLiangyuan_Animation", 3000)
 			room:getThread():delay(4000)
 			source:loseMark("@love")
 			local target = targets[1]
@@ -13676,7 +13676,7 @@ SevenRenDe = sgs.CreateTriggerSkill {
 		if player:getPhase() == sgs.Player_Discard then
 			if player:askForSkillInvoke(self:objectName()) then
 				room:notifySkillInvoked(player, self:objectName())
-				room:broadcastInvoke(self:objectName())
+				room:broadcastSkillInvoke(self:objectName())
 				if player:getHandcardNum() < room:getAlivePlayers():length() then
 					player:drawCards(room:getAlivePlayers():length() - player:getHandcardNum())
 				end
@@ -13942,7 +13942,7 @@ SevenZhenShi = sgs.CreateTriggerSkill {
 					room:moveCardTo(to_exchange, target, sgs.Player_PlaceHand, false)
 
 					room:notifySkillInvoked(player, self:objectName())
-					room:broadcastInvoke(self:objectName())
+					room:broadcastSkillInvoke(self:objectName())
 
 					local recover = sgs.RecoverStruct()
 					recover.who = player
@@ -14119,7 +14119,7 @@ SevenChuaiYi = sgs.CreateTriggerSkill {
 		local damage = data:toDamage()
 		if damage.from and not damage.from:isKongcheng() and not player:isKongcheng() then
 			if room:askForSkillInvoke(player, self:objectName(), data) then
-				room:broadcastInvoke(self:objectName())
+				room:broadcastSkillInvoke(self:objectName())
 				room:notifySkillInvoked(player, self:objectName())
 				local card = room:askForCard(damage.from, ".!", "@SevenChuaiYi-show", data, sgs.Card_MethodNone)
 				local carda = room:askForCard(damage.to, ".!", "@SevenChuaiYi-show", data, sgs.Card_MethodNone)
@@ -14230,7 +14230,7 @@ SevenJuGong = sgs.CreateTriggerSkill {
 		if draw.reason ~= "draw_phase" then return false end
 		if event == sgs.DrawNCards then
 			draw.num = draw.num + player:getLostHp()
-			room:broadcastInvoke(self:objectName())
+			room:broadcastSkillInvoke(self:objectName())
 			room:sendCompulsoryTriggerLog(player, self:objectName())
 			data:setValue(draw)
 		elseif event == sgs.AfterDrawNCards then
@@ -14431,7 +14431,7 @@ SevenXiaoRui_Tr = sgs.CreateTriggerSkill {
 
 			if invoke or (use.to:length() > 1 and use.from:getLostHp() > 0) then
 				room:setCardFlag(use.card, "SevenXiaoRui")
-				room:broadcastInvoke("SevenXiaoRui")
+				room:broadcastSkillInvoke("SevenXiaoRui")
 				room:sendCompulsoryTriggerLog(use.from, "SevenXiaoRui")
 			end
 		end
@@ -14683,7 +14683,7 @@ SevenLanQuan = sgs.CreateTriggerSkill {
 					if p:objectName() ~= player:objectName() and room:askForSkillInvoke(p, self:objectName()) then
 						room:notifySkillInvoked(p, self:objectName())
 						p:drawCards(2)
-						room:broadcastInvoke(self:objectName())
+						room:broadcastSkillInvoke(self:objectName())
 					end
 				end
 			end
@@ -14790,7 +14790,7 @@ SevenBaChao = sgs.CreateTriggerSkill {
 		if event == sgs.TrickCardCanceling then
 			local effect = data:toCardEffect()
 			if RIGHT(self, effect.from) and effect.card:hasFlag(self:objectName()) then
-				room:broadcastInvoke(self:objectName())
+				room:broadcastSkillInvoke(self:objectName())
 				room:sendCompulsoryTriggerLog(effect.from, self:objectName())
 				return true
 			end
@@ -14891,7 +14891,7 @@ SevenJieMing = sgs.CreateTriggerSkill {
 	on_trigger = function(self, event, player, data, room)
 		local damage = data:toDamage()
 		if damage.from then
-			room:broadcastInvoke(self:objectName())
+			room:broadcastSkillInvoke(self:objectName())
 			room:sendCompulsoryTriggerLog(player, self:objectName())
 			if not damage.from:isKongcheng() then
 				local card = room:askForCard(damage.from, "..", "@SevenJieMing", data, self:objectName())

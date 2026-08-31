@@ -11890,7 +11890,7 @@ guihanss = sgs.CreateTriggerSkill {
 		local room = player:getRoom()
 		if player:getPhase() == sgs.Player_Start then
 			if player:getMark("&guihans") > 0 then
-				room:broadcastInvoke("animate", "lightbox:$Guihans:3000")
+				room:doLightbox("$Guihans", 3000)
 				room:getThread():delay(3000)
 				room:handleAcquireDetachSkills(player, "-guihans")
 				if player:getGeneralName() == "newmspcaiwenji" then
@@ -12097,7 +12097,7 @@ xiehou = sgs.CreateTriggerSkill
 			local damage = data:toDamage()
 			if damage.nature == sgs.DamageStruct_Fire or damage.nature == sgs.DamageStruct_Thunder then
 				if room:askForSkillInvoke(player, "xiehou") then
-					room:broadcastInvoke("animate", "lightbox:$Xiehou:3000")
+					room:doLightbox("$Xiehou", 3000)
 					room:getThread():delay(3000)
 					if player:getGeneralName() == "newmspgodzhenji" then
 						room:changeHero(player, "newmspgodzhenjijh", false, false, false, false)
@@ -12287,7 +12287,7 @@ shixiang = sgs.CreateTriggerSkill {
 			if player:getMark("@shixiang") > 0 then
 				local room = player:getRoom()
 				if room:askForSkillInvoke(player, "shixiang") then
-					room:broadcastInvoke("animate", "lightbox:$Shixiang:3000")
+					room:doLightbox("$Shixiang", 3000)
 					room:getThread():delay(3000)
 					local x = math.min(9, player:getHandcardNum() * 3)
 					player:throwAllHandCards()
@@ -12319,7 +12319,7 @@ meizi_shenfu = sgs.CreateTriggerSkill {
 		local dying = data:toDying()
 		if dying.who:objectName() == player:objectName() then
 			if room:askForSkillInvoke(player, "meizi_shenfu") then
-				room:broadcastInvoke("animate", "lightbox:$Shenfu:3000")
+				room:doLightbox("$Shenfu", 3000)
 				room:getThread():delay(3000)
 				if player:getGeneralName() == "newmspgodzhenjijh" then
 					room:changeHero(player, "newmspgodzhenjijhnd", false, false, false, false)

@@ -396,7 +396,7 @@ FiveYingzhan = sgs.CreateTriggerSkill {
 			msg.from = player
 			msg.arg = self:objectName()
 			room:sendLog(msg)
-			room:broadcastInvoke("animate", "lightbox:$FiveYingzhan:3000")
+			room:doLightbox("$FiveYingzhan", 3000)
 			room:getThread():delay(4000)
 			player:addMark("FiveYingzhan")
 			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
@@ -1142,7 +1142,7 @@ FourJiaozhao_Card = sgs.CreateSkillCard {
 		local source = effect.from
 		local dest = effect.to
 		local room = source:getRoom()
-		room:broadcastInvoke("animate", "lightbox:$FourJiaozhao:3000")
+		room:doLightbox("$FourJiaozhao", 3000)
 		room:getThread():delay(4000)
 		source:loseMark("@jiaozhao", 1)
 		room:obtainCard(dest, self)
@@ -1727,7 +1727,7 @@ FourNiepan = sgs.CreateTriggerSkill {
 		local source = dying_data.who
 		if source:objectName() == player:objectName() then
 			if player:askForSkillInvoke(self:objectName(), data) then
-				room:broadcastInvoke("animate", "lightbox:$FourNiepan:3000")
+				room:doLightbox("$FourNiepan", 3000)
 				room:getThread():delay(4000)
 				player:loseMark("@Four_nirvana")
 				player:throwAllCards()
@@ -2782,7 +2782,7 @@ FourDedao = sgs.CreateTriggerSkill {
 			msg.arg = player:getPile("symbol"):length()
 			msg.arg2 = self:objectName()
 			room:sendLog(msg)
-			room:broadcastInvoke("animate", "lightbox:$FourDedao:3000")
+			room:doLightbox("$FourDedao", 3000)
 			room:getThread():delay(4000)
 
 			if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
@@ -3145,7 +3145,7 @@ DiyBaobian = sgs.CreateTriggerSkill {
 				msg.arg = player:getPile("turn"):length()
 				msg.arg2 = self:objectName()
 				room:sendLog(msg)
-				room:broadcastInvoke("animate", "lightbox:$DiyBaobian:3000")
+				room:doLightbox("$DiyBaobian", 3000)
 				room:getThread():delay(4000)
 				room:setPlayerMark(player, "DiyBaobian", 1)
 				if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
@@ -3305,7 +3305,7 @@ PlusFenxin = sgs.CreateTriggerSkill{
 						local ai_data = sgs.QVariant()
 						ai_data:setValue(player)
 						if room:askForSkillInvoke(killer, self:objectName(), ai_data) then
-							room:broadcastInvoke("animate", "lightbox:$FenxinAnimate")
+							room:doLightbox("$FenxinAnimate")
 							room:getThread():delay(1500)
 							killer:loseMark("@burnheart")
 							local killer_name = killer:getGeneralName()
