@@ -4540,12 +4540,12 @@ extension:insertRelatedSkills("tupo", "#tuporecord")
 --tassel/slumber/insomniac神之lua
 JESTA = sgs.General(extension, "JESTA", "EFSF", 3, true, false)
 
-zhanshi_card = sgs.CreateSkillCard{
-	name = "zhanshi",
+gaoda_zhanshicard = sgs.CreateSkillCard{
+	name = "gaoda_zhanshi",
 	will_throw = false,
 	handling_method = sgs.Card_MethodNone,
 	filter = function(self, targets, to_select, player)
-		local card = player:getTag("zhanshi"):toCard()
+		local card = player:getTag("gaoda_zhanshi"):toCard()
 		card:setSkillName(self:objectName())
 		if card and card:targetFixed() then
 			return false
@@ -4558,7 +4558,7 @@ zhanshi_card = sgs.CreateSkillCard{
 			and not player:isProhibited(to_select, card, qtargets)
 	end,
 	feasible = function(self, targets, player)
-		local card = player:getTag("zhanshi"):toCard()
+		local card = player:getTag("gaoda_zhanshi"):toCard()
 		card:setSkillName(self:objectName())
 		local qtargets = sgs.PlayerList()
 		for _, p in ipairs(targets) do
@@ -4590,31 +4590,31 @@ zhanshi_card = sgs.CreateSkillCard{
 	end,
 }
 
-zhanshi_vs = sgs.CreateZeroCardViewAsSkill{
-	name = "zhanshi",
+gaoda_zhanshivs = sgs.CreateZeroCardViewAsSkill{
+	name = "gaoda_zhanshi",
 	view_as = function(self, cards)
-		local c = sgs.Self:getTag("zhanshi"):toCard()
+		local c = sgs.Self:getTag("gaoda_zhanshi"):toCard()
 		if c then
-			local card = zhanshi_card:clone()
+			local card = gaoda_zhanshicard:clone()
 			card:setUserString(c:objectName())
 			return card
 		end
 		return nil
 	end,
-	response_pattern = "@@zhanshi"
+	response_pattern = "@@gaoda_zhanshi"
 }
 
-zhanshi = sgs.CreateTriggerSkill{
-	name = "zhanshi",
+gaoda_zhanshi = sgs.CreateTriggerSkill{
+	name = "gaoda_zhanshi",
 	events = {sgs.CardFinished, sgs.TurnStart},
-	view_as_skill = zhanshi_vs,
+	view_as_skill = gaoda_zhanshivs,
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		if event == sgs.CardFinished then
 			local use = data:toCardUse()
 			if use.card and use.card:isKindOf("BasicCard") and use.card:isBlack() then
-				if player:getTag("zhanshi"):toCard() then
-					player:removeTag("zhanshi")
+				if player:getTag("gaoda_zhanshi"):toCard() then
+					player:removeTag("gaoda_zhanshi")
 				end
 				local guhuo_list = player:property("allowed_guhuo_dialog_buttons"):toString()
 				if guhuo_list == "" then
@@ -4628,10 +4628,10 @@ zhanshi = sgs.CreateTriggerSkill{
 					end
 					room:setPlayerProperty(player, "allowed_guhuo_dialog_buttons", sgs.QVariant(table.concat(tricks, "+")))
 				end
-				if not room:askForUseCard(player, "@@zhanshi", "@zhanshi") then
+				if not room:askForUseCard(player, "@@gaoda_zhanshi", "@gaoda_zhanshi") then
 					room:setPlayerProperty(player, "allowed_guhuo_dialog_buttons", sgs.QVariant())
 				end
-			elseif use.card:isNDTrick() and table.contains(use.card:getSkillNames(), "zhanshi") and use.to:length() == 1 then
+			elseif use.card:isNDTrick() and table.contains(use.card:getSkillNames(), "gaoda_zhanshi") and use.to:length() == 1 then
 				local choices = {"eight_diagram", "renwang_shield", "silver_lion", "vine"}
 				for _, c in ipairs(choices) do
 					if player:getMark("@"..c) > 0 then
@@ -4641,7 +4641,7 @@ zhanshi = sgs.CreateTriggerSkill{
 				local choice = room:askForChoice(player, self:objectName(), table.concat(choices, "+"))
 				if choice then
 					local log = sgs.LogMessage()
-					log.type = "#zhanshi"
+					log.type = "#gaoda_zhanshi"
 					log.from = player
 					log.arg = choice
 					room:sendLog(log)
@@ -4657,7 +4657,7 @@ zhanshi = sgs.CreateTriggerSkill{
 	end
 }
 
-zhanshi:setGuhuoDialog("!r") --若是触发技，在r前加!
+gaoda_zhanshi:setGuhuoDialog("!r") --若是触发技，在r前加!
 
 heixing = sgs.CreateFilterSkill{
 	name = "heixing",
@@ -4831,7 +4831,7 @@ AmrorSkill_V = sgs.CreateTriggerSkill{
 	end,
 }
 
-JESTA:addSkill(zhanshi)
+JESTA:addSkill(gaoda_zhanshi)
 JESTA:addSkill(heixing)
 
 JESTA:addSkill(AmrorSkill_ED)
@@ -4839,10 +4839,10 @@ JESTA:addSkill(AmrorSkill_RS)
 JESTA:addSkill(AmrorSkill_SL)
 JESTA:addSkill(AmrorSkill_V)
 
-extension:insertRelatedSkills("zhanshi", "#AmrorSkill_ED")
-extension:insertRelatedSkills("zhanshi", "#AmrorSkill_RS")
-extension:insertRelatedSkills("zhanshi", "#AmrorSkill_SL")
-extension:insertRelatedSkills("zhanshi", "#AmrorSkill_V")
+extension:insertRelatedSkills("gaoda_zhanshi", "#AmrorSkill_ED")
+extension:insertRelatedSkills("gaoda_zhanshi", "#AmrorSkill_RS")
+extension:insertRelatedSkills("gaoda_zhanshi", "#AmrorSkill_SL")
+extension:insertRelatedSkills("gaoda_zhanshi", "#AmrorSkill_V")
 
 BYARLANT_C = sgs.General(extension, "BYARLANT_C", "EFSF", 4, true, false)
 
@@ -17576,13 +17576,13 @@ sgs.LoadTranslationTable{
 	["designer:JESTA"] = "高达杀制作组",
 	["cv:JESTA"] = "奈吉·盖瑞特、达里尔·麦金尼斯、瓦茨·斯特普尼",
 	["illustrator:JESTA"] = "wch5621628",
-	["zhanshi"] = "战式",
-	[":zhanshi"] = "当你使用一张<b>黑色</b>基本牌后，你可以视为使用任意一张通常锦囊，若此牌只有一个目标，你获得一次防具效果（至多一项，且装备区有防具牌时效果无效），直到你的下回合开始前。",
+	["gaoda_zhanshi"] = "战式",
+	[":gaoda_zhanshi"] = "当你使用一张<b>黑色</b>基本牌后，你可以视为使用任意一张通常锦囊，若此牌只有一个目标，你获得一次防具效果（至多一项，且装备区有防具牌时效果无效），直到你的下回合开始前。",
 	["heixing"] = "黑星",
 	[":heixing"] = "<font color=\"blue\"><b>锁定技，</b></font>你的方块【闪】均视为黑桃【闪】。",
-	["@zhanshi"] = "你可以视为使用任意一张通常锦囊",
-	["~zhanshi"] = "若此牌只指定一名其他角色，你获得一项防具效果，直到你的下回合开始前",
-	["#zhanshi"] = "%from 获得一次 %arg 效果",
+	["@gaoda_zhanshi"] = "你可以视为使用任意一张通常锦囊",
+	["~gaoda_zhanshi"] = "若此牌只指定一名其他角色，你获得一项防具效果，直到你的下回合开始前",
+	["#gaoda_zhanshi"] = "%from 获得一次 %arg 效果",
 	
 	["BYARLANT_C"] = "拜亚兰改",
 	["#BYARLANT_C"] = "超级王牌",
