@@ -1401,7 +1401,7 @@ function shuffle(tbl)
 	return tbl
 end
 
-sgs.ai_skill_use["@@zhanshi"] = function(self, prompt)
+sgs.ai_skill_use["@@gaoda_zhanshi"] = function(self, prompt)
 	local tricks = {"snatch", "dismantlement", "collateral", "ex_nihilo", "duel", --[["amazing_grace",]] "savage_assault", "archery_attack", "god_salvation"}
 	if not (Set(sgs.Sanguosha:getBanPackages()))["maneuvering"] then
 		table.insert(tricks, "fire_attack")
@@ -1415,7 +1415,7 @@ sgs.ai_skill_use["@@zhanshi"] = function(self, prompt)
 	
 	for _, trick in ipairs(tricks) do
 		local qicecard = sgs.Sanguosha:cloneCard(trick)
-		qicecard:setSkillName("zhanshi")
+		qicecard:setSkillName("gaoda_zhanshi")
 		
 		if self.player:isCardLimited(qicecard, sgs.Card_MethodUse, true) or not qicecard:isAvailable(self.player) then continue end
 		
@@ -1435,17 +1435,17 @@ sgs.ai_skill_use["@@zhanshi"] = function(self, prompt)
 				for _, p in sgs.qlist(use.to) do
 					table.insert(targets, p:objectName())
 				end
-				return ("%s:zhanshi[no_suit:0]=.->%s"):format(trick, table.concat(targets, "+"))
+				return ("%s:gaoda_zhanshi[no_suit:0]=.->%s"):format(trick, table.concat(targets, "+"))
 			end
 			
-			return ("%s:zhanshi[no_suit:0]=."):format(trick)
+			return ("%s:gaoda_zhanshi[no_suit:0]=."):format(trick)
 		end
 	end
 	
 	return "."
 end
 
-sgs.ai_skill_choice.zhanshi = function(self, choices, data)
+sgs.ai_skill_choice.gaoda_zhanshi = function(self, choices, data)
 	local choice = choices:split("+")
 	return choice[math.random(1, #choice)]
 end
@@ -1467,7 +1467,7 @@ sgs.ai_target_revises["@vine"] = function(to,card)
 end
 
 
-sgs.zhanshi_suit_value = {
+sgs.gaoda_zhanshi_suit_value = {
 	spade = 3,
 	club = 3
 }
