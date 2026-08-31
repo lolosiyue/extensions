@@ -6204,7 +6204,7 @@ sgs.LoadTranslationTable {
 
 sgs.Sanguosha:setPackage(mobile_sp)
 
-local OLStThicket = sgs.Sanguosha:getPackage("OLStThicket")
+local OLStThicket = sgs.Sanguosha:getPackage("ol_st_thicket")
 
 --OL界贾诩
 ol_jiaxu = sgs.General(OLStThicket, "ol_jiaxu", "qun", 3)
@@ -6664,7 +6664,7 @@ OLStThicket:insertRelatedSkills("olhaoshi", "#olhaoshiEffect")
 
 sgs.Sanguosha:setPackage(OLStThicket)
 
-local OLStFire = sgs.Sanguosha:getPackage("OLStFire")
+local OLStFire = sgs.Sanguosha:getPackage("ol_st_fire")
 
 keol_yanliangwenchou = sgs.General(OLStFire, "keol_yanliangwenchou", "qun", 4)
 keolshuangxiongVS = sgs.CreateOneCardViewAsSkill {
@@ -6757,7 +6757,7 @@ sgs.LoadTranslationTable {
 
 sgs.Sanguosha:setPackage(OLStFire)
 
-local OLStStandard = sgs.Sanguosha:getPackage("OLStStandard")
+local OLStStandard = sgs.Sanguosha:getPackage("ol_st_standard")
 
 keoljie_lvmeng = sgs.General(OLStStandard, "keoljie_lvmeng", "wu", 4)
 keolkeji = sgs.CreateTriggerSkill {
