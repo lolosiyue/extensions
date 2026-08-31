@@ -603,7 +603,7 @@ sgs.ai_event_callback[sgs.ChoiceMade].tongque = function(self, player, data)
     end
 end
 
-sgs.ai_skill_invoke.xixing = function(self, data)
+sgs.ai_skill_invoke.du_xixing = function(self, data)
     local target = data:toPlayer()
 
     if self:isFriend(target) then
@@ -616,7 +616,7 @@ sgs.ai_skill_invoke.xixing = function(self, data)
     return true
 end
 
-sgs.ai_can_damagehp.xixing = function(self, from, card, to)
+sgs.ai_can_damagehp.du_xixing = function(self, from, card, to)
     if from and to:getHp() + self:getAllPeachNum() - self:ajustDamage(from, to, 1, card) > 0 and
         self:canLoseHp(from, card, to) then
         return self:isEnemy(from) and from:getHandcardNum() > 0
