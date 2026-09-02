@@ -398,7 +398,7 @@ function getWinner(victim)
         end
 
     -- 4. 國戰模式 (Hegemony)
-    elseif sgs.GetConfig("EnableHegemony", true) then
+    elseif sgs.GetConfig("EnableHegemony", false) then
         local has_anjiang, has_diff_kingdoms = false, false
         local init_kingdom = ""
         

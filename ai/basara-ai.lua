@@ -53,7 +53,7 @@ sgs.ai_skill_choice.RevealGeneral = function(self,choices)
 	end
 end
 
-if sgs.GetConfig("EnableHegemony",true) then
+if sgs.GetConfig("EnableHegemony",false) then
 	local init = SmartAI.initialize
 	function SmartAI:initialize(player)
 		if not sgs.initialized then
