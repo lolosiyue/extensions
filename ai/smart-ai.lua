@@ -239,7 +239,7 @@ do
 	
 	-- Performance optimization: caching
 	sgs.qlist_cache = {}
-	sgs.qlist_cache_time = 0
+	sgs.qlist_cache_gen = 0
 	sgs.defense_cache = {}
 	sgs.defense_cache_time = 0
 
@@ -421,7 +421,7 @@ end
 -- Function to invalidate qlist cache
 function sgs.invalidate_qlist_cache()
 	sgs.qlist_cache = {}
-	sgs.qlist_cache_time = 0
+	sgs.qlist_cache_gen = (sgs.qlist_cache_gen or 0) + 1
 end
 
 function sgs.qlist_cached(qlist_obj, cache_key)
@@ -429,13 +429,8 @@ function sgs.qlist_cached(qlist_obj, cache_key)
 		return sgs.QList2Table(qlist_obj)
 	end
 	
-	local current_time = os.time()
-	if sgs.qlist_cache_time ~= current_time then
-		-- Clear cache every second to avoid stale data
-		sgs.qlist_cache = {}
-		sgs.qlist_cache_time = current_time
-	end
-	
+	-- 失效改由 sgs.invalidate_qlist_cache() 驅動 (每個 trigger event 一次),
+	-- 不再用 os.time(): 一秒的粒度在動輒數十秒的單次 AI 決策裡沒有意義。
 	if not sgs.qlist_cache[cache_key] then
 		sgs.qlist_cache[cache_key] = sgs.QList2Table(qlist_obj)
 	end
@@ -457,10 +452,12 @@ end
 function sgs.getPlayerSkillList(player)
 	-- Cache key for skill list
 	local cache_key = "skills_" .. player:objectName()
-	local current_time = os.time()
-	
-	-- Use cached result if available and fresh
-	if sgs.qlist_cache_time == current_time and sgs.qlist_cache[cache_key] then
+
+	-- 舊版以 os.time() 為鍵, 但只「讀」sgs.qlist_cache_time 而從不推進它,
+	-- 推進只發生在 sgs.qlist_cached() 裡; 於是這份快取幾乎永遠 miss,
+	-- 且 miss 時連寫入都會被下面的同一個條件擋掉。20 人局單次決策實測
+	-- getSkillList 被呼叫 35257 次。改為與 qlist_cached 共用 generation 失效。
+	if sgs.qlist_cache[cache_key] then
 		return sgs.qlist_cache[cache_key]
 	end
 	
@@ -479,10 +476,8 @@ function sgs.getPlayerSkillList(player)
 	end
 	
 	-- Cache the result
-	if sgs.qlist_cache_time == current_time then
-		sgs.qlist_cache[cache_key] = skills
-	end
-	
+	sgs.qlist_cache[cache_key] = skills
+
 	return skills
 end
 
@@ -2351,6 +2346,10 @@ sgs.ai_damage_from_flag_intention["FenchengUsing"] = 10
 function SmartAI:filterEvent(event,player,data)
 	self._ai_connect_cache = nil
 	self._active_recommends_cache = nil
+	-- 每個 trigger event 結束時 roomthread.cpp 都會呼叫這裡 (roomthread.cpp:1449),
+	-- 所以這是 qlist_cache 完整且最緊的失效點: 技能增減/死亡/換將都在 event 內發生,
+	-- 而單次 AI 決策期間不會有 event, 快取在決策內恆為有效。
+	sgs.invalidate_qlist_cache()
 	-- Flush cards that CardFilter cloned in the PREVIOUS filterEvent cycle.
 	-- This is the earliest safe point: all callers from last cycle are done.
 	sgs.flushDeferredDeleteCards()
