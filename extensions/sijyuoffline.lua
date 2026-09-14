@@ -13702,7 +13702,7 @@ sfofl_huoyin_buff = sgs.CreateTargetModSkill {
     name = "#sfofl_huoyin_buff",
     pattern = "Slash",
     residue_func = function(self, from, card, to)
-        if from and to and from:inMyAttackRange(to) and to:inMyAttackRange(from) and from:hasSkill("sfofl_huoyin") then
+        if from and to and from:hasSkill("sfofl_huoyin") and from:inMyAttackRange(to) and to:inMyAttackRange(from) then
 			return 999
 		else
 			return 0
