@@ -467,7 +467,11 @@ touzhi_skill.getTurnUseCard=function(self,inclusive)
 	return sgs.Card_Parse(card_str)
 end
 
-sgs.ai_use_priority_slash_remake["touzhi"] = 8
+-- 舊版 anime AI 的 sgs.ai_use_priority_slash_remake["touzhi"] = 8：有投擲時殺的使用優先度覆寫為 8。
+-- 現行 smart-ai 無此表，改用 adjustUsePriority 的技能回呼（回傳值累加到 v），回傳 8-v 等同覆寫。
+sgs.ai_card_priority.touzhi = function(self,card,v)
+	if card:isKindOf("Slash") then return 8-v end
+end
 
 sgs.ai_skill_use["@@youjiao"] = function(self, prompt, method)
 	local cardToUse
