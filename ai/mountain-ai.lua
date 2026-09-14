@@ -1412,21 +1412,29 @@ sgs.ai_skill_invoke.jilve_guicai = function(self,data)
 	and self:getRetrialCardId(sgs.QList2Table(self.player:getHandcards()),judge)~=-1
 end
 
+local function jilveFangzhuChosen(self,which)
+	local fn = sgs.ai_skill_playerchosen[which]
+	if type(fn)~="function" then return nil end
+	return fn(self,self.room:getOtherPlayers(self.player))
+end
+
 sgs.ai_skill_invoke.jilve_fangzhu = function(self,data)
-	return sgs.ai_skill_playerchosen.fangzhu(self,self.room:getOtherPlayers(self.player))~=nil
-	or sgs.ai_skill_playerchosen.mobilefangzhu(self,self.room:getOtherPlayers(self.player))~=nil
+	return jilveFangzhuChosen(self,"fangzhu")~=nil
+	or jilveFangzhuChosen(self,"mobilefangzhu")~=nil
+	or jilveFangzhuChosen(self,"sfofl_fangzhu")~=nil
 end
 
 sgs.ai_skill_choice._jilve = function(self,choices)
 	choices = choices:split("+")
 	if table.contains(choices,"tenyearjizhi") then return "tenyearjizhi" end
-	if table.contains(choices,"mobilefangzhu") then
-		if sgs.ai_skill_playerchosen.mobilefangzhu(self,self.room:getOtherPlayers(self.player))~=nil then
-			return "mobilefangzhu"
-		end
-		return "fangzhu"
+	if table.contains(choices,"mobilefangzhu") and jilveFangzhuChosen(self,"mobilefangzhu")~=nil then
+		return "mobilefangzhu"
 	end
-	return choices[2]
+	if table.contains(choices,"sfofl_fangzhu") and jilveFangzhuChosen(self,"sfofl_fangzhu")~=nil then
+		return "sfofl_fangzhu"
+	end
+	if table.contains(choices,"fangzhu") then return "fangzhu" end
+	return choices[2] or choices[1]
 end
 
 local jilve_skill = {}
