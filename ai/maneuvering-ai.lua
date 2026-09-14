@@ -111,11 +111,12 @@ function SmartAI:useCardAnaleptic(card,use)
 		or self.player:hasFlag("canshi") and self.player:getHandcardNum()<3
 		then return end
 		local n,cs = 0,{}
+		local tm = sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_Residue,self.player,card,self.player)
 		for _,c in ipairs(self:sortByDynamicUsePriority(self:getCards("Slash")))do
+			-- 下面 #cs-1>tm 就直接 return, 湊夠 tm+2 張可用殺之後結果已定, 不必再逐張 aiUseCard
+			if #cs>tm+1 then break end
 			if c:getSubcards():contains(card:getEffectiveId()) then continue end
-			self.player:addHistory("Slash",n)
-			local can = c:isAvailable(self.player)
-			self.player:addHistory("Slash",-n)
+			local can = sgs.aiSlashAvailable(self.player, c, n)
 			can = can and self:aiUseCard(c)
 			if can and can.card then
 				table.insert(cs,can)
@@ -123,7 +124,6 @@ function SmartAI:useCardAnaleptic(card,use)
 			end
 		end
 		if #cs<1 then return end
-		local tm = sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_Residue,self.player,card,self.player)
 		for i,d in ipairs(cs)do
 			if #cs-i>tm then return end
 			for _,to in sgs.qlist(d.to)do

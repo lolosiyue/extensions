@@ -355,9 +355,8 @@ nyarz_baguan = sgs.CreateTriggerSkill {
 nyarz_baguan_buff = sgs.CreateTargetModSkill {
 	name = "#nyarz_baguan_buff",
 	extra_target_func = function(self, from, card)
-		local n = from:getAttackRange()
 		if card:getSkillName() == "nyarz_baguan" then
-			return n
+			return from:getAttackRange()
 		end
 		return 0
 	end,
