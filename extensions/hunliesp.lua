@@ -3646,7 +3646,7 @@ TG_Event["useorrespondjink"] = function(self, event, player, data, room)  --每�
 	end
 end
 
-TG_Event["damaging"] = function(self, event, player, data, room)  --每回合限X（1~3）次，当你造成伤害时
+TG_Event["damagecaused"] = function(self, event, player, data, room)  --每回合限X（1~3）次，当你造成伤害时
 	if event == sgs.DamageCaused then
 		local damage = data:toDamage()
 		if damage.from and damage.from:objectName() == player:objectName() then
@@ -3719,7 +3719,7 @@ TG_Event["playerenterdying"] = function(self, event, player, data, room)  --每�
 	end
 end
 
-TG_Event["playerenterdying"] = function(self, event, player, data, room)  --每回合限X（1~3）次，当你脱离濒死状态后
+TG_Event["playerquitdying"] = function(self, event, player, data, room)  --每回合限X（1~3）次，当你脱离濒死状态后
 	if event == sgs.QuitDying then
 		local dying = data:toDying()
 		if dying.who and dying.who:objectName() == player:objectName() then
@@ -5246,7 +5246,7 @@ sgkgodlinglong = sgs.CreateTriggerSkill{
 							room:setPlayerMark(player, to_lose.."_mark", 0)
 							room:addPlayerMark(player, data:toString().."_temp_skill")
 							room:handleAcquireDetachSkills(player, data:toString())
-							room:setPlayerMark(player, data:toString().."_temp_skill")
+							room:setPlayerMark(player, data:toString().."_temp_skill", 0)
 							player:setTag("hunliesp_global_resistSkill", sgs.QVariant(true))
 						else
 							room:handleAcquireDetachSkills(player, data:toString())
@@ -5289,7 +5289,7 @@ sgkgodlinglonglose = sgs.CreateTriggerSkill{
 						room:setPlayerMark(player, to_lose.."_mark", 0)
 						room:addPlayerMark(player, data:toString().."_temp_skill")
 						room:handleAcquireDetachSkills(player, data:toString())
-						room:setPlayerMark(player, data:toString().."_temp_skill")
+						room:setPlayerMark(player, data:toString().."_temp_skill", 0)
 						player:setTag("hunliesp_global_resistSkill", sgs.QVariant(true))
 					else
 						room:handleAcquireDetachSkills(player, data:toString())
