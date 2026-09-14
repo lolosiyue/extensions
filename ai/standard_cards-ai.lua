@@ -506,14 +506,14 @@ function isCurrent(use,to)
 end
 
 function SmartAI:useCardSlash(card,use)
-	local extraTarget = sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget,self.player,card)
+	local extraTarget = sgs.aiSlashExtraTarget(self.player,card)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
 	function slashNoTarget(target)
 		if isCurrent(use,target)
 		or use.to:contains(target) then return end
 		if target:property("aiNoTo"):toBool() then return end
 		if use.card and use.card~=card then
-			extraTarget = sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget,self.player,use.card)
+			extraTarget = sgs.aiSlashExtraTarget(self.player,use.card)
 			if use.extra_target then extraTarget = extraTarget+use.extra_target end
 		end
 		if use.to:length()>extraTarget then return true end
