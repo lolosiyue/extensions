@@ -242,46 +242,55 @@ GameEndRecording = sgs.CreateTriggerSkill { --游戏结束时记录玩家各种�
 		if not room:getTag("InRAFTOM"):toBool() then
 			return false
 		end
+		if sgs.IsHeadless and sgs.IsHeadless() then return false end -- headless环境不写存档
 		for _, p in sgs.qlist(room:getAllPlayers(true)) do
 			if not p:getTag("RAFTOM"):toBool() then
 				continue
 			end
-			local recordFile = assert(io.open(GER, "r"))
-			local level = recordFile:read("*l"):split("=")
-			level = tonumber(level[2])
+			local recordFile = io.open(GER, "r")
+			if recordFile == nil then return false end
+			local firstLine = recordFile:read("*l")
 			recordFile:close()
-			local record = assert(io.open(GER, "w"))
+			if firstLine == nil then return false end
+			local level = tonumber(firstLine:split("=")[2]) or 1
+			local record = io.open(GER, "w")
+			if record == nil then return false end
 			if p:isDead() or level == 6 then
 				record:write("level=1")
 				record:close()
 				if p:isAlive() and level == 6 then
-					local winFile = assert(io.open(winTimes, "r"))
-					local win_count = winFile:read("*l")
-					winFile:close()
-					local winRecord = assert(io.open(winTimes, "w"))
-					if win_count == nil then
-						winRecord:write("1")
-					else
-						local chance = 0
-						if p:getMark("easy") > 0 then
-							chance = 40
-						elseif p:getMark("normal") > 0 then
-							chance = 70
-						elseif p:getMark("insane") > 0 then
-							chance = 100
-						end
-						if math.random(1, 100) <= chance then
-							local count = math.min(3, (tonumber(win_count) + 1))
-							winRecord:write("" .. count)
-							local msg = sgs.LogMessage()
-							msg.type = "#showWinCount"
-							msg.arg = count
-							room:sendLog(msg)
-						else
-							winRecord:write("" .. math.min(3, tonumber(win_count)))
-						end
+					local winFile = io.open(winTimes, "r")
+					local win_count
+					if winFile then
+						win_count = winFile:read("*l")
+						winFile:close()
 					end
-					winRecord:close()
+					local winRecord = io.open(winTimes, "w")
+					if winRecord then
+						if win_count == nil then
+							winRecord:write("1")
+						else
+							local chance = 0
+							if p:getMark("easy") > 0 then
+								chance = 40
+							elseif p:getMark("normal") > 0 then
+								chance = 70
+							elseif p:getMark("insane") > 0 then
+								chance = 100
+							end
+							if math.random(1, 100) <= chance then
+								local count = math.min(3, (tonumber(win_count) + 1))
+								winRecord:write("" .. count)
+								local msg = sgs.LogMessage()
+								msg.type = "#showWinCount"
+								msg.arg = count
+								room:sendLog(msg)
+							else
+								winRecord:write("" .. math.min(3, tonumber(win_count)))
+							end
+						end
+						winRecord:close()
+					end
 				end
 				return false
 			end
@@ -368,13 +377,18 @@ heroesNeverDie = sgs.CreateTriggerSkill {
 	priority = 0,
 	on_trigger = function(self, event, splayer, data, room)
 		if splayer:getTag("RAFTOM"):toBool() and splayer:getHp() <= 0 then
-			local winFile = assert(io.open(winTimes, "r"))
-			local win_count = tonumber(winFile:read("*l"))
-			winFile:close()
+			local winFile = io.open(winTimes, "r")
+			local win_count = 0
+			if winFile then
+				win_count = tonumber(winFile:read("*l")) or 0
+				winFile:close()
+			end
 			if win_count > 0 and room:askForSkillInvoke(splayer, self:objectName(), sgs.QVariant("HND:" .. win_count)) then
-				local winRecord = assert(io.open(winTimes, "w"))
-				winRecord:write("" .. math.max(0, math.min(3, win_count - 1)))
-				winRecord:close()
+				local winRecord = io.open(winTimes, "w")
+				if winRecord then
+					winRecord:write("" .. math.max(0, math.min(3, win_count - 1)))
+					winRecord:close()
+				end
 				splayer:throwAllHandCardsAndEquips()
 				room:recover(splayer, sgs.RecoverStruct(splayer, nil, 2 - splayer:getHp()))
 				room:drawCards(splayer, 3, self:objectName())
@@ -400,15 +414,22 @@ RAFTOM_start = sgs.CreateTriggerSkill { --用于使“千里走单骑”模式�
 						robot = p
 					end
 				end
-				local recordFile = assert(io.open(GER, "r"))
-				local rf = recordFile:read("*all"):split("\n")
-				recordFile:close()
-				local level = tonumber(rf[1]:split("=")[2])
+				local recordFile = io.open(GER, "r")
+				local rf, level = {}, 1
+				if recordFile then
+					rf = recordFile:read("*all"):split("\n")
+					recordFile:close()
+					if rf[1] then
+						level = tonumber(rf[1]:split("=")[2]) or 1
+					end
+				end
 				if player and robot and player:objectName() == splayer:objectName() and room:askForSkillInvoke(player, "RAFTOM_start", sgs.QVariant("RA_start:" .. tostring(level))) then
 					if level < 1 or level > 6 or #rf < 11 then
-						local record = assert(io.open(GER, "w"))
-						record:write("level=1")
-						record:close()
+						local record = io.open(GER, "w")
+						if record then
+							record:write("level=1")
+							record:close()
+						end
 						level = 1
 					end
 					if level == 1 and player:getSeat() ~= 1 then
@@ -560,10 +581,15 @@ RAFTOM_start = sgs.CreateTriggerSkill { --用于使“千里走单骑”模式�
 			if draw.reason ~= "InitialHandCards" then
 				return false
 			end
-			local recordFile = assert(io.open(GER, "r"))
-			local level = recordFile:read("*l"):split("=")
-			level = tonumber(level[2])
-			recordFile:close()
+			local recordFile = io.open(GER, "r")
+			local level = 1
+			if recordFile then
+				local firstLine = recordFile:read("*l")
+				recordFile:close()
+				if firstLine then
+					level = tonumber(firstLine:split("=")[2]) or 1
+				end
+			end
 			if splayer:getTag("RAFTOM"):toBool() and level ~= 1 then
 				data:setValue(0)
 			end

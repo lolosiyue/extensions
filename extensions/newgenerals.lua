@@ -13072,7 +13072,7 @@ mouxueyi = sgs.CreateTriggerSkill {
 			if use.card:getTypeId() > 0 and player:hasLordSkill(self:objectName()) then
 				for _, p in sgs.list(use.to) do
 					if p ~= player and p:getKingdom() == "qun" and player:getMark("mouxueyiDC-Clear") < 2 then
-						sendCompulsoryTriggerLog(player, self)
+						room:sendCompulsoryTriggerLog(player, self)
 						player:addMark("mouxueyiDC-Clear")
 						player:drawCards(1, self:objectName())
 					end

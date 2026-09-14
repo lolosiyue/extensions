@@ -551,7 +551,9 @@ local readData = function(section)
 end
 
 local writeData = function(t)
-	local record = assert(io.open(gdata, "w"))
+	if sgs.IsHeadless and sgs.IsHeadless() then return end -- headless环境不写存档
+	local record = io.open(gdata, "w")
+	if record == nil then return end
 	local order = {"Record", "Item", "Zabing", "Skin", "Unlock", "Daily", "GameTimes"}
 	setmetatable(order, { __index = table})
 	order:insertTable(zb_list)
@@ -2152,8 +2154,10 @@ if lucky_card and sgs.Sanguosha:translate("gaoda") ~= "高达杀" then
 			
 			if line ~= "" then
 				local file2 = io.open(gbackup, "w")
-				file2:write(line)
-				file2:close()
+				if file2 ~= nil then
+					file2:write(line)
+					file2:close()
+				end
 			end
 		else
 			--Remove temp bat files
