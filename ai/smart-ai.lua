@@ -4132,18 +4132,39 @@ function SmartAI:hasCrossbowEffect(player)
 	local cache = sgs.ai_crossbow_cache
 	local key = self.player:objectName().."|"..player:objectName()
 	if cache and cache[key]~=nil then return cache[key] end
-	local num,slashs,tps = 0,0,self:getEnemies(player)
+	local num,tps,list = 0,self:getEnemies(player),{}
 	for _,kc in ipairs(getKnownCards(player,self.player,"&he"))do
 		local s = isCard("Slash",kc,player)
-		if s then
-			slashs = slashs+1
-			for _,p in ipairs(tps)do
+		if s then table.insert(list,s) end
+	end
+	local slashs = #list
+	-- 手牌多時降級為近似: 超過 6 張已知殺只抽 6 張 (先每種 類別/花色/轉化技能 各取一張, 再依序補足),
+	-- 敵人仍全數計算。只對點數、個別卡牌或未抽到的組合生效的出殺次數技能, 結果可能與逐張計算不同。
+	local limit = 6
+	if slashs>limit then
+		local picked,seen,sample = {},{},{}
+		for i,s in ipairs(list)do
+			local g = s:getClassName().."|"..s:getSuitString().."|"..s:getSkillName()
+			if not seen[g] and #sample<limit then
+				seen[g] = true
+				picked[i] = true
+				table.insert(sample,s)
+			end
+		end
+		for i,s in ipairs(list)do
+			if #sample>=limit then break end
+			if not picked[i] then table.insert(sample,s) end
+		end
+		list = sample
+	end
+	for _,s in ipairs(list)do
+		for _,p in ipairs(tps)do
 			num = num+sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_Residue,player,s,p)
 		end
 	end
-	end
-	if cache then cache[key] = num>slashs/2 end
-	return num>slashs/2
+	local result = num>#list/2
+	if cache then cache[key] = result end
+	return result
 end
 
 function SmartAI:getCardNeedPlayer(cards,include_self,tos)
