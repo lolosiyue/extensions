@@ -239,7 +239,7 @@ do
 	
 	-- Performance optimization: caching
 	sgs.qlist_cache = {}
-	sgs.qlist_cache_time = 0
+	sgs.qlist_cache_gen = 0
 	sgs.defense_cache = {}
 	sgs.defense_cache_time = 0
 
@@ -421,7 +421,7 @@ end
 -- Function to invalidate qlist cache
 function sgs.invalidate_qlist_cache()
 	sgs.qlist_cache = {}
-	sgs.qlist_cache_time = 0
+	sgs.qlist_cache_gen = (sgs.qlist_cache_gen or 0) + 1
 end
 
 function sgs.qlist_cached(qlist_obj, cache_key)
@@ -429,13 +429,8 @@ function sgs.qlist_cached(qlist_obj, cache_key)
 		return sgs.QList2Table(qlist_obj)
 	end
 	
-	local current_time = os.time()
-	if sgs.qlist_cache_time ~= current_time then
-		-- Clear cache every second to avoid stale data
-		sgs.qlist_cache = {}
-		sgs.qlist_cache_time = current_time
-	end
-	
+	-- 失效改由 sgs.invalidate_qlist_cache() 驅動 (每個 trigger event 一次),
+	-- 不再用 os.time(): 一秒的粒度在動輒數十秒的單次 AI 決策裡沒有意義。
 	if not sgs.qlist_cache[cache_key] then
 		sgs.qlist_cache[cache_key] = sgs.QList2Table(qlist_obj)
 	end
@@ -454,14 +449,19 @@ function sgs.getCachedAllPlayers()
 	return sgs.qlist_cached(global_room:getPlayers(), "global_all_players")
 end
 
+sgs.ai_cache_verify = (os and os.getenv and (os.getenv("QSAN_AI_CACHE_VERIFY") or "") ~= "") or false
+
 function sgs.getPlayerSkillList(player)
 	-- Cache key for skill list
 	local cache_key = "skills_" .. player:objectName()
-	local current_time = os.time()
-	
-	-- Use cached result if available and fresh
-	if sgs.qlist_cache_time == current_time and sgs.qlist_cache[cache_key] then
-		return sgs.qlist_cache[cache_key]
+
+	-- 舊版以 os.time() 為鍵, 但只「讀」sgs.qlist_cache_time 而從不推進它,
+	-- 推進只發生在 sgs.qlist_cached() 裡; 於是這份快取幾乎永遠 miss,
+	-- 且 miss 時連寫入都會被下面的同一個條件擋掉。20 人局單次決策實測
+	-- getSkillList 被呼叫 35257 次。改為與 qlist_cached 共用 generation 失效。
+	local cached = sgs.qlist_cache[cache_key]
+	if cached and not sgs.ai_cache_verify then
+		return cached
 	end
 	
 	local skills = {}
@@ -478,11 +478,39 @@ function sgs.getPlayerSkillList(player)
 		end
 	end
 	
-	-- Cache the result
-	if sgs.qlist_cache_time == current_time then
-		sgs.qlist_cache[cache_key] = skills
+	-- 對拍模式 (QSAN_AI_CACHE_VERIFY=1): 快取命中時仍重算一次並逐項比對,
+	-- 用來證明「變快」不是靠「算錯」。回傳值一律沿用快取, 行為與正常模式相同。
+	if cached then
+		sgs.ai_cache_checked = (sgs.ai_cache_checked or 0) + 1
+		local mismatch = (#cached ~= #skills)
+		if not mismatch then
+			for i = 1, #skills do
+				if cached[i]:objectName() ~= skills[i]:objectName() then
+					mismatch = true
+					break
+				end
+			end
+		end
+		if mismatch then
+			local function names(t)
+				local o = {}
+				for i = 1, #t do o[i] = t[i]:objectName() end
+				return table.concat(o, ",")
+			end
+			sgs.ai_cache_mismatch = (sgs.ai_cache_mismatch or 0) + 1
+			print(string.format("[AI_CACHE_MISMATCH] %s cached=[%s] fresh=[%s]",
+				player:objectName(), names(cached), names(skills)))
+		end
+		if sgs.ai_cache_checked % 2000 == 0 then
+			print(string.format("[AI_CACHE_VERIFY] checked=%d mismatch=%d",
+				sgs.ai_cache_checked, sgs.ai_cache_mismatch or 0))
+		end
+		return cached
 	end
-	
+
+	-- Cache the result
+	sgs.qlist_cache[cache_key] = skills
+
 	return skills
 end
 
@@ -2351,6 +2379,10 @@ sgs.ai_damage_from_flag_intention["FenchengUsing"] = 10
 function SmartAI:filterEvent(event,player,data)
 	self._ai_connect_cache = nil
 	self._active_recommends_cache = nil
+	-- 每個 trigger event 結束時 roomthread.cpp 都會呼叫這裡 (roomthread.cpp:1449),
+	-- 所以這是 qlist_cache 完整且最緊的失效點: 技能增減/死亡/換將都在 event 內發生,
+	-- 而單次 AI 決策期間不會有 event, 快取在決策內恆為有效。
+	sgs.invalidate_qlist_cache()
 	-- Flush cards that CardFilter cloned in the PREVIOUS filterEvent cycle.
 	-- This is the earliest safe point: all callers from last cycle are done.
 	sgs.flushDeferredDeleteCards()
@@ -11420,4 +11452,49 @@ for skill_name, _ in pairs(sgs.ai_canliegong_skill) do
 	if not sgs.ai_cardneed[skill_name] then
 		sgs.ai_cardneed[skill_name] = sgs.ai_cardneed.slash
 	end
+end
+
+-- =========================================================
+-- 診斷插樁: 純 Lua 取樣分析器
+-- 用 debug.sethook 的 count 遮罩取樣, 把 VM 指令歸給當下執行的 Lua 行,
+-- 因此在 C++ (SWIG wrapper) 裡耗掉的時間會歸給呼叫它的那一行 AI 程式碼。
+-- 預設關閉; QSAN_LUA_PROFILE=1 開啟, QSAN_LUA_PROFILE_SEC 設定回報間隔 (預設 2 秒)。
+-- =========================================================
+if os and os.getenv and (os.getenv("QSAN_LUA_PROFILE") or "") ~= "" then
+	local samples = {}
+	local sample_count = 0
+	local period = tonumber(os.getenv("QSAN_LUA_PROFILE_SEC") or "") or 2
+	local step = tonumber(os.getenv("QSAN_LUA_PROFILE_STEP") or "") or 50000
+	local last_dump = os.clock()
+	local getinfo = debug.getinfo
+
+	local function dump()
+		local keys = {}
+		for k in pairs(samples) do keys[#keys + 1] = k end
+		table.sort(keys, function(a, b) return samples[a] > samples[b] end)
+		local parts = {}
+		for i = 1, math.min(#keys, 10) do
+			parts[#parts + 1] = string.format("%s=%d(%.0f%%)", keys[i], samples[keys[i]],
+				samples[keys[i]] * 100 / sample_count)
+		end
+		print(string.format("[LUA_PROFILE] samples=%d %s", sample_count,
+			table.concat(parts, " ")))
+		samples = {}
+		sample_count = 0
+	end
+
+	debug.sethook(function()
+		local info = getinfo(2, "Sln")
+		if info then
+			local key = string.format("%s:%d(%s)", info.short_src or "?",
+				info.currentline or 0, info.name or "?")
+			samples[key] = (samples[key] or 0) + 1
+			sample_count = sample_count + 1
+		end
+		local now = os.clock()
+		if now - last_dump >= period then
+			last_dump = now
+			if sample_count > 0 then dump() end
+		end
+	end, "", step)
 end

@@ -2223,3 +2223,132 @@ IsProhibited = sgs.CreateProhibitSkill {
 	end,
 }
 addToSkills(OnSkillTrigger, IsProhibited)
+
+function createMode(spec)
+	spec = spec or {}
+	sgs.GameModeCallbacks = sgs.GameModeCallbacks or {}
+	local name = spec.name or "預設模式"
+	local class = spec.class or "default"
+	local skipChooseGeneral = spec.skipChooseGeneral or false
+	local showRole = spec.showRole or false
+
+	-- false 是合法值，不能用 `or` 當預設
+	local shuffleSeats = true
+	if spec.shuffleSeats ~= nil then
+		shuffleSeats = spec.shuffleSeats
+	end
+
+	local lordWelfare = true
+	if spec.lordWelfare ~= nil then
+		lordWelfare = spec.lordWelfare
+	elseif spec.lord_welfare ~= nil then
+		lordWelfare = spec.lord_welfare
+	end
+
+	local rewardPolicy = spec.rewardPolicy
+	if rewardPolicy == nil then
+		rewardPolicy = spec.reward_policy
+	end
+	local winPolicy = spec.winPolicy
+	if winPolicy == nil then
+		winPolicy = spec.win_policy
+	end
+	local rewardFn = spec.reward
+	local winnerFn = spec.getWinner
+	if winnerFn == nil then
+		winnerFn = spec.get_winner
+	end
+
+	local roles
+	if type(spec.roles) == "string" then
+		roles = {spec.roles}
+	elseif type(spec.roles) == "table" then
+		roles = spec.roles
+	else
+		roles = {"ZF"}
+	end
+
+	local names
+	if type(spec.names) == "string" then
+		names = {spec.names}
+	elseif type(spec.names) == "table" then
+		names = spec.names
+	else
+		names = {}
+	end
+
+	local mode_count = #roles
+	local is_single_mode = mode_count == 1
+
+	local max_length = 0
+	for _, mode in ipairs(roles) do
+		max_length = math.max(max_length, #mode)
+	end
+	local max_digits = #tostring(max_length)
+
+	local generated_set = {}
+	local succeeded = {}
+
+	for i, mode in ipairs(roles) do
+		local length_str = string.format("%0" .. max_digits .. "d", #mode)
+		local id = length_str .. "_" .. class
+		-- 同一 roles 表內人數相同時，以補 0 避開本地 ID 碰撞
+		while generated_set[id] do
+			length_str = length_str .. "0"
+			id = length_str .. "_" .. class
+		end
+		generated_set[id] = true
+
+		if type(rewardFn) == "function" or type(winnerFn) == "function" then
+			sgs.GameModeCallbacks[id] = {
+				reward = type(rewardFn) == "function" and rewardFn or nil,
+				getWinner = type(winnerFn) == "function" and winnerFn or nil,
+			}
+		end
+
+		local display_name = name
+		if not is_single_mode then
+			if i <= #names then
+				display_name = names[i]
+			else
+				display_name = #mode .. "人局"
+			end
+		end
+
+		-- 重複 ID 或未註冊身份縮寫會被引擎拒絕，不進回傳與分組
+		if not sgs.Sanguosha:addModes(id, display_name, mode) then
+			continue
+		end
+
+		if not shuffleSeats then
+			sgs.Sanguosha:setGameModeShuffleSeats(id, false)
+		end
+		if not lordWelfare then
+			sgs.Sanguosha:setGameModeLordWelfare(id, false)
+		end
+		if skipChooseGeneral then
+			sgs.Sanguosha:addSkipGeneralMode(id)
+		end
+		if showRole then
+			sgs.Sanguosha:addShowRoleMode(id)
+		end
+		if type(rewardPolicy) == "string" then
+			sgs.Sanguosha:setGameModeRewardPolicy(id, rewardPolicy)
+		end
+		if type(winPolicy) == "string" then
+			sgs.Sanguosha:setGameModeWinPolicy(id, winPolicy)
+		end
+
+		table.insert(succeeded, id)
+	end
+
+	table.sort(succeeded, function(a, b)
+		return tonumber(string.match(a, "^(%d+)_")) < tonumber(string.match(b, "^(%d+)_"))
+	end)
+
+	if mode_count > 1 and #succeeded > 0 then
+		sgs.Sanguosha:addModeGroup(name, succeeded)
+	end
+
+	return succeeded
+end
