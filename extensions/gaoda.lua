@@ -19586,6 +19586,8 @@ lucky_translate = function(refresh) --动态描述
 			--Item
 			local g2_item = t["Item"] or {}
 			local g2_zabing = t["Zabing"] or {}
+			local g2_skin = t["Skin"] or {}
+			local g2_unlock = t["Unlock"] or {}
 			local g2_property = "<br><img src=\"image/mark/@coin.png\" height=\"25\" width=\"25\">G币 = "
 			g2_property = g2_property .. (g2_item["Coin"] or 0) .. "<br>"
 			g2_property = g2_property .. "<img src=\"image/mark/@fragment.png\" height=\"25\" width=\"25\">" .. sgs.Sanguosha:translate("fragment") .. " = "
@@ -19599,7 +19601,7 @@ lucky_translate = function(refresh) --动态描述
 			--Zabing
 			g2_property = g2_property .. "<br><b>支援机使用权(35%×1, 25%×3)</b>:<br>"
 			for _,zb in pairs(zb_list) do
-				g2_property = g2_property .. sgs.Sanguosha:translate(zb) .. " = " .. g2_zabing[zb]
+				g2_property = g2_property .. sgs.Sanguosha:translate(zb) .. " = " .. (g2_zabing[zb] or 0)
 				g2_property = g2_property .. "<br>"
 			end
 			
@@ -19620,7 +19622,7 @@ lucky_translate = function(refresh) --动态描述
 							girl = "(机娘红桃)"
 						end
 						g2_property = g2_property .. sgs.Sanguosha:translate("#" .. s) .. girl .. ": "
-						if t["Skin"][s] == 0 then
+						if (g2_skin[s] or 0) == 0 then
 							g2_property = g2_property .. "<font color='grey'>未获得</font>"
 						else
 							g2_property = g2_property .. "<font color='red'>已获得</font>"
@@ -19646,7 +19648,7 @@ lucky_translate = function(refresh) --动态描述
 			g2_property = g2_property .. "<b>解禁机体(15% 必定全新机体)</b>:<br>"
 			for _,un in pairs(unlock_list) do
 				g2_property = g2_property .. sgs.Sanguosha:translate(un) .. ": "
-				if t["Unlock"][un] == 0 then
+				if (g2_unlock[un] or 0) == 0 then
 					g2_property = g2_property .. "<font color='grey'>未解禁</font>"
 				else
 					g2_property = g2_property .. "<font color='red'>已解禁</font>"
@@ -19657,13 +19659,13 @@ lucky_translate = function(refresh) --动态描述
 			--SP Unlock
 			for it,un in pairs(sp_unlock_list) do
 				g2_property = g2_property .. sgs.Sanguosha:translate(un) .. ": "
-				if t["Item"][it] < item_max[it] then
+				if (g2_item[it] or 0) < item_max[it] then
 					if un == "PHENEX" then
 						g2_property = g2_property .. "<font color='grey'>通关<b>“在重力井底”</b>，获得" .. item_max[it] .. "枚<b>“" .. sgs.Sanguosha:translate(it) .. "”</b>解禁</font>"
 					else
 						g2_property = g2_property .. "<font color='grey'>未解禁</font>"
 					end
-				elseif t["Unlock"][un] == 0 then
+				elseif (g2_unlock[un] or 0) == 0 then
 					g2_property = g2_property .. "<font color='orange'>已加入扭蛋机</font>"
 				else
 					g2_property = g2_property .. "<font color='red'>已解禁</font>"
