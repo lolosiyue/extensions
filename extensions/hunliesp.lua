@@ -4680,24 +4680,28 @@ end
 
 for _, _first in ipairs(scheme_first_char) do
 	for _, _second in ipairs(scheme_second_char) do
+		-- 這 120 組全域技能每次算摸牌數／手牌上限／出殺次數都會逐一回呼;
+		-- 技能名與標記名在建立時算好, 並先查標記 (為 0 時結果必為 0) 再查 hasSkill。
+		local skname = _first.._second
+		local draw_mark = skname.."hunlie_global_schemedraw"
+		local maxcards_mark = skname.."hunlie_global_schememaxcards"
+		local slashtime_mark = skname.."hunlie_global_schemeslashtime"
 		local sgkgodjiguan_exdraw = sgs.CreateDrawCardsSkill{
 			name = "#".._first.._second.."draw",
 			global = true,
 			draw_num_func = function(self, player, n)
-				local x = 0
-				local skname = string.sub(self:objectName(), 2, -5)
-				if player:hasSkill(skname) then x = x + player:getMark(skname.."hunlie_global_schemedraw") end
-				return n + x
+				local x = player:getMark(draw_mark)
+				if x ~= 0 and player:hasSkill(skname) then return n + x end
+				return n
 			end
 		}
 		extension:addSkills(sgkgodjiguan_exdraw)
 		local sgkgodjiguan_maxcards = sgs.CreateMaxCardsSkill{
 			name = "#".._first.._second.."maxcard",
 			extra_func = function(self, target)
-				local n = 0
-				local skname = string.sub(self:objectName(), 2, -8)
-				if target:hasSkill(skname) then n = n + target:getMark(skname.."hunlie_global_schememaxcards") end
-				return n
+				local n = target:getMark(maxcards_mark)
+				if n ~= 0 and target:hasSkill(skname) then return n end
+				return 0
 			end
 		}
 		extension:addSkills(sgkgodjiguan_maxcards)
@@ -4705,10 +4709,9 @@ for _, _first in ipairs(scheme_first_char) do
 			name = "#".._first.._second.."slashtime",
 			pattern = ".",
 			residue_func = function(self, from, card)
-				local n = 0
-				local skname = string.sub(self:objectName(), 2, -10)
-				if from:hasSkill(skname) and card:isKindOf("Slash") then n = n + from:getMark(skname.."hunlie_global_schemeslashtime") end
-				return n
+				local n = from:getMark(slashtime_mark)
+				if n ~= 0 and card:isKindOf("Slash") and from:hasSkill(skname) then return n end
+				return 0
 			end,
 		}
 		extension:addSkills(sgkgodjiguan_slashtime)

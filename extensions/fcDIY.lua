@@ -3216,7 +3216,8 @@ fcjieying_MoreSlashUsed = sgs.CreateTargetModSkill{
 	name = "#fcjieying_MoreSlashUsed",
 	residue_func = function(self, player, card)
 	    local n = 0
-		if card:isKindOf("Slash") then
+		-- 每一項加成都要求 player 已橫置, 先判斷可省掉對全場角色的 hasSkill 迴圈
+		if card:isKindOf("Slash") and player:isChained() then
 		    if player:hasSkill("fcjieying") and player:isChained() then
 			    n = n + 1
 		    end
