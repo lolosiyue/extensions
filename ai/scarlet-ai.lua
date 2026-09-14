@@ -2605,14 +2605,15 @@ function sgs.ai_skill_pindian.s4_juxiang(minusecard, self, requestor)
     return self:getMaxCard(self.player):getId()
 end
 sgs.ai_skill_choice.s4_juxiang = function(self,choices,data)
-	local items = choices:split("+")
 	local target = data:toPlayer()
-	if table.contains(items, "obtain") then
-        if math.random()<0.4 and not self:cantDamageMore(target, self.player) then return "damage" end
-        if self:doDisCard(target, "he", true) then return "obtain" end
+	local damage_choice = getChoice(choices, "damage")
+	local obtain_choice = getChoice(choices, "obtain")
+	if obtain_choice then
+        if math.random()<0.4 and not self:cantDamageMore(target, self.player) then return damage_choice end
+        if self:doDisCard(target, "he", true) then return obtain_choice end
     end
 	if self:isEnemy(target)
-	then return "damage" end
+	then return damage_choice end
     return "cancel"
 end
 
@@ -3923,7 +3924,7 @@ sgs.ai_ajustdamage_to.s4_s_yinghun = function(self, from, to, card, nature)
 end
 
 sgs.ai_skill_invoke.s4_fuhan = function(self,data)
-	if (not self:isWeak() and (self:getCardsNum("Peach")+self.player:getHp()>1 or hasZhaxiangEffect(self.player))) or self.player:getMark("s4_fuhan_success") > 0 then
+	if (not self:isWeak() and (self:getCardsNum("Peach")+self.player:getHp()>1 or hasZhaxiangEffect(self.player))) or self.player:getMark("s4_fuhan__success") > 0 then
 		return true
 	end
 end
@@ -3937,11 +3938,13 @@ sgs.ai_view_as.s4_fuhan = function(card,player,card_place)
 	end
 end
 
-sgs.ai_fill_skill.s4_tiaoxin = function(self)
-    return sgs.Card_Parse("#s4_tiaoxin:.:")
+sgs.ai_fill_skill.s4_tiaoxin = function(self, inclusive, request)
+	local card = sgs.ActiveSkillCard()
+	card:setSkillName("s4_tiaoxin")
+	return card
 end
 
-sgs.ai_skill_use_func["#s4_tiaoxin"] = function(card,use,self)
+sgs.ai_skill_use_func.s4_tiaoxin = function(card,use,self)
     self:sort(self.enemies,"handcard")
     local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
     duel:setSkillName("_s4_tiaoxin")

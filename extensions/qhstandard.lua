@@ -156,8 +156,8 @@ qhstandard_indulgence = sgs.CreateTrickCard {           -- 锦囊牌
 
 --for i = 1, 2 do
 local qhstandard_indulgence = qhstandard_indulgence:clone()
-qhstandard_indulgence:setSuit(math.random(0, 3))    -- 随机花色
-qhstandard_indulgence:setNumber(math.random(1, 13)) -- 随机点数
+qhstandard_indulgence:setSuit(sgs.Card_Heart) -- 固定花色：红桃
+qhstandard_indulgence:setNumber(9)            -- 固定点数：9
 qhstandard_indulgence:setParent(extensionCard)
 --end
 
