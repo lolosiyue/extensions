@@ -421,6 +421,9 @@ end
 -- Function to invalidate qlist cache
 function sgs.invalidate_qlist_cache()
 	sgs.qlist_cache = {}
+	-- aiConnect／target_recommend 快取跟隨同一個失效點: 裝備、技能、標記都在 event 內變動
+	sgs.ai_connect_cache = {}
+	sgs.ai_active_recommends_cache = nil
 	sgs.qlist_cache_gen = (sgs.qlist_cache_gen or 0) + 1
 end
 
@@ -2377,8 +2380,6 @@ sgs.ai_damage_from_flag_intention["ShenfenUsing"] = 10
 sgs.ai_damage_from_flag_intention["FenchengUsing"] = 10
 
 function SmartAI:filterEvent(event,player,data)
-	self._ai_connect_cache = nil
-	self._active_recommends_cache = nil
 	-- 每個 trigger event 結束時 roomthread.cpp 都會呼叫這裡 (roomthread.cpp:1449),
 	-- 所以這是 qlist_cache 完整且最緊的失效點: 技能增減/死亡/換將都在 event 內發生,
 	-- 而單次 AI 決策期間不會有 event, 快取在決策內恆為有效。
@@ -3107,7 +3108,6 @@ sgs.ai_skill_discard.gamerule = function(self,x,n)
 	return discard
 end
 
-SmartAI._ai_connect_cache = {}
 function aiConnect(owner)
     if not current_self then
         global_room:writeToConsole("aiConnect called without current_self, using fallback")
@@ -3152,8 +3152,10 @@ function aiConnect(owner)
     local p_name = owner:objectName()
     
     -- 1. O(1) 極速命中：只要在同一個決策週期內，直接回傳快取表
-    if current_self._ai_connect_cache and current_self._ai_connect_cache[p_name] then
-        return current_self._ai_connect_cache[p_name]
+    -- 不可掛在 SmartAI 類別上: middleclass 會令所有實例共用同一張表, 實例上設 nil 清不掉
+    local cache = sgs.ai_connect_cache
+    if cache and cache[p_name] then
+        return cache[p_name]
     end
 
     -- 2. 快取未命中：代表這是本週期第一次查詢該玩家，執行一次完整提取
@@ -3213,8 +3215,8 @@ function aiConnect(owner)
     end
 
     -- 3. 寫入該決策週期的快取
-    current_self._ai_connect_cache = current_self._ai_connect_cache or {}
-    current_self._ai_connect_cache[p_name] = connects
+    sgs.ai_connect_cache = sgs.ai_connect_cache or {}
+    sgs.ai_connect_cache[p_name] = connects
     return connects
 end
 
@@ -10713,8 +10715,8 @@ function SmartAI:getBestTarget(targets, card, from, flags)
     end
 
 	local active_recommends
-    if self._active_recommends_cache then
-        active_recommends = self._active_recommends_cache
+    if sgs.ai_active_recommends_cache then
+        active_recommends = sgs.ai_active_recommends_cache
     else
         active_recommends = {}
         local all_players = sgs.getCachedAlivePlayers()
@@ -10731,7 +10733,7 @@ function SmartAI:getBestTarget(targets, card, from, flags)
             end
         end
         
-        self._active_recommends_cache = active_recommends
+        sgs.ai_active_recommends_cache = active_recommends
     end
     
     local scored_targets = {}
