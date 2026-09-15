@@ -7337,7 +7337,7 @@ ny_10th_xielingyu:addSkill(ny_10th_xinyou)
 ny_10th_xielingyu:addSkill(ny_10th_xinyou_buff)
 extension:insertRelatedSkills("ny_10th_xinyou", "#ny_10th_xinyou_buff")
 
-ny_10th_mouzhouyu = sgs.General(extension, "ny_10th_mouzhouyu", "wu", 4, true, false, false)
+ny10thmou_zhouyu = sgs.General(extension, "ny10thmou_zhouyu", "wu", 4, true, false, false)
 
 ny_10th_ronghuo = sgs.CreateTriggerSkill {
 	name = "ny_10th_ronghuo",
@@ -7501,9 +7501,9 @@ ny_10th_yingmou_buff = sgs.CreateTargetModSkill {
 	end,
 }
 
-ny_10th_mouzhouyu:addSkill(ny_10th_ronghuo)
-ny_10th_mouzhouyu:addSkill(ny_10th_yingmou)
-ny_10th_mouzhouyu:addSkill(ny_10th_yingmou_buff)
+ny10thmou_zhouyu:addSkill(ny_10th_ronghuo)
+ny10thmou_zhouyu:addSkill(ny_10th_yingmou)
+ny10thmou_zhouyu:addSkill(ny_10th_yingmou_buff)
 extension:insertRelatedSkills("ny_10th_yingmou", "#ny_10th_yingmou_buff")
 
 ny_10th_sunchen = sgs.General(extension, "ny_10th_sunchen", "wu", 4, true, false, false)
@@ -14418,7 +14418,7 @@ ny_10th_spzhenji:addSkill(ny_10th_jijie_recover)
 ny_10th_spzhenji:addSkill(ny_10th_huiji)
 extension:insertRelatedSkills("ny_10th_jijie", "#ny_10th_jijie_recover")
 
-ny_10th_panghui_second = sgs.General(extension, "ny_10th_panghui_second", "wei", 5, true, false, false)
+ny10thsecond_panghui = sgs.General(extension, "ny10thsecond_panghui", "wei", 5, true, false, false)
 
 ny_10th_yiyong = sgs.CreateTriggerSkill {
 	name = "ny_10th_yiyong",
@@ -14534,8 +14534,8 @@ ny_10th_suchou = sgs.CreateTriggerSkill {
 	end,
 }
 
-ny_10th_panghui_second:addSkill(ny_10th_yiyong)
-ny_10th_panghui_second:addSkill(ny_10th_suchou)
+ny10thsecond_panghui:addSkill(ny_10th_yiyong)
+ny10thsecond_panghui:addSkill(ny_10th_suchou)
 
 ny_10th_weizhangliao = sgs.General(extension, "ny_10th_weizhangliao", "qun", 4, true, false, false)
 
@@ -15976,13 +15976,13 @@ sgs.LoadTranslationTable {
 
 	--谋周瑜
 
-	["ny_10th_mouzhouyu"] = "谋周瑜[十周年]",
-	["&ny_10th_mouzhouyu"] = "谋周瑜",
-	["#ny_10th_mouzhouyu"] = "炽谋英隽",
-	["designer:ny_10th_mouzhouyu"] = "官方",
-	["cv:ny_10th_mouzhouyu"] = "官方",
-	["illustrator:ny_10th_mouzhouyu"] = "官方",
-	["ny_10th_mouzhouyu2"] = "谋周瑜",
+	["ny10thmou_zhouyu"] = "谋周瑜[十周年]",
+	["&ny10thmou_zhouyu"] = "谋周瑜",
+	["#ny10thmou_zhouyu"] = "炽谋英隽",
+	["designer:ny10thmou_zhouyu"] = "官方",
+	["cv:ny10thmou_zhouyu"] = "官方",
+	["illustrator:ny10thmou_zhouyu"] = "官方",
+	["ny10thmou_zhouyu2"] = "谋周瑜",
 
 	["ny_10th_ronghuo"] = "融火",
 	[":ny_10th_ronghuo"] = "锁定技，你使用火【杀】或【火攻】造成的伤害改为X（X为全场势力数）。",
@@ -16005,7 +16005,7 @@ sgs.LoadTranslationTable {
 	["$ny_10th_ronghuo2"] = "奇志吞樯橹，潮平百万寇贼。",
 	["$ny_10th_yingmou1"] = "行计以险，纵略以奇，敌虽百万亦戏之如犬豕。",
 	["$ny_10th_yingmou2"] = "若生铸剑为犁之心，须有纵钺止戈之力。",
-	["~ny_10th_mouzhouyu"] = "人生之艰难，犹如不息之长河。",
+	["~ny10thmou_zhouyu"] = "人生之艰难，犹如不息之长河。",
 
 	--孙綝
 
@@ -16925,12 +16925,12 @@ sgs.LoadTranslationTable {
 
 	--庞会·第二版
 
-	["ny_10th_panghui_second"] = "庞会[十周年二版]",
-	["&ny_10th_panghui_second"] = "庞会",
-	["#ny_10th_panghui_second"] = "临渭亭侯",
-	["designer:ny_10th_panghui_second"] = "官方",
-	["cv:ny_10th_panghui_second"] = "官方",
-	["illustrator:ny_10th_panghui_second"] = "秋呆呆",
+	["ny10thsecond_panghui"] = "庞会[十周年二版]",
+	["&ny10thsecond_panghui"] = "庞会",
+	["#ny10thsecond_panghui"] = "临渭亭侯",
+	["designer:ny10thsecond_panghui"] = "官方",
+	["cv:ny10thsecond_panghui"] = "官方",
+	["illustrator:ny10thsecond_panghui"] = "秋呆呆",
 
 	["ny_10th_yiyong"] = "异勇",
 	[":ny_10th_yiyong"] = "当你对其他角色造成伤害时，你可以与该角色同时弃置任意张牌。若你弃置的牌的点数之和：不大于其，你摸X张牌（X为该角色弃置的牌数+1）；不小于其，此伤害+1。",
@@ -16946,7 +16946,7 @@ sgs.LoadTranslationTable {
 	["$ny_10th_yiyong2"] = "凭一腔勇力，父仇定可报还。",
 	["$ny_10th_suchou1"] = "关家人我杀定了，谁也保不住！",
 	["$ny_10th_suchou2"] = "身陷仇海，谁知道我是怎么过的！",
-	["~ny_10th_panghui_second"] = "大仇虽报，奈何心有余创。",
+	["~ny10thsecond_panghui"] = "大仇虽报，奈何心有余创。",
 
 	--威张辽
 

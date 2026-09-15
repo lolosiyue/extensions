@@ -1,0 +1,426 @@
+-- Mode policy is owned by the loading Room VM. No Engine-global AI state or userdata
+-- is exported to the isolated AI VM; evaluateModeAI returns primitive snapshot data.
+if sgs.registerModeAI then return end
+
+local policies, minds = {}, {}
+local generation = 0
+local valid_relations = {friend=true, enemy=true, neutral=true, unknown=true}
+local scores = {friend=-2, enemy=5, neutral=0, unknown=0}
+local hook_names = {"relation", "objective", "rolePredictable", "gameProcess", "onIntention"}
+
+local function finite(value)
+    return type(value) == "number" and value == value and math.abs(value) < math.huge
+end
+
+local function policy_role(role, selector)
+    assert(type(role) == "string" and role ~= "", "invalid policy role")
+    if sgs.Sanguosha and not (selector and role == "unknown") then
+        assert(sgs.Sanguosha:getRoleAbbreviation(role) ~= "", "unregistered policy role: "..role)
+    end
+    return role
+end
+
+local function view_player(world, id)
+    if world.self.object_name == id then return world.self end
+    for _, player in ipairs(world.players) do
+        if player.object_name == id then return player end
+    end
+end
+
+local function known_role(player, state)
+    -- Visible facts override this observer's estimates; never read a hidden role.
+    if player.role_visible then return player.role end
+    return state.inferred_roles and state.inferred_roles[player.object_name] or "unknown"
+end
+
+local function compile_objectives(spec, fallback)
+    assert(type(spec) == "table", "objectiveByRole requires a table")
+    local targets = {}
+    for role, callback in pairs(spec) do
+        policy_role(role, true)
+        assert(type(callback) == "function" or finite(callback) and callback >= -5 and callback <= 5,
+            "target objective requires a callback or a score from -5 to 5")
+        targets[role] = callback
+    end
+    return function(world, target_id, state, process)
+        local target = view_player(world, target_id)
+        if not target then return nil end
+        local callback = targets[known_role(target, state)]
+        if type(callback) == "function" then return callback(world, target_id, state, process) end
+        if callback ~= nil then return callback end
+        -- Only an absent mapping falls back. An explicit callback returning nil
+        -- leaves the score unspecified, just like the original objective hook.
+        if fallback then return fallback(world, target_id, state, process) end
+    end
+end
+
+local function compile_intentions(spec)
+    assert(type(spec) == "table", "intentions requires a table")
+    local ignored, rules, inference = {}, {}, {}
+    for _, field in ipairs({"ignoreActors", "rules", "infer"}) do
+        assert(spec[field] == nil or type(spec[field]) == "table", "invalid intentions."..field)
+        local count = 0
+        for key in pairs(spec[field] or {}) do
+            assert(type(key) == "number" and key >= 1 and key % 1 == 0, "intentions."..field.." requires an array")
+            count = count + 1
+        end
+        for index = 1, count do
+            assert(spec[field][index] ~= nil, "sparse intentions."..field)
+        end
+    end
+    for _, role in ipairs(spec.ignoreActors or {}) do
+        ignored[policy_role(role, true)] = true
+    end
+    for _, rule in ipairs(spec.rules or {}) do
+        assert(type(rule) == "table" and type(rule.update) == "function", "invalid intention rule")
+        rules[#rules + 1] = {
+            actor=rule.actor ~= nil and policy_role(rule.actor, true) or nil,
+            target=rule.target ~= nil and policy_role(rule.target, true) or nil,
+            update=rule.update,
+        }
+    end
+    local seen = {}
+    for _, candidate in ipairs(spec.infer or {}) do
+        assert(type(candidate) == "table" and type(candidate.test) == "function", "invalid intention inference")
+        local role = policy_role(candidate.role, false)
+        assert(not seen[role], "duplicate intention inference role: "..role)
+        seen[role] = true
+        inference[#inference + 1] = {role=role, test=candidate.test}
+    end
+
+    return function(world, from_id, to_id, level, state)
+        local from, to = view_player(world, from_id), view_player(world, to_id)
+        if not from or not to then return end
+        local actor, target = known_role(from, state), known_role(to, state)
+        if ignored[actor] then return end
+        local event = {from=from_id, to=to_id, actor_role=actor, target_role=target, level=level}
+        local values = {}
+        for key, value in pairs(state.role_values and state.role_values[from_id] or {}) do
+            values[key] = value
+        end
+        local matched = false
+        for _, rule in ipairs(rules) do
+            if (rule.actor == nil or rule.actor == actor) and (rule.target == nil or rule.target == target) then
+                rule.update(world, event, values, state)
+                matched = true
+            end
+        end
+        if not matched then return end
+        local estimate
+        if not from.role_visible then
+            for _, candidate in ipairs(inference) do
+                local accepted = candidate.test(world, event, values, state)
+                assert(type(accepted) == "boolean", "intention inference must return boolean")
+                if accepted then estimate = candidate.role break end
+            end
+        end
+        for key, value in pairs(values) do
+            assert(type(key) == "string" and finite(value), "intention evidence must contain finite numeric values")
+        end
+        -- Commit only after all selected rules and inference have succeeded. Callbacks
+        -- may edit values; world, event and state are read-only by contract.
+        state.role_values = state.role_values or {}
+        state.inferred_roles = state.inferred_roles or {}
+        state.role_values[from_id] = values
+        state.inferred_roles[from_id] = estimate
+    end
+end
+
+local function copy_hooks(spec, defaults)
+    assert(type(spec) == "table", "mode/role AI requires a table")
+    local copy = {}
+    for _, name in ipairs(hook_names) do
+        assert(spec[name] == nil or type(spec[name]) == "function", "invalid AI hook: "..name)
+        copy[name] = spec[name]
+    end
+    if spec.intentions ~= nil then
+        assert(spec.onIntention == nil, "choose intentions or onIntention at the same policy level")
+        copy.onIntention = compile_intentions(spec.intentions)
+    end
+    if spec.objectiveByRole ~= nil then
+        copy.objective = compile_objectives(spec.objectiveByRole, copy.objective or defaults and defaults.objective)
+    end
+    return copy
+end
+
+function sgs.registerModeAI(mode, spec)
+    assert(type(mode) == "string" and mode ~= "", "mode AI requires a mode ID")
+    assert(type(spec) == "table", "mode AI requires a table")
+    local policy = copy_hooks(spec)
+    policy.teams, policy.roles = {}, {}
+    assert(spec.roles == nil or type(spec.roles) == "table", "AI roles must be a table")
+    for role, hooks in pairs(spec.roles or {}) do
+        assert(type(role) == "string" and role ~= "", "invalid AI role")
+        if sgs.Sanguosha then
+            assert(sgs.Sanguosha:getRoleAbbreviation(role) ~= "", "unregistered AI role: "..role)
+        end
+        policy.roles[role] = copy_hooks(hooks, policy)
+    end
+    assert(spec.teams == nil or type(spec.teams) == "table", "teams must be a table")
+    for team, roles in pairs(spec.teams or {}) do
+        assert(type(team) == "string" and team ~= "" and type(roles) == "table", "invalid team")
+        for _, role in ipairs(roles) do
+            assert(type(role) == "string" and role ~= "" and not policy.teams[role], "duplicate/invalid team role")
+            if sgs.Sanguosha then
+                assert(sgs.Sanguosha:getRoleAbbreviation(role) ~= "", "unregistered team role: "..role)
+            end
+            policy.teams[role] = team
+        end
+    end
+    policies[mode] = policy
+    minds[mode] = {} -- Definition replacement invalidates this VM's old inferred state.
+    generation = generation + 1
+end
+
+local function mind(mode, viewer)
+    minds[mode] = minds[mode] or {}
+    minds[mode][viewer] = minds[mode][viewer] or {}
+    return minds[mode][viewer]
+end
+
+local function invoke(policy, name, world, ...)
+    if not policy then return true, nil end
+    -- Dispatch by the observer's known identity, never by a hidden target identity.
+    local role_policy = world.self.role_visible and policy.roles[world.self.role]
+    local callback = role_policy and role_policy[name] or policy[name]
+    if not callback then return true, nil end
+    local ok, value, extra = pcall(callback, world, ...)
+    if not ok and not policy.warned then
+        policy.warned = true
+        print("Mode AI hook failed: "..name..": "..tostring(value))
+    end
+    return ok, value, extra
+end
+
+function sgs.evaluateModeAI(world)
+    local policy = policies[world.mode_id]
+    local result = {managed=policy ~= nil or world.custom_roles == true,
+        relations={}, objectives={}, predictable=false, game_process=0, process_label="neutral"}
+    if not result.managed then return result end
+    local state = mind(world.mode_id, world.self.object_name)
+    local players = {world.self}
+    local predictable = world.self.role_visible == true
+    for _, player in ipairs(world.players) do
+        players[#players + 1] = player
+        if player.alive and not player.role_visible then predictable = false end
+    end
+    local ok, custom = invoke(policy, "rolePredictable", world, state)
+    result.predictable = ok and (custom == true or custom == nil and predictable) or false
+    -- Evaluate the selected mode/observer process once. Objective hooks receive
+    -- its validated values, so overriding gameProcess also changes target scoring.
+    local accepted, process_value, label = invoke(policy, "gameProcess", world, state)
+    if accepted and finite(process_value) then
+        result.game_process = process_value
+        if type(label) == "string" then result.process_label = label end
+    end
+    local objectives = {}
+    for _, to in ipairs(players) do
+        local process = {value=result.game_process, label=result.process_label}
+        local accepted, value = invoke(policy, "objective", world, to.object_name, state, process)
+        objectives[to.object_name] = {valid=accepted and finite(value) and value >= -5 and value <= 5,
+            supplied=not accepted or value ~= nil, value=value}
+    end
+    for _, from in ipairs(players) do
+        local row = {}
+        result.relations[from.object_name] = row
+        for _, to in ipairs(players) do
+            local relation = "unknown"
+            if from.object_name == to.object_name
+                or from.controller and from.controller ~= "" and from.controller == to.controller then
+                relation = "friend"
+            else
+                local accepted, value = invoke(policy, "relation", world, from.object_name, to.object_name, state)
+                if accepted and valid_relations[value] then relation = value
+                elseif accepted and value == nil then
+                    -- Never derive team membership from an invisible identity.
+                    local a = policy and from.role_visible and policy.teams[from.role]
+                    local b = policy and to.role_visible and policy.teams[to.role]
+                    if a and b then
+                        relation = a == b and "friend" or "enemy"
+                    elseif from.object_name == world.self.object_name then
+                        -- Legacy objectiveLevel also defines friends/enemies. A score is
+                        -- viewer-relative; never transpose it into another player's row.
+                        local score = objectives[to.object_name]
+                        if score.valid then
+                            relation = score.value < 0 and "friend" or score.value > 0 and "enemy" or "neutral"
+                        end
+                    end
+                end
+            end
+            row[to.object_name] = relation
+        end
+    end
+    for _, to in ipairs(players) do
+        local value = scores[result.relations[world.self.object_name][to.object_name]]
+        local score = objectives[to.object_name]
+        if score.supplied then value = score.valid and score.value or 0 end
+        if world.self.controller and world.self.controller ~= "" and world.self.controller == to.controller then value = -2 end
+        result.objectives[to.object_name] = to.object_name == world.self.object_name and -3 or value
+    end
+    return result
+end
+
+-- Pure-value event entry point; the same dispatcher is used by legacy SmartAI.
+function sgs.updateModeAIIntention(world, from, to, level)
+    if type(from) ~= "string" or type(to) ~= "string" or from == to or not finite(level) then return end
+    local present = {[world.self.object_name]=true}
+    for _, player in ipairs(world.players) do present[player.object_name] = true end
+    if not present[from] or not present[to] then return end
+    invoke(policies[world.mode_id], "onIntention", world, from, to, level,
+        mind(world.mode_id, world.self.object_name))
+    generation = generation + 1
+end
+
+-- Cache only values, keyed by authoritative Room revision and hook/mind generation.
+function sgs.modeAIWorld(ai)
+    local revision = ai.room:aiStateRevision()
+    local cache = ai._mode_world
+    if cache and cache.revision == revision and ai._mode_generation == generation then return cache end
+    cache = ai.room:buildAIWorldView(ai.player)
+    ai._mode_world, ai._mode_generation = cache, generation
+    return cache
+end
+
+local function current_ai()
+    if current_self and current_self.room == global_room then return current_self end
+    for _, ai in pairs(sgs.ais or {}) do
+        if ai.room == global_room then return ai end
+    end
+end
+
+function sgs.modeAIEnabled(room, viewer)
+    if policies[room:getMode()] then return true end
+    local world = room:buildAIWorldView(viewer)
+    return world.mode_policy.managed == true
+end
+
+function sgs.installModeAI(SmartAI)
+    local objective, friend, enemy = SmartAI.objectiveLevel, SmartAI.isFriend, SmartAI.isEnemy
+    local update, compare, adjust = SmartAI.updatePlayers, SmartAI.compareRoleEvaluation, SmartAI.adjustAIRole
+    local friends, enemies = SmartAI.getFriends, SmartAI.getEnemies
+    local predictable, intentions = isRolePredictable, sgs.updateIntention
+    local process, evaluate, counts = sgs.gameProcess, evaluateAlivePlayersRole, updateAlivePlayerRoles
+
+    local function policy(ai)
+        local world = sgs.modeAIWorld(ai)
+        return world.mode_policy.managed and world or nil
+    end
+    local function relation(ai, from, to)
+        if not from or not to then return "unknown" end
+        if ai:isDualControlLinked(from, to) then return "friend" end
+        local world = sgs.modeAIWorld(ai)
+        local row = world.mode_policy.relations[from:objectName()]
+        return row and row[to:objectName()] or "unknown"
+    end
+    function SmartAI:objectiveLevel(to)
+        local world = policy(self)
+        if not world then return objective(self, to) end
+        if not to then return 0 end
+        if to == self.player then return -3 end
+        if self:isDualControlLinked(self.player, to) then return -2 end
+        return world.mode_policy.objectives[to:objectName()] or 0
+    end
+    function SmartAI:isFriend(other, another)
+        if not policy(self) then return friend(self, other, another) end
+        return relation(self, another or self.player, other) == "friend"
+    end
+    function SmartAI:isEnemy(other, another)
+        if not policy(self) then return enemy(self, other, another) end
+        return relation(self, another or self.player, other) == "enemy"
+    end
+    function SmartAI:updatePlayers(changed)
+        if not policy(self) then return update(self, changed) end
+        self.role = self.player:getRole()
+        evaluateAlivePlayersRole()
+        updateAlivePlayerRoles()
+        self.friends, self.friends_noself, self.enemies = {}, {}, {}
+        for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+            if self:isFriend(p) then
+                table.insert(self.friends, p)
+                if p ~= self.player then table.insert(self.friends_noself, p) end
+            elseif self:isEnemy(p) then table.insert(self.enemies, p) end
+        end
+        self.harsh_retain = false
+    end
+    function SmartAI:getFriends(player, no_self)
+        if not policy(self) then return friends(self, player, no_self) end
+        player = player or self.player
+        local result = {}
+        for _, target in sgs.qlist(self.room:getAlivePlayers()) do
+            if (not no_self or target ~= player) and self:isFriend(target, player) then
+                result[#result + 1] = target
+            end
+        end
+        return result
+    end
+    function SmartAI:getEnemies(player)
+        if not policy(self) then return enemies(self, player) end
+        local result = {}
+        for _, target in sgs.qlist(self.room:getAlivePlayers()) do
+            if self:isEnemy(target, player or self.player) then result[#result + 1] = target end
+        end
+        return result
+    end
+    function SmartAI:compareRoleEvaluation(player, first, second)
+        local world = policy(self)
+        if not world then return compare(self, player, first, second) end
+        local role = self.room:canSeeRole(self.player, player) and player:getRole() or "neutral"
+        return (role == first or role == second) and role or "neutral"
+    end
+    function SmartAI:adjustAIRole(...)
+        if not policy(self) then return adjust(self, ...) end
+        self:updatePlayers(false)
+    end
+    function isRolePredictable(classical)
+        local ai = current_ai()
+        if ai then
+            local world = policy(ai)
+            if world then return world.mode_policy.predictable end
+        elseif global_room and policies[global_room:getMode()] then
+            return false -- Initialization must not populate hidden identities in shared legacy tables.
+        end
+        return predictable(classical)
+    end
+    function sgs.gameProcess(arg, changed)
+        local ai = current_ai()
+        local world = ai and policy(ai)
+        if not world then return process(arg, changed) end
+        if arg then return world.mode_policy.game_process or 0 end
+        return world.mode_policy.process_label or "neutral"
+    end
+    function evaluateAlivePlayersRole()
+        local ai = current_ai()
+        if not ai or not policy(ai) then return evaluate() end
+        -- The shared legacy compatibility table contains public identities only.
+        for _, p in sgs.qlist(ai.room:getAlivePlayers()) do
+            sgs.ai_role[p:objectName()] = ai.room:isRoleRevealed(p) and p:getRole() or "neutral"
+        end
+    end
+    function updateAlivePlayerRoles()
+        local ai = current_ai()
+        if not ai or not policy(ai) then return counts() end
+        sgs.playerRoles = {lord=0, loyalist=0, rebel=0, renegade=0}
+        for _, p in sgs.qlist(ai.room:getAlivePlayers()) do
+            local role = ai.room:isRoleRevealed(p) and p:getRole() or "unknown"
+            sgs.playerRoles[role] = (sgs.playerRoles[role] or 0) + 1
+        end
+    end
+    function sgs.updateIntention(from, to, level)
+        local ai = current_ai()
+        if not ai or not policy(ai) then return intentions(from, to, level) end
+        if not from or not to or not finite(level) then return end
+        if sgs.ai_doNotUpdateIntenion then level = 0 end
+        sgs.ai_doNotUpdateIntenion = nil
+        if from == to then return end
+        -- Each viewer owns a separate mind. Events carry IDs and already-visible context.
+        for _, observer in pairs(sgs.ais) do
+            if observer.room == ai.room then
+                local world = sgs.modeAIWorld(observer)
+                sgs.updateModeAIIntention(world, from:objectName(), to:objectName(), level)
+            end
+        end
+        for _, observer in pairs(sgs.ais) do
+            if observer.room == ai.room then observer:updatePlayers(false) end
+        end
+    end
+end

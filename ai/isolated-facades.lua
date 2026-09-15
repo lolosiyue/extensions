@@ -4,6 +4,7 @@ SkillView = {}
 
 local player_scalar_aliases = {
     object_name = "objectName",
+    role_revealed = "hasShownRole",
     handcard_count = "getHandcardNum",
     face_up = "faceUp",
     general = "getGeneralName",
@@ -246,9 +247,76 @@ function SmartAIView.new(request)
         or request.world_view.self.object_name ~= request.viewer then
         return nil
     end
-    return setmetatable({
+    local ai = setmetatable({
         request = request,
         world = request.world_view,
         player = PlayerView.new(request.world_view.self)
     }, SmartAIView)
+    if ai.world.mode_policy and ai.world.mode_policy.managed then
+        ai.friends = ai:getFriends()
+        ai.friends_noself = ai:getFriends(nil, true)
+        ai.enemies = ai:getEnemies()
+    end
+    return ai
+end
+
+-- Mode policy is evaluated in the owning Room and copied into this snapshot.
+-- No gameplay VM callbacks, native players, or mutable shared beliefs cross here.
+function SmartAIView:relationTo(other, another)
+    local policy = self.world.mode_policy
+    if type(policy) ~= "table" or not policy.managed then return nil end
+    local from = another or self.player
+    if not from or not other then return "unknown" end
+    local rows = policy.relations or {}
+    local row = rows[from:objectName()]
+    return row and row[other:objectName()] or "unknown"
+end
+
+function SmartAIView:isFriend(other, another)
+    local relation = self:relationTo(other, another)
+    if relation == nil then return nil end
+    return relation == "friend"
+end
+
+function SmartAIView:isEnemy(other, another)
+    local relation = self:relationTo(other, another)
+    if relation == nil then return nil end
+    return relation == "enemy"
+end
+
+function SmartAIView:objectiveLevel(other)
+    local policy = self.world.mode_policy
+    if type(policy) ~= "table" or not policy.managed then return nil end
+    return other and (policy.objectives or {})[other:objectName()] or 0
+end
+
+function SmartAIView:isRolePredictable()
+    local policy = self.world.mode_policy
+    if not policy or not policy.managed then return nil end
+    return policy.predictable == true
+end
+
+function SmartAIView:getFriends(player, no_self)
+    if not self.world.mode_policy or not self.world.mode_policy.managed then return nil end
+    player = player or self.player
+    local result, players = {}, {self.world.self}
+    for _, view in ipairs(self.world.players) do players[#players + 1] = view end
+    for _, view in ipairs(players) do
+        local target = PlayerView.new(view)
+        if view.alive and (not no_self or target:objectName() ~= player:objectName())
+            and self:isFriend(target, player) then result[#result + 1] = target end
+    end
+    return result
+end
+
+function SmartAIView:getEnemies(player)
+    if not self.world.mode_policy or not self.world.mode_policy.managed then return nil end
+    player = player or self.player
+    local result, players = {}, {self.world.self}
+    for _, view in ipairs(self.world.players) do players[#players + 1] = view end
+    for _, view in ipairs(players) do
+        local target = PlayerView.new(view)
+        if view.alive and self:isEnemy(target, player) then result[#result + 1] = target end
+    end
+    return result
 end

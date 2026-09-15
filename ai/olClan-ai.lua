@@ -1704,6 +1704,20 @@ end
 sgs.ai_use_value.zukuduCard = 3.4
 sgs.ai_use_priority.zukuduCard = 6.2
 
+sgs.ai_skill_use["@@zukudu"] = function(self,prompt)
+	local dc = sgs.ai_fill_skill.zukudu(self)
+	if dc then
+		local dummy = self:aiUseCard(dc)
+		if dummy.card then
+			local tos = {}
+			for _,p in sgs.list(dummy.to)do
+				table.insert(tos,p:objectName())
+			end
+			return dc:toString().."->"..table.concat(tos,"+")
+		end
+	end
+end
+
 sgs.ai_skill_invoke.zujiannan = function(self,data)
 	return self:canDraw() or self:isWeak()
 end

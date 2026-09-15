@@ -5248,3 +5248,43 @@ sgs.ai_use_priority.QiangangCard = 7.2
 
 
 
+
+sgs.ai_skill_invoke.juemou = function(self,data)
+	return self:canDraw()
+end
+
+sgs.ai_skill_invoke.fuzhan = function(self,data)
+	local tp = data:toPlayer()
+	return self:isFriend(tp) and tp:getLostHp()>1 and self:isWeak(tp)
+end
+
+sgs.ai_skill_use["@@juemou"] = function(self,prompt)
+	self:sort(self.enemies)
+	self:sort(self.friends,nil,true)
+	for _,ep in sgs.list(self.enemies)do
+		for i,fp in sgs.list(self.friends)do
+			if fp:canDiscard(ep,"he") and i<#self.friends/2 then
+				local tps = {fp:objectName(),ep:objectName()}
+				return "#juemouCard:.:->"..table.concat(tps,"+")
+			end
+		end
+	end
+	for _,ep in sgs.list(self.friends_noself)do
+		if self:doDisCard(ep,"e") then
+			local tps = {self.player:objectName(),ep:objectName()}
+			return "#juemouCard:.:->"..table.concat(tps,"+")
+		end
+	end
+	for _,ep in sgs.list(self.enemies)do
+		if self:doDisCard(ep,"e") then
+			local tps = {self.player:objectName(),ep:objectName()}
+			return "#juemouCard:.:->"..table.concat(tps,"+")
+		end
+	end
+	for _,ep in sgs.list(self.enemies)do
+		if self:doDisCard(ep,"he") then
+			local tps = {self.player:objectName(),ep:objectName()}
+			return "#juemouCard:.:->"..table.concat(tps,"+")
+		end
+	end
+end
