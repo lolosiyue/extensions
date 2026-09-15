@@ -1895,6 +1895,7 @@ SE_Kirito:addSkill(se_yekong)
 extension:insertRelatedSkills("se_yekong", "#se_yekongRe")
 
 SE_Kirito:addSkill(se_erdao)
+SE_Kirito:addSkill("inovation_fengbi")
 --SE_Kirito:addSkill(se_erdaoTwice)
 --extension:insertRelatedSkills("se_erdao","#se_erdaoTwice")
 SE_Asuna:addSkill(SE_Shanguang)
