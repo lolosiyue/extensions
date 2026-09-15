@@ -4342,7 +4342,7 @@ function SmartAI:getCardNeedPlayer(cards,include_self,tos)
 		end
 	end
 	local cmpByAction = function(a,b)
-		return a:getRoom():getFront(a,b)==a
+		return a:objectName()~=b:objectName() and a:getRoom():getFront(a,b)==a
 	end
 	table.sort(friends,cmpByAction)
 	for _,friend in sgs.list(friends)do
