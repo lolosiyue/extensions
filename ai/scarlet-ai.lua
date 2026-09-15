@@ -3921,7 +3921,12 @@ sgs.ai_ajustdamage_to.s4_s_yinghun = function(self, from, to, card, nature)
 end
 
 sgs.ai_skill_invoke.s4_fuhan = function(self,data)
-	if (not self:isWeak() and (self:getCardsNum("Peach")+self.player:getHp()>1 or hasZhaxiangEffect(self.player))) or self.player:getMark("s4_fuhan__success") > 0 then
+    if (not self:isWeak() and (self:getCardsNum("Peach")+self.player:getHp()>1 or hasZhaxiangEffect(self.player))) or (function()
+        for _, id in sgs.qlist(self.player:getSkillInstanceIds("s4_fuhan")) do
+            if self.player:getSkillInstanceStateValue("s4_fuhan", id, "shiming_status"):toInt() == 1 then return true end
+        end
+        return false
+    end)() then
 		return true
 	end
 end

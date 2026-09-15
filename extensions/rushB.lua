@@ -3782,15 +3782,52 @@ sgs.LoadTranslationTable{
 ---------------------------------
 rushB_mouzhugeliang = sgs.General(extension, "rushB_mouzhugeliang", "shu", 3)
 
-rushB_moubazhen = sgs.CreateTriggerSkill{
+rushB_moubazhen = sgs.CreateTriggerSkillV2{
     name = "rushB_moubazhen",
     events = {sgs.CardUsed, sgs.TargetConfirming, sgs.MarkChanged, sgs.Death, sgs.EventPhaseChanging},
     shiming_skill = true,
     waked_skills = "kongcheng,olhuoji,olkanpo,bazhen",
     frequency = sgs.Skill_Compulsory,
-    on_trigger = function(self, event, player, data, room)
-	    if player:getMark("rushB_moubazhen") > 0 then return false end
-		local names = player:property("SkillDescriptionRecord_rushB_moubazhen"):toString():split("+")
+    -- Automatic mission events use the standard V2 instance dispatcher.
+    can_trigger = function(self, event, room, player, data)
+        if not player or not player:isAlive() or not player:hasSkill(self:objectName()) then return false end
+        local names = {}
+        for _, id in sgs.qlist(player:getValidSkillInstanceIds(self:objectName())) do
+            local ref = sgs.SkillInstanceRef(player:objectName(), sgs.SkillInstanceKey(self:objectName(), id))
+            local names = player:getSkillInstanceStateValue(self:objectName(), id, "names"):toString():split("+")
+            local eligible = false
+            if event == sgs.TargetConfirming or event == sgs.CardUsed then
+                local use = data:toCardUse()
+                if use.card and not use.card:isKindOf("SkillCard") and not use.card:isKindOf("EquipCard")
+                    and not table.contains(names, use.card:objectName()) then
+                    eligible = (event == sgs.CardUsed and use.from == player)
+                        or (event == sgs.TargetConfirming and use.to:length() == 1
+                            and use.to:contains(player) and use.from and use.from ~= player)
+                end
+            elseif event == sgs.Death then
+                eligible = data:toDeath().who ~= player
+            elseif event == sgs.MarkChanged then
+                eligible = data:toMark().name == "bazhendeath" and player:getMark("bazhendeath") > 0
+            elseif event == sgs.EventPhaseChanging then
+                eligible = data:toPhaseChange().to == sgs.Player_NotActive
+                    and #names > room:alivePlayerCount() and player:getMark("bazhendeath") == 0
+            end
+            if eligible and room:getShimingStatus(ref) == 0 then table.insert(names, ref.key:toString()) end
+        end
+        if #names == 0 then return false end
+        return table.concat(names, "+")
+    end,
+    on_cost = function(self, event, room, player, ctx)
+        return room:getShimingStatus(ctx:getActivationRef()) == 0
+    end,
+    on_effect = function(self, event, room, player, ctx)
+        -- Revalidate after V2 hooks; a nested outcome may have removed this copy.
+        local ref = ctx:getActivationRef()
+        if not player:hasSkillInstance(self:objectName(), ref.key.instanceID)
+            or player:isSkillInvalid(self:objectName(), ref.key.instanceID)
+            or room:getShimingStatus(ref) ~= 0 then return false end
+        local data = ctx.original_data
+        local names = player:getSkillInstanceStateValue(self:objectName(), ref.key.instanceID, "names"):toString():split("+")
 	    if event == sgs.TargetConfirming then
 			local use = data:toCardUse()
 			if use.card:isKindOf("SkillCard") then return false end
@@ -3802,7 +3839,7 @@ rushB_moubazhen = sgs.CreateTriggerSkill{
 				use.nullified_list = nullified_list
 				data:setValue(use)
 
-				room:setPlayerProperty(player, "SkillDescriptionRecord_rushB_moubazhen", sgs.QVariant(table.concat(names, "+")))
+                player:setSkillInstanceStateValue(self:objectName(), ref.key.instanceID, "names", sgs.QVariant(table.concat(names, "+")))
 				local result = ""
 				for i, v in ipairs(names) do
 					if i > 1 then
@@ -3826,7 +3863,7 @@ rushB_moubazhen = sgs.CreateTriggerSkill{
 			use.nullified_list = nullified_list
 			data:setValue(use)
 
-			room:setPlayerProperty(player, "SkillDescriptionRecord_rushB_moubazhen", sgs.QVariant(table.concat(names, "+")))
+            player:setSkillInstanceStateValue(self:objectName(), ref.key.instanceID, "names", sgs.QVariant(table.concat(names, "+")))
 			local result = ""
 			for i, v in ipairs(names) do
 				if i > 1 then
@@ -3844,10 +3881,9 @@ rushB_moubazhen = sgs.CreateTriggerSkill{
 		elseif event == sgs.MarkChanged then
 			local mark = data:toMark()
 			if mark.name == "bazhendeath" and player:getMark(mark.name) > 0 and player:hasSkill(self:objectName()) then
-				room:sendShimingLog(player, self, false)
-			    room:addPlayerMark(player, "rushB_moubazhen")
-			    room:detachSkillFromPlayer(player, "tenyearguanxing")
-			    room:detachSkillFromPlayer(player, self:objectName())
+                if not room:sendShimingLog(ref, false) then return false end
+                room:detachSkillFromPlayer(player, "tenyearguanxing")
+                room:detachSkillFromPlayer(player, ref.key:toString())
 			    room:acquireSkill(player, "olhuoji")
 			    room:acquireSkill(player, "olkanpo")
 			end
@@ -3862,10 +3898,9 @@ rushB_moubazhen = sgs.CreateTriggerSkill{
 				    end
 			    end
 			    if not players:isEmpty() and player:getMark("bazhendeath") == 0 then
-		            room:sendShimingLog(player, self)
-				    room:addPlayerMark(player, "rushB_moubazhen")
-				    room:acquireSkill(player, "kongcheng")
-				    room:detachSkillFromPlayer(player, "rushB_moubazhen", true)
+                    if not room:sendShimingLog(ref) then return false end
+                    room:acquireSkill(player, "kongcheng")
+                    room:detachSkillFromPlayer(player, ref.key:toString(), true)
 				    room:attachSkillToPlayer(player, "bazhen")
 			    end
 			end
