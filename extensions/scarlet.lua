@@ -3299,6 +3299,19 @@ sgs.LoadTranslationTable {
 
 local s4_skillList = sgs.SkillList()
 
+-- This attached skill displays duel rules only. Register it so client rules
+-- snapshots can resolve the name without weakening unknown-skill validation.
+local s4_txbw_general_duel_rule = sgs.CreateTriggerSkill {
+    name = "s4_txbw_general_duel_rule",
+    events = {},
+    on_trigger = function(self, event, player, data)
+        return false
+    end
+}
+if not sgs.Sanguosha:getSkill("s4_txbw_general_duel_rule") then
+    s4_skillList:append(s4_txbw_general_duel_rule)
+end
+
 s4_txbw_disgeneralCard = sgs.CreateSkillCard {
     name = "s4_txbw_disgeneral",
     target_fixed = true,

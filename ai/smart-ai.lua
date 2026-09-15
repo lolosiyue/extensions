@@ -3,6 +3,7 @@
 -- "middleclass" is the Lua OOP library written by kikito
 -- more information see: https://github.com/kikito/middleclass
 local middleclass = require "middleclass"
+dofile("lua/ai/mode-ai.lua")
 
 -- initialize the random seed for later use
 math.randomseed(os.time())
@@ -387,11 +388,15 @@ function SmartAI:initialize(player)
 		self.room:setTag("initialized",sgs.QVariant(true))
 		sgs.ai_humanized = sgs.GetConfig("AIHumanized",true)
 		self.room:writeToConsole(version..",Powered by ".._VERSION)
+		local modeAI = sgs.modeAIEnabled(self.room, self.player)
 		for i,ap in sgs.qlist(self.room:getAlivePlayers())do
 			sgs.ai_role[ap:objectName()] = "neutral"
 			sgs.roleValue[ap:objectName()] = {lord=0,loyalist=0,rebel=0,renegade=0}
 			sgs.roleValue[ap:objectName()][ap:getRole()] = 0
-			if ap:getRole()=="lord" then
+			if modeAI then
+				-- The legacy shared table may contain public identities, never another viewer's secrets.
+				if self.room:isRoleRevealed(ap) then sgs.ai_role[ap:objectName()] = ap:getRole() end
+			elseif ap:getRole()=="lord" then
 				sgs.roleValue[ap:objectName()]["lord"] = 99999
 				sgs.roleValue[ap:objectName()]["loyalist"] = 65535
 				sgs.ai_role[ap:objectName()] = "loyalist"
@@ -11571,3 +11576,6 @@ if os and os.getenv and (os.getenv("QSAN_LUA_PROFILE") or "") ~= "" then
 		end
 	end, "", step)
 end
+
+-- Install after legacy/scenario definitions; unregistered old modes retain their strategy.
+sgs.installModeAI(SmartAI)

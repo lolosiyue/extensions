@@ -1518,7 +1518,7 @@ zd_yawang = sgs.CreateTriggerSkill{
 }
 cuiyan:addSkill(zd_yawang)
 
-zd_huangfusong = sgs.General(Zhongdan,"zd_huangfusong","qun")
+huangfusong = sgs.General(Zhongdan,"huangfusong","qun")
 zd_fenyueCard = sgs.CreateSkillCard{
 	name = "zd_fenyueCard",
 	will_throw = false,
@@ -1565,7 +1565,7 @@ zd_fenyue = sgs.CreateOneCardViewAsSkill{
 		return player:usedTimes("#zd_fenyueCard") < n
 	end
 }
-zd_huangfusong:addSkill(zd_fenyue)
+huangfusong:addSkill(zd_fenyue)
 
 ZhongdanCard = sgs.Package("ZhongdanCard",sgs.Package_CardPack)
 
@@ -3050,16 +3050,16 @@ sgs.LoadTranslationTable{
 	["$zd_xunzhi1"] = "春秋大业，自在我心！",
 	["$zd_xunzhi2"] = "成大义者，这点儿牺牲，算不得什么！",
 	["~cuiyan"] = "尔等，尽是欺世盗名之辈......",
-	["zd_huangfusong"] = "皇甫嵩",
-	["#zd_huangfusong"] = "志定雪霜",
-	["illustrator:zd_huangfusong"] = "秋呆呆",
+	["huangfusong"] = "皇甫嵩",
+	["#huangfusong"] = "志定雪霜",
+	["illustrator:huangfusong"] = "秋呆呆",
 	["zd_fenyue"] = "奋钺",
 	[":zd_fenyue"] = "<font color=\"green\"><b>出牌阶段限X次，</b></font>你可以与一名角色拼点：若你赢，你选择视为对其使用【杀】或令其于此回合内不能使用或打出手牌；若你没赢后，你结束此阶段。（X为忠臣数）",
 	["zd_fenyue1"] = "其于此回合内不能使用或打出手牌",
 	["zd_fenyue2"] = "视为对其使用【杀】",
 	["$zd_fenyue1"] = "逆贼势大，且扎营寨，击其懈怠。",
 	["$zd_fenyue2"] = "兵有其变，不在众寡。",
-	["~zd_huangfusong"] = "只恨黄巾未除，不能报效朝廷。",
+	["~huangfusong"] = "只恨黄巾未除，不能报效朝廷。",
 	["zd_shengdongjixi"] = "声东击西",
 	[":zd_shengdongjixi"] = "锦囊牌·单目标锦囊<br/><font color=\"#bab8ba\"><b>（替换【顺手牵羊】）</b></font><br/><b>时机</b>：出牌阶段，对距离为1的一名角色使用并指定另一名角色<br/><b>效果</b>：你交给目标一张手牌，然后其将两张牌交给指定的角色。",
 	["zd_shengdongjixi0"] = "声东击西：请选择将一张手牌交给%src",

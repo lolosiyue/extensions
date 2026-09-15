@@ -6425,6 +6425,456 @@ sgs.LoadTranslationTable {
 	["sxfeili0"] = "你可以发动“诽离”防止此伤害",
 }
 
+sxfy_xuanwu = sgs.Package("sxfy_xuanwu",sgs.Package_GeneralPack)
+
+sx_lvboshe = sgs.General(sxfy_xuanwu,"sx_lvboshe","qun",4)
+sxfushivs = sgs.CreateViewAsSkill{
+	name = "sxfushi",
+	n = 998,
+	response_or_use = true,
+	view_filter = function(self,selected,to_select)
+		return to_select:isKindOf("Slash")
+	end,
+	view_as = function(self,cards)
+		if #cards>0 then
+			local sc = sgs.Sanguosha:cloneCard("slash")
+			sc:setSkillName("sxfushi")
+			for _,c in sgs.list(cards)do
+				sc:addSubcard(c)
+			end
+			return sc
+		end
+	end,
+	enabled_at_response = function(self,player,pattern)
+		return pattern:contains("slash")
+	end,
+	enabled_at_play = function(self,player)
+		return sgs.Slash_IsAvailable(player)
+	end,
+}
+sxfushi = sgs.CreateTriggerSkill{
+	name = "sxfushi",
+	view_as_skill = sxfushivs,
+	events = {sgs.CardFinished,sgs.CardUsed},
+	can_trigger = function(self,target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.CardFinished then
+			local use = data:toCardUse()
+			if use.card:hasFlag("sxfushiBf") then
+				for _,p in sgs.qlist(room:getAllPlayers())do
+					if use.card:hasFlag("sxfushiBf"..p:objectName()) and p:hasSkill(self) then
+						if room:getCardOwner(use.card:getEffectiveId()) then break end
+						p:peiyin("fushi")
+						room:sendCompulsoryTriggerLog(p,self:objectName())
+						p:obtainCard(use.card)
+					end
+				end
+			end
+		else
+			local use = data:toCardUse()
+			if use.card:getSkillName()==self:objectName() then
+				player:peiyin("fushi")
+			end
+			if use.card:isKindOf("Slash") and player:getMark("sxfushiNum-Clear")<1 then
+				player:addMark("sxfushiNum-Clear")
+				for _,p in sgs.qlist(room:getAlivePlayers())do
+					if p:distanceTo(player)<=1 then
+						room:setCardFlag(use.card,"sxfushiBf")
+						room:setCardFlag(use.card,"sxfushiBf"..p:objectName())
+					end
+				end
+			end
+		end
+	end,
+}
+sx_lvboshe:addSkill(sxfushi)
+
+sx_caojinyu = sgs.General(sxfy_xuanwu,"sx_caojinyu","wei",3,false)
+sxyuqi = sgs.CreateTriggerSkill{
+	name = "sxyuqi",
+	events = {sgs.Damaged},
+	can_trigger = function(self,target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.Damaged then
+			for _,p in sgs.qlist(room:getAllPlayers())do
+				if p:distanceTo(player)<=p:getHp() and p:hasSkill(self)
+				and p:askForSkillInvoke(self:objectName(),player) then
+					p:peiyin("yuqi")
+					p:drawCards(1,self:objectName())
+				end
+			end
+		end
+	end,
+}
+sx_caojinyu:addSkill(sxyuqi)
+sxshanshen = sgs.CreateTriggerSkill{
+	name = "sxshanshen",
+	events = {sgs.Death},
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.Death then
+			local death = data:toDeath()
+			if death.damage and death.damage.from==player then return end
+			if player:isWounded() and player:askForSkillInvoke(self) then
+				player:peiyin("shanshen")
+				room:recover(player,sgs.RecoverStruct(self:objectName(),player))
+			end
+		end
+	end,
+}
+sx_caojinyu:addSkill(sxshanshen)
+
+sx_kebineng = sgs.General(sxfy_xuanwu,"sx_kebineng","qun",4)
+sxkoujingvs = sgs.CreateViewAsSkill{
+	name = "sxkoujing",
+	n = 998,
+	response_or_use = true,
+	view_filter = function(self,selected,to_select)
+		return not to_select:isEquipped()
+	end,
+	view_as = function(self,cards)
+		local sc = sgs.Sanguosha:cloneCard("slash")
+		sc:setSkillName("sxkoujing")
+		for _,c in sgs.list(cards)do
+			sc:addSubcard(c)
+		end
+		return sc
+	end,
+	enabled_at_play = function(self,player)
+		return player:getMark("sxkoujingUse-PlayClear")<1
+	end,
+}
+sxkoujing = sgs.CreateTriggerSkill{
+	name = "sxkoujing",
+	view_as_skill = sxkoujingvs,
+	events = {sgs.Damaged,sgs.CardUsed},
+	can_trigger = function(self,target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.Damaged then
+			local damage = data:toDamage()
+			if damage.card and table.contains(damage.card:getSkillNames(),self:objectName()) and player~=damage.from then
+				if player:askForSkillInvoke(self,ToData("0:"..damage.from:objectName()),false) then
+					room:swapCards(player,damage.from,"h",self:objectName())
+				end
+			end
+		else
+			local use = data:toCardUse()
+			if table.contains(use.card:getSkillNames(),self:objectName()) then
+				room:addPlayerMark(player,"sxkoujingUse-Clear")
+				player:peiyin("koujing")
+			end
+		end
+	end,
+}
+sx_kebineng:addSkill(sxkoujing)
+
+sx_ganfuren = sgs.General(sxfy_xuanwu,"sx_ganfuren","shu",3,false)
+sxzhijie = sgs.CreateTriggerSkill{
+	name = "sxzhijie",
+	events = {sgs.EventPhaseStart,sgs.CardUsed},
+	can_trigger = function(self,target)
+		return target and target:isAlive()
+		and target:getPhase()==sgs.Player_Play
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.EventPhaseStart then
+			for _,p in sgs.qlist(room:getAllPlayers())do
+				if p:getMark("sxzhijieUse_lun")<1 and p:hasSkill(self) and player:getHandcardNum()>0
+				and p:askForSkillInvoke(self:objectName(),player) then
+					p:peiyin("zhijie")
+					p:addMark("sxzhijieUse_lun")
+					local id = room:askForCardChosen(p,player,"h",self:objectName())
+					if id<0 then continue end
+					room:showCard(player,id)
+					id = sgs.Sanguosha:getEngineCard(id):getType()
+					room:setPlayerMark(player,"&sxzhijie+"..id.."+#"..p:objectName().."-PlayClear",1)
+					player:addMark("sxzhijieUse-PlayClear")
+				end
+			end
+		else
+			local use = data:toCardUse()
+			if use.card:getTypeId()>0 and player:getMark("sxzhijieUse-PlayClear")>0
+			and player:getMark("sxzhijieNum-PlayClear")<3 then
+				player:addMark("sxzhijieNum-PlayClear")
+				for _,p in sgs.qlist(room:getAllPlayers())do
+					if player:getMark("&sxzhijie+"..use.card:getType().."+#"..p:objectName().."-PlayClear")>0 then
+						p:drawCards(1,self:objectName())
+					end
+				end
+			end
+		end
+	end,
+}
+sx_ganfuren:addSkill(sxzhijie)
+sxshushen = sgs.CreateTriggerSkill{
+	name = "sxshushen",
+	events = {sgs.EventPhaseChanging,sgs.CardsMoveOneTime},
+	can_trigger = function(self,target)
+		return target~=nil
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if (change.to == sgs.Player_NotActive) then
+				for _,p in sgs.qlist(room:getAllPlayers())do
+					if p:getMark("sxshushenNum-Clear")>2 and p:hasSkill(self:objectName()) then
+						local tps = sgs.SPlayerList()
+						for _,q in sgs.qlist(room:getOtherPlayers(p))do
+							if q:isWounded() then tps:append(q) end
+						end
+						local tp = room:askForPlayerChosen(p,tps,self:objectName(),"sxshushen0",true,true)
+						if tp then
+							p:peiyin("shushen")
+							room:recover(tp,sgs.RecoverStruct(self:objectName(),p))
+						end
+					end
+				end
+			end
+		else
+			local move = data:toMoveOneTime()
+			if (move.to_place==sgs.Player_PlaceHand or move.to_place==sgs.Player_PlaceEquip)
+			and move.to:objectName()==player:objectName() and player:hasTurn() then
+				player:addMark("sxshushenNum-Clear",move.card_ids:length())
+			end
+		end
+	end,
+}
+sx_ganfuren:addSkill(sxshushen)
+
+sx_niujin = sgs.General(sxfy_xuanwu,"sx_niujin","wei",4)
+sxcuorui = sgs.CreateTriggerSkill{
+	name = "sxcuorui",
+	events = {sgs.Death,sgs.GameStart},
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.Death then
+			local death = data:toDeath()
+			if death.damage and death.damage.from==player then else return end
+		end
+		local x = math.min(7,room:getPlayers():length())
+		if player:getHandcardNum()<x and player:askForSkillInvoke(self) then
+			player:peiyin("cuorui")
+			player:drawCards(x-player:getHandcardNum(),self:objectName())
+		end
+	end,
+}
+sx_niujin:addSkill(sxcuorui)
+
+sx_wuke = sgs.General(sxfy_xuanwu,"sx_wuke","wu",3,false)
+sxanda = sgs.CreateTriggerSkill{
+	name = "sxanda",
+	events = {sgs.Dying},
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.Dying then
+			local dying = data:toDying()
+			if player:getMark("sxandaUse_lun")<1 and dying.damage and dying.damage.from
+			and player:askForSkillInvoke(self,dying.who) then
+				player:addMark("sxandaUse_lun")
+				player:peiyin("anda")
+				if dying.damage.from:getCardCount()>0 then
+					local dc = room:askForCard(dying.damage.from,"..","sxanda0:"..dying.who:objectName(),data,sgs.Card_MethodNone)
+					if dc then
+						room:giveCard(dying.damage.from,dying.who,dc,self:objectName())
+						return
+					end
+				end
+				room:recover(dying.who,sgs.RecoverStruct(self:objectName(),player))
+			end
+		end
+	end,
+}
+sx_wuke:addSkill(sxanda)
+sxzhuguoCard = sgs.CreateSkillCard{
+	name = "sxzhuguoCard",
+	target_fixed = false,
+	mute = true,
+	filter = function(self,targets,to_select,source)
+		return #targets<1
+	end,
+	on_use = function(self,room,player,targets)
+		player:peiyin("zengou")
+		for _,p in sgs.list(targets)do
+			local x = 2-p:getHandcardNum()
+			if x>0 then
+				p:drawCards(x,"sxzhuguo")
+			end
+		end
+	end
+}
+sxzhuguo = sgs.CreateViewAsSkill{
+	name = "sxzhuguo",
+	view_as = function(self,cards)
+		return sxzhuguoCard:clone()
+	end,
+	enabled_at_play = function(self,player)
+		return player:usedTimes("#sxzhuguoCard")<1
+	end,
+}
+sx_wuke:addSkill(sxzhuguo)
+
+sx_wangshen = sgs.General(sxfy_xuanwu,"sx_wangshen","wei",3)
+sxanran = sgs.CreateTriggerSkill{
+	name = "sxanran",
+	events = {sgs.Damaged},
+	on_trigger = function(self,event,player,data,room)
+		if player:askForSkillInvoke(self) then
+			player:peiyin("anran")
+			local x = math.min(4,player:getMark("&sxanran+#num")+1)
+			player:drawCards(x,self:objectName())
+			room:addPlayerMark(player,"&sxanran+#num")
+		end
+	end,
+}
+sx_wangshen:addSkill(sxanran)
+sxgaobanvs = sgs.CreateViewAsSkill{
+	name = "sxgaoban",
+	n = 1,
+	expand_pile = "#sxgaoban",
+	response_pattern = "@@sxgaoban",
+	view_filter = function(self,selected,to_select)
+		return sgs.Self:getPileName(to_select:getId())=="#sxgaoban"
+	end,
+	view_as = function(self,cards)
+		return #cards>0 and cards[1]
+	end,
+}
+sxgaoban = sgs.CreateTriggerSkill{
+	name = "sxgaoban",
+	view_as_skill = sxgaobanvs;
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.EventPhaseChanging,sgs.CardsMoveOneTime,sgs.DamageDone},
+	can_trigger = function(self,target)
+		return target~=nil
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if (change.to == sgs.Player_NotActive) then
+				local ap = room:getTag("sxgaobanDone"):toString()
+				for _,p in sgs.qlist(room:getOtherPlayers(player))do
+					if ap:contains("+") then break end
+					if p:hasSkill(self:objectName()) then
+						for _,q in sgs.qlist(room:getAlivePlayers())do
+							if q:objectName()==ap then
+								local ids = sgs.IntList()
+								p:peiyin("gaoban")
+								room:sendCompulsoryTriggerLog(p,self:objectName())
+								for _,id in sgs.qlist(room:getDiscardPile())do
+									if p:getMark(id.."sxshushenId-Clear")>0 then
+										local c = sgs.Sanguosha:getCard(id)
+										if c:isKindOf("Slash") and c:isAvailable(q) then
+											ids:append(id)
+										end
+									end
+								end
+								if ids:length()>0 then
+									room:notifyMoveToPile(q,ids,"sxgaoban")
+									if room:askForUseCard(q,"@@sxgaoban","sxgaoban0") then continue end
+								end
+								room:setPlayerMark(p,"&sxanran+#num",0)
+							end
+						end
+					end
+				end
+				room:removeTag("sxgaobanDone")
+			end
+		elseif event==sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			if move.to_place==sgs.Player_DiscardPile then
+				for _,id in sgs.qlist(move.card_ids)do
+					player:addMark(id.."sxshushenId-Clear")
+				end
+			end
+		else
+			local aps = room:getTag("sxgaobanDone"):toString():split("+")
+			if table.contains(aps,player:objectName()) then return end
+			table.insert(aps,player:objectName())
+			room:setTag("sxgaobanDone",ToData(table.concat(aps,"+")))
+		end
+	end,
+}
+sx_wangshen:addSkill(sxgaoban)
+
+
+
+
+
+
+sgs.LoadTranslationTable{
+
+	["sxfy_xuanwu"] = "四象封印·玄武",
+
+
+	["sx_wangshen"] = "王沈[玄]",
+	["#sx_wangshen"] = "崇虎田光",
+	["illustrator:sx_wangshen"] = "错落宇宙",
+
+	["sxanran"] = "岸然",
+	[":sxanran"] = "当你受到伤害后，你可以摸一张牌，然后此技能摸牌数+1",
+	["sxgaoban"] = "告变",
+	[":sxgaoban"] = "锁定技，其他角色的回合结束时，若本回合仅有一名角色受到伤害，此受到伤害的角色选择一项：1.使用本回合置入弃牌堆的一张【杀】；2.令你重置“岸然”。",
+	["sxgaoban0"] = "告变：你可以使用弃牌堆一张【杀】",
+	["#sxgaoban"] = "弃牌堆",
+
+	["sx_wuke"] = "吴珂[玄]",
+	["#sx_wuke"] = "智略权谲",
+	["illustrator:sx_wuke"] = "铁杵",
+
+	["sxanda"] = "谙达",
+	[":sxanda"] = "每轮限一次，当一名角色陷入濒死时，你可以令伤害来源选择一项：1.交给其一张牌；2.其回复1点体力。",
+	["sxzhuguo"] = "助国",
+	[":sxzhuguo"] = "出牌阶段限一次，你可以令一名角色将手牌摸至2张。",
+	["sxanda0"] = "谙达：请交给%src一张牌，否则其回复1点体力",
+
+	["sx_niujin"] = "牛金[玄]",
+	["#sx_niujin"] = "独进的兵胆",
+	["illustrator:sx_niujin"] = "游漫美绘",
+
+	["sxcuorui"] = "挫锐",
+	[":sxcuorui"] = "游戏开始时和你杀死其他角色时，你可以摸牌至X张（X为角色数且至多为7）。",
+
+	["sx_ganfuren"] = "甘夫人[玄]",
+	["#sx_ganfuren"] = "昭烈皇后",
+	["illustrator:sx_ganfuren"] = "错落宇宙",
+
+	["sxzhijie"] = "智诫",
+	[":sxzhijie"] = "每轮限一次，一名角色出牌阶段开始时，你可以展示其一张手牌，其此阶段前3次使用与此牌类型相同的牌时，你摸一张牌。",
+	["sxshushen"] = "淑慎",
+	[":sxshushen"] = "每回合结束时，若你本回合获得了至少3张牌。你可以令一名其他角色回复1点体力。",
+	["sxshushen0"] = "你可以发动“淑慎”选择令一名其他角色回复体力",
+
+	["sx_lvboshe"] = "吕伯奢[玄]",
+	["#sx_lvboshe"] = "醉乡路稳",
+	["illustrator:sx_lvboshe"] = "丝葱",
+
+	["sxfushi"] = "缚豕",
+	[":sxfushi"] = "你距离1以内的角色使用每回合首次使用【杀】结算后，你获得之。你可以将任意张【杀】当做一张指定至多等量目标的【杀】使用。",
+
+	["sx_caojinyu"] = "曹金玉[玄]",
+	["#sx_caojinyu"] = "金乡公主",
+	["illustrator:sx_caojinyu"] = "月月岛",
+
+	["sxyuqi"] = "隅泣",
+	[":sxyuqi"] = "计算与你距离小于等于你体力值的角色受到伤害后，你可以令其摸一张牌。",
+	["sxshanshen"] = "善身",
+	[":sxshanshen"] = "当一名角色死亡后，若伤害来源不为你。你可以回复1点体力。",
+
+	["sx_kebineng"] = "轲比能[玄]",
+	["#sx_kebineng"] = "瀚海鲸波",
+	["illustrator:sx_kebineng"] = "丝葱",
+
+	["sxkoujing"] = "寇旌",
+	[":sxkoujing"] = "出牌阶段限一次，你可以将任意手牌当做一张无距离与次数限制的杀使用，当其他角色受到此【杀】造成的伤害后，其可以与你交换手牌。",
+	["sxkoujing:0"] = "寇旌：你可以与%src交换手牌",
+
+
+
+}
+
 sxfy_zhencang = sgs.Package("sxfy_zhencang", sgs.Package_GeneralPack)
 
 _zc_xuanhuafuTr = sgs.CreateTriggerSkill {
@@ -7132,4 +7582,4 @@ sgs.LoadTranslationTable {
 	[":zcjieji"] = "当你每回合使用首张【杀】对其他角色造成伤害后，你可以获得其一张牌，然后其视为对你使用一张【杀】。",
 }
 
-return { kearmsxfyli, kearmsxfyzhen, sxfygen, sxfykun, sxfyxun, sxfykan, sxfyqian, sxfydui, sxfy_qinglong, sxfy_baihu, sxfy_zhuque, sxfy_zhencang }
+return { kearmsxfyli, kearmsxfyzhen, sxfygen, sxfykun, sxfyxun, sxfykan, sxfyqian, sxfydui, sxfy_qinglong, sxfy_baihu, sxfy_zhuque, sxfy_xuanwu, sxfy_zhencang }

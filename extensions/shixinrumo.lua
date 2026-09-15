@@ -1943,4 +1943,1156 @@ sgs.LoadTranslationTable {
 
 
 
-return{shixinrumo_yi,shixinrumo_man}
+
+local function getShimingRef(p, skill)
+	return sgs.SkillInstanceRef(p:objectName(), sgs.SkillInstanceKey(skill:objectName(), p:getSkillInstanceId(skill:objectName())))
+end
+
+local shixinrumo_chen = sgs.Package("shixinrumo_chen",sgs.Package_GeneralPack)
+chen_zhouyu = sgs.General(shixinrumo_chen,"chen_zhouyu","demon",4)
+chenjiehuo = sgs.CreateTriggerSkill{
+	name = "chenjiehuo",
+	shiming_skill = true,
+	events = {sgs.EventPhaseStart,sgs.ConfirmDamage},
+	can_trigger = function(self,target)
+		return true
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.ConfirmDamage then
+			local damage = data:toDamage()
+			for i,p in sgs.qlist(room:getAllPlayers())do
+				if p:getMark("&chenjiehuo+#use")>0 then
+					room:setPlayerMark(p,"&chenjiehuo+#use",0)
+					room:sendCompulsoryTriggerLog(p,self)
+					damage.damage = 3
+					damage.nature = sgs.DamageStruct_Fire
+					data:setValue(damage)
+					if damage.from~=p then
+						room:sendShimingLog(getShimingRef(p, self), false)
+						room:loseMaxHp(p,1,self:objectName())
+					end
+				end
+			end
+		else
+			if player:isAlive() and player:getPhase()==sgs.Player_RoundStart and player:getMark("chenjiehuo")<1
+			and player:hasSkill(self:objectName()) and player:askForSkillInvoke(self:objectName()) then
+				room:setPlayerMark(player,"&chenjiehuo+#use",1)
+			end
+		end
+		return false
+	end
+}
+chen_zhouyu:addSkill(chenjiehuo)
+chenxiangerCard = sgs.CreateSkillCard{
+	name = "chenxiangerCard",
+	filter = function(self,targets,to_selec,source)
+		return #targets<1
+	end,
+	on_use = function(self,room,source,targets)
+		for i,p in sgs.list(targets)do
+			room:setPlayerMark(p,"&chenxianger+#"..source:objectName(),1)
+			room:setPlayerCardLimitation(p,"use",".|.|7~13",false)
+			p:setMark("chenxiangerNum",0)
+		end
+	end,
+}
+chenxiangervs = sgs.CreateViewAsSkill{
+	name = "chenxianger",
+	view_as = function(self,cards)
+		return chenxiangerCard:clone()
+	end,
+	enabled_at_play = function(self,player)
+		return player:usedTimes("#chenxiangerCard")<1
+		and player:getMark("chenxianger")<1
+	end,
+}
+chenxianger = sgs.CreateTriggerSkill{
+	name = "chenxianger",
+	view_as_skill = chenxiangervs,
+	events = {sgs.EventPhaseProceeding,sgs.DamageDone},
+	can_trigger = function(self,target)
+		return target~=nil
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.EventPhaseProceeding then
+	     	if(player:getPhase()==sgs.Player_Finish)then
+				for i,p in sgs.list(room:getAllPlayers())do
+					if(player:getMark("&chenxianger+#"..p:objectName())>0)then
+						room:setPlayerMark(player,"&chenxianger+#"..p:objectName(),0)
+						room:recover(player,sgs.RecoverStruct(self:objectName(),p,2))
+						room:removePlayerCardLimitation(player,"use",".|.|7~13")
+						if(player:getMark("chenxiangerNum")<2)then
+							room:sendShimingLog(getShimingRef(p, self), false)
+							room:loseMaxHp(p,1,self:objectName())
+						end
+					end
+				end
+			end
+		elseif event==sgs.DamageDone then
+			local damage = data:toDamage()
+			player:addMark("chenxiangerNum",damage.damage)
+		end
+		return false
+	end
+}
+chen_zhouyu:addSkill(chenxianger)
+chenmieguo = sgs.CreateTriggerSkill{
+	name = "chenmieguo",
+	waked_skills = "#chenmieguobf",
+	events = {sgs.EventPhaseStart,sgs.CardUsed},
+	can_trigger = function(self,target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.EventPhaseStart then
+			if player:getPhase()==sgs.Player_NotActive then
+				if player:getTag("Global_ExtraTurn"):toBool() then
+					for i,p in sgs.qlist(room:getAlivePlayers())do
+						room:setPlayerMark(p,"&chenmieguo_ban+#"..player:objectName(),0)
+					end
+					if player:getMark("chenmieguoBf")>0 then
+						player:setMark("chenmieguoBf",0)
+						if player:getMark("chenmieguoUse")<1 then
+							room:sendShimingLog(getShimingRef(player, self), false)
+							room:loseMaxHp(player,1,self:objectName())
+						end
+					end
+				else
+					if player:getMark("chenmieguo")<1 and player:hasSkill(self) then
+						local tps = sgs.SPlayerList()
+						for i,p in sgs.qlist(room:getOtherPlayers(player))do
+							if p:getCardCount()>0 then tps:append(p) end
+						end
+						local tp = room:askForPlayerChosen(player,tps,self:objectName(),"chenmieguo0",true,true)
+						if tp then
+							local dc = dummyCard()
+							for i=1,3 do
+								local id = room:askForCardChosen(player,tp,"he",self:objectName(),false,sgs.Card_MethodNone,dc:getSubcards(),true)
+								if id<0 then break end
+								dc:addSubcard(id)
+								if dc:subcardsLength()>=tp:getCardCount()
+								then break end
+							end
+							player:obtainCard(dc,false)
+							local x = dc:subcardsLength()
+							local tps = room:askForPlayersChosen(tp,room:getAlivePlayers(),self:objectName(),x,x,"chenmieguo1:"..x)
+							for i,p in sgs.qlist(tps)do
+								room:doAnimate(1,tp:objectName(),p:objectName())
+								room:setPlayerMark(p,"&chenmieguo_ban+#"..player:objectName(),1)
+							end
+							player:setMark("chenmieguoBf",1)
+							player:gainAnExtraTurn()
+						end
+					end
+				end
+			end
+		else
+			local use = data:toCardUse()
+			if use.card:getTypeId()>0 and player:getMark("chenmieguoBf")>0
+			and player:hasFlag("CurrentPlayer") then
+				player:addMark("chenmieguoUse")
+			end
+		end
+		return false
+	end
+}
+chen_zhouyu:addSkill(chenmieguo)
+chenmieguobf = sgs.CreateProhibitSkill{
+	name = "#chenmieguobf",
+	is_prohibited = function(self,from,to,card)
+		if card:getTypeId()>0 then
+			return to and to:getMark("&chenmieguo_ban+#"..from:objectName())>0
+		end
+	end
+}
+chen_zhouyu:addSkill(chenmieguobf)
+
+chen_zhugeliang = sgs.General(shixinrumo_chen,"chen_zhugeliang","shu",3)
+chenbingquvs = sgs.CreateViewAsSkill{
+	name = "chenbingqu",
+	n = 999,
+	response_pattern = "@@chenbingqu!",
+	view_filter = function(self,selected,to_select)
+		return #selected<sgs.Self:getHandcardNum()/2
+		and not to_select:isEquipped()
+	end,
+	view_as = function(self,cards)
+		if #cards<sgs.Self:getHandcardNum()/2 then return end
+		local dc = sgs.Sanguosha:cloneCard(sgs.Self:property("chenbingquCn"):toString())
+		dc:setSkillName("_chenbingqu")
+		for i,c in sgs.list(cards)do
+			dc:addSubcard(c)
+		end
+		return dc
+	end,
+}
+chenbingqu = sgs.CreateTriggerSkill{
+	name = "chenbingqu",
+	events = {sgs.EventPhaseStart},
+	view_as_skill = chenbingquvs,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.EventPhaseStart then
+			if player:getPhase()==sgs.Player_Start then
+				local tp = room:askForPlayerChosen(player,room:getOtherPlayers(player),self:objectName(),"chenbingqu0",true,true)
+				if tp then
+					local p2cn = {}
+					local msg = sgs.LogMessage()
+					msg.type = "#ShouxiChoice"
+					local cns = sgs.Sanguosha:getCardNames("TrickCard+^DelayedTrick")
+					for i,p in sgs.qlist(SPlayerList(player,tp))do
+						local choices = {}
+						for i,cn in sgs.list(cns)do
+							if cn==msg.arg then continue end
+							local dc = dummyCard(cn,"chenbingqu")
+							if dc:isAvailable(p) then
+								table.insert(choices,cn)
+							end
+						end
+						if #choices<1 then continue end
+						msg.from = p
+						msg.arg = room:askForChoice(p,self:objectName(),table.concat(choices,"+"),ToData((i<1 and tp or player)))
+						p2cn[p:objectName()] = msg.arg
+						room:sendLog(msg)
+					end
+					for i,p in sgs.qlist(SPlayerList(player,tp))do
+						local cn = p2cn[(i<1 and tp:objectName() or player:objectName())]
+						room:setPlayerProperty(p,"chenbingquCn",ToData(cn))
+						room:askForUseCard(p,"@@chenbingqu!","chenbingqu1:"..cn)
+					end
+				end
+			end
+		end
+		return false
+	end
+}
+chen_zhugeliang:addSkill(chenbingqu)
+chenfanxin = sgs.CreateTriggerSkill{
+	name = "chenfanxin",
+	events = {sgs.GameStart,sgs.Death,sgs.EventPhaseStart},
+	can_trigger = function(self,target)
+		return target~=nil
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.EventPhaseStart then
+			if player:getPhase()==sgs.Player_RoundStart and player:getMark("&wrath")>0 then
+				for i,p in sgs.qlist(room:getOtherPlayers(player))do
+					if player:getMark("&chenfanxin+#"..p:objectName())>0 and p:askForSkillInvoke(self,player) then
+						local choices = {}
+						for i=1,math.min(5,player:getMark("&wrath")) do
+							table.insert(choices,"1="..i)
+						end
+						local choice = room:askForChoice(p,self:objectName(),table.concat(choices,"+"),ToData(player))
+						local x = tonumber(choice:split("=")[2])
+						player:loseMark("&wrath",x)
+						p:drawCards(x,self:objectName())
+						if player:getMark("&wrath")<1 then break end
+					end
+				end
+			end
+		else
+			if event==sgs.Death then
+				local death = data:toDeath()
+				if death.who==player or death.who:getMark("&chenfanxin+#"..player:objectName())<1 then
+					return false
+				end
+			end
+			if player:isAlive() and player:hasSkill(self) then
+				local tp = room:askForPlayerChosen(player,room:getOtherPlayers(player),self:objectName(),"chenfanxin0",true,true)
+				if tp then
+					room:setPlayerMark(tp,"&chenfanxin+#"..player:objectName(),1)
+					room:handleAcquireDetachSkills(tp,"kuangbao|wumou")
+				end
+			end
+		end
+		return false
+	end
+}
+chen_zhugeliang:addSkill(chenfanxin)
+
+chen_zhaoyun = sgs.General(shixinrumo_chen,"chen_zhaoyun","shu",4)
+chenzhaduo = sgs.CreateTriggerSkill{
+	name = "chenzhaduo",
+	events = {sgs.EventPhaseStart},
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.EventPhaseStart then
+			if player:getPhase()==sgs.Player_Finish then
+				local tps = sgs.SPlayerList()
+				for i,p in sgs.list(room:getOtherPlayers(player))do
+					if p:getCardCount()>0 then tps:append(p) end
+				end
+				tps = room:askForPlayersChosen(player,tps,self:objectName(),-1,2,"chenzhaduo0",true,false)
+				if tps:length()<2 then return false end
+				for i,p in sgs.list(tps)do
+					local id = room:askForCardChosen(player,p,"he",self:objectName())
+					room:obtainCard(player,id,false)
+				end
+				local dc = dummyCard(nil,"_chenzhaduo")
+				if player:canSlash(tps:first(),dc,false) then
+					local skills = {}
+					for i,s in sgs.qlist(tps:last():getVisibleSkillList())do
+						if s:isAttachedLordSkill() or player:hasSkill(s,true) then continue end
+						table.insert(skills,s:objectName())
+					end
+					room:handleAcquireDetachSkills(player,table.concat(skills,"|"))
+					room:useCard(sgs.CardUseStruct(dc,player,tps:first()))
+					local skills2 = {}
+					for i,s in sgs.list(skills)do
+						table.insert(skills2,"-"..s)
+					end
+					room:handleAcquireDetachSkills(player,table.concat(skills2,"|"))
+				end
+				dc = dummyCard("duel","_chenzhaduo")
+				if tps:last():canUse(dc,player) then
+					local skills = {}
+					for i,s in sgs.list(tps:first():getVisibleSkillList())do
+						if s:isAttachedLordSkill() or player:hasSkill(s,true) then continue end
+						table.insert(skills,s:objectName())
+					end
+					room:handleAcquireDetachSkills(player,table.concat(skills,"|"))
+					room:useCard(sgs.CardUseStruct(dc,tps:last(),player))
+					local skills2 = {}
+					for i,s in sgs.list(skills)do
+						table.insert(skills2,"-"..s)
+					end
+					room:handleAcquireDetachSkills(player,table.concat(skills2,"|"))
+				end
+			end
+		end
+		return false
+	end
+}
+chen_zhaoyun:addSkill(chenzhaduo)
+
+chen_zhangzhao = sgs.General(shixinrumo_chen,"chen_zhangzhao","wu",3)
+chenxiezhongvs = sgs.CreateViewAsSkill{
+	name = "chenxiezhong",
+	n = 2,
+	view_filter = function(self,selected,to_select)
+		return true
+	end,
+	view_as = function(self,cards)
+		if #cards<2 then return end
+		local dc = sgs.Sanguosha:cloneCard("slash")
+		dc:setSkillName("_chenxiezhong")
+		for i,c in sgs.list(cards)do
+			dc:addSubcard(c)
+		end
+		return dc
+	end,
+	enabled_at_response = function(self,player,pattern)
+		return string.find(pattern,"chenxiezhong")
+	end,
+}
+chenxiezhong = sgs.CreateTriggerSkill{
+	name = "chenxiezhong",
+	events = {sgs.EventPhaseStart},
+	view_as_skill = chenxiezhongvs,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.EventPhaseStart then
+			if player:getPhase()==sgs.Player_Start then
+				local x = (player:aliveCount()+1)/2
+				local tps = room:askForPlayersChosen(player,room:getAlivePlayers(),self:objectName(),-1,x,"chenxiezhong0",true)
+				if tps:length()<x then return false end
+				local slash = 0
+				local draw = 0
+				local aps = sgs.SPlayerList()
+				for i,p in sgs.list(room:getAllPlayers())do
+					if tps:contains(p) then
+						if p:getCardCount()>1 and room:askForUseCard(p,"@@chenxiezhong","chenxiezhongy1")
+						then slash = slash+1 continue end
+						p:drawCards(2,self:objectName())
+						room:loseHp(p,1,true,player,self:objectName())
+						draw = draw+1
+					else
+						aps:append(p)
+					end
+				end
+				if player:isDead() then return false end
+				local choices = {}
+				if slash>=draw then
+					table.insert(choices,"xz_slash")
+				end
+				if draw>=slash then
+					table.insert(choices,"xz_draw")
+				end
+				local choice = room:askForChoice(player,self:objectName(),table.concat(choices,"+"))
+				local tp = room:askForPlayerChosen(player,aps,self:objectName(),"chenxiezhong2:"..choice,true)
+				if tp then
+					room:doAnimate(1,player:objectName(),tp:objectName())
+					for i=0,1 do
+						if choice=="xz_slash" then
+							if tp:getCardCount()>1 and sgs.Slash_IsAvailable(tp) then
+								room:askForUseCard(tp,"@@chenxiezhong!","chenxiezhong3")
+							end
+						else
+							tp:drawCards(2,self:objectName())
+							room:loseHp(tp,1,true,player,self:objectName())
+						end
+					end
+				end
+			end
+		end
+		return false
+	end
+}
+chen_zhangzhao:addSkill(chenxiezhong)
+chenqishi = sgs.CreateTriggerSkill{
+	name = "chenqishi",
+	events = {sgs.EventPhaseStart,sgs.CardsMoveOneTime,sgs.EventPhaseChanging},
+	can_trigger = function(self,target)
+		return target and target:isAlive()
+	end,
+	dynamic_frequency = function(self,target)
+		if target:getMark("chenqishiCompulsory")>0 then
+			return sgs.Skill_Compulsory
+		end
+		return sgs.Skill_NotFrequent
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.EventPhaseStart then
+			if player:getPhase()==sgs.Player_Finish and player:hasSkill(self) then
+				local ids = sgs.IntList()
+				for i,id in sgs.qlist(room:getDiscardPile())do
+					for _,p in sgs.list(room:getAlivePlayers())do
+						if p~=player and p:getMark(id.."chenqishiId-Clear")>0 then
+							ids:append(id)
+							break
+						end
+					end
+				end
+				if ids:isEmpty() then return end
+				if self:getFrequency(player)==sgs.Skill_Compulsory then
+					room:sendCompulsoryTriggerLog(player,self)
+				elseif not player:askForSkillInvoke(self,ToData(ids)) then return end
+				room:setPlayerMark(player,"chenqishiCompulsory",1)
+				room:changeTranslation(player,self:objectName(),1)
+				local dc = dummyCard()
+				room:fillAG(ids,player)
+				local x = math.min(5,ids:length())
+				for i=1,x do
+					local id = room:askForAG(player,ids,i>1,self:objectName())
+					if id<0 then break end
+					ids:removeOne(id)
+					dc:addSubcard(id)
+					room:takeAG(player,id,false,SPlayerList(player))
+				end
+				room:clearAG(player)
+				room:setPlayerMark(player,"&chenqishi+#bf",1)
+				player:obtainCard(dc)
+			end
+		elseif event==sgs.EventPhaseChanging then
+	     	local change = data:toPhaseChange()
+			if change.to==sgs.Player_Draw and player:getMark("&chenqishi+#bf")>0 then
+				room:setPlayerMark(player,"&chenqishi+#bf",0)
+				room:sendCompulsoryTriggerLog(player,self:objectName())
+				player:skip(sgs.Player_Draw)
+			end
+		else
+	     	local move = data:toMoveOneTime()
+			if move.to_place==sgs.Player_DiscardPile and player:hasTurn() then
+				if (move.from_places:contains(sgs.Player_PlaceHand) or move.from_places:contains(sgs.Player_PlaceEquip))
+				and move.from:objectName()==player:objectName() then
+					for i,id in sgs.qlist(move.card_ids)do
+						if move.from_places:at(i)==sgs.Player_PlaceHand
+						or move.from_places:at(i)==sgs.Player_PlaceEquip then
+							player:addMark(id.."chenqishiId-Clear")
+						end
+					end
+				end
+				if move.from_places:contains(sgs.Player_PlaceTable) and move.reason.m_playerId==player:objectName() then
+					for i,id in sgs.qlist(move.card_ids)do
+						if move.from_places:at(i)==sgs.Player_PlaceTable then
+							player:addMark(id.."chenqishiId-Clear")
+						end
+					end
+				end
+			end
+		end
+		return false
+	end
+}
+chen_zhangzhao:addSkill(chenqishi)
+
+chen_lusu = sgs.General(shixinrumo_chen,"chen_lusu","wu",3)
+chenwanliCard = sgs.CreateSkillCard{
+	name = "chenwanliCard",
+	filter = function(self,targets,to_selec,source)
+		return #targets<1 and to_selec~=source
+	end,
+	on_use = function(self,room,source,targets)
+		for i,p in sgs.list(targets)do
+			room:setPlayerMark(p,"&chenwanli+:+"..self:subcardsLength().."+#"..source:objectName(),4)
+			room:giveCard(source,p,self,"chenwanli")
+		end
+	end,
+}
+chenwanlivs = sgs.CreateViewAsSkill{
+	name = "chenwanli",
+	n = 999,
+	response_pattern = "@@chenwanli",
+	view_filter = function(self,selected,to_select)
+		return true
+	end,
+	view_as = function(self,cards)
+		if #cards<1 then return end
+		local dc = chenwanliCard:clone()
+		for i,c in sgs.list(cards)do
+			dc:addSubcard(c)
+		end
+		return dc
+	end,
+}
+chenwanli = sgs.CreateTriggerSkill{
+	name = "chenwanli",
+	view_as_skill = chenwanlivs,
+	events = {sgs.RoundStart,sgs.RoundEnd,sgs.DrawNCards,sgs.Death},
+	can_trigger = function(self,target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.RoundStart then
+			if data:toInt()==1 and player:hasSkill(self) then
+				room:askForUseCard(player,"@@chenwanli","chenwanli0")
+			end
+		elseif event==sgs.Death then
+			local death = data:toDeath()
+			for _,m in sgs.list(death.who:getMarkNames())do
+				if m:contains("&chenwanli+:+") and m:endsWith(player:objectName()) then
+					player:addMark("chenwanli_3")
+				end
+			end
+		elseif event==sgs.DrawNCards then
+			local draw = data:toDraw()
+			if draw.reason~="draw_phase" then return end
+			if player:getMark("chenwanli_3")>0 and player:hasSkill(self) then
+				room:sendCompulsoryTriggerLog(player,self)
+				draw.num = draw.num+3
+				data:setValue(draw)
+			end
+		else
+			local x = data:toInt()
+			for _,m in sgs.list(player:getMarkNames())do
+				if m:contains("&chenwanli+:+") and player:getMark(m)==x then
+					for _,p in sgs.qlist(room:getAlivePlayers())do
+						if m:endsWith(p:objectName()) then
+							local n = tonumber(m:split("+")[3])*3
+							local dc = room:askForExchange(player,self:objectName(),n,n,true,"chenwanli0:"..p:objectName()..":"..n)
+							if dc then
+								player:addMark("chenwanli_3")
+								room:giveCard(player,p,dc,self:objectName())
+								if dc:subcardsLength()>=n then continue end
+							end
+							local skills = {}
+							for _,s in sgs.qlist(player:getVisibleSkillList())do
+								if s:isAttachedLordSkill() then continue end
+								table.insert(skills,"-"..s:objectName())
+							end
+							room:handleAcquireDetachSkills(player,table.concat(skills,"|"))
+						end
+					end
+					room:setPlayerMark(player,m,0)
+				end
+			end
+		end
+		return false
+	end
+}
+chen_lusu:addSkill(chenwanli)
+chenlishuo = sgs.CreateTriggerSkill{
+	name = "chenlishuo",
+	events = {sgs.TargetConfirmed},
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.TargetConfirmed then
+			local use = data:toCardUse()
+			if use.card:getTypeId()>0 and use.card:isBlack()
+			and use.to:contains(player) and player:askForSkillInvoke(self) then
+				player:drawCards(1,self:objectName())
+				local tps = sgs.SPlayerList()
+				for _,p in sgs.qlist(room:getOtherPlayers(player))do
+					for _,m in sgs.list(p:getMarkNames())do
+						if m:contains("&chenwanli+:+") and m:endsWith(player:objectName()) then
+							if player:canPindian(p) then tps:append(p) end
+							break
+						end
+					end
+				end
+				local tp = room:askForPlayerChosen(player,tps,self:objectName(),"chenlishuo0")
+				if tp then
+					if player:pindian(tp,self:objectName()) then
+						for _,m in sgs.list(tp:getMarkNames())do
+							if m:contains("&chenwanli+:+") and m:endsWith(player:objectName()) then
+								room:removePlayerMark(tp,m)
+								break
+							end
+						end
+					end
+				end
+			end
+		end
+		return false
+	end
+}
+chen_lusu:addSkill(chenlishuo)
+
+chen_jiahua = sgs.General(shixinrumo_chen,"chen_jiahua","wu",5)
+chenfubeiCard = sgs.CreateSkillCard{
+	name = "chenfubeiCard",
+	target_fixed = true,
+	on_use = function(self,room,source,targets)
+		local x = source:getMaxHp()-source:getHandcardNum()
+		source:drawCardsList(x,"chenfubei")
+		local dc = room:askForExchange(source,"chenfubei",2,2,true,"chenfubei0")
+		if dc then
+			local id2n = {}
+			x = math.min(10,room:getDrawPile():length())
+			for i=1,dc:subcardsLength() do
+				local choices = {}
+				for n=1,x do
+					table.insert(choices,"1="..i.."="..n)
+				end
+				local choice = room:askForChoice(source,"chenfubei",table.concat(choices,"+"))
+				id2n[dc:getSubcards():at(i-1)] = tonumber(choice:split("=")[3])
+			end
+			for _,id in sgs.qlist(dc:getSubcards())do
+				room:moveCardsInToDrawpile(source,id,"chenfubei",id2n[id],true)
+			end
+		end
+	end
+}
+chenfubeivs = sgs.CreateViewAsSkill{
+	name = "chenfubei",
+	view_as = function(self,cards)
+		return chenfubeiCard:clone()
+	end,
+	enabled_at_play = function(self,player)
+		return player:usedTimes("#chenfubeiCard")<1
+		and player:getHandcardNum()<player:getMaxHp()
+	end,
+}
+chenfubei = sgs.CreateTriggerSkill{
+	name = "chenfubei",
+	view_as_skill = chenfubeivs,
+	events = {sgs.EventPhaseChanging},
+	can_trigger = function(self,target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.EventPhaseChanging then
+	     	local change = data:toPhaseChange()
+			if change.to==sgs.Player_NotActive then
+				local ids = room:getDrawPile()
+				if ids:isEmpty() or not sgs.Sanguosha:getCard(ids:first()):hasFlag("visible")
+				then return end
+				for _,p in sgs.qlist(room:getAllPlayers())do
+					if p:hasSkill(self) then
+						room:sendCompulsoryTriggerLog(p,self)
+						room:damage(sgs.DamageStruct(self:objectName(),p,player))
+					end
+				end
+			end
+		end
+		return false
+	end
+}
+chen_jiahua:addSkill(chenfubei)
+chendancui = sgs.CreateTriggerSkill{
+	name = "chendancui",
+	events = {sgs.DamageCaused},
+	dynamic_frequency = function(self,target)
+		if target:getMark("chendancuiCompulsory")>0 then
+			return sgs.Skill_Compulsory
+		end
+		return sgs.Skill_NotFrequent
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.DamageCaused then
+			if self:getFrequency(player)==sgs.Skill_Compulsory then
+				room:sendCompulsoryTriggerLog(player,self)
+				room:askForDiscard(player,self:objectName(),2,2,false,true)
+			else
+				player:setTag("chendancuiData",data)
+				if player:getCardCount()>0 then
+					if player:canDiscard("he") and room:askForDiscard(player,self:objectName(),2,2,true,true,"",".",self:objectName()) then
+					else return end
+				else
+					if player:askForSkillInvoke(self) then
+					else return end
+				end
+			end
+			room:setPlayerMark(player,"chendancuiCompulsory",1)
+			room:changeTranslation(player,self:objectName(),1)
+			return player:damageRevises(data,1)
+		end
+		return false
+	end
+}
+chen_jiahua:addSkill(chendancui)
+
+chen_caocao = sgs.General(shixinrumo_chen,"chen_caocao","wei",4)
+chenlanjiaoCard = sgs.CreateSkillCard{
+	name = "chenlanjiaoCard",
+	filter = function(self,targets,to_selec,source)
+		return #targets<1 and to_selec~=source and to_selec:getHandcardNum()>0
+		and source:getMark(to_selec:objectName().."chenlanjiaoBan-Clear")<1
+	end,
+	on_use = function(self,room,source,targets)
+		for i,p in sgs.list(targets)do
+			room:addPlayerMark(source,p:objectName().."chenlanjiaoBan-Clear")
+			local dc = dummyCard()
+			for i=1,math.min(2,p:getHandcardNum()) do
+				local id = room:askForCardChosen(source,p,"h","chenlanjiao",false,sgs.Card_MethodNone,dc:getSubcards())
+				if id<0 then break end
+				dc:addSubcard(id)
+			end
+			if dc:subcardsLength()<1 then continue end
+			room:showCard(p,dc:getSubcards())
+			p:setTag("chenlanjiaoIds",ToData(dc:getSubcards()))
+			while p:askForSkillInvoke("chenlanjiao",ToData("0:"..source:objectName()),false) do
+				room:loseHp(p,1,true,p,"chenlanjiao")
+				if p:isDead() then break end
+				dc:clearSubcards()
+				p:drawCards(1,"chenlanjiao")
+				for i=1,math.min(2,p:getHandcardNum()) do
+					local id = room:askForCardChosen(source,p,"h","chenlanjiao",false,sgs.Card_MethodNone,dc:getSubcards())
+					if id<0 then break end
+					dc:addSubcard(id)
+				end
+				room:showCard(p,dc:getSubcards())
+				p:setTag("chenlanjiaoIds",ToData(dc:getSubcards()))
+			end
+			if p:isDead() or dc:subcardsLength()<1 then continue end
+			for i,id in sgs.qlist(dc:getSubcards())do
+				source:addMark(sgs.Sanguosha:getCard(id):getSuitString().."chenlanjiaoSuit-Clear")
+			end
+			source:obtainCard(dc)
+			if source:getMark("heartchenlanjiaoSuit-Clear")>0 and source:getMark("diamondchenlanjiaoSuit-Clear")>0 then
+				room:addPlayerMark(source,"chenlanjiaoBan-Clear")
+			end
+		end
+	end,
+}
+chenlanjiao = sgs.CreateViewAsSkill{
+	name = "chenlanjiao",
+	view_as = function(self,cards)
+		return chenlanjiaoCard:clone()
+	end,
+	enabled_at_play = function(self,player)
+		return player:usedTimes("#chenlanjiaoCard")<1
+		and player:getMark("chenlanjiaoBan-Clear")<1
+	end,
+}
+chen_caocao:addSkill(chenlanjiao)
+
+chen_caoren = sgs.General(shixinrumo_chen,"chen_caoren","wei",4)
+chenyangbei = sgs.CreateTriggerSkill{
+	name = "chenyangbei",
+	events = {sgs.EventPhaseStart,sgs.TargetSpecified},
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.EventPhaseStart then
+			if player:getPhase()==sgs.Player_Finish or player:getPhase()==sgs.Player_Start then
+				if player:getMark("&chenyangbeiBan")<1 and player:askForSkillInvoke(self) then
+					player:turnOver()
+					player:drawCards(3,self:objectName())
+				end
+			end
+		else
+			local use = data:toCardUse()
+			if use.to:length()==1 and (use.card:isKindOf("Slash") or use.card:isNDTrick())
+			and use.to:last():canDiscard("h") and use.to:last():askForSkillInvoke(self,ToData("0:"..player:objectName()),false) then
+				use.to:last():throwAllHandCards(self:objectName())
+				room:setPlayerMark(player,"&chenyangbeiBan",1)
+			end
+		end
+		return false
+	end
+}
+chen_caoren:addSkill(chenyangbei)
+chenyinfeng = sgs.CreateTriggerSkill{
+	name = "chenyinfeng",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.Damage,sgs.Predamage,sgs.DamageForseen,sgs.EventPhaseChanging},
+	can_trigger = function(self,target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.Damage then
+			local damage = data:toDamage()
+			player:addMark("chenyinfengDamage-Clear")
+			if player:getMark("chenyinfengDamage-Clear")==1 and damage.to:isAlive() and player:hasSkill(self) then
+				room:sendCompulsoryTriggerLog(player,self)
+				room:addPlayerMark(damage.to,"&chenyinfeng+#"..player:objectName(),damage.to:getLostHp())
+				room:loseMaxHp(damage.to,damage.to:getLostHp(),self:objectName())
+			end
+		elseif event==sgs.Predamage or event==sgs.DamageForseen then
+			local damage = data:toDamage()
+			for i,p in sgs.qlist(room:getAlivePlayers())do
+				if player:getMark("&chenyinfeng+#"..p:objectName())>0 then
+					room:loseHp(damage.to,damage.damage,true,player,damage.reason)
+					return true
+				end
+			end
+		else
+	     	local change = data:toPhaseChange()
+			if change.from==sgs.Player_NotActive then
+				for i,p in sgs.qlist(room:getAllPlayers())do
+					local x = p:getMark("&chenyinfeng+#"..player:objectName())
+					if x<1 then continue end
+					room:setPlayerMark(p,"&chenyinfeng+#"..player:objectName(),0)
+					room:gainMaxHp(p,x,self:objectName())
+				end
+			end
+		end
+		return false
+	end
+}
+chen_caoren:addSkill(chenyinfeng)
+
+chen_sunshangxiang = sgs.General(shixinrumo_chen,"chen_sunshangxiang","wu",3,false)
+chenjiaozong = sgs.CreateTriggerSkill{
+	name = "chenjiaozong",
+	events = {sgs.EventPhaseStart,sgs.TargetConfirmed,sgs.EventPhaseChanging,sgs.DamageForseen},
+	can_trigger = function(self,target)
+		return target~=nil
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.EventPhaseChanging then
+	     	local change = data:toPhaseChange()
+			if change.to==sgs.Player_NotActive then
+				for i,p in sgs.qlist(room:getPlayers())do
+					if player:getMark("chenjiaozongbf-Keep")>0 then
+						player:setMark("chenjiaozongbf-Keep",0)
+						for _,m in sgs.list(p:getMarkNames())do
+							if m:contains("&chenjiaozong+:+") then
+								local ms = m:split("+")
+								room:removePlayerCardLimitation(p,"use",".|"..ms[3])
+								room:setPlayerMark(p,m,0)
+							end
+						end
+					end
+				end
+			end
+		elseif event==sgs.DamageForseen then
+			if player:getMark("chenjiaozongbf-Keep")>0 then
+				return player:damageRevises(data,1)
+			end
+		else
+			if event==sgs.EventPhaseStart then
+				if player:getPhase()==sgs.Player_Start then
+				else return end
+			else
+				local use = data:toCardUse()
+				if use.card:isKindOf("Slash") and use.to:contains(player) then
+				else return end
+			end
+			if player:isAlive() and player:hasSkill(self) then
+				local tps = sgs.SPlayerList()
+				for _,p in sgs.qlist(room:getAlivePlayers())do
+					for _,e in sgs.qlist(p:getCards("ej"))do
+						if e:getTypeId()~=3 then continue end
+						local n = e:getRealCard():toEquipCard():location()
+						for _,q in sgs.qlist(room:getAlivePlayers())do
+							if q:getEquip(n) or player:isProhibited(q,e) then continue end
+							tps:append(p)
+							break
+						end
+					end
+				end
+				local tp = room:askForPlayerChosen(player,tps,self:objectName(),"chenjiaozong0",true)
+				if tp then
+					player:skillInvoked(self)
+					local ids = sgs.IntList()
+					for _,e in sgs.qlist(tp:getCards("ej"))do
+						if e:getTypeId()~=3 then
+							ids:append(e:getId())
+							continue
+						end
+						local n = e:getRealCard():toEquipCard():location()
+						for _,q in sgs.qlist(room:getAlivePlayers())do
+							if q:getEquip(n) or player:isProhibited(q,e)
+							then continue end
+							n = 9
+							break
+						end
+						if n~=9 then
+							ids:append(e:getId())
+						end
+					end
+					room:doAnimate(1,player:objectName(),tp:objectName())
+					local id = room:askForCardChosen(player,tp,"ej",self:objectName(),false,sgs.Card_MethodNone,ids)
+					if id>=0 then
+						tps:clear()
+						local e = sgs.Sanguosha:getCard(id)
+						local n = e:getRealCard():toEquipCard():location()
+						for _,q in sgs.qlist(room:getAlivePlayers())do
+							if q:getEquip(n) or tp:isProhibited(q,e)
+							then continue end
+							tps:append(q)
+						end
+						local tp2 = room:askForPlayerChosen(player,tps,"chenjiaozong1","chenjiaozong1:"..e:objectName())
+						if tp2 then
+							room:doAnimate(1,player:objectName(),tp2:objectName())
+							tp2:addMark("chenjiaozongbf-Keep")
+							local cs = e:getColorString()
+							if tp2:getMark("&chenjiaozong+:+"..cs.."-Keep")<1 then
+								room:setPlayerMark(tp2,"&chenjiaozong+:+"..cs.."-Keep",1)
+								room:setPlayerCardLimitation(tp2,"use",".|"..cs,false)
+							end
+							room:moveCardTo(e,tp2,sgs.Player_PlaceEquip,true)
+						end
+					end
+				end
+			end
+		end
+		return false
+	end
+}
+chen_sunshangxiang:addSkill(chenjiaozong)
+chenfusuiCard = sgs.CreateSkillCard{
+	name = "chenfusuiCard",
+	filter = function(self,targets,to_selec,source)
+		return #targets<1 and to_selec:isMale()
+	end,
+	on_use = function(self,room,source,targets)
+		room:removePlayerMark(source,"@chenfusui")
+		room:doSuperLightbox(source,"chenfusui")
+		for i,p in sgs.list(targets)do
+			local skills = {}
+			for _,s in sgs.qlist(p:getVisibleSkillList())do
+				if s:isAttachedLordSkill() then continue end
+				local pt = s:getDescription(p)
+				if pt:contains("技，") then continue end
+				table.insert(skills,"1="..s:objectName())
+			end
+			if #skills<1 then continue end
+			local skill = room:askForChoice(source,"chenfusui",table.concat(skills,"+"),ToData(p))
+			skill = skill:split("=")[2]
+			room:detachSkillFromPlayer(p,skill)
+			room:setPlayerProperty(source,"chenbiyi_skill",ToData(skill))
+			room:setPlayerProperty(p,"chenbiyi_skill",ToData(skill))
+			skills = sgs.Sanguosha:getSkill(skill):getDescription(p)
+			source:setSkillDescriptionSwap("chenbiyi","%arg",skills)
+			room:acquireSkill(source,"chenbiyi")
+			p:setSkillDescriptionSwap("chenbiyi","%arg",skills)
+			room:acquireSkill(p,"chenbiyi")
+			room:setPlayerMark(source,"&chenfusui+#bf_lun",1)
+			room:setPlayerMark(p,"&chenfusui+#bf_lun",1)
+		end
+	end,
+}
+chenfusuivs = sgs.CreateViewAsSkill{
+	name = "chenfusui",
+	view_as = function(self,cards)
+		return chenfusuiCard:clone()
+	end,
+	enabled_at_play = function(self,player)
+		return player:getMark("@chenfusui")>0
+	end,
+}
+chenfusui = sgs.CreateTriggerSkill{
+	name = "chenfusui",
+	frequency = sgs.Skill_Limited,
+	limit_mark = "@chenfusui",
+	waked_skills = "chenbiyi",
+	view_as_skill = chenfusuivs,
+	events = {sgs.DamageInflicted},
+	can_trigger = function(self,target)
+		return target and target:isAlive()
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.DamageInflicted then
+			if player:getMark("&chenfusui+#bf_lun")>0 then
+				return player:damageRevises(data,-99)
+			end
+		end
+		return false
+	end
+}
+chen_sunshangxiang:addSkill(chenfusui)
+chenbiyivs = sgs.CreateViewAsSkill{
+	name = "chenbiyi",
+	n = 999,
+	view_filter = function(self,selected,to_select)
+		local cards = sgs.CardList()
+		for _,c in sgs.list(selected)do
+			cards:append(c)
+		end
+		local va = sgs.Sanguosha:getViewAsSkill(sgs.Self:property("chenbiyi_skill"):toString())
+		return va:viewFilter(cards,to_select)
+	end,
+	view_as = function(self,selected)
+		local cards = sgs.CardList()
+		for _,c in sgs.list(selected)do
+			cards:append(c)
+		end
+		local va = sgs.Sanguosha:getViewAsSkill(sgs.Self:property("chenbiyi_skill"):toString())
+		return va:viewAs(cards)
+	end,
+	enabled_at_response = function(self,player,pattern)
+		local vs = sgs.Sanguosha:getViewAsSkill(player:property("chenbiyi_skill"):toString())
+		return vs and vs:isEnabledAtResponse(player,pattern)
+	end,
+	enabled_at_play = function(self,player)
+		local vs = sgs.Sanguosha:getViewAsSkill(player:property("chenbiyi_skill"):toString())
+		return vs and vs:isEnabledAtPlay(player)
+	end,
+}
+local events = {}
+for i=sgs.GameStart,sgs.EventForDiy do
+	table.insert(events,i)
+end
+chenbiyi = sgs.CreateTriggerSkill{
+	name = "chenbiyi",
+	events = events,
+	change_skill = true,
+	view_as_skill = chenbiyivs,
+	can_trigger = function(self,target)
+		return true
+	end,
+	on_trigger = function(self,event,player,data,room)
+		if event==sgs.ChoiceMade then
+			local cm = data:toString()
+			if cm:startsWith("notifyInvoked:") then
+				local pt = player:property("chenbiyi_skill"):toString()
+				if pt~="" then
+					local skill = cm:split(":")[2]
+					if skill=="xiaoji" then
+						room:setChangeSkillState(player,self:objectName(),1)
+					elseif skill==pt then
+						room:setChangeSkillState(player,self:objectName(),2)
+					end
+				end
+			end
+		end
+		for _,owner in sgs.qlist(room:findPlayersBySkillName(self:objectName()))do
+			local pt = "xiaoji"
+			if owner:getChangeSkillState(self:objectName())==1 then
+				pt = owner:property("chenbiyi_skill"):toString()
+				if pt=="" then continue end
+			end
+			if owner:hasSkill(pt,true) then continue end
+			local ts = sgs.Sanguosha:getTriggerSkill(pt)
+			if ts and ts:hasEvent(event) then
+				local has = false
+				room:setPlayerProperty(owner,"pingjian_triggerskill",ToData(pt))
+				if ts:triggerable(player,room,event) then has = ts:trigger(event,room,player,data) end
+				room:setPlayerProperty(owner,"pingjian_triggerskill",ToData())
+				if has then return true end
+			end
+		end
+		return false
+	end
+}
+shixinrumo_chen:addSkills(chenbiyi)
+
+sgs.LoadTranslationTable {
+	["shixinrumo_chen"] = "蚀心入魔·嗔",
+
+	["chen_sunshangxiang"] = "嗔孙尚香",
+	["#chen_sunshangxiang"] = "生死相随",
+    ["illustrator:chen_sunshangxiang"] = "ShapByAI",
+	["chenjiaozong"] = "娇纵",
+	[":chenjiaozong"] = "准备阶段或当你成为【杀】的目标后，你可以移动场上一张装备牌至一名角色装备区，其本回合不能使用与之颜色相同的牌且受到的伤害+1。",
+	["chenfusui"] = "妇随",
+	[":chenfusui"] = "限定技，出牌阶段，你可以令一名男性角色失去一个无标签技能，然后你与其获得“比翼”并防止你与其本轮此后受到的伤害。",
+	["chenbiyi"] = "比翼",
+	[":chenbiyi"] = "转换技，此技能视为①因“妇随”失去的技能②“枭姬”。",
+	[":chenbiyi1"] = "转换技，此技能视为①因“妇随”失去的技能<font color=\"#01A5AF\"><s>②“枭姬”</s></font>。（%arg）",
+	[":chenbiyi2"] = "转换技，此技能视为<font color=\"#01A5AF\"><s>①因“妇随”失去的技能</s></font>②“枭姬”。（%arg）",
+	["chenjiaozong0"] = "你可以发动“娇纵”选择角色移动装备",
+	["chenjiaozong1"] = "娇纵：请选择【%src】移动目标",
+	["chenfusui:1"] = "失去“%src”",
+
+	["chen_caoren"] = "嗔曹仁",
+	["#chen_caoren"] = "坚壳之蚌",
+    ["illustrator:chen_caoren"] = "张油菜",
+	["chenyangbei"] = "佯北",
+	[":chenyangbei"] = "准备阶段和结束阶段，你可以翻面并摸三张牌。当你使用【杀】或普通锦囊牌指定唯一目标后，其可以弃置所有手牌令此技能失效。",
+	["chenyinfeng"] = "阴锋",
+	[":chenyinfeng"] = "锁定技，当你每回合首次造成伤害后，你令受伤角色将体力上限扣减至体力值，且其造成和受到的伤害均视为失去体力，直到你下回合开始。",
+	["chenyangbeiBan"] = "佯北失效",
+	["chenyangbei:0"] = "你可以弃置所有手牌令%src的“佯北”失效",
+
+	["chen_caocao"] = "嗔曹操",
+	["#chen_caocao"] = "铜雀囚凰",
+    ["illustrator:chen_caocao"] = "丝葱",
+	["chenlanjiao"] = "揽娇",
+	[":chenlanjiao"] = "出牌阶段每名角色限一次，你可以展示一名其他角色两张手牌，然后你获得展示牌；其可以于展示牌时失去1点体力并摸一张牌，令你重新展示。若你一回合内因此获得过红桃和方块，本回合此技能失效。",
+	["chenlanjiao:0"] = "揽娇：你可以失去1点体力摸一张牌，令%src重新展示",
+
+	["chen_jiahua"] = "嗔贾华",
+	["#chen_jiahua"] = "拔剑四顾",
+    ["illustrator:chen_jiahua"] = "城与橙与程",
+	["chenfubei"] = "伏备",
+	[":chenfubei"] = "出牌阶段限一次，你可以将手牌摸至体力上限，然后将两张牌正面朝上置于牌堆顶前十张牌的任意位置。一名角色回合角色时，若牌堆顶的牌正面朝上，你对其造成1点伤害。",
+	["chendancui"] = "殚瘁",
+	[":chendancui"] = "契定技，当你造成伤害时，你可以弃置两张牌（无牌则不弃），令此伤害+1。",
+	[":chendancui1"] = "锁定技，当你造成伤害时，你弃置两张牌（无牌则不弃），令此伤害+1。",
+	["chenfubei:1"] = "将选择的第%src张牌置为牌堆顶第%dest张牌",
+
+	["chen_lusu"] = "嗔鲁肃",
+	["#chen_lusu"] = "养虺为蛇",
+    ["illustrator:chen_lusu"] = "城与橙与程",
+	["chenwanli"] = "万利",
+	[":chenwanli"] = "首轮开始时，你可以交给一名其他角色任意张牌，第四轮结束时，若你存活，其交给你3倍的牌（不足则全给并失去所有技能）；若其以此法交给过你牌或已死亡，你于摸牌阶段多摸3张牌。",
+	["chenlishuo"] = "理说",
+	[":chenlishuo"] = "当你成为黑色牌的目标后，你可以摸一张牌并与“万利”角色拼点：若你赢，其提前一轮交给你牌。",
+	["chenwanli0"] = "你可以发动“万利”选择任意牌交给其他角色",
+	["chenwanli1"] = "万利：请选择%dest张牌交给%src",
+
+	["chen_zhangzhao"] = "嗔张昭",
+	["#chen_zhangzhao"] = "迂儒",
+    ["illustrator:chen_zhangzhao"] = "曲夜雀",
+	["chenxiezhong"] = "挟众",
+	[":chenxiezhong"] = "准备阶段，你可以令X名角色选择一项（X为角色数的一半，向上取整）：摸两张牌，失去1点体力；将两张牌当做【杀】使用。然后你可以令另一名角色执行两次选择次数最多的一项。",
+	["chenqishi"] = "乞施",
+	[":chenqishi"] = "契定技，结束阶段，你可以从本回合置入弃牌堆的牌中获得至多5张其他角色置入的牌，然后跳过你的下一个弃牌阶段。",
+	[":chenqishi1"] = "锁定技，结束阶段，你从本回合置入弃牌堆的牌中获得至多5张其他角色置入的牌，然后跳过你的下一个摸牌阶段。",
+	["chenxiezhong0"] = "你可以发动“挟众”选择半数角色",
+	["chenxiezhong1"] = "挟众：你可以将两张牌当【杀】使用，或者摸两张牌并失去1点体力",
+	["xz_draw"] = "令另一名角色摸两张牌并失去1点体力",
+	["xz_slash"] = "令另一名角色将两张牌当【杀】使用",
+	["chenxiezhong2"] = "挟众：%src",
+	["chenxiezhong3"] = "挟众：请将两张牌当【杀】使用",
+
+	["chen_zhaoyun"] = "嗔赵云",
+	["#chen_zhaoyun"] = "坐收渔利",
+    ["illustrator:chen_zhaoyun"] = "曲夜雀",
+	["chenzhaduo"] = "诈夺",
+	[":chenzhaduo"] = "结束阶段，你可以获得里面其他角色各一张牌，视为对其中一名角色使用【杀】，然后另一名角色视为对你使用【决斗】；在和其中一名角色的结算过程中，你视为拥有另一名角色的所有技能。",
+	["chenzhaduo0"] = "你可以发动“诈夺”选择两名角色获得牌，你对第一名【杀】，第二名对你【决斗】",
+
+	["chen_zhouyu"] = "嗔周瑜",
+	["#chen_zhouyu"] = "哀弦万耳惊",
+    ["illustrator:chen_zhouyu"] = "小罗没想好",
+	["chenjiehuo"] = "劫火",
+	[":chenjiehuo"] = "使命技，回合开始时，你可以令场上下次出现的伤害改为3点火焰伤害。失败：若造成伤害的角色不为你，你扣减1点体力上限。",
+	["chenxianger"] = "香饵",
+	[":chenxianger"] = "使命技，出牌阶段限一次，你可以令一名角色于其下个结束阶段回复2点体力，期间其不能使用点数大于6的牌。失败：期间其受到的伤害小于2点，你扣减1点体力上限。",
+	["chenmieguo"] = "灭虢",
+	[":chenmieguo"] = "使命技，额定回合结束后，你可以获得一名其他角色至多3张牌并令其指定等量角色，然后你执行一个不能对其指定角色使用牌的额外回合。失败：此额外回合你未使用牌，你扣减1点体力上限。",
+	["chenmieguo0"] = "你可以发动“灭虢”选择角色",
+	["chenmieguo1"] = "灭虢：请选择%src名角色",
+	["chenmieguo_ban"] = "灭虢禁止",
+
+	["chen_zhugeliang"] = "嗔诸葛亮",
+	["#chen_zhugeliang"] = "人也神也",
+    ["illustrator:chen_zhugeliang"] = "城与橙与程",
+	["chenbingqu"] = "并驱",
+	[":chenbingqu"] = "准备阶段，你可以与一名其他角色各声明一种普通锦囊牌，然后你与其依次将半数手牌（向上取整）当做对方声明的牌使用。",
+	["chenfanxin"] = "燔心",
+	[":chenfanxin"] = "游戏开始时或“燔心”角色死亡后，你可以令一名其他角色获得“狂暴”和“无谋”；其回合开始时，你可以移去其至多5枚“暴怒”标记并摸等量的牌。",
+	["chenbingqu0"] = "你可以发动“并驱”选择角色声明牌",
+	["chenbingqu1"] = "并驱：请选择半数手牌当做【%src】使用",
+	["chenfanxin0"] = "你可以发动“燔心”选择角色获得“狂暴”和“无谋”",
+	["chenfanxin:1"] = "移去%src枚“暴怒”摸%src张牌",
+
+
+
+
+
+
+
+}
+
+
+return{shixinrumo_yi,shixinrumo_man,shixinrumo_chen}
