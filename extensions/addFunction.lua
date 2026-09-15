@@ -2226,6 +2226,8 @@ addToSkills(OnSkillTrigger, IsProhibited)
 
 function createMode(spec)
 	spec = spec or {}
+	-- The module is VM-local and idempotent; Room reloads register their own callbacks.
+	if not sgs.registerModeAI then dofile("lua/ai/mode-ai.lua") end
 	sgs.GameModeCallbacks = sgs.GameModeCallbacks or {}
 	local name = spec.name or "預設模式"
 	local class = spec.class or "default"
@@ -2298,6 +2300,14 @@ function createMode(spec)
 			id = length_str .. "_" .. class
 		end
 		generated_set[id] = true
+
+		if spec.ai ~= nil or spec.teams ~= nil then
+			local aiSpec = {}
+			assert(spec.ai == nil or type(spec.ai) == "table", "ai must be a table")
+			for key, value in pairs(spec.ai or {}) do aiSpec[key] = value end
+			aiSpec.teams = spec.teams or aiSpec.teams
+			sgs.registerModeAI(id, aiSpec)
+		end
 
 		if type(rewardFn) == "function" or type(winnerFn) == "function" then
 			sgs.GameModeCallbacks[id] = {
