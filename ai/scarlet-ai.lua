@@ -1041,36 +1041,33 @@ sgs.ai_choicemade_filter.cardChosen.s4_fani = sgs.ai_choicemade_filter.cardChose
 
 
 
-sgs.ai_skill_use["@@s4_juejing"] = function(self,prompt)
+sgs.ai_skill_use["@@s4_juejing"] = function(self,prompt,method,pattern,request)
+	if not request or not request:isValid() then return "." end
+	if request:getActivationSkillName() ~= "s4_juejing" then return "." end
+	if not request:isActivationQuotaAvailable() then return "." end
+	local initiator = request:getInitiator()
+	if not initiator or initiator:objectName() ~= self.player:objectName() then return "." end
+	local instance_id = request:getActivationInstanceId()
+	if instance_id <= 0 then return "." end
     local dying = self.room:getCurrentDyingPlayer()
 	if not dying then return "." end
     if not self:isFriend(dying) then return "." end
-    local indulgence = sgs.Sanguosha:cloneCard("indulgence",sgs.Card_Diamond,0)
-	indulgence:deleteLater()
-	local supply_shortage = sgs.Sanguosha:cloneCard("supply_shortage",sgs.Card_Club,0)
-	supply_shortage:deleteLater()
+	local color_string = self.player:getSkillInstanceStateValue("s4_juejing", instance_id, "s4_juejing_suit", sgs.QVariant("")):toString()
+	local colors = color_string:split("+")
+	if #colors == 0 then return "." end
     local cards = self:addHandPile("he")
 	cards = self:sortByUseValue(cards,true)
-    if (self.player:isProhibited(dying,indulgence) or dying:containsTrick("indulgence")) and 
-	(self.player:isProhibited(dying,supply_shortage) or dying:containsTrick("supply_shortage")) then 
-        return "."
-    elseif  (self.player:isProhibited(dying,supply_shortage) or dying:containsTrick("supply_shortage")) then
-		for _,card in ipairs(cards)do
-            if card:isRed() then
-		        return "#s4_juejing:"..card:getEffectiveId()..":->"..dying:objectName()
-            end
-        end
-	elseif  (self.player:isProhibited(dying,indulgence) or dying:containsTrick("indulgence")) then
+	if not table.contains(colors, "red") then
 		self:sortByKeepValue(cards)
-		for _,card in ipairs(cards)do
-            if card:isBlack() then
-		        return "#s4_juejing:"..card:getEffectiveId()..":->"..dying:objectName()
-            end
-        end
-	else
-		for _,card in ipairs(cards)do
-		    return "#s4_juejing:"..card:getEffectiveId()..":->"..dying:objectName()
-        end
+	end
+	for _,card in ipairs(cards)do
+		if table.contains(colors, card:getColorString()) then
+			return {
+				accepted = true,
+				cards = { card:getEffectiveId() },
+				targets = { dying:objectName() }
+			}
+		end
 	end
     return "."
 end
