@@ -16,7 +16,10 @@ dl_chajuCard = sgs.CreateSkillCard{
 		return #targets == 0 and to_select:objectName() ~= player:objectName() and not to_select:isKongcheng()
 	end,
 	on_use = function(self, room, player, targets)
-		local to = targets[1] 
+        local id = self:getSkillInstanceId()
+        if not player:hasSkillInstance("dl_chaju", id)
+            or player:getSkillInstanceStateValue("dl_chaju", id, "shiming_status"):toInt() ~= 0 then return end
+        local to = targets[1]
 		room:showAllCards(to, player)
 		if player:getHandcardNum() ~= to:getHandcardNum() then
 		    local target = nil
@@ -27,7 +30,7 @@ dl_chajuCard = sgs.CreateSkillCard{
 			end
 			if target then
 			    if player:getHandcardNum() > to:getHandcardNum() then
-			        room:addPlayerMark(player, "&dl_chaju_add")
+                    player:setSkillInstanceStateValue("dl_chaju", id, "add", sgs.QVariant(player:getSkillInstanceStateValue("dl_chaju", id, "add"):toInt() + 1))
 			    end
 			    local card_id = room:askForExchange(player, self:objectName(), target:getHandcardNum(), 1, false, "", false)
 			    local id = room:askForExchange(to, self:objectName(), target:getHandcardNum(), 1, false, "", false)
@@ -48,7 +51,7 @@ dl_chajuCard = sgs.CreateSkillCard{
 			    room:throwCard(to:wholeHandCards(), to, nil)
 				player:drawCards(player:getMaxHp() - player:getHandcardNum())
 				to:drawCards(to:getMaxHp() - to:getHandcardNum())
-				room:addPlayerMark(player, "&dl_chaju_remove")
+                player:setSkillInstanceStateValue("dl_chaju", id, "remove", sgs.QVariant(player:getSkillInstanceStateValue("dl_chaju", id, "remove"):toInt() + 1))
 			end
 		end
 	end,
@@ -59,26 +62,62 @@ dl_chajuvs = sgs.CreateZeroCardViewAsSkill{
 		return dl_chajuCard:clone()
 	end,
 	enabled_at_play = function(self, player)
-		return not player:hasUsed("#dl_chaju") and not player:isKongcheng() and player:getMark("dl_chaju_success") == 0 and player:getMark("dl_chaju_fail") == 0
-	end,
+        if player:hasUsed("#dl_chaju") or player:isKongcheng() then return false end
+        for _, id in sgs.qlist(player:getValidSkillInstanceIds("dl_chaju")) do
+            if player:getSkillInstanceStateValue("dl_chaju", id, "shiming_status"):toInt() == 0 then return true end
+        end
+        return false
+    end,
 }
-dl_chaju = sgs.CreateTriggerSkill{
+dl_chaju = sgs.CreateTriggerSkillV2{
 	name = "dl_chaju",
     shiming_skill = true,
 	view_as_skill = dl_chajuvs,
 	events = {sgs.Dying, sgs.EventPhaseEnd, sgs.PreCardUsed},
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+    frequency = sgs.Skill_Compulsory,
+    -- Automatic mission events use the standard V2 instance dispatcher.
+    can_trigger = function(self, event, room, player, data)
+        if not player or not player:isAlive() or not player:hasSkill(self:objectName()) then return false end
+        local names = {}
+        for _, id in sgs.qlist(player:getValidSkillInstanceIds(self:objectName())) do
+            local ref = sgs.SkillInstanceRef(player:objectName(), sgs.SkillInstanceKey(self:objectName(), id))
+            local eligible = false
+            if event == sgs.EventPhaseEnd then
+                eligible = player:getPhase() == sgs.Player_Finish
+                    and (player:getSkillInstanceStateValue(self:objectName(), id, "add"):toInt() >= 3
+                        or player:getSkillInstanceStateValue(self:objectName(), id, "remove"):toInt() >= 3)
+            elseif event == sgs.PreCardUsed then
+                local use = data:toCardUse()
+                eligible = use.card and table.contains(use.card:getSkillNames(), self:objectName())
+                    and use.card:getSkillInstanceId() == id
+            elseif event == sgs.Dying then
+                eligible = room:getCurrentDyingPlayer() == player
+            end
+            if eligible and room:getShimingStatus(ref) == 0 then table.insert(names, ref.key:toString()) end
+        end
+        if #names == 0 then return false end
+        return table.concat(names, "+")
+    end,
+    on_cost = function(self, event, room, player, ctx)
+        return room:getShimingStatus(ctx:getActivationRef()) == 0
+    end,
+    on_effect = function(self, event, room, player, ctx)
+        -- Revalidate after V2 hooks; a nested outcome may have removed this copy.
+        local ref = ctx:getActivationRef()
+        if not player:hasSkillInstance(self:objectName(), ref.key.instanceID)
+            or player:isSkillInvalid(self:objectName(), ref.key.instanceID)
+            or room:getShimingStatus(ref) ~= 0 then return false end
+        local data = ctx.original_data
 		if event == sgs.EventPhaseEnd then
-			if player:getPhase() == sgs.Player_Finish and (player:getMark("&dl_chaju_add") >= 3 or player:getMark("&dl_chaju_remove") >= 3) and player:getMark("dl_chaju_success") == 0 and player:getMark("dl_chaju_fail") == 0 then
-				room:sendShimingLog(player, self)
+            if player:getPhase() == sgs.Player_Finish and (player:getSkillInstanceStateValue("dl_chaju", ref.key.instanceID, "add"):toInt() >= 3 or player:getSkillInstanceStateValue("dl_chaju", ref.key.instanceID, "remove"):toInt() >= 3) and room:getShimingStatus(ref) == 0 then
+                if not room:sendShimingLog(ref) then return false end
 				room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
 		        room:acquireSkill(player, "dl_pindi")
 		        room:acquireSkill(player, "faen")
 			    room:setPlayerProperty(player, "kingdom", sgs.QVariant("shu"))
-		        room:setPlayerMark(player, "&dl_chaju_add", 0)
-		        room:setPlayerMark(player, "&dl_chaju_remove", 0)
-			    room:addPlayerMark(player, "dl_chaju_success")
+                player:setSkillInstanceStateValue("dl_chaju", ref.key.instanceID, "add", sgs.QVariant(0))
+                player:setSkillInstanceStateValue("dl_chaju", ref.key.instanceID, "remove", sgs.QVariant(0))
+
 			end
 		elseif event == sgs.PreCardUsed then
 			local use = data:toCardUse()
@@ -87,17 +126,17 @@ dl_chaju = sgs.CreateTriggerSkill{
 			end
 		else
 			local who = room:getCurrentDyingPlayer()
-		    if not who or who:objectName() ~= player:objectName() or not who:hasSkill(self:objectName()) or who:getMark("dl_chaju_success") > 0 or who:getMark("dl_chaju_fail") > 0 then return false end
-		    room:sendShimingLog(player, self, false)
+            if not who or who:objectName() ~= player:objectName() or not who:hasSkill(self:objectName()) or room:getShimingStatus(ref) ~= 0 then return false end
+            if not room:sendShimingLog(ref, false) then return false end
 			room:broadcastSkillInvoke(self:objectName(), 3)
 		    local recover = math.min(1- player:getHp(), player:getMaxHp() - player:getHp())
 		    room:recover(player, sgs.RecoverStruct(player, nil, recover))
 		    room:acquireSkill(player, "dingpin")
 		    room:acquireSkill(player, "faen")
 			room:setPlayerProperty(player, "kingdom", sgs.QVariant("wei"))
-		    room:setPlayerMark(player, "&dl_chaju_add", 0)
-		    room:setPlayerMark(player, "&dl_chaju_remove", 0)
-			room:addPlayerMark(player, "dl_chaju_fail")
+            player:setSkillInstanceStateValue("dl_chaju", ref.key.instanceID, "add", sgs.QVariant(0))
+            player:setSkillInstanceStateValue("dl_chaju", ref.key.instanceID, "remove", sgs.QVariant(0))
+
 		end
 	end,
 }

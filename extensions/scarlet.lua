@@ -3176,28 +3176,36 @@ s4_fuhan = sgs.CreateTriggerSkillV2{
         if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then
             return false
         end
+        local names = {}
+        for _, id in sgs.qlist(player:getValidSkillInstanceIds(skill:objectName())) do
+            local ref = sgs.SkillInstanceRef(player:objectName(), sgs.SkillInstanceKey(skill:objectName(), id))
+            local status = room:getShimingStatus(ref)
+            if (event == sgs.DrawNCards and status ~= 2) or (event ~= sgs.DrawNCards and status == 0) then
+                table.insert(names, ref.key:toString())
+            end
+        end
+        if #names == 0 then return false end
         if event == sgs.DrawNCards then
             local draw = data:toDraw()
             if draw.reason ~= "draw_phase" then return false end
-            if player:getMark("s4_fuhan__fail") > 0 then return false end
-            return skill:objectName()
+            return table.concat(names, "+")
         elseif event == sgs.Death then
-            if player:getMark("s4_fuhan__success") > 0 or player:getMark("s4_fuhan__fail") > 0 then return false end
             local death = data:toDeath()
             if death.damage and death.damage.from and death.damage.from:objectName() == player:objectName() then
                 room:addPlayerMark(player, "s4_fuhan+sys_+_force")
-                return skill:objectName()
+                return table.concat(names, "+")
             end
         elseif event == sgs.EventPhaseEnd then
-            if player:getMark("s4_fuhan__success") > 0 or player:getMark("s4_fuhan__fail") > 0 then return false end
             if player:getPhase() == sgs.Player_Play and player:getMark("damage_point_play_phase") == 0 then
                 room:addPlayerMark(player, "s4_fuhan+sys_+_force")
-                return skill:objectName()
+                return table.concat(names, "+")
             end
         end
         return false
     end,
     on_cost = function(skill, event, room, player, ctx)
+        local status = room:getShimingStatus(ctx:getActivationRef())
+        if (event == sgs.DrawNCards and status == 2) or (event ~= sgs.DrawNCards and status ~= 0) then return false end
         if event == sgs.DrawNCards then
             if room:askForSkillInvoke(player, skill:objectName(), ctx.original_data) then
                 room:broadcastSkillInvoke(skill:objectName())
@@ -3210,7 +3218,7 @@ s4_fuhan = sgs.CreateTriggerSkillV2{
         return true
     end,
     on_pay = function(skill, event, room, player, ctx)
-        if event == sgs.DrawNCards and player:getMark("s4_fuhan__success") == 0 then
+        if event == sgs.DrawNCards and room:getShimingStatus(ctx:getActivationRef()) ~= 1 then
             room:loseHp(player, 1, true, player, skill:objectName())
         end
         return true
@@ -3225,7 +3233,7 @@ s4_fuhan = sgs.CreateTriggerSkillV2{
             end
         elseif event == sgs.Death then
             local death = ctx.original_data:toDeath()
-            room:setShimingStatus(player, skill:objectName(), 1)
+            if not room:sendShimingLog(ctx:getActivationRef()) then return false end
             local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
             local cards = death.who:getCards("he")
             for _,card in sgs.qlist(cards) do
@@ -3239,14 +3247,14 @@ s4_fuhan = sgs.CreateTriggerSkillV2{
             room:recover(player, sgs.RecoverStruct(skill:objectName(), player, 1))
             room:changeTranslation(player, "s4_fuhan", 2, ctx.instanceID)
         elseif event == sgs.EventPhaseEnd then
-            room:setShimingStatus(player, skill:objectName(), 2)
+            room:sendShimingLog(ctx:getActivationRef(), false)
         end
         return false
     end,
-    on_shiming_success = function(skill, room, player)
+    on_shiming_success = function(skill, room, player, ref)
         ShimingSkillDoAnimate(skill, player, true)
     end,
-    on_shiming_fail = function(skill, room, player)
+    on_shiming_fail = function(skill, room, player, ref)
         ShimingSkillDoAnimate(skill, player, false)
         local choicelist = {}
         table.insert(choicelist, "draw")
@@ -9176,42 +9184,41 @@ s4_ganglie = sgs.CreateTriggerSkillV2{
             end
         end
         
-		if event == sgs.Death then
-			local death = data:toDeath()
-			
-			if death.damage and death.damage.from and death.damage.from:objectName() ~= death.who:objectName() then
-				local killer = death.damage.from
-				if player:isAlive() and player:hasSkill(skill:objectName()) and player:objectName() == killer:objectName()
-				and death.who:getMark("s4_ganglie_damage_" .. killer:objectName()) > 0 then
-					room:addPlayerMark(killer, "s4_ganglie+sys_+_force")
-					return skill:objectName()
-				end
-			end
-			
-			if death.who:hasSkill(skill:objectName()) and player:objectName() == death.who:objectName() then
-				room:addPlayerMark(death.who, "s4_ganglie+sys_+_force")
-				return skill:objectName()
-			end
-			
-			return false
-		end
-        
+        if event == sgs.Death then
+            local death = data:toDeath()
+            local names = {}
+            for _, id in sgs.qlist(player:getValidSkillInstanceIds(skill:objectName())) do
+                local ref = sgs.SkillInstanceRef(player:objectName(), sgs.SkillInstanceKey(skill:objectName(), id))
+                local attackers = player:getSkillInstanceStateValue(skill:objectName(), id, "attackers"):toString():split("+")
+                if room:getShimingStatus(ref) == 0 and (death.who:objectName() == player:objectName()
+                    or (death.damage and death.damage.from == player and table.contains(attackers, death.who:objectName()))) then
+                    table.insert(names, ref.key:toString())
+                end
+            end
+            if #names > 0 then
+                room:addPlayerMark(player, "s4_ganglie+sys_+_force")
+                return table.concat(names, "+")
+            end
+        end
+
         return false
     end,
     on_record = function(skill, event, room, player, ctx)
-		local data = ctx.original_data
-        if event == sgs.Damaged then
-            local damage = data:toDamage()
-            if damage.from and damage.from:isAlive() and damage.to and damage.to:hasSkill("s4_ganglie") and damage.from:getMark("s4_ganglie_damage_" .. damage.to:objectName()) == 0 then
-                room:addPlayerMark(damage.from, "s4_ganglie_damage_" .. damage.to:objectName())
-                local splayer = sgs.SPlayerList()
-                splayer:append(damage.to)
-                room:setPlayerMark(damage.from, "&s4_ganglie+to+sys_+#"..damage.to:objectName(), 1, splayer)
-            end
+        if event ~= sgs.Damaged then return end
+        local damage = ctx.original_data:toDamage()
+        local ref = ctx:getActivationRef()
+        local owner = ctx.owner
+        if not owner or damage.to ~= owner or not damage.from or not damage.from:isAlive()
+            or room:getShimingStatus(ref) ~= 0 then return end
+        local attackers = owner:getSkillInstanceStateValue(skill:objectName(), ref.key.instanceID, "attackers"):toString():split("+")
+        if not table.contains(attackers, damage.from:objectName()) then
+            table.insert(attackers, damage.from:objectName())
+            owner:setSkillInstanceStateValue(skill:objectName(), ref.key.instanceID, "attackers", sgs.QVariant(table.concat(attackers, "+")))
         end
     end,
-    
+
     on_cost = function(skill, event, room, player, ctx)
+        if event == sgs.Death and room:getShimingStatus(ctx:getActivationRef()) ~= 0 then return false end
         if event == sgs.Damaged then
             if not player:hasSkill(skill:objectName()) then return false end
             local damage = ctx.original_data:toDamage()
@@ -9276,7 +9283,7 @@ s4_ganglie = sgs.CreateTriggerSkillV2{
 			local is_fail = false
 			
 			if death.damage and death.damage.from and death.damage.from:objectName() == player:objectName() then
-				if death.who:objectName() ~= player:objectName() and death.who:getMark("s4_ganglie_damage_" .. player:objectName()) > 0 then
+                if death.who:objectName() ~= player:objectName() and table.contains(player:getSkillInstanceStateValue(skill:objectName(), ctx.instanceID, "attackers"):toString():split("+"), death.who:objectName()) then
 					is_success = true
 				end
 			end
@@ -9285,11 +9292,11 @@ s4_ganglie = sgs.CreateTriggerSkillV2{
 				is_fail = true
 			end
 			if is_success then
-				room:setShimingStatus(player, skill:objectName(), 1)
+                room:sendShimingLog(ctx:getActivationRef())
 			end
 			
 			if is_fail then
-				room:setShimingStatus(player, skill:objectName(), 2)
+                room:sendShimingLog(ctx:getActivationRef(), false)
 			end
 			
 			return false
@@ -9297,7 +9304,7 @@ s4_ganglie = sgs.CreateTriggerSkillV2{
 		
 		return false
 	end,
-	on_shiming_success = function(skill, room, player)
+    on_shiming_success = function(skill, room, player, ref)
         ShimingSkillDoAnimate(skill, player, true)
 		room:broadcastSkillInvoke(skill:objectName())
 		player:gainHujia(1)
@@ -9308,12 +9315,10 @@ s4_ganglie = sgs.CreateTriggerSkillV2{
 			player:gainMark("&charge_num", max_charge - current_charge)
 		end
 		
-		for _, p in sgs.qlist(room:getAllPlayers()) do
-			room:setPlayerMark(p, "s4_ganglie_damage_" .. player:objectName(), 0)
-		end
+        player:removeSkillInstanceStateValue(skill:objectName(), ref.key.instanceID, "attackers")
     end,
     
-    on_shiming_fail = function(skill, room, player)
+    on_shiming_fail = function(skill, room, player, ref)
         ShimingSkillDoAnimate(skill, player, false)
 		local ren_cards = room:getTag("ren_pile"):toIntList()
 		

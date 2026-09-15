@@ -8098,16 +8098,46 @@ dulie = sgs.CreateTriggerSkill {
 	end,
 }
 
-powei = sgs.CreateTriggerSkill {
+powei = sgs.CreateTriggerSkillV2 {
 	name = "powei",
 	events = { sgs.DamageCaused, sgs.CardFinished, sgs.Dying },
 	shiming_skill = true,
 	waked_skills = "shenzhuo",
-	frequency = sgs.Skill_NotCompulsory,
-	on_trigger = function(self, event, player, data, room)
-		if player:getMark("powei") > 0 then
-			return false
-		end
+	frequency = sgs.Skill_Compulsory,
+    -- Automatic mission events use the standard V2 instance dispatcher.
+    can_trigger = function(self, event, room, player, data)
+        if not player or not player:isAlive() or not player:hasSkill(self:objectName()) then return false end
+        local names = {}
+        for _, id in sgs.qlist(player:getValidSkillInstanceIds(self:objectName())) do
+            local ref = sgs.SkillInstanceRef(player:objectName(), sgs.SkillInstanceKey(self:objectName(), id))
+            local eligible = false
+            if event == sgs.DamageCaused then
+                local damage = data:toDamage()
+                eligible = damage.card and damage.card:isKindOf("Slash") and damage.by_user
+                    and damage.to:isAlive() and damage.to:getMark("&stscdlwei") > 0
+            elseif event == sgs.CardFinished then
+                eligible = true
+                for _, p in sgs.qlist(room:getAlivePlayers()) do
+                    if p:getMark("&stscdlwei") > 0 then eligible = false; break end
+                end
+            elseif event == sgs.Dying then
+                eligible = room:getCurrentDyingPlayer() == player
+            end
+            if eligible and room:getShimingStatus(ref) == 0 then table.insert(names, ref.key:toString()) end
+        end
+        if #names == 0 then return false end
+        return table.concat(names, "+")
+    end,
+    on_cost = function(self, event, room, player, ctx)
+        return room:getShimingStatus(ctx:getActivationRef()) == 0
+    end,
+    on_effect = function(self, event, room, player, ctx)
+        -- Revalidate after V2 hooks; a nested outcome may have removed this copy.
+        local ref = ctx:getActivationRef()
+        if not player:hasSkillInstance(self:objectName(), ref.key.instanceID)
+            or player:isSkillInvalid(self:objectName(), ref.key.instanceID)
+            or room:getShimingStatus(ref) ~= 0 then return false end
+        local data = ctx.original_data
 
 		if event == sgs.DamageCaused then
 			local damage = data:toDamage()
@@ -8123,14 +8153,14 @@ powei = sgs.CreateTriggerSkill {
 					return false
 				end
 			end
-			room:sendShimingLog(player, self)
+            if not room:sendShimingLog(ref) then return false end
 			room:acquireSkill(player, "shenzhuo")
 		else
 			local who = room:getCurrentDyingPlayer()
 			if not who or who:objectName() ~= player:objectName() then
 				return false
 			end
-			room:sendShimingLog(player, self, false)
+            if not room:sendShimingLog(ref, false) then return false end
 			local recover = math.min(1 - player:getHp(), player:getMaxHp() - player:getHp())
 			room:recover(player, sgs.RecoverStruct(self:objectName(), player, recover))
 			if player:isAlive() then
@@ -13861,6 +13891,8 @@ mouhuojiCard = sgs.CreateSkillCard {
 		return #targets < 1 and to_select:objectName() ~= source:objectName()
 	end,
 	on_use = function(self, room, source, targets)
+        local ref = sgs.SkillInstanceRef(source:objectName(), sgs.SkillInstanceKey("mouhuoji", self:getSkillInstanceId()))
+        if not source:hasSkillInstance("mouhuoji", ref.key.instanceID) or room:getShimingStatus(ref) ~= 0 then return end
 		room:broadcastSkillInvoke("mouhuoji", 1)
 		room:damage(sgs.DamageStruct(self:objectName(), source, targets[1], 1, sgs.DamageStruct_Fire))
 		for _, p in sgs.qlist(room:getOtherPlayers(targets[1])) do
@@ -13881,30 +13913,61 @@ mouhuojiVS = sgs.CreateViewAsSkill {
 		return mouhuojiCard:clone()
 	end,
 	enabled_at_play = function(self, player, pattern)
-		return not player:hasUsed("#mouhuojiCard") and player:getMark("mouhuoji") < 1
-	end,
+        if player:hasUsed("#mouhuojiCard") then return false end
+        for _, id in sgs.qlist(player:getValidSkillInstanceIds("mouhuoji")) do
+            if player:getSkillInstanceStateValue("mouhuoji", id, "shiming_status"):toInt() == 0 then return true end
+        end
+        return false
+    end,
 }
-mouhuoji = sgs.CreateTriggerSkill {
+mouhuoji = sgs.CreateTriggerSkillV2 {
 	name = "mouhuoji",
 	events = { sgs.EventPhaseProceeding, sgs.Damage, sgs.Dying },
 	shiming_skill = true,
 	waked_skills = "mouguanxing,moukongcheng",
 	view_as_skill = mouhuojiVS,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		if player:getMark("mouhuoji") > 0 then
-			return false
-		end
+    frequency = sgs.Skill_Compulsory,
+    -- Automatic mission events use the standard V2 instance dispatcher.
+    can_trigger = function(self, event, room, player, data)
+        if not player or not player:isAlive() or not player:hasSkill(self:objectName()) then return false end
+        local names = {}
+        for _, id in sgs.qlist(player:getValidSkillInstanceIds(self:objectName())) do
+            local ref = sgs.SkillInstanceRef(player:objectName(), sgs.SkillInstanceKey(self:objectName(), id))
+            local eligible = false
+            if event == sgs.EventPhaseProceeding then
+                eligible = player:getPhase() == sgs.Player_Start
+                    and player:getSkillInstanceStateValue(self:objectName(), id, "damage"):toInt() >= room:getPlayers():length()
+            elseif event == sgs.Damage then
+                local damage = data:toDamage()
+                eligible = damage.nature == sgs.DamageStruct_Fire and damage.to ~= player
+            elseif event == sgs.Dying then
+                eligible = data:toDying().who == player
+            end
+            if eligible and room:getShimingStatus(ref) == 0 then table.insert(names, ref.key:toString()) end
+        end
+        if #names == 0 then return false end
+        return table.concat(names, "+")
+    end,
+    on_cost = function(self, event, room, player, ctx)
+        return room:getShimingStatus(ctx:getActivationRef()) == 0
+    end,
+    on_effect = function(self, event, room, player, ctx)
+        -- Revalidate after V2 hooks; a nested outcome may have removed this copy.
+        local ref = ctx:getActivationRef()
+        if not player:hasSkillInstance(self:objectName(), ref.key.instanceID)
+            or player:isSkillInvalid(self:objectName(), ref.key.instanceID)
+            or room:getShimingStatus(ref) ~= 0 then return false end
+        local data = ctx.original_data
 		if event == sgs.EventPhaseProceeding then
 			if player:getPhase() ~= sgs.Player_Start then
 				return false
 			end
-			if player:getMark("&mouhuojiDMG") < room:getPlayers():length() then
+            if player:getSkillInstanceStateValue("mouhuoji", ref.key.instanceID, "damage"):toInt() < room:getPlayers():length() then
 				return false
 			end
-			room:sendShimingLog(player, self, true, 2) --使命成功
+            if not room:sendShimingLog(ref, true, 2) then return false end --使命成功
 			room:doSuperLightbox(player, "ShimingSuccess")
-			room:setPlayerMark(player, "&mouhuojiDMG", 0)
+            player:setSkillInstanceStateValue("mouhuoji", ref.key.instanceID, "damage", sgs.QVariant(0))
 
 			local hp = player:getHp()
 			local mhp = player:getMaxHp()
@@ -13913,7 +13976,8 @@ mouhuoji = sgs.CreateTriggerSkill {
 			elseif player:getGeneral2Name() == "mobilemou_zhugeliang" then
 				room:changeHero(player, "mobilemou_zhugeliangs", false, false, true, false)
 			else
-				room:handleAcquireDetachSkills(player, "-mouhuoji|-moukanpo|mouguanxing|moukongcheng")
+                room:detachSkillFromPlayer(player, ref.key:toString())
+                room:handleAcquireDetachSkills(player, "-moukanpo|mouguanxing|moukongcheng")
 			end
 			if player:getMaxHp() ~= mhp then
 				room:setPlayerProperty(player, "maxhp", sgs.QVariant(mhp))
@@ -13926,16 +13990,16 @@ mouhuoji = sgs.CreateTriggerSkill {
 			if damage.nature ~= sgs.DamageStruct_Fire or damage.to == player then
 				return false
 			end
-			room:addPlayerMark(player, "&mouhuojiDMG", damage.damage)
+            player:setSkillInstanceStateValue("mouhuoji", ref.key.instanceID, "damage", sgs.QVariant(player:getSkillInstanceStateValue("mouhuoji", ref.key.instanceID, "damage"):toInt() + damage.damage))
 		else
 			local dying = data:toDying()
 			if dying.who:objectName() ~= player:objectName() then
 				return false
 			end
-			room:sendShimingLog(player, self, false, 3) --使命失败
+            if not room:sendShimingLog(ref, false, 3) then return false end --使命失败
 			--room:doLightbox("image=image/animate/mouhuoji_fail.png") --谋诸葛亮暮年原画废案
-			room:addPlayerMark(player, "mouhuoji")
 		end
+		return false
 	end,
 }
 mobilemou_zhugeliang:addSkill(mouhuoji)

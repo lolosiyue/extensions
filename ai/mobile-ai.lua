@@ -3871,7 +3871,12 @@ addAiSkills("xietu").getTurnUseCard = function(self)
 end
 
 sgs.ai_skill_use_func["XietuCard"] = function(card,use,self)
-	local n = self.player:getMark("weimingShiming")
+    local n = 0
+    for _, id in sgs.qlist(self.player:getSkillInstanceIds("weiming")) do
+        local status = self.player:getSkillInstanceStateValue("weiming", id, "shiming_status"):toInt()
+        if status == 1 then n = 1 break end
+        if status == 2 then n = 2 end
+    end
 	if n==1 then
 		for _,p in sgs.list(self.friends)do
 			if p:isWounded() and self.player:getMark("xietu1-PlayClear")<1 then
