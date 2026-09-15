@@ -634,7 +634,7 @@ function OlRendeArrange(self,cards,friends,enemies,unknowns,arrange,recover_only
             end
         end
         local compareByAction = function(a,b)
-            return self.room:getFront(a,b):objectName()==a:objectName()
+            return a:objectName()~=b:objectName() and self.room:getFront(a,b):objectName()==a:objectName()
         end
         table.sort(friends,compareByAction)
         for _,friend in ipairs(friends)do

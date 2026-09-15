@@ -7,7 +7,7 @@ function sgs.getCardNeedPlayerFromCertainPlayers(self, players, cards)
 	local friends = {}
 
 	local cmpByAction = function(a, b)
-		return a:getRoom():getFront(a, b):objectName() == a:objectName()
+		return a:objectName() ~= b:objectName() and a:getRoom():getFront(a, b):objectName() == a:objectName()
 	end
 	local cmpByNumber = function(a, b)
 		return a:getNumber() > b:getNumber()
