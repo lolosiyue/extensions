@@ -1574,7 +1574,7 @@ s4_fani = sgs.CreateTriggerSkillV2{
 					table.concat(choicelist, "+"), ctx.original_data, table.concat(disabled, "+"))
 				if choice ~= "cancel" then
 					ctx.targets:append(p)
-					table.insert(selected , p:objectName() .. "=" .. choice)
+					table.insert(selected , p:objectName() .. "=" .. choice:split("=")[1])
 				end
 			end
 		end

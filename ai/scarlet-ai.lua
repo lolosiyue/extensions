@@ -1016,6 +1016,9 @@ sgs.ai_skill_cardchosen["s4_beizhen"] = function(self, who, flags)
             return c
         end
 	end
+	if #cards > 0 then
+		return cards[1]
+	end
     return -1
 end
 
@@ -1024,15 +1027,15 @@ sgs.ai_ajustdamage_to["&s4_beizhen"] = function(self, from, to, card, nature)
 end
 
 sgs.ai_skill_choice.s4_fani = function(self, choices, data)
-    local target = data:toPlayer()
-    local items = choices:split("+")
-    if table.contains(items, "discard") and self:doDisCard(target, "he") then
-        if #self.toUse < 2 or math.random() < 0.5 then
-            if table.contains(items, "bieshui") then
-                return "bieshui"
-            end
+    -- 選項以 'discard=<objectName>' 攜帶目標；data 是 CardUse 不是 player
+    local discardChoice = getChoice(choices, "discard")
+    local target = discardChoice and self.room:findPlayerByObjectName(discardChoice:split("=")[2])
+    if target and self:doDisCard(target, "he") then
+        local bieshui = getChoice(choices, "bieshui")
+        if bieshui and ((self.toUse and #self.toUse or 0) < 2 or math.random() < 0.5) then
+            return bieshui
         end
-        return "discard"
+        return discardChoice
     end
     return "draw"
 end
