@@ -1579,7 +1579,7 @@ s4_fani = sgs.CreateTriggerSkillV2{
 			end
 		end
 		if #selected == 0 then return false end
-		ctx.extra_data = table.concat(selected , "|")
+		ctx.choice = table.concat(selected , "|")
 		return true
 	end,
 
