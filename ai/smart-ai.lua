@@ -4,6 +4,7 @@
 -- more information see: https://github.com/kikito/middleclass
 local middleclass = require "middleclass"
 dofile("lua/ai/mode-ai.lua")
+dofile("lua/ai/value-boundary.lua")
 
 -- initialize the random seed for later use
 math.randomseed(os.time())
@@ -462,6 +463,9 @@ end
 sgs.ai_cache_verify = (os and os.getenv and (os.getenv("QSAN_AI_CACHE_VERIFY") or "") ~= "") or false
 
 function sgs.getPlayerSkillList(player)
+	-- 技能清單與主公技判定仍是原生查詢；代理要明講未支援，不回空清單。
+	-- 這是每次決策上萬次的熱路徑，原生輸入只付一次 type() 檢查。
+	if type(player)=="table" then aiRejectValueView("getPlayerSkillList",player) end
 	-- Cache key for skill list
 	local cache_key = "skills_" .. player:objectName()
 
@@ -495,7 +499,7 @@ function sgs.getPlayerSkillList(player)
 		local mismatch = (#cached ~= #skills)
 		if not mismatch then
 			for i = 1, #skills do
-				if cached[i]:objectName() ~= skills[i]:objectName() then
+				if aiSkillKey(cached[i]) ~= aiSkillKey(skills[i]) then
 					mismatch = true
 					break
 				end
@@ -986,7 +990,7 @@ end
 local function aiCardKey(card)
 	local key = card:toString()
 	if card:isKindOf("ActiveSkillCard") then
-		key = key.."|"..card:getSkillName()..":"..card:getSkillInstanceId()
+		key = key.."|"..aiSkillKey(card:getSkillName(),card:getSkillInstanceId())
 	end
 	return key
 end
@@ -5397,9 +5401,14 @@ function sgs.flushDeferredDeleteCards()
 end
 
 function CardFilter(cid,owner,place)
+	-- 過濾／轉牌會暫改 Room card mapping，隔離代理不能走這條原生路徑。
+	if type(cid)=="table" or type(owner)=="table" then
+		aiRejectValueView("CardFilter",cid)
+		aiRejectValueView("CardFilter",owner)
+	end
 	local gc,tc = cid,nil
 	if type(cid)=="userdata" then cid = cid:getEffectiveId()
-	else gc = sgs.Sanguosha:getCard(cid) end
+	else gc = sgs.Sanguosha:getCard(aiCardId(cid)) end
 	for _,s in ipairs(sgs.getPlayerSkillList(owner))do
 		if s:inherits("FilterSkill") then
 			local cp = global_room:getCardPlace(cid)
@@ -5563,7 +5572,16 @@ function isCard(class_name,card,player)
 			if c then return c end
 		end
 	else
-		if type(card)~="userdata" then card = sgs.Sanguosha:getCard(card) end
+		if aiValueKind(card)=="card" then
+			-- 值代理只按投影判斷；轉牌與 CardFilter 推演仍待候選契約，不以 ID 回查 Engine。
+			return card:isKindOf(class_name) and card or nil
+		end
+		aiRejectValueView("isCard",card)
+		if type(card)~="userdata" then
+			card = aiCardId(card)
+			card = card and sgs.Sanguosha:getCard(card)
+			if not card then return end
+		end
 		if card:isKindOf(class_name) then return card end
 		local cf = CardFilter(card,player,sgs.Player_PlaceHand)
 		if cf:isKindOf(class_name) then return card end
@@ -5640,6 +5658,8 @@ end
 -- 这与getKnownCards不同，getKnownCards获取visible flag的牌
 -- 明置牌是通过UniversalCardDisplayMove机制创建的
 function getDisplayCards(player, from)
+	-- display_cards property 尚未投影；未支援不是「沒有明置牌」。
+	aiRejectValueView("getDisplayCards",player)
 	if type(player) ~= "userdata" then return {} end
 	from = from or global_room:getCurrent() or current_self.player
 	local cards = {}
@@ -5666,6 +5686,7 @@ end
 -- 检查玩家是否有依赖明置牌的技能
 -- 这些技能通常会将卡牌添加到pile中并依赖这些明置牌
 function hasDisplaySkills(player)
+	aiRejectValueView("hasDisplaySkills",player)
 	if type(player) ~= "userdata" then return false end
 	
 	-- 检查是否有display_cards property
@@ -5713,6 +5734,8 @@ function string:getKnownCard(to,from,viewas,flags)
 end
 
 function getKnownCards(player,from,flags)
+	-- 可見性 flag 與 hand pile 尚未投影；代理要明講未支援，不回空清單當「沒有已知牌」。
+	aiRejectValueView("getKnownCards",player)
 	if type(player)~="userdata" then global_room:writeToConsole(debug.traceback()) return {} end
 	from = from or global_room:getCurrent() or current_self.player
 	if type(flags)~="string" then flags = "&h" end
@@ -8961,6 +8984,8 @@ function SmartAI:targetRevises(use)
 end
 
 function SmartAI:aiUseCard(card,use)
+	-- 值型出牌與推演仍待候選契約；代理要明講未支援，不當成「沒有出牌」。
+	aiRejectValueView("aiUseCard",card)
 	if type(card)~="userdata" then global_room:writeToConsole(debug.traceback()) return end
 	use = use or dummy()
 	if card:getTypeId()<1 then
