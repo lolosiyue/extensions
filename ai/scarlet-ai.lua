@@ -968,7 +968,7 @@ local s4_beizhen_skill = {}
 s4_beizhen_skill.name = "s4_beizhen"
 table.insert(sgs.ai_skills, s4_beizhen_skill)
 s4_beizhen_skill.getTurnUseCard = function(self, inclusive)
-	if self.player:hasFlag("s4_beizhen_buff") then
+	if self.player:getMark("s4_beizhen_buff-Clear") > 0 then
 		for _, card in sgs.qlist(self.player:getHandcards()) do
 			if card:isKindOf("Jink") or card:isKindOf("Peach") then
 				return sgs.Card_Parse(("duel:s4_beizhen[%s:%s]=%d"):format(card:getSuitString(), card:getNumberString(), card:getEffectiveId()))
@@ -999,7 +999,7 @@ sgs.ai_skill_choice.s4_beizhen = function(self, choices, data)
 end
 sgs.ai_skill_cardchosen["s4_beizhen"] = function(self, who, flags)
 	local cards = sgs.QList2Table(who:getCards(flags))
-	self:sortByUseValue(cards, true)
+	self:sortByUseValue(cards)
 	if self:isFriend(who) then
 		if not who:getJudgingArea():isEmpty() then
 			for _, judge in sgs.qlist(who:getJudgingArea()) do
@@ -1016,8 +1016,10 @@ sgs.ai_skill_cardchosen["s4_beizhen"] = function(self, who, flags)
             return c
         end
 	end
-	if #cards > 0 then
-		return cards[1]
+	for _, card in ipairs(cards) do
+		if self:getUseValue(card) < 6 and not self:isValuableCard(card) then
+			return card
+		end
 	end
     return -1
 end
