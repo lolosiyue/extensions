@@ -1425,11 +1425,11 @@ s4_beizhen = sgs.CreateTriggerSkillV2{
 
     on_record = function(skill, event, room, player, ctx)
         if event == sgs.DamageInflicted then
-			local x = player:getMark("s4_beizhen-SelfStartClear")
+			local x = player:getMark("s4_beizhen-SelfRoundStartClear")
 			if x > 0 then
 				room:sendCompulsoryTriggerLog(player, skill:objectName())
-				room:setPlayerMark(player, "s4_beizhen-SelfStartClear", 0)
-				room:setPlayerMark(player, "&s4_beizhen+sys_-SelfStartClear", 0)
+				room:setPlayerMark(player, "s4_beizhen-SelfRoundStartClear", 0)
+				room:setPlayerMark(player, "&s4_beizhen+sys_-SelfRoundStartClear", 0)
 				local data = ctx.original_data
 				local damage = data:toDamage()
 				damage.damage = damage.damage + x
@@ -1490,8 +1490,8 @@ s4_beizhen = sgs.CreateTriggerSkillV2{
         if event == sgs.EventPhaseStart then
             room:setPlayerMark(player, "s4_beizhen_buff-Clear", 1)
             if ctx.choice == "damage" then
-                room:addPlayerMark(player, "s4_beizhen-SelfStartClear")
-                room:addPlayerMark(player, "&s4_beizhen+sys_-SelfStartClear")
+                room:addPlayerMark(player, "s4_beizhen-SelfRoundStartClear")
+                room:addPlayerMark(player, "&s4_beizhen+sys_-SelfRoundStartClear")
             else
 				local amount = skill:getEffectiveAmount(ctx)
 				if amount > 0 then
