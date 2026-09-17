@@ -1217,6 +1217,16 @@ local function normalize_card_action(value)
     end
     result.cards = copy_result_list(value.cards, "AI result cards must be a dense array")
     result.targets = copy_result_list(value.targets, "AI result targets must be a dense array")
+    if value.skill_action ~= nil then
+        -- 指名用哪個技能實例；權威端仍重跑 canActivate 與次數檢查，這裡只驗形狀。
+        local action = value.skill_action
+        assert(type(action) == "table" and type(action.skill) == "string"
+            and action.skill ~= "" and type(action.instance) == "number"
+            and action.instance > 0
+            and (action.owner == nil or type(action.owner) == "string"),
+            "AI result skill_action needs {skill, instance[, owner]}")
+        result.skill_action = action
+    end
     return result
 end
 
