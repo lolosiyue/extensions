@@ -104,43 +104,37 @@ ai_skill_choice["s4_fani"] = function(self, options, request)
     return nil
 end
 
-if type(ai_coverage) == "table" then
-    ai_coverage.declare("activate", function() return {"s4_beizhen"} end)
-end
-
--- 出牌階段：備陣 buff 生效時（skill_actions 由權威端驗過 canActivate）把【閃】/【桃】
--- 轉【決鬥】打最弱的敵人；模式未覆蓋時不猜敵我。其餘沿用 decision-core 通用規劃。
--- 注意：activate 每 kind 只有一個 handler，本檔必須排在 decision-core 之後載入。
-ai_register_handler("activate", function(self, request)
+-- 出牌階段：備陣 buff 生效時把【閃】/【桃】轉【決鬥】打最弱的敵人；
+-- 模式未覆蓋時不猜敵我。掛進 decision-core 的 per-skill registry，
+-- 一般 activate 與逐實例探測都會分派到這裡；實例請求的 context 由 C++ 回填，
+-- result 不用帶 skill_action。其餘狀況回 nil 落到下一個技能或通用規劃。
+ai_skill_activate["s4_beizhen"] = function(self, request)
+    local probe = type(request.skill_action) == "table" and request.skill_action or nil
     local action = self:getSkillAction("s4_beizhen")
-    if action and action:isValid() and self.enemies then
-        local hand = self.player:getHandcards()
-        if hand then
-            for _, card in ipairs(hand) do
-                if card:isKindOf("Jink") or card:isKindOf("Peach") then
-                    local target
-                    for _, enemy in ipairs(self.enemies) do
-                        if not target then target = enemy end
-                        if self:isWeak(enemy) == true then
-                            target = enemy
-                            break
-                        end
-                    end
-                    if target then
-                        return {
-                            kind = "use_card",
-                            skill_action = action:toAnswer(),
-                            cards = {card:getEffectiveId()},
-                            targets = {target:objectName()}
-                        }
-                    end
+    if not (probe or (action and action:isValid())) then return nil end
+    if not self.enemies then return nil end
+    local hand = self.player:getHandcards()
+    if not hand then return nil end
+    for _, card in ipairs(hand) do
+        if card:isKindOf("Jink") or card:isKindOf("Peach") then
+            local target
+            for _, enemy in ipairs(self.enemies) do
+                if not target then target = enemy end
+                if self:isWeak(enemy) == true then
+                    target = enemy
                     break
                 end
             end
+            if target then
+                return {
+                    kind = "use_card",
+                    skill_action = action and action:toAnswer() or nil,
+                    cards = {card:getEffectiveId()},
+                    targets = {target:objectName()}
+                }
+            end
+            break
         end
     end
-    if not self:getCardCandidates() then return nil end
-    local plan = self:planTurnUse()
-    if plan then return plan end
-    return {kind = "pass"}
-end)
+    return nil
+end

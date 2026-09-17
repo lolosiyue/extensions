@@ -214,13 +214,40 @@ function SmartAIView:planTurnUse()
     return nil
 end
 
--- 通用 activate：沒有任何武將策略時的預設出牌流程。註冊成 handler 讓 Shadow 先跑，
--- 個別技能仍由 ask-for-use-card 的 registry 擴充，不經過這裡。
+-- 逐技能 activate registry：key 是 activation_skill 名。各技能腳本用
+-- ai_skill_activate["xxx"] = function(self, request) ... end 掛自己的出牌策略，
+-- 回 nil 表示這次不啟動，繼續問下一個；都沒人接才落到通用出牌規劃。
+ai_skill_activate = {}
+
+-- 通用 activate：沒有任何武將策略時的預設出牌流程。
 if type(ai_coverage) == "table" then
-    ai_coverage.declare("activate", function() return {"generic"} end)
+    ai_coverage.declare("activate", function()
+        local keys = {"generic"}
+        for key in pairs(ai_skill_activate) do keys[#keys + 1] = key end
+        return keys
+    end)
 end
 
 ai_register_handler("activate", function(self, request)
+    -- 逐實例探測（request.skill_action）問的是「要不要啟動這個實例」：只派給
+    -- 該技能的 handler，沒註冊或拒答就回 nil 交給 legacy，不讓通用規劃的答案
+    -- 套到不相干的實例上。
+    local probe = type(request.skill_action) == "table" and request.skill_action or nil
+    if probe then
+        local handler = ai_skill_activate[probe.activation_skill]
+        return handler and handler(self, request) or nil
+    end
+    -- 一般 activate：按權威端給的 skill_actions 順序，先命中的技能 handler 先答。
+    if type(request.skill_actions) == "table" then
+        for _, action in ipairs(request.skill_actions) do
+            local handler = type(action) == "table"
+                and ai_skill_activate[action.activation_skill] or nil
+            if handler then
+                local result = handler(self, request)
+                if result ~= nil then return result end
+            end
+        end
+    end
     if not self:getCardCandidates() then return nil end
     local plan = self:planTurnUse()
     if not plan then return {kind = "pass"} end
