@@ -1888,6 +1888,8 @@ s4_jiezhan = sgs.CreateTriggerSkillV2{
             local damage = data:toDamage()
 
             if damage.from and damage.to and damage.card and damage.from:objectName() == player:objectName() and player:hasSkill(skill:objectName()) and damage.card:isKindOf("Slash") and damage.card:hasFlag(skill:objectName()) then
+                -- 加傷/奪牌為強制二選一（牌面無「可以」）：_force 標記使 trigger-order 不可取消
+                room:addPlayerMark(player, "s4_jiezhan+sys_+_force")
                 return skill:objectName()
             end
         end
@@ -1923,6 +1925,7 @@ s4_jiezhan = sgs.CreateTriggerSkillV2{
 			ctx.choice = choice
 			return true
         elseif event == sgs.DamageCaused then
+            room:setPlayerMark(player, "s4_jiezhan+sys_+_force", 0)
             local damage = ctx.original_data:toDamage()
 			local disabled = {}
             local choices = {"damage"}
@@ -7198,8 +7201,22 @@ s4_juejing_buff = sgs.CreateTriggerSkillV2{
 
 s4_longhun = sgs.CreateTriggerSkillV2{
 	name = "s4_longhun",
-	events = {sgs.Damaged, sgs.DrawNCards},
+	events = {sgs.Damaged, sgs.DrawNCards, sgs.HpChanged, sgs.MaxHpChanged, sgs.EventAcquireSkill},
 	frequency = sgs.Skill_Compulsory,
+	base_amount = 0,
+	on_record = function(skill, event, room, player, ctx)
+		-- 關鍵邏輯：已損失體力值同步進 cardmax 實例的 current amount
+		if not (event == sgs.HpChanged or event == sgs.MaxHpChanged
+			or (event == sgs.EventAcquireSkill
+				and ctx.original_data:toSkillChange().skillName == skill:objectName())) then
+			return
+		end
+		if not ctx.owner or player ~= ctx.owner then return end
+		for _, iid in sgs.list(player:getSkillInstanceIds("#s4_longhun_cardmax")) do
+			local ref = sgs.SkillInstanceRef(player:objectName(), sgs.SkillInstanceKey("#s4_longhun_cardmax", iid))
+			room:setSkillInstanceAmount(player, ref, player:getLostHp(), skill:objectName())
+		end
+	end,
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then
 			return false
@@ -7214,31 +7231,40 @@ s4_longhun = sgs.CreateTriggerSkillV2{
 		end
 		return false
 	end,
+	on_cost = function(skill, event, room, player, ctx)
+		ctx:setModifiedAmount(player:getLostHp())
+		return true
+	end,
 	on_effect = function(skill, event, room, player, ctx)
+		local amount = skill:getEffectiveAmount(ctx)
 		if event == sgs.Damaged then
 			if room:canMoveField("ej") then
 				room:moveField(player, skill:objectName(), true, "ej")
-			else
-				player:drawCards(player:getLostHp(), skill:objectName())
+			elseif amount > 0 then
+				player:drawCards(amount, skill:objectName())
 			end
 		elseif event == sgs.DrawNCards then
 			local draw = ctx.original_data:toDraw()
 			if draw.reason ~= "draw_phase" then return false end
-			room:sendCompulsoryTriggerLog(player, skill:objectName())
-			draw.num = draw.num + player:getLostHp()
-			ctx.original_data:setValue(draw)
+			if amount > 0 then
+				room:sendCompulsoryTriggerLog(player, skill:objectName())
+				draw.num = draw.num + amount
+				ctx.original_data:setValue(draw)
+			end
 		end
 		return false
 	end,
 }
-s4_longhun_cardmax = sgs.CreateMaxCardsSkill {
+s4_longhun_cardmax = sgs.CreateMaxCardsSkillV2 {
 	name = "#s4_longhun_cardmax",
-	extra_func = function(self, target)
-		if target:hasSkill("s4_longhun") then
-			return target:getLostHp()
-		else
-			return 0
+	base_amount = 0,
+	holder_selector = sgs.CorrectSkill_Primary,
+	correct_func = function(skill, ctx)
+		local holder = ctx:getHolder()
+		if holder and holder:hasSkill("s4_longhun") then
+			return ctx:getCurrentAmount()
 		end
+		return false
 	end
 }
 
@@ -7278,49 +7304,64 @@ s4_wenyang = sgs.General(extension, "s4_wenyang", "jin", 3)
 
 
 
-s4_chiyuanCard = sgs.CreateSkillCard{
+s4_chiyuanVS = sgs.CreateViewAsSkillV2{
     name = "s4_chiyuan",
-    target_fixed = true,
-    on_use = function(self, room, source, targets)
+    n = 0,
+    target_mode = sgs.ViewAsSkillV2_NoTarget,
+    limit_scope = sgs.Skill_Limit_Phase,
+    max_usage_limit = 1,
+    phase_name = "Play",
+    can_activate = function(skill, request)
+        local player = request:getInitiator()
+        return player
+            and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
+    end,
+    on_effect = function(skill, ctx)
+        local source = ctx.invoker
+        if not source then return end
+        local room = source:getRoom()
         room:addPlayerMark(source, "s4_chiyuan")
         source:enterYinniState(0)
-    end
-}
-s4_chiyuanVS = sgs.CreateZeroCardViewAsSkill{
-    name = "s4_chiyuan",
-    view_as = function(self)
-        return s4_chiyuanCard:clone()
     end,
-    enabled_at_play = function(self, player)
-        return not player:hasUsed("#s4_chiyuan")
-    end
 }
-s4_chiyuan = sgs.CreateTriggerSkill{
+s4_chiyuan = sgs.CreateTriggerSkillV2{
 	name = "s4_chiyuan",
 	events = {sgs.Appear},
     hide_skill = true,
+    base_amount = 1,
     view_as_skill = s4_chiyuanVS,
-	on_trigger = function(self, event, player, data, room)
-        player:drawCards(1, self:objectName())
-        room:notifySkillInvoked(player, self:objectName())
-	end
+    can_trigger = function(skill, event, room, player, data)
+        if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then
+            return false
+        end
+        return skill:objectName()
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        local amount = skill:getEffectiveAmount(ctx)
+        if amount > 0 then
+            player:drawCards(amount, skill:objectName())
+        end
+        room:notifySkillInvoked(player, skill:objectName())
+        return false
+    end,
 }
 
-s4_chiyuan_buff = sgs.CreateTriggerSkill{
+s4_chiyuan_buff = sgs.CreateTriggerSkillV2{
 	name = "#s4_chiyuan_buff",
 	events = {sgs.EventPhaseChanging},
     global = true,
-	on_trigger = function(self, event, player, data, room)
+    can_trigger = function(skill, event, room, player, data)
+        if not player then return false end
         local change = data:toPhaseChange()
-        if change.to == sgs.Player_NotActive then
-            if player:getMark("s4_chiyuan") > 0 then
-                room:setPlayerMark(player, "s4_chiyuan", 0)
-                player:breakYinniState()
-            end
+        if change.to == sgs.Player_NotActive and player:getMark("s4_chiyuan") > 0 then
+            return skill:objectName()
         end
-	end,
-    can_trigger = function(self, target)
-        return target ~= nil
+        return false
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        room:setPlayerMark(player, "s4_chiyuan", 0)
+        player:breakYinniState()
+        return false
     end,
 }
 
@@ -7593,7 +7634,7 @@ sgs.LoadTranslationTable {
     ["illustrator:s4_wenyang"] = "",
 
     ["s4_chiyuan"] = "驰援",
-    [":s4_chiyuan"] = "隐匿。当你登埸时，你摸一张牌。出牌阶段限一次，你可以隐匿至回合结束时登埸。",
+    [":s4_chiyuan"] = "隐匿，当你登埸时，你摸一张牌。出牌阶段限一次，你可以隐匿至回合结束时登埸。",
 
     ["s4_ganglu_saveself"] = "刚膂",
     ["s4_ganglu_slash"] = "刚膂",
@@ -7828,52 +7869,90 @@ sgs.LoadTranslationTable {
 
 s4_xiahouyuan = sgs.General(extension, "s4_xiahouyuan", "wei", 4)
 
-s4_zhuidao = sgs.CreateTargetModSkill{
+s4_zhuidao = sgs.CreateTargetModSkillV2{
 	name = "s4_zhuidao",
-	residue_func = function(self, player)
-		if player:hasSkill("s4_zhuidao") then
-			return 1
+	base_amount = 1,
+	correct_func = function(skill, ctx)
+		if ctx:getModType() ~= sgs.TargetModSkill_Residue then
+			return false
 		end
-		return 0
+		local holder = ctx:getHolder()
+		return holder ~= nil and holder:hasSkill("s4_zhuidao")
 	end,
 }
 
-s4_duansha = sgs.CreateTriggerSkill{
+s4_duansha = sgs.CreateTriggerSkillV2{
 	name = "s4_duansha",
 	events = {sgs.TargetConfirmed, sgs.Dying},
 	frequency = sgs.Skill_NotFrequent,
 	waked_skills = "feiying",
-	on_trigger = function(self, event, player, data, room)
+	limit_scope = sgs.Skill_Limit_Turn,
+	max_usage_limit = 1,
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then
+			return false
+		end
 		if event == sgs.TargetConfirmed then
+			if player:isKongcheng() then return false end
+			-- 每回合限一次：改用原生 usage 取代 s4_duansha-Clear 標記
+			local usable = false
+			for _, iid in sgs.list(player:getSkillInstanceIds(skill:objectName())) do
+				local c = sgs.SkillContext()
+				c.invoker = player; c.owner = player; c.instanceID = iid
+				if skill:isUsable(c) then usable = true; break end
+			end
+			if not usable then return false end
 			local use = data:toCardUse()
-			if use.card and use.card:isKindOf("Slash") and use.from:objectName() == player:objectName() and player:getMark("s4_duansha-Clear") == 0 then
-				if not player:isKongcheng() and room:askForSkillInvoke(player, self:objectName(), data) then
-					room:setPlayerMark(player, "s4_duansha-Clear", 1)
-					room:showAllCards(player, self:objectName())
-					local slash_num = 0
-					for _, card_id in sgs.qlist(player:handCards()) do
-						local card = sgs.Sanguosha:getCard(card_id)
-						if card:isKindOf("Slash") then
-							slash_num = slash_num + 1
-						end
-					end
-					if slash_num == 0 then return false end
-					room:setCardFlag(use.card, "s4_duansha")
-					use.extra_use = use.extra_use + slash_num
-					data:setValue(use)
-				end
+			if use.card and use.card:isKindOf("Slash") and use.from
+				and use.from:objectName() == player:objectName() then
+				return skill:objectName()
 			end
 		elseif event == sgs.Dying then
 			local dying = data:toDying()
-			if dying.damage and dying.damage.card and dying.damage.card:hasFlag("s4_duansha") then
-				local killer = dying.damage.from
-				if killer and killer:objectName() == player:objectName() then
-					room:setPlayerMark(player, "s4_duansha-Clear", 0)
-					room:detachSkillFromPlayer(player, "s4_duansha")
-					room:acquireSkill(player, "feiying")
-				end
+			local killer = dying.damage and dying.damage.from
+			if dying.damage and dying.damage.card and dying.damage.card:hasFlag("s4_duansha")
+				and killer and killer:objectName() == player:objectName() then
+				-- Dying 支線為強制後果：_force 標記使 trigger-order 不可取消
+				room:addPlayerMark(player, "s4_duansha+sys_+_force")
+				return skill:objectName()
 			end
 		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		if event == sgs.Dying then
+			-- 強制後果不詢問、不計次；進場即清 _force 標記
+			room:setPlayerMark(player, "s4_duansha+sys_+_force", 0)
+			return true
+		end
+		if not skill:isUsable(ctx) then return false end
+		if not room:askForSkillInvoke(player, skill:objectName(), ctx.original_data) then
+			return false
+		end
+		-- 與 legacy 一致：確認發動即耗次，即使之後展示不到【殺】
+		skill:addUsage(ctx)
+		return true
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		if event == sgs.TargetConfirmed then
+			room:showAllCards(player, skill:objectName())
+			local slash_num = 0
+			for _, card_id in sgs.qlist(player:handCards()) do
+				local card = sgs.Sanguosha:getCard(card_id)
+				if card:isKindOf("Slash") then
+					slash_num = slash_num + 1
+				end
+			end
+			if slash_num == 0 then return false end
+			local use = ctx.original_data:toCardUse()
+			room:setCardFlag(use.card, "s4_duansha")
+			use.extra_use = use.extra_use + slash_num
+			ctx.original_data:setValue(use)
+		elseif event == sgs.Dying then
+			room:detachSkillFromPlayer(player, skill:objectName())
+			room:acquireSkill(player, "feiying")
+		end
+		return false
 	end,
 }
 
@@ -7899,39 +7978,58 @@ sgs.LoadTranslationTable {
 
 s4_zujiangwei = sgs.General(extension, "s4_zujiangwei", "shu", 4)
 
-s4_daoli = sgs.CreateTriggerSkill{
+s4_daoli = sgs.CreateTriggerSkillV2{
 	name = "s4_daoli",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.EventPhaseChanging, sgs.EventPhaseEnd},
-	on_trigger = function(self,event,player,data)
-		local room = player:getRoom()
-        if event == sgs.EventPhaseChanging then
-            local change = data:toPhaseChange()
-            if change.to == sgs.Player_Judge then
-                room:sendCompulsoryTriggerLog(player,self)
-                change.to = sgs.Player_Play
-                data:setValue(change)
-                room:addPlayerMark(player, "s4_daoli-Clear")
-                room:addPlayerMark(player, "&s4_daoli-PlayClear")
-            end
-            if player:getMark("s4_daoliNoDmg-Clear") > 0 then
-                room:setPlayerMark(player, "s4_daoliNoDmg-Clear", 0)
-                room:sendCompulsoryTriggerLog(player,self)
-                change.to = sgs.Player_Play
-                data:setValue(change)
-            end
-        elseif event == sgs.EventPhaseEnd and player:getPhase() == sgs.Player_Play and player:getMark("s4_daoli-Clear") > 0 then
-            room:setPlayerMark(player, "s4_daoli-Clear",0)
-            if player:getMark("damage_point_play_phase") == 0 then
-                room:sendCompulsoryTriggerLog(player,self)
-                room:loseHp(player, 1, true, player, self:objectName())
-                player:drawCards(2, self:objectName())
-                if player:getMark("s4_daoliUsing-Clear") == 0 then
-                    room:setPlayerMark(player, "s4_daoliUsing-Clear", 1)
-                    room:setPlayerMark(player, "s4_daoliNoDmg-Clear", 1)
-                end
-            end
-        end
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then
+			return false
+		end
+		if event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to == sgs.Player_Judge or player:getMark("s4_daoliNoDmg-Clear") > 0 then
+				return skill:objectName()
+			end
+		elseif event == sgs.EventPhaseEnd
+			and player:getPhase() == sgs.Player_Play
+			and player:getMark("s4_daoli-Clear") > 0 then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		if event == sgs.EventPhaseChanging then
+			local change = ctx.original_data:toPhaseChange()
+			if change.to == sgs.Player_Judge then
+				-- 锁定技：判定阶段改为出牌阶段
+				room:sendCompulsoryTriggerLog(player, skill:objectName())
+				change.to = sgs.Player_Play
+				ctx.original_data:setValue(change)
+				room:addPlayerMark(player, "s4_daoli-Clear")
+				room:addPlayerMark(player, "&s4_daoli-PlayClear")
+			end
+			if player:getMark("s4_daoliNoDmg-Clear") > 0 then
+				-- 未造成伤害的后续效果：本回合下一个阶段改为出牌阶段
+				room:setPlayerMark(player, "s4_daoliNoDmg-Clear", 0)
+				room:sendCompulsoryTriggerLog(player, skill:objectName())
+				change.to = sgs.Player_Play
+				ctx.original_data:setValue(change)
+			end
+		elseif event == sgs.EventPhaseEnd then
+			room:setPlayerMark(player, "s4_daoli-Clear", 0)
+			if player:getMark("damage_point_play_phase") == 0 then
+				-- 此出牌阶段未造成伤害：失去1点体力并摸两张牌
+				room:sendCompulsoryTriggerLog(player, skill:objectName())
+				room:loseHp(player, 1, true, player, skill:objectName())
+				player:drawCards(2, skill:objectName())
+				if player:getMark("s4_daoliUsing-Clear") == 0 then
+					room:setPlayerMark(player, "s4_daoliUsing-Clear", 1)
+					room:setPlayerMark(player, "s4_daoliNoDmg-Clear", 1)
+				end
+			end
+		end
+		return false
 	end,
 }
 s4_xingguRecord = sgs.CreateTriggerSkill{
