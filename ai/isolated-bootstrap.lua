@@ -1,3 +1,15 @@
+-- ai_isolated_core：這個 runtime 少了哪幾支就答不出任何一題。
+-- 對應 smart-ai.lua 開頭那幾行 dofile：要載入什麼由 Lua 這邊宣告，不寫在 C++ 裡。
+-- sandbox 拿掉了 dofile，所以實際開檔由 host 代勞（AiLuaRuntime::loadConfiguredScripts），
+-- 但清單的權威在這裡；host 只負責照這張清單去讀 lua/ai/isolated/ 底下的檔。
+-- 武將／套件的 handler 不寫進這裡：那些照 <套件名>-ai.lua 由啟用的套件自己帶進來，
+-- 規則與 smart-ai.lua 掃 lua/ai/ 找 <package>-ai.lua 相同。
+ai_isolated_core = {
+    "ask-for-use-card.lua",
+    "ask-for-choice.lua",
+    "decision-core.lua",
+}
+
 -- ai_memory：跨 request 的推測記憶，按觀察者分區。
 -- 這裡存的是「這名觀察者相信什麼」，不是權威狀態：權威資料一律看當次快照。
 -- 只收純值（number／string／boolean 與它們組成的表），拒收代理、函式與 userdata，
