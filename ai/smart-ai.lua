@@ -4,6 +4,7 @@
 -- more information see: https://github.com/kikito/middleclass
 local middleclass = require "middleclass"
 dofile("lua/ai/mode-ai.lua")
+dofile("lua/ai/value-boundary.lua")
 
 -- initialize the random seed for later use
 math.randomseed(os.time())
