@@ -288,10 +288,23 @@ local function current_ai()
     end
 end
 
+local managed_rooms = setmetatable({}, {__mode="k"})
 function sgs.modeAIEnabled(room, viewer)
     if policies[room:getMode()] then return true end
-    local world = room:buildAIWorldView(viewer)
-    return world.mode_policy.managed == true
+    -- This is exactly evaluateModeAI's admission rule. Ordinary identity SmartAI
+    -- must not compute geometry, card zones and skill callbacks just to return false.
+    local revision = room:aiStateRevision()
+    local cached = managed_rooms[room]
+    if cached and cached.revision == revision then return cached.custom_roles end
+    local custom_roles = false
+    for _, player in sgs.qlist(room:getAllPlayers(true)) do
+        if player:getRoleEnum() == sgs.Player_UnknownRole then
+            custom_roles = true
+            break
+        end
+    end
+    managed_rooms[room] = {revision=revision, custom_roles=custom_roles}
+    return custom_roles
 end
 
 function sgs.installModeAI(SmartAI)
@@ -302,6 +315,7 @@ function sgs.installModeAI(SmartAI)
     local process, evaluate, counts = sgs.gameProcess, evaluateAlivePlayersRole, updateAlivePlayerRoles
 
     local function policy(ai)
+        if not sgs.modeAIEnabled(ai.room, ai.player) then return nil end
         local world = sgs.modeAIWorld(ai)
         return world.mode_policy.managed and world or nil
     end
