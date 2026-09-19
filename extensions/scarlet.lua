@@ -6932,10 +6932,10 @@ s4_shiyong = sgs.CreateTriggerSkillV2 {
         local prefix = skill:objectName() .. "#" .. ctx.instanceID
         if ctx.current_event == sgs.Damage then
             room:addPlayerMark(owner, prefix .. "damage" .. "-"..current:getPhase().."Clear")
-            room:addPlayerMark(owner, "&" .. skill:objectName() .. "damage" .. "-"..current:getPhase().."Clear")
+            room:addPlayerMark(owner, "&" .. skill:objectName() .. "+sys_+" .. "damage" .. "-"..current:getPhase().."Clear")
         elseif ctx.current_event == sgs.CardsMoveOneTime then
             room:addPlayerMark(owner, prefix .. "-"..current:getPhase().."Clear")
-            room:addPlayerMark(owner, "&" .. skill:objectName().. "-"..current:getPhase().."Clear")
+            room:addPlayerMark(owner, "&" .. skill:objectName() .."+sys_".. "-"..current:getPhase().."Clear")
         end
     end,
     can_trigger = function(skill, event, room, player, data)
@@ -7981,6 +7981,7 @@ s4_zujiangwei = sgs.General(extension, "s4_zujiangwei", "shu", 4)
 s4_daoli = sgs.CreateTriggerSkillV2{
 	name = "s4_daoli",
 	frequency = sgs.Skill_Compulsory,
+	base_amount = 2,
 	events = {sgs.EventPhaseChanging, sgs.EventPhaseEnd},
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then
@@ -8022,7 +8023,10 @@ s4_daoli = sgs.CreateTriggerSkillV2{
 				-- 此出牌阶段未造成伤害：失去1点体力并摸两张牌
 				room:sendCompulsoryTriggerLog(player, skill:objectName())
 				room:loseHp(player, 1, true, player, skill:objectName())
-				player:drawCards(2, skill:objectName())
+				local amount = skill:getEffectiveAmount(ctx)
+				if amount > 0 then
+					player:drawCards(amount, skill:objectName())
+				end
 				if player:getMark("s4_daoliUsing-Clear") == 0 then
 					room:setPlayerMark(player, "s4_daoliUsing-Clear", 1)
 					room:setPlayerMark(player, "s4_daoliNoDmg-Clear", 1)
@@ -8032,82 +8036,96 @@ s4_daoli = sgs.CreateTriggerSkillV2{
 		return false
 	end,
 }
-s4_xingguRecord = sgs.CreateTriggerSkill{
-    name = "#s4_xingguRecord",
-	frequency = sgs.Skill_Compulsory,
-	events = {sgs.CardUsed, sgs.EventPhaseChanging},
-	on_trigger = function(self,event,player,data, room)
-        if event == sgs.EventPhaseChanging then
-            local change = data:toPhaseChange()
-            if change.from == sgs.Player_Play then
-                local card = room:getTag("s4_xinggu")
-                if card then
-                    room:removeTag("s4_xinggu")
-                end
-            end
-        else
-            local current = room:getCurrent()
-            if current and current:hasSkill("s4_xinggu") then
-                local use = data:toCardUse()
-                if use.card and not use.card:isKindOf("SkillCard") then
-                    if use.card:isVirtualCard() then
-                        if use.card:subcardsLength() > 0 then
-                        else
-                            room:removeTag("s4_xinggu")
-                        end
-                    end
-                    room:setTag("s4_xinggu", ToData(use.card))
-                    for _, mark in sgs.list(current:getMarkNames()) do
-						if string.find(mark, "s4_xinggu") and current:getMark(mark) > 0 then
-							room:setPlayerMark(current, mark, 0)
-						end
-					end
-					room:setPlayerMark(current, "&s4_xinggu+:+" .. use.card:objectName() .. "-".. current:getPhase() .."Clear", 1)
-                end
-            end
-        end
-    end,
-    can_trigger = function(self, target)
-        return target ~= nil
-    end,
-}
-s4_xinggu = sgs.CreateTriggerSkill{
+s4_xinggu = sgs.CreateTriggerSkillV2{
 	name = "s4_xinggu",
 	frequency = sgs.Skill_Compulsory,
-	events = {sgs.EventPhaseEnd},
-	on_trigger = function(self,event,player,data)
-	    local room = player:getRoom()
-        if event == sgs.EventPhaseEnd and player:getPhase() == sgs.Player_Play then
-            room:sendCompulsoryTriggerLog(player,self)
-            local card = room:getTag("s4_xinggu"):toCard()
-            room:removeTag("s4_xinggu")
-            if card then
-                local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-                for _,id in sgs.qlist(card:getSubcards()) do
-                    if room:getCardPlace(id) == sgs.Player_DiscardPile then
-                        dummy:addSubcard(sgs.Sanguosha:getCard(id))
-                    end
-                end
-                if dummy:subcardsLength() > 0 then
-                    local targets = sgs.SPlayerList()
-                    targets:append(player)
-                    local target = room:askForPlayerChosen(player,targets,self:objectName(),"s4_xinggu-invoke",true,true)
-                    if not target then player:drawCards(1, self:objectName()) return false end
-                    room:obtainCard(target, dummy, true)
-                else
-                    player:drawCards(1, self:objectName())
-                end
-				dummy:deleteLater()
-            else
-                player:drawCards(1, self:objectName())
-            end
-        end
+	base_amount = 1,
+	events = {sgs.CardUsed, sgs.EventPhaseChanging, sgs.EventPhaseEnd},
+	on_record = function(skill, event, room, player, ctx)
+		if event == sgs.EventPhaseChanging then
+			-- 任何人離開出牌階段即清掉記錄（沿用舊版全域清理語義）
+			local change = ctx.original_data:toPhaseChange()
+			if change.from == sgs.Player_Play then
+				ctx.owner:removeSkillInstanceStateValue(skill:objectName(), ctx.instanceID, "last_card")
+			end
+			return
+		end
+		if event ~= sgs.CardUsed then return end
+		-- 只記錄持有者當前回合內被使用的最後一張牌
+		if room:getCurrent() ~= ctx.owner or not ctx.owner:hasSkill(skill:objectName()) then return end
+		local use = ctx.original_data:toCardUse()
+		if use.card and not use.card:isKindOf("SkillCard") then
+			-- 存子牌 id 列表而非 Card*，避免出牌階段結束讀取時卡片已回收的懸置指標
+			local ids = {}
+			for _, id in sgs.qlist(use.card:getSubcards()) do
+				table.insert(ids, tostring(id))
+			end
+			ctx.owner:setSkillInstanceStateValue(skill:objectName(), ctx.instanceID, "last_card", sgs.QVariant(table.concat(ids, "+")))
+			for _, mark in sgs.list(ctx.owner:getMarkNames()) do
+				if string.find(mark, "s4_xinggu") and ctx.owner:getMark(mark) > 0 then
+					room:setPlayerMark(ctx.owner, mark, 0)
+				end
+			end
+			room:setPlayerMark(ctx.owner, "&s4_xinggu+sys_+:+" .. use.card:objectName() .. "-".. ctx.owner:getPhase() .."Clear", 1)
+		end
+	end,
+	can_trigger = function(skill, event, room, player, data)
+		if event ~= sgs.EventPhaseEnd then return false end
+		if player:getPhase() ~= sgs.Player_Play then return false end
+		if not (player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		return skill:objectName()
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		room:sendCompulsoryTriggerLog(player, skill:objectName())
+		local raw = player:getSkillInstanceStateValue(skill:objectName(), ctx.instanceID, "last_card"):toString()
+		player:removeSkillInstanceStateValue(skill:objectName(), ctx.instanceID, "last_card")
+		local ids = {}
+		for _, s in ipairs(raw:split("+")) do
+			local id = tonumber(s)
+			if id and room:getCardPlace(id) == sgs.Player_DiscardPile then
+				table.insert(ids, id)
+			end
+		end
+		-- 無可給的牌就不問選角，交由 on_effect 摸牌
+		if #ids == 0 then return true end
+		ctx.extra_data:setValue(table.concat(ids, "+"))
+		local targets = sgs.SPlayerList()
+		targets:append(player)
+		local target = room:askForPlayerChosen(player,targets,skill:objectName(),"s4_xinggu-invoke",true,true)
+		if target then
+			ctx.targets:append(target)
+		end
+		return true
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		-- 沒有可給的牌或取消選角：摸 amount 張牌
+		if ctx.targets:isEmpty() then
+			local amount = skill:getEffectiveAmount(ctx)
+			if amount > 0 then player:drawCards(amount, skill:objectName()) end
+		end
+		return false
+	end,
+	on_effect_target = function(skill, event, room, player, ctx, target)
+		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+		for _, s in ipairs(ctx.extra_data:toString():split("+")) do
+			local id = tonumber(s)
+			if id and room:getCardPlace(id) == sgs.Player_DiscardPile then
+				dummy:addSubcard(sgs.Sanguosha:getCard(id))
+			end
+		end
+		if dummy:subcardsLength() > 0 then
+			room:obtainCard(target, dummy, true)
+		else
+			-- 牌在 cost 後被移出棄牌堆：回落摸牌
+			local amount = skill:getEffectiveAmount(ctx)
+			if amount > 0 then player:drawCards(amount, skill:objectName()) end
+		end
+		dummy:deleteLater()
+		return false
 	end,
 }
 s4_zujiangwei:addSkill(s4_daoli)
 s4_zujiangwei:addSkill(s4_xinggu)
-s4_zujiangwei:addSkill(s4_xingguRecord)
-extension:insertRelatedSkills("s4_xinggu","#s4_xingguRecord")
 sgs.LoadTranslationTable {
     ["s4_zujiangwei"] = "族姜维",
     ["&s4_zujiangwei"] = "族姜维",
