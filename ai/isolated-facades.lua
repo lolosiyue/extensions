@@ -215,7 +215,25 @@ end
 
 function PlayerView.new(view)
     local result = new_facade(PlayerView, view, player_scalar_aliases)
-    if result then facade_kinds[result] = "player" end
+    if result then
+        facade_kinds[result] = "player"
+        -- Build once per snapshot.  The raw values remain request-owned; this
+        -- index only accelerates read-only skill queries.
+        local skills = view.skills
+        if AIValue.isList(skills) then
+            local by_name, by_instance = {}, {}
+            for _, skill in ipairs(skills) do
+                if type(skill) == "table" and type(skill.name) == "string" then
+                    by_name[skill.name] = by_name[skill.name] or {}
+                    by_name[skill.name][#by_name[skill.name] + 1] = skill
+                    if type(skill.instance_id) == "number" then
+                        by_instance[skill.name .. "#" .. skill.instance_id] = skill
+                    end
+                end
+            end
+            result._skill_index = {by_name = by_name, by_instance = by_instance}
+        end
+    end
     return result
 end
 
@@ -272,15 +290,19 @@ function PlayerView:hasSkill(skill_name)
         base_name = skill_name
     end
     local view = rawget(self, "_view")
-    local skills = type(view) == "table" and view.skills or nil
-    if type(skills) ~= "table" then
+    local index = rawget(self, "_skill_index")
+    if type(index) ~= "table" then
         return false
     end
-    for _, skill in ipairs(skills) do
-        if type(skill) == "table" and skill.name == base_name and not skill.invalid
-            and (instance_id == nil or skill.instance_id == instance_id) then
+    if instance_id ~= nil then
+        local skill = index.by_instance[base_name .. "#" .. instance_id]
+        if type(skill) == "table" and not skill.invalid then
             return true
         end
+        return false
+    end
+    for _, skill in ipairs(index.by_name[base_name] or {}) do
+        if not skill.invalid then return true end
     end
     return false
 end
@@ -293,6 +315,104 @@ end
 function PlayerView:getJudgingArea()
     local view = rawget(self, "_view")
     return wrap_values(type(view) == "table" and view.judging_area or nil, CardView.new)
+end
+
+-- Common SmartAI queries derived from visible facts; hidden zones never become
+-- invented card identities. Missing scalar data stays unknown.
+function PlayerView:getLostHp()
+    local view = self._view
+    if type(view.hp) ~= "number" or type(view.max_hp) ~= "number" then return nil end
+    return math.max(0, view.max_hp - view.hp)
+end
+
+function PlayerView:getCardCount(include_judging)
+    local view = self._view
+    if type(view.handcard_count) ~= "number" or not AIValue.isList(view.equips) then return nil end
+    if include_judging and not AIValue.isList(view.judging_area) then return nil end
+    return view.handcard_count + #view.equips + (include_judging and #view.judging_area or 0)
+end
+
+function PlayerView:isNude()
+    local count = self:getCardCount()
+    if count == nil then return nil end
+    return count == 0
+end
+
+function PlayerView:isAllNude()
+    local count = self:getCardCount(true)
+    if count == nil then return nil end
+    return count == 0
+end
+
+function PlayerView:containsTrick(name)
+    local cards = self:getJudgingArea()
+    if not cards then return nil end
+    for _, card in ipairs(cards) do
+        if card:objectName() == name or card:isKindOf(name) then return true end
+    end
+    return false
+end
+
+function PlayerView:getEquipsId()
+    local cards = self:getEquips()
+    if not cards then return nil end
+    local ids = AIList.new({})
+    for _, card in ipairs(cards) do ids:append(card:getEffectiveId()) end
+    return ids
+end
+
+function PlayerView:getJudgingAreaID()
+    local cards = self:getJudgingArea()
+    if not cards then return nil end
+    local ids = AIList.new({})
+    for _, card in ipairs(cards) do ids:append(card:getEffectiveId()) end
+    return ids
+end
+
+local function equipped_kind(player, kind)
+    local cards = player:getEquips()
+    if not cards then return nil end
+    for _, card in ipairs(cards) do if card:isKindOf(kind) then return card end end
+end
+function PlayerView:getWeapon() return equipped_kind(self, "Weapon") end
+function PlayerView:getArmor() return equipped_kind(self, "Armor") end
+function PlayerView:getDefensiveHorse() return equipped_kind(self, "DefensiveHorse") end
+function PlayerView:getOffensiveHorse() return equipped_kind(self, "OffensiveHorse") end
+function PlayerView:getTreasure() return equipped_kind(self, "Treasure") end
+function PlayerView:hasWeapon(name)
+    if not self:getEquips() then return nil end
+    local card = self:getWeapon()
+    return card ~= nil and (name == nil or card:objectName() == name or card:isKindOf(name))
+end
+
+function PlayerView:hasArmorEffect(name, source)
+    -- The snapshot covers the source-independent equipped armor query only.
+    if source ~= nil then return nil end
+    local active = self._view.active_armor_name
+    if type(active) ~= "string" then return nil end
+    if name == nil or name == "" then return active ~= "" end
+    local armor = self:getArmor()
+    return active ~= "" and (active == name or armor ~= nil and armor:isKindOf(name))
+end
+
+function PlayerView:hasFlag(name)
+    if name == "CurrentPlayer" and self._room then
+        local current = self._room._world.current_player
+        if type(current) ~= "string" then return nil end
+        return self:objectName() == current
+    end
+    local flags = self._view.flags
+    if not AIValue.isList(flags) then return nil end
+    for _, flag in ipairs(flags) do if flag == name then return true end end
+    return false
+end
+
+function PlayerView:isSkipped(phase)
+    local skipped = self._view.skipped_phases
+    if type(skipped) ~= "table" then return nil end
+    local value = skipped[phase]
+    if value == nil then value = skipped[tostring(phase)] end
+    return value
 end
 
 function PlayerView:getHandcards()
@@ -425,6 +545,21 @@ function PlayerView:hasSkills(skill_names)
         if matches then return true end
     end
     return false
+end
+
+function CardView:getRange()
+    return self._view.weapon_range
+end
+
+function CardView:getSuitString()
+    local suit = self._view.suit
+    for _, entry in ipairs({{"Spade", "spade"}, {"Club", "club"}, {"Heart", "heart"},
+        {"Diamond", "diamond"}, {"NoSuitRed", "no_suit_red"},
+        {"NoSuitBlack", "no_suit_black"}, {"NoSuit", "no_suit"}}) do
+        local value = sgs["Card_" .. entry[1]]
+        if value ~= nil and suit == value then return entry[2] end
+    end
+    return nil -- Missing/unknown suit is not the known no-suit value.
 end
 
 function CardView:isKindOf(card_type)
@@ -573,13 +708,14 @@ end
 function RoomView.new(world)
     if type(world) ~= "table" or type(world.self) ~= "table"
         or not AIValue.isList(world.players) then return nil end
-    local room = setmetatable({_world = world, _players = {}}, RoomView)
+    local room = setmetatable({_world = world, _players = {}, _player_order = {}}, RoomView)
     facade_kinds[room] = "room"
     local function add(view)
         if type(view) ~= "table" or type(view.object_name) ~= "string"
             or view.object_name == "" or room._players[view.object_name] then return false end
         room._players[view.object_name] = PlayerView.new(view)
         room._players[view.object_name]._room = room
+        room._player_order[#room._player_order + 1] = view.object_name
         return true
     end
     if not add(world.self) then return nil end
@@ -647,11 +783,9 @@ function RoomView:getOtherPlayers(except, include_dead)
 end
 
 function RoomView:findPlayerByObjectName(name, include_dead)
-    local players = self:getAllPlayers(include_dead)
-    if not players then return nil end
-    for _, player in ipairs(players) do
-        if player:objectName() == name then return player end
-    end
+    local player = self._players[name]
+    if not player then return nil end
+    if include_dead or player:isAlive() then return player end
 end
 
 
@@ -704,13 +838,150 @@ function SmartAIView.new(request)
         room = room,
         player = room._players[request.viewer]
     }, SmartAIView)
+    -- Build immutable-by-convention lookup tables once for this request.  The
+    -- source rows are copied into facades; returned collections are fresh lists
+    -- so callers cannot alter the authoritative snapshot or its indexes.
+    local indexes = {candidates_by_card = {}, candidates_by_id = {},
+        conversions_by_id = {}, conversions_by_name = {}, skill_actions = nil,
+        choice_cards_by_id = {}}
+    local choice_cards = type(request.options) == "table" and request.options.cards or nil
+    if AIValue.isList(choice_cards) then
+        indexes.choice_cards = {}
+        for _, row in ipairs(choice_cards) do
+            local card = CardView.new(copy_value(row))
+            if card and type(card:getId()) == "number" then
+                indexes.choice_cards[#indexes.choice_cards + 1] = copy_value(row)
+                indexes.choice_cards_by_id[card:getId()] = copy_value(row)
+            end
+        end
+    end
+    local candidates = request.card_candidates
+    if AIValue.isList(candidates) then
+        indexes.candidates = {}
+        for _, row in ipairs(candidates) do
+            local candidate = CandidateView.new(copy_value(row))
+            if candidate then
+                indexes.candidates[#indexes.candidates + 1] = copy_value(row)
+                local card_id, candidate_id = candidate:getCardId(), candidate:getCandidateId()
+                if type(card_id) == "number" then indexes.candidates_by_card[card_id] = copy_value(row) end
+                if type(candidate_id) == "number" then indexes.candidates_by_id[candidate_id] = copy_value(row) end
+            end
+        end
+    end
+    local conversions = request.card_conversions
+    if AIValue.isList(conversions) then
+        indexes.conversions = {}
+        for _, row in ipairs(conversions) do
+            local conversion = ConversionView.new(copy_value(row))
+            if conversion then
+                indexes.conversions[#indexes.conversions + 1] = copy_value(row)
+                -- Incomplete rows remain available for coverage reporting, but
+                -- absent identity fields cannot contribute an index entry.
+                local id, name = row.conversion_id, row.name
+                if type(id) == "number" then indexes.conversions_by_id[id] = copy_value(row) end
+                if type(name) == "string" then
+                    indexes.conversions_by_name[name] = indexes.conversions_by_name[name] or {}
+                    indexes.conversions_by_name[name][#indexes.conversions_by_name[name] + 1] = copy_value(row)
+                end
+            end
+        end
+    end
+    local actions = request.skill_actions
+    if AIValue.isList(actions) then
+        indexes.skill_actions = {}
+        indexes.skill_actions_by_name = {}
+        for _, row in ipairs(actions) do
+            local action = SkillActionView.new(copy_value(row))
+            if action then
+                indexes.skill_actions[#indexes.skill_actions + 1] = copy_value(row)
+                local skill, instance = action:getActivationSkillName(), action:getActivationInstanceId()
+                if type(skill) == "string" then
+                    indexes.skill_actions_by_name[skill] = indexes.skill_actions_by_name[skill] or {}
+                    indexes.skill_actions_by_name[skill][#indexes.skill_actions_by_name[skill] + 1] = copy_value(row)
+                    if type(instance) == "number" then indexes.skill_actions[skill .. "#" .. instance] = copy_value(row) end
+                end
+            end
+        end
+    end
+    ai._indexes = indexes
     facade_kinds[ai] = "ai"
-    if ai.world.mode_policy and ai.world.mode_policy.managed then
+    if ai:isModeManaged() then
         ai.friends = ai:getFriends()
         ai.friends_noself = ai:getFriends(nil, true)
         ai.enemies = ai:getEnemies()
     end
     return ai
+end
+
+-- Choice-card projections are request-local and intentionally separate from
+-- hand cards: a choice may expose a visible card without granting ownership.
+function SmartAIView:getChoiceCards()
+    if type(self._indexes) ~= "table" or self._indexes.choice_cards == nil then return nil end
+    local result = AIList.new({})
+    for _, card in ipairs(self._indexes.choice_cards) do result:append(CardView.new(copy_value(card))) end
+    return result
+end
+
+function SmartAIView:getChoiceCard(card_id)
+    if type(card_id) ~= "number" or type(self._indexes) ~= "table" then return nil end
+    local card = self._indexes.choice_cards_by_id[card_id]
+    return card and CardView.new(copy_value(card)) or nil
+end
+
+-- Question context is an explicit pure-value schema. Wrap only named player/card
+-- fields; never imitate an unrestricted QVariant conversion or native tag lookup.
+function SmartAIView:getDecisionContext()
+    local options = self.request.options
+    local raw = type(options) == "table" and options.context or nil
+    if type(raw) ~= "table" then return {} end
+    local context = copy_value(raw)
+    local function wrap_event(event)
+        if type(event) ~= "table" then return end
+        for _, key in ipairs({"who", "from", "to"}) do
+            if type(event[key]) == "string" then
+                event[key .. "_name"] = event[key]
+                event[key] = self.room:findPlayerByObjectName(event[key], true)
+            end
+        end
+        if type(event.card) == "table" then event.card = CardView.new(event.card) end
+    end
+    if type(context.card) == "table" then context.card = CardView.new(context.card) end
+    wrap_event(context.judge)
+    wrap_event(context.damage)
+    wrap_event(context.effect)
+    if context.damage then context.damage.damage = context.damage.amount end
+    return context
+end
+
+function SmartAIView:getJudge()
+    local judge = self:getDecisionContext().judge
+    if type(judge) ~= "table" then return nil end
+    function judge:isGood(card)
+        if card == nil then return self.good end
+        if self.outcomes_complete ~= true or not AIValue.isCard(card) then return nil end
+        local outcomes = self.outcome_by_id
+        if type(outcomes) ~= "table" then return nil end
+        local id = card:getEffectiveId()
+        local value = outcomes[tostring(id)]
+        if value == nil then value = outcomes[id] end
+        return value
+    end
+    function judge:isBad(card)
+        local value = self:isGood(card)
+        if type(value) ~= "boolean" then return nil end
+        return not value
+    end
+    return judge
+end
+
+function SmartAIView:getDecisionData()
+    local ai, context = self, self:getDecisionContext()
+    return {
+        toJudge = function() return ai:getJudge() end,
+        toDamage = function() return context.damage end,
+        toCardEffect = function() return context.effect end,
+        isNull = function() return next(context) == nil end
+    }
 end
 
 -- 合法候選：全部由權威端在建立 request 時算好，這裡只查表。查不到就是「這次沒問到」，
@@ -721,10 +992,15 @@ CandidateView.__index = function(self, key)
 end
 
 local candidate_scalar_aliases = {
+    candidate_id = "getCandidateId",
     card_id = "getCardId",
     target_fixed = "targetFixed",
-    max_targets = "getMaxTargets"
+    complete_coverage = "hasCompleteCoverage"
 }
+
+-- Optional ticket fields stay queryable and return unknown when not projected.
+CandidateView.getCandidateId = make_scalar_getter("candidate_id")
+CandidateView.getCardId = make_scalar_getter("card_id")
 
 function CandidateView.new(view)
     local result = new_facade(CandidateView, view, candidate_scalar_aliases)
@@ -741,6 +1017,54 @@ function CandidateView:getLegalTargets()
     return AIList.new(targets)
 end
 
+function CandidateView:getAffectedTargets()
+    local view = rawget(self, "_view")
+    local targets = type(view) == "table" and view.affected_targets or nil
+    if not AIValue.isList(targets) then return nil end
+    return AIList.new(targets)
+end
+
+-- Complete combinations are paged locally; missing data is never an empty page.
+function CandidateView:getTargetCombinations(offset, limit)
+    if self:hasCompleteCoverage() ~= true then return nil end
+    local rows = rawget(self, "_view").target_combinations
+    if not AIValue.isList(rows) then return nil end
+    offset, limit = offset or 0, limit or 32
+    assert(offset >= 0 and offset % 1 == 0 and limit >= 1 and limit <= 32
+        and limit % 1 == 0, "invalid target page")
+    local page = AIList.new({})
+    for i = offset + 1, math.min(#rows, offset + limit) do
+        page:append(AIList.new(rows[i]))
+    end
+    return page, offset + #page < #rows and offset + #page or nil
+end
+
+-- Return (next names, may finish). Order is significant, including the empty prefix.
+function CandidateView:getTargetSelection(prefix)
+    if not AIValue.isList(prefix) then return nil end
+    local page, cursor = self:getTargetCombinations()
+    if not page then return nil end
+    local next_names, seen, finish = AIList.new({}), {}, false
+    repeat
+        for _, row in ipairs(page) do
+            local matches = #prefix <= #row
+            for i, name in ipairs(prefix) do
+                if row[i] ~= name then matches = false break end
+            end
+            if matches then
+                if #prefix == #row then finish = true
+                elseif not seen[row[#prefix + 1]] then
+                    local name = row[#prefix + 1]
+                    seen[name] = true
+                    next_names:append(name)
+                end
+            end
+        end
+        if cursor then page, cursor = self:getTargetCombinations(cursor) else break end
+    until false
+    return next_names, finish
+end
+
 function CandidateView:canTarget(player_name)
     local targets = self:getLegalTargets()
     if not targets then return nil end
@@ -750,17 +1074,243 @@ function CandidateView:canTarget(player_name)
     return false
 end
 
+-- 同一個人最多能被選幾次。權威端只送「大於一次」的人，所以查不到就是一次，
+-- 不是未知；這個數字是 targetFilter 的票數，不是可選目標總數。
+function CandidateView:getMaxVotes(player_name)
+    if self:canTarget(player_name) ~= true then return 0 end
+    local view = rawget(self, "_view")
+    local votes = type(view) == "table" and type(view.max_votes) == "table"
+        and view.max_votes[player_name] or nil
+    if type(votes) ~= "number" then return 1 end
+    return votes
+end
+
+-- 「這次沒有合法目標」與「這張牌本來就不用指定目標」是兩個答案，不能混。
+function CandidateView:needsATarget()
+    if self:targetFixed() then return false end
+    return not self:isFeasibleWithNoTarget()
+end
+
 function SmartAIView:getCardCandidates()
-    local candidates = self.request.card_candidates
-    if not AIValue.isList(candidates) then return nil end
-    return wrap_values(candidates, CandidateView.new)
+    if type(self._indexes) ~= "table" or self._indexes.candidates == nil then return nil end
+    local result = AIList.new({})
+    for _, candidate in ipairs(self._indexes.candidates) do result:append(CandidateView.new(copy_value(candidate))) end
+    return result
 end
 
 function SmartAIView:getCardCandidate(card_id)
-    local candidates = self:getCardCandidates()
-    if not candidates then return nil end
-    for _, candidate in ipairs(candidates) do
-        if candidate:getCardId() == card_id then return candidate end
+    -- 轉化的合成 id 是負數。它自己就描述得出合法目標與完整性，所以在這裡查回它本身，
+    -- 策略那一行 self:getCardCandidate(card:getEffectiveId()) 完全不用改。
+    if type(card_id) == "number" and card_id < 0 then
+        return self:getConversion(-card_id)
+    end
+    local row = self._indexes and self._indexes.candidates_by_card[card_id]
+    return row and CandidateView.new(copy_value(row)) or nil
+end
+
+-- 已授權的轉化：權威端自己用玩家真的持有的那個技能實例造出一張牌，再把那張牌的身分
+-- 與造它的成本記下來的一筆紀錄。作者不能把名字變成牌——只能指名一個 conversion_id，
+-- 權威端照自己的紀錄重造同一張並逐欄比對。牌名、class_name 與技能名都不是授權。
+ConversionView = {}
+ConversionView.__index = function(self, key)
+    return facade_index(ConversionView, self, key)
+end
+
+local conversion_scalar_aliases = {
+    conversion_id = "getConversionId",
+    name = "getName",
+    class_name = "getClassName",
+    activation_owner = "getActivationOwner",
+    activation_skill = "getActivationSkillName",
+    activation_instance = "getActivationInstanceId",
+    source_owner = "getSourceOwner",
+    source_skill = "getSourceSkillName",
+    source_instance = "getSourceInstanceID",
+    activation_quota_available = "isActivationQuotaAvailable",
+    source_quota_available = "isSourceQuotaAvailable",
+    target_fixed = "targetFixed",
+    complete_coverage = "hasCompleteCoverage"
+}
+
+function ConversionView.new(view)
+    local result = new_facade(ConversionView, view, conversion_scalar_aliases)
+    if result then facade_kinds[result] = "conversion" end
+    return result
+end
+
+function AIValue.isConversion(value) return AIValue.kind(value) == "conversion" end
+
+-- 分類來自受控卡牌目錄（權威端那張牌自己的 meta chain），不是作者宣稱的字串。
+function ConversionView:isKindOf(name)
+    local view = rawget(self, "_view")
+    local names = type(view) == "table" and view.kind_of_names or nil
+    if not AIValue.isList(names) then return nil end
+    for _, entry in ipairs(names) do
+        if entry == name then return true end
+    end
+    return false
+end
+
+-- 借用：activation 是入口，source 是根來源。兩者不同就是借來的，而配額記在 source 上，
+-- 所以同一個 root 用完時，每一個借用它的入口都一起用完。
+function ConversionView:isBorrowed()
+    local view = rawget(self, "_view")
+    if type(view) ~= "table" then return nil end
+    return view.activation_skill ~= view.source_skill
+        or view.activation_instance ~= view.source_instance
+end
+
+function ConversionView:getSubcards()
+    local view = rawget(self, "_view")
+    local ids = type(view) == "table" and view.subcards or nil
+    if not AIValue.isList(ids) then return nil end
+    return AIList.new(ids)
+end
+
+function ConversionView:getLegalTargets()
+    local view = rawget(self, "_view")
+    local targets = type(view) == "table" and view.legal_targets or nil
+    if not AIValue.isList(targets) then return nil end
+    return AIList.new(targets)
+end
+
+ConversionView.getAffectedTargets = CandidateView.getAffectedTargets
+
+ConversionView.getTargetCombinations = CandidateView.getTargetCombinations
+ConversionView.getTargetSelection = CandidateView.getTargetSelection
+
+-- Bind parameters to a fresh proposal. The ticket and source remain authority-owned.
+function ConversionView:withSubcards(ids)
+    if not AIValue.isList(ids) then return nil end
+    local view = rawget(self, "_view")
+    if type(view.cost_count) ~= "number" or view.cost_count < 2
+        or #ids ~= view.cost_count or not AIValue.isList(view.eligible_subcards) then
+        return nil
+    end
+    local eligible, seen = {}, {}
+    for _, id in ipairs(view.eligible_subcards) do eligible[id] = true end
+    for _, id in ipairs(ids) do
+        if not eligible[id] or seen[id] then return nil end
+        seen[id] = true
+    end
+    local bound = copy_value(view)
+    bound.subcards = copy_value(ids)
+    return ConversionView.new(bound)
+end
+
+function ConversionView:getCostSelection()
+    local view = rawget(self, "_view")
+    if not view.cost_count or view.cost_count < 2 then return nil end
+    return AIList.new(view.eligible_subcards), view.cost_count
+end
+
+function ConversionView:canTarget(player_name)
+    local targets = self:getLegalTargets()
+    if not targets then return nil end
+    for _, name in ipairs(targets) do
+        if name == player_name then return true end
+    end
+    return false
+end
+
+function ConversionView:getMaxVotes(player_name)
+    if self:canTarget(player_name) ~= true then return 0 end
+    local view = rawget(self, "_view")
+    local votes = type(view) == "table" and type(view.max_votes) == "table"
+        and view.max_votes[player_name] or nil
+    if type(votes) ~= "number" then return 1 end
+    return votes
+end
+
+function ConversionView:needsATarget()
+    if self:targetFixed() then return false end
+    return not self:isFeasibleWithNoTarget()
+end
+
+-- 策略是對「一張牌」寫的，所以轉化也要答得出牌的那幾個問題。這不是把轉化偽裝成牌：
+-- objectName 與 class_name 都是權威端造出來那張牌自己的身分，只有 id 是合成的。
+function ConversionView:objectName() return self:getName() end
+
+-- 合成 id。實體牌 id 一律 >= 0，所以負數不可能撞到任何一張真的牌，而 getCardCandidate
+-- 用它查回這一筆轉化——策略照舊寫 self:getCardCandidate(card:getEffectiveId())。
+function ConversionView:getEffectiveId()
+    local id = self:getConversionId()
+    if type(id) ~= "number" then return nil end
+    return -id
+end
+
+function ConversionView:getId() return self:getEffectiveId() end
+
+-- 值型答案。送出去的是票；牌名、花色、點數與成本一起送，只是讓權威端能比對出不一致
+-- 並拒絕，不是授權來源。
+function ConversionView:toCardSpec()
+    local subcards = self:getSubcards()
+    local ids = {}
+    if subcards then
+        for index, card_id in ipairs(subcards) do ids[index] = card_id end
+    end
+    return {conversion_id = self:getConversionId(), name = self:getName(),
+        suit = self:getSuit(), number = self:getNumber(),
+        skill = self:getActivationSkillName(), subcards = ids}
+end
+
+function SmartAIView:getConversions()
+    if type(self._indexes) ~= "table" or self._indexes.conversions == nil then return nil end
+    local result = AIList.new({})
+    for _, conversion in ipairs(self._indexes.conversions) do result:append(ConversionView.new(copy_value(conversion))) end
+    return result
+end
+
+function SmartAIView:getConversion(conversion_id)
+    local row = self._indexes and self._indexes.conversions_by_id[conversion_id]
+    return row and ConversionView.new(copy_value(row)) or nil
+end
+
+-- 權威端有沒有把這次能用的轉化列完。false 是「列不完」而不是「沒有轉化」：兩者分開，
+-- 規劃端保留這個未知分支，但可選其他完整合法方案；沒有方案時不能把它當作合法 pass。
+function SmartAIView:hasEnumeratedConversions()
+    local flag = self.request.conversions_enumerated
+    if type(flag) ~= "boolean" then return nil end
+    return flag
+end
+
+-- 計畫 7.1 的 newCard：它只「找出」一個已授權的轉化，不製造授權。proposal 只有
+-- 「我想這樣做」的意義，所以找不到對應、完整且已授權的轉化能力時回 nil，呼叫端據此
+-- 回 unsupported，而不是 clone 一張照用。
+function SmartAIView:newCard(name, options)
+    if type(name) ~= "string" or name == "" then return nil end
+    local conversions = self._indexes and self._indexes.conversions_by_name[name]
+    if conversions == nil then return nil end
+    options = options or {}
+    for _, row in ipairs(conversions) do
+        local conversion = ConversionView.new(copy_value(row))
+        local matched = conversion:getName() == name
+            and (options.skill == nil
+                or conversion:getActivationSkillName() == options.skill)
+            and (options.instance == nil
+                or conversion:getActivationInstanceId() == options.instance)
+            and (options.suit == nil or conversion:getSuit() == options.suit)
+            and (options.number == nil or conversion:getNumber() == options.number)
+        if matched and options.subcards ~= nil and conversion:getCostSelection() then
+            local bound = conversion:withSubcards(options.subcards)
+            if bound then return bound end
+            -- Another instance/source may authorize these costs; keep searching.
+            matched = false
+        end
+        if matched and options.subcards ~= nil then
+            local have = conversion:getSubcards()
+            if not have or #have ~= #options.subcards then
+                matched = false
+            else
+                for index = 1, #options.subcards do
+                    if options.subcards[index] ~= have[index] then
+                        matched = false
+                        break
+                    end
+                end
+            end
+        end
+        if matched then return conversion end
     end
     return nil
 end
@@ -832,7 +1382,10 @@ function SkillActionView:isBorrowed()
 end
 
 function SmartAIView:getSkillActions()
-    return wrap_values(self.request.skill_actions, SkillActionView.new)
+    if type(self._indexes) ~= "table" or self._indexes.skill_actions == nil then return nil end
+    local result = AIList.new({})
+    for _, action in ipairs(self._indexes.skill_actions) do result:append(SkillActionView.new(copy_value(action))) end
+    return result
 end
 
 function SmartAIView:getSkillAction(skill_name, instance_id)
@@ -840,15 +1393,15 @@ function SmartAIView:getSkillAction(skill_name, instance_id)
         local action = self.request.skill_action
         return type(action) == "table" and SkillActionView.new(copy_value(action)) or nil
     end
-    local actions = self:getSkillActions()
-    if not actions then return nil end
-    for _, action in ipairs(actions) do
-        if action:getActivationSkillName() == skill_name
-            and (instance_id == nil or action:getActivationInstanceId() == instance_id) then
-            return action
-        end
+    if type(self._indexes) ~= "table" or self._indexes.skill_actions == nil then return nil end
+    if instance_id ~= nil then
+        local row = self._indexes.skill_actions[skill_name .. "#" .. instance_id]
+        return row and SkillActionView.new(copy_value(row)) or nil
     end
-    return nil
+    local actions = self._indexes.skill_actions_by_name
+    if not actions then return nil end
+    local row = actions[skill_name] and actions[skill_name][1] or nil
+    return row and SkillActionView.new(copy_value(row)) or nil
 end
 
 -- 結果要指名用了哪個實例時的值型寫法。
@@ -957,13 +1510,101 @@ function SmartAIView:recallAt(key)
     return stored.value, stored.revision
 end
 
+-- Planning intents survive requests only as pure values.  The caller receives
+-- a stale/invalidated result and must fall back to a fresh snapshot decision.
+function SmartAIView:planIntent(kind, intent)
+    if type(ai_planning) ~= "table" or type(ai_planning.plan) ~= "function" then return nil end
+    return ai_planning.plan(self.request.viewer, kind, self.request.state_revision,
+        self.request.decision_id, intent)
+end
+
+function SmartAIView:getPlannedIntent(kind)
+    if type(ai_planning) ~= "table" or type(ai_planning.peek) ~= "function" then
+        return nil, "missing"
+    end
+    return ai_planning.peek(self.request.viewer, kind, self.request.state_revision,
+        self.request.decision_id)
+end
+
+function SmartAIView:revalidatePlannedIntent(kind, valid)
+    if type(ai_planning) ~= "table" or type(ai_planning.revalidate) ~= "function" then
+        return nil, "missing"
+    end
+    if valid == nil then
+        local intent, status = ai_planning.peek(self.request.viewer, kind,
+            self.request.state_revision, self.request.decision_id)
+        if status ~= "fresh" then return nil, status end
+        valid, status = self:validatePlannedIntent(kind, intent)
+        if valid == nil then return nil, status or "unknown" end
+    end
+    return ai_planning.revalidate(self.request.viewer, kind, self.request.state_revision,
+        self.request.decision_id, valid)
+end
+
+-- Revalidation is deliberately conservative: absent projections remain
+-- unknown, while a visible mismatch invalidates the intent before authority
+-- sees it.  The final candidate/cost authorization still belongs to authority.
+function SmartAIView:validatePlannedIntent(kind, intent)
+    if type(intent) ~= "table" then return nil, "unknown" end
+    if kind == "target" then
+        local row = self._indexes and self._indexes.candidates_by_id[intent.candidate_id]
+        local candidate = row and CandidateView.new(copy_value(row)) or nil
+        if not candidate then return nil, "unknown" end
+        local legal = candidate:getLegalTargets()
+        if not legal then return nil, "unknown" end
+        if not AIValue.isList(intent.targets) then return nil, "unknown" end
+        if candidate:hasCompleteCoverage() ~= true then return nil, "unknown" end
+        local function same(a, b)
+            if #a ~= #b then return false end
+            for index = 1, #a do if a[index] ~= b[index] then return false end end
+            return true
+        end
+        local offset = 0
+        repeat
+            local combinations, next_offset = candidate:getTargetCombinations(offset)
+            if not combinations then return nil, "unknown" end
+            for _, row in ipairs(combinations) do
+                if same(row, intent.targets) then return true, "valid" end
+            end
+            offset = next_offset
+        until offset == nil
+        return false, "invalidated"
+    elseif kind == "cost" then
+        local row = self._indexes and self._indexes.conversions_by_id[intent.conversion_id]
+        local conversion = row and ConversionView.new(copy_value(row)) or nil
+        if not conversion then return nil, "unknown" end
+        if not AIValue.isList(intent.subcards) then return nil, "unknown" end
+        local view = rawget(conversion, "_view")
+        local expected = type(view) == "table" and view.subcards or nil
+        if type(view) ~= "table" or type(view.cost_count) ~= "number" then return nil, "unknown" end
+        if view.cost_count < 2 then
+            if not AIValue.isList(expected) then return nil, "unknown" end
+            local same = #expected == #intent.subcards
+            for index = 1, #intent.subcards do
+                if not same or expected[index] ~= intent.subcards[index] then same = false break end
+            end
+            return same, same and "valid" or "invalidated"
+        end
+        if not AIValue.isList(view.eligible_subcards) then return nil, "unknown" end
+        local bound = conversion:withSubcards(intent.subcards)
+        return bound ~= nil and true or false, bound ~= nil and "valid" or "invalidated"
+    end
+    return nil, "unknown"
+end
+
+function SmartAIView:invalidatePlannedIntent(kind)
+    if type(ai_planning) == "table" and type(ai_planning.invalidate) == "function" then
+        ai_planning.invalidate(self.request.viewer, kind)
+    end
+end
+
 -- Mode policy is evaluated in the owning Room and copied into this snapshot.
 -- No gameplay VM callbacks, native players, or mutable shared beliefs cross here.
 -- 模式與身份：規則關係（mode policy 算出來的）與推測關係（這名觀察者自己相信的）
 -- 是兩回事，查詢分開，缺一不會拿另一個頂替。
 function SmartAIView:isModeManaged()
     local policy = self.world.mode_policy
-    return type(policy) == "table" and policy.managed == true
+    return type(policy) == "table" and policy.managed == true and policy.error == nil
 end
 
 -- 未覆蓋的模式回 nil：那是「不知道」，不是「中立」，也不是「沒有敵人」。
@@ -1041,7 +1682,7 @@ end
 
 function SmartAIView:relationTo(other, another)
     local policy = self.world.mode_policy
-    if type(policy) ~= "table" or not policy.managed then return nil end
+    if type(policy) ~= "table" or not policy.managed or policy.error ~= nil then return nil end
     local from = another or self.player
     if not from or not other then return "unknown" end
     local rows = policy.relations or {}
@@ -1063,18 +1704,18 @@ end
 
 function SmartAIView:objectiveLevel(other)
     local policy = self.world.mode_policy
-    if type(policy) ~= "table" or not policy.managed then return nil end
+    if type(policy) ~= "table" or not policy.managed or policy.error ~= nil then return nil end
     return other and (policy.objectives or {})[other:objectName()] or 0
 end
 
 function SmartAIView:isRolePredictable()
     local policy = self.world.mode_policy
-    if not policy or not policy.managed then return nil end
+    if not self:isModeManaged() then return nil end
     return policy.predictable == true
 end
 
 function SmartAIView:getFriends(player, no_self)
-    if not self.world.mode_policy or not self.world.mode_policy.managed then return nil end
+    if not self:isModeManaged() then return nil end
     player = player or self.player
     local result, players = AIList.new({}), {self.world.self}
     for _, view in ipairs(self.world.players) do players[#players + 1] = view end
@@ -1087,7 +1728,7 @@ function SmartAIView:getFriends(player, no_self)
 end
 
 function SmartAIView:getEnemies(player)
-    if not self.world.mode_policy or not self.world.mode_policy.managed then return nil end
+    if not self:isModeManaged() then return nil end
     player = player or self.player
     local result, players = AIList.new({}), {self.world.self}
     for _, view in ipairs(self.world.players) do players[#players + 1] = view end
@@ -1154,9 +1795,48 @@ function AILegacyRequest:getInitiator()
     return self._room:findPlayerByObjectName(self._action.activation_owner, true)
 end
 
+-- 未覆蓋訊號。用有標記的表當 error 值，不用字串：dispatcher 才分得出「這題接不住」
+-- 與「handler 壞了」，而不是去猜錯誤訊息長什麼樣。
+-- 舊作者寫 `if use.card then ... end`，所以不支援時不能只回 card=nil —— 那會被讀成
+-- 「AI 決定不出牌」。訊號預設一路丟到最外層 dispatcher，內層吞不掉；要自己接手的
+-- 呼叫者用 AIUnsupported.capture 明說。
+AIUnsupported = {}
+AIUnsupported.__index = AIUnsupported
+AIUnsupported.__tostring = function(signal)
+    if signal.key then return "AI not covered (" .. signal.key .. "): " .. signal.reason end
+    return "AI not covered: " .. signal.reason
+end
+
+function AIUnsupported.new(reason, key)
+    assert(type(reason) == "string" and reason ~= "", "an unsupported signal needs a reason")
+    assert(key == nil or type(key) == "string", "an unsupported key must be a name")
+    return setmetatable({reason = reason, key = key}, AIUnsupported)
+end
+
+function AIUnsupported.is(value)
+    return type(value) == "table" and getmetatable(value) == AIUnsupported
+end
+
+-- 丟出訊號。名字刻意與 error 不同：讀到這一行就知道這不是程式壞了。level 0 保持
+-- 錯誤值原樣，不讓 Lua 在前面貼上檔名行號把表變成字串。
+function ai_unsupported(reason, key)
+    error(AIUnsupported.new(reason, key), 0)
+end
+
+-- 接手訊號：回 (true, value) 或 (false, signal)。真正的程式錯誤照樣往上丟，不會被
+-- 當成未覆蓋而消失——未覆蓋要記錄並回退，錯誤要被稽核，兩者不能混。
+function AIUnsupported.capture(fn, ...)
+    local ok, value = pcall(fn, ...)
+    if AIUnsupported.is(value) then return false, value end
+    if not ok then error(value, 0) end
+    return true, value
+end
+
 -- Result conversion shared by both callback ABIs. The status separates the cases the
 -- legacy dispatcher treats differently: "unhandled" keeps searching, "declined" is the
 -- legacy "." answer a compulsory request refuses, "pass"/"use_card" are decisions.
+-- "unsupported" is none of those: the question was understood and could not be answered,
+-- so it must reach the outermost dispatcher instead of turning into a pass.
 -- A malformed answer raises, so a broken handler is audited as an error, never as a pass.
 AIResultValue = {}
 
@@ -1173,6 +1853,13 @@ local function normalize_card_spec(spec)
     assert(type(spec.name) == "string" and spec.name ~= "",
         "a card spec needs the engine card name")
     local result = {name = spec.name}
+    if spec.conversion_id ~= nil then
+        -- 授權票。其餘欄位是描述，這一個才是權威端據以放行的東西，所以形狀不對就拒絕，
+        -- 不可以默默丟掉——丟掉等於把一個有票的答案變成沒票的答案。
+        assert(type(spec.conversion_id) == "number" and spec.conversion_id >= 0,
+            "a card spec conversion_id must be a conversion ticket")
+        result.conversion_id = spec.conversion_id
+    end
     if spec.suit ~= nil then
         assert(type(spec.suit) == "number", "a card spec suit must be a suit constant")
         result.suit = spec.suit
@@ -1210,6 +1897,11 @@ local function normalize_card_action(value)
         assert(value.card == nil and value.card_spec == nil,
             "name the card once: card, card_spec or card_id")
         result.card_id = value.card_id
+    end
+    if value.candidate_id ~= nil then
+        assert(type(value.candidate_id) == "number" and value.candidate_id >= 0,
+            "candidate_id must be a candidate ticket")
+        result.candidate_id = value.candidate_id
     end
     if value.user_string ~= nil then
         assert(type(value.user_string) == "string", "AI result user_string must be a string")
@@ -1295,6 +1987,15 @@ local function normalize_selection(value, kind)
             "a player selection answers with object names")}, "answer"
     end
     assert(value.kind == "answer", "AI selection table needs kind=answer")
+    if value.card_spec ~= nil then
+        -- Response conversions use the same issued ticket as a play conversion;
+        -- physical selections and target lists cannot be mixed into that answer.
+        assert(kind == "respond_card", "only a card response may select a conversion")
+        assert(value.cards == nil and value.targets == nil and value.bottom_cards == nil
+            and value.card_id == nil and value.card == nil and value.candidate_id == nil,
+            "a converted response must carry only its card_spec")
+        return {kind = "answer", card_spec = normalize_card_spec(value.card_spec)}, "answer"
+    end
     local answer = {kind = "answer"}
     if value.cards ~= nil then
         answer.cards = selection_list(value.cards, "number", "selected cards must be ids")
@@ -1315,6 +2016,8 @@ end
 
 function AIResultValue.normalize(value, kind)
     if value == nil then return nil, "unhandled" end
+    -- 回傳訊號與丟出訊號同一個意思，走同一條出口；兩種寫法都不會被讀成 pass。
+    if AIUnsupported.is(value) then return nil, "unsupported" end
     if answer_kinds[kind] then return normalize_answer(value, kind) end
     if selection_kinds[kind] then return normalize_selection(value, kind) end
     if type(value) == "string" then

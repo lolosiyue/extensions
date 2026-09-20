@@ -8,6 +8,9 @@ ai_isolated_core = {
     "ask-for-use-card.lua",
     "ask-for-choice.lua",
     "decision-core.lua",
+    "retrial.lua",
+    "strategy-hooks.lua",
+    "event-intention.lua",
 }
 
 -- ai_memory：跨 request 的推測記憶，按觀察者分區。
@@ -81,11 +84,94 @@ function ai_memory.clear()
     memory = {}
 end
 
+-- Cross-request planning is a bounded, viewer-scoped value store.  It carries
+-- an intent only; the authoritative side must revalidate targets, costs and
+-- candidate tickets before applying it.  A revision mismatch invalidates the
+-- entry instead of pretending that an old plan is still legal.
+local planning = {}
+local planning_limit = 32
+local planning_keys = {target = true, cost = true, intent = true}
+
+ai_planning = {}
+
+local function planning_for(viewer, create)
+    if type(viewer) ~= "string" or viewer == "" then return nil end
+    if not planning[viewer] and create then planning[viewer] = {} end
+    return planning[viewer]
+end
+
+function ai_planning.plan(viewer, kind, revision, decision_id, intent)
+    assert(planning_keys[kind], "ai_planning kind must be target, cost or intent")
+    assert(revision ~= nil, "ai_planning needs a state revision")
+    local owned = planning_for(viewer, true)
+    assert(owned, "ai_planning needs its observer")
+    if owned[kind] == nil then
+        local used = 0
+        for _ in pairs(owned) do used = used + 1 end
+        assert(used < planning_limit, "ai_planning has too many entries")
+    end
+    assert(decision_id ~= nil, "ai_planning needs a decision identity")
+    local copied = copy_pure_value(intent, 1)
+    owned[kind] = {revision = copy_pure_value(revision, 1),
+        decision_id = copy_pure_value(decision_id, 1), intent = copied}
+    return true
+end
+
+function ai_planning.peek(viewer, kind, revision, decision_id)
+    local owned = planning_for(viewer, false)
+    local entry = owned and owned[kind] or nil
+    if not entry then return nil, "missing" end
+    if revision == nil or decision_id == nil or entry.revision ~= revision
+        or (kind ~= "intent" and entry.decision_id ~= decision_id) then
+        owned[kind] = nil
+        return nil, "stale"
+    end
+    return copy_pure_value(entry.intent, 1), "fresh"
+end
+
+function ai_planning.revalidate(viewer, kind, revision, decision_id, valid)
+    if valid ~= true then
+        local current, status = ai_planning.peek(viewer, kind, revision, decision_id)
+        if status ~= "fresh" then return current, status end
+        local owned = planning_for(viewer, false)
+        if owned then owned[kind] = nil end
+        return nil, "invalidated"
+    end
+    return ai_planning.peek(viewer, kind, revision, decision_id)
+end
+
+function ai_planning.invalidate(viewer, kind)
+    local owned = planning_for(viewer, false)
+    if owned then owned[kind] = nil end
+end
+
+function ai_planning.clear(viewer)
+    if viewer == nil then planning = {} else planning[viewer] = nil end
+end
+
 -- ai_coverage：這個 VM 目前接得住哪些決策。切換路由與驗收要靠它，而不是靠「試試看」。
 -- 每個 registry 自己申報它的鍵，沒申報的就是沒覆蓋，不會被當成已接通。
 local coverage_sources = {}
 
 ai_coverage = {}
+local outcome_counts = {}
+
+local function record_outcome(kind, status)
+    kind = type(kind) == "string" and kind or "invalid"
+    local row = outcome_counts[kind]
+    if not row then row = {}; outcome_counts[kind] = row end
+    row[status] = (row[status] or 0) + 1
+end
+
+-- Registration coverage describes capabilities; outcomes describe actual requests.
+-- Keep only counters, never hands, target IDs, prompts or callback error contents.
+function ai_coverage.outcomes()
+    return (copy_pure_value(outcome_counts, 1))
+end
+
+function ai_coverage.clearOutcomes()
+    outcome_counts = {}
+end
 
 function ai_coverage.declare(kind, list_keys)
     if type(kind) ~= "string" or kind == "" or type(list_keys) ~= "function" then
@@ -120,6 +206,34 @@ function ai_coverage.summary()
     return table.concat(parts, ";")
 end
 
+-- 未覆蓋紀錄：哪一題接不住、為什麼。放行標準要的是「逐情境有原因」，所以這裡存原因
+-- 而不是只計數；但這份紀錄跟著 VM 活整局，所以有上限，滿了只累加 dropped，不繼續長。
+-- 只存自己的 kind／reason／key 這類已授權的字串，不倒任何觀察者的牌面資料進來。
+local uncovered, uncovered_dropped = {}, 0
+local uncovered_limit = 64
+
+function ai_coverage.notCovered(kind, reason, key)
+    if type(kind) ~= "string" or type(reason) ~= "string" then return end
+    if #uncovered >= uncovered_limit then
+        uncovered_dropped = uncovered_dropped + 1
+        return
+    end
+    uncovered[#uncovered + 1] = {kind = kind, reason = reason,
+        key = type(key) == "string" and key or nil}
+end
+
+function ai_coverage.uncovered()
+    local report = {}
+    for index, entry in ipairs(uncovered) do
+        report[index] = {kind = entry.kind, reason = entry.reason, key = entry.key}
+    end
+    return report, uncovered_dropped
+end
+
+function ai_coverage.clearUncovered()
+    uncovered, uncovered_dropped = {}, 0
+end
+
 function ai_coverage.covers(kind, key)
     local report = ai_coverage.describe()
     local keys = report[kind]
@@ -146,18 +260,46 @@ function ai_decide(request)
     end
     local handler = handlers[request.kind]
     if not handler then
+        record_outcome(request.kind, "unhandled")
         return nil
     end
     if type(SmartAIView) ~= "table" or type(SmartAIView.new) ~= "function" then
         return nil
     end
     -- 推演暫存只活在這次決策裡：不寫 Room、不跨 request、不共享給別的觀察者。
-    if type(request.scratch) ~= "table" then request.scratch = {} end
+    request.scratch = {} -- A reused request starts a fresh decision, too.
+    if type(SmartAIView.resetPlanning) == "function" then
+        SmartAIView.resetPlanning(request)
+    end
     local self_view = SmartAIView.new(request)
     if not self_view then
+        record_outcome(request.kind, "invalid_snapshot")
+        return nil
+    end
+    -- 未覆蓋是新版決策缺口：回 nil 並記錄原因，不能當作已處理或合法 pass。
+    -- host 的故障保底不屬於策略；錯誤仍往上丟，記成 AI_RUNTIME_ERROR。
+    local ok, answer = pcall(handler, self_view, request)
+    if not ok and not AIUnsupported.is(answer) then
+        record_outcome(request.kind, "error")
+        error(answer, 0)
+    end
+    local covered = not AIUnsupported.is(answer)
+    if not covered then
+        record_outcome(request.kind, "unsupported")
+        ai_coverage.notCovered(request.kind, answer.reason, answer.key)
         return nil
     end
     -- One conversion point for every decision kind: unhandled stays nil, a declined or
     -- explicit pass becomes a pass result, and a malformed answer raises.
-    return (AIResultValue.normalize(handler(self_view, request), request.kind))
+    local normalized, result, status = pcall(AIResultValue.normalize, answer, request.kind)
+    if not normalized then
+        record_outcome(request.kind, "error")
+        error(result, 0)
+    end
+    record_outcome(request.kind, status)
+    if status == "unsupported" then
+        ai_coverage.notCovered(request.kind, answer.reason, answer.key)
+        return nil
+    end
+    return result
 end
