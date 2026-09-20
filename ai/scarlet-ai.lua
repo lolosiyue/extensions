@@ -1153,49 +1153,52 @@ sgs.ai_skill_use_func["#s4_chiyuan"] = function(card, use, self)
 end
 
 
-addAiSkills("s4_ganglu").getTurnUseCard = function(self)
+-- V2：直接回傳轉化後的普通卡；subcard 為素材、objectName 為宣告牌名，
+-- server 端 resolveActiveSkillRequest 會重建權威卡。
+-- 交出的卡不可 deleteLater（activate→useCard 期間仍在使用）。
+addAiSkills("s4_ganglu").getTurnUseCard = function(self, inclusive, request)
+	if request and not request:isActivationQuotaAvailable() then return end
 	local cards = self:addHandPile("he")
 	cards = self:sortByKeepValue(cards,nil,true)
 	if #cards<1 then return end
-	for dc,pn in sgs.list(RandomList(patterns()))do
-		dc = dummyCard(pn)
-		if dc and dc:isKindOf("BasicCard")
-		and dc:isAvailable(self.player)
-		and self:getCardsNum(dc:getClassName())<1
-		then
-			dc:addSubcard(cards[1])
-			dc:setSkillName("s4_ganglu")
-			local d = self:aiUseCard(dc)
-			if d.card and d.to
+	for _,pn in sgs.list(RandomList(patterns()))do
+		local dc = sgs.Sanguosha:cloneCard(pn, sgs.Card_NoSuit, 0)
+		if dc then
+			if dc:isKindOf("BasicCard")
+			and dc:isAvailable(self.player)
+			and self:getCardsNum(dc:getClassName())<1
 			then
-				self.s4_ganglu_to = d.to
-				if dc:canRecast() and d.to:length()<1 then continue end
-				sgs.ai_use_priority.s4_ganglu = sgs.ai_use_priority[dc:getClassName()]-0.3
-				return sgs.Card_Parse("#s4_ganglu:"..cards[1]:getEffectiveId()..":"..pn)
+				dc:addSubcard(cards[1])
+				dc:setSkillName("s4_ganglu")
+				local d = self:aiUseCard(dc)
+				if d.card and d.to
+				and not (dc:canRecast() and d.to:length()<1)
+				then
+					sgs.ai_use_priority.s4_ganglu = sgs.ai_use_priority[dc:getClassName()]-0.3
+					return dc
+				end
 			end
+			dc:deleteLater()
 		end
 	end
 end
 
-sgs.ai_skill_use_func["#s4_ganglu"] = function(card,use,self)
-	if self.s4_ganglu_to
-	then
-		use.card = card
-		use.to = self.s4_ganglu_to
-	end
-end
-
-sgs.ai_guhuo_card.s4_ganglu = function(self,toname,class_name)
-    if self.player:getMark("s4_ganglu-Clear") > 0 then return end
+sgs.ai_cardsview.s4_ganglu = function(self, class_name, player, request)
+    if not (request and request:isValid()) then return end
     if class_name and self:getCardsNum(class_name) > 0 then return end
 
+	local toname = patterns(class_name)
 	local card = sgs.Sanguosha:cloneCard(toname, sgs.Card_SuitToBeDecided, -1)
+    if (not card) or (not card:isKindOf("BasicCard")) then
+        if card then card:deleteLater() end
+        return
+    end
     card:deleteLater()
-    if (not card) or (not card:isKindOf("BasicCard")) then return end
     if self.player:isNude() then return end
     local cards = self:addHandPile("he")
     cards = self:sortByKeepValue(cards,nil,true) -- 按保留值排序
-    return "#s4_ganglu:"..cards[1]:getEffectiveId()..":"..toname
+    if #cards < 1 then return end
+    return toname..":s4_ganglu[no_suit:0]="..cards[1]:getEffectiveId()
 end
 
 sgs.ai_cardneed.s4_ganglu = function(to,card,self)
@@ -1205,17 +1208,20 @@ end
 sgs.ai_used_revises.s4_pinglu = function(self,use)
 	if use.card:isKindOf("Duel")
 	and self.player:hasSkill("s4_ganglu")
-    and self.player:getMark("s4_ganglu-Clear") == 0
 	and not use.isDummy then
-        local sk = sgs.ai_fill_skill["s4_ganglu"]
-        if sk then
-            sk = sk(self)
+        -- V2 配額走 request；僅在剛膂仍可發動時改出轉化牌
+        local request = self.room:getAiSkillActionContext(self.player,"s4_ganglu")
+        if request and request:isValid() then
+            local sk = sgs.ai_fill_skill["s4_ganglu"]
             if sk then
-                local d = self:aiUseCard(sk)
-                if d.card then
-                    use.card = sk
-                    use.to = d.to
-                    return false
+                sk = sk(self,nil,request)
+                if sk then
+                    local d = self:aiUseCard(sk)
+                    if d.card then
+                        use.card = sk
+                        use.to = d.to
+                        return false
+                    end
                 end
             end
         end
