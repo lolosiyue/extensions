@@ -3,10 +3,16 @@
 if sgs.registerModeAI then return end
 
 local policies, minds = {}, {}
+local standard_modes = {}
 local generation = 0
 local valid_relations = {friend=true, enemy=true, neutral=true, unknown=true}
 local scores = {friend=-2, enemy=5, neutral=0, unknown=0}
 local hook_names = {"relation", "objective", "rolePredictable", "gameProcess", "onIntention"}
+local hook_errors = {
+    relation="relation_hook", objective="objective_hook",
+    rolePredictable="predictable_hook", gameProcess="process_hook",
+    onIntention="intention_hook",
+}
 
 local function finite(value)
     return type(value) == "number" and value == value and math.abs(value) < math.huge
@@ -20,11 +26,27 @@ local function policy_role(role, selector)
     return role
 end
 
+-- Hooks often resolve the same IDs several times.  Keep the index ephemeral: it
+-- is an evaluation detail and never becomes part of the exported world/state.
+local active_indexes = setmetatable({}, {__mode="k"})
+local readonly_worlds = setmetatable({}, {__mode="k"})
 local function view_player(world, id)
+    local index = active_indexes[world]
+    if index then return index[id] end
     if world.self.object_name == id then return world.self end
     for _, player in ipairs(world.players) do
         if player.object_name == id then return player end
     end
+end
+
+local function snapshot_players(world)
+    local players, index = {world.self}, {[world.self.object_name]=world.self}
+    for _, player in ipairs(world.players) do
+        if not index[player.object_name] then
+            players[#players + 1], index[player.object_name] = player, player
+        end
+    end
+    return players, index
 end
 
 local function known_role(player, state)
@@ -168,8 +190,119 @@ function sgs.registerModeAI(mode, spec)
         end
     end
     policies[mode] = policy
+    standard_modes[mode] = nil -- An author's replacement always takes precedence.
     minds[mode] = {} -- Definition replacement invalidates this VM's old inferred state.
     generation = generation + 1
+end
+
+-- The standard strategy uses the same observer minds and hook dispatcher as
+-- extension modes. Its evidence follows SmartAI's allegiance direction, without
+-- native role counts, hidden player roles, random hostility or gameplay mutation.
+local function standard_process(world, state)
+    local strength = 0
+    for _, player in ipairs(snapshot_players(world)) do
+        if player.alive then
+            local role = known_role(player, state)
+            local value = 3 + math.max(player.hp or 0, 0)
+                + math.max(player.handcard_count or 0, 0) * 0.3
+            if role == "lord" or role == "loyalist" then strength = strength + value
+            elseif role == "rebel" then strength = strength - value end
+        end
+    end
+    -- This is observed strength, not a claim about unobserved team membership.
+    return strength, strength >= 4 and "loyalist" or strength <= -4 and "rebel" or "neutral"
+end
+
+local function standard_objective(world, target_id, state, process)
+    local target = view_player(world, target_id)
+    if not target then return nil end
+    local own, other = known_role(world.self, state), known_role(target, state)
+    if own == "unknown" or other == "unknown" then return nil end
+    if target_id == world.self.object_name then return -3 end
+    local label = process and process.label or "neutral"
+    if own == "lord" or own == "loyalist" then
+        if other == "lord" or other == "loyalist" then return -2 end
+        if other == "rebel" then return 5 end
+        if other == "renegade" then return label == "rebel" and -1 or 3 end
+    elseif own == "rebel" then
+        if other == "rebel" then return -2 end
+        if other == "lord" or other == "loyalist" then return 5 end
+        if other == "renegade" then return label == "loyalist" and -1 or 3 end
+    elseif own == "renegade" then
+        -- Preserve the lord until the final duel; press the currently stronger
+        -- observed side instead of treating renegades as a shared team.
+        if type(world.alive_player_order) == "table" and #world.alive_player_order == 2 then return 5 end
+        if other == "lord" then
+            if (target.hp or 0) <= 2 then return -2 end
+            return label == "rebel" and -1 or label == "loyalist" and 1 or 0
+        end
+        if other == "renegade" then return 3 end
+        if other == "loyalist" then return label == "loyalist" and 5 or label == "rebel" and 1 or 3 end
+        if other == "rebel" then return label == "rebel" and 5 or label == "loyalist" and 1 or 3 end
+    end
+    return nil
+end
+
+local function standard_relation(world, from_id, to_id, state)
+    local from, to = view_player(world, from_id), view_player(world, to_id)
+    if not from or not to then return nil end
+    local a, b = known_role(from, state), known_role(to, state)
+    local camps = {lord="court", loyalist="court", rebel="rebel"}
+    if camps[a] and camps[b] then return camps[a] == camps[b] and "friend" or "enemy" end
+    -- Renegade policy depends on the observing player's own objective. Do not
+    -- transplant that objective to another player's relation row.
+    return nil
+end
+
+local function standard_intention(world, from_id, to_id, level, state)
+    local from, to = view_player(world, from_id), view_player(world, to_id)
+    if not from or not to or from.role_visible or level == 0 then return end
+    local target_role = known_role(to, state)
+    local direction = ({lord=-1, loyalist=-1, rebel=1})[target_role]
+    if not direction then return end
+    state.role_values = state.role_values or {}
+    state.inferred_roles = state.inferred_roles or {}
+    local values = state.role_values[from_id] or {loyalist=0, renegade=0}
+    local delta = math.max(-100, math.min(100, level)) * direction
+    -- Contradictory camp evidence is a renegade estimate, never a secret role fact.
+    if values.loyalist * delta < 0 then
+        values.renegade = math.min(1000, values.renegade + math.abs(delta))
+    end
+    values.loyalist = math.max(-1000, math.min(1000, values.loyalist + delta))
+    state.role_values[from_id] = values
+    local estimate
+    if values.renegade >= 50 and math.abs(values.loyalist) < values.renegade then estimate = "renegade"
+    elseif values.loyalist >= 20 then estimate = "loyalist"
+    elseif values.loyalist <= -20 then estimate = "rebel" end
+    state.inferred_roles[from_id] = estimate
+end
+
+function sgs.registerStandardModeAI(mode, normal_identity, hegemony)
+    if policies[mode] then return false end
+    -- Native admission supplies the existing normal-mode classification. Kingdom
+    -- and scenario victory policies need their own explicit mode registration.
+    if hegemony then return false end
+    local fixed_teams = {
+        ["02_1v1"]={first={"lord"}, second={"renegade"}},
+        ["03_1v2"]={first={"lord"}, second={"rebel"}},
+        ["04_1v3"]={first={"lord"}, second={"rebel"}},
+        ["04_boss"]={first={"lord"}, second={"rebel"}},
+        ["04_2v2"]={first={"loyalist"}, second={"rebel"}},
+        ["05_ol"]={first={"lord", "loyalist"}, second={"rebel"}},
+        ["06_ol"]={first={"lord", "loyalist"}, second={"rebel"}},
+        ["08_defense"]={first={"loyalist"}, second={"rebel"}},
+    }
+    if fixed_teams[mode] then
+        sgs.registerModeAI(mode, {teams=fixed_teams[mode]})
+    elseif normal_identity then
+        sgs.registerModeAI(mode, {relation=standard_relation,
+            objective=standard_objective, gameProcess=standard_process,
+            onIntention=standard_intention})
+    else
+        return false
+    end
+    standard_modes[mode] = true
+    return true
 end
 
 local function mind(mode, viewer)
@@ -184,31 +317,95 @@ local function invoke(policy, name, world, ...)
     local role_policy = world.self.role_visible and policy.roles[world.self.role]
     local callback = role_policy and role_policy[name] or policy[name]
     if not callback then return true, nil end
-    local ok, value, extra = pcall(callback, world, ...)
-    if not ok and not policy.warned then
-        policy.warned = true
-        print("Mode AI hook failed: "..name..": "..tostring(value))
-    end
-    return ok, value, extra
+    local ok, value, extra = pcall(callback, readonly_worlds[world] or world, ...)
+    local error_class
+    if not ok then error_class = hook_errors[name] end
+    return ok, value, extra, error_class
 end
 
-function sgs.evaluateModeAI(world)
+local function clone_value(value, seen)
+    if type(value) ~= "table" then return value end
+    seen = seen or {}
+    if seen[value] then return seen[value] end
+    local copy = {}
+    seen[value] = copy
+    for key, item in pairs(value) do copy[clone_value(key, seen)] = clone_value(item, seen) end
+    return copy
+end
+
+local function valid_state(value, seen, depth, budget)
+    budget = budget or {remaining=1024}
+    budget.remaining = budget.remaining - 1
+    if budget.remaining < 0 then return false end
+    if value == nil or type(value) == "string" or type(value) == "boolean" then return true end
+    if type(value) == "number" then return finite(value) end
+    if type(value) ~= "table" or getmetatable(value) ~= nil then return false end
+    depth = depth or 0
+    if depth > 6 then return false end
+    seen = seen or {}
+    if seen[value] then return false end
+    seen[value] = true
+    for key, item in pairs(value) do
+        if (type(key) ~= "string" and type(key) ~= "number")
+            or not valid_state(key, seen, depth + 1, budget)
+            or not valid_state(item, seen, depth + 1, budget) then return false end
+    end
+    seen[value] = nil
+    return true
+end
+
+-- Query hooks receive a read-only primitive view and cannot mutate the
+-- persistent observer mind or leak changes into another target.
+local function readonly(value, seen)
+    if type(value) ~= "table" then return value end
+    seen = seen or {}
+    if seen[value] then return seen[value] end
+    local proxy = {}
+    seen[value] = proxy
+    setmetatable(proxy, {
+        __index=function(_, key) return readonly(value[key], seen) end,
+        __newindex=function() end,
+        __len=function() return #value end,
+        __pairs=function() return function(_, key)
+            local next_key, next_value = next(value, key)
+            if next_key ~= nil then return next_key, readonly(next_value, seen) end
+        end, proxy, nil end,
+    })
+    return proxy
+end
+
+function sgs.evaluateModeAI(world, options)
     local policy = policies[world.mode_id]
+    -- The boolean form is the C++ boundary.  Keep the table form as a small
+    -- Lua compatibility aid for callers that already pass option records.
+    local viewer_only = options == true or options and options.viewer_only == true or world.viewer_only == true
     local result = {managed=policy ~= nil or world.custom_roles == true,
-        relations={}, objectives={}, predictable=false, game_process=0, process_label="neutral"}
+        relations={}, objectives={}, predictable=false, game_process=0, process_label="neutral",
+        relation_scope=viewer_only and "viewer" or "full"}
     if not result.managed then return result end
     local state = mind(world.mode_id, world.self.object_name)
-    local players = {world.self}
-    local predictable = world.self.role_visible == true
-    for _, player in ipairs(world.players) do
-        players[#players + 1] = player
-        if player.alive and not player.role_visible then predictable = false end
+    local query_state = readonly(state)
+    local players, index = snapshot_players(world)
+    local previous_index = active_indexes[world]
+    local query_world = readonly(world)
+    active_indexes[world] = index
+    active_indexes[query_world] = index
+    readonly_worlds[world] = query_world
+    local function fail(error_class)
+        if not result.error then result.error = error_class end
     end
-    local ok, custom = invoke(policy, "rolePredictable", world, state)
+    local predictable = world.self.role_visible == true
+    for _, player in ipairs(players) do
+        if player.object_name ~= world.self.object_name
+            and player.alive and not player.role_visible then predictable = false end
+    end
+    local ok, custom, _, hook_error = invoke(policy, "rolePredictable", world, query_state)
+    if hook_error then fail(hook_error) end
     result.predictable = ok and (custom == true or custom == nil and predictable) or false
     -- Evaluate the selected mode/observer process once. Objective hooks receive
     -- its validated values, so overriding gameProcess also changes target scoring.
-    local accepted, process_value, label = invoke(policy, "gameProcess", world, state)
+    local accepted, process_value, label, hook_error = invoke(policy, "gameProcess", world, query_state)
+    if hook_error then fail(hook_error) end
     if accepted and finite(process_value) then
         result.game_process = process_value
         if type(label) == "string" then result.process_label = label end
@@ -216,11 +413,13 @@ function sgs.evaluateModeAI(world)
     local objectives = {}
     for _, to in ipairs(players) do
         local process = {value=result.game_process, label=result.process_label}
-        local accepted, value = invoke(policy, "objective", world, to.object_name, state, process)
+        local accepted, value, _, hook_error = invoke(policy, "objective", world, to.object_name, query_state, process)
+        if hook_error then fail(hook_error) end
         objectives[to.object_name] = {valid=accepted and finite(value) and value >= -5 and value <= 5,
             supplied=not accepted or value ~= nil, value=value}
     end
-    for _, from in ipairs(players) do
+    local relation_sources = viewer_only and {world.self} or players
+    for _, from in ipairs(relation_sources) do
         local row = {}
         result.relations[from.object_name] = row
         for _, to in ipairs(players) do
@@ -229,7 +428,8 @@ function sgs.evaluateModeAI(world)
                 or from.controller and from.controller ~= "" and from.controller == to.controller then
                 relation = "friend"
             else
-                local accepted, value = invoke(policy, "relation", world, from.object_name, to.object_name, state)
+                local accepted, value, _, hook_error = invoke(policy, "relation", world, from.object_name, to.object_name, query_state)
+                if hook_error then fail(hook_error) end
                 if accepted and valid_relations[value] then relation = value
                 elseif accepted and value == nil then
                     -- Never derive team membership from an invisible identity.
@@ -257,18 +457,97 @@ function sgs.evaluateModeAI(world)
         if world.self.controller and world.self.controller ~= "" and world.self.controller == to.controller then value = -2 end
         result.objectives[to.object_name] = to.object_name == world.self.object_name and -3 or value
     end
+    active_indexes[world] = previous_index
+    readonly_worlds[world] = nil
+    active_indexes[query_world] = nil
     return result
 end
 
--- Pure-value event entry point; the same dispatcher is used by legacy SmartAI.
+-- Opaque tokens never contain state. Keep only the latest preparation and let
+-- an abandoned token disappear with its caller; no failed event retains a queue.
+local prepared_intentions = setmetatable({}, {__mode="k"})
+
+-- Preparation is budgeted by the host. It never replaces an observer mind,
+-- including when an instruction hook interrupts after the callbacks finish.
+function sgs.prepareModeAIIntentions(world, deltas)
+    local pending = setmetatable({}, {__mode="k"})
+    prepared_intentions = pending
+    if type(deltas) ~= "table" or getmetatable(deltas) ~= nil then return "intention_input" end
+    local present = {[world.self.object_name]=true}
+    for _, player in ipairs(world.players) do present[player.object_name] = true end
+    local count = 0
+    for key in pairs(deltas) do
+        if type(key) ~= "number" or key % 1 ~= 0 or key < 1 or key > 64 then return "intention_input" end
+        count = count + 1
+    end
+    local fields = {from=true, to=true, level=true}
+    for index = 1, count do
+        local delta = deltas[index]
+        if type(delta) ~= "table" or getmetatable(delta) ~= nil then return "intention_input" end
+        for key in pairs(delta) do
+            if not fields[key] then return "intention_input" end
+        end
+        if type(delta.from) ~= "string" or type(delta.to) ~= "string"
+            or delta.from == delta.to or not present[delta.from] or not present[delta.to]
+            or not finite(delta.level) then return "intention_input" end
+    end
+    local mode, viewer = world.mode_id, world.self.object_name
+    local policy, owned = policies[mode], minds[mode]
+    local original = owned and owned[viewer]
+    local prepared_generation = generation
+    local query_world = readonly(world)
+    local shadow = clone_value(original or {})
+    -- Pass the read-only view directly. No global lookup mapping needs cleanup
+    -- if a host instruction hook aborts any part of this preparation.
+    for delta_index = 1, count do
+        local delta = deltas[delta_index]
+        local ok, _, _, callback_error = invoke(policy, "onIntention",
+            query_world, delta.from, delta.to, delta.level, shadow)
+        if not ok then return callback_error end
+    end
+    if not valid_state(shadow) then return "intention_state" end
+    if prepared_intentions ~= pending or generation ~= prepared_generation then return "intention_stale" end
+    local token = {}
+    pending[token] = {mode=mode, viewer=viewer, owned=owned,
+        original=original, generation=prepared_generation,
+        -- A hook may retain its mutable shadow. Detach the validated result so
+        -- subsequent changes to that reference cannot alter the prepared mind.
+        shadow=clone_value(shadow), noop=count == 0 or policy == nil}
+    return token
+end
+
+-- Native callers disable their instruction hook before this tiny commit. Only
+-- private, current, unused tokens can replace one viewer's state; no callbacks,
+-- traversals, validation loops or exported mutable state occur here.
+function sgs.commitModeAIIntentions(token)
+    if type(token) ~= "table" then return "intention_prepared" end
+    local prepared = prepared_intentions[token]
+    if not prepared then return "intention_prepared" end
+    prepared_intentions[token] = nil
+    if prepared.generation ~= generation or prepared.owned ~= minds[prepared.mode]
+        or prepared.original ~= (prepared.owned and prepared.owned[prepared.viewer]) then
+        return "intention_stale"
+    end
+    if not prepared.noop then
+        prepared.owned[prepared.viewer] = prepared.shadow
+        generation = generation + 1
+    end
+    return nil
+end
+
+function sgs.updateModeAIIntentions(world, deltas)
+    local prepared = sgs.prepareModeAIIntentions(world, deltas)
+    if type(prepared) ~= "table" then return prepared end
+    return sgs.commitModeAIIntentions(prepared)
+end
+
+-- Keep the legacy single-intention ABI while sharing the atomic batch consumer.
 function sgs.updateModeAIIntention(world, from, to, level)
     if type(from) ~= "string" or type(to) ~= "string" or from == to or not finite(level) then return end
     local present = {[world.self.object_name]=true}
     for _, player in ipairs(world.players) do present[player.object_name] = true end
     if not present[from] or not present[to] then return end
-    invoke(policies[world.mode_id], "onIntention", world, from, to, level,
-        mind(world.mode_id, world.self.object_name))
-    generation = generation + 1
+    return sgs.updateModeAIIntentions(world, {{from=from, to=to, level=level}})
 end
 
 -- Cache only values, keyed by authoritative Room revision and hook/mind generation.
@@ -290,6 +569,7 @@ end
 
 local managed_rooms = setmetatable({}, {__mode="k"})
 function sgs.modeAIEnabled(room, viewer)
+    if standard_modes[room:getMode()] then return false end
     if policies[room:getMode()] then return true end
     -- This is exactly evaluateModeAI's admission rule. Ordinary identity SmartAI
     -- must not compute geometry, card zones and skill callbacks just to return false.
@@ -390,7 +670,7 @@ function sgs.installModeAI(SmartAI)
         if ai then
             local world = policy(ai)
             if world then return world.mode_policy.predictable end
-        elseif global_room and policies[global_room:getMode()] then
+        elseif global_room and policies[global_room:getMode()] and not standard_modes[global_room:getMode()] then
             return false -- Initialization must not populate hidden identities in shared legacy tables.
         end
         return predictable(classical)
@@ -426,11 +706,14 @@ function sgs.installModeAI(SmartAI)
         if sgs.ai_doNotUpdateIntenion then level = 0 end
         sgs.ai_doNotUpdateIntenion = nil
         if from == to then return end
-        -- Each viewer owns a separate mind. Events carry IDs and already-visible context.
-        for _, observer in pairs(sgs.ais) do
-            if observer.room == ai.room then
-                local world = sgs.modeAIWorld(observer)
-                sgs.updateModeAIIntention(world, from:objectName(), to:objectName(), level)
+        -- Mixed routes keep legacy role scoring, but the independent event
+        -- pipeline is the sole producer of managed mode-mind updates.
+        if not sgs.modeAIUsesIsolatedEvents then
+            for _, observer in pairs(sgs.ais) do
+                if observer.room == ai.room then
+                    local world = sgs.modeAIWorld(observer)
+                    sgs.updateModeAIIntention(world, from:objectName(), to:objectName(), level)
+                end
             end
         end
         for _, observer in pairs(sgs.ais) do
