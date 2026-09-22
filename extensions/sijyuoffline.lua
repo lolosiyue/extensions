@@ -25906,7 +25906,7 @@ sfofl_mingshi = sgs.CreateTriggerSkill{
     end
 }
 sfofl_w_kongrong:addSkill(sfofl_mingshi)
-sfofl_w_kongrong:addSkill("lirang")
+sfofl_w_kongrong:addSkill("heg_lirang")
 
 sfofl_w_mateng = sgs.General(extension_war, "sfofl_w_mateng", "qun", 4)
 

@@ -13204,7 +13204,7 @@ mobilemoudengfeng = sgs.CreateTriggerSkill {
 					end
 				end
 				if #cards > 0 or players:length() > 0 then
-					local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "~shuangren", true, true)
+					local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "@choose-players", true, true)
 					if target then
 						room:broadcastSkillInvoke(self:objectName())
 						local choices = {}
@@ -19947,14 +19947,14 @@ xdluoshu = sgs.CreateTriggerSkill {
 	name = "xdluoshu",
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.EventPhaseStart },
-	waked_skills = "luanwu,jianshu,yongdi,xingshuai,fencheng,olqimou,xiongyi,xiongsuan,zaowang,xdfenbo",
+	waked_skills = "luanwu,jianshu,yongdi,xingshuai,fencheng,olqimou,heg_xiongyi,xiongsuan,zaowang,xdfenbo",
 	on_trigger = function(self, event, player, data, room)
 		if event == sgs.EventPhaseStart then
 			if player:getPhase() ~= sgs.Player_Start then
 				return
 			end
 			local sks = {}
-			for _, s in sgs.list({ "luanwu", "jianshu", "yongdi", "xingshuai", "fencheng", "olqimou", "xiongyi", "xiongsuan", "zaowang", "xdfenbo" }) do
+			for _, s in sgs.list({ "luanwu", "jianshu", "yongdi", "xingshuai", "fencheng", "olqimou", "heg_xiongyi", "xiongsuan", "zaowang", "xdfenbo" }) do
 				if player:hasSkill(s, true) then
 					continue
 				end

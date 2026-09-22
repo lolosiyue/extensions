@@ -847,7 +847,7 @@ diy_k_fenwei = sgs.CreateTriggerSkill{
 			                end
 		                end
 				        if p:objectName() == splayer:objectName() and (qixii or qixir) then
-			                room:askForUseCard(splayer, "@@diy_k_qixi", "~shuangren")
+			                room:askForUseCard(splayer, "@@diy_k_qixi", "@choose-players")
 						end
 					end
 				end
@@ -1267,13 +1267,13 @@ diy_k_wufei = sgs.CreateTriggerSkill{
 				end
 			end
 			if not players:isEmpty() then
-			    local to = room:askForPlayerChosen(player, players, self:objectName(), "~shuangren", true, false)
+			    local to = room:askForPlayerChosen(player, players, self:objectName(), "@choose-players", true, false)
 				if not to then return nil end
 			    room:sendCompulsoryTriggerLog(player, self:objectName())
 			    room:broadcastSkillInvoke(self:objectName())
 			    room:damage(sgs.DamageStruct(self:objectName(), damage.from, to, damage.damage, damage.nature))
 			elseif players:isEmpty() then
-			    local to = room:askForPlayerChosen(player, targets, self:objectName(), "~shuangren", true, false)
+			    local to = room:askForPlayerChosen(player, targets, self:objectName(), "@choose-players", true, false)
 				if not to then return nil end
 			    room:sendCompulsoryTriggerLog(player, self:objectName())
 			    room:broadcastSkillInvoke(self:objectName())
@@ -1306,13 +1306,13 @@ diy_k_wufei = sgs.CreateTriggerSkill{
 				end
 			end
 			if not players:isEmpty() then
-			    local to = room:askForPlayerChosen(player, players, self:objectName(), "~shuangren", true, false)
+			    local to = room:askForPlayerChosen(player, players, self:objectName(), "@choose-players", true, false)
 				if not to then return nil end
 			    room:sendCompulsoryTriggerLog(player, self:objectName())
 			    room:broadcastSkillInvoke(self:objectName())
 			    room:damage(sgs.DamageStruct(self:objectName(), to, damage.to, damage.damage, damage.nature))
 			elseif players:isEmpty() and not targets:isEmpty() then
-			    local to = room:askForPlayerChosen(player, targets, self:objectName(), "~shuangren", true, false)
+			    local to = room:askForPlayerChosen(player, targets, self:objectName(), "@choose-players", true, false)
 				if not to then return nil end
 			    room:sendCompulsoryTriggerLog(player, self:objectName())
 			    room:broadcastSkillInvoke(self:objectName())
@@ -2308,7 +2308,7 @@ diy_f_lirang = sgs.CreateTriggerSkill{
 					players:append(p)
 				end
 			end
-		    local target = room:askForPlayerChosen(player, players, self:objectName(), "~shuangren", true, true)
+		    local target = room:askForPlayerChosen(player, players, self:objectName(), "@choose-players", true, true)
 			if target then
 			    room:broadcastSkillInvoke(self:objectName(), 1)
 				room:setPlayerFlag(target, self:objectName())
@@ -2943,7 +2943,7 @@ mjin_buchen = sgs.CreateTriggerSkill{
 		local room = player:getRoom()
 		local to = nil
 		if event == sgs.Appear and player:hasSkill(self:objectName()) then
-			to = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "~shuangren", false, true)
+			to = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "@choose-players", false, true)
 			room:broadcastSkillInvoke(self:objectName(), math.random(1,2))
 			room:addPlayerMark(player, "mjinbuchen"..to:objectName())
 			room:sendCompulsoryTriggerLog(player, self)
@@ -5187,7 +5187,7 @@ sgszhenhuaCard = sgs.CreateSkillCard{
 		    room:addPlayerHistory(source, "#sgszhenhua", -1)
 		end
 		if sgs.Sanguosha:getCard(id):isKindOf("Slash") and not players:isEmpty() then
-			local target = room:askForPlayerChosen(source, players, self:objectName(), "~shuangren", true, false)
+			local target = room:askForPlayerChosen(source, players, self:objectName(), "@choose-players", true, false)
 			if not target then return false end
 			room:useCard(sgs.CardUseStruct(sgs.Sanguosha:getCard(id), source, target))
 		end
@@ -6116,7 +6116,7 @@ DIT_heg_yigui = sgs.CreateTriggerSkill{
 						end
 					end
 					if #list < 2 then return false end
-				    local target = room:askForPlayerChosen(player, players, self:objectName(), "~shuangren", false, false)
+				    local target = room:askForPlayerChosen(player, players, self:objectName(), "@choose-players", false, false)
 					for _,p in sgs.qlist(room:getAllPlayers()) do
 						--[[if ((((target:getKingdom() == "wei" and p:getKingdom() ~= "wei") or (target:getKingdom() == "wu" and p:getKingdom() ~= "wu") or (target:getKingdom() == "shu" and p:getKingdom() ~= "shu") 
 						or (target:getKingdom() == "qun" and p:getKingdom() ~= "qun") or (target:getKingdom() == "jin" and p:getKingdom() ~= "jin") or (target:getKingdom() == "god" and p:getKingdom() ~= "god") 

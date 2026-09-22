@@ -474,7 +474,7 @@ sgs.ai_skill_use["@@fuzuo"] = function(self,prompt,method)
 				return "@FuzuoCard="..card:getEffectiveId().."->"..from:objectName()
 			end
 		end
-	elseif reason=="dahe" or reason=="mizhao" or reason=="shuangren" then
+	elseif reason=="dahe" or reason=="mizhao" or reason=="heg_shuangren" then
 		if self:isFriend(from) and from_num<to_num then
 			return "@FuzuoCard="..card:getEffectiveId().."->"..from:objectName()
 		elseif not self:isFriend(from) and from_num>to_num then

@@ -2026,7 +2026,7 @@ heg_shuangrenCard = sgs.CreateSkillCard{
 				end
 			end
 			if not targets:isEmpty() then
-				local target = room:askForPlayerChosen(effect.from, targets, "shuangren-slash")
+				local target = room:askForPlayerChosen(effect.from, targets, "heg_shuangren-slash")
 				local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 				slash:setSkillName("heg_shuangren")
 				slash:deleteLater()
@@ -2065,7 +2065,7 @@ heg_shuangren = sgs.CreateTriggerSkill{
 				end
 			end
 			if can_invoke and not player:isKongcheng() then
-				room:askForUseCard(player, "@@heg_shuangren", "@shuangren-card", -1, sgs.Card_MethodPindian)
+				room:askForUseCard(player, "@@heg_shuangren", "@heg_shuangren", -1, sgs.Card_MethodPindian)
 			end
 			
 		end
@@ -10552,7 +10552,7 @@ heg_mobile_suishi = sgs.CreateTriggerSkill{
 }
 
 heg_mobile_tianfeng:addSkill(heg_mobile_suishi)
-heg_mobile_tianfeng:addSkill("sijian")
+heg_mobile_tianfeng:addSkill("heg_sijian")
 
 heg_mobile_panfeng = sgs.General(extension_hegmobile,  "heg_mobile_panfeng", "qun", 4)
 

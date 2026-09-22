@@ -249,7 +249,7 @@ do
 	
 	sgs.lose_equip_skill = "kofxiaoji|xiaoji|xuanfeng|nosxuanfeng|tenyearxuanfeng|mobilexuanfeng"
 	
-	sgs.need_kongcheng = "lianying|noslianying|kongcheng|sijian|hengzheng"
+	sgs.need_kongcheng = "lianying|noslianying|kongcheng|heg_sijian|hengzheng"
 	
 	sgs.masochism_skill = "guixin|yiji|fankui|jieming|xuehen|neoganglie|ganglie|vsganglie|enyuan|"..
 						"fangzhu|nosenyuan|langgu|quanji|zhiyu|renjie|tanlan|tongxin|huashen|duodao|chengxiang|benyu"
@@ -260,7 +260,7 @@ do
 	
 	sgs.priority_skill = "dimeng|haoshi|qingnang|nosjizhi|jizhi|guzheng|qixi|jieyin|guose|duanliang|jujian|fanjian|"..
 						"neofanjian|lijian|noslijian|manjuan|tuxi|qiaobian|yongsi|zhiheng|luoshen|nosrende|rende|"..
-						"mingce|wansha|gongxin|jilve|anxu|qice|yinling|qingcheng|houyuan|zhaoxin|shuangren|zhaxiang|"..
+						"mingce|wansha|gongxin|jilve|anxu|qice|yinling|heg_qingcheng|houyuan|zhaoxin|heg_shuangren|zhaxiang|"..
 						"xiansi|junxing|bifa|yanyu|shenxian|jgtianyun"
 	
 	sgs.save_skill = "jijiu|buyi|nosjiefan|chunlao|tenyearchunlao|secondtenyearchunlao|longhun|newlonghun"
@@ -274,7 +274,7 @@ do
 	
 	sgs.Active_cardneed_skill = "paoxiao|tenyearpaoxiao|olpaoxiao|tianyi|xianzhen|shuangxiong|nosjizhi|jizhi|guose|"..
 						"duanliang|qixi|qingnang|luoyi|guhuo|nosguhuo|jieyin|zhiheng|rende|nosrende|nosjujian|luanji|"..
-						"qiaobian|lirang|mingce|fuhun|spzhenwei|nosfuhun|nosluoyi|yinbing|jieyue|sanyao|xinzhan"
+						"qiaobian|heg_lirang|mingce|fuhun|spzhenwei|nosfuhun|nosluoyi|yinbing|jieyue|sanyao|xinzhan"
 	
 	sgs.notActive_cardneed_skill = "kanpo|guicai|guidao|beige|xiaoguo|liuli|tianxiang|jijiu|leiji|nosleiji"..
 						"qingjian|zhuhai|qinxue|jspdanqi|"..sgs.dont_kongcheng_skill
@@ -290,9 +290,9 @@ do
 						"buqu|miji|"..sgs.recover_hp_skill
 	
 	sgs.use_lion_skill = "longhun|newlonghun|duanliang|qixi|guidao|noslijian|lijian|jujian|nosjujian|zhiheng|mingce|"..
-						"yongsi|fenxun|gongqi|yinling|jilve|qingcheng|neoluoyi|diyyicong"
+						"yongsi|fenxun|gongqi|yinling|jilve|heg_qingcheng|neoluoyi|diyyicong"
 	
-	sgs.need_equip_skill = "shensu|tenyearshensu|mingce|jujian|beige|yuanhu|huyuan|gongqi|nosgongqi|yanzheng|qingcheng|"..
+	sgs.need_equip_skill = "shensu|tenyearshensu|mingce|jujian|beige|yuanhu|huyuan|gongqi|nosgongqi|yanzheng|heg_qingcheng|"..
 						"neoluoyi|longhun|newlonghun|shuijian|yinbing"
 	
 	sgs.straight_damage_skill = "qiangxi|nosxuanfeng|duwu|danshou"
@@ -3601,7 +3601,7 @@ function SmartAI:doDisCard(to,flags,obtain,n)
 					end
 					return to:getCardCount()>n/2
 				end
-				if not obtain and #self.enemies>1 and to:hasSkill("lirang") then return end
+				if not obtain and #self.enemies>1 and to:hasSkill("heg_lirang") then return end
 				if #self:poisonCards("e",to)<to:getEquips():length()
 				and not(self:loseEquipEffect(to) or to:getMark("&dev_die")>0)
 				then return true end
@@ -3610,7 +3610,7 @@ function SmartAI:doDisCard(to,flags,obtain,n)
 		if flags:contains("h") and to:getHandcardNum()>0 then
 			if is_friend then
 				if to:getHandcardNum()<=n and self:needKongcheng(to)
-				or not obtain and to:hasSkill("lirang") and #self:getFriends(to,true)>0
+				or not obtain and to:hasSkill("heg_lirang") and #self:getFriends(to,true)>0
 				or self:getLeastHandcardNum(to)>=n then return true end
 			else
 				if not self:needKongcheng(to)
@@ -5264,7 +5264,7 @@ function SmartAI:needRetrial(judge)
 			if judge.who:hasSkill("shenfen") and judge.who:getMark("&wrath")>=6
 			or judge.who:hasSkill("jixi") and judge.who:getPile("field"):length()>2
 			or judge.who:hasSkill("lihun") and self:isLihunTarget(self:getEnemies(judge.who),0)
-			or judge.who:hasSkill("xiongyi") and judge.who:getMark("@arise")>0
+			or judge.who:hasSkill("heg_xiongyi") and judge.who:getMark("@arise")>0
 			or judge.who:hasSkill("kurou") and judge.who:getHp()>=3 then
 				if self:isFriend(judge.who) then return judge:isBad()
 				else return judge:isGood() end
@@ -7104,7 +7104,7 @@ function SmartAI:findPlayerToDiscard(flags,include_self,no_dis,players,reason)
 		end
 		for _,enemy in sgs.list(enemies)do
 			IsDis(self.player,enemy)
-			if enemy:hasSkills("jijiu|beige|mingce|weimu|qingcheng") then
+			if enemy:hasSkills("jijiu|beige|mingce|weimu|heg_qingcheng") then
 				for _,e in sgs.list(enemy:getEquips())do
 					if self:doDisCard(enemy,e:getId(),no_dis)
 					then table.insert(player_table,enemy) break end
@@ -7845,7 +7845,7 @@ function SmartAI:needToThrowCard(to,flags,dis,give,draw)
 	if flags:contains("h") and not to:isKongcheng() then
 		if not self:hasLoseHandcardEffective(to) and not dis
 		or (dis or give) and self:needKongcheng(to,false,true)
-		or draw and to:hasSkill("lirang") and self:findFriendsByType(sgs.Friend_Draw,to)
+		or draw and to:hasSkill("heg_lirang") and self:findFriendsByType(sgs.Friend_Draw,to)
 		or draw and to:hasSkill("shangjian") and to:getMark("shangjian-Clear")<to:getHp()
 		or hasTuntianEffect(to)
 		then return true end
@@ -9931,10 +9931,9 @@ sgs.ai_card_priority.kofkuanggu = function(self,card,v)
 	then v = 1.09 end
 end
 
-sgs.ai_ajustdamage_to.mingshi = function(self,from,to,card,nature)
-	local x = self.equipsToDec or 0
-	if card then x = sgs.getCardNumAtCertainPlace(card,sgs.Player_PlaceEquip) end
-	if from:getEquips():length()-x<=to:getEquips():length() then return -1 end
+sgs.ai_ajustdamage_to.heg_mingshi = function(self,from,to,card,nature)
+    -- V2 Mingshi checks the damage source's revealed generals, not equipment counts.
+    if from and not from:hasShownAllGenerals() then return -1 end
 end
 
 sgs.ai_ajustdamage_to.ranshang = function(self,from,to,card,nature)

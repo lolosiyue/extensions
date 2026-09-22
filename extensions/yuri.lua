@@ -1401,7 +1401,7 @@ independent = sgs.CreateTriggerSkill{
 	name = "independent",
 	events = {sgs.EventPhaseStart},
 	frequency = sgs.Skill_Wake,
-	waked_skills = "fencheng,luanwu,jianshu,xiongyi,fenwei",
+	waked_skills = "fencheng,luanwu,jianshu,heg_xiongyi,fenwei",
 	on_trigger = function(self, event, player, data)
 		local room = player:getRoom()
 		-- room:addPlayerMark(player, "independent")
@@ -1423,7 +1423,7 @@ independent = sgs.CreateTriggerSkill{
 				room:acquireSkill(player, "fencheng")
 				room:acquireSkill(player, "luanwu")
 				room:acquireSkill(player, "jianshu")
-				room:acquireSkill(player, "xiongyi")
+				room:acquireSkill(player, "heg_xiongyi")
 				room:acquireSkill(player, "fenwei")
 				-- room:acquireSkill(player, "shenfen")
 				room:detachSkillFromPlayer(player, "independent")
@@ -1488,7 +1488,7 @@ machiko = sgs.CreateTriggerSkill{
 						-- room:throwCard(allcard, source, player)
 					-- end
 				-- end
-				if room:askForChoice(player, "machiko", "xiongyi+fenwei") == "xiongyi" then
+				if room:askForChoice(player, "machiko", "heg_xiongyi+fenwei") == "heg_xiongyi" then
 					room:loseHp(player, 1, true, player, self:objectName())
 					player:gainMark("@arise")
 				else
@@ -10730,7 +10730,7 @@ ys_xionchiCard = sgs.CreateSkillCard{
 	on_use = function(self, room, source, targets)
 		-- room:doSuperLightbox("mateng", "ys_xionchi")
 		room:setEmotion(source, "skill/xiongyi")
-		-- room:broadcastSkillInvoke("xiongyi", math.random(1, 2))
+		-- room:broadcastSkillInvoke("heg_xiongyi", math.random(1, 2))
 		local rec = sgs.RecoverStruct()
 		rec.who = source
 		room:recover(source, rec)

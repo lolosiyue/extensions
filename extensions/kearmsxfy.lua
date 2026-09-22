@@ -3110,7 +3110,7 @@ sxshuangren = sgs.CreateTriggerSkill {
 			end
 			local to = room:askForPlayerChosen(player, tos, self:objectName(), "sxshuangren0", true, true)
 			if to then
-				player:peiyin("shuangren")
+				player:peiyin("heg_shuangren")
 				if player:pindian(to, self:objectName()) then
 					tos = sgs.SPlayerList()
 					local dc = dummyCard()
@@ -4390,7 +4390,7 @@ sxlirang = sgs.CreateTriggerSkill {
 						room:fillAG(dc:getSubcards(), p)
 						local sc = room:askForExchange(p, self:objectName(), 1, 1, true, "sxlirang0:" .. player:objectName(), true)
 						if sc then
-							p:peiyin("lirang")
+							p:peiyin("heg_lirang")
 							p:skillInvoked(self, 0)
 							player:obtainCard(sc, false)
 							room:obtainCard(p, dc)
@@ -4447,7 +4447,7 @@ sxqingchengCard = sgs.CreateSkillCard {
 		end
 	end,
 	about_to_use = function(self, room, use)
-		use.from:peiyin("qingcheng")
+		use.from:peiyin("heg_qingcheng")
 		local dc = dummyCard("indulgence")
 		dc:addSubcards(self:getSubcards():first())
 		dc:setSkillName("sxqingcheng")

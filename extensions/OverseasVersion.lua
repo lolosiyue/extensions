@@ -3280,7 +3280,7 @@ ov_shuangren = sgs.CreateTriggerSkill {
 			return
 		end
 		player:addMark("ov_shuangren-PlayClear")
-		room:broadcastSkillInvoke("shuangren")
+		room:broadcastSkillInvoke("heg_shuangren")
 		if player:pindian(to, "ov_shuangren") then
 			local to_s = sgs.SPlayerList()
 			for i, p in sgs.list(room:getAlivePlayers()) do

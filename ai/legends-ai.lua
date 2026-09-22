@@ -204,7 +204,7 @@ function getSkillTarget(self, trick, targets)
 		if enemy:hasSkills(skills) then 
 			value = value + 5 
 		end
-		skills = "guzheng|shenyanng|xiliang|guixin|lihun|yinling|yingyan|shenfen|ganlu|duoshi|jueji|zhenggong"
+		skills = "guzheng|shenyanng|xiliang|guixin|lihun|yinling|yingyan|shenfen|ganlu|heg_duoshi|jueji|zhenggong"
 		if enemy:hasSkills(skills) then 
 			value = value + 3 
 		end
@@ -226,7 +226,7 @@ function getSkillTarget(self, trick, targets)
 		if enemy:hasSkills("guanxing|xiuluo") then 
 			value = value - 5 
 		end
-		if enemy:hasSkills("lirang|longluo") then 
+		if enemy:hasSkills("heg_lirang|longluo") then
 			value = value - 5 
 		end
 		if enemy:hasSkills("tuxi|noszhenlie|guanxing|juewang|zongshi|tiandu") then 
@@ -283,7 +283,7 @@ function getSkillTarget(self, trick, targets)
 		elseif self:hasSkills(skills, enemy) then
 			value = value + 5
 		end
-		skills = "yingzi|shelie|xuanhuo|buyi|jujian|jiangchi|mizhao|hongyuan|chongzhen|duoshi"
+		skills = "yingzi|shelie|xuanhuo|buyi|jujian|jiangchi|mizhao|hongyuan|chongzhen|heg_duoshi"
 		if self:hasSkills(skills, enemy) then 
 			value = value + 1 
 		end
