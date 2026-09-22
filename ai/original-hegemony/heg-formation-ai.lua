@@ -26,6 +26,17 @@ if not sgs.GetConfig("EnableHegemony", false) then
         return target and self:isFriend(target)
     end
     sgs.ai_skill_invoke.heg_shengxi = true
+    sgs.ai_skill_invoke.heg_shoucheng = function(self, data)
+        if sgs.ai_skill_invoke.shoucheng then return sgs.ai_skill_invoke.shoucheng(self, data) end
+        local move = data:toMoveOneTime()
+        local target = move.from and self.room:findPlayerByObjectName(move.from:objectName())
+        return target and self:isFriend(target) and not hasManjuanEffect(target)
+            and not self:needKongcheng(target, true)
+    end
+    sgs.ai_skill_choice.heg_shoucheng = function(self, choices)
+        -- This decision belongs to the recipient, after the owner's invocation.
+        return (hasManjuanEffect(self.player) or self:needKongcheng(self.player, true)) and "reject" or "accept"
+    end
     sgs.ai_skill_use["@@heg_ziliang"] = function(self)
         local damage = self.player:getTag("ziliang_aidata"):toDamage()
         if not damage.to or not self:isFriend(damage.to) or hasManjuanEffect(damage.to)
