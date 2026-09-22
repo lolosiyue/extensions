@@ -1133,7 +1133,7 @@ function sgs.ai_skill_choice.huashen(self,choices,data,xiaode_choice)
 			end
 			if self:findFriendsByType(sgs.Friend_Draw)
 			then
-				for _,askill in ipairs(("nosrende|rende|lirang|longluo"):split("|"))do
+				for _,askill in ipairs(("nosrende|rende|heg_lirang|longluo"):split("|"))do
 					if str:matchOne(askill) then return askill end
 				end
 			end

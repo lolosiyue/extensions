@@ -5,7 +5,7 @@ sgs.ai_skill_invoke["yinyang"] = function(self, data)
 	else
 		counter = self.player:getPile("femaleshiki"):length()
 	end
-	if self.player:hasSkills("lianying|noslianying|sijian") or (self.player:hasSkills("shangshi|nosshangshi") and self.player:isWounded()) then
+	if self.player:hasSkills("lianying|noslianying|heg_sijian") or (self.player:hasSkills("shangshi|nosshangshi") and self.player:isWounded()) then
 		return true
 	end
 	if self.player:containsTrick("indulgence") then

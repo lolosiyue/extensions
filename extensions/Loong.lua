@@ -2058,10 +2058,10 @@ lxtx_yishe = sgs.CreateTriggerSkill{
 			    end
 				local target = nil
 				if not players:isEmpty() then
-				    target = room:askForPlayerChosen(player, players, "lxtx_yisheAsk", "~shuangren", true, true)
+				    target = room:askForPlayerChosen(player, players, "lxtx_yisheAsk", "@choose-players", true, true)
 				else
 				    if not targets:isEmpty() then
-				        target = room:askForPlayerChosen(player, targets, "lxtx_yisheAsk", "~shuangren", true, true)
+				        target = room:askForPlayerChosen(player, targets, "lxtx_yisheAsk", "@choose-players", true, true)
 					end
 				end
 				if not target then return false end

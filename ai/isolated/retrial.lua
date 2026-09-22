@@ -128,7 +128,7 @@ function SmartAIView:needRetrial(judge)
         local own_overflow = overflow(self, self.player)
         if not finite(hp) or not finite(hand) or not finite(own_overflow) then return nil end
         -- These native active-skill exceptions can override low hand/draw heuristics.
-        if hand == 0 and judge.who:hasSkills("shenfen|jixi|lihun|xiongyi|kurou") then return nil end
+        if hand == 0 and judge.who:hasSkills("shenfen|jixi|lihun|heg_xiongyi|kurou") then return nil end
         local draw = draw_count(self, judge.who)
         if not finite(draw) then return nil end
         if own_overflow < 0 and (hp - hand >= draw

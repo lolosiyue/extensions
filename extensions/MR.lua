@@ -387,7 +387,7 @@ MR_luofeng = sgs.CreateTriggerSkill{
 		    local alives = room:getAlivePlayers()
 		    if player:objectName() == death.who:objectName() and player:hasSkill(self:objectName()) then
 			    if not alives:isEmpty() then
-				    local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "~shuangren", false, true)
+				    local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "@choose-players", false, true)
 				    room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
 				    local choices = {"bazhen", "olhuoji", "olkanpo", "olcangzhuo", "MR_lianhuan", "MR_niepan"}
 			        for _, choice_list in ipairs(choices) do
@@ -719,7 +719,7 @@ MR_haoshi = sgs.CreateTriggerSkill{
 				end
 			end
 			if not players:isEmpty() then
-				local target = room:askForPlayerChosen(player, players, self:objectName(), "~shuangren", player:getHandcardNum() == n, true)
+				local target = room:askForPlayerChosen(player, players, self:objectName(), "@choose-players", player:getHandcardNum() == n, true)
 				if target then
 					room:broadcastSkillInvoke(self:objectName(), 2)
 					local exchangeMove = sgs.CardsMoveList()
@@ -827,7 +827,7 @@ MR_jieming = sgs.CreateTriggerSkill{
 		else
 			local death = data:toDeath()
 			if death.who:objectName() == player:objectName() then
-				local cc = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "~shuangren", true, true)
+				local cc = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "@choose-players", true, true)
 				if not cc then return false end
 				local upper = math.min(5, cc:getMaxHp())
 				room:broadcastSkillInvoke(self:objectName())

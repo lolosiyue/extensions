@@ -44,7 +44,7 @@ function SmartAI:useCardshit(card,use)
 	        a = true
 	    end
 	
-	    if self.player:hasSkills("kuanggu|kofkuanggu|yuce|mingshi") and b then 
+	    if self.player:hasSkills("kuanggu|kofkuanggu|yuce|heg_mingshi") and b then
             a = true
         end
 		

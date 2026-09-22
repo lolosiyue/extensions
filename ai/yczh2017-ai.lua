@@ -985,7 +985,7 @@ sgs.ai_skill_playerchosen.jiexun = function(self,targets)
 		for _,enemy in ipairs(self.enemies)do
 			if hasManjuanEffect(enemy) and self:doDisCard(enemy,"he",false,use_time) then return enemy end
 			if not second and not self:needToThrowCard(enemy,"he",true) and enemy:getCardCount(true)>=n 
-			and not (enemy:hasSkill("lirang") and self:findFriendsByType(sgs.Friend_Draw,enemy)) then
+			and not (enemy:hasSkill("heg_lirang") and self:findFriendsByType(sgs.Friend_Draw,enemy)) then
 				second = enemy
 			end
 		end

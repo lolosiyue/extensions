@@ -4320,7 +4320,7 @@ tc_liefeng_spwd = sgs.CreateTriggerSkill{
 				end
 			end
 			if not players:isEmpty() then
-			    local to = room:askForPlayerChosen(player, players, self:objectName(), "~shuangren", false, true)
+			    local to = room:askForPlayerChosen(player, players, self:objectName(), "@choose-players", false, true)
 				room:broadcastSkillInvoke(self:objectName())
 				local dama, n = nil, math.random(1, 4)
 				if n == 1 then dama = sgs.DamageStruct_Normal end
@@ -4607,7 +4607,7 @@ diy_k_shouliCard = sgs.CreateSkillCard{
 			targets:append(source)
 		end
 		if not targets:isEmpty() then
-			to = room:askForPlayerChosen(source, targets, self:objectName(), "~shuangren", false, false)
+			to = room:askForPlayerChosen(source, targets, self:objectName(), "@choose-players", false, false)
 		end		
 		if to then
 			if to == source then
@@ -4642,7 +4642,7 @@ diy_k_shouliCard = sgs.CreateSkillCard{
 			targets:append(source)
 		end
 		if not targets:isEmpty() then
-			to = room:askForPlayerChosen(source, targets, self:objectName(), "~shuangren", false, false)
+			to = room:askForPlayerChosen(source, targets, self:objectName(), "@choose-players", false, false)
 		end		
 		if to then
 			if to == source then
@@ -5396,7 +5396,7 @@ tc_huishiCard = sgs.CreateSkillCard{
 				end
 			end
 		end
-		local target = room:askForPlayerChosen(source, room:getOtherPlayers(source), "tc_huishizx", "~shuangren", true, true)
+		local target = room:askForPlayerChosen(source, room:getOtherPlayers(source), "tc_huishizx", "@choose-players", true, true)
 		if target then
 			room:acquireSkill(target, "tc_zuoxing")
 		else
@@ -5615,7 +5615,7 @@ tc_tamoCard = sgs.CreateSkillCard{
 			end
 		end
 		while n > 0 do
-			targets = room:askForPlayersChosen(source, players, self:objectName(), 2, 2, "~shuangren", false, false)
+			targets = room:askForPlayersChosen(source, players, self:objectName(), 2, 2, "@choose-players", false, false)
 		    for _, p in sgs.qlist(targets) do
 				players:removeOne(p)
 		    end
@@ -5654,7 +5654,7 @@ tc_zhimeng = sgs.CreateTriggerSkill{
 				    end
 			    end
 		        if not players:isEmpty() then
-				    local target = room:askForPlayerChosen(player, players, self:objectName(), "~shuangren", true, true)
+				    local target = room:askForPlayerChosen(player, players, self:objectName(), "@choose-players", true, true)
 			        if target then
 					    room:broadcastSkillInvoke(self:objectName())
 			            local dummi, dummy = room:askForExchange(player, self:objectName(), player:getHandcardNum(), 1, false, "", false), room:askForExchange(target, self:objectName(), target:getHandcardNum(), 1, false, "", false)
