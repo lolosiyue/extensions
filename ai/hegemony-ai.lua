@@ -197,10 +197,15 @@ sgs.ai_card_intention.DuoshiCard = function(self,card,from,tos,source)
 	end
 end
 
-local fenxun_skill = {}
-fenxun_skill.name = "fenxun"
-table.insert(sgs.ai_skills,fenxun_skill)
-fenxun_skill.getTurnUseCard = function(self)
+-- Shared identity Fenxun uses the V2 proxy; its historical usage key stays FenxunCard.
+local function fenxunV2Card(id)
+    local card = sgs.ActiveSkillCard()
+    card:setSkillName("fenxun")
+    card:addSubcard(id)
+    return card
+end
+
+sgs.ai_fill_skill.fenxun = function(self)
 	if #self.enemies==0 then return end
 	if self:needBear() then return end
 	if not self.player:isNude() then
@@ -212,7 +217,7 @@ fenxun_skill.getTurnUseCard = function(self)
 		self:sortByKeepValue(cards)
 
 		if self:needToThrowArmor() then
-			return sgs.Card_Parse("@FenxunCard="..self.player:getArmor():getId())
+			return fenxunV2Card(self.player:getArmor():getId())
 		elseif self.player:getHandcardNum()>0 then
 			local lightning = self:getCard("Lightning")
 			if lightning and not self:willUseLightning(lightning) then
@@ -259,17 +264,17 @@ fenxun_skill.getTurnUseCard = function(self)
 		end
 
 		if slashcount>0 and card_id then
-			return sgs.Card_Parse("@FenxunCard="..card_id)
+			return fenxunV2Card(card_id)
 		end
 	end
 	return nil
 end
 
-sgs.ai_skill_use_func.FenxunCard = function(card,use,self)
+sgs.ai_skill_use_func.fenxun = function(card,use,self)
 	self:sort(self.enemies,"defense")
 	local target
 	for _,slash in ipairs(self:getCards("Slash"))do
-		if slash:getEffectiveId()~=card:getEffectiveId() then
+		if not card:getSubcards():contains(slash:getEffectiveId()) then
 			local target_num,hastarget = 0,nil
 			for _,enemy in ipairs(self.enemies)do
 				if not self:slashProhibit(slash,enemy) and self.player:canSlash(enemy,slash,false) and self:isGoodTarget(enemy,self.enemies,slash) then
@@ -291,9 +296,9 @@ sgs.ai_skill_use_func.FenxunCard = function(card,use,self)
 	end
 end
 
-sgs.ai_use_value.FenxunCard = 5.5
-sgs.ai_use_priority.FenxunCard = 8
-sgs.ai_card_intention.FenxunCard = 50
+sgs.ai_use_value.fenxun = 5.5
+sgs.ai_use_priority.fenxun = 8
+sgs.ai_card_intention.fenxun = 50
 
 sgs.ai_skill_askforyiji.lirang = function(self,card_ids)
 	local Shenfen_user
