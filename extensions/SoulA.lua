@@ -5,27 +5,32 @@ Soulcaoren = sgs.General(extension, "Soulcaoren", "wei", "4")
 Soulcaohong = sgs.General(extension,"Soulcaohong","wei", "4")
 
 --曹仁
-Rcekuiwei = sgs.CreateTriggerSkill{
-	name = "Rcekuiwei",  
-	frequency = sgs.Skill_NotFrequent, 
-	events = {sgs.EventPhaseStart}, 
-	on_trigger = function(self, event, player, data)
-	    local room = player:getRoom()
-		for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+Rcekuiwei = sgs.CreateTriggerSkillV2{
+	name = "Rcekuiwei",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.EventPhaseStart},
+	can_trigger = function(skill, event, room, player, data)
+		if player:getPhase() ~= sgs.Player_Finish then return false end
+		local skill_list, owner_list = {}, {}
+		for _, p in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
 			if p and player:getHp() >= p:getHp() then
-				local phase = player:getPhase()
-				if phase == sgs.Player_Finish then
-					if room:askForSkillInvoke(p, self:objectName()) then
-						room:broadcastSkillInvoke("Rcekuiwei",math.random(1,2))
-						p:drawCards(1)
-						p:turnOver()
-					end
-				end
+				table.insert(skill_list, skill:objectName())
+				table.insert(owner_list, p:objectName())
 			end
 		end
+		if #skill_list > 0 then
+			return table.concat(skill_list, "|"), table.concat(owner_list, "|")
+		end
+		return false
 	end,
-	can_trigger = function(self, target)
-		return target
+	on_cost = function(skill, event, room, player, ctx)
+		return room:askForSkillInvoke(player, skill:objectName())
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		room:broadcastSkillInvoke("Rcekuiwei",math.random(1,2))
+		player:drawCards(1)
+		player:turnOver()
+		return false
 	end
 }
 
@@ -62,49 +67,62 @@ Rceyanzheng = sgs.CreateViewAsSkill{
 	end
 }
 
-Rceshishou = sgs.CreateTriggerSkill{
+Rceshishou = sgs.CreateTriggerSkillV2{
 	name = "Rceshishou",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.EventPhaseChanging},
-	on_trigger = function(self, event, player, data)
+	can_trigger = function(skill, event, room, player, data)
+		if not player:hasSkill(skill:objectName()) then return false end
 		local change = data:toPhaseChange()
-		if change.to == sgs.Player_Start then
-			if change.from ~= sgs.Player_Discard then
-			    local room = player:getRoom()
-				change.to = sgs.Player_Discard
-				data:setValue(change)
-				player:insertPhase(sgs.Player_Discard)
-				room:broadcastSkillInvoke("Rceshishou")
-			end
+		if change.to == sgs.Player_Start and change.from ~= sgs.Player_Discard then
+			return skill:objectName()
 		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local change = ctx.original_data:toPhaseChange()
+		change.to = sgs.Player_Discard
+		ctx.original_data:setValue(change)
+		player:insertPhase(sgs.Player_Discard)
+		room:broadcastSkillInvoke("Rceshishou")
+		return false
 	end
 }
 
 
 --曹洪
-Rcelinshou = sgs.CreateTriggerSkill{
-	name = "Rcelinshou",  
-	frequency = sgs.Skill_Compulsory, 
-	events = {sgs.EventPhaseChanging, sgs.DrawNCards},  
-	on_trigger = function(self, event, player, data) 
-    	if event == sgs.EventPhaseChanging then
-	    	local change = data:toPhaseChange()
-		    local nextphase = change.to
-            if nextphase == sgs.Player_Discard then
-			    if not player:isSkipped(sgs.Player_Discard) then
-				    local room = player:getRoom()
-				    change.to = sgs.Player_Draw
-				    data:setValue(change)
-					room:broadcastSkillInvoke("Rcelinshou")
-			    end
-		    end
+Rcelinshou = sgs.CreateTriggerSkillV2{
+	name = "Rcelinshou",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.EventPhaseChanging, sgs.DrawNCards},
+	can_trigger = function(skill, event, room, player, data)
+		if not player:hasSkill(skill:objectName()) then return false end
+		if event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to == sgs.Player_Discard and not player:isSkipped(sgs.Player_Discard) then
+				return skill:objectName()
+			end
 		else
 			local draw = data:toDraw()
-			if draw.reason ~= "draw_phase" then return false end
-		    player:setFlags(self:objectName())
-			draw.num = draw.num - 1
-			data:setValue(draw)
+			if draw.reason == "draw_phase" then
+				return skill:objectName()
+			end
 		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		if event == sgs.EventPhaseChanging then
+			local change = ctx.original_data:toPhaseChange()
+			change.to = sgs.Player_Draw
+			ctx.original_data:setValue(change)
+			room:broadcastSkillInvoke("Rcelinshou")
+		else
+			local draw = ctx.original_data:toDraw()
+			player:setFlags(skill:objectName())
+			draw.num = draw.num - 1
+			ctx.original_data:setValue(draw)
+		end
+		return false
 	end
 }
 
