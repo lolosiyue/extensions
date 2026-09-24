@@ -226,7 +226,7 @@ function getSkillTarget(self, trick, targets)
 		if enemy:hasSkills("guanxing|xiuluo") then 
 			value = value - 5 
 		end
-		if enemy:hasSkills("heg_lirang|longluo") then
+		if enemy:hasSkills("lirang|longluo") then
 			value = value - 5 
 		end
 		if enemy:hasSkills("tuxi|noszhenlie|guanxing|juewang|zongshi|tiandu") then 

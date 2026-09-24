@@ -615,14 +615,16 @@ local shuangxiong_skill={}
 shuangxiong_skill.name="shuangxiong"
 table.insert(sgs.ai_skills,shuangxiong_skill)
 shuangxiong_skill.getTurnUseCard=function(self)
-	local mark = self.player:getMark("shuangxiong")
+	-- All modes use the same accumulated judgment colors.
+	local colors = self.player:property("shuangxiong_colors_turn"):toString():split("+")
 
 	local cards = self:addHandPile()
 	self:sortByUseValue(cards,true)
 
 	local card
 	for _,acard in sgs.list(cards)  do
-		if (acard:isRed() and mark==2) or (acard:isBlack() and mark==1) then
+		if not acard:hasFlag("using") and ((acard:isRed() and table.contains(colors, "no_suit_black"))
+			or (acard:isBlack() and table.contains(colors, "no_suit_red"))) then
 			card = acard
 			break
 		end

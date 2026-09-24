@@ -1137,97 +1137,14 @@ sgs.ai_skill_use["@@heg_tianxiang"] = function(self, prompt, method)
 	return "."
 end
 
-sgs.double_slash_skill = sgs.double_slash_skill .. "|heg_shuangren"
+sgs.double_slash_skill = sgs.double_slash_skill .. "|shuangren"
 
 
-sgs.ai_skill_use["@@heg_shuangren"] = function(self,prompt)
-	if not self.player:canPindian() then return "." end
-	self:sort(self.enemies,"handcard")
-	local max_card = self:getMaxCard()
-	local max_point = max_card:getNumber()
-
-	local slash = dummyCard()
-	self.player:setFlags("slashNoDistanceLimit")
-	local dummy_use = self:aiUseCard(slash, dummy())
-	self.player:setFlags("-slashNoDistanceLimit")
-
-	if dummy_use.card then
-		for _,enemy in ipairs(self.enemies)do
-			if not (enemy:hasSkill("kongcheng") and enemy:getHandcardNum()==1) and self.player:canPindian(enemy) then
-				local enemy_max_card = self:getMaxCard(enemy)
-				local enemy_max_point = enemy_max_card and enemy_max_card:getNumber() or 100
-				if max_point>enemy_max_point then
-					self.heg_shuangren_card = max_card:getEffectiveId()
-					return "#heg_shuangren:.:->"..enemy:objectName()
-				end
-			end
-		end
-		for _,enemy in ipairs(self.enemies)do
-			if not (enemy:hasSkill("kongcheng") and enemy:getHandcardNum()==1) and self.player:canPindian(enemy) then
-				if max_point>=10 then
-					self.heg_shuangren_card = max_card:getEffectiveId()
-					return "#heg_shuangren:.:->"..enemy:objectName()
-				end
-			end
-		end
-		if #self.enemies<1 then return end
-		self:sort(self.friends_noself,"handcard")
-		for index = #self.friends_noself,1,-1 do
-			local friend = self.friends_noself[index]
-			if self.player:canPindian(friend) then
-				local friend_min_card = self:getMinCard(friend)
-				local friend_min_point = friend_min_card and friend_min_card:getNumber() or 100
-				if max_point>friend_min_point then
-					self.heg_shuangren_card = max_card:getEffectiveId()
-					return "#heg_shuangren:.:->"..friend:objectName()
-				end
-			end
-		end
-
-		local zhugeliang = self.room:findPlayerBySkillName("kongcheng")
-		if zhugeliang and self:isFriend(zhugeliang) and zhugeliang:getHandcardNum()==1 and zhugeliang:objectName()~=self.player:objectName()
-			and self.player:canPindian(zhugeliang) then
-			if max_point>=7 then
-				self.heg_shuangren_card = max_card:getEffectiveId()
-				return "#heg_shuangren:.:->"..zhugeliang:objectName()
-			end
-		end
-
-		for index = #self.friends_noself,1,-1 do
-			local friend = self.friends_noself[index]
-			if self.player:canPindian(friend) then
-				if max_point>=7 then
-					self.heg_shuangren_card = max_card:getEffectiveId()
-					return "#heg_shuangren:.:->"..friend:objectName()
-				end
-			end
-		end
-	end
-	return "."
-end
-
-function sgs.ai_skill_pindian.heg_shuangren(minusecard,self,requestor)
-	local maxcard = self:getMaxCard()
-	return self:isFriend(requestor) and self:getMinCard() or (maxcard:getNumber()<6 and minusecard or maxcard)
-end
-
-
-sgs.ai_skill_playerchosen.heg_shuangren = sgs.ai_skill_playerchosen.zero_card_as_slash
-sgs.ai_card_intention["heg_shuangren"] = sgs.ai_card_intention.TianyiCard
-sgs.ai_cardneed.heg_shuangren = sgs.ai_cardneed.bignumber
-
-sgs.ai_skill_invoke.heg_kuangfu = function(self,data)
-	local target = data:toPlayer()
-	return not self:isFriend(target) and self:doDisCard(target, "e", true)
-end
-sgs.ai_cardneed.heg_kuangfu = sgs.ai_cardneed.slash
-
-
-sgs.ai_skill_playerchosen.heg_shushen = function(self,targets)
+sgs.ai_skill_playerchosen.shushen = function(self,targets)
 	if #self.friends_noself==0 then return nil end
 	return self:findPlayerToDraw(false,2)
 end
-sgs.ai_playerchosen_intention.heg_shushen = -80
+sgs.ai_playerchosen_intention.shushen = -80
 
 sgs.ai_skill_invoke.heg_yicheng = sgs.ai_skill_invoke.yicheng
 
@@ -5268,32 +5185,30 @@ sgs.ai_use_priority["heg_lord_jiahe_Attach"] = sgs.ai_use_priority.ZhihengCard +
 sgs.ai_skill_invoke.heg_lord_jiahe = true
 
 sgs.ai_fill_skill.heg_zhiheng = function(self)
-	return sgs.Card_Parse("#heg_zhiheng:.:")
+	if self.player:getMaxHp() < 1 or not self.player:canDiscard(self.player, "he") then return end
+	local card = sgs.ActiveSkillCard()
+	card:setSkillName("heg_zhiheng")
+	return card
 end
 
-sgs.ai_skill_use_func["#heg_zhiheng"] = function(card,use,self)
-	local card = sgs.Card_Parse("@ZhihengCard=.")
+sgs.ai_skill_use_func.heg_zhiheng = function(card,use,self)
+	local shared = sgs.Card_Parse("@ZhihengCard=.")
 	local dummy_use = dummy()
-	self:useSkillCard(card,dummy_use)
-	if dummy_use.card then 
-		local str = dummy_use.card:toString()
-		str = string.gsub(str,"@ZhihengCard=","#heg_zhiheng:")
-		if self.player:getMark("LuminousPearl_zhiheng") == 0 then
-			str = "#heg_zhiheng:"
-			local use_cards = dummy_use.card:getSubcards()
-			local x = 0
-			for _,id in sgs.list(use_cards) do
-				str = str..id.."+"
-				x = x + 1
-				if x >= self.player:getMaxHp() then break end
-			end
+	self:useSkillCard(shared,dummy_use)
+	if dummy_use.card then
+		-- Retain the chosen activation instance and reuse the existing selection strategy.
+		card:clearSubcards()
+		for _,id in sgs.list(dummy_use.card:getSubcards()) do
+			if card:subcardsLength() >= self.player:getMaxHp() then break end
+			if self.player:canDiscard(self.player, id) then card:addSubcard(id) end
 		end
-		str = str..":"
-		use.card = sgs.Card_Parse(str)
+		if card:subcardsLength() > 0 then use.card = card end
 	end
 end
 
 sgs.ai_use_priority["heg_zhiheng"] = sgs.ai_use_priority.ZhihengCard
+sgs.ai_use_value.heg_zhiheng = sgs.ai_use_value.ZhihengCard
+sgs.dynamic_value.benefit.heg_zhiheng = true
 
 sgs.ai_fill_skill.heg_lord_lianzi = function(self)
 	local cards = self.player:getCards("h")

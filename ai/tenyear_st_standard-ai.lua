@@ -243,15 +243,18 @@ end
 sgs.ai_use_priority.TenyearJieyinCard = 0
 
 --仁德
-local tenyearrende_skill = {}
-tenyearrende_skill.name = "tenyearrende"
-table.insert(sgs.ai_skills,tenyearrende_skill)
-tenyearrende_skill.getTurnUseCard = function(self)
+local function tenyearRendeV2Card(ids)
+	local card = sgs.ActiveSkillCard()
+	card:setSkillName("tenyearrende")
+	for _, id in ipairs(ids or {}) do card:addSubcard(id) end
+	return card
+end
+sgs.ai_fill_skill.tenyearrende = function(self)
 	if self.player:isKongcheng() then return end
-	return sgs.Card_Parse("@TenyearRendeCard=.")
+	return tenyearRendeV2Card()
 end
 
-sgs.ai_skill_use_func.TenyearRendeCard = function(card,use,self)
+sgs.ai_skill_use_func.tenyearrende = function(card,use,self)
     local others = self.room:getOtherPlayers(self.player)
     local friends,enemies,unknowns = {},{},{}
     local arrange = {}
@@ -316,7 +319,7 @@ sgs.ai_skill_use_func.TenyearRendeCard = function(card,use,self)
         for _,c in ipairs(arrange[max_name])do
             table.insert(to_use,c:getEffectiveId())
         end
-        use.card = sgs.Card_Parse("@TenyearRendeCard="..table.concat(to_use,"+"))
+        use.card = tenyearRendeV2Card(to_use)
         use.to:append(max_target)
     end
 end
@@ -325,6 +328,10 @@ sgs.ai_use_value.TenyearRendeCard = sgs.ai_use_value.RendeCard
 sgs.ai_use_priority.TenyearRendeCard = sgs.ai_use_priority.RendeCard
 sgs.ai_card_intention.TenyearRendeCard = sgs.ai_card_intention.RendeCard
 sgs.dynamic_value.benefit.TenyearRendeCard = true
+sgs.ai_use_value.tenyearrende = sgs.ai_use_value.TenyearRendeCard
+sgs.ai_use_priority.tenyearrende = sgs.ai_use_priority.TenyearRendeCard
+sgs.ai_card_intention.tenyearrende = sgs.ai_card_intention.TenyearRendeCard
+sgs.dynamic_value.benefit.tenyearrende = true
 
 sgs.ai_skill_askforag.tenyearrende = function(self,card_ids)
 	local cards = {}

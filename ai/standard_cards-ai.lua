@@ -1210,7 +1210,7 @@ sgs.ai_skill_invoke.ice_sword = function(self,data)
 	else
 		if self:isWeak(target) then return false end
 		if damage.damage>1 or self:ajustDamage(self.player,target,1,damage.card)>1 then return false end
-		if target:hasSkill("heg_lirang") and #self:getFriends(target,true)>0 then return false end
+		if target:hasSkill("lirang") and #self:getFriends(target,true)>0 then return false end
 		if target:getArmor() and self:evaluateArmor(target:getArmor(),target)>3 and not (target:hasArmorEffect("SilverLion") and target:isWounded()) then return true end
 		local num = target:getHandcardNum()
 		if self.player:hasSkill("tieji") or self:canLiegong(target,self.player) then return false end
@@ -1788,7 +1788,7 @@ function SmartAI:useCardDuel(duel,use)
 			if enemy:hasSkill("wushuang") then n2 = n2*2 end
 			enemySlash = enemySlash+n2
 			if n1>=enemySlash or self:needToLoseHp(self.player,nil,duel,true) or n2<1 
-			or self.player:hasSkill("jianxiong") or self.player:getMark("shuangxiong")>0 then else continue end
+			or self.player:hasSkill("jianxiong") or self.player:property("shuangxiong_colors_turn"):toString() ~= "" then else continue end
 			if self.player:getPhase()<=sgs.Player_Play and math.random()<0.5
 			then self.player:setFlags("duelTo_"..enemy:objectName()) end
 			use.card = duel
