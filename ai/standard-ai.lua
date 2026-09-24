@@ -625,14 +625,15 @@ end
 sgs.ai_skill_playerchosen.nosleiji = function(self,targets)
 	local mode = self.room:getMode()
 	if mode:find("_mini_17") or mode:find("_mini_19") or mode:find("_mini_20") or mode:find("_mini_26") then
-		local players = self.room:getAllPlayers()
+		local players = targets
 		for _,aplayer in sgs.qlist(players)do
 			if aplayer:getState()~="robot" then
 				return aplayer
 			end
 		end
 	end
-	return self:findLeijiTarget(self.player,100,nil,-1)
+	local target = self:findLeijiTarget(self.player,100,nil,-1)
+	if target and targets:contains(target) then return target end
 end
 
 sgs.ai_playerchosen_intention.nosleiji = sgs.ai_playerchosen_intention.leiji
