@@ -1,5 +1,23 @@
--- Identity skills keep the same IDs; reuse existing identity AI policies where
--- their decisions still match, adapting only the V2 response wire format.
+-- Source: TODO/QSanguosha-For-Hegemony-xxyheaven/lua/ai/formation-ai.lua (cf61c15).
+--[[********************************************************************
+	Copyright (c) 2013-2015 Mogara
+
+  This file is part of QSanguosha-Hegemony.
+
+  This game is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License as
+  published by the Free Software Foundation; either version 3.0
+  of the License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  General Public License for more details.
+
+  See the LICENSE file for more details.
+
+  Mogara
+*********************************************************************]]
 if not sgs.GetConfig("EnableHegemony", false) then
     local function proxy(name, id)
         local card = sgs.ActiveSkillCard()
@@ -106,27 +124,6 @@ end
 -- Hegemony policies are loaded only by the admitted bundle in this Room VM.
 if not sgs.original_hegemony_ai_loading then return end
 
---[[********************************************************************
-	Copyright (c) 2013-2014 - QSanguosha-Rara
-
-  This file is part of QSanguosha-Hegemony.
-
-  This game is free software; you can redistribute it and/or
-  modify it under the terms of the GNU General Public License as
-  published by the Free Software Foundation; either version 3.0
-  of the License, or (at your option) any later version.
-
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
-
-  See the LICENSE file for more details.
-
-  QSanguosha-Rara
-*********************************************************************]]
-
--- Selection replies and playable actions share the existing V2 proxy format.
 local function formationProxy(name, id)
     local card = sgs.ActiveSkillCard()
     card:setSkillName(name)
@@ -134,19 +131,30 @@ local function formationProxy(name, id)
     return card
 end
 
-local getZiliangCard = function(self, damage)
-	if not (damage.to:getPhase() == sgs.Player_NotActive and self:needKongcheng(damage.to, true)) then
+sgs.ai_skill_choice["heg_tuntian"] = function(self, choices)
+	return "yes"
+end
+
+local getZiliangCard = function(self, target)
+	if not (target:getPhase() == sgs.Player_NotActive and self:needKongcheng(target, true)) then
 		local ids = sgs.QList2Table(self.player:getPile("field"))
 		local cards = {}
 		for _, id in ipairs(ids) do table.insert(cards, sgs.Sanguosha:getCard(id)) end
-		for _, card in ipairs(cards) do
-			if card:isKindOf("Peach") or card:isKindOf("Analeptic") then return card:getEffectiveId() end
+		if target:getPhase() == sgs.Player_NotActive and self:isWeak(target) then
+			for _, card in ipairs(cards) do
+				if card:isKindOf("Peach") or card:isKindOf("Analeptic") then
+					return card:getEffectiveId()
+				end
+			end
+			for _, card in ipairs(cards) do
+				if card:isKindOf("Jink") then return card:getEffectiveId() end
+			end
+			self:sortByKeepValue(cards, true)
+			return cards[1]:getEffectiveId()
+		else--配合钟会找连弩？
+			self:sortByUseValue(cards)
+			return cards[1]:getEffectiveId()
 		end
-		for _, card in ipairs(cards) do
-			if card:isKindOf("Jink") then return card:getEffectiveId() end
-		end
-		self:sortByKeepValue(cards, true)
-		return cards[1]:getEffectiveId()
 	else
 		return nil
 	end
@@ -154,37 +162,44 @@ end
 
 sgs.ai_skill_use["@@heg_ziliang"] = function(self)
 	local damage = self.player:getTag("ziliang_aidata"):toDamage()
-	local id = getZiliangCard(self, damage)
+	local target = damage and damage.to
+	if not target then return "." end
+	local id = getZiliangCard(self, target)
 	if id then
 		return formationProxy("heg_ziliang", id):toString()
 	end
 	return "."
 end
 
-local function heg_huyuan_validate(self, equip_type, is_handcard)
+local function huyuan_validate(self, equip_type, is_handcard)
 	local targets = {}
 	if is_handcard then targets = self.friends else targets = self.friends_noself end
-	if equip_type == "SilverLion" then
+	if equip_type == "po_bazhen" then
 		for _, enemy in ipairs(self.enemies) do
-			if enemy:hasShownSkill("heg_bazhen") and not enemy:getArmor() then table.insert(targets, enemy) end
+			if self:hasKnownSkill("bazhen", enemy) and not enemy:getArmor() then table.insert(targets, enemy) end
 		end
+		equip_type = "Armor"
 	end
-	for _, friend in ipairs(targets) do
+	self:sort(targets, "defense")
+	for _, p in ipairs(targets) do
 		local has_equip = false
-		for _, equip in sgs.qlist(friend:getEquips()) do
-			if equip:isKindOf(equip_type == "SilverLion" and "Armor" or equip_type) then
+		for _, equip in sgs.qlist(p:getEquips()) do
+			if equip:isKindOf(equip_type) then
 				has_equip = true
 				break
 			end
 		end
-		if not has_equip and not ((equip_type == "Armor" or equip_type == "SilverLion") and friend:hasShownSkill("heg_bazhen")) then
+		if not has_equip and not (equip_type == "Armor" and self:hasKnownSkill("bazhen", p) and self:isFriend(p)) then
+			--[[
 			self:sort(self.enemies, "defense")
 			for _, enemy in ipairs(self.enemies) do
-				if friend:distanceTo(enemy) == 1 and self.player:canDiscard(enemy, "he") then
+				if p:distanceTo(enemy) == 1 and self.player:canDiscard(enemy, "he") then
 					enemy:setFlags("AI_HuyuanToChoose")
-					return friend
+					return p
 				end
 			end
+			]]
+			return p
 		end
 	end
 	return nil
@@ -195,52 +210,62 @@ sgs.ai_skill_use["@@heg_huyuan"] = function(self, prompt)
 	cards = sgs.QList2Table(cards)
 	self:sortByKeepValue(cards)
 	if self.player:hasArmorEffect("SilverLion") then
-		local player = heg_huyuan_validate(self, "SilverLion", false)
+		local player = huyuan_validate(self, "SilverLion", false)
 		if player then return formationProxy("heg_huyuan", self.player:getArmor():getEffectiveId()):toString() .. "->" .. player:objectName() end
 	end
 	if self.player:getOffensiveHorse() then
-		local player = heg_huyuan_validate(self, "OffensiveHorse", false)
+		local player = huyuan_validate(self, "OffensiveHorse", false)
 		if player then return formationProxy("heg_huyuan", self.player:getOffensiveHorse():getEffectiveId()):toString() .. "->" .. player:objectName() end
 	end
 	if self.player:getWeapon() then
-		local player = heg_huyuan_validate(self, "Weapon", false)
+		local player = huyuan_validate(self, "Weapon", false)
 		if player then return formationProxy("heg_huyuan", self.player:getWeapon():getEffectiveId()):toString() .. "->" .. player:objectName() end
 	end
 	if self.player:getArmor() and self.player:getLostHp() <= 1 and self.player:getHandcardNum() >= 3 then
-		local player = heg_huyuan_validate(self, "Armor", false)
+		local player = huyuan_validate(self, "Armor", false)
 		if player then return formationProxy("heg_huyuan", self.player:getArmor():getEffectiveId()):toString() .. "->" .. player:objectName() end
 	end
 	for _, card in ipairs(cards) do
 		if card:isKindOf("DefensiveHorse") then
-			local player = heg_huyuan_validate(self, "DefensiveHorse", true)
+			local player = huyuan_validate(self, "DefensiveHorse", true)
 			if player then return formationProxy("heg_huyuan", card:getEffectiveId()):toString() .. "->" .. player:objectName() end
 		end
 	end
 	for _, card in ipairs(cards) do
 		if card:isKindOf("OffensiveHorse") then
-			local player = heg_huyuan_validate(self, "OffensiveHorse", true)
+			local player = huyuan_validate(self, "OffensiveHorse", true)
 			if player then return formationProxy("heg_huyuan", card:getEffectiveId()):toString() .. "->" .. player:objectName() end
 		end
 	end
 	for _, card in ipairs(cards) do
 		if card:isKindOf("Weapon") then
-			local player = heg_huyuan_validate(self, "Weapon", true)
+			local player = huyuan_validate(self, "Weapon", true)
 			if player then return formationProxy("heg_huyuan", card:getEffectiveId()):toString() .. "->" .. player:objectName() end
 		end
 	end
 	for _, card in ipairs(cards) do
 		if card:isKindOf("SilverLion") then
-			local player = heg_huyuan_validate(self, "SilverLion", true)
+			local player = huyuan_validate(self, "SilverLion", true)
 			if player then return formationProxy("heg_huyuan", card:getEffectiveId()):toString() .. "->" .. player:objectName() end
 		end
-		if card:isKindOf("Armor") and heg_huyuan_validate(self, "Armor", true) then
-			local player = heg_huyuan_validate(self, "Armor", true)
+		if card:isKindOf("Armor") and huyuan_validate(self, "Armor", true) then
+			local player = huyuan_validate(self, "Armor", true)
 			if player then return formationProxy("heg_huyuan", card:getEffectiveId()):toString() .. "->" .. player:objectName() end
+		end
+	end
+	for _, friend in ipairs(self.friends_noself) do
+		if not friend:isRemoved() and friend:getHandcardNum() < 3 then
+			for _, card in ipairs(cards) do
+				if not self.player:isCardLimited(card, sgs.Card_MethodNone) then
+					return formationProxy("heg_huyuan", card:getEffectiveId()):toString() .. "->" .. friend:objectName()
+				end
+			end
 		end
 	end
 end
 
 sgs.ai_skill_playerchosen.heg_huyuan = function(self, targets)
+--[[
 	targets = sgs.QList2Table(targets)
 	for _, p in ipairs(targets) do
 		if p:hasFlag("AI_HuyuanToChoose") then
@@ -248,12 +273,13 @@ sgs.ai_skill_playerchosen.heg_huyuan = function(self, targets)
 			return p
 		end
 	end
-	return targets[1]
+]]
+	return self:findPlayerToDiscard("ej", false, sgs.Card_MethodDiscard, targets)
 end
 
-sgs.ai_card_intention.heg_huyuan = function(self, card, from, to)
-	if to[1]:hasShownSkill("heg_bazhen") then
-		if sgs.Sanguosha:getCard(card:getEffectiveId()):isKindOf("SilverLion") then
+sgs.ai_card_intention.HHuyuanCard = function(self, card, from, to)
+	if self:hasKnownSkill("bazhen", to[1]) then
+		if sgs.Sanguosha:getCard(card:getEffectiveId()):isKindOf("Armor") then
 			sgs.updateIntention(from, to[1], 10)
 			return
 		end
@@ -263,34 +289,47 @@ end
 
 sgs.ai_cardneed.heg_huyuan = sgs.ai_cardneed.equip
 
-sgs.heg_huyuan_keep_value = {
+sgs.huyuan_keep_value = {
 	Peach = 6,
 	Jink = 5.1,
 	EquipCard = 4.8
 }
 
-
 sgs.ai_skill_invoke.heg_shoucheng = function(self, data)
 	local move = data:toMoveOneTime()
-	if move and move.from then
-		local from = findPlayerByObjectName(move.from:objectName())
-		if from and self:isFriend(from) and not self:needKongcheng(move.from, true) then
-			return true
-		end
-	end
-	return false
+	local target = move and move.from and self.room:findPlayerByObjectName(move.from:objectName())
+	return target and self:isFriend(target) and not hasManjuanEffect(target)
+		and not self:needKongcheng(target, true)
 end
 
-local heg_shangyi_skill = {}
-heg_shangyi_skill.name = "heg_shangyi"
-table.insert(sgs.ai_skills, heg_shangyi_skill)
-heg_shangyi_skill.getTurnUseCard = function(self)
-	if self.player:isKongcheng() then return end
-	if not self:willShowForAttack() then return end
-	local heg_shangyi_card = formationProxy("heg_shangyi")
-	assert(heg_shangyi_card)
-	return heg_shangyi_card
+sgs.ai_skill_invoke.heg_shengxi = function(self, data)
+	if not self:willShowForDefence() and (self:needKongcheng() and self.player:getHp() < 3 ) then
+		return false
+	end
+--[[
+		if self:getOverflow() >= 0 then
+		local erzhang = sgs.findPlayerByShownSkillName("guzheng")
+		if erzhang and self:isEnemy(erzhang) then return false end
+	end
+]]--现在是结束阶段发动
+	return true
 end
+
+local shangyi_skill = {}
+
+shangyi_skill.name = "heg_shangyi"
+
+table.insert(sgs.ai_skills, shangyi_skill)
+
+shangyi_skill.getTurnUseCard = function(self)
+	if self.player:isKongcheng() then return end
+	if not self:willShowForAttack() then return end
+	local heg_shangyi_card = formationProxy("heg_shangyi")
+	assert(heg_shangyi_card)
+	return heg_shangyi_card
+end
+
+sgs.ai_fill_skill.heg_shangyi = shangyi_skill.getTurnUseCard
 
 sgs.ai_skill_use_func.heg_shangyi = function(card, use, self)
 	self:sort(self.enemies, "handcard")
@@ -307,27 +346,46 @@ sgs.ai_skill_use_func.heg_shangyi = function(card, use, self)
 end
 
 sgs.ai_skill_choice.heg_shangyi = function(self, choices)
-	return "handcards"
+	return self.heg_shangyi
+end
+
+sgs.ai_choicemade_filter.skillChoice.heg_shangyi = function(self, from, promptlist)
+	local choice = promptlist[#promptlist]
+	if choice ~= "handcards" then
+		for _, to in sgs.qlist(self.room:getOtherPlayers(from)) do
+			if to:hasFlag("shangyiTarget") then
+				to:setMark(("KnownBoth_%s_%s"):format(from:objectName(), to:objectName()), 1)
+-- Native disclosure owns private KnownBoth knowledge; observers never mutate it.
+				break
+			end
+		end
+	end
 end
 
 sgs.ai_use_value.heg_shangyi = 4
+
 sgs.ai_use_priority.heg_shangyi = 9
+
 sgs.ai_card_intention.heg_shangyi = 50
 
 sgs.ai_skill_invoke.heg_yicheng = function(self, data)
-	if not self:willShowForDefence() then
+	if not self:willShowForDefence() and not self:willShowForAttack() then
 		return false
 	end
 	return true
 end
 
 sgs.ai_skill_discard.heg_yicheng = function(self, discard_num, min_num, optional, include_equip)
-	if self.player:hasSkill("heg_hongyan") then
-		return self:askForDiscard("dummyreason", 1, 1, false, true)
+	if self.player:hasSkill("hongyan") then
+		return self:askForDiscard("dummyreason", discard_num, min_num, false, true)
 	end
 
 	local unpreferedCards = {}
 	local cards = sgs.QList2Table(self.player:getHandcards())
+
+	if self:needToThrowArmor() then
+		table.insert(unpreferedCards, self.player:getArmor():getId())
+	end
 
 	if self:getCardsNum("Slash") > 1 then
 		self:sortByKeepValue(cards)
@@ -358,10 +416,6 @@ sgs.ai_skill_discard.heg_yicheng = function(self, discard_num, min_num, optional
 		table.insert(unpreferedCards, self.player:getWeapon():getId())
 	end
 
-	if self:needToThrowArmor() then
-		table.insert(unpreferedCards, self.player:getArmor():getId())
-	end
-
 	if self.player:getOffensiveHorse() and self.player:getWeapon() then
 		table.insert(unpreferedCards, self.player:getOffensiveHorse():getId())
 	end
@@ -370,7 +424,13 @@ sgs.ai_skill_discard.heg_yicheng = function(self, discard_num, min_num, optional
 		if not self.player:isJilei(sgs.Sanguosha:getCard(unpreferedCards[index])) then return { unpreferedCards[index] } end
 	end
 
-	return self:askForDiscard("dummyreason", 1, 1, false, true)
+	return self:askForDiscard("dummyreason", discard_num, min_num, false, true)
+end
+
+sgs.ai_skill_choice.heg_yicheng = function(self, choices, data)
+	local owner = data and data:toPlayer()
+	if owner and self:isFriend(owner) then return "yes" end
+	return "no"
 end
 
 sgs.ai_skill_invoke.heg_qianhuan = function(self, data)
@@ -380,24 +440,62 @@ sgs.ai_skill_invoke.heg_qianhuan = function(self, data)
 	return true
 end
 
+sgs.ai_skill_cardask["@heg_qianhuan-put"] = function(self, data, pattern, target, target2)
+
+	local function qianhuan_CanPut(card)
+		local sorcery_ids = self.player:getPile("sorcery")
+		local suits = {"heart", "diamond", "spade", "club"}
+		for _,id in sgs.qlist(sorcery_ids) do
+			table.removeOne(suits, sgs.Sanguosha:getCard(id):getSuitString())
+		end
+		for _,suit in ipairs(suits) do
+			if card:getSuitString() == suit then
+				return true
+			end
+		end
+		return false
+	end
+
+	local cards = self.player:getCards("he")
+	cards=sgs.QList2Table(cards)
+	self:sortByKeepValue(cards)
+	if self.player:hasTreasure("WoodenOx") and not self.player:getPile("wooden_ox"):isEmpty() then
+		local WoodenOx = sgs.Sanguosha:getCard(self.player:getTreasure():getEffectiveId())
+		if self:getKeepValue(WoodenOx) > sgs.ai_keep_value.Peach then
+			table.removeOne(cards, WoodenOx)
+		end
+	end
+	for _,card in ipairs(cards) do
+		if qianhuan_CanPut(card) and (not isCard("Peach", card, self.player)) then
+			return card:toString()
+		end
+	end
+	return "."
+end
+
 local invoke_qianhuan = function(self, use)
 	if (use.from and self:isFriend(use.from)) then return false end
 	if use.to:isEmpty() then return false end
-	if use.card:isKindOf("Peach") then return false end
-	if use.card:isKindOf("Lightning") then return end
+	if use.card:isKindOf("Peach") or use.card:isKindOf("Analeptic") then return false end
+	if use.card:isKindOf("Lightning") or use.card:isKindOf("HKnownBoth") then return end
 	local to = use.to:first()
 	if use.card:isKindOf("Slash") and not self:slashIsEffective(use.card, to, use.from) then return end
-	if use.card:isKindOf("TrickCard") and not self:hasTrickEffective(use.card, to, use.from) then return end
+	if use.card:isKindOf("TrickCard") and not self:trickIsEffective(use.card, to, use.from) then return end
 	if self.player:getPile("sorcery"):length() == 1 then
-		if use.card:isKindOf("Slash") or use.card:isKindOf("Duel") or use.card:isKindOf("FireAttack") or use.card:isKindOf("BurningCamps")
-			or use.card:isKindOf("ArcheryAttack") or use.card:isKindOf("Drowning") or use.card:isKindOf("SavageAssault") then
+		if use.card:isKindOf("Slash") or use.card:isKindOf("Duel")  or use.card:isKindOf("HBurningCamps")
+			or use.card:isKindOf("ArcheryAttack")  or use.card:isKindOf("SavageAssault")
+			or (use.card:isKindOf("FireAttack") and to:getHp() == 1)
+			or (use.card:isKindOf("HDrowning") and to:getEquips():length() > 1) then
 			return true
 		end
-		if use.card:isKindOf("KnownBoth") or use.card:isKindOf("Dismantlement") or use.card:isKindOf("Indulgence") or use.card:isKindOf("SupplyShortage") then
-			--@todo
+		if (use.card:isKindOf("Indulgence") and self:getOverflow(to) > 1)
+		or (use.card:isKindOf("SupplyShortage") and to:getHandcardNum() < 2) then--乐、兵
+			return true
+		end
+		if (use.card:isKindOf("Snatch") or use.card:isKindOf("Dismantlement")) then--拆顺暂时不处理
 			return false
 		end
-		self.room:writeToConsole("invoke_qianhuan ? " .. use.card:getClassName())
+		--self.room:writeToConsole("invoke_qianhuan ? " .. use.card:getClassName())
 		return false
 	end
 	if to and to:objectName() == self.player:objectName() then
@@ -407,133 +505,66 @@ local invoke_qianhuan = function(self, use)
 		return not (use.from and use.from:objectName() == to:objectName())
 	end
 end
-sgs.ai_skill_use["@@heg_qianhuan"] = function(self)
+
+sgs.ai_skill_use["@@heg_qianhuan"] = function(self, prompt)
+	local pile = self.player:getPile("sorcery")
+	if pile:isEmpty() then return "." end
 	local use = self.player:getTag("qianhuan_data"):toCardUse()
-	local invoke = invoke_qianhuan(self, use)
-	if invoke then
-		return formationProxy("heg_qianhuan", self.player:getPile("sorcery"):first()):toString()
+	local cancel = use.card and not use.to:isEmpty() and invoke_qianhuan(self, use)
+	if not cancel then
+		-- BeforeCardsMoveBatch carries a move list rather than CardUseStruct;
+		-- the stable prompt carries the friendly recipient and delayed trick.
+		local fields = prompt:split(":")
+		local target = fields[3] and self.room:findPlayerByObjectName(fields[3])
+		cancel = target and self:isFriend(target)
+	end
+	if cancel then
+		return formationProxy("heg_qianhuan", pile:first()):toString()
 	end
 	return "."
 end
+
+function sgs.ai_cardneed.heg_zhendu(to, card, self)
+	return to:isKongcheng() and not self:needKongcheng(to)
+end
+
+sgs.ai_skill_invoke.heg_qiluan = true
 
 sgs.ai_skill_invoke.heg_jizhao = sgs.ai_skill_invoke.heg_niepan
 
 sgs.ai_skill_invoke.heg_zhangwu = true
 
-sgs.weapon_range.DragonPhoenix = 2
-sgs.ai_use_priority.DragonPhoenix = 2.400
-function sgs.ai_weapon_value.DragonPhoenix(self, enemy, player)
-	local lordliubei = nil
-	for _, p in sgs.qlist(self.room:getAlivePlayers()) do
-		if p:hasShownSkill("heg_zhangwu") then
-			lordliubei = p
-			break
-		end
-	end
-	if lordliubei and player:getWeapon() and not player:hasShownSkill("heg_xiaoji") then
+sgs.weapon_range.HDragonPhoenix = 2
+
+sgs.ai_use_priority.HDragonPhoenix = 2.400
+
+function sgs.ai_weapon_value.HDragonPhoenix(self, enemy, player)
+	local heg_lord_liubei = sgs.findPlayerByShownSkillName("heg_zhangwu")
+	if heg_lord_liubei and player:getWeapon() and not sgs.originalHegemonyHasShownSkills(player, sgs.lose_equip_skill) then
 		return -10
 	end
-	if enemy and enemy:getHp() <= 1 and (sgs.card_lack[enemy:objectName()]["Jink"] == 1 or getCardsNum("Jink", enemy, self.player) == 0) then
-		return 4.1
+	if enemy and enemy:getHp() <= 2 and enemy:getHandcardNum() <= 2 then--效果修改
+		--(sgs.card_lack[enemy:objectName()]["Jink"] == 1 or getCardsNum("Jink", enemy, self.player) == 0)
+		return 4.5
 	end
+	if sgs.originalHegemonyHasShownSkills(player, "heg_paoxiao|heg_paoxiao_xh|heg_suzhi|heg_xiongnve|heg_kuangcai") or (player:hasShownSkill("heg_baolie") and player:getHp() < 3) then
+		return 3.5
+	end
+	return 2.5
 end
 
-function sgs.ai_slash_weaponfilter.DragonPhoenix(self, to, player)
-	if player:distanceTo(to) > math.max(sgs.weapon_range.DragonPhoenix, player:getAttackRange()) then return end
+function sgs.ai_slash_weaponfilter.HDragonPhoenix(self, to, player)
+	if player:distanceTo(to) > math.max(sgs.weapon_range.HDragonPhoenix, player:getAttackRange()) then return end
+--[[
 	return getCardsNum("Peach", to, self.player) + getCardsNum("Jink", to, self.player) < 1
 		and (sgs.card_lack[to:objectName()]["Jink"] == 1 or getCardsNum("Jink", to, self.player) == 0)
+]]
+	return to:getHandcardNum() <= 2 or sgs.card_lack[to:objectName()]["Jink"] == 1 or getCardsNum("Jink", to, self.player) < 1
 end
 
 sgs.ai_skill_invoke.heg_DragonPhoenix = function(self, data)
-	if data:toString() == "revive" then return true end
-	local death = data:toDeath()
-	if death.who then return true
-	else
-		local to = data:toPlayer()
-		return self:doNotDiscard(to) == self:isFriend(to)
-	end
-end
-
-sgs.ai_skill_choice.heg_DragonPhoenix = function(self, choices, data)
-	local kingdom = data:toString()
-	choices_t = string.split(choices, "+")
-	if (kingdom == "wei") then
-		if (string.find(choices, "heg_guojia")) then
-			return "heg_guojia"
-		elseif (string.find(choices, "heg_xunyu")) then
-			return "heg_xunyu"
-		elseif (string.find(choices, "heg_lidian")) then
-			return "heg_lidian"
-		elseif (string.find(choices, "heg_zhanghe")) then
-			return "heg_zhanghe"
-		elseif (string.find(choices, "heg_caopi")) then
-			return "heg_caopi"
-		elseif (string.find(choices, "heg_zhangliao")) then
-			return "heg_zhangliao"
-		end
-
-		table.removeOne(choices_t, "heg_caohong")
-		table.removeOne(choices_t, "heg_zangba")
-		table.removeOne(choices_t, "heg_xuchu")
-		table.removeOne(choices_t, "heg_dianwei")
-		table.removeOne(choices_t, "heg_caoren")
-
-	elseif (kingdom == "shu") then
-		if (string.find(choices, "heg_mifuren")) then
-			return "heg_mifuren"
-		elseif (string.find(choices, "heg_pangtong")) then
-			return "heg_pangtong"
-		elseif (string.find(choices, "heg_lord_liubei")) then
-			return "heg_lord_liubei"
-		elseif (string.find(choices, "heg_liushan")) then
-			return "heg_liushan"
-		elseif (string.find(choices, "heg_jiangwanfeiyi")) then
-			return "heg_jiangwanfeiyi"
-		end
-
-		table.removeOne(choices_t, "heg_liubei")
-		table.removeOne(choices_t, "heg_guanyu")
-		table.removeOne(choices_t, "heg_zhangfei")
-		table.removeOne(choices_t, "heg_weiyan")
-		table.removeOne(choices_t, "heg_zhurong")
-		table.removeOne(choices_t, "heg_madai")
-
-	elseif (kingdom == "wu") then
-		if (string.find(choices, "heg_zhoutai")) then
-			return "heg_zhoutai"
-		elseif (string.find(choices, "heg_lusu")) then
-			return "heg_lusu"
-		elseif (string.find(choices, "heg_taishici")) then
-			return "heg_taishici"
-		elseif (string.find(choices, "heg_sunjian")) then
-			return "heg_sunjian"
-		end
-
-		table.removeOne(choices_t, "heg_sunce")
-		table.removeOne(choices_t, "heg_chenwudongxi")
-		table.removeOne(choices_t, "heg_luxun")
-		table.removeOne(choices_t, "heg_huanggai")
-
-	elseif (kingdom == "qun") then
-		if (string.find(choices, "heg_yuji")) then
-			return "heg_yuji"
-		elseif (string.find(choices, "heg_caiwenji")) then
-			return "heg_caiwenji"
-		elseif (string.find(choices, "heg_mateng")) then
-			return "heg_mateng"
-		elseif (string.find(choices, "heg_kongrong")) then
-			return "heg_kongrong"
-		elseif (string.find(choices, "heg_lord_zhangjiao")) then
-			return "heg_lord_zhangjiao"
-		end
-
-		table.removeOne(choices_t, "heg_dongzhuo")
-		table.removeOne(choices_t, "heg_tianfeng")
-		table.removeOne(choices_t, "heg_zhangjiao")
-
-	end
-	if #choices_t == 0 then choices_t = string.split(choices, "+") end
-	return choices_t[math.random(1, #choices_t)]
+	local target = data:toPlayer()
+	return not self:isFriend(target)
 end
 
 sgs.ai_skill_discard.heg_DragonPhoenix = function(self, discard_num, min_num, optional, include_equip)
@@ -546,23 +577,31 @@ sgs.ai_skill_discard.heg_DragonPhoenix = function(self, discard_num, min_num, op
 	local aux_func = function(card)
 		local place = self.room:getCardPlace(card:getEffectiveId())
 		if place == sgs.Player_PlaceEquip then
-			if card:isKindOf("SilverLion") and self.player:isWounded() then return -2 end
-
+			local few_hnum = self.player:getHandcardNum() < discard_num + 2 and not self:needKongcheng()
 			if card:isKindOf("Weapon") then
-				if self.player:getHandcardNum() < discard_num + 2 and not self:needKongcheng() then return 0
-				else return 2 end
+				return few_hnum and 0 or 2
 			elseif card:isKindOf("OffensiveHorse") then
-				if self.player:getHandcardNum() < discard_num + 2 and not self:needKongcheng() then return 0
-				else return 1 end
+				return few_hnum and 0 or 1
 			elseif card:isKindOf("DefensiveHorse") then return 3
 			elseif card:isKindOf("Armor") then
-				if self.player:hasSkill("heg_bazhen") then return 0
-				else return 4 end
-			else return 0 --@to-do: add the corrsponding value of Treasure
+				if self.player:getHp() == 1 and card:isKindOf("HBreastplate") then
+					return 99
+				end
+				return self:needToThrowArmor() and -2 or 4
+			elseif card:isKindOf("Treasure") then
+				if card:isKindOf("WoodenOx") then
+					if self.player:getPile("wooden_ox"):isEmpty() then
+						return few_hnum and 0 or 2
+					else
+						return 6
+					end
+				end
+				return few_hnum and 1 or 4
+			else return 0
 			end
 		else
-			if self.player:getMark("@heg_qianxi_red") > 0 and card:isRed() and not card:isKindOf("Peach") then return 0 end
-			if self.player:getMark("@heg_qianxi_black") > 0 and card:isBlack() then return 0 end
+			if self.player:getMark("##heg_qianxi+no_suit_red") > 0 and card:isRed() and not card:isKindOf("Peach") then return 0 end
+			if self.player:getMark("##heg_qianxi+no_suit_black") > 0 and card:isBlack() then return 0 end
 			if self:isWeak() then return 5 else return 0 end
 		end
 	end
@@ -576,26 +615,18 @@ sgs.ai_skill_discard.heg_DragonPhoenix = function(self, discard_num, min_num, op
 
 	table.sort(to_discard, compare_func)
 
+	if #to_discard == 2 then
+		if self.player:getHp() <= 1 and to_discard[1]:isKindOf("Jink") and not self.player:isJilei(to_discard[2])
+		and (to_discard[2]:isKindOf("Peach") or to_discard[2]:isKindOf("Analeptic")) then
+			return to_discard[2]:getEffectiveId()
+		end
+	end
+
 	for _, card in ipairs(to_discard) do
 		if not self.player:isJilei(card) then return {card:getEffectiveId()} end
 	end
 end
 
-sgs.ai_skill_invoke.heg_shengxi = function(self, data)
-	if not self:willShowForDefence() then
-		return false
-	end
-	if self:getOverflow() >= 0 then
-		local heg_erzhang = sgs.findPlayerByShownSkillName("heg_guzheng")
-		if heg_erzhang and self:isEnemy(heg_erzhang) then return false end
-	end
-	return true
-end
-
-
-
--- The common V2 gate owns availability and per-instance usage checks.
-sgs.ai_fill_skill.heg_shangyi = heg_shangyi_skill.getTurnUseCard
 for _, name in ipairs({"heg_heyi", "heg_tianfu", "heg_niaoxiang"}) do
     local skill_name = name
     local function summon(self)

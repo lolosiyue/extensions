@@ -232,7 +232,7 @@ sgs.ai_skill_choice.yingyang = function(self,choices,data)
 		return not amFrom and self:getCardsNum("Slash")>getCardsNum("Slash",from,self.player) and "down" or "up"
 	elseif reason=="zhiba_pindian" then
 		return amFrom and self:isFriend(to) and "down" or "up"
-	elseif string.find("tianyi,heg_shuangren,qiaoshui",reason) then
+	elseif string.find("tianyi,shuangren,qiaoshui",reason) then
 		return not amFrom and self:isFriend(from) and "down" or "up"
 	elseif string.find("dahe,tanhu,lieren,tanlan,jueji,xianzhen,zhuikong",reason) then
 		return "up"

@@ -509,7 +509,7 @@ function SmartAI:useCardmanbing(manbing,use)
 		then
 			local n2 = getCardsNum("Slash",enemy,self.player)
 			if self:needToLoseHp(self.player,nil,manbing,true) or n2<1 
-			or self:hasSkill("jianxiong") or self.player:getMark("shuangxiong")>0
+			or self:hasSkill("jianxiong") or self.player:property("shuangxiong_colors_turn"):toString() ~= ""
 			then else continue end
 			enemySlash = enemySlash+n2
 			if self.player:getPhase()<=sgs.Player_Play and math.random()<0.5

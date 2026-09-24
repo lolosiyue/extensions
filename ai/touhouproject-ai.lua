@@ -304,7 +304,7 @@ function SmartAI:CanUseAttackSkill(player)
 	if player:hasSkills("huashen|gongxin|mingce|ganlu|anxu|TH_SpearTheGungnir|TH_wugufengdeng|TH_Miracle_GodsWind|TH_Wonder_NwOBNS|TH_rengui|TH_nanti|"..
 	"TH_LifeGame|TH_thethiefmarisa|TH_BadFortune|TH_Hypnosis|TH_TerribleSouvenir|TH_liandemaihuo|TH_GreatestCaution|TH_GalacticIllusion|"..
 	"TH_CosmicMarionnette|TH_PhilosophersStone|TH_MoreUnscientific") then return true end
-	if player:hasSkill("shuangxiong") and player:getMark("shuangxiong") > 0 and player:getHandcardNum() > 3 then return true end
+	if player:hasSkill("shuangxiong") and player:property("shuangxiong_colors_turn"):toString() ~= "" and player:getHandcardNum() > 3 then return true end
 	if player:hasSkills("rende|nosrende|jieyin|zhiheng|nosguose|guhuo|quhu|tianyi|dimeng|shenji|manjuan|dahe|TH_wenwenxinwen|TH_MasterSpark") and player:getHandcardNum() > 1 then return true end
 	if player:hasSkills("fanjian|nosfanjian|qingnang|noslijian|lijian|qice|TH_huaidiao|TH_shengyusi|TH_Unscientific|TH_Science") and player:getHandcardNum() > 0 then return true end
 	if player:hasSkills("luanji|paoxiao|jizhi|qixi|xianzhen|yinling") and player:getHandcardNum() > 3 then return true end
@@ -3937,7 +3937,7 @@ sgs.ai_skill_use_func["#TH_liandemaihuoCARD"] = function(card, use, self)-------
 					local value = player:getCardCount()
 					if player:hasSkill("nosrende") then value = value - 2 end
 					if player:hasSkill("rende") and not player:hasUsed("RendeCard") then value = value - 1.3 end
-					if player:hasSkill("heg_lirang") then value = value - 1.6 end
+					if player:hasSkill("lirang") then value = value - 1.6 end
 					if player:hasSkill("xiaoji") then value = value - 1 end
 					if player:hasSkills("kofxiaoji|xuanfeng|nosxuanfeng") then value = value - 0.5 end
 					if self:willSkipPlayPhase(player) and self:getOverflow(player, true) < emax then value = value + 5 end

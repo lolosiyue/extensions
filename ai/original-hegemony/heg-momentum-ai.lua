@@ -1,16 +1,6 @@
--- V2 actions retain their skill ID through the common proxy.
-local function momentumV2Card(name, id)
-    local card = sgs.ActiveSkillCard()
-    card:setSkillName(name)
-    if id then card:addSubcard(id) end
-    return card
-end
-
--- Loaded only by the admitted Original Hegemony bundle in this Room VM.
-if not sgs.original_hegemony_ai_loading then return end
-
+-- Source: TODO/QSanguosha-For-Hegemony-xxyheaven/lua/ai/momentum-ai.lua (cf61c15).
 --[[********************************************************************
-	Copyright (c) 2013-2014 - QSanguosha-Rara
+	Copyright (c) 2013-2015 Mogara
 
   This file is part of QSanguosha-Hegemony.
 
@@ -26,11 +16,43 @@ if not sgs.original_hegemony_ai_loading then return end
 
   See the LICENSE file for more details.
 
-  QSanguosha-Rara
+  Mogara
 *********************************************************************]]
+local function momentumV2Card(name, id)
+    local card = sgs.ActiveSkillCard()
+    card:setSkillName(name)
+    if id then card:addSubcard(id) end
+    return card
+end
+
+if not sgs.original_hegemony_ai_loading then return end
+
+sgs.ai_skill_movecards.heg_xunxun = function(self, upcards, downcards, min_num, max_num)
+	local upcards_copy = table.copyFrom(upcards)
+	local down = {}
+	local id1 = self:askForAG(upcards_copy,false,"heg_xunxun")
+	down[1] = id1
+	table.removeOne(upcards_copy,id1)
+	local id2 = self:askForAG(upcards_copy,false,"heg_xunxun")
+	down[2] = id2
+	table.removeOne(upcards_copy,id2)
+	return upcards_copy,down
+end
+
+function sgs.ai_cardneed.heg_wangxi(to, card)
+	return card:isKindOf("AOE") or card:isKindOf("Crossbow")
+end
+
+sgs.wangxi_keep_value = {
+	Crossbow = 6,
+	SavageAssault = 5.2,
+	ArcheryAttack = 5.2
+}
+
 function sgs.ai_skill_invoke.heg_hengjiang(self, data)
 	if not self:willShowForMasochism() then return false end
 	local target = data:toPlayer()
+	if not target then target = data:toDamage().from end
 	if not target then return end
 	if self:isFriend(target) then
 		return false
@@ -47,6 +69,63 @@ sgs.ai_choicemade_filter.skillInvoke.heg_hengjiang = function(self, player, prom
 			sgs.updateIntention(player, current, 50)
 		end
 	end
+end
+
+sgs.ai_skill_cardask["@heg_qianxi-discard"] = function(self, data, pattern, target, target2)
+	local cards = self.player:getCards("he")
+	cards=sgs.QList2Table(cards)
+	self:sortByUseValue(cards, true)
+	self.qianxi_isred = cards[1]:isRed()
+	if cards[1]:isBlack() and #cards > 1 then
+		if cards[2]:isRed() and not cards[2]:isKindOf("Peach") then
+			self.qianxi_isred = cards[2]:isRed()
+			return cards[2]:toString()
+		end
+	end
+	return cards[1]:toString()--必须弃1
+end
+
+sgs.ai_skill_playerchosen.qianxi_target = function(self, targets)
+	local enemies = {}
+	local slash = self:getCard("Slash") or sgs.cloneCard("slash")
+
+	for _, target in sgs.qlist(targets) do
+		if not self:isFriend(target) and not target:isKongcheng() then
+			table.insert(enemies, target)
+		end
+	end
+	self:sort(enemies, "defenseSlash")
+
+	if #enemies == 1 then
+		return enemies[1]
+	else
+		if not self.qianxi_isred then
+			for _, enemy in ipairs(enemies) do
+				if enemy:hasShownSkill("qingguo") and self:slashIsEffective(slash, enemy) then return enemy end
+			end
+			for _, enemy in ipairs(enemies) do
+				if enemy:hasShownSkill("heg_kanpo") then return enemy end
+			end
+		else
+			for _, enemy in ipairs(enemies) do
+				if getKnownCard(enemy, self.player, "Jink", false, "h") > 0 and self:slashIsEffective(slash, enemy) and sgs.isGoodTarget(enemy, self.enemies, self) then return enemy end
+			end
+			for _, enemy in ipairs(enemies) do
+				if getKnownCard(enemy, self.player, "Peach", true, "h") > 0 or enemy:hasShownSkill("jijiu") then return enemy end
+			end
+			for _, enemy in ipairs(enemies) do
+				if getKnownCard(enemy, self.player, "Jink", false, "h") > 0 and self:slashIsEffective(slash, enemy) then return enemy end
+			end
+		end
+		return enemies[1]
+	end
+	return sgs.ai_skill_playerchosen.zero_card_as_slash(self, targets)--ai默认函数
+end
+
+sgs.ai_playerchosen_intention.qianxi_target = 60
+
+function sgs.ai_cardneed.heg_qianxi(to, card, self)
+	return card:isKindOf("Slash") or card:isKindOf("Analeptic") or (card:isRed() and getKnownCard(to, self.player, "red", false) < 2)
 end
 
 sgs.ai_skill_invoke.heg_guixiu = true
@@ -86,7 +165,9 @@ end
 
 sgs.ai_use_priority.heg_cunsi = 11
 
-sgs.ai_skill_invoke.heg_yongjue = true
+sgs.ai_skill_choice.heg_yongjue = function(self)
+	return "yes"
+end
 
 sgs.ai_skill_choice.heg_yingyang = function(self, choices, data)
 	local pindian = data:toPindian()
@@ -95,11 +176,12 @@ sgs.ai_skill_choice.heg_yingyang = function(self, choices, data)
 	local f_num, t_num = pindian.from_number, pindian.to_number
 	local amFrom = self.player:objectName() == from:objectName()
 
-	local table_pindian_friends = { "heg_tianyi", "heg_shuangren" }
-	if reason == "heg_quhu" then
-		if amFrom and self.player:hasSkill("heg_jieming") then
-			if f_num > 8 then return "jia3"
-			elseif self:getJiemingChaofeng(self.player) <= -6 then return "jian3"
+	local table_pindian_friends = { "tianyi", "heg_fenglve", "heg_fenglvezongheng" }
+	if reason == "quhu" then
+		local heg_xunyu = sgs.findPlayerByShownSkillName("heg_jieming")
+		if not amFrom and heg_xunyu and self:isFriend(heg_xunyu) then
+			if self:getJiemingDrawNum(heg_xunyu) >= 3 then return "jia3"
+			elseif f_num > 8 then return "jian3"
 			end
 		end
 		return "jia3"
@@ -139,9 +221,10 @@ sgs.ai_skill_use_func.heg_duanxie = function(card, use, self)
 end
 
 sgs.ai_card_intention.heg_duanxie = 60
-sgs.ai_use_priority.heg_duanxie = 0
 
-sgs.ai_skill_invoke.heg_fenming = function(self)
+sgs.ai_use_priority.HDuanxieCard = 0.5
+
+sgs.ai_skill_invoke.heg_fenming = function(self, data)
 	local value, count = 0, 0
 	for _, player in sgs.qlist(self.room:getAllPlayers()) do
 		if player:isChained() then
@@ -150,7 +233,7 @@ sgs.ai_skill_invoke.heg_fenming = function(self)
 				if self:needToThrowArmor(player) then
 					value = value + 1
 				elseif player:getHandcardNum() == 1 and self:needKongcheng(player) then
-					value = value + 0.2
+					value = value + 1
 				elseif self.player:canDiscard(player, "he") then
 					local dec = self:isWeak(player) and 1.2 or 0.8
 					if player:objectName() == self.player:objectName() then dec = dec / 1.5 end
@@ -167,28 +250,93 @@ sgs.ai_skill_invoke.heg_fenming = function(self)
 						value = value + dec
 					end
 				end
+			else
+				value = value + 0.5
 			end
 		end
 	end
-	--self.room:writeToConsole(value / count)
 	return value / count >= 0.2
+end
+
+sgs.ai_skill_exchange.heg_fenming = function(self)
+	local result = self:askForDiscard("dummy_reason", 1, 1, false, true)
+	if type(result) == "number" then return { result } end
+	return result
 end
 
 sgs.ai_skill_invoke.heg_hengzheng = function(self, data)
 	local value = 0
-	for _, player in sgs.qlist(self.room:getOtherPlayers(self.player)) do
-		value = value + self:getGuixinValue(player)
+	for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+		if p:isNude() and p:getJudgingArea():isEmpty() then continue end
+		if self:isFriend(p) then
+			local good = false
+			if not p:getJudgingArea():isEmpty() then
+				value = value + 1.5
+				good = true
+			end
+			if self:needToThrowArmor(p) then
+				value = value + 1.2
+				good = true
+			end
+			if p:getEquips():length() > 0 and sgs.originalHegemonyHasShownSkills(p, sgs.lose_equip_skill) then
+				value = value + 1
+				good = true
+			end
+			if p:hasShownSkill("heg_tuntian") then
+				value = value + 0.5
+				good = true
+			end
+			if self:needKongcheng(p, false, true) and p:getHandcardNum() == 1 then
+				value = value + 0.8
+				good = true
+			end
+			if not good then
+				value = value - 1
+			end
+		elseif self:isEnemy(p) then
+			if p:isNude() then
+				value = value - 1.5
+			else
+				if self:getDangerousCard(p) or self:getValuableCard(p) then
+					value = value + 0.8
+					if sgs.originalHegemonyHasShownSkills(p, sgs.lose_equip_skill) then
+						value = value - 1
+					end
+				elseif p:getEquips():isEmpty() then
+					if self:needKongcheng(p, false, true) and p:getHandcardNum() == 1 then
+						value = value - 0.8
+					end
+					if getKnownCard(p, self.player, "Peach", true, "h") > 0 or getKnownCard(p, self.player, "Analeptic", true, "h") > 0 then
+						value = value + 2 / p:getHandcardNum()
+					end
+				elseif p:isKongcheng() then
+					if p:getEquips():length() == 1 and self:needToThrowArmor(p) then
+						value = value - 1
+					end
+					if sgs.originalHegemonyHasShownSkills(p, sgs.lose_equip_skill) then
+						value = value - 1
+					end
+				end
+				if p:hasShownSkill("heg_tuntian") then
+					value = value - 0.5
+				end
+				value = value + 1
+			end
+		else
+			value = value + 1
+		end
 	end
-	return value >= 1.3
+	if value > 2 then
+		return true
+	end
+	return false
 end
 
 sgs.ai_skill_invoke.heg_chuanxin = function(self, data)
 	local damage = data:toDamage()
-
-	if damage.to:hasShownSkill("heg_niepan") and not damage.to:inHeadSkills("heg_niepan") and  damage.to:getMark("@nirvana") > 0 then
+	if damage.to:hasShownSkill("heg_niepan") and not damage.to:inHeadSkills("heg_niepan") and damage.to:getMark("@nirvana") > 0 then
 		return true
 	end
-
 	return not self:isFriend(damage.to)
 		and not self:hasHeavySlashDamage(self.player, damage.card, damage.to)
 		and not (damage.to:getHp() == 1 and not damage.to:getArmor())
@@ -262,20 +410,195 @@ sgs.ai_skill_use_func.heg_wendao = function(card, use, self)
 	use.card = card
 end
 
-sgs.ai_use_priority.heg_wendao = sgs.ai_use_priority.ZhihengCard or 2.8
+sgs.ai_use_priority.heg_wendao = sgs.ai_use_priority.HZhihengCard or 2.8
 
 sgs.ai_skill_invoke.heg_hongfa = true
 
-local getHongfaCard = function(pile)
-	for _, c in ipairs(pile) do
-		if sgs.Sanguosha:getCard(c):objectName() == "PeaceSpell" then return c end
-	end
-	for _, c in ipairs(pile) do
-		if sgs.Sanguosha:getCard(c):objectName() ~= "DragonPhoenix" then return c end
+local getHongfaCard = function(self,pile)
+	for _, id in ipairs(pile) do
+		local card = sgs.Sanguosha:getCard(id)
+		if card:isKindOf("HPeaceSpell") then
+			return id
+		elseif card:isKindOf("HDragonPhoenix") then
+			local lord = self.room:getLord("shu")
+			if not lord or self:isFriend(lord) then
+				return id
+			end
+		elseif card:isKindOf("HLuminousPearl") then
+			local lord = self.room:getLord("wu")
+			if not lord or self:isFriend(lord) then
+				return id
+			end
+		elseif card:isKindOf("HSixDragons") then
+			local lord = self.room:getLord("wei")
+			if not lord or self:isFriend(lord) then
+				return id
+			end
+		else
+			return id
+		end
 	end
 	if #pile > 0 then return pile[1] end
 	return nil
 end
+
+local huangjinsymbol_skill = {}
+
+huangjinsymbol_skill.name = "huangjinsymbol"
+
+table.insert(sgs.ai_skills, huangjinsymbol_skill)
+
+huangjinsymbol_skill.getTurnUseCard = function(self, inclusive)
+	local zj = self.room:getLord("qun")
+	if not zj or zj:getPile("heavenly_army"):isEmpty() or not self.player:willBeFriendWith(zj) then return end
+	local ints = sgs.QList2Table(zj:getPile("heavenly_army"))
+
+	local int = getHongfaCard(self,ints)
+	if int then
+		local card = sgs.Sanguosha:getCard(int)
+		local suit = card:getSuitString()
+		local number = card:getNumberString()
+		local card_id = card:getEffectiveId()
+		local card_str = string.format("slash:huangjinsymbol[%s:%s]=%d&", suit, number, card_id)
+		local slash = sgs.Card_Parse(card_str)
+		assert(slash)
+		return slash
+	end
+end
+
+-- HEG uses a distinct canonical skill ID while reusing the same public pile
+-- selection policy as the identity-mode donor skill.
+local heg_huangjinsymbol_skill = {}
+heg_huangjinsymbol_skill.name = "heg_huangjinsymbol"
+table.insert(sgs.ai_skills, heg_huangjinsymbol_skill)
+heg_huangjinsymbol_skill.getTurnUseCard = function(self, inclusive)
+	local lord = self.room:getLord("qun")
+	if not self.player:hasShownOneGeneral() or not lord or lord:getPile("heavenly_army"):isEmpty()
+		or not self.player:isFriendWith(lord) then return end
+	local ids = sgs.QList2Table(lord:getPile("heavenly_army"))
+	local id = getHongfaCard(self, ids)
+	if not id then return end
+	local material = sgs.Sanguosha:getCard(id)
+	local wire = string.format("slash:heg_huangjinsymbol[%s:%s]=%d&", material:getSuitString(), material:getNumberString(), material:getEffectiveId())
+	local slash = sgs.Card_Parse(wire)
+	assert(slash)
+	return slash
+end
+
+sgs.ai_cardsview.huangjinsymbol = function(self, class_name, player)
+	if class_name ~= "Slash" then return end
+	local zj = player:getLord()
+	if not zj or zj:getPile("heavenly_army"):isEmpty() or not self.player:willBeFriendWith(zj) then return end
+	local ints = zj:getPile("heavenly_army")
+	local card_str = {}
+	local HPeaceSpell, lord_equip
+	for _, int in sgs.qlist(ints) do
+		local card = sgs.Sanguosha:getCard(int)
+		local suit = card:getSuitString()
+		local number = card:getNumberString()
+		local id = card:getEffectiveId()
+		if card:isKindOf("HPeaceSpell") then
+			HPeaceSpell = string.format("slash:huangjinsymbol[%s:%s]=%d&", suit, number, id)
+		elseif card:isKindOf("HDragonPhoenix") or card:isKindOf("HLuminousPearl") or card:isKindOf("HSixDragons") then
+			lord_equip = string.format("slash:huangjinsymbol[%s:%s]=%d&", suit, number, id)
+		else
+			table.insert(card_str, string.format("slash:huangjinsymbol[%s:%s]=%d&", suit, number, id))
+		end
+	end
+	if HPeaceSpell then table.insert(card_str, 1, HPeaceSpell) end
+	if lord_equip then table.insert(card_str, lord_equip) end
+	return card_str
+end
+
+sgs.ai_cardsview.heg_huangjinsymbol = function(self, class_name, player)
+	if class_name ~= "Slash" then return end
+	local lord = player:getLord()
+	if not player:hasShownOneGeneral() or not lord or lord:getPile("heavenly_army"):isEmpty()
+		or not player:isFriendWith(lord) then return end
+	local ids = sgs.QList2Table(lord:getPile("heavenly_army"))
+	local cards = {}
+	for _, id in ipairs(ids) do
+		local card = sgs.Sanguosha:getCard(id)
+		local wire = string.format("slash:heg_huangjinsymbol[%s:%s]=%d&", card:getSuitString(), card:getNumberString(), card:getEffectiveId())
+		table.insert(cards, wire)
+	end
+	return cards
+end
+
+sgs.ai_skill_invoke.huangjinsymbol = true
+sgs.ai_skill_invoke.heg_huangjinsymbol = true
+
+sgs.ai_skill_askforag.heg_huangjinsymbol = function(self, card_ids)
+	return getHongfaCard(self, card_ids) or -1
+end
+
+sgs.ai_skill_exchange["huangjinsymbol"] = function(self,pattern,max_num,min_num,expand_pile)
+	global_room:writeToConsole("君角防止体力流失")
+	local ints = sgs.QList2Table(self.player:getPile("heavenly_army"))
+	local int = getHongfaCard(self,ints)
+	if int then
+		return {int}
+	end
+	return {}
+end
+
+sgs.ai_slash_prohibit.heg_PeaceSpell = function(self, from, enemy, card)
+	if from:hasShownSkill("heg_zhiman") then return false end
+	if enemy:hasArmorEffect("PeaceSpell") and card:isKindOf("NatureSlash")
+	and not IgnoreArmor(from, enemy) and not from:hasWeapon("IceSword") then return true end
+end
+
+function sgs.ai_armor_value.HPeaceSpell(player, self)
+	if sgs.originalHegemonyHasShownSkills(player, "heg_hongfa+heg_wendao") then return 1000 end
+--[[太平效果修改
+	if getCardsNum("Peach", player, player) + getCardsNum("Analeptic", player, player) == 0 and player:getHp() == 1 then
+		if player:hasArmorEffect("PeaceSpell") then return 99
+		else return -99
+		end
+	end
+]]
+	--进攻缺牌需要摸2怎么写？条件：目标1血，能使用杀等。如果能知道上一个杀目标就好写了
+	local v = 4.5
+	for _, p in ipairs(self:getFriendsNoself(player)) do
+		if player:isFriendWith(p) then
+			v = v + 0.5
+		end
+	end
+	if self:getOverflow(player) > 0 then
+		v = v + 0.5
+	end
+	if player:getMark("GlobalBattleRoyalMode") > 0 and player:hasArmorEffect("PeaceSpell") and player:getHp() > 1 then--鏖战别失去体力
+		v = v + 1.5
+	end
+	return v
+end
+
+sgs.ai_use_priority.HPeaceSpell = 0.75
+
+sgs.ai_skill_askforag.heg_hongfa = function(self, card_ids)
+    return getHongfaCard(self, card_ids) or -1
+end
+
+sgs.ai_skill_choice.hongfa_num = function(self, choices, data)
+    local count = data:toPlayerNum()
+    if count.m_reason == "heg_wuxin" or count.m_reason == "heg_hongfa" or count.m_reason == "HPeaceSpell" then
+        local options = choices:split("+")
+        return options[#options]
+    end
+    return "0"
+end
+
+sgs.ai_fill_skill.heg_guixiu = function(self)
+    return momentumV2Card("heg_guixiu")
+end
+
+sgs.ai_skill_use_func.heg_guixiu = function(card, use, self) use.card = card end
+
+sgs.ai_fill_skill.heg_fengshi = function(self) return momentumV2Card("heg_fengshi") end
+
+sgs.ai_skill_use_func.heg_fengshi = function(card, use, self) use.card = card end
+
+sgs.ai_skill_invoke.heg_fengshi = function(self, data) return self:isEnemy(data:toPlayer()) end
 
 sgs.ai_fill_skill.heg_hongfa_slash = function(self, inclusive)
 	local zj = self.room:getLord("qun")
@@ -294,66 +617,3 @@ sgs.ai_fill_skill.heg_hongfa_slash = function(self, inclusive)
 		return slash
 	end
 end
-
-sgs.ai_cardsview.heg_hongfa_slash = function(self, class_name, player)
-	if class_name ~= "Slash" then return end
-	local zj = player:getLord()
-	if (not zj or zj:getPile("heavenly_army"):isEmpty() or not zj:isFriendWith(player)) then return end
-	local ints = zj:getPile("heavenly_army")
-	local card_str = {}
-	local PeaceSpell, DragonPhoenix
-	for _, int in sgs.qlist(ints) do
-		local card = sgs.Sanguosha:getCard(int)
-		local suit = card:getSuitString()
-		local number = card:getNumberString()
-		local id = card:getEffectiveId()
-		if card:objectName() == "PeaceSpell" then
-			PeaceSpell = string.format("slash:heg_hongfa_slash[%s:%s]=%d&", suit, number, id)
-		elseif card:objectName() == "DragonPhoenix" then
-			DragonPhoenix = string.format("slash:heg_hongfa_slash[%s:%s]=%d&", suit, number, id)
-		else
-			table.insert(card_str, string.format("slash:heg_hongfa_slash[%s:%s]=%d&", suit, number, id))
-		end
-	end
-	if PeaceSpell then table.insert(card_str, 1, PeaceSpell) end
-	if DragonPhoenix then table.insert(card_str, DragonPhoenix) end
-	return card_str
-end
-
--- Selection is now carried by SkillContext; no synthetic card use or Player Tag.
-sgs.ai_skill_askforag.heg_hongfa = function(self, card_ids)
-    return getHongfaCard(card_ids) or -1
-end
-
-sgs.ai_skill_choice.heg_hongfa_num = function(self, choices, data)
-    local count = data:toPlayerNum()
-    if count.m_reason == "heg_wuxin" or count.m_reason == "heg_hongfa" or count.m_reason == "PeaceSpell" then
-        local options = choices:split("+")
-        return options[#options]
-    end
-    return "0"
-end
-
-sgs.ai_fill_skill.heg_guixiu = function(self)
-    return momentumV2Card("heg_guixiu")
-end
-sgs.ai_skill_use_func.heg_guixiu = function(card, use, self) use.card = card end
-sgs.ai_fill_skill.heg_fengshi = function(self) return momentumV2Card("heg_fengshi") end
-sgs.ai_skill_use_func.heg_fengshi = function(card, use, self) use.card = card end
-sgs.ai_skill_invoke.heg_fengshi = function(self, data) return self:isEnemy(data:toPlayer()) end
-
-sgs.ai_slash_prohibit.heg_PeaceSpell = function(self, from, enemy, card)
-	if enemy:hasArmorEffect("PeaceSpell") and card:isKindOf("NatureSlash") and not IgnoreArmor(from, enemy) then return true end
-	return
-end
-function sgs.ai_armor_value.PeaceSpell(player, self)
-	if sgs.originalHegemonyHasShownSkills(player, "heg_hongfa+heg_wendao") then return 1000 end
-	if getCardsNum("Peach", player, player) + getCardsNum("Analeptic", player, player) == 0 and player:getHp() == 1 then
-		if player:hasArmorEffect("PeaceSpell") then return 99
-		else return -99
-		end
-	end
-	return 3.5
-end
-
-sgs.ai_use_priority.PeaceSpell = 0.75

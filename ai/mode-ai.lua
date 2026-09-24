@@ -281,7 +281,31 @@ function sgs.registerStandardModeAI(mode, normal_identity, hegemony)
     if policies[mode] then return false end
     -- Native admission supplies the existing normal-mode classification. Kingdom
     -- and scenario victory policies need their own explicit mode registration.
-    if hegemony then return false end
+    if hegemony then
+        -- Role visibility is the authorization boundary.  A public careerist
+        -- recruitment can be known while its kingdom field is still empty.
+        local function faction(player)
+            if not player.role_visible then return nil end
+            local role = player.role
+            if type(role) == "string" and (role == "careerist" or role:match("^careerist_")) then
+                return role
+            end
+            local kingdom = player.kingdom
+            if type(kingdom) == "string" and kingdom ~= "" and kingdom ~= "unknown" and kingdom ~= "god" then
+                return kingdom
+            end
+        end
+        sgs.registerModeAI(mode, {relation=function(world, from_id, to_id)
+            if from_id == to_id then return "friend" end
+            local from, to = view_player(world, from_id), view_player(world, to_id)
+            if not from or not to then return "unknown" end
+            local a, b = faction(from), faction(to)
+            if not a or not b then return "neutral" end
+            if a == "careerist" or b == "careerist" then return "enemy" end
+            return a == b and "friend" or "enemy"
+        end})
+        return true
+    end
     local fixed_teams = {
         ["02_1v1"]={first={"lord"}, second={"renegade"}},
         ["03_1v2"]={first={"lord"}, second={"rebel"}},

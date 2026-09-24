@@ -2790,17 +2790,21 @@ function SmartAI:shouldUseRende()
 	then return true end
 end
 
-local rende_skill = {}
-rende_skill.name = "rende"
-table.insert(sgs.ai_skills,rende_skill)
-rende_skill.getTurnUseCard = function(self)
+-- Native V2 activation uses the same skill implementation in both modes.
+local function rendeV2Card(ids)
+	local card = sgs.ActiveSkillCard()
+	card:setSkillName("rende")
+	for _, id in ipairs(ids or {}) do card:addSubcard(id) end
+	return card
+end
+sgs.ai_fill_skill.rende = function(self)
 	--if self.player:isKongcheng() then return end
 	--if self:shouldUseRende() then
-		return sgs.Card_Parse("@RendeCard=.")
+		return rendeV2Card()
 	--end
 end
 
-sgs.ai_skill_use_func.RendeCard = function(card,use,self)
+sgs.ai_skill_use_func.rende = function(card,use,self)
 	local cards = sgs.QList2Table(self.player:getHandcards())
 	self:sortByUseValue(cards,true)
 	local notFound
@@ -2839,8 +2843,8 @@ sgs.ai_skill_use_func.RendeCard = function(card,use,self)
 		end
 		if friend:hasSkill("enyuan") and #cards>0
 		and not(self.room:getMode()=="04_1v3" and self.player:getMark("rende")==1)
-		then use.card = sgs.Card_Parse("@RendeCard="..h:getId().."+"..cards[1]:getId())
-		else use.card = sgs.Card_Parse("@RendeCard="..h:getId()) end
+		then use.card = rendeV2Card({h:getId(), cards[1]:getId()})
+		else use.card = rendeV2Card({h:getId()}) end
 		use.to:append(friend)
 		return
 	end
@@ -2857,7 +2861,7 @@ sgs.ai_skill_use_func.RendeCard = function(card,use,self)
 					if #to_give==2-self.player:getMark("rende") then break end
 				end
 				if #to_give>0 then
-					use.card = sgs.Card_Parse("@RendeCard="..table.concat(to_give,"+"))
+					use.card = rendeV2Card(to_give)
 					use.to:append(p)
 					break
 				end
@@ -2881,6 +2885,10 @@ sgs.ai_card_intention.RendeCard = function(self,card,from,tos)
 end
 
 sgs.dynamic_value.benefit.RendeCard = true
+sgs.ai_use_value.rende = sgs.ai_use_value.RendeCard
+sgs.ai_use_priority.rende = sgs.ai_use_priority.RendeCard
+sgs.ai_card_intention.rende = sgs.ai_card_intention.RendeCard
+sgs.dynamic_value.benefit.rende = true
 
 
 -- 仁德：有rende技能的角色，给他牌后他可以给回来（相当于帮他凑仁德回血）
@@ -2941,11 +2949,11 @@ sgs.ai_skill_use["@@rende"] = function(self,prompt)
 			end
 		end
 
-		local usecard = "@RendeCard="..card:getId()
+		local usecard = rendeV2Card({card:getId()})
 		if friend:hasSkill("enyuan") and #cards>0
 		and not (self.room:getMode()=="04_1v3" and self.player:getMark("nosrende")==1)
-		then usecard = "@RendeCard="..card:getId().."+"..cards[1]:getId() end
-		return usecard.."->"..friend:objectName()
+		then usecard = rendeV2Card({card:getId(), cards[1]:getId()}) end
+		return usecard:toString().."->"..friend:objectName()
 	end
 end
 
@@ -4748,29 +4756,27 @@ end
 sgs.ai_skill_use_func.ChuliCard = function(card,use,self)
 	self.chuli_id_choice = {}
 	local players = self:findPlayerToDiscard("he",false,true)
-	local kingdoms = {}
-	local targets = {}
+	local targets = sgs.PlayerList()
+	-- Reuse the card's legality check so identity and Hegemony target rules stay shared.
 	for _,player in ipairs(players)do
-		if self:isFriend(player) and not table.contains(kingdoms,player:getKingdom()) then
-			table.insert(targets,player)
-			table.insert(kingdoms,player:getKingdom())
+		if self:isFriend(player) and card:targetFilter(targets,player,self.player) then
+			targets:append(player)
 		end
 	end
 	for _,player in ipairs(players)do
-		if not table.contains(targets,player,true) and not table.contains(kingdoms,player:getKingdom()) then
-			table.insert(targets,player)
-			table.insert(kingdoms,player:getKingdom())
+		if not targets:contains(player) and card:targetFilter(targets,player,self.player) then
+			targets:append(player)
 		end
 	end
-	if #targets==0 then return end
-	for _,p in ipairs(targets)do
+	if targets:isEmpty() then return end
+	for _,p in sgs.qlist(targets)do
 		local id = self:askForCardChosen(p,"he","dummyreason",sgs.Card_MethodDiscard)
 		local chosen_card
 		if id then chosen_card = sgs.Sanguosha:getCard(id) end
 		if id and chosen_card and (self:isFriend(p) or not p:hasEquip(chosen_card) or sgs.Sanguosha:getCard(id):getSuit()~=sgs.Card_Spade) then
 			if not use.card then use.card = card end
 			self.chuli_id_choice[p:objectName()] = id
-			use.to:append(p)
+			if use.to then use.to:append(p) end
 		end
 	end
 end

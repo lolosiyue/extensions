@@ -123,7 +123,7 @@ sgs.ai_skill_invoke.shenzhi = function(self,data)
 	if self.player:getHandcardNum()>=3 then return false end
 	if self.player:getHandcardNum()>=self.player:getHp() and self.player:isWounded() then return true end
 	if self.player:hasSkill("beifa") and self.player:getHandcardNum()==1 and self:needKongcheng() then return true end
-	if self.player:hasSkill("heg_sijian") and self.player:getHandcardNum()==1 then return true end
+	if self.player:hasSkill("sijian") and self.player:getHandcardNum()==1 then return true end
 	return false
 end
 
@@ -373,40 +373,49 @@ sgs.ai_use_value.fenxun = 5.5
 sgs.ai_use_priority.fenxun = 8
 sgs.ai_card_intention.fenxun = 50
 
-sgs.ai_fill_skill.heg_xiongyi = function(self)
+sgs.ai_fill_skill.xiongyi = function(self)
 	if self.player:getMark("@arise") < 1 then return end
+	if not sgs.GetConfig("EnableHegemony", false) and self:isWeak() then
+		return hegemonyV2Card("xiongyi")
+	end
 
 	if self.player:hasShownSkill(sgs.Sanguosha:getSkill("heg_baoling")) then
-		return hegemonyV2Card("heg_xiongyi")
+		return hegemonyV2Card("xiongyi")
 	end
 
 	for _, friend in ipairs(self.friends) do
-		if (self:objectiveLevel(friend) == 2 or self.player:isFriendWith(friend)) and self:isWeak(friend) then
-			return hegemonyV2Card("heg_xiongyi")
+		if (not sgs.GetConfig("EnableHegemony", false) or self:objectiveLevel(friend) == 2 or self.player:isFriendWith(friend)) and self:isWeak(friend) then
+			return hegemonyV2Card("xiongyi")
 		end
 	end
 	if sgs.GetConfig("EnableHegemony", false) and sgs.originalHegemonyGameProcess() == "qun>>>" then
-		return hegemonyV2Card("heg_xiongyi")
+		return hegemonyV2Card("xiongyi")
 	end
 end
 
-sgs.ai_skill_use_func.heg_xiongyi = function(card, use, self)
+sgs.ai_skill_use_func.xiongyi = function(card, use, self)
 	use.card = card
+	-- Identity chooses beneficiaries; Hegemony determines its friends in the skill.
+	if not sgs.GetConfig("EnableHegemony", false) and use.to then
+		for _, friend in ipairs(self.friends_noself) do
+			if not self:needKongcheng(friend, true) then use.to:append(friend) end
+		end
+	end
 end
 
-sgs.ai_card_intention.heg_xiongyi = -80
-sgs.ai_use_priority.heg_xiongyi = 9.31
+sgs.ai_card_intention.xiongyi = -80
+sgs.ai_use_priority.xiongyi = 9.31
 
 sgs.ai_skill_invoke.heg_mingshi = true
 
-sgs.ai_skill_invoke.heg_lirang = function(self, data)
+sgs.ai_skill_invoke.lirang = function(self, data)
 	if not hegemonyWillShow(self) then
 		return false
 	end
 	return #self.friends_noself > 0
 end
 
-sgs.ai_skill_askforyiji.heg_lirang = function(self, card_ids)
+sgs.ai_skill_askforyiji.lirang = function(self, card_ids)
 	self:updatePlayers()
 	local cards = {}
 	for _, card_id in ipairs(card_ids) do
@@ -429,7 +438,7 @@ sgs.ai_skill_askforyiji.heg_lirang = function(self, card_ids)
 	return nil, -1
 end
 
-sgs.ai_skill_playerchosen.heg_shuangren = function(self, targets)
+sgs.ai_skill_playerchosen.shuangren = function(self, targets)
 	if self.player:isKongcheng() then return nil end
 	if not hegemonyWillShow(self) then return nil end
 	if self.player:getMark("ViewAsSkill_shuangxiongEffect") > 0 and self.player:hasSkill("shuangxiong") then return nil end
@@ -449,13 +458,13 @@ sgs.ai_skill_playerchosen.heg_shuangren = function(self, targets)
 			local enemy_max_card = self:getMaxCard(enemy)
 			local enemy_max_point = enemy_max_card and enemy_max_card:getNumber() or 100
 			if targets:contains(enemy) and max_point > enemy_max_point then
-				self.heg_shuangren_card = max_card:getEffectiveId()
+				self.shuangren_card = max_card:getEffectiveId()
 				return enemy
 			end
 		end
 		for _, enemy in sgs.qlist(dummy_use.to) do
 			if targets:contains(enemy) and max_point >= 10 then
-				self.heg_shuangren_card = max_card:getEffectiveId()
+				self.shuangren_card = max_card:getEffectiveId()
 				return enemy
 			end
 		end
@@ -463,14 +472,14 @@ sgs.ai_skill_playerchosen.heg_shuangren = function(self, targets)
 	return nil
 end
 
-function sgs.ai_skill_pindian.heg_shuangren(minusecard, self, requestor)
+function sgs.ai_skill_pindian.shuangren(minusecard, self, requestor)
 	local maxcard = self:getMaxCard()
 	return self:isFriend(requestor) and self:getMinCard() or (maxcard:getNumber() < 6 and minusecard or maxcard)
 end
 
-sgs.ai_skill_playerchosen["heg_shuangren_slash"] = sgs.ai_skill_playerchosen.zero_card_as_slash
-sgs.ai_playerchosen_intention.heg_shuangren = 20
-sgs.ai_cardneed.heg_shuangren = sgs.ai_cardneed.bignumber
+sgs.ai_skill_playerchosen["shuangren_slash"] = sgs.ai_skill_playerchosen.zero_card_as_slash
+sgs.ai_playerchosen_intention.shuangren = 20
+sgs.ai_cardneed.shuangren = sgs.ai_cardneed.bignumber
 
 sgs.ai_skill_invoke.heg_suishi = function(self, data)
 	local event = data:toInt()
@@ -478,19 +487,19 @@ sgs.ai_skill_invoke.heg_suishi = function(self, data)
 	return true
 end
 
-sgs.ai_skill_playerchosen.heg_sijian = function(self, targets)
+sgs.ai_skill_playerchosen.sijian = function(self, targets)
 	-- The shared helper returns a ranked list; the callback requires one legal player.
-    for _, target in ipairs(self:findPlayerToDiscard("he", false, true, targets, "heg_sijian")) do
+    for _, target in ipairs(self:findPlayerToDiscard("he", false, true, targets, "sijian")) do
         if targets:contains(target) then return target end
     end
     return nil
 end
 
-sgs.ai_cardneed.heg_sijian = function(to, card, self)
+sgs.ai_cardneed.sijian = function(to, card, self)
     return to:isKongcheng() and not self:needKongcheng(to)
 end
 
-sgs.ai_playerchosen_intention.heg_sijian = function(self, from, to)
+sgs.ai_playerchosen_intention.sijian = function(self, from, to)
 	local intention = 80
 	if (to:hasShownSkill("kongcheng") and to:getHandcardNum() == 1) or self:needToThrowArmor(to) then
 		intention = 0

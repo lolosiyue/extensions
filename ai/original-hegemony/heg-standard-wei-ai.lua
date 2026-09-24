@@ -446,7 +446,7 @@ end
 
 function sgs.ai_slash_prohibit.tiandu(self, from, to)
 	if self:canLiegong(to, from) then return false end
-	if sgs.originalHegemonyHasShownSkills(from, "heg_tieqi|heg_tieqi_xh|heg_jianchu") then return false end
+	if sgs.originalHegemonyHasShownSkills(from, "heg_tieqi|heg_tieqi_xh|tenyearjianchu") then return false end
 	if self:isEnemy(to) and self:hasEightDiagramEffect(to) and not IgnoreArmor(from, to) and to:hasShownSkill("qingguo") then return true end
 	if self:isEnemy(to) and self:hasEightDiagramEffect(to) and not IgnoreArmor(from, to) and #self.enemies > 1 then return true end
 end
@@ -496,7 +496,7 @@ sgs.ai_need_damaged.heg_yiji = function (self, attacker, player)
 	if not player:hasShownSkill("heg_yiji") then return end
 	local need_card = false
 	local current = self.room:getCurrent()
-	if self:hasCrossbowEffect(current) or current:hasShownSkill("heg_paoxiao") or current:hasFlag("heg_shuangxiong") then need_card = true end
+	if self:hasCrossbowEffect(current) or current:hasShownSkill("heg_paoxiao") or current:hasFlag("shuangxiong") then need_card = true end
 	if sgs.originalHegemonyHasShownSkills(current, "jieyin|jijiu") and self:getOverflow(current) <= 0 then need_card = true end
 	if self:isFriend(current, player) and need_card then return true end
 
