@@ -24,9 +24,9 @@ sgs.Sanguosha:setAudioType("lvlingqi", "wushuang", "5,6")
 sgs.Sanguosha:setAudioType("tenyear_huaxiong", "tenyearyaowu", "1,2")
 sgs.Sanguosha:setAudioType("mobilemobilemou_huaxiong", "tenyearyaowu", "3,4")
 --刘表
+sgs.Sanguosha:setAudioType("nos_liubiao", "noszishou", "1,2")
 sgs.Sanguosha:setAudioType("liubiao", "zishou", "1,2")
-sgs.Sanguosha:setAudioType("new_liubiao", "zishou", "1,2")
-sgs.Sanguosha:setAudioType("ol_liubiao", "zishou", "1,2")
+sgs.Sanguosha:setAudioType("ol_liubiao", "olzishou", "1,2")
 sgs.Sanguosha:setAudioType("mobile_liubiao", "zishou", "4,5")
 --简雍
 sgs.Sanguosha:setAudioType("jianyong", "zongshih", "1,2")
@@ -5229,7 +5229,7 @@ olruishibf2 = sgs.CreateTargetModSkill {
 			or card:isRed() and from:getMark("keolduoshou_red-Clear") < 1 and from:hasSkill("keolduoshou")
 			or to and to:getMark("&sscybpingding") > 0 and from:hasSkill("yingba")
 			or from:hasFlag("dlszCardBuff") and from:hasSkill("ol_shengzhi")
-			or from:getMark(to:objectName() .. "SkillEffect24-SelfClear") > 0
+			or to and from:getMark(to:objectName() .. "SkillEffect24-SelfClear") > 0
 			or card:isKindOf("TrickCard") and from:hasSkill("mouqicai")
 			or card:hasFlag("ofjunweiBf0")
 		then

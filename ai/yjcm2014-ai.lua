@@ -85,7 +85,7 @@ sgs.ai_skill_use["@@sidi"] = function(self)
 	return "."
 end
 
-sgs.ai_skill_cardask["@newsidi-discard"] = function(self,data,pattern)
+sgs.ai_skill_cardask["@ol_sidi-discard"] = function(self,data,pattern)
 	local target = self.room:getCurrent()
     local cards = self.player:getCards("he")
     cards = sgs.QList2Table(cards) -- 将列表转换为表

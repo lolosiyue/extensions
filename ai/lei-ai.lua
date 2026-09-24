@@ -848,14 +848,14 @@ sgs.ai_skill_playerchosen.jieyingg = function(self,targets)
 	local second
 	for _,enemy in sgs.list(self.enemies)do
 		if enemy:faceUp() and not enemy:hasSkills("tenyearliegong|tieji") and not self:needKongcheng(enemy) 
-		and not (enemy:hasSkills("rende|nosrende|olrende|tenyearrende|mingjian|newmingjian|mizhao") and self:findFriendsByType(sgs.Friend_Draw,enemy)) then
+		and not (enemy:hasSkills("rende|nosrende|olrende|tenyearrende|nosmingjian|mingjian|mizhao") and self:findFriendsByType(sgs.Friend_Draw,enemy)) then
 			if not enemy:inMyAttackRange(self.player) or enemy:getHandcardNum()>3 or self:hasSkills(sgs.notActive_cardneed_skill,enemy) then return enemy end
 			if not second then second = enemy end
 		end
 	end
 	self:sort(self.friends_noself,"handcard")
 	for _,friend in sgs.list(self.friends_noself)do
-		if self:needKongcheng(friend) or friend:hasSkills("tenyearliegong|tieji|rende|nosrende|olrende|tenyearrende|mingjian|newmingjian|mizhao") then
+		if self:needKongcheng(friend) or friend:hasSkills("tenyearliegong|tieji|rende|nosrende|olrende|tenyearrende|nosmingjian|mingjian|mizhao") then
 			return friend
 		end
 	end

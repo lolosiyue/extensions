@@ -2896,7 +2896,7 @@ end
 
 --自守
 sgs.ai_skill_invoke.tenyearzishou = function(self,data)
-	return sgs.ai_skill_invoke.zishou(self,data)
+	return sgs.ai_skill_invoke.noszishou(self,data)
 end
 
 sgs.ai_skill_use["@@tenyearzishou"] = function(self,prompt,method)

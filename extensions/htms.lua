@@ -2160,29 +2160,6 @@ sgs.LoadTranslationTable {
 	["tjdzf$"] = "anim=skill/tjdzf",
 
 }
---切换背景
-function file_exists(name)
-	local f = io.open(name, "r")
-	if f ~= nil then
-		io.close(f)
-		return true
-	else return false end
-end
-
-local n = 0
-for i = 1, 998, 1 do
-	if file_exists("image/system/backdrop/" .. i .. ".jpg") then
-		n = i
-	else
-		break
-	end
-end
-
-if n > 0 then
-	sgs.SetConfig("BackgroundImage", "image/system/backdrop/" .. math.random(1, n) .. ".jpg")
-	sgs.SetConfig("TableBgImage", "image/system/backdrop/" .. math.random(1, n) .. ".jpg")
-end
-
 --信息发送
 function printTable(t, k, v)
 	for k, v in ipairs(t) do

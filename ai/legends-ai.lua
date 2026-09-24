@@ -287,7 +287,7 @@ function getSkillTarget(self, trick, targets)
 		if self:hasSkills(skills, enemy) then 
 			value = value + 1 
 		end
-		if enemy:hasSkill("zishou") then 
+		if enemy:hasSkill("noszishou") then 
 			value = value + enemy:getLostHp() 
 		end
 		if self:isWeak(enemy) then 

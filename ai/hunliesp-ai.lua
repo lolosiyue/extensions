@@ -333,7 +333,7 @@ end
 sgs.ai_skill_playerchosen.sgkgodjieying = function(self, targets)
 	local target
 	for _, pe in sgs.qlist(targets) do
-		if self:isEnemy(pe) and pe:hasSkills("yongsi|tenyearzhiheng|zhiheng|sgkgodluocha|zishou|xiaoji|haoshi|mou_yingzi|yingzi|sgkgodguixin|fenyin|pingcai|tenyearfenyin") then
+		if self:isEnemy(pe) and pe:hasSkills("yongsi|tenyearzhiheng|zhiheng|sgkgodluocha|noszishou|xiaoji|haoshi|mou_yingzi|yingzi|sgkgodguixin|fenyin|pingcai|tenyearfenyin") then
 			target = pe
 			break
 		end

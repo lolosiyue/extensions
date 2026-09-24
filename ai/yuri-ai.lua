@@ -6005,7 +6005,7 @@ end
 -- end
 
 -- 給牌AI範例，使用的是room:askForYiji(player, hands, "pinghe", false, false, false, 1)的程式碼(非本AI範例，但同格式)
--- sgs.ai_skill_askforyiji.olmiji = function(self, card_ids)
+-- sgs.ai_skill_askforyiji.mobilemiji = function(self, card_ids)
     
     -- local available_friends = {}
     -- for _, friend in ipairs(self.friends) do
