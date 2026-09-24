@@ -353,7 +353,8 @@ function SmartAIView:getChaofeng(player)
     if not player then return nil end
     local value = sgs.ai_chaofeng[player:objectName()]
     if type(value) == "function" then value = value(self, player) end
-    return finite_number(value) and value or (value == nil and 0 or nil)
+    -- Missing policy data remains uncovered; zero must be an explicit value.
+    return finite_number(value) and value or nil
 end
 
 -- These two evaluators are the pure-value counterparts of evaluateWeapon and
@@ -1570,11 +1571,20 @@ local function apply_use_revises(self, card, use, strategy)
     local excluded = use.scratch.revised_targets or {}
     use.scratch.revised_targets = excluded
     for attempt = 1, #players + 1 do
+        -- A strategy may replace the card; query only its authority-issued ticket.
+        local candidate = self:getCardCandidate(use.card:getEffectiveId())
+        if not candidate then ai_unsupported("proposed card has no authority candidate", "candidate") end
         local targets = use.to
-        if #targets == 0 and use.card:targetFixed() then targets = {self.player} end
+        if #targets == 0 then
+            if type(candidate.targetFixed) ~= "function" then
+                ai_unsupported("target mode is unknown", "targets")
+            end
+            local fixed = candidate:targetFixed()
+            if fixed == nil then ai_unsupported("target mode is unknown", "targets") end
+            if fixed then targets = {self.player} end
+        end
         if use.card:isKindOf("AOE") or use.card:isKindOf("GlobalEffect") then
-            local candidate = self:getCardCandidate(use.card:getEffectiveId())
-            local names = candidate and candidate:getAffectedTargets()
+            local names = candidate:getAffectedTargets()
             if not names then ai_unsupported("implicit effect targets are unknown", "ai_target_revises") end
             targets = AIList.new({})
             for _, name in ipairs(names) do
