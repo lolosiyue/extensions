@@ -51,48 +51,68 @@ elseif event  == sgs.Damage then
 }
 ]]
 
-Qinggang = sgs.CreateTriggerSkill {
+Qinggang = sgs.CreateTriggerSkillV2 {
 	name = "Qinggang",
 	events = { sgs.Damage },
 	priority = 2,
 	frequency = sgs.Skill_Compulsory,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		if event == sgs.Damage then
-			local damage = data:toDamage()
-			if damage.from:hasSkill(self:objectName()) and damage.from:objectName() ~= damage.to:objectName() then
-				if damage.from:isWounded() then
-					room:broadcastSkillInvoke("longhun") --音效
-					local recover = sgs.RecoverStruct()
-					recover.who = damage.from
-					recover.recover = damage.damage
-					--room:recover(damage.from, recover)
-					room:sendCompulsoryTriggerLog(damage.from, "Qinggang", true)
-				end
-			end
+	can_trigger = function(skill, event, room, player, data)
+		if event ~= sgs.Damage then return false end
+		local damage = data:toDamage()
+		if damage.from and damage.to
+			and damage.from:objectName() == player:objectName()
+			and player:hasSkill(skill:objectName())
+			and damage.from:objectName() ~= damage.to:objectName()
+			and damage.from:isWounded() then
+			return skill:objectName()
 		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local damage = ctx.original_data:toDamage()
+		room:broadcastSkillInvoke("longhun") --音效
+		local recover = sgs.RecoverStruct()
+		recover.who = damage.from
+		recover.recover = damage.damage
+		--room:recover(damage.from, recover)
+		room:sendCompulsoryTriggerLog(damage.from, "Qinggang", true)
+		return false
 	end,
 }
 --攻击距离
 
-luanixi = sgs.CreateAttackRangeSkill {
+luanixi = sgs.CreateAttackRangeSkillV2 {
 	name = "luanixi",
-	extra_func = function(self, player, include_weapon)
-		if player:hasSkill("luanixi") then
+	holder_selector = sgs.CorrectSkill_Primary,
+	correct_func = function(skill, ctx)
+		local player = ctx:getHolder()
+		if player and player:hasSkill("luanixi") then
 			return 0
 			-- return player:getMark("&fenyong_y") + 4
 		end
 	end,
 }
 
-luanixi_tr = sgs.CreateTriggerSkill {
+luanixi_tr = sgs.CreateTriggerSkillV2 {
 	name = "#luanixi_tr",
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.Damaged, sgs.DrawNCards, sgs.TurnStart, sgs.RoundStart },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		if not player or not player:isAlive() or not player:hasSkill(skill:objectName()) then
+			return false
+		end
+		if event == sgs.DrawNCards then
+			--if player:isWounded() then
+			if player:getPhase() ~= sgs.Player_Draw then return false end
+			local draw = data:toDraw()
+			if draw.reason ~= "draw_phase" then return false end
+			--end
+		end
+		return skill:objectName()
+	end,
+	on_effect = function(skill, event, room, player, ctx)
 		if event == sgs.Damaged then
-			local damage = data:toDamage()
+			local damage = ctx.original_data:toDamage()
 			room:broadcastSkillInvoke("longdan") --音效
 			player:gainMark("&fenyong_y", damage.damage)
 			for i = 1, damage.damage, 1 do
@@ -102,25 +122,18 @@ luanixi_tr = sgs.CreateTriggerSkill {
 					player:drawCards(x)
 				end
 			end
-			for _, skill in sgs.qlist(player:getVisibleSkillList()) do
-				if skill:getFrequency(player) == sgs.Skill_Wake then
-					player:setCanWake(skill:objectName(), skill:objectName())
+			for _, sk in sgs.qlist(player:getVisibleSkillList()) do
+				if sk:getFrequency(player) == sgs.Skill_Wake then
+					player:setCanWake(sk:objectName(), sk:objectName())
 				end
 			end
 		elseif event == sgs.DrawNCards then
-			--if player:isWounded() then
-			if player:getPhase() == sgs.Player_Draw then
-				local draw = data:toDraw()
-				if draw.reason ~= "draw_phase" then
-					return false
-				end
-				-- room:loseHp(player, player:getHp()-1)
-				room:sendCompulsoryTriggerLog(player, "luanixi", true)
-				draw.num = draw.num + 4
-				-- data:setValue(draw)
-				room:broadcastSkillInvoke("juejing")
-			end
-			--end
+			local draw = ctx.original_data:toDraw()
+			-- room:loseHp(player, player:getHp()-1)
+			room:sendCompulsoryTriggerLog(player, "luanixi", true)
+			draw.num = draw.num + 4
+			-- ctx.original_data:setValue(draw)
+			room:broadcastSkillInvoke("juejing")
 		elseif event == sgs.RoundStart then
 			player:gainAnExtraTurn()
 		elseif event == sgs.TurnStart then
@@ -131,9 +144,9 @@ luanixi_tr = sgs.CreateTriggerSkill {
 			-- room:doAnimate(2,"skill=Dynamic:yo")
 			room:doLightbox("spine=test/XingXiang", 3000, 0)
 			player:gainMark("@testing", 1)
-			for _, skill in sgs.qlist(player:getVisibleSkillList()) do
-				if skill:getFrequency(player) == sgs.Skill_Wake then
-					player:setCanWake(skill:objectName(), skill:objectName())
+			for _, sk in sgs.qlist(player:getVisibleSkillList()) do
+				if sk:getFrequency(player) == sgs.Skill_Wake then
+					player:setCanWake(sk:objectName(), sk:objectName())
 				end
 			end
 
@@ -158,7 +171,7 @@ luanixi_tr = sgs.CreateTriggerSkill {
 				end
 			end
 			if not ids:isEmpty() then
-				-- local id = room:askForAG(player, ids, false, self:objectName())
+				-- local id = room:askForAG(player, ids, false, skill:objectName())
 				local to_handcard_x = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 				for _, id in sgs.qlist(ids) do
 					to_handcard_x:addSubcard(id)
@@ -171,12 +184,15 @@ luanixi_tr = sgs.CreateTriggerSkill {
 				-- room:setPlayerProperty(p, "kingdom", sgs.QVariant("wei"))
 			end
 		end
+		return false
 	end,
 }
-luanixi_Keep = sgs.CreateMaxCardsSkill {
+luanixi_Keep = sgs.CreateMaxCardsSkillV2 {
 	name = "#luanixi_Keep",
-	extra_func = function(self, target)
-		if target:hasSkill(self:objectName()) then
+	holder_selector = sgs.CorrectSkill_Primary,
+	correct_func = function(skill, ctx)
+		local target = ctx:getHolder()
+		if target and target:hasSkill(skill:objectName()) then
 			return target:getMark("&fenyong_y")
 			-- return 0
 		else
@@ -185,12 +201,18 @@ luanixi_Keep = sgs.CreateMaxCardsSkill {
 	end,
 }
 
-debugchangehero = sgs.CreateTriggerSkill {
+debugchangehero = sgs.CreateTriggerSkillV2 {
 	name = "debugchangehero",
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.GameReady },
 	priority = 100,
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if player and player:isAlive() and player:hasSkill(skill:objectName()) then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
 		local playerlist = room:getOtherPlayers(player) -- 获取所有角色名单
 		room:handleAcquireDetachSkills(player, "-debugchangehero", false) -- 失去此技能
 		local general_table = {}
@@ -220,6 +242,7 @@ debugchangehero = sgs.CreateTriggerSkill {
 				table.removeOne(general_table, new_general) -- 移除
 			end
 		end
+		return false
 	end,
 }
 
@@ -246,20 +269,24 @@ gz_zhaoyun:addSkill("feiyang")
 
 extension:insertRelatedSkills("luanixi", "#luanixi_Keep")
 
-debug_skill = sgs.CreateTriggerSkill {
+debug_skill = sgs.CreateTriggerSkillV2 {
 	name = "debug_skill",
 	events = { sgs.GameStart },
 	global = true,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
 		if event == sgs.GameStart then
-			local owner = room:getOwner()
-			if owner and owner:isAlive() then
-				room:acquireSkill(owner, "bahu")
-				room:acquireSkill(owner, "feiyang")
-				room:acquireSkill(owner, "#luanixi_tr")
-			end
+			return skill:objectName()
 		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local owner = room:getOwner()
+		if owner and owner:isAlive() then
+			room:acquireSkill(owner, "bahu")
+			room:acquireSkill(owner, "feiyang")
+			room:acquireSkill(owner, "#luanixi_tr")
+		end
+		return false
 	end,
 }
 --extension:addSkills(debug_skill)
