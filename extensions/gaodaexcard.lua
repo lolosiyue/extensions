@@ -145,16 +145,15 @@ decade = sgs.CreateTrickCard {
 decade:clone(0, 10):setParent(extension)
 
 --防止作弊卡牌一览获得移出游戏的牌
-gaodaexcard_skill = sgs.CreateTriggerSkill {
-	name = "gaodaexcard_skill",
+--V2 触发技能须由玩家持有实例才会派发；record 阶段在每次派发开头执行，等效旧版全局守卫
+gaodaexcard_skill = sgs.CreateTriggerSkillV2 {
+	name = "#gaodaexcard_skill",
 	events = { sgs.BeforeCardsMove },
 	global = true,
 	priority = 3,
-	can_trigger = function(self, target)
-		return true
-	end,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	on_record = function(skill, event, room, player, ctx)
+		if not player then return end
+		local data = ctx.original_data
 		local move = data:toMoveOneTime()
 		if move.to and move.to:objectName() == player:objectName() then
 			for _, id in sgs.qlist(move.card_ids) do
@@ -163,7 +162,7 @@ gaodaexcard_skill = sgs.CreateTriggerSkill {
 					--移出游戏就不能再拿回来，不然会闪退
 					move.card_ids:removeOne(id)
 				else
-					return false
+					return
 				end
 			end
 			data:setValue(move)
@@ -171,9 +170,29 @@ gaodaexcard_skill = sgs.CreateTriggerSkill {
 	end,
 }
 
+--Lua 侧没有不依赖玩家实例的全局 V2 入口（recordEvent 仅 C++ 可用），
+--故保留此隐藏旧式技能，在开局为每名玩家挂载上面的守卫实例
+gaodaexcard_attach = sgs.CreateTriggerSkill {
+	name = "#gaodaexcard_attach",
+	events = { sgs.GameStart },
+	global = true,
+	can_trigger = function(self, target)
+		return target ~= nil
+	end,
+	on_trigger = function(self, event, player, data, room)
+		if not player:hasSkill("#gaodaexcard_skill") then
+			room:attachSkillToPlayer(player, "#gaodaexcard_skill")
+		end
+		return false
+	end,
+}
+
 local skills = sgs.SkillList()
-if not sgs.Sanguosha:getSkill("gaodaexcard_skill") then
+if not sgs.Sanguosha:getSkill("#gaodaexcard_skill") then
 	skills:append(gaodaexcard_skill)
+end
+if not sgs.Sanguosha:getSkill("#gaodaexcard_attach") then
+	skills:append(gaodaexcard_attach)
 end
 sgs.Sanguosha:addSkills(skills)
 
