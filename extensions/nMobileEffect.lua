@@ -2,16 +2,35 @@
 
 n_anjiang = sgs.General(extension,"n_anjiang","god",5,true,true)
 
-n_trig = sgs.CreateTriggerSkill{
+--V2 触发技能须由玩家持有实例才会派发；record 阶段在每次派发开头执行、不产生触发顺序询问，等效旧版全局触发。
+--三个技能在文件末尾挂到所有武将（innate）；晚于本扩展加载的武将或换将后在结算时补挂 acquired 实例。
+local n_mobile_skill_names = {"#n_trig","#n_mobile_effect","#n_mvpexperience"}
+local function n_mobile_ensure_instances(room)
+	for _,p in sgs.qlist(room:getAllPlayers(true))do
+		for _,skill_name in ipairs(n_mobile_skill_names)do
+			if p:getSkillInstanceIds(skill_name):isEmpty() then
+				room:attachSkillToPlayer(p,skill_name)
+			end
+		end
+	end
+end
+
+--record 按每个持有实例调用一次；只在 ctx.owner 为事件目标本人时放行，等效旧版 can_trigger(target)+trigger(target) 的一次派发
+local function n_mobile_target_ctx(room,player,ctx)
+	if table.contains(sgs.Sanguosha:getBanPackages(),"n_mobile_effect") or not player then
+		return false
+	end
+	n_mobile_ensure_instances(room)
+	return ctx.owner and ctx.owner:objectName() == player:objectName()
+end
+
+n_trig = sgs.CreateTriggerSkillV2{
 	name = "#n_trig",
 	global = true,
 	events = {sgs.TurnStart,sgs.FinishJudge,sgs.EventPhaseStart,sgs.Death},
-	can_trigger = function(self,target)
-		if table.contains(sgs.Sanguosha:getBanPackages(),"n_mobile_effect")
-		then else return target end
-	end,
-	on_trigger = function(self,event,player,data)
-		local room = player:getRoom()
+	on_record = function(skill,event,room,player,ctx)
+		if not n_mobile_target_ctx(room,player,ctx) then return end
+		local data = ctx.original_data
 		if event == sgs.TurnStart then
 			local n = 15
 			for _,p in sgs.qlist(room:getAlivePlayers())do
@@ -37,6 +56,7 @@ n_trig = sgs.CreateTriggerSkill{
 				room:setEmotion(judge.who,"lightning-effect")
 			end
 		elseif event == sgs.GameOverJudge then
+			--原 events 未注册 GameOverJudge，此分支保留原样、依旧不会进入
 			local current = room:getCurrent()
 			room:addPlayerMark(current,"havekilled-Clear",1)
 			local x = current:getMark("havekilled-Clear")
@@ -74,30 +94,26 @@ n_trig = sgs.CreateTriggerSkill{
 				room:getThread():delay(2500)
 			end
 		end
-		return false
 	end
 }
 n_anjiang:addSkill(n_trig)
 
-n_mobile_effect = sgs.CreateTriggerSkill{
-    name = "n_mobile_effect",
+n_mobile_effect = sgs.CreateTriggerSkillV2{
+    name = "#n_mobile_effect",
     priority = 9,
     global = true,
     events = {sgs.Damage,sgs.DamageComplete,sgs.EnterDying,sgs.GameOverJudge,sgs.HpRecover},
-	can_trigger = function(self,target)
-		if table.contains(sgs.Sanguosha:getBanPackages(),"n_mobile_effect")
-		then else return target end
-	end,
-    on_trigger = function(self,event,player,data)
-        local room = player:getRoom()
+    on_record = function(skill,event,room,player,ctx)
+		if not n_mobile_target_ctx(room,player,ctx) then return end
+		local data = ctx.original_data
 		local function damage_effect(n)
 			if n == 3 then
 				room:doAnimate(2,"skill=Rampage:mbjs","")
-				room:broadcastSkillInvoke(self:objectName(),1)
+				room:broadcastSkillInvoke("n_mobile_effect",1)
 				room:getThread():delay(3325)
             elseif n >= 4 then
                 room:doAnimate(2,"skill=Violence:mbjs","")
-				room:broadcastSkillInvoke(self:objectName(),2)
+				room:broadcastSkillInvoke("n_mobile_effect",2)
 				room:getThread():delay(4000)
 			end
 		end
@@ -124,24 +140,24 @@ n_mobile_effect = sgs.CreateTriggerSkill{
 			if not room:getTag("FirstBlood"):toBool() then
                 room:setTag("FirstBlood",sgs.QVariant(true))
 				room:doAnimate(2,"skill=FirstBlood:mbjs","")
-				room:broadcastSkillInvoke(self:objectName(),3)
+				room:broadcastSkillInvoke("n_mobile_effect",3)
 				room:getThread():delay(2500)
 			end
 			if x == 2 then
                 room:doAnimate(2,"skill=DoubleKill:mbjs","")
-				room:broadcastSkillInvoke(self:objectName(),x + 2)
+				room:broadcastSkillInvoke("n_mobile_effect",x + 2)
 				room:getThread():delay(2800)
             elseif x == 3 then
                 room:doAnimate(2,"skill=TripleKill:mbjs","")
-				room:broadcastSkillInvoke(self:objectName(),x + 2)
+				room:broadcastSkillInvoke("n_mobile_effect",x + 2)
 				room:getThread():delay(2800)
             elseif x == 4 then
                 room:doAnimate(2,"skill=QuadraKill:mbjs","")
-				room:broadcastSkillInvoke(self:objectName(),x + 2)
+				room:broadcastSkillInvoke("n_mobile_effect",x + 2)
 				room:getThread():delay(3500)
             elseif x > 4 and x<=7 then
                 room:doAnimate(2,"skill=MoreKill:" .. x,"")
-				room:broadcastSkillInvoke(self:objectName(),x + 2)
+				room:broadcastSkillInvoke("n_mobile_effect",x + 2)
 				room:getThread():delay(4000)
             end
 		elseif event == sgs.HpRecover then
@@ -153,7 +169,7 @@ n_mobile_effect = sgs.CreateTriggerSkill{
 					room:setPlayerMark(player,"healed",0)
 					room:addPlayerMark(player,"Nohealed")
 					room:doAnimate(2,"skill=Heal:mbjs","")
-					room:broadcastSkillInvoke(self:objectName(),10)
+					room:broadcastSkillInvoke("n_mobile_effect",10)
 					room:getThread():delay(2000)
 				end
 			end
@@ -164,7 +180,7 @@ n_mobile_effect = sgs.CreateTriggerSkill{
 					room:setPlayerMark(recover.who,"rescued",0)
 					room:addPlayerMark(recover.who,"Norescued")
 					room:doAnimate(2,"skill=Rescue:mbjs","")
-					room:broadcastSkillInvoke(self:objectName(),11)
+					room:broadcastSkillInvoke("n_mobile_effect",11)
 					room:getThread():delay(2000)
 				end
 			end
@@ -173,18 +189,16 @@ n_mobile_effect = sgs.CreateTriggerSkill{
 }
 n_anjiang:addSkill(n_mobile_effect)
 
-n_mvpexperience = sgs.CreateTriggerSkill {
+n_mvpexperience = sgs.CreateTriggerSkillV2 {
 	name = "#n_mvpexperience",
 	events = { sgs.PreCardUsed,sgs.CardResponded,sgs.CardsMoveOneTime,sgs.PreDamageDone,
 	sgs.HpLost,sgs.GameOverJudge,sgs.GameFinished },
 	global = true,
 	priority = 3,
-	can_trigger = function(self,target)
-		if table.contains(sgs.Sanguosha:getBanPackages(),"n_mobile_effect")
-		then else return target end
-	end,
-	on_trigger = function(self,triggerEvent,player,data)
-		local room = player:getRoom()
+	on_record = function(skill,event,room,player,ctx)
+		if not n_mobile_target_ctx(room,player,ctx) then return end
+		local data = ctx.original_data
+		local triggerEvent = event
 		if not string.find(room:getMode(),"p") then return end
 		local x = 1
 		local conv = false --(math.random() < 0.2)
@@ -212,10 +226,11 @@ n_mvpexperience = sgs.CreateTriggerSkill {
 				or (move.from and move.from:objectName() == move.to:objectName())
 				or (move.to_place~=sgs.Player_PlaceHand and move.to_place~=sgs.Player_PlaceEquip)
 				or room:getTag("FirstRound"):toBool() then
-				return false
+				return
 			end
 			room:addPlayerMark(player,"mvpexp",move.card_ids:length() * x)
 		elseif triggerEvent == sgs.PreDamage then
+			--sgs.PreDamage 不是有效枚举（实际为 sgs.Predamage），Lua 中值为 nil，此分支保留原样、依旧不会进入
 			local damage = data:toDamage()
 			if damage.from then
 				room:addPlayerMark(damage.from,"mvpexp",damage.damage * 5 * x)
@@ -293,10 +308,16 @@ n_mvpexperience = sgs.CreateTriggerSkill {
 				thread:delay(2900)
 			end
 		end
-		return false
 	end
 }
 n_anjiang:addSkill(n_mvpexperience)
+
+--V2 触发须由玩家持有实例：三个全局特效技能挂到所有武将，令每名玩家持有其 innate 实例
+for _,gen in sgs.qlist(sgs.Sanguosha:getAllGenerals())do
+	for _,skill_name in ipairs(n_mobile_skill_names)do
+		gen:addSkill(skill_name)
+	end
+end
 
 sgs.LoadTranslationTable{
 	["n_anjiang"] = "技能暗将",
