@@ -38,32 +38,43 @@ function choseSeer(player)
 end
 
 --这一段没啥用
-playtogether2Card = sgs.CreateSkillCard {
-	name = "playtogether2Card",
-	target_fixed = true,
-	on_use = function(self, room, source)
-		choseSeer(source)
-	end,
-}
-playtogether2VS = sgs.CreateZeroCardViewAsSkill {
+playtogether2VS = sgs.CreateViewAsSkillV2 {
 	name = "playtogether2&",
-	view_as = function()
-		return playtogether2Card:clone()
+	n = 0,
+	target_mode = sgs.ViewAsSkillV2_NoTarget,
+	can_activate = function(skill, request)
+		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
 	end,
-	enabled_at_play = function(self, player)
-		return true
+	on_effect = function(skill, ctx)
+		local source = ctx.invoker or ctx.initiator
+		if source then
+			choseSeer(source)
+		end
 	end,
 }
 addToSkills(playtogether2VS)
 
-playtogether = sgs.CreateTriggerSkill {
+playtogether = sgs.CreateTriggerSkillV2 {
 	name = "#playtogether",
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.GameReady },
 	global = true,
 	priority = -999,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		if event ~= sgs.GameReady then return false end
+		-- 掛技為強制後果（無「可以」）：sys_+_force 標記使 trigger-order 不可取消
+		if not table.contains(sgs.Sanguosha:getBanPackages(), "playtogether") and player
+			and player:getState() ~= "robot" and player:isAlive() then
+			room:addPlayerMark(player, "#playtogether+sys_+_force")
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		room:setPlayerMark(player, "#playtogether+sys_+_force", 0)
+		return true
+	end,
+	on_effect = function(skill, event, room, player, ctx)
 		if player:getState() ~= "robot" then
 			local name1 = player:getGeneralName()
 			local targets = sgs.SPlayerList()
@@ -77,11 +88,7 @@ playtogether = sgs.CreateTriggerSkill {
 			--	room:doAnimate(2,"skill=test:"..name1..":","aa",targets)--骨骼图
 			--	room:doAnimate(2,"skill=newAnimation:"..name1..":","aa",targets)--新特效图
 		end
-	end,
-	can_trigger = function(self, target)
-		if not table.contains(sgs.Sanguosha:getBanPackages(), "playtogether") and target and target:getState() ~= "robot" then
-			return target:isAlive()
-		end
+		return false
 	end,
 }
 
