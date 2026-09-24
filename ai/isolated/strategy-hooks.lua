@@ -153,4 +153,201 @@ function SmartAIView:forSkillHooks(name, player)
     return AIList.new(result)
 end
 
+-- Target recommendation failures are distinct from an empty ranked result:
+-- unknown classification/relation/projection, missing evaluators, malformed hooks,
+-- and non-finite scores must raise unsupported, never choose the fallback.
+local function target_known(value, key)
+    if value == nil then ai_unsupported("target recommendation projection is unknown", key) end
+    return value
+end
+local function target_number(value, key)
+    if type(value) ~= "number" or value ~= value or value == math.huge or value == -math.huge then
+        ai_unsupported("target recommendation score is not finite", key)
+    end
+    return value
+end
+local function target_call(object, method, ...)
+    if type(object[method]) ~= "function" then ai_unsupported("target recommendation helper is unavailable", method) end
+    return target_known(object[method](object, ...), method)
+end
+local target_types = {
+    damage = {"damageSkillsList", "checkIsDamageCard", {}},
+    draw = {"drawSkillsList", "checkIsDrawCard", {"ExNihilo", "AmazingGrace", "IronChain", "Dongzhuxianji"}},
+    buff = {"buffSkillsList", "checkIsBuff", {"Peach"}},
+    debuff = {"debuffSkillsList", "checkIsDebuff", {"Dismantlement", "Snatch", "Indulgence", "SupplyShortage", "IronChain"}},
+    recover = {"recoverSkillsList", "checkIsRecover", {"Peach", "Analeptic", "GodSalvation"}},
+    decrease = {"decreaseSkillsList", "checkIsDecreaseCard", {"Dismantlement", "Snatch", "Collateral"}},
+    turnOver = {"turnOverSkillsList", "checkIsTurnOver", {}}
+}
+for kind, entry in pairs(target_types) do
+    sgs[entry[1]] = sgs[entry[1]] or {}
+    SmartAIView[entry[2]] = function(self, card)
+        if card == nil then return false end
+        if type(card) == "string" then
+            if card == kind then return true end
+            for _, name in ipairs(sgs[entry[1]]) do if name == card then return true end end
+            if kind == "recover" then
+                for _, key in ipairs({"recover_skill", "recover_hp_skill", "save_skill"}) do
+                    if sgs[key] and sgs[key]:match(card) then return true end
+                end
+            end
+            return false
+        end
+        if not AIValue.isCard(card) then ai_unsupported("target context must be a card value", kind) end
+        if kind == "damage" or kind == "debuff" then
+            if target_call(card, "isDamageCard") then return true end
+        end
+        for _, class in ipairs(entry[3]) do if target_call(card, "isKindOf", class) then return true end end
+        return false
+    end
+end
+function sgs.registerSkillCardType(name, kind)
+    local entry = target_types[kind]
+    assert(entry and type(name) == "string", "unknown skill card type")
+    for _, existing in ipairs(sgs[entry[1]]) do if existing == name then return end end
+    table.insert(sgs[entry[1]], name)
+end
+function sgs.registerTargetRecommend(name, fn)
+    sgs.ai_target_recommend[name] = function(self, from, to, card, owner, ctx)
+        if not to or not target_call(to, "hasSkill", name) then return 0 end
+        return fn(self, from, to, card, owner, ctx or self:buildTargetRecommendContext(card))
+    end
+end
+function sgs.registerGlobalTargetRecommend(name, fn)
+    for _, entry in ipairs(sgs.ai_target_recommend_global) do
+        if entry.name == name then entry.eval = fn; return end
+    end
+    table.insert(sgs.ai_target_recommend_global, {name = name, eval = fn})
+end
+function SmartAIView:buildTargetRecommendContext(card, flags)
+    if type(card) == "string" then
+        local registered = target_types[card] ~= nil
+        for _, entry in pairs(target_types) do
+            for _, name in ipairs(sgs[entry[1]]) do if name == card then registered = true end end
+        end
+        if not registered then ai_unsupported("skill target classification is not registered", card) end
+    end
+    return {isDamage = self:checkIsDamageCard(card), isDebuff = self:checkIsDebuff(card),
+        isTurnOver = self:checkIsTurnOver(card), isRecovery = self:checkIsRecover(card),
+        isDraw = self:checkIsDrawCard(card), isBuff = self:checkIsBuff(card),
+        isDecrease = self:checkIsDecreaseCard(card), isVirtual = type(card) == "string", flags = flags}
+end
+local function target_relation(self, to, from)
+    local relation = self:relationTo(to, from)
+    if relation == nil or relation == "unknown" then ai_unsupported("target relation is unknown", "recommend") end
+    return relation
+end
+function SmartAIView:needDraw(to, notDraw)
+    if not to then return false end
+    if target_call(to, "hasSkills", "manjuan|zishu") and target_call(to, "getPhase") ~= sgs.Player_NotActive then return true end
+    if not notDraw and target_call(to, "hasSkill", "zhanji") and target_call(to, "getPhase") == sgs.Player_Play then return true end
+    if not notDraw and target_call(to, "hasSkill", "Luajianzai") then return true end
+    local function mark(player, name)
+        local view = rawget(player, "_view")
+        if type(view) ~= "table" or type(view.public_marks) ~= "table" then
+            ai_unsupported("public marks are unknown", name)
+        end
+        return target_number(player:getMark(name), name)
+    end
+    if target_call(to, "hasSkill", "qhfiremanjuann") and mark(to, "qhfiremanjuann-Clear") < 2 then return true end
+    if target_call(to, "getHandcardNum") < 5 and target_call(to, "hasSkill", "zhengu") then
+        for _, player in ipairs(target_call(self.room, "getAlivePlayers")) do
+            if mark(player, "&zhengu") > 0 and target_relation(self, player, to) == "friend" then return true end
+        end
+    end
+    return false
+end
+function SmartAIView:getTargetBaseScore(target, card, from, flags)
+    from = from or self.player
+    local ctx = self:buildTargetRecommendContext(card, flags)
+    local relation = target_relation(self, target, from)
+    if relation ~= "friend" and relation ~= "enemy" then return 0 end
+    -- Damage and discard base scoring need further original strategy ports.
+    if ctx.isDamage or ctx.isDecrease or ctx.isRecovery then
+        ai_unsupported("target base scoring is not ported for this effect", "getTargetBaseScore")
+    end
+    local score, sign = 0, relation == "friend" and 1 or -1
+    if ctx.isDraw then
+        if target_call(self, "canDraw", target, from) then
+            if not target_call(self, "needKongcheng", target) then score = score + sign * 2 end
+            -- Legacy uses undefined to/notDraw here: needDraw(nil) is false.
+            -- Preserve the observed score; fixing the donor is a separate change.
+        else score = score - 1 end
+    end
+    local view = rawget(target, "_view")
+    if type(view) ~= "table" or type(view.lord) ~= "boolean" then ai_unsupported("lord flag is unknown", "recommend") end
+    if view.lord then score = score + 1 end
+    if relation == "enemy" then
+        local objective = target_number(self:objectiveLevel(target), "objectiveLevel")
+        if objective > 3 then score = score + math.min(objective - 3, 2) end
+    end
+    return score
+end
+function SmartAIView:getBestTarget(targets, card, from, flags)
+    if not AIValue.isList(targets) then ai_unsupported("target candidates are unknown", "getBestTarget") end
+    if #targets == 0 then return nil end
+    from = from or self.player
+    local ctx = self:buildTargetRecommendContext(card, flags)
+    -- Built-in recommend ports below cover draw effects. Other effects must not
+    -- silently omit native damage/chain/turnover policy and claim equivalence.
+    if not ctx.isDraw or ctx.isDamage or ctx.isDecrease or ctx.isRecovery then
+        ai_unsupported("target recommendation defaults only cover draw effects", "getBestTarget")
+    end
+    local recommends = {}
+    for _, owner in ipairs(target_call(self.room, "getAlivePlayers")) do
+        for _, hook in ipairs(target_known(self:forSkillHooks("ai_target_recommend", owner), "recommend skills")) do
+            if type(hook.value) ~= "function" then ai_unsupported("invalid target recommendation hook", hook.key) end
+            recommends[#recommends + 1] = {owner = owner, eval = hook.value}
+        end
+    end
+    local scored, total = {}, 0
+    for _, target in ipairs(targets) do
+        if not AIValue.isPlayer(target) then ai_unsupported("invalid target facade", "getBestTarget") end
+        local score = target_number(self:getTargetBaseScore(target, card, from, flags), "base score")
+        if score > 0 then
+            local veto = false
+            local function apply(eval, owner)
+                if type(eval) ~= "function" then ai_unsupported("invalid global recommend hook", "recommend") end
+                local adjust = eval(self, from, target, card, owner, ctx)
+                if adjust == false then veto = true
+                elseif type(adjust) == "number" then score = target_number(score + target_number(adjust, "adjustment"), "score")
+                elseif adjust ~= nil then ai_unsupported("invalid target recommendation result", "recommend") end
+            end
+            for _, rec in ipairs(recommends) do apply(rec.eval, rec.owner); if veto then break end end
+            if not veto then
+                for _, rec in ipairs(sgs.ai_target_recommend_global) do apply(rec.eval, nil); if veto then break end end
+            end
+            if not veto and score > 0 then
+                scored[#scored + 1] = {target = target, score = score}
+                total = target_number(total + score, "total score")
+            end
+        end
+    end
+    if #scored == 0 then return nil end
+    if #scored == 1 then return scored[1].target end
+    local random, cumulative = math.random() * total, 0
+    for _, entry in ipairs(scored) do
+        cumulative = cumulative + entry.score
+        if random <= cumulative then return entry.target end
+    end
+    return scored[#scored].target
+end
+function SmartAIView:getBestTargetOr(targets, card, from, fallback)
+    local target = self:getBestTarget(targets, card, from)
+    if target then return target end
+    if type(fallback) == "function" then return fallback(self, targets, card, from) end
+    return nil
+end
+-- The donor's damage/Slash-only defaults return zero for draw contexts.
+-- These are the two default registrations that can change Scarlet draw scores.
+sgs.registerTargetRecommend("rende", function(self, from, to, card, owner, ctx)
+    if ctx.isDraw and target_call(to, "isWounded") then return 2 end
+    return 0
+end)
+sgs.registerTargetRecommend("s4_qiaobian", function(self, from, to, card, owner, ctx)
+    if ctx.isDraw and target_relation(self, from, to) == "friend" then return 2 end
+    if ctx.isDecrease then ai_unsupported("qiaobian discard recommendation is not ported", "s4_qiaobian") end
+    return 0
+end)
+
 return sgs
