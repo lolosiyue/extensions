@@ -491,7 +491,7 @@ function SmartAI:SuicidebyKurou()
 	if self.player:getHp() == 1 and self:getCardsNum("Armor") == 0 and self:getCardsNum("Jink") == 0 and self:getKingdomCount() > 1 then
 		if self:isFriend(nextplayer) then
 			for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
-				if p:hasShownSkill("heg_xiaoguo") and not self:isFriend(p) and not p:isKongcheng() and self.player:getEquips():isEmpty() then
+				if p:hasShownSkill("xiaoguo") and not self:isFriend(p) and not p:isKongcheng() and self.player:getEquips():isEmpty() then
 					to_death = true
 					break
 				end

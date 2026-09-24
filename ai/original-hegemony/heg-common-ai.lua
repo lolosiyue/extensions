@@ -135,7 +135,7 @@ sgs.ai_event_callback[sgs.TargetConfirmed].original_hegemony = function(self, pl
     top.targets, top.relevant, top.confirmed = {}, false, true
     for _, target in sgs.qlist(use.to) do
         top.targets[target:objectName()] = true
-        if target:hasShownSkill("fangzhu") or
+        if target:hasShownSkill("mobilefangzhu") or
             (use.card:isKindOf("ArcheryAttack") and target:hasShownSkill("guidao")
                 and target:hasShownSkill("leiji")) then top.relevant = true end
     end
@@ -261,7 +261,7 @@ end
 								"jieyin|heg_zhiheng|heg_rende|luanji|qiaobian|heg_lirang"
 	sgs.notActive_cardneed_skill =		"heg_kanpo|nosguicai|guidao|beige|heg_xiaoguo|liuli|tianxiang|jijiu"
 	sgs.cardneed_skill =  sgs.Active_cardneed_skill .. "|" .. sgs.notActive_cardneed_skill
-	sgs.drawpeach_skill =		"nostuxi|qiaobian"
+	sgs.drawpeach_skill =		"tenyeartuxi|qiaobian"
 	sgs.recover_skill =		"heg_rende|heg_kuanggu|heg_zaiqi|jieyin|qingnang|yinghun|hunzi|heg_shenzhi|buqu"
 	sgs.use_lion_skill =		 "duanliang|qixi|guidao|lijian|heg_zhiheng|fenxun|heg_qingcheng"
 	sgs.need_equip_skill = 		"shensu|beige|heg_huyuan|heg_qingcheng"
@@ -412,7 +412,7 @@ function sgs.getDefense(player)
 
 	if player:hasShownSkill("jieming") then defense = defense + 3 end
 	if player:hasShownSkill("nosyiji") then defense = defense + 2 end
-	if player:hasShownSkill("nostuxi") then defense = defense + 0.5 end
+	if player:hasShownSkill("tenyeartuxi") then defense = defense + 0.5 end
 	if player:hasShownSkill("heg_luoshen") then defense = defense + 1 end
 
 	if player:hasShownSkill("heg_rende") and player:getHp() > 2 then defense = defense + 1 end
@@ -1554,7 +1554,7 @@ function SmartAI:askForNullification(trick, from, to, positive)
 				if (to:hasShownSkill("heg_guanxing") or to:hasShownSkill("heg_yizhi") and to:inDeputySkills("heg_yizhi"))
 					and (global_room:alivePlayerCount() > 4 or to:hasShownSkill("heg_yizhi")) then return end
 				if to:getHp() - to:getHandcardNum() >= 2 then return nil end
-				if to:hasShownSkill("nostuxi") and to:getHp() > 2 then return nil end
+				if to:hasShownSkill("tenyeartuxi") and to:getHp() > 2 then return nil end
 				if to:hasShownSkill("qiaobian") and not to:isKongcheng() then return nil end
 				if to:containsTrick("supply_shortage") and null_num == 1 and to:getOverflow() > 1 then return nil end
 				return null_card
@@ -2600,7 +2600,7 @@ function SmartAI:needRetrial(judge)
 		if self:isFriend(who) then
 			local drawcardnum = self:ImitateResult_DrawNCards(who, who:getVisibleSkillList(true))
 			if who:getHp() - who:getHandcardNum() >= drawcardnum and self:getOverflow() < 0 then return false end
-			if who:hasShownSkill("nostuxi") and who:getHp() > 2 and self:getOverflow() < 0 then return false end
+			if who:hasShownSkill("tenyeartuxi") and who:getHp() > 2 and self:getOverflow() < 0 then return false end
 			return not judge:isGood()
 		else
 			return judge:isGood()
@@ -3556,9 +3556,9 @@ function SmartAI:getAoeValue(card)
 			end
 
 			if card:isKindOf("ArcheryAttack") and sj_num >= 1 then
-				if to:hasShownSkill("heg_xiaoguo") then value = value - 4 end
+				if to:hasShownSkill("xiaoguo") then value = value - 4 end
 			elseif card:isKindOf("SavageAssault") and sj_num >= 1 then
-				if to:hasShownSkill("heg_xiaoguo") then value = value - 4 end
+				if to:hasShownSkill("xiaoguo") then value = value - 4 end
 			end
 
 			if to:getHp() == 1 then
@@ -4296,7 +4296,7 @@ function SmartAI:ImitateResult_DrawNCards(player, skills)
 	if player:hasTreasure("JadeSeal") and player:hasShownOneGeneral() then count = count + 1 end
 	if #drawSkills > 0 then
 		for _,skillname in pairs(drawSkills) do
-			if skillname == "nostuxi" then return math.min(2, self.room:getOtherPlayers(player):length())
+			if skillname == "tenyeartuxi" then return math.min(2, self.room:getOtherPlayers(player):length())
 			elseif skillname == "shuangxiong" then return 1
 			elseif skillname == "heg_zaiqi" then return math.floor(player:getLostHp() * 3 / 4)
 			elseif skillname == "nosluoyi" then count = count - 1
