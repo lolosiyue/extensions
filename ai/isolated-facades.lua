@@ -507,6 +507,28 @@ function PlayerView:getHandPile()
     return result
 end
 
+-- Failure boundaries: closed pile, missing metadata, or mismatched ids are unknown.
+-- A known empty pile remains empty; no Engine lookup is allowed from this VM.
+function PlayerView:getHandPileCards()
+    local piles = self._view.piles
+    if not AIValue.isList(piles) then return nil end
+    local result = AIList.new({})
+    for _, pile in ipairs(piles) do
+        if pile.hand_pile then
+            if not AIValue.isList(pile.card_ids) then return nil end
+            if #pile.card_ids > 0 then
+                local cards = wrap_values(pile.cards, CardView.new)
+                if not cards or #cards ~= #pile.card_ids then return nil end
+                for i, card in ipairs(cards) do
+                    if card:getId() ~= pile.card_ids[i] then return nil end
+                    result:append(card)
+                end
+            end
+        end
+    end
+    return result
+end
+
 function PlayerView:getPileName(card_id)
     local view = rawget(self, "_view")
     local piles = type(view) == "table" and view.piles or nil
@@ -1737,6 +1759,111 @@ function SmartAIView:getEnemies(player)
         if view.alive and self:isEnemy(target, player) then result[#result + 1] = target end
     end
     return result
+end
+
+-- Copy the caller's list before appending hand-pile cards, matching addHandPile's
+-- he + hand-pile order without mutating the snapshot or guessing missing cards.
+function SmartAIView:addHandPile(cards, player)
+    player = player or self.player
+    local base = type(cards) == "string" and player:getCards(cards) or cards
+    if cards == nil then base = player:getHandcards() end
+    local pile = player:getHandPileCards()
+    if not AIValue.isList(base) or not pile then
+        return ai_unsupported("addHandPile requires visible card metadata", "addHandPile")
+    end
+    local result = AIList.new(base)
+    for _, card in ipairs(pile) do result:append(card) end
+    return result
+end
+
+-- Rescue is a viewer-scoped estimate, not proof that another player can respond.
+-- Preserve SmartAI's Wansha gate and its small hidden-hand estimate; never inspect
+-- another viewer's private cards. Missing zones/relations are not zero supplies.
+function SmartAIView:getAllPeachNum(player)
+    player = player or self.player
+    local current = self.room:getCurrent() or self.player
+    local wansha = current:hasSkill("wansha")
+    local dying = self.player:hasFlag("Global_Dying")
+    local players = self.room:getAlivePlayers()
+    if wansha == nil or dying == nil or not players then
+        return ai_unsupported("rescue context is unknown", "getAllPeachNum")
+    end
+    local total = 0
+    for _, friend in ipairs(players) do
+        local same = friend:objectName() == player:objectName()
+        local relation = same and "friend" or self:relationTo(friend, player)
+        if not same and wansha then relation = "excluded" end
+        if relation == nil or relation == "unknown" then
+            return ai_unsupported("rescue relation is unknown", "getAllPeachNum")
+        end
+        if relation == "friend" then
+            local known, equips = friend:getKnownCards(), friend:getEquips()
+            local hand = friend:getHandcardNum()
+            if not known or not equips or type(hand) ~= "number" then
+                return ai_unsupported("rescue cards are unknown", "getAllPeachNum")
+            end
+            -- Discover capability from native classification, not just installed
+            -- Lua hooks: an unported view-as skill must not vanish from estimates.
+            local skills, jijiu = friend:getSkills(), false
+            if not skills then return ai_unsupported("rescue skills are unknown", "getAllPeachNum") end
+            for _, skill in ipairs(skills) do
+                if not skill:isInvalid() then
+                    local capability = skill._view.has_view_as_skill
+                    if type(capability) ~= "boolean" then
+                        return ai_unsupported("rescue conversion capability is unknown", "getAllPeachNum")
+                    end
+                    if skill:objectName() == "jijiu" then
+                        local active = friend:hasFlag("CurrentPlayer")
+                        if active == nil then return ai_unsupported("Jijiu current player is unknown", "getAllPeachNum") end
+                        -- Only the viewer's private prevention mark is available.
+                        -- Other recipients require an explicit projected value.
+                        local prevented = friend._view.public_marks and friend._view.public_marks.Global_PreventPeach
+                        if prevented == nil and friend:objectName() ~= self.player:objectName() and not active then
+                            return ai_unsupported("Jijiu prevention state is unknown", "getAllPeachNum")
+                        end
+                        jijiu = not active and (prevented or 0) < 1
+                    elseif capability then
+                        return ai_unsupported("rescue conversion is not covered: " .. skill:objectName(), "getAllPeachNum")
+                    end
+                end
+            end
+            for _, registry in ipairs({"ai_view_as", "ai_cardsview", "ai_cardsview_valuable"}) do
+                local hooks = self:forSkillHooks(registry, friend)
+                if not hooks then return ai_unsupported("rescue hooks are unknown", "getAllPeachNum") end
+                for _, hook in ipairs(hooks) do
+                    if hook.key ~= "jijiu" then
+                        return ai_unsupported("rescue conversion needs a response projection", "getAllPeachNum")
+                    end
+                end
+            end
+            local cards = AIList.new(known)
+            for _, card in ipairs(equips) do cards:append(card) end
+            local classes = same and {"Peach", "Analeptic"} or {"Peach"}
+            for _, class in ipairs(classes) do
+                local count = 0
+                for _, card in ipairs(cards) do
+                    local matches = card:isKindOf(class)
+                    if matches == nil then
+                        return ai_unsupported("rescue card classification is unknown", "getAllPeachNum")
+                    end
+                    -- SmartAI's getKnownCard(viewas=true) counts Jijiu red he cards;
+                    -- do not construct the legacy peach string or double-count it.
+                    if not matches and jijiu and class == "Peach" then
+                        matches = card:isRed()
+                        if matches == nil then
+                            return ai_unsupported("rescue card color is unknown", "getAllPeachNum")
+                        end
+                    end
+                    if matches then count = count + 1 end
+                end
+                if #cards < hand / 2 and hand > 2 and count < hand / 3 and not dying then
+                    count = count + 1
+                end
+                total = total + count
+            end
+        end
+    end
+    return total
 end
 
 -- Legacy callback ABI. A value-shaped stand-in for AiLegacyRequestView, built only for

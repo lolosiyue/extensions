@@ -921,6 +921,217 @@ local function damage_estimate(self, from, to, card, damage, raw_nature)
     return damage
 end
 
+-- Failure cases for the cardless damage port: incomplete skills/marks/piles,
+-- unknown armor bypass or role, elemental/chain damage, room event tags and
+-- unported enemy damage-benefit policy. Never turn these into one damage.
+local function damage_known(value, label)
+    if value == nil then ai_unsupported("damage projection is unknown: " .. label, "ajustDamage") end
+    return value
+end
+
+local function damage_call(object, method, ...)
+    if not object or type(object[method]) ~= "function" then
+        ai_unsupported("damage getter is unavailable: " .. method, "ajustDamage")
+    end
+    return damage_known(object[method](object, ...), method)
+end
+
+local function damage_player(player)
+    if not AIValue.isPlayer(player) or not player:getSkills() or not player:getEquips()
+        or type(player._view.public_marks) ~= "table" then
+        ai_unsupported("damage needs skills, equipment and public marks", "ajustDamage")
+    end
+    return player
+end
+
+local function special_damage_mark(player, prefix)
+    local count = 0
+    for name, value in pairs(player._view.public_marks) do
+        if name:sub(1, #prefix) == prefix then
+            if not finite_number(value) then ai_unsupported("invalid damage mark", prefix) end
+            if value > 0 then count = count + 1 end
+        end
+    end
+    return count
+end
+
+local function damage_relation(self, to, from)
+    if to:objectName() == from:objectName() then return "friend" end
+    local relation = self:relationTo(to, from)
+    if relation == nil or relation == "unknown" then
+        ai_unsupported("damage relation is unknown", "canLoseHp")
+    end
+    return relation
+end
+
+-- Same early loss-of-HP substitution checks as hasJueqingEffect. Pile names
+-- establish known absence; a missing projection is not an empty sp_ss pile.
+local function damage_replaces_hp(from, to)
+    if from:hasSkills("jueqing|gangzhi|MeowJueqing|exjueqing|sy_xushu")
+        or to:hasSkills("gangzhi|xinnian|sy_xushu|s3_yijue") then return true end
+    if from:hasSkill("tenyearjueqing") and from:getMark("tenyearjueqing") > 0
+        or to:hasSkill("nyarz_shibei") and to:getMark("nyarz_shibei-Clear") > 1 then return true end
+    if from:hasSkill("meizlwuqing") and damage_known(from:isWounded(), "wounded") then return true end
+    for _, name in ipairs(damage_known(from:getPileNames(), "pile names")) do
+        if name == "sp_ss" and damage_known(from:getPileCount(name), "sp_ss size") > 0 then return true end
+    end
+    if from:hasSkill("bffeedingpoisoning") and from:objectName() ~= to:objectName() then
+        ai_unsupported("beFriend role policy is not projected", "bffeedingpoisoning")
+    end
+    return false
+end
+
+local function damage_ignores_armor(from, to)
+    if damage_known(from:hasWeapon("QinggangSword"), "weapon")
+        or not damage_known(to:hasArmorEffect(nil), "armor effect")
+        or from:hasSkills("keshengqinggang|Qinggang")
+        or from:hasSkill("SE_Wuwei") and from:getMark("@Wuwei") > 2 then return true end
+    if from:hasSkills("luaqiangwang|s3_xiaoyong") then
+        local distance = damage_known(from:distanceTo(to), "armor bypass distance")
+        return from:hasSkill("luaqiangwang") and distance > 1
+            or from:hasSkill("s3_xiaoyong") and distance == 1
+    end
+    return false
+end
+
+function SmartAIView:ajustDamage(from, to, damage, card, nature, depth)
+    from = damage_player(from or self.room:getCurrent() or self.player)
+    to = damage_player(to or self.player)
+    damage = damage == nil and 1 or damage
+    if not finite_number(damage) or damage < 0 then ai_unsupported("invalid damage", "ajustDamage") end
+    -- This port deliberately covers skill-generated, normal damage. A physical
+    -- card carries flags/tags and chain policy not present in this contract.
+    if card ~= nil or nature ~= nil and nature ~= "N" and nature ~= sgs.DamageStruct_Normal
+        or depth ~= nil and depth ~= 0 then
+        ai_unsupported("card or elemental damage is not covered", "ajustDamage")
+    end
+    if damage_replaces_hp(from, to) then return -damage end
+    local players = damage_known(self.room:getAlivePlayers(), "alive roster")
+    for _, player in ipairs(players) do damage_player(player) end
+    if (damage_known(to:hasArmorEffect("SilverLion"), "armor effect") or to:getMark("@silver_lion") > 0)
+        and not damage_ignores_armor(from, to) then return 1 end
+    if to:hasSkill("gongqing") then
+        if damage_known(scalar(from, "getAttackRange"), "attack range") < 3 then return 1 end
+    end
+    for _, player in ipairs(players) do
+        if player:hasSkill("huaiju") and to:getMark("&orange") > 0 then return 1 end
+        if player:hasSkill("jgchiying") then
+            if damage_call(player, "getRole") == damage_call(to, "getRole") then return 1 end
+        end
+    end
+    local fortune4, fortune5 = special_damage_mark(to, "&tiansuan4"), special_damage_mark(to, "&tiansuan5")
+    if fortune4 + fortune5 < 1
+        and special_damage_mark(to, "&tiansuan2") + special_damage_mark(to, "&tiansuan3") > 0 then return 1 end
+    if to:hasSkills("keyaoliandu|kejieyaoliandu|s2_gangzhi|s4_s_gedang") then return 1 end
+    if special_damage_mark(to, "&tiansuan1") > 0 then return 0 end
+    for _, player in ipairs(players) do
+        if player:hasSkill("wuling") and player:getMark("@fire") > 0 then
+            ai_unsupported("wuling changes damage nature", "ajustDamage")
+        end
+    end
+    if from:hasSkills("keyaoleimu|TH_SubterraneanSun")
+        or to:getMark("&undershouli-Clear") > 0 or to:getMark("&tyshouli-Clear") > 0
+        or to:getMark("&shouli_debuff-Clear") > 0 then
+        ai_unsupported("skill changes damage nature", "ajustDamage")
+    end
+    if from:hasSkill("Zhena") and from:getWeapon() and from:objectName() ~= to:objectName() then
+        ai_unsupported("Zhena role and fire damage policy is not covered", "ajustDamage")
+    end
+    local mode = damage_known(self.room:getMode(), "game mode")
+    if mode:find("guandu", 1, true) then ai_unsupported("guandu event tags are not projected", "ajustDamage") end
+    self.to, self.from, self.card, self.nature = to, from, nil, "N"
+    local function adjustments(registry, player)
+        for _, hook in ipairs(damage_known(skill_hooks(self, registry, player), registry)) do
+            local delta = self:callHook(registry, hook.key, self, from, to, nil, "N")
+            if delta ~= nil then
+                if not finite_number(delta) then ai_unsupported("non-numeric damage adjustment", hook.key) end
+                damage = damage + delta
+            end
+        end
+    end
+    adjustments("ai_ajustdamage_from", from)
+    for _, player in ipairs({from, to}) do
+        if player:hasSkill("jiaozi") then
+            local hand = damage_known(scalar(player, "getHandcardNum"), "jiaozi hand count")
+            local most = true
+            for _, other in ipairs(players) do
+                if other:objectName() ~= player:objectName()
+                    and damage_known(scalar(other, "getHandcardNum"), "jiaozi sibling hand count") >= hand then most = false end
+            end
+            if most then damage = damage + 1 end
+        end
+    end
+    damage = damage + fortune4 + fortune5
+    local hp = damage_known(scalar(to, "getHp"), "target hp")
+    if from:hasSkill("se_yezhan") and damage >= hp then damage = damage + 1 end
+    adjustments("ai_ajustdamage_to", to)
+    if to:getMark("&kechengyechou") > 0 and damage >= hp then damage = damage * 2 * to:getMark("&kechengyechou") end
+    if to:hasSkill("Sixu") and damage == 1 and not damage_call(to, "faceUp") then damage = 0 end
+    if to:hasSkill("DSTP") and damage > 1 then damage = 1 end
+    -- Preserve the donor's Lua truthiness: getMark("@inu_to") is truthy even
+    -- at zero. This is donor policy, not an engine damage ruling.
+    if damage > 1 then damage = damage - 1 end
+    if to:hasSkill("luaRkuangyan") then
+        if damage == 1 then damage = 0 end
+        if damage > 1 then damage = damage + 1 end
+    end
+    if to:hasSkill("ark_kewang") and damage > 1 then damage = 0 end
+    if to:hasSkill("sk_kuangyan") then
+        if damage == 1 then damage = 0 end
+        if damage >= 2 then damage = damage + 1 end
+    end
+    if to:hasSkill("Djianxiong") and damage > 1 then ai_unsupported("Djianxiong needs card history", "ajustDamage") end
+    if to:hasSkill("zhouchu") and damage > 1 then damage = damage - 1 end
+    if to:hasSkill("optimistic") and damage > 1 and to:getMark("@SuperLimitBreak") > 0 then damage = 0 end
+    if to:hasSkill("cheerful") and damage > 1 then damage = 1 end
+    return damage < -10 and 0 or damage
+end
+
+function SmartAIView:damageIsEffective(to, card_nature, from)
+    local card = AIValue.isCard(card_nature) and card_nature or nil
+    if self:ajustDamage(from, to, 1, card, card and nil or card_nature) <= 0 then return false end
+    return not sgs.ai_humanized or math.random() < 0.95
+end
+
+function SmartAIView:canDamage(to, from, card)
+    from, to = from or self.room:getCurrent() or self.player, to or self.player
+    if not self:damageIsEffective(to, card, from) then return false end
+    if damage_relation(self, to, self.player) == "enemy" then
+        ai_unsupported("enemy damage benefit and cantbeHurt policy are not covered", "canDamage")
+    end
+    return true
+end
+
+function SmartAIView:canLoseHp(from, card, to)
+    from, to = from or self.room:getCurrent() or self.player, to or self.player
+    local damage = self:ajustDamage(from, to, 1, card)
+    if damage < 0 then return false end
+    if damage_relation(self, to, from) ~= "friend" then
+        if from:hasSkill("jinyimie") and from:getMark("jinyimie-Clear") < 1
+            or from:hasSkill("fcj_yimie") and from:getMark("fcj_yimie-Clear") < 1 then return false end
+        if from:hasSkill("jieyuan") and damage_known(scalar(from, "getHp"), "source hp") <= damage_known(scalar(to, "getHp"), "target hp")
+            and damage_known(scalar(from, "getHandcardNum"), "source hand count") > 0 then return false end
+        if damage_known(self:isWeak(to), "target weakness")
+            and (from:hasSkill("zhenyi") and from:getMark("@flyuqing") > 0 or from:hasSkill("pojun")) then return false end
+        if from:hasSkill("jiedao") and from:getMark("jiedao-Clear") > 0
+            and damage_known(from:getLostHp(), "lost hp") >= damage_known(scalar(to, "getHp"), "target hp") then return false end
+        if from:hasSkill("shanzhuan") and #damage_known(to:getJudgingArea(), "judging area") == 0 then return false end
+        if from:hasSkill("duorui") then ai_unsupported("duorui skill property is not projected", "canLoseHp") end
+        if from:hasSkills("nosdanshou|chuanxin") then return false end
+        if from:hasSkill("kuanggu") and damage_known(from:distanceTo(to), "kuanggu distance") == 1 then return false end
+    end
+    if damage_known(self:isWeak(to), "target weakness") then
+        if to:getMark("@brutal") > 0 and from:hasSkill("xionghuo") then return false end
+        if from:hasSkill("zhuixi") and damage_call(from, "faceUp") ~= damage_call(to, "faceUp") then return false end
+    end
+    if damage >= damage_known(scalar(to, "getHp"), "target hp") then return false end
+    if from:hasSkill("jiaozi") and damage_known(scalar(from, "getHandcardNum"), "source hand count")
+        > damage_known(scalar(to, "getHandcardNum"), "target hand count") then return false end
+    if from:hasSkill("ov_equan") and damage_known(scalar(from, "getPhase"), "source phase")
+        ~= damage_known(sgs.Player_NotActive, "NotActive phase") then return false end
+    return true
+end
+
 function SmartAIView:needToLoseHp(to, from, card, passive, recover)
     to, from = to or self.player, from or self.room:getCurrent() or self.player
     local hp, max_hp = scalar(to, "getHp"), scalar(to, "getMaxHp")
