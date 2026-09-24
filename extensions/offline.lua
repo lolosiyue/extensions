@@ -47,27 +47,31 @@ zhaoyeyushizi:setParent(extension_card)
 ]]
 --
 
-sijyuoffline_huyi_skill = sgs.CreateTriggerSkill {
+sijyuoffline_huyi_skill = sgs.CreateTriggerSkillV2 {
 	name = "sijyuoffline_huyi", --一般的话，技能的objectName()和武器的objectName(）用一样的名字
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.DamageCaused },
-	can_trigger = function(self, target)
-		return target and target:hasWeapon(self:objectName())
-	end,
-	on_trigger = function(self, event, player, data)
+	can_trigger = function(skill, event, room, player, data)
+		if not player or not player:hasWeapon(skill:objectName()) then return false end
 		local damage = data:toDamage()
-		local room = player:getRoom()
 		if damage.card and damage.card:isKindOf("Slash") and damage.card:isKindOf("NatureSlash") and not damage.transfer and not damage.chain then
-			if damage.from:objectName() == player:objectName() then
-				local others = room:askForPlayersChosen(player, room:getAlivePlayers(), self:objectName(), 0, 2, "@sijyuoffline_huyi", true, true)
-				if others and others:length() > 0 then
-					for _, enemy in sgs.qlist(others) do
-						if not enemy:isChained() then
-							room:setPlayerChained(enemy)
-						end
-					end
-				end
+			if damage.from and damage.from:objectName() == player:objectName() then
+				return skill:objectName()
 			end
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		local others = room:askForPlayersChosen(player, room:getAlivePlayers(), skill:objectName(), 0, 2, "@sijyuoffline_huyi", true, true)
+		if not others or others:length() == 0 then return false end
+		for _, enemy in sgs.qlist(others) do
+			ctx.targets:append(enemy)
+		end
+		return true
+	end,
+	on_effect_target = function(skill, event, room, player, ctx, target)
+		if not target:isChained() then
+			room:setPlayerChained(target)
 		end
 		return false
 	end,
@@ -79,25 +83,6 @@ sijyuoffline_huyi = sgs.CreateWeapon {
 	number = 11,
 	range = 3,
 	equip_skill = sijyuoffline_huyi_skill,
-	on_install = function(self, player)
-		local room = player:getRoom()
-		local skill = sgs.Sanguosha:getSkill(self:objectName())
-		if skill then
-			if skill:inherits("ViewAsSkill") then
-				room:attachSkillToPlayer(player, self:objectName())
-			elseif skill:inherits("TriggerSkill") then
-				local tirggerskill = sgs.Sanguosha:getTriggerSkill(self:objectName())
-				room:getThread():addTriggerSkill(tirggerskill)
-			end
-		end
-	end,
-	on_uninstall = function(self, player) --卸下时移除技能
-		local room = player:getRoom()
-		local skill = sgs.Sanguosha:getSkill(self:objectName())
-		if skill and skill:inherits("ViewAsSkill") then
-			room:detachSkillFromPlayer(player, self:objectName(), true)
-		end
-	end,
 }
 sijyuoffline_huyi:setParent(extension_card)
 
