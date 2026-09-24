@@ -4560,3 +4560,22 @@ end
 
 
 
+
+-- V2 target selection reuses the existing Tenyear Tuxi strategy without parsing
+-- or executing its legacy card. Intersect its reply with the current candidates.
+sgs.ai_skill_playerschosen.tenyeartuxi = function(self, candidates, max_num, min_num)
+    local strategy = sgs.ai_skill_use["@@tenyeartuxi"]
+    if type(strategy) ~= "function" then return {} end
+    local reply = strategy(self, "@tuxi-card:::" .. tostring(max_num))
+    local names = type(reply) == "string" and reply:match("%->(.+)$")
+    if not names then return {} end
+    local available, selected, result = {}, {}, {}
+    for _, player in sgs.qlist(candidates) do available[player:objectName()] = player end
+    for name in names:gmatch("[^+]+") do
+        if available[name] and not selected[name] and #result < max_num then
+            selected[name] = true
+            table.insert(result, available[name])
+        end
+    end
+    return result
+end
