@@ -15,7 +15,7 @@ end
 
 sgs.ai_playerchosen_intention.huituo = -80
 
-sgs.ai_skill_playerchosen.mingjian = function(self,targets)
+sgs.ai_skill_playerchosen.nosmingjian = function(self,targets)
     if (sgs.ai_skill_invoke.fangquan(self) or self:needKongcheng(self.player)) then
         local cards = sgs.QList2Table(self.player:getHandcards())
         self:sortByKeepValue(cards)
@@ -37,13 +37,13 @@ sgs.ai_skill_playerchosen.mingjian = function(self,targets)
     return nil
 end
 
-sgs.ai_playerchosen_intention.mingjian = -80
+sgs.ai_playerchosen_intention.nosmingjian = -80
 
-addAiSkills("newmingjian").getTurnUseCard = function(self)
-	return sgs.Card_Parse("@NewMingjianCard=.:")
+addAiSkills("mingjian").getTurnUseCard = function(self)
+	return sgs.Card_Parse("@MingjianCard=.:")
 end
 
-sgs.ai_skill_use_func["NewMingjianCard"] = function(card,use,self)
+sgs.ai_skill_use_func["MingjianCard"] = function(card,use,self)
 	self:sort(self.friends_noself)
 	for _,p in sgs.list(self.friends_noself)do
 		if self:isWeak(p) then
@@ -62,8 +62,8 @@ sgs.ai_skill_use_func["NewMingjianCard"] = function(card,use,self)
 	end
 end
 
-sgs.ai_use_value.NewMingjianCard = 2.4
-sgs.ai_use_priority.NewMingjianCard = -2.4
+sgs.ai_use_value.MingjianCard = 2.4
+sgs.ai_use_priority.MingjianCard = -2.4
 
 
 sgs.ai_skill_invoke.xingshuai = sgs.ai_skill_invoke.niepan

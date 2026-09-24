@@ -106,11 +106,11 @@ sgs.ai_skill_invoke.biluan = function(self,data)
     return self.player:getHandcardNum()>3 and #self:getTurnUse()>2
 end
 
-sgs.ai_skill_choice.olmiji_draw = function(self,choices)
+sgs.ai_skill_choice.mobilemiji_draw = function(self,choices)
     return ""..self.player:getLostHp()
 end
 
-sgs.ai_skill_invoke.olmiji = function(self,data)
+sgs.ai_skill_invoke.mobilemiji = function(self,data)
     if #self.friends==0 then return false end
     for _,friend in ipairs(self.friends)do
         if not friend:hasSkill("manjuan") and not self:isLihunTarget(friend) then return true end
@@ -118,7 +118,7 @@ sgs.ai_skill_invoke.olmiji = function(self,data)
     return false
 end
 
-sgs.ai_skill_askforyiji.olmiji = function(self,card_ids)
+sgs.ai_skill_askforyiji.mobilemiji = function(self,card_ids)
     local available_friends = {}
     for _,friend in ipairs(self.friends)do
         if not friend:hasSkill("manjuan") and not self:isLihunTarget(friend) then table.insert(available_friends,friend) end

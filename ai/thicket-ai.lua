@@ -431,7 +431,7 @@ sgs.ai_skill_invoke.haoshi = function(self,data)
 		end
 		extra=extra+#kingdoms
 	end
-	local sk = {["yingzi"]=1,["zishou"]=self.player:getLostHp(),["ayshuijian"]=1+self.player:getEquips():length(),
+	local sk = {["yingzi"]=1,["noszishou"]=self.player:getLostHp(),["ayshuijian"]=1+self.player:getEquips():length(),
 	["shenwei"]=2,["juejing"]=self.player:getLostHp()}
 	for s,n in ipairs(sk)do
 		if self.player:hasSkill(s) then

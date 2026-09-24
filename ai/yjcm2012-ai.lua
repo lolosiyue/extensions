@@ -72,7 +72,7 @@ function sgs.ai_cardneed.dangxian(to,card,self)
 	return isCard("Slash",card,to) and getKnownCard(to,self.player,"Slash",true)==0
 end
 
-sgs.ai_skill_invoke.zishou = function(self,data)
+sgs.ai_skill_invoke.noszishou = function(self,data)
 	if self:needBear() then return true end
 	if self.player:isSkipped(sgs.Player_Play) then return true end
 
@@ -947,5 +947,5 @@ end
 
 sgs.ai_use_priority.QiceCard = 3.5
 
-sgs.ai_skill_invoke["newzishou"] = sgs.ai_skill_invoke["zishou"]
-sgs.ai_skill_invoke["olzishou"] = sgs.ai_skill_invoke["zishou"]
+sgs.ai_skill_invoke["zishou"] = sgs.ai_skill_invoke["noszishou"]
+sgs.ai_skill_invoke["olzishou"] = sgs.ai_skill_invoke["noszishou"]

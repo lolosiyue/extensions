@@ -6420,15 +6420,6 @@ sgs.ai_skill_use["@@newshuliang"] = function(self,prompt)
 	end
 end
 
---天命
-sgs.ai_skill_invoke.newtianming = function(self,data)
-	return sgs.ai_skill_invoke.tianming(self,data)
-end
-
-sgs.ai_skill_discard.newtianming = function(self,discard_num,min_num,optional,include_equip)
-	return sgs.ai_skill_discard.tianming(self,discard_num,min_num,optional,include_equip)
-end
-
 --观虚
 addAiSkills("guanxu").getTurnUseCard = function(self)
 	return sgs.Card_Parse("@GuanxuCard=.")

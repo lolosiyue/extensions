@@ -36,13 +36,13 @@ kelqxfslashmore = sgs.CreateTargetModSkill {
 				return 999
 			end
 		end
-		if to:getMark("&ty2chengshi+#" .. from:objectName() .. "_lun") > 1 then
+		if to and to:getMark("&ty2chengshi+#" .. from:objectName() .. "_lun") > 1 then
 			return 999
 		end
-		if to:getHandcardNum() < 1 and from:hasSkill("tyzhuiling") then
+		if to and to:getHandcardNum() < 1 and from:hasSkill("tyzhuiling") then
 			return 999
 		end
-		if from:hasSkill("tyxiongren") and to:distanceTo(from) <= 1 then
+		if to and from:hasSkill("tyxiongren") and to:distanceTo(from) <= 1 then
 			return 999
 		end
 		return 0

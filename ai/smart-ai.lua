@@ -286,7 +286,7 @@ do
 	sgs.recover_hp_skill = "nosrende|rende|tenyearrende|kofkuanggu|kuanggu|tenyearkuanggu|zaiqi|mobilezaiqi|jieyin|"..
 						"qingnang|shenzhi|longhun|newlonghun|ytchengxiang|quji|dev_zhiyu|dev_pinghe|dev_qiliao|dev_saodong"
 	
-	sgs.recover_skill =	"yinghun|hunzi|nosmiji|zishou|newzishou|olzishou|tenyearzishou|ganlu|xueji|shangshi|nosshangshi|"..
+	sgs.recover_skill =	"yinghun|hunzi|nosmiji|noszishou|zishou|olzishou|tenyearzishou|ganlu|xueji|shangshi|nosshangshi|"..
 						"buqu|miji|"..sgs.recover_hp_skill
 	
 	sgs.use_lion_skill = "longhun|newlonghun|duanliang|qixi|guidao|noslijian|lijian|jujian|nosjujian|zhiheng|mingce|"..
@@ -300,7 +300,7 @@ do
 	sgs.double_slash_skill = "paoxiao|tenyearpaoxiao|olpaoxiao|fuhun|tianyi|xianzhen|zhaxiang|lihuo|jiangchi|shuangxiong|"..
 						"qiangwu|luanji"
 	
-	sgs.need_maxhp_skill = "yingzi|zaiqi|yinghun|hunzi|juejing|ganlu|zishou|miji|chizhong|xueji|quji|xuehen|shude|"..
+	sgs.need_maxhp_skill = "yingzi|zaiqi|yinghun|hunzi|juejing|ganlu|noszishou|miji|chizhong|xueji|quji|xuehen|shude|"..
 						"neojushou|tannang|fangzhu|nosshangshi|nosmiji|yisuan|xuhe"
 	
 	sgs.bad_skills = "benghuai|wumou|shiyong|yaowu|zaoyao|chanyuan|chouhai|tenyearchouhai|lianhuo|ranshang"

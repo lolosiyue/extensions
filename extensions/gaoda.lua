@@ -5,7 +5,7 @@ extension=sgs.Package("gaoda")
 --高达杀胆创功能（true:开启, false:关闭）
 animation = true --萌妹纸动画
 auto_bgm = true --自动切换BGM
-auto_backdrop = true --自动切换起始背景
+auto_backdrop = false --自动切换起始背景
 gg_effect = true --阵亡特效
 opening = true --开场对白
 dlc = true --武将解锁系统（每5场游戏解锁1名隐藏武将）+记录胜率

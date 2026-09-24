@@ -883,7 +883,7 @@ function SmartAI:ImitateResult_DrawNCards(player,skills,overall)
 						count = count-1
 					end
 				end
-			elseif skillname=="zishou" then --自守，多摸已损失体力值数目的牌
+			elseif skillname=="noszishou" then --自守，多摸已损失体力值数目的牌
 				count = count+lost
 			elseif skillname=="hongyuan" then --弘援，少摸一张牌
 				count = count-1

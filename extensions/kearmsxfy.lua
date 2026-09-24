@@ -1962,7 +1962,7 @@ sxzishou = sgs.CreateTriggerSkill {
 		if event == sgs.EventPhaseChanging then
 			local change = data:toPhaseChange()
 			if change.to == sgs.Player_Play and not player:isSkipped(sgs.Player_Play) and player:askForSkillInvoke(self) then
-				player:peiyin("zishou")
+				player:peiyin("noszishou")
 				local ks = {}
 				for _, p in sgs.qlist(room:getAllPlayers()) do
 					if not table.contains(ks, p:getKingdom()) then

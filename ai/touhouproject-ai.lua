@@ -3134,7 +3134,7 @@ end
 sgs.ai_skill_use_func["#TH_BadFortuneCARD"] = function(card, use, self)-----------ج��
 
 	for _,enemy in ipairs(self.enemies) do
-		if enemy:hasSkills("yongsi|TH_wujiecao|haoshi|nosjuejing|juejing|zishou|yingzi|nosyingzi") and not enemy:containsTrick("supply_shortage") then
+		if enemy:hasSkills("yongsi|TH_wujiecao|haoshi|nosjuejing|juejing|noszishou|yingzi|nosyingzi") and not enemy:containsTrick("supply_shortage") then
 			use.card = card
 			if use.to then use.to:append(enemy) end
 			return
