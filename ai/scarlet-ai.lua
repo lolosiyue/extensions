@@ -1656,8 +1656,11 @@ sgs.ai_skill_choice.s4_zhiji = function(self, choices, data)
 end
 
 sgs.ai_cardneed.s4_banjiang = function(to, card)
-    if to:getMark("s4_banjiang_slash-SelfPlayClear") > 0 then
-        return card:isKindOf("Slash")
+    -- 數值改存 SkillInstanceState（見 scarlet.lua s4_banjiang），mark 只剩展示用
+    for _, id in sgs.list(to:getValidSkillInstanceIds("s4_banjiang")) do
+        if to:getSkillInstanceStateValue("s4_banjiang", id, "slash", sgs.QVariant(0)):toInt() > 0 then
+            return card:isKindOf("Slash")
+        end
     end
     return false
 end
@@ -2797,26 +2800,20 @@ end
 sgs.ai_skill_playerchosen.s4_xianxing = function(self, targets)
     local destlist = sgs.QList2Table(targets) -- 将列表转换为表
 	self:sort(destlist,"handcard")
-    local record = self.player:property("s4_xianxingRecords"):toString()
-    local records
-    if (record) then
-        records = record:split(",")
-        if #records == 4 then
-            for _,target in sgs.list(destlist)do
-                if self:isEnemy(target) then return target end
+    local records = {}
+    for _, iid in sgs.list(self.player:getSkillInstanceIds("s4_xianxing")) do
+        for _, suit in ipairs(self.player:getSkillInstanceStateValue("s4_xianxing", iid, "records", sgs.QVariant("")):toString():split(",")) do
+            if suit ~= "" and not table.contains(records, suit) then
+                table.insert(records, suit)
             end
         end
-        return nil
     end
-    for _,target in sgs.list(destlist)do
-        if self:isEnemy(target) and (self:doDisCard(target, "he") or not self:canDraw(target, self.player))
-        then return target end
+    if #records == 4 then
+        for _,target in sgs.list(destlist)do
+            if self:isEnemy(target) then return target end
+        end
     end
-    for _,target in sgs.list(destlist)do
-        if self:isFriend(target) and (self:doDisCard(target, "he") or self:canDraw(target, self.player) or ZishuEffect(target)>0)
-        then return target end
-    end
-    return self:findPlayerToDiscard("he", true, false, targets)[1]
+    return nil
 end
 
 sgs.ai_skill_use["@@s4_xianxingDiscard"] = function(self,prompt)
@@ -3129,18 +3126,21 @@ sgs.ai_skill_playerchosen.s4_baojun = function(self, targets)
     return nil
 end
 
-sgs.ai_fill_skill.s4_gonggeng_attach = function(self, target)
-    return sgs.Card_Parse("#s4_gonggeng:.:")
+sgs.ai_fill_skill.s4_gonggeng_attach = function(self, inclusive, request)
+    local card = sgs.ActiveSkillCard()
+    card:setSkillName("s4_gonggeng_attach")
+    return card
 end
 
-sgs.ai_skill_use_func["#s4_gonggeng"] = function(card,use,self)
+sgs.ai_skill_use_func["s4_gonggeng_attach"] = function(card,use,self)
     for _,p in ipairs(self.friends) do
         if p:hasSkill("s4_gonggeng") then
             local cards = self.player:getCards("he")
 	        cards = self:sortByKeepValue(cards)
             for _,c in ipairs(cards)do
                 if c:isDamageCard() then
-                    use.card = sgs.Card_Parse("#s4_gonggeng:"..c:getEffectiveId()..":")
+                    card:addSubcard(c:getEffectiveId())
+                    use.card = card
                     if use.to then
                         use.to:append(p)
                     end
