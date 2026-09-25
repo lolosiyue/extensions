@@ -28,31 +28,38 @@ local TrickCard_dhls = 1
 local TrickCard_tjbz = 1
 ----------------------===================================-------------
 if EquipCard_sjlrd == 1 then
-	EXCard_SJLRD_Skill = sgs.CreateTriggerSkill{
+	EXCard_SJLRD_Skill = sgs.CreateTriggerSkillV2{
 		name = "EXCard_SJLRD_Skill",
 		events = { sgs.Damage },
-		can_trigger = function(self, target)
-			return target and target:isAlive() and target:hasWeapon("EXCard_SJLRD")
-		end,
-		on_trigger = function(self, event, player, data)
+		hide_skill = true,
+		can_trigger = function(skill, event, room, player, data)
+			if not (player and player:isAlive() and player:hasSkill(skill:objectName()) and player:hasWeapon("EXCard_SJLRD")) then
+				return false
+			end
 			local damage = data:toDamage()
-			local room = player:getRoom()
 			if damage.card and damage.card:isKindOf("Slash") and damage.from and damage.from:objectName() == player:objectName()
 				and not player:isKongcheng() and not damage.chain and not damage.transfer and damage.by_user then
-				if room:askForDiscard(player, self:objectName(), 1, 1, true, false, "#EXCard_SJLRD_Skill_dis") then
-					local targets = sgs.SPlayerList()
-					for _, p in sgs.qlist(room:getOtherPlayers(damage.to)) do
-						if damage.to:distanceTo(p) == 1 then targets:append(p) end
-					end
-					if targets:isEmpty() then return end
-					local sb = room:askForPlayerChosen(player, targets, self:objectName(), "#EXCard_SJLRD_chosen", true)
-					if sb then
-						room:setEmotion(player, "/excard2014/EXCard_SJLRD")
-						room:damage(sgs.DamageStruct(self:objectName(), player, sb))
-					end
-				end
+				return skill:objectName()
 			end
-		end
+			return false
+		end,
+		on_cost = function(skill, event, room, player, ctx)
+			return room:askForDiscard(player, skill:objectName(), 1, 1, true, false, "#EXCard_SJLRD_Skill_dis") ~= nil
+		end,
+		on_effect = function(skill, event, room, player, ctx)
+			local damage = ctx.original_data:toDamage()
+			local targets = sgs.SPlayerList()
+			for _, p in sgs.qlist(room:getOtherPlayers(damage.to)) do
+				if damage.to:distanceTo(p) == 1 then targets:append(p) end
+			end
+			if targets:isEmpty() then return false end
+			local sb = room:askForPlayerChosen(player, targets, skill:objectName(), "#EXCard_SJLRD_chosen", true)
+			if sb then
+				room:setEmotion(player, "/excard2014/EXCard_SJLRD")
+				room:damage(sgs.DamageStruct(skill:objectName(), player, sb))
+			end
+			return false
+		end,
 	}
 
 	EXCard_SJLRD = sgs.CreateWeapon{
@@ -63,8 +70,9 @@ if EquipCard_sjlrd == 1 then
 		range = 3,
 		on_install = function(self, player)
 			local room = player:getRoom()
-			local skill = sgs.Sanguosha:getTriggerSkill("EXCard_SJLRD_Skill")
-			if skill then room:getThread():addTriggerSkill(skill) end
+			if player:getSkillInstanceIds("EXCard_SJLRD_Skill"):isEmpty() then
+				room:attachSkillToPlayer(player, "EXCard_SJLRD_Skill")
+			end
 		end,
 		on_uninstall = function(self, player)
 		end,
@@ -79,6 +87,8 @@ if EquipCard_sjlrd == 1 then
 end
 
 if EquipCard_wlj == 1 then
+	-- 保留自訂 SkillCard：lua/ai/excard2014-ai.lua 以 Card_Parse("#EXCard_WLJ_SkillCARD:.:")
+	-- 及 ai_skill_use_func["#EXCard_WLJ_SkillCARD"] 依賴此卡類名，V2 以 create_card 沿用。
 	EXCard_WLJ_SkillCARD = sgs.CreateSkillCard{
 		name = "EXCard_WLJ_SkillCARD",
 		skill_name = "EXCard_WLJ",
@@ -104,21 +114,35 @@ if EquipCard_wlj == 1 then
 			end
 		end
 	}
-	EXCard_WLJ_Skill = sgs.CreateZeroCardViewAsSkill{
+	EXCard_WLJ_Skill = sgs.CreateViewAsSkillV2{
 		name = "EXCard_WLJ",
-		view_as = function(self)
+		n = 0,
+		target_mode = sgs.ViewAsSkillV2_SelectTargets,
+		can_activate = function(skill, request)
+			local player = request:getInitiator()
+			return player
+				and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
+				and player:hasWeapon("EXCard_WLJ")
+		end,
+		can_select_target = function(skill, request, selected, candidate)
+			return candidate and candidate:isAlive()
+		end,
+		targets_feasible = function(skill, request, selected)
+			return #selected > 0
+		end,
+		create_card = function(skill, request)
 			return EXCard_WLJ_SkillCARD:clone()
 		end,
-		enabled_at_play = function(self, player)
-			return player and player:hasWeapon("EXCard_WLJ")
-		end,
 	}
-	EXCard_WLJ_SkillTM = sgs.CreateTargetModSkill{
+	EXCard_WLJ_SkillTM = sgs.CreateTargetModSkillV2{
 		name = "EXCard_WLJ_SkillTM",
 		pattern = "Slash",
-		distance_limit_func = function(self, from, card)
+		holder_selector = sgs.CorrectSkill_System,
+		correct_func = function(skill, ctx)
+			if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return nil end
+			local from = ctx:getPrimary()
 			if from and from:getMark("@EXCard_WLJ") > 0 then return 1 end
-			return 0
+			return nil
 		end,
 	}
 	EXCard_WLJ = sgs.CreateWeapon{
@@ -157,101 +181,130 @@ end
 
 
 if EquipCard_fldf == 1 then
-	EXCard_FLDF_Skill = sgs.CreateTriggerSkill{
+	EXCard_FLDF_Skill = sgs.CreateTriggerSkillV2{
 		name = "EXCard_FLDF_Skill",
 		events = { sgs.TargetConfirmed, sgs.BuryVictim },
 		priority = -1,
-		can_trigger = function(self, target)
-			return target and (target:isAlive() and target:hasWeapon("EXCard_FLDF") or target:isDead())
-		end,
-		on_trigger = function(self, event, player, data)
-			local room = player:getRoom()
-			if player:isAlive() and player:hasWeapon("EXCard_FLDF") and event == sgs.TargetConfirmed then
-				local use = data:toCardUse()
-				if use.from and use.from:objectName() == player:objectName() and not use.to:isEmpty() and use.card:isKindOf("Slash") then
-					for _, to in sgs.qlist(use.to) do
-						if not to:isKongcheng() and room:askForSkillInvoke(use.from, "EXCard_FLDF", data) then
-							room:setEmotion(player, "/excard2014/EXCard_FLDF")
-							room:askForDiscard(to, self:objectName(), 1, 1, false, true, "#EXCard_FLDF_Skill_discard")
-						end
+		hide_skill = true,
+		can_trigger = function(skill, event, room, player, data)
+			if event == sgs.TargetConfirmed then
+				if player and player:isAlive() and player:hasSkill(skill:objectName()) and player:hasWeapon("EXCard_FLDF") then
+					local use = data:toCardUse()
+					if use.from and use.from:objectName() == player:objectName() and not use.to:isEmpty() and use.card:isKindOf("Slash") then
+						return skill:objectName()
 					end
 				end
-			elseif player:isDead() and event == sgs.BuryVictim then
+				return false
+			elseif event == sgs.BuryVictim then
+				if not (player and player:isDead()) then return false end
 				local death = data:toDeath()
-				if death.who:objectName() ~= player:objectName() then return end
+				if not (death.who and death.who:objectName() == player:objectName()) then return false end
 				local damage = death.damage
-				if damage and damage.from and damage.from:hasWeapon("EXCard_FLDF") and damage.card and damage.card:isKindOf("Slash") then
-					local generalsname = sgs.Sanguosha:getRandomGenerals(888)
-					local bannames = {}
-					for _, p in sgs.qlist(room:getAllPlayers(true)) do
-						table.insert(bannames, p:getGeneralName())
-						if p:getGeneral2() then table.insert(bannames, p:getGeneral2Name()) end
-					end
-					table.removeTable(generalsname, bannames)
-					local newnames = {}
-					for _, name in ipairs(generalsname) do
-						local general = sgs.Sanguosha:getGeneral(name)
-						if general and general:getKingdom() == damage.from:getKingdom() then
-							table.insert(newnames, name)
-						end
-					end
-					local names1, names2, first, second
-					if #newnames == 0 then
-						names1 = sgs.Sanguosha:getRandomGenerals(1)[1]
-						if player:getGeneral2() then names2 = sgs.Sanguosha:getRandomGenerals(1)[1] end
-					else
-						first = newnames[1]
-						if #newnames > 21 then
-							names1 = table.concat(newnames, "+", 1, 21)
-						else
-							names1 = table.concat(newnames, "+")
-						end
-					end
-
-					if names1 then
-						room:setPlayerFlag(death.who, self:objectName())
-						if not room:askForSkillInvoke(damage.from, "EXCard_FLDF_revive", data) then room:setPlayerFlag(death.who, "-"..self:objectName()) return end
-						room:setPlayerFlag(death.who, "-"..self:objectName())
-						room:setEmotion(player, "/excard2014/EXCard_FLDF")
-						local choice1 = room:askForGeneral(player, names1, first) or first
-						local choice2
-						if player:getGeneral2() then
-							table.removeTable(newnames, { choice1 })
-							second = newnames[1]
-							if #newnames > 21 then
-								names2 = table.concat(newnames, "+", 1, 21)
-							else
-								names2 = table.concat(newnames, "+")
-							end
-							choice2 = room:askForGeneral(player, names2, second) or second
-						end
-
-						room:changeHero(player, choice1, true, not choice2, false, false)
-						if choice2 then room:changeHero(player, choice2, true, true, true, false) end
-						room:revivePlayer(player)
-						if not sgs.GetConfig("EnableHegemony", false) then
-							if damage.from:getRole() == "lord" then
-								room:setPlayerProperty(player, "role", sgs.QVariant("loyalist"))
-							else
-								room:setPlayerProperty(player, "role", sgs.QVariant(damage.from:getRole()))
-							end
-						end
-						room:setPlayerProperty(player, "kingdom", sgs.QVariant(damage.from:getKingdom()))
-						room:setPlayerProperty(player, "faceup", sgs.QVariant(true))
-						room:setPlayerProperty(player, "chained", sgs.QVariant(false))
-						room:resetAI(player)
-						room:updateStateItem()
-						local log = sgs.LogMessage()
-						log.type = "#EXCard_FLDF"
-						log.from = damage.from
-						log.to:append(player)
-						log.arg = "EXCard_FLDF"
-						room:sendLog(log)
-						room:setTag("EXCard_FLDF_effected", sgs.QVariant(player:objectName()))
-					end
+				if damage and damage.from and damage.from:hasWeapon("EXCard_FLDF")
+					and damage.from:hasSkill(skill:objectName()) and damage.card and damage.card:isKindOf("Slash") then
+					return skill:objectName(), damage.from
+				end
+				return false
+			end
+			return false
+		end,
+		on_cost = function(skill, event, room, player, ctx)
+			if event ~= sgs.BuryVictim then return true end
+			local death = ctx.original_data:toDeath()
+			local damage = death.damage
+			local victim = death.who or ctx.invoker
+			local generalsname = sgs.Sanguosha:getRandomGenerals(888)
+			local bannames = {}
+			for _, p in sgs.qlist(room:getAllPlayers(true)) do
+				table.insert(bannames, p:getGeneralName())
+				if p:getGeneral2() then table.insert(bannames, p:getGeneral2Name()) end
+			end
+			table.removeTable(generalsname, bannames)
+			local newnames = {}
+			for _, name in ipairs(generalsname) do
+				local general = sgs.Sanguosha:getGeneral(name)
+				if general and general:getKingdom() == damage.from:getKingdom() then
+					table.insert(newnames, name)
 				end
 			end
-		end
+			local names1, names2, first
+			if #newnames == 0 then
+				names1 = sgs.Sanguosha:getRandomGenerals(1)[1]
+				if victim:getGeneral2() then names2 = sgs.Sanguosha:getRandomGenerals(1)[1] end
+			else
+				first = newnames[1]
+				if #newnames > 21 then
+					names1 = table.concat(newnames, "+", 1, 21)
+				else
+					names1 = table.concat(newnames, "+")
+				end
+			end
+			if not names1 then return false end
+			room:setPlayerFlag(victim, skill:objectName())
+			local invoke = room:askForSkillInvoke(player, "EXCard_FLDF_revive", ctx.original_data)
+			room:setPlayerFlag(victim, "-"..skill:objectName())
+			if not invoke then return false end
+			ctx.extra_data:setValue(table.concat({names1, first or "", table.concat(newnames, "+")}, "|"))
+			return true
+		end,
+		on_effect = function(skill, event, room, player, ctx)
+			if event == sgs.TargetConfirmed then
+				local use = ctx.original_data:toCardUse()
+				for _, to in sgs.qlist(use.to) do
+					if not to:isKongcheng() and room:askForSkillInvoke(use.from, "EXCard_FLDF", ctx.original_data) then
+						room:setEmotion(player, "/excard2014/EXCard_FLDF")
+						room:askForDiscard(to, skill:objectName(), 1, 1, false, true, "#EXCard_FLDF_Skill_discard")
+					end
+				end
+				return false
+			end
+			local death = ctx.original_data:toDeath()
+			local damage = death.damage
+			local victim = death.who or ctx.invoker
+			local parts = ctx.extra_data:toString():split("|")
+			local names1, first = parts[1], parts[2]
+			if first == "" then first = nil end
+			local newnames = {}
+			if parts[3] and parts[3] ~= "" then newnames = parts[3]:split("+") end
+			room:setEmotion(victim, "/excard2014/EXCard_FLDF")
+			local choice1 = room:askForGeneral(victim, names1, first) or first
+			local choice2
+			if victim:getGeneral2() then
+				table.removeTable(newnames, { choice1 })
+				local second = newnames[1]
+				local names2
+				if #newnames > 21 then
+					names2 = table.concat(newnames, "+", 1, 21)
+				else
+					names2 = table.concat(newnames, "+")
+				end
+				choice2 = room:askForGeneral(victim, names2, second) or second
+			end
+
+			room:changeHero(victim, choice1, true, not choice2, false, false)
+			if choice2 then room:changeHero(victim, choice2, true, true, true, false) end
+			room:revivePlayer(victim)
+			if not sgs.GetConfig("EnableHegemony", false) then
+				if damage.from:getRole() == "lord" then
+					room:setPlayerProperty(victim, "role", sgs.QVariant("loyalist"))
+				else
+					room:setPlayerProperty(victim, "role", sgs.QVariant(damage.from:getRole()))
+				end
+			end
+			room:setPlayerProperty(victim, "kingdom", sgs.QVariant(damage.from:getKingdom()))
+			room:setPlayerProperty(victim, "faceup", sgs.QVariant(true))
+			room:setPlayerProperty(victim, "chained", sgs.QVariant(false))
+			room:resetAI(victim)
+			room:updateStateItem()
+			local log = sgs.LogMessage()
+			log.type = "#EXCard_FLDF"
+			log.from = damage.from
+			log.to:append(victim)
+			log.arg = "EXCard_FLDF"
+			room:sendLog(log)
+			room:setTag("EXCard_FLDF_effected", sgs.QVariant(victim:objectName()))
+			return false
+		end,
 	}
 
 	EXCard_FLDF = sgs.CreateWeapon{
@@ -262,8 +315,9 @@ if EquipCard_fldf == 1 then
 		range = 2,
 		on_install = function(self, player)
 			local room = player:getRoom()
-			local skill = sgs.Sanguosha:getTriggerSkill("EXCard_FLDF_Skill")
-			if skill then room:getThread():addTriggerSkill(skill) end
+			if player:getSkillInstanceIds("EXCard_FLDF_Skill"):isEmpty() then
+				room:attachSkillToPlayer(player, "EXCard_FLDF_Skill")
+			end
 		end,
 		on_uninstall = function(self, player)
 		end,
@@ -277,44 +331,60 @@ if EquipCard_fldf == 1 then
 end
 
 if EquipCard_typs == 1 then
-	EXCard_TPYS_Skill = sgs.CreateTriggerSkill{
+	EXCard_TPYS_Skill = sgs.CreateTriggerSkillV2{
 		name = "EXCard_TPYS_Skill",
 		events = { sgs.DamageInflicted, sgs.CardsMoveOneTime },
-		can_trigger = function(self, target)
-			return target and target:isAlive()
-		end,
-		on_trigger = function(self, event, player, data)
-			local room = player:getRoom()
-			if event == sgs.DamageInflicted and player:hasArmorEffect("EXCard_TPYS") then
+		hide_skill = true,
+		can_trigger = function(skill, event, room, player, data)
+			if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then
+				return false
+			end
+			if event == sgs.DamageInflicted then
 				local damage = data:toDamage()
-				if damage.nature == sgs.DamageStruct_Normal then return end
+				if player:hasArmorEffect("EXCard_TPYS") and damage.nature ~= sgs.DamageStruct_Normal then
+					return skill:objectName()
+				end
+			elseif event == sgs.CardsMoveOneTime then
+				if player:hasFlag("EXCard_TPYS_uninstall") then
+					return skill:objectName()
+				end
+			end
+			return false
+		end,
+		on_effect = function(skill, event, room, player, ctx)
+			if event == sgs.DamageInflicted then
+				local damage = ctx.original_data:toDamage()
 				local log = sgs.LogMessage()
 				log.type = "#EXCard_TPYS"
 				log.from = damage.to
 				room:sendLog(log)
 				room:setEmotion(damage.to, "/excard2014/EXCard_TPYS")
 				return true
-			elseif event == sgs.CardsMoveOneTime and player:hasFlag("EXCard_TPYS_uninstall") then
+			elseif event == sgs.CardsMoveOneTime then
 				room:setPlayerFlag(player, "-EXCard_TPYS_uninstall")
-				local move = data:toMoveOneTime()
+				local move = ctx.original_data:toMoveOneTime()
 				if move.from and move.from:objectName() == player:objectName() and move.from_places:contains(sgs.Player_PlaceEquip) then
 					for _, id in sgs.qlist(move.card_ids) do
 						if sgs.Sanguosha:getEngineCard(id):getClassName() == "EXCard_TPYS" then
 							player:drawCards(2)
 							if player:getHp() > 1 then
-								room:loseHp(player, 1, true, player, self:objectName())
+								room:loseHp(player, 1, true, player, skill:objectName())
 							end
-							return
+							break
 						end
 					end
 				end
 			end
-		end
+			return false
+		end,
 	}
 
-	EXCard_TPYS_MaxCardSkill = sgs.CreateMaxCardsSkill{
+	EXCard_TPYS_MaxCardSkill = sgs.CreateMaxCardsSkillV2{
 		name = "EXCard_TPYS_MaxCardSkill",
-		extra_func = function(self, player)
+		holder_selector = sgs.CorrectSkill_System,
+		correct_func = function(skill, ctx)
+			local player = ctx:getPrimary()
+			if not player then return nil end
 			local players = player:getAliveSiblings()
 			players:append(player)
 			local extra = 0
@@ -325,11 +395,9 @@ if EquipCard_typs == 1 then
 					end
 				end
 			end
-			return extra and player:hasArmorEffect("EXCard_TPYS")
+			if extra > 0 and player:hasArmorEffect("EXCard_TPYS") then return extra end
+			return nil
 		end,
-		fixed_func = function()
-			return -1
-		end
 	}
 
 	EXCard_TPYS = sgs.CreateArmor{
@@ -339,8 +407,9 @@ if EquipCard_typs == 1 then
 		number = 2,
 		on_install = function(self, player)
 			local room = player:getRoom()
-			local skill = sgs.Sanguosha:getTriggerSkill("EXCard_TPYS_Skill")
-			if skill then room:getThread():addTriggerSkill(skill) end
+			if player:getSkillInstanceIds("EXCard_TPYS_Skill"):isEmpty() then
+				room:attachSkillToPlayer(player, "EXCard_TPYS_Skill")
+			end
 		end,
 		on_uninstall = function(self, player)
 			local room = player:getRoom()
@@ -358,6 +427,8 @@ end
 
 
 if TrickCard_wwjz == 1 then
+	-- 保留 legacy：全域「任一持牌者可響應他人【殺】」觸發技；V2 觸發需持有者技能實例，
+	-- 卡牌包無合適的實例掛載點（非裝備技能、非武將技能），而 global=true 不自動建立實例。
 	EXCard_WWJZ_Skill = sgs.CreateTriggerSkill{
 		name = "EXCard_WWJZ_Skill",
 		events = { sgs.TargetConfirmed, sgs.SlashMissed, sgs.SlashEffected, sgs.TurnBroken, sgs.StageChange },
