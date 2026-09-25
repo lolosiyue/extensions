@@ -173,12 +173,22 @@ dl_pindi = sgs.CreateViewAsSkillV2{
 		end
 	end,
 }
-dl_pindi_extra = sgs.CreateTriggerSkill{
-	name = "dl_pindi_extra",
+-- V2 全域觸發技須由玩家持有實例才會派發：在命中條件時為缺實例的事件目標補掛 acquired 實例
+-- （等效舊版 global=true 的全場派發；# 隱藏名不進入面板與技能列表）
+dl_pindi_extra = sgs.CreateTriggerSkillV2{
+	name = "#dl_pindi_extra",
 	global = true,
+	frequency = sgs.Skill_Compulsory,
 	events = {sgs.MarkChanged, sgs.EventPhaseStart},
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(self, event, room, player, data)
+		if not player then return false end
+		if player:getSkillInstanceIds(self:objectName()):isEmpty() then
+			room:attachSkillToPlayer(player, self:objectName())
+		end
+		return self:objectName()
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.MarkChanged then
 			local mark = data:toMark()
 			if mark.name == "&dl_upup" and mark.who:getMark(mark.name) >= 1 then
@@ -272,12 +282,10 @@ dl_pindi_extra = sgs.CreateTriggerSkill{
 				end
 			end
 		end
-	end,
-	can_trigger = function(self, player)
-	    return player
+		return false
 	end,
 }
-if not sgs.Sanguosha:getSkill("dl_pindi_extra") then skills:append(dl_pindi_extra) end
+if not sgs.Sanguosha:getSkill("#dl_pindi_extra") then skills:append(dl_pindi_extra) end
 dl_chenqun:addSkill(dl_chaju)
 if not sgs.Sanguosha:getSkill("dl_pindi") then skills:append(dl_pindi) end
 dl_chenqun:addRelateSkill("dl_pindi")
