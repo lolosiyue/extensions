@@ -2034,13 +2034,23 @@ if hcv then
 	hcv:close()
 	sgs.aiHandCardVisible = true
 end
-OnSkillTrigger = sgs.CreateTriggerSkill {
-	name = "OnSkillTrigger",
+OnSkillTrigger = sgs.CreateTriggerSkillV2 {
+	name = "#OnSkillTrigger",
 	global = true,
 	priority = { 9, 9, 9, 0, 1 },
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.EventPhaseStart, sgs.EventPhaseProceeding, sgs.CardsMoveOneTime, sgs.EventPhaseChanging, sgs.PreCardUsed, sgs.HpChanged },
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not player then
+			return false
+		end
+		if player:getSkillInstanceIds(skill:objectName()):isEmpty() then
+			room:attachSkillToPlayer(player, skill:objectName())
+		end
+		return skill:objectName()
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.CardsMoveOneTime then
 			local move = data:toMoveOneTime()
 			if move.to_place == sgs.Player_PlaceHand and move.to:objectName() == player:objectName() and player:getTag("ThrowArea_1"):toBool() then
