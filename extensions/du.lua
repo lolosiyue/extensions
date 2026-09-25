@@ -984,30 +984,34 @@ tongpaodestCard = sgs.CreateSkillCard {
 		return nil
 	end,
 }
-tongpaodest = sgs.CreateZeroCardViewAsSkill {
+tongpaodest = sgs.CreateViewAsSkillV2 {
 	name = "tongpaodest&",
-	enabled_at_play = function(self, player)
-		if player:hasFlag("Global_tongpaoFailed") then
+	n = 0,
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player then
 			return false
 		end
-		return sgs.Slash_IsAvailable(player)
-	end,
-	enabled_at_response = function(self, player, pattern)
-		if player:hasFlag("Global_tongpaoFailed") then
-			return
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+			if player:hasFlag("Global_tongpaoFailed") then
+				return false
+			end
+			return sgs.Slash_IsAvailable(player)
 		end
-		if player:hasFlag("Global_tongpaoUsing") then
-			return
-		end
-		if pattern == "slash" or pattern == "jink" then
-			return true
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+			or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			if player:hasFlag("Global_tongpaoFailed") or player:hasFlag("Global_tongpaoUsing") then
+				return false
+			end
+			local pattern = request:getPattern()
+			return pattern == "slash" or pattern == "jink"
 		end
 		return false
 	end,
-	view_as = function(self)
+	create_card = function(skill, request)
 		local acard = tongpaodestCard:clone()
-		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
-		acard:setUserString(pattern)
+		acard:setUserString(request:getPattern())
 		return acard
 	end,
 }
