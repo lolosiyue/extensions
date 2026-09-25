@@ -34,6 +34,10 @@ Rcekuiwei = sgs.CreateTriggerSkillV2{
 	end
 }
 
+-- DEFER:Rceyanzheng:view-as stays legacy — its enabled_at_response covers the "nullification"
+-- race via ServerPlayer::hasNullification(), which only calls ViewAsSkill::isEnabledAtResponse;
+-- LuaViewAsSkillV2 exposes no response_pattern setter, so migrating would silently drop holders
+-- from nullification asks. Deferred until a V2 nullification-response path exists.
 Rceyanzheng = sgs.CreateViewAsSkill{
 	name = "Rceyanzheng", 
 	n = 1, 
