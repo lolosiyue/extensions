@@ -667,6 +667,11 @@ ejisiCard = sgs.CreateSkillCard {
 		return nil
 	end,
 }
+-- DEFER:ejisi:view-as stays legacy — it only answers "nullification" asks, which are gated
+-- by ServerPlayer::hasNullification() calling ViewAsSkill::isEnabledAtResponse;
+-- LuaViewAsSkillV2 cannot set response_pattern, so migrating would silently drop holders
+-- from nullification races. Its validate also mixes the ejisiUsed flag, a pindian and a
+-- card replacement (LegacyValidateLimited). Deferred until a V2 nullification-response path exists.
 ejisiVS = sgs.CreateViewAsSkill {
 	name = "ejisi",
 	n = 0,
