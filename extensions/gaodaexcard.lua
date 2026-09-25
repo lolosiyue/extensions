@@ -145,13 +145,26 @@ decade = sgs.CreateTrickCard {
 decade:clone(0, 10):setParent(extension)
 
 --防止作弊卡牌一览获得移出游戏的牌
---V2 触发技能须由玩家持有实例才会派发；record 阶段在每次派发开头执行，等效旧版全局守卫
+--V2 触发技能须由玩家持有实例才会派发；全局守卫以隐藏技能名挂到所有武将，
+--晚于本扩展加载的武将或换将后于 record 阶段补挂 acquired 实例
+local gaodaexcard_global_skill_names = { "#gaodaexcard_skill" }
+local function gaodaexcard_ensure_global_instances(room)
+	for _, p in sgs.qlist(room:getAllPlayers(true)) do
+		for _, skill_name in ipairs(gaodaexcard_global_skill_names) do
+			if p:getSkillInstanceIds(skill_name):isEmpty() then
+				room:attachSkillToPlayer(p, skill_name)
+			end
+		end
+	end
+end
+
 gaodaexcard_skill = sgs.CreateTriggerSkillV2 {
 	name = "#gaodaexcard_skill",
 	events = { sgs.BeforeCardsMove },
 	global = true,
 	priority = 3,
 	on_record = function(skill, event, room, player, ctx)
+		gaodaexcard_ensure_global_instances(room)
 		if not player then return end
 		local data = ctx.original_data
 		local move = data:toMoveOneTime()
@@ -170,31 +183,18 @@ gaodaexcard_skill = sgs.CreateTriggerSkillV2 {
 	end,
 }
 
---Lua 侧没有不依赖玩家实例的全局 V2 入口（recordEvent 仅 C++ 可用），
---故保留此隐藏旧式技能，在开局为每名玩家挂载上面的守卫实例
-gaodaexcard_attach = sgs.CreateTriggerSkill {
-	name = "#gaodaexcard_attach",
-	events = { sgs.GameStart },
-	global = true,
-	can_trigger = function(self, target)
-		return target ~= nil
-	end,
-	on_trigger = function(self, event, player, data, room)
-		if not player:hasSkill("#gaodaexcard_skill") then
-			room:attachSkillToPlayer(player, "#gaodaexcard_skill")
-		end
-		return false
-	end,
-}
-
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("#gaodaexcard_skill") then
 	skills:append(gaodaexcard_skill)
 end
-if not sgs.Sanguosha:getSkill("#gaodaexcard_attach") then
-	skills:append(gaodaexcard_attach)
-end
 sgs.Sanguosha:addSkills(skills)
+
+--V2 触发须由玩家持有实例：守卫技能挂到所有武将，令每名玩家持有其 innate 实例
+for _, gen in sgs.qlist(sgs.Sanguosha:getAllGenerals()) do
+	for _, skill_name in ipairs(gaodaexcard_global_skill_names) do
+		gen:addSkill(skill_name)
+	end
+end
 
 sgs.LoadTranslationTable {
 	["gaodaexcard"] = "高达杀乱入卡",
