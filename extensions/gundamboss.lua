@@ -55,12 +55,20 @@ gainItems = function(player, item_list)
 end
 
 --灭绝爆发
-burste = sgs.CreateTriggerSkill {
+burste = sgs.CreateTriggerSkillV2 {
 	name = "burste",
 	events = { sgs.EventPhaseStart },
 	priority = 1,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(skill, event, room, player, data)
+		if not player or not player:hasSkill(skill:objectName()) then return false end
+		if player:getPhase() ~= sgs.Player_Finish then return false end
+		if player:getMark("@burste9") == 0 and player:getMark("@burste6") == 0 and player:getMark("@burste3") == 0 then
+			return false
+		end
+		return skill:objectName()
+	end,
+	on_effect = function(skill, event, room, player, ctx)
 		if player:getPhase() == sgs.Player_Finish then
 			if player:getMark("@burste9") == 0 and player:getMark("@burste6") == 0 and player:getMark("@burste3") == 0 then
 				return false
@@ -92,30 +100,42 @@ burste = sgs.CreateTriggerSkill {
 
 				for _, p in ipairs(targets) do
 					room:doAnimate(1, player:objectName(), p:objectName())
-					room:loseHp(p, 1, true, player, self:objectName())
+					room:loseHp(p, 1, true, player, skill:objectName())
 				end
 			end
 		end
+		return false
 	end,
 }
 
+-- V2 觸發技能須由玩家持有實例才會派發：全域規則技於檔末掛到所有武將（innate 實例）；
+-- 此處在命中條件時為缺實例的事件目標補掛 acquired 實例（晚於本擴展載入的武將／換將後）。
+local function gundamboss_attach_instance(room, player, skill_name)
+	if player and player:getSkillInstanceIds(skill_name):isEmpty() then
+		room:attachSkillToPlayer(player, skill_name)
+	end
+end
+
 -- 通用效果：房主赢了可以选择重玩此局（联机刷币甚佳）
-_mini_0_skill = sgs.CreateTriggerSkill {
-	name = "_mini_0_skill",
+_mini_0_skill = sgs.CreateTriggerSkillV2 {
+	name = "#_mini_0_skill",
 	events = { sgs.GameOverJudge },
 	priority = 0,
 	global = true,
-	can_trigger = function(self, player)
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(skill, event, room, player, data)
 		local mode = player:getGameMode()
 		if mode:startsWith("_mini_") then
 			local n = string.gsub(mode, "_mini_", "")
 			n = tonumber(n)
-			return n >= 2
+			if n and n >= 2 then
+				gundamboss_attach_instance(room, player, skill:objectName())
+				return skill:objectName()
+			end
 		end
 		return false
 	end,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	on_effect = function(skill, event, room, player, ctx)
 		local owner = room:getOwner()
 		local winner = getWinner(player) -- player is victim
 		if winner ~= "" then
@@ -126,40 +146,46 @@ _mini_0_skill = sgs.CreateTriggerSkill {
 				end
 			end
 		end
+		return false
 	end,
 }
 
 -- 剧情效果：单挑谁赢谁拿10个G币而已
-_mini_2_skill = sgs.CreateTriggerSkill {
-	name = "_mini_2_skill",
+_mini_2_skill = sgs.CreateTriggerSkillV2 {
+	name = "#_mini_2_skill",
 	events = { sgs.GameOverJudge },
 	priority = 1,
 	global = true,
-	can_trigger = function(self, player)
-		return player:getGameMode() == "_mini_2"
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(skill, event, room, player, data)
+		if player:getGameMode() ~= "_mini_2" then return false end
+		gundamboss_attach_instance(room, player, skill:objectName())
+		return skill:objectName()
 	end,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	on_effect = function(skill, event, room, player, ctx)
 		for _, p in sgs.qlist(room:getAllPlayers(true)) do
 			if p:objectName() ~= player:objectName() then
 				gainItems(p, "Coin:10")
 			end
 		end
+		return false
 	end,
 }
 
 -- 剧情效果：巴巴托斯会复活两次，第一次复活变身8/8天狼并获得技能“狂骨”，第二次复活变身12/12帝王并获得技能“血祭”
 -- 反贼胜利可以拿10个G币，主公胜利不会拿（BOSS强度都让你嗨翻天了，还想当BOSS骗G币？）
-_mini_3_skill = sgs.CreateTriggerSkill {
-	name = "_mini_3_skill",
+_mini_3_skill = sgs.CreateTriggerSkillV2 {
+	name = "#_mini_3_skill",
 	events = { sgs.GameOverJudge, sgs.BuryVictim },
 	priority = 1,
 	global = true,
-	can_trigger = function(self, player)
-		return player:getGameMode() == "_mini_3"
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(skill, event, room, player, data)
+		if player:getGameMode() ~= "_mini_3" then return false end
+		gundamboss_attach_instance(room, player, skill:objectName())
+		return skill:objectName()
 	end,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	on_effect = function(skill, event, room, player, ctx)
 		if player:isLord() then
 			if event == sgs.GameOverJudge then
 				if player:getGeneralName() == "BARBATOS" then
@@ -212,16 +238,18 @@ _mini_3_skill = sgs.CreateTriggerSkill {
 
 -- 剧情效果：清完杂兵后，原本两个穿藤甲的杂兵会复活成命运和传说
 -- 主公/忠臣胜利可以拿10个G币
-_mini_4_skill = sgs.CreateTriggerSkill {
-	name = "_mini_4_skill",
+_mini_4_skill = sgs.CreateTriggerSkillV2 {
+	name = "#_mini_4_skill",
 	events = { sgs.GameOverJudge, sgs.BuryVictim },
 	priority = 1,
 	global = true,
-	can_trigger = function(self, player)
-		return player:getGameMode() == "_mini_4"
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(skill, event, room, player, data)
+		if player:getGameMode() ~= "_mini_4" then return false end
+		gundamboss_attach_instance(room, player, skill:objectName())
+		return skill:objectName()
 	end,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	on_effect = function(skill, event, room, player, ctx)
 		if event == sgs.GameOverJudge then
 			if player:getKingdom() == "OMNI" and room:getLieges("OMNI", player):isEmpty() then
 				local a, b = room:getAllPlayers(true):at(5), room:getAllPlayers(true):at(6)
@@ -308,25 +336,27 @@ _mini_4_skill = sgs.CreateTriggerSkill {
 
 -- 剧情效果：若未出现双方均发动“明镜止水”的状态，甲方进入濒死状态时，其将体力回复至1点，然后乙方获得X个“怒”标记（X为甲方的体力回复值）
 -- 胜利者可以拿10+Y个G币（Y为其“怒”标记数量）
-_mini_5_skill = sgs.CreateTriggerSkill {
-	name = "_mini_5_skill",
+_mini_5_skill = sgs.CreateTriggerSkillV2 {
+	name = "#_mini_5_skill",
 	events = { sgs.DrawNCards, sgs.EnterDying, sgs.GameOverJudge },
 	priority = 1,
 	global = true,
-	can_trigger = function(self, player)
-		return player:getGameMode() == "_mini_5"
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(skill, event, room, player, data)
+		if player:getGameMode() ~= "_mini_5" then return false end
+		gundamboss_attach_instance(room, player, skill:objectName())
+		return skill:objectName()
 	end,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	on_effect = function(skill, event, room, player, ctx)
 		if event == sgs.DrawNCards then
-			local draw = data:toDraw()
+			local draw = ctx.original_data:toDraw()
 			if draw.reason ~= "InitialHandCards" then
 				return false
 			end
 			if player:isLord() then
 				player:speak("Gundam Fight!Ready~Go!")
 				player:getNextAlive():speak("Gundam Fight!Ready~Go!")
-				room:broadcastSkillInvoke(self:objectName())
+				room:broadcastSkillInvoke("_mini_5_skill")
 				room:getThread():delay(3500)
 			end
 		elseif event == sgs.EnterDying then
@@ -366,16 +396,18 @@ _mini_5_skill = sgs.CreateTriggerSkill {
 -- 4. 若BOSS已觉醒：讨伐队角色回合结束后，若下家不为BOSS，则BOSS进行一个额外的回合
 
 -- 讨伐队赢了可以拿15个G币&1枚银鸟吊坠
-_mini_6_skill = sgs.CreateTriggerSkill {
-	name = "_mini_6_skill",
+_mini_6_skill = sgs.CreateTriggerSkillV2 {
+	name = "#_mini_6_skill",
 	events = { sgs.GameOverJudge, sgs.EventPhaseEnd, sgs.DrawNCards, sgs.EventPhaseStart },
 	priority = 1,
 	global = true,
-	can_trigger = function(self, player)
-		return player:getGameMode() == "_mini_6"
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(skill, event, room, player, data)
+		if player:getGameMode() ~= "_mini_6" then return false end
+		gundamboss_attach_instance(room, player, skill:objectName())
+		return skill:objectName()
 	end,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	on_effect = function(skill, event, room, player, ctx)
 		if event == sgs.GameOverJudge then
 			if player:isLord() then
 				room:doLightbox("image=image/animate/SHAMBLO_death.png", 8000)
@@ -404,8 +436,8 @@ _mini_6_skill = sgs.CreateTriggerSkill {
 			end
 		elseif event == sgs.DrawNCards then
 			if player:isLord() and room:getOtherPlayers(player):length() >= 3 then
-				local count = data:toInt() + 2
-				data:setValue(count)
+				local count = ctx.original_data:toInt() + 2
+				ctx.original_data:setValue(count)
 			end
 		else
 			if not player:isLord() and room:getOtherPlayers(player):length() >= 3 and player:getPhase() == sgs.Player_RoundStart then
@@ -416,7 +448,7 @@ _mini_6_skill = sgs.CreateTriggerSkill {
 						return false
 					end
 					room:setPlayerProperty(boss, "general2", sgs.QVariant("ZAKU_I_ST"))
-					room:broadcastSkillInvoke(self:objectName())
+					room:broadcastSkillInvoke("_mini_6_skill")
 					room:getThread():delay(2000)
 
 					local shoot = sgs.Sanguosha:cloneCard("pierce_shoot", sgs.Card_NoSuit, 0)
@@ -427,6 +459,7 @@ _mini_6_skill = sgs.CreateTriggerSkill {
 				end
 			end
 		end
+		return false
 	end,
 }
 
@@ -434,108 +467,122 @@ local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("burste") then
 	skills:append(burste)
 end
-if not sgs.Sanguosha:getSkill("_mini_0_skill") then
+if not sgs.Sanguosha:getSkill("#_mini_0_skill") then
 	skills:append(_mini_0_skill)
 end
-if not sgs.Sanguosha:getSkill("_mini_2_skill") then
+if not sgs.Sanguosha:getSkill("#_mini_2_skill") then
 	skills:append(_mini_2_skill)
 end
-if not sgs.Sanguosha:getSkill("_mini_3_skill") then
+if not sgs.Sanguosha:getSkill("#_mini_3_skill") then
 	skills:append(_mini_3_skill)
 end
-if not sgs.Sanguosha:getSkill("_mini_4_skill") then
+if not sgs.Sanguosha:getSkill("#_mini_4_skill") then
 	skills:append(_mini_4_skill)
 end
-if not sgs.Sanguosha:getSkill("_mini_5_skill") then
+if not sgs.Sanguosha:getSkill("#_mini_5_skill") then
 	skills:append(_mini_5_skill)
 end
-if not sgs.Sanguosha:getSkill("_mini_6_skill") then
+if not sgs.Sanguosha:getSkill("#_mini_6_skill") then
 	skills:append(_mini_6_skill)
 end
 sgs.Sanguosha:addSkills(skills)
 
 SHAMBLO = sgs.General(extension, "SHAMBLO", "ZEON", 7, false, true, true)
 
-boss_juao = sgs.CreateTriggerSkill {
+boss_juao = sgs.CreateTriggerSkillV2 {
 	name = "boss_juao",
 	events = { sgs.CardFinished },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		if not player or not player:hasSkill(skill:objectName()) then return false end
 		local use = data:toCardUse()
-		if use.card and use.card:isKindOf("Weapon") then
-			local invoked = false
-			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-				if player:distanceTo(p) == 1 then
-					if not invoked and room:askForSkillInvoke(player, self:objectName(), data) then
-						invoked = true
-						room:broadcastSkillInvoke(self:objectName())
-					end
-					if invoked then
-						room:damage(sgs.DamageStruct(self:objectName(), player, p))
-					else
-						break
-					end
-				end
+		if not (use.card and use.card:isKindOf("Weapon")) then return false end
+		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+			if player:distanceTo(p) == 1 then
+				return skill:objectName()
 			end
 		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		return room:askForSkillInvoke(player, skill:objectName(), ctx.original_data)
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		room:broadcastSkillInvoke(skill:objectName())
+		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+			if player:distanceTo(p) == 1 then
+				room:damage(sgs.DamageStruct(skill:objectName(), player, p))
+			end
+		end
+		return false
 	end,
 }
 
-boss_fuchou = sgs.CreateTriggerSkill {
+boss_fuchou = sgs.CreateTriggerSkillV2 {
 	name = "boss_fuchou",
 	events = { sgs.TargetSpecifying, sgs.TargetConfirming },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		if not player or not player:hasSkill(skill:objectName()) then return false end
 		local use = data:toCardUse()
-		if event == sgs.TargetSpecifying or (event == sgs.TargetConfirming and use.to:contains(player)) then
-			if use.card and use.card:getSuit() <= 3 and use.card:objectName():endsWith("shoot") and use.to:length() == 1 and room:getOtherPlayers(player):length() >= 3 then
-				local card = room:askForCard(player, ".|" .. use.card:getSuitString(), "@boss_fuchou", data, sgs.Card_MethodDiscard, nil, false, self:objectName(), false)
-				if card then
-					room:broadcastSkillInvoke(self:objectName(), math.random(1, 3))
-
-					local orig = use.to:first()
-					local prev = orig
-					for i = 1, 5 do
-						local targets = room:getOtherPlayers(player)
-						targets:removeOne(prev)
-						local n = targets:length()
-						local p = targets:at(math.random(0, n - 1))
-
-						room:setEmotion(p, "reflector")
-						room:doAnimate(1, prev:objectName(), p:objectName())
-						room:broadcastSkillInvoke(self:objectName(), 4)
-						room:getThread():delay(0400)
-
-						prev = p
-					end
-
-					if orig:objectName() ~= prev:objectName() then
-						local log1 = sgs.LogMessage()
-						log1.type = "$CancelTarget"
-						log1.from = use.from
-						log1.arg = use.card:objectName()
-						log1.to:append(orig)
-						room:sendLog(log1)
-						use.to:removeOne(orig)
-						if not use.from:isProhibited(prev, use.card) then
-							local log2 = sgs.LogMessage()
-							log2.type = "#BecomeTarget"
-							log2.from = prev
-							log2.card_str = use.card:toString()
-							room:sendLog(log2)
-							use.to:append(prev)
-							room:sortByActionOrder(use.to)
-						end
-						data:setValue(use)
-					end
-
-					if not prev:isNude() then
-						local id_throw = room:askForCardChosen(player, prev, "he", self:objectName())
-						room:throwCard(id_throw, prev, player)
-					end
-				end
-			end
+		if not (event == sgs.TargetSpecifying or (event == sgs.TargetConfirming and use.to:contains(player))) then
+			return false
 		end
+		if use.card and use.card:getSuit() <= 3 and use.card:objectName():endsWith("shoot")
+			and use.to:length() == 1 and room:getOtherPlayers(player):length() >= 3 then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		local use = ctx.original_data:toCardUse()
+		local card = room:askForCard(player, ".|" .. use.card:getSuitString(), "@boss_fuchou",
+			ctx.original_data, sgs.Card_MethodDiscard, nil, false, skill:objectName(), false)
+		return card ~= nil
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		room:broadcastSkillInvoke(skill:objectName(), math.random(1, 3))
+
+		local use = ctx.original_data:toCardUse()
+		local orig = use.to:first()
+		local prev = orig
+		for i = 1, 5 do
+			local targets = room:getOtherPlayers(player)
+			targets:removeOne(prev)
+			local n = targets:length()
+			local p = targets:at(math.random(0, n - 1))
+
+			room:setEmotion(p, "reflector")
+			room:doAnimate(1, prev:objectName(), p:objectName())
+			room:broadcastSkillInvoke(skill:objectName(), 4)
+			room:getThread():delay(0400)
+
+			prev = p
+		end
+
+		if orig:objectName() ~= prev:objectName() then
+			local log1 = sgs.LogMessage()
+			log1.type = "$CancelTarget"
+			log1.from = use.from
+			log1.arg = use.card:objectName()
+			log1.to:append(orig)
+			room:sendLog(log1)
+			use.to:removeOne(orig)
+			if not use.from:isProhibited(prev, use.card) then
+				local log2 = sgs.LogMessage()
+				log2.type = "#BecomeTarget"
+				log2.from = prev
+				log2.card_str = use.card:toString()
+				room:sendLog(log2)
+				use.to:append(prev)
+				room:sortByActionOrder(use.to)
+			end
+			ctx.original_data:setValue(use)
+		end
+
+		if not prev:isNude() then
+			local id_throw = room:askForCardChosen(player, prev, "he", skill:objectName())
+			room:throwCard(id_throw, prev, player)
+		end
+		return false
 	end,
 }
 
@@ -568,45 +615,57 @@ boss_miehou_card = sgs.CreateSkillCard {
 	end,
 }
 
-boss_miehou = sgs.CreateZeroCardViewAsSkill {
+-- boss_miehou V2：出牌阶段限一次（limit_scope+max_usage_limit 原生配額），
+-- create_card 回傳 SkillCard clone（非 ActiveSkillCard），效果沿用 boss_miehou_card:on_use；
+-- AI 以 "#boss_miehou:.:" 直用，伺服器經 resolveActiveSkillRequest 重建同一張卡。
+boss_miehou = sgs.CreateViewAsSkillV2 {
 	name = "boss_miehou",
-	view_as = function(self, cards)
-		return boss_miehou_card:clone()
+	n = 0,
+	limit_scope = sgs.Skill_Limit_Turn,
+	max_usage_limit = 1,
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player or not player:isAlive() then return false end
+		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
+		return player:getMark("@point") >= 6
 	end,
-	enabled_at_play = function(self, player)
-		return player:getMark("@point") >= 6 and not player:hasUsed("#boss_miehou")
+	card_selection_feasible = function(skill, request)
+		return request:getSelectedCardIds():isEmpty()
+	end,
+	create_card = function(skill, request)
+		return boss_miehou_card:clone()
 	end,
 }
 
-boss_qiangnian = sgs.CreateTriggerSkill {
+boss_qiangnian = sgs.CreateTriggerSkillV2 {
 	name = "boss_qiangnian",
 	events = { sgs.EventPhaseStart },
 	frequency = sgs.Skill_Wake,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		if not player or not player:hasSkill(skill:objectName()) then return false end
+		if player:getPhase() ~= sgs.Player_Start or player:getMark("@boss_qiangnian") > 0 then
+			return false
+		end
+		if player:getHp() <= 4 then
+			return skill:objectName()
+		end
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+			if
+				p:hasSkill("NTD") and p:getMark("@NTD") > 0
+				or p:hasSkill("ntdtwo") and p:getMark("@NTD2") == 0
+				or p:hasSkill("ntdthree") and p:getMark("@NTD3") == 0
+				or p:hasSkill("ntdfour") and p:getMark("@NTD4") > 0
+			then
+				return skill:objectName()
+			end
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
 		if player:getPhase() == sgs.Player_Start and player:getMark("@boss_qiangnian") == 0 then
-			local can_invoke = player:getHp() <= 4
-			if not can_invoke then
-				for _, p in sgs.qlist(room:getAlivePlayers()) do
-					if
-						p:hasSkill("NTD") and p:getMark("@NTD") > 0
-						or p:hasSkill("ntdtwo") and p:getMark("@NTD2") == 0
-						or p:hasSkill("ntdthree") and p:getMark("@NTD3") == 0
-						or p:hasSkill("ntdfour") and p:getMark("@NTD4") > 0
-					then
-						can_invoke = true
-						break
-					end
-				end
-			end
-
-			if not can_invoke then
-				return false
-			end
-
-			room:sendCompulsoryTriggerLog(player, self:objectName())
-			room:broadcastSkillInvoke(self:objectName(), 1)
-			room:broadcastSkillInvoke(self:objectName(), 2)
+			room:sendCompulsoryTriggerLog(player, skill:objectName())
+			room:broadcastSkillInvoke(skill:objectName(), 1)
+			room:broadcastSkillInvoke(skill:objectName(), 2)
 			room:doSuperLightbox("SHAMBLO", "boss_qiangnian")
 			room:setPlayerProperty(player, "general", sgs.QVariant("SHAMBLO_skin1"))
 			player:gainMark("@boss_qiangnian")
@@ -614,7 +673,7 @@ boss_qiangnian = sgs.CreateTriggerSkill {
 			if player:getMaxHp() > 4 then
 				room:loseMaxHp(player, player:getMaxHp() - 4)
 			end
-			player:drawCards(4, self:objectName())
+			player:drawCards(4, skill:objectName())
 			if player:getMark("@point") < 6 then
 				player:gainMark("@point", 6 - player:getMark("@point"))
 			end
@@ -638,6 +697,7 @@ boss_qiangnian = sgs.CreateTriggerSkill {
 			end
 			room:broadcastSkillInvoke("gdsbgm", 4)
 		end
+		return false
 	end,
 }
 
@@ -649,6 +709,18 @@ SHAMBLO:addSkill(boss_qiangnian)
 SHAMBLO_skin1 = sgs.General(extension, "SHAMBLO_skin1", "ZEON", 8, false, true, true)
 ZAKU_I_ST = sgs.General(extension, "ZAKU_I_ST", "", 0, true, true, true)
 ZAKU_I_ST:setGender(sgs.General_Neuter)
+
+-- V2 触发技能需要持有者实例：规则技挂到所有武将作为 bootstrap；
+-- 晚於本擴展載入的武將/換將後缺實例者，由各技能 can_trigger 命中條件時補掛 acquired 實例。
+for _, gen in sgs.qlist(sgs.Sanguosha:getAllGenerals()) do
+	gen:addSkill("#_mini_0_skill")
+	gen:addSkill("#_mini_2_skill")
+	gen:addSkill("#_mini_3_skill")
+	gen:addSkill("#_mini_4_skill")
+	gen:addSkill("#_mini_5_skill")
+	gen:addSkill("#_mini_6_skill")
+end
+
 --total hide boss
 sgs.LoadTranslationTable {
 	["gundamboss"] = "高达杀BOSS",
