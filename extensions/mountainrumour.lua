@@ -1726,81 +1726,100 @@ function CreateShishengSkillCard(sc_details)
 end
 
 function CreateShishengVsSkill(skill_details)
-	local shisheng_vsskill = sgs.CreateViewAsSkill {
+	local shisheng_vsskill = sgs.CreateViewAsSkillV2 {
 		name = "shisheng" .. skill_details.i,
 		n = skill_details.cn,
-		view_filter = skill_details.view_filter,
-		view_as = function(self, cards)
-			local player = sgs.Self
-			local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
-			if #cards == skill_details.cn then
-				local card
-				if pattern ~= "" then
-					if pattern == "@@shisheng_1_10" then
-						card = sgs.shisheng_responses[skill_details.i]:clone()
-					end
-					local patterns = {
-						"slash",
-						"fire_slash",
-						"thunder_slash",
-						"jink",
-						"peach",
-						"analeptic",
-						"nullification",
-						"snatch",
-						"dismantlement",
-						"collateral",
-						"ex_nihilo",
-						"duel",
-						"fire_attack",
-						"amazing_grace",
-						"savage_assault",
-						"archery_attack",
-						"god_salvation",
-						"iron_chain",
-					}
-					local pattern_fx
-					for _, p in ipairs(patterns) do
-						if string.find(pattern, p) then
-							pattern_fx = p
-							break
-						end
-					end
-					if pattern_fx then
-						if sgs.Sanguosha:cloneCard(pattern_fx, sgs.Card_NoSuit, 0):targetFixed() then
-							card = sgs.shisheng_sc_ress_tf[skill_details.i]:clone()
-						else
-							card = sgs.shisheng_sc_ress[skill_details.i]:clone()
-						end
-					end
-					card:setUserString(pattern)
-				else
-					card = sgs.shisheng_scs[skill_details.i]:clone()
-				end
-				for _, i in ipairs(cards) do
-					card:addSubcard(i)
-				end
-				return card
-			end
-			return nil
-		end,
-		enabled_at_play = function(self, player)
-			return player:getMark("@wins") >= skill_details.i
-		end,
-		enabled_at_response = function(self, player, pattern) --return false end,
-			if player:getMark("@wins") < skill_details.i then
+		can_activate = function(skill, request)
+			local player = request:getInitiator()
+			if not player or player:getMark("@wins") < skill_details.i then
 				return false
-			elseif pattern == "@@shisheng_1_10" then
+			end
+			local reason = request:getReason()
+			if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+				return true
+			end
+			if reason ~= sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+				and reason ~= sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+				return false
+			end
+			local pattern = request:getPattern()
+			if pattern == "@@shisheng_1_10" then
 				return true
 			elseif pattern == "slash" then
-				return sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE
+				return reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE
+			-- ServerPlayer::hasNullification 仍只查舊版 isEnabledAtResponse 探針（同 newstar.lua LuaDongcha 的情況）
 			elseif pattern == "nullification" or string.find(pattern, "peach") or string.find(pattern, "analeptic") then
 				return true
 			end
 			return false
 		end,
-		enabled_at_nullification = function(self, player)
-			return player:getMark("@wins") >= skill_details.i
+		can_select_card = function(skill, request, candidate)
+			if not candidate then return false end
+			local selected = {}
+			for _, id in sgs.qlist(request:getSelectedCardIds()) do
+				local selected_card = sgs.Sanguosha:getCard(id)
+				if selected_card then table.insert(selected, selected_card) end
+			end
+			return skill_details.view_filter(skill, selected, candidate)
+		end,
+		card_selection_feasible = function(skill, request)
+			return request:getSelectedCardIds():length() == skill_details.cn
+		end,
+		create_card = function(skill, request)
+			local card_ids = request:getSelectedCardIds()
+			if card_ids:length() ~= skill_details.cn then return nil end
+			local pattern = request:getPattern()
+			local card
+			if pattern ~= "" then
+				if pattern == "@@shisheng_1_10" then
+					card = sgs.shisheng_responses[skill_details.i]:clone()
+				end
+				local patterns = {
+					"slash",
+					"fire_slash",
+					"thunder_slash",
+					"jink",
+					"peach",
+					"analeptic",
+					"nullification",
+					"snatch",
+					"dismantlement",
+					"collateral",
+					"ex_nihilo",
+					"duel",
+					"fire_attack",
+					"amazing_grace",
+					"savage_assault",
+					"archery_attack",
+					"god_salvation",
+					"iron_chain",
+				}
+				local pattern_fx
+				for _, p in ipairs(patterns) do
+					if string.find(pattern, p) then
+						pattern_fx = p
+						break
+					end
+				end
+				if pattern_fx then
+					local probe = sgs.Sanguosha:cloneCard(pattern_fx, sgs.Card_NoSuit, 0)
+					local probe_tf = probe and probe:targetFixed()
+					if probe then probe:deleteLater() end
+					if probe_tf then
+						card = sgs.shisheng_sc_ress_tf[skill_details.i]:clone()
+					else
+						card = sgs.shisheng_sc_ress[skill_details.i]:clone()
+					end
+				end
+				if not card then return nil end
+				card:setUserString(pattern)
+			else
+				card = sgs.shisheng_scs[skill_details.i]:clone()
+			end
+			for _, id in sgs.qlist(card_ids) do
+				card:addSubcard(id)
+			end
+			return card
 		end,
 	}
 	return shisheng_vsskill
@@ -1941,14 +1960,22 @@ shisheng_card = sgs.CreateSkillCard {
 		end
 	end,
 }
-shisheng_vs = sgs.CreateViewAsSkill {
+shisheng_vs = sgs.CreateViewAsSkillV2 {
 	name = "shisheng",
 	n = 0,
-	view_as = function(self, cards)
-		local player = sgs.Self
+	can_activate = function(skill, request)
+		local reason = request:getReason()
+		return (reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+				or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE)
+			and request:getPattern() == "@@shisheng"
+	end,
+	create_card = function(skill, request)
+		local player = request:getInitiator()
+		if not player then return nil end
 		local pattern = player:property("shisheng_sel"):toString()
 		if pattern ~= "" then
 			local card = sgs.Sanguosha:cloneCard(pattern, sgs.Card_SuitToBeDecided, 0)
+			if not card then return nil end
 			if player:getMark("ss10") == 0 then
 				local marks = player:getMark("shisheng_id")
 				local remaining = math.mod(marks, 1000)
@@ -1959,16 +1986,10 @@ shisheng_vs = sgs.CreateViewAsSkill {
 				end
 				card:addSubcard(remaining)
 			end
-			card:setSkillName(self:objectName())
+			card:setSkillName(skill:objectName())
 			return card
 		end
 		return shisheng_card:clone()
-	end,
-	enabled_at_play = function(self, player)
-		return false
-	end,
-	enabled_at_response = function(self, player, pattern)
-		return pattern == "@@shisheng"
 	end,
 }
 
