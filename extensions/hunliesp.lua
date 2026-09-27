@@ -131,37 +131,58 @@ function isSchemeSkill(skill_name)
 	return string.find(skill_name, "sgkgodjiguan_")
 end
 
+--V2 全局技能以隐藏技能名挂到所有武将；晚于本扩展加载的武将或换将后于结算时补挂 acquired 实例。
+local hunliesp_global_skill_names = {
+	"#yinyang_lose", "#hunliesp_global_drawcards", "#hunliesp_global_clear",
+	"#hunliesp_global_controlSkill", "#hunliesp_global_clearScheme",
+	"#hunliesp_global_clearSchemeMarks", "#hunliesp_global_resistLoseSkill",
+	"#hunliesp_global_breakTempCards", "#sgkgodhualongDraw1",
+}
+local function hunliesp_ensure_global_instances(room)
+	for _, p in sgs.qlist(room:getAllPlayers(true)) do
+		for _, skill_name in ipairs(hunliesp_global_skill_names) do
+			if p:getSkillInstanceIds(skill_name):isEmpty() then
+				room:attachSkillToPlayer(p, skill_name)
+			end
+		end
+	end
+end
+
 --全局配置类技能
-shajue_slash = sgs.CreateTriggerSkill{
+shajue_slash = sgs.CreateTriggerSkillV2{
 	name = "shajue_slash",
 	frequency = sgs.Skill_Compulsory,
 	events = {},
-	on_trigger = function()
-	end
 }
 
-jl_sgkgodlangxi = sgs.CreateTriggerSkill{
+jl_sgkgodlangxi = sgs.CreateTriggerSkillV2{
 	name = "jl_sgkgodlangxi",
 	frequency = sgs.Skill_Compulsory,
 	events = {},
-	on_trigger = function()
-	end
 }
 
-sgkgodmaxcards = sgs.CreateMaxCardsSkill{
+sgkgodmaxcards = sgs.CreateMaxCardsSkillV2{
 	name = "#sgkgodmaxcards",
-	extra_func = function(self, target)
+	correct_func = function(skill, ctx)
 		local n = 0
-		return n
-	end
+		if n ~= 0 then return n end
+		return false
+	end,
 }
 
-yinyang_lose = sgs.CreateTriggerSkill{
+yinyang_lose = sgs.CreateTriggerSkillV2{
 	name = "#yinyang_lose",
 	frequency = sgs.Skill_Compulsory,
 	global = true,
 	events = {sgs.EventLoseSkill},
-	on_trigger = function(self, event, player, data, room)
+	on_record = function(skill, event, room, player, ctx)
+		hunliesp_ensure_global_instances(room)
+	end,
+	can_trigger = function(skill, event, room, player, data)
+		return skill:objectName()
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if data:toSkillChange().skillName == "sgkgodjiyang" then
 			if player:getMark("&jiyang_positive") > 0 then
 				local x = player:getMark("&jiyang_positive")
@@ -207,20 +228,32 @@ yinyang_lose = sgs.CreateTriggerSkill{
 			end
 		end
 		if data:toString() == "sgkgodxiangsheng" then
-			if player:getMark("&xiangsheng_balance") > 0 then 
+			if player:getMark("&xiangsheng_balance") > 0 then
 				local x = player:getMark("&xiangsheng_balance")
 				player:loseAllMarks("&xiangsheng_balance")
 				player:drawCards(x, "sgkgodxiangsheng")
 			end
 		end
+		return false
 	end
 }
 
-hunliesp_global_drawcards = sgs.CreateDrawCardsSkill{
+hunliesp_global_drawcards = sgs.CreateTriggerSkillV2{
 	name = "#hunliesp_global_drawcards",
 	global = true,
-	draw_num_func = function(self, player, n)
-		local room = player:getRoom()
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.DrawNCards},
+	on_record = function(skill, event, room, player, ctx)
+		hunliesp_ensure_global_instances(room)
+	end,
+	can_trigger = function(skill, event, room, player, data)
+		local draw = data:toDraw()
+		if draw.reason == "draw_phase" then return skill:objectName() end
+		return false
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
+		local draw = data:toDraw()
 		local x = 0
 		for _, t in sgs.qlist(room:getAllPlayers()) do
 			if t:hasSkill("sgkgodzhiti") then
@@ -231,74 +264,92 @@ hunliesp_global_drawcards = sgs.CreateDrawCardsSkill{
 			end
 		end
 		if player:getMark("hunliesp_global_draw") > 0 then x = x + player:getMark("hunliesp_global_draw") end
-		return n + x
+		draw.num = draw.num + x
+		data:setValue(draw)
+		return false
 	end
 }
 
-hunliesp_global_clear = sgs.CreateTriggerSkill{
+hunliesp_global_clear = sgs.CreateTriggerSkillV2{
 	name = "#hunliesp_global_clear",
 	global = true,
-	can_trigger = function(self, target)
-		return true
-	end,
 	priority = 1,
 	frequency = sgs.Skill_Compulsory,
-	events = {sgs.EventPhaseChanging, sgs.CardUsed, sgs.CardFinished, sgs.Death, sgs.PreHpRecover, sgs.PreHpLost, sgs.HpChanged, sgs.MaxHpChange, sgs.MaxHpChanged, sgs.Dying, sgs.BeforeCardsMove, sgs.DamageInflicted, sgs.Dying},
-	on_trigger = function(self, event, player, data, room)
+	events = {sgs.EventPhaseChanging, sgs.CardUsed, sgs.CardFinished, sgs.Death, sgs.PreHpRecover, sgs.PreHpLost, sgs.HpChanged, sgs.MaxHpChange, sgs.MaxHpChanged, sgs.Dying, sgs.BeforeCardsMove, sgs.DamageInflicted},
+	on_record = function(skill, event, room, player, ctx)
+		hunliesp_ensure_global_instances(room)
+	end,
+	can_trigger = function(skill, event, room, player, data)
+		return skill:objectName()
+	end,
+	on_effect = function(self, event, room, player, ctx)
 		for _, p in sgs.qlist(room:getAllPlayers()) do
 			if p:getMark("jieying_rob_temp") > 0 then room:setPlayerMark(p, "jieying_rob_temp", 0) end
 			if p:getTag("hunlie_global_resist_invalid"):toBool() then p:removeTag("hunlie_global_resist_invalid") end
 			if p:getTag("hunliesp_global_resistSkill"):toBool() then p:removeTag("hunliesp_global_resistSkill") end
 		end
+		return false
 	end
 }
 
-hunliesp_global_clearScheme = sgs.CreateTriggerSkill{
+hunliesp_global_clearScheme = sgs.CreateTriggerSkillV2{
 	name = "#hunliesp_global_clearScheme",
 	global = true,
-	can_trigger = function(self, target)
-		return true
-	end,
 	priority = 1,
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.Death},
-	on_trigger = function(self, event, player, data, room)
-		local death = data:toDeath()
+	on_record = function(skill, event, room, player, ctx)
+		hunliesp_ensure_global_instances(room)
+	end,
+	can_trigger = function(skill, event, room, player, data)
+		return skill:objectName()
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local death = ctx.original_data:toDeath()
 		if not death.who:getVisibleSkillList():isEmpty() then
 			for _, sk in sgs.qlist(death.who:getVisibleSkillList()) do
 				if isSchemeSkill(sk:objectName()) then room:removeTag(""..sk:objectName()) end
 			end
 		end
+		return false
 	end
 }
 
-hunliesp_global_clearSchemeMarks = sgs.CreateTriggerSkill{
+hunliesp_global_clearSchemeMarks = sgs.CreateTriggerSkillV2{
 	name = "#hunliesp_global_clearSchemeMarks",
 	frequency = sgs.Skill_Compulsory,
 	global = true,
-	can_trigger = function(self, targets)
-		return target
-	end,
 	events = {sgs.EventLoseSkill},
-	on_trigger = function(self, event, player, data, room)
-		local sk = data:toSkillChange().skillName
+	on_record = function(skill, event, room, player, ctx)
+		hunliesp_ensure_global_instances(room)
+	end,
+	can_trigger = function(skill, event, room, player, data)
+		return skill:objectName()
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local sk = ctx.original_data:toSkillChange().skillName
 		if isSchemeSkill(sk) then
 			if player:getMark(sk.."hunlie_global_schemedraw") > 0 then room:removePlayerMark(player, sk.."hunlie_global_schemedraw", player:getMark(sk.."hunlie_global_schemedraw")) end
 			if player:getMark(sk.."hunlie_global_schememaxcard") > 0 then room:removePlayerMark(player, sk.."hunlie_global_schememaxcard", player:getMark(sk.."hunlie_global_schememaxcard")) end
 			if player:getMark(sk.."hunlie_global_schemeslashtime") > 0 then room:removePlayerMark(player, sk.."hunlie_global_schemeslashtime", player:getMark(sk.."hunlie_global_schemeslashtime")) end
 		end
+		return false
 	end
 }
 
-hunliesp_global_controlSkill = sgs.CreateTriggerSkill{
+hunliesp_global_controlSkill = sgs.CreateTriggerSkillV2{
 	name = "#hunliesp_global_controlSkill",
 	events = {sgs.EventAcquireSkill, sgs.MarkChanged, sgs.EventPhaseChanging},
 	frequency = sgs.Skill_Compulsory,
 	global = true,
-	can_trigger = function(self, target)
-		return true
+	on_record = function(skill, event, room, player, ctx)
+		hunliesp_ensure_global_instances(room)
 	end,
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		return skill:objectName()
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.EventAcquireSkill then
 			local num = player:getTag("_hunlieforbid"):toInt()
 			if num < 0 then
@@ -332,50 +383,61 @@ hunliesp_global_controlSkill = sgs.CreateTriggerSkill{
 				end
 			end
 		end
+		return false
 	end
 }
 
-hunliesp_targetmod = sgs.CreateTargetModSkill{
+hunliesp_targetmod = sgs.CreateTargetModSkillV2{
 	name = "#hunliesp_targetmod",
 	pattern = ".",
-	residue_func = function(self, from, card)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		local mod = ctx:getModType()
+		if mod ~= sgs.TargetModSkill_Residue and mod ~= sgs.TargetModSkill_DistanceLimit then return false end
+		local from, card = ctx:getPrimary(), ctx:getCard()
+		if not (from and card) then return false end
 		local n = 0
 		if from:hasSkill("sgkgodyingshi") and card:hasTip("jlyingshi_eagle") then n = n + 9999 end
-		return n
+		if n ~= 0 then return n end
+		return false
 	end,
-	distance_limit_func = function(self, from, card)
-		local n = 0
-		if from:hasSkill("sgkgodyingshi") and card:hasTip("jlyingshi_eagle") then n = n + 9999 end
-		return n
-	end
 }
 
-hunliesp_global_resistLoseSkill = sgs.CreateTriggerSkill{
+hunliesp_global_resistLoseSkill = sgs.CreateTriggerSkillV2{
 	name = "#hunliesp_global_resistLoseSkill",
 	events = {sgs.EventLoseSkill},
 	frequency = sgs.Skill_Compulsory,
 	global = true,
-	can_trigger = function(self, target)
-		return target ~= nil
+	on_record = function(skill, event, room, player, ctx)
+		hunliesp_ensure_global_instances(room)
 	end,
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		return skill:objectName()
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if player:getTag("hunliesp_global_resistSkill"):toBool() then
 			room:addPlayerMark(player, data:toString().."_temp_skill")
 			room:handleAcquireDetachSkills(player, data:toString())
 			room:addPlayerMark(player, "-"..data:toString().."_temp_skill")
 		end
+		return false
 	end
 }
 
-hunliesp_global_breakTempCards = sgs.CreateTriggerSkill{
+hunliesp_global_breakTempCards = sgs.CreateTriggerSkillV2{
 	name = "#hunliesp_global_breakTempCards",
 	events = {sgs.GameStart, sgs.CardsMoveOneTime},
 	frequency = sgs.Skill_Compulsory,
 	global = true,
-	can_trigger = function(self, target)
-		return target ~= nil
+	on_record = function(skill, event, room, player, ctx)
+		hunliesp_ensure_global_instances(room)
 	end,
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		return skill:objectName()
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.GameStart then
 			local cards = sgs.IntList()
 			for _,id in sgs.qlist(sgs.Sanguosha:getRandomCards(true))do
@@ -400,30 +462,30 @@ hunliesp_global_breakTempCards = sgs.CreateTriggerSkill{
 			if move.to_place == sgs.Player_PlaceHand then
 				for _, id in sgs.qlist(move.card_ids) do
 					if sgs.Sanguosha:getCard(id):property("hunliesp_tempcard"):toBool() and room:getCardPlace(id) == sgs.Player_PlaceHand then
-						if not sgs.Sanguosha:getCard(id):hasTip("hunliesp_tempcard") then room:setCardTip(card:getEffectiveId(), "hunliesp_tempcard") end
+						if not sgs.Sanguosha:getCard(id):hasTip("hunliesp_tempcard") then room:setCardTip(id, "hunliesp_tempcard") end
 					end
 				end
 			end
-		end	
+		end
+		return false
 	end
 }
 
 
-sgkgodjiguan = sgs.CreateTriggerSkill{
+sgkgodjiguan = sgs.CreateTriggerSkillV2{
 	name = "sgkgodjiguan",
 	frequency = sgs.Skill_Compulsory,
 	events = {},
-	on_trigger = function()
-	end
 }
 
 
-hunliesp_global_maxcards = sgs.CreateMaxCardsSkill{
+hunliesp_global_maxcards = sgs.CreateMaxCardsSkillV2{
 	name = "#hunliesp_global_maxcards",
-	extra_func = function(self, target)
+	correct_func = function(skill, ctx)
 		local n = 0
-		return n
-	end
+		if n ~= 0 then return n end
+		return false
+	end,
 }
 
 local sgkgodhidden = sgs.SkillList()
@@ -582,85 +644,100 @@ end
 	技能描述：回合开始阶段，回合结束阶段，出牌阶段限一次，当你受到伤害后，你可以摸一张牌，然后从随机三个能在此时机发动的技能中选择一个并发动。
 	引用：sgkgodyaozhi
 ]]--
-sgkgodyaozhi = sgs.CreateTriggerSkill{
+sgkgodyaozhi = sgs.CreateTriggerSkillV2{
 	name = "sgkgodyaozhi",
 	frequency = sgs.Skill_Frequent,
 	events = {sgs.EventPhaseStart, sgs.EventPhaseChanging, sgs.Damaged, sgs.ChoiceMade, sgs.CardUsed, sgs.CardResponded},
 	priority = {20, 20, 20, 20, 20, 20, 20, 20, 20},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not player:isAlive() then return false end
+		if event == sgs.EventPhaseStart then
+			local phase = player:getPhase()
+			if phase == sgs.Player_Start or phase == sgs.Player_Play or phase == sgs.Player_Finish then
+				return skill:objectName()
+			end
+			return false
+		elseif event == sgs.Damaged then
+			if data:toDamage().damage > 0 then return skill:objectName() end
+			return false
+		end
+		return skill:objectName()
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		if event == sgs.EventPhaseStart or event == sgs.Damaged then
+			return player:askForSkillInvoke(skill:objectName(), ctx.original_data)
+		end
+		return true
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.EventPhaseStart then
 			if player:getPhase() == sgs.Player_Start then
-				if player:askForSkillInvoke(self:objectName(), data) then
-					room:addPlayerMark(player, self:objectName().."engine")
-					if player:getMark(self:objectName().."engine") > 0 then
-						room:broadcastSkillInvoke(self:objectName())
-						player:drawCards(1, self:objectName())
-						local yaozhi_playerstart = getSpecificDescriptionSkills(3, player, "准备阶段", "回合开始阶段", "准备阶段开始时", "锁定技，准备阶段", "锁定技，回合开始阶段",
-						"锁定技，准备阶段开始时", -1, -1, false)
-						if #yaozhi_playerstart > 0 then
-							local yaozhi = room:askForChoice(player, self:objectName(), table.concat(yaozhi_playerstart, "+"), data)
-							local yaozhi_gained = player:getTag("yaozhi_gained"):toString():split("+")
-							if not table.contains(yaozhi_gained, yaozhi) then table.insert(yaozhi_gained, yaozhi) end
-							player:setTag("yaozhi_gained", sgs.QVariant(table.concat(yaozhi_gained, "+")))
-							local temp_msg = sgs.LogMessage()
-							temp_msg.from = player
-							temp_msg.arg = yaozhi
-							temp_msg.type = "#YaozhiTempSkill"
-							room:sendLog(temp_msg)
-							room:addPlayerMark(player, yaozhi.."_temp_skill")
-							room:acquireSkill(player, yaozhi, true, true, false)
-						end
-						room:removePlayerMark(player, self:objectName().."engine")
+				room:addPlayerMark(player, self:objectName().."engine")
+				if player:getMark(self:objectName().."engine") > 0 then
+					room:broadcastSkillInvoke(self:objectName())
+					player:drawCards(1, self:objectName())
+					local yaozhi_playerstart = getSpecificDescriptionSkills(3, player, "准备阶段", "回合开始阶段", "准备阶段开始时", "锁定技，准备阶段", "锁定技，回合开始阶段",
+					"锁定技，准备阶段开始时", -1, -1, false)
+					if #yaozhi_playerstart > 0 then
+						local yaozhi = room:askForChoice(player, self:objectName(), table.concat(yaozhi_playerstart, "+"), data)
+						local yaozhi_gained = player:getTag("yaozhi_gained"):toString():split("+")
+						if not table.contains(yaozhi_gained, yaozhi) then table.insert(yaozhi_gained, yaozhi) end
+						player:setTag("yaozhi_gained", sgs.QVariant(table.concat(yaozhi_gained, "+")))
+						local temp_msg = sgs.LogMessage()
+						temp_msg.from = player
+						temp_msg.arg = yaozhi
+						temp_msg.type = "#YaozhiTempSkill"
+						room:sendLog(temp_msg)
+						room:addPlayerMark(player, yaozhi.."_temp_skill")
+						room:acquireSkill(player, yaozhi, true, true, false)
 					end
+					room:removePlayerMark(player, self:objectName().."engine")
 				end
 			end
 			if player:getPhase() == sgs.Player_Play then
-				if player:askForSkillInvoke(self:objectName(), data) then
-					room:addPlayerMark(player, self:objectName().."engine")
-					if player:getMark(self:objectName().."engine") > 0 then
-						room:broadcastSkillInvoke(self:objectName())
-						player:drawCards(1, self:objectName())
-						local yaozhi_playerplay = getSpecificDescriptionSkills(3, player, "出牌阶段", "出牌阶段限一次", "出牌阶段，若你", "出牌阶段限一次，若你", -1, -1, -1, -1, false)
-						if #yaozhi_playerplay > 0 then
-							local yaozhi = room:askForChoice(player, self:objectName(), table.concat(yaozhi_playerplay, "+"), data)
-							local yaozhi_gained = player:getTag("yaozhi_gained"):toString():split("+")
-							if not table.contains(yaozhi_gained, yaozhi) then table.insert(yaozhi_gained, yaozhi) end
-							player:setTag("yaozhi_gained", sgs.QVariant(table.concat(yaozhi_gained, "+")))
-							local temp_msg = sgs.LogMessage()
-							temp_msg.from = player
-							temp_msg.arg = yaozhi
-							temp_msg.type = "#YaozhiTempSkill"
-							room:sendLog(temp_msg)
-							room:addPlayerMark(player, yaozhi.."_temp_skill")
-							room:acquireSkill(player, yaozhi, true, true, false)
-						end
-						room:removePlayerMark(player, self:objectName().."engine")
+				room:addPlayerMark(player, self:objectName().."engine")
+				if player:getMark(self:objectName().."engine") > 0 then
+					room:broadcastSkillInvoke(self:objectName())
+					player:drawCards(1, self:objectName())
+					local yaozhi_playerplay = getSpecificDescriptionSkills(3, player, "出牌阶段", "出牌阶段限一次", "出牌阶段，若你", "出牌阶段限一次，若你", -1, -1, -1, -1, false)
+					if #yaozhi_playerplay > 0 then
+						local yaozhi = room:askForChoice(player, self:objectName(), table.concat(yaozhi_playerplay, "+"), data)
+						local yaozhi_gained = player:getTag("yaozhi_gained"):toString():split("+")
+						if not table.contains(yaozhi_gained, yaozhi) then table.insert(yaozhi_gained, yaozhi) end
+						player:setTag("yaozhi_gained", sgs.QVariant(table.concat(yaozhi_gained, "+")))
+						local temp_msg = sgs.LogMessage()
+						temp_msg.from = player
+						temp_msg.arg = yaozhi
+						temp_msg.type = "#YaozhiTempSkill"
+						room:sendLog(temp_msg)
+						room:addPlayerMark(player, yaozhi.."_temp_skill")
+						room:acquireSkill(player, yaozhi, true, true, false)
 					end
+					room:removePlayerMark(player, self:objectName().."engine")
 				end
 			end
 			if player:getPhase() == sgs.Player_Finish then
-				if player:askForSkillInvoke(self:objectName(), data) then
-					room:addPlayerMark(player, self:objectName().."engine")
-					if player:getMark(self:objectName().."engine") > 0 then
-						room:broadcastSkillInvoke(self:objectName())
-						player:drawCards(1, self:objectName())
-						local yaozhi_playerfinish = getSpecificDescriptionSkills(3, player, "结束阶段", "结束阶段开始时", "回合结束时", "回合结束阶段", 
-						"锁定技，结束阶段", "锁定技，结束阶段开始时", "锁定技，回合结束时", "锁定技，回合结束阶段", false)
-						if #yaozhi_playerfinish > 0 then
-							local yaozhi = room:askForChoice(player, self:objectName(), table.concat(yaozhi_playerfinish, "+"), data)
-							local yaozhi_gained = player:getTag("yaozhi_gained"):toString():split("+")
-							if not table.contains(yaozhi_gained, yaozhi) then table.insert(yaozhi_gained, yaozhi) end
-							player:setTag("yaozhi_gained", sgs.QVariant(table.concat(yaozhi_gained, "+")))
-							local temp_msg = sgs.LogMessage()
-							temp_msg.from = player
-							temp_msg.arg = yaozhi
-							temp_msg.type = "#YaozhiTempSkill"
-							room:sendLog(temp_msg)
-							room:addPlayerMark(player, yaozhi.."_temp_skill")
-							room:acquireSkill(player, yaozhi, true, true, false)
-						end
-						room:removePlayerMark(player, self:objectName().."engine")
+				room:addPlayerMark(player, self:objectName().."engine")
+				if player:getMark(self:objectName().."engine") > 0 then
+					room:broadcastSkillInvoke(self:objectName())
+					player:drawCards(1, self:objectName())
+					local yaozhi_playerfinish = getSpecificDescriptionSkills(3, player, "结束阶段", "结束阶段开始时", "回合结束时", "回合结束阶段",
+					"锁定技，结束阶段", "锁定技，结束阶段开始时", "锁定技，回合结束时", "锁定技，回合结束阶段", false)
+					if #yaozhi_playerfinish > 0 then
+						local yaozhi = room:askForChoice(player, self:objectName(), table.concat(yaozhi_playerfinish, "+"), data)
+						local yaozhi_gained = player:getTag("yaozhi_gained"):toString():split("+")
+						if not table.contains(yaozhi_gained, yaozhi) then table.insert(yaozhi_gained, yaozhi) end
+						player:setTag("yaozhi_gained", sgs.QVariant(table.concat(yaozhi_gained, "+")))
+						local temp_msg = sgs.LogMessage()
+						temp_msg.from = player
+						temp_msg.arg = yaozhi
+						temp_msg.type = "#YaozhiTempSkill"
+						room:sendLog(temp_msg)
+						room:addPlayerMark(player, yaozhi.."_temp_skill")
+						room:acquireSkill(player, yaozhi, true, true, false)
 					end
+					room:removePlayerMark(player, self:objectName().."engine")
 				end
 			end
 		elseif event == sgs.EventPhaseChanging then
@@ -674,7 +751,7 @@ sgkgodyaozhi = sgs.CreateTriggerSkill{
 			end
 		elseif event == sgs.Damaged then
 			local damage = data:toDamage()
-			if damage.damage > 0 and player:askForSkillInvoke(self:objectName(), data) then
+			if damage.damage > 0 then
 				room:addPlayerMark(player, self:objectName().."engine")
 				if player:getMark(self:objectName().."engine") > 0 then
 					room:broadcastSkillInvoke(self:objectName())
@@ -749,12 +826,18 @@ sgkgodspzhuge:addSkill(sgkgodyaozhi)
 	技能描述：锁定技，回合结束后，你减1点体力上限，然后获得因“妖智”选择过的一个技能。
 	引用：sgkgodxingyun
 ]]--
-sgkgodxingyun = sgs.CreateTriggerSkill{
+sgkgodxingyun = sgs.CreateTriggerSkillV2{
 	name = "sgkgodxingyun",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.EventPhaseChanging},
 	priority = 0,
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not player:isAlive() then return false end
+		if data:toPhaseChange().from == sgs.Player_Finish then return skill:objectName() end
+		return false
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		local change = data:toPhaseChange()
 		if change.from == sgs.Player_Finish then
 			room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
@@ -769,6 +852,7 @@ sgkgodxingyun = sgs.CreateTriggerSkill{
 				end
 			end
 		end
+		return false
 	end
 }
 
@@ -836,12 +920,17 @@ end
 	技能描述：锁定技，游戏开始时，你随机获得3个与【杀】有关的技能。当其他角色进入濒死状态时，你摸两张牌，然后随机获得1个与【杀】有关的技能。
 	引用：sgkgodluocha
 ]]--
-sgkgodluocha = sgs.CreateTriggerSkill{
+sgkgodluocha = sgs.CreateTriggerSkillV2{
 	name = "sgkgodluocha",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.GameStart, sgs.FetchDrawPileCard, sgs.Dying},
 	priority = 10,
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not player:isAlive() then return false end
+		return skill:objectName()
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.GameStart or event == sgs.FetchDrawPileCard then
 			room:addPlayerMark(player, self:objectName().."engine")
 			if player:getMark(self:objectName().."engine") > 0 then
@@ -957,14 +1046,37 @@ sgkgodshajueCard = sgs.CreateSkillCard{
 	end
 }
 
-sgkgodshajue = sgs.CreateZeroCardViewAsSkill{
+sgkgodshajue = sgs.CreateViewAsSkillV2{
 	name = "sgkgodshajue",
-	view_as = function()
-		return sgkgodshajueCard:clone()
+	n = 0,
+	target_mode = sgs.ViewAsSkillV2_SelectTargets,
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		return player and player:isAlive()
+			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
+			and not player:hasUsed("#sgkgodshajueCard")
+			and not player:isKongcheng()
 	end,
-	enabled_at_play = function(self, player)
-		return not player:hasUsed("#sgkgodshajueCard") and not player:isKongcheng()
-	end
+	can_select_target = function(skill, request, selected, candidate)
+		local player = request:getInitiator()
+		return player and candidate
+			and #selected == 0
+			and candidate:getSeat() ~= player:getSeat()
+			and player:canSlash(candidate, nil, false)
+	end,
+	targets_feasible = function(skill, request, selected)
+		return #selected == 1
+	end,
+	create_card = function(skill, request)
+		local card = sgkgodshajueCard:clone()
+		local instance_id = request:getActivationInstanceId()
+		if card and instance_id > 0 then
+			card:setSkillInstanceId(instance_id)
+			card:setActivationSkill("sgkgodshajue", instance_id)
+			card:setSourceSkill("sgkgodshajue", instance_id)
+		end
+		return card
+	end,
 }
 
 
@@ -977,29 +1089,50 @@ sgkgodsplvbu:addSkill(sgkgodshajue)
 	技能描述：锁定技，你的手牌上限为你的技能数。当你处于濒死状态时，你可以失去一个技能，视为使用【桃】。
 	引用：sgkgodguiqu
 ]]--
-sgkgodguiqu = sgs.CreateZeroCardViewAsSkill{
+sgkgodguiqu = sgs.CreateViewAsSkillV2{
 	name = "sgkgodguiqu",
-	view_as = function(self, cards)
+	n = 0,
+	target_mode = sgs.ViewAsSkillV2_NoTarget,
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not (player and player:isAlive()) then return false end
+		local reason = request:getReason()
+		if reason ~= sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+			and reason ~= sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			return false
+		end
+		if not player:hasFlag("Global_Dying") then return false end
+		return string.find(request:getPattern() or "", "peach") ~= nil
+	end,
+	create_card = function(skill, request)
 		local peach = sgs.Sanguosha:cloneCard("peach", sgs.Card_NoSuit, 0)
-		peach:setSkillName("sgkgodguiqu")
+		if peach then
+			peach:setSkillName("sgkgodguiqu")
+			local instance_id = request:getActivationInstanceId()
+			if instance_id > 0 then
+				peach:setSkillInstanceId(instance_id)
+				peach:setActivationSkill("sgkgodguiqu", instance_id)
+				peach:setSourceSkill("sgkgodguiqu", instance_id)
+			end
+		end
 		return peach
 	end,
-	enabled_at_play = function(self, player)
-		return false
-	end,
-	enabled_at_response = function(self, player, pattern)
-		if player:hasFlag("Global_Dying") then
-			return string.find(pattern, "peach")
-		end
-		return false
-	end
 }
 
-sgkgodguiquPeach = sgs.CreateTriggerSkill{
+sgkgodguiquPeach = sgs.CreateTriggerSkillV2{
 	name = "#sgkgodguiquPeach",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.CardUsed},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not player:isAlive() then return false end
+		local use = data:toCardUse()
+		if use.card and use.card:isKindOf("Peach") and table.contains(use.card:getSkillNames(), "sgkgodguiqu") then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		local use = data:toCardUse()
 		if use.card and use.card:isKindOf("Peach") and table.contains(use.card:getSkillNames(), "sgkgodguiqu") then
 			room:addPlayerMark(player, "sgkgodguiqu".."engine")
@@ -1013,13 +1146,18 @@ sgkgodguiquPeach = sgs.CreateTriggerSkill{
 				room:removePlayerMark(player, "sgkgodguiqu".."engine")
 			end
 		end
+		return false
 	end
 }
 
-sgkgodguiquMax = sgs.CreateMaxCardsSkill{
+sgkgodguiquMax = sgs.CreateMaxCardsSkillV2{
 	name = "#sgkgodguiquMax",
-	extra_func = function(self, target)
-		if target:hasSkill(self:objectName()) then return math.max(0, target:getVisibleSkillList():length() - target:getHp()) end
+	correct_func = function(skill, ctx)
+		local target = ctx:getHolder()
+		if target and target:hasSkill(skill:objectName()) then
+			return math.max(0, target:getVisibleSkillList():length() - target:getHp())
+		end
+		return false
 	end
 }
 
@@ -1069,17 +1207,36 @@ sgkgodspzhangjiao = sgs.General(extension, "sgkgodspzhangjiao", "sy_god", 3)
 	引用：sgkgodjiyang
 ]]--
 local zhangjiao_yinyangskills = sgs.SkillList()
-sgkgodjiyang = sgs.CreateTriggerSkill{
+sgkgodjiyang = sgs.CreateTriggerSkillV2{
 	name = "sgkgodjiyang",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.EventAcquireSkill, sgs.CardsMoveOneTime},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not player:isAlive() then return false end
+		if event == sgs.EventAcquireSkill then
+			if data:toSkillChange().skillName == "sgkgodjiyang" then return skill:objectName() end
+			return false
+		elseif event == sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			if player:getMark("&jiyang_positive") == 0 then return false end
+			if move.from and move.from:objectName() == player:objectName() then
+				if move.from_places:contains(sgs.Player_PlaceHand) or move.from_places:contains(sgs.Player_PlaceEquip) then
+					for _, id in sgs.qlist(move.card_ids) do
+						if sgs.Sanguosha:getCard(id):isRed() then return skill:objectName() end
+					end
+				end
+			end
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.EventAcquireSkill then
 			if data:toSkillChange().skillName == self:objectName() then player:gainMark("&jiyang_positive", 3) end
 		elseif event == sgs.CardsMoveOneTime then
 			local move = data:toMoveOneTime()
 			if player:getMark("&jiyang_positive") == 0 then return false end
-			if move.from and move.from:hasSkill(self:objectName()) and move.from:objectName() == player:objectName() then
+			if move.from and move.from:objectName() == player:objectName() then
 				if move.from_places:contains(sgs.Player_PlaceHand) or move.from_places:contains(sgs.Player_PlaceEquip) then
 					local can_do = false
 					for _, id in sgs.qlist(move.card_ids) do
@@ -1128,17 +1285,36 @@ if not sgs.Sanguosha:getSkill("sgkgodjiyang") then zhangjiao_yinyangskills:appen
 	若其已受伤，改为减1点体力上限。
 	引用：sgkgodjiyin
 ]]--
-sgkgodjiyin = sgs.CreateTriggerSkill{
+sgkgodjiyin = sgs.CreateTriggerSkillV2{
 	name = "sgkgodjiyin",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.EventAcquireSkill, sgs.CardsMoveOneTime},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not player:isAlive() then return false end
+		if event == sgs.EventAcquireSkill then
+			if data:toSkillChange().skillName == "sgkgodjiyin" then return skill:objectName() end
+			return false
+		elseif event == sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			if player:getMark("&jiyin_negative") == 0 then return false end
+			if move.from and move.from:objectName() == player:objectName() then
+				if move.from_places:contains(sgs.Player_PlaceHand) or move.from_places:contains(sgs.Player_PlaceEquip) then
+					for _, id in sgs.qlist(move.card_ids) do
+						if sgs.Sanguosha:getCard(id):isBlack() then return skill:objectName() end
+					end
+				end
+			end
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.EventAcquireSkill then
 			if data:toSkillChange().skillName == self:objectName() then player:gainMark("&jiyin_negative", 3) end
 		elseif event == sgs.CardsMoveOneTime then
 			local move = data:toMoveOneTime()
 			if player:getMark("&jiyin_negative") == 0 then return false end
-			if move.from and move.from:hasSkill(self:objectName()) and move.from:objectName() == player:objectName() then
+			if move.from and move.from:objectName() == player:objectName() then
 				if move.from_places:contains(sgs.Player_PlaceHand) or move.from_places:contains(sgs.Player_PlaceEquip) then
 					local can_do = false
 					for _, id in sgs.qlist(move.card_ids) do
@@ -1178,17 +1354,39 @@ if not sgs.Sanguosha:getSkill("sgkgodjiyin") then zhangjiao_yinyangskills:append
 	技能描述：锁定技，当你获得/失去“相生”时，你获得6个/弃置所有“生”标记。当你失去黑色/红色牌后，你弃置1个“生”标记，从牌堆或弃牌堆中随机获得一张红色/黑色牌。
 	引用：sgkgodxiangsheng
 ]]--
-sgkgodxiangsheng = sgs.CreateTriggerSkill{
+sgkgodxiangsheng = sgs.CreateTriggerSkillV2{
 	name = "sgkgodxiangsheng",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.EventAcquireSkill, sgs.CardsMoveOneTime},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not player:isAlive() then return false end
+		if event == sgs.EventAcquireSkill then
+			if data:toSkillChange().skillName == "sgkgodxiangsheng" then return skill:objectName() end
+			return false
+		elseif event == sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			if player:getMark("&xiangsheng_balance") == 0 then return false end
+			if move.from and move.from:objectName() == player:objectName()
+				and (move.from_places:contains(sgs.Player_PlaceHand)
+					or move.from_places:contains(sgs.Player_PlaceEquip)
+					or move.from_places:contains(sgs.Player_PlaceDelayedTrick)) then
+				for _, id in sgs.qlist(move.card_ids) do
+					if sgs.Sanguosha:getCard(id):isBlack() or sgs.Sanguosha:getCard(id):isRed() then
+						return skill:objectName()
+					end
+				end
+			end
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.EventAcquireSkill then
 			if data:toSkillChange().skillName == self:objectName() then player:gainMark("&xiangsheng_balance", 6) end
 		elseif event == sgs.CardsMoveOneTime then
 			local move = data:toMoveOneTime()
 			if player:getMark("&xiangsheng_balance") == 0 then return false end
-			if move.from and move.from:hasSkill(self:objectName()) and move.from:objectName() == player:objectName() then
+			if move.from and move.from:objectName() == player:objectName() then
 				if move.from_places:contains(sgs.Player_PlaceHand) or move.from_places:contains(sgs.Player_PlaceEquip) or move.from_places:contains(sgs.Player_PlaceDelayedTrick) then
 					local can_getred = false
 					local can_getblack = false
@@ -1293,11 +1491,23 @@ local function YinyangChange(room, player, yinyang_flag, skill_name)
 	player:setTag("SPYinyangSkills", sgs.QVariant(table.concat(spyinyang_skills, "+")))
 end
 
-sgkgodyinyang = sgs.CreateTriggerSkill{
+sgkgodyinyang = sgs.CreateTriggerSkillV2{
 	name = "sgkgodyinyang",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.TurnStart, sgs.HpChanged, sgs.MaxHpChanged, sgs.EventAcquireSkill},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not player then return false end
+		if event == sgs.TurnStart then
+			local holder = room:findPlayerBySkillName(skill:objectName())
+			if holder then return skill:objectName(), holder:objectName() end
+			return false
+		elseif event == sgs.EventAcquireSkill then
+			if data:toSkillChange().skillName ~= skill:objectName() then return false end
+		end
+		return skill:objectName()
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.TurnStart then
 			for _, spzhangjiao in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
 			YinyangChange(room, spzhangjiao, "hp_Yang", "sgkgodjiyang")
@@ -1307,14 +1517,13 @@ sgkgodyinyang = sgs.CreateTriggerSkill{
 		elseif event == sgs.EventAcquireSkill then
 			if data:toSkillChange().skillName ~= self:objectName() then return false end
 		end
-		if not player:isAlive() or (not player:hasSkill(self:objectName())) then return false end
-		YinyangChange(room, player, "hp_Yang", "sgkgodjiyang")
-		YinyangChange(room, player, "hp_Sheng", "sgkgodxiangsheng")
-		YinyangChange(room, player, "hp_Yin", "sgkgodjiyin")
+		local subject = ctx.invoker or player
+		if not subject:isAlive() or (not subject:hasSkill(self:objectName())) then return false end
+		YinyangChange(room, subject, "hp_Yang", "sgkgodjiyang")
+		YinyangChange(room, subject, "hp_Sheng", "sgkgodxiangsheng")
+		YinyangChange(room, subject, "hp_Yin", "sgkgodjiyin")
+		return false
 	end,
-	can_trigger = function(self, target)
-		return target ~= nil
-	end
 }
 
 
@@ -1348,48 +1557,65 @@ local function exchangeYinYang(from, target)  --“交换”一名角色的体�
 end
 
 
-sgkgoddingming = sgs.CreateTriggerSkill{
+sgkgoddingming = sgs.CreateTriggerSkillV2{
 	name = "sgkgoddingming",
 	events = {sgs.EventPhaseStart, sgs.Damaged, sgs.Damage},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive()) then return false end
+		if event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_Start and getYinyangState(player) ~= "hp_Sheng" then
+				return skill:objectName()
+			end
+		elseif event == sgs.Damaged then
+			local damage = data:toDamage()
+			if damage.from and getYinyangState(player) ~= "hp_Sheng" then return skill:objectName() end
+		elseif event == sgs.Damage then
+			local damage = data:toDamage()
+			if damage.to and damage.to:getSeat() ~= player:getSeat() and getYinyangState(damage.to) ~= "hp_Sheng" then
+				return skill:objectName()
+			end
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
+		local _data = sgs.QVariant()
+		if event == sgs.Damage then
+			local damage = data:toDamage()
+			_data:setValue(damage.to)
+			return damage.to:isAlive() and player:askForSkillInvoke(skill:objectName(), _data)
+		end
+		_data:setValue(player)
+		return player:isAlive() and player:askForSkillInvoke(skill:objectName(), _data)
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.EventPhaseStart then
 			if player:getPhase() == sgs.Player_Start and getYinyangState(player) ~= "hp_Sheng" then  --你都“相生”了还交换个锤子啊
-				local _data = sgs.QVariant()
-				_data:setValue(player)
-				if player:isAlive() and player:askForSkillInvoke(self:objectName(), _data) then
-					room:broadcastSkillInvoke(self:objectName())
-					local x = math.abs(player:getHp() - player:getLostHp())
-					exchangeYinYang(player, player)
-					if getYinyangState(player) == "hp_Yang" then room:loseMaxHp(player) end
-					if player:isAlive() then player:drawCards(x, self:objectName()) end
-				end
+				room:broadcastSkillInvoke(self:objectName())
+				local x = math.abs(player:getHp() - player:getLostHp())
+				exchangeYinYang(player, player)
+				if getYinyangState(player) == "hp_Yang" then room:loseMaxHp(player) end
+				if player:isAlive() then player:drawCards(x, self:objectName()) end
 			end
 		elseif event == sgs.Damaged then
 			local damage = data:toDamage()
 			if not damage.from then return false end
 			if getYinyangState(player) ~= "hp_Sheng" then  --你都“相生”了还交换个锤子啊
-				local _data = sgs.QVariant()
-				_data:setValue(player)
-				if player:isAlive() and player:askForSkillInvoke(self:objectName(), _data) then
-					room:broadcastSkillInvoke(self:objectName())
-					local x = math.abs(player:getHp() - player:getLostHp())
-					exchangeYinYang(player, player)
-					if getYinyangState(player) == "hp_Yang" then room:loseMaxHp(player) end
-					if player:isAlive() then player:drawCards(x, self:objectName()) end
-				end
+				room:broadcastSkillInvoke(self:objectName())
+				local x = math.abs(player:getHp() - player:getLostHp())
+				exchangeYinYang(player, player)
+				if getYinyangState(player) == "hp_Yang" then room:loseMaxHp(player) end
+				if player:isAlive() then player:drawCards(x, self:objectName()) end
 			end
 		elseif event == sgs.Damage then
 			local damage = data:toDamage()
 			if damage.to and damage.to:getSeat() ~= player:getSeat() and getYinyangState(damage.to) ~= "hp_Sheng" then  --你都“相生”了还交换个锤子啊
-				local _data = sgs.QVariant()
-				_data:setValue(damage.to)
-				if damage.to:isAlive() and player:askForSkillInvoke(self:objectName(), _data) then
-					room:broadcastSkillInvoke(self:objectName())
-					local x = math.abs(damage.to:getHp() - damage.to:getLostHp())
-					exchangeYinYang(player, damage.to)
-					if getYinyangState(damage.to) == "hp_Yin" then room:loseMaxHp(player) end
-					if player:isAlive() and damage.to:isAlive() then player:drawCards(x, self:objectName()) end
-				end
+				room:broadcastSkillInvoke(self:objectName())
+				local x = math.abs(damage.to:getHp() - damage.to:getLostHp())
+				exchangeYinYang(player, damage.to)
+				if getYinyangState(damage.to) == "hp_Yin" then room:loseMaxHp(player) end
+				if player:isAlive() and damage.to:isAlive() then player:drawCards(x, self:objectName()) end
 			end
 		end
 		return false
@@ -1453,16 +1679,29 @@ sgkgodspzhangliao = sgs.General(extension, "sgkgodspzhangliao", "sy_god", 4)
 	技能描述：当你摸一张牌前，你可改为视为对一名其他角色使用【雷杀】（无距离限制），每回合限四次。
 	引用：sgkgodfengying, sgkgodfengyingClear
 ]]--
-sgkgodfengying = sgs.CreateTriggerSkill{
+sgkgodfengying = sgs.CreateTriggerSkillV2{
 	name = "sgkgodfengying",
 	events = {sgs.BeforeCardsMove},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not player:isAlive() then return false end
 		local move = data:toMoveOneTime()
 		if room:getTag("FirstRound"):toBool() then return false end
-		if not player:hasSkill(self:objectName()) then return false end
 	    if not move.from_places:contains(sgs.Player_DrawPile) or move.from then return false end
-	    if move.to_place == sgs.Player_PlaceHand and move.to:objectName() == player:objectName() 
-	            and (bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DRAW 
+	    if move.to_place == sgs.Player_PlaceHand and move.to and move.to:objectName() == player:objectName()
+	            and (bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DRAW
+			    or move.reason.m_reason == sgs.CardMoveReason_S_REASON_DRAW) then
+			if player:getMark("fengying_thunderslash-Clear") >= 4 then return false end
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
+		local move = data:toMoveOneTime()
+		if room:getTag("FirstRound"):toBool() then return false end
+	    if not move.from_places:contains(sgs.Player_DrawPile) or move.from then return false end
+	    if move.to_place == sgs.Player_PlaceHand and move.to and move.to:objectName() == player:objectName()
+	            and (bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DRAW
 			    or move.reason.m_reason == sgs.CardMoveReason_S_REASON_DRAW) then
 			if player:getMark("fengying_thunderslash-Clear") >= 4 then return false end
 			local thunder_slash = sgs.Sanguosha:cloneCard("thunder_slash", sgs.Card_NoSuit, 0)
@@ -1518,30 +1757,52 @@ sgkgodspzhangliao:addSkill(sgkgodfengying)
 	每项对每名其他角色限一次。
 	引用：sgkgodzhiti
 ]]--
-sgkgodzhiti = sgs.CreateTriggerSkill{
+local function sgkgodzhiti_rest_items(to)
+	local zhiti_items = {"spgodzl_stealOneHpAndMaxhp", "spgodzl_stealOneDraw", "spgodzl_stealOneSkill", "spgodzl_banEquip", "spgodzl_turnOver"}
+	local enabled_items = to:property("_ZhitiEnabled"):toString():split("+")
+	local rest_items = {}
+	if #enabled_items > 0 then
+		for i = 1, #zhiti_items, 1 do
+			if not table.contains(enabled_items, zhiti_items[i]) then table.insert(rest_items, zhiti_items[i]) end
+		end
+	else
+		for i = 1, #zhiti_items, 1 do
+			table.insert(rest_items, zhiti_items[i])
+		end
+	end
+	return rest_items
+end
+
+sgkgodzhiti = sgs.CreateTriggerSkillV2{
 	name = "sgkgodzhiti",
 	frequency = sgs.Skill_NotFrequent,
 	events = {sgs.DamageCaused},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not player:isAlive() then return false end
 		local damage = data:toDamage()
+		if not damage.to then return false end
 		if damage.to:getSeat() == player:getSeat() then return false end
 		if damage.damage == 0 then return false end
-		local zhiti_items = {"spgodzl_stealOneHpAndMaxhp", "spgodzl_stealOneDraw", "spgodzl_stealOneSkill", "spgodzl_banEquip", "spgodzl_turnOver"}
-		local enabled_items = damage.to:property("_ZhitiEnabled"):toString():split("+")
-		local rest_items = {}
-		if #enabled_items > 0 then
-			for i = 1, #zhiti_items, 1 do
-				if not table.contains(enabled_items, zhiti_items[i]) then table.insert(rest_items, zhiti_items[i]) end
-			end
-		else
-			for i = 1, #zhiti_items, 1 do
-				table.insert(rest_items, zhiti_items[i])
-			end
-		end
+		if #sgkgodzhiti_rest_items(damage.to) > 0 then return skill:objectName() end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		local damage = ctx.original_data:toDamage()
+		if not damage.to then return false end
+		local _data = sgs.QVariant()
+		_data:setValue(damage.to)
+		return player:askForSkillInvoke(skill:objectName(), _data)
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
+		local damage = data:toDamage()
+		if not damage.to or damage.to:getSeat() == player:getSeat() then return false end
+		if damage.damage == 0 then return false end
+		local rest_items = sgkgodzhiti_rest_items(damage.to)
 		if #rest_items > 0 then
 			local _data = sgs.QVariant()
 			_data:setValue(damage.to)
-			if player:askForSkillInvoke(self:objectName(), _data) then
+			do
 				local choice = room:askForChoice(player, self:objectName(), table.concat(rest_items, "+"), _data)
 				room:doAnimate(1, player:objectName(), damage.to:objectName())
 				room:broadcastSkillInvoke(self:objectName(), math.random(1, 2))
@@ -1609,6 +1870,7 @@ sgkgodzhiti = sgs.CreateTriggerSkill{
 				end
 			end
 		end
+		return false
 	end
 }
 
@@ -1660,19 +1922,44 @@ sgkgodspganning = sgs.General(extension, "sgkgodspganning", "sy_god", 4)
 	获得技能前，其移去1个“劫营”标记，改为由你执行对应的效果。
 	引用：sgkgodjieying, sgkgodjieyingRob
 ]]--
-sgkgodjieying = sgs.CreateTriggerSkill{
+sgkgodjieying = sgs.CreateTriggerSkillV2{
 	name = "sgkgodjieying",
 	events = {sgs.EventPhaseStart, sgs.Death, sgs.BeforeCardsMove},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive()) then return false end
+		if event == sgs.EventPhaseStart then
+			if player:getPhase() ~= sgs.Player_Draw then return false end
+			for _, pe in sgs.qlist(room:getOtherPlayers(player)) do
+				if pe:getMark("&"..skill:objectName()) == 0 then return skill:objectName() end
+			end
+			return false
+		elseif event == sgs.BeforeCardsMove then
+			local move = data:toMoveOneTime()
+			if move.card_ids:length() == 0 then return false end
+			if move.to_place == sgs.Player_PlaceHand and move.to and move.to:getMark("&"..skill:objectName()) > 0
+				and move.to:objectName() ~= player:objectName()
+				and (bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DRAW
+					or move.reason.m_reason == sgs.CardMoveReason_S_REASON_DRAW) then
+				return skill:objectName()
+			end
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		if event == sgs.EventPhaseStart then
+			return player:askForSkillInvoke(skill:objectName())
+		end
+		return true
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.EventPhaseStart then
 			if player:getPhase() == sgs.Player_Draw then
-				local can_invoke = false
 				local targets = sgs.SPlayerList()
 				for _, pe in sgs.qlist(room:getOtherPlayers(player)) do
 					if pe:getMark("&"..self:objectName()) == 0 then targets:append(pe) end
 				end
-				if not targets:isEmpty() then can_invoke = true end
-				if can_invoke and player:askForSkillInvoke(self:objectName()) then
+				if not targets:isEmpty() then
 					local target = room:askForPlayerChosen(player, targets, self:objectName())
 					room:doAnimate(1, player:objectName(), target:objectName())
 					room:broadcastSkillInvoke(self:objectName())
@@ -1690,7 +1977,7 @@ sgkgodjieying = sgs.CreateTriggerSkill{
 		elseif event == sgs.BeforeCardsMove then  --偷摸牌
 			local move = data:toMoveOneTime()
 			if move.card_ids:length() == 0 then return false end
-			if move.to_place == sgs.Player_PlaceHand and move.to:getMark("&"..self:objectName()) > 0 and move.to:objectName() ~= player:objectName()
+			if move.to_place == sgs.Player_PlaceHand and move.to and move.to:getMark("&"..self:objectName()) > 0 and move.to:objectName() ~= player:objectName()
 	            and (bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DRAW 
 			    or move.reason.m_reason == sgs.CardMoveReason_S_REASON_DRAW) then
 				room:broadcastSkillInvoke(self:objectName())
@@ -1719,15 +2006,43 @@ sgkgodjieying = sgs.CreateTriggerSkill{
 }
 
 --劫营的抢劫部分
-sgkgodjieyingRob = sgs.CreateTriggerSkill{
+--V2：事件主体（被劫者）无实例；对每名持有者各返回一个 context（owner=劫营者，invoker=主体），保持与旧 global 版本一致。
+sgkgodjieyingRob = sgs.CreateTriggerSkillV2{
 	name = "#sgkgodjieyingRob",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.PreHpRecover, sgs.MaxHpChange, sgs.TurnStart, sgs.EventAcquireSkill},
 	priority = {10, 100, 100, 100},
-	global = true,
-	on_trigger = function(self, event, player, data, room)
-		for _, sgn in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-			if event == sgs.PreHpRecover then  --偷体力回复
+	can_trigger = function(skill, event, room, player, data)
+		local names, owners = {}, {}
+		for _, sgn in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+			local ok = false
+			if event == sgs.PreHpRecover then
+				ok = player:getMark("&sgkgodjieying") > 0
+			elseif event == sgs.MaxHpChange then
+				ok = player:getMark("&sgkgodjieying") > 0 and data:toMaxHp().change > 0
+			elseif event == sgs.TurnStart then
+				ok = player:getMark("&sgkgodjieying") > 0 and player:getMark("@extra_turn") > 0
+			elseif event == sgs.EventAcquireSkill then
+				local sk = data:toSkillChange().skillName
+				ok = sk ~= "sgkgodjieying"
+					and (player:getMark("&sgkgodjieying") > 0
+						or (sgn:getMark("jieying_rob_temp") > 0 and player:objectName() ~= sgn:objectName()))
+			end
+			if ok then
+				table.insert(names, "#sgkgodjieyingRob")
+				table.insert(owners, sgn:objectName())
+			end
+		end
+		if #names > 0 then
+			return table.concat(names, "|"), table.concat(owners, "|")
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
+		local sgn = player
+		player = ctx.invoker
+		if event == sgs.PreHpRecover then  --偷体力回复
 				local rec = data:toRecover()
 				local x = rec.recover
 				local source = rec.from
@@ -1808,9 +2123,8 @@ sgkgodjieyingRob = sgs.CreateTriggerSkill{
 					end
 				end
 			end
-		end
 		return false
-	end			
+	end
 }
 
 
@@ -1825,12 +2139,25 @@ extension:insertRelatedSkills("sgkgodjieying", "#sgkgodjieyingRob")
 	技能描述：锁定技，当一张装备牌被你获得或进入弃牌堆后，你将其置于武将牌上并摸1张牌，且视为拥有这些装备牌的技能。
 	引用：sgkgodjinlong, sgkgodjinlongLose
 ]]--
-sgkgodjinlong = sgs.CreateTriggerSkill{
+sgkgodjinlong = sgs.CreateTriggerSkillV2{
 	name = "sgkgodjinlong",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.CardsMoveOneTime},
 	priority = -2,
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not player:isAlive() then return false end
+		local move = data:toMoveOneTime()
+		if room:getTag("FirstRound"):toBool() then return false end
+		if (move.to and move.to:objectName() == player:objectName() and (move.to_place == sgs.Player_PlaceHand or move.to_place == sgs.Player_PlaceEquip))
+			or move.to_place == sgs.Player_DiscardPile then
+			for _, id in sgs.qlist(move.card_ids) do
+				if sgs.Sanguosha:getCard(id):isKindOf("EquipCard") then return skill:objectName() end
+			end
+		end
+		return false
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		local move = data:toMoveOneTime()
 		if room:getTag("FirstRound"):toBool() then return false end
 		if (move.to and move.to:objectName() == player:objectName() and (move.to_place == sgs.Player_PlaceHand or move.to_place == sgs.Player_PlaceEquip))
@@ -1882,11 +2209,17 @@ sgkgodjinlong = sgs.CreateTriggerSkill{
 }
 
 
-sgkgodjinlongLose = sgs.CreateTriggerSkill{
+sgkgodjinlongLose = sgs.CreateTriggerSkillV2{
 	name = "#sgkgodjinlongLose",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.EventLoseSkill},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not player:isAlive() then return false end
+		if data:toSkillChange().skillName == "sgkgodjinlong" then return skill:objectName() end
+		return false
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if data:toSkillChange().skillName == "sgkgodjinlong" then
 			local eqs = player:getTag("sgkgodjinlong_equips"):toString():split("+")
 			for _, name in ipairs(eqs) do
@@ -1895,6 +2228,7 @@ sgkgodjinlongLose = sgs.CreateTriggerSkill{
 			player:clearOnePrivatePile("jinlong_equips")
 			player:removeTag("sgkgodjinlong_equips")
 		end
+		return false
 	end
 }
 
@@ -1945,12 +2279,17 @@ sgkgodspsimayi = sgs.General(extension, "sgkgodspsimayi", "sy_god", 3)
 	你使用“鹰”无距离和次数限制。当你使用“鹰”后，你摸一张牌。
 	引用：sgkgodyingshi, sgkgodyingshiRob
 ]]--
-sgkgodyingshi = sgs.CreateTriggerSkill{
+sgkgodyingshi = sgs.CreateTriggerSkillV2{
 	name = "sgkgodyingshi",
 	frequency = sgs.Skill_Compulsory,
 	priority = {10, 0},
 	events = {sgs.GameStart, sgs.CardsMoveOneTime, sgs.CardFinished, sgs.CardResponded},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not player:isAlive() then return false end
+		return skill:objectName()
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.GameStart then
 			room:sendCompulsoryTriggerLog(player, "sgkgodyingshi")
 			room:broadcastSkillInvoke(self:objectName())
@@ -2084,17 +2423,29 @@ sgkgodyingshi = sgs.CreateTriggerSkill{
 	end
 }
 
-sgkgodyingshiRob = sgs.CreateTriggerSkill{
+--V2：事件主体（回合阶段变化者）无实例；对每名“鹰视”持有者返回一个 context（owner=持有者，invoker=主体），与旧全局语义一致。
+sgkgodyingshiRob = sgs.CreateTriggerSkillV2{
 	name = "#sgkgodyingshiRob",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.EventPhaseChanging},
-	can_trigger = function(self, target)
-		return target and target:isAlive()
-	end,
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive()) then return false end
+		if data:toPhaseChange().to ~= sgs.Player_NotActive then return false end
+		local names, owners = {}, {}
 		for _, smy in sgs.qlist(room:findPlayersBySkillName("sgkgodyingshi")) do
-			local change = data:toPhaseChange()
-			if change.to == sgs.Player_NotActive then
+			if not smy:getSkillInstanceIds(skill:objectName()):isEmpty() then
+				table.insert(names, skill:objectName())
+				table.insert(owners, smy:objectName())
+			end
+		end
+		if #names > 0 then return table.concat(names, "|"), table.concat(owners, "|") end
+		return false
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
+		local smy = player
+		local change = data:toPhaseChange()
+		if change.to == sgs.Player_NotActive then
 				local yingshi = sgs.Sanguosha:cloneCard("jink", sgs.Card_NoSuit, 0)
 				--1. 统计牌堆和弃牌堆
 				if not room:getDrawPile():isEmpty() then
@@ -2126,8 +2477,8 @@ sgkgodyingshiRob = sgs.CreateTriggerSkill{
 					if pe:getMark("jlyingshi_moved") > 0 then room:setPlayerMark(pe, "jlyingshi_moved", 0) end
 				end
 				yingshi:deleteLater()
-			end
 		end
+		return false
 	end
 }
 
@@ -2161,11 +2512,25 @@ local function prepareLangxiRecord(player, langxi_str)
 	return lx
 end
 
-sgkgodlangxi = sgs.CreateTriggerSkill{
+sgkgodlangxi = sgs.CreateTriggerSkillV2{
 	name = "sgkgodlangxi",
 	priority = {3, 3, -10, -10},
 	events = {sgs.GameStart, sgs.PreCardUsed, sgs.CardFinished},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:hasSkill(skill:objectName())) then return false end
+		return skill:objectName()
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		if event == sgs.PreCardUsed then
+			local data = ctx.original_data
+			local use = data:toCardUse()
+			return use.from and use.from:objectName() == player:objectName() and use.to and use.to:length() > 0
+				and use.card:isNDTrick() and (not use.card:isKindOf("Suijiyingbian")) and use.card:subcardsLength() > 0
+		end
+		return true
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.GameStart then
 			room:sendCompulsoryTriggerLog(player, self:objectName(), true, true)
 			local tricks = sgs.IntList()
@@ -2277,9 +2642,6 @@ sgkgodlangxi = sgs.CreateTriggerSkill{
 			end
 		end
 		return false
-	end,
-	can_trigger = function(self, target)
-		return target and target:hasSkill(self:objectName())
 	end
 }
 
@@ -2405,12 +2767,28 @@ local function shenyinRewrite(player)
 	player:drawCards(2*X, "sgkgodshenyin")
 end
 
-sgkgodshenyin = sgs.CreateTriggerSkill{
+sgkgodshenyin = sgs.CreateTriggerSkillV2{
 	name = "sgkgodshenyin",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.GameStart, sgs.Death, sgs.EventPhaseStart, sgs.Dying},
 	priority = {-99, 99, -10, -10, 99},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		return skill:objectName()
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		if event == sgs.EventPhaseStart then
+			return player:getPhase() == sgs.Player_Start and player:getMark("&sgkgodshenyin") > 0
+				and player:askForSkillInvoke("sgkgodshenyin", ctx.original_data)
+		elseif event == sgs.Dying then
+			local dying = ctx.original_data:toDying()
+			return dying.who and dying.who:objectName() == player:objectName() and dying.who:hasSkill("sgkgodshenyin")
+				and dying.who:getMark("&sgkgodshenyin") > 0 and player:askForSkillInvoke("sgkgodshenyin", ctx.original_data)
+		end
+		return true
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.GameStart then  --把记录的优先级降到-99，因为有人可能这个时候副将配的SP神吕布【罗刹】先拿技能
 			room:sendCompulsoryTriggerLog(player, "sgkgodshenyin", true, true)
 			player:gainMark("&sgkgodshenyin", 1)
@@ -2424,20 +2802,16 @@ sgkgodshenyin = sgs.CreateTriggerSkill{
 			end
 		elseif event == sgs.EventPhaseStart then
 			if player:getPhase() == sgs.Player_Start and player:getMark("&sgkgodshenyin") > 0 then
-				if player:askForSkillInvoke("sgkgodshenyin", data) then
-					room:broadcastSkillInvoke("sgkgodshenyin")
-					player:gainMark("&sgkgodshenyin", 1)
-					shenyinRecord(player)
-				end
+				room:broadcastSkillInvoke("sgkgodshenyin")
+				player:gainMark("&sgkgodshenyin", 1)
+				shenyinRecord(player)
 			end
 		elseif event == sgs.Dying then
 			local dying = data:toDying()
 			if dying.who:objectName() == player:objectName() and dying.who:hasSkill("sgkgodshenyin") and dying.who:getMark("&sgkgodshenyin") > 0 then
-				if player:askForSkillInvoke("sgkgodshenyin", data) then
-					room:broadcastSkillInvoke("sgkgodshenyin")
-					room:doSuperLightbox("sgkgodspsimayi", "sgkgodshenyin")
-					shenyinRewrite(dying.who)
-				end
+				room:broadcastSkillInvoke("sgkgodshenyin")
+				room:doSuperLightbox("sgkgodspsimayi", "sgkgodshenyin")
+				shenyinRewrite(dying.who)
 			end
 		end
 		return false
@@ -2445,24 +2819,25 @@ sgkgodshenyin = sgs.CreateTriggerSkill{
 }
 
 
-sgkgodshenyinLose = sgs.CreateTriggerSkill{
+sgkgodshenyinLose = sgs.CreateTriggerSkillV2{
 	name = "#sgkgodshenyinLose",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.EventLoseSkill},
-	on_trigger = function(self, event, player, data, room)
-		for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-			if data:toSkillChange().skillName == "sgkgodshenyin" and p:objectName() == player:objectName() and p:getMark("&sgkgodshenyin") > 0 then
-				if player:askForSkillInvoke(self:objectName(), data) then
-					room:broadcastSkillInvoke("sgkgodshenyin")
-					room:doSuperLightbox("sgkgodspsimayi", "sgkgodshenyin")
-					shenyinRewrite(player)
-				end
-			end
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:hasSkill(skill:objectName())) then return false end
+		if data:toSkillChange().skillName == "sgkgodshenyin" and player:getMark("&sgkgodshenyin") > 0 then
+			return skill:objectName()
 		end
 		return false
 	end,
-	can_trigger = function(self, target)
-		return target ~= nil
+	on_cost = function(skill, event, room, player, ctx)
+		return player:askForSkillInvoke(skill:objectName(), ctx.original_data)
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		room:broadcastSkillInvoke("sgkgodshenyin")
+		room:doSuperLightbox("sgkgodspsimayi", "sgkgodshenyin")
+		shenyinRewrite(player)
+		return false
 	end
 }
 
@@ -2594,22 +2969,79 @@ qianyuanDoDebuff = function(spshenzhaoyun, exe)
 	end
 end
 
-sgkgodqianyuan = sgs.CreateTriggerSkill{
+local function qianyuan_askPrevent(player, skill_name, debuff)
+	local qy_recorded = player:getTag("qianyuan_recorded_debuff"):toString():split("+")
+	local prompt = string.format("qianyuan_prevent:%s:", debuff)
+	if not table.contains(qy_recorded, debuff) then
+		return player:askForSkillInvoke(skill_name, sgs.QVariant(prompt))
+	end
+	local debuffs = qy_debuffs()
+	table.removeOne(debuffs, debuff)
+	return #debuffs > 0 and player:askForSkillInvoke(skill_name, sgs.QVariant(prompt))
+end
+
+sgkgodqianyuan = sgs.CreateTriggerSkillV2{
 	name = "sgkgodqianyuan",
 	events = {sgs.DamageInflicted, sgs.PreHpLost, sgs.MaxHpChange, sgs.BeforeCardsMove, sgs.MarkChange, sgs.ChainStateChange, sgs.TurnOver},
-	can_trigger = function(self, target)
-		return target and target:isAlive() and target:hasSkill(self:objectName()) and target:getMark("&"..self:objectName().."_usedtimes") < target:getAliveSiblings():length() + 1
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		if player:getMark("&"..skill:objectName().."_usedtimes") >= player:getAliveSiblings():length() + 1 then return false end
+		if event == sgs.DamageInflicted then
+			local damage = data:toDamage()
+			if damage.damage > 0 and damage.to and damage.to:objectName() == player:objectName() then return skill:objectName() end
+		elseif event == sgs.PreHpLost then
+			if data:toHpLost().lose > 0 then return skill:objectName() end
+		elseif event == sgs.MaxHpChange then
+			if 0 - data:toMaxHp().change > 0 then return skill:objectName() end
+		elseif event == sgs.BeforeCardsMove then
+			local move = data:toMoveOneTime()
+			if move.from and move.from:objectName() == player:objectName() and move.to_place == sgs.Player_DiscardPile and (move.from_places:contains(sgs.Player_PlaceHand)
+				or move.from_places:contains(sgs.Player_PlaceEquip)) and not move.from_places:contains(sgs.Player_PlaceDelayedTrick) and
+				bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD and move.card_ids:length() > 0 then
+				return skill:objectName()
+			end
+		elseif event == sgs.MarkChange then
+			if player:getTag("hunlie_global_resist_invalid"):toBool() then return skill:objectName() end
+			local mark = data:toMark()
+			if mark.gain > 0 and (string.find(mark.name, "Qingcheng") or string.find(mark.name, "skill_invalidity") or string.find(mark.name, "fangzhu")) then
+				return skill:objectName()
+			end
+		elseif event == sgs.ChainStateChange then
+			if not player:isChained() then return skill:objectName() end
+		elseif event == sgs.TurnOver then
+			if player:faceUp() then return skill:objectName() end
+		end
+		return false
 	end,
 	priority = {-99, -99, -99, -99, -99, -99, -99},
-	on_trigger = function(self, event, player, data, room)
+	on_cost = function(skill, event, room, player, ctx)
+		if event == sgs.DamageInflicted then
+			return qianyuan_askPrevent(player, skill:objectName(), "qianyuan_damaged")
+		elseif event == sgs.PreHpLost then
+			return qianyuan_askPrevent(player, skill:objectName(), "qianyuan_losehp")
+		elseif event == sgs.MaxHpChange then
+			return qianyuan_askPrevent(player, skill:objectName(), "qianyuan_losemaxhp")
+		elseif event == sgs.BeforeCardsMove then
+			return qianyuan_askPrevent(player, skill:objectName(), "qianyuan_discard")
+		elseif event == sgs.MarkChange then
+			if player:getTag("hunlie_global_resist_invalid"):toBool() then return true end
+			return qianyuan_askPrevent(player, skill:objectName(), "qianyuan_invalidskill")
+		elseif event == sgs.ChainStateChange then
+			return qianyuan_askPrevent(player, skill:objectName(), "qianyuan_chained")
+		elseif event == sgs.TurnOver then
+			return qianyuan_askPrevent(player, skill:objectName(), "qianyuan_turnover")
+		end
+		return true
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.DamageInflicted then
 			local damage = data:toDamage()
 			local qy_recorded = player:getTag("qianyuan_recorded_debuff"):toString():split("+")  --读取整局游戏已经记录过的防止过的负面效果
 			local qy_play_debuff = player:getTag("qianyuan_play_debuff"):toString():split("+")
 			if damage.damage > 0 and damage.to and damage.to:objectName() == player:objectName() then
 				if not table.contains(qy_recorded, "qianyuan_damaged") then  --如果“受到伤害”没被记录，则防止此伤害，记录“受到伤害”这一负面效果
-					local prompt = string.format("qianyuan_prevent:%s:", "qianyuan_damaged")
-					if player:askForSkillInvoke(self:objectName(), sgs.QVariant(prompt)) then
+					do
 						room:broadcastSkillInvoke(self:objectName())
 						local msg = sgs.LogMessage()
 						msg.from = player
@@ -2637,10 +3069,9 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 						return true
 					end
 				else
-					local prompt = string.format("qianyuan_prevent:%s:", "qianyuan_damaged")
 					local debuffs = qy_debuffs()
 					table.removeOne(debuffs, "qianyuan_damaged")
-					if #debuffs > 0 and player:askForSkillInvoke(self:objectName(), sgs.QVariant(prompt)) then  --如果“受到伤害”已被记录，且还有没被记录的负面效果，则防止此伤害，随机切换为其他的负面效果
+					if #debuffs > 0 then  --如果“受到伤害”已被记录，且还有没被记录的负面效果，则防止此伤害，随机切换为其他的负面效果
 						room:broadcastSkillInvoke(self:objectName())
 						room:addPlayerMark(player, "&"..self:objectName().."_usedtimes")
 						local msg = sgs.LogMessage()
@@ -2683,8 +3114,7 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 			local qy_play_debuff = player:getTag("qianyuan_play_debuff"):toString():split("+")
 			if lose.lose > 0 then
 				if not table.contains(qy_recorded, "qianyuan_losehp") then  --如果“失去体力”没被记录，则防止此次失去体力，记录“失去体力”这一负面效果
-					local prompt = string.format("qianyuan_prevent:%s:", "qianyuan_losehp")
-					if player:askForSkillInvoke(self:objectName(), sgs.QVariant(prompt)) then
+					do
 						room:broadcastSkillInvoke(self:objectName())
 						table.insert(qy_recorded, "qianyuan_losehp")
 						table.insert(qy_play_debuff, "qianyuan_losehp")
@@ -2712,10 +3142,9 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 						return true
 					end
 				else
-					local prompt = string.format("qianyuan_prevent:%s:", "qianyuan_losehp")
 					local debuffs = qy_debuffs()
 					table.removeOne(debuffs, "qianyuan_losehp")
-					if #debuffs > 0 and player:askForSkillInvoke(self:objectName(), sgs.QVariant(prompt)) then  --如果“失去体力”已被记录，且还有没被记录的负面效果，则防止此伤害，随机切换为其他的负面效果
+					if #debuffs > 0 then  --如果“失去体力”已被记录，且还有没被记录的负面效果，则防止此伤害，随机切换为其他的负面效果
 						room:broadcastSkillInvoke(self:objectName())
 						room:addPlayerMark(player, "&"..self:objectName().."_usedtimes")
 						local msg = sgs.LogMessage()
@@ -2759,8 +3188,7 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 			local qy_play_debuff = player:getTag("qianyuan_play_debuff"):toString():split("+")
 			if x > 0 then
 				if not table.contains(qy_recorded, "qianyuan_losemaxhp") then  --如果“失去体力上限”没被记录，则防止之，记录“失去体力上限”这一负面效果
-					local prompt = string.format("qianyuan_prevent:%s:", "qianyuan_losemaxhp")
-					if player:askForSkillInvoke(self:objectName(), sgs.QVariant(prompt)) then
+					do
 						room:broadcastSkillInvoke(self:objectName())
 						table.insert(qy_recorded, "qianyuan_losemaxhp")
 						table.insert(qy_play_debuff, "qianyuan_losemaxhp")
@@ -2788,10 +3216,9 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 						return true
 					end
 				else
-					local prompt = string.format("qianyuan_prevent:%s:", "qianyuan_losemaxhp")
 					local debuffs = qy_debuffs()
 					table.removeOne(debuffs, "qianyuan_losemaxhp")
-					if #debuffs > 0 and player:askForSkillInvoke(self:objectName(), sgs.QVariant(prompt)) then  --如果“失去体力上限”已被记录，且还有没被记录的负面效果，则防止之，随机切换为其他的负面效果
+					if #debuffs > 0 then  --如果“失去体力上限”已被记录，且还有没被记录的负面效果，则防止之，随机切换为其他的负面效果
 						room:broadcastSkillInvoke(self:objectName())
 						room:addPlayerMark(player, "&"..self:objectName().."_usedtimes")
 						local msg = sgs.LogMessage()
@@ -2840,8 +3267,7 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 					end
 				end
 				if not table.contains(qy_recorded, "qianyuan_discard") then  --如果“弃置牌”没被记录，则防止此次弃牌，记录“弃置牌”这一负面效果
-					local prompt = string.format("qianyuan_prevent:%s:", "qianyuan_discard")
-					if player:askForSkillInvoke(self:objectName(), sgs.QVariant(prompt)) then
+					do
 						room:broadcastSkillInvoke(self:objectName())
 						local msg = sgs.LogMessage()
 						msg.from = player
@@ -2870,10 +3296,9 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 						data:setValue(move)
 					end
 				else
-					local prompt = string.format("qianyuan_prevent:%s:", "qianyuan_discard")
 					local debuffs = qy_debuffs()
 					table.removeOne(debuffs, "qianyuan_discard")
-					if #debuffs > 0 and player:askForSkillInvoke(self:objectName(), sgs.QVariant(prompt)) then  --如果“弃置牌”已被记录，且还有没被记录的负面效果，则防止之，随机切换为其他的负面效果
+					if #debuffs > 0 then  --如果“弃置牌”已被记录，且还有没被记录的负面效果，则防止之，随机切换为其他的负面效果
 						room:broadcastSkillInvoke(self:objectName())
 						room:addPlayerMark(player, "&"..self:objectName().."_usedtimes")
 						local msg = sgs.LogMessage()
@@ -2922,8 +3347,7 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 			if player:getTag("hunlie_global_resist_invalid"):toBool() then return true end
 			if mark.gain > 0 and (string.find(mark.name, "Qingcheng") or string.find(mark.name, "skill_invalidity") or string.find(mark.name, "fangzhu")) and not player:getTag("hunlie_global_resist_invalid"):toBool() then
 				if not table.contains(qy_recorded, "qianyuan_invalidskill") then  --如果“技能被失效”没被记录，则防止之，记录“技能被失效”这一负面效果
-					local prompt = string.format("qianyuan_prevent:%s:", "qianyuan_invalidskill")
-					if player:askForSkillInvoke(self:objectName(), sgs.QVariant(prompt)) then
+					do
 						room:broadcastSkillInvoke(self:objectName())
 						table.insert(qy_recorded, "qianyuan_invalidskill")
 						table.insert(qy_play_debuff, "qianyuan_invalidskill")
@@ -2952,10 +3376,9 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 						return true
 					end
 				else
-					local prompt = string.format("qianyuan_prevent:%s:", "qianyuan_invalidskill")
 					local debuffs = qy_debuffs()
 					table.removeOne(debuffs, "qianyuan_invalidskill")
-					if #debuffs > 0 and not player:getTag("hunlie_global_resist_invalid"):toBool() and player:askForSkillInvoke(self:objectName(), sgs.QVariant(prompt)) then  --如果“技能被失效”已被记录，且还有没被记录的负面效果，则防止之，随机切换为其他的负面效果
+					if #debuffs > 0 and not player:getTag("hunlie_global_resist_invalid"):toBool() then  --如果“技能被失效”已被记录，且还有没被记录的负面效果，则防止之，随机切换为其他的负面效果
 						room:broadcastSkillInvoke(self:objectName())
 						room:addPlayerMark(player, "&"..self:objectName().."_usedtimes")
 						local msg = sgs.LogMessage()
@@ -2980,8 +3403,7 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 			end
 			if not player:isChained() then
 				if not table.contains(qy_recorded, "qianyuan_chained") then  --如果“被横置”没被记录，则防止之，记录“被横置”这一负面效果
-					local prompt = string.format("qianyuan_prevent:%s:", "qianyuan_chained")
-					if player:askForSkillInvoke(self:objectName(), sgs.QVariant(prompt)) then
+					do
 						room:broadcastSkillInvoke(self:objectName())
 						table.insert(qy_recorded, "qianyuan_chained")
 						table.insert(qy_play_debuff, "qianyuan_chained")
@@ -3009,10 +3431,9 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 						return true
 					end
 				else
-					local prompt = string.format("qianyuan_prevent:%s:", "qianyuan_chained")
 					local debuffs = qy_debuffs()
 					table.removeOne(debuffs, "qianyuan_chained")
-					if #debuffs > 0 and player:askForSkillInvoke(self:objectName(), sgs.QVariant(prompt)) then  --如果“被横置”已被记录，且还有没被记录的负面效果，则防止之，随机切换为其他的负面效果
+					if #debuffs > 0 then  --如果“被横置”已被记录，且还有没被记录的负面效果，则防止之，随机切换为其他的负面效果
 						room:broadcastSkillInvoke(self:objectName())
 						room:addPlayerMark(player, "&"..self:objectName().."_usedtimes")
 						local msg = sgs.LogMessage()
@@ -3036,8 +3457,7 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 			end
 			if player:faceUp() then
 				if not table.contains(qy_recorded, "qianyuan_turnover") then  --如果“被翻面”没被记录，则防止之，记录“被翻面”这一负面效果
-					local prompt = string.format("qianyuan_prevent:%s:", "qianyuan_turnover")
-					if player:askForSkillInvoke(self:objectName(), sgs.QVariant(prompt)) then
+					do
 						room:broadcastSkillInvoke(self:objectName())
 						table.insert(qy_recorded, "qianyuan_turnover")
 						table.insert(qy_play_debuff, "qianyuan_turnover")
@@ -3065,10 +3485,9 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 						return true
 					end
 				else
-					local prompt = string.format("qianyuan_prevent:%s:", "qianyuan_turnover")
 					local debuffs = qy_debuffs()
 					table.removeOne(debuffs, "qianyuan_turnover")
-					if #debuffs > 0 and player:askForSkillInvoke(self:objectName(), sgs.QVariant(prompt)) then  --如果“被翻面”已被记录，且还有没被记录的负面效果，则防止之，随机切换为其他的负面效果
+					if #debuffs > 0 then  --如果“被翻面”已被记录，且还有没被记录的负面效果，则防止之，随机切换为其他的负面效果
 						room:addPlayerMark(player, "&"..self:objectName().."_usedtimes")
 						local msg = sgs.LogMessage()
 						msg.from = player
@@ -3087,13 +3506,30 @@ sgkgodqianyuan = sgs.CreateTriggerSkill{
 	end
 }
 
-sgkgodqianyuanLose = sgs.CreateTriggerSkill{
+sgkgodqianyuanLose = sgs.CreateTriggerSkillV2{
 	name = "#sgkgodqianyuanLose",
 	events = {sgs.EventLoseSkill, sgs.EventPhaseChanging},
-	can_trigger = function(self, target)
-		return target ~= nil
+	can_trigger = function(skill, event, room, player, data)
+		if not player then return false end
+		if event == sgs.EventLoseSkill then
+			if player:hasSkill(skill:objectName())
+				and player:getMark("&sgkgodqianyuan_usedtimes") < room:getAlivePlayers():length() then
+				return skill:objectName()
+			end
+		elseif event == sgs.EventPhaseChanging then
+			local holder = room:findPlayerBySkillName(skill:objectName())
+			if holder then return skill:objectName(), holder:objectName() end
+		end
+		return false
 	end,
-	on_trigger = function(self, event, player, data, room)
+	on_cost = function(skill, event, room, player, ctx)
+		if event == sgs.EventLoseSkill then
+			return qianyuan_askPrevent(player, skill:objectName(), "qianyuan_loseskill")
+		end
+		return true
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.EventLoseSkill then
 			if player:hasSkill(self:objectName()) then
 				local qy_recorded = player:getTag("qianyuan_recorded_debuff"):toString():split("+")  --读取整局游戏已经记录过的防止过的负面效果
@@ -3104,8 +3540,7 @@ sgkgodqianyuanLose = sgs.CreateTriggerSkill{
 				end
 				if player:getMark("&sgkgodqianyuan_usedtimes") < room:getAlivePlayers():length() then
 					if not table.contains(qy_recorded, "qianyuan_loseskill") then  --如果“失去技能”没被记录，则防止之，记录“失去技能”这一负面效果
-						local prompt = string.format("qianyuan_prevent:%s:", "qianyuan_loseskill")
-						if player:askForSkillInvoke(self:objectName(), sgs.QVariant(prompt)) then
+						do
 							room:broadcastSkillInvoke("sgkgodqianyuan")
 							player:setTag("hunliesp_global_resistSkill", sgs.QVariant(true))
 							table.insert(qy_recorded, "qianyuan_loseskill")
@@ -3136,10 +3571,9 @@ sgkgodqianyuanLose = sgs.CreateTriggerSkill{
 							room:setPlayerMark(player, data:toString().."_temp_skill", 0)
 						end
 					else
-						local prompt = string.format("qianyuan_prevent:%s:", "qianyuan_loseskill")
 						local debuffs = qy_debuffs()
 						table.removeOne(debuffs, "qianyuan_loseskill")
-						if #debuffs > 0 and player:askForSkillInvoke(self:objectName(), sgs.QVariant(prompt)) then  --如果“失去技能”已被记录，且还有没被记录的负面效果，则防止之，随机切换为其他的负面效果
+						if #debuffs > 0 then  --如果“失去技能”已被记录，且还有没被记录的负面效果，则防止之，随机切换为其他的负面效果
 							room:addPlayerMark(player, "&sgkgodqianyuan_usedtimes")
 							local msg = sgs.LogMessage()
 							msg.from = player
@@ -3181,16 +3615,32 @@ extension:insertRelatedSkills("sgkgodqianyuan", "#sgkgodqianyuanLose")
 	以此法弃置的“潜渊”标记总数。
 	引用：sgkgodhualong, sgkgodhualongTargetMod, sgkgodhualongDraw
 ]]--
-sgkgodhualong = sgs.CreateTriggerSkill{
+sgkgodhualong = sgs.CreateTriggerSkillV2{
 	name = "sgkgodhualong",
 	events = {sgs.EventPhaseStart},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		if player:getPhase() == sgs.Player_Start or player:getPhase() == sgs.Player_Finish then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		if player:getPhase() == sgs.Player_Start then
+			local qy_play_debuff = player:getTag("qianyuan_play_debuff"):toString():split("+")
+			local qianyuan_count = player:getMark("&sgkgodqianyuan")
+			return #qy_play_debuff > 0 and qianyuan_count > 0 and player:askForSkillInvoke(skill:objectName(), ctx.original_data)
+		end
+		return true
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if player:getPhase() == sgs.Player_Start then
 			local qy_play_debuff = player:getTag("qianyuan_play_debuff"):toString():split("+")
 			local qianyuan_count = player:getMark("&sgkgodqianyuan")
 			local n = #qy_play_debuff
 			if n > 0 and qianyuan_count > 0 then
-				if player:askForSkillInvoke(self:objectName(), data) then
+				do
 					local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName())
 					room:broadcastSkillInvoke(self:objectName())
 					room:doAnimate(1, player:objectName(), target:objectName())
@@ -3270,23 +3720,44 @@ sgkgodhualong = sgs.CreateTriggerSkill{
 	end
 }
 
-sgkgodhualongDraw1 = sgs.CreateDrawCardsSkill{
+sgkgodhualongDraw1 = sgs.CreateTriggerSkillV2{
 	name = "#sgkgodhualongDraw1",
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.DrawNCards},
 	global = true,
-	draw_num_func = function(self, player, n)
+	on_record = function(skill, event, room, player, ctx)
+		hunliesp_ensure_global_instances(room)
+	end,
+	can_trigger = function(skill, event, room, player, data)
+		if not player then return false end
+		local draw = data:toDraw()
+		if draw.reason == "draw_phase" then return skill:objectName() end
+		return false
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
+		local draw = data:toDraw()
 		local x = 0
 		if player:getMark("sgkgodhualong") > 0 then
 			x = x + player:getMark("sgkgodhualong") - 2
 		end
-		return n + x
+		draw.num = draw.num + x
+		data:setValue(draw)
+		return false
 	end
 }
+extension:addSkills(sgkgodhualongDraw1)
 
-sgkgodhualongDraw2 = sgs.CreateTriggerSkill{
+sgkgodhualongDraw2 = sgs.CreateTriggerSkillV2{
 	name = "#sgkgodhualongDraw2",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.CardsMoveOneTime, sgs.EventPhaseChanging, sgs.EventPhaseStart},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		return skill:objectName()
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.CardsMoveOneTime then
 			local move = data:toMoveOneTime()
 			if player:getPhase() == sgs.Player_Discard then
@@ -3337,20 +3808,25 @@ sgkgodhualongDraw2 = sgs.CreateTriggerSkill{
 	end
 }
 
-sgkgodhualongATK = sgs.CreateAttackRangeSkill{
+sgkgodhualongATK = sgs.CreateAttackRangeSkillV2{
 	name = "#sgkgodhualongATK",
-	extra_func = function(self, target, include_weapon)
-		if target:getMark("sgkgodhualong") > 0 then return target:getMark("sgkgodhualong") - 1 end
+	correct_func = function(skill, ctx)
+		local target = ctx:getHolder()
+		if target and target:hasSkill(skill:objectName()) and target:getMark("sgkgodhualong") > 0 then return target:getMark("sgkgodhualong") - 1 end
+		return false
 	end
 }
 
-sgkgodhualongTargetMod = sgs.CreateTargetModSkill{
+sgkgodhualongTargetMod = sgs.CreateTargetModSkillV2{
 	name = "#sgkgodhualongTargetMod",
 	pattern = ".",
-	residue_func = function(self, from, card, to)
-		if from:getMark("sgkgodhualong") > 0 then
+	correct_func = function(skill, ctx)
+		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
+		local from = ctx:getHolder()
+		if from and from:hasSkill(skill:objectName()) and from:getMark("sgkgodhualong") > 0 then
 			return from:getMark("sgkgodhualong") - 1
 		end
+		return false
 	end
 }
 
@@ -3358,11 +3834,9 @@ sgkgodhualongTargetMod = sgs.CreateTargetModSkill{
 sgkgodspzhaoyun:addSkill(sgkgodhualong)
 sgkgodspzhaoyun:addSkill(sgkgodhualongATK)
 sgkgodspzhaoyun:addSkill(sgkgodhualongTargetMod)
-sgkgodspzhaoyun:addSkill(sgkgodhualongDraw1)
 sgkgodspzhaoyun:addSkill(sgkgodhualongDraw2)
 extension:insertRelatedSkills("sgkgodhualong", "#sgkgodhualongATK")
 extension:insertRelatedSkills("sgkgodhualong", "#sgkgodhualongTargetMod")
-extension:insertRelatedSkills("sgkgodhualong", "#sgkgodhualongDraw1")
 extension:insertRelatedSkills("sgkgodhualong", "#sgkgodhualongDraw2")
 
 
@@ -4644,14 +5118,19 @@ local scheme_prototypes = {}
 
 for _, _first in sgs.list(scheme_first_char) do
 	for _, _second in sgs.list(scheme_second_char) do
-		local sgkgodjiguan_prototype = sgs.CreateTriggerSkill{
+		local sgkgodjiguan_prototype = sgs.CreateTriggerSkillV2{
 			name = "".._first.._second,
 			events = scheme_events,
 			frequency = sgs.Skill_Compulsory,
-			can_trigger = function(self, player)
-				return player and player:isAlive()
+			can_trigger = function(skill, event, room, player, data)
+				if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+				local scheme_info = room:getTag(skill:objectName()):toString():split("+")
+				local event_str = scheme_info[2]
+				if event_str and event_str ~= "" and TG_Event[event_str] then return skill:objectName() end
+				return false
 			end,
-			on_trigger = function(self, event, player, data, room)
+			on_effect = function(self, event, room, player, ctx)
+				local data = ctx.original_data
 				local scheme_info = room:getTag(self:objectName()):toString():split("+")  --记录信息：1机关技能名、2发动时机、3执行目标、4技能效果、5限制次数（0代表不限制）
 				local event_str, targets_str, effect_str, limit_time = scheme_info[2], scheme_info[3], scheme_info[4], tonumber(scheme_info[5])
 				if event_str ~= "" then
@@ -4686,32 +5165,56 @@ for _, _first in ipairs(scheme_first_char) do
 		local draw_mark = skname.."hunlie_global_schemedraw"
 		local maxcards_mark = skname.."hunlie_global_schememaxcards"
 		local slashtime_mark = skname.."hunlie_global_schemeslashtime"
-		local sgkgodjiguan_exdraw = sgs.CreateDrawCardsSkill{
+		local sgkgodjiguan_exdraw = sgs.CreateTriggerSkillV2{
 			name = "#".._first.._second.."draw",
 			global = true,
-			draw_num_func = function(self, player, n)
+			frequency = sgs.Skill_Compulsory,
+			events = {sgs.DrawNCards},
+			on_record = function(skill, event, room, player, ctx)
+				hunliesp_ensure_global_instances(room)
+			end,
+			can_trigger = function(skill, event, room, player, data)
+				if not player then return false end
+				local draw = data:toDraw()
+				if draw.reason == "draw_phase" then return skill:objectName() end
+				return false
+			end,
+			on_effect = function(self, event, room, player, ctx)
+				local data = ctx.original_data
+				local draw = data:toDraw()
 				local x = player:getMark(draw_mark)
-				if x ~= 0 and player:hasSkill(skname) then return n + x end
-				return n
+				if x ~= 0 and player:hasSkill(skname) then
+					draw.num = draw.num + x
+					data:setValue(draw)
+				end
+				return false
 			end
 		}
 		extension:addSkills(sgkgodjiguan_exdraw)
-		local sgkgodjiguan_maxcards = sgs.CreateMaxCardsSkill{
+		table.insert(hunliesp_global_skill_names, "#".._first.._second.."draw")
+		local sgkgodjiguan_maxcards = sgs.CreateMaxCardsSkillV2{
 			name = "#".._first.._second.."maxcard",
-			extra_func = function(self, target)
+			holder_selector = sgs.CorrectSkill_System,
+			correct_func = function(skill, ctx)
+				local target = ctx:getPrimary()
+				if not target then return false end
 				local n = target:getMark(maxcards_mark)
 				if n ~= 0 and target:hasSkill(skname) then return n end
-				return 0
+				return false
 			end
 		}
 		extension:addSkills(sgkgodjiguan_maxcards)
-		local sgkgodjiguan_slashtime = sgs.CreateTargetModSkill{
+		local sgkgodjiguan_slashtime = sgs.CreateTargetModSkillV2{
 			name = "#".._first.._second.."slashtime",
 			pattern = ".",
-			residue_func = function(self, from, card)
+			holder_selector = sgs.CorrectSkill_System,
+			correct_func = function(skill, ctx)
+				if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
+				local from, card = ctx:getPrimary(), ctx:getCard()
+				if not (from and card) then return false end
 				local n = from:getMark(slashtime_mark)
 				if n ~= 0 and card:isKindOf("Slash") and from:hasSkill(skname) then return n end
-				return 0
+				return false
 			end,
 		}
 		extension:addSkills(sgkgodjiguan_slashtime)
@@ -4932,10 +5435,22 @@ sgs.LoadTranslationTable{
 
 
 tiangong_targets_me_welfare = true  --特殊福利：这一项如果变为true，那么“天工”备选的【可执行目标】中，有较大概率包含“你”这个选项
-sgkgodtiangong = sgs.CreateTriggerSkill{
+sgkgodtiangong = sgs.CreateTriggerSkillV2{
 	name = "sgkgodtiangong",
 	events = {sgs.GameStart, sgs.EventPhaseStart},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		if countSchemeNum(room) >= 7 then return false end
+		if event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_Start or player:getPhase() == sgs.Player_Finish then
+				return skill:objectName()
+			end
+			return false
+		end
+		return skill:objectName()
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if countSchemeNum(room) >= 7 then return false end
 		if event == sgs.GameStart then
 			for i = 1, 2 do
@@ -5131,10 +5646,39 @@ function getSchemeSkills(target)
 	return schemes
 end
 
-sgkgodlinglong = sgs.CreateTriggerSkill{
+sgkgodlinglong = sgs.CreateTriggerSkillV2{
 	name = "sgkgodlinglong",
 	events = {sgs.DamageInflicted, sgs.PreHpLost, sgs.MaxHpChange, sgs.EventLoseSkill},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		return skill:objectName()
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
+		if event == sgs.DamageInflicted then
+			local damage = data:toDamage()
+			local targets = getLinglongTargets(player)
+			return not targets:isEmpty() and damage.damage > 0 and damage.from and damage.from:objectName() ~= player:objectName()
+		elseif event == sgs.PreHpLost then
+			local lose = data:toHpLost()
+			local targets = getLinglongTargets(player)
+			return not targets:isEmpty() and lose.lose > 0 and lose.from and lose.from:objectName() ~= player:objectName()
+		elseif event == sgs.MaxHpChange then
+			local change = data:toMaxHp()
+			local targets = getLinglongTargets(player)
+			return not targets:isEmpty() and change.change < 0 and (not string.find(change.reason, "sgkgodjiguan_"))
+		elseif event == sgs.EventLoseSkill then
+			if player:getMark(data:toSkillChange().skillName.."_temp_skill") > 0 then return false end
+			if player:getMark(data:toSkillChange().skillName.."_mark") == 0 or player:hasInnateSkill(data:toSkillChange().skillName) then
+				local targets = getLinglongTargets(player)
+				return (not targets:isEmpty()) and (not player:getTag("hunliesp_global_resistSkill"):toBool())
+			end
+			return false
+		end
+		return true
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.DamageInflicted then
 			local damage = data:toDamage()
 			local targets = getLinglongTargets(player)
@@ -5264,13 +5808,16 @@ sgkgodlinglong = sgs.CreateTriggerSkill{
 	end
 }
 
-sgkgodlinglonglose = sgs.CreateTriggerSkill{
+sgkgodlinglonglose = sgs.CreateTriggerSkillV2{
 	name = "#sgkgodlinglonglose",
 	events = {sgs.EventLoseSkill},
-	can_trigger = function(self, target)
-		return target ~= nil
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:hasSkill(skill:objectName())) then return false end
+		if data:toString() == "sgkgodlinglong" then return skill:objectName() end
+		return false
 	end,
-	on_trigger = function(self, event, player, data, room)
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if data:toString() == "sgkgodlinglong" and player:hasSkill(self:objectName()) then
 			local targets = getLinglongTargets(player)
 			if (not targets:isEmpty()) and (not player:getTag("hunliesp_global_resistSkill"):toBool()) then
@@ -5353,18 +5900,37 @@ sgkgodspguanyu = sgs.General(extension, "sgkgodspguanyu", "sy_god", 4, true)
 	一半体力的伤害（向上取整），此【杀】结算后，你摸此【杀】造成伤害总数的牌。
 	引用：sgkgodzhanyue
 ]]--
-sgkgodzhanyue = sgs.CreateTriggerSkill{
+sgkgodzhanyue = sgs.CreateTriggerSkillV2{
 	name = "sgkgodzhanyue",
 	frequency = sgs.Skill_NotFrequent,
 	events = {sgs.TargetSpecifying, sgs.DamageCaused, sgs.Damage, sgs.CardFinished},
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
 		if event == sgs.TargetSpecifying then
 			local use = data:toCardUse()
 			if use.from and use.from:objectName() == player:objectName() and use.card:isKindOf("Slash") and use.to:length() == 1 then
-				local _q = sgs.QVariant()
-				local to = use.to:first()
-				_q:setValue(to)
-				if player:askForSkillInvoke(self:objectName(), _q) then
+				return skill:objectName()
+			end
+			return false
+		end
+		return skill:objectName()
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		if event == sgs.TargetSpecifying then
+			local use = ctx.original_data:toCardUse()
+			local _q = sgs.QVariant()
+			_q:setValue(use.to:first())
+			return player:askForSkillInvoke(skill:objectName(), _q)
+		end
+		return true
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
+		if event == sgs.TargetSpecifying then
+			local use = data:toCardUse()
+			if use.from and use.from:objectName() == player:objectName() and use.card:isKindOf("Slash") and use.to:length() == 1 then
+				do
+					local to = use.to:first()
 					room:broadcastSkillInvoke(self:objectName())
 					room:setCardFlag(use.card, "zhanyue_buff")
 					room:addPlayerHistory(player, use.card:getClassName(), -1)
@@ -5456,22 +6022,76 @@ sgkgodspguanyu:addSkill(sgkgodzhanyue)
 	你令其所有技能无效，上述效果持续至本回合结束或其对你造成伤害。
 	引用：sgkgodfengtian
 ]]--
-sgkgodfengtian = sgs.CreateTriggerSkill{
+sgkgodfengtian = sgs.CreateTriggerSkillV2{
 	name = "sgkgodfengtian",
 	events = {sgs.EventPhaseStart, sgs.EventPhaseChanging, sgs.DrawNCards, sgs.CardsMoveOneTime, sgs.CardFinished, sgs.Damage, sgs.EventAcquireSkill},
 	frequency = sgs.Skill_NotFrequent,
-	can_trigger = function(self, target)
-		return target
-	end,
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not player then return false end
+		local gy = room:findPlayerBySkillName(skill:objectName())
+		if not gy then return false end
+		local name = skill:objectName()
 		if event == sgs.EventPhaseStart then
-			if room:findPlayerBySkillName(self:objectName()) == nil then return false end
-			local gy = room:findPlayerBySkillName(self:objectName())
+			if player:getPhase() == sgs.Player_Start and player:objectName() ~= gy:objectName() and (not gy:isNude()) and player:isAlive() then
+				return name, gy
+			end
+		elseif event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to == sgs.Player_NotActive and player:getTag(name):toBool() == true then
+				return name, gy
+			end
+		elseif event == sgs.DrawNCards then
+			local draw = data:toDraw()
+			if (player:getTag(name):toBool() == true or player:getMark("&"..name.."-Clear") > 0)
+				and draw.num > 0 and player:getMark("fengtian_draw-Clear") == 0 then
+				return name, gy
+			end
+		elseif event == sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			if move.from and move.from:objectName() == player:objectName()
+				and (player:getMark("&"..name.."-Clear") > 0 or player:getTag(name):toBool() == true)
+				and bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD
+				and player:getMark("fengtian_discard-Clear") == 0 then
+				return name, gy
+			end
+		elseif event == sgs.CardFinished then
+			local use = data:toCardUse()
+			if use.from and use.from:objectName() == player:objectName()
+				and (player:getMark("&"..name.."-Clear") > 0 or player:getTag(name):toBool() == true) then
+				return name, gy
+			end
+		elseif event == sgs.Damage then
+			local damage = data:toDamage()
+			if damage.from and damage.from:objectName() == player:objectName()
+				and (player:getMark("&"..name.."-Clear") > 0 or player:getTag(name):toBool() == true) then
+				return name, gy
+			end
+		elseif event == sgs.EventAcquireSkill then
+			local skill_name = data:toSkillChange().skillName
+			if player:getMark("&"..name.."-Clear") > 0 or player:getTag(name):toBool() == true and player:hasSkill(skill_name) then
+				return name, gy
+			end
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		if event == sgs.EventPhaseStart then
+			local _q = sgs.QVariant()
+			_q:setValue(ctx.invoker)
+			return player:askForSkillInvoke(skill:objectName(), _q)
+		end
+		return true
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
+		local gy = player            -- 技能持有者（SP神关羽）
+		local player = ctx.invoker   -- 事件主体（被“封天”的目标角色）
+		if event == sgs.EventPhaseStart then
 			if player:getPhase() == sgs.Player_Start and player:objectName() ~= gy:objectName() and (not gy:isNude()) then
 				if player:isDead() then return false end
 				local _q = sgs.QVariant()
 				_q:setValue(player)
-				if gy:askForSkillInvoke(self:objectName(), _q) then
+				do
 					local card = room:askForCard(gy, ".!", "@fengtian-target:"..player:objectName(), _q, sgs.Card_MethodNone)
 					if card then
 						local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_THROW, gy:objectName(), self:objectName(), "")
@@ -5675,4 +6295,14 @@ sgs.LoadTranslationTable{
 	["illustrator:sgkgodspguanyu"] = "极略三国",
 	["cv:sgkgodspguanyu"] = "极略三国",
 }
+
+--V2 全局技能需要實例先會被調度；此處先為全部武將掛 innate 實例，
+--結算時再由 on_record 的 hunliesp_ensure_global_instances 補掛 acquired 實例
+--（包括动态机关“draw”助手与旧 global 的 #sgkgodhualongDraw1——名字已在上面循环中插入列表）。
+for _, gen in sgs.qlist(sgs.Sanguosha:getAllGenerals()) do
+	for _, skill_name in ipairs(hunliesp_global_skill_names) do
+		gen:addSkill(skill_name)
+	end
+end
+
 return {extension}
