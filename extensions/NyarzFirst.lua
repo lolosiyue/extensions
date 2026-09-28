@@ -2575,7 +2575,7 @@ dxibin = sgs.CreateTriggerSkillV2{
         if n < hp then
             use.from:drawCards(draw)
         end
-        room:setPlayerCardLimitation(use.from, "use,response", ".|.|.|.", true)
+        room:setPlayerCardLimitation(use.from, "use,response", ".|.|.|.", true, "dxibin")
         local log = sgs.LogMessage()
         log.type = "$dxibin"
         log.arg = use.from:getGeneralName()
@@ -4823,14 +4823,14 @@ miyundmaxignore = sgs.CreateTriggerSkillV2{
             if player:getHandcardNum() == 0 then return false end
             for _,card in sgs.qlist(player:getHandcards()) do
                 if card:hasFlag("miyunsafe") then
-                    room:setPlayerCardLimitation(player, "discard", card:toString(), true)
+                    room:setPlayerCardLimitation(player, "discard", card:toString(), true, "miyund")
                 end
             end
         elseif event == sgs.EventPhaseEnd then
             if player:getHandcardNum() == 0 then return false end
             for _,card in sgs.qlist(player:getHandcards()) do
                 if card:hasFlag("miyunsafe") then
-                    room:removePlayerCardLimitation(player, "discard", card:toString())
+                    room:removePlayerCardLimitation(player, "discard", card:toString(), "miyund")
                 end
             end
         end
@@ -6779,43 +6779,73 @@ extension:insertRelatedSkills("xiaosheji", "#xiaoshejisave")
 
 doubleO = sgs.General(extension, "doubleO", "qun", 4, true, false, false)
 
-doubleneifa = sgs.CreateTriggerSkill{
+doubleneifa = sgs.CreateTriggerSkillV2{
     name = "doubleneifa",
     events = {sgs.EventPhaseStart},
     frequency = sgs.Skill_Compulsory,
-    on_trigger = function(self, event, player, data)
-        local room = player:getRoom()
+    on_cost = function(skill, event, room, player, ctx)
         local targets = sgs.SPlayerList()
-        local cancancel = true
-        local prompt
-        if player:hasSkill(self:objectName()) then
-            cancancel = false
-            for _,p in sgs.qlist(room:getAlivePlayers()) do
-                if not p:isAllNude() then
-                    targets:append(p)
-                end
+        for _,p in sgs.qlist(room:getAlivePlayers()) do
+            if not p:isAllNude() then
+                targets:append(p)
             end
-            prompt = "doubleneifamust"
-        elseif player:getMark("&doubleneifa") > 0 then
-            for _,p in sgs.qlist(room:getAlivePlayers()) do
-                if (not p:isAllNude()) and ((p:getMark("&doubleneifa") > 0) or p:hasSkill(self:objectName())) then
-                    targets:append(p)
-                end
-            end
-            prompt = "doubleneifacan"
         end
         if targets:length() == 0 then return false end
-        local target = room:askForPlayerChosen(player, targets, self:objectName(), prompt, cancancel, true)
-        if target then
-            room:broadcastSkillInvoke(self:objectName())
-            room:setPlayerMark(target, "&doubleneifa", 1)
-            local card = room:askForCardChosen(player, target, "hej", self:objectName())
-            room:throwCard(card, nil, player)
-            player:drawCards(2)
-        end
+        local target = room:askForPlayerChosen(player, targets, skill:objectName(), "doubleneifamust", false, true)
+        if not target then return false end
+        ctx.targets:append(target)
+        return true
     end,
-    can_trigger = function(self, target)
-        return target and target:getPhase() == sgs.Player_Start and (target:hasSkill(self:objectName()) or target:getMark("&doubleneifa") > 0)
+    on_effect_target = function(skill, event, room, player, ctx, target)
+        room:broadcastSkillInvoke(skill:objectName())
+        room:setPlayerMark(target, "&doubleneifa", 1)
+        local card = room:askForCardChosen(player, target, "hej", skill:objectName())
+        room:throwCard(card, nil, player)
+        player:drawCards(2)
+        return false
+    end,
+    can_trigger = function(skill, event, room, player, data)
+        if player and player:getPhase() == sgs.Player_Start and player:hasSkill(skill:objectName()) then
+            return nyarz_single_owner(skill, room, player)
+        end
+        return false
+    end,
+}
+
+--被「內伐」標記的角色未必持有技能實例：由全局 RuleSkillV2 以標記者為 owner 分發可取消的分支
+doubleneifaelse = sgs.CreateRuleSkillV2{
+    name = "#doubleneifaelse",
+    events = {sgs.EventPhaseStart},
+    frequency = sgs.Skill_Compulsory,
+    can_trigger = function(skill, event, room, player, data)
+        if player and player:getPhase() == sgs.Player_Start
+            and player:getMark("&doubleneifa") > 0
+            and not player:hasSkill("doubleneifa") then
+            return skill:objectName(), player:objectName()
+        end
+        return false
+    end,
+    on_cost = function(skill, event, room, player, ctx)
+        local targets = sgs.SPlayerList()
+        for _,p in sgs.qlist(room:getAlivePlayers()) do
+            if (not p:isAllNude())
+                and ((p:getMark("&doubleneifa") > 0) or p:hasSkill("doubleneifa")) then
+                targets:append(p)
+            end
+        end
+        if targets:length() == 0 then return false end
+        local target = room:askForPlayerChosen(player, targets, "doubleneifa", "doubleneifacan", true, true)
+        if not target then return false end
+        ctx.targets:append(target)
+        return true
+    end,
+    on_effect_target = function(skill, event, room, player, ctx, target)
+        room:broadcastSkillInvoke("doubleneifa")
+        room:setPlayerMark(target, "&doubleneifa", 1)
+        local card = room:askForCardChosen(player, target, "hej", "doubleneifa")
+        room:throwCard(card, nil, player)
+        player:drawCards(2)
+        return false
     end,
 }
 
@@ -8160,6 +8190,7 @@ if not sgs.Sanguosha:getSkill("#spjilvere") then skills:append(spjilvere) end
 if not sgs.Sanguosha:getSkill("#spjilveda") then skills:append(spjilveda) end
 if not sgs.Sanguosha:getSkill("#spjilvedea") then skills:append(spjilvedea) end
 if not sgs.Sanguosha:getSkill("#spjilvepr") then skills:append(spjilvepr) end
+if not sgs.Sanguosha:getSkill("#doubleneifaelse") then skills:append(doubleneifaelse) end
 
 sgs.Sanguosha:addSkills(skills)
 
