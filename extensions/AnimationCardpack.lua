@@ -1202,115 +1202,92 @@ if gaokao_special then
 	end,
 }
 
-	heikeji_test_card = sgs.CreateSkillCard{
-		name = "heikeji_test_card",
-		will_throw = false,
-		handling_method = sgs.Card_MethodNone,
-		filter = function(self, targets, to_select, player)
-			local card = player:getTag("heikeji_test"):toCard()
-			card:addSubcard(self:getSubcards():first())
-			card:setSkillName(self:objectName())
-			if card and card:targetFixed() then
-				return false
-			end
-			local qtargets = sgs.PlayerList()
-			for _, p in ipairs(targets) do
-				qtargets:append(p)
-			end
-			return card and card:targetFilter(qtargets, to_select, player) 
-				and not player:isProhibited(to_select, card, qtargets)
-		end,
-		feasible = function(self, targets, player)
-			local card = player:getTag("heikeji_test"):toCard()
-			card:addSubcard(self:getSubcards():first())
-			card:setSkillName(self:objectName())
-			local qtargets = sgs.PlayerList()
-			for _, p in ipairs(targets) do
-				qtargets:append(p)
-			end
-			if card and card:canRecast() and #targets == 0 then
-				return false
-			end
-			return card and card:targetsFeasible(qtargets, player)
-		end,	
-		on_validate = function(self, card_use)
-			local xunyou = card_use.from
-			local room = xunyou:getRoom()
-			local use_card = sgs.Sanguosha:cloneCard(self:getUserString())
-			use_card:addSubcard(self:getSubcards():first())
-			use_card:setSkillName(self:objectName())
-			local available = true
-			for _,p in sgs.qlist(card_use.to) do
-				if xunyou:isProhibited(p,use_card)	then
-					available = false
-					break
-				end
-			end
-			available = available and use_card:isAvailable(xunyou)
-			if not available then return nil end
-			return use_card		
-		end,
-	}
+heikeji_test_vs_skill = sgs.CreateViewAsSkillV2{
+	name = "heikeji_test",
+	guhuo_type = "r",
+	n = 1,
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not (player and player:hasFlag("ban_heikeji")) then return false end
+		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
+	end,
+	can_select_card = function(skill, request, card)
+		local player = request:getInitiator()
+		if not (card and player) or card:hasFlag("using")
+			or request:getSelectedCardIds():length() >= 1 then
+			return false
+		end
+		return sgs.Sanguosha:matchExpPattern("TrickCard", player, card)
+	end,
+	card_selection_feasible = function(skill, request)
+		return request:getSelectedCardIds():length() == 1
+	end,
+	allow_declaration = function(skill, player, name)
+		if not player then return false end
+		for _, n in ipairs(player:property("allowed_guhuo_dialog_buttons"):toString():split("+")) do
+			if n == name then return true end
+		end
+		return false
+	end,
+	create_card = function(skill, request)
+		local pattern = request:getPattern()
+		if pattern == "" then
+			pattern = request:getUserString()
+		end
+		if pattern == "" then return nil end
+		local sc = sgs.Sanguosha:cloneCard(pattern)
+		sc:setSkillName(skill:objectName())
+		for _, id in sgs.qlist(request:getSelectedCardIds()) do
+			sc:addSubcard(id)
+		end
+		return sc
+	end,
+}
 
 
-heikeji_test_skill = sgs.CreateTriggerSkill{
+heikeji_test_skill = sgs.CreateTriggerSkillV2{
 	name = "heikeji_test_skill",
 	events = {sgs.EventPhaseStart, sgs.CardFinished},
 	global = true,
 	view_as_skill = heikeji_test_vs_skill,
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if player and player:isAlive() and player:hasTreasure("heikeji_test")
+			and player:getPhase() == sgs.Player_Play then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		if event ~= sgs.EventPhaseStart then return true end
+		return room:askForSkillInvoke(player, skill:objectName(), ctx.original_data)
+	end,
+	on_effect = function(skill, event, room, player, ctx)
 		if event == sgs.EventPhaseStart then
-			if room:askForSkillInvoke(player, self:objectName(), data) then
-				room:loseHp(player, 1, true, player, self:objectName())
-				local standrad = {"god_salvation", "amazing_grace", "savage_assault", "archery_attack", "collateral", "dismantlement", "snatch", "ex_nihilo", "duel", "iron_chain", "fire_attack", "mouthgun", "rotenburo", "bunkasai", "fall_back_in_disorder"}
-				local choices = {}
-				local trick1 = standrad[math.random(1,#standrad)]
-				table.removeOne(standrad, trick1)
-				table.insert(choices, trick1)
-				local trick2 = standrad[math.random(1,#standrad - 1)]
-				table.removeOne(standrad, trick2)
-				table.insert(choices, trick2)
-				local trick3 = standrad[math.random(1,#standrad - 2)]
-				table.removeOne(standrad, trick3)
-				table.insert(choices, trick3)
-				room:setPlayerProperty(player, "allowed_guhuo_dialog_buttons", sgs.QVariant(table.concat(choices, "+")))
-				player:speak(table.concat(choices, "+"))
-				room:setPlayerFlag(player, "ban_heikeji")
-			else
-		--		room:setPlayerFlag(player, "ban_heikeji")
-			end
+			room:loseHp(player, 1, true, player, skill:objectName())
+			local standrad = {"god_salvation", "amazing_grace", "savage_assault", "archery_attack", "collateral", "dismantlement", "snatch", "ex_nihilo", "duel", "iron_chain", "fire_attack", "mouthgun", "rotenburo", "bunkasai", "fall_back_in_disorder"}
+			local choices = {}
+			local trick1 = standrad[math.random(1,#standrad)]
+			table.removeOne(standrad, trick1)
+			table.insert(choices, trick1)
+			local trick2 = standrad[math.random(1,#standrad - 1)]
+			table.removeOne(standrad, trick2)
+			table.insert(choices, trick2)
+			local trick3 = standrad[math.random(1,#standrad - 2)]
+			table.removeOne(standrad, trick3)
+			table.insert(choices, trick3)
+			room:setPlayerProperty(player, "allowed_guhuo_dialog_buttons", sgs.QVariant(table.concat(choices, "+")))
+			player:speak(table.concat(choices, "+"))
+			room:setPlayerFlag(player, "ban_heikeji")
 		else
-			local use = data:toCardUse()
-			if table.contains(use.card:getSkillNames(), "heikeji_test_card") then
+			local use = ctx.original_data:toCardUse()
+			if table.contains(use.card:getSkillNames(), "heikeji_test") then
 				room:setPlayerFlag(player, "-ban_heikeji")
 				room:setPlayerProperty(player, "allowed_guhuo_dialog_buttons", sgs.QVariant())
 			end
 		end
-	end,
-	can_trigger = function(self,target)
-		return target and target:isAlive() and target:hasTreasure("heikeji_test") and target:getPhase() == sgs.Player_Play
-	end
-}
-
-
-heikeji_test_vs_skill = sgs.CreateOneCardViewAsSkill{
-	name = "heikeji_test",
-	filter_pattern = "TrickCard",
-	view_as = function(self, card)
-		local c = sgs.Self:getTag("heikeji_test"):toCard()
-		if c then
-			local acard = heikeji_test_card:clone()
-			acard:setUserString(c:objectName())	
-			acard:addSubcard(card)
-			return acard
-		end
-		return nil
-	end,
-	enabled_at_play = function(self, player)
-		return player:hasFlag("ban_heikeji")
+		return false
 	end,
 }
-heikeji_test_vs_skill:setGuhuoDialog("r")
 
 	
 	oni = sgs.CreateBasicCard{
