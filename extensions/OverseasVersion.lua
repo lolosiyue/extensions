@@ -3614,7 +3614,7 @@ ov_wangcan = sgs.General(extensionSp, "ov_wangcan", "wei", 3)
 ov_dianyi = sgs.CreateTriggerSkillV2 {
 	name = "ov_dianyi",
 	frequency = sgs.Skill_Compulsory,
-	events = { sgs.Damage, sgs.EventPhaseChanging },
+	events = { sgs.EventPhaseChanging },
 	can_trigger = function(self, event, room, player, data)
 		local function __triggerable(_, target, room, event, _, data)
 			return target and target:isAlive() and target:hasSkill(self:objectName())
@@ -3633,18 +3633,24 @@ ov_dianyi = sgs.CreateTriggerSkillV2 {
 		local data = ctx.original_data
 		local room = player:getRoom()
 
-		if event == sgs.Damage then
-			if player:getPhase() ~= sgs.Player_NotActive then
-				player:addMark("ov_dianyi-Clear")
+		local change = data:toPhaseChange()
+		if change.to == sgs.Player_NotActive then
+			local turn = room:historyScopes().turn_id
+			local dealt
+			if turn and turn ~= "0" then
+				local page = room:queryActualDamage {
+					turn_id = turn, from = player:objectName(), limit = 1,
+				}
+				if not (page.error or not page.complete or not page.attribution_complete) then
+					dealt = #page.items > 0
+				end
 			end
-		else
-			local change = data:toPhaseChange()
-			if change.to == sgs.Player_NotActive then
+			if dealt ~= nil then
 				room:sendCompulsoryTriggerLog(player, "ov_dianyi", true, true)
-				if player:getMark("ov_dianyi-Clear") < 1 then
-					PlayerHandcardNum(player, self, 4)
-				else
+				if dealt then
 					player:throwAllHandCards()
+				else
+					PlayerHandcardNum(player, self, 4)
 				end
 			end
 		end
@@ -19882,16 +19888,30 @@ ov_juluan = sgs.CreateTriggerSkillV2 {
 				end
 			end
 		elseif event == sgs.DamageCaused then
-			player:addMark("ov_juluanCaused-Clear")
-			if player:getMark("ov_juluanCaused-Clear") == 2 then
-				room:sendCompulsoryTriggerLog(player, self)
-				player:damageRevises(data, 1)
+			local turn = room:historyScopes().turn_id
+			if turn and turn ~= "0" then
+				local page = room:queryHistoryFacts {
+					kind = "damage_caused", turn_id = turn,
+					player = player:objectName(), limit = 2,
+				}
+				if not (page.error or not page.complete or not page.attribution_complete)
+					and #page.items == 2 and not page.has_more then
+					room:sendCompulsoryTriggerLog(player, self)
+					player:damageRevises(data, 1)
+				end
 			end
 		elseif event == sgs.DamageInflicted then
-			player:addMark("ov_juluanInflicted-Clear")
-			if player:getMark("ov_juluanInflicted-Clear") == 2 then
-				room:sendCompulsoryTriggerLog(player, self)
-				player:damageRevises(data, 1)
+			local turn = room:historyScopes().turn_id
+			if turn and turn ~= "0" then
+				local page = room:queryHistoryFacts {
+					kind = "damage_inflicted", turn_id = turn,
+					player = player:objectName(), limit = 2,
+				}
+				if not (page.error or not page.complete or not page.attribution_complete)
+					and #page.items == 2 and not page.has_more then
+					room:sendCompulsoryTriggerLog(player, self)
+					player:damageRevises(data, 1)
+				end
 			end
 		end	end,}
 ov_luoli:addSkill(ov_juluan)
