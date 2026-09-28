@@ -472,18 +472,28 @@ tieba_zhiliCard = sgs.CreateSkillCard {
 		return false
 	end,
 }
--- DEFER:tieba_zhili:trigger stays legacy — the card detaches the skill on use, so at
--- AskForPeachesDone no player holds a live "tieba_zhili" instance; legacy can_trigger
--- returns true for the dying actor regardless of ownership, while V2 requires the owner
--- to hold a valid instance. Its view_as_skill is migrated to V2 (play-only).
-tieba_zhili = sgs.CreateTriggerSkill {
+-- 本体只做视为技载具：卡牌发动时 detachSkillFromPlayer 会令来源失去 tieba_zhili
+-- 实例，故濒死回复监听不能依赖持有者实例；由下面的全局 RuleSkillV2 处理。
+tieba_zhili = sgs.CreateTriggerSkillV2 {
 	name = "tieba_zhili",
-	events = { sgs.AskForPeachesDone }, -- 濒死求桃时触发
 	view_as_skill = tieba_zhiliVS,
-	on_trigger = function(self, event, player, data)
+}
+-- 全局规则技能监听濒死结算：AskForPeachesDone 的 actor 即 dying.who，
+-- RuleSkillV2 允许无持有者实例下以濒死者为 owner 分发。
+tieba_zhili_done = sgs.CreateRuleSkillV2 {
+	name = "#tieba_zhili_done",
+	events = { sgs.AskForPeachesDone },
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(skill, event, room, player, data)
 		local dying = data:toDying()
-		if dying.who:getMark("tieba_pofang") == 1 then
-			local room = player:getRoom()
+		if dying.who and dying.who:getMark("tieba_pofang") == 1 then
+			return skill:objectName(), dying.who:objectName()
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local dying = ctx.original_data:toDying()
+		if dying.who and dying.who:getMark("tieba_pofang") == 1 then
 			room:setPlayerMark(dying.who, "tieba_pofang", 0) -- 清除标记
 			local original_hp = dying.who:getMark("tieba_original_hp") -- 获取记录的初始体力
 			-- 强制回复至1体力
@@ -493,10 +503,8 @@ tieba_zhili = sgs.CreateTriggerSkill {
 		end
 		return false
 	end,
-	can_trigger = function(self, target)
-		return target
-	end,
 }
+extension:addSkills(tieba_zhili_done)
 
 deepseek:addSkill(MaoniangGangyin)
 deepseek:addSkill(MaoniangGangyinRW12)
@@ -769,16 +777,15 @@ qigedazao = sgs.CreateTriggerSkillV2 {
 		room:setEmotion(player, "AIWJ/WXYY")
 		room:broadcastSkillInvoke(skill:objectName(), 1)
 		room:sendCompulsoryTriggerLog(player, skill:objectName(), true)
-		local playerdata = sgs.QVariant()
-		playerdata:setValue(player)
-		room:setTag("qigedazaoTarget", playerdata)
+		-- 待授額外回合係跨事件暫態：記喺技能實例狀態（唔用 Room Tag），由 #qigedazao_turn 消費
+		player:setSkillInstanceStateValue("qigedazao", ctx.instanceID, "extra_turn_pending", sgs.QVariant(true))
 		return false
 	end,
 }
 qigedazao_turn = sgs.CreateTriggerSkillV2 {
 	name = "#qigedazao_turn",
 	events = { sgs.EventPhaseStart },
-	-- legacy 對任何進入 NotActive 的 actor 觸發（不綁定持有者）；V2 必須回傳持有者
+	-- 全局監聽：任何角色進入 NotActive 時，為掛住 pending 嘅持有者授額外回合
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:getPhase() == sgs.Player_NotActive) then
 			return false
@@ -786,8 +793,13 @@ qigedazao_turn = sgs.CreateTriggerSkillV2 {
 		local trigger_list_skill, trigger_list_who = {}, {}
 		for _, p in sgs.qlist(room:getAllPlayers()) do
 			if p:hasSkill(skill:objectName()) then
-				table.insert(trigger_list_skill, skill:objectName())
-				table.insert(trigger_list_who, p:objectName())
+				for _, id in sgs.qlist(p:getSkillInstanceIds("qigedazao")) do
+					if p:getSkillInstanceStateValue("qigedazao", id, "extra_turn_pending"):toBool() then
+						table.insert(trigger_list_skill, skill:objectName())
+						table.insert(trigger_list_who, p:objectName())
+						break
+					end
+				end
 			end
 		end
 		if #trigger_list_skill > 0 then
@@ -796,11 +808,13 @@ qigedazao_turn = sgs.CreateTriggerSkillV2 {
 		return false
 	end,
 	on_effect = function(skill, event, room, player, ctx)
-		if room:getTag("qigedazaoTarget") then
-			local target = room:getTag("qigedazaoTarget"):toPlayer()
-			room:removeTag("qigedazaoTarget")
-			if target and target:isAlive() then
-				target:gainAnExtraTurn()
+		for _, id in sgs.qlist(player:getSkillInstanceIds("qigedazao")) do
+			if player:getSkillInstanceStateValue("qigedazao", id, "extra_turn_pending"):toBool() then
+				player:setSkillInstanceStateValue("qigedazao", id, "extra_turn_pending", sgs.QVariant(false))
+				if player:isAlive() then
+					player:gainAnExtraTurn()
+				end
+				break
 			end
 		end
 		return false
@@ -1224,6 +1238,18 @@ qianwenAIWJ = sgs.CreateTriggerSkillV2 {
 				room:broadcastSkillInvoke(skill:objectName(), 2)
 				room:sendCompulsoryTriggerLog(player, skill:objectName())
 				room:setPlayerMark(player, "qianwenAIWJ", 1)
+				-- 「有冇造成過傷害」由 Resolution History 回答：首次發動時記低歷史游標，
+				-- 之後每個結算點以 watermark 推進，唔再自己用 mark 記事實
+				local since = player:getSkillInstanceStateValue(
+					"qianwenAIWJ", ctx.instanceID, "damage_since"):toString()
+				if since == "" then
+					local probe = room:queryActualDamage { from = player:objectName(), limit = 1 }
+					if probe.error or probe.complete == false then
+						error("qianwenAIWJ: damage history is unavailable")
+					end
+					player:setSkillInstanceStateValue(
+						"qianwenAIWJ", ctx.instanceID, "damage_since", sgs.QVariant(probe.watermark))
+				end
 				for _, p in sgs.qlist(room:getAlivePlayers()) do
 					local choice = room:askForChoice(p, "qianwenAIWJ", "yes+no")
 					if choice == "yes" then
@@ -1235,15 +1261,24 @@ qianwenAIWJ = sgs.CreateTriggerSkillV2 {
 			end
 		elseif event == sgs.Damage and player:getMark("qianwenAIWJ") == 1 then
 			if player:getMark("&qianwenYes") >= 0 then
-				room:setPlayerMark(player, "qianwenDamage", 1)
 				room:setPlayerMark(player, "&qianwenYes", 0)
 			end
 		elseif event == sgs.EventPhaseEnd and player:getMark("qianwenAIWJ") == 1 then
 			if player:getPhase() == sgs.Player_Finish then
 				room:broadcastSkillInvoke("qianwenAIWJ", 1)
 				room:sendCompulsoryTriggerLog(player, "qianwenAIWJ")
-				if player:getMark("qianwenDamage") == 1 then
-					room:setPlayerMark(player, "qianwenDamage", 0)
+				-- 持有者由上次結算（或首次發動）以嚟有冇造成過傷害
+				local filter = { from = player:objectName(), limit = 1 }
+				local since = player:getSkillInstanceStateValue(
+					"qianwenAIWJ", ctx.instanceID, "damage_since"):toString()
+				if since ~= "" then filter.after = since end
+				local page = room:queryActualDamage(filter)
+				if page.error or page.complete == false or page.attribution_complete == false then
+					error("qianwenAIWJ: damage history is incomplete")
+				end
+				player:setSkillInstanceStateValue(
+					"qianwenAIWJ", ctx.instanceID, "damage_since", sgs.QVariant(page.watermark))
+				if #page.items > 0 then
 					local x = player:getMark("&qianwenNo")
 					player:drawCards(x)
 					local y = player:getMark("qianwenY")
