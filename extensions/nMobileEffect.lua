@@ -5,14 +5,31 @@ n_anjiang = sgs.General(extension,"n_anjiang","god",5,true,true)
 --V2 触发技能须由玩家持有实例才会派发；record 阶段在每次派发开头执行、不产生触发顺序询问，等效旧版全局触发。
 --三个技能在文件末尾挂到所有武将（innate）；晚于本扩展加载的武将或换将后在结算时补挂 acquired 实例。
 local n_mobile_skill_names = {"#n_trig","#n_mobile_effect","#n_mvpexperience"}
+-- Same-room records share a scan while native state is unchanged. The revision
+-- advances synchronously on skill removal/attachment and either general change.
+-- Keep the wrapper weak: a collected wrapper merely causes another full scan.
+local n_mobile_instance_room = setmetatable({}, {__mode = "v"})
+local n_mobile_instance_revision, n_mobile_instance_count
 local function n_mobile_ensure_instances(room)
-	for _,p in sgs.qlist(room:getAllPlayers(true))do
+	local revision = room.aiStateRevision and room:aiStateRevision()
+	local players = room:getAllPlayers(true)
+	local count = players:length()
+	if revision and n_mobile_instance_room[1] == room
+		and n_mobile_instance_revision == revision and n_mobile_instance_count == count then return end
+	local complete = true
+	for _,p in sgs.qlist(players)do
 		for _,skill_name in ipairs(n_mobile_skill_names)do
 			if p:getSkillInstanceIds(skill_name):isEmpty() then
+				complete = false
 				room:attachSkillToPlayer(p,skill_name)
 			end
 		end
 	end
+	-- Do not certify a repair (which can re-enter Lua or fail). A subsequent
+	-- record verifies it; mutations during this scan also invalidate its stamp.
+	n_mobile_instance_room[1] = room
+	n_mobile_instance_revision = complete and revision or nil
+	n_mobile_instance_count = count
 end
 
 --record 按每个持有实例调用一次；只在 ctx.owner 为事件目标本人时放行，等效旧版 can_trigger(target)+trigger(target) 的一次派发
