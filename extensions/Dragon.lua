@@ -676,21 +676,28 @@ Dragon_fuyuanVS = sgs.CreateViewAsSkillV2{
 	end,
 }
 
-Dragon_fuyuan = sgs.CreateTriggerSkill{
-	name = "Dragon_fuyuan$", 
-	frequency = sgs.Skill_NotFrequent, 
-	events = {sgs.GameStart, sgs.EventLoseSkill, sgs.EventAcquireSkill, sgs.Death}, 
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+Dragon_fuyuan = sgs.CreateTriggerSkillV2{
+	name = "Dragon_fuyuan$",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.GameStart, sgs.EventLoseSkill, sgs.EventAcquireSkill, sgs.Death},
+	can_trigger = function(skill, event, room, player, data)
+		-- 旧实现默认可触发：存活的事件目标须持有本技能
+		if player and player:isAlive() and player:hasSkill(skill:objectName()) then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
 		local skill_exist = false
-		if player:hasLordSkill(self:objectName()) then skill_exist = true end
-		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == self:objectName()) then
+		if player:hasLordSkill(skill:objectName()) then skill_exist = true end
+		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == skill:objectName()) then
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:getKingdom() == "wu" and not p:hasSkill("Dragon_fuyuanVS") then
 					room:attachSkillToPlayer(p, "Dragon_fuyuanVS")
 				end
 			end
-		elseif ((event == sgs.EventLoseSkill and data:toSkillChange().skillName == self:objectName()) or event == sgs.Death ) and not skill_exist then
+		elseif ((event == sgs.EventLoseSkill and data:toSkillChange().skillName == skill:objectName()) or event == sgs.Death ) and not skill_exist then
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:hasSkill("Dragon_fuyuanVS") then
 					room:detachSkillFromPlayer(p, "Dragon_fuyuanVS")
@@ -1042,36 +1049,57 @@ Dragon_change_weaponCard = sgs.CreateSkillCard{
 		room:moveCardTo(sgs.Sanguosha:getCard(self:getEffectiveId()), effect.from, effect.to, sgs.Player_PlaceEquip, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXCHANGE_FROM_PILE, effect.from:objectName(), "Dragon_collateral", ""))
 	end
 }
-Dragon_change_weaponVS = sgs.CreateOneCardViewAsSkill{
-	name = "Dragon_change_weapon", 
-	relate_to_place = "head",
-	filter_pattern = ".|.|.|Dragon_collateral",
+Dragon_change_weaponVS = sgs.CreateViewAsSkillV2{
+	name = "Dragon_change_weapon",
+	n = 1,
 	expand_pile = "Dragon_collateral",
-	view_as = function(self, ocard)
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player then return false end
+		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
+		return not player:getPile("Dragon_collateral"):isEmpty()
+	end,
+	can_select_card = function(skill, request, candidate)
+		local player = request:getInitiator()
+		return candidate and player and not candidate:hasFlag("using")
+			and request:getSelectedCardIds():isEmpty()
+			and sgs.Sanguosha:matchExpPattern(".|.|.|Dragon_collateral", player, candidate)
+	end,
+	card_selection_feasible = function(skill, request)
+		return request:getSelectedCardIds():length() == 1
+	end,
+	create_card = function(skill, request)
+		local ids = request:getSelectedCardIds()
+		if ids:length() ~= 1 then return nil end
 		local card =  Dragon_change_weaponCard:clone()
-			card:addSubcard(ocard)
-		card:setSkillName(self:objectName())
+		card:addSubcard(ids:first())
+		card:setSkillName(skill:objectName())
 		return card
 	end,
 }
-Dragon_change_weapon = sgs.CreateTriggerSkill{
-	name = "Dragon_change_weapon&", 
-	events = {sgs.BeforeCardsMove, sgs.EventPhaseChanging}, 
-	view_as_skill = Dragon_change_weaponVS, 
+-- 借刀换械的挂接/搬械监听是全局规则，不能要求借刀者持有技能实例（原 legacy global=true）
+Dragon_change_weapon = sgs.CreateRuleSkillV2{
+	name = "Dragon_change_weapon&",
+	events = {sgs.BeforeCardsMove, sgs.EventPhaseChanging},
+	view_as_skill = Dragon_change_weaponVS,
 	global = true,
-	on_trigger = function(self, event, player, data)
-	    local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		if player then return skill:objectName() end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
 		local source = nil
 		for _, p in sgs.qlist(room:getAllPlayers()) do
 		    if p:hasFlag("Dragon_collateral") then
 			    source = p
-			end 
+			end
 		end
-		if not source then return end
+		if not source then return false end
 		local card_ids1 = room:getTag("collateralSource"):toIntList()
 		if card_ids1:isEmpty() then
-		    return
-		end	
+		    return false
+		end
 		if event == sgs.BeforeCardsMove then
 	        local move = data:toMoveOneTime()
 			if source:hasFlag("collateral_moving") then
@@ -1091,12 +1119,12 @@ Dragon_change_weapon = sgs.CreateTriggerSkill{
 					    if not card_ids1:contains(id) then
 					        room:moveCardTo(sgs.Sanguosha:getCard(id), source, nil, sgs.Player_DiscardPile, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_THROW, source:objectName(), "Dragon_collateral", ""), true)
 					    end
-					end	
+					end
 				end
 				room:notifySkillInvoked(source, "Dragon_collateral")
 				data:setValue(move)
 			end
-		elseif event == sgs.CardsMoveOneTime then	
+		elseif event == sgs.CardsMoveOneTime then
 		    if source:hasFlag("collateral_moving") then
 			    return true
 			end
@@ -1105,7 +1133,7 @@ Dragon_change_weapon = sgs.CreateTriggerSkill{
 			if data:toPhaseChange().to == sgs.Player_NotActive then
 			    room:setPlayerFlag(source, "-Dragon_collateral")
 				if source:hasSkill("Dragon_change_weapon") then
-			        room:detachSkillFromPlayer(source, "Dragon_change_weapon")	
+			        room:detachSkillFromPlayer(source, "Dragon_change_weapon")
 			    end
 			    for _, p in sgs.qlist(room:getOtherPlayers(source)) do
 			        local card_ids2 = room:getTag("collateralTarget" .. p:objectName()):toIntList()
@@ -1119,7 +1147,7 @@ Dragon_change_weapon = sgs.CreateTriggerSkill{
 			                    room:moveCardTo(sgs.Sanguosha:getCard(id), source, to, place, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PUT, source:objectName(), "Dragon_collateral", ""), true)
 								room:getThread():delay()
 			                end
-						end	 
+						end
 			        end
 			    end
 				local card_ids = source:getPile("Dragon_collateral")
@@ -1131,17 +1159,17 @@ Dragon_change_weapon = sgs.CreateTriggerSkill{
 							    to, place = source, sgs.Player_PlaceEquip
 							end
 							room:moveCardTo(sgs.Sanguosha:getCard(id), source, to, place, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PUT, source:objectName(), "Dragon_collateral", ""), true)
-						else	
+						else
 							if room:getCardOwner(id):objectName() == source:objectName() then
-							    room:moveCardTo(sgs.Sanguosha:getCard(id), source, nil, sgs.Player_DiscardPile, 
+							    room:moveCardTo(sgs.Sanguosha:getCard(id), source, nil, sgs.Player_DiscardPile,
 								    sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PUT, source:objectName(), "Dragon_collateral", ""), true)
 							end
 						end
 				    end
 				end
 				room:setTag("collateralSource", sgs.QVariant())
-				for _, p in sgs.qlist(room:getOtherPlayers(source)) do 
-				    room:setTag("collateralTarget" .. p:objectName(), sgs.QVariant()) 
+				for _, p in sgs.qlist(room:getOtherPlayers(source)) do
+				    room:setTag("collateralTarget" .. p:objectName(), sgs.QVariant())
 				end
 			end
 		end
@@ -1737,21 +1765,29 @@ sgs.LoadTranslationTable{
 
 Dragon_sunshangxiang = sgs.General(extension, "Dragon_sunshangxiang", "wu+shu", "4", false)
 
-Dragon_qiankun = sgs.CreateTriggerSkill{ 
-	name = "Dragon_qiankun", 
-	events = {sgs.GameStart, sgs.EventLoseSkill, sgs.EventAcquireSkill, sgs.Death}, 
-	frequency = sgs.Skill_Compulsory, 
-	on_trigger = function(self, event, player, data) 
-		local room = player:getRoom()
+Dragon_qiankun = sgs.CreateTriggerSkillV2{
+	name = "Dragon_qiankun",
+	events = {sgs.GameStart, sgs.EventLoseSkill, sgs.EventAcquireSkill, sgs.Death},
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(skill, event, room, player, data)
+		-- 旧实现默认可触发：存活的事件目标须持有本技能
+		if player and player:isAlive() and player:hasSkill(skill:objectName()) then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
 		if room:getLord():getKingdom() == "shu" then
 			room:setPlayerProperty(player, "kingdom", sgs.QVariant("shu"))
 		end
-		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == self:objectName()) then
+		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == skill:objectName()) then
 			room:setPlayerMark(player, "Equips_of_Others_Nullified_to_You", 1)
-		elseif (event == sgs.EventLoseSkill and data:toSkillChange().skillName == self:objectName()) or event == sgs.Death then
+		elseif (event == sgs.EventLoseSkill and data:toSkillChange().skillName == skill:objectName()) or event == sgs.Death then
 			room:setPlayerMark(player, "Equips_of_Others_Nullified_to_You", 0)
 		end
-	end, 
+		return false
+	end,
 }
 
 Dragon_qiankunSlash = sgs.CreateProhibitSkill{ 
@@ -2155,23 +2191,32 @@ Dragon_double_sword = sgs.CreateWeapon{
 }
 Dragon_double_sword:clone():setParent(extensionC)
 
-Dragon_double_swordSkill = sgs.CreateTriggerSkill{
-	name = "Dragon_double_swordSkill", 
-	events = {sgs.CardEffected}, 
-	frequency = sgs.Skill_NotFrequent, 
-	on_trigger = function(self, TriggerEvent, player, data)
-		local room = player:getRoom()
+Dragon_double_swordSkill = sgs.CreateEquipSkillV2{
+	name = "Dragon_double_swordSkill",
+	equipment = "Dragon_double_sword",
+	equipment_type = "weapon",
+	events = {sgs.CardEffected},
+	frequency = sgs.Skill_NotFrequent,
+	can_trigger = function(skill, event, room, player, data)
+		-- CardEffected 的事件目标是被杀者（装备持有者）；武器归属由引擎 admission 校验
+		if player and player:getMark("Equips_Nullified_to_Yourself") == 0 then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
 		local effect = data:toCardEffect()
 		local draw_card = false
 		local card
-		if not effect.card:isKindOf("Slash") then return end
-		if effect.from:getGender() == effect.to:getGender() or effect.from:getGender() == sgs.General_SexLess or effect.to:getGender() == sgs.General_SexLess then return end
+		if not effect.card:isKindOf("Slash") then return false end
+		if effect.from:getGender() == effect.to:getGender() or effect.from:getGender() == sgs.General_SexLess or effect.to:getGender() == sgs.General_SexLess then return false end
 		if effect.to:getMark("Equips_of_Others_Nullified_to_You") == 0 then
-			if effect.from:askForSkillInvoke(self:objectName()) then
+			if effect.from:askForSkillInvoke(skill:objectName()) then
 				local log = sgs.LogMessage()
 				log.type = "#InvokeSkill"
 				log.from = effect.from
-				log.arg = self:objectName()
+				log.arg = skill:objectName()
 				room:sendLog(log)
 				effect.to:getRoom():setEmotion(effect.from, "weapon/double_sword");
 				if not effect.to:canDiscard(effect.to, "h") then
@@ -2181,14 +2226,12 @@ Dragon_double_swordSkill = sgs.CreateTriggerSkill{
 					if not card then draw_card = true end
 				end
 				if draw_card then
-					effect.from:drawCards(1, self:objectName())
+					effect.from:drawCards(1, skill:objectName())
 				end
 			end
 		end
-	end, 
-	can_trigger = function(self, target) 
-		return target and target:getWeapon() and target:getWeapon():objectName() == "Dragon_double_sword" and target:getMark("Equips_Nullified_to_Yourself") == 0
-	end, 
+		return false
+	end,
 }
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("Dragon_double_swordSkill") then skills:append(Dragon_double_swordSkill) end
@@ -2230,12 +2273,21 @@ Dragon_blade = sgs.CreateWeapon{
 }
 Dragon_blade:clone():setParent(extensionC)
 
-Dragon_bladeSkill = sgs.CreateTriggerSkill{
-	name = "Dragon_bladeSkill", 
-	events = {sgs.CardOffset}, 
-	frequency = sgs.Skill_NotFrequent, 
-	on_trigger = function(self, TriggerEvent, player, data)
-		local room = player:getRoom()
+Dragon_bladeSkill = sgs.CreateEquipSkillV2{
+	name = "Dragon_bladeSkill",
+	equipment = "Dragon_blade",
+	equipment_type = "weapon",
+	events = {sgs.CardOffset},
+	frequency = sgs.Skill_NotFrequent,
+	can_trigger = function(skill, event, room, player, data)
+		-- CardOffset 的事件目标是出杀者（装备持有者）；武器归属由引擎 admission 校验
+		if player and player:getMark("Equips_Nullified_to_Yourself") == 0 and player:getHp() > 2 then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
 		local effect = data:toCardEffect()
 		if not effect.card:isKindOf("Slash") then return false end
 		local weapon_id
@@ -2255,10 +2307,7 @@ Dragon_bladeSkill = sgs.CreateTriggerSkill{
 			return use
 		end
 		return false
-	end, 
-	can_trigger = function(self, target) 
-		return target and target:getWeapon() and target:getWeapon():objectName() == "Dragon_blade" and target:getMark("Equips_Nullified_to_Yourself") == 0 and target:getHp() > 2
-	end, 
+	end,
 }
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("Dragon_bladeSkill") then skills:append(Dragon_bladeSkill) end
@@ -2398,29 +2447,34 @@ Dragon_axe = sgs.CreateWeapon{
 }
 Dragon_axe:clone():setParent(extensionC)
 
-Dragon_axeSkill = sgs.CreateTriggerSkill{
-	name = "Dragon_axeSkill", 
-	events = {sgs.CardOffset}, 
-	view_as_skill = Dragon_axeViewAsSkill, 
-	frequency = sgs.Skill_NotFrequent, 
-	on_trigger = function(self, TriggerEvent, player, data)
-		local room = player:getRoom()
+Dragon_axeSkill = sgs.CreateEquipSkillV2{
+	name = "Dragon_axeSkill",
+	equipment = "Dragon_axe",
+	equipment_type = "weapon",
+	events = {sgs.CardOffset},
+	frequency = sgs.Skill_NotFrequent,
+	can_trigger = function(skill, event, room, player, data)
+		-- CardOffset 的事件目标是出杀者（装备持有者）；武器归属由引擎 admission 校验
+		if player and player:getMark("Equips_Nullified_to_Yourself") == 0 and player:getMaxHp() > 3 then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
 		local effect = data:toCardEffect()
 		if not effect.card:isKindOf("Slash") then return false end
 		local card
 		if (not effect.to:isAlive()) or effect.to:getMark("Equips_of_Others_Nullified_to_You") > 0 then return false end
 		if player:getCardCount() >= 3 then
-			card = room:askForCard(player, "@axe", "@axe:"..effect.to:objectName(), data, self:objectName())
+			card = room:askForCard(player, "@axe", "@axe:"..effect.to:objectName(), data, skill:objectName())
 			if card then
 				room:setEmotion(effect.from, "weapon/axe")
 				return true
 			end
 		end
 		return false
-	end, 
-	can_trigger = function(self, target) 
-		return target and target:getWeapon() and target:getWeapon():objectName() == "Dragon_axe" and target:getMark("Equips_Nullified_to_Yourself") == 0 and target:getMaxHp() > 3
-	end, 
+	end,
 }
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("Dragon_axeSkill") then skills:append(Dragon_axeSkill) end
@@ -2462,12 +2516,21 @@ Dragon_kylin_bow = sgs.CreateWeapon{
 }
 Dragon_kylin_bow:clone():setParent(extensionC)
 
-Dragon_kylin_bowSkill = sgs.CreateTriggerSkill{
-	name = "Dragon_kylin_bowSkill", 
-	events = {sgs.DamageCaused}, 
-	frequency = sgs.Skill_NotFrequent, 
-	on_trigger = function(self, TriggerEvent, player, data)
-		local room = player:getRoom()
+Dragon_kylin_bowSkill = sgs.CreateEquipSkillV2{
+	name = "Dragon_kylin_bowSkill",
+	equipment = "Dragon_kylin_bow",
+	equipment_type = "weapon",
+	events = {sgs.DamageCaused},
+	frequency = sgs.Skill_NotFrequent,
+	can_trigger = function(skill, event, room, player, data)
+		-- DamageCaused 的事件目标是伤害来源（装备持有者）；武器归属由引擎 admission 校验
+		if player and player:getMark("Equips_Nullified_to_Yourself") == 0 then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
 		local damage = data:toDamage()
 		local horses = {}
 		local horse_type
@@ -2481,19 +2544,16 @@ Dragon_kylin_bowSkill = sgs.CreateTriggerSkill{
 		end
 		if #horses == 0 then return false end
 		if player == nil then return false end
-		if not player:askForSkillInvoke(self:objectName(), data) then return false end
+		if not player:askForSkillInvoke(skill:objectName(), data) then return false end
 		room:setEmotion(player, "weapon/kylin_bow")
-		horse_type = room:askForChoice(damage.to, self:objectName(), table.concat(horses, "+"))
+		horse_type = room:askForChoice(damage.to, skill:objectName(), table.concat(horses, "+"))
 		if (horse_type == "defensive_horse") then
 			room:throwCard(damage.to:getDefensiveHorse(), damage.to, damage.from)
 		elseif (horse_type == "offensive_horse") then
 			room:throwCard(damage.to:getOffensiveHorse(), damage.to, damage.from)
 		end
 		return false
-	end, 
-	can_trigger = function(self, target)
-		return target and target:getWeapon() and target:getWeapon():objectName() == "Dragon_kylin_bow" and target:getMark("Equips_Nullified_to_Yourself") == 0
-	end, 
+	end,
 }
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("Dragon_kylin_bowSkill") then skills:append(Dragon_kylin_bowSkill) end
@@ -3263,21 +3323,28 @@ Promote_jiuyuanVS = sgs.CreateViewAsSkillV2{
 	end,
 }
 
-Promote_jiuyuan = sgs.CreateTriggerSkill{
-	name = "Promote_jiuyuan$", 
-	frequency = sgs.Skill_NotFrequent, 
-	events = {sgs.GameStart, sgs.EventLoseSkill, sgs.EventAcquireSkill, sgs.Death}, 
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+Promote_jiuyuan = sgs.CreateTriggerSkillV2{
+	name = "Promote_jiuyuan$",
+	frequency = sgs.Skill_NotFrequent,
+	events = {sgs.GameStart, sgs.EventLoseSkill, sgs.EventAcquireSkill, sgs.Death},
+	can_trigger = function(skill, event, room, player, data)
+		-- 旧实现默认可触发：存活的事件目标须持有本技能
+		if player and player:isAlive() and player:hasSkill(skill:objectName()) then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
 		local skill_exist = false
-		if player:hasLordSkill(self:objectName()) then skill_exist = true end
-		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == self:objectName()) then
+		if player:hasLordSkill(skill:objectName()) then skill_exist = true end
+		if event == sgs.GameStart or (event == sgs.EventAcquireSkill and data:toSkillChange().skillName == skill:objectName()) then
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:getKingdom() == "wu" and not p:hasSkill("Promote_jiuyuanVS") then
 					room:attachSkillToPlayer(p, "Promote_jiuyuanVS")
 				end
 			end
-		elseif ((event == sgs.EventLoseSkill and data:toSkillChange().skillName == self:objectName()) or event == sgs.Death ) and not skill_exist then
+		elseif ((event == sgs.EventLoseSkill and data:toSkillChange().skillName == skill:objectName()) or event == sgs.Death ) and not skill_exist then
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				if p:hasSkill("Promote_jiuyuanVS") then
 					room:detachSkillFromPlayer(p, "Promote_jiuyuanVS")
@@ -3716,13 +3783,20 @@ extensionD = sgs.Package("Promote_d")
 Promote_darksoul = sgs.General(extensionD, "Promote_darksoul", "god", 0, true, true)
 
 
-Promote_darksoul_rule = sgs.CreateTriggerSkill{
+Promote_darksoul_rule = sgs.CreateRuleSkillV2{
 	name = "Promote_darksoul_rule",
 	events = {sgs.GameStart, sgs.Damaged, sgs.Death},
 	global = true,
 	priority = 3,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		-- 旧实现 global=true：包未禁用时对每个事件目标都触发
+		if player and not table.contains(sgs.Sanguosha:getBanPackages(), "Promote_d") then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.GameStart then
 			room:setTag("DeathNum", sgs.QVariant(0))
 		elseif event == sgs.Damaged then
@@ -3768,22 +3842,25 @@ Promote_darksoul_rule = sgs.CreateTriggerSkill{
 				room:setTag("DeathNum", sgs.QVariant(room:getTag("DeathNum"):toInt()+1))
 			end
 		end
+		return false
 	end,
-	can_trigger = function(self, player)
-        return not table.contains(sgs.Sanguosha:getBanPackages(), "Promote_d")
-    end
 }
-Promote_luohan = sgs.CreateTriggerSkill{
+Promote_luohan = sgs.CreateRuleSkillV2{
 	name = "Promote_luohan",
 	events = {sgs.Death, sgs.DamageInflicted},
 	global = true,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		-- 旧实现 global=true：对每个事件目标都触发
+		if player then return skill:objectName() end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.Death then
 			local death = data:toDeath()
 			if death.who:objectName() == player:objectName() then
 				if room:getTag("DeathNum"):toInt() == 1 and player:getRole() == "loyalist" then
-					local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName(), "Promote_luohan-invoke",
+					local target = room:askForPlayerChosen(player, room:getAlivePlayers(), skill:objectName(), "Promote_luohan-invoke",
 								true, true)
 					if target then
 						local jsonValue = {
@@ -3806,7 +3883,7 @@ Promote_luohan = sgs.CreateTriggerSkill{
 			local damage = data:toDamage()
             if damage.to and damage.to:isAlive() and damage.to:objectName() == player:objectName() and player:getTag("Promote_luohan"):toPlayer() then
 				if player:canDiscard(player, "h") and room:askForSkillInvoke(player:getTag("Promote_luohan"):toPlayer(), "Promote_luohan", data) then
-					room:askForDiscard(player, self:objectName(), 1, 1, false, false)
+					room:askForDiscard(player, skill:objectName(), 1, 1, false, false)
 					local jsonValue={9}
 					room:doBroadcastNotify(sgs.CommandType.S_COMMAND_LOG_EVENT, json.encode(jsonValue))
 					local jsonValue = {
@@ -3822,29 +3899,32 @@ Promote_luohan = sgs.CreateTriggerSkill{
 					local log = sgs.LogMessage()
 					log.type  = "#SkillNullifyDamage"
 					log.from  = player
-					log.arg   = self:objectName()
+					log.arg   = skill:objectName()
 					log.arg2  = damage.damage
 					room:sendLog(log)
 					return true
 				end
 			end
 		end
+		return false
 	end,
-	can_trigger = function(self, player)
-        return true
-    end
 }
-Promote_xuanwu = sgs.CreateTriggerSkill{
+Promote_xuanwu = sgs.CreateRuleSkillV2{
 	name = "Promote_xuanwu",
 	events = {sgs.Death, sgs.EventPhaseStart},
 	global = true,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		-- 旧实现 global=true：对每个事件目标都触发
+		if player then return skill:objectName() end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.Death then
 			local death = data:toDeath()
 			if death.who:objectName() == player:objectName() then
 				if room:getTag("DeathNum"):toInt() == 1 and player:getRole() == "rebel"  then
-					local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName(), "Promote_xuanwu-invoke",
+					local target = room:askForPlayerChosen(player, room:getAlivePlayers(), skill:objectName(), "Promote_xuanwu-invoke",
 								true, true)
 					if target then
 						local jsonValue = {
@@ -3879,7 +3959,7 @@ Promote_xuanwu = sgs.CreateTriggerSkill{
 						"huashen", --dummy skill
 					}
 					room:doBroadcastNotify(sgs.CommandType.S_COMMAND_LOG_EVENT, json.encode(jsonValue))
-					local id = room:askForCardChosen(player:getTag("Promote_xuanwu"):toPlayer(), player, "h", self:objectName())
+					local id = room:askForCardChosen(player:getTag("Promote_xuanwu"):toPlayer(), player, "h", skill:objectName())
 					room:throwCard(id, player, player:getTag("Promote_xuanwu"):toPlayer())
 					if player:getPile("Promote_xuanwu"):length() > 0 then
 						for _, id in sgs.qlist(player:getPile("Promote_xuanwu")) do
@@ -3890,22 +3970,25 @@ Promote_xuanwu = sgs.CreateTriggerSkill{
 				end
 			end
 		end
+		return false
 	end,
-	can_trigger = function(self, player)
-        return true
-    end
 }
-Promote_zhuyou = sgs.CreateTriggerSkill{
+Promote_zhuyou = sgs.CreateRuleSkillV2{
 	name = "Promote_zhuyou",
 	events = {sgs.Death, sgs.EventPhaseStart},
 	global = true,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		-- 旧实现 global=true：对每个事件目标都触发
+		if player then return skill:objectName() end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.Death then
 			local death = data:toDeath()
 			if death.who:objectName() == player:objectName() then
 				if room:getTag("DeathNum"):toInt() == 1 and player:getRole() == "renegade"  then
-					local target = room:askForPlayerChosen(player, room:getAlivePlayers(), self:objectName(), "Promote_zhuyou-invoke",
+					local target = room:askForPlayerChosen(player, room:getAlivePlayers(), skill:objectName(), "Promote_zhuyou-invoke",
 								true, true)
 					if target then
 						local jsonValue = {
@@ -3942,10 +4025,8 @@ Promote_zhuyou = sgs.CreateTriggerSkill{
 				end
 			end
 		end
+		return false
 	end,
-	can_trigger = function(self, player)
-        return true
-    end
 }
 
 -- Promote_darksoul:addSkill(Promote_luohan)
