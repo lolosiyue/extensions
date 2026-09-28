@@ -388,6 +388,8 @@ function SmartAI:initialize(player)
 		global_delay = sgs.GetConfig("OriginAIDelay",0)
 		self.room:setTag("initialized",sgs.QVariant(true))
 		sgs.ai_humanized = sgs.GetConfig("AIHumanized",true)
+	-- 50p soak: humanized random branches add variance without helping headless.
+	if sgs.getMode=="50p" then sgs.ai_humanized = false end
 		self.room:writeToConsole(version..",Powered by ".._VERSION)
 		local modeAI = sgs.modeAIEnabled(self.room, self.player)
 		for i,ap in sgs.qlist(self.room:getAlivePlayers())do
@@ -1418,6 +1420,15 @@ function SmartAI:compareRoleEvaluation(player,first,second)
 end
 
 function isRolePredictable(classical)
+	-- 50p is experimental; hidden-role AI is O(n^2+)/soak-unfinishable.
+	-- Use known-role friend/enemy (same path as 1v1 / non-identity modes).
+	if sgs.getMode=="50p" then return true end
+	local alive = 0
+	if sgs.playerRoles then
+		alive = (sgs.playerRoles.lord or 0)+(sgs.playerRoles.loyalist or 0)
+			+(sgs.playerRoles.rebel or 0)+(sgs.playerRoles.renegade or 0)
+	end
+	if alive > 16 then return true end
 	return sgs.getMode=="02p" or string.sub(sgs.getMode,3,3)~="p"
 	or not classical and sgs.GetConfig("RolePredictable",false)
 end
@@ -1431,7 +1442,7 @@ function outputRoleValues(p,level)
 	","..string.format("%3.3f",sgs.gameProcess(true)))
 end
 
-function sgs.updateIntention(from,to,level)
+function sgs.updateIntention(from,to,level,defer_refresh)
 	if from==nil or to==nil then return end
 	if sgs.ai_doNotUpdateIntenion then level = 0 end
 	sgs.ai_doNotUpdateIntenion = nil
@@ -1519,6 +1530,7 @@ function sgs.updateIntention(from,to,level)
 			sgs.roleValue[from:objectName()].loyalist = sgs.roleValue[from:objectName()].loyalist+level
 			if sgs.playerRoles.renegade>0 and (sgs.ai_role[from:objectName()]~="loyalist" and level>0 or sgs.ai_role[from:objectName()]~="rebel" and level<0)
 			then sgs.roleValue[from:objectName()].renegade = sgs.roleValue[from:objectName()].renegade+math.abs(level) end
+			sgs._intentionNeedsRefresh = true
 		else
 			if to:getRole()~="lord" and (sgs.UnknownRebel or sgs.roleValue[from:objectName()].renegade>0 and not sgs.explicit_renegade) then
 			elseif sgs.playerRoles.rebel+sgs.playerRoles.renegade>0 then sgs.roleValue[from:objectName()].loyalist = sgs.roleValue[from:objectName()].loyalist-level end
@@ -1531,23 +1543,54 @@ function sgs.updateIntention(from,to,level)
 					sgs.roleValue[from:objectName()].renegade = sgs.roleValue[from:objectName()].renegade+math.abs(level)
 				end
 			end
+			sgs._intentionNeedsRefresh = true
 		end
-		-- Performance: Use cached alive players
-		-- Clear cache to ensure we have the latest alive player list
-		if sgs.qlist_cache then
-			sgs.qlist_cache["global_alive_players"] = nil
+		-- Only rebuild friend/enemy lists when roleValue actually changed.
+		-- Neutral-chat path used to pay full O(n^2)/O(n^3) for nothing.
+		if not defer_refresh and sgs._intentionNeedsRefresh then
+			sgs.refreshAIsAfterIntention(from,level)
 		end
-		local alive_players = sgs.getCachedAlivePlayers()
+	end
+end
+
+-- Rebuild friend/enemy lists after roleValue changes.
+-- At large n, refreshing every AI is O(n^2) per intention and dominates 50p.
+-- Shared ai_role/roleValue are updated once; only the acting AI rebuilds now.
+-- Other AIs refresh on their own next updatePlayers (turn / skill activate).
+function sgs.refreshAIsAfterIntention(from,level)
+	sgs._intentionNeedsRefresh = nil
+	if sgs.qlist_cache then
+		sgs.qlist_cache["global_alive_players"] = nil
+	end
+	local alive_players = sgs.getCachedAlivePlayers()
+	local n = #alive_players
+	if n > 16 then
+		evaluateAlivePlayersRole()
+		sgs.gameProcess(true,true)
+		if from then
+			local ai = sgs.ais[from:objectName()]
+			if ai then ai:updatePlayers(false) end
+		end
+	else
 		for i,p in ipairs(alive_players)do
-			sgs.ais[p:objectName()]:updatePlayers(i==1)
+			local ai = sgs.ais[p:objectName()]
+			if ai then ai:updatePlayers(i==1) end
 		end
+	end
+	-- Role dumps are multi-MB/hour at 50p and call gameProcess for display only.
+	if from ~= nil and level ~= nil and (n <= 16
+		or (os and os.getenv and (os.getenv("QSAN_AI_ROLE_DEBUG") or "") ~= "")) then
 		outputRoleValues(from,level)
 	end
 end
 
 function sgs.updateIntentions(from,tos,intention)
+	-- Batch roleValue deltas, then ONE all-AI refresh (AOE at 50p).
 	for _,to in sgs.list(tos)do
-		sgs.updateIntention(from,to,intention)
+		sgs.updateIntention(from,to,intention,true)
+	end
+	if sgs._intentionNeedsRefresh then
+		sgs.refreshAIsAfterIntention(from,intention)
 	end
 end
 
@@ -1662,7 +1705,12 @@ function SmartAI:objectiveLevel(to)
 		if sgs.ai_role[to:objectName()]==sgs.ai_role[self.player:objectName()]
 		then return 4-to:getHp() end
 	end
-	local process = sgs.gameProcess(nil,true)
+	-- Use cached gameProcess. Forcing update=true here made every
+	-- objectiveLevel recompute defense for all alive players. updateIntention
+	-- refreshes all AIs via updatePlayers, so that was O(n^3) per intention
+	-- (lethal at 50p: ~10 turns/hour). Callers that need a fresh process
+	-- already call sgs.gameProcess(true,true) / updatePlayers(true).
+	local process = sgs.gameProcess()
 	if self.role=="renegade" then
 		if to:getRole()=="lord" and sgs.getMode~="couple" and to:hasFlag("Global_Dying")
 		and not sgs.GetConfig("EnableHegemony",false) then return -2  end
@@ -5069,6 +5117,8 @@ function SmartAI:useCardForCombo(card, use)
 end
 
 function SmartAI:activate(use)
+	-- Large rooms skip all-AI intention refresh; rebuild here once per play decision.
+	self:updatePlayers(false)
 	-- Step 1: Handle debug file writing
 	if sgs.aiHandCardVisible then
 		pcall(function()
@@ -5082,19 +5132,15 @@ function SmartAI:activate(use)
 		--self.room:writeToConsole("TurnUse：")
 	end
 	
-	-- Step 2: Get turn use cards
-	if #self.toUse<1 then 
-		local success = pcall(function()
-			self:getTurnUse()
-		end)
-		
-		if not success then
-			return
-		end
+	-- Step 2: Get turn use cards (once). A second getTurnUse() here
+	-- previously doubled getUsageState O(alive x skills) cost every play.
+	local success = pcall(function()
+		self:getTurnUse()
+	end)
+	if not success then
+		return
 	end
-	
-	-- Step 3: Process cards
-	local turnUse = self:getTurnUse()
+	local turnUse = self.toUse
 	
 	for i, c in ipairs(turnUse) do
 		pcall(function()
