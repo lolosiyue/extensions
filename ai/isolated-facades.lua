@@ -971,6 +971,23 @@ function SmartAIView:getDecisionContext()
     wrap_event(context.judge)
     wrap_event(context.damage)
     wrap_event(context.effect)
+    if type(context.player) == "string" then
+        context.player = self.room:findPlayerByObjectName(context.player, true)
+    end
+    if type(context.use) == "table" then
+        wrap_event(context.use)
+        if AIValue.isList(context.use.to) then
+            local targets = AIList.new({})
+            for _, name in ipairs(context.use.to) do
+                local target = self.room:findPlayerByObjectName(name, true)
+                if not target then
+                    ai_unsupported("card-use target is absent from the visible roster", "context.use")
+                end
+                targets:append(target)
+            end
+            context.use.to = targets
+        end
+    end
     if context.damage then context.damage.damage = context.damage.amount end
     return context
 end
@@ -1002,6 +1019,8 @@ function SmartAIView:getDecisionData()
         toJudge = function() return ai:getJudge() end,
         toDamage = function() return context.damage end,
         toCardEffect = function() return context.effect end,
+        toCardUse = function() return context.use end,
+        toPlayer = function() return context.player end,
         isNull = function() return next(context) == nil end
     }
 end
