@@ -15665,34 +15665,46 @@ WangZiFu_Six:addSkill(SixMiBian)
 JuShou_Six = sgs.General(extension_six, "JuShou_Six", "qun", 3, true)
 
 
--- DEFER:SixJianCe: CreatePhaseChangeSkill has no V2 equivalent
-SixJianCe = sgs.CreatePhaseChangeSkill {
+SixJianCe = sgs.CreateTriggerSkillV2 {
 	name = "SixJianCe",
-	on_phasechange = function(self, player)
-		local room = player:getRoom()
-		for _, p in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-			local dest = sgs.QVariant()
-			dest:setValue(player)
-			if p and p:objectName() ~= player:objectName() and room:askForSkillInvoke(p, self:objectName(), dest) then
-				player:drawCards(1)
-				if p:canPindian(player) then
-					local success = p:pindian(player, self:objectName(), nil)
-					if success then
-						local x = player:getHandcardNum()
-						local to_exchange = player:wholeHandCards()
-						room:moveCardTo(to_exchange, p, sgs.Player_PlaceHand, false)
-						to_exchange = room:askForExchange(p, "SixJianCe", x, x)
-						room:moveCardTo(to_exchange, player, sgs.Player_PlaceHand, false)
-					else
-						room:loseHp(p, 1, true, p, self:objectName())
-					end
+	events = { sgs.EventPhaseStart },
+	can_trigger = function(skill, event, room, player, data)
+		if player and player:getPhase() == sgs.Player_Play then
+			local skill_list, who_list = {}, {}
+			for _, p in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+				if p:objectName() ~= player:objectName() then
+					table.insert(skill_list, skill:objectName())
+					table.insert(who_list, p:objectName())
 				end
 			end
+			if #skill_list > 0 then
+				return table.concat(skill_list, "|"), table.concat(who_list, "|")
+			end
 		end
+		return false
 	end,
-	can_trigger = function(self, target)
-		return target and target:getPhase() == sgs.Player_Play
-	end
+	on_cost = function(skill, event, room, player, ctx)
+		local dest = sgs.QVariant()
+		dest:setValue(ctx.invoker)
+		return room:askForSkillInvoke(player, skill:objectName(), dest)
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local target = ctx.invoker
+		target:drawCards(1)
+		if player:canPindian(target) then
+			local success = player:pindian(target, skill:objectName(), nil)
+			if success then
+				local x = target:getHandcardNum()
+				local to_exchange = target:wholeHandCards()
+				room:moveCardTo(to_exchange, player, sgs.Player_PlaceHand, false)
+				to_exchange = room:askForExchange(player, "SixJianCe", x, x)
+				room:moveCardTo(to_exchange, target, sgs.Player_PlaceHand, false)
+			else
+				room:loseHp(player, 1, true, player, skill:objectName())
+			end
+		end
+		return false
+	end,
 }
 
 SixShouLue = sgs.CreateMaxCardsSkillV2 {
@@ -15883,24 +15895,24 @@ SevenJuDiVS = sgs.CreateViewAsSkillV2 {
 		return SevenJuDiCard:clone()
 	end
 }
--- DEFER:SevenJuDi: CreatePhaseChangeSkill has no V2 equivalent
-SevenJuDi = sgs.CreatePhaseChangeSkill {
+SevenJuDi = sgs.CreateTriggerSkillV2 {
 	name = "SevenJuDi",
+	events = { sgs.EventPhaseStart },
 	view_as_skill = SevenJuDiVS,
-	on_phasechange = function(self, target)
-		local room = target:getRoom()
-		if target:getPhase() == sgs.Player_Finish then
-			local targets = sgs.SPlayerList()
-			for _, p in sgs.qlist(room:getOtherPlayers(target)) do
-				if target:canDiscard(p, "he") then
-					targets:append(p)
+	can_trigger = function(skill, event, room, player, data)
+		if player and player:isAlive() and player:hasSkill(skill:objectName())
+			and player:getPhase() == sgs.Player_Finish then
+			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+				if player:canDiscard(p, "he") then
+					return skill:objectName()
 				end
 			end
-			if targets:isEmpty() then return false end
-			if room:askForUseCard(target, "@@SevenJuDi", "@SevenJuDi-card") then
-			end
 		end
-	end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		return room:askForUseCard(player, "@@SevenJuDi", "@SevenJuDi-card")
+	end,
 }
 
 WeiYan_Seven:addSkill(SevenJuDi)
