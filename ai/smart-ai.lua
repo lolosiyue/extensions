@@ -1950,14 +1950,40 @@ local function getCardIntention(card)
 	return intention
 end
 
+-- Relationship lists are dense arrays, but package AIs may sort, replace or
+-- edit them during a decision. Cache only positive positions and validate the
+-- current entry on every hit; never cache an absence or a relationship result.
+-- Weak keys release the index when updatePlayers replaces a list.
+local ai_player_list_positions = setmetatable({}, {__mode = "k"})
+local function aiPlayerInList(players, other)
+	if #players < 1 then return false end
+	local name = other:objectName()
+	local positions = ai_player_list_positions[players]
+	if not positions then
+		positions = {}
+		ai_player_list_positions[players] = positions
+	end
+	local index = positions[name]
+	if index and players[index] and players[index]:objectName() == name then
+		return true
+	end
+	for i, player in ipairs(players) do
+		local player_name = player:objectName()
+		positions[player_name] = i
+		if player_name == name then return true end
+	end
+	positions[name] = nil
+	return false
+end
+
 function SmartAI:isFriend(other,another)
 	if another then return self:isFriend(other)==self:isFriend(another) end
-	return table.contains(self.friends,other,true)--self:objectiveLevel(other)<0
+	return aiPlayerInList(self.friends,other)--self:objectiveLevel(other)<0
 end
 
 function SmartAI:isEnemy(other,another)
 	if another then return self:isFriend(other)==self:isEnemy(another) end
-	return table.contains(self.enemies,other,true)--self:objectiveLevel(other)>0
+	return aiPlayerInList(self.enemies,other)--self:objectiveLevel(other)>0
 end
 
 function SmartAI:getActualController(player)
