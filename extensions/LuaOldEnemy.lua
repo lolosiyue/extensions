@@ -37,13 +37,58 @@ require "lua.luaoldenemy_lib"
 
 local skilllist = sgs.SkillList()
 
-LuaOldEnemy = sgs.CreateTriggerSkill {
+LuaOldEnemy = sgs.CreateTriggerSkillV2 {
 	name = "#LuaOldEnemy",
-	events = { sgs.EventPhaseStart, sgs.EventPhaseEnd, sgs.DamageInflicted, sgs.Death },
+	events = { sgs.GameReady, sgs.EventPhaseStart, sgs.EventPhaseEnd, sgs.DamageInflicted, sgs.Death },
 	global = true,
+	frequency = sgs.Skill_Compulsory,
 
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		if not player or table.contains(sgs.Sanguosha:getBanPackages(), "LuaOldEnemy") then
+			return false
+		end
+		if event == sgs.GameReady then
+			return skill:objectName()
+		elseif event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_Start
+				and (getOEMark(player) or player:getMark("@LuaPublicEnemy") > 0) then
+				return skill:objectName()
+			end
+		elseif event == sgs.EventPhaseEnd then
+			if player:getPhase() == sgs.Player_Finish then
+				return skill:objectName()
+			end
+		elseif event == sgs.DamageInflicted then
+			local damage = data:toDamage()
+			if not damage.from or damage.from:objectName() == damage.to:objectName() then
+				return false
+			end
+			if findMyOE(damage.from) or findMyOE(damage.to) then
+				return false
+			end
+			if damage.from:getMark("@LuaPublicEnemy") > 0 or damage.to:getMark("@LuaPublicEnemy") > 0 then
+				return false
+			end
+			return skill:objectName()
+		elseif event == sgs.Death then
+			local death = data:toDeath()
+			if death.who:objectName() == player:objectName() then
+				return skill:objectName()
+			end
+		end
+		return false
+	end,
+
+	on_effect = function(skill, event, room, player, ctx)
+		-- V2 觸發需要持有者實例：為缺少實例的角色補掛 acquired 實例
+		-- （晚於本擴展載入的武將、國戰暗將、中途換將均會缺 innate 實例；
+		-- acquired 實例不受暗將 preshow 限制）。已有實例者跳過，避免雙實例重複觸發。
+		for _, p in sgs.qlist(room:getAllPlayers()) do
+			if p:getSkillInstanceIds("#LuaOldEnemy"):isEmpty() then
+				room:attachSkillToPlayer(p, "#LuaOldEnemy")
+			end
+		end
+		if event == sgs.GameReady then return false end
 		if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Start then
 			if getOEMark(player) or player:getMark("@LuaPublicEnemy") > 0 then
 				room:setPlayerFlag(player, "OEHermit")
@@ -64,7 +109,9 @@ LuaOldEnemy = sgs.CreateTriggerSkill {
 			end
 		end
 		if event == sgs.DamageInflicted then
-			local damage = data:toDamage()
+			local damage = ctx.original_data:toDamage()
+			-- 與 can_trigger 相同的條件在執行時再判一次：收集 context 到執行之間
+			-- 宿敵關係可能已被其他觸發建立（舊版係執行時判斷，此處保留該時序語義）
 			if not damage.from or damage.from:objectName() == damage.to:objectName() then
 				return false
 			end
@@ -90,13 +137,9 @@ LuaOldEnemy = sgs.CreateTriggerSkill {
 				end
 			end
 			establishOE(room, damage.from, damage.to)
-			return false
 		end
 		if event == sgs.Death then
-			local death = data:toDeath()
-			if death.who:objectName() ~= player:objectName() then
-				return false
-			end
+			local death = ctx.original_data:toDeath()
 			local OldEnemy = findMyOE(death.who, room)
 			if OldEnemy then
 				relieveOE(room, death.who)
@@ -139,12 +182,8 @@ LuaOldEnemy = sgs.CreateTriggerSkill {
 			if OldEnemy and OldEnemy:getMark("OEs") >= 2 then
 				setPublicEnemy(room, OldEnemy)
 			end --设置公敌
-			return false
 		end
-	end,
-
-	can_trigger = function(self, target)
-		return target and not table.contains(sgs.Sanguosha:getBanPackages(), "LuaOldEnemy")
+		return false
 	end,
 }
 
@@ -152,18 +191,24 @@ if not sgs.Sanguosha:getSkill("#LuaOldEnemy") then
 	skilllist:append(LuaOldEnemy)
 end
 
-LuaOldEnemyDistance = sgs.CreateDistanceSkill {
+LuaOldEnemyDistance = sgs.CreateDistanceSkillV2 {
 	name = "#LuaOldEnemyDistance",
-	correct_func = function(self, from, to)
+	-- 全局规则技能：无持有者实例，按 (from,to) 每次评估一次
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
 		if table.contains(sgs.Sanguosha:getBanPackages(), "LuaOldEnemy") then
-			return 0
+			return nil
 		end
+		local from = ctx:getPrimary()
+		local to = ctx:getSecondary()
+		if not from or not to then return nil end
 		if findMyOE(from) and findMyOE(from):objectName() == to:objectName() then
 			return -1
 		end
 		if to:getMark("@LuaPublicEnemy") > 0 then
 			return -1
 		end
+		return nil
 	end,
 }
 
@@ -172,6 +217,12 @@ if not sgs.Sanguosha:getSkill("#LuaOldEnemyDistance") then
 end
 
 sgs.Sanguosha:addSkills(skilllist)
+
+-- V2 触发技能需要持有者实例：规则技挂到所有武将作为 bootstrap；
+-- 加载顺序更晚的武将/暗将在 on_effect 里再补挂 acquired 实例
+for _, gen in sgs.qlist(sgs.Sanguosha:getAllGenerals()) do
+	gen:addSkill("#LuaOldEnemy")
+end
 
 sgs.LoadTranslationTable {
 	["LuaOldEnemy"] = "宿敌规则",

@@ -145,16 +145,28 @@ decade = sgs.CreateTrickCard {
 decade:clone(0, 10):setParent(extension)
 
 --防止作弊卡牌一览获得移出游戏的牌
-gaodaexcard_skill = sgs.CreateTriggerSkill {
-	name = "gaodaexcard_skill",
+--V2 触发技能须由玩家持有实例才会派发；全局守卫以隐藏技能名挂到所有武将，
+--晚于本扩展加载的武将或换将后于 record 阶段补挂 acquired 实例
+local gaodaexcard_global_skill_names = { "#gaodaexcard_skill" }
+local function gaodaexcard_ensure_global_instances(room)
+	for _, p in sgs.qlist(room:getAllPlayers(true)) do
+		for _, skill_name in ipairs(gaodaexcard_global_skill_names) do
+			if p:getSkillInstanceIds(skill_name):isEmpty() then
+				room:attachSkillToPlayer(p, skill_name)
+			end
+		end
+	end
+end
+
+gaodaexcard_skill = sgs.CreateTriggerSkillV2 {
+	name = "#gaodaexcard_skill",
 	events = { sgs.BeforeCardsMove },
 	global = true,
 	priority = 3,
-	can_trigger = function(self, target)
-		return true
-	end,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	on_record = function(skill, event, room, player, ctx)
+		gaodaexcard_ensure_global_instances(room)
+		if not player then return end
+		local data = ctx.original_data
 		local move = data:toMoveOneTime()
 		if move.to and move.to:objectName() == player:objectName() then
 			for _, id in sgs.qlist(move.card_ids) do
@@ -163,7 +175,7 @@ gaodaexcard_skill = sgs.CreateTriggerSkill {
 					--移出游戏就不能再拿回来，不然会闪退
 					move.card_ids:removeOne(id)
 				else
-					return false
+					return
 				end
 			end
 			data:setValue(move)
@@ -172,10 +184,17 @@ gaodaexcard_skill = sgs.CreateTriggerSkill {
 }
 
 local skills = sgs.SkillList()
-if not sgs.Sanguosha:getSkill("gaodaexcard_skill") then
+if not sgs.Sanguosha:getSkill("#gaodaexcard_skill") then
 	skills:append(gaodaexcard_skill)
 end
 sgs.Sanguosha:addSkills(skills)
+
+--V2 触发须由玩家持有实例：守卫技能挂到所有武将，令每名玩家持有其 innate 实例
+for _, gen in sgs.qlist(sgs.Sanguosha:getAllGenerals()) do
+	for _, skill_name in ipairs(gaodaexcard_global_skill_names) do
+		gen:addSkill(skill_name)
+	end
+end
 
 sgs.LoadTranslationTable {
 	["gaodaexcard"] = "高达杀乱入卡",
