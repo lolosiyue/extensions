@@ -4,67 +4,80 @@ extension = sgs.Package("newstar")
 xingcaocao = sgs.General(extension, "xingcaocao", "wei", 3)
 --星包曹操
 
-LuaNengchen_TM = sgs.CreateTargetModSkill {
+LuaNengchen_TM = sgs.CreateTargetModSkillV2 {
 	name = "#LuaNengchen_TM",
 	pattern = "TrickCard",
-	extra_target_func = function(self, player, card)
-		if player:hasSkill(self:objectName()) and card:isNDTrick() then
+	correct_func = function(skill, ctx)
+		if ctx:getModType() ~= sgs.TargetModSkill_ExtraTarget then return false end
+		local player = ctx:getPrimary()
+		local card = ctx:getCard()
+		if player and card and player:hasSkill(skill:objectName()) and card:isNDTrick() then
 			return 1
 		end
+		return false
 	end,
 }
 
 
 
-LuaNengchen = sgs.CreateViewAsSkill {
+LuaNengchen = sgs.CreateViewAsSkillV2 {
 	name = "LuaNengchen",
 	n = 1,
 	response_or_use = true,
-	view_filter = function(self, selected, to_select)
-		return true
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		return player ~= nil
+			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
+			and player:hasFlag("jx")
 	end,
-	view_as = function(self, cards)
-		if #cards == 0 then return nil end
-		local card_id = sgs.Self:getMark("luanengchenskill")
+	can_select_card = function(skill, request, card)
+		return card ~= nil and request:getSelectedCardIds():isEmpty()
+	end,
+	create_card = function(skill, request)
+		local ids = request:getSelectedCardIds()
+		if ids:isEmpty() then return nil end
+		local player = request:getInitiator()
+		if not player then return nil end
+		local card_id = player:getMark("luanengchenskill")
 		local card = sgs.Sanguosha:getCard(card_id)
-		local acard = cards[1]
+		local acard = sgs.Sanguosha:getCard(ids:first())
+		if not card or not acard then return nil end
 		local new_card = sgs.Sanguosha:cloneCard(card:objectName(), acard:getSuit(), acard:getNumber())
-		new_card:addSubcard(cards[1])
-		new_card:setSkillName(self:objectName())
+		new_card:addSubcard(acard)
+		new_card:setSkillName(skill:objectName())
 		return new_card
-	end,
-	enabled_at_play = function(self, player)
-		return player:hasFlag("jx")
 	end,
 }
 
 
-luanengchenskill = sgs.CreateTriggerSkill {
+luanengchenskill = sgs.CreateTriggerSkillV2 {
 	name = "#luanengchenskill",
 	view_as_skill = LuaNengchen,
 	events = { sgs.CardUsed },
 	frequency = sgs.Skill_Frequency,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		local card = data:toCardUse().card
-		if (player:getPhase() ~= sgs.Player_Play) then return false end
-		if event == sgs.CardUsed and not player:hasFlag("jxused") and not card:isKindOf("Nullification") and not card:isKindOf("IronChain") then
+	on_record = function(skill, event, room, player, ctx)
+		local owner = ctx.owner
+		if not (owner and owner:isAlive()) then return end
+		if not (ctx.invoker and ctx.invoker:objectName() == owner:objectName()) then return end
+		local card = ctx.original_data:toCardUse().card
+		if (owner:getPhase() ~= sgs.Player_Play) then return end
+		if event == sgs.CardUsed and not owner:hasFlag("jxused") and not card:isKindOf("Nullification") and not card:isKindOf("IronChain") then
 			if card:isNDTrick() then
-				room:setPlayerFlag(player, "jx")
+				room:setPlayerFlag(owner, "jx")
 				if not card:isVirtualCard() then
-					for _, mark in sgs.list(player:getMarkNames()) do
-						if string.find(mark, "LuaNengchen") and player:getMark(mark) > 0 then
-							room:setPlayerMark(player, mark, 0)
+					for _, mark in sgs.list(owner:getMarkNames()) do
+						if string.find(mark, "LuaNengchen") and owner:getMark(mark) > 0 then
+							room:setPlayerMark(owner, mark, 0)
 						end
 					end
-					room:setPlayerMark(player, "&LuaNengchen+" .. card:objectName() .. "-".. player:getPhase() .."Clear", 1)
+					room:setPlayerMark(owner, "&LuaNengchen+" .. card:objectName() .. "-".. owner:getPhase() .."Clear", 1)
 
 					local card_id = card:getEffectiveId()
-					room:setPlayerMark(player, "luanengchenskill", card_id)
+					room:setPlayerMark(owner, "luanengchenskill", card_id)
 				end
 				if table.contains(card:getSkillNames(), "LuaNengchen") then
-					room:setPlayerFlag(player, "jxused")
-					room:setPlayerFlag(player, "-jx")
+					room:setPlayerFlag(owner, "jxused")
+					room:setPlayerFlag(owner, "-jx")
 				end
 			end
 		end
@@ -72,52 +85,60 @@ luanengchenskill = sgs.CreateTriggerSkill {
 }
 
 
-LuaJianxiong = sgs.CreateTriggerSkill {
+LuaJianxiong = sgs.CreateTriggerSkillV2 {
 	name = "LuaJianxiong",
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.Damaged },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		if event == sgs.Damaged then
-			local damage = data:toDamage()
-			local x = player:getLostHp()
-			local choices = { "LuaJianxiongdraw=" .. x }
-			local card = damage.card
-			local card_str = ""
-			if card then
-				local ids = sgs.IntList()
-				if card:isVirtualCard() then
-					card_str = card:objectName()
-					ids = card:getSubcards()
-				else
-					ids:append(card:getEffectiveId())
-					card_str = card:objectName()
-				end
-				if ids:length() > 0 then
-					local all_place_table = true
-					for _, id in sgs.qlist(ids) do
-						if room:getCardPlace(id) ~= sgs.Player_PlaceTable then
-							all_place_table = false
-							break
-						end
-					end
-					if all_place_table then
-						table.insert(choices, "LuaJianxiongobtain=" .. card_str)
-					end
-				end
+	can_trigger = function(skill, event, room, player, data)
+		if player and player:isAlive() and player:hasSkill(skill:objectName()) then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		local damage = ctx.original_data:toDamage()
+		local x = player:getLostHp()
+		local choices = { "LuaJianxiongdraw=" .. x }
+		local card = damage.card
+		local card_str = ""
+		if card then
+			local ids = sgs.IntList()
+			if card:isVirtualCard() then
+				card_str = card:objectName()
+				ids = card:getSubcards()
+			else
+				ids:append(card:getEffectiveId())
+				card_str = card:objectName()
 			end
-			table.insert(choices, "cancel")
-			local choice = room:askForChoice(player, self:objectName(), table.concat(choices, "+"), data)
-			if choice ~= "cancel" then
-				room:notifySkillInvoked(player, self:objectName())
-				room:broadcastSkillInvoke("LuaJianxiong")
-				if string.startsWith(choice, "LuaJianxiongobtain") then
-					player:obtainCard(card)
-				else
-					player:drawCards(x, self:objectName())
+			if ids:length() > 0 then
+				local all_place_table = true
+				for _, id in sgs.qlist(ids) do
+					if room:getCardPlace(id) ~= sgs.Player_PlaceTable then
+						all_place_table = false
+						break
+					end
+				end
+				if all_place_table then
+					table.insert(choices, "LuaJianxiongobtain=" .. card_str)
 				end
 			end
 		end
+		table.insert(choices, "cancel")
+		local choice = room:askForChoice(player, skill:objectName(), table.concat(choices, "+"), ctx.original_data)
+		if choice == "cancel" then return false end
+		ctx.choice = choice
+		return true
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		room:notifySkillInvoked(player, skill:objectName())
+		room:broadcastSkillInvoke("LuaJianxiong")
+		if string.startsWith(ctx.choice, "LuaJianxiongobtain") then
+			local card = ctx.original_data:toDamage().card
+			if card then player:obtainCard(card) end
+		else
+			player:drawCards(player:getLostHp(), skill:objectName())
+		end
+		return false
 	end
 }
 
@@ -148,60 +169,83 @@ LuaXinyijicard = sgs.CreateSkillCard {
 		source:addToPile("ji", self)
 	end
 }
-LuaXinyijiVS = sgs.CreateViewAsSkill {
+LuaXinyijiVS = sgs.CreateViewAsSkillV2 {
 	name = "LuaXinyiji",
-	response_pattern = "@@LuaXinyiji",
 	n = 1,
-	view_filter = function(self, selected, to_select)
-		local suit = {}
-		for _, card_id in sgs.qlist(sgs.Self:getPile("ji")) do
-			local card = sgs.Sanguosha:getCard(card_id)
-			table.insert(suit, card:getSuitString())
+	target_mode = sgs.ViewAsSkillV2_NoTarget,
+	can_activate = function(skill, request)
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+			or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			return request:getPattern() == "@@LuaXinyiji"
 		end
-		return not to_select:isEquipped() and (not table.contains(suit, to_select:getSuitString()))
-	end,
-	view_as = function(self, cards)
-		if #cards > 0 then
-			local snatch = LuaXinyijicard:clone()
-			snatch:addSubcard(cards[1])
-			snatch:setSkillName(self:objectName())
-			return snatch
-		end
-	end,
-	enabled_at_play = function(self, player)
 		return false
 	end,
+	can_select_card = function(skill, request, card)
+		local player = request:getInitiator()
+		if not player or not card or not request:getSelectedCardIds():isEmpty() then return false end
+		local suit = {}
+		for _, card_id in sgs.qlist(player:getPile("ji")) do
+			local pile_card = sgs.Sanguosha:getCard(card_id)
+			table.insert(suit, pile_card:getSuitString())
+		end
+		return not card:isEquipped() and (not table.contains(suit, card:getSuitString()))
+	end,
+	create_card = function(skill, request)
+		local ids = request:getSelectedCardIds()
+		if ids:isEmpty() then return nil end
+		local snatch = LuaXinyijicard:clone()
+		snatch:addSubcard(ids:first())
+		snatch:setSkillName(skill:objectName())
+		return snatch
+	end,
 }
-LuaXinyiji = sgs.CreateTriggerSkill {
+LuaXinyiji = sgs.CreateTriggerSkillV2 {
 	name = "LuaXinyiji",
 	frequency = sgs.NotFrequent,
 	events = { sgs.Damaged, sgs.EventPhaseEnd },
 	view_as_skill = LuaXinyijiVS,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		if event == sgs.Damaged then
+			return skill:objectName()
+		elseif event == sgs.EventPhaseEnd then
+			if player:getPhase() == sgs.Player_Start
+				and player:getPile("ji"):length() < 4
+				and not player:isKongcheng() then
+				return skill:objectName()
+			end
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		return true
+	end,
+	on_effect = function(skill, event, room, player, ctx)
 		local ji = player:getPile("ji")
 		local n = ji:length()
 		if player:getPhase() == sgs.Player_Start and n < 4 then
 			if not player:isKongcheng() then
-				if player:getRoom():askForUseCard(player, "@@LuaXinyiji", "@LuaXinyiji-card", -1, sgs.Card_MethodNone) then
+				if room:askForUseCard(player, "@@LuaXinyiji", "@LuaXinyiji-card", -1, sgs.Card_MethodNone) then
 					room:broadcastSkillInvoke("LuaXinyiji")
 				end
 			end
 		end
 		if event == sgs.Damaged then
-			local damage = data:toDamage()
+			local damage = ctx.original_data:toDamage()
 			local x = damage.damage
 			for i = 1, x, 1 do
-				if room:askForSkillInvoke(player, "LuaXinyiji", data) then
+				if room:askForSkillInvoke(player, "LuaXinyiji", ctx.original_data) then
 					room:drawCards(player, 2)
 					room:broadcastSkillInvoke("LuaXinyiji")
 					if not player:isKongcheng() then
-						player:getRoom():askForUseCard(player, "@@LuaXinyiji", "@LuaXinyiji-card", -1,
+						room:askForUseCard(player, "@@LuaXinyiji", "@LuaXinyiji-card", -1,
 							sgs.Card_MethodNone)
 					end
 				end
 			end
 		end
+		return false
 	end
 }
 
@@ -252,46 +296,63 @@ LuaJuececard = sgs.CreateSkillCard {
 		end
 	end
 }
-LuaJueceVS = sgs.CreateOneCardViewAsSkill {
+LuaJueceVS = sgs.CreateViewAsSkillV2 {
 	name = "LuaJuece",
-	response_pattern = "@@LuaJuece",
+	n = 1,
+	target_mode = sgs.ViewAsSkillV2_NoTarget,
 	expand_pile = "ji",
-	filter_pattern = ".|.|.|ji",
-	view_as = function(self, originalCard)
-		local snatch = LuaJuececard:clone()
-		snatch:addSubcard(originalCard:getId())
-		snatch:setSkillName(self:objectName())
-		return snatch
-	end,
-
-	enabled_at_play = function(self, player)
+	can_activate = function(skill, request)
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+			or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			return request:getPattern() == "@@LuaJuece"
+		end
 		return false
 	end,
+	can_select_card = function(skill, request, card)
+		local player = request:getInitiator()
+		if not player or not card or not request:getSelectedCardIds():isEmpty() then return false end
+		return player:getPile("ji"):contains(card:getEffectiveId())
+	end,
+	create_card = function(skill, request)
+		local ids = request:getSelectedCardIds()
+		if ids:isEmpty() then return nil end
+		local snatch = LuaJuececard:clone()
+		snatch:addSubcard(ids:first())
+		snatch:setSkillName(skill:objectName())
+		return snatch
+	end,
 }
-LuaJuece = sgs.CreateTriggerSkill {
+LuaJuece = sgs.CreateTriggerSkillV2 {
 	name = "LuaJuece",
 	frequency = sgs.Skill_NotFrequent,
-	events = { sgs.Damaged, sgs.EventPhaseEnd },
+	events = { sgs.Damaged },
 	view_as_skill = LuaJueceVS,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		if event == sgs.Damaged then
-			local damage = data:toDamage()
-			local victim = damage.to
-			if not victim:isDead() then
-				local splayers = room:findPlayersBySkillName(self:objectName())
-				for _, guojia in sgs.qlist(splayers) do
-					guojia:setTag("LuaJueceDamage", data)
-					if guojia:getPile("ji"):length() > 0 and guojia:getMark("&LuaJuece-Clear") == 0 then
-						room:askForUseCard(guojia, "@@LuaJuece", "@LuaJuece-card", -1, sgs.Card_MethodDiscard)
-					end
-					guojia:removeTag("LuaJueceDamage")
-				end
+	can_trigger = function(skill, event, room, player, data)
+		if event ~= sgs.Damaged then return false end
+		local damage = data:toDamage()
+		local victim = damage.to
+		if not victim or victim:isDead() then return false end
+		local trigger_list_skill, trigger_list_who = {}, {}
+		for _, guojia in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+			if guojia:getPile("ji"):length() > 0 and guojia:getMark("&LuaJuece-Clear") == 0 then
+				table.insert(trigger_list_skill, skill:objectName())
+				table.insert(trigger_list_who, guojia:objectName())
 			end
 		end
+		if #trigger_list_skill > 0 then
+			return table.concat(trigger_list_skill, "|"), table.concat(trigger_list_who, "|")
+		end
+		return false
 	end,
-	can_trigger = function(self, target)
-		return target ~= nil
+	on_cost = function(skill, event, room, player, ctx)
+		player:setTag("LuaJueceDamage", ctx.original_data)
+		local used = room:askForUseCard(player, "@@LuaJuece", "@LuaJuece-card", -1, sgs.Card_MethodDiscard)
+		player:removeTag("LuaJueceDamage")
+		return used ~= nil
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		return false
 	end
 }
 
@@ -309,25 +370,36 @@ xingguojia:addSkill(LuaJuece)
 xingsimayi = sgs.General(extension, "xingsimayi", "wei", 3)
 --星包司马懿
 
-LuaGuizha = sgs.CreateTriggerSkill {
+LuaGuizha = sgs.CreateTriggerSkillV2 {
 	name = "LuaGuizha",
 	events = { sgs.AskForRetrial },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		if player:isNude() then return false end
-		local judge = data:toJudge()
+	can_trigger = function(skill, event, room, player, data)
+		if player and player:isAlive() and player:hasSkill(skill:objectName()) and not player:isNude() then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		local judge = ctx.original_data:toJudge()
 		local prompt_list = {
 			"@LuaGuizha-card",
 			judge.who:objectName(),
-			self:objectName(),
+			skill:objectName(),
 			judge.reason,
 			string.format("%d", judge.card:getEffectiveId())
 		}
 		local prompt = table.concat(prompt_list, ":")
 		local askforcardpattern = ".."
-		local card = room:askForCard(player, askforcardpattern, prompt, data, sgs.Card_MethodResponse, judge.who, true)
+		local card = room:askForCard(player, askforcardpattern, prompt, ctx.original_data, sgs.Card_MethodResponse, judge.who, true)
+		if not card then return false end
+		ctx.extra_data:setValue(card)
+		return true
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local card = ctx.extra_data:toCard()
+		local judge = ctx.original_data:toJudge()
 		if card then
-			room:retrial(card, player, judge, self:objectName(), true)
+			room:retrial(card, player, judge, skill:objectName(), true)
 			room:broadcastSkillInvoke("LuaGuizha")
 		end
 		return false
@@ -335,21 +407,44 @@ LuaGuizha = sgs.CreateTriggerSkill {
 
 }
 
-LuaQuanbian = sgs.CreateTriggerSkill {
+LuaQuanbian = sgs.CreateTriggerSkillV2 {
 	name = "LuaQuanbian",
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.Damage, sgs.Damaged },
 
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		local damage = data:toDamage()
 		if event == sgs.Damaged then
-			local from = data:toDamage().from
-			local damage = data:toDamage()
+			local from = damage.from
+			if from and not from:isNude() and damage.damage >= 1 then
+				return skill:objectName()
+			end
+		elseif event == sgs.Damage then
+			local from = damage.to
+			if from and from:getEquips():length() > 0 then
+				return skill:objectName()
+			end
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		if event == sgs.Damaged then return true end
+		local damage = ctx.original_data:toDamage()
+		local from = damage.to
+		local invoke_data = sgs.QVariant(0)
+		invoke_data:setValue(from)
+		return room:askForSkillInvoke(player, "LuaQuanbian", invoke_data)
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		if event == sgs.Damaged then
+			local from = ctx.original_data:toDamage().from
+			local damage = ctx.original_data:toDamage()
 			local x = damage.damage
-			local data = sgs.QVariant(0)
-			data:setValue(from)
+			local invoke_data = sgs.QVariant(0)
+			invoke_data:setValue(from)
 			for i = 1, x, 1 do
-				if (from and (not from:isNude()) and room:askForSkillInvoke(player, "LuaQuanbian", data)) then
+				if (from and (not from:isNude()) and room:askForSkillInvoke(player, "LuaQuanbian", invoke_data)) then
 					local card_id = room:askForCardChosen(player, from, "he", "LuaQuanbian")
 					if (room:getCardPlace(card_id) == sgs.Player_Hand) then
 						room:moveCardTo(sgs.Sanguosha:getCard(card_id), player, sgs.Player_Hand, false)
@@ -361,21 +456,17 @@ LuaQuanbian = sgs.CreateTriggerSkill {
 			end
 		end
 		if event == sgs.Damage then
-			local damage = data:toDamage()
+			local damage = ctx.original_data:toDamage()
 			local from = damage.to
-			local x = damage.damage
-			local data = sgs.QVariant(0)
-			data:setValue(from)
-			if (from and from:getEquips():length() > 0 and room:askForSkillInvoke(player, "LuaQuanbian", data)) then
-				local card_id = room:askForCardChosen(player, from, "e", "LuaQuanbian")
-				if (room:getCardPlace(card_id) == sgs.Player_Hand) then
-					room:moveCardTo(sgs.Sanguosha:getCard(card_id), player, sgs.Player_Hand, false)
-				else
-					room:obtainCard(player, card_id)
-				end
-				room:broadcastSkillInvoke("LuaQuanbian")
+			local card_id = room:askForCardChosen(player, from, "e", "LuaQuanbian")
+			if (room:getCardPlace(card_id) == sgs.Player_Hand) then
+				room:moveCardTo(sgs.Sanguosha:getCard(card_id), player, sgs.Player_Hand, false)
+			else
+				room:obtainCard(player, card_id)
 			end
+			room:broadcastSkillInvoke("LuaQuanbian")
 		end
+		return false
 	end
 
 }
@@ -394,100 +485,105 @@ xingsimayi:addSkill(LuaQuanbian)
 xingzhugeliang = sgs.General(extension, "xingzhugeliang", "shu", 3)
 --星诸葛亮
 
-LuaDongchaB = sgs.CreateTriggerSkill {
+LuaDongchaB = sgs.CreateTriggerSkillV2 {
 	name = "#LuaDongchaB",
 	frequency = sgs.Skill_Frequent,
 	events = { sgs.CardUsed },
-	on_trigger = function(self, event, player, data)
+	can_trigger = function(skill, event, room, player, data)
 		local use = data:toCardUse()
-		if use.card:isKindOf("Nullification") then
-			player:drawCards(1)
+		if player and player:isAlive() and player:hasSkill(skill:objectName()) and use.card and use.card:isKindOf("Nullification") then
+			return skill:objectName()
 		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		player:drawCards(1)
+		return false
 	end
 }
 
-LuaNixing = sgs.CreateTriggerSkill {
+LuaNixing = sgs.CreateTriggerSkillV2 {
 	name = "LuaNixing",
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.EventPhaseStart },
-	on_trigger = function(self, event, player, data)
-		if player:getPhase() == sgs.Player_Start then
-			if player:askForSkillInvoke(self:objectName()) then
-				local room = player:getRoom()
-				room:broadcastSkillInvoke("LuaNixing")
-				local count3 = player:getHp()
-				local x = 8
-				if count3 > 0 then
-					x = 8 - count3;
-				end
-				local stars = room:getNCards(x)
-				if x > 0 then
-					room:askForGuanxing(player, stars)
-				end
-			end
+	can_trigger = function(skill, event, room, player, data)
+		if player and player:isAlive() and player:hasSkill(skill:objectName())
+			and player:getPhase() == sgs.Player_Start then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		return room:askForSkillInvoke(player, skill:objectName())
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		room:broadcastSkillInvoke("LuaNixing")
+		local count3 = player:getHp()
+		local x = 8
+		if count3 > 0 then
+			x = 8 - count3;
+		end
+		local stars = room:getNCards(x)
+		if x > 0 then
+			room:askForGuanxing(player, stars)
 		end
 		return false
 	end
 }
 
-LuaDongcha = sgs.CreateViewAsSkill {
+LuaDongcha = sgs.CreateViewAsSkillV2 {
 	name = "LuaDongcha",
 	n = 1,
 	response_or_use = true,
-	view_filter = function(self, selected, to_select)
-		return to_select:getSuit() == sgs.Card_Spade
-	end,
-	view_as = function(self, cards)
-		if #cards == 1 then
-			local card = cards[1]
-			local suit = card:getSuit()
-			local point = card:getNumber()
-			local ncard = sgs.Sanguosha:cloneCard("nullification", suit, point)
-			ncard:addSubcard(card)
-			ncard:setSkillName(self:objectName())
-			return ncard
-		end
-	end,
-	enabled_at_play = function(self, player)
-		return false
-	end,
-	enabled_at_response = function(self, player, pattern)
-		return pattern == "nullification"
-	end,
-	enabled_at_nullification = function(self, player)
-		local handcards = player:getHandcards()
-		for _, card in sgs.qlist(handcards) do
-			if card:getSuit() == sgs.Card_Spade then
-				return true
-			end
-			if card:objectName() == "nullification" then
-				return true
-			end
-		end
-		local cards = player:getEquips()
-		for _, card in sgs.qlist(cards) do
-			if card:getSuit() == sgs.Card_Spade then
-				return true
-			end
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player or not player:isAlive() then return false end
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+			or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			return request:getPattern() == "nullification"
 		end
 		return false
-	end
+	end,
+	can_select_card = function(skill, request, card)
+		return card ~= nil
+			and request:getSelectedCardIds():isEmpty()
+			and card:getSuit() == sgs.Card_Spade
+	end,
+	create_card = function(skill, request)
+		local ids = request:getSelectedCardIds()
+		if ids:isEmpty() then return nil end
+		local card = sgs.Sanguosha:getCard(ids:first())
+		if not card then return nil end
+		local ncard = sgs.Sanguosha:cloneCard("nullification", card:getSuit(), card:getNumber())
+		ncard:addSubcard(card)
+		ncard:setSkillName(skill:objectName())
+		return ncard
+	end,
 }
+-- ServerPlayer::hasNullification 仍然查詢舊版 response_pattern 探針（參照內建 kanpo 的做法）
+LuaDongcha.response_pattern = "nullification"
 
-LuaNixingEx = sgs.CreateTriggerSkill {
+LuaNixingEx = sgs.CreateTriggerSkillV2 {
 	name = "#LuaNixingEx",
 	frequency = sgs.Skill_Frequent,
 	events = { sgs.DrawNCards },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
 		local draw = data:toDraw()
-		if draw.reason~="draw_phase" then return end
-		local y = player:getHp()
-		if (8 - y) >= 7 then
-			draw.num = draw.num+1
-			room:sendCompulsoryTriggerLog(player, "LuaDongcha", true, true)
-			data:setValue(draw)
+		if player and player:isAlive() and player:hasSkill(skill:objectName()) and draw.reason == "draw_phase" then
+			local y = player:getHp()
+			if (8 - y) >= 7 then
+				return skill:objectName()
+			end
 		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local draw = ctx.original_data:toDraw()
+		draw.num = draw.num + 1
+		room:sendCompulsoryTriggerLog(player, "LuaDongcha", true, true)
+		ctx.original_data:setValue(draw)
+		return false
 	end
 }
 
@@ -505,93 +601,122 @@ extension:insertRelatedSkills("LuaNixing", "#LuaNixingEx")
 xingzhaoyun = sgs.General(extension, "xingzhaoyun", "shu", 3)
 --星包赵云
 
-sgs.LuaLongzhenPattern = { "pattern" }
-LuaLongzhen = sgs.CreateViewAsSkill {
+LuaLongzhen = sgs.CreateViewAsSkillV2 {
 	name = "LuaLongzhen",
 	n = 1,
 	response_or_use = true,
-	view_filter = function(self, selected, to_select)
-		if #selected == 0 then
-			local pattern = sgs.LuaLongzhenPattern[1]
-			if pattern == "slash" then
-				return to_select:isKindOf("Jink")
-			elseif pattern == "jink" then
-				return to_select:isKindOf("Slash")
-			end
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player or not player:isAlive() then return false end
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+			return sgs.Slash_IsAvailable(player)
+		end
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+			or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			local pattern = request:getPattern()
+			return pattern == "jink" or pattern == "slash"
 		end
 		return false
 	end,
-	view_as = function(self, cards)
-		if #cards == 1 then
-			local card = cards[1]
-			local suit = card:getSuit()
-			local point = card:getNumber()
-			if card:isKindOf("Slash") then
-				local jink = sgs.Sanguosha:cloneCard("jink", suit, point)
-				jink:addSubcard(card)
-				jink:setSkillName(self:objectName())
-				return jink
-			elseif card:isKindOf("Jink") then
-				local slash = sgs.Sanguosha:cloneCard("slash", suit, point)
-				slash:addSubcard(card)
-				slash:setSkillName(self:objectName())
-				return slash
-			end
+	can_select_card = function(skill, request, card)
+		if not card or not request:getSelectedCardIds():isEmpty() then return false end
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+			return card:isKindOf("Jink")
 		end
-	end,
-	enabled_at_play = function(self, player)
-		if sgs.Slash_IsAvailable(player) then
-			sgs.LuaLongzhenPattern = { "slash" }
-			return true
+		local pattern = request:getPattern()
+		if pattern == "slash" then
+			return card:isKindOf("Jink")
+		elseif pattern == "jink" then
+			return card:isKindOf("Slash")
 		end
 		return false
 	end,
-	enabled_at_response = function(self, player, pattern)
-		if pattern == "jink" or pattern == "slash" then
-			sgs.LuaLongzhenPattern = { pattern }
-			return true
+	create_card = function(skill, request)
+		local ids = request:getSelectedCardIds()
+		if ids:isEmpty() then return nil end
+		local card = sgs.Sanguosha:getCard(ids:first())
+		if not card then return nil end
+		if card:isKindOf("Slash") then
+			local jink = sgs.Sanguosha:cloneCard("jink", card:getSuit(), card:getNumber())
+			jink:addSubcard(card)
+			jink:setSkillName(skill:objectName())
+			return jink
+		elseif card:isKindOf("Jink") then
+			local slash = sgs.Sanguosha:cloneCard("slash", card:getSuit(), card:getNumber())
+			slash:addSubcard(card)
+			slash:setSkillName(skill:objectName())
+			return slash
 		end
-		return false
-	end
+		return nil
+	end,
 }
 
 
-LuaChongzhen = sgs.CreateTriggerSkill {
+LuaChongzhen = sgs.CreateTriggerSkillV2 {
 	name = "#LuaChongzhen",
 	events = { sgs.CardResponded, sgs.TargetConfirmed },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
 		if event == sgs.CardResponded then
 			local resp = data:toCardResponse()
+			if resp.m_card and resp.m_who and not resp.m_who:isKongcheng()
+				and (table.contains(resp.m_card:getSkillNames(), "LuaLongzhen")
+					or resp.m_card:isKindOf("Jink") or resp.m_card:isKindOf("Slash")
+					or resp.m_card:isKindOf("FireSlash") or resp.m_card:isKindOf("ThunderSlash")) then
+				return skill:objectName()
+			end
+		elseif event == sgs.TargetConfirmed then
+			local use = data:toCardUse()
+			if use.from and use.from:objectName() == player:objectName()
+				and use.card and (table.contains(use.card:getSkillNames(), "LuaLongzhen")
+					or use.card:isKindOf("Slash") or use.card:isKindOf("FireSlash")
+					or use.card:isKindOf("ThunderSlash")) then
+				for _, p in sgs.qlist(use.to) do
+					if not p:isNude() then
+						return skill:objectName()
+					end
+				end
+			end
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		return true
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		if event == sgs.CardResponded then
+			local resp = ctx.original_data:toCardResponse()
 			if (table.contains(resp.m_card:getSkillNames(), "LuaLongzhen") or resp.m_card:isKindOf("Jink") or resp.m_card:isKindOf("Slash") or resp.m_card:isKindOf("FireSlash") or resp.m_card:isKindOf("ThunderSlash")) and resp.m_who and (not resp.m_who:isKongcheng()) then
 				room:broadcastSkillInvoke("#LuaChongzhen")
 				local _data = sgs.QVariant()
 				_data:setValue(resp.m_who)
 				resp.m_who:setFlags("LuaChongzhenTarget")
-				if player:askForSkillInvoke(self:objectName(), _data) then
-					local card_id = room:askForCardChosen(player, resp.m_who, "h", self:objectName())
+				if player:askForSkillInvoke(skill:objectName(), _data) then
+					local card_id = room:askForCardChosen(player, resp.m_who, "h", skill:objectName())
 					room:obtainCard(player, sgs.Sanguosha:getCard(card_id), false)
 				end
 				resp.m_who:setFlags("-LuaChongzhenTarget")
 			end
 		else
-			local use = data:toCardUse()
+			local use = ctx.original_data:toCardUse()
 			if ((use.from:objectName() == player:objectName()) and (table.contains(use.card:getSkillNames(), "LuaLongzhen") or use.card:isKindOf("Slash") or use.card:isKindOf("FireSlash") or use.card:isKindOf("ThunderSlash"))) then
 				for _, p in sgs.qlist(use.to) do
-					if p:isNude() then continue end
-					local _data = sgs.QVariant()
-					_data:setValue(p)
-					p:setFlags("LuaChongzhenTarget")
-					local invoke = nil
-					if not player:hasFlag("LuaChongzhenTarget") then
-						invoke = player:askForSkillInvoke(self:objectName(), _data)
-					end
-					p:setFlags("-LuaChongzhenTarget")
-					if invoke then
-						room:broadcastSkillInvoke("#LuaChongzhen")
-						local card_id = room:askForCardChosen(player, p, "he", self:objectName())
-						room:obtainCard(player, sgs.Sanguosha:getCard(card_id), false)
+					if not p:isNude() then
+						local _data = sgs.QVariant()
+						_data:setValue(p)
+						p:setFlags("LuaChongzhenTarget")
+						local invoke = nil
+						if not player:hasFlag("LuaChongzhenTarget") then
+							invoke = player:askForSkillInvoke(skill:objectName(), _data)
+						end
+						p:setFlags("-LuaChongzhenTarget")
+						if invoke then
+							room:broadcastSkillInvoke("#LuaChongzhen")
+							local card_id = room:askForCardChosen(player, p, "he", skill:objectName())
+							room:obtainCard(player, sgs.Sanguosha:getCard(card_id), false)
+						end
 					end
 				end
 			end
@@ -649,25 +774,41 @@ LuaFanjianCard = sgs.CreateSkillCard {
 		end
 	end
 }
-LuaFanjian = sgs.CreateViewAsSkill {
+LuaFanjian = sgs.CreateViewAsSkillV2 {
 	name = "LuaFanjian",
 	n = 1,
-	view_filter = function(self, selected, to_select)
-		return not to_select:isEquipped()
-	end,
-	view_as = function(self, cards)
-		if #cards == 1 then
-			local card = LuaFanjianCard:clone()
-			card:addSubcard(cards[1])
-			return card
-		end
-	end,
-	enabled_at_play = function(self, player)
+	target_mode = sgs.ViewAsSkillV2_SelectTargets,
+	target_effect_mode = sgs.ViewAsSkillV2_EachTarget,
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player or not player:isAlive() then return false end
+		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		if not player:isKongcheng() then
 			return not player:hasUsed("#LuaFanjianCard")
 		end
 		return false
-	end
+	end,
+	can_select_card = function(skill, request, card)
+		return card ~= nil
+			and request:getSelectedCardIds():isEmpty()
+			and not card:isEquipped()
+	end,
+	can_select_target = function(skill, request, selected, candidate)
+		local player = request:getInitiator()
+		return player ~= nil and candidate ~= nil
+			and #selected == 0
+			and candidate:objectName() ~= player:objectName()
+	end,
+	targets_feasible = function(skill, request, selected)
+		return #selected == 1
+	end,
+	create_card = function(skill, request)
+		local ids = request:getSelectedCardIds()
+		if ids:isEmpty() then return nil end
+		local card = LuaFanjianCard:clone()
+		card:addSubcard(ids:first())
+		return card
+	end,
 }
 
 xingzhouyu:addSkill("yingzi")
@@ -689,25 +830,31 @@ LuaRusheng = sgs.CreateProhibitSkill {
 }
 
 
-LuaXiongcai = sgs.CreateTriggerSkill {
+LuaXiongcai = sgs.CreateTriggerSkillV2 {
 	name = "LuaXiongcai",
 	events = { sgs.EventPhaseStart, sgs.CardsMoveOneTime },
 	frequency = sgs.Skill_Compulsory,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		if event ~= sgs.CardsMoveOneTime then return false end
 		local num = player:getHandcardNum()
 		local lost = 3
-		if num >= lost then return end
-		if player:getPhase() ~= sgs.Player_Discard then
-			if event == sgs.CardsMoveOneTime then
-				local move = data:toMoveOneTime()
-				if move.from and move.from:objectName() == player:objectName() then
-					room:sendCompulsoryTriggerLog(player, "LuaXiongcai", true)
-					player:drawCards(lost - num)
-					room:broadcastSkillInvoke("LuaXiongcai")
-				end
-			end
+		if num >= lost then return false end
+		if player:getPhase() == sgs.Player_Discard then return false end
+		local move = data:toMoveOneTime()
+		if move.from and move.from:objectName() == player:objectName() then
+			return skill:objectName()
 		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local num = player:getHandcardNum()
+		local lost = 3
+		if num >= lost then return false end
+		room:sendCompulsoryTriggerLog(player, "LuaXiongcai", true)
+		player:drawCards(lost - num)
+		room:broadcastSkillInvoke("LuaXiongcai")
+		return false
 	end
 }
 
@@ -720,83 +867,94 @@ xingluxun:addSkill(LuaXiongcai)
 xinglvbu = sgs.General(extension, "xinglvbu", "qun", 4)
 --星包吕布
 
-LuaShenji = sgs.CreateTargetModSkill {
+LuaShenji = sgs.CreateTargetModSkillV2 {
 	name = "#LuaShenji",
-	extra_target_func = function(self, from, card)
-		if from:hasSkill("LuaGuishen") and (card:isRed()) then
-			local count = math.min(from:getLostHp() + 1, 2)
-			return count
-		else
-			return 0
-		end
-	end,
-	distance_limit_func = function(self, from, card)
-		if from:hasSkill("LuaGuishen") and (card:isBlack()) then
-			return 1000
-		else
-			return 0
-		end
-	end
-}
-
-LuaGuishen = sgs.CreateViewAsSkill {
-	name = "LuaGuishen",
-	n = 1,
-	response_or_use = true,
-	view_filter = function(self, selected, to_select)
-		if to_select:isEquipped() then return false end
-		if (sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY) and sgs.Self:getWeapon()
-			and (to_select:getEffectiveId() == sgs.Self:getWeapon():getId()) and to_select:isKindOf("Crossbow") then
-			return sgs.Self:canSlashWithoutCrossbow()
-		else
-			return true
-		end
-	end,
-	view_as = function(self, cards)
-		if #cards == 1 then
-			local card = cards[1]
-			local slash = sgs.Sanguosha:cloneCard("slash", card:getSuit(), card:getNumber())
-			slash:addSubcard(card:getId())
-			slash:setSkillName(self:objectName())
-			return slash
-		end
-	end,
-	enabled_at_play = function(self, player)
-		return sgs.Slash_IsAvailable(player)
-	end,
-	enabled_at_response = function(self, player, pattern)
-		return pattern == "slash"
-	end
-}
-
-LuaWushuang = sgs.CreateTriggerSkill {
-	name = "#LuaWushuang",
-	frequency = sgs.Skill_Compulsory,
-	events = { sgs.TargetConfirmed },
-	on_trigger = function(self, event, player, data)
-		if event == sgs.TargetConfirmed then
-			local use = data:toCardUse()
-			local can_invoke = false
-			local room = player:getRoom()
-			if use.card:isKindOf("Slash") and (player and player:isAlive() and player:hasSkill(self:objectName())) and (use.from:objectName() == player:objectName()) then
-				can_invoke = true
-				local jink_table = sgs.QList2Table(player:getTag("Jink_" .. use.card:toString()):toIntList())
-				room:broadcastSkillInvoke("wushuang")
-				room:sendCompulsoryTriggerLog(player, "LuaGuishen", true)
-				for i = 0, use.to:length() - 1, 1 do
-					if jink_table[i + 1] == 1 then
-						jink_table[i + 1] = 2 --只要设置出两张闪就可以了，不用两次askForCard
-					end
-				end
-				local jink_data = sgs.QVariant()
-				jink_data:setValue(Table2IntList(jink_table))
-				player:setTag("Jink_" .. use.card:toString(), jink_data)
+	correct_func = function(skill, ctx)
+		local from = ctx:getPrimary()
+		local card = ctx:getCard()
+		if not (from and card and from:hasSkill("LuaGuishen")) then return false end
+		local modType = ctx:getModType()
+		if modType == sgs.TargetModSkill_ExtraTarget then
+			if card:isRed() then
+				return math.min(from:getLostHp() + 1, 2)
+			end
+		elseif modType == sgs.TargetModSkill_DistanceLimit then
+			if card:isBlack() then
+				return 1000
 			end
 		end
 		return false
+	end
+}
+
+LuaGuishen = sgs.CreateViewAsSkillV2 {
+	name = "LuaGuishen",
+	n = 1,
+	response_or_use = true,
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player or not player:isAlive() then return false end
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+			return sgs.Slash_IsAvailable(player)
+		end
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+			or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			return request:getPattern() == "slash"
+		end
+		return false
 	end,
-	can_trigger = function(self, target)
-		return target
+	can_select_card = function(skill, request, card)
+		if not card or not request:getSelectedCardIds():isEmpty() then return false end
+		if card:isEquipped() then return false end
+		local player = request:getInitiator()
+		if not player then return false end
+		if request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY and player:getWeapon()
+			and (card:getEffectiveId() == player:getWeapon():getId()) and card:isKindOf("Crossbow") then
+			return player:canSlashWithoutCrossbow()
+		end
+		return true
+	end,
+	create_card = function(skill, request)
+		local ids = request:getSelectedCardIds()
+		if ids:isEmpty() then return nil end
+		local card = sgs.Sanguosha:getCard(ids:first())
+		if not card then return nil end
+		local slash = sgs.Sanguosha:cloneCard("slash", card:getSuit(), card:getNumber())
+		slash:addSubcard(card:getId())
+		slash:setSkillName(skill:objectName())
+		return slash
+	end,
+}
+
+LuaWushuang = sgs.CreateTriggerSkillV2 {
+	name = "#LuaWushuang",
+	frequency = sgs.Skill_Compulsory,
+	events = { sgs.TargetConfirmed },
+	can_trigger = function(skill, event, room, player, data)
+		if event ~= sgs.TargetConfirmed then return false end
+		local use = data:toCardUse()
+		if use.card and use.card:isKindOf("Slash")
+			and (player and player:isAlive() and player:hasSkill(skill:objectName()))
+			and use.from and (use.from:objectName() == player:objectName()) then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local use = ctx.original_data:toCardUse()
+		local jink_table = sgs.QList2Table(player:getTag("Jink_" .. use.card:toString()):toIntList())
+		room:broadcastSkillInvoke("wushuang")
+		room:sendCompulsoryTriggerLog(player, "LuaGuishen", true)
+		for i = 0, use.to:length() - 1, 1 do
+			if jink_table[i + 1] == 1 then
+				jink_table[i + 1] = 2 --只要设置出两张闪就可以了，不用两次askForCard
+			end
+		end
+		local jink_data = sgs.QVariant()
+		jink_data:setValue(Table2IntList(jink_table))
+		player:setTag("Jink_" .. use.card:toString(), jink_data)
+		return false
 	end
 }
 
@@ -811,64 +969,91 @@ extension:insertRelatedSkills("LuaGuishen", "#LuaWushuang")
 xingzhaoyun_o = sgs.General(extension, "xingzhaoyun_o", "shu", 3)
 mobanzhaoyun = sgs.General(extension, "mobanzhaoyun", "shu", 3, true, true, true)
 --星赵云
-sgs.LongdanPattern = { "pattern" }
-LuaLongzhen_o = sgs.CreateViewAsSkill {
+LuaLongzhen_o = sgs.CreateViewAsSkillV2 {
 	name = "LuaLongzhen_o",
 	n = 1,
 	response_or_use = true,
-	view_filter = function(self, selected, to_select)
-		if #selected == 0 then
-			local pattern = sgs.LongdanPattern[1]
-			if pattern == "slash" then
-				return to_select:isKindOf("Jink")
-			elseif pattern == "jink" then
-				return to_select:isKindOf("Slash")
-			end
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player or not player:isAlive() then return false end
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+			return sgs.Slash_IsAvailable(player)
+		end
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+			or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			local pattern = request:getPattern()
+			return pattern == "jink" or pattern == "slash"
 		end
 		return false
 	end,
-	view_as = function(self, cards)
-		if #cards == 1 then
-			local card = cards[1]
-			local suit = card:getSuit()
-			local point = card:getNumber()
-			if card:isKindOf("Slash") then
-				local jink = sgs.Sanguosha:cloneCard("jink", suit, point)
-				jink:addSubcard(card)
-				jink:setSkillName(self:objectName())
-				return jink
-			elseif card:isKindOf("Jink") then
-				local slash = sgs.Sanguosha:cloneCard("slash", suit, point)
-				slash:addSubcard(card)
-				slash:setSkillName(self:objectName())
-				return slash
-			end
+	can_select_card = function(skill, request, card)
+		if not card or not request:getSelectedCardIds():isEmpty() then return false end
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+			return card:isKindOf("Jink")
 		end
-	end,
-	enabled_at_play = function(self, player)
-		if sgs.Slash_IsAvailable(player) then
-			sgs.LongdanPattern = { "slash" }
-			return true
+		local pattern = request:getPattern()
+		if pattern == "slash" then
+			return card:isKindOf("Jink")
+		elseif pattern == "jink" then
+			return card:isKindOf("Slash")
 		end
 		return false
 	end,
-	enabled_at_response = function(self, player, pattern)
-		if pattern == "jink" or pattern == "slash" then
-			sgs.LongdanPattern = { pattern }
-			return true
+	create_card = function(skill, request)
+		local ids = request:getSelectedCardIds()
+		if ids:isEmpty() then return nil end
+		local card = sgs.Sanguosha:getCard(ids:first())
+		if not card then return nil end
+		if card:isKindOf("Slash") then
+			local jink = sgs.Sanguosha:cloneCard("jink", card:getSuit(), card:getNumber())
+			jink:addSubcard(card)
+			jink:setSkillName(skill:objectName())
+			return jink
+		elseif card:isKindOf("Jink") then
+			local slash = sgs.Sanguosha:cloneCard("slash", card:getSuit(), card:getNumber())
+			slash:addSubcard(card)
+			slash:setSkillName(skill:objectName())
+			return slash
 		end
-		return false
-	end
+		return nil
+	end,
 }
 
-LuaChongzhen_o = sgs.CreateTriggerSkill {
+LuaChongzhen_o = sgs.CreateTriggerSkillV2 {
 	name = "#LuaChongzhen_o",
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.CardResponded, sgs.TargetConfirmed },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
 		if event == sgs.CardResponded then
 			local resp = data:toCardResponse()
+			local dest = resp.m_who
+			local card = resp.m_card
+			if card and table.contains(card:getSkillNames(), "LuaLongzhen_o")
+				and dest and not dest:isKongcheng() then
+				return skill:objectName()
+			end
+		elseif event == sgs.TargetConfirmed then
+			local use = data:toCardUse()
+			if use.from and use.from:objectName() == player:objectName()
+				and use.card and table.contains(use.card:getSkillNames(), "LuaLongzhen_o") then
+				for _, dest in sgs.qlist(use.to) do
+					if not dest:isKongcheng() then
+						return skill:objectName()
+					end
+				end
+			end
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		return true
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		if event == sgs.CardResponded then
+			local resp = ctx.original_data:toCardResponse()
 			local dest = resp.m_who
 			local card = resp.m_card
 			if table.contains(card:getSkillNames(), "LuaLongzhen_o") then
@@ -876,14 +1061,14 @@ LuaChongzhen_o = sgs.CreateTriggerSkill {
 					local ai_data = sgs.QVariant()
 					ai_data:setValue(dest)
 					if player:askForSkillInvoke("LuaLongzhen_o", ai_data) then
-						card_id = room:askForCardChosen(player, dest, "h", "LuaLongzhen_o")
+						local card_id = room:askForCardChosen(player, dest, "h", "LuaLongzhen_o")
 						local destcard = sgs.Sanguosha:getCard(card_id)
 						room:obtainCard(player, destcard)
 					end
 				end
 			end
 		elseif event == sgs.TargetConfirmed then
-			local use = data:toCardUse()
+			local use = ctx.original_data:toCardUse()
 			if use.from:objectName() == player:objectName() then
 				if table.contains(use.card:getSkillNames(), "LuaLongzhen_o") then
 					local targets = use.to
@@ -905,142 +1090,192 @@ LuaChongzhen_o = sgs.CreateTriggerSkill {
 	end
 }
 
-LuaXDuojian = sgs.CreateTriggerSkill {
+LuaXDuojian = sgs.CreateTriggerSkillV2 {
 	name = "#LuaXDuojian",
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.EventPhaseStart },
-	on_trigger = function(self, event, player, data)
-		if player:getPhase() == sgs.Player_Start then
-			local room = player:getRoom()
-			local others = room:getOtherPlayers(player)
-			for _, p in sgs.qlist(others) do
-				local weapon = p:getWeapon()
-				if weapon and weapon:objectName() == "QinggangSword" then
-					if room:askForSkillInvoke(player, self:objectName()) then
-						player:obtainCard(weapon)
-					end
-				end
-			end
-		end
-		return false
-	end
-}
-
-LuaLongwei = sgs.CreateTriggerSkill {
-	name = "LuaLongwei",
-	frequency = sgs.Skill_Frequent,
-	events = { sgs.BeforeCardsMove },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		local move = data:toMoveOneTime()
-		if (move.from == nil) or (move.from:objectName() == player:objectName()) then return false end
-		if (move.to_place == sgs.Player_DiscardPile)
-			and ((bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD)
-				or (move.reason.m_reason == sgs.CardMoveReason_S_REASON_JUDGEDONE)) then
-			local card_ids = sgs.IntList()
-			local i = 0
-			for _, card_id in sgs.qlist(move.card_ids) do
-				if (sgs.Sanguosha:getCard(card_id):getSuit() == sgs.Card_Diamond or sgs.Sanguosha:getCard(card_id):getSuit() == sgs.Card_Heart)
-					and (((move.reason.m_reason == sgs.CardMoveReason_S_REASON_JUDGEDONE)
-							and (move.from_places:at(i) == sgs.Player_PlaceJudge)
-							and (move.to_place == sgs.Player_DiscardPile))
-						or ((move.reason.m_reason ~= sgs.CardMoveReason_S_REASON_JUDGEDONE)
-							and (room:getCardOwner(card_id):objectName() == move.from:objectName())
-							and ((move.from_places:at(i) == sgs.Player_PlaceHand) or (move.from_places:at(i) == sgs.Player_PlaceEquip)))) then
-					card_ids:append(card_id)
-				end
-				i = i + 1
-			end
-			if card_ids:isEmpty() then
-				return false
-			elseif player:askForSkillInvoke(self:objectName(), data) then
-				if not card_ids:length() == 1 then
-					while not card_ids:isEmpty() do
-						room:fillAG(card_ids, player)
-						local id = room:askForAG(player, card_ids, true, self:objectName())
-						if id == -1 then
-							room:clearAG(player)
-							break
-						end
-						card_ids:removeOne(id)
-						room:clearAG(player)
-					end
-				end
-				local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-				if not card_ids:isEmpty() then
-					for _, id in sgs.qlist(card_ids) do
-						if move.card_ids:contains(id) then
-							move.from_places:removeAt(listIndexOf(move.card_ids, id))
-							move.card_ids:removeOne(id)
-							data:setValue(move)
-						end
-						dummy:addSubcard(id)
-						--room:moveCardTo(sgs.Sanguosha:getCard(id), player, sgs.Player_PlaceHand, move.reason, true)
-						if not player:isAlive() then break end
-					end
-				end
-				room:obtainCard(player, dummy)
-				dummy:deleteLater()
-			end
-		end
-		return false
-	end
-}
-
-
-LuaShenyong = sgs.CreateTriggerSkill {
-	name = "LuaShenyong",
-	frequency = sgs.Skill_NotFrequent,
-	events = { sgs.CardOffset },
-	on_trigger = function(self, event, player, data)
-		local effect = data:toCardEffect()
-		local source = effect.from
-		local dest = effect.to
-		if effect.card:isKindOf("Slash") and dest:isAlive() then
-			if not dest:isNude() then
-				if player:askForSkillInvoke(self:objectName(), data) then
-					local room = source:getRoom()
-					room:broadcastSkillInvoke("LuaShenyong")
-					local prompt = string.format("@tiaoxin-slash:%s", source:objectName())
-					if not room:askForUseSlashTo(dest, source, prompt) then
-						if player:canDiscard(dest, "he") then
-							local chosen = room:askForCardChosen(source, dest, "he", self:objectName())
-							room:throwCard(chosen, dest, source)
-						end
-					end
-				end
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		if player:getPhase() ~= sgs.Player_Start then return false end
+		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+			local weapon = p:getWeapon()
+			if weapon and weapon:objectName() == "QinggangSword" then
+				return skill:objectName()
 			end
 		end
 		return false
 	end,
-	priority = 2
-}
-
-LuaJuejing = sgs.CreateTriggerSkill {
-	name = "LuaJuejing",
-	events = { sgs.BeforeCardsMove, sgs.CardsMoveOneTime },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		local move = data:toMoveOneTime()
-		if move.from and move.from:hasSkill(self:objectName()) and move.from_places:contains(sgs.Player_PlaceHand) then
-			if event == sgs.BeforeCardsMove then
-				for _, rh in sgs.qlist(player:handCards()) do
-					if not move.card_ids:contains(rh) then return end
-				end
-				player:addMark(self:objectName())
-			else
-				if player:getMark(self:objectName()) == 0 then return end
-				player:removeMark(self:objectName())
-				if not room:askForSkillInvoke(player, self:objectName(), data) then return end
-				room:broadcastSkillInvoke("LuaJuejing");
-				if room:changeMaxHpForAwakenSkill(player, -1, self:objectName()) then
-					room:handleAcquireDetachSkills(player, "LuaLongwei|-LuaJuejing|-LuaShenyong")
-					room:addMaxCards(player, 1, false)
-					room:addPlayerMark(player, "&LuaJuejing")
-					player:drawCards(4)
+	on_cost = function(skill, event, room, player, ctx)
+		return true
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local others = room:getOtherPlayers(player)
+		for _, p in sgs.qlist(others) do
+			local weapon = p:getWeapon()
+			if weapon and weapon:objectName() == "QinggangSword" then
+				if room:askForSkillInvoke(player, skill:objectName()) then
+					player:obtainCard(weapon)
 				end
 			end
 		end
+		return false
+	end
+}
+
+LuaLongwei = sgs.CreateTriggerSkillV2 {
+	name = "LuaLongwei",
+	frequency = sgs.Skill_Frequent,
+	events = { sgs.BeforeCardsMove },
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		local move = data:toMoveOneTime()
+		if (move.from == nil) or (move.from:objectName() == player:objectName()) then return false end
+		if not ((move.to_place == sgs.Player_DiscardPile)
+			and ((bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD)
+				or (move.reason.m_reason == sgs.CardMoveReason_S_REASON_JUDGEDONE))) then
+			return false
+		end
+		local card_ids = sgs.IntList()
+		local i = 0
+		for _, card_id in sgs.qlist(move.card_ids) do
+			if (sgs.Sanguosha:getCard(card_id):getSuit() == sgs.Card_Diamond or sgs.Sanguosha:getCard(card_id):getSuit() == sgs.Card_Heart)
+				and (((move.reason.m_reason == sgs.CardMoveReason_S_REASON_JUDGEDONE)
+						and (move.from_places:at(i) == sgs.Player_PlaceJudge)
+						and (move.to_place == sgs.Player_DiscardPile))
+					or ((move.reason.m_reason ~= sgs.CardMoveReason_S_REASON_JUDGEDONE)
+						and (room:getCardOwner(card_id):objectName() == move.from:objectName())
+						and ((move.from_places:at(i) == sgs.Player_PlaceHand) or (move.from_places:at(i) == sgs.Player_PlaceEquip)))) then
+				card_ids:append(card_id)
+			end
+			i = i + 1
+		end
+		if card_ids:isEmpty() then return false end
+		return skill:objectName()
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		return player:askForSkillInvoke(skill:objectName(), ctx.original_data)
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local move = ctx.original_data:toMoveOneTime()
+		local card_ids = sgs.IntList()
+		local i = 0
+		for _, card_id in sgs.qlist(move.card_ids) do
+			if (sgs.Sanguosha:getCard(card_id):getSuit() == sgs.Card_Diamond or sgs.Sanguosha:getCard(card_id):getSuit() == sgs.Card_Heart)
+				and (((move.reason.m_reason == sgs.CardMoveReason_S_REASON_JUDGEDONE)
+						and (move.from_places:at(i) == sgs.Player_PlaceJudge)
+						and (move.to_place == sgs.Player_DiscardPile))
+					or ((move.reason.m_reason ~= sgs.CardMoveReason_S_REASON_JUDGEDONE)
+						and (room:getCardOwner(card_id):objectName() == move.from:objectName())
+						and ((move.from_places:at(i) == sgs.Player_PlaceHand) or (move.from_places:at(i) == sgs.Player_PlaceEquip)))) then
+				card_ids:append(card_id)
+			end
+			i = i + 1
+		end
+		if card_ids:isEmpty() then
+			return false
+		end
+		if not card_ids:length() == 1 then
+			while not card_ids:isEmpty() do
+				room:fillAG(card_ids, player)
+				local id = room:askForAG(player, card_ids, true, skill:objectName())
+				if id == -1 then
+					room:clearAG(player)
+					break
+				end
+				card_ids:removeOne(id)
+				room:clearAG(player)
+			end
+		end
+		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+		if not card_ids:isEmpty() then
+			for _, id in sgs.qlist(card_ids) do
+				if move.card_ids:contains(id) then
+					move.from_places:removeAt(listIndexOf(move.card_ids, id))
+					move.card_ids:removeOne(id)
+					ctx.original_data:setValue(move)
+				end
+				dummy:addSubcard(id)
+				--room:moveCardTo(sgs.Sanguosha:getCard(id), player, sgs.Player_PlaceHand, move.reason, true)
+				if not player:isAlive() then break end
+			end
+		end
+		room:obtainCard(player, dummy)
+		dummy:deleteLater()
+		return false
+	end
+}
+
+
+LuaShenyong = sgs.CreateTriggerSkillV2 {
+	name = "LuaShenyong",
+	frequency = sgs.Skill_NotFrequent,
+	events = { sgs.CardOffset },
+	priority = 2,
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		local effect = data:toCardEffect()
+		local dest = effect.to
+		if effect.card and effect.card:isKindOf("Slash") and dest and dest:isAlive() and not dest:isNude() then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		return player:askForSkillInvoke(skill:objectName(), ctx.original_data)
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local effect = ctx.original_data:toCardEffect()
+		local source = effect.from
+		local dest = effect.to
+		room:broadcastSkillInvoke("LuaShenyong")
+		local prompt = string.format("@tiaoxin-slash:%s", source:objectName())
+		if not room:askForUseSlashTo(dest, source, prompt) then
+			if player:canDiscard(dest, "he") then
+				local chosen = room:askForCardChosen(source, dest, "he", skill:objectName())
+				room:throwCard(chosen, dest, source)
+			end
+		end
+		return false
+	end
+}
+
+LuaJuejing = sgs.CreateTriggerSkillV2 {
+	name = "LuaJuejing",
+	events = { sgs.BeforeCardsMove, sgs.CardsMoveOneTime },
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		local move = data:toMoveOneTime()
+		if not (move.from and move.from:hasSkill(skill:objectName()) and move.from_places:contains(sgs.Player_PlaceHand)) then
+			return false
+		end
+		if event == sgs.BeforeCardsMove then
+			for _, rh in sgs.qlist(player:handCards()) do
+				if not move.card_ids:contains(rh) then return false end
+			end
+			return skill:objectName()
+		else
+			if player:getMark(skill:objectName()) == 0 then return false end
+			return skill:objectName()
+		end
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		if event ~= sgs.CardsMoveOneTime then return true end
+		player:removeMark(skill:objectName())
+		return room:askForSkillInvoke(player, skill:objectName(), ctx.original_data)
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		if event == sgs.BeforeCardsMove then
+			player:addMark(skill:objectName())
+		else
+			room:broadcastSkillInvoke("LuaJuejing");
+			if room:changeMaxHpForAwakenSkill(player, -1, skill:objectName()) then
+				room:handleAcquireDetachSkills(player, "LuaLongwei|-LuaJuejing|-LuaShenyong")
+				room:addMaxCards(player, 1, false)
+				room:addPlayerMark(player, "&LuaJuejing")
+				player:drawCards(4)
+			end
+		end
+		return false
 	end,
 }
 
@@ -1059,7 +1294,7 @@ extension:insertRelatedSkills("LuaShenyong", "#LuaXDuojian")
 mubanXlubu = sgs.General(extension, "mubanXlubu", "qun", 4, true, true, true)
 
 
-local Exchange1 = function(xinglvbu)
+local Exchange1 = function(xinglvbu, skill_name)
 	local wrath = xinglvbu:getPile("wrath")
 	if wrath:length() > 0 then
 		local room = xinglvbu:getRoom()
@@ -1073,14 +1308,14 @@ local Exchange1 = function(xinglvbu)
 
 		room:broadcastSkillInvoke("LuaBaonu")
 		if xinglvbu:hasSkill("xingLuashenji") then
-			if room:changeMaxHpForAwakenSkill(xinglvbu, -1, self:objectName()) then
+			if room:changeMaxHpForAwakenSkill(xinglvbu, -1, skill_name) then
 				room:addMaxCards(xinglvbu, 1, false)
 				room:handleAcquireDetachSkills(xinglvbu, "exshenji")
 				room:handleAcquireDetachSkills(xinglvbu, "-LuaBaonu")
 				room:handleAcquireDetachSkills(xinglvbu, "-LuaHuaji")
 			end
 		else
-			if room:changeMaxHpForAwakenSkill(xinglvbu, -1, self:objectName()) then
+			if room:changeMaxHpForAwakenSkill(xinglvbu, -1, skill_name) then
 				room:addMaxCards(xinglvbu, 1, false)
 				room:handleAcquireDetachSkills(xinglvbu, "xingLuashenji")
 			end
@@ -1089,35 +1324,47 @@ local Exchange1 = function(xinglvbu)
 end
 
 
-exshenji = sgs.CreateTriggerSkill {
+exshenji = sgs.CreateTriggerSkillV2 {
 	name = "exshenji",
 	frequency = sgs.Skill_Frequent,
 	events = { sgs.EventPhaseStart },
-	on_trigger = function(self, event, player, data)
-		if player:getPhase() == sgs.Player_Finish then
-			local room = player:getRoom()
-			if room:askForSkillInvoke(player, self:objectName()) then
-				player:drawCards(2)
-				room:broadcastSkillInvoke("exshenji")
-			end
-		end
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		if player:getPhase() ~= sgs.Player_Finish then return false end
+		return skill:objectName()
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		return room:askForSkillInvoke(player, skill:objectName())
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		player:drawCards(2)
+		room:broadcastSkillInvoke("exshenji")
+		return false
 	end
 }
-xingLuashenji = sgs.CreateTriggerSkill {
+xingLuashenji = sgs.CreateTriggerSkillV2 {
 	name = "xingLuashenji",
 	frequency = sgs.Skill_Wake,
 	waked_skills = "exshenji",
 	events = { sgs.EventPhaseStart },
-	on_trigger = function(self, event, player, data, room)
-		if player:getPile("wrath"):length() > 2 or player:canWake(self:objectName()) then
-			if player:hasSkill(self:objectName()) then
-				Exchange1(player)
-				room:addPlayerMark(player, self:objectName())
+	can_trigger = function(skill, event, room, player, data)
+		if player and player:getPhase() == sgs.Player_Start
+			and player:getMark(skill:objectName()) < 1 and player:hasSkill(skill:objectName()) then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		return true
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		if player:getPile("wrath"):length() > 2 or player:canWake(skill:objectName()) then
+			if player:hasSkill(skill:objectName()) then
+				Exchange1(player, skill:objectName())
+				room:addPlayerMark(player, skill:objectName())
 			end
 		end
-	end,
-	can_trigger = function(self, player)
-		return player and player:getPhase() == sgs.Player_Start and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
+		return false
 	end,
 }
 mubanXlubu:addSkill(exshenji)
@@ -1126,101 +1373,123 @@ mubanXlubu:addSkill(xingLuashenji)
 xinglvbu_o = sgs.General(extension, "xinglvbu_o", "qun", 4)
 
 
-LuaMashu = sgs.CreateDistanceSkill {
+LuaMashu = sgs.CreateDistanceSkillV2 {
 	name = "#LuaMashu",
-	correct_func = function(self, from, to)
-		if from:hasSkill("#LuaMashu") then
+	correct_func = function(skill, ctx)
+		local from = ctx:getPrimary()
+		if from and from:hasSkill("#LuaMashu") then
 			return -1
 		end
+		return false
 	end,
 }
 
 --赤兔
-os_chitu = sgs.CreateTriggerSkill {
+os_chitu = sgs.CreateTriggerSkillV2 {
 	name = "os_chitu",
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.TargetConfirmed },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		if event == sgs.TargetConfirmed then
-			local use = data:toCardUse()
-			local can_invoke = false
-			if use.card:isKindOf("Slash") and (player and player:isAlive() and player:hasSkill(self:objectName())) and (use.from:objectName() == player:objectName()) then
-				can_invoke = true
-				local jink_table = sgs.QList2Table(player:getTag("Jink_" .. use.card:toString()):toIntList())
-				for i = 0, use.to:length() - 1, 1 do
-					if jink_table[i + 1] == 1 then
-						jink_table[i + 1] = 2 --只要设置出两张闪就可以了，不用两次askForCard
-					end
-				end
-				local jink_data = sgs.QVariant()
-				jink_data:setValue(Table2IntList(jink_table))
-				player:setTag("Jink_" .. use.card:toString(), jink_data)
-			end
+	priority = 1,
+	can_trigger = function(skill, event, room, player, data)
+		if event ~= sgs.TargetConfirmed then return false end
+		local use = data:toCardUse()
+		if use.card and use.card:isKindOf("Slash")
+			and (player and player:isAlive() and player:hasSkill(skill:objectName()))
+			and use.from and (use.from:objectName() == player:objectName()) then
+			return skill:objectName()
 		end
 		return false
 	end,
-	can_trigger = function(self, target)
-		return target
+	on_effect = function(skill, event, room, player, ctx)
+		local use = ctx.original_data:toCardUse()
+		local jink_table = sgs.QList2Table(player:getTag("Jink_" .. use.card:toString()):toIntList())
+		for i = 0, use.to:length() - 1, 1 do
+			if jink_table[i + 1] == 1 then
+				jink_table[i + 1] = 2 --只要设置出两张闪就可以了，不用两次askForCard
+			end
+		end
+		local jink_data = sgs.QVariant()
+		jink_data:setValue(Table2IntList(jink_table))
+		player:setTag("Jink_" .. use.card:toString(), jink_data)
+		return false
 	end,
-	priority = 1,
 }
 
 --画戟
-LuaHuaji = sgs.CreateTriggerSkill {
+LuaHuaji = sgs.CreateTriggerSkillV2 {
 	name = "LuaHuaji",
 	frequency = sgs.Skill_Frequent,
 	events = { sgs.Damaged, sgs.Damage },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
 		local wrath = player:getPile("wrath")
 		local damage = data:toDamage()
 		local x = damage.damage
 		local n = wrath:length()
-		if n < 3 then
-			if n + x > 3 then
-				x = 1
-			end
-			if x < 1 then return false end
-			if room:askForSkillInvoke(player, self:objectName(), data) then
-				for i = 1, x, 1 do
-					room:drawCards(player, 1)
-					room:broadcastSkillInvoke("LuaHuaji")
-					if not player:isKongcheng() then
-						local card_id = -1
-						local handcards = player:handCards()
-						if handcards:length() == 1 then
-							room:getThread():delay(500)
-							card_id = handcards:first()
-						else
-							local cards = room:askForExchange(player, self:objectName(), 1, 1, false, "QuanjiPush")
-							card_id = cards:getSubcards():first()
-						end
-						player:addToPile("wrath", card_id)
-					end
+		if n >= 3 then return false end
+		if n + x > 3 then x = 1 end
+		if x < 1 then return false end
+		return skill:objectName()
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		local damage = ctx.original_data:toDamage()
+		local x = damage.damage
+		local n = player:getPile("wrath"):length()
+		if n + x > 3 then x = 1 end
+		if x < 1 then return false end
+		if room:askForSkillInvoke(player, skill:objectName(), ctx.original_data) then
+			ctx.extra_data:setValue(x)
+			return true
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local x = ctx.extra_data:toInt()
+		for i = 1, x, 1 do
+			room:drawCards(player, 1)
+			room:broadcastSkillInvoke("LuaHuaji")
+			if not player:isKongcheng() then
+				local card_id = -1
+				local handcards = player:handCards()
+				if handcards:length() == 1 then
+					room:getThread():delay(500)
+					card_id = handcards:first()
+				else
+					local cards = room:askForExchange(player, skill:objectName(), 1, 1, false, "QuanjiPush")
+					card_id = cards:getSubcards():first()
 				end
+				player:addToPile("wrath", card_id)
 			end
 		end
+		return false
 	end
 }
 
 
 
-LuaBaonu = sgs.CreateTriggerSkill {
+LuaBaonu = sgs.CreateTriggerSkillV2 {
 	name = "LuaBaonu",
 	frequency = sgs.Skill_Wake,
 	waked_skills = "xingLuashenji",
 	events = { sgs.EventPhaseStart },
-	on_trigger = function(self, event, player, data, room)
-		if player:getPile("wrath"):length() > 2 or player:canWake(self:objectName()) then
-			if player:hasSkill(self:objectName()) then
-				Exchange1(player)
-				room:addPlayerMark(player, self:objectName())
+	can_trigger = function(skill, event, room, player, data)
+		if player and (player:getPhase() == sgs.Player_Start or player:getPhase() == sgs.Player_Finish)
+			and player:getMark(skill:objectName()) < 1 and player:hasSkill(skill:objectName()) then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		return true
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		if player:getPile("wrath"):length() > 2 or player:canWake(skill:objectName()) then
+			if player:hasSkill(skill:objectName()) then
+				Exchange1(player, skill:objectName())
+				room:addPlayerMark(player, skill:objectName())
 			end
 		end
-	end,
-	can_trigger = function(self, player)
-		return player and (player:getPhase() == sgs.Player_Start or player:getPhase() == sgs.Player_Finish) and player:getMark(self:objectName()) < 1 and player:hasSkill(self)
+		return false
 	end,
 }
 

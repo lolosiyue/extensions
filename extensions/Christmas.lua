@@ -5,76 +5,107 @@ sgs.LoadTranslationTable {
 	["Christmas"] = "圣诞快乐",
 }
 
-RLiwaCard = sgs.CreateSkillCard {
-	name = "RLiwaCard",
-	skill_name = "RLiwa",
-	target_fixed = false,
-	will_throw = false,
-	filter = function(self, targets, to_select, player)
-		return #targets == 0 and to_select:objectName() ~= player:objectName()
+RLiwaVS = sgs.CreateViewAsSkillV2 {
+	name = "RLiwa",
+	n = 1,
+	target_mode = sgs.ViewAsSkillV2_SelectTargets,
+	target_effect_mode = sgs.ViewAsSkillV2_EachTarget,
+	will_throw_selected_cards = false,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
+	phase_name = "Play",
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		return player and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
 	end,
-	feasible = function(self, targets, player)
-		return #targets == 1
+	can_select_target = function(skill, request, selected, candidate)
+		local player = request:getInitiator()
+		return player and candidate and #selected == 0
+			and candidate:objectName() ~= player:objectName()
 	end,
-	on_use = function(self, room, source, targets)
-		targets[1]:addToPile("liwas", self, true)
-		room:setPlayerMark(targets[1], "RLiwa" .. source:objectName() .. self:getSubcards():at(0), 1)
+	targets_feasible = function(skill, request, selected)
+		return #selected == 1
+	end,
+	on_effect_target = function(skill, ctx, target)
+		local source = ctx.invoker or ctx.initiator
+		if not (source and target and ctx.use_card) then return end
+		local room = source:getRoom()
+		if not room then return end
+		target:addToPile("liwas", ctx.use_card, true)
+		room:setPlayerMark(target, "RLiwa" .. source:objectName() .. ctx.use_card:getSubcards():at(0), 1)
 	end,
 }
 
-RLiwaVS = sgs.CreateOneCardViewAsSkill {
+RLiwa = sgs.CreateTriggerSkillV2 {
 	name = "RLiwa",
-	filter_pattern = ".",
-	view_as = function(self, originalCard)
-		local skillcard = RLiwaCard:clone()
-		skillcard:addSubcard(originalCard)
-		return skillcard
-	end,
-	enabled_at_play = function(self, player)
-		return not player:hasUsed("#RLiwaCard")
-	end,
-	--
-}
-
-RLiwa = sgs.CreateTriggerSkill {
-	name = "RLiwa",
+	frequency = sgs.Skill_Compulsory,
 	events = { sgs.EventPhaseStart, sgs.CardFinished },
 	view_as_skill = RLiwaVS,
 
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Start then
-			local RLiwa_types = {}
-			for _, card in sgs.qlist(player:getPile("liwas")) do
-				table.insert(RLiwa_types, sgs.Sanguosha:getCard(card):getTypeId())
-				for _, source in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-					if player:getMark("RLiwa" .. source:objectName() .. card) > 0 then
-						room:setPlayerMark(player, "RLiwa" .. source:objectName() .. card, 0)
-						room:setPlayerMark(source, "RLiwa" .. sgs.Sanguosha:getCard(card):getTypeId() .. "-Clear", 1)
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive()) then return false end
+		if event == sgs.EventPhaseStart then
+			if player:getPhase() ~= sgs.Player_Start then return false end
+			if player:getPile("liwas"):length() == 0 then return false end
+			local owner = room:findPlayerBySkillName("RLiwa")
+			if not owner then return false end
+			local ids = owner:getValidSkillInstanceIds("RLiwa")
+			if ids:length() == 0 then return false end
+			return "RLiwa#" .. ids:at(0), owner
+		elseif event == sgs.CardFinished then
+			if player:getPhase() ~= sgs.Player_Play then return false end
+			local use = data:toCardUse()
+			if not (use and use.card) then return false end
+			local card_type = tostring(use.card:getTypeId())
+			local RLiwa_types = player:getTag("RLiwa"):toString():split(",")
+			if not table.contains(RLiwa_types, card_type) then return false end
+			local trigger_list_skill, trigger_list_who = {}, {}
+			for _, source in sgs.qlist(room:findPlayersBySkillName("RLiwa")) do
+				if source:getMark("RLiwa" .. card_type .. "-Clear") > 0 then
+					local ids = source:getValidSkillInstanceIds("RLiwa")
+					if ids:length() > 0 then
+						table.insert(trigger_list_skill, "RLiwa#" .. ids:at(0))
+						table.insert(trigger_list_who, source:objectName())
 					end
 				end
 			end
-			player:setTag("RLiwa", sgs.QVariant(table.concat(RLiwa_types, ",")))
-			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, player:objectName())
-			local move = sgs.CardsMoveStruct(player:getPile("liwas"), player, sgs.Player_PlaceHand, reason)
-			room:moveCardsAtomic(move, true)
-		end
-		if event == sgs.CardFinished and player:getPhase() == sgs.Player_Play then
-			local RLiwa_types = player:getTag("RLiwa"):toString():split(",")
-			local use = data:toCardUse()
-			for _, source in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-				if source and table.contains(RLiwa_types, tostring(use.card:getTypeId())) and source:getMark("RLiwa" .. use.card:getTypeId() .. "-Clear") > 0 then
-					if room:askForSkillInvoke(source, self:objectName(), data) then
-						source:drawCards(1)
-					end
-				end
+			if #trigger_list_skill > 0 then
+				return table.concat(trigger_list_skill, "|"), table.concat(trigger_list_who, "|")
 			end
 		end
 		return false
 	end,
 
-	can_trigger = function(self, target)
-		return target and target:isAlive()
+	on_cost = function(skill, event, room, player, ctx)
+		if event == sgs.EventPhaseStart then return true end
+		if event == sgs.CardFinished then
+			return room:askForSkillInvoke(player, skill:objectName(), ctx.original_data)
+		end
+		return false
+	end,
+
+	on_effect = function(skill, event, room, player, ctx)
+		if event == sgs.EventPhaseStart then
+			local pile_owner = ctx.invoker
+			if not pile_owner or pile_owner:getPile("liwas"):length() == 0 then return false end
+			local RLiwa_types = {}
+			for _, card in sgs.qlist(pile_owner:getPile("liwas")) do
+				table.insert(RLiwa_types, sgs.Sanguosha:getCard(card):getTypeId())
+				for _, source in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+					if pile_owner:getMark("RLiwa" .. source:objectName() .. card) > 0 then
+						room:setPlayerMark(pile_owner, "RLiwa" .. source:objectName() .. card, 0)
+						room:setPlayerMark(source, "RLiwa" .. sgs.Sanguosha:getCard(card):getTypeId() .. "-Clear", 1)
+					end
+				end
+			end
+			pile_owner:setTag("RLiwa", sgs.QVariant(table.concat(RLiwa_types, ",")))
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, pile_owner:objectName())
+			local move = sgs.CardsMoveStruct(pile_owner:getPile("liwas"), pile_owner, sgs.Player_PlaceHand, reason)
+			room:moveCardsAtomic(move, true)
+		elseif event == sgs.CardFinished then
+			player:drawCards(1)
+		end
+		return false
 	end,
 }
 

@@ -11,48 +11,114 @@ do
 	config.color_de = "#EEB422"
 end
 
+-- pin 首个有效实例，防止同一持有者同名多实例重复发动（s4_yuezhe/s4_zhaowu 惯例）
+local function se_diva_first_instance_id(player, skill_name)
+	for _, iid in sgs.qlist(player:getValidSkillInstanceIds(skill_name)) do
+		return iid
+	end
+	return nil
+end
+
 --逆天
-se_nitian = sgs.CreateTriggerSkill {
+se_nitian = sgs.CreateTriggerSkillV2 {
 	name = "se_nitian",
 	frequency = sgs.Skill_Frequent,
 	events = { sgs.FinishJudge, sgs.CardsMoveOneTime },
-	on_trigger = function(self, event, player, data)
+	can_trigger = function(skill, event, room, player, data)
 		if event == sgs.FinishJudge then
 			local judge = data:toJudge()
-			local room = player:getRoom()
-			for _, honoka in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-				if judge.who:getHp() >= judge.who:getMaxHp() then
-					return
-				end
+			-- 旧行为：judge.who 满血时整段中断，任何持有者都不询问
+			if not judge.who or judge.who:getHp() >= judge.who:getMaxHp() then
+				return false
+			end
+			local skills, whos = {}, {}
+			for _, honoka in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
 				if honoka:canDiscard(honoka, "h") then
-					local prompt = string.format("se_nitian_dis:%s", judge.who:objectName())
-					room:setTag("se_nitian_judge", data)
-					if room:askForDiscard(honoka, self:objectName(), 1, 1, true, false, prompt) then
-						if judge.reason ~= "se_guwu" then
-							room:broadcastSkillInvoke(self:objectName())
-						end
-						local re = sgs.RecoverStruct()
-						re.who = judge.who
-						room:recover(judge.who, re, true)
-						local msg = sgs.LogMessage()
-						msg.type = "#se_nitian_recovery"
-						msg.from = judge.who
-						msg.arg = 1
-						room:sendLog(msg)
+					local iid = se_diva_first_instance_id(honoka, skill:objectName())
+					if iid then
+						table.insert(skills, skill:objectName() .. "#" .. iid)
+						table.insert(whos, honoka:objectName())
 					end
 				end
 			end
+			if #skills > 0 then
+				return table.concat(skills, "|"), table.concat(whos, "|")
+			end
 		elseif event == sgs.CardsMoveOneTime then
-			local room = player:getRoom()
+			-- CardsMoveOneTime 对每名角色逐一 dispatch；仅在持有者本人处触发
+			if not player:hasSkill(skill:objectName()) then
+				return false
+			end
 			local move = data:toMoveOneTime()
 			if move.to_place ~= sgs.Player_DiscardPile then
-				return
+				return false
 			end
-			for _, honoka in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-				if player:objectName() ~= honoka:objectName() then
-					continue
+			for _, id in sgs.qlist(move.card_ids) do
+				if sgs.Sanguosha:getCard(id):isKindOf("DelayedTrick") then
+					local iid = se_diva_first_instance_id(player, skill:objectName())
+					if iid then
+						return skill:objectName() .. "#" .. iid
+					end
+					return false
 				end
-
+			end
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		if event == sgs.FinishJudge then
+			local judge = ctx.original_data:toJudge()
+			-- 旧循环在每位持有者提问前重查 judge.who 体力：前一持有者回复至满则后续持有者不再被询问
+			if not judge.who or judge.who:getHp() >= judge.who:getMaxHp() then
+				return false
+			end
+			if not player:canDiscard(player, "h") then
+				return false
+			end
+			local prompt = string.format("se_nitian_dis:%s", judge.who:objectName())
+			-- AI ai_skill_discard.se_nitian 在询问期间读取此 Tag
+			room:setTag("se_nitian_judge", ctx.original_data)
+			local discarded = room:askForDiscard(player, skill:objectName(), 1, 1, true, false, prompt)
+			room:removeTag("se_nitian_judge")
+			return discarded ~= nil
+		elseif event == sgs.CardsMoveOneTime then
+			-- 旧行为：手牌数不小于上限时先问是否直接摸一张牌；拒绝后仍落入三选一
+			if player:getHandcardNum() >= player:getMaxHp()
+				and room:askForSkillInvoke(player, skill:objectName()) then
+				ctx.choice = "se_nitian_draw"
+				return true
+			end
+			-- AI ai_skill_choice.se_nitian 在询问期间读取此 Tag
+			room:setTag("se_nitian_move", ctx.original_data)
+			local choice = room:askForChoice(player, skill:objectName(), "se_nitian_gain+se_nitian_draw+cancel")
+			room:removeTag("se_nitian_move")
+			if choice ~= "se_nitian_gain" and choice ~= "se_nitian_draw" then
+				return false
+			end
+			ctx.choice = choice
+			return true
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		if event == sgs.FinishJudge then
+			local judge = ctx.original_data:toJudge()
+			if judge.reason ~= "se_guwu" then
+				room:broadcastSkillInvoke(skill:objectName())
+			end
+			local re = sgs.RecoverStruct()
+			re.who = judge.who
+			room:recover(judge.who, re, true)
+			local msg = sgs.LogMessage()
+			msg.type = "#se_nitian_recovery"
+			msg.from = judge.who
+			msg.arg = 1
+			room:sendLog(msg)
+		elseif event == sgs.CardsMoveOneTime then
+			if ctx.choice == "se_nitian_draw" then
+				player:drawCards(1, skill:objectName())
+			elseif ctx.choice == "se_nitian_gain" then
+				local move = ctx.original_data:toMoveOneTime()
 				local newMove = sgs.CardsMoveStruct()
 				for _, id in sgs.qlist(move.card_ids) do
 					if sgs.Sanguosha:getCard(id):isKindOf("DelayedTrick") then
@@ -60,118 +126,140 @@ se_nitian = sgs.CreateTriggerSkill {
 					end
 				end
 				if newMove.card_ids:length() > 0 then
-					if honoka:getHandcardNum() >= honoka:getMaxHp() and room:askForSkillInvoke(honoka, self:objectName()) then
-						honoka:drawCards(1, self:objectName())
-						continue
-					end
-					room:setTag("se_nitian_move", data)
-					local choice = room:askForChoice(honoka, self:objectName(), "se_nitian_gain+se_nitian_draw+cancel")
-					if choice == "se_nitian_gain" then
-						newMove.to = honoka
-						newMove.to_place = sgs.Player_PlaceHand
-						newMove.reason = sgs.CardMoveReason(0x27, "", "se_nitian", "")
-						room:broadcastSkillInvoke(self:objectName())
-						room:moveCardsAtomic(newMove, true)
-					elseif choice == "se_nitian_draw" then
-						honoka:drawCards(1, self:objectName())
-					end
-					room:removeTag("se_nitian_move")
+					newMove.to = player
+					newMove.to_place = sgs.Player_PlaceHand
+					newMove.reason = sgs.CardMoveReason(0x27, "", "se_nitian", "")
+					room:broadcastSkillInvoke(skill:objectName())
+					room:moveCardsAtomic(newMove, true)
 				end
 			end
-			return false
 		end
-	end,
-	can_trigger = function(self, target)
-		return target ~= nil
+		return false
 	end,
 }
 
 --鼓舞
-se_guwu = sgs.CreateTriggerSkill {
+se_guwu = sgs.CreateTriggerSkillV2 {
 	name = "se_guwu",
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.QuitDying },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		local dying_data = data:toDying()
-		local source = dying_data.who
-		for _, mygod in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-			if mygod:isAlive() and source:isAlive() then
-				local dest = sgs.QVariant()
-				dest:setValue(source)
-				if room:askForSkillInvoke(mygod, "se_guwu", dest) then
-					room:broadcastSkillInvoke(self:objectName())
-					local judge = sgs.JudgeStruct()
-					judge.pattern = "."
-					judge.reason = self:objectName()
-					judge.who = source
-					judge.time_consuming = true
-					room:judge(judge)
-					if judge.card:isRed() then
-						room:doLightbox("se_guwu$", 3000)
-						local re = sgs.RecoverStruct()
-						re.who = judge.who
-						room:recover(judge.who, re, true)
-					else
-						room:doLightbox("se_guwu$", 1200)
-						judge.who:drawCards(1)
-						mygod:drawCards(1)
-					end
+	can_trigger = function(skill, event, room, player, data)
+		local source = data:toDying().who
+		if not source or not source:isAlive() then
+			return false
+		end
+		local skills, whos = {}, {}
+		for _, mygod in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+			if mygod:isAlive() then
+				local iid = se_diva_first_instance_id(mygod, skill:objectName())
+				if iid then
+					table.insert(skills, skill:objectName() .. "#" .. iid)
+					table.insert(whos, mygod:objectName())
 				end
 			end
 		end
+		if #skills > 0 then
+			return table.concat(skills, "|"), table.concat(whos, "|")
+		end
+		return false
 	end,
-	can_trigger = function(self, target)
-		return target ~= nil
+	on_cost = function(skill, event, room, player, ctx)
+		local source = ctx.original_data:toDying().who
+		if not source or not source:isAlive() then
+			return false
+		end
+		-- AI ai_skill_invoke.se_guwu 以 data:toPlayer() 读取脱离濒死者
+		local dest = sgs.QVariant()
+		dest:setValue(source)
+		if room:askForSkillInvoke(player, skill:objectName(), dest) then
+			ctx.targets:append(source)
+			return true
+		end
+		return false
+	end,
+	on_effect_target = function(skill, event, room, player, ctx, target)
+		room:broadcastSkillInvoke(skill:objectName())
+		local judge = sgs.JudgeStruct()
+		judge.pattern = "."
+		judge.reason = skill:objectName()
+		judge.who = target
+		judge.time_consuming = true
+		room:judge(judge)
+		if judge.card:isRed() then
+			room:doLightbox("se_guwu$", 3000)
+			local re = sgs.RecoverStruct()
+			re.who = target
+			room:recover(target, re, true)
+		else
+			room:doLightbox("se_guwu$", 1200)
+			target:drawCards(1)
+			player:drawCards(1)
+		end
+		return false
 	end,
 }
 
 --抢镜
-se_qiangjing = sgs.CreateTriggerSkill {
+se_qiangjing = sgs.CreateTriggerSkillV2 {
 	name = "se_qiangjing",
 	frequency = sgs.Skill_Frequent,
 	events = { sgs.CardsMoveOneTime },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		-- CardsMoveOneTime 对每名角色逐一 dispatch；仅在持有者本人处触发
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then
+			return false
+		end
 		local move = data:toMoveOneTime()
-		if not move.from_places:contains(sgs.Player_DrawPile) or move.from then
-			return
+		if move.from or not move.from_places:contains(sgs.Player_DrawPile) then
+			return false
 		end
 		if room:getTag("FirstRound"):toBool() then
 			return false
 		end
-		for _, kotori in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-			if move.to_place == sgs.Player_PlaceHand and move.to:objectName() ~= kotori:objectName() and move.to:getPhase() ~= sgs.Player_Draw then
-				if not kotori:askForSkillInvoke(self:objectName(), data) then
-					continue
-				end
-				local judge = sgs.JudgeStruct()
-				judge.pattern = ".|heart"
-				judge.reason = self:objectName()
-				judge.who = kotori
-				judge.play_animation = false
-				judge.time_consuming = true
-				room:judge(judge)
-				if judge:isGood() then
-					room:broadcastSkillInvoke(self:objectName())
-					room:doLightbox("se_qiangjing$", 500)
-					local ran = math.random(1, 100)
-					local num = 1
-					if ran > 70 then
-						num = 2
-					end
-					if ran > 92 then
-						num = 4
-					end
-					if ran > 96 then
-						num = 8
-					end
-					if ran > 99 then
-						num = 20
-					end
-					kotori:drawCards(num)
-				end
+		if move.to_place ~= sgs.Player_PlaceHand or not move.to then
+			return false
+		end
+		if move.to:objectName() == player:objectName() then
+			return false
+		end
+		if move.to:getPhase() == sgs.Player_Draw then
+			return false
+		end
+		local iid = se_diva_first_instance_id(player, skill:objectName())
+		if not iid then
+			return false
+		end
+		return skill:objectName() .. "#" .. iid
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		return player:askForSkillInvoke(skill:objectName(), ctx.original_data)
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local judge = sgs.JudgeStruct()
+		judge.pattern = ".|heart"
+		judge.reason = skill:objectName()
+		judge.who = player
+		judge.play_animation = false
+		judge.time_consuming = true
+		room:judge(judge)
+		if judge:isGood() then
+			room:broadcastSkillInvoke(skill:objectName())
+			room:doLightbox("se_qiangjing$", 500)
+			local ran = math.random(1, 100)
+			local num = 1
+			if ran > 70 then
+				num = 2
 			end
+			if ran > 92 then
+				num = 4
+			end
+			if ran > 96 then
+				num = 8
+			end
+			if ran > 99 then
+				num = 20
+			end
+			player:drawCards(num)
 		end
 		return false
 	end,
@@ -251,22 +339,29 @@ se_zhifucard = sgs.CreateSkillCard {
 	end,
 }
 
-se_zhifu = sgs.CreateViewAsSkill {
+-- 兼容原型：AI 以 "#se_zhifucard:.:" 字符串发动，需保留 LuaSkillCard 供 Card_Parse 解析；
+-- 产卡由 create_card 沿用本卡，filter/on_use 逻辑不变。
+se_zhifu = sgs.CreateViewAsSkillV2 {
 	name = "se_zhifu",
 	n = 1,
-	view_filter = function(self, selected, to_select)
-		return #selected < 1 and not to_select:isEquipped()
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		return player
+			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
+			and not player:isKongcheng()
 	end,
-	view_as = function(self, cards)
-		if #cards == 1 then
-			local card = se_zhifucard:clone()
-			card:setSkillName(self:objectName())
-			card:addSubcard(cards[1])
-			return card
+	can_select_card = function(skill, request, candidate)
+		return request:getSelectedCardIds():length() < 1 and not candidate:isEquipped()
+	end,
+	create_card = function(skill, request)
+		local ids = request:getSelectedCardIds()
+		if ids:length() ~= 1 then
+			return nil
 		end
-	end,
-	enabled_at_play = function(self, player)
-		return not player:isKongcheng()
+		local card = se_zhifucard:clone()
+		card:setSkillName(skill:objectName())
+		card:addSubcard(ids:at(0))
+		return card
 	end,
 }
 
@@ -282,6 +377,8 @@ se_nikecard = sgs.CreateSkillCard {
 		return true
 	end,
 	on_use = function(self, room, source, targets)
+		-- V2 以技能名 "se_nike" 记录历史；AI 与 can_activate 以 "#se_nikecard" 判断每回合限一次，故手动补记。
+		room:addPlayerHistory(source, "#se_nikecard")
 		table.insert(targets, source)
 		local num = math.floor(#targets / 2)
 		--room:broadcastSkillInvoke("se_nike")
@@ -295,105 +392,128 @@ se_nikecard = sgs.CreateSkillCard {
 	end,
 }
 
-se_nike = sgs.CreateViewAsSkill {
+-- 兼容原型：AI 以 "#se_nikecard:.:" 字符串发动，需保留 LuaSkillCard 供 Card_Parse 解析。
+se_nike = sgs.CreateViewAsSkillV2 {
 	name = "se_nike",
 	n = 0,
-	view_as = function(self, cards)
-		local card = se_nikecard:clone()
-		card:setSkillName(self:objectName())
-		return card
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		return player
+			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
+			and not player:hasUsed("#se_nikecard")
+			and not player:isNude()
 	end,
-	enabled_at_play = function(self, player)
-		return not player:hasUsed("#se_nikecard") and not player:isNude()
+	create_card = function(skill, request)
+		local card = se_nikecard:clone()
+		card:setSkillName(skill:objectName())
+		return card
 	end,
 }
 
-se_yanyi = sgs.CreateTriggerSkill {
+se_yanyi = sgs.CreateTriggerSkillV2 {
 	name = "se_yanyi",
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.Damaged, sgs.PreHpRecover },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then
+			return false
+		end
 		if event == sgs.Damaged then
 			local damage = data:toDamage()
-			if damage.to:hasSkill(self:objectName()) then
-				room:broadcastSkillInvoke("se_yanyi")
-				for i = 1, damage.damage do
-					local players = room:getAlivePlayers()
-					local skill_name = ""
-					local sks = {}
-					local all_generals = sgs.Sanguosha:getLimitedGeneralNames()
-					for i = 1, #all_generals do
-						if
-							all_generals[i] == "Tukasa"
-							or all_generals[i] == "mianma"
-							or all_generals[i] == "Sakura"
-							or all_generals[i] == "Riko"
-							or all_generals[i] == "Nanami"
-							or all_generals[i] == "Koishi"
-							or all_generals[i] == "Mikoto"
-							or all_generals[i] == "Natsume_Rin"
-							or all_generals[i] == "Kazehaya"
-							or all_generals[i] == "AiAstin"
-							or all_generals[i] == "Reimu"
-							or all_generals[i] == "Louise"
-						then
-							table.remove(all_generals, i)
-							i = i - 1
-						end
-					end
-
-					for _, general_name in ipairs(all_generals) do
-						local general = sgs.Sanguosha:getGeneral(general_name)
-						for _, sk in sgs.qlist(general:getVisibleSkillList()) do
-							if not sk:isLordSkill() then
-								if sk:getFrequency() ~= sgs.Skill_Wake and sk:getFrequency() ~= sgs.Skill_Limited then
-									table.insert(sks, sk:objectName())
-								end
-							end
-						end
-					end
-
-					for _, pl in sgs.qlist(players) do
-						for _, ske in sgs.qlist(pl:getVisibleSkillList()) do
-							if table.contains(sks, ske:objectName()) then
-								table.removeOne(sks, ske:objectName())
-							end
-						end
-					end
-
-					if #sks == 0 then
-						return
-					end
-					local ran = math.random(1, #sks)
-					skill_name = sks[ran]
-					room:handleAcquireDetachSkills(damage.to, skill_name)
-					local randomYanyi = math.random(1, 10)
-					room:doLightbox("se_yanyi" .. randomYanyi .. "$", 800)
-					room:doLightbox(skill_name, 600)
-					local msg = sgs.LogMessage()
-					msg.type = "#se_yanyi_use"
-					msg.arg = skill_name
-					room:sendLog(msg)
-				end
+			if not damage.to or damage.to:objectName() ~= player:objectName() then
+				return false
 			end
-			return false
 		elseif event == sgs.PreHpRecover then
 			local re = data:toRecover()
-			if re.who:hasSkill(self:objectName()) then
-				choices = {}
-				for _, skill in sgs.qlist(re.who:getSkillList()) do
-					if skill:isVisible() and skill:objectName() ~= "zhuchangClone" then
-						table.insert(choices, skill:objectName())
+			if not re.who or re.who:objectName() ~= player:objectName() then
+				return false
+			end
+		else
+			return false
+		end
+		local iid = se_diva_first_instance_id(player, skill:objectName())
+		if not iid then
+			return false
+		end
+		return skill:objectName() .. "#" .. iid
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		if event == sgs.Damaged then
+			local damage = ctx.original_data:toDamage()
+			room:broadcastSkillInvoke("se_yanyi")
+			for i = 1, damage.damage do
+				local players = room:getAlivePlayers()
+				local skill_name = ""
+				local sks = {}
+				local all_generals = sgs.Sanguosha:getLimitedGeneralNames()
+				for i = 1, #all_generals do
+					if
+						all_generals[i] == "Tukasa"
+						or all_generals[i] == "mianma"
+						or all_generals[i] == "Sakura"
+						or all_generals[i] == "Riko"
+						or all_generals[i] == "Nanami"
+						or all_generals[i] == "Koishi"
+						or all_generals[i] == "Mikoto"
+						or all_generals[i] == "Natsume_Rin"
+						or all_generals[i] == "Kazehaya"
+						or all_generals[i] == "AiAstin"
+						or all_generals[i] == "Reimu"
+						or all_generals[i] == "Louise"
+					then
+						table.remove(all_generals, i)
+						i = i - 1
 					end
 				end
-				local skl = room:askForChoice(re.who, self:objectName(), table.concat(choices, "+"))
-				if not skl then
-					skl = self:objectName()
+
+				for _, general_name in ipairs(all_generals) do
+					local general = sgs.Sanguosha:getGeneral(general_name)
+					for _, sk in sgs.qlist(general:getVisibleSkillList()) do
+						if not sk:isLordSkill() then
+							if sk:getFrequency() ~= sgs.Skill_Wake and sk:getFrequency() ~= sgs.Skill_Limited then
+								table.insert(sks, sk:objectName())
+							end
+						end
+					end
 				end
-				room:detachSkillFromPlayer(re.who, skl)
+
+				for _, pl in sgs.qlist(players) do
+					for _, ske in sgs.qlist(pl:getVisibleSkillList()) do
+						if table.contains(sks, ske:objectName()) then
+							table.removeOne(sks, ske:objectName())
+						end
+					end
+				end
+
+				if #sks == 0 then
+					return false
+				end
+				local ran = math.random(1, #sks)
+				skill_name = sks[ran]
+				room:handleAcquireDetachSkills(damage.to, skill_name)
+				local randomYanyi = math.random(1, 10)
+				room:doLightbox("se_yanyi" .. randomYanyi .. "$", 800)
+				room:doLightbox(skill_name, 600)
+				local msg = sgs.LogMessage()
+				msg.type = "#se_yanyi_use"
+				msg.arg = skill_name
+				room:sendLog(msg)
 			end
+		elseif event == sgs.PreHpRecover then
+			local re = ctx.original_data:toRecover()
+			local choices = {}
+			for _, skill in sgs.qlist(re.who:getSkillList()) do
+				if skill:isVisible() and skill:objectName() ~= "zhuchangClone" then
+					table.insert(choices, skill:objectName())
+				end
+			end
+			local skl = room:askForChoice(re.who, skill:objectName(), table.concat(choices, "+"))
+			if not skl then
+				skl = skill:objectName()
+			end
+			room:detachSkillFromPlayer(re.who, skl)
 		end
+		return false
 	end,
 }
 

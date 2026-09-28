@@ -187,7 +187,7 @@ local function RAFTOMreward(player, enemy, reward_type) --奖励函数：用于�
 		room:askForDiscard(player, "reward", 2, 2, false, true)
 		local playerdata = sgs.QVariant()
 		playerdata:setValue(player)
-		room:setTag("rewardExtraTurn", playerdata)
+		room:setTag("#rewardExtraTurn", playerdata)
 	elseif reward_type == "re_type14" then
 		room:drawCards(player, 1, "reward")
 		enemy:turnOver()
@@ -234,14 +234,27 @@ local function enemyBuff(enemy, level) --敌方加成函数：用于结算敌方
 end
 
 --==============================================全局技能区==============================================--
-GameEndRecording = sgs.CreateTriggerSkill { --游戏结束时记录玩家各种状态
-	name = "GameEndRecording",
+-- V2 觸發技能須由玩家持有實例才會派發：全域規則技在命中條件時為缺實例的事件目標補掛 acquired 實例
+-- （等效舊版 global=true 的全場派發；隱藏名不進入 getVisibleSkillList，不污染存檔與面板）
+local function raftom_attach_instance(room, player, skill_name)
+	if player and player:getSkillInstanceIds(skill_name):isEmpty() then
+		room:attachSkillToPlayer(player, skill_name)
+	end
+end
+
+GameEndRecording = sgs.CreateTriggerSkillV2 { --游戏结束时记录玩家各种状态
+	name = "#GameEndRecording",
 	global = true,
+	frequency = sgs.Skill_Compulsory,
 	events = { sgs.GameOverJudge },
-	on_trigger = function(self, event, splayer, data, room)
-		if not room:getTag("InRAFTOM"):toBool() then
+	can_trigger = function(skill, event, room, player, data)
+		if not player or not room:getTag("InRAFTOM"):toBool() then
 			return false
 		end
+		raftom_attach_instance(room, player, skill:objectName())
+		return skill:objectName()
+	end,
+	on_effect = function(skill, event, room, player, ctx)
 		if sgs.IsHeadless and sgs.IsHeadless() then return false end -- headless环境不写存档
 		for _, p in sgs.qlist(room:getAllPlayers(true)) do
 			if not p:getTag("RAFTOM"):toBool() then
@@ -355,55 +368,148 @@ GameEndRecording = sgs.CreateTriggerSkill { --游戏结束时记录玩家各种�
 	end,
 }
 
-rewardExtraTurn = sgs.CreatePhaseChangeSkill {
-	name = "rewardExtraTurn",
+rewardExtraTurn = sgs.CreateTriggerSkillV2 {
+	name = "#rewardExtraTurn",
 	global = true,
+	frequency = sgs.Skill_Compulsory,
 	priority = 0,
-	on_phasechange = function(self, splayer)
-		local room = splayer:getRoom()
-		local player = room:getTag(self:objectName()):toPlayer()
-		if splayer:getPhase() == sgs.Player_NotActive and player and player:isAlive() then
-			room:removeTag(self:objectName())
-			player:gainAnExtraTurn()
+	events = { sgs.EventPhaseStart },
+	can_trigger = function(skill, event, room, player, data)
+		if not player or player:getPhase() ~= sgs.Player_NotActive then
+			return false
+		end
+		local target = room:getTag(skill:objectName()):toPlayer()
+		if not (target and target:isAlive()) then
+			return false
+		end
+		raftom_attach_instance(room, player, skill:objectName())
+		return skill:objectName()
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local target = room:getTag(skill:objectName()):toPlayer()
+		if player:getPhase() == sgs.Player_NotActive and target and target:isAlive() then
+			room:removeTag(skill:objectName())
+			target:gainAnExtraTurn()
 		end
 		return false
 	end,
 }
 
-heroesNeverDie = sgs.CreateTriggerSkill {
-	name = "heroesNeverDie",
+heroesNeverDie = sgs.CreateTriggerSkillV2 {
+	name = "#heroesNeverDie",
 	events = { sgs.AskForPeachesDone },
 	global = true,
+	frequency = sgs.Skill_Compulsory,
 	priority = 0,
-	on_trigger = function(self, event, splayer, data, room)
-		if splayer:getTag("RAFTOM"):toBool() and splayer:getHp() <= 0 then
-			local winFile = io.open(winTimes, "r")
-			local win_count = 0
-			if winFile then
-				win_count = tonumber(winFile:read("*l")) or 0
-				winFile:close()
-			end
-			if win_count > 0 and room:askForSkillInvoke(splayer, self:objectName(), sgs.QVariant("HND:" .. win_count)) then
-				local winRecord = io.open(winTimes, "w")
-				if winRecord then
-					winRecord:write("" .. math.max(0, math.min(3, win_count - 1)))
-					winRecord:close()
-				end
-				splayer:throwAllHandCardsAndEquips()
-				room:recover(splayer, sgs.RecoverStruct(splayer, nil, 2 - splayer:getHp()))
-				room:drawCards(splayer, 3, self:objectName())
-			end
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:getTag("RAFTOM"):toBool() and player:getHp() <= 0) then
+			return false
 		end
+		raftom_attach_instance(room, player, skill:objectName())
+		return skill:objectName()
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		local winFile = io.open(winTimes, "r")
+		local win_count = 0
+		if winFile then
+			win_count = tonumber(winFile:read("*l")) or 0
+			winFile:close()
+		end
+		if win_count > 0 and room:askForSkillInvoke(player, "heroesNeverDie", sgs.QVariant("HND:" .. win_count)) then
+			ctx.extra_data:setValue(win_count)
+			return true
+		end
+		return false
+	end,
+	on_pay = function(skill, event, room, player, ctx)
+		local winRecord = io.open(winTimes, "w")
+		if winRecord then
+			winRecord:write("" .. math.max(0, math.min(3, ctx.extra_data:toInt() - 1)))
+			winRecord:close()
+		end
+		return true
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		player:throwAllHandCardsAndEquips()
+		room:recover(player, sgs.RecoverStruct(player, nil, 2 - player:getHp()))
+		room:drawCards(player, 3, "heroesNeverDie")
 		return false
 	end,
 }
 
-RAFTOM_start = sgs.CreateTriggerSkill { --用于使“千里走单骑”模式开始
+RAFTOM_start = sgs.CreateTriggerSkillV2 { --用于使“千里走单骑”模式开始
 	name = "#RAFTOM_start",
 	events = { sgs.GameStart, sgs.TurnStart, sgs.DrawNCards, sgs.AfterDrawNCards },
 	global = true,
+	frequency = sgs.Skill_Compulsory,
 	priority = 10,
-	on_trigger = function(self, event, splayer, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not player then
+			return false
+		end
+		if event == sgs.GameStart then
+			if room:getMode() == "02p" and room:alivePlayerCount() == 2
+				and not room:getTag("InRAFTOM"):toBool() and player:getState() ~= "robot" then
+				raftom_attach_instance(room, player, skill:objectName())
+				return skill:objectName()
+			end
+		elseif event == sgs.TurnStart then
+			if room:getTag("InRAFTOM"):toBool() then
+				for _, p in sgs.list(room:getAlivePlayers()) do
+					if p:getTag("getFirstTurn"):toBool() then
+						raftom_attach_instance(room, player, skill:objectName())
+						return skill:objectName()
+					end
+				end
+			end
+		elseif event == sgs.DrawNCards then
+			local draw = data:toDraw()
+			if draw.reason == "InitialHandCards"
+				and (player:getTag("RAFTOM"):toBool() or player:getTag("enemy_buff"):toInt() > 0) then
+				raftom_attach_instance(room, player, skill:objectName())
+				return skill:objectName()
+			end
+		else
+			local draw = data:toDraw()
+			if draw.reason == "InitialHandCards" then
+				local reward_type = player:getTag("reward_type"):toString()
+				if reward_type ~= "" and table.contains(reward_types, reward_type) then
+					raftom_attach_instance(room, player, skill:objectName())
+					return skill:objectName()
+				end
+			end
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		if event ~= sgs.GameStart then
+			return true
+		end
+		local human, robot = nil, nil
+		for _, p in sgs.list(room:getAlivePlayers()) do
+			if p:getState() ~= "robot" then
+				human = p
+			else
+				robot = p
+			end
+		end
+		if not (human and robot and human:objectName() == player:objectName()) then
+			return false
+		end
+		local recordFile = io.open(GER, "r")
+		local level = 1
+		if recordFile then
+			local firstLine = recordFile:read("*l")
+			recordFile:close()
+			if firstLine then
+				level = tonumber(firstLine:split("=")[2]) or 1
+			end
+		end
+		return room:askForSkillInvoke(player, "RAFTOM_start", sgs.QVariant("RA_start:" .. tostring(level)))
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
+		local splayer = player
 		if event == sgs.GameStart then
 			if room:getMode() == "02p" and room:alivePlayerCount() == 2 and not room:getTag("InRAFTOM"):toBool() then
 				local player, robot = nil, nil
@@ -423,7 +529,7 @@ RAFTOM_start = sgs.CreateTriggerSkill { --用于使“千里走单骑”模式�
 						level = tonumber(rf[1]:split("=")[2]) or 1
 					end
 				end
-				if player and robot and player:objectName() == splayer:objectName() and room:askForSkillInvoke(player, "RAFTOM_start", sgs.QVariant("RA_start:" .. tostring(level))) then
+				if player and robot and player:objectName() == splayer:objectName() then
 					if level < 1 or level > 6 or #rf < 11 then
 						local record = io.open(GER, "w")
 						if record then
@@ -470,7 +576,7 @@ RAFTOM_start = sgs.CreateTriggerSkill { --用于使“千里走单骑”模式�
 								player,
 								sgs.Player_DrawPile,
 								sgs.Player_PlaceEquip,
-								sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, player:objectName(), self:objectName(), "")
+								sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, player:objectName(), skill:objectName(), "")
 							)
 							moves:append(move_e)
 						end
@@ -482,7 +588,7 @@ RAFTOM_start = sgs.CreateTriggerSkill { --用于使“千里走单骑”模式�
 								player,
 								sgs.Player_DrawPile,
 								sgs.Player_PlaceHand,
-								sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, player:objectName(), self:objectName(), "")
+								sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, player:objectName(), skill:objectName(), "")
 							)
 							moves:append(move_h)
 						end
@@ -591,10 +697,12 @@ RAFTOM_start = sgs.CreateTriggerSkill { --用于使“千里走单骑”模式�
 				end
 			end
 			if splayer:getTag("RAFTOM"):toBool() and level ~= 1 then
-				data:setValue(0)
+				draw.num = 0
+				data:setValue(draw)
 			end
 			if splayer:getTag("enemy_buff"):toInt() > 0 then
-				data:setValue(data:toInt() + splayer:getTag("enemy_buff"):toInt())
+				draw.num = draw.num + splayer:getTag("enemy_buff"):toInt()
+				data:setValue(draw)
 			end
 		else
 			local draw = data:toDraw()
@@ -612,13 +720,13 @@ RAFTOM_start = sgs.CreateTriggerSkill { --用于使“千里走单骑”模式�
 }
 
 local skills = sgs.SkillList()
-if not sgs.Sanguosha:getSkill("GameEndRecording") then
+if not sgs.Sanguosha:getSkill("#GameEndRecording") then
 	skills:append(GameEndRecording)
 end
-if not sgs.Sanguosha:getSkill("rewardExtraTurn") then
+if not sgs.Sanguosha:getSkill("#rewardExtraTurn") then
 	skills:append(rewardExtraTurn)
 end
-if not sgs.Sanguosha:getSkill("heroesNeverDie") then
+if not sgs.Sanguosha:getSkill("#heroesNeverDie") then
 	skills:append(heroesNeverDie)
 end
 if not sgs.Sanguosha:getSkill("#RAFTOM_start") then
@@ -627,11 +735,22 @@ end
 
 --==============================================技能区==============================================--
 RA_caiyang = sgs.General(extension, "RA_caiyang", "wei", 1, true, true)
-yinka = sgs.CreateTriggerSkill {
+yinka = sgs.CreateTriggerSkillV2 {
 	name = "#yinka",
 	events = { sgs.DrawNCards, sgs.AfterDrawNCards },
+	frequency = sgs.Skill_Compulsory,
 	priority = 10,
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then
+			return false
+		end
+		if data:toDraw().reason == "InitialHandCards" then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.DrawNCards then
 			local draw = data:toDraw()
 			if draw.reason ~= "InitialHandCards" then
@@ -667,9 +786,9 @@ yinka = sgs.CreateTriggerSkill {
 				end
 			end
 			local fix = 4 - dummy:subcardsLength()
-			room:obtainCard(player, dummy, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_DRAW, player:objectName(), self:objectName(), ""), false)
+			room:obtainCard(player, dummy, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_DRAW, player:objectName(), skill:objectName(), ""), false)
 			if fix > 0 then
-				room:drawCards(player, fix, self:objectName())
+				room:drawCards(player, fix, skill:objectName())
 			end
 		end
 		return false
@@ -678,6 +797,15 @@ yinka = sgs.CreateTriggerSkill {
 RA_caiyang:addSkill(yinka)
 
 sgs.Sanguosha:addSkills(skills)
+
+-- V2 觸發技能須由玩家持有實例才會派發：四個全域規則技掛到所有武將作為 innate 實例；
+-- 換將或晚於本擴展載入的武將缺實例者，由各技能 can_trigger 命中條件時補掛 acquired 實例。
+for _, gen in sgs.qlist(sgs.Sanguosha:getAllGenerals()) do
+	gen:addSkill("#GameEndRecording")
+	gen:addSkill("#rewardExtraTurn")
+	gen:addSkill("#heroesNeverDie")
+	gen:addSkill("#RAFTOM_start")
+end
 
 sgs.LoadTranslationTable {
 

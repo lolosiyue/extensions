@@ -3,6 +3,23 @@ local ZhongdanEvent = false
 local ZhongdanEvent_reward = false
 local Wenhe_event_only = false --文和乱武随机事件
 
+-- V2 迁移说明：触发技不再经过装备区注册即可对所有角色生效，
+-- 必须给每名角色一个真实技能实例。本文件装备触发技与全局工具技统一改用
+-- "#" 前缀的隐藏全局技能（isVisible() 为 false，不占用技能栏显示），
+-- 并在文件末尾通过 gen:addSkill 给全部武将挂上天生实例；
+-- 后入场/换将的角色再由各技能 on_record 补挂 attached 实例。
+local function yjTopupHiddenInstance(skill, room)
+	local name = skill:objectName()
+	for _, p in sgs.qlist(room:getAllPlayers()) do
+		if p:getSkillInstanceIds(name):isEmpty() then
+			room:attachSkillToPlayer(p, name)
+		end
+	end
+end
+local function yjHiddenOnRecord(skill, event, room, player, ctx)
+	yjTopupHiddenInstance(skill, room)
+end
+
 --- 基於現有卡牌物件克隆並創建「禮物牌」
 --- 
 --- **區別**：與 `AddCloneCard` 不同，此函數接受一個已存在的 `sgs.Card` 物件作為模板。
@@ -114,10 +131,12 @@ AddCloneCard("amazing_grace",2,3,true)
 
 AddCloneCard("duel",3,1,true)
 
-yj_numabf = sgs.CreateDistanceSkill{
+yj_numabf = sgs.CreateDistanceSkillV2{
 	name = "yj_numa",
-	fixed_func = function(self,from,to)
-		if to:hasOffensiveHorse("yj_numa")
+	holder_selector = sgs.CorrectSkill_System,
+	fixed_func = function(self,context)
+		local to = context:getSecondary()
+		if to and to:hasOffensiveHorse("yj_numa")
 		then return 1 end
 		return -1
 	end
@@ -139,14 +158,23 @@ yj_numa = sgs.CreateOffensiveHorse{
 }
 AddPresentCard(yj_numa,1,13,true)
 
-yj_zhanxiangTr = sgs.CreateTriggerSkill{
+yj_zhanxiangMk = sgs.CreateTriggerSkillV2{
 	name = "yj_zhanxiang",
+	frequency = sgs.Skill_Compulsory,
+}
+yj_zhanxiangTr = sgs.CreateTriggerSkillV2{
+	name = "#yj_zhanxiang",
+	global = true,
 	events = {sgs.BeforeCardsMove},
 	frequency = sgs.Skill_Compulsory,
-	can_trigger = function(self,target)
-		return target and target:hasDefensiveHorse("yj_zhanxiang")
+	can_trigger = function(self,event,room,player,data)
+		if player and player:hasDefensiveHorse("yj_zhanxiang")
+		then return self:objectName() end
+		return false
 	end,
-	on_trigger = function(self,event,player,data,room)
+	on_record = yjHiddenOnRecord,
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
 		if event==sgs.BeforeCardsMove then
 	     	local move = data:toMoveOneTime()
 			if move.to and player:objectName()==move.to:objectName() and move.reason.m_skillName=="yj_zhengyu" then
@@ -176,10 +204,10 @@ yj_zhanxiang = sgs.CreateDefensiveHorse{
 	class_name = "Zhanxiang",
 --	correct = 1,
 	is_gift = true,
-	equip_skill = yj_zhanxiangTr,
+	equip_skill = yj_zhanxiangMk,
 	on_install = function(c,player)
 		local room = player:getRoom()
-		room:acquireSkill(player,yj_zhanxiangTr,true,true,false)
+		room:acquireSkill(player,yj_zhanxiangMk,true,true,false)
 	end,
 	on_uninstall = function(c,player)
 		local room = player:getRoom()
@@ -352,14 +380,23 @@ yj_tuixinzhifu = sgs.CreateTrickCard{
 AddPresentCard(yj_tuixinzhifu,3,9)
 AddPresentCard(yj_tuixinzhifu,3,10)
 
-yj_nvzhuangTr = sgs.CreateTriggerSkill{
+yj_nvzhuangMk = sgs.CreateTriggerSkillV2{
 	name = "yj_nvzhuang",
 	frequency = sgs.Skill_Compulsory,
+}
+yj_nvzhuangTr = sgs.CreateTriggerSkillV2{
+	name = "#yj_nvzhuang",
+	global = true,
+	frequency = sgs.Skill_Compulsory,
 	events = {sgs.TargetConfirmed,sgs.DamageForseen},
-	can_trigger = function(self,target)
-		return target and target:hasArmorEffect("yj_nvzhuang")
+	can_trigger = function(self,event,room,player,data)
+		if player and player:hasArmorEffect("yj_nvzhuang")
+		then return self:objectName() end
+		return false
 	end,
-	on_trigger = function(self,event,player,data,room)
+	on_record = yjHiddenOnRecord,
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
     	if event==sgs.TargetConfirmed then
 			local use = data:toCardUse()
 			if use.card:isKindOf("Slash")
@@ -370,7 +407,7 @@ yj_nvzhuangTr = sgs.CreateTriggerSkill{
 				judge.pattern = ".|black"
 				judge.good = false
 				judge.negative = true
-				judge.reason = self:objectName()
+				judge.reason = "yj_nvzhuang"
 				judge.who = player
 				room:judge(judge)
 				if judge:isBad() then
@@ -391,13 +428,13 @@ yj_nvzhuang = sgs.CreateArmor{
 	class_name = "Nvzhuang",
 	is_gift = true,
 --	target_fixed = false,
-	equip_skill = yj_nvzhuangTr,
+	equip_skill = yj_nvzhuangMk,
 	filter = function(self,targets,to_select,source)
 	    return to_select~=source
 	end,
 	on_install = function(self,player)
 		local room = player:getRoom()
-		room:acquireSkill(player,yj_nvzhuangTr,true,true,false)
+		room:acquireSkill(player,yj_nvzhuangMk,true,true,false)
 		return false
 	end,
 	on_uninstall = function(self,player)
@@ -442,24 +479,26 @@ yj_xingecard = sgs.CreateSkillCard{
 		room:giveCard(source,target,self,"yj_xinge")
 	end,
 }
-yj_xingeTr = sgs.CreateViewAsSkill{
+yj_xingeTr = sgs.CreateViewAsSkillV2{
 	name = "yj_xinge",
 	n = 1,
-	view_filter = function(self,selected,to_select)
+	can_activate = function(self,request)
+		local player = request:getInitiator()
+		if not player then return false end
+		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
+		-- V2 发动以技能名 "yj_xinge" 记录 history；旧 AI 直用 #yj_xingecard 记牌名
+		return player:usedTimes("#yj_xingecard") + player:usedTimes("yj_xinge") < 1
+			and player:getHandcardNum() > 0
+	end,
+	can_select_card = function(self,request,to_select)
        	return not to_select:isEquipped()
 	end,
-	view_as = function(self,cards)
-	   	if #cards<1 then return end
-	    local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
-		pattern = yj_xingecard:clone()
-	   	for _,cid in sgs.list(cards)do
+	create_card = function(self,request)
+	    local pattern = yj_xingecard:clone()
+	   	for _,cid in sgs.qlist(request:getSelectedCardIds())do
 	   	    pattern:addSubcard(cid)
 	   	end
 		return pattern
-	end,
-	enabled_at_play = function(self,player)
-		return player:usedTimes("#yj_xingecard")<1
-		and player:getHandcardNum()>0
 	end,
 }
 yj_xinge = sgs.CreateTreasure{
@@ -480,14 +519,23 @@ yj_xinge = sgs.CreateTreasure{
 }
 AddPresentCard(yj_xinge,2,4,true)
 
-yj_yinfengyiTr = sgs.CreateTriggerSkill{
+yj_yinfengyiMk = sgs.CreateTriggerSkillV2{
 	name = "yj_yinfengyi",
 	frequency = sgs.Skill_Compulsory,
+}
+yj_yinfengyiTr = sgs.CreateTriggerSkillV2{
+	name = "#yj_yinfengyi",
+	global = true,
+	frequency = sgs.Skill_Compulsory,
 	events = {sgs.PreHpLost,sgs.DamageForseen},
-	can_trigger = function(self,target)
-		return target and target:hasArmorEffect("yj_yinfengyi")
+	can_trigger = function(self,event,room,player,data)
+		if player and player:hasArmorEffect("yj_yinfengyi")
+		then return self:objectName() end
+		return false
 	end,
-	on_trigger = function(self,event,player,data,room)
+	on_record = yjHiddenOnRecord,
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
     	if event==sgs.PreHpLost then
 			if player:hasFlag("Poison") then
 				data:setValue(data:toInt()+1)
@@ -516,10 +564,10 @@ yj_yinfengyi = sgs.CreateArmor{
 	name = "yj_yinfengyi",
 	class_name = "Yinfengyi",
 --	is_gift = true,
-	equip_skill = yj_yinfengyiTr,
+	equip_skill = yj_yinfengyiMk,
 	on_install = function(self,player)
 		local room = player:getRoom()
-		room:acquireSkill(player,yj_yinfengyiTr,true,true,false)
+		room:acquireSkill(player,yj_yinfengyiMk,true,true,false)
 		return false
 	end,
 	on_uninstall = function(self,player)
@@ -530,14 +578,22 @@ yj_yinfengyi = sgs.CreateArmor{
 }
 AddPresentCard(yj_yinfengyi,1,3,true)
 
-yj_yitianjianTr = sgs.CreateTriggerSkill{
+yj_yitianjianMk = sgs.CreateTriggerSkillV2{
 	name = "yj_yitianjian",
+}
+yj_yitianjianTr = sgs.CreateTriggerSkillV2{
+	name = "#yj_yitianjian",
+	global = true,
 --	frequency = sgs.Skill_Compulsory,
 	events = {sgs.Damage},
-	can_trigger = function(self,target)
-		return target and target:hasWeapon("yj_yitianjian")
+	can_trigger = function(self,event,room,player,data)
+		if player and player:hasWeapon("yj_yitianjian")
+		then return self:objectName() end
+		return false
 	end,
-	on_trigger = function(self,event,player,data,room)
+	on_record = yjHiddenOnRecord,
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
    		if event==sgs.Damage
 		then
 		    local damage = data:toDamage()
@@ -556,9 +612,9 @@ yj_yitianjian = sgs.CreateWeapon{
 	name = "yj_yitianjian",
 	class_name = "Yitianjian",
 	range = 2,
-	equip_skill = yj_yitianjianTr,
+	equip_skill = yj_yitianjianMk,
 	on_install = function(self,player)
-		player:getRoom():acquireSkill(player,yj_yitianjianTr,true,true,false)
+		player:getRoom():acquireSkill(player,yj_yitianjianMk,true,true,false)
 	end,
 	on_uninstall = function(self,player)
 		player:getRoom():detachSkillFromPlayer(player,"yj_yitianjian",true,true)
@@ -641,35 +697,45 @@ yj_zhengyuCard = sgs.CreateSkillCard{
 		end
 	end
 }
-yj_zhengyu = sgs.CreateOneCardViewAsSkill{
+yj_zhengyu = sgs.CreateViewAsSkillV2{
 	name = "yj_zhengyu&",
-	view_filter = function(self,to_select)
+	n = 1,
+	can_select_card = function(self,request,to_select)
 		return not to_select:isEquipped()
 		and CardIsPresent(to_select)
 	end,
-	view_as = function(self,card)
+	create_card = function(self,request)
 		local c = yj_zhengyuCard:clone()
-	   	c:addSubcard(card)
+	   	for _,cid in sgs.qlist(request:getSelectedCardIds())do
+	   		c:addSubcard(cid)
+	   	end
 		return c
 	end,
-	enabled_at_play = function(self,player)
+	can_activate = function(self,request)
+		local player = request:getInitiator()
+		if not player or request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		for _,c in sgs.qlist(player:getHandcards())do
 			if CardIsPresent(c) then return true end
 		end
+		return false
 	end,
 }
 yongjian:addSkills(yj_zhengyu)
-yj_on_trigger = sgs.CreateTriggerSkill{
-	name = "yj_on_trigger",
+yj_on_trigger = sgs.CreateTriggerSkillV2{
+	name = "#yj_on_trigger",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.CardOffset,sgs.EventPhaseProceeding,sgs.EventPhaseEnd,sgs.CardsMoveOneTime},
 	priority = {4},
 	global = true,
-	can_trigger = function(self,target)
-		return target and target:isAlive()
+	can_trigger = function(self,event,room,player,data)
+		if player and player:isAlive()
 		--and not table.contains(sgs.Sanguosha:getBanPackages(),"yongjian")
+		then return self:objectName() end
+		return false
 	end,
-	on_trigger = function(self,event,player,data,room)
+	on_record = yjHiddenOnRecord,
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
    		if event==sgs.CardsMoveOneTime then
 	     	local move = data:toMoveOneTime()
 			if move.to_place==sgs.Player_PlaceHand
@@ -740,6 +806,12 @@ yj_on_trigger = sgs.CreateTriggerSkill{
 	end
 }
 yongjian:addSkills(yj_on_trigger)
+-- V2：装备触发技改用隐藏 global V2 技能判定（hasXxxEffect 可覆盖虚拟装备），
+-- 卡面上的 yj_xxx 技能名保留为装备专用 marker 技能
+yongjian:addSkills(yj_zhanxiangTr)
+yongjian:addSkills(yj_nvzhuangTr)
+yongjian:addSkills(yj_yinfengyiTr)
+yongjian:addSkills(yj_yitianjianTr)
 
 sgs.LoadTranslationTable{
 	["yongjian"] = "用间篇",
@@ -999,14 +1071,23 @@ zl_kh:setParent(zhulu)
 local zl_kh = yj_shushangkaihua:clone(3,9)
 zl_kh:setParent(zhulu)
 
-zl_wufengjianTr = sgs.CreateTriggerSkill{
+zl_wufengjianMk = sgs.CreateTriggerSkillV2{
 	name = "zl_wufengjian",
 	frequency = sgs.Skill_Compulsory,
+}
+zl_wufengjianTr = sgs.CreateTriggerSkillV2{
+	name = "#zl_wufengjian",
+	global = true,
+	frequency = sgs.Skill_Compulsory,
 	events = {sgs.CardUsed},
-	can_trigger = function(self,target)
-		return target and target:hasWeapon("zl_wufengjian")
+	can_trigger = function(self,event,room,player,data)
+		if player and player:hasWeapon("zl_wufengjian")
+		then return self:objectName() end
+		return false
 	end,
-	on_trigger = function(self,event,player,data,room)
+	on_record = yjHiddenOnRecord,
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
    		if event==sgs.CardUsed then
 	       	local use = data:toCardUse()
         	if use.card:isKindOf("Slash") then
@@ -1028,12 +1109,12 @@ zl_wufengjian = sgs.CreateWeapon{
 	suit = 0,
 	number = 5,
 	is_gift = true,
-	equip_skill = zl_wufengjianTr,
+	equip_skill = zl_wufengjianMk,
     available = function(self,player)
     	return false
     end,
 	on_install = function(self,player)
-		player:getRoom():acquireSkill(player,zl_wufengjianTr,true,true,false)
+		player:getRoom():acquireSkill(player,zl_wufengjianMk,true,true,false)
 	end,
 	on_uninstall = function(self,player)
 		player:getRoom():detachSkillFromPlayer(player,"zl_wufengjian",true,true)
@@ -1042,14 +1123,23 @@ zl_wufengjian = sgs.CreateWeapon{
 zl_wufengjian:addCharTag("present_card")
 zl_wufengjian:setParent(zhulu)
 
-zl_yexingyiTr = sgs.CreateTriggerSkill{
+zl_yexingyiMk = sgs.CreateTriggerSkillV2{
 	name = "zl_yexingyi",
 	frequency = sgs.Skill_Compulsory,
+}
+zl_yexingyiTr = sgs.CreateTriggerSkillV2{
+	name = "#zl_yexingyi",
+	global = true,
+	frequency = sgs.Skill_Compulsory,
 	events = {sgs.CardEffected},
-	can_trigger = function(self,target)
-		return target and target:hasArmorEffect("zl_yexingyi")
+	can_trigger = function(self,event,room,player,data)
+		if player and player:hasArmorEffect("zl_yexingyi")
+		then return self:objectName() end
+		return false
 	end,
-	on_trigger = function(self,event,player,data,room)
+	on_record = yjHiddenOnRecord,
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
     	if event==sgs.CardEffected then
     		local effect = data:toCardEffect()
 			if effect.card:isKindOf("TrickCard")
@@ -1066,12 +1156,12 @@ zl_yexingyiTr = sgs.CreateTriggerSkill{
 zl_yexingyi = sgs.CreateArmor{
 	name = "zl_yexingyi",
 	class_name = "Yexingyi",
-	equip_skill = zl_yexingyiTr,
+	equip_skill = zl_yexingyiMk,
 	suit = 0,
 	number = 10,
 	on_install = function(self,player)
 		local room = player:getRoom()
-		room:acquireSkill(player,zl_yexingyiTr,true,true,false)
+		room:acquireSkill(player,zl_yexingyiMk,true,true,false)
 		return false
 	end,
 	on_uninstall = function(self,player)
@@ -1108,12 +1198,14 @@ zl_jinheCard = sgs.CreateSkillCard{
 		room:throwCard(dc,reason,source)
 	end
 }
-zl_jinheTr = sgs.CreateViewAsSkill{
+zl_jinheTr = sgs.CreateViewAsSkillV2{
 	name = "zl_jinhe",
-	view_as = function(self)
+	create_card = function(self,request)
 		return zl_jinheCard:clone()
 	end,
-	enabled_at_play = function(self,player)
+	can_activate = function(self,request)
+		local player = request:getInitiator()
+		if not player or request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 	   	return player:getPile("zl_li"):length()>0
 	end,
 }
@@ -1209,14 +1301,22 @@ zl_nvzhuang = sgs.CreateArmor{
 zl_nvzhuang:addCharTag("present_card")
 zl_nvzhuang:setParent(zhulu)
 
-zl_yajiaoqiangTr = sgs.CreateTriggerSkill{
+zl_yajiaoqiangMk = sgs.CreateTriggerSkillV2{
 	name = "zl_yajiaoqiang",
+}
+zl_yajiaoqiangTr = sgs.CreateTriggerSkillV2{
+	name = "#zl_yajiaoqiang",
+	global = true,
 	events = {sgs.CardUsed,sgs.CardResponded,sgs.CardFinished},
-	can_trigger = function(self,target)
-		return target and target:hasWeapon("zl_yajiaoqiang")
-		and not target:hasFlag("CurrentPlayer")
+	can_trigger = function(self,event,room,player,data)
+		if player and player:hasWeapon("zl_yajiaoqiang")
+		and not player:hasFlag("CurrentPlayer")
+		then return self:objectName() end
+		return false
 	end,
-	on_trigger = function(self,event,player,data,room)
+	on_record = yjHiddenOnRecord,
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
    		if event==sgs.CardUsed then
 			local use = data:toCardUse()
         	if use.card:getTypeId()>0 and use.card:isBlack()
@@ -1230,7 +1330,7 @@ zl_yajiaoqiangTr = sgs.CreateTriggerSkill{
 			and player:getMark("zl_yajiaoqiang-Clear")<1 then
 				player:addMark("zl_yajiaoqiang-Clear")
 				if res.m_card:getEffectiveId()>=0 and not room:getCardOwner(res.m_card:getEffectiveId())
-				and player:askForSkillInvoke(self,data,false) then
+				and player:askForSkillInvoke("zl_yajiaoqiang",data,false) then
 					room:obtainCard(player,res.m_card)
 				end
 			end
@@ -1240,7 +1340,7 @@ zl_yajiaoqiangTr = sgs.CreateTriggerSkill{
 			and use.card:getEffectiveId()>=0 then
 				player:removeTag("Yajiaoqiang")
 				if not room:getCardOwner(use.card:getEffectiveId())
-				and player:askForSkillInvoke(self,data) then
+				and player:askForSkillInvoke("zl_yajiaoqiang",data) then
 					room:obtainCard(player,use.card)
 				end
 			end
@@ -1254,9 +1354,9 @@ zl_yajiaoqiang = sgs.CreateWeapon{
 	range = 3,
 	suit = 3,
 	number = 5,
-	equip_skill = zl_yajiaoqiangTr,
+	equip_skill = zl_yajiaoqiangMk,
 	on_install = function(self,player)
-		player:getRoom():acquireSkill(player,zl_yajiaoqiangTr,true,true,false)
+		player:getRoom():acquireSkill(player,zl_yajiaoqiangMk,true,true,false)
 	end,
 	on_uninstall = function(self,player)
 		player:getRoom():detachSkillFromPlayer(player,"zl_yajiaoqiang",true,true)
@@ -1264,14 +1364,23 @@ zl_yajiaoqiang = sgs.CreateWeapon{
 }
 zl_yajiaoqiang:setParent(zhulu)
 
-zl_yinfengjiaTr = sgs.CreateTriggerSkill{
+zl_yinfengjiaMk = sgs.CreateTriggerSkillV2{
 	name = "zl_yinfengjia",
 	frequency = sgs.Skill_Compulsory,
+}
+zl_yinfengjiaTr = sgs.CreateTriggerSkillV2{
+	name = "#zl_yinfengjia",
+	global = true,
+	frequency = sgs.Skill_Compulsory,
 	events = {sgs.DamageInflicted},
-	can_trigger = function(self,target)
-		return target and target:hasArmorEffect("zl_yinfengjia")
+	can_trigger = function(self,event,room,player,data)
+		if player and player:hasArmorEffect("zl_yinfengjia")
+		then return self:objectName() end
+		return false
 	end,
-	on_trigger = function(self,event,player,data,room)
+	on_record = yjHiddenOnRecord,
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
     	if event==sgs.DamageInflicted then
  		    local damage = data:toDamage()
             if damage.card and damage.card:isKindOf("TrickCard") then
@@ -1292,9 +1401,9 @@ zl_yinfengjia = sgs.CreateArmor{
     available = function(self,player)
     	return false
     end,
-	equip_skill = zl_yinfengjiaTr,
+	equip_skill = zl_yinfengjiaMk,
 	on_install = function(self,player)
-		player:getRoom():acquireSkill(player,zl_yinfengjiaTr,true,true,false)
+		player:getRoom():acquireSkill(player,zl_yinfengjiaMk,true,true,false)
 	end,
 	on_uninstall = function(self,player)
 		player:getRoom():detachSkillFromPlayer(player,"zl_yinfengjia",true,true)
@@ -1303,16 +1412,20 @@ zl_yinfengjia = sgs.CreateArmor{
 zl_yinfengjia:addCharTag("present_card")
 zl_yinfengjia:setParent(zhulu)
 
-zlCardOnTrigger = sgs.CreateTriggerSkill{
-	name = "zlCardOnTrigger",
+zlCardOnTrigger = sgs.CreateTriggerSkillV2{
+	name = "#zlCardOnTrigger",
 	events = {sgs.CardsMoveOneTime,sgs.CardEffected,sgs.EventPhaseEnd,sgs.EventPhaseProceeding,sgs.CardFinished},
 	frequency = sgs.Skill_Compulsory,
 	global = true,
-	can_trigger = function(self,target)
-		return target and target:isAlive()
+	can_trigger = function(self,event,room,player,data)
+		if player and player:isAlive()
 		--and not table.contains(sgs.Sanguosha:getBanPackages(),"zhulu")
+		then return self:objectName() end
+		return false
 	end,
-	on_trigger = function(self,event,player,data,room)
+	on_record = yjHiddenOnRecord,
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
  		if event==sgs.CardsMoveOneTime then
 	     	local move = data:toMoveOneTime()
 			if move.to_place==sgs.Player_PlaceHand and player:objectName()==move.to:objectName()
@@ -1416,6 +1529,11 @@ zlCardOnTrigger = sgs.CreateTriggerSkill{
 	end,
 }
 zhulu:addSkills(zlCardOnTrigger)
+-- V2：装备触发技改用隐藏 global V2 技能判定，卡面技能名保留为 marker
+zhulu:addSkills(zl_wufengjianTr)
+zhulu:addSkills(zl_yexingyiTr)
+zhulu:addSkills(zl_yajiaoqiangTr)
+zhulu:addSkills(zl_yinfengjiaTr)
 
 sgs.LoadTranslationTable{
 	["zhulu"] = "逐鹿天下",
@@ -1454,10 +1572,15 @@ sgs.LoadTranslationTable{
 Zhongdan = sgs.Package("zhongdanyingjie")
 
 cuiyan = sgs.General(Zhongdan,"cuiyan","wei",3)
-zd_xunzhi = sgs.CreatePhaseChangeSkill{
+zd_xunzhi = sgs.CreateTriggerSkillV2{
 	name = "zd_xunzhi",
-	on_phasechange = function(self,player)
-		local room = player:getRoom()
+	events = {sgs.EventPhaseStart},
+	can_trigger = function(self,event,room,player,data)
+		if player and player:isAlive() and player:hasSkill(self:objectName())
+		then return self:objectName() end
+		return false
+	end,
+	on_effect = function(self,event,room,player,ctx)
 		for _,p in sgs.qlist(room:getOtherPlayers(player)) do
 			if player:getPhase()==sgs.Player_Start
 			and p:getNextAlive()==player and p:getHp()~=player:getHp()
@@ -1470,14 +1593,21 @@ zd_xunzhi = sgs.CreatePhaseChangeSkill{
 				break
 			end
 		end
+		return false
 	end
 }
 cuiyan:addSkill(zd_xunzhi)
-zd_yawang = sgs.CreateTriggerSkill{
+zd_yawang = sgs.CreateTriggerSkillV2{
 	name = "zd_yawang",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.EventPhaseStart,sgs.CardUsed,sgs.CardResponded,sgs.EventPhaseEnd},
-	on_trigger = function(self,event,player,data,room)
+	can_trigger = function(self,event,room,player,data)
+		if player and player:isAlive() and player:hasSkill(self:objectName())
+		then return self:objectName() end
+		return false
+	end,
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
 		if event==sgs.EventPhaseStart then
 			if player:getPhase()==sgs.Player_Draw then
 				local x = 0
@@ -1547,22 +1677,30 @@ zd_fenyueCard = sgs.CreateSkillCard{
 		end
 	end
 }
-zd_fenyue = sgs.CreateOneCardViewAsSkill{
+zd_fenyue = sgs.CreateViewAsSkillV2{
 	name = "zd_fenyue",
-	filter_pattern = ".|.|.|hand",
-	view_as = function(self,card)
+	n = 1,
+	can_select_card = function(self,request,card)
+		return not card:isEquipped()
+	end,
+	create_card = function(self,request)
 		local skillcard = zd_fenyueCard:clone()
-		skillcard:addSubcard(card:getId())
-		skillcard:setSkillName(self:objectName())
+		for _,cid in sgs.qlist(request:getSelectedCardIds())do
+			skillcard:addSubcard(cid)
+		end
+		skillcard:setSkillName("zd_fenyue")
 		return skillcard
 	end,
-	enabled_at_play = function(self,player)
+	can_activate = function(self,request)
+		local player = request:getInitiator()
+		if not player or request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local n = 0
 		for _,p in sgs.qlist(player:getAliveSiblings(true))do
 			if p:getRole()=="loyalist"
 			then n = n+1 end
 		end
-		return player:usedTimes("#zd_fenyueCard") < n
+		-- V2 发动以技能名记 history；旧 AI 直用 #zd_fenyueCard 记牌名
+		return player:usedTimes("#zd_fenyueCard") + player:usedTimes("zd_fenyue") < n
 	end
 }
 huangfusong:addSkill(zd_fenyue)
@@ -1728,30 +1866,31 @@ ZengbingCard = sgs.CreateSkillCard{
 		room:throwCard(self,"zd_zengbingjianzao",use.from)
 	end
 }
-Zengbing = sgs.CreateViewAsSkill{
+Zengbing = sgs.CreateViewAsSkillV2{
 	name = "Zengbing",
 	n = 2,
-	view_filter = function(self,selected,to_select)
-		return not sgs.Self:isJilei(to_select)
+	can_select_card = function(self,request,to_select)
+		local player = request:getInitiator()
+		return player and not player:isJilei(to_select)
 	end,
-	view_as = function(self,cards)
-		local can = #cards>1
-	   	for _,c in sgs.list(cards)do
-			can = can or c:getTypeId()~=1
+	create_card = function(self,request)
+		local ids = request:getSelectedCardIds()
+		if ids:length()<2 then return nil end
+		local sc = ZengbingCard:clone()
+	   	for _,c in sgs.qlist(ids)do
+			sc:addSubcard(c)
 	   	end
-		if can then
-			local sc = ZengbingCard:clone()
-			for _,c in sgs.list(cards)do
-				sc:addSubcard(c)
-			end
-			return sc
+		return sc
+	end,
+	can_activate = function(self,request)
+		local player = request:getInitiator()
+		if not player then return false end
+		local reason = request:getReason()
+		if reason==sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+		or reason==sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			return string.find(request:getPattern() or "","@@Zengbing")~=nil
 		end
-	end,
-	enabled_at_response = function(self,player,pattern)
-		return string.find(pattern,"@@Zengbing")
-	end,
-	enabled_at_play = function(self,player)
-	   	return false
+		return false
 	end,
 }
 ZhongdanCard:addSkills(Zengbing)
@@ -1940,40 +2079,46 @@ zd_fulei = sgs.CreateTrickCard{--锦囊牌
 zd_fulei:setParent(ZhongdanCard)
 zd_fulei:clone(2,12):setParent(ZhongdanCard)
 
-zd_lanyinjiaTrVS = sgs.CreateViewAsSkill{
+zd_lanyinjiaTrVS = sgs.CreateViewAsSkillV2{
 	name = "zd_lanyinjia",
 	n = 1,
 	response_or_use = true,
-	view_filter = function(self,selected,to_select)
+	can_select_card = function(self,request,to_select)
        	return not to_select:isEquipped()
 	end,
-	view_as = function(self,cards)
-	   	if #cards<1 then return end
-	    local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
-		pattern = sgs.Sanguosha:cloneCard("jink")
+	create_card = function(self,request)
+		local pattern = sgs.Sanguosha:cloneCard("jink")
 		pattern:setSkillName("zd_lanyinjia")
-	   	for _,cid in sgs.list(cards)do
+	   	for _,cid in sgs.qlist(request:getSelectedCardIds())do
 	   	    pattern:addSubcard(cid)
 	   	end
 		return pattern
 	end,
-	enabled_at_response = function(self,player,pattern)
-		return string.find(pattern,"jink")
-		and player:getHandcardNum()+player:getHandPile():length()>0
-	end,
-	enabled_at_play = function(self,player)
+	can_activate = function(self,request)
+		local player = request:getInitiator()
+		if not player then return false end
+		local reason = request:getReason()
+		if reason==sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+		or reason==sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			return string.find(request:getPattern() or "","jink")~=nil
+			and player:getHandcardNum()+player:getHandPile():length()>0
+		end
 		return false
 	end,
 }
-zd_lanyinjiaTr = sgs.CreateTriggerSkill{
-	name = "zd_lanyinjiaTr",
+zd_lanyinjiaTr = sgs.CreateTriggerSkillV2{
+	name = "#zd_lanyinjiaTr",
+	global = true,
 	--frequency = sgs.Skill_Compulsory,
-	view_as_skill = zd_lanyinjiaTrVS,
 	events = {sgs.DamageInflicted},
-	can_trigger = function(self,target)
-		return target and (target:getArmor() and target:getArmor():objectName()=="zd_lanyinjia" or target:viewAsEquip("zd_lanyinjia"))
+	can_trigger = function(self,event,room,player,data)
+		if player and (player:getArmor() and player:getArmor():objectName()=="zd_lanyinjia" or player:viewAsEquip("zd_lanyinjia"))
+		then return self:objectName() end
+		return false
 	end,
-	on_trigger = function(self,event,player,data,room)
+	on_record = yjHiddenOnRecord,
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
    		if event==sgs.DamageInflicted
 		then
 		    local damage = data:toDamage()
@@ -1995,7 +2140,7 @@ zd_lanyinjia = sgs.CreateArmor{
 	number = 2,
 	on_install = function(self,player)
 		local room = player:getRoom()
-		room:getThread():addTriggerSkill(zd_lanyinjiaTr)
+		-- V2：伤害触发已由隐藏 global 技能 #zd_lanyinjiaTr 处理
 		room:attachSkillToPlayer(player,"zd_lanyinjia")
 		return false
 	end,
@@ -2009,14 +2154,23 @@ zd_lanyinjia:setParent(ZhongdanCard)
 zd_lanyinjia:clone(1,2):setParent(ZhongdanCard)
 ZhongdanCard:addSkills(zd_lanyinjiaTr)
 
-zd_qibaodaoTr = sgs.CreateTriggerSkill{
+zd_qibaodaoMk = sgs.CreateTriggerSkillV2{
 	name = "zd_qibaodao",
 	frequency = sgs.Skill_Compulsory,
+}
+zd_qibaodaoTr = sgs.CreateTriggerSkillV2{
+	name = "#zd_qibaodao",
+	global = true,
+	frequency = sgs.Skill_Compulsory,
 	events = {sgs.TargetSpecified,sgs.CardUsed,sgs.ConfirmDamage},
-	can_trigger = function(self,target)
-		return target and target:hasWeapon("zd_qibaodao")
+	can_trigger = function(self,event,room,player,data)
+		if player and player:hasWeapon("zd_qibaodao")
+		then return self:objectName() end
+		return false
 	end,
-	on_trigger = function(self,event,player,data,room)
+	on_record = yjHiddenOnRecord,
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
    		if event==sgs.TargetSpecified then
 	       	local use = data:toCardUse()
 	       	if use.card:isKindOf("Slash") then
@@ -2064,10 +2218,10 @@ zd_qibaodao = sgs.CreateWeapon{
 	range = 2,
 	suit = 0,
 	number = 6,
-	equip_skill = zd_qibaodaoTr,
+	equip_skill = zd_qibaodaoMk,
 	on_install = function(self,player)
 		local room = player:getRoom()
-		room:acquireSkill(player,zd_qibaodaoTr,true,true,false)
+		room:acquireSkill(player,zd_qibaodaoMk,true,true,false)
 		return false
 	end,
 	on_uninstall = function(self,player)
@@ -2077,21 +2231,31 @@ zd_qibaodao = sgs.CreateWeapon{
 	end,
 }
 zd_qibaodao:setParent(ZhongdanCard)
+-- V2：装备触发技改用隐藏 global V2 技能判定，卡面技能名保留为 marker
+ZhongdanCard:addSkills(zd_qibaodaoTr)
 
-zd_zhungangshuoTr = sgs.CreateTriggerSkill{
+zd_zhungangshuoMk = sgs.CreateTriggerSkillV2{
 	name = "zd_zhungangshuo",
+}
+zd_zhungangshuoTr = sgs.CreateTriggerSkillV2{
+	name = "#zd_zhungangshuo",
+	global = true,
 	events = {sgs.TargetConfirmed},
-	can_trigger = function(self,target)
-		return target and target:hasWeapon("zd_zhungangshuo")
+	can_trigger = function(self,event,room,player,data)
+		if player and player:hasWeapon("zd_zhungangshuo")
+		then return self:objectName() end
+		return false
 	end,
-	on_trigger = function(self,event,player,data,room)
+	on_record = yjHiddenOnRecord,
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
    		if event==sgs.TargetConfirmed then
 	       	local use = data:toCardUse()
 	       	if use.card:isKindOf("Slash")
 			and use.from==player then
 				for _,to in sgs.list(use.to)do
     	           	if player:getHandcardNum()>0
-					and player:askForSkillInvoke(self,to) then
+					and player:askForSkillInvoke("zd_zhungangshuo",to) then
 						room:setEmotion(player,"weapon/zd_zhungangshuo")
 						local id = room:askForCardChosen(to,player,"h","zd_zhungangshuo")
 						room:throwCard(id,player,to)
@@ -2111,10 +2275,10 @@ zd_zhungangshuo = sgs.CreateWeapon{
 	range = 3,
 	suit = 0,
 	number = 5,
-	equip_skill = zd_zhungangshuoTr,
+	equip_skill = zd_zhungangshuoMk,
 	on_install = function(self,player)
 		local room = player:getRoom()
-		room:acquireSkill(player,zd_zhungangshuoTr,true,true,false)
+		room:acquireSkill(player,zd_zhungangshuoMk,true,true,false)
 		return false
 	end,
 	on_uninstall = function(self,player)
@@ -2124,14 +2288,20 @@ zd_zhungangshuo = sgs.CreateWeapon{
 	end,
 }
 zd_zhungangshuo:setParent(ZhongdanCard)
+ZhongdanCard:addSkills(zd_zhungangshuoTr)
 
 
 
 
-zd_dongcha = sgs.CreateTriggerSkill{
+zd_dongcha = sgs.CreateTriggerSkillV2{
 	name = "zd_dongcha",
 	events = {sgs.GameStart,sgs.EventPhaseStart},
-	on_trigger = function(self,event,player,data,room)
+	can_trigger = function(self,event,room,player,data)
+		if player and player:isAlive() and player:hasSkill(self:objectName())
+		then return self:objectName() end
+		return false
+	end,
+	on_effect = function(self,event,room,player,ctx)
 		if event==sgs.GameStart then
 			local rebel = {}
            	for _,p in sgs.list(room:getAlivePlayers())do
@@ -2157,22 +2327,32 @@ zd_dongcha = sgs.CreateTriggerSkill{
 		end
 	end
 }
-zd_sheshen = sgs.CreateTriggerSkill{
+zd_sheshen = sgs.CreateTriggerSkillV2{
 	name = "zd_sheshen",
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.AskForPeachesDone},
-	can_trigger = function(self,target)
-		return target and target:getHp()<1
+	can_trigger = function(self,event,room,player,data)
+		if not (player and player:getHp()<1) then return false end
+		-- 技能由持有者的实例在他人濒死结算时触发；context owner = 持有者
+		local who = {}
+		for _,p in sgs.qlist(room:findPlayersBySkillName("zd_sheshen"))do
+			table.insert(who,p:objectName())
+		end
+		if #who>0 then return self:objectName(), table.concat(who,"|") end
+		return false
 	end,
-	on_trigger = function(self,event,player,data,room)
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
+		-- player = 持有者；ctx.invoker = 濒死结算中的角色（原 can_trigger 的 target）
+		local target = ctx.invoker or player
 		if event==sgs.AskForPeachesDone then
 			local lord = room:getTag("ZhongdanLord"):toPlayer()
-			if player==lord then
-				for _,p in sgs.list(room:getAllPlayers())do
-					if lord:getHp()<1 and p:hasSkill(self) then
-						room:sendCompulsoryTriggerLog(p,self)
-						room:gainMaxHp(lord)
-						room:recover(lord,sgs.RecoverStruct(p,nil,p:getHp()))
+			if target==lord then
+				local p = player
+				if lord:getHp()<1 then
+					room:sendCompulsoryTriggerLog(p,self)
+					room:gainMaxHp(lord)
+					room:recover(lord,sgs.RecoverStruct(p,nil,p:getHp()))
 				local d = dummyCard()
 						d:addSubcards(p:handCards())
 						d:addSubcards(p:getEquipsId())
@@ -2181,7 +2361,6 @@ zd_sheshen = sgs.CreateTriggerSkill{
 			end
 		end
 	end
-		end
 	end
 }
 ZhongdanCard:addSkills(zd_dongcha)
@@ -2335,18 +2514,22 @@ zhongdanScenario:setRule(zhongdanScenarioRule)--将触发技设置给剧情
 sgs.Sanguosha:addScenario(zhongdanScenario)--]]
 
 local canZhongdan
-ZhongdanOnTrigger = sgs.CreateTriggerSkill{
-	name = "ZhongdanOnTrigger",
+ZhongdanOnTrigger = sgs.CreateTriggerSkillV2{
+	name = "#ZhongdanOnTrigger",
 	events = {sgs.GameReady,sgs.BuryVictim,sgs.BeforeGameOverJudge,
 	sgs.DrawNCards,sgs.EventPhaseEnd,sgs.TargetConfirming,sgs.CardsMoveOneTime},
 	frequency = sgs.Skill_Compulsory,
 	global = true,
-	can_trigger = function(self,target)
-		if canZhongdan or ZhongdanEvent then return true elseif canZhongdan==false then return false end
+	can_trigger = function(self,event,room,player,data)
+		if not player then return false end
+		if canZhongdan or ZhongdanEvent then return self:objectName() elseif canZhongdan==false then return false end
 		canZhongdan = not table.contains(sgs.Sanguosha:getBanPackages(),"ZhongdanCard")
-		return canZhongdan
+		if canZhongdan then return self:objectName() end
+		return false
 	end,
-	on_trigger = function(self,event,player,data,room)
+	on_record = yjHiddenOnRecord,
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
 		if event==sgs.GameReady then
 			if  ZhongdanEvent then
 			elseif table.contains(sgs.Sanguosha:getBanPackages(),"zhongdanyingjie")
@@ -2739,19 +2922,23 @@ wl_toulianghuanzhu:clone(1,13):setParent(wenheluanwu)
 wl_toulianghuanzhu:clone(0,13):setParent(wenheluanwu)
 
 local banWenhe,WL_Round
-WenheOnTrigger = sgs.CreateTriggerSkill{
-	name = "WenheOnTrigger",
+WenheOnTrigger = sgs.CreateTriggerSkillV2{
+	name = "#WenheOnTrigger",
 	frequency = sgs.Skill_Compulsory,
 	global = true,
 	events = {sgs.ConfirmDamage,sgs.RoundStart,sgs.GameReady,sgs.Death,sgs.CardsMoveOneTime,
 	sgs.RoundEnd,sgs.GameOverJudge,sgs.EventPhaseChanging,sgs.HpChanged},
 	priority = {5,5,5,5,5,5,5},
-	can_trigger = function(self,target)
-		if banWenhe==false or Wenhe_event_only then return true elseif banWenhe then return end
+	can_trigger = function(self,event,room,player,data)
+		if not player then return false end
+		if banWenhe==false or Wenhe_event_only then return self:objectName() elseif banWenhe then return false end
 		banWenhe = sgs.Sanguosha:currentRoom():getMode()~="08_wl" or table.contains(sgs.Sanguosha:getBanPackages(),"wenheluanwu")
-		return not banWenhe
+		if not banWenhe then return self:objectName() end
+		return false
 	end,
-	on_trigger = function(self,event,player,data,room)
+	on_record = yjHiddenOnRecord,
+	on_effect = function(self,event,room,player,ctx)
+		local data = ctx.original_data
 		local log = sgs.LogMessage()
 		log.type = "$jl_bingfen"
 		log.from = room:getOwner()
@@ -3152,7 +3339,43 @@ sgs.LoadTranslationTable{
 	["$wl_toulianghuanzhu"] = "%arg 为 %to 分配了 %arg2 张装备牌 %card",
 	["$wl_toulianghuanzhu0"] = "%arg 为 %to 分配了 %arg2 张装备牌",
 	["ToTable"] = "移除",
+	-- V2 隐藏触发技显示名（触发顺序提示/日志用）
+	["#yj_zhanxiang"] = "战象",
+	["#yj_nvzhuang"] = "女装",
+	["#yj_yinfengyi"] = "引蜂衣",
+	["#yj_yitianjian"] = "倚天剑",
+	["#yj_on_trigger"] = "用间篇",
+	["#zl_wufengjian"] = "无锋剑",
+	["#zl_yexingyi"] = "夜行衣",
+	["#zl_yajiaoqiang"] = "涯角枪",
+	["#zl_yinfengjia"] = "引蜂甲",
+	["#zlCardOnTrigger"] = "逐鹿天下",
+	["#zd_lanyinjiaTr"] = "烂银甲",
+	["#zd_qibaodao"] = "七宝刀",
+	["#zd_zhungangshuo"] = "衠钢槊",
+	["#ZhongdanOnTrigger"] = "忠胆英杰",
+	["#WenheOnTrigger"] = "文和乱武",
 }
+
+-- V2：隐藏 global 触发技需要在每个武将上预挂引导实例，V2 触发系统才能评估；
+-- 后加载武将/换将/隐藏武将缺失的实例由各技能的 on_record（yjHiddenOnRecord）补齐
+for _, gen in sgs.qlist(sgs.Sanguosha:getAllGenerals()) do
+	gen:addSkill("#yj_zhanxiang")
+	gen:addSkill("#yj_nvzhuang")
+	gen:addSkill("#yj_yinfengyi")
+	gen:addSkill("#yj_yitianjian")
+	gen:addSkill("#yj_on_trigger")
+	gen:addSkill("#zl_wufengjian")
+	gen:addSkill("#zl_yexingyi")
+	gen:addSkill("#zl_yajiaoqiang")
+	gen:addSkill("#zl_yinfengjia")
+	gen:addSkill("#zlCardOnTrigger")
+	gen:addSkill("#zd_lanyinjiaTr")
+	gen:addSkill("#zd_qibaodao")
+	gen:addSkill("#zd_zhungangshuo")
+	gen:addSkill("#ZhongdanOnTrigger")
+	gen:addSkill("#WenheOnTrigger")
+end
 
 
 

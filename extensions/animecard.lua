@@ -24,8 +24,7 @@ if GreenRoseUse then
 				if skill:inherits("ViewAsSkill") then
 					room:attachSkillToPlayer(player, self:objectName())
 				elseif skill:inherits("TriggerSkill") then
-					local tirggerskill = sgs.Sanguosha:getTriggerSkill(self:objectName())
-					room:getThread():addTriggerSkill(tirggerskill)
+					room:acquireSkill(player, skill, true, true, false)
 				end
 			end
 			room:setPlayerProperty(player, "maxhp", sgs.QVariant(player:getMaxHp() + 1))
@@ -34,33 +33,29 @@ if GreenRoseUse then
 		end,
 		on_uninstall = function(self, player) --卸下时移除技能
 			local room = player:getRoom()
-			local skill = sgs.Sanguosha:getSkill(self:objectName())
-			if skill and skill:inherits("ViewAsSkill") then
-				room:detachSkillFromPlayer(player, self:objectName(), true)
-			end
+			room:detachSkillFromPlayer(player, self:objectName(), true, true, false)
 			room:setPlayerProperty(player, "maxhp", sgs.QVariant(player:getMaxHp() - 1))
 		end,
 	}
 
-	GreenRose_skill = sgs.CreateTriggerSkill {
+	GreenRose_skill = sgs.CreateTriggerSkillV2 {
 		name = "GreenRose", --一般的话，技能的objectName()和武器的objectName(）用一样的名字
 		frequency = sgs.Skill_Compulsory,
 		events = { sgs.TargetConfirmed },
-		can_trigger = function(self, target)
-			return target and target:hasWeapon(self:objectName())
-		end,
-		on_trigger = function(self, event, player, data)
+		can_trigger = function(skill, event, room, player, data)
+			if not player or not player:hasWeapon(skill:objectName()) then return false end
 			local use = data:toCardUse()
-			local card = use.card
-			local source = use.from
-			local room = player:getRoom()
-			if card:isKindOf("Slash") then
-				if source:objectName() == player:objectName() then
-					for i = 0, use.to:length() - 1 do
-						if use.to:at(i):getArmor() then
-							room:throwCard(use.to:at(i):getArmor():getEffectiveId(), use.to:at(i), source)
-						end
-					end
+			if use.card and use.card:isKindOf("Slash")
+				and use.from and use.from:objectName() == player:objectName() then
+				return skill:objectName()
+			end
+			return false
+		end,
+		on_effect = function(skill, event, room, player, ctx)
+			local use = ctx.original_data:toCardUse()
+			for i = 0, use.to:length() - 1 do
+				if use.to:at(i):getArmor() then
+					room:throwCard(use.to:at(i):getArmor():getEffectiveId(), use.to:at(i), player)
 				end
 			end
 			return false
@@ -89,45 +84,47 @@ if ElucidatorUse then
 				if skill:inherits("ViewAsSkill") then
 					room:attachSkillToPlayer(player, self:objectName())
 				elseif skill:inherits("TriggerSkill") then
-					local tirggerskill = sgs.Sanguosha:getTriggerSkill(self:objectName())
-					room:getThread():addTriggerSkill(tirggerskill)
+					room:acquireSkill(player, skill, true, true, false)
 				end
 			end
 		end,
 		on_uninstall = function(self, player) --卸下时移除技能
 			local room = player:getRoom()
-			local skill = sgs.Sanguosha:getSkill(self:objectName())
-			if skill and skill:inherits("ViewAsSkill") then
-				room:detachSkillFromPlayer(player, self:objectName(), true)
-			end
+			room:detachSkillFromPlayer(player, self:objectName(), true, true, false)
 		end,
 	}
 
-	Se_Elucidator_skill = sgs.CreateTriggerSkill {
+	Se_Elucidator_skill = sgs.CreateTriggerSkillV2 {
 		name = "Se_Elucidator", --一般的话，技能的objectName()和武器的objectName(）用一样的名字
 		frequency = sgs.Skill_NotFrequent,
 		events = { sgs.CardOffset },
-		can_trigger = function(self, target)
-			return target and target:hasWeapon(self:objectName())
-		end,
-		on_trigger = function(self, event, player, data)
+		can_trigger = function(skill, event, room, player, data)
+			if not player or not player:hasWeapon(skill:objectName()) then return false end
 			local effect = data:toCardEffect()
-			local room = player:getRoom()
-			if effect.card and effect.card:isKindOf("Slash") and effect.from:objectName() == player:objectName() and room:getCurrent():objectName() == player:objectName() then
-				if effect.to and effect.to:isAlive() then
-					local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
-					if effect.to:isProhibited(player, duel) then
-						duel:deleteLater()
-						return
-					end
-					if room:askForSkillInvoke(player, self:objectName(), data) then
-						player:drawCards(1)
-						duel:setSkillName(self:objectName())
-						room:useCard(sgs.CardUseStruct(duel, player, effect.to, false))
-					end
-					duel:deleteLater()
-				end
+			if effect.card and effect.card:isKindOf("Slash")
+				and effect.from and effect.from:objectName() == player:objectName()
+				and room:getCurrent() and room:getCurrent():objectName() == player:objectName()
+				and effect.to and effect.to:isAlive() then
+				return skill:objectName()
 			end
+			return false
+		end,
+		on_cost = function(skill, event, room, player, ctx)
+			local effect = ctx.original_data:toCardEffect()
+			if not (effect.to and effect.to:isAlive()) then return false end
+			local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
+			local prohibited = effect.to:isProhibited(player, duel)
+			duel:deleteLater()
+			if prohibited then return false end
+			return room:askForSkillInvoke(player, skill:objectName(), ctx.original_data)
+		end,
+		on_effect = function(skill, event, room, player, ctx)
+			local effect = ctx.original_data:toCardEffect()
+			local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_NoSuit, 0)
+			player:drawCards(1)
+			duel:setSkillName(skill:objectName())
+			room:useCard(sgs.CardUseStruct(duel, player, effect.to, false))
+			duel:deleteLater()
 			return false
 		end,
 	}
@@ -230,7 +227,11 @@ if SenjyutsuRinkUse then
 				end
 			end
 			targets[1]:gainMark(string.format("@SenjyutsuGroup" .. group))
-			targets[2]:gainMark(string.format("@SenjyutsuGroup" .. group))
+			room:attachSkillToPlayer(targets[1], "SenjyutsuRinkSkill")
+			if targets[2] then
+				targets[2]:gainMark(string.format("@SenjyutsuGroup" .. group))
+				room:attachSkillToPlayer(targets[2], "SenjyutsuRinkSkill")
+			end
 		end,
 	}
 
@@ -241,47 +242,58 @@ if SenjyutsuRinkUse then
 	local sr3 = SenjyutsuRink:clone(2, 11)
 	sr3:setParent(extension)
 
-	SenjyutsuRink_skill = sgs.CreateTriggerSkill {
+	SenjyutsuRink_skill = sgs.CreateTriggerSkillV2 {
 		name = "SenjyutsuRinkSkill",
 		frequency = sgs.Skill_NotFrequent,
 		events = { sgs.TargetConfirmed },
-		on_trigger = function(self, event, player, data)
+		can_trigger = function(skill, event, room, player, data)
+			if not player or not player:isAlive() or not player:hasSkill(skill:objectName()) then return false end
 			local use = data:toCardUse()
-			local card = use.card
+			if not (use.card and use.card:isKindOf("Slash") and use.from) then return false end
 			local source = use.from
-			local room = player:getRoom()
-			if card:isKindOf("Slash") then
-				local group = 0
-				for i = 1, 5 do
-					if source:getMark(string.format("@SenjyutsuGroup" .. i)) > 0 then
-						group = i
-					end
-				end
-				if group == 0 then
-					return
-				end
-				local linker = source
-				for _, p in sgs.qlist(room:getOtherPlayers(source)) do
-					if p:getMark(string.format("@SenjyutsuGroup" .. group)) > 0 and p:objectName() ~= source:objectName() then
-						linker = p
-					end
-				end
-				if linker:askForSkillInvoke(self:objectName(), data) then
-					local sl = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-					sl:setSkillName(self:objectName())
-					local s = sgs.CardUseStruct()
-					s.from = linker
-					s.to = use.to
-					s.card = sl
-					room:useCard(s, false)
-					source:loseMark(string.format("@SenjyutsuGroup" .. group))
-					linker:loseMark(string.format("@SenjyutsuGroup" .. group))
+			local group = 0
+			for i = 1, 5 do
+				if source:getMark(string.format("@SenjyutsuGroup" .. i)) > 0 then
+					group = i
 				end
 			end
-			return false
+			if group == 0 then return false end
+			if player:getMark(string.format("@SenjyutsuGroup" .. group)) <= 0 then return false end
+			if player:objectName() == source:objectName() then
+				for _, p in sgs.qlist(room:getOtherPlayers(source)) do
+					if p:getMark(string.format("@SenjyutsuGroup" .. group)) > 0 then
+						return false
+					end
+				end
+			end
+			return skill:objectName()
 		end,
-		can_trigger = function(self, target)
-			return target
+		on_cost = function(skill, event, room, player, ctx)
+			return room:askForSkillInvoke(player, skill:objectName(), ctx.original_data)
+		end,
+		on_effect = function(skill, event, room, player, ctx)
+			local use = ctx.original_data:toCardUse()
+			local source = use.from
+			local group = 0
+			for i = 1, 5 do
+				if source:getMark(string.format("@SenjyutsuGroup" .. i)) > 0 then
+					group = i
+				end
+			end
+			if group == 0 then return false end
+			local sl = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+			sl:setSkillName(skill:objectName())
+			sl:deleteLater()
+			local s = sgs.CardUseStruct()
+			s.from = player
+			s.to = use.to
+			s.card = sl
+			room:useCard(s, false)
+			source:loseMark(string.format("@SenjyutsuGroup" .. group))
+			player:loseMark(string.format("@SenjyutsuGroup" .. group))
+			room:detachSkillFromPlayer(source, "SenjyutsuRinkSkill", true, true, false)
+			room:detachSkillFromPlayer(player, "SenjyutsuRinkSkill", true, true, false)
+			return false
 		end,
 	}
 
@@ -331,7 +343,11 @@ if SenjyutsuRinkUse then
 				end
 			end
 			targets[1]:gainMark(string.format("@SenjyutsuGroup" .. group))
-			targets[2]:gainMark(string.format("@SenjyutsuGroup" .. group))
+			room:attachSkillToPlayer(targets[1], "SenjyutsuRinkSkill")
+			if targets[2] then
+				targets[2]:gainMark(string.format("@SenjyutsuGroup" .. group))
+				room:attachSkillToPlayer(targets[2], "SenjyutsuRinkSkill")
+			end
 		end,
 	}
 
@@ -342,47 +358,58 @@ if SenjyutsuRinkUse then
 	local sr3 = SenjyutsuRink:clone(2, 11)
 	sr3:setParent(extension)
 
-	SenjyutsuRink_skill = sgs.CreateTriggerSkill {
+	SenjyutsuRink_skill = sgs.CreateTriggerSkillV2 {
 		name = "SenjyutsuRinkSkill",
 		frequency = sgs.Skill_NotFrequent,
 		events = { sgs.TargetConfirmed },
-		on_trigger = function(self, event, player, data)
+		can_trigger = function(skill, event, room, player, data)
+			if not player or not player:isAlive() or not player:hasSkill(skill:objectName()) then return false end
 			local use = data:toCardUse()
-			local card = use.card
+			if not (use.card and use.card:isKindOf("Slash") and use.from) then return false end
 			local source = use.from
-			local room = player:getRoom()
-			if card:isKindOf("Slash") then
-				local group = 0
-				for i = 1, 5 do
-					if source:getMark(string.format("@SenjyutsuGroup" .. i)) > 0 then
-						group = i
-					end
-				end
-				if group == 0 then
-					return
-				end
-				local linker = source
-				for _, p in sgs.qlist(room:getOtherPlayers(source)) do
-					if p:getMark(string.format("@SenjyutsuGroup" .. group)) > 0 and p:objectName() ~= source:objectName() then
-						linker = p
-					end
-				end
-				if linker:askForSkillInvoke(self:objectName(), data) then
-					local sl = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-					sl:setSkillName(self:objectName())
-					local s = sgs.CardUseStruct()
-					s.from = linker
-					s.to = use.to
-					s.card = sl
-					room:useCard(s, false)
-					source:loseMark(string.format("@SenjyutsuGroup" .. group))
-					linker:loseMark(string.format("@SenjyutsuGroup" .. group))
+			local group = 0
+			for i = 1, 5 do
+				if source:getMark(string.format("@SenjyutsuGroup" .. i)) > 0 then
+					group = i
 				end
 			end
-			return false
+			if group == 0 then return false end
+			if player:getMark(string.format("@SenjyutsuGroup" .. group)) <= 0 then return false end
+			if player:objectName() == source:objectName() then
+				for _, p in sgs.qlist(room:getOtherPlayers(source)) do
+					if p:getMark(string.format("@SenjyutsuGroup" .. group)) > 0 then
+						return false
+					end
+				end
+			end
+			return skill:objectName()
 		end,
-		can_trigger = function(self, target)
-			return target
+		on_cost = function(skill, event, room, player, ctx)
+			return room:askForSkillInvoke(player, skill:objectName(), ctx.original_data)
+		end,
+		on_effect = function(skill, event, room, player, ctx)
+			local use = ctx.original_data:toCardUse()
+			local source = use.from
+			local group = 0
+			for i = 1, 5 do
+				if source:getMark(string.format("@SenjyutsuGroup" .. i)) > 0 then
+					group = i
+				end
+			end
+			if group == 0 then return false end
+			local sl = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+			sl:setSkillName(skill:objectName())
+			sl:deleteLater()
+			local s = sgs.CardUseStruct()
+			s.from = player
+			s.to = use.to
+			s.card = sl
+			room:useCard(s, false)
+			source:loseMark(string.format("@SenjyutsuGroup" .. group))
+			player:loseMark(string.format("@SenjyutsuGroup" .. group))
+			room:detachSkillFromPlayer(source, "SenjyutsuRinkSkill", true, true, false)
+			room:detachSkillFromPlayer(player, "SenjyutsuRinkSkill", true, true, false)
+			return false
 		end,
 	}
 

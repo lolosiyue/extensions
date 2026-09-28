@@ -17,7 +17,7 @@ extension = sgs.Package("gaodacard", sgs.Package_CardPack)
 shootUse = function(self, room, source, targets, isSpreadShoot)
 	if isSpreadShoot == nil then isSpreadShoot = false end
 	
-	-- 以最終目標集重建 Jink_ tag：shoot_skill 在 CardUsed 時 use.to 可能已被
+	-- 以最終目標集重建 Jink_ tag：#shoot_skill 在 CardUsed 時 use.to 可能已被
 	-- TargetConfirming 技能（如 bachi）修改，導致 tag 目標數少於實際命中數，
 	-- 造成 shootEffect 讀到空 list 崩潰（0xC0000005）
 	local jink_list = sgs.IntList()
@@ -320,17 +320,29 @@ for n = 4, 6, 2 do
 	spread_shoot:clone(3, n):setParent(extension)
 end
 
-shoot_skill = sgs.CreateTriggerSkill{
-	name = "shoot_skill",
+--V2 全局技能以隱藏技能名掛到所有武將；
+--晚於本擴展加載的武將或換將後於結算時補掛 acquired 實例。
+local gaoda_global_skill_names = {"#shoot_skill", "#Guard_skill", "#laplace_box_card"}
+local function gaoda_ensure_global_instances(room)
+	for _, p in sgs.qlist(room:getAllPlayers(true)) do
+		for _, skill_name in ipairs(gaoda_global_skill_names) do
+			if p:getSkillInstanceIds(skill_name):isEmpty() then
+				room:attachSkillToPlayer(p, skill_name)
+			end
+		end
+	end
+end
+
+shoot_skill = sgs.CreateTriggerSkillV2{
+	name = "#shoot_skill",
 	events = {sgs.CardUsed},
 	global = true,
 	priority = 0,
-	can_trigger = function(self, target)
-		return target and target:isAlive()
-	end,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		local use = data:toCardUse()
+	on_record = function(skill, event, room, player, ctx)
+		gaoda_ensure_global_instances(room)
+		if not player or not player:isAlive() or not ctx.owner
+			or ctx.owner:objectName() ~= player:objectName() then return end
+		local use = ctx.original_data:toCardUse()
 		if use.card and use.card:objectName():endsWith("shoot") then
 			local jink_list = sgs.IntList()
 			for _, _ in sgs.qlist(use.to) do
@@ -382,124 +394,138 @@ counter_guard = sgs.CreateBasicCard{
 counter_guard:clone(0, 2):setParent(extension)
 counter_guard:clone(2, 2):setParent(extension)
 
-Guard_skill = sgs.CreateTriggerSkill{
-	name = "Guard_skill",
+Guard_skill = sgs.CreateTriggerSkillV2{
+	name = "#Guard_skill",
 	events = {sgs.DamageInflicted},
 	global = true,
+	frequency = sgs.Skill_Compulsory,
 	priority = -1,
-	can_trigger = function(self, target)
-		if target and target:isAlive() then
-			--强武可触发
-			if target:hasSkill("luaqiangwu") and target:getMark("luaqiangwub") > 0 then
-				return true
+	on_record = function(skill, event, room, player, ctx)
+		gaoda_ensure_global_instances(room)
+	end,
+	can_trigger = function(skill, event, room, player, data)
+		local damage = data:toDamage()
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName()) and damage.card
+			and (damage.card:isKindOf("Slash") or (damage.card:objectName():endsWith("shoot")
+				and damage.card:objectName() ~= "pierce_shoot"))) then
+			return false
+		end
+
+		--强武可触发
+		if player:hasSkill("luaqiangwu") and player:getMark("luaqiangwub") > 0 then
+			return skill:objectName()
+		end
+
+		--覆盾可触发
+		if player:hasSkill("fudun") and (player:getDefensiveHorse() ~= nil or player:getOffensiveHorse() ~= nil) then
+			return skill:objectName()
+		end
+
+		--骷颅可触发
+		if player:getTag("Guard"):toCard() then
+			return skill:objectName()
+		end
+
+		--亮剑可触发
+		if player:hasSkill("liangjian") then
+			local can_invoke = true
+			for _, p in sgs.qlist(player:getAliveSiblings()) do
+				if not player:inMyAttackRange(p) then
+					can_invoke = false
+					break
+				end
 			end
-			
-			--覆盾可触发
-			if target:hasSkill("fudun") and (target:getDefensiveHorse() ~= nil or target:getOffensiveHorse() ~= nil) then
-				return true
-			end
-			
-			--骷颅可触发
-			if target:getTag("Guard"):toCard() then
-				return true
-			end
-			
-			--亮剑可触发
-			if target:hasSkill("liangjian") then
-				local can_invoke = true
-				for _, p in sgs.qlist(target:getAliveSiblings()) do
-					if not target:inMyAttackRange(p) then
-						can_invoke = false
-						break
+			if can_invoke then
+				for _,card in sgs.qlist(player:getHandcards()) do
+					if card:getClassName():endsWith("Guard") or (card:getNumber() == 1 or card:getNumber() == 7 or card:getNumber() == 13) then
+						return skill:objectName()
 					end
 				end
-				if can_invoke then
-					for _,card in sgs.qlist(target:getHandcards()) do
-						if card:getClassName():endsWith("Guard") or (card:getNumber() == 1 or card:getNumber() == 7 or card:getNumber() == 13) then
-							return true
-						end
-					end
-					
-					for _,id in sgs.qlist(target:getHandPile()) do
-						local card = sgs.Sanguosha:getCard(id)
-						if card:getClassName():endsWith("Guard") or (card:getNumber() == 1 or card:getNumber() == 7 or card:getNumber() == 13) then
-							return true
-						end
+
+				for _,id in sgs.qlist(player:getHandPile()) do
+					local card = sgs.Sanguosha:getCard(id)
+					if card:getClassName():endsWith("Guard") or (card:getNumber() == 1 or card:getNumber() == 7 or card:getNumber() == 13) then
+						return skill:objectName()
 					end
 				end
 			end
-			
-			for _,card in sgs.qlist(target:getHandcards()) do
-				if card:getClassName():endsWith("Guard") then
-					return true
-				end
+		end
+
+		for _,card in sgs.qlist(player:getHandcards()) do
+			if card:getClassName():endsWith("Guard") then
+				return skill:objectName()
 			end
-			
-			for _,id in sgs.qlist(target:getHandPile()) do
-				local card = sgs.Sanguosha:getCard(id)
-				if card:getClassName():endsWith("Guard") then
-					return true
-				end
+		end
+
+		for _,id in sgs.qlist(player:getHandPile()) do
+			local card = sgs.Sanguosha:getCard(id)
+			if card:getClassName():endsWith("Guard") then
+				return skill:objectName()
 			end
-			
-			--融合
-			local list = target:property("ronghe"):toString():split("+")
-			for _,l in pairs(list) do
-				local card = sgs.Sanguosha:getCard(tonumber(l))
-				if card:getClassName():endsWith("Guard") then
-					return true
-				end
+		end
+
+		--融合
+		local list = player:property("ronghe"):toString():split("+")
+		for _,l in pairs(list) do
+			local card_id = tonumber(l)
+			local card = card_id and sgs.Sanguosha:getCard(card_id)
+			if card and card:getClassName():endsWith("Guard") then
+				return skill:objectName()
 			end
 		end
 		return false
 	end,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		local damage = data:toDamage()
-		if damage.card and (damage.card:isKindOf("Slash") or damage.card:objectName():endsWith("shoot") and damage.card:objectName() ~= "pierce_shoot") then
-			
-			--骷颅
-			local pro_guard = player:getTag("Guard"):toCard()
-			if pro_guard then
-				player:removeTag("Guard")
-			end
-			
-			local prompt = "@Guard:" .. damage.card:objectName() .. (damage.from and ":" .. damage.from:objectName() or "")
-			local guard = room:askForCard(player, "Guard,CounterGuard", prompt, data, sgs.Card_MethodUse, damage.from)
-			
-			if guard then				
-				math.random()
-				if (damage.card:objectName():endsWith("shoot") or math.random(1, 100) <= 70) then
-					local log = sgs.LogMessage()
-					log.type = "#burstd"
-					log.to:append(damage.to)
-					log.arg = damage.damage
-					log.arg2 = damage.damage - 1
-					room:sendLog(log)
-					damage.damage = damage.damage - 1
-					if damage.damage < 1 then
-						room:setEmotion(player, "skill_nullify")
-						
-						if damage.from and guard:objectName() == "counter_guard" then
-							room:doAnimate(1, player:objectName(), damage.from:objectName())
-							local card = room:askForCard(damage.from, "jink", "@fengong", sgs.QVariant(), sgs.Card_MethodResponse, player, false, self:objectName(), false)
-							if not card then
-								room:damage(sgs.DamageStruct(guard, player, damage.from))
-							end
-						end
-						
-						return true
-					end
-					data:setValue(damage)
-				else
-					local log = sgs.LogMessage()
-					log.type = "#Guard_failed"
-					log.from = player
-					log.card_str = guard:toString()
-					room:sendLog(log)
-				end
-			end
+	on_cost = function(skill, event, room, player, ctx)
+		local damage = ctx.original_data:toDamage()
+
+		--骷颅
+		local pro_guard = player:getTag("Guard"):toCard()
+		if pro_guard then
+			player:removeTag("Guard")
 		end
+
+		local prompt = "@Guard:" .. damage.card:objectName() .. (damage.from and ":" .. damage.from:objectName() or "")
+		local guard = room:askForCard(player, "Guard,CounterGuard", prompt, ctx.original_data, sgs.Card_MethodUse, damage.from)
+		if guard then
+			ctx.extra_data:setValue(guard:getEffectiveId())
+			return true
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local damage = ctx.original_data:toDamage()
+		local guard = sgs.Sanguosha:getCard(ctx.extra_data:toInt())
+		math.random()
+		if damage.card and (damage.card:objectName():endsWith("shoot") or math.random(1, 100) <= 70) then
+			local log = sgs.LogMessage()
+			log.type = "#burstd"
+			log.to:append(damage.to)
+			log.arg = damage.damage
+			log.arg2 = damage.damage - 1
+			room:sendLog(log)
+			damage.damage = damage.damage - 1
+			if damage.damage < 1 then
+				room:setEmotion(player, "skill_nullify")
+
+				if damage.from and guard and guard:objectName() == "counter_guard" then
+					room:doAnimate(1, player:objectName(), damage.from:objectName())
+					local card = room:askForCard(damage.from, "jink", "@fengong", sgs.QVariant(), sgs.Card_MethodResponse, player, false, skill:objectName(), false)
+					if not card then
+						room:damage(sgs.DamageStruct(guard, player, damage.from))
+					end
+				end
+
+				return true
+			end
+			ctx.original_data:setValue(damage)
+		else
+			local log = sgs.LogMessage()
+			log.type = "#Guard_failed"
+			log.from = player
+			if guard then log.card_str = guard:toString() end
+			room:sendLog(log)
+		end
+		return false
 	end
 }
 
@@ -556,100 +582,124 @@ tactical_combo:clone(1, 2):setParent(extension)
 tactical_combo:clone(3, 1):setParent(extension)
 tactical_combo:clone(3, 2):setParent(extension)
 
-laplace_box_skill = sgs.CreateTriggerSkill{
-	name = "laplace_box_skill",
+laplace_box_skill = sgs.CreateTriggerSkillV2{
+	name = "#laplace_box_skill",
 	events = {sgs.EventPhaseStart, sgs.Damaged},
-	can_trigger = function(self, target)
-		return target and target:isAlive() and target:hasTreasure("laplace_box")
-	end,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	frequency = sgs.Skill_Compulsory,
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName()) and player:hasTreasure("laplace_box")) then
+			return false
+		end
 		if event == sgs.EventPhaseStart then
 			if player:getPhase() == sgs.Player_Finish then
-				room:sendCompulsoryTriggerLog(player, "laplace_box")
-				local use = sgs.CardUseStruct()
-				local card = sgs.Sanguosha:cloneCard("amazing_grace", sgs.Card_NoSuit, 0)
-				card:setSkillName("laplace_box")
-				use.card = card
-				use.from = player
-				room:useCard(use)
-				card:deleteLater()
+				return skill:objectName()
 			end
 		else
 			local damage = data:toDamage()
+			if damage.from and damage.from:isAlive() then
+				return skill:objectName()
+			end
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		if event == sgs.EventPhaseStart then
+			room:sendCompulsoryTriggerLog(player, "laplace_box")
+			local use = sgs.CardUseStruct()
+			local card = sgs.Sanguosha:cloneCard("amazing_grace", sgs.Card_NoSuit, 0)
+			card:setSkillName("laplace_box")
+			use.card = card
+			use.from = player
+			room:useCard(use)
+			card:deleteLater()
+		else
+			local damage = ctx.original_data:toDamage()
 			if damage.from and damage.from:isAlive() then
 				room:sendCompulsoryTriggerLog(player, "laplace_box")
 				room:obtainCard(damage.from, player:getTreasure():getRealCard())
 			end
 		end
+		return false
 	end
 }
 
-laplace_box_card = sgs.CreateTriggerSkill{
-	name = "laplace_box_card",
+laplace_box_card = sgs.CreateTriggerSkillV2{
+	name = "#laplace_box_card",
 	events = {sgs.TargetSpecifying, sgs.CardEffected, sgs.CardFinished},
 	global = true,
+	frequency = sgs.Skill_Compulsory,
 	priority = 3,
-	can_trigger = function(self, target)
-		return target and target:isAlive()
+	on_record = function(skill, event, room, player, ctx)
+		gaoda_ensure_global_instances(room)
 	end,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		if event == sgs.TargetSpecifying then
-			local use = data:toCardUse()
-			if use.card and table.contains(use.card:getSkillNames(), "laplace_box") and use.card:isKindOf("AmazingGrace") and use.from:objectName() == player:objectName() then
-				local card_ids = room:getTag("AmazingGrace"..use.card:toString()):toIntList()
-				card_ids:append(room:getNCards(1):first())
-				local _data = sgs.QVariant()
-				_data:setValue(card_ids)
-				room:setTag("LaplaceBox"..use.card:toString(), _data)
-				-- room:removeTag("AmazingGrace")
-			end
-		elseif event == sgs.CardEffected then
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then
+			return false
+		end
+		if event == sgs.CardEffected then
 			local effect = data:toCardEffect()
 			if effect.card and table.contains(effect.card:getSkillNames(), "laplace_box") and effect.card:isKindOf("AmazingGrace") then
-				room:setPlayerFlag(player, "Global_NonSkillNullify")
-				local card_ids = room:getTag("AmazingGrace"..effect.card:toString()):toIntList()
-				local card_ids2 = room:getTag("LaplaceBox"..effect.card:toString()):toIntList()
-				if not card_ids2:isEmpty() then 
-					card_ids:append(card_ids2:first())
-					room:clearAG()
-					room:fillAG(card_ids)
-					room:removeTag("LaplaceBox"..effect.card:toString())
-				end
-				local _data = sgs.QVariant()
-				_data:setValue(card_ids)
-				room:setTag("AmazingGrace"..effect.card:toString(), _data)
-				
-				if not room:isCanceled(effect) then
-					local n = 1
-					if effect.from:objectName() == player:objectName() then
-						n = 2
-					end
-					for i = 1, n, 1 do
-						local card_id = room:askForAG(player, card_ids, false, "amazing_grace")
-						room:takeAG(player, card_id)
-						card_ids:removeOne(card_id)
-						local _data = sgs.QVariant()
-						_data:setValue(card_ids)
-						room:setTag("AmazingGrace"..effect.card:toString(), _data)
-					end
-				end
-				return true
+				return skill:objectName()
 			end
 		else
 			local use = data:toCardUse()
 			if use.card and table.contains(use.card:getSkillNames(), "laplace_box") and use.card:isKindOf("AmazingGrace") and use.from:objectName() == player:objectName() then
-				local card_ids = room:getTag("LaplaceBox"):toIntList()
-				if card_ids:isEmpty() then return false end
-				local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
-				dummy:addSubcards(card_ids)
-				dummy:deleteLater()
-				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, "", "amazing_grace", "")
-				room:throwCard(dummy, reason, nil)
-				room:removeTag("LaplaceBox")
+				return skill:objectName()
 			end
 		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		if event == sgs.TargetSpecifying then
+			local use = ctx.original_data:toCardUse()
+			local card_ids = room:getTag("AmazingGrace"..use.card:toString()):toIntList()
+			card_ids:append(room:getNCards(1):first())
+			local _data = sgs.QVariant()
+			_data:setValue(card_ids)
+			room:setTag("LaplaceBox"..use.card:toString(), _data)
+			-- room:removeTag("AmazingGrace")
+		elseif event == sgs.CardEffected then
+			local effect = ctx.original_data:toCardEffect()
+			room:setPlayerFlag(player, "Global_NonSkillNullify")
+			local card_ids = room:getTag("AmazingGrace"..effect.card:toString()):toIntList()
+			local card_ids2 = room:getTag("LaplaceBox"..effect.card:toString()):toIntList()
+			if not card_ids2:isEmpty() then
+				card_ids:append(card_ids2:first())
+				room:clearAG()
+				room:fillAG(card_ids)
+				room:removeTag("LaplaceBox"..effect.card:toString())
+			end
+			local _data = sgs.QVariant()
+			_data:setValue(card_ids)
+			room:setTag("AmazingGrace"..effect.card:toString(), _data)
+
+			if not room:isCanceled(effect) then
+				local n = 1
+				if effect.from:objectName() == player:objectName() then
+					n = 2
+				end
+				for i = 1, n, 1 do
+					local card_id = room:askForAG(player, card_ids, false, "amazing_grace")
+					room:takeAG(player, card_id)
+					card_ids:removeOne(card_id)
+					local _data = sgs.QVariant()
+					_data:setValue(card_ids)
+					room:setTag("AmazingGrace"..effect.card:toString(), _data)
+				end
+			end
+			return true
+		else
+			local use = ctx.original_data:toCardUse()
+			local card_ids = room:getTag("LaplaceBox"):toIntList()
+			if card_ids:isEmpty() then return false end
+			local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+			dummy:addSubcards(card_ids)
+			dummy:deleteLater()
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER, "", "amazing_grace", "")
+			room:throwCard(dummy, reason, nil)
+			room:removeTag("LaplaceBox")
+		end
+		return false
 	end
 }
 
@@ -660,18 +710,24 @@ laplace_box = sgs.CreateTreasure{
 	number = 7,
 	on_install = function(self, player)
 		local room = player:getRoom()
-		local skill = sgs.Sanguosha:getTriggerSkill("laplace_box_skill")
-		if skill then room:getThread():addTriggerSkill(skill) end
+		if player:getSkillInstanceIds("#laplace_box_skill"):isEmpty() then
+			room:attachSkillToPlayer(player, "#laplace_box_skill")
+		end
 	end
 }
 
 laplace_box:clone():setParent(extension)
 local skills = sgs.SkillList()
-if not sgs.Sanguosha:getSkill("shoot_skill") then skills:append(shoot_skill) end
-if not sgs.Sanguosha:getSkill("Guard_skill") then skills:append(Guard_skill) end
-if not sgs.Sanguosha:getSkill("laplace_box_skill") then skills:append(laplace_box_skill) end
-if not sgs.Sanguosha:getSkill("laplace_box_card") then skills:append(laplace_box_card) end
+if not sgs.Sanguosha:getSkill("#shoot_skill") then skills:append(shoot_skill) end
+if not sgs.Sanguosha:getSkill("#Guard_skill") then skills:append(Guard_skill) end
+if not sgs.Sanguosha:getSkill("#laplace_box_skill") then skills:append(laplace_box_skill) end
+if not sgs.Sanguosha:getSkill("#laplace_box_card") then skills:append(laplace_box_card) end
 sgs.Sanguosha:addSkills(skills)
+for _, gen in sgs.qlist(sgs.Sanguosha:getAllGenerals()) do
+	for _, skill_name in ipairs(gaoda_global_skill_names) do
+		gen:addSkill(skill_name)
+	end
+end
 
 sgs.LoadTranslationTable{
 	["gaodacard"] = "高达杀卡牌",
@@ -738,4 +794,9 @@ sgs.LoadTranslationTable{
 	<b>宝物技能</b>：\
 	1. 锁定技。结束阶段开始时，视为你使用一张【和平协议】，并额外亮出一张牌，且你额外获得其中一张牌。\
 	2. 锁定技。当你受到伤害后，伤害来源获得此牌。",
+
+	["#shoot_skill"] = "射击",
+	["#Guard_skill"] = "挡",
+	["#laplace_box_skill"] = "拉普拉斯之盒",
+	["#laplace_box_card"] = "拉普拉斯之盒",
 }

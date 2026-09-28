@@ -17,92 +17,46 @@ tr {
 	["designer:dan_amira"] = "Amira",
 	["illustrator:dan_amira"] = "",
 }
-if isHegemony then
-	LuaJiangfu = sgs.CreateTriggerSkill {
-		name = "LuaJiangfu",
-		events = { sgs.Damaged },
-		can_preshow = true,
-		can_trigger = function(self, event, room, player, data)
-			if not (player and player:isAlive() and player:hasSkill(self:objectName())) then
-				return ""
-			end
-			if player:getPhase() ~= sgs.Player_NotActive then
-				return ""
-			end
-			local num_tab = {}
-			local invoke = false
-			local draw_pile = room:getDrawPile()
-			for _, id in sgs.qlist(draw_pile) do
-				local c = sgs.Sanguosha:getCard(id)
-				if table.contains(num_tab, c:getNumber()) then
-					invoke = true
-					break
-				else
-					table.insert(num_tab, c:getNumber())
-				end
-			end
-			if invoke then
-				return self:objectName()
-			end
-			return ""
-		end,
-		on_cost = function(self, event, room, player, data)
-			local targets = sgs.SPlayerList()
-			for _, p in sgs.qlist(room:getAlivePlayers()) do
-				if p:getLostHp() > 0 then
-					targets:append(p)
-				end
-			end
-			local pl = room:askForPlayerChosen(player, targets, self:objectName(), self:objectName() .. "_Invoke", true, true)
-			if pl then
-				local _data = sgs.QVariant()
-				_data:setValue(pl)
-				player:setTag(self:objectName(), _data)
-				return true
-			end
+
+LuaJiangfu = sgs.CreateTriggerSkillV2 {
+	name = "LuaJiangfu",
+	events = { sgs.Damaged },
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then
 			return false
-		end,
-		on_effect = function(self, event, room, player, data)
-			local p = player:getTag(self:objectName()):toPlayer()
-			if p then
-				local re = sgs.RecoverStruct()
-				re.who = player
-				re.recover = 1
-				room:recover(p, re)
-			end
+		end
+		if player:getPhase() ~= sgs.Player_NotActive then
 			return false
-		end,
-	}
-else
-	LuaJiangfu = sgs.CreateTriggerSkill {
-		name = "LuaJiangfu",
-		events = { sgs.Damaged },
-		on_trigger = function(self, event, player, data, room)
-			if player:getPhase() == sgs.Player_NotActive then
-				local num_tab = {}
-				for _, id in sgs.qlist(room:getDrawPile()) do
-					local c = sgs.Sanguosha:getCard(id)
-					if table.contains(num_tab, c:getNumber()) then
-						local targets = sgs.SPlayerList()
-						for _, p in sgs.qlist(room:getAlivePlayers()) do
-							if p:getLostHp() > 0 then
-								targets:append(p)
-							end
-						end
-						local p = room:askForPlayerChosen(player, targets, self:objectName(), "LuaJiangfu_Invoke", true, true)
-						if p then
-							room:recover(p, sgs.RecoverStruct(player))
-						end
-						break
-					else
-						table.insert(num_tab, c:getNumber())
-					end
-				end
+		end
+		local num_tab = {}
+		for _, id in sgs.qlist(room:getDrawPile()) do
+			local c = sgs.Sanguosha:getCard(id)
+			if table.contains(num_tab, c:getNumber()) then
+				return skill:objectName()
 			end
-			return false
-		end,
-	}
-end
+			table.insert(num_tab, c:getNumber())
+		end
+		return false
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		local targets = sgs.SPlayerList()
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+			if p:getLostHp() > 0 then
+				targets:append(p)
+			end
+		end
+		local pl = room:askForPlayerChosen(player, targets, skill:objectName(), skill:objectName() .. "_Invoke", true, true)
+		if pl then
+			ctx.targets:append(pl)
+			return true
+		end
+		return false
+	end,
+	on_effect_target = function(skill, event, room, player, ctx, target)
+		room:recover(target, sgs.RecoverStruct(player))
+		return false
+	end,
+}
 
 dan_gen:addSkill(LuaJiangfu)
 
@@ -112,126 +66,103 @@ tr {
 	["LuaJiangfu_Invoke"] = "请选择一名受伤的角色来发动技能 降福 ~",
 }
 
-if isHegemony then
-	LuaYanjiuVS = sgs.CreateOneCardViewAsSkill {
-		name = "LuaYanjiu",
-		view_filter = function(self, to_select)
-			local suits = sgs.Self:property(self:objectName()):toString():split("+")
-			return table.contains(suits, to_select:getSuitString())
-		end,
-		response_or_use = true,
-		view_as = function(self, card)
-			local analeptic = sgs.Sanguosha:cloneCard("analeptic", sgs.Card_NoSuit, 0)
-			analeptic:setSkillName(self:objectName())
-			analeptic:setShowSkill(self:objectName())
-			analeptic:addSubcard(card)
-			return analeptic
-		end,
+LuaYanjiuVS = sgs.CreateViewAsSkillV2 {
+	name = "LuaYanjiu",
+	n = 1,
+	response_or_use = true,
 
-		enabled_at_play = function(self, player)
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player or not player:isAlive() then
+			return false
+		end
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			return sgs.Analeptic_IsAvailable(player)
-		end,
+		end
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+			or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			return string.find(request:getPattern(), "analeptic") ~= nil
+		end
+		return false
+	end,
 
-		enabled_at_response = function(self, player, pattern)
-			return string.find(pattern, "analeptic")
-		end,
-	}
+	can_select_card = function(skill, request, card)
+		if not card or not request:getSelectedCardIds():isEmpty() then
+			return false
+		end
+		local player = request:getInitiator()
+		if not player then
+			return false
+		end
+		local suits = player:property(skill:objectName()):toString():split("+")
+		return table.contains(suits, card:getSuitString())
+	end,
 
-	LuaYanjiu = sgs.CreateTriggerSkill {
-		name = "LuaYanjiu",
-		events = { sgs.CardsMoveOneTime },
-		view_as_skill = LuaYanjiuVS,
+	create_card = function(skill, request)
+		local ids = request:getSelectedCardIds()
+		local player = request:getInitiator()
+		if ids:length() ~= 1 or not player then
+			return nil
+		end
+		local material = sgs.Sanguosha:getCard(ids:first())
+		if not material then
+			return nil
+		end
+		local suits = player:property(skill:objectName()):toString():split("+")
+		if not table.contains(suits, material:getSuitString()) then
+			return nil
+		end
+		local analeptic = sgs.Sanguosha:cloneCard("analeptic", sgs.Card_NoSuit, 0)
+		if not analeptic then
+			return nil
+		end
+		analeptic:addSubcard(material)
+		analeptic:setSkillName(skill:objectName())
+		if isHegemony then
+			analeptic:setShowSkill(skill:objectName())
+		end
+		return analeptic
+	end,
+}
 
-		on_record = function(self, event, room, player, data)
-			if player and player:isAlive() and player:hasSkill(self:objectName()) then
-				local move = data:toMoveOneTime()
-				if move.from_places:contains(sgs.Player_DrawPile) or move.to_place == sgs.Player_DrawPile then
-					local hash = {}
-					for _, id in sgs.qlist(room:getDrawPile()) do
-						local c = sgs.Sanguosha:getCard(id)
-						if hash[c:getSuitString()] then
-							hash[c:getSuitString()] = hash[c:getSuitString()] + 1
-						else
-							hash[c:getSuitString()] = 1
-						end
-					end
-					local max = 0
-					for _, v in pairs(hash) do
-						if v > max then
-							max = v
-						end
-					end
-					local big_suit = {}
-					for s, v in pairs(hash) do
-						if v == max then
-							table.insert(big_suit, s)
-						end
-					end
-					room:setPlayerProperty(player, self:objectName(), sgs.QVariant(table.concat(big_suit, "+")))
+LuaYanjiu = sgs.CreateTriggerSkillV2 {
+	name = "LuaYanjiu",
+	events = { sgs.CardsMoveOneTime },
+	view_as_skill = LuaYanjiuVS,
+
+	on_record = function(skill, event, room, player, ctx)
+		local owner = ctx.owner
+		if not (owner and owner:isAlive() and owner:hasSkill(skill:objectName())) then
+			return
+		end
+		local move = ctx.original_data:toMoveOneTime()
+		if move.from_places:contains(sgs.Player_DrawPile) or move.to_place == sgs.Player_DrawPile then
+			local hash = {}
+			for _, id in sgs.qlist(room:getDrawPile()) do
+				local c = sgs.Sanguosha:getCard(id)
+				if hash[c:getSuitString()] then
+					hash[c:getSuitString()] = hash[c:getSuitString()] + 1
+				else
+					hash[c:getSuitString()] = 1
 				end
 			end
-		end,
-		can_trigger = function()
-			return ""
-		end,
-	}
-else
-	LuaYanjiuVS = sgs.CreateOneCardViewAsSkill {
-		name = "LuaYanjiu",
-		view_filter = function(self, to_select)
-			local suits = sgs.Self:property(self:objectName()):toString():split("+")
-			return table.contains(suits, to_select:getSuitString())
-		end,
-		response_or_use = true,
-		view_as = function(self, card)
-			local analeptic = sgs.Sanguosha:cloneCard("analeptic", sgs.Card_NoSuit, 0)
-			analeptic:setSkillName(self:objectName())
-			analeptic:addSubcard(card)
-			return analeptic
-		end,
-
-		enabled_at_play = function(self, player)
-			return sgs.Analeptic_IsAvailable(player)
-		end,
-
-		enabled_at_response = function(self, player, pattern)
-			return string.find(pattern, "analeptic")
-		end,
-	}
-
-	LuaYanjiu = sgs.CreateTriggerSkill {
-		name = "LuaYanjiu",
-		events = { sgs.CardsMoveOneTime },
-		view_as_skill = LuaYanjiuVS,
-		on_trigger = function(self, event, player, data, room)
-			local move = data:toMoveOneTime()
-			if move.from_places:contains(sgs.Player_DrawPile) or move.to_place == sgs.Player_DrawPile then
-				local hash = {}
-				for _, id in sgs.qlist(room:getDrawPile()) do
-					local c = sgs.Sanguosha:getCard(id)
-					if hash[c:getSuitString()] then
-						hash[c:getSuitString()] = hash[c:getSuitString()] + 1
-					else
-						hash[c:getSuitString()] = 1
-					end
+			local max = 0
+			for _, v in pairs(hash) do
+				if v > max then
+					max = v
 				end
-				local max = 0
-				for _, v in pairs(hash) do
-					if v > max then
-						max = v
-					end
-				end
-				local big_suit = {}
-				for s, v in pairs(hash) do
-					if v == max then
-						table.insert(big_suit, s)
-					end
-				end
-				room:setPlayerProperty(player, self:objectName(), sgs.QVariant(table.concat(big_suit, "+")))
 			end
-		end,
-	}
-end
+			local big_suit = {}
+			for s, v in pairs(hash) do
+				if v == max then
+					table.insert(big_suit, s)
+				end
+			end
+			room:setPlayerProperty(owner, skill:objectName(), sgs.QVariant(table.concat(big_suit, "+")))
+		end
+	end,
+}
 
 dan_gen:addSkill(LuaYanjiu)
 

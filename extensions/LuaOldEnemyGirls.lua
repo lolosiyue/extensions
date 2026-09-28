@@ -5,32 +5,73 @@ sgs.LoadTranslationTable {
 	["LuaOldEnemyGirls"] = "宿敌规则专属",
 }
 
-LuaFengyu = sgs.CreateTriggerSkill {
+-- on_record 逐持有者實例各跑一次（含死亡持有者的實例）。凡需在 record 內做
+-- 事件級簿記（計數、旗標消耗等）時，只讓記錄順序中的第一個實例執行，以免
+-- 多名持有者或多實例重複生效。此順序與 roomthread 派發迴圈
+-- （getAllPlayers(true) × getSkillInstanceIds）一致。
+local function isFirstSkillInstance(room, skill_name, ctx)
+	if not ctx.owner then return false end
+	for _, p in sgs.qlist(room:getAllPlayers(true)) do
+		for _, id in sgs.qlist(p:getSkillInstanceIds(skill_name)) do
+			return p:objectName() == ctx.owner:objectName() and id == ctx.instanceID
+		end
+	end
+	return false
+end
+
+LuaFengyu = sgs.CreateTriggerSkillV2 {
 	name = "LuaFengyu",
 	frequency = sgs.Skill_Frequent,
-	events = { sgs.CardsMoveOneTime, sgs.EventPhaseEnd },
+	events = { sgs.CardsMoveOneTime, sgs.EventPhaseEnd, sgs.EventPhaseChanging },
 
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	-- 棄牌數累計只由首個實例執行；標記於進入棄牌階段時歸零（record 先於
+	-- can_trigger，若在 EventPhaseEnd 清除會令標記在判斷前歸零）。
+	on_record = function(self, event, room, player, ctx)
 		if event == sgs.CardsMoveOneTime then
-			local move = data:toMoveOneTime()
-			if (not move.from) or (move.from:objectName() ~= player:objectName()) then return false end
+			if not player or not player:isAlive()
+				or player:getPhase() ~= sgs.Player_Discard
+				or player:hasSkill(self:objectName()) then
+				return
+			end
+			if not isFirstSkillInstance(room, self:objectName(), ctx) then return end
+			local move = ctx.original_data:toMoveOneTime()
+			if (not move.from) or (move.from:objectName() ~= player:objectName()) then return end
 			if (move.from_places:contains(sgs.Player_PlaceHand)) and (bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD) then
 				room:addPlayerMark(player, self:objectName(), move.card_ids:length())
 			end
-		end
-		if event == sgs.EventPhaseEnd then
-			for _, source in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-				if source and player:getMark(self:objectName()) >= source:getHp() then
-					if room:askForSkillInvoke(source, self:objectName()) then source:drawCards(1) end
-				end
+		elseif event == sgs.EventPhaseChanging then
+			local change = ctx.original_data:toPhaseChange()
+			if change.to == sgs.Player_Discard then
+				room:setPlayerMark(player, self:objectName(), 0)
 			end
-			room:setPlayerMark(player, self:objectName(), 0)
 		end
 	end,
 
-	can_trigger = function(self, target)
-		return target:isAlive() and target:getPhase() == sgs.Player_Discard and not target:hasSkill(self:objectName())
+	can_trigger = function(self, event, room, player, data)
+		if event ~= sgs.EventPhaseEnd then return false end
+		if not player or not player:isAlive()
+			or player:getPhase() ~= sgs.Player_Discard
+			or player:hasSkill(self:objectName()) then
+			return false
+		end
+		local skill_names, owner_names = {}, {}
+		for _, source in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+			if source and player:getMark(self:objectName()) >= source:getHp() then
+				table.insert(skill_names, self:objectName())
+				table.insert(owner_names, source:objectName())
+			end
+		end
+		if #skill_names == 0 then return false end
+		return table.concat(skill_names, "|"), table.concat(owner_names, "|")
+	end,
+
+	on_cost = function(self, event, room, player, ctx)
+		return room:askForSkillInvoke(player, self:objectName())
+	end,
+
+	on_effect = function(self, event, room, player, ctx)
+		player:drawCards(1)
+		return false
 	end,
 }
 
@@ -60,13 +101,23 @@ LuaFengxiCard = sgs.CreateSkillCard {
 	end,
 }
 
-LuaFengxi = sgs.CreateZeroCardViewAsSkill {
+-- 保留 LuaFengxiCard 原型：舊 AI 以 Card_Parse("#LuaFengxiCard:.:") 產生並以
+-- "#LuaFengxiCard" history 判斷每階段限一次；V2 create_card 直接回傳其 clone，
+-- 目標選擇與效果仍由牌本身的 filter/feasible/on_use 處理。
+LuaFengxi = sgs.CreateViewAsSkillV2 {
 	name = "LuaFengxi",
-	view_as = function(self)
-		return LuaFengxiCard:clone()
+	n = 0,
+	can_activate = function(self, request)
+		local player = request:getInitiator()
+		if not player or not player:isAlive() then return false end
+		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
+		-- V2 發動以技能名 "LuaFengxi" 記錄 history；舊 AI 直用卡牌則記 "#LuaFengxiCard"。
+		return not getOEList(player):isEmpty()
+			and not player:hasUsed("#LuaFengxiCard")
+			and not player:hasUsed(self:objectName())
 	end,
-	enabled_at_play = function(self, player)
-		return not getOEList(player):isEmpty() and not player:hasUsed("#LuaFengxiCard")
+	create_card = function(self, request)
+		return LuaFengxiCard:clone()
 	end,
 }
 
@@ -87,32 +138,38 @@ sgs.LoadTranslationTable {
 	["illustrator:WindGirl"] = "monono",
 }
 
-LuaLinying = sgs.CreateTriggerSkill {
+LuaLinying = sgs.CreateTriggerSkillV2 {
 	name = "LuaLinying",
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.EventPhaseStart },
 
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		local n = player:getMaxHp() - player:getHandcardNum()
-		if player:getPhase() == sgs.Player_Start and n > 0 and room:askForSkillInvoke(player, self:objectName()) then
-			player:drawCards(n)
-			-- player:setPhase(sgs.Player_NotActive)
-			-- room:broadcastProperty(player, "phase")
-			local OEs = getOEList(player, room)
-			if OEs:isEmpty() then return false end
-			local myoe = room:askForPlayerChosen(player, OEs, self:objectName(), "@LuaLinying-invoke", true, true)
-			if myoe then
-				myoe:drawCards(1)
-				myoe:turnOver()
-			end
-			room:throwEvent(sgs.TurnBroken)
+	can_trigger = function(self, event, room, player, data)
+		if player and player:isAlive() and player:hasSkill(self:objectName())
+			and player:getPhase() == sgs.Player_Start
+			and player:getMaxHp() - player:getHandcardNum() > 0 then
+			return self:objectName()
 		end
 		return false
 	end,
 
-	can_trigger = function(self, target)
-		return target:isAlive() and target:hasSkill(self:objectName())
+	on_cost = function(self, event, room, player, ctx)
+		return room:askForSkillInvoke(player, self:objectName())
+	end,
+
+	on_effect = function(self, event, room, player, ctx)
+		local n = player:getMaxHp() - player:getHandcardNum()
+		player:drawCards(n)
+		-- player:setPhase(sgs.Player_NotActive)
+		-- room:broadcastProperty(player, "phase")
+		local OEs = getOEList(player, room)
+		if OEs:isEmpty() then return false end
+		local myoe = room:askForPlayerChosen(player, OEs, self:objectName(), "@LuaLinying-invoke", true, true)
+		if myoe then
+			myoe:drawCards(1)
+			myoe:turnOver()
+		end
+		room:throwEvent(sgs.TurnBroken)
+		return false
 	end,
 }
 
@@ -134,39 +191,44 @@ LuaLinluCard = sgs.CreateSkillCard {
 	end,
 }
 
-LuaLinluVS = sgs.CreateViewAsSkill {
+LuaLinluVS = sgs.CreateViewAsSkillV2 {
 	name = "LuaLinlu",
 	n = 2,
-	view_filter = function(self, selected, to_select)
-		if to_select:isEquipped() then return false end
+	can_activate = function(self, request)
+		local player = request:getInitiator()
+		return player and player:isAlive()
+			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
+			and player:getMark("@LuaLinlu") > 0
+	end,
+	can_select_card = function(self, request, candidate)
+		if not candidate or candidate:isEquipped() then return false end
+		local selected = sgs.QList2Table(request:getSelectedCardIds())
 		if #selected == 0 then
 			return true
 		elseif #selected == 1 then
-			return to_select:sameColorWith(selected[1])
+			local first = sgs.Sanguosha:getCard(selected[1])
+			return first ~= nil and candidate:sameColorWith(first)
 		end
+		return false
 	end,
-	view_as = function(self, cards)
-		if #cards == 2 then
-			local SCard = LuaLinluCard:clone()
-			for _, card in pairs(cards) do SCard:addSubcard(card) end
-			SCard:setSkillName(self:objectName())
-			return SCard
+	-- 保留 LuaLinluCard 原型：舊 AI 以 Card_Parse("#LuaLinluCard:...") 產生，
+	-- 目標選擇與效果由牌本身的 filter/feasible/on_use 處理。
+	create_card = function(self, request)
+		local card = LuaLinluCard:clone()
+		for _, id in sgs.qlist(request:getSelectedCardIds()) do
+			card:addSubcard(id)
 		end
-	end,
-
-	enabled_at_play = function(self, player)
-		return player:getMark("@LuaLinlu") > 0
+		card:setSkillName(self:objectName())
+		return card
 	end,
 }
 
-LuaLinlu = sgs.CreateTriggerSkill {
+LuaLinlu = sgs.CreateTriggerSkillV2 {
 	name = "LuaLinlu",
 	frequency = sgs.Skill_Limited,
 	events = { },
 	view_as_skill = LuaLinluVS,
 	limit_mark = "@LuaLinlu",
-	on_trigger = function(self, event, player, data)
-	end
 }
 
 ThicketGirl = sgs.General(extension, "ThicketGirl", "wu", 4, false)
@@ -211,83 +273,128 @@ LuaHuoweiCard = sgs.CreateSkillCard {
 	end
 }
 
-LuaHuoweiVS = sgs.CreateOneCardViewAsSkill {
+-- 保留 LuaHuoweiCard 原型：舊 AI 在 "@@LuaHuowei" 回應中以 "#LuaHuoweiCard:..." 字串
+-- 出牌；V2 create_card 回傳其 clone，效果仍由牌本身的 on_effect 處理。
+LuaHuoweiVS = sgs.CreateViewAsSkillV2 {
 	name = "LuaHuowei",
-	response_pattern = "@@LuaHuowei",
-	filter_pattern = ".|red|.|hand",
-
-	view_as = function(self, card)
-		local Card = LuaHuoweiCard:clone()
-		Card:addSubcard(card)
-		return Card
+	n = 1,
+	can_activate = function(self, request)
+		local reason = request:getReason()
+		if reason ~= sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+			and reason ~= sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			return false
+		end
+		return request:getPattern() == "@@LuaHuowei"
 	end,
-
-	enabled_at_play = function(self, player)
-		return false
+	can_select_card = function(self, request, candidate)
+		return candidate and request:getSelectedCardIds():isEmpty()
+			and candidate:isRed() and not candidate:isEquipped()
+	end,
+	create_card = function(self, request)
+		local card = LuaHuoweiCard:clone()
+		for _, id in sgs.qlist(request:getSelectedCardIds()) do
+			card:addSubcard(id)
+		end
+		card:setSkillName(self:objectName())
+		return card
 	end,
 }
 
-LuaHuowei = sgs.CreateTriggerSkill {
+LuaHuowei = sgs.CreateTriggerSkillV2 {
 	name = "LuaHuowei",
 	view_as_skill = LuaHuoweiVS,
 	events = { sgs.DamageCaused, sgs.DamageInflicted },
 
-	on_trigger = function(self, event, player, data)
-		local damage = data:toDamage()
-		if damage.nature ~= sgs.DamageStruct_Fire then return false end
-		local room = player:getRoom()
-		if damage.to:hasFlag("LuaHuoweiTarget") then
-			damage.to:setFlags("-LuaHuoweiTarget")
-			return false
+	-- 舊版於 on_trigger「見旗即清」：旗標由 LuaHuoweiCard 在轉移傷害前設於新目標，
+	-- 在下一個符合 can_trigger 條件的持有者事件中壓制發動一次並清除。
+	-- V2 record 先於 can_trigger，故以 LuaHuoweiConsumed 做交接：record 見旗即
+	-- 轉記為 Consumed（同事件內 can_trigger 仍視為已用過），下一個傷害事件再清。
+	on_record = function(self, event, room, player, ctx)
+		if event ~= sgs.DamageCaused and event ~= sgs.DamageInflicted then return end
+		if not player or not player:isAlive() or not player:hasSkill(self:objectName()) then
+			return
 		end
-		local OEs = getOEList(player, room)
-		if OEs:isEmpty() or not player:canDiscard(player, "h") then return false end
-		player:setTag("LuaHuoweiDamage", data)
-		return room:askForUseCard(player, "@@LuaHuowei", "@LuaHuowei", -1, sgs.Card_MethodDiscard)
+		if not isFirstSkillInstance(room, self:objectName(), ctx) then return end
+		local damage = ctx.original_data:toDamage()
+		if damage.nature ~= sgs.DamageStruct_Fire then return end
+		local to = damage.to
+		if not to then return end
+		if to:hasFlag("LuaHuoweiTarget") then
+			to:setFlags("-LuaHuoweiTarget")
+			to:setFlags("LuaHuoweiConsumed")
+		elseif to:hasFlag("LuaHuoweiConsumed") then
+			to:setFlags("-LuaHuoweiConsumed")
+		end
 	end,
 
-	can_trigger = function(self, target)
-		return target:isAlive() and target:hasSkill(self:objectName())
+	can_trigger = function(self, event, room, player, data)
+		if event ~= sgs.DamageCaused and event ~= sgs.DamageInflicted then return false end
+		if not player or not player:isAlive() or not player:hasSkill(self:objectName()) then
+			return false
+		end
+		local damage = data:toDamage()
+		if damage.nature ~= sgs.DamageStruct_Fire then return false end
+		if damage.to and damage.to:hasFlag("LuaHuoweiConsumed") then return false end
+		local OEs = getOEList(player, room)
+		if OEs:isEmpty() or not player:canDiscard(player, "h") then return false end
+		return self:objectName()
+	end,
+
+	on_cost = function(self, event, room, player, ctx)
+		player:setTag("LuaHuoweiDamage", ctx.original_data)
+		local used = room:askForUseCard(player, "@@LuaHuowei", "@LuaHuowei", -1, sgs.Card_MethodDiscard) ~= nil
+		ctx.extra_data:setValue(used and 1 or 0)
+		return used
+	end,
+
+	-- 舊 on_trigger 以 askForUseCard 結果作回傳：成功出牌即中斷其餘觸發。
+	on_effect = function(self, event, room, player, ctx)
+		return ctx.extra_data:toInt() ~= 0
 	end,
 }
 
-LuaYinyan = sgs.CreateTriggerSkill {
+LuaYinyan = sgs.CreateTriggerSkillV2 {
 	name = "LuaYinyan",
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.CardUsed, sgs.CardResponded },
 
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(self, event, room, player, data)
+		if not player or not player:isAlive() or player:hasSkill(self:objectName()) then
+			return false
+		end
 		local card
 		if event == sgs.CardUsed then
-			local use = data:toCardUse()
 			card = data:toCardUse().card
-		end
-		if event == sgs.CardResponded then
+		elseif event == sgs.CardResponded then
 			local response = data:toCardResponse()
 			card = response.m_card
 		end
-
-		if card and card:isRed() and card:isKindOf("BasicCard") then
-			for _, source in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-				if source:getPhase() == sgs.Player_Play and source:canPindian(player) then
-					local target_data = sgs.QVariant()
-					target_data:setValue(player)
-					if room:askForSkillInvoke(source, self:objectName(), target_data) then
-						local success = source:pindian(player, self:objectName(), nil)
-						if success then
-							room:damage(sgs.DamageStruct(self:objectName(), source, player, 1,
-								sgs.DamageStruct_Fire))
-						end
-					end
-				end
+		if not card or not card:isRed() or not card:isKindOf("BasicCard") then return false end
+		local skill_names, owner_names = {}, {}
+		for _, source in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
+			if source and source:getPhase() == sgs.Player_Play and source:canPindian(player) then
+				table.insert(skill_names, self:objectName())
+				table.insert(owner_names, source:objectName())
 			end
 		end
-		return false
+		if #skill_names == 0 then return false end
+		return table.concat(skill_names, "|"), table.concat(owner_names, "|")
 	end,
 
-	can_trigger = function(self, target)
-		return target:isAlive() and not target:hasSkill(self:objectName())
+	-- player 為技能持有者（ctx.owner）；事件發起人（用牌者）為 ctx.invoker。
+	on_cost = function(self, event, room, player, ctx)
+		local target_data = sgs.QVariant()
+		target_data:setValue(ctx.invoker)
+		return room:askForSkillInvoke(player, self:objectName(), target_data)
+	end,
+
+	on_effect = function(self, event, room, player, ctx)
+		local target = ctx.invoker
+		if target and player:pindian(target, self:objectName(), nil) then
+			room:damage(sgs.DamageStruct(self:objectName(), player, target, 1,
+				sgs.DamageStruct_Fire))
+		end
+		return false
 	end,
 }
 
@@ -311,28 +418,51 @@ sgs.LoadTranslationTable {
 }
 
 
-LuaYanling = sgs.CreateTriggerSkill {
+LuaYanling = sgs.CreateTriggerSkillV2 {
 	name = "LuaYanling",
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.TargetSpecifying },
 
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		if event == sgs.TargetSpecifying then
-			local use = data:toCardUse()
-			if use.card and use.card:isKindOf("Slash") then
-				local targets = getOEList(player, room)
-				for _, p in sgs.qlist(targets) do
-					if use.to:contains(p) or sgs.Sanguosha:isProhibited(player, p, use.card) then
-						targets:removeOne(p)
-					end
-				end
-				if targets:isEmpty() then return false end
-				local OE = room:askForPlayerChosen(player, targets, self:objectName(), "@LuaYanling-invoke", true,
-					true)
-				if OE then use.to:append(OE) end
-				data:setValue(use)
+	-- 舊版無 can_trigger，採預設（存活且擁有技能）。此處補上 Slash 與宿敵目標的
+	-- 純查詢條件，避免無合適宿敵時仍彈出發動詢問。
+	can_trigger = function(self, event, room, player, data)
+		if not player or not player:isAlive() or not player:hasSkill(self:objectName()) then
+			return false
+		end
+		local use = data:toCardUse()
+		if not use.card or not use.card:isKindOf("Slash") then return false end
+		local targets = getOEList(player, room)
+		for _, p in sgs.qlist(targets) do
+			if use.to:contains(p) or sgs.Sanguosha:isProhibited(player, p, use.card) then
+				targets:removeOne(p)
 			end
+		end
+		if targets:isEmpty() then return false end
+		return self:objectName()
+	end,
+
+	on_cost = function(self, event, room, player, ctx)
+		local use = ctx.original_data:toCardUse()
+		local targets = getOEList(player, room)
+		for _, p in sgs.qlist(targets) do
+			if use.to:contains(p) or sgs.Sanguosha:isProhibited(player, p, use.card) then
+				targets:removeOne(p)
+			end
+		end
+		if targets:isEmpty() then return false end
+		local OE = room:askForPlayerChosen(player, targets, self:objectName(), "@LuaYanling-invoke", true,
+			true)
+		if not OE then return false end
+		ctx.extra_data:setValue(OE)
+		return true
+	end,
+
+	on_effect = function(self, event, room, player, ctx)
+		local OE = ctx.extra_data:toPlayer()
+		local use = ctx.original_data:toCardUse()
+		if OE and use.card then
+			use.to:append(OE)
+			ctx.original_data:setValue(use)
 		end
 		return false
 	end,
@@ -384,47 +514,62 @@ LuaDuanjianCard = sgs.CreateSkillCard {
 	end,
 }
 
-LuaDuanjian = sgs.CreateOneCardViewAsSkill {
+-- 保留 LuaDuanjianCard 原型：舊 AI 以 Card_Parse("#LuaDuanjianCard:<id>:") 產生；
+-- V2 create_card 回傳其 clone，兩段宿敵目標選擇與效果由牌本身處理。
+LuaDuanjian = sgs.CreateViewAsSkillV2 {
 	name = "LuaDuanjian",
-	filter_pattern = "Weapon",
-	view_as = function(self, card)
-		local scard = LuaDuanjianCard:clone()
-		scard:setSkillName(self:objectName())
-		scard:addSubcard(card)
-		return scard
+	n = 1,
+	can_activate = function(self, request)
+		local player = request:getInitiator()
+		return player and player:isAlive()
+			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
 	end,
-
-	enabled_at_play = function(self, player)
-		return true
+	can_select_card = function(self, request, candidate)
+		return candidate and request:getSelectedCardIds():isEmpty()
+			and candidate:isKindOf("Weapon")
+	end,
+	create_card = function(self, request)
+		local card = LuaDuanjianCard:clone()
+		for _, id in sgs.qlist(request:getSelectedCardIds()) do
+			card:addSubcard(id)
+		end
+		card:setSkillName(self:objectName())
+		return card
 	end,
 }
 
-LuaLianzhanTest = sgs.CreateTriggerSkill {
+LuaLianzhanTest = sgs.CreateTriggerSkillV2 {
 	name = "LuaLianzhanTest",
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.CardEffected },
 
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(self, event, room, player, data)
+		if not player or not player:isAlive() then return false end
 		local effect = data:toCardEffect()
+		if not effect.card or not table.contains(effect.card:getSkillNames(), "establishOECard") then
+			return false
+		end
+		local skill_names, owner_names = {}, {}
 		for _, source in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
 			if source and source:getPhase() == sgs.Player_NotActive then
-				if effect.card and table.contains(effect.card:getSkillNames(), "establishOECard") then
-					room:notifySkillInvoked(source, self:objectName())
-					local log = sgs.LogMessage()
-					log.type = "#TriggerSkill"
-					log.from = source
-					log.arg = self:objectName()
-					room:sendLog(log)
-					source:drawCards(1)
-				end
+				table.insert(skill_names, self:objectName())
+				table.insert(owner_names, source:objectName())
 			end
 		end
-		return false
+		if #skill_names == 0 then return false end
+		return table.concat(skill_names, "|"), table.concat(owner_names, "|")
 	end,
 
-	can_trigger = function(self, target)
-		return target:isAlive()
+	-- player 為技能持有者（ctx.owner），與舊版逐 source 處理一致。
+	on_effect = function(self, event, room, player, ctx)
+		room:notifySkillInvoked(player, self:objectName())
+		local log = sgs.LogMessage()
+		log.type = "#TriggerSkill"
+		log.from = player
+		log.arg = self:objectName()
+		room:sendLog(log)
+		player:drawCards(1)
+		return false
 	end,
 }
 
