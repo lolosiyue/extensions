@@ -598,21 +598,19 @@ ny_10th_jieling_target = sgs.CreateTargetModSkillV2{
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if table.contains(card:getSkillNames(), "ny_10th_jieling") then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
 		if mt == sgs.TargetModSkill_DistanceLimit then
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if table.contains(card:getSkillNames(), "ny_10th_jieling") then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -759,9 +757,9 @@ ny_10th_tongye_maxcards = sgs.CreateMaxCardsSkillV2{
 	correct_func = function(self, ctx)
 		local target = ctx:getPrimary()
 				if target:getMark("&ny_10th_tongye") <= 4 and target:getMark("&ny_10th_tongye") > 0 and target:hasSkill("ny_10th_tongye") then
-					return sgs.CorrectSkillResult.useAmount(3)
+					return 3
 				end
-				return sgs.CorrectSkillResult.noEffect()
+				return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -772,9 +770,9 @@ ny_10th_tongye_range = sgs.CreateAttackRangeSkillV2{
 		local target = ctx:getPrimary()
 		local include_weapon = ctx:includesWeapon()
 				if target:hasSkill("ny_10th_tongye") and target:getMark("&ny_10th_tongye") <= 3 and target:getMark("&ny_10th_tongye") > 0 then
-					return sgs.CorrectSkillResult.useAmount(3)
+					return 3
 				end
-				return sgs.CorrectSkillResult.noEffect()
+				return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -787,12 +785,11 @@ ny_10th_tongye_slash = sgs.CreateTargetModSkillV2{
 			local target = ctx:getPrimary()
 			local card = ctx:getCard()
 					if target:hasSkill("ny_10th_tongye") and target:getMark("&ny_10th_tongye") <= 2 and target:getMark("&ny_10th_tongye") > 0 then
-						return sgs.CorrectSkillResult.useAmount(3)
+						return 3
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -1049,12 +1046,11 @@ ny_10th_jiaoxia_buff = sgs.CreateTargetModSkillV2{
 			local card = ctx:getCard()
 			local to = ctx:getSecondary()
 					if from:hasSkill("ny_10th_jiaoxia") and to and to:getMark("ny_10th_jiaoxia_used-PlayClear") == 0 then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -2804,9 +2800,9 @@ ny_10th_shuangjia_distance = sgs.CreateDistanceSkillV2{
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
 				if to:hasSkill("ny_10th_shuangjia") then
-					return sgs.CorrectSkillResult.useAmount(math.min(to:getMark("&ny_10th_shuangjia"), 5))
+					return math.min(to:getMark("&ny_10th_shuangjia"), 5)
 				end
-				return sgs.CorrectSkillResult.noEffect()
+				return false
 	end,
 	holder_selector = sgs.CorrectSkill_Secondary,
 }
@@ -2894,21 +2890,19 @@ ny_10th_beifen_buff = sgs.CreateTargetModSkillV2{
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if from:hasSkill("ny_10th_beifen") and from:getMark("&ny_10th_shuangjia") * 2 < from:getHandcardNum() then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
 		if mt == sgs.TargetModSkill_DistanceLimit then
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if from:hasSkill("ny_10th_beifen") and from:getMark("&ny_10th_shuangjia") * 2 < from:getHandcardNum() then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -3559,21 +3553,19 @@ ny_tenth_dagongche_buff = sgs.CreateTargetModSkillV2{
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if table.contains(card:getSkillNames(), "ny_tenth_dagongche") and from:getMark("ny_tenth_xianzhu_ignore") > 0 then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
 		if mt == sgs.TargetModSkill_ExtraTarget then
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if table.contains(card:getSkillNames(), "ny_tenth_dagongche") then
-						return sgs.CorrectSkillResult.useAmount(from:getMark("SkillDescriptionArg2_ny_tenth_xianzhu"))
+						return from:getMark("SkillDescriptionArg2_ny_tenth_xianzhu")
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -3796,9 +3788,9 @@ ny_10th_quanji_maxcard = sgs.CreateMaxCardsSkillV2{
 	correct_func = function(self, ctx)
 		local target = ctx:getPrimary()
 				if target:hasSkill("ny_10th_quanji") then
-					return sgs.CorrectSkillResult.useAmount(target:getPile("ny_10th_quan"):length())
+					return target:getPile("ny_10th_quan"):length()
 				end
-				return sgs.CorrectSkillResult.noEffect()
+				return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -4650,9 +4642,9 @@ ny_10th_linglong_max = sgs.CreateMaxCardsSkillV2{
 	correct_func = function(self, ctx)
 		local player = ctx:getPrimary()
 				if (not player:getDefensiveHorse()) and (not player:getOffensiveHorse()) and player:hasSkill("ny_10th_linglong") then
-					return sgs.CorrectSkillResult.useAmount(2)
+					return 2
 				end
-				return sgs.CorrectSkillResult.noEffect()
+				return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -4875,12 +4867,11 @@ ny_10th_lvecheng_target = sgs.CreateTargetModSkillV2{
 			local card = ctx:getCard()
 			local to = ctx:getSecondary()
 					if card:hasFlag("ny_10th_lvecheng") and to and to:getMark("ny_10th_lvecheng_from" .. from:objectName() .. "-Clear") > 0 then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -5712,21 +5703,19 @@ ny_tenth_shanjia_buff = sgs.CreateTargetModSkillV2{
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if from:getMark("ny_tenth_shanjia_slash-PlayClear") > 0 and card and card:isKindOf("Slash") then
-						return sgs.CorrectSkillResult.useAmount(1)
+						return 1
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
 		if mt == sgs.TargetModSkill_DistanceLimit then
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if from:getMark("ny_tenth_shanjia_distance-PlayClear") > 0 then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -5771,12 +5760,11 @@ ny_tenth_piliche_target = sgs.CreateTargetModSkillV2{
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if from:getEquip(4) and from:getEquip(4):objectName() == "_ny_tenth_piliche" and from:getPhase() ~= sgs.Player_NotActive then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -8587,9 +8575,9 @@ ny_10th_lima = sgs.CreateDistanceSkillV2{
 					if num == 0 then
 						num = -1
 					end
-					return sgs.CorrectSkillResult.useAmount(num)
+					return num
 				end
-				return sgs.CorrectSkillResult.noEffect()
+				return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -9468,21 +9456,19 @@ ny_10th_yingmou_buff = sgs.CreateTargetModSkillV2{
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if from:hasFlag("ny_10th_yingmou") then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
 		if mt == sgs.TargetModSkill_DistanceLimit then
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if from:hasFlag("ny_10th_yingmou") then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -9778,7 +9764,7 @@ ny_tenth_shuangbi_max = sgs.CreateMaxCardsSkillV2{
 		name = "#ny_tenth_shuangbi_max",
 	correct_func = function(self, ctx)
 		local target = ctx:getPrimary()
-				return sgs.CorrectSkillResult.useAmount(target:getMark("&ny_tenth_shuangbi-Clear"))
+				return target:getMark("&ny_tenth_shuangbi-Clear")
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -9791,12 +9777,11 @@ ny_tenth_shuangbi_buff = sgs.CreateTargetModSkillV2{
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if table.contains(card:getSkillNames(), "ny_tenth_shuangbi_mouzhouyu") then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -11055,21 +11040,19 @@ ny_tenth_fengying_buff = sgs.CreateTargetModSkillV2{
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if table.contains(card:getSkillNames(), "ny_tenth_fengying") then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
 		if mt == sgs.TargetModSkill_DistanceLimit then
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if table.contains(card:getSkillNames(), "ny_tenth_fengying") then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -11429,22 +11412,20 @@ ny_tenth_wencan_buff = sgs.CreateTargetModSkillV2{
 			local card = ctx:getCard()
 			local to = ctx:getSecondary()
 					if from and to and to:getMark("&ny_tenth_wencan+#" .. from:objectName() .. "-Clear") > 0 then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
 		if mt == sgs.TargetModSkill_DistanceLimit then
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 			local to = ctx:getSecondary()
 					if from and to and to:getMark("&ny_tenth_wencan+#" .. from:objectName() .. "-Clear") > 0 then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -12060,22 +12041,20 @@ ny_tenth_jiaoxia_second_buff = sgs.CreateTargetModSkillV2{
 			local card = ctx:getCard()
 			local to = ctx:getSecondary()
 					if from:hasSkill("ny_tenth_jiaoxia_second") and to and to:getMark("ny_tenth_jiaoxia_second_used-PlayClear") == 0 then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
 		if mt == sgs.TargetModSkill_DistanceLimit then
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 			local to = ctx:getSecondary()
 					if from:hasSkill("ny_tenth_jiaoxia_second") and to and to:getMark("ny_tenth_jiaoxia_second_used-PlayClear") == 0 then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -12805,22 +12784,20 @@ ny_10th_weiwan_buff = sgs.CreateTargetModSkillV2{
 			local card = ctx:getCard()
 			local to = ctx:getSecondary()
 					if from and to and to:getMark("&ny_10th_weiwan_nolimit+#" .. from:objectName() .. "-Clear") > 0 then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
 		if mt == sgs.TargetModSkill_DistanceLimit then
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 			local to = ctx:getSecondary()
 					if from and to and to:getMark("&ny_10th_weiwan_nolimit+#" .. from:objectName() .. "-Clear") > 0 then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -13678,12 +13655,11 @@ ny_tenth_zongshi_buff = sgs.CreateTargetModSkillV2{
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if table.contains(card:getSkillNames(), "ny_tenth_zongshi") then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -14282,12 +14258,11 @@ ny_tenth_chanjuan_buff = sgs.CreateTargetModSkillV2{
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if table.contains(card:getSkillNames(), "ny_tenth_chanjuan") then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -15223,7 +15198,7 @@ ny_tenth_dehua_max = sgs.CreateMaxCardsSkillV2{
 		name = "#ny_tenth_dehua_max",
 	correct_func = function(self, ctx)
 		local target = ctx:getPrimary()
-				return sgs.CorrectSkillResult.useAmount(target:getMark("&ny_tenth_dehua"))
+				return target:getMark("&ny_tenth_dehua")
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -15326,7 +15301,7 @@ ny_10th_fuli_range = sgs.CreateAttackRangeSkillV2{
 	correct_func = function(self, ctx)
 		local target = ctx:getPrimary()
 		local include_weapon = ctx:includesWeapon()
-				return sgs.CorrectSkillResult.useAmount(-1 * target:getMark("&ny_10th_fuli"))
+				return -1 * target:getMark("&ny_10th_fuli")
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -15736,7 +15711,7 @@ ny_tenth_yanjiao_max = sgs.CreateMaxCardsSkillV2{
 		name = "#ny_tenth_yanjiao_max",
 	correct_func = function(self, ctx)
 		local target = ctx:getPrimary()
-				return sgs.CorrectSkillResult.useAmount(-target:getMark("&ny_tenth_yanjiao_failed-Clear"))
+				return -target:getMark("&ny_tenth_yanjiao_failed-Clear")
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -15880,10 +15855,9 @@ ny_tenth_pingliao_buff = sgs.CreateTargetModSkillV2{
 		if mt == sgs.TargetModSkill_Residue then
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
-					return sgs.CorrectSkillResult.useAmount(from:getMark("&ny_tenth_pingliao_slash-PlayClear"))
-			return sgs.CorrectSkillResult.noEffect()
+					return from:getMark("&ny_tenth_pingliao_slash-PlayClear")
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -16701,21 +16675,19 @@ ny_tenth_wuyou_buff = sgs.CreateTargetModSkillV2{
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if table.contains(card:getSkillNames(), "ny_tenth_wuyou") then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
 		if mt == sgs.TargetModSkill_DistanceLimit then
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if table.contains(card:getSkillNames(), "ny_tenth_wuyou") then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -17596,21 +17568,19 @@ ny_10th_wuwei_buff = sgs.CreateTargetModSkillV2{
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if table.contains(card:getSkillNames(), "ny_10th_wuwei") then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
 		if mt == sgs.TargetModSkill_DistanceLimit then
 			local from = ctx:getPrimary()
 			local card = ctx:getCard()
 					if table.contains(card:getSkillNames(), "ny_10th_wuwei") then
-						return sgs.CorrectSkillResult.useAmount(1000)
+						return 1000
 					end
-					return sgs.CorrectSkillResult.noEffect()
-			return sgs.CorrectSkillResult.noEffect()
+					return false
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -18334,10 +18304,9 @@ ny_10th_yuxi_buff = sgs.CreateTargetModSkillV2{
 					if card:hasFlag("ny_10th_yuxi") then
 						extra = 1000
 					end
-					return sgs.CorrectSkillResult.useAmount(extra)
-			return sgs.CorrectSkillResult.noEffect()
+					return extra
 		end
-		return sgs.CorrectSkillResult.noEffect()
+		return false
 	end,
 	holder_selector = sgs.CorrectSkill_Primary,
 }
@@ -18411,21 +18380,20 @@ ny_10th_weizhangliao:addSkill(ny_10th_porong)
 extension:insertRelatedSkills("ny_10th_yuxi", "#ny_10th_yuxi_buff")
 
 --用处懂得都懂
-global_fuckusetimes = sgs.CreateTriggerSkill {
+--全局规则技能：带 RemoveFromHistory 旗标的牌不计入用牌历史；record 阶段直接改 CardUseStruct，无需技能实例或 activation。
+global_fuckusetimes = sgs.CreateRuleSkillV2{
 	name = "global_fuckusetimes",
-	global = true,
-	events = { sgs.PreCardUsed },
 	frequency = sgs.Skill_Compulsory,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
-		local use = data:toCardUse()
-		if use.card:hasFlag("RemoveFromHistory") then
-			use.m_addHistory = false
-			data:setValue(use)
-		end
+	events = { sgs.PreCardUsed },
+	can_trigger = function(self, event, room, player, data)
+		return ""
 	end,
-	can_trigger = function(self, target)
-		return target ~= nil
+	on_record = function(self, event, room, player, ctx)
+		local use = ctx.original_data:toCardUse()
+		if use.card and use.card:hasFlag("RemoveFromHistory") then
+			use.m_addHistory = false
+			ctx.original_data:setValue(use)
+		end
 	end,
 }
 
