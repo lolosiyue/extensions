@@ -46,7 +46,7 @@ local function kearcane_ensure_global_instances(room)
 	end
 	local skip_changed = false
 	for _, p in sgs.qlist(players) do
-		for _, name in ipairs(		) do
+		for _, name in ipairs(kearcane_global_skill_names) do
 			if not skip_set[name] and p:getSkillInstanceIds(name):isEmpty() then
 				room:attachSkillToPlayer(p, name)
 				if p:getSkillInstanceIds(name):isEmpty() then
@@ -435,7 +435,7 @@ extension:insertRelatedSkills("jinxchange", "#kejinxguner")
 --鱼骨头无限距离
 kejinxcannon = sgs.CreateTargetModSkillV2{
 	name = "kejinxcannon",
-	holder_selector = sgs.CorrectSkill_Primary,
+	holder_selector = sgs.CorrectSkill_System,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local from = ctx:getPrimary()
@@ -1058,7 +1058,7 @@ if not sgs.Sanguosha:getSkill("kebengneng") then skills:append(kebengneng) end
 
 kebengnengextwo = sgs.CreateTargetModSkillV2{
 	name = "kebengnengextwo",
-	holder_selector = sgs.CorrectSkill_Primary,
+	holder_selector = sgs.CorrectSkill_System,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local from = ctx:getPrimary()
@@ -2102,7 +2102,7 @@ kedarius:addSkill(keblood)
 kedariusKeep = sgs.CreateMaxCardsSkillV2{
 	name = "kedariusKeep",
 	frequency = sgs.Skill_Compulsory,
-	holder_selector = sgs.CorrectSkill_Primary,
+	holder_selector = sgs.CorrectSkill_System,
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if not target then return false end
@@ -2766,7 +2766,7 @@ kegarenjuli = sgs.CreateTargetModSkillV2{
 		return false
 	end
 }
-kecaitlyn:addSkill(kegarenjuli)
+kegaren:addSkill(kegarenjuli)
 
 
 kehaojin = sgs.CreateTriggerSkillV2{
