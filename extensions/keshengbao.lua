@@ -532,7 +532,8 @@ keshengqizuoclear = sgs.CreateTriggerSkillV2 {
 	global = true,
 	frequency = sgs.Skill_Compulsory,
 	can_trigger = function(skill, event, room, player, data)
-		if player:getPhase() == sgs.Player_Start and player:getMark("&keshengqizuo") > 0 then
+		if player:getPhase() == sgs.Player_Start
+			and (player:getMark("&keshengqizuo") > 0 or player:getMark("&kejieshengqizuo") > 0) then
 			if player:getSkillInstanceIds(skill:objectName()):isEmpty() then
 				room:attachSkillToPlayer(player, skill:objectName())
 			end
@@ -545,6 +546,11 @@ keshengqizuoclear = sgs.CreateTriggerSkillV2 {
 		if player:getMark("&keshengqizuo") > 0 then
 			room:removePlayerMark(player, "@skill_invalidity")
 			room:removePlayerMark(player, "&keshengqizuo")
+		end
+		if player:getMark("&kejieshengqizuo") > 0 then
+			room:removePlayerMark(player, "@skill_invalidity")
+			room:removePlayerMark(player, "&kejieshengqizuo")
+			room:removePlayerCardLimitation(player, "use,response", "BasicCard")
 		end
 		return false
 	end,
@@ -636,7 +642,7 @@ keshengxiangzhi = sgs.CreateTriggerSkillV2 {
 			for _, id in sgs.qlist(to_throw) do
 				dummy:addSubcard(id)
 			end
-			room:throwCard(dummy, reason, nil)
+			room:throwCard(dummy, skill:objectName(), nil)
 		end
 		dummy:deleteLater()
 		room:clearAG()
@@ -1575,7 +1581,7 @@ kejieshengxiangzhi = sgs.CreateTriggerSkillV2 {
 			for _, id in sgs.qlist(to_throw) do
 				dummy:addSubcard(id)
 			end
-			room:throwCard(dummy, reason, nil)
+			room:throwCard(dummy, skill:objectName(), nil)
 		end
 		dummy:deleteLater()
 		room:clearAG()
@@ -1801,7 +1807,6 @@ kejieshengliema = sgs.CreateTriggerSkillV2 {
 	on_effect = function(skill, event, room, player, ctx)
 		if event == sgs.Damaged then
 			local damage = ctx.original_data:toDamage()
-			room:setPlayerFlag(damage.from, "beliema")
 			local card_id = room:askForCardChosen(player, damage.from, "he", skill:objectName(), false, sgs.Card_MethodDiscard)
 			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_DISMANTLE, player:objectName(), damage.from:objectName(), skill:objectName(), "")
 			room:throwCard(sgs.Sanguosha:getCard(card_id), reason, damage.from, player)
@@ -1812,21 +1817,13 @@ kejieshengliema = sgs.CreateTriggerSkillV2 {
 			if (sgs.Sanguosha:getCard(move.card_ids:first()):objectName() ~= "dilu") and (sgs.Sanguosha:getCard(move.card_ids:first()):objectName() ~= "zhuahuangfeidian") then
 				yes = 1
 			end
+			local move_from = move.from and room:findPlayerByObjectName(move.from:objectName()) or nil
 			room:obtainCard(player, move.card_ids:first())
 			move.card_ids:removeAt(0)
 			move.from_places:removeAt(0)
 			ctx.original_data:setValue(move)
-			if yes == 1 then
-				for _, p in sgs.qlist(room:getAllPlayers()) do
-					if p:hasFlag("beliema") then
-						room:damage(sgs.DamageStruct(skill:objectName(), player, p))
-					end
-				end
-			end
-			for _, pp in sgs.qlist(room:getAllPlayers()) do
-				if pp:hasFlag("beliema") then
-					room:setPlayerFlag(pp, "-beliema")
-				end
+			if yes == 1 and move_from then
+				room:damage(sgs.DamageStruct(skill:objectName(), player, move_from))
 			end
 		end
 		return false
