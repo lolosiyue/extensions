@@ -13412,7 +13412,9 @@ SE_GuiyinDis = sgs.CreateDistanceSkillV2 {
 	name = "#SE_GuiyinDis",
 	holder_selector = sgs.CorrectSkill_System,
 	correct_func = function(skill, ctx)
-		local from = ctx:getFrom()
+		-- DistanceSkillV2 ctx uses getPrimary (not getFrom); nil-guard for empty ctx
+		if not ctx then return false end
+		local from = ctx:getPrimary()
 		if from and from:hasSkill("#SE_GuiyinDis") and from:getMark("OniLv") > 0 then
 			return -2
 		end
