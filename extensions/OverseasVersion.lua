@@ -10533,6 +10533,8 @@ ov_huajingCard = sgs.CreateSkillCard {
 		if ms == "" then
 			return
 		end
+		-- once-per-turn sticky guard (usedTimes unreliable for MethodNone / will_throw=false)
+		room:setPlayerMark(source, "ov_huajing-Clear", 1)
 		ms = string.gsub(ms, "&", "")
 		ms = string.gsub(ms, "+#ov_huajingWu", "")
 		ms = ms:split("+")
@@ -10556,8 +10558,15 @@ ov_huajingvs = sgs.CreateViewAsSkillV2 {
 		local reason = request:getReason()
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-
-					return player:usedTimes("#ov_huajingCard") < 1
+					if player:usedTimes("#ov_huajingCard") >= 1 or player:getMark("ov_huajing-Clear") > 0 then
+						return false
+					end
+					for _, m in sgs.list(player:getMarkNames()) do
+						if m:endsWith("+#ov_huajingWu") and player:getMark(m) > 0 then
+							return true
+						end
+					end
+					return false
 		end
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
 			return false
