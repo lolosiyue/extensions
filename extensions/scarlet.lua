@@ -3488,27 +3488,24 @@ s4_txbw_general_limit = sgs.CreateCardLimitSkill {
     end
 }
 
-s4_txbw_general = sgs.CreateTriggerSkill {
+s4_txbw_general = sgs.CreateRuleSkillV2 {
     name = "s4_txbw_general",
-    global = true,
     frequency = sgs.Skill_NotFrequent,
     events = { sgs.GameStart },
     priority = -1,
-    on_trigger = function(self, event, player, data)
-        local room = player:getRoom()
-        if event == sgs.GameStart then
-            --for _, p in sgs.qlist(room:getAlivePlayers()) do
-                if player:getMark("@s4_txbw_general_1") > 0 then
-                    room:attachSkillToPlayer(player, "s4_txbw_disgeneral")
-                    room:attachSkillToPlayer(player, "s4_txbw_general_duel")
-                    room:attachSkillToPlayer(player, "s4_txbw_general_duel_rule")
-                end
-            --end
-        end
+    can_trigger = function(skill, event, room, player, data)
+        if player then return skill:objectName(), player end
         return false
     end,
-    can_trigger = function(self, target)
-        return target
+    on_effect = function(skill, event, room, player, ctx)
+        --for _, p in sgs.qlist(room:getAlivePlayers()) do
+            if player:getMark("@s4_txbw_general_1") > 0 then
+                room:attachSkillToPlayer(player, "s4_txbw_disgeneral")
+                room:attachSkillToPlayer(player, "s4_txbw_general_duel")
+                room:attachSkillToPlayer(player, "s4_txbw_general_duel_rule")
+            end
+        --end
+        return false
     end
 }
 
@@ -13777,12 +13774,16 @@ s4_youlong = sgs.CreateTriggerSkillV2 {
     end,
 }
 
-s4_adouSkill = sgs.CreateTriggerSkill{
+s4_adouSkill = sgs.CreateRuleSkillV2{
     name = "_s4_adou",
     frequency = sgs.Skill_Compulsory,
     events = { sgs.BeforeCardsMove, sgs.HpLost, sgs.CardsMoveOneTime },
-    global = true,
-    on_trigger = function(self, event, player, data, room)
+    can_trigger = function(skill, event, room, player, data)
+        if player then return skill:objectName(), player end
+        return false
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        local data = ctx.original_data
         if event == sgs.BeforeCardsMove then
             local move = data:toMoveOneTime()
             if move.from and move.from:objectName() == player:objectName()
@@ -13791,14 +13792,14 @@ s4_adouSkill = sgs.CreateTriggerSkill{
                     if move.from_places:at(i) == sgs.Player_PlaceEquip then
                         local equip = sgs.Sanguosha:getEngineCard(id)
                         if equip and equip:isKindOf("Adou") then
-                            room:sendCompulsoryTriggerLog(player, self:objectName())
+                            room:sendCompulsoryTriggerLog(player, skill:objectName())
                             local ids = sgs.IntList()
                             ids:append(id)
                             move:removeCardIds(ids)
                             data:setValue(move)
                             room:setPlayerMark(player, "_s4_adou-Clear", 1)
                             if player:getMark("s4_adou_LoseHp-Clear") == 0 then
-                                room:loseHp(player, 1, true, player,self:objectName())
+                                room:loseHp(player, 1, true, player,skill:objectName())
                                 room:addPlayerMark(player, "s4_adou_LoseHp-Clear")
                             end
                             return false
@@ -13831,10 +13832,8 @@ s4_adouSkill = sgs.CreateTriggerSkill{
             room:setPlayerMark(player, "_s4_adou-Clear", 0)
             local adou = player:getDerivativeCard("_s4_adou", sgs.Player_PlaceEquip)
         end
+        return false
     end,
-    can_trigger = function(self, target)
-        return target
-    end
 }
 
 s4_adou = sgs.CreateTreasure{
