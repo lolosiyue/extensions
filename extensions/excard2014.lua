@@ -427,55 +427,79 @@ end
 
 
 if TrickCard_wwjz == 1 then
-	-- 保留 legacy：全域「任一持牌者可響應他人【殺】」觸發技；V2 觸發需持有者技能實例，
-	-- 卡牌包無合適的實例掛載點（非裝備技能、非武將技能），而 global=true 不自動建立實例。
-	EXCard_WWJZ_Skill = sgs.CreateTriggerSkill{
+	-- 全域規則：任一持有【围魏救赵】的存活角色皆可響應他人【殺】。CreateRuleSkillV2
+	-- 讓無技能實例的持牌者成為決策者（ctx.owner），無需掛載實例；AI 依賴的
+	-- "EXCard_WWJZ_data" Room Tag 僅在 on_cost 的 askForUseCard 視窗內存在，
+	-- 時序與 legacy 一致；on_turn_broken 補上 legacy 遺漏的中斷清理。
+	EXCard_WWJZ_Skill = sgs.CreateRuleSkillV2{
 		name = "EXCard_WWJZ_Skill",
+		frequency = sgs.Skill_Compulsory,
+		hide_skill = true,
 		events = { sgs.TargetConfirmed, sgs.SlashMissed, sgs.SlashEffected, sgs.TurnBroken, sgs.StageChange },
-		global = true,
-		can_trigger = function(self, target)
-			return target and target:isAlive()
-		end,
-		on_trigger = function(self, event, player, data)
-			local room = player:getRoom()
+		can_trigger = function(skill, event, room, player, data)
+			if not (player and player:isAlive()) then return false end
 			if event == sgs.TargetConfirmed then
 				local use = data:toCardUse()
-				if use.card:isKindOf("Slash") and use.from and not use.to:contains(player) and use.from:objectName() ~= player:objectName()
-					and not use.to:contains(use.from) and use.card:getSkillName() ~= "EXCard_WWJZ" and not use.card:hasFlag("EXCard_WWJZ_success") then
-					local has
+				if use.card and use.card:isKindOf("Slash") and use.from
+					and not use.to:contains(player) and use.from:objectName() ~= player:objectName()
+					and not use.to:contains(use.from) and use.card:getSkillName() ~= "EXCard_WWJZ"
+					and not use.card:hasFlag("EXCard_WWJZ_success") then
 					for _, c in sgs.qlist(player:getHandcards()) do
-						if c:isKindOf("EXCard_WWJZ") then has = true end
+						if c:isKindOf("EXCard_WWJZ") then return skill:objectName() end
 					end
-					if not has then return end
-					room:setPlayerFlag(use.from, "EXCard_WWJZ_Wei")
-					room:setTag("EXCard_WWJZ_data", data)
-					local card = room:askForUseCard(player, "EXCard_WWJZ", string.format("#EXCard_WWJZ:%s", use.from:objectName()))
-					room:setPlayerFlag(use.from, "-EXCard_WWJZ_Wei")
-					room:removeTag("EXCard_WWJZ_data")
 				end
 			elseif event == sgs.SlashMissed then
 				local slash = data:toSlashEffect()
-				if table.contains(slash.slash:getSkillNames(), "EXCard_WWJZ") then
-					local use = room:getTag("EXCard_WWJZ_data"):toCardUse()
-					room:setCardFlag(use.card, "EXCard_WWJZ_success")
+				if slash.slash and table.contains(slash.slash:getSkillNames(), "EXCard_WWJZ") then
+					return skill:objectName()
 				end
 			elseif event == sgs.SlashEffected then
 				local slash = data:toSlashEffect()
-				if slash.slash:hasFlag("EXCard_WWJZ_success") then
-					local msg = sgs.LogMessage()
-					msg.type = "$EXCard_WWJZ_effect"
-					msg.from = slash.from
-					msg.to:append(slash.to)
-					msg.card_str = slash.slash:toString()
-					room:sendLog(msg)
-					return true
+				if slash.slash and slash.slash:hasFlag("EXCard_WWJZ_success") then
+					return skill:objectName()
 				end
+			elseif event == sgs.TurnBroken or event == sgs.StageChange then
+				return skill:objectName()
+			end
+			return false
+		end,
+		on_cost = function(skill, event, room, player, ctx)
+			if event ~= sgs.TargetConfirmed then return true end
+			local use = ctx.original_data:toCardUse()
+			room:setPlayerFlag(use.from, "EXCard_WWJZ_Wei")
+			room:setTag("EXCard_WWJZ_data", ctx.original_data)
+			local card = room:askForUseCard(player, "EXCard_WWJZ", string.format("#EXCard_WWJZ:%s", use.from:objectName()))
+			room:setPlayerFlag(use.from, "-EXCard_WWJZ_Wei")
+			room:removeTag("EXCard_WWJZ_data")
+			return card ~= nil
+		end,
+		on_turn_broken = function(skill, callback_name, event, room, player, ctx)
+			for _, p in sgs.qlist(room:getAlivePlayers()) do
+				room:setPlayerFlag(p, "-EXCard_WWJZ_Wei")
+			end
+			room:removeTag("EXCard_WWJZ_data")
+		end,
+		on_effect = function(skill, event, room, player, ctx)
+			if event == sgs.SlashMissed then
+				local slash = ctx.original_data:toSlashEffect()
+				local use = room:getTag("EXCard_WWJZ_data"):toCardUse()
+				if use.card then room:setCardFlag(use.card, "EXCard_WWJZ_success") end
+			elseif event == sgs.SlashEffected then
+				local slash = ctx.original_data:toSlashEffect()
+				local msg = sgs.LogMessage()
+				msg.type = "$EXCard_WWJZ_effect"
+				msg.from = slash.from
+				msg.to:append(slash.to)
+				msg.card_str = slash.slash:toString()
+				room:sendLog(msg)
+				return true
 			elseif event == sgs.TurnBroken or event == sgs.StageChange then
 				for _, p in sgs.qlist(room:getAlivePlayers()) do
 					room:setPlayerFlag(p, "-EXCard_WWJZ_Wei")
 				end
 			end
-		end
+			return false
+		end,
 	}
 
 	EXCard_WWJZ = sgs.CreateTrickCard{
@@ -838,6 +862,7 @@ sgs.LoadTranslationTable{
 	["#EXCard_TPYS"] = "%from 的防具【<font color= 'gold'><b>太平要术</b></font>】效果被触发，属性伤害无效。",
 
 	["EXCard_WWJZ"] = "围魏救赵",
+	["EXCard_WWJZ_Skill"] = "围魏救赵",
 	[":EXCard_WWJZ"] = "锦囊牌\
 	出牌时机：每当一名角色使用【杀】指定目标后\
 	使用目标：使用【杀】的角色\
