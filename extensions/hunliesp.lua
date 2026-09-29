@@ -138,12 +138,21 @@ local hunliesp_global_skill_names = {
 	"#hunliesp_global_clearSchemeMarks", "#hunliesp_global_resistLoseSkill",
 	"#hunliesp_global_breakTempCards", "#sgkgodhualongDraw1",
 }
--- Reentrancy guard: attachSkillToPlayer can fire skill-change on_record
--- which used to re-enter ensure and spin forever (50p soft-stuck).
+-- Scheme #*draw stay innate-only (gen:addSkill); do NOT feed ensure (120×players attach storm).
+local hunliesp_scheme_draw_skill_names = {}
+-- Reentrancy + one-shot: attachSkillToPlayer fires EventAcquireSkill on_record
+-- which used to re-enter / sequentially re-run ensure (50p soft-stuck, UseCard=0).
+-- Scheme #*draw names stay off this list (innate via gen:addSkill only).
 local hunliesp_ensuring_globals = false
 local function hunliesp_ensure_global_instances(room)
 	if hunliesp_ensuring_globals then return end
+	if room:getTag("hunliesp_globals_ensured"):toBool() then return end
 	hunliesp_ensuring_globals = true
+	local players = room:getAllPlayers(true)
+	if players:isEmpty() then
+		hunliesp_ensuring_globals = false
+		return
+	end
 	local skip_set = {}
 	local skip_str = room:getTag("hunliesp_ensure_skip"):toString()
 	if skip_str ~= "" then
@@ -152,7 +161,7 @@ local function hunliesp_ensure_global_instances(room)
 		end
 	end
 	local skip_changed = false
-	for _, p in sgs.qlist(room:getAllPlayers(true)) do
+	for _, p in sgs.qlist(players) do
 		for _, skill_name in ipairs(hunliesp_global_skill_names) do
 			if not skip_set[skill_name] and p:getSkillInstanceIds(skill_name):isEmpty() then
 				room:attachSkillToPlayer(p, skill_name)
@@ -169,6 +178,8 @@ local function hunliesp_ensure_global_instances(room)
 		for n, _ in pairs(skip_set) do table.insert(parts, n) end
 		room:setTag("hunliesp_ensure_skip", sgs.QVariant(table.concat(parts, "+")))
 	end
+	-- Mark done before clearing reentrancy so queued AcquireSkill cannot re-run.
+	room:setTag("hunliesp_globals_ensured", sgs.QVariant(true))
 	hunliesp_ensuring_globals = false
 end
 
@@ -199,9 +210,6 @@ yinyang_lose = sgs.CreateTriggerSkillV2{
 	frequency = sgs.Skill_Compulsory,
 	global = true,
 	events = {sgs.EventLoseSkill},
-	on_record = function(skill, event, room, player, ctx)
-		hunliesp_ensure_global_instances(room)
-	end,
 	can_trigger = function(skill, event, room, player, data)
 		return skill:objectName()
 	end,
@@ -267,9 +275,6 @@ hunliesp_global_drawcards = sgs.CreateTriggerSkillV2{
 	global = true,
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.DrawNCards},
-	on_record = function(skill, event, room, player, ctx)
-		hunliesp_ensure_global_instances(room)
-	end,
 	can_trigger = function(skill, event, room, player, data)
 		local draw = data:toDraw()
 		if draw.reason == "draw_phase" then return skill:objectName() end
@@ -300,9 +305,6 @@ hunliesp_global_clear = sgs.CreateTriggerSkillV2{
 	priority = 1,
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.EventPhaseChanging, sgs.CardUsed, sgs.CardFinished, sgs.Death, sgs.PreHpRecover, sgs.PreHpLost, sgs.HpChanged, sgs.MaxHpChange, sgs.MaxHpChanged, sgs.Dying, sgs.BeforeCardsMove, sgs.DamageInflicted},
-	on_record = function(skill, event, room, player, ctx)
-		hunliesp_ensure_global_instances(room)
-	end,
 	can_trigger = function(skill, event, room, player, data)
 		return skill:objectName()
 	end,
@@ -322,9 +324,6 @@ hunliesp_global_clearScheme = sgs.CreateTriggerSkillV2{
 	priority = 1,
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.Death},
-	on_record = function(skill, event, room, player, ctx)
-		hunliesp_ensure_global_instances(room)
-	end,
 	can_trigger = function(skill, event, room, player, data)
 		return skill:objectName()
 	end,
@@ -344,9 +343,6 @@ hunliesp_global_clearSchemeMarks = sgs.CreateTriggerSkillV2{
 	frequency = sgs.Skill_Compulsory,
 	global = true,
 	events = {sgs.EventLoseSkill},
-	on_record = function(skill, event, room, player, ctx)
-		hunliesp_ensure_global_instances(room)
-	end,
 	can_trigger = function(skill, event, room, player, data)
 		return skill:objectName()
 	end,
@@ -366,9 +362,6 @@ hunliesp_global_controlSkill = sgs.CreateTriggerSkillV2{
 	events = {sgs.EventAcquireSkill, sgs.MarkChanged, sgs.EventPhaseChanging},
 	frequency = sgs.Skill_Compulsory,
 	global = true,
-	on_record = function(skill, event, room, player, ctx)
-		hunliesp_ensure_global_instances(room)
-	end,
 	can_trigger = function(skill, event, room, player, data)
 		return skill:objectName()
 	end,
@@ -432,9 +425,6 @@ hunliesp_global_resistLoseSkill = sgs.CreateTriggerSkillV2{
 	events = {sgs.EventLoseSkill},
 	frequency = sgs.Skill_Compulsory,
 	global = true,
-	on_record = function(skill, event, room, player, ctx)
-		hunliesp_ensure_global_instances(room)
-	end,
 	can_trigger = function(skill, event, room, player, data)
 		return skill:objectName()
 	end,
@@ -455,7 +445,10 @@ hunliesp_global_breakTempCards = sgs.CreateTriggerSkillV2{
 	frequency = sgs.Skill_Compulsory,
 	global = true,
 	on_record = function(skill, event, room, player, ctx)
-		hunliesp_ensure_global_instances(room)
+		-- GameStart-driven ensure only; CardsMoveOneTime must not re-spam attach.
+		if event == sgs.GameStart then
+			hunliesp_ensure_global_instances(room)
+		end
 	end,
 	can_trigger = function(skill, event, room, player, data)
 		return skill:objectName()
@@ -3749,9 +3742,6 @@ sgkgodhualongDraw1 = sgs.CreateTriggerSkillV2{
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.DrawNCards},
 	global = true,
-	on_record = function(skill, event, room, player, ctx)
-		hunliesp_ensure_global_instances(room)
-	end,
 	can_trigger = function(skill, event, room, player, data)
 		if not player then return false end
 		local draw = data:toDraw()
@@ -5215,7 +5205,7 @@ for _, _first in ipairs(scheme_first_char) do
 			end
 		}
 		extension:addSkills(sgkgodjiguan_exdraw)
-		table.insert(hunliesp_global_skill_names, "#".._first.._second.."draw")
+		table.insert(hunliesp_scheme_draw_skill_names, "#".._first.._second.."draw")
 		local sgkgodjiguan_maxcards = sgs.CreateMaxCardsSkillV2{
 			name = "#".._first.._second.."maxcard",
 			holder_selector = sgs.CorrectSkill_System,
@@ -6321,10 +6311,13 @@ sgs.LoadTranslationTable{
 }
 
 --V2 全局技能需要實例先會被調度；此處先為全部武將掛 innate 實例，
---結算時再由 on_record 的 hunliesp_ensure_global_instances 補掛 acquired 實例
---（包括动态机关“draw”助手与旧 global 的 #sgkgodhualongDraw1——名字已在上面循环中插入列表）。
+--結算時再由 GameStart on_record 的 hunliesp_ensure_global_instances 補掛 acquired 實例
+--（核心 globals only）。机关 #*draw 僅 innate，不進入 ensure 列表。
 for _, gen in sgs.qlist(sgs.Sanguosha:getAllGenerals()) do
 	for _, skill_name in ipairs(hunliesp_global_skill_names) do
+		gen:addSkill(skill_name)
+	end
+	for _, skill_name in ipairs(hunliesp_scheme_draw_skill_names) do
 		gen:addSkill(skill_name)
 	end
 end
