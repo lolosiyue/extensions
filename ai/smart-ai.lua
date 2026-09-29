@@ -9199,6 +9199,9 @@ function SmartAI:useTrickCard(card,use)
 	if self:useCardByClassName(card,use)
 	or use.card then return end
 	if card:isKindOf("AOE") then
+		-- Large rooms: AOE damages dozens of targets; DamageInflicted/BreakYinni
+		-- nesting overflowed RoomThread stack in 50p soak (SIGSEGV). Skip AOE.
+		if self.room:alivePlayerCount() >= 20 then return end
 		if sgs.getMode:find("p")
 		and sgs.getMode>="04p" then
 			if card:isKindOf("ArcheryAttack") and self.player:getMark("AI_fangjian-Clear")>0 and self:getOverflow()<1
