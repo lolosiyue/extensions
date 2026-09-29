@@ -40,6 +40,13 @@ local function exactName(ref)
     return ref.key:toString()
 end
 
+-- Wall-clock game duration; GameStart is recorded per instance, Room has no elapsed API.
+local function gameElapsedSeconds(player, ref)
+    local t0 = state(player, ref, "game_start"):toInt()
+    if t0 <= 0 then return 0 end
+    return math.max(0, os.time() - t0)
+end
+
 local function observedSkill(event, data)
     local name
     if event == sgs.SkillTriggered then name = data:toString()
@@ -197,8 +204,8 @@ cs_mingli = sgs.CreateTriggerSkillV2{
     on_pay = function(self,event,room,player,ctx)
         local card=sgs.Sanguosha:getCard(ctx.extra_data:toInt())
         if room:getCardOwner(card:getEffectiveId())~=player or room:getCardPlace(card:getEffectiveId())~=sgs.Player_PlaceEquip then return false end
-        local stored=state(player,ctx:getSourceRef(),"equipment"):toString()
-        setstate(player,ctx:getSourceRef(),"equipment",stored=="" and card:objectName() or stored..","..card:objectName())
+        local stored=state(player,ctx:getActivationRef(),"equipment"):toString()
+        setstate(player,ctx:getActivationRef(),"equipment",stored=="" and card:objectName() or stored..","..card:objectName())
         room:breakCard(card); return true
     end,
     on_effect = function(self,event,room,player,ctx) player:drawCards(tonumber(ctx.choice) * self:getEffectiveAmount(ctx),self:objectName()); return false end
@@ -368,17 +375,17 @@ c_chengzhangVS = sgs.CreateViewAsSkillV2{
     end,
     on_effect=function(self,ctx)
         local source=ctx.invoker
-        local list=state(source,ctx:getSourceRef(),"poem"):toString():split("+")
+        local list=state(source,ctx:getActivationRef(),"poem"):toString():split("+")
         if table.contains(caozhi_poem,ctx.choice) and not table.contains(list,ctx.choice) then
-            table.insert(list,ctx.choice);setstate(source,ctx:getSourceRef(),"poem",table.concat(list,"+"));source:drawCards(self:getEffectiveAmount(ctx))
-        else setstate(source,ctx:getSourceRef(),"failed",true) end
+            table.insert(list,ctx.choice);setstate(source,ctx:getActivationRef(),"poem",table.concat(list,"+"));source:drawCards(self:getEffectiveAmount(ctx))
+        else setstate(source,ctx:getActivationRef(),"failed",true) end
         source:speak(ctx.choice)
     end
 }
 c_chengzhang = sgs.CreateTriggerSkillV2{
     name="c_chengzhang",view_as_skill=c_chengzhangVS,events={sgs.EventPhaseChanging},
     on_record=function(self,event,room,player,ctx)
-        if ctx.original_data:toPhaseChange().to==sgs.Player_NotActive then setstate(ctx.owner,ctx:getSourceRef(),"failed",false) end
+        if ctx.original_data:toPhaseChange().to==sgs.Player_NotActive then setstate(ctx.owner,ctx:getActivationRef(),"failed",false) end
     end,
     can_trigger=function() return "" end
 }
@@ -482,12 +489,12 @@ c_canshi = sgs.CreateTriggerSkillV2{
             if player:hasSkill(self:objectName()) then
                 -- 初始时记录最后一个非出牌阶段
                 local phase_list = {}
-                local old_phases = state(player,ctx:getSourceRef(),"phases"):toString()
+                local old_phases = state(player,ctx:getActivationRef(),"phases"):toString()
 
                 if old_phases == "" then
                     -- 初次设置，默认替换结束阶段
                     phase_list = {sgs.Player_Finish}
-                    setstate(player,ctx:getSourceRef(),"phases",table.concat(phase_list, ","))
+                    setstate(player,ctx:getActivationRef(),"phases",table.concat(phase_list, ","))
 
                     -- 通知玩家技能发动
                     room:notifySkillInvoked(player, self:objectName())
@@ -505,7 +512,7 @@ c_canshi = sgs.CreateTriggerSkillV2{
             -- 如果进入回合结束时，尝试记录新的阶段
             if change.to == sgs.Player_NotActive and player:hasSkill(self:objectName()) then
                 local phase_list = {}
-                local old_phases = state(player,ctx:getSourceRef(),"phases"):toString()
+                local old_phases = state(player,ctx:getActivationRef(),"phases"):toString()
 
                 if old_phases ~= "" then
                     for _, phase in ipairs(old_phases:split(",")) do
@@ -532,7 +539,7 @@ c_canshi = sgs.CreateTriggerSkillV2{
 
                 if next_phase then
                     table.insert(phase_list, next_phase)
-                    setstate(player,ctx:getSourceRef(),"phases",table.concat(phase_list, ","))
+                    setstate(player,ctx:getActivationRef(),"phases",table.concat(phase_list, ","))
 
                     -- 通知玩家技能发动
                     room:notifySkillInvoked(player, self:objectName())
@@ -547,7 +554,7 @@ c_canshi = sgs.CreateTriggerSkillV2{
 
             -- 处理阶段替换
             local phase_list = {}
-            local old_phases = state(player,ctx:getSourceRef(),"phases"):toString()
+            local old_phases = state(player,ctx:getActivationRef(),"phases"):toString()
 
             if old_phases ~= "" then
                 for _, phase in ipairs(old_phases:split(",")) do
@@ -712,14 +719,14 @@ c_huaming = sgs.CreateTriggerSkillV2{
     on_effect=function(self,event,room,player,ctx)
         local name=observedSkill(event, ctx.original_data)
         if not name then return false end
-        local recorded=state(player,ctx:getSourceRef(),"skills"):toString():split(",")
+        local recorded=state(player,ctx:getActivationRef(),"skills"):toString():split(",")
         for i=#recorded,1,-1 do if recorded[i]==name or recorded[i]=="" then table.remove(recorded,i) end end
         table.insert(recorded,1,name);while #recorded>3 do table.remove(recorded) end
         local parent = ctx:getActivationRef()
         local retained, acquired = {}, {}
         for _, skill in ipairs(recorded) do retained[skill] = true end
         -- Retain exact instances (and their usage/state); retire only departed grants.
-        for _, old in ipairs(state(player,ctx:getSourceRef(),"acquired"):toString():split(",")) do
+        for _, old in ipairs(state(player,ctx:getActivationRef(),"acquired"):toString():split(",")) do
             local skill, id = old:match("^(.-)#(%d+)$")
             if skill and not retained[skill] then
                 room:detachAttachedSkill(sgs.SkillInstanceRef(player:objectName(), sgs.SkillInstanceKey(skill, tonumber(id))))
@@ -741,8 +748,8 @@ c_huaming = sgs.CreateTriggerSkillV2{
                 end
             end
         end
-        setstate(player,ctx:getSourceRef(),"skills",table.concat(recorded,","))
-        setstate(player,ctx:getSourceRef(),"acquired",table.concat(acquired,","));return false
+        setstate(player,ctx:getActivationRef(),"skills",table.concat(recorded,","))
+        setstate(player,ctx:getActivationRef(),"acquired",table.concat(acquired,","));return false
     end
 }
 
@@ -831,7 +838,7 @@ sgs.LoadTranslationTable{
 c_yinyang = sgs.CreateTriggerSkillV2{
     name="c_yinyang",frequency=sgs.Skill_Compulsory,events={sgs.CardsMoveOneTime,sgs.EventPhaseEnd},
     on_record=function(self,event,room,player,ctx)
-        if event~=sgs.CardsMoveOneTime or not ctx:getSourceRef():isValid() then return end
+        if event~=sgs.CardsMoveOneTime or not ctx:getActivationRef():isValid() then return end
         player=ctx.owner
         local data=ctx.original_data
             local move = data:toMoveOneTime()
@@ -840,7 +847,7 @@ c_yinyang = sgs.CreateTriggerSkillV2{
                 -- 获取已标记的牌ID列表，使用哈希表来提高查找效率
                 local marked_ids_set = {}
                 local marked_ids_list = {}
-                local marked_str = state(player,ctx:getSourceRef(),"marked"):toString()
+                local marked_str = state(player,ctx:getActivationRef(),"marked"):toString()
 
                 if marked_str ~= "" then
                     for _, id_str in ipairs(marked_str:split(",")) do
@@ -871,7 +878,7 @@ c_yinyang = sgs.CreateTriggerSkillV2{
                 -- 只有当有新牌被标记时才更新标记列表
                 if has_new_cards then
                     local new_marked_str = table.concat(marked_ids_list, ",")
-                    setstate(player,ctx:getSourceRef(),"marked",new_marked_str)
+                    setstate(player,ctx:getActivationRef(),"marked",new_marked_str)
                 end
             end
 
@@ -899,7 +906,7 @@ c_yinyang = sgs.CreateTriggerSkillV2{
 
                 -- 获取已标记的牌ID列表，直接使用哈希表结构
                 local marked_ids = {}
-                local marked_str = state(player,ctx:getSourceRef(),"marked"):toString()
+                local marked_str = state(player,ctx:getActivationRef(),"marked"):toString()
                 if marked_str ~= "" then
                     for _, id_str in ipairs(marked_str:split(",")) do
                         marked_ids[tonumber(id_str)] = true
@@ -1029,7 +1036,7 @@ c_fengjun = sgs.CreateTriggerSkillV2{
         if not target then return false end;ctx.targets:append(target);return true
     end,
     on_effect=function(self,event,room,player,ctx)
-        local ref=ctx:getSourceRef()
+        local ref=ctx:getActivationRef()
         if ctx.invoker:getPhase()==sgs.Player_Finish then
             local target=ctx.targets:first();setstate(player,ref,"target",target:objectName());setstate(player,ref,"used",false)
             room:setPlayerMark(target,"&c_fengjun_target",1);log(room,"#c_fengjun_give",player,target)
@@ -1494,7 +1501,8 @@ c_wuqiong = sgs.CreateTriggerSkillV2{
         elseif event==sgs.Dying and data:toDying().who~=player then return "" end
         local names={}
         for _,id in sgs.qlist(player:getValidSkillInstanceIds(self:objectName())) do
-            if not player:getSkillInstanceStateValue(self:objectName(),id,"complete"):toBool() then table.insert(names,self:objectName().."#"..id) end
+            local ref=sgs.SkillInstanceRef(player:objectName(),sgs.SkillInstanceKey(self:objectName(),id))
+            if room:getShimingStatus(ref)==0 then table.insert(names,self:objectName().."#"..id) end
         end
         return table.concat(names,"+"),player
     end,
@@ -1515,10 +1523,11 @@ c_wuqiong = sgs.CreateTriggerSkillV2{
         return true
     end,
     on_effect=function(self,event,room,player,ctx)
+        local ref=ctx:getActivationRef()
         if event==sgs.Damaged then
             player:addEquipArea(0);room:recover(player,sgs.RecoverStruct(player,nil,1));log(room,"#c_wuqiong_abolish",player,nil,ctx.choice)
         elseif event==sgs.EventPhaseStart then
-            room:sendShimingLog(ctx:getSourceRef(),true)
+            if not room:sendShimingLog(ref,true) then return false end
             local ids=sgs.IntList()
             for _,id in sgs.qlist(room:getDrawPile()) do if sgs.Sanguosha:getCard(id):isKindOf("EquipCard") then ids:append(id) end end
             if not ids:isEmpty() then
@@ -1530,9 +1539,10 @@ c_wuqiong = sgs.CreateTriggerSkillV2{
                 end
                 room:clearAG();if dummy:subcardsLength()>0 then player:obtainCard(dummy) end;dummy:deleteLater()
             end
-            room:acquireSkill(player,"c_kuangni");setstate(player,ctx:getSourceRef(),"complete",true)
+            room:acquireSkill(player,"c_kuangni")
         else
-            room:sendShimingLog(ctx:getSourceRef(),false);room:acquireSkill(player,"benghuai");setstate(player,ctx:getSourceRef(),"complete",true)
+            if not room:sendShimingLog(ref,false) then return false end
+            room:acquireSkill(player,"benghuai")
         end
         return false
     end
@@ -1694,7 +1704,8 @@ c_shienVS = sgs.CreateViewAsSkillV2{
     name="c_shien",n=2,target_mode=sgs.ViewAsSkillV2_SelectTargets,will_throw_selected_cards=false,
     can_activate=function(self,request)
         local player=request:getInitiator()
-        return play(request) and player:getHandcardNum()>=2 and not state(player,requestRef(request),"complete"):toBool()
+        return play(request) and player:getHandcardNum()>=2
+            and player:getRoom():getShimingStatus(requestRef(request))==0
     end,
     can_select_card=function(self,request,card)
         return request:getSelectedCardIds():length()<2 and not card:isEquipped()
@@ -1708,7 +1719,7 @@ c_shienVS = sgs.CreateViewAsSkillV2{
     pay=function(self,room,ctx,request)
         local source=ctx.invoker;local target=ctx.targets:first()
         if not target or request:getSelectedCardIds():length()~=2 then return false end
-        local list=state(source,ctx:getSourceRef(),"used"):toString():split("+")
+        local list=state(source,ctx:getActivationRef(),"used"):toString():split("+")
         if table.contains(list,target:objectName()) then return false end
         local dummy=sgs.DummyCard();local red,black=false,false
         for _,id in sgs.qlist(request:getSelectedCardIds()) do
@@ -1716,18 +1727,19 @@ c_shienVS = sgs.CreateViewAsSkillV2{
             local card=sgs.Sanguosha:getCard(id);red=red or card:isRed();black=black or card:isBlack();dummy:addSubcard(id)
         end
         ctx.extra_data=sgs.QVariant(red and black)
-        table.insert(list,target:objectName());setstate(source,ctx:getSourceRef(),"used",table.concat(list,"+"))
-        local all=state(source,ctx:getSourceRef(),"all_targets"):toString():split("+")
-        if not table.contains(all,target:objectName()) then table.insert(all,target:objectName());setstate(source,ctx:getSourceRef(),"all_targets",table.concat(all,"+")) end
+        table.insert(list,target:objectName());setstate(source,ctx:getActivationRef(),"used",table.concat(list,"+"))
+        local all=state(source,ctx:getActivationRef(),"all_targets"):toString():split("+")
+        if not table.contains(all,target:objectName()) then table.insert(all,target:objectName());setstate(source,ctx:getActivationRef(),"all_targets",table.concat(all,"+")) end
         local reason=sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE,source:objectName(),target:objectName(),"c_shien","")
         room:obtainCard(target,dummy,reason,false);dummy:deleteLater();return true
     end,
     on_effect=function(self,ctx)
         local source=ctx.invoker;local room=source:getRoom();local target=ctx.targets:first()
-        local all=state(source,ctx:getSourceRef(),"all_targets"):toString():split("+")
+        local ref=ctx:getActivationRef()
+        local all=state(source,ref,"all_targets"):toString():split("+")
         if source:isAlive() then source:drawCards(2 * self:getEffectiveAmount(ctx),"c_shien") end
         if ctx.extra_data:toBool() and source:isAlive() and target:isAlive() then
-            room:sendShimingLog(ctx:getSourceRef(),false);setstate(source,ctx:getSourceRef(),"complete",true)
+            if not room:sendShimingLog(ref,false) then return end
             if not target:isKongcheng() then
                 local cards=room:askForExchange(target,"c_shien",target:getHandcardNum(),0,true,"@c_shien-give:"..source:objectName())
                 if cards and cards:subcardsLength()>0 then room:obtainCard(source,cards,false) end
@@ -1743,9 +1755,9 @@ c_shienVS = sgs.CreateViewAsSkillV2{
             end
             return
         end
-        if source:isAlive() and not state(source,ctx:getSourceRef(),"complete"):toBool() then
+        if source:isAlive() and room:getShimingStatus(ref)==0 then
             for _,other in sgs.qlist(room:getOtherPlayers(source)) do if not table.contains(all,other:objectName()) then return end end
-            room:sendShimingLog(ctx:getSourceRef(),true);room:acquireSkill(source,"c_renze");setstate(source,ctx:getSourceRef(),"complete",true)
+            if room:sendShimingLog(ref,true) then room:acquireSkill(source,"c_renze") end
         end
     end
 }
@@ -1754,7 +1766,7 @@ c_shienVS = sgs.CreateViewAsSkillV2{
 c_shien = sgs.CreateTriggerSkillV2{
     name="c_shien",shiming_skill=true,view_as_skill=c_shienVS,events={sgs.EventPhaseChanging},
     on_record=function(self,event,room,player,ctx)
-        if ctx.original_data:toPhaseChange().to==sgs.Player_NotActive then setstate(ctx.owner,ctx:getSourceRef(),"used","") end
+        if ctx.original_data:toPhaseChange().to==sgs.Player_NotActive then setstate(ctx.owner,ctx:getActivationRef(),"used","") end
     end,
     can_trigger=function() return "" end
 }
@@ -1914,7 +1926,7 @@ c_fengqi = sgs.CreateTriggerSkillV2{
     name="c_fengqi",frequency=sgs.Skill_Limited,limit_scope=sgs.Skill_Limit_Game,max_usage_limit=1,
     events={sgs.Dying,sgs.RoundEnd},
     on_record=function(self,event,room,player,ctx)
-        if event==sgs.RoundEnd then room:setSkillInstanceCorrectState(ctx.owner,ctx:getSourceRef(),"unlimited",sgs.QVariant(false)) end
+        if event==sgs.RoundEnd then room:setSkillInstanceCorrectState(ctx.owner,ctx:getActivationRef(),"unlimited",sgs.QVariant(false)) end
     end,
     can_trigger=function(self,event,room,player,data)
         if event==sgs.Dying and data:toDying().who==player then return own(self,event,room,player,data) end
@@ -1930,7 +1942,7 @@ c_fengqi = sgs.CreateTriggerSkillV2{
     on_effect=function(self,event,room,player,ctx)
         log(room,"#c_fengqi_log",player);resolveLuanhui(room,player,self:getEffectiveAmount(ctx))
         if ctx.choice~="" then room:detachSkillFromPlayer(player,ctx.choice) end
-        room:setSkillInstanceCorrectState(player,ctx:getSourceRef(),"unlimited",sgs.QVariant(true));return false
+        room:setSkillInstanceCorrectState(player,ctx:getActivationRef(),"unlimited",sgs.QVariant(true));return false
     end
 }
 
@@ -1940,7 +1952,7 @@ c_fengqi_unlimited = sgs.CreateTargetModSkillV2{
     correct_func=function(self,ctx)
         local parent=ctx:getHolder():getSkillInstanceParentRef(ctx:getInstanceRef().key.skillName,ctx:getInstanceRef().key.instanceID)
         if parent:isValid() and ctx:getModType()==sgs.TargetModSkill_Residue and ctx:getHolder():getSkillInstanceCorrectStateValue(parent.key.skillName,parent.key.instanceID,"unlimited"):toBool() then
-            return 1000
+            return -1
         end
         return false
     end
@@ -1981,7 +1993,7 @@ c_yizhong = sgs.CreateTriggerSkillV2{
     end,
     on_cost=function(self,event,room,player,ctx)
         if event==sgs.CardEffected then return true end
-        if state(player,ctx:getSourceRef(),"original"):toString()~="" then return false end
+        if state(player,ctx:getActivationRef(),"original"):toString()~="" then return false end
         local target=room:askForPlayerChosen(player,room:getOtherPlayers(player),self:objectName(),"@c_yizhong",true,true)
         if not target then return false end;ctx.targets:append(target);return true
     end,
@@ -1991,7 +2003,7 @@ c_yizhong = sgs.CreateTriggerSkillV2{
             effect.nullified=true;ctx.original_data:setValue(effect)
         else
             local target=ctx.targets:first();log(room,"#c_yizhong_transfer",player,target)
-            room:detachSkillFromPlayer(player,exactName(ctx:getSourceRef()))
+            room:detachSkillFromPlayer(player,exactName(ctx:getActivationRef()))
             local id=room:acquireSkill(target,self:objectName())
             if id<=0 then return false end
             local ref=sgs.SkillInstanceRef(target:objectName(),sgs.SkillInstanceKey(self:objectName(),id))
@@ -2057,8 +2069,12 @@ C_shishi = sgs.General(extension, "C_shishi", "qun", 3)
 -- 技能1：计时 - 根据游戏时长获得不同效果
 c_jishi = sgs.CreateTriggerSkillV2{
     name = "c_jishi",
-    events = {sgs.EventPhaseStart},
+    events = {sgs.EventPhaseStart, sgs.GameStart},
     frequency = sgs.Skill_Compulsory,
+
+    on_record = function(self, event, room, player, ctx)
+        if event == sgs.GameStart then setstate(ctx.owner, ctx:getActivationRef(), "game_start", os.time()) end
+    end,
 
     on_effect = function(self, event, room, player, ctx)
         room:writeToConsole("========== 【计时】技能触发 ==========")
@@ -2071,8 +2087,8 @@ c_jishi = sgs.CreateTriggerSkillV2{
         end
 
         -- 获取游戏时长（秒）
-        local elapsed = room:getGameElapsedSeconds()
-        room:writeToConsole(">>> 调用 room:getGameElapsedSeconds() 返回: " .. tostring(elapsed) .. " 秒")
+        local elapsed = gameElapsedSeconds(player, ctx:getActivationRef())
+        room:writeToConsole(">>> 游戏时长: " .. tostring(elapsed) .. " 秒")
 
         -- 转换为分钟和秒
         local minutes = math.floor(elapsed / 60)
@@ -2154,12 +2170,21 @@ c_jishi = sgs.CreateTriggerSkillV2{
 
 -- 技能2：时光 - 游戏时长超过5分钟时可以防止伤害
 c_shiguang = sgs.CreateTriggerSkillV2{
-    name="c_shiguang",events={sgs.DamageComplete},frequency=sgs.Skill_Limited,
+    name="c_shiguang",events={sgs.DamageComplete,sgs.GameStart},frequency=sgs.Skill_Limited,
     limit_scope=sgs.Skill_Limit_Game,max_usage_limit=1,
+    on_record=function(self,event,room,player,ctx)
+        if event==sgs.GameStart then setstate(ctx.owner,ctx:getActivationRef(),"game_start",os.time()) end
+    end,
     can_trigger=function(self,event,room,player,data)
+        if event~=sgs.DamageComplete or not player or not player:isAlive() then return "" end
         local damage=data:toDamage()
-        if damage.to==player and room:getGameElapsedSeconds()>=300 then return own(self,event,room,player,data) end
-        return ""
+        if damage.to~=player then return "" end
+        local names={}
+        for _,id in sgs.qlist(player:getValidSkillInstanceIds(self:objectName())) do
+            local ref=sgs.SkillInstanceRef(player:objectName(),sgs.SkillInstanceKey(self:objectName(),id))
+            if gameElapsedSeconds(player,ref)>=300 then table.insert(names,self:objectName().."#"..id) end
+        end
+        return table.concat(names,"+"),player
     end,
     on_cost=invoke,
     on_effect=function(self,event,room,player,ctx)
