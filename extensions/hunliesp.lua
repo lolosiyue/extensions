@@ -350,7 +350,7 @@ hunliesp_global_clearSchemeMarks = sgs.CreateTriggerSkillV2{
 		local sk = ctx.original_data:toSkillChange().skillName
 		if isSchemeSkill(sk) then
 			if player:getMark(sk.."hunlie_global_schemedraw") > 0 then room:removePlayerMark(player, sk.."hunlie_global_schemedraw", player:getMark(sk.."hunlie_global_schemedraw")) end
-			if player:getMark(sk.."hunlie_global_schememaxcard") > 0 then room:removePlayerMark(player, sk.."hunlie_global_schememaxcard", player:getMark(sk.."hunlie_global_schememaxcard")) end
+			if player:getMark(sk.."hunlie_global_schememaxcards") > 0 then room:removePlayerMark(player, sk.."hunlie_global_schememaxcards", player:getMark(sk.."hunlie_global_schememaxcards")) end
 			if player:getMark(sk.."hunlie_global_schemeslashtime") > 0 then room:removePlayerMark(player, sk.."hunlie_global_schemeslashtime", player:getMark(sk.."hunlie_global_schemeslashtime")) end
 		end
 		return false
@@ -5171,69 +5171,81 @@ for _, _first in sgs.list(scheme_first_char) do
 	end
 end
 
+-- 50p soft-stuck: 120×(draw+maxcard+slashtime) System/global skills meant
+-- every general carried 120 innate #*draw instances; AI WorldView buildPublicBoard
+-- (getMaxCards / getAttackRange→viewAsEquip) then scanned those instances on every
+-- BeforeCardsMove TriggerOrder during GameReady InitialHandCards. Collapse to
+-- three shared skills that still honour per-scheme marks. Do NOT call ensure here.
+local scheme_sknames = {}
 for _, _first in ipairs(scheme_first_char) do
 	for _, _second in ipairs(scheme_second_char) do
-		-- 這 120 組全域技能每次算摸牌數／手牌上限／出殺次數都會逐一回呼;
-		-- 技能名與標記名在建立時算好, 並先查標記 (為 0 時結果必為 0) 再查 hasSkill。
-		local skname = _first.._second
-		local draw_mark = skname.."hunlie_global_schemedraw"
-		local maxcards_mark = skname.."hunlie_global_schememaxcards"
-		local slashtime_mark = skname.."hunlie_global_schemeslashtime"
-		-- Do NOT call hunliesp_ensure_global_instances here: 120 of these fire
-		-- on every DrawNCards and re-enter ensure via attach → soft-stuck.
-		-- Ensure stays on GameStart / EventAcquire|LoseSkill / core globals.
-		local sgkgodjiguan_exdraw = sgs.CreateTriggerSkillV2{
-			name = "#".._first.._second.."draw",
-			global = true,
-			frequency = sgs.Skill_Compulsory,
-			events = {sgs.DrawNCards},
-			can_trigger = function(skill, event, room, player, data)
-				if not player then return false end
-				local draw = data:toDraw()
-				if draw.reason == "draw_phase" then return skill:objectName() end
-				return false
-			end,
-			on_effect = function(self, event, room, player, ctx)
-				local data = ctx.original_data
-				local draw = data:toDraw()
-				local x = player:getMark(draw_mark)
-				if x ~= 0 and player:hasSkill(skname) then
-					draw.num = draw.num + x
-					data:setValue(draw)
-				end
-				return false
-			end
-		}
-		extension:addSkills(sgkgodjiguan_exdraw)
-		table.insert(hunliesp_scheme_draw_skill_names, "#".._first.._second.."draw")
-		local sgkgodjiguan_maxcards = sgs.CreateMaxCardsSkillV2{
-			name = "#".._first.._second.."maxcard",
-			holder_selector = sgs.CorrectSkill_System,
-			correct_func = function(skill, ctx)
-				local target = ctx:getPrimary()
-				if not target then return false end
-				local n = target:getMark(maxcards_mark)
-				if n ~= 0 and target:hasSkill(skname) then return n end
-				return false
-			end
-		}
-		extension:addSkills(sgkgodjiguan_maxcards)
-		local sgkgodjiguan_slashtime = sgs.CreateTargetModSkillV2{
-			name = "#".._first.._second.."slashtime",
-			pattern = ".",
-			holder_selector = sgs.CorrectSkill_System,
-			correct_func = function(skill, ctx)
-				if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
-				local from, card = ctx:getPrimary(), ctx:getCard()
-				if not (from and card) then return false end
-				local n = from:getMark(slashtime_mark)
-				if n ~= 0 and card:isKindOf("Slash") and from:hasSkill(skname) then return n end
-				return false
-			end,
-		}
-		extension:addSkills(sgkgodjiguan_slashtime)
+		table.insert(scheme_sknames, _first .. _second)
 	end
 end
+
+local function scheme_mark_total(player, suffix)
+	local total = 0
+	for _, skname in ipairs(scheme_sknames) do
+		local n = player:getMark(skname .. suffix)
+		if n ~= 0 and player:hasSkill(skname) then
+			total = total + n
+		end
+	end
+	return total
+end
+
+local sgkgodjiguan_exdraw = sgs.CreateTriggerSkillV2{
+	name = "#sgkgodjiguan_scheme_draw",
+	global = true,
+	frequency = sgs.Skill_Compulsory,
+	events = {sgs.DrawNCards},
+	can_trigger = function(skill, event, room, player, data)
+		if not player then return false end
+		local draw = data:toDraw()
+		if draw.reason == "draw_phase" then return skill:objectName() end
+		return false
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
+		local draw = data:toDraw()
+		local x = scheme_mark_total(player, "hunlie_global_schemedraw")
+		if x ~= 0 then
+			draw.num = draw.num + x
+			data:setValue(draw)
+		end
+		return false
+	end
+}
+extension:addSkills(sgkgodjiguan_exdraw)
+table.insert(hunliesp_scheme_draw_skill_names, "#sgkgodjiguan_scheme_draw")
+
+local sgkgodjiguan_maxcards = sgs.CreateMaxCardsSkillV2{
+	name = "#sgkgodjiguan_scheme_maxcard",
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		local target = ctx:getPrimary()
+		if not target then return false end
+		local n = scheme_mark_total(target, "hunlie_global_schememaxcards")
+		if n ~= 0 then return n end
+		return false
+	end
+}
+extension:addSkills(sgkgodjiguan_maxcards)
+
+local sgkgodjiguan_slashtime = sgs.CreateTargetModSkillV2{
+	name = "#sgkgodjiguan_scheme_slashtime",
+	pattern = ".",
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
+		local from, card = ctx:getPrimary(), ctx:getCard()
+		if not (from and card and card:isKindOf("Slash")) then return false end
+		local n = scheme_mark_total(from, "hunlie_global_schemeslashtime")
+		if n ~= 0 then return n end
+		return false
+	end,
+}
+extension:addSkills(sgkgodjiguan_slashtime)
 
 
 --做好机关之后，需要赋予其描述
@@ -6312,7 +6324,7 @@ sgs.LoadTranslationTable{
 
 --V2 全局技能需要實例先會被調度；此處先為全部武將掛 innate 實例，
 --結算時再由 GameStart on_record 的 hunliesp_ensure_global_instances 補掛 acquired 實例
---（核心 globals only）。机关 #*draw 僅 innate，不進入 ensure 列表。
+--（核心 globals only）。机关摸牌修正僅掛單一 #sgkgodjiguan_scheme_draw，不進入 ensure。
 for _, gen in sgs.qlist(sgs.Sanguosha:getAllGenerals()) do
 	for _, skill_name in ipairs(hunliesp_global_skill_names) do
 		gen:addSkill(skill_name)
