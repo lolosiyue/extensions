@@ -1,12 +1,73 @@
 module("extensions.new", package.seeall)
 extension = sgs.Package("new")
 ----华丽的分割线
+
+-- 原生 C++ SkillV2 技能不能再以 skill:trigger(...) 直接发动：
+-- 直接调用建立不到合法嘅 SkillContext（owner 为空、activationRef 无效），
+-- 会喺引擎内空转甚至崩溃。呢度按其现行 V2 语义就地重演一次发动。
+local function luaInvokeNativeSkill(skill_name, room, player, data)
+	local damage = data:toDamage()
+	if skill_name == "fankui" then
+		local from = damage.from
+		if not from or from:isNude() then return end
+		local invoke_data = sgs.QVariant()
+		invoke_data:setValue(from)
+		for i = 1, damage.damage do
+			if from:isNude() or not player:isAlive() then break end
+			if not room:askForSkillInvoke(player, "fankui", invoke_data) then break end
+			room:broadcastSkillInvoke("fankui")
+			local card_id = room:askForCardChosen(player, from, "he", "fankui")
+			if room:getCardOwner(card_id) == from
+				and (room:getCardPlace(card_id) == sgs.Player_PlaceHand
+					or room:getCardPlace(card_id) == sgs.Player_PlaceEquip) then
+				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName())
+				room:obtainCard(player, sgs.Sanguosha:getCard(card_id), reason,
+					room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
+			end
+		end
+	elseif skill_name == "jieming" then
+		local target = room:askForPlayerChosen(player, room:getAlivePlayers(), "jieming", "jieming-invoke", true, true)
+		if target then
+			local count = math.min(5, target:getMaxHp()) - target:getHandcardNum()
+			if count > 0 then
+				room:broadcastSkillInvoke("jieming")
+				target:drawCards(count, "jieming")
+			end
+		end
+	elseif skill_name == "fangzhu" then
+		local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), "fangzhu", "fangzhu-invoke", true, true)
+		if target then
+			local index = target:faceUp() and 1 or 2
+			if target:getGeneralName():find("caozhi") or target:getGeneral2Name():find("caozhi") then
+				index = 3
+			end
+			room:broadcastSkillInvoke("fangzhu", index)
+			target:drawCards(player:getLostHp(), "fangzhu")
+			target:turnOver()
+		end
+	elseif skill_name == "yiji" then
+		for i = 1, damage.damage do
+			if not player:isAlive() then break end
+			if not room:askForSkillInvoke(player, "yiji", data) then break end
+			room:broadcastSkillInvoke("yiji")
+			player:drawCards(2, "yiji")
+			room:askForUseCard(player, "@@yiji", "@yiji")
+		end
+	end
+end
+
 luayiheng = sgs.General(extension, "luayiheng", "qun", 3, true)
 
 lualilian = sgs.CreateTriggerSkillV2 { --新神杀已实现
 	name = "lualilian",
 	frequency = sgs.Skill_Frequent,
 	events = { sgs.Damaged },
+	can_trigger = function(skill, event, room, player, data)
+		if player and player:isAlive() and player:hasSkill(skill:objectName()) then
+			return "lualilian"
+		end
+		return false
+	end,
 	on_cost = function(skill, event, room, player, ctx)
 		if not room:askForSkillInvoke(player, "lualilian") then
 			return false
@@ -19,10 +80,9 @@ lualilian = sgs.CreateTriggerSkillV2 { --新神杀已实现
 		for var = 1, damage.damage, 1 do
 			local choice = room:askForChoice(player, skill:objectName(), "luayihengmopai+luayihengturn")
 			if choice == "luayihengmopai" then --选择1
-				local fangzhu = sgs.Sanguosha:getTriggerSkill("yiji")
-				if fangzhu then
+				if sgs.Sanguosha:getTriggerSkill("yiji") then
 					room:notifySkillInvoked(player, skill:objectName())
-					fangzhu:trigger(event, room, player, ctx.original_data)
+					luaInvokeNativeSkill("yiji", room, player, ctx.original_data)
 				end
 			end
 			if choice == "luayihengturn" then ---选择2
@@ -1200,20 +1260,21 @@ luajilue = sgs.CreateTriggerSkillV2 {
 			local x = damage.damage
 			for i = 1, x, 1 do
 				local choice = room:askForChoice(player, skill:objectName(), "c1+c2+c3+c4+c5")
-				local skill2
+				local skill_name
 				if choice == "c1" then
-					skill2 = sgs.Sanguosha:getTriggerSkill("fankui")
+					skill_name = "fankui"
 				elseif choice == "c2" then
-					skill2 = sgs.Sanguosha:getTriggerSkill("jieming")
+					skill_name = "jieming"
 				elseif choice == "c3" then
-					skill2 = sgs.Sanguosha:getTriggerSkill("fangzhu")
+					skill_name = "fangzhu"
 				elseif choice == "c4" then
-					skill2 = sgs.Sanguosha:getTriggerSkill("yiji")
+					skill_name = "yiji"
 				end
-				if choice ~= "c5" and skill2 then
+				if choice ~= "c5" and skill_name and sgs.Sanguosha:getTriggerSkill(skill_name) then
+					local luamous = player:getPile("luamou")
+					if luamous:isEmpty() then break end
 					room:broadcastSkillInvoke("luajilue") --音效
 					room:notifySkillInvoked(player, skill:objectName())
-					local luamous = player:getPile("luamou")
 					local card_id
 					if luamous:length() == 1 then
 						card_id = luamous:first()
@@ -1225,7 +1286,7 @@ luajilue = sgs.CreateTriggerSkillV2 {
 					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", skill:objectName(), "")
 					room:throwCard(sgs.Sanguosha:getCard(card_id), reason, nil)
 					--room:throwCard(card_id,player)
-					skill2:trigger(event, room, player, ctx.original_data)
+					luaInvokeNativeSkill(skill_name, room, player, ctx.original_data)
 				end
 			end
 		end
@@ -1341,70 +1402,64 @@ luafentian = sgs.CreateTriggerSkillV2 {
 	--priority
 }
 
-lualianji = sgs.CreateTriggerSkillV2 {
-	name = "lualianji",
-	frequency = sgs.Skill_NotFrequent,
-	events = { sgs.CardsMoveOneTime },
-	on_record = function(skill, event, room, player, ctx)
-		local current = room:getCurrent()
-		local move = ctx.original_data:toMoveOneTime()
-		local source = move.from
-		if source and current then
-			if player:objectName() == source:objectName() then
-				if current:getPhase() == sgs.Player_Discard then
-					local tag = room:getTag("lualianjiToGet")
-					local guzhengToGet = tag:toString()
-					if guzhengToGet == nil then
-						guzhengToGet = ""
-					end
-					for _, card_id in sgs.qlist(move.card_ids) do
-						local flag = bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON)
-						if flag == sgs.CardMoveReason_S_REASON_DISCARD then
-							if source:objectName() == current:objectName() then
-								if guzhengToGet == "" then
-									guzhengToGet = tostring(card_id)
-								else
-									guzhengToGet = guzhengToGet .. "+" .. tostring(card_id)
-								end
-							end
-						end
-					end
-					if guzhengToGet then
-						room:setTag("lualianjiToGet", sgs.QVariant(guzhengToGet))
-					end
+--「敛计」共享清单：以 Resolution History 重建本弃牌阶段被置入弃牌堆、
+--且仍留在弃牌堆嘅牌；歷史不完整時回傳 nil（不得當作「無牌」）。
+local function lualianjiDiscardPileCards(room, player)
+	local scope = room:historyScopes()
+	local phase = scope and scope.phase_id
+	if not phase or phase == "0" or phase == 0 then
+		return nil
+	end
+	local filter = { phase_id = phase, from = player:objectName(), limit = 64 }
+	local recorded = {}
+	local watermark = nil
+	while true do
+		local page = room:queryHistoryMoves(filter)
+		if not page or page.error or not page.complete then
+			return nil
+		end
+		if not watermark then
+			watermark = page.watermark
+		end
+		for _, fact in ipairs(page.items or {}) do
+			local move = fact.data or {}
+			if move.to_place == sgs.Player_DiscardPile
+				and bit32.band(move.reason or 0, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD then
+				local id = move.card_id
+				if type(id) == "number" and id >= 0 then
+					recorded[id] = true
 				end
 			end
 		end
-	end,
+		if not page.has_more then
+			break
+		end
+		filter.after = page.next_after
+		filter.watermark = watermark
+	end
+	local cards = {}
+	for _, id in sgs.qlist(room:getDiscardPile()) do
+		if recorded[id] then
+			table.insert(cards, id)
+		end
+	end
+	return cards
+end
+
+lualianji = sgs.CreateTriggerSkillV2 {
+	name = "lualianji",
+	frequency = sgs.Skill_NotFrequent,
 }
 lualianjiGet = sgs.CreateTriggerSkillV2 {
 	name = "#lualianjiGet",
 	frequency = sgs.Skill_Frequent,
-	events = { sgs.EventPhaseEnd, sgs.EventPhaseStart },
-	on_record = function(skill, event, room, player, ctx)
-		--每个弃牌阶段开始时清掉上轮残留，保证 lualianjiToGet 只记录本阶段弃牌
-		if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Discard then
-			room:removeTag("lualianjiToGet")
-		end
-	end,
+	events = { sgs.EventPhaseEnd },
 	can_trigger = function(skill, event, room, player, data)
-		if event ~= sgs.EventPhaseEnd then
-			return false
-		end
 		if not (player and not player:isDead() and player:getPhase() == sgs.Player_Discard) then
 			return false
 		end
-		local tag = room:getTag("lualianjiToGet")
-		local guzheng_cardsToGet = tag:toString():split("+")
-		local has_card = false
-		for i = 1, #guzheng_cardsToGet, 1 do
-			local card_id = tonumber(guzheng_cardsToGet[i])
-			if card_id and room:getCardPlace(card_id) == sgs.Player_DiscardPile then
-				has_card = true
-				break
-			end
-		end
-		if not has_card then
+		local cards = lualianjiDiscardPileCards(room, player)
+		if not cards or #cards == 0 then
 			return false
 		end
 		local skill_names = {}
@@ -1421,20 +1476,13 @@ lualianjiGet = sgs.CreateTriggerSkillV2 {
 		return false
 	end,
 	on_cost = function(skill, event, room, player, ctx)
-		local tag = room:getTag("lualianjiToGet")
-		local guzheng_cardsToGet = tag:toString():split("+")
-		local cardsToGet = sgs.IntList()
-		for i = 1, #guzheng_cardsToGet, 1 do
-			local card_data = guzheng_cardsToGet[i]
-			if card_data ~= "" then --弃牌阶段没弃牌则字符串为""
-				local card_id = tonumber(card_data)
-				if card_id and room:getCardPlace(card_id) == sgs.Player_DiscardPile then
-					cardsToGet:append(card_id)
-				end
-			end
-		end
-		if cardsToGet:isEmpty() then
+		local cards = lualianjiDiscardPileCards(room, ctx.invoker)
+		if not cards or #cards == 0 then
 			return false
+		end
+		local cardsToGet = sgs.IntList()
+		for _, card_id in ipairs(cards) do
+			cardsToGet:append(card_id)
 		end
 		local ai_data = sgs.QVariant()
 		ai_data:setValue(cardsToGet:length())
@@ -1458,20 +1506,6 @@ lualianjiGet = sgs.CreateTriggerSkillV2 {
 		log.card_str = sgs.Sanguosha:getCard(to_back):toString()
 		room:sendLog(log)
 		player:addToPile("Plianji", sgs.Sanguosha:getCard(to_back))
-
-		--取走的牌从共享清单移除，供下一位持有者继续挑选
-		local tag = room:getTag("lualianjiToGet")
-		local remain = {}
-		for _, card_data in sgs.qlist(tag:toString():split("+")) do
-			if tonumber(card_data) ~= to_back then
-				table.insert(remain, card_data)
-			end
-		end
-		if #remain > 0 then
-			room:setTag("lualianjiToGet", sgs.QVariant(table.concat(remain, "+")))
-		else
-			room:removeTag("lualianjiToGet")
-		end
 		return false
 	end,
 }
@@ -1560,7 +1594,9 @@ lualianji_result_2 = sgs.CreateDistanceSkillV2 { --敛计延伸技2
 		if to == holder and to:hasSkill("lualianji") then
 			return x / 2
 		end
-		if from == holder and from:hasSkill("lualianji") then
+		-- 舊版 correct_func 對每個技能只調一次且 to 優先：to 持有時唔會再計 from，
+		-- Participants 會逐 holder 累加，故此處須保留「to 優先」語義
+		if from == holder and from:hasSkill("lualianji") and not to:hasSkill("lualianji") then
 			return 0 - y / 2
 		end
 		return false
