@@ -26,43 +26,51 @@ end
 
 
 
-yaochangetupo = sgs.CreateTriggerSkill {
+yaochangetupo = sgs.CreateRuleSkillV2 {
 	name = "yaochangetupo",
 	global = true,
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.GameStart },
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(skill, event, room, player, data)
+		if player and (player:hasSkill("keyaotaiping") or player:hasSkill("keyaobuhui")
+				or player:hasSkill("keyaozhabing") or player:hasSkill("keyaoquwu")
+				or player:hasSkill("keyaoshidu") or player:hasSkill("keyaoxieqin")) then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
 		if (player:hasSkill("keyaotaiping")) then
-			if room:askForSkillInvoke(player, self:objectName(), data) then
+			if room:askForSkillInvoke(player, skill:objectName(), ctx.original_data) then
 				room:changeHero(player, "kejieyaozhangjiao", false, true, player:getGeneral2Name()=="keyaozhangjiao", false)
 			end
 		end
 		if (player:hasSkill("keyaobuhui")) then
-			if room:askForSkillInvoke(player, self:objectName(), data) then
+			if room:askForSkillInvoke(player, skill:objectName(), ctx.original_data) then
 				room:changeHero(player, "kejieyaozhoutai", false, true, player:getGeneral2Name()=="keyaozhoutai", false)
 			end
 		end
 		if (player:hasSkill("keyaozhabing")) then
-			if room:askForSkillInvoke(player, self:objectName(), data) then
+			if room:askForSkillInvoke(player, skill:objectName(), ctx.original_data) then
 				room:changeHero(player, "kejieyaosimayi", false, true, player:getGeneral2Name()=="keyaosimayi", false)
 			end
 		end
 		if (player:hasSkill("keyaoquwu")) then
-			if room:askForSkillInvoke(player, self:objectName(), data) then
+			if room:askForSkillInvoke(player, skill:objectName(), ctx.original_data) then
 				room:changeHero(player, "kejieyaoxiaoqiao", false, true, player:getGeneral2Name()=="keyaoxiaoqiao", false)
 			end
 		end
 		if (player:hasSkill("keyaoshidu")) then
-			if room:askForSkillInvoke(player, self:objectName(), data) then
+			if room:askForSkillInvoke(player, skill:objectName(), ctx.original_data) then
 				room:changeHero(player, "kejieyaojiping", false, true, player:getGeneral2Name()=="keyaojiping", false)
 			end
 		end
 		if (player:hasSkill("keyaoxieqin")) then
-			if room:askForSkillInvoke(player, self:objectName(), data) then
+			if room:askForSkillInvoke(player, skill:objectName(), ctx.original_data) then
 				room:changeHero(player, "kejieyaochengyu", false, true, player:getGeneral2Name()=="keyaochengyu", false)
 			end
 		end
+		return false
 	end,
 	priority = 5,
 }
@@ -209,24 +217,29 @@ keyaojiazi = sgs.CreateTriggerSkillV2 {
 }
 keyaozhangjiao:addSkill(keyaojiazi)
 
-keyaotuzhong = sgs.CreatePhaseChangeSkill {
+keyaotuzhong = sgs.CreateTriggerSkillV2 {
 	name = "keyaotuzhong$",
-	on_phasechange = function(self, player)
-		if player:getPhase() == sgs.Player_Draw then
-			local room = player:getRoom()
-			if player:hasLordSkill(self:objectName()) and player:askForSkillInvoke(self:objectName()) then
-				local target = room:askForPlayerChosen(player, room:getAllPlayers(), self:objectName(), "yaotuzhong-ask",
-					true, true)
-				if target then
-					local recover = sgs.RecoverStruct()
-					recover.who = target
-					room:recover(target, recover)
-				end
-				return true
-			end
+	frequency = sgs.Skill_NotFrequent,
+	events = { sgs.EventPhaseStart },
+	can_trigger = function(skill, event, room, player, data)
+		if player:getPhase() == sgs.Player_Draw and player:hasLordSkill(skill:objectName()) then
+			return skill:objectName()
 		end
 		return false
-	end
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		return room:askForSkillInvoke(player, skill:objectName())
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local target = room:askForPlayerChosen(player, room:getAllPlayers(), skill:objectName(), "yaotuzhong-ask",
+			true, true)
+		if target then
+			local recover = sgs.RecoverStruct()
+			recover.who = target
+			room:recover(target, recover)
+		end
+		return true
+	end,
 }
 keyaozhangjiao:addSkill(keyaotuzhong)
 
@@ -614,11 +627,10 @@ keyaoshiduVS = sgs.CreateViewAsSkillV2 {
 	end,
 }
 
-keyaoshidu = sgs.CreatePhaseChangeSkill {
+keyaoshidu = sgs.CreateTriggerSkillV2 {
 	name = "keyaoshidu",
 	view_as_skill = keyaoshiduVS,
-	on_phasechange = function()
-	end
+	events = { sgs.NonTrigger },
 }
 keyaojiping:addSkill(keyaoshidu)
 
@@ -776,10 +788,23 @@ keyaochengyu = sgs.General(extension, "keyaochengyu", "wei", 3)
 keyaoxieqin = sgs.CreateTriggerSkillV2 {
 	name = "keyaoxieqin",
 	events = { sgs.Damage },
+	limit_scope = sgs.Skill_Limit_Round,
+	max_usage_limit = 1,
 	can_trigger = function(skill, event, room, player, data)
 		local damage = data:toDamage()
-		if damage.from and damage.from:objectName() == player:objectName()
-			and player:getMark("canuseyaoxieqin_lun") == 0 then
+		if damage.from and damage.from:objectName() == player:objectName() then
+			local usable = false
+			for _, iid in sgs.list(player:getSkillInstanceIds(skill:objectName())) do
+				local usageCtx = sgs.SkillContext()
+				usageCtx.invoker = player
+				usageCtx.owner = player
+				usageCtx.instanceID = iid
+				if skill:isUsable(usageCtx) then
+					usable = true
+					break
+				end
+			end
+			if not usable then return false end
 			for _, p in sgs.qlist(room:getOtherPlayers(damage.to)) do
 				if player:canDiscard(p, "he") then
 					return skill:objectName()
@@ -804,7 +829,7 @@ keyaoxieqin = sgs.CreateTriggerSkillV2 {
 	end,
 	on_pay = function(skill, event, room, player, ctx)
 		room:broadcastSkillInvoke(skill:objectName())
-		room:addPlayerMark(player, "keyaoxieqin_lun")
+		skill:addUsage(ctx)
 		return true
 	end,
 	on_effect = function(skill, event, room, player, ctx)
@@ -1018,27 +1043,28 @@ kejieyaozhangjiao:addSkill(kejieyaojiazi)
 }]]
 
 
-kejieyaotuzhong = sgs.CreatePhaseChangeSkill {
+kejieyaotuzhong = sgs.CreateTriggerSkillV2 {
 	name = "kejieyaotuzhong$",
-	on_phasechange = function(self, player)
-		if player:getPhase() == sgs.Player_Draw then
-			local room = player:getRoom()
-			local invoked = false
-			if player:hasLordSkill(self:objectName()) then
-				invoked = player:askForSkillInvoke(self:objectName())
-				if invoked then
-					local target = room:askForPlayerChosen(player, room:getAllPlayers(), self:objectName(),
-						"yaotuzhong-ask", true, true)
-					if target then
-						room:recover(target, sgs.RecoverStruct())
-						target:drawCards(1)
-					end
-					return true
-				end
-			end
+	frequency = sgs.Skill_NotFrequent,
+	events = { sgs.EventPhaseStart },
+	can_trigger = function(skill, event, room, player, data)
+		if player:getPhase() == sgs.Player_Draw and player:hasLordSkill(skill:objectName()) then
+			return skill:objectName()
 		end
 		return false
-	end
+	end,
+	on_cost = function(skill, event, room, player, ctx)
+		return room:askForSkillInvoke(player, skill:objectName())
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local target = room:askForPlayerChosen(player, room:getAllPlayers(), skill:objectName(),
+			"yaotuzhong-ask", true, true)
+		if target then
+			room:recover(target, sgs.RecoverStruct())
+			target:drawCards(1)
+		end
+		return true
+	end,
 }
 kejieyaozhangjiao:addSkill(kejieyaotuzhong)
 
