@@ -687,7 +687,11 @@ se_shuacun = sgs.CreateTriggerSkillV2 {
 	end,
 	on_record = function(skill, event, room, player, ctx)
 		if event == sgs.TargetConfirmed then
-			player:setFlags("sonzaikan_aru")
+			local use = ctx.original_data:toCardUse()
+			if use.from and use.from:getPhase() == sgs.Player_Play and use.to:contains(player)
+				and player:hasSkill(skill:objectName()) then
+				player:setFlags("sonzaikan_aru")
+			end
 		end
 	end,
 	on_cost = function(skill, event, room, player, ctx)
@@ -875,9 +879,6 @@ fanqianCard = sgs.CreateSkillCard {
 		if target then
 			local card = sgs.Sanguosha:getCard(self:getSubcards():first())
 			card:setSkillName("fanqian")
-			local dest = sgs.QVariant()
-			dest:setValue(target)
-			room:setTag("fanqian_target", dest)
 			local use = sgs.CardUseStruct()
 			use.from = source
 			use.to:append(target)
@@ -924,9 +925,12 @@ fanqian = sgs.CreateTriggerSkillV2 {
 	end,
 	on_effect = function(skill, event, room, player, ctx)
 		local use = ctx.original_data:toCardUse()
-		use.to:clear()
-		use.to:append(room:getTag("fanqian_target"):toPlayer())
-		ctx.original_data:setValue(use)
+		if not use.to:isEmpty() then
+			local target = use.to:first()
+			use.to:clear()
+			use.to:append(target)
+			ctx.original_data:setValue(use)
+		end
 		return false
 	end,
 }
@@ -1146,14 +1150,21 @@ youdiz = sgs.CreateTriggerSkillV2 {
 			return skill:objectName()
 		elseif event == sgs.DamageInflicted then
 			local damage = data:toDamage()
-			if damage.from and damage.from:getMark("@Youdi") > 0 then
-				return skill:objectName()
+			if not (damage.from and damage.from:getMark("@Youdi") > 0) then return false end
+			local fallback
+			for _, p in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+				fallback = fallback or p
+				if damage.from:getMark("&youdiz+to+#" .. p:objectName() .. "+-Clear") > 0 then
+					return skill:objectName(), p:objectName()
+				end
 			end
+			if fallback then return skill:objectName(), fallback:objectName() end
 			return false
 		elseif event == sgs.EventPhaseChanging then
 			local change = data:toPhaseChange()
 			if player and player:getMark("@Youdi") > 0 and change.to == sgs.Player_NotActive then
-				return skill:objectName()
+				local owner = room:findPlayerBySkillName(skill:objectName())
+				if owner then return skill:objectName(), owner:objectName() end
 			end
 			return false
 		end
@@ -1203,11 +1214,12 @@ youdiz = sgs.CreateTriggerSkillV2 {
 				return true
 			end
 		elseif event == sgs.EventPhaseChanging then
-			player:loseAllMarks("@Youdi")
-			player:turnOver()
+			local target = ctx.invoker
+			target:loseAllMarks("@Youdi")
+			target:turnOver()
 			for _, p in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
-				if player:getMark("&youdiz+to+#" .. p:objectName() .. "+-Clear") > 0 then
-					room:setPlayerMark(player, "&youdiz+to+#" .. p:objectName() .. "+-Clear", 0)
+				if target:getMark("&youdiz+to+#" .. p:objectName() .. "+-Clear") > 0 then
+					room:setPlayerMark(target, "&youdiz+to+#" .. p:objectName() .. "+-Clear", 0)
 				end
 			end
 		end
@@ -1332,25 +1344,28 @@ fanghuoBuff = sgs.CreateTriggerSkillV2 {
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.EventPhaseEnd },
 	can_trigger = function(skill, event, room, player, data)
-		if player and player:getMark("@FireCaused") > 0 and player:isAlive() and player:getPhase() == sgs.Player_Play then
-			return skill:objectName()
+		if player and player:getMark("@FireCaused") > 0 and player:isAlive()
+			and player:getPhase() == sgs.Player_Play then
+			local owner = room:findPlayerBySkillName(skill:objectName())
+			if owner then return skill:objectName(), owner:objectName() end
 		end
 		return false
 	end,
 	on_effect = function(skill, event, room, player, ctx)
-		room:setEmotion(player, "fire_caused")
+		local target = ctx.invoker
+		room:setEmotion(target, "fire_caused")
 		local damage = sgs.DamageStruct()
-		damage.from = player
-		damage.to = player
+		damage.from = target
+		damage.to = target
 		damage.damage = 1
 		damage.nature = sgs.DamageStruct_Fire
 		room:damage(damage)
 		local log = sgs.LogMessage()
 		log.type = "#fanghuo"
-		log.from = player
+		log.from = target
 		room:sendLog(log)
 		if math.random(1, 100) < 26 then
-			player:loseMark("@FireCaused")
+			target:loseMark("@FireCaused")
 		end
 		return false
 	end,
