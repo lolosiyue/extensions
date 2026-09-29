@@ -378,6 +378,39 @@ FiveYingzhan_Count = sgs.CreateTriggerSkillV2 {
 		end
 	end,
 }
+FiveYingzhan_DealtFireDamage = function(room, player)
+	-- 「本回合曾造成火焰傷害」以 Resolution History 為準；
+	-- 歷史未知時回傳 nil，由調用方退回 FiveYingzhan_Damage 旗標（AI 亦觀察該旗標）。
+	local turn = room:historyScopes().turn_id
+	if not (turn and turn ~= "0") then return nil end
+	local filter = {
+		turn_id = turn,
+		from = player:objectName(),
+		limit = 64,
+	}
+	local page = room:queryActualDamage(filter)
+	if page.error or not page.complete or not page.attribution_complete then return nil end
+	local watermark = page.watermark
+	local dealt_fire = false
+	local saw_unknown_nature = false
+	while true do
+		for _, fact in ipairs(page.items) do
+			local nature = (fact.data or {}).nature
+			if nature == sgs.DamageStruct_Fire then
+				return true
+			elseif nature == nil then
+				saw_unknown_nature = true
+			end
+		end
+		if not page.has_more then break end
+		filter.after = page.next_after
+		filter.watermark = watermark
+		page = room:queryActualDamage(filter)
+		if page.error or not page.complete or not page.attribution_complete then return nil end
+	end
+	if saw_unknown_nature then return nil end
+	return dealt_fire
+end
 FiveYingzhan = sgs.CreateTriggerSkillV2 {
 	name = "FiveYingzhan",
 	frequency = sgs.Skill_Wake,
@@ -391,7 +424,9 @@ FiveYingzhan = sgs.CreateTriggerSkillV2 {
 		return false
 	end,
 	on_effect = function(skill, event, room, player, ctx)
-		if player:hasFlag("FiveYingzhan_Damage") or player:canWake(skill:objectName()) then
+		local dealt_fire = FiveYingzhan_DealtFireDamage(room, player)
+		if dealt_fire == true or (dealt_fire == nil and player:hasFlag("FiveYingzhan_Damage"))
+			or player:canWake(skill:objectName()) then
 			local msg = sgs.LogMessage()
 			msg.type = "#FiveYingzhan"
 			msg.from = player
@@ -2125,6 +2160,8 @@ GanNing_Four = sgs.General(extension, "GanNing_Four", "wu", 4, true)
 FourQixi_VS = sgs.CreateViewAsSkillV2 {
 	name = "FourQixi",
 	n = 1,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
@@ -2626,43 +2663,73 @@ GetHorseB = function(ganning)
 	end
 	return false
 end
+FourQixiB_DiscardedCount = function(room, player)
+	-- 「棄牌階段棄置兩張或更多牌」屬事實查詢：以 entered 的 phase event 界定棄牌階段，
+	-- 再統計該範圍內由玩家移至棄牌堆嘅 move fact（每張實體牌一筆）；歷史未知回傳 nil。
+	local turn = room:historyScopes().turn_id
+	if not (turn and turn ~= "0") then return nil end
+	local discard_phases = {}
+	local efilter = {
+		kind = "phase",
+		turn_id = turn,
+		player = player:objectName(),
+		limit = 32,
+	}
+	local epage = room:queryHistoryEvents(efilter)
+	if epage.error or not epage.complete or not epage.attribution_complete then return nil end
+	local ewatermark = epage.watermark
+	while true do
+		for _, ev in ipairs(epage.items) do
+			local edata = ev.data or {}
+			if edata.phase == sgs.Player_Discard and edata.entered == true then
+				discard_phases[ev.id] = true
+			end
+		end
+		if not epage.has_more then break end
+		efilter.after = epage.next_after
+		efilter.watermark = ewatermark
+		epage = room:queryHistoryEvents(efilter)
+		if epage.error or not epage.complete or not epage.attribution_complete then return nil end
+	end
+	if not next(discard_phases) then return 0 end
+	local count = 0
+	for phase_id in pairs(discard_phases) do
+		local mfilter = {
+			phase_id = phase_id,
+			from = player:objectName(),
+			limit = 64,
+		}
+		local mpage = room:queryHistoryMoves(mfilter)
+		if mpage.error or not mpage.complete or not mpage.attribution_complete then return nil end
+		local mwatermark = mpage.watermark
+		while true do
+			for _, fact in ipairs(mpage.items) do
+				if (fact.data or {}).to_place == sgs.Player_DiscardPile then
+					count = count + 1
+					if count >= 2 then return count end
+				end
+			end
+			if not mpage.has_more then break end
+			mfilter.after = mpage.next_after
+			mfilter.watermark = mwatermark
+			mpage = room:queryHistoryMoves(mfilter)
+			if mpage.error or not mpage.complete or not mpage.attribution_complete then return nil end
+		end
+	end
+	return count
+end
 FourQixiB = sgs.CreateTriggerSkillV2 {
 	name = "FourQixiB",
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.CardsMoveOneTime, sgs.EventPhaseStart },
 	view_as_skill = FourQixiB_VS,
-	on_record = function(skill, event, room, player, ctx)
-		-- 標記計數與回合結束時的消耗屬無條件簿記。
-		-- record 先於 can_trigger 執行，故把「標記達2」暫存為旗標供 can_trigger 判斷。
-		local owner = ctx.owner
-		if not (owner and owner:objectName() == player:objectName()) then return end
-		if event == sgs.EventPhaseStart then
-			if player:getPhase() == sgs.Player_Finish then
-				if player:getMark("FourQixiB") >= 2 then
-					room:setPlayerFlag(player, "FourQixiB_Ready")
-				else
-					room:setPlayerFlag(player, "-FourQixiB_Ready")
-				end
-				player:setMark("FourQixiB", 0)
-			end
-		elseif event == sgs.CardsMoveOneTime then
-			local move = ctx.original_data:toMoveOneTime()
-			local source = move.from
-			if source and source:objectName() == player:objectName() then
-				local markcount = player:getMark("FourQixiB")
-				if move.to_place == sgs.Player_DiscardPile then
-					if player:getPhase() == sgs.Player_Discard then
-						room:setPlayerMark(player, "FourQixiB", markcount + move.card_ids:length())
-					end
-				end
-			end
-		end
-	end,
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
 		if player:getPile("horseB"):length() >= 4 then return false end
 		if event == sgs.EventPhaseStart then
-			if player:getPhase() == sgs.Player_Finish and player:hasFlag("FourQixiB_Ready") then
+			if player:getPhase() == sgs.Player_Finish then
+				local count = FourQixiB_DiscardedCount(room, player)
+				if count == nil or count < 2 then return false end
 				return skill:objectName()
 			end
 		elseif event == sgs.CardsMoveOneTime then
@@ -2679,9 +2746,6 @@ FourQixiB = sgs.CreateTriggerSkillV2 {
 		return room:askForSkillInvoke(player, skill:objectName())
 	end,
 	on_effect = function(skill, event, room, player, ctx)
-		if event == sgs.EventPhaseStart then
-			room:setPlayerFlag(player, "-FourQixiB_Ready")
-		end
 		-- 與 GetHorseB 發動成功後的流程一致（on_cost 已代替其內部的發動詢問）
 		if player:getPile("horseB"):length() < 4 then
 			room:drawCards(player, 1, "FourQixiB")
@@ -2974,7 +3038,7 @@ FourDedao = sgs.CreateTriggerSkillV2 {
 		return false
 	end,
 	on_effect = function(skill, event, room, player, ctx)
-		if player:getPile("symbol") >= 3 or player:canWake(skill:objectName()) then
+		if player:getPile("symbol"):length() >= 3 or player:canWake(skill:objectName()) then
 			local msg = sgs.LogMessage()
 			msg.type = "#FourDedao"
 			msg.from = player
