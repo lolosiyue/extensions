@@ -512,15 +512,36 @@ erangwaiVS = sgs.CreateViewAsSkillV2 {
 		return true
 	end,
 }
+-- "未使用过基本牌和锦囊牌" is a journal fact; query it instead of self-marking a flag.
+-- Unknown (incomplete history) is not proof of a clean turn, so the skill stays silent.
+local function erangwaiUsedCleanCard(room, player)
+	local turn = room:historyScopes().turn_id
+	if not turn or turn == "0" then return true end
+	local filter = { kind = "use_card", turn_id = turn, from = player:objectName(), limit = 64 }
+	while true do
+		local page = room:queryHistoryFacts(filter)
+		if page.error or not page.complete then return true end
+		for _, fact in ipairs(page.items) do
+			local card = fact.data and fact.data.card
+			if not card or not card.classes then return true end
+			if table.contains(card.classes, "BasicCard") or table.contains(card.classes, "TrickCard") then
+				return true
+			end
+		end
+		if not page.has_more then return false end
+		filter.watermark = filter.watermark or page.watermark
+		filter.after = page.next_after
+	end
+end
 erangwai = sgs.CreateTriggerSkillV2 {
 	name = "erangwai",
 	frequency = sgs.Skill_NotFrequent,
-	events = { sgs.EventPhaseStart, sgs.CardUsed },
+	events = { sgs.EventPhaseStart },
 	view_as_skill = erangwaiVS,
 	can_trigger = function(skill, event, room, player, data)
 		if event ~= sgs.EventPhaseStart then return false end
 		if player:getPhase() ~= sgs.Player_Finish then return false end
-		if player:hasFlag("erangwai") then return false end
+		if erangwaiUsedCleanCard(room, player) then return false end
 		local names, owners = {}, {}
 		for _, zhangxingcai in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
 			names[#names + 1] = skill:objectName()
@@ -528,16 +549,6 @@ erangwai = sgs.CreateTriggerSkillV2 {
 		end
 		if #names == 0 then return false end
 		return table.concat(names, "|"), table.concat(owners, "|")
-	end,
-	on_record = function(skill, event, room, player, ctx)
-		if event ~= sgs.CardUsed then return end
-		local use = ctx.original_data:toCardUse()
-		local card = use.card
-		if card:isKindOf("BasicCard") or card:isKindOf("TrickCard") then
-			if player:getPhase() ~= sgs.Player_NotActive then
-				player:setFlags("erangwai")
-			end
-		end
 	end,
 	on_effect = function(skill, event, room, player, ctx)
 		if event == sgs.EventPhaseStart then
