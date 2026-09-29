@@ -275,7 +275,7 @@ fateqiuzhan_card = sgs.CreateSkillCard
 		local from = effect.from
 		local to = effect.to
 		local room = from:getRoom()
-		local slash = room:askForCard(to, "slash", "@fateqzslash:",sgs.QVariant(data))
+		local slash = room:askForCard(to, "slash", "@fateqzslash:",sgs.QVariant())
 		if slash then 
 			local use = sgs.CardUseStruct()
   			use.card = slash
@@ -378,8 +378,6 @@ end,
 
 
 
-lastcard = nil
-
 --死战
 fatesizhan = sgs.CreateTriggerSkillV2{
 	name = "fatesizhan",
@@ -411,163 +409,7 @@ fatesizhan = sgs.CreateTriggerSkillV2{
 	end,
 }
 
-touyingcard = nil
-
 --投影
---[[
-fatetouying = sgs.CreateViewAsSkill
-{
-	name = "fatetouying",
-	n = 1,
-	
-	view_filter = function(self, selected, to_select)
-		if to_select:isEquipped() then return false end                        --装备不可以使用
-		return true
-	end,
-	
-	view_as = function(self, cards)
-		if #cards == 1 then
-			local card = cards[1]
-			local ld_card
-			if touyingcard==nil then
-				touyingcard="peach"
-			end
-			ld_card = sgs.Sanguosha:cloneCard(touyingcard, cards[1]:getSuit(), cards[1]:getNumber())
-			ld_card:addSubcard(cards[1])
-			ld_card:setSkillName(self:objectName())
-			return ld_card
-		end
-	end,
-	
-	enabled_at_play = function(self, player) 
-		if player:getMark("@touyingused")==0 then
-			if player:hasFlag("amazing_grace") then --五谷丰登
-				touyingcard = "amazing_grace"
-			elseif player:hasFlag("archery_attack") then --万箭齐发
-				touyingcard = "archery_attack"
-			elseif player:hasFlag("collateral") then --借刀杀人
-				touyingcard = "collateral"
-			elseif player:hasFlag("dismantlement") then --过河拆桥
-				touyingcard = "dismantlement"
-			elseif player:hasFlag("duel") then --决斗
-				touyingcard = "duel"
-			elseif player:hasFlag("ex_nihilo") then --无中生有
-				touyingcard = "ex_nihilo"
-			elseif player:hasFlag("fire_attack") then --火攻
-				touyingcard = "fire_attack"
-			elseif player:hasFlag("fire_slash") then --火杀
-				touyingcard = "fire_slash"
-			elseif player:hasFlag("fate_salvation") then --桃园结义
-				touyingcard = "fate_salvation"
-			elseif player:hasFlag("iron_chain") then --铁锁连环
-				touyingcard = "iron_chain"
-			elseif player:hasFlag("nullification") then --无懈可击
-				touyingcard = "nullification"
-			elseif player:hasFlag("peach") then --桃
-				touyingcard = "peach"
-			elseif player:hasFlag("savage_assault") then --南蛮入侵
-				touyingcard = "savage_assault"
-			elseif player:hasFlag("slash") then --杀
-				touyingcard = "slash"
-			elseif player:hasFlag("snatch") then --顺手牵羊
-				touyingcard = "snatch"
-			elseif player:hasFlag("thunder_slash") then --雷杀
-				touyingcard = "thunder_slash"
-			elseif player:hasFlag("analeptic") then --酒
-				touyingcard = "analeptic"
-			else
-				return false
-			end
-		else
-			return false
-		end
-		if touyingcard==nil then
-			return false
-		else
-			return true
-		end	
-	end,
-	enabled_at_response = function(self, player, pattern)
-		return false
-	end,
-}
-
-
-fatetouying_trs = sgs.CreateTriggerSkill{
-	name = "#fatetouying_trs",
-	frequency = sgs.Skill_Frequent,
-	events = {sgs.EventPhaseStart,sgs.CardUsed},
-	on_trigger=function(self,event,player,data)
-		local room=player:getRoom()
-		if event==sgs.EventPhaseStart and player:getPhase() == sgs.Player_Finish then
-			if player:getMark("@touyingused")>0 then
-				player:loseMark("@touyingused")
-		--	room:setPlayerMark(player,"@touyingused",0)
-			end
-			lastcard = nil
-		elseif event==sgs.CardUsed and player:getPhase() == sgs.Player_Play and player:getMark("@touyingused")==0 then
-			local card = data:toCardUse().card
-			if table.contains(card:getSkillNames(), "fatetouying") then
-				if card:isKindOf("BasicCard") then
-					room:broadcastSkillInvoke("lexue",2)
-				elseif card:isNDTrick() then
-					room:broadcastSkillInvoke("lexue",3)
-				end
-				player:gainMark("@touyingused", 1)
-		--		player:addMark("@touyingused")
-			end
-			if (card:isKindOf("BasicCard") or card:isNDTrick()) and player:getMark("@touyingused")==0 then 
-			--	player:clearFlags() 这句会导致甚多bug！比如【酒】无效等等等
-			
-				if player:hasFlag("amazing_grace") then --五谷丰登
-					player:setFlags("-amazing_grace")
-				elseif player:hasFlag("archery_attack") then --万箭齐发
-					player:setFlags("-archery_attack")
-				elseif player:hasFlag("collateral") then --借刀杀人
-					player:setFlags("-collateral")
-				elseif player:hasFlag("dismantlement") then --过河拆桥
-					player:setFlags("-dismantlement")
-				elseif player:hasFlag("duel") then --决斗
-					player:setFlags("-duel")
-				elseif player:hasFlag("ex_nihilo") then --无中生有
-					player:setFlags("-ex_nihilo")
-				elseif player:hasFlag("fire_attack") then --火攻
-					player:setFlags("-fire_attack")
-				elseif player:hasFlag("fire_slash") then --火杀
-					player:setFlags("-fire_slash")
-				elseif player:hasFlag("fate_salvation") then --桃园结义
-					player:setFlags("-fate_salvation")
-				elseif player:hasFlag("iron_chain") then --铁锁连环
-					player:setFlags("-iron_chain")
-				elseif player:hasFlag("nullification") then --无懈可击
-					player:setFlags("-nullification")
-				elseif player:hasFlag("peach") then --桃
-					player:setFlags("-peach")
-				elseif player:hasFlag("savage_assault") then --南蛮入侵
-					player:setFlags("-savage_assault")
-				elseif player:hasFlag("slash") then --杀
-					player:setFlags("-slash")
-				elseif player:hasFlag("snatch") then --顺手牵羊
-					player:setFlags("-snatch")
-				elseif player:hasFlag("thunder_slash") then --雷杀
-					player:setFlags("-thunder_slash")
-				elseif player:hasFlag("analeptic") then --酒
-					player:setFlags("-analeptic")
-				end
-
-				if lastcard~=nil then 
-					room:setPlayerFlag(player,"-"..lastcard)
-				end
-				room:setPlayerFlag(player,card:objectName())
-				lastcard = card:objectName()
-			end
-		--以下觉悟开始
-		end
-	end,
-}
-]]
-
-
 fatetouyingVS=sgs.CreateViewAsSkillV2{
 	name="fatetouying",
 	n=1,
@@ -625,13 +467,13 @@ fatetouying = sgs.CreateTriggerSkillV2{
 				room:setPlayerFlag(owner,"fatetouyingx")
 				if not card:isVirtualCard() then
 				local card_id=card:getEffectiveId()
-				room:setPlayerMark(owner,"fatetouyingskill",card_id)
 				for _, mark in sgs.list(owner:getMarkNames()) do
 					if string.find(mark, "fatetouying") and owner:getMark(mark) > 0 then
 						room:setPlayerMark(owner, mark, 0)
 					end
 				end
-				room:setPlayerMark(owner, "&fatetouying+" .. card:objectName() .. "-".. owner:getPhase() .."Clear", 1)
+				room:setPlayerMark(owner,"fatetouyingskill",card_id)
+				room:setPlayerMark(owner, "&fatetouying+" .. card:objectName() .. "-PlayClear", 1)
 				end
 				if table.contains(card:getSkillNames(), "fatetouying") then
 					room:setPlayerFlag(owner,"fatetouyingused")
@@ -1293,7 +1135,7 @@ fateheihua = sgs.CreateTriggerSkillV2{
 			if not player:faceUp() then player:turnOver() end
 			player:drawCards(3)
 				local recover = sgs.RecoverStruct()
-				recover.who = from
+				recover.who = player
 				recover.recover = 3 - player:getHp()
 				room:recover(player, recover)
 			if room:changeMaxHpForAwakenSkill(player, 0, skill:objectName()) then
@@ -1313,10 +1155,11 @@ fateluanshe_vs = sgs.CreateViewAsSkillV2
 	name = "fateluanshe_vs",
 	n =1,
 	response_or_use = true,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasFlag("luansheused")
 	end,
 	can_select_card = function(skill, request, candidate)
 		return candidate and (candidate:getSuit() == sgs.Card_Heart) and (candidate:isEquipped() == false)
@@ -1330,12 +1173,6 @@ fateluanshe_vs = sgs.CreateViewAsSkillV2
         card:addSubcard(acard:getId())
 		card:setSkillName("fateluanshe_vs")
 		return card
-	end,
-	on_effect = function(skill, ctx)
-		local source = ctx.invoker or ctx.initiator
-		if source then
-			source:setFlags("luansheused")--给予标志
-		end
 	end,
 }
 
@@ -1448,43 +1285,6 @@ fatetiangong_vs = sgs.CreateViewAsSkillV2
 	end,
 }
 
---[[
-fatetiangong_trs=sgs.CreateTriggerSkill{
-name="fatetiangong_trs",
-view_as_skill=fatetiangong_vs,
-events={sgs.GameStart,sgs.Death},
-can_trigger = function(self, target)
-    return true
-end,
-frequency = sgs.Skill_NotFrequent,
---priorityelse
-on_trigger=function(self,event,player,data)
-	local room=player:getRoom()
-	local Archer = room:findPlayerBySkillName(self:objectName())
-	if not Archer:isAlive() then return end
-if event == sgs.GameStart then
-		playernum = room:alivePlayerCount()
-		setMark("plnum", playernum)
-			local log = sgs.LogMessage()
-log.from = player
-log.type = ("startnum=%d"):format(playernum)
-room:sendLog(log)
-	end
-	if event == sgs.Death then
-		playernum = room:alivePlayerCount()
-					local log = sgs.LogMessage()
-log.from = player
-log.type = ("num=%d"):format(playernum)
-room:sendLog(log)
-	end
-
-	local playernum = room:alivePlayerCount()
-	Archer:setMark("plnum", playernum)
-	return false
-end,
-}
-
-]]
 --剑冢 锁定技，【万箭齐发】对你无效；当其他角色使用【万箭齐发】，轮到你结算时，你可以弃掉一张牌并选择一名角色，视为对之打出了一张无色的【杀】。
 fatejianzhong=sgs.CreateTriggerSkillV2{
 name="fatejianzhong",
@@ -2061,7 +1861,7 @@ fatexinyin_card = sgs.CreateSkillCard
 		if not to:isAllNude() then 
 		choicelist  = string.format("%s+%s", choicelist, "xychoice2")
 		end
-			choice = room:askForChoice(from, "fatexinyin_card", choicelist)
+			local choice = room:askForChoice(from, "fatexinyin_card", choicelist)
 			if(choice == "xychoice1") then
 				local damage = sgs.DamageStruct()
 				damage.from = from
@@ -2327,7 +2127,7 @@ fatejuntuan_card = sgs.CreateSkillCard
 		local to = effect.to
 		local room = from:getRoom()
 		if to:isAlive() then 		
-			local slash = room:askForCard(to, "slash", "@fateqzslash:",sgs.QVariant(data))
+			local slash = room:askForCard(to, "slash", "@fateqzslash:",sgs.QVariant())
 			if (not slash) then
 				local damage = sgs.DamageStruct()
 				damage.from = from
@@ -2616,6 +2416,7 @@ on_effect=function(skill,event,room,player,ctx)
 		log.arg = tonumber(damage.damage)
 		log.arg2 = tonumber(damage.damage + 1)
 		room:sendLog(log)
+		room:setCardFlag(damage.card, "-fatetuci_dmgenhaced")
 		damage.damage = damage.damage + 1
 		ctx.original_data:setValue(damage)
 	end
