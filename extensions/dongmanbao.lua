@@ -249,7 +249,7 @@ YingbiGet = sgs.CreateTriggerSkillV2 {
 		local room = player:getRoom()
 		room:sendCompulsoryTriggerLog(player, "Yingbi", true)
 		player:gainMark("@se_ying", 1)
-		if not player:getMark("@se_ying") == 2 or player:hasSkill("se_paoji") then
+		if player:getMark("@se_ying") ~= 2 or player:hasSkill("se_paoji") then
 			room:broadcastSkillInvoke("Yingbi")
 		end
 		return false
@@ -368,13 +368,16 @@ se_paojicard = sgs.CreateSkillCard {
 se_paoji = sgs.CreateViewAsSkillV2 {
 	name = "se_paoji",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	create_card = function(skill, request)
 		return se_paojicard:clone()
 	end,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and player:getMark("@se_ying") > 0 and not player:hasUsed("se_paoji")
+		return player and player:getMark("@se_ying") > 0
 	end,
 }
 
@@ -820,10 +823,13 @@ se_zhijian = sgs.CreateViewAsSkillV2 {
 	name = "se_zhijian",
 	n = 1,
 	expand_pile = "moli",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:getPile("moli"):isEmpty() and not player:hasFlag("se_zhijiancard_used")
+		return player and not player:getPile("moli"):isEmpty()
 	end,
 	can_select_card = function(skill, request, candidate)
 		if not candidate or candidate:hasFlag("using") then return false end
@@ -1232,7 +1238,7 @@ SE_Dapo = sgs.CreateTriggerSkillV2 {
 								room:broadcastSkillInvoke("$SE_Dapo")
 								room:doLightbox("SE_Dapo$", 3000)
 								room:setPlayerProperty(source, "role", sgs.QVariant("loyalist"))
-							elseif mygod:getRole() ~= source:getRole() and not mygod:getRole() == "lord" then
+							elseif mygod:getRole() ~= source:getRole() and mygod:getRole() ~= "lord" then
 								room:broadcastSkillInvoke("$SE_Dapo")
 								room:doLightbox("SE_Dapo$", 3000)
 								room:setPlayerProperty(source, "role", sgs.QVariant(mygod:getRole()))
@@ -2341,13 +2347,25 @@ se_erdao_old = sgs.CreateTriggerSkillV2 {
 	view_as_skill = se_erdao_oldVS,
 	--frequency = sgs.Skill_NotFrequent,
 	events = { sgs.CardFinished },
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then
 			return false
 		end
-		if player:getPhase() ~= sgs.Player_Play or player:getMark("se_erdao_old-PlayClear") > 0 then
+		if player:getPhase() ~= sgs.Player_Play then
 			return false
 		end
+		local usable = false
+		for _, iid in sgs.list(player:getSkillInstanceIds(skill:objectName())) do
+			local usageCtx = sgs.SkillContext()
+			usageCtx.invoker = player
+			usageCtx.owner = player
+			usageCtx.instanceID = iid
+			if skill:isUsable(usageCtx) then usable = true; break end
+		end
+		if not usable then return false end
 		local use = data:toCardUse()
 		if use.card and use.card:isNDTrick() and use.to:length() == 1 then
 			return skill:objectName()
@@ -2358,11 +2376,11 @@ se_erdao_old = sgs.CreateTriggerSkillV2 {
 		local data = ctx.original_data
 		local room = player:getRoom()
 		local use = data:toCardUse()
-		if player:getPhase() ~= sgs.Player_Play or player:getMark("se_erdao_old-PlayClear") > 0 then return false end
+		if player:getPhase() ~= sgs.Player_Play then return false end
 		if use.card:isNDTrick() then
 			if use.to:length() ~= 1 then return false end
 			if room:askForSkillInvoke(player, self:objectName(), data) then
-				room:addPlayerMark(player, "se_erdao_old-PlayClear")
+				self:addUsage(ctx)
 				room:addPlayerMark(player, "&se_erdao_old-PlayClear")
 				use.card:use(room, use.from, use.to)
 			end
@@ -2577,6 +2595,8 @@ SE_Qixin = sgs.CreateTriggerSkillV2 {
 	name = "SE_Qixin",
 	frequency = sgs.Skill_Frequent,
 	events = { sgs.TargetSpecified },
+	limit_scope = sgs.Skill_Limit_Turn,
+	max_usage_limit = 1,
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill("SE_Qixin")) then
 			return false
@@ -2589,10 +2609,15 @@ SE_Qixin = sgs.CreateTriggerSkillV2 {
 		if not use.from or use.from:objectName() ~= player:objectName() then
 			return false
 		end
-		local current = room:getCurrent()
-		if not (current and not current:hasFlag("SE_Qixin")) then
-			return false
+		local usable = false
+		for _, iid in sgs.list(player:getSkillInstanceIds(skill:objectName())) do
+			local usageCtx = sgs.SkillContext()
+			usageCtx.invoker = player
+			usageCtx.owner = player
+			usageCtx.instanceID = iid
+			if skill:isUsable(usageCtx) then usable = true; break end
 		end
+		if not usable then return false end
 		for _, target in sgs.qlist(use.to) do
 			if target:getMark("@juren") > 0 then
 				return skill:objectName()
@@ -2607,13 +2632,12 @@ SE_Qixin = sgs.CreateTriggerSkillV2 {
 			local targets = use.to
 			local card = use.card
 			local room = player:getRoom()
-			local current = room:getCurrent()
 			if card:isKindOf("Slash") or card:isKindOf("Duel") then
-				if use.from:objectName() == player:objectName() and player:hasSkill(self:objectName()) and current and not current:hasFlag("SE_Qixin") then
+				if use.from:objectName() == player:objectName() and player:hasSkill(self:objectName()) and self:isUsable(ctx) then
 					for _, target in sgs.qlist(targets) do
 						if target:getMark("@juren") > 0 then
 							if room:askForSkillInvoke(player, self:objectName()) then
-								room:setPlayerFlag(current, "SE_Qixin")
+								self:addUsage(ctx)
 								room:broadcastSkillInvoke("SE_Qixin")
 								room:doLightbox("SE_Qixin$", 800)
 								for _, ap in sgs.qlist(room:getOtherPlayers(player)) do
@@ -2687,10 +2711,13 @@ Kuroko_p = sgs.General(extension, "Kuroko_p", "Erciyuan", 3, false, true, true)
 se_shunshan = sgs.CreateViewAsSkillV2 {
 	name = "se_shunshan",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasFlag("se_shunshan_used")
+		return player ~= nil
 	end,
 	create_card = function(skill, request)
 		return se_shunshancard:clone()
@@ -3290,15 +3317,6 @@ se_tianmingWore = sgs.CreateTriggerSkillV2 {
 					end
 				end
 			end
-		elseif event == sgs.CardAsked then
-			local ask = data:toString()
-			if ask == "jink" then
-				room:setPlayerFlag(player, "jink_to")
-			elseif ask == "slash" then
-				room:setPlayerFlag(player, "slash_to")
-			elseif ask == "nullification" then
-				room:setPlayerFlag(player, "null_to")
-			end
 		elseif event == sgs.TurnStart then
 			local room = player:getRoom()
 			if room:getAllPlayers(true):length() == 2 then
@@ -3381,10 +3399,13 @@ se_jianwucard = sgs.CreateSkillCard {
 se_kanhu = sgs.CreateViewAsSkillV2 {
 	name = "se_kanhu",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and player:getMark("@Tianming") > 19 and not player:hasUsed("se_kanhu")
+		return player and player:getMark("@Tianming") > 19
 	end,
 	create_card = function(skill, request)
 		return se_kanhucard:clone()
@@ -3400,7 +3421,6 @@ se_kanhucard = sgs.CreateSkillCard {
 		return #targets == 0
 	end,
 	on_use = function(self, room, source, targets)
-		room:setPlayerFlag(source, "se_kanhucard_used")
 		source:loseMark("@Tianming", 20)
 		room:broadcastSkillInvoke("se_kanhu")
 		local re = sgs.RecoverStruct()
@@ -3773,10 +3793,13 @@ Lichang = sgs.CreateTriggerSkillV2 {
 se_shouren = sgs.CreateViewAsSkillV2 {
 	name = "se_shouren",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("se_shouren")
+		return player ~= nil
 	end,
 	create_card = function(skill, request)
 		return se_shourencard:clone()
@@ -3792,7 +3815,6 @@ se_shourencard = sgs.CreateSkillCard {
 		return #targets == 0 and to_select:objectName() ~= player:objectName()
 	end,
 	on_use = function(self, room, source, targets)
-		room:setPlayerFlag(source, "se_shourencard_used")
 		room:broadcastSkillInvoke("se_shouren")
 		local target = targets[1]
 		local hp = target:getHp()
@@ -4224,10 +4246,13 @@ sgs.LoadTranslationTable {
 se_shengjian = sgs.CreateViewAsSkillV2 {
 	name = "se_shengjian",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("se_shengjian")
+		return player ~= nil
 	end,
 	create_card = function(skill, request)
 		return se_shengjiancard:clone()
@@ -4244,7 +4269,6 @@ se_shengjiancard = sgs.CreateSkillCard {
 	on_use = function(self, room, source, targets)
 		source:turnOver()
 		room:broadcastSkillInvoke("se_shengjian")
-		room:setPlayerFlag(source, "se_shengjiancard_used")
 		local force = math.abs(source:getEquips():length() - targets[1]:getEquips():length())
 		if force > 3 then force = 3 end
 		if force == 3 then
@@ -4480,10 +4504,13 @@ se_zhurencard = sgs.CreateSkillCard {
 se_zhuren = sgs.CreateViewAsSkillV2 {
 	name = "se_zhuren",
 	n = 999,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("se_zhuren")
+		return player ~= nil
 	end,
 	can_select_card = function(skill, request, candidate)
 		local player = request:getInitiator()
@@ -4981,10 +5008,13 @@ se_bianhuaCard = sgs.CreateSkillCard {
 se_bianhua = sgs.CreateViewAsSkillV2 {
 	name = "se_bianhua",
 	n = 1,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 5,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and player:usedTimes("se_bianhua") < 5
+		return player ~= nil
 	end,
 	create_card = function(skill, request)
 		local ids = request:getSelectedCardIds()
@@ -5267,10 +5297,13 @@ SE_Juji = sgs.CreateTriggerSkillV2 {
 se_jianyu = sgs.CreateViewAsSkillV2 {
 	name = "se_jianyu",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("se_jianyu")
+		return player ~= nil
 	end,
 	create_card = function(skill, request)
 		return se_jianyucard:clone()
@@ -5291,7 +5324,6 @@ se_jianyucard = sgs.CreateSkillCard {
 	end,
 	on_use = function(self, room, source, targets)
 		room:broadcastSkillInvoke("se_jianyu")
-		room:setPlayerFlag(source, "se_jianyucard_used")
 		room:doLightbox("se_jianyu$", 800)
 		if #targets > 0 then
 			local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
@@ -5632,10 +5664,13 @@ se_zhiyu = sgs.CreateTriggerSkillV2 {
 se_liaolivs = sgs.CreateViewAsSkillV2 {
 	name = "se_liaoli",
 	n = 1,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("se_liaoli")
+		return player ~= nil
 	end,
 	create_card = function(skill, request)
 		local ids = request:getSelectedCardIds()
@@ -7731,6 +7766,8 @@ SE_Mishi = sgs.CreateTriggerSkillV2 {
 	name = "SE_Mishi",
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.Dying },
+	limit_scope = sgs.Skill_Limit_Turn,
+	max_usage_limit = 1,
 	can_trigger = function(skill, event, room, player, data)
 		if player and player:isAlive() and player:hasSkill(skill:objectName()) then
 			return skill:objectName()
@@ -7743,12 +7780,20 @@ SE_Mishi = sgs.CreateTriggerSkillV2 {
 		local dying_data = data:toDying()
 		local source = dying_data.who
 		for _, mygod in sgs.qlist(room:findPlayersBySkillName(self:objectName())) do
-			if mygod:isAlive() and source and not mygod:hasFlag("SE_Mishi_used") then
+			local usageCtx
+			for _, iid in sgs.list(mygod:getSkillInstanceIds(self:objectName())) do
+				local uctx = sgs.SkillContext()
+				uctx.invoker = mygod
+				uctx.owner = mygod
+				uctx.instanceID = iid
+				if self:isUsable(uctx) then usageCtx = uctx; break end
+			end
+			if mygod:isAlive() and source and usageCtx then
 				local list = room:getAlivePlayers()
 				local targets = sgs.SPlayerList()
 				if room:askForSkillInvoke(mygod, "SE_Mishi", data) then
 					room:broadcastSkillInvoke("SE_Mishi")
-					room:setPlayerFlag(mygod, "SE_Mishi_used")
+					self:addUsage(usageCtx)
 					local cardsid = sgs.IntList()
 					local cards = mygod:getHandcards()
 					if cards then
@@ -8563,10 +8608,13 @@ se_huanyuan_Pre = sgs.CreateTriggerSkillV2 {
 se_huanyuan = sgs.CreateViewAsSkillV2 {
 	name = "se_huanyuan",
 	n = 1,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("se_huanyuan") and not player:isKongcheng() and
+		return player and not player:isKongcheng() and
 			player:getMark("se_huanyuan_Pre_MaxHp") > 0
 	end,
 	can_select_card = function(skill, request, candidate)
@@ -9270,10 +9318,13 @@ SE_Niepan = sgs.CreateTriggerSkillV2 {
 se_jiangui = sgs.CreateViewAsSkillV2 {
 	name = "se_jiangui",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("se_jiangui")
+		return player ~= nil
 	end,
 	create_card = function(skill, request)
 		local card = se_jianguicard:clone()
@@ -9344,7 +9395,6 @@ SE_Wufan = sgs.CreateTriggerSkillV2 {
 			if player:getMark("@Efreet") >= 1 then
 				if room:askForSkillInvoke(player, self:objectName()) then
 					player:loseMark("@Efreet")
-					room:setPlayerFlag(player, "SE_Wufan")
 					room:broadcastSkillInvoke("SE_Wufan")
 					room:doLightbox("SE_Wufan$", 2000)
 					room:handleAcquireDetachSkills(player, "SE_Niepan")
@@ -10465,10 +10515,13 @@ SE_Jiepi = sgs.CreateTriggerSkillV2 {
 se_zhanjing = sgs.CreateViewAsSkillV2 {
 	name = "se_zhanjing",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("se_zhanjing")
+		return player ~= nil
 	end,
 	create_card = function(skill, request)
 		return se_zhanjingcard:clone()
@@ -10484,7 +10537,6 @@ se_zhanjingcard = sgs.CreateSkillCard {
 	end,
 	on_use = function(self, room, source, targets)
 		if #targets > 1 then return end
-		room:setPlayerFlag(source, "se_zhanjing_used")
 		local target = targets[1]
 		if target:objectName() == source:objectName() then return end
 		if math.random(1, 2) == 1 then
@@ -10591,10 +10643,13 @@ sgs.LoadTranslationTable {
 se_poyi = sgs.CreateViewAsSkillV2 {
 	name = "se_poyi",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("se_poyi")
+		return player ~= nil
 	end,
 	create_card = function(skill, request)
 		return se_poyicard:clone()
@@ -10851,10 +10906,13 @@ SE_Yirong = sgs.CreateTriggerSkillV2 {
 se_youhuo = sgs.CreateViewAsSkillV2 {
 	name = "se_youhuo",
 	n = 1,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("se_youhuo") and not player:isKongcheng()
+		return player and not player:isKongcheng()
 	end,
 	can_select_card = function(skill, request, to_select)
 		return not to_select:isEquipped()
@@ -11413,10 +11471,13 @@ SE_Rennai = sgs.CreateTriggerSkillV2 {
 se_qingqiangwei = sgs.CreateViewAsSkillV2 {
 	name = "se_qingqiangwei",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("se_qingqiangwei")
+		return player ~= nil
 	end,
 	create_card = function(skill, request)
 		local card = se_qingqiangweicard:clone()
@@ -11502,6 +11563,8 @@ SE_Huajian = sgs.CreateTriggerSkillV2 {
 	name = "SE_Huajian",
 	frequency = sgs.Skill_Limited,
 	events = { sgs.Death },
+	limit_scope = sgs.Skill_Limit_Game,
+	max_usage_limit = 1,
 	can_trigger = function(skill, event, room, player, data)
 		if not player then return false end
 		local death = data:toDeath()
@@ -11526,7 +11589,7 @@ SE_Huajian = sgs.CreateTriggerSkillV2 {
 				end
 				if not num then num = 56 end
 				if not num then return end
-				if room:getTag("SE_Huajian_Used"):toBool() then return end
+				if not self:isUsable(ctx) then return end
 				if room:askForSkillInvoke(player, "SE_Huajian", data) then
 					local dest = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName())
 					room:doLightbox("SE_Huajian$", 3000)
@@ -11539,7 +11602,7 @@ SE_Huajian = sgs.CreateTriggerSkillV2 {
 					move.to_place = sgs.Player_PlaceEquip
 					room:moveCardsAtomic(move, true)
 					room:handleAcquireDetachSkills(dest, "SE_Huajian_ed")
-					room:setTag("SE_Huajian_Used", sgs.QVariant(true))
+					self:addUsage(ctx)
 				end
 			end
 		end
@@ -11829,7 +11892,6 @@ SE_Mipa_ed = sgs.CreateTriggerSkillV2 {
 	name = "#SE_Mipa_ed",
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.EventPhaseStart },
-	view_as_skill = se_mipaVS,
 	can_trigger = function(skill, event, room, player, data)
 		if player and player:isAlive() and player:hasSkill(skill:objectName()) and player:getPhase() == sgs.Player_Start then
 			return skill:objectName()
@@ -14143,7 +14205,6 @@ se_gate = sgs.CreateTriggerSkillV2 {
 	name = "#se_gate",
 	frequency = sgs.Skill_Frequent,
 	events = { sgs.EventPhaseStart },
-	view_as_skill = se_gatevs,
 	can_trigger = function(skill, event, room, player, data)
 		if player and player:isAlive() and player:hasSkill(skill:objectName()) and player:getPhase() == sgs.Player_Start then
 			return skill:objectName()
@@ -14299,6 +14360,7 @@ se_gatevs = sgs.CreateViewAsSkillV2 {
 		end
 	end,
 }
+se_gate:setViewAsSkill(se_gatevs)
 se_gateTargetMod = sgs.CreateTargetModSkillV2 {
 	name = "#se_gate-target",
 	pattern = "Slash",
@@ -14707,10 +14769,13 @@ sgs.LoadTranslationTable {
 se_banyun = sgs.CreateViewAsSkillV2 {
 	name = "se_banyun",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("#se_banyuncard")
+		return player ~= nil
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -14769,10 +14834,13 @@ se_banyuncard = sgs.CreateSkillCard {
 se_jianxi = sgs.CreateViewAsSkillV2 {
 	name = "se_jianxi",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("#se_jianxicard")
+		return player ~= nil
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
