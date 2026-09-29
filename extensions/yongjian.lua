@@ -8,13 +8,21 @@ local Wenhe_event_only = false --文和乱武随机事件
 -- "#" 前缀的隐藏全局技能（isVisible() 为 false，不占用技能栏显示），
 -- 并在文件末尾通过 gen:addSkill 给全部武将挂上天生实例；
 -- 后入场/换将的角色再由各技能 on_record 补挂 attached 实例。
+-- Reentrancy + per-skill one-shot: attachSkillToPlayer re-enters via on_record (50p soft-stuck).
+local yj_topup_busy = false
 local function yjTopupHiddenInstance(skill, room)
+	if yj_topup_busy then return end
 	local name = skill:objectName()
+	local tag = "yj_topup_done_" .. name
+	if room:getTag(tag):toBool() then return end
+	yj_topup_busy = true
 	for _, p in sgs.qlist(room:getAllPlayers()) do
 		if p:getSkillInstanceIds(name):isEmpty() then
 			room:attachSkillToPlayer(p, name)
 		end
 	end
+	room:setTag(tag, sgs.QVariant(true))
+	yj_topup_busy = false
 end
 local function yjHiddenOnRecord(skill, event, room, player, ctx)
 	yjTopupHiddenInstance(skill, room)
