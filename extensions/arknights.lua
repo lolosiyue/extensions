@@ -58,14 +58,43 @@ end
 --V2 全局技能以隱藏技能名掛到所有武將；
 --晚於本擴展加載的武將或換將後於結算時補掛 acquired 實例。
 local ark_global_skill_names = {"#arknight_winmusic"}
+-- Reentrancy + one-shot: attachSkillToPlayer can re-enter via on_record (50p soft-stuck).
+local ark_ensuring_globals = false
 local function ark_ensure_global_instances(room)
-    for _, p in sgs.qlist(room:getAllPlayers(true)) do
+    if ark_ensuring_globals then return end
+    if room:getTag("ark_globals_ensured"):toBool() then return end
+    ark_ensuring_globals = true
+    local players = room:getAllPlayers(true)
+    if players:isEmpty() then
+        ark_ensuring_globals = false
+        return
+    end
+    local skip_set = {}
+    local skip_str = room:getTag("ark_ensure_skip"):toString()
+    if skip_str ~= "" then
+        for _, n in ipairs(skip_str:split("+")) do
+            if n ~= "" then skip_set[n] = true end
+        end
+    end
+    local skip_changed = false
+    for _, p in sgs.qlist(players) do
         for _, skill_name in ipairs(ark_global_skill_names) do
-            if p:getSkillInstanceIds(skill_name):isEmpty() then
+            if not skip_set[skill_name] and p:getSkillInstanceIds(skill_name):isEmpty() then
                 room:attachSkillToPlayer(p, skill_name)
+                if p:getSkillInstanceIds(skill_name):isEmpty() then
+                    skip_set[skill_name] = true
+                    skip_changed = true
+                end
             end
         end
     end
+    if skip_changed then
+        local parts = {}
+        for n, _ in pairs(skip_set) do table.insert(parts, n) end
+        room:setTag("ark_ensure_skip", sgs.QVariant(table.concat(parts, "+")))
+    end
+    room:setTag("ark_globals_ensured", sgs.QVariant(true))
+    ark_ensuring_globals = false
 end
 
 arknight_winmusic = sgs.CreateTriggerSkillV2{

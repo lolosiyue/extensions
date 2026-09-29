@@ -24,14 +24,43 @@ end
 local nyarz_global_skill_names = {
 	"#nyarz_liubei_winmusic", "nyarz_guanyu_win",
 }
+-- Reentrancy + one-shot: attachSkillToPlayer can re-enter via on_record (50p soft-stuck).
+local nyarz2_ensuring_globals = false
 local function nyarz_ensure_global_instances(room)
-	for _, p in sgs.qlist(room:getAllPlayers(true)) do
+	if nyarz2_ensuring_globals then return end
+	if room:getTag("nyarz2_globals_ensured"):toBool() then return end
+	nyarz2_ensuring_globals = true
+	local players = room:getAllPlayers(true)
+	if players:isEmpty() then
+		nyarz2_ensuring_globals = false
+		return
+	end
+	local skip_set = {}
+	local skip_str = room:getTag("nyarz2_ensure_skip"):toString()
+	if skip_str ~= "" then
+		for _, n in ipairs(skip_str:split("+")) do
+			if n ~= "" then skip_set[n] = true end
+		end
+	end
+	local skip_changed = false
+	for _, p in sgs.qlist(players) do
 		for _, skill_name in ipairs(nyarz_global_skill_names) do
-			if p:getSkillInstanceIds(skill_name):isEmpty() then
+			if not skip_set[skill_name] and p:getSkillInstanceIds(skill_name):isEmpty() then
 				room:attachSkillToPlayer(p, skill_name)
+				if p:getSkillInstanceIds(skill_name):isEmpty() then
+					skip_set[skill_name] = true
+					skip_changed = true
+				end
 			end
 		end
 	end
+	if skip_changed then
+		local parts = {}
+		for n, _ in pairs(skip_set) do table.insert(parts, n) end
+		room:setTag("nyarz2_ensure_skip", sgs.QVariant(table.concat(parts, "+")))
+	end
+	room:setTag("nyarz2_globals_ensured", sgs.QVariant(true))
+	nyarz2_ensuring_globals = false
 end
 
 

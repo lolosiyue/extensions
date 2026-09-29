@@ -25,15 +25,44 @@ local kearcane_global_skill_names = {
 	"kejiguan_nopayClear",
 }
 
+-- Reentrancy + one-shot: attachSkillToPlayer can re-enter via on_record (50p soft-stuck).
+local kearcane_ensuring_globals = false
 local function kearcane_ensure_global_instances(room)
 	if not room then return end
-	for _, p in sgs.qlist(room:getAllPlayers(true)) do
-		for _, name in ipairs(kearcane_global_skill_names) do
-			if p:getSkillInstanceIds(name):isEmpty() then
+	if kearcane_ensuring_globals then return end
+	if room:getTag("kearcane_globals_ensured"):toBool() then return end
+	kearcane_ensuring_globals = true
+	local players = room:getAllPlayers(true)
+	if players:isEmpty() then
+		kearcane_ensuring_globals = false
+		return
+	end
+	local skip_set = {}
+	local skip_str = room:getTag("kearcane_ensure_skip"):toString()
+	if skip_str ~= "" then
+		for _, n in ipairs(skip_str:split("+")) do
+			if n ~= "" then skip_set[n] = true end
+		end
+	end
+	local skip_changed = false
+	for _, p in sgs.qlist(players) do
+		for _, name in ipairs(		) do
+			if not skip_set[name] and p:getSkillInstanceIds(name):isEmpty() then
 				room:attachSkillToPlayer(p, name)
+				if p:getSkillInstanceIds(name):isEmpty() then
+					skip_set[name] = true
+					skip_changed = true
+				end
 			end
 		end
 	end
+	if skip_changed then
+		local parts = {}
+		for n, _ in pairs(skip_set) do table.insert(parts, n) end
+		room:setTag("kearcane_ensure_skip", sgs.QVariant(table.concat(parts, "+")))
+	end
+	room:setTag("kearcane_globals_ensured", sgs.QVariant(true))
+	kearcane_ensuring_globals = false
 end
 
 local function kearcane_global_can_trigger(skill, room, player)
