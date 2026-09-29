@@ -13,6 +13,29 @@ local function kearlqxfDispatchContext(room, skill_name)
 	return false
 end
 
+--SkillV2：「本回合有冇發生過某類移牌」唔再靠 -Clear mark 記住，改由 resolution history 查證。
+--回傳本回合全部 move facts 的 data 列表；歷史不完整時回傳 nil（不得當作「冇發生」）。
+local function kearlqxfMoveFactsThisTurn(room)
+	local scope = room:historyScopes()
+	if not scope then return nil end
+	local turn = scope.turn_id
+	if not turn or turn == "0" or turn == 0 then return nil end
+	local filter = { turn_id = turn, limit = 64 }
+	local facts = {}
+	local watermark = nil
+	while true do
+		local page = room:queryHistoryMoves(filter)
+		if not page or page.error or not page.complete then return nil end
+		if not watermark then watermark = page.watermark end
+		for _, fact in ipairs(page.items or {}) do
+			table.insert(facts, fact.data or {})
+		end
+		if not page.has_more then return facts end
+		filter.after = page.next_after
+		filter.watermark = watermark
+	end
+end
+
 kelqxfslashmore = sgs.CreateTargetModSkillV2 {
 	name = "kelqxfslashmore",
 	pattern = ".",
@@ -75,12 +98,9 @@ kelqchaojue = sgs.CreateTriggerSkillV2 {
 	on_record = function(skill, event, room, player, ctx)
 		if event == sgs.Death then
 			local death = ctx.original_data:toDeath()
-			local pattern = death.who:getTag("kelqchaojueLimitation"):toString()
-			death.who:removeTag("kelqchaojueLimitation")
+			local reason = "kelqchaojue#" .. death.who:objectName()
 			for _, p in sgs.qlist(room:getAllPlayers()) do
-				if pattern ~= "" then
-					room:removePlayerCardLimitation(p, "use,response", pattern)
-				end
+				room:removePlayerCardLimitationByReason(p, reason)
 				local n = p:getMark(death.who:objectName() .. "kelqchaojue-Clear")
 				if n > 0 then
 					room:setPlayerMark(p, death.who:objectName() .. "kelqchaojue-Clear", 0)
@@ -92,12 +112,9 @@ kelqchaojue = sgs.CreateTriggerSkillV2 {
 			local change = ctx.original_data:toPhaseChange()
 			if change.to == sgs.Player_NotActive then
 				local changer = ctx.invoker
-				local pattern = changer:getTag("kelqchaojueLimitation"):toString()
-				changer:removeTag("kelqchaojueLimitation")
+				local reason = "kelqchaojue#" .. changer:objectName()
 				for _, p in sgs.qlist(room:getAllPlayers()) do
-					if pattern ~= "" then
-						room:removePlayerCardLimitation(p, "use,response", pattern)
-					end
+					room:removePlayerCardLimitationByReason(p, reason)
 					local n = p:getMark(changer:objectName() .. "kelqchaojue-Clear")
 					if n > 0 then
 						room:setPlayerMark(p, changer:objectName() .. "kelqchaojue-Clear", 0)
@@ -125,9 +142,8 @@ kelqchaojue = sgs.CreateTriggerSkillV2 {
 		local suit = ctx.extra_data:toString()
 		room:broadcastSkillInvoke(skill:objectName())
 		room:setPlayerMark(player, "&kelqchaojue+:+" .. suit .. "_char-Clear", 1)
-		player:setTag("kelqchaojueLimitation", ToData(".|" .. suit))
 		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-			room:setPlayerCardLimitation(p, "use,response", ".|" .. suit, false)
+			room:setPlayerCardLimitation(p, "use,response", ".|" .. suit, false, "kelqchaojue#" .. player:objectName())
 			local todis =
 				room:askForExchange(p, "kelqchaojue_show", 1, 1, false, "kelqchaojue_show:" .. player:objectName() .. "::" .. suit, true, ".|" .. suit)
 			if todis then
@@ -845,6 +861,8 @@ tychengshi = sgs.CreateTriggerSkillV2 {
 	name = "tychengshi",
 	events = { sgs.Damage, sgs.CardFinished },
 	frequency = sgs.Skill_Compulsory,
+	limit_scope = sgs.Skill_Limit_Turn,
+	max_usage_limit = 1,
 	waked_skills = "#tychengshibf",
 	can_trigger = function(skill, event, room, player, data)
 		if not player:isAlive() then
@@ -855,10 +873,16 @@ tychengshi = sgs.CreateTriggerSkillV2 {
 			if use.card:hasFlag("tychengshiBf") then
 				return "tychengshi"
 			end
-		elseif player:getMark("tychengshiUse-Clear") < 1 and player:hasTurn() then
+		elseif event == sgs.Damage and player:hasTurn() then
 			local damage = data:toDamage()
 			if damage.card and damage.card:isRed() and damage.card:isKindOf("Slash") then
-				return "tychengshi"
+				for _, iid in sgs.list(player:getSkillInstanceIds(skill:objectName())) do
+					local usageCtx = sgs.SkillContext()
+					usageCtx.invoker = player
+					usageCtx.owner = player
+					usageCtx.instanceID = iid
+					if skill:isUsable(usageCtx) then return "tychengshi" end
+				end
 			end
 		end
 		return false
@@ -870,7 +894,7 @@ tychengshi = sgs.CreateTriggerSkillV2 {
 			ctx.original_data:setValue(use)
 		else
 			local damage = ctx.original_data:toDamage()
-			player:addMark("tychengshiUse-Clear")
+			skill:addUsage(ctx)
 			room:sendCompulsoryTriggerLog(player, skill)
 			if player:hasFlag("CurrentPlayer") then
 				damage.card:setFlags("tychengshiBf")
@@ -897,7 +921,6 @@ tyfuwei = sgs.CreateTriggerSkillV2 {
 		for _, p in sgs.qlist(room:getAllPlayers()) do
 			if p:hasSkill(skill) and p:getMark("tyfuwei-Clear") < 1 and p:hasTurn() then
 				if p ~= lord then
-					p:setTag("tyfuweiDamage", ctx.original_data)
 					local dc = room:askForExchange(p, skill:objectName(), damage.damage, 1, true, "tyfuwei0:" .. lord:objectName() .. ":" .. damage.damage, true)
 					if dc then
 						p:addMark("tyfuwei-Clear")
@@ -1424,6 +1447,8 @@ tybianwo = sgs.CreateTriggerSkillV2 {
 	name = "tybianwo",
 	view_as_skill = tybianwovs,
 	events = { sgs.TargetConfirmed, sgs.EventPhaseStart },
+	limit_scope = sgs.Skill_Limit_Turn,
+	max_usage_limit = 1,
 	can_trigger = function(skill, event, room, player, data)
 		if not player:isAlive() then
 			return false
@@ -1433,12 +1458,17 @@ tybianwo = sgs.CreateTriggerSkillV2 {
 			if
 				use.card:isDamageCard()
 				and use.to:contains(player)
-				and player:getMark("tybianwoUse-Clear") < 1
 				and use.card:getEffectiveId() > 0
 				and room:getCardOwner(use.card:getEffectiveId()) == nil
 				and player:hasTurn()
 			then
-				return "tybianwo"
+				for _, iid in sgs.list(player:getSkillInstanceIds(skill:objectName())) do
+					local usageCtx = sgs.SkillContext()
+					usageCtx.invoker = player
+					usageCtx.owner = player
+					usageCtx.instanceID = iid
+					if skill:isUsable(usageCtx) then return "tybianwo" end
+				end
 			end
 		elseif player:getPhase() == sgs.Player_Finish then
 			return "tybianwo"
@@ -1454,7 +1484,7 @@ tybianwo = sgs.CreateTriggerSkillV2 {
 	on_effect = function(skill, event, room, player, ctx)
 		if event == sgs.TargetConfirmed then
 			local use = ctx.original_data:toCardUse()
-			player:addMark("tybianwoUse-Clear")
+			skill:addUsage(ctx)
 			player:addToPile("tyyuan", use.card)
 		else
 			local ids = player:getPile("tyyuan")
@@ -1510,35 +1540,29 @@ ty_fanjiang:addSkill("tyxiezhan")
 ty_chengji = sgs.General(extension_ty, "ty_chengji", "shu", 3)
 tyzhongen = sgs.CreateTriggerSkillV2 {
 	name = "tyzhongen",
-	events = { sgs.CardsMoveOneTime, sgs.EventPhaseStart },
+	events = { sgs.EventPhaseStart },
 	can_trigger = function(skill, event, room, player, data)
-		if not player:isAlive() then
-			return false
-		end
-		if event == sgs.CardsMoveOneTime then
-			local move = data:toMoveOneTime()
-			if (move.to and move.to_place == sgs.Player_PlaceHand and player:objectName() == move.to:objectName())
-				or (move.from and move.from_places:contains(sgs.Player_PlaceHand) and player:objectName() == move.from:objectName()) then
-				return kearlqxfDispatchContext(room, "tyzhongen")
-			end
-		elseif player:getPhase() == sgs.Player_Finish then
+		if player:isAlive() and player:getPhase() == sgs.Player_Finish then
 			return kearlqxfDispatchContext(room, "tyzhongen")
 		end
 		return false
 	end,
 	on_effect = function(skill, event, room, player, ctx)
-		if event == sgs.CardsMoveOneTime then
-			local move = ctx.original_data:toMoveOneTime()
-			if move.to and move.to_place == sgs.Player_PlaceHand and ctx.invoker:objectName() == move.to:objectName() then
-				ctx.invoker:addMark("tyzhongen-Clear")
-			end
-			if move.from and move.from_places:contains(sgs.Player_PlaceHand) and ctx.invoker:objectName() == move.from:objectName() then
-				ctx.invoker:addMark("tyzhongen-Clear")
-			end
-		else
-			local finisher = ctx.invoker
+		local finisher = ctx.invoker
+		-- 「手牌本回合發生過變化」以 resolution history 為準：本回合內該角色手牌有入有出
+		local moves = kearlqxfMoveFactsThisTurn(room)
+		if not moves then return false end
+		do
 			for _, p in sgs.list(room:getAlivePlayers()) do
-				if p:getMark("tyzhongen-Clear") > 0 and p:hasSkill(skill) then
+				local hand_changed = false
+				for _, d in ipairs(moves) do
+					if (d.to == p:objectName() and d.to_place == sgs.Player_PlaceHand)
+						or (d.from == p:objectName() and d.from_place == sgs.Player_PlaceHand) then
+						hand_changed = true
+						break
+					end
+				end
+				if hand_changed and p:hasSkill(skill) then
 					for _, h in sgs.list(p:getHandcards()) do
 						if h:isKindOf("Slash") then
 							if p:askForSkillInvoke(skill, finisher) then
@@ -1819,7 +1843,7 @@ ty_zhaorong:addSkill(tyyuantao)
 ty_guanxing = sgs.General(extension_ty, "ty_guanxing", "shu", 4)
 tychonglong = sgs.CreateTriggerSkillV2 {
 	name = "tychonglong",
-	events = { sgs.DamageCaused, sgs.CardUsed, sgs.EventPhaseChanging, sgs.CardsMoveOneTime },
+	events = { sgs.DamageCaused, sgs.CardUsed, sgs.EventPhaseChanging },
 	can_trigger = function(skill, event, room, player, data)
 		if not player:isAlive() then
 			return false
@@ -1832,11 +1856,6 @@ tychonglong = sgs.CreateTriggerSkillV2 {
 		elseif event == sgs.CardUsed then
 			local use = data:toCardUse()
 			if use.card:isRed() and use.card:isKindOf("Slash") then
-				return kearlqxfDispatchContext(room, "tychonglong")
-			end
-		elseif event == sgs.CardsMoveOneTime then
-			local move = data:toMoveOneTime()
-			if bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD and move.from and move.from:objectName() == player:objectName() then
 				return kearlqxfDispatchContext(room, "tychonglong")
 			end
 		else
@@ -1864,13 +1883,22 @@ tychonglong = sgs.CreateTriggerSkillV2 {
 					ctx.original_data:setValue(use)
 				end
 			end
-		elseif event == sgs.CardsMoveOneTime then
-			local move = ctx.original_data:toMoveOneTime()
-			ctx.invoker:addMark("tychonglongDis-Clear", move.card_ids:length())
 		else
+			-- 「本回合棄置過至少兩張牌」以 resolution history 逐持有者查證
+			local moves = kearlqxfMoveFactsThisTurn(room)
+			if not moves then return false end
 			for _, p in sgs.list(room:getAllPlayers()) do
-				if p:getMark("tychonglongDis-Clear") > 1 and p:hasSkill(skill) and p:askForSkillInvoke(skill) then
-					p:drawCards(1, skill:objectName())
+				if p:hasSkill(skill) then
+					local discarded = 0
+					for _, d in ipairs(moves) do
+						if d.from == p:objectName()
+							and bit32.band(d.reason or 0, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD then
+							discarded = discarded + 1
+						end
+					end
+					if discarded > 1 and p:askForSkillInvoke(skill) then
+						p:drawCards(1, skill:objectName())
+					end
 				end
 			end
 		end
@@ -1969,7 +1997,7 @@ tyqianshou = sgs.CreateTriggerSkillV2 {
 	can_trigger = function(skill, event, room, player, data)
 		if event == sgs.EventPhaseChanging and player:isAlive() then
 			local change = data:toPhaseChange()
-			if change.from == sgs.Player_NotActive then
+			if change.from == sgs.Player_NotActive or change.to == sgs.Player_NotActive then
 				return kearlqxfDispatchContext(room, "tyqianshou")
 			end
 		end
@@ -1988,7 +2016,7 @@ tyqianshou = sgs.CreateTriggerSkillV2 {
 							room:setChangeSkillState(p, skill:objectName(), 2)
 							room:showCard(p, c:getEffectiveId())
 							room:giveCard(p, turner, c, skill:objectName(), true)
-							room:setPlayerCardLimitation(p, "use", ".|.|.|hand", false)
+							room:setPlayerCardLimitation(p, "use", ".|.|.|hand", false, "tyqianshou")
 							room:setPlayerMark(turner, "&tyqianshou-Clear", 1)
 							room:setPlayerMark(p, "&tyqianshou-Clear", 1)
 						end
@@ -2008,11 +2036,10 @@ tyqianshou = sgs.CreateTriggerSkillV2 {
 					end
 				end
 			end
-		elseif change.from == sgs.Player_NotActive then
-			for _, p in sgs.qlist(room:getOtherPlayers(turner)) do
-				if p:getMark("&tyqianshou-Clear") > 0 then
-					room:removePlayerCardLimitation(p, "use", ".|.|.|hand")
-				end
+		elseif change.to == sgs.Player_NotActive then
+			--「本回合」限制喺回合結束時按 reason 移除；原寫法誤用 change.from 導致永不清理
+			for _, p in sgs.qlist(room:getAllPlayers()) do
+				room:removePlayerCardLimitationByReason(p, "tyqianshou")
 			end
 		end
 		return false
@@ -2582,32 +2609,32 @@ ty_huangzhong:addSkill(tyyizhuang)
 ty_yanque = sgs.General(extension_ty, "ty_yanque", "qun", 4)
 tysiji = sgs.CreateTriggerSkillV2 {
 	name = "tysiji",
-	events = { sgs.CardsMoveOneTime, sgs.EventPhaseChanging },
+	events = { sgs.EventPhaseChanging },
 	can_trigger = function(skill, event, room, player, data)
 		if not player:isAlive() then
 			return false
 		end
-		if event == sgs.CardsMoveOneTime then
-			local move = data:toMoveOneTime()
-			if move.from_places:contains(sgs.Player_PlaceEquip) or move.from_places:contains(sgs.Player_PlaceHand) then
-				if move.from and move.from:objectName() == player:objectName()
-					and move.reason.m_reason ~= sgs.CardMoveReason_S_REASON_RESPONSE
-					and move.reason.m_reason ~= sgs.CardMoveReason_S_REASON_USE then
-					return kearlqxfDispatchContext(room, "tysiji")
-				end
-			end
-		else
+		if event == sgs.EventPhaseChanging then
 			local change = data:toPhaseChange()
-			if change.to == sgs.Player_NotActive and player:getMark("tysiji-Clear") > 0 then
-				return kearlqxfDispatchContext(room, "tysiji")
+			if change.to == sgs.Player_NotActive then
+				-- 「本回合不因使用／打出而失去過手牌或裝備」以 resolution history 查證
+				local moves = kearlqxfMoveFactsThisTurn(room)
+				if not moves then return false end
+				for _, d in ipairs(moves) do
+					if d.from == player:objectName()
+						and (d.from_place == sgs.Player_PlaceHand or d.from_place == sgs.Player_PlaceEquip)
+						and d.reason
+						and d.reason ~= sgs.CardMoveReason_S_REASON_RESPONSE
+						and d.reason ~= sgs.CardMoveReason_S_REASON_USE then
+						return kearlqxfDispatchContext(room, "tysiji")
+					end
+				end
 			end
 		end
 		return false
 	end,
 	on_effect = function(skill, event, room, player, ctx)
-		if event == sgs.CardsMoveOneTime then
-			ctx.invoker:addMark("tysiji-Clear")
-		else
+		do
 			local turner = ctx.invoker
 			for _, p in sgs.list(room:getAllPlayers()) do
 				if p:hasSkill(skill) and p:getCardCount() > 0 then
@@ -2640,18 +2667,26 @@ tycangshen = sgs.CreateTriggerSkillV2 {
 	name = "tycangshen",
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.CardFinished },
+	limit_scope = sgs.Skill_Limit_Round,
+	max_usage_limit = 1,
 	can_trigger = function(skill, event, room, player, data)
 		if event == sgs.CardFinished and player:isAlive() then
 			local use = data:toCardUse()
-			if use.card:isKindOf("Slash") and player:getMark("tycangshen_lun") < 1 then
-				return "tycangshen"
+			if use.card:isKindOf("Slash") then
+				for _, iid in sgs.list(player:getSkillInstanceIds(skill:objectName())) do
+					local usageCtx = sgs.SkillContext()
+					usageCtx.invoker = player
+					usageCtx.owner = player
+					usageCtx.instanceID = iid
+					if skill:isUsable(usageCtx) then return "tycangshen" end
+				end
 			end
 		end
 		return false
 	end,
 	on_effect = function(skill, event, room, player, ctx)
 		room:sendCompulsoryTriggerLog(player, skill)
-		room:addPlayerMark(player, "tycangshen_lun")
+		skill:addUsage(ctx)
 		return false
 	end,
 }
@@ -2660,30 +2695,30 @@ ty_yanque:addSkill(tycangshen)
 ty_wangque = sgs.General(extension_ty, "ty_wangque", "qun", 3)
 tydaifa = sgs.CreateTriggerSkillV2 {
 	name = "tydaifa",
-	events = { sgs.CardsMoveOneTime, sgs.EventPhaseChanging },
+	events = { sgs.EventPhaseChanging },
 	can_trigger = function(skill, event, room, player, data)
 		if not player:isAlive() then
 			return false
 		end
-		if event == sgs.CardsMoveOneTime then
-			local move = data:toMoveOneTime()
-			if move.from_places:contains(sgs.Player_PlaceEquip) or move.from_places:contains(sgs.Player_PlaceHand) then
-				if move.to_place == sgs.Player_PlaceHand and move.from ~= move.to and move.to and move.to:objectName() == player:objectName() then
-					return kearlqxfDispatchContext(room, "tydaifa")
-				end
-			end
-		else
+		if event == sgs.EventPhaseChanging then
 			local change = data:toPhaseChange()
-			if change.to == sgs.Player_NotActive and player:getMark("tydaifa-Clear") > 0 then
-				return kearlqxfDispatchContext(room, "tydaifa")
+			if change.to == sgs.Player_NotActive then
+				-- 「本回合獲得過其他角色手牌或裝備」以 resolution history 查證
+				local moves = kearlqxfMoveFactsThisTurn(room)
+				if not moves then return false end
+				for _, d in ipairs(moves) do
+					if d.to == player:objectName() and d.to_place == sgs.Player_PlaceHand
+						and (d.from_place == sgs.Player_PlaceHand or d.from_place == sgs.Player_PlaceEquip)
+						and d.from ~= player:objectName() then
+						return kearlqxfDispatchContext(room, "tydaifa")
+					end
+				end
 			end
 		end
 		return false
 	end,
 	on_effect = function(skill, event, room, player, ctx)
-		if event == sgs.CardsMoveOneTime then
-			ctx.invoker:addMark("tydaifa-Clear")
-		else
+		do
 			local turner = ctx.invoker
 			for _, p in sgs.list(room:getAllPlayers()) do
 				if p:hasSkill(skill) and p:getCardCount() > 0 then
