@@ -93,6 +93,7 @@ shouji = sgs.CreateViewAsSkillV2{
 	limit_scope = sgs.Skill_Limit_Phase,
 	max_usage_limit = 1,
 	phase_name = "Play",
+	history_key = "#shoujicard",
 	can_activate = function(skill, request)
 		return request:getInitiator() ~= nil
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
@@ -117,6 +118,28 @@ shouji = sgs.CreateViewAsSkillV2{
 				local list = p:handCards()
 				room:fillAG(list,source)
 				local card_id = room:askForAG(source,list,true,skill:objectName())
+				local card = sgs.Sanguosha:getCard(card_id)
+				room:obtainCard(source,card,false)
+				room:clearAG(source)
+			end
+		end
+	end
+}
+
+-- 保留具名 SkillCard：舊 AI（lolihime-ai.lua）以 Card_Parse("#shoujicard:...") 提交，
+-- 伺服器 resolveActiveSkillRequest 會重建為 V2 代理卡，on_use 不會執行。
+shoujicard = sgs.CreateSkillCard{
+    name = "shoujicard",
+    target_fixed = true,
+    will_throw = true,
+	on_use = function(self, room, source, targets)
+		--room:broadcastSkillInvoke("shouji")
+		room:doLightbox("shouji$", 1000)
+		for _,p in sgs.qlist(room:getOtherPlayers(source)) do
+			if not p:getCards("h"):isEmpty() then
+				local list = p:handCards()
+				room:fillAG(list,source)
+				local card_id = room:askForAG(source,list,true,self:objectName())
 				local card = sgs.Sanguosha:getCard(card_id)
 				room:obtainCard(source,card,false)
 				room:clearAG(source)
@@ -250,11 +273,12 @@ youpian = sgs.CreateViewAsSkillV2{
 	n = 0,
 	target_mode = sgs.ViewAsSkillV2_SelectTargets,
 	target_effect_mode = sgs.ViewAsSkillV2_EachTarget,
+	limit_scope = sgs.Skill_Limit_Turn,
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player ~= nil
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasFlag("youpian_used")
 	end,
 	can_select_target = function(skill, request, selected, candidate)
 		return #selected == 0 and candidate:getCardCount(true) > 0
@@ -265,7 +289,6 @@ youpian = sgs.CreateViewAsSkillV2{
 	end,
 	on_effect_target = function(skill, ctx, target)
 		local room = target:getRoom()
-		room:setPlayerFlag(ctx.invoker,"youpian_used")
 		room:setPlayerMark(target,"youpian_target",1)
 
 		local y = math.random(1,2)
@@ -579,7 +602,10 @@ LLJ_recycle = sgs.CreateTriggerSkillV2{
 			end
 			if flag then return "LLJ_recycle" end
 		elseif event == sgs.DrawNCards then
-			return "LLJ_recycle"
+			local draw = data:toDraw()
+			if draw.reason == "draw_phase" then
+				return "LLJ_recycle"
+			end
 		end
 		return false
 	end,
@@ -611,11 +637,10 @@ LLJ_recycle = sgs.CreateTriggerSkillV2{
 				end
 			end
 		elseif event == sgs.DrawNCards then
-			local data = ctx.original_data
-			if data:toInt() - 1 > 0 then
-				data:setValue(data:toInt() - 1)
-			else
-				data:setValue(0)
+			local draw = ctx.original_data:toDraw()
+			if draw.num > 0 then
+				draw.num = draw.num - 1
+				ctx.original_data:setValue(draw)
 			end
 		end
 		return false
