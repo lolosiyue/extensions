@@ -3662,12 +3662,17 @@ on_effect = function(self, event, room, player, ctx)
 	end,
 }
 keol_zhangyi:addSkill(keoldianjun)
-keolkangrui = sgs.CreateTriggerSkill {
+keolkangrui = sgs.CreateRuleSkillV2 {
 	name = "keolkangrui",
 	global = true,
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.Damaged, sgs.Damage, sgs.ConfirmDamage },
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive()) then return false end
+		return self:objectName(), player
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.Damage then
 			--local damage = data:toDamage()
 			if player:getMark("readydismax-Clear") > 0 then
@@ -3702,9 +3707,7 @@ keolkangrui = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-	end,
-	can_trigger = function(self, player)
-		return player and player:isAlive()
+		return false
 	end,
 }
 keol_zhangyi:addSkill(keolkangrui)
@@ -3733,13 +3736,17 @@ sgs.LoadTranslationTable {
 }
 
 keol_zhujun = sgs.General(ol_ccxh, "keol_zhujun", "qun", 4)
-keolcuipo = sgs.CreateTriggerSkill {
+keolcuipo = sgs.CreateRuleSkillV2 {
 	name = "keolcuipo",
 	events = { sgs.CardUsed, sgs.ConfirmDamage, sgs.CardResponded },
 	frequency = sgs.Skill_Compulsory,
 	global = true,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(self, event, room, player, data)
+		if not player then return false end
+		return self:objectName(), player
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.CardUsed then
 			local use = data:toCardUse()
 			player:addMark("keolcuipo-Clear")
@@ -3767,6 +3774,7 @@ keolcuipo = sgs.CreateTriggerSkill {
 				end
 			end
 		end
+		return false
 	end,
 }
 keol_zhujun:addSkill(keolcuipo)
@@ -4035,14 +4043,19 @@ on_effect = function(self, event, room, player, ctx)
 	end,
 }
 keol_wenqin:addSkill(keolguangao)
-keolhuiqi = sgs.CreateTriggerSkill {
+keolhuiqi = sgs.CreateRuleSkillV2 {
 	name = "keolhuiqi",
 	events = { sgs.TargetConfirmed, sgs.EventPhaseChanging },
 	frequency = sgs.Skill_Wake,
 	waked_skills = "keolxieju",
 	global = true,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(self, event, room, player, data)
+		if not player then return false end
+		if player:getMark(self:objectName()) > 0 then return false end --legacy canWake
+		return self:objectName(), player
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.EventPhaseChanging then
 			local change = data:toPhaseChange()
 			if change.to == sgs.Player_NotActive then
@@ -4083,6 +4096,7 @@ keolhuiqi = sgs.CreateTriggerSkill {
 				end
 			end
 		end
+		return false
 	end,
 }
 keol_wenqin:addSkill(keolhuiqi)
@@ -5242,14 +5256,18 @@ create_card = function(self, request)
 	end)(self, cards)
 end,
 }
-keolgoude = sgs.CreateTriggerSkill {
+keolgoude = sgs.CreateRuleSkillV2 {
 	name = "keolgoude",
 	events = { sgs.EventPhaseChanging, sgs.CardsMoveOneTime, sgs.KingdomChanged, sgs.CardUsed },
 	frequency = sgs.Skill_NotFrequent,
 	view_as_skill = keolgoudevs,
 	global = true,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive()) then return false end
+		return self:objectName(), player
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.CardsMoveOneTime then
 			local move = data:toMoveOneTime()
 			if move.from and move.from:objectName() == player:objectName() and move.card_ids:length() == 1 and move.reason.m_reason == sgs.CardMoveReason_S_REASON_DISMANTLE then --弃置一张手牌
@@ -5332,9 +5350,7 @@ keolgoude = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-	end,
-	can_trigger = function(self, target)
-		return target and target:isAlive()
+		return false
 	end,
 }
 keol_mengda:addSkill(keolgoude)
@@ -13898,12 +13914,17 @@ create_card = function(self, request)
 	end)(self, sgs.Sanguosha:getCard(ids:first()))
 end,
 }
-keolzhuri = sgs.CreateTriggerSkill {
+keolzhuri = sgs.CreateRuleSkillV2 {
 	name = "keolzhuri",
 	view_as_skill = keolzhuriVS,
 	global = true,
 	events = { sgs.CardsMoveOneTime, sgs.EventPhaseEnd, sgs.EventPhaseChanging },
-	on_trigger = function(self, event, player, data, room)
+	can_trigger = function(self, event, room, player, data)
+		if not player then return false end
+		return self:objectName(), player
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.CardsMoveOneTime and player:getPhase() ~= sgs.Player_NotActive then
 			local move = data:toMoveOneTime()
 			if
@@ -13954,6 +13975,7 @@ keolzhuri = sgs.CreateTriggerSkill {
 				end
 			end
 		end
+		return false
 	end,
 }
 keolranji = sgs.CreateTriggerSkillV2 {
@@ -14780,13 +14802,17 @@ on_effect = function(self, event, room, player, ctx)
 	end,
 }
 keolweilin:setJuguanDialog("all_slashs,analeptic")
-keolduoshou = sgs.CreateTriggerSkill {
+keolduoshou = sgs.CreateRuleSkillV2 {
 	name = "keolduoshou",
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.Damage, sgs.CardUsed },
 	global = true,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(self, event, room, player, data)
+		if not player then return false end
+		return self:objectName(), player
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.Damage then
 			if player:getMark("keolduoshou_damage-Clear") < 1 then
 				player:addMark("keolduoshou_damage-Clear")
@@ -14816,6 +14842,7 @@ keolduoshou = sgs.CreateTriggerSkill {
 				end
 			end
 		end
+		return false
 	end,
 }
 keolmou_guanyu:addSkill(keolweilin)
@@ -15566,16 +15593,17 @@ on_effect = function(self, event, room, player, ctx)
 mobilemou_zhaoyun:addSkill(moujizhuo)
 
 --==[[协力]]==--（谋攻篇新机制）
-XLeffect = sgs.CreateTriggerSkill {
+XLeffect = sgs.CreateRuleSkillV2 {
 	name = "XLeffect",
 	global = true,
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.DamageComplete, sgs.CardsMoveOneTime, sgs.GameStart, sgs.CardUsed, sgs.CardResponded, sgs.BuryVictim, sgs.Dying },
-	can_trigger = function(self, player)
-		return player ~= nil
+	can_trigger = function(self, event, room, player, data)
+		if not player then return false end
+		return self:objectName(), player
 	end,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.DamageComplete then
 			local damage = data:toDamage() --协力[同仇]：共计造成至少4点伤害。
 			if damage.prevented then
@@ -15732,6 +15760,7 @@ XLeffect = sgs.CreateTriggerSkill {
 				end
 			end
 		end
+		return false
 	end,
 }
 mobilemoutong:addSkills(XLeffect)
@@ -25380,14 +25409,19 @@ on_effect = function(self, event, room, player, ctx)
 	end)(self, event, ctx.invoker, ctx.original_data, room)
 	end,
 }
-olspaige = sgs.CreateTriggerSkill {
+olspaige = sgs.CreateRuleSkillV2 {
 	name = "olspaige",
 	waked_skills = "olspzhubei",
 	frequency = sgs.Skill_Wake,
 	events = { sgs.EnterDying },
 	global = true,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive()) then return false end
+		if player:getMark(self:objectName()) > 0 then return false end --legacy canWake
+		return self:objectName(), player
+	end,
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		local dying = data:toDying()
 		for _, p in sgs.qlist(room:getAllPlayers()) do
 			p:addMark("olspaige-Clear")
@@ -25412,9 +25446,7 @@ olspaige = sgs.CreateTriggerSkill {
 				end
 			end
 		end
-	end,
-	can_trigger = function(self, player)
-		return player and player:isAlive()
+		return false
 	end,
 }
 olspzhubeiCard = sgs.CreateSkillCard {
@@ -30986,14 +31018,18 @@ correct_func = function(self, ctx)
 end,
 }
 extension:addSkills(_ofhun_crossbowSkill)
-_crossbowSkillbf = sgs.CreateTriggerSkill {
+_crossbowSkillbf = sgs.CreateEquipSkillV2 {
 	name = "#_ofhun_crossbowbf",
+	equipment = "_ofhun_crossbow",
+	equipment_type = "weapon",
 	global = true,
 	events = { sgs.TargetSpecified },
-	can_trigger = function(self, target)
-		return target and target:isAlive()
+	can_trigger = function(self, event, room, player, data)
+		if not (player and player:isAlive()) then return false end
+		return self:objectName(), player
 	end,
-	on_trigger = function(self, event, player, data, room)
+	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
 		if event == sgs.TargetSpecified then
 			local use = data:toCardUse()
 			if use.card:isKindOf("Slash") and player:hasWeapon("_ofhun_crossbow") then
@@ -31034,6 +31070,7 @@ _crossbowSkillbf = sgs.CreateTriggerSkill {
 				end
 			end
 		end
+		return false
 	end,
 }
 extension:addSkills(_crossbowSkillbf)
