@@ -4303,12 +4303,12 @@ rushB_moubazhen = sgs.CreateTriggerSkillV2{
         local names = {}
         for _, id in sgs.qlist(player:getValidSkillInstanceIds(skill:objectName())) do
             local ref = sgs.SkillInstanceRef(player:objectName(), sgs.SkillInstanceKey(skill:objectName(), id))
-            local names = player:getSkillInstanceStateValue(skill:objectName(), id, "names"):toString():split("+")
+            local recorded = player:getSkillInstanceStateValue(skill:objectName(), id, "names"):toString():split("+")
             local eligible = false
             if event == sgs.TargetConfirming or event == sgs.CardUsed then
                 local use = data:toCardUse()
                 if use.card and not use.card:isKindOf("SkillCard") and not use.card:isKindOf("EquipCard")
-                    and not table.contains(names, use.card:objectName()) then
+                    and not table.contains(recorded, use.card:objectName()) then
                     eligible = (event == sgs.CardUsed and use.from == player)
                         or (event == sgs.TargetConfirming and use.to:length() == 1
                             and use.to:contains(player) and use.from and use.from ~= player)
@@ -4319,7 +4319,7 @@ rushB_moubazhen = sgs.CreateTriggerSkillV2{
                 eligible = data:toMark().name == "bazhendeath" and player:getMark("bazhendeath") > 0
             elseif event == sgs.EventPhaseChanging then
                 eligible = data:toPhaseChange().to == sgs.Player_NotActive
-                    and #names > room:alivePlayerCount() and player:getMark("bazhendeath") == 0
+                    and #recorded > room:alivePlayerCount() and player:getMark("bazhendeath") == 0
             end
             if eligible and room:getShimingStatus(ref) == 0 then table.insert(names, ref.key:toString()) end
         end
