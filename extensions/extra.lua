@@ -136,14 +136,43 @@ local extra_global_skill_names = {
 	"#RemoveFromHistoryAndIgnoreArmorLog", "#YingBianEffect_Global",
 	"#gd_xujiu_on_trigger", "#GuanduOnTrigger",
 }
+-- Reentrancy + one-shot: attachSkillToPlayer can re-enter via on_record (50p soft-stuck).
+local extra_ensuring_globals = false
 local function extra_ensure_global_instances(room)
-	for _, p in sgs.qlist(room:getAllPlayers(true)) do
+	if extra_ensuring_globals then return end
+	if room:getTag("extra_globals_ensured"):toBool() then return end
+	extra_ensuring_globals = true
+	local players = room:getAllPlayers(true)
+	if players:isEmpty() then
+		extra_ensuring_globals = false
+		return
+	end
+	local skip_set = {}
+	local skip_str = room:getTag("extra_ensure_skip"):toString()
+	if skip_str ~= "" then
+		for _, n in ipairs(skip_str:split("+")) do
+			if n ~= "" then skip_set[n] = true end
+		end
+	end
+	local skip_changed = false
+	for _, p in sgs.qlist(players) do
 		for _, skill_name in ipairs(extra_global_skill_names) do
-			if p:getSkillInstanceIds(skill_name):isEmpty() then
+			if not skip_set[skill_name] and p:getSkillInstanceIds(skill_name):isEmpty() then
 				room:attachSkillToPlayer(p, skill_name)
+				if p:getSkillInstanceIds(skill_name):isEmpty() then
+					skip_set[skill_name] = true
+					skip_changed = true
+				end
 			end
 		end
 	end
+	if skip_changed then
+		local parts = {}
+		for n, _ in pairs(skip_set) do table.insert(parts, n) end
+		room:setTag("extra_ensure_skip", sgs.QVariant(table.concat(parts, "+")))
+	end
+	room:setTag("extra_globals_ensured", sgs.QVariant(true))
+	extra_ensuring_globals = false
 end
 local function extra_global_can_trigger(skill, room, player)
 	if not player then return false end

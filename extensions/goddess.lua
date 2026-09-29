@@ -1016,14 +1016,43 @@ Kai = sgs.CreateBasicCard{
 --V2 全局技能以隱藏技能名掛到所有武將；
 --晚於本擴展加載的武將或換將後於結算時補掛 acquired 實例。
 local goddess_global_skill_names = {"#Kai_Skill", "#Weikai_Skill", "#gongcheng_clear", "#RemoveGeneral_Skill"}
+-- Reentrancy + one-shot: attachSkillToPlayer can re-enter via on_record (50p soft-stuck).
+local goddess_ensuring_globals = false
 local function goddess_ensure_global_instances(room)
-	for _, p in sgs.qlist(room:getAllPlayers(true)) do
+	if goddess_ensuring_globals then return end
+	if room:getTag("goddess_globals_ensured"):toBool() then return end
+	goddess_ensuring_globals = true
+	local players = room:getAllPlayers(true)
+	if players:isEmpty() then
+		goddess_ensuring_globals = false
+		return
+	end
+	local skip_set = {}
+	local skip_str = room:getTag("goddess_ensure_skip"):toString()
+	if skip_str ~= "" then
+		for _, n in ipairs(skip_str:split("+")) do
+			if n ~= "" then skip_set[n] = true end
+		end
+	end
+	local skip_changed = false
+	for _, p in sgs.qlist(players) do
 		for _, skill_name in ipairs(goddess_global_skill_names) do
-			if p:getSkillInstanceIds(skill_name):isEmpty() then
+			if not skip_set[skill_name] and p:getSkillInstanceIds(skill_name):isEmpty() then
 				room:attachSkillToPlayer(p, skill_name)
+				if p:getSkillInstanceIds(skill_name):isEmpty() then
+					skip_set[skill_name] = true
+					skip_changed = true
+				end
 			end
 		end
 	end
+	if skip_changed then
+		local parts = {}
+		for n, _ in pairs(skip_set) do table.insert(parts, n) end
+		room:setTag("goddess_ensure_skip", sgs.QVariant(table.concat(parts, "+")))
+	end
+	room:setTag("goddess_globals_ensured", sgs.QVariant(true))
+	goddess_ensuring_globals = false
 end
 --Why Kai_Skill is so long is it must be used with Weikai_Skill, or there will be something wrong with the game.
 Kai_Skill = sgs.CreateTriggerSkillV2{

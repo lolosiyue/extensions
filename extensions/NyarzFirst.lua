@@ -11,14 +11,43 @@ local nyarz_global_skill_names = {
 	"#dmshenyouother", "#godlongnukill", "#xiaoyifubuff",
 	"#jfjifengbuff", "#jfjifengdamage", "#cqtiejiclears",
 }
+-- Reentrancy + one-shot: attachSkillToPlayer can re-enter via on_record (50p soft-stuck).
+local nyarz_ensuring_globals = false
 local function nyarz_ensure_global_instances(room)
-	for _, p in sgs.qlist(room:getAllPlayers(true)) do
+	if nyarz_ensuring_globals then return end
+	if room:getTag("nyarz_globals_ensured"):toBool() then return end
+	nyarz_ensuring_globals = true
+	local players = room:getAllPlayers(true)
+	if players:isEmpty() then
+		nyarz_ensuring_globals = false
+		return
+	end
+	local skip_set = {}
+	local skip_str = room:getTag("nyarz_ensure_skip"):toString()
+	if skip_str ~= "" then
+		for _, n in ipairs(skip_str:split("+")) do
+			if n ~= "" then skip_set[n] = true end
+		end
+	end
+	local skip_changed = false
+	for _, p in sgs.qlist(players) do
 		for _, skill_name in ipairs(nyarz_global_skill_names) do
-			if p:getSkillInstanceIds(skill_name):isEmpty() then
+			if not skip_set[skill_name] and p:getSkillInstanceIds(skill_name):isEmpty() then
 				room:attachSkillToPlayer(p, skill_name)
+				if p:getSkillInstanceIds(skill_name):isEmpty() then
+					skip_set[skill_name] = true
+					skip_changed = true
+				end
 			end
 		end
 	end
+	if skip_changed then
+		local parts = {}
+		for n, _ in pairs(skip_set) do table.insert(parts, n) end
+		room:setTag("nyarz_ensure_skip", sgs.QVariant(table.concat(parts, "+")))
+	end
+	room:setTag("nyarz_globals_ensured", sgs.QVariant(true))
+	nyarz_ensuring_globals = false
 end
 --鎖定單一實例（舊版為每事件一次觸發）：優先以事件目標為持有者，否則取首位存活持有者
 local function nyarz_single_owner(skill, room, player)

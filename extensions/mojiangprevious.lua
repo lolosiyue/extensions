@@ -9,14 +9,43 @@ sgs.LoadTranslationTable{
 --V2 全局技能以隐藏技能名挂到所有武将；
 --晚于本扩展加载的武将或换将后于结算时补挂 acquired 实例。
 local sy_old_global_skill_names = {"#sy_old_sm_judge", "#sy_old_zongyu_lose", "#sy_old_maxcards", "#sy_old_clear"}
+-- Reentrancy + one-shot: attachSkillToPlayer can re-enter via on_record (50p soft-stuck).
+local sy_old_ensuring_globals = false
 local function sy_old_ensure_global_instances(room)
-	for _, p in sgs.qlist(room:getAllPlayers(true)) do
+	if sy_old_ensuring_globals then return end
+	if room:getTag("sy_old_globals_ensured"):toBool() then return end
+	sy_old_ensuring_globals = true
+	local players = room:getAllPlayers(true)
+	if players:isEmpty() then
+		sy_old_ensuring_globals = false
+		return
+	end
+	local skip_set = {}
+	local skip_str = room:getTag("sy_old_ensure_skip"):toString()
+	if skip_str ~= "" then
+		for _, n in ipairs(skip_str:split("+")) do
+			if n ~= "" then skip_set[n] = true end
+		end
+	end
+	local skip_changed = false
+	for _, p in sgs.qlist(players) do
 		for _, skill_name in ipairs(sy_old_global_skill_names) do
-			if p:getSkillInstanceIds(skill_name):isEmpty() then
+			if not skip_set[skill_name] and p:getSkillInstanceIds(skill_name):isEmpty() then
 				room:attachSkillToPlayer(p, skill_name)
+				if p:getSkillInstanceIds(skill_name):isEmpty() then
+					skip_set[skill_name] = true
+					skip_changed = true
+				end
 			end
 		end
 	end
+	if skip_changed then
+		local parts = {}
+		for n, _ in pairs(skip_set) do table.insert(parts, n) end
+		room:setTag("sy_old_ensure_skip", sgs.QVariant(table.concat(parts, "+")))
+	end
+	room:setTag("sy_old_globals_ensured", sgs.QVariant(true))
+	sy_old_ensuring_globals = false
 end
 
 
