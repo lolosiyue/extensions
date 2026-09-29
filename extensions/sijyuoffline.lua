@@ -5412,6 +5412,7 @@ sfofl_2_shiyin = sgs.CreateTriggerSkillV2{
 	引用：sfofl_quwu
 ]] --
 
+-- DEFER:sfofl_quwu_limit：CreateCardLimitSkill 無 V2 對應 API（係現行 CardLimitation 靜態規則機制），保留 legacy。
 sfofl_quwu_limit = sgs.CreateCardLimitSkill{
     name = "#sfofl_quwu_limit",
     limit_list = function(self,player)
@@ -8105,6 +8106,7 @@ sfofl_wentian_Clear = sgs.CreateTriggerSkillV2{
         return false
     end
 }
+-- DEFER:sfofl_wentian_spade：CreateViewAsEquipSkill 無 V2 對應 API，保留 legacy。
 sfofl_wentian_spade = sgs.CreateViewAsEquipSkill {
 	name = "#sfofl_wentian_spade",
 	view_as_equip = function(self, player)
@@ -8113,6 +8115,7 @@ sfofl_wentian_spade = sgs.CreateViewAsEquipSkill {
 		end
 	end
 }
+-- DEFER:sfofl_wentian_club：CreateViewAsEquipSkill 無 V2 對應 API，保留 legacy。
 sfofl_wentian_club = sgs.CreateViewAsEquipSkill {
 	name = "#sfofl_wentian_club",
 	view_as_equip = function(self, player)
@@ -10929,6 +10932,7 @@ sfofl_shuangren = sgs.CreateTriggerSkillV2{
 	end
 }
 
+-- DEFER:sfofl_shuangrenFilter：CreateFilterSkill 無 V2 對應 API，保留 legacy。
 sfofl_shuangrenFilter = sgs.CreateFilterSkill {
 	name = "#sfofl_shuangrenFilter",
 	view_filter = function(self, to_select)
@@ -11112,6 +11116,7 @@ sfofl_wenchou = sgs.General(extension_s, "sfofl_wenchou", "qun", 4)
 	引用：sfofl_xuezhan
 ]] --
 
+-- DEFER:sfofl_xuezhan：CreateFilterSkill 無 V2 對應 API，保留 legacy。
 sfofl_xuezhan = sgs.CreateFilterSkill{
     name = "sfofl_xuezhan", 
     view_filter = function(self,to_select)
@@ -16488,6 +16493,7 @@ sfofl_cuiji = sgs.CreateTriggerSkillV2{
 		return false
 	end,
 }
+-- DEFER:sfofl_cuiji_prohibit：CreateProhibitSkill 無 V2 對應 API，保留 legacy。
 sfofl_cuiji_prohibit = sgs.CreateProhibitSkill {
 	name = "#sfofl_cuiji_prohibit",
 	is_prohibited = function(self, from, to, card)
@@ -17982,6 +17988,7 @@ sfofl_podai = sgs.CreateTriggerSkillV2{
 		return false
 	end,
 }
+-- DEFER:sfofl_podaiInvalidity：CreateInvaliditySkill 無 V2 對應 API，保留 legacy。
 sfofl_podaiInvalidity = sgs.CreateInvaliditySkill{
 	name = "#sfofl_podaiInvalidity",
 	validity_mark_prefix = "sfofl_podai",
@@ -22678,6 +22685,7 @@ sfofl_ducai = sgs.CreateTargetModSkillV2{
     end,
 }
 
+-- DEFER:sfofl_ducaiInvalidity：CreateInvaliditySkill 無 V2 對應 API，保留 legacy。
 sfofl_ducaiInvalidity = sgs.CreateInvaliditySkill{
 	name = "#sfofl_ducaiInvalidity",
 	validity_current_sibling_skill = "sfofl_ducai",
@@ -22693,6 +22701,7 @@ sfofl_ducaiInvalidity = sgs.CreateInvaliditySkill{
         return true
 	end
 }
+-- DEFER:sfofl_ducai_limit：CreateCardLimitSkill 無 V2 對應 API（現行 CardLimitation 靜態規則機制），保留 legacy。
 sfofl_ducai_limit = sgs.CreateCardLimitSkill{
     name = "#sfofl_ducai_limit",
     limit_list = function(self, player)
@@ -27198,14 +27207,18 @@ sfofl_liufangcCard = sgs.CreateSkillCard {
     end
 }
 
-sfofl_liufangc = sgs.CreateMasochismSkill{
+sfofl_liufangc = sgs.CreateTriggerSkillV2{
     name = "sfofl_liufangc",
     view_as_skill = sfofl_liufangcVS,
-    on_damaged = function(self, player)
-        local room = player:getRoom()
-        local to = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "sfofl_liufangc-invoke", true, true)
+    events = {sgs.Damaged},
+    can_trigger = function(skill, event, room, player, data)
+        if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+        return skill:objectName()
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        local to = room:askForPlayerChosen(player, room:getOtherPlayers(player), skill:objectName(), "sfofl_liufangc-invoke", true, true)
         if to then
-            to:drawCards(player:getLostHp(), self:objectName())
+            to:drawCards(player:getLostHp(), skill:objectName())
             to:turnOver()
             if player:getLostHp() > 1 then
                 local lightning = sgs.Sanguosha:cloneCard("lightning", sgs.Card_NoSuit, 0)
@@ -27216,6 +27229,7 @@ sfofl_liufangc = sgs.CreateMasochismSkill{
                 lightning:onEffect(effect)
             end
         end
+        return false
     end
 }
 
@@ -27628,6 +27642,7 @@ yuanjue = sgs.CreateTriggerSkillV2{
 	end,
 }
 quaxiaojiang:addSkill(yuanjue)
+-- DEFER:yuanjue1：CreateFilterSkill 無 V2 對應 API，保留 legacy。
 yuanjue1 = sgs.CreateFilterSkill{
 	name = "#yuanjue1",
 	view_filter = function(self,card)
@@ -28722,6 +28737,7 @@ sfofl_jianji_buff = sgs.CreateTargetModSkillV2{
         return false
     end,
 }
+-- DEFER:sfofl_jianji_prohibit：CreateProhibitSkill 無 V2 對應 API，保留 legacy。
 sfofl_jianji_prohibit = sgs.CreateProhibitSkill {
 	name = "#sfofl_jianji_prohibit",
 	is_prohibited = function(self, from, to, card)
@@ -28852,17 +28868,21 @@ sfofl_duliangVS = sgs.CreateViewAsSkillV2{
 		return sfofl_duliangCard:clone()
 	end,
 }
-sfofl_duliang = sgs.CreateDrawCardsSkill{
+-- 督粮的摸牌增益作用于被標記的角色（未必持有技能實例），
+-- 以全局 RuleSkillV2 在 record 階段直接修正 DrawNCards 數據，等同舊版 DrawCardsSkill 的靜默結算。
+sfofl_duliang = sgs.CreateRuleSkillV2{
 	name = "sfofl_duliang",
 	view_as_skill = sfofl_duliangVS,
-	draw_num_func = function(self, player, n)
-		local room = player:getRoom()
-		local x = player:getMark(self:objectName().."-SelfClear")
-		return n + x
-	end,
-    can_trigger = function(self,target)
-	    return target and target:isAlive() and target:getMark("sfofl_duliang-SelfClear") > 0
-    end
+	events = {sgs.DrawNCards},
+	on_record = function(skill, event, room, player, ctx)
+		if not (player and player:isAlive()) then return end
+		local x = player:getMark(skill:objectName().."-SelfClear")
+		if x <= 0 then return end
+		local draw = ctx.original_data:toDraw()
+		if draw.reason ~= "draw_phase" then return end
+		draw.num = draw.num + x
+		ctx.original_data:setValue(draw)
+	end
 }
 
 sfofl_liyan:addSkill("fulin")
@@ -29013,25 +29033,30 @@ sfofl_xingshang = sgs.CreateTriggerSkillV2{
 	引用：sfofl_fangzhu
 ]] --    
 
-sfofl_fangzhu = sgs.CreateMasochismSkill{
+sfofl_fangzhu = sgs.CreateTriggerSkillV2{
     name = "sfofl_fangzhu",
-    on_damaged = function(self, player)
-        local room = player:getRoom()
-        local to = room:askForPlayerChosen(player, room:getOtherPlayers(player), self:objectName(), "sfofl_fangzhu-invoke", true, true)
+    events = {sgs.Damaged},
+    can_trigger = function(skill, event, room, player, data)
+        if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+        return skill:objectName()
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        local to = room:askForPlayerChosen(player, room:getOtherPlayers(player), skill:objectName(), "sfofl_fangzhu-invoke", true, true)
         if to then
             if not player:isLord() then
                 local n = player:getLostHp()
-                if n>0 and room:askForDiscard(to, self:objectName(), n, n, true,true,"@sfofl_fangzhu:"..player:objectName()) then
-                   room:loseHp(to, 1, true, player, self:objectName())
+                if n>0 and room:askForDiscard(to, skill:objectName(), n, n, true,true,"@sfofl_fangzhu:"..player:objectName()) then
+                   room:loseHp(to, 1, true, player, skill:objectName())
                 else
-                    to:drawCards(player:getLostHp(), self:objectName())
+                    to:drawCards(player:getLostHp(), skill:objectName())
                     to:turnOver()
                 end
             else
-                to:drawCards(player:getLostHp(), self:objectName())
+                to:drawCards(player:getLostHp(), skill:objectName())
                 to:turnOver()
             end
         end
+        return false
     end
 }
 
@@ -29223,22 +29248,26 @@ sfofl_duyu = sgs.General(extension_gai, "sfofl_duyu", "qun", 4)
 	引用：sfofl_sanchen
 ]] --  
 
-sfofl_sanchen = sgs.CreatePhaseChangeSkill{
+sfofl_sanchen = sgs.CreateTriggerSkillV2{
     name = "sfofl_sanchen",
     frequency = sgs.Skill_Wake,
     waked_skills = "sfofl_miewu",
-    on_phasechange = function(self, player)
-        local room = player:getRoom()
-        room:setPlayerMark(player, self:objectName(), 1)
-        if room:changeMaxHpForAwakenSkill(player, 1, self:objectName()) then
-            room:recover(player,sgs.RecoverStruct(self:objectName(),player, 1))
+    events = {sgs.EventPhaseStart},
+    can_trigger = function(skill, event, room, player, data)
+        if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+        if player:getPhase() ~= sgs.Player_Finish or player:getMark(skill:objectName()) ~= 0 then return false end
+        if player:getMark("&mobilezhiwuku") >= 2 or player:canWake(skill:objectName()) then
+            return skill:objectName()
+        end
+        return false
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        room:setPlayerMark(player, skill:objectName(), 1)
+        if room:changeMaxHpForAwakenSkill(player, 1, skill:objectName()) then
+            room:recover(player, sgs.RecoverStruct(skill:objectName(), player, 1))
             room:handleAcquireDetachSkills(player, "sfofl_miewu")
         end
         return false
-    end ,
-    can_trigger = function(self, target)
-        return target and target:isAlive() and target:hasSkill(self:objectName()) and target:getPhase() == sgs.Player_Finish 
-        and target:getMark(self:objectName()) == 0 and (target:getMark("&mobilezhiwuku") >= 2 or target:canWake(self:objectName()))
     end
 }
 
@@ -29923,6 +29952,7 @@ sfofl_w_shenyuanshao = sgs.General(extension_war, "sfofl_w_shenyuanshao", "qun",
 	技能描述：锁定技，你不能装备坐骑牌。你的攻击范围+X（X为你损失的体力值）。
 	引用：sfofl_buzhan
 ]] -- 
+-- DEFER:sfofl_buzhan：CreateCardLimitSkill 無 V2 對應 API（現行 CardLimitation 靜態規則機制），保留 legacy。
 sfofl_buzhan = sgs.CreateCardLimitSkill{
     name = "sfofl_buzhan",
     limit_list = function(self, player)
@@ -31254,6 +31284,7 @@ sfofl_dunji = sgs.CreateTriggerSkillV2{
 	技能描述：锁定技，你的手牌上张始终为4；若你的装备区里没有防具牌，你视为装备着仁王盾。
 	引用：sfofl_gucheng
 ]] -- 
+-- DEFER:sfofl_gucheng_buff：CreateViewAsEquipSkill 無 V2 對應 API，保留 legacy。
 sfofl_gucheng_buff = sgs.CreateViewAsEquipSkill{
     name = "#sfofl_gucheng_buff",
 	view_as_equip = function(self,target)
@@ -31641,6 +31672,7 @@ sfofl_nanbing = sgs.CreateViewAsSkillV2 {
 	技能描述：继承技，你不会成为黑色牌的目标，你的黑色牌目标数+1。
 	引用：sfofl_sunshou
 ]] -- 
+-- DEFER:sfofl_sunshou_prohibit：CreateProhibitSkill 無 V2 對應 API，保留 legacy。
 sfofl_sunshou_prohibit = sgs.CreateProhibitSkill {
 	name = "#sfofl_sunshou_prohibit",
 	is_prohibited = function(self, from, to, card)
@@ -32644,7 +32676,7 @@ sfofl_n_poshi = sgs.CreateTriggerSkillV2{
 				return use.from and (use.from:objectName() == player:objectName() or use.to:contains(player)) and skill:objectName() or false
 			end
         elseif event == sgs.EventLoseSkill or event == sgs.EventAcquireSkill then
-            return data:toSkillChange().skillName == "sfofl_n_poshi" and skill:objectName(), player:objectName() or false
+            return data:toSkillChange().skillName == "sfofl_n_poshi" and skill:objectName() or false
         else
 			local p = room:findPlayersBySkillName(skill:objectName()):first()
 			return p and skill:objectName(), p:objectName() or false
@@ -32785,6 +32817,7 @@ sfofl_n_duanji = sgs.CreateTriggerSkillV2 {
 		return false
 	end
 }
+-- DEFER:sfofl_n_duanji_limit：CreateCardLimitSkill 無 V2 對應 API（現行 CardLimitation 靜態規則機制），保留 legacy。
 sfofl_n_duanji_limit = sgs.CreateCardLimitSkill{
     name = "#sfofl_n_duanji_limit",
     limit_list = function(self, player)
@@ -32955,11 +32988,22 @@ sfofl_n_shenji = sgs.CreateTargetModSkillV2 {
 	技能描述：锁定技，你摸牌阶段改为摸X张牌（X为你的体力值）。
 	引用：sfofl_n_shenwei
 ]] --
-sfofl_n_shenwei = sgs.CreateDrawCardsSkill{
+sfofl_n_shenwei = sgs.CreateTriggerSkillV2{
 	name = "sfofl_n_shenwei",
 	frequency = sgs.Skill_Compulsory,
-	draw_num_func = function(self, player, n)
-		return player:getHp()
+	events = {sgs.DrawNCards},
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:hasSkill(skill:objectName())) then return false end
+		local draw = data:toDraw()
+		return draw.reason == "draw_phase" and skill:objectName() or false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
+		local draw = data:toDraw()
+		room:sendCompulsoryTriggerLog(player, skill:objectName(), true)
+		draw.num = player:getHp()
+		data:setValue(draw)
+		return false
 	end,
 }
 
@@ -33716,7 +33760,7 @@ sfofl_n_weishui_gain = sgs.CreateTriggerSkillV2{
 	events = {sgs.Damage},
 	frequency = sgs.Skill_Compulsory,
 	can_trigger = function(skill, event, room, player, data)
-		return player and skill:objectName(), player:objectName() or false
+		return player and skill:objectName() or false
 	end,
 	on_effect = function(skill, event, room, player, ctx)
 		local Generals = player:property("weishuiGenerals"):toString():split("+")
@@ -33784,6 +33828,8 @@ sfofl_n_weishui_ruleCard = sgs.CreateSkillCard{
 		room:askForUseCard(use.from,"@@sfofl_n_weishui_rule","sfofl_n_weishui_rule0:"..qipjsk,-1,sgs.Card_MethodPlay)
 	end
 }
+-- DEFER:sfofl_n_weishui_ruleVS：動態委派任意借用將的 ViewAsSkill（va:viewFilter/va:viewAs/isEnabledAtResponse/@@ 攔截），
+-- 借用對象多為 legacy/C++ ViewAsSkill，無 V2 request 介面可安全轉發，保留 legacy。
 sfofl_n_weishui_ruleVS = sgs.CreateViewAsSkill{
 	name = "sfofl_n_weishui_rule",
 	n = 999,
@@ -33844,6 +33890,9 @@ local events = {}
 for i=sgs.GameStart,sgs.EventForDiy do
 	table.insert(events,i)
 end
+-- DEFER:sfofl_n_weishui_rule：全域事件多工器——對全部事件 forward 至 weishuiGenerals 動態發現的
+-- legacy TriggerSkill（ts:triggerable/ts:trigger），並維護 weishuiGenerals/sfofl_n_weishui_ruleUse* property/mark 狀態；
+-- V2 技能無舊版 trigger 介面可轉發，借用技能機制屬外部 RTTI 依賴，保留 legacy。
 sfofl_n_weishui_rule = sgs.CreateTriggerSkill{
 	name = "sfofl_n_weishui_rule",
 	events = events,
@@ -33876,7 +33925,7 @@ sfofl_n_weishui_rule = sgs.CreateTriggerSkill{
                             local remove
                             yg = yg:split("+")
                             for _,name in sgs.list(yg)do
-                                if sgs.Sanguosha:getGeneral(name):hasSkill(ts:objectName())	then
+                                if sgs.Sanguosha:getGeneral(name):hasSkill(s:objectName())	then
                                     table.removeOne(yg,name)
                                     remove = name
                                     break
@@ -33964,7 +34013,7 @@ sfofl_n_weishui_rule_hp = sgs.CreateTriggerSkillV2{
 	frequency = sgs.Skill_Frequent,
 	events = {sgs.HpChanged},
 	can_trigger = function(skill, event, room, player, data)
-		return player and skill:objectName(), player:objectName() or false
+		return player and skill:objectName() or false
 	end,
 	on_effect = function(skill, event, room, player, ctx)
 		room:setTag("SkipGameRule", sgs.QVariant(tonumber(event)))
@@ -35006,7 +35055,7 @@ sfofl_jiwei_record = sgs.CreateTriggerSkillV2{
 	events = {sgs.InvokeSkill},
 	can_trigger = function(skill, event, room, player, data)
 		return player and data:toString() == "sfofl_jixin" and player:getMark("sfofl_jiwei") == 0
-			and skill:objectName(), player:objectName() or false
+			and skill:objectName() or false
     end,
 	on_effect = function(skill, event, room, player, ctx)
 		room:addPlayerMark(player, "sfofl_jiwei_jixin_lun")
@@ -35740,6 +35789,7 @@ sfofl_jinghong_buff = sgs.CreateTargetModSkillV2{
 	end,
 }
 
+-- DEFER:sfofl_jinghong_limit：CreateCardLimitSkill 無 V2 對應 API（現行 CardLimitation 靜態規則機制），保留 legacy。
 sfofl_jinghong_limit = sgs.CreateCardLimitSkill{
     name = "#sfofl_jinghong_limit",
     limit_list = function(self, player)
@@ -36489,7 +36539,7 @@ sfofl_henghui_clear = sgs.CreateTriggerSkillV2{
 		local mark = data:toMark()
 		return mark.name == "sfofl_henshin" and mark.gain < 0
 			and (player:getMark("&sfofl_henghui_first") > 0 or player:getMark("&sfofl_henghui_sec") > 0)
-			and skill:objectName(), player:objectName() or false
+			and skill:objectName() or false
     end,
     on_effect = function(skill, event, room, player, ctx)
 		room:setPlayerMark(player, "&sfofl_henghui_first", 0)
@@ -36557,11 +36607,11 @@ sfofl_moqi_clear = sgs.CreateTriggerSkillV2{
         if event == sgs.MarkChanged then
             local mark = data:toMark()
             return mark.name == "sfofl_henshin" and mark.gain < 0 and player:getMark("sfofl_moqi_used") > 0
-				and skill:objectName(), player:objectName() or false
+				and skill:objectName() or false
         elseif event == sgs.EventPhaseChanging then
             local change = data:toPhaseChange()
             return change.to == sgs.Player_NotActive and player:getMark("&sfofl_moqi") > 0
-				and skill:objectName(), player:objectName() or false
+				and skill:objectName() or false
         end
 		return false
     end,
@@ -36728,7 +36778,7 @@ sfofl_gongming_clear = sgs.CreateTriggerSkillV2{
         if event == sgs.MarkChanged then
             local mark = data:toMark()
             return mark.name == "sfofl_henshin" and mark.gain < 0 and player:getMark("&sfofl_gongming") > 0
-				and skill:objectName(), player:objectName() or false
+				and skill:objectName() or false
         end
 		return false
     end,
