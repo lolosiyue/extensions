@@ -12311,7 +12311,7 @@ ny_10th_zhangcai = sgs.CreateTriggerSkillV2{
 					end
 				end
 				n = math.max(1, n)
-		return room:askForSkillInvoke(player, self:objectName(), sgs.QVariant( .. n))
+		return room:askForSkillInvoke(player, self:objectName(), sgs.QVariant(n))
 	end,
 	on_effect = function(self, event, room, player, ctx)
 		local player = ctx.invoker or player
