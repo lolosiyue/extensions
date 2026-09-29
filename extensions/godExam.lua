@@ -30,9 +30,10 @@ ge_shenyi = sgs.CreateTriggerSkillV2{
 	on_record = function(skill, event, room, player, ctx)
 		if event == sgs.EventPhaseProceeding
 		and ctx.owner and ctx.owner:objectName() == player:objectName() then
-			player:removeTag("ge_shenyiJudge")
+			player:removeSkillInstanceStateValue(skill:objectName(), ctx.instanceID, "judge")
 			if player:getPhase()==sgs.Player_Judge then
-				player:setTag("ge_shenyiJudge",ToData(player:getJudgingAreaID()))
+				player:setSkillInstanceStateValue(skill:objectName(), ctx.instanceID, "judge",
+					ToData(player:getJudgingAreaID()))
 			end
 		end
 	end,
@@ -44,9 +45,12 @@ ge_shenyi = sgs.CreateTriggerSkillV2{
 			if player:faceUp() then return skill:objectName() end
 		elseif event == sgs.StartJudge then
 			local judge = data:toJudge()
-			for _,id in sgs.qlist(player:getTag("ge_shenyiJudge"):toIntList()) do
-				if sgs.Sanguosha:getCard(id):objectName()==judge.reason then
-					return skill:objectName()
+			-- 每實例各自記錄判定牌；只讓首個有效實例改判一次（對齊舊版每角色一次）
+			for _,iid in sgs.qlist(player:getValidSkillInstanceIds(skill:objectName())) do
+				for _,id in sgs.qlist(player:getSkillInstanceStateValue(skill:objectName(), iid, "judge"):toIntList()) do
+					if sgs.Sanguosha:getCard(id):objectName()==judge.reason then
+						return skill:objectName().."#"..tostring(iid)
+					end
 				end
 			end
 		end
@@ -59,7 +63,7 @@ ge_shenyi = sgs.CreateTriggerSkillV2{
 			return true
 		elseif event == sgs.StartJudge then
 			local judge = data:toJudge()
-			for _,id in sgs.qlist(player:getTag("ge_shenyiJudge"):toIntList()) do
+			for _,id in sgs.qlist(player:getSkillInstanceStateValue(skill:objectName(), ctx.instanceID, "judge"):toIntList()) do
 				if sgs.Sanguosha:getCard(id):objectName()==judge.reason then
 					room:sendCompulsoryTriggerLog(player, skill)
 					judge.good = not judge.good
@@ -136,7 +140,7 @@ ge_fentianvs = sgs.CreateViewAsSkillV2{
 ge_fentian = sgs.CreateTriggerSkillV2{
 	name = "ge_fentian",
 	events = {sgs.Death},
-	view_as = ge_fentianvs,
+	view_as_skill = ge_fentianvs,
 	can_trigger = function(skill, event, room, player, data)
 		if player and player:isAlive() and player:hasSkill(skill:objectName()) then
 			return skill:objectName()
@@ -1011,6 +1015,7 @@ ge_xuanming:addSkill(ge_zirun)
 ge_chuanxi = sgs.General(extension_exam, "ge_chuanxi", "god", 4, true, true)
 ge_chuanxi:addSkill("ge_shenyi")
 ge_chuanxi:addSkill("ge_shenen")
+-- ProhibitSkill has no SkillV2 counterpart (no V2 factory in sgs_ex.lua); kept as legacy.
 ge_zaoyi = sgs.CreateProhibitSkill{
 	name = "ge_zaoyi",
 	is_prohibited = function(self,from,to,card)
@@ -1253,16 +1258,29 @@ god_examScenario = sgs.CreateScenario{--创建剧情模式
 		roles = roles2
 	end
 }
-god_examScenarioRule = sgs.CreateScenarioRule{--创建剧情规则（就是创建一个特殊的全局触发技，但这个全局触发技只有进入剧情才启用）
+god_examScenarioRule = sgs.CreateRuleSkillV2{--创建剧情规则（就是创建一个特殊的全局触发技，但这个全局触发技只有进入剧情才启用）
+	name = "godexam",--规则沿用剧情名（旧 ScenarioRule 以剧情 objectName 命名）
 	events = {sgs.GameReady,sgs.GameOver},--触发时机
-	global = true,--默认全局触发
-	scenario = god_examScenario,--设定触发技的剧情模式
-	on_trigger = function(self,event,player,data,room)--触发函数
+	scenario = god_examScenario,--设定触发技的剧情模式（工厂会 setRule 并关闭 global）
+	priority = 1,--旧 CreateScenarioRule 默认 priority=1
+	frequency = sgs.Skill_Compulsory,--剧情规则自动执行，不给取消选项
+	can_trigger = function(self,event,room,player,data)--规则需回传技能名+决策者；player 为事件角色（房间级事件为 nil）
 		if event==sgs.GameReady then
-			if room:getTag("god_exam"):toBool() or player then return end
+			if room:getTag("god_exam"):toBool() or player then return "" end--只在开局广播（无事件角色）时执行
 			local lord = room:getLord()
-			if not lord then return end
+			if lord then return self:objectName(), lord end
+		elseif event==sgs.GameOver
+		and room:getTag("god_exam"):toBool() then
+			local decision = player or room:getAllPlayers():first()
+			if decision then return self:objectName(), decision end
+		end
+		return ""
+	end,
+	on_effect = function(self,event,room,player,ctx)--player 即 can_trigger 指定的决策者
+		local data = ctx.original_data
+		if event==sgs.GameReady then
 			room:setTag("god_exam",ToData(true))
+			local lord = room:getLord()
 			local ops = room:getOtherPlayers(lord)
 			
 			local lgs = {"ge_qinglong","ge_zhuque","ge_baihu","ge_xuanwu"}
@@ -1314,7 +1332,7 @@ god_examScenarioRule = sgs.CreateScenarioRule{--创建剧情规则（就是创�
 		return false
 	end,
 }
---god_examScenario:setRule(god_examScenarioRule)--将触发技设置给剧情
+addToSkills(god_examScenarioRule)--V2 派发用 Sanguosha->getTriggerSkill("godexam") 解析规则定义，须注册进引擎
 --sgs.Sanguosha:addScenario(god_examScenario)
 
 
@@ -1465,6 +1483,7 @@ sgs.LoadTranslationTable{
 extension_yanluo = sgs.Package("~BossYanluo")
 
 yl_qinguang = sgs.General(extension_yanluo, "yl_qinguang", "qun", 3, true, true)
+-- ProhibitSkill has no SkillV2 counterpart (no V2 factory in sgs_ex.lua); kept as legacy.
 yl_panguan = sgs.CreateProhibitSkill{
 	name = "yl_panguan",
 	is_prohibited = function(self,from,to,card)
@@ -2319,8 +2338,17 @@ yl_wuliang = sgs.CreateTriggerSkillV2{
 			end
 		elseif event==sgs.DrawNCards then
 			local draw = ctx.original_data:toDraw()
-			if draw.reason~="InitialHandCards" or player:getTag("yl_wuliangIHC"):toBool() then return false end
-			player:setTag("yl_wuliangIHC",sgs.QVariant(true))
+			if draw.reason~="InitialHandCards" then return false end
+			-- 起手加成每名玩家只發一次；同一武將多實例共用此判定
+			local dealt = false
+			for _,iid in sgs.qlist(player:getSkillInstanceIds(skill:objectName())) do
+				if player:getSkillInstanceStateValue(skill:objectName(),iid,"ihc"):toBool() then
+					dealt = true
+					break
+				end
+			end
+			if dealt then return false end
+			player:setSkillInstanceStateValue(skill:objectName(),ctx.instanceID,"ihc",sgs.QVariant(true))
 			room:sendCompulsoryTriggerLog(player, skill)
 			draw.num = draw.num+3
 			ctx.original_data:setValue(draw)
