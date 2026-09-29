@@ -64,10 +64,32 @@ establishOECard = sgs.CreateSkillCard{
 }
 
 function establishOE(room, source, target)
-	local card = establishOECard:clone()
-	card:setSkillName("establishOECard")
-	room:useCard(sgs.CardUseStruct(card, source, target, false), false)
-	return
+	-- Avoid nested room:useCard during DamageInflicted.
+	-- 50p AOE (~49 targets) + establishOE useCard + BreakYinni/changeHero
+	-- overflowed RoomThread stack (SIGSEGV, fault≈SP) in h50p-huajing-fix.
+	if not source or not target then return end
+	local number
+	for num = 8, 0, -1 do
+		local numused = false
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+			if p:getMark("@LuaOldEnemy" .. num) ~= 0 then
+				numused = true
+				break
+			end
+		end
+		if not numused then
+			number = num
+		end
+	end
+	if number == nil then return end
+	local mark = "@LuaOldEnemy" .. number
+	if not getOEMark(source) then source:gainMark(mark) end
+	if not getOEMark(target) then target:gainMark(mark) end
+	-- Mirror establishOECard on_effect for both parties (on_use cardEffect'd both)
+	source:loseAllMarks("@LuaOldEnemyHermit")
+	target:loseAllMarks("@LuaOldEnemyHermit")
+	room:setPlayerFlag(source, "OEHermit")
+	room:setPlayerFlag(target, "OEHermit")
 end
 
 relieveOECard = sgs.CreateSkillCard{
@@ -82,13 +104,13 @@ relieveOECard = sgs.CreateSkillCard{
 }
 
 function relieveOE(room, player)
+	-- Same stack-safety rationale as establishOE: no nested useCard.
 	local OldEnemy = findMyOE(player, room)
-	if OldEnemy then
-		local card = relieveOECard:clone()
-		card:setSkillName("relieveOECard")
-		room:useCard(sgs.CardUseStruct(card, player, OldEnemy, false), false)
-	end
-	return
+	if not OldEnemy then return end
+	local mark = getOEMark(player)
+	if not mark then return end
+	player:loseAllMarks(mark)
+	OldEnemy:loseAllMarks(mark)
 end
 
 function setPublicEnemy(room, player)
