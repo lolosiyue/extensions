@@ -5158,6 +5158,17 @@ end
 sgs.ai_playerchosen_intention.ov_tianshou = -66
 
 addAiSkills("ov_huajing").getTurnUseCard = function(self)
+	if self.player:usedTimes("#ov_huajingCard") >= 1 or self.player:getMark("ov_huajing-Clear") > 0 then
+		return
+	end
+	local hasWu = false
+	for _, m in sgs.list(self.player:getMarkNames()) do
+		if m:endsWith("+#ov_huajingWu") and self.player:getMark(m) > 0 then
+			hasWu = true
+			break
+		end
+	end
+	if not hasWu then return end
 	local ids = {}
 	local ss = {}
 	local cs = self.player:getHandcards()
