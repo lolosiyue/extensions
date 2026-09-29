@@ -1074,31 +1074,62 @@ sgkgodjuejing = sgs.CreateTriggerSkillV2{
 	【无懈可击】-不可被响应，且你获得被响应的牌。
 	引用：sgkgodlonghun
 ]]--
-sgkgodlonghun = sgs.CreateViewAsSkill{
+sgkgodlonghun = sgs.CreateViewAsSkillV2{
     name = "sgkgodlonghun",
 	response_or_use = true,
 	n = 2,
-	view_filter = function(self, selected, to_select)
-	    if (#selected > 1) or to_select:hasFlag("using") then return false end
-		if #selected > 0 then
-			return to_select:getSuit() == selected[1]:getSuit()
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player then return false end
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+			return player:isWounded() or sgs.Slash_IsAvailable(player)
 		end
-		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-			if sgs.Self:isWounded() or (to_select:getSuit() == sgs.Card_Heart) then
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+				or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			local pattern = request:getPattern() or ""
+			if pattern == "nullification" then
+				local count = 0
+				for _, c in sgs.qlist(player:getHandcards()) do
+					if c:getSuit() == sgs.Card_Spade then count = count + 1 end
+				end
+				for _, c in sgs.qlist(player:getEquips()) do
+					if c:getSuit() == sgs.Card_Spade then count = count + 1 end
+				end
+				return count >= 1
+			end
+			return pattern == "slash" or pattern == "jink"
+				or (string.find(pattern, "peach") ~= nil and player:getMark("Global_PreventPeach") == 0)
+		end
+		return false
+	end,
+	can_select_card = function(skill, request, to_select)
+		if not to_select or to_select:hasFlag("using") then return false end
+		local ids = request:getSelectedCardIds()
+		if ids:length() > 1 then return false end
+		local player = request:getInitiator()
+		if not player then return false end
+		if ids:length() > 0 then
+			local first = sgs.Sanguosha:getCard(ids:first())
+			return first ~= nil and to_select:getSuit() == first:getSuit()
+		end
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+			if player:isWounded() or (to_select:getSuit() == sgs.Card_Heart) then
 				return true
-			elseif sgs.Slash_IsAvailable(sgs.Self) and (to_select:getSuit() == sgs.Card_Diamond) then
-				if sgs.Self:getWeapon() and (to_select:getEffectiveId() == sgs.Self:getWeapon():getId())
+			elseif sgs.Slash_IsAvailable(player) and (to_select:getSuit() == sgs.Card_Diamond) then
+				if player:getWeapon() and (to_select:getEffectiveId() == player:getWeapon():getId())
 						and to_select:isKindOf("Crossbow") then
-					return sgs.Self:canSlashWithoutCrossbow()
+					return player:canSlashWithoutCrossbow()
 				else
 					return true
 				end
 			else
 				return false
 			end
-		elseif (sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE)
-				or (sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE) then
-			local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
+		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+				or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			local pattern = request:getPattern() or ""
 			if pattern == "jink" then
 				return to_select:getSuit() == sgs.Card_Club
 			elseif pattern == "nullification" then
@@ -1112,9 +1143,16 @@ sgkgodlonghun = sgs.CreateViewAsSkill{
 		end
 		return false
 	end,
-	view_as = function(self, cards)
-		if #cards ~= 1 and #cards ~= 2 then return nil end
-		local card = cards[1]
+	card_selection_feasible = function(skill, request)
+		local n = request:getSelectedCardIds():length()
+		return n == 1 or n == 2
+	end,
+	create_card = function(skill, request)
+		local ids = request:getSelectedCardIds()
+		local n = ids:length()
+		if n ~= 1 and n ~= 2 then return nil end
+		local card = sgs.Sanguosha:getCard(ids:first())
+		if not card then return nil end
 		local new_card = nil
 		if card:getSuit() == sgs.Card_Spade then
 			new_card = sgs.Sanguosha:cloneCard("nullification", sgs.Card_SuitToBeDecided, 0)
@@ -1126,33 +1164,17 @@ sgkgodlonghun = sgs.CreateViewAsSkill{
 			new_card = sgs.Sanguosha:cloneCard("fire_slash", sgs.Card_SuitToBeDecided, 0)
 		end
 		if new_card then
-			if #cards == 1 then
+			if n == 1 then
 				new_card:setSkillName("sgkgodlonghunC")
 			else
 				new_card:setSkillName("sgkgodlonghunBuff")
 			end
-			for _, c in ipairs(cards) do
-				new_card:addSubcard(c)
+			for _, id in sgs.qlist(ids) do
+				new_card:addSubcard(id)
 			end
 		end
 		return new_card
-	end ,
-	enabled_at_play = function(self, player)
-		return player:isWounded() or sgs.Slash_IsAvailable(player)
-	end ,
-	enabled_at_response = function(self, player, pattern)
-		return pattern == "slash" or pattern == "jink" or (string.find(pattern, "peach") and player:getMark("Global_PreventPeach") == 0) or pattern == "nullification"
-	end ,
-	enabled_at_nullification = function(self, player)
-		local count = 0
-		for _, card in sgs.qlist(player:getHandcards()) do
-			if card:getSuit() == sgs.Card_Spade then count = count + 1 end
-		end
-		for _, card in sgs.qlist(player:getEquips()) do
-			if card:getSuit() == sgs.Card_Spade then count = count + 1 end
-		end
-		return count >= 1
-	end
+	end,
 }
 
 
@@ -1833,51 +1855,63 @@ sgkgodtianqiCard = sgs.CreateSkillCard{
 	end
 }
 
-sgkgodtianqiVS = sgs.CreateZeroCardViewAsSkill{
+sgkgodtianqiVS = sgs.CreateViewAsSkillV2{
 	name = "sgkgodtianqi",
+	n = 0,
 	response_or_use = true,
-	enabled_at_response = function(self, player, pattern)
-		if player:hasFlag("Global_Dying") then return false end
-		if string.sub(pattern, 1, 1) == "." or string.sub(pattern, 1, 1) == "@" then return false end
-        if pattern == "peach" then
-		    return not player:hasFlag("Global_PreventPeach")
+	guhuo_type = "lr",
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player or player:hasFlag("Global_Dying") then return false end
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+			return not player:hasFlag("tianqi_used")
 		end
-		if string.find(pattern, "[%u%d]") then return false end
-		return true
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+				or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			local pattern = request:getPattern() or ""
+			if string.sub(pattern, 1, 1) == "." or string.sub(pattern, 1, 1) == "@" then return false end
+			if pattern == "peach" then
+				return not player:hasFlag("Global_PreventPeach")
+			end
+			if string.find(pattern, "[%u%d]") then return false end
+			return true
+		end
+		return false
 	end,
-	enabled_at_play = function(self, player)
-		if player:hasFlag("Global_Dying") then return false end
-		return not player:hasFlag("tianqi_used")
-	end,
-	view_as = function(self)
-	    if not sgs.Self:hasFlag("Global_Dying") then
-		    local pattern
-			if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-			    local c = sgs.Self:getTag("sgkgodtianqi"):toCard()
+	create_card = function(skill, request)
+		local player = request:getInitiator()
+		if not player or player:hasFlag("Global_Dying") then return nil end
+		local pattern
+		if request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+			local user_str = request:getUserString()
+			if user_str and user_str ~= "" then
+				pattern = user_str
+			else
+				local c = player:getTag("sgkgodtianqi"):toCard()
 				if c then
 					pattern = c:objectName()
 				else
 					return nil
 				end
+			end
+		else
+			local user_str = request:getUserString()
+			if user_str and user_str ~= "" then
+				pattern = user_str
+			elseif player:getTag("TianqiSlash"):toString() ~= "" then
+				pattern = player:getTag("TianqiSlash"):toString()
 			else
-				if sgs.Self:getTag("TianqiSlash"):toString() ~= "" then
-					pattern = sgs.Self:getTag("TianqiSlash"):toString()
-				else
-					pattern = sgs.Sanguosha:getCurrentCardUsePattern()
-				end
-		    end
-		    if pattern then
-				local tq = sgkgodtianqiCard:clone()
-				tq:setUserString(pattern)
-				return tq
-			else
-				return nil
+				pattern = request:getPattern()
 			end
 		end
+		if pattern and pattern ~= "" then
+			local tq = sgkgodtianqiCard:clone()
+			tq:setUserString(pattern)
+			return tq
+		end
+		return nil
 	end,
-	enabled_at_nullification = function(self, player)
-		return not player:hasFlag("Global_Dying")
-	end
 }
 
 sgkgodtianqi = sgs.CreateTriggerSkillV2{
@@ -2237,6 +2271,7 @@ sgkgodguanyu = sgs.General(extension, "sgkgodguanyu", "sy_god", 5)
 	技能描述：锁定技，你的【杀】和【桃】均视为【决斗】。你对其他神或魔武将造成的伤害+1。
 	引用：sgkgodwushen
 ]]--
+--DEFER:sgkgodwushen:CreateFilterSkill 無 V2 API
 sgkgodwushen = sgs.CreateFilterSkill{
     name = "sgkgodwushen",
 	view_filter = function(self, to_select)
@@ -2634,6 +2669,7 @@ sgkgodfeiying = sgs.CreateTargetModSkillV2{
 	end
 }
 
+--DEFER:sgkgodfeiyingSlash:CreateProhibitSkill 無 V2 API
 sgkgodfeiyingSlash = sgs.CreateProhibitSkill{
     name = "#sgkgodfeiying",
 	is_prohibited = function(self, from, to, card)
@@ -7988,32 +8024,59 @@ nos_sgkgodjuejing = sgs.CreateTriggerSkillV2{
 
 
 --龙魂
-nos_sgkgodlonghun = sgs.CreateViewAsSkill{
+nos_sgkgodlonghun = sgs.CreateViewAsSkillV2{
     name = "nos_sgkgodlonghun",
 	response_or_use = true,
 	n = 999,
-	view_filter = function(self, selected, card)
-	    local n = math.max(1, sgs.Self:getHp())
-		if #selected >= n or card:hasFlag("using") then
-			return false 
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player then return false end
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+			return player:isWounded() or sgs.Slash_IsAvailable(player)
 		end
-		if n > 1 and not #selected == 0 then
-			local suit = selected[1]:getSuit()
-			return card:getSuit() == suit
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+				or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			local pattern = request:getPattern() or ""
+			if pattern == "nullification" then
+				local n = math.max(1, player:getHp())
+				local count = 0
+				for _, c in sgs.qlist(player:getHandcards()) do
+					if c:getSuit() == sgs.Card_Spade then count = count + 1 end
+					if count >= n then return true end
+				end
+				for _, c in sgs.qlist(player:getEquips()) do
+					if c:getSuit() == sgs.Card_Spade then count = count + 1 end
+					if count >= n then return true end
+				end
+				return false
+			end
+			return pattern == "slash" or pattern == "jink"
+				or (string.find(pattern, "peach") ~= nil and player:getMark("Global_PreventPeach") == 0)
 		end
-		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-			if sgs.Self:isWounded() and card:getSuit() == sgs.Card_Heart then
+		return false
+	end,
+	can_select_card = function(skill, request, card)
+		local player = request:getInitiator()
+		if not player then return false end
+		local n = math.max(1, player:getHp())
+		if not card or card:hasFlag("using") then return false end
+		if request:getSelectedCardIds():length() >= n then return false end
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+			if player:isWounded() and card:getSuit() == sgs.Card_Heart then
 				return true
 			elseif card:getSuit() == sgs.Card_Diamond then
 				local slash = sgs.Sanguosha:cloneCard("fire_slash", sgs.Card_SuitToBeDecided, -1)
 				slash:addSubcard(card:getEffectiveId())
 				slash:deleteLater()
-				return slash:isAvailable(sgs.Self)
+				return slash:isAvailable(player)
 			else
 				return false
 			end
-		elseif sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE or sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
-			local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
+		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+				or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			local pattern = request:getPattern() or ""
 			if pattern == "jink" then
 				return card:getSuit() == sgs.Card_Club
 			elseif pattern == "nullification" then
@@ -8026,13 +8089,21 @@ nos_sgkgodlonghun = sgs.CreateViewAsSkill{
 			return false
 		end
 		return false
-	end ,
-	view_as = function(self, cards)
-		local n = math.max(1, sgs.Self:getHp())
-		if #cards ~= n then 
-			return nil 
-		end
-		local card = cards[1]
+	end,
+	card_selection_feasible = function(skill, request)
+		local player = request:getInitiator()
+		if not player then return false end
+		local n = math.max(1, player:getHp())
+		return request:getSelectedCardIds():length() == n
+	end,
+	create_card = function(skill, request)
+		local player = request:getInitiator()
+		if not player then return nil end
+		local n = math.max(1, player:getHp())
+		local ids = request:getSelectedCardIds()
+		if ids:length() ~= n then return nil end
+		local card = sgs.Sanguosha:getCard(ids:first())
+		if not card then return nil end
 		local new_card = nil
 		if card:getSuit() == sgs.Card_Spade then
 			new_card = sgs.Sanguosha:cloneCard("nullification", sgs.Card_SuitToBeDecided, 0)
@@ -8044,32 +8115,13 @@ nos_sgkgodlonghun = sgs.CreateViewAsSkill{
 			new_card = sgs.Sanguosha:cloneCard("fire_slash", sgs.Card_SuitToBeDecided, 0)
 		end
 		if new_card then
-			new_card:setSkillName(self:objectName())
-			for _, c in ipairs(cards) do
-				new_card:addSubcard(c)
+			new_card:setSkillName(skill:objectName())
+			for _, id in sgs.qlist(ids) do
+				new_card:addSubcard(id)
 			end
 		end
 		return new_card
-	end ,
-	enabled_at_play = function(self, player)
-		return player:isWounded() or sgs.Slash_IsAvailable(player)
-	end ,
-	enabled_at_response = function(self, player, pattern)
-		return pattern == "slash" or pattern == "jink" or (string.find(pattern, "peach") and player:getMark("Global_PreventPeach") == 0) or (pattern == "nullification")
-	end ,
-	enabled_at_nullification = function(self, player)
-		local n = math.max(1, player:getHp())
-		local count = 0
-		for _, card in sgs.qlist(player:getHandcards()) do
-			if card:getSuit() == sgs.Card_Spade then count = count + 1 end
-			if count >= n then return true end
-		end
-		for _, card in sgs.qlist(player:getEquips()) do
-			if card:getSuit() == sgs.Card_Spade then count = count + 1 end
-			if count >= n then return true end
-		end
-		return false
-	end
+	end,
 }
 
 
