@@ -178,7 +178,9 @@ y_tiaoxin = sgs.CreateViewAsSkillV2 {
 	end,
 
 	create_card = function(skill, request)
-		return y_tiaoxincard:clone()
+		local card = y_tiaoxincard:clone()
+		card:setSkillName(skill:objectName())
+		return card
 	end,
 }
 
@@ -1511,6 +1513,7 @@ y_shenzhu = sgs.CreateViewAsSkillV2 {
 		if ids:length() ~= 1 then return nil end
 		local card = y_shenzhucard:clone()
 		card:addSubcard(ids:at(0))
+		card:setSkillName(skill:objectName())
 		return card
 	end,
 }
@@ -2070,7 +2073,9 @@ y_xiangxi = sgs.CreateViewAsSkillV2 {
 	end,
 
 	create_card = function(skill, request)
-		return y_xiangxicard:clone()
+		local card = y_xiangxicard:clone()
+		card:setSkillName(skill:objectName())
+		return card
 	end,
 }
 
