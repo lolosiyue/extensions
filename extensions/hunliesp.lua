@@ -138,14 +138,38 @@ local hunliesp_global_skill_names = {
 	"#hunliesp_global_clearSchemeMarks", "#hunliesp_global_resistLoseSkill",
 	"#hunliesp_global_breakTempCards", "#sgkgodhualongDraw1",
 }
+-- Reentrancy guard: attachSkillToPlayer can fire skill-change on_record
+-- which used to re-enter ensure and spin forever (50p soft-stuck).
+local hunliesp_ensuring_globals = false
 local function hunliesp_ensure_global_instances(room)
+	if hunliesp_ensuring_globals then return end
+	hunliesp_ensuring_globals = true
+	local skip_set = {}
+	local skip_str = room:getTag("hunliesp_ensure_skip"):toString()
+	if skip_str ~= "" then
+		for _, n in ipairs(skip_str:split("+")) do
+			if n ~= "" then skip_set[n] = true end
+		end
+	end
+	local skip_changed = false
 	for _, p in sgs.qlist(room:getAllPlayers(true)) do
 		for _, skill_name in ipairs(hunliesp_global_skill_names) do
-			if p:getSkillInstanceIds(skill_name):isEmpty() then
+			if not skip_set[skill_name] and p:getSkillInstanceIds(skill_name):isEmpty() then
 				room:attachSkillToPlayer(p, skill_name)
+				-- If attach left ids empty, do not hammer this name for the room.
+				if p:getSkillInstanceIds(skill_name):isEmpty() then
+					skip_set[skill_name] = true
+					skip_changed = true
+				end
 			end
 		end
 	end
+	if skip_changed then
+		local parts = {}
+		for n, _ in pairs(skip_set) do table.insert(parts, n) end
+		room:setTag("hunliesp_ensure_skip", sgs.QVariant(table.concat(parts, "+")))
+	end
+	hunliesp_ensuring_globals = false
 end
 
 --全局配置类技能
@@ -5165,14 +5189,14 @@ for _, _first in ipairs(scheme_first_char) do
 		local draw_mark = skname.."hunlie_global_schemedraw"
 		local maxcards_mark = skname.."hunlie_global_schememaxcards"
 		local slashtime_mark = skname.."hunlie_global_schemeslashtime"
+		-- Do NOT call hunliesp_ensure_global_instances here: 120 of these fire
+		-- on every DrawNCards and re-enter ensure via attach → soft-stuck.
+		-- Ensure stays on GameStart / EventAcquire|LoseSkill / core globals.
 		local sgkgodjiguan_exdraw = sgs.CreateTriggerSkillV2{
 			name = "#".._first.._second.."draw",
 			global = true,
 			frequency = sgs.Skill_Compulsory,
 			events = {sgs.DrawNCards},
-			on_record = function(skill, event, room, player, ctx)
-				hunliesp_ensure_global_instances(room)
-			end,
 			can_trigger = function(skill, event, room, player, data)
 				if not player then return false end
 				local draw = data:toDraw()
