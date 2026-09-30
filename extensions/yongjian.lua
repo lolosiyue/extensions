@@ -146,7 +146,7 @@ yj_numabf = sgs.CreateDistanceSkillV2{
 		local to = context:getSecondary()
 		if to and to:hasOffensiveHorse("yj_numa")
 		then return 1 end
-		return -1
+		-- V2 固定值：nil/false 表示不生效；负数会作为有效固定值参与聚合
 	end
 }
 yj_numa = sgs.CreateOffensiveHorse{
@@ -1630,7 +1630,7 @@ zd_yawang = sgs.CreateTriggerSkillV2{
 				room:setPlayerMark(player,"zd_yawang-Clear",x)
 				return true
 			elseif player:getPhase()==sgs.Player_Play and player:getMark("zd_yawang_stop-Clear")>0 then
-				room:setPlayerCardLimitation(player,"use",".",false)
+				room:setPlayerCardLimitation(player,"use",".",true,"zd_yawang")
 			end
 		elseif player:getPhase()==sgs.Player_Play and (event==sgs.CardUsed or event==sgs.CardResponded) then
 			local card
@@ -1645,12 +1645,12 @@ zd_yawang = sgs.CreateTriggerSkillV2{
 			if card and card:getHandlingMethod()==sgs.Card_MethodUse and player:getMark("zd_yawang-Clear") > 0 then
 				room:removePlayerMark(player,"zd_yawang-Clear")
 				if player:getMark("zd_yawang-Clear")==0 then
-					room:setPlayerCardLimitation(player,"use",".",false)
+					room:setPlayerCardLimitation(player,"use",".",true,"zd_yawang")
 					room:addPlayerMark(player,"zd_yawang_stop-Clear")
 				end
 			end
 		elseif event==sgs.EventPhaseEnd and player:getPhase()==sgs.Player_Play then
-			room:removePlayerCardLimitation(player,"use",".")
+			room:removePlayerCardLimitationByReason(player,"zd_yawang")
 		end
 	end
 }
@@ -1677,7 +1677,9 @@ zd_fenyueCard = sgs.CreateSkillCard{
 				room:useCard(sgs.CardUseStruct(slash,source,targets[1]))
 			else
 				room:addPlayerMark(targets[1],"ban_ur")
-				room:setPlayerCardLimitation(targets[1],"use,response",".|.|.|hand",false)
+				-- "本回合"有效期：$1 于目标自己回合结束兜底清除；
+				-- 正常由 ZhongdanOnTrigger 在当前回合结束时按 reason 清扫
+				room:setPlayerCardLimitation(targets[1],"use,response",".|.|.|hand",true,"zd_fenyue")
 			end
 		else
 			room:broadcastSkillInvoke("zd_fenyue",1)
@@ -2342,11 +2344,13 @@ zd_sheshen = sgs.CreateTriggerSkillV2{
 	can_trigger = function(self,event,room,player,data)
 		if not (player and player:getHp()<1) then return false end
 		-- 技能由持有者的实例在他人濒死结算时触发；context owner = 持有者
-		local who = {}
+		-- format-2 返回的技能名与持有者列表必须一一对应，否则只有首个持有者会被配对
+		local skills,who = {},{}
 		for _,p in sgs.qlist(room:findPlayersBySkillName("zd_sheshen"))do
-			table.insert(who,p:objectName())
+			skills[#skills+1] = self:objectName()
+			who[#who+1] = p:objectName()
 		end
-		if #who>0 then return self:objectName(), table.concat(who,"|") end
+		if #who>0 then return table.concat(skills,"|"), table.concat(who,"|") end
 		return false
 	end,
 	on_effect = function(self,event,room,player,ctx)
@@ -2525,11 +2529,17 @@ local canZhongdan
 ZhongdanOnTrigger = sgs.CreateTriggerSkillV2{
 	name = "#ZhongdanOnTrigger",
 	events = {sgs.GameReady,sgs.BuryVictim,sgs.BeforeGameOverJudge,
-	sgs.DrawNCards,sgs.EventPhaseEnd,sgs.TargetConfirming,sgs.CardsMoveOneTime},
+	sgs.DrawNCards,sgs.EventPhaseEnd,sgs.EventPhaseChanging,sgs.TargetConfirming,sgs.CardsMoveOneTime},
 	frequency = sgs.Skill_Compulsory,
 	global = true,
 	can_trigger = function(self,event,room,player,data)
 		if not player then return false end
+		-- 回合结束清扫 zd_* 卡牌限制；与 ZhongdanCard 封禁开关无关（无对应 reason 时为空操作）
+		if event==sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change and change.to==sgs.Player_NotActive then return self:objectName() end
+			return false
+		end
 		if canZhongdan or ZhongdanEvent then return self:objectName() elseif canZhongdan==false then return false end
 		canZhongdan = not table.contains(sgs.Sanguosha:getBanPackages(),"ZhongdanCard")
 		if canZhongdan then return self:objectName() end
@@ -2694,6 +2704,12 @@ ZhongdanOnTrigger = sgs.CreateTriggerSkillV2{
 				if p:distanceTo(player)==1 then
 					p:drawCards(1,"zd_caomujiebing")
 				end
+			end
+		elseif event==sgs.EventPhaseChanging then
+			-- "本回合"语义的 use/response 锁定于当前回合结束时清除
+			for _,p in sgs.list(room:getAllPlayers())do
+				room:removePlayerCardLimitationByReason(p,"zd_fenyue")
+				room:removePlayerCardLimitationByReason(p,"zd_yawang")
 			end
 		end
 		return false
