@@ -14171,7 +14171,7 @@ fanyiTargetMod = sgs.CreateTargetModSkillV2 {
 		if from:hasFlag("3available_ad") and card:isKindOf("Slash") then
 			return 1
 		elseif from:hasFlag("3available_re") and card:isKindOf("Slash") then
-			return -1
+			return sgs.CorrectSkillResult.unlimitedResidue()
 		end
 		return 0
 				end
