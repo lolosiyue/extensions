@@ -110,58 +110,102 @@ s4_cloud_tuxi = sgs.CreateTriggerSkillV2{
     end,
 }
 
+-- 勇前目標以實例 correctState["target"]（QStringList）記錄，供技能描述投影與 buff 查詢；
+-- 目標身上的 & 角標仍用 mark（state 無法顯示在他人頭像），按實例引用數重算。
+local function s4_cloud_yongqianRef(holder, iid)
+    return sgs.SkillInstanceRef(holder:objectName(), sgs.SkillInstanceKey("s4_cloud_yongqian", iid))
+end
+
+local function s4_cloud_yongqianTargets(holder, iid)
+    local targets = {}
+    for _, n in sgs.qlist(holder:getSkillInstanceCorrectStateValue("s4_cloud_yongqian", iid, "target"):toStringList()) do
+        table.insert(targets, n)
+    end
+    return targets
+end
+
+local function s4_cloud_yongqianSetTargets(room, holder, iid, targets)
+    local ref = s4_cloud_yongqianRef(holder, iid)
+    if #targets == 0 then
+        room:removeSkillInstanceCorrectState(holder, ref, "target")
+    else
+        local v = sgs.QVariant()
+        v:setStringList(table.concat(targets, "|"))
+        room:setSkillInstanceCorrectState(holder, ref, "target", v)
+    end
+end
+
+local function s4_cloud_yongqianSyncBadge(room, holder, targetName)
+    local count = 0
+    for _, iid in sgs.list(holder:getSkillInstanceIds("s4_cloud_yongqian")) do
+        for _, tn in sgs.qlist(holder:getSkillInstanceCorrectStateValue("s4_cloud_yongqian", iid, "target"):toStringList()) do
+            if tn == targetName then count = count + 1 end
+        end
+    end
+    local target = room:findPlayerByObjectName(targetName, true)
+    if target then
+        room:setPlayerMark(target, "&s4_cloud_yongqian+sys_+to+#" .. holder:objectName(), count)
+    end
+end
+
+local function s4_cloud_yongqianDropTarget(room, holder, iid, targetName)
+    local targets = s4_cloud_yongqianTargets(holder, iid)
+    local kept, removed = {}, false
+    for _, tn in ipairs(targets) do
+        if tn == targetName then removed = true else table.insert(kept, tn) end
+    end
+    if removed then
+        s4_cloud_yongqianSetTargets(room, holder, iid, kept)
+        s4_cloud_yongqianSyncBadge(room, holder, targetName)
+    end
+end
+
+local function s4_cloud_yongqianClearInstance(room, holder, iid)
+    local seen = {}
+    for _, tn in ipairs(s4_cloud_yongqianTargets(holder, iid)) do
+        seen[tn] = true
+    end
+    room:clearSkillInstanceCorrectState(holder, s4_cloud_yongqianRef(holder, iid))
+    -- 實例可能已隨失去技能移除而讀不到 state，補掃仍帶角標的目標
+    local badge = "&s4_cloud_yongqian+sys_+to+#" .. holder:objectName()
+    for _, p in sgs.qlist(room:getAllPlayers()) do
+        if p:getMark(badge) > 0 then seen[p:objectName()] = true end
+    end
+    for tn in pairs(seen) do
+        s4_cloud_yongqianSyncBadge(room, holder, tn)
+    end
+end
+
 s4_cloud_yongqian = sgs.CreateTriggerSkillV2{
     name = "s4_cloud_yongqian",
     events = { sgs.DrawNCards, sgs.TargetConfirmed, sgs.EventPhaseChanging, sgs.EventLoseSkill, sgs.Death },
 	base_amount = 1,
     on_record = function(skill, event, room, player, ctx)
-		local shouldClean = false
 		local instId = ctx.instanceID
 		local data = ctx.original_data
 		if event == sgs.EventPhaseChanging then
 			local change = data:toPhaseChange()
 			if change.to == sgs.Player_Start and player:hasSkill("s4_cloud_yongqian") then
-				shouldClean = true
+				s4_cloud_yongqianClearInstance(room, player, instId)
 			end
 		elseif event == sgs.EventLoseSkill then
 			local change = data:toSkillChange()
 			if change.skillName == skill:objectName() and change.instanceID == instId then
-				shouldClean = true
+				s4_cloud_yongqianClearInstance(room, player, instId)
 			end
         elseif event == sgs.Death then
 			local who = data:toDeath().who
 			-- Death 對每位玩家各呼叫一次 on_record；只在 player 是死者時動作
 			if who:objectName() == player:objectName() then
 				if ctx.owner:objectName() == player:objectName() then
-					-- 死者 = 技能持有者：走下方全清迴圈
-					shouldClean = true
+					-- 死者 = 技能持有者：清本實例
+					s4_cloud_yongqianClearInstance(room, player, instId)
 				else
-					-- 死者 = 被標記目標：只清與死者相關的 mark（refcount 遞減）
-					local markName = skill:objectName() .. "#" .. instId .. player:objectName() .. "-SelfStartClear"
-					if ctx.owner:getMark(markName) > 0 then
-						room:setPlayerMark(ctx.owner, markName, 0)
-						room:removePlayerMark(ctx.owner, "s4_cloud_yongqian_buff" .. player:objectName() .. "-SelfStartClear", 1)
-						if ctx.owner:getMark("s4_cloud_yongqian_buff" .. player:objectName() .. "-SelfStartClear") == 0 then
-							room:setPlayerMark(player, "&" .. skill:objectName() .. "+sys_+to+#" .. ctx.owner:objectName(), 0)
-						end
-					end
+					-- 死者 = 被記錄目標：從本實例 target 清單移除
+					s4_cloud_yongqianDropTarget(room, ctx.owner, instId, player:objectName())
 				end
 			end
 		end
-        if shouldClean then
-			for _, p in sgs.qlist(room:getAllPlayers()) do
-				if p:objectName() ~= player:objectName() then
-					local markName = skill:objectName() .. "#" .. instId .. p:objectName() .. "-SelfStartClear"
-					if player:getMark(markName) > 0 then
-						room:setPlayerMark(player, markName, 0)
-						room:removePlayerMark(player, "s4_cloud_yongqian_buff" .. p:objectName() .. "-SelfStartClear", 1)
-						if player:getMark("s4_cloud_yongqian_buff" .. p:objectName().. "-SelfStartClear") == 0 then
-							room:setPlayerMark(p, "&" .. skill:objectName() .. "+sys_+to+#" .. player:objectName(), 0)
-						end
-					end
-				end
-			end
-        end
     end,
 
     can_trigger = function(skill, event, room, player, data)
@@ -181,8 +225,9 @@ s4_cloud_yongqian = sgs.CreateTriggerSkillV2{
             if not use.to:contains(player) then return false end
             if not use.from or player:objectName() == use.from:objectName() then return false end
             for _, iid in sgs.list(player:getSkillInstanceIds(skill:objectName())) do
-                local markName = skill:objectName() .. "#" .. iid .. use.from:objectName() .. "-SelfStartClear"
-                if player:getMark(markName) > 0 then return skill:objectName() end
+                for _, tn in sgs.qlist(player:getSkillInstanceCorrectStateValue(skill:objectName(), iid, "target"):toStringList()) do
+                    if tn == use.from:objectName() then return skill:objectName() end
+                end
             end
         end
         return false
@@ -218,10 +263,14 @@ s4_cloud_yongqian = sgs.CreateTriggerSkillV2{
     end,
 	on_effect_target = function(skill, event, room, player, ctx, target)
 		if event == sgs.DrawNCards then
-			local instId = ctx.instanceID
-            room:setPlayerMark(player, skill:objectName() .. "#" .. instId .. target:objectName() .. "-SelfStartClear", 1)
-            room:addPlayerMark(player, "s4_cloud_yongqian_buff" .. target:objectName() .. "-SelfStartClear", 1)
-            room:addPlayerMark(target, "&" .. skill:objectName() .. "+sys_+to+#" .. player:objectName())
+			local targets = s4_cloud_yongqianTargets(player, ctx.instanceID)
+			local exists = false
+			for _, tn in ipairs(targets) do
+				if tn == target:objectName() then exists = true; break end
+			end
+			if not exists then table.insert(targets, target:objectName()) end
+			s4_cloud_yongqianSetTargets(room, player, ctx.instanceID, targets)
+			s4_cloud_yongqianSyncBadge(room, player, target:objectName())
 		end
 		return false
 	end,
@@ -236,12 +285,15 @@ s4_cloud_yongqian_buff = sgs.CreateTargetModSkillV2 {
         if modType ~= sgs.TargetModSkill_Residue and modType ~= sgs.TargetModSkill_DistanceLimit then return nil end
         local from = ctx:getPrimary()
         local to = ctx:getSecondary()
-      	 if from and to and from:hasSkill("s4_cloud_yongqian")
-           and from:getMark("s4_cloud_yongqian_buff" .. to:objectName() .. "-SelfStartClear") > 0 then
-            if modType == sgs.TargetModSkill_Residue  then
-                return sgs.CorrectSkillResult.unlimitedResidue()
-            else
-                return 1000
+        if not (from and to and from:hasSkill("s4_cloud_yongqian")) then return nil end
+        for _, iid in sgs.list(from:getSkillInstanceIds("s4_cloud_yongqian")) do
+            for _, tn in sgs.qlist(from:getSkillInstanceCorrectStateValue("s4_cloud_yongqian", iid, "target"):toStringList()) do
+                if tn == to:objectName() then
+                    if modType == sgs.TargetModSkill_Residue then
+                        return sgs.CorrectSkillResult.unlimitedResidue()
+                    end
+                    return 1000
+                end
             end
         end
         return nil
@@ -272,6 +324,8 @@ sgs.LoadTranslationTable {
     ["s4_cloud_yongqian-invoke"] = "你可以发动“勇前”<br/> <b>操作提示</b>: 选择一名其他角色→点击确定<br/>",
     ["s4_cloud_yongqian"] = "勇前",
     [":s4_cloud_yongqian"] = "摸牌阶段，你可以少摸一张牌，然后选择一名其他角色，直到你下回合开始，你对其使用牌无距离和次数限制，当其使用牌指定你为目标后，你可以摸一张牌。",
+    ["@s4_cloud_yongqian.correct.target"] = "勇前目標",
+    ["@s4_cloud_yongqian.correct.target.type"] = "players",
     ["$s4_cloud_yongqian1"] = "千围万困，吾亦能来去自如！",
     ["$s4_cloud_yongqian2"] = "敌军虽百倍于我，破之易而。"
 
