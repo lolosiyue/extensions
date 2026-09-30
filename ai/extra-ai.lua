@@ -5806,6 +5806,16 @@ end
 
 sgs.ai_playerchosen_intention.heg_ov_hongyuan = -50
 
+-- Native cards expose the static transfer mark; Hongyuan may add one at runtime.
+local function CardIsHezong(card_or_id)
+	local id = type(card_or_id) == "number" and card_or_id or card_or_id:getId()
+	if id < 0 then return false end
+	local engine_card = sgs.Sanguosha:getEngineCard(id)
+	local current_card = sgs.Sanguosha:getCard(id)
+	return (engine_card and engine_card:isTransferable())
+		or (current_card and current_card:hasFlag("heg_transfer_card")) or false
+end
+
 sgs.ai_fill_skill.heg_ov_hongyuan = function(self)
 	return sgs.Card_Parse("#heg_ov_hongyuan:.:")
 end
@@ -6681,7 +6691,7 @@ sgs.ai_fill_skill.heg_transfer = function(self)
 	self.yjzy_to = nil
 	local use_cards = {}
 	local cards = self.player:getCards("h")
-	self:sortByKeepValue(cards)
+	cards = self:sortByKeepValue(cards)
   	for _,c in sgs.list(cards)do
 		if CardIsHezong(c) then
 			local card,player = self:getCardNeedPlayer({c},false)

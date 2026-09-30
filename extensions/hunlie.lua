@@ -14,7 +14,7 @@ sgs.LoadTranslationTable{
 
 --V2 全局技能以隐藏技能名挂到所有武将；晚于本扩展加载的武将或换将后于结算时补挂 acquired 實例
 local hunlie_global_skill_names = {
-	"#hunlie_drawCards", "sgkgodlonghunC", "sgkgodlonghunBuff",
+	"#hunlie_drawCards",
 	"#sgkgoddawu_fog", "#sgkgodluoyan_mark", "#sgkgodzhenhun_clear",
 	"#tongtian_wansha_clear", "#sgkgodliangyuan_check", "#sgkgodliangyuan_exgive",
 	"#sgkgodluncexia", "#sgkgodluncezhong", "#sgkgodlunceshang", "#sgkgodmeixinClear",
@@ -175,17 +175,19 @@ function throwRandomCards(random_bool, thrower, victim, n, flag, skill)  --随�
 end
 
 
+-- 语音只随龙魂持有者的隐藏关联实例触发，不向其他武将补挂。
 sgkgodlonghunC = sgs.CreateTriggerSkillV2{
-	name = "sgkgodlonghunC",
+	name = "#sgkgodlonghunC",
 	global = true,
 	hide_skill = true,
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.CardUsed, sgs.CardResponded},
-	on_record = function(skill, event, room, player, ctx)
-		hunlie_ensure_global_instances(room)
-	end,
 	can_trigger = function(skill, event, room, player, data)
-		return skill:objectName()
+		local ids = player and player:getValidSkillInstanceIds(skill:objectName())
+		if ids and not ids:isEmpty() then
+			return skill:objectName().."#"..tostring(ids:first()), player
+		end
+		return false
 	end,
 	on_effect = function(self, event, room, player, ctx)
 		local data = ctx.original_data
@@ -195,7 +197,7 @@ sgkgodlonghunC = sgs.CreateTriggerSkillV2{
 		else
 			card = data:toCardResponse().m_card
 		end
-		if card and (table.contains(card:getSkillNames(), "sgkgodlonghunC") or table.contains(card:getSkillNames(), "sgkgodlonghunBuff")) then
+		if card and (table.contains(card:getSkillNames(), "sgkgodlonghun") or table.contains(card:getSkillNames(), "sgkgodlonghunC") or table.contains(card:getSkillNames(), "sgkgodlonghunBuff")) then
 			if card:isKindOf("Nullification") then
 				room:broadcastSkillInvoke("sgkgodlonghun", 1)
 			elseif card:isKindOf("Jink") then
@@ -210,23 +212,22 @@ sgkgodlonghunC = sgs.CreateTriggerSkillV2{
 	end
 }
 
-sgkgodlonghunBuff = sgs.CreateTriggerSkillV2{
-	name = "sgkgodlonghunBuff",
+-- 已用出的双牌效果须完成 CardFinished 结算，不能随主技能失去而中断。
+sgkgodlonghunBuff = sgs.CreateRuleSkillV2{
+	name = "#sgkgodlonghunBuff",
 	global = true,
 	hide_skill = true,
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.CardUsed, sgs.CardFinished, sgs.CardResponded},
-	on_record = function(skill, event, room, player, ctx)
-		hunlie_ensure_global_instances(room)
-	end,
 	can_trigger = function(skill, event, room, player, data)
-		return skill:objectName()
+		if player then return skill:objectName(), player end
+		return false
 	end,
 	on_effect = function(self, event, room, player, ctx)
 		local data = ctx.original_data
 		if event == sgs.CardUsed then
 			local use = data:toCardUse()
-			if use.card and use.card:subcardsLength() == 2 and table.contains(use.card:getSkillNames(), "sgkgodlonghunBuff") then
+			if use.card and use.card:subcardsLength() == 2 and (table.contains(use.card:getSkillNames(), "sgkgodlonghun") or table.contains(use.card:getSkillNames(), "sgkgodlonghunBuff")) then
 				if use.card:isKindOf("Nullification") then
 					local no_respond_list = use.no_respond_list
 					table.insert(no_respond_list, "_ALL_TARGETS")
@@ -265,7 +266,7 @@ sgkgodlonghunBuff = sgs.CreateTriggerSkillV2{
 			end
 		elseif event == sgs.CardResponded then
 			local res = data:toCardResponse()
-			if res.m_card and res.m_card:isKindOf("Nullification") and table.contains(res.m_card:getSkillNames(), "sgkgodlonghunBuff") then
+			if res.m_card and res.m_card:isKindOf("Nullification") and res.m_card:subcardsLength() == 2 and (table.contains(res.m_card:getSkillNames(), "sgkgodlonghun") or table.contains(res.m_card:getSkillNames(), "sgkgodlonghunBuff")) then
 				local tocard = res.m_toCard
 				if tocard then
 					local ids = sgs.IntList()
@@ -486,8 +487,8 @@ if not sgs.Sanguosha:getSkill("qianqi_slash") then sgkgodhidden:append(qianqi_sl
 if not sgs.Sanguosha:getSkill("hunlie_tarmod") then sgkgodhidden:append(hunlie_tarmod) end
 if not sgs.Sanguosha:getSkill("#hunlie_maxcards") then sgkgodhidden:append(hunlie_maxcards) end
 if not sgs.Sanguosha:getSkill("#hunlie_drawCards") then sgkgodhidden:append(hunlie_drawCards) end
-if not sgs.Sanguosha:getSkill("sgkgodlonghunC") then sgkgodhidden:append(sgkgodlonghunC) end
-if not sgs.Sanguosha:getSkill("sgkgodlonghunBuff") then sgkgodhidden:append(sgkgodlonghunBuff) end
+if not sgs.Sanguosha:getSkill("#sgkgodlonghunC") then sgkgodhidden:append(sgkgodlonghunC) end
+if not sgs.Sanguosha:getSkill("#sgkgodlonghunBuff") then sgkgodhidden:append(sgkgodlonghunBuff) end
 if not sgs.Sanguosha:getSkill("sgkgodrenzheng") then sgkgodhidden:append(sgkgodrenzheng) end
 if not sgs.Sanguosha:getSkill("sgkgodjiquan") then sgkgodhidden:append(sgkgodjiquan) end
 sgs.Sanguosha:addSkills(sgkgodhidden)
@@ -497,6 +498,8 @@ sgs.LoadTranslationTable{
 	["cuifeng_slash"] = "摧锋",
 	["sgkgodlonghunBuff"] = "龙魂",
 	["sgkgodlonghunC"] = "龙魂",
+	["#sgkgodlonghunBuff"] = "龙魂",
+	["#sgkgodlonghunC"] = "龙魂",
 	["sgkgodrenzheng"] = "仁政",
 	[":sgkgodrenzheng"] = "出牌阶段限一次，你可以将至少一张手牌或技能交给一名其他角色，然后若该角色是第一次成为此技能的目标，你可以令你与其各加1点体力上限并回复1点体力。",
 	["$sgkgodrenzheng"] = "仁政为民，恩泽天下。",
@@ -1164,11 +1167,7 @@ sgkgodlonghun = sgs.CreateViewAsSkillV2{
 			new_card = sgs.Sanguosha:cloneCard("fire_slash", sgs.Card_SuitToBeDecided, 0)
 		end
 		if new_card then
-			if n == 1 then
-				new_card:setSkillName("sgkgodlonghunC")
-			else
-				new_card:setSkillName("sgkgodlonghunBuff")
-			end
+			new_card:setSkillName("sgkgodlonghun")
 			for _, id in sgs.qlist(ids) do
 				new_card:addSubcard(id)
 			end
@@ -1180,6 +1179,10 @@ sgkgodlonghun = sgs.CreateViewAsSkillV2{
 
 sgkgodzhaoyun:addSkill(sgkgodjuejing)
 sgkgodzhaoyun:addSkill(sgkgodlonghun)
+sgkgodzhaoyun:addSkill(sgkgodlonghunC)
+sgkgodzhaoyun:addSkill(sgkgodlonghunBuff)
+extension:insertRelatedSkills("sgkgodlonghun", "#sgkgodlonghunC")
+extension:insertRelatedSkills("sgkgodlonghun", "#sgkgodlonghunBuff")
 
 
 sgs.LoadTranslationTable{

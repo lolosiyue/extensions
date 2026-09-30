@@ -2712,7 +2712,7 @@ sgkgodlonghun_skill.getTurnUseCard = function(self)
 	self:sortByUseValue(usable_cards, true)
 	for _,c in ipairs(usable_cards) do
 		if c:getSuit() == sgs.Card_Diamond and self:slashIsAvailable() and not c:isKindOf("Peach") then	--yun
-			return sgs.Card_Parse(("fire_slash:sgkgodlonghunC[%s:%s]=%d"):format(c:getSuitString(), c:getNumberString(), c:getEffectiveId()))
+			return sgs.Card_Parse(("fire_slash:sgkgodlonghun[%s:%s]=%d"):format(c:getSuitString(), c:getNumberString(), c:getEffectiveId()))
 		end
 	end
 end
@@ -2756,31 +2756,31 @@ sgs.ai_view_as["sgkgodlonghun"] = function(card, player, card_place)
 	local number = card:getNumberString()
 	local card_id = card:getEffectiveId()
 	if #two_club_cards == 2 and club_num >= 3 then
-		return ("jink:sgkgodlonghunBuff[%s:%s]=%d+%d"):format(sgs.Card_Club, 0, two_club_cards[1], two_club_cards[2])
+		return ("jink:sgkgodlonghun[%s:%s]=%d+%d"):format(sgs.Card_Club, 0, two_club_cards[1], two_club_cards[2])
 	else
 		if card:getSuit() == sgs.Card_Club then
-			return ("jink:sgkgodlonghunC[%s:%s]=%d"):format(suit, number, card_id)
+			return ("jink:sgkgodlonghun[%s:%s]=%d"):format(suit, number, card_id)
 		end
 	end
 	if #two_heart_cards == 2 and player:getMark("Global_PreventPeach") == 0 and heart_num >= 3 and player:getMaxHp() <= 5 then
-		return ("peach:sgkgodlonghunBuff[%s:%s]=%d+%d"):format(sgs.Card_Heart, 0, two_heart_cards[1], two_heart_cards[2])
+		return ("peach:sgkgodlonghun[%s:%s]=%d+%d"):format(sgs.Card_Heart, 0, two_heart_cards[1], two_heart_cards[2])
 	else
 		if card:getSuit() == sgs.Card_Heart and player:getMark("Global_PreventPeach") == 0 then
-			return ("peach:sgkgodlonghunC[%s:%s]=%d"):format(suit, number, card_id)
+			return ("peach:sgkgodlonghun[%s:%s]=%d"):format(suit, number, card_id)
 		end
 	end
 	if #two_diamond_cards == 2 and diamond_num >= 3 then
-		return ("fire_slash:sgkgodlonghunBuff[%s:%s]=%d+%d"):format(sgs.Card_Diamond, 0, two_diamond_cards[1], two_diamond_cards[2])
+		return ("fire_slash:sgkgodlonghun[%s:%s]=%d+%d"):format(sgs.Card_Diamond, 0, two_diamond_cards[1], two_diamond_cards[2])
 	else
 		if card:getSuit() == sgs.Card_Diamond and not (card:isKindOf("WoodenOx") and player:getPile("wooden_ox"):length() > 0) then
-			return ("fire_slash:sgkgodlonghunC[%s:%s]=%d"):format(suit, number, card_id)
+			return ("fire_slash:sgkgodlonghun[%s:%s]=%d"):format(suit, number, card_id)
 		end
 	end
 	if #two_spade_cards == 2 and spade_num >= 3 then
-		return ("nullification:sgkgodlonghunBuff[%s:%s]=%d+%d"):format(sgs.Card_Spade, 0, two_spade_cards[1], two_spade_cards[2])
+		return ("nullification:sgkgodlonghun[%s:%s]=%d+%d"):format(sgs.Card_Spade, 0, two_spade_cards[1], two_spade_cards[2])
 	else
 		if card:getSuit() == sgs.Card_Spade then
-			return ("nullification:sgkgodlonghunC[%s:%s]=%d"):format(suit, number, card_id)
+			return ("nullification:sgkgodlonghun[%s:%s]=%d"):format(suit, number, card_id)
 		end
 	end
 end
