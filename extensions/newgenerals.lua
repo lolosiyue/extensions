@@ -35362,7 +35362,7 @@ local yuanjue_unlimited = sgs.CreateTargetModSkillV2{
     correct_func = function(self, ctx)
         local card = ctx:getCard()
         if ctx:getModType() == sgs.TargetModSkill_Residue and card
-            and table.contains(card:getSkillNames(), "yuanjue") then return -1 end
+            and table.contains(card:getSkillNames(), "yuanjue") then return sgs.CorrectSkillResult.unlimitedResidue() end
         return false
     end,
 }

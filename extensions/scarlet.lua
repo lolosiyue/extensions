@@ -103,6 +103,7 @@ s4_cloud_tuxi = sgs.CreateTriggerSkillV2{
             damage.from = player
             damage.to = target
 			damage.damage = amount
+            damage.reason = skill:objectName()
             room:damage(damage)
         end
         return false
@@ -238,7 +239,7 @@ s4_cloud_yongqian_buff = sgs.CreateTargetModSkillV2 {
       	 if from and to and from:hasSkill("s4_cloud_yongqian")
            and from:getMark("s4_cloud_yongqian_buff" .. to:objectName() .. "-SelfStartClear") > 0 then
             if modType == sgs.TargetModSkill_Residue  then
-                return -1
+                return sgs.CorrectSkillResult.unlimitedResidue()
             else
                 return 1000
             end
@@ -593,7 +594,7 @@ s4_cloud_yongyiAnaleptic = sgs.CreateTargetModSkillV2 {
 			return false
 		end
 		if card:getActivationSkillName() == "s4_cloud_yongyi" then
-			return -1
+			return sgs.CorrectSkillResult.unlimitedResidue()
 		end
 		return false
 	end,
@@ -948,7 +949,7 @@ s4_xianfeng_buff = sgs.CreateTargetModSkillV2{
         local from = ctx:getPrimary()
         local to = ctx:getSecondary()
         if to and from:distanceTo(to) <= 1 then
-            return -1  -- 无限次数
+            return sgs.CorrectSkillResult.unlimitedResidue()  -- 无限次数
         end
         return false
     end,
@@ -2566,7 +2567,7 @@ s4_paoxiao_buff = sgs.CreateTargetModSkillV2{
 			return false
 		end
 		if modType == sgs.TargetModSkill_Residue then
-			return -1
+			return sgs.CorrectSkillResult.unlimitedResidue()
 		end
 		return true
 	end,

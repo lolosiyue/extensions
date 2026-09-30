@@ -790,7 +790,7 @@ luajiezhiTargetMod = sgs.CreateTargetModSkillV2 {
 		local card = ctx:getCard()
 		if player and player:hasSkill("luajiezhi") and card
 			and table.contains(card:getSkillNames(), "luajiezhi") then
-			return -1
+			return sgs.CorrectSkillResult.unlimitedResidue()
 		end
 		return false
 	end,

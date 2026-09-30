@@ -1952,7 +1952,7 @@ c_fengqi_unlimited = sgs.CreateTargetModSkillV2{
     correct_func=function(self,ctx)
         local parent=ctx:getHolder():getSkillInstanceParentRef(ctx:getInstanceRef().key.skillName,ctx:getInstanceRef().key.instanceID)
         if parent:isValid() and ctx:getModType()==sgs.TargetModSkill_Residue and ctx:getHolder():getSkillInstanceCorrectStateValue(parent.key.skillName,parent.key.instanceID,"unlimited"):toBool() then
-            return -1
+            return sgs.CorrectSkillResult.unlimitedResidue()
         end
         return false
     end
