@@ -246,6 +246,8 @@ sr_chouxicard = sgs.CreateSkillCard{
 sr_chouxi = sgs.CreateViewAsSkillV2{
 	name = "sr_chouxi",
 	n = 1,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		return not to_select:isEquipped()
 	end,
@@ -260,8 +262,7 @@ sr_chouxi = sgs.CreateViewAsSkillV2{
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and (not player:hasUsed("#sr_chouxicard")) and (not player:hasUsed("sr_chouxi"))
-			and (not player:isKongcheng())
+		return player and (not player:isKongcheng())
 	end
 }
 sr_liubei:addSkill(sr_chouxi)
@@ -476,6 +477,8 @@ sr_shoujicard = sgs.CreateSkillCard{
 sr_shouji = sgs.CreateViewAsSkillV2{
 	name = "sr_shouji",
 	n = 1,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		return true
 	end,
@@ -491,7 +494,7 @@ sr_shouji = sgs.CreateViewAsSkillV2{
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("#sr_shoujicard") and not player:hasUsed("sr_shouji")
+		return player
 	end
 }
 sr_huangyueying:addSkill(sr_shouji)
@@ -892,6 +895,8 @@ sr_yaozhancard = sgs.CreateSkillCard{
 sr_yaozhan = sgs.CreateViewAsSkillV2{
 	name = "sr_yaozhan",
 	n = 1,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		return not to_select:isEquipped()
 	end,
@@ -907,8 +912,7 @@ sr_yaozhan = sgs.CreateViewAsSkillV2{
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and (not player:hasUsed("#sr_yaozhancard")) and (not player:hasUsed("sr_yaozhan"))
-			and (not player:isKongcheng())
+		return player and (not player:isKongcheng())
 	end,
 }
 sr_machao:addSkill(sr_yaozhan)
@@ -961,6 +965,8 @@ sr_wenjiucard = sgs.CreateSkillCard{
 sr_wenjiuVS = sgs.CreateViewAsSkillV2{
 	name = "sr_wenjiu",
 	n = 1,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		if not to_select:isEquipped() then
 			return to_select:isBlack()
@@ -978,10 +984,7 @@ sr_wenjiuVS = sgs.CreateViewAsSkillV2{
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		if player and not player:isKongcheng() then
-			return not player:hasUsed("#sr_wenjiucard") and not player:hasUsed("sr_wenjiu")
-		end
-		return false
+		return player and not player:isKongcheng()
 	end
 }
 
@@ -1120,7 +1123,7 @@ sr_shuixicard = sgs.CreateSkillCard{
 		if not srthrowcard then
 			room:loseHp(target, 1, true, source, "sr_shuixi")
 			room:addPlayerMark(source, "&sr_shuixi-Clear")
-			room:setPlayerCardLimitation(source, "use", "Slash", true)
+			room:setPlayerCardLimitation(source, "use", "Slash", true, "sr_shuixi")
 		end		
 	end
 }
@@ -1275,13 +1278,15 @@ sr_sanfencard = sgs.CreateSkillCard{
 sr_sanfen = sgs.CreateViewAsSkillV2{
 	name = "sr_sanfen",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	create_card = function(skill, request)
 		return sr_sanfencard:clone()
 	end,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("#sr_sanfencard") and not player:hasUsed("sr_sanfen")
+		return player
 	end
 }
 sr_zhugeliang:addSkill(sr_sanfen)
@@ -1930,6 +1935,7 @@ sr_quanhengCard = sgs.CreateSkillCard{
 	end
 }
 
+--DEFER:sr_quanheng:外層卡 about_to_use 開 @@ 多階段對話，內層卡 on_use 先標 quanheng_used、取消時退還，limit_scope 無法表達，保留 flag。
 sr_quanhengVS = sgs.CreateViewAsSkillV2{
 	name = "sr_quanheng",
 	n = 0,
@@ -2705,13 +2711,15 @@ sr_dailaocard = sgs.CreateSkillCard{
 sr_dailao = sgs.CreateViewAsSkillV2{
 	name = "sr_dailao",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	create_card = function(skill, request)
 		return sr_dailaocard:clone()
 	end,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("#sr_dailaocard") and not player:hasUsed("sr_dailao")
+		return player
 	end
 }
 sr_luxun:addSkill(sr_dailao)
@@ -2989,6 +2997,8 @@ sr_weibaocard = sgs.CreateSkillCard{
 sr_weibao = sgs.CreateViewAsSkillV2{
 	name = "sr_weibao",
 	n = 1,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		return not to_select:isEquipped()
 	end,
@@ -3008,7 +3018,6 @@ sr_weibao = sgs.CreateViewAsSkillV2{
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
 		return player and not player:isKongcheng()
-			and not player:hasUsed("#sr_weibaocard") and not player:hasUsed("sr_weibao")
 	end
 }
 sr_zhouyu:addSkill(sr_weibao)
@@ -3123,6 +3132,8 @@ sr_choulvecard = sgs.CreateSkillCard{
 sr_choulvevs = sgs.CreateViewAsSkillV2{
 	name = "sr_choulve",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	create_card = function(skill, request)
 		local card = sr_choulvecard:clone()
 		card:setSkillName(skill:objectName())
@@ -3132,7 +3143,6 @@ sr_choulvevs = sgs.CreateViewAsSkillV2{
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
 		return player and player:getHandcardNum() >= 2
-			and not player:hasUsed("#sr_choulvecard") and not player:hasUsed("sr_choulve")
 	end
 }
 
@@ -3267,10 +3277,33 @@ sr_shixue = sgs.CreateTriggerSkillV2{
 sr_lvmeng:addSkill(sr_shixue)
 
 --国士
+--SkillV2：「本回合邊啲牌入咗棄牌堆」唔再用 Room Tag 自記，改由 resolution history 查證。
+--回傳本回合全部 move facts 的 data 列表；歷史不完整時回傳 nil（不得當作「冇發生」）。
+local function srMoveFactsThisTurn(room)
+	local scope = room:historyScopes()
+	if not scope then return nil end
+	local turn = scope.turn_id
+	if not turn or turn == "0" or turn == 0 then return nil end
+	local filter = { turn_id = turn, limit = 64 }
+	local facts = {}
+	local watermark = nil
+	while true do
+		local page = room:queryHistoryMoves(filter)
+		if not page or page.error or not page.complete or not page.attribution_complete then return nil end
+		if not watermark then watermark = page.watermark end
+		for _, fact in ipairs(page.items or {}) do
+			table.insert(facts, fact.data or {})
+		end
+		if not page.has_more then return facts end
+		filter.after = page.next_after
+		filter.watermark = watermark
+	end
+end
+
 sr_guoshi = sgs.CreateTriggerSkillV2{
 	name = "sr_guoshi",
 	frequency = sgs.Skill_NotFrequent,
-	events = {sgs.EventPhaseStart,sgs.EventPhaseChanging},
+	events = {sgs.EventPhaseStart},
 	can_trigger = function(skill, event, room, player, data)
 		local names, owners = {}, {}
 		for _, lvmeng in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
@@ -3280,25 +3313,19 @@ sr_guoshi = sgs.CreateTriggerSkillV2{
 			end
 		end
 		if #names == 0 then return false end
-		if event == sgs.EventPhaseChanging then
-			local change = data:toPhaseChange()
-			if change.to == sgs.Player_NotActive then
-				return table.concat(names, "|"), table.concat(owners, "|")
-			end
-		else
-			local phase = player:getPhase()
-			if phase == sgs.Player_Start then
-				return table.concat(names, "|"), table.concat(owners, "|")
-			elseif phase == sgs.Player_Finish then
-				local DiscardPile = room:getDiscardPile()
-				local tag = room:getTag("srguoshicard"):toString():split("+")
-				local toGainList = sgs.IntList()
-				for _,is in ipairs(tag) do
-					if is~="" and DiscardPile:contains(tonumber(is)) then
-						toGainList:append(tonumber(is))
-					end
-				end
-				if not toGainList:isEmpty() then
+		local phase = player:getPhase()
+		if phase == sgs.Player_Start then
+			return table.concat(names, "|"), table.concat(owners, "|")
+		elseif phase == sgs.Player_Finish then
+			local facts = srMoveFactsThisTurn(room)
+			if not facts then return false end
+			local DiscardPile = room:getDiscardPile()
+			for _, mdata in ipairs(facts) do
+				local reason = mdata.reason or 0
+				if mdata.to_place == sgs.Player_DiscardPile
+					and (bit32.band(reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD
+						or reason == sgs.CardMoveReason_S_REASON_JUDGEDONE)
+					and DiscardPile:contains(mdata.card_id or -1) then
 					return table.concat(names, "|"), table.concat(owners, "|")
 				end
 			end
@@ -3306,107 +3333,51 @@ sr_guoshi = sgs.CreateTriggerSkillV2{
 		return false
 	end,
 	on_cost = function(skill, event, room, player, ctx)
-		if event == sgs.EventPhaseChanging then return true end
 		local invoker = ctx.invoker
 		if invoker and invoker:getPhase() == sgs.Player_Start then
 			return room:askForSkillInvoke(ctx.owner,"sr_guoshibegin",ctx.original_data)
 		elseif invoker and invoker:getPhase() == sgs.Player_Finish then
-			local DiscardPile = room:getDiscardPile()
-			local tag = room:getTag("srguoshicard"):toString():split("+")
-			local toGainList = sgs.IntList()
-			for _,is in ipairs(tag) do
-				if is~="" and DiscardPile:contains(tonumber(is)) then
-					toGainList:append(tonumber(is))
-				end
-			end
-			if toGainList:isEmpty() then return false end
 			return room:askForSkillInvoke(ctx.owner,"sr_guoshiend",ctx.original_data)
 		end
 		return true
 	end,
 	on_effect = function(self, event, room, player, ctx)
-		if event == sgs.EventPhaseChanging then
-			local change = ctx.original_data:toPhaseChange()
-			if change.to == sgs.Player_NotActive then
-				room:removeTag("srguoshicard")
+		local phase = ctx.invoker:getPhase()
+		if phase == sgs.Player_Start then
+			room:notifySkillInvoked(ctx.owner,"srguoshi")
+			room:broadcastSkillInvoke("sr_guoshi",1)
+			local ids = room:getNCards(2)
+			room:askForGuanxing(ctx.owner,ids,0)
+		elseif phase == sgs.Player_Finish then
+			local facts = srMoveFactsThisTurn(room)
+			if not facts then return false end
+			local DiscardPile = room:getDiscardPile()
+			local toGainList = sgs.IntList()
+			for _, mdata in ipairs(facts) do
+				local reason = mdata.reason or 0
+				if mdata.to_place == sgs.Player_DiscardPile
+					and (bit32.band(reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD
+						or reason == sgs.CardMoveReason_S_REASON_JUDGEDONE)
+					and DiscardPile:contains(mdata.card_id or -1) then
+					toGainList:append(mdata.card_id)
+				end
 			end
-		else
-			local phase = ctx.invoker:getPhase()
-			if phase == sgs.Player_Start then
-				room:notifySkillInvoked(ctx.owner,"srguoshi")
-				room:broadcastSkillInvoke("sr_guoshi",1)
-				local ids = room:getNCards(2)
-				room:askForGuanxing(ctx.owner,ids,0)
-			elseif phase == sgs.Player_Finish then
-				local DiscardPile = room:getDiscardPile()
-				local tag = room:getTag("srguoshicard"):toString():split("+")
-				room:removeTag("srguoshicard")
-				if #tag == 0 then return false end
-				local toGainList = sgs.IntList()
-				for _,is in ipairs(tag) do
-					if is~="" and DiscardPile:contains(tonumber(is)) then
-						toGainList:append(tonumber(is))
-					end
-				end
-				if toGainList:isEmpty() then return false end
-				room:notifySkillInvoked(ctx.owner,"srguoshi")
-				room:broadcastSkillInvoke("sr_guoshi",2)
-				room:fillAG(toGainList)
-				local card_id = room:askForAG(ctx.invoker, toGainList, false, "sr_guoshi")
-				room:clearAG()
-				if card_id ~= -1 then
-					local gain_card = sgs.Sanguosha:getCard(card_id)
-					ctx.invoker:obtainCard(gain_card)
-					toGainList:removeOne(card_id)
-				end
+			if toGainList:isEmpty() then return false end
+			room:notifySkillInvoked(ctx.owner,"srguoshi")
+			room:broadcastSkillInvoke("sr_guoshi",2)
+			room:fillAG(toGainList)
+			local card_id = room:askForAG(ctx.invoker, toGainList, false, "sr_guoshi")
+			room:clearAG()
+			if card_id ~= -1 then
+				local gain_card = sgs.Sanguosha:getCard(card_id)
+				ctx.invoker:obtainCard(gain_card)
 			end
 		end
 		return false
 	end,
-}
-
-sr_guoshimove = sgs.CreateTriggerSkillV2{
-	name = "#sr_guoshi",
-	frequency = sgs.Skill_Compulsory,
-	events = {sgs.CardsMoveOneTime,},
-	can_trigger = function(skill, event, room, player, data)
-		local current = room:getCurrent()
-		if not current or current:isDead() or current:getPhase() == sgs.Player_NotActive then return false end
-		local move = data:toMoveOneTime()
-		if (move.to_place == sgs.Player_DiscardPile)
-			and ((bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) ==
-				sgs.CardMoveReason_S_REASON_DISCARD)
-			or (move.reason.m_reason == sgs.CardMoveReason_S_REASON_JUDGEDONE)) then
-			local names, owners = {}, {}
-			for _,p in sgs.qlist(room:getAllPlayers()) do
-				if p:isAlive() and p:hasSkill(skill:objectName()) then
-					table.insert(names, skill:objectName())
-					table.insert(owners, p:objectName())
-				end
-			end
-			if #names > 0 then
-				return table.concat(names, "|"), table.concat(owners, "|")
-			end
-		end
-		return false
-	end,
-	on_effect = function(self, event, room, player, ctx)
-		local move = ctx.original_data:toMoveOneTime()
-		local oldtag = room:getTag("srguoshicard"):toString():split("+")
-		local totag = {}
-		for _,is in ipairs(oldtag) do
-			table.insert(totag,tonumber(is))
-		end
-		for _, card_id in sgs.qlist(move.card_ids) do
-			table.insert(totag,card_id)
-		end
-		room:setTag("srguoshicard",sgs.QVariant(table.concat(totag,"+")))
-	end
 }
 
 sr_lvmeng:addSkill(sr_guoshi)
-sr_lvmeng:addSkill(sr_guoshimove)
-extension:insertRelatedSkills("sr_guoshi","#sr_guoshi")
 sr_lvmeng:addSkill("#choose")
 
 sgs.LoadTranslationTable{
@@ -3469,6 +3440,8 @@ sr_jiexicard = sgs.CreateSkillCard{
 sr_jiexivs = sgs.CreateViewAsSkillV2{
 	name = "sr_jiexi",
 	n = 1,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		return not to_select:isEquipped()
 	end,
@@ -3486,7 +3459,7 @@ sr_jiexivs = sgs.CreateViewAsSkillV2{
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("#sr_jiexicard") and not player:hasUsed("sr_jiexi")
+		return player
 	end
 }
 
@@ -3600,6 +3573,7 @@ sr_youxia = sgs.CreateViewAsSkillV2{
 -- 		return target and target:isAlive()
 -- 	end
 -- }
+--DEFER:#sr_youxiaPro:CreateProhibitSkill 無 V2 API，依遷移指南保留 legacy。
 sr_youxiaPro = sgs.CreateProhibitSkill{
 	name = "#sr_youxiaPro",
 	is_prohibited = function(self, from, to, card)
@@ -3804,6 +3778,8 @@ sr_zhaxiangcard = sgs.CreateSkillCard{
 sr_zhaxiang = sgs.CreateViewAsSkillV2{
 	name = "sr_zhaxiang",
 	n = 1,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		return not to_select:isEquipped()
 	end,
@@ -3822,7 +3798,6 @@ sr_zhaxiang = sgs.CreateViewAsSkillV2{
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
 		return player and not player:isKongcheng()
-			and not player:hasUsed("#sr_zhaxiangcard") and not player:hasUsed("sr_zhaxiang")
 	end
 }
 sr_huanggai:addSkill(sr_zhaxiang)
@@ -4100,6 +4075,7 @@ sr_yinmengcard = sgs.CreateSkillCard{
 	end
 }
 
+--DEFER:sr_yinmeng:上限為動態 usedTimes<max(lostHp,1)，ViewAsSkillV2 無 check_custom_usage 欄位，保留 usedTimes。
 sr_yinmeng = sgs.CreateViewAsSkillV2{
 	name = "sr_yinmeng",
 	n = 0,
@@ -4248,6 +4224,7 @@ sr_jueliecard = sgs.CreateSkillCard{
 	end
 }
 
+--DEFER:sr_juelie:on_use 失敗時以 addPlayerHistory(-1) 退還使用次數，limit_scope 已 commit 嘅 usage 無 API 退還，保留 hasUsed。
 sr_juelie = sgs.CreateViewAsSkillV2{
 	name = "sr_juelie",
 	n = 0,
@@ -4387,13 +4364,15 @@ sr_zhishicard = sgs.CreateSkillCard{
 sr_zhishi = sgs.CreateViewAsSkillV2{
 	name = "sr_zhishi",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	create_card = function(skill, request)
 		return sr_zhishicard:clone()
 	end,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("#sr_zhishicard") and not player:hasUsed("sr_zhishi")
+		return player
 	end
 }
 sr_caocao:addSkill(sr_zhishi)
@@ -4762,16 +4741,15 @@ sr_aozhanCard = sgs.CreateSkillCard{
 sr_aozhanVS = sgs.CreateViewAsSkillV2{
 	name = "sr_aozhan",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	create_card = function(skill, request)
 		return sr_aozhanCard:clone()
 	end,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		if player and player:getPile("@srzhan"):length() > 0 then
-			return not player:hasUsed("#sr_aozhanCard") and not player:hasUsed("sr_aozhan")
-		end
-		return false
+		return player and player:getPile("@srzhan"):length() > 0
 	end
 }
 
@@ -5172,6 +5150,8 @@ sr_liuyuncard = sgs.CreateSkillCard{
 sr_liuyun = sgs.CreateViewAsSkillV2{
 	name = "sr_liuyun",
 	n = 1,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		return to_select:isBlack()
 	end,
@@ -5191,7 +5171,7 @@ sr_liuyun = sgs.CreateViewAsSkillV2{
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
 		if player and not player:isChained() then
-			return not player:hasUsed("#sr_liuyuncard") and not player:hasUsed("sr_liuyun")
+			return true
 		end
 		return false
 	end
@@ -5255,10 +5235,6 @@ sr_qingchengcard = sgs.CreateSkillCard{
 	name = "sr_qingchengcard",
 	target_fixed = false,
 	will_throw = false,
-	player = nil,
-	on_use = function(self, room, source)
-		player = source	
-	end,
 	filter = function(self,targets,to_select,player)
 		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
 			return false
@@ -5312,6 +5288,7 @@ sr_qingchengcard = sgs.CreateSkillCard{
 		return card and card:targetsFeasible(qtargets, player)
 	end,
 	
+	--DEFER:sr_qingchengcard:on_validate 同時支付横置/重置狀態、替換使用牌並逐目標剪除禁制目標（含 #SkillAvoid 廣播），validate/onUse 無法拆，保留 legacy SkillCard。
 	on_validate = function(self, card_use)
 		local zhenji = card_use.from
 		local room = zhenji:getRoom()		
@@ -5447,7 +5424,7 @@ sr_xiahoucard = sgs.CreateSkillCard{
 		    end
 	    end
 		if not xiahou or xiahou:isDead() then 
-		    room:setPlayerFlag(player, "xiahouused")
+		    room:setPlayerFlag(source, "xiahouused")
 		end
 		if not (sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE or 
 			sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE) then
@@ -5613,6 +5590,7 @@ sr_xiahou = sgs.CreateViewAsSkillV2{
 			Analeptic:deleteLater()
 			if (not sgs.Slash_IsAvailable(player)) and (not Analeptic:isAvailable(player)) and
 				(not player:isWounded()) then return false end
+			--DEFER:sr_xiahou:出牌/響應(slash,jink,peach)共用同一計數，並與卡 on_use 嘅 xiahouused 旗標互動；limit_scope 會連響應一齊消耗，保留 hasUsed+flag。
 			if player:hasUsed("#sr_xiahoucard") or player:hasUsed("sr_xiahou") then return false end
 			if player:hasFlag("xiahouused") then return false end
 			return true
@@ -6231,6 +6209,8 @@ sr_lijiancard = sgs.CreateSkillCard{
 sr_lijian = sgs.CreateViewAsSkillV2{
 	name = "sr_lijian",
 	n = 1,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		return request:getSelectedCardIds():length() == 0
 	end,
@@ -6245,7 +6225,7 @@ sr_lijian = sgs.CreateViewAsSkillV2{
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("#sr_lijiancard") and not player:hasUsed("sr_lijian")
+		return player
 	end
 }
 sr_diaochan:addSkill(sr_lijian)
@@ -6290,90 +6270,77 @@ sr_manwucard = sgs.CreateSkillCard{
 sr_manwu = sgs.CreateViewAsSkillV2{
 	name = "sr_manwu",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	create_card = function(skill, request)
 		return sr_manwucard:clone()
 	end,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("#sr_manwucard") and not player:hasUsed("sr_manwu")
+		return player
 	end
 }
 sr_diaochan:addSkill(sr_manwu)
 
 --拜月
-local srbaiyue_list = {}
+--SkillV2：原以檔案級 srbaiyue_list 追蹤「本回合其他角色置入棄牌堆且未離開嘅牌」，
+--改由 resolution history 重放本回合 move facts：其他角色入棄牌堆 +1，牌離開棄牌堆 -1。
+local function srBaiyueDiscardPileCards(room, player)
+	local facts = srMoveFactsThisTurn(room)
+	if not facts then return nil end
+	local counts = {}
+	local order = {}
+	for _, mdata in ipairs(facts) do
+		local card_id = mdata.card_id or -1
+		if counts[card_id] == nil then
+			counts[card_id] = 0
+			table.insert(order, card_id)
+		end
+		if mdata.to_place == sgs.Player_DiscardPile then
+			local from = mdata.from
+			if from and from ~= "" and from ~= player:objectName() then
+				counts[card_id] = counts[card_id] + 1
+			end
+		end
+		if mdata.from_place == sgs.Player_DiscardPile and counts[card_id] > 0 then
+			counts[card_id] = counts[card_id] - 1
+		end
+	end
+	local cardIds = sgs.IntList()
+	for _, card_id in ipairs(order) do
+		if counts[card_id] > 0 then cardIds:append(card_id) end
+	end
+	return cardIds
+end
+
 sr_baiyue = sgs.CreateTriggerSkillV2{
 	name = "sr_baiyue",
 	frequency = sgs.Skill_Frequent,
-	events = {sgs.BeforeCardsMove,sgs.EventPhaseStart},
+	events = {sgs.EventPhaseStart},
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
-		if event == sgs.BeforeCardsMove then
-			if player:getPhase() == sgs.Player_NotActive then return false end
-			local move = data:toMoveOneTime()
-			local source = move.from
-			if move.to_place == sgs.Player_DiscardPile and source and source:objectName() ~= player:objectName() then
+		if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Finish then
+			local cardIds = srBaiyueDiscardPileCards(room, player)
+			if cardIds and not cardIds:isEmpty() then
 				return skill:objectName()
 			end
-			if move.from_places:contains(sgs.Player_DiscardPile) then
-				for _,card_id in sgs.qlist(move.card_ids) do
-					if table.contains(srbaiyue_list, card_id) then
-						return skill:objectName()
-					end
-				end
-			end
-			return false
-		elseif event == sgs.EventPhaseStart then
-			if player:getPhase() == sgs.Player_Finish and #srbaiyue_list > 0 then
-				return skill:objectName()
-			end
-			return false
 		end
 		return false
 	end,
 	on_cost = function(skill, event, room, player, ctx)
-		if event == sgs.EventPhaseStart then
-			if room:askForSkillInvoke(player, skill:objectName(), ctx.original_data) then
-				return true
-			end
-			srbaiyue_list = {}
-			return false
-		end
-		return true
+		return room:askForSkillInvoke(player, skill:objectName(), ctx.original_data)
 	end,
 	on_effect = function(skill, event, room, player, ctx)
-		if event == sgs.BeforeCardsMove then
-			local move = ctx.original_data:toMoveOneTime()
-			local source = move.from
-			if source and source:objectName() ~= player:objectName() then
-				if move.to_place == sgs.Player_DiscardPile then
-					for _,card_id in sgs.qlist(move.card_ids) do
-						table.insert(srbaiyue_list, card_id)
-					end
-				end
-			end
-			if move.from_places:contains(sgs.Player_DiscardPile) then
-				for _,card_id in sgs.qlist(move.card_ids) do
-					if table.contains(srbaiyue_list, card_id) then
-						table.removeOne(srbaiyue_list, card_id)
-					end
-				end
-			end
-		elseif event == sgs.EventPhaseStart then
-			room:notifySkillInvoked(player, "sr_baiyue")
-			room:broadcastSkillInvoke("sr_baiyue")
-			local cardIds = sgs.IntList()
-			for _,card_id in ipairs(srbaiyue_list) do
-				cardIds:append(card_id)
-			end
-			room:fillAG(cardIds, player)
-			local card_id = room:askForAG(player, cardIds, false, skill:objectName())
-			local card = sgs.Sanguosha:getCard(card_id)
-			room:obtainCard(player, card, true)
-			room:clearAG()
-			srbaiyue_list = {}
-		end
+		local cardIds = srBaiyueDiscardPileCards(room, player)
+		if not cardIds or cardIds:isEmpty() then return false end
+		room:notifySkillInvoked(player, "sr_baiyue")
+		room:broadcastSkillInvoke("sr_baiyue")
+		room:fillAG(cardIds, player)
+		local card_id = room:askForAG(player, cardIds, false, skill:objectName())
+		local card = sgs.Sanguosha:getCard(card_id)
+		room:obtainCard(player, card, true)
+		room:clearAG()
 	end
 }
 sr_diaochan:addSkill(sr_baiyue)
@@ -6432,13 +6399,15 @@ sr_xingyicard = sgs.CreateSkillCard{
 sr_xingyi = sgs.CreateViewAsSkillV2{
 	name = "sr_xingyi",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	create_card = function(skill, request)
 		return sr_xingyicard:clone()
 	end,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("#sr_xingyicard") and not player:hasUsed("sr_xingyi")
+		return player
 	end
 }
 sr_huatuo:addSkill(sr_xingyi)
@@ -6584,13 +6553,15 @@ sr_jiwucard = sgs.CreateSkillCard{
 sr_jiwuvs = sgs.CreateViewAsSkillV2{
 	name = "sr_jiwu",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	max_usage_limit = 1,
 	create_card = function(skill, request)
 		return sr_jiwucard:clone()
 	end,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and not player:hasUsed("#sr_jiwucard") and not player:hasUsed("sr_jiwu")
+		return player
 	end
 }
 
