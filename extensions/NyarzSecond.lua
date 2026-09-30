@@ -22,7 +22,7 @@ end
 
 --全域 V2 技能（GameOver 播音等）透過 load 時為全部武將掛 innate 實例保證存在持有者。
 local nyarz_global_skill_names = {
-	"#nyarz_liubei_winmusic", "nyarz_guanyu_win",
+	"#nyarz_liubei_winmusic",
 }
 -- Reentrancy + one-shot: attachSkillToPlayer can re-enter via on_record (50p soft-stuck).
 local nyarz2_ensuring_globals = false
@@ -10127,15 +10127,13 @@ nyarz_guanyu:addSkill(nyarz_wusheng_buff)
 nyarz_guanyu:addSkill(nyarz_yijve)
 extension:insertRelatedSkills("nyarz_wusheng", "#nyarz_wusheng_buff")
 
-nyarz_guanyu_win = sgs.CreateTriggerSkillV2{
-    name = "nyarz_guanyu_win",
+-- 胜利语音归属该武将；规则调度保留按武将身份判断，不依赖武圣仍在或有效。
+nyarz_guanyu_win = sgs.CreateRuleSkillV2{
+    name = "#nyarz_guanyu_win",
     events = {sgs.GameOver},
     frequency = sgs.Skill_NotFrequent,
     global = true,
     hide_skill = true,
-    on_record = function(skill, event, room, player, ctx)
-    	nyarz_ensure_global_instances(room)
-    end,
     on_effect = function(skill, event, room, player, ctx)
     	local data = ctx.original_data
     	player = ctx.invoker
@@ -10144,18 +10142,20 @@ nyarz_guanyu_win = sgs.CreateTriggerSkillV2{
         for audio,target in sgs.qlist(room:getAlivePlayers()) do
             if (table.contains(winner, target:objectName()) or table.contains(winner, target:getRole())) 
             and target:getGeneralName() == "nyarz_guanyu" then
-                room:broadcastSkillInvoke(skill:objectName())
+                room:broadcastSkillInvoke("nyarz_guanyu_win")
                 room:getThread():delay(500)
             end
         end
     end,
     can_trigger = function(skill, event, room, player, data)
     	if player then
-    		return nyarz_single_owner(skill, room, player)
+            return skill:objectName(), player
     	end
     	return false
     end,
 }
+
+nyarz_guanyu:addSkill(nyarz_guanyu_win)
 
 nyarz_zhaoyun = sgs.General(extension, "nyarz_zhaoyun", "shu", 4, true, false, false)
 
@@ -13303,7 +13303,6 @@ if not sgs.Sanguosha:getSkill("#nyarz_shenji_god_audio") then skills:append(nyar
 if not sgs.Sanguosha:getSkill("nyarz_shenwei_god") then skills:append(nyarz_shenwei_god) end
 if not sgs.Sanguosha:getSkill("#nyarz_shenwei_god_max") then skills:append(nyarz_shenwei_god_max) end
 if not sgs.Sanguosha:getSkill("nyarz_duoshi_use") then skills:append(nyarz_duoshi_use) end
-if not sgs.Sanguosha:getSkill("nyarz_guanyu_win") then skills:append(nyarz_guanyu_win) end
 if not sgs.Sanguosha:getSkill("nyarz_paiyi") then skills:append(nyarz_paiyi) end
 
 sgs.Sanguosha:addSkills(skills)

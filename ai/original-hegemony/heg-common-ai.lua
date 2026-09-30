@@ -1086,7 +1086,9 @@ function SmartAI:cardNeed(card)
 	return self:getUseValue(card)
 end
 
+-- Shared SmartAI callers pass QList values and iterate the returned Lua table.
 function SmartAI:sortByKeepValue(cards, inverse, kept)
+	cards = sgs.QList2Table(cards)
 	local compare_func = function(a, b)
 		local v1 = self:getKeepValue(a)
 		local v2 = self:getKeepValue(b)
@@ -1101,9 +1103,11 @@ function SmartAI:sortByKeepValue(cards, inverse, kept)
 	end
 
 	table.sort(cards, compare_func)
+	return cards
 end
 
 function SmartAI:sortByUseValue(cards, inverse)
+	cards = sgs.QList2Table(cards)
 	local compare_func = function(a, b)
 		local value1 = self:getUseValue(a)
 		local value2 = self:getUseValue(b)
@@ -1118,9 +1122,11 @@ function SmartAI:sortByUseValue(cards, inverse)
 	end
 
 	table.sort(cards, compare_func)
+	return cards
 end
 
 function SmartAI:sortByUsePriority(cards)
+	cards = sgs.QList2Table(cards)
 	local compare_func = function(a, b)
 		local value1 = self:getUsePriority(a)
 		local value2 = self:getUsePriority(b)
@@ -1132,9 +1138,11 @@ function SmartAI:sortByUsePriority(cards)
 		end
 	end
 	table.sort(cards, compare_func)
+	return cards
 end
 
 function SmartAI:sortByDynamicUsePriority(cards)
+	cards = sgs.QList2Table(cards)
 	local compare_func = function(a,b)
 		local value1 = self:getDynamicUsePriority(a)
 		local value2 = self:getDynamicUsePriority(b)
@@ -1147,9 +1155,11 @@ function SmartAI:sortByDynamicUsePriority(cards)
 	end
 
 	table.sort(cards, compare_func)
+	return cards
 end
 
 function SmartAI:sortByCardNeed(cards, inverse)
+	cards = sgs.QList2Table(cards)
 	local compare_func = function(a,b)
 		local value1 = self:cardNeed(a)
 		local value2 = self:cardNeed(b)
@@ -1164,6 +1174,7 @@ function SmartAI:sortByCardNeed(cards, inverse)
 	end
 
 	table.sort(cards, compare_func)
+	return cards
 end
 
 function sgs.findIntersectionSkills(first, second)
@@ -3146,7 +3157,9 @@ function SmartAI:getCardId(class_name, acard)
 	return
 end
 
-function SmartAI:getCard(class_name)
+function SmartAI:getCard(class_name, islist)
+	-- Response callbacks need every legal candidate, including an empty list.
+	if islist then return self:sortByUsePriority(self:getCards(class_name)) end
 	local card_id = self:getCardId(class_name)
 	if card_id then return sgs.Card_Parse(card_id) end
 end
