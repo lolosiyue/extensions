@@ -247,15 +247,25 @@ TH_Weapon_BailouLouguan = sgs.CreateWeapon{
 	number = 2,
 	range = 2,
 }
-TH_Weapon_BailouLouguan_skill = sgs.CreateTriggerSkill{
+TH_Weapon_BailouLouguan_skill = sgs.CreateTriggerSkillV2{
 	name = "TH_Weapon_BailouLouguan",
 	events = { sgs.TargetConfirmed, sgs.CardEffected, sgs.CardUsed },
 	frequency = sgs.Skill_Compulsory,
-	can_trigger = function(self, target)
-		return target and (target:hasWeapon("TH_Weapon_BailouLouguan") or target:hasFlag("TH_Weapon_BailouLouguan"))
+	can_trigger = function(skill, event, room, player, data)
+		if not player then return false end
+		if player:hasWeapon("TH_Weapon_BailouLouguan") then return skill:objectName() end
+		-- CardEffected 主體為被【殺】指定的目標、CardUsed 可能為被標記的出閃者：
+		-- 皆非技能持有者，比照 Feixiangjian 回傳武器持有者作為 owner
+		if (event == sgs.CardEffected or event == sgs.CardUsed) and player:hasFlag("TH_Weapon_BailouLouguan") then
+			for _, holder in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+				if holder:hasWeapon("TH_Weapon_BailouLouguan") then return skill:objectName(), holder end
+			end
+		end
+		return false
 	end,
-	on_trigger = function(self, event, player, data)
-		local room = player:getRoom()
+	on_effect = function(skill, event, room, player, ctx)
+		local data = ctx.original_data
+		local player = ctx.invoker
 		if event == sgs.CardEffected then
 			local slash = data:toCardEffect()
 			if not slash.card:isKindOf("Slash") then return false end
@@ -327,6 +337,7 @@ TH_Weapon_BailouLouguan_skill = sgs.CreateTriggerSkill{
 				end
 			end
 		end
+		return false
 	end
 }
 TH_Weapon_BailouLouguan:setParent(extension)
@@ -8460,22 +8471,27 @@ TH_lordskill_exturn = sgs.CreateTriggerSkillV2{
 	end
 }
 
-TH_askforkingdom = sgs.CreateGameStartSkill{
+TH_askforkingdom = sgs.CreateTriggerSkillV2{
 	name = "#TH_askforkingdom",
 	frequency = sgs.Skill_Compulsory,
-	on_gamestart = function(self, player)
-		local room = player:getRoom()
+	events = { sgs.GameStart },
+	-- 原 GameStartSkill：持有者在各自 GameStart 觸發（現時無武將持有，屬 dead code）
+	can_trigger = function(skill, event, room, player, data)
+		if player and player:hasSkill(skill:objectName()) then return skill:objectName() end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
 		if room:getMode() == "mini" then return false end
 		if room:getMode() == "02_1v1" then return false end
 		if room:getMode() == "04_1v3" then return false end
 		if room:getMode() == "06_XMode" then return false end
 		if room:getMode() == "06_3v3" then return false end
 		if room:getMode() == "custom_scenario" then return false end
-		if player:getKingdom() == "TH_kingdom_baka" then return end
+		if player:getKingdom() == "TH_kingdom_baka" then return false end
 		if player:getState() == "robot" then
-			local str = room:askForChoice(player,self:objectName(),"TH_cancel+wei+shu+wu+qun+TH_kingdom_baka+TH_kingdom_meng")
+			local str = room:askForChoice(player,skill:objectName(),"TH_cancel+wei+shu+wu+qun+TH_kingdom_baka+TH_kingdom_meng")
 			if str == "TH_cancel" then
-				return
+				return false
 			else
 				room:setPlayerProperty(player, "kingdom", sgs.QVariant(str))
 				TH_logmessage("#TH_playerkingdom",player,str)
@@ -8485,6 +8501,7 @@ TH_askforkingdom = sgs.CreateGameStartSkill{
 			room:setPlayerProperty(player, "kingdom", sgs.QVariant(kname))
 			TH_logmessage("#ChooseKingdom", player, kname)
 		end
+		return false
 	end
 }
 
