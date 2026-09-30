@@ -165,7 +165,7 @@ yimiehaivs = sgs.CreateViewAsSkillV2{
 yimiehai = sgs.CreateTriggerSkillV2{
 	name = "yimiehai",
 	view_as_skill = yimiehaivs,
-	events = {sgs.PreCardUsed,sgs.CardFinished,sgs.CardsMoveOneTime},
+	events = {sgs.CardsMoveOneTime},
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive()) then return false end
 		return firstSkillOwner(room, skill:objectName())
@@ -173,28 +173,36 @@ yimiehai = sgs.CreateTriggerSkillV2{
 	on_effect = function(skill,event,room,player,ctx)
 		local data = ctx.original_data
 		local invoker = ctx.invoker
-		if event==sgs.PreCardUsed then
-			local use = data:toCardUse()
-			if table.contains(use.card:getSkillNames(),skill:objectName()) then
-				invoker:setMark("yimiehaibf",1)
+		-- 「滅害」用牌結算中嘅移牌：以 historyParent 取外層 use_card，
+		-- 取代舊版 PreCardUsed/CardFinished 之間嘅 yimiehaibf 標記。
+		local move = data:toMoveOneTime()
+		if not invoker:hasSkill(skill)
+		or not (move.from_places:contains(sgs.Player_PlaceHand)
+			or move.from_places:contains(sgs.Player_PlaceEquip)) then
+			return false
+		end
+		-- 走訪所有 use_card 祖先（舊標記於整個 PreCardUsed~CardFinished 窗口有效，
+		-- 巢狀用牌不會清除它）
+		local eid = room:currentHistoryEventId()
+		local in_yimiehai_use = false
+		while eid do
+			local use_ev = room:historyParent(eid,"use_card",true)
+			if not (use_ev and use_ev.id) then break end
+			local ud = use_ev.data or {}
+			if tostring(ud.from or "")==invoker:objectName()
+			and string.find(tostring((ud.card or {}).skill_name or ""),"yimiehai",1,true) then
+				in_yimiehai_use = true
+				break
 			end
-		elseif event==sgs.CardFinished then
-			local use = data:toCardUse()
-			if table.contains(use.card:getSkillNames(),skill:objectName()) then
-				invoker:setMark("yimiehaibf",0)
-			end
-		elseif event==sgs.CardsMoveOneTime then
-	     	local move = data:toMoveOneTime()
-			if invoker:getMark("yimiehaibf")>0 and invoker:hasSkill(skill)
-			and (move.from_places:contains(sgs.Player_PlaceHand) or move.from_places:contains(sgs.Player_PlaceEquip)) then
-				for i,id in sgs.qlist(move.card_ids)do
-					local c = sgs.Sanguosha:getCard(id)
-					if c:getSuit()==0 and c:hasFlag("visible") and move.from:isWounded() then
-						local to = BeMan(room,move.from)
-						to:drawCards(2,skill:objectName())
-						room:recover(to,sgs.RecoverStruct(skill:objectName(),invoker))
-					end
-				end
+			eid = use_ev.parent_id
+		end
+		if not in_yimiehai_use then return false end
+		for i,id in sgs.qlist(move.card_ids)do
+			local c = sgs.Sanguosha:getCard(id)
+			if c:getSuit()==0 and c:hasFlag("visible") and move.from:isWounded() then
+				local to = BeMan(room,move.from)
+				to:drawCards(2,skill:objectName())
+				room:recover(to,sgs.RecoverStruct(skill:objectName(),invoker))
 			end
 		end
 		return false
@@ -238,7 +246,7 @@ yi_lvboshe = sgs.General(shixinrumo_yi,"yi_lvboshe","qun",4)
 yiqingjun = sgs.CreateTriggerSkillV2{
 	name = "yiqingjun",
 	waked_skills = "shefu",
-	events = {sgs.RoundEnd,sgs.EventPhaseChanging,sgs.DamageDone},
+	events = {sgs.RoundEnd,sgs.EventPhaseChanging},
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive()) then return false end
 		return firstSkillOwner(room, skill:objectName())
@@ -276,14 +284,9 @@ yiqingjun = sgs.CreateTriggerSkillV2{
 						end
 						p:addMark("yiqingjunbf")
 					end
-					room:setTag("yiqingjunTo",ToData(tp))
 					tp:gainAnExtraTurn()
 					room:setPlayerMark(tp,"&yiqingjun",0)
 				end
-			end
-		elseif event==sgs.DamageDone then
-	     	if invoker:getMark("yiqingjunbf")>0 then
-				invoker:addMark("yiqingjunDamage-Clear")
 			end
 		elseif event==sgs.EventPhaseChanging then
 	     	local change = data:toPhaseChange()
@@ -300,11 +303,34 @@ yiqingjun = sgs.CreateTriggerSkillV2{
 						end
 					end
 				end
+				-- 「未受傷害」以本 turn 域嘅 damage 事件取代 yiqingjunDamage-Clear 標記
+				local turn = room:historyScopes().turn_id
+				local damaged = {}
+				if turn and tostring(turn)~="0" then
+					local dfilter = {kind="damage",turn_id=turn,limit=64}
+					local dpage = room:queryHistoryEvents(dfilter)
+					if not (dpage.error or not dpage.complete or not dpage.attribution_complete) then
+						local dwatermark = dpage.watermark
+						while true do
+							for _,ev in ipairs(dpage.items or {})do
+								local dd = ev.data or {}
+								if dd.prevented~=true and dd.to and tostring(dd.to)~="" then
+									damaged[tostring(dd.to)] = true
+								end
+							end
+							if not dpage.has_more then break end
+							dfilter.after = dpage.next_after
+							dfilter.watermark = dwatermark
+							dpage = room:queryHistoryEvents(dfilter)
+							if dpage.error or not dpage.complete or not dpage.attribution_complete then break end
+						end
+					end
+				end
 				for i,p in sgs.qlist(room:getAllPlayers())do
 					if p:getMark("yiqingjunbf")>0 then
 						p:setMark("yiqingjunbf",0)
-						if p:getMark("yiqingjunDamage-Clear")<1 then
-							local tp = room:getTag("yiqingjunTo"):toPlayer()
+						if not damaged[p:objectName()] then
+							local tp = invoker
 							if p:canSlash(tp,false) then
 								tp = BeMan(room,tp)
 								local dc = dummyCard("slash","_yiqingjun")
@@ -394,14 +420,16 @@ yizhengsiCard = sgs.CreateSkillCard{
 		return #targets>2 and table.contains(targets,source)
 	end,
 	about_to_use = function(self,room,use)
-		room:setTag("yizhengsiUse",ToData(use))
+		-- 保留選擇順序：cardOnUse 內 use.to 會被 sortByActionOrder 重排
+		self:setTag("yizhengsiUse",ToData(use))
 		self:cardOnUse(room,use)
 	end,
 	on_use = function(self,room,source,targets)
-		local use = room:getTag("yizhengsiUse"):toCardUse()
+		local use = self:getTag("yizhengsiUse"):toCardUse()
+		local nums,ids = {},{}
 		local dc = room:askForCardShow(use.to:first(),source,"yizhengsi")
 		local max,min = dc:getNumber(),dc:getNumber()
-		use.to:first():setMark("yizhengsiNumber",dc:getNumber())
+		nums[use.to:first():objectName()] = dc:getNumber()
 		room:showCard(use.to:first(),dc:getEffectiveId())
 		for i,p in sgs.qlist(use.to)do
 			p:addMark("yizhengsiUse-PlayClear")
@@ -409,20 +437,21 @@ yizhengsiCard = sgs.CreateSkillCard{
 				local dc2 = room:askForCardShow(p,source,"yizhengsi")
 				if dc2:getNumber()>max then max = dc2:getNumber() end
 				if dc2:getNumber()<min then min = dc2:getNumber() end
-				p:setMark("yizhengsiId",dc2:getEffectiveId())
-				p:setMark("yizhengsiNumber",dc2:getNumber())
+				ids[p:objectName()] = dc2:getEffectiveId()
+				nums[p:objectName()] = dc2:getNumber()
 			end
 		end
 		for i,p in sgs.qlist(use.to)do
 			if i>0 then
-				room:showCard(p,p:getMark("yizhengsiId"))
+				room:showCard(p,ids[p:objectName()])
 			end
 		end
 		for i,p in sgs.qlist(use.to)do
-			if p:getMark("yizhengsiNumber")>=max then
+			local n = nums[p:objectName()] or 0
+			if n>=max then
 				room:askForDiscard(p,"yizhengsi",2,2)
 			end
-			if p:getMark("yizhengsiNumber")<=min then
+			if n<=min then
 				room:loseHp(p,1,true,source,"yizhengsi")
 			end
 		end
@@ -600,22 +629,30 @@ yijizhi = sgs.CreateTriggerSkillV2{
 	name = "yijizhi",
 	events = {sgs.Dying},
 	frequency = sgs.Skill_Compulsory,
+	-- 「每回合首次陷入濒死」由 SkillV2 usage 計量（回合域）；觸發技需手動 isUsable/addUsage
+	limit_scope = sgs.Skill_Limit_Turn,
+	max_usage_limit = 1,
 	can_trigger = function(skill, event, room, player, data)
-		if player and player:isAlive() and player:hasSkill(skill:objectName()) then
-			return skill:objectName()
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then
+			return false
+		end
+		if data:toDying().who~=player then return false end
+		for _, iid in sgs.list(player:getSkillInstanceIds(skill:objectName())) do
+			local uctx = sgs.SkillContext()
+			uctx.owner = player
+			uctx.invoker = player
+			uctx.instanceID = iid
+			uctx.current_event = event
+			if skill:isUsable(uctx) then return skill:objectName() end
 		end
 		return false
 	end,
 	on_effect = function(skill,event,room,player,ctx)
-		local data = ctx.original_data
-		if event==sgs.Dying then
-			local dy = data:toDying()
-			if dy.who==player and player:getMark("yijizhiUse-Clear")<1 then
-				room:sendCompulsoryTriggerLog(player,skill)
-				player:addMark("yijizhiUse-Clear")
-				room:recover(player,sgs.RecoverStruct(skill:objectName(),player))
-			end
-		end
+		if not skill:isUsable(ctx) then return false end
+		skill:addUsage(ctx)
+		room:sendCompulsoryTriggerLog(player,skill)
+		room:recover(player,sgs.RecoverStruct(skill:objectName(),player))
+		return false
 	end
 }
 yi_xunyu:addSkill(yijizhi)
@@ -649,9 +686,10 @@ yimitu = sgs.CreateTriggerSkillV2{
 				end
 				tps = room:askForPlayersChosen(player,tps,skill:objectName(),0,3,"yimitu0",true,true)
 				if tps:length()>0 then
+					local shown = {}
 					for _,p in sgs.qlist(tps)do
 						local id = room:drawCardsList(p,1,skill:objectName()):first()
-						p:setMark("yimituId",id)
+						shown[p:objectName()] = id
 						room:showCard(p,id)
 					end
 					local tps2 = sgs.SPlayerList()
@@ -676,13 +714,13 @@ yimitu = sgs.CreateTriggerSkillV2{
 										room:useCard(sgs.CardUseStruct(dc,tp,p))
 									end
 								end
-								if pd.from_card:getEffectiveId()==p:getMark("yimituId")
+								if pd.from_card:getEffectiveId()==shown[p:objectName()]
 								then continue end
 							end
-							p:setMark("yimituId",-1)
+							shown[p:objectName()] = -1
 						end
 						for _,p in sgs.list(tps)do
-							if p:getMark("yimituId")<0 then
+							if (shown[p:objectName()] or 0)<0 then
 								room:loseMaxHp(player,1,skill:objectName())
 							end
 						end
@@ -1119,37 +1157,73 @@ manhaibianvs = sgs.CreateViewAsSkillV2{
 manhaibian = sgs.CreateTriggerSkillV2{
 	name = "manhaibian",
 	view_as_skill = manhaibianvs,
-	events = {sgs.EventPhaseStart,sgs.CardUsed},
+	events = {sgs.EventPhaseStart},
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive()) then return false end
 		return firstSkillOwner(room, skill:objectName())
 	end,
 	on_effect = function(skill,event,room,player,ctx)
-		local data = ctx.original_data
 		local invoker = ctx.invoker
-		if event==sgs.CardUsed then
-    		local use = data:toCardUse()
-			if use.card:getTypeId()>0 then
-				invoker:addMark("manhaibianUse")
-				room:setTag("manhaibianColor"..use.card:getColorString(),ToData(invoker))
-			end
-		else
-			if invoker:getPhase()==sgs.Player_RoundStart then
-				local rp = room:getTag("manhaibianColorred"):toPlayer()
-				local bp = room:getTag("manhaibianColorblack"):toPlayer()
-				for _,p in sgs.qlist(room:getAllPlayers())do
-					if p:getMark("manhaibianUse")>0 and p:hasSkill(skill) then
-						if rp and rp:isAlive() then
-							room:askForUseCard(rp,"@@manhaibian","manhaibian0")
-						end
-						if bp and bp:isAlive() then
-							room:askForUseCard(bp,"@@manhaibian","manhaibian0")
-						end
+		if invoker:getPhase()~=sgs.Player_RoundStart then return false end
+		-- 以 Resolution History 取代 manhaibianUse/manhaibianColor* 標記：
+		-- 舊版窗界為「上一次 RoundStart 階段事件」之後嘅所有非技能用牌。
+		local cur = room:historyParent(room:currentHistoryEventId(),"phase",true)
+		local curid = tonumber(tostring((cur or {}).id)) or 0
+		local boundary = 0
+		local efilter = {kind="phase",limit=64}
+		local epage = room:queryHistoryEvents(efilter)
+		if not (epage.error or not epage.complete or not epage.attribution_complete) then
+			local ewatermark = epage.watermark
+			while true do
+				for _,ev in ipairs(epage.items or {})do
+					local ed = ev.data or {}
+					local id = tonumber(tostring(ev.id)) or 0
+					if ed.phase==sgs.Player_RoundStart and ed.entered==true
+					and id>boundary and id<curid then
+						boundary = id
 					end
-					p:setMark("manhaibianUse",0)
 				end
-				room:removeTag("manhaibianColorred")
-				room:removeTag("manhaibianColorblack")
+				if not epage.has_more then break end
+				efilter.after = epage.next_after
+				efilter.watermark = ewatermark
+				epage = room:queryHistoryEvents(efilter)
+				if epage.error or not epage.complete or not epage.attribution_complete then break end
+			end
+		end
+		local users = {}
+		local lastUser = {}
+		local ufilter = {kind="use_card",after=boundary,limit=64}
+		local upage = room:queryHistoryEvents(ufilter)
+		if not (upage.error or not upage.complete or not upage.attribution_complete) then
+			local uwatermark = upage.watermark
+			while true do
+				for _,ev in ipairs(upage.items or {})do
+					local ud = ev.data or {}
+					local card = ud.card or {}
+					local f = tostring(ud.from or "")
+					if (tonumber(tostring(card.type)) or 0)>0 and f~="" then
+						users[f] = true
+						if card.red==true then lastUser["red"] = f
+						elseif card.black==true then lastUser["black"] = f end
+					end
+				end
+				if not upage.has_more then break end
+				ufilter.after = upage.next_after
+				ufilter.watermark = uwatermark
+				upage = room:queryHistoryEvents(ufilter)
+				if upage.error or not upage.complete or not upage.attribution_complete then break end
+			end
+		end
+		local rp = lastUser["red"] and room:findPlayerByObjectName(lastUser["red"],true) or nil
+		local bp = lastUser["black"] and room:findPlayerByObjectName(lastUser["black"],true) or nil
+		for _,p in sgs.qlist(room:getAllPlayers())do
+			if users[p:objectName()] and p:hasSkill(skill) then
+				if rp and rp:isAlive() then
+					room:askForUseCard(rp,"@@manhaibian","manhaibian0")
+				end
+				if bp and bp:isAlive() then
+					room:askForUseCard(bp,"@@manhaibian","manhaibian0")
+				end
 			end
 		end
 		return false
@@ -1675,7 +1749,7 @@ manhuoe = sgs.CreateTriggerSkillV2{
 				local dc = dummyCard()
 				local n = 0
 				for _,p in sgs.qlist(use.to)do
-					local sc = p:getTag("manhuoeSC"):toCard()
+					local sc = use.card:getTag("manhuoeSC-"..p:objectName()):toCard()
 					if sc then
 						n = n+sc:getNumber()
 						dc:addSubcard(sc)
@@ -1694,11 +1768,10 @@ manhuoe = sgs.CreateTriggerSkillV2{
 		elseif event==sgs.CardEffected then
 			local effect = data:toCardEffect()
 			if effect.card:isKindOf("FireAttack") and table.contains(effect.card:getSkillNames(),skill:objectName()) then
-				effect.to:removeTag("manhuoeSC")
 				if effect.to:getHandcardNum()>0 and effect.from:getMark("manhuoeBanTo-Clear")<1 then
 					local sc = room:askForCardShow(effect.to,effect.from,"fire_attack")
 					room:showCard(effect.to,sc:getEffectiveId())
-					effect.to:setTag("manhuoeSC",ToData(sc))
+					effect.card:setTag("manhuoeSC-"..effect.to:objectName(),ToData(sc))
 					local suit = sc:getSuitString()
 					local suit_png = suit
 					if sc:hasSuit() then
@@ -1820,18 +1893,19 @@ manrenwangvs = sgs.CreateViewAsSkillV2{
 	name = "manrenwang",
 	n = 1,
 	response_or_use = true,
+	-- 「每回合限一次」由 SkillV2 usage 計量（回合域）
+	limit_scope = sgs.Skill_Limit_Turn,
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not (player and player:isAlive()) then return false end
 		local reason = request:getReason()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-			return player:getMark("manrenwangUse-Clear")<1
-				and dummyCard("peach"):isAvailable(player)
+			return dummyCard("peach"):isAvailable(player)
 		end
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
 			local pattern = request:getPattern() or ""
 			return string.find(pattern,"peach") and player:hasTurn()
-				and player:getMark("manrenwangUse-Clear")<1
 		end
 		return false
 	end,
@@ -1851,23 +1925,6 @@ manrenwangvs = sgs.CreateViewAsSkillV2{
 manrenwang = sgs.CreateTriggerSkillV2{
 	name = "manrenwang",
 	view_as_skill = manrenwangvs,
-	events = {sgs.PreCardUsed},
-	can_trigger = function(skill, event, room, player, data)
-		if player and player:isAlive() and player:hasSkill(skill:objectName()) then
-			return skill:objectName()
-		end
-		return false
-	end,
-	on_effect = function(skill,event,room,player,ctx)
-		local data = ctx.original_data
-		if event==sgs.PreCardUsed then
-			local use = data:toCardUse()
-			if use.card:isKindOf("Peach") and table.contains(use.card:getSkillNames(),skill:objectName()) then
-				room:addPlayerMark(player,"manrenwangUse-Clear")
-			end
-		end
-		return false
-	end
 }
 man_yujin:addSkill(manrenwang)
 
@@ -2245,7 +2302,7 @@ chen_zhouyu:addSkill(chenxianger)
 chenmieguo = sgs.CreateTriggerSkillV2{
 	name = "chenmieguo",
 	waked_skills = "#chenmieguobf",
-	events = {sgs.EventPhaseStart,sgs.CardUsed},
+	events = {sgs.EventPhaseStart},
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive()) then return false end
 		return firstSkillOwner(room, skill:objectName())
@@ -2261,7 +2318,32 @@ chenmieguo = sgs.CreateTriggerSkillV2{
 					end
 					if invoker:getMark("chenmieguoBf")>0 then
 						invoker:setMark("chenmieguoBf",0)
-						if invoker:getMark("chenmieguoUse")<1 then
+						-- 「此額外回合未使用牌」：以本 turn 域嘅 use_card 事件取代 chenmieguoUse 標記
+						local used = false
+						local turn = room:historyScopes().turn_id
+						if turn and tostring(turn)~="0" then
+							local ufilter = {kind="use_card",turn_id=turn,
+								from=invoker:objectName(),limit=8}
+							local upage = room:queryHistoryEvents(ufilter)
+							if not (upage.error or not upage.complete or not upage.attribution_complete) then
+								local uwatermark = upage.watermark
+								while not used do
+									for _,ev in ipairs(upage.items or {})do
+										local ud = ev.data or {}
+										if (tonumber(tostring((ud.card or {}).type)) or 0)>0 then
+											used = true
+											break
+										end
+									end
+									if used or not upage.has_more then break end
+									ufilter.after = upage.next_after
+									ufilter.watermark = uwatermark
+									upage = room:queryHistoryEvents(ufilter)
+									if upage.error or not upage.complete or not upage.attribution_complete then break end
+								end
+							end
+						end
+						if not used then
 							room:sendShimingLog(getShimingRef(invoker, skill), false)
 							room:loseMaxHp(invoker,1,skill:objectName())
 						end
@@ -2294,12 +2376,6 @@ chenmieguo = sgs.CreateTriggerSkillV2{
 						end
 					end
 				end
-			end
-		else
-			local use = data:toCardUse()
-			if use.card:getTypeId()>0 and invoker:getMark("chenmieguoBf")>0
-			and invoker:hasFlag("CurrentPlayer") then
-				invoker:addMark("chenmieguoUse")
 			end
 		end
 		return false
@@ -2586,7 +2662,7 @@ chenxiezhong = sgs.CreateTriggerSkillV2{
 chen_zhangzhao:addSkill(chenxiezhong)
 chenqishi = sgs.CreateTriggerSkillV2{
 	name = "chenqishi",
-	events = {sgs.EventPhaseStart,sgs.CardsMoveOneTime,sgs.EventPhaseChanging},
+	events = {sgs.EventPhaseStart,sgs.EventPhaseChanging},
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive()) then return false end
 		return firstSkillOwner(room, skill:objectName())
@@ -2602,14 +2678,45 @@ chenqishi = sgs.CreateTriggerSkillV2{
 		local invoker = ctx.invoker
 		if event==sgs.EventPhaseStart then
 			if invoker:getPhase()==sgs.Player_Finish and invoker:hasSkill(skill) then
-				local ids = sgs.IntList()
-				for i,id in sgs.qlist(room:getDiscardPile())do
-					for _,p in sgs.list(room:getAlivePlayers())do
-						if p~=invoker and p:getMark(id.."chenqishiId-Clear")>0 then
-							ids:append(id)
-							break
+				-- 以 Resolution History 查本回合由其他角色置入棄牌堆嘅牌，
+				-- 取代舊版 id.."chenqishiId-Clear" 標記。
+				local others = {}
+				for _,p in sgs.list(room:getAlivePlayers())do
+					if p~=invoker then others[p:objectName()] = true end
+				end
+				local put = {}
+				local turn = room:historyScopes().turn_id
+				if turn and tostring(turn)~="0" then
+					local mfilter = {turn_id = turn, limit = 64}
+					local mpage = room:queryHistoryMoves(mfilter)
+					if not (mpage.error or not mpage.complete or not mpage.attribution_complete) then
+						local mwatermark = mpage.watermark
+						while true do
+							for _,fact in ipairs(mpage.items or {})do
+								local d = fact.data or {}
+								if d.to_place==sgs.Player_DiscardPile and d.card_id then
+									if (d.from_place==sgs.Player_PlaceHand
+										or d.from_place==sgs.Player_PlaceEquip)
+									and others[tostring(d.from or "")] then
+										put[d.card_id] = true
+									elseif d.from_place==sgs.Player_PlaceTable
+									and others[tostring(d.reason_player or "")] then
+										put[d.card_id] = true
+									end
+								end
+							end
+							if not mpage.has_more then break end
+							mfilter.after = mpage.next_after
+							mfilter.watermark = mwatermark
+							mpage = room:queryHistoryMoves(mfilter)
+							if mpage.error or not mpage.complete
+							or not mpage.attribution_complete then break end
 						end
 					end
+				end
+				local ids = sgs.IntList()
+				for i,id in sgs.qlist(room:getDiscardPile())do
+					if put[id] then ids:append(id) end
 				end
 				if ids:isEmpty() then return end
 				if skill:getFrequency(invoker)==sgs.Skill_Compulsory then
@@ -2637,26 +2744,6 @@ chenqishi = sgs.CreateTriggerSkillV2{
 				room:setPlayerMark(invoker,"&chenqishi+#bf",0)
 				room:sendCompulsoryTriggerLog(invoker,skill:objectName())
 				invoker:skip(sgs.Player_Draw)
-			end
-		else
-	     	local move = data:toMoveOneTime()
-			if move.to_place==sgs.Player_DiscardPile and invoker:hasTurn() then
-				if (move.from_places:contains(sgs.Player_PlaceHand) or move.from_places:contains(sgs.Player_PlaceEquip))
-				and move.from:objectName()==invoker:objectName() then
-					for i,id in sgs.qlist(move.card_ids)do
-						if move.from_places:at(i)==sgs.Player_PlaceHand
-						or move.from_places:at(i)==sgs.Player_PlaceEquip then
-							invoker:addMark(id.."chenqishiId-Clear")
-						end
-					end
-				end
-				if move.from_places:contains(sgs.Player_PlaceTable) and move.reason.m_playerId==invoker:objectName() then
-					for i,id in sgs.qlist(move.card_ids)do
-						if move.from_places:at(i)==sgs.Player_PlaceTable then
-							invoker:addMark(id.."chenqishiId-Clear")
-						end
-					end
-				end
 			end
 		end
 		return false
@@ -3211,34 +3298,52 @@ chenfusui = sgs.CreateTriggerSkillV2{
 	end
 }
 chen_sunshangxiang:addSkill(chenfusui)
--- DEFER:chenbiyivs:dynamic proxy over arbitrary external ViewAsSkill objects
--- (viewFilter/viewAs/enabled_at_response of a runtime-chosen skill) has no V2 request-model equivalent.
-chenbiyivs = sgs.CreateViewAsSkill{
+-- chenbiyi 代理 chenbiyi_skill 所指嘅（舊版）ViewAsSkill；V2 以 request 模型橋接：
+-- can_activate 對應 enabled_at_*，can_select_card 對應 viewFilter，create_card 對應 viewAs。
+local function chenbiyiCards(request)
+	local cards = sgs.CardList()
+	for _,id in sgs.qlist(request:getSelectedCardIds())do
+		cards:append(sgs.Sanguosha:getCard(id))
+	end
+	return cards
+end
+chenbiyivs = sgs.CreateViewAsSkillV2{
 	name = "chenbiyi",
 	n = 999,
-	view_filter = function(self,selected,to_select)
-		local cards = sgs.CardList()
-		for _,c in sgs.list(selected)do
-			cards:append(c)
-		end
-		local va = sgs.Sanguosha:getViewAsSkill(sgs.Self:property("chenbiyi_skill"):toString())
-		return va:viewFilter(cards,to_select)
-	end,
-	view_as = function(self,selected)
-		local cards = sgs.CardList()
-		for _,c in sgs.list(selected)do
-			cards:append(c)
-		end
-		local va = sgs.Sanguosha:getViewAsSkill(sgs.Self:property("chenbiyi_skill"):toString())
-		return va:viewAs(cards)
-	end,
-	enabled_at_response = function(self,player,pattern)
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player then return false end
 		local vs = sgs.Sanguosha:getViewAsSkill(player:property("chenbiyi_skill"):toString())
-		return vs and vs:isEnabledAtResponse(player,pattern)
+		if not vs then return false end
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+			return vs:isEnabledAtPlay(player)
+		end
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+		or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			return vs:isEnabledAtResponse(player,request:getPattern())
+		end
+		return false
 	end,
-	enabled_at_play = function(self,player)
+	can_select_card = function(skill, request, candidate)
+		local player = request:getInitiator()
+		if not (player and candidate) then return false end
 		local vs = sgs.Sanguosha:getViewAsSkill(player:property("chenbiyi_skill"):toString())
-		return vs and vs:isEnabledAtPlay(player)
+		if not vs then return false end
+		return vs:viewFilter(chenbiyiCards(request),candidate)
+	end,
+	card_selection_feasible = function(skill, request)
+		local player = request:getInitiator()
+		if not player then return false end
+		local vs = sgs.Sanguosha:getViewAsSkill(player:property("chenbiyi_skill"):toString())
+		return vs ~= nil and vs:viewAs(chenbiyiCards(request)) ~= nil
+	end,
+	create_card = function(skill, request)
+		local player = request:getInitiator()
+		if not player then return nil end
+		local vs = sgs.Sanguosha:getViewAsSkill(player:property("chenbiyi_skill"):toString())
+		if not vs then return nil end
+		return vs:viewAs(chenbiyiCards(request))
 	end,
 }
 local events = {}
