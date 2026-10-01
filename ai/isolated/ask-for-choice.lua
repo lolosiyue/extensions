@@ -166,6 +166,10 @@ local function make_registry(kind, default_name, name)
             if result ~= nil then return result end
         end
         -- 理由專用策略優先；共用預設仍可明確回 nil，表示這題未覆蓋。
+        -- SmartAI 有此理由的 hook 時（C++ 標 legacy_hook），共用預設讓位給它。
+        if options and type(options.context) == "table" and options.context.legacy_hook == true then
+            return nil
+        end
         local fallback = default_name and _G[default_name]
         if type(fallback) == "function" then return fallback(self, options, request) end
         return nil
