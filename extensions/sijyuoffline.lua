@@ -35505,6 +35505,7 @@ sfofl_yaoli_buff = sgs.CreateTriggerSkillV2 {
     end
 }
 
+sfofl_analepticchan = sgs.General(extension_s, "sfofl_analepticchan", "qun", 4, false)
 sfofl_analepticchan:addSkill(sfofl_meiniang)
 sfofl_analepticchan:addSkill(sfofl_yaoli)
 sfofl_analepticchan:addSkill(sfofl_yaoli_buff)
