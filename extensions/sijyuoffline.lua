@@ -17984,6 +17984,7 @@ sfofl_podai = sgs.CreateTriggerSkillV2{
 }
 sfofl_podaiInvalidity = sgs.CreateInvaliditySkill{
 	name = "#sfofl_podaiInvalidity",
+	validity_mark_prefix = "sfofl_podai",
 	skill_valid = function(self, player, skill)
 		if skill and player and player:getMark("sfofl_podai"..skill:objectName()) >= 1 then
 			return false
@@ -22679,6 +22680,7 @@ sfofl_ducai = sgs.CreateTargetModSkillV2{
 
 sfofl_ducaiInvalidity = sgs.CreateInvaliditySkill{
 	name = "#sfofl_ducaiInvalidity",
+	validity_current_sibling_skill = "sfofl_ducai",
 	skill_valid = function(self, player, skill)
         for _, p in sgs.qlist(player:getAliveSiblings()) do
             if p:hasFlag("CurrentPlayer") then
