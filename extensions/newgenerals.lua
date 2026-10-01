@@ -8513,6 +8513,7 @@ olwanshabf = sgs.CreateCardLimitSkill {
 
 olwanshaInvalidity = sgs.CreateInvaliditySkill { --成功运行过两次，再后来就会崩了。。
 	name = "#olwanshaInvalidity",
+	validity_current_sibling_skill = "olwansha",
 	skill_valid = function(self, player, skill)
 		if player:hasFlag("Global_Dying") or skill:objectName() == "olwansha" then
 			return true
