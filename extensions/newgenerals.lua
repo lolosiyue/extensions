@@ -13098,9 +13098,10 @@ card_selection_feasible = function(self, request)
 			end
 			return sc
 		end
-		local c = sgs.Self:getTag("keolyilie"):toCard()
-		if c then
-			local sc = sgs.Sanguosha:cloneCard(c:objectName())
+		-- 服务器没有 sgs.Self：蛊惑框选的牌名由 request 带来（客户端取自框，服务器取自提交的牌）
+		local name = request:getUserString()
+		local sc = name ~= "" and sgs.Sanguosha:cloneCard(name) or nil
+		if sc then
 			sc:setSkillName(self:objectName())
 			sc:setFlags(self:objectName())
 			for _, card in ipairs(cards) do
@@ -13131,9 +13132,10 @@ create_card = function(self, request)
 			end
 			return sc
 		end
-		local c = sgs.Self:getTag("keolyilie"):toCard()
-		if c then
-			local sc = sgs.Sanguosha:cloneCard(c:objectName())
+		-- 服务器没有 sgs.Self：蛊惑框选的牌名由 request 带来（客户端取自框，服务器取自提交的牌）
+		local name = request:getUserString()
+		local sc = name ~= "" and sgs.Sanguosha:cloneCard(name) or nil
+		if sc then
 			sc:setSkillName(self:objectName())
 			sc:setFlags(self:objectName())
 			for _, card in ipairs(cards) do

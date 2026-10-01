@@ -9914,7 +9914,7 @@ ny_10th_yinjun = sgs.CreateTriggerSkillV2{
 			local use = data:toCardUse()
 			if use.card:isKindOf("Slash") or use.card:isKindOf("TrickCard") then
 				if use.m_isHandcard then
-					room:setCardFlag("ny_10th_yinjunBf")
+					room:setCardFlag(use.card, "ny_10th_yinjunBf")
 				end
 			end
 		end
