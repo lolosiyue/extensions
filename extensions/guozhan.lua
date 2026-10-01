@@ -132,14 +132,14 @@ ZhijiZhibi = sgs.CreateTrickCard{
     can_recast = true,    -- 可以重铸
     
     -- 目标过滤：可以选择一名有手牌的其他角色
-    filter = function(self, targets, to_select)
+    filter = function(self, targets, to_select, player)
         -- 最多选择1个目标
         if #targets >= 1 then
             return false
         end
         
         -- 不能选择自己
-        if to_select:objectName() == sgs.Self:objectName() then
+        if to_select:objectName() == player:objectName() then
             return false
         end
         
