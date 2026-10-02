@@ -3197,7 +3197,7 @@ xianxsy_spmax  = sgs.CreateMaxCardsSkillV2 {
 	name = "#xianxsy_spmax",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local target = ctx:getPrimary()
@@ -3213,7 +3213,7 @@ xianxsy_spmax  = sgs.CreateMaxCardsSkillV2 {
 		end
 			end
 		local __r = __fixed_func(self, target)
-		return tonumber(__r) or 0
+		return tonumber(__r) or false -- Missing effect is not a fixed limit of zero.
 	end,
 }
 --鲜血沸腾
@@ -25982,7 +25982,7 @@ luashouhuo2 = sgs.CreateMaxCardsSkillV2 {
 		end
 			end
 		local __r = __fixed_func(self, target)
-		return tonumber(__r) or 0
+		return tonumber(__r) or false -- Only an active luashouhuo flag fixes the limit.
 	end,
 }
 luashouhuo = sgs.CreateTriggerSkillV2 {

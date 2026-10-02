@@ -1714,9 +1714,9 @@ manhuaibingbf = sgs.CreateMaxCardsSkillV2{
 					x = math.max(tonumber(m:split("+")[3]),x)
 				end
 			end
-			return x
+			if x >= 0 then return x end -- Only a live effect mark supplies a fixed limit.
 		end
-		return -1
+		return nil
 	end
 }
 man_koufeng:addSkill(manhuaibingbf)
