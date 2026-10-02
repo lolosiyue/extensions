@@ -914,12 +914,60 @@ sgs.LoadTranslationTable {
 
 s4_cloud_sunquan = sgs.General(extension, "s4_cloud_sunquan", "wu", 3, false)
 
+local function s4_cloud_yingziInstanceRef(player, instance_id)
+    if not player or not instance_id or instance_id <= 0 then
+        return nil
+    end
+    return sgs.SkillInstanceRef(
+        player:objectName(),
+        sgs.SkillInstanceKey("s4_cloud_yingzi", instance_id)
+    )
+end
+
+local function s4_cloud_yingziClearState(room, player, instance_id)
+    if not player or not instance_id or instance_id <= 0 then
+        return
+    end
+    player:removeSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "x")
+    player:removeSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "hand")
+    player:removeSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "hp")
+    player:removeSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "equip")
+    local ref = s4_cloud_yingziInstanceRef(player, instance_id)
+    if room and ref then
+        room:removeSkillInstanceCorrectState(player, ref, "x")
+    end
+end
+
+local function s4_cloud_yingziWriteState(room, player, instance_id, x, hand, hp, equip)
+    if not player or not instance_id or instance_id <= 0 then
+        return
+    end
+    player:setSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "x", sgs.QVariant(x))
+    player:setSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "hand", sgs.QVariant(hand))
+    player:setSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "hp", sgs.QVariant(hp))
+    player:setSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "equip", sgs.QVariant(equip))
+    local ref = s4_cloud_yingziInstanceRef(player, instance_id)
+    if room and ref then
+        room:setSkillInstanceCorrectState(player, ref, "x", sgs.QVariant(x))
+    end
+end
+
 s4_cloud_yingzi = sgs.CreateTriggerSkillV2{
     name = "s4_cloud_yingzi",
     frequency = sgs.Skill_Compulsory,
-    events = { sgs.DrawNCards },
+    events = { sgs.DrawNCards, sgs.EventPhaseChanging },
 	base_amount = 0,
+    on_record = function(skill, event, room, player, ctx)
+        if event ~= sgs.EventPhaseChanging then return end
+        if not ctx.owner or not player then return end
+        if ctx.owner:objectName() ~= player:objectName() then return end
+        local change = ctx.original_data:toPhaseChange()
+        if change.to == sgs.Player_NotActive then
+            s4_cloud_yingziClearState(room, ctx.owner, ctx.instanceID)
+        end
+    end,
     can_trigger = function(skill, event, room, player, data)
+        if event ~= sgs.DrawNCards then return false end
         if not player:hasSkill(skill:objectName()) then return false end
         local draw = data:toDraw()
         if draw.reason ~= "draw_phase" then return false end
@@ -927,10 +975,14 @@ s4_cloud_yingzi = sgs.CreateTriggerSkillV2{
     end,
 
     on_cost = function(skill, event, room, player, ctx)
+        local hand = player:getHandcardNum() >= 2
+        local hp = player:getHp() >= 2
+        local equip = player:getEquips():length() >= 1
         local x = 0
-        if player:getHandcardNum() >= 2 then x = x + 1 end
-        if player:getHp() >= 2 then x = x + 1 end
-        if player:getEquips():length() >= 1 then x = x + 1 end
+        if hand then x = x + 1 end
+        if hp then x = x + 1 end
+        if equip then x = x + 1 end
+        s4_cloud_yingziWriteState(room, player, ctx.instanceID, x, hand, hp, equip)
         if x > 0 then
             ctx:setModifiedAmount(x)
         end
@@ -964,7 +1016,18 @@ sgs.LoadTranslationTable {
     ["illustrator:s4_cloud_sunquan"] = "云崖",
 
     ["s4_cloud_yingzi"] = "英姿",
-    [":s4_cloud_yingzi"] = "锁定技，摸牌阶段，你多摸X张牌且你本回合的手牌上限+X（X为你满足的条件数：手牌数不小于2、体力值不小于2、装备区的牌数不小于1）。"
+    [":s4_cloud_yingzi"] = "锁定技，摸牌阶段，你多摸X张牌且你本回合的手牌上限+X（X为你满足的条件数：手牌数不小于2、体力值不小于2、装备区的牌数不小于1）。",
+    ["@s4_cloud_yingzi.state.x"] = "本回合条件数",
+    ["@s4_cloud_yingzi.state.hand"] = "手牌不少于2",
+    ["@s4_cloud_yingzi.state.hp"] = "体力不少于2",
+    ["@s4_cloud_yingzi.state.equip"] = "装备区有牌",
+    ["@s4_cloud_yingzi.state.hand.value.true"] = "是",
+    ["@s4_cloud_yingzi.state.hand.value.false"] = "否",
+    ["@s4_cloud_yingzi.state.hp.value.true"] = "是",
+    ["@s4_cloud_yingzi.state.hp.value.false"] = "否",
+    ["@s4_cloud_yingzi.state.equip.value.true"] = "是",
+    ["@s4_cloud_yingzi.state.equip.value.false"] = "否",
+    ["@s4_cloud_yingzi.correct.x"] = "本回合手牌上限+"
 }
 ----------------------------------------------------------------
 -- https://tieba.baidu.com/p/8501081538
