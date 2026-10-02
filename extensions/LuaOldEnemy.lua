@@ -37,6 +37,12 @@ require "lua.luaoldenemy_lib"
 
 local skilllist = sgs.SkillList()
 
+-- 觸發與每對距離都會問；不要每次把整張禁包表轉成 Lua table
+local function LuaOldEnemyBanned()
+	if sgs.Sanguosha.isPackageBanned then return sgs.Sanguosha:isPackageBanned("LuaOldEnemy") end
+	return table.contains(sgs.Sanguosha:getBanPackages(), "LuaOldEnemy")
+end
+
 LuaOldEnemy = sgs.CreateTriggerSkillV2 {
 	name = "#LuaOldEnemy",
 	events = { sgs.GameReady, sgs.EventPhaseStart, sgs.EventPhaseEnd, sgs.DamageInflicted, sgs.Death },
@@ -44,7 +50,7 @@ LuaOldEnemy = sgs.CreateTriggerSkillV2 {
 	frequency = sgs.Skill_Compulsory,
 
 	can_trigger = function(skill, event, room, player, data)
-		if not player or table.contains(sgs.Sanguosha:getBanPackages(), "LuaOldEnemy") then
+		if not player or LuaOldEnemyBanned() then
 			return false
 		end
 		if event == sgs.GameReady then
@@ -196,7 +202,7 @@ LuaOldEnemyDistance = sgs.CreateDistanceSkillV2 {
 	-- 全局规则技能：无持有者实例，按 (from,to) 每次评估一次
 	holder_selector = sgs.CorrectSkill_System,
 	correct_func = function(skill, ctx)
-		if table.contains(sgs.Sanguosha:getBanPackages(), "LuaOldEnemy") then
+		if LuaOldEnemyBanned() then
 			return nil
 		end
 		local from = ctx:getPrimary()

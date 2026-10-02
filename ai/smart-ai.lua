@@ -1988,6 +1988,8 @@ end
 
 function SmartAI:getActualController(player)
 	if not player then return nil end
+	-- 從未有人被設控制者時，每個角色都控制自己；免得 isFriend 每次走兩條 getTag 鏈
+	if sgs.ControllerTagInUse and not sgs.ControllerTagInUse() then return player end
 
 	local visited = {}
 	local current = player
@@ -2012,6 +2014,9 @@ end
 
 function SmartAI:isDualControlLinked(first, second)
 	if not first or not second then return false end
+	if sgs.ControllerTagInUse and not sgs.ControllerTagInUse() then
+		return first:objectName() == second:objectName()
+	end
 
 	local first_controller = self:getActualController(first)
 	local second_controller = self:getActualController(second)

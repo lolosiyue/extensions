@@ -2071,6 +2071,9 @@ SE_ShanguangFakeMove = sgs.CreateTriggerSkillV2 {
 	priority = 10,
 	can_trigger = function(skill, event, room, player, data)
 		if not player then return false end
+		if room.findPlayerWithFlag then
+			return room:findPlayerWithFlag("SE_Shanguang_InTempMoving") and skill:objectName() or false
+		end
 		for _, p in sgs.qlist(room:getAllPlayers()) do
 			if p:hasFlag("SE_Shanguang_InTempMoving") then
 				return skill:objectName()

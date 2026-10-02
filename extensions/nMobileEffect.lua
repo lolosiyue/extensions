@@ -33,8 +33,14 @@ local function n_mobile_ensure_instances(room)
 end
 
 --record 按每个持有实例调用一次；只在 ctx.owner 为事件目标本人时放行，等效旧版 can_trigger(target)+trigger(target) 的一次派发
+local function n_mobile_banned()
+	if sgs.Sanguosha.isPackageBanned then return sgs.Sanguosha:isPackageBanned("n_mobile_effect") end
+	return table.contains(sgs.Sanguosha:getBanPackages(),"n_mobile_effect")
+end
+
 local function n_mobile_target_ctx(room,player,ctx)
-	if table.contains(sgs.Sanguosha:getBanPackages(),"n_mobile_effect") or not player then
+	-- 每個事件逐角色實例各呼叫一次；整張禁包表轉 Lua table 太貴
+	if not player or n_mobile_banned() then
 		return false
 	end
 	n_mobile_ensure_instances(room)

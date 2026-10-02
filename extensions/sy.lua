@@ -805,6 +805,10 @@ fake_move = sgs.CreateTriggerSkillV2{
 	priority = 20,
 	can_trigger = function(skill, event, room, player, data)
 		sy_ensure_global_instances(room)
+		-- 每次牌移動都會問；原生掃描免得 50 人局逐人包 userdata
+		if room.findPlayerWithFlag then
+			return room:findPlayerWithFlag("_InTempMoving", true) and skill:objectName() or false
+		end
 		for _, p in sgs.qlist(room:getAllPlayers()) do
 			if string.find(p:getFlags(), "_InTempMoving") then
 				return skill:objectName()

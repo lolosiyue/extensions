@@ -119,6 +119,11 @@ leo_InTempMoving = sgs.CreateTriggerSkillV2 {
 		leo_ensure_global_instances(room)
 	end,
 	can_trigger = function(skill, event, room, player, data)
+		if room.findPlayerWithFlag then
+			local p = room:findPlayerWithFlag("leo_InTempMoving")
+			if p then return skill:objectName(), p end
+			return false
+		end
 		for _, p in sgs.qlist(room:getAllPlayers()) do
 			if p:hasFlag("leo_InTempMoving") then
 				return skill:objectName(), p
