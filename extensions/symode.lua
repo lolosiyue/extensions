@@ -74,10 +74,16 @@ sy_1stturnplay = sgs.CreateTriggerSkillV2 {
 	global = true,
 	priority = 1,
 	can_trigger = function(skill, event, room, player, data)
-		-- 舊版每次派發先掃一次 @syfirstturn；invoke 為單向旗標，此處保留同一掃描時機
-		for _, p in sgs.qlist(room:getAllPlayers()) do
-			if p:getMark("@syfirstturn") > 0 then
-				invoke = true
+		-- 舊版每次派發先掃一次 @syfirstturn；invoke 為單向旗標，已成立就不必再掃
+		if not invoke then
+			if room.findPlayerWithMark then
+				if room:findPlayerWithMark("@syfirstturn") then invoke = true end
+			else
+				for _, p in sgs.qlist(room:getAllPlayers()) do
+					if p:getMark("@syfirstturn") > 0 then
+						invoke = true
+					end
+				end
 			end
 		end
 		if not invoke then
