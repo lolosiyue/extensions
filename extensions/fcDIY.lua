@@ -16440,7 +16440,7 @@ FcjhqTreasureMXC = sgs.CreateMaxCardsSkillV2
 if player and player:getTreasure() ~= nil and player:getTreasure():isKindOf("FcjhqTreasure") then
 			return (player:getHp() + player:getMaxHp()) / 2
 		end
-		return -1
+		return nil -- No equipped treasure means no fixed limit.
 
 			end
 		local __r = __fixed_func(self, target)
@@ -18857,7 +18857,7 @@ if event == sgs.DamageInflicted then
 f_pinghe_cardmax = sgs.CreateMaxCardsSkillV2
 {
 	name = "#f_pinghe_cardmax",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local target = ctx:getPrimary()
@@ -18868,9 +18868,9 @@ f_pinghe_cardmax = sgs.CreateMaxCardsSkillV2
 		local self = skill
 		local target = ctx:getPrimary()
 		local function __fixed_func(self, player)
-local n = -1
+local n = nil -- Only this skill instance can supply the fixed limit.
 		if player:hasSkill("f_pinghe") then
-			n = math.max(n,player:getLostHp())
+			n = player:getLostHp()
 		end
 		return n
 
