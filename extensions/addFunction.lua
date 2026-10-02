@@ -2236,8 +2236,11 @@ addToSkills(OnSkillTrigger, IsProhibited)
 
 function createMode(spec)
 	spec = spec or {}
-	-- The module is VM-local and idempotent; Room reloads register their own callbacks.
-	if not sgs.registerModeAI then dofile("lua/ai/mode-ai.lua") end
+	-- Metadata-only modes also load in clients, whose content omits server AI.
+	-- Load the VM-local policy module only when the definition registers AI hooks.
+	if (spec.ai ~= nil or spec.teams ~= nil) and not sgs.registerModeAI then
+		dofile("lua/ai/mode-ai.lua")
+	end
 	sgs.GameModeCallbacks = sgs.GameModeCallbacks or {}
 	local name = spec.name or "預設模式"
 	local class = spec.class or "default"
