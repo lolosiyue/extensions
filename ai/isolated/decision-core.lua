@@ -68,6 +68,34 @@ function SmartAIView:getKeepValue(card)
         if reserve == nil then return nil end
         value = (value or 0) + math.max(0, reserve) * 2
     end
+    if card then
+        local skills = self.player and self.player:getSkills()
+        if not skills then return nil end
+        local values = sgs.card_value
+        if type(values) == "table" then
+            local seen = {}
+            for _, skill in ipairs(skills) do
+                local name = skill:objectName()
+                if not seen[name] and not skill:isInvalid() then
+                    seen[name] = true
+                    local class = values[name]
+                    if type(class) == "table" then
+                        local keys = {
+                            type(card.getSuitString) == "function" and card:getSuitString() or nil,
+                            type(card.getNumber) == "function" and tostring(card:getNumber()) or nil,
+                            card:getClassName(),
+                            card:objectName(),
+                            type(card.getColorString) == "function" and card:getColorString() or nil
+                        }
+                        for _, key in ipairs(keys) do
+                            local cv = key and class[key]
+                            if finite_number(cv) then value = (value or 0) + cv end
+                        end
+                    end
+                end
+            end
+        end
+    end
     return value or 0
 end
 
@@ -331,6 +359,15 @@ function SmartAIView:getNeedPeach(player)
 end
 
 function SmartAIView:isWeak(player)
+    if type(player) == "table" and not AIValue.isPlayer(player) then
+        local any = false
+        for _, p in ipairs(player) do
+            local weak = self:isWeak(p)
+            if weak == nil then return nil end
+            if weak then any = true end
+        end
+        return any
+    end
     local defense = self:getDefense(player)
     if defense == nil then return nil end
     local hp = (player or self.player):getHp()
@@ -813,6 +850,49 @@ function SmartAIView:hasLoseHandcardEffective(player, count)
     return count > least
 end
 
+function SmartAIView:getOverflow(player, isMax)
+    player = player or self.player
+    local hand = scalar(player, "getHandcardNum")
+    local max_cards = scalar(player, "getMaxCards")
+    if hand == nil or max_cards == nil then return nil end
+    if isMax and max_cards > 0 then return max_cards end
+    return hand - max_cards
+end
+
+function SmartAIView:hasManjuanEffect(player, manjuan_only)
+    player = player or self.player
+    local phase = player:getPhase()
+    if phase == nil or sgs.Player_NotActive == nil then return nil end
+    local manjuan = player:hasSkill("manjuan")
+    if manjuan == nil then return nil end
+    if manjuan and phase == sgs.Player_NotActive then return true end
+    if manjuan_only then return false end
+    local zishu = player:hasSkill("zishu")
+    if zishu == nil then return nil end
+    return zishu and phase == sgs.Player_NotActive
+end
+
+function SmartAIView:cantDamageMore(from, to)
+    from = from or self.room:getCurrent() or self.player
+    to = to or self.player
+    if not from or not to then return nil end
+    local jueqing = from:hasSkill("jueqing")
+    if jueqing == nil then return nil end
+    if jueqing then return false end
+    local lion = to:hasArmorEffect("SilverLion")
+    if lion == true then return true end
+    if lion == nil then return nil end
+    if to:getMark("@silver_lion") > 0 then return true end
+    if to:hasSkill("gongqing") then
+        local range = scalar(from, "getAttackRange")
+        if range == nil then return nil end
+        if range < 3 then return true end
+    end
+    local capped = to:hasSkills("keyaoliandu|kejieyaoliandu|s2_gangzhi|s4_s_gedang")
+    if capped == nil then return nil end
+    return capped
+end
+
 local awaken_empty = {"zhiji", "mobilezhiji", "olzhiji"}
 function SmartAIView:needKongcheng(player, keep)
     player = player or self.player
@@ -999,11 +1079,21 @@ function SmartAIView:ajustDamage(from, to, damage, card, nature, depth)
     to = damage_player(to or self.player)
     damage = damage == nil and 1 or damage
     if not finite_number(damage) or damage < 0 then ai_unsupported("invalid damage", "ajustDamage") end
-    -- This port deliberately covers skill-generated, normal damage. A physical
-    -- card carries flags/tags and chain policy not present in this contract.
-    if card ~= nil or nature ~= nil and nature ~= "N" and nature ~= sgs.DamageStruct_Normal
-        or depth ~= nil and depth ~= 0 then
-        ai_unsupported("card or elemental damage is not covered", "ajustDamage")
+    -- Slash／Duel 的普通傷害走同一條調整鏈，把實體牌交給 hook；其餘屬性與
+    -- 連鎖政策仍未投影。
+    if nature ~= nil and nature ~= "N" and nature ~= sgs.DamageStruct_Normal then
+        ai_unsupported("elemental damage is not covered", "ajustDamage")
+    end
+    if depth ~= nil and depth ~= 0 then
+        ai_unsupported("chained damage is not covered", "ajustDamage")
+    end
+    if card ~= nil then
+        if not AIValue.isCard(card) then
+            ai_unsupported("card damage needs a projected card", "ajustDamage")
+        end
+        if not (card:isKindOf("Slash") or card:isKindOf("Duel")) then
+            ai_unsupported("card or elemental damage is not covered", "ajustDamage")
+        end
     end
     if damage_replaces_hp(from, to) then return -damage end
     local players = damage_known(self.room:getAlivePlayers(), "alive roster")
@@ -1039,10 +1129,10 @@ function SmartAIView:ajustDamage(from, to, damage, card, nature, depth)
     end
     local mode = damage_known(self.room:getMode(), "game mode")
     if mode:find("guandu", 1, true) then ai_unsupported("guandu event tags are not projected", "ajustDamage") end
-    self.to, self.from, self.card, self.nature = to, from, nil, "N"
+    self.to, self.from, self.card, self.nature = to, from, card, nature or "N"
     local function adjustments(registry, player)
         for _, hook in ipairs(damage_known(skill_hooks(self, registry, player), registry)) do
-            local delta = self:callHook(registry, hook.key, self, from, to, nil, "N")
+            local delta = self:callHook(registry, hook.key, self, from, to, card, nature or "N")
             if delta ~= nil then
                 if not finite_number(delta) then ai_unsupported("non-numeric damage adjustment", hook.key) end
                 damage = damage + delta
@@ -1164,6 +1254,497 @@ function SmartAIView:needToLoseHp(to, from, card, passive, recover)
     return hp > best
 end
 SmartAIView.needToloseHp = SmartAIView.needToLoseHp
+
+function SmartAIView:getSuitNum(suit_strings, include_equip, player)
+    player = player or self.player
+    if type(suit_strings) ~= "string" or not player then return nil end
+    local cards
+    if player:objectName() == self.player:objectName() then
+        cards = player:getCards(include_equip and "he" or "h")
+    else
+        cards = player:getKnownCards()
+        if cards and include_equip then
+            local equips = player:getEquips()
+            if not equips then return nil end
+            local merged = AIList.new({})
+            for _, card in ipairs(cards) do merged:append(card) end
+            for _, card in ipairs(equips) do merged:append(card) end
+            cards = merged
+        end
+    end
+    if not cards then return nil end
+    local n = 0
+    for _, card in ipairs(cards) do
+        for _, suit in ipairs(suit_strings:split("|")) do
+            if card:getColorString() == suit or card:getSuitString() == suit then
+                n = n + 1
+                break
+            end
+        end
+    end
+    return n
+end
+
+function SmartAIView:hasSuit(suit_strings, include_equip, player)
+    local n = self:getSuitNum(suit_strings, include_equip, player)
+    if n == nil then return nil end
+    return n > 0
+end
+
+function SmartAIView:hasEightDiagramEffect(owner)
+    owner = owner or self.player
+    if not owner then return nil end
+    return owner:hasArmorEffect("EightDiagram")
+end
+
+-- Original wind-ai cantbeHurt, snapshot-only. Missing role/mark/peach counts stay unknown.
+function SmartAIView:cantbeHurt(player, from, damageNum)
+    from = from or self.player
+    player = player or self.player
+    if not player or not from then return nil end
+    if self:hasSkills("jueqing|gangzhi|MeowJueqing|exjueqing|sy_xushu", from)
+        or player:hasSkills("gangzhi|xinnian|sy_xushu|s3_yijue") then
+        return false
+    end
+    damageNum = damageNum or 1
+    if not finite_number(damageNum) then return nil end
+    local friends_of, enemies_of = self:getFriends(player, true), self:getEnemies(from)
+    local friends_from = self:getFriends(from)
+    if not friends_of or not enemies_of or not friends_from then return nil end
+    if (player:hasSkill("wuhun") or player:hasSkills("spwuhun") or player:hasSkills("sgkgodsuohun"))
+        and not player:isLord() and #friends_of > 0 then
+        local maxfriendmark, maxenemymark = 0, 0
+        local badge = "&nightmare+#" .. player:objectName()
+        for _, friend in ipairs(friends_from) do
+            local mark = friend:getMark(badge)
+            if mark > maxfriendmark then maxfriendmark = mark end
+        end
+        for _, enemy in ipairs(enemies_of) do
+            local mark = enemy:getMark(badge)
+            if mark > maxenemymark and enemy:objectName() ~= player:objectName() then
+                maxenemymark = mark
+            end
+        end
+        local hp = scalar(player, "getHp")
+        if hp == nil then return nil end
+        local enemy = self:isEnemy(player, from)
+        if enemy == nil then return nil end
+        if enemy then
+            if maxfriendmark + damageNum - hp / 2 >= maxenemymark then
+                local alive = self.room:getAlivePlayers()
+                if not alive then return nil end
+                if not (#enemies_of == 1 and #friends_from + #enemies_of == #alive)
+                    and not (from:getMark(badge) == maxfriendmark and from:getRole() == "loyalist") then
+                    return true
+                end
+            end
+        elseif maxfriendmark + damageNum - hp / 2 > maxenemymark then
+            return true
+        end
+    end
+    if player:hasSkill("duanchang") and not player:isLord() and #friends_of > 0
+        and (scalar(player, "getHp") or 0) <= 1 then
+        local max_hp = scalar(from, "getMaxHp")
+        if max_hp == nil then return nil end
+        if not (max_hp == 3 and from:getArmor() and from:getDefensiveHorse()) then
+            local weak = self:isWeak(from)
+            if weak == nil then return nil end
+            if max_hp <= 3 or from:isLord() and weak then return true end
+            if max_hp <= 3 or self.room:getLord() and from:getRole() == "renegade" then return true end
+        end
+    end
+    if player:hasSkill("tianxiang") then
+        local known = self:getSuitNum("diamond|club", false, player)
+        local hand = scalar(player, "getHandcardNum")
+        if known == nil or hand == nil then return nil end
+        if known < hand then
+            for _, friend in ipairs(friends_from) do
+                local hp, peaches = scalar(friend, "getHp"), self:getCardsNum("Peach", from)
+                if hp == nil or peaches == nil then return nil end
+                if hp + peaches < 2 and hand > 0 then return true end
+            end
+        end
+    end
+    return false
+end
+
+-- Original standard_cards-ai isGoodTarget. Recursion uses a viewer-local guard
+-- instead of room:setPlayerFlag. Helpers that are not projected leave the
+-- matching skill branch unknown rather than inventing a veto.
+function SmartAIView:isGoodTarget(to, targets, card)
+    if not to then return nil end
+    if type(targets) == "table" then
+        for _, p in ipairs(targets) do
+            local good = self:isGoodTarget(p, nil, card)
+            if good == nil then return nil end
+            if good then
+                if p == to then return true end
+                return self:isGoodTarget(to, nil, card)
+            end
+        end
+        return true
+    end
+    local damageNum = self:ajustDamage(self.player, to, 1, card)
+    if not finite_number(damageNum) then return nil end
+    if damageNum == 0 then return false end
+    if to:getMark("hunzi") < 1 and to:isLord() and (scalar(to, "getHp") or 0) >= 2
+        and math.abs(damageNum) == 1 and to:hasSkill("hunzi") then
+        return false
+    end
+    if damageNum < 0 then return true end
+    if not to:isLord() and (scalar(to, "getHp") or 0) <= damageNum and to:hasSkill("huilei") then
+        local hand = scalar(self.player, "getHandcardNum")
+        if hand == nil then return nil end
+        if hand >= 4 then return false end
+        return nil
+    end
+    local apn = self:getAllPeachNum(to)
+    local hp = scalar(to, "getHp")
+    if type(apn) ~= "number" or hp == nil then return nil end
+    if apn + hp > damageNum then
+        if to:hasSkill("jieming") then return nil end
+        if to:hasSkill("yiji") then return nil end
+        if to:hasSkills("nosmiji|miji") then return false end
+        local weak_friends = self:isWeak(self.friends)
+        if to:hasSkills("neoganglie|xuehen|xueji") then
+            if weak_friends == nil then return nil end
+            if weak_friends then return false end
+        end
+        if (scalar(self.player, "getHp") or 99) < 2 and math.random() < 0.5 and to:hasSkill("ganglie") then
+            return false
+        end
+        if (scalar(self.player, "getHp") or 99) < 2 and math.random() < 0.7 and to:hasSkill("nosganglie") then
+            return false
+        end
+        if to:hasSkill("guixin") then
+            local alive = self.room:getAlivePlayers()
+            if not alive then return nil end
+            if #alive > 2 then return false end
+        end
+        if (self._good_target_guard or 0) > 0 then return true end
+        self._good_target_guard = (self._good_target_guard or 0) + 1
+        local need = self:needToLoseHp(to, self.player, card)
+        self._good_target_guard = self._good_target_guard - 1
+        if need == nil then return nil end
+        if math.random() < 0.6 and need then return false end
+    end
+    local lost = scalar(to, "getLostHp")
+    if lost == nil then return nil end
+    if (lost < 2 or apn + hp > damageNum) and to:hasSkill("fangzhu") then
+        local friends = self:getFriends(to)
+        if not friends then return nil end
+        if lost < 2 or #friends > 1 then return false end
+    end
+    if not to:isLord() and to:hasSkill("wuhun") then
+        local friends = self:getFriends(to, true)
+        if not friends then return nil end
+        if #friends > 0 then
+            local maxfriendmark, maxenemymark = 0, 0
+            local badge = "&nightmare+#" .. to:objectName()
+            local own_friends, own_enemies = self.friends, self.enemies
+            if not own_friends or not own_enemies then return nil end
+            for _, friend in ipairs(own_friends) do
+                local mark = friend:getMark(badge)
+                if mark > maxfriendmark then maxfriendmark = mark end
+            end
+            for _, enemy in ipairs(own_enemies) do
+                local mark = enemy:getMark(badge)
+                if mark > maxenemymark and enemy:objectName() ~= to:objectName() then
+                    maxenemymark = mark
+                end
+            end
+            local enemy = self:isEnemy(to)
+            if enemy == nil then return nil end
+            local alive = self.room:getAlivePlayers()
+            if not alive then return nil end
+            if enemy then
+                if maxfriendmark + damageNum - hp / 2 >= maxenemymark
+                    and not (#own_enemies == 1 and #own_friends + #own_enemies == #alive)
+                    and not (self.player:getMark(badge) == maxfriendmark and self.player:getRole() == "loyalist") then
+                    return false
+                end
+            elseif maxfriendmark + damageNum - hp / 2 > maxenemymark then
+                return false
+            end
+        end
+    end
+    if hp <= damageNum and (scalar(self.player, "getMaxHp") or 99) < 6
+        and not to:isLord() and to:hasSkill("duanchang") then
+        local friends = self:getFriends(to, true)
+        if not friends then return nil end
+        if #friends > 0 then
+            local max_hp = scalar(self.player, "getMaxHp")
+            if max_hp == nil then return nil end
+            if not (max_hp >= 3 and self.player:getArmor() and self.player:getDefensiveHorse()) then
+                local weak = self:isWeak()
+                if weak == nil then return nil end
+                if self.player:isLord() and weak or self.room:getLord() and self.player:getRole() == "renegade" then
+                    return false
+                end
+            end
+        end
+    end
+    if to:hasSkill("tianxiang") then
+        local known = self:getSuitNum("diamond|club", false, to)
+        local hand = scalar(to, "getHandcardNum")
+        if known == nil or hand == nil then return nil end
+        if known < hand then
+            local peaches = self:getCardsNum("Peach")
+            if peaches == nil then return nil end
+            for _, friend in ipairs(self.friends or {}) do
+                local fhp = scalar(friend, "getHp")
+                if fhp == nil then return nil end
+                if fhp + peaches - damageNum < 2 then return false end
+            end
+        end
+    end
+    if to:hasSkill("kechengshishou") and to:hasSkill("kechengcangchu")
+        and to:getMark("Qingchengkechengcangchu") == 0 and card
+        and (card:isKindOf("FireSlash") or card:isKindOf("FireAttack")) then
+        return true
+    end
+    if to:hasSkill("LuaBimie") or to:hasSkill("fatebimie") then return true end
+    if self.player:hasSkill("sp_guoguanzhanjiang") and to:getMark("&LeVeL") > 0 then return true end
+    if (self._good_target_guard or 0) > 0 then return true end
+    self._good_target_guard = (self._good_target_guard or 0) + 1
+    local need = self:needToLoseHp(to, self.player, card)
+    self._good_target_guard = self._good_target_guard - 1
+    if need == nil then return nil end
+    if need and apn + hp > damageNum and math.random() < 0.66 then return false end
+    return true
+end
+
+-- Original standard_cards-ai canAttack. Nature defaults to normal; fire vine /
+-- kuangfeng still raise the cantbeHurt estimate the way the donor does.
+function SmartAIView:canAttack(enemy, attacker, nature)
+    attacker = attacker or self.player
+    nature = nature or sgs.DamageStruct_Normal
+    if not enemy or not attacker then return nil end
+    local enemies = self.enemies
+    if not enemies then return nil end
+    local damage = 1
+    if nature == sgs.DamageStruct_Fire and not enemy:hasArmorEffect("SilverLion") then
+        if enemy:hasArmorEffect("Vine") then damage = damage + 1 end
+        if enemy:getMark("&kuangfeng") > 0 then damage = damage + 1 end
+    end
+    if #enemies == 1 or self:hasSkills("jueqing") then return true end
+    local need = self:needToLoseHp(enemy, attacker, false, true)
+    if need == nil then return nil end
+    local good = self:isGoodTarget(enemy, enemies)
+    if good == nil then return nil end
+    local objective = self:objectiveLevel(enemy)
+    if type(objective) ~= "number" then return nil end
+    local hurt = self:cantbeHurt(enemy, self.player, damage)
+    if hurt == nil then return nil end
+    local effective = self:damageIsEffective(enemy, nature, attacker)
+    if effective == nil then return nil end
+    if nature ~= sgs.DamageStruct_Normal and enemy:isChained() then
+        return nil
+    end
+    if need and #enemies > 1 or not good or objective <= 2 or hurt or not effective then
+        return false
+    end
+    return true
+end
+
+-- Original standard_cards-ai canLiuli. dummyCard() in the donor is an untagged
+-- slash; needToLoseHp's slash-and-damage>1 gate is identical for 1 damage with
+-- no card, so the snapshot path does not invent a dummy CardView.
+function SmartAIView:canLiuli(other, another)
+    if not other or not other:hasSkill("liuli") then return false end
+    if type(another) == "table" then
+        for _, target in ipairs(another) do
+            local hp = scalar(target, "getHp")
+            if hp == nil then return nil end
+            if hp < 3 then
+                local can = self:canLiuli(other, target)
+                if can == nil then return nil end
+                if can then return true end
+            end
+        end
+        return false
+    end
+    if not another then return false end
+    local need = self:needToLoseHp(another, self.player, nil)
+    if need == nil then return nil end
+    if not need then return false end
+    local hand = scalar(other, "getHandcardNum")
+    local distance = other:distanceTo(another)
+    local range = scalar(other, "getAttackRange")
+    if hand == nil or distance == nil or range == nil then return nil end
+    local weapon, horse = other:getWeapon(), other:getOffensiveHorse()
+    if hand > 0 and distance <= range then return true end
+    if weapon and horse and distance <= range then return true end
+    if (weapon or horse) and distance <= 1 then return true end
+    return false
+end
+
+-- Original wind-ai findLeijiTarget. Missing slash-effectiveness stays "slash
+-- might land" so a Leiji holder is still treated as a threat, matching the
+-- donor's "do not pick this attacker" use at the call sites.
+-- Original SmartAI:canLiegong. Built-in liegong / kofliegong / tenyearliegong
+-- keep their phase and count gates; package hooks stay truthy-only.
+function SmartAIView:canLiegong(to, from)
+    from = from or self.room:getCurrent()
+    to = to or self.player
+    if not from then return false end
+    if not to then return nil end
+    local to_hand = scalar(to, "getHandcardNum")
+    local from_hp = scalar(from, "getHp")
+    local from_hand = scalar(from, "getHandcardNum")
+    local from_range = scalar(from, "getAttackRange")
+    if from:hasSkill("liegong") then
+        local phase = from:getPhase()
+        if phase == nil or sgs.Player_Play == nil then return nil end
+        if phase == sgs.Player_Play then
+            if type(to_hand) ~= "number" or type(from_hp) ~= "number"
+                or type(from_range) ~= "number" then
+                return nil
+            end
+            if to_hand >= from_hp or to_hand <= from_range then return true end
+        end
+    end
+    if from:hasSkill("kofliegong") then
+        local phase = from:getPhase()
+        if phase == nil or sgs.Player_Play == nil then return nil end
+        if phase == sgs.Player_Play then
+            if type(to_hand) ~= "number" or type(from_hp) ~= "number" then return nil end
+            if to_hand >= from_hp then return true end
+        end
+    end
+    if from:hasSkill("tenyearliegong") then
+        if type(to_hand) ~= "number" or type(from_hand) ~= "number" then return nil end
+        if to_hand <= from_hand then return true end
+    end
+    local hooks = skill_hooks(self, "ai_canliegong_skill", from)
+    if not hooks then return nil end
+    for _, hook in ipairs(hooks) do
+        local result = self:callHook("ai_canliegong_skill", hook.key, self, from, to)
+        if result then return true end
+    end
+    return false
+end
+
+function SmartAIView:hasCrossbowEffect(player)
+    player = player or self.player
+    if not player then return nil end
+    local paoxiao = player:hasSkills("paoxiao|tenyearpaoxiao|olpaoxiao")
+    if paoxiao == true then return true end
+    if paoxiao == nil then return nil end
+    local crossbow = player:hasWeapon("Crossbow")
+    if crossbow == nil then
+        crossbow = player:hasWeapon("crossbow")
+    end
+    if crossbow == true then return true end
+    if crossbow == nil then return nil end
+    return false
+end
+
+function SmartAIView:hasHeavyDamage(from, card, to, nature)
+    local damage = self:ajustDamage(from, to, 1, card, nature)
+    if type(damage) ~= "number" then return nil end
+    return damage > 1
+end
+
+function SmartAIView:findLeijiTarget(player, leiji_value, slasher, latest_version)
+    if not player then return nil end
+    if not latest_version then
+        return self:findLeijiTarget(player, leiji_value, slasher, 1)
+            or self:findLeijiTarget(player, leiji_value, slasher, -1)
+    end
+    local skills = latest_version == 1 and "leiji|olleiji|tenyearleiji"
+        or "nosleiji|luafan|PlusLeiji|qhwindleiji|sfofl_huanlei"
+    if not player:hasSkills(skills) then return nil end
+    if slasher then
+        if slasher:hasSkill("liegong") then
+            local phase = slasher:getPhase()
+            local enemy = self:isEnemy(player, slasher)
+            if enemy == nil or phase == nil then return player end
+            if phase == sgs.Player_Play and enemy then
+                local hand, hp, range = scalar(player, "getHandcardNum"), scalar(slasher, "getHp"),
+                    scalar(slasher, "getAttackRange")
+                if hand == nil or hp == nil or range == nil then return player end
+                if hand >= hp or hand <= range then return nil end
+            end
+        end
+        if slasher:hasSkill("kofliegong") then
+            local phase = slasher:getPhase()
+            local enemy = self:isEnemy(player, slasher)
+            if enemy == nil or phase == nil then return player end
+            if phase == sgs.Player_Play and enemy then
+                local hand, hp = scalar(player, "getHandcardNum"), scalar(slasher, "getHp")
+                if hand == nil or hp == nil then return player end
+                if hand >= hp then return nil end
+            end
+        end
+        local suit = latest_version == 1 and "black" or "spade"
+        local need = latest_version == 1 and 2 or 3
+        local has_suit = self:hasSuit(suit, true, player)
+        local hand = scalar(player, "getHandcardNum")
+        if has_suit == nil or hand == nil then return player end
+        if not has_suit and hand < need then return nil end
+        local known = player:getKnownCards()
+        if not known then return player end
+        local known_jink = 0
+        for _, card in ipairs(known) do
+            if card:isKindOf("Jink") then known_jink = known_jink + 1 end
+        end
+        local estimated = self:getCardsNum("Jink", player)
+        local weak = self:isWeak(player)
+        local eight = self:hasEightDiagramEffect(player)
+        if estimated == nil or weak == nil or eight == nil then return player end
+        local qinggang = slasher:hasWeapon("qinggang_sword")
+        if qinggang == nil then return player end
+        if not (known_jink > 0 or hand >= 4 and estimated >= 1
+            or not weak and eight and not qinggang and estimated >= 1) then
+            return nil
+        end
+    end
+    local enemies = self:getEnemies(player)
+    if not enemies then return nil end
+    local function getCmpValue(enemy)
+        -- Cardless thunder is not in ajustDamage's contract; the donor only
+        -- uses this score for truthiness at attack-target call sites.
+        local effective = self:damageIsEffective(enemy, sgs.DamageStruct_Normal, player)
+        if effective == nil then return nil end
+        if not effective then return 99 end
+        local value = 0
+        if enemy:hasSkills("hongyan|olhongyan") then
+            if latest_version == -1 then return 99 end
+            local has_club = self:hasSuit("club", true, player)
+            local hand = scalar(player, "getHandcardNum")
+            if has_club == nil or hand == nil then return nil end
+            if not has_club and hand < 3 then value = value + 80 else value = value + 70 end
+        end
+        local hurt = self:cantbeHurt(enemy, player, latest_version == 1 and 1 or 2)
+        local objective = self:objectiveLevel(enemy)
+        if hurt == nil or type(objective) ~= "number" then return nil end
+        if hurt or objective < 3 then return 100 end
+        if enemy:isChained() then return 100 end
+        if not latest_version and enemy:hasArmorEffect("silver_lion") then value = value + 20 end
+        if enemy:hasSkills(sgs.exclusive_skill) then value = value + 10 end
+        if enemy:hasSkills(sgs.masochism_skill) then value = value + 5 end
+        if enemy:isLord() then value = value - 5 end
+        local hp = scalar(enemy, "getHp")
+        if hp == nil then return nil end
+        value = value + hp
+        if latest_version and player:isWounded() then
+            local need = self:needToLoseHp(player)
+            if need == nil then return nil end
+            if not need then value = value + 15 end
+        end
+        return value
+    end
+    local best, best_value
+    for _, enemy in ipairs(enemies) do
+        local value = getCmpValue(enemy)
+        if value == nil then return player end
+        if value < (leiji_value or 50) and (not best or value < best_value) then
+            best, best_value = enemy, value
+        end
+    end
+    return best
+end
 
 local function card_in_player(player, id)
     for _, entry in ipairs({{player:getKnownCards(), "hand"}, {player:getEquips(), "equip"},

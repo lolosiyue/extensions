@@ -23,7 +23,8 @@ local registry_names = {
     "ai_compare_funcs", "ai_nullification_threat_table", "ai_fill_skill", "ai_weapon_value",
     "ai_armor_value", "ai_card_usage_limit", "ai_card_usage_penalty", "ai_suppress_intention",
     "ai_ajustdamage_from", "ai_ajustdamage_to", "ai_lijian_effect", "ai_liuli_effect",
-    "ai_quhu_effect", "ai_slash_benefit", "ai_type_name", "dynamic_value", "card_damage_nature"
+    "ai_quhu_effect", "ai_slash_benefit", "ai_type_name", "dynamic_value", "card_damage_nature",
+    "card_value"
 }
 
 local choice_legacy = rawget(_G, "ai_choice_legacy_registries")
@@ -82,7 +83,9 @@ local aliases = {
     besthp = "ai_getBestHp_skill", need_kongcheng = "need_kongcheng",
     lose_equip_skill = "lose_equip_skill", masochism_skill = "masochism_skill",
     Active_cardneed_skill = "Active_cardneed_skill", notActive_cardneed_skill = "notActive_cardneed_skill",
-    cardneed_skill = "cardneed_skill", dynamic_value = "dynamic_value", card_damage_nature = "card_damage_nature"
+    cardneed_skill = "cardneed_skill", need_equip_skill = "need_equip_skill",
+    double_slash_skill = "double_slash_skill",
+    dynamic_value = "dynamic_value", card_damage_nature = "card_damage_nature"
 }
 
 local function canonical(name)
@@ -104,6 +107,8 @@ sgs.dont_kongcheng_skill = sgs.dont_kongcheng_skill or "yuce|tanlan|toudu|qiaobi
 sgs.Active_cardneed_skill = sgs.Active_cardneed_skill or "paoxiao|tenyearpaoxiao|olpaoxiao|tianyi|xianzhen|shuangxiong|nosjizhi|jizhi|guose|duanliang|qixi|qingnang|luoyi|guhuo|nosguhuo|jieyin|zhiheng|rende|nosrende|nosjujian|luanji|qiaobian|lirang|mingce|fuhun|spzhenwei|nosfuhun|nosluoyi|yinbing|jieyue|sanyao|xinzhan"
 sgs.notActive_cardneed_skill = sgs.notActive_cardneed_skill or "kanpo|guicai|guidao|beige|xiaoguo|liuli|tianxiang|jijiu|leiji|nosleijiqingjian|zhuhai|qinxue|jspdanqi|" .. sgs.dont_kongcheng_skill
 sgs.cardneed_skill = sgs.cardneed_skill or sgs.Active_cardneed_skill .. "|" .. sgs.notActive_cardneed_skill
+sgs.need_equip_skill = sgs.need_equip_skill or "shensu|tenyearshensu|mingce|jujian|beige|yuanhu|huyuan|gongqi|nosgongqi|yanzheng|heg_qingcheng|neoluoyi|longhun|newlonghun|shuijian|yinbing"
+sgs.double_slash_skill = sgs.double_slash_skill or "paoxiao|tenyearpaoxiao|olpaoxiao|fuhun|tianyi|xianzhen|zhaxiang|lihuo|jiangchi|shuangxiong|qiangwu|luanji"
 
 for _, key in ipairs({"damage_card", "control_usecard", "control_card", "lucky_chance", "benefit"}) do
     if type(sgs.dynamic_value[key]) ~= "table" then sgs.dynamic_value[key] = {} end

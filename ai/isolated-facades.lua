@@ -307,6 +307,87 @@ function PlayerView:hasSkill(skill_name)
     return false
 end
 
+-- Snapshot stand-ins for Player::getSkillInstanceIds / hasSkillInstance /
+-- isSkillInvalid / getSkillInstanceStateValue. Missing skill projection is
+-- unknown (nil); a projected player with no matching instance is empty/false.
+function PlayerView:getSkillInstanceIds(skill_name)
+    if type(skill_name) ~= "string" or skill_name == "" then return nil end
+    local index = rawget(self, "_skill_index")
+    if type(index) ~= "table" then return nil end
+    local ids = AIList.new({})
+    for _, skill in ipairs(index.by_name[skill_name] or {}) do
+        if type(skill.instance_id) == "number" and skill.instance_id > 0 then
+            ids:append(skill.instance_id)
+        end
+    end
+    return ids
+end
+
+function PlayerView:hasSkillInstance(skill_name, instance_id)
+    if type(skill_name) ~= "string" or type(instance_id) ~= "number" then
+        return false
+    end
+    local index = rawget(self, "_skill_index")
+    if type(index) ~= "table" then return nil end
+    return type(index.by_instance[skill_name .. "#" .. instance_id]) == "table"
+end
+
+function PlayerView:isSkillInvalid(skill_name, instance_id)
+    if type(skill_name) ~= "string" or type(instance_id) ~= "number" then
+        return false
+    end
+    local index = rawget(self, "_skill_index")
+    if type(index) ~= "table" then return nil end
+    local skill = index.by_instance[skill_name .. "#" .. instance_id]
+    if type(skill) ~= "table" then return false end
+    return skill.invalid == true
+end
+
+function PlayerView:getSkillInstanceStateValue(skill_name, instance_id, key, default_value)
+    if type(skill_name) ~= "string" or type(instance_id) ~= "number"
+        or type(key) ~= "string" then
+        return default_value
+    end
+    local index = rawget(self, "_skill_index")
+    if type(index) ~= "table" then return nil end
+    local skill = index.by_instance[skill_name .. "#" .. instance_id]
+    if type(skill) ~= "table" then return default_value end
+    if type(skill.state) ~= "table" then
+        -- Other viewers do not receive private instance state.
+        return default_value
+    end
+    local value = skill.state[key]
+    if value == nil then return default_value end
+    return copy_value(value)
+end
+
+function PlayerView:getSkillInstanceCorrectStateValue(skill_name, instance_id, key, default_value)
+    if type(skill_name) ~= "string" or type(instance_id) ~= "number"
+        or type(key) ~= "string" then
+        return default_value
+    end
+    local index = rawget(self, "_skill_index")
+    if type(index) ~= "table" then return nil end
+    local skill = index.by_instance[skill_name .. "#" .. instance_id]
+    if type(skill) ~= "table" then return default_value end
+    local state = skill.correct_state
+    if type(state) ~= "table" then return default_value end
+    local value = state[key]
+    if value == nil then return default_value end
+    return copy_value(value)
+end
+
+function PlayerView:getMarkNames()
+    local view = rawget(self, "_view")
+    local marks = type(view) == "table" and view.public_marks or nil
+    if type(marks) ~= "table" then return nil end
+    local names = AIList.new({})
+    for name in pairs(marks) do
+        if type(name) == "string" then names:append(name) end
+    end
+    return names
+end
+
 function PlayerView:getEquips()
     local view = rawget(self, "_view")
     return wrap_values(type(view) == "table" and view.equips or nil, CardView.new)
@@ -342,6 +423,41 @@ function PlayerView:isAllNude()
     local count = self:getCardCount(true)
     if count == nil then return nil end
     return count == 0
+end
+
+-- Snapshot stand-in for Player:canDiscard. Jilei / lock are not projected, so a
+-- visible hej card is treated as discardable; a hidden hand with cards counts
+-- as discardable when the "h" flag is requested.
+function PlayerView:canDiscard(who, flags)
+    who = who or self
+    if not AIValue.isPlayer(who) then return nil end
+    if type(flags) == "number" then
+        local known, equips, judging = who:getKnownCards(), who:getEquips(), who:getJudgingArea()
+        if not known or not equips or not judging then return nil end
+        for _, zone in ipairs({known, equips, judging}) do
+            for _, card in ipairs(zone) do
+                if card:getEffectiveId() == flags then return true end
+            end
+        end
+        return false
+    end
+    if type(flags) ~= "string" or flags == "" or string.find(flags, "[^hej]") then return nil end
+    if string.find(flags, "h", 1, true) then
+        local n = who:getHandcardNum()
+        if type(n) ~= "number" then return nil end
+        if n > 0 then return true end
+    end
+    if string.find(flags, "e", 1, true) then
+        local equips = who:getEquips()
+        if not equips then return nil end
+        if #equips > 0 then return true end
+    end
+    if string.find(flags, "j", 1, true) then
+        local judging = who:getJudgingArea()
+        if not judging then return nil end
+        if #judging > 0 then return true end
+    end
+    return false
 end
 
 function PlayerView:containsTrick(name)
@@ -582,6 +698,26 @@ function CardView:getSuitString()
         if value ~= nil and suit == value then return entry[2] end
     end
     return nil -- Missing/unknown suit is not the known no-suit value.
+end
+
+function CardView:getColorString()
+    if self:isRed() then return "red" end
+    if self:isBlack() then return "black" end
+    return nil
+end
+
+function CardView:hasSuit()
+    local suit = self:getSuitString()
+    return suit == "spade" or suit == "club" or suit == "heart" or suit == "diamond"
+end
+
+function CardView:hasFlag(name)
+    if type(name) ~= "string" or name == "" then return false end
+    local view = rawget(self, "_view")
+    local flags = type(view) == "table" and view.flags or nil
+    if not AIValue.isList(flags) then return nil end
+    for _, flag in ipairs(flags) do if flag == name then return true end end
+    return false
 end
 
 function CardView:isKindOf(card_type)
