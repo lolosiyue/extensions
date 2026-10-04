@@ -3183,21 +3183,22 @@ end
 sgs.ai_playerchosen_intention.ov_qianxi = 55
 
 sgs.ai_skill_invoke.ov_enyuan = function(self,data)
+	-- The recovery prompt is asked while CardsMoveOneTime is still set.
+	local prompt = data:toString():split(":")
+	if prompt[1]=="ov_enyuan1"
+	then
+		local target = BeMan(self.room,prompt[2])
+		return self:isFriend(target) and target:isWounded()
+	end
+	-- Both initial prompts pass the source ServerPlayer, not the event struct.
+	local target = data:toPlayer()
 	if self.player:hasFlag("Damaged")
 	then
-		local damage = data:toDamage()
-		return not self:isFriend(damage.from)
+		return not self:isFriend(target)
 	end
 	if self.player:hasFlag("CardsMoveOneTime")
 	then
-		local target = data:toPlayer()
 		return self:isFriend(target)
-	end
-	local target = data:toString():split(":")[2]
-	target = BeMan(self.room,target)
-	if self:isFriend(target)
-	then
-		return target:isWounded()
 	end
 end
 

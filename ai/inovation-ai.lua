@@ -120,7 +120,7 @@ function SmartAI:useCardMapoTofu(card, use) --need help 这个锦囊太复杂了
 		for _,v in ipairs(self.enemies) do
 			if v:objectName() ~= f_target:objectName() then
 				use.card = card
-				if use.to and not (self.room:isProhibited(self.player, v, card) or self.room:isinovation_Akarin(self.player, v)) then use.to:append(v) end
+				if use.to and not (self.room:isProhibited(self.player, v, card) or self.room:isAkarin(v, self.player)) then use.to:append(v) end
 				return
 			end
 		end
@@ -135,14 +135,14 @@ sgs.ai_card_intention.MapoTofu = 0
 
 function SmartAI:useCardKeyTrick(card, use)
 	for _,v in ipairs(self.friends) do
-		if v:getLostHp() > 0 and not v:containsTrick("key_trick") and not (self.room:isProhibited(self.player, v, card) or self.room:isinovation_Akarin(self.player, v)) then
+		if v:getLostHp() > 0 and not v:containsTrick("key_trick") and not (self.room:isProhibited(self.player, v, card) or self.room:isAkarin(v, self.player)) then
 			use.card = card
 			if use.to then use.to:append(v) end
 			return
 		end
 	end
 	for _,v in ipairs(self.friends) do
-		if not v:containsTrick("key_trick") and not (self.room:isProhibited(self.player, v, card) or self.room:isinovation_Akarin(self.player, v)) then
+		if not v:containsTrick("key_trick") and not (self.room:isProhibited(self.player, v, card) or self.room:isAkarin(v, self.player)) then
 			use.card = card
 			if use.to then use.to:append(v) end
 			return

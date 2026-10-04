@@ -446,6 +446,7 @@ ny_10th_shengdu_clear = sgs.CreateTriggerSkillV2{
 
 ny_10th_jieling = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_jieling",
+	history_key = "#ny_10th_jieling",
 		response_or_use = true,
 	n = 2,
 	can_activate = function(self, request)
@@ -629,6 +630,7 @@ ny_10th_gaoxiang = sgs.General(extension, "ny_10th_gaoxiang", "shu", 4, true, fa
 
 ny_10th_chiying = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_chiying",
+	history_key = "#ny_10th_chiying",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -797,6 +799,7 @@ ny_10th_tongye_slash = sgs.CreateTargetModSkillV2{
 
 ny_10th_changqu = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_changqu",
+	history_key = "#ny_10th_changqu",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -1737,6 +1740,7 @@ ny_10th_duyu = sgs.General(extension, "ny_10th_duyu", "wei", 4, true, false, fal
 
 ny_10th_jianguo = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_jianguo",
+	history_key = "#ny_10th_jianguo",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -2182,6 +2186,7 @@ ny_10th_chentai = sgs.General(extension, "ny_10th_chentai", "wei", 4, true, fals
 
 ny_10th_jiuxian = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_jiuxian",
+	history_key = "#ny_10th_jiuxian",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -3982,6 +3987,7 @@ ny_10th_jingdiansunquan = sgs.General(extension, "ny_10th_jingdiansunquan", "wu"
 
 ny_10th_jingdianzhiheng = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_jingdianzhiheng",
+	history_key = "#ny_10th_jingdianzhiheng",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -4756,6 +4762,7 @@ ny_10th_zhongji = sgs.CreateTriggerSkillV2{
 
 ny_10th_lvecheng = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_lvecheng",
+	history_key = "#ny_10th_lvecheng",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -4974,6 +4981,7 @@ ny_10th_yaoyi_start = sgs.CreateTriggerSkillV2{
 
 ny_10th_shoutan = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_shoutan",
+	history_key = "#ny_10th_shoutan",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -6052,6 +6060,7 @@ ny_10th_poyuan = sgs.CreateTriggerSkillV2{
 
 ny_10th_huace = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_huace",
+	history_key = "#ny_10th_huace",
 		response_or_use = true,
 	n = 0,
 	can_activate = function(self, request)
@@ -7403,6 +7412,7 @@ ny_10th_sufei = sgs.General(extension, "ny_10th_sufei", "wu", 4, true, false, fa
 
 ny_tenth_shujian = sgs.CreateViewAsSkillV2{
 		name = "ny_tenth_shujian",
+	history_key = "#ny_tenth_shujian",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -7970,6 +7980,7 @@ ny_10th_jiachong = sgs.General(extension, "ny_10th_jiachong", "wei", 3, true, fa
 
 ny_10th_beini = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_beini",
+	history_key = "#ny_10th_beini",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -8991,6 +9002,7 @@ ny_tenth_xiaoyin_buff = sgs.CreateTriggerSkillV2{
 
 ny_tenth_huahuo = sgs.CreateViewAsSkillV2{
 		name = "ny_tenth_huahuo",
+	history_key = "#ny_tenth_huahuo",
 	n = 1,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -9193,6 +9205,7 @@ ny_10th_yuandi = sgs.CreateTriggerSkillV2{
 
 ny_10th_xinyou = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_xinyou",
+	history_key = "#ny_10th_xinyou",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -9555,6 +9568,7 @@ ny_10th_zuowei = sgs.CreateTriggerSkillV2{
 
 ny_10th_zigu = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_zigu",
+	history_key = "#ny_10th_zigu",
 	n = 1,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -9980,6 +9994,7 @@ ny_10th_zhugeruoxue = sgs.General(extension, "ny_10th_zhugeruoxue", "wei", 3, fa
 
 ny_10th_qiongying = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_qiongying",
+	history_key = "#ny_10th_qiongying",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -10282,6 +10297,7 @@ ny_10th_xiahoumao = sgs.General(extension, "ny_10th_xiahoumao", "wei", 4, true, 
 
 ny_10th_tongwei = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_tongwei",
+	history_key = "#ny_10th_tongwei",
 	n = 2,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -12686,6 +12702,7 @@ ny_10th_qiqin = sgs.CreateTriggerSkillV2{
 
 ny_10th_weiwan = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_weiwan",
+	history_key = "#ny_10th_weiwan",
 	n = 1,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -13762,6 +13779,7 @@ ny_10th_aoshi = sgs.CreateTriggerSkillV2{
 
 ny_10th_aoshi_give = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_aoshi_give&",
+	history_key = "#ny_10th_aoshi_give",
 	n = 1,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -15212,6 +15230,7 @@ ny_tenth_dehua_max = sgs.CreateMaxCardsSkillV2{
 
 ny_10th_fuli = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_fuli",
+	history_key = "#ny_10th_fuli",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -16458,6 +16477,7 @@ ny_10th_zhimin = sgs.CreateTriggerSkillV2{
 
 ny_10th_jujianVS = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_jujian$",
+	history_key = "#ny_10th_jujian",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -16538,6 +16558,7 @@ ny_10th_wuguanyu = sgs.General(extension, "ny_10th_wuguanyu", "shu", 5, true, fa
 
 ny_tenth_wuyou_other = sgs.CreateViewAsSkillV2{
 		name = "ny_tenth_wuyou_other&",
+	history_key = "#ny_tenth_wuyou",
 	n = 1,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -17700,6 +17721,7 @@ ny_10th_mou_hucheer = sgs.General(extension, "ny_10th_mou_hucheer", "qun", 4, tr
 
 ny_10th_kongwu = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_kongwu",
+	history_key = "#ny_10th_kongwu",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -17949,6 +17971,7 @@ ny_10th_jijie_recover = sgs.CreateTriggerSkillV2{
 
 ny_10th_huijivs = sgs.CreateViewAsSkillV2{
 		name = "ny_10th_huiji",
+	history_key = "#ny_10th_huiji",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
