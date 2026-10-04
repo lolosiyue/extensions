@@ -363,6 +363,7 @@ function SmartAI:initialize(player)
 			if success then 
 				return result1, result2
 			else
+                self.room:writeToConsole("[AI_CALLBACK_ERROR] " .. method_name .. ": " .. tostring(result1))
 				self.room:writeToConsole(method_name)
 				self.room:writeToConsole(result1)
 				self.room:outputEventStack()

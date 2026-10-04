@@ -144,6 +144,7 @@ ov_lingbaoCard = sgs.CreateSkillCard {
 }
 ov_lingbao = sgs.CreateViewAsSkillV2 {
 	name = "ov_lingbao",
+	history_key = "#ov_lingbaoCard",
 	n = 2,
 	expand_pile = "ov_dan",
 	can_activate = function(self, request)
@@ -937,6 +938,7 @@ ov_beiniCard = sgs.CreateSkillCard {
 }
 ov_beini = sgs.CreateViewAsSkillV2 {
 	name = "ov_beini",
+	history_key = "#ov_beiniCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -1369,6 +1371,7 @@ ov_mouzhuCard = sgs.CreateSkillCard {
 }
 ov_mouzhuvs = sgs.CreateViewAsSkillV2 {
 	name = "ov_mouzhu",
+	history_key = "#ov_mouzhuCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -1623,6 +1626,7 @@ ov_daojiCard = sgs.CreateSkillCard {
 }
 ov_daoji = sgs.CreateViewAsSkillV2 {
 	name = "ov_daoji",
+	history_key = "#ov_daojiCard",
 	n = 1,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -2534,6 +2538,7 @@ ov_sfzhouhuCard = sgs.CreateSkillCard {
 }
 ov_sfzhouhuvs = sgs.CreateViewAsSkillV2 {
 	name = "ov_sfzhouhu",
+	history_key = "#ov_sfzhouhuCard",
 	n = 1,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -2622,6 +2627,7 @@ ov_sffengqiCard = sgs.CreateSkillCard {
 }
 ov_sffengqivs = sgs.CreateViewAsSkillV2 {
 	name = "ov_sffengqi",
+	history_key = "#ov_sffengqiCard",
 	n = 1,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -2710,6 +2716,7 @@ ov_sfzuhuoCard = sgs.CreateSkillCard {
 }
 ov_sfzuhuovs = sgs.CreateViewAsSkillV2 {
 	name = "ov_sfzuhuo",
+	history_key = "#ov_sfzuhuoCard",
 	n = 1,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -2977,6 +2984,7 @@ ov_fuzuanCard = sgs.CreateSkillCard {
 }
 ov_fuzuanvs = sgs.CreateViewAsSkillV2 {
 	name = "ov_fuzuan",
+	history_key = "#ov_fuzuanCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -4219,6 +4227,7 @@ ov_zhuiduCard = sgs.CreateSkillCard {
 }
 ov_zhuidu = sgs.CreateViewAsSkillV2 {
 	name = "ov_zhuidu",
+	history_key = "#ov_zhuiduCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -5231,6 +5240,7 @@ ov_bingdeCard = sgs.CreateSkillCard {
 }
 ov_bingdevs = sgs.CreateViewAsSkillV2 {
 	name = "ov_bingde",
+	history_key = "#ov_bingdeCard",
 	n = 1,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -5861,6 +5871,7 @@ ov_yuanhuCard = sgs.CreateSkillCard {
 }
 ov_yuanhuvs = sgs.CreateViewAsSkillV2 {
 	name = "ov_yuanhu",
+	history_key = "#ov_yuanhuCard",
 	n = 1,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -6759,6 +6770,7 @@ ov_xingzhuiCard = sgs.CreateSkillCard {
 }
 ov_xingzhuivs = sgs.CreateViewAsSkillV2 {
 	name = "ov_xingzhui",
+	history_key = "#ov_xingzhuiCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -8362,6 +8374,7 @@ ov_mutaoCard = sgs.CreateSkillCard {
 }
 ov_mutao = sgs.CreateViewAsSkillV2 {
 	name = "ov_mutao",
+	history_key = "#ov_mutaoCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -8505,6 +8518,7 @@ ov_kujianCard = sgs.CreateSkillCard {
 }
 ov_kujianvs = sgs.CreateViewAsSkillV2 {
 	name = "ov_kujian",
+	history_key = "#ov_kujianCard",
 	n = 3,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -11010,6 +11024,7 @@ ov_jieqiuCard = sgs.CreateSkillCard {
 }
 ov_jieqiuvs = sgs.CreateViewAsSkillV2 {
 	name = "ov_jieqiu",
+	history_key = "#ov_jieqiuCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -11174,6 +11189,7 @@ ov_enchouCard = sgs.CreateSkillCard {
 }
 ov_enchou = sgs.CreateViewAsSkillV2 {
 	name = "ov_enchou",
+	history_key = "#ov_enchouCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -13461,6 +13477,7 @@ ov_bomingCard = sgs.CreateSkillCard {
 }
 ov_bomingvs = sgs.CreateViewAsSkillV2 {
 	name = "ov_boming",
+	history_key = "#ov_bomingCard",
 	n = 1,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -14537,6 +14554,7 @@ ov_luanchouCard = sgs.CreateSkillCard {
 }
 ov_luanchouvs = sgs.CreateViewAsSkillV2 {
 	name = "ov_luanchou",
+	history_key = "#ov_luanchouCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -15043,6 +15061,7 @@ ov_yuejianCard = sgs.CreateSkillCard {
 }
 ov_yuejianvs = sgs.CreateViewAsSkillV2 {
 	name = "ov_yuejian",
+	history_key = "#ov_yuejianCard",
 	n = 998,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -15145,6 +15164,7 @@ ov_muyueCard = sgs.CreateSkillCard {
 }
 ov_muyuevs = sgs.CreateViewAsSkillV2 {
 	name = "ov_muyue",
+	history_key = "#ov_muyueCard",
 	n = 1,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -15651,6 +15671,7 @@ ov_gongqiCard = sgs.CreateSkillCard {
 }
 ov_gongqi = sgs.CreateViewAsSkillV2 {
 	name = "ov_gongqi",
+	history_key = "#ov_gongqiCard",
 	n = 1,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -18227,6 +18248,7 @@ ov_kaizengCard = sgs.CreateSkillCard {
 }
 ov_kaizengVS = sgs.CreateViewAsSkillV2 {
 	name = "ov_kaizengvs&",
+	history_key = "#ov_kaizengCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -18342,6 +18364,7 @@ ov_xiechangCard = sgs.CreateSkillCard {
 }
 ov_xiechangvs = sgs.CreateViewAsSkillV2 {
 	name = "ov_xiechang",
+	history_key = "#ov_xiechangCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -19146,6 +19169,7 @@ ov_danlieCard = sgs.CreateSkillCard {
 }
 ov_danlievs = sgs.CreateViewAsSkillV2 {
 	name = "ov_danlie",
+	history_key = "#ov_danlieCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -21162,6 +21186,7 @@ ov_huanjiCard = sgs.CreateSkillCard {
 }
 ov_huanji = sgs.CreateViewAsSkillV2 {
 	name = "ov_huanji",
+	history_key = "#ov_huanjiCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -21485,6 +21510,7 @@ ov_qinghanCard = sgs.CreateSkillCard {
 }
 ov_qinghanvs = sgs.CreateViewAsSkillV2 {
 	name = "ov_qinghan",
+	history_key = "#ov_qinghanCard",
 	n = 1,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -22371,6 +22397,7 @@ ov_guihanCard = sgs.CreateSkillCard {
 }
 ov_guihan = sgs.CreateViewAsSkillV2 {
 	name = "ov_guihan",
+	history_key = "#ov_guihanCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -22433,6 +22460,7 @@ ov_renxianCard = sgs.CreateSkillCard {
 }
 ov_renxianvs = sgs.CreateViewAsSkillV2 {
 	name = "ov_renxian",
+	history_key = "#ov_renxianCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -23143,6 +23171,7 @@ ov_fenxianCard = sgs.CreateSkillCard {
 }
 ov_fenxian = sgs.CreateViewAsSkillV2 {
 	name = "ov_fenxian",
+	history_key = "#ov_fenxianCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -23277,6 +23306,7 @@ ov_shiyiCard = sgs.CreateSkillCard {
 }
 ov_shiyi = sgs.CreateViewAsSkillV2 {
 	name = "ov_shiyi",
+	history_key = "#ov_shiyiCard",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -23747,6 +23777,7 @@ ov_qianxiongCard = sgs.CreateSkillCard {
 }
 ov_qianxiongvs = sgs.CreateViewAsSkillV2 {
 	name = "ov_qianxiong",
+	history_key = "#ov_qianxiongCard",
 	expand_pile = "#ov_qianxiong",
 	n = 1,
 	can_activate = function(self, request)
