@@ -15170,9 +15170,26 @@ fczhizheFCB = sgs.CreateTriggerSkillV2
 	events = {sgs.CardsMoveOneTime, sgs.CardUsed, sgs.CardResponded, sgs.EventLoseSkill, sgs.EventPhaseChanging},
 	can_trigger = function(self, event, room, player, data)
 		local function __triggerable(self, player)
-return player
-
+			if not player then return false end
+			if event == sgs.CardsMoveOneTime then
+				local move = data:toMoveOneTime()
+				-- Recovery needs a flagged discard and any matching room mark.
+				if move.to_place ~= sgs.Player_DiscardPile then return false end
+				local has_flagged_card = false
+				for _, id in sgs.qlist(move.card_ids) do
+					if sgs.Sanguosha:getCard(id):hasFlag("fczhizheFCB_UAR_card") then
+						has_flagged_card = true
+						break
+					end
+				end
+				if not has_flagged_card then return false end
+				for _, p in sgs.qlist(room:getAllPlayers()) do
+					if p:getMark("fczhizheFCB_UAR_" .. p:objectName()) > 0 then return true end
+				end
+				return false
 			end
+			return player
+		end
 		if not __triggerable(self, player, room, event, player, data) then return false end
 		local owner = room:findPlayerBySkillName(self:objectName())
 		if not owner then
@@ -16584,9 +16601,13 @@ fcj_shanxiFakeMove = sgs.CreateTriggerSkillV2
 	events = {sgs.BeforeCardsMove, sgs.CardsMoveOneTime},
 	can_trigger = function(self, event, room, player, data)
 		local function __triggerable(self, player)
-return player
-
+			if not player then return false end
+			-- Fake moves are suppressed only while the original room-wide flag is set.
+			for _, p in sgs.qlist(room:getAllPlayers()) do
+				if p:hasFlag("fcj_shanxi_InTempMoving") then return true end
 			end
+			return false
+		end
 		if not __triggerable(self, player, room, event, player, data) then return false end
 		local owner = room:findPlayerBySkillName(self:objectName())
 		if not owner then
