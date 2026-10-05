@@ -22,7 +22,7 @@ local registry_names = {
     "ai_getLeastHandcardNum_skill", "ai_getBestHp_skill", "ai_canliegong_skill", "damageSkillsList",
     "ai_compare_funcs", "ai_nullification_threat_table", "ai_fill_skill", "ai_weapon_value",
     "ai_armor_value", "ai_card_usage_limit", "ai_card_usage_penalty", "ai_suppress_intention",
-    "ai_ajustdamage_from", "ai_ajustdamage_to", "ai_lijian_effect", "ai_liuli_effect",
+    "ai_ajustdamage_from", "ai_ajustdamage_to", "ai_can_damagehp", "ai_lijian_effect", "ai_liuli_effect",
     "ai_quhu_effect", "ai_slash_benefit", "ai_type_name", "dynamic_value", "card_damage_nature",
     "card_value"
 }

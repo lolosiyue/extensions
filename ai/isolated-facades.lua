@@ -278,6 +278,20 @@ function PlayerView:getMark(mark_name)
     return type(value) == "number" and value or 0
 end
 
+function PlayerView:hasLordSkill(skill_name)
+    if type(skill_name) ~= "string" or skill_name == "" then return false end
+    local skills = self:getSkills()
+    if not skills then return nil end
+    for _, skill in ipairs(skills) do
+        if skill:objectName() == skill_name then
+            local effective = skill:isLordSkillEffective()
+            if type(effective) ~= "boolean" then return nil end
+            return effective
+        end
+    end
+    return false
+end
+
 function PlayerView:hasSkill(skill_name)
     if type(skill_name) ~= "string" or skill_name == "" then
         return false
@@ -404,6 +418,24 @@ function PlayerView:getLostHp()
     local view = self._view
     if type(view.hp) ~= "number" or type(view.max_hp) ~= "number" then return nil end
     return math.max(0, view.max_hp - view.hp)
+end
+
+function PlayerView:isKongcheng()
+    local count = self:getHandcardNum()
+    if type(count) ~= "number" then return nil end
+    return count == 0
+end
+
+function PlayerView:isWounded()
+    local lost = self:getLostHp()
+    if type(lost) ~= "number" then return nil end
+    return lost > 0
+end
+
+function PlayerView:isAlive()
+    local view = self._view
+    if type(view) ~= "table" or type(view.alive) ~= "boolean" then return nil end
+    return view.alive
 end
 
 function PlayerView:getCardCount(include_judging)
@@ -913,6 +945,18 @@ function RoomView:getAlivePlayers()
     return players_in_order(self, self._world.alive_player_order)
 end
 
+-- 存活玩家裡第一個持有該技能的人。技能表不完整時回 nil，掃完沒有則也是 nil。
+function RoomView:findPlayerBySkillName(skill_name)
+    if type(skill_name) ~= "string" or skill_name == "" then return nil end
+    local players = self:getAlivePlayers()
+    if not players then return nil end
+    for _, player in ipairs(players) do
+        local has = player:hasSkill(skill_name)
+        if has == nil then return nil end
+        if has then return player end
+    end
+end
+
 function RoomView:getAllPlayers(include_dead)
     local players = self:getPlayers()
     if not players then return nil end
@@ -1110,6 +1154,12 @@ function SmartAIView:getDecisionContext()
     if type(context.player) == "string" then
         context.player = self.room:findPlayerByObjectName(context.player, true)
     end
+    if type(context.dying) == "table" then
+        if type(context.dying.who) == "string" then
+            context.dying.who = self.room:findPlayerByObjectName(context.dying.who, true)
+        end
+        wrap_event(context.dying.damage)
+    end
     if type(context.use) == "table" then
         wrap_event(context.use)
         if AIValue.isList(context.use.to) then
@@ -1157,6 +1207,7 @@ function SmartAIView:getDecisionData()
         toCardEffect = function() return context.effect end,
         toCardUse = function() return context.use end,
         toPlayer = function() return context.player end,
+        toDying = function() return context.dying end,
         isNull = function() return next(context) == nil end
     }
 end
@@ -1514,6 +1565,52 @@ function PlayerView:inMyAttackRange(other)
     local range = type(view) == "table" and view.attack_range or nil
     if distance == nil or type(range) ~= "number" then return nil end
     return distance > 0 and distance <= range
+end
+
+-- 存活順序沿用快照的座位環。步數未知或名冊對不上時不猜下家。
+function PlayerView:getNextAlive(steps)
+    local room = rawget(self, "_room")
+    if not room then return nil end
+    steps = steps or 1
+    if type(steps) ~= "number" then return nil end
+    local alive = room:getAlivePlayers()
+    if not alive or #alive == 0 then return nil end
+    local index
+    for position, player in ipairs(alive) do
+        if player:objectName() == self:objectName() then index = position break end
+    end
+    if not index then return nil end
+    return alive[((index - 1 + steps) % #alive) + 1]
+end
+
+-- 雙方手牌是否空是拼點的可見前提。禁拼點等私有限制沒投影時，只回答「手牌允許」，合法性仍由權威端重驗。
+function PlayerView:canPindian(other)
+    if not other or type(other.isKongcheng) ~= "function" then return nil end
+    local self_empty, other_empty = self:isKongcheng(), other:isKongcheng()
+    if self_empty == nil or other_empty == nil then return nil end
+    if self_empty or other_empty then return false end
+    return true
+end
+
+-- 可見攻擊範圍內才視為能殺。距離或範圍沒投影時不猜；禁出牌仍由權威端重驗。
+function PlayerView:canSlash(other)
+    if not other then return nil end
+    if other:objectName() == self:objectName() then return false end
+    return self:inMyAttackRange(other)
+end
+
+function PlayerView:aliveCount()
+    local room = rawget(self, "_room")
+    if not room then return nil end
+    local players = room:getAlivePlayers()
+    if not players then return nil end
+    return #players
+end
+
+function PlayerView:isMale()
+    local gender = self:getGender()
+    if type(gender) ~= "number" or sgs.General_Male == nil then return nil end
+    return gender == sgs.General_Male
 end
 
 -- 技能實例候選：同名多實例各自是一筆，來源關係（借用／轉化）由 source_* 保留。

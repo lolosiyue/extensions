@@ -451,7 +451,31 @@ hunliesp_global_breakTempCards = sgs.CreateTriggerSkillV2{
 		end
 	end,
 	can_trigger = function(skill, event, room, player, data)
-		return skill:objectName()
+		-- Keep GameStart initialization; movement needs an actual temporary-card effect.
+		if event == sgs.GameStart then
+			return skill:objectName()
+		elseif event == sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			local property = "hunliesp_tempcard"
+			if move.to_place == sgs.Player_DiscardPile then
+				for _, id in sgs.qlist(move.card_ids) do
+					if sgs.Sanguosha:getCard(id):property(property):toBool()
+						and room:getCardPlace(id) == sgs.Player_DiscardPile then
+						return skill:objectName()
+					end
+				end
+			elseif move.to_place == sgs.Player_PlaceHand then
+				for _, id in sgs.qlist(move.card_ids) do
+					local card = sgs.Sanguosha:getCard(id)
+					if card:property(property):toBool()
+						and room:getCardPlace(id) == sgs.Player_PlaceHand
+						and not card:hasTip(property) then
+						return skill:objectName()
+					end
+				end
+			end
+		end
+		return false
 	end,
 	on_effect = function(self, event, room, player, ctx)
 		local data = ctx.original_data

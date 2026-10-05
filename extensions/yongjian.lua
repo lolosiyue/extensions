@@ -736,10 +736,31 @@ yj_on_trigger = sgs.CreateTriggerSkillV2{
 	priority = {4},
 	global = true,
 	can_trigger = function(self,event,room,player,data)
-		if player and player:isAlive()
-		--and not table.contains(sgs.Sanguosha:getBanPackages(),"yongjian")
-		then return self:objectName() end
-		return false
+		if not player or not player:isAlive() then return false end
+		-- Preserve the incoming/outgoing branch order used by on_effect.
+		if event==sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			if move.to_place==sgs.Player_PlaceHand and move.to and player:objectName()==move.to:objectName() then
+				local present = player:getPhase()==sgs.Player_Play and not player:hasSkill("yj_zhengyu",true)
+				for _,id in sgs.qlist(move.card_ids) do
+					if player:handCards():contains(id) and ((present and CardIsPresent(id))
+						or (move.reason.m_reason==sgs.CardMoveReason_S_REASON_DRAW and sgs.Sanguosha:getCard(id):isKindOf("Poison"))) then
+						return self:objectName()
+					end
+				end
+			elseif move.from and move.from_places:contains(sgs.Player_PlaceHand)
+				and player:objectName()==move.from:objectName() and player:getMark("BanPoisonEffect")<1 then
+				for i,id in sgs.qlist(move.card_ids) do
+					if move.from_places:at(i)==sgs.Player_PlaceHand and sgs.Sanguosha:getEngineCard(id):isKindOf("Poison")
+						and (move.to_place==sgs.Player_DiscardPile or move.to_place==sgs.Player_PlaceJudge
+						or move.to_place==sgs.Player_PlaceEquip or sgs.Sanguosha:getCard(id):hasFlag("visible")) then
+						return self:objectName()
+					end
+				end
+			end
+			return false
+		end
+		return self:objectName()
 	end,
 	on_record = yjHiddenOnRecord,
 	on_effect = function(self,event,room,player,ctx)
@@ -1426,10 +1447,34 @@ zlCardOnTrigger = sgs.CreateTriggerSkillV2{
 	frequency = sgs.Skill_Compulsory,
 	global = true,
 	can_trigger = function(self,event,room,player,data)
-		if player and player:isAlive()
-		--and not table.contains(sgs.Sanguosha:getBanPackages(),"zhulu")
-		then return self:objectName() end
-		return false
+		if not player or not player:isAlive() then return false end
+		-- Card movement can affect presents, Jinhe, or the Nv zhuang cleanup.
+		if event==sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			if move.to_place==sgs.Player_PlaceHand and move.to and player:objectName()==move.to:objectName()
+				and player:getPhase()==sgs.Player_Play and not player:hasSkill("yj_zhengyu",true) then
+				for _,id in sgs.qlist(move.card_ids) do
+					if player:handCards():contains(id) and CardIsPresent(id) then return self:objectName() end
+				end
+			end
+			if move.from and move.from_places:contains(sgs.Player_PlaceEquip) and player:objectName()==move.from:objectName() then
+				for i,id in sgs.qlist(move.card_ids) do
+					if move.from_places:at(i)==sgs.Player_PlaceEquip then
+						local c = sgs.Sanguosha:getCard(id)
+						if c:isKindOf("Jinhe") or (c:objectName()=="zl_nvzhuang" and player:hasFlag("zl_nvzhuangBuff")) then
+							return self:objectName()
+						end
+					end
+				end
+			elseif move.from_places:contains(sgs.Player_PlaceTable) and move.reason.m_playerId==player:objectName()
+				and move.to_place==sgs.Player_DiscardPile then
+				for _,id in sgs.qlist(move.card_ids) do
+					if player:hasFlag("zl_jinhe"..id) then return self:objectName() end
+				end
+			end
+			return false
+		end
+		return self:objectName()
 	end,
 	on_record = yjHiddenOnRecord,
 	on_effect = function(self,event,room,player,ctx)
@@ -2539,6 +2584,19 @@ ZhongdanOnTrigger = sgs.CreateTriggerSkillV2{
 			local change = data:toPhaseChange()
 			if change and change.to==sgs.Player_NotActive then return self:objectName() end
 			return false
+		end
+		-- Only discarded hand cards of Jinchan need this move callback.
+		if event==sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			if not (bit32.band(move.reason.m_reason,sgs.CardMoveReason_S_MASK_BASIC_REASON)==sgs.CardMoveReason_S_REASON_DISCARD
+				and move.from and move.from:objectName()==player:objectName()) then return false end
+			local matches = false
+			for i,id in sgs.list(move.card_ids) do
+				if move.from_places:at(i)==sgs.Player_PlaceHand and sgs.Sanguosha:getCard(id):isKindOf("Jinchantuoqiao") then
+					matches = true break
+				end
+			end
+			if not matches then return false end
 		end
 		if canZhongdan or ZhongdanEvent then return self:objectName() elseif canZhongdan==false then return false end
 		canZhongdan = not table.contains(sgs.Sanguosha:getBanPackages(),"ZhongdanCard")

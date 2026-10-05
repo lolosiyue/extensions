@@ -1,4 +1,6 @@
--- Scarlet 隔離 AI；藏拙／志繼的獨立參考 handler 見本檔中段。
+﻿-- Scarlet 隔離 AI。共用 SmartAI 相等函式在 smart-ai-functions.lua，
+-- 本檔只擴充技能名單、決鬥點數與各 s4 handler，不改基礎層。
+-- 藏拙／志繼的獨立參考 handler 見本檔中段。
 -- 以下 s4_sunjian（備陣／伐逆）對應舊版 lua/ai/scarlet-ai.lua 的
 -- sgs.ai_skill_invoke／ai_skill_choice／ai_skill_cardchosen 與 getTurnUseCard。
 -- s4_cloud_zhangliao（突襲／勇前）對應同檔原版 invoke／choice／discard／
@@ -23,6 +25,78 @@
 -- s4_2_zhaoyun（龍膽）對應同檔原版 activate／playerchosen／invoke／cardneed。
 -- 全部改用快照與值型答案；快照查不到的資料回 nil（NotCovered）交回 legacy，
 -- 不在這層編預設答案。
+
+-- 這些名單是基礎層的擴充點，對應舊版 scarlet-ai.lua 的字串拼接。
+sgs.append_skill_list("drawpeach_skill", "s4_cloud_tuxi")
+sgs.append_skill_list("dont_kongcheng_skill", "s4_cloud_tuxi")
+sgs.append_skill_list("dont_kongcheng_skill", "s4_jiuzhu")
+sgs.append_skill_list("hit_skill", "s4_cloud_yongyi")
+sgs.append_skill_list("hit_skill", "s4_jiwu")
+sgs.append_skill_list("notActive_cardneed_skill", "s4_cloud_yingzi")
+sgs.append_skill_list("notActive_cardneed_skill", "s4_jiuzhu")
+sgs.append_skill_list("need_equip_skill", "s4_cloud_yingzi")
+sgs.append_skill_list("double_slash_skill", "s4_xianfeng")
+sgs.append_skill_list("bad_skills", "s4_neiji")
+
+-- 天下霸武單挑點數。只加在 Scarlet，基礎層的 getMaxCard 不認識這些技能。
+function SmartAIView:getGeneralDuelPoint(player, card)
+    if not card then return nil end
+    player = player or self.player
+    local point = card:getNumber()
+    if type(point) ~= "number" then return nil end
+    if player:hasSkill("s4_txbw_motian") then
+        point = point + (player:getMark("TurnLengthCount") or 0)
+    end
+    if player:hasSkill("s4_txbw_yizhong") then
+        local hp = player:getHp()
+        if type(hp) ~= "number" then return nil end
+        point = point + hp / 2
+    end
+    if player:hasSkill("s4_txbw_wanpo") then point = point + 1 end
+    if player:hasSkill("s4_txbw_wusheng") and card:isRed() then point = point + 2 end
+    return point
+end
+
+function SmartAIView:getGeneralDuelCard(player, cards)
+    player = player or self.player
+    if cards == nil then
+        cards = player:objectName() == self.player:objectName() and player:getHandcards() or player:getKnownCards()
+    end
+    if not cards then return nil end
+    if player:hasSkill("s4_txbw_yishi") then
+        -- The shared sorter leaves the input unchanged and can report unknown.
+        cards = self:sortByUseValue(cards, true)
+        if cards == nil then
+            -- Callers use nil for no card; an unknown order must not become declined.
+            ai_unsupported("general duel card order is unknown", "s4_txbw_yishi")
+        end
+        return cards[1]
+    end
+    local function pick(skip_valuable)
+        local best, best_point
+        for _, card in ipairs(cards) do
+            local skip = false
+            if skip_valuable and player:objectName() == self.player:objectName() then
+                local valuable = self:isValuableCard(card, player)
+                if valuable == nil then return nil, "unknown" end
+                skip = valuable == true
+            end
+            if not skip then
+                local point = self:getGeneralDuelPoint(player, card)
+                if point == nil then return nil, "unknown" end
+                if not best_point or point > best_point then best, best_point = card, point end
+            end
+        end
+        return best
+    end
+    local card, status = pick(true)
+    if status == "unknown" then return nil end
+    if player:objectName() == self.player:objectName() and not card then
+        card, status = pick(false)
+        if status == "unknown" then return nil end
+    end
+    return card
+end
 
 -- 完殺下隊友的桃救不了自己；模式未覆蓋時只算自己看得見的桃酒。
 local function peach_supply(self)
@@ -656,13 +730,6 @@ local function s4_cloud_yingzi_ai_state(player)
                     hand = player:getSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "hand") == true,
                     hp = player:getSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "hp") == true,
                     equip = player:getSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "equip") == true
-                }
-            end
-            local pub = player:getSkillInstanceCorrectStateValue("s4_cloud_yingzi", instance_id, "x")
-            if pub ~= nil then
-                return {
-                    instance_id = instance_id,
-                    x = tonumber(pub) or 0
                 }
             end
         end
@@ -1854,4 +1921,307 @@ ai_skill_activate.s4_longdan = function(self)
     if status == "unsupported" then error(plan, 0) end
     if status == "planned" then return plan:toAnswer() end
     return nil
+end
+
+-- 以下出牌原先 Card_Parse／cloneCard。現在只挑權威端發票；目標由牌族策略或 fill 決定。
+-- 龍心已有自己的轉化票處理，這裡不覆寫。
+local function parsed_activate(skill, options)
+    ai_skill_activate[skill] = function(self)
+        return self:playAuthorizedConversion(skill, options)
+    end
+end
+
+local function use_as_is(_, card, use)
+    use.card = card
+end
+
+parsed_activate("s4_chiyuan", {fill = use_as_is})
+parsed_activate("s4_moubei", {fill = use_as_is})
+
+parsed_activate("s4_wuhu_heduan", {
+    gate = function(self)
+        local bear = self:needBear()
+        local slashes = self:getCardsNum("Slash")
+        if bear == nil or type(slashes) ~= "number" then return nil end
+        return not bear and slashes > 1
+    end,
+    fill = use_as_is
+})
+
+parsed_activate("s4_suihuai", {
+    gate = function(self)
+        if not self.player:hasSkill("s4_neiji") then return true end
+        local hand = self.player:getHandcardNum()
+        if type(hand) ~= "number" then return nil end
+        return hand <= 6
+    end,
+    fill = use_as_is
+})
+
+parsed_activate("s4_zhimeng", {
+    gate = function(self)
+        if self.player:isKongcheng() then return false end
+        if not self.friends_noself or not self.enemies then return nil end
+        local mine = self.player:getHandcardNum()
+        if type(mine) ~= "number" then return nil end
+        local good = 2
+        for _, friend in ipairs(self.friends_noself) do
+            local count = friend:getHandcardNum()
+            if type(count) ~= "number" then return nil end
+            if count >= mine then good = good + 1 end
+        end
+        for _, enemy in ipairs(self.enemies) do
+            local count = enemy:getHandcardNum()
+            if type(count) ~= "number" then return nil end
+            if count >= mine then good = good - 1 end
+        end
+        return good > 0
+    end,
+    fill = use_as_is
+})
+
+parsed_activate("s4_beizhen", {
+    kind = "Duel",
+    gate = function(self)
+        return self.player:getMark("s4_beizhen_buff-Clear") > 0
+    end,
+    accept = function(self, conversion)
+        local card = self:conversionSubcard(conversion)
+        if card == nil then return nil end
+        if not card then return false end
+        return card:isKindOf("Jink") or card:isKindOf("Peach")
+    end
+})
+
+parsed_activate("s4_fuhan", {
+    kind = "Slash",
+    gate = function(self)
+        return self.player:getMark("&s4_fuhan-Clear") > 0
+    end,
+    accept = function(self, conversion)
+        local card = self:conversionSubcard(conversion)
+        if card == nil then return nil end
+        if not card or card:isKindOf("BasicCard") then return false end
+        local value = self:getUseValue(card)
+        if type(value) ~= "number" then return nil end
+        local slash = type(sgs.ai_use_value) == "table" and sgs.ai_use_value.Slash or 4
+        return value < slash
+    end
+})
+
+parsed_activate("s4_ganglu", {
+    accept = function(self, conversion)
+        local basic = conversion:isKindOf("BasicCard")
+        if basic == nil then return nil end
+        if not basic then return false end
+        local class_name = conversion:getClassName()
+        if type(class_name) ~= "string" then return nil end
+        local count = self:getCardsNum(class_name)
+        if type(count) ~= "number" then return nil end
+        return count < 1
+    end
+})
+
+parsed_activate("s4_txbw_zhenyue", {
+    accept = function(self, conversion)
+        local card = self:conversionSubcard(conversion)
+        if card == nil then return nil end
+        if not card then return false end
+        local number = card:getNumber()
+        if type(number) ~= "number" then return nil end
+        if number ~= self.player:getMark("&s4_txbw_zhenyue") then return false end
+        local will = self:willUse(self.player, card)
+        if will == nil then return nil end
+        return not will
+    end,
+    fill = use_as_is
+})
+
+parsed_activate("s4_xingyi", {
+    gate = function(self)
+        if self.player:getMark("s4_yanshi") < 2 then
+            if not self.friends_noself then return nil end
+            return #self.friends_noself > 0
+        end
+        local slash = self:getCard("Slash")
+        if slash == nil then return nil end
+        if not slash then return false end
+        local _, status = self:tryUseCard(slash)
+        if status == "unsupported" then return nil end
+        return status == "planned"
+    end,
+    fill = use_as_is
+})
+
+parsed_activate("s4_txbw_huibian", {
+    fill = function(self, card, use)
+        if not self.friends_noself or not self.enemies then
+            ai_unsupported("s4_txbw_huibian relations are unknown", "s4_txbw_huibian")
+        end
+        local friends = self:sort(self.friends_noself, "hp")
+        if not friends then
+            ai_unsupported("s4_txbw_huibian friend order is unknown", "s4_txbw_huibian")
+        end
+        local function hurt_friend(target)
+            local hp = target:getHp()
+            if type(hp) ~= "number" then
+                ai_unsupported("s4_txbw_huibian hp is unknown", "s4_txbw_huibian")
+            end
+            if hp <= 1 then return false end
+            local can = self:canDamage(target, self.player, nil)
+            if can == nil then
+                ai_unsupported("s4_txbw_huibian damage is unknown", "s4_txbw_huibian")
+            end
+            if not can then return false end
+            local draw = self:canDraw(target)
+            if draw == nil then
+                ai_unsupported("s4_txbw_huibian draw is unknown", "s4_txbw_huibian")
+            end
+            return draw == true
+        end
+        local first
+        for _, target in ipairs(friends) do
+            if hurt_friend(target) then first = target break end
+        end
+        if not first then
+            for _, target in ipairs(self.enemies) do
+                local hp = target:getHp()
+                if type(hp) ~= "number" then
+                    ai_unsupported("s4_txbw_huibian hp is unknown", "s4_txbw_huibian")
+                end
+                if hp > 1 then
+                    local can = self:canDamage(target, self.player, nil)
+                    if can == nil then
+                        ai_unsupported("s4_txbw_huibian damage is unknown", "s4_txbw_huibian")
+                    end
+                    if can then first = target break end
+                end
+            end
+        end
+        if not first then return end
+        local second
+        for index = #friends, 1, -1 do
+            local friend = friends[index]
+            if friend:isWounded() and friend:objectName() ~= first:objectName() then
+                second = friend
+                break
+            end
+        end
+        if not second then return end
+        if card:canTarget(first:objectName()) ~= true or card:canTarget(second:objectName()) ~= true then
+            return
+        end
+        use.card = card
+        use.to:append(first)
+        use.to:append(second)
+    end
+})
+
+parsed_activate("s4_txbw_qiaobian", {
+    fill = function(self, card, use)
+        if self.player:isKongcheng() then return end
+        local others = self.room:getOtherPlayers(self.player)
+        if not others then ai_unsupported("s4_txbw_qiaobian roster is unknown", "s4_txbw_qiaobian") end
+        for _, target in ipairs(others) do
+            if target:objectName() ~= self.player:objectName() then
+                local hand = target:getHandcardNum()
+                if type(hand) ~= "number" then
+                    ai_unsupported("s4_txbw_qiaobian hand count is unknown", "s4_txbw_qiaobian")
+                end
+                if hand > 0 then
+                    local discard = self:doDisCard(target, "h", true)
+                    if discard == nil then
+                        ai_unsupported("s4_txbw_qiaobian discard value is unknown", "s4_txbw_qiaobian")
+                    end
+                    if discard and card:canTarget(self.player:objectName()) == true
+                        and card:canTarget(target:objectName()) == true then
+                        use.card = card
+                        use.to:append(self.player)
+                        use.to:append(target)
+                        return
+                    end
+                end
+            end
+        end
+    end
+})
+
+parsed_activate("s4_txbw_general_duel", {
+    fill = function(self, card, use)
+        if not self.enemies then
+            ai_unsupported("s4_txbw_general_duel relations are unknown", "s4_txbw_general_duel")
+        end
+        local own = self.player:getHandcards()
+        if not own then
+            ai_unsupported("s4_txbw_general_duel hand is unknown", "s4_txbw_general_duel")
+        end
+        local max_card = self:getGeneralDuelCard()
+        if not max_card then return end
+        local max_point = self:getGeneralDuelPoint(self.player, max_card)
+        if type(max_point) ~= "number" then
+            ai_unsupported("s4_txbw_general_duel point is unknown", "s4_txbw_general_duel")
+        end
+        local enemies = self:sort(self.enemies, "handcard")
+        if not enemies then
+            ai_unsupported("s4_txbw_general_duel enemy order is unknown", "s4_txbw_general_duel")
+        end
+        local function beats(enemy, loose)
+            local damage = self:damageStruct({from = self.player, to = enemy, damage = 1,
+                reason = "s4_txbw_general_duel"})
+            if damage == nil then return nil end
+            if not damage then return false end
+            local known = enemy:getKnownCards()
+            if known == nil then return nil end
+            local enemy_card = self:getGeneralDuelCard(enemy, known)
+            local enemy_point = 100
+            if enemy_card then
+                enemy_point = self:getGeneralDuelPoint(enemy, enemy_card)
+                if type(enemy_point) ~= "number" then return nil end
+            end
+            local win = enemy_card and max_point > enemy_point
+            if not loose then
+                if not win then return false end
+                local capped = self:cantDamageMore(enemy, self.player)
+                if capped == nil then return nil end
+                if capped then
+                    if self.player:getMark("&s4_txbw_luoyi") > 0 then return false end
+                    if self.player:hasSkill("s4_txbw_wanpo") and not enemy:isWounded() then return false end
+                end
+                return true
+            end
+            return win or max_point > 7 or self.player:hasSkill("s4_txbw_yishi")
+                or self.player:hasSkill("s4_txbw_shenwei")
+        end
+        for _, loose in ipairs({false, true}) do
+            for _, enemy in ipairs(enemies) do
+                local ok = beats(enemy, loose)
+                if ok == nil then
+                    ai_unsupported("s4_txbw_general_duel target is unknown", "s4_txbw_general_duel")
+                end
+                if ok and card:canTarget(enemy:objectName()) == true then
+                    self:remember("s4_txbw_general_duel_card", max_card:getEffectiveId())
+                    use.card = card
+                    use.to:append(enemy)
+                    return
+                end
+            end
+        end
+    end
+})
+
+ai_skill_discard.s4_txbw_general_duel = function(self, options)
+    local id = self:recall("s4_txbw_general_duel_card")
+    if type(id) ~= "number" then
+        local card = self:getGeneralDuelCard()
+        id = card and card:getEffectiveId() or nil
+    end
+    if type(id) ~= "number" then return nil end
+    local offered = type(options) == "table" and options.card_ids or nil
+    if type(offered) == "table" then
+        for _, card_id in ipairs(offered) do
+            if card_id == id then return {id} end
+        end
+        return nil
+    end
+    return {id}
 end
