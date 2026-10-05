@@ -1635,7 +1635,7 @@ function SmartAI:getWoundedFriend(maleOnly, include_self)
 
 	local cmp = function (a, b)
 		if getCmpHp(a) == getCmpHp(b) then
-			return sgs.getDefenseSlash(a, self) < sgs.getDefenseSlash(b, self)
+			return self:getDefenseSlash(a) < self:getDefenseSlash(b)
 		else
 			return getCmpHp(a) < getCmpHp(b)
 		end

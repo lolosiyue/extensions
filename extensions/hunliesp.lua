@@ -5177,13 +5177,36 @@ end
 -- BeforeCardsMove TriggerOrder during GameReady InitialHandCards. Collapse to
 -- three shared skills that still honour per-scheme marks. Do NOT call ensure here.
 local scheme_sknames = {}
+local scheme_mark_names = {
+	hunlie_global_schemedraw = {},
+	hunlie_global_schememaxcards = {},
+	hunlie_global_schemeslashtime = {},
+}
 for _, _first in ipairs(scheme_first_char) do
 	for _, _second in ipairs(scheme_second_char) do
-		table.insert(scheme_sknames, _first .. _second)
+		local skname = _first .. _second
+		table.insert(scheme_sknames, skname)
+		for suffix, names in pairs(scheme_mark_names) do
+			names[skname .. suffix] = true
+		end
 	end
 end
 
 local function scheme_mark_total(player, suffix)
+	-- Mark names are read live, including negative values. An absent scheme
+	-- mark cannot contribute; keep the original ordered scan whenever one
+	-- exists so hasSkill callbacks retain their behavior and mutation timing.
+	local relevant_names = scheme_mark_names[suffix]
+	if relevant_names and player.getMarkNames then
+		local names = player:getMarkNames()
+		if #names < 40 then
+			local found = false
+			for _, name in ipairs(names) do
+				if relevant_names[name] then found = true break end
+			end
+			if not found then return 0 end
+		end
+	end
 	local total = 0
 	for _, skname in ipairs(scheme_sknames) do
 		local n = player:getMark(skname .. suffix)

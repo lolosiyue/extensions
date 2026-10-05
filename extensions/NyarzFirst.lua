@@ -3192,10 +3192,10 @@ spyuqiVS = sgs.CreateViewAsSkillV2
     can_select_card = function(skill, request, to_select)
         local player = request:getInitiator()
         if not player then return false end
-        return player:getPile("#spyuqi"):contains(to_select:getId())
+        return skill:getExpandPileCardIds(player):contains(to_select:getId())
     end,
     card_selection_feasible = function(skill, request)
-        return #request:getSelectedCardIds() > 0
+        return request:getSelectedCardIds():length() > 0
     end,
     create_card = function(skill, request)
         local cc = spyuqiCard:clone()

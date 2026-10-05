@@ -31722,6 +31722,7 @@ sfofl_zaizhengCard = sgs.CreateSkillCard{
 }
 sfofl_zaizheng = sgs.CreateViewAsSkillV2{
 	name = "sfofl_zaizheng",
+	history_key = "#sfofl_zaizheng",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()

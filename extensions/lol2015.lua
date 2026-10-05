@@ -1412,6 +1412,7 @@ lol_xlnw_wCard = sgs.CreateSkillCard{
 }
 lol_xlnw_wVS = sgs.CreateViewAsSkillV2{
 	name = "lol_xlnw_w",
+	history_key = "#lol_xlnw_wCard",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
@@ -1503,6 +1504,7 @@ lol_xlnw_eCard = sgs.CreateSkillCard{
 }
 lol_xlnw_eVS = sgs.CreateViewAsSkillV2{
 	name = "lol_xlnw_e",
+	history_key = "#lol_xlnw_eCard",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()

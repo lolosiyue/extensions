@@ -6184,6 +6184,7 @@ sxwangluCard = sgs.CreateSkillCard {
 }
 sxwanglu = sgs.CreateViewAsSkillV2 {
 	name = "sxwanglu",
+	history_key = "#sxwangluCard",
 	n = 0,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end

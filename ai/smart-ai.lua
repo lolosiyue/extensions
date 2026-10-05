@@ -1688,8 +1688,7 @@ function SmartAI:objectiveLevel(to)
 	if to:objectName()==self.player:objectName() then return -3 end
 	local players = self.room:getAlivePlayers()
 	players:removeOne(self.player)
-	players = sgs.QList2Table(players)
-	if #players<2 then
+	if players:length()<2 then
 		if self.role~="renegade" and sgs.ai_role[to:objectName()]==sgs.ai_role[self.player:objectName()]
 		then return -1 else return 5 end
 	elseif self.player:getMark("revenge"..to:objectName())>0 then--报复仇恨
@@ -1706,6 +1705,9 @@ function SmartAI:objectiveLevel(to)
 		if sgs.ai_role[to:objectName()]==sgs.ai_role[self.player:objectName()]
 		then return 4-to:getHp() end
 	end
+	-- Keep the original roster snapshot, but only convert it when the role
+	-- evaluation continues past the common predictable-role early returns.
+	players = sgs.QList2Table(players)
 	-- Use cached gameProcess. Forcing update=true here made every
 	-- objectiveLevel recompute defense for all alive players. updateIntention
 	-- refreshes all AIs via updatePlayers, so that was O(n^3) per intention
@@ -11640,7 +11642,7 @@ end
 -- =========================================================
 -- 診斷插樁: 純 Lua 取樣分析器
 -- 用 debug.sethook 的 count 遮罩取樣, 把 VM 指令歸給當下執行的 Lua 行,
--- 因此在 C++ (SWIG wrapper) 裡耗掉的時間會歸給呼叫它的那一行 AI 程式碼。
+-- 只反映 Lua 指令取樣比例，不計 C++ (SWIG wrapper) 的耗時；不是牆鐘時間分析。
 -- 預設關閉; QSAN_LUA_PROFILE=1 開啟, QSAN_LUA_PROFILE_SEC 設定回報間隔 (預設 2 秒)。
 -- =========================================================
 if os and os.getenv and (os.getenv("QSAN_LUA_PROFILE") or "") ~= "" then
