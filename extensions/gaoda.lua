@@ -4968,12 +4968,12 @@ xiezhan = sgs.CreateViewAsSkillV2{
 			and not player:isNude()
 	end,
 	can_select_card = function(skill, request, candidate)
-		return candidate:matchExpPattern("EquipCard", request:getInitiator())
+		return sgs.Sanguosha:matchExpPattern("EquipCard", request:getInitiator(), candidate)
 	end,
 	create_card = function(skill, request)
 		local ids = request:getSelectedCardIds()
 		local acard = xiezhancard:clone()
-		for _, id in ipairs(ids) do
+		for _, id in sgs.qlist(ids) do
 			acard:addSubcard(id)
 		end
 		acard:setSkillName(skill:objectName())
@@ -5835,14 +5835,14 @@ baosangvs = sgs.CreateViewAsSkillV2{
 			and request:getPattern() == "@@baosang"
 	end,
 	can_select_card = function(skill, request, candidate)
-		return candidate:matchExpPattern(".|black|.|hand", request:getInitiator())
+		return sgs.Sanguosha:matchExpPattern(".|black|.|hand", request:getInitiator(), candidate)
 	end,
 	create_card = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return nil end
 		local ids = request:getSelectedCardIds()
-		if #ids == 0 then return nil end
-		local card = sgs.Sanguosha:getCard(ids[1])
+		if ids:isEmpty() then return nil end
+		local card = sgs.Sanguosha:getCard(ids:first())
 		local pattern = player:property("bsuse"):toString()
 		local acard = sgs.Sanguosha:cloneCard(pattern, card:getSuit(), card:getNumber())
 		acard:addSubcard(card)
@@ -6282,12 +6282,12 @@ gaoda_zuzhouvs = sgs.CreateViewAsSkillV2{
 			and request:getPattern() == "@@gaoda_zuzhou"
 	end,
 	can_select_card = function(skill, request, candidate)
-		return candidate:matchExpPattern(".|black|.|hand", request:getInitiator())
+		return sgs.Sanguosha:matchExpPattern(".|black|.|hand", request:getInitiator(), candidate)
 	end,
 	create_card = function(skill, request)
 		local ids = request:getSelectedCardIds()
-		if #ids == 0 then return nil end
-		local card = sgs.Sanguosha:getCard(ids[1])
+		if ids:isEmpty() then return nil end
+		local card = sgs.Sanguosha:getCard(ids:first())
 		local acard = sgs.Sanguosha:cloneCard("slash", card:getSuit(), card:getNumber())
 		acard:addSubcard(card)
 		acard:setSkillName(skill:objectName())

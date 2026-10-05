@@ -6169,6 +6169,7 @@ tc_dingzhouCard = sgs.CreateSkillCard{
 }
 tc_dingzhou = sgs.CreateViewAsSkillV2{
 	name = "tc_dingzhou",
+	history_key = "#tc_dingzhou",
 	n = 0,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end

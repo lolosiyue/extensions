@@ -7,11 +7,19 @@ function SmartAI:useCardShoot(card, use)
 	if self.player:usedTimes("Shoot") >= 1 + sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_Residue, self.player, card) then return false end
 	use.card = card
 	if use.to then
+		-- Defense heuristics can randomize; freeze keys for a consistent sort order.
+		local ranges, defenses = {}, {}
+		for _, enemy in ipairs(self.enemies) do
+			local name = enemy:objectName()
+			ranges[name] = self.player:inMyAttackRange(enemy)
+			defenses[name] = self:getDefenseSlash(enemy)
+		end
 		local f = function(a, b)
-			if self.player:inMyAttackRange(a) == self.player:inMyAttackRange(b) then
-				return self:getDefenseSlash(a) < self:getDefenseSlash(b)
+			local a_name, b_name = a:objectName(), b:objectName()
+			if ranges[a_name] == ranges[b_name] then
+				return defenses[a_name] < defenses[b_name]
 			else
-				return self.player:inMyAttackRange(a)
+				return ranges[a_name]
 			end
 		end
 		table.sort(self.enemies, f)
