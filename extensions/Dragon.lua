@@ -2999,8 +2999,22 @@ Dragon_Lightning = sgs.CreateTriggerSkillV2{
 	global = true,
 	events = {sgs.CardsMoveOneTime},
 	can_trigger = function(skill, event, room, player, data)
-		if player then
-			return skill:objectName()
+		-- Only a non-Lightning entering a Lightning judging area needs the fake move.
+		if not player then return false end
+		local move = data:toMoveOneTime()
+		if not move.to or move.to_place ~= sgs.Player_PlaceDelayedTrick then return false end
+		local has_non_lightning = false
+		for _, card_id in sgs.qlist(move.card_ids) do
+			if sgs.Sanguosha:getCard(card_id):getClassName() ~= "Lightning" then
+				has_non_lightning = true
+				break
+			end
+		end
+		if not has_non_lightning then return false end
+		for _, jcard in sgs.qlist(move.to:getJudgingArea()) do
+			if jcard:getClassName() == "Lightning" then
+				return skill:objectName()
+			end
 		end
 		return false
 	end,
