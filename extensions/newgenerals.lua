@@ -32417,8 +32417,8 @@ extension:addSkills(ofxiefang_gs)
 extension:addSkills(ofxiefang_gs_mod)
 extension:insertRelatedSkills("ofxiefang_gs", "#ofxiefang_gs_mod")
 
-of_huaci = sgs.General(extension, "of_huaci", "qun", 6)
-of_huaci:setStartHp(3)
+-- 群 3/6，性别男（Tom 定案）
+of_huaci = sgs.General(extension, "of_huaci", "qun", 6, true, false, false, 3)
 
 ofshiyao = sgs.CreateTriggerSkillV2 {
 	name = "ofshiyao",
@@ -32639,20 +32639,17 @@ ofshouxiang = sgs.CreateTriggerSkillV2 {
 	events = { sgs.CardEffected },
 	can_trigger = function(self, event, room, player, data)
 		local effect = data:toCardEffect()
-		if not (player and player:hasSkill(self:objectName()) and effect.card and effect.card:isKindOf("Slash") and not effect.card:isKindOf("NatureSlash") and effect.from) then
-			-- NatureSlash check: property damage attribute
-			if not (player and player:hasSkill(self:objectName()) and effect.card and effect.card:isKindOf("Slash") and effect.from) then return false end
-			if effect.card:getDamageAttribute and effect.card:getDamageAttribute() ~= sgs.DamageStruct_Normal then return false end
+		if not (player and player:hasSkill(self:objectName()) and effect.from and effect.card and effect.card:isKindOf("Slash")) then
+			return false
+		end
+		-- 非属性【杀】：排除火／雷／冰等属性杀
+		if effect.card:isKindOf("FireSlash") or effect.card:isKindOf("ThunderSlash") or effect.card:isKindOf("IceSlash") then
+			return false
 		end
 		local n = 0
-		for _, p in sgs.qlist(room:getOtherPlayers(effect.from)) do
-			if effect.from:inMyAttackRange(p) then n = n + 1 end
-		end
-		-- also count if includes self
-		if effect.from:inMyAttackRange(player) or true then
-			n = 0
-			for _, p in sgs.qlist(room:getAlivePlayers()) do
-				if p:objectName() ~= effect.from:objectName() and effect.from:inMyAttackRange(p) then n = n + 1 end
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+			if p:objectName() ~= effect.from:objectName() and effect.from:inMyAttackRange(p) then
+				n = n + 1
 			end
 		end
 		if n >= 3 then return self:objectName() end
@@ -32660,9 +32657,9 @@ ofshouxiang = sgs.CreateTriggerSkillV2 {
 	end,
 	on_effect = function(self, event, room, player, ctx)
 		local effect = ctx.original_data:toCardEffect()
-		if effect.card:isKindOf("NatureSlash") then return false end
-		-- check normal slash only
-		if effect.card:isKindOf("FireSlash") or effect.card:isKindOf("ThunderSlash") then return false end
+		if effect.card:isKindOf("FireSlash") or effect.card:isKindOf("ThunderSlash") or effect.card:isKindOf("IceSlash") then
+			return false
+		end
 		room:sendCompulsoryTriggerLog(player, self)
 		return true
 	end,
@@ -32682,8 +32679,9 @@ ofjuwu = sgs.CreateTriggerSkillV2 {
 		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 			if p:inMyAttackRange(player) then x = x + 1 end
 		end
-		x = math.min(3, x)
-		if x < 1 or not player:askForSkillInvoke(self) then return end
+		-- 卡面：x 至少为 3（下限，非青帝「至多」）
+		x = math.max(3, x)
+		if not player:askForSkillInvoke(self) then return end
 		data:setValue(data:toInt() + x)
 		-- after draw, choose up to x players
 		room:setPlayerMark(player, "ofjuwu_x-Clear", x)
@@ -32850,14 +32848,49 @@ of_longguanyu = sgs.General(extension, "of_longguanyu", "shu", 4)
 
 ofchaojue = sgs.CreateTriggerSkillV2 {
 	name = "ofchaojue",
-	events = { sgs.EventPhaseStart },
+	events = { sgs.EventPhaseStart, sgs.EventPhaseChanging, sgs.Death },
 	can_trigger = function(self, event, room, player, data)
-		if player and player:isAlive() and player:hasSkill(self:objectName()) and player:getPhase() == sgs.Player_Start then
-			return self:objectName()
+		if event == sgs.EventPhaseStart then
+			if player and player:isAlive() and player:hasSkill(self:objectName()) and player:getPhase() == sgs.Player_Start then
+				return self:objectName()
+			end
+			return false
+		end
+		-- cleanup card limitation / @skill_invalidity at turn end or death
+		if event == sgs.EventPhaseChanging then
+			local change = data:toPhaseChange()
+			if change.to == sgs.Player_NotActive and player then
+				return self:objectName()
+			end
+			return false
+		end
+		if event == sgs.Death then
+			local death = data:toDeath()
+			if death.who and death.who:hasSkill(self:objectName()) then
+				return self:objectName(), death.who
+			end
 		end
 		return false
 	end,
 	on_effect = function(self, event, room, player, ctx)
+		local data = ctx.original_data
+		local function clear_for(owner)
+			local reason = "ofchaojue#" .. owner:objectName()
+			for _, p in sgs.qlist(room:getAllPlayers()) do
+				room:removePlayerCardLimitationByReason(p, reason)
+				local n = p:getMark(owner:objectName() .. "ofchaojue-Clear")
+				if n > 0 then
+					room:setPlayerMark(p, owner:objectName() .. "ofchaojue-Clear", 0)
+					room:removePlayerMark(p, "@skill_invalidity", n)
+				end
+			end
+		end
+		if event == sgs.EventPhaseChanging or event == sgs.Death then
+			local owner = (event == sgs.Death) and (ctx.invoker or player) or player
+			clear_for(owner)
+			return
+		end
+		-- EventPhaseStart: 摸一张牌并展示一张手牌
 		if not player:askForSkillInvoke(self) then return end
 		player:drawCards(1, self:objectName())
 		if player:getHandcardNum() < 1 then return end
@@ -32865,27 +32898,16 @@ ofchaojue = sgs.CreateTriggerSkillV2 {
 		if not c then return end
 		room:showCard(player, c:getEffectiveId())
 		local suit = c:getSuitString()
+		local reason = "ofchaojue#" .. player:objectName()
 		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-			room:setPlayerCardLimitation(p, "use,response", ".|" .. suit, true)
-			room:addPlayerMark(p, "ofchaojue_suit_" .. suit .. "-Clear")
-			local same = {}
-			for _, h in sgs.qlist(p:getHandcards()) do
-				if h:getSuitString() == suit then table.insert(same, h) end
-			end
-			if #same > 0 then
-				local give = room:askForExchange(p, self:objectName(), 1, 0, false, "ofchaojue1:" .. player:objectName() .. ":" .. suit, true)
-				local ok = false
-				if give then
-					for _, id in sgs.qlist(give:getSubcards()) do
-						if sgs.Sanguosha:getCard(id):getSuitString() == suit then ok = true break end
-					end
-					if ok then room:obtainCard(player, give, true) end
-				end
-				if not ok then
-					room:setPlayerMark(p, "SkillInvalidity_notCompulsory-Clear", 1)
-				end
+			room:setPlayerCardLimitation(p, "use,response", ".|" .. suit, false, reason)
+			local give = room:askForExchange(p, "ofchaojue", 1, 1, false, "ofchaojue1:" .. player:objectName() .. "::" .. suit, true, ".|" .. suit)
+			if give then
+				room:showCard(p, give:getEffectiveId())
+				room:obtainCard(player, give, true)
 			else
-				room:setPlayerMark(p, "SkillInvalidity_notCompulsory-Clear", 1)
+				room:addPlayerMark(p, player:objectName() .. "ofchaojue-Clear")
+				room:addPlayerMark(p, "@skill_invalidity")
 			end
 		end
 	end,
@@ -32924,43 +32946,38 @@ ofjunshenvs = sgs.CreateViewAsSkillV2 {
 ofjunshen = sgs.CreateTriggerSkillV2 {
 	name = "ofjunshen",
 	view_as_skill = ofjunshenvs,
-	events = { sgs.DamageCaused, sgs.CardUsed },
+	events = { sgs.DamageCaused },
 	can_trigger = function(self, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill(self:objectName())) then return false end
-		return self:objectName()
+		local damage = data:toDamage()
+		if damage.card and table.contains(damage.card:getSkillNames(), "ofjunshen") and damage.to then
+			return self:objectName()
+		end
+		return false
 	end,
 	on_effect = function(self, event, room, player, ctx)
 		local data = ctx.original_data
-		if event == sgs.CardUsed then
-			local use = data:toCardUse()
-			if use.card and use.card:isKindOf("Slash") then
-				if use.card:getSuit() == sgs.Card_Diamond then
-					use.card:setFlags("ofjunshen_nodistance")
-				elseif use.card:getSuit() == sgs.Card_Heart then
-					-- +1 target via target mod mark
-					room:addPlayerMark(player, "ofjunshen_extra-Clear")
-				end
-			end
-		elseif event == sgs.DamageCaused then
-			local damage = data:toDamage()
-			if not (damage.card and table.contains(damage.card:getSkillNames(), "ofjunshen") and damage.to) then return end
-			if not player:askForSkillInvoke(self, ToData(damage.to)) then return end
-			local equips = damage.to:getEquips()
-			local n = equips:length()
-			if n > 0 then
-				local dc = dummyCard()
-				dc:addSubcards(equips)
-				room:throwCard(dc, damage.to, player)
-			end
-			n = math.max(1, n)
-			for i = 1, n do
-				local choice = room:askForChoice(player, self:objectName(), "discard+damage")
-				if choice == "discard" and not damage.to:isNude() then
+		local damage = data:toDamage()
+		if not player:askForSkillInvoke(self, ToData(damage.to)) then return end
+		local equips = damage.to:getEquips()
+		local n = equips:length()
+		if n > 0 then
+			local dc = dummyCard()
+			dc:addSubcards(equips)
+			room:throwCard(dc, damage.to, player)
+		end
+		-- 选择 X 次（X=因此失去的装备数，至少为1）；每次可重复选
+		n = math.max(1, n)
+		for i = 1, n do
+			if damage.to:isDead() then break end
+			local choice = room:askForChoice(player, self:objectName(), "discard+damage")
+			if choice == "discard" then
+				if not damage.to:isKongcheng() then
 					local id = room:askForCardChosen(player, damage.to, "h", self:objectName())
 					if id >= 0 then room:throwCard(id, damage.to, player) end
-				else
-					player:damageRevises(data, 1)
 				end
+			else
+				player:damageRevises(data, 1)
 			end
 		end
 	end,
@@ -32970,13 +32987,15 @@ ofjunshen_mod = sgs.CreateTargetModSkillV2 {
 	name = "#ofjunshen_mod",
 	pattern = "Slash",
 	distance_limit_func = function(self, from, card)
-		if from:hasSkill("ofjunshen") and card and (table.contains(card:getSkillNames(), "ofjunshen") or card:getSuit() == sgs.Card_Diamond) then
+		-- 你使用的方块【杀】无视距离
+		if from:hasSkill("ofjunshen") and card and card:isKindOf("Slash") and card:getSuit() == sgs.Card_Diamond then
 			return 1000
 		end
 		return 0
 	end,
 	extra_target_func = function(self, from, card)
-		if from:hasSkill("ofjunshen") and from:getMark("ofjunshen_extra-Clear") > 0 and card and card:isKindOf("Slash") then
+		-- 红桃【杀】可以使目标+1（选牌阶段生效，不能靠 CardUsed 事后补 mark）
+		if from:hasSkill("ofjunshen") and card and card:isKindOf("Slash") and card:getSuit() == sgs.Card_Heart then
 			return 1
 		end
 		return 0
@@ -32987,9 +33006,8 @@ of_longguanyu:addSkill(ofjunshen_mod)
 extension:insertRelatedSkills("ofjunshen", "#ofjunshen_mod")
 
 -- 龙吕蒙
-of_longlvmeng = sgs.General(extension, "of_longlvmeng", "wu", 4)
-of_longlvmeng:setStartHp(3)
--- 护甲: engine may use setShield; set mark approximation
+-- 吴 3/4 体力 + 1 护甲（Tom 定案）
+of_longlvmeng = sgs.General(extension, "of_longlvmeng", "wu", 4, true, false, false, 3, 1)
 oflujing = sgs.CreateTriggerSkillV2 {
 	name = "oflujing",
 	frequency = sgs.Skill_Compulsory,
@@ -33046,7 +33064,7 @@ oflujing = sgs.CreateTriggerSkillV2 {
 		local choice = room:askForChoice(me, self:objectName(), "draw+armor+beishui+cancel")
 		if choice == "draw" then me:drawCards(1, self:objectName())
 		elseif choice == "armor" then
-			if me.gainShield then me:gainShield(1) else room:addPlayerMark(me, "@shield") end
+			me:gainHujia(1)
 		elseif choice == "beishui" then
 			room:loseHp(me, 1, true, me, self:objectName())
 			if me:isAlive() and me:hasSkill("gongxin", true) or true then
@@ -33138,7 +33156,7 @@ ofduojing = sgs.CreateTriggerSkillV2 {
 	on_effect = function(self, event, room, player, ctx)
 		local use = ctx.original_data:toCardUse()
 		if not player:askForSkillInvoke(self) then return end
-		if player.loseShield then player:loseShield(1) else room:removePlayerMark(player, "@shield") end
+		if player:getHujia() > 0 then player:loseHujia(1) end
 		use.card:setFlags("ofduojing_ignore")
 		for _, p in sgs.qlist(use.to) do
 			if not p:isNude() then
@@ -33146,7 +33164,7 @@ ofduojing = sgs.CreateTriggerSkillV2 {
 				if id >= 0 then room:obtainCard(player, id, false) end
 			end
 		end
-		room:addSlashCount -- noop
+		-- 本阶段可以多使用一张【杀】
 		room:addPlayerHistory(player, "Slash", -1)
 	end,
 }
@@ -34370,9 +34388,9 @@ sgs.LoadTranslationTable {
 	["of_lvchang"] = "吕常[龙起]",
 	["#of_lvchang"] = "御敌用威",
 	["ofshouxiang"] = "守襄",
-	[":ofshouxiang"] = "锁定技，攻击范围内包含至少三名角色的角色对你使用的非属性【杀】无效。",
+	[":ofshouxiang"] = "锁定技，攻击范围内包含至少三名角色的角色使用的非属性【杀】对你无效。",
 	["ofjuwu"] = "拒武",
-	[":ofjuwu"] = "摸牌阶段，你可以多摸X张牌并选择至多X名角色，然后你依次选择交给其一张手牌或将一张【杀】当【桃】对其使用（X为攻击范围内包含你的角色数，至多为3）。",
+	[":ofjuwu"] = "摸牌阶段，你可以多摸X张牌并选择至多X名角色，然后你依次交给其一张手牌或将一张【杀】当【桃】对其使用（X为攻击范围内含有你的角色数且至少为3）。",
 	["ofjuwu0"] = "拒武：选择至多%src名角色",
 	["ofjuwu1"] = "拒武：交给%src一张手牌",
 	["ofjuwu2"] = "拒武：将一张【杀】当【桃】对%src使用",
@@ -34393,9 +34411,11 @@ sgs.LoadTranslationTable {
 	["ofchaojue"] = "超绝",
 	[":ofchaojue"] = "准备阶段，你可以摸一张牌并展示一张手牌，令所有其他角色本回合不能使用或打出与此牌花色相同的牌，然后这些角色依次选择一项：1.展示并交给你一张与此牌花色相同的手牌；2.其本回合所有非锁定技失效。",
 	["ofchaojue0"] = "超绝：展示一张手牌",
-	["ofchaojue1"] = "超绝：交给%src一张%arg手牌，否则非锁定技失效",
+	["ofchaojue1"] = "超绝：展示并交给%src一张%arg手牌；否则你本回合所有非锁定技失效",
 	["ofjunshen"] = "军神",
-	[":ofjunshen"] = "你可以将一张红色牌当【杀】使用或打出。当你以此法使用的【杀】对一名角色造成伤害时，你可以令其弃置装备区里的所有牌，然后你选择X次（X为其因此失去的牌数，至少为1）：1.弃置其一张手牌；2.令此伤害+1。你使用的方块【杀】无视距离，红桃【杀】可以使目标+1。",
+	[":ofjunshen"] = "你可以将一张红色牌当【杀】使用或打出。当你以此法使用的【杀】对一名角色造成伤害时，你可以令其弃置装备区里的所有牌，然后你选择X次（X为其因此失去的牌数，至少为1）：1.弃置其一张手牌；2.令此伤害+1（可重复选择）。你使用的方块【杀】无视距离，红桃【杀】可以使目标+1。",
+	["ofjunshen:discard"] = "弃置其一张手牌",
+	["ofjunshen:damage"] = "令此伤害+1",
 	["of_longlvmeng"] = "吕蒙[龙]",
 	["#of_longlvmeng"] = "青龙入命",
 	["oflujing"] = "蝜荆",
