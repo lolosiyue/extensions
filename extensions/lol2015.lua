@@ -1,4 +1,10 @@
-﻿module("extensions.lol2015",package.seeall)--【NeonFire LOL 0519】for 0405 by NeonFire
+﻿-- Exact native liveness counting for a global distance callback in 50P.
+local perf50_native_skill_scan = sgs.GetConfig("50PNativeSkillScan", true)
+if os and os.getenv and os.getenv("QSAN_50P_NATIVE_SKILL_SCAN") == "0" then
+    perf50_native_skill_scan = false
+end
+
+module("extensions.lol2015",package.seeall)--【NeonFire LOL 0519】for 0405 by NeonFire
 extension = sgs.Package("lol2015")
 
 lol_jiansu = sgs.CreateDistanceSkillV2{
@@ -2383,8 +2389,13 @@ lol_bjfh_wDistance = sgs.CreateDistanceSkillV2{
 		local to = ctx:getSecondary()
 		if not (from and to) then return nil end
 		local n = 1
-		for _,p in sgs.qlist(from:getSiblings()) do
-			if p:isAlive() then n = n + 1 end
+		if perf50_native_skill_scan and from:getGameMode() == "50p" then
+			-- Keep the original +1 even for a dead source; only siblings are counted.
+			n = n + from:getAliveSiblings():length()
+		else
+			for _,p in sgs.qlist(from:getSiblings()) do
+				if p:isAlive() then n = n + 1 end
+			end
 		end
 		local ncut = math.abs(to:getMark("lol_bjfh_w") - from:getMark("lol_bjfh_w"))
 		--return ncut - math.min(ncut, n - ncut)

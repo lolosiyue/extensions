@@ -1,4 +1,21 @@
-﻿-- Date 2013.5.24
+﻿-- 50P keeps this live scan in native code: same getAllPlayers() roster and exact flag.
+-- No flag result is cached. Other modes retain the Lua scan.
+local perf50_native_flag_scan = sgs.GetConfig("50PNativeFlagScan", true)
+if os and os.getenv and os.getenv("QSAN_50P_NATIVE_FLAG_SCAN") == "0" then
+    perf50_native_flag_scan = false
+end
+local function perf50RoomHasFlag(room, flag)
+    if perf50_native_flag_scan and room:getMode() == "50p" and room.findPlayerWithFlag then
+        return room:findPlayerWithFlag(flag) ~= nil
+    end
+    for _, p in sgs.qlist(room:getAllPlayers()) do
+        if p:hasFlag(flag) then return true end
+    end
+    return false
+end
+-- End 50P flag scan helper.
+
+-- Date 2013.5.24
 --module("extensions.biaofeng", package.seeall)
 extension = sgs.Package("biaofeng", sgs.Package_GeneralPack)
 extension_six = sgs.Package("biaofeng_six", sgs.Package_GeneralPack)
@@ -14494,16 +14511,14 @@ SixWuzhiFakeMove = sgs.CreateTriggerSkillV2 {
 	priority = 10,
 	can_trigger = function(skill, event, room, player, data)
 		if not player then return false end
-		for _, p in sgs.qlist(room:getAllPlayers()) do
-			if p:hasFlag("SixWuzhi_InTempMoving") then
-				if player:hasSkill(skill:objectName()) then
-					return skill:objectName()
-				end
-				for _, holder in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
-					return skill:objectName(), holder:objectName()
-				end
-				return false
+		if perf50RoomHasFlag(room, "SixWuzhi_InTempMoving") then
+			if player:hasSkill(skill:objectName()) then
+				return skill:objectName()
 			end
+			for _, holder in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+				return skill:objectName(), holder:objectName()
+			end
+			return false
 		end
 		return false
 	end,
@@ -14511,12 +14526,7 @@ SixWuzhiFakeMove = sgs.CreateTriggerSkillV2 {
 		return true
 	end,
 	on_effect = function(skill, event, room, player, ctx)
-		for _, p in sgs.qlist(room:getAllPlayers()) do
-			if p:hasFlag("SixWuzhi_InTempMoving") then
-				return true
-			end
-		end
-		return false
+		return perf50RoomHasFlag(room, "SixWuzhi_InTempMoving")
 	end
 }
 WangPing_Six:addSkill(SixWuzhi)
@@ -14671,16 +14681,14 @@ SixHusiFakeMove = sgs.CreateTriggerSkillV2 {
 	priority = 10,
 	can_trigger = function(skill, event, room, player, data)
 		if not player then return false end
-		for _, p in sgs.qlist(room:getAllPlayers()) do
-			if p:hasFlag("SixHusi_InTempMoving") then
-				if player:hasSkill(skill:objectName()) then
-					return skill:objectName()
-				end
-				for _, holder in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
-					return skill:objectName(), holder:objectName()
-				end
-				return false
+		if perf50RoomHasFlag(room, "SixHusi_InTempMoving") then
+			if player:hasSkill(skill:objectName()) then
+				return skill:objectName()
 			end
+			for _, holder in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+				return skill:objectName(), holder:objectName()
+			end
+			return false
 		end
 		return false
 	end,
@@ -14688,12 +14696,7 @@ SixHusiFakeMove = sgs.CreateTriggerSkillV2 {
 		return true
 	end,
 	on_effect = function(skill, event, room, player, ctx)
-		for _, p in sgs.qlist(room:getAllPlayers()) do
-			if p:hasFlag("SixHusi_InTempMoving") then
-				return true
-			end
-		end
-		return false
+		return perf50RoomHasFlag(room, "SixHusi_InTempMoving")
 	end
 }
 MiFuRen_Six:addSkill(SixHusi)
@@ -15120,16 +15123,14 @@ SixJiahuoAvoidTriggeringCardsMove = sgs.CreateTriggerSkillV2 {
 	priority = 10,
 	can_trigger = function(skill, event, room, player, data)
 		if not player then return false end
-		for _, p in sgs.qlist(room:getAllPlayers()) do
-			if p:hasFlag("SixJiahuo_InTempMoving") then
-				if player:hasSkill(skill:objectName()) then
-					return skill:objectName()
-				end
-				for _, holder in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
-					return skill:objectName(), holder:objectName()
-				end
-				return false
+		if perf50RoomHasFlag(room, "SixJiahuo_InTempMoving") then
+			if player:hasSkill(skill:objectName()) then
+				return skill:objectName()
 			end
+			for _, holder in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+				return skill:objectName(), holder:objectName()
+			end
+			return false
 		end
 		return false
 	end,
@@ -15137,12 +15138,7 @@ SixJiahuoAvoidTriggeringCardsMove = sgs.CreateTriggerSkillV2 {
 		return true
 	end,
 	on_effect = function(skill, event, room, player, ctx)
-		for _, p in sgs.qlist(room:getAllPlayers()) do
-			if p:hasFlag("SixJiahuo_InTempMoving") then
-				return true
-			end
-		end
-		return false
+		return perf50RoomHasFlag(room, "SixJiahuo_InTempMoving")
 	end
 }
 SunLuBan_Six:addSkill(SixJiahuo)

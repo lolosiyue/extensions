@@ -1,4 +1,26 @@
-﻿module("extensions.animic",package.seeall)
+﻿-- A missing raw owner cannot pass hasSkill(), regardless of invalidity.
+-- Live native lookup avoids repeated 50-seat Lua walks; positive hits keep all
+-- original validity/flag/mark checks and traversal. No result is cached.
+local perf50_native_skill_scan = sgs.GetConfig("50PNativeSkillScan", true)
+if os and os.getenv and os.getenv("QSAN_50P_NATIVE_SKILL_SCAN") == "0" then
+    perf50_native_skill_scan = false
+end
+local function perf50MayHaveSkillOwner(player, skill_name)
+    if not perf50_native_skill_scan or not player or player:getGameMode() ~= "50p" then return true end
+    -- Correct/prohibit callbacks expose Player, whose Lua API has no getRoom().
+    local room = sgs.Sanguosha:currentRoom()
+    if not room or room:getMode() ~= "50p" or not room.findPlayerBySkillName then return true end
+    if room:findPlayerByObjectName(player:objectName(), true) ~= player then return true end
+    -- A dead source can still supply a live card effect; keep its raw ownership.
+    if player:hasSkill(skill_name, true) then return true end
+    -- Roster players are direct Room children. Extra/stale Player children
+    -- require the original sibling traversal rather than an absence shortcut.
+    if room:getPlayers():length() ~= player:getSiblings(true):length() then return true end
+    return room:findPlayerBySkillName(skill_name, true) ~= nil
+end
+-- End 50P raw-owner scan helper.
+
+module("extensions.animic",package.seeall)
 extension=sgs.Package("animic")
 
 sgs.LoadTranslationTable{
@@ -463,6 +485,7 @@ caiduanMaxCards = sgs.CreateMaxCardsSkillV2{
 caiduanProhibit = sgs.CreateProhibitSkill{
 	name = "#caiduanProhibit" ,
 	is_prohibited = function(self, from, to, card)
+		if not perf50MayHaveSkillOwner(from, "caiduan") then return false end
 		for _, p in sgs.qlist(from:getAliveSiblings()) do
 			if p:hasSkill("caiduan") and from:hasFlag("caiduan"..p:objectName()) and card:targetFixed() then
 				return from:objectName() == to:objectName()
