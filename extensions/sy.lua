@@ -407,13 +407,11 @@ sy_2ndturnstart = sgs.CreateTriggerSkillV2{
 }
 
 
---是否允许所有人都拥有重铸装备的资格
-everyone_can_recast = true
+--裝備重鑄只在三英武將自己的 addSkill("#W_recast") 上，不進全域名單。
 --是否允许身份局重铸
 role_can_recast = true
 --V2 全局技能以隱藏技能名掛到所有武將；晚於本擴展加載的武將或換將後於結算時補掛 acquired 實例。
 local sy_global_skill_names = {"#tianyou_lightningRecord", "#pojun_returncards", "#sy_clear", "#fake_move", "#reset_alive", "#arrangejw_skills"}
-if everyone_can_recast then table.insert(sy_global_skill_names, "#W_recast") end
 -- Reentrancy + one-shot: attachSkillToPlayer can re-enter via on_record (50p soft-stuck).
 local syext_ensuring_globals = false
 local function sy_ensure_global_instances(room)
@@ -459,7 +457,7 @@ W_recast = sgs.CreateTriggerSkillV2{
 	events = {sgs.PreCardUsed, sgs.CardUsed},
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive()) then return false end
-		if not everyone_can_recast and not player:hasSkill(skill:objectName()) then return false end
+		if not player:hasSkill(skill:objectName()) then return false end
 		local sanyingmode = room:getTag("sanyingmode"):toBool()
 		if not sanyingmode then
 			if not role_can_recast then return false end
