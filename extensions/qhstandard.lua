@@ -8438,8 +8438,14 @@ qhFakeMove = sgs.CreateTriggerSkillV2 { --假移动
     global = true,
     hide_skill = true,
     can_trigger = function(skill, event, room, player, data)
+        -- Suppress fake moves only while a room player has the temporary-move flag.
         if not player then return false end -- 任何角色触发都能发动
-        return qh_single_owner(skill, room, player)
+        for _, p in sgs.qlist(room:getAllPlayers()) do
+            if p:hasFlag("qh_InTempMoving") then
+                return qh_single_owner(skill, room, player)
+            end
+        end
+        return false
     end,
     on_record = function(skill, event, room, player, ctx)
         qh_ensure_global_instances(room)
@@ -9264,7 +9270,15 @@ mythanzhiRecord = sgs.CreateTriggerSkillV2 {
     hide_skill = true,
     events = { sgs.CardsMoveOneTime, sgs.EventPhaseChanging },
     can_trigger = function(skill, event, room, player, data)
+        -- Keep discard recording and the original end-of-turn reset.
         if not (player and player:isAlive()) then return false end -- 任何角色触发都能发动
+        if event == sgs.CardsMoveOneTime then
+            if data:toMoveOneTime().to_place ~= sgs.Player_DiscardPile then return false end
+        elseif event == sgs.EventPhaseChanging then
+            if data:toPhaseChange().to ~= sgs.Player_NotActive then return false end
+        else
+            return false
+        end
         return qh_single_owner(skill, room, player)
     end,
     on_record = function(skill, event, room, player, ctx)

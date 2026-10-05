@@ -6278,7 +6278,16 @@ kezhuanYing = sgs.CreateRuleSkillV2 {
 	events = { sgs.CardsMoveOneTime },
 	global = true,
 	can_trigger = function(skill, event, room, player, data)
-		if player then return skill:objectName() end
+		-- Destroy only Ying cards that remain in the discard pile.
+		if not player then return false end
+		local move = data:toMoveOneTime()
+		if move.to_place ~= sgs.Player_DiscardPile then return false end
+		for _, id in sgs.qlist(move.card_ids) do
+			if sgs.Sanguosha:getCard(id):isKindOf("Ying")
+				and room:getCardPlace(id) == sgs.Player_DiscardPile then
+				return skill:objectName()
+			end
+		end
 		return false
 	end,
 	on_effect = function(skill, event, room, player, ctx)

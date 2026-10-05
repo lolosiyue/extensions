@@ -110,41 +110,50 @@ s4_cloud_tuxi = sgs.CreateTriggerSkillV2{
     end,
 }
 
--- 勇前目標以實例 correctState["target"]（QStringList）記錄，供技能描述投影與 buff 查詢；
--- 目標身上的 & 角標仍用 mark（state 無法顯示在他人頭像），按實例引用數重算。
-local function s4_cloud_yongqianRef(holder, iid)
-    return sgs.SkillInstanceRef(holder:objectName(), sgs.SkillInstanceKey("s4_cloud_yongqian", iid))
-end
-
+-- 勇前目标以实例私有 state["target"]（QStringList）记录（触发技不适用 correctState 通道）；
+-- 供持有者 hover 投影与 buff 查询；目标身上的 & 角标仍用 mark，按实例引用数重算。
 local function s4_cloud_yongqianTargets(holder, iid)
     local targets = {}
-    for _, n in sgs.qlist(holder:getSkillInstanceCorrectStateValue("s4_cloud_yongqian", iid, "target"):toStringList()) do
+    for _, n in sgs.qlist(holder:getSkillInstanceStateValue("s4_cloud_yongqian", iid, "target"):toStringList()) do
         table.insert(targets, n)
     end
     return targets
 end
 
 local function s4_cloud_yongqianSetTargets(room, holder, iid, targets)
-    local ref = s4_cloud_yongqianRef(holder, iid)
     if #targets == 0 then
-        room:removeSkillInstanceCorrectState(holder, ref, "target")
+        holder:removeSkillInstanceStateValue("s4_cloud_yongqian", iid, "target")
     else
         local v = sgs.QVariant()
         v:setStringList(table.concat(targets, "|"))
-        room:setSkillInstanceCorrectState(holder, ref, "target", v)
+        holder:setSkillInstanceStateValue("s4_cloud_yongqian", iid, "target", v)
     end
 end
 
 local function s4_cloud_yongqianSyncBadge(room, holder, targetName)
-    local count = 0
+    local count, firstIid = 0, 0
     for _, iid in sgs.list(holder:getSkillInstanceIds("s4_cloud_yongqian")) do
-        for _, tn in sgs.qlist(holder:getSkillInstanceCorrectStateValue("s4_cloud_yongqian", iid, "target"):toStringList()) do
-            if tn == targetName then count = count + 1 end
+        for _, tn in sgs.qlist(holder:getSkillInstanceStateValue("s4_cloud_yongqian", iid, "target"):toStringList()) do
+            if tn == targetName then
+                count = count + 1
+                if firstIid == 0 then firstIid = iid end
+            end
         end
     end
     local target = room:findPlayerByObjectName(targetName, true)
     if target then
-        room:setPlayerMark(target, "&s4_cloud_yongqian+sys_+to+#" .. holder:objectName(), count)
+        local badge = "&s4_cloud_yongqian+sys_+to+#" .. holder:objectName()
+        room:setPlayerMark(target, badge, count)
+        -- 角标 mark 兼作 activeMark：count=0 时主动移除描述，mark 重用也不复活旧来源
+        local effectId = "s4_cloud_yongqian:" .. holder:objectName()
+        if count > 0 then
+            local ref = sgs.SkillInstanceRef(holder:objectName(),
+                sgs.SkillInstanceKey("s4_cloud_yongqian", firstIid))
+            room:setSkillEffectDescription(target, effectId, "@s4_cloud_yongqian.effect",
+                ref, "@s4_cloud_yongqian.effect.expiry", badge, true)
+        else
+            room:removeSkillEffectDescription(target, effectId)
+        end
     end
 end
 
@@ -165,7 +174,7 @@ local function s4_cloud_yongqianClearInstance(room, holder, iid)
     for _, tn in ipairs(s4_cloud_yongqianTargets(holder, iid)) do
         seen[tn] = true
     end
-    room:clearSkillInstanceCorrectState(holder, s4_cloud_yongqianRef(holder, iid))
+    holder:removeSkillInstanceStateValue("s4_cloud_yongqian", iid, "target")
     -- 實例可能已隨失去技能移除而讀不到 state，補掃仍帶角標的目標
     local badge = "&s4_cloud_yongqian+sys_+to+#" .. holder:objectName()
     for _, p in sgs.qlist(room:getAllPlayers()) do
@@ -225,7 +234,7 @@ s4_cloud_yongqian = sgs.CreateTriggerSkillV2{
             if not use.to:contains(player) then return false end
             if not use.from or player:objectName() == use.from:objectName() then return false end
             for _, iid in sgs.list(player:getSkillInstanceIds(skill:objectName())) do
-                for _, tn in sgs.qlist(player:getSkillInstanceCorrectStateValue(skill:objectName(), iid, "target"):toStringList()) do
+                for _, tn in sgs.qlist(player:getSkillInstanceStateValue(skill:objectName(), iid, "target"):toStringList()) do
                     if tn == use.from:objectName() then return skill:objectName() end
                 end
             end
@@ -287,7 +296,7 @@ s4_cloud_yongqian_buff = sgs.CreateTargetModSkillV2 {
         local to = ctx:getSecondary()
         if not (from and to and from:hasSkill("s4_cloud_yongqian")) then return nil end
         for _, iid in sgs.list(from:getSkillInstanceIds("s4_cloud_yongqian")) do
-            for _, tn in sgs.qlist(from:getSkillInstanceCorrectStateValue("s4_cloud_yongqian", iid, "target"):toStringList()) do
+            for _, tn in sgs.qlist(from:getSkillInstanceStateValue("s4_cloud_yongqian", iid, "target"):toStringList()) do
                 if tn == to:objectName() then
                     if modType == sgs.TargetModSkill_Residue then
                         return sgs.CorrectSkillResult.unlimitedResidue()
@@ -324,8 +333,10 @@ sgs.LoadTranslationTable {
     ["s4_cloud_yongqian-invoke"] = "你可以发动“勇前”<br/> <b>操作提示</b>: 选择一名其他角色→点击确定<br/>",
     ["s4_cloud_yongqian"] = "勇前",
     [":s4_cloud_yongqian"] = "摸牌阶段，你可以少摸一张牌，然后选择一名其他角色，直到你下回合开始，你对其使用牌无距离和次数限制，当其使用牌指定你为目标后，你可以摸一张牌。",
-    ["@s4_cloud_yongqian.correct.target"] = "勇前目標",
-    ["@s4_cloud_yongqian.correct.target.type"] = "players",
+    ["@s4_cloud_yongqian.state.target"] = "勇前目标",
+    ["@s4_cloud_yongqian.state.target.type"] = "players",
+    ["@s4_cloud_yongqian.effect"] = "勇前目标：来源对其使用牌无距离和次数限制",
+    ["@s4_cloud_yongqian.effect.expiry"] = "来源的下回合开始",
     ["$s4_cloud_yongqian1"] = "千围万困，吾亦能来去自如！",
     ["$s4_cloud_yongqian2"] = "敌军虽百倍于我，破之易而。"
 
@@ -914,16 +925,6 @@ sgs.LoadTranslationTable {
 
 s4_cloud_sunquan = sgs.General(extension, "s4_cloud_sunquan", "wu", 3, false)
 
-local function s4_cloud_yingziInstanceRef(player, instance_id)
-    if not player or not instance_id or instance_id <= 0 then
-        return nil
-    end
-    return sgs.SkillInstanceRef(
-        player:objectName(),
-        sgs.SkillInstanceKey("s4_cloud_yingzi", instance_id)
-    )
-end
-
 local function s4_cloud_yingziClearState(room, player, instance_id)
     if not player or not instance_id or instance_id <= 0 then
         return
@@ -932,9 +933,9 @@ local function s4_cloud_yingziClearState(room, player, instance_id)
     player:removeSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "hand")
     player:removeSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "hp")
     player:removeSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "equip")
-    local ref = s4_cloud_yingziInstanceRef(player, instance_id)
-    if room and ref then
-        room:removeSkillInstanceCorrectState(player, ref, "x")
+    if room then
+        room:removeSkillEffectDescription(player,
+            "s4_cloud_yingzi:" .. player:objectName() .. ":" .. instance_id)
     end
 end
 
@@ -946,10 +947,6 @@ local function s4_cloud_yingziWriteState(room, player, instance_id, x, hand, hp,
     player:setSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "hand", sgs.QVariant(hand))
     player:setSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "hp", sgs.QVariant(hp))
     player:setSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "equip", sgs.QVariant(equip))
-    local ref = s4_cloud_yingziInstanceRef(player, instance_id)
-    if room and ref then
-        room:setSkillInstanceCorrectState(player, ref, "x", sgs.QVariant(x))
-    end
 end
 
 s4_cloud_yingzi = sgs.CreateTriggerSkillV2{
@@ -995,6 +992,13 @@ s4_cloud_yingzi = sgs.CreateTriggerSkillV2{
             room:sendCompulsoryTriggerLog(player, skill:objectName(), true)
             room:addMaxCards(player, amount, true, skill:objectName(), player)
             room:addPlayerMark(player, "&s4_cloud_yingzi-Clear", amount)
+            -- & mark 兼作 activeMark：-Clear 回合末自动归零，效果描述随之隐藏
+            room:setSkillEffectDescription(player,
+                "s4_cloud_yingzi:" .. player:objectName() .. ":" .. ctx.instanceID,
+                "@s4_cloud_yingzi.effect",
+                sgs.SkillInstanceRef(player:objectName(),
+                    sgs.SkillInstanceKey("s4_cloud_yingzi", ctx.instanceID)),
+                "@s4_cloud_yingzi.effect.expiry", "&s4_cloud_yingzi-Clear", true)
 			local draw = ctx.original_data:toDraw()
 			draw.num = draw.num + amount
 			ctx.original_data:setValue(draw)
@@ -1027,7 +1031,8 @@ sgs.LoadTranslationTable {
     ["@s4_cloud_yingzi.state.hp.value.false"] = "否",
     ["@s4_cloud_yingzi.state.equip.value.true"] = "是",
     ["@s4_cloud_yingzi.state.equip.value.false"] = "否",
-    ["@s4_cloud_yingzi.correct.x"] = "本回合手牌上限+"
+    ["@s4_cloud_yingzi.effect"] = "英姿：本回合手牌上限提升",
+    ["@s4_cloud_yingzi.effect.expiry"] = "本回合结束",
 }
 ----------------------------------------------------------------
 -- https://tieba.baidu.com/p/8501081538

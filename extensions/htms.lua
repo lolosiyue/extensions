@@ -13754,9 +13754,8 @@ yohaneFakeMove = sgs.CreateTriggerSkillV2 { --fakeMove触发技
 
 	can_trigger = function(self, event, room, player, data)
 		local function __triggerable(self, target)
-
-		return target
-			end
+			return target
+		end
 		if not __triggerable(self, player, room, event, player, data) then return false end
 		local owner = room:findPlayerBySkillName(self:objectName())
 		if not owner then
@@ -13765,6 +13764,8 @@ yohaneFakeMove = sgs.CreateTriggerSkillV2 { --fakeMove触发技
 			end
 			owner = player
 		end
+		-- The effect reads the resolved invoker, rather than the event target.
+		if not owner:hasFlag("yohane_InTempMoving") then return false end
 		return self:objectName(), owner
 	end,
 	on_effect = function(self, event, room, player, ctx)

@@ -2041,8 +2041,16 @@ OnSkillTrigger = sgs.CreateTriggerSkillV2 {
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.EventPhaseStart, sgs.EventPhaseProceeding, sgs.CardsMoveOneTime, sgs.EventPhaseChanging, sgs.PreCardUsed, sgs.HpChanged },
 	can_trigger = function(skill, event, room, player, data)
-		if not player then
-			return false
+		if not player then return false end
+		-- Skip card moves with no ThrowArea or discard-task work for this target.
+		if event == sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			local throw_area = move.to_place == sgs.Player_PlaceHand and move.to
+				and move.to:objectName() == player:objectName() and player:getTag("ThrowArea_1"):toBool()
+			local zhengsu = room:getCurrent() == player and player:getTag("zhengsu3"):toBool()
+				and player:getPhase() == sgs.Player_Discard and move.to_place == sgs.Player_DiscardPile
+				and bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD
+			if not throw_area and not zhengsu then return false end
 		end
 		if player:getSkillInstanceIds(skill:objectName()):isEmpty() then
 			room:attachSkillToPlayer(player, skill:objectName())

@@ -882,10 +882,17 @@ respond_defaults.askForCard = function(self, options, request)
     -- retains the existing physical-card baseline, not a guessed damage benefit.
     if not compulsory and effect and effect.card and effect.from
         and (effect.card:isKindOf("Slash")
-            or (type(effect.card.isDamageCard) == "function" and effect.card:isDamageCard()))
-        and type(self.needToLoseHp) == "function"
-        and self:needToLoseHp(self.player, legacy_player(self, effect.from), effect.card) == true then
-        return {kind="pass"}
+            or (type(effect.card.isDamageCard) == "function" and effect.card:isDamageCard())) then
+        local from = legacy_player(self, effect.from)
+        -- 想掉血，或套件登記的 ai_can_damagehp 要這次傷害，就不出防。
+        if type(self.needToLoseHp) == "function"
+            and self:needToLoseHp(self.player, from, effect.card) == true then
+            return {kind="pass"}
+        end
+        if type(self.canDamageHp) == "function"
+            and self:canDamageHp(from, effect.card, self.player) == true then
+            return {kind="pass"}
+        end
     end
     return response_card_default(self, options, request)
 end
@@ -900,6 +907,16 @@ respond_defaults.askForNullification = function(self, options, request)
     end
     if type(context.positive) ~= "boolean" then return unsupported("nullification polarity is unknown", "askForNullification") end
     local to, from = legacy_player(self, context.to), legacy_player(self, context.from)
+    -- 傷害牌且目標想承受時不無懈。套件用 canDamageHp 擴充，未知不當成不想承受。
+    if context.positive and to and from and type(card.isDamageCard) == "function" and card:isDamageCard() then
+        local want, benefit = false, false
+        if type(self.needToLoseHp) == "function" then want = self:needToLoseHp(to, from, card) end
+        if type(self.canDamageHp) == "function" then benefit = self:canDamageHp(from, card, to) end
+        if want == nil or benefit == nil then
+            return unsupported("nullification damage benefit is unknown", "askForNullification")
+        end
+        if want == true or benefit == true then return {kind = "pass"} end
+    end
     local to_relation = to == self.player and "friend" or (to and self:relationTo(to))
     if to_relation ~= "friend" and to_relation ~= "enemy" then return {kind="pass"} end
     -- Trick inheritance is not an effect classification: ExNihilo is a

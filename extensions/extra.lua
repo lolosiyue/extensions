@@ -436,6 +436,30 @@ universal_card_display_global = sgs.CreateTriggerSkillV2{
 	frequency = sgs.Skill_Compulsory,
 	global = true,
 	can_trigger = function(skill, event, room, player, data)
+		if not player then return false end
+		local move = data:toMoveOneTime()
+		-- Display cleanup only concerns displayed cards leaving the hand.
+		if event == sgs.CardsMoveOneTime then
+			if not move.from then return false end
+			local displayed = move.from:property("display_cards"):toString()
+			if displayed == "" then return false end
+			local matches = false
+			for i = 0, move.card_ids:length() - 1 do
+				if move.from_places:at(i) == sgs.Player_PlaceHand then
+					for _, id in pairs(displayed:split("+")) do
+						if id ~= "" and tonumber(id) == move.card_ids:at(i) then matches = true break end
+					end
+				end
+				if matches then break end
+			end
+			if not matches then return false end
+		elseif event == sgs.BeforeCardsMove then
+			local source = move.reason.m_playerId
+			if not (source and move.from and move.from:objectName() ~= source and player:objectName() == source
+				and move.from_places:contains(sgs.Player_PlaceHand) and move.reason.m_skillName ~= "longqi"
+				and not (room:getTag("Dongchaer"):toString() == player:objectName()
+				and room:getTag("Dongchaee"):toString() == move.from:objectName())) then return false end
+		end
 		return extra_global_can_trigger(skill, room, player)
 	end,
 	on_record = function(skill, event, room, player, ctx)

@@ -11,6 +11,7 @@ ai_isolated_core = {
     "retrial.lua",
     "strategy-hooks.lua",
     "event-intention.lua",
+    "smart-ai-functions.lua",
 }
 
 -- ai_memory：跨 request 的推測記憶，按觀察者分區。

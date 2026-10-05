@@ -253,7 +253,9 @@ local sort_keys = {
     equip = function(self, player) return #(player:getEquips() or {}) end,
     card = function(self, player)
         return scalar(player, "getHandcardNum", 0) + #(player:getEquips() or {})
-    end
+    end,
+    -- 殺防排序走基礎層 getDefenseSlash；缺估計回 nil，不把未知排成 0。
+    defenseSlash = function(self, player) return self:getDefenseSlash(player) end
 }
 
 function SmartAIView:sort(players, key, anti)
@@ -2690,7 +2692,7 @@ end
 -- 第一批實體牌策略：殺與桃。這兩支放在共用核心而不是某個套件 handler，因為
 -- activate 的通用出牌流程本身就要靠它們；套件 handler 仍可用 ai_card_use 覆寫。
 
--- 實體殺：只打敵人，優先打快死的、威脅大的。打不到敵人就不打，不硬找友軍下手。
+-- 實體殺：先打願意挨這刀的賣血友方，其餘只打敵人。打不到就不打。
 ai_card_use.Slash = function(self, card, use)
     require_play(use, "Slash")
     local candidate = self:getCardCandidate(card:getEffectiveId())
@@ -2704,6 +2706,21 @@ ai_card_use.Slash = function(self, card, use)
     end
     local targets = candidate:getLegalTargets()
     if not targets then ai_unsupported("legal targets are unknown", "Slash") end
+    -- SmartAI 先打賣血友方。canDamageHp 未知或這條序列接不住時，仍走下面的敵人目標。
+    local friend_hit
+    local friend_ok = AIUnsupported.capture(function()
+        friend_hit = self:planTargetSequence(candidate, "friend", function(target)
+            if target:objectName() == self.player:objectName() then return false end
+            if self:isWeak(target) ~= false then return false end
+            local willing = self:canDamageHp(self.player, card, target)
+            return willing == true
+        end)
+    end)
+    if friend_ok and friend_hit then
+        use.card = card
+        use.to = friend_hit
+        return
+    end
     local chosen = self:planTargetSequence(candidate, "enemy", function(target)
         local hooks = skill_hooks(self, "ai_slash_prohibit", target)
         if not hooks then ai_unsupported("slash target skills are unknown", "ai_slash_prohibit") end

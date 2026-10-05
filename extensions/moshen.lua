@@ -699,8 +699,32 @@ hidden_clearcardflag = sgs.CreateTriggerSkillV2 {
 		moshen_ensure_global_instances(room)
 	end,
 	can_trigger = function(skill, event, room, player, data)
-		if player:hasSkill(skill:objectName()) then
-			return skill:objectName()
+		-- Cleanup is needed only when a moved or finished card has a slash-effect flag.
+		if not player:hasSkill(skill:objectName()) then
+			return false
+		end
+		if event == sgs.CardsMoveOneTime then
+			local move = data:toMoveOneTime()
+			if move.to_place ~= sgs.Player_DiscardPile
+				or bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_USE then
+				return false
+			end
+			for _, id in sgs.qlist(move.card_ids) do
+				for _, flag in sgs.list(sgs.Sanguosha:getCard(id):getFlags()) do
+					if string.find(flag, "_slash_effect") then
+						return skill:objectName()
+					end
+				end
+			end
+		elseif event == sgs.CardFinished then
+			local use = data:toCardUse()
+			if use.card then
+				for _, flag in sgs.list(use.card:getFlags()) do
+					if string.find(flag, "_slash_effect") then
+						return skill:objectName()
+					end
+				end
+			end
 		end
 		return false
 	end,
