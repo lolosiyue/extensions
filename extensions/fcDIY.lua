@@ -1,4 +1,21 @@
-﻿extension = sgs.Package("fcDIY", sgs.Package_GeneralPack)
+﻿-- 50P keeps this live scan in native code: same getAllPlayers() roster and exact flag.
+-- No flag result is cached. Other modes retain the Lua scan.
+local perf50_native_flag_scan = sgs.GetConfig("50PNativeFlagScan", true)
+if os and os.getenv and os.getenv("QSAN_50P_NATIVE_FLAG_SCAN") == "0" then
+    perf50_native_flag_scan = false
+end
+local function perf50RoomHasFlag(room, flag)
+    if perf50_native_flag_scan and room:getMode() == "50p" and room.findPlayerWithFlag then
+        return room:findPlayerWithFlag(flag) ~= nil
+    end
+    for _, p in sgs.qlist(room:getAllPlayers()) do
+        if p:hasFlag(flag) then return true end
+    end
+    return false
+end
+-- End 50P flag scan helper.
+
+extension = sgs.Package("fcDIY", sgs.Package_GeneralPack)
 xiangyuEquip = sgs.Package("xiangyuEquip", sgs.Package_CardPack)
 extension_Cards = sgs.Package("fcDIY_Cards", sgs.Package_CardPack)
 --==V1.0==--
@@ -16603,10 +16620,7 @@ fcj_shanxiFakeMove = sgs.CreateTriggerSkillV2
 		local function __triggerable(self, player)
 			if not player then return false end
 			-- Fake moves are suppressed only while the original room-wide flag is set.
-			for _, p in sgs.qlist(room:getAllPlayers()) do
-				if p:hasFlag("fcj_shanxi_InTempMoving") then return true end
-			end
-			return false
+			return perf50RoomHasFlag(room, "fcj_shanxi_InTempMoving")
 		end
 		if not __triggerable(self, player, room, event, player, data) then return false end
 		local owner = room:findPlayerBySkillName(self:objectName())
@@ -16623,13 +16637,7 @@ fcj_shanxiFakeMove = sgs.CreateTriggerSkillV2
 		local data = ctx.original_data
 		local room = player:getRoom()
 local room = player:getRoom()
-		local allplayers = room:getAllPlayers()
-		for _, p in sgs.qlist(allplayers) do
-			if p:hasFlag("fcj_shanxi_InTempMoving") then
-				return true
-			end
-		end
-		return false
+		return perf50RoomHasFlag(room, "fcj_shanxi_InTempMoving")
 
 	end,
 }

@@ -1,3 +1,25 @@
+-- A missing raw owner cannot pass hasSkill(), regardless of invalidity.
+-- Live native lookup avoids repeated 50-seat Lua walks; positive hits keep all
+-- original validity/flag/mark checks and traversal. No result is cached.
+local perf50_native_skill_scan = sgs.GetConfig("50PNativeSkillScan", true)
+if os and os.getenv and os.getenv("QSAN_50P_NATIVE_SKILL_SCAN") == "0" then
+    perf50_native_skill_scan = false
+end
+local function perf50MayHaveSkillOwner(player, skill_name)
+    if not perf50_native_skill_scan or not player or player:getGameMode() ~= "50p" then return true end
+    -- Correct/prohibit callbacks expose Player, whose Lua API has no getRoom().
+    local room = sgs.Sanguosha:currentRoom()
+    if not room or room:getMode() ~= "50p" or not room.findPlayerBySkillName then return true end
+    if room:findPlayerByObjectName(player:objectName(), true) ~= player then return true end
+    -- A dead source can still supply a live card effect; keep its raw ownership.
+    if player:hasSkill(skill_name, true) then return true end
+    -- Roster players are direct Room children. Extra/stale Player children
+    -- require the original sibling traversal rather than an absence shortcut.
+    if room:getPlayers():length() ~= player:getSiblings(true):length() then return true end
+    return room:findPlayerBySkillName(skill_name, true) ~= nil
+end
+-- End 50P raw-owner scan helper.
+
 local extension = sgs.Package("newgenerals", sgs.Package_GeneralPack)
 
 --统一进行语音绑定
@@ -24342,6 +24364,7 @@ lianpojxbf1 = sgs.CreateMaxCardsSkillV2 {
 	holder_selector = sgs.CorrectSkill_System,
 correct_func = function(self, ctx)
 	return (function(self, target)
+		if not perf50MayHaveSkillOwner(target, "lianpojx") then return 0 end
 		local hasr = { rebel = 0 }
 		for _, p in sgs.qlist(target:getAliveSiblings()) do
 			if p:hasSkill("lianpojx") then
@@ -24391,6 +24414,7 @@ correct_func = function(self, ctx)
 	local mt = ctx:getModType()
 	if mt == sgs.TargetModSkill_Residue then
 		return (function(self, from, card)
+		if not perf50MayHaveSkillOwner(from, "lianpojx") then return 0 end
 		local hasr = { rebel = 0 }
 		for _, p in sgs.qlist(from:getAliveSiblings(true)) do
 			if p:hasSkill("lianpojx") then
@@ -24440,6 +24464,7 @@ lianpojxbf3 = sgs.CreateAttackRangeSkillV2 {
 	holder_selector = sgs.CorrectSkill_System,
 correct_func = function(self, ctx)
 	return (function(self, target)
+		if not perf50MayHaveSkillOwner(target, "lianpojx") then return 0 end
 		local hasr = { rebel = 0 }
 		for _, p in sgs.qlist(target:getAliveSiblings(true)) do
 			if p:hasSkill("lianpojx") then
@@ -24483,6 +24508,7 @@ lianpojxbf4 = sgs.CreateProhibitSkill {
 	name = "#lianpojxbf4",
 	is_prohibited = function(self, from, to, card)
 		if card:isKindOf("Peach") and from ~= to then
+			if not perf50MayHaveSkillOwner(from, "lianpojx") then return false end
 			local hasr = { loyalist = 0 }
 			for _, p in sgs.qlist(from:getAliveSiblings()) do
 				if p:hasSkill("lianpojx") then

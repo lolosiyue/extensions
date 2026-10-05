@@ -1,3 +1,25 @@
+-- A missing raw owner cannot pass hasSkill(), regardless of invalidity.
+-- Live native lookup avoids repeated 50-seat Lua walks; positive hits keep all
+-- original validity/flag/mark checks and traversal. No result is cached.
+local perf50_native_skill_scan = sgs.GetConfig("50PNativeSkillScan", true)
+if os and os.getenv and os.getenv("QSAN_50P_NATIVE_SKILL_SCAN") == "0" then
+    perf50_native_skill_scan = false
+end
+local function perf50MayHaveSkillOwner(player, skill_name)
+    if not perf50_native_skill_scan or not player or player:getGameMode() ~= "50p" then return true end
+    -- Correct/prohibit callbacks expose Player, whose Lua API has no getRoom().
+    local room = sgs.Sanguosha:currentRoom()
+    if not room or room:getMode() ~= "50p" or not room.findPlayerBySkillName then return true end
+    if room:findPlayerByObjectName(player:objectName(), true) ~= player then return true end
+    -- A dead source can still supply a live card effect; keep its raw ownership.
+    if player:hasSkill(skill_name, true) then return true end
+    -- Roster players are direct Room children. Extra/stale Player children
+    -- require the original sibling traversal rather than an absence shortcut.
+    if room:getPlayers():length() ~= player:getSiblings(true):length() then return true end
+    return room:findPlayerBySkillName(skill_name, true) ~= nil
+end
+-- End 50P raw-owner scan helper.
+
 extension = sgs.Package("sgs10th", sgs.Package_GeneralPack)
 local packages = {}
 table.insert(packages, extension)
@@ -4907,6 +4929,7 @@ ny_10th_yaoyi = sgs.CreateProhibitSkill {
 		if from:objectName() == to:objectName() then
 			return false
 		end
+		if not perf50MayHaveSkillOwner(from, "ny_10th_yaoyi") then return false end
 		local find = false
 		if from:hasSkill("ny_10th_yaoyi") then
 			find = true

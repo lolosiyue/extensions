@@ -1,4 +1,21 @@
-﻿---@diagnostic disable: lowercase-global
+﻿-- 50P keeps this live scan in native code: same getAllPlayers() roster and exact flag.
+-- No flag result is cached. Other modes retain the Lua scan.
+local perf50_native_flag_scan = sgs.GetConfig("50PNativeFlagScan", true)
+if os and os.getenv and os.getenv("QSAN_50P_NATIVE_FLAG_SCAN") == "0" then
+    perf50_native_flag_scan = false
+end
+local function perf50RoomHasFlag(room, flag)
+    if perf50_native_flag_scan and room:getMode() == "50p" and room.findPlayerWithFlag then
+        return room:findPlayerWithFlag(flag) ~= nil
+    end
+    for _, p in sgs.qlist(room:getAllPlayers()) do
+        if p:hasFlag(flag) then return true end
+    end
+    return false
+end
+-- End 50P flag scan helper.
+
+---@diagnostic disable: lowercase-global
 -- module("extensions.qhstandard", package.seeall)
 extension = sgs.Package("qhstandard", sgs.Package_GeneralPack)      -- 标准版
 extensionMyth = sgs.Package("mythology", sgs.Package_GeneralPack)   -- 神话降临
@@ -8440,10 +8457,8 @@ qhFakeMove = sgs.CreateTriggerSkillV2 { --假移动
     can_trigger = function(skill, event, room, player, data)
         -- Suppress fake moves only while a room player has the temporary-move flag.
         if not player then return false end -- 任何角色触发都能发动
-        for _, p in sgs.qlist(room:getAllPlayers()) do
-            if p:hasFlag("qh_InTempMoving") then
-                return qh_single_owner(skill, room, player)
-            end
+        if perf50RoomHasFlag(room, "qh_InTempMoving") then
+            return qh_single_owner(skill, room, player)
         end
         return false
     end,
@@ -8452,10 +8467,7 @@ qhFakeMove = sgs.CreateTriggerSkillV2 { --假移动
         return false
     end,
     on_effect = function(self, event, room, player, ctx)
-        for _, p in sgs.qlist(room:getAllPlayers()) do
-            if p:hasFlag("qh_InTempMoving") then return true end
-        end
-        return false
+        return perf50RoomHasFlag(room, "qh_InTempMoving")
     end
 }
 

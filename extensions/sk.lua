@@ -1,4 +1,21 @@
-﻿--module("extensions.sk", package.seeall)
+﻿-- 50P keeps this live scan in native code: same getAllPlayers() roster and exact flag.
+-- No flag result is cached. Other modes retain the Lua scan.
+local perf50_native_flag_scan = sgs.GetConfig("50PNativeFlagScan", true)
+if os and os.getenv and os.getenv("QSAN_50P_NATIVE_FLAG_SCAN") == "0" then
+    perf50_native_flag_scan = false
+end
+local function perf50RoomHasFlag(room, flag)
+    if perf50_native_flag_scan and room:getMode() == "50p" and room.findPlayerWithFlag then
+        return room:findPlayerWithFlag(flag) ~= nil
+    end
+    for _, p in sgs.qlist(room:getAllPlayers()) do
+        if p:hasFlag(flag) then return true end
+    end
+    return false
+end
+-- End 50P flag scan helper.
+
+--module("extensions.sk", package.seeall)
 extension = sgs.Package("sk")
 
 sgs.LoadTranslationTable{
@@ -1522,10 +1539,7 @@ sk_sijian_FakeMove = sgs.CreateTriggerSkillV2{
 		return false
 	end,
 	on_effect = function(skill, event, room, player, ctx)
-		for _, p in sgs.qlist(room:getAllPlayers()) do
-		    if p:hasFlag("sk_sijian_InTempMoving") then return true end
-		end
-		return false
+		return perf50RoomHasFlag(room, "sk_sijian_InTempMoving")
 	end,
 }
 
