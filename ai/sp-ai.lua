@@ -11073,18 +11073,11 @@ local hongyi_skill = {}
 hongyi_skill.name = "hongyi"
 table.insert(sgs.ai_skills,hongyi_skill)
 hongyi_skill.getTurnUseCard = function(self)
+	if #self.enemies==0 then return end
 	return sgs.Card_Parse("@HongyiCard=.")
 end
 
 sgs.ai_skill_use_func.HongyiCard = function(card,use,self)
-	if #self.enemies==0 then return end
-	
-	local death = 0
-	for _,p in sgs.qlist(self.room:getAllPlayers(true))do
-		if p:isDead() then death = death+1 end
-		if death>=2 then break end
-	end
-	
 	self:sort(self.enemies,"handcard")
 	self.enemies = sgs.reverse(self.enemies)
 	local enemy = self.enemies[1]
@@ -11093,94 +11086,16 @@ sgs.ai_skill_use_func.HongyiCard = function(card,use,self)
 		enemy = p
 		break
 	end
-	
-	if death==0 then
-		sgs.ai_use_priority.HongyiCard = 10
-		use.card = sgs.Card_Parse("@HongyiCard=.")
-		use.to:append(enemy)
-		return
-	end
-	
-	local candis = {}
-	for _,c in sgs.qlist(self.player:getCards("he"))do
-		if self:isValuableCard(c) or not self.player:canDiscard(self.player,c:getEffectiveId()) then continue end
-		table.insert(candis,c)
-	end
-	if #candis<death then return end
-	self:sortByKeepValue(candis)
-	local dis = {}
-	if self:needToThrowArmor() and self.player:canDiscard(self.player,self.player:getArmor():getEffectiveId()) then
-		table.insert(dis,self.player:getArmor():getEffectiveId())
-	end
-	if death>#dis then
-		for i = 1,death-#dis do
-			table.insert(dis,candis[i]:getEffectiveId())
-		end
-	end
-	use.card = sgs.Card_Parse("@HongyiCard="..table.concat(dis,"+"))
+	sgs.ai_use_priority.HongyiCard = 10
+	use.card = card
 	use.to:append(enemy) 
-	return
 end
 
 sgs.ai_use_priority.HongyiCard = sgs.ai_use_priority.ExNihilo-0.1
 sgs.ai_card_intention.HongyiCard = 80 
 
 --劝封
-sgs.ai_skill_choice.quanfeng = function(self,choices,data)
-	choices = choices:split(":")
-	for _,choice in ipairs(choices)do
-		if self.player:hasSkill(choice,true) or string.find(sgs.bad_skills,choice) then continue end
-		if self:isValueSkill(choice,nil,true) then
-			return choice
-		end
-	end
-	for _,choice in ipairs(choices)do
-		if self.player:hasSkill(choice,true) or string.find(sgs.bad_skills,choice) then continue end
-		if self:isValueSkill(choice) then
-			return choice
-		end
-	end
-	local skills = {}
-	for _,choice in ipairs(choices)do
-		if self.player:hasSkill(choice,true) or string.find(sgs.bad_skills,choice) then continue end
-		table.insert(skills,choice)
-	end
-	if #skills>0 then return skills[math.random(1,#skills)] end
-	for _,choice in ipairs(choices)do
-		if string.find(sgs.bad_skills,choice) then continue end
-		return choice
-	end
-	return choices[math.random(1,#choices)]
-end
-
---二版弘仪
-local secondhongyi = {}
-secondhongyi.name = "secondhongyi"
-table.insert(sgs.ai_skills,secondhongyi)
-secondhongyi.getTurnUseCard = function(self)
-	if #self.enemies==0 then return end
-	return sgs.Card_Parse("@SecondHongyiCard=.")
-end
-
-sgs.ai_skill_use_func.SecondHongyiCard = function(card,use,self)
-	self:sort(self.enemies,"handcard")
-	self.enemies = sgs.reverse(self.enemies)
-	local enemy = self.enemies[1]
-	for _,p in ipairs(self.enemies)do
-		if (p:hasSkill("keji") and not self:hasCrossbowEffect(p)) or self:willSkipPlayPhase(p) then continue end
-		enemy = p
-		break
-	end
-	sgs.ai_use_priority.SecondHongyiCard = 10
-	use.card = card
-	use.to:append(enemy) 
-end
-
-sgs.ai_use_priority.SecondHongyiCard = sgs.ai_use_priority.ExNihilo-0.1
-sgs.ai_card_intention.SecondHongyiCard = 80 
-
---二版劝封
-sgs.ai_skill_invoke.secondquanfeng = function(self,data)
+sgs.ai_skill_invoke.quanfeng = function(self,data)
 	local target = data:toPlayer()
 	if target
 	then
