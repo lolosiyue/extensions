@@ -32401,7 +32401,7 @@ ofxiefang_gs_mod = sgs.CreateTargetModSkillV2 {
 	name = "#ofxiefang_gs_mod",
 	pattern = "BasicCard,TrickCard",
 	extra_target_func = function(self, from, card)
-		if from:hasSkill("ofxiefang_gs") and card and (card:isKindOf("BasicCard") or (card:isNDTrick and card:isNDTrick())) then
+		if from:hasSkill("ofxiefang_gs") and card and (card:isKindOf("BasicCard") or (card.isNDTrick and card:isNDTrick())) then
 			local n = 0
 			for _, p in sgs.list(sgs.Sanguosha:getPlayers()) do end
 			for _, p in sgs.qlist(from:getAliveSiblings()) do
