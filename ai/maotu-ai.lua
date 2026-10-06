@@ -74,7 +74,7 @@ sgs.ai_fill_skill.mtzhihe = function(self)
 	end
 end
 
-sgs.ai_skill_use["@@mtjiye"] = function(self,prompt)
+sgs.ai_skill_cardask["@mtjiye"] = function(self,data,pattern,prompt)
     local cs = self.player:getCards("he")
     cs = self:sortByUseValue(cs)
     local tocs = {}
@@ -122,14 +122,18 @@ sgs.ai_skill_use["@@mtjiye"] = function(self,prompt)
 	end
 	if #tocs>0
 	then
-    	return "@MTJiyeCard="..table.concat(tocs,"+")
+		local d = dummyCard()
+		d:setSkillName("mtjiye")
+		for _,id in ipairs(tocs)do d:addSubcard(id) end
+    	return d:toString()
 	end
+	return "."
 end
 
 sgs.ai_skill_cardask["@mtlunhuan-discard"] = function(self,data,pattern,prompt)
 	local record = self.player:property("MTLunhuanSuits"):toString():split("+")
     local d = dummyCard()
-	d:setSkillName("_mtlunhuan")
+	d:setSkillName("mtlunhuan")
 	local to = data:toPlayer()
 	for _,c in sgs.list(self:sortByKeepValue(self.player:getCards("he")))do
 		if table.contains(record,c:getSuitString())
@@ -174,7 +178,7 @@ end
 sgs.ai_skill_cardask["@mtguqu-discard1"] = function(self,data,pattern,prompt)
 	local record = self.player:property("MTGuquSuits"):toString():split("+")
     local d = dummyCard()
-	d:setSkillName("_mtguqu")
+	d:setSkillName("mtguqu")
 	local cs = {}
 	for _,c in sgs.list(self:sortByKeepValue(self.player:getCards("he")))do
 		if table.contains(record,c:getSuitString())
@@ -195,11 +199,19 @@ sgs.ai_skill_cardask["@mtguqu-discard1"] = function(self,data,pattern,prompt)
 	return "."
 end
 
-sgs.ai_fill_skill.mtguzhao = function(self)
-	return sgs.Card_Parse("@MTGuzhaoCard=.")
+-- V2 proxy activations are keyed by skill name.
+local function maotuV2Card(name, ids)
+	local card = sgs.ActiveSkillCard()
+	card:setSkillName(name)
+	for _,id in ipairs(ids or {})do card:addSubcard(id) end
+	return card
 end
 
-sgs.ai_skill_use_func["MTGuzhaoCard"] = function(card,use,self)
+sgs.ai_fill_skill.mtguzhao = function(self)
+	return maotuV2Card("mtguzhao")
+end
+
+sgs.ai_skill_use_func.mtguzhao = function(card,use,self)
 	local mc = self:getMaxCard()
 	if not (mc and mc:getNumber()>9) then return end
 	self:sort(self.enemies,"hp")
@@ -222,8 +234,8 @@ sgs.ai_skill_use_func["MTGuzhaoCard"] = function(card,use,self)
 	end
 end
 
-sgs.ai_use_value.MTGuzhaoCard = 5.4
-sgs.ai_use_priority.MTGuzhaoCard = 3.8
+sgs.ai_use_value.mtguzhao = 5.4
+sgs.ai_use_priority.mtguzhao = 3.8
 
 sgs.ai_skill_invoke.mtjiawei = function(self,data)
 	local str = data:toString():split(":")
@@ -308,7 +320,7 @@ sgs.ai_view_as.mtfeiren = function(card,player,card_place,class_name)
 	end
 end
 
-sgs.ai_skill_use["@@mtrenyi2"] = function(self,prompt)
+sgs.ai_skill_use["@@mtrenyi2"] = function(self,prompt,method,pattern,request)
 	local d = self.player:getMark("mtrenyi_id-Clear")-1
 	d = sgs.Sanguosha:getCard(d)
     local c = dummyCard(d:objectName())
@@ -320,6 +332,7 @@ sgs.ai_skill_use["@@mtrenyi2"] = function(self,prompt)
        	for _,p in sgs.list(dummy.to)do
        		table.insert(tos,p:objectName())
        	end
+		if request then return {cards = {}, targets = tos, user_string = ""} end
        	return c:toString().."->"..table.concat(tos,"+")
     end
 end
@@ -337,7 +350,7 @@ sgs.ai_skill_askforag.mtrenyi = function(self,card_ids)
 	end
 end
 
-sgs.ai_skill_use["@@mtrenyi1"] = function(self,prompt)
+sgs.ai_skill_use["@@mtrenyi1"] = function(self,prompt,method,pattern,request)
     local cs = self.player:getCards("he")
     self:sortByUseValue(cs,true)
     local tocs = {}
@@ -363,7 +376,8 @@ sgs.ai_skill_use["@@mtrenyi1"] = function(self,prompt)
 	if #cs==#tocs
 	and #tocs==n
 	then
-    	return "@MTRenyiCard="..table.concat(tocs,"+").."->"..table.concat(cs,"+")
+		if request then return {cards = tocs, targets = cs, user_string = ""} end
+    	return maotuV2Card("mtrenyi",tocs):toString().."->"..table.concat(cs,"+")
 	end
 end
 
@@ -419,10 +433,10 @@ sgs.ai_skill_choice.mtzhilie = function(self,choices,data)
 end
 
 sgs.ai_fill_skill.mtzhilie = function(self)
-	return sgs.Card_Parse("@MTZhilieCard=.")
+	return maotuV2Card("mtzhilie")
 end
 
-sgs.ai_skill_use_func["MTZhilieCard"] = function(card,use,self)
+sgs.ai_skill_use_func.mtzhilie = function(card,use,self)
 	for _,p in sgs.list(self.enemies)do
 		if p:getHandcardNum()>0
 		and use.to
@@ -434,8 +448,8 @@ sgs.ai_skill_use_func["MTZhilieCard"] = function(card,use,self)
 	end
 end
 
-sgs.ai_use_value.MTZhilieCard = 5.4
-sgs.ai_use_priority.MTZhilieCard = 4.8
+sgs.ai_use_value.mtzhilie = 5.4
+sgs.ai_use_priority.mtzhilie = 4.8
 
 sgs.ai_skill_invoke.mtguanda = function(self,data)
     return true
@@ -445,7 +459,7 @@ sgs.ai_skill_invoke.mtweiqie = function(self,data)
     return true
 end
 
-sgs.ai_skill_use["@@mtweiqie"] = function(self,prompt)
+sgs.ai_skill_cardask["@mtweiqie"] = function(self,data,pattern,prompt)
     local cs = {}
     local tocs = {}
 	for _,c in sgs.list(self.player:getTag("mtweiqieForAI"):toIntList())do
@@ -466,14 +480,14 @@ sgs.ai_skill_use["@@mtweiqie"] = function(self,prompt)
 			table.insert(tocs,c)
 		end
 	end
-	cs = {}
-	for _,c in sgs.list(tocs)do
-		table.insert(cs,c:getEffectiveId())
-	end
-	if #cs>0
+	if #tocs>0
 	then
-    	return "@MTWeiqieCard="..table.concat(cs,"+")
+		local d = dummyCard()
+		d:setSkillName("mtweiqie")
+		for _,c in ipairs(tocs)do d:addSubcard(c) end
+    	return d:toString()
 	end
+	return "."
 end
 
 sgs.ai_skill_invoke.mtzhongyi = function(self,data)
@@ -498,13 +512,20 @@ sgs.ai_fill_skill.mtjieli = function(self)
 		then table.insert(cs,h:getEffectiveId()) end
 	end
 	if #cs<1 then return end
-	return sgs.Card_Parse("@MTJieliCard="..table.concat(cs,"+"))
+	-- The proxy declares the colour; every hand card of it becomes the Duel.
+	local card = maotuV2Card("mtjieli")
+	card:setUserString(sgs.Sanguosha:getCard(cs[1]):isRed() and "red" or "black")
+	return card
 end
 
-sgs.ai_skill_use_func["MTJieliCard"] = function(card,use,self)
+sgs.ai_skill_use_func.mtjieli = function(card,use,self)
 	local d = dummyCard("duel")
 	d:setSkillName("mtjieli")
-	d:addSubcards(card:getSubcards())
+	for _,h in sgs.list(self.player:getHandcards())do
+		if card:getUserString()=="red" and h:isRed()
+		or card:getUserString()=="black" and h:isBlack()
+		then d:addSubcard(h) end
+	end
 	d = self:aiUseCard(d)
 	if d.card
 	and use.to
@@ -514,8 +535,8 @@ sgs.ai_skill_use_func["MTJieliCard"] = function(card,use,self)
 	end
 end
 
-sgs.ai_use_value.MTJieliCard = 5.4
-sgs.ai_use_priority.MTJieliCard = 2.8
+sgs.ai_use_value.mtjieli = 5.4
+sgs.ai_use_priority.mtjieli = 2.8
 
 sgs.ai_skill_choice.mtliaoshi = function(self,choices,data)
 	local items = choices:split("+")
