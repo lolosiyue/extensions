@@ -1265,7 +1265,6 @@ qhstandardguicaiMark = sgs.CreateTriggerSkillV2 {
     name = "#qhstandardguicaiMark",
     frequency = sgs.Skill_Compulsory,
     global = true,
-    hide_skill = true,
     events = { sgs.EventPhaseChanging },
     can_trigger = function(skill, event, room, player, data)
         if player and (player:getMark("Player_Start") > 0 or player:getMark("Player_Finish") > 0) then
@@ -4672,7 +4671,6 @@ qhstandardlianying = sgs.CreateTriggerSkillV2 {
 qhstandardlianyingClear = sgs.CreateTriggerSkillV2 {
     name = "#qhstandardlianyingClear",
     global = true,
-    hide_skill = true,
     events = { sgs.EventPhaseChanging },
     can_trigger = function(skill, event, room, player, data)
         if not player then return false end
@@ -4978,7 +4976,6 @@ qhwindtianxiangTransfer = sgs.CreateTriggerSkillV2 {
     name = "#qhwindtianxiangTransfer",
     frequency = sgs.Skill_NotFrequent,
     global = true,
-    hide_skill = true,
     events = { sgs.DamageComplete }, -- 伤害结算完毕时
     can_trigger = function(skill, event, room, player, data)
         if player and player:isAlive() then
@@ -5426,7 +5423,6 @@ qhfireqinyinMark = sgs.CreateTriggerSkillV2 {
     name = "#qhfireqinyinMark",
     frequency = sgs.Skill_Frequent,
     global = true,
-    hide_skill = true,
     events = { sgs.EventPhaseEnd },
     can_trigger = function(skill, event, room, player, data)
         if not player then
@@ -5828,7 +5824,6 @@ qhstandardWushuangDuel = sgs.CreateTriggerSkillV2 {
     name = "#qhstandardWushuangDuel",
     frequency = sgs.Skill_Compulsory,
     global = true,
-    hide_skill = true,
     events = { sgs.CardEffected },
     can_trigger = function(skill, event, room, player, data)
         if not player then return false end
@@ -6353,7 +6348,6 @@ qhwindGuibingGuard = sgs.CreateTriggerSkillV2 {
     name = "#qhwindGuibingGuard",
     frequency = sgs.Skill_Compulsory,
     global = true,
-    hide_skill = true,
     events = { sgs.DamageInflicted },
     can_trigger = function(skill, event, room, player, data)
         if not player then return false end
@@ -6500,7 +6494,6 @@ qhwindhuangtianSync = sgs.CreateTriggerSkillV2 {
     name = "#qhwindhuangtianSync",
     frequency = sgs.Skill_NotFrequent,
     global = true,
-    hide_skill = true,
     events = { sgs.TurnStart, sgs.EventLoseSkill },
     can_trigger = function(skill, event, room, player, data)
         if not player then
@@ -6854,7 +6847,6 @@ qhwindguhuo = sgs.CreateViewAsSkillV2 {
 qhwindguhuoclear = sgs.CreateTriggerSkillV2 {
     name = "#qhwindguhuoclear",
     global = true,
-    hide_skill = true,
     events = { sgs.EventPhaseChanging, sgs.CardUsed, sgs.CardResponded },
     can_trigger = function(skill, event, room, player, data)
         if not player then return false end
@@ -7318,7 +7310,6 @@ qhfirekuangfengDamage = sgs.CreateTriggerSkillV2 {
     name = "#qhfirekuangfengDamage",
     frequency = sgs.Skill_NotFrequent,
     global = true,
-    hide_skill = true,
     events = { sgs.DamageForseen },
     can_trigger = function(skill, event, room, player, data)
         if not player then
@@ -7453,7 +7444,6 @@ qhfiredawuDamage = sgs.CreateTriggerSkillV2 {
     name = "#qhfiredawuDamage",
     frequency = sgs.Skill_NotFrequent,
     global = true,
-    hide_skill = true,
     events = { sgs.DamageForseen },
     can_trigger = function(skill, event, room, player, data)
         if not player then
@@ -7536,7 +7526,6 @@ globaljizhi = sgs.CreateTriggerSkillV2 {
     frequency = sgs.Skill_Frequent,
     events = { sgs.CardUsed, sgs.CardFinished },
     global = true,
-    hide_skill = true,
     can_trigger = function(skill, event, room, player, data)
         if player and player:property("mythjizhi"):toInt() == 1 then
             return qh_single_owner(skill, room, player)
@@ -7853,7 +7842,6 @@ globallinglong = sgs.CreateTriggerSkillV2 {
     events = { sgs.CardsMoveOneTime, sgs.TargetConfirming },
     priority = 1,
     global = true,
-    hide_skill = true,
     can_trigger = function(skill, event, room, player, data)
         if player and player:property("mythlinglong"):toInt() == 1 then
             return qh_single_owner(skill, room, player)
@@ -8436,7 +8424,6 @@ qhFakeMove = sgs.CreateTriggerSkillV2 { --假移动
     events = { sgs.BeforeCardsMove, sgs.CardsMoveOneTime },
     priority = 100,
     global = true,
-    hide_skill = true,
     can_trigger = function(skill, event, room, player, data)
         -- Suppress fake moves only while a room player has the temporary-move flag.
         if not player then return false end -- 任何角色触发都能发动
@@ -9267,7 +9254,6 @@ mythanzhi = sgs.CreateTriggerSkillV2 { -- 暗织 触发技
 mythanzhiRecord = sgs.CreateTriggerSkillV2 {
     name = "#mythanzhiRecord",
     global = true,
-    hide_skill = true,
     events = { sgs.CardsMoveOneTime, sgs.EventPhaseChanging },
     can_trigger = function(skill, event, room, player, data)
         -- Keep discard recording and the original end-of-turn reset.

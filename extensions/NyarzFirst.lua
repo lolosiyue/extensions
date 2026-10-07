@@ -8,8 +8,8 @@ table.insert(packages, extension)
 local nyarz_global_skill_names = {
 	"#Godjieyingget", "#Godjieyingdraw", "#spduoruireturn", "#shenxianjudge",
 	"#spjilvedea", "#sptianrenup", "#dyizhengskip", "#dmwumeibuff",
-	"#dmshenyouother", "#godlongnukill", "#xiaoyifubuff",
-	"#jfjifengbuff", "#jfjifengdamage", "#cqtiejiclears",
+	"#godlongnukill", "#xiaoyifubuff",
+	"#jfjifengbuff", "#jfjifengdamage",
 }
 -- Reentrancy + one-shot: attachSkillToPlayer can re-enter via on_record (50p soft-stuck).
 local nyarz_ensuring_globals = false
@@ -6306,6 +6306,7 @@ dmshenyou = sgs.CreateTriggerSkillV2{
 dmshenyouother = sgs.CreateTriggerSkillV2{
     name = "#dmshenyouother",
     events = {sgs.EventPhaseStart},
+    global = true,
     frequency = sgs.Skill_NotFrequent,
 	on_effect = function(skill, event, room, player, ctx)
 		local data = ctx.original_data
@@ -6333,7 +6334,13 @@ dmshenyouother = sgs.CreateTriggerSkillV2{
 
 	end,
 	can_trigger = function(skill, event, room, player, data)
-		if player:getPhase() ~= sgs.Player_NotActive then return false end
+		if not player or player:getPhase() ~= sgs.Player_NotActive then return false end
+		if room:findPlayersBySkillName("dmshenyou"):isEmpty() then return false end
+		local pending = false
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+			if p:getMark("dmshenyoucount") > 0 then pending = true break end
+		end
+		if not pending then return false end
 		return nyarz_single_owner(skill, room, player)
 	end,
 }
@@ -7765,11 +7772,9 @@ cqtiejibuff = sgs.CreateDistanceSkillV2{
 
 cqtiejiclears = sgs.CreateTriggerSkillV2{
     name = "#cqtiejiclears",
-    events = {sgs.EventPhaseStart},
+    events = {sgs.EventPhaseStart, sgs.Death},
+    global = true,
     frequency = sgs.Skill_NotFrequent,
-	on_record = function(skill, event, room, player, ctx)
-		nyarz_ensure_global_instances(room)
-	end,
 	on_effect = function(skill, event, room, player, ctx)
 		local data = ctx.original_data
 		player = ctx.invoker
@@ -7781,7 +7786,19 @@ cqtiejiclears = sgs.CreateTriggerSkillV2{
         end
 	end,
 	can_trigger = function(skill, event, room, player, data)
-		if player:getPhase() ~= sgs.Player_NotActive then return false end
+		if event == sgs.Death then
+			local death = data:toDeath()
+			if not death or not death.who or not player or death.who:objectName() ~= player:objectName() then return false end
+			if not player:hasSkill("cqtieji", true) then return false end
+			return nyarz_single_owner(skill, room, player)
+		end
+		if not player or player:getPhase() ~= sgs.Player_NotActive then return false end
+		if room:findPlayersBySkillName("cqtieji"):isEmpty() then return false end
+		local pending = false
+		for _, p in sgs.qlist(room:getAlivePlayers()) do
+			if p:getMark("cqtieji") > 0 then pending = true break end
+		end
+		if not pending then return false end
 		return nyarz_single_owner(skill, room, player)
 	end,
 }

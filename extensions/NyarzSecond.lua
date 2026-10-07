@@ -10133,7 +10133,6 @@ nyarz_guanyu_win = sgs.CreateRuleSkillV2{
     events = {sgs.GameOver},
     frequency = sgs.Skill_NotFrequent,
     global = true,
-    hide_skill = true,
     on_effect = function(skill, event, room, player, ctx)
     	local data = ctx.original_data
     	player = ctx.invoker
