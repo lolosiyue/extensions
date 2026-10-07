@@ -112,24 +112,6 @@ s4_cloud_tuxi = sgs.CreateTriggerSkillV2{
 
 -- 勇前目标以实例私有 state["target"]（QStringList）记录（触发技不适用 correctState 通道）；
 -- 供持有者 hover 投影与 buff 查询；目标身上的 & 角标仍用 mark，按实例引用数重算。
-local function s4_cloud_yongqianTargets(holder, iid)
-    local targets = {}
-    for _, n in sgs.qlist(holder:getSkillInstanceStateValue("s4_cloud_yongqian", iid, "target"):toStringList()) do
-        table.insert(targets, n)
-    end
-    return targets
-end
-
-local function s4_cloud_yongqianSetTargets(room, holder, iid, targets)
-    if #targets == 0 then
-        holder:removeSkillInstanceStateValue("s4_cloud_yongqian", iid, "target")
-    else
-        local v = sgs.QVariant()
-        v:setStringList(table.concat(targets, "|"))
-        holder:setSkillInstanceStateValue("s4_cloud_yongqian", iid, "target", v)
-    end
-end
-
 local function s4_cloud_yongqianSyncBadge(room, holder, targetName)
     local count, firstIid = 0, 0
     for _, iid in sgs.list(holder:getSkillInstanceIds("s4_cloud_yongqian")) do
@@ -158,20 +140,20 @@ local function s4_cloud_yongqianSyncBadge(room, holder, targetName)
 end
 
 local function s4_cloud_yongqianDropTarget(room, holder, iid, targetName)
-    local targets = s4_cloud_yongqianTargets(holder, iid)
+    local targets = holder:getSkillInstanceStateStringList("s4_cloud_yongqian", iid, "target")
     local kept, removed = {}, false
     for _, tn in ipairs(targets) do
         if tn == targetName then removed = true else table.insert(kept, tn) end
     end
     if removed then
-        s4_cloud_yongqianSetTargets(room, holder, iid, kept)
+        holder:setSkillInstanceStateStringList("s4_cloud_yongqian", iid, "target", kept)
         s4_cloud_yongqianSyncBadge(room, holder, targetName)
     end
 end
 
 local function s4_cloud_yongqianClearInstance(room, holder, iid)
     local seen = {}
-    for _, tn in ipairs(s4_cloud_yongqianTargets(holder, iid)) do
+    for _, tn in ipairs(holder:getSkillInstanceStateStringList("s4_cloud_yongqian", iid, "target")) do
         seen[tn] = true
     end
     holder:removeSkillInstanceStateValue("s4_cloud_yongqian", iid, "target")
@@ -272,13 +254,13 @@ s4_cloud_yongqian = sgs.CreateTriggerSkillV2{
     end,
 	on_effect_target = function(skill, event, room, player, ctx, target)
 		if event == sgs.DrawNCards then
-			local targets = s4_cloud_yongqianTargets(player, ctx.instanceID)
+			local targets = player:getSkillInstanceStateStringList("s4_cloud_yongqian", ctx.instanceID, "target")
 			local exists = false
 			for _, tn in ipairs(targets) do
 				if tn == target:objectName() then exists = true; break end
 			end
 			if not exists then table.insert(targets, target:objectName()) end
-			s4_cloud_yongqianSetTargets(room, player, ctx.instanceID, targets)
+			player:setSkillInstanceStateStringList("s4_cloud_yongqian", ctx.instanceID, "target", targets)
 			s4_cloud_yongqianSyncBadge(room, player, target:objectName())
 		end
 		return false
@@ -551,29 +533,9 @@ local function s4_cloud_yongyiSetRecords(room, player, instance_id, records)
     -- 先同步 & mark（client can_activate 讀），再寫 count 觸發 updateSkillButtons
     s4_cloud_yongyiSyncDisplayMarks(room, player, instance_id, records)
 
-    -- 攻擊範圍 helper 只需要知道記錄數量。
-    local root_key = sgs.SkillInstanceKey(
-        "s4_cloud_yongyi",
-        instance_id
-    )
-
-    for _, child_key in sgs.list(
-        player:getChildSkillInstanceKeys(root_key)
-    ) do
-        if child_key.skillName == "#s4_cloud_yongyiAttackRange" then
-            local child_ref = sgs.SkillInstanceRef(
-                player:objectName(),
-                child_key
-            )
-
-            room:setSkillInstanceCorrectState(
-                player,
-                child_ref,
-                "count",
-                sgs.QVariant(#records)
-            )
-        end
-    end
+    -- 攻擊範圍 helper 只需要知道記錄數量，沿用既有 correctState 投影。
+    room:setChildSkillInstanceCorrectState(player, "s4_cloud_yongyi", instance_id,
+        "#s4_cloud_yongyiAttackRange", "count", sgs.QVariant(#records))
 
     return true
 end
@@ -929,10 +891,8 @@ local function s4_cloud_yingziClearState(room, player, instance_id)
     if not player or not instance_id or instance_id <= 0 then
         return
     end
-    player:removeSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "x")
-    player:removeSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "hand")
-    player:removeSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "hp")
-    player:removeSkillInstanceStateValue("s4_cloud_yingzi", instance_id, "equip")
+    player:removeSkillInstanceStateKeys("s4_cloud_yingzi", instance_id,
+        {"x", "hand", "hp", "equip"})
     if room then
         room:removeSkillEffectDescription(player,
             "s4_cloud_yingzi:" .. player:objectName() .. ":" .. instance_id)
@@ -9644,19 +9604,15 @@ local function s4_banjiangGetBonus(player, instance_id, key)
     return player:getSkillInstanceStateValue("s4_banjiang", instance_id, key, sgs.QVariant(0)):toInt()
 end
 
--- 出殺次數同步到子技 correctState（會廣播；私有 state 只同步持有者 client）
+-- 出殺次數同步到子技 correctState（按既有 visibility 投影；私有 state 只同步持有者 client）
 local function s4_banjiangSyncSlashBuff(room, player, instance_id, count)
     if not room or not player or instance_id <= 0 then return end
-    local root_key = sgs.SkillInstanceKey("s4_banjiang", instance_id)
-    for _, child_key in sgs.list(player:getChildSkillInstanceKeys(root_key)) do
-        if child_key.skillName == "#s4_banjiang_buff" then
-            local child_ref = sgs.SkillInstanceRef(player:objectName(), child_key)
-            if count > 0 then
-                room:setSkillInstanceCorrectState(player, child_ref, "slash", sgs.QVariant(count))
-            else
-                room:removeSkillInstanceCorrectState(player, child_ref, "slash")
-            end
-        end
+    if count > 0 then
+        room:setChildSkillInstanceCorrectState(player, "s4_banjiang", instance_id,
+            "#s4_banjiang_buff", "slash", sgs.QVariant(count))
+    else
+        room:removeChildSkillInstanceCorrectState(player, "s4_banjiang", instance_id,
+            "#s4_banjiang_buff", "slash")
     end
 end
 
