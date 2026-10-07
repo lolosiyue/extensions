@@ -179,7 +179,6 @@ end
 sgkgodlonghunC = sgs.CreateTriggerSkillV2{
 	name = "#sgkgodlonghunC",
 	global = true,
-	hide_skill = true,
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.CardUsed, sgs.CardResponded},
 	can_trigger = function(skill, event, room, player, data)
@@ -216,7 +215,6 @@ sgkgodlonghunC = sgs.CreateTriggerSkillV2{
 sgkgodlonghunBuff = sgs.CreateRuleSkillV2{
 	name = "#sgkgodlonghunBuff",
 	global = true,
-	hide_skill = true,
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.CardUsed, sgs.CardFinished, sgs.CardResponded},
 	can_trigger = function(skill, event, room, player, data)
