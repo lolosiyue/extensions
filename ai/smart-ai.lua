@@ -393,7 +393,9 @@ function SmartAI:initialize(player)
 	if sgs.getMode=="50p" then sgs.ai_humanized = false end
 		self.room:writeToConsole(version..",Powered by ".._VERSION)
 		local modeAI = sgs.modeAIEnabled(self.room, self.player)
-		for i,ap in sgs.qlist(self.room:getAlivePlayers())do
+		-- Special-mode drafts initialize AI before the alive roster is built.
+		-- Identity bookkeeping must cover every seated player; combat still uses alive players.
+		for i,ap in sgs.qlist(self.room:getPlayers())do
 			sgs.ai_role[ap:objectName()] = "neutral"
 			sgs.roleValue[ap:objectName()] = {lord=0,loyalist=0,rebel=0,renegade=0}
 			sgs.roleValue[ap:objectName()][ap:getRole()] = 0
