@@ -4323,7 +4323,7 @@ sk_yyanliang = sgs.CreateTriggerSkillV2{
 			if to == sgs.Player_Draw
 				or (player:hasFlag("afterplay") and to == sgs.Player_Discard and not player:hasFlag("SupplyShortaged"))
 				or (player:hasFlag("afterdiscard") and to == sgs.Player_Finish and not player:hasFlag("SupplyShortaged")) then
-				local liyan = room:findPlayersBySkillName(skill:objectName()):first()
+				local liyan = room:findPlayersBySkillName(skill:objectName()):at(0)
 				if liyan then return skill:objectName(), liyan:objectName() end
 			end
 		end
@@ -5226,7 +5226,7 @@ sk_zhoufu = sgs.CreateTriggerSkillV2{
 			end
 		elseif player:getPhase() == sgs.Player_Finish then
 			if player:getMark(skill:objectName().."ForbidSkill") > 0 then
-				local zhangbao = room:findPlayersBySkillName(skill:objectName()):first()
+				local zhangbao = room:findPlayersBySkillName(skill:objectName()):at(0)
 				if zhangbao then return skill:objectName(), zhangbao:objectName() end
 			end
 		end

@@ -16527,8 +16527,8 @@ sfofl_paoxi = sgs.CreateTriggerSkillV2{
 		if not player then return false end
 		local use = data:toCardUse()
 		if use.card:isKindOf("SkillCard") then return false end
-		local p = room:findPlayersBySkillName(skill:objectName()):first()
-		return p and skill:objectName(), p:objectName() or false
+		local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+		if p then return skill:objectName(), p:objectName() end
 	end,
 	on_effect = function(skill, event, room, player, ctx)
 		local data = ctx.original_data
@@ -16715,7 +16715,7 @@ sfofl_wuxiao = sgs.CreateTriggerSkillV2{
 			for _, card_id in sgs.qlist(move.card_ids) do
 				local card = sgs.Sanguosha:getCard(card_id)
                 if card:isRed() then
-                    local p = room:findPlayersBySkillName(skill:objectName()):first()
+                    local p = room:findPlayersBySkillName(skill:objectName()):at(0)
                     if p and p:getMark("sfofl_wuxiaoUsed-Clear") == 0 then
                         return skill:objectName(), p:objectName()
                     end
@@ -16898,8 +16898,8 @@ sfofl_mingdao_change = sgs.CreateTriggerSkillV2{
 		local move = data:toMoveOneTime()
 		if move.from_places:contains(sgs.Player_PlaceEquip) and move.reason.m_skillName~="BreakCard"
 		and move.from:objectName()==player:objectName() then
-			local p = room:findPlayersBySkillName(skill:objectName()):first()
-			return p and skill:objectName(), p:objectName() or false
+			local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+			if p then return skill:objectName(), p:objectName() end
 		end
 		return false
 	end,
@@ -17482,8 +17482,8 @@ sfofl_zhouyuan_return = sgs.CreateTriggerSkillV2{
         if not (player and player:getPhase() == sgs.Player_Play) then return false end
         for _, q in sgs.qlist(room:getAllPlayers()) do
             if not q:getPile("sfofl_zhoubing"):isEmpty() then
-                local p = room:findPlayersBySkillName(skill:objectName()):first()
-                return p and skill:objectName(), p:objectName() or false
+                local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+                if p then return skill:objectName(), p:objectName() end
             end
         end
         return false
@@ -18067,8 +18067,8 @@ sfofl_zhengan_buff = sgs.CreateTriggerSkillV2{
 	can_trigger = function(skill, event, room, player, data)
 		if not player then return false end
 		if event == sgs.EventAcquireSkill and data:toSkillChange().skillName ~= "sfofl_zhengan" then return false end
-		local p = room:findPlayersBySkillName("sfofl_zhengan"):first()
-		return p and skill:objectName(), p:objectName() or false
+		local p = room:findPlayersBySkillName("sfofl_zhengan"):at(0)
+		if p then return skill:objectName(), p:objectName() end
 	end,
 	on_effect = function(skill, event, room, player, ctx)
 		for _, p in sgs.qlist(room:getAllPlayers()) do
@@ -18138,20 +18138,20 @@ sfofl_zhengan_record = sgs.CreateTriggerSkillV2{
             if (move.to_place == sgs.Player_PlaceHand) and move.from and move.to and move.from:objectName() ~= move.to:objectName()
                 and (bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == 
                     sgs.CardMoveReason_S_REASON_GIVE) then
-                local p = room:findPlayersBySkillName("sfofl_zhengan"):first()
-                return p and skill:objectName(), p:objectName() or false
+                local p = room:findPlayersBySkillName("sfofl_zhengan"):at(0)
+                if p then return skill:objectName(), p:objectName() end
             end	
         elseif event == sgs.EventPhaseStart then
             if player:getPhase() == sgs.Player_Start then
-                local p = room:findPlayersBySkillName("sfofl_zhengan"):first()
-                return p and skill:objectName(), p:objectName() or false
+                local p = room:findPlayersBySkillName("sfofl_zhengan"):at(0)
+                if p then return skill:objectName(), p:objectName() end
             end
         elseif event == sgs.EventPhaseChanging and data:toPhaseChange().to==sgs.Player_NotActive then
             for _, p in sgs.qlist(room:getAlivePlayers()) do
                 for _, q in sgs.qlist(room:getOtherPlayers(p)) do
                     if p:getMark("sfofl_zhengan_record"..q:objectName().."-Clear") ~= p:distanceTo(q) then
-                        local h = room:findPlayersBySkillName("sfofl_zhengan"):first()
-                        return h and skill:objectName(), h:objectName() or false
+                        local h = room:findPlayersBySkillName("sfofl_zhengan"):at(0)
+                        if h then return skill:objectName(), h:objectName() end
                     end
                 end
             end
@@ -18565,8 +18565,8 @@ sfofl_jicui_buff = sgs.CreateTriggerSkillV2{
         local damage = data:toDamage()
         if not damage.to or damage.to:isDead() then return false end
         if damage.card and damage.card:hasFlag("sfofl_jicui") then
-            local p = room:findPlayersBySkillName("sfofl_jicui"):first()
-            return p and skill:objectName(), p:objectName() or false
+            local p = room:findPlayersBySkillName("sfofl_jicui"):at(0)
+            if p then return skill:objectName(), p:objectName() end
         end
         return false
     end,
@@ -18620,8 +18620,8 @@ sfofl_jicui_return = sgs.CreateTriggerSkillV2{
         if not (player and player:getPhase() == sgs.Player_NotActive) then return false end
         for _,target in sgs.qlist(room:getAlivePlayers()) do
             if target:isAlive() and target:getPile("sfofl_jicui") and target:getPile("sfofl_jicui"):length() > 0 then
-                local p = room:findPlayersBySkillName(skill:objectName()):first()
-                return p and skill:objectName(), p:objectName() or false
+                local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+                if p then return skill:objectName(), p:objectName() end
             end
         end
         return false
@@ -19537,8 +19537,8 @@ sfofl_lianji_buff = sgs.CreateTriggerSkillV2{
 	can_trigger = function(skill, event, room, player, data)
 		if not player then return false end
 		if event == sgs.EventAcquireSkill and data:toSkillChange().skillName ~= "sfofl_lianji" then return false end
-		local p = room:findPlayersBySkillName("sfofl_lianji"):first()
-		return p and skill:objectName(), p:objectName() or false
+		local p = room:findPlayersBySkillName("sfofl_lianji"):at(0)
+		if p then return skill:objectName(), p:objectName() end
 	end,
 	on_effect = function(skill, event, room, player, ctx)
 		for _, p in sgs.qlist(room:getAllPlayers()) do
@@ -19959,8 +19959,8 @@ sfofl_weiju_return = sgs.CreateTriggerSkillV2{
         if not (player and player:getPhase() == sgs.Player_NotActive) then return false end
         for _,target in sgs.qlist(room:getAlivePlayers()) do
             if target:isAlive() and target:getPile("sfofl_weiju_ju") and target:getPile("sfofl_weiju_ju"):length() > 0 then
-                local p = room:findPlayersBySkillName(skill:objectName()):first()
-                return p and skill:objectName(), p:objectName() or false
+                local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+                if p then return skill:objectName(), p:objectName() end
             end
         end
         return false
@@ -20885,8 +20885,8 @@ sfofl_anchao = sgs.CreateTriggerSkillV2{
         if event==sgs.EventPhaseChanging and data:toPhaseChange().to==sgs.Player_NotActive then
             for _, p in sgs.qlist(room:getAllPlayers()) do
                 if p:getMark("sfofl_anchao") > 0 then
-                    local h = room:findPlayersBySkillName(skill:objectName()):first()
-                    return h and skill:objectName(), h:objectName() or false
+                    local h = room:findPlayersBySkillName(skill:objectName()):at(0)
+                    if h then return skill:objectName(), h:objectName() end
                 end
             end
         else
@@ -20902,8 +20902,8 @@ sfofl_anchao = sgs.CreateTriggerSkillV2{
                 end
             end
             if card and card:getTypeId()>0 and card:isVirtualCard() and target then
-                local p = room:findPlayersBySkillName(skill:objectName()):first()
-                return p and skill:objectName(), p:objectName() or false
+                local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+                if p then return skill:objectName(), p:objectName() end
             end
         end
         return false
@@ -21365,8 +21365,8 @@ sfofl_dingluan_Clear = sgs.CreateTriggerSkillV2{
 		for _,sk in sgs.list(player:getSkillList())do
             if sk:isAttachedLordSkill() then continue end
             if player:getMark("sfofl_dingluan_"..sk:objectName()) > 0 then
-				local p = room:findPlayersBySkillName(skill:objectName()):first()
-				return p and skill:objectName(), p:objectName() or false
+				local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+				if p then return skill:objectName(), p:objectName() end
             end
         end
 		return false
@@ -21647,8 +21647,8 @@ sfofl_zhuying = sgs.CreateTriggerSkillV2{
 			local use = data:toCardUse()
 			if not use.card:isKindOf("SkillCard")	then
 				for i,to in sgs.list(use.to)do
-					local p = room:findPlayersBySkillName(skill:objectName()):first()
-					return p and skill:objectName(), p:objectName() or false
+					local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+					if p then return skill:objectName(), p:objectName() end
 				end
 			end
         elseif event == sgs.EventPhaseStart then
@@ -23046,8 +23046,8 @@ sfofl_nagong = sgs.CreateTriggerSkillV2{
         if event == sgs.TurnStart then
             local kingdom = player:property("sfofl_nagong"):toString()
             if kingdom ~= "" then
-				local p = room:findPlayersBySkillName(skill:objectName()):first()
-				return p and skill:objectName(), p:objectName() or false
+				local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+				if p then return skill:objectName(), p:objectName() end
             end
         elseif event == sgs.EventPhaseStart then
             if player:getPhase() == sgs.Player_Start and not player:isKongcheng() then
@@ -23250,8 +23250,8 @@ sfofl_zongma_change = sgs.CreateTriggerSkillV2{
                     if move.from_places:at(i)==sgs.Player_PlaceEquip
                     and ((sgs.Sanguosha:getEngineCard(id):objectName() == "_horseof") or 
                     sgs.Sanguosha:getEngineCard(id):objectName() == "_horsede") then
-						local p = room:findPlayersBySkillName(skill:objectName()):first()
-						return p and skill:objectName(), p:objectName() or false
+						local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+						if p then return skill:objectName(), p:objectName() end
                     end
                 end
             end
@@ -23263,8 +23263,8 @@ sfofl_zongma_change = sgs.CreateTriggerSkillV2{
                     if move.from_places:at(i)==sgs.Player_PlaceEquip
                     and ((sgs.Sanguosha:getEngineCard(id):objectName() == "_horseof") or 
                     sgs.Sanguosha:getEngineCard(id):objectName() == "_horsede") then
-						local p = room:findPlayersBySkillName(skill:objectName()):first()
-						return p and skill:objectName(), p:objectName() or false
+						local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+						if p then return skill:objectName(), p:objectName() end
                     end
                 end
             end
@@ -23356,13 +23356,13 @@ sfofl_zongma_buff = sgs.CreateTriggerSkillV2{
         local damage = data:toDamage()
         if event == sgs.DamageInflicted then
             if player:getTag("sfofl_zongmaDe") and player:objectName() == damage.to:objectName() and player:getDefensiveHorse() ~= nil and player:getDefensiveHorse():getId() == player:getTag("sfofl_zongmaDe"):toInt() then
-				local p = room:findPlayersBySkillName(skill:objectName()):first()
-				return p and skill:objectName(), p:objectName() or false
+				local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+				if p then return skill:objectName(), p:objectName() end
             end
         elseif event == sgs.DamageCaused then
             if player:getTag("sfofl_zongmaOf") and player:objectName() == damage.from:objectName() and player:getOffensiveHorse() ~= nil and player:getOffensiveHorse():getId() == player:getTag("sfofl_zongmaOf"):toInt() then
-				local p = room:findPlayersBySkillName(skill:objectName()):first()
-				return p and skill:objectName(), p:objectName() or false
+				local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+				if p then return skill:objectName(), p:objectName() end
             end
         end
         return false
@@ -23526,8 +23526,8 @@ sfofl_jieyue_buff = sgs.CreateTriggerSkillV2{
 		if not (player and player:getPhase() == sgs.Player_NotActive) then return false end
 		if room:getTag("sfofl_jieyueTarget") and room:getTag("sfofl_jieyueTarget"):toPlayer()
 			and room:getTag("sfofl_jieyueTarget"):toPlayer():isAlive() then
-			local p = room:findPlayersBySkillName("sfofl_jieyue"):first()
-			return p and skill:objectName(), p:objectName() or false
+			local p = room:findPlayersBySkillName("sfofl_jieyue"):at(0)
+			if p then return skill:objectName(), p:objectName() end
 		end
 		return false
 	end ,
@@ -23645,8 +23645,8 @@ sfofl_xiaoguo = sgs.CreateTriggerSkillV2 {
 		local dying = data:toDying()
 		local damage = dying.damage
 		if damage and damage.from and dying.who:objectName() == player:objectName() and damage:getReason() == "sfofl_xiaoguo" then
-			local p = room:findPlayersBySkillName(skill:objectName()):first()
-			return p and skill:objectName(), p:objectName() or false
+			local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+			if p then return skill:objectName(), p:objectName() end
 		end
 		return false
 	end,
@@ -24061,7 +24061,6 @@ sfofl_batteringram:setParent(extension_card)
 
 sfofl_bladecartTr = sgs.CreateTriggerSkillV2 {
 	name = "sfofl_bladecart",
-	view_as_skill = sfofl_bladecartVS,
 	events = { sgs.TargetConfirmed, sgs.CardFinished },
 	can_trigger = function(skill, event, room, player, data)
 		if not player then return false end
@@ -24071,9 +24070,9 @@ sfofl_bladecartTr = sgs.CreateTriggerSkillV2 {
 				return skill:objectName()
             end
         elseif event == sgs.CardFinished then
-            if use.card:hasFlag(skill:objectName()) and use.from and use.from:isAlive() then
-				local p = room:findPlayersBySkillName(skill:objectName()):first()
-				return p and skill:objectName(), p:objectName() or false
+            if use.card and use.card:hasFlag(skill:objectName()) and use.from and use.from:isAlive() then
+				local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+				if p then return skill:objectName(), p:objectName() end
             end
         end
         return false
@@ -24099,13 +24098,10 @@ sfofl_bladecartTr = sgs.CreateTriggerSkillV2 {
                 room:setCardFlag(use.card, skill:objectName())
             end
         elseif event == sgs.CardFinished then
-            if use.card:hasFlag(skill:objectName()) and use.from and use.from:isAlive() then
-                ctx.invoker:gainMark("@1")
-                for _,p in sgs.qlist(room:getAlivePlayers()) do
-                    p:gainMark("@2")
+            if use.card and use.card:hasFlag(skill:objectName()) and use.from and use.from:isAlive() then
+                for _, p in sgs.qlist(room:getAlivePlayers()) do
                     if use.card:hasFlag(skill:objectName()..p:objectName()) then
-                        p:gainMark("@3")
-                        room:damage(sgs.DamageStruct(skill:objectName(), use.from, p))
+                        room:damage(sgs.DamageStruct(skill:objectName(), p, use.from))
                     end
                 end
             end
@@ -24200,8 +24196,8 @@ sfofl_yufeng_Clear = sgs.CreateTriggerSkillV2{
 		if not player or player:getPhase() ~= sgs.Player_Start then return false end
         for _,mark in sgs.list(player:getMarkNames()) do
             if string.find(mark, "sfofl_yufeng") and player:getMark(mark) > 0 then
-				local p = room:findPlayersBySkillName(skill:objectName()):first()
-				return p and skill:objectName(), p:objectName() or false
+				local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+				if p then return skill:objectName(), p:objectName() end
             end
         end
 		return false
@@ -24314,8 +24310,8 @@ sfofl_zhengjing_Clear = sgs.CreateTriggerSkillV2{
     can_trigger = function(skill, event, room, player, data)
 		if not player or player:getPhase() ~= sgs.Player_Start then return false end
         if player:getPile("sfofl_zhengjing"):length() > 0 then
-			local p = room:findPlayersBySkillName(skill:objectName()):first()
-			return p and skill:objectName(), p:objectName() or false
+			local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+			if p then return skill:objectName(), p:objectName() end
         end
 		return false
     end,
@@ -25440,8 +25436,8 @@ sfofl_changshi_buff = sgs.CreateTriggerSkillV2{
         elseif (event == sgs.DamageInflicted) and (player:getMark("&sfofl_changshi") > 0) then
 			local damage = data:toDamage()
 			if (damage.damage >= player:getHp()+player:getHujia()) and damage.to:objectName() == player:objectName() then
-				local p = room:findPlayersBySkillName("sfofl_changshi"):first()
-				return p and skill:objectName(), p:objectName() or false
+				local p = room:findPlayersBySkillName("sfofl_changshi"):at(0)
+				if p then return skill:objectName(), p:objectName() end
 			end
         end
 		return false
@@ -25557,8 +25553,8 @@ sfofl_taoluan = sgs.CreateTriggerSkillV2{
 		if not (player and player:isAlive()) then return false end
 		local use = data:toCardUse()
 		if use.card and table.contains(use.card:getSkillNames(),skill:objectName()) then
-			local p = room:findPlayersBySkillName(skill:objectName()):first()
-			return p and skill:objectName(), p:objectName() or false
+			local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+			if p then return skill:objectName(), p:objectName() end
 		end
 		return false
 	end,
@@ -25646,8 +25642,8 @@ sfofl_chiyan_return = sgs.CreateTriggerSkillV2{
 		if not player or player:getPhase() ~= sgs.Player_NotActive then return false end
         for _,target in sgs.qlist(room:getAlivePlayers()) do
             if target:isAlive() and target:getPile("sfofl_chiyan") and target:getPile("sfofl_chiyan"):length() > 0 then
-				local p = room:findPlayersBySkillName("sfofl_chiyan"):first()
-				return p and skill:objectName(), p:objectName() or false
+				local p = room:findPlayersBySkillName("sfofl_chiyan"):at(0)
+				if p then return skill:objectName(), p:objectName() end
             end
         end
 		return false
@@ -25674,8 +25670,8 @@ sfofl_chiyan_buff = sgs.CreateTriggerSkillV2{
 		if not player then return false end
 		local damage = data:toDamage()
         if player:getMark("sfofl_chiyan-Clear") > 0 and player:objectName() == damage.to:objectName() then
-			local p = room:findPlayersBySkillName("sfofl_chiyan"):first()
-			return p and skill:objectName(), p:objectName() or false
+			local p = room:findPlayersBySkillName("sfofl_chiyan"):at(0)
+			if p then return skill:objectName(), p:objectName() end
         end
 		return false
     end,
@@ -26060,8 +26056,8 @@ sfofl_kuiji = sgs.CreateTriggerSkillV2{
 		if not (player and player:isAlive()) then return false end
         for _,m in sgs.list(player:getMarkNames())do
             if m:startsWith("sfofl_kuiji_chouhai") then
-				local p = room:findPlayersBySkillName(skill:objectName()):first()
-				return p and skill:objectName(), p:objectName() or false
+				local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+				if p then return skill:objectName(), p:objectName() end
             end
         end
 		return false
@@ -26146,8 +26142,8 @@ sfofl_chihe_buff = sgs.CreateTriggerSkillV2{
 		if not player then return false end
 		local damage = data:toDamage()
         if damage.card and damage.card:hasFlag("sfofl_chihe") and player:objectName() == damage.from:objectName() then
-			local p = room:findPlayersBySkillName("sfofl_chihe"):first()
-			return p and skill:objectName(), p:objectName() or false
+			local p = room:findPlayersBySkillName("sfofl_chihe"):at(0)
+			if p then return skill:objectName(), p:objectName() end
         end
 		return false
     end,
@@ -27427,8 +27423,8 @@ sfofl_fuxiang_buff = sgs.CreateTriggerSkillV2{
 		if not (player and player:getPhase() == sgs.Player_NotActive) then return false end
 		if room:getTag("sfofl_fuxiangTarget") and room:getTag("sfofl_fuxiangTarget"):toPlayer()
 			and room:getTag("sfofl_fuxiangTarget"):toPlayer():isAlive() then
-			local p = room:findPlayersBySkillName("sfofl_fuxiang"):first()
-			return p and skill:objectName(), p:objectName() or false
+			local p = room:findPlayersBySkillName("sfofl_fuxiang"):at(0)
+			if p then return skill:objectName(), p:objectName() end
 		end
 		return false
 	end ,
@@ -27594,8 +27590,8 @@ yuanjue = sgs.CreateTriggerSkillV2{
 		else
 			local use = data:toCardUse()
 			if use.card:isKindOf("Slash") and table.contains(use.card:getSkillNames(),skill:objectName()) then
-				local p = room:findPlayersBySkillName(skill:objectName()):first()
-				return p and skill:objectName(), p:objectName() or false
+				local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+				if p then return skill:objectName(), p:objectName() end
 			end
 		end
 		return false
@@ -27790,8 +27786,8 @@ jiechu = sgs.CreateTriggerSkillV2{
 		if event==sgs.PreCardUsed then
 			local use = data:toCardUse()
 			if use.card:getTypeId()>0 and table.contains(use.card:getSkillNames(),skill:objectName()) then
-				local p = room:findPlayersBySkillName(skill:objectName()):first()
-				return p and skill:objectName(), p:objectName() or false
+				local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+				if p then return skill:objectName(), p:objectName() end
 			end
 		elseif event==sgs.CardFinished then
 			local use = data:toCardUse()
@@ -28454,8 +28450,8 @@ sfofl_kannan = sgs.CreateTriggerSkillV2{
 			end
 		elseif event == sgs.DamageComplete then
 			if player:getMark("sfofl_kannanDamaged-Clear") > 0 then
-				local p = room:findPlayersBySkillName(skill:objectName()):first()
-				return p and skill:objectName(), p:objectName() or false
+				local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+				if p then return skill:objectName(), p:objectName() end
             end
 		end
 		return false
@@ -28559,8 +28555,8 @@ sfofl_kannan_record = sgs.CreateTriggerSkillV2{
 		if not player then return false end
 		local card = data:toCardUse().card
 	    if card and card:isKindOf("Analeptic") then
-			local p = room:findPlayersBySkillName("sfofl_kannan"):first()
-			return p and skill:objectName(), p:objectName() or false
+			local p = room:findPlayersBySkillName("sfofl_kannan"):at(0)
+			if p then return skill:objectName(), p:objectName() end
         end
 		return false
 	end,
@@ -29463,8 +29459,8 @@ sfofl_luoyi_buff = sgs.CreateTriggerSkillV2{
 	events = {sgs.DamageCaused, sgs.EventPhaseStart},
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:getMark("sfofl_luoyi") > 0 and player:isAlive()) then return false end
-		local p = room:findPlayersBySkillName("sfofl_luoyi"):first()
-		return p and skill:objectName(), p:objectName() or false
+		local p = room:findPlayersBySkillName("sfofl_luoyi"):at(0)
+		if p then return skill:objectName(), p:objectName() end
 	end,
 	on_effect = function(skill, event, room, player, ctx)
 		player = ctx.invoker
@@ -30414,8 +30410,8 @@ sfofl_huzhu = sgs.CreateTriggerSkillV2 {
 	events = { sgs.Damaged },
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and not player:hasSkill("sfofl_huzhu")) then return false end
-		local p = room:findPlayersBySkillName(skill:objectName()):first()
-		return p and skill:objectName(), p:objectName() or false
+		local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+		if p then return skill:objectName(), p:objectName() end
 	end,
 	on_effect = function(skill, event, room, player, ctx)
 		player = ctx.invoker
@@ -31456,8 +31452,8 @@ sfofl_jiedao = sgs.CreateTriggerSkillV2{
 			return damage.from and damage.from:objectName() == player:objectName() and player:hasSkill(skill:objectName()) and skill:objectName() or false
 		elseif event == sgs.DamageComplete then
 			if damage.from and damage.to and damage.to:isAlive() and damage.from:getMark("sfofl_jiedao_invoke-Clear") > 0 then
-				local p = room:findPlayersBySkillName(skill:objectName()):first()
-				return p and skill:objectName(), p:objectName() or false
+				local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+				if p then return skill:objectName(), p:objectName() end
 			end
 		end
 		return false
@@ -32679,8 +32675,8 @@ sfofl_n_poshi = sgs.CreateTriggerSkillV2{
         elseif event == sgs.EventLoseSkill or event == sgs.EventAcquireSkill then
             return data:toSkillChange().skillName == "sfofl_n_poshi" and skill:objectName() or false
         else
-			local p = room:findPlayersBySkillName(skill:objectName()):first()
-			return p and skill:objectName(), p:objectName() or false
+			local p = room:findPlayersBySkillName(skill:objectName()):at(0)
+			if p then return skill:objectName(), p:objectName() end
         end
 		return false
     end,
@@ -34419,8 +34415,8 @@ sfofl_n_baijiang_buff = sgs.CreateTriggerSkillV2{
 			local change = data:toPhaseChange()
 			if change.to ~= sgs.Player_NotActive then return false end
 			if player:getMark("sfofl_n_baijiang-Clear") > 0 and player:getMark("sfofl_n_baijiang_DisCard-Clear") >= 2 then
-				local p = room:findPlayersBySkillName("sfofl_n_baijiang"):first()
-				return p and skill:objectName(), p:objectName() or false
+				local p = room:findPlayersBySkillName("sfofl_n_baijiang"):at(0)
+				if p then return skill:objectName(), p:objectName() end
 			end
 		end
 		return false
@@ -35332,8 +35328,8 @@ sfofl_guisha_buff = sgs.CreateTriggerSkillV2{
 		if not player then return false end
         local damage = data:toDamage()
 		if damage.card and damage.card:hasFlag("sfofl_guisha") then
-			local p = room:findPlayersBySkillName("sfofl_guisha"):first()
-			return p and skill:objectName(), p:objectName() or false
+			local p = room:findPlayersBySkillName("sfofl_guisha"):at(0)
+			if p then return skill:objectName(), p:objectName() end
 		end
 		return false
 	end,
@@ -35534,8 +35530,8 @@ sfofl_yaoli_buff = sgs.CreateTriggerSkillV2 {
 		if not (player and player:getMark("&sfofl_yaoli-Clear") > 0) then return false end
         local use = data:toCardUse()
         if use.card and use.card:isKindOf("Slash") then
-			local p = room:findPlayersBySkillName("sfofl_yaoli"):first()
-			return p and skill:objectName(), p:objectName() or false
+			local p = room:findPlayersBySkillName("sfofl_yaoli"):at(0)
+			if p then return skill:objectName(), p:objectName() end
         end
 		return false
 	end,
@@ -35824,15 +35820,15 @@ sfofl_youlong_buff = sgs.CreateTriggerSkillV2{
         if event == sgs.Damaged then
             local damage = data:toDamage()
             if damage.nature == sgs.DamageStruct_Ice then
-				local p = room:findPlayersBySkillName("sfofl_youlong"):first()
-				return p and skill:objectName(), p:objectName() or false
+				local p = room:findPlayersBySkillName("sfofl_youlong"):at(0)
+				if p then return skill:objectName(), p:objectName() end
             end
         elseif event == sgs.DrawNCards then
             if player:getMark("&sfofl_youlong-SelfClear") > 0 then
                 local draw = data:toDraw()
 				if draw.reason ~= "draw_phase" then return false end
-				local p = room:findPlayersBySkillName("sfofl_youlong"):first()
-				return p and skill:objectName(), p:objectName() or false
+				local p = room:findPlayersBySkillName("sfofl_youlong"):at(0)
+				if p then return skill:objectName(), p:objectName() end
             end
         end
 		return false
@@ -36081,8 +36077,8 @@ sfofl_fengshou_buff = sgs.CreateTriggerSkillV2{
     frequency = sgs.Skill_Compulsory,
     can_trigger = function(skill, event, room, player, data)
 		if not (player and player:getMark("&sfofl_fengshou") > 0) then return false end
-		local p = room:findPlayersBySkillName("sfofl_fengshou"):first()
-		return p and skill:objectName(), p:objectName() or false
+		local p = room:findPlayersBySkillName("sfofl_fengshou"):at(0)
+		if p then return skill:objectName(), p:objectName() end
     end,
     on_effect = function(skill, event, room, player, ctx)
 		local damage = ctx.original_data:toDamage()
@@ -36508,8 +36504,8 @@ sfofl_henghui_damage = sgs.CreateTriggerSkillV2{
 		if not (player and player:getMark("&sfofl_henghui_first") > 0) then return false end
         local damage = data:toDamage()
 		if damage.card and damage.card:isKindOf("Slash") then
-			local p = room:findPlayersBySkillName("sfofl_henghui"):first()
-			return p and skill:objectName(), p:objectName() or false
+			local p = room:findPlayersBySkillName("sfofl_henghui"):at(0)
+			if p then return skill:objectName(), p:objectName() end
 		end
 		return false
     end,

@@ -92,7 +92,7 @@ keqizhenglue = sgs.CreateTriggerSkillV2 {
 	events = { sgs.EventPhaseChanging, sgs.Damage },
 	on_record = function(skill, event, room, player, ctx)
 		if event ~= sgs.Damage then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or (ctx.owner:objectName() ~= first:objectName()) then return end
 		local damage = ctx.original_data:toDamage()
 		if damage.from then
@@ -209,7 +209,7 @@ keqipingrong = sgs.CreateTriggerSkillV2 {
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.EventPhaseChanging, sgs.Damage, sgs.EventPhaseStart },
 	on_record = function(skill, event, room, player, ctx)
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or (ctx.owner:objectName() ~= first:objectName()) then return end
 		local data = ctx.original_data
 		if event == sgs.Damage then
@@ -543,7 +543,7 @@ keqijuelietwo = sgs.CreateTriggerSkillV2 {
 	--view_as_skill = keqijuelietwoVS,
 	on_record = function(skill, event, room, player, ctx)
 		if event ~= sgs.CardFinished then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or (ctx.owner:objectName() ~= first:objectName()) then return end
 		local use = ctx.original_data:toCardUse()
 		if use.card:hasFlag("newjueliecard") then
@@ -879,7 +879,7 @@ keqiguanhuo = sgs.CreateTriggerSkillV2 {
 	view_as_skill = keqiguanhuoVS,
 	events = { sgs.CardUsed, sgs.Damage, sgs.CardFinished, sgs.DamageForseen },
 	on_record = function(skill, event, room, player, ctx)
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner:objectName() ~= first:objectName() then return end
 		if event == sgs.CardUsed then
 			local use = ctx.original_data:toCardUse()
@@ -977,7 +977,7 @@ keqilirang = sgs.CreateTriggerSkillV2 {
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.EventPhaseStart, sgs.EventPhaseEnd, sgs.CardsMoveOneTime },
 	on_record = function(skill, event, room, player, ctx)
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner:objectName() ~= first:objectName() then return end
 		if event == sgs.CardsMoveOneTime then
 			local move = ctx.original_data:toMoveOneTime()
@@ -2205,7 +2205,7 @@ keqizhaohan = sgs.CreateTriggerSkillV2 {
 	events = { sgs.SwappedPile, sgs.EventPhaseStart },
 	on_record = function(skill, event, room, player, ctx)
 		if event ~= sgs.SwappedPile then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner:objectName() ~= first:objectName() then return end
 		room:setTag("keqizhaohan", sgs.QVariant(1))
 	end,
@@ -2234,7 +2234,7 @@ keqirangjie = sgs.CreateTriggerSkillV2 {
 	events = { sgs.Damaged, sgs.EventPhaseChanging, sgs.CardsMoveOneTime },
 	frequency = sgs.Skill_Frequent,
 	on_record = function(skill, event, room, player, ctx)
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner:objectName() ~= first:objectName() then return end
 		if event == sgs.CardsMoveOneTime then
 			local move = ctx.original_data:toMoveOneTime()
@@ -2339,7 +2339,7 @@ keqiyizheng = sgs.CreateTriggerSkillV2 {
 	events = { sgs.EventPhaseChanging },
 	on_record = function(skill, event, room, player, ctx)
 		if event ~= sgs.EventPhaseChanging then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner:objectName() ~= first:objectName() then return end
 		local change = ctx.original_data:toPhaseChange()
 		if (change.to == sgs.Player_Draw) and (player:isAlive()) and (player:getMark("&keqiyizheng") > 0) then
@@ -2360,7 +2360,7 @@ keqifendi = sgs.CreateTriggerSkillV2 {
 	events = { sgs.TargetSpecified, sgs.Damage, sgs.CardFinished },
 	on_record = function(skill, event, room, player, ctx)
 		if event == sgs.CardFinished then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner:objectName() ~= first:objectName() then return end
 			local use = ctx.original_data:toCardUse()
 			if use.card:hasFlag("keqifendislash") then
@@ -3456,7 +3456,7 @@ kechengduxing = sgs.CreateTriggerSkillV2 {
 	events = { sgs.CardFinished },
 	on_record = function(skill, event, room, player, ctx)
 		if event ~= sgs.CardFinished then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner:objectName() ~= first:objectName() then return end
 		local use = ctx.original_data:toCardUse()
 		if table.contains(use.card:getSkillNames(), "kechengduxing") then
@@ -3493,7 +3493,7 @@ kechengzhiheng = sgs.CreateTriggerSkillV2 {
 	events = { sgs.CardResponded, sgs.CardUsed, sgs.DamageCaused },
 	frequency = sgs.Skill_Compulsory,
 	on_record = function(skill, event, room, player, ctx)
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner:objectName() ~= first:objectName() then return end
 		local data = ctx.original_data
 		if event == sgs.DamageCaused then
@@ -3782,7 +3782,7 @@ kechengguanjue = sgs.CreateTriggerSkillV2 {
 	waked_skills = "#kechengguanjueex",
 	events = { sgs.CardUsed, sgs.CardResponded, sgs.EventPhaseChanging },
 	on_record = function(skill, event, room, player, ctx)
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner:objectName() ~= first:objectName() then return end
 		local data = ctx.original_data
 		if event == sgs.CardResponded then
@@ -4042,7 +4042,7 @@ kechengnianen = sgs.CreateTriggerSkillV2 {
 	waked_skills = "mashu",
 	events = { sgs.CardUsed, sgs.CardResponded, sgs.EventPhaseChanging },
 	on_record = function(skill, event, room, player, ctx)
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner:objectName() ~= first:objectName() then return end
 		local data = ctx.original_data
 		if event == sgs.EventPhaseChanging then
@@ -4085,7 +4085,7 @@ kechengbiaozhao = sgs.CreateTriggerSkillV2 {
 	frequency = sgs.Skill_Frequent,
 	events = { sgs.EventPhaseStart, sgs.ConfirmDamage, sgs.Death },
 	on_record = function(skill, event, room, player, ctx)
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner:objectName() ~= first:objectName() then return end
 		local data = ctx.original_data
 		if event == sgs.Death then
@@ -4151,7 +4151,7 @@ kechengyechou = sgs.CreateTriggerSkillV2 {
 	frequency = sgs.Skill_Frequent,
 	on_record = function(skill, event, room, player, ctx)
 		if event ~= sgs.DamageForseen then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner:objectName() ~= first:objectName() then return end
 		local data = ctx.original_data
 		local damage = data:toDamage()
@@ -4602,7 +4602,7 @@ kechengqongtu = sgs.CreateTriggerSkillV2 {
 	events = { sgs.CardFinished, sgs.PostCardEffected },
 	view_as_skill = kechengqongtuvs,
 	on_record = function(skill, event, room, player, ctx)
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner:objectName() ~= first:objectName() then return end
 		local data = ctx.original_data
 		if event == sgs.CardFinished then
@@ -4775,7 +4775,7 @@ kechengtuwei = sgs.CreateTriggerSkillV2 {
 	events = { sgs.EventPhaseStart, sgs.EventPhaseChanging, sgs.Damaged },
 	on_record = function(skill, event, room, player, ctx)
 		if event ~= sgs.Damaged then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner:objectName() ~= first:objectName() then return end
 		local damage = ctx.original_data:toDamage()
 		if damage.to:getMark("&kechengtuwei") > 0 then
@@ -4842,7 +4842,7 @@ kechengguyin = sgs.CreateTriggerSkillV2 {
 	events = { sgs.EventPhaseStart, sgs.GameStart },
 	on_record = function(skill, event, room, player, ctx)
 		if event ~= sgs.GameStart then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner:objectName() ~= first:objectName() then return end
 		local num = 0
 		for _, p in sgs.qlist(room:getAllPlayers()) do
@@ -4993,7 +4993,7 @@ kechengzhangdeng = sgs.CreateTriggerSkillV2 {
 	name = "kechengzhangdeng",
 	events = { sgs.GameStart, sgs.EventAcquireSkill },
 	on_record = function(skill, event, room, player, ctx)
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner:objectName() ~= first:objectName() then return end
 		--游戏开始时或获得技能时，每个人发一个技能
 		for _, p in sgs.qlist(room:getAllPlayers()) do
@@ -5294,7 +5294,7 @@ kechengjixiang = sgs.CreateTriggerSkillV2 {
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.EventAcquireSkill, sgs.EventPhaseChanging },
 	on_record = function(skill, event, room, player, ctx)
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner:objectName() ~= first:objectName() then return end
 		if event == sgs.EventPhaseChanging then
 			local change = ctx.original_data:toPhaseChange()
@@ -6214,7 +6214,7 @@ kezhuanzhenfeng = sgs.CreateTriggerSkillV2 {
 	view_as_skill = kezhuanzhenfengvs,
 	on_record = function(skill, event, room, player, ctx)
 		if not (player and player:isAlive()) then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		if event == sgs.PostCardEffected then
 			local effect = ctx.original_data:toCardEffect()
@@ -6466,7 +6466,7 @@ kezhuanchuanxin = sgs.CreateTriggerSkillV2 {
 	view_as_skill = kezhuanchuanxinVS,
 	on_record = function(skill, event, room, player, ctx)
 		if not (player and player:isAlive()) then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		if event == sgs.DamageCaused then
 			local damage = ctx.original_data:toDamage()
@@ -6595,7 +6595,7 @@ kezhuanbaohe = sgs.CreateTriggerSkillV2 {
 	frequency = sgs.Skill_NotFrequent,
 	on_record = function(skill, event, room, player, ctx)
 		if not (player and player:isAlive()) then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		if event == sgs.CardFinished then
 			local use = ctx.original_data:toCardUse()
@@ -6879,7 +6879,7 @@ kezhuanguiji = sgs.CreateTriggerSkillV2 {
 	view_as_skill = kezhuanguijiVS,
 	on_record = function(skill, event, room, player, ctx)
 		if event ~= sgs.Death then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		local death = ctx.original_data:toDeath()
 		if death.who == player then
@@ -6997,7 +6997,7 @@ kezhuanjiaohao = sgs.CreateTriggerSkillV2 {
 	on_record = function(skill, event, room, player, ctx)
 		if not (player and player:isAlive()) then return end
 		if event == sgs.EventPhaseEnd then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first then return end
 			for _, p in sgs.qlist(room:getAllPlayers()) do
 				if p:hasSkill("kezhuanjiaohaoex", true) then
@@ -7006,7 +7006,7 @@ kezhuanjiaohao = sgs.CreateTriggerSkillV2 {
 			end
 		elseif event == sgs.EventPhaseStart then
 			if player:getPhase() == sgs.Player_Play then
-				local first = room:findPlayersBySkillName(skill:objectName()):first()
+				local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 				if not first or ctx.owner ~= first then return end
 				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 					if p:hasSkill(skill:objectName(), true) then
@@ -7129,7 +7129,7 @@ kezhuancuifeng = sgs.CreateTriggerSkillV2 {
 	on_record = function(skill, event, room, player, ctx)
 		if not player then return end
 		if event == sgs.DamageDone then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first then return end
 			local damage = ctx.original_data:toDamage()
 			if damage.card and table.contains(damage.card:getSkillNames(), "kezhuancuifeng") then
@@ -7248,7 +7248,7 @@ kezhuandengnan = sgs.CreateTriggerSkillV2 {
 	on_record = function(skill, event, room, player, ctx)
 		if not player then return end
 		if event == sgs.DamageDone then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first then return end
 			local damage = ctx.original_data:toDamage()
 			local hz = room:findPlayerBySkillName(skill:objectName())
@@ -7582,7 +7582,7 @@ kezhuanyangming = sgs.CreateTriggerSkillV2 {
 	events = { sgs.Pindian },
 	on_record = function(skill, event, room, player, ctx)
 		if not (player and player:isAlive()) then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		if event == sgs.Pindian then
 			local cp = room:getCurrent()
@@ -7617,7 +7617,7 @@ kezhuanshacheng = sgs.CreateTriggerSkillV2 {
 			return
 		end
 		if event == sgs.CardsMoveOneTime then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first then return end
 			local move = ctx.original_data:toMoveOneTime()
 			if
@@ -7843,7 +7843,7 @@ kezhuanhuchou = sgs.CreateTriggerSkillV2 {
 				ctx.original_data:setValue(damage)
 			end
 		elseif event == sgs.CardUsed then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first then return end
 			local use = ctx.original_data:toCardUse()
 			if use.card:isDamageCard() then
@@ -7984,7 +7984,7 @@ kezhuanhuozhong = sgs.CreateTriggerSkillV2 {
 	view_as_skill = kezhuanhuozhongVS,
 	on_record = function(skill, event, room, player, ctx)
 		if not player then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		if event == sgs.EventPhaseEnd then
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
@@ -8070,7 +8070,7 @@ kezhuanchixueqingfengskill = sgs.CreateTriggerSkillV2 {
 				ctx.original_data:setValue(use)
 			end
 		elseif event == sgs.CardFinished and use.card:isKindOf("Slash") then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first then return end
 			for _, p in sgs.qlist(room:getAllPlayers()) do
 				if p:hasFlag("kezhuan_cxqfto") then
@@ -8118,7 +8118,7 @@ kezhuanhujian = sgs.CreateTriggerSkillV2 {
 		if event == sgs.CardResponded then
 			local response = ctx.original_data:toCardResponse()
 			if response.m_card:getTypeId() < 1 then return end
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first or not player:isAlive() then return end
 			for _, p in sgs.qlist(room:getAlivePlayers()) do
 				room:setPlayerMark(p, "&kezhuanhujian-Clear", 0)
@@ -8128,7 +8128,7 @@ kezhuanhujian = sgs.CreateTriggerSkillV2 {
 		if event == sgs.CardUsed then
 			local use = ctx.original_data:toCardUse()
 			if use.card:getTypeId() < 1 then return end
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first or not player:isAlive() then return end
 			for _, p in sgs.qlist(room:getAlivePlayers()) do
 				room:setPlayerMark(p, "&kezhuanhujian-Clear", 0)
@@ -8739,7 +8739,7 @@ kehewentian = sgs.CreateTriggerSkillV2 {
 			room:setPlayerMark(player, "@usekehewentian", 7)
 		end
 		if event == sgs.CardsMoveOneTime then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first then return end
 			local move = ctx.original_data:toMoveOneTime()
 			if move.to_place == sgs.Player_DrawPile or move.from_places:contains(sgs.Player_DrawPile) then
@@ -8747,7 +8747,7 @@ kehewentian = sgs.CreateTriggerSkillV2 {
 			end
 		end
 		if event == sgs.PreCardUsed then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first then return end
 			local use = ctx.original_data:toCardUse()
 			if table.contains(use.card:getSkillNames(), "kehewentian") then
@@ -8891,7 +8891,7 @@ keheyinlue = sgs.CreateTriggerSkillV2 {
 	events = { sgs.DamageInflicted, sgs.EventPhaseStart },
 	on_record = function(skill, event, room, player, ctx)
 		if event ~= sgs.EventPhaseStart or not (player and player:getPhase() == sgs.Player_NotActive) then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		for _, zgl in sgs.qlist(room:getAllPlayers()) do
 			if zgl:getMark("&keheyinluemp") > 0 then
@@ -9082,7 +9082,7 @@ kehefumou = sgs.CreateTriggerSkillV2 {
 	events = { sgs.EventForDiy, sgs.EventPhaseChanging },
 	on_record = function(skill, event, room, player, ctx)
 		if not player then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		if event == sgs.EventPhaseChanging then
 			local change = ctx.original_data:toPhaseChange()
@@ -9170,7 +9170,7 @@ kehexuanfeng = sgs.CreateTriggerSkillV2 {
 	events = { sgs.CardUsed },
 	on_record = function(skill, event, room, player, ctx)
 		if not (player and player:isAlive()) then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		local use = ctx.original_data:toCardUse()
 		if table.contains(use.card:getSkillNames(), "kehexuanfeng") then
@@ -9244,7 +9244,7 @@ kehetuigu = sgs.CreateTriggerSkillV2 {
 	on_record = function(skill, event, room, player, ctx)
 		if not (player and player:isAlive()) then return end
 		if event == sgs.EventPhaseChanging then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first then return end
 			local change = ctx.original_data:toPhaseChange()
 			if change.from == sgs.Player_NotActive then
@@ -9262,7 +9262,7 @@ kehetuigu = sgs.CreateTriggerSkillV2 {
 			end
 		end
 		if event == sgs.CardOnEffect then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first then return end
 			local effect = ctx.original_data:toCardEffect()
 			if effect.card:objectName() == "zl_jiejiaguitian" and table.contains(effect.card:getSkillNames(), skill:objectName()) then
@@ -9433,7 +9433,7 @@ kehezhubei = sgs.CreateTriggerSkillV2 {
 			end
 		end
 		if event == sgs.CardsMoveOneTime then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first then return end
 			local move = ctx.original_data:toMoveOneTime()
 			if move.from_places:contains(sgs.Player_PlaceHand) and move.from:objectName() == player:objectName() and move.is_last_handcard then
@@ -9446,7 +9446,7 @@ kehezhubei = sgs.CreateTriggerSkillV2 {
 			end
 		end
 		if event == sgs.Damaged then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first then return end
 			for _, p in sgs.qlist(room:getAllPlayers()) do
 				if p:hasSkill(skill, true) then
@@ -9467,7 +9467,7 @@ kehelonglin = sgs.CreateTriggerSkillV2 {
 	events = { sgs.Damage, sgs.TargetSpecified, sgs.EventPhaseChanging },
 	on_record = function(skill, event, room, player, ctx)
 		if not player then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		if event == sgs.TargetSpecified then
 			local use = ctx.original_data:toCardUse()
@@ -9717,7 +9717,7 @@ kehezhendan = sgs.CreateTriggerSkillV2 {
 	on_record = function(skill, event, room, player, ctx)
 		if not (player and player:isAlive()) then return end
 		if event == sgs.TurnStart then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first then return end
 			if player:faceUp() then
 				room:addPlayerMark(player, "kehezhendanhuihe_lun")
@@ -9790,7 +9790,7 @@ kehezhaotu = sgs.CreateTriggerSkillV2 {
 	events = { sgs.CardUsed, sgs.EventPhaseStart },
 	on_record = function(skill, event, room, player, ctx)
 		if not player then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		if event == sgs.CardUsed then
 			local use = ctx.original_data:toCardUse()
@@ -10127,7 +10127,7 @@ kehebazheng = sgs.CreateTriggerSkillV2 {
 		else
 			local str = ctx.original_data:toString()
 			if str:startsWith("yishiresult:") then
-				local first = room:findPlayersBySkillName(skill:objectName()):first()
+				local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 				if not first or ctx.owner ~= first then return end
 				local strs = str:split(":")
 				for _, pn in sgs.list(strs[4]:split("+")) do
@@ -10145,7 +10145,7 @@ kehebazheng = sgs.CreateTriggerSkillV2 {
 					p:setMark("kehebazhengFid", 0)
 				end
 			elseif str:startsWith("askyishicard:") then
-				local first = room:findPlayersBySkillName(skill:objectName()):first()
+				local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 				if not first or ctx.owner ~= first then return end
 				local strs = str:split(":")
 				if player:hasSkill(skill) then
@@ -10346,7 +10346,7 @@ keheeqian = sgs.CreateTriggerSkillV2 {
 	events = { sgs.EventPhaseStart, sgs.TargetSpecified, sgs.CardUsed },
 	on_record = function(skill, event, room, player, ctx)
 		if event ~= sgs.CardUsed or not player then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		local use = ctx.original_data:toCardUse()
 		if use.from and use.card:hasFlag("xumoucard") then
@@ -10668,7 +10668,7 @@ kehepianchong = sgs.CreateTriggerSkillV2 {
 		if event == sgs.CardsMoveOneTime then
 			local move = ctx.original_data:toMoveOneTime()
 			if move.to_place == sgs.Player_DiscardPile then
-				local first = room:findPlayersBySkillName(skill:objectName()):first()
+				local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 				if first and ctx.owner == first then
 					for _, id in sgs.qlist(move.card_ids) do
 						local cs = sgs.Sanguosha:getCard(id):getColorString()
@@ -10810,7 +10810,7 @@ kehedanxin = sgs.CreateTriggerSkillV2 {
 	waked_skills = "#kehedanxinex",
 	on_record = function(skill, event, room, player, ctx)
 		if not (player and player:isAlive()) then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		if event == sgs.CardFinished then
 			local use = ctx.original_data:toCardUse()
@@ -11058,7 +11058,7 @@ keheyinluepre = sgs.CreateTriggerSkillV2 {
 	events = { sgs.DamageInflicted, sgs.EventPhaseStart },
 	on_record = function(skill, event, room, player, ctx)
 		if event ~= sgs.EventPhaseStart or not (player and player:getPhase() == sgs.Player_NotActive) then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		for _, zgl in sgs.qlist(room:getAllPlayers()) do
 			if zgl:getMark("&keheyinluemp") > 0 then
@@ -11414,7 +11414,7 @@ kehehuiqi = sgs.CreateTriggerSkillV2 {
 			end
 		end
 		if event == sgs.TargetConfirmed then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first then return end
 			local use = ctx.original_data:toCardUse()
 			local wqs = room:findPlayersBySkillName(skill:objectName())
@@ -12055,7 +12055,7 @@ keshuaitianyu = sgs.CreateTriggerSkillV2 {
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.EventPhaseChanging, sgs.CardsMoveOneTime },
 	on_record = function(skill, event, room, player, ctx)
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		if event == sgs.CardsMoveOneTime then
 			local move = ctx.original_data:toMoveOneTime()
@@ -12604,7 +12604,7 @@ keshuaizhushou = sgs.CreateTriggerSkillV2 {
 		end
 		--记录进入弃牌堆的牌
 		if move.to_place == sgs.Player_DiscardPile then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or ctx.owner ~= first then return end
 			local tag = room:getTag("keshuaizhushou_distag"):toIntList()
 			for _, card_id in sgs.qlist(move.card_ids) do
@@ -12621,7 +12621,7 @@ keshuaizhushou = sgs.CreateTriggerSkillV2 {
 		if event ~= sgs.EventPhaseChanging or not (player and player:isAlive()) then return false end
 		local change = data:toPhaseChange()
 		if change.to ~= sgs.Player_NotActive then return false end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first then return false end
 		return skill:objectName(), first:objectName()
 	end,
@@ -12752,7 +12752,7 @@ keshuaiyangge = sgs.CreateTriggerSkillV2 {
 	frequency = sgs.Skill_Frequent,
 	on_record = function(skill, event, room, player, ctx)
 		if not (player and player:isAlive()) then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		if event == sgs.EventPhaseEnd then
 			for _, p in sgs.qlist(room:getAllPlayers()) do
@@ -12891,7 +12891,7 @@ keshuaiguanshi = sgs.CreateTriggerSkillV2 {
 	view_as_skill = keshuaiguanshiVS,
 	events = { sgs.PreCardUsed, sgs.Damage, sgs.CardEffect, sgs.PostCardEffected },
 	on_record = function(skill, event, room, player, ctx)
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		local data = ctx.original_data
 		if event == sgs.PostCardEffected then
@@ -13364,7 +13364,7 @@ keshuaigangfen = sgs.CreateTriggerSkillV2 {
 	frequency = sgs.Skill_NotFrequent,
 	on_record = function(skill, event, room, player, ctx)
 		if event ~= sgs.TargetSpecifying then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		local use = ctx.original_data:toCardUse()
 		if use.card:isKindOf("Slash") then
@@ -13729,7 +13729,7 @@ keshuaizonghai = sgs.CreateTriggerSkillV2 {
 	events = { sgs.EnterDying, sgs.QuitDying },
 	on_record = function(skill, event, room, player, ctx)
 		if event ~= sgs.QuitDying then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		for _, dmd in sgs.qlist(room:getAllPlayers()) do
 			for _, p in sgs.qlist(room:getAllPlayers()) do
@@ -13934,7 +13934,7 @@ xingxiezheng = sgs.CreateTriggerSkillV2 {
 	events = { sgs.EventPhaseStart, sgs.DamageDone },
 	on_record = function(skill, event, room, player, ctx)
 		if event ~= sgs.DamageDone or not (player and player:isAlive()) then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		local damage = ctx.original_data:toDamage()
 		if damage.card and damage.card:isKindOf("Slash") then
@@ -14054,7 +14054,7 @@ xingweisi = sgs.CreateTriggerSkillV2 {
 		elseif event == sgs.EventPhaseChanging then
 			local change = ctx.original_data:toPhaseChange()
 			if change.to == sgs.Player_NotActive then
-				local first = room:findPlayersBySkillName(skill:objectName()):first()
+				local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 				if not first or ctx.owner ~= first then return end
 				for _, p in sgs.qlist(room:getAllPlayers()) do
 					local dc = dummyCard()
@@ -14374,7 +14374,7 @@ xingxunji = sgs.CreateTriggerSkillV2 {
 	events = { sgs.EventPhaseStart, sgs.Damage, sgs.CardFinished },
 	on_record = function(skill, event, room, player, ctx)
 		if not (player and player:isAlive()) then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		if event == sgs.Damage then
 			local damage = ctx.original_data:toDamage()
@@ -14563,7 +14563,7 @@ xingqinrao = sgs.CreateTriggerSkillV2 {
 		if event == sgs.CardEffected then
 			local effect = data:toCardEffect()
 			if not (effect.card:isKindOf("Duel") and table.contains(effect.card:getSkillNames(), skill:objectName())) then return false end
-			local owner = room:findPlayersBySkillName(skill:objectName()):first()
+			local owner = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not owner then return false end
 			return skill:objectName(), owner:objectName()
 		elseif event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Play then
@@ -14955,7 +14955,7 @@ xingpiqi = sgs.CreateTriggerSkillV2 {
 	events = { sgs.EventPhaseChanging },
 	on_record = function(skill, event, room, player, ctx)
 		if not (player and player:isAlive()) then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		local change = ctx.original_data:toPhaseChange()
 		if change.to == sgs.Player_NotActive then
@@ -15010,7 +15010,7 @@ xingzhoulin = sgs.CreateTriggerSkillV2 {
 		else
 			local change = ctx.original_data:toPhaseChange()
 			if change.from == sgs.Player_NotActive then
-				local first = room:findPlayersBySkillName(skill:objectName()):first()
+				local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 				if not first or ctx.owner ~= first then return end
 				for _, p in sgs.list(room:getAlivePlayers()) do
 					if p:hasSkill(skill:objectName(), true) then
@@ -15174,7 +15174,7 @@ xingfuzhen = sgs.CreateTriggerSkillV2 {
 	on_record = function(skill, event, room, player, ctx)
 		if not (player and player:isAlive()) then return end
 		if event == sgs.EventPhaseStart then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		if event == sgs.CardFinished then
 			local use = ctx.original_data:toCardUse()
@@ -15419,7 +15419,7 @@ xingkuangjian = sgs.CreateTriggerSkillV2 {
 	guhuo_type = "l",
 	on_record = function(skill, event, room, player, ctx)
 		if not (player and player:isAlive()) then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or ctx.owner ~= first then return end
 		local use = ctx.original_data:toCardUse()
 		if table.contains(use.card:getSkillNames(), skill:objectName()) then

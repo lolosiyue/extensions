@@ -52,7 +52,7 @@ kejianxiong = sgs.CreateTriggerSkillV2 {
 	--frequency = sgs.Skill_NotFrequent,
 	events = { sgs.Damaged, sgs.CardUsed, sgs.TargetSpecified },
 	on_record = function(skill, event, room, player, ctx)
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or (ctx.owner:objectName() ~= first:objectName()) then return end
 		local data = ctx.original_data
 		if event == sgs.CardUsed then
@@ -4744,7 +4744,7 @@ keyanzhu = sgs.CreateTriggerSkillV2 {
 	events = { sgs.EnterDying},
 	on_record = function(skill, event, room, player, ctx)
 		if event == sgs.EnterDying then
-			local first = room:findPlayersBySkillName(skill:objectName()):first()
+			local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 			if not first or (ctx.owner:objectName() ~= first:objectName()) then return end
 			local dying = ctx.original_data:toDying()
 			local damage = dying.damage
@@ -4943,7 +4943,7 @@ kezhenggong = sgs.CreateTriggerSkillV2 {
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.Damage, sgs.EventPhaseChanging, sgs.DamageComplete, sgs.MarkChanged },
 	on_record = function(skill, event, room, player, ctx)
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or (ctx.owner:objectName() ~= first:objectName()) then return end
 		local data = ctx.original_data
 		if event == sgs.MarkChanged then
@@ -5891,7 +5891,7 @@ keraoxi = sgs.CreateTriggerSkillV2 {
 	end,
 	on_record = function(skill, event, room, player, ctx)
 		if event ~= sgs.EventPhaseChanging then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):first()
+		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
 		if not first or (ctx.owner:objectName() ~= first:objectName()) then return end
 		local data = ctx.original_data
 		local change = data:toPhaseChange()
