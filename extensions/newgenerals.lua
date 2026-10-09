@@ -25319,11 +25319,10 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		local sc = sgs.Self:getTag("olspxixiang"):toCard()
-		if sc == nil then
+		if request:getUserString() == "" then
 			return false
 		end
-		return #selected <= sgs.Self:getMark("olspxixiangNum-Clear")
+		return #selected <= request:getInitiator():getMark("olspxixiangNum-Clear")
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -25332,15 +25331,15 @@ card_selection_feasible = function(self, request)
 		table.insert(cards, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, cards)
-		if #cards <= sgs.Self:getMark("olspxixiangNum-Clear") then
+		if #cards <= request:getInitiator():getMark("olspxixiangNum-Clear") then
 			return
 		end
-		local sc = sgs.Self:getTag("olspxixiang"):toCard()
-		if sc == nil then
+		local name = request:getUserString()
+		if name == "" then
 			return
 		end
 		local skillcard = olspxixiangCard:clone()
-		skillcard:setUserString(sc:objectName())
+		skillcard:setUserString(name)
 		for _, c in sgs.list(cards) do
 			skillcard:addSubcard(c)
 		end
@@ -25353,15 +25352,15 @@ create_card = function(self, request)
 		table.insert(cards, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, cards)
-		if #cards <= sgs.Self:getMark("olspxixiangNum-Clear") then
+		if #cards <= request:getInitiator():getMark("olspxixiangNum-Clear") then
 			return
 		end
-		local sc = sgs.Self:getTag("olspxixiang"):toCard()
-		if sc == nil then
+		local name = request:getUserString()
+		if name == "" then
 			return
 		end
 		local skillcard = olspxixiangCard:clone()
-		skillcard:setUserString(sc:objectName())
+		skillcard:setUserString(name)
 		for _, c in sgs.list(cards) do
 			skillcard:addSubcard(c)
 		end
