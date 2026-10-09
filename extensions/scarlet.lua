@@ -4046,8 +4046,8 @@ s4_txbw_general_duelCard = sgs.CreateSkillCard {
     name = "s4_txbw_general_duel_start",
     target_fixed = false,
     will_throw = false,
-    filter = function(self, targets, to_select)
-        if to_select:objectName() ~= sgs.Self:objectName() then
+    filter = function(self, targets, to_select, player)
+        if to_select:objectName() ~= player:objectName() then
             return #targets == 0
         end
         return false
@@ -6531,7 +6531,7 @@ s4_txbw_nilinVS = sgs.CreateViewAsSkillV2 {
                     if c:getSuit() ~= card:getSuit() then return false end
                 end
             end
-            return not card:isEquipped() and not sgs.Self:isJilei(card)
+            return not card:isEquipped() and not player:isJilei(card)
         end
         return true
     end,
@@ -6666,8 +6666,8 @@ s4_txbw_cangying_select = sgs.CreateSkillCard {
 	name = "s4_txbw_cangying",
 	will_throw = true,
 	target_fixed = false,
-    filter = function(self, targets, to_select)
-		return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng()
+    filter = function(self, targets, to_select, player)
+		return #targets == 0 and to_select:objectName() ~= player:objectName() and not to_select:isKongcheng()
 	end,
 	on_use = function(self, room, source, targets)
         local card = sgs.Sanguosha:getCard(self:getSubcards():first())
@@ -6942,8 +6942,8 @@ s4_txbw_cangying_duel = sgs.CreateTriggerSkillV2 {
 
 s4_txbw_juanzhuoCard = sgs.CreateSkillCard{
 	name = "s4_txbw_juanzhuo" ,
-	filter = function(self, targets, to_select)
-		return #targets == 0 and sgs.Self:inMyAttackRange(to_select) and to_select:objectName() ~= sgs.Self:objectName() and not to_select:isKongcheng()
+	filter = function(self, targets, to_select, player)
+		return #targets == 0 and player:inMyAttackRange(to_select) and to_select:objectName() ~= player:objectName() and not to_select:isKongcheng()
 	end ,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
@@ -12484,17 +12484,17 @@ s4_xingyiCard = sgs.CreateSkillCard {
 	name = "s4_xingyi",
 	target_fixed = false,
 	will_throw = false,
-	filter = function(self, targets, to_select)
-        if sgs.Self:getMark("s4_yanshi") > 1 or sgs.Sanguosha:getCurrentCardUsePattern() == "@@s4_xingyi" then
+	filter = function(self, targets, to_select, player)
+        if player:getMark("s4_yanshi") > 1 or sgs.Sanguosha:getCurrentCardUsePattern() == "@@s4_xingyi" then
             local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
             slash:deleteLater()
             local plist = sgs.PlayerList()
             for i = 1, #targets, 1 do
                 plist:append(targets[i])
             end
-            return slash:targetFilter(plist, to_select, sgs.Self)
+            return slash:targetFilter(plist, to_select, player)
         else
-            return #targets == 0 and to_select:objectName() ~= sgs.Self:objectName()
+            return #targets == 0 and to_select:objectName() ~= player:objectName()
         end
 	end,
     feasible = function(self,targets,player)
