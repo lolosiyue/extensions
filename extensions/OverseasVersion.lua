@@ -15179,6 +15179,15 @@ ov_muyuevs = sgs.CreateViewAsSkillV2 {
 		end
 		return false
 	end,
+	-- The bonus create_card branch selects no material; the V2 default n=1
+	-- feasibility would otherwise make that existing branch unreachable.
+	card_selection_feasible = function(self, request)
+		local count = request:getSelectedCardIds():length()
+		if request:getInitiator():getMark("ov_muyuebf") > 0 then
+			return count == 0
+		end
+		return count == 1
+	end,
 	can_select_card = function(self, request, candidate)
 		local player = request:getInitiator()
 		local reason = request:getReason()

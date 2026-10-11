@@ -39,63 +39,71 @@ sgs.append_skill_list("double_slash_skill", "s4_xianfeng")
 sgs.append_skill_list("bad_skills", "s4_neiji")
 
 -- 天下霸武單挑點數。只加在 Scarlet，基礎層的 getMaxCard 不認識這些技能。
+local function general_duel_known(value, key)
+    if AIUnsupported.is(value) then error(value, 0) end
+    if value == nil then ai_unsupported("general duel input is unknown", key) end
+    return value
+end
+
 function SmartAIView:getGeneralDuelPoint(player, card)
     if not card then return nil end
     player = player or self.player
-    local point = card:getNumber()
-    if type(point) ~= "number" then return nil end
-    if player:hasSkill("s4_txbw_motian") then
-        point = point + (player:getMark("TurnLengthCount") or 0)
+    local point = general_duel_known(card:getNumber(), "general_duel.number")
+    if general_duel_known(player:hasSkill("s4_txbw_motian"), "general_duel.motian") then
+        point = point + general_duel_known(player:getStrategyMark("TurnLengthCount"), "general_duel.turn_length")
     end
-    if player:hasSkill("s4_txbw_yizhong") then
-        local hp = player:getHp()
-        if type(hp) ~= "number" then return nil end
-        point = point + hp / 2
+    if general_duel_known(player:hasSkill("s4_txbw_yizhong"), "general_duel.yizhong") then
+        point = point + general_duel_known(player:getHp(), "general_duel.hp") / 2
     end
-    if player:hasSkill("s4_txbw_wanpo") then point = point + 1 end
-    if player:hasSkill("s4_txbw_wusheng") and card:isRed() then point = point + 2 end
+    if general_duel_known(player:hasSkill("s4_txbw_wanpo"), "general_duel.wanpo") then point = point + 1 end
+    if general_duel_known(player:hasSkill("s4_txbw_wusheng"), "general_duel.wusheng")
+        and general_duel_known(card:isRed(), "general_duel.red") then point = point + 2 end
     return point
 end
 
 function SmartAIView:getGeneralDuelCard(player, cards)
     player = player or self.player
-    if cards == nil then
-        cards = player:objectName() == self.player:objectName() and player:getHandcards() or player:getKnownCards()
+    local owner = player:objectName() == self.player:objectName()
+    if cards == nil then cards = owner and player:getHandcards() or player:getKnownCards() end
+    cards = sgs.QList2Table(general_duel_known(cards, "general_duel.cards"))
+    if not owner then
+        -- Source reads the whole foreign hand, then its visibility flags (and
+        -- yishi sorts that whole private hand). Use only legitimately disclosed
+        -- faces; this is a marked knowledge substitution, never a private peek.
+        cards = self:useKnowledgeEstimate({value=cards,status="estimate",
+            basis="general_duel_disclosed_cards_replace_foreign_hand_and_visibility",
+            target=player:objectName(),viewer=self.player:objectName(),observer=self.player:objectName()}, "getGeneralDuelCard")
     end
-    if not cards then return nil end
-    if player:hasSkill("s4_txbw_yishi") then
-        -- The shared sorter leaves the input unchanged and can report unknown.
-        cards = self:sortByUseValue(cards, true)
-        if cards == nil then
-            -- Callers use nil for no card; an unknown order must not become declined.
-            ai_unsupported("general duel card order is unknown", "s4_txbw_yishi")
-        end
+    if #cards < 1 then return nil end
+    if general_duel_known(player:hasSkill("s4_txbw_yishi"), "general_duel.yishi") then
+        general_duel_known(self:sortByUseValue(cards, true), "general_duel.order")
         return cards[1]
     end
-    local function pick(skip_valuable)
-        local best, best_point
-        for _, card in ipairs(cards) do
-            local skip = false
-            if skip_valuable and player:objectName() == self.player:objectName() then
-                local valuable = self:isValuableCard(card, player)
-                if valuable == nil then return nil, "unknown" end
-                skip = valuable == true
-            end
-            if not skip then
-                local point = self:getGeneralDuelPoint(player, card)
-                if point == nil then return nil, "unknown" end
-                if not best_point or point > best_point then best, best_point = card, point end
+    local best, best_point = nil, 0
+    for _, card in ipairs(cards) do
+        local valuable = false
+        if owner then
+            local provider = self.isValuableCard
+            if type(provider) ~= "function" then ai_unsupported("general duel valuable provider unavailable", "general_duel.valuable") end
+            valuable = provider(self, card)
+            if valuable ~= nil or not SmartAIView.isKnownNilStrategyResult(self, "isValuableCard", provider) then
+                valuable = general_duel_known(valuable, "general_duel.valuable")
             end
         end
-        return best
+        if not valuable then
+            -- Own hand is visible to its owner. The foreign branch above is
+            -- explicitly an estimate over its disclosed input domain.
+            local point = general_duel_known(self:getGeneralDuelPoint(player, card), "general_duel.point")
+            if point > best_point then best_point, best = point, card end
+        end
     end
-    local card, status = pick(true)
-    if status == "unknown" then return nil end
-    if player:objectName() == self.player:objectName() and not card then
-        card, status = pick(false)
-        if status == "unknown" then return nil end
+    if owner and not best then
+        for _, card in ipairs(cards) do
+            local point = general_duel_known(self:getGeneralDuelPoint(player, card), "general_duel.point")
+            if point > best_point then best_point, best = point, card end
+        end
     end
-    return card
+    return best
 end
 
 -- 完殺下隊友的桃救不了自己；模式未覆蓋時只算自己看得見的桃酒。
@@ -422,39 +430,20 @@ ai_skill_invoke.s4_cloud_tuxi = function(self, options, request)
 end
 
 -- 原版：敵方且體力>1 就拒棄（改失體力）；體力<=1 才 dummy 棄 1。非敵或無當前回合拒棄。
-ai_skill_discard.s4_cloud_tuxi = function(self, options, request)
+local function s4_discard_known(value, key)
+    if AIUnsupported.is(value) then error(value, 0) end
+    if value == nil then ai_unsupported("discard policy input is unknown", key) end
+    return value
+end
+
+sgs.ai_skill_discard.s4_cloud_tuxi = function(self, discard_num, min_num, optional, include_equip)
     local target = self.room:getCurrent()
-    if not target then return {kind = "pass"} end
-    local enemy = self:isEnemy(target)
-    if enemy == nil then
-        return ai_unsupported("s4_cloud_tuxi discard relation is unknown", "s4_cloud_tuxi")
+    if not target then return {} end
+    if s4_discard_known(self:isEnemy(target), "s4_cloud_tuxi.enemy") then
+        if s4_discard_known(self.player:getHp(), "s4_cloud_tuxi.hp") > 1 then return {} end
+        return self:askForDiscard("dummy", 1, 1, false, include_equip)
     end
-    if not enemy then return {kind = "pass"} end
-    local hp = self.player:getHp()
-    if type(hp) ~= "number" then
-        return ai_unsupported("s4_cloud_tuxi hp is unknown", "s4_cloud_tuxi")
-    end
-    if hp > 1 then return {kind = "pass"} end
-    if type(options) ~= "table" or options.candidates_complete ~= true then
-        return ai_unsupported("s4_cloud_tuxi discard candidates are incomplete", "s4_cloud_tuxi")
-    end
-    local ids = options.card_ids
-    if type(ids) ~= "table" or #ids == 0 then return {kind = "pass"} end
-    local cards = self.player:getCards("he")
-    if not cards then
-        return ai_unsupported("s4_cloud_tuxi discard cards are unknown", "s4_cloud_tuxi")
-    end
-    local offered, pool = {}, AIList.new({})
-    for _, id in ipairs(ids) do offered[id] = true end
-    for _, card in ipairs(cards) do
-        if offered[card:getEffectiveId()] then pool:append(card) end
-    end
-    if #pool == 0 then return {kind = "pass"} end
-    local sorted = self:sortByKeepValue(pool, false)
-    if not sorted then
-        return ai_unsupported("s4_cloud_tuxi keep values are unknown", "s4_cloud_tuxi")
-    end
-    return {sorted[1]:getEffectiveId()}
+    return {}
 end
 
 sgs.ai_choicemade_filter = sgs.ai_choicemade_filter or {}
@@ -796,24 +785,12 @@ local function s4_jiwu_dummy_discard(self, options, key)
     return result
 end
 
-ai_skill_discard.s4_jiwu_invoke = function(self, options)
-    local key = "s4_jiwu_invoke"
-    local min_num = type(options) == "table" and options.min_count or nil
-    if type(min_num) ~= "number" then
-        return ai_unsupported(key .. " discard minimum is unknown", key)
+sgs.ai_skill_discard.s4_jiwu_invoke = function(self, discard_num, min_num, optional, include_equip)
+    if min_num > 0 and (s4_discard_known(self.player:getCardCount(), "s4_jiwu.card_count") >= 2
+        or s4_discard_known(self:isWeak(), "s4_jiwu.weak")) then
+        return self:askForDiscard("dummy", min_num, min_num, false, include_equip)
     end
-    if min_num <= 0 then return {kind = "pass"} end
-    local count = self.player:getCardCount()
-    if type(count) ~= "number" then
-        return ai_unsupported(key .. " card count is unknown", key)
-    end
-    if count >= 2 then return s4_jiwu_dummy_discard(self, options, key) end
-    local weak = self:isWeak()
-    if weak == nil then
-        return ai_unsupported(key .. " weakness is unknown", key)
-    end
-    if weak then return s4_jiwu_dummy_discard(self, options, key) end
-    return {kind = "pass"}
+    return {}
 end
 
 local function s4_jiwu_flag(card, name, key)
@@ -1091,20 +1068,12 @@ ai_skill_playerchosen.s4_jiuzhu = function(self, options)
         or ai_unsupported(key .. " self is not offered", key)
 end
 
-ai_skill_discard.s4_jiuzhu_invoke = function(self, options)
-    local key = "s4_jiuzhu_invoke"
-    local min_num = type(options) == "table" and options.min_count or nil
-    if type(min_num) ~= "number" then
-        return ai_unsupported(key .. " discard minimum is unknown", key)
+sgs.ai_skill_discard.s4_jiuzhu_invoke = function(self, discard_num, min_num, optional, include_equip)
+    if min_num > 0 and s4_discard_known(self.player:getHp(), "s4_jiuzhu.hp")
+        < s4_discard_known(getBestHp(self.player), "s4_jiuzhu.best_hp") then
+        return self:askForDiscard("dummy", min_num, min_num, false, include_equip)
     end
-    if min_num <= 0 then return {kind = "pass"} end
-    local hp = self.player:getHp()
-    local best = self:getBestHp(self.player)
-    if type(hp) ~= "number" or type(best) ~= "number" then
-        return ai_unsupported(key .. " hp is unknown", key)
-    end
-    if hp < best then return s4_jiwu_dummy_discard(self, options, key) end
-    return {kind = "pass"}
+    return {}
 end
 
 ai_skill_invoke.s4_jiuzhu = function(self)
@@ -1626,14 +1595,18 @@ sgs.ai_ajustdamage_from.s4_juxiang = function(_, from, to, card)
     if from:getMark(mark) > 0 then return 1 end
 end
 
-sgs.ai_ajustdamage_from.s4_benxi = function(_, from, to, card)
-    if not (card and from and to and card:isKindOf("Slash")) then return end
-    local flagged = card:hasFlag("s4_benxi" .. to:objectName())
-    if flagged == nil then return end
-    local first = from:getMark("used_slash-Clear") == 0
-    local distance = from:distanceTo(to)
-    if type(distance) ~= "number" then return end
-    if (flagged or first) and distance <= 1 then return 1 end
+local function benxi_known(value, key)
+    if AIUnsupported.is(value) then error(value, 0) end
+    if value == nil then ai_unsupported("s4_benxi source fact is unknown", key) end
+    return value
+end
+sgs.ai_ajustdamage_from.s4_benxi = function(self, from, to, card)
+    if card and benxi_known(card:isKindOf("Slash"), "s4_benxi.class")
+        and (benxi_known(card:hasFlag("s4_benxi" .. to:objectName()), "s4_benxi.flag")
+            or benxi_known(from:getStrategyMark("used_slash-Clear"), "used_slash-Clear") == 0)
+        and benxi_known(from:distanceTo(to), "s4_benxi.distance") <= 1 then
+        return 1
+    end
 end
 
 -- s4_guanyu：原版 lua/ai/scarlet-ai.lua 的武聖。
@@ -2209,19 +2182,31 @@ parsed_activate("s4_txbw_general_duel", {
     end
 })
 
-ai_skill_discard.s4_txbw_general_duel = function(self, options)
-    local id = self:recall("s4_txbw_general_duel_card")
-    if type(id) ~= "number" then
-        local card = self:getGeneralDuelCard()
-        id = card and card:getEffectiveId() or nil
+sgs.ai_skill_discard.s4_txbw_general_duel = function(self, discard_num, min_num, optional, include_equip)
+    -- The isolated planner persists this viewer-local observation across requests.
+    local id = self.s4_txbw_general_duel_start_card or self:recall("s4_txbw_general_duel_card")
+    if id then return {id} end
+    if self:getGeneralDuelCard(self.player) then
+        return {self:getGeneralDuelCard(self.player):getId()}
     end
-    if type(id) ~= "number" then return nil end
-    local offered = type(options) == "table" and options.card_ids or nil
-    if type(offered) == "table" then
-        for _, card_id in ipairs(offered) do
-            if card_id == id then return {id} end
-        end
-        return nil
-    end
-    return {id}
+    return self:askForDiscard("dummy", min_num, min_num, false, include_equip)
+end
+
+-- Round21 fixed donor scarlet-ai.lua:2450-2460. This callback retains the
+-- flag-before-mark short circuit; an undisclosed card flag is not false.
+sgs.ai_skill_invoke.s4_wuhu_fuyong = function(self, data)
+    local target = data:toPlayer()
+    if not self:isFriend(target) then return true end
+    return false
+end
+sgs.ai_ajustdamage_from.s4_wuhu_fuyong = function(self, from, to, card, nature)
+    if not card then return end
+    local flag = card:hasFlag("s4_wuhu_fuyong")
+    if AIUnsupported.is(flag) then error(flag, 0) end
+    if flag == nil then ai_unsupported("source card flag is not disclosed", "s4_wuhu_fuyong") end
+    if flag then return 1 end
+    local mark = from:getStrategyMark("s4_wuhu_fuyong-Clear")
+    if AIUnsupported.is(mark) then error(mark, 0) end
+    if mark == nil then ai_unsupported("source strategy mark is unknown", "s4_wuhu_fuyong-Clear") end
+    if mark + 1 == 2 then return 1 end
 end

@@ -2489,13 +2489,16 @@ function SmartAI:filterEvent(event,player,data)
 	
 	-- Wrap the entire function body in pcall for safety
 	pcall(function()
+        if type(ai_imagine_focus_enter)=="function" then ai_imagine_focus_enter() end
 		sgs.filterData[event] = data
 		-- Check if event callbacks exist before iterating
 		if sgs.ai_event_callback[event] and type(sgs.ai_event_callback[event]) == "table" then
 			for _,callback in pairs(sgs.ai_event_callback[event])do
 				-- Protected callback execution
 				if type(callback) == "function" then
-					local cb_success, cb_error = pcall(callback, self, player, data)
+					local selected = type(ai_imagine_focus_callback)=="function"
+                        and ai_imagine_focus_callback(callback) or callback
+                    local cb_success, cb_error = pcall(selected,self,player,data)
 				end
 			end
 		end

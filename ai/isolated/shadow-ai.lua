@@ -35,6 +35,40 @@ sgs.ai_getLeastHandcardNum_skill.y_lianying = function(self, player, least)
     if type(least) == "number" and least < 1 then return 1 end
 end
 
+-- Question-scoped values only. The producer does not expose unrelated move
+-- faces or arbitrary IDs read from owner marks/tags.
+local function shadow_fact(self, key)
+    local context = self:getDecisionContext()
+    local value = context.choice_body and context.choice_body[key]
+    if value == nil then ai_unsupported("Shadow scoped fact is not projected", key) end
+    return value
+end
+local function shadow_player(self, name)
+    if name == false or name == "" then return nil end
+    local player = self.room:findPlayerByObjectName(name)
+    if not player then ai_unsupported("Shadow scoped player is not in roster", tostring(name)) end
+    return player
+end
+local function shadow_move(self)
+    local row = shadow_fact(self, "shadow_move")
+    return {from=shadow_player(self,row.from), to=shadow_player(self,row.to)}
+end
+local function shadow_card(self, key)
+    if key == "y_shouju_card" and self._shadow_shouju_override then return self._shadow_shouju_override end
+    local row = shadow_fact(self, key)
+    if row == false then return nil end
+    if type(row) ~= "table" then ai_unsupported("Shadow disclosed card is malformed", key) end
+    return CardView.new(row)
+end
+local function shadow_hand(self, player)
+    if player:objectName() == self.player:objectName() then return player:getHandcards() end
+    local cards = player:getKnownCards()
+    if cards == nil or #cards ~= player:getHandcardNum() then
+        ai_unsupported("Fanjin donor first-hand identity is not observable", "y_fanjin.hand_order")
+    end
+    return cards
+end
+
 local function skill_plan(self, name, cards, targets)
     local action = self:getSkillAction(name)
     if not (action and action:isValid()) then return nil end
@@ -821,8 +855,14 @@ sgs.ai_skill_invoke.y_kongzhen = function(self, data)
     return self:isFriend(player)
 end
 
-sgs.ai_skill_invoke.y_huaiju = function()
-    ai_unsupported("y_huaiju move context is not projected", "y_huaiju")
+sgs.ai_skill_invoke.y_huaiju = function(self, data)
+	local move = shadow_move(self)
+	if move.from:getSeat() ~= self.player:getSeat() then
+		return true
+	elseif move.from:getSeat() == self.player:getSeat() then
+		if #self.friends_noself > 0 then return true end
+	end
+	return false
 end
 
 ai_skill_use["@@y_huntian"] = function(self)
@@ -1032,14 +1072,96 @@ end
 
 sgs.ai_skill_invoke.y_yingzi = true
 
-sgs.ai_skill_invoke.y_shouju = function()
-    ai_unsupported("y_shouju card id is not projected", "y_shouju")
+sgs.ai_skill_invoke.y_shouju = function(self, data)
+	local card = shadow_card(self, "y_shouju_card")
+	local sj = false
+	self:sort(self.friends, "defense")
+	if card:isKindOf("EquipCard") then
+		local i = card:getEquipSlot()
+		for _, p in ipairs(self.friends) do
+			if p:hasEquipArea(i) and not p:getEquip(i) then
+				sj = true
+				break
+			end
+		end
+	end
+	if sj == false then return false end
+	for _, c in sgs.qlist(self.player:getCards("h")) do
+		if c:isKindOf("Basic") and not c:isKindOf("Peach") then
+			return true
+		end
+	end
+	return false
 end
-sgs.ai_skill_playerchosen.y_shouju = function()
-    ai_unsupported("y_shouju shown card is not projected", "y_shouju")
+sgs.ai_skill_playerchosen.y_shouju = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	self:sort(targets, "defense")
+	local card = shadow_card(self, "y_shouju_card")
+	if card and card:isKindOf("EquipCard") then
+		local i = card:getEquipSlot()
+		for _, t in ipairs(targets) do
+			if self:isFriend(t) then
+				if t:hasEquipArea(i) and not t:getEquip(i) and (self:loseEquipEffect(t) or self:hasSkills(sgs.need_equip_skill, t)) then
+					return t
+				end
+			end
+		end
+		for _, t in ipairs(targets) do
+			if self:isFriend(t) then
+				if t:hasEquipArea(i) and not t:getEquip(i) then
+					return t
+				end
+			end
+		end
+	end
+	if card and card:isKindOf("DelayedTrick") then
+		for _, t in ipairs(targets) do
+			if self:isEnemy(t) and (not self.player:isProhibited(t, card) and t:hasJudgeArea() and not t:containsTrick(card:objectName())) then
+				return t
+			end
+		end
+	end
+	return nil
 end
-sgs.ai_skill_cardask.y_shouju = function()
-    ai_unsupported("y_shouju card ask is not projected", "y_shouju")
+sgs.ai_skill_cardask["y_shouju"] = function(self, data, pattern)
+	local hcards = self.player:getCards("h")
+	hcards = sgs.QList2Table(hcards)
+	self:sortByUseValue(hcards, true)
+	local card
+	for _, hcard in ipairs(hcards) do
+		if hcard:isKindOf("BasicCard") then
+			card = hcard
+		end
+	end
+	local targets = AIList.new({})
+	local use_card = shadow_card(self, "y_shouju_card")
+	if use_card:isKindOf("EquipCard") then
+		local i = use_card:getEquipSlot()
+		for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+			if p:hasEquipArea(i) and not p:getEquip(i) then
+				targets:append(p)
+			end
+		end
+	elseif use_card:isKindOf("DelayedTrick") then
+		local no = true
+		for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+			for _, c in sgs.qlist(p:getJudgingArea()) do
+				if c:objectName() == use_card:objectName() then
+					no = false
+					break
+				end
+			end
+			if no == true then
+				targets:append(p)
+			end
+		end
+	end
+	self._shadow_shouju_override = use_card
+	if card and sgs.ai_skill_playerchosen.y_shouju(self, targets) ~= nil then
+		self._shadow_shouju_override = nil
+		return "$" .. card:getEffectiveId()
+	end
+	self._shadow_shouju_override = nil
 end
 
 sgs.ai_skill_invoke.y_wenliang = function(self, data)
@@ -1079,19 +1201,53 @@ end
 
 sgs.ai_skill_invoke.y_duoqi = true
 
-sgs.ai_skill_invoke.y_youfang = function()
-    ai_unsupported("y_youfang move context is not projected", "y_youfang")
+sgs.ai_skill_invoke.y_youfang = function(self, data)
+	local move = shadow_move(self)
+	if not move.from or not move.from:isAlive() then return false end
+	if move.from and self:isFriend(move.from) then
+		return true
+	end
+	return false
 end
-sgs.ai_skill_choice.y_youfang = function()
-    ai_unsupported("y_youfang move context is not projected", "y_youfang")
+sgs.ai_skill_choice.y_youfang = function(self, choices, data)
+	local move = shadow_move(self)
+	local target = move.from
+	choices = choices:split("+")
+	if self:isFriend(target) then
+		if table.contains(choices, "recover") and target:getLostHp() > 0 and self:isWeak(target) then
+			return "recover"
+		end
+		if table.contains(choices, "draw") and self:needBear(target) then
+			return "draw"
+		end
+		if table.contains(choices, "recover") and target:getLostHp() > 0 then
+			return "recover"
+		end
+	end
+	return "draw"
 end
-sgs.ai_skill_invoke.y_zhixi = function()
-    ai_unsupported("y_zhixi move context is not projected", "y_zhixi")
+sgs.ai_skill_invoke.y_zhixi = function(self, data)
+	local move = shadow_move(self)
+	if not move.to or not move.to:isAlive() then return false end
+	if move.to and self:isFriend(move.to) then
+		return false
+	end
+	return true
 end
 
 sgs.ai_skill_invoke.y_xiaoyi = true
-sgs.ai_skill_playerchosen.y_xiaoyi = function()
-    ai_unsupported("y_xiaoyi card tag is not projected", "y_xiaoyi")
+sgs.ai_skill_playerchosen.y_xiaoyi = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	self:sort(targets, "defense")
+	local card = shadow_card(self, "y_xiaoyi_card")
+	local cards = AIList.new({})
+	cards:append(card)
+	local cards = sgs.QList2Table(cards)
+	local c, friend = self:getCardNeedPlayer(cards)
+	if c and friend then
+		return friend
+	end
+	return self.player
 end
 
 ai_skill_activate.y_lianzhu = function(self)
@@ -1121,11 +1277,94 @@ ai_skill_activate.y_lianzhu = function(self)
 end
 
 sgs.ai_skill_invoke.y_fanjin = true
-sgs.ai_skill_playerchosen.y_fanjin = function()
-    ai_unsupported("y_fanjin property list is not projected", "y_fanjin")
+sgs.ai_skill_playerchosen.y_fanjin = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	self:sort(targets, "defense")
+
+	for _, p in ipairs(targets) do
+		if self:isEnemy(p) and not p:isKongcheng() then
+			local list = shadow_fact(self, "y_fanjin_property"):split("+")
+			if #list > 0 then
+				local allhas = true
+				for _, l in pairs(list) do
+					local handcards = sgs.QList2Table(shadow_hand(self, p))
+					local has = false
+					for _, c in ipairs(handcards) do
+						if c:getEffectiveId() == tonumber(l) then
+							has = true
+						end
+						if not has then
+							allhas = false
+						end
+					end
+				end
+				if not allhas then
+					return p
+				end
+			end
+		end
+	end
+	for _, p in ipairs(targets) do
+		if not self:isFriend(p) and not p:isKongcheng() then
+			local list = shadow_fact(self, "y_fanjin_property"):split("+")
+			if #list > 0 then
+				local allhas = true
+				for _, l in pairs(list) do
+					local handcards = sgs.QList2Table(shadow_hand(self, p))
+					local has = false
+					for _, c in ipairs(handcards) do
+						if c:getEffectiveId() == tonumber(l) then
+							has = true
+						end
+						if not has then
+							allhas = false
+						end
+					end
+				end
+				if not allhas then
+					return p
+				end
+			end
+		end
+	end
+	for _, p in ipairs(targets) do
+		if self:isFriend(p) and not p:isKongcheng() then
+			local list = shadow_fact(self, "y_fanjin_property"):split("+")
+			if #list > 0 then
+				local allhas = true
+				for _, l in pairs(list) do
+					local handcards = sgs.QList2Table(shadow_hand(self, p))
+					local has = false
+					for _, c in ipairs(handcards) do
+						if c:getEffectiveId() == tonumber(l) then
+							has = true
+						end
+						if not has then
+							allhas = false
+						end
+					end
+				end
+				if not allhas then
+					return p
+				end
+			end
+		end
+	end
+	return targets[1]
 end
-sgs.ai_skill_cardchosen.y_fanjin = function()
-    ai_unsupported("y_fanjin property list is not projected", "y_fanjin")
+sgs.ai_skill_cardchosen.y_fanjin = function(self, who, flags)
+	local handcards = sgs.QList2Table(shadow_hand(self, who))
+	local list = shadow_fact(self, "y_fanjin_property"):split("+")
+	if #list > 0 then
+		for _, l in pairs(list) do
+			for _, c in ipairs(handcards) do
+				if c:getEffectiveId() == tonumber(l) then
+					return c:getEffectiveId()
+				end
+			end
+		end
+	end
+	return nil
 end
 
 ai_skill_use["@@y_xianzhou"] = function(self)
@@ -1209,4 +1448,24 @@ sgs.ai_skill_invoke.y_huiyu = function(self, data)
         if self:isEnemy(target) and ok and good then return true end
     end
     return false
+end
+
+-- Same accepted Huaiju chain: the mark identifies an already discarded face.
+sgs.ai_skill_playerchosen.y_huaiju = function(self, targets)
+	self:sort(self.friends_noself, "defense")
+	local card = shadow_card(self, "y_huaiju_card")
+	local cards = { card }
+	local h,friend = self:getCardNeedPlayer(cards, false)
+	if h and friend then
+		return friend
+	end
+	for _, fr in ipairs(self.friends_noself) do
+		if self:canDraw(fr, self.player) then
+			return fr
+		end
+	end
+	for _, fr in ipairs(self.friends_noself) do
+		return fr
+	end
+	return targets:first()
 end

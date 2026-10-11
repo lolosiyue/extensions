@@ -94,103 +94,78 @@ local function not_jilei(self, card, key)
     return not banned
 end
 
--- 原版用新 table 比較 playerschosen 結果，空表也會選拼點。這裡保留那個結果：
--- 至少兩名能拼點就選 pindian，不再要求選出的目標非空。
-local function huoqi_choice(self, key)
-    if known(self:isWeak(), key) then return "recover" end
-    local players = self.room:getAlivePlayers()
-    if not players then ai_unsupported(key .. " roster is unknown", key) end
-    local ready = 0
-    for _, player in ipairs(players) do
-        local can = self:canPindian(player)
-        if can == nil then ai_unsupported(key .. " pindian legality is unknown", key) end
-        if can then ready = ready + 1 end
-    end
-    if ready >= 2 then return "pindian" end
-    return "cancel"
-end
-
-local function huoqi_targets(self, options, key)
-    local players = offered_players(self, options, key)
-    local ordered = known(self:sort(players, "hp"), key, key .. " hp order is unknown")
-    local names = {}
-    local function take(want_friend)
-        for _, left in ipairs(ordered) do
-            for _, right in ipairs(ordered) do
-                if #names >= 2 then return end
-                local right_is_friend = want_friend and relation_friend(self, right, key)
-                local right_is_enemy = not want_friend and relation_enemy(self, right, key)
-                if left:objectName() ~= right:objectName() and relation_enemy(self, left, key)
-                    and (right_is_friend or right_is_enemy) then
-                    local can = self:canPindian(left, right)
-                    if can == nil then ai_unsupported(key .. " pindian pair is unknown", key) end
-                    local seen = false
-                    for _, name in ipairs(names) do if name == right:objectName() then seen = true end end
-                    if can and not seen then names[#names + 1] = right:objectName() end
-                end
-            end
-        end
-    end
-    take(false)
-    -- 界火氣：兩個敵人都湊不齊時，保留已選的敵人，再補一名友方。
-    if key == "kejiexianhuoqi" and #names < 2 then take(true) end
-    if #names < 2 then return {kind = "pass"} end
-    return names
-end
-
 ai_skill_invoke.xianchangetupo = function()
     return false
 end
 
-ai_skill_choice.kexianhuoqi = function(self, options)
-    local _, offered = choice_items(options, "kexianhuoqi")
-    local choice = huoqi_choice(self, "kexianhuoqi")
-    if offered[choice] then return choice end
-    ai_unsupported("kexianhuoqi choice was not offered", "kexianhuoqi")
+-- Original callbacks, including the otherwise redundant playerschosen call:
+-- it performs sorting and relationship observations before the table comparison.
+rawset(ai_skill_choice, "kexianhuoqi", nil)
+rawset(ai_skill_invoke, "kexianhuoqi", nil)
+rawset(ai_skill_playerschosen, "kexianhuoqi", nil)
+sgs.ai_skill_invoke.kexianhuoqi = function(self, data)
+    return sgs.ai_skill_choice.kexianhuoqi(self, "recover+pindian+cancel", data) ~= "cancel"
 end
-
-ai_skill_invoke.kexianhuoqi = function(self, options)
-    return ai_skill_choice.kexianhuoqi(self, options) ~= "cancel"
+sgs.ai_skill_choice.kexianhuoqi = function(self, choices, data)
+    if known(self:isWeak(), "kexianhuoqi") then return "recover" end
+    local players = AIList.new({})
+    for _, pp in ipairs(known(self.room:getAllPlayers(), "kexianhuoqi.roster")) do
+        -- The common adapter preserves owner exact capabilities and records
+        -- the existing lawful foreign-pair estimate, rather than private rules.
+        if known(self:canPindian(pp), "kexianhuoqi.ready") then players:append(pp) end
+    end
+    if players:length() >= 2 and sgs.ai_skill_playerschosen.kexianhuoqi(self, players, 2, 2) ~= {} then
+        return "pindian"
+    end
+    return "cancel"
 end
-
-ai_skill_playerschosen.kexianhuoqi = function(self, options)
-    return huoqi_targets(self, options, "kexianhuoqi")
-end
-
--- 獲勝者旗標只投影給旗標持有者。棄牌的人通常不是獲勝者，看不到就不假設傷害無效。
-ai_skill_discard.kexianhuoqi = function(self, options)
-    local key = "kexianhuoqi"
-    if type(options) ~= "table" or options.candidates_complete ~= true or not AIValue.isList(options.card_ids) then
-        ai_unsupported(key .. " discard candidates are incomplete", key)
-    end
-    local winner = self.player:hasFlag("kexianhuoqi_winner")
-    if winner == nil then ai_unsupported(key .. " winner flag is unknown", key) end
-    if winner then
-        local effective = self:damageIsEffective(self.player, sgs.DamageStruct_Normal, self.player)
-        local lose = self:needToLoseHp(self.player, self.player)
-        if effective == nil or lose == nil then ai_unsupported(key .. " damage desire is unknown", key) end
-        if not effective or lose then return {kind = "pass"} end
-    end
-    local hand = self.player:getHandcards()
-    if not hand then ai_unsupported(key .. " hand is unknown", key) end
-    local peaches, offered = 0, {}
-    for _, id in ipairs(options.card_ids) do offered[id] = true end
-    for _, card in ipairs(hand) do
-        if isCard("Peach", card, self.player) then peaches = peaches + 1 end
-    end
-    local overflow = known(self:getOverflow(), key)
-    if peaches >= 2 and overflow <= 0 then return {kind = "pass"} end
-    local sorted = known(self:sortByKeepValue(hand), key, key .. " keep order is unknown")
-    local ids = {}
-    for _, card in ipairs(sorted) do
-        if #ids >= 2 then break end
-        local id = card:getEffectiveId()
-        if offered[id] and not isCard("Peach", card, self.player) and not_jilei(self, card, key) then
-            ids[#ids + 1] = id
+sgs.ai_skill_playerschosen.kexianhuoqi = function(self, players, x, n)
+    local destlist = sgs.QList2Table(players)
+    self:sort(destlist, "hp")
+    local tos = {}
+    for _, a in ipairs(destlist) do
+        for _, b in ipairs(destlist) do
+            if #tos >= x then break end
+            if known(self:isEnemy(a), "kexianhuoqi.relation")
+                and known(self:isEnemy(b), "kexianhuoqi.relation")
+                and not table.contains(tos, b)
+                and known(self:canPindian(a, b), "kexianhuoqi.pair")
+                and b:objectName() ~= a:objectName() then
+                table.insert(tos, b)
+            end
         end
     end
-    if #ids < 2 then return {kind = "pass"} end
-    return ids
+    return tos
+end
+
+-- Disclosed winner flags are exact; an unobserved foreign flag uses the
+-- common explicit inactive prior, never a private winner-flag native query.
+sgs.ai_skill_discard.kexianhuoqi = function(self, discard_num, min_num, optional, include_equip)
+    local key, winner = "kexianhuoqi"
+    for _, player in ipairs(known(self.room:getAlivePlayers(), key)) do
+        if known(player:getStrategyFlag("kexianhuoqi_winner"), key) then winner = player; break end
+    end
+    if winner and (not known(self:damageIsEffective(self.player, sgs.DamageStruct_Normal, winner), key)
+        or known(self:needToLoseHp(self.player, winner), key)) then return {} end
+    if winner and known(self:needToLoseHp(self.player, winner), key) then return {} end
+    local result, cards, peaches = {}, sgs.QList2Table(known(self.player:getHandcards(), key)), 0
+    for _, card in ipairs(cards) do
+        if isCard("Peach", card, self.player) then peaches = peaches + 1 end
+    end
+    if peaches >= 2 and known(self:getOverflow(), key) <= 0 then return {} end
+    local sorted = self:sortByKeepValue(cards)
+    if AIUnsupported.is(sorted) then error(sorted, 0) end
+    -- Source sort is in-place; preserve its reverse/backwards-removal traversal.
+    cards = sgs.reverse(cards)
+    for i = #cards, 1, -1 do
+        local card = cards[i]
+        if not isCard("Peach", card, self.player) and not known(self.player:isJilei(card), key) then
+            result[#result + 1] = card:getEffectiveId()
+            table.remove(cards, i)
+            if #result == 2 then break end
+        end
+    end
+    if #result < 2 then return {} else return result end
 end
 
 local function pindian_numbers(self, key)
@@ -208,252 +183,267 @@ local function pindian_numbers(self, key)
     return from, to, pindian.from_number, pindian.to_number
 end
 
-local function tianbian_answer(self, key, card_ok)
-    local from, to, from_number, to_number = pindian_numbers(self, key)
-    local hand = self.player:getHandcards()
-    if not hand then ai_unsupported(key .. " hand is unknown", key) end
-    local sorted = known(self:sortByKeepValue(hand), key, key .. " keep order is unknown")
-    local function pick(predicate, target)
-        for _, card in ipairs(sorted) do
-            local number = card:getNumber()
-            if type(number) ~= "number" then ai_unsupported(key .. " card number is unknown", key) end
-            if not isCard("Peach", card, self.player) and predicate(number) then
-                return {kind = "use_card", cards = {card:getEffectiveId()}, targets = {target:objectName()}}
-            end
-        end
-    end
-    local friend_to = relation_friend(self, to, key) and relation_enemy(self, from, key)
-    local friend_from = relation_friend(self, from, key) and relation_enemy(self, to, key)
-    if friend_to and to_number < from_number then
-        return pick(function(number) return number >= from_number end, to)
-            or pick(function(number) return number < to_number end, from)
-            or {kind = "pass"}
-    end
-    if friend_from and to_number >= from_number then
-        return pick(function(number) return number > to_number end, from)
-            or pick(function(number) return number < from_number end, to)
-            or {kind = "pass"}
-    end
-    if card_ok and card_ok(from, to, from_number, to_number) then
-        if to_number >= from_number then
-            return pick(function(number) return number > to_number end, from)
-                or pick(function(number) return number < from_number end, to)
-                or {kind = "pass"}
-        end
-        return pick(function(number) return number >= from_number end, to)
-            or pick(function(number) return number < to_number end, from)
-            or {kind = "pass"}
-    end
-    return {kind = "pass"}
-end
-
-ai_skill_use["@kexiantianbian"] = function(self)
-    return tianbian_answer(self, "kexiantianbian")
-end
-
 ai_skill_invoke.kexianyuli = function()
     return true
 end
 
-ai_skill_choice.kejiexianhuoqi = function(self, options)
-    local _, offered = choice_items(options, "kejiexianhuoqi")
-    local choice = huoqi_choice(self, "kejiexianhuoqi")
-    if offered[choice] then return choice end
-    ai_unsupported("kejiexianhuoqi choice was not offered", "kejiexianhuoqi")
+-- Full fixed source166-218; preserve callback evaluation and partial target order.
+rawset(ai_skill_invoke, "kejiexianhuoqi", nil)
+sgs.ai_skill_invoke.kejiexianhuoqi = function(self, data)
+	return sgs.ai_skill_choice.kejiexianhuoqi(self, "recover+pindian+cancel") ~= "cancel"
+end
+rawset(ai_skill_choice, "kejiexianhuoqi", nil)
+sgs.ai_skill_choice.kejiexianhuoqi = function(self, choices, data)
+	if known(self:isWeak(), "kejiexianhuoqi.weak") then return "recover" end
+	local players = AIList.new({})
+	for _, pp in ipairs(known(self.room:getAllPlayers(), "kejiexianhuoqi.roster")) do
+		if known(self:canPindian(pp), "kejiexianhuoqi.ready") then
+			players:append(pp)
+		end
+	end
+	if players:length() >= 2 and sgs.ai_skill_playerschosen.kejiexianhuoqi(self, players, 2, 2) ~= {} then
+		return "pindian"
+	end
+	return "cancel"
+end
+rawset(ai_skill_playerschosen, "kejiexianhuoqi", nil)
+sgs.ai_skill_playerschosen.kejiexianhuoqi = function(self, players, x, n)
+	local destlist = sgs.QList2Table(players)
+	self:sort(destlist, "hp")
+	local tos = {}
+	for _, a in ipairs(destlist) do
+		for _, b in ipairs(destlist) do
+			if #tos >= x then break end
+			if known(self:isEnemy(a), "kejiexianhuoqi.relation") and known(self:isEnemy(b), "kejiexianhuoqi.relation") and not table.contains(tos, b) and known(self:canPindian(a,b), "kejiexianhuoqi.pair") and b:objectName() ~= a:objectName() then
+				table.insert(tos, b)
+			end
+		end
+	end
+	if #tos < 2 then
+		for _, a in ipairs(destlist) do
+			for _, b in ipairs(destlist) do
+				if #tos >= x then break end
+				if known(self:isEnemy(a), "kejiexianhuoqi.relation") and known(self:isFriend(b), "kejiexianhuoqi.relation") and not table.contains(tos, b) and known(self:canPindian(a,b), "kejiexianhuoqi.pair") and b:objectName() ~= a:objectName() then
+					table.insert(tos, b)
+				end
+			end
+		end
+	end
+	if #tos < 2 then return {} end
+	return tos
 end
 
-ai_skill_invoke.kejiexianhuoqi = function(self, options)
-    return ai_skill_choice.kejiexianhuoqi(self, options) ~= "cancel"
+rawset(ai_skill_choice,"jienhlxloser",nil)
+sgs.ai_skill_choice.jienhlxloser = function(self, choices, data)
+	local pindian = data:toPindian()
+	if pindian.to and pindian.from then
+		if self:isFriend(pindian.to) and self:needToLoseHp(pindian.to, pindian.from, nil) then
+			return "damage"
+		elseif self:isEnemy(pindian.to) and not self:needToLoseHp(pindian.to, pindian.from, nil) then
+			return "damage"
+		end
+	end
+	return "qipai"
 end
 
-ai_skill_playerschosen.kejiexianhuoqi = function(self, options)
-    return huoqi_targets(self, options, "kejiexianhuoqi")
+
+local function chanxin_slash_available(self)
+    local context=self:getDecisionContext()
+    local row=context and context.round22_choice
+    local value
+    if type(row)=="table" then value=row.chanxin_slash_available end
+    if type(value)~="boolean" then ai_unsupported("source static Slash availability is not projected","kexianchanxin") end
+    return value
+end
+rawset(ai_skill_activate,"kexianchanxin",nil)
+sgs.ai_fill_skill.kexianchanxin = function(self,inclusive,request)
+	if (self.player:hasUsed("#kexianchanxinCard"))
+		or (chanxin_slash_available(self)) then
+		return
+	end
+	local card_id
+	local cards = self.player:getHandcards()
+	cards = sgs.QList2Table(cards)
+	self:sortByKeepValue(cards)
+	local to_throw = AIList.new({})
+	for _, acard in ipairs(cards) do
+		if acard:isKindOf("Slash") then
+			to_throw:append(acard:getEffectiveId())
+		end
+	end
+	card_id = to_throw:at(0) --(to_throw:length()-1)
+	if not card_id then
+		return nil
+	else
+		return self:evaluateTurnSkillCard("kexianchanxin","#kexianchanxinCard",{card_id},request)
+	end
 end
 
-ai_skill_choice.jienhlxloser = function(self, options)
-    local _, offered = choice_items(options, "jienhlxloser")
-    local context = self:getDecisionContext()
-    local pindian = type(context) == "table" and context.pindian or nil
-    if type(pindian) ~= "table" or not pindian.to or not pindian.from then
-        ai_unsupported("jienhlxloser pindian is not projected", "jienhlxloser")
-    end
-    local target = pindian.to
-    if type(target) == "string" then target = self.room:findPlayerByObjectName(target, true) end
-    local source = pindian.from
-    if type(source) == "string" then source = self.room:findPlayerByObjectName(source, true) end
-    if not target or not source then ai_unsupported("jienhlxloser players are missing", "jienhlxloser") end
-    local friend = relation_friend(self, target, "jienhlxloser")
-    local enemy = relation_enemy(self, target, "jienhlxloser")
-    local lose = known(self:needToLoseHp(target, source, nil), "jienhlxloser")
-    local choice
-    if friend and lose then choice = "damage"
-    elseif enemy and not lose then choice = "damage"
-    else choice = "qipai" end
-    if offered[choice] then return choice end
-    ai_unsupported("jienhlxloser choice was not offered", "jienhlxloser")
+sgs.ai_skill_use_func["#kexianchanxinCard"] = function(card, use, self)
+	if not (self.player:hasUsed("#kexianchanxinCard")) then
+		use.card = card
+		return
+	end
 end
 
-ai_skill_use["@kejiexiantianbian"] = function(self)
-    return tianbian_answer(self, "kejiexiantianbian", function()
-        return math.random() < 0.5
-    end)
-end
-
-ai_skill_activate.kexianchanxin = function(self)
-    local key = "kexianchanxin"
-    local hand = self.player:getHandcards()
-    if not hand then ai_unsupported(key .. " hand is unknown", key) end
-    local slashes = AIList.new({})
-    for _, card in ipairs(hand) do
-        if card:isKindOf("Slash") then slashes:append(card) end
-    end
-    if #slashes == 0 then return nil end
-    local sorted = known(self:sortByKeepValue(slashes), key, key .. " keep order is unknown")
-    for _, card in ipairs(sorted) do
-        local _, status = self:tryUseCard(card)
-        if status == "unsupported" then ai_unsupported(key .. " slash plan is unknown", key) end
-        -- 這張殺本身打得出去就留著；打不出去才拿來付禪心。
-        if status ~= "planned" then
-            return skill_use(self, key, {card:getEffectiveId()})
-        end
-    end
-    return nil
-end
-
-sgs.ai_cardneed.kexianchanxin = function(to, _, self)
-    if not self or self.player:objectName() ~= to:objectName() then return false end
-    local action = self:getSkillAction("kexianchanxin")
-    return action ~= nil and action:isValid()
+function sgs.ai_cardneed.kexianchanxin(to, card, self)
+	if (self.player:hasUsed("#kexianchanxinCard")) then return false end
+	return true
 end
 
 ai_skill_invoke.xianhuiyanfadong = function()
     return true
 end
 
-local function retrial_or_best(self, options, key, tag_name)
-    if type(options) ~= "table" or options.candidates_complete ~= true or not AIValue.isList(options.card_ids) then
-        ai_unsupported(key .. " cards are incomplete", key)
-    end
-    local cards = AIList.new({})
-    for _, id in ipairs(options.card_ids) do
-        local card = self:getChoiceCard(id, options)
-        if not card then ai_unsupported(key .. " card metadata is missing", key) end
-        cards:append(card)
-    end
-    local context = self:getDecisionContext()
-    local judge = type(context) == "table" and context.judge or nil
-    if type(judge) == "table" then
-        local id = self:getRetrialCardId(cards, judge)
-        if type(id) == "number" and id >= 0 then return id end
-    elseif tag_name then
-        ai_unsupported(key .. " judge is not projected", key)
-    end
-    local sorted = known(self:sortByUseValue(cards, true), key, key .. " use order is unknown")
-    return sorted[1]:getEffectiveId()
-end
-
-ai_skill_askforag.kexianhuiyan = function(self, options)
-    return retrial_or_best(self, options, "kexianhuiyan", true)
-end
-
 ai_skill_invoke.kejiexianhuiyan = function()
     return true
 end
 
-ai_skill_askforag.kejiexianhuiyan = function(self, options)
-    return retrial_or_best(self, options, "kejiexianhuiyan", true)
-end
 
-local function guiyi_target(self, options, key)
-    local targets = offered_players(self, options, key)
-    local max_card = self:getMaxCard()
-    if not max_card then return decline_player(options) end
-    local point = max_card:getNumber()
-    if type(point) ~= "number" then ai_unsupported(key .. " point is unknown", key) end
-    if self.player:hasSkill("tianbian") and max_card:getSuit() == sgs.Card_Heart then point = 13 end
-    local ordered = known(self:sort(targets, "handcard"), key, key .. " hand order is unknown")
-    if point >= 7 then
-        for _, player in ipairs(ordered) do
-            if relation_enemy(self, player, key) then
-                local can = self:canPindian(self.player, player)
-                if can == nil then ai_unsupported(key .. " pindian legality is unknown", key) end
-                if can then
-                    local theirs = self:getMaxCard(player)
-                    if theirs then
-                        local number = theirs:getNumber()
-                        if type(number) ~= "number" then ai_unsupported(key .. " enemy point is unknown", key) end
-                        if player:hasSkill("tianbian") and theirs:getSuit() == sgs.Card_Heart then number = 13 end
-                        if number < point then return player:objectName() end
-                    end
-                end
+
+rawset(ai_skill_invoke,"kexianguiyi",nil)
+rawset(ai_skill_playerchosen,"kexianguiyi",nil)
+sgs.ai_skill_invoke.kexianguiyi = function(self, data)
+	local players = AIList.new({})
+	for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+		if known(self:canPindian(self.player,p),"kexianguiyi.canPindian") then
+			players:append(p)
+		end
+	end
+	return sgs.ai_skill_playerchosen.kexianguiyi(self, players) ~= nil
+end
+sgs.ai_skill_playerchosen.kexianguiyi = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	local max_card = self:getMaxCard()
+	if not max_card then return nil end
+	local point = max_card:getNumber()
+	if self.player:hasSkill("tianbian") and max_card:getSuit() == sgs.Card_Heart then point = 13 end
+	if point >= 7 then
+		self:sort(targets, "handcard")
+		for _, p in ipairs(targets) do
+			if self:isEnemy(p) and known(self:canPindian(self.player,p),"kexianguiyi.canPindian") then
+			local maxcard = self:getMaxCard(p)
+			if maxcard then
+				local number = maxcard:getNumber()
+				if p:hasSkill("tianbian") and maxcard:getSuit() == sgs.Card_Heart then number = 13 end
+				if number < point then
+					return p
+				end
+			end
             end
-        end
-    end
-    if point >= 10 then
-        for _, player in ipairs(ordered) do
-            if relation_enemy(self, player, key) and known(self:canPindian(self.player, player), key) then
-                return player:objectName()
+		end
+	end
+	if point >= 10 then
+		self:sort(targets, "handcard")
+		for _, p in ipairs(targets) do
+			if self:isEnemy(p) and known(self:canPindian(self.player,p),"kexianguiyi.canPindian") then
+			return p
             end
-        end
-    end
-    return decline_player(options)
+		end
+	end
+	return nil
+end
+local function chanxin_wansha(self)
+    local facts=self.world.strategy_facts
+    local value
+    if type(facts)=="table" and type(facts.standard)=="table" then value=facts.standard.jilve_wansha end
+    if type(value)~="boolean" then ai_unsupported("owner JilveWansha is unknown","kejiexianchanxin") end
+    return value
+end
+rawset(ai_skill_activate,"kejiexianchanxin",nil)
+sgs.ai_fill_skill.kejiexianchanxin=function(self,inclusive,request)
+    return self:evaluateTurnSkillCard("kejiexianchanxin","#kejiexianchanxinCard",{},request)
+end
+sgs.ai_skill_use_func["#kejiexianchanxinCard"] = function(card, use, self)
+	local unpreferedCards = {}
+	local cards = sgs.QList2Table(self.player:getHandcards())
+
+	if self.player:getHp() < 3 then
+		local use_slash, keep_weapon = false, nil
+		local keep_slash = chanxin_wansha(self)
+		for _, zcard in sgs.list(self.player:getCards("he")) do
+			if zcard:isDamageCard() or zcard:isKindOf("Weapon")
+			then
+				local shouldUse = true
+				if isCard("Slash", zcard, self.player)
+					and not use_slash
+				then
+					local dummy_use = self:aiUseCard(zcard)
+					if dummy_use.card then
+						if keep_slash then shouldUse = false end
+						if dummy_use.to then
+							for _, p in sgs.list(dummy_use.to) do
+								if p:getHp() <= 1 then
+									shouldUse = false
+									if self.player:distanceTo(p) > 1 then keep_weapon = self.player:getWeapon() end
+									break
+								end
+							end
+							if dummy_use.to:length() > 1 then shouldUse = false end
+						end
+						if not self:isWeak() then shouldUse = false end
+						if not shouldUse then use_slash = true end
+					end
+				end
+				if zcard:getTypeId() == sgs.Card_TypeTrick then
+					if self:aiUseCard(zcard).card then shouldUse = false end
+				end
+				if zcard:getTypeId() == sgs.Card_TypeEquip and not self.player:hasEquip(zcard) then
+					if self:aiUseCard(zcard).card then shouldUse = false end
+					if keep_weapon and zcard:getEffectiveId() == keep_weapon:getEffectiveId() then shouldUse = false end
+				end
+				if shouldUse then table.insert(unpreferedCards, zcard:getId()) end
+			end
+		end
+	end
+
+	if #unpreferedCards < 1 then
+		local use_slash_num = 0
+		self:sortByKeepValue(cards)
+		for _, card in ipairs(cards) do
+			if card:isKindOf("Slash") then
+				local will_use = false
+				if use_slash_num <= known(card:getTargetModResidue(self.player),"kejiexianchanxin.residue")
+				then
+					if self:aiUseCard(card).card then
+						will_use = true
+						use_slash_num = use_slash_num + 1
+					end
+				end
+				if not will_use then table.insert(unpreferedCards, card:getId()) end
+			end
+		end
+
+		for _, card in ipairs(cards) do
+			if card:isKindOf("Weapon") and self.player:getHandcardNum() < 3
+			then
+				table.insert(unpreferedCards, card:getId())
+			elseif card:getTypeId() == sgs.Card_TypeTrick and card:isDamageCard() then
+				if not self:aiUseCard(card).card then table.insert(unpreferedCards, card:getId()) end
+			end
+		end
+
+		if self.player:getWeapon() and self.player:getHandcardNum() < 3 then
+			table.insert(unpreferedCards, self.player:getWeapon():getId())
+		end
+	end
+
+	local use_cards = {}
+	for i = #unpreferedCards, 1, -1 do
+		if not self.player:isJilei(known(self:getKnownCardById(unpreferedCards[i]),"kejiexianchanxin.material")) then
+			table.insert(use_cards,
+				unpreferedCards[i])
+		end
+	end
+
+	if #use_cards > 0 then
+		use.card = self:evaluateTurnSkillCard("kejiexianchanxin","#kejiexianchanxinCard",use_cards)
+	end
 end
 
-ai_skill_playerchosen.kexianguiyi = function(self, options)
-    return guiyi_target(self, options, "kexianguiyi")
-end
-
-ai_skill_invoke.kexianguiyi = function(self, options)
-    local names = type(options) == "table" and options.players or nil
-    if type(names) ~= "table" then
-        local others = self.room:getOtherPlayers(self.player)
-        if not others then ai_unsupported("kexianguiyi roster is unknown", "kexianguiyi") end
-        names = {}
-        for _, player in ipairs(others) do
-            local can = self:canPindian(self.player, player)
-            if can == nil then ai_unsupported("kexianguiyi pindian legality is unknown", "kexianguiyi") end
-            if can then names[#names + 1] = player:objectName() end
-        end
-    end
-    local picked = guiyi_target(self, {players = names, candidates_complete = true, optional = true}, "kexianguiyi")
-    return type(picked) == "string"
-end
-
-ai_skill_activate.kejiexianchanxin = function(self)
-    local key = "kejiexianchanxin"
-    local cards = self.player:getCards("he")
-    if not cards then ai_unsupported(key .. " cards are unknown", key) end
-    local hp = known(self.player:getHp(), key)
-    local picked = {}
-    local function consider(card)
-        if not (card:isDamageCard() or card:isKindOf("Weapon")) then return end
-        if not not_jilei(self, card, key) then return end
-        local _, status = self:tryUseCard(card)
-        if status == "unsupported" then ai_unsupported(key .. " card plan is unknown", key) end
-        if status ~= "planned" then picked[#picked + 1] = card:getEffectiveId() end
-    end
-    if hp < 3 then
-        for _, card in ipairs(cards) do consider(card) end
-    end
-    if #picked == 0 then
-        local hand = known(self:sortByKeepValue(self.player:getHandcards() or cards), key)
-        local slash_used = false
-        for _, card in ipairs(hand) do
-            if card:isKindOf("Slash") then
-                local _, status = self:tryUseCard(card)
-                if status == "unsupported" then ai_unsupported(key .. " slash plan is unknown", key) end
-                if status == "planned" and not slash_used then slash_used = true
-                elseif not_jilei(self, card, key) then picked[#picked + 1] = card:getEffectiveId() end
-            elseif card:isKindOf("Weapon") and known(self.player:getHandcardNum(), key) < 3 then
-                if not_jilei(self, card, key) then picked[#picked + 1] = card:getEffectiveId() end
-            elseif card:getTypeId() == sgs.Card_TypeTrick and card:isDamageCard() then
-                consider(card)
-            end
-        end
-    end
-    if #picked == 0 then return nil end
-    return skill_use(self, key, picked)
-end
+sgs.ai_use_value["#kejiexianchanxinCard"]=9
+sgs.ai_use_priority["#kejiexianchanxinCard"]=2.61
+sgs.dynamic_value.benefit["#kejiexianchanxinCard"]=true
 
 sgs.ai_cardneed.kejiexianchanxin = function(_, card)
     return card:isKindOf("Weapon") or card:isDamageCard()
@@ -476,74 +466,129 @@ local function discard_enemy(self, key, flags)
     return nil
 end
 
-ai_skill_playerchosen.kejiexianchanxinCard = function(self, options)
-    return discard_enemy(self, "kejiexianchanxin") or decline_player(options)
+rawset(ai_skill_playerchosen,"kejiexianchanxinCard",nil)
+sgs.ai_skill_playerchosen.kejiexianchanxinCard = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	self:sort(targets, "defense")
+	for _, enemy in ipairs(self.enemies) do
+		if (self:doDisCard(enemy, "he") or self:getDangerousCard(enemy) or self:getValuableCard(enemy)) and not enemy:isNude() then
+			return enemy
+		end
+	end
+	for _, enemy in ipairs(self.enemies) do
+		if (self:doDisCard(enemy, "he") or self:getDangerousCard(enemy) or self:getValuableCard(enemy)) and not enemy:isNude() then
+			return enemy
+		end
+	end
+	return nil
 end
 
-ai_skill_invoke.kejiexianguiyi = function(self)
-    local target = self:getDecisionContext().player
-    if not target then ai_unsupported("kejiexianguiyi target is not projected", "kejiexianguiyi") end
-    if relation_friend(self, target, "kejiexianguiyi") then return false end
-    return true
+
+
+rawset(ai_skill_invoke,"kejiexianguiyi",nil)
+rawset(ai_skill_choice,"kejiexianguiyi",nil)
+sgs.ai_skill_invoke.kejiexianguiyi = function(self, data)
+	local target = data:toPlayer()
+	if target and self:isFriend(target) then return false end
+	return true
 end
 
-ai_skill_choice.kejiexianguiyi = function(self, options)
-    local _, offered = choice_items(options, "kejiexianguiyi")
-    local target = self:getDecisionContext().player
-    if not target then ai_unsupported("kejiexianguiyi target is not projected", "kejiexianguiyi") end
-    if relation_friend(self, target, "kejiexianguiyi") then
-        if offered.have then return "have" end
-        ai_unsupported("kejiexianguiyi have was not offered", "kejiexianguiyi")
-    end
-    local cards = target:getKnownCards()
-    if not cards then ai_unsupported("kejiexianguiyi known cards are missing", "kejiexianguiyi") end
-    for _, card in ipairs(cards) do
-        if card:isDamageCard() and offered.have then return "have" end
-    end
-    if offered.nothave then return "nothave" end
-    ai_unsupported("kejiexianguiyi nothave was not offered", "kejiexianguiyi")
+sgs.ai_skill_choice.kejiexianguiyi = function(self, choices, data)
+	local target = data:toPlayer()
+	if target and self:isFriend(target) then return "have" end
+	local flag = string.format("%s_%s_%s", "visible", self.player:objectName(), target:objectName())
+	for _, card in sgs.qlist(known(target:getKnownCards(),"kejiexianguiyi.known_hand")) do
+		if known(card:hasFlag("visible"),"kejiexianguiyi.visibility") or known(card:hasFlag(flag),"kejiexianguiyi.visibility") then
+			if card:isDamageCard() then
+				return "have"
+			end
+		end
+	end
+	return "nothave"
 end
+
+
+
+
 
 ai_skill_invoke.kexianlunhui = function()
     return true
 end
 
-local function fenshen_activate(self, key, mark, limit_mark, limit)
-    if known(self.player:getMark(mark), key) <= 0 then return nil end
-    if limit_mark and known(self.player:getMark(limit_mark), key) >= limit then return nil end
-    local hand = self.player:getHandcards()
-    if not hand or #hand == 0 then return nil end
-    local sorted = known(self:sortByKeepValue(hand), key, key .. " keep order is unknown")
-    for _, card in ipairs(sorted) do
-        if not_jilei(self, card, key) then
-            return skill_use(self, key, {card:getEffectiveId()})
-        end
-    end
-    return nil
+rawset(ai_skill_activate,"kexianfenshen",nil)
+sgs.ai_fill_skill.kexianfenshen = function(self,inclusive,request)
+	if (self.player:hasUsed("#kexianfenshenCard")) or (self.player:getMark("&xianzuociji") == 0) then return end
+	local card_id
+	local cards = self.player:getHandcards()
+	cards = sgs.QList2Table(cards)
+	self:sortByKeepValue(cards)
+	local to_throw = AIList.new({})
+	for _, acard in ipairs(cards) do
+		to_throw:append(acard:getEffectiveId())
+	end
+	card_id = to_throw:at(0) --(to_throw:length()-1)
+	if not card_id then
+		return nil
+	else
+		return self:evaluateTurnSkillCard("kexianfenshen","#kexianfenshenCard",{card_id},request)
+	end
 end
 
-ai_skill_activate.kexianfenshen = function(self)
-    return fenshen_activate(self, "kexianfenshen", "&xianzuociji")
+sgs.ai_skill_use_func["#kexianfenshenCard"] = function(card, use, self)
+	if (self.player:getMark("&xianzuociji") > 0) and not (self.player:hasUsed("#kexianfenshenCard")) then
+		use.card = card
+		return
+	end
 end
 
-sgs.ai_cardneed.kexianfenshen = function()
-    return true
+sgs.ai_use_value.kexianfenshenCard = 8.5
+sgs.ai_use_priority.kexianfenshenCard = 9.5
+sgs.ai_card_intention.kexianfenshenCard = -80
+
+-- kexianfeijian category registered once at module entry.
+
+ai_skill_invoke.kejiexianlunhui = function(self, data)
+	return true
 end
 
-ai_skill_invoke.kejiexianlunhui = function()
-    return true
+rawset(ai_skill_activate,"kejiexianfenshen",nil)
+sgs.ai_fill_skill.kejiexianfenshen = function(self,inclusive,request)
+	if (self.player:hasUsed("#kejiexianfenshenCard"))
+		or (self.player:getMark("&kexianfenshen") >= 3)
+		or (self.player:getMark("&jiexianzuociji") == 0) then
+		return
+	end
+	local card_id
+	local cards = self.player:getHandcards()
+	cards = sgs.QList2Table(cards)
+	self:sortByKeepValue(cards)
+	local to_throw = AIList.new({})
+	for _, acard in ipairs(cards) do
+		to_throw:append(acard:getEffectiveId())
+	end
+	card_id = to_throw:at(0) --(to_throw:length()-1)
+	if not card_id then
+		return nil
+	else
+		return self:evaluateTurnSkillCard("kejiexianfenshen","#kejiexianfenshenCard",{card_id},request)
+	end
 end
 
-ai_skill_activate.kejiexianfenshen = function(self)
-    return fenshen_activate(self, "kejiexianfenshen", "&jiexianzuociji", "&kexianfenshen", 3)
+sgs.ai_skill_use_func["#kejiexianfenshenCard"] = function(card, use, self)
+	if (self.player:getMark("&kexianfenshen") < 3) and (self.player:getMark("&jiexianzuociji") > 0) and not (self.player:hasUsed("#kejiexianfenshenCard")) then
+		use.card = card
+		return
+	end
 end
 
-sgs.ai_cardneed.kejiexianfenshen = function(to, _, self)
-    if not self then return nil end
-    if known(self.player:getMark("&kexianfenshen"), "kejiexianfenshen") >= 3 then return false end
-    if known(self.player:getMark("&jiexianzuociji"), "kejiexianfenshen") <= 0 then return false end
-    return true
+function sgs.ai_cardneed.kejiexianfenshen(to, card, self)
+	if (not (self.player:getMark("&kexianfenshen") < 3)) and (self.player:hasUsed("#kejiexianfenshenCard")) or (self.player:getMark("&jiexianzuociji") == 0) then return false end
+	return true
 end
+
+sgs.ai_use_value.kejiexianfenshenCard = 8.5
+sgs.ai_use_priority.kejiexianfenshenCard = 9.5
+sgs.ai_card_intention.kejiexianfenshenCard = -80
 
 ai_skill_invoke.kejiexianfeijian = function()
     return true
@@ -557,52 +602,38 @@ ai_skill_playerchosen.kejiexianfeijian = function(self, options)
     return decline_player(options)
 end
 
-local function mabi_invoke(self, key, marks)
-    local damage = self:getDecisionContext().damage
-    local target = type(damage) == "table" and damage.to or nil
-    if not target or type(damage.damage) ~= "number" then
-        ai_unsupported(key .. " damage is not projected", key)
-    end
-    for _, mark in ipairs(marks) do
-        if known(target:getMark(mark), key) > 0 then return false end
-    end
-    if relation_friend(self, target, key) then
-        local lose = known(self:needToLoseHp(target, self.player, damage.card), key)
-        if lose then return false end
-        local chained = target:isChained()
-        if chained == nil then ai_unsupported(key .. " chain state is unknown", key) end
-        if chained and known(self:isGoodChainTarget(target, damage.card), key) then return false end
-        if known(self:isWeak(target), key) or damage.damage > 1 then return true end
-        local lost = target:getLostHp()
-        if type(lost) ~= "number" then ai_unsupported(key .. " lost hp is unknown", key) end
-        return lost >= 1
-    end
-    if known(self:isWeak(target), key) then return false end
-    local adjusted = known(self:ajustDamage(self.player, target, 1, damage.card), key)
-    if damage.damage > 1 or adjusted > 1 then return false end
-    if target:hasSkill("lirang") then
-        local friends = self:getFriends(target, true)
-        if not friends then ai_unsupported(key .. " friends are unknown", key) end
-        if #friends > 0 then return false end
-    end
-    local armor = target:getArmor()
-    if armor then
-        local value = known(self:evaluateArmor(armor, target), key)
-        local lion = target:hasArmorEffect("silver_lion")
-        local wounded = target:isWounded()
-        if lion == nil or wounded == nil then ai_unsupported(key .. " armor state is unknown", key) end
-        if value > 3 and not (lion and wounded) then return true end
-    end
-    if self.player:hasSkill("tieji") or known(self:canLiegong(target, self.player), key) then return false end
-    local count = target:getCardCount()
-    if type(count) ~= "number" then ai_unsupported(key .. " card count is unknown", key) end
-    return count < 4 and count > 1
+-- Source only asks for he length. This public count equals that native list
+-- length without enumerating foreign hidden hand identities; keep both calls.
+local function mabi_he_count(target)
+    return known(target:getCardCount(),"mabi.he_count")
 end
-
-ai_skill_invoke.kexianmabi = function(self)
-    return mabi_invoke(self, "kexianmabi", {"&kexianmabimopai"})
+rawset(ai_skill_invoke,"kexianmabi",nil)
+sgs.ai_skill_invoke.kexianmabi = function(self, data)
+	local damage = data:toDamage()
+	local target = damage.to
+	if known(target:getStrategyMark("&kexianmabimopai"),"kexianmabi.mark") > 0 then return false end
+	if self:isFriend(target)
+	then
+		if self:needToLoseHp(target, self.player, damage.card) then
+			return false
+		elseif target:isChained() and self:isGoodChainTarget(target, damage.card) then
+			return false
+		elseif self:isWeak(target) or damage.damage > 1 then
+			return true
+		elseif target:getLostHp() < 1 then
+			return false
+		end
+		return true
+	else
+		if self:isWeak(target) then return false end
+		if damage.damage > 1 or self:ajustDamage(self.player, target, 1, damage.card) > 1 then return false end
+		if target:hasSkill("lirang") and #self:getFriends(target, true) > 0 then return false end
+		if target:getArmor() and self:evaluateArmor(target:getArmor(), target) > 3 and not (target:hasArmorEffect("silver_lion") and target:isWounded()) then return true end
+		if self.player:hasSkill("tieji") or self:canLiegong(target, self.player) then return false end
+		if mabi_he_count(target) < 4 and mabi_he_count(target) > 1 then return true end
+		return false
+	end
 end
-
 ai_skill_invoke.kexianxiuzhen = function(self)
     local damage = self:getDecisionContext().damage
     local target = type(damage) == "table" and damage.from or nil
@@ -612,101 +643,110 @@ ai_skill_invoke.kexianxiuzhen = function(self)
     return true
 end
 
-local function damage_hp_hook(self, from, card, to, enemy_only)
-    if not from or not to then return nil end
-    local hp = to:getHp()
-    local rescue = self:getAllPeachNum()
-    local damage = self:ajustDamage(from, to, 1, card)
-    local lose = self:canLoseHp(from, card, to)
-    if type(hp) ~= "number" or type(rescue) ~= "number" or type(damage) ~= "number" or lose == nil then
-        return nil
-    end
-    if hp + rescue - damage > 0 and lose then
-        if enemy_only then return self:isEnemy(from) end
-        return true
-    end
-    return false
-end
-
 sgs.ai_can_damagehp.kexianxiuzhen = function(self, from, card, to)
-    return damage_hp_hook(self, from, card, to, true)
+	if from and to:getHp() + self:getAllPeachNum() - self:ajustDamage(from, to, 1, card) > 0
+		and self:canLoseHp(from, card, to)
+	then
+		return self:isEnemy(from)
+	end
 end
 
-ai_skill_invoke.kejiexianmabi = function(self)
-    return mabi_invoke(self, "kejiexianmabi", {"&kejiexianmabimp", "&kejiexianmabicp"})
+rawset(ai_skill_invoke,"kejiexianmabi",nil)
+sgs.ai_skill_invoke.kejiexianmabi = function(self, data)
+	local damage = data:toDamage()
+	local target = damage.to
+	if known(target:getStrategyMark("&kejiexianmabimp"),"kejiexianmabi.mark") > 0 then return false end
+	if known(target:getStrategyMark("&kejiexianmabicp"),"kejiexianmabi.mark") > 0 then return false end
+	if self:isFriend(target)
+	then
+		if self:needToLoseHp(target, self.player, damage.card) then
+			return false
+		elseif target:isChained() and self:isGoodChainTarget(target, damage.card) then
+			return false
+		elseif self:isWeak(target) or damage.damage > 1 then
+			return true
+		elseif target:getLostHp() < 1 then
+			return false
+		end
+		return true
+	else
+		if self:isWeak(target) then return false end
+		if damage.damage > 1 or self:ajustDamage(self.player, target, 1, damage.card) > 1 then return false end
+		if target:hasSkill("lirang") and #self:getFriends(target, true) > 0 then return false end
+		if target:getArmor() and self:evaluateArmor(target:getArmor(), target) > 3 and not (target:hasArmorEffect("silver_lion") and target:isWounded()) then return true end
+		if self.player:hasSkill("tieji") or self:canLiegong(target, self.player) then return false end
+		if mabi_he_count(target) < 4 and mabi_he_count(target) > 1 then return true end
+		return false
+	end
 end
 
 ai_skill_invoke.kejiexianxiuzhenpd = function()
     return true
 end
 
-ai_skill_playerchosen.kejiexianxiuzhen = function(self, options)
-    local key = "kejiexianxiuzhen"
-    known(self:updatePlayers(), key, key .. " relations are unknown")
-    local enemies = self:getEnemies(self.player)
-    if not enemies then ai_unsupported(key .. " enemies are unknown", key) end
-    local offered = {}
-    for _, name in ipairs(offered_players(self, options, key) and options.players or {}) do
-        offered[name] = true
-    end
-    local function score(enemy)
-        if not offered[enemy:objectName()] then return nil end
-        local effective = known(self:damageIsEffective(enemy, sgs.DamageStruct_Thunder, self.player), key)
-        if not effective then return 99 end
-        local hurt = known(self:cantbeHurt(enemy, self.player, 1), key)
-        local objective = known(self:objectiveLevel(enemy), key)
-        local chained = enemy:isChained()
-        if chained == nil then ai_unsupported(key .. " chain state is unknown", key) end
-        local good = false
-        if chained then
-            good = self:isGoodChainTarget(enemy, sgs.DamageStruct_Thunder, self.player, 1)
-            if good == nil then ai_unsupported(key .. " chain value is unknown", key) end
-        end
-        if hurt or objective < 3 or (chained and not good) then return 100 end
-        local value = 0
-        if enemy:hasSkills(sgs.exclusive_skill) then value = value + 10 end
-        if enemy:hasSkills(sgs.masochism_skill) then value = value + 5 end
-        local chain_enemies = self:getChainedEnemies(self.player)
-        if not chain_enemies then ai_unsupported(key .. " chained enemies are unknown", key) end
-        if chained and good and #chain_enemies > 1 then value = value - 25 end
-        if enemy:isLord() then value = value - 5 end
-        local hp = known(enemy:getHp(), key)
-        local defense = known(self:getDefenseSlash(enemy), key)
-        return value + hp + defense * 0.01
-    end
-    local best, best_value
-    for _, enemy in ipairs(enemies) do
-        local value = score(enemy)
-        if type(value) == "number" and value > 0 and (not best or value < best_value) then
-            best, best_value = enemy, value
-        end
-    end
-    if best then return best:objectName() end
-    return decline_player(options)
+rawset(ai_skill_playerchosen,"kejiexianxiuzhen",nil)
+sgs.ai_skill_playerchosen.kejiexianxiuzhen = function(self, targets)
+	self:updatePlayers()
+	local function getCmpValue(enemy)
+		local value = 0
+		if not self:damageIsEffective(enemy, sgs.DamageStruct_Thunder, self.player) then return 99 end
+		if self:cantbeHurt(enemy, self.player, 1)
+			or self:objectiveLevel(enemy) < 3
+			or (enemy:isChained() and not self:isGoodChainTarget(enemy, sgs.DamageStruct_Thunder, self.player, 1))
+		then
+			return 100
+		end
+		if enemy:hasSkills(sgs.exclusive_skill) then value = value + 10 end
+		if enemy:hasSkills(sgs.masochism_skill) then value = value + 5 end
+		if enemy:isChained() and self:isGoodChainTarget(enemy, sgs.DamageStruct_Thunder, self.player, 1) and #(self:getChainedEnemies(self.player)) > 1 then
+			value =
+				value - 25
+		end
+		if enemy:isLord() then value = value - 5 end
+		value = value + enemy:getHp() + self:getDefenseSlash(enemy) * 0.01
+		return value
+	end
+	local bcv = {}
+	local enemies = self:getEnemies(self.player)
+	for _, enemy in ipairs(enemies) do
+		bcv[enemy:objectName()] = getCmpValue(enemy)
+	end
+	local function cmp(a, b)
+		return bcv[a:objectName()] < bcv[b:objectName()]
+	end
+	table.sort(enemies, cmp)
+	for _, enemy in ipairs(enemies) do
+		if getCmpValue(enemy) > 0 then return enemy end
+	end
+	return nil
 end
 
-ai_skill_playerchosen.kejiexianxiuzhendis = function(self, options)
-    return discard_enemy(self, "kejiexianxiuzhendis") or decline_player(options)
+rawset(ai_skill_playerchosen,"kejiexianxiuzhendis",nil)
+sgs.ai_skill_playerchosen.kejiexianxiuzhendis = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	self:sort(targets, "defense")
+	for _, enemy in ipairs(self.enemies) do
+		if (self:doDisCard(enemy, "he") or self:getDangerousCard(enemy) or self:getValuableCard(enemy)) and not enemy:isNude() then
+			return enemy
+		end
+	end
 end
 
 sgs.ai_can_damagehp.kejiexianxiuzhen = function(self, from, card, to)
-    return damage_hp_hook(self, from, card, to, false)
+	if from and to:getHp() + self:getAllPeachNum() - self:ajustDamage(from, to, 1, card) > 0
+		and self:canLoseHp(from, card, to)
+	then
+		return true
+	end
 end
 
-ai_skill_choice.kejiexianxiuzhen = function(self, options)
-    local items = choice_items(options, "kejiexianxiuzhen")
-    local lord = self.room:getLord()
-    if lord then
-        local friend = known(self:isFriend(lord), "kejiexianxiuzhen")
-        if friend then
-            local kingdom = lord:getKingdom()
-            for _, item in ipairs(items) do
-                if item == kingdom then return item end
-            end
-        end
-    end
-    return items[math.random(1, #items)]
+rawset(ai_skill_choice,"kejiexianxiuzhen",nil)
+sgs.ai_skill_choice.kejiexianxiuzhen = function(self, choices)
+	if self.room:getLord() and known(self.player:isYourFriend(self.room:getLord()),"kejiexianxiuzhen.public_role_relation") then return self.room:getLord():getKingdom() end
+	choices = choices:split(":")
+	return choices[math.random(1, #choices)]
 end
+
 
 local function give_or_throw(self, options, key)
     local enemy = discard_enemy(self, key)
@@ -726,216 +766,575 @@ local function give_or_throw(self, options, key)
     return decline_player(options)
 end
 
-ai_skill_playerchosen.kexianhanyan = function(self, options)
-    return give_or_throw(self, options, "kexianhanyan")
+rawset(ai_skill_playerchosen,"kexianhanyan",nil)
+sgs.ai_skill_playerchosen.kexianhanyan = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	self:sort(targets, "defense")
+	for _, enemy in ipairs(self.enemies) do
+		if (self:doDisCard(enemy, "he") or self:getDangerousCard(enemy) or self:getValuableCard(enemy)) and not enemy:isNude() then
+			return enemy
+		end
+	end
+	for _, friend in ipairs(self.friends_noself) do
+		if (self:hasSkills(sgs.lose_equip_skill, friend) and not friend:getEquips():isEmpty())
+			or (self:needToThrowArmor(friend) and friend:getArmor()) or self:doDisCard(friend, "he") then
+			return friend
+		end
+	end
 end
+
 
 ai_skill_invoke.kexianxiaocai = function()
     return true
 end
 
-ai_skill_playerchosen.kejiexianliwei = function(self, options)
-    return give_or_throw(self, options, "kejiexianliwei")
+rawset(ai_skill_playerchosen,"kejiexianliwei",nil)
+sgs.ai_skill_playerchosen.kejiexianliwei = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	self:sort(targets, "defense")
+	for _, enemy in ipairs(self.enemies) do
+		if (self:doDisCard(enemy, "he") or self:getDangerousCard(enemy) or self:getValuableCard(enemy)) and not enemy:isNude() then
+			return enemy
+		end
+	end
+	for _, friend in ipairs(self.friends_noself) do
+		if (self:hasSkills(sgs.lose_equip_skill, friend) and not friend:getEquips():isEmpty())
+			or (self:needToThrowArmor(friend) and friend:getArmor()) or self:doDisCard(friend, "he") then
+			return friend
+		end
+	end
+	return nil
 end
 
-ai_skill_cardchosen.kejiexianliwei = function(self, options)
-    local key = "kejiexianliwei"
-    if type(options) ~= "table" or not AIValue.isList(options.card_ids) or #options.card_ids == 0 then
-        ai_unsupported(key .. " cards are missing", key)
-    end
-    local who_name = type(options.context) == "table" and (options.context.who or options.context.target) or nil
-    local who = who_name and self.room:findPlayerByObjectName(who_name, true) or nil
-    if not who then return options.card_ids[1] end
-    local equips = who:getEquips() or {}
-    if #equips > 0 then return equips[1]:getEffectiveId() end
-    local known_cards = who:getKnownCards() or {}
-    if #known_cards > 0 then return known_cards[1]:getEffectiveId() end
-    return options.card_ids[1]
-end
-
-ai_skill_invoke.kejiexianaoce = function(self)
-    local key = "kejiexianaoce"
-    local use = self:getDecisionContext().use
-    local target = type(use) == "table" and use.from or nil
-    if not target then return false end
-    if relation_friend(self, target, key) then return false end
-    local hp = known(self.player:getHp(), key)
-    local hit = known(self:canHit(self.player, target), key)
-    local sword = target:hasWeapon("double_sword")
-    if sword == nil then ai_unsupported(key .. " weapon is unknown", key) end
-    local gender_diff = self.player:getGender() ~= target:getGender()
-    if hp > 1 and not hit and not (sword and gender_diff) then return true end
-    local slashes = known(self:getCardsNum("Slash", target), key)
-    local leiji = known(self:needLeiji(self.player, target), key)
-    local lose = known(self:needToLoseHp(self.player, target, nil), key)
-    if slashes < 1 or leiji or lose then return true end
-    local overflow = known(self:getOverflow(), key)
-    local jinks = known(self:getCardsNum("Jink"), key)
-    if overflow and jinks > 1 then return true end
-    local hand = self.player:getHandcards()
-    if not hand then ai_unsupported(key .. " hand is unknown", key) end
-    for _, card in ipairs(hand) do
-        if card:isKindOf("Jink") then return true end
-    end
-    return false
-end
-
-ai_skill_invoke.kexianbenxi = function(self)
-    local key = "kexianbenxi"
-    local skipped = self.player:isSkipped(sgs.Player_Play)
-    if skipped == nil then ai_unsupported(key .. " skip state is unknown", key) end
-    if skipped or known(self:needBear(), key) then return false end
-    if not self.enemies then ai_unsupported(key .. " enemies are unknown", key) end
-    local enemies = known(self:sort(self.enemies, "hp"), key, key .. " enemy order is unknown")
-    local hand = self.player:getHandcards()
-    if not hand then ai_unsupported(key .. " hand is unknown", key) end
-    for _, card in ipairs(hand) do
-        if card:isKindOf("Slash") then
-            for _, enemy in ipairs(enemies) do
-                local reach = known(self:canSlash(self.player, enemy, card, true), key)
-                local effective = known(self:slashIsEffective(card, enemy), key)
-                local objective = known(self:objectiveLevel(enemy), key)
-                local good = known(self:isGoodTarget(enemy, enemies, card), key)
-                if reach and effective and objective > 3 and good then
-                    local jinks = known(self:getCardsNum("Jink", enemy), key)
-                    local axe = self.player:hasWeapon("axe")
-                    local count = self.player:getCardCount()
-                    if axe == nil or type(count) ~= "number" then
-                        ai_unsupported(key .. " axe state is unknown", key)
-                    end
-                    if jinks < 1 or (axe and count > 4) then return true end
-                end
-            end
+rawset(ai_skill_cardchosen,"kejiexianliwei",nil)
+sgs.ai_skill_cardchosen.kejiexianliwei=function(self,who,flags)
+    local cards=sgs.QList2Table(known(who:getEquips(),"kejiexianliwei.equips"))
+    -- The donor always returns the first equipment if one exists. Appending a
+    -- hand card cannot change that prefix; no private hand/flag oracle needed.
+    if #cards>0 then return cards[1] end
+    local count=known(who:getHandcardNum(),"kejiexianliwei.hand_count")
+    if count==0 then return nil end
+    local hand=known(who:getKnownCards(),"kejiexianliwei.known_hand")
+    if #hand~=count then
+        if count>=3 then ai_unsupported("source first hidden hand visibility is not disclosed","kejiexianliwei.first_visible") end
+        local context=self:getDecisionContext()
+        local row=known(context.random_card_choices and context.random_card_choices.kejiexianliwei_first_hand,"kejiexianliwei.opaque_hand")
+        if type(row)~="table" or row.source_first~=true or row.count~=count or type(row.token)~="string" or row.token=="" then
+            ai_unsupported("original first hand ordinal is not authorized","kejiexianliwei.first_hand")
         end
+        return {kind="answer",random_card_choice={token=row.token,index=1,avoid_wounded_enemy_silver_lion=false}}
     end
-    return false
+    if #hand<3 or known(hand[1]:hasFlag("visible"),"kejiexianliwei.first_visible") then table.insert(cards,hand[1]) end
+    for i=1,#cards do return cards[i] end
+    return nil
 end
 
-ai_skill_playerchosen.kexianbenxi = function(self, options)
-    local key = "kexianbenxi"
-    if not self.enemies then ai_unsupported(key .. " enemies are unknown", key) end
-    local enemies = known(self:sort(self.enemies, "handcard"), key)
-    local names = {}
-    for _, name in ipairs((offered_players(self, options, key) and options.players) or {}) do names[name] = true end
-    for index = #enemies, 1, -1 do
-        local enemy = enemies[index]
-        local empty = enemy:isKongcheng()
-        if empty == nil then ai_unsupported(key .. " hand emptiness is unknown", key) end
-        if names[enemy:objectName()] and not empty and known(self:objectiveLevel(enemy), key) > 0 then
-            return enemy:objectName()
-        end
+rawset(ai_skill_invoke,"kejiexianaoce",nil)
+sgs.ai_skill_invoke.kejiexianaoce = function(self, data)
+	local target = data:toCardUse().from
+	if not target then return false end
+	if self:isFriend(target) then return false end
+	if self.player:getHp() > 1 and not self:canHit(self.player, target)
+		and not (target:hasWeapon("double_sword") and self.player:getGender() ~= target:getGender())
+	then
+		return true
+	end
+	if getCardsNum("Slash", target, self.player) < 1
+		or self:needLeiji(self.player, target)
+		or self:needToLoseHp(self.player, target, dummyCard())
+	then
+		return true
+	end
+	if self:getOverflow() and self:getCardsNum("Jink") > 1 then return true end
+
+	for _, c in sgs.qlist(self.player:getCards("h")) do
+		if c:isKindOf("Jink") then
+			return true
+		end
+	end
+	return false
+end
+
+
+-- Missing foreign hidden flags remain unknown; disclosed identities alone do
+-- not assert legacy visibility flags. No fabricated hidden cards are inserted.
+local function benxi_visible_hand(self,player)
+    local cards=known(player:getKnownCards(),"kexianbenxi.known_hand")
+    -- Source uses the current player's visibility, which need not be ours.
+    -- Do not silently treat another observer's private known hand as empty.
+    local current=known(self.room:getCurrent(),"kexianbenxi.current_observer")
+    if current:objectName()~=self.player:objectName()
+        and #cards<known(player:getHandcardNum(),"kexianbenxi.hand_count") then
+        ai_unsupported("source current-player visibility includes an unavailable observer domain","kexianbenxi.observer_hand")
     end
-    return decline_player(options)
+    return cards
+end
+local function benxi_visible_flag(card,flag)
+    return known(card:hasFlag(flag),"kexianbenxi.visibility")
+end
+rawset(ai_skill_invoke,"kexianbenxi",nil)
+rawset(ai_skill_playerchosen,"kexianbenxi",nil)
+rawset(ai_skill_invoke,"kejiexianjibian",nil)
+rawset(ai_skill_playerchosen,"kejiexianjibian",nil)
+rawset(ai_skill_choice,"kejiexianjibian",nil)
+sgs.ai_skill_invoke.kexianbenxi = function(self, data)
+	if self.player:isSkipped(sgs.Player_Play) then return false end
+	if self:needBear() then return false end
+	local cards = self.player:getHandcards()
+	cards = sgs.QList2Table(cards)
+	local slashtarget = 0
+	self:sort(self.enemies, "hp")
+	for _, card in ipairs(cards) do
+		if card:isKindOf("Slash") then
+			for _, enemy in ipairs(self.enemies) do
+				if self.player:canSlash(enemy, card, true) and self:slashIsEffective(card, enemy) and self:objectiveLevel(enemy) > 3 and self:isGoodTarget(enemy, self.enemies, card) then
+					if getCardsNum("Jink", enemy) < 1 or (self.player:hasWeapon("axe") and self.player:getCards("he"):length() > 4) then
+						slashtarget = slashtarget + 1
+					end
+				end
+			end
+		end
+	end
+	if (slashtarget) > 0 then
+		return true
+	end
+	return false
+end
+sgs.ai_skill_playerchosen.kexianbenxi = function(self, targets)
+	self:sort(self.enemies, "handcard")
+	self.enemies = sgs.reverse(self.enemies)
+
+	for _, enemy in sgs.list(self.enemies) do
+		if not enemy:isKongcheng() and self:objectiveLevel(enemy) > 0 then
+			return enemy
+		end
+	end
+	return nil
 end
 
-sgs.ai_ajustdamage_from.kexianbenxi = function(_, from, _, card)
-    local mark = from:getMark("&kexianbenxi-PlayClear")
-    if type(mark) ~= "number" then return nil end
-    if mark > 0 and card and card:isKindOf("Slash") then return 1 end
-    return 0
+sgs.ai_ajustdamage_from.kexianbenxi = function(self, from, to, card, nature)
+	if known(from:getStrategyMark("&kexianbenxi-PlayClear"),"kexianbenxi.mark") > 0 and card and card:isKindOf("Slash")
+	then
+		return 1
+	end
 end
 
-sgs.ai_cardneed.kexianbenxi = function(to, card, self)
-    if not self or not self.enemies then return nil end
-    local enemies = self:sort(self.enemies, "defenseSlash")
-    if not enemies then return nil end
-    local need_slash = true
-    local hand = to:getKnownCards()
-    if to:objectName() == self.player:objectName() then hand = to:getHandcards() end
-    if not hand then return nil end
-    for _, owned in ipairs(hand) do
-        if isCard("Slash", owned, to) then need_slash = false break end
-    end
-    if not need_slash or not isCard("Slash", card, to) then return false end
-    for _, enemy in ipairs(enemies) do
-        local reach = to:distanceTo(enemy)
-        local range = to:getAttackRange()
-        if type(reach) ~= "number" or type(range) ~= "number" then return nil end
-        if reach <= range and not self:slashProhibit(nil, enemy, to)
-            and self:slashIsEffective(nil, enemy, to) and (self:getDefenseSlash(enemy) or 99) <= 2 then
-            return true
-        end
-    end
-    return false
+function sgs.ai_cardneed.kexianbenxi(to, card, self)
+	local slash_num = 0
+	local target
+	local slash = dummyCard()
+
+	local cards = benxi_visible_hand(self,to)
+	local need_slash = true
+	for _, c in sgs.qlist(cards) do
+		local flag = string.format("%s_%s_%s", "visible", self.room:getCurrent():objectName(), to:objectName())
+		if benxi_visible_flag(c,"visible") or benxi_visible_flag(c,flag) then
+			if isCard("Slash", c, to) then
+				need_slash = false
+				break
+			end
+		end
+	end
+
+	self:sort(self.enemies, "defenseSlash")
+	for _, enemy in ipairs(self.enemies) do
+		if to:canSlash(enemy) and not self:slashProhibit(slash, enemy) and self:slashIsEffective(slash, enemy) and self:getDefenseSlash(enemy) <= 2 then
+			target = enemy
+			break
+		end
+	end
+
+	if need_slash and target and isCard("Slash", card, to) then return true end
 end
 
-ai_skill_invoke.kejiexianjibian = function()
-    return true
+sgs.kexianbenxi_keep_value = {
+	Peach          = 6,
+	Analeptic      = 5.8,
+	Jink           = 5.2,
+	Duel           = 5.5,
+	FireSlash      = 5.6,
+	Slash          = 5.4,
+	ThunderSlash   = 5.5,
+	Axe            = 5,
+	Blade          = 4.9,
+	spear          = 4.9,
+	fan            = 4.8,
+	KylinBow       = 4.7,
+	Halberd        = 4.6,
+	MoonSpear      = 4.5,
+	SPMoonSpear    = 4.5,
+	DefensiveHorse = 4
+}
+
+sgs.ai_cardneed.kejiexianjibian = sgs.ai_cardneed.slash
+sgs.ai_skill_invoke.kejiexianjibian = function(self, data)
+	return true
 end
 
-ai_skill_playerchosen.kejiexianjibian = function(self, options)
-    local key = "kejiexianjibian"
-    if not self.enemies then ai_unsupported(key .. " enemies are unknown", key) end
-    local names = {}
-    for _, name in ipairs(options and options.players or {}) do names[name] = true end
-    for _, enemy in ipairs(self.enemies) do
-        if names[enemy:objectName()] then
-            local can = self.player:canDiscard(enemy, "h")
-            if can == nil then ai_unsupported(key .. " discard legality is unknown", key) end
-            if can then
-                local discard = self:doDisCard(enemy, "h")
-                if discard == nil then ai_unsupported(key .. " discard value is unknown", key) end
-                if discard or self:getDangerousCard(enemy) or self:getValuableCard(enemy) then
-                    return enemy:objectName()
-                end
-            end
-        end
-    end
-    return decline_player(options)
+sgs.ai_skill_choice.kejiexianjibian = function(self, choices, data)
+	local items = choices:split("+")
+	if table.contains(items, "benxione") then return "benxione" end
+	if table.contains(items, "benxitwo") then
+		if sgs.ai_skill_playerchosen.kejiexianjibian(self, self.room:getOtherPlayers(self.player)) ~= nil then
+			return "benxitwo"
+		end
+	end
+	if table.contains(items, "benxithree") then
+		if sgs.ai_skill_invoke.kexianbenxi(self, nil --[[source empty QVariant unused by kexianbenxi body]]) then
+			return "benxithree"
+		end
+	end
+	return items[1]
 end
 
-ai_skill_choice.kejiexianjibian = function(self, options)
-    local items, offered = choice_items(options, "kejiexianjibian")
-    if offered.benxione then return "benxione" end
-    if offered.benxitwo then
-        local others = self.room:getOtherPlayers(self.player)
-        if not others then ai_unsupported("kejiexianjibian roster is unknown", "kejiexianjibian") end
-        local names = {}
-        for _, player in ipairs(others) do names[#names + 1] = player:objectName() end
-        local target = ai_skill_playerchosen.kejiexianjibian(self, {players = names, candidates_complete = true})
-        if type(target) == "string" then return "benxitwo" end
-    end
-    if offered.benxithree and ai_skill_invoke.kexianbenxi(self) then return "benxithree" end
-    return items[1]
+sgs.ai_skill_playerchosen.kejiexianjibian = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	for _, enemy in ipairs(self.enemies) do
+		if (self:doDisCard(enemy, "h") or self:getDangerousCard(enemy) or self:getValuableCard(enemy)) and self.player:canDiscard(enemy, "h") then
+			return enemy
+		end
+	end
+	return nil
 end
 
-sgs.ai_ajustdamage_from.kejiexianjibian = function(_, from, _, card)
-    local mark = from:getMark("&kejiexianjibianda-PlayClear")
-    if type(mark) ~= "number" then return nil end
-    if mark > 0 and card and card:isKindOf("Slash") then return 1 end
-    return 0
+sgs.ai_ajustdamage_from.kejiexianjibian = function(self, from, to, card, nature)
+	if known(from:getStrategyMark("&kejiexianjibianda-PlayClear"),"kejiexianjibian.mark") > 0 and card and card:isKindOf("Slash")
+	then
+		return 1
+	end
 end
+
 
 ai_skill_invoke.kexianwuqin = function()
     return true
 end
 
-ai_skill_activate.kexianjishi = function(self)
-    local key = "kexianjishi"
-    if known(self.player:getMark("@xianjishi"), key) == 0 then return nil end
-    if known(self.player:getHandcardNum(), key) < 4 then return nil end
-    local players = self.room:getAllPlayers(true)
-    if not players then ai_unsupported(key .. " roster is unknown", key) end
-    local role = self.player:getRole()
-    local found = false
-    for _, player in ipairs(players) do
-        local dead = player:isDead()
-        if dead == nil then ai_unsupported(key .. " death state is unknown", key) end
-        if dead and (player:getRole() == role or (player:getRole() == "loyalist" and self.player:isLord())) then
-            found = true
-            break
-        end
+rawset(ai_skill_activate,"kexianjishi",nil)
+sgs.ai_fill_skill.kexianjishi = function(self,inclusive,request)
+	if self.player:getMark("@xianjishi") == 0 then return end
+	local deathplayer = {}
+	for _, p in sgs.qlist(self.room:getPlayers()) do
+		if p:isDead() and ((known(p:getRole(),"kexianjishi.dead_role") == self.player:getRole())
+				or (known(p:getRole(),"kexianjishi.dead_role") == "loyalist" and self.player:isLord())) then
+			table.insert(deathplayer, p:objectName()) -- Only cardinality is consumed; no hidden general identity needed.
+		end
+	end
+	if #deathplayer == 0 then return end
+	if self.player:getHandcardNum() >= 4 then
+		local spade, club, heart, diamond
+		for _, card in sgs.list(self.player:getHandcards()) do
+			if card:getSuit() == sgs.Card_Spade then
+				spade = true
+			elseif card:getSuit() == sgs.Card_Club then
+				club = true
+			elseif card:getSuit() == sgs.Card_Heart then
+				heart = true
+			elseif card:getSuit() == sgs.Card_Diamond then
+				diamond = true
+			end
+		end
+		if spade and club and diamond and heart then
+			return self:evaluateTurnSkillCard("kexianjishi","#kexianjishiCard",{},request)
+		end
+	end
+end
+
+sgs.ai_skill_use_func["#kexianjishiCard"] = function(card, use, self)
+	local cards = self.player:getHandcards()
+	cards = sgs.QList2Table(cards)
+	self:sortByUseValue(cards, true)
+	local need_cards = {}
+	local spade, club, heart, diamond
+	for _, card in sgs.list(cards) do
+		if card:getSuit() == sgs.Card_Spade and not spade then
+			spade = true
+			table.insert(need_cards, card:getId())
+		elseif card:getSuit() == sgs.Card_Club and not club then
+			club = true
+			table.insert(need_cards, card:getId())
+		elseif card:getSuit() == sgs.Card_Heart and not heart then
+			heart = true
+			table.insert(need_cards, card:getId())
+		elseif card:getSuit() == sgs.Card_Diamond and not diamond then
+			diamond = true
+			table.insert(need_cards, card:getId())
+		end
+	end
+	if #need_cards < 4 then return end
+	local greatyeyan = self:evaluateTurnSkillCard("kexianjishi","#kexianjishiCard",need_cards)
+	assert(greatyeyan)
+	use.card = greatyeyan
+end
+
+sgs.ai_use_value["#kexianjishiCard"] = 8
+sgs.ai_use_priority["#kexianjishiCard"] = 9.5
+sgs.ai_use_priority.kexianjishiCard = 9.5
+
+-- Exact owner inquiry context; source CurrentPindianStruct never grants private
+-- face access. The producer only includes faces already lawful to this viewer.
+local function tianbian_context(self,key)
+    local context=self:getDecisionContext()
+    local row=context and context.round21_choice
+    if type(row)~="table" or row.tianbian_skill~=key or row.tianbian_pindian==nil or type(row.tianbian_flags)~="table" then
+        ai_unsupported("Tianbian public inquiry context is incomplete",key)
     end
-    if not found then return nil end
-    local hand = known(self:sortByUseValue(self.player:getHandcards(), true), key)
-    local need, seen = {}, {}
-    for _, card in ipairs(hand) do
-        local suit = card:getSuit()
-        if type(suit) == "number" and not seen[suit] then
-            seen[suit] = true
-            need[#need + 1] = card:getEffectiveId()
-        end
-    end
-    if #need < 4 then return nil end
-    return skill_use(self, key, {need[1], need[2], need[3], need[4]})
+    return row
+end
+local function tianbian_pindian(self,key)
+    local row=tianbian_context(self,key).tianbian_pindian
+    if row==false then return nil end
+    return {from_card=row.from_card and CardView.new(row.from_card) or nil,
+        to_card=row.to_card and CardView.new(row.to_card) or nil}
+end
+local function tianbian_flag(self,player,key,suffix)
+    local row=tianbian_context(self,key).tianbian_flags[player:objectName()]
+    local value
+    if type(row)=="table" then value=row[suffix] end
+    if type(value)~="boolean" then ai_unsupported("Tianbian public flag is unknown",key..suffix) end
+    return value
+end
+local function tianbian_selected(self,key,wire)
+    if wire=="." then return wire end
+    local id,target=wire:match("^#"..key.."_Card:(%d+):%->(.+)$")
+    if not id then ai_unsupported("unexpected source Tianbian response",key) end
+    local card=self:bindSkillCard(key,{tonumber(id)},nil,nil,"#"..key.."_Card")
+    return {kind="use_card",card_spec=card:toCardSpec(),targets={target}}
+end
+local function kexiantianbian_policy(self, prompt)
+	local targets = sgs.QList2Table(self.room:getAllPlayers())
+	local pindian = tianbian_pindian(self,"kexiantianbian")
+	local from, to
+	for _, p in ipairs(targets) do
+		if tianbian_flag(self,p,"kexiantianbian","Source") then
+			from = p
+		end
+		if tianbian_flag(self,p,"kexiantianbian","Target") then
+			to = p
+		end
+	end
+	if from and to and self:isFriend(to) and self:isEnemy(from) then
+		local cards = sgs.QList2Table(self.player:getCards("h"))
+		local max_card = {}
+		local min_card = {}
+		self:sortByKeepValue(cards)
+		if pindian.to_card:getNumber() < pindian.from_card:getNumber() then
+			for _, acard in ipairs(cards) do
+				if not acard:isKindOf("Peach") then
+					if acard:getNumber() < pindian.to_card:getNumber() then
+						table.insert(min_card, acard:getEffectiveId())
+					elseif acard:getNumber() >= pindian.from_card:getNumber() then
+						table.insert(max_card, acard:getEffectiveId())
+					end
+				end
+			end
+			if #max_card > 0 then
+				return "#kexiantianbian_Card:" .. max_card[1] .. ":->" .. to:objectName()
+			end
+			if #min_card > 0 then
+				return "#kexiantianbian_Card:" .. min_card[1] .. ":->" .. from:objectName()
+			end
+		end
+	end
+	if from and to and self:isFriend(from) and self:isEnemy(to) then
+		local cards = sgs.QList2Table(self.player:getCards("h"))
+		local max_card = {}
+		local min_card = {}
+		self:sortByKeepValue(cards)
+		if pindian.to_card:getNumber() >= pindian.from_card:getNumber() then
+			for _, acard in ipairs(cards) do
+				if not acard:isKindOf("Peach") then
+					if acard:getNumber() > pindian.to_card:getNumber() then
+						table.insert(max_card, acard:getEffectiveId())
+					elseif acard:getNumber() < pindian.from_card:getNumber() then
+						table.insert(min_card, acard:getEffectiveId())
+					end
+				end
+			end
+			if #max_card > 0 then
+				return "#kexiantianbian_Card:" .. max_card[1] .. ":->" .. from:objectName()
+			end
+			if #min_card > 0 then
+				return "#kexiantianbian_Card:" .. min_card[1] .. ":->" .. to:objectName()
+			end
+		end
+	end
+
+	return "."
+end
+rawset(ai_skill_use,"@kexiantianbian",nil)
+sgs.ai_skill_use["@kexiantianbian"] = function(self,prompt)
+    return tianbian_selected(self,"kexiantianbian",kexiantianbian_policy(self,prompt))
+end
+
+local function kejiexiantianbian_policy(self, prompt)
+	local targets = sgs.QList2Table(self.room:getAllPlayers())
+	local pindian = tianbian_pindian(self,"kejiexiantianbian")
+	local from, to
+	for _, p in ipairs(targets) do
+		if tianbian_flag(self,p,"kejiexiantianbian","Source") then
+			from = p
+		end
+		if tianbian_flag(self,p,"kejiexiantianbian","Target") then
+			to = p
+		end
+	end
+	if from and to and self:isFriend(to) and self:isEnemy(from) then
+		local cards = sgs.QList2Table(self.player:getCards("h"))
+		local max_card = {}
+		local min_card = {}
+		self:sortByKeepValue(cards)
+		if pindian.to_card:getNumber() < pindian.from_card:getNumber() then
+			for _, acard in ipairs(cards) do
+				if not acard:isKindOf("Peach") then
+					if acard:getNumber() < pindian.to_card:getNumber() then
+						table.insert(min_card, acard:getEffectiveId())
+					elseif acard:getNumber() >= pindian.from_card:getNumber() then
+						table.insert(max_card, acard:getEffectiveId())
+					end
+				end
+			end
+			if #max_card > 0 then
+				return "#kejiexiantianbian_Card:" .. max_card[1] .. ":->" .. to:objectName()
+			end
+			if #min_card > 0 then
+				return "#kejiexiantianbian_Card:" .. min_card[1] .. ":->" .. from:objectName()
+			end
+		end
+	end
+	if from and to and self:isFriend(from) and self:isEnemy(to) then
+		local cards = sgs.QList2Table(self.player:getCards("h"))
+		local max_card = {}
+		local min_card = {}
+		self:sortByKeepValue(cards)
+		if pindian.to_card:getNumber() >= pindian.from_card:getNumber() then
+			for _, acard in ipairs(cards) do
+				if not acard:isKindOf("Peach") then
+					if acard:getNumber() > pindian.to_card:getNumber() then
+						table.insert(max_card, acard:getEffectiveId())
+					elseif acard:getNumber() < pindian.from_card:getNumber() then
+						table.insert(min_card, acard:getEffectiveId())
+					end
+				end
+			end
+			if #max_card > 0 then
+				return "#kejiexiantianbian_Card:" .. max_card[1] .. ":->" .. from:objectName()
+			end
+			if #min_card > 0 then
+				return "#kejiexiantianbian_Card:" .. min_card[1] .. ":->" .. to:objectName()
+			end
+		end
+	end
+	if from and to and math.random()<0.5 then
+		local cards = sgs.QList2Table(self.player:getCards("h"))
+		local max_card = {}
+		local min_card = {}
+		self:sortByKeepValue(cards)
+		if pindian.to_card:getNumber() >= pindian.from_card:getNumber() then
+			for _, acard in ipairs(cards) do
+				if not acard:isKindOf("Peach") then
+					if acard:getNumber() > pindian.to_card:getNumber() then
+						table.insert(max_card, acard:getEffectiveId())
+					elseif acard:getNumber() < pindian.from_card:getNumber() then
+						table.insert(min_card, acard:getEffectiveId())
+					end
+				end
+			end
+			if #max_card > 0 then
+				return "#kejiexiantianbian_Card:" .. max_card[1] .. ":->" .. from:objectName()
+			end
+			if #min_card > 0 then
+				return "#kejiexiantianbian_Card:" .. min_card[1] .. ":->" .. to:objectName()
+			end
+		end
+		if pindian.to_card:getNumber() < pindian.from_card:getNumber() then
+			for _, acard in ipairs(cards) do
+				if not acard:isKindOf("Peach") then
+					if acard:getNumber() < pindian.to_card:getNumber() then
+						table.insert(min_card, acard:getEffectiveId())
+					elseif acard:getNumber() >= pindian.from_card:getNumber() then
+						table.insert(max_card, acard:getEffectiveId())
+					end
+				end
+			end
+			if #max_card > 0 then
+				return "#kejiexiantianbian_Card:" .. max_card[1] .. ":->" .. to:objectName()
+			end
+			if #min_card > 0 then
+				return "#kejiexiantianbian_Card:" .. min_card[1] .. ":->" .. from:objectName()
+			end
+		end
+	end
+
+	return "."
+end
+rawset(ai_skill_use,"@kejiexiantianbian",nil)
+sgs.ai_skill_use["@kejiexiantianbian"] = function(self,prompt)
+    return tianbian_selected(self,"kejiexiantianbian",kejiexiantianbian_policy(self,prompt))
+end
+
+local function huiyan_context(self,key)
+    local context=self:getDecisionContext()
+    local row=context and context.round22_choice and context.round22_choice.huiyan
+    if type(row)~="table" or row.skill~=key then ai_unsupported("Huiyan inquiry context is unknown",key) end
+    return row
+end
+local function huiyan_judge(self,key)
+    local row=huiyan_context(self,key).judge
+    if row==false then return nil end
+    if type(row)~="table" then ai_unsupported("Huiyan named judge is not projected",key) end
+    local judge={};for k,v in pairs(row) do judge[k]=v end
+    judge.who=known(self.room:findPlayerByObjectName(row.who,true),key)
+    judge.card=row.card and CardView.new(row.card) or nil
+    return judge
+end
+local function huiyan_card(self,key,id,fallback)
+    if not fallback then return known(self:getChoiceCard(id),key) end
+    local rows=huiyan_context(self,key).index_cards
+    local row
+    if type(rows)=="table" then row=rows[tostring(id)] end
+    if row==false then return nil end
+    if type(row)~="table" then ai_unsupported("source Huiyan fallback index names an undisclosed card",key..":"..tostring(id)) end
+    return CardView.new(row)
+end
+rawset(ai_skill_askforag,"kexianhuiyan",nil)
+sgs.ai_skill_askforag.kexianhuiyan = function(self, card_ids)
+	local cards = {}
+	local cards_ids = sgs.QList2Table(card_ids)                  -- 获得手牌的表
+	for _,card_id in ipairs(cards_ids) do
+		table.insert(cards, huiyan_card(self,"kexianhuiyan",card_id,false))
+	end
+	local judge = huiyan_judge(self,"kexianhuiyan") -- 获得判定结构体
+	local card_id = self:getRetrialCardId(cards, judge)     -- 从所有手牌中寻找可供改判的牌
+	if card_id ~= -1 then
+		return card_id                                      -- 若找到则改判
+	end
+
+	local to_obtain = {}
+	for card_id in ipairs(card_ids) do
+		table.insert(to_obtain, huiyan_card(self,"kexianhuiyan",card_id,true))
+	end
+	self:sortByUseValue(to_obtain, true)
+	return to_obtain[1]:getEffectiveId()
+end
+
+
+rawset(ai_skill_askforag,"kejiexianhuiyan",nil)
+sgs.ai_skill_askforag.kejiexianhuiyan = function(self, card_ids)
+	local cards = {}
+	local judge = huiyan_judge(self,"kejiexianhuiyan") -- 获得判定结构体
+	local cards_ids = sgs.QList2Table(card_ids)                  -- 获得手牌的表
+	for _,card_id in ipairs(cards_ids) do
+		table.insert(cards, huiyan_card(self,"kejiexianhuiyan",card_id,false))
+	end
+	local card_id = self:getRetrialCardId(cards, judge)      -- 从所有手牌中寻找可供改判的牌
+	if card_id ~= -1 then
+		return card_id                                       -- 若找到则改判
+	end
+
+	local to_obtain = {}
+	for card_id in ipairs(card_ids) do
+		table.insert(to_obtain, huiyan_card(self,"kejiexianhuiyan",card_id,true))
+	end
+	self:sortByUseValue(to_obtain, true)
+	return to_obtain[1]:getEffectiveId()
 end

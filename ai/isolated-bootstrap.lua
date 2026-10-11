@@ -2,7 +2,7 @@
 -- 對應 smart-ai.lua 開頭那幾行 dofile：要載入什麼由 Lua 這邊宣告，不寫在 C++ 裡。
 -- sandbox 拿掉了 dofile，所以實際開檔由 host 代勞（AiLuaRuntime::loadConfiguredScripts），
 -- 但清單的權威在這裡；host 只負責照這張清單去讀 lua/ai/isolated/ 底下的檔。
--- 武將／套件的 handler 不寫進這裡：那些照 <套件名>-ai.lua 由啟用的套件自己帶進來，
+-- legacy 固定 dofile 的共用政策也在此；其餘套件照 <套件名>-ai.lua 載入，
 -- 規則與 smart-ai.lua 掃 lua/ai/ 找 <package>-ai.lua 相同。
 ai_isolated_core = {
     "ask-for-use-card.lua",
@@ -10,8 +10,20 @@ ai_isolated_core = {
     "decision-core.lua",
     "retrial.lua",
     "strategy-hooks.lua",
+    "speech.lua",
     "event-intention.lua",
     "smart-ai-functions.lua",
+    "imagine-ai.lua",
+    "pindian-ai.lua",
+    "guanxing.lua",
+    "standard_cards-ai.lua",
+    "maneuvering-ai.lua",
+    "standard-ai.lua",
+    "basara-ai.lua",
+    "hegemony-ai.lua",
+    "hulaoguan-ai.lua",
+    "jiange-defense-ai.lua",
+    "boss-ai.lua",
 }
 
 -- ai_memory：跨 request 的推測記憶，按觀察者分區。
@@ -22,7 +34,8 @@ ai_isolated_core = {
 local memory = {}
 local memory_limits = {depth = 8, values = 1024, entries = 256}
 
-local function copy_pure_value(value, depth)
+local function copy_pure_value(value, depth, limit)
+    limit = limit or memory_limits.values
     local value_type = type(value)
     if value_type == "number" or value_type == "string" or value_type == "boolean" then
         return value, 1
@@ -34,9 +47,9 @@ local function copy_pure_value(value, depth)
     for key, item in pairs(value) do
         local key_type = type(key)
         assert(key_type == "string" or key_type == "number", "ai_memory keys must be plain")
-        local copied_item, item_count = copy_pure_value(item, depth + 1)
+        local copied_item, item_count = copy_pure_value(item, depth + 1, limit)
         counted = counted + item_count
-        assert(counted <= memory_limits.values, "ai_memory value is too large")
+        assert(counted <= limit, "ai_memory value is too large")
         copy[key] = copied_item
     end
     return copy, counted
@@ -58,7 +71,7 @@ function ai_memory.recall(viewer, key)
     local owned = memory_for(viewer, false)
     local stored = owned and owned[key] or nil
     if stored == nil then return nil end
-    return (copy_pure_value(stored, 1))
+    return (copy_pure_value(stored, 1, key == "filter_event" and 32768 or nil))
 end
 
 function ai_memory.remember(viewer, key, value)
@@ -74,7 +87,39 @@ function ai_memory.remember(viewer, key, value)
         for _ in pairs(owned) do used = used + 1 end
         assert(used < memory_limits.entries, "ai_memory has too many entries")
     end
-    owned[key] = (copy_pure_value(value, 1))
+    owned[key] = (copy_pure_value(value, 1, key == "filter_event" and 32768 or nil))
+end
+
+-- Events prepare their viewer memory alongside intention deltas. Cloning and
+-- limits are checked before the host commits the mode update; commit itself is
+-- one replacement and cannot invoke policy or expose a half-written record.
+local prepared_memory = setmetatable({}, {__mode = "k"})
+function ai_memory.prepare(viewer, key, value)
+    assert(type(viewer) == "string" and viewer ~= "", "ai_memory needs its observer")
+    assert(type(key) == "string" and key ~= "", "ai_memory needs a string key")
+    -- Reserve the viewer slot before native commits its mode state. The empty
+    -- envelope carries no event facts; commit only replaces an existing slot.
+    local owned = memory_for(viewer, true)
+    local next_owned, used = {}, 0
+    for stored_key, stored_value in pairs(owned) do
+        next_owned[stored_key] = stored_value
+        used = used + 1
+    end
+    if next_owned[key] == nil and value ~= nil then
+        assert(used < memory_limits.entries, "ai_memory has too many entries")
+    end
+    if value == nil then next_owned[key] = nil
+    else next_owned[key] = copy_pure_value(value, 1, key == "filter_event" and 32768 or nil) end
+    local token = {}
+    prepared_memory[token] = {viewer = viewer, owned = next_owned}
+    return token
+end
+
+function ai_memory.commit(token)
+    local prepared = prepared_memory[token]
+    assert(prepared, "invalid or consumed ai_memory token")
+    memory[prepared.viewer] = prepared.owned
+    prepared_memory[token] = nil
 end
 
 function ai_memory.forget(viewer)
@@ -83,6 +128,7 @@ end
 
 function ai_memory.clear()
     memory = {}
+    prepared_memory = setmetatable({}, {__mode = "k"})
 end
 
 -- Cross-request planning is a bounded, viewer-scoped value store.  It carries
@@ -158,6 +204,8 @@ ai_coverage = {}
 local outcome_counts = {}
 
 local function record_outcome(kind, status)
+    -- One primitive diagnostic only; never retain request payload or private cards.
+    ai_last_decision_outcome = status
     kind = type(kind) == "string" and kind or "invalid"
     local row = outcome_counts[kind]
     if not row then row = {}; outcome_counts[kind] = row end
@@ -246,6 +294,53 @@ function ai_coverage.covers(kind, key)
     return false
 end
 
+-- This is a gameplay fact ingress, separate from policy-event transactions.
+-- The core event module registers one pure cache transformer during loading;
+-- callbacks cannot replace the captured function by rewriting its global name.
+local flag_clear_synchronizer
+function ai_register_flag_clear_synchronizer(fn)
+    assert(type(fn) == "function" and flag_clear_synchronizer == nil,
+        "strategy flag-clear synchronizer must be registered exactly once")
+    flag_clear_synchronizer = fn
+end
+
+local function sync_strategy_flag_clears(world)
+    local function missing(reason)
+        ai_unsupported(reason, "strategy_flag_clear_epochs")
+    end
+    if type(world) ~= "table" or type(world.self) ~= "table"
+        or type(world.self.object_name) ~= "string" or world.self.object_name == "" then
+        missing("strategy flag-clear synchronization needs a viewer snapshot")
+    end
+    local facts = world.strategy_facts
+    local epochs = type(facts) == "table" and facts.strategy_flag_clear_epochs
+    if type(epochs) ~= "table" or getmetatable(epochs) ~= nil then
+        missing("actual player flag-clear epochs are unavailable")
+    end
+    local roster = {[world.self.object_name] = true}
+    if type(world.players) ~= "table" then missing("flag-clear roster is unavailable") end
+    for _, player in ipairs(world.players) do
+        if type(player) ~= "table" or type(player.object_name) ~= "string"
+            or player.object_name == "" then missing("invalid flag-clear roster") end
+        roster[player.object_name] = true
+    end
+    for name, epoch in pairs(epochs) do
+        if type(name) ~= "string" or not roster[name] or type(epoch) ~= "number"
+            or epoch < 0 or epoch > 9007199254740991 or epoch % 1 ~= 0 then
+            missing("invalid player flag-clear epoch")
+        end
+    end
+    for name in pairs(roster) do
+        if epochs[name] == nil then missing("player flag-clear epoch is not projected") end
+    end
+    if type(flag_clear_synchronizer) ~= "function" then
+        missing("strategy flag-clear memory synchronizer is unavailable")
+    end
+    flag_clear_synchronizer(world, epochs)
+    return true
+end
+ai_sync_strategy_flag_clears = sync_strategy_flag_clears
+
 local handlers = {}
 
 function ai_register_handler(kind, handler)
@@ -256,8 +351,19 @@ function ai_register_handler(kind, handler)
 end
 
 function ai_decide(request)
+    ai_last_decision_outcome = "unhandled"
     if type(request) ~= "table" then
         return nil
+    end
+    local synchronized, failure = pcall(sync_strategy_flag_clears, request.world_view)
+    if not synchronized then
+        if AIUnsupported.is(failure) then
+            record_outcome(request.kind, "unsupported")
+            ai_coverage.notCovered(request.kind, failure.reason, failure.key)
+            return nil
+        end
+        record_outcome(request.kind, "error")
+        error(failure, 0)
     end
     local handler = handlers[request.kind]
     if not handler then
@@ -286,8 +392,12 @@ function ai_decide(request)
     end
     local covered = not AIUnsupported.is(answer)
     if not covered then
-        record_outcome(request.kind, "unsupported")
-        ai_coverage.notCovered(request.kind, answer.reason, answer.key)
+        if answer.native_rejected == true then
+            record_outcome(request.kind, "native-rejected")
+        else
+            record_outcome(request.kind, "unsupported")
+            ai_coverage.notCovered(request.kind, answer.reason, answer.key)
+        end
         return nil
     end
     -- One conversion point for every decision kind: unhandled stays nil, a declined or
@@ -301,6 +411,17 @@ function ai_decide(request)
     if status == "unsupported" then
         ai_coverage.notCovered(request.kind, answer.reason, answer.key)
         return nil
+    end
+    if type(result) == "table" and type(self_view.useKnowledgeEstimate) == "function" then
+        local policy = request.world_view.mode_policy
+        for _, basis in ipairs(type(policy) == "table" and policy.estimated_branches or {}) do
+            self_view:useKnowledgeEstimate({status="estimate",value=true,basis=basis,
+                viewer=request.viewer}, "mode_policy_dependency")
+        end
+    end
+    if type(result) == "table" and type(request.scratch) == "table" then
+        result.knowledge_estimates = request.scratch.knowledge_estimates
+        result.strategy_effects = self_view._strategy_effects
     end
     return result
 end

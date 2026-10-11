@@ -66,79 +66,47 @@ local function bind_use(name, handler)
     sgs.ai_skill_use_func[name] = handler
 end
 
--- 悲歌：先看來源翻面，再依目標回血、摸牌、棄牌選花色。
-local function beige_friend(self, player)
-    local relation = self:relationTo(player)
-    -- isFriend() folds the string "unknown" into false; this strategy needs certainty.
-    if relation == nil or relation == "unknown" then return nil end
-    return relation == "friend"
+local function meow_rule(value,key)
+    if AIUnsupported.is(value) then error(value,0) end
+    if value==nil then ai_unsupported("Meow source predicate is unknown",key) end
+    return value
 end
 
-local function beige_suit(self, damage)
-    if damage.from then
-        local friend = beige_friend(self, damage.from)
-        if friend == nil then return nil end
-        local turn = self:toTurnOver(damage.from, 0)
-        if turn == nil then return nil end
-        if friend and not turn then return "Spade" end
-        if not friend and turn then return "Spade" end
-    end
-    local target_friend = beige_friend(self, damage.to)
-    if target_friend == nil then return nil end
-    local hp = damage.to:getHp()
-    local best = getBestHp(damage.to)
-    if type(hp) ~= "number" or type(best) ~= "number" then return nil end
-    if hp < best and target_friend then return "Heart" end
-    local draw = self:canDraw(damage.to)
-    if draw == nil then return nil end
-    if target_friend and draw then return "Diamond" end
-    if damage.from then
-        local discard = self:doDisCard(damage.from, "he")
-        if discard == nil then return nil end
-        if discard then return "Club" end
-    end
-    return false
-end
+rawset(ai_skill_cardask,"@MeowBeige",nil)
+sgs.ai_skill_cardask["@MeowBeige"] = function(self, data)
+    local damage = data:toDamage()
+    if not self:isFriend(damage.to) or self:isFriend(damage.from) then return "." end
+    local cards = sgs.QList2Table(self.player:getCards("he"))
+    self:sortByUseValue(cards, true)
 
-ai_skill_cardask["@MeowBeige"] = function(self, options)
-    local damage = damage_of(self, "MeowBeige")
-    local help = beige_friend(self, damage.to)
-    local source_friend = false
-    if damage.from then source_friend = beige_friend(self, damage.from) end
-    if help == nil or (damage.from and source_friend == nil) then
-        ai_unsupported("MeowBeige relations are unknown", "MeowBeige")
-    end
-    if not help or source_friend then return {kind = "pass"} end
-    local cards = self.player:getCards("he")
-    if not cards then ai_unsupported("MeowBeige cards are unknown", "MeowBeige") end
-    cards = self:sortByUseValue(cards, true)
-    if not cards then ai_unsupported("MeowBeige card order is unknown", "MeowBeige") end
-    local suit = beige_suit(self, damage)
-    if suit == nil then ai_unsupported("MeowBeige suit policy is unknown", "MeowBeige") end
-    local function give(wanted)
+    if self:isFriend(damage.from)
+    then
         for _, card in ipairs(cards) do
-            if card:getSuitString() == string.lower(wanted) then return card:getEffectiveId() end
+            if not self:toTurnOver(damage.from, 0)
+                and card:getSuit() == sgs.Card_Spade
+            then
+                return "$" .. card:getEffectiveId()
+            end
         end
-    end
-    if suit and suit ~= false then
-        local id = give(suit)
-        if id then return id end
+    else
+        for _, card in ipairs(cards) do
+            if self:toTurnOver(damage.from, 0)
+                and card:getSuit() == sgs.Card_Spade
+            then
+                return "$" .. card:getEffectiveId()
+            end
+        end
     end
     for _, card in ipairs(cards) do
-        local card_suit = card:getSuitString()
-        local best = getBestHp(damage.to)
-        local draw = self:canDraw(damage.to)
-        if (card_suit == "heart" and type(best) == "number" and damage.to:getHp() < best and help)
-            or (card_suit == "diamond" and help and draw)
-            or (card_suit == "club" and damage.from and self:doDisCard(damage.from, "he")) then
-            return card:getEffectiveId()
+        if (card:getSuit() == sgs.Card_Heart and damage.to:getHp() < getBestHp(damage.to) and self:isFriend(damage.to))
+            or (card:getSuit() == sgs.Card_Diamond and self:isFriend(damage.to) and self:canDraw(damage.to))
+            or (card:getSuit() == sgs.Card_Club and damage.from and self:doDisCard(damage.from, "he")) then
+            return "$" .. card:getEffectiveId()
         end
     end
-    local discard = self:askForDiscard("beige", 1, 1, false, true)
-    -- An unknown discard order is not an intentional refusal to pay.
-    if discard == nil then ai_unsupported("MeowBeige discard is unknown", "MeowBeige") end
-    if discard and discard[1] then return discard[1] end
-    return {kind = "pass"}
+
+    local to_discard = self:askForDiscard("beige", 1, 1, false, true)
+    if #to_discard > 0 then return "$" .. to_discard[1] else return "." end
 end
 
 function sgs.ai_cardneed.MeowBeige(to, card)
@@ -147,199 +115,448 @@ function sgs.ai_cardneed.MeowBeige(to, card)
     return count <= 2
 end
 
-ai_skill_choice.MeowBeige = function(self, options)
-    local items = choices_of(options, "MeowBeige")
-    local suit = beige_suit(self, damage_of(self, "MeowBeige"))
-    if suit == nil then ai_unsupported("MeowBeige suit policy is unknown", "MeowBeige") end
-    if suit and suit ~= false then
-        local chosen = pick(items, suit)
-        if chosen then return chosen end
+rawset(ai_skill_choice,"MeowBeige",nil)
+sgs.ai_skill_choice["MeowBeige"] = function(self, choices, data)
+    local items = choices:split("+")
+    local damage = damage_of(self, "MeowBeige")
+    if damage and damage.from then
+        if self:isFriend(damage.from)
+        then
+            if not self:toTurnOver(damage.from, 0)
+            then
+                return "Spade"
+            else
+            end
+        else
+            if self:toTurnOver(damage.from, 0)
+
+            then
+                return "Spade"
+            end
+
+        end
+    end
+    if damage.to:getHp() < getBestHp(damage.to) and self:isFriend(damage.to) then
+        return "Heart"
+    end
+    if self:isFriend(damage.to) and self:canDraw(damage.to) then
+        return "Diamond"
+    end
+    if damage.from and self:doDisCard(damage.from, "he") then
+        return "Club"
     end
     return items[math.random(1, #items)]
 end
 
 function sgs.ai_slash_prohibit.MeowDuanchang(self, from, to)
-    local jueqing = self:hasJueqingEffect(from, to)
-    if jueqing == nil then return nil end
-    if jueqing or (from:hasSkill("nosqianxi") and from:distanceTo(to) == 1) then return false end
+    if meow_rule(self:hasJueqingEffect(from,to),"MeowDuanchang.jueqing") or (from:hasSkill("nosqianxi") and from:distanceTo(to) == 1) then return false end
     if from:hasFlag("NosJiefanUsed") then return false end
-    local hp = to:getHp()
-    local enemies = self:getEnemies(from)
-    if type(hp) ~= "number" or not enemies then return nil end
-    if hp > 1 or #enemies == 1 then return false end
+    if to:getHp() > 1 or #(self:getEnemies(from)) == 1 then return false end
     if from:getMaxHp() == 3 and from:getArmor() and from:getDefensiveHorse() then return false end
-    local weak = self:isWeak(from)
-    if weak == nil then return nil end
-    if from:getMaxHp() <= 3 or (from:isLord() and weak) then return true end
-    local lord = self.room:getLord()
-    if from:getMaxHp() <= 3 or (lord and role_of(from) == "renegade") then return true end
+    if from:getMaxHp() <= 3 or (from:isLord() and meow_rule(self:isWeak(from),"MeowDuanchang.weak")) then return true end
+    if from:getMaxHp() <= 3 or (self.room:getLord() and meow_rule(self:getRoleEstimate(from),"MeowDuanchang.role") == "renegade") then return true end
     return false
 end
 
--- 離間：沿用原版先主忠、再武魂、再敵方配對。決鬥有效性用類別探測，不出假牌。
-local function use_lijian(card, use, self)
-    relations(self, "Meowlijian")
-    local alive = self.player:aliveCount()
-    if alive == nil then ai_unsupported("Meowlijian player count is unknown", "Meowlijian") end
-    local nude = self.player:isNude()
-    if nude == nil then ai_unsupported("Meowlijian cards are unknown", "Meowlijian") end
-    if nude or alive < 3 then return end
-    local n = (self.player:getHandcardNum() or 0) + #(self.player:getEquips() or {})
+
+-- Full fixed meow-ai.lua:99-301, retaining source sorting and target order.
+local function meow_lijian_known(value, key)
+    if AIUnsupported.is(value) then error(value, 0) end
+    if value == nil then ai_unsupported("Meowlijian source fact is unknown", key) end
+    return value
+end
+local function meow_lijian_locked(player, card)
+    return meow_lijian_known(player:isLocked(card), "Meowlijian.isLocked")
+end
+local function meow_lijian_log(self, text)
+    -- SmartAI:log writes optional debug output only, not speech or strategy state.
+    if type(self.log) == "function" then self:log(text) end
+end
+rawset(ai_skill_activate, "Meowlijian", nil)
+sgs.ai_fill_skill.Meowlijian = function(self,inclusive,request)
+    if self.player:isNude() or self.room:getAlivePlayers():length() < 3 then return end
+    local n = self.player:getHandcardNum() + self.player:getEquips():length()
     if not self.player:hasSkill("Meowdoumiao") then n = n + 1 end
-    if n <= 1 then return end
-    local duel = self:classProbe("Duel")
-    local function trick_ok(to, from)
-        local effective = self:hasTrickEffective(duel, to, from)
-        if effective ~= nil then return effective end
-        return self:damageIsEffective(to, sgs.DamageStruct_Normal, from)
-    end
-    local targets = {}
+    if n > 1 then return self:evaluateTurnSkillCard("Meowlijian", "#MeowlijianCard", {}, request) end
+end
+local function use_lijian(card,use,self)
     local lord = self.room:getLord()
-    local my_role = role_of(self.player)
-    if my_role == "rebel" and lord and not same(lord, self.player) and not lord:isNude() then
-        local enemies = self:sort(self.enemies, "handcard")
-        if not enemies then ai_unsupported("Meowlijian enemy order is unknown", "Meowlijian") end
-        for _, enemy in ipairs(enemies) do
-            if enemy:getHp() == 1 and not same(enemy, lord) and trick_ok(enemy, lord) then
-                targets[#targets + 1] = enemy
-                targets[#targets + 1] = lord
-                break
+    local duel = meow_lijian_known(self:getEvaluationCard("duel"), "duel")
+    local findFriend_maxSlash = function(self,first)
+		meow_lijian_log(self, "Looking for the friend!")
+		local maxSlash = 0
+		local friend_maxSlash
+		local nos_fazheng,fazheng
+		for _,friend in ipairs(self.friends_noself)do
+			if self:hasTrickEffective(duel,first,friend) then
+				if friend:hasSkill("nosenyuan") and friend:getHp()>1 then nos_fazheng = friend end
+				if friend:hasSkill("enyuan") and friend:getHp()>1 then fazheng = friend end
+				if (getCardsNum("Slash",friend)>maxSlash) then
+					maxSlash = getCardsNum("Slash",friend)
+					friend_maxSlash = friend
+				end
+			end
+		end
+
+		if friend_maxSlash then
+			local safe = false
+			if self:hasSkills("neoganglie|vsganglie|fankui|enyuan|ganglie|nosenyuan",first) and not self:hasSkills("wuyan|noswuyan",first) then
+				if (first:getHp()<=1 and first:getHandcardNum()==0) then safe = true end
+			elseif (getCardsNum("Slash",friend_maxSlash)>=getCardsNum("Slash",first)) then safe = true end
+			if safe then return friend_maxSlash end
+		else meow_lijian_log(self, "unfound")
+		end
+		if nos_fazheng or fazheng then  return nos_fazheng or fazheng end       --备用友方，各种恶心的法正
+		return nil
+	end
+    local n = self.player:getHandcardNum() + self.player:getEquips():length()
+    if not self.player:hasSkill("Meowdoumiao") then
+        n = n + 1
+    end
+    if n < 2 then return end
+    local targets = {}
+	if meow_lijian_known(self.player:getRole(), "owner_role")=="rebel" or (meow_lijian_known(self.player:getRole(), "owner_role")=="renegade" and meow_lijian_known(self:getRoleCounts().loyalist,"loyalist")+1>meow_lijian_known(self:getRoleCounts().rebel,"rebel")) then
+
+		if lord and not lord:isNude() and lord:objectName()~=self.player:objectName() then      -- 优先离间1血忠和主
+			self:sort(self.enemies,"handcard")
+			local e_peaches = 0
+			local loyalist
+
+			for _,enemy in ipairs(self.enemies)do
+				e_peaches = e_peaches+getCardsNum("Peach",enemy)
+				if enemy:getHp()==1 and self:hasTrickEffective(duel,enemy,lord) and enemy:objectName()~=lord:objectName() and not loyalist then
+					loyalist = enemy
+					break
+				end
+			end
+
+			if loyalist and e_peaches<1 then
+                table.insert(targets, loyalist)
+                table.insert(targets, lord)
             end
-        end
+		end
     end
     if #targets < n then
-        local ordered = self:sort(self.enemies, "defense")
-        if not ordered then ai_unsupported("Meowlijian defense order is unknown", "Meowlijian") end
-        local first
-        for _, enemy in ipairs(ordered) do
-            if not enemy:hasSkills("wuyan|noswuyan") and not first then first = enemy end
-        end
-        if first then
-            for _, enemy in ipairs(ordered) do
-                if not same(enemy, first) and trick_ok(first, enemy) and not table.contains(targets, enemy) then
-                    if not table.contains(targets, first) then targets[#targets + 1] = first end
-                    targets[#targets + 1] = enemy
-                    if #targets >= n then break end
+        local shenguanyu = self.room:findPlayerBySkillName("wuhun")
+        if shenguanyu and shenguanyu:objectName()~=self.player:objectName() then
+            if meow_lijian_known(self.player:getRole(), "owner_role")=="rebel" and lord and lord:objectName()~=self.player:objectName() and shenguanyu:objectName()~=lord:objectName()
+                and not self:hasJueqingEffect(lord,shenguanyu) and self:hasTrickEffective(duel,shenguanyu,lord) then
+                table.insert(targets, shenguanyu)
+            elseif self:isEnemy(shenguanyu) and #self.enemies>=2 then
+                for _,enemy in ipairs(self.enemies)do
+                    if enemy:objectName()~=shenguanyu:objectName() and not meow_lijian_locked(enemy,duel)
+                        and self:hasTrickEffective(duel,shenguanyu,enemy) then
+                        if not table.contains(targets,enemy) then
+                            table.insert(targets, enemy)
+                            if #targets >= n then
+                                break
+                            end
+                        end
+                    end
                 end
             end
         end
     end
-    if #targets >= 2 and n >= #targets then
-        use.card = card
-        for _, target in ipairs(targets) do use.to:append(target) end
+    if #targets < n then
+        self:sort(self.enemies,"defense")
+		local males,others = {},{}
+		local first,second
+		local zhugeliang_kongcheng,xunyu
+
+		for _,enemy in ipairs(self.enemies)do
+			if  not enemy:hasSkills("wuyan|noswuyan") then
+				if enemy:hasSkill("kongcheng") and enemy:isKongcheng() then zhugeliang_kongcheng = enemy
+				elseif enemy:hasSkill("jieming") then xunyu = enemy
+				else
+					for _,anotherenemy in ipairs(self.enemies)do
+						if  anotherenemy:objectName()~=enemy:objectName() then
+							if #males==0 and self:hasTrickEffective(duel,enemy,anotherenemy) then
+								if not (enemy:hasSkill("hunzi") and enemy:getStrategyMark("hunzi")<1 and enemy:getHp()==2) then
+									table.insert(males,enemy)
+								else
+									table.insert(others,enemy)
+								end
+							end
+							if #males==1 and self:hasTrickEffective(duel,males[1],anotherenemy) then
+								if not anotherenemy:hasSkills("nosjizhi|jizhi|jiang") then
+									table.insert(males,anotherenemy)
+								else
+									table.insert(others,anotherenemy)
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+
+		if #males>0 then
+			if isLord(males[1]) and meow_lijian_known(self.world.turn_count,"turn_count")<=1 and meow_lijian_known(self.player:getRole(), "owner_role")=="rebel" and self.player:aliveCount()>=3 then
+				local p_slash,max_p,max_pp = 0,nil,nil
+				for _,p in sgs.list(self.room:getOtherPlayers(self.player))do
+					if not self:isFriend(p) and p:objectName()~=males[1]:objectName() and self:hasTrickEffective(duel,males[1],p) and not meow_lijian_locked(p,duel)
+						and p_slash<getCardsNum("Slash",p) then
+						if p:getKingdom()==males[1]:getKingdom() then
+							max_p = p
+							break
+						elseif not max_pp then
+							max_pp = p
+						end
+					end
+				end
+				if max_p then table.insert(males,max_p) end
+				if max_pp and #males==1 then table.insert(males,max_pp) end
+			end
+		end
+
+		if #males>0 then
+			if #others>=1 and not meow_lijian_locked(others[1],duel) then
+                for _,p in ipairs(others)do
+                    if not table.contains(males,p) then
+				        table.insert(males,p)
+                    end
+                end
+			elseif xunyu and not meow_lijian_locked(xunyu,duel) then
+				if getCardsNum("Slash",males[1])<1 then
+					table.insert(males,xunyu)
+				else
+					local drawcards = 0
+					for _,enemy in ipairs(self.enemies)do
+						local x = enemy:getMaxHp()>enemy:getHandcardNum() and math.min(5,enemy:getMaxHp()-enemy:getHandcardNum()) or 0
+						if x>drawcards then drawcards = x end
+					end
+					if drawcards<=2 then
+						table.insert(males,xunyu)
+					end
+				end
+			end
+		end
+
+		if #males>0 and #self.friends_noself>0 then
+			meow_lijian_log(self, "Only 1")
+			first = males[1]
+			if zhugeliang_kongcheng and self:hasTrickEffective(duel,first,zhugeliang_kongcheng) then
+				table.insert(males,zhugeliang_kongcheng)
+			else
+				local friend_maxSlash = findFriend_maxSlash(self,first)
+				if friend_maxSlash then table.insert(males,friend_maxSlash) end
+			end
+		end
+
+		if #males>=2 then
+            for _,p in ipairs(males)do
+                if not table.contains(targets,p) then
+			        table.insert(targets, p)
+                    if #targets >= n then
+                        break
+                    end
+                end
+            end
+        end
     end
+	if #targets >= 2 and n >= #targets then
+		use.card = card
+        for _,p in ipairs(targets)do
+		    use.to:append(p)
+        end
+	end
 end
+
 bind_use("MeowlijianCard", use_lijian)
-ai_skill_activate.Meowlijian = activate("Meowlijian")
 sgs.ai_use_value.MeowlijianCard = 8.5
 sgs.ai_use_priority.MeowlijianCard = 4
+sgs.ai_card_intention.MeowlijianCard = function(self, card, from, to)
+    sgs.updateIntentions(from, to, 40)
+end
 sgs.dynamic_value.damage_card.MeowlijianCard = true
+sgs.ai_suppress_intention.Meowlijian = true
 
 ai_skill_invoke.MeowQieting = function() return true end
 
-ai_skill_choice.MeowQieting = function(self, options)
-    local items = choices_of(options, "MeowQieting")
-    local target = self:getDecisionContext().player
-    if not target then ai_unsupported("MeowQieting target is missing", "MeowQieting") end
-    if pick(items, "draw") and self:isFriend(target) then return "draw" end
-    local hand = getChoice(items, "getHCrad")
-    local equip = getChoice(items, "get")
-    if (target:getHandcardNum() or 0) >= 2 and hand then return hand end
-    local equips = target:getEquips()
-    if equips and #equips > 0 and equip then return equip end
-    if pick(items, "draw") then return "draw" end
-    return items[1]
+local function meow_turn_count(self)
+    local policy=self:getResponsePolicy()
+    local value=type(policy)=="table" and policy.turn_count
+    if type(value)~="number" then ai_unsupported("turn count is unknown","Meowxianzhou") end
+    return value
+end
+rawset(ai_skill_choice,"MeowQieting",nil)
+sgs.ai_skill_choice.MeowQieting = function(self, choices, data)
+    local target = data:toPlayer()
+    local items = choices:split("+")
+    if table.contains(items, "draw")
+        and self:isFriend(target)
+    then
+        return "draw"
+    end
+    local Equip = getChoice(choices, "get")
+    local HandCard = getChoice(choices, "getHCrad")
+    if target:getHandcardNum() >= 2
+    then
+        return HandCard
+    end
+    if target:hasEquip()
+    then
+        return Equip
+    end
+    if table.contains(items, "draw")
+    then
+        return "draw"
+    end
 end
 
-local function xianzhou_target(self, card)
-    relations(self, "Meowxianzhou")
-    local weak = self:isWeak()
-    if weak == nil then ai_unsupported("Meowxianzhou weakness is unknown", "Meowxianzhou") end
-    if weak then
-        for _, friend in ipairs(self.friends_noself) do
-            local blocked = hasManjuanEffect(friend)
-            local draw = self:canDraw(friend, self.player)
-            if blocked == nil or draw == nil then
-                ai_unsupported("Meowxianzhou draw policy is unknown", "Meowxianzhou")
-            end
-            if not blocked and draw then return friend end
-        end
-    end
-    if not self.player:isWounded() then
-        for _, friend in ipairs(self.friends_noself) do
-            for _, target in ipairs(self.room:getOtherPlayers(self.player) or {}) do
-                local reach = friend:inMyAttackRange(target)
-                local effective = self:damageIsEffective(target, nil, friend)
-                local lose = self:needToLoseHp(target, friend)
-                local target_weak = self:isWeak(target)
-                if reach and effective and lose == false and target_weak then return friend end
-            end
-        end
-    end
-    local equips = self.player:getEquips()
-    if equips and (#equips > 2 or (#self.enemies > 0 and #equips > #self.enemies)) then
-        local friends = self:sort(self.friends_noself, "defense")
-        return friends and friends[1] or nil
-    end
-    return nil
-end
 
-local function use_xianzhou(card, use, self)
+rawset(ai_skill_activate,"Meowxianzhou",nil)
+sgs.ai_fill_skill.Meowxianzhou = function(self,inclusive,request)
+    if self.player:getEquips():isEmpty() then return end
     if self.player:getMark("@handover") == 0 then return end
-    local equips = self.player:getEquips()
-    if not equips or #equips == 0 then return end
-    local ids = card:getSubcards()
-    if ids and #ids == 0 then return end
-    local target = xianzhou_target(self, card)
-    if target then
-        use.card = card
-        use.to:append(target)
+    return self:evaluateTurnSkillCard("Meowxianzhou","#MeowxianzhouCard",{},request)
+end
+
+sgs.ai_skill_use_func["#MeowxianzhouCard"] = function(card, use, self)
+    local cards = sgs.QList2Table(self.player:getHandcards())
+    local to_give = {}
+    self:sortByUseValue(cards, true)
+    for _, card in ipairs(cards) do
+        if not isCard("Peach", card, self.player)
+            and not isCard("ExNihilo", card, self.player)
+        then
+            table.insert(to_give, card:getId())
+        end
+        if #to_give >= 2 and self:getOverflow() - #to_give <= 0
+        then
+            break
+        end
+    end
+    if #to_give > 0
+    then
+        if self:isWeak() then
+            for _, friend in ipairs(self.friends_noself) do
+                if not hasManjuanEffect(friend) and self:canDraw(friend, self.player) then
+                    use.card = card
+                    if use.to then use.to:append(friend) end
+                    return
+                end
+            end
+            self:sort(self.friends)
+            for _, target in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+                local canUse = true
+                for _, friend in ipairs(self.friends) do
+                    if target:inMyAttackRange(friend) and self:damageIsEffective(friend, nil, target)
+                        and not self:needToLoseHp(friend, target)
+                    then
+                        canUse = false
+                        break
+                    end
+                end
+                if canUse then
+                    use.card = self:evaluateTurnSkillCard("Meowxianzhou","#MeowxianzhouCard",to_give)
+                    if use.to then use.to:append(target) end
+                    return
+                end
+            end
+        end
+        if not self.player:isWounded() then
+            local killer
+            self:sort(self.friends_noself)
+            for _, target in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+                local canUse = false
+                for _, friend in ipairs(self.friends_noself) do
+                    if friend:inMyAttackRange(target) and self:damageIsEffective(target, nil, friend)
+                        and not self:needToLoseHp(target, friend) and self:isWeak(target) then
+                        canUse = true
+                        killer = friend
+                        break
+                    end
+                end
+                if canUse then
+                    use.card = self:evaluateTurnSkillCard("Meowxianzhou","#MeowxianzhouCard",to_give)
+                    if use.to then use.to:append(killer) end
+                    return
+                end
+            end
+        end
+
+        if #self.friends_noself == 0 then return end
+        if self.player:getEquips():length() > 2 or self.player:getEquips():length() > #self.enemies and meow_turn_count(self) > 2 then
+            local function cmp_AttackRange(a, b)
+                local ar_a = a:getAttackRange()
+                local ar_b = b:getAttackRange()
+                if ar_a == ar_b then
+                    return sgs.getDefense(a) > sgs.getDefense(b)
+                else
+                    return ar_a > ar_b
+                end
+            end
+            table.sort(self.friends_noself, cmp_AttackRange)
+            use.card = self:evaluateTurnSkillCard("Meowxianzhou","#MeowxianzhouCard",to_give)
+            if use.to then use.to:append(self.friends_noself[1]) end
+        end
     end
 end
-bind_use("MeowxianzhouCard", use_xianzhou)
-ai_skill_activate.Meowxianzhou = activate("Meowxianzhou")
+
 sgs.ai_use_priority.MeowxianzhouCard = 2
 
-ai_skill_use["@@Meowxianzhou"] = function(self)
-    relations(self, "Meowxianzhou")
+-- Fixed donor target policy, shared by the response and hypothetical choice.
+local function meow_xianzhou_policy(self, prompt)
     local current = self.room:getCurrent()
-    local limit = tonumber(self.player:getMark("Meowxianzhou_count")) or 0
-    if limit <= 0 then return {kind = "pass"} end
-    if current and self:isWeak(current) and self:isFriend(current) then return {kind = "pass"} end
+    local num = self.player:getMark("Meowxianzhou_count")
+    if self:isWeak(current) and self:isFriend(current) then return "." end
     local targets = {}
-    local function add(pool)
-        for _, target in ipairs(pool) do
-            local reach = self.player:inMyAttackRange(target)
-            local effective = self:damageIsEffective(target, nil, self.player)
-            local lose = self:needToLoseHp(target, self.player)
-            if reach and effective and lose == false then
-                targets[#targets + 1] = target:objectName()
-                if #targets == limit then return true end
+    self:sort(self.enemies, "hp")
+    for _, enemy in ipairs(self.enemies) do
+        if self.player:inMyAttackRange(enemy) and self:damageIsEffective(enemy, nil, self.player)
+            and not self:needToLoseHp(enemy, self.player)
+        then
+            table.insert(targets, enemy:objectName())
+            if #targets == tonumber(num) then break end
+        end
+    end
+    if #targets < tonumber(num) then
+        self:sort(self.friends_noself)
+        self.friends_noself = sgs.reverse(self.friends_noself)
+        for _, friend in ipairs(self.friends_noself) do
+            if self.player:inMyAttackRange(friend) and self:damageIsEffective(friend, nil, self.player)
+                and not self:needToLoseHp(friend, self.player)
+            then
+                table.insert(targets, friend:objectName())
+                if #targets == tonumber(num) then break end
             end
         end
     end
-    local enemies = self:sort(self.enemies, "hp")
-    if not enemies then ai_unsupported("Meowxianzhou enemy order is unknown", "Meowxianzhou") end
-    if not add(enemies) then
-        local friends = sgs.reverse(self.friends_noself)
-        if friends then add(friends) end
+    if #targets < tonumber(num) then
+        for _, target in sgs.qlist(self.room:getAlivePlayers()) do
+            if not self:isFriend(target) and self:isWeak(target) then
+                table.insert(targets, target:objectName())
+            end
+        end
     end
-    if #targets == 0 then return {kind = "pass"} end
-    local action = self:getSkillAction("Meowxianzhou")
-    return {
-        kind = "use_card",
-        skill_action = action and action:toAnswer() or nil,
-        targets = targets
-    }
+
+    if #targets > 0 and #targets <= tonumber(num) then
+        return "#MeowxianzhouCard:.:->" .. table.concat(targets, "+")
+    end
+    return "."
 end
 
-ai_skill_choice.Meowxianzhou = function(self, options)
-    local items = choices_of(options, "Meowxianzhou")
-    local answer = ai_skill_use["@@Meowxianzhou"](self)
-    if type(answer) == "table" and answer.kind == "use_card" and pick(items, "damage") then
-        return "damage"
-    end
-    return pick(items, "recover") or items[1]
+
+local function meow_response(self,skill,wire)
+    if wire=="." then return wire end
+    local costs,targets=wire:match("^#"..skill.."Card:([^:]+):%->(.+)$")
+    if not costs then ai_unsupported("unexpected Meow response policy wire",skill) end
+    local ids={}
+    if costs~="." then for id in costs:gmatch("[^+]+") do ids[#ids+1]=tonumber(id) end end
+    local card=self:bindSkillCard(skill,ids,nil,nil,"#"..skill.."Card")
+    return {kind="use_card",card_spec=card:toCardSpec(),targets=targets:split("+")}
+end
+rawset(ai_skill_use,"@@Meowxianzhou",nil)
+sgs.ai_skill_use["@@Meowxianzhou"]=function(self,prompt)
+    return meow_response(self,"Meowxianzhou",meow_xianzhou_policy(self,prompt))
+end
+rawset(ai_skill_choice,"Meowxianzhou",nil)
+sgs.ai_skill_choice.Meowxianzhou=function(self,choices,data)
+    local target=data:toPlayer() -- retained source conversion; result is unused
+    local items=choices:split("+")
+    if table.contains(items,"damage") and meow_xianzhou_policy(self,"@Meowxianzhou")~="." then return "damage" end
+    return "recover"
 end
 
 sgs.ai_cardneed.MeowQiangwu = sgs.ai_cardneed.slash
@@ -355,269 +572,531 @@ function sgs.ai_cardneed.MeowLieren(to, card, self)
     return known == 0
 end
 
-ai_skill_invoke.MeowLieren = function(self)
-    local use = use_of(self, "MeowLieren")
-    if not use.to then return false end
-    for _, target in ipairs(use.to) do
-        if self:doDisCard(target, "he", true) then return true end
+local function meow_lieren_flag(self,player,name)
+    local context=self:getDecisionContext()
+    local row=context and context.round23_choice
+    local flags=type(row)=="table" and row.lieren_flags
+    local target=type(flags)=="table" and flags[player:objectName()]
+    local value=type(target)=="table" and target[name]
+    if type(value)~="boolean" then ai_unsupported("Lieren broadcast flag is not projected",name) end
+    return value
+end
+local function meow_lieren_policy(self, prompt)
+    self:sort(self.enemies, "handcard")
+
+    for _, enemy in ipairs(self.enemies) do
+        if ((meow_lieren_flag(self,enemy,"MeowLierenMarkto") and meow_lieren_flag(self,self.player,"MeowLierenMarkfrom")) or not meow_lieren_flag(self,self.player,"MeowLierenMarkfrom")) and meow_lijian_known(self:canPindian(self.player,enemy),"MeowLieren.canPindian")
+        then
+            if self.player:getHandcardNum() == 1 then
+                if (self:needKongcheng() or not self:hasLoseHandcardEffective()) and not self:isWeak() then
+                    return
+                        "#MeowLierenCard:.:->" .. enemy:objectName()
+                end
+                local card = self.player:getHandcards():first()
+                if card:isKindOf("Jink") or card:isKindOf("Peach") then return "." end
+            end
+            if self:doDisCard(enemy, "he", true, 2) then return "#MeowLierenCard:.:->" .. enemy:objectName() end
+        end
+    end
+    return "."
+end
+
+
+function sgs.ai_skill_pindian.MeowLieren(minusecard, self, requestor)
+    local cards = sgs.QList2Table(self.player:getHandcards())
+    self:sortByKeepValue(cards)
+    if requestor:objectName() == self.player:objectName() then
+        return cards[1]:getId()
+    end
+    return self:getMaxCard(self.player):getId()
+end
+
+rawset(ai_skill_use,"@@MeowLieren",nil)
+sgs.ai_skill_use["@@MeowLieren"]=function(self,prompt)
+    return meow_response(self,"MeowLieren",meow_lieren_policy(self,prompt))
+end
+rawset(ai_skill_invoke,"MeowLieren",nil)
+sgs.ai_skill_invoke.MeowLieren = function(self, data)
+    local use = data:toCardUse()
+    for _, p in sgs.qlist(use.to) do
+        if self.player:getHandcardNum() == 1 then
+            if (self:needKongcheng() or not self:hasLoseHandcardEffective()) and not self:isWeak() then return true end
+            local card = self.player:getHandcards():first()
+            if card:isKindOf("Jink") or card:isKindOf("Peach") then return end
+        end
+        if self:doDisCard(p, "he", true) then return true end
+    end
+    if meow_lieren_policy(self, "@MeowLieren") ~= "." then
+        return true
     end
     return false
 end
 
-ai_skill_use["@@MeowLieren"] = function(self)
-    relations(self, "MeowLieren")
-    local enemies = self:sort(self.enemies, "handcard")
-    if not enemies then ai_unsupported("MeowLieren enemy order is unknown", "MeowLieren") end
-    for _, enemy in ipairs(enemies) do
-        local marked = enemy:hasFlag("MeowLierenMarkto")
-        local from_mark = self.player:hasFlag("MeowLierenMarkfrom")
-        local pindian = self.player:canPindian(enemy)
-        if pindian == nil then ai_unsupported("MeowLieren pindian state is unknown", "MeowLieren") end
-        if pindian and ((marked and from_mark) or not from_mark) and self:doDisCard(enemy, "he", true, 2) then
-            local action = self:getSkillAction("MeowLieren")
-            return {
-                kind = "use_card",
-                skill_action = action and action:toAnswer() or nil,
-                targets = {enemy:objectName()}
-            }
-        end
-    end
-    return {kind = "pass"}
-end
 
-sgs.ai_skill_pindian.MeowLieren = function(minusecard, self, requestor)
-    local cards = self.player:getHandcards()
-    if not cards or #cards == 0 then return nil end
-    cards = self:sortByKeepValue(cards)
-    if not cards then return nil end
-    if requestor and same(requestor, self.player) then return cards[1] end
-    local maximum = self:getMaxCard(self.player)
-    return maximum or cards[#cards]
-end
+
 
 function sgs.ai_cardneed.MeowJizhi(to, card)
-    return card and card:isKindOf("TrickCard")
+    return card:getTypeId() == sgs.Card_TypeTrick
 end
 
-local function guose_diamond(self)
+rawset(ai_skill_activate,"MeowGuose",nil)
+sgs.ai_fill_skill.MeowGuose = function(self,inclusive,request)
     local cards = self:addHandPile("he")
-    if not cards then return nil end
-    cards = self:sortByUseValue(cards, true)
-    if not cards then return nil end
-    for _, card in ipairs(cards) do
-        if card:getSuit() == sgs.Card_Diamond then
-            local value = self:getUseValue(card)
-            local indulgence = sgs.ai_use_value.Indulgence
-            if type(value) == "number" and type(indulgence) == "number" and value < indulgence then
-                return card
+    self:sortByUseValue(cards, true)
+    local card = nil
+    local has_weapon, has_armor = false, false
+
+    for _, acard in ipairs(cards) do
+        if acard:isKindOf("Weapon") and not acard:getSuit() == sgs.Card_Diamond then has_weapon = true end
+    end
+
+    for _, acard in ipairs(cards) do
+        if acard:isKindOf("Armor") and not acard:getSuit() == sgs.Card_Diamond then has_armor = true end
+    end
+
+    for _, acard in ipairs(cards) do
+        if acard:getSuit() == sgs.Card_Diamond
+            and ((self:getUseValue(acard) < sgs.ai_use_value.Indulgence) or inclusive)
+        then
+            local shouldUse = true
+
+            if acard:isKindOf("Armor") then
+                if not self.player:getArmor() then
+                    shouldUse = false
+                elseif self.player:hasEquip(acard) and not has_armor and self:evaluateArmor() > 0
+                then
+                    shouldUse = false
+                end
+            end
+
+            if acard:isKindOf("Weapon") then
+                if not self.player:getWeapon() then
+                    shouldUse = false
+                elseif self.player:hasEquip(acard) and not has_weapon
+                then
+                    shouldUse = false
+                end
+            end
+
+            if shouldUse then
+                card = acard
+                break
             end
         end
     end
-    return false
+
+    if (self.player:getMark("MeowGuoseUsed") >= 4) then return nil end
+    if card then
+        return self:evaluateTurnSkillCard("MeowGuose","#MeowGuoseCard2",{card:getEffectiveId()},request)
+    else
+        return self:evaluateTurnSkillCard("MeowGuose","#MeowGuoseCard",{},request)
+    end
 end
 
-local function use_guose_remove(card, use, self)
-    relations(self, "MeowGuose")
-    if (self.player:getMark("MeowGuoseUsed") or 0) >= 4 then return end
-    local friends = self:sort(self.friends)
-    if not friends then return end
-    for _, friend in ipairs(friends) do
-        if friend:containsTrick("Indulgence") and self:willSkipPlayPhase(friend) then
-            local judging = friend:getJudgingArea()
-            if judging then
-                for _, judge in ipairs(judging) do
-                    if judge:isKindOf("Indulgence")
-                        and self.player:canDiscard(friend, judge:getEffectiveId()) then
-                        use.card = card
-                        use.to:append(friend)
-                        return
-                    end
+sgs.ai_skill_use_func["#MeowGuoseCard"] = function(card, use, self)
+    self:sort(self.friends)
+
+
+    self:setPriorityValue("#MeowGuoseCard",5.5)
+    for _, friend in ipairs(self.friends) do
+        if friend:containsTrick("Indulgence")
+            and self:willSkipPlayPhase(friend)
+            and not friend:hasSkills("shensu|qingyi|qiaobian")
+            and (self:isWeak(friend) or self:getOverflow(friend) > 1)
+        then
+            for _, c in sgs.list(friend:getJudgingArea()) do
+                if c:isKindOf("Indulgence")
+                    and self.player:canDiscard(friend, c:getEffectiveId())
+                then
+                    use.card = card
+                    if use.to then use.to:append(friend) end
+                    return
+                end
+            end
+        end
+    end
+
+    self:setPriorityValue("#MeowGuoseCard",5.5)
+
+    for _, friend in ipairs(self.friends) do
+        if friend:containsTrick("Indulgence")
+            and self:willSkipPlayPhase(friend)
+        then
+            for _, c in sgs.list(friend:getJudgingArea()) do
+                if c:isKindOf("Indulgence") and self.player:canDiscard(friend, c:getEffectiveId())
+                then
+                    use.card = card
+                    if use.to then use.to:append(friend) end
+                    return
+                end
+            end
+        end
+    end
+
+
+
+    for _, friend in ipairs(self.friends) do
+        if friend:containsTrick("Indulgence") then
+            for _, c in sgs.list(friend:getJudgingArea()) do
+                if c:isKindOf("Indulgence") and self.player:canDiscard(friend, card:getEffectiveId()) then
+                    use.card = card
+                    if use.to then use.to:append(friend) end
+                    return
                 end
             end
         end
     end
 end
-bind_use("MeowGuoseCard", use_guose_remove)
 
-local function use_guose_play(card, use, self)
-    if (self.player:getMark("MeowGuoseUsed") or 0) >= 4 then return end
-    local diamond = self:conversionSubcard(card)
-    if diamond == nil then ai_unsupported("MeowGuose subcard is unknown", "MeowGuose") end
-    if diamond == false or diamond:getSuit() ~= sgs.Card_Diamond then return end
-    if type(ai_card_use.Indulgence) == "function" then
-        ai_card_use.Indulgence(self, card, use)
-        if use.card then use.card = card end
-    end
-end
-bind_use("MeowGuoseCard2", use_guose_play)
-ai_skill_activate.MeowGuose = function(self)
-    if (self.player:getMark("MeowGuoseUsed") or 0) >= 4 then return nil end
-    local diamond = guose_diamond(self)
-    if diamond == nil then ai_unsupported("MeowGuose cards are unknown", "MeowGuose") end
-    if diamond then
-        local played = self:playAuthorizedConversion("MeowGuose", {
-            accept = function(ai, conversion)
-                local sub = ai:conversionSubcard(conversion)
-                return sub and sub:getEffectiveId() == diamond:getEffectiveId()
-            end
-        })
-        if played then return played end
-    end
-    return self:playAuthorizedConversion("MeowGuose", {
-        accept = function(ai, conversion)
-            local name = conversion:getName()
-            return name == "MeowGuoseCard" or name == "#MeowGuoseCard"
-        end
-    })
-end
 sgs.ai_use_priority["#MeowGuoseCard"] = 5.5
 sgs.ai_use_value["#MeowGuoseCard"] = 5
+sgs.ai_card_intention["#MeowGuoseCard"] = -60
+
+sgs.ai_skill_use_func["#MeowGuoseCard2"] = function(card, use, self)
+    self:sort(self.friends)
+    local id = card:getEffectiveId()
+
+    local indulgence = self:evaluateOwnerViewAsCard({source_key="MeowGuose",skill="",name="indulgence",suit=sgs.Card_NoSuit,number=0,subcards={id}})
+    if not self.player:isLocked(indulgence) then
+        local dummy = self:aiUseCard(indulgence)
+        if dummy.card and dummy.to:length() > 0
+        then
+            use.card = card
+            self:setPriorityValue("#MeowGuoseCard2",sgs.ai_use_priority.Indulgence)
+            if use.to then use.to = dummy.to end
+            return
+        end
+    end
+end
+
 sgs.ai_use_priority["#MeowGuoseCard2"] = 5.5
 sgs.ai_use_value["#MeowGuoseCard2"] = 5
+sgs.ai_card_intention["#MeowGuoseCard2"] = -60
 
 function sgs.ai_cardneed.MeowGuose(to, card)
     return card and card:getSuit() == sgs.Card_Diamond
 end
 
-local function liuli_card(self, who, cards, range_fix)
-    if not cards then return nil end
-    cards = self:sortByKeepValue(cards)
-    if not cards then return nil end
-    for _, card in ipairs(cards) do
-        local reach = true
-        if range_fix then
-            local extra = 0
-            if card:isKindOf("Weapon") then
-                local weapon_range = card:getRange() or (sgs.weapon_range or {})[card:getClassName()]
-                local bare = self.player:getAttackRange()
-                if type(weapon_range) ~= "number" or type(bare) ~= "number" then return nil end
-                extra = weapon_range - bare
-            end
-            if card:isKindOf("OffensiveHorse") then extra = extra + 1 end
-            reach = self:canSlash(self.player, who, nil, true)
-            if reach == nil then return nil end
-        else
-            reach = self:canSlash(self.player, who)
-            if reach == nil then return nil end
-        end
-        if reach then return card:getEffectiveId() end
+local function meow_liuli_context(self)
+    local ctx=self:getDecisionContext()
+    local row=ctx and ctx.round22_choice and ctx.round22_choice.meow_liuli
+    if type(row)~="table" or type(row.card)~="table" or type(row.source_flags)~="table" then
+        ai_unsupported("MeowLiuli public use context is missing","MeowLiuli")
     end
-    return false
+    return {card=CardView.new(row.card),source_flags=row.source_flags}
 end
-
-ai_skill_use["@@MeowLiuli"] = function(self)
-    relations(self, "MeowLiuli")
+local function meow_liuli_source(self,player)
+    local value=meow_liuli_context(self).source_flags[player:objectName()]
+    if type(value)~="boolean" then ai_unsupported("MeowLiuli public source flag unknown","MeowLiuli") end
+    return value
+end
+local function meow_liuli_policy(self, prompt, method)
+    local others = self.room:getOtherPlayers(self.player)
+    --local slash = self.player:getTag("liuli-card"):toCard()
+    local slash = meow_liuli_context(self).card
+    others = sgs.QList2Table(others)
     local source
-    for _, player in ipairs(self.room:getOtherPlayers(self.player) or {}) do
-        if player:hasFlag("MeowLiuliSlashSource") then source = player break end
-    end
-    local limit = self.player:hasSkill("Meowdoumiao") and 1 or 2
-    local targets, paid_id = {}, nil
-    local function consider(who)
-        if source and same(source, who) then return end
-        if #targets >= limit then return end
-        local hand = liuli_card(self, who, self.player:getCards("h"), false)
-        if hand == nil then ai_unsupported("MeowLiuli hand is unknown", "MeowLiuli") end
-        if type(hand) == "number" then
-            paid_id = paid_id or hand
-            targets[#targets + 1] = who:objectName()
-            return
-        end
-        local equip = liuli_card(self, who, self.player:getCards("e"), true)
-        if equip == nil then ai_unsupported("MeowLiuli equips are unknown", "MeowLiuli") end
-        if type(equip) == "number" then
-            paid_id = paid_id or equip
-            targets[#targets + 1] = who:objectName()
-        end
-    end
-    local enemies = self:sort(self.enemies, "defense")
-    if not enemies then ai_unsupported("MeowLiuli enemy order is unknown", "MeowLiuli") end
-    for _, enemy in ipairs(enemies) do consider(enemy) end
-    if #targets < limit then
-        local friends = sgs.reverse(self:sort(self.friends_noself, "defense") or {})
-        for _, friend in ipairs(friends or {}) do
-            local context = self:getDecisionContext().use
-            local slash = type(context) == "table" and context.card or nil
-            local effective = self:slashIsEffective(slash, friend)
-            local lose = self:needToLoseHp(friend, source)
-            if effective == false or lose then consider(friend) end
-        end
-    end
-    if #targets == 0 or type(paid_id) ~= "number" then return {kind = "pass"} end
-    local action = self:getSkillAction("MeowLiuli")
-    return {
-        kind = "use_card",
-        skill_action = action and action:toAnswer() or nil,
-        cards = {paid_id},
-        targets = targets
-    }
-end
-
-function sgs.ai_slash_prohibit.MeowLiuli(self, from, to, card)
-    local friend = self:isFriend(to, from)
-    if friend == nil then return nil end
-    if friend or from:hasFlag("NosJiefanUsed") or to:isNude() then return false end
-    local friends = self:getFriends(from, true)
-    if not friends then return nil end
-    for _, ally in ipairs(friends) do
-        local reach = self:canSlash(to, ally, card)
-        local effective = self:slashIsEffective(card, ally, from)
-        if reach == nil or effective == nil then return nil end
-        if reach and effective then return true end
-    end
-    return false
-end
-
-function sgs.ai_cardneed.MeowLiuli(to, card)
-    local cards = to:getCards("he")
-    if not cards then return nil end
-    return #cards <= 2
-end
-
-ai_skill_use["@@MeowTianxiang"] = function(self)
-    relations(self, "MeowTianxiang")
-    local damage = self:getDecisionContext().damage
-    if type(damage) ~= "table" then ai_unsupported("MeowTianxiang damage is missing", "MeowTianxiang") end
-    local cards = self:sortByUseValue(self.player:getCards("h") or {}, true)
-    if not cards then ai_unsupported("MeowTianxiang hand is unknown", "MeowTianxiang") end
-    local card_id
-    for _, card in ipairs(cards) do
-        if card:getSuit() == sgs.Card_Heart and not card:isKindOf("Peach") then
-            card_id = card:getEffectiveId()
+    for _, player in ipairs(others) do
+        if meow_liuli_source(self,player) then
+            source = player
             break
         end
     end
-    if not card_id then return {kind = "pass"} end
-    local amount = damage.damage or damage.amount or 1
-    local function answer(target)
-        local action = self:getSkillAction("MeowTianxiang")
-        return {
-            kind = "use_card",
-            skill_action = action and action:toAnswer() or nil,
-            cards = {card_id},
-            targets = {target:objectName()}
-        }
+    self:sort(self.enemies, "defense")
+    local doMeowLiuli = function(who)
+        if not self:isFriend(who) and who:hasSkills("leiji|nosleiji|olleiji")
+            and (self:hasSuit("spade", true, who) or who:getHandcardNum() >= 3)
+            and (getKnownCard(who, self.player, "Jink", true) >= 1 or self:hasEightDiagramEffect(who)) then
+            return "."
+        end
+
+        local cards = self.player:getCards("h")
+        cards = sgs.QList2Table(cards)
+        self:sortByKeepValue(cards)
+        for _, card in ipairs(cards) do
+            if not meow_lijian_known(self.player:isCardLimited(card, method), "MeowLiuli.limit") and meow_lijian_known(self.player:canSlash(who), "MeowLiuli.reach") then
+                if self:isFriend(who) and not (isCard("Peach", card, self.player) or isCard("Analeptic", card, self.player)) then
+                    return "#MeowLiuliCard:" .. card:getEffectiveId() .. ":->" .. who:objectName()
+                else
+                    return "#MeowLiuliCard:" .. card:getEffectiveId() .. ":->" .. who:objectName()
+                end
+            end
+        end
+
+        local cards = self.player:getCards("e")
+        cards = sgs.QList2Table(cards)
+        self:sortByKeepValue(cards)
+        for _, card in ipairs(cards) do
+            local range_fix = 0
+            if card:isKindOf("Weapon") then
+                range_fix = range_fix + sgs.weapon_range[card:getClassName()] -
+                    self.player:getAttackRange(false)
+            end
+            if card:isKindOf("OffensiveHorse") then range_fix = range_fix + 1 end
+            if not meow_lijian_known(self.player:isCardLimited(card, method), "MeowLiuli.limit") and meow_lijian_known(self.player:canSlash(who, nil, true, range_fix), "MeowLiuli.rangefix") then
+                return "#MeowLiuliCard:" .. card:getEffectiveId() .. ":->" .. who:objectName()
+            end
+        end
+        return "."
     end
-    local enemies = self:sort(self.enemies, "hp")
-    if not enemies then ai_unsupported("MeowTianxiang enemy order is unknown", "MeowTianxiang") end
-    for _, enemy in ipairs(enemies) do
-        local hp = enemy:getHp()
-        if type(hp) == "number" and hp <= amount and enemy:isAlive() then
-            local attack = self:canAttack(enemy, damage.from or self.room:getCurrent(), damage.nature)
-            if attack then return answer(enemy) end
+    local targets = {}
+    local n = 1
+    if not self.player:hasSkill("Meowdoumiao") then
+        n = 2
+    end
+    for _, enemy in ipairs(self.enemies) do
+        if not (source and source:objectName() == enemy:objectName()) then
+            local ret = doMeowLiuli(enemy)
+            if ret ~= "." then
+                if #targets < n and n > 1 then
+                    table.insert(targets, enemy:objectName())
+                else
+                    return ret
+                end
+            end
         end
     end
+
+    for _, player in ipairs(others) do
+        if self:objectiveLevel(player) == 0 and not (source and source:objectName() == player:objectName()) then
+            local ret = doMeowLiuli(player)
+            if ret ~= "." then
+                if #targets < n and n > 1 then
+                    table.insert(targets, player:objectName())
+                else
+                    return ret
+                end
+            end
+        end
+    end
+
+    self:sort(self.friends_noself, "defense")
+    self.friends_noself = sgs.reverse(self.friends_noself)
+
+
     for _, friend in ipairs(self.friends_noself) do
-        local lose = self:needToLoseHp(friend)
-        local chained = friend:isChained()
-        if chained and damage.nature and damage.nature ~= sgs.DamageStruct_Normal then
-            local good = self:isGoodChainTarget(friend, damage.card or damage.nature, damage.from, amount)
-            if good == false or lose or hasBuquEffect(friend) then return answer(friend) end
-        elseif lose or hasBuquEffect(friend) then
-            return answer(friend)
+        if not self:slashIsEffective(slash, friend) or self:findLeijiTarget(friend, 50, source) then
+            if not (source and source:objectName() == friend:objectName()) then
+                local ret = doMeowLiuli(friend)
+                if ret ~= "." then
+                    if #targets < n and n > 1 then
+                        table.insert(targets, friend:objectName())
+                    else
+                        return ret
+                    end
+                end
+            end
         end
     end
-    return {kind = "pass"}
+
+    for _, friend in ipairs(self.friends_noself) do
+        if self:needToLoseHp(friend, source, dummyCard())
+        then
+            if not (source and source:objectName() == friend:objectName()) then
+                local ret = doMeowLiuli(friend)
+                if ret ~= "." then
+                    if #targets < n and n > 1 then
+                        table.insert(targets, friend:objectName())
+                    else
+                        return ret
+                    end
+                end
+            end
+        end
+    end
+
+    if (self:isWeak() or self:ajustDamage(source, nil, 1, slash) > 1) and source:hasWeapon("axe") and source:getCards("he"):length() > 2
+        and not self:getCardId("Peach") and not self:getCardId("Analeptic") then
+        for _, friend in ipairs(self.friends_noself) do
+            if not self:isWeak(friend) then
+                if not (source and source:objectName() == friend:objectName()) then
+                    local ret = doMeowLiuli(friend)
+                    if ret ~= "." then
+                        if #targets < n and n > 1 then
+                            table.insert(targets, friend:objectName())
+                        else
+                            return ret
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if (self:isWeak() or self:ajustDamage(source, nil, 1, slash) > 1) and not self:getCardId("Jink") then
+        for _, friend in ipairs(self.friends_noself) do
+            if not self:isWeak(friend) or (self:hasEightDiagramEffect(friend) and getCardsNum("Jink", friend) >= 1) then
+                if not (source and source:objectName() == friend:objectName()) then
+                    local ret = doMeowLiuli(friend)
+                    if ret ~= "." then
+                        if #targets < n and n > 1 then
+                            table.insert(targets, friend:objectName())
+                        else
+                            return ret
+                        end
+                    end
+                end
+            end
+        end
+    end
+    if #targets > 0 then
+        local cards = self.player:getCards("h")
+        cards = sgs.QList2Table(cards)
+        self:sortByKeepValue(cards)
+        for _, card in ipairs(cards) do
+            if not meow_lijian_known(self.player:isCardLimited(card, method), "MeowLiuli.limit") then
+                return "#MeowLiuliCard:" .. card:getEffectiveId() .. ":->" .. table.concat(targets, "+")
+            end
+        end
+        local cards = self.player:getCards("e")
+        cards = sgs.QList2Table(cards)
+        self:sortByKeepValue(cards)
+        for _, card in ipairs(cards) do
+            local range_fix = 0
+            if card:isKindOf("Weapon") then
+                range_fix = range_fix + sgs.weapon_range[card:getClassName()] -
+                    self.player:getAttackRange(false)
+            end
+            if card:isKindOf("OffensiveHorse") then range_fix = range_fix + 1 end
+            if not meow_lijian_known(self.player:isCardLimited(card, method), "MeowLiuli.limit") then
+                return "#MeowLiuliCard:" .. card:getEffectiveId() .. ":->" .. table.concat(targets, "+")
+            end
+        end
+    end
+    return "."
+end
+
+
+rawset(ai_skill_use,"@@MeowLiuli",nil)
+sgs.ai_skill_use["@@MeowLiuli"]=function(self,prompt,method)
+    return meow_response(self,"MeowLiuli",meow_liuli_policy(self,prompt,method))
+end
+
+function sgs.ai_slash_prohibit.MeowLiuli(self, from, to, card)
+    if self:isFriend(to, from) then return false end
+    if from:hasFlag("NosJiefanUsed") then return false end
+    if to:isNude() then return false end
+    for _, friend in ipairs(self:getFriends(from, true)) do
+        if meow_rule(to:canSlash(friend,card),"MeowLiuli.canSlash") and meow_rule(self:slashIsEffective(card,friend,from),"MeowLiuli.effective") then return true end
+    end
+end
+
+function sgs.ai_cardneed.MeowLiuli(to, card)
+    return meow_rule(to:getCardCount(),"MeowLiuli.he_count") <= 2
+end
+
+
+local function meow_tianxiang_damage(self)
+    local context=self:getDecisionContext()
+    local facts=context and context.round21_choice
+    local row
+    if type(facts)=="table" then row=facts.meow_tianxiang_damage end
+    if row==nil then ai_unsupported("owner Tianxiang damage is not projected", "MeowTianxiangDamage") end
+    if row==false then return nil end
+    local function player(name)
+        if name==false or name==nil then return nil end
+        return meow_lijian_known(self.room:findPlayerByObjectName(name,true), "MeowTianxiang.damage_player")
+    end
+    return {from=player(row.from),to=player(row.to),damage=meow_lijian_known(row.amount,"MeowTianxiang.amount"),
+        nature=meow_lijian_known(row.nature,"MeowTianxiang.nature"),
+        card=row.card and CardView.new(row.card) or nil,chain=row.chain,transfer=row.transfer}
+end
+local function meow_tianxiang_policy(self, data, method)
+    if not method then method = sgs.Card_MethodDiscard end
+    local friend_lost_hp = 10
+    local friend_hp = 0
+    local card_id
+    local target
+    local cant_use_skill
+    local dmg
+
+    if data == "@tianxiang-card" then
+        dmg = meow_tianxiang_damage(self)
+    else
+        dmg = data
+    end
+
+    if not dmg then
+        self:log(debug.traceback())
+        return "."
+    end
+
+    local cards = self.player:getCards("h")
+    cards = sgs.QList2Table(cards)
+    self:sortByUseValue(cards, true)
+    for _, card in ipairs(cards) do
+        if not meow_lijian_known(self.player:isCardLimited(card, method), "MeowTianxiang.card_limit") and card:getSuit() == sgs.Card_Heart and not card:isKindOf("Peach") then
+            card_id = card:getId()
+            break
+        end
+    end
+    if not card_id then return "." end
+
+    self:sort(self.enemies, "hp")
+
+    for _, enemy in ipairs(self.enemies) do
+        if (enemy:getHp() <= dmg.damage and enemy:isAlive() and enemy:getLostHp() + dmg.damage < 3) then
+            if (enemy:getHandcardNum() <= 2 or enemy:hasSkills("guose|leiji|ganglie|enyuan|qingguo|wuyan|kongcheng") or enemy:containsTrick("indulgence"))
+                and self:canAttack(enemy, dmg.from or self.room:getCurrent(), dmg.nature)
+                and not (dmg.card and dmg.card:getTypeId() == sgs.Card_TypeTrick and enemy:hasSkill("wuyan")) then
+                return "#MeowTianxiangCard:" .. card_id .. ":->" .. enemy:objectName()
+            end
+        end
+    end
+
+    for _, friend in ipairs(self.friends_noself) do
+        if friend:getLostHp() + dmg.damage > 1 and friend:isAlive()
+        then
+            if friend:isChained() and dmg.nature ~= sgs.DamageStruct_Normal
+                and not self:isGoodChainTarget(friend, dmg.card or dmg.nature, dmg.from, dmg.damage)
+            then
+            elseif friend:getHp() >= 2 and dmg.damage < 2
+                and (friend:hasSkills("yiji|buqu|nosbuqu|shuangxiong|zaiqi|yinghun|jianxiong|fangzhu")
+                    or self:needToLoseHp(friend)
+                    or (friend:getHandcardNum() < 3 and (friend:hasSkill("nosrende") or (friend:hasSkill("rende") and not friend:hasUsed("RendeCard")))))
+            then
+                return "#MeowTianxiangCard:" .. card_id .. ":->" .. friend:objectName()
+            elseif dmg.card and dmg.card:getTypeId() == sgs.Card_TypeTrick
+                and friend:hasSkill("wuyan") and friend:getLostHp() > 1
+            then
+                return "#MeowTianxiangCard:" .. card_id .. ":->" .. friend:objectName()
+            elseif hasBuquEffect(friend)
+            then
+                return "#MeowTianxiangCard:" .. card_id .. ":->" .. friend:objectName()
+            end
+        end
+    end
+
+    for _, enemy in ipairs(self.enemies) do
+        if (enemy:getLostHp() <= 1 or dmg.damage > 1) and enemy:isAlive() and enemy:getLostHp() + dmg.damage < 4 then
+            if (enemy:getHandcardNum() <= 2)
+                or enemy:containsTrick("indulgence") or enemy:hasSkills("guose|leiji|vsganglie|ganglie|enyuan|qingguo|wuyan|kongcheng")
+                and self:canAttack(enemy, (dmg.from or self.room:getCurrent()), dmg.nature)
+                and not (dmg.card and dmg.card:getTypeId() == sgs.Card_TypeTrick and enemy:hasSkill("wuyan")) then
+                return "#MeowTianxiangCard:" .. card_id .. ":->" .. enemy:objectName()
+            end
+        end
+    end
+
+    for i = #self.enemies, 1, -1 do
+        local enemy = self.enemies[i]
+        if not enemy:isWounded() and not self:hasSkills(sgs.masochism_skill, enemy) and enemy:isAlive()
+            and self:canAttack(enemy, dmg.from or self.room:getCurrent(), dmg.nature)
+            and (not (dmg.card and dmg.card:getTypeId() == sgs.Card_TypeTrick and enemy:hasSkill("wuyan") and enemy:getLostHp() > 0) or self:isWeak()) then
+            return "#MeowTianxiangCard:" .. card_id .. ":->" .. enemy:objectName()
+        end
+    end
+
+    return "."
+end
+rawset(ai_skill_use, "@@MeowTianxiang", nil)
+sgs.ai_skill_use["@@MeowTianxiang"] = function(self, data, method)
+    local result=meow_tianxiang_policy(self,data,method)
+    if result=="." then return result end
+    local id,target=result:match("^#MeowTianxiangCard:(%d+):%->(.+)$")
+    if not id then ai_unsupported("unexpected source Tianxiang response", "MeowTianxiang") end
+    local card=self:bindSkillCard("MeowTianxiang",{tonumber(id)},nil,nil,"#MeowTianxiangCard")
+    return {kind="use_card",card_spec=card:toCardSpec(),targets={target}}
 end
 
 function sgs.ai_slash_prohibit.MeowTianxiang(self, from, to)
@@ -629,15 +1108,10 @@ function sgs.ai_slash_prohibit.MeowTianxiang(self, from, to)
 end
 
 function sgs.ai_cardneed.MeowTianxiang(to, card, self)
-    if not card or not self then return nil end
-    local heart = card:getSuit() == sgs.Card_Heart
-        or (to:hasSkill("MeowHongyan") and card:getSuit() == sgs.Card_Spade)
-    if not heart then return false end
-    local known_heart = getKnownCard(to, self.player, "heart", false)
-    local known_spade = getKnownCard(to, self.player, "spade", false)
-    if known_heart == nil or known_spade == nil then return nil end
-    return known_heart + known_spade < 2
+    return (card:getSuit() == sgs.Card_Heart or (to:hasSkill("MeowHongyan") and card:getSuit() == sgs.Card_Spade))
+        and (meow_rule(getKnownCard(to,self.player,"heart",false),"MeowTianxiang.heart") + meow_rule(getKnownCard(to,self.player,"spade",false),"MeowTianxiang.spade")) < 2
 end
+
 
 local function jieyi_id(self, male)
     local cards = self.player:getCards("he")
@@ -707,194 +1181,305 @@ ai_skill_choice.MeowJieyi = function(self, options)
     return pick(items, "no") or "no"
 end
 
-ai_skill_invoke.MeowXiaoji_dis = function(self)
-    relations(self, "MeowXiaoji")
+rawset(ai_skill_invoke,"MeowXiaoji_dis",nil)
+sgs.ai_skill_invoke.MeowXiaoji_dis = function(self, data)
     for _, enemy in ipairs(self.enemies) do
-        local dangerous = self:getDangerousCard(enemy)
-        local valuable = self:getValuableCard(enemy)
-        if dangerous == nil or valuable == nil then
-            ai_unsupported("MeowXiaoji card value is unknown", "MeowXiaoji")
-        end
-        if (self:doDisCard(enemy, "he") or dangerous or valuable) and not enemy:isNude() then
+        if (self:doDisCard(enemy, "he") or self:getDangerousCard(enemy) or self:getValuableCard(enemy)) and not enemy:isNude() and
+            not (enemy:hasSkill("guzheng") and self.room:getCurrent():getPhase() == sgs.Player_Discard) then
             return true
         end
     end
     for _, friend in ipairs(self.friends_noself) do
-        local equips = friend:getEquips()
-        if self:hasSkills(sgs.lose_equip_skill, friend) and equips and #equips > 0 then return true end
-        if self:needToThrowArmor(friend) and friend:getArmor() then return true end
-        if self:doDisCard(friend, "he") then return true end
+        if (self:hasSkills(sgs.lose_equip_skill, friend) and not friend:getEquips():isEmpty())
+            or (self:needToThrowArmor(friend) and friend:getArmor()) or self:doDisCard(friend, "he") then
+            return true
+        end
     end
     return false
 end
 
-ai_skill_playerchosen.MeowXiaoji = function(self, options)
-    relations(self, "MeowXiaoji")
-    local names = type(options) == "table" and options.players or nil
-    if type(names) ~= "table" then ai_unsupported("MeowXiaoji candidates are missing", "MeowXiaoji") end
-    local function offered(player)
-        for _, name in ipairs(names) do
-            if name == player:objectName() then return true end
-        end
-    end
+rawset(ai_skill_playerchosen,"MeowXiaoji",nil)
+sgs.ai_skill_playerchosen.MeowXiaoji = function(self, targets)
+    targets = sgs.QList2Table(targets)
+    self:sort(targets, "defense")
     for _, enemy in ipairs(self.enemies) do
-        if offered(enemy) and not enemy:isNude()
-            and (self:doDisCard(enemy, "je") or self:getDangerousCard(enemy) or self:getValuableCard(enemy)) then
-            return enemy:objectName()
+        if (self:doDisCard(enemy, "je") or self:getDangerousCard(enemy) or self:getValuableCard(enemy)) and not enemy:isNude() then
+            return enemy
         end
     end
     for _, friend in ipairs(self.friends_noself) do
-        if offered(friend) and self:doDisCard(friend, "je") then return friend:objectName() end
-    end
-    return {kind = "pass"}
-end
-
-sgs.ai_use_revises.MeowXiaoji = function(self, card, use)
-    if card:isKindOf("EquipCard") then
-        local value = self:evaluateArmor(card)
-        if type(value) == "number" and value > -5 then
-            use.card = card
-            return true
+        if (self:hasSkills(sgs.lose_equip_skill, friend) and not friend:getEquips():isEmpty())
+            or (self:needToThrowArmor(friend) and friend:getArmor()) or self:doDisCard(friend, "je") then
+            return friend
         end
     end
+    return nil
 end
 
-ai_skill_activate.MeowQingguo = function(self)
-    if self.player:hasSkill("Meowdoumiao") then return nil end
-    local best_id, best_value
-    local conversions = self:getConversions()
-    if not conversions then ai_unsupported("MeowQingguo conversions are unknown", "MeowQingguo") end
-    for _, conversion in ipairs(conversions) do
-        if conversion:getActivationSkillName() == "MeowQingguo" and conversion:isKindOf("Peach") then
-            local sub = self:conversionSubcard(conversion)
-            if sub and sub:isKindOf("Jink") then
-                local value = self:getUseValue(sub)
-                if type(value) == "number" and (not best_value or value < best_value) then
-                    best_id, best_value = sub:getEffectiveId(), value
-                end
+sgs.ai_use_revises.MeowXiaoji = function(self,card,use)
+	if card:isKindOf("EquipCard") and meow_rule(self:evaluateArmor(card),"MeowXiaoji.armor")>-5
+	then use.card = card return true end
+end
+
+
+local function meow_qingguo_hypothesis(self,card,request)
+    local suit=card:getSuitString()
+    local number=card:getNumberString()
+    local id=card:getEffectiveId()
+    -- Source numeric parse uses 0 for nonnumeric jokers, then single material
+    -- getters inherit the printed number; the sealed recipe uses that face.
+    local numeric=({A=1,J=11,Q=12,K=13})[number] or tonumber(number) or 0
+    if numeric<=0 then numeric=card:getNumber() end
+    return self:evaluateTurnConversion("MeowQingguo","Peach",{
+        name="peach",skill="MeowQingguo",suit=card:getSuit(),number=numeric,subcards={id}},request)
+end
+rawset(ai_skill_activate,"MeowQingguo",nil)
+sgs.ai_fill_skill.MeowQingguo = function(self,inclusive,request)
+    local cards = self:addHandPile()
+    self:sortByUseValue(cards, true)
+    if not self.player:hasSkill("Meowdoumiao") then
+        for _, c in ipairs(cards) do
+            if c:isKindOf("Jink") then
+                return meow_qingguo_hypothesis(self,c,request)
             end
         end
     end
-    if not best_id then return nil end
-    return self:playAuthorizedConversion("MeowQingguo", {
-        kind = "Peach",
-        accept = function(ai, conversion)
-            local sub = ai:conversionSubcard(conversion)
-            return sub and sub:getEffectiveId() == best_id
-        end
-    })
+end
+
+sgs.ai_view_as.MeowQingguo=function(card,player,card_place)
+    local suit=card:getSuitString()
+    local number=card:getNumberString()
+    local card_id=card:getEffectiveId()
+    local name
+    if card:isBlack() and card_place==sgs.Player_PlaceHand then name="jink"
+    elseif card:isKindOf("Jink") and card_place==sgs.Player_PlaceHand and not player:hasSkill("Meowdoumiao") then name="peach" end
+    if name then
+        local numeric=({A=1,J=11,Q=12,K=13})[number] or tonumber(number) or 0
+        if numeric<=0 then numeric=card:getNumber() end
+        return {name=name,skill="MeowQingguo",suit=card:getSuit(),number=numeric,subcards={card_id}}
+    end
 end
 
 function sgs.ai_cardneed.MeowQingguo(to, card)
-    local hand = to:getCards("h")
-    if not hand or not card then return nil end
-    return #hand < 2 and (card:isBlack() or card:isKindOf("Jink"))
+    return meow_lijian_known(to:getHandcardNum(),"MeowQingguo.hand_count") < 2 and (card:isBlack() or card:isKindOf("Jink"))
 end
 
-ai_skill_invoke.MeowJueqing = function(self)
-    local damage = damage_of(self, "MeowJueqing")
-    if damage.to:isDead() or self:isFriend(damage.to) then return false end
+rawset(ai_skill_invoke,"MeowJueqing",nil)
+sgs.ai_skill_invoke.MeowJueqing = function(self, data)
+    local damage = data:toDamage()
+    if not damage or damage.to:isDead() or self:isFriend(damage.to) then return false end
     if self:cantDamageMore(self.player, damage.to) then return false end
-    local hp = self.player:getHp()
-    local amount = damage.damage or damage.amount
-    if type(hp) ~= "number" or type(amount) ~= "number" then
-        ai_unsupported("MeowJueqing damage size is unknown", "MeowJueqing")
-    end
-    local gap = amount - hp
-    if gap < 0 or hasBuquEffect(self.player) then return true end
-    local saved = self:getSaveNum(true)
-    if saved == nil then ai_unsupported("MeowJueqing rescue count is unknown", "MeowJueqing") end
-    return saved >= gap
+    local n = damage.damage - self.player:getHp()
+    if n < 0 or hasBuquEffect(self.player) or self:getSaveNum(true) >= n then return true end
+    return false
 end
+
 
 sgs.ai_getLeastHandcardNum_skill.Meowshangshi = function(self, player, least)
-    local lost = player:getLostHp()
-    if type(lost) ~= "number" or type(least) ~= "number" then return nil end
-    if least < lost then return math.max(lost, 1) end
+	if least < player:getLostHp() then
+		return math.max(player:getLostHp(), 1)
+	end
 end
 
-ai_skill_invoke.MeowZhenlie = function(self)
-    local use = use_of(self, "MeowZhenlie")
+
+rawset(ai_skill_invoke,"MeowZhenlie",nil)
+function sgs.ai_skill_invoke.MeowZhenlie(self, data)
+    local use = data:toCardUse()
     if not use.from or use.from:isDead() then return false end
-    local enemy = self:isEnemy(use.from)
-    if enemy == nil then ai_unsupported("MeowZhenlie relation is unknown", "MeowZhenlie") end
-    if not enemy then return false end
-    local card = use.card
-    if card:isKindOf("Slash") then
-        local effective = self:slashIsEffective(card, self.player, use.from)
-        if effective == false then return false end
-        local damage = self:ajustDamage(use.from, self.player, 1, card)
-        if type(damage) == "number" and damage > 1 then return true end
-        local jinks = self:getCardsNum("Jink")
-        local expected = self:getExpectedJinkNum(use)
-        if jinks == nil then ai_unsupported("MeowZhenlie jink count is unknown", "MeowZhenlie") end
-        if expected == nil or jinks < (expected or 1) or jinks == 0 then
-            if card:isKindOf("NatureSlash") and self.player:isChained()
-                and self:isGoodChainTarget(self.player, card, use.from) == false then
-                return true
+    if self.role == "rebel" and meow_lijian_known(self:getRoleEstimate(use.from),"MeowZhenlie.role") == "rebel" and not use.from:hasSkill("jueqing")
+        and self.player:getHp() == 1 and self:getAllPeachNum() < 1 then
+        return false
+    end
+
+    if self:isEnemy(use.from) or (self:isFriend(use.from) and self.role == "loyalist" and not use.from:hasSkill("jueqing") and use.from:isLord() and self.player:getHp() == 1) then
+        if use.card:isKindOf("Slash") then
+            if not self:slashIsEffective(use.card, self.player, use.from) then return false end
+            if self:ajustDamage(use.from, self.player, 1, use.card) > 1 then return true end
+            local jink_num = self:getExpectedJinkNum(use)
+            local hasHeart = false
+            for _, card in ipairs(self:getCards("Jink")) do
+                if card:getSuit() == sgs.Card_Heart then
+                    hasHeart = true
+                    break
+                end
             end
-            if self:doDisCard(use.from, "he") then return true end
+            if self:getCardsNum("Jink") == 0
+                or jink_num == 0
+                or self:getCardsNum("Jink") < jink_num
+                or (use.from:hasSkill("dahe") and self.player:hasFlag("dahe") and not hasHeart) then
+                if use.card:isKindOf("NatureSlash") and self.player:isChained() and not self:isGoodChainTarget(self.player, use.card, use.from) then return true end
+                if use.from:hasSkill("nosqianxi") and use.from:distanceTo(self.player) == 1 then return true end
+                if self:isFriend(use.from) and self.role == "loyalist" and not hasJueqingEffect(use.from, self.player, sgs.card_damage_nature[use.card:getClassName()]) and use.from:isLord() and self.player:getHp() == 1 then return true end
+                if (not (self:hasSkills(sgs.masochism_skill) or (self.player:hasSkill("tianxiang") and getKnownCard(self.player, self.player, "heart") > 0)) or hasJueqingEffect(use.from, self.player, sgs.card_damage_nature[use.card:getClassName()]))
+                    and self:doDisCard(use.from, "he") then
+                    return true
+                end
+            end
+        elseif use.card:isKindOf("AOE") then
+            local from = use.from
+            if use.card:isKindOf("SavageAssault") then
+                local menghuo = self.room:findPlayerBySkillName("huoshou")
+                if menghuo then from = menghuo end
+            end
+
+            local friend_null = 0
+            for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+                if self:isFriend(p) then friend_null = friend_null + getCardsNum("Nullification", p, self.player) end
+                if self:isEnemy(p) then friend_null = friend_null - getCardsNum("Nullification", p, self.player) end
+            end
+            friend_null = friend_null + self:getCardsNum("Nullification")
+            local sj_num = self:getCardsNum(use.card:isKindOf("SavageAssault") and "Slash" or "Jink")
+
+            if not self:hasTrickEffective(use.card, self.player, from) then return false end
+            if not self:damageIsEffective(self.player, sgs.DamageStruct_Normal, from) then return false end
+            if use.from:hasSkill("drwushuang") and self.player:getCardCount() == 1 and self:hasLoseHandcardEffective() then return true end
+            if sj_num == 0 and friend_null <= 0 then
+                if self:isEnemy(from) and hasJueqingEffect(from, self.player, sgs.card_damage_nature[use.card:getClassName()]) then
+                    return self:doDisCard(from, "he")
+                end
+                if self:isFriend(from) and self.role == "loyalist" and from:isLord() and self.player:getHp() == 1 and not hasJueqingEffect(from, self.player, sgs.card_damage_nature[use.card:getClassName()]) then
+                    return self:doDisCard(from, "he")
+                end
+                if (not (self:hasSkills(sgs.masochism_skill) or (self.player:hasSkill("tianxiang") and getKnownCard(self.player, self.player, "heart") > 0)) or hasJueqingEffect(from, self.player, sgs.card_damage_nature[use.card:getClassName()])
+                        and self:doDisCard(use.from, "he")) then
+                    return true
+                end
+            end
+        elseif self:isEnemy(use.from) then
+            if use.card:isKindOf("FireAttack") and use.from:getHandcardNum() > 0 then
+                if not self:hasTrickEffective(use.card, self.player) then return false end
+                if not self:damageIsEffective(self.player, sgs.DamageStruct_Fire, use.from) then return false end
+                if (self.player:hasArmorEffect("vine") or self.player:getMark("&kuangfeng") > 0) and use.from:getHandcardNum() > 3
+                    and not (use.from:hasSkill("hongyan") and getKnownCard(self.player, self.player, "spade") > 0) then
+                    return self:doDisCard(use.from, "he")
+                elseif self.player:isChained() and not self:isGoodChainTarget(self.player, nil, use.from)
+                then
+                    return self:doDisCard(use.from, "he")
+                end
+            elseif (use.card:isKindOf("Snatch") or use.card:isKindOf("Dismantlement"))
+                and self:getCardsNum("Peach") == self.player:getHandcardNum() and not self.player:isKongcheng()
+            then
+                if not self:hasTrickEffective(use.card, self.player) then return false end
+                return self:doDisCard(use.from, "he")
+            elseif use.card:isKindOf("Duel")
+            then
+                if self:getCardsNum("Slash") == 0 or self:getCardsNum("Slash") < getCardsNum("Slash", use.from, self.player)
+                then
+                    if not self:hasTrickEffective(use.card, self.player) then return false end
+                    if not self:damageIsEffective(self.player, sgs.DamageStruct_Normal, use.from) then return false end
+                    return self:doDisCard(use.from, "he")
+                end
+            elseif use.card:isKindOf("TrickCard") and not use.card:isKindOf("AmazingGrace")
+            then
+                if self:doDisCard(use.from, "he") and self:needToLoseHp(self.player, nil, use.card)
+                then
+                    return true
+                end
+            end
         end
-    elseif card:isKindOf("Duel") or card:isKindOf("Snatch") or card:isKindOf("Dismantlement")
-        or card:isKindOf("FireAttack") or card:isKindOf("AOE") then
-        if self:doDisCard(use.from, "he") then return true end
     end
     return false
 end
 
 ai_skill_invoke.MeowMiji = function() return true end
 
-ai_skill_playerchosen.MeowMiji = function(self, options)
-    local names = type(options) == "table" and options.players or nil
-    if type(names) ~= "table" or #names == 0 then
-        ai_unsupported("MeowMiji candidates are missing", "MeowMiji")
+rawset(ai_skill_playerchosen,"MeowMiji",nil)
+sgs.ai_skill_playerchosen.MeowMiji = function(self, targets)
+    targets = sgs.QList2Table(targets)
+    self:sort(targets, "hp")
+    local max = 0
+    for _, p in ipairs(targets) do
+        if p:getLostHp() > max then
+            max = p:getLostHp()
+        end
     end
-    local best, lost = nil, -1
-    for _, name in ipairs(names) do
-        local player = self.room:findPlayerByObjectName(name)
-        local value = player and player:getLostHp()
-        if type(value) ~= "number" then ai_unsupported("MeowMiji lost hp is unknown", "MeowMiji") end
-        if value > lost then best, lost = name, value end
+    for _, p in ipairs(targets) do
+        if p:getLostHp() == max then
+            return p
+        end
     end
-    return best
+    return nil
 end
+
 
 ai_skill_use["@@MeowMiji"] = function() return {kind = "pass"} end
 
-ai_skill_playerchosen.Meowdoumiao = function(self, options)
-    relations(self, "Meowdoumiao")
-    local names = type(options) == "table" and options.players or {}
-    local function offered(player)
-        if #names == 0 then return true end
-        for _, name in ipairs(names) do
-            if name == player:objectName() then return true end
-        end
-    end
+rawset(ai_skill_playerchosen,"Meowdoumiao",nil)
+rawset(ai_skill_invoke,"Meowdoumiao",nil)
+sgs.ai_skill_invoke.Meowdoumiao = function(self, data)
+    return sgs.ai_skill_playerchosen.Meowdoumiao(self, self.room:getOtherPlayers(self.player)) ~= nil
+end
+
+sgs.ai_skill_playerchosen.Meowdoumiao = function(self, targets)
+    targets = sgs.QList2Table(targets)
+    self:sort(targets, "defense")
     for _, enemy in ipairs(self.enemies) do
-        if offered(enemy) and not enemy:isNude() and (
-            self:doDisCard(enemy, "h") or self:getDangerousCard(enemy) or self:getValuableCard(enemy)
-            or enemy:hasSkills("MeowZhenlie|Meowshangshi|MeowJueqing|MeowQingguo|MeowXiaoji|MeowJizhi|MeowDuanchang|MeowBeige")
-        ) then
-            return enemy:objectName()
+        if (self:doDisCard(enemy, "h") or self:getDangerousCard(enemy) or self:getValuableCard(enemy) or self:hasSkills("MeowZhenlie|Meowshangshi|MeowJueqing|MeowQingguo|MeowXiaoji|MeowJizhi|MeowShenxian|MeowDuanchang|MeowBeige", enemy)) and not enemy:isNude() then
+            return enemy
         end
     end
     for _, friend in ipairs(self.friends_noself) do
-        if offered(friend) and (self:doDisCard(friend, "h")
-            or friend:hasSkills("Meowxianzhou|MeowQiangwu|MeowLieren")) then
-            return friend:objectName()
+        if self:doDisCard(friend, "h") or self:hasSkills("Meowxianzhou|MeowQiangwu|MeowLieren", friend) then
+            return friend
         end
     end
-    return {kind = "pass"}
+    for _, friend in ipairs(self.friends_noself) do
+        if self:doDisCard(friend, "h") then
+            return friend
+        end
+    end
+    return nil
 end
-
-ai_skill_invoke.Meowdoumiao = function(self)
-    local others = self.room:getOtherPlayers(self.player)
-    if not others then ai_unsupported("Meowdoumiao players are unknown", "Meowdoumiao") end
-    local names = {}
-    for _, player in ipairs(others) do names[#names + 1] = player:objectName() end
-    local chosen = ai_skill_playerchosen.Meowdoumiao(self, {players = names})
-    return type(chosen) == "string"
-end
-
 ai_skill_invoke.MeowGuowu = function() return true end
 sgs.ai_cardneed.MeowGuowu = sgs.ai_cardneed.slash
+
+-- Fixed source intention callbacks; viewer state is stored in common event
+-- slots so subsequent Liuli consumers read the same state, without globals.
+sgs.ai_card_intention.MeowxianzhouCard = function(self, card, from, tos)
+    if meow_lijian_known(from:getStrategyFlag("Meowxianzhou_target"), "Meowxianzhou_target") then
+        for _, to in ipairs(tos) do
+            if self:damageIsEffective(to, nil, from) and not self:needToLoseHp(to, from) then
+                sgs.updateIntention(from, to, 10)
+            end
+        end
+    else
+        if not meow_lijian_known(from:isWounded(), "Meowxianzhou.wounded") then sgs.updateIntentions(from, tos, -10) end
+    end
+end
+sgs.ai_card_intention.MeowLiuliCard = function(self, card, from, to)
+    self:setCommonEventMemory("ai_liuli_effect", true)
+    if not self:hasExplicitRebel() then
+        self:setCommonEventMemory("ai_liuli_user", from)
+    else
+        self:setCommonEventMemory("ai_liuli_user", nil)
+    end
+end
+sgs.ai_card_intention["#MeowTianxiangCard"] = function(self, card, from, tos)
+    local to = tos[1]
+    if self:needToLoseHp(to) then return end
+    local intention = 10
+    if hasBuquEffect(to) then
+        intention = 0
+    elseif (to:getHp() >= 2 and meow_lijian_known(to:hasSkills("yiji|shuangxiong|zaiqi|yinghun|jianxiong|fangzhu"), "MeowTianxiang.predicate"))
+        or (to:getHandcardNum() < 3 and (meow_lijian_known(to:hasSkill("nosrende"), "MeowTianxiang.predicate") or (meow_lijian_known(to:hasSkill("rende"), "MeowTianxiang.predicate") and not meow_lijian_known(to:hasUsed("RendeCard"), "MeowTianxiang.predicate")))) then
+        intention = 0
+    end
+    sgs.updateIntention(from, to, intention)
+end
+
+-- Fixed donor valuation metadata; previously omitted despite mapped callbacks.
+sgs.MeowGuose_suit_value={diamond=3.9}
+sgs.MeowTianxiang_suit_value={heart=4.9}
+
+-- Source cardResponded @MeowBeige, scoped by the actual event callback key.
+-- The shared public current-damage projection supplies no private response card.
+sgs.ai_choicemade_filter.cardResponded["@MeowBeige"]=function(self,player,promptlist)
+    local standard=self.world.strategy_facts and self.world.strategy_facts.standard
+    local row=standard and standard.current_damage
+    if row==nil then ai_unsupported("current public damage is unknown","MeowBeige.intention") end
+    if row==false then return end
+    if type(row)~="table" then ai_unsupported("current damage shape is invalid","MeowBeige.intention") end
+    local target=row.to and self.room:findPlayerByObjectName(row.to,true)
+    if row.to and not target then ai_unsupported("current damage target is absent","MeowBeige.intention") end
+    if target and promptlist[#promptlist]~="" then sgs.updateIntention(player,target,-80) end
+end

@@ -1,326 +1,353 @@
--- AIgeneral 隔離 AI。
--- 這裡只讀 viewer 可見的 value facade；角色私有資料、Engine 物件與 legacy
--- Card_Parse/cloneCard 均不會跨過 isolated 邊界。
-
-local function unsupported(reason, key)
-    return ai_unsupported(reason, key)
+-- Fixed b6025acc AIgeneral strategy bodies. Native authorization is separate
+-- from source planning; foreign private roles use an explicit viewer estimate.
+local function known(v,key)
+    if v==nil then ai_unsupported("AIgeneral value is unknown",key)end
+    return v
 end
-
--- Unknown mode relations are not negative answers to friend/enemy questions.
-local function relation(self, player)
-    local value = self:relationTo(player)
-    if value ~= "friend" and value ~= "enemy" and value ~= "neutral" then
-        unsupported("player relation is unknown", "AIgeneral")
+local function q(object,method,...)
+    if not object or type(object[method])~="function"then ai_unsupported("AIgeneral method is unavailable",method)end
+    if AIValue.isPlayer(object)then
+        if method=="getMark"then method="getStrategyMark"
+        elseif method=="hasFlag"then method="getStrategyFlag"end
     end
-    return value
-end
-local function is_friend(self, player) return relation(self, player) == "friend" end
-local function is_enemy(self, player) return relation(self, player) == "enemy" end
-
-local function offered(options)
-    return type(options) == "table" and type(options.choices) == "table"
-        and options.choices or nil
-end
-
-local function decision_context(self)
-    return type(self.getDecisionContext) == "function" and self:getDecisionContext() or {}
-end
-
-local function context_player(self, event, key)
-    local value = type(event) == "table" and event[key] or nil
-    if AIValue.isPlayer(value) then return value end
-    if type(value) == "string" then return self.room:findPlayerByObjectName(value, true) end
-    return nil
-end
-
-local function context_targets(self, context)
-    local targets = type(context) == "table" and context.to or nil
-    if AIValue.isList(targets) then
-        local result = AIList.new({})
-        for _, value in ipairs(targets) do
-            local player = AIValue.isPlayer(value) and value
-                or type(value) == "string" and self.room:findPlayerByObjectName(value, true) or nil
-            if not player then return nil end
-            result:append(player)
-        end
-        return result
+    if method=="findPlayerBySkillName"then
+        local all=known(object:findPlayersBySkillName(...),method)
+        return all[1]or false
     end
-    local target = context_player(self, context, "to")
-    return target and AIList.new({target}) or nil
+    return known(object[method](object,...),method)
+end
+local function visible_role(self,player)
+    local role=player:getRole()
+    if role~=nil then return role end
+    role=q(self,"getRoleEstimate",player)
+    return self:useKnowledgeEstimate({value=role,status="estimate",basis="AIgeneral:viewer_inference_replaces_foreign_private_role",viewer=q(self.player,"objectName"),observer=q(player,"objectName")},"AIgeneral.role")
+end
+local function known_card(...)return known(getKnownCard(...),"getKnownCard")end
+local function known_count(...)return known(getCardsNum(...),"getCardsNum")end
+local function sort_enemies(self,...)
+    self.enemies=q(self,"sort",known(self.enemies,"enemies"),...)
+end
+local function wounded_friends(self)
+    local first,second=self:getWoundedFriend(false)
+    return known(first,"wounded friend first group"),known(second,"wounded friend second group")
+end
+local function bind_tiaojiao(self,source)
+    local costs={}
+    for _,card in ipairs(q(self.player,"getHandcards"))do costs[#costs+1]=q(card,"getEffectiveId")end
+    return self:bindSkillCard("tiaojiaoCMT",costs,nil,nil,"#tiaojiaoCMTCard")
+end
+local function tongyi_evaluation(self,name)
+    local card=self:evaluateOwnerViewAsCard({source_key="tongyiTQ",skill="tongyiAIWJ",name=name,suit=sgs.Card_NoSuit,number=0,subcards={}})
+    -- Donor calls setSkillName before its nil check. Missing clone is an
+    -- ordinary source error, never a successful pass or fabricated card.
+    if card==nil then error("attempt to index a nil value (local 'c')",0)end
+    return card
 end
 
-local function require_helper(self, name, key)
-    if type(self[name]) ~= "function" then
-        return unsupported("isolated helper is unavailable", key or name)
-    end
-    return true
-end
-
-local function call_value(object, method, key, ...)
-    if type(object) ~= "table" or type(object[method]) ~= "function" then
-        return unsupported("isolated value method is unavailable", key or method)
-    end
-    return object[method](object, ...)
-end
-
--- 深度思考的舊版依賴 sgs.ai_role。isolated 沒有角色真值；關係記憶也不能
--- 被冒充成 lord/rebel/loyalist/renegade，因此兩個入口保留為明確缺口。
-ai_skill_invoke.deep_seek = function(self, options, request)
-    return unsupported("deep_seek requires viewer role prediction, not projected", "deep_seek")
-end
-
-ai_skill_choice.deep_seek = function(self, options, request)
-    return unsupported("deep_seek role choice requires private role inference", "deep_seek")
-end
-
--- KaiyuanShengshi is intentionally not registered: the legacy callback reads
--- private roles and mutates global roleValue. An unconditional unsupported
--- ChoiceMade hook would abort unrelated intention batches. This event gap has
--- no native fallback and remains documented as not ported.
--- tieba_zhili：保留兩輪目標分支與原順序。合法候選、敵我關係和 damage
--- effectiveness 必須由當次 card candidate／mode policy 提供。
-ai_skill_activate.tieba_zhili = function(self, request)
-    return unsupported("tieba_zhili needs a skill-card conversion and hurt policy", "tieba_zhili")
-end
-
-ai_card_use["tieba_zhiliCard"] = function(self, card, use)
-    if not card or not use then return unsupported("tieba_zhili card request is incomplete", "tieba_zhili") end
-    local candidate = self:getCardCandidate(card:getEffectiveId())
-    if not candidate then return unsupported("tieba_zhili has no authorized card candidate", "tieba_zhili") end
-    local legal = candidate:getLegalTargets()
-    if not legal then return unsupported("tieba_zhili legal targets are unknown", "tieba_zhili") end
-    if not require_helper(self, "cantbeHurt", "tieba_zhili")
-        or not require_helper(self, "cantDamageMore", "tieba_zhili") then return nil end
-    local allowed = {}
-    for _, name in ipairs(legal) do allowed[name] = true end
-    local enemies = self.enemies
-    if not enemies then return unsupported("tieba_zhili enemy projection is unknown", "tieba_zhili") end
-    local sorted = self:sort(enemies, "handcard", true)
-    if not sorted then return unsupported("tieba_zhili enemy ordering is unknown", "tieba_zhili") end
-    local function pick(strict)
-        for _, enemy in ipairs(sorted) do
-            local ehp, hp = enemy:getHp(), self.player:getHp()
-            if allowed[enemy:objectName()] and type(ehp) == "number" and type(hp) == "number" and ehp < hp
-                and self:cantbeHurt(enemy) ~= true
-                and self:damageIsEffective(enemy, "N", self.player) == true
-                and self:canDamage(enemy, self.player, nil) == true
-                and (not strict or self:cantDamageMore(self.player, enemy) ~= true) then
-                return enemy
-            end
-        end
-    end
-    local target = pick(true) or pick(false)
-    if not target then return nil end
-    use.card = card
-    use.to:append(target)
-end
-
--- 會員神力 target revise：getCardsNum 對自己只使用已知手牌，符合 viewer
--- 可見性；不可把他人的未知手牌當成零。
-sgs.ai_target_revises = sgs.ai_target_revises or {}
-sgs.ai_target_revises.huiyuanshenli = function(to, card, self, use)
-    if not card or card:isKindOf("SkillCard") then return nil end
-    local hand, peach = self.player:getHandcardNum(), self:getCardsNum("Peach")
-    if type(hand) ~= "number" or type(peach) ~= "number" then
-        return unsupported("huiyuanshenli viewer hand projection is unknown", "huiyuanshenli")
-    end
-    if hand - peach < 1 then return true end
-end
-
--- Preserve the legacy marked-target gate and branch order. Unsupported policy
--- stays at the branch that needs it; generic low-keep selection is not the
--- legacy askForDiscard decision, and boolean true is not a cardask answer.
-ai_skill_cardask["@huiyuanshenli"] = function(self, options, request)
-    local use = decision_context(self).use
-    if not use or not AIValue.isCard(use.card) then
-        return unsupported("huiyuanshenli CardUse is not projected", "@huiyuanshenli")
-    end
-    local targets = context_targets(self, use)
-    if not targets then return unsupported("huiyuanshenli targets are unknown", "@huiyuanshenli") end
-    local function discard_branch()
-        return unsupported("huiyuanshenli needs the legacy dummy-reason hand-only discard policy", "@huiyuanshenli")
-    end
-    local function affirmative_branch()
-        return unsupported("legacy huiyuanshenli boolean cardask needs an explicit response-card policy", "@huiyuanshenli")
-    end
-    for _, target in ipairs(targets) do
-        if target:getMark("huiyuanshenli-Clear") > 0 then
-            local friend = is_friend(self, target)
-            if friend == nil then return unsupported("huiyuanshenli relation is unknown", "@huiyuanshenli") end
-            if friend then
-                if use.card:isKindOf("AmazingGrace") then
-                    local current = self.room:getCurrent()
-                    local seat = call_value(target, "getSeat", "@huiyuanshenli")
-                    local current_seat = call_value(current, "getSeat", "@huiyuanshenli")
-                    local alive = self.room:getAlivePlayers()
-                    if type(seat) ~= "number" or type(current_seat) ~= "number" or not alive or #alive == 0 then
-                        return unsupported("huiyuanshenli seat order is unknown", "@huiyuanshenli")
-                    end
-                    if (seat - current_seat) % #alive < #alive / 2 then return discard_branch() end
-                end
-                if use.card:isKindOf("GodSalvation") then
-                    local hp = call_value(target, "getHp", "@huiyuanshenli")
-                    local maxhp = call_value(target, "getMaxHp", "@huiyuanshenli")
-                    if type(hp) ~= "number" or type(maxhp) ~= "number" then
-                        return unsupported("huiyuanshenli wounded state is unknown", "@huiyuanshenli")
-                    end
-                    if hp < maxhp then return discard_branch() end
-                elseif use.card:isKindOf("ExNihilo") then return discard_branch() end
-                if use.card:isKindOf("IronChain") then
-                    local chained = call_value(target, "isChained", "@huiyuanshenli")
-                    if chained == nil then return unsupported("huiyuanshenli chain state is unknown", "@huiyuanshenli") end
-                    if chained then
-                        require_helper(self, "isGoodChainTarget", "@huiyuanshenli")
-                        local good = self:isGoodChainTarget(target)
-                        if good == nil then return unsupported("huiyuanshenli chain policy is unknown", "@huiyuanshenli") end
-                        if not good then return discard_branch() end
-                    end
-                end
-                if use.card:isKindOf("Peach") then return affirmative_branch() end
-            end
-            local enemy = is_enemy(self, target)
-            if enemy == nil then return unsupported("huiyuanshenli relation is unknown", "@huiyuanshenli") end
-            if not enemy and friend then
-                -- Original short-circuit next reads the friend's private role.
-                return unsupported("huiyuanshenli loyalist-sacrifice role policy is not projected", "@huiyuanshenli")
-            end
-            if enemy then
-                if use.card:isKindOf("AOE") then
-                    return unsupported("huiyuanshenli AOE source, response estimates and Jueqing policy are unavailable", "@huiyuanshenli")
-                elseif use.card:isKindOf("FireAttack") then
-                    return unsupported("huiyuanshenli FireAttack effectiveness and Hongyan known-spade policy are unavailable", "@huiyuanshenli")
-                elseif use.card:isKindOf("Snatch") or use.card:isKindOf("Dismantlement")
-                    or use.card:isKindOf("Zhujinqiyuan") or use.card:isKindOf("ZdShengdongjixi") then
-                    local hand = target:getHandcardNum()
-                    if type(hand) ~= "number" then return unsupported("huiyuanshenli hand count is unknown", "@huiyuanshenli") end
-                    if hand > 0 then return unsupported("huiyuanshenli trick effectiveness is unavailable", "@huiyuanshenli") end
-                elseif use.card:isKindOf("Duel") or use.card:isKindOf("chuqibuyi") then
-                    return unsupported("huiyuanshenli trick effectiveness is unavailable", "@huiyuanshenli")
-                elseif use.card:isKindOf("IronChain") then
-                    require_helper(self, "isGoodChainTarget", "@huiyuanshenli")
-                    local good = self:isGoodChainTarget(target)
-                    if good == nil then return unsupported("huiyuanshenli chain policy is unknown", "@huiyuanshenli") end
-                    if good then return affirmative_branch() end
-                else
-                    local damage = call_value(use.card, "isDamageCard", "@huiyuanshenli")
-                    if damage == nil then return unsupported("huiyuanshenli damage-card classification is unknown", "@huiyuanshenli") end
-                    if damage then return affirmative_branch() end
-                end
-            end
-        end
-    end
-    return {kind = "pass"}
-end
-ai_skill_invoke.huiyuanshenli = function(self, options, request)
-    local target = context_player(self, decision_context(self), "player")
-    if not target then return unsupported("huiyuanshenli player is not projected", "huiyuanshenli") end
-    local enemy = is_enemy(self, target)
-    if enemy == nil then return unsupported("huiyuanshenli relation is unknown", "huiyuanshenli") end
-    if enemy then
-        require_helper(self, "cantbeHurt", "huiyuanshenli")
-        local protected = self:cantbeHurt(target)
-        if protected == nil then return unsupported("huiyuanshenli hurt policy is unknown", "huiyuanshenli") end
-        if not protected then
-            local effective = self:damageIsEffective(target, sgs.DamageStruct_Normal, self.player)
-            if effective == nil then return unsupported("huiyuanshenli damage policy is unknown", "huiyuanshenli") end
-            if effective then
-                local lose = self:needToLoseHp(target, self.player, nil)
-                if lose == nil then return unsupported("huiyuanshenli HP-loss policy is unknown", "huiyuanshenli") end
-                if not lose then return true end
-            end
-        end
-    end
-    local friend = is_friend(self, target)
-    if friend == nil then return unsupported("huiyuanshenli relation is unknown", "huiyuanshenli") end
-    if friend then
-        local lose = self:needToLoseHp(target, self.player, nil)
-        if lose == nil then return unsupported("huiyuanshenli HP-loss policy is unknown", "huiyuanshenli") end
-        if lose then return true end
-    end
-    return false
-end
--- 通義選擇：保留 Jink／Nullification 優先與最後的等機率 RNG。
-ai_skill_choice.tongyiAIWJ = function(self, options, request)
-    local choices = offered(options)
-    local context, target = decision_context(self), nil
-    target = context_player(self, context, "to")
-    target = target or context_player(self, context, "player")
-    if not choices or #choices == 0 or not target then
-        return unsupported("tongyiAIWJ choices or target are not projected", "tongyiAIWJ")
-    end
-    local function answer(kind, flag)
-        if not self.player:hasFlag(flag) then return nil end
-        if target == self.player then
-            local count = self:getCardsNum(kind)
-            if type(count) ~= "number" then return unsupported("tongyiAIWJ known card count is unknown", "tongyiAIWJ") end
-            return count > 0 and "yes" or "no"
-        end
-        local count = self:getCardsNum(kind, target)
-        if type(count) ~= "number" then return unsupported("tongyiAIWJ known cards are unknown", "tongyiAIWJ") end
-        if count > 0 then return "yes" end
-    end
-    local result = answer("Jink", "Jink") or answer("Nullification", "Nullification")
-    if result then return result end
-    return choices[math.random(1, #choices)]
-end
-
--- tongyiTQ 是 legacy guhuo：原 callback 可任意製造宣稱牌，當次 isolated
--- request 若沒有 conversion ticket 便不能安全改寫成 card_spec。
-ai_skill_activate.tongyiAIWJ = function(self, request)
-    return unsupported("tongyiTQ requires an authorized conversion ticket", "tongyiTQ")
-end
-
-ai_skill_invoke.tiaojiaoCMT = function(self, options, request)
-    local damage = decision_context(self).damage
-    if type(damage) ~= "table" then return unsupported("tiaojiaoCMT damage is not projected", "tiaojiaoCMT") end
-    local from = context_player(self, damage, "from")
-    local target = context_player(self, damage, "to")
-    if from ~= self.player then return false end
-    if not target then return unsupported("tiaojiaoCMT damage target is unknown", "tiaojiaoCMT") end
-    local friend, enemy = is_friend(self, target), is_enemy(self, target)
-    if friend == nil or enemy == nil then return unsupported("tiaojiaoCMT relation is unknown", "tiaojiaoCMT") end
-    local hp, maxhp = target:getHp(), target:getMaxHp()
-    if type(hp) ~= "number" or type(maxhp) ~= "number" then return unsupported("tiaojiaoCMT HP is unknown", "tiaojiaoCMT") end
-    if friend and hp < maxhp then
-        local best = self:getBestHp(target)
-        local hp = target:getHp()
-        if type(best) ~= "number" or type(hp) ~= "number" then return unsupported("tiaojiaoCMT HP estimate is unknown", "tiaojiaoCMT") end
-        if best < hp then return true end
-    end
-    if enemy then
-        if type(damage.damage) ~= "number" then return unsupported("tiaojiaoCMT damage amount is unknown", "tiaojiaoCMT") end
-        if damage.damage > 1 then return false end
-        if hp < maxhp then
-            local weak = self:isWeak(target)
-            if weak == nil then return unsupported("tiaojiaoCMT weakness is unknown", "tiaojiaoCMT") end
-            if weak then return false end
-        end
-        local discard = self:doDisCard(target, "h", true)
-        if discard == nil then return unsupported("tiaojiaoCMT discard policy is unknown", "tiaojiaoCMT") end
-        if hp >= maxhp then return discard end
-        return discard and math.random() < 0.5
+--深度思考
+sgs.ai_skill_invoke.deep_seek = function(self, data)
+    local target = q(data,"toDamage").to
+    if  q(self,"getRoleEstimate",target) ~= "neutral" or q(target,"isLord")  then
+        return true
     end
     return false
 end
 
-ai_skill_invoke.daduanCMT = function(self, options, request)
-    return true
+sgs.ai_skill_choice.deep_seek = function(self, choices, data)
+    local target = q(data,"toPlayer")
+    local items = q(choices,"split","+")
+
+    if q(self,"getRoleEstimate",target)== "rebel" and table.contains(items, "rebel")  then
+        return "rebel"
+    elseif q(target,"isLord") and table.contains(items, "lord")  then
+        return "lord"
+    elseif q(self,"getRoleEstimate",target)== "loyalist" and table.contains(items, "loyalist")  then
+        return "loyalist"
+    elseif q(self,"getRoleEstimate",target)== "renegade" and table.contains(items, "renegade")  then
+        return "renegade"
+    end
+    return items[1]
 end
 
--- getWoundedFriend／canDamageHp／needBear 不是目前 isolated core 的 ABI；保留
--- 原 callback 的技能鍵，等 authority 補齊純值 helper 後由本 handler 接通。
-ai_skill_activate.tiaojiaoCMT = function(self, request)
-    local hand = self.player:getHandcardNum()
-    if type(hand) ~= "number" then return unsupported("tiaojiaoCMT hand count is unknown", "tiaojiaoCMT") end
-    if hand > 2 then return nil end
-    return unsupported("tiaojiaoCMT activation needs wounded-friend and conversion projections", "tiaojiaoCMT")
+sgs.ai_fill_skill.tieba_zhili = function(self,inclusive,request)
+    return q(self,"legacySkillSeed","tieba_zhili","#tieba_zhiliCard",request)
+end
+
+sgs.ai_skill_use_func["#tieba_zhiliCard"] = function(card, use, self)
+    sort_enemies(self,"handcard",true)
+    local target
+    for _,enemy in sgs.list(self.enemies)do
+        if q(enemy,"getHp")<q(self.player,"getHp") then
+            if not q(self,"cantbeHurt",enemy) and q(self,"damageIsEffective",enemy, "N", self.player) and q(self,"canDamage",enemy,self.player,nil) and not q(self,"cantDamageMore",self.player, enemy) then
+                target = enemy
+                break
+            end
+        end
+    end
+    if not target then
+        for _,enemy in sgs.list(self.enemies)do
+            if q(enemy,"getHp")<q(self.player,"getHp") then
+                if not q(self,"cantbeHurt",enemy) and q(self,"damageIsEffective",enemy, "N", self.player) and q(self,"canDamage",enemy,self.player,nil) then
+                    target = enemy
+                    break
+                end
+            end
+        end
+    end
+    if target then
+        use.card = q(self,"bindSkillCard","tieba_zhili",{},nil,nil,"#tieba_zhiliCard")
+        use.to:append(target)
+    return
+    end
+end
+
+--会员神力
+sgs.ai_target_revises.huiyuanshenli = function(to,card,self,use)
+    if not q(card,"isKindOf","SkillCard")
+    and q(self.player,"getHandcardNum")-q(self,"getCardsNum","Peach")<1
+    then return true end
+end
+
+sgs.ai_skill_cardask["@huiyuanshenli"] = function(self, data)
+    local use = q(data,"toCardUse")
+    local current = q(self.room,"getCurrent")
+    for _, p in sgs.qlist(use.to) do
+        if q(p,"getMark","huiyuanshenli-Clear") > 0 then
+            if q(self,"isFriend",p) then
+                if q(use.card,"isKindOf","AmazingGrace") and
+                    (q(p,"getSeat") - q(current,"getSeat")) % (q(self.room,"alivePlayerCount")) < q(self.room,"alivePlayerCount") / 2 then
+                    local to_discard = q(self,"askForDiscard","dummyreason", 1, 1, false, false, ".")
+                    if #to_discard > 0 then return "$" .. to_discard[1] end
+                end
+                if q(use.card,"isKindOf","GodSalvation") and q(p,"isWounded") or q(use.card,"isKindOf","ExNihilo") then
+                    local to_discard = q(self,"askForDiscard","dummyreason", 1, 1, false, false, ".")
+
+                    if #to_discard > 0 then return "$" .. to_discard[1] end
+                end
+                if q(use.card,"isKindOf","IronChain") then
+                    if q(p,"isChained") and not q(self,"isGoodChainTarget",p) then
+                        local to_discard = q(self,"askForDiscard","dummyreason", 1, 1, false, false, ".")
+                        if #to_discard > 0 then return "$" .. to_discard[1] end
+                    end
+                end
+                if q(use.card,"isKindOf","Peach") then
+                    return true
+                end
+            end
+            if q(self,"isEnemy",p) or (q(self,"isFriend",p) and visible_role(self,p) == "loyalist" and not hasJueqingEffect(self.player, p, sgs.card_damage_nature[q(use.card,"getClassName")]) and q(self.player,"isLord") and q(p,"getHp") == 1) then
+                if q(use.card,"isKindOf","AOE") then
+                    local from = use.from
+                    if q(use.card,"isKindOf","SavageAssault") then
+                        local menghuo = q(self.room,"findPlayerBySkillName","huoshou")
+                        if menghuo then from = menghuo end
+                    end
+
+                    local friend_null = 0
+                    for _, other in sgs.qlist(q(self.room,"getOtherPlayers",self.player)) do
+                        if q(self,"isFriend",other) then friend_null = friend_null + known_count("Nullification", other, self.player) end
+                        if q(self,"isEnemy",other) then friend_null = friend_null - known_count("Nullification", other, self.player) end
+                    end
+                    friend_null = friend_null + q(self,"getCardsNum","Nullification")
+                    local sj_num = q(self,"getCardsNum",q(use.card,"isKindOf","SavageAssault") and "Slash" or "Jink")
+
+                    if q(self,"hasTrickEffective",use.card, p, from) then
+                        if q(self,"damageIsEffective",p, sgs.DamageStruct_Normal, from) then
+                            if sj_num == 0 and friend_null <= 0 then
+                                if q(self,"isEnemy",from) and hasJueqingEffect(from, p, sgs.card_damage_nature[q(use.card,"getClassName")]) then
+
+                                    local to_discard = q(self,"askForDiscard","dummyreason", 1, 1, false, false, ".")
+                                    if #to_discard > 0 then return "$" .. to_discard[1] end
+                                end
+                                if q(self,"isFriend",from) and visible_role(self,p) == "loyalist" and q(from,"isLord") and q(p,"getHp") == 1 and not hasJueqingEffect(from, p, sgs.card_damage_nature[q(use.card,"getClassName")]) then
+                                    return "."
+                                end
+                                if (not (q(self,"hasSkills",sgs.masochism_skill, p) or (q(self.player,"hasSkills","tianxiang|ol_tianxiang") and known_card(self.player, self.player, "heart") > 0)) or hasJueqingEffect(use.from, p, sgs.card_damage_nature[q(use.card,"getClassName")])) then
+                                    return "."
+                                end
+                            end
+                        end
+                    end
+                elseif q(self,"isEnemy",p) then
+                    if q(use.card,"isKindOf","FireAttack") then
+                        if q(self,"hasTrickEffective",use.card, p) then
+                            if q(self,"damageIsEffective",p, sgs.DamageStruct_Fire, self.player) then
+                                if (q(p,"hasArmorEffect","vine") or q(p,"getMark","@gale") > 0) and q(self.player,"getHandcardNum") > 3
+                                    and not (q(self.player,"hasSkill","hongyan") and known_card(p, p, "spade") > 0) then
+
+                                    return true
+                                elseif q(p,"isChained") and not q(self,"isGoodChainTarget",p, use.from) then
+
+                                    return true
+                                end
+                            end
+                        end
+                    elseif (q(use.card,"isKindOf","Snatch") or q(use.card,"isKindOf","Dismantlement") or q(use.card,"isKindOf","Zhujinqiyuan") or q(use.card,"isKindOf","ZdShengdongjixi")) and not q(p,"isKongcheng") then
+                        if q(self,"hasTrickEffective",use.card, p) then
+                            return true
+                        end
+                    elseif q(use.card,"isKindOf","Duel") or q(use.card,"isKindOf","chuqibuyi") then
+                        if q(self,"hasTrickEffective",use.card, p) then
+                            if q(self,"damageIsEffective",p, sgs.DamageStruct_Normal, self.player) then
+                                return true
+                            end
+                        end
+                    elseif q(use.card,"isKindOf","IronChain") then
+                        if q(self,"isGoodChainTarget",p) then
+                            return true
+                        end
+                    elseif q(use.card,"isDamageCard") then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+
+    return "."
+end
+
+sgs.ai_skill_invoke.huiyuanshenli = function(self, data)
+    local target = q(data,"toPlayer")
+    if q(self,"isEnemy",target) and not q(self,"cantbeHurt",target) and q(self,"damageIsEffective",target, sgs.DamageStruct_Normal, self.player) and not q(self,"needToLoseHp",target, self.player, nil) then
+        return true
+    end
+    if q(self,"isFriend",target) and q(self,"needToLoseHp",target, self.player, nil) then
+        return true
+    end
+    return false
+end
+
+--通义
+
+sgs.ai_skill_choice["tongyiAIWJ"]    = function(self, choices, data)
+    local items = q(choices,"split","+")
+    local target = q(data,"toPlayer")
+    if q(self.player,"hasFlag","Jink") then
+        if q(self.player,"objectName") == q(target,"objectName") and q(self,"getCardsNum","Jink") > 0 then
+            return "yes"
+        elseif q(self.player,"objectName") == q(target,"objectName") and q(self,"getCardsNum","Jink") == 0 then
+            return "no"
+        end
+        if known_card(target, self.player, "Jink") > 0 then
+            return "yes"
+        end
+    end
+    if q(self.player,"hasFlag","Nullification") then
+        if q(self.player,"objectName") == q(target,"objectName") and q(self,"getCardsNum","Nullification") > 0 then
+            return "yes"
+        elseif q(self.player,"objectName") == q(target,"objectName") and q(self,"getCardsNum","Nullification") == 0 then
+            return "no"
+        end
+        if known_card(target, self.player, "Nullification") > 0 then
+            return "yes"
+        end
+    end
+    return items[math.random(1,#items)]
+end
+
+sgs.ai_guhuo_card.tongyiTQ = function(self, toname, class_name)
+    if class_name and q(self,"getCardsNum",class_name) > 0 then return end
+    if q(self.player,"hasFlag","Global_tongyiAIWJ_Failed") then return false end
+    if q(self.player,"getMark","tongyiTQ-using") > 0 then return false end
+    if q(self.player,"getMark","tongyiTQ_allcard-Clear") > 0 then return false end
+    local c = tongyi_evaluation(self,toname)
+    if (not c) then return end
+    if q(c,"isKindOf","BasicCard") or q(c,"isNDTrick") then
+        for _, p in sgs.qlist(q(self.room,"findPlayersBySkillName","tongyiAIWJ")) do
+            if not q(self,"isEnemy",p) then
+                return {skill="tongyiTQ",legacy_class="#tongyiTQ",subcards={},user_string=toname}
+            end
+        end
+    end
+end
+
+
+
+
+--千问
+sgs.ai_skill_invoke.tiaojiaoCMT = function(self, data)
+    local damage = q(data,"toDamage")
+    if damage.from and q(self.player,"objectName") == q(damage.from,"objectName") then
+        if q(self,"isFriend",damage.to) and q(damage.to,"isWounded") and known(getBestHp(damage.to),"getBestHp") < q(damage.to,"getHp") then
+            return true
+        end
+        if q(self,"isEnemy",damage.to) then
+            if damage.damage > 1 then return false end
+            if not q(damage.to,"isWounded") then
+                return q(self,"doDisCard",damage.to, "h", true)
+            end
+            if q(self,"isWeak",damage.to) then
+                return false
+            end
+            return q(self,"doDisCard",damage.to, "h", true) and math.random() < 0.5
+        end
+    end
+    return false
+end
+
+sgs.ai_skill_invoke.daduanCMT = true
+
+sgs.ai_fill_skill.tiaojiaoCMT=function(self,inclusive,request)
+    if q(self.player,"getHandcardNum") > 2 then return nil end
+    if q(self,"needBear") and not q(self.player,"isWounded") and q(self,"isWeak") then return nil end
+    if q(self,"getPriorTurnUseCount") < 2 then return nil end
+    return q(self,"legacySkillSeed","tiaojiaoCMT","#tiaojiaoCMTCard",request)
+end
+sgs.ai_skill_use_func["#tiaojiaoCMTCard"] = function(card,use,self)
+    local arr1,arr2 = wounded_friends(self)
+    local target = nil
+
+    repeat
+        if #arr1>0 and (q(self,"isWeak",arr1[1]) or q(self,"isWeak") or q(self,"getOverflow")>=1) then
+            target = arr1[1]
+            break
+        end
+        if #arr2>0 and q(self,"isWeak") then
+            target = arr2[1]
+            break
+        end
+    until true
+
+    if not target then
+        for _,friend in sgs.list(self.friends_noself)do
+            if q(self,"canDamageHp",self.player, nil, friend) or q(self,"needToLoseHp",friend, self.player, nil, true, true) then
+                target = friend
+                break
+            end
+        end
+    end
+
+    if target then
+        use.card = bind_tiaojiao(self,card)
+        use.to:append(target)
+        return
+    end
 end
 
 sgs.ai_use_priority.tiaojiaoCMTCard = 2.8
 
-if type(ai_coverage) == "table" then
-    ai_coverage.declare("AIgeneral", function()
-        return {"deep_seek", "tieba_zhili", "huiyuanshenli", "tongyiAIWJ",
-            "tongyiTQ", "tiaojiaoCMT", "daduanCMT"}
-    end)
+-- ChoiceMade peach results precede the public card use. Native provides this
+-- witness only to the actual asking viewer; no response card identity is exposed.
+local choice_made=sgs.ChoiceMade or "ChoiceMade"
+sgs.ai_event_callback[choice_made]=sgs.ai_event_callback[choice_made]or{}
+sgs.ai_event_callback[choice_made].KaiyuanShengshi=function(self,player,event)
+    local facts=self.world.strategy_facts
+    local witness=known(facts and facts.kaiyuan_role_witness,"Kaiyuan ChoiceMade witness")
+    if witness==false then return end
+    if type(witness)~="table"or type(witness.player)~="string"or not AIValue.isList(witness.sources)then
+        ai_unsupported("Kaiyuan witness is malformed","KaiyuanShengshi")
+    end
+    local target=known(self.room:findPlayerByObjectName(witness.player,true),"Kaiyuan target")
+    local roles={lord=true,loyalist=true,rebel=true,renegade=true}
+    for _,name in ipairs(witness.sources)do
+        local source=known(self.room:findPlayerByObjectName(name,true),"Kaiyuan source")
+        local source_role=visible_role(self,source)
+        if not roles[source_role]then ai_unsupported("Kaiyuan source role inference is unresolved","KaiyuanShengshi")end
+        local target_role=visible_role(self,target)
+        if not roles[target_role]then ai_unsupported("Kaiyuan target role inference is unresolved","KaiyuanShengshi")end
+        -- The donor's local rebel->loyalist/-1000 calculation is dead code:
+        -- its actual assignment still writes source_role = 1000.
+        self:emitStrategyEffect({kind="kaiyuan_role",player=witness.player,source_player=name,source_role=source_role,target_role=target_role})
+        self:updatePlayers()
+    end
 end

@@ -35,6 +35,26 @@ if sgs.ai_card_intention.Collateral ~= nil then
     sgs.ai_card_intention.caoduoCard = sgs.ai_card_intention.Collateral
 end
 
+-- Fixed source mcompetition-ai.lua:71. Read the owner's property only
+-- after the Weapon test; false veto and nil/no-op remain distinct.
+sgs.ai_use_revises.qishibusiyutushou = function(self, card, use)
+    if card:isKindOf("Weapon") then
+        local facts=self.world.strategy_facts and self.world.strategy_facts.mcompetition
+        local value=facts and facts.qishibusiyutushou_equips
+        if type(value)~="string" then
+            ai_unsupported("Owner equipment property is not projected", "qishibusiyutushouEquips")
+        end
+        if value~="" then return false end
+    end
+end
+
+local function choice_body(self, key)
+    local context = self:getDecisionContext()
+    local value = context.choice_body and context.choice_body[key]
+    if value == nil then ai_unsupported("Mcompetition scoped fact is not projected", key) end
+    return value
+end
+
 local function probed(request, name)
     local action = type(request) == "table" and request.skill_action or nil
     return type(action) == "table" and action.activation_skill == name
@@ -128,8 +148,28 @@ end
 
 -- 神異的階段紀錄是字串 data，快照沒有這段，不能用選項順序代替。
 ai_skill_invoke.shenyi = function() return true end
-ai_skill_choice.shenyi = function()
-    ai_unsupported("shenyi phase record is not in the decision context", "shenyi")
+ai_skill_choice.shenyi = function(self, options)
+    local items = options.choices
+    local phases = choice_body(self, "shenyi_phases")
+    local num = phases == "" and 1 or #phases:split("+") + 2
+    local current = self.room:getCurrent()
+    if num == 1 then
+        if self:isFriend(current) then
+            if self:getOverflow(current) <= 0 and table.contains(items, "discard") then return "discard" end
+            if table.contains(items, "draw") then return "draw" end
+        elseif self:isEnemy(current) then
+            if current:isKongcheng() and table.contains(items, "play") then return "play" end
+            if self:getOverflow(current) > 0 and table.contains(items, "draw") then return "draw" end
+        end
+    elseif num == 2 then
+        if self:isFriend(current) then
+            if table.contains(items, "draw") then return "draw" end
+            if table.contains(items, "play") then return "play" end
+        elseif self:isEnemy(current) then
+            if self:getOverflow(current) > 0 and table.contains(items, "discard") then return "discard" end
+        end
+    end
+    return items[1]
 end
 
 ai_skill_invoke.zhuanshan = function(self)
@@ -345,10 +385,23 @@ ai_skill_activate.zhiluan = function(self, request)
     return nil
 end
 
-ai_skill_discard.zhiluan = function(self, options)
-    local count = options and options.max_count or 1
-    if type(count) ~= "number" or count < 1 then return {kind = "pass"} end
-    return lowest_ids(self, count, "he", "zhiluan")
+sgs.ai_skill_discard.zhiluan = function(self, discard_num, optional, include_equip)
+    local hand = self.player:getCards("he")
+    if hand == nil then ai_unsupported("discard owner cards are unknown", "zhiluan") end
+    local cards = sgs.QList2Table(hand)
+    table.sort(cards, function(a, b)
+        local left, right = self:getKeepValue(a), self:getKeepValue(b)
+        if AIUnsupported.is(left) then error(left, 0) end
+        if AIUnsupported.is(right) then error(right, 0) end
+        if left == nil or right == nil then ai_unsupported("discard keep value is unknown", "zhiluan") end
+        return left < right
+    end)
+    local result = {}
+    for _, card in ipairs(cards) do
+        if #result >= discard_num then break end
+        result[#result + 1] = card:getId()
+    end
+    return result
 end
 
 ai_skill_choice.zhiluan = function(self, options)
@@ -361,12 +414,40 @@ ai_skill_choice.zhiluan = function(self, options)
     return choose(options, "reset") or (options.choices or {})[1]
 end
 
-ai_skill_invoke.caoduo = function()
-    ai_unsupported("caoduo invoke payload is not in the decision context", "caoduo")
+ai_skill_invoke.caoduo = function(self)
+    local name = choice_body(self, "caoduo_target")
+    local target = name ~= false and self.room:findPlayerByObjectName(name) or nil
+    if target and self:isEnemy(target) then return true end
+    return false
 end
 
-ai_skill_use["@@caoduo"] = function()
-    ai_unsupported("caoduo response tag is not projected", "caoduo")
+ai_skill_use["@@caoduo"] = function(self)
+    local preview=self:getDecisionContext().retrial_preview
+    if type(preview)~="table" or preview.known~=true or preview.skill~="caoduo"
+        or type(preview.ids)~="table" then
+        ai_unsupported("Caoduo ordered recipient preview is not projected", "caoduo.cards")
+    end
+    for _, id in ipairs(preview.ids) do
+        local card=self:getPreviewCardEvaluation(id)
+        -- Source plans every original borrowed card before checking its flag.
+        -- The readonly evaluator grants no action ticket and no ownership.
+        local use=self:aiUseCard(card)
+        if use.card then
+            local flagged=card:hasFlag("caoduo")
+            if flagged==nil then ai_unsupported("Caoduo source flag is unknown", "caoduo.flag") end
+            if flagged and use.to and use.to:length()>0 then
+                local targets={}
+                for _, player in ipairs(use.to) do targets[#targets+1]=player:objectName() end
+                -- The donor submits the original physical card, not a rewritten
+                -- use.card or the human ViewAsSkill's clone+skill+singlecost.
+                local selected=self:materializeBorrowedSelectedCard(card,targets)
+                local answer=AIUsePlan.new();answer.card=selected
+                answer.to=AIList.new(sgs.QList2Table(use.to))
+                return answer:toAnswer()
+            end
+        end
+    end
+    return {kind="pass"}
 end
 
 ai_skill_activate.caoduo = function(self, request)
@@ -539,6 +620,7 @@ ai_skill_cardask["@shengkong-use"] = function(self, options, request)
         ai_unsupported("shengkong pattern is not a card class", "shengkong")
     end
     local id = self:getCardId(pattern)
+    if type(id) == "table" then return {kind = "answer", card_spec = id} end
     if type(id) ~= "number" then ai_unsupported("shengkong has no visible response card", "shengkong") end
     return id
 end
@@ -694,12 +776,17 @@ ai_skill_cardask["@huanxing"] = function(self, _, request)
         ai_unsupported("huanxing pattern is not a card class", "huanxing")
     end
     local id = self:getCardId(pattern)
+    if type(id) == "table" then return {kind = "answer", card_spec = id} end
     if type(id) ~= "number" then return {kind = "pass"} end
     return id
 end
 
-ai_skill_invoke.huanxing = function()
-    ai_unsupported("huanxing used-state tag is not projected", "huanxing")
+ai_skill_invoke.huanxing = function(self)
+    if choice_body(self, "huanxing_used") then
+        local current = self.room:getCurrent()
+        if current and self:isFriend(current) then return true end
+    end
+    return false
 end
 
 ai_skill_activate.zzy_weimian = function(self, request)
@@ -951,10 +1038,23 @@ ai_skill_invoke.boyi = function(self)
     ai_unsupported("boyi response jink policy is not on the isolated base", "boyi")
 end
 
-ai_skill_discard.boyi = function(self, options)
-    local count = options and options.max_count or 1
-    if type(count) ~= "number" or count < 1 then return {kind = "pass"} end
-    return lowest_ids(self, count, "he", "boyi")
+sgs.ai_skill_discard.boyi = function(self, discard_num, optional, include_equip)
+    local hand = self.player:getCards("he")
+    if hand == nil then ai_unsupported("discard owner cards are unknown", "boyi") end
+    local cards = sgs.QList2Table(hand)
+    table.sort(cards, function(a, b)
+        local left, right = self:getKeepValue(a), self:getKeepValue(b)
+        if AIUnsupported.is(left) then error(left, 0) end
+        if AIUnsupported.is(right) then error(right, 0) end
+        if left == nil or right == nil then ai_unsupported("discard keep value is unknown", "boyi") end
+        return left < right
+    end)
+    local result = {}
+    for _, card in ipairs(cards) do
+        if #result >= discard_num then break end
+        result[#result + 1] = card:getId()
+    end
+    return result
 end
 
 ai_skill_playerchosen.langmanpaotai = function(self, options)

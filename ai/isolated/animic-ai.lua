@@ -1,379 +1,372 @@
--- Animic 隔離 AI。這裡保留 lua/ai/animic-ai.lua 的分支順序與隨機決策，
--- 只使用 viewer-scoped value facade；未知資料交回 ai_unsupported，不能猜成拒絕。
-
-local function unsupported(reason, key)
-    return ai_unsupported(reason, key)
+-- Complete fixed b6025acc animic callback bodies. Readonly planning is kept
+-- separate from native activation receipts; public equipment/judges only.
+local function known(v,key)if v==nil then ai_unsupported("animic value is unknown",key)end return v end
+local function q(o,k,...)
+    if k=="getMark" and type(o.getStrategyMark)=="function"then k="getStrategyMark"end
+    if not o or type(o[k])~="function"then ai_unsupported("animic helper unavailable",k)end
+    return known(o[k](o,...),k)
+end
+local function copy(xs)local out={};for _,v in ipairs(known(xs,"card/player list"))do out[#out+1]=v end return out end
+local function material(card)return{name="analeptic",skill="guihao",suit=q(card,"getSuit"),number=q(card,"getNumber"),subcards={q(card,"getEffectiveId")}}end
+local function huayuan_answer(self,names)
+    local card=self:bindSkillCard("huayuan",{},self.request,nil,"#huayuanCard")
+    local use=AIUsePlan.new();use.card=card
+    for _,name in ipairs(names)do use.to:append(known(self.room:findPlayerByObjectName(name),"huayuan target"))end
+    return use:toAnswer()
+end
+sgs.ai_skill_invoke["modao"] = function(self, data)
+    if #self.enemies == 0 then return false end
+    return true
 end
 
-local function choices(options, key)
-    return type(options) == "table" and AIValue.isList(options[key]) and options[key] or nil
+sgs.ai_skill_choice["modao"] = function(self, choices, data)
+    local items = choices:split("+")
+    if q(self.player,"isKongcheng") then return "1" end
+    for _, c in ipairs(self.player:getHandcards()) do
+            if c:isKindOf("Duel") then
+                local dummy_use = self:aiUseCard(c)
+                if not dummy_use.to:isEmpty() then
+                    return "2"
+                end
+            end
+            if c:isKindOf("FireAttack") and q(self.player,"getHandcardNum") > 2 then
+                local dummy_use = self:aiUseCard(c)
+                if not dummy_use.to:isEmpty() then
+                    return "2"
+                end
+            end
+
+        local x = nil
+        if isCard("ArcheryAttack", c, self.player) then
+            x = self:getEvaluationCard("ArcheryAttack")
+        elseif isCard("SavageAssault", c, self.player) then
+            x = self:getEvaluationCard("SavageAssault")
+        else continue end
+        if x then
+            -- Readonly evaluation lifetime is native-owned.
+            local du = self:aiUseCard(x)
+            if (du.card) then return "3" end
+        end
+    end
+    return "1"
 end
 
-local function offered(options, value)
-    for _, item in ipairs(options or {}) do if item == value then return true end end
+sgs.ai_skill_playerchosen.modao = function(self, targets)
+    targets = copy(targets)
+    targets = self:sort(targets, "handcard_defense")
+    for _, target in ipairs(targets) do
+        if self:isEnemy(target) and self:doDisCard(target, "h", true, known(self.world.strategy_facts.animic.owner_modao,"owner modao tag")) then
+            return target
+        end
+    end
+    for _, target in ipairs(targets) do
+        if self:isEnemy(target) and self:doDisCard(target, "h", true) then
+            return target
+        end
+    end
+
+    return targets[1]
+end
+
+sgs.ai_skill_invoke["cuisheng"] = function(self, data)
+    local current = self.room:getCurrent()
+    return current and self:isFriend(current)
+end
+sgs.ai_choicemade_filter.skillInvoke.cuisheng = function(self, player, promptlist)
+    if promptlist[#promptlist] == "yes" then
+        local current = self.room:getCurrent()
+        self:updateIntention(player, current, -50)
+    end
+end
+
+
+sgs.ai_skill_use["@@huayuan"]=function(self,prompt,method)
+    self:updatePlayers()
+    local enemytargets = {}
+        for _, enemy in ipairs(self.enemies) do
+            if  not q(enemy,"isChained")
+                and not q(enemy,"hasSkill","danlao")
+                --不要對董允敵人使用
+                and not q(enemy,"hasSkill","sheyan")
+                --不要對陸抗敵人使用
+                and not q(enemy,"hasSkill","qianjie")
+                --不要對司馬徽敵人使用
+                and not q(enemy,"hasSkills","chenghao+yinshi")
+
+                --add dongmanbao enemy
+                and not q(enemy,"hasSkill","Tianhuo")
+
+                --add fate
+                and not q(enemy,"hasSkill","fatefapao")
+
+
+                and not (self:objectiveLevel(enemy) <= 3)
+                and not self:needToLoseHp(enemy) and self:isGoodTarget(enemy, self.enemies, nil)
+                and #enemytargets < 2  then
+                table.insert(enemytargets, enemy:objectName())
+            end
+        end
+        for _, friend in ipairs(self.friends) do
+            if not q(friend,"isChained")
+                and self:needToLoseHp(friend)
+                and #enemytargets < 2  then
+                table.insert(enemytargets, friend:objectName())
+            end
+        end
+        if #enemytargets > 0 then
+            if #enemytargets > 1 then
+                return huayuan_answer(self,enemytargets)
+            end
+            return huayuan_answer(self,enemytargets)
+        end
+    return "."
+end
+
+
+sgs.ai_card_intention["huayuanCard"] = function(self,card,from,to)
+    local callback=sgs.ai_card_intention.IronChain
+    if type(callback)~="function" then ai_unsupported("IronChain intention unavailable","huayuanCard") end
+    return callback(self,card,from,to)
+end
+
+sgs.ai_skill_playerchosen["jiaosha"] = function(self, targets)
+    targets = copy(targets)
+    targets = self:sort(targets, "handcard")
+    for _,p in ipairs(targets) do
+        if self:isFriend(p) then
+            if not self:willSkipPlayPhase(p) then
+                if self:needToLoseHp(p) or not self:damageIsEffective(p, sgs.DamageStruct_Normal) then
+                    return p
+                end
+            end
+        end
+    end
+    for _,p in ipairs(targets) do
+        if self:isEnemy(p) then
+            if self:willSkipPlayPhase(p) and self:damageIsEffective(p, sgs.DamageStruct_Normal)
+            and not self:needToLoseHp(p) and self:isGoodTarget(p, self.enemies, nil)   then
+                return p
+            end
+        end
+    end
+    return nil
+end
+
+sgs.ai_skill_cardask["@huanglue"] = function(self, data, pattern, target, target2)
+    local use = data:toCardUse()
+    local handcards = copy(self.player:getCards("he"))
+    handcards = self:sortByKeepValue(handcards)
+    if q(use.card,"isKindOf","Jink") or q(use.card,"isKindOf","Nullification") then
+        if use.from and self:isEnemy(use.from) then
+            for _, card in ipairs(handcards) do
+                if q(card,"getNumber") > q(use.card,"getNumber") then
+                    return "$" .. q(card,"getEffectiveId")
+                end
+            end
+        end
+    elseif q(use.card,"isKindOf","Peach") then
+        if use.from and self:isEnemy(use.from) then
+            for _, p in ipairs(use.to) do
+                if self:isEnemy(p) then
+                    for _, card in ipairs(handcards) do
+                        if q(card,"getNumber") > q(use.card,"getNumber") then
+                            return "$" .. q(card,"getEffectiveId")
+                        end
+                    end
+                end
+            end
+        end
+    else
+        if not self:isWeak() and use.from and not self:isFriend(use.from) then
+            for _, p in ipairs(use.to) do
+                if self:isFriend(p) then
+                    for _, card in ipairs(handcards) do
+                        if q(card,"getNumber") > q(use.card,"getNumber") then
+                            return "$" .. q(card,"getEffectiveId")
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return "."
+end
+
+
+sgs.ai_skill_playerchosen.luafenwei = function(self, targets)
+    if self:needKongcheng(self.player, true) then
+        return nil
+    end
+    targets = copy(targets)
+    targets = self:sort(targets, "defense")
+    for _, target in ipairs(targets) do
+        if self:isFriend(target) and ( target:getJudgingArea():length() > 0  and not q(target,"containsTrick","YanxiaoCard")) then return target end
+    end
+    for _, target in ipairs(targets) do
+        if self:isEnemy(target) and (( target:getJudgingArea():length() > 0  and  q(target,"containsTrick","YanxiaoCard"))) then return target end
+    end
+    for _, target in ipairs(targets) do
+        if self:isEnemy(target) and not ( q(target,"hasSkills",sgs.lose_equip_skill) or self:doDisCard(target, "ej", true)) then
+            return target
+        end
+    end
+    for _, target in ipairs(targets) do
+        if self:isFriend(target) and ((q(target,"hasSkills",sgs.lose_equip_skill) and target:getEquips():length() > 0) or self:needToThrowArmor(target)) then return target end
+    end
+
+    return targets[1]
+end
+
+sgs.ai_skill_cardchosen["luafenwei"] = function(self, who, flags)
+    self:updatePlayers()
+            if flags:match("e") then
+                if self:isEnemy(who) then
+                    if not  q(who,"hasSkills",sgs.lose_equip_skill) then
+                        for _, e in ipairs(copy(who:getCards("e"))) do
+                            local equip_index = q(e,"location")
+                            return e:getEffectiveId()
+                        end
+                    end
+                else
+                    if  q(who,"hasSkills",sgs.lose_equip_skill) then
+                        for _, e in ipairs(copy(who:getCards("e"))) do
+                            local equip_index = q(e,"location")
+                            return e:getEffectiveId()
+                        end
+                    end
+                end
+            end
+            if flags:match("j") then
+                if self:isEnemy(who) then
+                    local judges = who:getJudgingArea()
+                    if q(who,"containsTrick","YanxiaoCard") then
+                        for _, judge in ipairs(judges) do
+                            if judge:isKindOf("YanxiaoCard") then
+                                return judge:getEffectiveId()
+                            end
+                        end
+                    end
+                elseif self:isFriend(who) then
+                    local judges = who:getJudgingArea()
+                    for _, judge in ipairs(judges) do
+                        if not judge:isKindOf("YanxiaoCard") then
+                            return judge:getEffectiveId()
+                        end
+                    end
+                end
+            end
+end
+sgs.need_kongcheng = sgs.need_kongcheng .. "|luafenwei"
+
+
+
+
+sgs.ai_fill_skill.guihao=function(self,inclusive,request)
+    local cards = self.player:getCards("h")
+    cards=copy(cards)
+
+    if self.player:getPile("wooden_ox"):length() > 0 then
+        for _, id in ipairs(self.player:getPile("wooden_ox")) do
+            table.insert(cards, known(self:getKnownCardById(id),"guihao wooden-ox card"))
+        end
+    end
+
+    local card
+
+    cards = self:sortByUseValue(cards,true)
+
+    for _,acard in ipairs(cards)  do
+        if q(acard,"isBlack") then
+            card = acard
+            break
+        end
+    end
+
+    if not card then return nil end
+    if  q(self.player,"getMark","guihao") == 0 then return nil end
+    local suit = q(card,"getSuitString")
+    local number = q(card,"getNumberString")
+    local card_id = q(card,"getEffectiveId")
+    -- Source declaration metadata is retained by the material DTO.
+    local analeptic = self:evaluateOwnerViewAsCard({source_key="guihao",skill="guihao",name="analeptic",suit=q(card,"getSuit"),number=q(card,"getNumber"),subcards={card_id}})
+
+    if q(analeptic,"isAvailable",self.player) then
+        assert(analeptic)
+        return self:bindTurnConversion("guihao","Analeptic",material(card),request)
+    end
+end
+
+sgs.ai_view_as.guihao = function(card, player, card_place)
+    local suit = q(card,"getSuitString")
+    local number = q(card,"getNumberString")
+    local card_id = q(card,"getEffectiveId")
+    if card_place == sgs.Player_PlaceHand or player:getPile("wooden_ox"):contains(card_id) then
+        if q(card,"isBlack") and player:getMark("guihao") > 0 then
+            return material(card)
+        end
+    end
+end
+
+function sgs.ai_cardneed.guihao(to, card, self)
+    return q(card,"isBlack") and (getKnownCard(to, self.player, "club", false) + getKnownCard(to, self.player, "spade", false)) == 0
+end
+
+
+
+sgs.ai_skill_invoke.guihao = function(self, data)
+    if self:isWeak(self.player) and self:getAllPeachNum() == 0 then return false end
+    if self:willSkipPlayPhase(self.player) then return false end
+    for _,card in ipairs(self.player:getHandcards()) do
+        if q(card,"isKindOf","Peach") or q(card,"isKindOf","Analeptic") or q(card,"isKindOf","Slash") then
+            return true
+        end
+    end
+    if math.random()<0.6 then return true end
     return false
 end
 
-local function known(value, key)
-    if value == nil then unsupported("required visible value is unknown", key or "animic") end
-    return value
-end
-local function relation(self, player)
-    local value = self:relationTo(player)
-    if value ~= "friend" and value ~= "enemy" and value ~= "neutral" then
-        unsupported("player relation is unknown", "animic")
-    end
-    return value
-end
-local function is_friend(self, player) return relation(self, player) == "friend" end
-local function is_enemy(self, player) return relation(self, player) == "enemy" end
-
-local function target(self, name)
-    return type(name) == "string" and self.room:findPlayerByObjectName(name) or nil
-end
-
-local function require_helper(self, name, key)
-    if type(self[name]) ~= "function" then
-        return unsupported(name .. " is not covered by the isolated common layer", key)
-    end
-    return true
-end
-
-local function offered_targets(self, names)
-    if not AIValue.isList(names) then return nil end
-    local result = AIList.new({})
-    for _, name in ipairs(names) do
-        local player = target(self, name)
-        if not player then return nil end
-        result:append(player)
-    end
-    return result
-end
-
--- 魔道：空手先選 1；原版會依手牌逐張測試決鬥、火攻，再測試群攻牌。
-ai_skill_invoke.modao = function(self)
-    if not self.enemies then return unsupported("modao enemies are unknown", "modao") end
-    return #self.enemies > 0
-end
-
-ai_skill_choice.modao = function(self, options)
-    local items = choices(options, "choices")
-    if not items or #items == 0 then return unsupported("modao choices are missing", "modao") end
-    local hand = self.player:getHandcards()
-    if not hand then return unsupported("modao hand is unknown", "modao") end
-    if #hand == 0 and offered(items, "1") then return "1" end
-    for _, card in ipairs(hand) do
-        if card:isKindOf("Duel") or (card:isKindOf("FireAttack") and #hand > 2) then
-            local plan, status = self:tryUseCard(card)
-            if status == "unsupported" then return unsupported(plan.reason, "modao") end
-            if status == "planned" and plan and plan.to and #plan.to > 0 and offered(items, "2") then
-                return "2"
-            end
-        elseif card:isKindOf("ArcheryAttack") or card:isKindOf("SavageAssault") then
-            return unsupported("modao dummy AOE identity and effects are not projected", "modao")
-        end
-    end
-    if offered(items, "1") then return "1" end
-    return unsupported("modao choice 1 was not offered", "modao")
-end
-
-ai_skill_playerchosen.modao = function(self, options)
-    -- The original orders by handcard_defense and reads getTag("modao"), not
-    -- getMark("modao"). Neither may be silently replaced by another value.
-    return unsupported("modao tag and handcard_defense ordering are not projected", "modao")
-end
-
-ai_skill_invoke.cuisheng = function(self)
-    local current = self.room:getCurrent()
-    if not current then return unsupported("cuisheng current player is unknown", "cuisheng") end
-    local friend = is_friend(self, current)
-    if friend == nil then return unsupported("cuisheng relation is unknown", "cuisheng") end
-    return friend
-end
-
--- @@huayuan：原版目標過濾順序完整保留；最後由 skill_action／authority 做合法性確認。
-ai_skill_use["@@huayuan"] = function(self, prompt, request)
-    local action = self:getSkillAction()
-    local candidates = choices(request.options or {}, "players")
-    local players = offered_targets(self, candidates)
-    if not action or not action:isValid() or action:getActivationSkillName() ~= "huayuan" or not players or not self.enemies or not self.friends then return unsupported("huayuan action, candidates or relations are unknown", "huayuan") end
-    if not require_helper(self, "isGoodTarget", "huayuan") or not require_helper(self, "needToLoseHp", "huayuan") then return nil end
-    local selected = {}
-    for _, enemy in ipairs(self.enemies) do
-        local objective = self:objectiveLevel(enemy)
-        if objective == nil then return unsupported("huayuan objective is unknown", "huayuan") end
-        if players:contains(enemy) and not enemy:isChained() and not enemy:hasSkill("danlao") and not enemy:hasSkill("sheyan")
-            and not enemy:hasSkill("qianjie") and not enemy:hasSkills("chenghao+yinshi")
-            and not enemy:hasSkill("Tianhuo") and not enemy:hasSkill("fatefapao")
-            and objective > 3
-            and self:needToLoseHp(enemy) == false
-            and self:isGoodTarget(enemy, self.enemies, nil) == true then
-            selected[#selected + 1] = enemy:objectName()
-            if #selected == 2 then break end
-        end
-    end
-    if #selected < 2 then
-        for _, friend in ipairs(self.friends) do
-            if players:contains(friend) and not friend:isChained() and self:needToLoseHp(friend) == true then
-                selected[#selected + 1] = friend:objectName()
-                if #selected == 2 then break end
-            end
-        end
-    end
-    if #selected == 0 then return {kind = "pass"} end
-    return {kind = "use_card", skill_action = action:toAnswer(), targets = selected}
-end
-
-ai_skill_playerchosen.jiaosha = function(self, options)
-    local names = choices(options, "players")
-    local players = offered_targets(self, names)
-    if not players then return unsupported("jiaosha candidates are unknown", "jiaosha") end
-    local sorted = self:sort(players, "handcard")
-    if not sorted then return unsupported("jiaosha hand ordering is unknown", "jiaosha") end
-    if not require_helper(self, "willSkipPlayPhase", "jiaosha") or not require_helper(self, "isGoodTarget", "jiaosha") then return nil end
-    for _, p in ipairs(sorted) do
-        local friend, skip, lose, effective = is_friend(self, p), self:willSkipPlayPhase(p), self:needToLoseHp(p), self:damageIsEffective(p, sgs.DamageStruct_Normal)
-        if friend == nil or skip == nil or lose == nil or effective == nil then return unsupported("jiaosha policy is unknown", "jiaosha") end
-        if friend and not skip and (lose or not effective) then
-            return p:objectName()
-        end
-    end
-    for _, p in ipairs(sorted) do
-        local enemy, skip, effective, lose, good = is_enemy(self, p), self:willSkipPlayPhase(p), self:damageIsEffective(p, sgs.DamageStruct_Normal), self:needToLoseHp(p), self:isGoodTarget(p, self.enemies, nil)
-        if enemy == nil or skip == nil or effective == nil or lose == nil or good == nil then return unsupported("jiaosha policy is unknown", "jiaosha") end
-        if enemy and skip and effective and not lose and good then
-            return p:objectName()
-        end
-    end
-    return nil
-end
-
--- 黃略是 askForCard：只在原版允許的關係與牌點條件下出牌。
-ai_skill_cardask["@huanglue"] = function(self, options)
-    local use = self:getDecisionContext().use
-    if not use or not use.card or not use.to then unsupported("huanglue card use is not projected", "huanglue") end
-    local cards = known(self:sortByKeepValue(known(self.player:getCards("he"), "huanglue")), "huanglue")
-    local wanted = false
-    if use.card:isKindOf("Jink") or use.card:isKindOf("Nullification") then
-        wanted = use.from and is_enemy(self, use.from)
-    elseif use.card:isKindOf("Peach") then
-        if use.from and is_enemy(self, use.from) then
-            for _, player in ipairs(use.to) do
-                if is_enemy(self, player) then wanted = true; break end
-            end
-        end
-    elseif not known(self:isWeak(), "huanglue") and use.from and not is_friend(self, use.from) then
-        for _, player in ipairs(use.to) do
-            if is_friend(self, player) then wanted = true; break end
-        end
-    end
-    if wanted then
-        local number = known(use.card:getNumber(), "huanglue")
-        for _, card in ipairs(cards) do
-            if known(card:getNumber(), "huanglue") > number then
-                -- Preserve the first legacy choice; an unoffered cost is unknown,
-                -- not a reason to silently switch to the next card.
-                for _, id in ipairs(choices(options, "card_ids") or {}) do
-                    if id == card:getEffectiveId() then return id end
+sgs.ai_skill_use["@@caiduan"] = function(self,prompt)
+    local cards = self.player:getCards("h")
+    cards = copy(cards) -- 将列表转换为表
+    cards = self:sortByKeepValue(cards) -- 按保留值排序
+    for _,h in ipairs(cards)do
+        if h and not q(h,"targetFixed") then
+            local dummy_use = self:aiUseCard(h)
+            if dummy_use.card and dummy_use.to  then
+                local tos = {}
+                for _,p in ipairs(dummy_use.to)do
+                    table.insert(tos,p:objectName())
                 end
-                unsupported("huanglue selected card was not offered", "huanglue")
-            end
-        end
-    end
-    return {kind = "pass"}
-end
-
-ai_skill_playerchosen.luafenwei = function(self, options)
-    local keep_empty = self:needKongcheng(self.player, true)
-    if keep_empty == nil then return unsupported("luafenwei empty-hand policy is unknown", "luafenwei") end
-    if keep_empty then return {kind = "pass"} end
-    local names = choices(options, "players")
-    local players = offered_targets(self, names)
-    if not players then return unsupported("luafenwei candidates are unknown", "luafenwei") end
-    local sorted = self:sort(players, "defense")
-    if not sorted then return unsupported("luafenwei defense ordering is unknown", "luafenwei") end
-    for _, p in ipairs(sorted) do
-        local judging = p:getJudgingArea()
-        if not judging then return unsupported("luafenwei judging area is unknown", "luafenwei") end
-        local friend = is_friend(self, p)
-        if friend == nil then return unsupported("luafenwei relation is unknown", "luafenwei") end
-        if friend and #judging > 0 and not p:containsTrick("YanxiaoCard") then return p:objectName() end
-    end
-    for _, p in ipairs(sorted) do
-        local enemy = is_enemy(self, p)
-        if enemy == nil then return unsupported("luafenwei relation is unknown", "luafenwei") end
-        if enemy and p:containsTrick("YanxiaoCard") then return p:objectName() end
-    end
-    for _, p in ipairs(sorted) do
-        local enemy, legal = is_enemy(self, p), self:doDisCard(p, "ej", true)
-        if enemy == nil or legal == nil then return unsupported("luafenwei relation or discard legality is unknown", "luafenwei") end
-        if enemy and not (p:hasSkills(sgs.lose_equip_skill) or legal) then return p:objectName() end
-    end
-    for _, p in ipairs(sorted) do
-        local equips = p:getEquips()
-        if not equips then return unsupported("luafenwei equipment is unknown", "luafenwei") end
-        local friend = is_friend(self, p)
-        if friend == nil then return unsupported("luafenwei relation is unknown", "luafenwei") end
-        if friend then
-            if p:hasSkills(sgs.lose_equip_skill) and #equips > 0 then return p:objectName() end
-            require_helper(self, "needToThrowArmor", "luafenwei")
-            local throw = self:needToThrowArmor(p)
-            if throw == nil then return unsupported("luafenwei armor policy is unknown", "luafenwei") end
-            if throw then return p:objectName() end
-        end
-    end
-    return sorted[1] and sorted[1]:objectName() or nil
-end
-
-ai_skill_cardchosen.luafenwei = function(self, options)
-    local context = self:getDecisionContext()
-    local who = context.who or context.target
-    if type(who) == "string" then who = self.room:findPlayerByObjectName(who, true) end
-    if not who then return unsupported("luafenwei target is unknown", "luafenwei") end
-    local flags = context.flags or ""
-    if flags:find("e", 1, true) then
-        local enemy = is_enemy(self, who)
-        if enemy == nil then return unsupported("luafenwei relation is unknown", "luafenwei") end
-        if (enemy and not who:hasSkills(sgs.lose_equip_skill)) or (not enemy and who:hasSkills(sgs.lose_equip_skill)) then
-            local equips = who:getCards("e")
-            if not equips then return unsupported("luafenwei equipment is unknown", "luafenwei") end
-            if equips[1] then return equips[1]:getEffectiveId() end
-        end
-    end
-    if flags:find("j", 1, true) then
-        local judges = who:getJudgingArea()
-        if not judges then return unsupported("luafenwei judging area is unknown", "luafenwei") end
-        if is_enemy(self, who) and who:containsTrick("YanxiaoCard") then
-            for _, card in ipairs(judges) do if card:isKindOf("YanxiaoCard") then return card:getEffectiveId() end end
-        elseif is_friend(self, who) then
-            for _, card in ipairs(judges) do if not card:isKindOf("YanxiaoCard") then return card:getEffectiveId() end end
-        end
-    end
-    return nil
-end
-
--- 鬼豪：轉化必須使用 authority 已列出的 conversion ticket，不能拼牌字串。
-ai_skill_activate.guihao = function(self)
-    local key = "guihao"
-    local cards = known(self.player:getHandcards(), key)
-    local pile_ids = AIList.new({})
-    for _, name in ipairs(known(self.player:getPileNames(), key)) do
-        if name == "wooden_ox" then pile_ids = known(self.player:getPile(name), key); break end
-    end
-    if #pile_ids > 0 then
-        local indexed = {}
-        for _, card in ipairs(known(self.player:getHandPileCards(), key)) do indexed[card:getEffectiveId()] = card end
-        for _, id in ipairs(pile_ids) do cards:append(known(indexed[id], key)) end
-    end
-    local selected
-    for _, card in ipairs(known(self:sortByUseValue(cards, true), key)) do
-        if known(card:isBlack(), key) then selected = card; break end
-    end
-    if not selected or known(self.player:getMark("guihao"), key) == 0 then return nil end
-    local action = self:getSkillAction()
-    if not action then
-        for _, candidate in ipairs(known(self:getSkillActions(), key)) do
-            if candidate:getActivationSkillName() == key then
-                if action then unsupported("guihao activation instance is ambiguous", key) end
-                action = candidate
-            end
-        end
-    end
-    if not action or not action:isValid() or action:getActivationSkillName() ~= key then
-        unsupported("guihao activation ticket is missing", key)
-    end
-    for _, conversion in ipairs(known(self:getConversions(), key)) do
-        if conversion:getActivationSkillName() == key
-            and conversion:getActivationOwner() == action:getActivationOwner()
-            and conversion:getActivationInstanceId() == action:getActivationInstanceId()
-            and conversion:getSourceOwner() == action:getSourceOwner()
-            and conversion:getSourceSkillName() == action:getSourceSkillName()
-            and conversion:getSourceInstanceID() == action:getSourceInstanceID()
-            and conversion:getClassName() == "Analeptic" then
-            local costs = known(conversion:getSubcards(), key)
-            if #costs == 1 and costs[1] == selected:getEffectiveId() then
-                local available = known(conversion:isAvailable(), key)
-                if not available then return nil end
-                local plan, status = self:tryUseCard(conversion)
-                if status == "unsupported" then error(plan, 0) end
-                if status == "planned" then return plan:toAnswer() end
-                return nil
-            end
-        end
-    end
-    unsupported("guihao first black card has no authorized Analeptic conversion", key)
-end
-
-sgs.ai_cardneed.guihao = function(to, card, self)
-    if not known(card:isBlack(), "guihao") then return false end
-    for _, known_card in ipairs(known(to:getKnownCards(), "guihao")) do
-        local suit = known(known_card:getSuitString(), "guihao")
-        if suit == "club" or suit == "spade" then return false end
-    end
-    return true
-end
-
-ai_skill_invoke.guihao = function(self)
-    local weak = self:isWeak(self.player)
-    if weak == nil then return unsupported("guihao weakness is unknown", "guihao") end
-    if weak then
-        local peach = self:getAllPeachNum()
-        if peach == nil then return unsupported("guihao rescue estimate is unknown", "guihao") end
-        if peach == 0 then return false end
-    end
-    if not require_helper(self, "willSkipPlayPhase", "guihao") then return nil end
-    local skip = self:willSkipPlayPhase(self.player)
-    if skip == nil then return unsupported("guihao skipped phase is unknown", "guihao") end
-    if skip then return false end
-    local hand = self.player:getHandcards()
-    if not hand then return unsupported("guihao hand is unknown", "guihao") end
-    for _, card in ipairs(hand) do
-        if card:isKindOf("Peach") or card:isKindOf("Analeptic") or card:isKindOf("Slash") then return true end
-    end
-    return math.random() < 0.6
-end
-
-ai_skill_use["@@caiduan"] = function(self, prompt, request)
-    local cards = self.player:getHandcards()
-    if not cards then return unsupported("caiduan hand is unknown", "caiduan") end
-    local sorted = self:sortByKeepValue(cards)
-    if not sorted then return unsupported("caiduan keep ordering is unknown", "caiduan") end
-    for _, card in ipairs(sorted) do
-        if not card:targetFixed() then
-            local plan, status = self:tryUseCard(card)
-            if status == "unsupported" then return unsupported(plan.reason, "caiduan") end
-            if status == "planned" and plan then
+                local plan=AIUsePlan.new();plan.card=h
+                for _,name in ipairs(tos)do plan.to:append(known(self.room:findPlayerByObjectName(name),"caiduan target"))end
                 return plan:toAnswer()
             end
         end
     end
-    return {kind = "pass"}
 end
 
-ai_skill_invoke.caiduan = function(self)
+sgs.ai_skill_invoke["caiduan"] = function(self, data)
     local current = self.room:getCurrent()
-    if not current then return unsupported("caiduan current player is unknown", "caiduan") end
-    local enemy = is_enemy(self, current)
-    local weak = self:isWeak()
-    if enemy == nil or weak == nil then return unsupported("caiduan relation or weakness is unknown", "caiduan") end
-    return enemy and not weak
+    return current and self:isEnemy(current) and not self:isWeak()
+end
+sgs.ai_choicemade_filter.skillInvoke.caiduan = function(self, player, promptlist)
+    if promptlist[#promptlist] == "yes" then
+        local current = self.room:getCurrent()
+        self:updateIntention(player, current, 50)
+    end
 end
 
-ai_skill_invoke.shenni = function(self, options)
-    -- Legacy data:toMoveOneTime().card_ids has no isolated move projection yet;
-    -- getChoiceCards() is a different request and cannot stand in for moved cards.
-    return unsupported("shenni move card projection is not covered", "shenni")
+sgs.ai_skill_invoke["shenni"] = function(self, data)
+    local move = data:toMoveOneTime()
+    for _,card_id in ipairs(move.card_ids) do
+        if q(known(self:getKnownCardById(card_id),"shenni disclosed moved card"),"isKindOf","Peach") then
+            return true
+        end
+    end
+    return not self:isWeak()
 end
 
-ai_skill_playerchosen.yui_changxin = function(self, options)
-    local names = choices(options, "players")
-    local players = offered_targets(self, names)
-    if not players then return unsupported("yui_changxin candidates are unknown", "yui_changxin") end
-    local result = self:findPlayerToDiscard("he", true, true, players, false)
-    if not result then return unsupported("yui_changxin discard target is unknown", "yui_changxin") end
-    return result[1] and result[1]:objectName() or nil
-end
 
-sgs.need_kongcheng = (sgs.need_kongcheng or "") .. "|luafenwei"
--- Missing coverage: legacy intention callbacks and guihao legacy view-as;
--- moved cards for shenni are not interchangeable with choice-card candidates.
+sgs.ai_skill_playerchosen.yui_changxin = function(self, targets)
+    return self:findPlayerToDiscard("he", true, true, targets, false)[1]
+end

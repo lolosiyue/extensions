@@ -1,0 +1,4124 @@
+-- NyarzSecond fixed b6025acc. Readonly hypotheses are never payment receipts.
+local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported('NyarzSecond source input unknown',k)end;return v end
+local function hydrate_context(self,value,kind)
+ if value==nil then return nil end
+ if kind=='Player' then
+  if AIValue.isPlayer(value)then return value end
+  return known(self.room:findPlayerByObjectName(value,true),'context.player:'..tostring(value))
+ end
+ if kind=='Card'then
+  if AIValue.isCard(value)or AIValue.isConversion(value)then return value end
+  return CardView.new(value,self.room)
+ end
+ if kind=='Bool'or kind=='String'or kind=='Int'then return value end
+ if kind=='IntList'then return AIList.new(value)end
+ local row={};for k,v in pairs(value)do row[k]=v end
+ for _,k in ipairs{'from','who','m_who'}do if value[k]then row[k]=hydrate_context(self,value[k],'Player')end end
+ for _,k in ipairs{'card','whocard','m_card','m_toCard'}do if value[k]then row[k]=hydrate_context(self,value[k],'Card')end end
+ if kind=='CardUse'then row.to=AIList.new({});for _,v in ipairs(value.to or{})do row.to:append(hydrate_context(self,v,'Player'))end
+ elseif value.to then row.to=hydrate_context(self,value.to,'Player')end
+ if kind=='Dying'and value.damage then row.damage=hydrate_context(self,value.damage,'Damage')end
+ if kind=='Judge'then
+  local current_good=value.good
+  row.good=known(value.predicate_good,'judge.predicate_good')
+  function row:isGood(c)
+   if c==nil then return current_good end
+   if self.outcomes_complete~=true then return nil end
+   local values=self.outcome_by_id;if type(values)=='table'then return values[tostring(c:getEffectiveId())]end
+  end
+  function row:isBad(c)local v=self:isGood(c);if type(v)=='boolean'then return not v end end
+ end
+ return row
+end
+local nullable={getMinCard=true,getSameEquip=true,getOffensiveHorse=true,useCardByClassName=true,updatePlayers=true,getCard=true,getArmor=true,getWeapon=true,getTreasure=true,findPlayerBySkillName=true,toPlayer=true,useEquipCard=true,useTrickCard=true,useBasicCard=true,moveField=true,getCurrent=true,getLord=true,getMaxCard=true,setStrategyMemory=true,getStrategyMemory=true,updateIntention=true,setStrategyCardFlag=true}
+local function q(o,k,...)
+ if k=='hasFlag'and AIValue.isPlayer(o)then
+  local ai=o._room and o._room._ai;local fs=ai and ai.world.strategy_facts
+  local rows=fs and fs.NyarzSecond and fs.NyarzSecond.public_flags
+  local values=rows and rows[(...)];local v=values and values[o:objectName()]
+  local audited={['jxjuxiangtarget']=true,['basuran']=true,['mjtongguantarget']=true,['gsgushetarget']=true,['ny_second_juanxia_target']=true,['nyarz_wangxi_target']=true,['nyarz_liuzhuan_target']=true,['nyarz_pojun_target']=true,['nyarz_juece_target']=true}
+  if audited[(...)]then if type(v)~='boolean'then ai_unsupported('public flag disclosure missing',(...))end;return v end
+ end
+ if not o or type(o[k])~='function'then ai_unsupported('NyarzSecond helper unavailable',k)end
+ local m=k;if k=='getMark'and AIValue.isPlayer(o)then m='getStrategyMark'end
+ local r=table.pack(o[m](o,...));if AIUnsupported.is(r[1])then error(r[1],0)end
+ if k=='sort'or k=='sortByKeepValue'or k=='sortByUseValue'then local t=(...);known(r[1],k);for i,v in ipairs(r[1])do t[i]=v end;return t end
+ if k=='hasSkill'or k=='hasSkills'then local p=AIValue.isPlayer(o)and o or select(2,...)or o.player;local row=type(p)=='table'and rawget(p,'_view');if r[1]==false and row and row.skills_complete~=true then ai_unsupported('NyarzSecond foreign skill absence unknown',(...))end end
+ if not nullable[k]then known(r[1],k)end;return table.unpack(r,1,r.n)
+end
+local function source_type(c)for _,name in ipairs{"BasicCard","TrickCard","EquipCard"}do if q(c,"isKindOf",name)then return name end end end
+local function facts(self)return known(self.world.strategy_facts and self.world.strategy_facts.NyarzSecond,'NyarzSecond')end
+local function face(self,id)return q(self,'getKnownCardById',id)end
+local function fullhe(p)local cs=q(p,"getCards","he");if #cs~=q(p,"getHandcardNum")+#q(p,"getEquips")then ai_unsupported("source requires complete lawful he","NyarzSecond.foreign_he")end;return cs end
+local function fullhand(p)local cs=q(p,'getHandcards');if #cs~=q(p,'getHandcardNum')then ai_unsupported('NyarzSecond source requires complete lawful foreign hand','NyarzSecond.foreign_hand')end;return cs end
+local function evaluation(self,name)return q(self,'getEvaluationCard',name or'slash')end
+local function named(self,skill,name,costs)return q(self,'evaluateSkillCard',skill,name,costs or{})end
+local function own_ai(p)local a=p._room and p._room._ai;if not a or a.player~=p then ai_unsupported('NyarzSecond view-as requires owner','NyarzSecond.view_as')end;return a end
+local function memory(self,key,value,write)
+ if write then if value==nil then value=false end;q(self,'setStrategyMemory','NyarzSecond.'..key,value);return end
+ local value,present=q(self,'getStrategyMemory','NyarzSecond.'..key);if present then return value~=false and value or nil end
+end
+local function save_targets(self,key,ts)if ts==nil then memory(self,key,false,true);return end;local names={};for _,p in ipairs(ts or{})do names[#names+1]=q(p,'objectName')end;memory(self,key,names,true)end
+local function targets(self,key)local names=memory(self,key);if not names then return nil end;local out=AIList.new({});for _,n in ipairs(names)do out:append(known(self.room:findPlayerByObjectName(n),n))end;return out end
+local selectors={jxyangjie=true,jjjijin=true,mjtongguan=true,gsgushe=true,gsjici=true,jjcuijue=true,ny_zhanjue_diy=true,ny_second_juanxia=true,nyarz_daoshu=true,nyarz_mieji=true,nyarz_fencheng=true,nyarz_ruxian_wu=true,nyarz_rende=true,nyarz_rendebasic=true,nyarz_longnu=true,nyarz_jianying=true,nyarz_yingmou_mou=true,nyarz_mingshi_mou=true,nyarz_hongyuan=true,nyarz_xinsheng=true,nyarz_yiji=true,nyarz_luanfeng=true,nyarz_youlong=true,nyarz_shenfen_god=true,nyarz_wuqian_god=true,nyarz_liji=true,nyarz_jianhe=true,nyarz_longhun_god=true,nyarz_duoshi=true,nyarz_ximo=true,nyarz_bixin=true,nyarz_wusheng=true,nyarz_longdan=true,nyarz_canxi=true,nyarz_tongwei=true,nyarz_luanzheng=true,nyarz_qiangxi=true,nyarz_shensu=true,nyarz_shebian=true,nyarz_paiyi=true}
+local provider={}
+local function ids(raw)local out={};if raw~='.'and raw~=''then for v in raw:gmatch('[^+]+')do local id=tonumber(v);if not id or id<0 or id%1~=0 then ai_unsupported('invalid NyarzSecond source material',raw)end;out[#out+1]=id end end;return out end
+local function wireparts(wire)
+ local cls,raw,user=wire:match('^#([%w_]+):([^:]*):(.*)$');if not cls or not selectors[cls]then ai_unsupported('unmapped NyarzSecond skillcard selector',wire)end
+ local to={};local declaration=user;local names=user:match('^%-%>(.*)$');if names then declaration='';for n in names:gmatch('[^+]+')do to[#to+1]=n end end
+ return cls,ids(raw),declaration,to
+end
+local suits={spade=0,club=1,heart=2,diamond=3,no_suit_black=4,no_suit_red=5,no_suit=6,to_be_decided=6}
+local function printed(wire,self)
+ local name,skill,suit,num,raw=wire:match('^([%w_]+):([%w_]+)%[([^:]+):([^%]]+)%]=([^:]+)$')
+ if not name or suits[suit]==nil then ai_unsupported('NyarzSecond source CardParse face needs exact native parser witness',wire)end
+ local numbers={A=1,J=11,Q=12,K=13,JOKER=0};local number=numbers[num]or tonumber(num);if not number then ai_unsupported('NyarzSecond source number is not parsed',wire)end
+ local costs=ids(raw);local color=suits[suit]
+ if #costs==1 then local c=face(self,costs[1]);if color==6 then color=q(c,'getSuit')end;if number<=0 then number=q(c,'getNumber')end
+ elseif #costs>1 and color==6 then local red,black=true,true;for _,id in ipairs(costs)do local c=face(self,id);red=red and q(c,'isRed');black=black and q(c,'isBlack')end;color=red and 5 or black and 4 or 6 end
+ return{name=name,skill=skill,suit=color,number=number,subcards=costs}
+end
+local function parse(self,wire)
+ if wire:sub(1,1)~='#'then local spec=printed(wire,self);local c=evaluation(self,spec.name);return q(self,'evaluateTurnConversion',spec.skill,q(c,'getClassName'),spec,self.request)end
+ local cls,costs,user=wireparts(wire);local skill=provider[cls]or cls
+ if #costs==0 and user==''then return q(self,'legacySkillSeed',skill,'#'..cls,self.request)end
+ return q(self,'evaluateTurnSkillCard',skill,'#'..cls,costs,self.request,user~=''and user or nil)
+end
+local function response(self,wire)
+ local cls,costs,user,to=wireparts(wire);local c=q(self,'bindSkillCard',provider[cls]or cls,costs,self.request,user~=''and user or nil,'#'..cls)
+ return{kind='use_card',card_spec=q(c,'toCardSpec'),targets=to}
+end
+local function answer(self,c,to)
+ if q(c,'isEvaluationOnly')then local skill=q(c,'getSkillName',false);local provider=skill:gsub('^_','');local receipt=q(self,'bindSkillCard',provider,q(c,'getSubcards'),self.request,q(c,'objectName'))
+  for _,key in ipairs{'objectName','getSuit','getNumber'}do if q(receipt,key)~=q(c,key)then ai_unsupported('NyarzSecond receipt changed selected source product',key)end end
+  if q(receipt,'getSkillName',false)~=skill then ai_unsupported('NyarzSecond receipt changed raw skill',skill)end
+  local a,b=q(receipt,'getSubcards'),q(c,'getSubcards');if #a~=#b then ai_unsupported('NyarzSecond receipt changed costs',skill)end;for i,id in ipairs(a)do if b[i]~=id then ai_unsupported('NyarzSecond receipt reordered costs',skill)end end;c=receipt
+ end
+ if AIValue.isConversion(c)then return{kind='use_card',card_spec=q(c,'toCardSpec'),targets=to or{}}end
+ if q(c,'isVirtualCard')then ai_unsupported('NyarzSecond selected virtual lacks authority','NyarzSecond.answer')end
+ return{kind='use_card',card_ids={q(c,'getEffectiveId')},targets=to or{}}
+end
+local function nested(self,reg,key,...)
+ local f=q(self,'getHooks',reg)[key];if type(f)~='function'then ai_unsupported('NyarzSecond required shared callback missing',reg..'.'..key)end
+ local v=table.pack(f(...));if AIUnsupported.is(v[1])then error(v[1],0)end;return table.unpack(v,1,v.n)
+end
+local function view(self,wire)return printed(wire,self)end
+
+local function source_inverse(self) local row=facts(self).inverse; if type(row)~="table" or row.known~=true then ai_unsupported("source global inverse is unknown","NyarzSecond.inverse")end; return row.value end
+local function prop(self,key)return known(facts(self).properties and facts(self).properties[key],key)end
+local function context(self)return known(q(self,'getDecisionContext').NyarzSecond,'NyarzSecond.context')end
+local function tagplayer(self,owner,key)
+ local rows=context(self).player_tags;local row=rows and rows[key]
+ if type(row)~='table'or row.owner~=(owner and q(owner,'objectName')or '@room')or row.known~=true then ai_unsupported('NyarzSecond current actor tag unknown',key)end
+ if row.present==false then return nil end
+ return hydrate_context(self,row.value,'Player')
+end
+local function tagids(self,key)local rows=context(self).id_tags;return AIList.new(known(rows and rows[key],key))end
+local function taguse(self,key)return hydrate_context(self,known(context(self)[key],key),'CardUse')end
+local function tagjudge(self,key)return hydrate_context(self,known(context(self)[key],key),'Judge')end
+local function cardtag(self,c,key)local rows=facts(self).card_tags;local row=rows and rows[tostring(q(c,'getEffectiveId'))];return known(row and row[key],key)end
+local function role(self,p)if p==self.player then return q(p,'getRole')end;return q(self,'getRoleEstimate',p)end
+local function descriptor(c)local ids={};for _,id in ipairs(q(c,'getSubcards'))do ids[#ids+1]=id end;return{name=q(c,'objectName'),skill=q(c,'getSkillName',false),suit=q(c,'getSuit'),number=q(c,'getNumber'),subcards=ids}end
+
+
+
+local function source_analeptic_available(c)local r=rawget(c,"_view");local b=r and r.source_analeptic_available;if type(b)~="boolean"then ai_unsupported("bnjiuchi requires exact Analeptic_IsAvailable","bnjiuchi")end;return b end
+local function material(self,scope,name,costs)local c=q(self,'evaluateSkillCard',scope,name,costs);if q(c,'getSkillName',false)~=''then ai_unsupported('source unskilled material dummy changed skill',scope)end;return c end
+local function proposal(self,wire)local cls,costs,user=wireparts(wire);return{skill=provider[cls]or cls,legacy_class='#'..cls,subcards=costs,user_string=user}end
+local function tagvalue(self,key,kind)
+ local row=context(self).values;row=row and row[key];if type(row)~='table'or row.known~=true or row.kind~=kind then ai_unsupported('NyarzSecond typed context missing',key)end
+ if row.present==false and(kind=='Card'or kind=='Player')then return nil end;return hydrate_context(self,known(row.value,key),kind)
+end
+local function judge_match(self,judge,card)local rows=context(self).judge_nil_matches;local row=rows and rows[judge.pattern];local v=row and row[tostring(q(card,'getEffectiveId'))];if type(v)~='boolean'then ai_unsupported('exact nil-player judge matcher unknown',judge.pattern)end;return v end
+local function draw_iter(self)local f=facts(self);local count=known(f.draw_count,'draw_count');local i=-1;return function()i=i+1;if i<count then return i+1,known(f.observed_draw_ids and f.observed_draw_ids[tostring(i)],'draw_index:'..i)end end end
+local function skill_description(self,key)return q(self,'translatePublicKey',':'..key)end
+local function global_card_id(self)return known(facts(self).global_card_id,'source global card used by nyarz_longhun_god')end
+local function source_slash(self)local value,present=q(self,'getStrategyMemory','NyarzSecond.observed_global_slash');if not present then ai_unsupported('cross-viewer source global slash was not observed','nyarz_weipo')end;return value end
+local function write_source_slash(self,v)q(self,'setStrategyMemory','NyarzSecond.observed_global_slash',v)end
+local function rename_jiuchi(str)
+ if type(str)~='table'or str.name~='analeptic'or str.skill~='jiuchi'or type(str.subcards)~='table'then ai_unsupported('Jiuchi callback ABI lacks exact printed proposal','bnjiuchi')end
+ local out={name=str.name,skill='bnjiuchi',suit=str.suit,number=str.number,subcards={}};for _,id in ipairs(str.subcards)do out.subcards[#out.subcards+1]=id end;return out
+end
+
+local function findPlayerByFlag(room, flag)
+    for _,player in sgs.qlist(q(room,"getAlivePlayers")) do
+        if q(player,"hasFlag",flag) then return player end
+    end
+    return nil
+end
+
+
+sgs.ai_skill_invoke.jxhoulu = function(self, data)
+    local target = q(data,"toPlayer")
+    if not q(self,"isFriend",target) then return false end
+    if q(target,"getHp") == 1 then return false end
+    if q(target,"containsTrick","indulgence") then return false end
+    if q(target,"objectName") == q(self.player,"objectName") then 
+        return q(self.player,"getHp") > 1 or q(self,"getCardsNum","Peach") > 1 or q(self,"getCardsNum","Analeptic") > 1
+    end
+    return q(target,"getHp") >= 3 and q(target,"getHandcardNum") <= 8
+end
+sgs.ai_card_priority.jxhoulu = function(self,card,v)
+	if q(self.player,"getMark","jxhoulunum-Clear") >= 1 and q(self.player,"getMark","jxhouludamage-Clear") == 0 and q(card,"isDamageCard") then return 10 end
+end
+
+
+sgs.ai_skill_invoke.jxjuxiang = function(self, data)
+    local target = nil
+    for _,p in sgs.qlist(q(self.room,"getAlivePlayers")) do
+        if q(p,"hasFlag","jxjuxiangtarget") then
+            target = p
+            break
+        end
+    end
+    if not target then return false end
+    return q(self,"isEnemy",target)
+end
+
+
+sgs.ai_skill_use["@@jxyangjie"] = function(self, prompt)
+    local targets = {}
+    local qtargets = AIList.new({})
+    local all = sgs.QList2Table(q(self.room,"getOtherPlayers",self.player))
+    q(self,"sort",all, "defense")
+    local slash = named(self,"jxyangjie","fire_slash",{})
+    
+
+    for _,p in ipairs(all) do
+        if q(self,"isFriend",p) and q(p,"getHp") == 1 then
+            if q(self,"round50Prefix",slash,qtargets,p,"target_filter") and (not q(self,"round50Prefix",slash,qtargets,p,"is_prohibited")) then
+                table.insert(targets, q(p,"objectName"))
+                qtargets:append(p)      
+            end
+        end
+    end
+
+    if #targets == 0 then
+        local use = q(self,"aiUseCard",slash, dummy())
+        if use.to then
+            for _,p in sgs.qlist(use.to) do
+                table.insert(targets, q(p,"objectName"))
+            end
+        end
+    end
+
+    if #targets > 0 then
+        local card_str = string.format("#jxyangjie:.:->%s", table.concat(targets, "+"))
+        return response(self,card_str)
+    end
+    return "."
+end
+
+sgs.ai_skill_choice["jxyangjie"] = function(self, choices, data)
+	local target = tagplayer(self,self.player,"jxyangjieto")
+    choices = choices:split("+")
+    if q(self,"isFriend",target) then
+        for _,p in ipairs(choices) do
+            if string.find(p, "recover") then return p end
+        end
+    end
+    for _,p in ipairs(choices) do
+        if string.find(p, "damage") then return p end
+    end
+    return choices[math.random(1, #choices)]
+end
+
+
+sgs.ai_fill_skill.jjjijin=function(self,inclusive,request)
+    if q(self.player,"getMark","jjjijinused-Clear") > 0 then return end
+    local patterns = {"nullification", "snatch", "duel", "dismantlement", "fire_attack", "amazing_grace", "savage_assault", "archery_attack", "ex_nihilo", "god_salvation", "iron_chain"}
+    for _,p in ipairs(patterns) do
+        if q(self.player,"getMark","jjjijin_juguan_remove_"..p) == 0 then
+            local card = named(self,"jjjijin",p,{})
+            
+            local d = q(self,"aiUseCard",card)
+            sgs.ai_use_priority.jjjijin = sgs.ai_use_priority[q(card,"getClassName")]
+            save_targets(self,"jjjijin_to",d.to)
+			if d.card and d.to
+			and q(card,"isAvailable",self.player) and q(self,"getCardsNum",q(card,"getClassName")) == 0
+			then return parse(self,"#jjjijin:.:"..p) end
+        end
+    end
+end
+
+sgs.ai_skill_use_func["#jjjijin"] = function(card,use,self)
+	if targets(self,"jjjijin_to")
+	then
+		use.card = card
+		if use.to then use.to = targets(self,"jjjijin_to") end
+	end
+end
+
+sgs.ai_use_priority.jjjijin = 3.8
+
+sgs.ai_skill_playerchosen.jjjijin = function(self, targets)
+    q(self,"sort",self.friends, "handcard")
+    for _,p in ipairs(self.friends) do
+        if q(self.player,"objectName") ~= q(p,"objectName") then return p end
+    end
+    return nil
+end
+
+sgs.ai_playerchosen_intention.jjjijin = function(self, from, to)
+	q(self,"updateIntention",from, to, -80)
+end
+sgs.ai_target_revises.jjjijin = function(to,card)
+	if q(card,"isKindOf","TrickCard") and q(to,"getMark","jjjijin_juguan_remove_"..card:objectName()) > 0
+	then return true end
+end
+
+
+sgs.ai_skill_playerschosen.basuran = function(self, targets, max, min)
+    local selected = sgs.SPlayerList()
+    q(self,"sort",self.friends, "handcard")
+    selected:append(self.friends[#self.friends])
+    q(self,"sort",self.friends, "defense")
+
+    for _,p in ipairs(self.friends) do
+        if q(p,"getJudgingArea"):length() > 0 and (not selected:contains(p)) then
+            selected:append(p)
+            break
+        end
+    end
+
+    if selected:length() < 2 then
+        for _,p in ipairs(self.friends) do
+            if (not selected:contains(p)) then
+                selected:append(p)
+                break
+            end
+        end
+    end
+
+    if #self.enemies  == 0 then return selected end
+
+    q(self,"sort",self.enemies, "handcard")
+    if not selected:contains(self.enemies[#self.enemies]) then
+        selected:append(self.enemies[#self.enemies])
+    end
+    for _,p in ipairs(self.enemies) do
+        if not selected:contains(p) then
+            selected:append(p)
+            break
+        end
+    end
+    return selected
+end
+
+sgs.ai_skill_choice["basuran"] = function(self, choices, data)
+    local target = nil
+    choices = choices:split("+")
+    for _,p in sgs.qlist(q(self.room,"getAlivePlayers")) do
+        if q(p,"hasFlag","basuran") then 
+            target = p
+            break
+        end
+    end
+    if q(self,"isFriend",target) then
+        q(self,"sort",self.friends, "handcard")
+        if q(target,"objectName") == self.friends[#self.friends]:objectName() then
+            for _,p in ipairs(choices) do
+                if string.find(p, "discard") then
+                    return p
+                end
+            end
+        end
+        if q(target,"getJudgingArea"):length() > 0 then
+            for _,p in ipairs(choices) do
+                if string.find(p, "judge") then
+                    return p
+                end
+            end
+        end
+        for _,p in ipairs(choices) do
+            if string.find(p, "judge") or string.find(p, "discard") then
+                return p
+            end
+        end
+    end
+
+    if q(self,"isEnemy",target) then
+        if #self.enemies ~= 0 then 
+            q(self,"sort",self.enemies, "handcard")
+            if q(target,"objectName") == self.enemies[#self.enemies]:objectName() then
+                for _,p in ipairs(choices) do
+                    if string.find(p, "play") then
+                        return p
+                    end
+                end
+            end
+        end
+        for _,p in ipairs(choices) do
+            if string.find(p, "draw") or string.find(p, "play") then
+                return p
+            end
+        end
+    end
+    return choices[math.random(1, #choices)]
+end
+
+
+sgs.ai_skill_playerchosen.bajuwei = function(self, targets)
+    for _,p in sgs.qlist(targets) do
+        if q(self,"isFriend",p) then
+            return p
+        end
+    end
+    return nil
+end
+
+sgs.ai_playerchosen_intention.bajuwei = function(self, from, to)
+	q(self,"updateIntention",from, to, -80)
+end
+
+
+sgs.ai_skill_choice["dianyingfu"] = function(self, choices, data)
+    choices = choices:split("+")
+    local n = q(self.player,"getMark","dianyingfucards")
+    local target = q(data,"toPlayer")
+    if not q(self,"isFriend",target) then
+        if n <= 1 then
+            for _,p in ipairs(choices) do
+                if string.find(p, "all") then
+                    return p
+                end
+            end
+        else
+            for _,p in ipairs(choices) do
+                if string.find(p, "give") then
+                    return p
+                end
+            end
+        end
+    end
+    if q(self,"isFriend",target) then
+        if math.random(1, 3) == 1 then
+            for _,p in ipairs(choices) do
+                if string.find(p, "all") then
+                    return p
+                end
+            end
+        else
+            for _,p in ipairs(choices) do
+                if string.find(p, "give") then
+                    return p
+                end
+            end
+        end
+    end
+    return choices[math.random(1, #choices)]
+end
+
+
+sgs.ai_skill_playerchosen.dianfengshao = function(self, targets)
+    for _,p in sgs.qlist(targets) do
+        if q(self,"isFriend",p) and (not q(p,"faceUp")) then
+            return p
+        end
+        if q(self,"isFriend",p) and q(p,"getMark","dianfengshaofrom"..self.player:objectName().."-Clear") > 0 then
+            return p
+        end
+    end
+    if not q(self.player,"faceUp") then return self.player end
+    local enemies = {}
+    local unknown = {}
+    for _,p in sgs.qlist(targets) do
+        if q(self,"isEnemy",p) then
+            table.insert(enemies, p)
+        elseif (not q(self,"isFriend",p)) and (not q(self,"isEnemy",p)) then
+            table.insert(unknown, p)
+        end
+    end
+    if #enemies > 0 then
+        q(self,"sort",enemies, "hp")
+        for _,p in ipairs(enemies) do
+            if q(p,"getMark","dianfengshaofrom"..self.player:objectName().."-Clear") == 0 then
+                return p
+            end
+        end
+        for _,p in ipairs(enemies) do
+            if q(p,"getMark","dianfengshaofrom"..self.player:objectName().."-Clear") > 0 and ((not q(p,"isWounded")) or (q(p,"faceUp"))) then
+                return p
+            end
+        end
+    end
+    if #unknown > 0 then
+        q(self,"sort",unknown, "defense")
+        for _,p in ipairs(enemies) do
+            if q(p,"getMark","dianfengshaofrom"..self.player:objectName().."-Clear") == 0 then
+                return p
+            end
+        end
+        for _,p in ipairs(enemies) do
+            if q(p,"getMark","dianfengshaofrom"..self.player:objectName().."-Clear") > 0 and ((not q(p,"isWounded")) or (q(p,"faceUp"))) then
+                return p
+            end
+        end
+    end
+    if q(self.player,"getMark","dianfengshaofrom"..self.player:objectName().."-Clear") == 0 and (q(self.player,"getHp") > 1) then
+        return self.player
+    elseif q(self.player,"getMark","dianfengshaofrom"..self.player:objectName().."-Clear") > 0 then
+        return self.player
+    end
+    for _,p in sgs.qlist(targets) do
+        if q(p,"getMark","dianfengshaofrom"..self.player:objectName().."-Clear") == 0 and ((not q(self,"isFriend",p)) or (q(self,"isFriend",p) and q(p,"getHp") > 1 and q(self.player,"getHp") == 1)) then
+            return p
+        end
+    end
+
+    return self.player
+end
+
+sgs.ai_playerchosen_intention.dianfengshao = function(self, from, to)
+    if q(to,"getMark","dianfengshaofrom"..self.player:objectName().."-Clear") > 0 then
+	    q(self,"updateIntention",from, to, -20)
+    else
+        q(self,"updateIntention",from, to, 80)
+    end
+end
+
+sgs.ai_skill_choice["dianfengshao"] = function(self, choices, data)
+    choices = choices:split("+")
+    local target = q(data,"toPlayer")
+    if q(self,"isFriend",target) then
+        if not q(target,"faceUp") then
+            for _,choice in ipairs(choices) do
+                if string.find(choice, "renew") or string.find(choice, "turn") then
+                    return choice
+                end
+            end
+        end
+        if q(target,"getHp") > 1 then
+            for _,choice in ipairs(choices) do
+                if string.find(choice, "damage")  then
+                    return choice
+                end
+            end
+        else 
+            for _,choice in ipairs(choices) do
+                if string.find(choice, "turn")  then
+                    return choice
+                end
+            end
+        end
+        if q(target,"isWounded") then
+            for _,choice in ipairs(choices) do
+                if string.find(choice, "recover")  then
+                    return choice
+                end
+            end
+        end
+    end
+    if not q(self,"isFriend",target) then
+        for _,choice in ipairs(choices) do
+            if string.find(choice, "damage")  then
+                return choice
+            end
+        end
+        if q(target,"faceUp") then
+            for _,choice in ipairs(choices) do
+                if string.find(choice, "turn") or string.find(choice, "renew") then
+                    return choice
+                end
+            end
+        end
+        if not q(target,"isWounded") then
+            for _,choice in ipairs(choices) do
+                if string.find(choice, "recover")  then
+                    return choice
+                end
+            end
+        end
+    end
+    return choices[math.random(1, #choices)]       
+end
+
+
+sgs.ai_skill_playerschosen.mjmengjie = function(self, targets, max, min)
+    return nil
+end
+
+
+sgs.ai_skill_invoke.mjtongguan = true
+
+sgs.ai_skill_playerchosen.mjtongguan = function(self, targets)
+    if #self.enemies > 0 then
+        q(self,"sort",self.enemies, "defense")
+        for _,p in ipairs(self.enemies) do
+            if q(p,"getHandcardNum") > 0 then
+                return p
+            end
+        end
+    end
+    for _,p in sgs.qlist(targets) do
+        if not q(self,"isFriend",p) then return p end
+    end
+    for _,p in sgs.qlist(targets) do
+        return p
+    end
+    return nil
+end
+
+sgs.ai_playerchosen_intention.mjtongguan = function(self, from, to)
+	q(self,"updateIntention",from, to, 40)
+end
+
+sgs.ai_card_intention.mjtongguan = function(self, card, from, tos)
+    for _,to in ipairs(tos) do
+		q(self,"updateIntention",from, to, -60)
+	end
+end
+
+sgs.ai_skill_use["@@mjtongguan"] = function(self, prompt)
+    local card_ids = tagids(self,"mjtongguancards")
+    local cards = {}
+    for _,id in sgs.qlist(card_ids) do
+        table.insert(cards, face(self,id))
+    end
+
+    q(self,"sortByKeepValue",cards)
+    local get = cards[#cards]:getEffectiveId()
+    local target = nil
+    if math.random(1,3) == 1 then
+        q(self,"sort",self.friends, "defense")
+        for _,p in ipairs(self.friends) do
+            if not q(p,"hasFlag","mjtongguantarget") then
+                target = p
+                break
+            end
+        end
+    elseif (not q(self.player,"hasFlag","mjtongguantarget")) then
+        target = self.player
+    end
+    if get and target then
+        local card_str = string.format("#mjtongguan:%s:->%s", get, q(target,"objectName"))
+        return response(self,card_str)
+    end
+    return "."
+end
+
+sgs.ai_skill_choice["#mjtongguan"] = function(self, choices, data)
+    choices = choices:split("+")
+    for _,p in ipairs(choices) do
+        if string.find(p, "equip") then
+            return p
+        end
+    end
+    for _,p in ipairs(choices) do
+        if string.find(p, "hand") then
+            return p
+        end
+    end
+    return choices[math.random(1, #choices)]
+end
+
+
+sgs.ai_skill_discard.gsgushe = function(self,max,min)
+	local cards = sgs.QList2Table(q(self.player,"getCards","h"))
+	q(self,"sortByKeepValue",cards)
+	local dis = {}
+    if #cards == 0 then return dis end
+    for _,p in sgs.qlist(q(self.room,"getAlivePlayers")) do
+        if q(p,"hasFlag","gsgushetarget") then
+            if q(self,"isFriend",p) then return dis end
+            break
+        end
+    end
+	table.insert(dis,cards[1]:getEffectiveId())
+	return dis
+end
+
+sgs.ai_fill_skill.gsgushe=function(self,inclusive,request)
+	local card = q(self,"getMaxCard")
+	if not card then return end
+	if q(card,"getNumber") + q(self.player,"getMark","&gsgushe")*2 <= 11  and q(self.player,"getHp") == 1 then return end
+	if q(card,"getNumber") + q(self.player,"getMark","&gsgushe")*2 <= 6 then return end
+	for _,enemy in ipairs(self.enemies)do
+		if q(self.player,"canPindian",enemy) then
+			return parse(self,"#gsgushe:.:")
+		end
+	end
+end
+
+sgs.ai_skill_use_func["#gsgushe"] = function(card, use, self)
+	local max_card = q(self,"getMaxCard")
+	if not max_card then return end
+	memory(self,"gsgushe_card",q(max_card,"getEffectiveId"),true)
+	q(self,"sort",self.enemies,"handcard")
+	local tos = sgs.SPlayerList()
+	for _,enemy in ipairs(self.enemies)do
+		if q(self.player,"canPindian",enemy)  then
+			if tos:length() < 3 then
+				tos:append(enemy)
+			end
+		end
+	end
+	if tos:isEmpty() then return end
+	use.card = card
+	if use.to then use.to = tos end
+end
+
+sgs.ai_card_intention.gsgushe = function(self, card, from, tos)
+    for _,to in ipairs(tos) do
+		q(self,"updateIntention",from, to, 80)
+	end
+end
+
+sgs.ai_use_priority.gsgushe = 7.8
+sgs.ai_use_value.gsgushe = sgs.ai_use_value.ExNihilo-0.1
+
+function sgs.ai_skill_pindian.gsgushe(minusecard,self,requestor)
+	local maxcard = q(self,"getMaxCard")
+	return q(self,"isFriend",requestor) and q(self,"getMinCard") or ( maxcard:getNumber()<6 and  minusecard or maxcard )
+end
+
+
+sgs.ai_fill_skill.gsjici=function(self,inclusive,request)
+	if q(self.player,"getMark","&countjici_usedtimes-Clear") > 4 then return end
+        local patterns = {"nullification", "snatch", "duel", "dismantlement", "fire_attack", "amazing_grace", "savage_assault", "archery_attack", "ex_nihilo", "god_salvation", "iron_chain"}
+	for _,name in sgs.list(patterns)do
+        local c = evaluation(self,name)
+		if c and q(c,"isAvailable",self.player)
+		and q(self,"getCardsNum",q(c,"getClassName"))<1
+		and q(c,"isNDTrick") 
+        and q(self.player,"getMark","gsjici_juguan_remove_"..name) == 0
+		then
+         	local dummy = q(self,"aiUseCard",c)
+    		if dummy.card
+	    	and dummy.to
+	     	then
+	           	if q(c,"canRecast")
+				and dummy.to:length()<1
+				then continue end
+				save_targets(self,"gsjici_to",dummy.to)
+				sgs.ai_use_priority["#gsjici"] = sgs.ai_use_priority[q(c,"getClassName")]
+                return parse(self,"#gsjici:.:"..name)
+			end
+		end
+		if c then  end
+	end
+end
+
+sgs.ai_skill_use_func["#gsjici"] = function(card, use, self)
+	use.card = card
+	if use.to then use.to = targets(self,"gsjici_to") end
+end
+
+sgs.ai_guhuo_card.gsjici = function(self,toname,class_name)
+	if q(self.player,"getMark","&countjici_usedtimes-Clear") >= q(self.player,"getMark","&gsjici") then return end
+    if q(self.player,"getMark","gsjici_juguan_remove_"..toname) > 0 then return end
+	local c = evaluation(self,toname)
+	if c then  end
+	if c and q(c,"isNDTrick")
+	and q(self,"getCardsNum",class_name)<1
+	then
+        return proposal(self,"#gsjici:.:"..toname)
+	end
+end
+
+sgs.ai_use_priority["#gsjici"] = 7.8
+sgs.ai_use_value["#gsjici"] = 7.8
+
+
+sgs.ai_skill_choice["bnbenghuai"] = function(self, choices, data)
+    if q(self.player,"getHp") >= 6 and q(self.player,"getHandcardNum") <= 3 then return "all" end
+    if q(self.player,"getLostHp") >= 3 and q(self.player,"getHp") > 1 then return "max" end
+    if q(self.player,"getHp") == 1 then
+        if q(self,"getCardsNum","Peach") + q(self,"getCardsNum","Analeptic") > 0 then return "hp" end
+        for _,card in sgs.qlist(q(self.player,"getHandcards")) do
+            if q(card,"getSuit") == sgs.Card_Spade then return "hp" end
+        end
+        for _,card in sgs.qlist(q(self.player,"getEquips")) do
+            if q(card,"getSuit") == sgs.Card_Spade then return "hp" end
+        end
+        if q(self.player,"getMaxHp") > 1 then return "max" end
+    end
+    return "hp"
+end
+sgs.ai_damage_reason_suppress_intention["bnbaonve"] = true
+
+
+sgs.ai_skill_invoke.bnhengzheng = function(self, data)
+    if q(self.player,"getHp") == 1 then
+        if q(self,"getCardsNum","Peach") + q(self,"getCardsNum","Analeptic") <= 0 then return false end
+        local ends = true
+        for _,card in sgs.qlist(q(self.player,"getHandcards")) do
+            if q(card,"getSuit") == sgs.Card_Spade then ends = false break end
+        end
+        for _,card in sgs.qlist(q(self.player,"getEquips")) do
+            if q(card,"getSuit") == sgs.Card_Spade then ends = false break end
+        end
+        if ends then return false end
+    end
+    local friend,enemy = 0, 0
+    for _,p in sgs.qlist(q(self.room,"getOtherPlayers",self.player)) do
+        if not q(p,"isNude") then
+            if q(self,"isFriend",p) then 
+                friend = friend + 1 
+            else
+                enemy = enemy + 1
+            end
+        end
+    end
+    return ((friend < enemy) or (q(self.player,"getHandcardNum") <=3 and friend <= enemy + 1)) and enemy > 1
+end
+
+
+sgs.ai_fill_skill.bnjiuchi=function(self,inclusive,request)
+	local cards = q(self,"addHandPile")
+	local card
+	q(self,"sortByUseValue",cards,true)
+	for _,acard in ipairs(cards)  do
+		if q(acard,"getSuit")==sgs.Card_Spade then
+			card = acard
+			break
+		end
+	end
+	if not card then return nil end
+	local number = q(card,"getNumberString")
+	local card_id = q(card,"getEffectiveId")
+	local analeptic = parse(self,("analeptic:bnjiuchi[spade:%s]=%d"):format(number,card_id))
+	assert(analeptic)
+	if source_analeptic_available(analeptic) then
+		return analeptic
+	end
+end
+
+sgs.ai_view_as.bnjiuchi = function(card,player,card_place)
+ local self=own_ai(player);local str=nested(self,"ai_view_as","jiuchi",card,player,card_place)
+ if not str or str=="" then return end
+ if type(str)=="string"then return view(self,string.gsub(str,"jiuchi","bnjiuchi"))end
+ return rename_jiuchi(str)
+end
+
+function sgs.ai_cardneed.bnjiuchi(to,card,self)
+	return nested(self,"ai_cardneed","jiuchi",to,card,self)
+end
+
+-- audited alias ai_use_priority.bnjiuchi
+sgs.ai_card_priority.bnjiuchi = function(self,card)
+	if table.contains(q(card,"getSkillNames"), "bnjiuchi")
+	then
+		if self.useValue
+		then return 5 end
+		return 0.08
+	end
+end
+
+
+sgs.ai_skill_invoke.jsjushou = true
+
+
+sgs.ai_skill_playerchosen.jsjiewei = function(self, targets)
+    local target = nil
+    local min = 0
+    for _,p in sgs.qlist(targets) do
+        if q(self,"isFriend",p) then
+            if (not target) or q(p,"getHandcardNum") < min then
+                target = p
+                min = q(p,"getHandcardNum")
+            end
+        end
+    end
+    return target
+end
+
+sgs.ai_playerchosen_intention.jsjiewei = function(self, from, to)
+    q(self,"updateIntention",from, to, -80)
+end
+
+
+sgs.ai_skill_invoke.xsxingshang = true
+
+sgs.ai_skill_playerchosen.xsxingshang = function(self, targets)
+    q(self,"sort",self.enemies, "hp")
+    for _,enemy in ipairs(self.enemies) do
+        if q(enemy,"getHp") == 1 then return enemy end
+    end
+    for _,enemy in ipairs(self.enemies) do
+        if q(enemy,"getMark","xsxingshangfrom"..self.player:objectName()) == 0 then return enemy end
+    end
+    if #self.enemies > 0 then return self.enemies[1] end
+    return nil
+end
+
+sgs.ai_playerchosen_intention.xsxingshang = function(self, from, to)
+    q(self,"updateIntention",from, to, 80)
+end
+
+
+sgs.ai_need_damaged.xsfangzu = function (self,attacker,player)
+	if not q(player,"hasSkill","xsfangzu") then return false end
+	local enemies = q(self,"getEnemies",player)
+	if #enemies<1 then return false end
+	q(self,"sort",enemies,"defense")
+	for _,enemy in ipairs(enemies)do
+		if q(player,"getLostHp")<1 and q(self,"toTurnOver",enemy,q(player,"getLostHp")+1) then
+			return true
+		end
+	end
+	local friends = q(self,"getFriends",player, true)
+	q(self,"sort",friends,"defense")
+	for _,friend in ipairs(friends)do
+		if not q(self,"toTurnOver",friend,q(player,"getLostHp")+1) then return true end
+	end
+	return false
+end
+
+sgs.ai_skill_playerchosen.xsfangzu = function(self,targets)
+	return nested(self,"ai_skill_playerchosen","fangzhu",self,targets)
+end
+
+sgs.ai_playerchosen_intention.xsfangzu = function(self,from,to)
+	return nested(self,"ai_playerchosen_intention","fangzhu",self,from,to)
+end
+
+sgs.ai_skill_choice["xsfangzu"] = function(self, choices, data)
+	local target = q(data,"toPlayer")
+    choices = choices:split("+")
+    if q(self,"isFriend",target) 
+    or (q(target,"faceUp") and q(target,"getHp") > 1 and q(target,"getHandcardNum") >= q(self.player,"getLostHp"))then
+        for _,p in ipairs(choices) do
+            if string.find(p, "turn") then return p end
+        end
+    end
+    if not q(self,"toTurnOver",self.player,q(target,"getLostHp")+1) then 
+        for _,p in ipairs(choices) do
+            if string.find(p, "turn") then return p end
+        end
+    end
+   
+    for _,p in ipairs(choices) do
+        if string.find(p, "discard") then return p end
+    end
+end
+
+
+sgs.ai_skill_invoke.xssongwei = true
+
+
+sgs.ai_skill_choice["ty_xianjin"] = function(self, choices, data)
+    local items = choices:split("+")
+    if table.contains(items, "ty_tuoyu_fengtian") and q(self.player,"getLostHp") > 2 and q(self,"getCardsNum","Peach") > 1 then return "ty_tuoyu_fengtian" end
+    if table.contains(items, "ty_tuoyu_qingqu") and q(self,"getCardsNum","Slash") >= 3 then return "ty_tuoyu_qingqu" end
+    if table.contains(items, "ty_tuoyu_junshan") then return "ty_tuoyu_junshan" end
+    if table.contains(items, "ty_tuoyu_fengtian") then return "ty_tuoyu_fengtian" end
+    return items[math.random(1, #choices)]
+end
+
+
+sgs.ai_skill_choice["ty_tuoyu"] = function(self, choices, data)
+    local items = choices:split("+")
+    if #items == 1 then return items[1] end
+    local card = q(data,"toCard")
+    if table.contains(items, "ty_tuoyu_fengtian") then 
+        if q(card,"isKindOf","Peach") or q(card,"isKindOf","god_salvation") then return "ty_tuoyu_fengtian" end
+        if q(card,"isKindOf","Analeptic") then
+            if q(self.player,"getHp") <= 0 or q(self,"getCardsNum","Analeptic") == 0 then return "ty_tuoyu_fengtian" end
+        end
+        if not q(card,"isDamageCard") then table.removeOne(items, "ty_tuoyu_fengtian") end
+    end
+    if #items == 1 then return items[1] end
+    if table.contains(items, "ty_tuoyu_qingqu") then
+        if q(card,"isKindOf","Slash") and q(self,"getCardsNum","Slash") > 0 then return "ty_tuoyu_qingqu" end
+        if q(card,"isKindOf","Analeptic") and q(self,"getCardsNum","Analeptic") > 0 then return "ty_tuoyu_qingqu" end
+        table.removeOne(items, "ty_tuoyu_qingqu")
+    end
+    if #items == 1 then return items[1] end
+    return items[math.random(1, #choices)]
+end
+
+
+sgs.ai_skill_playerchosen.tyqijin = function(self, targets)
+    for _,p in sgs.list(targets)do
+		local n = 0
+		for i=1,#self.friends_noself do
+			i = q(p,"getNextAlive",i)
+			if q(self,"isFriend",i)
+			and i~=self.player
+			then n = n+1
+			else break end
+		end
+		if #self.friends_noself-n<2
+		and not q(self,"isFriend",p)
+		then
+			return p
+		end
+	end
+    return nil
+end
+
+
+sgs.ai_skill_invoke.tycuixin = function(self,data)
+    return q(self,"isEnemy",q(data,"toPlayer"))
+end
+
+sgs.ai_ajustdamage_from.jjjuanjia = function(self, from, to, card, nature)
+	if (card and (q(card,"isKindOf","Slash") )) and table.contains(q(card,"getSkillNames"), "jjjuanjia")
+	then
+		return 1
+	end
+end
+
+
+sgs.ai_skill_choice["jjqiexie"] = function(self, choices, data)
+    local items = choices:split("+")
+    table.removeOne(items, "cancel")
+    return items[math.random(1,#items)]
+end
+
+
+sgs.ai_skill_choice["jjcuijue"] = function(self, choices, data)
+    local items = choices:split("+")
+    local avoid = {"jjcuijue", "jjqiexie"}
+    for _,choice in ipairs(avoid) do
+        if table.contains(items, choice) then table.removeOne(items, choice) end
+    end
+    if #items == 0 then return "jjcuijue" end
+    return items[math.random(1,#items)]
+end
+
+sgs.ai_fill_skill.jjcuijue=function(self,inclusive,request)
+	local skills = q(self.player,"getVisibleSkillList")
+    local choices = {}
+    local avoid = {"jjcuijue", "jjqiexie"}
+    for _,skill in sgs.qlist(skills) do
+        if (not q(skill,"isAttachedLordSkill")) and (not table.contains(avoid, q(skill,"objectName"))) then
+            table.insert(choices, q(skill,"objectName"))
+            break
+        end
+    end
+    if #choices == 0 then return end
+    if math.random(1,4) == 1 and #choices < 2 then return end
+	return parse(self,"#jjcuijue:.:")
+end
+
+sgs.ai_skill_use_func["#jjcuijue"] = function(card, use, self)
+	q(self,"updatePlayers")
+	if #self.enemies <= 0 then return end
+	local target = nil
+	q(self,"sort",self.enemies, "hp")
+	for _,p in ipairs(self.enemies) do
+        if q(self.player,"inMyAttackRange",p) and q(p,"getMark","jjcuijue_"..self.player:objectName().."-Clear") == 0 then 
+            target = p 
+            break
+        end
+    end
+	if not target then return end
+	if target then
+		local card_str = "#jjcuijue:.:->"..target:objectName()
+		local acard = parse(self,card_str)
+		assert(acard)
+		use.card = acard
+		if use.to then
+			use.to:append(target)
+		end
+	end
+end
+
+
+sgs.ai_skill_playerschosen.ny_qingwang_diy = function(self, targets, max, min)
+    local selected = sgs.SPlayerList()
+    local n = max
+    if q(self.player,"getHp") > 1 then
+        q(self,"sort",self.enemies, "defense")
+        for _,enemy in ipairs(self.enemies) do
+            if (not q(enemy,"isNude")) then
+                selected:append(enemy)
+                n = n - 1
+            end
+            if n <= 0 then return selected end
+        end
+
+        q(self,"sort",self.friends, "defense", true)
+        for _,friend in ipairs(self.friends) do
+            for _,card in sgs.qlist(fullhand(friend)) do
+                if selected:contains(friend) then break end
+                if q(card,"isKindOf","Slash") then
+                    selected:append(friend)
+                    n = n - 1
+                    break
+                end
+            end
+            if n <= 0 then return selected end
+        end
+    else
+        q(self,"sort",self.friends, "defense", true)
+        for _,friend in ipairs(self.friends) do
+            for _,card in sgs.qlist(fullhand(friend)) do
+                if q(card,"isKindOf","Slash") then
+                    selected:append(friend)
+                    n = n - 1
+                    break
+                end
+            end
+            if n <= 0 then return selected end
+        end
+
+        q(self,"sort",self.enemies, "defense")
+        for _,enemy in ipairs(self.enemies) do
+            if (not q(enemy,"isNude")) and (not selected:contains(enemy)) then
+                selected:append(enemy)
+                n = n - 1
+            end
+            if n <= 0 then return selected end
+        end
+    end
+    return selected
+end
+
+sgs.ai_skill_discard.ny_qingwang_diy = function(self,max,min)
+    local target = tagplayer(self,nil,"ny_qingwang_target")
+    local discard = {}
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    q(self,"sortByKeepValue",cards)
+    if q(self,"isFriend",target) then
+        for _,card in ipairs(cards) do
+            if q(card,"isKindOf","Slash") then
+                table.insert(discard, q(card,"getEffectiveId"))
+                return discard
+            end
+        end
+    end
+    if #cards > 0 then
+        table.insert(discard, cards[1]:getEffectiveId())
+    end
+    return discard
+end
+
+sgs.ai_skill_invoke.ny_qingwang_diy = function(self, data)
+    local n = 0
+    for _,target in sgs.qlist(q(self.room,"getOtherPlayers",self.player)) do
+        if q(target,"getMark","ny_qingwang_diy_slashto_"..self.player:objectName().."-Clear") > 0 then
+            if q(self,"isEnemy",target) then
+                n = n - 1
+            else
+                n = n + 1.2
+            end
+        end
+    end
+    return n > 0
+end
+
+
+sgs.ai_fill_skill.ny_zhanjue_diy=function(self,inclusive,request)
+    local value = 1.5
+	value = value + math.max(1, q(self.player,"getLostHp"))
+    if q(self.player,"getHp") == 1 then value = value - 4 end
+
+    if q(self.player,"hasSkill","ny_qingwang_diy") and q(self.player,"getMark","ny_qingwang_diy-Clear") == 0 then
+        local n = q(self.player,"getHandcardNum")
+        for _,target in ipairs(self.enemies) do
+            if (not q(target,"isNude")) then
+                n = n - 1
+                value = value + 1.5
+            end
+            if n <= 0 then break end
+        end
+    end
+
+    if value < 0 then return end
+
+    local duel = evaluation(self,"duel")
+    
+    local dummy_use = q(self,"aiUseCard",duel, dummy())
+    if dummy_use.card and dummy_use.to and dummy_use.to:length() > 0 then
+        return parse(self,"#ny_zhanjue_diy:.:")
+    end
+end
+
+sgs.ai_skill_use_func["#ny_zhanjue_diy"] = function(card,use,self)
+    local usec = {isDummy=true,to=sgs.SPlayerList()}
+    local duel = evaluation(self,"duel")
+    
+    local dummy_use = q(self,"aiUseCard",duel, dummy())
+    if dummy_use.card and dummy_use.to and dummy_use.to:length() > 0 then
+        local tos = {}
+        for _,to in sgs.qlist(dummy_use.to) do
+            table.insert(tos, q(to,"objectName"))
+        end
+        local card_str = string.format("#ny_zhanjue_diy:.:->%s", table.concat(tos, "+"))
+        local acard = parse(self,card_str)
+        use.card = acard
+        if use.to then use.to = dummy_use.to end
+    end
+end
+
+sgs.ai_skill_use["@@ny_zhanjue_diy"] = function(self, prompt)
+    local value = 1.5
+	value = value + math.max(1, q(self.player,"getLostHp"))
+    local n = q(self.player,"getHandcardNum")
+    if q(self.player,"getHp") == 1 then 
+        value = value - 4
+        if q(self,"getCardsNum","Peach") + q(self,"getCardsNum","Analeptic") > 0 then return end
+    end
+
+    if q(self.player,"hasSkill","ny_qingwang_diy") and q(self.player,"getMark","ny_qingwang_diy-Clear") == 0 then
+        for _,target in ipairs(self.enemies) do
+            if (not q(target,"isNude")) then
+                n = n - 1
+                value = value + 1.5
+            end
+            if n <= 0 then break end
+        end
+    end
+
+    if value < 0 then return "." end
+
+    local usec = {isDummy=true,to=sgs.SPlayerList()}
+    local duel = evaluation(self,"duel")
+    
+    q(self,"useCardByClassName",duel, usec)
+    if usec.to and usec.to:length() > 0 then
+        local tos = {}
+        for _,to in sgs.qlist(usec.to) do
+            table.insert(tos, q(to,"objectName"))
+        end
+        local card_str = string.format("#ny_zhanjue_diy:.:->%s", table.concat(tos, "+"))
+        return response(self,card_str)
+    end
+    return "."
+end
+
+sgs.ai_use_priority.ny_zhanjue_diy = 2.9
+
+
+sgs.ai_skill_invoke.ny_second_dingcuo = function(self, data)
+    local n = q(self.player,"getMark","&ny_second_dingcuo-Clear")
+    if (n + 1) < q(self.player,"getMaxHp") then return true end
+    if q(self.player,"getHandcardNum") <= q(self.player,"getMaxHp") then return true end
+    local first
+    local second
+    local count = 0
+    for _,id in draw_iter(self) do
+        if count == 0 then
+            first = face(self,id)
+        elseif count == 1 then
+            second = face(self,id)
+        end
+        count = count + 1
+        if count >= 2 then break end
+    end
+    if first and second and q(first,"sameColorWith",second) then return true end
+    return false 
+end
+
+
+sgs.ai_skill_invoke.ny_second_juanxia = function(self, data)
+    local target = nil
+    for _,p in sgs.qlist(q(self.room,"getAlivePlayers")) do
+        if q(p,"hasFlag","ny_second_juanxia_target") then
+            target = p
+            break
+        end
+    end
+    if not target then return true end
+    if q(self,"isEnemy",target) then return true end
+    return false
+end
+
+sgs.ai_skill_choice["ny_second_juanxia"] = function(self, choices, data)
+    local n = 0
+    for _,p in sgs.qlist(q(self.room,"getOtherPlayers",self.player)) do
+        n = n + q(p,"getMark","ny_second_juanxia"..self.player:objectName().."-SelfClear")
+    end
+    local items = choices:split("+")
+    table.removeOne(items, "cancel")
+    for _,item in ipairs(items) do
+        local card = evaluation(self,item)
+        
+
+        local use = {isDummy=true,to=sgs.SPlayerList()}
+        q(self,"useCardByClassName",card, use)
+        if use.to and use.card then
+            if q(card,"canRecast")
+            and use.to:length()<1
+            then continue end
+            local add = 0
+            for _,p in sgs.qlist(use.to) do
+                if q(self,"isEnemy",p) then
+                    add = add + 1
+                end
+            end
+            if add == 0 then return item end
+            if add + n <= q(self.player,"getHp") then return item end
+        end
+    end
+    return "cancel"
+end
+
+sgs.ai_skill_use["@@ny_second_juanxia"] = function(self, prompt)
+    local pattern = prop(self,"ny_second_juanxia_card")
+    local card = evaluation(self,pattern)
+    
+
+    local use = {isDummy=true,to=sgs.SPlayerList()}
+    q(self,"useCardByClassName",card, use)
+    if use.to then
+        local tos = {}
+        for _,to in sgs.qlist(use.to) do
+            table.insert(tos, q(to,"objectName"))
+        end
+        return response(self,string.format("#ny_second_juanxia:.:->%s", table.concat(tos, "+")))
+    end
+    return "."
+end
+
+
+sgs.ai_skill_invoke.nyarz_xunxun = true
+
+
+sgs.ai_skill_invoke.nyarz_wangxi = function(self, data)
+    if q(self.player,"getPhase") ~= sgs.Player_NotActive then return true end
+    local target
+    for _,p in sgs.qlist(q(self.room,"getAlivePlayers")) do
+        if q(p,"hasFlag","nyarz_wangxi_target") then
+            target = p
+        end
+    end
+    if not target then return true end
+    if target and q(self,"isFriend",target) then return true end
+    if q(self.player,"getLostHp") > 1 then return true end
+end
+
+
+sgs.ai_skill_invoke.nyarz_weicheng = true
+
+
+sgs.ai_fill_skill.nyarz_daoshu=function(self,inclusive,request)
+    return parse(self,"#nyarz_daoshu:.:")
+end
+
+sgs.ai_skill_use_func["#nyarz_daoshu"] = function(card,use,self)
+    q(self,"sort",self.enemies, "handcard")
+
+    for _,enemy in ipairs(self.enemies) do
+
+        if q(enemy,"getMark","couldnt_nyarz_daoshu_from"..self.player:objectName()) == 0 and (not q(enemy,"isNude")) then
+            local names = q(enemy,"getMarkNames")
+            local mark = nil
+            for _,name in ipairs(names) do
+                if q(enemy,"getMark",name) > 0 and name:startsWith("&nyarz_daoshu") then
+                    mark = name
+                    break
+                end
+            end
+
+            if not mark then 
+                use.card = card
+                if use.to then use.to:append(enemy) end
+                return
+            end
+            if mark then
+                for _,cc in sgs.qlist(fullhe(enemy)) do
+                    if string.find(mark, q(cc,"getSuitString")) then
+                    else
+                        if math.random(1,2) == 1 and q(self.player,"getKingdom") ~= q(enemy,"getKingdom") then break end
+                        use.card = card
+                        if use.to then use.to:append(enemy) end
+                        return
+                    end
+                end
+            end
+        end
+    end
+end
+
+sgs.ai_skill_playerchosen.nyarz_daoshu = function(self, targets)
+    local all = sgs.QList2Table(targets)
+    q(self,"sort",all, "defense")
+    for _,a in ipairs(all) do
+        if q(self,"isFriend",a) and q(self.player,"objectName") ~= q(a,"objectName") then
+            return a
+        end
+    end
+    return self.player
+end
+
+sgs.ai_skill_cardchosen.nyarz_daoshu = function(self, who,flags,reason,method)
+    local enemy = who
+    local names = q(enemy,"getMarkNames")
+    local mark = nil
+    for _,name in ipairs(names) do
+        if q(enemy,"getMark",name) > 0 and name:startsWith("&nyarz_daoshu") then
+            mark = name
+            break
+        end
+    end
+
+    local cards = sgs.QList2Table(fullhe(who))
+    q(self,"sortByKeepValue",cards, true)
+    if not mark then return cards[1]:getEffectiveId() end
+    for _,card in ipairs(cards) do
+        if string.find(mark, q(card,"getSuitString")) then
+        else
+            return q(card,"getEffectiveId")
+        end
+    end
+    return cards[1]:getEffectiveId()
+end
+    
+
+sgs.ai_use_priority.nyarz_daoshu = 8.8
+
+
+sgs.ai_skill_invoke.nyarz_liuzhuan = function(self, data)
+    local target
+    for _,player in sgs.qlist(q(self.room,"getAlivePlayers")) do
+        if q(player,"hasFlag","nyarz_liuzhuan_target") then
+            target = player
+            break
+        end
+    end
+    if not target then return false end
+    if target then
+        if q(self,"isEnemy",target) then
+            if q(target,"getPhase") == sgs.Player_NotActive then return false end
+            if q(target,"getPhase") == sgs.Player_Start then return true end
+            if q(target,"getPhase") == sgs.Player_Play then
+                local names = {"snatch","ex_nihilo","iron_chain","amazing_grace"}
+                for _,card in sgs.qlist(fullhand(target)) do
+                    if table.contains(names, q(card,"objectName")) then return true end
+                end
+                for _,skill in sgs.qlist(q(target,"getVisibleSkillList")) do
+                    if not q(skill,"isAttachedLordSkill") then
+                        local translation = skill_description(self,q(skill,"objectName"))
+                        if string.find(translation, "摸") then
+                            return true
+                        end
+                    end
+                end
+            end
+        end
+        if q(self,"isFriend",target) then
+            if q(target,"getPhase") == sgs.Player_NotActive then return true end
+            if q(target,"getPhase") == sgs.Player_Start then return false end
+            if q(target,"getPhase") == sgs.Player_Play then
+                local names = {"snatch","ex_nihilo","iron_chain","amazing_grace"}
+                for _,card in sgs.qlist(fullhand(target)) do
+                    if table.contains(names, q(card,"objectName")) then return false end
+                end
+            end
+            return true
+        end
+    end
+    return false 
+end
+
+
+sgs.ai_skill_invoke.nyarz_zhubi = function(self, data)
+    local target
+    for _,player in sgs.qlist(q(self.room,"getAlivePlayers")) do
+        if q(player,"getPhase") == sgs.Player_Start then
+            target = player
+            break
+        end
+    end
+    if target and q(self,"isEnemy",target) then
+        if q(target,"getJudgingArea"):isEmpty() then 
+            return false
+        else
+            local cards = sgs.QList2Table(q(target,"getJudgingArea"))
+            if cards[#cards]:objectName() == "supply_shortage" then
+                return true
+            end
+            return false 
+        end
+    end
+    if target and q(self,"isFriend",target) then
+        if q(target,"getJudgingArea"):isEmpty() then 
+            return true
+        else
+            local cards = sgs.QList2Table(q(target,"getJudgingArea"))
+            if cards[#cards]:objectName() == "supply_shortage" then
+                return false
+            end
+            return true
+        end
+    end
+    return false
+end
+
+sgs.ai_skill_discard.nyarz_zhubi = function(self,max,min)
+    local cards = sgs.QList2Table(q(self.player,"getCards","h"))
+    q(self,"sortByKeepValue",cards)
+    local dis = {}
+    if #cards == 0 then return dis end
+    if (cards[1]:objectName() == "peach" or cards[1]:objectName() == "analeptic") and q(self.player,"isWounded") then return dis end
+    table.insert(dis, cards[1]:getEffectiveId())
+    return dis
+end
+
+
+sgs.ai_skill_invoke.nyarz_pojun = function(self, data)
+    local target
+    for _,p in sgs.qlist(q(self.room,"getAlivePlayers")) do
+        if q(p,"hasFlag","nyarz_pojun_target") then
+            target = p
+            break
+        end
+    end
+    return target and q(self,"isEnemy",target)
+end
+
+sgs.ai_skill_choice["nyarz_pojun"] = function(self, choices, data)
+	local items = choices:split("+")
+    return items[#items]
+end
+
+sgs.ai_skill_use["@@nyarz_pojun"] = function(self, prompt)
+    local slash = named(self,"nyarz_pojun","slash",{})
+    
+
+    local dummy_use = q(self,"aiUseCard",slash)
+    if dummy_use.card then
+        local tos = {}
+        for _,to in sgs.qlist(dummy_use.to) do
+            table.insert(tos, q(to,"objectName"))
+        end
+        return answer(self,slash,tos)
+    end
+    return "."
+end
+sgs.hit_skill = sgs.hit_skill .. "|nyarz_pojun"
+
+
+sgs.ai_skill_invoke.nyarz_juece = function(self, data)
+    local target = findPlayerByFlag(self.room, "nyarz_juece_target")
+    if not target then return false end
+    if q(self,"isFriend",target) and q(self,"needToLoseHp",target, self.player, nil) and q(self,"damageIsEffective",target) then return true end
+    if not q(self,"isEnemy",target) then return false end
+    if not q(self,"cantbeHurt",target) and q(self,"damageIsEffective",target) and q(self,"canDamage",target,self.player,nil) then return true end
+    if q(self.player,"getPhase") ~= sgs.Player_NotActive then return true end
+    if q(self.player,"isNude") then return true end
+    if q(self.player,"getHandcardNum") <= 1 and (not q(target,"isKongcheng")) and q(target,"getHp") > 2 then return false end
+    return true
+end
+
+sgs.ai_skill_choice["nyarz_juece"] = function(self, choices, data)
+    local target = q(data,"toPlayer")
+    if not target or q(self,"isFriend",target) then return "draw" end
+    if q(self,"isEnemy",target) and q(target,"getHp") == 2 then return "damage" end
+    if q(self.player,"getHandcardNum") <= 2 then return "draw" end
+    if q(self.player,"getLostHp") > 1 then return "draw" end
+    if q(target,"getHp") == 1 then return "draw" end
+    return "damage"
+end
+
+
+sgs.ai_fill_skill.nyarz_mieji=function(self,inclusive,request)
+    if q(self.player,"hasUsed","#nyarz_mieji") then return end
+    return parse(self,"#nyarz_mieji:.:")
+end
+
+sgs.ai_skill_use_func["#nyarz_mieji"] = function(card,use,self)
+    local target = nil
+    q(self,"sort",self.enemies, "handcard")
+    for _,enemy in ipairs(self.enemies) do
+        if not q(enemy,"isKongcheng") then
+            target = enemy
+            break
+        end
+    end
+    if not target then return "." end
+    local max = q(target,"getHandcardNum")
+    local cards = q(self.player,"getHandcards")
+    local show = {}
+    for _,card in sgs.qlist(cards) do
+        if q(card,"isNDTrick") and q(card,"objectName") ~= "nullification" then
+            table.insert(show, q(card,"getEffectiveId"))
+            max = max - 1
+        end
+        if max <= 0 then break end
+    end
+    if #show == 0 then return end
+    local card_str = string.format("#nyarz_mieji:%s:", table.concat(show, "+"))
+    use.card = parse(self,card_str)
+    if use.to then use.to:append(target) end
+end
+
+sgs.ai_use_priority.nyarz_mieji = 8.7
+
+
+function sgs.ai_cardneed.nyarz_mieji(to,card)
+	return q(card,"isNDTrick")
+end
+
+
+sgs.ai_fill_skill.nyarz_fencheng=function(self,inclusive,request)
+    if q(self.player,"getMark","@nyarz_fencheng_mark") == 0 then return end
+    local value = 0
+    for _,target in sgs.qlist(q(self.room,"getOtherPlayers",self.player)) do
+        if q(self,"isFriend",target) then
+            value = value - 1.1
+            if q(target,"getHp") == 1 then value = value - 1.1 end
+            if not q(target,"getEquips"):isEmpty() then
+                value = value - 0.21*q(target,"getEquips"):length()
+            end
+        else
+            value = value +1
+            if q(target,"getHp") == 1 then value = value + 1 end
+            if not q(target,"getEquips"):isEmpty() then
+                value = value + 0.2*q(target,"getEquips"):length()
+            end
+        end
+    end
+    if value < 0 then return end
+    return parse(self,"#nyarz_fencheng:.:")
+end
+
+sgs.ai_skill_use_func["#nyarz_fencheng"] = function(card,use,self)
+    use.card = card
+end
+
+sgs.ai_use_priority.nyarz_mieji = 7.7
+
+
+sgs.ai_skill_invoke.nyarz_zhangcai_wu = true
+
+
+sgs.ai_fill_skill.nyarz_ruxian_wu=function(self,inclusive,request)
+	if q(self.player,"getMark","@nyarz_ruxian_wu_mark") > 0 then
+		return parse(self,"#nyarz_ruxian_wu:.:")
+	end
+end
+
+sgs.ai_skill_use_func["#nyarz_ruxian_wu"] = function(card, use, self)
+    use.card = card
+end
+
+sgs.ai_use_priority.nyarz_ruxian_wu = 10
+
+
+sgs.ai_skill_playerchosen.nyarz_xuanfeng = function(self, targets)
+    local enemy = {}
+    for _,target in sgs.qlist(targets) do
+        if q(self,"isEnemy",target) and q(self,"doDisCard",target, "he") then
+            table.insert(enemy, target)
+        end
+    end
+    if #enemy == 0 then return nil end
+    q(self,"sort",enemy, "defense")
+    return enemy[1]
+end
+
+sgs.ai_skill_playerchosen.nyarz_xuanfeng_damageto = function(self, targets)
+    local enemy = {}
+    for _,target in sgs.qlist(targets) do
+        if q(self,"isEnemy",target) and not q(self,"cantbeHurt",target) and q(self,"damageIsEffective",target) and q(self,"canDamage",target,self.player,nil) then
+            table.insert(enemy, target)
+        end
+    end
+    if #enemy == 0 then return nil end
+    q(self,"sort",enemy, "hp")
+    return enemy[1]
+end
+
+sgs.lose_equip_skill = sgs.lose_equip_skill .. "|nyarz_xuanfeng"
+
+
+sgs.ai_fill_skill.nyarz_yongjin=function(self,inclusive,request)
+	if q(self.player,"hasUsed","#nyarz_yongjin") then return end
+    local need = {}
+    local yongjin_costs,user = {},nil
+
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    if #cards > 1 then table.insert(need, "recast") end
+
+    if q(self.room,"canMoveField","ej") then
+        local from, card, to = q(self,"moveField")
+        if from and card and to then table.insert(need, "move") end
+    end
+
+    if #need == 1 then
+        user=need[1]
+        if need[1] == "recast" then
+
+            q(self,"sortByKeepValue",cards)
+            yongjin_costs={cards[1]:getEffectiveId(),cards[2]:getEffectiveId()}
+            return q(self,"evaluateTurnSkillCard","nyarz_yongjin","#nyarz_yongjin",yongjin_costs,self.request,user)
+        else
+            return q(self,"evaluateTurnSkillCard","nyarz_yongjin","#nyarz_yongjin",yongjin_costs,self.request,user)
+        end
+    elseif #need > 1 and (not q(self,"isWeak")) then
+        user="all"
+
+        q(self,"sortByKeepValue",cards)
+        yongjin_costs={cards[1]:getEffectiveId(),cards[2]:getEffectiveId()}
+        return q(self,"evaluateTurnSkillCard","nyarz_yongjin","#nyarz_yongjin",yongjin_costs,self.request,user)
+    elseif #need > 1 and q(self,"isWeak") then
+        table.removeOne(need, need[math.random(1,#need)])
+        user=need[1]
+        if need[1] == "recast" then
+
+            q(self,"sortByKeepValue",cards)
+            yongjin_costs={cards[1]:getEffectiveId(),cards[2]:getEffectiveId()}
+            return q(self,"evaluateTurnSkillCard","nyarz_yongjin","#nyarz_yongjin",yongjin_costs,self.request,user)
+        else
+            return q(self,"evaluateTurnSkillCard","nyarz_yongjin","#nyarz_yongjin",yongjin_costs,self.request,user)
+        end
+    end
+    return 
+end
+
+sgs.ai_skill_use_func["#nyarz_yongjin"] = function(card, use, self)
+    use.card = card
+end
+
+sgs.ai_use_priority.nyarz_yongjin = 5.5
+
+sgs.lose_equip_skill = sgs.lose_equip_skill.."|nyarz_xuanfeng"
+
+
+sgs.ai_skill_invoke.nyarz_jiqiao = function(self, data)
+    if q(self.player,"getLostHp") < 2 or q(self.player,"getHp") > 3 then return true end
+    local colors = {}
+    for _,cc in sgs.qlist(q(self.player,"getHandcards")) do
+        local color = q(cc,"getColorString")
+        if (not table.contains(colors, color)) then
+            table.insert(colors, color)
+        end
+    end
+    local i = 2
+    for _,id in draw_iter(self) do
+        local card = face(self,id)
+        local color = q(card,"getColorString")
+        if (not table.contains(colors, color)) then
+            table.insert(colors, color)
+        end
+        i = i - 1
+        if i <= 0 then break end
+    end
+    if #colors <= 1 then return true end
+
+    local red = 0
+    local black = 0
+    local other = 0
+    for _,card in sgs.qlist(q(self.player,"getHandcards")) do
+        if q(card,"isRed") then red = red + 1
+        elseif q(card,"isBlack") then black = black + 1
+        else other = other + 1 end
+    end
+    local i = 3
+    for _,id in draw_iter(self) do
+        local card = face(self,id)
+        if q(card,"isRed") then red = red + 1
+        elseif q(card,"isBlack") then black = black + 1
+        else other = other + 1 end
+        i = i - 1
+        if i <= 0 then break end
+    end
+    if (red == 0) or (black == 0) or (other == 0) then
+        return (red == 1) or (black == 1) or (other == 1)
+    end
+    return false
+end
+
+sgs.ai_skill_discard.nyarz_jiqiao = function(self,max,min)
+    local dis = {}
+    local cards = sgs.QList2Table(q(self.player,"getHandcards"))
+
+    q(self,"sortByKeepValue",cards)
+    local red = 0
+    local black = 0
+    local other = 0
+    for _,card in ipairs(cards) do
+        if q(card,"isRed") then red = red + 1
+        elseif q(card,"isBlack") then black = black + 1
+        else other = other + 1 end
+    end
+
+    for _,card in ipairs(cards) do
+        if q(card,"isRed") then
+            if red == 1 then
+                table.insert(dis, q(card,"getEffectiveId"))
+                break
+            end
+        elseif  q(card,"isBlack") then
+            if black == 1 then
+                table.insert(dis, q(card,"getEffectiveId"))
+                break
+            end
+        else
+            if other == 1 then
+                table.insert(dis, q(card,"getEffectiveId"))
+                break
+            end
+        end
+    end
+    return dis
+end
+
+
+sgs.ai_skill_invoke.nyarz_renwang = function(self, data)
+    local damage = tagvalue(self,"nyarz_renwang","Damage")
+    return q(self,"isFriend",damage.to)
+end
+sgs.ai_can_damagehp.nyarz_renwang = function(self,from,card,to)
+	if from and q(to,"getHp")+q(self,"getAllPeachNum")-q(self,"ajustDamage",from,to,1,card)>0
+	and q(self,"canLoseHp",from,card,to)
+	then
+		return q(self,"isFriend",from) and q(from,"getMark","nyarz_renwang-Clear") == 0
+	end
+end
+
+
+sgs.ai_skill_invoke.nyarz_rende = function(self, data)
+    if q(self.player,"getPhase") ~= sgs.Player_Finish then return true end
+    if q(self.player,"getMark","nyarz_rende_draw-Clear") >= 3 then return true end
+    if q(self.player,"getMark","&nyarz_rende") <= 0 then return false end
+    if q(self.player,"getHandcardNum") <= 1 then return true end
+    if q(self.player,"getMark","&nyarz_rende") <= 1 then return false end
+    return true
+end
+
+sgs.ai_fill_skill.nyarz_rende=function(self,inclusive,request)
+	if #self.friends_noself == 0 then return end
+    local min = math.min(3, q(self.player,"getMaxCards"))
+    if q(self.player,"getHandcardNum") <= min then return end
+    return parse(self,"#nyarz_rende:.:")
+end
+
+sgs.ai_skill_use_func["#nyarz_rende"] = function(card, use, self)
+    q(self,"sort",self.friends_noself, "defense")
+    local need = {}
+    for _,p in ipairs(self.friends_noself) do
+        if q(p,"getMark","nyarz_rende_give-PlayClear") == 0 then
+            table.insert(need, p)
+        end
+    end
+
+    local give = 0 
+    if #need == 0 then return end
+    if #need == 1 then give = math.max(2, q(self.player,"getHandcardNum") - q(self.player,"getMaxCards")) end
+    if #need > 1 then give = 2 end
+
+    local cards = sgs.QList2Table(q(self.player,"getCards","h"))
+    q(self,"sortByKeepValue",cards)
+    local usecards = {}
+    for _,cc in ipairs(cards) do
+        table.insert(usecards, q(cc,"getEffectiveId"))
+        give = give - 1
+        if give <= 0 then break end
+    end
+    if give > 0 then return end
+    local card_str = string.format("#nyarz_rende:%s:->%s", table.concat(usecards,"+"), need[1]:objectName())
+    use.card = parse(self,card_str)
+    if use.to then use.to:append(need[1]) end
+end
+
+sgs.ai_guhuo_card.nyarz_rendebasic = function(self,toname,class_name)
+    if q(self.player,"getMark","&nyarz_rende") <= 0 then return end
+    if q(self.player,"getMark","nyarz_rende_used2_lun") >= 4 then return end
+    if class_name and q(self,"getCardsNum",class_name) > 0 then return end
+
+	local card = evaluation(self,toname)
+    
+    if (not card) or (not q(card,"isKindOf","BasicCard")) then return end
+
+    return proposal(self,"#nyarz_rendebasic:.:"..toname)
+end
+
+sgs.ai_fill_skill.nyarz_rendebasic=function(self,inclusive,request)
+    if q(self.player,"getMark","&nyarz_rende") <= 0 then return end
+    if q(self.player,"getMark","nyarz_rende_used2_lun") >= 4 then return end
+
+    local basics = {"peach", "analeptic", "thunder_slash", "slash", "fire_slash"}
+    for _,name in ipairs(basics) do
+        local card = evaluation(self,name)
+        
+        if card and q(card,"isAvailable",self.player) then
+
+            local dummy = {isDummy=true,to=sgs.SPlayerList()}
+            q(self,"useCardByClassName",card, dummy)
+            local num = q(self,"getCardsNum",q(card,"getClassName"),"he")
+			if dummy.card and dummy.to and ((num < 1) or (q(self.player,"getMark","&nyarz_rende") >= 3)) then
+                save_targets(self,"nyarz_rendebasicto",dummy.to)
+                return parse(self,"#nyarz_rendebasic:.:"..name)
+            end
+        end
+	end
+end
+
+sgs.ai_skill_use_func["#nyarz_rendebasic"] = function(card, use, self)
+    use.card = card
+	if use.to
+	then
+		use.to = targets(self,"nyarz_rendebasicto")
+	end
+end
+
+
+sgs.ai_skill_invoke.nyarz_zhangwu = function(self, data)
+    if q(self.player,"getMark","&nyarz_rende") >= 2 then return false end
+    if #self.friends_noself == 0 then return true end
+    if q(self,"isWeak") then return true end
+    return false
+end
+
+
+sgs.ai_fill_skill.nyarz_longnu=function(self,inclusive,request)
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    local red = {}
+    local tricks = {}
+    for _,card in ipairs(cards) do
+        if q(card,"isRed") then table.insert(red, card) end
+        if q(card,"isKindOf","TrickCard") then table.insert(tricks, card) end
+    end
+    q(self,"sortByKeepValue",red)
+    q(self,"sortByKeepValue",tricks)
+    if #red > 0 then
+        local slashs = {"thunder_slash", "slash", "fire_slash"}
+        for _,name in ipairs(slashs) do
+            local card = material(self,"nyarz_longnu",name,{red[1]:getEffectiveId()})
+            
+            if card and q(card,"isAvailable",self.player) then
+                local dummy_use = q(self,"aiUseCard",card)
+                local num = q(self,"getCardsNum",q(card,"getClassName"),"he")
+			    if dummy_use.card and dummy_use.to and num < 1 then
+                    save_targets(self,"nyarz_longnuto",dummy_use.to)
+                    return parse(self,"#nyarz_longnu:"..red[1]:getEffectiveId()..":")
+                end
+            end
+	    end
+    end
+    if #tricks > 0 then
+        save_targets(self,"nyarz_longnuto",sgs.SPlayerList())
+        return parse(self,"#nyarz_longnu:"..tricks[1]:getEffectiveId()..":")
+    end
+end
+
+sgs.ai_skill_use_func["#nyarz_longnu"] = function(card, use, self)
+    use.card = card
+	if use.to
+	then
+		use.to = targets(self,"nyarz_longnuto")
+	end
+end
+
+sgs.ai_skill_choice["nyarz_longnu"] = function(self, choices, data)
+    if known(self.request.reason,"reason") ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return "slash" end
+    local slashs = {"thunder_slash", "slash", "fire_slash"}
+    for _,name in ipairs(slashs) do
+        local card = evaluation(self,name)
+        
+        if card and q(card,"isAvailable",self.player) then
+
+            local dummy = {isDummy=true,to=sgs.SPlayerList()}
+            q(self,"useCardByClassName",card, dummy)
+			if dummy.card and dummy.to then
+                return name
+            end
+        end
+	end
+    return "slash"
+end
+
+sgs.ai_view_as.nyarz_longnu = function(card, player, card_place)
+	local suit = q(card,"getSuitString")
+	local number = q(card,"getNumberString")
+	local card_id = q(card,"getEffectiveId")
+	if q(card,"isRed") then
+		return view(own_ai(player),("slash:nyarz_longnu[%s:%s]=%d"):format(suit, number, card_id))
+	end
+end
+
+sgs.ai_ajustdamage_to.nyarz_shibei = function(self,from,to,card,nature)
+	if getKnownCard(from,self.player,"TrickCard")>1
+	or getKnownCard(from,self.player,"Slash")>1 and (getKnownCard(from,self.player,"Crossbow")>0 or q(from,"hasSkills",sgs.double_slash_skill))
+	or q(from,"hasSkills",sgs.straight_damage_skill)
+	or q(self,"getOverflow",from)>0 then
+	else
+		return q(to,"getMark","nyarz_shibei-Clear")<1
+	end
+end
+
+
+sgs.ai_skill_invoke.nyarz_jianying = true
+
+sgs.ai_fill_skill.nyarz_jianying=function(self,inclusive,request)
+    if q(self.player,"getHandcardNum") <= q(self.player,"getMaxCards") then return end
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    if #cards < 2 then return end
+
+    q(self,"sortByKeepValue",cards)
+
+    local card_str = string.format("#nyarz_jianying:%s+%s:",cards[1]:getEffectiveId(),cards[2]:getEffectiveId())
+    return parse(self,card_str)
+end
+
+sgs.ai_skill_use_func["#nyarz_jianying"] = function(card, use, self)
+    use.card = card
+end
+
+sgs.ai_card_priority.nyarz_jianying = function(self,card)
+    local mark = string.format("&nyarz_jianying+%s_char",q(card,"getSuitString"))
+	if (q(self.player,"getMark",mark) > 0) or (q(self.player,"getMark","nyarz_jianying_number") == q(card,"getNumber"))
+	then
+		if self.useValue
+		then return 1 end
+		return 0.08
+	end
+end
+
+sgs.ai_ajustdamage_from.nyarz_ronghuo_mou = function(self, from, to, card, nature)
+	if nature == sgs.DamageStruct_Fire then
+        local kingdoms = {}
+        for _,p in sgs.qlist(q(self.room,"getAlivePlayers")) do
+            if not table.contains(kingdoms, q(p,"getKingdom")) then
+                table.insert(kingdoms, q(p,"getKingdom"))
+            end
+        end
+        local n = #kingdoms 
+        return n
+    end
+end
+
+
+sgs.ai_skill_invoke.nyarz_yingmou_mou = true
+
+sgs.ai_skill_choice["nyarz_yingmou_mou"] = function(self, choices, data)
+    local items = choices:split("+")
+    for _,item in ipairs(items) do
+        if item == "draw" then
+            local use = q(data,"toCardUse")
+            for _,p in sgs.qlist(use.to) do
+                if q(p,"getHandcardNum") > q(self.player,"getHandcardNum") then return item end
+            end
+            local card = evaluation(self,"fire_attack")
+            
+            local usec = q(self,"aiUseCard",card, dummy())
+            if usec.card then return item end
+        end
+        if item == "show" then
+            local use = q(data,"toCardUse")
+            local targets = {}
+            for _,p in sgs.qlist(q(self.room,"getAlivePlayers")) do
+                if q(p,"isAlive") and (not q(p,"isKongcheng")) and (not use.to:contains(p)) 
+                and (q(self,"isEnemy",p) or (q(self.player,"objectName") == q(p,"objectName"))) then 
+                    table.insert(targets, p)
+                end
+            end
+            q(self,"sort",targets, "handcard", true)
+            for _,p in ipairs(targets) do
+                if q(p,"objectName") ~= q(self.player,"objectName") then
+                    if (q(self.player,"getHandcardNum") < q(p,"getHandcardNum")) or (q(p,"getHandcardNum") > 5) then
+                        return item
+                    end
+                else
+                    local n = 0
+                    for _,card in sgs.qlist(q(self.player,"getHandcards")) do
+                        local use = q(self,"aiUseCard",card, dummy())
+                        if q(card,"isDamageCard") and (use.card) then
+                            n = n + 1
+                        end
+                        if n >= 2 then return item end
+                    end
+                end
+            end
+        end
+        if string.find(item,"discard") then
+            local target = q(data,"toPlayer")
+            if q(self,"isEnemy",target) and q(self.player,"getHandcardNum") < q(target,"getHandcardNum") then
+                local n = 0
+                for _,card in sgs.qlist(fullhand(target)) do
+                    local use = q(self,"aiUseCard",card, dummy())
+                    if q(card,"isDamageCard") and (use.card) then
+                        n = n + 1
+                    end
+                end
+                if n == 0 then return item end
+                if (n + n) < (q(target,"getHandcardNum") - q(self.player,"getHandcardNum")) then return item end
+            end
+        end
+        if string.find(item, "use") then
+            local target = q(data,"toPlayer")
+            for _,card in sgs.qlist(fullhand(target)) do
+                local use = q(self,"aiUseCard",card, dummy())
+                if q(card,"isDamageCard") and (use.card) then
+                    return item
+                end
+            end
+        end
+    end
+    return "cancel"
+end
+
+sgs.ai_skill_use["@@nyarz_yingmou_mou"] = function(self, prompt)
+    if (not q(self.player,"hasFlag","nyarz_yingmou_mou")) then
+        local card = named(self,"_nyarz_yingmou_mou","fire_attack",{})
+        
+
+        local use = {isDummy=true,to=sgs.SPlayerList()}
+        q(self,"useCardByClassName",card, use)
+        if use.card then
+            if use.to:length() > 0 then
+            local tos = {}
+            for _,to in sgs.qlist(use.to) do
+                table.insert(tos, q(to,"objectName"))
+            end
+            return answer(self,card,tos)
+            else
+                return answer(self,card,{})
+            end
+        end
+        return "."
+    else
+        local card_ids = tagids(self,"nyarz_yingmou_mou_card_ids")
+        if (not card_ids) or (card_ids:isEmpty()) then return "." end
+
+        local cards = {}
+        for _,id in sgs.qlist(card_ids) do
+            table.insert(cards, face(self,id))
+        end
+        q(self,"sortByUseValue",cards, true)
+
+        for _,card in ipairs(cards) do
+
+            local use = {isDummy=true,to=sgs.SPlayerList()}
+            q(self,"useCardByClassName",card, use)
+            if use.card then
+                if (not use.to:isEmpty()) then 
+                local tos = {}
+                for _,to in sgs.qlist(use.to) do
+                    table.insert(tos, q(to,"objectName"))
+                end
+                return response(self,string.format("#nyarz_yingmou_mou:%s:->%s",q(card,"getEffectiveId"),table.concat(tos, "+")))
+                else
+                    return response(self,string.format("#nyarz_yingmou_mou:%s:",q(card,"getEffectiveId")))
+                end
+            end
+        end
+        return "."
+    end
+end
+
+sgs.ai_skill_playerchosen.nyarz_yingmou_mou = function(self, targets)
+    if q(self.player,"hasFlag","nyarz_yingmou_mou_draw") then
+        local max = -1
+        local target
+        for _,p in sgs.qlist(targets) do
+            if q(p,"getHandcardNum") > max then
+                max = q(p,"getHandcardNum")
+                target = p
+            end
+        end
+        return target
+    else
+        local newtargets = {}
+        for _,p in sgs.qlist(targets) do
+            if  (q(self,"isEnemy",p) or (q(self.player,"objectName") == q(p,"objectName"))) then 
+                table.insert(newtargets, p)
+            end
+        end
+        if #newtargets == 0 then return nil end
+        q(self,"sort",newtargets, "handcard", true)
+        return newtargets[1]
+    end
+end
+
+
+sgs.ai_skill_invoke.nyarz_mengmou_mou = true
+
+sgs.ai_skill_choice["nyarz_mengmou_mou"] = function(self, choices, data)
+    local target = q(data,"toPlayer")
+    if q(self,"isFriend",target) then
+        return string.format("recover=%s", q(target,"getGeneralName"))
+    else
+        return string.format("lose=%s", q(target,"getGeneralName"))
+    end
+end
+
+
+sgs.ai_skill_invoke.nyarz_mingshi_mou = true
+
+sgs.ai_skill_use["@@nyarz_mingshi_mou!"] = function(self, prompt)
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    if #self.friends_noself == 0 then
+        q(self,"sortByKeepValue",cards)
+        local show = {}
+        for i = 1, 3, 1 do
+            table.insert(show, cards[i]:getEffectiveId())
+        end
+        local targets = sgs.QList2Table(q(self.room,"getOtherPlayers",self.player))
+        q(self,"sort",targets, "defense")
+        return response(self,string.format("#nyarz_mingshi_mou:%s:->%s", table.concat(show, "+"), targets[1]:objectName()))
+    else
+        q(self,"sortByKeepValue",cards, true)
+        local show = {}
+        for i = 1, 3, 1 do
+            table.insert(show, cards[i]:getEffectiveId())
+        end
+        q(self,"sort",self.friends_noself, "defense")
+        return response(self,string.format("#nyarz_mingshi_mou:%s:->%s", table.concat(show, "+"), self.friends_noself[1]:objectName()))
+    end
+end
+
+
+sgs.ai_skill_discard.nyarz_huanshi = function(self,max,min)
+    local judge = tagvalue(self,"nyarz_huanshi","Judge")
+    if judge:isGood() and q(self,"isFriend",judge.who) then return {} end
+    if judge:isBad() and (not q(self,"isFriend",judge.who)) then return {} end
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+
+    q(self,"sortByKeepValue",cards)
+    if q(self,"isFriend",judge.who) then
+        local show = {}
+        local needmatch 
+        if judge.good then needmatch = true
+        else needmatch = false end
+        local find = false
+        for _,card in ipairs(cards) do
+            if needmatch and (judge_match(self,judge,card)) then
+                find = true
+                table.insert(show, q(card,"getEffectiveId"))
+                break
+            elseif (not needmatch) and (not judge_match(self,judge,card)) then
+                find = true
+                table.insert(show, q(card,"getEffectiveId"))
+                break
+            end
+        end
+        if not find then return {} end
+        local other = 2
+        if q(self,"isWeak") then other = 1 end
+        for _,card in ipairs(cards) do
+            if not table.contains(show, q(card,"getEffectiveId")) then
+                table.insert(show, q(card,"getEffectiveId"))
+                other = other - 1
+            end
+            if other <= 0 then break end
+        end
+        if #show >= 2 then return show end
+    elseif q(self,"isEnemy",judge.who) then
+        local show = {}
+        local needmatch 
+        if judge.good then needmatch = false
+        else needmatch = true end
+        local find = 2
+        for _,card in ipairs(cards) do
+            if needmatch and (judge_match(self,judge,card)) then
+                find = find - 1
+                table.insert(show, q(card,"getEffectiveId"))
+            elseif (not needmatch) and (not judge_match(self,judge,card)) then
+                find = find - 1
+                table.insert(show, q(card,"getEffectiveId"))
+            end
+            if find <= 0 then break end
+        end
+        if #show >= 2 then return show end
+    end
+    return {}
+end
+
+sgs.ai_skill_askforag["nyarz_huanshi"] = function(self, card_ids)
+    local judge = tagvalue(self,"nyarz_huanshi","Judge")
+    local needmatch 
+    if judge.good then needmatch = true
+    else needmatch = false end
+    for _,id in ipairs(card_ids) do
+        local card = q(self,'getChoiceCard',id)
+        if needmatch and (judge_match(self,judge,card)) then
+            return id
+        elseif (not needmatch) and (not judge_match(self,judge,card)) then
+            return id
+        end
+    end
+    return card_ids[math.random(1,#card_ids)]
+end
+sgs.wizard_skill = sgs.wizard_skill .. "|nyarz_huanshi"
+
+
+sgs.ai_skill_invoke.nyarz_hongyuan = function(self, data)
+    return #self.friends_noself > 0
+end
+
+sgs.ai_skill_use["@@nyarz_hongyuan"] = function(self, prompt)
+    if #self.friends_noself <= 0 then return "." end
+    if q(self.player,"isNude") then return "." end
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+
+    q(self,"sortByKeepValue",cards, true)
+    local target
+    q(self,"sort",self.friends_noself, "defense")
+    for _,friend in ipairs(self.friends_noself) do
+        if q(friend,"getMark","&nyarz_hongyuan_chosen+#"..self.player:objectName()) == 0 then
+            target = friend
+            break
+        end
+    end
+    if not target then return "." end
+    return response(self,string.format("#nyarz_hongyuan:%s:->%s", cards[1]:getEffectiveId(), q(target,"objectName")))
+end
+
+
+sgs.ai_skill_invoke.nyarz_huashen = true
+
+sgs.ai_skill_choice["nyarz_huashen"] = function(self, choices, data)
+    local items = choices:split("+")
+    if table.contains(items, "giveup") then
+        table.removeOne(items, "giveup")
+    end
+    return items[math.random(1, #items)]
+end
+
+
+sgs.ai_fill_skill.nyarz_xinsheng=function(self,inclusive,request)
+    if q(self.player,"hasUsed","#nyarz_xinsheng") then return end
+    if q(self.player,"getMark","&nyarz_souls") <= 0 then return end
+
+    return parse(self,"#nyarz_xinsheng:.:")
+end
+
+sgs.ai_skill_use_func["#nyarz_xinsheng"] = function(card, use, self)
+    use.card = card
+end
+
+sgs.ai_use_priority.nyarz_xinsheng = 5
+
+sgs.ai_skill_playerchosen.nyarz_xinsheng = function(self, targets)
+    local friends = {}
+    for _,target in sgs.qlist(targets) do
+        if q(self,"isFriend",target) then
+            table.insert(friends, target)
+        end
+    end
+    if #friends <= 0 then return nil end
+    q(self,"sort",friends, "defense")
+    return friends[1]
+end
+
+
+sgs.ai_skill_playerchosen.nyarz_yiji = function(self, targets)
+    local friends = {}
+    for _,target in sgs.qlist(targets) do
+        if q(self,"isFriend",target) then
+            table.insert(friends, target)
+        end
+    end
+    if #friends <= 0 then return nil end
+    q(self,"sort",friends, "defense")
+    return friends[1]
+end
+
+sgs.ai_skill_invoke.nyarz_yiji = true
+
+sgs.ai_skill_use["@@nyarz_yiji"] = function(self,prompt)
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+
+    q(self,"sortByUseValue",cards)
+    local max = q(self.player,"getMark","nyarz_yiji_max")
+    max = math.max(2, max)
+    if q(self.player,"getMark","nyarz_yiji_give") >= max then return "." end
+    for _,card in ipairs(cards) do
+        local card_ids = {}
+        table.insert(card_ids, q(card,"getEffectiveId"))
+        local target, id = nested(self,"ai_skill_askforyiji","nosyiji",self,card_ids)
+        if target  and (id > 0) then
+            return response(self,string.format("#nyarz_yiji:%s:->%s", id, q(target,"objectName")))
+        end
+    end
+    return "."
+end
+
+sgs.ai_need_damaged.nyarz_yiji = function (self,attacker,player)
+    if not q(self.player,"hasSkill","nyarz_yiji") then return end
+    
+	local friends = {}
+	for _,ap in sgs.list(q(self.room,"getAlivePlayers"))do
+		if q(self,"isFriend",ap,player) then
+			table.insert(friends,ap)
+		end
+	end
+	q(self,"sort",friends,"hp")
+
+	if #friends>0 and friends[1]:objectName()==q(player,"objectName") and q(self,"isWeak",player) and getCardsNum("Peach",player,(attacker or self.player))==0 then return false end
+
+	return q(player,"getHp")>2 and sgs.turncount>2 and #friends>1 and not q(self,"isWeak",player) and q(player,"getHandcardNum")>=2
+end
+
+sgs.double_slash_skill = sgs.double_slash_skill .. "|nyarz_funing"
+
+sgs.ai_card_priority.nyarz_funing = function(self,card,v)
+	if q(card,"isKindOf","Slash") and q(self.player,"getMark","&nyarz_funing-Clear") == 0 then
+        local mark = nil
+        local suit = q(card,"getSuitString")
+        for _,p in ipairs(q(self.player,"getMarkNames")) do
+            if (string.find(p,"&nyarz_funing_suit")) and (q(self.player,"getMark",p) > 0) then
+                mark = p
+                break
+            end
+        end
+        if mark and q(self.player,"getMark",mark) > 0 then 
+            if not string.find(mark,suit.."_char") then
+                for _,c in sgs.qlist(q(self.player,"getHandcards")) do
+                    if q(c,"getSuit") == q(card,"getSuit") and q(c,"getEffectiveId") ~= q(card,"getEffectiveId") then
+                        return 10 
+                    end
+                end
+            end
+        else
+            for _,c in sgs.qlist(q(self.player,"getHandcards")) do
+                if q(c,"getSuit") == q(card,"getSuit") and q(c,"getEffectiveId") ~= q(card,"getEffectiveId") then
+                    return 10 
+                end
+            end
+        end
+    end
+end
+
+-- audited alias ai_cardneed.nyarz_funing
+sgs.ai_hasTuntianEffect_skill.nyarz_bingji = function(to, need_zaoxian)
+	return true
+end
+
+
+sgs.ai_skill_invoke.nyarz_luanfeng = function(self, data)
+    local target = q(data,"toPlayer")
+    return target and q(self,"isFriend",target)
+end
+
+sgs.ai_fill_skill.nyarz_luanfeng=function(self,inclusive,request)
+    if q(self.player,"getMark","nyarz_luanfeng_used_lun") > 0 then return end
+
+    return parse(self,"#nyarz_luanfeng:.:")
+end
+
+sgs.ai_skill_use_func["#nyarz_luanfeng"] = function(card, use, self)
+    local maxvalue = 0
+    local target
+    q(self,"sort",self.friends, "defense")
+    local hp = 3
+    if q(self.player,"getMark","&nyarz_luanfeng") > 0 then hp = 1 end
+    local hand = 6
+    if q(self.player,"getMark","&nyarz_luanfeng") > 0 then hand = 3 end
+    for _,friend in ipairs(self.friends) do
+        local value = 0
+        if q(friend,"isWounded") and q(friend,"getHp") < hp then
+            value = value + 2*(hp - q(friend,"getHp"))
+        end
+        if q(friend,"getHandcardNum") < hand then
+            value = value + hand - q(friend,"getHandcardNum")
+        end
+        for i = 0, 4, 1 do
+            if not q(friend,"hasEquipArea",i) then
+                value = value + 1
+            end
+        end
+        if value > maxvalue then 
+            target = friend
+            maxvalue = value
+        end
+    end
+    if target and maxvalue >= 5 then
+        use.card = card
+        if use.to then use.to:append(target) end
+    end
+end
+
+
+sgs.ai_guhuo_card.nyarz_youlong = function(self,toname,class_name)
+	if known(self.request.reason,"reason") == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then return end
+    if not q(self.player,"hasEquipArea") then return end
+    if q(self.player,"getChangeSkillState","nyarz_youlong") <= 1 then
+	    local c = evaluation(self,toname)
+        local mark = string.format("nyarz_youlong_%s_lun", toname)
+	    if c then  end
+	    if c and q(c,"isKindOf","BasicCard")
+	    and q(self,"getCardsNum",class_name) < 1
+        and q(self.player,"getMark",mark) <= 0
+	    then
+            return proposal(self,"#nyarz_youlong:.:"..toname)
+	    end
+    else
+        local c = evaluation(self,toname)
+        local mark = string.format("nyarz_youlong_%s_lun", toname)
+	    if c then  end
+	    if c and q(c,"isNDTrick")
+	    and q(self,"getCardsNum",class_name) < 1
+        and q(self.player,"getMark",mark) <= 0
+	    then
+            return proposal(self,"#nyarz_youlong:.:"..toname)
+	    end
+    end
+end
+
+sgs.ai_fill_skill.nyarz_youlong=function(self,inclusive,request)
+    if not q(self.player,"hasEquipArea") then return end
+	for _,name in sgs.list(known(self.world.strategy_facts.pattern_names,"pattern_names"))do
+        local c = evaluation(self,name)
+        local mark = string.format("nyarz_youlong_%s_lun", name)
+		if c and q(c,"isAvailable",self.player)
+		and q(self,"getCardsNum",q(c,"getClassName"))<1
+		and ((q(c,"isNDTrick") and q(self.player,"getChangeSkillState","nyarz_youlong") == 2)
+            or (q(c,"isKindOf","BasicCard") and q(self.player,"getChangeSkillState","nyarz_youlong") <= 1))
+        and q(self.player,"getMark",mark) == 0
+		then
+         	local dummy = q(self,"aiUseCard",c, dummy())
+
+
+    		if dummy.card
+	    	and dummy.to
+	     	then
+	           	if q(c,"canRecast")
+				and dummy.to:length()<1
+				then continue end
+				save_targets(self,"nyarz_youlong_to",dummy.to)
+				sgs.ai_use_priority["#nyarz_youlong"] = sgs.ai_use_priority[q(c,"getClassName")]
+                return parse(self,"#nyarz_youlong:.:"..name)
+			end
+		end
+		if c then  end
+	end
+end
+
+sgs.ai_skill_use_func["#nyarz_youlong"] = function(card, use, self)
+	use.card = card
+	if use.to then use.to = targets(self,"nyarz_youlong_to") end
+end
+
+sgs.ai_use_priority.nyarz_youlong = 6
+
+
+sgs.ai_fill_skill.nyarz_shenfen_god=function(self,inclusive,request)
+    if q(self.player,"getMark","&nyarz_baonu_god") < 6 then return end
+    if q(self.player,"hasUsed","#nyarz_shenfen_god") then return end
+    if (self.role=="loyalist" or self.role=="renegade") and q(self.room,"getLord") and q(self,"isWeak",q(self.room,"getLord")) and not q(self.player,"isLord") then return end
+    local value = 0
+    for _,p in sgs.qlist(q(self.room,"getOtherPlayers",self.player)) do
+        if q(self,"isFriend",p) then
+            value = value - 2
+            if q(p,"getHp") == 1 and q(self,"getCardsNum","Peach") <= 0 then
+                value = value - 4
+            end
+            value = value - q(p,"getEquips"):length()*1.2
+            value = value - math.min(4, q(p,"getHandcardNum"))
+        else
+            value = value + 2
+            if q(p,"getHp") == 1  then
+                value = value + 3
+            end
+            value = value + q(p,"getEquips"):length()*1.2
+            value = value + math.min(4, q(p,"getHandcardNum"))
+        end
+    end
+    if value < 0 then return end
+
+    return parse(self,"#nyarz_shenfen_god:.:")
+end
+
+sgs.ai_skill_use_func["#nyarz_shenfen_god"] = function(card, use, self)
+	use.card = card
+end
+
+sgs.ai_skill_use["@@nyarz_shenfen_god"] = function(self, prompt)
+    return response(self,"#nyarz_shenfen_god:.:")
+end
+
+sgs.ai_use_value.nyarz_shenfen_god = 8
+sgs.ai_use_priority.nyarz_shenfen_god = 5.3
+
+
+sgs.ai_fill_skill.nyarz_wuqian_god=function(self,inclusive,request)
+    if q(self,"isWeak") or q(self.player,"getHp") <= 2 then return end
+    local patterns = {"fire_slash", "thunder_slash", "duel", "slash"}
+	for _,name in sgs.list(patterns)do
+        local c = evaluation(self,name)
+		if c and q(c,"isAvailable",self.player)
+		then
+         	local dummy = q(self,"aiUseCard",c)
+
+
+    		if dummy.card
+	    	and dummy.to
+	     	then
+				save_targets(self,"nyarz_wuqian_god_to",dummy.to)
+				sgs.ai_use_priority["#nyarz_wuqian_god"] = sgs.ai_use_priority[q(c,"getClassName")]
+                return parse(self,"#nyarz_wuqian_god:.:"..name)
+			end
+		end
+		if c then  end
+	end
+end
+
+sgs.ai_skill_use_func["#nyarz_wuqian_god"] = function(card, use, self)
+	use.card = card
+	if use.to then use.to = targets(self,"nyarz_wuqian_god_to") end
+end
+
+sgs.ai_use_priority.nyarz_wuqian_god = sgs.ai_use_priority.Slash + 0.1
+
+
+sgs.ai_skill_choice["nyarz_wumou_god"] = function(self, choices, data)
+    if q(self.player,"getMark","&nyarz_baonu_god") > 9 then return "dismark" end
+    if q(self.player,"getMark","&nyarz_baonu_god") <= 0 then return "damaged" end
+    local use = q(data,"toCardUse")
+    local value = 0
+    for _,p in sgs.qlist(use.to) do
+        if q(self,"isFriend",p) then value = value - 1
+        else value = value + 1 end
+    end
+    if value < 0 then return "dismark" end
+    if q(self.player,"getHp")+q(self,"getCardsNum","Peach")>3 then return "damaged" end
+    return "dismark"
+end
+
+
+sgs.ai_skill_choice["nyarz_wushuang_god"] = function(self, choices, data)
+    local use = q(data,"toCardUse")
+    local items = choices:split("+")
+    if q(use.from,"objectName") == q(self.player,"objectName") then
+        for _,item in ipairs(items) do
+            if string.find(item, "no") then
+                return item
+            end
+        end
+    end
+    if q(use.card,"isKindOf","Slash") then
+        if q(self,"getCardsNum","Jink") > 0 then
+            for _,item in ipairs(items) do
+                if string.find(item, "up") then
+                    return item
+                end
+            end
+        else
+            for _,item in ipairs(items) do
+                if string.find(item, "no") then
+                    return item
+                end
+            end
+        end
+    end
+    for _,item in ipairs(items) do
+        if string.find(item, "no") then
+            return item
+        end
+    end
+end
+
+
+sgs.ai_skill_use["@@nyarz_liji"] = function(self, prompt)
+    if #self.enemies <= 0 then return "." end
+    local num = q(self.player,"getMark","nyarz_liji")
+    if num > 3 then return "." end
+    if q(self,"isWeak") then
+        if num >= 3 then return "." end
+        if num == 2 then
+            q(self,"sort",self.enemies, "hp")
+            if self.enemies[1]:getHp() == 1 and q(self,"damageIsEffective",self.enemies[1], sgs.DamageStruct_Normal) and not q(self,"cantbeHurt",self.enemies[1]) and q(self,"canDamage",self.enemies[1],self.player,nil) then
+                local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+                local need = {}
+                q(self,"sortByKeepValue",cards)
+                for _,card in ipairs(cards) do
+                    table.insert(need, q(card,"getEffectiveId"))
+                    num = num - 1
+                    if num <= 0 then break end
+                end
+                if num <= 0 then
+                    local card_str = string.format("#nyarz_liji:%s:->%s",table.concat(need, "+"), self.enemies[1]:objectName())
+                    return response(self,card_str)
+                end
+            end
+            return "."
+        end
+        q(self,"sort",self.enemies, "defense")
+        for _, enemy in ipairs(self.enemies) do
+            if q(self,"objectiveLevel",enemy) > 3 and not q(self,"cantbeHurt",enemy) and q(self,"damageIsEffective",enemy) and q(self,"canDamage",enemy,self.player,nil) then
+                local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+                local need = {}
+                q(self,"sortByKeepValue",cards)
+                for _,card in ipairs(cards) do
+                    table.insert(need, q(card,"getEffectiveId"))
+                    num = num - 1
+                    if num <= 0 then break end
+                end
+                if num <= 0 then
+                    local card_str = string.format("#nyarz_liji:%s:->%s",table.concat(need, "+"), q(enemy,"objectName"))
+                    return response(self,card_str)
+                end
+            end
+        end
+        return "."
+    else
+        if num == 3 then
+            q(self,"sort",self.enemies, "defense")
+            if self.enemies[1]:getHp() == 1 and q(self,"damageIsEffective",self.enemies[1], sgs.DamageStruct_Normal) and not q(self,"cantbeHurt",self.enemies[1]) and q(self,"canDamage",self.enemies[1],self.player,nil) then
+                local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+                local need = {}
+                q(self,"sortByKeepValue",cards)
+                for _,card in ipairs(cards) do
+                    table.insert(need, q(card,"getEffectiveId"))
+                    num = num - 1
+                    if num <= 0 then break end
+                end
+                if num <= 0 then
+                    local card_str = string.format("#nyarz_liji:%s:->%s",table.concat(need, "+"), self.enemies[1]:objectName())
+                    return response(self,card_str)
+                end
+            end
+            return "."
+        end
+        q(self,"sort",self.enemies, "defense")
+        for _, enemy in ipairs(self.enemies) do
+            if q(self,"objectiveLevel",enemy) > 3 and not q(self,"cantbeHurt",enemy) and q(self,"damageIsEffective",enemy) and q(self,"canDamage",enemy,self.player,nil) then
+                local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+                local need = {}
+                q(self,"sortByKeepValue",cards)
+                for _,card in ipairs(cards) do
+                    table.insert(need, q(card,"getEffectiveId"))
+                    num = num - 1
+                    if num <= 0 then break end
+                end
+                if num <= 0 then
+                    local card_str = string.format("#nyarz_liji:%s:->%s",table.concat(need, "+"), q(enemy,"objectName"))
+                    return response(self,card_str)
+                end
+            end
+        end
+        return "."
+    end
+    return "."
+end
+
+
+sgs.ai_skill_discard.nyarz_jianhe = function(self,max,min)
+    local ctype = "BasicCard"
+    if q(self.player,"getMark","nyarz_jianhe_type") == 2 then
+        ctype = "TrickCard"
+    elseif q(self.player,"getMark","nyarz_jianhe_type") == 3 then
+        ctype = "EquipCard"
+    end
+    local need = q(self.player,"getMark","nyarz_jianhe")
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    if q(self.player,"getPhase") == sgs.Player_Play then
+        q(self,"sortByUseValue",cards)
+    else
+        q(self,"sortByKeepValue",cards)
+    end
+    local dis = {}
+    for _,card in ipairs(cards) do
+        if q(card,"isKindOf",ctype) then
+            table.insert(dis, q(card,"getEffectiveId"))
+            need = need - 1
+        end
+        if need <= 0 then break end
+    end
+    if need <= 0 then return dis end
+    return {}
+end
+
+sgs.ai_fill_skill.nyarz_jianhe=function(self,inclusive,request)
+    return parse(self,"#nyarz_jianhe:.:")
+end
+
+sgs.ai_skill_use_func["#nyarz_jianhe"] = function(card, use, self)
+    local recast = {}
+    local need = 2
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    q(self,"sortByUseValue",cards)
+    for _,card in ipairs(cards) do
+        if need >= 2 then
+            table.insert(recast, q(card,"getEffectiveId"))
+            need = need - 1
+        else
+            if q(card,"getTypeId") == cards[1]:getTypeId() then
+                table.insert(recast, q(card,"getEffectiveId"))
+                need = need - 1
+                if q(self,"isWeak") then break end
+                if #recast >= math.random(3,5) then break end
+            end
+        end
+    end
+    if need > 0 then return end
+    local target 
+
+    if #self.enemies > 0 then
+        q(self,"sort",self.enemies, "defense")
+        for _,enemy in ipairs(self.enemies) do
+            local mark = string.format("&nyarz_jianhe_%s+#%s-PlayClear", "skill", q(self.player,"objectName"))
+            if q(enemy,"getMark",mark) == 0 then 
+                target = enemy
+                break
+            end
+        end
+    end
+
+    if (not q(self,"isWeak")) and q(self.player,"getHp") > 1 and (not target)
+    and q(self.player,"getMark","&nyarz_jianhe_skill+#"..self.player:objectName().."-PlayClear") == 0 
+    and ((q(self.player,"getHandcardNum") > 6) or q(self.player,"hasSkill","nyarz_bihun")) then
+        target = self.player
+    end
+
+    if (not target) then return end
+
+    local card_str = string.format("#nyarz_jianhe:%s:->%s", table.concat(recast, "+"), q(target,"objectName"))
+
+	use.card = parse(self,card_str)
+	if use.to then use.to:append(target) end
+end
+
+sgs.ai_use_priority.nyarz_jianhe = 7
+
+sgs.ai_skill_choice["nyarz_jianhe"] = function(self, choices, data)
+    local items = choices:split("+")
+    if #items == 1 then return items[1] end
+    local target = q(data,"toPlayer")
+    if (not target) then
+        return items[math.random(1,#items)]
+    end
+    
+    if q(self,"isEnemy",target) and ((not q(self.player,"inMyAttackRange",target)) or (q(self,"getCardsNum","Slash") <= 0)) then
+        return "card"
+    end
+
+    return "skill"
+end
+
+
+sgs.ai_skill_playerchosen.nyarz_bihun = function(self, targets)
+    local players = sgs.QList2Table(targets)
+    q(self,"sort",players, "defense")
+    for _,player in ipairs(players) do
+        if q(self,"isFriend",player) then return player end
+    end
+    for _,player in ipairs(players) do
+        if not q(self,"isEnemy",player) then return player end
+    end
+    return players[1]
+end
+
+
+sgs.ai_skill_choice["nyarz_chuanwu"] = function(self, choices, data)
+    if q(self.player,"getPhase") == sgs.Player_NotActive then
+        if string.find(choices, "nyarz_bihun") then return "nyarz_bihun" end
+        if string.find(choices, "nyarz_jianhe") then return "nyarz_jianhe" end
+        if string.find(choices, "nyarz_chuanwu") then return "nyarz_chuanwu" end
+    else
+        if string.find(choices, "nyarz_bihun") then return "nyarz_bihun" end
+        if string.find(choices, "nyarz_chuanwu") then return "nyarz_chuanwu" end
+    end
+    local items = choices:split("+")
+    return items[math.random(1,#items)]
+end
+
+sgs.ai_fill_skill.nyarz_longhun_god=function(self,inclusive,request)
+    local cards = sgs.QList2Table(q(self.player,"getCards","h"))
+    cards = q(self,"sortByUseValue",cards, true)
+    local heart, diamond = {}, {}
+    for _,card in ipairs(cards) do
+        if q(card,"getSuit") == sgs.Card_Heart then
+            table.insert(heart, card)
+        end
+        if q(card,"getSuit") == sgs.Card_Diamond then
+            table.insert(diamond, card)
+        end
+    end
+    if #heart >= q(self.player,"getMark","&nyarz_longhun_god-Clear") + 1 then
+        local usecard_costs = {}
+        for _,c in ipairs(heart) do
+            table.insert(usecard_costs,q(c,"getEffectiveId"))
+            if #usecard_costs >= q(self.player,"getMark","&nyarz_longhun_god-Clear") + 2 then
+                break
+            end
+        end
+        if #usecard_costs < q(self.player,"getMark","&nyarz_longhun_god-Clear") + 1 then
+            return
+        end
+        local usecard = named(self,"nyarz_longhun_god","peach",usecard_costs)
+
+
+        local usec = q(self,"aiUseCard",usecard, dummy())
+        if usec.card and q(self.player,"isWounded") then
+            save_targets(self,"nyarz_longhun_god_to",usec.to)
+            local card_str = string.format("#nyarz_longhun_god:%s:%s",global_card_id(self), "peach")
+            local acard = parse(self,card_str)
+            return acard
+        end
+    end
+    if #diamond >= q(self.player,"getMark","&nyarz_longhun_god-Clear") + 1 then
+        local slash_costs = {}
+        for _,c in ipairs(diamond) do
+            table.insert(slash_costs,q(c,"getEffectiveId"))
+            if #slash_costs >= q(self.player,"getMark","&nyarz_longhun_god-Clear") + 2 then
+                break
+            end
+        end
+        if #slash_costs < q(self.player,"getMark","&nyarz_longhun_god-Clear") + 1 then
+            return
+        end
+        local slash = named(self,"nyarz_longhun_god","fire_slash",slash_costs)
+        local usec = q(self,"aiUseCard",slash, dummy())
+        if usec.card and q(slash,"isAvailable",self.player) then
+            save_targets(self,"nyarz_longhun_god_to",usec.to)
+            local card_str = string.format("#nyarz_longhun_god:%s:%s",global_card_id(self), "fire_slash")
+            local acard = parse(self,card_str)
+            return acard
+        end
+    end
+end
+
+sgs.ai_skill_use_func["#nyarz_longhun_god"] = function(card, use, self)
+    use.card = card
+    if use.to then use.to = targets(self,"nyarz_longhun_god_to") end
+end
+
+-- audited alias ai_use_priority.nyarz_longhun_god
+sgs.need_kongcheng = sgs.need_kongcheng .. "|nyarz_lianying"
+sgs.ai_skill_invoke.nyarz_lianying = true
+
+sgs.ai_getLeastHandcardNum_skill.nyarz_lianying = function(self, player, least)
+	if least < q(player,"getMaxCards") + 1 then
+		return q(player,"getMaxCards") + 1
+	end
+end
+
+
+sgs.ai_skill_use["@@nyarz_duoshi"] = function(self, prompt)
+    if q(self.player,"isNude") then return "." end
+    if q(self,"isWeak") and (not q(self.player,"hasSkill","nyarz_lianying")) then return "." end
+
+    local cards = sgs.QList2Table(q(self.player,"getHandcards"))
+    if q(self.player,"getPhase") == sgs.Player_NotActive then
+        q(self,"sortByKeepValue",cards)
+    else
+        q(self,"sortByKeepValue",cards, true)
+    end
+    local n = 2
+    local give = {}
+    for _,card in ipairs(cards) do
+        table.insert(give, q(card,"getEffectiveId"))
+        n = n - 1
+        if n <= 0 then break end
+    end
+    if #self.friends_noself == 0 then
+        return response(self,string.format("#nyarz_duoshi:%s:", table.concat(give, "+")))
+    else
+        q(self,"sort",self.friends_noself, "defense")
+        for _,card in ipairs(give) do
+            local cc = face(self,card)
+            if q(cc,"isKindOf","Jink") or q(cc,"isKindOf","Nullification")
+            or (q(cc,"isKindOf","Peach") and not q(self.player,"isWounded"))
+            or (q(cc,"isKindOf","Analeptic") and q(self,"getCardsNum","Slash") == 0)
+            then
+                return response(self,string.format("#nyarz_duoshi:%s:->%s", table.concat(give, "+"), self.friends_noself[1]:objectName()))
+            end
+        end
+        return response(self,string.format("#nyarz_duoshi:%s:", table.concat(give, "+")))
+    end
+    return "."
+end
+
+sgs.ai_skill_use["@@nyarz_duoshi_use"] = function(self, prompt)
+    local cards = {}
+    for _,id in sgs.qlist(q(self.player,"getPile","nyarz_duoshi")) do
+        local card = face(self,id)
+        table.insert(cards, card)
+    end
+    q(self,"sortByUseValue",cards)
+    for _,card in ipairs(cards) do
+        if q(card,"isAvailable",self.player) then
+            if q(card,"isKindOf","EquipCard") then
+                return answer(self,card,{})
+            end
+
+
+            local usec = q(self,"aiUseCard",card, dummy())
+            if usec.card then
+                if usec.to and usec.to:length() > 0 then
+                    local tos = {}
+                    for _,p in sgs.qlist(usec.to) do
+                        table.insert(tos, q(p,"objectName"))
+                    end
+                    return answer(self,card,tos)
+                else
+                    return answer(self,card,{})
+                end
+            end
+        end
+    end
+    return "."
+end
+sgs.ai_use_revises.nyarz_duoshi = function(self,card,use)
+	if q(card,"isKindOf","EquipCard") and q(self,"evaluateArmor",card)>-5 and q(self,"hasSkills",sgs.need_kongcheng, self.player)
+	then use.card = card return true end
+end
+
+
+sgs.ai_skill_invoke.nyarz_jieying = function(self, data)
+    local target = q(self.room,"getCurrent")
+    if target and q(self,"isEnemy",target) then return true end
+end
+
+
+sgs.ai_skill_invoke.nyarz_weipo = true
+
+sgs.ai_skill_discard.nyarz_weipo = function(self, max, min)
+    local discards = {}
+    if q(self.player,"getHandcardNum") < q(self.player,"getMaxHp") then
+        local n = q(self.player,"getMaxHp") - q(self.player,"getHandcardNum")
+        local cards
+        if q(self,"isWeak") then
+            cards = sgs.QList2Table(q(self.player,"getCards","he"))
+            q(self,"sortByKeepValue",cards)
+            for _,card in ipairs(cards) do
+                if q(card,"isKindOf","Peach") or q(card,"isKindOf","Analeptic")
+                or q(card,"isKindOf","Jink") or q(card,"isKindOf","Nullification")
+                or (((q(card,"isKindOf","Armor")) or (q(card,"isKindOf","DefensiveHorse"))) 
+                and q(self.room,"getCardPlace",q(card,"getEffectiveId")) == sgs.Player_PlaceEquip) then
+                    table.insert(discards, q(card,"getEffectiveId"))
+                end
+            end
+            if #discards <= n then return {} end
+            if #discards > n*1.5 or (q(self.player,"getHp") == 1 and #discards > n) then 
+                return discards
+            else
+                return {}
+            end
+        else
+            cards = sgs.QList2Table(q(self.player,"getHandcards"))
+            q(self,"sortByUseValue",cards, true)
+            local need = {["jink"] = 0, ["nullification"] = 0, ["peach"] = 0}
+            for _,card in ipairs(cards) do
+                if need[q(card,"objectName")] and need[q(card,"objectName")] == 0 then
+                    if q(card,"isKindOf","Peach") and (not q(self.player,"isWounded")) then
+                        table.insert(discards, q(card,"getEffectiveId"))
+                    else
+                        need[q(card,"objectName")] = 1
+                    end
+                else
+                    if q(card,"isAvailable",self.player) then
+                        local usec = q(self,"aiUseCard",card, dummy())
+
+
+                        if (not usec.card) then table.insert(discards, q(card,"getEffectiveId")) end
+                        if (not source_slash(self)) and q(card,"isKindOf","Slash") then table.insert(discards, q(card,"getEffectiveId")) end
+                        if q(card,"isKindOf","Slash") then write_source_slash(self,true) end
+                    else
+                        table.insert(discards, q(card,"getEffectiveId"))
+                    end
+                end
+            end
+            if #discards <= n then return {} end
+            if #discards > n*1.5 then 
+                return discards
+            end
+            return {}
+        end
+    end
+    local cards = sgs.QList2Table(q(self.player,"getHandcards"))
+    q(self,"sortByUseValue",cards, true)
+    local need = {["jink"] = 0, ["nullification"] = 0, ["peach"] = 0}
+    local slash = false
+    for _,card in ipairs(cards) do
+        if need[q(card,"objectName")] and need[q(card,"objectName")] == 0 then
+            if q(card,"isKindOf","Peach") and (not q(self.player,"isWounded")) then
+                table.insert(discards, q(card,"getEffectiveId"))
+            else
+                need[q(card,"objectName")] = 1
+            end
+        else
+            if q(card,"isAvailable",self.player) then
+
+
+                local usec = q(self,"aiUseCard",card, dummy())
+                if (not usec.card) then table.insert(discards, q(card,"getEffectiveId")) end
+                if (not slash) and q(card,"isKindOf","Slash") 
+                and (not table.contains(discards, q(card,"getEffectiveId"))) then 
+                    table.insert(discards, q(card,"getEffectiveId")) 
+                end
+                if q(card,"isKindOf","Slash") then slash = true end
+            else
+                table.insert(discards, q(card,"getEffectiveId"))
+            end
+        end
+    end
+    return discards
+end
+
+
+sgs.ai_fill_skill.nyarz_ximo=function(self,inclusive,request)
+    if q(self.player,"getMark","nyarz_ximo-PlayClear") > 0 then return end
+    if #self.enemies == 0 then return end
+    for _,enemy in ipairs(self.enemies) do
+        if not q(enemy,"getEquips"):isEmpty() then
+            return parse(self,"#nyarz_ximo:.:")
+        end
+    end
+    for _,enemy in ipairs(self.enemies) do
+        if not q(enemy,"isNude") then
+            return parse(self,"#nyarz_ximo:.:")
+        end
+    end
+    if (not q(self,"isWeak")) and (not q(self.player,"isKongcheng")) then return parse(self,"#nyarz_ximo:.:") end
+end
+
+sgs.ai_skill_use_func["#nyarz_ximo"] = function(card, use, self)
+    q(self,"sort",self.enemies, "defense")
+    for _,enemy in ipairs(self.enemies) do
+        if not q(enemy,"getEquips"):isEmpty() then
+            use.card = card
+            if use.to then use.to:append(enemy) end
+            return 
+        end
+    end
+    for _,enemy in ipairs(self.enemies) do
+        if not q(enemy,"isNude") then
+            use.card = card
+            if use.to then use.to:append(enemy) end
+            return 
+        end
+    end
+    if (not q(self,"isWeak")) and q(self.player,"isKongcheng") then
+        use.card = card
+        if use.to then use.to:append(self.player) end
+    end
+
+end
+
+sgs.ai_use_priority.nyarz_ximo = 5
+sgs.ai_card_intention.nyarz_ximo = 20
+
+sgs.ai_skill_playerchosen.nyarz_ximo = function(self, targets)
+    q(self,"sort",self.friends, "defense")
+    return self.friends[1]
+end
+
+sgs.ai_playerchosen_intention.nyarz_ximo = -40
+
+
+sgs.ai_cardsview_valuable.nyarz_bixin = function(self, class_name, player)
+	if q(self.player,"isKongcheng") then return end
+	local classname2objectname = {
+		["Slash"] = "slash", ["Jink"] = "jink",
+		["Peach"] = "peach", ["Analeptic"] = "analeptic",
+		["FireSlash"] = "fire_slash", ["ThunderSlash"] = "thunder_slash",
+	}
+	local name = classname2objectname[class_name]
+	if not name then return end
+    for _,card in sgs.qlist(q(self.player,"getHandcards")) do
+        if q(card,"isKindOf",class_name) and (q(self.player,"getHandcardNum") > 1) then return end
+    end
+	return proposal(self,string.format("#nyarz_bixin:.:%s", name))
+end
+
+sgs.ai_fill_skill.nyarz_bixin=function(self,inclusive,request)
+    if q(self.player,"isKongcheng") then return end
+    local canuse = {"peach", "analeptic", "fire_slash", "thunder_slash", "slash"}
+    for _,pattern in ipairs(canuse) do
+        local n = 0
+        if q(self.player,"getHandcardNum") > 1 then
+            for _,card in sgs.qlist(q(self.player,"getHandcards")) do
+                if q(card,"objectName") == pattern then
+                    n = 1
+                    break
+                end
+            end
+            if n > 0 then continue end
+        end
+
+        local card = evaluation(self,pattern)
+        
+        sgs.ai_use_priority.nyarz_bixin = sgs.ai_use_priority[q(card,"getClassName")]
+        if (not q(card,"isAvailable",self.player)) then continue end
+
+        local use = {isDummy=true,to=sgs.SPlayerList()}
+
+        q(self,"useBasicCard",card,use)
+        if use.card then
+            save_targets(self,"nyarz_bixin_to",use.to)
+            return parse(self,"#nyarz_bixin:.:"..pattern)
+        end
+    end
+end
+
+sgs.ai_skill_use_func["#nyarz_bixin"] = function(card, use, self)
+    use.card = card
+    if use.to then use.to = targets(self,"nyarz_bixin_to") end
+end
+
+sgs.ai_use_priority.nyarz_bixin = 8
+
+sgs.ai_skill_choice.nyarz_bixin = function(self, choices)
+    local items = choices:split("+")
+    if #items == 1 then return items[1] end
+    local num = {}
+    for _,item in ipairs(items) do
+        num[item] = 0
+    end
+
+    for _,card in sgs.qlist(q(self.player,"getHandcards")) do
+        for _,item in ipairs(items) do
+            if q(card,"isKindOf",item) then
+                num[item] = num[item] + 1
+            end
+        end
+    end
+
+    local types = {"BasicCard","TrickCard","EquipCard"}
+    local n = 0
+    for _,ctype in ipairs(types) do
+        if q(self.player,"getMark","nyarz_bixin_"..ctype.."_lun") == 0 then n = n + 1 end
+    end
+
+    if n > 0 then
+        for _,id in draw_iter(self) do
+            local card = face(self,id)
+            for _,item in ipairs(items) do
+                if q(card,"isKindOf",item) then
+                    num[item] = num[item] + 1
+                end
+            end
+        end
+    end
+    local min = 99999
+    for _,n in ipairs(num) do
+        if n < min then min = n end
+    end
+    local maxnum = 0
+    local result
+    for _,item in ipairs(items) do
+        if num[item] == min then
+            result = item
+            maxnum = maxnum + 1
+        end
+    end
+    if maxnum == 1 then return result end
+    for _,item in ipairs(items) do
+        if num[item] == min and q(self.player,"getMark","nyarz_bixin_"..item.."_lun") > 0 then
+            return item
+        end
+    end
+    for _,item in ipairs(items) do
+        if num[item] == min then
+            return item
+        end
+    end
+    return items[math.random(1,#items)]
+end
+sgs.ai_ajustdamage_from["nyarz_feibai"]   = function(self, from, to, card, nature)
+	if card and not q(card,"isKindOf","SkillCard") and not q(card,"isRed") and not q(card,"isBlack") then
+		return 1
+	end
+end
+
+
+sgs.ai_skill_invoke.nyarz_yijve = function(self, data)
+    local dying = tagvalue(self,"nyarz_yijve","Dying")
+    local target = dying.who
+    if q(self,"isFriend",target) and q(target,"getMark","&nyarz_yijve+#"..self.player:objectName()) == 0 then return true end
+    if q(self,"isEnemy",target) and q(target,"getMark","&nyarz_yijve+#"..self.player:objectName()) > 0 then return true end
+    if q(self,"isEnemy",target) and q(target,"getMark","&nyarz_yijve+#"..self.player:objectName()) == 0 then
+        for _,card in sgs.qlist(fullhand(target)) do
+            if q(card,"isKindOf","Peach") or q(card,"isKindOf","Analeptic") then return true end
+        end
+        return false
+    end
+    return false
+end
+
+
+sgs.ai_cardsview_valuable.nyarz_wusheng = function(self, class_name, player)
+	if q(self.player,"isNude") then return end
+    for _,card in sgs.qlist(q(self.player,"getHandcards")) do
+        if q(card,"hasFlag","nyarz_wusheng") then return end
+    end
+	local classname2objectname = {
+		["Slash"] = "slash", ["IceSlash"] = "ice_slash",
+		["FireSlash"] = "fire_slash", ["ThunderSlash"] = "thunder_slash",
+	}
+	local name = classname2objectname[class_name]
+	if not name then return end
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    q(self,"sortByKeepValue",cards)
+    return proposal(self,string.format("#nyarz_wusheng:"..cards[1]:getEffectiveId()..":"..name))
+end
+
+sgs.ai_fill_skill.nyarz_wusheng=function(self,inclusive,request)
+    if q(self.player,"isKongcheng") then return end
+    for _,card in sgs.qlist(q(self.player,"getHandcards")) do
+        if q(card,"hasFlag","nyarz_wusheng") then return end
+    end
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    q(self,"sortByKeepValue",cards)
+
+    local canuse = {"fire_slash", "thunder_slash", "slash"}
+    for _,pattern in ipairs(canuse) do
+        local card = material(self,"nyarz_wusheng",pattern,{cards[1]:getEffectiveId()})
+        
+        sgs.ai_use_priority.nyarz_wusheng = sgs.ai_use_priority[q(card,"getClassName")]
+        if (not q(card,"isAvailable",self.player)) then continue end
+
+        local use = {isDummy=true,to=sgs.SPlayerList()}
+
+        q(self,"useBasicCard",card,use)
+        if use.card then
+            save_targets(self,"nyarz_wusheng_to",use.to)
+            return parse(self,"#nyarz_wusheng:"..cards[1]:getEffectiveId()..":"..pattern)
+        end
+    end
+end
+
+sgs.ai_skill_use_func["#nyarz_wusheng"] = function(card, use, self)
+    use.card = card
+    if use.to then use.to = targets(self,"nyarz_wusheng_to") end
+end
+
+-- audited alias ai_use_priority.nyarz_wusheng
+sgs.ai_card_priority.nyarz_wusheng = function(self,card)
+    if q(card,"hasFlag","nyarz_wusheng")
+    then
+        if self.useValue
+        then return 1 end
+        return 0.08
+    end
+end
+
+
+sgs.ai_cardsview_valuable.nyarz_longdan = function(self, class_name, player)
+    if q(self.player,"getMark","@nyarz_longdan_mark") == 0 then return end
+	if q(self.player,"isNude") then return end
+	local classname2objectname = {
+		["Slash"] = "slash", ["IceSlash"] = "ice_slash",
+		["FireSlash"] = "fire_slash", ["ThunderSlash"] = "thunder_slash",
+        ["Jink"] = "jink"
+	}
+	local name = classname2objectname[class_name]
+	if not name then return end
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    q(self,"sortByKeepValue",cards)
+
+    if #cards <= 2 then
+        return proposal(self,string.format("#nyarz_longdan:"..cards[1]:getEffectiveId()..":"..name))
+    else
+        if #cards == 1 then
+            return proposal(self,string.format("#nyarz_longdan:"..cards[1]:getEffectiveId()..":"..name))
+        else
+            return proposal(self,string.format("#nyarz_longdan:"..cards[1]:getEffectiveId().."+"..cards[2]:getEffectiveId()..":"..name))
+        end
+    end
+end
+
+sgs.ai_fill_skill.nyarz_longdan=function(self,inclusive,request)
+    if q(self.player,"getMark","@nyarz_longdan_mark") == 0 then return end
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    q(self,"sortByUseValue",cards, true)
+
+    local canuse = {"fire_slash", "thunder_slash", "slash"}
+    for _,pattern in ipairs(canuse) do
+        local card = material(self,"nyarz_longdan",pattern,{cards[1]:getEffectiveId()})
+        
+        if (not q(card,"isAvailable",self.player)) then continue end
+
+        local use = {isDummy=true,to=sgs.SPlayerList()}
+
+        q(self,"useBasicCard",card,use)
+        if use.card then
+            save_targets(self,"nyarz_longdan_to",use.to)
+            if #cards <= 2 then
+                return parse(self,"#nyarz_longdan:"..cards[1]:getEffectiveId()..":"..pattern)
+            else
+                local card_str = string.format("#nyarz_longdan:%s+%s:%s",cards[1]:getEffectiveId(), cards[2]:getEffectiveId(), pattern)
+                return parse(self,card_str)
+            end
+        end
+    end
+end
+
+sgs.ai_skill_use_func["#nyarz_longdan"] = function(card, use, self)
+    use.card = card
+    if use.to then use.to = targets(self,"nyarz_longdan_to") end
+end
+
+sgs.ai_use_priority.nyarz_longdan = 8
+
+
+sgs.ai_skill_invoke.nyarz_diancai = true
+
+sgs.ai_hasTuntianEffect_skill.nyarz_diancai = function(to, need_zaoxian)
+	return true
+end
+
+sgs.need_equip_skill = sgs.need_equip_skill .. "|nyarz_diaodu"
+sgs.ai_skill_playerchosen.nyarz_diaodu_get = function(self, targets)
+    local tos = sgs.QList2Table(targets)
+    q(self,"sort",tos, "defense")
+    for _,to in ipairs(tos) do
+        if q(self,"isFriend",to) and q(to,"getJudgingArea"):length() > 0 then return to end
+    end
+    for _,to in ipairs(tos) do
+        if q(self,"isFriend",to) and q(self,"doDisCard",to, "he", true) then return to end
+    end
+    for _,to in ipairs(tos) do
+        if q(self,"isEnemy",to) and q(self,"doDisCard",to, "he", true) then return to end
+    end
+    return nil
+end
+sgs.ai_use_revises.nyarz_diaodu = function(self,card,use)
+	if q(card,"isKindOf","EquipCard") and q(self,"evaluateArmor",card)>-5
+	then use.card = card return true end
+end
+
+
+sgs.ai_playerchosen_intention.nyarz_diaodu_get = 80
+
+sgs.ai_skill_playerchosen.nyarz_diaodu_give = function(self, targets)
+    local tos = sgs.QList2Table(targets)
+    q(self,"sort",tos, "defense")
+    for _,to in ipairs(tos) do
+        if q(self,"isFriend",to) and q(self,"canDraw",to, self.player)  then return to end
+    end
+    return tos[math.random(1,#tos)]
+end
+
+sgs.ai_playerchosen_intention.nyarz_diaodu_give = -80
+
+sgs.ai_skill_invoke.nyarz_diaodu = function(self, data)
+    local target = tagplayer(self,nil,"nyarz_diaodu")
+    if target and q(self,"isFriend",target) then return true end
+    return false
+end
+
+sgs.ai_choicemade_filter.skillInvoke.nyarz_diaodu = function(self,player,promptlist)
+	if promptlist[#promptlist]=="yes" then
+		local target = tagplayer(self,nil,"nyarz_diaodu")
+		if target then q(self,"updateIntention",player,target,-50) end
+	end
+end
+
+
+sgs.ai_skill_invoke.nyarz_zhaotao = true
+
+sgs.ai_skill_playerchosen.nyarz_zhaotao = function(self, targets)
+    local tos = sgs.QList2Table(targets)
+    q(self,"sort",tos, "defense")
+    for _,to in ipairs(tos) do
+        if (q(self,"isEnemy",to)) then return to end
+    end
+    return nil
+end
+
+sgs.ai_playerchosen_intention.nyarz_zhaotao = 80
+
+
+
+sgs.ai_skill_invoke.nyarz_sanchen = function(self, data)
+    return q(self.player,"getMark","nyarz_sanchen_quip") == 0
+end
+
+sgs.ai_skill_playerchosen.nyarz_sanchen = function(self, targets)
+    local tos = sgs.QList2Table(targets)
+    q(self,"sort",tos, "defense")
+    for _,to in ipairs(tos) do
+        if q(self,"isFriend",to) then return to end
+    end
+    return self.player
+end
+
+sgs.ai_playerchosen_intention.nyarz_sanchen = -80
+
+
+sgs.ai_cardsview_valuable.nyarz_canxi = function(self, class_name, player)
+	for _,p in sgs.qlist(q(self.room,"getAlivePlayers")) do
+        if q(p,"getPhase") ~= sgs.Player_NotActive then
+            if q(self.player,"getMark","@nyarz_canxi_"..p:getKingdom()) == 0 then return end
+        end
+    end
+	if class_name ~= "Nullification" then return end
+    for _,card in sgs.qlist(q(self.player,"getHandcards")) do
+        if q(card,"isKindOf",class_name) and (q(self.player,"getHandcardNum") > 1) then return end
+    end
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    q(self,"sortByKeepValue",cards)
+    for _,card in ipairs(cards) do
+        if (not q(card,"isKindOf","BasicCard")) then
+            return proposal(self,string.format("#nyarz_canxi:%s:", q(card,"getEffectiveId")))
+        end
+    end
+	return
+end
+
+
+sgs.ai_fill_skill.nyarz_tongwei=function(self,inclusive,request)
+    if q(self.player,"hasUsed","#nyarz_tongwei") then return end
+	return parse(self,"#nyarz_tongwei:.:")
+end
+
+
+sgs.ai_skill_use_func["#nyarz_tongwei"] = function(card,use,self)
+	local unpreferedCards = {}
+	local cards = sgs.QList2Table(q(self.player,"getHandcards"))
+
+	if q(self.player,"getHp")<3 then
+		local use_slash,keep_jink,keep_analeptic,keep_weapon = false,false,false,nil
+		local keep_slash = tagvalue(self,"JilveWansha","Bool")
+		for _,zcard in sgs.list(q(self.player,"getCards","he"))do
+			if not isCard("Peach",zcard,self.player)
+			then
+				local shouldUse = true
+				if isCard("Slash",zcard,self.player)
+				and not use_slash
+				then
+
+                    local dummy_use = {isDummy=true,to=sgs.SPlayerList()}
+                    q(self,"useCardByClassName",zcard, dummy_use)
+
+					if dummy_use.card then
+						if keep_slash then shouldUse = false end
+						if dummy_use.to then
+							for _,p in sgs.list(dummy_use.to)do
+								if q(p,"getHp")<=1 then
+									shouldUse = false
+									if q(self.player,"distanceTo",p)>1 then keep_weapon = q(self.player,"getWeapon") end
+									break
+								end
+							end
+							if dummy_use.to:length()>1 then shouldUse = false end
+						end
+						if not q(self,"isWeak") then shouldUse = false end
+						if not shouldUse then use_slash = true end
+					end
+				end
+				if q(zcard,"getTypeId")==sgs.Card_TypeTrick then
+                    local dummy_use = {isDummy=true,to=sgs.SPlayerList()}
+                    q(self,"useCardByClassName",zcard, dummy_use)
+
+					if dummy_use.card then shouldUse = false end
+				end
+				if q(zcard,"getTypeId")==sgs.Card_TypeEquip and not q(self.player,"hasEquip",zcard) then
+                    local dummy_use = {isDummy=true,to=sgs.SPlayerList()}
+                    q(self,"useCardByClassName",zcard, dummy_use)
+					if dummy_use.card then shouldUse = false end
+					if keep_weapon and q(zcard,"getEffectiveId")==q(keep_weapon,"getEffectiveId") then shouldUse = false end
+				end
+				if q(self.player,"hasEquip",zcard) and q(zcard,"isKindOf","Armor") and not q(self,"needToThrowArmor") then shouldUse = false end
+				if q(self.player,"hasEquip",zcard) and q(zcard,"isKindOf","DefensiveHorse") and not q(self,"needToThrowArmor") then shouldUse = false end
+				if q(self.player,"hasEquip",zcard) and q(zcard,"isKindOf","WoodenOx") and q(self.player,"getPile","wooden_ox"):length()>1 then shouldUse = false end
+				if isCard("Jink",zcard,self.player) and not keep_jink then
+					keep_jink = true
+					shouldUse = false
+				end
+				if q(self.player,"getHp")<2 and isCard("Analeptic",zcard,self.player) and not keep_analeptic then
+					keep_analeptic = true
+					shouldUse = false
+				end
+				if shouldUse then table.insert(unpreferedCards,q(zcard,"getId")) end
+			end
+		end
+	end
+
+	if #unpreferedCards<1 then
+		local use_slash_num = 0
+		q(self,"sortByKeepValue",cards)
+		for _,card in ipairs(cards)do
+			if q(card,"isKindOf","Slash") then
+				local will_use = false
+				if use_slash_num<=q(card,"getTargetResidue",self.player)
+				then
+                    local dummy_use = {isDummy=true,to=sgs.SPlayerList()}
+                    q(self,"useCardByClassName",card, dummy_use)
+
+					if dummy_use.card then
+						will_use = true
+						use_slash_num = use_slash_num+1
+					end
+				end
+				if not will_use then table.insert(unpreferedCards,q(card,"getId")) end
+			end
+		end
+
+		local num = q(self,"getCardsNum","Jink")-1
+		if q(self.player,"getArmor") then num = num+1 end
+		if num>0 then
+			for _,card in ipairs(cards)do
+				if q(card,"isKindOf","Jink") and num>0 then
+					table.insert(unpreferedCards,q(card,"getId"))
+					num = num-1
+				end
+			end
+		end
+		for _,card in ipairs(cards)do
+			if q(card,"isKindOf","Weapon") and q(self.player,"getHandcardNum")<3
+			or q(self,"getSameEquip",card,self.player)
+			or q(card,"isKindOf","OffensiveHorse")
+			or q(card,"isKindOf","AmazingGrace")
+			then table.insert(unpreferedCards,q(card,"getId"))
+			elseif q(card,"getTypeId")==sgs.Card_TypeTrick then
+                local dummy_use = {isDummy=true,to=sgs.SPlayerList()}
+                    q(self,"useCardByClassName",card, dummy_use)
+				if not dummy_use.card then table.insert(unpreferedCards,q(card,"getId")) end
+			end
+		end
+
+		if q(self.player,"getWeapon") and q(self.player,"getHandcardNum")<3 then
+			table.insert(unpreferedCards,q(self.player,"getWeapon"):getId())
+		end
+
+		if q(self,"needToThrowArmor") then
+			table.insert(unpreferedCards,q(self.player,"getArmor"):getId())
+		end
+
+		if q(self.player,"getOffensiveHorse") and q(self.player,"getWeapon") then
+			table.insert(unpreferedCards,q(self.player,"getOffensiveHorse"):getId())
+		end
+	end
+
+	for i = #unpreferedCards,1,-1 do
+		if face(self,unpreferedCards[i]):isKindOf("WoodenOx") and q(self.player,"getPile","wooden_ox"):length()>1 then
+			table.removeOne(unpreferedCards,unpreferedCards[i])
+		end
+	end
+
+	local use_cards = {}
+	for i = #unpreferedCards,1,-1 do
+		if not q(self.player,"isJilei",face(self,unpreferedCards[i])) then table.insert(use_cards,unpreferedCards[i]) end
+	end
+
+    local targets = sgs.QList2Table(q(self.room,"getOtherPlayers",self.player))
+    q(self,"sort",targets, "defense")
+    local target = targets[1]
+
+    if #use_cards>0 then
+		local card_str = string.format("#nyarz_tongwei:%s:", table.concat(use_cards,"+"))
+		local acard = parse(self,card_str)
+        use.card = acard
+        if use.to then use.to:append(target) end
+	end
+end
+
+-- audited alias ai_use_value.nyarz_tongwei
+-- audited alias ai_use_priority.nyarz_tongwei
+sgs.dynamic_value.benefit.nyarz_tongwei = sgs.dynamic_value.benefit.ZhihengCard
+
+sgs.ai_skill_choice.nyarz_tongwei = function(self, choices, data)
+    local items = choices:split("+")
+    if #items == 1 then return items[1] end
+    local use = q(data,"toCardUse")
+    if use.from then
+        if q(self,"isFriend",use.from) then return "Trick" end
+        if q(use.from,"hasArmorEffect","eight_diagram") then return "Trick" end
+        local Jink = 0
+        for _,card in sgs.qlist(fullhand(use.from)) do
+            if q(card,"isKindOf","Jink") then Jink = Jink + 1 end
+        end
+        if q(self.player,"hasSkill","nyarz_cuguo") then
+            if Jink <= 1 - q(self.player,"getMark","nyarz_cuguo-Clear") then return "Slash" end
+        else
+            if Jink == 0 then return "Slash" end
+        end
+        return "Trick"
+    end
+    return items[math.random(1, #items)]
+end
+
+sgs.ai_skill_choice.nyarz_tongwei_slash = function(self, choices, data)
+    local items = choices:split("+")
+    if #items == 1 then return items[1] end
+    local use = q(data,"toCardUse")
+    if use.from then
+        if q(self,"isFriend",use.from) then return "slash" end
+        if q(use.from,"hasArmorEffect","vine") 
+        and (not (q(self.player,"isChained") and q(use.from,"isChained") and q(self.player,"getHp") <= q(use.from,"getHp"))) then
+            return "fire_slash"
+        end
+        if (not (q(self.player,"isChained") and q(use.from,"isChained"))) then return "thunder_slash" end
+        return "slash"
+    end
+    return "slash"
+end
+
+sgs.ai_skill_choice.nyarz_tongwei_trick = function(self, choices, data)
+    local items = choices:split("+")
+    if #items == 1 then return items[1] end
+    local use = q(data,"toCardUse")
+    if use.from then
+        if q(self,"isFriend",use.from) then
+            if q(self,"isWeak",use.from) and q(use.from,"isWounded")
+            and table.contains(items, "god_salvation") then return "god_salvation" end
+            if q(use.from,"getJudgingArea"):length() > 0 then
+                local patterns = {"snatch", "dismantlement"}
+                for _,pattern in ipairs(patterns) do
+                    if table.contains(items, pattern) then return pattern end
+                end
+            end
+            if table.contains(items, "ex_nihilo") then return "ex_nihilo" end
+            if q(use.from,"isChained") and table.contains(items, "iron_chain") then return "iron_chain" end
+            if table.contains(items, "amazing_grace") then return "amazing_grace" end
+            return items[math.random(1, #items)]
+        end
+        if (q(use.from,"hasArmorEffect","vine") or q(self.player,"getHandcardNum") + 2 >= q(use.from,"getHandcardNum"))
+        and (not (q(self.player,"isChained") and q(use.from,"isChained") and q(self.player,"getHp") <= q(use.from,"getHp"))) then
+            return "fire_attack"
+        end
+        local SlashSelf = q(self,"getCardsNum","Slash")
+        local SlashTarget = 0
+        local Jink = 0
+        for _,card in sgs.qlist(fullhand(use.from)) do
+            if q(card,"isKindOf","Jink") then Jink = Jink + 1 end
+            if q(card,"isKindOf","Slash") then SlashTarget = SlashTarget + 1 end
+        end
+        if (not (q(use.from,"hasArmorEffect","vine") and q(use.from,"hasArmorEffect","eight_diagram"))) 
+        and Jink == 0 and table.contains(items, "archery_attack") then return "archery_attack" end
+        if SlashTarget == 0 and (not q(use.from,"hasArmorEffect","vine")) 
+        and table.contains(items, "savage_assault") then return "savage_assault" end
+        if SlashSelf >= SlashTarget and table.contains(items, "duel") then return "duel" end
+        if (not q(use.from,"isNude")) then
+            local patterns = {"snatch", "dismantlement"}
+            for _,pattern in ipairs(patterns) do
+                if table.contains(items, pattern) then return pattern end
+            end
+        end
+    end
+    return items[math.random(1, #items)]
+end
+
+
+sgs.ai_cardsview_valuable.nyarz_luanzheng = function(self, class_name, player)
+	if q(self.player,"isNude") then return end
+    if q(self.player,"getMark","nyarz_luanzheng_failed-Clear") > 0 then return end
+	local classname2objectname = {
+		["Slash"] = "slash", ["Jink"] = "jink",
+		["Peach"] = "peach", ["Analeptic"] = "analeptic",
+		["FireSlash"] = "fire_slash", ["ThunderSlash"] = "thunder_slash",
+        ["Nullification"] = "nullification"
+	}
+	local name = classname2objectname[class_name]
+	if not name then return end
+    local mark = string.format("nyarz_luanzheng_guhuo_remove_%s_lun", name)
+    if q(self.player,"getMark",mark) > 0 then return end
+    for _,card in sgs.qlist(q(self.player,"getHandcards")) do
+        if q(card,"isKindOf",class_name) then return end
+    end
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    return proposal(self,string.format("#nyarz_luanzheng:.:%s", name))
+end
+    
+sgs.ai_skill_discard.nyarz_luanzheng_put = function(self, max, min)
+    if q(self.player,"isNude") then return end
+    if q(self.player,"getPhase") == sgs.Player_Play then
+        if #self.friends_noself == 0 then
+            local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+            q(self,"sortByKeepValue",cards)
+            return {cards[1]:getEffectiveId()}
+        else
+            q(self,"sort",self.friends_noself, "defense", true)
+            for _,friend in ipairs(self.friends_noself) do
+                if q(friend,"getHandcardNum") > (q(self.player,"getHandcardNum") + 1) then return {} end
+            end
+        end
+        local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+        q(self,"sortByKeepValue",cards)
+        return {cards[1]:getEffectiveId()}
+    end
+    if (not q(self,"isWeak")) then return {} end
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    q(self,"sortByKeepValue",cards)
+    return {cards[1]:getEffectiveId()}
+end
+
+sgs.ai_fill_skill.nyarz_luanzheng=function(self,inclusive,request)
+    if q(self.player,"getMark","nyarz_luanzheng_failed-Clear") > 0 then return end
+    local huace_patterns = tagvalue(self,"nyarz_luanzheng_cards","String"):split("+")
+
+	for _,pattern in ipairs(huace_patterns) do
+        local canuse = false
+        local card = named(self,"nyarz_luanzheng",pattern,{})
+        
+
+        local mark = string.format("nyarz_luanzheng_guhuo_remove_%s_lun", pattern)
+        if q(self.player,"getMark",mark) == 0 and q(card,"isAvailable",self.player) then
+            canuse = true
+        end
+
+        if canuse then
+            local usec = {isDummy=true,to=sgs.SPlayerList()}
+            q(self,"useCardByClassName",card, usec)
+            if usec.card and (not (q(card,"canRecast") and usec.to:length() < 1)) then
+                save_targets(self,"nyarz_luanzheng_to",usec.to)
+                local card_str = string.format("#nyarz_luanzheng:.:%s",  pattern)
+                return parse(self,card_str)
+            end
+        end
+    end
+end
+
+sgs.ai_skill_use_func["#nyarz_luanzheng"] = function(card, use, self)
+	use.card = card
+    if use.to then use.to = targets(self,"nyarz_luanzheng_to") end
+end
+
+sgs.ai_use_priority.nyarz_luanzheng = 6.8
+
+sgs.ai_skill_discard.nyarz_luanzheng = function(self, max, min)
+    local use = tagvalue(self,"nyarz_luanzheng","CardUse")
+    local target = use.from
+    if (not target) or (not q(self,"isFriend",target)) then return {} end
+    if q(self,"isWeak") or q(self.player,"isNude") then return {} end
+    if q(target,"getPhase") == sgs.Player_NotActive and (not q(self,"isWeak",target)) 
+    and q(self.player,"getHandcardNum") <= q(self.player,"getHp") then return {} end
+    if q(target,"getPhase") == sgs.Player_Play then
+        local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+        q(self,"sortByUseValue",cards)
+        return {cards[1]:getEffectiveId()}
+    end
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    q(self,"sortByKeepValue",cards, true)
+    return {cards[1]:getEffectiveId()}
+end
+
+sgs.ai_skill_playerchosen.nyarz_luanzheng = function(self, targets)
+    local tos = sgs.QList2Table(q(self.room,"getOtherPlayers",self.player))
+    if #self.friends_noself == 0 then return tos[1] end
+    q(self,"sort",self.friends_noself, "handcard")
+    for _,friend in ipairs(self.friends_noself) do
+        if (not q(self,"isWeak",friend)) then return friend end
+    end
+    return self.friends_noself[1]
+end
+
+
+sgs.ai_skill_playerschosen.nyarz_quanqing = function(self, targets, max, min)
+    local player = self.player
+    if q(player,"getPhase") ~= sgs.Player_NotActive then
+        if q(player,"getPhase") == sgs.Player_Discard 
+        or q(player,"getPhase") == sgs.Player_Finish then
+            local tos = sgs.SPlayerList()
+            for _,other in sgs.qlist(q(self.room,"getOtherPlayers",player)) do
+                if q(self,"isFriend",other) then
+                    tos:append(other)
+                end
+            end
+            return tos
+        end
+        local tos = sgs.SPlayerList()
+        for _,other in sgs.qlist(q(self.room,"getOtherPlayers",player)) do
+            if q(self,"isFriend",other) then
+                tos:append(other)
+            end
+            if q(self,"isEnemy",other) then
+                if q(other,"getMark","&nyarz_quanqing_bad+#"..player:objectName().."-Clear") == 0 then
+                    tos:append(other)
+                end
+            end
+        end
+        return tos
+    end
+    local tos = sgs.SPlayerList()
+    local now = q(self.room,"getCurrent")
+    if now and q(self,"isEnemy",now) and q(now,"getPhase") == sgs.Player_Play
+    and q(now,"getMark","&nyarz_quanqing_bad+#"..player:objectName().."-Clear") == 0 then
+        tos:append(now)
+    end
+    for _,other in sgs.qlist(q(self.room,"getOtherPlayers",player)) do
+        if q(self,"isFriend",other) and q(other,"getPhase") ~= sgs.Player_Play
+        and ((not q(self,"isWeak",other)) or (q(other,"getMark","&nyarz_quanqing_bad+#"..player:objectName().."-Clear") > 0)) then
+            tos:append(other)
+        end
+    end
+    return tos
+end
+
+
+sgs.ai_skill_invoke.nyarz_shangyu = function(self, data)
+    local target = tagplayer(self,self.player,"nyarz_shangyu")
+    return target and q(self,"isFriend",target)
+end
+
+sgs.ai_skill_playerchosen.nyarz_shangyu = function(self, targets)
+    local target = tagplayer(self,self.player,"nyarz_shangyu")
+    if (not target) or (not q(self,"isEnemy",target)) then return nil end
+    local tos = sgs.QList2Table(q(self.room,"getOtherPlayers",target))
+    q(self,"sort",tos, "defense")
+    for _,to in ipairs(tos) do
+        if q(self,"isFriend",to) then return to end
+    end
+    return nil
+end
+
+sgs.ai_playerchosen_intention.nyarz_shangyu = -80
+
+
+sgs.ai_skill_invoke.nyarz_caixia = function(self, data)
+    local card = tagvalue(self,"nyarz_caixia","Card")
+    if (not card) then return false end
+    if q(self.player,"getHp") <= 1 then return nil end
+    if q(card,"isKindOf","Peach") or q(card,"isKindOf","Analeptic")
+    or q(card,"isKindOf","Nullification") or q(card,"isKindOf","Jink") then return false end
+    return true
+end
+
+
+sgs.ai_fill_skill.nyarz_qiangxi=function(self,inclusive,request)
+    if q(self,"isWeak") then return end
+    if q(self.player,"getHp") <= 2 then return end
+    if #self.enemies <= 0 then return end
+    return parse(self,"#nyarz_qiangxi:.:")
+end
+
+sgs.ai_skill_use_func["#nyarz_qiangxi"] = function(card, use, self)
+
+    q(self,"sort",self.enemies, "hp")
+    for _,enemy in ipairs(self.enemies) do
+        if q(enemy,"getMark","nyarz_qiangxi_damaged-PlayClear") == 0 then
+            use.card = card
+            if use.to then use.to:append(enemy) end
+            return
+        end
+    end
+end
+
+sgs.ai_use_priority.nyarz_qiangxi = 7.8
+
+
+sgs.ai_skill_discard.nyarz_ninge = function(self, max, min)
+    local discards = {}
+    local cards = sgs.QList2Table(q(self.player,"getHandcards"))
+    q(self,"sortByUseValue",cards, true)
+    local need = {["jink"] = 0, ["nullification"] = 0, ["peach"] = 0}
+    local slash = false
+    for _,card in ipairs(cards) do
+        if need[q(card,"objectName")] and need[q(card,"objectName")] == 0 then
+            if q(card,"isKindOf","Peach") and (not q(self.player,"isWounded")) then
+                table.insert(discards, q(card,"getEffectiveId"))
+            else
+                need[q(card,"objectName")] = 1
+            end
+        else
+            if q(card,"isAvailable",self.player) then
+                local usec = {isDummy=true,to=sgs.SPlayerList()}
+                q(self,"useCardByClassName",card, usec)
+                if (not usec.card) then table.insert(discards, q(card,"getEffectiveId")) end
+                if (not slash) and q(card,"isKindOf","Slash") 
+                and (not table.contains(discards, q(card,"getEffectiveId"))) then 
+                    table.insert(discards, q(card,"getEffectiveId")) 
+                end
+                if q(card,"isKindOf","Slash") then slash = true end
+            else
+                table.insert(discards, q(card,"getEffectiveId"))
+            end
+        end
+    end
+    return discards
+end
+
+sgs.ai_skill_choice.nyarz_ninge = function(self, choices, data)
+    local damage = q(data,"toDamage")
+    if q(damage.to,"objectName") == q(self.player,"objectName") then
+        if string.find(choices, "nyarz_qiangxi") then return "nyarz_qiangxi" end
+        if string.find(choices, "nyarz_ninge") then return "nyarz_ninge" end
+    end
+    local items = choices:split("+")
+    return items[math.random(1, #items)]
+end
+
+sgs.ai_card_priority.nyarz_piaopin = function(self,card,v)
+	if q(card,"hasFlag","nyarz_piaopin")
+	then return 10 end
+end
+
+
+sgs.ai_fill_skill.nyarz_shensu=function(self,inclusive,request)
+    if (q(self.player,"getMark","@nyarz_shensu_limit") == 0)
+    or (q(self.player,"getMark","nyarz_shensu-Clear") == 0) then
+    else return end
+
+    local canuse = {"fire_slash", "thunder_slash", "slash"}
+    for _,pattern in ipairs(canuse) do
+        local card = named(self,"nyarz_shensu",pattern,{})
+        
+        sgs.ai_use_priority.nyarz_shensu = sgs.ai_use_priority[q(card,"getClassName")]
+        if (not q(card,"isAvailable",self.player)) then continue end
+
+        local use = {isDummy=true,to=sgs.SPlayerList()}
+
+        q(self,"useBasicCard",card,use)
+        if use.card then
+            save_targets(self,"nyarz_shensu_to",use.to)
+            return parse(self,"#nyarz_shensu:.:"..pattern)
+        end
+    end
+end
+
+sgs.ai_skill_use_func["#nyarz_shensu"] = function(card, use, self)
+    use.card = card
+    if use.to then use.to = targets(self,"nyarz_shensu_to") end
+end
+
+sgs.ai_skill_choice.nyarz_shensu = function(self, choices, data)
+    local items = choices:split("+")
+    if #items == 1 then return items[1] end
+    table.removeOne(items, "limit")
+    return items[math.random(1,#items)] 
+end
+
+sgs.ai_use_priority.nyarz_shensu = sgs.ai_use_priority.Slash - 0.1
+sgs.ai_use_value.nyarz_shensu = sgs.ai_use_value.Slash - 0.1
+
+
+sgs.ai_fill_skill.nyarz_shebian=function(self,inclusive,request)
+    if q(self.player,"getMark","@nyarz_shebian_mark") == 0 then return end
+
+    local cant = true
+    for _,skill in sgs.qlist(q(self.player,"getVisibleSkillList")) do
+        if (not q(skill,"isAttachedLordSkill")) and q(skill,"objectName") ~= "nyarz_shebian" then 
+            cant = false
+            break
+        end
+    end
+    if cant then return end
+    if q(self.player,"hasSkill","nyarz_shensu") and q(self.player,"getGeneralName") == "nyarz_xiahouyuan" then else return end
+
+    local buffs = {"noresponse", "damage", "limit"}
+    local choices = {}
+    for _,buff in ipairs(buffs) do
+        local mark = string.format("@nyarz_shensu_%s", buff)
+        if q(self.player,"getMark",mark) == 0 then return end
+    end
+
+    return parse(self,"#nyarz_shebian:.:")
+end
+
+sgs.ai_skill_use_func["#nyarz_shebian"] = function(card, use, self)
+    use.card = card
+end
+
+sgs.ai_skill_choice.nyarz_shebian = function(self, choices, data)
+    local items = choices:split("+")
+    if table.contains(items, "nyarz_shensu") then return "nyarz_shensu" end
+    return items[math.random(1,#items)] 
+end
+
+sgs.ai_skill_playerchosen.nyarz_shebian = function(self, targets)
+    if targets:contains(self.player) then return self.player end
+    return targets:at((math.random(1,targets:length()) - 1))
+end
+
+sgs.ai_use_priority.nyarz_shebian = 0
+
+
+sgs.ai_skill_invoke.nyarz_quanji = true
+
+sgs.ai_skill_discard.nyarz_quanji_damaged = function(self,max,min)
+    if q(self.player,"getPhase") == sgs.Player_Play then return {} end
+    if q(self.player,"hasSkill","nyarz_zili") and q(self.player,"getMark","nyarz_zili") == 0 then
+        if q(self.player,"getPile","nyarz_quanji"):length() <  q(self.player,"getMaxHp")  then
+            local need = math.min(q(self.player,"getCards","he"):length() - 2, q(self.player,"getMaxHp") - q(self.player,"getPile","nyarz_quanji"):length())
+            if need <= 0 then return {} end
+            local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+            local discards = {}
+            q(self,"sortByKeepValue",cards)
+            for i = 1, need, 1 do
+                table.insert(discards, cards[i]:getEffectiveId())
+            end
+            return discards
+        end
+    end
+    if q(self,"isWeak") then return {} end
+    local need = math.random(0,2)
+    need = math.min(need, q(self.player,"getCards","he"):length() - 2)
+    if need <= 0 then return {} end
+    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    local discards = {}
+    q(self,"sortByKeepValue",cards)
+    for i = 1, need, 1 do
+        table.insert(discards, cards[i]:getEffectiveId())
+    end
+    return discards
+end
+
+sgs.ai_skill_discard.nyarz_quanji_end = function(self, max, min)
+    if q(self.player,"getHandcardNum") < q(self.player,"getMaxCards") then
+        if q(self.player,"getHandcardNum") >= q(self.player,"getHp") or math.random(1,2) == 1 then
+            local cards = sgs.QList2Table(q(self.player,"getCards","h"))
+            q(self,"sortByKeepValue",cards)
+            return {cards[1]:getEffectiveId()}
+        end
+    else
+        local need = (q(self.player,"getHandcardNum") - q(self.player,"getMaxCards"))/2 + 1
+        local cards = sgs.QList2Table(q(self.player,"getCards","h"))
+        q(self,"sortByKeepValue",cards)
+        local discards = {}
+        for _,card in ipairs(cards) do
+            table.insert(discards, q(card,"getEffectiveId"))
+            need = need - 1
+            if need <= 0 then break end
+        end
+        return discards
+    end
+    return {}
+end
+
+
+sgs.ai_fill_skill.nyarz_paiyi=function(self,inclusive,request)
+    if q(self.player,"getPile","nyarz_quanji"):length() <= 0 then return end
+    local choices = {"damage","draw"}
+    for _,choice in ipairs(choices) do
+        if q(self.player,"getMark","nyarz_paiyi_tiansuan_remove_"..choice.."-PlayClear") == 0  then
+            return parse(self,"#nyarz_paiyi:.:")
+        end
+    end
+end
+
+sgs.ai_skill_use_func["#nyarz_paiyi"] = function(card,use,self)
+    local card_ids = sgs.QList2Table(q(self.player,"getPile","nyarz_quanji"))
+    if q(self.player,"getMark","nyarz_paiyi_tiansuan_remove_damage-PlayClear") == 0 then
+        q(self,"sort",self.enemies, "defense")
+        if #self.enemies < (q(self.player,"getPile","nyarz_quanji"):length() / 2) then
+            if q(self.player,"getMark","nyarz_paiyi_tiansuan_remove_draw-PlayClear") == 0 then
+                local num = q(self.player,"getPile","nyarz_quanji"):length() - #self.enemies
+                local dis = {}
+                for i = 1, num, 1 do
+                    table.insert(dis, card_ids[i])
+                end
+                local card_str = string.format("#nyarz_paiyi:%s:draw",table.concat(dis, "+"))
+                local acard = parse(self,card_str)
+                use.card = acard
+                return
+            end
+        end
+
+        local dis = {}
+        local max = q(self.player,"getPile","nyarz_quanji"):length()
+        if q(self.player,"getMark","nyarz_paiyi_tiansuan_remove_draw-PlayClear") == 0 then
+            max = max - 1
+        end
+        if max > 0 then
+            local tos = sgs.SPlayerList()
+            for _,p in ipairs(self.enemies) do
+                tos:append(p)
+                max = max - 1
+                if max <= 0 then break end
+            end
+            local i = 0
+            while(#dis < tos:length() or (#dis < (q(self.player,"getPile","nyarz_quanji"):length() / 2))) do
+                table.insert(dis, card_ids[i+1])
+                i = i + 1
+            end
+
+            local card_str = string.format("#nyarz_paiyi:%s:damage",table.concat(dis, "+"))
+            local acard = parse(self,card_str)
+            use.card = acard
+            if use.to then use.to = tos end
+            return
+        end
+    end
+    if q(self.player,"getMark","nyarz_paiyi_tiansuan_remove_draw-PlayClear") == 0 then
+        local card_str = string.format("#nyarz_paiyi:%s:draw",table.concat(card_ids, "+"))
+        local acard = parse(self,card_str)
+        use.card = acard
+        return
+    end
+end
+
+sgs.ai_use_priority.nyarz_paiyi = 6.8
+
+ai_audited_aliases.register({id="ai_use_priority.bnjiuchi",registry="ai_use_priority",path={"bnjiuchi"},canonical_registry="ai_use_priority",canonical_path={"Analeptic"},self_index=1,defer_canonical=true})
+
+ai_audited_aliases.register({id="ai_cardneed.nyarz_funing",registry="ai_cardneed",path={"nyarz_funing"},canonical_registry="ai_cardneed",canonical_path={"slash"},self_index=3,defer_canonical=true})
+
+ai_audited_aliases.register({id="ai_use_priority.nyarz_longhun_god",registry="ai_use_priority",path={"nyarz_longhun_god"},canonical_registry="ai_use_priority",canonical_path={"Slash"},self_index=1,defer_canonical=true})
+
+ai_audited_aliases.register({id="ai_use_priority.nyarz_wusheng",registry="ai_use_priority",path={"nyarz_wusheng"},canonical_registry="ai_use_priority",canonical_path={"Slash"},self_index=1,defer_canonical=true})
+
+ai_audited_aliases.register({id="ai_use_value.nyarz_tongwei",registry="ai_use_value",path={"nyarz_tongwei"},canonical_registry="ai_use_value",canonical_path={"ZhihengCard"},self_index=1,defer_canonical=true})
+
+ai_audited_aliases.register({id="ai_use_priority.nyarz_tongwei",registry="ai_use_priority",path={"nyarz_tongwei"},canonical_registry="ai_use_priority",canonical_path={"ZhihengCard"},self_index=1,defer_canonical=true})

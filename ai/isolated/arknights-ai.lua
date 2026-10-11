@@ -1,235 +1,238 @@
--- Arknights: port the SmartAI branch order using viewer-visible values only.
--- V1 card construction and opponent Slash legality remain explicit coverage gaps.
-local function known(value, key)
-    if value == nil then ai_unsupported("required visible value is unknown", key) end
-    return value
+-- Fixed b6025acc Arknights strategies. The two old Lua SkillCard prototypes
+-- disappeared in the native V2 migration: retain source Card_Parse nil rather
+-- than manufacture action receipts or claim an accepted activation.
+local function known(v,k)if v==nil then ai_unsupported("arknights value is unknown",k)end return v end
+local function q(o,k,...)
+    if not o then ai_unsupported("arknights object is absent",k)end
+    if k=="getMark"and type(o.getStrategyMark)=="function"then k="getStrategyMark"end
+    if k=="hasFlag"and type(o.getStrategyFlag)=="function"then k="getStrategyFlag"end
+    if type(o[k])~="function"then ai_unsupported("arknights helper unavailable",k)end
+    return known(o[k](o,...),k)
 end
-
-local function relation(self, player, key)
-    local value = self:relationTo(player)
-    if value ~= "friend" and value ~= "enemy" and value ~= "neutral" then
-        ai_unsupported("player relation is unknown", key)
-    end
-    return value
-end
-
-local function targets(self, options, key)
-    if not options or options.candidates_complete ~= true or not AIValue.isList(options.players) then
-        ai_unsupported("complete player candidates are required", key)
-    end
-    local result = AIList.new({})
-    for _, name in ipairs(options.players) do
-        local player = self.room:findPlayerByObjectName(name)
-        if not player then ai_unsupported("candidate is absent from the visible roster", key) end
-        result:append(player)
-    end
-    return result
-end
-
-local function choose_many(options, names, key)
-    if type(options.min_count) ~= "number" or type(options.max_count) ~= "number"
-        or #names < options.min_count or #names > options.max_count then
-        ai_unsupported("legacy selection does not fit the offered bounds", key)
-    end
-    return names
-end
-
-local function active_action(self, key)
-    local action = self:getSkillAction()
-    if action then
-        if action:getActivationSkillName() ~= key then
-            ai_unsupported("activation belongs to another skill", key)
-        end
-    else
-        -- General activation has no bound probe; refuse an ambiguous instance.
-        for _, candidate in ipairs(known(self:getSkillActions(), key)) do
-            if candidate:getActivationSkillName() == key then
-                if action then ai_unsupported("activation instance is ambiguous", key) end
-                action = candidate
-            end
-        end
-    end
-    if not action or not action:isValid() then ai_unsupported("activation ticket is missing", key) end
-    return action
-end
-
--- The legacy card counter includes view-as responses. Do not replace an unknown
--- conversion with a physical-card count when deciding whether revival is needed.
-local function rescue_count(self, key)
-    for _, skill in ipairs(known(self.player:getSkills(), key)) do
-        if not skill:isInvalid() then
-            local capability = skill._view.has_view_as_skill
-            if capability == nil or capability then
-                ai_unsupported("rescue view-as counting is not covered", key)
-            end
-        end
-    end
-    return known(self:getCardsNum("Peach"), key) + known(self:getCardsNum("Analeptic"), key)
-end
-
-ai_skill_activate.ark_guozai = function(self)
-    local key = "ark_guozai"
-    if known(self.player:getMark("&ark_guozai-PlayClear"), key) >= known(self.player:getMaxHp(), key) then return nil end
-    local action = active_action(self, key)
-    for _, conversion in ipairs(known(self:getConversions(), key)) do
-        if conversion:getActivationSkillName() == key
-            and conversion:getActivationOwner() == action:getActivationOwner()
-            and conversion:getActivationInstanceId() == action:getActivationInstanceId()
-            and conversion:getSourceOwner() == action:getSourceOwner()
-            and conversion:getSourceSkillName() == action:getSourceSkillName()
-            and conversion:getSourceInstanceID() == action:getSourceInstanceID()
-            and conversion:getClassName() == "Slash" then
-            -- Exactly the authority-issued Slash replaces the original dummy Slash.
-            local plan, status = self:tryUseCard(conversion)
-            if status == "unsupported" then error(plan, 0) end
-            if status == "planned" then return plan:toAnswer() end
-            return nil
-        end
-    end
-    ai_unsupported("ark_guozai requires an authorized Slash conversion", key)
-end
-sgs.ai_use_priority.ark_guozai = 8
-
-ai_skill_playerchosen.ark_gongzhen = function(self, options)
-    local key, enemies = "ark_gongzhen", {}
-    for _, player in ipairs(targets(self, options, key)) do
-        if relation(self, player, key) == "enemy" then enemies[#enemies + 1] = player end
-    end
-    if #enemies == 0 then return nil end
-    enemies = known(self:sort(enemies, "defense"), key)
-    if known(self.player:hasFlag("ark_gongzhenBasicCard"), key) then
-        for _, player in ipairs(enemies) do
-            if known(player:getMark("&ark_gongzhen_recordtypeBasicCard"), key) == 0
-                or known(player:getHandcardNum(), key) >= 3 then return player:objectName() end
-        end
-    elseif known(self.player:hasFlag("ark_gongzhenTrickCard"), key) then
-        -- Reverse the sorted list, including ties, as the original sgs.reverse did.
-        local reversed = {}
-        for i = #enemies, 1, -1 do reversed[#reversed + 1] = enemies[i] end
-        enemies = reversed
-        for _, player in ipairs(enemies) do
-            if known(player:getMark("&ark_gongzhen_recordtypeTrickCard"), key) == 0 then return player:objectName() end
-        end
-    elseif known(self.player:hasFlag("ark_gongzhenEquipCard"), key) then
-        -- The original equip branch intentionally checks the TrickCard record.
-        for _, player in ipairs(enemies) do
-            if known(player:getMark("&ark_gongzhen_recordtypeTrickCard"), key) == 0 then return player:objectName() end
-        end
-    end
-    return enemies[math.random(1, #enemies)]:objectName()
-end
-
-ai_skill_invoke.ark_jianmo = function(self)
-    for _, player in ipairs(known(self.room:getAlivePlayers(), "ark_jianmo")) do
-        if known(player:hasFlag("ark_jianmotarget"), "ark_jianmo") then
-            return relation(self, player, "ark_jianmo") == "enemy"
-        end
+local function missing_source_prototype(self,name)
+    local facts=self.world.strategy_facts
+    local row=facts and facts.arknights and facts.arknights.legacy_prototypes
+    if type(row)~="table"or row[name]~=false then
+        ai_unsupported("missing legacy prototype has not been established by native catalog",name)
     end
     return nil
 end
+--过载
 
-local function select_relation(self, options, key, predicate)
-    local result = {}
-    for _, player in ipairs(targets(self, options, key)) do
-        if predicate(relation(self, player, key)) then result[#result + 1] = player:objectName() end
+sgs.ai_fill_skill.ark_guozai = function(self,inclusive,request)
+    if q(self.player,"getMark","&ark_guozai-PlayClear") >= q(self.player,"getMaxHp") then return end
+    local card = self:evaluateSkillCard("ark_guozai","slash",{})
+    local d = self:aiUseCard(card)
+    local names=false
+    if d.to then names={};for _,p in ipairs(d.to)do names[#names+1]=p:objectName()end end
+    self:setStrategyMemory("ark_guozai_to",names)
+    if d.card and d.to
+        and q(card,"isAvailable",self.player)
+    then
+        return missing_source_prototype(self,"#ark_guozai")
     end
-    return choose_many(options, result, key)
-end
-ai_skill_playerschosen.ark_jianmo = function(self, options)
-    return select_relation(self, options, "ark_jianmo", function(value) return value == "enemy" end)
-end
-ai_skill_playerschosen.ark_jianyu = function(self, options)
-    return select_relation(self, options, "ark_jianyu", function(value) return value ~= "enemy" end)
 end
 
-ai_skill_activate.ark_zhuilie = function(self)
-    local key = "ark_zhuilie"
-    local enemies = known(self.enemies, key)
-    if #enemies == 0 then return nil end
-    local action = active_action(self, key)
-    local ordered = known(self:sort(enemies, "hp"), key)
-    local hp = known(self.player:getHp(), key)
-    for _, enemy in ipairs(ordered) do
-        -- Retain the original short circuit: hp > 1 needs no canSlash query.
-        if hp > 1 then
-            return {kind = "use_card", skill_action = action:toAnswer(), targets = {enemy:objectName()}}
+sgs.ai_skill_use_func["#ark_guozai"] = function(card, use, self)
+    local cached,present=self:getStrategyMemory("ark_guozai_to")
+    local targets
+    if present and cached~=false then
+        targets=AIList.new({});for _,name in ipairs(cached)do targets:append(known(self.room:findPlayerByObjectName(name),"Guozai cached target"))end
+    end
+    if targets then
+        use.card = card
+        if use.to then use.to = targets end
+    end
+end
+
+sgs.ai_use_priority.ark_guozai = 8
+
+
+sgs.ai_ajustdamage_from.ark_douzheng = function(self, from, to, card, nature)
+    if to:objectName() ~= from:objectName()
+    then
+        return 1
+    end
+end
+
+
+--共振
+
+sgs.ai_skill_playerchosen.ark_gongzhen = function(self, targets)
+    local en = {}
+    for _, p in ipairs(targets) do
+        if self:isEnemy(p) then
+            table.insert(en, p)
         end
-        -- The next operand is enemy:canSlash; later rescue/card-count operands
-        -- must not hide this unprojected legality query or change its ordering.
-        ai_unsupported("opponent Slash legality is not projected", key)
+    end
+    if #en == 0 then return nil end
+    en = self:sort(en, "defense")
+    if q(self.player,"hasFlag","ark_gongzhenBasicCard") then
+        for _, p in ipairs(en) do
+            if q(p,"getMark","&ark_gongzhen_recordtypeBasicCard") == 0 or q(p,"getHandcardNum") >= 3 then return p end
+        end
+    elseif q(self.player,"hasFlag","ark_gongzhenTrickCard") then
+        -- Source ignores sgs.reverse(en)'s newly allocated return; keep order.
+        for _, p in ipairs(en) do
+            if q(p,"getMark","&ark_gongzhen_recordtypeTrickCard") == 0 then return p end
+        end
+    elseif q(self.player,"hasFlag","ark_gongzhenEquipCard") then
+        for _, p in ipairs(en) do
+            if q(p,"getMark","&ark_gongzhen_recordtypeTrickCard") == 0 then return p end
+        end
+    end
+    return en[math.random(1, #en)]
+end
+
+--缄默
+
+sgs.ai_skill_invoke.ark_jianmo = function(self, data)
+    local name=known(self:getDecisionContext().ark_jianmo_target,"public ark_jianmotarget")
+    local target=name~=false and known(self.room:findPlayerByObjectName(name),"Jianmo target")or nil
+    return target and self:isEnemy(target)
+end
+
+sgs.ai_skill_playerschosen.ark_jianmo = function(self, targets, max, min)
+    local enemy = AIList.new({})
+    for _, p in ipairs(targets) do
+        if self:isEnemy(p) then
+            enemy:append(p)
+        end
+    end
+    return enemy
+end
+
+--剑雨
+
+sgs.ai_skill_playerschosen.ark_jianyu = function(self, targets, max, min)
+    local enemy = AIList.new({})
+    for _, p in ipairs(targets) do
+        if not self:isEnemy(p) then
+            enemy:append(p)
+        end
+    end
+    return enemy
+end
+
+sgs.ai_ajustdamage_from.ark_chujue = function(self, from, to, card, nature)
+    if to:objectName() ~= from:objectName()
+    then
+        return q(to,"getLostHp") - 1
     end
 end
 
-ai_skill_playerschosen.ark_tanshuo = function(self, options)
-    local key, enemies, nonfriends = "ark_tanshuo", {}, {}
-    local candidates = targets(self, options, key)
-    for _, player in ipairs(candidates) do
-        local value = relation(self, player, key)
-        if value == "enemy" then enemies[#enemies + 1] = player:objectName() end
-        if value ~= "friend" then nonfriends[#nonfriends + 1] = player:objectName() end
-    end
-    if #enemies > 0 then return choose_many(options, enemies, key) end
-    if #nonfriends > 0 then return choose_many(options, nonfriends, key) end
-    if #candidates == 0 then ai_unsupported("no offered player", key) end
-    return choose_many(options, {candidates[math.random(1, #candidates)]:objectName()}, key)
+--追猎
+
+sgs.ai_fill_skill.ark_zhuilie = function(self,inclusive,request)
+    return missing_source_prototype(self,"#ark_zhuilie")
 end
 
-ai_skill_invoke.ark_zhige = function(self)
-    return relation(self, known(self:getDecisionContext().player, "ark_zhige"), "ark_zhige") == "enemy"
+sgs.ai_skill_use_func["#ark_zhuilie"] = function(card, use, self)
+    local target
+    self.enemies = self:sort(self.enemies, "hp")
+    if #self.enemies == 0 then return "." end
+    for _, enemy in ipairs(self.enemies) do
+        if q(self.player,"getHp") > 1
+            or (not q(enemy,"canSlash",self.player,nil,true,0))
+            or (self:getCardsNum("Peach") + self:getCardsNum("Analpetic") + self:getCardsNum("Jink") > 0)
+            or q(enemy,"getHandcardNum") == 0
+            or q(enemy,"getMark","&ark_guodu_cant") > 0 then
+            target = enemy
+            break
+        end
+    end
+    if target then
+        use.card = card
+        if use.to then use.to:append(target) end
+    end
 end
 
-ai_skill_choice.ark_wanxiang = function(self, options)
-    local key, items = "ark_wanxiang", {}
-    if not options or not AIValue.isList(options.choices) or #options.choices == 0 then
-        ai_unsupported("offered choices are missing", key)
+--坍缩
+
+sgs.ai_skill_playerschosen.ark_tanshuo = function(self, targets, max, min)
+    local enemy = AIList.new({})
+    for _, p in ipairs(targets) do
+        if self:isEnemy(p) then
+            enemy:append(p)
+        end
     end
-    local chongying = known(self.player:getMark("&ark_chongying"), key)
-    local fuchen = known(self.player:getMark("&ark_fuchen"), key)
-    for _, choice in ipairs(options.choices) do
-        if not (choice == "ark_chongying" and chongying > 0)
-            and not (choice == "ark_fuchen" and fuchen > 0) then items[#items + 1] = choice end
+    if enemy:length() <= 0 then
+        for _, p in ipairs(targets) do
+            if not self:isFriend(p) then
+                enemy:append(p)
+            end
+        end
     end
-    if math.random(1, 2) == 1 then
-        for _, choice in ipairs(options.choices) do if choice == "ark_wowu" then return choice end end
-        ai_unsupported("legacy ark_wowu choice was not offered", key)
+    if enemy:length() <= 0 then
+        targets = targets
+        enemy:append(targets[math.random(1, #targets)])
     end
-    if #items == 0 then ai_unsupported("legacy random choice pool is empty", key) end
+    return enemy
+end
+
+sgs.exclusive_skill = sgs.exclusive_skill .. "|ark_tanshuo"
+
+--止戈
+
+sgs.ai_skill_invoke.ark_zhige = function(self, data)
+    local target = data:toPlayer()
+    return target and self:isEnemy(target)
+end
+
+--万象
+
+sgs.ai_skill_choice["ark_wanxiang"] = function(self, choices, data)
+    local items = choices:split("+")
+    if q(self.player,"getMark","&ark_chongying") > 0 then table.removeOne(items, "ark_chongying") end
+    if q(self.player,"getMark","&ark_fuchen") > 0 then table.removeOne(items, "ark_fuchen") end
+    if math.random(1, 2) == 1 then return "ark_wowu" end
     return items[math.random(1, #items)]
 end
 
-ai_skill_invoke.ark_zhuye = function(self)
-    return rescue_count(self, "ark_zhuye") < 1 - known(self.player:getHp(), "ark_zhuye")
-end
-ai_skill_playerchosen.ark_poxiao = function(self, options)
-    local key, enemies = "ark_poxiao", {}
-    for _, player in ipairs(targets(self, options, key)) do
-        if relation(self, player, key) == "enemy" then enemies[#enemies + 1] = player end
+sgs.ai_ajustdamage_from["&ark_chongying"] = function(self, from, to, card, nature)
+    if to:objectName() ~= from:objectName()
+    then
+        return math.min(q(to,"getMark","&ark_chongying"), 3)
     end
-    if #enemies == 0 then return nil end
-    return known(self:sort(enemies, "hp"), key)[1]:objectName()
 end
 
-sgs.ai_ajustdamage_from.ark_douzheng = function(self, from, to)
-    if from:objectName() ~= to:objectName() then return 1 end
+
+--逐夜
+
+sgs.ai_skill_invoke.ark_zhuye = function(self, data)
+    local n = 1 - q(self.player,"getHp")
+    return (self:getCardsNum("Peach") + self:getCardsNum("Analeptic")) < n
 end
-sgs.ai_ajustdamage_from.ark_chujue = function(self, from, to)
-    if from:objectName() ~= to:objectName() then return known(to:getLostHp(), "ark_chujue") - 1 end
+
+--破晓
+
+sgs.ai_skill_playerchosen.ark_poxiao = function(self, targets)
+    local selected = {}
+    for _, p in ipairs(targets) do
+        if self:isEnemy(p) then
+            table.insert(selected, p)
+        end
+    end
+    if #selected == 0 then return nil end
+    selected = self:sort(selected, "hp")
+    return selected[1]
 end
-sgs.ai_ajustdamage_from["&ark_chongying"] = function(self, from, to)
-    if from:objectName() ~= to:objectName() then return math.min(known(to:getMark("&ark_chongying"), "ark_chongying"), 3) end
-end
-sgs.ai_ajustdamage_from.ark_zhuye = function(self, from)
-    if known(from:getMark("&ark_zhuye"), "ark_zhuye") > 0 then return 1 end
-end
-sgs.ai_canNiepan_skill.ark_zhuye = function(player)
-    return known(player:getMark("@ark_zhuye_mark"), "ark_zhuye") > 0
-end
-sgs.ai_use_revises.ark_yaoyang = function(self, card)
-    if card:isKindOf("Slash") then
-        -- CardView is immutable; an unconsumed use.card_flags field would silently
-        -- drop Qinggang's effect. Keep this branch unhandled until it is projected.
-        ai_unsupported("Qinggang planning effects are not projected", "ark_yaoyang")
+
+sgs.double_slash_skill = sgs.double_slash_skill .. "|ark_yaoyang"
+
+sgs.ai_use_revises.ark_yaoyang = function(self,card,use)
+    if q(card,"isKindOf","Slash") then
+        self:setStrategyCardFlag(card,"Qinggang",true)
     end
 end
-sgs.double_slash_skill = (sgs.double_slash_skill or "") .. "|ark_yaoyang"
-sgs.exclusive_skill = (sgs.exclusive_skill or "") .. "|ark_tanshuo"
+
+sgs.ai_ajustdamage_from.ark_zhuye = function(self, from, to, card, nature)
+    if q(from,"getMark","&ark_zhuye") > 0
+    then
+        return 1
+    end
+end
+
+sgs.ai_canNiepan_skill.ark_zhuye = function(player)
+    return q(player,"getMark","@ark_zhuye_mark") > 0
+end
