@@ -738,6 +738,7 @@ Godjieyingmax = sgs.CreateMaxCardsSkillV2{
 Godpoxi = sgs.CreateViewAsSkillV2
 {
     name = "Godpoxi",
+    history_key = "#Godpoxi",
     n = 99,
     expand_pile = "#Godpoxi",
     can_activate = function(skill, request)
@@ -1315,6 +1316,7 @@ godshelieextra = sgs.CreateTriggerSkillV2{
 godgongxin = sgs.CreateViewAsSkillV2
 {
     name = "godgongxin",
+    history_key = "#godgongxin",
     n = 99,
     expand_pile = "#godgongxin",
     can_activate = function(skill, request)
@@ -1666,6 +1668,8 @@ LuaLonghun = sgs.CreateViewAsSkillV2{
 		return new_card
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+LuaLonghun.response_pattern = "nullification"
 
 godzhaoyun:addSkill(godjuejin)
 godzhaoyun:addSkill(godjuejinmax)
@@ -1954,13 +1958,16 @@ ziliex = sgs.CreateTriggerSkillV2{
 paiyiex = sgs.CreateViewAsSkillV2
 {
     name = "paiyiex",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#paiyiex",
     expand_pile = "exquan",
     n = 1,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if not player then return false end
         return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-            and not player:hasUsed("#paiyiex")
     end,
     can_select_card = function(skill, request, to_select)
         local player = request:getInitiator()
@@ -2720,12 +2727,15 @@ end
 pingjianex = sgs.CreateViewAsSkillV2
 {
     name = "pingjianex",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#pingjianex",
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if not player then return false end
         return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-            and not player:hasUsed("#pingjianex")
     end,
     card_selection_feasible = function(skill, request)
         return #request:getSelectedCardIds() == 0
@@ -3103,12 +3113,15 @@ shenxianjudge = sgs.CreateTriggerSkillV2{
 exqiangwu = sgs.CreateViewAsSkillV2
 {
     name = "exqiangwu",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#exqiangwu",
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if not player then return false end
         return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-            and not player:hasUsed("#exqiangwu")
     end,
     card_selection_feasible = function(skill, request)
         return #request:getSelectedCardIds() == 0
@@ -3794,12 +3807,15 @@ jiangdraw = sgs.CreateTriggerSkillV2{
 spjiang = sgs.CreateViewAsSkillV2
 {
     name = "spjiang",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#spjiang",
     n = 999,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if not player then return false end
         return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-            and not player:hasUsed("#spjiang")
     end,
     can_select_card = function(skill, request, to_select)
         local player = request:getInitiator()
@@ -4120,12 +4136,15 @@ spbaiyin = sgs.CreateTriggerSkillV2{
 spjilve = sgs.CreateViewAsSkillV2
 {
     name = "spjilve",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#spjilve",
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if not player then return false end
-        return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-            and (not player:hasUsed("#spjilve")) and player:getMark("&spren") > 0
+        return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY and player:getMark("&spren") > 0
     end,
     card_selection_feasible = function(skill, request)
         return #request:getSelectedCardIds() == 0
@@ -4408,6 +4427,7 @@ sptianrenup = sgs.CreateTriggerSkillV2{
 sppingxiang = sgs.CreateViewAsSkillV2
 {
     name = "sppingxiang",
+    history_key = "#sppingxiangSlash",
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
@@ -5260,12 +5280,15 @@ dzhaohan = sgs.CreateTriggerSkillV2{
 dyizheng = sgs.CreateViewAsSkillV2
 {
     name = "dyizheng",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#dyizheng",
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if not player then return false end
-        return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-            and (not player:hasUsed("#dyizheng")) and player:getHandcardNum() > 0
+        return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY and player:getHandcardNum() > 0
     end,
     card_selection_feasible = function(skill, request)
         return #request:getSelectedCardIds() == 0

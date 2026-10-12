@@ -26,6 +26,12 @@ sgs.LoadTranslationTable{
 ["counterclockwise"]="逆时针",
 }
 
+local function updateCardDescription(room, card_name, key, value)
+    for _, p in sgs.qlist(room:getPlayers()) do
+        p:setCardDescriptionSwap(card_name, key, value)
+    end
+end
+
 -- 伤害由装备来源授权；关押记录属于实体牌，离开装备区后仍持续。
 local QiulongSkill = sgs.CreateEquipSkillV2{
     name = "#QiulongSkill", equipment = "Qiulong", equipment_type = "treasure",
@@ -51,7 +57,7 @@ local QiulongSkill = sgs.CreateEquipSkillV2{
         room:notifySkillInvoked(player, "qiulong")
         local log = sgs.LogMessage(); log.type = "#QiulongEffect"; log.from = player; log.to:append(victim); room:sendLog(log)
         room:directRestPlayer(victim, "qiulong", false)
-        room:updateCardDescription("Qiulong", {["%prisoner%"] = victim:getGeneralName()})
+        updateCardDescription(room, "Qiulong", "%prisoner%", victim:getGeneralName())
         return false
     end,
 }
@@ -70,7 +76,7 @@ local QiulongRelease = sgs.CreateRuleSkillV2{
                     local log = sgs.LogMessage(); log.type = "#QiulongLose"; log.from = move.from or player; log.to:append(victim); room:sendLog(log)
                     room:unrestPlayer(victim, false)
                     room:removeTag(key)
-                    room:updateCardDescription("Qiulong", {["%prisoner%"] = "无"})
+                    updateCardDescription(room, "Qiulong", "%prisoner%", "无")
                 end
             end
         end
@@ -106,9 +112,8 @@ local shilaiyunzhuan = sgs.CreateTrickCard{
 	on_effect = function(self, effect)
         local room = effect.to:getRoom()
         room:reversePlayOrder()
-        room:updateCardDescription("shilaiyunzhuan", {
-            ["%order_direction%"] = room:isPlayOrderReversed() and "counterclockwise" or "clockwise",
-        })
+        updateCardDescription(room, "shilaiyunzhuan", "%order_direction%",
+            room:isPlayOrderReversed() and "counterclockwise" or "clockwise")
     end,
 }
 for i = 0, 10 do

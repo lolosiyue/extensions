@@ -1822,6 +1822,8 @@ function CreateShishengVsSkill(skill_details)
 			return card
 		end,
 	}
+	-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（shisheng1..10）
+	shisheng_vsskill.response_pattern = "nullification"
 	return shisheng_vsskill
 end
 

@@ -1231,10 +1231,13 @@ luaboxue = sgs.CreateViewAsSkillV2 {
 --------------------------------------------------------------妖精@sheryl
 LuaYaojing = sgs.CreateViewAsSkillV2 {
 	name = "LuaYaojing",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return not request:getInitiator():hasUsed(skill:objectName())
+		return true
 	end,
 	can_select_card = function(skill, request, card)
 		return not card:isEquipped()

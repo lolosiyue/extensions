@@ -713,11 +713,14 @@ XiansiZHCMTCard = sgs.CreateSkillCard {
 
 XiansiZHCMTVS = sgs.CreateViewAsSkillV2 {
 	name = "XiansiZHCMT",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#XiansiZHCMTCard",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player ~= nil and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#XiansiZHCMTCard")
 	end,
 	create_card = function(skill, request)
 		return XiansiZHCMTCard:clone()

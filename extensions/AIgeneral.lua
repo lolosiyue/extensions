@@ -1150,22 +1150,17 @@ tongyiTQCard = sgs.CreateSkillCard {
 	end,
 }
 
--- DEFER:tongyiTQ:view-as stays legacy — its enabled_at_response covers the "nullification"
--- race via Room::hasNullification(), which only calls ViewAsSkill::isEnabledAtResponse;
--- ViewAsSkillV2 does not bridge that hook, so migrating would silently drop holders from
--- nullification asks. Deferred until a V2 nullification-response path exists.
-tongyiTQ = sgs.CreateZeroCardViewAsSkill {
+tongyiTQ = sgs.CreateViewAsSkillV2 {
 	name = "tongyiTQ&",
-	view_as = function(self)
-		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
-		local dc = tongyiTQCard:clone()
-		dc:setUserString(pattern)
-		return dc
-	end,
-	enabled_at_play = function(self, player)
-		return false
-	end,
-	enabled_at_response = function(self, player, pattern)
+	n = 0,
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player then return false end
+		local reason = request:getReason()
+		if reason ~= sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+			and reason ~= sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			return false
+		end
 		if player:getPhase() ~= sgs.Player_NotActive then
 			return false
 		end
@@ -1178,6 +1173,7 @@ tongyiTQ = sgs.CreateZeroCardViewAsSkill {
 		if player:getMark("tongyiTQ_allcard-Clear") > 0 then
 			return false
 		end
+		local pattern = request:getPattern()
 		for _, p in sgs.qlist(player:getAliveSiblings()) do
 			if p:hasSkill("tongyiAIWJ") then
 				for _, p in sgs.list(pattern:split("+")) do
@@ -1191,7 +1187,15 @@ tongyiTQ = sgs.CreateZeroCardViewAsSkill {
 		end
 		return false
 	end,
+	create_card = function(skill, request)
+		local pattern = request:getPattern()
+		local dc = tongyiTQCard:clone()
+		dc:setUserString(pattern)
+		return dc
+	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+tongyiTQ.response_pattern = "nullification"
 tongyiAIWJ_prohibit = sgs.CreateProhibitSkill {
 	name = "#tongyiAIWJ_prohibit",
 	is_prohibited = function(self, from, to, card)
@@ -1343,11 +1347,13 @@ doubaoCMT = sgs.General(extension, "doubaoCMT", "shu", "3", false)
 
 tiaojiaoCMTVS = sgs.CreateViewAsSkillV2 {
 	name = "tiaojiaoCMT",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
-		return player and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#tiaojiaoCMTCard") or false
+		return player and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY or false
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():isEmpty()

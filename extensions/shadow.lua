@@ -168,13 +168,16 @@ y_tiaoxincard = sgs.CreateSkillCard
 
 y_tiaoxin = sgs.CreateViewAsSkillV2 {
 	name = "y_tiaoxin",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#y_tiaoxincard",
 	n = 0,
 
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#y_tiaoxincard")
 	end,
 
 	create_card = function(skill, request)
@@ -625,13 +628,16 @@ y_yuanjiu = sgs.CreateTriggerSkillV2
 y_jiefan = sgs.CreateViewAsSkillV2
 	{ --解烦
 		name = "y_jiefan",
+		limit_scope = sgs.Skill_Limit_Phase,
+		phase_name = "Play",
+		max_usage_limit = 1,
+		history_key = "#y_jiefancard",
 		n = 0,
 
 		can_activate = function(skill, request)
 			local player = request:getInitiator()
 			return player
 				and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-				and not player:hasUsed("#y_jiefancard")
 		end,
 
 		create_card = function(skill, request)
@@ -688,13 +694,16 @@ y_jiefancard = sgs.CreateSkillCard
 y_anxu = sgs.CreateViewAsSkillV2
 	{ --安恤
 		name = "y_anxu",
+		limit_scope = sgs.Skill_Limit_Phase,
+		phase_name = "Play",
+		max_usage_limit = 1,
+		history_key = "#y_anxucard",
 		n = 0,
 
 		can_activate = function(skill, request)
 			local player = request:getInitiator()
 			return player
 				and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-				and not player:hasUsed("#y_anxucard")
 		end,
 
 		create_card = function(skill, request)
@@ -837,13 +846,16 @@ y_hongyuan = sgs.CreateTriggerSkillV2
 y_huanshi = sgs.CreateViewAsSkillV2
 	{ --缓释
 		name = "y_huanshi",
+		limit_scope = sgs.Skill_Limit_Phase,
+		phase_name = "Play",
+		max_usage_limit = 1,
+		history_key = "#y_huanshicard",
 		n = 0,
 
 		can_activate = function(skill, request)
 			local player = request:getInitiator()
 			return player
 				and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-				and not player:hasUsed("#y_huanshicard")
 		end,
 
 		create_card = function(skill, request)
@@ -1486,15 +1498,17 @@ y_shenzhucard = sgs.CreateSkillCard
 
 y_shenzhu = sgs.CreateViewAsSkillV2 {
 	name = "y_shenzhu",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#y_shenzhucard",
 	n = 1,
 
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player or request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		if not player:hasUsed("#y_shenzhucard") then
-			for _, h in sgs.qlist(player:getHandcards()) do
-				if h:isKindOf("Slash") then return true end
-			end
+		for _, h in sgs.qlist(player:getHandcards()) do
+			if h:isKindOf("Slash") then return true end
 		end
 		return false
 	end,
@@ -2063,13 +2077,16 @@ y_xiangxicard = sgs.CreateSkillCard {
 
 y_xiangxi = sgs.CreateViewAsSkillV2 {
 	name = "y_xiangxi",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#y_xiangxicard",
 	n = 0,
 
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#y_xiangxicard")
 	end,
 
 	create_card = function(skill, request)
@@ -2570,13 +2587,16 @@ y_xiaoyi = sgs.CreateTriggerSkillV2
 y_lianzhu = sgs.CreateViewAsSkillV2
 	{ --联诛
 		name = "y_lianzhu",
+		limit_scope = sgs.Skill_Limit_Phase,
+		phase_name = "Play",
+		max_usage_limit = 1,
+		history_key = "#y_lianzhucard",
 		n = 99,
 
 		can_activate = function(skill, request)
 			local player = request:getInitiator()
 			return player
 				and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-				and not player:hasUsed("#y_lianzhucard")
 		end,
 
 		can_select_card = function(skill, request, candidate)

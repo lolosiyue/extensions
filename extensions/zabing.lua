@@ -71,12 +71,14 @@ JEGAN:setGender(sgs.General_Neuter)
 
 gaoda_lianxievs = sgs.CreateViewAsSkillV2{
 	name = "gaoda_lianxie",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 1,
 	response_or_use = true,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("gaoda_lianxie")
 	end,
 	can_select_card = function(skill, request, card)
 		if not card or card:hasFlag("using") then return false end

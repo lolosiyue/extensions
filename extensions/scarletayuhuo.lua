@@ -54,6 +54,10 @@ s_nixing = sgs.CreateTriggerSkillV2{
 s_anren = sgs.CreateViewAsSkillV2{
 	name = "s_anren",
 	n = 1,
+	history_key = "#s_anren",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	response_or_use = true,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
@@ -62,7 +66,7 @@ s_anren = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return not player:hasUsed("#s_anren")
+		return true
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -2434,6 +2438,10 @@ s_w_shenghunCard = sgs.CreateSkillCard{
 s_w_shenghunVS = sgs.CreateViewAsSkillV2{
 	name = "s_w_shenghun",
 	n = 0,
+	history_key = "#s_w_shenghun",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -2441,7 +2449,7 @@ s_w_shenghunVS = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return not player:hasUsed("#s_w_shenghun") and not player:isKongcheng()
+		return not player:isKongcheng()
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -4391,6 +4399,10 @@ s2_shenpanCard = sgs.CreateSkillCard{
 s2_shenpan = sgs.CreateViewAsSkillV2{
 	name = "s2_shenpan",
 	n = 0,
+	history_key = "#s2_shenpan",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -4398,7 +4410,7 @@ s2_shenpan = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, target)
-		return not target:hasUsed("#s2_shenpan")
+		return true
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -4865,6 +4877,10 @@ s2_jiangeCard = sgs.CreateSkillCard{
 s2_jiange = sgs.CreateViewAsSkillV2{
 	name = "s2_jiange",
 	n = 0,
+	history_key = "#s2_jiange",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -4872,7 +4888,7 @@ s2_jiange = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return (not player:hasUsed("#s2_jiange")) and not player:isKongcheng()
+		return not player:isKongcheng()
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -6664,6 +6680,10 @@ s2_yizeiCard = sgs.CreateSkillCard{
 s2_yizei = sgs.CreateViewAsSkillV2{
 	name = "s2_yizei",
 	n = 0,
+	history_key = "#s2_yizei",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -6671,7 +6691,7 @@ s2_yizei = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return not player:hasUsed("#s2_yizei")
+		return true
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -6831,6 +6851,10 @@ s2_zhanjiangCard = sgs.CreateSkillCard{
 s2_zhanjiang = sgs.CreateViewAsSkillV2{
 	name = "s2_zhanjiang",
 	n = 0,
+	history_key = "#s2_zhanjiang",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -6838,7 +6862,7 @@ s2_zhanjiang = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return not player:hasUsed("#s2_zhanjiang") and not player:isKongcheng()
+		return not player:isKongcheng()
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -7478,6 +7502,10 @@ s2_shanqiCard = sgs.CreateSkillCard{
 s2_shanqi = sgs.CreateViewAsSkillV2{
 	name = "s2_shanqi",
 	n = 999,
+	history_key = "#s2_shanqi",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -7485,7 +7513,7 @@ s2_shanqi = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return not player:hasUsed("#s2_shanqi") and player:canDiscard(player, "he")
+		return player:canDiscard(player, "he")
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -7997,6 +8025,8 @@ s2_longwei = sgs.CreateViewAsSkillV2 {
 		return view_as_func(skill, cards)
 	end,
 	}
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+s2_longwei.response_pattern = "nullification"
 
 
 s2_2_juejing = sgs.CreateMaxCardsSkillV2{
@@ -9235,6 +9265,10 @@ s2_xiaoguoCard = sgs.CreateSkillCard{
 s2_xiaoguoVS = sgs.CreateViewAsSkillV2{
 	name = "s2_xiaoguo",
 	n = 0,
+	history_key = "#s2_xiaoguo",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -9242,7 +9276,7 @@ s2_xiaoguoVS = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return not player:hasUsed("#s2_xiaoguo") and not player:isKongcheng()
+		return not player:isKongcheng()
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -9366,6 +9400,10 @@ s2_xiandeCard = sgs.CreateSkillCard{
 s2_xiande = sgs.CreateViewAsSkillV2{
 	name = "s2_xiande",
 	n = 0,
+	history_key = "#s2_xiande",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -9373,7 +9411,7 @@ s2_xiande = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return not player:hasUsed("#s2_xiande") and not player:isKongcheng()
+		return not player:isKongcheng()
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -9827,6 +9865,9 @@ s2_jinchiCard = sgs.CreateSkillCard{
 s2_jinchi = sgs.CreateViewAsSkillV2{
 	name = "s2_jinchi",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -9834,7 +9875,7 @@ s2_jinchi = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return not player:hasUsed("#s2_jinchi") and not player:isKongcheng() and player:getArmor()
+		return not player:isKongcheng() and player:getArmor()
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -10127,6 +10168,10 @@ s2_zhanpoCard = sgs.CreateSkillCard{
 s2_zhanpo = sgs.CreateViewAsSkillV2{
 	name = "s2_zhanpo",
 	n = 0,
+	history_key = "#s2_zhanpo",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -10135,7 +10180,7 @@ s2_zhanpo = sgs.CreateViewAsSkillV2{
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
 	local z = player:getLostHp() + 1
-		return not player:hasUsed("#s2_zhanpo") and player:getMark("s2_zhanpoduel") >= z
+		return player:getMark("s2_zhanpoduel") >= z
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -10659,6 +10704,10 @@ s2_danjingCard = sgs.CreateSkillCard{
 s2_danjing = sgs.CreateViewAsSkillV2{
 	name = "s2_danjing",
 	n = 0,
+	history_key = "#s2_danjing",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -10666,7 +10715,7 @@ s2_danjing = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return (not player:hasUsed("#s2_danjing")) and (player:getPile("s2_shi"):length() > player:getLostHp())
+		return (player:getPile("s2_shi"):length() > player:getLostHp())
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -11933,6 +11982,10 @@ s2_chizhaCard = sgs.CreateSkillCard{
 s2_chizha = sgs.CreateViewAsSkillV2{
 	name = "s2_chizha",
 	n = 1,
+	history_key = "#s2_chizha",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -11940,7 +11993,7 @@ s2_chizha = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return not player:hasUsed("#s2_chizha")
+		return true
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -12243,6 +12296,7 @@ s2_xubianCard = sgs.CreateSkillCard{
 s2_xubian = sgs.CreateViewAsSkillV2{
 	name = "s2_xubian",
 	n = 999,
+	history_key = "#s2_xubian",
 	expand_pile = "s2_zu",
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
@@ -14320,6 +14374,10 @@ s2_2_zhanjiangCard = sgs.CreateSkillCard{
 s2_2_zhanjiangVS = sgs.CreateViewAsSkillV2{
 	name = "s2_2_zhanjiang",
 	n = 0,
+	history_key = "#s2_2_zhanjiang",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -14327,7 +14385,7 @@ s2_2_zhanjiangVS = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return (not player:hasUsed("#s2_2_zhanjiang")) 
+		return true
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -14869,6 +14927,10 @@ s3_jianyanCard = sgs.CreateSkillCard{
 s3_jianyan = sgs.CreateViewAsSkillV2{
 	name = "s3_jianyan",
 	n = 1,
+	history_key = "#s3_jianyan",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -14876,7 +14938,7 @@ s3_jianyan = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return player:canDiscard(player, "he") and (not player:hasUsed("#s3_jianyan"))
+		return player:canDiscard(player, "he")
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -16266,6 +16328,10 @@ s3_fenzhiCard = sgs.CreateSkillCard{
 s3_fenzhi = sgs.CreateViewAsSkillV2{
 	name = "s3_fenzhi",
 	n = 2,
+	history_key = "#s3_fenzhi",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -16273,7 +16339,7 @@ s3_fenzhi = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return not player:hasUsed("#s3_fenzhi")
+		return true
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -16448,6 +16514,10 @@ s3_fudaoCard = sgs.CreateSkillCard{
 s3_fudao = sgs.CreateViewAsSkillV2{
 	name = "s3_fudao",
 	n = 0,
+	history_key = "#s3_fudao",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -16455,7 +16525,7 @@ s3_fudao = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return (not player:isKongcheng()) and (not player:hasUsed("#s3_fudao"))
+		return (not player:isKongcheng())
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -18375,6 +18445,10 @@ s3_yt_tongnanCard = sgs.CreateSkillCard{
 s3_yt_tongnanVS = sgs.CreateViewAsSkillV2{
 	name = "s3_yt_tongnan",
 	n = 0,
+	history_key = "#s3_yt_tongnan",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -18382,7 +18456,7 @@ s3_yt_tongnanVS = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return not player:hasUsed("#s3_yt_tongnan") 
+		return true
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
@@ -23191,6 +23265,10 @@ s3_jxwj_shangdaoCard = sgs.CreateSkillCard{
 s3_jxwj_shangdao = sgs.CreateViewAsSkillV2{
 	name = "s3_jxwj_shangdao",
 	n = 999,
+	history_key = "#s3_jxwj_shangdao",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local __initiator = request:getInitiator()
 		if not __initiator then return false end
@@ -23198,7 +23276,7 @@ s3_jxwj_shangdao = sgs.CreateViewAsSkillV2{
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local enabled_at_play_func = function(self, player)
-		return not player:hasUsed("#s3_jxwj_shangdao")
+		return true
 	end
 			return enabled_at_play_func(skill, __initiator)
 		elseif reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE

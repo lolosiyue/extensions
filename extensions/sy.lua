@@ -636,15 +636,19 @@ sy_zhihengCard = sgs.CreateSkillCard{
 
 sy_zhihengVS = sgs.CreateViewAsSkillV2{
 	name = "sy_zhiheng",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#sy_zhiheng",
 	n = 1000,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player or not player:isAlive() then return false end
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		if isSanyingBoss(player) then
-			return is2ndBossMode(player) and not player:hasUsed("#sy_zhiheng")
+			return is2ndBossMode(player)
 		else
-			return not player:hasUsed("#sy_zhiheng")
+			return true
 		end
 	end,
 	can_select_card = function(skill, request, to_select)
@@ -1505,12 +1509,16 @@ sy_yaohuoCard = sgs.CreateSkillCard{
 
 sy_yaohuoVs = sgs.CreateViewAsSkillV2{
 	name = "sy_yaohuo",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#sy_yaohuoCard",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player or not player:isAlive() then return false end
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return not player:hasUsed("#sy_yaohuoCard")
+		return true
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():isEmpty()
@@ -1782,13 +1790,16 @@ sy_chanxianCard = sgs.CreateSkillCard{
 
 sy_chanxianVS = sgs.CreateViewAsSkillV2{
     name = "sy_chanxian",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#sy_chanxianCard",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player or not player:isAlive() then return false end
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		if player:hasUsed("#sy_chanxianCard") then return false end
-		for _, pe in sgs.qlist(player:getAliveSiblings()) do
+				for _, pe in sgs.qlist(player:getAliveSiblings()) do
 			if canMoveCard(pe) then return true end
 		end
 		return false
@@ -2645,6 +2656,10 @@ sy_dihuiCard = sgs.CreateSkillCard{
 
 sy_dihuiVS = sgs.CreateViewAsSkillV2{
     name = "sy_dihui",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#sy_dihuiCard",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
@@ -2659,7 +2674,7 @@ sy_dihuiVS = sgs.CreateViewAsSkillV2{
 		for _, pe in sgs.qlist(players) do
 			if pe:getHp() > _min then n = n + 1 end
 		end
-	    return n >= 1 and (not player:hasUsed("#sy_dihuiCard"))
+	    return n >= 1
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():isEmpty()
@@ -2732,12 +2747,16 @@ sy_luansiCard = sgs.CreateSkillCard{
 
 sy_luansiVS = sgs.CreateViewAsSkillV2{
     name = "sy_luansi",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#sy_luansiCard",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player or not player:isAlive() then return false end
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-	    return not player:hasUsed("#sy_luansiCard")
+	    return true
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():isEmpty()
@@ -3893,12 +3912,16 @@ sy_zhongzhangCard = sgs.CreateSkillCard{
 
 sy_zhongzhangVS = sgs.CreateViewAsSkillV2{
 	name = "sy_zhongzhang",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#sy_zhongzhang",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player or not player:isAlive() then return false end
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return (not player:isKongcheng()) and (not player:hasUsed("#sy_zhongzhang"))
+		return (not player:isKongcheng())
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():isEmpty()

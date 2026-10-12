@@ -3008,6 +3008,8 @@ diy_m_jichouVS = sgs.CreateViewAsSkillV2{
 		end
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+diy_m_jichouVS.response_pattern = "nullification"
 diy_m_jichou = sgs.CreateTriggerSkillV2{
 	name = "diy_m_jichou",
 	events = {sgs.CardFinished},
@@ -3077,6 +3079,8 @@ diy_m_jilunVS = sgs.CreateViewAsSkillV2{
 		end
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+diy_m_jilunVS.response_pattern = "nullification"
 diy_m_jilun = sgs.CreateTriggerSkillV2{
 	name = "diy_m_jilun",
 	events = {sgs.Damaged, sgs.CardFinished},
@@ -6508,6 +6512,8 @@ DIT_if_moukanpovs = sgs.CreateViewAsSkillV2{
 		return ncard
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+DIT_if_moukanpovs.response_pattern = "nullification"
 DIT_if_moukanpo = sgs.CreateTriggerSkillV2{
 	name = "DIT_if_moukanpo",
 	events = {sgs.CardUsed},
@@ -6860,6 +6866,8 @@ DIT_heg_yiguivs = sgs.CreateViewAsSkillV2{
 		end
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+DIT_heg_yiguivs.response_pattern = "nullification"
 DIT_heg_yigui = sgs.CreateTriggerSkillV2{
 	name = "DIT_heg_yigui",
 	events = {sgs.PreCardUsed, sgs.CardUsed, sgs.PreCardResponded},
@@ -7207,6 +7215,8 @@ mk_danlve_yinyue = sgs.CreateViewAsSkillV2{
 		return yinyue
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+mk_danlve_yinyue.response_pattern = "nullification"
   --“青釭”卡
 mk_danlve_qinggang = sgs.CreateViewAsSkillV2{
 	name = "mk_danlve_qinggang&",
@@ -7275,6 +7285,8 @@ mk_danlve_qinggang = sgs.CreateViewAsSkillV2{
 		return qinggang
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+mk_danlve_qinggang.response_pattern = "nullification"
 --
 mk_danlveAR = sgs.CreateAttackRangeSkillV2{
 	name = "#mk_danlveAR",

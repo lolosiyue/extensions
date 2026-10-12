@@ -297,12 +297,15 @@ keshenghuixueCard = sgs.CreateSkillCard {
 keshenghuixue = sgs.CreateViewAsSkillV2 {
 	name = "keshenghuixue",
 	n = 0,
+	history_key = "#keshenghuixueCard",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	target_mode = sgs.ViewAsSkillV2_NoTarget,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#keshenghuixueCard")
 	end,
 	create_card = function(skill, request)
 		return keshenghuixueCard:clone()
@@ -329,12 +332,15 @@ keshengzhuihunCard = sgs.CreateSkillCard {
 keshengzhuihunVS = sgs.CreateViewAsSkillV2 {
 	name = "keshengzhuihun",
 	n = 999,
+	history_key = "#keshengzhuihunCard",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	target_mode = sgs.ViewAsSkillV2_NoTarget,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#keshengzhuihunCard")
 			and player:canDiscard(player, "h")
 			and player:getMark("keshengzhuihun") == 0
 	end,
@@ -1223,12 +1229,15 @@ kejieshengzhuihunCard = sgs.CreateSkillCard {
 kejieshengzhuihunVS = sgs.CreateViewAsSkillV2 {
 	name = "kejieshengzhuihun",
 	n = 999,
+	history_key = "#kejieshengzhuihunCard",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	target_mode = sgs.ViewAsSkillV2_NoTarget,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#kejieshengzhuihunCard")
 			and player:canDiscard(player, "he")
 	end,
 	can_select_card = function(skill, request, to_select)

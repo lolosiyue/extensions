@@ -124,11 +124,13 @@ yisiguCard = sgs.CreateSkillCard{
 }
 yisigu = sgs.CreateViewAsSkillV2{
 	name = "yisigu",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player and player:isAlive()
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player:usedTimes("#yisiguCard") < 1
 	end,
 	create_card = function(skill, request)
 		return yisiguCard:clone()
@@ -571,11 +573,13 @@ yihuiceCard = sgs.CreateSkillCard{
 }
 yihuice = sgs.CreateViewAsSkillV2{
 	name = "yihuice",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player and player:isAlive()
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player:usedTimes("#yihuiceCard") < 1
 			and player:getHandcardNum() > 0
 	end,
 	create_card = function(skill, request)
@@ -1351,11 +1355,13 @@ manchanyuCard = sgs.CreateSkillCard{
 }
 manchanyuvs = sgs.CreateViewAsSkillV2{
 	name = "manchanyu",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player and player:isAlive()
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player:usedTimes("#manchanyuCard") < 1
 	end,
 	create_card = function(skill, request)
 		return manchanyuCard:clone()
@@ -2006,11 +2012,13 @@ manquchiCard = sgs.CreateSkillCard{
 }
 manquchi = sgs.CreateViewAsSkillV2{
 	name = "manquchi",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player and player:isAlive()
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player:usedTimes("#manquchiCard") < 1
 	end,
 	create_card = function(skill, request)
 		return manquchiCard:clone()
@@ -2255,11 +2263,13 @@ chenxiangerCard = sgs.CreateSkillCard{
 }
 chenxiangervs = sgs.CreateViewAsSkillV2{
 	name = "chenxianger",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player and player:isAlive()
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player:usedTimes("#chenxiangerCard") < 1
 			and player:getMark("chenxianger") < 1
 	end,
 	create_card = function(skill, request)
@@ -2914,11 +2924,13 @@ chenfubeiCard = sgs.CreateSkillCard{
 }
 chenfubeivs = sgs.CreateViewAsSkillV2{
 	name = "chenfubei",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player and player:isAlive()
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player:usedTimes("#chenfubeiCard") < 1
 			and player:getHandcardNum() < player:getMaxHp()
 	end,
 	create_card = function(skill, request)
@@ -3040,11 +3052,13 @@ chenlanjiaoCard = sgs.CreateSkillCard{
 }
 chenlanjiao = sgs.CreateViewAsSkillV2{
 	name = "chenlanjiao",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player and player:isAlive()
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player:usedTimes("#chenlanjiaoCard") < 1
 			and player:getMark("chenlanjiaoBan-Clear") < 1
 	end,
 	create_card = function(skill, request)

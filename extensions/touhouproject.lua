@@ -477,12 +477,15 @@ end
 
 TH_ForbiddenFruitsVS = sgs.CreateViewAsSkillV2{--禁忌·禁果
 	name = "TH_ForbiddenFruits",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_ForbiddenFruitsCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_ForbiddenFruitsCARD")
 	end,
 	create_card = function(skill, request)
 		return TH_ForbiddenFruitsCARD:clone()
@@ -631,12 +634,15 @@ TH_Catadioptric = sgs.CreateTriggerSkillV2{-------禁弹·折反射
 
 TH_SositeVS = sgs.CreateViewAsSkillV2{--秘弹·之后就一个人都没有了吗？
 	name = "TH_Sosite",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_SositeCARD",
 	n = 999,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_SositeCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() >= 0
@@ -745,12 +751,15 @@ TH_huaidiaoCARD = sgs.CreateSkillCard{--坏掉
 
 TH_huaidiao = sgs.CreateViewAsSkillV2{--坏掉
 	name = "TH_huaidiao",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_huaidiaoCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_huaidiaoCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -1003,12 +1012,15 @@ TH_HeartBreakCARD = sgs.CreateSkillCard{--必杀·碎心
 
 TH_HeartBreakVS = sgs.CreateViewAsSkillV2{
 	name = "TH_HeartBreak",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_HeartBreakCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_HeartBreakCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -1094,12 +1106,15 @@ TH_ScarletShootCARD = sgs.CreateSkillCard{--绯红之击
 
 TH_ScarletShootVS = sgs.CreateViewAsSkillV2{
 	name = "TH_ScarletShoot",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_ScarletShootCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_ScarletShootCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -1269,12 +1284,15 @@ TH_SpearTheGungnirCARD = sgs.CreateSkillCard{--神枪
 
 TH_SpearTheGungnirVS = sgs.CreateViewAsSkillV2{--神枪
 	name = "TH_SpearTheGungnir",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_SpearTheGungnirCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_SpearTheGungnirCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -1373,12 +1391,15 @@ TH_xingtaiCARD = sgs.CreateSkillCard{
 
 TH_xingtaiVS = sgs.CreateViewAsSkillV2{--切换形态
     name = "TH_xingtai",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#TH_xingtaiCARD",
     n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_xingtaiCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -1667,12 +1688,15 @@ TH_bianshen_MagakiReimu = sgs.CreateTriggerSkillV2{--变身
 --------●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●------------------kotiyasanae
 TH_wugufengdeng = sgs.CreateViewAsSkillV2{--五谷丰登
 	name = "TH_wugufengdeng",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_wugufengdengCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_wugufengdengCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -1714,12 +1738,15 @@ TH_wugufengdengCARD = sgs.CreateSkillCard{--五谷丰登
 ------------------------------------------
 TH_Wonder_NwOBNSVS = sgs.CreateViewAsSkillV2{--奇迹-辉煌
 	name = "TH_Wonder_NwOBNS",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_Wonder_NwOBNSCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_Wonder_NwOBNSCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -1809,12 +1836,15 @@ TH_Wonder_NwOBNS = sgs.CreateTriggerSkillV2{--奇迹-辉煌
 -------------------------------------------------------
 TH_Miracle_GodsWindVS = sgs.CreateViewAsSkillV2{--奇迹-风
 	name = "TH_Miracle_GodsWind",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_Miracle_GodsWindCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_Miracle_GodsWindCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -2079,6 +2109,7 @@ TH_xixingyao = sgs.CreateTriggerSkillV2{--西行妖
 }
 
 -----------------
+-- DEFER:TH_chihuo: conversion card + response/pattern; history_key ignored (BACKLOG §4)
 TH_chihuo = sgs.CreateViewAsSkillV2{--吃货
 	name = "TH_chihuo",
 	n = 1,
@@ -2115,12 +2146,15 @@ TH_chihuo = sgs.CreateViewAsSkillV2{--吃货
 
 TH_renguiVS = sgs.CreateViewAsSkillV2{--人鬼未来永劫斩
 	name = "TH_rengui",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_renguiCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_renguiCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -2203,6 +2237,7 @@ TH_erdaoliuCARD = sgs.CreateSkillCard{--二刀流
 
 TH_erdaoliu = sgs.CreateViewAsSkillV2{--二刀流
 	name = "TH_erdaoliu",
+	history_key = "#TH_erdaoliuCARD",
 	response_or_use = true,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
@@ -2256,12 +2291,14 @@ TH_ShenbaoPLYZCARD = sgs.CreateSkillCard{
 
 TH_ShenbaoPLYZVS = sgs.CreateViewAsSkillV2{
 	name = "TH_ShenbaoPLYZ",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
-			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_ShenbaoPLYZCARD") and not player:hasWeapon("TH_Weapon_Penglaiyuzhi")
+			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY and not player:hasWeapon("TH_Weapon_Penglaiyuzhi")
 	end,
 	can_select_card = function(skill, request, candidate)
 		return not candidate:isEquipped()
@@ -2298,12 +2335,14 @@ TH_YongyeguifanDaixiaoCARD = sgs.CreateSkillCard{
 
 TH_YongyeguifanDaixiaoVS = sgs.CreateViewAsSkillV2{
 	name = "TH_YongyeguifanDaixiao",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_YongyeguifanDaixiaoCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 1
@@ -2435,12 +2474,15 @@ TH_yongyefanTS = sgs.CreateTriggerSkillV2{--永夜返
 
 TH_nanti= sgs.CreateViewAsSkillV2{--难题
 	name = "TH_nanti",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_nantiCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_nantiCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -2759,12 +2801,15 @@ TH_LifeGameCARD = sgs.CreateSkillCard{------生命游戏
 
 TH_LifeGame = sgs.CreateViewAsSkillV2{-----生命游戏
 	name= "TH_LifeGame",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_LifeGameCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_LifeGameCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -2834,12 +2879,15 @@ TH_huanlongyueni=sgs.CreateTriggerSkillV2{----幻胧月睨
 
 TH_yuetubingqi = sgs.CreateViewAsSkillV2{----月兔兵器
 	name= "TH_yuetubingqi",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_yuetubingqiCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_yuetubingqiCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -3242,12 +3290,15 @@ TH_wenwenxinwenCARD = sgs.CreateSkillCard{---文文新闻
 
 TH_wenwenxinwenVS = sgs.CreateViewAsSkillV2{------文文新闻
 	name = "TH_wenwenxinwen",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_wenwenxinwenCARD",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_wenwenxinwenCARD")
 	end,
 	can_select_card = function(skill, request, candidate)
 		return not candidate:isEquipped()
@@ -3662,12 +3713,15 @@ TH_MasterSparkCARD = sgs.CreateSkillCard{----极限火花
 
 TH_MasterSpark=sgs.CreateViewAsSkillV2{------极限火花
 	name = "TH_MasterSpark",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_MasterSparkCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
-			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_MasterSparkCARD") and not player:isKongcheng()
+			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY and not player:isKongcheng()
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -3690,12 +3744,15 @@ TH_thethiefmarisa_tempskill.skillname={}
 TH_thethiefmarisa_tempskill.owner={}
 TH_thethiefmarisaVS = sgs.CreateViewAsSkillV2{----------大盗魔理沙
 	name = "TH_thethiefmarisa",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_thethiefmarisaCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_thethiefmarisaCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -3775,11 +3832,14 @@ TH_thethiefmarisa =sgs.CreateTriggerSkillV2{
 ---------------------------------------------------------------●●●●●●●●●●●●●●●●---------------------------------------------------------------------kagiyamahina
 TH_BadFortuneVS=sgs.CreateViewAsSkillV2{ ------噩运
 	name = "TH_BadFortune",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_BadFortuneCARD",
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_BadFortuneCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -4009,12 +4069,15 @@ TH_ExiledDoll = sgs.CreateTriggerSkillV2{------创符-流刑人偶
 ---------------------------------------------------------------●●●●●●●●●●●●●●●●---------------------------------------------------------------------YasakaKanako
 TH_MiracleofOtensui = sgs.CreateViewAsSkillV2{------天流-天水奇迹
 	name = "TH_MiracleofOtensui",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_MiracleofOtensuiCARD",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_MiracleofOtensuiCARD")
 	end,
 	can_select_card = function(skill, request, candidate)
 		return not candidate:isEquipped() and request:getSelectedCardIds():length() < 1
@@ -4368,12 +4431,15 @@ TH_shengyusiCARD = sgs.CreateSkillCard{----生与死的境界
 
 TH_shengyusiVS = sgs.CreateViewAsSkillV2{-----生与死的境界
 	name = "TH_shengyusi",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_shengyusiCARD",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_shengyusiCARD")
 	end,
 	can_select_card = function(skill, request, candidate)
 		return request:getSelectedCardIds():length() < 1 and not candidate:isEquipped()
@@ -4512,12 +4578,15 @@ TH_shishen= sgs.CreateTriggerSkillV2{--------式神
 ------------------------------
 TH_menghuanpaoyingVS=sgs.CreateViewAsSkillV2{---------梦幻泡影
 	name = "TH_menghuanpaoying",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_menghuanpaoyingCARD",
 	n = 100,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
-			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_menghuanpaoyingCARD") and not player:isKongcheng() and player:isWounded()
+			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY and not player:isKongcheng() and player:isWounded()
 	end,
 	can_select_card = function(skill, request, candidate)
 		local player = request:getInitiator()
@@ -4632,12 +4701,15 @@ TH_UnilateralContractCARD = sgs.CreateSkillCard{------片面义务契约
 
 TH_UnilateralContract = sgs.CreateViewAsSkillV2{---------片面义务契约
 	name = "TH_UnilateralContract",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_UnilateralContractCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_UnilateralContractCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -4745,12 +4817,15 @@ TH_chao9CARD = sgs.CreateSkillCard{------超⑨武神霸斩
 
 TH_chao9VS=sgs.CreateViewAsSkillV2{-------超⑨武神霸斩
 	name = "TH_chao9",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_chao9CARD",
 	n=2,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_chao9CARD")
 	end,
 	can_select_card = function(skill, request, candidate)
 		return request:getSelectedCardIds():length() < 2 and candidate:getNumber() >= 9
@@ -4849,12 +4924,15 @@ TH_TerribleSouvenirCARD = sgs.CreateSkillCard{
 
 TH_TerribleSouvenirVS = sgs.CreateViewAsSkillV2{------恐怖的回忆
 	name = "TH_TerribleSouvenir",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_TerribleSouvenirCARD",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_TerribleSouvenirCARD")
 	end,
 	can_select_card = function(skill, request, candidate)
 		return request:getSelectedCardIds():length() < 1 and not candidate:isEquipped()
@@ -4982,12 +5060,15 @@ TH_HypnosisCARD = sgs.CreateSkillCard{--------恐怖催眠术
 
 TH_HypnosisVS = sgs.CreateViewAsSkillV2{------恐怖催眠术
 	name = "TH_Hypnosis",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_HypnosisCARD",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_HypnosisCARD")
 	end,
 	can_select_card = function(skill, request, candidate)
 		return request:getSelectedCardIds():length() < 1 and not candidate:isEquipped()
@@ -5260,12 +5341,15 @@ TH_liandemaihuoCARD = sgs.CreateSkillCard{-------恋的埋火
 
 TH_liandemaihuo = sgs.CreateViewAsSkillV2{------恋的埋火
 	name = "TH_liandemaihuo",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_liandemaihuoCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_liandemaihuoCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -5874,12 +5958,15 @@ TH_GreatestCautionCARD = sgs.CreateSkillCard{--灰暗警告冲击波
 
 TH_GreatestCaution=sgs.CreateViewAsSkillV2{--灰暗警告冲击波
 	name = "TH_GreatestCaution",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_GreatestCautionCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_GreatestCautionCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -5912,12 +5999,15 @@ TH_GalacticIllusionCARD = sgs.CreateSkillCard{--宇宙大幻觉
 
 TH_GalacticIllusion=sgs.CreateViewAsSkillV2{--宇宙大幻觉
 	name = "TH_GalacticIllusion",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_GalacticIllusionCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_GalacticIllusionCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -5941,12 +6031,15 @@ TH_CosmicMarionnetteCARD = sgs.CreateSkillCard{----星辰傀儡线
 
 TH_CosmicMarionnetteVS=sgs.CreateViewAsSkillV2{---星辰傀儡线
 	name = "TH_CosmicMarionnette",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_CosmicMarionnetteCARD",
 	n=2,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_CosmicMarionnetteCARD")
 	end,
 	can_select_card = function(skill, request, candidate)
 		return request:getSelectedCardIds():length() < 2 and not candidate:isEquipped()
@@ -6037,12 +6130,15 @@ TH_PhilosophersStoneCARD = sgs.CreateSkillCard{-----贤者之石
 
 TH_PhilosophersStoneVS = sgs.CreateViewAsSkillV2{------贤者之石
 	name = "TH_PhilosophersStone",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_PhilosophersStoneCARD",
 	 n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_PhilosophersStoneCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -6191,12 +6287,15 @@ TH_mshiCARD = sgs.CreateSkillCard{
 
 TH_mshiVS = sgs.CreateViewAsSkillV2{
 	name = "TH_mshi",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_mshiCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_mshiCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -6791,12 +6890,15 @@ TH_NazrinPendulumCARD = sgs.CreateSkillCard{
 
 TH_NazrinPendulum = sgs.CreateViewAsSkillV2{
 	name = "TH_NazrinPendulum",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_NazrinPendulumCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_NazrinPendulumCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -7262,12 +7364,16 @@ TH_paratrooperCARD = sgs.CreateSkillCard{
 
 TH_paratrooperVS = sgs.CreateViewAsSkillV2{
 	name = "TH_paratrooper",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_paratrooperCARD",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player:getCardCount(true) > 1 and not player:hasUsed("#TH_paratrooperCARD")
+			and player:getCardCount(true) > 1
 	end,
 	can_select_card = function(skill, request, candidate)
 		return request:getSelectedCardIds():length() < 1 and candidate:isKindOf("EquipCard")
@@ -7331,12 +7437,16 @@ TH_UmbrellaCycloneCARD = sgs.CreateSkillCard{
 
 TH_UmbrellaCycloneVS = sgs.CreateViewAsSkillV2{
 	name = "TH_UmbrellaCyclone",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_UmbrellaCycloneCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player:getMark("@TH_Umbrella") > 0 and not player:hasUsed("#TH_UmbrellaCycloneCARD")
+			and player:getMark("@TH_Umbrella") > 0
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -7434,12 +7544,15 @@ TH_chaorenCARD = sgs.CreateSkillCard{
 
 TH_chaorenVS = sgs.CreateViewAsSkillV2{
 	name = "TH_chaoren",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_chaorenCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
-			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_chaorenCARD") and player:getPile("TH_yinhexi_pile"):length() > 6
+			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY and player:getPile("TH_yinhexi_pile"):length() > 6
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -7512,12 +7625,15 @@ TH_yinhexiCARD = sgs.CreateSkillCard{
 
 TH_yinhexiVS = sgs.CreateViewAsSkillV2{
 	name = "TH_yinhexi",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_yinhexiCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
-			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_yinhexiCARD") and player:getPile("TH_yinhexi_pile"):length() > 0
+			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY and player:getPile("TH_yinhexi_pile"):length() > 0
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -7604,12 +7720,15 @@ TH_ScienceCARD = sgs.CreateSkillCard{--科学
 
 TH_Science = sgs.CreateViewAsSkillV2{--科学
 	name = "TH_Science",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_ScienceCARD",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
-			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_ScienceCARD") and not player:isKongcheng()
+			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY and not player:isKongcheng()
 	end,
 	can_select_card = function(skill, request, candidate)
 		return request:getSelectedCardIds():length() < 1 and not candidate:isEquipped()
@@ -7653,12 +7772,15 @@ TH_UnscientificCARD = sgs.CreateSkillCard{--这不科学
 
 TH_UnscientificVS = sgs.CreateViewAsSkillV2{--这不科学
 	name = "TH_Unscientific",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_UnscientificCARD",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
-			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_UnscientificCARD") and not player:isKongcheng()
+			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY and not player:isKongcheng()
 	end,
 	can_select_card = function(skill, request, candidate)
 		return request:getSelectedCardIds():length() < 1 and not candidate:isEquipped()
@@ -7715,12 +7837,15 @@ TH_MoreUnscientificCARD = sgs.CreateSkillCard{--这更不科学
 
 TH_MoreUnscientificVS = sgs.CreateViewAsSkillV2{--这更不科学
 	name = "TH_MoreUnscientific",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_MoreUnscientificCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_MoreUnscientificCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -7862,12 +7987,15 @@ TH_mifengCARD = sgs.CreateSkillCard{--密封
 
 TH_mifengVS = sgs.CreateViewAsSkillV2{--密封
 	name = "TH_mifeng",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_mifengCARD",
 	n = 2,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_mifengCARD")
 	end,
 	can_select_card = function(skill, request, candidate)
 		return request:getSelectedCardIds():length() < 2 and not candidate:isEquipped()
@@ -8050,12 +8178,15 @@ TH_shenlingdayuzhouCARD = sgs.CreateSkillCard{
 
 TH_shenlingdayuzhouVS = sgs.CreateViewAsSkillV2{
 	name = "TH_shenlingdayuzhou",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_shenlingdayuzhouCARD",
 	n = 3,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_shenlingdayuzhouCARD")
 			and (player:getCardCount(true) >= math.ceil(player:aliveCount()/2) or player:getCardCount(true) >= 3)
 	end,
 	can_select_card = function(skill, request, candidate)
@@ -8111,12 +8242,15 @@ TH_shenjiCARD = sgs.CreateSkillCard{
 
 TH_shenjiVS = sgs.CreateViewAsSkillV2{
 	name = "TH_shenji",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_shenjiCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_shenjiCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -8180,12 +8314,15 @@ TH_huanghuoCARD = sgs.CreateSkillCard{
 
 TH_huanghuo = sgs.CreateViewAsSkillV2{
 	name = "TH_huanghuo",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_huanghuoCARD",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_huanghuoCARD")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -8350,12 +8487,15 @@ TH_lordskill_subCARD = sgs.CreateSkillCard{
 
 TH_lordskill_subVS = sgs.CreateViewAsSkillV2{
 	name = "TH_lordskill_sub",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#TH_lordskill_subCARD",
 	n = 2,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#TH_lordskill_subCARD")
 	end,
 	can_select_card = function(skill, request, candidate)
 		local player = request:getInitiator()

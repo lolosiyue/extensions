@@ -503,6 +503,8 @@ jjjijin = sgs.CreateViewAsSkillV2
 		return false
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+jjjijin.response_pattern = "nullification"
 
 jjjijinCard = sgs.CreateSkillCard {
 	name = "jjjijin",
@@ -1896,6 +1898,8 @@ gsjici = sgs.CreateViewAsSkillV2
 		return false
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+gsjici.response_pattern = "nullification"
 
 gsjiciCard = sgs.CreateSkillCard
 {
@@ -3078,6 +3082,7 @@ ny_liuchen_diy = sgs.General(extension, "ny_liuchen_diy", "shu", 4, true, false,
 ny_zhanjue_diy = sgs.CreateViewAsSkillV2
 {
     name = "ny_zhanjue_diy",
+    history_key = "#ny_zhanjue_diy",
 	can_activate = function(skill, request)
 		local reason = request:getReason()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
@@ -4311,6 +4316,10 @@ nyarz_juece = sgs.CreateTriggerSkillV2{
 nyarz_mieji = sgs.CreateViewAsSkillV2
 {
     name = "nyarz_mieji",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#nyarz_mieji",
     n = 999,
     can_select_card = function(skill, request, to_select)
     	local player = request:getInitiator()
@@ -4355,7 +4364,7 @@ nyarz_mieji = sgs.CreateViewAsSkillV2
 		local reason = request:getReason()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local player = request:getInitiator()
-		        return not player:hasUsed("#nyarz_mieji")
+		        return true
 		end
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
 			or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -4954,6 +4963,10 @@ nyarz_xuanfeng = sgs.CreateTriggerSkillV2{
 nyarz_yongjin = sgs.CreateViewAsSkillV2
 {
     name = "nyarz_yongjin",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#nyarz_yongjin",
     n = 99,
     tiansuan_type = "recast,move,all",
     can_select_card = function(skill, request, to_select)
@@ -5010,7 +5023,7 @@ nyarz_yongjin = sgs.CreateViewAsSkillV2
 		local reason = request:getReason()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local player = request:getInitiator()
-		        return (not player:hasUsed("#nyarz_yongjin"))
+		        return true
 		end
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
 			or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -5223,6 +5236,10 @@ nyarz_huashen_buff = sgs.CreateTriggerSkillV2{
 nyarz_xinshengVS = sgs.CreateViewAsSkillV2
 {
     name = "nyarz_xinsheng",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#nyarz_xinsheng",
     create_card = function(skill, request)
     	local player = request:getInitiator()
     	local cards = {}
@@ -5248,7 +5265,7 @@ nyarz_xinshengVS = sgs.CreateViewAsSkillV2
 		local reason = request:getReason()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local player = request:getInitiator()
-		        return (not player:hasUsed("#nyarz_xinsheng")) and player:getMark("&nyarz_souls") > 0
+		        return player:getMark("&nyarz_souls") > 0
 		end
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
 			or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -7710,6 +7727,8 @@ nyarz_youlongVS = sgs.CreateViewAsSkillV2
 		return false
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+nyarz_youlongVS.response_pattern = "nullification"
 
 nyarz_youlong_selectCard = sgs.CreateSkillCard
 {
@@ -8095,6 +8114,9 @@ nyarz_wumou_god = sgs.CreateTriggerSkillV2{
 nyarz_wuqian_god = sgs.CreateViewAsSkillV2
 {
     name = "nyarz_wuqian_god",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 2,
     tiansuan_type = "slash,fire_slash,thunder_slash,duel",
     create_card = function(skill, request)
     	local player = request:getInitiator()
@@ -8124,7 +8146,7 @@ nyarz_wuqian_god = sgs.CreateViewAsSkillV2
 		local reason = request:getReason()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local player = request:getInitiator()
-		        return player:usedTimes("#nyarz_wuqian_god") < 2
+		        return true
 		end
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
 			or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -8208,6 +8230,7 @@ nyarz_wuqian_god_buff = sgs.CreateTargetModSkillV2{
 nyarz_shenfen_godVS = sgs.CreateViewAsSkillV2
 {
     name = "nyarz_shenfen_god",
+    history_key = "#nyarz_shenfen_god",
 	can_activate = function(skill, request)
 		local reason = request:getReason()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
@@ -9026,6 +9049,8 @@ nyarz_longhun_god = sgs.CreateViewAsSkillV2
 		return false
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+nyarz_longhun_god.response_pattern = "nullification"
 
 nyarz_longhun_godCard = sgs.CreateSkillCard
 {
@@ -10682,6 +10707,10 @@ nyarz_cuguo = sgs.CreateTriggerSkillV2{
 nyarz_tongwei = sgs.CreateViewAsSkillV2
 {
     name = "nyarz_tongwei",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#nyarz_tongwei",
     n = 999,
     can_select_card = function(skill, request, to_select)
     	local player = request:getInitiator()
@@ -10727,7 +10756,7 @@ nyarz_tongwei = sgs.CreateViewAsSkillV2
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local player = request:getInitiator()
 		        --return true
-		        return not player:hasUsed("#nyarz_tongwei")
+		        return true
 		end
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
 			or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -11481,6 +11510,8 @@ nyarz_luanzheng = sgs.CreateViewAsSkillV2
 		return false
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+nyarz_luanzheng.response_pattern = "nullification"
 
 nyarz_luanzhengCard = sgs.CreateSkillCard
 {

@@ -4505,11 +4505,14 @@ sfofl_quanyiCard = sgs.CreateSkillCard {
 }
 sfofl_quanyiVS = sgs.CreateViewAsSkillV2{
     name = "sfofl_quanyi",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_quanyi")
+        return player
     end,
     create_card = function(skill, request)
         return sfofl_quanyiCard:clone()
@@ -4820,6 +4823,7 @@ sfofl_horsetailwhiskCard = sgs.CreateSkillCard {
 
 sfofl_horsetailwhiskVS = sgs.CreateViewAsSkillV2{
     name = "sfofl_horsetailwhisk",
+    history_key = "#sfofl_horsetailwhisk",
     n = 1,
     expand_pile = "sfofl_horsetailwhisk",
     can_activate = function(skill, request)
@@ -4871,6 +4875,8 @@ sfofl_horsetailwhiskVS = sgs.CreateViewAsSkillV2{
         end
     end
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+sfofl_horsetailwhiskVS.response_pattern = "nullification"
 sfofl_horsetailwhisk = sgs.CreateArmor{
     name = "sfofl_horsetailwhisk",
     class_name = "Horsetailwhisk",
@@ -5694,11 +5700,14 @@ sfofl_nuchenCard = sgs.CreateSkillCard{
 }
 sfofl_nuchen = sgs.CreateViewAsSkillV2{
     name = "sfofl_nuchen" ,
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_nuchen") and player:getKingdom() == "wei"
+        return player and player:getKingdom() == "wei"
     end,
     create_card = function(skill, request)
         return sfofl_nuchenCard:clone()
@@ -5732,11 +5741,14 @@ sfofl_yijueCard = sgs.CreateSkillCard{
 }
 sfofl_yijue = sgs.CreateViewAsSkillV2{
     name = "sfofl_yijue" ,
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_yijue") and player:getKingdom() == "shu"
+        return player and player:getKingdom() == "shu"
     end,
     create_card = function(skill, request)
         return sfofl_yijueCard:clone()
@@ -5866,11 +5878,14 @@ sfofl_zhijiCard = sgs.CreateSkillCard{
 }
 sfofl_zhiji = sgs.CreateViewAsSkillV2{
     name = "sfofl_zhiji",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 2,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_zhiji")
+        return player
     end,
     can_select_card = function(skill, request, card)
         return not card:isEquipped()
@@ -6449,6 +6464,8 @@ sfofl_longyin = sgs.CreateViewAsSkillV2 {
         end
     end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+sfofl_longyin.response_pattern = "nullification"
 sfofl_longyin_use = sgs.CreateTriggerSkillV2{
     name = "#sfofl_longyin_use",
     events = {sgs.CardUsed, sgs.CardResponded},
@@ -6860,11 +6877,14 @@ sfofl_2_jianshuCard = sgs.CreateSkillCard{
 
 sfofl_2_jianshu = sgs.CreateViewAsSkillV2{
     name = "sfofl_2_jianshu",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 1,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_2_jianshu")
+        return player
     end,
     can_select_card = function(skill, request, card)
         if card:hasFlag("using") or not request:getSelectedCardIds():isEmpty() then return false end
@@ -7598,11 +7618,14 @@ sfofl_daoheCard = sgs.CreateSkillCard{
 }
 sfofl_daohe = sgs.CreateViewAsSkillV2{
     name = "sfofl_daohe",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_daohe")
+        return player
     end,
     create_card = function(skill, request)
         return sfofl_daoheCard:clone()
@@ -7631,11 +7654,14 @@ sfofl_zhiyizCard = sgs.CreateSkillCard{
 }
 sfofl_zhiyiz = sgs.CreateViewAsSkillV2{
     name = "sfofl_zhiyiz",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_zhiyiz")
+        return player
     end,
     create_card = function(skill, request)
         return sfofl_zhiyizCard:clone()
@@ -7964,11 +7990,14 @@ sfofl_young_zhihengCard = sgs.CreateSkillCard {
 }
 sfofl_young_zhiheng = sgs.CreateViewAsSkillV2 {
     name = "sfofl_young_zhiheng",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 1,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_young_zhiheng")
+        return player
     end,
     can_select_card = function(skill, request, card)
         if card:hasFlag("using") or not request:getSelectedCardIds():isEmpty() then return false end
@@ -8723,12 +8752,15 @@ sfofl_boss_ruiyiCard = sgs.CreateSkillCard{
 }
 sfofl_boss_ruiyi = sgs.CreateViewAsSkillV2{
     name = "sfofl_boss_ruiyi",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 999,
     expand_pile = "sfofl_boss_wuhun",
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_boss_ruiyi")
+        return player
     end,
 	can_select_card = function(skill, request, card)
         local player = request:getInitiator()
@@ -9277,12 +9309,15 @@ sfofl_boss_xiuluoCard = sgs.CreateSkillCard{
 }
 sfofl_boss_xiuluo = sgs.CreateViewAsSkillV2 {
     name = "sfofl_boss_xiuluo",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 1,
     expand_pile = "sfofl_boss_zhanyi",
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_boss_xiuluo")
+        return player
     end,
     can_select_card = function(skill, request, card)
         if card:hasFlag("using") or not request:getSelectedCardIds():isEmpty() then return false end
@@ -9813,11 +9848,14 @@ sfofl_zhanyanCard = sgs.CreateSkillCard{
 }
 sfofl_zhanyan = sgs.CreateViewAsSkillV2{
     name = "sfofl_zhanyan",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_zhanyan")
+        return player
     end,
     create_card = function(skill, request)
         return sfofl_zhanyanCard:clone()
@@ -10293,11 +10331,14 @@ sfofl_liuli = sgs.General(extension_s, "sfofl_liuli", "shu", 3)
 sfofl_fuli = sgs.CreateViewAsSkillV2
 {
     name = "sfofl_fuli",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and (not player:isKongcheng()) and (not player:hasUsed("#sfofl_fuli"))
+        return player and (not player:isKongcheng())
     end,
     create_card = function(skill, request)
         return sfofl_fuliCard:clone()
@@ -10749,6 +10790,7 @@ sfofl_sancaiCard = sgs.CreateSkillCard{
 }
 sfofl_sancai = sgs.CreateViewAsSkillV2{
     name = "sfofl_sancai",
+    history_key = "#sfofl_sancai",
     n = 1,
     can_activate = function(skill, request)
         local player = request:getInitiator()
@@ -11588,12 +11630,15 @@ sfofl_xuanshiCard = sgs.CreateSkillCard{
 }
 sfofl_xuanshi = sgs.CreateViewAsSkillV2{
 	name = "sfofl_xuanshi" ,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 2,
 	n = 0 ,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
         if not player then return false end
-        if not player:isKongcheng() and player:usedTimes("#sfofl_xuanshi") < 2 then
+        if not player:isKongcheng() then
             local red = 0
             local black = 0
 		    for _,card in sgs.qlist(player:getHandcards()) do
@@ -11649,11 +11694,14 @@ sfofl_xiongyeCard = sgs.CreateSkillCard{
 
 sfofl_xiongye = sgs.CreateViewAsSkillV2{
 	name = "sfofl_xiongye$" ,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0 ,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:isKongcheng() and not player:hasUsed("#sfofl_xiongye")
+        return player and not player:isKongcheng()
 	end,
 	create_card = function(skill, request)
 		return sfofl_xiongyeCard:clone()
@@ -12333,11 +12381,14 @@ sfofl_lianhuanCard = sgs.CreateSkillCard{
 }
 sfofl_lianhuan = sgs.CreateViewAsSkillV2 {
     name = "sfofl_lianhuan",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_lianhuan")
+        return player
     end,
     create_card = function(skill, request)
         return sfofl_lianhuanCard:clone()
@@ -12542,11 +12593,14 @@ sfofl_beirongCard = sgs.CreateSkillCard{
 }
 sfofl_beirong = sgs.CreateViewAsSkillV2{
 	name = "sfofl_beirong",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
     n = 999,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_beirong")
+        return player
 	end,
     can_select_card = function(skill, request, card)
 		return not card:isEquipped() and not card:hasFlag("using")
@@ -12878,11 +12932,14 @@ sfofl_huoceCard = sgs.CreateSkillCard{
 
 sfofl_huoce = sgs.CreateViewAsSkillV2{
 	name = "sfofl_huoce",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_huoce") and player:canDiscard(player, "h")
+		return player and player:canDiscard(player, "h")
 	end, 
 	create_card = function(skill, request)
 		return sfofl_huoceCard:clone()
@@ -12937,11 +12994,14 @@ sfofl_boyanCard = sgs.CreateSkillCard{
 
 sfofl_boyan = sgs.CreateViewAsSkillV2{
 	name = "sfofl_boyan",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 2,
 	n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and player:usedTimes("#sfofl_boyan") < 2
+		return player
 	end, 
 	create_card = function(skill, request)
 		return sfofl_boyanCard:clone()
@@ -13066,6 +13126,7 @@ sfofl_2_zhoujiCard = sgs.CreateSkillCard{
 
 sfofl_2_zhouji = sgs.CreateViewAsSkillV2{
 	name = "sfofl_2_zhouji",
+	history_key = "#sfofl_2_zhouji",
 	n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
@@ -13145,11 +13206,14 @@ sfofl_zhaxiongCard = sgs.CreateSkillCard{
 }
 sfofl_zhaxiongVS = sgs.CreateViewAsSkillV2{
 	name = "sfofl_zhaxiong",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_zhaxiong")
+		return player
     end,
 	create_card = function(skill, request) 
 		return sfofl_zhaxiongCard:clone()
@@ -13361,11 +13425,14 @@ sfofl_barbsCard = sgs.CreateSkillCard{
 
 sfofl_barbs = sgs.CreateViewAsSkillV2{
 	name = "sfofl_barbs",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_barbs")
+		return player
 	end, 
 	create_card = function(skill, request)
 		return sfofl_barbsCard:clone()
@@ -13574,11 +13641,14 @@ sfofl_liaofuCard = sgs.CreateSkillCard{
 
 sfofl_liaofuVS = sgs.CreateViewAsSkillV2{
     name = "sfofl_liaofu",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 1,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_liaofu")
+        return player
     end,
     can_select_card = function(skill, request, card)
         local player = request:getInitiator()
@@ -13888,11 +13958,14 @@ sfofl_jianjingCard = sgs.CreateSkillCard{
 }
 sfofl_jianjing = sgs.CreateViewAsSkillV2{
     name = "sfofl_jianjing",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and (not player:hasUsed("#sfofl_jianjing")) and not player:isKongcheng()
+        return player and not player:isKongcheng()
     end, 
     create_card = function(skill, request) 
         return sfofl_jianjingCard:clone()
@@ -14172,11 +14245,14 @@ sfofl_fenqiCard = sgs.CreateSkillCard{
 }
 sfofl_fenqi = sgs.CreateViewAsSkillV2{
 	name = "sfofl_fenqi",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_fenqi") and player:getMark("&sfofl_xiaoxi") > 0
+		return player and player:getMark("&sfofl_xiaoxi") > 0
     end,
 	create_card = function(skill, request) 
 		return sfofl_fenqiCard:clone()
@@ -14865,11 +14941,14 @@ sfofl_2_zhanyanCard = sgs.CreateSkillCard{
 }
 sfofl_2_zhanyan = sgs.CreateViewAsSkillV2{
 	name = "sfofl_2_zhanyan",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_2_zhanyan") and not player:isKongcheng()
+		return player and not player:isKongcheng()
 	end,
 	create_card = function(skill, request)
 		return sfofl_2_zhanyanCard:clone()
@@ -15041,7 +15120,7 @@ sfofl_wushengVS = sgs.CreateViewAsSkillV2{
 		end
 		local name = request:getUserString()
 		if name == "" then
-			local c = sgs.Self:getTag("sfofl_wusheng"):toCard()
+			local c = request:getInitiator():getTag("sfofl_wusheng"):toCard()
 			if c then name = c:objectName() end
 		end
 		if name == "" then return nil end
@@ -15211,11 +15290,14 @@ sfofl_zaineiCard = sgs.CreateSkillCard {
 
 sfofl_zaineiVS = sgs.CreateViewAsSkillV2 {
 	name = "sfofl_zainei",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_zainei") and player:getMark("@sfofl_zainei") > 0
+		return player and player:getMark("@sfofl_zainei") > 0
 	end,
 	create_card = function(skill, request)
 		return sfofl_zaineiCard:clone()
@@ -15299,11 +15381,14 @@ sfofl_hanweiCard = sgs.CreateSkillCard {
 
 sfofl_hanwei = sgs.CreateViewAsSkillV2 {
 	name = "sfofl_hanwei",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 999,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_hanwei")
+		return player
 	end,
 	can_select_card = function(skill, request, card)
 		return not card:isDamageCard() and not card:hasFlag("using")
@@ -16260,11 +16345,14 @@ sfofl_jukouCard = sgs.CreateSkillCard {
 }
 sfofl_jukou = sgs.CreateViewAsSkillV2 {
 	name = "sfofl_jukou",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_jukou")
+		return player
 	end,
 	create_card = function(skill, request)
 		return sfofl_jukouCard:clone()
@@ -16651,11 +16739,14 @@ sfofl_houyingCard = sgs.CreateSkillCard{
 }
 sfofl_houyingVS = sgs.CreateViewAsSkillV2{
 	name = "sfofl_houying",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 2,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_houying")
+		return player
 	end,
 	can_select_card = function(skill, request, card)
 		return card:isBlack() and not card:hasFlag("using")
@@ -16833,11 +16924,14 @@ sfofl_qianhuCard = sgs.CreateSkillCard{
 }
 sfofl_qianhuVS = sgs.CreateViewAsSkillV2{
 	name = "sfofl_qianhu",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 2,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_qianhu")
+		return player
 	end,
 	can_select_card = function(skill, request, card)
 		return card:isRed() and not card:hasFlag("using")
@@ -17434,11 +17528,14 @@ sfofl_zhouyuanCard = sgs.CreateSkillCard {
 }
 sfofl_zhouyuan = sgs.CreateViewAsSkillV2 {
 	name = "sfofl_zhouyuan",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 999,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_zhouyuan") and not player:isKongcheng()
+		return player and not player:isKongcheng()
 	end,
 	can_select_card = function(skill, request, card)
 		local selected = request:getSelectedCardIds()
@@ -18251,11 +18348,14 @@ sfofl_weizhuCard = sgs.CreateSkillCard{
 }
 sfofl_weizhu = sgs.CreateViewAsSkillV2 {
     name = "sfofl_weizhu",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 999,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_weizhu")
+        return player
     end,
     can_select_card = function(skill, request, card)
 		return not card:isEquipped() and not card:hasFlag("using")
@@ -18490,11 +18590,14 @@ sfofl_chejiCard = sgs.CreateSkillCard{
 }
 sfofl_cheji = sgs.CreateViewAsSkillV2 {
     name = "sfofl_cheji",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 999,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_cheji")
+        return player
     end,
     can_select_card = function(skill, request, card)
 		return not card:hasFlag("using")
@@ -18763,11 +18866,14 @@ sfofl_cuixiCard = sgs.CreateSkillCard{
 
 sfofl_cuixi = sgs.CreateViewAsSkillV2{
 	name = "sfofl_cuixi",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 2,
 	n = 99,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and player:usedTimes("#sfofl_cuixi") < 2
+		return player
 	end, 
     can_select_card = function(skill, request, card)
 		return not card:isEquipped() and not card:hasFlag("using")
@@ -18874,6 +18980,7 @@ sfofl_sixiCard = sgs.CreateSkillCard{
 
 sfofl_sixiVS = sgs.CreateViewAsSkillV2{
 	name = "sfofl_sixi",
+	history_key = "#sfofl_sixi",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
@@ -19591,11 +19698,14 @@ sfofl_lianjiCard = sgs.CreateSkillCard {
 }
 sfofl_lianji = sgs.CreateViewAsSkillV2 {
 	name = "sfofl_lianji",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_lianji")
+		return player
 	end,
 	create_card = function(skill, request)
 		return sfofl_lianjiCard:clone()
@@ -19795,11 +19905,14 @@ sfofl_liyuCard = sgs.CreateSkillCard{
 
 sfofl_liyu = sgs.CreateViewAsSkillV2{
 	name = "sfofl_liyu",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 2,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and player:usedTimes("#sfofl_liyu") < 2
+		return player
 	end,
 	create_card = function(skill, request)
         return sfofl_liyuCard:clone()
@@ -20398,23 +20511,17 @@ sfofl_chuce = sgs.CreateTriggerSkillV2{
 }
 sfofl_chuce_buff = sgs.CreateTargetModSkillV2 {
     name = "#sfofl_chuce_buff",
-    residue_func = function(skill, ctx)
-        local from = ctx:getPrimary()
-        local card = ctx:getCard()
-        if from and from:hasSkill("sfofl_chuce") and card and table.contains(card:getSkillNames(), "sfofl_chuce") then
-			return 999
-		else
-			return false
-		end
-    end,
-    distance_limit_func = function(skill, ctx)
+    holder_selector = sgs.CorrectSkill_System,
+    correct_func = function(skill, ctx)
+        local mod = ctx:getModType()
+        if mod ~= sgs.TargetModSkill_Residue and mod ~= sgs.TargetModSkill_DistanceLimit then return false end
         local from = ctx:getPrimary()
         local card = ctx:getCard()
         if from and from:hasSkill("sfofl_chuce") and card and table.contains(card:getSkillNames(), "sfofl_chuce") then
             return 999
         end
         return false
-    end
+    end,
 }
 
 --[[
@@ -21344,12 +21451,15 @@ sfofl_dingluanCard = sgs.CreateSkillCard{
 
 sfofl_dingluan = sgs.CreateViewAsSkillV2{
 	name = "sfofl_dingluan",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
     waked_skills = "_sfofl_bearing_down_border",
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_dingluan")
+		return player
     end,
 	create_card = function(skill, request)
 		return sfofl_dingluanCard:clone()
@@ -21709,11 +21819,14 @@ sfofl_chiyuanCard = sgs.CreateSkillCard {
 }
 sfofl_chiyuanVS = sgs.CreateViewAsSkillV2 {
 	name = "sfofl_chiyuan",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_chiyuan")
+		return player
 	end,
 	create_card = function(skill, request)
 		return sfofl_chiyuanCard:clone()
@@ -21919,11 +22032,14 @@ sfofl_dutanCard = sgs.CreateSkillCard{
 }
 sfofl_dutan = sgs.CreateViewAsSkillV2{
 	name = "sfofl_dutan",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_dutan")
+		return player
 	end,
 	create_card = function(skill, request)
 		local card = sfofl_dutanCard:clone()
@@ -22126,11 +22242,14 @@ sfofl_zhanyiCard = sgs.CreateSkillCard {
 }
 sfofl_zhanyiVS = sgs.CreateViewAsSkillV2 {
     name = "sfofl_zhanyi",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 1,
     can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_zhanyi")
+		return player
     end,
     can_select_card = function(skill, request, card)
         return (card:isKindOf("BasicCard") or card:isKindOf("TrickCard")) and request:getSelectedCardIds():isEmpty() and not card:hasFlag("using")
@@ -22258,11 +22377,14 @@ sfofl_jianshuCard = sgs.CreateSkillCard{
 
 sfofl_jianshu = sgs.CreateViewAsSkillV2{
     name = "sfofl_jianshu",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 1,
     can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_jianshu")
+        return player
     end,
     can_select_card = function(skill, request, card)
 		return not card:isEquipped() and not card:hasFlag("using") and request:getSelectedCardIds():isEmpty()
@@ -22667,22 +22789,16 @@ sfofl_caesar = sgs.General(extension_e, "sfofl_caesar$", "west", 4)
 
 sfofl_ducai = sgs.CreateTargetModSkillV2{
 	name = "sfofl_ducai",
-	distance_limit_func = function(skill, ctx)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		local mod = ctx:getModType()
+		if mod ~= sgs.TargetModSkill_Residue and mod ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local from = ctx:getPrimary()
 		if from and from:hasSkill("sfofl_ducai") and from:getPhase() ~= sgs.Player_NotActive then
 			return 999
-		else
-			return false
 		end
+		return false
 	end,
-    residue_func = function(skill, ctx)
-        local from = ctx:getPrimary()
-        if from and from:hasSkill("sfofl_ducai") and from:getPhase() ~= sgs.Player_NotActive then
-			return 999
-		else
-			return false
-		end
-    end,
 }
 
 -- DEFER:sfofl_ducaiInvalidity：CreateInvaliditySkill 無 V2 對應 API，保留 legacy。
@@ -22839,8 +22955,10 @@ sfofl_macrinus = sgs.General(extension_e, "sfofl_macrinus", "west", 4)
 
 sfofl_dengtian_cardmax = sgs.CreateMaxCardsSkillV2 {
 	name = "#sfofl_dengtian_cardmax",
-	extra_func = function(skill, target)
-		if target:hasSkill("sfofl_dengtian") and target:getMark("sfofl_dengtian_cardmax") > 0 then
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		local target = ctx:getPrimary()
+		if target and target:hasSkill("sfofl_dengtian") and target:getMark("sfofl_dengtian_cardmax") > 0 then
 			return target:getMark("sfofl_dengtian_cardmax")
 		end
         return false
@@ -24013,11 +24131,14 @@ sfofl_batteringramCard = sgs.CreateSkillCard {
 }
 sfofl_batteringramVS = sgs.CreateViewAsSkillV2 {
     name = "sfofl_batteringram",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 0,
     can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_batteringram") and player:getEquips():length() >= 2
+		return player and player:getEquips():length() >= 2
 	end, 
     create_card = function(skill, request)
         local acard = sfofl_batteringramCard:clone()
@@ -24177,6 +24298,7 @@ sfofl_yufengCard = sgs.CreateSkillCard{
 
 sfofl_yufeng = sgs.CreateViewAsSkillV2{
 	name = "sfofl_yufeng",
+	history_key = "#sfofl_yufeng",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
@@ -24292,11 +24414,14 @@ sfofl_zhengjingCard = sgs.CreateSkillCard{
 
 sfofl_zhengjing = sgs.CreateViewAsSkillV2{
 	name = "sfofl_zhengjing",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_zhengjing")
+		return player
     end,
 	create_card = function(skill, request) 
 		return sfofl_zhengjingCard:clone()
@@ -24663,7 +24788,9 @@ sfofl_anmou = sgs.CreateTriggerSkillV2{
 }
 sfofl_anmou_buff = sgs.CreateTargetModSkillV2 {
 	name = "#sfofl_anmou_buff",
-    residue_func = function(skill, ctx)
+    holder_selector = sgs.CorrectSkill_System,
+    correct_func = function(skill, ctx)
+        if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
         if from and to then
@@ -25274,7 +25401,8 @@ local function getxingbian(player)
 end
 sfofl_xingbian_range = sgs.CreateAttackRangeSkillV2 {
 	name = "#sfofl_xingbian_range",
-	extra_func = function(skill, ctx)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player and player:hasEquipSkill("sfofl_xingbian") and getxingbian(player) > 0 then return getxingbian(player) end
 	end,
@@ -25792,11 +25920,14 @@ sfofl_picaiCard = sgs.CreateSkillCard{
 }
 sfofl_picai = sgs.CreateViewAsSkillV2{
 	name = "sfofl_picai",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and player:usedTimes("#sfofl_picai")<1
+		return player
 	end,
 	create_card = function(skill, request)
 		return sfofl_picaiCard:clone()
@@ -25838,6 +25969,7 @@ sfofl_yaozhuoCard = sgs.CreateSkillCard{
 
 sfofl_yaozhuoVS = sgs.CreateViewAsSkillV2{
 	name = "sfofl_yaozhuo",
+	history_key = "#sfofl_yaozhuo",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
@@ -25921,6 +26053,7 @@ sfofl_lisong:setGender(sgs.General_Sexless)
 
 sfofl_kuijiVS = sgs.CreateViewAsSkillV2{
     name = "sfofl_kuiji",
+    history_key = "#sfofl_kuiji",
     n = 99,
     expand_pile = "#sfofl_kuiji",
     can_activate = function(skill, request)
@@ -26752,22 +26885,24 @@ sfofl_l_yuanshao = sgs.General(extension_e, "sfofl_l_yuanshao$", "qun", 4)
 sfofl_hefa_buff = sgs.CreateTargetModSkillV2{
 	name = "#sfofl_hefa_buff",
 	pattern = "Slash",
-	extra_target_func = function(skill, ctx)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		local mod = ctx:getModType()
 		local card = ctx:getCard()
-		if card and table.contains(card:getSkillNames(), "sfofl_hefa") then
-			local x = card:subcardsLength()
-			return x - 1
-		else
+		if mod == sgs.TargetModSkill_ExtraTarget then
+			if card and table.contains(card:getSkillNames(), "sfofl_hefa") then
+				local x = card:subcardsLength()
+				return x - 1
+			end
+			return false
+		elseif mod == sgs.TargetModSkill_Residue then
+			if card and table.contains(card:getSkillNames(), "sfofl_hefa") then
+				return 999
+			end
 			return false
 		end
+		return false
 	end,
-    residue_func = function(skill, ctx)
-		local card = ctx:getCard()
-        if card and table.contains(card:getSkillNames(), "sfofl_hefa") then
-            return 999
-        end
-        return false
-    end,
 }
 sfofl_hefaVS = sgs.CreateViewAsSkillV2{
     name = "sfofl_hefa",
@@ -27174,11 +27309,14 @@ sfofl_cuanzun = sgs.CreateTriggerSkillV2{
 ]] --
 sfofl_liufangcVS = sgs.CreateViewAsSkillV2 {
     name = "sfofl_liufangc",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 0,
     can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_liufangc")
+		return player
     end,
     create_card = function(skill, request)
         return sfofl_liufangcCard:clone()
@@ -28034,11 +28172,14 @@ sfofl_pianchong = sgs.CreateTriggerSkillV2{
 ]] --
 sfofl_zunwei = sgs.CreateViewAsSkillV2 {
     name = "sfofl_zunwei",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 0,
     can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_zunwei") and 
+        return player and 
         (player:getMark("sfofl_zunwei_hp") == 0 or
         player:getMark("sfofl_zunwei_equip") == 0 or
         player:getMark("sfofl_zunwei_handcard") == 0
@@ -28112,11 +28253,14 @@ sfofl_sunhanhua = sgs.General(extension_gai, "sfofl_sunhanhua", "wu", 3, false)
 ]] --
 sfofl_chongxu = sgs.CreateViewAsSkillV2 {
     name = "sfofl_chongxu",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 0,
     can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_chongxu")
+		return player
     end,
     create_card = function(skill, request)
         return sfofl_chongxuCard:clone()
@@ -28714,11 +28858,14 @@ sfofl_jianjiCard = sgs.CreateSkillCard{
 }
 sfofl_jianji = sgs.CreateViewAsSkillV2{
 	name = "sfofl_jianji",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_jianji")
+		return player
 	end,
 	create_card = function(skill, request)
 		return sfofl_jianjiCard:clone()
@@ -28727,7 +28874,9 @@ sfofl_jianji = sgs.CreateViewAsSkillV2{
 sfofl_jianji_buff = sgs.CreateTargetModSkillV2{
     name = "#sfofl_jianji_buff",
     pattern = ".",
-    distance_limit_func = function(skill, ctx)
+    holder_selector = sgs.CorrectSkill_System,
+    correct_func = function(skill, ctx)
+        if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local card, to = ctx:getCard(), ctx:getSecondary()
         if card and card:hasFlag("sfofl_jianji") and to and to:getMark("&dianhu") > 0 then return 1000 end
         return false
@@ -28854,11 +29003,14 @@ sfofl_duliangCard = sgs.CreateSkillCard{
 }
 sfofl_duliangVS = sgs.CreateViewAsSkillV2{
 	name = "sfofl_duliang",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_duliang")
+		return player
 	end,
 	create_card = function(skill, request)
 		return sfofl_duliangCard:clone()
@@ -29135,11 +29287,14 @@ sfofl_zhurenCard = sgs.CreateSkillCard{
 }
 sfofl_zhuren = sgs.CreateViewAsSkillV2{
     name = "sfofl_zhuren",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 1,
     can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_zhuren") and player:canDiscard(player, "h")
+		return player and player:canDiscard(player, "h")
 	end,
 	can_select_card = function(skill, request, card)
 		local player = request:getInitiator()
@@ -29966,7 +30121,8 @@ sfofl_buzhan = sgs.CreateCardLimitSkill{
 }
 sfofl_buzhan_range = sgs.CreateAttackRangeSkillV2 {
 	name = "#sfofl_buzhan_range",
-	extra_func = function(skill, ctx)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player and player:hasSkill("sfofl_buzhan") then return player:getLostHp() end
 	end,
@@ -30470,11 +30626,14 @@ sfofl_kuisheCard = sgs.CreateSkillCard{
 }
 sfofl_kuishe = sgs.CreateViewAsSkillV2{
 	name = "sfofl_kuishe",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_kuishe")
+		return player
 	end,
 	create_card = function(skill, request) 
 		return sfofl_kuisheCard:clone()
@@ -30631,6 +30790,9 @@ sfofl_yuanlueCard = sgs.CreateSkillCard{
 }
 sfofl_yuanlue = sgs.CreateViewAsSkillV2{
 	name = "sfofl_yuanlue",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
@@ -30641,7 +30803,7 @@ sfofl_yuanlue = sgs.CreateViewAsSkillV2{
                 x = p:getEquips():length()
             end
 		end
-		return player:getEquips():length() >= x and not player:hasUsed("#sfofl_yuanlue") and player:getEquips():length() > 0
+		return player:getEquips():length() >= x and player:getEquips():length() > 0
 	end,
 	create_card = function(skill, request) 
 		return sfofl_yuanlueCard:clone()
@@ -31625,11 +31787,14 @@ sfofl_bingmanCard = sgs.CreateSkillCard{
 }
 sfofl_bingman = sgs.CreateViewAsSkillV2{
 	name = "sfofl_bingman",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_bingman")
+        return player
     end,
 	create_card = function(skill, request)
 		return sfofl_bingmanCard:clone()
@@ -31681,7 +31846,9 @@ sfofl_sunshou_prohibit = sgs.CreateProhibitSkill {
 sfofl_sunshou = sgs.CreateTargetModSkillV2 {
 	name = "sfofl_sunshou",
 	pattern = ".",
-	extra_target_func = function(skill, ctx)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		if ctx:getModType() ~= sgs.TargetModSkill_ExtraTarget then return false end
 		local from, card = ctx:getPrimary(), ctx:getCard()
 		if from and from:hasSkill(skill:objectName()) and card and card:isBlack() then return 1 end
 		return 0
@@ -32513,11 +32680,14 @@ sfofl_n_yangwuCard = sgs.CreateSkillCard{
 }
 sfofl_n_yangwu = sgs.CreateViewAsSkillV2{
 	name = "sfofl_n_yangwu",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_n_yangwu")
+		return player
 	end,
 	create_card = function(skill, request) 
 		return sfofl_n_yangwuCard:clone()
@@ -32972,7 +33142,9 @@ sfofl_nw_shenlvbu = sgs.General(extension_war, "sfofl_nw_shenlvbu", "god", 5, tr
 sfofl_n_shenji = sgs.CreateTargetModSkillV2 {
 	name = "sfofl_n_shenji",
 	pattern = "Slash",
-	extra_target_func = function(skill, ctx)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		if ctx:getModType() ~= sgs.TargetModSkill_ExtraTarget then return false end
 		local from = ctx:getPrimary()
 		if from and from:hasSkill(skill:objectName()) then return 1 end
 		return 0
@@ -33118,11 +33290,14 @@ sfofl_n_yuanlueCard = sgs.CreateSkillCard{
 }
 sfofl_n_yuanlue = sgs.CreateViewAsSkillV2{
 	name = "sfofl_n_yuanlue",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_n_yuanlue")
+		return player
 	end,
 	create_card = function(skill, request)
 		return sfofl_n_yuanlueCard:clone()
@@ -33583,11 +33758,14 @@ sfofl_n_fenyinCard = sgs.CreateSkillCard{
 }
 sfofl_n_fenyin = sgs.CreateViewAsSkillV2{
 	name = "sfofl_n_fenyin",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return player and not player:hasUsed("#sfofl_n_fenyin") and not player:isKongcheng()
+        return player and not player:isKongcheng()
     end,
 	create_card = function(skill, request)
 		return sfofl_n_fenyinCard:clone()
@@ -33734,11 +33912,14 @@ sfofl_n_tongchouCard = sgs.CreateSkillCard{
 }
 sfofl_n_tongchou = sgs.CreateViewAsSkillV2{
 	name = "sfofl_n_tongchou",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_n_tongchou")
+		return player
 	end,
 	create_card = function(skill, request)
 		return sfofl_n_tongchouCard:clone()
@@ -34159,11 +34340,14 @@ sfofl_n_luozhanCard = sgs.CreateSkillCard{
 }
 sfofl_n_luozhan = sgs.CreateViewAsSkillV2{
 	name = "sfofl_n_luozhan", 
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 1, 
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player and not player:hasUsed("#sfofl_n_luozhanCard")
+		return player
 	end,
 	can_select_card = function(skill, request, card)
 		return request:getSelectedCardIds():isEmpty() and card:isKindOf("Weapon")
@@ -35028,16 +35212,19 @@ sfofl_jixin_buff = sgs.CreateTriggerSkillV2{
 }
 sfofl_jixin_targetmod = sgs.CreateTargetModSkillV2 {
 	name = "#sfofl_jixin_targetmod",
-	residue_func = function(skill, ctx)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		local mod = ctx:getModType()
 		local card = ctx:getCard()
-		if card and card:hasFlag("sfofl_jixin") then return 999 end
-		return 0
+		if mod == sgs.TargetModSkill_Residue then
+			if card and card:hasFlag("sfofl_jixin") then return 999 end
+			return 0
+		elseif mod == sgs.TargetModSkill_DistanceLimit then
+			if card and card:hasFlag("sfofl_jixin") then return 1000 end
+			return 0
+		end
+		return false
 	end,
-    distance_limit_func = function(skill, ctx)
-		local card = ctx:getCard()
-        if card and card:hasFlag("sfofl_jixin") then return 1000 end
-        return 0
-    end,
 }
 
 
@@ -35779,7 +35966,9 @@ sfofl_jinghong = sgs.CreateTriggerSkillV2{
 }
 sfofl_jinghong_buff = sgs.CreateTargetModSkillV2{
     name = "#sfofl_jinghong_buff",
-	residue_func = function(skill, ctx)
+    holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
 		local player, card = ctx:getPrimary(), ctx:getCard()
 		if card and card:isBlack() and player and player:hasSkill("sfofl_jinghong") then return 999 end
 		return 0
@@ -36253,15 +36442,18 @@ sfofl_magic_ruiji_change = sgs.General(extension_e, "sfofl_magic_ruiji_change", 
 
 sfofl_shengcai_buff = sgs.CreateTargetModSkillV2{
     name = "#sfofl_shengcai_buff",
-    residue_func = function(skill, ctx)
+    holder_selector = sgs.CorrectSkill_System,
+    correct_func = function(skill, ctx)
+		local mod = ctx:getModType()
 		local card = ctx:getCard()
-        if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "sfofl_shengcai") then return 999 end
-        return 0
-    end,
-    distance_limit_func = function(skill, ctx)
-		local card = ctx:getCard()
-        if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "sfofl_shengcai") then return 1000 end
-        return 0
+        if mod == sgs.TargetModSkill_Residue then
+            if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "sfofl_shengcai") then return 999 end
+            return 0
+        elseif mod == sgs.TargetModSkill_DistanceLimit then
+            if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "sfofl_shengcai") then return 1000 end
+            return 0
+        end
+        return false
     end,
 }
 
@@ -36475,24 +36667,25 @@ sfofl_magic_lulingqi_change = sgs.General(extension_e, "sfofl_magic_lulingqi_cha
 sfofl_henghui_buff = sgs.CreateTargetModSkillV2{
     name = "#sfofl_henghui_buff",
     pattern = "Slash",
-    distance_limit_func = function(skill, ctx)
+    holder_selector = sgs.CorrectSkill_System,
+    correct_func = function(skill, ctx)
+		local mod = ctx:getModType()
 		local from = ctx:getPrimary()
-        if from and from:getMark("&sfofl_henghui_sec") > 0 then
-            return 1000
+        if mod == sgs.TargetModSkill_DistanceLimit then
+            if from and from:getMark("&sfofl_henghui_sec") > 0 then
+                return 1000
+            end
+            return 0
+        elseif mod == sgs.TargetModSkill_ExtraTarget then
+            if from and from:getMark("&sfofl_henghui_sec") > 0 then return 2*from:getMark("&sfofl_henghui_sec") end
+            return 0
+        elseif mod == sgs.TargetModSkill_Residue then
+            if from and from:getMark("&sfofl_henghui_first") > 0 then
+                return from:getMark("&sfofl_henghui_first")
+            end
+            return 0
         end
-        return 0
-    end,
-    extra_target_func = function(skill, ctx)
-		local from = ctx:getPrimary()
-		if from and from:getMark("&sfofl_henghui_sec") > 0 then return 2*from:getMark("&sfofl_henghui_sec") end
-		return 0
-	end,
-    residue_func = function(skill, ctx)
-		local player = ctx:getPrimary()
-        if player and player:getMark("&sfofl_henghui_first") > 0 then
-            return player:getMark("&sfofl_henghui_first")
-        end
-        return 0
+        return false
     end,
 }
 
