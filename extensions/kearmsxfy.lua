@@ -7253,7 +7253,7 @@ sxtongli = sgs.CreateTriggerSkillV2 {
 		end
 	end,
 	can_trigger = function(skill, event, room, player, data)
-		if event == sgs.CardUsed and player:getPhase() == sgs.Player_Play then
+		if event == sgs.CardUsed and player:getPhase() == sgs.Player_Play and player:hasSkill(skill:objectName()) then
 			local use = data:toCardUse()
 			if use.card:getTypeId() > 0 then
 				local suits = {}
