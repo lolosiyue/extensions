@@ -6958,6 +6958,14 @@ ai_register_handler("activate", function(self, request)
                 -- This finite acknowledgement grants no candidate/authority;
                 -- all collector unknowns and final validation remain below.
                 local covered = (key == "xuanzhu" or key == "xufa" or key == "olspxixiang" or key == "limu" or key == "fuzhai" or key == "olquxi" or key == "miuyan" or key == "huiyun" or key == "zonglve") and type(sgs.ai_fill_skill[key]) == "function"
+                -- The fixed original Zunwei fill uses an issued readonly seed,
+                -- so an empty native conversion catalog is not missing strategy.
+                -- Require both existing family entries; planning and all source
+                -- unknowns/final authority checks still run below.
+                if key == "zunwei" and type(sgs.ai_fill_skill.zunwei) == "function"
+                    and type(sgs.ai_skill_use_func.ZunweiCard) == "function" then
+                    covered = true
+                end
                 -- 列不完就不能宣稱覆蓋：那是「不知道這個技能變得出什麼」。
                 if self:hasEnumeratedConversions() and conversion_by_skill[key] then
                     covered = true
