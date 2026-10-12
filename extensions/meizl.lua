@@ -1142,6 +1142,8 @@ meizlsuxianskill = sgs.CreateViewAsSkillV2 {
 		return false
 	end
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+meizlsuxianskill.response_pattern = "nullification"
 
 meizlsuxian = sgs.CreateTriggerSkillV2 {
 	name = "meizlsuxian",

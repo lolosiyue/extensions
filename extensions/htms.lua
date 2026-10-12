@@ -20275,6 +20275,8 @@ tucao = sgs.CreateViewAsSkillV2 {
 		return ncard
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+tucao.response_pattern = "nullification"
 
 
 tucaoxx = sgs.CreateTriggerSkillV2 {

@@ -3275,6 +3275,8 @@ se_tianming = sgs.CreateViewAsSkillV2 {
 		return nil
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+se_tianming.response_pattern = "nullification"
 
 se_tianmingWore = sgs.CreateTriggerSkillV2 {
 	name = "se_tianming",
@@ -12945,6 +12947,8 @@ SE_Gaoling = sgs.CreateViewAsSkillV2 {
 		end
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+SE_Gaoling.response_pattern = "nullification"
 
 SE_Gaoling_tr = sgs.CreateTriggerSkillV2 {
 	name = "#SE_Gaoling_tr",
@@ -15048,6 +15052,8 @@ se_zhiyan = sgs.CreateViewAsSkillV2 {
 		return ncard
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+se_zhiyan.response_pattern = "nullification"
 
 se_zhiyan_Trigger = sgs.CreateTriggerSkillV2 {
 	name = "#se_zhiyan_Trigger",
@@ -15418,6 +15424,8 @@ se_linmo = sgs.CreateViewAsSkillV2 {
 		return slash
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+se_linmo.response_pattern = "nullification"
 
 se_zhenfen = sgs.CreateTriggerSkillV2 {
 	name = "se_zhenfen",

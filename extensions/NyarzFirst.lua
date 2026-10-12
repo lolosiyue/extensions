@@ -1666,6 +1666,8 @@ LuaLonghun = sgs.CreateViewAsSkillV2{
 		return new_card
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+LuaLonghun.response_pattern = "nullification"
 
 godzhaoyun:addSkill(godjuejin)
 godzhaoyun:addSkill(godjuejinmax)

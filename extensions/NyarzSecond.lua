@@ -503,6 +503,8 @@ jjjijin = sgs.CreateViewAsSkillV2
 		return false
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+jjjijin.response_pattern = "nullification"
 
 jjjijinCard = sgs.CreateSkillCard {
 	name = "jjjijin",
@@ -1896,6 +1898,8 @@ gsjici = sgs.CreateViewAsSkillV2
 		return false
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+gsjici.response_pattern = "nullification"
 
 gsjiciCard = sgs.CreateSkillCard
 {
@@ -7710,6 +7714,8 @@ nyarz_youlongVS = sgs.CreateViewAsSkillV2
 		return false
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+nyarz_youlongVS.response_pattern = "nullification"
 
 nyarz_youlong_selectCard = sgs.CreateSkillCard
 {
@@ -9026,6 +9032,8 @@ nyarz_longhun_god = sgs.CreateViewAsSkillV2
 		return false
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+nyarz_longhun_god.response_pattern = "nullification"
 
 nyarz_longhun_godCard = sgs.CreateSkillCard
 {
@@ -11481,6 +11489,8 @@ nyarz_luanzheng = sgs.CreateViewAsSkillV2
 		return false
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+nyarz_luanzheng.response_pattern = "nullification"
 
 nyarz_luanzhengCard = sgs.CreateSkillCard
 {

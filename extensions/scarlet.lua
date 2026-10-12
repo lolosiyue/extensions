@@ -5435,6 +5435,8 @@ s4_txbw_chiliVS = sgs.CreateViewAsSkillV2 {
         return c
     end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+s4_txbw_chiliVS.response_pattern = "nullification"
 s4_txbw_chili = sgs.CreateTriggerSkillV2 {
     name = "s4_txbw_chili",
     events = { sgs.TurnedOver, sgs.CardUsed },
@@ -11927,6 +11929,8 @@ s4_wuhu_longdanVS = sgs.CreateViewAsSkillV2{
 		end
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+s4_wuhu_longdanVS.response_pattern = "nullification"
 
 
 s4_wuhu_longdan = sgs.CreateTriggerSkillV2{

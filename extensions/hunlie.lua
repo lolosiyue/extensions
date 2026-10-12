@@ -1173,6 +1173,8 @@ sgkgodlonghun = sgs.CreateViewAsSkillV2{
 		return new_card
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+sgkgodlonghun.response_pattern = "nullification"
 
 
 sgkgodzhaoyun:addSkill(sgkgodjuejing)
@@ -8124,6 +8126,8 @@ nos_sgkgodlonghun = sgs.CreateViewAsSkillV2{
 		return new_card
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+nos_sgkgodlonghun.response_pattern = "nullification"
 
 
 nos_sgkgodzhaoyun:addSkill(nos_sgkgodjuejing)

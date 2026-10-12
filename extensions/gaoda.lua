@@ -3482,6 +3482,8 @@ luashipovs = sgs.CreateViewAsSkillV2{
 		end
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+luashipovs.response_pattern = "nullification"
 
 luashipo = sgs.CreateTriggerSkillV2{
 	name = "luashipo",
@@ -18375,6 +18377,8 @@ huansevs = sgs.CreateViewAsSkillV2{
 		end
 	end
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+huansevs.response_pattern = "nullification"
 
 huanse = sgs.CreateTriggerSkillV2{
 	name = "huanse",
@@ -18754,6 +18758,8 @@ huancaivs = sgs.CreateViewAsSkillV2{
 		end
 	end
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+huancaivs.response_pattern = "nullification"
 
 huancai = sgs.CreateTriggerSkillV2{
 	name = "huancai",

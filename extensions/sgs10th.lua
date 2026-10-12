@@ -5411,6 +5411,8 @@ ny_10th_lifengvs = sgs.CreateViewAsSkillV2{
 				end
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+ny_10th_lifengvs.response_pattern = "nullification"
 
 ny_10th_lifeng = sgs.CreateTriggerSkillV2{
 		name = "ny_10th_lifeng",
@@ -12542,6 +12544,8 @@ ny_10th_longhunvs = sgs.CreateViewAsSkillV2{
 				end
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+ny_10th_longhunvs.response_pattern = "nullification"
 
 ny_10th_longhun = sgs.CreateTriggerSkillV2{
 		name = "ny_10th_longhun",

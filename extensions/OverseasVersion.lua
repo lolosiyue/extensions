@@ -6199,6 +6199,8 @@ ov_zhuitingVS = sgs.CreateViewAsSkillV2 {
 				return c
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+ov_zhuitingVS.response_pattern = "nullification"
 ov_zhuiting = sgs.CreateTriggerSkillV2 {
 	name = "ov_zhuiting$",
 	events = { sgs.EventAcquireSkill, sgs.RoundStart, sgs.CardEffected, sgs.PostCardEffected },

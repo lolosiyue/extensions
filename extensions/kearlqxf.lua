@@ -379,6 +379,8 @@ kelqlizhongUseVS = sgs.CreateViewAsSkillV2 {
 		return new_card
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+kelqlizhongUseVS.response_pattern = "nullification"
 --RoundEnd 自清：原本靠 kelqlizhong 的觸發做回收，改成掛在 kelqlizhongUse 自身，
 --持有者回合結束時移除手牌上限加成並卸除本技能（原寫法在 kelqcaoren 陣亡後仍能生效，
 --此寫法甚至可於其死亡後正常回收）。

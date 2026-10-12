@@ -1576,42 +1576,32 @@ pomouCard = sgs.CreateSkillCard{
     end
 }
 
--- DEFER:pomouVS:view-as stays legacy -- enabled_at_response covers the "nullification" race
--- via ServerPlayer::hasNullification(), which only calls ViewAsSkill::isEnabledAtResponse;
--- LuaViewAsSkillV2 exposes no response_pattern setter, so migrating would silently drop
--- holders from nullification asks. Deferred until a V2 nullification-response path exists.
-pomouVS = sgs.CreateZeroCardViewAsSkill{
+pomouVS = sgs.CreateViewAsSkillV2{
     name = "pomou",
+    n = 0,
 
-    enabled_at_play = function(self, player)
+    can_activate = function(skill, request)
+        local player = request:getInitiator()
+        if not player then return false end
+        local reason = request:getReason()
+        if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+            or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+            if request:getPattern() ~= "nullification" then return false end
+            local can_invoke = false
+            for _, p in sgs.qlist(player:getAliveSiblings()) do
+                if not p:isKongcheng() then
+                    can_invoke = true
+                    break
+                end
+            end
+            return can_invoke and not player:hasFlag(skill:objectName())
+        end
         return false
     end,
-    enabled_at_response = function(self, player, pattern)
-        local can_invoke = false
-        for _, p in sgs.qlist(player:getAliveSiblings()) do
-            if not p:isKongcheng() then
-                can_invoke = true
-                break
-            end
-        end
-        if pattern == "nullification" then
-            return can_invoke and not player:hasFlag(self:objectName())
-        end
-        return false
-    end,
-    enabled_at_nullification = function(self, player)
-        local can_invoke = false
-        for _, p in sgs.qlist(player:getAliveSiblings()) do
-            if  not p:isKongcheng() then
-                can_invoke = true
-                break
-            end
-        end
-        return can_invoke and not player:hasFlag(self:objectName())
-    end,
-    view_as = function(self)
-        if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE or sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
-            local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
+    create_card = function(skill, request)
+        local reason = request:getReason()
+        if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+            local pattern = request:getPattern()
             if pattern == "nullification" then
                 local acard = pomouCard:clone()
                 acard:setUserString(pattern)
@@ -1620,6 +1610,8 @@ pomouVS = sgs.CreateZeroCardViewAsSkill{
         end
     end
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+pomouVS.response_pattern = "nullification"
 pomou = sgs.CreateRuleSkillV2{
     name = "pomou",
     global = true,

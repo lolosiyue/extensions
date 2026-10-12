@@ -561,9 +561,8 @@ LuaDongcha = sgs.CreateViewAsSkillV2 {
 		return ncard
 	end,
 }
--- ServerPlayer::hasNullification 仍然查詢舊版 response_pattern 探針（參照內建 kanpo 的做法）
--- V2: response_pattern setter gone; keep nullification via can_activate/pattern
--- LuaDongcha.response_pattern = "nullification"
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（引擎 ded76460+ setter 已生效）
+LuaDongcha.response_pattern = "nullification"
 
 LuaNixingEx = sgs.CreateTriggerSkillV2 {
 	name = "#LuaNixingEx",

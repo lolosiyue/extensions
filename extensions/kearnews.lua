@@ -1597,6 +1597,8 @@ keyanzhengVS = sgs.CreateViewAsSkillV2 {
 		return request:getSelectedCardIds():length() > 0 and c or nil
 	end
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+keyanzhengVS.response_pattern = "nullification"
 
 keyanzheng = sgs.CreateTriggerSkillV2 {
 	name = "keyanzheng",
@@ -2623,6 +2625,8 @@ kenewkanpoVS = sgs.CreateViewAsSkillV2 {
 		return ncard
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+kenewkanpoVS.response_pattern = "nullification"
 
 kenewkanpo = sgs.CreateTriggerSkillV2 {
 	name = "kenewkanpo",

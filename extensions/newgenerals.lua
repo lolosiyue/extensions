@@ -29674,6 +29674,8 @@ create_card = function(self, request)
 	end)(self, cards)
 end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+ofjunweiVS.response_pattern = "nullification"
 ofjunwei = sgs.CreateTriggerSkillV2 {
 
 	name = "ofjunwei",
@@ -31976,7 +31978,9 @@ of_liubei:addSkill(ofhuji)
 
 ofhoufa_range = sgs.CreateAttackRangeSkillV2 {
 	name = "#ofhoufa_range",
-	extra_func = function(self, target, include_weapon)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		local target = ctx:getPrimary()
 		if target and target:hasSkill("ofhoufa") then
 			return target:getMark("ofhoufa_range-Keep")
 		end
@@ -32400,8 +32404,12 @@ ofxiefang_gs = sgs.CreateDistanceSkillV2 {
 ofxiefang_gs_mod = sgs.CreateTargetModSkillV2 {
 	name = "#ofxiefang_gs_mod",
 	pattern = "BasicCard,TrickCard",
-	extra_target_func = function(self, from, card)
-		if from:hasSkill("ofxiefang_gs") and card and (card:isKindOf("BasicCard") or (card:isNDTrick())) then
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		if ctx:getModType() ~= sgs.TargetModSkill_ExtraTarget then return false end
+		local from = ctx:getPrimary()
+		local card = ctx:getCard()
+		if from and from:hasSkill("ofxiefang_gs") and card and (card:isKindOf("BasicCard") or (card:isNDTrick())) then
 			local n = 0
 			for _, p in sgs.qlist(from:getAliveSiblings()) do
 				if p:isFemale() then n = n + 1 end
@@ -32985,19 +32993,25 @@ ofjunshen = sgs.CreateTriggerSkillV2 {
 ofjunshen_mod = sgs.CreateTargetModSkillV2 {
 	name = "#ofjunshen_mod",
 	pattern = "Slash",
-	distance_limit_func = function(self, from, card)
-		-- 你使用的方块【杀】无视距离
-		if from:hasSkill("ofjunshen") and card and card:isKindOf("Slash") and card:getSuit() == sgs.Card_Diamond then
-			return 1000
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		local mod = ctx:getModType()
+		local from = ctx:getPrimary()
+		local card = ctx:getCard()
+		if mod == sgs.TargetModSkill_DistanceLimit then
+			-- 你使用的方块【杀】无视距离
+			if from and from:hasSkill("ofjunshen") and card and card:isKindOf("Slash") and card:getSuit() == sgs.Card_Diamond then
+				return 1000
+			end
+			return 0
+		elseif mod == sgs.TargetModSkill_ExtraTarget then
+			-- 红桃【杀】可以使目标+1（选牌阶段生效，不能靠 CardUsed 事后补 mark）
+			if from and from:hasSkill("ofjunshen") and card and card:isKindOf("Slash") and card:getSuit() == sgs.Card_Heart then
+				return 1
+			end
+			return 0
 		end
-		return 0
-	end,
-	extra_target_func = function(self, from, card)
-		-- 红桃【杀】可以使目标+1（选牌阶段生效，不能靠 CardUsed 事后补 mark）
-		if from:hasSkill("ofjunshen") and card and card:isKindOf("Slash") and card:getSuit() == sgs.Card_Heart then
-			return 1
-		end
-		return 0
+		return false
 	end,
 }
 of_longguanyu:addSkill(ofjunshen)
@@ -33412,7 +33426,11 @@ ofhuxiao = sgs.CreateTriggerSkillV2 {
 ofhuxiao_mod = sgs.CreateTargetModSkillV2 {
 	name = "#ofhuxiao_mod",
 	pattern = ".",
-	residue_func = function(self, from, card, to)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
+		local from = ctx:getPrimary()
+		local to = ctx:getSecondary()
 		if from and from:hasSkill("ofhuxiao") and to and to:getMark("ofhuxiao_tgt-Clear") > 0 then
 			return 1000
 		end
@@ -34371,7 +34389,10 @@ ofzhongjue = sgs.CreateTriggerSkillV2 {
 ofzhongjue_mod = sgs.CreateTargetModSkillV2 {
 	name = "#ofzhongjue_mod",
 	pattern = ".",
-	residue_func = function(self, from, card)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
+		local from = ctx:getPrimary()
 		if from and from:getMark("ofzhongjue_unlimited") > 0 then return 1000 end
 		return 0
 	end,
@@ -34545,10 +34566,11 @@ ofjianxi = sgs.CreateTriggerSkillV2 {
 ofjianxi_mod = sgs.CreateTargetModSkillV2 {
 	name = "#ofjianxi_mod",
 	pattern = "BasicCard",
-	residue_func = function(self, from, card)
-		return from and from:getMark("ofjianxi_basic-Keep") or 0
-	end,
-	extra_target_func = function(self, from, card)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		local mod = ctx:getModType()
+		if mod ~= sgs.TargetModSkill_Residue and mod ~= sgs.TargetModSkill_ExtraTarget then return false end
+		local from = ctx:getPrimary()
 		return from and from:getMark("ofjianxi_basic-Keep") or 0
 	end,
 }

@@ -4871,6 +4871,8 @@ sfofl_horsetailwhiskVS = sgs.CreateViewAsSkillV2{
         end
     end
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+sfofl_horsetailwhiskVS.response_pattern = "nullification"
 sfofl_horsetailwhisk = sgs.CreateArmor{
     name = "sfofl_horsetailwhisk",
     class_name = "Horsetailwhisk",
@@ -6449,6 +6451,8 @@ sfofl_longyin = sgs.CreateViewAsSkillV2 {
         end
     end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+sfofl_longyin.response_pattern = "nullification"
 sfofl_longyin_use = sgs.CreateTriggerSkillV2{
     name = "#sfofl_longyin_use",
     events = {sgs.CardUsed, sgs.CardResponded},
@@ -20398,23 +20402,17 @@ sfofl_chuce = sgs.CreateTriggerSkillV2{
 }
 sfofl_chuce_buff = sgs.CreateTargetModSkillV2 {
     name = "#sfofl_chuce_buff",
-    residue_func = function(skill, ctx)
-        local from = ctx:getPrimary()
-        local card = ctx:getCard()
-        if from and from:hasSkill("sfofl_chuce") and card and table.contains(card:getSkillNames(), "sfofl_chuce") then
-			return 999
-		else
-			return false
-		end
-    end,
-    distance_limit_func = function(skill, ctx)
+    holder_selector = sgs.CorrectSkill_System,
+    correct_func = function(skill, ctx)
+        local mod = ctx:getModType()
+        if mod ~= sgs.TargetModSkill_Residue and mod ~= sgs.TargetModSkill_DistanceLimit then return false end
         local from = ctx:getPrimary()
         local card = ctx:getCard()
         if from and from:hasSkill("sfofl_chuce") and card and table.contains(card:getSkillNames(), "sfofl_chuce") then
             return 999
         end
         return false
-    end
+    end,
 }
 
 --[[
@@ -22667,22 +22665,16 @@ sfofl_caesar = sgs.General(extension_e, "sfofl_caesar$", "west", 4)
 
 sfofl_ducai = sgs.CreateTargetModSkillV2{
 	name = "sfofl_ducai",
-	distance_limit_func = function(skill, ctx)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		local mod = ctx:getModType()
+		if mod ~= sgs.TargetModSkill_Residue and mod ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local from = ctx:getPrimary()
 		if from and from:hasSkill("sfofl_ducai") and from:getPhase() ~= sgs.Player_NotActive then
 			return 999
-		else
-			return false
 		end
+		return false
 	end,
-    residue_func = function(skill, ctx)
-        local from = ctx:getPrimary()
-        if from and from:hasSkill("sfofl_ducai") and from:getPhase() ~= sgs.Player_NotActive then
-			return 999
-		else
-			return false
-		end
-    end,
 }
 
 -- DEFER:sfofl_ducaiInvalidity：CreateInvaliditySkill 無 V2 對應 API，保留 legacy。
@@ -22839,8 +22831,10 @@ sfofl_macrinus = sgs.General(extension_e, "sfofl_macrinus", "west", 4)
 
 sfofl_dengtian_cardmax = sgs.CreateMaxCardsSkillV2 {
 	name = "#sfofl_dengtian_cardmax",
-	extra_func = function(skill, target)
-		if target:hasSkill("sfofl_dengtian") and target:getMark("sfofl_dengtian_cardmax") > 0 then
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		local target = ctx:getPrimary()
+		if target and target:hasSkill("sfofl_dengtian") and target:getMark("sfofl_dengtian_cardmax") > 0 then
 			return target:getMark("sfofl_dengtian_cardmax")
 		end
         return false
@@ -24663,7 +24657,9 @@ sfofl_anmou = sgs.CreateTriggerSkillV2{
 }
 sfofl_anmou_buff = sgs.CreateTargetModSkillV2 {
 	name = "#sfofl_anmou_buff",
-    residue_func = function(skill, ctx)
+    holder_selector = sgs.CorrectSkill_System,
+    correct_func = function(skill, ctx)
+        if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
         if from and to then
@@ -25274,7 +25270,8 @@ local function getxingbian(player)
 end
 sfofl_xingbian_range = sgs.CreateAttackRangeSkillV2 {
 	name = "#sfofl_xingbian_range",
-	extra_func = function(skill, ctx)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player and player:hasEquipSkill("sfofl_xingbian") and getxingbian(player) > 0 then return getxingbian(player) end
 	end,
@@ -26752,22 +26749,24 @@ sfofl_l_yuanshao = sgs.General(extension_e, "sfofl_l_yuanshao$", "qun", 4)
 sfofl_hefa_buff = sgs.CreateTargetModSkillV2{
 	name = "#sfofl_hefa_buff",
 	pattern = "Slash",
-	extra_target_func = function(skill, ctx)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		local mod = ctx:getModType()
 		local card = ctx:getCard()
-		if card and table.contains(card:getSkillNames(), "sfofl_hefa") then
-			local x = card:subcardsLength()
-			return x - 1
-		else
+		if mod == sgs.TargetModSkill_ExtraTarget then
+			if card and table.contains(card:getSkillNames(), "sfofl_hefa") then
+				local x = card:subcardsLength()
+				return x - 1
+			end
+			return false
+		elseif mod == sgs.TargetModSkill_Residue then
+			if card and table.contains(card:getSkillNames(), "sfofl_hefa") then
+				return 999
+			end
 			return false
 		end
+		return false
 	end,
-    residue_func = function(skill, ctx)
-		local card = ctx:getCard()
-        if card and table.contains(card:getSkillNames(), "sfofl_hefa") then
-            return 999
-        end
-        return false
-    end,
 }
 sfofl_hefaVS = sgs.CreateViewAsSkillV2{
     name = "sfofl_hefa",
@@ -28727,7 +28726,9 @@ sfofl_jianji = sgs.CreateViewAsSkillV2{
 sfofl_jianji_buff = sgs.CreateTargetModSkillV2{
     name = "#sfofl_jianji_buff",
     pattern = ".",
-    distance_limit_func = function(skill, ctx)
+    holder_selector = sgs.CorrectSkill_System,
+    correct_func = function(skill, ctx)
+        if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local card, to = ctx:getCard(), ctx:getSecondary()
         if card and card:hasFlag("sfofl_jianji") and to and to:getMark("&dianhu") > 0 then return 1000 end
         return false
@@ -29966,7 +29967,8 @@ sfofl_buzhan = sgs.CreateCardLimitSkill{
 }
 sfofl_buzhan_range = sgs.CreateAttackRangeSkillV2 {
 	name = "#sfofl_buzhan_range",
-	extra_func = function(skill, ctx)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player and player:hasSkill("sfofl_buzhan") then return player:getLostHp() end
 	end,
@@ -31681,7 +31683,9 @@ sfofl_sunshou_prohibit = sgs.CreateProhibitSkill {
 sfofl_sunshou = sgs.CreateTargetModSkillV2 {
 	name = "sfofl_sunshou",
 	pattern = ".",
-	extra_target_func = function(skill, ctx)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		if ctx:getModType() ~= sgs.TargetModSkill_ExtraTarget then return false end
 		local from, card = ctx:getPrimary(), ctx:getCard()
 		if from and from:hasSkill(skill:objectName()) and card and card:isBlack() then return 1 end
 		return 0
@@ -32972,7 +32976,9 @@ sfofl_nw_shenlvbu = sgs.General(extension_war, "sfofl_nw_shenlvbu", "god", 5, tr
 sfofl_n_shenji = sgs.CreateTargetModSkillV2 {
 	name = "sfofl_n_shenji",
 	pattern = "Slash",
-	extra_target_func = function(skill, ctx)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		if ctx:getModType() ~= sgs.TargetModSkill_ExtraTarget then return false end
 		local from = ctx:getPrimary()
 		if from and from:hasSkill(skill:objectName()) then return 1 end
 		return 0
@@ -35028,16 +35034,19 @@ sfofl_jixin_buff = sgs.CreateTriggerSkillV2{
 }
 sfofl_jixin_targetmod = sgs.CreateTargetModSkillV2 {
 	name = "#sfofl_jixin_targetmod",
-	residue_func = function(skill, ctx)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		local mod = ctx:getModType()
 		local card = ctx:getCard()
-		if card and card:hasFlag("sfofl_jixin") then return 999 end
-		return 0
+		if mod == sgs.TargetModSkill_Residue then
+			if card and card:hasFlag("sfofl_jixin") then return 999 end
+			return 0
+		elseif mod == sgs.TargetModSkill_DistanceLimit then
+			if card and card:hasFlag("sfofl_jixin") then return 1000 end
+			return 0
+		end
+		return false
 	end,
-    distance_limit_func = function(skill, ctx)
-		local card = ctx:getCard()
-        if card and card:hasFlag("sfofl_jixin") then return 1000 end
-        return 0
-    end,
 }
 
 
@@ -35779,7 +35788,9 @@ sfofl_jinghong = sgs.CreateTriggerSkillV2{
 }
 sfofl_jinghong_buff = sgs.CreateTargetModSkillV2{
     name = "#sfofl_jinghong_buff",
-	residue_func = function(skill, ctx)
+    holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
 		local player, card = ctx:getPrimary(), ctx:getCard()
 		if card and card:isBlack() and player and player:hasSkill("sfofl_jinghong") then return 999 end
 		return 0
@@ -36253,15 +36264,18 @@ sfofl_magic_ruiji_change = sgs.General(extension_e, "sfofl_magic_ruiji_change", 
 
 sfofl_shengcai_buff = sgs.CreateTargetModSkillV2{
     name = "#sfofl_shengcai_buff",
-    residue_func = function(skill, ctx)
+    holder_selector = sgs.CorrectSkill_System,
+    correct_func = function(skill, ctx)
+		local mod = ctx:getModType()
 		local card = ctx:getCard()
-        if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "sfofl_shengcai") then return 999 end
-        return 0
-    end,
-    distance_limit_func = function(skill, ctx)
-		local card = ctx:getCard()
-        if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "sfofl_shengcai") then return 1000 end
-        return 0
+        if mod == sgs.TargetModSkill_Residue then
+            if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "sfofl_shengcai") then return 999 end
+            return 0
+        elseif mod == sgs.TargetModSkill_DistanceLimit then
+            if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "sfofl_shengcai") then return 1000 end
+            return 0
+        end
+        return false
     end,
 }
 
@@ -36475,24 +36489,25 @@ sfofl_magic_lulingqi_change = sgs.General(extension_e, "sfofl_magic_lulingqi_cha
 sfofl_henghui_buff = sgs.CreateTargetModSkillV2{
     name = "#sfofl_henghui_buff",
     pattern = "Slash",
-    distance_limit_func = function(skill, ctx)
+    holder_selector = sgs.CorrectSkill_System,
+    correct_func = function(skill, ctx)
+		local mod = ctx:getModType()
 		local from = ctx:getPrimary()
-        if from and from:getMark("&sfofl_henghui_sec") > 0 then
-            return 1000
+        if mod == sgs.TargetModSkill_DistanceLimit then
+            if from and from:getMark("&sfofl_henghui_sec") > 0 then
+                return 1000
+            end
+            return 0
+        elseif mod == sgs.TargetModSkill_ExtraTarget then
+            if from and from:getMark("&sfofl_henghui_sec") > 0 then return 2*from:getMark("&sfofl_henghui_sec") end
+            return 0
+        elseif mod == sgs.TargetModSkill_Residue then
+            if from and from:getMark("&sfofl_henghui_first") > 0 then
+                return from:getMark("&sfofl_henghui_first")
+            end
+            return 0
         end
-        return 0
-    end,
-    extra_target_func = function(skill, ctx)
-		local from = ctx:getPrimary()
-		if from and from:getMark("&sfofl_henghui_sec") > 0 then return 2*from:getMark("&sfofl_henghui_sec") end
-		return 0
-	end,
-    residue_func = function(skill, ctx)
-		local player = ctx:getPrimary()
-        if player and player:getMark("&sfofl_henghui_first") > 0 then
-            return player:getMark("&sfofl_henghui_first")
-        end
-        return 0
+        return false
     end,
 }
 

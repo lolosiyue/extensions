@@ -4457,6 +4457,8 @@ countertrickVS = sgs.CreateViewAsSkillV2{
 		return nil
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+countertrickVS.response_pattern = "nullification"
 
 countertrick = sgs.CreateTriggerSkillV2{
 	name = "countertrick",
@@ -6672,6 +6674,8 @@ n=1,
 		return nil
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+clevervs.response_pattern = "nullification"
 			
 clever = sgs.CreateTriggerSkillV2{
 	name = "clever",
@@ -15398,6 +15402,8 @@ yuri_hagakuVS = sgs.CreateViewAsSkillV2{
 		-- return jink
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+yuri_hagakuVS.response_pattern = "nullification"
 yuri_hagaku = sgs.CreateTriggerSkillV2{
 	name = "yuri_hagaku",
 	view_as_skill = yuri_hagakuVS,
@@ -15849,6 +15855,8 @@ genshunoYURI = sgs.CreateViewAsSkillV2{
 		end
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+genshunoYURI.response_pattern = "nullification"
 
 --百染：鎖定技。當你造成、受到傷害時，你摸一张牌，然後令傷害來源或受傷者獲得一枚感染標記(最多一枚)。
 -- 已帶有感染標記的目標使用桃、酒、無中生有、洞燭先機、裝備牌等對自身有益的牌時，你可以令其失去標記，然後你也成為目標(若為裝備則你成為受益者)。

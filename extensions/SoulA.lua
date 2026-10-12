@@ -34,42 +34,41 @@ Rcekuiwei = sgs.CreateTriggerSkillV2{
 	end
 }
 
--- DEFER:Rceyanzheng:view-as stays legacy — its enabled_at_response covers the "nullification"
--- race via ServerPlayer::hasNullification(), which only calls ViewAsSkill::isEnabledAtResponse;
--- LuaViewAsSkillV2 exposes no response_pattern setter, so migrating would silently drop holders
--- from nullification asks. Deferred until a V2 nullification-response path exists.
-Rceyanzheng = sgs.CreateViewAsSkill{
-	name = "Rceyanzheng", 
-	n = 1, 
-	view_filter = function(self, selected, to_select)
-		return true
-	end, 
-	view_as = function(self, cards) 
-		if #cards == 1 then 
-			local ncard = cards[1]
-			local nsuit = ncard:getSuit()
-			local npoint = ncard:getNumber()
-			local Newcard = sgs.Sanguosha:cloneCard("nullification", nsuit, npoint)
-			Newcard:addSubcard(ncard)
-			Newcard:setSkillName(self:objectName())
-			return Newcard
+Rceyanzheng = sgs.CreateViewAsSkillV2{
+	name = "Rceyanzheng",
+	n = 1,
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player then return false end
+		local reason = request:getReason()
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
+			return false
 		end
-	end, 
-	enabled_at_play = function(self, player)
-		return false
-	end, 
-	enabled_at_response = function(self, player, pattern)
-		if player:getHandcardNum() > player:getHp() then
-			return pattern == "nullification"
+		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
+			or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			if player:getHandcardNum() > player:getHp() then
+				return request:getPattern() == "nullification"
+			end
 		end
 		return false
 	end,
-	enabled_at_nullification = function(self, player)
-        if player:getHandcardNum() > player:getHp() then
-	    	return true
+	can_select_card = function(skill, request, to_select)
+		return to_select ~= nil and not to_select:hasFlag("using")
+			and request:getSelectedCardIds():isEmpty()
+	end,
+	create_card = function(skill, request)
+		local ids = request:getSelectedCardIds()
+		if ids:length() == 1 then
+			local ncard = sgs.Sanguosha:getCard(ids:first())
+			local Newcard = sgs.Sanguosha:cloneCard("nullification", ncard:getSuit(), ncard:getNumber())
+			Newcard:addSubcard(ncard)
+			Newcard:setSkillName(skill:objectName())
+			return Newcard
 		end
-	end
+	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+Rceyanzheng.response_pattern = "nullification"
 
 Rceshishou = sgs.CreateTriggerSkillV2{
 	name = "Rceshishou",

@@ -7997,6 +7997,8 @@ s2_longwei = sgs.CreateViewAsSkillV2 {
 		return view_as_func(skill, cards)
 	end,
 	}
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+s2_longwei.response_pattern = "nullification"
 
 
 s2_2_juejing = sgs.CreateMaxCardsSkillV2{

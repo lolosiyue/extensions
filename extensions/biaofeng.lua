@@ -5322,6 +5322,8 @@ PlusLongdan = sgs.CreateViewAsSkillV2 {
 		end
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+PlusLongdan.response_pattern = "nullification"
 ZhaoYun_Plus:addSkill(PlusLongdan)
 --[[
 	sgs.PlusLongdan_Pattern = {"pattern", "state"}
@@ -13941,8 +13943,9 @@ SixLongdanProtect = sgs.CreateTriggerSkillV2 {
 SixLongdanNDL = sgs.CreateTargetModSkillV2 {
 	name = "#SixLongdan-slash-ndl",
 	pattern = "Slash",
-	holder_selector = sgs.CorrectSkill_Primary,
-	distance_limit_func = function(skill, ctx)
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local player = ctx:getPrimary()
 		local card = ctx:getCard()
 		if player and player:hasSkill("SixLongdan") and card
@@ -15709,9 +15712,9 @@ SixJianCe = sgs.CreateTriggerSkillV2 {
 
 SixShouLue = sgs.CreateMaxCardsSkillV2 {
 	name = "SixShouLue",
-	holder_selector = sgs.CorrectSkill_Primary,
-	extra_func = function(skill, ctx)
-		local target = ctx:getHolder()
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		local target = ctx:getPrimary()
 		if target and target:hasSkill(skill:objectName()) then
 			return target:getEquips():length() + 2
 		end
@@ -16635,21 +16638,24 @@ CaoZhen_Seven = sgs.General(extension_six, "CaoZhen_Seven", "wei", 4, true)
 SevenXiaoRui = sgs.CreateTargetModSkillV2 {
 	name = "SevenXiaoRui",
 	pattern = "Slash",
-	holder_selector = sgs.CorrectSkill_Primary,
-	distance_limit_func = function(skill, ctx)
-		local player = ctx:getHolder()
-		if player and player:hasSkill(skill:objectName()) and player:getPhase() == sgs.Player_Play then
-			return 1000
-		else
+	holder_selector = sgs.CorrectSkill_System,
+	correct_func = function(skill, ctx)
+		local mod = ctx:getModType()
+		if mod == sgs.TargetModSkill_DistanceLimit then
+			local player = ctx:getPrimary()
+			if player and player:hasSkill(skill:objectName()) and player:getPhase() == sgs.Player_Play then
+				return 1000
+			else
+				return 0
+			end
+		elseif mod == sgs.TargetModSkill_ExtraTarget then
+			local from = ctx:getPrimary()
+			if from and from:hasSkill(skill:objectName()) and from:getPhase() == sgs.Player_Play then
+				return from:getLostHp()
+			end
 			return 0
 		end
-	end,
-	extra_target_func = function(skill, ctx)
-		local from = ctx:getHolder()
-		if from and from:hasSkill(skill:objectName()) and from:getPhase() == sgs.Player_Play then
-			return from:getLostHp()
-		end
-		return 0
+		return false
 	end
 }
 

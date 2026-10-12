@@ -4597,6 +4597,8 @@ kechengqongtuvs = sgs.CreateViewAsSkillV2 {
 		return new_card
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+kechengqongtuvs.response_pattern = "nullification"
 kechengqongtu = sgs.CreateTriggerSkillV2 {
 	name = "kechengqongtu",
 	events = { sgs.CardFinished, sgs.PostCardEffected },
@@ -8729,6 +8731,8 @@ kehewentianVS = sgs.CreateViewAsSkillV2 {
 		end
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+kehewentianVS.response_pattern = "nullification"
 kehewentian = sgs.CreateTriggerSkillV2 {
 	name = "kehewentian",
 	view_as_skill = kehewentianVS,
@@ -10945,6 +10949,8 @@ kehewentianpreVS = sgs.CreateViewAsSkillV2 {
 		end
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+kehewentianpreVS.response_pattern = "nullification"
 kehewentianpre = sgs.CreateTriggerSkillV2 {
 	name = "kehewentianpre",
 	view_as_skill = kehewentianpreVS,
@@ -14993,6 +14999,8 @@ xingpiqivst = sgs.CreateViewAsSkillV2 {
 		return card
 	end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
+xingpiqivst.response_pattern = "nullification"
 extension_xing:addSkills(xingpiqivst)
 xingzhoulin = sgs.CreateTriggerSkillV2 {
 	name = "xingzhoulin",

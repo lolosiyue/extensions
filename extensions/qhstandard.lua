@@ -3849,6 +3849,8 @@ qhfirekanpoVS = sgs.CreateViewAsSkillV2 { --看破 视为技
     	return false
     end,
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+qhfirekanpoVS.response_pattern = "nullification"
 
 qhfirekanpo = sgs.CreateTriggerSkillV2 { -- 看破 触发技
     name = "qhfirekanpo",
@@ -6843,6 +6845,8 @@ qhwindguhuo = sgs.CreateViewAsSkillV2 {
         return false
     end
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+qhwindguhuo.response_pattern = "nullification"
 
 qhwindguhuoclear = sgs.CreateTriggerSkillV2 {
     name = "#qhwindguhuoclear",
@@ -7796,6 +7800,8 @@ mythjiqiaoVS = sgs.CreateViewAsSkillV2 {
         return false
     end
 }
+-- ServerPlayer::hasNullification 只問舊 response_pattern 探針
+mythjiqiaoVS.response_pattern = "nullification"
 
 mythjiqiao = sgs.CreateTriggerSkillV2 {
     name = "mythjiqiao",
