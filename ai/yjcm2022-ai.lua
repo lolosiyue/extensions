@@ -231,12 +231,14 @@ end
 sgs.ai_skill_playerschosen.zhitu = function(self,players,x,n)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	local use = self.room:getTag("zhituData"):toCardUse()
-	local d = self:aiUseCard(use.card,dummy(nil,99,use.to))
 	local tos = {}
-	if d.card then
-		for _,p in sgs.list(d.to)do
-			if table.contains(destlist,p)
-			then table.insert(tos,p) end
+	if use.card then
+		local d = self:aiUseCard(use.card,dummy(nil,99,use.to))
+		if d and d.card then
+			for _,p in sgs.list(d.to)do
+				if table.contains(destlist,p)
+				then table.insert(tos,p) end
+			end
 		end
 	end
 	return tos

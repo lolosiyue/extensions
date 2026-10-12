@@ -3509,11 +3509,11 @@ meizljianwuskill2 = sgs.CreateViewAsSkillV2 {
 	response_or_use = true,
 	can_select_card = function(skill, request, to_select)
 		if not to_select then return false end
-		local weapon = sgs.Self:getWeapon()
+		local weapon = request:getInitiator():getWeapon()
 		if weapon then
 			if to_select:objectName() == weapon:objectName() then
 				if to_select:objectName() == "Crossbow" then
-					return sgs.Self:canSlashWithoutCrossbow()
+					return request:getInitiator():canSlashWithoutCrossbow()
 				end
 			end
 		end
@@ -7049,11 +7049,11 @@ meispxiaojiskill = sgs.CreateViewAsSkillV2 {
 		if not to_select then return false end
 		local selected = request:getSelectedCardIds()
 		if selected:length() > 0 then
-			if sgs.Self:handCards():contains(selected:first()) then
+			if request:getInitiator():handCards():contains(selected:first()) then
 				sgs.meispxiaojiPattern = { "slash" }
 				return false
 			else
-				for _, p in sgs.qlist(sgs.Self:getAliveSiblings()) do
+				for _, p in sgs.qlist(request:getInitiator():getAliveSiblings()) do
 					if p:getPile("meispji"):length() > 0 and p:getPile("meispji"):contains(selected:first()) then
 						sgs.meispxiaojiPattern = { "jink" }
 						return p:getPile("meispji"):contains(to_select:getId()) and

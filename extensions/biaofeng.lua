@@ -12155,7 +12155,7 @@ SixGuicaiVS = sgs.CreateViewAsSkillV2 {
 	end,
 	can_select_card = function(skill, request, candidate)
 		if request:getSelectedCardIds():length() == 0 then
-			return not candidate:isEquipped() and not sgs.Self:isJilei(candidate)
+			return not candidate:isEquipped() and not request:getInitiator():isJilei(candidate)
 		end
 		return false
 	end,

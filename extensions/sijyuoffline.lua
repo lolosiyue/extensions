@@ -15041,7 +15041,7 @@ sfofl_wushengVS = sgs.CreateViewAsSkillV2{
 		end
 		local name = request:getUserString()
 		if name == "" then
-			local c = sgs.Self:getTag("sfofl_wusheng"):toCard()
+			local c = request:getInitiator():getTag("sfofl_wusheng"):toCard()
 			if c then name = c:objectName() end
 		end
 		if name == "" then return nil end

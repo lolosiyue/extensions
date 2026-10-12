@@ -1961,7 +1961,7 @@ end
 -- Weak keys release the index when updatePlayers replaces a list.
 local ai_player_list_positions = setmetatable({}, {__mode = "k"})
 local function aiPlayerInList(players, other)
-	if #players < 1 then return false end
+	if type(players) ~= "table" or not other or #players < 1 then return false end
 	local name = other:objectName()
 	local positions = ai_player_list_positions[players]
 	if not positions then

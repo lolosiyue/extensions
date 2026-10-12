@@ -904,8 +904,8 @@ create_card = function(self, request)
 			c:setUserString(sgs.Sanguosha:getCurrentCardUsePattern())
 			return c
 		end
-		local cj = sgs.Self:getTag("chongjian"):toCard()
-		if cj and cj:isAvailable(sgs.Self) then
+		local cj = request:getInitiator():getTag("chongjian"):toCard()
+		if cj and cj:isAvailable(request:getInitiator()) then
 			local c = chongjianCard:clone()
 			c:setUserString(cj:objectName())
 			c:addSubcard(card)
@@ -3493,7 +3493,7 @@ can_select_card = function(self, request, to_select)
 	return (function(self, selected, to_select)
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		if pattern == "@@keolzhubi" then
-			return to_select:hasTip("keolbi") or sgs.Self:getPileName(to_select:getId()) == "#keolzhubi"
+			return to_select:hasTip("keolbi") or request:getInitiator():getPileName(to_select:getId()) == "#keolzhubi"
 		end
 	end)(self, selected, to_select) and true or false
 end,
@@ -4135,7 +4135,7 @@ can_select_card = function(self, request, to_select)
 		local slash = dummyCard()
 		slash:setSkillName("_keolxieju")
 		slash:addSubcard(to_select)
-		return to_select:isBlack() and not sgs.Self:isLocked(slash)
+		return to_select:isBlack() and not request:getInitiator():isLocked(slash)
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -4215,7 +4215,7 @@ can_select_card = function(self, request, to_select)
 	end
 	return (function(self, selected, to_select)
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
-		return to_select:isBlack() and pattern == "@@keolxiejuslash" and not sgs.Self:isLocked(to_select)
+		return to_select:isBlack() and pattern == "@@keolxiejuslash" and not request:getInitiator():isLocked(to_select)
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -4594,6 +4594,7 @@ keolxianbiCard = sgs.CreateSkillCard {
 keolxianbi = sgs.CreateViewAsSkillV2 {
 
 	name = "keolxianbi",
+	history_key = "#keolxianbiCard",
 
 
 can_activate = function(self, request)
@@ -4966,7 +4967,7 @@ can_select_card = function(self, request, to_select)
 		slash:setSkillName("keolsuji")
 		slash:addSubcard(to_select)
 		slash:deleteLater()
-		return not sgs.Self:isLocked(slash) and to_select:isBlack()
+		return not request:getInitiator():isLocked(slash) and to_select:isBlack()
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -5836,18 +5837,18 @@ card_selection_feasible = function(self, request)
 	return (function(self, cards)
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		if pattern == "@@keolbixin!" then
-			pattern = sgs.Self:property("keolbixincard"):toString()
+			pattern = request:getInitiator():property("keolbixincard"):toString()
 			local vbasic = sgs.Sanguosha:cloneCard(pattern)
 			vbasic:setSkillName("_keolbixin")
-			pattern = sgs.Self:property("keolbixintype"):toString()
-			for _, h in sgs.list(sgs.Self:getHandcards()) do
+			pattern = request:getInitiator():property("keolbixintype"):toString()
+			for _, h in sgs.list(request:getInitiator():getHandcards()) do
 				if h:getType() == pattern then
 					vbasic:addSubcard(h)
 				end
 			end
 			return vbasic
 		elseif pattern == "" then
-			local dc = sgs.Self:getTag("keolbixin"):toCard()
+			local dc = request:getInitiator():getTag("keolbixin"):toCard()
 			if dc == nil then
 				return
 			end
@@ -5866,18 +5867,18 @@ create_card = function(self, request)
 	return (function(self, cards)
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		if pattern == "@@keolbixin!" then
-			pattern = sgs.Self:property("keolbixincard"):toString()
+			pattern = request:getInitiator():property("keolbixincard"):toString()
 			local vbasic = sgs.Sanguosha:cloneCard(pattern)
 			vbasic:setSkillName("_keolbixin")
-			pattern = sgs.Self:property("keolbixintype"):toString()
-			for _, h in sgs.list(sgs.Self:getHandcards()) do
+			pattern = request:getInitiator():property("keolbixintype"):toString()
+			for _, h in sgs.list(request:getInitiator():getHandcards()) do
 				if h:getType() == pattern then
 					vbasic:addSubcard(h)
 				end
 			end
 			return vbasic
 		elseif pattern == "" then
-			local dc = sgs.Self:getTag("keolbixin"):toCard()
+			local dc = request:getInitiator():getTag("keolbixin"):toCard()
 			if dc == nil then
 				return
 			end
@@ -6356,7 +6357,7 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		return to_select:isKindOf("Slash") and not sgs.Self:isLocked(to_select) and sgs.Self:getPileName(to_select:getId()) == "#keolsaoguslash"
+		return to_select:isKindOf("Slash") and not request:getInitiator():isLocked(to_select) and request:getInitiator():getPileName(to_select:getId()) == "#keolsaoguslash"
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -6501,10 +6502,10 @@ can_select_card = function(self, request, to_select)
 	return (function(self, selected, to_select)
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		if pattern == "@@keolsaogu" then
-			return #selected < 1 and not sgs.Self:isJilei(to_select)
+			return #selected < 1 and not request:getInitiator():isJilei(to_select)
 		end
-		if sgs.Self:getChangeSkillState("keolsaogu") == 1 then
-			return #selected < 2 and not sgs.Self:isJilei(to_select) and sgs.Self:getMark(to_select:getSuitString() .. "keolsaoguSuit-PlayClear") < 1
+		if request:getInitiator():getChangeSkillState("keolsaogu") == 1 then
+			return #selected < 2 and not request:getInitiator():isJilei(to_select) and request:getInitiator():getMark(to_select:getSuitString() .. "keolsaoguSuit-PlayClear") < 1
 		end
 	end)(self, selected, to_select) and true or false
 end,
@@ -6525,7 +6526,7 @@ card_selection_feasible = function(self, request)
 			end
 			return card
 		end
-		if sgs.Self:getChangeSkillState("keolsaogu") == 1 then
+		if request:getInitiator():getChangeSkillState("keolsaogu") == 1 then
 			if #cards < 2 then
 				return
 			end
@@ -6556,7 +6557,7 @@ create_card = function(self, request)
 			end
 			return card
 		end
-		if sgs.Self:getChangeSkillState("keolsaogu") == 1 then
+		if request:getInitiator():getChangeSkillState("keolsaogu") == 1 then
 			if #cards < 2 then
 				return
 			end
@@ -6768,14 +6769,14 @@ can_select_card = function(self, request, to_select)
 	return (function(self, selected, to_select)
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		if pattern == "@@olxiaofan1" then
-			pattern = sgs.Self:property("olxiaofanPattern"):toString():split("+")
-			return table.contains(pattern, to_select:toString()) and sgs.Self:getPileName(to_select:getId()) == "#olxiaofan"
+			pattern = request:getInitiator():property("olxiaofanPattern"):toString():split("+")
+			return table.contains(pattern, to_select:toString()) and request:getInitiator():getPileName(to_select:getId()) == "#olxiaofan"
 		end
 		if pattern == "@@olxiaofan2" then
-			pattern = sgs.Self:property("olxiaofanPattern"):toString()
+			pattern = request:getInitiator():property("olxiaofanPattern"):toString()
 			for _, pn in sgs.list(pattern:split("+")) do
 				if to_select:sameNameWith(pn) then
-					return sgs.Self:getPileName(to_select:getId()) == "#olxiaofan" and not sgs.Self:isLocked(to_select)
+					return request:getInitiator():getPileName(to_select:getId()) == "#olxiaofan" and not request:getInitiator():isLocked(to_select)
 				end
 			end
 		end
@@ -7616,7 +7617,7 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		return not sgs.Self:isJilei(to_select)
+		return not request:getInitiator():isJilei(to_select)
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -7776,7 +7777,7 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		return not sgs.Self:isJilei(to_select)
+		return not request:getInitiator():isJilei(to_select)
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -8075,7 +8076,7 @@ card_selection_feasible = function(self, request)
 		if #cards < 1 then
 			return
 		end
-		local dc = sgs.Self:getTag("mobilexiaoni"):toCard()
+		local dc = request:getInitiator():getTag("mobilexiaoni"):toCard()
 		if dc == nil then
 			return
 		end
@@ -8095,7 +8096,7 @@ create_card = function(self, request)
 		if #cards < 1 then
 			return
 		end
-		local dc = sgs.Self:getTag("mobilexiaoni"):toCard()
+		local dc = request:getInitiator():getTag("mobilexiaoni"):toCard()
 		if dc == nil then
 			return
 		end
@@ -8742,7 +8743,7 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		return not to_select:isEquipped() and #selected < math.floor(sgs.Self:getHandcardNum() / 2)
+		return not to_select:isEquipped() and #selected < math.floor(request:getInitiator():getHandcardNum() / 2)
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -8751,7 +8752,7 @@ card_selection_feasible = function(self, request)
 		table.insert(cards, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, cards)
-		if #cards ~= math.floor(sgs.Self:getHandcardNum() / 2) then
+		if #cards ~= math.floor(request:getInitiator():getHandcardNum() / 2) then
 			return nil
 		end
 		local c = olhaoshiCard:clone()
@@ -8767,7 +8768,7 @@ create_card = function(self, request)
 		table.insert(cards, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, cards)
-		if #cards ~= math.floor(sgs.Self:getHandcardNum() / 2) then
+		if #cards ~= math.floor(request:getInitiator():getHandcardNum() / 2) then
 			return nil
 		end
 		local c = olhaoshiCard:clone()
@@ -9085,7 +9086,7 @@ end,
 can_select_card = function(self, request, to_select)
 	if not request:getSelectedCardIds():isEmpty() or to_select:hasFlag("using") then return false end
 	return (function(self, to_select)
-		return sgs.Self:getMark("&keolshuangxiong+" .. to_select:getColorString() .. "-Clear") < 1
+		return request:getInitiator():getMark("&keolshuangxiong+" .. to_select:getColorString() .. "-Clear") < 1
 	end)(self, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -9646,14 +9647,14 @@ can_select_card = function(self, request, to_select)
 		if ec:property("YingBianEffects"):toString() == "" then
 			return false
 		end
-		local c = sgs.Self:getTag("nosjinwanyi"):toCard()
+		local c = request:getInitiator():getTag("nosjinwanyi"):toCard()
 		if c == nil then
 			return false
 		end
 		local dc = dummyCard(c:objectName())
 		dc:addSubcard(to_select)
 		dc:setSkillName("nosjinwanyi")
-		return dc:isAvailable(sgs.Self)
+		return dc:isAvailable(request:getInitiator())
 	end)(self, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -9663,8 +9664,8 @@ create_card = function(self, request)
 	local ids = request:getSelectedCardIds()
 	if ids:length() ~= 1 then return nil end
 	return (function(self, card)
-		local _card = sgs.Self:getTag("nosjinwanyi"):toCard()
-		if _card and _card:isAvailable(sgs.Self) then
+		local _card = request:getInitiator():getTag("nosjinwanyi"):toCard()
+		if _card and _card:isAvailable(request:getInitiator()) then
 			local c = nosjinwanyiCard:clone()
 			c:setUserString(_card:objectName())
 			c:addSubcard(card)
@@ -10139,8 +10140,8 @@ can_activate = function(self, request)
 end,
 create_card = function(self, request)
 	return (function()
-		local _card = sgs.Self:getTag("zuoxing"):toCard()
-		if _card and _card:isAvailable(sgs.Self) then
+		local _card = request:getInitiator():getTag("zuoxing"):toCard()
+		if _card and _card:isAvailable(request:getInitiator()) then
 			local c = zuoxingCard:clone()
 			c:setUserString(_card:objectName())
 			return c
@@ -13114,7 +13115,7 @@ card_selection_feasible = function(self, request)
 			end
 			return sc
 		end
-		-- 服务器没有 sgs.Self：蛊惑框选的牌名由 request 带来（客户端取自框，服务器取自提交的牌）
+		-- 服务器没有 Self：蛊惑框选的牌名由 request 带来（客户端取自框，服务器取自提交的牌）
 		local name = request:getUserString()
 		local sc = name ~= "" and sgs.Sanguosha:cloneCard(name) or nil
 		if sc then
@@ -13148,7 +13149,7 @@ create_card = function(self, request)
 			end
 			return sc
 		end
-		-- 服务器没有 sgs.Self：蛊惑框选的牌名由 request 带来（客户端取自框，服务器取自提交的牌）
+		-- 服务器没有 Self：蛊惑框选的牌名由 request 带来（客户端取自框，服务器取自提交的牌）
 		local name = request:getUserString()
 		local sc = name ~= "" and sgs.Sanguosha:cloneCard(name) or nil
 		if sc then
@@ -13274,7 +13275,7 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		local num = sgs.Self:getHandcardNum()
+		local num = request:getInitiator():getHandcardNum()
 		if num % 2 == 1 then
 			return false
 		end
@@ -13287,7 +13288,7 @@ card_selection_feasible = function(self, request)
 		table.insert(cards, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, cards)
-		local num = sgs.Self:getHandcardNum()
+		local num = request:getInitiator():getHandcardNum()
 		if num % 2 == 1 then
 			return ny_ol_yanruCard:clone()
 		else
@@ -13307,7 +13308,7 @@ create_card = function(self, request)
 		table.insert(cards, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, cards)
-		local num = sgs.Self:getHandcardNum()
+		local num = request:getInitiator():getHandcardNum()
 		if num % 2 == 1 then
 			return ny_ol_yanruCard:clone()
 		else
@@ -13900,7 +13901,7 @@ end,
 can_select_card = function(self, request, to_select)
 	if not request:getSelectedCardIds():isEmpty() or to_select:hasFlag("using") then return false end
 	return (function(self, to_select)
-		return to_select:isAvailable(sgs.Self) and sgs.Self:getPile("#keolzhuri"):contains(to_select:getEffectiveId())
+		return to_select:isAvailable(request:getInitiator()) and request:getInitiator():getPile("#keolzhuri"):contains(to_select:getEffectiveId())
 	end)(self, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -14695,7 +14696,7 @@ card_selection_feasible = function(self, request)
 		if #cards > 0 then
 			local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 			if pattern == "" then
-				local dc = sgs.Self:getTag("keolweilin")
+				local dc = request:getInitiator():getTag("keolweilin")
 				if dc == nil then
 					return
 				end
@@ -14722,7 +14723,7 @@ create_card = function(self, request)
 		if #cards > 0 then
 			local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 			if pattern == "" then
-				local dc = sgs.Self:getTag("keolweilin")
+				local dc = request:getInitiator():getTag("keolweilin")
 				if dc == nil then
 					return
 				end
@@ -15350,7 +15351,7 @@ end,
 can_select_card = function(self, request, to_select)
 	if not request:getSelectedCardIds():isEmpty() or to_select:hasFlag("using") then return false end
 	return (function(self, card)
-		if sgs.Self:getMark("&moulongdanLast") > 0 then
+		if request:getInitiator():getMark("&moulongdanLast") > 0 then
 			return card:getTypeId() == 1
 		end
 		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
@@ -15373,10 +15374,10 @@ create_card = function(self, request)
 	local ids = request:getSelectedCardIds()
 	if ids:length() ~= 1 then return nil end
 	return (function(self, card)
-		if sgs.Self:getMark("&moulongdanLast") > 0 then
+		if request:getInitiator():getMark("&moulongdanLast") > 0 then
 			local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 			if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-				local dc = sgs.Self:getTag("moulongdan"):toCard()
+				local dc = request:getInitiator():getTag("moulongdan"):toCard()
 				if dc == nil then
 					return
 				end
@@ -16029,7 +16030,7 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		local n = math.max(1, sgs.Self:getMark("moumingxuanCardGive"))
+		local n = math.max(1, request:getInitiator():getMark("moumingxuanCardGive"))
 		if #selected >= n then
 			return false
 		end
@@ -16047,7 +16048,7 @@ card_selection_feasible = function(self, request)
 		table.insert(cards, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, cards)
-		local n = math.max(1, sgs.Self:getMark("moumingxuanCardGive"))
+		local n = math.max(1, request:getInitiator():getMark("moumingxuanCardGive"))
 		if #cards >= 1 and #cards <= n then
 			local MXC = moumingxuanCard:clone()
 			for _, c in ipairs(cards) do
@@ -16063,7 +16064,7 @@ create_card = function(self, request)
 		table.insert(cards, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, cards)
-		local n = math.max(1, sgs.Self:getMark("moumingxuanCardGive"))
+		local n = math.max(1, request:getInitiator():getMark("moumingxuanCardGive"))
 		if #cards >= 1 and #cards <= n then
 			local MXC = moumingxuanCard:clone()
 			for _, c in ipairs(cards) do
@@ -16368,7 +16369,7 @@ create_card = function(self, request)
 	return (function()
 		local duel = sgs.Sanguosha:cloneCard("duel")
 		duel:setSkillName("moujiang")
-		for _, h in sgs.qlist(sgs.Self:getHandcards()) do
+		for _, h in sgs.qlist(request:getInitiator():getHandcards()) do
 			duel:addSubcard(h)
 		end
 		return duel
@@ -17275,7 +17276,7 @@ create_card = function(self, request)
 	if ids:length() ~= 1 then return nil end
 	return (function(self, card)
 		if sgs.Sanguosha:getCurrentCardUseReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-			local dc = sgs.Self:getTag("mouwusheng"):toCard()
+			local dc = request:getInitiator():getTag("mouwusheng"):toCard()
 			if dc == nil then
 				return
 			end
@@ -18116,7 +18117,7 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		if #selected >= sgs.Self:getMark("mouqingzhengSuits") then
+		if #selected >= request:getInitiator():getMark("mouqingzhengSuits") then
 			return false
 		end
 		for _, c in sgs.list(selected) do
@@ -18133,10 +18134,10 @@ card_selection_feasible = function(self, request)
 		table.insert(cards, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, cards)
-		if #cards == sgs.Self:getMark("mouqingzhengSuits") then
+		if #cards == request:getInitiator():getMark("mouqingzhengSuits") then
 			local dc = mouqingzhengCard:clone()
 			for _, c in ipairs(cards) do
-				for _, h in sgs.qlist(sgs.Self:getHandcards()) do
+				for _, h in sgs.qlist(request:getInitiator():getHandcards()) do
 					if c:getSuit() == h:getSuit() then
 						dc:addSubcard(h)
 					end
@@ -18152,10 +18153,10 @@ create_card = function(self, request)
 		table.insert(cards, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, cards)
-		if #cards == sgs.Self:getMark("mouqingzhengSuits") then
+		if #cards == request:getInitiator():getMark("mouqingzhengSuits") then
 			local dc = mouqingzhengCard:clone()
 			for _, c in ipairs(cards) do
-				for _, h in sgs.qlist(sgs.Self:getHandcards()) do
+				for _, h in sgs.qlist(request:getInitiator():getHandcards()) do
 					if c:getSuit() == h:getSuit() then
 						dc:addSubcard(h)
 					end
@@ -18387,7 +18388,7 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		return not to_select:isEquipped() and sgs.Self:getMark(to_select:getSuitString() .. "moufanjianUsed-PlayClear") < 1
+		return not to_select:isEquipped() and request:getInitiator():getMark(to_select:getSuitString() .. "moufanjianUsed-PlayClear") < 1
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -18566,9 +18567,9 @@ card_selection_feasible = function(self, request)
 		if #cards < 1 then
 			local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 			if pattern == "@@mourende" then
-				pattern = sgs.Sanguosha:getEngineCard(sgs.Self:getMark("mourendeId")):objectName()
+				pattern = sgs.Sanguosha:getEngineCard(request:getInitiator():getMark("mourendeId")):objectName()
 			end
-			if sgs.Self:getMark("&mRenWang") > 1 and (string.find(pattern, "+") or pattern == "") then
+			if request:getInitiator():getMark("&mRenWang") > 1 and (string.find(pattern, "+") or pattern == "") then
 				local mrd_card = mourendeCard:clone()
 				mrd_card:setUserString(pattern)
 				return mrd_card
@@ -18597,9 +18598,9 @@ create_card = function(self, request)
 		if #cards < 1 then
 			local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 			if pattern == "@@mourende" then
-				pattern = sgs.Sanguosha:getEngineCard(sgs.Self:getMark("mourendeId")):objectName()
+				pattern = sgs.Sanguosha:getEngineCard(request:getInitiator():getMark("mourendeId")):objectName()
 			end
-			if sgs.Self:getMark("&mRenWang") > 1 and (string.find(pattern, "+") or pattern == "") then
+			if request:getInitiator():getMark("&mRenWang") > 1 and (string.find(pattern, "+") or pattern == "") then
 				local mrd_card = mourendeCard:clone()
 				mrd_card:setUserString(pattern)
 				return mrd_card
@@ -19269,7 +19270,7 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		return sgs.Self:getPile("&mouStarsXing"):contains(to_select:getEffectiveId())
+		return request:getInitiator():getPile("&mouStarsXing"):contains(to_select:getEffectiveId())
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -20293,7 +20294,7 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		return not sgs.Self:isJilei(to_select)
+		return not request:getInitiator():isJilei(to_select)
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -20544,7 +20545,7 @@ can_activate = function(self, request)
 end,
 create_card = function(self, request)
 	return (function(self, cards)
-		local c = sgs.Sanguosha:getEngineCard(sgs.Self:getMark("mobilemoutianduName"))
+		local c = sgs.Sanguosha:getEngineCard(request:getInitiator():getMark("mobilemoutianduName"))
 		local transcard = sgs.Sanguosha:cloneCard(c:objectName())
 		transcard:setSkillName("_mobilemoutiandu")
 		return transcard
@@ -20891,7 +20892,7 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		return not sgs.Self:isJilei(to_select)
+		return not request:getInitiator():isJilei(to_select)
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -21138,8 +21139,8 @@ can_select_card = function(self, request, to_select)
 		if to_select:isEquipped() then
 			return false
 		end
-		if sgs.Self:getMark("f_mode_doudizhu") > 0 then
-			return to_select:isKindOf("Armor") and sgs.Self:getMark("mouqicaiArmor" .. to_select:objectName()) < 1
+		if request:getInitiator():getMark("f_mode_doudizhu") > 0 then
+			return to_select:isKindOf("Armor") and request:getInitiator():getMark("mouqicaiArmor" .. to_select:objectName()) < 1
 		else
 			return to_select:isKindOf("EquipCard")
 		end
@@ -21299,7 +21300,7 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		return to_select:getColor() == sgs.Sanguosha:getCard(sgs.Self:getPile("mouResponsibility"):first()):getColor()
+		return to_select:getColor() == sgs.Sanguosha:getCard(request:getInitiator():getPile("mouResponsibility"):first()):getColor()
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -22028,7 +22029,7 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		return sgs.Sanguosha:getCurrentCardUsePattern() == "@@mobileqiaosi!" and #selected < sgs.Self:getMark("mobileqiaosiNum")
+		return sgs.Sanguosha:getCurrentCardUsePattern() == "@@mobileqiaosi!" and #selected < request:getInitiator():getMark("mobileqiaosiNum")
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -22039,7 +22040,7 @@ card_selection_feasible = function(self, request)
 	return (function(self, cards)
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		if pattern == "@@mobileqiaosi!" then
-			if #cards < sgs.Self:getMark("mobileqiaosiNum") then
+			if #cards < request:getInitiator():getMark("mobileqiaosiNum") then
 				return
 			end
 			local dc = mobileqiaosi2Card:clone()
@@ -22059,7 +22060,7 @@ create_card = function(self, request)
 	return (function(self, cards)
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		if pattern == "@@mobileqiaosi!" then
-			if #cards < sgs.Self:getMark("mobileqiaosiNum") then
+			if #cards < request:getInitiator():getMark("mobileqiaosiNum") then
 				return
 			end
 			local dc = mobileqiaosi2Card:clone()
@@ -23951,7 +23952,7 @@ can_select_card = function(self, request, to_select)
 				return false
 			end
 		end
-		return not sgs.Self:isJilei(to_select)
+		return not request:getInitiator():isJilei(to_select)
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -24925,7 +24926,7 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		return not sgs.Self:isJilei(to_select)
+		return not request:getInitiator():isJilei(to_select)
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -26637,7 +26638,7 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		return sgs.Self:getPileName(to_select:getId()) == "#zhengjing"
+		return request:getInitiator():getPileName(to_select:getId()) == "#zhengjing"
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -27168,9 +27169,9 @@ card_selection_feasible = function(self, request)
 	return (function(self, cards)
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		if pattern == "@@xdyifuvs" then
-			pattern = sgs.Self:property("xdyifuvsCN"):toString()
+			pattern = request:getInitiator():property("xdyifuvsCN"):toString()
 			local c = sgs.Sanguosha:cloneCard(pattern)
-			c:addSubcard(sgs.Self:getMark("xdyifuvsId"))
+			c:addSubcard(request:getInitiator():getMark("xdyifuvsId"))
 			c:setSkillName("_xdyifu")
 			return c
 		end
@@ -27193,9 +27194,9 @@ create_card = function(self, request)
 	return (function(self, cards)
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		if pattern == "@@xdyifuvs" then
-			pattern = sgs.Self:property("xdyifuvsCN"):toString()
+			pattern = request:getInitiator():property("xdyifuvsCN"):toString()
 			local c = sgs.Sanguosha:cloneCard(pattern)
-			c:addSubcard(sgs.Self:getMark("xdyifuvsId"))
+			c:addSubcard(request:getInitiator():getMark("xdyifuvsId"))
 			c:setSkillName("_xdyifu")
 			return c
 		end
@@ -27424,7 +27425,7 @@ card_selection_feasible = function(self, request)
 		table.insert(cards, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, cards)
-		local n = sgs.Self:getMark("xdfangchanId")
+		local n = request:getInitiator():getMark("xdfangchanId")
 		local dc = sgs.Sanguosha:cloneCard(sgs.Sanguosha:getCard(n):objectName())
 		dc:setSkillName("_xdfangchan")
 		return dc
@@ -27436,7 +27437,7 @@ create_card = function(self, request)
 		table.insert(cards, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, cards)
-		local n = sgs.Self:getMark("xdfangchanId")
+		local n = request:getInitiator():getMark("xdfangchanId")
 		local dc = sgs.Sanguosha:cloneCard(sgs.Sanguosha:getCard(n):objectName())
 		dc:setSkillName("_xdfangchan")
 		return dc
@@ -28069,7 +28070,7 @@ card_selection_feasible = function(self, request)
 			return
 		end
 		if pattern == "@@olmoguofu" then
-			pattern = sgs.Self:property("olmoguofuPn"):toString()
+			pattern = request:getInitiator():property("olmoguofuPn"):toString()
 		end
 		local dc = sgs.Sanguosha:cloneCard(pattern:split("+")[1])
 		dc:setSkillName("olmoguofu")
@@ -28091,7 +28092,7 @@ create_card = function(self, request)
 			return
 		end
 		if pattern == "@@olmoguofu" then
-			pattern = sgs.Self:property("olmoguofuPn"):toString()
+			pattern = request:getInitiator():property("olmoguofuPn"):toString()
 		end
 		local dc = sgs.Sanguosha:cloneCard(pattern:split("+")[1])
 		dc:setSkillName("olmoguofu")
@@ -29396,7 +29397,7 @@ can_select_card = function(self, request, to_select)
 		if pattern == "@@ofsifen!" then
 			return not to_select:isEquipped()
 		end
-		local n = sgs.Self:getMark("ofsifenRed-PlayClear")
+		local n = request:getInitiator():getMark("ofsifenRed-PlayClear")
 		return n > 0 and to_select:isRed() and #selected < n
 	end)(self, selected, to_select) and true or false
 end,
@@ -29418,7 +29419,7 @@ card_selection_feasible = function(self, request)
 			end
 			return dc
 		end
-		local n = sgs.Self:getMark("ofsifenRed-PlayClear")
+		local n = request:getInitiator():getMark("ofsifenRed-PlayClear")
 		if n > 0 then
 			if #cards < n then
 				return
@@ -29450,7 +29451,7 @@ create_card = function(self, request)
 			end
 			return dc
 		end
-		local n = sgs.Self:getMark("ofsifenRed-PlayClear")
+		local n = request:getInitiator():getMark("ofsifenRed-PlayClear")
 		if n > 0 then
 			if #cards < n then
 				return
@@ -29890,9 +29891,9 @@ card_selection_feasible = function(self, request)
 	end
 	return (function(self, cards)
 		if sgs.Sanguosha:getCurrentCardUsePattern() == "@@ofshezuo!" then
-			local dc = sgs.Sanguosha:getCard(sgs.Self:getMark("ofshezuoId"))
+			local dc = sgs.Sanguosha:getCard(request:getInitiator():getMark("ofshezuoId"))
 			dc = sgs.Sanguosha:cloneCard(dc:objectName())
-			dc:addSubcards(sgs.Self:handCards())
+			dc:addSubcards(request:getInitiator():handCards())
 			dc:setSkillName("ofshezuo")
 			return dc
 		end
@@ -29906,9 +29907,9 @@ create_card = function(self, request)
 	end
 	return (function(self, cards)
 		if sgs.Sanguosha:getCurrentCardUsePattern() == "@@ofshezuo!" then
-			local dc = sgs.Sanguosha:getCard(sgs.Self:getMark("ofshezuoId"))
+			local dc = sgs.Sanguosha:getCard(request:getInitiator():getMark("ofshezuoId"))
 			dc = sgs.Sanguosha:cloneCard(dc:objectName())
-			dc:addSubcards(sgs.Self:handCards())
+			dc:addSubcards(request:getInitiator():handCards())
 			dc:setSkillName("ofshezuo")
 			return dc
 		end
@@ -30114,7 +30115,7 @@ can_select_card = function(self, request, to_select)
 	return (function(self, selected, to_select)
 		local pattern = sgs.Sanguosha:getCurrentCardUseReason()
 		if pattern == "@@ofjixu!" then
-			return sgs.Self:getPileName(to_select:getEffectiveId()) == "#ofjixu"
+			return request:getInitiator():getPileName(to_select:getEffectiveId()) == "#ofjixu"
 		end
 	end)(self, selected, to_select) and true or false
 end,
@@ -30310,7 +30311,7 @@ card_selection_feasible = function(self, request)
 	return (function(self, cards)
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		if pattern == "" then
-			local c = sgs.Self:getTag("ofyouchong"):toCard()
+			local c = request:getInitiator():getTag("ofyouchong"):toCard()
 			if c then
 				pattern = c:objectName()
 			else
@@ -30330,7 +30331,7 @@ create_card = function(self, request)
 	return (function(self, cards)
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		if pattern == "" then
-			local c = sgs.Self:getTag("ofyouchong"):toCard()
+			local c = request:getInitiator():getTag("ofyouchong"):toCard()
 			if c then
 				pattern = c:objectName()
 			else
@@ -30385,7 +30386,7 @@ card_selection_feasible = function(self, request)
 		if #cards < 3 then
 			return
 		end
-		local dc = sgs.Sanguosha:cloneCard(sgs.Self:property("ofyouchongCN"):toString())
+		local dc = sgs.Sanguosha:cloneCard(request:getInitiator():property("ofyouchongCN"):toString())
 		dc:setSkillName("ofyouchong")
 		for i, c in sgs.list(cards) do
 			dc:addSubcard(c)
@@ -30402,7 +30403,7 @@ create_card = function(self, request)
 		if #cards < 3 then
 			return
 		end
-		local dc = sgs.Sanguosha:cloneCard(sgs.Self:property("ofyouchongCN"):toString())
+		local dc = sgs.Sanguosha:cloneCard(request:getInitiator():property("ofyouchongCN"):toString())
 		dc:setSkillName("ofyouchong")
 		for i, c in sgs.list(cards) do
 			dc:addSubcard(c)
@@ -30695,7 +30696,7 @@ can_select_card = function(self, request, to_select)
 		table.insert(selected, sgs.Sanguosha:getCard(id))
 	end
 	return (function(self, selected, to_select)
-		return sgs.Self:getPile("#godshenji"):contains(to_select:getId())
+		return request:getInitiator():getPile("#godshenji"):contains(to_select:getId())
 	end)(self, selected, to_select) and true or false
 end,
 card_selection_feasible = function(self, request)
@@ -30707,7 +30708,7 @@ card_selection_feasible = function(self, request)
 		if #cards < 1 then
 			return
 		end
-		local dc = sgs.Sanguosha:cloneCard(sgs.Self:property("godshenjiCN"):toString())
+		local dc = sgs.Sanguosha:cloneCard(request:getInitiator():property("godshenjiCN"):toString())
 		dc:setSkillName("godshenji")
 		for i, c in sgs.list(cards) do
 			dc:addSubcard(c)
@@ -30724,7 +30725,7 @@ create_card = function(self, request)
 		if #cards < 1 then
 			return
 		end
-		local dc = sgs.Sanguosha:cloneCard(sgs.Self:property("godshenjiCN"):toString())
+		local dc = sgs.Sanguosha:cloneCard(request:getInitiator():property("godshenjiCN"):toString())
 		dc:setSkillName("godshenji")
 		for i, c in sgs.list(cards) do
 			dc:addSubcard(c)
@@ -37569,7 +37570,7 @@ card_selection_feasible = function(self, request)
 		if #cards<1 then return end
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		if pattern=="" then
-			local c = sgs.Self:getTag("ofguhuo"):toCard()
+			local c = request:getInitiator():getTag("ofguhuo"):toCard()
 			if c==nil then return end
 			pattern = c:objectName()
 		end
@@ -37588,7 +37589,7 @@ create_card = function(self, request)
 		if #cards<1 then return end
 		local pattern = sgs.Sanguosha:getCurrentCardUsePattern()
 		if pattern=="" then
-			local c = sgs.Self:getTag("ofguhuo"):toCard()
+			local c = request:getInitiator():getTag("ofguhuo"):toCard()
 			if c==nil then return end
 			pattern = c:objectName()
 		end

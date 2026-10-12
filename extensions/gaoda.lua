@@ -432,7 +432,8 @@ gdsbgm = sgs.CreateRuleSkillV2{
 			if room:getOwner():getGameMode() == "_mini_1" then
 				name = generalName2BGM(room:getOwner():getGeneralName()) --扭蛋BGM
 			else
-				name = generalName2BGM(room:getLord():getGeneralName())
+				local lord = room:getLord()
+				name = generalName2BGM((lord or room:getOwner()):getGeneralName())
 			end
 			changeBGM(name)
 			local ip = room:getOwner():getIp()

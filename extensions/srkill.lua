@@ -553,7 +553,7 @@ sr_hemouvs = sgs.CreateViewAsSkillV2{
 	name = "sr_hemouvs",
 	n = 1,
 	can_select_card = function(skill, request, to_select)
-		local n = sgs.Self:getMark("hemousuit")
+		local n = request:getInitiator():getMark("hemousuit")
 		if n<=0 then return false end
 		if to_select:isEquipped() then return false end
 		if n == 1 then
@@ -2046,7 +2046,7 @@ sr_quanheng_slash = sgs.CreateViewAsSkillV2{
 	name = "sr_quanheng_slash",
 	n = 999,
 	can_select_card = function(skill, request, to_select)
-		return (not to_select:isEquipped()) and (not sgs.Self:isJilei(to_select))
+		return (not to_select:isEquipped()) and (not request:getInitiator():isJilei(to_select))
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() > 0
@@ -2088,7 +2088,7 @@ sr_quanheng_ex_nihilo = sgs.CreateViewAsSkillV2{
 	name = "sr_quanheng_ex_nihilo",
 	n = 999,
 	can_select_card = function(skill, request, to_select)
-		return (not to_select:isEquipped()) and (not sgs.Self:isJilei(to_select))
+		return (not to_select:isEquipped()) and (not request:getInitiator():isJilei(to_select))
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() > 0
