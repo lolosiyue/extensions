@@ -247,6 +247,7 @@ sr_chouxi = sgs.CreateViewAsSkillV2{
 	name = "sr_chouxi",
 	n = 1,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		return not to_select:isEquipped()
@@ -478,6 +479,7 @@ sr_shouji = sgs.CreateViewAsSkillV2{
 	name = "sr_shouji",
 	n = 1,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		return true
@@ -896,6 +898,7 @@ sr_yaozhan = sgs.CreateViewAsSkillV2{
 	name = "sr_yaozhan",
 	n = 1,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		return not to_select:isEquipped()
@@ -966,6 +969,7 @@ sr_wenjiuVS = sgs.CreateViewAsSkillV2{
 	name = "sr_wenjiu",
 	n = 1,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		if not to_select:isEquipped() then
@@ -1279,6 +1283,7 @@ sr_sanfen = sgs.CreateViewAsSkillV2{
 	name = "sr_sanfen",
 	n = 0,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	create_card = function(skill, request)
 		return sr_sanfencard:clone()
@@ -2712,6 +2717,7 @@ sr_dailao = sgs.CreateViewAsSkillV2{
 	name = "sr_dailao",
 	n = 0,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	create_card = function(skill, request)
 		return sr_dailaocard:clone()
@@ -2998,6 +3004,7 @@ sr_weibao = sgs.CreateViewAsSkillV2{
 	name = "sr_weibao",
 	n = 1,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		return not to_select:isEquipped()
@@ -3133,6 +3140,7 @@ sr_choulvevs = sgs.CreateViewAsSkillV2{
 	name = "sr_choulve",
 	n = 0,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	create_card = function(skill, request)
 		local card = sr_choulvecard:clone()
@@ -3441,6 +3449,7 @@ sr_jiexivs = sgs.CreateViewAsSkillV2{
 	name = "sr_jiexi",
 	n = 1,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		return not to_select:isEquipped()
@@ -3779,6 +3788,7 @@ sr_zhaxiang = sgs.CreateViewAsSkillV2{
 	name = "sr_zhaxiang",
 	n = 1,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		return not to_select:isEquipped()
@@ -4365,6 +4375,7 @@ sr_zhishi = sgs.CreateViewAsSkillV2{
 	name = "sr_zhishi",
 	n = 0,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	create_card = function(skill, request)
 		return sr_zhishicard:clone()
@@ -4742,6 +4753,7 @@ sr_aozhanVS = sgs.CreateViewAsSkillV2{
 	name = "sr_aozhan",
 	n = 0,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	create_card = function(skill, request)
 		return sr_aozhanCard:clone()
@@ -5151,6 +5163,7 @@ sr_liuyun = sgs.CreateViewAsSkillV2{
 	name = "sr_liuyun",
 	n = 1,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		return to_select:isBlack()
@@ -6210,6 +6223,7 @@ sr_lijian = sgs.CreateViewAsSkillV2{
 	name = "sr_lijian",
 	n = 1,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	can_select_card = function(skill, request, to_select)
 		return request:getSelectedCardIds():length() == 0
@@ -6271,6 +6285,7 @@ sr_manwu = sgs.CreateViewAsSkillV2{
 	name = "sr_manwu",
 	n = 0,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	create_card = function(skill, request)
 		return sr_manwucard:clone()
@@ -6400,6 +6415,7 @@ sr_xingyi = sgs.CreateViewAsSkillV2{
 	name = "sr_xingyi",
 	n = 0,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	create_card = function(skill, request)
 		return sr_xingyicard:clone()
@@ -6554,6 +6570,7 @@ sr_jiwuvs = sgs.CreateViewAsSkillV2{
 	name = "sr_jiwu",
 	n = 0,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	create_card = function(skill, request)
 		return sr_jiwucard:clone()

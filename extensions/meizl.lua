@@ -778,6 +778,10 @@ meizldiaochan = sgs.General(extension, "meizldiaochan", "qun", 3, false)
 meizllipo = sgs.CreateViewAsSkillV2
 	{
 		name = "meizllipo",
+		limit_scope = sgs.Skill_Limit_Phase,
+		phase_name = "Play",
+		max_usage_limit = 1,
+		history_key = "#meizllipocard",
 		n = 0,
 
 		create_card = function(skill, request)
@@ -788,7 +792,6 @@ meizllipo = sgs.CreateViewAsSkillV2
 			local player = request:getInitiator()
 			return player
 				and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-				and not player:hasUsed("#meizllipocard")
 		end,
 	}
 
@@ -997,6 +1000,10 @@ meizlzhaoxucard = sgs.CreateSkillCard {
 
 meizlzhaoxu = sgs.CreateViewAsSkillV2 {
 	name = "meizlzhaoxu",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizlzhaoxucard",
 	n = 0,
 	create_card = function(skill, request)
 		return meizlzhaoxucard:clone()
@@ -1005,7 +1012,6 @@ meizlzhaoxu = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#meizlzhaoxucard")
 	end,
 }
 --助治（吴国太）
@@ -1278,6 +1284,10 @@ meizlhujiacard = sgs.CreateSkillCard {
 
 meizlhujia = sgs.CreateViewAsSkillV2 {
 	name = "meizlhujia",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizlhujiacard",
 	n = 0,
 
 	can_select_card = function(skill, request, to_select)
@@ -1295,7 +1305,6 @@ meizlhujia = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#meizlhujiacard")
 	end,
 }
 
@@ -1512,6 +1521,10 @@ end]]
 meizlzhinang = sgs.CreateViewAsSkillV2
 	{
 		name = "meizlzhinang",
+		limit_scope = sgs.Skill_Limit_Phase,
+		phase_name = "Play",
+		max_usage_limit = 1,
+		history_key = "#meizlzhinangcard",
 		n = 999,
 
 		can_select_card = function(skill, request, to_select)
@@ -1537,7 +1550,6 @@ meizlzhinang = sgs.CreateViewAsSkillV2
 			local player = request:getInitiator()
 			return player
 				and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-				and not player:hasUsed("#meizlzhinangcard")
 		end
 	}
 meizlzhinang_InTempMoving = sgs.CreateTriggerSkillV2 {
@@ -2120,6 +2132,10 @@ meizlzhaojiecard = sgs.CreateSkillCard {
 
 meizlzhaojie = sgs.CreateViewAsSkillV2 {
 	name = "meizlzhaojie",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizlzhaojiecard",
 	n = 999,
 
 	can_select_card = function(skill, request, to_select)
@@ -2143,7 +2159,6 @@ meizlzhaojie = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#meizlzhaojiecard")
 	end,
 }
 
@@ -2396,6 +2411,10 @@ meizlhuguan = sgs.CreateTriggerSkillV2 {
 --武姻（王悦）
 meizlwuyinskill = sgs.CreateViewAsSkillV2 {
 	name = "meizlwuyin",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizlwuyincard",
 	n = 1,
 	can_select_card = function(skill, request, to_select)
 		return to_select ~= nil
@@ -2415,7 +2434,6 @@ meizlwuyinskill = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#meizlwuyincard")
 	end,
 }
 
@@ -2506,6 +2524,10 @@ meizlmihuncard = sgs.CreateSkillCard {
 
 meizlmihun = sgs.CreateViewAsSkillV2 {
 	name = "meizlmihun",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizlmihuncard",
 	n = 1,
 
 	can_select_card = function(skill, request, to_select)
@@ -2527,7 +2549,6 @@ meizlmihun = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#meizlmihuncard")
 	end,
 }
 --妖娆（杜氏）
@@ -2673,6 +2694,7 @@ meizlmijiancard = sgs.CreateSkillCard {
 }
 meizlmijian = sgs.CreateViewAsSkillV2 {
 	name = "meizlmijian",
+	history_key = "#meizlmijiancard",
 	n = 999,
 	can_select_card = function(skill, request, to_select)
 		return to_select ~= nil
@@ -3228,6 +3250,10 @@ meizlchanhuocard = sgs.CreateSkillCard {
 }
 meizlchanhuo = sgs.CreateViewAsSkillV2 {
 	name = "meizlchanhuo",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizlchanhuocard",
 	n = 0,
 
 	can_select_card = function(skill, request, to_select)
@@ -3249,7 +3275,6 @@ meizlchanhuo = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#meizlchanhuocard")
 	end,
 }
 --谮毁（孙鲁班）
@@ -3270,6 +3295,10 @@ meizlzenhuicard = sgs.CreateSkillCard {
 }
 meizlzenhuiskill = sgs.CreateViewAsSkillV2 {
 	name = "meizlzenhui",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizlzenhuicard",
 	n = 1,
 
 	can_select_card = function(skill, request, to_select)
@@ -3291,7 +3320,6 @@ meizlzenhuiskill = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#meizlzenhuicard")
 	end,
 }
 meizlzenhui = sgs.CreateTriggerSkillV2 {
@@ -3404,6 +3432,10 @@ meizljianwucard = sgs.CreateSkillCard {
 }
 meizljianwuskill = sgs.CreateViewAsSkillV2 {
 	name = "meizljianwu",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizljianwucard",
 	n = 1,
 
 	can_select_card = function(skill, request, to_select)
@@ -3426,7 +3458,6 @@ meizljianwuskill = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#meizljianwucard")
 	end,
 }
 
@@ -3626,6 +3657,10 @@ meizlrangdoucard = sgs.CreateSkillCard {
 }
 meizlrangdouskill = sgs.CreateViewAsSkillV2 {
 	name = "meizlrangdou",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizlrangdoucard",
 	n = 1,
 
 	can_select_card = function(skill, request, to_select)
@@ -3647,7 +3682,6 @@ meizlrangdouskill = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#meizlrangdoucard")
 	end,
 }
 meizlrangdou = sgs.CreateTriggerSkillV2 {
@@ -3937,6 +3971,10 @@ meizlyujuecard = sgs.CreateSkillCard {
 
 meizlyujue = sgs.CreateViewAsSkillV2 {
 	name = "meizlyujue",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizlyujuecard",
 	n = 0,
 	create_card = function(skill, request)
 		return meizlyujuecard:clone()
@@ -3945,7 +3983,6 @@ meizlyujue = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#meizlyujuecard")
 	end
 }
 --哭骂（丁夫人）
@@ -4408,6 +4445,10 @@ meizljuese = sgs.CreateTriggerSkillV2 {
 meizlzefu = sgs.CreateViewAsSkillV2
 	{
 		name = "meizlzefu",
+		limit_scope = sgs.Skill_Limit_Phase,
+		phase_name = "Play",
+		max_usage_limit = 1,
+		history_key = "#meizlzefucard",
 		n = 0,
 
 		create_card = function(skill, request)
@@ -4418,7 +4459,6 @@ meizlzefu = sgs.CreateViewAsSkillV2
 			local player = request:getInitiator()
 			return player
 				and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-				and not player:hasUsed("#meizlzefucard")
 		end,
 	}
 
@@ -4749,6 +4789,10 @@ meizlluohongcard = sgs.CreateSkillCard
 meizlluohong = sgs.CreateViewAsSkillV2
 	{
 		name = "meizlluohong",
+		limit_scope = sgs.Skill_Limit_Phase,
+		phase_name = "Play",
+		max_usage_limit = 1,
+		history_key = "#meizlluohongcard",
 		n = 998,
 
 		can_select_card = function(skill, request, to_select)
@@ -4774,7 +4818,6 @@ meizlluohong = sgs.CreateViewAsSkillV2
 			local player = request:getInitiator()
 			return player
 				and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-				and not player:hasUsed("#meizlluohongcard")
 		end
 	}
 --曼舞（神貂蝉）
@@ -5753,6 +5796,10 @@ meizlbiyincard = sgs.CreateSkillCard
 meizlbiyinskill = sgs.CreateViewAsSkillV2
 	{
 		name = "meizlbiyin",
+		limit_scope = sgs.Skill_Limit_Phase,
+		phase_name = "Play",
+		max_usage_limit = 1,
+		history_key = "#meizlbiyincard",
 		n = 0,
 
 		create_card = function(skill, request)
@@ -5763,7 +5810,7 @@ meizlbiyinskill = sgs.CreateViewAsSkillV2
 			local player = request:getInitiator()
 			return player
 				and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-				and not (player:hasUsed("#meizlbiyincard") or player:getMark("@meizlbiyin") == 0)
+				and player:getMark("@meizlbiyin") ~= 0
 		end,
 	}
 meizlbiyin = sgs.CreateTriggerSkillV2 {
@@ -6586,6 +6633,10 @@ meispliwucard              = sgs.CreateSkillCard {
 
 meispliwuskill             = sgs.CreateViewAsSkillV2 {
 	name = "meispliwu",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meispliwucard",
 	n = 0,
 
 	create_card = function(skill, request)
@@ -6596,8 +6647,7 @@ meispliwuskill             = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player:getKingdom() == "shu" and player:getMark("@meispfeng") >= 2 and
-			not player:hasUsed("#meispliwucard")
+			and player:getKingdom() == "shu" and player:getMark("@meispfeng") >= 2
 	end,
 }
 
@@ -6804,6 +6854,10 @@ meichunjiefulicard         = sgs.CreateSkillCard {
 
 meichunjiefuli             = sgs.CreateViewAsSkillV2 {
 	name = "meichunjiefuli",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meichunjiefulicard",
 	n = 0,
 
 	create_card = function(skill, request)
@@ -6814,7 +6868,6 @@ meichunjiefuli             = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#meichunjiefulicard")
 	end,
 }
 local skills               = sgs.SkillList()
@@ -7809,6 +7862,10 @@ room:damage(damage)]]
 
 meizlseyousha      = sgs.CreateViewAsSkillV2 {
 	name = "meizlseyousha",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizlseyoushacard",
 	n = 1,
 
 	can_select_card = function(skill, request, to_select)
@@ -7830,7 +7887,6 @@ meizlseyousha      = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#meizlseyoushacard")
 	end,
 }
 
@@ -7884,6 +7940,10 @@ meizlselianyucard  = sgs.CreateSkillCard {
 }
 meizlselianyuskill = sgs.CreateViewAsSkillV2 {
 	name = "meizlselianyu",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizlselianyucard",
 	n = 0,
 	create_card = function(skill, request)
 		return meizlselianyucard:clone()
@@ -7893,8 +7953,7 @@ meizlselianyuskill = sgs.CreateViewAsSkillV2 {
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
 			and sgs.Slash_IsAvailable(player) and
-			(player:getMark("@meizlselianyu") > 0 or player:getMark("@meizlsebaonu") > 0) and
-			not player:hasUsed("#meizlselianyucard")
+			(player:getMark("@meizlselianyu") > 0 or player:getMark("@meizlsebaonu") > 0)
 	end
 }
 meizlselianyu      = sgs.CreateTriggerSkillV2 {
@@ -8236,6 +8295,10 @@ meizlsedangyangcard = sgs.CreateSkillCard {
 }
 meizlsedangyang     = sgs.CreateViewAsSkillV2 {
 	name = "meizlsedangyang",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizlsedangyangcard",
 	n = 0,
 	create_card = function(skill, request)
 		local card = meizlsedangyangcard:clone()
@@ -8245,7 +8308,6 @@ meizlsedangyang     = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#meizlsedangyangcard")
 	end
 }
 --妖惑（魔界七将‧阿斯莫德‧孙鲁班）
@@ -8463,6 +8525,7 @@ meizlsepoxiaocard     = sgs.CreateSkillCard {
 
 meizlsepoxiaoskill    = sgs.CreateViewAsSkillV2 {
 	name = "meizlsepoxiao",
+	history_key = "#meizlsepoxiaocard",
 	n = 1,
 
 	can_select_card = function(skill, request, to_select)
@@ -9029,6 +9092,10 @@ meizlshhujiacard = sgs.CreateSkillCard {
 
 meizlshhujia = sgs.CreateViewAsSkillV2 {
 	name = "meizlshhujia",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizlshhujiacard",
 	n = 0,
 
 	create_card = function(skill, request)
@@ -9042,7 +9109,6 @@ meizlshhujia = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#meizlshhujiacard")
 	end,
 }
 
@@ -9353,6 +9419,10 @@ meizlshjuese = sgs.CreateTriggerSkillV2 {
 meizlshzefu = sgs.CreateViewAsSkillV2
 	{
 		name = "meizlshzefu",
+		limit_scope = sgs.Skill_Limit_Phase,
+		phase_name = "Play",
+		max_usage_limit = 1,
+		history_key = "#meizlshzefucard",
 		n = 0,
 
 		create_card = function(skill, request)
@@ -9363,7 +9433,6 @@ meizlshzefu = sgs.CreateViewAsSkillV2
 			local player = request:getInitiator()
 			return player
 				and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-				and not player:hasUsed("#meizlshzefucard")
 		end,
 	}
 
@@ -9956,6 +10025,10 @@ meizlkujingguhuncard = sgs.CreateSkillCard {
 }
 meizlkujingguhunskill = sgs.CreateViewAsSkillV2 {
 	name = "meizlkujingguhun",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizlkujingguhuncard",
 	n = 0,
 	create_card = function(skill, request)
 		return meizlkujingguhuncard:clone()
@@ -9966,7 +10039,7 @@ meizlkujingguhunskill = sgs.CreateViewAsSkillV2 {
 			return false
 		end
 		local count = player:getMark("@meizlmifurenmark")
-		return count >= 1 and not player:hasUsed("#meizlkujingguhuncard")
+		return count >= 1
 	end
 }
 
@@ -10239,6 +10312,10 @@ meizlyanranyixiaocard = sgs.CreateSkillCard {
 }
 meizlyanranyixiaoskill = sgs.CreateViewAsSkillV2 {
 	name = "meizlyanranyixiao",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizlyanranyixiaocard",
 	n = 0,
 	create_card = function(skill, request)
 		return meizlyanranyixiaocard:clone()
@@ -10249,7 +10326,7 @@ meizlyanranyixiaoskill = sgs.CreateViewAsSkillV2 {
 			return false
 		end
 		local count = player:getMark("@meizlfanshimark")
-		return count >= 8 and not player:hasUsed("#meizlyanranyixiaocard")
+		return count >= 8
 	end
 }
 
@@ -10290,6 +10367,10 @@ meizlyuezhanyueqiangcard = sgs.CreateSkillCard {
 }
 meizlyuezhanyueqiangskill = sgs.CreateViewAsSkillV2 {
 	name = "meizlyuezhanyueqiang",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meizlyuezhanyueqiangcard",
 	n = 0,
 	create_card = function(skill, request)
 		return meizlyuezhanyueqiangcard:clone()
@@ -10300,7 +10381,7 @@ meizlyuezhanyueqiangskill = sgs.CreateViewAsSkillV2 {
 			return false
 		end
 		local count = player:getMark("@meizlmayunlumark")
-		return count >= 4 and not player:hasUsed("#meizlyuezhanyueqiangcard")
+		return count >= 4
 	end
 }
 
@@ -11055,6 +11136,10 @@ meispshliwucard = sgs.CreateSkillCard {
 
 meispshliwuskill = sgs.CreateViewAsSkillV2 {
 	name = "meispshliwu",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#meispshliwucard",
 	n = 0,
 
 	create_card = function(skill, request)
@@ -11066,7 +11151,6 @@ meispshliwuskill = sgs.CreateViewAsSkillV2 {
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
 			and player:getKingdom() == "shu" and player:getMark("@meispshfeng") >= 1
-			and not player:hasUsed("#meispshliwucard")
 	end,
 }
 
@@ -11468,6 +11552,9 @@ meizlzhenkujingguhuncard = sgs.CreateSkillCard {
 }
 meizlzhenkujingguhunskill = sgs.CreateViewAsSkillV2 {
 	name = "meizlzhenkujingguhun",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	create_card = function(skill, request)
 		return meizlzhenkujingguhuncard:clone()
@@ -11478,7 +11565,7 @@ meizlzhenkujingguhunskill = sgs.CreateViewAsSkillV2 {
 			return false
 		end
 		local count = player:getMark("@meizlmifurenmark")
-		return count >= 1 and not player:hasUsed("#meizlzhenkujingguhuncard")
+		return count >= 1
 	end
 }
 
@@ -14044,6 +14131,10 @@ guyan_card = sgs.CreateSkillCard {
 
 guyan = sgs.CreateViewAsSkillV2 {
 	name = "guyan",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#guyan",
 	n = 0,
 	create_card = function(skill, request)
 		return guyan_card:clone()
@@ -14052,7 +14143,6 @@ guyan = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#guyan")
 	end,
 }
 guihans = sgs.CreateTriggerSkillV2 {
@@ -14508,6 +14598,9 @@ shijuncard = sgs.CreateSkillCard {
 
 shijunVS = sgs.CreateViewAsSkillV2 {
 	name = "shijun",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 1,
 	can_select_card = function(skill, request, to_select)
 		if not to_select then return false end
@@ -14528,7 +14621,6 @@ shijunVS = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#shijun")
 	end,
 }
 

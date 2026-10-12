@@ -639,10 +639,12 @@ keguitiqiCard = sgs.CreateSkillCard {
 keguitiqi = sgs.CreateViewAsSkillV2 {
 	name = "keguitiqi",
 	n = 999,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player ~= nil and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#keguitiqiCard")
 	end,
 	can_select_card = function(skill, request, card)
 		return request:getSelectedCardIds():length() < 999
@@ -714,10 +716,13 @@ keguishouyeCard = sgs.CreateSkillCard {
 keguishouyeVS = sgs.CreateViewAsSkillV2 {
 	name = "keguishouye",
 	n = 1,
+	history_key = "#keguishouyeCard",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player ~= nil and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#keguishouyeCard")
 	end,
 	can_select_card = function(skill, request, card)
 		local player = request:getInitiator()
@@ -1436,10 +1441,13 @@ kejieguizhashiCard = sgs.CreateSkillCard {
 kejieguizhashiVS = sgs.CreateViewAsSkillV2 {
 	name = "kejieguizhashi",
 	n = 0,
+	history_key = "#kejieguizhashiCard",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player ~= nil and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#kejieguizhashiCard")
 	end,
 	create_card = function(skill, request)
 		return kejieguizhashiCard:clone()
@@ -2541,10 +2549,13 @@ kejieguishouyeCard = sgs.CreateSkillCard {
 kejieguishouyeVS = sgs.CreateViewAsSkillV2 {
 	name = "kejieguishouye",
 	n = 1,
+	history_key = "#kejieguishouyeCard",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player ~= nil and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#kejieguishouyeCard")
 	end,
 	can_select_card = function(skill, request, card)
 		local player = request:getInitiator()

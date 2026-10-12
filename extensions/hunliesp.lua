@@ -1089,13 +1089,16 @@ sgkgodshajueCard = sgs.CreateSkillCard{
 
 sgkgodshajue = sgs.CreateViewAsSkillV2{
 	name = "sgkgodshajue",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#sgkgodshajueCard",
 	n = 0,
 	target_mode = sgs.ViewAsSkillV2_SelectTargets,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player and player:isAlive()
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#sgkgodshajueCard")
 			and not player:isKongcheng()
 	end,
 	can_select_target = function(skill, request, selected, candidate)

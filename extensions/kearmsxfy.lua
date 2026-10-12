@@ -3179,6 +3179,7 @@ sxjiaozhaoCard = sgs.CreateSkillCard {
 sxjiaozhao = sgs.CreateViewAsSkillV2 {
 	name = "sxjiaozhao",
 	n = 0,
+	history_key = "#sxjiaozhaoCard",
 	can_activate = function(skill, request)
 		if request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			local player = request:getInitiator()
@@ -4762,6 +4763,7 @@ sxduwuCard = sgs.CreateSkillCard {
 sxduwu = sgs.CreateViewAsSkillV2 {
 	name = "sxduwu",
 	n = 999,
+	history_key = "#sxduwuCard",
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
@@ -5226,10 +5228,13 @@ sxqingchengCard = sgs.CreateSkillCard {
 sxqingcheng = sgs.CreateViewAsSkillV2 {
 	name = "sxqingcheng",
 	n = 2,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and player:getCardCount() > 1 and player:usedTimes("#sxqingchengCard") < 1
+		return player and player:getCardCount() > 1
 	end,
 	can_select_card = function(skill, request, candidate)
 		return candidate:isRed() and candidate:getTypeId() ~= 2
@@ -5581,10 +5586,13 @@ sxxianluCard = sgs.CreateSkillCard {
 sxxianlu = sgs.CreateViewAsSkillV2 {
 	name = "sxxianlu",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and player:usedTimes("#sxxianluCard") < 1
+		return player
 	end,
 	create_card = function(skill, request)
 		return sxxianluCard:clone()
@@ -6149,10 +6157,13 @@ sxgongqiaoCard = sgs.CreateSkillCard {
 sxgongqiao = sgs.CreateViewAsSkillV2 {
 	name = "sxgongqiao",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and player:usedTimes("#sxgongqiaoCard") < 1
+		return player
 	end,
 	create_card = function(skill, request)
 		return sxgongqiaoCard:clone()
@@ -6623,10 +6634,13 @@ sxfuliCard = sgs.CreateSkillCard {
 sxfuli = sgs.CreateViewAsSkillV2 {
 	name = "sxfuli",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player and player:usedTimes("#sxfuliCard") < 1
+		return player
 	end,
 	create_card = function(skill, request)
 		return sxfuliCard:clone()
@@ -6836,6 +6850,7 @@ sxzengouCard = sgs.CreateSkillCard {
 sxzengou = sgs.CreateViewAsSkillV2 {
 	name = "sxzengou",
 	n = 0,
+	history_key = "#sxzengouCard",
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
@@ -7357,11 +7372,14 @@ sxyingmenCard = sgs.CreateSkillCard {
 sxyingmen = sgs.CreateViewAsSkillV2 {
 	name = "sxyingmen",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player:usedTimes("#sxyingmenCard") < 1 and player:getPile("sxfangke"):length() < 1
+		return player:getPile("sxfangke"):length() < 1
 	end,
 	create_card = function(skill, request)
 		return sxyingmenCard:clone()
@@ -7913,11 +7931,13 @@ sxzhuguoCard = sgs.CreateSkillCard{
 sxzhuguo = sgs.CreateViewAsSkillV2{
 	name = "sxzhuguo",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill,request)
 		local player = request:getInitiator()
 		if not player then return false end
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player:usedTimes("#sxzhuguoCard")<1
 	end,
 	create_card = function(skill,request)
 		return sxzhuguoCard:clone()
@@ -8484,11 +8504,13 @@ zcyuanzhuoCard = sgs.CreateSkillCard {
 zcyuanzhuo = sgs.CreateViewAsSkillV2 {
 	name = "zcyuanzhuo",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player:usedTimes("#zcyuanzhuoCard") < 1
 	end,
 	create_card = function(skill, request)
 		return zcyuanzhuoCard:clone()

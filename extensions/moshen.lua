@@ -509,11 +509,13 @@ ms_jingjiCard = sgs.CreateSkillCard {
 
 ms_jingji = sgs.CreateViewAsSkillV2 {
 	name = "ms_jingji",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#ms_jingji")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():isEmpty()
@@ -2124,11 +2126,14 @@ ms_yonghengCard = sgs.CreateSkillCard {
 
 ms_yonghengVS = sgs.CreateViewAsSkillV2 {
 	name = "ms_yongheng",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#ms_yonghengCard",
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#ms_yonghengCard")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():isEmpty()
@@ -2393,13 +2398,16 @@ ms_mimouCard = sgs.CreateSkillCard {
 
 ms_mimou = sgs.CreateViewAsSkillV2 {
 	name = "ms_mimou",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#ms_mimou",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
 			and (not player:isKongcheng())
-			and (not player:hasUsed("#ms_mimou"))
 	end,
 	can_select_card = function(skill, request, candidate)
 		return not candidate:isEquipped()

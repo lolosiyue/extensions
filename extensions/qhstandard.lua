@@ -1304,6 +1304,10 @@ qhstandardguicaiMark = sgs.CreateTriggerSkillV2 {
 -- 天命
 qhstandardtianming = sgs.CreateViewAsSkillV2 { -- 天命 视为技
     name = "qhstandardtianming",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#qhstandardtianmingCARD",
     n = 1,                                   -- 最大卡牌数
     can_select_card = function(skill, request, to_select)
         if request:getSelectedCardIds():isEmpty() and not to_select:isEquipped() then
@@ -1325,7 +1329,7 @@ qhstandardtianming = sgs.CreateViewAsSkillV2 { -- 天命 视为技
         local player = request:getInitiator()
         if not player then return false end
         if request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-            return not player:hasUsed("#qhstandardtianmingCARD") -- 没使用过技能卡
+            return true -- 没使用过技能卡
         end
         return false
     end
@@ -2024,6 +2028,10 @@ qhfireqiangxiCARD = sgs.CreateSkillCard { -- 强袭 技能卡
 --荀彧-驱虎
 qhfirequhu = sgs.CreateViewAsSkillV2 { -- 驱虎 视为技
     name = "qhfirequhu",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#qhfirequhuCARD",
     n = 1,                           -- 最大卡牌数
     can_select_card = function(skill, request, to_select)
     	local selected = {}
@@ -2048,7 +2056,7 @@ qhfirequhu = sgs.CreateViewAsSkillV2 { -- 驱虎 视为技
     	local player = request:getInitiator()
     	local reason = request:getReason()
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-        return not player:hasUsed("#qhfirequhuCARD") -- 没使用过技能卡
+        return true -- 没使用过技能卡
     	end
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
     		or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -2785,6 +2793,10 @@ qhstandardzhangba = sgs.CreateTriggerSkillV2 { -- 丈八 触发技
 -- 标准版-强化 诸葛亮-观星
 qhstandardguanxingVS = sgs.CreateViewAsSkillV2 {       -- 观星 视为技
     name = "qhstandardguanxing",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#qhstandardguanxingCARD",
     n = 0,                                           -- 不选择卡牌
     create_card = function(skill, request)
     	local cards = {}
@@ -2799,7 +2811,7 @@ qhstandardguanxingVS = sgs.CreateViewAsSkillV2 {       -- 观星 视为技
     	local player = request:getInitiator()
     	local reason = request:getReason()
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-        return not player:hasUsed("#qhstandardguanxingCARD") -- 没使用过技能卡
+        return true -- 没使用过技能卡
     	end
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
     		or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -4229,6 +4241,10 @@ qhstandardkeji = sgs.CreateTriggerSkillV2 {
 -- 标准版-强化 黄盖-苦肉
 qhstandardkurouVS = sgs.CreateViewAsSkillV2 {       -- 苦肉 视为技
     name = "qhstandardkurou",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 5,
+    history_key = "#qhstandardkurouCARD",
     n = 0,                                        -- 不选择卡牌
     create_card = function(skill, request)
     	local cards = {}
@@ -4243,7 +4259,7 @@ qhstandardkurouVS = sgs.CreateViewAsSkillV2 {       -- 苦肉 视为技
     	local player = request:getInitiator()
     	local reason = request:getReason()
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-        return player:usedTimes("#qhstandardkurouCARD") < 5 -- 使用次数小于5
+        return true -- 使用次数小于5
     	end
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
     		or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -4331,6 +4347,10 @@ qhstandardyingzi = sgs.CreateTriggerSkillV2 {
 -- 反间
 qhstandardfanjian = sgs.CreateViewAsSkillV2 { -- 反间 视为技
     name = "qhstandardfanjian",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#qhstandardfanjianCARD",
     n = 1,                                  -- 最大卡牌数
     can_select_card = function(skill, request, to_select)
     	local selected = {}
@@ -4362,7 +4382,7 @@ qhstandardfanjian = sgs.CreateViewAsSkillV2 { -- 反间 视为技
     	local reason = request:getReason()
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
         if not player:isKongcheng() then                        -- 有手牌
-            return not player:hasUsed("#qhstandardfanjianCARD") -- 没使用过技能卡
+            return true -- 没使用过技能卡
         end
         return false
     	end
@@ -4693,6 +4713,10 @@ qhstandardlianyingClear = sgs.CreateTriggerSkillV2 {
 -- 标准版-强化 孙尚香-结姻
 qhstandardjieyin = sgs.CreateViewAsSkillV2 { -- 结姻 视为技
     name = "qhstandardjieyin",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#qhstandardjieyinCARD",
     n = 2,                                 -- 最大卡牌数
     can_select_card = function(skill, request, to_select)
     	local selected = {}
@@ -4725,7 +4749,7 @@ qhstandardjieyin = sgs.CreateViewAsSkillV2 { -- 结姻 视为技
     	local player = request:getInitiator()
     	local reason = request:getReason()
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-        return not player:hasUsed("#qhstandardjieyinCARD") -- 没使用过技能卡
+        return true -- 没使用过技能卡
     	end
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
     		or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -5180,6 +5204,10 @@ qhwindshelie = sgs.CreateTriggerSkillV2 {
 -- 攻心
 qhwindgongxin = sgs.CreateViewAsSkillV2 {         -- 攻心 视为技
     name = "qhwindgongxin",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#qhwindgongxinCARD",
     n = 0,                                      -- 不选择卡牌
     create_card = function(skill, request)
     	local cards = {}
@@ -5194,7 +5222,7 @@ qhwindgongxin = sgs.CreateViewAsSkillV2 {         -- 攻心 视为技
     	local player = request:getInitiator()
     	local reason = request:getReason()
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-        return not player:hasUsed("#qhwindgongxinCARD") -- 没使用过技能卡
+        return true -- 没使用过技能卡
     	end
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
     		or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -5222,6 +5250,7 @@ qhwindgongxinCARD = sgs.CreateSkillCard {                                       
 --火包-强化 太史慈-天义
 qhfiretianyiVS = sgs.CreateViewAsSkillV2 { -- 天义 视为技
     name = "qhfiretianyi",
+    history_key = "#qhfiretianyiCARD",
     n = 1,                               -- 最大卡牌数
     can_select_card = function(skill, request, to_select)
     	local selected = {}
@@ -5539,6 +5568,10 @@ qhfirexinhuo = sgs.CreateTriggerSkillV2 {
 -- 标准版-强化 华佗-青囊
 qhstandardqingnang = sgs.CreateViewAsSkillV2 { -- 青囊 视为技
     name = "qhstandardqingnang",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#qhstandardqingnangCARD",
     n = 1,                                   -- 最大卡牌数
     can_select_card = function(skill, request, to_select)
     	local selected = {}
@@ -5569,7 +5602,7 @@ qhstandardqingnang = sgs.CreateViewAsSkillV2 { -- 青囊 视为技
     	local player = request:getInitiator()
     	local reason = request:getReason()
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-        return player:canDiscard(player, "h") and not player:hasUsed("#qhstandardqingnangCARD") -- 没使用过技能卡
+        return player:canDiscard(player, "h") -- 没使用过技能卡
     	end
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
     		or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -5697,6 +5730,10 @@ qhstandardjijiu = sgs.CreateViewAsSkillV2 {
 -- 仁心
 qhstandardrenxinVS = sgs.CreateViewAsSkillV2 {       -- 仁心 视为技
     name = "qhstandardrenxin",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#qhstandardrenxinCARD",
     n = 0,                                         -- 不选择卡牌
     create_card = function(skill, request)
     	local cards = {}
@@ -5711,7 +5748,7 @@ qhstandardrenxinVS = sgs.CreateViewAsSkillV2 {       -- 仁心 视为技
     	local player = request:getInitiator()
     	local reason = request:getReason()
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-        return player:getMark("@qhstandardrenxin") > 0 and not player:hasUsed("#qhstandardrenxinCARD") -- 仁心标记大于0且没使用过技能卡
+        return player:getMark("@qhstandardrenxin") > 0 -- 仁心标记大于0且没使用过技能卡
     	end
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
     		or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -5908,6 +5945,10 @@ qhstandardWushuangDuel = sgs.CreateTriggerSkillV2 {
 -- 标准版-强化 貂蝉-离间
 qhstandardLijian = sgs.CreateViewAsSkillV2 { -- 离间 视为技
     name = "qhstandardLijian",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#qhstandardLijianCARD",
     n = 1,                                 -- 最大卡牌数
     can_select_card = function(skill, request, to_select)
     	local selected = {}
@@ -5938,7 +5979,7 @@ qhstandardLijian = sgs.CreateViewAsSkillV2 { -- 离间 视为技
     	local player = request:getInitiator()
     	local reason = request:getReason()
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-        return player:canDiscard(player, "he") and not player:hasUsed("#qhstandardLijianCARD")
+        return player:canDiscard(player, "he")
     	end
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
     		or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -6263,6 +6304,10 @@ qhwindguidao = sgs.CreateTriggerSkillV2 {
 -- 鬼兵
 qhwindGuibingVS = sgs.CreateViewAsSkillV2 { -- 鬼兵 视为技
     name = "qhwindGuibing",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#qhwindGuibingCARD",
     n = 1,                                -- 最大卡牌数
     response_or_use = true,               -- 可以选择木牛流马上的牌
     can_select_card = function(skill, request, to_select)
@@ -6295,7 +6340,7 @@ qhwindGuibingVS = sgs.CreateViewAsSkillV2 { -- 鬼兵 视为技
     	local player = request:getInitiator()
     	local reason = request:getReason()
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-        return not player:hasUsed("#qhwindGuibingCARD")
+        return true
     	end
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
     		or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -6383,6 +6428,10 @@ qhwindGuibingGuard = sgs.CreateTriggerSkillV2 {
 -- 黄天
 qhwindhuangtianVS = sgs.CreateViewAsSkillV2 {                                         -- 黄天 视为技
     name = "qhwindhuangtianvs&",                                                    -- 附加技能加 & 号
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#qhwindhuangtianVSCARD",
     n = 1,                                                                          -- 最大卡牌数
     response_or_use = true,                                                         -- 可以选择木牛流马上的牌
     can_select_card = function(skill, request, to_select)
@@ -6415,7 +6464,7 @@ qhwindhuangtianVS = sgs.CreateViewAsSkillV2 {                                   
     	local player = request:getInitiator()
     	local reason = request:getReason()
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-        return not player:hasUsed("#qhwindhuangtianVSCARD")
+        return true
     	end
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
     		or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -7738,6 +7787,7 @@ mythjiqiaoCard = sgs.CreateSkillCard {
 
 mythjiqiaoVS = sgs.CreateViewAsSkillV2 {
     name = "mythjiqiao",
+    history_key = "#mythjiqiaoCard",
     n = 1,                  -- 最大卡牌数
     response_or_use = true, -- 可以选择木牛流马上的牌
     can_select_card = function(skill, request, to_select)
@@ -8777,6 +8827,10 @@ mythxianjing = sgs.CreateTriggerSkillV2 {
 --善身
 mythshanshenVS = sgs.CreateViewAsSkillV2 { -- 善身 视为技
     name = "mythshanshen",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#mythshanshenCARD",
     n = 0,                               -- 不选择卡牌
     create_card = function(skill, request)
     	local cards = {}
@@ -8789,7 +8843,7 @@ mythshanshenVS = sgs.CreateViewAsSkillV2 { -- 善身 视为技
     	local player = request:getInitiator()
     	local reason = request:getReason()
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-        return not player:hasUsed("#mythshanshenCARD")
+        return true
     	end
     	if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
     		or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then

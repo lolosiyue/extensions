@@ -760,10 +760,14 @@ kefanmaoCard = sgs.CreateSkillCard{
 kefanmaoVS = sgs.CreateViewAsSkillV2{
 	name = "kefanmao",
 	n = 0,
+	history_key = "#kefanmaoCard",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player ~= nil and (not player:hasUsed("#kefanmaoCard")) and (player:getMark("@hexstone") >= 2)
+		return player ~= nil and (player:getMark("@hexstone") >= 2)
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():isEmpty()
@@ -1091,10 +1095,13 @@ kejieyanCard = sgs.CreateSkillCard{
 kejieyan = sgs.CreateViewAsSkillV2{
 	name = "kejieyan&",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player ~= nil and (not player:hasUsed("#kejieyanCard"))
+		return player ~= nil
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():isEmpty()
@@ -2497,10 +2504,13 @@ kebeilianCard = sgs.CreateSkillCard{
 kebeilian = sgs.CreateViewAsSkillV2{
 	name = "kebeilian&",
 	n = 0,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player ~= nil and (not player:hasUsed("#kebeilianCard"))
+		return player ~= nil
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():isEmpty()
@@ -2731,10 +2741,13 @@ kehaojinCard = sgs.CreateSkillCard{
 kehaojinVS = sgs.CreateViewAsSkillV2{
 	name = "kehaojin" ,
 	n = 1 ,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player ~= nil and not player:hasUsed("#kehaojinCard")
+		return player ~= nil
 	end,
 	can_select_card = function(skill, request, card)
 		local player = request:getInitiator()
@@ -3008,10 +3021,14 @@ keguangfuCard = sgs.CreateSkillCard{
 keguangfuVS = sgs.CreateViewAsSkillV2{
 	name = "keguangfu",
 	n = 0,
+	history_key = "#keguangfuCard",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player ~= nil and not (player:hasUsed("#keguangfuCard"))
+		return player ~= nil
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():isEmpty()
@@ -3451,10 +3468,14 @@ playmovesoldierCard = sgs.CreateSkillCard{
 playmovesoldierVS = sgs.CreateViewAsSkillV2{
 	name = "playmovesoldier",
 	n = 0,
+	history_key = "#playmovesoldierCard",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		local player = request:getInitiator()
-		return player ~= nil and (not player:hasUsed("#playmovesoldierCard"))
+		return player ~= nil
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():isEmpty()

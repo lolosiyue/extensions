@@ -665,6 +665,7 @@ kenewgirljingmu = sgs.CreateViewAsSkillV2{
     n = 99,
     target_mode = sgs.ViewAsSkillV2_SelectTargets,
     limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
     max_usage_limit = 1,
     can_activate = function(skill, request)
         return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
@@ -1399,6 +1400,7 @@ kenewgirlbuguanvs = sgs.CreateViewAsSkillV2{
 	n = 0,
 	target_mode = sgs.ViewAsSkillV2_NoTarget,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
@@ -1910,6 +1912,7 @@ kenewgirlchenji = sgs.CreateViewAsSkillV2{
 	n = 0,
 	target_mode = sgs.ViewAsSkillV2_SelectTargets,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY

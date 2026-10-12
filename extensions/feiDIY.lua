@@ -156,12 +156,15 @@ feiqianxuncard = sgs.CreateSkillCard {
 }
 feiqianxunVS = sgs.CreateViewAsSkillV2 {
     name = "feiqianxun",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if not player then return false end
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return (not player:hasUsed("#feiqianxuncard")) and (not player:isKongcheng())
+        return (not player:isKongcheng())
     end,
     create_card = function(skill, request)
         return feiqianxuncard:clone()
@@ -497,12 +500,16 @@ feihujueCard = sgs.CreateSkillCard {
 }
 feihujueVS = sgs.CreateViewAsSkillV2 {
     name = "feihujue",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#feihujueCard",
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if not player then return false end
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return not player:hasUsed("#feihujueCard")
+        return true
     end,
     create_card = function(skill, request)
         return feihujueCard:clone()
@@ -583,12 +590,16 @@ feilangduoCard = sgs.CreateSkillCard {
 }
 feilangduo = sgs.CreateViewAsSkillV2 {
     name = "feilangduo",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#feilangduoCard",
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if not player then return false end
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return (not player:hasUsed("#feilangduoCard")) and not player:isKongcheng()
+        return not player:isKongcheng()
     end,
     create_card = function(skill, request)
         return feilangduoCard:clone()
@@ -1059,12 +1070,16 @@ feizuijiaoCard = sgs.CreateSkillCard {
 }
 feizuijiaoVS = sgs.CreateViewAsSkillV2 {
     name = "feizuijiao",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#feizuijiaoCard",
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if not player then return false end
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return not player:hasUsed("#feizuijiaoCard")
+        return true
     end,
     create_card = function(skill, request)
         return feizuijiaoCard:clone()
@@ -1235,12 +1250,16 @@ feiyanjunCard = sgs.CreateSkillCard {
 }
 feiyanjun = sgs.CreateViewAsSkillV2 {
     name = "feiyanjun",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#feiyanjunCard",
     n = 1,
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if not player then return false end
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-        return not player:hasUsed("#feiyanjunCard")
+        return true
     end,
     can_select_card = function(skill, request, card)
         return card and not card:isKindOf("BasicCard")

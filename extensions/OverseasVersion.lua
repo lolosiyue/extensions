@@ -5016,6 +5016,7 @@ ov_xiongxiCard = sgs.CreateSkillCard {
 }
 ov_xiongxi = sgs.CreateViewAsSkillV2 {
 	name = "ov_xiongxi",
+	history_key = "#ov_xiongxiCard",
 	n = 998,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -10270,6 +10271,9 @@ ov_quanqianCard = sgs.CreateSkillCard {
 }
 ov_quanqianvs = sgs.CreateViewAsSkillV2 {
 	name = "ov_quanqian",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 998,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -10277,7 +10281,7 @@ ov_quanqianvs = sgs.CreateViewAsSkillV2 {
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 
-					return player:usedTimes("#ov_quanqianCard") < 1 and player:getMark("ov_quanqianUse") < 1
+					return true and player:getMark("ov_quanqianUse") < 1
 		end
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
 			return false
@@ -10568,6 +10572,7 @@ ov_huajingCard = sgs.CreateSkillCard {
 }
 ov_huajingvs = sgs.CreateViewAsSkillV2 {
 	name = "ov_huajing",
+	history_key = "#ov_huajingCard",
 	n = 4,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -13034,6 +13039,9 @@ ov_gongxinCard = sgs.CreateSkillCard {
 }
 ov_gongxinVS = sgs.CreateViewAsSkillV2 {
 	name = "ov_gongxin",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -13041,7 +13049,7 @@ ov_gongxinVS = sgs.CreateViewAsSkillV2 {
 		local pattern = request:getPattern()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 
-					return player:usedTimes("#ov_gongxinCard") < 1
+					return true
 		end
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
 			return false
@@ -15356,6 +15364,9 @@ ov_jinglveCard = sgs.CreateSkillCard {
 }
 ov_jinglvevs = sgs.CreateViewAsSkillV2 {
 	name = "ov_jinglve",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -15365,7 +15376,7 @@ ov_jinglvevs = sgs.CreateViewAsSkillV2 {
 
 					for i, p in sgs.qlist(player:getAliveSiblings(true)) do
 						if player:getMark("ov_sishi_" .. player:objectName()) < 1 then
-							return player:usedTimes("#ov_jinglveCard") < 1
+							return true
 						end
 					end
 		end

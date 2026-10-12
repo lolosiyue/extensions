@@ -36,12 +36,16 @@ se_chichengcard = sgs.CreateSkillCard {
 }
 se_chicheng = sgs.CreateViewAsSkillV2 {
 	name = "se_chicheng",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#se_chichengcard",
 	n = 999,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return not player:isNude() and not player:hasUsed("#se_chichengcard")
+		return not player:isNude()
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() > 0
@@ -730,13 +734,17 @@ se_shuacun = sgs.CreateTriggerSkillV2 {
 
 se_hongzha = sgs.CreateViewAsSkillV2 {
 	name = "se_hongzha",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#se_hongzha",
 	n = 1,
 	response_or_use = true,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return sgs.Slash_IsAvailable(player) and not player:hasUsed("#se_hongzha") and player:getHp() >= 2 and
+		return sgs.Slash_IsAvailable(player) and player:getHp() >= 2 and
 			not player:getPile("Kansaiki"):isEmpty() and not isFire(player)
 	end,
 	create_card = function(skill, request)
@@ -1014,12 +1022,16 @@ eryuCard = sgs.CreateSkillCard {
 
 eryuVS = sgs.CreateViewAsSkillV2 {
 	name = "eryu",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#eryu",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return not player:hasUsed("#eryu") and player:getMark("@EryuMark") == 0
+		return true and player:getMark("@EryuMark") == 0
 	end,
 	create_card = function(skill, request)
 		return eryuCard:clone()
@@ -1229,13 +1241,17 @@ youdiz = sgs.CreateTriggerSkillV2 {
 
 nuequ = sgs.CreateViewAsSkillV2 {
 	name = "nuequ",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#nuequ",
 	n = 1,
 	response_or_use = true,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return not player:hasUsed("#nuequ")
+		return true
 	end,
 	can_select_card = function(skill, request, card)
 		return card and not card:isEquipped()

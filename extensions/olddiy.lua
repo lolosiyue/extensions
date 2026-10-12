@@ -35,12 +35,15 @@ luajuaocard = sgs.CreateSkillCard{
 
 luajuao = sgs.CreateViewAsSkillV2{
 	name = "luajuao",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#luajuaocard",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#luajuaocard")
 	end,
 	can_select_card = function(skill, request, candidate)
 		if not candidate or #request:getSelectedCardIds() >= 1 then return false end
@@ -110,12 +113,15 @@ zfduanhecard = sgs.CreateSkillCard {
 }
 zfduanhevs = sgs.CreateViewAsSkillV2 {
 	name = "zfduanhe",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#zfduanhe",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#zfduanhe")
 	end,
 	create_card = function(skill, request)
 		return zfduanhecard:clone()
@@ -231,12 +237,14 @@ lydujicard = sgs.CreateSkillCard{
 }
 lydujiVS = sgs.CreateViewAsSkillV2{
 	name = "lyduji",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#lyduji")
 	end,
 	can_select_card = function(skill, request, candidate)
 		if not candidate or #request:getSelectedCardIds() >= 1 then return false end
@@ -1157,12 +1165,15 @@ LuaFangxianCard = sgs.CreateSkillCard{
 
 LuaFangxian = sgs.CreateViewAsSkillV2{
 	name = "LuaFangxian",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#LuaFangxianCard",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#LuaFangxianCard")
 	end,
 	can_select_card = function(skill, request, candidate)
 		if not candidate or #request:getSelectedCardIds() >= 1 then return false end
@@ -2052,6 +2063,7 @@ bu_s2_jiashe = sgs.CreateTriggerSkillV2{
 bu_s2_benxiVS = sgs.CreateViewAsSkillV2
 {
     name = "bu_s2_benxi",
+    history_key = "#bu_s2_benxi",
     n = 0,
     can_activate = function(skill, request)
         local player = request:getInitiator()

@@ -463,6 +463,7 @@ lxtx_zhengpi = sgs.CreateViewAsSkillV2{
 	name = "lxtx_zhengpi",
 	n = 1,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
@@ -1640,6 +1641,7 @@ lxtx_manjuanvs = sgs.CreateViewAsSkillV2{
 	name = "lxtx_manjuan",
 	n = 0,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
@@ -1755,6 +1757,7 @@ lxtx_lianheng = sgs.CreateViewAsSkillV2{
 	n = 0,
 	frequency = sgs.Skill_Compulsory,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
@@ -2615,6 +2618,7 @@ lxtx_fushi = sgs.CreateViewAsSkillV2{
 	name = "lxtx_fushi",
 	n = 0,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
@@ -2707,6 +2711,7 @@ lxtx_yanpo = sgs.CreateViewAsSkillV2{
     name = "lxtx_yanpo",
 	n = 999,
 	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
 	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()

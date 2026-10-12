@@ -1347,11 +1347,13 @@ doubaoCMT = sgs.General(extension, "doubaoCMT", "shu", "3", false)
 
 tiaojiaoCMTVS = sgs.CreateViewAsSkillV2 {
 	name = "tiaojiaoCMT",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
-		return player and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#tiaojiaoCMTCard") or false
+		return player and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY or false
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():isEmpty()

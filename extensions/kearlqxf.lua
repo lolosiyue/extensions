@@ -2091,6 +2091,7 @@ tytanlongCard = sgs.CreateSkillCard {
 tytanlong = sgs.CreateViewAsSkillV2 {
 	name = "tytanlong",
 	n = 0,
+	history_key = "#tytanlongCard",
 	can_activate = function(skill, request)
 		local initiator = request:getInitiator()
 		if not initiator or request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then
@@ -2952,6 +2953,9 @@ tyxianqicard = sgs.CreateSkillCard {
 tyxianqivs = sgs.CreateViewAsSkillV2 {
 	name = "tyxianqivs&",
 	n = 2,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local initiator = request:getInitiator()
 		if not initiator or request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then
@@ -2959,7 +2963,7 @@ tyxianqivs = sgs.CreateViewAsSkillV2 {
 		end
 		for _, p in sgs.list(initiator:getAliveSiblings()) do
 			if p:hasSkill("tyxianqi") then
-				return initiator:usedTimes("#tyxianqicard") < 1
+				return true
 			end
 		end
 		return false

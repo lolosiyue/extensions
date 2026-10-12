@@ -2482,6 +2482,7 @@ ny_10th_fumou = sgs.CreateTriggerSkillV2{
 
 ny_tenth_jianzheng = sgs.CreateViewAsSkillV2{
 		name = "ny_tenth_jianzheng",
+		history_key = "#ny_tenth_jianzheng",
 		expand_pile = "#ny_tenth_jianzheng",
 	n = 0,
 	can_activate = function(self, request)
@@ -9645,6 +9646,7 @@ ny_10th_sunce_shuangbi = sgs.General(extension, "ny_10th_sunce_shuangbi", "wu", 
 
 ny_tenth_shuangbi = sgs.CreateViewAsSkillV2{
 		name = "ny_tenth_shuangbi",
+		history_key = "#ny_tenth_shuangbi",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -11300,6 +11302,7 @@ ny_10th_danyi = sgs.CreateTriggerSkillV2{
 
 ny_tenth_wencan = sgs.CreateViewAsSkillV2{
 		name = "ny_tenth_wencan",
+		history_key = "#ny_tenth_wencan",
 	n = 0,
 	can_activate = function(self, request)
 		local player = request:getInitiator()
@@ -15452,6 +15455,7 @@ end
 
 ny_tenth_yanjiao = sgs.CreateViewAsSkillV2{
 		name = "ny_tenth_yanjiao",
+		history_key = "#ny_tenth_yanjiao",
 		expand_pile = "#ny_tenth_yanjiao,#ny_tenth_yanjiao_self,#ny_tenth_yanjiao_target",
 	n = 0,
 	can_activate = function(self, request)

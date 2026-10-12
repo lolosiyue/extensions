@@ -138,12 +138,15 @@ lol_jwyh_qCard = sgs.CreateSkillCard{
 }
 lol_jwyh_q = sgs.CreateViewAsSkillV2{
 	name = "lol_jwyh_q",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#lol_jwyh_qCard",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#lol_jwyh_qCard")
 	end,
 	can_select_card = function(skill, request, card)
 		return card and request:getSelectedCardIds():length() < 1
@@ -205,12 +208,15 @@ lol_jwyh_wCard = sgs.CreateSkillCard{
 }
 lol_jwyh_w = sgs.CreateViewAsSkillV2{
 	name = "lol_jwyh_w" ,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#lol_jwyh_wCard",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#lol_jwyh_wCard")
 	end,
 	create_card = function(skill, request)
 		return lol_jwyh_wCard:clone()
@@ -233,12 +239,15 @@ lol_jwyh_eCard = sgs.CreateSkillCard{
 }
 lol_jwyh_eVS = sgs.CreateViewAsSkillV2{
 	name = "lol_jwyh_e",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#lol_jwyh_eCard",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#lol_jwyh_eCard")
 	end,
 	can_select_card = function(skill, request, card)
 		return card and request:getSelectedCardIds():length() < 1
@@ -435,12 +444,15 @@ lol_hbss_qCard = sgs.CreateSkillCard{
 }
 lol_hbss_qVS = sgs.CreateViewAsSkillV2{
 	name = "lol_hbss_q" ,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#lol_hbss_qCard",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#lol_hbss_qCard")
 	end,
 	can_select_card = function(skill, request, card)
 		return card and request:getSelectedCardIds():length() < 1
@@ -548,12 +560,15 @@ lol_hbss_eCard = sgs.CreateSkillCard{
 }
 lol_hbss_e = sgs.CreateViewAsSkillV2{
 	name = "lol_hbss_e" ,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#lol_hbss_eCard",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#lol_hbss_eCard")
 	end,
 	can_select_card = function(skill, request, card)
 		return card and request:getSelectedCardIds():length() < 1
@@ -757,12 +772,15 @@ lol_mzzw_qCard = sgs.CreateSkillCard{
 }
 lol_mzzw_q = sgs.CreateViewAsSkillV2{
 	name = "lol_mzzw_q" ,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#lol_mzzw_qCard",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#lol_mzzw_qCard")
 	end,
 	create_card = function(skill, request)
 		return lol_mzzw_qCard:clone()
@@ -791,12 +809,15 @@ lol_mzzw_wCard = sgs.CreateSkillCard{
 }
 lol_mzzw_w = sgs.CreateViewAsSkillV2{
 	name = "lol_mzzw_w" ,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#lol_mzzw_wCard",
 	n = 0,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#lol_mzzw_wCard")
 	end,
 	create_card = function(skill, request)
 		return lol_mzzw_wCard:clone()
@@ -1109,13 +1130,16 @@ lol_tqz_wCard = sgs.CreateSkillCard{
 }
 lol_tqz_w = sgs.CreateViewAsSkillV2{
 	name = "lol_tqz_w",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#lol_tqz_wCard",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
 			and player:isWounded()
-			and not player:hasUsed("#lol_tqz_wCard")
 	end,
 	can_select_card = function(skill, request, card)
 		return card and request:getSelectedCardIds():length() < 1
@@ -1177,12 +1201,15 @@ lol_tqz_eCard = sgs.CreateSkillCard{
 }
 lol_tqz_e = sgs.CreateViewAsSkillV2{
 	name = "lol_tqz_e",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#lol_tqz_eCard",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#lol_tqz_eCard")
 	end,
 	can_select_card = function(skill, request, card)
 		return card and request:getSelectedCardIds():length() < 1
@@ -1685,12 +1712,15 @@ lol_smss_qCard = sgs.CreateSkillCard{
 }
 lol_smss_qVS = sgs.CreateViewAsSkillV2{
 	name = "lol_smss_q" ,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#lol_smss_qCard",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#lol_smss_qCard")
 	end,
 	can_select_card = function(skill, request, card)
 		return card and request:getSelectedCardIds():length() < 1
@@ -1759,12 +1789,15 @@ lol_smss_wCard = sgs.CreateSkillCard{
 }
 lol_smss_w = sgs.CreateViewAsSkillV2{
 	name = "lol_smss_w",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#lol_smss_wCard",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#lol_smss_wCard")
 	end,
 	can_select_card = function(skill, request, card)
 		return card and request:getSelectedCardIds():length() < 1
@@ -1800,12 +1833,15 @@ lol_smss_eCard = sgs.CreateSkillCard{
 }
 lol_smss_e = sgs.CreateViewAsSkillV2{
 	name = "lol_smss_e",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#lol_smss_eCard",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#lol_smss_eCard")
 	end,
 	can_select_card = function(skill, request, card)
 		return card and request:getSelectedCardIds():length() < 1
@@ -2245,12 +2281,14 @@ lol_bjfh_qCard = sgs.CreateSkillCard{
 }
 lol_bjfh_qVS = sgs.CreateViewAsSkillV2{
 	name = "lol_bjfh_q" ,
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#lol_bjfh_qCard")
 	end,
 	can_select_card = function(skill, request, card)
 		return card and request:getSelectedCardIds():length() < 1
@@ -2317,12 +2355,14 @@ lol_bjfh_wCard = sgs.CreateSkillCard{
 }
 lol_bjfh_wVS = sgs.CreateViewAsSkillV2{
 	name = "lol_bjfh_w",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#lol_bjfh_wCard")
 	end,
 	can_select_card = function(skill, request, card)
 		return card and request:getSelectedCardIds():length() < 1
@@ -2422,12 +2462,14 @@ lol_bjfh_eCard = sgs.CreateSkillCard{
 }
 lol_bjfh_e = sgs.CreateViewAsSkillV2{
 	name = "lol_bjfh_e",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#lol_bjfh_eCard")
 	end,
 	can_select_card = function(skill, request, card)
 		return card and request:getSelectedCardIds():length() < 1
@@ -2673,12 +2715,15 @@ lol_sxls_w_slash = sgs.CreateTargetModSkillV2{
 }
 lol_sxls_w = sgs.CreateViewAsSkillV2{
 	name = "lol_sxls_w",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#lol_sxls_wCard",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#lol_sxls_wCard")
 	end,
 	can_select_card = function(skill, request, card)
 		return card and request:getSelectedCardIds():length() < 1
@@ -2965,13 +3010,16 @@ lol_bzll_eCard = sgs.CreateSkillCard{
 }
 lol_bzll_eVS = sgs.CreateViewAsSkillV2{
 	name = "lol_bzll_e",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#lol_bzll_eCard",
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
 			and player:getMark("@lol_bzll_e") == 0
-			and not player:hasUsed("#lol_bzll_eCard")
 	end,
 	can_select_card = function(skill, request, card)
 	    return card ~= nil and request:getSelectedCardIds():length() < 1

@@ -61,12 +61,14 @@ ckdianjicard = sgs.CreateSkillCard {
 
 ckdianji = sgs.CreateViewAsSkillV2 {
 	name = "ckdianji",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#ckdianjicard")
 	end,
 	can_select_card = function(skill, request, to_select)
 		return to_select
@@ -200,12 +202,14 @@ cksiliecard = sgs.CreateSkillCard {
 
 cksilie = sgs.CreateViewAsSkillV2 {
 	name = "cksilie",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	n = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#cksiliecard")
 	end,
 	create_card = function(skill, request)
 		local ids = request:getSelectedCardIds()

@@ -776,6 +776,10 @@ LuaFanjianCard = sgs.CreateSkillCard {
 }
 LuaFanjian = sgs.CreateViewAsSkillV2 {
 	name = "LuaFanjian",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
+	history_key = "#LuaFanjianCard",
 	n = 1,
 	target_mode = sgs.ViewAsSkillV2_SelectTargets,
 	target_effect_mode = sgs.ViewAsSkillV2_EachTarget,
@@ -784,7 +788,7 @@ LuaFanjian = sgs.CreateViewAsSkillV2 {
 		if not player or not player:isAlive() then return false end
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		if not player:isKongcheng() then
-			return not player:hasUsed("#LuaFanjianCard")
+			return true
 		end
 		return false
 	end,

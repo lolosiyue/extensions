@@ -4137,11 +4137,15 @@ PlusZhiguo_Card = sgs.CreateSkillCard {
 PlusZhiguo = sgs.CreateViewAsSkillV2 {
 	name = "PlusZhiguo",
 	n = 1,
+	history_key = "#PlusZhiguo_Card",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			if player and not player:isKongcheng() then
-				return not player:hasUsed("#PlusZhiguo_Card")
+				return true
 			end
 		end
 		return false
@@ -5014,11 +5018,14 @@ PlusPaoxiao_Card = sgs.CreateSkillCard {
 PlusPaoxiaoVS = sgs.CreateViewAsSkillV2 {
 	name = "PlusPaoxiao",
 	n = 0,
+	history_key = "#PlusPaoxiao_Card",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
 			and player and player:getLostHp() > 0
-			and not player:hasUsed("#PlusPaoxiao_Card")
 	end,
 	create_card = function(skill, request)
 		return PlusPaoxiao_Card:clone()
@@ -6625,10 +6632,14 @@ PlusChenggui_Card = sgs.CreateSkillCard {
 PlusChenggui = sgs.CreateViewAsSkillV2 {
 	name = "PlusChenggui",
 	n = 1,
+	history_key = "#PlusChenggui",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player and not player:hasUsed("#PlusChenggui")
+			and player
 	end,
 	can_select_card = function(skill, request, candidate)
 		return not candidate:isEquipped()
@@ -6734,10 +6745,14 @@ PlusZhiheng_Card = sgs.CreateSkillCard {
 PlusZhiheng = sgs.CreateViewAsSkillV2 {
 	name = "PlusZhiheng",
 	n = 999,
+	history_key = "#PlusZhiheng_Card",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player and not player:hasUsed("#PlusZhiheng_Card")
+			and player
 	end,
 	can_select_card = function(skill, request, candidate)
 		return true
@@ -6862,10 +6877,14 @@ PlusFanjian_Card = sgs.CreateSkillCard {
 PlusFanjianVS = sgs.CreateViewAsSkillV2 {
 	name = "PlusFanjian",
 	n = 1,
+	history_key = "#PlusFanjian_Card",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player and not player:hasUsed("#PlusFanjian_Card")
+			and player
 	end,
 	can_select_card = function(skill, request, candidate)
 		return true
@@ -7189,13 +7208,17 @@ PlusDuocheng_Card = sgs.CreateSkillCard {
 PlusDuochengVS = sgs.CreateViewAsSkillV2 {
 	name = "PlusDuocheng",
 	n = 1,
+	history_key = "#PlusDuocheng_Card",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	expand_pile = "slack",
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
 		if player:getPile("slack"):isEmpty() then return false end
-		return not player:hasUsed("#PlusDuocheng_Card")
+		return true
 	end,
 	can_select_card = function(skill, request, candidate)
 		local player = request:getInitiator()
@@ -7719,11 +7742,14 @@ PlusKurou_Card = sgs.CreateSkillCard {
 PlusKurou = sgs.CreateViewAsSkillV2 {
 	name = "PlusKurou",
 	n = 0,
+	history_key = "#PlusKurou_Card",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#PlusKurou_Card")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -8177,11 +8203,14 @@ PlusJieyin_Card = sgs.CreateSkillCard {
 PlusJieyin = sgs.CreateViewAsSkillV2 {
 	name = "PlusJieyin",
 	n = 2,
+	history_key = "#PlusJieyin_Card",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#PlusJieyin_Card")
 	end,
 	can_select_card = function(skill, request, candidate)
 		return not candidate:isEquipped()
@@ -9439,11 +9468,14 @@ PlusZenhui_Card = sgs.CreateSkillCard {
 PlusZenhui = sgs.CreateViewAsSkillV2 {
 	name = "PlusZenhui",
 	n = 1,
+	history_key = "#PlusZenhui_Card",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#PlusZenhui_Card")
 	end,
 	can_select_card = function(skill, request, candidate)
 		return candidate:getSuit() == sgs.Card_Spade and not candidate:isEquipped()
@@ -9982,11 +10014,14 @@ PlusXuanhu_Card = sgs.CreateSkillCard {
 PlusXuanhu = sgs.CreateViewAsSkillV2 {
 	name = "PlusXuanhu",
 	n = 1,
+	history_key = "#PlusXuanhu_Card",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#PlusXuanhu_Card")
 	end,
 	can_select_card = function(skill, request, candidate)
 		return not candidate:isEquipped()
@@ -11023,12 +11058,16 @@ PlusMizhao_Card = sgs.CreateSkillCard {
 PlusMizhaoVS = sgs.CreateViewAsSkillV2 {
 	name = "PlusMizhao",
 	n = 999,
+	history_key = "#PlusMizhao_Card",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		if request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
 			if not player:isKongcheng() then
-				return not player:hasUsed("#PlusMizhao_Card")
+				return true
 			end
 		end
 		return false
@@ -11668,11 +11707,14 @@ PlusZhiren_Card = sgs.CreateSkillCard {
 PlusZhiren = sgs.CreateViewAsSkillV2 {
 	name = "PlusZhiren",
 	n = 0,
+	history_key = "#PlusZhiren_Card",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#PlusZhiren_Card")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -13141,21 +13183,22 @@ SixChouzuanCard = sgs.CreateSkillCard {
 SixChouzuan = sgs.CreateViewAsSkillV2 {
 	name = "SixChouzuan",
 	n = 0,
+	history_key = "#SixChouzuanCard",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		if not player:hasUsed("#SixChouzuanCard") then
-			local dummy = SixChouzuanDummyCard:clone() --防鸡肋
-			local handcards = player:getHandcards()
-			for _, card in sgs.qlist(handcards) do
-				if not player:isJilei(card) then
-					dummy:addSubcard(card)
-				end
+		local dummy = SixChouzuanDummyCard:clone() --防鸡肋
+		local handcards = player:getHandcards()
+		for _, card in sgs.qlist(handcards) do
+			if not player:isJilei(card) then
+				dummy:addSubcard(card)
 			end
-			return dummy:subcardsLength() > 0
 		end
-		return false
+		return dummy:subcardsLength() > 0
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -13363,11 +13406,15 @@ SixTaichenCard = sgs.CreateSkillCard {
 SixTaichenVS = sgs.CreateViewAsSkillV2 {
 	name = "SixTaichen",
 	n = 1,
+	history_key = "#SixTaichenCard",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player:canDiscard(player, "h") and not player:hasUsed("#SixTaichenCard")
+			and player:canDiscard(player, "h")
 	end,
 	can_select_card = function(skill, request, candidate)
 		return candidate:isKindOf("Slash") and not request:getInitiator():isJilei(candidate)
@@ -14117,11 +14164,15 @@ SixSanceCard = sgs.CreateSkillCard {
 SixSance = sgs.CreateViewAsSkillV2 {
 	name = "SixSance",
 	n = 3,
+	history_key = "#SixSanceCard",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and player:getHandcardNum() >= 3 and not player:hasUsed("#SixSanceCard")
+			and player:getHandcardNum() >= 3
 	end,
 	can_select_card = function(skill, request, candidate)
 		if candidate:isEquipped() then return false end
@@ -14473,11 +14524,14 @@ SixWuzhiCard = sgs.CreateSkillCard {
 SixWuzhi = sgs.CreateViewAsSkillV2 {
 	name = "SixWuzhi",
 	n = 1,
+	history_key = "#SixWuzhiCard",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#SixWuzhiCard")
 	end,
 	can_select_card = function(skill, request, candidate)
 		return candidate:isKindOf("Slash")
@@ -15275,11 +15329,15 @@ SixChunlaoWineCard = sgs.CreateSkillCard {
 SixChunlao = sgs.CreateViewAsSkillV2 {
 	name = "SixChunlao",
 	n = 1,
+	history_key = "#SixChunlaoCard",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		if request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-			return not player:hasUsed("#SixChunlaoCard") and player:canDiscard(player, "he")
+			return player:canDiscard(player, "he")
 		end
 		local pattern = request:getPattern()
 		if pattern and string.find(pattern, "peach") then
@@ -15624,11 +15682,14 @@ SixMiBianCard = sgs.CreateSkillCard {
 SixMiBian = sgs.CreateViewAsSkillV2 {
 	name = "SixMiBian",
 	n = 4,
+	history_key = "#SixMiBian",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#SixMiBian")
 	end,
 	can_select_card = function(skill, request, candidate)
 		for _, id in sgs.qlist(request:getSelectedCardIds()) do
@@ -16044,11 +16105,14 @@ SevenZhaoXiangCard = sgs.CreateSkillCard {
 SevenZhaoXiang = sgs.CreateViewAsSkillV2 {
 	name = "SevenZhaoXiang",
 	n = 0,
+	history_key = "#SevenZhaoXiang",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#SevenZhaoXiang")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -16990,11 +17054,14 @@ SevenZhengBianCard = sgs.CreateSkillCard {
 SevenZhengBian = sgs.CreateViewAsSkillV2 {
 	name = "SevenZhengBian",
 	n = 1,
+	history_key = "#SevenZhengBian",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#SevenZhengBian")
 	end,
 	can_select_card = function(skill, request, candidate)
 		return request:getSelectedCardIds():length() == 0 and candidate:isKindOf("EquipCard")
@@ -17299,11 +17366,14 @@ SevenLuanZhengCard = sgs.CreateSkillCard {
 SevenLuanZheng = sgs.CreateViewAsSkillV2 {
 	name = "SevenLuanZheng",
 	n = 0,
+	history_key = "#SevenLuanZheng",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#SevenLuanZheng")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -17472,11 +17542,14 @@ SevenChuanJiaoCard = sgs.CreateSkillCard {
 SevenChuanJiao = sgs.CreateViewAsSkillV2 {
 	name = "SevenChuanJiao",
 	n = 0,
+	history_key = "#SevenChuanJiao",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#SevenChuanJiao")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -17616,11 +17689,14 @@ SevenFengPingCard = sgs.CreateSkillCard {
 SevenFengPing = sgs.CreateViewAsSkillV2 {
 	name = "SevenFengPing",
 	n = 0,
+	history_key = "#SevenFengPing",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
 		return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#SevenFengPing")
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0

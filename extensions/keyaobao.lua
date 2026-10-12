@@ -368,11 +368,14 @@ keyaoquwuCard = sgs.CreateSkillCard {
 keyaoquwuVS = sgs.CreateViewAsSkillV2 {
 	name = "keyaoquwu",
 	n = 0,
+	history_key = "#keyaoquwuCard",
+	limit_scope = sgs.Skill_Limit_Phase,
+	phase_name = "Play",
+	max_usage_limit = 1,
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		return player ~= nil
 			and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-			and not player:hasUsed("#keyaoquwuCard")
 	end,
 	create_card = function(skill, request)
 		return keyaoquwuCard:clone()

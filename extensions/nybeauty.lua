@@ -377,11 +377,15 @@ stabs_slash_on_trigger = sgs.CreateTriggerSkillV2{
 nymiaojian = sgs.CreateViewAsSkillV2
 {
     name = "nymiaojian",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#nymiaojian",
     n = 0,
     can_activate = function(skill, request)
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
         local player = request:getInitiator()
-        return player ~= nil and (not player:hasUsed("#nymiaojian"))
+        return player ~= nil
     end,
     card_selection_feasible = function(skill, request)
         return request:getSelectedCardIds():isEmpty()
@@ -1460,11 +1464,15 @@ nyzhangyao = sgs.General(extension, "nyzhangyao", "wu", 3, false, false, false)
 nyyuanyu = sgs.CreateViewAsSkillV2
 {
     name = "nyyuanyu",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#nyyuanyu",
     n = 0,
     can_activate = function(skill, request)
         if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
         local player = request:getInitiator()
-        return player ~= nil and (not player:hasUsed("#nyyuanyu"))
+        return player ~= nil
     end,
     card_selection_feasible = function(skill, request)
         return request:getSelectedCardIds():isEmpty()
@@ -3118,11 +3126,14 @@ end
 ny_luochongVS = sgs.CreateViewAsSkillV2
 {
     name = "ny_luochong",
+    limit_scope = sgs.Skill_Limit_Phase,
+    phase_name = "Play",
+    max_usage_limit = 1,
+    history_key = "#ny_luochong",
     can_activate = function(skill, request)
         local player = request:getInitiator()
         if not player then return false end
         return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-            and (not player:hasUsed("#ny_luochong"))
             and ny_luochong_judge(player)
     end,
     create_card = function(skill, request)
