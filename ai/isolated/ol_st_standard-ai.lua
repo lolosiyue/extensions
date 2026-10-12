@@ -83,26 +83,22 @@ end
 local function save_state(self)
  for _,key in ipairs(state_keys)do q(self,'setStrategyMemory','ol_st_standard.'..key,encode(self[key]))end
 end
-local function global_call(self,op,value)
- if type(ai_ol_jijiang_state)~='function'then ai_unsupported('OLJijiang continuity host missing','oljijiang')end
- local row=ai_ol_jijiang_state(op,value)
- if type(row)~='table'or row.kind~='ol_jijiang_state'or row.known~=true then ai_unsupported(type(row)=='table'and(row.reason or row.error)or'OLJijiang state unknown','oljijiang')end
- return row
-end
+-- Same-observer value memory replaces the legacy shared sgs fields. Every
+-- reset/append is written at the donor statement, including prefixes preceding
+-- an ordinary callback error. Direct remember avoids the event cache envelope
+-- rolling back this donor prefix. No card receipt is stored or restored here.
 local function write_global(self,key,value)
  if key=='oljijiangsource'then
-  global_call(self,value and'source_write'or'source_clear',value and q(value,'objectName')or nil)
+  q(self,'remember','ol_jijiang.source',value and q(value,'objectName')or nil)
+  if value==nil then q(self,'clearOLJijiangResponseSource')end
  elseif key=='oljijiangtarget'then
-  if value==nil then global_call(self,'targets_clear')
-  elseif type(value)=='table'and #value==0 then global_call(self,'targets_reset')
-  else ai_unsupported('OLJijiang target writer shape differs','oljijiang')end
+  q(self,'remember','ol_jijiang.targets',value)
  end
- self[key]=value
 end
 local function global_source(self)
- local row=global_call(self,'source_read')
- if row.present==false then return nil end
- return known(q(self.room,'findPlayerByObjectName',known(row.player,'OLJijiang source'),true),'OLJijiang current roster')
+ -- The native prompt supplies the lord during pay, before PreCardUsed exists.
+ -- It also rejects stale source memory after completion/cancellation/clear.
+ return self:getOLJijiangResponseSource()
 end
 local olguhuo_policy
 local function general(self,name)
@@ -246,7 +242,7 @@ sgs.ai_fill_skill.oljijiang = function(self,inclusive,request)
 	local has_friend
 	for _,p in sgs.list(lieges)do
 		if q(self,"isFriend",p) then
-			return parse(self,"@OLJijiangCard=.")
+			return parse(self,"@OLJijiangCard=.",request)
 		end
 	end
 end
@@ -268,8 +264,9 @@ sgs.ai_skill_use_func.OLJijiangCard = function(card,use,self)
 	if dummy_use.card and dummy_use.to:length()>0 then
 		use.card = card
 		for _,p in sgs.list(dummy_use.to)do
-			global_call(self,'targets_append',q(p,'objectName'))
-			table.insert(self.oljijiangtarget,p)
+			local targets=known(q(self,'recall','ol_jijiang.targets'),'OLJijiang target prefix')
+			table.insert(targets,q(p,'objectName'))
+			q(self,'remember','ol_jijiang.targets',targets)
 			use.to:append(p)
 		end
 	end

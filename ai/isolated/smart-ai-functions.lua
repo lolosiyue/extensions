@@ -1,35 +1,27 @@
-local original_source_arrays=setmetatable({},{__mode="k"})
-local function source_array(room,op,player,make)
-    local cache=original_source_arrays[room]
-    if not cache then cache={};original_source_arrays[room]=cache end
-    local key=op..":"..(player and player:objectName()or"")
-    if cache[key]==nil then cache[key]=make()end
-    return cache[key]
-end
-local function initial_source_cache(room,op,player)
+-- The native issuer supplies only Room/viewer/question/revision/reset identity.
+-- Ordered cache values below are computed from this observer's immutable views;
+-- no legacy GameVM arrays or foreign completeness receipts are imported.
+local function snapshot_cache_stamp(room,op,player)
     local query=rawget(_G,"ai_target_recommend_cache")
-    if type(query)~="function" then return nil end
+    if type(query)~="function" then ai_unsupported("observer cache stamp host unavailable",op)end
     local proposal={op=op}
-    if player then proposal.player=player:objectName() end
-    local row=query(proposal)
-    if AIUnsupported.is(row)then error(row,0)end
-    if type(row)~="table" then ai_unsupported("source cache reply malformed",op)end
-    if row.applicable==false then return nil end
-    if row.applicable~=true or row.known~=true or not AIValue.isList(row.names)
-        or not AIValue.isList(row.foreign_original_empty_maps)then
-        ai_unsupported(row.reason or "original source cache provenance unavailable",op)
+    if player then proposal.player=player:objectName()end
+    local stamp=query(proposal)
+    if AIUnsupported.is(stamp)then error(stamp,0)end
+    local world=room and rawget(room,"_world")
+    if type(stamp)~="table"or getmetatable(stamp)~=nil or stamp.known~=true or stamp.snapshot~=true
+        or type(stamp.scope)~="string"or stamp.scope==""
+        or type(stamp.epoch)~="string"or not stamp.epoch:match("^%d+$")
+        or type(stamp.revision)~="string"or not stamp.revision:match("^%d+$")
+        or type(stamp.question)~="string"or not stamp.question:match("^%a+:%d+$")
+        or type(world)~="table"or type(world.self)~="table"or stamp.viewer~=world.self.object_name then
+        ai_unsupported(type(stamp)=="table"and stamp.reason or "observer cache stamp malformed",op)
     end
-    -- These are original native constructor/write-history receipts, issued
-    -- only inside the complete current request/async source graph. No current
-    -- foreign map was sampled and no game-state write is performed here.
-    for _,name in ipairs(row.foreign_original_empty_maps)do
-        local p=room:findPlayerByObjectName(name,true)
-        local view=p and rawget(p,"_view")
-        if type(view)~="table"then ai_unsupported("source roster view absent",op)end
-        view.marks_complete=true;view.skills_complete=true
-    end
-    for _,name in ipairs(row.names)do if type(name)~="string"then ai_unsupported("source cache element malformed",op)end end
-    return row
+    return stamp
+end
+local function same_snapshot_cache(left,right)
+    return left and right and left.scope==right.scope and left.epoch==right.epoch
+        and left.viewer==right.viewer and left.question==right.question and left.revision==right.revision
 end
 
 -- SmartAI 相等的純值工具函式。套件只註冊 hook／技能名單，不改這層。
@@ -3659,32 +3651,27 @@ local function replay(self, entries)
         self:useKnowledgeEstimate(e,row.context or 'aiConnect.cache')
     end
 end
-local function cache(self)
-    -- Query even on a local hit: Death clears the source caches a second
-    -- time during the same event, after the immutable world snapshot exists.
-    local query=rawget(_G,'ai_target_recommend_cache')
-    if type(query)~='function'then ai_unsupported('connection cache epoch host is unavailable','aiConnect')end
-    local stamp=query({op='epoch'})
-    if AIUnsupported.is(stamp)then error(stamp,0)end
-    if type(stamp)~='table'or getmetatable(stamp)~=nil or stamp.known~=true
-        or type(stamp.scope)~='string'or stamp.scope==''
-        or type(stamp.epoch)~='string'or not stamp.epoch:match('^%d+$')then
-        ai_unsupported('connection cache requires a live scoped source epoch','aiConnect')
-    end
-    local scope,epoch=stamp.scope,stamp.epoch
+local function cache(self,stamp)
+    -- Read a real native stamp even on a hit. Natural recordEvent and the
+    -- donor's second Death clear advance the reset epoch; distinct questions
+    -- and revisions also keep these value caches from crossing snapshots.
+    stamp=stamp or snapshot_cache_stamp(self.room,'observer_epoch')
     local live=rawget(self,'_legacy_connection_cache')
-    if live and live.scope==scope and live.epoch==epoch then return live end
-    local state,known=self:getStrategyMemory('legacy_connections')
-    if known and type(state)=='table'and state.scope==scope and state.epoch==epoch then
+    if same_snapshot_cache(live,stamp)then return live end
+    local state,known=self:getStrategyMemory('observer_connections')
+    if known and type(state)=='table'and same_snapshot_cache(state,stamp)then
         if type(state.by_player)~='table'then ai_unsupported('connection cache malformed','aiConnect')end
         state=copy(state)
-    else state={scope=scope,epoch=epoch,by_player={}} end
+    else
+        state={scope=stamp.scope,epoch=stamp.epoch,viewer=stamp.viewer,question=stamp.question,
+            revision=stamp.revision,by_player={}}
+    end
     self._legacy_connection_cache=state
     self._legacy_connection_views={by_player={}}
     return state
 end
 local function save(self,state)
-    self:setStrategyMemory('legacy_connections',state)
+    self:setStrategyMemory('observer_connections',state)
 end
 local function estimates(self, before)
     local log=self.request and self.request.scratch and self.request.scratch.knowledge_estimates or{}
@@ -3700,17 +3687,8 @@ local function estimates(self, before)
     return added
 end
 function SmartAIView:getCachedAlivePlayers()
-    local original=initial_source_cache(self.room,"source_alive")
-    if original then return source_array(self.room,"alive",nil,function()
-        local values={}
-        for _,name in ipairs(original.names)do
-            local p=self.room:findPlayerByObjectName(name,true)
-            if not p then ai_unsupported("actual cached player is not projected","qlist_cached")end
-            values[#values+1]=p
-        end
-        return values
-    end)end
-    local state=cache(self)
+    local stamp=snapshot_cache_stamp(self.room,"source_alive")
+    local state=cache(self,stamp)
     local views=rawget(self,'_legacy_connection_views')
     if views.alive then return views.alive end
     local names=state.alive
@@ -3735,10 +3713,9 @@ function SmartAIView:getCachedAlivePlayers()
 end
 function SmartAIView:getConnections(player)
     player=player or self.player
-    local original=initial_source_cache(self.room,"source_connections",player)
-    if original then return source_array(self.room,"connections",player,function()return original.names end)end
+    local stamp=snapshot_cache_stamp(self.room,"source_connections",player)
     local name=q(player,'objectName')
-    local state=cache(self)
+    local state=cache(self,stamp)
     local row=state.by_player[name]
     local views=rawget(self,'_legacy_connection_views')
     if row~=nil then
@@ -5301,23 +5278,10 @@ end
 -- and appends Weidi's lord skills without deduplication.
 function sgs.getPlayerSkillList(player)
     local room=player and rawget(player,"_room")
-    local original=room and initial_source_cache(room,"source_skills",player)
-    if original then
-        if not AIValue.isList(original.definitions) or #original.definitions~=#original.names then
-            ai_unsupported("actual cached skill definitions unavailable","getPlayerSkillList")
-        end
-        return source_array(room,"skills",player,function()
-        local values={}
-        for i,definition in ipairs(original.definitions)do
-            if type(definition)~="table"or definition.name~=original.names[i]then ai_unsupported("cached definition identity changed","getPlayerSkillList")end
-            values[#values+1]=SkillView.new(definition)
-        end
-        return AIList.asLuaTable(values)
-        end)
-    end
-    if not player then ai_unsupported("skill-list player is missing","getPlayerSkillList") end
+    if not player or not room then ai_unsupported("skill-list player is missing","getPlayerSkillList")end
+    local stamp=snapshot_cache_stamp(room,"source_skills",player)
     local cached=rawget(player,"_strategy_skill_list_cache")
-    if cached then return cached end
+    if cached and same_snapshot_cache(rawget(player,"_strategy_skill_list_stamp"),stamp)then return cached end
     local result=AIList.new{}
     for _,skill in ipairs(strategy_call(player,"getSkills")) do
         local name=strategy_call(skill,"objectName")
@@ -5336,6 +5300,7 @@ function sgs.getPlayerSkillList(player)
         end
     end
     rawset(player,"_strategy_skill_list_cache",result)
+    rawset(player,"_strategy_skill_list_stamp",stamp)
     return result
 end
 

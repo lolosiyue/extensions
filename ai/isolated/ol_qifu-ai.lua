@@ -71,12 +71,12 @@ local function source_choice_continuity(self,op,key,row)
  return result.present and result.value or nil
 end
 local function save_xufa(self,d,name)
- q(self,'rememberActualXufaUse',d) -- source assignment precedes global choice write
- source_choice_continuity(self,'record','xufa',{known=true,present=true,value=name})
+ q(self,'rememberXufaUse',d) -- source assignment precedes the choice write
+ q(self,'setStrategyMemory','xufa.choice',name)
 end
 local function load_xufa(self)
  -- nil/false is a legal host result but the donor then indexes it: retain that ordinary error.
- return self:readActualXufaUse()
+ return self:getStrategyMemory('xufa.use')
 end
 local function fengpo_from(self)
  local row=facts(self).fengpo_from
@@ -1078,13 +1078,12 @@ sgs.ai_use_value.XufaCard = 4.4
 sgs.ai_use_priority.XufaCard = 11.8
 
 sgs.ai_skill_choice.xufa=function(self)
- return source_choice_continuity(self,'read','xufa')
+ return q(self,'getStrategyMemory','xufa.choice')
 end
 sgs.ai_skill_use["@@xufa"]=function(self,prompt,method)
  local d=load_xufa(self)
  if d.card then
-  if q(d.card,"canRecast") and #d.to<1 and method~=sgs.Card_MethodRecast then return end
-  local tos={};for _,p in ipairs(d.to)do tos[#tos+1]=q(p,"objectName")end
-  return q(self,"materializeXufaSaved",d.card,tos)
+  if d.card.can_recast and #d.to<1 and method~=sgs.Card_MethodRecast then return end
+  return q(self,"materializeXufaSaved",d.card,d.to)
  end
 end

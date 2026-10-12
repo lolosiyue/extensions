@@ -517,9 +517,10 @@ function SmartAIView:getDefenseValue(key)
     return sgs.ai_skill_defense[key]
 end
 
+-- Ordinary priorities use this VM's registered values and the existing owner
+-- memory. Native callback lifetime does not invalidate these policy values.
 function SmartAIView:setPriorityValue(key, value, source)
     if type(key) ~= "string" or value~=nil and not finite_number(value) then ai_unsupported("invalid priority override", "priority") end
-    if self:writeOverseasPriority(key,value) then return value end
     local state, present = self:getStrategyMemory("priority_overrides")
     if not present or type(state) ~= "table" then state = {} end
     -- A source `table[key]=nil` removes the effective registration. Removing
@@ -551,8 +552,6 @@ function SmartAIView:getSourcePriorityValue(key)
     local actual,value=self:readNamedSourcePriority(key)
     if actual then return value end
     if type(key)~="string" then ai_unsupported("invalid raw priority key","priority")end
-    local tracked,raw=self:readOverseasPriority(key)
-    if tracked then return raw end
     local entry=priority_entry(self,key)
     local value
     if entry then
@@ -572,12 +571,6 @@ end
 function SmartAIView:getPriorityValue(key, card, fallback)
     local actual,value=self:readNamedSourcePriority(key)
     if actual then if value==nil then return fallback end;return value end
-    local tracked,raw,removed=self:readOverseasPriority(key)
-    if tracked then
-        if raw==nil and not removed then raw=default_use_priority[key] end
-        if raw==nil then raw=fallback end
-        return raw
-    end
     local entry=priority_entry(self,key)
     local value
     if entry then

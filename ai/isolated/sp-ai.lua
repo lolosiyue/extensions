@@ -15,6 +15,30 @@ local function call(object, method, ...)
 end
 local function q(object, method, ...) return known(call(object, method, ...), method) end
 
+-- sp-ai.lua:44..62. Run the original OL planner, then read that same
+-- observer's ordered value list. Binding still obtains a fresh native receipt.
+sgs.ai_skill_use["@oljijiang"] = function(self, prompt, method, pattern, request)
+    if q(self.player, "getStrategyFlag", "Global_JijiangFailed") then return "." end
+    local source = request
+    local card = q(self, "evaluateTurnSkillCard", "oljijiang", "OLJijiangCard", {}, source)
+    local dummy_use = AIUsePlan.new()
+    dummy_use.isDummy = true
+    call(self, "useSkillCard", card, dummy_use)
+    if dummy_use.card then
+        local targets = call(self, "recall", "ol_jijiang.targets")
+        if targets then
+            local names = {}
+            for _, name in ipairs(targets) do
+                if type(name) ~= "string" then ai_unsupported("invalid OLJijiang target memory", "oljijiang") end
+                names[#names + 1] = name
+            end
+            local paid = q(self, "bindSkillCard", "oljijiang", {}, source, nil, "OLJijiangCard")
+            return {kind="use_card", card_spec=q(paid,"toCardSpec"), targets=names}
+        end
+    end
+    return "."
+end
+
 -- sp-ai.lua:921. The SkillCard declaration belongs to the policy object;
 -- the response resolver supplies the independently validated ordinary receipt.
 sgs.ai_cardsview_valuable.aocai = function(self, class_name, player)

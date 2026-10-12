@@ -5366,7 +5366,7 @@ qingtq_keep_keep = sgs.CreateAttackRangeSkillV2 {
 		end
 			end
 		local __r = __fixed_func(self, player, include_weapon)
-		return tonumber(__r) or 0
+		return tonumber(__r)
 	end,
 }
 extension:insertRelatedSkills("qingtq", "#qingtq")

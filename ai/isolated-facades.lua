@@ -6792,7 +6792,7 @@ do
  end
 end
 
--- Actual game-VM own Xufa slot; copied policy recipes are not continuation proof.
+-- Xufa source evaluation and same-owner pure-value strategy history.
 do
  local function host(self,mode,payload)
   if type(ai_xufa_actual_slot)~='function'then ai_unsupported('Xufa actual slot bridge missing','xufaUse')end
@@ -6811,32 +6811,22 @@ do
   if r.exists==false then return nil end
   return card_result(r)
  end
- function SmartAIView:rememberActualXufaUse(d)
-  if type(d)~='table'or d.isDummy~=true or not AIValue.isList(d.to)then ai_unsupported('Xufa source dummy shape missing','xufaUse')end
-  local c=d.card;local v=type(c)=='table'and rawget(c,'_view')
-  if (not AIValue.isCard(c)and not AIValue.isConversion(c))or type(v)~='table'then ai_unsupported('Xufa source selected Card unavailable','xufaUse')end
-  local permitted={card=true,to=true,isDummy=true,extra_target=true,current_targets=true,_evaluation_only=true,context=true,scratch=true,candidate_id=true}
-  for k in pairs(d)do if not permitted[k]then ai_unsupported('Xufa source dummy field has no native representation: '..tostring(k),'xufaUse')end end
-  local extra=d.extra_target;if extra==nil then extra=0 end
-  if type(extra)~='number'or extra~=extra or extra%1~=0 or extra < -2147483648 or extra > 2147483647 then ai_unsupported('Xufa dummy extra_target malformed','xufaUse')end
-  if d.current_targets~=nil and(type(d.current_targets)~='table'or next(d.current_targets)~=nil)then ai_unsupported('Xufa nonempty current_targets unsupported','xufaUse')end
-  local selector
-  if type(v.readonly_recipe_key)=='string'and v.readonly_recipe_key~=''then selector={readonly_recipe_key=v.readonly_recipe_key}
-  elseif AIValue.isConversion(c)then selector={conversion_id=c:getConversionId(),legacy_identity_token=v.legacy_identity_token}
-  else selector={physical_id=c:getEffectiveId(),legacy_identity_token=v.legacy_identity_token}end
-  local names={};for _,p in ipairs(d.to)do if not AIValue.isPlayer(p)then ai_unsupported('Xufa source target is not a player','xufaUse')end;names[#names+1]=p:objectName()end
-  local r=host(self,'capture',{selector=selector,targets=names,source_fields={isDummy=true,extra_target=extra,current_targets_empty=true}})
-  if type(r.token)~='string'or r.token==''then ai_unsupported('Xufa actual assignment was not witnessed','xufaUse')end
-  return r.token
- end
- function SmartAIView:readActualXufaUse()
-  local r=host(self,'read',{})
-  if r.status=='nil_plan'then return nil end
-  if r.status=='false_plan'then return false end
-  if r.status=='empty_card'then return{}end
-  if r.status~='card_plan'or not AIValue.isList(r.targets)then ai_unsupported('Xufa actual plan status malformed','xufaUse')end
-  local to={};for _,name in ipairs(r.targets)do local p=self.room:findPlayerByObjectName(name,true);if not p then ai_unsupported('Xufa actual target missing from roster','xufaUse')end;to[#to+1]=p end
-  local d={card=card_result(r),to=to};if r.targets_missing==true then d.to=nil;if r.targets_false==true then d.to=false end end;return d
+ -- Save only fields read by the fixed @@xufa consumer. No proxy, recipe key,
+ -- identity token, conversion id or payment authority crosses the request.
+ function SmartAIView:rememberXufaUse(d)
+  local c=d.card
+  if not AIValue.isCard(c)and not AIValue.isConversion(c)then
+   ai_unsupported('Xufa selected plan card is unavailable','xufaUse')
+  end
+  local materials={};for _,id in ipairs(c:getSubcards())do materials[#materials+1]=id end
+  local names={};for _,p in ipairs(d.to)do names[#names+1]=p:objectName()end
+  local card={virtual=c:isVirtualCard(),id=c:getEffectiveId(),name=c:objectName(),
+   suit=c:getSuit(),number=c:getNumber(),skill=c:getSkillName(false),
+   materials=materials,can_recast=c:canRecast(),wire=c:toString()}
+  -- Decision writes persist before later ordinary errors, exactly like the
+  -- donor assignment. get/setStrategyMemory also use the existing event envelope.
+  self:setStrategyMemory('xufa.use',{card=card,to=names})
+  return true
  end
 end
 
@@ -7466,10 +7456,8 @@ do
   return paid
  end
  function SmartAIView:materializeXufaSaved(card,names)
-  local v=type(card)=='table'and rawget(card,'_view')
-  if not AIValue.isCard(card)or type(v)~='table'or type(v.readonly_recipe_key)~='string'or not AIValue.isList(names)then
-   ai_unsupported('Xufa selected saved observation is not native retained custody','xufaUse')end
-  local r=checked(call(self,'saved_select',{recipe_key=v.readonly_recipe_key,targets=copy_value(names)}))
+  -- This remembered value is a proposal, never a retained native Card or ticket.
+  local r=checked(call(self,'value_select',{card=copy_value(card),targets=copy_value(names)}))
   if not turn_same(r.targets,names)then ai_unsupported('Xufa selected target order changed','xufaUse')end
   return{kind='use_card',card_spec=copy_value(r.card_spec),targets=copy_value(r.targets)}
  end
@@ -8078,4 +8066,35 @@ function SmartAIView:readNamedSourcePriority(key)
  if not r.present then return true,nil,true end
  if (type(r.value)~='number'and type(r.value)~='boolean')or(type(r.value)=='number'and(r.value~=r.value or r.value==math.huge or r.value==-math.huge))then ai_unsupported('actual priority source value unavailable',key)end
  return true,r.value,false
+end
+
+-- OLJijiang keeps policy memory as observer-owned values. Only the real native
+-- askForCard operation identifies a liege's current source; saved names cannot
+-- make a new operation or authorize a response/payment.
+local function oljijiang_source_operation(op)
+    if type(ai_ol_jijiang_state) ~= "function" then
+        ai_unsupported("OLJijiang native response source is unavailable", "oljijiang")
+    end
+    local row = ai_ol_jijiang_state(op)
+    if type(row) ~= "table" or row.kind ~= "ol_jijiang_state" or row.known ~= true then
+        ai_unsupported(type(row) == "table" and row.reason or "invalid OLJijiang response source", "oljijiang")
+    end
+    return row
+end
+function SmartAIView:getOLJijiangResponseSource()
+    local row = oljijiang_source_operation("source_read")
+    if row.present == false then return nil end
+    if row.present ~= true or type(row.player) ~= "string" or type(row.operation) ~= "string" then
+        ai_unsupported("invalid OLJijiang operation source", "oljijiang")
+    end
+    local player = self.room:findPlayerByObjectName(row.player, true)
+    if not player then ai_unsupported("OLJijiang source is absent from the current roster", "oljijiang") end
+    self:remember("ol_jijiang.source", row.player)
+    self:remember("ol_jijiang.operation", row.operation)
+    return player
+end
+function SmartAIView:clearOLJijiangResponseSource()
+    local row = oljijiang_source_operation("source_clear")
+    if row.present ~= false then ai_unsupported("OLJijiang source clear failed", "oljijiang") end
+    return true
 end
