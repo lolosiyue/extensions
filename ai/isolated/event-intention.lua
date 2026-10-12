@@ -9,6 +9,7 @@ local active_sink
 local active_refresh
 local pending_memory
 local memory_key = "filter_event"
+local publish_defense = ai_publish_defense_snapshot
 -- Capture before packages register callbacks; the final commit cannot be replaced
 -- by a callback that mutates ai_memory methods during an event.
 local memory_prepare, memory_commit, memory_recall = ai_memory.prepare, ai_memory.commit, ai_memory.recall
@@ -237,6 +238,11 @@ end
 function SmartAIView:setStrategyMemory(key, value)
     assert(type(key) == "string" and key ~= "", "invalid strategy cache key")
     if rawget(self, "_event_state") then return self:setEventMemory("cache:"..key, value) end
+    if rawget(self, "_defense_refresh_active") then
+        local state=assert(rawget(self,"_strategy_state"))
+        state["cache:"..key],state.known["cache:"..key]=copy_memory(value),true
+        return
+    end
     local state = copy_memory(rawget(self, "_strategy_state") or self:recall(memory_key) or {known={}})
     state.known = state.known or {}
     state["cache:"..key], state.known["cache:"..key] = copy_memory(value), true
@@ -410,36 +416,61 @@ function SmartAIView:refreshDefenseSnapshotForSort(players, initialize_only)
     local previous = rawget(self, "_strategy_state")
     local state = copy_memory(event_state or previous or self:recall(memory_key) or {known={}})
     state.known = state.known or {}
-    if state.known.defense_snapshot ~= true or state.known.defense_sort_time ~= true then
-        local roster = self.room:getPlayers()
-        if not roster then ai_unsupported("defense initialization roster is unknown", "sort.defense") end
-        state.defense_snapshot = {}
-        -- The source's qlist initializer starts at zero. Initialization may
-        -- precede this VM's first observation, so this seed is explicitly an
-        -- estimate; actual subsequent sort refreshes use the projected clock.
-        for index, player in ipairs(roster) do state.defense_snapshot[player:objectName()] = index - 1 end
-        state.defense_sort_time = now
+    local source = publish_defense() -- native retained history for this active observer only
+    if type(source) ~= "table" or source.observer ~= self.player:objectName()
+        or not finite(source.sequence) or not finite(source.sort_clock) then
+        ai_unsupported("same-observer defense source is unavailable", "sort.defense")
+    end
+    do -- The source DTO also rejects unknown writers to generic strategy memory.
+        -- Only the native, same-observer publication can seed/rebase this cache.
+        state.defense_snapshot = copy_memory(source.baselines)
+        state.defense_estimates = copy_memory(source.estimates)
+        state.defense_sort_time = source.sort_clock
+        state.defense_origin = source.origin
+        state.defense_sequence = source.sequence
         state.known.defense_snapshot, state.known.defense_sort_time = true, true
-        state.estimation_branches = state.estimation_branches or {}
-        state.estimation_branches["defense.late_initialization_seat_prior"] = true
-        state.known.estimation_branches = true
+        state.known.defense_estimates = true
     end
     local field = event_state and "_event_state" or "_strategy_state"
     self[field] = state
+    self._defense_refresh_active = true
+    local refreshed = false
     local ok, failure = pcall(function()
         if not initialize_only and now - state.defense_sort_time > 1 then
             for _, player in ipairs(players) do
-                local value = self:getDefense(player, true)
+                -- Collect this cell's dependencies independently of earlier cells.
+                local scratch = self.request and self.request.scratch
+                local previous_estimates = scratch and scratch.knowledge_estimates
+                if scratch then scratch.knowledge_estimates = {} end
+                local ok_value, value = pcall(self.getDefense, self, player, true)
+                local dependencies = copy_memory(scratch and scratch.knowledge_estimates or {})
+                if scratch then scratch.knowledge_estimates = previous_estimates end
+                if not ok_value then error(value, 0) end
                 if not finite(value) then ai_unsupported("defense refresh returned unknown", "sort.defense") end
+                local labels, seen = {}, {}
+                for _, entry in ipairs(dependencies) do
+                    if type(entry.basis) == "string" and not seen[entry.basis] then
+                        labels[#labels+1], seen[entry.basis] = entry.basis, true
+                    end
+                    self:useKnowledgeEstimate(entry, entry.context or "sort.defense")
+                end
                 state.defense_snapshot[player:objectName()] = value
+                state.defense_estimates[player:objectName()] = labels
             end
             state.defense_sort_time = now
+            refreshed = true
         end
     end)
+    self._defense_refresh_active = nil
     if not ok then self[field] = event_state or previous; error(failure,0) end
-    if state.estimation_branches and state.estimation_branches["defense.late_initialization_seat_prior"]
-        and type(self.useKnowledgeEstimate) == "function" then
-        self:useKnowledgeEstimate({value=true,status="estimate",basis="defense.late_initialization_seat_prior",observer=self.player:objectName()}, "sort.defense")
+    if refreshed then
+        local dto = {observer=self.player:objectName(), revision=self.world.revision,
+            sequence=state.defense_sequence, sort_clock=now, origin=state.defense_origin,
+            baselines=state.defense_snapshot, estimates=state.defense_estimates}
+        state.defense_sequence = publish_defense(dto)
+        -- Nested updatePlayers sees this transaction's own just-produced values.
+        self.world.strategy_facts.defense_history = copy_memory(dto)
+        self.world.strategy_facts.defense_history.sequence = state.defense_sequence
     end
     if not event_state then
         -- Decision-time sort updates are the source helper's own persistent
@@ -449,9 +480,10 @@ function SmartAIView:refreshDefenseSnapshotForSort(players, initialize_only)
     return true
 end
 
+if ai_register_defense_writer then ai_register_defense_writer(SmartAIView.refreshDefenseSnapshotForSort) end
+
 function SmartAIView:ensureDefenseSnapshot()
     local snapshot, known = self:getEventMemory("defense_snapshot")
-    if known and type(snapshot) == "table" then return true end
     return self:refreshDefenseSnapshotForSort({}, true)
 end
 

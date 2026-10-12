@@ -1167,7 +1167,7 @@ function SmartAIView:getDefense(player, start)
         ai_unsupported("defense baseline event memory is unavailable", "getDefense")
     end
     local snapshot, known = self:getEventMemory("defense_snapshot")
-    if (known ~= true or type(snapshot) ~= "table") and type(self.ensureDefenseSnapshot) == "function" then
+    if type(self.ensureDefenseSnapshot) == "function" and not rawget(self,"_defense_refresh_active") then
         value_known(self:ensureDefenseSnapshot(), "defense baseline initialization")
         snapshot, known = self:getEventMemory("defense_snapshot")
     end
@@ -1183,9 +1183,13 @@ function SmartAIView:getDefense(player, start)
     local hand = value_known(value_call(player, "getHandcardNum"), "defense hand count")
     local pile = value_known(value_call(player, "getHandPileCount"), "defense hand pile count")
     local value = hp * 2 + hand + pile + baseline
-    local branches, branches_known = self:getEventMemory("estimation_branches")
-    if branches_known and type(branches) == "table" and branches["defense.late_initialization_seat_prior"] then
-        return value_known(value_call(self, "useKnowledgeEstimate", {value=value,status="estimate",basis="defense.late_initialization_seat_prior",observer=self.player:objectName()}, "getDefense baseline"), "defense estimate")
+    local estimates, estimates_known = self:getEventMemory("defense_estimates")
+    if not estimates_known or type(estimates[name]) ~= "table" then
+        ai_unsupported("defense baseline dependencies are missing", "getDefense")
+    end
+    for _, basis in ipairs(estimates[name]) do
+        value_known(value_call(self, "useKnowledgeEstimate", {value=value,status="estimate",basis=basis,
+            observer=self.player:objectName()}, "getDefense baseline"), "defense estimate")
     end
     return value
 end

@@ -325,28 +325,62 @@ local function lord_hp(lord)
 end
 
 local function public_defense(world, player)
-    -- The isolated sort cache belongs to a different VM. A documented public
-    -- state estimate replaces that private cache, never a zero default.
-    return player.hp*2 + (player.handcard_count or 0) + (player.hand_pile_count or 0)
+    local source = world.strategy_facts and world.strategy_facts.defense_history
+    assert(type(source)=="table" and source.observer==world.self.object_name,
+        "same-observer defense publication is missing")
+    local baseline = source.baselines and source.baselines[player.object_name]
+    local estimates = source.estimates and source.estimates[player.object_name]
+    assert(type(baseline)=="number" and baseline==baseline and math.abs(baseline)<math.huge
+        and type(estimates)=="table", "defense baseline or its dependencies are missing")
+    return player.hp*2 + assert(player.handcard_count) + assert(player.hand_pile_count) + baseline, estimates
 end
 
-local function standard_process(world, state)
+local function standard_process(world, state, arg, update)
+    local cache=state.cached_process or {}
+    if arg~=nil and not update and cache[arg and "value" or "label"]~=nil then
+        return cache.value,cache.label,cache[arg and "value_estimates" or "label_estimates"] or {}
+    end
+    if arg==nil and cache.value~=nil and cache.label~=nil then return cache.value,cache.label,cache.estimates or {} end
     local counts, lord = role_counts(world), standard_lord(world)
-    if counts.rebel<1 and counts.loyalist>0 then return 99,"loyalist" end
-    if counts.loyalist<1 and counts.rebel>1 then return -99,"rebel" end
+    local early=counts.rebel<1 and counts.loyalist>0 and 99 or counts.loyalist<1 and counts.rebel>1 and -99
+    if early then
+        local label=early==99 and "loyalist" or "rebel"
+        if arg~=nil then
+            cache[arg and "value" or "label"]=arg and early or label
+            cache[arg and "value_estimates" or "label_estimates"]={}
+            cache.estimates={}
+            for _,field in ipairs({"value_estimates","label_estimates"}) do
+                for basis in pairs(cache[field] or {}) do cache.estimates[basis]=true end
+            end
+            state.cached_process=cache
+            return cache.value,cache.label,{}
+        end
+        return early,label,{}
+    end
+    local estimates={}
+    local function defense(player)
+        local value,dependencies=public_defense(world,player)
+        for _,basis in ipairs(dependencies) do estimates[basis]=true end
+        return value
+    end
     local diff=(counts.loyalist+1-counts.rebel)*3
     for _, player in ipairs(alive_in_order(world)) do
         local role, hp=known_role(player,state),player.hp
         if hp>4 and has_public_skill(player,"benghuai") then hp=4 end
         if role=="rebel" then
-            diff=diff-hp+math.max(public_defense(world,player)-hp*2,0)*0.5
-            local rows=world.distances
-            local distance=lord and rows and rows[player.object_name] and rows[player.object_name][lord.object_name]
-            if finite(distance) and distance <= (player.attack_range or 1) then diff=diff-0.4 end
-        elseif role=="loyalist" or role=="lord" then diff=diff+hp+math.max(public_defense(world,player)-hp*2,0)*0.5 end
+            diff=diff-hp+math.max(defense(player)-hp*2,0)*0.5
+            if lord then
+                local facts=world.strategy_facts and world.strategy_facts.yjcm2015
+                local rows=facts and facts.in_attack_range
+                local pair=rows and rows[player.object_name] and rows[player.object_name][lord.object_name]
+                assert(facts and facts.attack_range_known==true and pair and type(pair["0"])=="boolean",
+                    "native attack-range matrix is unavailable")
+                if pair["0"] then diff=diff-0.4 end
+            end
+        elseif role=="loyalist" or role=="lord" then diff=diff+hp+math.max(defense(player)-hp*2,0)*0.5 end
     end
     local hp=lord and lord_hp(lord)
-    local healthy=not lord or hp>3 or hp>2 and public_defense(world,lord)>3
+    local healthy=not lord or hp>3 or hp>2 and defense(lord)>3
     local danger=lord and hp<3
     local process="neutral"
     if diff>=4 then process=healthy and "loyalist" or "dilemma"
@@ -354,7 +388,8 @@ local function standard_process(world, state)
     elseif diff<= -4 then process="rebel"
     elseif diff<= -2 then process=healthy and "rebelish" or "rebel"
     elseif not healthy then process="rebelish" end
-    return diff,process
+    if arg~=nil then state.cached_process={value=diff,label=process,estimates=estimates,value_estimates=estimates,label_estimates=estimates} end
+    return diff,process,estimates
 end
 
 local function standard_objective_body(self,to,sgs,isRolePredictable,BeMan)
@@ -702,9 +737,17 @@ local function objective_context(world, state, process)
     end
     local_sgs.qlist=ipairs
     local_sgs.QList2Table=function(t) return t end
-    local_sgs.gameProcess=function() return process and process.label or "neutral" end
+    local_sgs.gameProcess=function(arg,update)
+        local value,label,used=standard_process(world,state,not not arg,update)
+        for basis in pairs(used) do estimate(basis) end
+        return arg and value or label
+    end
     local_sgs.GetConfig=function(_,default) return default end -- identity mode only
-    local_sgs.getDefense=function(w) estimate("mode.objective_public_defense");return public_defense(world,w.snapshot) end
+    local_sgs.getDefense=function(w)
+        local value,used=public_defense(world,w.snapshot)
+        for _,basis in ipairs(used) do estimate(basis) end
+        return value
+    end
     local lord=standard_lord(world)
     local_sgs.isLordHealthy=function()
         if not lord then return true end
@@ -865,8 +908,7 @@ local function standard_refresh_relations(world,state,to_use_count,refresh_proce
     end
     state.owner_role=own_role
     if refresh_process or not state.cached_process then
-        local value,label=standard_process(world,state)
-        state.cached_process={value=value,label=label}
+        standard_process(world,state,true,true)
     end
     if not standard_classical(world) and world.strategy_facts and world.strategy_facts.role_predictable_config
         and state.inferred_roles and state.inferred_roles[world.self.object_name]~=own_role and own_role~="lord" then
@@ -959,9 +1001,8 @@ local function standard_update_players(world,state,to_use_count,update)
     if composition_prior then estimates["mode.scenario_public_composition_prior"]=true end
     for key in pairs(state.base_role_cache_estimates or {}) do estimates[key]=true end
     if update or not state.cached_process then
-        local value,label=standard_process(world,state)
-        state.cached_process={value=value,label=label}
-        estimates["mode.game_process_public_defense"]=true
+        standard_process(world,state,true,true)
+        for basis in pairs(state.cached_process.estimates or {}) do estimates[basis]=true end
     end
     local classical=standard_classical(world)
     if not classical then
@@ -1019,8 +1060,7 @@ local function standard_refresh_after_intention(world,state,actor)
         standard_refresh_relations(world,state,nil,true)
     else
         -- Fixed source's large-room path refreshes only the acting AI's lists.
-        local value,label=standard_process(world,state)
-        state.cached_process={value=value,label=label}
+        standard_process(world,state,true,true)
     end
 end
 
@@ -1395,7 +1435,7 @@ function sgs.evaluateModeAI(world, options, state_override)
         state = clone_value(state)
         if not state.inferred_roles then standard_evaluate_roles(world,state) end
         result.standard_identity = true
-        result.estimated_branches = {"mode.observer_local_role_evidence", "mode.game_process_public_defense"}
+        result.estimated_branches = {"mode.observer_local_role_evidence"}
         if state.donor_intention_random_repaired then result.estimated_branches[#result.estimated_branches+1]="donor_error_repair.updateIntention_fractional_random" end
         if state.adjust_role_inferred then result.estimated_branches[#result.estimated_branches+1]="mode.adjust_hidden_role_inference" end
     end
@@ -1440,9 +1480,17 @@ function sgs.evaluateModeAI(world, options, state_override)
         result.game_process = process_value
         if type(label) == "string" then result.process_label = label end
     end
-    if result.standard_identity and state.cached_process then
+    if result.standard_identity then
+        standard_process(world,state,true,false)
+        standard_process(world,state,false,false)
         result.game_process=state.cached_process.value
         result.process_label=state.cached_process.label
+        local seen={};for _,basis in ipairs(result.estimated_branches) do seen[basis]=true end
+        for _,field in ipairs({"value_estimates","label_estimates"}) do
+            for basis in pairs(state.cached_process[field] or {}) do
+                if not seen[basis] then result.estimated_branches[#result.estimated_branches+1]=basis;seen[basis]=true end
+            end
+        end
     end
     local objectives = {}
     for _, to in ipairs(players) do
@@ -1541,7 +1589,7 @@ local function standard_query_state(world)
     local state=clone_value(mind(world.mode_id,world.self.object_name))
     if not state.inferred_roles then standard_evaluate_roles(world,state) end
     if not state.cached_process then
-        local value,label=standard_process(world,state);state.cached_process={value=value,label=label}
+        standard_process(world,state,false,false)
     end
     return state
 end
@@ -1607,7 +1655,7 @@ function sgs.prepareStandardRelations(world,to_use_count)
 end
 
 local function player_relations_result(world,state,estimates,event_prefix)
-    local result,token=standard_query_result(world,state,0,estimates,event_prefix)
+    standard_process(world,state,true,false);standard_process(world,state,false,false);for basis in pairs(state.cached_process.estimates or {}) do estimates[basis]=true end;local result,token=standard_query_result(world,state,0,estimates,event_prefix)
     result.owner_role,result.harsh_retain=state.owner_role,state.harsh_retain
     result.friends=clone_value(state.relation_friends)
     result.friends_noself=clone_value(state.relation_friends_noself)
