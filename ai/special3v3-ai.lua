@@ -83,6 +83,39 @@ sgs.ai_skill_askforag.huanshi = function(self,card_ids)
 	return -1
 end
 
+sgs.ai_skill_invoke.xiaoxin_huanshi = sgs.ai_skill_invoke.huanshi
+sgs.ai_skill_askforag.xiaoxin_huanshi = function(self,card_ids)
+	local cards = {}
+	for _,id in sgs.list(card_ids)do table.insert(cards,sgs.Sanguosha:getCard(id)) end
+	local judge = self.player:getTag("HuanshiJudge"):toJudge()
+	local zhugejin = self.player:getTag("XiaoxinHuanshiOwner"):toPlayer()
+	if not zhugejin then zhugejin = self.room:findPlayerBySkillName("xiaoxin_huanshi") end
+	local cmp = function(a,b)
+		local av = (sgs.ai_keep_value[a:getClassName()] or 0)+a:getNumber()/100
+		local bv = (sgs.ai_keep_value[b:getClassName()] or 0)+b:getNumber()/100
+		if zhugejin and zhugejin:hasSkill("xiaoxin_mingzhe") then
+			if a:isRed() then av = av-0.3 end
+			if b:isRed() then bv = bv-0.3 end
+		end
+		return av<bv
+	end
+	local card_id = self:getRetrialCardId(cards,judge,false)
+	if card_id~=-1 then return card_id end
+	if zhugejin and not self:isEnemy(zhugejin) then
+		local valueless = {}
+		for _,card in sgs.list(cards)do if not self:isValuableCard(card,zhugejin) then table.insert(valueless,card) end end
+		if #valueless==0 then valueless = cards end
+		table.sort(valueless,cmp)
+		return valueless[1]:getEffectiveId()
+	end
+	for _,card in sgs.list(cards)do if judge:isGood(card) then return card:getEffectiveId() end end
+	local valuable = {}
+	for _,card in sgs.list(cards)do if self:isValuableCard(card,zhugejin) then table.insert(valuable,card) end end
+	if #valuable==0 then valuable = cards end
+	table.sort(valuable,cmp)
+	return valuable[#valuable]:getEffectiveId()
+end
+
 function sgs.ai_cardneed.huanshi(to,card,self)
 	for _,player in sgs.list(self.friends)do
 		if self:getFinalRetrial(to)==1 then
@@ -108,9 +141,35 @@ sgs.ai_skill_invoke.hongyuan = function(self,data)
 	return false
 end
 
+sgs.ai_skill_invoke.xiaoxin_hongyuan = function(self)
+	for _, friend in ipairs(self.friends_noself) do
+		if not self:needKongcheng(friend, true) and not friend:hasSkill("manjuan") then return true end
+	end
+	return false
+end
+
+sgs.ai_skill_playerschosen.xiaoxin_hongyuan = function(self, targets, max_num)
+	local candidates = {}
+	for _, target in sgs.list(targets) do
+		if self:isFriend(target) and not self:needKongcheng(target, true) and not target:hasSkill("manjuan") then
+			table.insert(candidates, target)
+		end
+	end
+	if #candidates == 0 then return {} end
+	self:sort(candidates, "handcard")
+	local chosen = {}
+	for i = 1, math.min(2, max_num or 2, #candidates) do table.insert(chosen, candidates[i]) end
+	return chosen
+end
+
 function sgs.ai_cardneed.mingzhe(to,card,self)
 	return card:isRed() and getKnownCard(to,self.player,"red",false)<2
 end
+
+sgs.ai_skill_invoke.xiaoxin_mingzhe = function(self)
+	return not self:needKongcheng(self.player, true)
+end
+sgs.ai_cardneed.xiaoxin_mingzhe = sgs.ai_cardneed.mingzhe
 
 sgs.ai_skill_use["@@hongyuan"] = function(self,prompt)
 	self:sort(self.friends_noself,"handcard")

@@ -375,6 +375,50 @@ sgs.ai_skill_choice.yinghun = function(self,choices)
 	return self.yinghunchoice
 end
 
+sgs.ai_skill_playerchosen.xiaoxin_yinghun = function(self, targets)
+	local lost = self.player:getLostHp()
+	local friends, enemies = {}, {}
+	for _, target in sgs.list(targets) do
+		if self:isFriend(target) and not target:hasSkill("manjuan") and not self:needKongcheng(target, true) then
+			table.insert(friends, target)
+		elseif self:isEnemy(target) and target:getCardCount(true) > 0 then
+			table.insert(enemies, target)
+		end
+	end
+	self.xiaoxin_yinghunchoice = "d1tx"
+	if lost == 0 then
+		if #friends > 0 then
+			self:sort(friends, "handcard")
+			return friends[1]
+		end
+		self.xiaoxin_yinghunchoice = "dxt1"
+		if #enemies > 0 then return enemies[1] end
+		return nil
+	end
+	if lost > 1 then
+		for _, enemy in ipairs(enemies) do
+			if enemy:getCardCount(true) >= lost and self:doDisCard(enemy, "he", true, lost) then return enemy end
+		end
+		self.xiaoxin_yinghunchoice = "dxt1"
+		if #friends > 0 then
+			self:sort(friends, "handcard")
+			return friends[1]
+		end
+	end
+	if #friends > 0 then
+		self:sort(friends, "handcard")
+		return friends[1]
+	end
+	if #enemies > 0 then return enemies[1] end
+	return nil
+end
+
+sgs.ai_skill_choice.xiaoxin_yinghun = function(self, choices)
+	local selected = self.xiaoxin_yinghunchoice or "d1tx"
+	if table.contains(choices:split("+"), selected) then return selected end
+	return "d1tx"
+end
+
 sgs.ai_playerchosen_intention.yinghun = function(self,from,to)
 	if from:getLostHp()>1 then return end
 	local intention = -80

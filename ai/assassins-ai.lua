@@ -85,6 +85,21 @@ sgs.ai_skill_discard.tianming = function(self,discard_num,min_num,optional,inclu
 	end
 end
 
+sgs.ai_skill_invoke.xiaoxin_tianming = function(self, data)
+	return not hasManjuanEffect(self.player)
+end
+
+sgs.ai_skill_discard.xiaoxin_tianming = function(self, discard_num, min_num, optional, include_equip)
+	local cards = sgs.QList2Table(self.player:getCards("he"))
+	local legal = {}
+	for _, card in ipairs(cards) do
+		if not self.player:isJilei(card) and not card:hasFlag("using") then table.insert(legal, card) end
+	end
+	if #legal == 0 then return {} end
+	self:sortByKeepValue(legal)
+	return { legal[1]:getEffectiveId() }
+end
+
 local mizhao_skill = {}
 mizhao_skill.name = "mizhao"
 table.insert(sgs.ai_skills,mizhao_skill)
@@ -198,6 +213,71 @@ function sgs.ai_skill_pindian.mizhao(minusecard,self,requestor,maxcard)
 	end
 	return maxcard or cards[1]
 end
+
+local function xiaoxinMizhaoRecipients(self)
+	if self.player:isKongcheng() then return {} end
+	local recipients = {}
+	for _, friend in ipairs(self.friends_noself) do
+		if friend:hasSkill("manjuan") or self:needKongcheng(friend, true) then continue end
+		local can_receive = true
+		for _, card in sgs.list(self.player:getHandcards()) do
+			if card:hasFlag("using") or not self.player:canMove(card:getEffectiveId(), friend) then
+				can_receive = false
+				break
+			end
+		end
+		if can_receive then
+			for _, enemy in ipairs(self.enemies) do
+				if enemy:isAlive() and enemy:getHandcardNum() > 0 then
+					table.insert(recipients, friend)
+					break
+				end
+			end
+		end
+	end
+	self:sort(recipients, "defense")
+	return recipients
+end
+
+sgs.ai_fill_skill.xiaoxin_mizhao = function(self, inclusive, request)
+	if #xiaoxinMizhaoRecipients(self) == 0 then return end
+	local card = sgs.ActiveSkillCard()
+	card:setSkillName("xiaoxin_mizhao")
+	return card
+end
+
+sgs.ai_skill_use_func.xiaoxin_mizhao = function(card, use, self, request)
+	local recipients = xiaoxinMizhaoRecipients(self)
+	if #recipients == 0 then return end
+	self.xiaoxin_mizhao_first = recipients[1]
+	use.card = card
+	use.to:append(recipients[1])
+end
+
+sgs.ai_skill_playerchosen.xiaoxin_mizhao = function(self, targets)
+	local first = self.xiaoxin_mizhao_first
+	local candidates = {}
+	for _, target in sgs.list(targets) do
+		if target ~= self.player and target:isAlive() and target:getHandcardNum() > 0
+		and self:isEnemy(target) then table.insert(candidates, target) end
+	end
+	if #candidates == 0 then return nil end
+	self:sort(candidates, "handcard")
+	if first and first:getHandcardNum() > 0 then
+		for _, target in ipairs(candidates) do
+			if target:getHandcardNum() < first:getHandcardNum() then return target end
+		end
+	end
+	return candidates[1]
+end
+
+sgs.ai_skill_cardchosen.xiaoxin_mizhao = function(self, who, flags, method)
+	return self:getCardRandomly(who, flags)
+end
+
+sgs.ai_skill_pindian.xiaoxin_mizhao = sgs.ai_skill_pindian.mizhao
+sgs.ai_use_value.xiaoxin_mizhao = 5
+sgs.ai_use_priority.xiaoxin_mizhao = 1.5
 
 sgs.ai_skill_cardask["@jieyuan-increase"] = function(self,data)
 	local damage = data:toDamage()

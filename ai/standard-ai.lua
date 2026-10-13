@@ -2043,6 +2043,48 @@ sgs.ai_card_intention.QingnangCard = -100
 sgs.dynamic_value.benefit.QingnangCard = true
 sgs.ai_skill_defense.qingnang = -2
 
+sgs.ai_fill_skill.xiaoxin_qingnang = function(self, inclusive, request)
+	local arr1, arr2 = self:getWoundedFriend(false, true)
+	local targets = {}
+	for _, friend in ipairs(arr1) do if not self:needKongcheng(friend, true) then table.insert(targets, friend) end end
+	for _, friend in ipairs(arr2) do if not self:needKongcheng(friend, true) then table.insert(targets, friend) end end
+	if self.player:isWounded() and not self:needKongcheng(self.player, true) then table.insert(targets, self.player) end
+	if #targets == 0 then return end
+	local cards = sgs.QList2Table(self.player:getCards("he"))
+	local equips = {}
+	for _, card in ipairs(cards) do if not self.player:isJilei(card) then table.insert(equips, card) end end
+	if #equips == 0 then return end
+	table.sort(equips, function(a, b)
+		return self:getKeepValue(a) + (a:isKindOf("Peach") and 50 or 0) < self:getKeepValue(b) + (b:isKindOf("Peach") and 50 or 0)
+	end)
+	local card = sgs.ActiveSkillCard()
+	card:setSkillName("xiaoxin_qingnang")
+	card:addSubcard(equips[1]:getEffectiveId())
+	return card
+end
+
+sgs.ai_skill_use_func.xiaoxin_qingnang = function(card, use, self, request)
+	local arr1, arr2 = self:getWoundedFriend(false, true)
+	local target
+	for _, friend in ipairs(arr1) do
+		if not self:needKongcheng(friend, true) and (self:isWeak(friend) or self:getOverflow() > 0 or friend:getHp() < getBestHp(friend)) then target = friend break end
+	end
+	if not target then
+		for _, friend in ipairs(arr2) do
+			if not self:needKongcheng(friend, true) then target = friend break end
+		end
+	end
+	if not target and self.player:isWounded() then target = self.player end
+	if target then use.card = card; use.to:append(target) end
+end
+
+sgs.ai_use_value.xiaoxin_qingnang = 4.2
+sgs.ai_use_priority.xiaoxin_qingnang = 4.2
+sgs.ai_card_intention.xiaoxin_qingnang = -100
+sgs.ai_skill_defense.xiaoxin_qingnang = -2
+
+sgs.ai_skill_invoke.xiaoxin_guanxing = true
+
 local gdlonghun_skill={}
 gdlonghun_skill.name="gdlonghun"
 table.insert(sgs.ai_skills,gdlonghun_skill)
@@ -4822,6 +4864,18 @@ jijiu.getTurnUseCard = function(self)
 		end
 	end
 end
+
+sgs.ai_cardsview.xiaoxin_jijiu = function(self, class_name, player, request)
+	if class_name ~= "Peach" or player:hasFlag("CurrentPlayer") then return end
+	for _, card in sgs.list(self:addHandPile("he")) do
+		if card:isRed() then
+			return ("peach:xiaoxin_jijiu[%s:%s]=%d"):format(card:getSuitString(), card:getNumberString(), card:getEffectiveId())
+		end
+	end
+end
+
+sgs.ai_cardneed.xiaoxin_jijiu = sgs.ai_cardneed.jijiu
+sgs.xiaoxin_jijiu_suit_value = sgs.jijiu_suit_value
 
 sgs.ai_skill_cardask["@wushuang-slash-1"] = function(self,data,pattern,target)
 	if sgs.ai_skill_cardask.nullfilter(self,data,pattern,target) then return "." end

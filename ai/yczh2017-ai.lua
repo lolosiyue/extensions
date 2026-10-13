@@ -182,6 +182,20 @@ sgs.ai_skill_choice.fumian = function(self,choices,data)
 	return "draw"
 end
 
+sgs.ai_skill_invoke.xiaoxin_fumian = true
+sgs.ai_skill_choice.xiaoxin_fumian = sgs.ai_skill_choice.fumian
+sgs.ai_skill_playerschosen.xiaoxin_fumian = function(self, targets, max_num)
+	local candidates = {}
+	for _, target in sgs.list(targets) do
+		if self:isFriend(target) then table.insert(candidates, target) end
+	end
+	if #candidates == 0 then return {} end
+	self:sort(candidates, "defense")
+	local chosen = {}
+	for i = 1, math.min(max_num or 0, #candidates) do table.insert(chosen, candidates[i]) end
+	return chosen
+end
+
 sgs.ai_skill_use["@@fumian"] = function(self,prompt,method)
 	local length = string.find(prompt,":")
 	local card_name = string.sub(prompt,length+1 ,string.len(prompt))
@@ -263,6 +277,20 @@ sgs.ai_skill_playerchosen.daiyan = function(self,targets)
 	end
 	return nil
 end
+
+sgs.ai_skill_playerchosen.xiaoxin_daiyan = function(self, targets)
+	local friends = {}
+	for _, target in sgs.list(targets) do
+		if self:isFriend(target) and not hasManjuanEffect(target) and not self:needKongcheng(target, true) then
+			table.insert(friends, target)
+		end
+	end
+	if #friends == 0 then return nil end
+	self:sort(friends, "defense")
+	return friends[1]
+end
+
+sgs.ai_playerchosen_intention.xiaoxin_daiyan = -10
 
 sgs.ai_playerchosen_intention.daiyan = function(self,from,to)
 	if self:needKongcheng(to,true) then return end
@@ -1070,6 +1098,64 @@ sgs.ai_skill_invoke.huimin = function(self,data)
 		end
 	end
 	return friend_num>0 and friend_num>=enemy_num
+end
+
+sgs.ai_skill_invoke.xiaoxin_huimin = sgs.ai_skill_invoke.huimin
+
+sgs.ai_skill_use["@@xiaoxin_huimin!"] = function(self, prompt, method, pattern, request)
+	if not request or not request.isValid or not request:isValid() then return "." end
+	local instance = request:getActivationInstanceId()
+	if not instance or instance < 0 then return "." end
+	local skill = "xiaoxin_huimin"
+	local count = self.player:getSkillInstanceStateValue(skill, instance, "count"):toInt()
+	if count <= 0 then return "." end
+	local names = self.player:getSkillInstanceStateValue(skill, instance, "recipients"):toStringList()
+	local targets = {}
+	for _, name in sgs.list(names) do
+		local target = self.room:findPlayerByObjectName(name)
+		if target and target:isAlive() then table.insert(targets, target) end
+	end
+	if #targets == 0 then return "." end
+	local hand = sgs.QList2Table(self.player:getHandcards())
+	if #hand <= count then return "." end
+	self:sortByKeepValue(hand)
+	local ids = {}
+	for i = 1, math.min(count, #hand) do table.insert(ids, hand[i]:getEffectiveId()) end
+	local start = targets[1]
+	local best = huiminValue(self, start, targets)
+	for _, target in ipairs(targets) do
+		local value = huiminValue(self, target, targets)
+		if value > best then start, best = target, value end
+	end
+	return { accepted = true, cards = ids, targets = { start:objectName() }, user_string = "" }
+end
+
+sgs.ai_skill_askforag.xiaoxin_huimin = function(self, card_ids)
+	local cards = {}
+	for _, id in sgs.list(card_ids) do table.insert(cards, sgs.Sanguosha:getCard(id)) end
+	if #cards == 0 then return -1 end
+	self:sortByUseValue(cards, false)
+	return cards[1]:getEffectiveId()
+end
+
+sgs.ai_skill_invoke.xiaoxin_shouxi = sgs.ai_skill_invoke.shouxi
+
+sgs.ai_skill_askforag.xiaoxin_shouxi = function(self, card_ids)
+	local attacker = self.player:getTag("Shouxi_ForAI"):toCardUse().from
+	self.player:removeTag("Shouxi_ForAI")
+	local cards = {}
+	for _, id in sgs.list(card_ids) do
+		local card = sgs.Sanguosha:getEngineCard(id)
+		if card then table.insert(cards, card) end
+	end
+	if #cards == 0 then return -1 end
+	table.sort(cards, function(a, b)
+		local ac, bc = attacker and getKnownCard(attacker, self.player, a:objectName(), true) or 0,
+			attacker and getKnownCard(attacker, self.player, b:objectName(), true) or 0
+		if ac ~= bc then return ac < bc end
+		return self:getUseValue(a) > self:getUseValue(b)
+	end)
+	return cards[1]:getEffectiveId()
 end
 
 function huiminValue(self,p,tos)
