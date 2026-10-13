@@ -56,6 +56,17 @@ end
 sgs.ai_use_value.yisiguCard = 3.4
 sgs.ai_use_priority.yisiguCard = 0.2
 
+sgs.ai_skill_invoke.yikuimu = true
+sgs.ai_skill_playerchosen.yikuimu = function(self, players)
+	if self:isWeak() then return nil end
+	local dest = sgs.QList2Table(players)
+	self:sort(dest, "handcard")
+	for i = #dest, 1, -1 do
+		if self:isEnemy(dest[i]) then return dest[i] end
+	end
+	return nil
+end
+
 sgs.ai_fill_skill.yimiehai = function(self)
     local cards = self.player:getCards("he")
     cards = sgs.QList2Table(cards) -- 将列表转换为表

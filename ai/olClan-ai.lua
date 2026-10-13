@@ -2019,3 +2019,8 @@ end
 
 
 
+
+-- SOURCE-2 族杨众
+sgs.ai_skill_invoke.zujuetu = true
+sgs.ai_skill_invoke.zukudu = true
+sgs.ai_skill_invoke.zuquhuo = true

@@ -943,43 +943,29 @@ end
 
 --�Ƴ���
 --����
-sgs.ai_skill_invoke.y_caipei = function(self, data)
-	for _, fr in ipairs(self.friends) do
-		if not fr:isKongcheng() then
-			return self:getCardsNum("Peach") < self.player:getHandcardNum()
-		end
-	end
+sgs.ai_skill_invoke.nsw_longyue = function(self, data)
+    local target = data:toPlayer()
+    return target and self:isFriend(target)
+end
+sgs.ai_skill_invoke.nsw_zhenyin = function(self, data)
+    local current = self.room:getCurrent()
+    if not current or not self:isFriend(current) or current:isKongcheng() then return false end
+    local judge = data:toJudge()
+    if not self:needRetrial(judge) then return false end
+    if current:objectName() == self.player:objectName() then
+        return self:getRetrialCardId(sgs.QList2Table(self.player:getHandcards()), judge) ~= -1
+    end
+    return true
+end
+sgs.ai_skill_cardask["@nsw_zhenyin-card"] = function(self, data)
+    local judge = data:toJudge()
+    if self:needRetrial(judge) then
+        local id = self:getRetrialCardId(sgs.QList2Table(self.player:getHandcards()), judge)
+        if id ~= -1 then return "$" .. id end
+    end
+    return "."
 end
 
-sgs.ai_skill_playerchosen.y_caipei = function(self, targets)
-	local cur = self.room:getCurrent()
-	if self:isFriend(cur) and self:canDraw(cur, self.player) then
-		return cur
-	else
-		local to = self:findPlayerToDraw(true,1)
-		if to then
-			return to
-		end
-		return self.player
-	end
-end
-sgs.ai_playerchosen_intention.y_caipei = -80
-
-function sgs.ai_cardneed.y_caipei(to, card)
-	return card:getTypeId() == sgs.Card_TypeTrick
-end
-
-sgs.notActive_cardneed_skill = sgs.notActive_cardneed_skill .. "|y_caipei"
-
---����
-sgs.ai_skill_invoke.y_kongzhen = function(self, data)
-	local player = data:toPlayer()
-	return self:isFriend(player)
-end
-
-
---½��
---����
 sgs.ai_skill_invoke.y_huaiju = function(self, data)
 	local move = data:toMoveOneTime()
 	if move.from:getSeat() ~= self.player:getSeat() then

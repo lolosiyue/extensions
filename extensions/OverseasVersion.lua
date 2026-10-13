@@ -64,16 +64,12 @@ ov_lingbaoCard = sgs.CreateSkillCard {
 	handling_method = sgs.Card_MethodDiscard,
 	filter = function(self, targets, to_select, from)
 		local r, b = 0, 0
-		for c, id in sgs.list(self:getSubcards()) do
-			c = sgs.Sanguosha:getCard(id)
-			if c:isRed() then
-				r = r + 1
-			end
-			if c:isBlack() then
-				b = b + 1
-			end
+		for _, id in sgs.list(self:getSubcards()) do
+			local c = sgs.Sanguosha:getCard(id)
+			if c:isRed() then r = r + 1 end
+			if c:isBlack() then b = b + 1 end
 		end
-		if r == b then
+		if r == 1 and b == 1 then
 			return #targets < 2
 		else
 			return #targets < 1
@@ -81,121 +77,88 @@ ov_lingbaoCard = sgs.CreateSkillCard {
 	end,
 	feasible = function(self, targets, player)
 		local r, b = 0, 0
-		for c, id in sgs.list(self:getSubcards()) do
-			c = sgs.Sanguosha:getCard(id)
-			if c:isRed() then
-				r = r + 1
-			end
-			if c:isBlack() then
-				b = b + 1
-			end
+		for _, id in sgs.list(self:getSubcards()) do
+			local c = sgs.Sanguosha:getCard(id)
+			if c:isRed() then r = r + 1 end
+			if c:isBlack() then b = b + 1 end
 		end
-		if r == b then
-			return #targets > 1
+		if r == 1 and b == 1 then
+			return #targets == 2
 		else
-			return #targets > 0
+			return #targets == 1
 		end
 	end,
 	about_to_use = function(self, room, use)
 		self:cardOnUse(room, use)
-		local r, b = 0, 0
-		for c, id in sgs.list(self:getSubcards()) do
-			c = sgs.Sanguosha:getCard(id)
-			if c:isRed() then
-				r = r + 1
-			end
-			if c:isBlack() then
-				b = b + 1
+		use.from:drawCards(2, "ov_lingbao")
+		-- track suits discarded this turn for 失效
+		for _, id in sgs.list(self:getSubcards()) do
+			local suit = sgs.Sanguosha:getCard(id):getSuitString()
+			room:addPlayerMark(use.from, "ov_lingbao_suit_" .. suit .. "-Clear")
+			if use.from:getMark("ov_lingbao_suit_" .. suit .. "-Clear") >= 2 then
+				room:setPlayerMark(use.from, "&ov_lingbao_ban-Clear", 1)
 			end
 		end
-		if use.to:length() > 1 then
+		local r, b = 0, 0
+		for _, id in sgs.list(self:getSubcards()) do
+			local c = sgs.Sanguosha:getCard(id)
+			if c:isRed() then r = r + 1 end
+			if c:isBlack() then b = b + 1 end
+		end
+		if r == 1 and b == 1 then
 			use.to:at(0):drawCards(1, "ov_lingbao")
 			room:askForDiscard(use.to:at(1), "ov_lingbao", 1, 1, false, true)
 		elseif r > 1 then
-			room:recover(use.to:at(0), sgs.RecoverStruct(use.from, self))
+			-- 均为红色：从牌堆获得两张基本牌
+			local basics = sgs.IntList()
+			for _, id in sgs.qlist(room:getDrawPile()) do
+				if sgs.Sanguosha:getCard(id):isKindOf("BasicCard") then
+					basics:append(id)
+					if basics:length() >= 2 then break end
+				end
+			end
+			if basics:length() > 0 then
+				local dummy = sgs.DummyCard(basics)
+				room:obtainCard(use.to:at(0), dummy, true)
+			end
 		else
-			r = "hej"
-			b = sgs.IntList()
-			for i = 1, 2 do
-				if use.to:at(0):getCards("hej"):length() <= b:length() then
-					break
-				end
-				use.from:setTag("askForCardChosen_ForAI", ToData(b))
-				local id = room:askForCardChosen(use.from, use.to:at(0), r, "ov_lingbao", false, sgs.Card_MethodDiscard, b, b:length() > 0)
-				use.from:removeTag("askForCardChosen_ForAI")
-				if id < 0 then
-					break
-				end
-				local cp = room:getCardPlace(id)
-				if cp == sgs.Player_PlaceHand then
-					r = "ej"
-				end
+			-- 均为黑色：弃置一名角色任意区域一张牌
+			local id = room:askForCardChosen(use.from, use.to:at(0), "hej", "ov_lingbao", false, sgs.Card_MethodDiscard)
+			if id >= 0 then
 				room:throwCard(id, use.to:at(0), use.from)
-				for ic, c in sgs.list(use.to:at(0):getCards("hej")) do
-					ic = c:getEffectiveId()
-					if room:getCardPlace(ic) ~= cp then
-						continue
-					end
-					b:append(ic)
-				end
 			end
 		end
 	end,
 }
 ov_lingbao = sgs.CreateViewAsSkillV2 {
 	name = "ov_lingbao",
-	history_key = "#ov_lingbaoCard",
 	n = 2,
 	expand_pile = "ov_dan",
 	can_activate = function(self, request)
 		local player = request:getInitiator()
-		local reason = request:getReason()
-		local pattern = request:getPattern()
-		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-
-					return player:getPile("ov_dan"):length() > 1 and player:usedTimes("#ov_lingbaoCard") < 1
-		end
-		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
-			return false
-		end
-		return false
+		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
+		if player:getMark("&ov_lingbao_ban-Clear") > 0 then return false end
+		return player:getPile("ov_dan"):length() > 1
 	end,
 	can_select_card = function(self, request, candidate)
 		local player = request:getInitiator()
-		local reason = request:getReason()
-		local pattern = request:getPattern()
-		local selected = {}
+		if not player:getPile("ov_dan"):contains(candidate:getEffectiveId()) then return false end
 		for _, __id in sgs.qlist(request:getSelectedCardIds()) do
-			selected[#selected + 1] = sgs.Sanguosha:getCard(__id)
+			if sgs.Sanguosha:getCard(__id):getSuit() == candidate:getSuit() then
+				return false
+			end
 		end
-		local to_select = candidate
-		if #selected >= 2 then return false end
-
-				for _, c in sgs.list(selected) do
-					if c:getSuit() == to_select:getSuit() then
-						return
-					end
-				end
-				return player:getPile("ov_dan"):contains(to_select:getEffectiveId())
+		return request:getSelectedCardIds():length() < 2
+	end,
+	card_selection_feasible = function(self, request)
+		return request:getSelectedCardIds():length() == 2
 	end,
 	create_card = function(self, request)
-		local player = request:getInitiator()
-		local reason = request:getReason()
-		local pattern = request:getPattern()
-		local cards = {}
-		for _, __id in sgs.qlist(request:getSelectedCardIds()) do
-			cards[#cards + 1] = sgs.Sanguosha:getCard(__id)
+		local c = ov_lingbaoCard:clone()
+		for _, id in sgs.qlist(request:getSelectedCardIds()) do
+			c:addSubcard(id)
 		end
-
-				if #cards < 2 then
-					return
-				end
-				local c = ov_lingbaoCard:clone()
-				c:setUserString(sgs.Sanguosha:getCurrentCardUsePattern())
-				for _, ic in sgs.list(cards) do
-					c:addSubcard(ic)
-				end
-				return c
+		return c
 	end,
 }
 ov_gexuan:addSkill(ov_lingbao)
@@ -10036,6 +9999,33 @@ ov_xianfengbf1 = sgs.CreateTriggerSkillV2 {
 ov_yangang:addSkill(ov_xianfengbf1)
 extensionSp:insertRelatedSkills("ov_xianfeng", "#ov_xianfengbf1")
 
+-- 激昂进度：因弃置进入弃牌堆的张数 / 本局角色数。标记名带分数，客户端按钮显示为「激昂n/X」。
+local function ovLijianCap(room)
+	local players = room:getPlayers()
+	local n = players and players:length() or 0
+	if n < 1 then n = 1 end
+	return n
+end
+
+local function ovLijianClearProgress(room, player)
+	local names = {}
+	for _, m in ipairs(player:getMarkNames()) do
+		if m:startsWith("&ov_lijian_jiang") then
+			names[#names + 1] = m
+		end
+	end
+	for _, m in ipairs(names) do
+		room:setPlayerMark(player, m, 0)
+	end
+end
+
+local function ovLijianShowProgress(room, player, count)
+	ovLijianClearProgress(room, player)
+	if count < 0 then return end
+	local cap = ovLijianCap(room)
+	room:setPlayerMark(player, "&ov_lijian_jiang+" .. tostring(count) .. "/" .. tostring(cap), 1)
+end
+
 ov_zhangzhao = sgs.General(extensionSp, "ov_zhangzhao", "wu")
 ov_lijianCard = sgs.CreateSkillCard {
 	name = "ov_lijianCard",
@@ -10154,6 +10144,8 @@ ov_lijian = sgs.CreateTriggerSkillV2 {
 				if can then
 					owner:peiyin(self)
 					room:addPlayerMark(owner, "ov_lijianUse")
+					room:setPlayerMark(owner, "ov_lijian_jiang_n", 0)
+					ovLijianShowProgress(room, owner, 0)
 					room:notifyMoveToPile(owner, ids, "ov_lijian", sgs.Player_DiscardPile, true)
 					can = room:askForUseCard(owner, "@@ov_lijian", "ov_lijian0:" .. player:objectName())
 					room:notifyMoveToPile(owner, ids, "ov_lijian", sgs.Player_DiscardPile, false)
@@ -10176,11 +10168,18 @@ ov_lijian = sgs.CreateTriggerSkillV2 {
 			room:removeTag("ov_lijian")
 		elseif event == sgs.CardsMoveOneTime then
 			local move = data:toMoveOneTime()
-			if move.to_place == sgs.Player_DiscardPile and player:getMark("ov_lijianUse") > 0 and player:hasSkill(self) then
-				room:addPlayerMark(player, "&ov_lijian+-+angyang", move.card_ids:length())
-				if player:getMark("&ov_lijian+-+angyang") >= 8 then
+			if move.to_place == sgs.Player_DiscardPile
+				and bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD
+				and player:getMark("ov_lijianUse") > 0 and player:hasSkill(self) then
+				local n = player:getMark("ov_lijian_jiang_n") + move.card_ids:length()
+				local cap = ovLijianCap(room)
+				if n >= cap then
 					room:setPlayerMark(player, "ov_lijianUse", 0)
-					room:setPlayerMark(player, "&ov_lijian+-+angyang", 0)
+					room:setPlayerMark(player, "ov_lijian_jiang_n", 0)
+					ovLijianShowProgress(room, player, -1)
+				else
+					room:setPlayerMark(player, "ov_lijian_jiang_n", n)
+					ovLijianShowProgress(room, player, n)
 				end
 			end
 			if bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) == sgs.CardMoveReason_S_REASON_DISCARD and player:getPhase() == sgs.Player_Discard then
@@ -17948,6 +17947,195 @@ ov_jianming = sgs.CreateTriggerSkillV2 {
 		return false	end,}
 ov_wangyue:addSkill(ov_jianming)
 
+-- SOURCE-5 张媱[海外]：夕颜只在「怨」被放上后检查花色，不监听全部移牌。
+local function ovXiyanSuitCount(player)
+	local pile = player:getPile("ov_yuan")
+	if not pile or pile:isEmpty() then return 0 end
+	local suits = {}
+	for _, id in sgs.qlist(pile) do
+		local suit = sgs.Sanguosha:getCard(id):getSuitString()
+		if suit == "spade" or suit == "heart" or suit == "club" or suit == "diamond" then
+			suits[suit] = true
+		end
+	end
+	local n = 0
+	for _ in pairs(suits) do n = n + 1 end
+	return n
+end
+
+local function ovXiyanTry(room, owner)
+	if not (owner and owner:isAlive() and owner:hasSkill("ov_xiyan")) then return false end
+	if ovXiyanSuitCount(owner) < 4 then return false end
+	if not owner:askForSkillInvoke("ov_xiyan") then return false end
+	room:notifySkillInvoked(owner, "ov_xiyan")
+	room:broadcastSkillInvoke("ov_xiyan")
+	local pile = owner:getPile("ov_yuan")
+	if pile:isEmpty() then return false end
+	local dummy = sgs.DummyCard(pile)
+	room:obtainCard(owner, dummy, true)
+	for _, p in sgs.list(room:getAllPlayers()) do
+		if p:getMark("&ov_yuanyu+#" .. owner:objectName()) > 0 then
+			room:setPlayerMark(p, "&ov_yuanyu+#" .. owner:objectName(), 0)
+		end
+	end
+	local cur = room:getCurrent()
+	if cur and cur:objectName() == owner:objectName() then
+		room:setPlayerMark(owner, "&ov_xiyan_reset-Clear", 1)
+		room:setPlayerMark(owner, "&ov_xiyan_max-Clear", 4)
+		room:setPlayerMark(owner, "&ov_xiyan_free-Clear", 1)
+	elseif cur and cur:isAlive() and owner:askForSkillInvoke("ov_xiyan", sgs.QVariant("debuff")) then
+		room:setPlayerMark(cur, "&ov_xiyan_debuff-Clear", 4)
+		room:setPlayerCardLimitation(cur, "use", "BasicCard", true)
+		room:setPlayerMark(cur, "ov_xiyan_limit-Clear", 1)
+	end
+	return true
+end
+
+-- SOURCE-2 张媱[海外]
+ov_zhangyao = sgs.General(extensionXia, "ov_zhangyao", "wu", 3, false)
+ov_yuanyuCard = sgs.CreateSkillCard {
+	name = "ov_yuanyuCard",
+	target_fixed = false,
+	will_throw = false,
+	filter = function(self, targets, to_select, Self)
+		return #targets < 1 and to_select:objectName() ~= Self:objectName()
+	end,
+	feasible = function(self, targets)
+		return #targets == 1
+	end,
+	on_use = function(self, room, source, targets)
+		source:drawCards(2, "ov_yuanyu")
+		room:addPlayerMark(source, "ov_yuanyu_used-PlayClear")
+		local target = targets[1]
+		room:setPlayerMark(target, "&ov_yuanyu+#" .. source:objectName(), 1)
+		local put = room:askForExchange(source, "ov_yuanyu", 1, 1, false, "ov_yuanyu_put")
+		if put then
+			source:addToPile("ov_yuan", put, true)
+			ovXiyanTry(room, source)
+		end
+	end,
+}
+ov_yuanyuVS = sgs.CreateViewAsSkillV2 {
+	name = "ov_yuanyu",
+	n = 0,
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player then return false end
+		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
+		if player:getMark("ov_yuanyu_used-PlayClear") > 0 and player:getMark("&ov_xiyan_reset-Clear") < 1 then return false end
+		return true
+	end,
+	create_card = function(skill, request)
+		return ov_yuanyuCard:clone()
+	end,
+}
+ov_yuanyu = sgs.CreateTriggerSkillV2 {
+	name = "ov_yuanyu",
+	view_as_skill = ov_yuanyuVS,
+	events = { sgs.EventPhaseStart, sgs.Damage },
+	can_trigger = function(skill, event, room, player, data)
+		if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Discard then
+			local owners = room:findPlayersBySkillName(skill:objectName())
+			for _, owner in sgs.list(owners) do
+				if player:objectName() == owner:objectName() then
+					for _, p in sgs.list(room:getOtherPlayers(owner)) do
+						if p:getMark("&ov_yuanyu+#" .. owner:objectName()) > 0 and (not p:isNude()) then
+							return skill:objectName(), owner
+						end
+					end
+				elseif player:getMark("&ov_yuanyu+#" .. owner:objectName()) > 0 and (not player:isNude()) then
+					return skill:objectName(), owner
+				end
+			end
+		elseif event == sgs.Damage then
+			local damage = data:toDamage()
+			if not (damage.from and damage.from:isAlive()) then return false end
+			local owners = room:findPlayersBySkillName(skill:objectName())
+			for _, owner in sgs.list(owners) do
+				if damage.from:getMark("&ov_yuanyu+#" .. owner:objectName()) > 0 and (not damage.from:isNude()) then
+					return skill:objectName(), owner
+				end
+			end
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local owner = ctx.invoker or player
+		local function put_yuan(from)
+			if not from or from:isDead() or from:isNude() or owner:isDead() then return false end
+			local c = room:askForExchange(from, "ov_yuanyu", 1, 1, true, "ov_yuanyu_force:" .. owner:objectName())
+			if not c then return false end
+			owner:addToPile("ov_yuan", c, true)
+			return ovXiyanTry(room, owner)
+		end
+		if event == sgs.EventPhaseStart then
+			if player:objectName() == owner:objectName() then
+				for _, p in sgs.list(room:getOtherPlayers(owner)) do
+					if p:getMark("&ov_yuanyu+#" .. owner:objectName()) > 0 then
+						if put_yuan(p) then break end
+					end
+				end
+			else
+				put_yuan(player)
+			end
+		else
+			local damage = ctx.original_data:toDamage()
+			for i = 1, damage.damage do
+				if put_yuan(damage.from) then break end
+			end
+		end
+		return false
+	end,
+}
+ov_zhangyao:addSkill(ov_yuanyu)
+
+ov_xiyan = sgs.CreateTriggerSkillV2 {
+	name = "ov_xiyan",
+	events = {},
+	can_trigger = function()
+		return false
+	end,
+}
+ov_xiyanMax = sgs.CreateMaxCardsSkill {
+	name = "#ov_xiyan-max",
+	extra_func = function(self, target)
+		local extra = target:getMark("&ov_xiyan_max-Clear") or 0
+		local debuff = target:getMark("&ov_xiyan_debuff-Clear") or 0
+		return extra - debuff
+	end,
+}
+ov_xiyanMod = sgs.CreateTargetModSkill {
+	name = "#ov_xiyan-mod",
+	residue_func = function(self, from, card)
+		if from and from:getMark("&ov_xiyan_free-Clear") > 0 then return 1000 end
+		return 0
+	end,
+}
+ov_xiyanClear = sgs.CreateTriggerSkillV2 {
+	name = "#ov_xiyan-clear",
+	events = { sgs.EventPhaseChanging },
+	can_trigger = function(skill, event, room, player, data)
+		local change = data:toPhaseChange()
+		if change.to == sgs.Player_NotActive and player:getMark("ov_xiyan_limit-Clear") > 0 then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		room:removePlayerCardLimitation(player, "use", "BasicCard")
+		room:setPlayerMark(player, "ov_xiyan_limit-Clear", 0)
+		return false
+	end,
+}
+ov_zhangyao:addSkill(ov_xiyan)
+ov_zhangyao:addSkill(ov_xiyanMax)
+ov_zhangyao:addSkill(ov_xiyanMod)
+ov_zhangyao:addSkill(ov_xiyanClear)
+extensionXia:insertRelatedSkills("ov_xiyan", "#ov_xiyan-max")
+extensionXia:insertRelatedSkills("ov_xiyan", "#ov_xiyan-mod")
+extensionXia:insertRelatedSkills("ov_xiyan", "#ov_xiyan-clear")
+
+
 ov_dianwei = sgs.General(extensionXia, "ov_dianwei", "qun")
 ov_liexiCard = sgs.CreateSkillCard {
 	name = "ov_liexiCard",
@@ -18541,138 +18729,169 @@ ov_duoren = sgs.CreateTriggerSkillV2 {
 ov_xiahouzie:addSkill(ov_duoren)
 
 ov_zhaoe = sgs.General(extensionXia, "ov_zhaoe", "qun", 3, false)
+
+-- SOURCE-2 赵娥重置：言誓 / 刃仇
+ov_yanshiCard = sgs.CreateSkillCard {
+	name = "ov_yanshiCard",
+	will_throw = false,
+	filter = function(self, targets, to_select, Self)
+		return #targets < 1 and to_select:objectName() ~= Self:objectName()
+			and to_select:getMark("&ov_shi+#" .. Self:objectName()) > 0
+	end,
+	feasible = function(self, targets, Self)
+		return #targets == 1
+	end,
+	on_use = function(self, room, source, targets)
+		local target = targets[1]
+		room:throwCard(self, "ov_yanshi", source)
+		local slash = sgs.Sanguosha:cloneCard("slash")
+		slash:setSkillName("ov_yanshi")
+		slash:deleteLater()
+		local use = sgs.CardUseStruct(slash, source, target)
+		room:useCard(use, false)
+		if target:getMark("&ov_shi+#" .. source:objectName()) > 0 then
+			room:removePlayerMark(target, "&ov_shi+#" .. source:objectName())
+		end
+	end,
+}
+ov_yanshiVS = sgs.CreateViewAsSkillV2 {
+	name = "ov_yanshi",
+	n = 1,
+	can_activate = function(skill, request)
+		local player = request:getInitiator()
+		if not player then return false end
+		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
+		if player:isKongcheng() then return false end
+		for _, p in sgs.list(player:getAliveSiblings()) do
+			if p:getMark("&ov_shi+#" .. player:objectName()) > 0 then return true end
+		end
+		return false
+	end,
+	can_select_card = function(skill, request, candidate)
+		return not candidate:isEquipped()
+	end,
+	card_selection_feasible = function(skill, request)
+		return request:getSelectedCardIds():length() == 1
+	end,
+	create_card = function(skill, request)
+		local c = ov_yanshiCard:clone()
+		for _, id in sgs.qlist(request:getSelectedCardIds()) do
+			c:addSubcard(id)
+		end
+		return c
+	end,
+}
 ov_yanshi = sgs.CreateTriggerSkillV2 {
 	name = "ov_yanshi",
-	events = { sgs.GameStart, sgs.ConfirmDamage, sgs.Damage },
-	can_trigger = function(self, event, room, player, data)
-		local function __triggerable(_, target, room, event, _, data)
-			return target and target:isAlive() and target:hasSkill(self:objectName())
-		end
-		if not __triggerable(self, player, room, event, player, data) then return false end
-		local owner = player
-		if not (owner and owner:hasSkill(self:objectName())) then
-			local owners = room:findPlayersBySkillName(self:objectName())
-			if owners:isEmpty() then return false end
-			owner = owners:first()
-		end
-		return self:objectName(), owner
-	end,
-	on_effect = function(self, event, room, player, ctx)
-		local player = ctx.invoker or player
-		local data = ctx.original_data
-		local room = player:getRoom()
-
+	view_as_skill = ov_yanshiVS,
+	events = { sgs.GameStart, sgs.Damaged },
+	can_trigger = function(skill, event, room, player, data)
 		if event == sgs.GameStart then
-			Skill_msg(self, player, 1)
-			local to = PlayerChosen(self, player, room:getOtherPlayers(player), "ov_yanshi0:")
-			room:setPlayerMark(to, "&ov_yanshi+#" .. player:objectName(), 1)
-		elseif event == sgs.ConfirmDamage then
-			local damage = data:toDamage()
-			if damage.to:getMark("&ov_zeshi+#" .. player:objectName()) > 0 then
-				Skill_msg(self, player, math.random(2, 3))
-				player:damageRevises(data, 1)
-			end
-		elseif event == sgs.Damage then
-			local damage = data:toDamage()
-			if damage.to:getMark("&ov_zeshi+#" .. player:objectName()) > 0 then
-				Skill_msg(self, player, math.random(2, 3))
-				player:drawCardsList(damage.damage, "ov_yanshi")
-				Log_message("#ov_zeshi2", damage.to, nil, nil, "ov_zeshi")
-				room:setPlayerMark(damage.to, "&ov_zeshi+#" .. player:objectName(), 0)
+			if player and player:hasSkill(skill) then return skill:objectName() end
+			return false
+		end
+		-- Damaged: first damage per turn to 言誓 owner or chosen
+		if not (player and player:isAlive()) then return false end
+		if player:getMark("ov_yanshi_used-Clear") > 0 then return false end
+		local owners = room:findPlayersBySkillName(skill:objectName())
+		for _, owner in sgs.list(owners) do
+			if player:objectName() == owner:objectName()
+				or player:getMark("&ov_yanshi+#" .. owner:objectName()) > 0 then
+				return skill:objectName(), owner
 			end
 		end
-		return false	end,}
-ov_yanshibf = sgs.CreateTriggerSkillV2 {
-	name = "#ov_yanshibf",
-	events = { sgs.Damaged },
-	can_trigger = function(self, event, room, player, data)
-		local function __triggerable(_, target, room, event, _, data)
-		return target and target:isAlive() and target:getRoom():findPlayerBySkillName("ov_yanshi")
-			end
-		if not __triggerable(self, player, room, event, player, data) then return false end
-		local owner = player
-		if not (owner and owner:hasSkill(self:objectName())) then
-			local owners = room:findPlayersBySkillName(self:objectName())
-			if owners:isEmpty() then return false end
-			owner = owners:first()
-		end
-		return self:objectName(), owner
+		return false
 	end,
-	on_effect = function(self, event, room, player, ctx)
-		local player = ctx.invoker or player
-		local data = ctx.original_data
-		local room = player:getRoom()
-
-		if event == sgs.Damaged then
-			local damage = data:toDamage()
-			if damage.from and damage.from ~= damage.to then
-				for _, owner in sgs.list(room:findPlayersBySkillName("ov_yanshi")) do
-					if
-						(owner == damage.to or damage.to:getMark("&ov_yanshi+#" .. owner:objectName()) > 0)
-						and damage.from:getMark("&ov_yanshi+#" .. owner:objectName()) + damage.from:getMark("&ov_zeshi+#" .. owner:objectName()) < 1
-						and damage.from ~= owner
-					then
-						Skill_msg("ov_yanshi", owner)
-						Log_message("#ov_zeshi1", damage.from, nil, nil, "ov_zeshi")
-						room:setPlayerMark(damage.from, "&ov_zeshi+#" .. owner:objectName(), 1)
-					end
-				end
+	on_cost = function(skill, event, room, player, ctx)
+		if event == sgs.GameStart then return true end
+		local owner = ctx.invoker or player
+		return owner:askForSkillInvoke(skill, ctx.original_data)
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local owner = ctx.invoker or player
+		if event == sgs.GameStart then
+			room:notifySkillInvoked(owner, skill:objectName())
+			local to = room:askForPlayerChosen(owner, room:getOtherPlayers(owner), skill:objectName(), "ov_yanshi0", false, true)
+			if to then
+				room:setPlayerMark(to, "&ov_yanshi+#" .. owner:objectName(), 1)
+			end
+			return false
+		end
+		local damage = ctx.original_data:toDamage()
+		room:setPlayerMark(player, "ov_yanshi_used-Clear", 1)
+		room:notifySkillInvoked(owner, skill:objectName())
+		room:broadcastSkillInvoke(skill:objectName())
+		owner:drawCards(3, skill:objectName())
+		if damage.from and damage.from:isAlive() then
+			local cur = damage.from:getMark("&ov_shi+#" .. owner:objectName())
+			if cur < 3 then
+				room:addPlayerMark(damage.from, "&ov_shi+#" .. owner:objectName())
 			end
 		end
-		return false	end,}
+		return false
+	end,
+}
 ov_zhaoe:addSkill(ov_yanshi)
-ov_zhaoe:addSkill(ov_yanshibf)
-extensionXia:insertRelatedSkills("ov_yanshi", "#ov_yanshibf")
+
 ov_renchou = sgs.CreateTriggerSkillV2 {
 	name = "ov_renchou",
-	events = { sgs.Death },
+	events = { sgs.Death, sgs.CardUsed },
 	frequency = sgs.Skill_Compulsory,
-	can_trigger = function(self, event, room, player, data)
-		local function __triggerable(_, target, room, event, _, data)
-		return target and target:isDead()
-			end
-		if not __triggerable(self, player, room, event, player, data) then return false end
-		local owner = player
-		if not (owner and owner:hasSkill(self:objectName())) then
-			local owners = room:findPlayersBySkillName(self:objectName())
-			if owners:isEmpty() then return false end
-			owner = owners:first()
-		end
-		return self:objectName(), owner
-	end,
-	on_effect = function(self, event, room, player, ctx)
-		local player = ctx.invoker or player
-		local data = ctx.original_data
-		local room = player:getRoom()
-
+	can_trigger = function(skill, event, room, player, data)
 		if event == sgs.Death then
 			local death = data:toDeath()
-			local from = death.damage
-			from = from and from.from
-			from = from or death.hplost and death.hplost.from
-			if not from then
-				return
+			if not death.who then return false end
+			-- 赵娥死亡：令言誓对象获得言誓
+			if death.who:hasSkill("ov_yanshi", true) or death.who:hasSkill(skill) then
+				return skill:objectName(), death.who
 			end
-			for _, owner in sgs.list(room:getAllPlayers(true)) do
-				if owner:hasSkill(self) then
-					if owner == death.who then
-						for _, p in sgs.list(room:getAllPlayers()) do
-							if p:getMark("&ov_yanshi+#" .. owner:objectName()) > 0 then
-								room:sendCompulsoryTriggerLog(owner, "ov_renchou", true, true)
-								room:doSuperLightbox(owner:getGeneralName(), "ov_renchou")
-								room:damage(sgs.DamageStruct("ov_renchou", p, from, p:getHp()))
-							end
-						end
-					end
-					if death.who:getMark("&ov_yanshi+#" .. owner:objectName()) > 0 then
-						room:sendCompulsoryTriggerLog(owner, "ov_renchou", true, true)
-						room:doSuperLightbox(owner:getGeneralName(), "ov_renchou")
-						room:damage(sgs.DamageStruct("ov_renchou", owner, from, owner:getHp()))
-					end
+			-- 言誓对象死亡：标记刃仇生效
+			for _, p in sgs.list(room:getAllPlayers(true)) do
+				if death.who:getMark("&ov_yanshi+#" .. p:objectName()) > 0 and p:hasSkill(skill) then
+					return skill:objectName(), p
 				end
 			end
+			return false
 		end
-		return false	end,}
+		-- CardUsed: 拥有誓标记者不可响应
+		if player and player:hasSkill(skill) and player:getMark("&ov_renchou_active") > 0 then
+			return skill:objectName()
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local owner = ctx.invoker or player
+		if event == sgs.Death then
+			local death = ctx.original_data:toDeath()
+			room:sendCompulsoryTriggerLog(owner, skill:objectName())
+			if death.who:objectName() == owner:objectName() then
+				-- 自己死亡：把言誓给所选角色
+				for _, p in sgs.list(room:getAllPlayers()) do
+					if p:getMark("&ov_yanshi+#" .. owner:objectName()) > 0 then
+						room:acquireSkill(p, "ov_yanshi")
+						break
+					end
+				end
+			else
+				-- 言誓对象死亡
+				room:setPlayerMark(owner, "&ov_renchou_active", 1)
+			end
+			return false
+		end
+		local use = ctx.original_data:toCardUse()
+		if use.from and use.from:objectName() == owner:objectName() then
+			local no_respond = use.no_respond_list
+			for _, p in sgs.list(room:getAlivePlayers()) do
+				if p:getMark("&ov_shi+#" .. owner:objectName()) > 0 then
+					table.insert(no_respond, p:objectName())
+				end
+			end
+			use.no_respond_list = no_respond
+			ctx.original_data:setValue(use)
+		end
+		return false
+	end,
+}
 ov_zhaoe:addSkill(ov_renchou)
 
 ov_liubei = sgs.General(extensionXia, "ov_liubei", "shu")
@@ -24381,6 +24600,85 @@ ov_on_trigger = sgs.CreateTriggerSkillV2 {
 		return false	end,}
 extension:addSkills(ov_on_trigger)
 
+-- SOURCE-6 李昭焦伯[海外]。护甲走 gainHujia（@HuJia，默认上限 5）。
+local function ovZuoyouDo(room, who, yang)
+	if not (who and who:isAlive()) then return end
+	if yang then
+		who:drawCards(3, "ov_zuoyou")
+		if who:isAlive() then
+			room:askForDiscard(who, "ov_zuoyou", 2, 2)
+		end
+	else
+		who:gainHujia(1)
+	end
+end
+
+ov_lizhaojiaobo = sgs.General(extensionSp, "ov_lizhaojiaobo", "wei", 4)
+ov_zuoyouCard = sgs.CreateSkillCard {
+	name = "ov_zuoyouCard",
+	skill_name = "ov_zuoyou",
+	filter = function(self, targets, to_select, from)
+		return #targets < 1
+	end,
+	on_effect = function(self, effect)
+		local room = effect.from:getRoom()
+		local yang = effect.from:getChangeSkillState("ov_zuoyou") <= 1
+		room:setChangeSkillState(effect.from, "ov_zuoyou", yang and 2 or 1)
+		ovZuoyouDo(room, effect.to, yang)
+	end,
+}
+ov_zuoyouVS = sgs.CreateViewAsSkillV2 {
+	name = "ov_zuoyou",
+	n = 0,
+	history_key = "#ov_zuoyouCard",
+	can_activate = function(self, request)
+		local player = request:getInitiator()
+		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
+		return player and player:usedTimes("#ov_zuoyouCard") < 1
+	end,
+	card_selection_feasible = function(self, request)
+		return true
+	end,
+	create_card = function(self, request)
+		local card = ov_zuoyouCard:clone()
+		card:setSkillName("ov_zuoyou")
+		return card
+	end,
+}
+ov_zuoyou = sgs.CreateTriggerSkillV2 {
+	name = "ov_zuoyou",
+	change_skill = true,
+	view_as_skill = ov_zuoyouVS,
+}
+ov_shishou = sgs.CreateTriggerSkillV2 {
+	name = "ov_shishou",
+	frequency = sgs.Skill_Compulsory,
+	events = { sgs.CardFinished },
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		local use = data:toCardUse()
+		if not use.card then return false end
+		local names = use.card:getSkillNames()
+		if use.card:getSkillName() ~= "ov_zuoyou" and not (names and table.contains(names, "ov_zuoyou")) then
+			return false
+		end
+		for _, p in sgs.qlist(use.to) do
+			if p and p:objectName() ~= player:objectName() then
+				return skill:objectName()
+			end
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		room:sendCompulsoryTriggerLog(player, skill:objectName(), true, true)
+		local did_yang = player:getChangeSkillState("ov_zuoyou") > 1
+		ovZuoyouDo(room, player, not did_yang)
+		return false
+	end,
+}
+ov_lizhaojiaobo:addSkill(ov_zuoyou)
+ov_lizhaojiaobo:addSkill(ov_shishou)
+
 sgs.LoadTranslationTable {
 	["OverseasVersion"] = "海外服",
 	["overseas_version_sp"] = "海外·SP",
@@ -24973,14 +25271,16 @@ sgs.LoadTranslationTable {
 	["#ov_zhangzhao"] = "功劝克举",
 	["~ov_zhangzhao"] = "哼哼，此皆老臣罪责，陛下岂会有过....",
 	["ov_lijian"] = "力谏",
-	[":ov_lijian"] = "<b>昂扬技，</b>其他角色弃牌阶段结束时，你可以选择获得任意张此阶段弃置的牌，然后将其余牌交给该角色，若其获得的牌数大于你，则你可以对其造成1点伤害。<b>激昂</b>：八张牌进入弃牌堆。",
+	[":ov_lijian"] = "昂扬技：其他角色的弃牌阶段结束时，你可以选择获得任意张本回合因弃置而进入弃牌堆的牌，然后将其余牌交给该角色，若其获得的牌数大于等于你，则你可以对其造成1点伤害。激昂：X张牌因弃置进入弃牌堆（X为本局角色数）。",
+	["ov_lijian_jiang"] = "激昂",
+	[":&ov_lijian_jiang"] = "因弃置进入弃牌堆的牌数 / 本局角色数",
 	["ov_lijian_damage:ov_lijian_damage"] = "力谏：你可以对%src造成1点伤害",
 	["#ov_lijian"] = "弃牌堆",
 	["$ov_lijian1"] = "陛下欲复昔日桓公之事乎？",
 	["$ov_lijian2"] = "君者当御贤于后，安可校勇于猛兽！",
 	["ov_lijian0"] = "力谏：你可以选择获得任意张此阶段弃置的牌",
 	["ov_chungang"] = "纯刚",
-	[":ov_chungang"] = "锁定技，其他角色在摸牌阶段外一次性获得不小于两张牌时，你令其弃置一张牌。",
+	[":ov_chungang"] = "游戏开始时或出牌阶段限一次，你可以令至多两名角色各摸一张牌。除你以外的角色使用以此法获得的牌时，其须弃置一张牌。",
 	["ov_chungang0"] = "纯刚：请弃置一张牌",
 	["$ov_chungang1"] = "陛下若此，天下何以观之！",
 	["$ov_chungang2"] = "偏听谄谀之言，此为万民所仰之君乎？",
@@ -25147,7 +25447,7 @@ sgs.LoadTranslationTable {
 	["#ov_zhaoe"] = "烈女誓仇",
 	["~ov_zhaoe"] = "乞就刑戮，肃明王法.......",
 	["ov_yanshi"] = "言誓",
-	[":ov_yanshi"] = "游戏开始时，你选择一名其他角色；当你或其受到其余角色的伤害后，来源获得“誓”标记；你对“誓”角色使用牌无距离限制且造成的伤害+1，造成伤害后摸等同伤害数的牌并移去其“誓”标记。",
+	[":ov_yanshi"] = "游戏开始时，你选择一名其他角色。每回合当你或选择的角色首次受到伤害后，你摸三张牌并令伤害来源获得一个“誓”标记（至多拥有3个）。出牌阶段，你可将一张手牌当做单目标伤害牌对一名拥有“誓”标记的角色使用，此牌结算结束后，你移除其一个“誓”标记。",
 	["ov_yanshi0"] = "言誓：请选择一名其他角色",
 	["#ov_zeshi1"] = "%from 获得了“%arg”标记",
 	["#ov_zeshi2"] = "%from 移除了“%arg”标记",
@@ -25155,7 +25455,7 @@ sgs.LoadTranslationTable {
 	["$ov_yanshi2"] = "当以贼血，汙此白刃！",
 	["$ov_yanshi3"] = "挟长持短，昼夜哀酸！",
 	["ov_renchou"] = "刃仇",
-	[":ov_renchou"] = "锁定技。当你或“言誓”角色死亡时，其中存活的角色对来源造成等同自己体力值的伤害。",
+	[":ov_renchou"] = "锁定技，当你死亡时，你令“言誓”选择的角色获得“言誓”。当“言誓”选择的角色死亡后，本局游戏拥有“誓”标记的角色不可响应你使用的牌。",
 	["ov_zeshi"] = "誓",
 	["$ov_renchou1"] = "塞亡父之冤魂，雪三弟之永恨！",
 	["$ov_renchou2"] = "禄福夜雪白，都庭朝露红！",
@@ -25184,17 +25484,17 @@ sgs.LoadTranslationTable {
 	["~ov_gexuan"] = "金丹难成，大道难修",
 	["$ov_gexuan"] = "科有天禁不可抑，华精庵蔼化仙人",
 	["ov_danfa"] = "丹法",
-	[":ov_danfa"] = "准备阶段或结束阶段，你可以将一张牌当做“丹”置于武将牌上。每回合每种花色限一次，当你使用与“丹”中花色相同的牌时，你摸一张牌。",
+	[":ov_danfa"] = "当你使用或打出的牌结算结束后，若此牌花色与你拥有的“丹”均不相同，你可以将此牌置于你的武将牌上，称为“丹”。",
 	["ov_danfa0"] = "丹法：你可以将一张牌当做“丹”置于武将牌上",
 	["ov_dan"] = "丹",
 	["$ov_danfa1"] = "取五灵三使之要，炼九光七曜之丹",
 	["$ov_danfa2"] = "云液踊跃成雪霜，流珠之英能延年",
 	["ov_lingbao"] = "灵宝",
-	[":ov_lingbao"] = "出牌阶段限一次，你可以移去两张不同花色的“丹”牌，若：均为红色，你令一名角色回复1点体力；均为黑色，你弃置一名角色至多两个区域内各一张牌；颜色不同，你令一名角色摸一张牌，令另一名角色弃置一张牌。",
+	[":ov_lingbao"] = "出牌阶段，你可以弃置两张花色不同的“丹”并摸两张牌，然后根据其情况执行如下效果：①均为红色，你令一名角色从牌堆中获得两张基本牌；②均为黑色，你弃置一名角色任意区域的一张牌；③颜色不同，你令一名角色摸一张牌，另一名角色弃一张牌。然后若你于本回合弃置过两张相同花色的“丹”，则此技能失效直到回合结束。",
 	["$ov_lingbao1"] = "洞明于至道，俯弘于世教",
 	["$ov_lingbao2"] = "凝神太虚镜，北冥探玄珠",
 	["ov_sidao"] = "司道",
-	[":ov_sidao"] = "游戏开始时，你选择一个法宝置入装备区（【灵宝仙葫】、【太极拂尘】、【冲应神符】）。准备阶段，若你选择的法宝在游戏外、牌堆中或弃牌堆中，你获得并使用之。",
+	[":ov_sidao"] = "游戏开始时，你选择一件葛玄的法宝装备之：【灵宝仙葫】、【太极拂尘】、【冲应神符】，准备阶段，若你选择的法宝不在游戏内、在牌堆或弃牌堆中，则你获得并使用之。",
 	["$ov_sidao1"] = "执吾法器，以司正道",
 	["$ov_sidao2"] = "内修道法，外需宝器",
 	["_ov_lingbaoxianhu"] = "灵宝仙葫",
@@ -25772,12 +26072,12 @@ sgs.LoadTranslationTable {
 	["#ov_baoxin"] = "坚朴的忠相",
 	["~ov_baoxin"] = "区区黄巾流寇，如何挡我？呃啊……",
 	["ov_mutao"] = "募讨",
-	[":ov_mutao"] = "出牌阶段限一次，你可以选择一名角色，令其将手牌中所有杀依次交给由其下家开始的每名角色，然后其对最后一名角色造成X点伤害（X为其手牌中的【杀】数且至多为3）。",
+	[":ov_mutao"] = "出牌阶段限一次，你可以选择一名角色，令其将手牌中所有的【杀】置于其武将牌上，然后其依次将这些【杀】随机交给由其下家开始的每一名角色，然后其对最后一名角色造成X点伤害（X为最后一名角色手牌中【杀】的数量且至多为2）。",
 	["ov_mutao0"] = "募讨：请选择一张【杀】交给%src",
 	["$ov_mutao1"] = "董贼暴乱，天下定当奋节讨之！",
 	["$ov_mutao2"] = "募州郡义士，讨祸国逆贼！",
 	["ov_yimou"] = "毅谋",
-	[":ov_yimou"] = "你距离1以内的角色受到伤害后，你可以选择一项：1、其获得牌堆中的一张【杀】；2、其交给你选择的另一名角色一张手牌，然后摸2张牌。若其不为你，你可以背水：将所有手牌交给其。",
+	[":ov_yimou"] = "当一名角色受到伤害后，若你与其距离1以内，你可以选择一项令其执行之：1.从牌堆中获得一张【杀】；2.将一张手牌交给另一名角色，然后摸一张牌。",
 	["ov_yimou0"] = "毅谋：请选择一名%src交给手牌目标的角色",
 	["ov_yimou01"] = "毅谋：请选择一张手牌交给%src",
 	["ov_yimou1"] = "其获得牌堆中的一张【杀】",
@@ -25889,14 +26189,24 @@ sgs.LoadTranslationTable {
 	["#ov_wangyue"] = "驭龙在天",
 	["~ov_wangyue"] = "汉室中兴，不系于吾一人……",
 	["ov_yulong"] = "驭龙",
-	[":ov_yulong"] = "当你使用【杀】指定目标后，你可以与其中一名目标拼点。若你赢，此【杀】造成伤害则不计入次数，且根据拼点牌颜色获得效果：黑色，伤害+1；红色，不能被响应。",
+	[":ov_yulong"] = "当你使用【杀】指定目标后，你可以与其中一名目标拼点。若你此次拼点牌的颜色为：黑色，此【杀】伤害+1；红色，此【杀】不可回应。然后若你赢则此【杀】不计入次数，若你没赢则你获得此【杀】。",
 	["ov_yulong0"] = "驭龙：你可以与此【杀】其中一名目标拼点",
 	["$ov_yulong1"] = "三尺青锋，为君驭六龙，定九州！",
 	["$ov_yulong2"] = "十年砺剑，当率千军之众，堪万夫之雄！",
 	["ov_jianming"] = "剑鸣",
-	[":ov_jianming"] = "锁定技，每回合每种花色限一次，当你使用或打出一种花色的【杀】时，你摸一张牌。",
+	[":ov_jianming"] = "锁定技，你使用或打出【杀】时，或你因拼点失去牌时，你摸一张牌。（每回合每种花色限一次）",
 	["$ov_jianming1"] = "弹剑作谱，鸣之铮铮。",
 	["$ov_jianming2"] = "剑鸣凄凄，穿心刺骨！",
+	["ov_zhangyao"] = "张媱[海外]",
+	["&ov_zhangyao"] = "张媱",
+	["#ov_zhangyao"] = "琼楼孤蒂",
+	["ov_yuanyu"] = "怨语",
+	[":ov_yuanyu"] = "出牌阶段限一次，摸2张牌并选择一名其他角色。然后你将1张手牌置于武将牌上称为“怨”。其须在以下时机放1张“怨”直到你触发“夕颜”：1.你的弃牌阶段；2.其弃牌阶段；3.该角色每造成1点伤害后。",
+	["ov_yuanyu_put"] = "怨语：请将一张手牌置于武将牌上称为“怨”",
+	["ov_yuanyu_force"] = "怨语：请放1张“怨”给 %src",
+	["ov_yuan"] = "怨",
+	["ov_xiyan"] = "夕颜",
+	[":ov_xiyan"] = "若“怨”的花色数达到4种，你可获得所有“怨”。此时：1.在你的回合，“怨语”视为未发动，本回合手牌上限+4且使用牌不限次数；2.在你的回合外，你可令当前回合角色本回合手牌上限-4且不能用基本牌。",
 	["ov_chengpu"] = "程普[海外]",
 	["&ov_chengpu"] = "程普",
 	["ov_lihuo"] = "疠火",
@@ -26093,7 +26403,7 @@ sgs.LoadTranslationTable {
 	["#ov_qiaogong"] = "高风朔望",
 	["~ov_qiaogong"] = "为父所念，唯汝二人啊.....",
 	["ov_yizhu"] = "遗珠",
-	[":ov_yizhu"] = "结束阶段，你摸两张牌，然后将两张牌随机置于牌堆顶2X张牌中（X为角色数）。当其他角色使用“遗珠”牌指定唯一目标时，你可以为此牌修改或增加一个目标，并摸一张牌。",
+	[":ov_yizhu"] = "游戏开始时与结束阶段，你须摸X张牌，然后选择2张牌作为“遗珠”牌随机洗入牌堆顶前2X张牌中（X=场上角色数，且至多为4），并展示遗珠牌的牌名。其他角色使用“遗珠”牌指定唯一目标后，你可以修改或增加一个目标，然后你将此牌从“遗珠”记录中移除并摸一张牌。",
 	["ov_yizhu0"] = "遗珠：请选择两张牌随机置于牌堆顶%src张牌中",
 	["ov_yizhu1"] = "遗珠:你可以为此【%src】修改或增加一个目标",
 	["ov_yizhu2"] = "修改目标",
@@ -26101,7 +26411,7 @@ sgs.LoadTranslationTable {
 	["$ov_yizhu1"] = "将军若得遇小女，万望护送而归",
 	["$ov_yizhu2"] = "老夫有二女，视之如明珠",
 	["ov_luanchou"] = "鸾俦",
-	[":ov_luanchou"] = "出牌阶段限一次，你可以令两名角色获得“共患”，直到你再次发动此技能。",
+	[":ov_luanchou"] = "每轮开始时，你可以选择2名角色获得技能“共患”，直到你下次发动该技能。",
 	["$ov_luanchou1"] = "夫妻相濡以沫，方可百年偕老",
 	["$ov_luanchou2"] = "愿汝永结鸾俦，以期共盟鸳蝶",
 	["ov_gonghuan"] = "共患",
@@ -26188,5 +26498,16 @@ sgs.LoadTranslationTable {
 	["ov_guoyi0"] = "果毅：你可以弃置%src张牌，否则此回合不能使用或打出手牌",
 	["ov_chuhai0"] = "除害：请选择弃置获得牌中的一张牌",
 	["ov_chuhai1"] = "除害：请选择将一张牌交给%src",
+
+	["ov_lizhaojiaobo"] = "李昭焦伯[海外]",
+	["&ov_lizhaojiaobo"] = "李昭焦伯",
+	["#ov_lizhaojiaobo"] = "竭诚尽节",
+	["illustrator:ov_lizhaojiaobo"] = "",
+	["ov_zuoyou"] = "佐佑",
+	[":ov_zuoyou"] = "转换技，出牌阶段限一次，阳：你可以令一名角色摸三张牌，然后其弃置两张手牌；阴：你可以令一名角色获得1点「护甲」。",
+	[":ov_zuoyou1"] = "转换技，出牌阶段限一次，阳：你可以令一名角色摸三张牌，然后其弃置两张手牌；<font color=\"#01A5AF\"><s>阴：你可以令一名角色获得1点「护甲」</s></font>。",
+	[":ov_zuoyou2"] = "转换技，出牌阶段限一次，<font color=\"#01A5AF\"><s>阳：你可以令一名角色摸三张牌，然后其弃置两张手牌；</s></font>阴：你可以令一名角色获得1点「护甲」。",
+	["ov_shishou"] = "侍守",
+	[":ov_shishou"] = "锁定技，当其他角色执行了〖佐佑〗的一项后，你执行〖佐佑〗的另一项。",
 }
 return { extension, extensionSp, extensionShiji, extensionJie, extensionXia, extensionHuan }

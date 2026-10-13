@@ -925,12 +925,18 @@ keqihuangfusong:addSkill(keqiguanhuo)
 
 keqijuxia = sgs.CreateTriggerSkillV2 {
 	name = "keqijuxia",
-	events = { sgs.TargetConfirmed },
+	events = { sgs.TargetConfirmed, sgs.EventPhaseStart },
 	frequency = sgs.Skill_NotFrequent,
 	can_trigger = function(skill, event, room, player, data)
+		if event == sgs.EventPhaseStart then
+			if player:getPhase() == sgs.Player_Start and player:hasSkill(skill) and (not player:hasSkill("keqiguanhuo", true)) then
+				return skill:objectName()
+			end
+			return false
+		end
 		local use = data:toCardUse()
 		if use.to:contains(player) and (not use.card:isKindOf("SkillCard")) and use.from
-			and player:getMark("&usekeqijuxia-Clear") < 1 and player:hasTurn() and player ~= use.from then
+			and player:getMark("&usekeqijuxia-Clear") < 1 and player ~= use.from and player:hasSkill(skill) then
 			local skill_listuse = {}
 			local skill_listplayer = {}
 			for _, skillx in sgs.qlist(use.from:getVisibleSkillList()) do
@@ -943,22 +949,26 @@ keqijuxia = sgs.CreateTriggerSkillV2 {
 					table.insert(skill_listplayer, skillx:objectName())
 				end
 			end
-			local numuse = #skill_listuse
-			local numplayer = #skill_listplayer
-			if numuse > numplayer then
+			if #skill_listuse > #skill_listplayer then
 				return skill:objectName()
 			end
 		end
 		return false
 	end,
 	on_cost = function(skill, event, room, player, ctx)
-		local use = ctx.original_data:toCardUse()
-		local _data = sgs.QVariant()
-		_data:setValue(player)
+		if event == sgs.EventPhaseStart then
+			return player:askForSkillInvoke(skill, sgs.QVariant("regain_guanhuo"))
+		end
 		room:setTag("keqijuxiaData", ctx.original_data)
-		return use.from:askForSkillInvoke(skill, _data, false)
+		return player:askForSkillInvoke(skill, ctx.original_data)
 	end,
 	on_effect = function(skill, event, room, player, ctx)
+		if event == sgs.EventPhaseStart then
+			room:broadcastSkillInvoke(skill:objectName())
+			room:notifySkillInvoked(player, skill:objectName())
+			room:handleAcquireDetachSkills(player, "keqiguanhuo")
+			return false
+		end
 		local data = ctx.original_data
 		local use = data:toCardUse()
 		room:broadcastSkillInvoke(skill:objectName())
@@ -968,7 +978,7 @@ keqijuxia = sgs.CreateTriggerSkillV2 {
 		table.insert(nullified_list, player:objectName())
 		use.nullified_list = nullified_list
 		data:setValue(use)
-		player:drawCards(2, skill:objectName())
+		player:drawCards(1, skill:objectName())
 		return false
 	end,
 }
@@ -3119,11 +3129,11 @@ sgs.LoadTranslationTable {
 	["illustrator:keqihuangfusong"] = "君桓文化",
 
 	["keqiguanhuo"] = "观火",
-	[":keqiguanhuo"] = "出牌阶段，你可以视为使用一张【火攻】，若此牌未造成伤害，此牌结算完毕后：若此牌是你本阶段第一次以此法使用的牌，本阶段你使用【火攻】造成的伤害+1，否则你失去技能“观火”。",
+	[":keqiguanhuo"] = "出牌阶段，你可以视为使用一张【火攻】。当你以此法使用的未造成伤害的【火攻】结算后，若此次为你于此阶段内第一次发动本技能，则你令此阶段内你使用【火攻】造成的伤害+1，否则你失去「观火」。",
 	["usekeqiguanhuoda"] = "观火加伤",
 
 	["keqijuxia"] = "居下",
-	[":keqijuxia"] = "每个回合限一次，当其他角色使用牌指定你为目标后，若其技能数大于你，其可以令此牌对你无效并令你摸两张牌。",
+	[":keqijuxia"] = "每名角色的回合限一次，当其他角色使用牌指定你为目标后，若该角色拥有的技能数量大于你，则你可以令此牌对你无效，然后摸一张牌。准备阶段，若你没有技能「观火」，你可以获得之。",
 	["usekeqijuxia"] = "已使用居下",
 
 	["keqijuxia:keqijuxia-pre"] = "你可以发动“居下”令此牌对 %src 无效并令其摸两张牌",

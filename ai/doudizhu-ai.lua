@@ -381,3 +381,75 @@ end
 
 
 
+
+-- GU-audit2025 follow-up 2026-10-13: 限时地主 batch
+sgs.ai_skill_invoke.gu_weiji = true
+sgs.ai_skill_choice.gu_weiji = function(self, choices)
+	local items = choices:split("+")
+	return items[math.random(1, #items)]
+end
+sgs.ai_skill_choice.gu_weiji_guess = function(self, choices)
+	local items = choices:split("+")
+	return items[math.random(1, #items)]
+end
+
+sgs.ai_skill_playerchosen.gu_saima = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	for _, p in ipairs(targets) do
+		if self:isEnemy(p) then return p end
+	end
+	return nil
+end
+
+addAiSkills("gu_huoluan").getTurnUseCard = function(self)
+	return sgs.Card_Parse("@GuHuoluanCard=.")
+end
+sgs.ai_skill_use_func["GuHuoluanCard"] = function(card, use, self)
+	self:sort(self.enemies, "defense")
+	for _, ep in ipairs(self.enemies) do
+		if self.player:canPindian(ep) then
+			use.to:append(ep)
+			if use.to:length() >= 2 then break end
+		end
+	end
+	if use.to:length() > 0 then use.card = card end
+end
+sgs.ai_use_value.GuHuoluanCard = 6
+sgs.ai_use_priority.GuHuoluanCard = 5
+sgs.ai_skill_choice.gu_huoluan_number = function(self, choices)
+	return "13"
+end
+
+sgs.ai_skill_invoke.gu_guxing = function(self, data)
+	return self.room:getTag("TurnLengthCount"):toInt() >= 3
+end
+sgs.ai_skill_invoke.gu_qianyao = function(self, data)
+	return #self.enemies > 0 and self.room:getTag("TurnLengthCount"):toInt() >= 3
+end
+sgs.ai_skill_playerschosen.gu_qianyao = function(self, targets, max, min)
+	local tos = {}
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) and #tos < max then table.insert(tos, p) end
+	end
+	if #tos < 1 and min > 0 then table.insert(tos, targets:first()) end
+	return tos
+end
+
+sgs.ai_skill_invoke.gu_tieji = function(self, data)
+	local to = data:toPlayer()
+	return to and not self:isFriend(to)
+end
+sgs.ai_skill_playerchosen.gu_chongqi = function(self, targets)
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) then return p end
+	end
+	return nil
+end
+sgs.ai_skill_playerchosen.gu_fanquan = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	self:sort(targets, "hp")
+	for _, p in ipairs(targets) do
+		if self:isEnemy(p) then return p end
+	end
+	return nil
+end

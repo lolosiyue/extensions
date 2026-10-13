@@ -981,6 +981,8 @@ sgs.ai_use_revises.chiguo = function(self,card,use)
 end
 
 sgs.ai_skill_playerchosen.thjizhan = function(self,players)
+	local bonus = 2 - self.player:getMark("thjizhanNum-Clear")
+	if bonus < 1 then return end
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	self:sort(destlist)
     for i,p in sgs.list(destlist)do
@@ -1231,15 +1233,26 @@ sgs.ai_skill_cardask["zhanyan0"] = function(self,data)
     return "."
 end
 
-sgs.ai_skill_discard.qinqiang = function(self,m,x)
-    local handcards = sgs.QList2Table(self.player:getCards("h"))
-    self:sortByKeepValue(handcards) -- 按保留值排序
-	local ids = {}
-	for _,h in sgs.list(handcards)do
-		table.insert(ids,h:getId())
-		if #ids>#handcards/2 then break end
+-- 勤强（上线版）：使用手牌时选择 1.此牌伤害+X / 2.摸 X 张（每回合每项限一次）。
+sgs.ai_skill_choice.qinqiang = function(self, choices, data)
+	local items = choices:split("+")
+	local use = data:toCardUse()
+	if table.contains(items, "damage") and use.card and use.card:isDamageCard() then
+		local enemies, friends = 0, 0
+		for _, p in sgs.qlist(use.to) do
+			if self:isEnemy(p) then enemies = enemies + 1 elseif self:isFriend(p) then friends = friends + 1 end
+		end
+		if enemies > friends then return "damage" end
 	end
-	return ids
+	if table.contains(items, "draw") then return "draw" end
+	return "cancel"
+end
+
+-- 疑阵（上线版）：受到伤害后与伤害来源互相观看手牌并同时弃置对方一张。
+sgs.ai_skill_invoke.yizhen = function(self, data)
+	local from = data:toPlayer()
+	if not from or self:isFriend(from) then return false end
+	return not from:isKongcheng()
 end
 
 sgs.ai_skill_invoke.shugang = function(self,data)

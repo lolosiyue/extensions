@@ -5342,3 +5342,7 @@ end
 
 
 
+
+-- SOURCE-2 起皇甫嵩
+sgs.ai_skill_invoke.keqiguanhuo = true
+sgs.ai_skill_invoke.keqijuxia = true

@@ -2201,4 +2201,1358 @@ C_shishi:addSkill(c_shiguang)
 
 
 
+
+-- 三国杀diy吧 3D2J：仅据 diyba.md §2.1，独立于官方同名版本。
+local diyba_quanjian = sgs.CreateViewAsSkillV2{
+    name="diyba_quanjian", n=1, target_mode=sgs.ViewAsSkillV2_SelectTargets,
+    will_throw_selected_cards=false, limit_scope=sgs.Skill_Limit_Phase, phase_name="Play", max_usage_limit=1,
+    can_activate=function(self,request) return play(request) end,
+    can_select_card=function(self,request,card)
+        return request:getSelectedCardIds():isEmpty() and not card:isEquipped() and card:isKindOf("Jink")
+    end,
+    card_selection_feasible=function(self,request) return request:getSelectedCardIds():length()==1 end,
+    can_select_target=function(self,request,selected,candidate)
+        return #selected==0 and candidate~=request:getInitiator()
+    end,
+    targets_feasible=function(self,request,selected) return #selected==1 end,
+    pay=function(self,room,ctx,request)
+        local id=request:getSelectedCardIds():first()
+        local target=ctx.targets:first()
+        if not target or room:getCardOwner(id)~=ctx.invoker or room:getCardPlace(id)~=sgs.Player_PlaceHand
+            or not sgs.Sanguosha:getCard(id):isKindOf("Jink") then return false end
+        room:obtainCard(target,id,false)
+        return true
+    end,
+    on_effect=function(self,ctx)
+        local source,target=ctx.invoker,ctx.targets:first()
+        local room=source:getRoom()
+        if not source:isAlive() or not target:isAlive() or target:isKongcheng() then return end
+        local id=room:askForCardChosen(source,target,"h",self:objectName())
+        room:showCard(target,id)
+        if sgs.Sanguosha:getCard(id):isKindOf("Jink") then
+            source:drawCards(1,self:objectName())
+            if target:isAlive() then target:drawCards(1,self:objectName()) end
+        end
+    end
+}
+local diyba_sijie = sgs.CreateTriggerSkillV2{
+    name="diyba_sijie", events={sgs.Damaged},
+    can_trigger=function(self,event,room,player,data) return own(self,event,room,player,data) end,
+    on_cost=invoke,
+    on_effect=function(self,event,room,player,ctx)
+        -- 每一点伤害各自选择；伤害过程中死亡或失去技能即停止。
+        for i=1,ctx.original_data:toDamage().damage do
+            if not player:isAlive() or not player:hasSkill(self:objectName()) then break end
+            if i==1 or room:askForSkillInvoke(player,self:objectName(),ctx.original_data) then
+            local candidates=sgs.SPlayerList()
+            for _,p in sgs.qlist(room:getAlivePlayers()) do
+                if player:canDiscard(p,"he") then candidates:append(p) end
+            end
+            if candidates:isEmpty() then break end
+            local target=room:askForPlayerChosen(player,candidates,self:objectName(),"@diyba-sijie",false,true)
+            local count=math.max(1,target:getLostHp())
+            for j=1,count do
+                if not player:isAlive() or not target:isAlive() or not player:canDiscard(target,"he") then break end
+                local id=room:askForCardChosen(player,target,"he",self:objectName(),false,sgs.Card_MethodDiscard)
+                room:throwCard(id,target,player)
+            end
+            end
+        end
+        return false
+    end
+}
+local diyba_jushou=sgs.General(extension,"diyba_2j_jushou","qun",3)
+diyba_jushou:setImage("jushou")
+diyba_jushou:addSkill(diyba_quanjian)
+diyba_jushou:addSkill(diyba_sijie)
+sgs.LoadTranslationTable{
+    ["diyba_2j_jushou"]="沮授", ["&diyba_2j_jushou"]="沮授", ["#diyba_2j_jushou"]="忠贞义烈·3D二将",
+    ["designer:diyba_2j_jushou"]="三国杀diy吧",
+    ["diyba_quanjian"]="劝谏",
+    [":diyba_quanjian"]="出牌阶段，你可以交给一名其他角色一张【闪】，展示其一张手牌：若为【闪】，则你与该角色各摸一张牌。每阶段限一次。",
+    ["diyba_sijie"]="死节",
+    [":diyba_sijie"]="每当你受到1点伤害后，可弃置一名角色的X张牌（X为该角色已损失的体力值，且至少为1）。",
+    ["@diyba-sijie"]="死节：选择一名角色，弃置其牌",
+}
+
+
+-- 3D2J 程昱：捧日/刚戾，同名官方及极略版本均非本设计。
+local function diyba_slash(room,from,to,skill)
+    if not from:isAlive() or not to:isAlive() then return end
+    local slash=sgs.Sanguosha:cloneCard("slash",sgs.Card_NoSuit,0)
+    slash:setSkillName(skill)
+    if not from:isProhibited(to,slash) then
+        local use=sgs.CardUseStruct()
+        use.card=slash; use.from=from; use.to:append(to)
+        room:useCard(use,false)
+    end
+    slash:deleteLater()
+end
+local diyba_pengri=sgs.CreateViewAsSkillV2{
+    name="diyba_pengri", target_mode=sgs.ViewAsSkillV2_SelectTargets,
+    limit_scope=sgs.Skill_Limit_Phase, phase_name="Play", max_usage_limit=1,
+    can_activate=function(self,request) return play(request) end,
+    can_select_target=function(self,request,selected,candidate)
+        return #selected==0 and candidate~=request:getInitiator() and not candidate:isNude()
+    end,
+    targets_feasible=function(self,request,selected) return #selected==1 end,
+    on_effect=function(self,ctx)
+        local player,target=ctx.invoker,ctx.targets:first()
+        local room=player:getRoom()
+        if not target or not target:isAlive() or target:isNude() then return end
+        local id=room:askForCardChosen(player,target,"he",self:objectName())
+        room:obtainCard(player,id,false)
+        diyba_slash(room,target,player,self:objectName())
+    end
+}
+local diyba_gangli=sgs.CreateTriggerSkillV2{
+    name="diyba_gangli", events={sgs.Damaged},
+    can_trigger=function(self,event,room,player,data)
+        local damage=data:toDamage()
+        if damage.from and damage.from~=player and damage.from:isAlive() then return own(self,event,room,player,data) end
+        return ""
+    end,
+    on_cost=invoke,
+    on_effect=function(self,event,room,player,ctx)
+        local damage=ctx.original_data:toDamage()
+        for i=1,damage.damage do
+            if not player:isAlive() or not player:hasSkill(self:objectName()) or not damage.from:isAlive() then break end
+            if i==1 or room:askForSkillInvoke(player,self:objectName(),ctx.original_data) then
+                local candidates=sgs.SPlayerList()
+                local slash=sgs.Sanguosha:cloneCard("slash",sgs.Card_NoSuit,0)
+                slash:setSkillName(self:objectName())
+                for _,p in sgs.qlist(room:getAlivePlayers()) do
+                    if p~=damage.from and not damage.from:isProhibited(p,slash) then candidates:append(p) end
+                end
+                slash:deleteLater()
+                if not candidates:isEmpty() then
+                    local target=room:askForPlayerChosen(player,candidates,self:objectName(),"@diyba-gangli",false,true)
+                    diyba_slash(room,damage.from,target,self:objectName())
+                end
+            end
+        end
+        return false
+    end
+}
+local diyba_chengyu=sgs.General(extension,"diyba_2j_chengyu","wei",3)
+diyba_chengyu:setImage("chengyu")
+diyba_chengyu:addSkill(diyba_pengri)
+diyba_chengyu:addSkill(diyba_gangli)
+sgs.LoadTranslationTable{
+    ["diyba_2j_chengyu"]="程昱", ["&diyba_2j_chengyu"]="程昱", ["#diyba_2j_chengyu"]="世之奇士·3D二将",
+    ["designer:diyba_2j_chengyu"]="三国杀diy吧",
+    ["diyba_pengri"]="捧日",
+    [":diyba_pengri"]="出牌阶段，你可以获得一名其他角色的一张牌，视为该角色对你使用一张【杀】。每阶段限一次。",
+    ["diyba_gangli"]="刚戾",
+    [":diyba_gangli"]="每当你受到其他角色造成的1点伤害后，你可以：选择除伤害来源外的另一名角色，视为伤害来源对该角色使用一张【杀】（此【杀】无距离限制且不计入出牌阶段使用次数限制）。",
+    ["@diyba-gangli"]="刚戾：选择伤害来源以外的一名角色，令来源对其使用【杀】",
+}
+
+-- 3D2J 李儒：毒计储牌与本次杀的酒效果；不改官方同名将。
+local diyba_dujiVS=sgs.CreateViewAsSkillV2{
+    name="diyba_duji", n=1, target_mode=sgs.ViewAsSkillV2_SelectTargets,
+    will_throw_selected_cards=false,
+    can_activate=function(self,request)
+        return play(request) and request:getInitiator():getPile("diyba_poison"):isEmpty()
+    end,
+    can_select_card=function(self,request,card)
+        return request:getSelectedCardIds():isEmpty() and card:getSuit()==sgs.Card_Spade
+    end,
+    card_selection_feasible=function(self,request) return request:getSelectedCardIds():length()==1 end,
+    targets_feasible=function(self,request,selected) return #selected==0 end,
+    pay=function(self,room,ctx,request)
+        local id=request:getSelectedCardIds():first()
+        if not ctx.invoker:getPile("diyba_poison"):isEmpty() or room:getCardOwner(id)~=ctx.invoker then return false end
+        ctx.invoker:addToPile("diyba_poison",id,true)
+        return true
+    end,
+    on_effect=function(self,ctx) end
+}
+local diyba_duji=sgs.CreateTriggerSkillV2{
+    name="diyba_duji", view_as_skill=diyba_dujiVS, events={sgs.TargetSpecified},
+    can_trigger=function(self,event,room,player,data)
+        local use=data:toCardUse()
+        if not player or player:getPhase()~=sgs.Player_Play or not use.card:isKindOf("Slash") then return "" end
+        local names,players={},{}
+        for _,p in sgs.qlist(room:getAlivePlayers()) do
+            if p~=player and p:hasSkill(self:objectName()) and not p:getPile("diyba_poison"):isEmpty() then
+                table.insert(names,self:objectName());table.insert(players,p:objectName())
+            end
+        end
+        return table.concat(names,"|"),table.concat(players,"|")
+    end,
+    on_cost=invoke,
+    on_effect=function(self,event,room,player,ctx)
+        local owner=ctx.owner
+        local use=ctx.original_data:toCardUse()
+        local id=owner:getPile("diyba_poison"):first()
+        if id<0 or not use.from:isAlive() then return false end
+        -- Tag before the card movement: movement triggers may kill the user.
+        use.card:setTag("drank",sgs.QVariant(math.max(1,use.card:getTag("drank"):toInt())))
+        room:setCardFlag(use.card,"drank")
+        room:obtainCard(use.from,id,true)
+        if use.from:isAlive() then
+            if room:askForChoice(use.from,self:objectName(),"turnover+losehp",ctx.original_data)=="turnover" then
+                use.from:turnOver()
+            else room:loseHp(use.from,1) end
+        end
+        return false
+    end
+}
+local diyba_shipo=sgs.CreateProhibitSkill{
+    name="diyba_shipo",
+    is_prohibited=function(self,from,to,card)
+        return to:hasSkill(self:objectName()) and card:getSuit()==sgs.Card_Spade
+            and (card:isKindOf("Slash") or card:isKindOf("TrickCard"))
+    end
+}
+local diyba_liru=sgs.General(extension,"diyba_2j_liru","qun",3)
+diyba_liru:setImage("liru")
+diyba_liru:addSkill(diyba_duji)
+diyba_liru:addSkill(diyba_shipo)
+sgs.LoadTranslationTable{
+    ["diyba_2j_liru"]="李儒",["&diyba_2j_liru"]="李儒",["#diyba_2j_liru"]="魔王的智囊·3D二将",
+    ["designer:diyba_2j_liru"]="三国杀diy吧",["diyba_poison"]="毒计",
+    ["diyba_duji"]="毒计",[":diyba_duji"]="出牌阶段，若你的武将牌上没有牌，你可以将一张黑桃牌置于你的武将牌上。当一名其他角色在其出牌阶段使用一张【杀】指定目标后，你可将此牌置于其手上，并令此【杀】当有【酒】效果的【杀】结算，然后该角色须执行下列一项：将武将牌翻面或失去1点体力。",
+    ["diyba_shipo"]="识破",[":diyba_shipo"]="锁定技，你不能成为黑桃【杀】或黑桃锦囊的目标。",
+}
+
+-- 3D3J 刘协：血昭按选择顺序指定杀的使用者、目标。
+local diyba_xuezhao=sgs.CreateViewAsSkillV2{
+    name="diyba_xuezhao",n=2,target_mode=sgs.ViewAsSkillV2_SelectTargets,
+    limit_scope=sgs.Skill_Limit_Phase,phase_name="Play",max_usage_limit=1,
+    will_throw_selected_cards=false,
+    can_activate=function(self,request) return play(request) end,
+    can_select_card=function(self,request,card)
+        return request:getSelectedCardIds():length()<2 and not request:getInitiator():isJilei(card)
+    end,
+    card_selection_feasible=function(self,request)
+        local n=request:getSelectedCardIds():length();return n==0 or n==2
+    end,
+    can_select_target=function(self,request,selected,candidate)
+        return #selected<2 and (#selected==0 or selected[1]~=candidate)
+    end,
+    targets_feasible=function(self,request,selected) return #selected==2 end,
+    pay=function(self,room,ctx,request)
+        local ids=request:getSelectedCardIds()
+        if ids:isEmpty() then room:loseHp(ctx.invoker,1);return true end
+        if ids:length()~=2 then return false end
+        local dummy=sgs.DummyCard()
+        for _,id in sgs.qlist(ids) do
+            if room:getCardOwner(id)~=ctx.invoker or ctx.invoker:isJilei(sgs.Sanguosha:getCard(id)) then
+                dummy:deleteLater();return false
+            end
+            dummy:addSubcard(id)
+        end
+        room:throwCard(dummy,ctx.invoker,ctx.invoker);dummy:deleteLater()
+        return true
+    end,
+    on_effect=function(self,ctx)
+        local from,to=ctx.targets:at(0),ctx.targets:at(1)
+        local room=ctx.invoker:getRoom()
+        if not from or not to or not from:isAlive() or not to:isAlive() then return end
+        if not room:askForUseSlashTo(from,to,"@diyba-xuezhao:"..to:objectName(),false,false,false)
+            and from:isAlive() then room:loseHp(from,1) end
+    end
+}
+local diyba_hanhuang=sgs.CreateTriggerSkillV2{
+    name="diyba_hanhuang$",events={sgs.EventPhaseEnd},
+    can_trigger=function(self,event,room,player,data)
+        if not player or not player:isAlive() or player:getPhase()~=sgs.Player_Discard
+            or player:getKingdom()~="qun" or not player:isKongcheng() then return "" end
+        local names,holders={},{}
+        for _,p in sgs.qlist(room:getAlivePlayers()) do
+            if p:hasLordSkill(self:objectName()) and p:isWounded() then
+                table.insert(names,self:objectName());table.insert(holders,p:objectName())
+            end
+        end
+        return table.concat(names,"|"),table.concat(holders,"|")
+    end,
+    on_cost=function(self,event,room,player,ctx)
+        return room:askForSkillInvoke(ctx.invoker,self:objectName(),sgs.QVariant(ctx.owner:objectName()))
+    end,
+    on_effect=function(self,event,room,player,ctx)
+        if ctx.owner:isAlive() then room:recover(ctx.owner,sgs.RecoverStruct(ctx.invoker,nil,1)) end
+        return false
+    end
+}
+local diyba_liuxie=sgs.General(extension,"diyba_3j_liuxie$","qun",4)
+diyba_liuxie:setImage("liuxie")
+diyba_liuxie:addSkill(diyba_xuezhao)
+diyba_liuxie:addSkill(diyba_hanhuang)
+sgs.LoadTranslationTable{
+    ["diyba_3j_liuxie"]="刘协",["&diyba_3j_liuxie"]="刘协",["#diyba_3j_liuxie"]="最后的汉皇·3D三将",
+    ["designer:diyba_3j_liuxie"]="三国杀diy吧",
+    ["diyba_xuezhao"]="血昭",[":diyba_xuezhao"]="出牌阶段，你可以失去一点体力或弃两张牌，并指定一名角色发动，目标需要对另一名你指定的角色无视距离使用一张杀，否则目标失去一点体力。每阶段限一次。",
+    ["@diyba-xuezhao"]="血昭：请对 %src 使用一张【杀】，否则失去1点体力",
+    ["diyba_hanhuang"]="汉皇",[":diyba_hanhuang"]="主公技，群势力角色弃牌阶段结束时若没有手牌，可以令你恢复一点体力。",
+}
+
+-- 3D7J 韩当：装备格数使用引擎计数，含宝物及额外装备格。
+local diyba_gongqi=sgs.CreateDistanceSkillV2{
+    name="diyba_gongqi",holder_selector=sgs.CorrectSkill_Primary,
+    correct_func=function(self,ctx)
+        local from=ctx:getPrimary()
+        return -from:getEquipArea()
+    end
+}
+local diyba_jiefan=sgs.CreateViewAsSkillV2{
+    name="diyba_jiefan",response_or_use=true,
+    can_activate=function(self,request)
+        local p=request:getInitiator()
+        if p:getEquipArea()<=0 or p:getMark("Global_PreventPeach")>0 then return false end
+        if play(request) then
+            local peach=sgs.Sanguosha:cloneCard("peach")
+            local available=peach:isAvailable(p);peach:deleteLater();return available
+        end
+        return string.find(request:getPattern() or "","peach",1,true)~=nil
+    end,
+    create_card=function(self,request)
+        local peach=sgs.Sanguosha:cloneCard("peach",sgs.Card_NoSuit,0)
+        peach:setSkillName(self:objectName());return peach
+    end,
+    pay=function(self,room,ctx,request)
+        local p=ctx.invoker
+        local choices={}
+        local names={"weapon_area","armor_area","defensive_horse_area","offensive_horse_area","treasure_area"}
+        for i=0,4 do if p:hasEquipArea(i) then table.insert(choices,names[i+1]) end end
+        if #choices==0 then return false end
+        local choice=room:askForChoice(p,self:objectName(),table.concat(choices,"+"))
+        for i=0,4 do
+            if names[i+1]==choice and p:hasEquipArea(i) then
+                local equipped=p:getEquip(i)~=nil
+                p:throwEquipArea(i)
+                if equipped and p:isAlive() then p:drawCards(2,self:objectName()) end
+                return true
+            end
+        end
+        return false
+    end
+}
+local diyba_handang=sgs.General(extension,"diyba_7j_handang","wu",4)
+diyba_handang:setImage("handang")
+diyba_handang:addSkill(diyba_gongqi)
+diyba_handang:addSkill(diyba_jiefan)
+sgs.LoadTranslationTable{
+    ["diyba_7j_handang"]="韩当",["&diyba_7j_handang"]="韩当",["#diyba_7j_handang"]="3D七将",
+    ["designer:diyba_7j_handang"]="好孩子系我",
+    ["diyba_gongqi"]="弓骑",[":diyba_gongqi"]="锁定技，你与其他角色计算距离时始终-X。(X为你的装备格数)",
+    ["diyba_jiefan"]="解烦",[":diyba_jiefan"]="你可以失去一个装备格，视为使用一张【桃】；若你以此法失去了装备牌，你摸两张牌。",
+}
+
+-- 3D2J 蒋琬：规为公开独立牌堆；蹈矩由原锦囊负责目标校验。
+local diyba_yaliang=sgs.CreateTriggerSkillV2{
+    name="diyba_yaliang",events={sgs.TargetConfirming},
+    can_trigger=function(self,event,room,player,data)
+        local use=data:toCardUse()
+        if use.from and use.from~=player and use.card:isNDTrick() and use.to:contains(player)
+            and not table.contains(use.nullified_list,player:objectName()) then
+            return own(self,event,room,player,data)
+        end
+        return ""
+    end,
+    on_cost=invoke,
+    on_effect=function(self,event,room,player,ctx)
+        local use=ctx.original_data:toCardUse()
+        local nullified=use.nullified_list
+        table.insert(nullified,player:objectName());use.nullified_list=nullified
+        ctx.original_data:setValue(use)
+        player:drawCards(1,self:objectName())
+        diyba_slash(room,use.from,player,self:objectName())
+        return false
+    end
+}
+local diyba_xungui=sgs.CreateViewAsSkillV2{
+    name="diyba_xungui",n=1,target_mode=sgs.ViewAsSkillV2_SelectTargets,
+    limit_scope=sgs.Skill_Limit_Phase,phase_name="Play",max_usage_limit=1,
+    will_throw_selected_cards=false,
+    can_activate=function(self,request) return play(request) end,
+    can_select_card=function(self,request,card)
+        return request:getSelectedCardIds():isEmpty() and card:isNDTrick()
+    end,
+    card_selection_feasible=function(self,request) return request:getSelectedCardIds():length()==1 end,
+    targets_feasible=function(self,request,selected) return #selected==0 end,
+    pay=function(self,room,ctx,request)
+        local p=ctx.invoker
+        local id=request:getSelectedCardIds():first()
+        if room:getCardOwner(id)~=p then return false end
+        local old=sgs.DummyCard();old:addSubcards(p:getPile("diyba_rule"))
+        local replaced=old:subcardsLength()>0
+        -- Install the new rule before movement triggers can re-enter this skill.
+        p:addToPile("diyba_rule",id,true)
+        if replaced then room:throwCard(old,p,p) end
+        old:deleteLater()
+        if replaced and p:isAlive() then room:recover(p,sgs.RecoverStruct(p,nil,1)) end
+        return true
+    end,
+    on_effect=function(self,ctx) end
+}
+local diyba_daoju=sgs.CreateViewAsSkillV2{
+    name="diyba_daoju",n=2,
+    limit_scope=sgs.Skill_Limit_Phase,phase_name="Play",max_usage_limit=1,
+    can_activate=function(self,request)
+        local pile=request:getInitiator():getPile("diyba_rule")
+        if not play(request) or pile:isEmpty() then return false end
+        local card=sgs.Sanguosha:cloneCard(sgs.Sanguosha:getCard(pile:first()):objectName())
+        local available=card:isAvailable(request:getInitiator());card:deleteLater();return available
+    end,
+    can_select_card=function(self,request,card)
+        local ids=request:getSelectedCardIds()
+        if card:isEquipped() or ids:length()>=2 then return false end
+        if ids:isEmpty() then return card:isRed() or card:isBlack() end
+        local first=sgs.Sanguosha:getCard(ids:first())
+        return (first:isRed() and card:isRed()) or (first:isBlack() and card:isBlack())
+    end,
+    card_selection_feasible=function(self,request) return request:getSelectedCardIds():length()==2 end,
+    create_card=function(self,request)
+        local ids=request:getSelectedCardIds()
+        local pile=request:getInitiator():getPile("diyba_rule")
+        if ids:length()~=2 or pile:isEmpty() then return nil end
+        local card=sgs.Sanguosha:cloneCard(sgs.Sanguosha:getCard(pile:first()):objectName(),sgs.Card_NoSuit,0)
+        card:addSubcards(ids);card:setSkillName(self:objectName());return card
+    end
+}
+local diyba_jiangwan=sgs.General(extension,"diyba_2j_jiangwan","shu",3)
+diyba_jiangwan:setImage("jiangwan")
+diyba_jiangwan:addSkill(diyba_yaliang)
+diyba_jiangwan:addSkill(diyba_xungui)
+diyba_jiangwan:addSkill(diyba_daoju)
+sgs.LoadTranslationTable{
+    ["diyba_2j_jiangwan"]="蒋琬",["&diyba_2j_jiangwan"]="蒋琬",["#diyba_2j_jiangwan"]="安阳亭侯·3D二将",
+    ["designer:diyba_2j_jiangwan"]="三国杀diy吧",["diyba_rule"]="规",
+    ["diyba_yaliang"]="雅量",[":diyba_yaliang"]="当你成为其他角色所使用的非延时类锦囊的目标时，你可以摸一张牌，若如此做，该锦囊对你无效，且视为锦囊使用者对你使用了一张【杀】（该【杀】不计入回合使用限制）。",
+    ["diyba_xungui"]="循规",[":diyba_xungui"]="出牌阶段，你可以将一张非延时类锦囊置于你的武将牌上，称为“规”。若存在“规”，则弃掉代替之，且你回复1点体力。每阶段限用一次。",
+    ["diyba_daoju"]="蹈矩",[":diyba_daoju"]="出牌阶段，你可以将两张相同颜色手牌当“规”所示锦囊使用。每阶段限用一次。",
+}
+
+-- 3D2J 乐进：距离标记由引擎在回合结束清除，不覆盖其他固定距离。
+local diyba_xiandeng=sgs.CreateTriggerSkillV2{
+    name="diyba_xiandeng",events={sgs.DrawNCards},
+    can_trigger=function(self,event,room,player,data)
+        if player and player:getPhase()==sgs.Player_Draw and data:toInt()>0 then return own(self,event,room,player,data) end
+        return ""
+    end,
+    on_cost=function(self,event,room,player,ctx)
+        local target=room:askForPlayerChosen(player,room:getOtherPlayers(player),self:objectName(),"@diyba-xiandeng",true,true)
+        if not target then return false end
+        ctx.targets:append(target);return true
+    end,
+    on_effect=function(self,event,room,player,ctx)
+        ctx.original_data:setValue(math.max(0,ctx.original_data:toInt()-1))
+        room:setPlayerMark(player,"diyba_xiandeng_"..ctx.targets:first():objectName().."-Clear",1)
+        return false
+    end
+}
+local diyba_xiandengDistance=sgs.CreateDistanceSkillV2{
+    name="#diyba_xiandeng-distance",holder_selector=sgs.CorrectSkill_Primary,
+    fixed_func=function(self,ctx)
+        local from,to=ctx:getPrimary(),ctx:getSecondary()
+        if to and from:getMark("diyba_xiandeng_"..to:objectName().."-Clear")>0 then return 1 end
+        return 0
+    end
+}
+local function diyba_materials(card)
+    local ids=sgs.IntList()
+    if card:isVirtualCard() then ids=card:getSubcards() else ids:append(card:getEffectiveId()) end
+    return ids
+end
+local diyba_xiaoguo=sgs.CreateTriggerSkillV2{
+    name="diyba_xiaoguo",events={sgs.SlashMissed},
+    can_trigger=function(self,event,room,player,data)
+        local effect=data:toSlashEffect()
+        if player and player:getPhase()==sgs.Player_Play and effect.jink and effect.to:isAlive()
+            and (effect.slash:isBlack() or effect.slash:getSuit()==sgs.Card_Diamond) then
+            return own(self,event,room,player,data)
+        end
+        return ""
+    end,
+    on_cost=invoke,
+    on_effect=function(self,event,room,player,ctx)
+        local effect=ctx.original_data:toSlashEffect()
+        local jinks=sgs.DummyCard()
+        for _,id in sgs.qlist(diyba_materials(effect.jink)) do
+            local place=room:getCardPlace(id)
+            if place==sgs.Player_DiscardPile or place==sgs.Player_PlaceTable then jinks:addSubcard(id) end
+        end
+        if jinks:subcardsLength()>0 then room:obtainCard(effect.to,jinks,true) end
+        jinks:deleteLater()
+        if not player:isAlive() or not effect.to:isAlive() then return false end
+        local name=effect.slash:isBlack() and "supply_shortage" or "indulgence"
+        local trick=sgs.Sanguosha:cloneCard(name,effect.slash:getSuit(),effect.slash:getNumber())
+        trick:setSkillName(self:objectName())
+        local ids=diyba_materials(effect.slash)
+        -- The delayed trick needs the Slash's still-available physical material.
+        local available=not ids:isEmpty()
+        for _,id in sgs.qlist(ids) do
+            if room:getCardPlace(id)~=sgs.Player_PlaceTable then available=false end
+        end
+        if available and effect.to:hasJudgeArea() and not effect.to:containsTrick(name)
+            and not player:isProhibited(effect.to,trick) then
+            trick:addSubcards(ids)
+            local use=sgs.CardUseStruct();use.card=trick;use.from=player;use.to:append(effect.to)
+            room:useCard(use,false)
+        end
+        trick:deleteLater();return false
+    end
+}
+local diyba_lejin=sgs.General(extension,"diyba_2j_lejin","wei",4)
+diyba_lejin:setImage("yuejin")
+diyba_lejin:addSkill(diyba_xiandeng)
+diyba_lejin:addSkill(diyba_xiandengDistance)
+diyba_lejin:addSkill(diyba_xiaoguo)
+extension:insertRelatedSkills("diyba_xiandeng","#diyba_xiandeng-distance")
+sgs.LoadTranslationTable{
+    ["diyba_2j_lejin"]="乐进",["&diyba_2j_lejin"]="乐进",["#diyba_2j_lejin"]="胆识英烈·3D二将",
+    ["designer:diyba_2j_lejin"]="三国杀diy吧",
+    ["diyba_xiandeng"]="先登",[":diyba_xiandeng"]="摸牌阶段，你可少摸一张牌，然后你无视一名其它角色的距离直到回合结束。",
+    ["@diyba-xiandeng"]="先登：选择本回合无视距离的角色（少摸一张牌）",
+    ["diyba_xiaoguo"]="骁果",[":diyba_xiaoguo"]="出牌阶段，每当你使用黑色或方块【杀】被目标的【闪】抵消时，你可令此【闪】返回该角色手中，然后将此【杀】当一张延时锦囊对该角色使用（黑色当【兵粮寸断】，方块当【乐不思蜀】）。",
+}
+
+-- 3D12J 牵招，仅据 diyba.md §4.3。
+local diyba_yuanzhen=sgs.CreateTriggerSkillV2{
+    name="diyba_yuanzhen",events={sgs.TargetSpecified},frequency=sgs.Skill_Compulsory,
+    can_trigger=function(self,event,room,player,data)
+        local use=data:toCardUse()
+        if use.from==player and use.to:length()==1 and use.to:first()~=player
+            and player:distanceTo(use.to:first())~=1 then return own(self,event,room,player,data) end
+        return ""
+    end,
+    on_effect=function(self,event,room,player,ctx)
+        local target=ctx.original_data:toCardUse().to:first()
+        if not room:askForCard(target,"..","@diyba-yuanzhen:"..player:objectName(),
+            ctx.original_data,sgs.Card_MethodDiscard) and player:isAlive() then
+            player:drawCards(1,self:objectName())
+        end
+        return false
+    end
+}
+local function diyba_equipDestinations(room,from,card)
+    local targets=sgs.SPlayerList()
+    local index=card:getRealCard():toEquipCard():location()
+    for _,p in sgs.qlist(room:getOtherPlayers(from)) do
+        if p:hasEquipArea(index) and not p:getEquip(index) then targets:append(p) end
+    end
+    return targets
+end
+local diyba_zhirong=sgs.CreateTriggerSkillV2{
+    name="diyba_zhirong",events={sgs.EventPhaseStart},
+    can_trigger=function(self,event,room,player,data)
+        if player and player:getPhase()==sgs.Player_Play then return own(self,event,room,player,data) end
+        return ""
+    end,
+    on_cost=function(self,event,room,player,ctx)
+        local ids=sgs.IntList()
+        for _,p in sgs.qlist(room:getAlivePlayers()) do
+            for _,c in sgs.qlist(p:getEquips()) do
+                if not diyba_equipDestinations(room,p,c):isEmpty() then ids:append(c:getEffectiveId()) end
+            end
+        end
+        if ids:isEmpty() or not room:askForSkillInvoke(player,self:objectName()) then return false end
+        room:fillAG(ids,player)
+        local id=room:askForAG(player,ids,false,self:objectName());room:clearAG(player)
+        if id<0 then return false end
+        local from=room:getCardOwner(id)
+        if not from then return false end
+        local target=room:askForPlayerChosen(player,diyba_equipDestinations(room,from,sgs.Sanguosha:getCard(id)),
+            self:objectName(),"@diyba-zhirong",false,true)
+        if not target then return false end
+        ctx.targets:append(from);ctx.targets:append(target);ctx.extra_data=sgs.QVariant(id)
+        return true
+    end,
+    on_effect=function(self,event,room,player,ctx)
+        local from,to=ctx.targets:at(0),ctx.targets:at(1)
+        local card=sgs.Sanguosha:getCard(ctx.extra_data:toInt())
+        if room:getCardOwner(card:getEffectiveId())~=from or room:getCardPlace(card:getEffectiveId())~=sgs.Player_PlaceEquip
+            or not diyba_equipDestinations(room,from,card):contains(to) then return false end
+        room:moveCardTo(card,from,to,sgs.Player_PlaceEquip,
+            sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TRANSFER,player:objectName(),self:objectName(),""),true)
+        if from:isAlive() and to:isAlive() and not to:isAllNude() then
+            local trick=sgs.Sanguosha:cloneCard("dismantlement",sgs.Card_NoSuit,0)
+            trick:setSkillName(self:objectName())
+            if not from:isProhibited(to,trick) and trick:targetFilter(sgs.SPlayerList(),to,from) then
+                local use=sgs.CardUseStruct();use.card=trick;use.from=from;use.to:append(to)
+                room:useCard(use,false)
+            end
+            trick:deleteLater()
+        end
+        return false
+    end
+}
+local diyba_qianzhao=sgs.General(extension,"diyba_12j_qianzhao","wei",4)
+diyba_qianzhao:setImage("qianzhao")
+diyba_qianzhao:addSkill(diyba_yuanzhen)
+diyba_qianzhao:addSkill(diyba_zhirong)
+sgs.LoadTranslationTable{
+    ["diyba_12j_qianzhao"]="牵招",["&diyba_12j_qianzhao"]="牵招",["#diyba_12j_qianzhao"]="凛正戍远塞·3D十二将",
+    ["designer:diyba_12j_qianzhao"]="林已",
+    ["diyba_yuanzhen"]="远振",[":diyba_yuanzhen"]="锁定技，你使用牌指定与你距离不为1的其他角色为唯一的目标后，你令其选择一项：1.弃置一张牌；2.令你摸一张牌。",
+    ["@diyba-yuanzhen"]="远振：弃置一张牌，否则 %src 摸一张牌",
+    ["diyba_zhirong"]="制戎",[":diyba_zhirong"]="出牌阶段开始时，你可将一名角色场上的一张装备牌置入另一名角色的装备区，然后前者视为对后者使用【过河拆桥】。",
+    ["@diyba-zhirong"]="制戎：选择装备牌移入的角色",
+}
+
+-- 3D10J 张悌：手牌同时交换，覆江只识别实际获得你的牌。
+local diyba_nishi=sgs.CreateTriggerSkillV2{
+    name="diyba_nishi",events={sgs.EventPhaseStart},frequency=sgs.Skill_Compulsory,
+    can_trigger=function(self,event,room,player,data)
+        if player and player:getPhase()==sgs.Player_Start and not room:getOtherPlayers(player):isEmpty() then
+            return own(self,event,room,player,data)
+        end
+        return ""
+    end,
+    on_effect=function(self,event,room,player,ctx)
+        local minimum=1000000
+        for _,p in sgs.qlist(room:getOtherPlayers(player)) do minimum=math.min(minimum,p:getHandcardNum()) end
+        if player:getHandcardNum()<=minimum then player:drawCards(minimum+1-player:getHandcardNum(),self:objectName()) end
+        if not player:isAlive() then return false end
+        local targets=sgs.SPlayerList()
+        for _,p in sgs.qlist(room:getOtherPlayers(player)) do
+            if p:getHandcardNum()<player:getHandcardNum() then targets:append(p) end
+        end
+        if targets:isEmpty() then return false end
+        local target=room:askForPlayerChosen(player,targets,self:objectName(),"@diyba-nishi",false,true)
+        if not target or not target:isAlive() then return false end
+        local moves=sgs.CardsMoveList()
+        moves:append(sgs.CardsMoveStruct(player:handCards(),target,sgs.Player_PlaceHand,
+            sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_SWAP,player:objectName(),target:objectName(),self:objectName(),"")))
+        moves:append(sgs.CardsMoveStruct(target:handCards(),player,sgs.Player_PlaceHand,
+            sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_SWAP,target:objectName(),player:objectName(),self:objectName(),"")))
+        room:moveCardsAtomic(moves,false)
+        return false
+    end
+}
+local diyba_fujiang=sgs.CreateTriggerSkillV2{
+    name="diyba_fujiang",events={sgs.CardsMoveOneTime},
+    can_trigger=function(self,event,room,player,data)
+        local move=data:toMoveOneTime()
+        if not move.from or not move.to or move.from:objectName()==move.to:objectName() or move.card_ids:isEmpty() then return "" end
+        if move.to_place~=sgs.Player_PlaceHand and move.to_place~=sgs.Player_PlaceEquip
+            and move.to_place~=sgs.Player_PlaceJudge and move.to_place~=sgs.Player_PlaceSpecial then return "" end
+        local owned=false
+        for _,place in sgs.qlist(move.from_places) do
+            if place==sgs.Player_PlaceHand or place==sgs.Player_PlaceEquip
+                or place==sgs.Player_PlaceJudge or place==sgs.Player_PlaceSpecial then owned=true end
+        end
+        if not owned then return "" end
+        local from=room:findPlayerByObjectName(move.from:objectName())
+        local to=room:findPlayerByObjectName(move.to:objectName())
+        if to and to:isAlive() then return own(self,event,room,from,data) end
+        return ""
+    end,
+    on_cost=invoke,
+    on_effect=function(self,event,room,player,ctx)
+        local move=ctx.original_data:toMoveOneTime()
+        local target=room:findPlayerByObjectName(move.to:objectName())
+        if not target or not target:isAlive() then return false end
+        if target:getEquips():isEmpty() then
+            room:damage(sgs.DamageStruct(self:objectName(),player,target,1))
+        elseif player:canDiscard(target,"e") then
+            local id=room:askForCardChosen(player,target,"e",self:objectName(),false,sgs.Card_MethodDiscard)
+            if id>=0 then room:throwCard(id,target,player) end
+        end
+        return false
+    end
+}
+local diyba_zhangti=sgs.General(extension,"diyba_10j_zhangti","wu",3)
+diyba_zhangti:setImage("zhangti")
+diyba_zhangti:addSkill(diyba_nishi)
+diyba_zhangti:addSkill(diyba_fujiang)
+sgs.LoadTranslationTable{
+    ["diyba_10j_zhangti"]="张悌",["&diyba_10j_zhangti"]="张悌",["#diyba_10j_zhangti"]="枯浪哀潮·3D十将",
+    ["designer:diyba_10j_zhangti"]="晨曦千载",
+    ["diyba_nishi"]="逆势",[":diyba_nishi"]="锁定技，准备阶段，你须与手牌少于你的一名其他角色交换手牌。若你为手牌最少的角色，你须先将手牌摸至比手牌数最少的其他角色多一张牌。",
+    ["@diyba-nishi"]="逆势：选择手牌少于你的角色，交换所有手牌",
+    ["diyba_fujiang"]="覆江",[":diyba_fujiang"]="其他角色获得你的牌时，若其装备区里：有牌，你可以弃置其中一张牌；没有牌，你可以对该角色造成1点伤害。",
+}
+
+-- 3D10J 诸葛靓：转换状态及濒死救援次数分别属于技能实例。
+local function diyba_sansiMode(player,ref)
+    return state(player,ref,"mode"):toInt()%3+1
+end
+local function diyba_sansiAdvance(player,ref)
+    local mode=diyba_sansiMode(player,ref)%3+1
+    setstate(player,ref,"mode",mode-1)
+    player:getRoom():setPlayerMark(player,"&diyba_sansi+"..ref.key.instanceID,mode)
+    return mode
+end
+local diyba_sansi=sgs.CreateViewAsSkillV2{
+    name="diyba_sansi",n=4,target_mode=sgs.ViewAsSkillV2_SelectTargets,
+    will_throw_selected_cards=false,limit_scope=sgs.Skill_Limit_Phase,phase_name="Play",max_usage_limit=1,
+    can_activate=function(self,request) return play(request) end,
+    can_select_card=function(self,request,card)
+        local p=request:getInitiator()
+        if p:isCardLimited(card,sgs.Card_MethodRecast) then return false end
+        local ids=request:getSelectedCardIds()
+        local mode=diyba_sansiMode(p,requestRef(request))
+        if ids:length()>=mode+1 then return false end
+        if mode==1 then return true end
+        for _,id in sgs.qlist(ids) do
+            local c=sgs.Sanguosha:getCard(id)
+            if (mode==2 and c:getTypeId()==card:getTypeId()) or (mode==3 and c:getSuit()==card:getSuit()) then return false end
+        end
+        return mode~=3 or card:getSuit()<=sgs.Card_Diamond
+    end,
+    card_selection_feasible=function(self,request)
+        return request:getSelectedCardIds():length()==diyba_sansiMode(request:getInitiator(),requestRef(request))+1
+    end,
+    can_select_target=function(self,request,selected,candidate) return #selected==0 end,
+    targets_feasible=function(self,request,selected) return #selected==1 end,
+    pay=function(self,room,ctx,request)
+        local p=ctx.invoker
+        local ids=request:getSelectedCardIds()
+        for _,id in sgs.qlist(ids) do
+            if room:getCardOwner(id)~=p or (room:getCardPlace(id)~=sgs.Player_PlaceHand and room:getCardPlace(id)~=sgs.Player_PlaceEquip)
+                or p:isCardLimited(sgs.Sanguosha:getCard(id),sgs.Card_MethodRecast) then return false end
+        end
+        -- Advance before movement/draw callbacks can re-enter the conversion.
+        diyba_sansiAdvance(p,ctx:getActivationRef())
+        local card=sgs.DummyCard();card:addSubcards(ids)
+        room:moveCardTo(card,p,nil,sgs.Player_DiscardPile,
+            sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_RECAST,p:objectName(),self:objectName(),""),true)
+        card:deleteLater()
+        if p:isAlive() then p:drawCards(ids:length(),self:objectName()) end
+        return true
+    end,
+    on_effect=function(self,ctx)
+        local target=ctx.targets:first()
+        if target and target:isAlive() then target:drawCards(3,self:objectName()) end
+    end
+}
+local diyba_jiezhong=sgs.CreateTriggerSkillV2{
+    name="diyba_jiezhong",events={sgs.Dying},limit_scope=sgs.Skill_Limit_Round,max_usage_limit=1,
+    can_trigger=function(self,event,room,player,data)
+        local who=data:toDying().who
+        if who and who:isAlive() and who:getHp()<1 then
+            local names,players={},{}
+            for _,p in sgs.qlist(room:getOtherPlayers(who)) do
+                if p:hasSkill(self:objectName()) then table.insert(names,self:objectName());table.insert(players,p:objectName()) end
+            end
+            return table.concat(names,"|"),table.concat(players,"|")
+        end
+        return ""
+    end,
+    on_cost=function(self,event,room,player,ctx)
+        if not room:askForSkillInvoke(player,self:objectName(),ctx.original_data) then return false end
+        local choices={}
+        for _,id in sgs.qlist(player:getValidSkillInstanceIds("diyba_sansi")) do table.insert(choices,tostring(id)) end
+        ctx.choice=#choices==0 and "" or (#choices==1 and choices[1] or room:askForChoice(player,self:objectName(),table.concat(choices,"+")))
+        return true
+    end,
+    on_pay=function(self,event,room,player,ctx)
+        if not self:isUsable(ctx) then return false end
+        self:addUsage(ctx);return true
+    end,
+    on_effect=function(self,event,room,player,ctx)
+        local who=ctx.original_data:toDying().who
+        if not who or not who:isAlive() or who:getHp()>=1 then return false end
+        room:recover(who,sgs.RecoverStruct(player,nil,1-who:getHp()))
+        if player:isAlive() and ctx.choice~="" and player:getValidSkillInstanceIds("diyba_sansi"):contains(tonumber(ctx.choice)) then
+            local key=sgs.SkillInstanceKey();key.skillName="diyba_sansi";key.instanceID=tonumber(ctx.choice)
+            local ref=sgs.SkillInstanceRef(player:objectName(),key)
+            local mode=diyba_sansiAdvance(player,ref)
+            if mode==1 then room:loseHp(player,1)
+            elseif mode==3 then self:resetUsage(ctx) end
+        end
+        return false
+    end
+}
+local diyba_zhugejing=sgs.General(extension,"diyba_10j_zhugejing","wu",4)
+diyba_zhugejing:setImage("zhugejing")
+diyba_zhugejing:addSkill(diyba_sansi)
+diyba_zhugejing:addSkill(diyba_jiezhong)
+sgs.LoadTranslationTable{
+    ["diyba_10j_zhugejing"]="诸葛靓",["&diyba_10j_zhugejing"]="诸葛靓",["#diyba_10j_zhugejing"]="失恨咽漆·3D十将",
+    ["designer:diyba_10j_zhugejing"]="绝代倾国倾城貌",
+    ["diyba_sansi"]="三思",[":diyba_sansi"]="转换技，出牌阶段限一次，你可以重铸①两张牌②三种类别的牌③四种花色的牌，令一名角色摸三张牌。",
+    ["diyba_jiezhong"]="竭忠",[":diyba_jiezhong"]="每轮限一次，其他角色进入濒死时，你可以令其将体力值回复至1点，然后你转换“三思”的状态；然后若“三思”状态：为①，你失去1点体力；为③，重置此技能。",
+}
+
+-- 3D15J 步度根：后续发动属于同一次扰掠结算，不占用第二次阶段配额。
+local function diyba_raolueLegal(from,to)
+    if not from:isAlive() or not to:isAlive() or from==to or to:getHandcardNum()<from:getHandcardNum() then return false end
+    local duel=sgs.Sanguosha:cloneCard("duel",sgs.Card_NoSuit,0)
+    duel:setSkillName("diyba_raolue")
+    local legal=not from:isCardLimited(duel,sgs.Card_MethodUse) and not from:isProhibited(to,duel)
+        and duel:targetFilter(sgs.SPlayerList(),to,from)
+    duel:deleteLater();return legal
+end
+local diyba_raolue=sgs.CreateViewAsSkillV2{
+    name="diyba_raolue",n=0,target_mode=sgs.ViewAsSkillV2_SelectTargets,
+    limit_scope=sgs.Skill_Limit_Phase,phase_name="Play",max_usage_limit=1,
+    can_activate=function(self,request)
+        if not play(request) then return false end
+        local p=request:getInitiator()
+        for _,q in sgs.qlist(p:getRoom():getOtherPlayers(p)) do if diyba_raolueLegal(p,q) then return true end end
+        return false
+    end,
+    can_select_target=function(self,request,selected,candidate)
+        return #selected==0 and diyba_raolueLegal(request:getInitiator(),candidate)
+    end,
+    targets_feasible=function(self,request,selected) return #selected==1 end,
+    on_effect=function(self,ctx)
+        local p,q=ctx.invoker,ctx.targets:first()
+        local room=p:getRoom()
+        while q and diyba_raolueLegal(p,q) do
+            local duel=sgs.Sanguosha:cloneCard("duel",sgs.Card_NoSuit,0);duel:setSkillName(self:objectName())
+            local use=sgs.CardUseStruct();use.card=duel;use.from=p;use.to:append(q)
+            room:useCard(use,false);duel:deleteLater()
+            if not p:isAlive() or not q:isAlive() then break end
+            if room:askForChoice(q,self:objectName(),"diyba_raolue_swap+diyba_raolue_refuse",sgs.QVariant(p:objectName()))=="diyba_raolue_swap" then
+                local moves=sgs.CardsMoveList()
+                moves:append(sgs.CardsMoveStruct(p:handCards(),q,sgs.Player_PlaceHand,
+                    sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_SWAP,p:objectName(),q:objectName(),self:objectName(),"")))
+                moves:append(sgs.CardsMoveStruct(q:handCards(),p,sgs.Player_PlaceHand,
+                    sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_SWAP,q:objectName(),p:objectName(),self:objectName(),"")))
+                room:moveCardsAtomic(moves,false);break
+            end
+            if not room:askForSkillInvoke(p,"diyba_raolue_draw",sgs.QVariant(q:objectName())) then break end
+            p:drawCards(2,self:objectName())
+            if not diyba_raolueLegal(p,q) or not room:askForSkillInvoke(p,"diyba_raolue_repeat",sgs.QVariant(q:objectName())) then break end
+        end
+    end
+}
+local diyba_budugen=sgs.General(extension,"diyba_15j_budugen","qun",4)
+diyba_budugen:setImage("budugen")
+diyba_budugen:addSkill(diyba_raolue)
+sgs.LoadTranslationTable{
+    ["diyba_15j_budugen"]="步度根",["&diyba_15j_budugen"]="步度根",["#diyba_15j_budugen"]="霜刃露寒·3D十五将",
+    ["designer:diyba_15j_budugen"]="七哀",
+    ["diyba_raolue"]="扰掠",[":diyba_raolue"]="出牌阶段限一次，你可视为对一名手牌数不小于你的角色使用【决斗】，然后于结算后令该角色选择是否与你交换手牌；若其选择否，你可以摸两张牌，然后若该角色手牌数仍不小于你，你可对其再次发动“扰掠”。",
+    ["diyba_raolue_swap"]="交换所有手牌",["diyba_raolue_refuse"]="不交换手牌",
+    ["diyba_raolue_draw"]="扰掠：摸两张牌",["diyba_raolue_repeat"]="扰掠：再次对该角色使用决斗",
+}
+
+-- 3D2J SP 马良：用原牌的目标列表及 extra_effect 保留原结算流程。
+local diyba_lianman=sgs.CreateTriggerSkillV2{
+    name="diyba_lianman",events={sgs.TargetSpecified},
+    can_trigger=function(self,event,room,player,data)
+        local use=data:toCardUse()
+        if use.card:isKindOf("TrickCard") and use.to:length()>1 then return owners(self,room) end
+        return ""
+    end,
+    on_cost=function(self,event,room,player,ctx)
+        local use=ctx.original_data:toCardUse()
+        local candidates=sgs.SPlayerList()
+        for _,p in sgs.qlist(use.to) do if p:isAlive() then candidates:append(p) end end
+        if candidates:isEmpty() then return false end
+        player:setTag("diyba_lianman_ai",ctx.original_data)
+        local target=room:askForPlayerChosen(player,candidates,self:objectName(),"@diyba-lianman",true,true)
+        player:removeTag("diyba_lianman_ai")
+        if not target then return false end
+        ctx.targets:append(target)
+        ctx.choice=room:askForChoice(player,self:objectName(),"diyba_lianman_draw+diyba_lianman_skip",ctx.original_data)
+        return true
+    end,
+    on_effect=function(self,event,room,player,ctx)
+        local target=ctx.targets:first()
+        local use=ctx.original_data:toCardUse()
+        if not target or not target:isAlive() or not use.to:contains(target) then return false end
+        if ctx.choice=="diyba_lianman_draw" then
+            local key="diyba_lianman_"..target:objectName()
+            use.card:setTag(key,sgs.QVariant(use.card:getTag(key):toInt()+1))
+            target:drawCards(1,self:objectName())
+        else
+            -- 保留目标身份，只跳过其效果；不取消其他目标或改变牌的总目标数。
+            local nullified=use.nullified_list
+            if not table.contains(nullified,target:objectName()) then
+                table.insert(nullified,target:objectName());use.nullified_list=nullified
+                ctx.original_data:setValue(use)
+            end
+            room:askForDiscard(target,self:objectName(),1,1,false,true)
+        end
+        return false
+    end
+}
+local diyba_lianman_effect=sgs.CreateRuleSkillV2{
+    name="#diyba_lianman_effect",events={sgs.CardEffect,sgs.CardFinished},
+    on_record=function(self,event,room,player,ctx)
+        local data=ctx.original_data
+        if event==sgs.CardEffect then
+            local effect=data:toCardEffect()
+            local n=effect.card:getTag("diyba_lianman_"..effect.to:objectName()):toInt()
+            if n>0 then effect.extra_effect=effect.extra_effect+n;data:setValue(effect) end
+        else
+            local card=data:toCardUse().card
+            for _,p in sgs.qlist(room:getAllPlayers()) do card:removeTag("diyba_lianman_"..p:objectName()) end
+        end
+    end
+}
+addToSkills(diyba_lianman_effect)
+local function diyba_xiemengTargets(player,use)
+    local candidates=sgs.SPlayerList()
+    for _,p in sgs.qlist(player:getRoom():getOtherPlayers(player)) do
+        -- 只放宽目标数量；距离、禁止、判定区等原牌规则仍有效。
+        if not use.to:contains(p) and not use.from:isProhibited(p,use.card)
+            and use.card:targetFilter(sgs.PlayerList(),p,use.from) then candidates:append(p) end
+    end
+    return candidates
+end
+local diyba_xiemeng=sgs.CreateTriggerSkillV2{
+    name="diyba_xiemeng",events={sgs.TargetConfirming},
+    can_trigger=function(self,event,room,player,data)
+        local use=data:toCardUse()
+        if use.card:isNDTrick() and use.to:length()==1 and use.to:first()==player
+            and not diyba_xiemengTargets(player,use):isEmpty() then return own(self,event,room,player,data) end
+        return ""
+    end,
+    on_cost=function(self,event,room,player,ctx)
+        local targets=diyba_xiemengTargets(player,ctx.original_data:toCardUse())
+        if targets:isEmpty() then return false end
+        player:setTag("diyba_xiemeng_ai",ctx.original_data)
+        local target=room:askForPlayerChosen(player,targets,self:objectName(),"@diyba-xiemeng",true,true)
+        player:removeTag("diyba_xiemeng_ai")
+        if not target then return false end
+        ctx.targets:append(target);return true
+    end,
+    on_effect=function(self,event,room,player,ctx)
+        local use=ctx.original_data:toCardUse();local target=ctx.targets:first()
+        if target and target:isAlive() and diyba_xiemengTargets(player,use):contains(target) then
+            local targets=sgs.SPlayerList();targets:append(target)
+            for _,p in sgs.qlist(use.to) do targets:append(p) end
+            use.to=targets;ctx.original_data:setValue(use)
+        end
+        return false
+    end
+}
+local diyba_maliang=sgs.General(extension,"diyba_2j_maliang","shu",3)
+diyba_maliang:setImage("maliang")
+diyba_maliang:addSkill(diyba_lianman)
+diyba_maliang:addSkill(diyba_xiemeng)
+extension:insertRelatedSkills("diyba_lianman","#diyba_lianman_effect")
+sgs.LoadTranslationTable{
+    ["diyba_2j_maliang"]="马良",["&diyba_2j_maliang"]="马良",["#diyba_2j_maliang"]="白眉最良·3D二将SP",
+    ["designer:diyba_2j_maliang"]="灭鼠灵大人",
+    ["diyba_lianman"]="联蛮",[":diyba_lianman"]="每当一张锦囊牌指定了一名以上的角色为目标时，你可指定其中一名目标角色，并选择其中一项：1.令其摸一张牌并额外进行一次结算 2.令其弃置一张牌并跳过结算",
+    ["diyba_xiemeng"]="协盟",[":diyba_xiemeng"]="每当你成为一张非延时性锦囊牌的唯一目标时，你可指定一名其他角色为目标之一，且该角色优先进行结算",
+    ["@diyba-lianman"]="联蛮：选择一名锦囊目标，或取消",
+    ["@diyba-xiemeng"]="协盟：增加一名优先结算的目标，或取消",
+    ["diyba_lianman_draw"]="摸一张牌，额外结算一次",["diyba_lianman_skip"]="弃置一张牌，跳过结算",
+}
+
+-- 3D10J 薛灵芸：弃牌批次由全局规则记录，技能失效不撤销已接受的回合效果。
+local function diyba_anzhiBlack(room)
+    local latest,black=0,false
+    for _,id in sgs.qlist(room:getDiscardPile()) do
+        local batch=room:getTag("diyba_anzhi_batch_"..id):toInt()
+        if batch>latest then latest=batch;black=false end
+        if batch==latest and sgs.Sanguosha:getCard(id):isBlack() then black=true end
+    end
+    -- 上面的遍历会在遇到较新批次时重置，顺序不限。
+    return black
+end
+local diyba_lianer=sgs.CreateTriggerSkillV2{
+    name="diyba_lianer",events={sgs.CardFinished},
+    can_trigger=function(self,event,room,player,data)
+        local card=data:toCardUse().card
+        if card and card:isRed() and not card:isKindOf("SkillCard") and not diyba_materials(card):isEmpty() then
+            return own(self,event,room,player,data)
+        end
+        return ""
+    end,
+    on_cost=invoke,
+    on_effect=function(self,event,room,player,ctx)
+        local card=ctx.original_data:toCardUse().card
+        local number=card:getNumber()
+        local ids=diyba_materials(card)
+        local dummy=sgs.DummyCard();dummy:addSubcards(ids)
+        room:obtainCard(player,dummy,true);dummy:deleteLater()
+        if player:isAlive() then
+            -- 每次限制均持续本回合，交集自然保留其中最严格的上界。
+            room:setPlayerCardLimitation(player,"use",".|.|"..number.."~13",true,self:objectName())
+        end
+        return false
+    end
+}
+local diyba_anzhi=sgs.CreateTriggerSkillV2{
+    name="diyba_anzhi",events={sgs.TurnStart},
+    can_trigger=function(self,event,room,player,data)
+        if diyba_anzhiBlack(room) then return owners(self,room) end
+        return ""
+    end,
+    on_cost=function(self,event,room,player,ctx)
+        local target=room:askForPlayerChosen(player,room:getAlivePlayers(),self:objectName(),"@diyba-anzhi",true,true)
+        if not target then return false end
+        ctx.targets:append(target);return true
+    end,
+    on_effect=function(self,event,room,player,ctx)
+        local target=ctx.targets:first()
+        if target and target:isAlive() then room:setPlayerMark(target,"&diyba_anzhi-Clear",1) end
+        return false
+    end
+}
+local diyba_anzhi_rule=sgs.CreateRuleSkillV2{
+    name="#diyba_anzhi_rule",events={sgs.CardsMoveOneTime,sgs.TargetConfirming},
+    on_record=function(self,event,room,player,ctx)
+        local data=ctx.original_data
+        if event==sgs.CardsMoveOneTime then
+            local move=data:toMoveOneTime()
+            if move.to_place~=sgs.Player_DiscardPile or move.card_ids:isEmpty() then return end
+            local batch=room:getTag("diyba_anzhi_batch"):toInt()+1
+            room:setTag("diyba_anzhi_batch",sgs.QVariant(batch))
+            for _,id in sgs.qlist(move.card_ids) do room:setTag("diyba_anzhi_batch_"..id,sgs.QVariant(batch)) end
+        elseif player and player:getMark("&diyba_anzhi-Clear")>0 then
+            local use=data:toCardUse()
+            if use.card:isBlack() and use.to:contains(player) then
+                room:setPlayerMark(player,"&diyba_anzhi-Clear",0)
+                local nullified=use.nullified_list
+                if not table.contains(nullified,player:objectName()) then
+                    table.insert(nullified,player:objectName());use.nullified_list=nullified;data:setValue(use)
+                end
+            end
+        end
+    end
+}
+addToSkills(diyba_anzhi_rule)
+local diyba_xuelingyun=sgs.General(extension,"diyba_10j_xuelingyun","wei",3,false)
+diyba_xuelingyun:setImage("xuelingyun")
+diyba_xuelingyun:addSkill(diyba_lianer)
+diyba_xuelingyun:addSkill(diyba_anzhi)
+extension:insertRelatedSkills("diyba_anzhi","#diyba_anzhi_rule")
+sgs.LoadTranslationTable{
+    ["diyba_10j_xuelingyun"]="薛灵芸",["&diyba_10j_xuelingyun"]="薛灵芸",["#diyba_10j_xuelingyun"]="玉壶垂霞泪·3D十将",
+    ["designer:diyba_10j_xuelingyun"]="GENTOVA07",
+    ["diyba_lianer"]="涟洏",[":diyba_lianer"]="当你使用红色牌后，你可以获得之，然后你只能使用点数小于此牌的牌直到回合结束。",
+    ["diyba_anzhi"]="暗织",[":diyba_anzhi"]="一名角色的回合开始时，若最近进入并在弃牌堆的牌包含黑色，你可以指定一名角色，此回合其第一次成为黑色牌的目标时，此牌对其无效。",
+    ["@diyba-anzhi"]="暗织：选择一名角色，令本回合首张以其为目标的黑色牌对其无效",
+}
+
+-- 3D12J 孙和：回合内/外轮次配额独立；临时命也按授予的实例精确移除。
+local function diyba_isSunhe(player)
+    return player:getGeneralName()=="diyba_12j_sunhe" or player:getGeneral2Name()=="diyba_12j_sunhe"
+end
+local function diyba_mingyeSlot(room,player)
+    return room:getCurrent()==player and player:getPhase()~=sgs.Player_NotActive and "inside" or "outside"
+end
+local function diyba_mingyeCard(event,data)
+    if event==sgs.CardUsed then return data:toCardUse().card end
+    local response=data:toCardResponse()
+    if response.m_isUse then return response.m_card end
+end
+local diyba_mingye=sgs.CreateTriggerSkillV2{
+    name="diyba_mingye",frequency=sgs.Skill_Compulsory,events={sgs.CardUsed,sgs.CardResponded},
+    can_trigger=function(self,event,room,player,data)
+        local card=diyba_mingyeCard(event,data)
+        if card and (card:isKindOf("BasicCard") or card:isNDTrick()) then return own(self,event,room,player,data) end
+        return ""
+    end,
+    on_cost=function(self,event,room,player,ctx)
+        local slot=diyba_mingyeSlot(room,player)
+        local round=tostring(room:historyScopes().round_id)
+        if state(player,ctx:getActivationRef(),slot):toString()==round then return false end
+        ctx.choice=slot;ctx.extra_data=sgs.QVariant(round);return true
+    end,
+    on_pay=function(self,event,room,player,ctx)
+        -- Consume before drawing/healing can cause a nested use of a basic card.
+        setstate(player,ctx:getActivationRef(),ctx.choice,ctx.extra_data:toString())
+        return true
+    end,
+    on_effect=function(self,event,room,player,ctx)
+        local card=diyba_mingyeCard(event,ctx.original_data)
+        if not card then return false end
+        if event==sgs.CardUsed then
+            local use=ctx.original_data:toCardUse()
+            local nullified=use.nullified_list
+            if not table.contains(nullified,"_ALL_TARGETS") then table.insert(nullified,"_ALL_TARGETS") end
+            use.nullified_list=nullified
+            if use.m_addHistory then
+                room:addPlayerHistory(player,card:getClassName(),-1)
+                use.m_addHistory=false
+            end
+            ctx.original_data:setValue(use)
+        else
+            local response=ctx.original_data:toCardResponse()
+            response.nullified=true;ctx.original_data:setValue(response)
+        end
+        player:drawCards(2,self:objectName())
+        if player:isAlive() then
+            if diyba_isSunhe(player) then
+                if player:isWounded() and room:askForCard(player,".|heart", "@diyba-mingye-heal",
+                    ctx.original_data,sgs.Card_MethodDiscard) then
+                    if player:isAlive() then room:recover(player,sgs.RecoverStruct(player,nil,1)) end
+                end
+            else
+                local candidates=sgs.SPlayerList()
+                for _,p in sgs.qlist(room:getAlivePlayers()) do if diyba_isSunhe(p) then candidates:append(p) end end
+                local target
+                if not candidates:isEmpty() then
+                    target=room:askForPlayerChosen(player,candidates,self:objectName(),"@diyba-mingye-give",true,true)
+                end
+                if target and target:isAlive() then
+                    local ids=card:isVirtualCard() and card:getSubcards() or sgs.IntList()
+                    if not card:isVirtualCard() then ids:append(card:getEffectiveId()) end
+                    local available=sgs.IntList()
+                    for _,id in sgs.qlist(ids) do
+                        if room:getCardPlace(id)==sgs.Player_PlaceTable then available:append(id) end
+                    end
+                    if not available:isEmpty() then
+                        local dummy=sgs.DummyCard();dummy:addSubcards(available)
+                        room:obtainCard(target,dummy,true);dummy:deleteLater()
+                    end
+                end
+            end
+        end
+        -- CardUsed stops before GameRule's normal card effects; CardFinished and
+        -- native table cleanup still run. Response-use cancellation uses nullified.
+        return event==sgs.CardUsed
+    end
+}
+local diyba_danghu=sgs.CreateTriggerSkillV2{
+    name="diyba_danghu",events={sgs.HpChanged},limit_scope=sgs.Skill_Limit_Round,max_usage_limit=1,
+    can_trigger=own,
+    on_cost=function(self,event,room,player,ctx)
+        if not self:isUsable(ctx) then return false end
+        local target=room:askForPlayerChosen(player,room:getOtherPlayers(player),self:objectName(),"@diyba-danghu",true,true)
+        if not target then return false end
+        ctx.targets:append(target);return true
+    end,
+    on_pay=function(self,event,room,player,ctx)
+        if not self:isUsable(ctx) then return false end
+        self:addUsage(ctx);return true
+    end,
+    on_effect=function(self,event,room,player,ctx)
+        local target=ctx.targets:first()
+        if not target or not target:isAlive() or target:hasSkill("diyba_mingye",true) then return false end
+        local id=room:acquireSkill(target,"diyba_mingye")
+        if id>0 then
+            local grants=room:getTag("diyba_danghu_grants"):toString()
+            local entry=target:objectName()..":"..id
+            room:setTag("diyba_danghu_grants",sgs.QVariant(grants=="" and entry or grants.."|"..entry))
+        end
+        return false
+    end
+}
+local diyba_danghu_rule=sgs.CreateRuleSkillV2{
+    name="#diyba_danghu_rule",events={sgs.RoundEnd},
+    on_record=function(self,event,room,player,ctx)
+        local grants=room:getTag("diyba_danghu_grants"):toString()
+        room:removeTag("diyba_danghu_grants")
+        for name,id in string.gmatch(grants,"([^|:]+):(%d+)") do
+            local target=room:findPlayerByObjectName(name,true)
+            if target and target:hasSkillInstance("diyba_mingye",tonumber(id)) then
+                room:detachSkillFromPlayer(target,"diyba_mingye#"..id)
+            end
+        end
+    end
+}
+addToSkills(diyba_danghu_rule)
+local diyba_sunhe=sgs.General(extension,"diyba_12j_sunhe","wu",3)
+diyba_sunhe:setImage("sunhe")
+diyba_sunhe:addSkill(diyba_mingye)
+diyba_sunhe:addSkill(diyba_danghu)
+extension:insertRelatedSkills("diyba_danghu","#diyba_danghu_rule")
+sgs.LoadTranslationTable{
+    ["diyba_12j_sunhe"]="孙和",["&diyba_12j_sunhe"]="孙和",["#diyba_12j_sunhe"]="季子绝途·3D十二将",
+    ["designer:diyba_12j_sunhe"]="再見末日基因",
+    ["diyba_mingye"]="命也",[":diyba_mingye"]="锁定技，回合内外每轮各限一次，你使用基本牌或普通锦囊牌时，你取消此牌，且令之不计限制次数，然后摸两张牌。若如此做，若你为孙和，则你可弃置一张红桃牌，回复1点体力；否则你可令孙和获得被取消的牌。",
+    ["diyba_danghu"]="党乎",[":diyba_danghu"]="每轮限一次，你的体力值改变后，你可令一名其他角色于本轮中拥有“命也”。",
+    ["@diyba-mingye-heal"]="命也：你可弃置一张红桃牌，回复1点体力",
+    ["@diyba-mingye-give"]="命也：你可令一名孙和获得被取消的牌",
+    ["@diyba-danghu"]="党乎：你可令一名其他角色于本轮内拥有命也",
+}
+
+
+-- 3D9J 濮阳兴。辛土用原实体牌，保留原牌目标规则与正常用牌流程。
+local function diyba_xintuCompletion(room,player,card,selected)
+    local list=sgs.PlayerList()
+    for _,p in ipairs(selected) do list:append(p) end
+    if #selected>0 and card:targetsFeasible(list,player) then return selected end
+    if #selected>=room:alivePlayerCount() then return nil end
+    for _,p in sgs.qlist(room:getAlivePlayers()) do
+        if not table.contains(selected,p) and not player:isProhibited(p,card,list)
+            and card:targetFilter(list,p,player) then
+            local nextTargets={};for _,q in ipairs(selected) do table.insert(nextTargets,q) end
+            table.insert(nextTargets,p)
+            local result=diyba_xintuCompletion(room,player,card,nextTargets)
+            if result then return result end
+        end
+    end
+end
+local function diyba_xintuLegal(room,player,card)
+    if not player:isAlive() or not card:isAvailable(player) or player:isCardLimited(card,sgs.Card_MethodUse) then return nil end
+    if card:targetFixed() then return {} end
+    return diyba_xintuCompletion(room,player,card,{})
+end
+local diyba_xintu_use=sgs.CreateViewAsSkillV2{
+    name="diyba_xintu_use",n=1,expand_pile="#diyba_xintu",
+    can_activate=function(self,request)
+        return request:getPattern()=="@@diyba_xintu_use" and request:getInitiator():getTag("diyba_xintu_id"):toInt()>0
+    end,
+    can_select_card=function(self,request,card)
+        return request:getSelectedCardIds():isEmpty()
+            and card:getEffectiveId()+1==request:getInitiator():getTag("diyba_xintu_id"):toInt()
+    end,
+    card_selection_feasible=function(self,request) return request:getSelectedCardIds():length()==1 end,
+    cost=function(self,room,ctx,request)
+        local id=request:getSelectedCardIds():first()
+        return id+1==ctx.invoker:getTag("diyba_xintu_id"):toInt()
+            and room:getCardPlace(id)==sgs.Player_PlaceTable
+            and diyba_xintuLegal(room,ctx.invoker,sgs.Sanguosha:getCard(id))~=nil
+    end,
+    create_card=function(self,request)
+        local ids=request:getSelectedCardIds()
+        if ids:length()~=1 then return nil end
+        return sgs.Sanguosha:getCard(ids:first())
+    end
+}
+addToSkills(diyba_xintu_use)
+local function diyba_xintuUse(room,player,id)
+    local card=sgs.Sanguosha:getCard(id)
+    if room:getCardPlace(id)~=sgs.Player_PlaceTable or not diyba_xintuLegal(room,player,card) then return false end
+    local offered=sgs.IntList();offered:append(id)
+    player:setTag("diyba_xintu_id",sgs.QVariant(id+1))
+    room:notifyMoveToPile(player,offered,"diyba_xintu",sgs.Player_PlaceTable,true,true)
+    local used=room:askForUseCardWithBorrowedSkill(player,"diyba_xintu_use","diyba_xintu","@diyba-xintu-use")
+    room:notifyMoveToPile(player,offered,"diyba_xintu",sgs.Player_PlaceTable,false,true)
+    player:removeTag("diyba_xintu_id")
+    if used then return true end
+    -- 锁定技不能跳过仍可合法使用的牌。每次选择只提供可完成原牌目标规则的候选。
+    if room:getCardPlace(id)~=sgs.Player_PlaceTable then return false end
+    local completion=diyba_xintuLegal(room,player,card)
+    if not completion then return false end
+    local selected={}
+    if not card:targetFixed() then
+        while true do
+            local list=sgs.PlayerList();for _,p in ipairs(selected) do list:append(p) end
+            if #selected>0 and card:targetsFeasible(list,player) then break end
+            local candidates=sgs.SPlayerList()
+            for _,p in sgs.qlist(room:getAlivePlayers()) do
+                if not table.contains(selected,p) and not player:isProhibited(p,card,list)
+                    and card:targetFilter(list,p,player) then
+                    local nextTargets={};for _,q in ipairs(selected) do table.insert(nextTargets,q) end
+                    table.insert(nextTargets,p)
+                    if diyba_xintuCompletion(room,player,card,nextTargets) then candidates:append(p) end
+                end
+            end
+            if candidates:isEmpty() then return false end
+            player:setTag("diyba_xintu_target_id",sgs.QVariant(id+1))
+            local target=room:askForPlayerChosen(player,candidates,"diyba_xintu","@diyba-xintu-target",false)
+            player:removeTag("diyba_xintu_target_id")
+            if not target then return false end
+            table.insert(selected,target)
+        end
+    end
+    if not player:isAlive() or room:getCardPlace(id)~=sgs.Player_PlaceTable then return false end
+    local use=sgs.CardUseStruct();use.card=card;use.from=player
+    for _,p in ipairs(selected) do use.to:append(p) end
+    return room:useCard(use,true)
+end
+local function diyba_xintuCleanup(room,player,ids)
+    local offered=sgs.IntList()
+    local id=player:getTag("diyba_xintu_id"):toInt()-1
+    if id>=0 then
+        offered:append(id)
+        room:notifyMoveToPile(player,offered,"diyba_xintu",sgs.Player_PlaceTable,false,true)
+    end
+    player:removeTag("diyba_xintu_id");player:removeTag("diyba_xintu_target_id")
+    local rest=sgs.DummyCard()
+    for _,cid in sgs.qlist(ids) do if room:getCardPlace(cid)==sgs.Player_PlaceTable then rest:addSubcard(cid) end end
+    if rest:subcardsLength()>0 then
+        room:moveCardTo(rest,nil,nil,sgs.Player_DiscardPile,
+            sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_NATURAL_ENTER,player:objectName(),"diyba_xintu",""),true)
+    end
+    rest:deleteLater()
+end
+local diyba_xintu=sgs.CreateTriggerSkillV2{
+    name="diyba_xintu",frequency=sgs.Skill_Compulsory,events={sgs.EventPhaseStart},
+    can_trigger=function(self,event,room,player,data)
+        if player and player:getPhase()==sgs.Player_Draw then return own(self,event,room,player,data) end
+        return ""
+    end,
+    on_effect=function(self,event,room,player,ctx)
+        local ids=room:getNCards(math.max(0,player:getMaxHp()))
+        local saved={};for _,id in sgs.qlist(ids) do table.insert(saved,tostring(id)) end
+        ctx.extra_data=sgs.QVariant(table.concat(saved,","))
+        local dummy=sgs.DummyCard();dummy:addSubcards(ids)
+        room:moveCardTo(dummy,nil,nil,sgs.Player_PlaceTable,
+            sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TURNOVER,player:objectName(),self:objectName(),""),true)
+        dummy:deleteLater()
+        local count=0
+        for _,id in sgs.qlist(ids) do
+            if not player:isAlive() then break end
+            if diyba_xintuUse(room,player,id) then count=count+1 end
+        end
+        -- 不能使用或在中途死亡留下的牌正常进入弃牌堆，不收回牌堆。
+        diyba_xintuCleanup(room,player,ids)
+        ctx.extra_data=sgs.QVariant("")
+        if player:isAlive() then
+            if count>=player:getHp() and player:canDiscard(player,"e") then
+                local id=room:askForCardChosen(player,player,"e",self:objectName(),false,sgs.Card_MethodDiscard)
+                room:throwCard(id,player,player)
+            end
+            if player:isAlive() and count>player:getHp() then return true end
+        end
+        return false
+    end,
+    on_turn_broken=function(self,callback,event,room,player,ctx)
+        local ids=sgs.IntList()
+        for id in string.gmatch(ctx.extra_data:toString(),"%d+") do ids:append(tonumber(id)) end
+        ctx.extra_data=sgs.QVariant("")
+        diyba_xintuCleanup(room,player,ids)
+    end
+}
+-- 下一次实际受伤先消耗所有已支付的预测，再执行回复；新发动不会被本次消费。
+local diyba_sili_rule=sgs.CreateRuleSkillV2{
+    name="#diyba_sili_rule",events={sgs.Damaged},priority=5,
+    on_record=function(self,event,room,player,ctx)
+        local damaged=ctx.original_data:toDamage().to
+        if not damaged then return end
+        local pending=room:getTag("diyba_sili_pending"):toString()
+        room:removeTag("diyba_sili_pending")
+        for name in string.gmatch(pending,"[^|]+") do
+            if damaged:isAlive() and damaged:objectName()~=name then
+                room:recover(damaged,sgs.RecoverStruct(nil,nil,1))
+            end
+        end
+    end
+}
+addToSkills(diyba_sili_rule)
+local diyba_sili=sgs.CreateTriggerSkillV2{
+    name="diyba_sili",events={sgs.Damaged},limit_scope=sgs.Skill_Limit_Round,max_usage_limit=1,
+    can_trigger=function(self,event,room,player,data)
+        local damaged=data:toDamage().to
+        if not damaged then return "" end
+        local names,players={},{}
+        for _,p in sgs.qlist(room:getOtherPlayers(damaged)) do
+            if p:hasSkill(self:objectName()) then table.insert(names,self:objectName());table.insert(players,p:objectName()) end
+        end
+        return table.concat(names,"|"),table.concat(players,"|")
+    end,
+    on_cost=function(self,event,room,player,ctx)
+        if not self:isUsable(ctx) then return false end
+        local damaged=ctx.original_data:toDamage().to
+        local candidates=sgs.SPlayerList()
+        for _,p in sgs.qlist(room:getOtherPlayers(player)) do if p~=damaged then candidates:append(p) end end
+        if candidates:isEmpty() then return false end
+        local target=room:askForPlayerChosen(player,candidates,self:objectName(),"@diyba-sili",true,true)
+        if not target then return false end
+        ctx.targets:append(target);return true
+    end,
+    on_pay=function(self,event,room,player,ctx)
+        if not self:isUsable(ctx) then return false end
+        self:addUsage(ctx);return true
+    end,
+    on_effect=function(self,event,room,player,ctx)
+        local target=ctx.targets:first()
+        if not target then return false end
+        local pending=room:getTag("diyba_sili_pending"):toString()
+        room:setTag("diyba_sili_pending",sgs.QVariant(pending=="" and target:objectName() or pending.."|"..target:objectName()))
+        return false
+    end
+}
+local diyba_puyangxing=sgs.General(extension,"diyba_9j_puyangxing","wu",3)
+diyba_puyangxing:setImage("puyangxing")
+diyba_puyangxing:addSkill(diyba_sili)
+diyba_puyangxing:addSkill(diyba_xintu)
+extension:insertRelatedSkills("diyba_sili","#diyba_sili_rule")
+extension:insertRelatedSkills("diyba_xintu","diyba_xintu_use")
+sgs.LoadTranslationTable{
+    ["diyba_9j_puyangxing"]="濮阳兴",["&diyba_9j_puyangxing"]="濮阳兴",["#diyba_9j_puyangxing"]="3D九将",
+    ["designer:diyba_9j_puyangxing"]="龙哥头屑",
+    ["diyba_sili"]="肆立",[":diyba_sili"]="每轮限一次，当其他角色受到伤害后，你可以指定另一名其他角色，若下一个受到伤害的角色不为你指定的角色，则该角色回复1点体力。",
+    ["diyba_xintu"]="辛土",[":diyba_xintu"]="锁定技，摸牌阶段开始时，你展示牌堆顶X张牌并依次使用之（X为你的体力上限）。若你以此法使用的牌数：不小于你的体力值，弃置你装备区内一张牌；大于你的体力值，跳过你的摸牌阶段。",
+    ["diyba_xintu_use"]="辛土用牌",["@diyba-xintu-use"]="辛土：使用展示的牌（可用的牌必须使用）",
+    ["@diyba-xintu-target"]="辛土：选择此牌的合法目标",["@diyba-sili"]="肆立：指定下一名受到伤害的角色",
+}
+
 return {extension}

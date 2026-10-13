@@ -1529,11 +1529,12 @@ sgs.ai_skill_playerchosen.caiyi = function(self,players)
 	else
 		local removes = self.player:property("SkillDescriptionRecord_caiyi"):toString():split("+")
 		n = 4-#removes
+		local rn, dn = n + 1, n + 2
 		for _,target in sgs.list(destlist)do
 			if self:isFriend(target)
 			then
-				if not table.contains(removes,"caiyi_recover") and (target:getLostHp()>=n or self:isWeak(target) and n>0)
-				or not table.contains(removes,"caiyi_draw") and target:getHandcardNum()+n<5
+				if not table.contains(removes,"caiyi_recover") and (target:getLostHp()>=rn or self:isWeak(target) and rn>0)
+				or not table.contains(removes,"caiyi_draw") and target:getHandcardNum()+dn<5
 				or not table.contains(removes,"caiyi_fuyuan") and not target:faceUp()
 				or not table.contains(removes,"caiyi_random1") and self:isWeak(target)
 				then return target end
@@ -1548,12 +1549,13 @@ sgs.ai_skill_choice.caiyi = function(self,choices,data)
 	if n>1 then n = 4-#caiyi_from:property("SkillDescriptionChoiceRecord1_caiyi"):toString():split("+")
 	else n = 4-#caiyi_from:property("SkillDescriptionRecord_caiyi"):toString():split("+") end
 	local items = choices:split("+")
+	local rn, dn = n + 1, n + 2
 	for _,cho in sgs.list(items)do
 		if cho:startsWith("recover")
-		and (self.player:getLostHp()>=n or self:isWeak() and n>0)
+		and (self.player:getLostHp()>=rn or self:isWeak() and rn>0)
 		then return cho end
 		if cho:startsWith("draw")
-		and self.player:getHandcardNum()+n<5
+		and self.player:getHandcardNum()+dn<5
 		then return cho end
 		if cho:startsWith("fuyuan")
 		and not self.player:faceUp()
@@ -5287,4 +5289,145 @@ sgs.ai_skill_use["@@juemou"] = function(self,prompt)
 			return "#juemouCard:.:->"..table.concat(tps,"+")
 		end
 	end
+end
+
+-- GU-audit2025 follow-up 2026-10-13: OL batch
+sgs.ai_skill_invoke.gu_chaozheng = true
+sgs.ai_skill_playerchosen.gu_shenchong = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	self:sort(targets, "defense")
+	for _, p in ipairs(targets) do
+		if self:isEnemy(p) then return p end
+	end
+	return nil
+end
+sgs.ai_skill_invoke.gu_julian = true
+sgs.ai_skill_invoke.gu_julian_draw = true
+
+sgs.ai_skill_invoke.gu_longlin_duel = function(self, data)
+	local to = data:toPlayer()
+	return to and self:isEnemy(to) and self:getCardsNum("Slash") >= 1
+end
+
+sgs.ai_skill_choice.gu_guying = function(self, choices, data)
+	local to = data:toPlayer()
+	if to and self:isFriend(to) then return "give" end
+	return "return"
+end
+
+addAiSkills("gu_zhengbing").getTurnUseCard = function(self)
+	local cards = sgs.QList2Table(self.player:getCards("h"))
+	self:sortByKeepValue(cards)
+	for _, c in ipairs(cards) do
+		if c:isKindOf("Slash") or c:isKindOf("Jink") or c:isKindOf("Peach") or c:isKindOf("Analeptic") then
+			return sgs.Card_Parse("@GuZhengbingCard=" .. c:getEffectiveId())
+		end
+	end
+end
+sgs.ai_skill_use_func["GuZhengbingCard"] = function(card, use, self)
+	use.card = card
+end
+sgs.ai_use_value.GuZhengbingCard = 4
+sgs.ai_use_priority.GuZhengbingCard = 8
+
+sgs.ai_skill_playerschosen.gu_tuwei = function(self, targets, max, min)
+	local tos = {}
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) and #tos < max then table.insert(tos, p) end
+	end
+	return tos
+end
+
+-- SOURCE-2 OL overwrite AI stubs (gu-audit2025)
+sgs.ai_skill_invoke.jieyan = true
+sgs.ai_skill_invoke.jinghua = true
+sgs.ai_skill_invoke.shuiyue = true
+sgs.ai_skill_invoke.jinming = true
+sgs.ai_skill_invoke.xiaoshi = true
+sgs.ai_skill_invoke.jiaoyu = true
+sgs.ai_skill_invoke.neixun = true
+sgs.ai_skill_invoke.leiluan = true
+sgs.ai_skill_invoke.fuchao = true
+sgs.ai_skill_invoke.jigu = true
+sgs.ai_skill_invoke.jiewan = true
+sgs.ai_skill_invoke.lixian = true
+sgs.ai_skill_invoke.bingcai = true
+sgs.ai_skill_invoke.olzhenlie = true
+sgs.ai_skill_invoke.olmiji = true
+sgs.ai_skill_invoke.ol_mutao = true
+sgs.ai_skill_invoke.ol_yimou = true
+sgs.ai_skill_invoke.olliyong = true
+
+-- GU-audit2025 SOURCE-3: 祢衡[OL]
+addAiSkills("kuangjuan").getTurnUseCard = function(self)
+	for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+		if not p:isKongcheng() then
+			return sgs.Card_Parse("@GuKuangjuanCard=.")
+		end
+	end
+end
+sgs.ai_skill_use_func["GuKuangjuanCard"] = function(card, use, self)
+	self:sort(self.enemies, "handcard")
+	for _, ep in ipairs(self.enemies) do
+		if not ep:isKongcheng() then
+			use.card = card
+			use.to:append(ep)
+			return
+		end
+	end
+	local others = sgs.QList2Table(self.room:getOtherPlayers(self.player))
+	for _, p in ipairs(others) do
+		if not p:isKongcheng() then
+			use.card = card
+			use.to:append(p)
+			return
+		end
+	end
+end
+sgs.ai_use_value.GuKuangjuanCard = 5
+sgs.ai_use_priority.GuKuangjuanCard = 4
+sgs.ai_skill_playerchosen.kuangjuan = function(self, targets)
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) then return p end
+	end
+	return targets:first()
+end
+sgs.ai_skill_cardchosen.kuangjuan = function(self, who, flags)
+	local cards = self:sortByUseValue(who:getCards(flags or "h"))
+	if cards and #cards > 0 then return cards[1]:getEffectiveId() end
+	return -1
+end
+sgs.ai_skill_use["@@kuangjuan"] = function(self, prompt)
+	local ids = self.player:getPile("#kuangjuan")
+	if ids:isEmpty() then return "." end
+	local card = sgs.Sanguosha:getCard(ids:first())
+	if not card or not self.player:canUse(card) then return "." end
+	local dummy = self:aiUseCard(card)
+	if dummy.card then
+		local tos = {}
+		if dummy.to then
+			for _, p in sgs.qlist(dummy.to) do table.insert(tos, p:objectName()) end
+		end
+		if card:targetFixed() or #tos > 0 then
+			return card:toString() .. "->" .. (#tos > 0 and table.concat(tos, "+") or ".")
+		end
+	end
+	return "."
+end
+
+sgs.ai_skill_playerchosen.feibian = function(self, targets)
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) then return p end
+	end
+	return nil
+end
+sgs.ai_skill_cardchosen.feibian = function(self, who, flags)
+	local cards = sgs.QList2Table(who:getCards(flags or "he"))
+	if #cards < 1 then return -1 end
+	self:sortByKeepValue(cards, true)
+	return cards[1]:getEffectiveId()
+end
+sgs.ai_skill_invoke.feibian = function(self, data)
+	local to = data:toPlayer()
+	return to and self:isFriend(to)
 end

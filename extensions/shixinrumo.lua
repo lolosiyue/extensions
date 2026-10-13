@@ -65,7 +65,6 @@ yikuxin = sgs.CreateTriggerSkillV2{
 					then dc2:addSubcard(id) end
 				end
 				room:throwCard(dc2,skill:objectName(),player)
-				player:turnOver()
 			end
 		end
 		return false
@@ -137,6 +136,46 @@ yisigu = sgs.CreateViewAsSkillV2{
 	end,
 }
 yi_caocao:addSkill(yisigu)
+yikuimu = sgs.CreateTriggerSkillV2{
+	name = "yikuimu",
+	events = {sgs.AskForRetrial},
+	can_trigger = function(skill, event, room, player, data)
+		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+		if player:getMark("yikuimu_lun") > 0 then return false end
+		local judge = data:toJudge()
+		if not (judge and judge.card) then return false end
+		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+			if p:getHandcardNum() > 0 then return skill:objectName() end
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local judge = ctx.original_data:toJudge()
+		if not (judge and judge.card) then return false end
+		local targets = sgs.SPlayerList()
+		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+			if p:isAlive() and p:getHandcardNum() > 0 then targets:append(p) end
+		end
+		if targets:isEmpty() then return false end
+		local tp = room:askForPlayerChosen(player, targets, skill:objectName(), "yikuimu0", true, true)
+		if not tp then return false end
+		room:addPlayerMark(player, "yikuimu_lun")
+		room:doGongxin(player, tp, tp:handCards(), skill:objectName())
+		if tp:isKongcheng() then return false end
+		local id = room:askForCardChosen(player, tp, "h", skill:objectName())
+		if id < 0 then return false end
+		local card = sgs.Sanguosha:getCard(id)
+		if not card or not judge.card then return false end
+		local oldSuit = judge.card:getSuit()
+		local newSuit = card:getSuit()
+		room:retrial(card, player, judge, skill:objectName(), false)
+		if player:isAlive() and tp:isAlive() and oldSuit ~= newSuit then
+			room:damage(sgs.DamageStruct(skill:objectName(), tp, player))
+		end
+		return false
+	end,
+}
+yi_caocao:addSkill(yikuimu)
 
 yi_huatuo = sgs.General(shixinrumo_yi,"yi_huatuo","qun",4)
 yimiehaivs = sgs.CreateViewAsSkillV2{
@@ -1022,9 +1061,12 @@ sgs.LoadTranslationTable {
 	["#yi_caocao"] = "一目窥九州",
 	["illustrator:yi_caocao"] = "鬼画府",
 	["yikuxin"] = "枯心",
-	[":yikuxin"] = "当你受到伤害后，你可以令所有其他角色依次展示任意张手牌，你选择获得所有角色展示的牌或一名其他角色未展示的牌所有手牌并展示之。若你没有因此获得♥牌，你弃置获得的牌并翻面。",
+	[":yikuxin"] = "当你受到伤害后，你可以令所有其他角色依次展示任意张手牌，你选择获得所有角色展示的牌或一名其他角色未展示的牌所有手牌并展示之。若你没有因此获得♥牌，你弃置获得的牌。",
 	["yisigu"] = "似故",
-	[":yisigu"] = "出牌阶段限一次，你可以令一名其他角色进行一次判定并对其造成两次1点伤害，期间其根据判定结果视为拥有对应的“受到伤害后”的技能。",
+	[":yisigu"] = "出牌阶段限一次，你可以令一名其他角色进行一次判定并对其造成两次1点伤害，期间其根据判定点数视为拥有智迟～武魂中对应的受到伤害后技能。",
+	["yikuimu"] = "窥目",
+	[":yikuimu"] = "每轮限一次观手牌代判定牌，花色不同受其1伤。",
+	["yikuimu0"] = "窥目：你可以观看一名其他角色的手牌，将其中一张代替判定牌",
 	["yikuxin0"] = "枯心：请选择任意张手牌展示",
 	["yikuxin1"] = "枯心：你可以点击取消获得这些牌或选择一名角色获得其未展示的牌",
 

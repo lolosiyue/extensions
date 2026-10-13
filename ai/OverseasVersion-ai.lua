@@ -6685,3 +6685,55 @@ end
 
 
 
+
+-- SOURCE-2 overseas overwrite AI stubs
+sgs.ai_skill_invoke.ov_yanshi = true
+sgs.ai_skill_invoke.ov_renchou = true
+sgs.ai_skill_invoke.ov_danfa = true
+sgs.ai_skill_invoke.ov_lingbao = true
+sgs.ai_skill_invoke.ov_sidao = true
+sgs.ai_skill_invoke.ov_yizhu = true
+sgs.ai_skill_invoke.ov_luanchou = true
+sgs.ai_skill_invoke.ov_lijian = true
+sgs.ai_skill_invoke.ov_chungang = true
+sgs.ai_skill_invoke.ov_yulong = true
+sgs.ai_skill_invoke.ov_jianming = true
+sgs.ai_skill_invoke.ov_yuanyu = true
+sgs.ai_skill_invoke.ov_xiyan = function(self, data)
+	if data and data:toString() == "debuff" then
+		local cur = self.room:getCurrent()
+		return cur and self:isEnemy(cur)
+	end
+	return true
+end
+sgs.ai_skill_invoke.ov_mutao = true
+sgs.ai_skill_invoke.ov_yimou = true
+
+-- SOURCE-6 李昭焦伯[海外]
+addAiSkills("ov_zuoyou").getTurnUseCard = function(self)
+	return sgs.Card_Parse("#ov_zuoyouCard:.:")
+end
+
+sgs.ai_skill_use_func["#ov_zuoyouCard"] = function(card, use, self)
+	local yang = self.player:getChangeSkillState("ov_zuoyou") <= 1
+	if yang then
+		self:sort(self.friends, "handcard")
+		for _, p in sgs.list(self.friends) do
+			use.card = card
+			use.to:append(p)
+			return
+		end
+	else
+		self:sort(self.friends, "defense")
+		for _, p in sgs.list(self.friends) do
+			if p:getHujia() < 5 then
+				use.card = card
+				use.to:append(p)
+				return
+			end
+		end
+	end
+end
+
+sgs.ai_use_value.ov_zuoyouCard = 6
+sgs.ai_use_priority.ov_zuoyouCard = 7

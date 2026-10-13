@@ -2357,3 +2357,707 @@ sgs.LoadTranslationTable
 
 
 
+-- 三国杀设计吧 3S2J；唯一文本来源：sheji.md §2.1。
+-- 使用独立版本 ID，避免覆盖 Fate 等作品的同名角色。
+sj2_haigelisi = sgs.General(extension, "sj2_haigelisi", "god", 4)
+sj2_shiershilian = sgs.CreateTriggerSkillV2{
+    name = "sj2_shiershilian",
+    events = {sgs.TargetSpecified},
+    can_trigger = function(skill, event, room, player, data)
+        if not player or not player:isAlive() or not player:hasSkill(skill:objectName())
+            or room:getCurrentDyingPlayer() then return false end
+        local use = data:toCardUse()
+        if not use.card or use.card:isKindOf("SkillCard")
+            or player:getMark("sj2_trial_" .. use.card:getNumber()) > 0 then return false end
+        for _, p in sgs.qlist(use.to) do
+            if p ~= player and player:canDiscard(p, "hej") then return skill:objectName() end
+        end
+        return false
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        local use = ctx.original_data:toCardUse()
+        local targets = sgs.SPlayerList()
+        for _, p in sgs.qlist(use.to) do
+            if p ~= player and player:canDiscard(p, "hej") then targets:append(p) end
+        end
+        local to = room:askForPlayerChosen(player, targets, skill:objectName(), "@sj2-trial", true, true)
+        if not to then return false end
+        -- 先记点数和次数，防止弃牌引发嵌套使用时重复发动。
+        room:setPlayerMark(player, "sj2_trial_" .. use.card:getNumber(), 1)
+        room:addPlayerMark(player, "&sj2_trials")
+        local id = room:askForCardChosen(player, to, "hej", skill:objectName(), false, sgs.Card_MethodDiscard)
+        room:throwCard(id, to, player)
+        if player:isAlive() and player:getMark("&sj2_trials") == 13 and not room:getCurrentDyingPlayer() then
+            room:loseHp(player, player:getHp())
+        end
+        return false
+    end,
+}
+sj2_shenyizhiqu = sgs.CreateTriggerSkillV2{
+    name = "sj2_shenyizhiqu",
+    frequency = sgs.Skill_Limited,
+    limit_mark = "@sj2-divinity",
+    events = {sgs.HpRecover},
+    can_trigger = function(skill, event, room, player, data)
+        if player and player:isAlive() and player:hasSkill(skill:objectName())
+            and player:getHp() == 1 and player:getMark("@sj2-divinity") > 0 then
+            return skill:objectName()
+        end
+        return false
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        if room:askForSkillInvoke(player, skill:objectName(), ctx.original_data) then
+            room:removePlayerMark(player, "@sj2-divinity")
+            player:drawCards(player:getMark("&sj2_trials"), skill:objectName())
+        end
+        return false
+    end,
+}
+sj2_haigelisi:addSkill(sj2_shiershilian)
+sj2_haigelisi:addSkill(sj2_shenyizhiqu)
+sgs.LoadTranslationTable{
+    ["sj2_haigelisi"] = "海格力斯[三设2]",
+    ["&sj2_haigelisi"] = "海格力斯",
+    ["designer:sj2_haigelisi"] = "请叫我宣宣",
+    ["sj2_shiershilian"] = "十二试炼",
+    [":sj2_shiershilian"] = "每个点数限一次，当你使用牌指定其他角色为目标时，若没有角色处于濒死状态，则你可以弃置一名目标角色的一张牌。当你第13次发动此技能时，若当前没有角色处于濒死状态，则你失去所有体力。",
+    ["sj2_shenyizhiqu"] = "神裔之躯",
+    [":sj2_shenyizhiqu"] = "限定技，当你回复体力后，若你的体力值为1，则你可以摸X张牌（X为你已发动“十二试炼”的次数）。",
+    ["@sj2-trial"] = "十二试炼：你可以选择一名目标，弃置其一张牌",
+    ["sj2_trials"] = "试炼",
+    ["@sj2-divinity"] = "神裔之躯",
+}
+
+sj2_lisailiu = sgs.General(extension, "sj2_lisailiu", "qun", 4)
+sj2_lisailiu:setStartHp(3)
+sj2_quanjue = sgs.CreateTriggerSkillV2{
+    name = "sj2_quanjue",
+    frequency = sgs.Skill_Limited,
+    limit_mark = "@sj2-quanjue",
+    events = {sgs.CardUsed, sgs.Death},
+    can_trigger = function(skill, event, room, player, data)
+        if event == sgs.Death then
+            if data:toDeath().who:getRole() ~= "rebel" then return false end
+            local names, owners = {}, {}
+            for _, p in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+                if p:isAlive() then
+                    table.insert(names, skill:objectName())
+                    table.insert(owners, p:objectName())
+                end
+            end
+            return table.concat(names, "|"), table.concat(owners, "|")
+        end
+        if not player or not player:isAlive() or not player:hasSkill(skill:objectName())
+            or player:getPhase() ~= sgs.Player_Play or player:getMark("@sj2-quanjue") == 0 then return false end
+        local card = data:toCardUse().card
+        if card and not card:isKindOf("SkillCard") and card:isBlack() then return skill:objectName() end
+        return false
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        if event == sgs.Death then
+            room:setPlayerMark(player, "@sj2-quanjue", 1)
+            return false
+        end
+        if not room:askForSkillInvoke(player, skill:objectName(), ctx.original_data) then return false end
+        room:removePlayerMark(player, "@sj2-quanjue")
+        local number = ctx.original_data:toCardUse().card:getNumber()
+        -- 每位角色的手牌／装备／判定区一并处理；不把“所有”改为逐张可选。
+        for _, p in sgs.qlist(room:getOtherPlayers(player)) do
+            local discard = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+            for _, c in sgs.qlist(p:getCards("hej")) do
+                if c:getNumber() < number then discard:addSubcard(c) end
+            end
+            if discard:subcardsLength() > 0 then room:throwCard(discard, p, player) end
+            discard:deleteLater()
+        end
+        return false
+    end,
+}
+sj2_cewai = sgs.CreateTriggerSkillV2{
+    name = "sj2_cewai",
+    global = true,
+    events = {sgs.CardUsed, sgs.DamageDone, sgs.CardFinished},
+    on_record = function(skill, event, room, player, data)
+        if event == sgs.CardUsed then
+            local card = data:toCardUse().card
+            if card and card:isKindOf("Slash") then room:setCardFlag(card, "-sj2_cewai_damage") end
+        elseif event == sgs.DamageDone then
+            local damage = data:toDamage()
+            if damage.card and damage.card:isKindOf("Slash") then
+                room:setCardFlag(damage.card, "sj2_cewai_damage")
+            end
+        end
+    end,
+    can_trigger = function(skill, event, room, player, data)
+        if event == sgs.DamageDone then return false end
+        local use = data:toCardUse()
+        if not use.card or not use.card:isKindOf("Slash") or not use.from then return false end
+        local names, owners = {}, {}
+        for _, p in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+            local eligible = false
+            if p:isAlive() and use.from ~= p then
+                if event == sgs.CardFinished then
+                    eligible = use.card:hasFlag("sj2_cewai_" .. p:objectName())
+                else
+                    local farthest = -1
+                    for _, other in sgs.qlist(room:getOtherPlayers(p)) do
+                        farthest = math.max(farthest, p:distanceTo(other))
+                    end
+                    for _, to in sgs.qlist(use.to) do
+                        if to ~= p and p:distanceTo(to) == farthest then eligible = true end
+                    end
+                end
+            end
+            if eligible then table.insert(names, skill:objectName()); table.insert(owners, p:objectName()) end
+        end
+        return table.concat(names, "|"), table.concat(owners, "|")
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        local use = ctx.original_data:toCardUse()
+        local flag = "sj2_cewai_" .. player:objectName()
+        if event == sgs.CardUsed then
+            if room:askForSkillInvoke(player, skill:objectName(), ctx.original_data) then
+                room:setCardFlag(use.card, flag)
+                use.from:drawCards(2, skill:objectName())
+            end
+        else
+            room:setCardFlag(use.card, "-" .. flag)
+            if not use.card:hasFlag("sj2_cewai_damage") and player:isAlive() and use.from:isAlive()
+                and not use.from:isNude() then
+                local n = math.min(2, use.from:getCardCount(true))
+                local give = room:askForExchange(use.from, skill:objectName(), n, n, true,
+                    "@sj2-cewai-give:" .. player:objectName(), false)
+                if give then room:obtainCard(player, give, false); give:deleteLater() end
+            end
+        end
+        return false
+    end,
+}
+sj2_lisailiu:addSkill(sj2_quanjue)
+sj2_lisailiu:addSkill(sj2_cewai)
+sgs.LoadTranslationTable{
+    ["sj2_lisailiu"] = "黎塞留[三设2]",
+    ["&sj2_lisailiu"] = "黎塞留",
+    ["designer:sj2_lisailiu"] = "别玩一起跑",
+    ["sj2_quanjue"] = "权决",
+    [":sj2_quanjue"] = "限定技，出牌阶段，当你使用一张黑色牌时，可以弃置场上其他角色区域内所有点数小于此牌的牌。当一名反贼阵亡后，你视为此技能未发动过。",
+    ["@sj2-quanjue"] = "权决",
+    ["sj2_cewai"] = "策外",
+    [":sj2_cewai"] = "当其他角色使用【杀】时，若目标为与你距离最远的角色，则你可以令使用者摸两张牌；若其未造成伤害，则需交给你两张牌（不足则全给）。",
+    ["@sj2-cewai-give"] = "策外：此杀未造成伤害，请交给 %src 两张牌（不足则全给）",
+}
+
+-- 战无常法保留原区域：手牌移至手牌区，装备／判定牌移至同类区域。
+local function sj2_move_targets(room, source, from, card)
+    local targets = sgs.SPlayerList()
+    local place = room:getCardPlace(card:getEffectiveId())
+    for _, to in sgs.qlist(room:getAlivePlayers()) do
+        local legal = to ~= from
+        if place == sgs.Player_PlaceEquip then
+            local slot = card:getRealCard():toEquipCard():location()
+            legal = legal and to:hasEquipArea(slot) and not to:getEquip(slot)
+        elseif place == sgs.Player_PlaceDelayedTrick then
+            legal = legal and not to:containsTrick(card:objectName()) and not source:isProhibited(to, card)
+        elseif place ~= sgs.Player_PlaceHand then
+            legal = false
+        end
+        if legal then targets:append(to) end
+    end
+    return targets
+end
+sj2_zhanwuchangfaCard = sgs.CreateSkillCard{
+    name = "sj2_zhanwuchangfaCard",
+    filter = function(self, targets, to_select, player)
+        if #targets > 0 or to_select:isAllNude() then return false end
+        if player:canDiscard(to_select, "hej") then return true end
+        if player:getMark("sj2_move_mode") == 0 then return false end
+        for _, c in sgs.qlist(to_select:getCards("hej")) do
+            if not sj2_move_targets(player:getRoom(), player, to_select, c):isEmpty() then return true end
+        end
+        return false
+    end,
+    on_use = function(self, room, source, targets)
+        local from = targets[1]
+        if not from or source:getMark("sj2_zhan_blocked") > 0 then return end
+        local movable = false
+        if source:getMark("sj2_move_mode") > 0 then
+            for _, c in sgs.qlist(from:getCards("hej")) do
+                if not sj2_move_targets(room, source, from, c):isEmpty() then movable = true end
+            end
+        end
+        local mode = "discard"
+        if movable then
+            mode = source:canDiscard(from, "hej") and room:askForChoice(source, "sj2_zhanwuchangfa", "discard+move") or "move"
+        end
+        if mode == "discard" then
+            local id = room:askForCardChosen(source, from, "hej", "sj2_zhanwuchangfa", false, sgs.Card_MethodDiscard)
+            if id < 0 then return end
+            room:setPlayerMark(source, "sj2_zhan_blocked", 1)
+            room:throwCard(id, from, source)
+        else
+            local disabled = sgs.IntList()
+            for _, c in sgs.qlist(from:getCards("hej")) do
+                if sj2_move_targets(room, source, from, c):isEmpty() then disabled:append(c:getEffectiveId()) end
+            end
+            local id = room:askForCardChosen(source, from, "hej", "sj2_zhanwuchangfa", false, sgs.Card_MethodNone, disabled)
+            if id < 0 then return end
+            local card = sgs.Sanguosha:getCard(id)
+            local tos = sj2_move_targets(room, source, from, card)
+            if tos:isEmpty() then return end
+            local to = room:askForPlayerChosen(source, tos, "sj2_zhan_move", "@sj2-zhan-move", false, true)
+            room:setPlayerMark(source, "sj2_zhan_blocked", 1)
+            local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TRANSFER, source:objectName(), "sj2_zhanwuchangfa", "")
+            room:moveCardTo(card, from, to, room:getCardPlace(id), reason, room:getCardPlace(id) ~= sgs.Player_PlaceHand)
+        end
+    end,
+}
+sj2_zhanwuchangfaVS = sgs.CreateViewAsSkillV2{
+    name = "sj2_zhanwuchangfa",
+    n = 0,
+    can_activate = function(skill, request)
+        local player = request:getInitiator()
+        return player and request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
+            and player:getMark("sj2_zhan_blocked") == 0
+    end,
+    card_selection_feasible = function(skill, request) return #request:getSelectedCardIds() == 0 end,
+    create_card = function(skill, request)
+        local card = sj2_zhanwuchangfaCard:clone()
+        card:setSkillName(skill:objectName())
+        return card
+    end,
+}
+sj2_zhanwuchangfa = sgs.CreateTriggerSkillV2{
+    name = "sj2_zhanwuchangfa",
+    global = true,
+    events = {sgs.HpChanged, sgs.EventPhaseChanging},
+    view_as_skill = sj2_zhanwuchangfaVS,
+    on_record = function(skill, event, room, player, data)
+        if event == sgs.HpChanged then
+            for _, p in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+                room:setPlayerMark(p, "sj2_zhan_blocked", 0)
+                if p == player then room:setPlayerMark(p, "sj2_move_mode", 1) end
+            end
+        elseif player and data:toPhaseChange().to == sgs.Player_NotActive then
+            room:setPlayerMark(player, "sj2_move_mode", 0)
+        end
+    end,
+}
+sj2_hannibal = sgs.General(extension, "sj2_hannibal", "qun", 4)
+sj2_hannibal:addSkill(sj2_zhanwuchangfa)
+sgs.LoadTranslationTable{
+    ["sj2_hannibal"] = "汉尼拔·巴卡[三设2]",
+    ["&sj2_hannibal"] = "汉尼拔·巴卡",
+    ["designer:sj2_hannibal"] = "龙哥头屑",
+    ["sj2_zhanwuchangfa"] = "战无常法",
+    [":sj2_zhanwuchangfa"] = "出牌阶段，你可以弃置一名角色区域内的一张牌。然后直到一名角色的体力值发生变动前，你不能发动此技能。若体力值变动的角色为你，则你可以将描述中的“弃置”改为“移动”直到你的回合结束。",
+    ["sj2_zhan_move"] = "战无常法",
+    ["@sj2-zhan-move"] = "战无常法：选择移动此牌的目标角色",
+}
+
+-- 三国杀设计吧 3S5J：绊与手牌同时交换，先封锁再移动，避免嵌套重复交换。
+sj5_fengyingCard = sgs.CreateSkillCard{
+    name = "sj5_fengyingCard",
+    target_fixed = true,
+    will_throw = false,
+    handling_method = sgs.Card_MethodNone,
+    on_use = function(self, room, source, targets)
+        source:addToPile("sj5_ban", self:getSubcards(), false)
+    end,
+}
+sj5_fengyingVS = sgs.CreateViewAsSkillV2{
+    name = "sj5_fengying",
+    n = 999,
+    can_activate = function(skill, request)
+        local p = request:getInitiator()
+        return p and not p:isNude() and (request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
+            or request:getPattern() == "@@sj5_fengying")
+    end,
+    can_select_card = function(skill, request, candidate)
+        if not candidate then return false end
+        local p = request:getInitiator()
+        return p and (p:getHandcards():contains(candidate) or candidate:isEquipped())
+    end,
+    card_selection_feasible = function(skill, request) return #request:getSelectedCardIds() > 0 end,
+    create_card = function(skill, request)
+        if #request:getSelectedCardIds() == 0 then return nil end
+        local card = sj5_fengyingCard:clone()
+        for _, id in ipairs(request:getSelectedCardIds()) do card:addSubcard(id) end
+        card:setSkillName(skill:objectName())
+        return card
+    end,
+}
+sj5_fengying = sgs.CreateTriggerSkillV2{
+    name = "sj5_fengying",
+    events = {sgs.GameStart, sgs.CardsMoveOneTime},
+    view_as_skill = sj5_fengyingVS,
+    can_trigger = function(skill, event, room, player, data)
+        if not player or not player:isAlive() or not player:hasSkill(skill:objectName()) then return false end
+        if event == sgs.GameStart then return skill:objectName() end
+        local move = data:toMoveOneTime()
+        if move.to and move.to:objectName() == player:objectName() and not move.card_ids:isEmpty()
+            and (move.to_place == sgs.Player_PlaceHand or move.to_place == sgs.Player_PlaceEquip)
+            and move.reason.m_skillName ~= skill:objectName() and not player:isNude() then
+            return skill:objectName()
+        end
+        return false
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        if event == sgs.GameStart then
+            player:drawCards(4, skill:objectName())
+        else
+            room:askForUseCard(player, "@@sj5_fengying", "@sj5-fengying-store", -1, sgs.Card_MethodNone)
+        end
+        return false
+    end,
+}
+local function sj5_wangting_block(owner, other)
+    return "sj5_wangting_" .. other:objectName()
+end
+local function sj5_wangting_exchange(room, owner, other)
+    local ban, hand = owner:getPile("sj5_ban"), other:handCards()
+    room:setPlayerMark(owner, sj5_wangting_block(owner, other), 1)
+    local moves = sgs.CardsMoveList()
+    local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_SWAP, owner:objectName(), "sj5_wangting", "")
+    if not ban:isEmpty() then
+        local move = sgs.CardsMoveStruct()
+        move.card_ids = ban
+        move.from = owner
+        move.from_place = sgs.Player_PlaceSpecial
+        move.from_pile_name = "sj5_ban"
+        move.to = other
+        move.to_place = sgs.Player_PlaceHand
+        move.reason = reason
+        moves:append(move)
+    end
+    if not hand:isEmpty() then
+        local move = sgs.CardsMoveStruct()
+        move.card_ids = hand
+        move.from = other
+        move.from_place = sgs.Player_PlaceHand
+        move.to = owner
+        move.to_place = sgs.Player_PlaceSpecial
+        move.to_pile_name = "sj5_ban"
+        move.reason = reason
+        moves:append(move)
+    end
+    if not moves:isEmpty() then room:moveCardsAtomic(moves, false) end
+end
+sj5_wangting = sgs.CreateTriggerSkillV2{
+    name = "sj5_wangting",
+    global = true,
+    events = {sgs.EventPhaseStart, sgs.HpChanged},
+    can_trigger = function(skill, event, room, player, data)
+        if not player then return false end
+        if event == sgs.EventPhaseStart and player:getPhase() ~= sgs.Player_Draw
+            and player:getPhase() ~= sgs.Player_Finish then return false end
+        local names, owners = {}, {}
+        for _, p in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+            local eligible = false
+            if p:isAlive() then
+                if event == sgs.EventPhaseStart then
+                    eligible = p ~= player and p:getMark(sj5_wangting_block(p, player)) == 0
+                        and p:getPile("sj5_ban"):length() >= player:getHandcardNum()
+                else
+                    for _, other in sgs.qlist(room:getOtherPlayers(p)) do
+                        if (p == player or other == player) and p:getMark(sj5_wangting_block(p, other)) > 0
+                            and p:getMark(sj5_wangting_block(p, other) .. "_pending") == 0
+                            and p:getHp() == other:getHp() then eligible = true end
+                    end
+                end
+            end
+            if eligible then table.insert(names, skill:objectName()); table.insert(owners, p:objectName()) end
+        end
+        return table.concat(names, "|"), table.concat(owners, "|")
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        local changed = ctx.invoker
+        if event == sgs.EventPhaseStart then
+            if changed and changed:isAlive() and player:getMark(sj5_wangting_block(player, changed)) == 0
+                and player:getPile("sj5_ban"):length() >= changed:getHandcardNum()
+                and room:askForSkillInvoke(player, skill:objectName(), sgs.QVariant(changed)) then
+                sj5_wangting_exchange(room, player, changed)
+            end
+        else
+            for _, other in sgs.qlist(room:getOtherPlayers(player)) do
+                local mark = sj5_wangting_block(player, other)
+                if (player == changed or other == changed) and player:getMark(mark) > 0
+                    and player:getMark(mark .. "_pending") == 0 and player:getHp() == other:getHp()
+                    and room:askForSkillInvoke(player, "sj5_wangting_reset", sgs.QVariant(other)) then
+                    -- 摸牌完成后解锁；临时标记仅防止摸牌中的嵌套重复触发。
+                    room:setPlayerMark(player, mark .. "_pending", 1)
+                    player:drawCards(2, skill:objectName())
+                    room:setPlayerMark(player, mark, 0)
+                    room:setPlayerMark(player, mark .. "_pending", 0)
+                end
+            end
+        end
+        return false
+    end,
+}
+sj5_eleanor = sgs.General(extension, "sj5_eleanor", "qun", 3, false)
+sj5_eleanor:addSkill(sj5_fengying)
+sj5_eleanor:addSkill(sj5_wangting)
+sgs.LoadTranslationTable{
+    ["sj5_eleanor"] = "阿基坦的埃莉诺[三设5]",
+    ["&sj5_eleanor"] = "阿基坦的埃莉诺",
+    ["#sj5_eleanor"] = "暧爱倘堂",
+    ["designer:sj5_eleanor"] = "再見末日基因",
+    ["sj5_fengying"] = "丰盈宝藏",
+    [":sj5_fengying"] = "游戏开始时，你摸四张牌；不因此技能获得一次牌后，或出牌阶段，你可将任意张牌置于武将牌上，称为“绊”。",
+    ["sj5_ban"] = "绊",
+    ["@sj5-fengying-store"] = "丰盈宝藏：可将任意张手牌或装备牌置为“绊”",
+    ["sj5_wangting"] = "血脉王庭",
+    [":sj5_wangting"] = "其他角色的摸牌阶段或结束阶段开始时，若“绊”不小于其手牌数，你可用所有“绊”交换其手牌，然后你不能再对其发动此技能；你或其体力值变动后，若你们体力相等，你可摸两张牌，然后令你可继续对其发动技能。",
+    ["sj5_wangting_reset"] = "血脉王庭（摸牌并解锁）",
+}
+
+-- 三国杀设计吧 3S7J：花色集合包含所有进入弃牌堆的牌，不限于弃置。
+local function sj7_discard_suit(room, suit)
+    return room:getTag("sj7_discard_suit_" .. tostring(suit)):toBool()
+end
+sj7_xiangjian = sgs.CreateTriggerSkillV2{
+    name = "sj7_xiangjian",
+    global = true,
+    events = {sgs.CardsMoveOneTime, sgs.EventPhaseChanging, sgs.EventPhaseEnd},
+    on_record = function(skill, event, room, player, data)
+        if event == sgs.EventPhaseChanging and data:toPhaseChange().from == sgs.Player_NotActive then
+            for suit = 0, 3 do room:removeTag("sj7_discard_suit_" .. tostring(suit)) end
+        elseif event == sgs.CardsMoveOneTime then
+            local move = data:toMoveOneTime()
+            if move.to_place == sgs.Player_DiscardPile then
+                for _, id in sgs.qlist(move.card_ids) do
+                    local suit = sgs.Sanguosha:getCard(id):getSuit()
+                    if suit >= 0 and suit <= 3 then
+                        room:setTag("sj7_discard_suit_" .. tostring(suit), sgs.QVariant(true))
+                    end
+                end
+            end
+        end
+    end,
+    can_trigger = function(skill, event, room, player, data)
+        if event ~= sgs.EventPhaseEnd or not player or player:getPhase() ~= sgs.Player_Play then return false end
+        local names, owners = {}, {}
+        for _, p in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+            if p:isAlive() then table.insert(names, skill:objectName()); table.insert(owners, p:objectName()) end
+        end
+        return table.concat(names, "|"), table.concat(owners, "|")
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        local current = ctx.invoker
+        if not current or not current:isAlive()
+            or not room:askForSkillInvoke(player, skill:objectName(), sgs.QVariant(current)) then return false end
+        local actors = room:getOtherPlayers(current)
+        room:sortByActionOrder(actors)
+        for _, actor in sgs.qlist(actors) do
+            if not current:isAlive() or not player:isAlive() then break end
+            if actor:isAlive() then
+                local suits = {}
+                local suit_names = {"spade", "club", "heart", "diamond"}
+                for suit = 0, 3 do
+                    if not sj7_discard_suit(room, suit) then table.insert(suits, suit_names[suit + 1]) end
+                end
+                if #suits > 0 then
+                    local pattern = ".|" .. table.concat(suits, ",") .. "|.|hand,equipped"
+                    local card = room:askForCard(actor, pattern, "@sj7-xiangjian-discard:" .. current:objectName(),
+                        sgs.QVariant(current), sgs.Card_MethodDiscard, player, false, skill:objectName())
+                    if card and current:isAlive() and (current == player
+                        or room:askForSkillInvoke(actor, "sj7_xiangjian_turn", sgs.QVariant(current))) then
+                        current:turnOver()
+                    end
+                end
+            end
+        end
+        return false
+    end,
+}
+sj7_chaoai = sgs.CreateTriggerSkillV2{
+    name = "sj7_chaoai",
+    global = true,
+    events = {sgs.Damaged},
+    can_trigger = function(skill, event, room, player, data)
+        if not player or not player:isAlive() or player:getRole() ~= "lord" then return false end
+        local names, owners = {}, {}
+        for _, p in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+            if p:isAlive() then table.insert(names, skill:objectName()); table.insert(owners, p:objectName()) end
+        end
+        return table.concat(names, "|"), table.concat(owners, "|")
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        local lord = ctx.invoker
+        if not lord or not lord:isAlive() or not player:isAlive() then return false end
+        if room:getCurrent() == player
+            or room:askForSkillInvoke(lord, "sj7_chaoai_fangzhu", sgs.QVariant(player)) then
+            player:drawCards(lord:getLostHp(), "fangzhu")
+            if player:isAlive() then player:turnOver() end
+        end
+        return false
+    end,
+}
+sj7_sunba = sgs.General(extension, "sj7_sunba", "wu", 4)
+sj7_sunba:addSkill(sj7_xiangjian)
+sj7_sunba:addSkill(sj7_chaoai)
+sgs.LoadTranslationTable{
+    ["sj7_sunba"] = "孙霸[三设7]",
+    ["&sj7_sunba"] = "孙霸",
+    ["#sj7_sunba"] = "叔子弥竖",
+    ["designer:sj7_sunba"] = "易大剧",
+    ["sj7_xiangjian"] = "相煎",
+    [":sj7_xiangjian"] = "一名角色的出牌阶段结束时，你可令除其外的角色依次可弃置一张当前回合未进入过弃牌堆的花色的牌且可令当前回合角色翻面，若当前回合角色为你，则改为“你须令”。",
+    ["@sj7-xiangjian-discard"] = "相煎：可弃置一张符合花色的牌，再选择是否令 %src 翻面（孙霸回合须翻面）",
+    ["sj7_xiangjian_turn"] = "相煎（令当前角色翻面）",
+    ["sj7_chaoai"] = "朝哀",
+    [":sj7_chaoai"] = "当主公受到伤害后，其可对你发动“放逐”，若当前回合角色为你，则改为“其须对”。",
+    ["sj7_chaoai_fangzhu"] = "朝哀（对孙霸发动放逐）",
+}
+
+-- 无名杀吧 2020 三国组；唯一文本来源：wuming.md §2.1。
+-- 袁熙此前没有同名注册，加入现有吧友 DIY 包。
+local nsw_judges = sgs.CreateRuleSkillV2{
+    name = "#nsw_judges",
+    global = true,
+    priority = 10,
+    events = {sgs.FinishJudge},
+    on_record = function(skill, event, room, player, ctx)
+        local judge = ctx.original_data:toJudge()
+        if player and judge.card then
+            room:addPlayerMark(player, "nsw_judge_" .. judge.card:getSuitString() .. "-Clear")
+        end
+    end,
+}
+extension:addSkills(nsw_judges)
+
+local nsw_shengyan = sgs.CreateTriggerSkillV2{
+    name = "nsw_shengyan",
+    frequency = sgs.Skill_Compulsory,
+    events = {sgs.FinishJudge},
+    can_trigger = function(skill, event, room, player, data)
+        local judge = data:toJudge()
+        local current = room:getCurrent()
+        if player and player:isAlive() and player:hasSkill(skill:objectName()) and judge.card
+            and player:getMark("nsw_judge_" .. judge.card:getSuitString() .. "-Clear") == 1
+            and current and current:isAlive() and current:getPhase() ~= sgs.Player_NotActive then
+            return skill:objectName()
+        end
+        return false
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        local current = room:getCurrent()
+        if current and current:isAlive() then room:addPlayerMark(current, "nsw_shengyan-Clear", 2) end
+        return false
+    end,
+}
+local nsw_shengyan_max = sgs.CreateMaxCardsSkillV2{
+    name = "#nsw_shengyan_max",
+    holder_selector = sgs.CorrectSkill_System,
+    correct_func = function(skill, ctx)
+        local target = ctx:getPrimary()
+        return target and target:getMark("nsw_shengyan-Clear") or 0
+    end,
+}
+
+local function nsw_daizhan_choices(player, material)
+    local choices = {}
+    if not player:hasJudgeArea() then return choices end
+    for _, name in ipairs({"supply_shortage", "indulgence"}) do
+        local card = sgs.Sanguosha:cloneCard(name, material:getSuit(), material:getNumber())
+        card:addSubcard(material)
+        card:setSkillName("nsw_daizhan")
+        if not player:containsTrick(name) and not player:isCardLimited(card, sgs.Card_MethodUse)
+            and not player:getRoom():isProhibited(player, player, card) then
+            table.insert(choices, name)
+        end
+        card:deleteLater()
+    end
+    return choices
+end
+local nsw_daizhan = sgs.CreateTriggerSkillV2{
+    name = "nsw_daizhan",
+    events = {sgs.EventPhaseStart},
+    can_trigger = function(skill, event, room, player, data)
+        if not player or not player:isAlive() then return false end
+        if player:hasSkill(skill:objectName()) and player:getPhase() == sgs.Player_Start then
+            for _, card in sgs.qlist(player:getCards("he")) do
+                if not card:isKindOf("TrickCard") and #nsw_daizhan_choices(player, card) > 0 then
+                    return skill:objectName()
+                end
+            end
+        end
+        return false
+    end,
+    on_cost = function(skill, event, room, player, ctx)
+        local card = room:askForCard(player, "BasicCard,EquipCard", "@nsw_daizhan-card", ctx.original_data,
+            sgs.Card_MethodNone, nil, false, skill:objectName())
+        if not card or card:isKindOf("TrickCard") then return false end
+        local choices = nsw_daizhan_choices(player, card)
+        if #choices == 0 then return false end
+        local choice = room:askForChoice(player, skill:objectName(), table.concat(choices, "+"))
+        ctx.extra_data:setValue(tostring(card:getEffectiveId()) .. ":" .. choice)
+        return true
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        local id, name = string.match(ctx.extra_data:toString(), "^(%d+):(.+)$")
+        if id and room:getCardOwner(tonumber(id)) == player then
+            local material = sgs.Sanguosha:getCard(tonumber(id))
+            local legal = false
+            for _, choice in ipairs(nsw_daizhan_choices(player, material)) do
+                if choice == name then legal = true end
+            end
+            if not legal then return false end
+            local card = sgs.Sanguosha:cloneCard(name, material:getSuit(), material:getNumber())
+            card:addSubcard(material)
+            card:setSkillName(skill:objectName())
+            card:deleteLater()
+            room:setPlayerMark(player, "nsw_daizhan-Clear", 1)
+            local use = sgs.CardUseStruct()
+            use.card, use.from = card, player
+            use.to:append(player)
+            room:useCard(use)
+        end
+        return false
+    end,
+}
+
+-- 已发动怠战的补牌是强制的延迟效果，不能随失去技能或取消触发排序而消失。
+local nsw_daizhan_refill = sgs.CreateRuleSkillV2{
+    name = "#nsw_daizhan_refill",
+    global = true,
+    frequency = sgs.Skill_Compulsory,
+    priority = 1,
+    events = {sgs.EventPhaseChanging},
+    can_trigger = function(skill, event, room, player, data)
+        if player and player:isAlive() and player:getMark("nsw_daizhan-Clear") > 0
+            and data:toPhaseChange().to == sgs.Player_NotActive then
+            return skill:objectName(), player
+        end
+        return false
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        room:setPlayerMark(player, "nsw_daizhan-Clear", 0)
+        local count = player:getMaxCards() - player:getHandcardNum()
+        if count > 0 then player:drawCards(count, "nsw_daizhan") end
+        return false
+    end,
+}
+extension:addSkills(nsw_daizhan_refill)
+
+local nsw_yuanxi = sgs.General(extension, "nsw_yuanxi", "qun", 4)
+nsw_yuanxi:addSkill(nsw_shengyan)
+nsw_yuanxi:addSkill(nsw_shengyan_max)
+nsw_yuanxi:addSkill(nsw_daizhan)
+extension:insertRelatedSkills("nsw_shengyan", "#nsw_shengyan_max")
+extension:insertRelatedSkills("nsw_daizhan", "#nsw_daizhan_refill")
+
+sgs.LoadTranslationTable{
+    ["nsw_yuanxi"] = "袁熙",
+    ["&nsw_yuanxi"] = "袁熙",
+    ["#nsw_yuanxi"] = "名门的牵系者",
+    ["designer:nsw_yuanxi"] = "食茸-二十四",
+    ["information:nsw_yuanxi"] = "无名杀吧赛2020·NS004",
+    ["nsw_shengyan"] = "盛筵",
+    [":nsw_shengyan"] = "锁定技，你的判定牌生效后，若结果花色与你本回合内其他判定结果的花色均不同，则你令当前回合角色本回合的手牌上限+2。",
+    ["nsw_daizhan"] = "怠战",
+    [":nsw_daizhan"] = "准备阶段，你可以将一张非锦囊牌当做【兵粮寸断】或【乐不思蜀】对自己使用。若如此做，回合结束时，你将手牌摸至手牌上限。",
+    ["@nsw_daizhan-card"] = "你可以选择一张非锦囊牌，选择当【兵粮寸断】或【乐不思蜀】对自己使用",
+    ["nsw_daizhan:supply_shortage"] = "兵粮寸断",
+    ["nsw_daizhan:indulgence"] = "乐不思蜀",
+}

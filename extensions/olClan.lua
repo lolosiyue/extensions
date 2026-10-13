@@ -5784,21 +5784,18 @@ zujuetu = sgs.CreateTriggerSkillV2 {
 			local tp = room:askForPlayerChosen(player, tps, skill:objectName(), "zujuetu1")
 			if tp then
 				room:doAnimate(1, player:objectName(), tp:objectName())
-				dc = room:askForCardShow(tp, player, skill:objectName())
-				room:showCard(tp, dc:getEffectiveId())
-				for _, h in sgs.list(player:getHandcards()) do
-					if h:getSuit() == dc:getSuit() then
-						sc = false
+				local discarded = room:askForDiscard(tp, skill:objectName(), 1, 1, false, false, "zujuetu1")
+				if discarded and discarded:subcardsLength() > 0 then
+					local suit = sgs.Sanguosha:getCard(discarded:getSubcards():first()):getSuit()
+					local has = false
+					for _, h in sgs.list(player:getHandcards()) do
+						if h:getSuit() == suit then
+							has = true
+							break
+						end
 					end
-				end
-				if sc then
-					room:damage(sgs.DamageStruct(skill:objectName(), player, tp))
-				else
-					sc = dummyCard("dismantlement", "zujuetu")
-					sc:addSubcard(dc)
-					if sc:isAvailable(player) then
-						room:setPlayerMark(player, "zujuetuId", dc:getEffectiveId())
-						room:askForUseCard(player, "@@zujuetu1!", "zujuetu2")
+					if not has then
+						room:damage(sgs.DamageStruct(skill:objectName(), player, tp))
 					end
 				end
 			end
@@ -5830,8 +5827,12 @@ zukuduvs = sgs.CreateViewAsSkillV2 {
 	can_activate = function(skill, request)
 		local player = request:getInitiator()
 		if not player then return false end
-		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return player:getMark("@zukudu") > 0 and player:getCardCount() > 0
+		-- SOURCE-2: 结束阶段发动（经 @@zukudu 响应），不再于出牌阶段主动使用
+		if request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+			local pattern = request:getPattern() or ""
+			return pattern:contains("@@zukudu") and player:getMark("@zukudu") > 0 and player:getCardCount() >= 2
+		end
+		return false
 	end,
 	can_select_card = function(skill, request, candidate)
 		local player = request:getInitiator()
@@ -5857,6 +5858,10 @@ zukudu = sgs.CreateTriggerSkillV2 {
 	events = { sgs.EventPhaseChanging, sgs.EventPhaseStart },
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive()) then return false end
+		if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Finish
+			and player:hasSkill(skill) and player:getMark("@zukudu") > 0 and player:getCardCount() >= 2 then
+			return skill:objectName()
+		end
 		if event == sgs.EventPhaseChanging then
 			local change = data:toPhaseChange()
 			if change.to == sgs.Player_NotActive and player:getMark("&zukudu") > 0 then
@@ -5875,7 +5880,17 @@ zukudu = sgs.CreateTriggerSkillV2 {
 		end
 		return false
 	end,
+	on_cost = function(skill, event, room, player, ctx)
+		if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Finish then
+			return room:askForUseCard(player, "@@zukudu", "zukudu0") ~= nil
+		end
+		return true
+	end,
 	on_effect = function(skill, event, room, player, ctx)
+		if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Finish then
+			-- card already used via askForUseCard in on_cost
+			return false
+		end
 		if event == sgs.EventPhaseChanging then
 			if player:getMark("&zukudu") > 0 then
 				room:removePlayerMark(player, "&zukudu")
@@ -5901,11 +5916,12 @@ sgs.LoadTranslationTable {
 	["information:zu_yangzhong"] = "宗族：[弘农·杨氏]",
 
 	["zujuetu"] = "绝途",
-	[":zujuetu"] = "锁定技，弃牌阶段开始时，你选择手牌中每种花色的牌各一张，将其余的手牌置入弃牌堆，然后令一名角色展示一张手牌。若你手牌中没有此花色的牌，则你对其造成1点伤害，否则你将此牌当【过河拆桥】使用。",
+	[":zujuetu"] = "锁定技，弃牌阶段开始时，你选择手牌中每种花色的牌各一张，将其余的手牌置入弃牌堆，然后令一名角色弃置一张手牌。若你手牌中没有此花色的牌，则你对其造成1点伤害。",
 	["zukudu"] = "苦渡",
-	[":zukudu"] = "限定技，出牌阶段，你可以重铸两张牌，令一名角色于其回合结束时摸一张牌直到其以此法获得了X张牌（X为你重铸的牌的点数之差且至多为5），然后其于最后一个以此法获得牌的回合结束后执行一个额外的回合。",
+	[":zukudu"] = "限定技，结束阶段，你可以重铸两张牌，令一名角色于其回合结束时摸一张牌直到其以此法获得了X张牌（X为你重铸的牌的点数之差且至多为5），然后其于最后一个以此法获得牌的回合结束后执行一个额外的回合。",
 	["zujuetu0"] = "绝途：请选择保留的各花色牌",
-	["zujuetu1"] = "绝途：请选择令一名角色展示牌",
+	["zukudu0"] = "苦渡：你可以重铸两张牌并令一名角色获得「苦渡」效果",
+	["zujuetu1"] = "绝途：请选择一名角色弃置一张手牌",
 	["zujuetu2"] = "绝途：请选择【过河拆桥】使用目标",
 	["$zujuetu1"] = "此天子銮驾，尔可有异心耶？",
 	["$zujuetu2"] = "断途绝路，莫使凉州人追来！",
@@ -6317,7 +6333,7 @@ sgs.LoadTranslationTable {
 	["zufennu"] = "奋驽",
 	[":zufennu"] = "出牌阶段开始时，你可以令至多X名角色各弃置一张牌（X为你的体力值），然后将这些牌置于你的武将牌上，称为“逸”。若你拥有“逸”，你使用牌指定目标时，记录此牌点数。准备阶段，若记录的点数大于“逸”的点数之和，你清除记录并获得所有“逸”。",
 	["zuzelie"] = "泽烈",
-	[":zuzelie"] = "宗族技，当同族角色失去其场上所有牌后，你可以令一名角色本回合下次摸牌/弃牌后，其再摸一张牌/弃一张牌。",
+	[":zuzelie"] = "宗族技，当同族角色失去其场上最后一张牌后，你可以令一名角色本回合下次摸牌/弃牌后，其再摸一张牌/弃一张牌。",
 	["zufennu0"] = "你可以发动“奋驽”选择至多%src名角色各弃置一张牌",
 	["zufennu_yi"] = "逸",
 	["zuzelie0"] = "你可以发动“泽烈”选择一名角色",
@@ -6361,7 +6377,8 @@ zutanfengvs = sgs.CreateViewAsSkillV2 {
 		local player = request:getInitiator()
 		if not player then return false end
 		if request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
-		return dummyCard():isAvailable(player)
+		local slash = dummyCard(nil, "zutanfeng")
+		return slash and slash:isAvailable(player)
 	end,
 	card_selection_feasible = function(skill, request)
 		return request:getSelectedCardIds():length() == 0
@@ -6396,6 +6413,18 @@ zutanfeng = sgs.CreateTriggerSkillV2 {
 	end,
 }
 zu_lujing:addSkill(zutanfeng)
+zutanfengMod = sgs.CreateTargetModSkill {
+	name = "#zutanfeng-mod",
+	pattern = "Slash",
+	residue_func = function(self, from, card)
+		if card and card:getSkillName() == "zutanfeng" then
+			return -1
+		end
+		return 0
+	end,
+}
+zu_lujing:addSkill(zutanfengMod)
+extension:insertRelatedSkills("zutanfeng", "#zutanfeng-mod")
 zujuewei = sgs.CreateTriggerSkillV2 {
 	name = "zujuewei",
 	events = { sgs.CardFinished, sgs.TargetSpecified, sgs.TargetConfirmed },
@@ -6504,7 +6533,7 @@ sgs.LoadTranslationTable {
 	["information:zu_lujing"] = "宗族：[吴郡·陆氏]",
 
 	["zutanfeng"] = "探锋",
-	[":zutanfeng"] = "出牌阶段限一次，你可以视为对一名其他角色使用一张无视防具且不计入次数的【杀】。若此【杀】造成了伤害，你摸X张牌（X为你与其装备区牌数的差）；若未造成伤害，其可以视为对你使用一张【杀】。",
+	[":zutanfeng"] = "出牌阶段限一次，你可以视为对一名其他角色使用一张无视防具且无次数限制的【杀】。若此【杀】造成了伤害，你摸X张牌（X为你与其装备区牌数的差）；若未造成伤害，其可以视为对你使用一张【杀】。",
 	["zujuewei"] = "绝围",
 	[":zujuewei"] = "每回合限一次，当你使用伤害牌指定目标后，或成为伤害牌目标后，你可以选择一项：重铸一张装备牌，此牌结算后，你视为对其中一名除自己以外的角色使用此牌；弃置一张装备牌，令此牌无效。",
 	["zujuewei0"] = "你可以发动“绝围”选择一张装备牌进行重铸或弃置",

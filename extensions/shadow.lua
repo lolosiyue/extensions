@@ -17,7 +17,7 @@ y_luxun = sgs.General(extension, "y_luxun", "wu", 3)
 y_liubiao = sgs.General(extension, "y_liubiao", "qun", 3)
 y_liru = sgs.General(extension, "y_liru", "qun", 3)
 y_lvlingqi = sgs.General(extension, "y_lvlingqi", "qun", 3, false)
-y_huangchengyan = sgs.General(extension, "y_huangchengyan", "qun", 3)
+y_huangchengyan = sgs.General(extension, "y_huangchengyan", "shu", 3)
 y_lukang = sgs.General(extension, "y_lukang", "wu", 3)
 y_luji = sgs.General(extension, "y_luji", "wu", 3)
 y_dongbai = sgs.General(extension, "y_dongbai", "qun", 3, false)
@@ -1595,78 +1595,97 @@ y_bailian = sgs.CreateTriggerSkillV2
 		end,
 	}
 
---黄承彦
-y_caipei = sgs.CreateTriggerSkillV2
-	{ --才配
-		name = "y_caipei",
-		events = { sgs.CardUsed },
-		frequency = sgs.Skill_NotFrequent,
+-- 黄承彦：按 wuming.md 原地改为无名杀吧赛 NS002。
+local nsw_uses = sgs.CreateRuleSkillV2{
+    name = "#nsw_uses",
+    global = true,
+    priority = 10,
+    events = {sgs.PreCardUsed, sgs.CardResponded},
+    on_record = function(skill, event, room, player, ctx)
+        if not player then return end
+        local card
+        if event == sgs.PreCardUsed then
+            card = ctx.original_data:toCardUse().card
+        else
+            local response = ctx.original_data:toCardResponse()
+            if response.m_isUse then card = response.m_card end
+        end
+        if not card or card:isKindOf("SkillCard") then return end
+        room:setCardFlag(card, "-nsw_first_use")
+        if player:getPhase() ~= sgs.Player_NotActive then
+            room:addPlayerMark(player, "nsw_used-Clear")
+            if player:getMark("nsw_used-Clear") == 1 then
+                room:setCardFlag(card, "nsw_first_use")
+            end
+        end
+    end,
+}
+extension:addSkills(nsw_uses)
 
-		can_trigger = function(skill, event, room, player, data)
-			local use = data:toCardUse()
-			if not use.card or not use.card:isNDTrick() then return false end
-			--player 為使用錦囊者；擁有者須可棄牌，且使用者為女性或擁有者本人
-			return y_v2_all_owners(skill, room, function(hcy)
-				return hcy:canDiscard(hcy, "he")
-					and (player:isFemale() or player:objectName() == hcy:objectName())
-			end)
-		end,
+local nsw_longyue = sgs.CreateTriggerSkillV2{
+    name = "nsw_longyue",
+    events = {sgs.CardUsed, sgs.CardResponded},
+    can_trigger = function(skill, event, room, player, data)
+        if not player or not player:isAlive() or player:getPhase() == sgs.Player_NotActive then return false end
+        local card
+        if event == sgs.CardUsed then
+            card = data:toCardUse().card
+        else
+            local response = data:toCardResponse()
+            if response.m_isUse then card = response.m_card end
+        end
+        if not card or not card:isKindOf("TrickCard") or not card:hasFlag("nsw_first_use") then return false end
+        local skills, owners = {}, {}
+        for _, owner in sgs.qlist(room:findPlayersBySkillName(skill:objectName())) do
+            if owner:isAlive() then
+                table.insert(skills, skill:objectName())
+                table.insert(owners, owner:objectName())
+            end
+        end
+        if #owners > 0 then return table.concat(skills, "|"), table.concat(owners, "|") end
+        return false
+    end,
+    on_cost = function(skill, event, room, player, ctx)
+        local data = sgs.QVariant()
+        data:setValue(ctx.invoker)
+        return room:askForSkillInvoke(player, skill:objectName(), data)
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        if ctx.invoker:isAlive() then ctx.invoker:drawCards(1, skill:objectName()) end
+        return false
+    end,
+}
 
-		on_cost = function(skill, event, room, player, ctx)
-			return player:askForSkillInvoke(skill:objectName(), ctx.original_data)
-		end,
-
-		on_effect = function(skill, event, room, player, ctx)
-			local tar = room:askForPlayerChosen(player, room:getAlivePlayers(), skill:objectName())
-			room:broadcastSkillInvoke(skill:objectName())
-			tar:drawCards(1)
-			if not player:isKongcheng() then
-				room:askForDiscard(player, skill:objectName(), 1, 1, false, true)
-			end
-			return false
-		end,
-	}
-
-y_kongzhen = sgs.CreateTriggerSkillV2
-	{ --空阵
-		name = "y_kongzhen",
-		frequency = sgs.Skill_NotFrequent,
-		events = { sgs.CardAsked },
-
-		can_trigger = function(skill, event, room, player, data)
-			if not player:isKongcheng() then return false end
-			local pattern = data:toStringList()[1]
-			if pattern ~= "jink" and pattern ~= "slash" then return false end
-			return y_v2_all_owners(skill, room)
-		end,
-
-		on_cost = function(skill, event, room, player, ctx)
-			local ai_data = sgs.QVariant()
-			ai_data:setValue(ctx.invoker)
-			return player:askForSkillInvoke(skill:objectName(), ai_data)
-		end,
-
-		on_effect = function(skill, event, room, player, ctx)
-			local pattern = ctx.original_data:toStringList()[1]
-			local judge = sgs.JudgeStruct()
-			judge.pattern = ".|red|.|."
-			judge.good = true
-			judge.reason = skill:objectName()
-			judge.who = ctx.invoker
-			judge.play_animation = true
-			room:setEmotion(ctx.invoker, "armor/EightDiagram")
-			room:judge(judge)
-			if judge:isGood() then
-				local js = sgs.Sanguosha:cloneCard(pattern, sgs.Card_NoSuit, 0)
-				js:setSkillName(skill:objectName())
-				js:deleteLater()
-				room:provide(js)
-				return true
-			end
-			return false
-		end,
-	}
-
+local nsw_zhenyin = sgs.CreateTriggerSkillV2{
+    name = "nsw_zhenyin",
+    events = {sgs.AskForRetrial},
+    can_trigger = function(skill, event, room, player, data)
+        -- AskForRetrial 由引擎逐人发送，只在持有者自己的机会询问。
+        local current = room:getCurrent()
+        if player and player:isAlive() and player:hasSkill(skill:objectName())
+            and player:getMark("nsw_zhenyin-Clear") == 0
+            and current and current:isAlive() and current:getPhase() ~= sgs.Player_NotActive
+            and not current:isKongcheng() and data:toJudge().card then
+            return skill:objectName()
+        end
+        return false
+    end,
+    on_cost = function(skill, event, room, player, ctx)
+        return room:askForSkillInvoke(player, skill:objectName(), ctx.original_data)
+    end,
+    on_effect = function(skill, event, room, player, ctx)
+        local current = room:getCurrent()
+        -- 发动即占用次数；当前回合角色可拒绝打出牌。
+        room:setPlayerMark(player, "nsw_zhenyin-Clear", 1)
+        if current and current:isAlive() and not current:isKongcheng() then
+            local judge = ctx.original_data:toJudge()
+            local card = room:askForCard(current, ".|.|.|hand", "@nsw_zhenyin-card:" .. player:objectName(),
+                ctx.original_data, sgs.Card_MethodResponse, judge.who, true, skill:objectName())
+            if card then room:retrial(card, current, judge, skill:objectName(), false) end
+        end
+        return false
+    end,
+}
 
 --陆绩
 y_huntiancard = sgs.CreateSkillCard
@@ -2925,8 +2944,8 @@ y_lvlingqi:addSkill(y_wujitar)
 y_lvlingqi:addSkill(y_laoyue)
 y_puyuan:addSkill(y_shenzhu)
 y_puyuan:addSkill(y_bailian)
-y_huangchengyan:addSkill(y_caipei)
-y_huangchengyan:addSkill(y_kongzhen)
+y_huangchengyan:addSkill(nsw_longyue)
+y_huangchengyan:addSkill(nsw_zhenyin)
 y_dongbai:addSkill(y_weiji)
 y_dongbai:addSkill(y_jiushang)
 --y_liuxie:addSkill(y_kuilei)
@@ -3162,16 +3181,16 @@ sgs.LoadTranslationTable
 	["~y_puyuan"] = "江郎才尽了么？",
 	["#y_puyuan"] = "铸造大师",
 
-	["y_huangchengyan"] = "黄承彦[影]",
-	["y_caipei"] = "才配",
-	["y_kongzhen"] = "空阵",
-	[":y_caipei"] = "每当你或女性角色使用非延时类锦囊牌选定目标时，你可令一名角色摸一张牌，然后你弃置一张牌。",
-	["$y_caipei"] = "我看好你",
-	["$y_kongzhen"] = "此阵可挡精兵十万",
-	[":y_kongzhen"] = "每当没有手牌的角色需要响应【杀】或【闪】时，你可令其进行一次判定，若判定结果为红色，视为该角色响应了需要响应的牌。",
-	["designer:y_huangchengyan"] = "ByArt",
-	["~y_huangchengyan"] = "唉",
-	["#y_huangchengyan"] = "沔南名士",
+    ["y_huangchengyan"] = "黄承彦[无名杀]",
+    ["&y_huangchengyan"] = "黄承彦",
+    ["#y_huangchengyan"] = "沔南之岳",
+    ["designer:y_huangchengyan"] = "竹邀月",
+    ["information:y_huangchengyan"] = "无名杀吧赛2020·NS002",
+    ["nsw_longyue"] = "龙岳",
+    [":nsw_longyue"] = "当一名角色使用锦囊牌时，若此牌是其本回合内使用的第一张牌，则你可令其摸一张牌。",
+    ["nsw_zhenyin"] = "阵引",
+    [":nsw_zhenyin"] = "每回合限一次。一名角色的判定牌生效前，你可令当前回合角色打出一张手牌代替之。",
+    ["@nsw_zhenyin-card"] = "%src 发动了“阵引”，你可以打出一张手牌替换此判定牌",
 
 	["y_luji"] = "陆绩[影]",
 	["y_huaiju"] = "怀橘",

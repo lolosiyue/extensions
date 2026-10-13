@@ -9745,3 +9745,183 @@ end
 
 
 
+
+-- GU-audit2025 follow-up 2026-10-13: 十周年 batch
+sgs.ai_skill_invoke.gu_jiedang = true
+sgs.ai_skill_choice.gu_jiedang = function(self, choices)
+	local items = choices:split("+")
+	return items[#items]
+end
+sgs.ai_skill_discard.gu_jiedang = function(self, discard_num, min_num, optional, include_equip)
+	return {}
+end
+
+sgs.ai_skill_invoke.gu_aoren = true
+
+sgs.ai_skill_playerchosen.gu_xianniang = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	self:sort(targets, "handcard")
+	for _, p in ipairs(targets) do
+		if self:isEnemy(p) then return p end
+	end
+	return nil
+end
+sgs.ai_skill_playerchosen.gu_xianniang_give = function(self, targets)
+	return nil
+end
+
+addAiSkills("gu_xiaowu").getTurnUseCard = function(self)
+	local cards = sgs.QList2Table(self.player:getCards("he"))
+	self:sortByKeepValue(cards)
+	if #cards < 1 then return end
+	return sgs.Card_Parse("@GuXiaowuCard=" .. cards[1]:getEffectiveId())
+end
+sgs.ai_skill_use_func["GuXiaowuCard"] = function(card, use, self)
+	use.card = card
+end
+sgs.ai_use_value.GuXiaowuCard = 5
+sgs.ai_use_priority.GuXiaowuCard = 6
+
+sgs.ai_skill_use["@@gu_baguan"] = function(self, prompt)
+	local x = self.player:getMark("gu_baguan_x")
+	local cards = sgs.QList2Table(self.player:getHandcards())
+	self:sortByKeepValue(cards)
+	local ids = {}
+	for i = 1, math.min(x, #cards) do table.insert(ids, cards[i]:getEffectiveId()) end
+	if #ids < 1 then return "." end
+	self:sort(self.enemies, "defense")
+	for _, ep in ipairs(self.enemies) do
+		if self.player:canSlash(ep) then
+			return "slash:gu_baguan[no_suit:0]=" .. table.concat(ids, "+") .. "->" .. ep:objectName()
+		end
+	end
+	return "."
+end
+
+sgs.ai_skill_playerchosen.gu_dangchen = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	self:sort(targets, "handcard", true)
+	for _, p in ipairs(targets) do
+		if self:isEnemy(p) then return p end
+	end
+	return nil
+end
+sgs.ai_skill_invoke.gu_dangchen = true
+
+sgs.ai_skill_use["@@gu_shuguo"] = function(self, prompt)
+	local ids = self.player:getPile("#gu_shuguo")
+	if ids:isEmpty() then return "." end
+	local card = sgs.Sanguosha:getCard(ids:first())
+	local dummy = self:aiUseCard(card)
+	if dummy.card and dummy.to then
+		local tos = {}
+		for _, p in sgs.qlist(dummy.to) do table.insert(tos, p:objectName()) end
+		return card:toString() .. "->" .. (#tos > 0 and table.concat(tos, "+") or ".")
+	end
+	return "."
+end
+sgs.ai_skill_invoke.gu_shuguo = true
+
+sgs.ai_skill_invoke.gu_qiaolue = function(self, data)
+	return true
+end
+
+sgs.ai_skill_invoke.gu_hanjie = function(self, data)
+	local to = data:toPlayer()
+	return to and self:isEnemy(to)
+end
+sgs.ai_skill_choice.gu_hanjie = function(self, choices)
+	local items = choices:split("+")
+	for _, name in ipairs({"duel", "fire_slash", "thunder_slash", "slash"}) do
+		if table.contains(items, name) then return name end
+	end
+	return items[1]
+end
+
+addAiSkills("gu_zhonge").getTurnUseCard = function(self)
+	return sgs.Card_Parse("@GuZhongeCard=.")
+end
+sgs.ai_skill_use_func["GuZhongeCard"] = function(card, use, self)
+	self:sort(self.enemies, "defense")
+	for _, ep in ipairs(self.enemies) do
+		use.card = card
+		use.to:append(ep)
+		return
+	end
+end
+sgs.ai_use_value.GuZhongeCard = 6
+sgs.ai_use_priority.GuZhongeCard = 7
+sgs.ai_skill_choice.gu_zhonge = function(self, choices, data)
+	local to = data:toPlayer()
+	if to and self:isEnemy(to) then return "slash" end
+	return "draw"
+end
+
+addAiSkills("gu_juekai").getTurnUseCard = function(self)
+	if self.player:usedTimes("GuZhongeCard") > 0 and #self.enemies > 0 then
+		return sgs.Card_Parse("@GuJuekaiCard=.")
+	end
+end
+sgs.ai_skill_use_func["GuJuekaiCard"] = function(card, use, self)
+	use.card = card
+end
+sgs.ai_use_value.GuJuekaiCard = 3
+sgs.ai_use_priority.GuJuekaiCard = 6.5
+
+-- GU-audit2025 SOURCE-2: 武皇甫嵩 / 乐诸葛果 / 谋胡烈
+sgs.ai_skill_invoke.chaozhen = true
+sgs.ai_skill_choice.chaozhen = function(self, choices)
+	return "drawpile"
+end
+sgs.ai_skill_invoke.lianjie = true
+sgs.ai_skill_playerchosen.lianjie = function(self, targets)
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) then return p end
+	end
+	return targets:first()
+end
+addAiSkills("jiangxian").getTurnUseCard = function(self)
+	if self.player:getMark("@jiangxian") > 0 and self.player:getHp() <= 2 then
+		return sgs.Card_Parse("@GuJiangxianCard=.")
+	end
+end
+sgs.ai_skill_use_func["GuJiangxianCard"] = function(card, use, self)
+	use.card = card
+end
+sgs.ai_skill_choice.jiangxian = function(self, choices)
+	return "chaozhen"
+end
+sgs.ai_skill_invoke.chengyan = true
+sgs.ai_skill_invoke.chuanyu = true
+sgs.ai_skill_playerchosen.chuanyu = function(self, targets)
+	for _, p in sgs.qlist(targets) do
+		if self:isFriend(p) then return p end
+	end
+	return nil
+end
+sgs.ai_skill_invoke.yitou = function(self, data)
+	local to = data:toPlayer()
+	return to and self:isFriend(to) and self.player:getHandcardNum() <= 2
+end
+
+-- GU-audit2025 SOURCE-3: 有诸葛亮
+sgs.ai_skill_invoke.gu_yingyou = true
+sgs.ai_skill_choice.gu_yingyou = function(self, choices)
+	local items = choices:split("+")
+	for _, name in ipairs({"wuhu", "crossbow", "mantou"}) do
+		for _, item in ipairs(items) do
+			if item == name then return item end
+		end
+	end
+	return items[1]
+end
+sgs.ai_skill_invoke.gu_mantou = function(self, data)
+	local use = data:toCardUse()
+	if not use or not use.card then return false end
+	local n = use.card:getNumber()
+	if n <= 0 or self.player:getMark("@gu_mantou") < n then return false end
+	local card = use.card
+	return card:isDamageCard() or card:isKindOf("Peach") or card:isKindOf("Analeptic")
+		or card:isKindOf("ExNihilo") or card:isKindOf("Snatch") or card:isKindOf("Dismantlement")
+		or card:isKindOf("GodSalvation")
+end

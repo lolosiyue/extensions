@@ -1,5 +1,10 @@
 
 
+-- 时空对决曹休：两种群体锦囊对其无效。
+sgs.ai_target_revises.shikong_zhengzhan = function(to, card)
+	if card:isKindOf("SavageAssault") or card:isKindOf("ArcheryAttack") then return true end
+end
+
 function SmartAI:useCardQizhengxiangsheng(card,use)
 	self:sort(self.enemies,"hp")
 	local extraTarget = sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_ExtraTarget,self.player,card)
@@ -5274,16 +5279,15 @@ sgs.ai_use_value.mobile_wulingCard = 4.5
 sgs.ai_use_priority.mobile_wulingCard = 5.7
 
 sgs.ai_skill_choice.mobile_wuling = function(self,choices,data)
-	local items = choices:split("+")
-	local to = data:toPlayer()
-	if self:isFriend(to) then
-		if table.contains(items,"wl_hu_mark") and self:isWeak(to) then
-			return "wl_hu_mark"
-		end
-		if table.contains(items,"wl_lu_mark") and to:getCards("j"):length()>0 then
-			return "wl_lu_mark"
-		end
-	end
+    local items = choices:split("+")
+    local to = data:toPlayer()
+    if to and self:isFriend(to) then
+        if table.contains(items, "wl_lu_mark") and to:isWounded() then return "wl_lu_mark" end
+        if table.contains(items, "wl_xiong_mark") and self:isWeak(to) then return "wl_xiong_mark" end
+        if table.contains(items, "wl_he_mark") and to:getHandcardNum() < 3 then return "wl_he_mark" end
+        if table.contains(items, "wl_hu_mark") then return "wl_hu_mark" end
+    end
+    return items[1]
 end
 
 sgs.ai_fill_skill.mobile_youyi = function(self)
@@ -5371,18 +5375,14 @@ sgs.ai_use_value.mobile_dingzouCard = 4.5
 sgs.ai_use_priority.mobile_dingzouCard = 4.7
 
 sgs.ai_skill_playerchosen.mobile_zhimeng = function(self,players,x,n)
-	local destlist = sgs.QList2Table(players) -- 将列表转换为表
-	self:sort(destlist,"handcard",true)
-    for _,target in sgs.list(destlist)do
-		if not self:isFriend(target)
-		and target:getHandcardNum()>self.player:getHandcardNum()
-		then return target end
-	end
-    for _,target in sgs.list(destlist)do
-		if self:isFriend(target) and self:isWeak(target)
-		and target:getHandcardNum()<self.player:getHandcardNum()/2
-		then return target end
-	end
+    local ps = sgs.QList2Table(players)
+    self:sort(ps, "handcard", true)
+    for _, target in ipairs(ps) do
+        if target:getHandcardNum() <= self.player:getHandcardNum() + 1 then
+            if self:isEnemy(target) and target:getHandcardNum() > self.player:getHandcardNum() then return target end
+            if self:isFriend(target) and target:getHandcardNum() < self.player:getHandcardNum()/2 then return target end
+        end
+    end
 end
 
 
@@ -7225,6 +7225,48 @@ sgs.ai_skill_playerchosen._of_lingling = function(self,players)
 	end
 end
 
+
+-- 江魂龙谶徐氏
+sgs.ai_fill_skill.oflongchan = function(self)
+	return sgs.Card_Parse("#oflongchanCard:.:")
+end
+
+sgs.ai_skill_use_func["#oflongchanCard"] = function(card,use,self)
+	self:sort(self.enemies, "hp")
+	for _, p in sgs.list(self.enemies) do
+		if self:damageIsEffective(p, "T", self.player) then
+			use.card = card
+			use.to:append(p)
+			return
+		end
+	end
+	self:sort(self.friends, "hp")
+	for _, p in sgs.list(self.friends) do
+		if p:isWounded() then
+			use.card = card
+			use.to:append(p)
+			return
+		end
+	end
+end
+
+sgs.ai_skill_choice.oflongchan = function(self,choices,data)
+	local target = data:toPlayer()
+	if target and self:isFriend(target) then return "recover" end
+	return "damage"
+end
+
+sgs.ai_skill_invoke.ofshouxin_jhlc = function(self,data)
+	local use = data:toCardUse()
+	if not use.card then return false end
+	return not self:needToLoseHp(self.player, use.from, use.card)
+		and (use.card:isDamageCard() and self:isEnemy(use.from)
+			or use.card:isKindOf("Snatch") or use.card:isKindOf("Dismantlement")
+			or use.card:isKindOf("DelayedTrick"))
+end
+
+sgs.ai_use_value.oflongchanCard = 5.4
+sgs.ai_use_priority.oflongchanCard = 4.2
 
 
 

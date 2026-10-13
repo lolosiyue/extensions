@@ -837,3 +837,157 @@ sgs.ai_can_damagehp.bu_stwo_guicai = function(self,from,card,to)
 	and self:canLoseHp(from,card,to) and #self.enemies > 0
 end
 
+
+-- 三国杀设计吧 3S2J（smart-ai）
+sgs.ai_skill_playerchosen.sj2_shiershilian = function(self, targets)
+    if self.player:getMark("&sj2_trials") == 12 then return nil end
+    local enemies = {}
+    for _, p in sgs.qlist(targets) do
+        if self:isEnemy(p) and not self:doNotDiscard(p, "he") then table.insert(enemies, p) end
+    end
+    self:sort(enemies, "defense")
+    return enemies[1]
+end
+sgs.ai_skill_invoke.sj2_shenyizhiqu = function(self)
+    return self.player:getMark("&sj2_trials") > 0
+end
+sgs.ai_skill_invoke.sj2_cewai = function(self, data)
+    local use = data:toCardUse()
+    if self:isFriend(use.from) then return true end
+    for _, p in sgs.qlist(use.to) do
+        if self:slashIsEffective(use.card, p, use.from) and self:isFriend(p) then return false end
+    end
+    return use.from:getCardCount(true) >= 2
+end
+sgs.ai_skill_invoke.sj2_quanjue = function(self, data)
+    local number = data:toCardUse().card:getNumber()
+    local score = 0
+    for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+        local sign = self:isEnemy(p) and 1 or (self:isFriend(p) and -1 or 0)
+        for _, c in sgs.qlist(p:getCards("ej")) do
+            if c:getNumber() < number then
+                score = score + sign * (c:isKindOf("DelayedTrick") and -1 or 1)
+            end
+        end
+        -- AI不读取隐藏手牌的点数，以预期数量估值。
+        score = score + sign * p:getHandcardNum() * math.max(0, number - 1) / 13
+    end
+    return score >= 2
+end
+local sj2_zhan_skill = {name = "sj2_zhanwuchangfa"}
+table.insert(sgs.ai_skills, sj2_zhan_skill)
+sj2_zhan_skill.getTurnUseCard = function(self)
+    if self.player:getMark("sj2_zhan_blocked") == 0 then
+        return sgs.Card_Parse("#sj2_zhanwuchangfaCard:.:")
+    end
+end
+sgs.ai_skill_use_func["#sj2_zhanwuchangfaCard"] = function(card, use, self)
+    self:sort(self.enemies, "defense")
+    for _, enemy in ipairs(self.enemies) do
+        -- 移动模式优先取敌人手牌；避免提出没有合法接收区域的装备移动。
+        if (self.player:getMark("sj2_move_mode") > 0 and not enemy:isKongcheng())
+            or (self.player:getMark("sj2_move_mode") == 0 and self.player:canDiscard(enemy, "hej")
+                and not self:doNotDiscard(enemy, "he")) then
+            use.card = card
+            if use.to then use.to:append(enemy) end
+            return
+        end
+    end
+end
+sgs.ai_skill_playerchosen.sj2_zhan_move = function(self, targets)
+    for _, p in sgs.qlist(targets) do if p == self.player then return p end end
+    for _, p in sgs.qlist(targets) do if self:isFriend(p) then return p end end
+    return targets:first()
+end
+sgs.ai_use_priority.sj2_zhanwuchangfaCard = 5
+
+sgs.ai_skill_choice.sj2_zhanwuchangfa = function(self) return "move" end
+
+-- 三国杀设计吧 3S5J 埃莉诺：只存低价值牌，保留防御与回复。
+local function sj5_ban_ids(self)
+    local cards = sgs.QList2Table(self.player:getCards("he"))
+    self:sortByKeepValue(cards)
+    local ids = {}
+    for _, c in ipairs(cards) do
+        if not c:isKindOf("Peach") and not c:isKindOf("Jink") and not c:isKindOf("Analeptic")
+            and self:getKeepValue(c) < 4 then table.insert(ids, c:getEffectiveId()) end
+    end
+    return ids
+end
+local sj5_fengying_skill = {name = "sj5_fengying"}
+table.insert(sgs.ai_skills, sj5_fengying_skill)
+sj5_fengying_skill.getTurnUseCard = function(self)
+    local ids = sj5_ban_ids(self)
+    if #ids > 0 then return sgs.Card_Parse("#sj5_fengyingCard:" .. table.concat(ids, "+") .. ":") end
+end
+sgs.ai_skill_use_func["#sj5_fengyingCard"] = function(card, use, self) use.card = card end
+sgs.ai_skill_use["@@sj5_fengying"] = function(self)
+    local ids = sj5_ban_ids(self)
+    return #ids > 0 and ("#sj5_fengyingCard:" .. table.concat(ids, "+") .. ":") or "."
+end
+sgs.ai_skill_invoke.sj5_wangting = function(self, data)
+    local other = data:toPlayer()
+    if not other then return false end
+    local ban = self.player:getPile("sj5_ban"):length()
+    if self:isFriend(other) then return ban > other:getHandcardNum() end
+    return self:isEnemy(other) and other:getHandcardNum() > 0 and ban <= other:getHandcardNum() + 1
+end
+sgs.ai_skill_invoke.sj5_wangting_reset = true
+sgs.ai_use_priority.sj5_fengyingCard = 0.1
+
+sgs.ai_skill_invoke.sj7_xiangjian = function(self, data)
+    local current = data:toPlayer()
+    return current and (self:isEnemy(current) and current:faceUp() or self:isFriend(current) and not current:faceUp())
+end
+sgs.ai_skill_cardask["@sj7-xiangjian-discard"] = function(self, data, pattern)
+    local current = data:toPlayer()
+    if not current then return "." end
+    local good = self:isEnemy(current) and current:faceUp() or self:isFriend(current) and not current:faceUp()
+    if not good then return "." end
+    local cards = sgs.QList2Table(self.player:getCards("he"))
+    self:sortByKeepValue(cards)
+    for _, c in ipairs(cards) do
+        if sgs.Sanguosha:matchExpPattern(pattern, self.player, c) and not self.player:isJilei(c)
+            and self:getKeepValue(c) < 5 then return "$" .. c:getEffectiveId() end
+    end
+    return "."
+end
+sgs.ai_skill_invoke.sj7_xiangjian_turn = function(self, data)
+    local current = data:toPlayer()
+    return current and (self:isEnemy(current) and current:faceUp() or self:isFriend(current) and not current:faceUp())
+end
+sgs.ai_skill_invoke.sj7_chaoai_fangzhu = function(self, data)
+    local target = data:toPlayer()
+    if not target then return false end
+    local bad = self:toTurnOver(target, self.player:getLostHp(), "fangzhu")
+    return self:isEnemy(target) and bad or self:isFriend(target) and not bad
+end
+
+
+-- 无名杀吧赛2020（olddiy）：仅使用 smart-ai 回调。
+sgs.ai_skill_cardask["@nsw_daizhan-card"] = function(self, data)
+    if not self.player:hasJudgeArea() then return "." end
+    local cards = sgs.QList2Table(self.player:getCards("he"))
+    self:sortByKeepValue(cards)
+    for _, material in ipairs(cards) do
+        if not material:isKindOf("TrickCard") and self:getKeepValue(material) < 5 then
+            for _, name in ipairs({"supply_shortage", "indulgence"}) do
+                local card = sgs.Sanguosha:cloneCard(name, material:getSuit(), material:getNumber())
+                card:addSubcard(material)
+                card:setSkillName("nsw_daizhan")
+                card:deleteLater()
+                if not self.player:containsTrick(name)
+                    and not self.player:isCardLimited(card, sgs.Card_MethodUse)
+                    and not self.room:isProhibited(self.player, self.player, card)
+                    and (name == "supply_shortage" or self.player:isSkipped(sgs.Player_Play)) then
+                    return "$" .. material:getEffectiveId()
+                end
+            end
+        end
+    end
+    return "."
+end
+sgs.ai_skill_choice.nsw_daizhan = function(self, choices)
+    if string.find(choices, "supply_shortage", 1, true) then return "supply_shortage" end
+    return "indulgence"
+end
