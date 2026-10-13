@@ -6087,11 +6087,1310 @@ sgs.ai_skill_use_func.GuHaoxianCard = function(card, use, self)
 	use.card = card
 end
 
--- GU-audit2026 section AI files. SmartAI only auto-loads "<package>-ai.lua",
--- so the per-section files for generals registered in the mobile package are loaded here.
-for _, gu_ai_file in ipairs({ "gu-audit2026-m06b-ai.lua", "gu-audit2026-m07a-ai.lua", "gu-audit2026-m07b-ai.lua",
-	"gu-audit2026-m07c-ai.lua", "gu-audit2026-m07d-ai.lua", "gu-audit2026-m08a-ai.lua", "gu-audit2026-m08b-ai.lua",
-	"gu-audit2026-m08c-ai.lua", "gu-audit2026-m08d-ai.lua" }) do
-	local ok, err = pcall(dofile, "lua/ai/" .. gu_ai_file)
-	if not ok then print("AI script load failed: " .. tostring(err)) end
+-- GU-audit2026 2026-06 谋关羽 / 孙綝 / 势程普
+
+local function gu_contains(targets, player)
+	if not targets or not player then return false end
+	for _, p in sgs.qlist(targets) do
+		if p:objectName() == player:objectName() then return true end
+	end
+	return false
+end
+
+sgs.ai_skill_invoke.gu_weishi = function(self, data)
+	local use = data and data.toCardUse and data:toCardUse()
+	if use and use.card and not use.card:isDamageCard() and use.from and self:isFriend(use.from) then
+		return false
+	end
+	return true
+end
+
+sgs.ai_skill_invoke.gu_duzuo = function(self)
+	return true
+end
+
+sgs.ai_skill_playerchosen.gu_duzuo = function(self, targets)
+	self:sort(self.friends, "handcard")
+	for _, p in ipairs(self.friends) do
+		if gu_contains(targets, p) then return p end
+	end
+	return targets:first()
+end
+
+sgs.ai_skill_playerchosen.gu_lulian = function(self, targets)
+	local pool = {}
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) then table.insert(pool, p) end
+	end
+	if #pool == 0 then
+		for _, p in sgs.qlist(targets) do table.insert(pool, p) end
+	end
+	self:sort(pool, "hp")
+	return pool[1]
+end
+
+sgs.ai_skill_invoke.gu_bihan = function(self, data)
+	local victim = data and data.toPlayer and data:toPlayer()
+	return victim and self:isFriend(victim)
+end
+
+sgs.ai_skill_choice.gu_bihan = function(self, choices, data)
+	local victim = data and data.toPlayer and data:toPlayer()
+	if not victim or victim:objectName() == self.player:objectName() then return "self" end
+	local function excess(p)
+		return math.max(0, p:getHandcardNum() - math.max(0, p:getHp()))
+	end
+	if self:isFriend(victim) then
+		return excess(self.player) <= excess(victim) and "self" or "victim"
+	end
+	return excess(victim) > 0 and "victim" or "self"
+end
+
+sgs.ai_skill_cardask["@gu_nigu-give"] = function(self, data, pattern, target)
+	if not target or self:isFriend(target) then return "." end
+	local cards = sgs.QList2Table(self.player:getCards("he"))
+	if #cards == 0 then return "." end
+	self:sortByKeepValue(cards)
+	return "$" .. cards[1]:getEffectiveId()
+end
+
+local gu_juao_skill = {name = "gu_juao"}
+table.insert(sgs.ai_skills, gu_juao_skill)
+gu_juao_skill.getTurnUseCard = function(self)
+	if self.player:hasUsed("GuJuaoCard") then return nil end
+	local cards = sgs.QList2Table(self.player:getCards("he"))
+	if #cards == 0 then return nil end
+	local hit = false
+	for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+		if self:isEnemy(p) and self.player:inMyAttackRange(p) then hit = true break end
+	end
+	if not hit then return nil end
+	self:sortByKeepValue(cards)
+	return sgs.Card_Parse("@GuJuaoCard=" .. cards[1]:getEffectiveId() .. ":slash")
+end
+
+sgs.ai_skill_use_func.GuJuaoCard = function(card, use, self)
+	self:sort(self.enemies, "hp")
+	for _, p in ipairs(self.enemies) do
+		if self.player:inMyAttackRange(p) then
+			use.card = card
+			use.to:append(p)
+			return
+		end
+	end
+end
+sgs.ai_use_priority.GuJuaoCard = 2.5
+
+local gu_nigu_skill = {name = "gu_nigu"}
+table.insert(sgs.ai_skills, gu_nigu_skill)
+gu_nigu_skill.getTurnUseCard = function(self)
+	if self.player:hasUsed("GuNiguCard") then return nil end
+	local hit = false
+	for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+		if self:isEnemy(p) and self.player:inMyAttackRange(p) then hit = true break end
+	end
+	if not hit then return nil end
+	local cards = sgs.QList2Table(self.player:getCards("he"))
+	if #cards == 0 then return nil end
+	self:sortByKeepValue(cards)
+	return sgs.Card_Parse("@GuNiguCard=" .. cards[1]:getEffectiveId())
+end
+
+sgs.ai_skill_use_func.GuNiguCard = function(card, use)
+	use.card = card
+end
+sgs.ai_use_priority.GuNiguCard = 4
+
+-- GU-audit2026 2026-07a
+-- 星夏侯霸 gu_xingxiahouba / 夏侯恩 gu_xiahouen / 谋张任 gu_mouzhangren.
+
+local function gu07a_parse_ids(pattern)
+	local ids = {}
+	for id in string.gmatch(pattern or "", "%d+") do ids[tonumber(id)] = true end
+	return ids
+end
+
+local function gu07a_weakest_enemy(self, targets)
+	local pool = {}
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) then table.insert(pool, p) end
+	end
+	if #pool == 0 then return nil end
+	self:sort(pool, "hp")
+	return pool[1]
+end
+
+-- 维谷 ---------------------------------------------------------------
+local function gu07a_weigu_extra_score(self, use)
+	local score = 0
+	if not use or not use.card then return 0 end
+	for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+		local skip = (use.from and p:objectName() == use.from:objectName())
+		if not skip then
+			for _, t in sgs.qlist(use.to) do
+				if t:objectName() == p:objectName() then skip = true break end
+			end
+		end
+		if not skip and self.player:inMyAttackRange(p) then
+			if self:isEnemy(p) then score = score + 1 elseif self:isFriend(p) then score = score - 1 end
+		end
+	end
+	if use.from and self:isEnemy(use.from) then score = -score end
+	return score
+end
+
+sgs.ai_skill_invoke.gu_weigu = function(self, data)
+	if self.player:getMark("&gu_juefa") > 0 then return true end
+	local use = data and data.toCardUse and data:toCardUse()
+	if self.player:getHp() <= 1 then return false end
+	if use and use.from and use.from:objectName() == self.player:objectName() then
+		return gu07a_weigu_extra_score(self, use) > 0 or self.player:getHp() >= 3
+	end
+	return self.player:getHp() >= 3
+end
+
+sgs.ai_skill_discard.gu_weigu = function(self, discard_num, min_num, optional, include_equip, pattern)
+	local allowed = gu07a_parse_ids(pattern)
+	local cards = {}
+	for _, c in sgs.qlist(self.player:getCards("he")) do
+		if allowed[c:getEffectiveId()] then table.insert(cards, c) end
+	end
+	if #cards == 0 then return {} end
+	self:sortByKeepValue(cards)
+	return { cards[1]:getEffectiveId() }
+end
+
+sgs.ai_skill_choice.gu_weigu = function(self, choices, data)
+	local items = choices:split("+")
+	local has = function(n) return table.contains(items, n) end
+	if has("damage") then return "damage" end
+	local use = data and data.toCardUse and data:toCardUse()
+	if has("target") and gu07a_weigu_extra_score(self, use) > 0 then return "target" end
+	if has("move") then return "move" end
+	return items[1]
+end
+
+sgs.ai_skill_playerchosen.gu_weigu_damage = function(self, targets)
+	return gu07a_weakest_enemy(self, targets) or targets:last()
+end
+
+-- 绝伐: only when an enemy is low enough to be finished by 维谷's 2 damage.
+local gu_juefa_skill = { name = "gu_juefa" }
+table.insert(sgs.ai_skills, gu_juefa_skill)
+gu_juefa_skill.getTurnUseCard = function(self)
+	if self.player:getMark("@gu_juefa") <= 0 or self.player:getHp() < 2 then return nil end
+	for _, p in ipairs(self.enemies) do
+		if p:getHp() <= 2 and not p:hasArmorEffect("silver_lion") then
+			return sgs.Card_Parse("@GuJuefaCard=.")
+		end
+	end
+	return nil
+end
+sgs.ai_skill_use_func.GuJuefaCard = function(card, use, self)
+	use.card = card
+end
+sgs.ai_use_priority.GuJuefaCard = 6
+
+-- 恃武 ---------------------------------------------------------------
+sgs.ai_skill_invoke.gu_shiwu = function(self, data)
+	local target = data and data.toPlayer and data:toPlayer()
+	if not target or not self:isEnemy(target) then return false end
+	if self:getCardsNum("Slash") >= getCardsNum("Slash", target, self.player) then return true end
+	return self.player:getHp() >= 3
+end
+
+-- 慑道 ---------------------------------------------------------------
+sgs.ai_skill_invoke.gu_shedao = function(self, data)
+	return true
+end
+
+sgs.ai_skill_choice.gu_shedao = function(self, choices, data)
+	local items = choices:split("+")
+	if table.contains(items, "slash") and self.player:hasSkill("gu_xunshi") then return "slash" end
+	if table.contains(items, "red") then return "red" end
+	return items[1]
+end
+
+sgs.ai_skill_discard.gu_shedao = function(self, discard_num, min_num, optional, include_equip, pattern)
+	local cards = {}
+	for _, c in sgs.qlist(self.player:getCards("he")) do
+		if c:isBlack() then table.insert(cards, c) end
+	end
+	if #cards == 0 then return {} end
+	self:sortByKeepValue(cards)
+	return { cards[1]:getEffectiveId() }
+end
+
+-- 震弓 ---------------------------------------------------------------
+local gu_zhengong_skill = { name = "gu_zhengong" }
+table.insert(sgs.ai_skills, gu_zhengong_skill)
+gu_zhengong_skill.getTurnUseCard = function(self)
+	if self.player:getMark("@gu_zhengong") <= 0 or #self.enemies == 0 then return nil end
+	local groups = {}
+	for _, c in sgs.qlist(self.player:getCards("he")) do
+		if not self.player:isJilei(c) then
+			local key = c:isKindOf("Slash") and "slash" or c:objectName()
+			groups[key] = groups[key] or {}
+			table.insert(groups[key], c)
+		end
+	end
+	local best
+	for _, list in pairs(groups) do
+		if not best or #list > #best then best = list end
+	end
+	if not best then return nil end
+	local weakest = 99
+	for _, p in ipairs(self.enemies) do weakest = math.min(weakest, p:getHp()) end
+	if #best < 3 and #best < weakest then return nil end
+	local ids = {}
+	for _, c in ipairs(best) do table.insert(ids, tostring(c:getEffectiveId())) end
+	return sgs.Card_Parse("@GuZhengongCard=" .. table.concat(ids, "+"))
+end
+sgs.ai_skill_use_func.GuZhengongCard = function(card, use, self)
+	local n = card:subcardsLength()
+	self:sort(self.enemies, "hp")
+	for _, p in ipairs(self.enemies) do
+		if use.to:length() >= n then break end
+		use.to:append(p)
+	end
+	if use.to:length() > 0 then use.card = card end
+end
+sgs.ai_use_priority.GuZhengongCard = 3
+
+sgs.ai_skill_playerchosen.gu_zhengong = function(self, targets)
+	return gu07a_weakest_enemy(self, targets) or targets:first()
+end
+
+-- GU-audit2026 2026-07b
+-- 李昭仪 gu_lizhaoyi / 段煨 gu_duanwei / 势周瑜 gu_shizhouyu.
+
+local function gu07b_has(choices, name)
+	for _, c in ipairs(choices:split("+")) do
+		if c == name then return true end
+	end
+	return false
+end
+
+-- ---------------- 李昭仪 ----------------
+
+sgs.ai_skill_playerchosen.gu_mingjie = function(self, targets)
+	-- The partner's death kills you: prefer the sturdiest friend (the lord first).
+	local best, bestScore
+	for _, p in sgs.qlist(targets) do
+		local score = p:getHp() + p:getMaxHp() * 0.1
+		if self:isFriend(p) then score = score + 100 end
+		if p:isLord() and self:isFriend(p) then score = score + 5 end
+		if not bestScore or score > bestScore then best, bestScore = p, score end
+	end
+	return best or targets:first()
+end
+
+sgs.ai_skill_invoke.gu_mingjie = function(self, data)
+	local p = data and data.toPlayer and data:toPlayer()
+	return p ~= nil and self:isFriend(p)
+end
+
+sgs.ai_skill_invoke.gu_xianfu = function(self, data)
+	local use = data and data.toCardUse and data:toCardUse()
+	if not use or not use.card then return false end
+	if use.from and self:isFriend(use.from) then return false end
+	local c = use.card
+	if c:isDamageCard() then return true end
+	return c:isKindOf("Snatch") or c:isKindOf("Dismantlement") or c:isKindOf("Indulgence")
+		or c:isKindOf("SupplyShortage") or c:isKindOf("Collateral") or c:isKindOf("FireAttack")
+end
+
+-- ---------------- 段煨 ----------------
+
+sgs.ai_skill_discard.gu_taohuai = function(self, discard_num, min_num, optional, include_equip)
+	-- Discarding only flips the state; do it with a card that would be lost to the hand limit anyway.
+	if self.player:getHandcardNum() <= self.player:getMaxCards() then return {} end
+	local cards = sgs.QList2Table(self.player:getHandcards())
+	if #cards == 0 then return {} end
+	self:sortByKeepValue(cards)
+	return { cards[1]:getEffectiveId() }
+end
+
+-- ---------------- 势周瑜 ----------------
+
+sgs.ai_skill_askforyiji.gu_chiyun = function(self, card_ids, targets)
+	local pool = {}
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) then table.insert(pool, p) end
+	end
+	if #pool == 0 then return nil, -1 end
+	self:sort(pool, "hp")
+	local cards = {}
+	for _, id in ipairs(card_ids) do table.insert(cards, sgs.Sanguosha:getCard(id)) end
+	self:sortByKeepValue(cards)
+	if #cards == 0 then return nil, -1 end
+	return pool[1], cards[1]:getEffectiveId()
+end
+
+sgs.ai_skill_choice.gu_chiyun = function(self, choices, data)
+	local owner = data and data.toPlayer and data:toPlayer()
+	if owner and self:isFriend(owner) and gu07b_has(choices, "chain") then return "chain" end
+	if self.player:getHp() <= 2 and gu07b_has(choices, "chain") then return "chain" end
+	if gu07b_has(choices, "show") then return "show" end
+	return choices:split("+")[1]
+end
+
+sgs.ai_skill_invoke.gu_yanhui = function(self, data)
+	local p = data and data.toPlayer and data:toPlayer()
+	if not p or p:objectName() == self.player:objectName() then return false end
+	return not self:isFriend(p)
+end
+
+sgs.ai_skill_choice.gu_yanhui = function(self, choices, data)
+	if gu07b_has(choices, "damage") then
+		for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+			if p:getMark("gu_yanhui_lost-Clear") > 0 and self:isEnemy(p) then return "damage" end
+		end
+	end
+	if gu07b_has(choices, "draw") then return "draw" end
+	return "cancel"
+end
+
+sgs.ai_skill_playerchosen.gu_yanhui = function(self, targets)
+	local pool = {}
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) then table.insert(pool, p) end
+	end
+	if #pool == 0 then
+		for _, p in sgs.qlist(targets) do
+			if not self:isFriend(p) then table.insert(pool, p) end
+		end
+	end
+	if #pool == 0 then
+		for _, p in sgs.qlist(targets) do table.insert(pool, p) end
+	end
+	self:sort(pool, "hp")
+	return pool[1]
+end
+
+sgs.ai_skill_choice.gu_fentao = function(self, choices, data)
+	-- Option 1 only raises the damage the iron chain passes on to the others.
+	local friends, enemies = 0, 0
+	for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+		if p:isChained() then
+			if self:isFriend(p) then friends = friends + 1 else enemies = enemies + 1 end
+		end
+	end
+	if friends == 0 or enemies > friends then return "conduct" end
+	return "discard"
+end
+
+sgs.ai_skill_invoke.gu_xiongzi = function(self)
+	if self.player:getHp() <= 2 then return true end
+	for _, p in ipairs(self.enemies) do
+		if p:getHp() <= 2 then return true end
+	end
+	return false
+end
+
+sgs.ai_skill_choice.gu_xiongzi = function(self, choices)
+	return "one"
+end
+
+-- GU-audit2026 2026-07c
+-- 界周妃 gu_jiezhoufei / 幻大乔 gu_huandaqiao / 疑伏寿 gu_yifushou.
+
+local function gu07c_player(self, name)
+	if not name or name == "" then return nil end
+	return self.room:findPlayerByObjectName(name)
+end
+
+local function gu07c_contains(targets, player)
+	if not targets or not player then return false end
+	for _, p in sgs.qlist(targets) do
+		if p:objectName() == player:objectName() then return true end
+	end
+	return false
+end
+
+-- 良姻
+sgs.ai_skill_playerchosen.gu_liangyin = function(self, targets)
+	local mode = self.player:getTag("GuLiangyinMode"):toString()
+	local list = sgs.QList2Table(targets)
+	if mode == "discard" then
+		list = self:sort(list, "handcard", true)
+		for _, p in ipairs(list) do
+			if self:isEnemy(p) and p:getCardCount(true) > 0 then return p end
+		end
+		for _, p in ipairs(list) do
+			if not self:isFriend(p) then return p end
+		end
+		for _, p in ipairs(list) do
+			if p:getCardCount(true) > 2 then return p end
+		end
+		return list[1]
+	end
+	list = self:sort(list, "handcard")
+	for _, p in ipairs(list) do
+		if self:isFriend(p) then return p end
+	end
+	return list[1]
+end
+
+sgs.ai_skill_choice.gu_liangyin = function(self, choices, data)
+	local items = choices:split("+")
+	local healed = gu07c_player(self, self.player:getTag("GuLiangyinRecover"):toString())
+	local victim = gu07c_player(self, self.player:getTag("GuLiangyinLose"):toString())
+	local canRecover = table.contains(items, "recover") and healed
+	local canLose = table.contains(items, "lose") and victim
+	if canLose and self:isEnemy(victim) then return "lose" end
+	if canRecover and self:isFriend(healed) and healed:isWounded() then return "recover" end
+	if canRecover and not (self:isEnemy(healed) and healed:isWounded()) then return "recover" end
+	if canLose and not self:isFriend(victim) then return "lose" end
+	if canRecover then return "recover" end
+	return items[1]
+end
+
+-- 箜声
+sgs.ai_skill_invoke.gu_kongsheng = function(self, data)
+	local current = data:toPlayer()
+	if not current then return false end
+	if current:objectName() == self.player:objectName() then
+		return self.player:getCardCount(true) > 1
+	end
+	return self:isEnemy(current)
+end
+
+sgs.ai_skill_discard.gu_kongsheng = function(self, max_num, min_num)
+	local cards = sgs.QList2Table(self.player:getCards("he"))
+	if #cards == 0 then return {} end
+	for _, c in ipairs(cards) do
+		if c:isKindOf("Jink") or c:isKindOf("Nullification") then return { c:getEffectiveId() } end
+	end
+	self:sortByKeepValue(cards)
+	return { cards[1]:getEffectiveId() }
+end
+
+sgs.ai_skill_use["@@gu_kongsheng"] = function(self, prompt)
+	local ids = self.player:getPile("#gu_kongsheng")
+	for _, id in sgs.qlist(ids) do
+		local card = sgs.Sanguosha:getCard(id)
+		if card and card:isAvailable(self.player) then
+			local dummy = self:aiUseCard(card)
+			if dummy.card and dummy.to then
+				local tos = {}
+				for _, p in sgs.qlist(dummy.to) do table.insert(tos, p:objectName()) end
+				return card:toString() .. "->" .. (#tos > 0 and table.concat(tos, "+") or ".")
+			end
+		end
+	end
+	return "."
+end
+
+-- 帼色
+sgs.ai_skill_invoke.gu_guose = function(self, data)
+	local target = data:toPlayer()
+	return target and self:isEnemy(target) and target:objectName() ~= self.player:objectName()
+end
+
+sgs.ai_skill_choice.gu_guose = function(self, choices, data)
+	local items = choices:split("+")
+	local target = data:toPlayer()
+	if table.contains(items, "swap") then
+		if target and self:isFriend(target) then return "swap" end
+		return "cancel"
+	end
+	if table.contains(items, "target") and target and self:isEnemy(target) then return "target" end
+	return items[1]
+end
+
+sgs.ai_skill_discard.gu_guose = function(self, max_num, min_num)
+	local cards = sgs.QList2Table(self.player:getCards("he"))
+	if #cards == 0 then return {} end
+	self:sortByKeepValue(cards)
+	return { cards[1]:getEffectiveId() }
+end
+
+-- 流俪
+sgs.ai_skill_invoke.gu_liuli = function(self, data)
+	local target = data:toPlayer()
+	if not target then return false end
+	if not self:isFriend(target) then return false end
+	local from = gu07c_player(self, self.player:getTag("GuLiuliFrom"):toString())
+	if from and self:isFriend(from) and not target:getJudgingArea():isEmpty() then return true end
+	if from and self:isFriend(from) then return false end
+	return true
+end
+
+sgs.ai_skill_cardchosen.gu_liuli = function(self, who, flags, method)
+	for _, c in sgs.qlist(who:getJudgingArea()) do
+		if c:isRed() then return c:getEffectiveId() end
+	end
+	local equips = sgs.QList2Table(who:getEquips())
+	self:sortByKeepValue(equips)
+	for _, c in ipairs(equips) do
+		if c:isRed() then return c:getEffectiveId() end
+	end
+	return nil
+end
+
+-- 密图
+sgs.ai_skill_playerschosen.gu_mitu = function(self, targets, max_num, min_num)
+	local rival = false
+	for _, p in ipairs(self.enemies) do
+		if not p:isKongcheng() then rival = true break end
+	end
+	if not rival then return {} end
+	local chosen = {}
+	local friends = {}
+	for _, p in ipairs(self.friends) do
+		if gu07c_contains(targets, p) then table.insert(friends, p) end
+	end
+	friends = self:sort(friends, "handcard")
+	for _, p in ipairs(friends) do
+		if #chosen >= max_num then break end
+		table.insert(chosen, p)
+	end
+	return chosen
+end
+
+sgs.ai_skill_playerchosen.gu_mitu = function(self, targets)
+	local from = gu07c_player(self, self.player:getTag("GuMituFrom"):toString())
+	local list = sgs.QList2Table(targets)
+	list = self:sort(list, "hp")
+	local wantEnemy = not from or self:isFriend(from)
+	for _, p in ipairs(list) do
+		if wantEnemy and self:isEnemy(p) then return p end
+		if not wantEnemy and self:isFriend(p) then return p end
+	end
+	return list[1]
+end
+
+-- A chosen character pindians with the highest of its own shown cards when it can.
+local gu07c_askForPindian = SmartAI.askForPindian
+function SmartAI:askForPindian(requestor, reason)
+	if reason == "gu_mitu" and requestor and requestor:objectName() == self.player:objectName() then
+		local best
+		for _, c in sgs.qlist(self.player:getHandcards()) do
+			if c:hasFlag("gu_mitu_shown") and (not best or c:getNumber() > best:getNumber()) then best = c end
+		end
+		if best then return best end
+	end
+	return gu07c_askForPindian(self, requestor, reason)
+end
+
+-- 潜流
+sgs.ai_skill_choice.gu_qianliu = function(self, choices)
+	if choices:match("obtain") then return "obtain" end
+	return "cancel"
+end
+
+-- GU-audit2026 2026-07d
+-- 界马超（台服重置） gu_twjiemachao：马术 + 铁骑 gu_twtieji.
+
+sgs.ai_skill_invoke.gu_twtieji = function(self, data)
+	local target = data:toPlayer()
+	return target and not self:isFriend(target)
+end
+
+-- Target side: hand over a card of the judge suit, otherwise no response and +1 damage.
+-- An unanswerable, boosted 【杀】 costs more than one card, so give the cheapest match.
+sgs.ai_skill_cardask["@gu_twtieji-give"] = function(self, data, pattern, target)
+	local use = data:toCardUse()
+	local suit = pattern:split("|")[2]
+	local from = use and use.from or target
+	if use and use.card and from and not self:slashIsEffective(use.card, self.player, from) then return "." end
+	local cards = sgs.QList2Table(self.player:getCards("he"))
+	self:sortByKeepValue(cards)
+	for _, c in ipairs(cards) do
+		if c:getSuitString() == suit then return "$" .. c:getEffectiveId() end
+	end
+	return "."
+end
+
+-- GU-audit2026 2026-08a
+-- 威马腾 / 王越 / 傅干 / 木鹿大王（十周年新版）.
+
+local function gu08a_contains(targets, player)
+	if not targets or not player then return false end
+	for _, p in sgs.qlist(targets) do
+		if p:objectName() == player:objectName() then return true end
+	end
+	return false
+end
+
+local function gu08a_weakest_enemy(self, targets)
+	local pool = {}
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) then table.insert(pool, p) end
+	end
+	if #pool == 0 then return nil end
+	self:sort(pool, "hp")
+	return pool[1]
+end
+
+-- 威马腾: keep 骑 on enemies, take them off friends.
+
+local function gu08a_qi_from(self, targets)
+	for _, p in sgs.qlist(targets) do
+		if p:objectName() ~= self.player:objectName() and self:isFriend(p) then return p end
+	end
+	if gu08a_contains(targets, self.player) then return self.player end
+	for _, p in sgs.qlist(targets) do
+		if not self:isEnemy(p) then return p end
+	end
+	return targets:first()
+end
+
+local function gu08a_qi_to(self, targets)
+	local from = self.gu08a_qi_from_player
+	if from and from:objectName() ~= self.player:objectName() and self:isFriend(from)
+		and gu08a_contains(targets, self.player) then
+		return self.player
+	end
+	return gu08a_weakest_enemy(self, targets) or (gu08a_contains(targets, self.player) and self.player) or targets:first()
+end
+
+for _, name in ipairs({"gu_huirui", "gu_xiaoben"}) do
+	sgs.ai_skill_playerchosen[name .. "_from"] = function(self, targets)
+		local p = gu08a_qi_from(self, targets)
+		self.gu08a_qi_from_player = p
+		return p
+	end
+	sgs.ai_skill_playerchosen[name .. "_to"] = function(self, targets)
+		local p = gu08a_qi_to(self, targets)
+		self.gu08a_qi_from_player = nil
+		return p
+	end
+end
+
+sgs.ai_skill_choice.gu_huirui = function(self, choices)
+	local items = choices:split("+")
+	local has = function(c)
+		for _, x in ipairs(items) do if x == c then return true end end
+		return false
+	end
+	if has("move") and #self.enemies > 0 then
+		local friendQi = self.player:getMark("&gu_heqi_qi") > 0
+		for _, p in ipairs(self.friends_noself) do
+			if p:getMark("&gu_heqi_qi") > 0 then friendQi = true end
+		end
+		if friendQi then return "move" end
+	end
+	if has("slash") then
+		for _, p in ipairs(self.enemies) do
+			if self.player:canSlash(p) and not self:slashProhibit(nil, p) then return "slash" end
+		end
+	end
+	return "gain"
+end
+
+sgs.ai_skill_playerchosen.gu_huirui = function(self, targets)
+	return gu08a_weakest_enemy(self, targets) or targets:first()
+end
+
+-- 王越
+
+sgs.ai_skill_invoke.gu_shifeng = function(self, data)
+	local use = data and data.toCardUse and data:toCardUse()
+	if not use or not use.from then return false end
+	if self:isFriend(use.from) then return false end
+	for _, p in sgs.qlist(use.to) do
+		if self:isFriend(p) then return true end
+	end
+	return self:getCardsNum("Slash") >= 1
+end
+
+sgs.ai_skill_invoke.gu_jiandao_swap = function(self)
+	return true
+end
+
+sgs.ai_skill_cardchosen.gu_jiandao = function(self, who, flags, method)
+	if who:objectName() ~= self.player:objectName() then return nil end
+	local cards = {}
+	for _, c in sgs.qlist(self.player:getHandcards()) do
+		if not c:isDamageCard() then table.insert(cards, c) end
+	end
+	if #cards == 0 then return nil end
+	self:sortByKeepValue(cards)
+	return cards[1]:getEffectiveId()
+end
+
+sgs.ai_skill_cardask["@gu_jiandao-basic"] = function(self, data, pattern, target)
+	if self:getCardsNum("Jink") < 1 then return "." end
+	local basics = {}
+	for _, c in sgs.qlist(self.player:getHandcards()) do
+		if c:isKindOf("BasicCard") and not c:isKindOf("Jink") and not c:isKindOf("Peach") then
+			table.insert(basics, c)
+		end
+	end
+	if #basics == 0 then return "." end
+	self:sortByKeepValue(basics)
+	return "$" .. basics[1]:getEffectiveId()
+end
+
+-- 傅干
+
+local gu_qiaojian_skill = {name = "gu_qiaojian"}
+table.insert(sgs.ai_skills, gu_qiaojian_skill)
+gu_qiaojian_skill.getTurnUseCard = function(self)
+	if self.player:getCardCount(true) < 2 then return nil end
+	return sgs.Card_Parse("@GuQiaojianCard=.")
+end
+
+sgs.ai_skill_use_func.GuQiaojianCard = function(card, use, self)
+	local mark = function(p) return self.player:getMark("gu_qiaojian_" .. p:objectName() .. "-PlayClear") end
+	self:sort(self.friends_noself, "handcard")
+	for _, p in ipairs(self.friends_noself) do
+		if mark(p) == 0 then
+			use.card = card
+			use.to:append(p)
+			return
+		end
+	end
+	self:sort(self.enemies, "handcard")
+	for _, p in ipairs(self.enemies) do
+		if mark(p) == 0 then
+			use.card = card
+			use.to:append(p)
+			return
+		end
+	end
+end
+sgs.ai_use_priority.GuQiaojianCard = 3
+
+sgs.ai_skill_discard.gu_qiaojian = function(self, discard_num, min_num, optional, include_equip)
+	local cards = sgs.QList2Table(self.player:getCards(include_equip and "he" or "h"))
+	if #cards == 0 then return {} end
+	self:sortByKeepValue(cards)
+	local pick = cards[1]
+	for i = 1, math.min(3, #cards) do
+		if cards[i]:getNumber() > pick:getNumber() then pick = cards[i] end
+	end
+	return {pick:getEffectiveId()}
+end
+
+sgs.ai_skill_discard.gu_qiaojian_target = function(self)
+	return {}
+end
+
+sgs.ai_skill_choice.gu_qiaojian = function(self, choices, data)
+	local target = data and data.toPlayer and data:toPlayer()
+	if target and self:isFriend(target) then return "extra" end
+	return "ban"
+end
+
+sgs.ai_skill_cardchosen.gu_xicha = function(self, who, flags, method)
+	local cards = sgs.QList2Table(who:getHandcards())
+	if #cards == 0 then return nil end
+	local disabled = self.disabled_ids
+	local best, bestValue
+	for _, c in ipairs(cards) do
+		if not (disabled and disabled:contains(c:getEffectiveId())) then
+			local v = self:getUseValue(c)
+			if not best or v > bestValue then best, bestValue = c, v end
+		end
+	end
+	return best and best:getEffectiveId() or nil
+end
+
+-- 木鹿大王
+
+local function gu08a_zhoufa_material(self)
+	local cards = {}
+	for _, c in sgs.qlist(self.player:getHandcards()) do
+		if c:getTypeId() ~= sgs.Card_TypeBasic and not c:isKindOf("Nullification") and not c:isDamageCard() then
+			table.insert(cards, c)
+		end
+	end
+	if #cards == 0 then return nil end
+	self:sortByUseValue(cards, true)
+	return cards[1]
+end
+
+local gu_zhoufa_skill = {name = "gu_zhoufa"}
+table.insert(sgs.ai_skills, gu_zhoufa_skill)
+gu_zhoufa_skill.getTurnUseCard = function(self)
+	local card = gu08a_zhoufa_material(self)
+	if not card or #self.enemies == 0 then return nil end
+	local name = "duel"
+	if sgs.Slash_IsAvailable(self.player) then
+		for _, p in ipairs(self.enemies) do
+			if self.player:canSlash(p) then name = "slash" break end
+		end
+	end
+	return sgs.Card_Parse(("%s:gu_zhoufa[%s:%s]=%d"):format(name, card:getSuitString(), card:getNumberString(), card:getEffectiveId()))
+end
+sgs.ai_use_priority.gu_zhoufa = 2.6
+
+sgs.ai_view_as.gu_zhoufa = function(card, player, card_place, class_name)
+	if class_name ~= "Slash" then return nil end
+	if card:getTypeId() == sgs.Card_TypeBasic or card_place == sgs.Player_PlaceSpecial then return nil end
+	if card:isKindOf("Nullification") or card:isKindOf("Peach") then return nil end
+	return ("slash:gu_zhoufa[%s:%s]=%d"):format(card:getSuitString(), card:getNumberString(), card:getEffectiveId())
+end
+
+sgs.ai_skill_choice.gu_shouqun = function(self, choices)
+	local init = self.player:getMark("gu_shouqun_init")
+	if init > 0 and self.player:getMaxHp() < init and self.player:getHp() <= 2 then return "pick" end
+	return "all"
+end
+
+-- GU-audit2026 2026-08b
+-- 谋祝融（OL） gu_olmouzhurong / 曹金玉（OL） gu_olcaojinyu / 界步练师（OL） gu_oljiebulianshi.
+
+local function gu08b_contains(targets, player)
+	if not targets or not player then return false end
+	for _, p in sgs.qlist(targets) do
+		if p:objectName() == player:objectName() then return true end
+	end
+	return false
+end
+
+-- ---------------- 谋祝融 刃掣 ----------------
+local gu_renche_skill = {name = "gu_renche"}
+table.insert(sgs.ai_skills, gu_renche_skill)
+gu_renche_skill.getTurnUseCard = function(self)
+	local x = math.max(1, self.player:getMark("&gu_renche_x-Clear"))
+	if self.player:getMark("gu_renche_used-PlayClear") >= x then return nil end
+	local victims = 0
+	for _, p in ipairs(self.enemies) do
+		if not p:isNude() then victims = victims + 1 end
+	end
+	if victims == 0 or x > math.max(2, victims) then return nil end
+	local cards = sgs.QList2Table(self.player:getCards("he"))
+	if #cards < x then return nil end
+	self:sortByKeepValue(cards)
+	local ids = {}
+	for i = 1, x do
+		if cards[i]:isKindOf("Peach") then return nil end
+		table.insert(ids, cards[i]:getEffectiveId())
+	end
+	return sgs.Card_Parse("@GuRencheCard=" .. table.concat(ids, "+"))
+end
+
+sgs.ai_skill_use_func.GuRencheCard = function(card, use, self)
+	local x = card:subcardsLength()
+	local picks = {}
+	for _, p in ipairs(self.enemies) do
+		if not p:isNude() then table.insert(picks, p) end
+	end
+	if #picks == 0 then return end
+	self:sort(picks, "handcard")
+	use.card = card
+	if use.to then
+		for i = #picks, 1, -1 do
+			if use.to:length() >= x then break end
+			use.to:append(picks[i])
+		end
+	end
+end
+sgs.ai_use_priority.GuRencheCard = 3
+sgs.ai_card_intention.GuRencheCard = 40
+
+-- ---------------- 谋祝融 牙镰 ----------------
+sgs.ai_skill_playerschosen.gu_yalian = function(self, targets, max_num, min_num)
+	local chosen = {}
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) then table.insert(chosen, p) end
+	end
+	return chosen
+end
+
+-- ---------------- 曹金玉 春晖 ----------------
+sgs.ai_skill_playerchosen.gu_chunhui = function(self, targets)
+	local best
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) and (not best or p:getHandcardNum() > best:getHandcardNum()) then best = p end
+	end
+	if best then return best end
+	for _, p in sgs.qlist(targets) do
+		if not self:isFriend(p) then return p end
+	end
+	self:sort(self.friends_noself, "handcard")
+	for i = #self.friends_noself, 1, -1 do
+		if gu08b_contains(targets, self.friends_noself[i]) then return self.friends_noself[i] end
+	end
+	return targets:first()
+end
+
+-- ---------------- 曹金玉 秋暮 ----------------
+sgs.ai_skill_invoke.gu_qiumu = function(self, data)
+	local who = data and data.toPlayer and data:toPlayer()
+	if not who or who:objectName() == self.player:objectName() then return false end
+	if self:isFriend(who) then return false end
+	return true
+end
+
+-- ---------------- 界步练师 安恤 ----------------
+local gu_anxu_skill = {name = "gu_anxu"}
+table.insert(sgs.ai_skills, gu_anxu_skill)
+gu_anxu_skill.getTurnUseCard = function(self)
+	if self.player:hasUsed("GuAnxuCard") then return nil end
+	return sgs.Card_Parse("@GuAnxuCard=.")
+end
+
+sgs.ai_skill_use_func.GuAnxuCard = function(card, use, self)
+	local picks = {}
+	local enemies = {}
+	for _, p in ipairs(self.enemies) do
+		if not p:isNude() then table.insert(enemies, p) end
+	end
+	if #enemies == 0 then return end
+	self:sort(enemies, "handcard")
+	for i = #enemies, 1, -1 do
+		if #picks >= 2 then break end
+		table.insert(picks, enemies[i])
+	end
+	if #picks < 2 then
+		local friends = {}
+		for _, p in ipairs(self.friends_noself) do
+			if not p:isNude() then table.insert(friends, p) end
+		end
+		self:sort(friends, "handcard")
+		for _, p in ipairs(friends) do
+			if #picks >= 2 then break end
+			table.insert(picks, p)
+		end
+	end
+	if #picks < 2 then return end
+	use.card = card
+	if use.to then
+		use.to:append(picks[1])
+		use.to:append(picks[2])
+	end
+end
+sgs.ai_use_priority.GuAnxuCard = 6
+
+sgs.ai_skill_askforag.gu_anxu = function(self, card_ids)
+	local best, bestValue
+	for _, id in ipairs(card_ids) do
+		local c = sgs.Sanguosha:getCard(id)
+		local value = self:getKeepValue(c)
+		if c:getSuit() ~= sgs.Card_Spade then value = value - 10 end
+		if not best or value < bestValue then best, bestValue = id, value end
+	end
+	return best
+end
+
+-- ---------------- 界步练师 追忆 ----------------
+sgs.ai_skill_playerchosen.gu_zhuiyi = function(self, targets)
+	local friends = {}
+	for _, p in ipairs(self.friends_noself) do
+		if gu08b_contains(targets, p) then table.insert(friends, p) end
+	end
+	if #friends == 0 then return nil end
+	self:sort(friends, "hp")
+	local first = friends[1]
+	if not first:isWounded() and first:getHandcardNum() > 2 and self.player:getHp() > 1 then return nil end
+	return first
+end
+
+sgs.ai_skill_invoke.gu_zhuiyi = function(self, data)
+	local target = data and data.toPlayer and data:toPlayer()
+	return target and self:isFriend(target)
+end
+
+-- GU-audit2026 2026-08c
+-- 势小乔 合韵/音洄, 势贺齐 闪袭/绮胄, 幻周瑜 督鍪/撼天.
+
+local function gu08c_in(targets, player)
+	if not targets or not player then return false end
+	for _, p in sgs.qlist(targets) do
+		if p:objectName() == player:objectName() then return true end
+	end
+	return false
+end
+
+local function gu08c_skill_names(player)
+	local names = {}
+	for _, sk in sgs.qlist(player:getVisibleSkillList()) do
+		if not sk:isAttachedLordSkill() then table.insert(names, sk:objectName()) end
+	end
+	return names
+end
+
+local function gu08c_shares_skill(a, b)
+	for _, name in ipairs(gu08c_skill_names(b)) do
+		if a:hasSkill(name) then return true end
+	end
+	return false
+end
+
+-- A skill the AI is willing to give up for 合韵.
+local function gu08c_spare_skill(self)
+	local gained = self.player:getTag("gu_yinhui_skill"):toString()
+	if gained ~= "" and self.player:hasSkill(gained) then return gained end
+	for _, name in ipairs(gu08c_skill_names(self.player)) do
+		if name ~= "gu_heyun" and name ~= "gu_yinhui" then return name end
+	end
+	return nil
+end
+
+-- 合韵
+local gu_heyun_skill = { name = "gu_heyun" }
+table.insert(sgs.ai_skills, gu_heyun_skill)
+gu_heyun_skill.getTurnUseCard = function(self)
+	if self.player:usedTimes("GuHeyunCard") >= 2 then return nil end
+	if not gu08c_spare_skill(self) then return nil end
+	return sgs.Card_Parse("@GuHeyunCard=.")
+end
+
+sgs.ai_skill_use_func.GuHeyunCard = function(card, use, self)
+	self:sort(self.friends_noself, "handcard")
+	for _, p in ipairs(self.friends_noself) do
+		if gu08c_shares_skill(self.player, p) then
+			use.card = card
+			use.to:append(p)
+			return
+		end
+	end
+end
+sgs.ai_use_priority.GuHeyunCard = 6
+sgs.ai_card_intention.GuHeyunCard = -60
+
+sgs.ai_skill_choice.gu_heyun = function(self, choices)
+	local items = choices:split("+")
+	local spare = gu08c_spare_skill(self)
+	if spare and table.contains(items, spare) then return spare end
+	for _, name in ipairs(items) do
+		if name ~= "gu_heyun" and name ~= "gu_yinhui" then return name end
+	end
+	return items[#items]
+end
+
+-- 音洄
+sgs.ai_skill_invoke.gu_yinhui = function(self)
+	return true
+end
+
+sgs.ai_skill_playerchosen.gu_yinhui = function(self, targets)
+	local best, most = nil, -1
+	for _, p in sgs.qlist(targets) do
+		if self:isFriend(p) then
+			local n = #gu08c_skill_names(p)
+			if n > most then best, most = p, n end
+		end
+	end
+	return best or targets:first()
+end
+
+-- 闪袭
+local gu_shanxi_skill = { name = "gu_shanxi" }
+table.insert(sgs.ai_skills, gu_shanxi_skill)
+gu_shanxi_skill.getTurnUseCard = function(self)
+	local cards = sgs.QList2Table(self.player:getHandcards())
+	self:sortByUseValue(cards, true)
+	for _, c in ipairs(cards) do
+		if c:hasFlag("cardTip:gu_yingji") then
+			return sgs.Card_Parse(("duel:gu_shanxi[%s:%s]=%d"):format(c:getSuitString(), c:getNumberString(), c:getEffectiveId()))
+		end
+	end
+	return nil
+end
+
+-- 绮胄: marking an enemy's hand card sends it to the discard pile at turn end.
+sgs.ai_skill_playerchosen.gu_qizhou = function(self, targets)
+	local pool = {}
+	for _, p in sgs.qlist(targets) do
+		if self:isEnemy(p) then table.insert(pool, p) end
+	end
+	if #pool == 0 then
+		if self.player:getPhase() == sgs.Player_Play and gu08c_in(targets, self.player) then return self.player end
+		return nil
+	end
+	self:sort(pool, "handcard")
+	return pool[1]
+end
+
+-- 督鍪
+sgs.ai_skill_invoke.gu_dumou = function(self)
+	return true
+end
+
+local function gu08c_recast_enemy(self)
+	local best, most = nil, 0
+	for _, p in ipairs(self.enemies) do
+		local n = p:getCardCount(true)
+		if n > most then best, most = p, n end
+	end
+	return best
+end
+
+sgs.ai_skill_choice.gu_dumou = function(self, choices)
+	if choices:match("recast") and gu08c_recast_enemy(self) then return "recast" end
+	return "obtain"
+end
+
+sgs.ai_skill_playerchosen.gu_dumou_recast = function(self, targets)
+	local enemy = gu08c_recast_enemy(self)
+	if enemy and gu08c_in(targets, enemy) then return enemy end
+	return targets:first()
+end
+
+sgs.ai_skill_playerchosen.gu_dumou_obtain = function(self, targets)
+	self:sort(self.friends, "handcard")
+	for _, p in ipairs(self.friends) do
+		if gu08c_in(targets, p) then return p end
+	end
+	return targets:first()
+end
+
+-- 撼天
+local gu_hantian_skill = { name = "gu_hantian" }
+table.insert(sgs.ai_skills, gu_hantian_skill)
+gu_hantian_skill.getTurnUseCard = function(self)
+	if self.player:getMark("gu_hantian-PlayClear") > 0 then return nil end
+	return sgs.Card_Parse("fire_attack:gu_hantian[no_suit:0]=.")
+end
+
+-- Target side: pick which of this turn's gained cards to show.
+sgs.ai_skill_discard.gu_hantian = function(self, max_num, min_num, optional, equiped, pattern)
+	local cards = sgs.QList2Table(self.player:getHandcards())
+	self:sortByUseValue(cards, true)
+	for _, c in ipairs(cards) do
+		if sgs.Sanguosha:matchExpPattern(pattern, self.player, c) then return { c:getEffectiveId() } end
+	end
+	return {}
+end
+
+-- GU-audit2026 2026-08d
+-- 界严颜[手杀] gu_jieyanyan / 崔琰毛玠[手杀] gu_cuiyanmaojie / 界王基[手杀] gu_jiewangji.
+
+local function gu08d_chargeMax(player)
+	local n = 0
+	local ok = pcall(function()
+		for _, sk in sgs.qlist(player:getVisibleSkillList()) do
+			local cn = sk:property("ChargeNum"):toString()
+			if cn ~= "" then
+				n = n + (tonumber(cn:split("/")[2]) or 0)
+			end
+		end
+	end)
+	if not ok then return 0 end
+	return n
+end
+
+local function gu08d_contains(targets, player)
+	for _, p in sgs.qlist(targets) do
+		if p:objectName() == player:objectName() then return true end
+	end
+	return false
+end
+
+-- 拒战 (阳): drawing together with the user is always worth it.
+sgs.ai_skill_invoke.gu_juzhan = function(self, data)
+	return true
+end
+
+-- 拒战 (阴): take a card from an enemy target only.
+sgs.ai_skill_playerchosen.gu_juzhan = function(self, targets)
+	local pool = sgs.QList2Table(targets)
+	self:sort(pool, "defense")
+	for _, p in ipairs(pool) do
+		if self:isEnemy(p) then return p end
+	end
+	return nil
+end
+
+-- 征辟: enemies first (take good cards, return weak ones), then friends with
+-- delayed tricks in their judge area.
+sgs.ai_skill_playerschosen.gu_zhengpi = function(self, targets, max, min)
+	local selected = sgs.SPlayerList()
+	local pool = sgs.QList2Table(targets)
+	self:sort(pool, "handcard")
+	for i = #pool, 1, -1 do
+		local p = pool[i]
+		if selected:length() < max and self:isEnemy(p) and not p:isNude() then
+			selected:append(p)
+		end
+	end
+	for _, p in ipairs(pool) do
+		if selected:length() < max and self:isFriend(p) and p:getJudgingArea():length() > 0
+			and not gu08d_contains(selected, p) then
+			selected:append(p)
+		end
+	end
+	return selected
+end
+
+-- 征辟 (target side): help a friendly owner grow the skill, give enemies the minimum.
+sgs.ai_skill_choice.gu_zhengpi = function(self, choices, data)
+	local owner = data and data.toPlayer and data:toPlayer()
+	local items = choices:split("+")
+	if owner and self:isFriend(owner) then
+		if table.contains(items, "3") then return "3" end
+		return items[#items]
+	end
+	return items[1]
+end
+
+-- 奉迎: pick a friend whose attack range covers the most characters with hand cards.
+local function gu08d_fengyingScore(self, target)
+	local n = 0
+	for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+		if p:objectName() ~= target:objectName() and target:inMyAttackRange(p) and not p:isKongcheng() then
+			n = n + 1
+		end
+	end
+	return n
+end
+
+local function gu08d_isMaxHpTop(self, target)
+	for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+		if p:getMaxHp() > target:getMaxHp() then return false end
+	end
+	return true
+end
+
+local gu_fengying_skill = {name = "gu_fengying"}
+table.insert(sgs.ai_skills, gu_fengying_skill)
+gu_fengying_skill.getTurnUseCard = function(self)
+	if self.player:getMark("@gu_fengying") < 1 then return nil end
+	return sgs.Card_Parse("@GuFengyingCard=.")
+end
+
+sgs.ai_skill_use_func.GuFengyingCard = function(card, use, self)
+	local best, bestScore = nil, 0
+	for _, p in ipairs(self.friends) do
+		local score = gu08d_fengyingScore(self, p) * 2
+		if p:objectName() == self.player:objectName() and gu08d_isMaxHpTop(self, p) then
+			score = score + 3
+		elseif gu08d_isMaxHpTop(self, p) then
+			score = score + 2
+		end
+		if score > bestScore then best, bestScore = p, score end
+	end
+	if best and bestScore >= 5 then
+		use.card = card
+		if use.to then use.to:append(best) end
+	end
+end
+sgs.ai_use_priority.GuFengyingCard = 1.5
+
+-- 奇制: let another friend draw two.
+local gu_qizhi_skill = {name = "gu_qizhi"}
+table.insert(sgs.ai_skills, gu_qizhi_skill)
+gu_qizhi_skill.getTurnUseCard = function(self)
+	if self.player:getMark("&charge_num") < 1 then return nil end
+	return sgs.Card_Parse("@GuQizhiCard=.")
+end
+
+sgs.ai_skill_use_func.GuQizhiCard = function(card, use, self)
+	local mark = "gu_qizhi_" .. self.player:objectName() .. "-PlayClear"
+	local pool = {}
+	for _, p in ipairs(self.friends_noself) do
+		if p:getMark(mark) < 1 then table.insert(pool, p) end
+	end
+	self:sort(pool, "handcard")
+	-- Self-targeting would discard your own hand on every later basic/trick.
+	local target = pool[1]
+	if not target then return end
+	use.card = card
+	if use.to then use.to:append(target) end
+end
+sgs.ai_use_priority.GuQizhiCard = 7
+
+-- 进趋: give the charge to yourself first, else to a friend with room for it.
+sgs.ai_skill_playerchosen.gu_jinqu = function(self, targets)
+	if self.player:getMark("&charge_num") < gu08d_chargeMax(self.player) then return self.player end
+	for _, p in ipairs(self.friends_noself) do
+		if gu08d_contains(targets, p) and p:getMark("&charge_num") < gu08d_chargeMax(p) then return p end
+	end
+	return self.player
 end
