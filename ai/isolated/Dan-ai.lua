@@ -8,11 +8,9 @@ local function call(object, method, ...)
     return value
 end
 local function allowedSuits(player)
-    local ai=player and player._room and player._room._ai
-    local facts=ai and ai.world and ai.world.strategy_facts
-    local properties=type(facts)=="table" and facts.owner_skill_properties
-    local value=type(properties)=="table" and properties.LuaYanjiu
-    if not ai or player~=ai.player or type(value)~="string" then
+    -- Viewer-only property; an absent one reads as the donor's empty QVariant string.
+    local value=player:getPropertyValue("LuaYanjiu") or ""
+    if type(value)~="string" then
         ai_unsupported("owner LuaYanjiu property is not projected", "LuaYanjiu.property")
     end
     local suits={}

@@ -1,18 +1,28 @@
 -- Fixed qhstandard b6025acc source strategy. No hidden authority or legacy fallback.
 local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("qhstandard input unknown",k)end;return v end
 local function q(o,k,...)if o==nil then error("attempt to index a nil value",0)end;if k=="getMark"and AIValue.isPlayer(o)then k="getStrategyMark"elseif k=="hasFlag"and AIValue.isPlayer(o)then k="getStrategyFlag"end;if type(o[k])~="function"then ai_unsupported("qhstandard helper unavailable",k)end;return known(o[k](o,...),k)end
-local function fact(self,k)return known(known(self.world.strategy_facts.qhstandard,"qhstandard facts")[k],k)end
-local function property(self,k)return known(known(self.world.strategy_facts.owner_skill_properties,"owner properties")[k],k)end
+-- Own dynamic property; QVariant::toString of an unset one is "".
+local function property(self,k)local v=self.player:getPropertyValue(k);if v==nil then return""end;return v end
 local function visible(self,id)
  local c=self:getKnownCardById(id);if c then return c end
- local row=self.world.strategy_facts.round49_notified_faces
- if type(row)=="table"and row.pattern==self.request.pattern and type(row.cards)=="table"then
-  local v=row.cards[tostring(id)];if type(v)=="table"and v.effective_id==id then return CardView.new(v)end
- end
+ -- Faces notified to this viewer outside its own zones are not projected.
  return known(nil,"disclosed current notified face")
 end
+-- A card string held in an own property: a physical id is matched to the public
+-- card_use row that carried it; a virtual card string is not parsed here.
+local function used_card(self,text,key)
+ if text==""then return known(nil,key)end
+ local id=tonumber(text);if not id then ai_unsupported("virtual card string is not parsed",key)end
+ local c=self:getKnownCardById(id);if c then return c end
+ local events=self.world.events or{}
+ for i=#events,1,-1 do
+  local row=events[i].kind=="card_use"and type(events[i].details)=="table"and events[i].details.card
+  if type(row)=="table"and(row.effective_id==id or row.id==id)then return CardView.new(row)end
+ end
+ return known(nil,key.." card face")
+end
 local function full_hand(self,p)if p:objectName()==self.player:objectName()then return p:getHandcards()end;local cs=known(p:getKnownCards(),"known hand");if#cs~=q(p,"getHandcardNum")then ai_unsupported("source reads undisclosed target hand","qhstandardtiandu")end;return cs end
-local function use_fact(self,k)local r=fact(self,k);if r==false then return nil end;local to=AIList.new({});for _,n in ipairs(r.to)do to:append(known(self.room:findPlayerByObjectName(n,true),k))end;return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=to,card=CardView.new(r.card)}end
+local function use_fact(self,k)local r=known(self.player:getTag(k),k);local to=AIList.new({});for _,n in ipairs(r.to)do to:append(known(self.room:findPlayerByObjectName(n,true),k))end;return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=to,card=CardView.new(r.card)}end
 local function dummy_plan()local u=AIUsePlan.new();u.isDummy=true;return u end
 local function readonly_clone(self,key,name,suit,number)return self:evaluateOwnerViewAsCard({source_key=key,skill="",name=name,suit=suit,number=number,subcards={}})end
 local function turn_clone(self,key,name,suit,number,ids,request)local base=known(self:getEvaluationCard(name),"printed prototype");return self:evaluateTurnConversion(key,base:getClassName(),{name=name,skill=key,suit=suit,number=number,subcards=ids},request)end
@@ -1247,7 +1257,7 @@ sgs.ai_card_priority.qhwindkuanggu = function(self,card,v)
 end
 sgs.ai_use_revises.qhwindkuanggu = function(self,card,use)
 	if q(card,"isKindOf","Peach")
-	and not hasJueqingEffect(self.player)
+	and not q(self,"hasJueqingEffect",self.player)
 	and self.player:getOffensiveHorse()
 	and q(self.player,"getLostHp")==1
 	and self:getOverflow()<1
@@ -1501,7 +1511,9 @@ sgs.ai_skill_use_func["#qhstandardzhihengCARD"] = function(card, use, self) --�
 	if q(self.player,"getHp") < 3 then
 		local zcards = self.player:getCards("he")
 		local use_slash, keep_jink, keep_analeptic, keep_weapon = false, false, false, false
-		local keep_slash = known(known(self.world.strategy_facts.standard,"standard facts").jilve_wansha,"JilveWansha")
+		-- QVariant::toBool of the own tag (it holds the acquired skill name).
+		local wansha = self.player:getTag("JilveWansha")
+		local keep_slash = wansha~=nil and wansha~=false and wansha~=""
 		for _, zcard in sgs.qlist(zcards) do
 			if not isCard("Peach", zcard, self.player) and not isCard("ExNihilo", zcard, self.player) then
 				local shouldUse = true
@@ -1869,7 +1881,7 @@ sgs.ai_skill_use["@qhstandardliuli"] = function(self, prompt, method) --被动�
 		canChoicefrom = true
 	end
 	local others = self.room:getOtherPlayers(self.player)
-	local slash = CardView.new(fact(self,"liuli_card"))
+	local slash = used_card(self,property(self,"qhstandardliuli"),"qhstandardliuli")
 	others = sgs.QList2Table(others)
 	local source
 	for _, player in ipairs(others) do
@@ -2132,7 +2144,7 @@ sgs.qhwindtianxiang_suit_value = {
 	spade = 6
 }
 function sgs.ai_slash_prohibit.qhwindtianxiang(self,from,to)
-	if hasJueqingEffect(from,to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to)==1) then return false end
+	if q(self,"hasJueqingEffect",from,to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to)==1) then return false end
 	if q(from,"hasFlag","NosJiefanUsed") then return false end
 	if self:isFriend(to,from) then return false end
 	return self:cantbeHurt(to,from)
@@ -2350,7 +2362,7 @@ sgs.ai_skill_invoke.qhfirexinhuo = function(self, data) --是否发动技能
 end
 
 sgs.ai_cardshow.qhfirexinhuo = function(self, requestor)
-	local suitrRecord = fact(self,"xinhuo_suits"):split("+")
+	local suitrRecord = (self.player:getTag("qhfirexinhuo") or ""):split("+")
 	local hcards = self.player:getHandcards()
 	for _, hcard in sgs.qlist(hcards) do
 		local suit = q(hcard,"getSuitString")
@@ -3081,7 +3093,7 @@ sgs.ai_skill_playerschosen.qhfireluanji = function(self, targets, max_num, min_n
 	targets = sgs.QList2Table(targets)                                              -- 将列表转换为表
 	targets = self:sort(targets, "defense")
 	local tos = {}
-	local use=use_fact(self,"luanji_use")
+	local use=use_fact(self,"qhfireluanji-AI")
 	if q(use.card,"isKindOf","IronChain") then
 		return {}
 	end
@@ -3202,7 +3214,7 @@ end
 sgs.ai_skill_invoke.qhfiremengjin = function(self, data) --是否发动技能
 	local player = data:toPlayer()
 	if self:isEnemy(player) then
-		local use = use_fact(self,"mengjin_use")
+		local use = use_fact(self,"qhfiremengjin-AI")
 		if q(use.card,"isKindOf","Slash") then
 			return self:doDisCard(player, "he", true) --发动
 		end
@@ -3390,7 +3402,7 @@ sgs.ai_choicemade_filter.cardChosen.mythluochong = sgs.ai_choicemade_filter.card
 --神话降临 曹金玉-隅泣
 sgs.ai_skill_use["@@mythyuqi"] = function(self, prompt) --被动技能卡的使用函数
 	local num = q(self.player,"getMark","mythyuqi_num")
-	local list = property(self,"mythyuqi_AI")
+	local list = self.player:getPropertyValue("mythyuqi_AI") or {}
 	local pile = {}
 	for _, id in sgs.qlist(list) do
 		table.insert(pile, visible(self,id))
@@ -3561,7 +3573,7 @@ end
 sgs.ai_fill_skill["mythanzhi"] = function(self,inclusive,request) --考虑使用视为技的可能性
 	if q(self.player,"getMark","&mythanzhi-Clear") > 0 then return nil end
 	if q(self.player,"getMark","&mythxialei-Clear") > 0 then
-		local did = known(fact(self,"disclosed_draw_top_id"),"mythanzhi public draw top")
+		local did = ai_unsupported("the draw pile top is not projected","mythanzhi public draw top")
 		if visible(self,did):isRed() then --判红
 			return policy(self,"#mythanzhiCARD:.:") --返回技能卡
 		end

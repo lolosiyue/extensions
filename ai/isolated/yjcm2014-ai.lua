@@ -16,9 +16,6 @@ end
 local function dummy(is_dummy,extra,current)
     local use=AIUsePlan.new();use.isDummy=is_dummy~=false;use.extra_target=extra or 0;use.current_targets=current or{};return use
 end
-local function fact(self,name)
-    return known(self.world.strategy_facts and self.world.strategy_facts.standard and self.world.strategy_facts.standard[name],name)
-end
 local function visible(self,id)
     id=tonumber(id)
     return known(self:getChoiceCard(id)or self:getKnownCardById(id),'disclosed card '..tostring(id))
@@ -70,14 +67,19 @@ local function save_yonglve(self,id)
     self:useKnowledgeEstimate({value=id,status='estimate',basis='viewer_local_yonglve_cardchosen_without_cross_viewer_global_writes'},'yonglve')
 end
 local function zenhui_use(self)
-    local row=fact(self,'zenhui_use')
+    local row=known(self.player:getTag('zenhui'),'zenhui_use')
     local use={card=known(CardView.new(row.card),'Zenhui active card'),to=AIList.new({})}
     use.from=known(self.room:findPlayerByObjectName(row.from),'Zenhui source')
     for _,name in ipairs(row.to)do use.to:append(known(self.room:findPlayerByObjectName(name),'Zenhui target'))end
     return use
 end
+-- getAI() from the public board: a player who is online, or whose actual
+-- controller is online, has none; any other control state is private.
 local function borrowed_ai(self,player)
-    return known(fact(self,'player_has_ai')[q(player,'objectName')],'player AI presence')
+    if q(player,'getState')=='online' then return false end
+    local controller=self.room:findPlayerByObjectName(q(player,'getController'),true)
+    if controller and q(controller,'getState')=='online' then return false end
+    return known(nil,'player AI presence')
 end
 
 sgs.ai_fill_skill.dingpin = function(self,inclusive,request)
@@ -172,7 +174,7 @@ sgs.ai_skill_cardask["@ol_sidi-discard"] = function(self,data,pattern)
 end
 
 sgs.ai_skill_use["@@shenduan"] = function(self)
-	for _,id in ipairs(fact(self,"shenduan_for_ai"):split("+"))do
+	for _,id in ipairs((self.player:getPropertyValue("shenduanForAI") or ""):split("+"))do
 		local card = visible(self,id)
 		local card_str = ("supply_shortage:shenduan[%s:%s]=%d"):format(q(card,"getSuitString"),q(card,"getNumberString"),id)
 		local ss = self:bindTurnConversion("shenduan","SupplyShortage",{name="supply_shortage",skill="shenduan",suit=q(card,"getSuit"),number=q(card,"getNumber"),subcards={tonumber(id)}})
@@ -370,7 +372,9 @@ sgs.ai_skill_use_func.ShenxingCard = function(card,use,self,request)
 	if q(self.player,"getHp")<3 then
 		local zcards = q(self.player,"getCards","he")
 		local use_slash,keep_jink,keep_analeptic,keep_weapon = false,false,false,nil
-		local keep_slash = fact(self,"jilve_wansha")
+		-- QVariant::toBool of the own tag (it holds the acquired skill name).
+		local wansha = self.player:getTag("JilveWansha")
+		local keep_slash = wansha~=nil and wansha~=false and wansha~=""
 		for _,zcard in sgs.qlist(zcards)do
 			if q(self.player,"isCardLimited",zcard,sgs.Card_MethodDiscard) then continue end
 			if not isCard("Peach",zcard,self.player) and not isCard("ExNihilo",zcard,self.player) then
@@ -671,7 +675,7 @@ sgs.ai_skill_cardask["@zenhui-give"] = function(self,data)
 		end
 		return id
 	elseif q(use.card,"isKindOf","Collateral") then
-		local victim = self.room:findPlayerByObjectName(fact(self,"collateral_victim"))
+		local victim = self.room:findPlayerByObjectName(self.player:getTag("collateralVictim") or "")
 		if sgs.ai_skill_cardask["collateral-slash"](self,nil,nil,victim,use.from)~="."
 			and q(self,"isFriend",use.from) or not q(self,"isValuableCard",cards[1]) then
 			return "."

@@ -2,8 +2,8 @@
 local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("maotu fact unknown",k)end;return v end
 local function q(o,k,...)if o==nil then error("attempt to index a nil value",0)end;if type(o[k])~="function"then ai_unsupported("maotu helper unavailable",k)end;if k=="getMark"and AIValue.isPlayer(o)then k="getStrategyMark"end;return known(o[k](o,...),k)end
 local function known_card(self,id)return known(self:getKnownCardById(id),"disclosed card "..tostring(id))end
-local function fact(self,key)return known(known(self.world.strategy_facts.maotu,"maotu")[key],key)end
-local function property(self,key)return known(known(self.world.strategy_facts.owner_skill_properties,"owner properties")[key],key)end
+-- The viewer's own property; both readers use toString, so absent reads as "".
+local function property(self,key)local v=self.player:getPropertyValue(key);if v==nil then return""end;return v end
 local function clone(self,skill,name,ids)
     return self:evaluateOwnerViewAsCard({source_key=skill,skill=skill,name=name,suit=sgs.Card_NoSuit,number=0,subcards=ids})
 end
@@ -33,9 +33,10 @@ local function response_use(self,skill,ids,names,request,policy)
     return {kind="use_card",card_spec=spec,targets=names}
 end
 local function owner_use(self)
-    local row=fact(self,"mtrenyu_use")
-    if row==false then return {from=nil,to=AIList.new({}),card=nil}end
-    return {from=row.from and self.room:findPlayerByObjectName(row.from,true)or nil,card=row.card and CardView.new(row.card)or nil}
+    -- The viewer's own MTRenyuData tag; an absent one is the default CardUseStruct.
+    local row=self.player:getTag("MTRenyuData")
+    if type(row)~="table"or type(row.to)~="table"then return {from=nil,to=AIList.new({}),card=nil}end
+    return {from=row.from and row.from~="" and self.room:findPlayerByObjectName(row.from,true)or nil,card=type(row.card)=="table" and next(row.card)~=nil and CardView.new(row.card)or nil}
 end
 local function write(self,key,value)
     if key~="mtxianzheng_cid"and value then value=value:objectName()end
@@ -492,8 +493,9 @@ end
 sgs.ai_skill_cardask["@mtweiqie"] = function(self,data,pattern,prompt)
     local cs = {}
     local tocs = {}
-	for _,c in sgs.list(fact(self,"mtweiqie_ids"))do
-		table.insert(cs,CardView.new(known(fact(self,"mtweiqie_cards")[tostring(c)],"mtweiqie public face")))
+	-- The viewer's own mtweiqieForAI tag lists table cards; their faces must be known here.
+	for _,c in sgs.list(self.player:getTag("mtweiqieForAI") or {})do
+		table.insert(cs,known_card(self,c))
 	end
     cs = self:sortByUseValue(cs)
 	local function Judge(a,b)

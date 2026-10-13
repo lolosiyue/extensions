@@ -726,7 +726,10 @@ sgs.ai_skill_use_func["#sy_zhiheng"] = function(card, use, self,request)
     if q(self.player,"getHp") < 3 then
         local zcards = self.player:getCards("he")
         local use_slash, keep_jink, keep_analeptic, keep_weapon = false, false, false
-        local keep_slash = known(self.world.strategy_facts.standard and self.world.strategy_facts.standard.jilve_wansha,"JilveWansha")
+        -- Own tag holds the granted skill name; QVariant::toBool reads absent as false.
+        local wansha = self.player:getTag("JilveWansha")
+        if wansha ~= nil and type(wansha) ~= "string" then ai_unsupported("owner JilveWansha is unknown","JilveWansha") end
+        local keep_slash = wansha ~= nil and wansha ~= "" and wansha ~= "0" and wansha:lower() ~= "false"
         for _, zcard in sgs.qlist(zcards) do
             if not isCard("Peach", zcard, self.player) and not isCard("ExNihilo", zcard, self.player) then
                 local shouldUse = true

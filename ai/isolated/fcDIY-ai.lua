@@ -25,12 +25,11 @@ local function dummy(isDummy,extra,current)
     return use
 end
 local function pattern_names(self,class)
-    local facts=known(self.world.strategy_facts,'pattern facts')
     if type(class)=='string'then
-        local mapping=known(facts.pattern_class_names,'exact last-write class/name catalog')
+        local mapping=known(AICardCatalog.patternClassNames(),'exact last-write class/name catalog')
         return mapping[class] or class
     end
-    return known(facts.pattern_names,'pattern names')
+    return known(AICardCatalog.patternNames(),'pattern names')
 end
 local function printed(self,name)
     return self:cloneEvaluationCard(name or 'slash')
@@ -154,10 +153,7 @@ local function trigger_skill(self,name)
             return {hasEvent=function(_,event)return q(s,'hasTriggerEvent',event)end}
         end
     end end
-    local f=self.world.strategy_facts.fcDIY
-    local v=f and f.trigger_skills and f.trigger_skills[name]
-    if v==false then return nil end
-    if type(v)=='table' then return {hasEvent=function(_,e)return known(v[tostring(e)],'trigger event')end}end
+    -- Definitions of skills no visible player holds are not projected.
     ai_unsupported('public trigger-skill definition unavailable',name)
 end
 local function role_estimate(self,p)return q(self,'getRoleEstimate',p)end
@@ -186,7 +182,7 @@ end
 local first_skill_index=#sgs.ai_skills
 local function addAiSkills(name)local r={name=name};table.insert(sgs.ai_skills,r);return r end
 local function use_slash(self,c,use)return self:useCardSlash(resolve_preview(c),use)end
-local function translated(s)return known(ai_translate_card_name(s),'public translation')end
+local function translated(s)return ai_unsupported('translations are not projected','translate:'..tostring(s))end
 local function source_suit(skill)
     local value,yes=SmartAIView.getSourceSuitValueTable({},skill)
     if not yes then ai_unsupported('fixed suit metadata unavailable',skill)end
@@ -282,21 +278,17 @@ end
 local function clone_preview(self,name,suit,number)return preview(self,name,'',suit or sgs.Card_NoSuit,number or 0)end
 local function printed_card(self,id)return q(self,'getPrintedCardById',id)end
 local function card_fact(self,c,key)
-    local f=self.world.strategy_facts.fcDIY
-    local rows=f and f.printed_card_properties
-    local row=rows and rows[tostring(q(c,'getEffectiveId'))]
-    return known(type(row)=='table'and row[key]or nil,key)
+    ai_unsupported('printed card properties are not projected',key)
 end
+-- Only the viewer's own properties are projected (another player's raises);
+-- QVariant::toString of an unset one is "".
 local function property_value(self,p,key)
-    local r=self.world.strategy_facts.fcDIY
-    local by=r and r.player_properties
-    local row=by and by[q(p,'objectName')]
-    if type(row)~='table' then ai_unsupported('scoped lawful property missing',key)end
-    return known(row[key],key)
+    local v=p:getPropertyValue(key)
+    if v==nil then return '' end
+    return v
 end
 local function visible_top_id(self)
-    local f=self.world.strategy_facts.fcDIY
-    return known(f and f.visible_draw_top_id,'lawfully observed top card')
+    ai_unsupported('the draw pile top is not projected','visible_draw_top_id')
 end
 local function judge_pattern(self,key)
     local patterns,yes=self:getEventMemory('judge_patterns')

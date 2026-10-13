@@ -16,10 +16,6 @@ local function raw_call(o,k,...)
  if not o or type(o[k])~='function' then unsupported(k)end
  local v=table.pack(o[k](o,...));if AIUnsupported.is(v[1])then error(v[1],0)end;return table.unpack(v,1,v.n)
 end
-local function fact(self,key)
- local all=self.world and self.world.strategy_facts;local p=all and all[PACKAGE];local v=p and p[key]
- if v==nil then unsupported(key)end;return v
-end
 local function clone(self,name,skill,suit,number)
  name=name or 'slash';local p=raw_call(self,'cloneEvaluationCard',name)
  if p==false then return nil end;if not p then unsupported('prototype.'..tostring(name))end
@@ -91,21 +87,21 @@ end
 local function package_known(o,k,...)
  local v=table.pack(package_call(o,k,...));if v[1]==nil then unsupported(k)end;return table.unpack(v,1,v.n)
 end
+-- Donor sgs.Slash_IsAvailable(self.player): the core's generic owner slash availability.
+local function slash_available(self)return package_known(self,'slashIsAvailable')end
 local function dummy(value,extra,current)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;u.current_targets=current or{};return u end
 local function patterns_for(self,class)
  if class then return patterns(class)end
- local f=self.world and self.world.strategy_facts;local a=f and f.pattern_names
+ local a=AICardCatalog.patternNames()
  if not AIValue.isList(a)then unsupported('pattern_names')end;return a
 end
 local function source_fact(self,key,kind)
- if key=='JilveWansha' and kind=='toBool' then
-  local facts=self.world and self.world.strategy_facts
-  local standard=facts and facts.standard
-  local value=standard and standard.jilve_wansha
-  if type(value)~='boolean' then unsupported('JilveWansha.owner_bool') end
-  return value
+ -- The viewer's own tag; absent reads as the donor's empty QVariant conversion.
+ local v=self.player:getTag(key)
+ if v==nil then
+  if kind=='toInt'then return 0 elseif kind=='toString'then return''elseif kind=='toBool'then return false elseif kind=='toIntList'then return AIList.new({})end
+  v=false
  end
- local v=fact(self,key)
  if kind=='toPlayer'then return v~=false and package_known(self.room,'findPlayerByObjectName',v,true)or nil end
  if kind=='toInt'or kind=='toString'or kind=='toBool'then return v end
  if kind=='toIntList'then return AIList.new(v)end
@@ -136,13 +132,10 @@ end
 -- This package's source constructor alphabet is ASCII; this is not a general
 -- action parser and cannot create a payment receipt.
 local function source_ids(text)
- if type(ai_source_wire_ids)~='function'then unsupported('source_numeric_costs')end
- local row=ai_source_wire_ids('gaoda',text)
- if type(row)~='table'or row.kind~='source_numeric_costs'or row.package~='gaoda'or type(row.ids)~='table'then unsupported('source_numeric_costs')end
  local out={}
- for i,id in ipairs(row.ids)do
-  if type(id)~='number'or id%1~=0 or id< -2147483648 or id>2147483647 then unsupported('source_numeric_costs')end
-  out[i]=id
+ for piece in (text..'+'):gmatch('([^+]*)%+')do
+  local id=piece:match('^%-?%d+$')and tonumber(piece)
+  if id and id>=-2147483648 and id<=2147483647 then out[#out+1]=id end
  end
  return out
 end
@@ -192,14 +185,19 @@ local function disclosed_card(self,id)
 end
 local function printed_card(self,id)return package_known(self,'getPrintedCardById',id)end
 local function turn_count(self)local v=self.world and self.world.turn_count;if type(v)~='number'then unsupported('turn_count')end;return v end
-local function owner_reason(self)local f=self.world and self.world.strategy_facts;local n=f and f.owner_current_card_use_reason;if type(n)~='number'then unsupported('owner_current_card_use_reason')end;return n end
+-- Engine getCurrentCardUseReason() during a card question is that question's reason.
+local function owner_reason(self)
+ local r=self.request;local card_ask=type(r)=='table'and(r.kind=='activate'or r.kind=='use_card'or r.kind=='respond_card')
+ if not card_ask or type(r.reason)~='number'then unsupported('owner_current_card_use_reason')end;return r.reason
+end
 local function ambient_pattern(self)unsupported('ambient_pattern')end
 local function source_tag(self,key)return setmetatable({},{__index=function(_,kind)return function()return source_fact(self,key,kind)end end})end
 local function foreign_fact(self,subject,key,kind)
  if subject==self.player then return source_fact(self,key,kind)end
  unsupported('foreign_tag.'..key)
 end
-local function translation(self,key)local rows=fact(self,'translations');if type(rows[key])~='string'then unsupported('translation.'..key)end;return rows[key]end
+local function room_tag(self,key)unsupported('room_tag.'..key)end
+local function translation(self,key)unsupported('translation.'..key)end
 local function view_as_meta(self,name)unsupported('public_skill_view_as.'..name)end
 local function trigger_meta(self,name)unsupported('public_trigger_skill.'..name)end
 local function correct_target(self,kind,card)
@@ -293,8 +291,9 @@ local function source_state(self)
 end
 
 local function source_property(self,key)
- local rows=fact(self,'owner_properties');local v=rows[key];if v==nil then unsupported('owner_property.'..key)end
- return{toString=function()if type(v)~='string'then unsupported('property_string.'..key)end;return v end,toInt=function()if type(v)~='number'then unsupported('property_number.'..key)end;return v end,toBool=function()if type(v)~='boolean'then unsupported('property_bool.'..key)end;return v end}
+ -- The viewer's own property; absent reads as QVariant's empty conversion.
+ local v=self.player:getPropertyValue(key)
+ return{toString=function()if v==nil then return''end;if type(v)~='string'then unsupported('property_string.'..key)end;return v end,toInt=function()if v==nil then return 0 end;if type(v)~='number'then unsupported('property_number.'..key)end;return v end,toBool=function()if v==nil then return false end;if type(v)~='boolean'then unsupported('property_bool.'..key)end;return v end}
 end
 local function dispatch_source_type(self,card,use)
  local types={'BasicCard','TrickCard'};local suffix=types[package_known(card,'getTypeId')];if not suffix then unsupported('source_type_dispatch')end
@@ -310,22 +309,14 @@ local function prototype_clone(self,selector)
  setUserString=function(_,value)if type(value)~='string'then unsupported('prototype_user_string')end;user=value end,
  toString=function()local card=skill_source(self,selector,costs,nil,user);return package_known(card,'getLegacyStringKey')end}
 end
-local function native_bans(self)local v=fact(self,'ban_packages');if not AIValue.isList(v)then unsupported('ban_packages')end;return v end
-local function source_clock_seed(self)
- if type(ai_source_clock)~='function'then unsupported('zhanshi.source_clock')end
- local row=ai_source_clock('gaoda:shuffle:zhanshi')
- if type(row)~='table'or row.kind~='source_clock'or row.source_key~='gaoda:shuffle:zhanshi'
-  or type(row.seconds)~='number'or row.seconds%1~=0 or row.seconds<0 or row.seconds>9007199254740991 then unsupported('zhanshi.source_clock')end
- -- Fixed engine luaGameRandomSeed checks an integer and returns without seeding.
- -- Do not turn this source no-op into a gameplay or AI RNG reset.
- math.randomseed(row.seconds)
-end
-local function source_shuffle_random(upper)
- if type(ai_source_gaoda_random)~='function'then unsupported('zhanshi.source_random')end
- local row=ai_source_gaoda_random(upper)
- if type(row)~='table'or row.kind~='source_gaoda_random'or row.upper~=upper
-  or type(row.value)~='number'or row.value%1~=0 or row.value<1 or row.value>upper then unsupported('zhanshi.source_random')end
- return row.value
+-- Engine getBanPackages(): the card catalog marks every card of a banned package.
+local function native_bans(self)
+ if type(ai_card_catalog)~='table'then unsupported('ban_packages')end
+ local seen,bans={},{}
+ for _,row in ipairs(ai_card_catalog)do
+  if not seen[row.package]then seen[row.package]=true;if row.banned then bans[#bans+1]=row.package end end
+ end
+ return bans
 end
 local function source_index_of(players,player)for i,p in ipairs(players)do if AIValue.sameLegacyIdentity(p,player)then return i-1 end end;return -1 end
 local function source_jink_numbers(self,use)
@@ -1061,7 +1052,7 @@ bianxing_skill.getTurnUseCard = function(self,inclusive,request)
 			return source_construct(self,"#bianxing:.:")
 		end
 	elseif package_known(self.player,"hasSkill","tuci") then
-		if package_known(self.player,"getCardCount") > 1 and not fact(self,"slash_available") then
+		if package_known(self.player,"getCardCount") > 1 and not slash_available(self) then
 			return source_construct(self,"#bianxing:.:")
 		end
 	end
@@ -1731,9 +1722,9 @@ Set=function(list)
 end
 
 shuffle=function(self,tbl)
-	source_clock_seed(self)
+	-- The donor's randomseed is a no-op in the engine; math.random here is the AI RNG.
 	for i = #tbl, 2, -1 do
-		local j = source_shuffle_random(i)
+		local j = math.random(i)
 		tbl[i], tbl[j] = tbl[j], tbl[i]
 	end
 	return tbl
@@ -3465,7 +3456,7 @@ local gelin_skill = {}
 gelin_skill.name = "gelin"
 table.insert(package_skills, gelin_skill)
 gelin_skill.getTurnUseCard = function(self,inclusive,request)
-	if package_known(self.player,"getPile","dan"):isEmpty() or not fact(self,"slash_available") then
+	if package_known(self.player,"getPile","dan"):isEmpty() or not slash_available(self) then
 		return false
 	end
 	for i = 0, package_known(self.player,"getPile","dan"):length() - 1, 1 do
@@ -3724,7 +3715,7 @@ weibo_skill.getTurnUseCard=function(self,inclusive,request)
 			n = n + 1
 		end
 	end
-	if (n == 1 and package_known(self.player,"getStrategyMark","@point") > 0) or (n > 1 and package_known(self.player,"getStrategyMark","@point") > 2) and package_known(self,"getCardsNum","Slash") > 0 and fact(self,"slash_available") then
+	if (n == 1 and package_known(self.player,"getStrategyMark","@point") > 0) or (n > 1 and package_known(self.player,"getStrategyMark","@point") > 2) and package_known(self,"getCardsNum","Slash") > 0 and slash_available(self) then
 		local card_str = ("#weibo:%d:")
 		return source_construct(self,card_str)
 	end
@@ -3766,7 +3757,7 @@ weixing_skill.getTurnUseCard=function(self,inclusive,request)
 			n = n + 1
 		end
 	end
-	if (n == 1 and package_known(self.player,"getStrategyMark","@point") > 1) or (n > 1 and package_known(self.player,"getStrategyMark","@point") > 3) and package_known(self,"getCardsNum","Slash") > 0 and fact(self,"slash_available") then
+	if (n == 1 and package_known(self.player,"getStrategyMark","@point") > 1) or (n > 1 and package_known(self.player,"getStrategyMark","@point") > 3) and package_known(self,"getCardsNum","Slash") > 0 and slash_available(self) then
 		local card_str = ("#weixing:%d:")
 		return source_construct(self,card_str)
 	end
@@ -4136,7 +4127,7 @@ sgs.ai_use_value["shouwang"] = sgs.ai_use_value.Peach
 sgs.ai_use_priority["shouwang"] = sgs.ai_use_priority.Peach - 0.5
 
 sgs.ai_skill_invoke.huiwu = function(self, data)
-	if package_known(self,"getCardsNum","Slash") > 0 and fact(self,"slash_available") then return false end
+	if package_known(self,"getCardsNum","Slash") > 0 and slash_available(self) then return false end
 	return package_known(self.player,"getHandcardNum") == 1 or package_known(self.player,"hasSkill","helie")
 end
 
@@ -5011,7 +5002,7 @@ local jianmie_skill = {}
 jianmie_skill.name = "jianmie"
 table.insert(package_skills, jianmie_skill)
 jianmie_skill.getTurnUseCard = function(self,inclusive,request)
-	if package_known(self.player,"isNude") or not fact(self,"slash_available") then
+	if package_known(self.player,"isNude") or not slash_available(self) then
 		return false
 	end
 	local cards = package_known(self.player,"getCards","h")
@@ -5778,7 +5769,7 @@ local feijian_skill = {}
 feijian_skill.name = "feijian"
 table.insert(package_skills, feijian_skill)
 feijian_skill.getTurnUseCard = function(self,inclusive,request)
-	if package_known(self.player,"getPile","jian"):isEmpty() or package_known(self.player,"isNude") or not fact(self,"slash_available") then
+	if package_known(self.player,"getPile","jian"):isEmpty() or package_known(self.player,"isNude") or not slash_available(self) then
 		return false
 	end
 	local cards = package_known(self.player,"getCards","he")
@@ -5983,8 +5974,8 @@ sgs.ai_skill_invoke.lijie = function(self, data)
 	local damage = package_known(data,"toDamage")
 	if package_known(self.player,"isWounded") then
 		if package_known(self,"isFriend",damage.from) then
-			if source_fact(self,"Dongchaer","toString") == package_known(self.player,"objectName")
-				and source_fact(self,"Dongchaee","toString") == package_known(damage.from,"objectName") then
+			if room_tag(self,"Dongchaer") == package_known(self.player,"objectName")
+				and room_tag(self,"Dongchaee") == package_known(damage.from,"objectName") then
 				for _,card in sgs.qlist(package_known(damage.from,"getHandcards")) do
 					if package_known(card,"getSuit") == sgs.Card_Heart then
 						return true
@@ -5999,8 +5990,8 @@ sgs.ai_skill_invoke.lijie = function(self, data)
 end
 
 sgs.ai_skill_cardchosen["lijie"] = function(self, who, flags)
-	if source_fact(self,"Dongchaer","toString") == package_known(self.player,"objectName")
-		and source_fact(self,"Dongchaee","toString") == package_known(who,"objectName") then
+	if room_tag(self,"Dongchaer") == package_known(self.player,"objectName")
+		and room_tag(self,"Dongchaee") == package_known(who,"objectName") then
 		for _,card in sgs.qlist(package_known(who,"getHandcards")) do
 			if package_known(card,"getSuit") == sgs.Card_Heart then
 				return card

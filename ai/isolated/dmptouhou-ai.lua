@@ -9,11 +9,9 @@ local function call(o,k,...)
     local v=o[k](o,...);if AIUnsupported.is(v) then error(v,0) end;return v
 end
 local function q(o,k,...) return known(call(o,k,...),k) end
-local function facts(self) return known(self.world.strategy_facts and self.world.strategy_facts.dmptouhou,"dmptouhou") end
 local function parse_nil(self,selector)
-    local rows=facts(self).legacy_prototypes
-    if type(rows)~="table" or rows[selector]~=false then ai_unsupported("dmptouhou source prototype absence is not proven",selector) end
-    return nil
+    -- Whether LuaSkillCard::Parse knows the old selector is not projected.
+    ai_unsupported("legacy prototype presence is not projected",selector)
 end
 local function sort_in_place(self,values,key)
     local sorted=q(self,"sort",values,key)
@@ -26,10 +24,7 @@ local function skills(self,player,names)
     ai_unsupported("dmptouhou skill absence is not visible",names)
 end
 local function kuixin_used(self,player)
-    local row=facts(self).kuixin_used
-    local value=type(row)=="table" and row[q(player,"objectName")]
-    if type(value)~="boolean" then ai_unsupported("public se_kuixin_used flag is not projected","se_kuixin_used") end
-    return value
+    return q(player,"hasFlag","se_kuixin_used")
 end
 local function wounded(self)
     local a,b=self:getWoundedFriend(false,true)

@@ -23,12 +23,11 @@ local function dummy(isDummy,extra,current)
     return AIUsePlan.new({isDummy=isDummy~=false,extra_target=extra,current_targets=current})
 end
 local function pattern_names(self,class)
-    local facts=known(self.world.strategy_facts,'pattern facts')
     if type(class)=='string'then
-        local mapping=known(facts.pattern_class_names,'exact last-write class/name catalog')
+        local mapping=known(AICardCatalog.patternClassNames(),'exact last-write class/name catalog')
         return mapping[class] or class
     end
-    return known(facts.pattern_names,'pattern names')
+    return known(AICardCatalog.patternNames(),'pattern names')
 end
 local function printed(self,name)
     return self:cloneEvaluationCard(name or 'slash')
@@ -97,7 +96,11 @@ local function target_ok(c,from,to,prefix)
     return CanToCard(resolve_preview(c),from,to,prefix)
 end
 local function scope(self,key)
-    if key=='CurrentDamageStruct'then return known(known(self.world.strategy_facts.standard,'standard facts').current_damage,key)end
+    if key=='CurrentDamageStruct'then
+        -- The room tag reaches only asks that project it as their context damage.
+        local raw=type(self.request.options)=='table' and self.request.options.context
+        return known(type(raw)=='table' and raw.damage or nil,key)
+    end
     local row=q(self,'getDecisionContext').meizl
     if type(row)~='table' then ai_unsupported('Meizl scoped context unavailable',key) end
     return known(row[key],key)
@@ -137,10 +140,7 @@ local function trigger_skill(self,name)
             return {hasEvent=function(_,event)return q(s,'hasTriggerEvent',event)end}
         end
     end end
-    local f=self.world.strategy_facts.meizl
-    local v=f and f.trigger_skills and f.trigger_skills[name]
-    if v==false then return nil end
-    if type(v)=='table' then return {hasEvent=function(_,e)return known(v[tostring(e)],'trigger event')end}end
+    -- Trigger skills nobody visible holds are not projected.
     ai_unsupported('public trigger-skill definition unavailable',name)
 end
 local function role_estimate(self,p)return q(self,'getRoleEstimate',p)end
@@ -169,7 +169,7 @@ end
 local first_skill_index=#sgs.ai_skills
 local function addAiSkills(name)local r={name=name};table.insert(sgs.ai_skills,r);return r end
 local function use_slash(self,c,use)return self:useCardSlash(resolve_preview(c),use)end
-local function translated(s)return known(ai_translate_card_name(s),'public translation')end
+local function translated(s)ai_unsupported('public translation is not projected','meizl')end
 local function source_suit(skill)
     local value,yes=SmartAIView.getSourceSuitValueTable({},skill)
     if not yes then ai_unsupported('fixed suit metadata unavailable',skill)end
@@ -269,21 +269,14 @@ end
 local function clone_preview(self,name,suit,number)return preview(self,name,'',suit or sgs.Card_NoSuit,number or 0)end
 local function printed_card(self,id)return q(self,'getPrintedCardById',id)end
 local function card_fact(self,c,key)
-    local f=self.world.strategy_facts.meizl
-    local rows=f and f.printed_card_properties
-    local row=rows and rows[tostring(q(c,'getEffectiveId'))]
-    return known(type(row)=='table'and row[key]or nil,key)
+    ai_unsupported('printed card properties are not projected',key)
 end
 local function property_value(self,p,key)
-    local r=self.world.strategy_facts.meizl
-    local by=r and r.player_properties
-    local row=by and by[q(p,'objectName')]
-    if type(row)~='table' then ai_unsupported('scoped lawful property missing',key)end
-    return known(row[key],key)
+    -- Only the viewer's own properties are projected; others raise unsupported.
+    return q(p,'getPropertyValue',key)
 end
 local function visible_top_id(self)
-    local f=self.world.strategy_facts.meizl
-    return known(f and f.visible_draw_top_id,'lawfully observed top card')
+    ai_unsupported('draw pile top card is not projected','meizl')
 end
 local function judge_pattern(self,key)
     local patterns,yes=self:getEventMemory('judge_patterns')
@@ -431,7 +424,7 @@ sgs.ai_card_intention.meizlchunshencard = function(self, card, from, tos)
 end
 
 function sgs.ai_slash_prohibit.meizlchunshen(self, from, to)
-    if hasJueqingEffect(from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
+    if q(self,"hasJueqingEffect",from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
     if q(from,"hasFlag","NosJiefanUsed") then return false end
     if q(self,"isFriend",to, from) then return false end
     return q(self,"cantbeHurt",to, from)
@@ -483,7 +476,7 @@ end
 
 function sgs.ai_slash_prohibit.meizlqiji(self, from, to)
     if q(self,"isFriend",from, to) then return false end
-    if hasJueqingEffect(from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
+    if q(self,"hasJueqingEffect",from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
     if q(from,"hasFlag","NosJiefanUsed") then return false end
     return q(from,"getHp") < 2
 end
@@ -642,7 +635,7 @@ sgs.ai_skill_playerchosen.meizlrangma = function(self, targets)
 end
 
 function sgs.ai_slash_prohibit.meizlrangma(self, from, to)
-    if hasJueqingEffect(from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
+    if q(self,"hasJueqingEffect",from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
     if q(from,"hasFlag","NosJiefanUsed") then return false end
     if q(self,"isFriend",to, from) and q(self,"isWeak",to) then return true end
     return #(self:getEnemies(from)) > 1 and q(self,"isWeak",to) and q(from,"getHandcardNum") > 3
@@ -1086,7 +1079,7 @@ meizlsuxian_skill.getTurnUseCard = function(self, inclusive)
 end
 
 sgs.ai_cardsview["meizlsuxian"] = function(self, class_name, player)
-    if not (known(self.world.strategy_facts.owner_current_card_use_reason,"current card use reason") == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE or known(self.world.strategy_facts.owner_current_card_use_reason,"current card use reason") == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE) then return end
+    if not (known(self.request.reason,"current card use reason") == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE or known(self.request.reason,"current card use reason") == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE) then return end
     local classname2objectname = {
         ["Slash"] = "slash",
         ["Jink"] = "jink",
@@ -1913,7 +1906,7 @@ end
 
 
 function sgs.ai_slash_prohibit.meizlyuanshi(self, from, to)
-    if hasJueqingEffect(from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
+    if q(self,"hasJueqingEffect",from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
     if q(from,"hasFlag","NosJiefanUsed") then return false end
     return #(self:getEnemies(from)) > 1 and q(self,"isWeak",to) and
         (q(from,"getMaxHp") <= 3 or q(from,"hasSkills",sgs.need_maxhp_skill))
@@ -2073,7 +2066,7 @@ end
 
 sgs.ai_view_as.meizljianwuskill2 = function(card, player, card_place)
     local self=known(q(player,"getRoom")._ai,"viewer AI")
-    if known(self.world.strategy_facts.owner_current_card_use_reason,"current card use reason") ~= sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then return end
+    if known(self.request.reason,"current card use reason") ~= sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then return end
     local suit = q(card,"getSuitString")
     local number = q(card,"getNumberString")
     local card_id = q(card,"getEffectiveId")
@@ -2291,7 +2284,7 @@ sgs.ai_can_damagehp.meizlkuma = function(self, from, card, to)
 end
 
 function sgs.ai_slash_prohibit.meizlliyi(self, from, to)
-    if hasJueqingEffect(from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
+    if q(self,"hasJueqingEffect",from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
     if q(from,"hasFlag","NosJiefanUsed") then return false end
     if q(to,"getHp") > 1 or #(self:getEnemies(from)) == 1 then return false end
     return false
@@ -3479,7 +3472,7 @@ end
 
 sgs.ai_view_as.meispliwuskill2 = function(card, player, card_place)
     local self=known(q(player,"getRoom")._ai,"viewer AI")
-    if known(self.world.strategy_facts.owner_current_card_use_reason,"current card use reason") ~= sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then return end
+    if known(self.request.reason,"current card use reason") ~= sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then return end
     local suit = q(card,"getSuitString")
     local number = q(card,"getNumberString")
     local card_id = q(card,"getEffectiveId")
@@ -4053,11 +4046,11 @@ function SmartAIView:findyoushaTarget(card_name, use)
     local shenguanyu = self.room:findPlayerBySkillName("wuhun")
     if shenguanyu and q(shenguanyu,"isMale") and q(shenguanyu,"objectName") ~= q(self.player,"objectName") then
         if self.role == "rebel" and lord and q(lord,"isMale") and q(lord,"objectName") ~= q(self.player,"objectName") and q(shenguanyu,"objectName") ~= q(lord,"objectName")
-            and not hasJueqingEffect(lord, shenguanyu) then
+            and not q(self,"hasJueqingEffect",lord, shenguanyu) then
             return shenguanyu, lord
         elseif q(self,"isEnemy",shenguanyu) and #self.enemies >= 2 then
             for _, enemy in ipairs(self.enemies) do
-                if q(enemy,"objectName") ~= q(shenguanyu,"objectName") and q(enemy,"isMale") and not hasJueqingEffect(enemy, shenguanyu) then
+                if q(enemy,"objectName") ~= q(shenguanyu,"objectName") and q(enemy,"isMale") and not q(self,"hasJueqingEffect",enemy, shenguanyu) then
                     return shenguanyu, enemy
                 end
             end
@@ -4698,7 +4691,7 @@ sgs.ai_card_intention.meizlshchunshencard = function(self, card, from, tos)
 end
 
 function sgs.ai_slash_prohibit.meizlshchunshen(self, from, to)
-    if hasJueqingEffect(from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
+    if q(self,"hasJueqingEffect",from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
     if q(from,"hasFlag","NosJiefanUsed") then return false end
     if q(self,"isFriend",to, from) then return false end
     return q(self,"cantbeHurt",to, from)
@@ -4830,7 +4823,7 @@ sgs.ai_use_value["meizlshguihancard"] = sgs.ai_use_value.ExNihilo - 0.1
 sgs.ai_use_priority["meizlshguihancard"] = sgs.ai_use_priority.ExNihilo - 0.1
 
 function sgs.ai_slash_prohibit.meizlshhunshi(self, from, to)
-    if hasJueqingEffect(from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
+    if q(self,"hasJueqingEffect",from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
     if q(from,"hasFlag","NosJiefanUsed") then return false end
     if q(to,"getHp") > 1 or #(self:getEnemies(from)) == 1 then return false end
     return q(self,"isWeak",from)
@@ -5300,7 +5293,7 @@ sgs.ai_skill_playerchosen.meizlshrangma = function(self, targets)
 end
 
 function sgs.ai_slash_prohibit.meizlshrangma(self, from, to)
-    if hasJueqingEffect(from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
+    if q(self,"hasJueqingEffect",from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
     if q(from,"hasFlag","NosJiefanUsed") then return false end
     if q(self,"isFriend",to, from) and q(self,"isWeak",to) then return true end
     return #(self:getEnemies(from)) > 1 and q(self,"isWeak",to) and q(from,"getHandcardNum") > 3
@@ -5476,7 +5469,7 @@ end
 
 sgs.ai_view_as.meispshliwuskill2 = function(card, player, card_place)
     local self=known(q(player,"getRoom")._ai,"viewer AI")
-    if known(self.world.strategy_facts.owner_current_card_use_reason,"current card use reason") ~= sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then return end
+    if known(self.request.reason,"current card use reason") ~= sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then return end
     local suit = q(card,"getSuitString")
     local number = q(card,"getNumberString")
     local card_id = q(card,"getEffectiveId")
@@ -5687,7 +5680,7 @@ sgs.ai_skill_discard["guyanjh"] = function(self, discard_num, min_num, optional,
 end
 
 function sgs.ai_slash_prohibit.hujiajh(self, from, to)
-    if hasJueqingEffect(from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
+    if q(self,"hasJueqingEffect",from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
     if q(from,"hasFlag","NosJiefanUsed") then return false end
     if q(to,"getHp") > 1 or #(self:getEnemies(from)) == 1 then return false end
     if q(from,"getMaxHp") == 3 and from:getArmor() and from:getDefensiveHorse() then return false end

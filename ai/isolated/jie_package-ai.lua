@@ -43,16 +43,10 @@ local function source_damage(card)
     if card==nil then error("fixed Jie missing tag dereferences nil CardUse card",0)end
     return q(card,"isDamageCard")
 end
-local function patterns(self)return known(self.world.strategy_facts.pattern_names,"pattern_names")end
+local function patterns(self)return known(AICardCatalog.patternNames(),"pattern_names")end
 local function pattern_card(self,name)
-    -- PatternsCard performs one getRandomCards shuffle per scalar query even
-    -- though this caller only consumes its public card type.
-    if type(ai_consume_deck_count_shuffle)~="function" then ai_unsupported("PatternsCard shuffle query missing","jinbingxin")end
-    local result=ai_consume_deck_count_shuffle()
-    local size=self.world.strategy_facts.deck_definition_size
-    if type(result)~="table" or result.kind~="deck_count_shuffle" or result.count~=size then
-        ai_unsupported("PatternsCard shuffle response is stale","jinbingxin")
-    end
+    -- PatternsCard also shuffles a getRandomCards list, but this caller only
+    -- consumes the public card type; the isolated VM never draws gameplay RNG.
     return self:cloneEvaluationCard(name)
 end
 local function preview(self,name)

@@ -85,11 +85,10 @@ do
   return table.unpack(v,1,v.n)
  end
  local function current_damage(self)
-  local standard=self.world and self.world.strategy_facts and self.world.strategy_facts.standard
-  local row=type(standard)=='table'and standard.current_damage
-  -- QVariant::value<DamageStruct>() returns a value, including on an absent
-  -- tag: default from/card are null. Do not substitute current inquiry data.
-  if row==false then return{}end
+  -- The raw question context carries CurrentDamageStruct only for invoke/choice/
+  -- response asks, so an absent row is unknown here, not an absent tag.
+  local options=self.request and self.request.options
+  local row=type(options)=='table'and type(options.context)=='table'and options.context.damage
   if type(row)~='table'then ai_unsupported('CurrentDamageStruct is not projected','sijyu_lijian')end
   local damage={}
   local name=row.from
@@ -166,14 +165,8 @@ do
   return v
  end
  local function selected(self,id)
-  if type(id)~='number'or id%1~=0 or id<0 or type(ai_sijyu_fengyi_select)~='function'then ai_unsupported('Fengyi physical source answer unavailable','sijyu_fengyi')end
-  local out=ai_sijyu_fengyi_select(id)
-  if AIUnsupported.is(out)then error(out,0)end
-  if type(out)~='table'or out.accepted~=true or out.card_id~=id then
-   local e=AIUnsupported.new(type(out)=='table'and out.error or'Fengyi native response rejected','sijyu_fengyi')
-   if type(out)=='table'and out.native_rejected then e.native_rejected=true;e.terminal_response_selection=true end
-   error(e,0)
-  end
+  if type(id)~='number'or id%1~=0 or id<0 then ai_unsupported('Fengyi physical source answer unavailable','sijyu_fengyi')end
+  -- The authority admits the selected physical card when it applies the answer.
   return{kind='answer',cards={id}}
  end
  sgs.ai_skill_discard.sijyu_qixing=function(self,discard_num,optional,include_equip)

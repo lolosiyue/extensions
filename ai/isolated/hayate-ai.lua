@@ -13,14 +13,9 @@ local function q(o,k,...)
     end
     if nullable[k]then return v end;return known(v,k)
 end
-local function facts(self)return known(self.world.strategy_facts and self.world.strategy_facts.hayate,"hayate")end
-local function owner_tag(self,key)return known(facts(self).owner_tags and facts(self).owner_tags[key],key)end
-local function target_flag(self,p,flag)
-    local rows=facts(self).target_flags;local row=rows and rows[flag]
-    local value=row and row[q(p,"objectName")]
-    if type(value)~="boolean"then ai_unsupported("hayate scoped public target flag missing",flag)end
-    return value
-end
+-- The viewer's own tag, read like the donor's toInt() (absent reads 0).
+local function owner_tag(self,key)return tonumber(self.player:getTag(key))or 0 end
+local function target_flag(self,p,flag)return q(p,"hasFlag",flag)end
 local function response(self,skill,selector,costs,targets,request)
     local card=q(self,"bindSkillCard",skill,costs,request or self.request,nil,selector)
     return {kind="use_card",card_spec=q(card,"toCardSpec"),targets=targets}
@@ -76,7 +71,8 @@ local function mishi_partial_result(hp,rescue,jink,missing)
     return false
 end
 local function require_enemy_nil(self)
-    if facts(self).legacy_enemy_global_known_nil~=true then ai_unsupported("source vector typo reads an unclassified global enemy","vector")end
+    -- The donor's free global `enemy` lives in the gameplay VM and is not projected.
+    ai_unsupported("source vector typo reads an unclassified global enemy","vector")
 end
 
 sgs.ai_keep_value.DoubleSword = 8

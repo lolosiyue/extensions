@@ -11,12 +11,11 @@ local function q(o,k,...)
  if not nullable[k]then known(r[1],k)end
  return table.unpack(r,1,r.n)
 end
-local function facts(self)return known(self.world.strategy_facts and self.world.strategy_facts.ol_qifu,'ol_qifu')end
-local function property(self,key)return known(facts(self).properties and facts(self).properties[key],key)end
-local function tag_ids(self,key)return known(facts(self).owner_tag_ids and facts(self).owner_tag_ids[key],key)end
+-- The viewer's own property and tag, read like the donor's toString()/toIntList() (absent reads empty).
+local function property(self,key)local v=self.player:getPropertyValue(key);if v==nil then return''end;return v end
+local function tag_ids(self,key)return AIList.new(self.player:getTag(key)or{})end
 local function public_flag(self,p,key)
  if key:sub(1,12)=='weapon_done_'then return q(self,'hasStrategyPlayerFlag',p,key)end
- if key=='olanxu_target'then return known(facts(self).olanxu_target and facts(self).olanxu_target[q(p,'objectName')],key)end
  return q(p,'hasFlag',key)
 end
 local function callback(self,registry,key,...)
@@ -60,15 +59,8 @@ local function paid(self,skill,cls,ids,tos)
  return answer(self,c,tos)
 end
 local function source_choice_continuity(self,op,key,row)
- if type(ai_response_choice_continuity)~='function'then ai_unsupported('native source choice continuity unavailable',key)end
- local result=ai_response_choice_continuity({op=op,key=key,row=row})
- if AIUnsupported.is(result)then error(result,0)end
- if type(result)~='table'or result.known~=true then
-  ai_unsupported('source global choice continuation is unobserved',key)
- end
- if op=='record'then if result.recorded~=true then ai_unsupported('invalid source choice record',key)end;return end
- if type(result.present)~='boolean'or(result.present and type(result.value)~='string')then ai_unsupported('invalid source choice value',key)end
- return result.present and result.value or nil
+ -- Gameplay-VM registry choices, also written by its SmartAI, are not readable or writable here.
+ ai_unsupported('gameplay SmartAI choice registry is not available',key)
 end
 local function save_xufa(self,d,name)
  q(self,'rememberXufaUse',d) -- source assignment precedes the choice write
@@ -79,10 +71,8 @@ local function load_xufa(self)
  return self:getStrategyMemory('xufa.use')
 end
 local function fengpo_from(self)
- local row=facts(self).fengpo_from
- if type(row)~='table'or row.known~=true then ai_unsupported('source global from is not classified','fengpo.from')end
- if row.present==false then return nil end
- return known(self.room:findPlayerByObjectName(row.player),'fengpo.from')
+ -- The donor reads a free global `from` of the gameplay VM, which is not projected.
+ ai_unsupported('source global from is not classified','fengpo.from')
 end
 
 

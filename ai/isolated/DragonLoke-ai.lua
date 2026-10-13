@@ -17,12 +17,9 @@ local function sort_in_place(self,values,key)
     for i,value in ipairs(ordered) do values[i]=value end
 end
 local function missing_prototype(self,selector)
-    local facts=self.world and self.world.strategy_facts
-    local rows=facts and facts.dragonloke and facts.dragonloke.legacy_prototypes
-    if type(rows)~="table" or rows[selector]~=false then
-        ai_unsupported("DragonLoke source Card_Parse absence is not proven",selector)
-    end
-    return nil
+    -- Whether the source's skill-card class is registered (Card_Parse) is engine
+    -- registry state, not projected.
+    ai_unsupported("DragonLoke source Card_Parse absence is not projected",selector)
 end
 local function cache_target(self,player)
     call(self,"setStrategyMemory","dragonloke.dl_liuli",player and q(player,"objectName") or false)

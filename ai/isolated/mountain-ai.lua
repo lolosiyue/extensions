@@ -641,7 +641,7 @@ local function role(self,player)
     return self:useKnowledgeEstimate({status="estimate",value=known(self:getRoleEstimate(player),"mountain.role"),basis="mountain.private_role_uses_viewer_inference",target=player:objectName()},"mountain.role")
 end
 function sgs.ai_slash_prohibit.duanchang(self,from,to)
-	if hasJueqingEffect(from,to) or (skill(self,from,"nosqianxi") and from:distanceTo(to)==1) then return false end
+	if self:hasJueqingEffect(from,to) or (skill(self,from,"nosqianxi") and from:distanceTo(to)==1) then return false end
 	if from:hasFlag("NosJiefanUsed") then return false end
 	if to:getHp()>1 or #(self:getEnemies(from))==1 then return false end
 	if from:getMaxHp()==3 and from:getArmor() and from:getDefensiveHorse() then return false end
@@ -1194,7 +1194,7 @@ sgs.ai_skill_use_func.ZhijianCard = function(card,use,self,request)
 				local slash = self:getCard("Slash")
 				for _,enemy in ipairs(self.enemies)do
 					if self.player:canSlash(enemy,slash,true) and not self:slashProhibit(slash,enemy) and
-						self:slashIsEffective(slash,enemy) and not hasJueqingEffect(self.player,enemy) and enemy:isKongcheng() then
+						self:slashIsEffective(slash,enemy) and not self:hasJueqingEffect(self.player,enemy) and enemy:isKongcheng() then
 							HeavyDamage = true
 							break
 					end
@@ -1521,12 +1521,8 @@ sgs.ai_fill_skill.jilve=function(self,inclusive,request)
             if known(self.player:canSlash(enemy),"jilve.can_slash") and self:isWeak(enemy)
                 and self:damageMinusHp(enemy,1)>0 and #self.enemies>1 then
                 self:setPriorityValue("JilveCard",8,"jilve")
-                local facts=self.world.strategy_facts
-                if not facts or facts.skill_catalog_scope~="public_registered_skill_definitions" then
-                    ai_unsupported("public registered skill catalogue is absent","jilve.olwansha")
-                end
-                self:setStrategyMemory("choice_override:jilve",facts.skill_catalog.olwansha and "olwansha" or "wansha")
-                return self:legacySkillSeed("jilve","JilveCard",request)
+                -- Whether the engine registers olwansha (Sanguosha:getSkill) is not projected.
+                ai_unsupported("engine skill registry is not projected","jilve.olwansha")
             end
         end
     end

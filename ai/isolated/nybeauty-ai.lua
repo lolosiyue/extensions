@@ -9,8 +9,8 @@ local function q(o,k,...)
  if k=='hasSkill'or k=='hasSkills'then local p=AIValue.isPlayer(o)and o or select(2,...)or o.player;local row=type(p)=='table'and rawget(p,'_view');if r[1]==false and row and row.skills_complete~=true then ai_unsupported('nybeauty foreign skill absence unknown',(...))end end
  if not nullable[k]then known(r[1],k)end;return table.unpack(r,1,r.n)
 end
-local function facts(self)return known(self.world.strategy_facts and self.world.strategy_facts.nybeauty,'nybeauty')end
-local function prop(self,key)return known(facts(self).properties and facts(self).properties[key],key)end
+-- Own dynamic property; QVariant::toString of an unset one is "".
+local function prop(self,key)local v=self.player:getPropertyValue(key);if v==nil then return''end;return v end
 local function hydrate(self,value,kind)
  if value==nil then return nil end
  if kind=='Player'then if AIValue.isPlayer(value)then return value end;return known(self.room:findPlayerByObjectName(value),'tag player')end
@@ -34,10 +34,10 @@ local function face(self,id)return q(self,'getKnownCardById',id)end
 local function complete_hand(self,p)
  local cards=q(p,'getHandcards');if #cards~=q(p,'getHandcardNum')then ai_unsupported('source requires complete lawful foreign hand','nybeauty.foreign_hand')end;return cards
 end
-local function draw_count(self)return known(facts(self).draw_count,'draw_count')end
+local function draw_count(self)return known(self.world.draw_pile_count,'draw_count')end
+-- The draw pile size is public; its card order is not projected.
 local function draw_id(self,index)
- local rows=facts(self).observed_draw_ids
- return known(rows and rows[tostring(index)],'nybeauty.observed_draw_index:'..tostring(index))
+ ai_unsupported('draw pile contents are not projected','nybeauty.observed_draw_index:'..tostring(index))
 end
 local function draw_top(self,n)
  local index,count=-1,math.min(math.max(1,n),draw_count(self))

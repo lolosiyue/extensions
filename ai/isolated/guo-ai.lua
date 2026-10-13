@@ -11,14 +11,10 @@ local function q(object,key,...)
     if AIUnsupported and AIUnsupported.is(value)then error(value,0)end
     return known(value,key)
 end
-local function fact(self,key)
-    local row=self.world.strategy_facts and self.world.strategy_facts.guo
-    if type(row)~="table"then ai_unsupported("guo fact group unknown",key)end
-    return known(row[key],key)
-end
+-- The viewer's own player tag; an absent tag is no player.
 local function fact_player(self,key)
-    local name=fact(self,key)
-    if name==false then return nil end
+    local name=self.player:getTag(key)
+    if name==nil or name=="" then return nil end
     return known(self.room:findPlayerByObjectName(name,true),key)
 end
 local function yinni(self,player)
@@ -28,27 +24,11 @@ local function yinni(self,player)
     return self:useKnowledgeEstimate({value=false,status="estimate",basis="foreign_yinni_inactive_prior",viewer=self.player:objectName(),observer=player:objectName()},"guo.inYinniState")
 end
 local function tuishi_from(self)return fact_player(self,"jintuishi_from")end
-local function niluan_body(self,data,pattern,target)
-	if target then
-		for _,slash in ipairs(self:getCards("Slash"))do
-			if self:isFriend(target) and self:slashIsEffective(slash,target) then
-				if self:needLeiji(target,self.player) then return slash:getLegacyStringKey() end
-				if self:needToLoseHp(target,self.player,slash,true) then return slash:getLegacyStringKey() end
-			end
-			if self:isEnemy(target) and self:slashIsEffective(slash,target)
-			and not self:needToLoseHp(target,self.player,slash) and not self:needLeiji(target,self.player) 
-			then return slash:getLegacyStringKey() end
-		end
-	end
-	return "."
-end
-
 local function niluan(self,...)
-    local metadata=fact(self,"mobileniluan_callback")
-    if type(metadata)~="table"or metadata.known~=true then ai_unsupported("indirect mobileniluan source presence unknown","jintuishi")end
-    if metadata.present==false then error("attempt to call a nil value (field '@mobileniluan')",0)end
-    if metadata.present~=true or metadata.source_matches~=true then ai_unsupported("indirect mobileniluan source changed","jintuishi")end
-    return niluan_body(self,...)
+    -- The donor calls whichever @mobileniluan callback this VM registered.
+    local callback=sgs.ai_skill_cardask["@mobileniluan"]
+    if callback==nil then error("attempt to call a nil value (field '@mobileniluan')",0)end
+    return callback(self,...)
 end
 
 --推弑

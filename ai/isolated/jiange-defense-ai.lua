@@ -342,7 +342,7 @@ sgs.ai_use_value.JGHanjunCard = 3.4
 sgs.ai_use_priority.JGHanjunCard = 9.2
 
 sgs.ai_skill_use["@@jgkeding"] = function(self,prompt)
-	local row=known(known(self.world.strategy_facts.jiange,"jiange").jgkeding,"jgkedingUser")
+	local row=known(nil,"jgkedingUser") -- The Keding source parse is not projected.
     local user=known(row.parts,"jgkeding exact split")
     local face=known(row.card,"jgkeding source parse")
     local dc=face~=false and CardView.new(face)or nil

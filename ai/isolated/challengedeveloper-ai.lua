@@ -38,9 +38,9 @@ local function response(self,skill,class,costs,targets)
     local use=AIUsePlan.new();use.card=bind(self,skill,class,costs,nil);use.to=AIList.new(targets)
     return use:toAnswer()
 end
-local function fact(self,key)
-    local facts=self.world.strategy_facts;local row=facts and facts.challengedeveloper
-    return known(row and row[key],"challengedeveloper."..key)
+local function play_epoch(self)
+    local epochs=known(AIWorldLifecycle.epochs(self.world,"play"),"challengedeveloper.play_clear_epoch")
+    return known(epochs[q(self.player,"objectName")],"challengedeveloper.play_clear_epoch")
 end
 local function context(self,key)
     local row=q(self,"getDecisionContext");local value=known(row["challengedeveloper_"..key],key)
@@ -55,7 +55,7 @@ local function context(self,key)
 end
 local function remember(self,key,value)self:setStrategyMemory("challengedeveloper."..key,value)end
 local function recall(self,key)local value=self:getStrategyMemory("challengedeveloper."..key);return value end
-local function pattern_names(self)return known(self.world.strategy_facts.pattern_names,"pattern_names")end
+local function pattern_names(self)return known(AICardCatalog.patternNames(),"pattern_names")end
 local function disclosed(self,id)return known(self:getKnownCardById(id)or self:getChoiceCard(id),"disclosed card")end
 local function clone(self,source,skill,name,costs)
     return q(self,"evaluateOwnerViewAsCard",{source_key=source,skill=skill,name=name,suit=sgs.Card_NoSuit,number=0,subcards=costs})
@@ -73,19 +73,16 @@ local function priority(self,key,card,offset)
     return self:setPriorityValue(key,q(self,"getPriorityValue",q(card,"getClassName"),card)+offset,"challengedeveloper."..key)
 end
 local function known_draw_id(self,index)
-    local row=fact(self,"known_draw_top")
-    if type(row)~="table"or row.known~=true or type(row.ids)~="table"or row.ids[index+1]==nil then
-        ai_unsupported("source requires undisclosed draw-pile order","dev_lvedong")
-    end
-    return row.ids[index+1]
+    -- Draw-pile contents are not projected.
+    ai_unsupported("source requires undisclosed draw-pile order","dev_lvedong")
 end
 local function lvedong_mark(self)
-    local epoch=fact(self,"play_clear_epoch");local row=recall(self,"lvedong_mark")
+    local epoch=play_epoch(self);local row=recall(self,"lvedong_mark")
     local delta=type(row)=="table"and row.epoch==epoch and row.delta or 0
     return q(self.player,"getMark","dev_lvedongUse-PlayClear")+delta
 end
 local function increment_lvedong(self)
-    local epoch=fact(self,"play_clear_epoch");local row=recall(self,"lvedong_mark")
+    local epoch=play_epoch(self);local row=recall(self,"lvedong_mark")
     local delta=type(row)=="table"and row.epoch==epoch and row.delta or 0
     remember(self,"lvedong_mark",{epoch=epoch,delta=delta+1})
 end
@@ -340,7 +337,7 @@ sgs.ai_skill_discard.dev_pofeng = function(self,discard_num,min_num,optional,inc
 		return {id}
 	end
 	
-	local n = fact(self,"pofeng_num")
+	local n = self.player:getTag("dev_pofeng_num") or 0 -- absent: QVariant::toInt() 0
 	if n<=0 then return q(self,"askForDiscard","dummyreason",1,1,optional,include_equip) end
 	
 	local cards,discards = AIList.new(q(self.player,"getCards","he")),{}
@@ -1072,7 +1069,7 @@ local dev_juanlao_skill = {}
 dev_juanlao_skill.name = "dev_juanlao"
 table.insert(package_skills,dev_juanlao_skill)
 dev_juanlao_skill.getTurnUseCard = function(self,inclusive,request)
-	local name = fact(self,"juanlao_card")
+	local name = self.player:getPropertyValue("dev_juanlao_card") or "" -- absent: QVariant::toString() ""
 	if not name or name==nil or name=="" then return end
 	local card_str = ("%s:dev_juanlao[no_suit:0]=."):format(name)
 	local preview=call(self,"getEvaluationCard",name)

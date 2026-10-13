@@ -16,9 +16,18 @@ local function raw_call(o,k,...)
  if not o or type(o[k])~='function' then unsupported(k)end
  local v=table.pack(o[k](o,...));if AIUnsupported.is(v[1])then error(v[1],0)end;return table.unpack(v,1,v.n)
 end
+-- Only the viewer's own tags are projected (absent reads as false); a room tag
+-- reaches the VM only as the ask's context damage.
+local OWN_TAGS={sfofl_zongfan=true,sfofl_bianchiForAI=true,sfofl_boss_wushuang=true,PresentCard=true,sfofl_YellowTurbanRebels0=true}
 local function fact(self,key)
- local all=self.world and self.world.strategy_facts;local p=all and all[PACKAGE];local v=p and p[key]
- if v==nil then unsupported(key)end;return v
+ if key=='CurrentDamageStruct'then
+  local raw=type(self.request.options)=='table'and self.request.options.context
+  local v=type(raw)=='table'and raw.damage or nil
+  if v==nil then unsupported(key)end;return v
+ end
+ if not OWN_TAGS[key]then unsupported(key)end
+ local v=package_call(self.player,'getTag',key)
+ if v==nil then return false end;return v
 end
 local function clone(self,name,skill,suit,number)
  name=name or 'slash';local p=raw_call(self,'cloneEvaluationCard',name)
@@ -98,21 +107,20 @@ end
 local function dummy(value,extra,current)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;u.current_targets=current or{};return u end
 local function patterns_for(self,class)
  if class then return patterns(class)end
- local f=self.world and self.world.strategy_facts;local a=f and f.pattern_names
+ local a=AICardCatalog.patternNames()
  if not AIValue.isList(a)then unsupported('pattern_names')end;return a
 end
 local function source_fact(self,key,kind)
  if key=='JilveWansha' and kind=='toBool' then
-  local facts=self.world and self.world.strategy_facts
-  local standard=facts and facts.standard
-  local value=standard and standard.jilve_wansha
+  local value=package_call(self.player,'getTag','JilveWansha')
+  if value==nil then value=false end
   if type(value)~='boolean' then unsupported('JilveWansha.owner_bool') end
   return value
  end
  local v=fact(self,key)
  if kind=='toPlayer'then return v~=false and package_known(self.room,'findPlayerByObjectName',v,true)or nil end
  if kind=='toInt'or kind=='toString'or kind=='toBool'then return v end
- if kind=='toIntList'then return AIList.new(v)end
+ if kind=='toIntList'then return AIList.new(v or{})end
  if kind=='toHpLost'or kind=='toMaxHp'then return v~=false and v or nil end
  if kind=='toMoveOneTime'then if v==false then return nil end;local d={};for k,x in pairs(v)do d[k]=x end;for _,k in ipairs({'card_ids','from_places'})do if d[k]then d[k]=AIList.new(d[k])end end;for _,k in ipairs({'from','to'})do if d[k]then d[k]=package_known(self.room,'findPlayerByObjectName',d[k],true)end end;return d end
  if kind=='toJudge'then if v==false then return nil end;local j={};for k,x in pairs(v)do j[k]=x end;j.who=j.who and package_known(self.room,'findPlayerByObjectName',j.who,true);j.card=j.card and CardView.new(j.card);function j:isGood(c)if not c then return self.good end;if self.outcomes_complete~=true or type(self.outcome_by_id)~='table'then unsupported('judge_outcomes.'..key)end;local n=self.outcome_by_id[tostring(package_known(c,'getEffectiveId'))];if type(n)~='boolean'then unsupported('judge_outcome.'..key)end;return n end;function j:isBad(c)return not self:isGood(c)end;return j end
@@ -136,13 +144,11 @@ end
 -- Only literals present in this package's source may enter this small grammar.
 -- It is a pure policy constructor, never Card_Parse or an action-string parser.
 local function source_ids(text)
- if type(ai_source_wire_ids)~='function'then unsupported('source_numeric_costs')end
- local row=ai_source_wire_ids('sfoflCard',text)
- if type(row)~='table'or row.kind~='source_numeric_costs'or row.package~='sfoflCard'or type(row.ids)~='table'then unsupported('source_numeric_costs')end
+ -- ListS2I(text.split('+')): pieces that are not integers are skipped.
  local out={}
- for i,id in ipairs(row.ids)do
-  if type(id)~='number'or id%1~=0 or id< -2147483648 or id>2147483647 then unsupported('source_numeric_costs')end
-  out[i]=id
+ for piece in (text..'+'):gmatch('([^+]*)%+')do
+  local id=piece:match('^%s*[-+]?%d+%s*$')and tonumber(piece)
+  if id and id>=-2147483648 and id<=2147483647 then out[#out+1]=id end
  end
  return out
 end
@@ -186,14 +192,14 @@ local function clone_native(self,name,suit,number)return clone(self,name,nil,sui
 local function disclosed_card(self,id)return package_known(self,'getKnownCardById',id)end
 local function printed_card(self,id)return package_known(self,'getPrintedCardById',id)end
 local function turn_count(self)local v=self.world and self.world.turn_count;if type(v)~='number'then unsupported('turn_count')end;return v end
-local function owner_reason(self)local f=self.world and self.world.strategy_facts;local n=f and f.owner_current_card_use_reason;if type(n)~='number'then unsupported('owner_current_card_use_reason')end;return n end
+-- The engine's current card-use reason is the reason of the card ask being answered.
+local function owner_reason(self)local n=self.request and self.request.reason;if type(n)~='number'then unsupported('owner_current_card_use_reason')end;return n end
 local function ambient_pattern(self)unsupported('ambient_pattern')end
 local function source_tag(self,key)return setmetatable({},{__index=function(_,kind)return function()return source_fact(self,key,kind)end end})end
 local function foreign_fact(self,subject,key,kind)
  if subject==self.player then return source_fact(self,key,kind)end
  unsupported('foreign_tag.'..key)
 end
-local function translation(self,key)local rows=fact(self,'translations');if type(rows[key])~='string'then unsupported('translation.'..key)end;return rows[key]end
 local function view_as_meta(self,name)unsupported('public_skill_view_as.'..name)end
 local function trigger_meta(self,name)unsupported('public_trigger_skill.'..name)end
 local function correct_target(self,kind,card)
@@ -287,7 +293,9 @@ local function source_state(self)
 end
 
 local function source_property(self,key)
- local rows=fact(self,'owner_properties');local v=rows[key];if v==nil then unsupported('owner_property.'..key)end
+ -- The viewer's own property; an absent one reads as an invalid QVariant.
+ local v=package_call(self.player,'getPropertyValue',key)
+ if v==nil then return{toString=function()return''end,toInt=function()return 0 end,toBool=function()return false end}end
  return{toString=function()if type(v)~='string'then unsupported('property_string.'..key)end;return v end,toInt=function()if type(v)~='number'then unsupported('property_number.'..key)end;return v end,toBool=function()if type(v)~='boolean'then unsupported('property_bool.'..key)end;return v end}
 end
 local function dispatch_source_type(self,card,use)
@@ -318,45 +326,8 @@ local function InsertList(first,second)
  for _,v in ipairs(second)do if AIList.isNativeList(first)then first:append(v)else table.insert(first,v)end end;return first
 end
 local function public_deck_rows(self,key)
- if type(ai_response_catalogue)~='function'then unsupported('public_deck_host')end
- local row=ai_response_catalogue(key);if AIUnsupported.is(row)then error(row,0)end
- if type(row)~='table'or row.known~=true or row.complete~=true or row.key~=key or not AIValue.isList(row.cards)then unsupported('public_deck_result')end
- local out={}
- for ordinal,face in ipairs(row.cards)do
-  if type(face)~='table'or type(face.name)~='string'or type(face.basic)~='boolean'or type(face.nd_trick)~='boolean'or type(face.damage_card)~='boolean'
-   or type(face.suit)~='number'or type(face.number)~='number'or face.evaluation_only~=true or face.id~=-1 or face.effective_id~=-1 then unsupported('public_deck_printed_row')end
-  -- Restricted public metadata object, deliberately no payment/physical-card API.
-  local card={}
-  function card:objectName()return face.name end
-  function card:isKindOf(name)if name=='BasicCard'then return face.basic end;unsupported('public_deck_kind.'..tostring(name))end
-  function card:isNDTrick()return face.nd_trick end
-  function card:isDamageCard()return face.damage_card end
-  function card:getSuit()return face.suit end
-  function card:getNumber()return face.number end
-  local assigned=false;local owner=self.player
-  local function source_effect(operation)
-   if type(row.sequence)~='string'then unsupported('public_printed_sequence')end
-   local result=ai_response_catalogue(operation,row.sequence,ordinal)
-   if AIUnsupported.is(result)then error(result,0)end
-   if type(result)~='table'or result.known~=true or result.key~=operation or result.sequence~=row.sequence or result.index~=ordinal then
-    unsupported('public_printed_source_effect.'..operation)
-   end
-   return result
-  end
-  function card:setSkillName(name)
-   if name~='sfofl_zhengan_basic'then unsupported('public_printed_setter')end
-   source_effect('sfofl_zhengan_basic_set');assigned=true
-  end
-  function card:isAvailable(player)
-   if player~=owner then unsupported('public_printed_availability_owner')end
-   if not assigned then unsupported('public_printed_availability_before_set')end
-   local result=source_effect('sfofl_zhengan_basic_available')
-   if type(result.available)~='boolean'then unsupported('public_printed_availability')end
-   return result.available
-  end
-  out[#out+1]=card
- end
- return AIList.new(out)
+ -- Printed deck rows and their hypothetical availability are not projected.
+ unsupported('public_deck_host')
 end
 local function PatternsCard(self,name,islist)
  if name~='BasicCard'or islist~=true then unsupported('public_deck_source_pattern')end
@@ -367,22 +338,20 @@ local function source_can_to_card(self,card,from,to)
  return package_known(self,'cardTargetFilter',card,{},to)
 end
 local function longmu_event(self,player,event)
- local facts=self.world and self.world.strategy_facts;local witness=facts and facts.sfofl_longmu_role_witness
- if witness==nil then unsupported('longmu.role_witness')end
- if witness==false then return end
- if type(witness)~='table'or type(witness.player)~='string'or not AIValue.isList(witness.sources)then unsupported('longmu.role_witness_schema')end
- local target=package_known(self.room,'findPlayerByObjectName',witness.player,true)
- local allowed={};for _,name in ipairs(witness.sources)do if type(name)~='string'then unsupported('longmu.source_witness')end;allowed[name]=true end
+ -- Death.who, generals, skills and marks are read from the public board.
+ if event.kind~='death'then unsupported('longmu.death')end
+ local target=package_known(self.room,'findPlayerByObjectName',event.to,true)
+ if package_known(target,'getGeneralName'):find('zombie',1,true)or package_known(target,'getGeneral2Name'):find('zombie',1,true)then return end
  local function role(p)
   local value=package_call(p,'getRole')
   if value==nil then value=package_known(self,'getRoleEstimate',p);value=package_known(self,'useKnowledgeEstimate',{value=value,status='estimate',basis='sfofl_longmu:viewer_inference_replaces_foreign_private_role',viewer=package_known(self.player,'objectName'),observer=package_known(p,'objectName')},'sfofl_longmu.role')end
   if not({lord=true,loyalist=true,rebel=true,renegade=true})[value]then unsupported('longmu.role')end;return value
  end
- -- Native witness proves Death.who, the zombie exclusion and each public
- -- skill/mark condition. Keep donor roster order and update after every write.
+ -- Keep donor roster order and update after every write.
  for _,source in ipairs(package_known(self.room,'getOtherPlayers',player))do
-  if allowed[package_known(source,'objectName')]then
-   package_call(self,'emitStrategyEffect',{kind='sfofl_longmu_role',player=witness.player,source_player=package_known(source,'objectName'),source_role=role(source),target_role=role(target)})
+  local name=package_known(source,'objectName')
+  if package_known(source,'hasSkill','sfofl_longmu')and package_known(target,'getMark','sfofl_longmu'..name)>0 then
+   package_call(self,'emitStrategyEffect',{kind='sfofl_longmu_role',player=package_known(target,'objectName'),source_player=name,source_role=role(source),target_role=role(target)})
    package_call(self,'updatePlayers')
   end
  end
@@ -2290,7 +2259,7 @@ ai_skill_use["@@sfofl_longsong"]=function(self,prompt,request)
         for _,s in sgs.qlist(skills) do
             local skillname = package_known(s,"objectName")
             if (not package_known(s,"isAttachedLordSkill")) and (not package_known(self.player,"hasSkill",skillname)) then
-                local translation = translation(self,":"..skillname)
+                local translation = package_known(s,"getDescription")
                 if string.find(translation,"出牌阶段") then
                     find = true
                     break
@@ -9067,7 +9036,7 @@ sgs.ai_skill_use_func["#sfofl_zunwei"] = function(card,use,self,request)
 		return
 	end
 
-	if #draw_t>0 and ((package_known(draw_t[1],"getHandcardNum")-package_known(self.player,"getHandcardNum")>=2 and fact(self,"slash_available")) or
+	if #draw_t>0 and ((package_known(draw_t[1],"getHandcardNum")-package_known(self.player,"getHandcardNum")>=2 and package_known(self,"slashIsAvailable",self.player)) or
 	package_known(draw_t[1],"getHandcardNum")-package_known(self.player,"getHandcardNum")>=4) then
 		source_state(self).sfofl_zunwei = "draw"
 		use.card = card
@@ -9634,7 +9603,7 @@ package_add("sfofl_zhuren").getTurnUseCard = function(self,inclusive,request)
   	for _,c in sgs.list(cards)do
 		if package_known(c,"getNumber")<6
 		and package_known(self,"getCardsNum","Slash")<1
-		and fact(self,"slash_available")
+		and package_known(self,"slashIsAvailable",self.player)
 		then return source_construct(self,"#sfofl_zhuren:"..package_known(c,"getEffectiveId")..":") end
 	end
 end
@@ -9954,7 +9923,7 @@ package_add("sfofl_nujianAttach").getTurnUseCard = function(self,inclusive,reque
 	if dummy.card then
 		source_state(self).sfofl_nujianAttachdummy = dummy
 		for _, p in sgs.qlist(package_known(self.room,"findPlayersBySkillName","sfofl_nujian")) do
-			if package_known(p,"getPile","sfofl_nujian_jian"):length() > 0 and package_known(self,"isFriend",p) and fact(self,"slash_available")	then return source_construct(self,"#sfofl_nujianAttach:.:")
+			if package_known(p,"getPile","sfofl_nujian_jian"):length() > 0 and package_known(self,"isFriend",p) and package_known(self,"slashIsAvailable",self.player)	then return source_construct(self,"#sfofl_nujianAttach:.:")
 			end
 		end
 	end
@@ -10727,7 +10696,7 @@ sgs.ai_skill_playerchosen.sfofl_n_lianjiphase = function(self, targets)
         for _,s in sgs.qlist(package_known(friend,"getVisibleSkillList")) do
             local skillname = package_known(s,"objectName")
             if (not package_known(s,"isAttachedLordSkill")) and (not package_known(self.player,"hasSkill",skillname)) then
-                local translation = translation(self,":"..skillname)
+                local translation = package_known(s,"getDescription")
                 if (string.find(translation,"结束阶段") or string.find(translation,"弃牌阶段") ) and string.find(translation,"你可以") then
                     return friend
                 end

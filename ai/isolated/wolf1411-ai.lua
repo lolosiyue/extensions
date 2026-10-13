@@ -36,12 +36,12 @@ local function absent_prototype() return nil end
 local function absent_response(wire) ai_unsupported("fixed donor response names missing SkillCard prototype",wire) end
 local function visible_card(self,id) return known(self:getKnownCardById(id) or self:getChoiceCard(id),"wolf1411.disclosed_card") end
 local function visible_hand(self,player)
-    local facts=self.world.strategy_facts
-    local rows=facts and facts.source_visible_hand_ids
-    local ids=known(rows and rows[q(player,"objectName")],"wolf1411.source_visible_hand_ids")
-    local faces={};for _,card in ipairs(q(player,"getKnownCards"))do faces[q(card,"getEffectiveId")]=card end
-    local cards={};for _,id in ipairs(ids)do cards[#cards+1]=known(faces[id],"tengxun.source_visible_card")end
-    return cards
+    -- Another player's known cards are the hand cards this viewer may see; the
+    -- visible-flag subset of the viewer's own hand is not projected.
+    if q(player,"objectName")==q(self.player,"objectName")then
+        ai_unsupported("own visible-flag hand subset is not projected","wolf1411.source_visible_hand_ids")
+    end
+    return q(player,"getKnownCards")
 end
 local function visible_role(self,player)
     local role=call(player,"getRole");if role~=nil then return role end
@@ -53,15 +53,17 @@ local function get_lalong(self)
     if known and name then return q(self.room,"findPlayerByObjectName",name) end
 end
 local function current_damage(self)
-    local facts=self.world.strategy_facts
-    local row=known(facts and facts.standard and facts.standard.current_damage,"CurrentDamageStruct")
-    if row==false then return {} end
-    local out={};for k,v in pairs(row)do out[k]=v end
-    for _,key in ipairs({"from","to"})do
-        if type(out[key])=="string"then out[key]=q(self.room,"findPlayerByObjectName",out[key],true)
-        elseif out[key]==false then out[key]=nil end
+    -- CurrentDamageStruct is set from DamageDone to DamageComplete and a trigger is
+    -- logged when its dispatch ends, so while a Damage/Damaged skill answers the
+    -- latest damage event is that damage's DamageDone or Damage stage.
+    local event=self:getLastEvent("damage")
+    local stage=event and q(event,"getTriggerEvent")
+    if stage~=sgs.DamageDone and stage~=sgs.Damage then ai_unsupported("CurrentDamageStruct is not projected","CurrentDamageStruct")end
+    local out={}
+    for key,method in pairs({from="getFrom",to="getTo"})do
+        local name=q(event,method)
+        if name~=""then out[key]=q(self.room,"findPlayerByObjectName",name,true)end
     end
-    if out.card and not AIValue.isCard(out.card)then out.card=known(CardView.new(out.card),"damage.card")end
     return out
 end
 sgs.ai_skill_playerchosen.tengxun = function(self, targets)

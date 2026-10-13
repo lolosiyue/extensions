@@ -134,7 +134,7 @@ sgs.ai_skill_cardask["@huiyuanshenli"] = function(self, data)
                     return true
                 end
             end
-            if q(self,"isEnemy",p) or (q(self,"isFriend",p) and visible_role(self,p) == "loyalist" and not hasJueqingEffect(self.player, p, sgs.card_damage_nature[q(use.card,"getClassName")]) and q(self.player,"isLord") and q(p,"getHp") == 1) then
+            if q(self,"isEnemy",p) or (q(self,"isFriend",p) and visible_role(self,p) == "loyalist" and not q(self,"hasJueqingEffect",self.player, p, sgs.card_damage_nature[q(use.card,"getClassName")]) and q(self.player,"isLord") and q(p,"getHp") == 1) then
                 if q(use.card,"isKindOf","AOE") then
                     local from = use.from
                     if q(use.card,"isKindOf","SavageAssault") then
@@ -153,15 +153,15 @@ sgs.ai_skill_cardask["@huiyuanshenli"] = function(self, data)
                     if q(self,"hasTrickEffective",use.card, p, from) then
                         if q(self,"damageIsEffective",p, sgs.DamageStruct_Normal, from) then
                             if sj_num == 0 and friend_null <= 0 then
-                                if q(self,"isEnemy",from) and hasJueqingEffect(from, p, sgs.card_damage_nature[q(use.card,"getClassName")]) then
+                                if q(self,"isEnemy",from) and q(self,"hasJueqingEffect",from, p, sgs.card_damage_nature[q(use.card,"getClassName")]) then
 
                                     local to_discard = q(self,"askForDiscard","dummyreason", 1, 1, false, false, ".")
                                     if #to_discard > 0 then return "$" .. to_discard[1] end
                                 end
-                                if q(self,"isFriend",from) and visible_role(self,p) == "loyalist" and q(from,"isLord") and q(p,"getHp") == 1 and not hasJueqingEffect(from, p, sgs.card_damage_nature[q(use.card,"getClassName")]) then
+                                if q(self,"isFriend",from) and visible_role(self,p) == "loyalist" and q(from,"isLord") and q(p,"getHp") == 1 and not q(self,"hasJueqingEffect",from, p, sgs.card_damage_nature[q(use.card,"getClassName")]) then
                                     return "."
                                 end
-                                if (not (q(self,"hasSkills",sgs.masochism_skill, p) or (q(self.player,"hasSkills","tianxiang|ol_tianxiang") and known_card(self.player, self.player, "heart") > 0)) or hasJueqingEffect(use.from, p, sgs.card_damage_nature[q(use.card,"getClassName")])) then
+                                if (not (q(self,"hasSkills",sgs.masochism_skill, p) or (q(self.player,"hasSkills","tianxiang|ol_tianxiang") and known_card(self.player, self.player, "heart") > 0)) or q(self,"hasJueqingEffect",use.from, p, sgs.card_damage_nature[q(use.card,"getClassName")])) then
                                     return "."
                                 end
                             end
@@ -326,28 +326,27 @@ end
 
 sgs.ai_use_priority.tiaojiaoCMTCard = 2.8
 
--- ChoiceMade peach results precede the public card use. Native provides this
--- witness only to the actual asking viewer; no response card identity is exposed.
+-- ChoiceMade peach results precede the public card use. The event DTO's toString()
+-- raises unsupported for choice strings it does not project; Kaiyuan flags are public.
 local choice_made=sgs.ChoiceMade or "ChoiceMade"
 sgs.ai_event_callback[choice_made]=sgs.ai_event_callback[choice_made]or{}
 sgs.ai_event_callback[choice_made].KaiyuanShengshi=function(self,player,event)
-    local facts=self.world.strategy_facts
-    local witness=known(facts and facts.kaiyuan_role_witness,"Kaiyuan ChoiceMade witness")
-    if witness==false then return end
-    if type(witness)~="table"or type(witness.player)~="string"or not AIValue.isList(witness.sources)then
-        ai_unsupported("Kaiyuan witness is malformed","KaiyuanShengshi")
-    end
-    local target=known(self.room:findPlayerByObjectName(witness.player,true),"Kaiyuan target")
+    local datastr=event:toString()
+    if datastr:sub(1,6)~="peach:"then return end
+    local target_name=datastr:split(":")[2]
+    local target=known(self.room:findPlayerByObjectName(target_name,true),"Kaiyuan target")
     local roles={lord=true,loyalist=true,rebel=true,renegade=true}
-    for _,name in ipairs(witness.sources)do
-        local source=known(self.room:findPlayerByObjectName(name,true),"Kaiyuan source")
-        local source_role=visible_role(self,source)
-        if not roles[source_role]then ai_unsupported("Kaiyuan source role inference is unresolved","KaiyuanShengshi")end
-        local target_role=visible_role(self,target)
-        if not roles[target_role]then ai_unsupported("Kaiyuan target role inference is unresolved","KaiyuanShengshi")end
-        -- The donor's local rebel->loyalist/-1000 calculation is dead code:
-        -- its actual assignment still writes source_role = 1000.
-        self:emitStrategyEffect({kind="kaiyuan_role",player=witness.player,source_player=name,source_role=source_role,target_role=target_role})
-        self:updatePlayers()
+    for _,source in ipairs(known(self.room:findPlayersBySkillName("KaiyuanShengshi"),"Kaiyuan sources"))do
+        if known(source:hasFlag("KaiyuanShengshi"),"KaiyuanShengshi flag")then
+            local name=q(source,"objectName")
+            local source_role=visible_role(self,source)
+            if not roles[source_role]then ai_unsupported("Kaiyuan source role inference is unresolved","KaiyuanShengshi")end
+            local target_role=visible_role(self,target)
+            if not roles[target_role]then ai_unsupported("Kaiyuan target role inference is unresolved","KaiyuanShengshi")end
+            -- The donor's local rebel->loyalist/-1000 calculation is dead code:
+            -- its actual assignment still writes source_role = 1000.
+            self:emitStrategyEffect({kind="kaiyuan_role",player=target_name,source_player=name,source_role=source_role,target_role=target_role})
+            self:updatePlayers()
+        end
     end
 end

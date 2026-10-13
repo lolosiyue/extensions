@@ -1,13 +1,9 @@
 -- Fixed tenyear_hc b6025acc source policy. Readonly proposals never grant payment authority.
 local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("tenyear_hc fact unknown",k)end;return v end
 local function __hc_value_call(o,k,...)if o==nil then error("attempt to index a nil value",0)end;if k=="getMark"and AIValue.isPlayer(o)then k="getStrategyMark"elseif k=="hasFlag"and AIValue.isPlayer(o)then k="getStrategyFlag"end;if type(o[k])~="function"then ai_unsupported("tenyear_hc method unavailable",k)end;return known(o[k](o,...),k)end
-local function fact(self,k)return known(known(self.world.strategy_facts.tenyear_hc,"tenyear_hc facts")[k],k)end
 local function visible(self,id)
  local c=self:getKnownCardById(id);if c then return c end
- local row=self.world.strategy_facts.round49_notified_faces
- if type(row)=="table"and row.pattern==self.request.pattern and type(row.cards)=="table"then
-  local v=row.cards[tostring(id)];if type(v)=="table"and v.effective_id==id then return CardView.new(v)end
- end
+ -- Notified-pile faces beyond the viewer's known cards are not projected.
  return known(nil,"disclosed current notified face")
 end
 -- Only the fixed notified physical callbacks use this per-call cache.
@@ -21,9 +17,17 @@ local function notified_card(self,id)
  if not c then c=self:getPreviewCardEvaluation(id);entry.cards[id]=c end
  return c
 end
-local function property(self,k)return known(known(self.world.strategy_facts.owner_skill_properties,"owner properties")[k],k)end
+-- The viewer's own dynamic property, converted like the donor's QVariant read (absent reads empty).
+local function property(self,k,kind)
+ local v=self.player:getPropertyValue(k)
+ if kind=="Bool"then return v==true elseif kind=="Int"then return tonumber(v)or 0 end
+ if kind=="StringList"then if type(v)=="table"then return v end;return(v==nil or v=="")and{}or tostring(v):split("+")end
+ if v==nil then return""end;return v
+end
+-- The viewer's own tag; an absent list reads as the donor's empty toIntList/toStringList.
 local function tag(self,k,kind)
- local r=fact(self,k);if r==false then return nil end
+ local r=self.player:getTag(k)
+ if r==nil then if kind=="IntList"or kind=="StringList"then return AIList.new({})end;return nil end
  if kind=="Player"then return known(self.room:findPlayerByObjectName(r,true),k)elseif kind=="IntList"or kind=="StringList"then return AIList.new(r)
  elseif kind=="CardUse"then local to=AIList.new({});for _,n in ipairs(r.to)do to:append(known(self.room:findPlayerByObjectName(n,true),k))end;return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=to,card=CardView.new(r.card)}
  elseif kind=="Damage"then return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=r.to and self.room:findPlayerByObjectName(r.to,true),card=r.card and CardView.new(r.card),damage=r.amount,nature=r.nature,chain=r.chain,transfer=r.transfer}
@@ -38,7 +42,7 @@ local function clone(self,name,suit,number,skill)
  local spec={source_key=self._hc_callback_key or "tenyear_hc",name=name,skill=skill or"",suit=suit,number=number,subcards={}}
  local c
  if ({fengying=true,fuping=true,jingong=true,tenyearjingong=true,choulve=true,["@@choulve!"]=true})[spec.source_key]then c=self:evaluateOwnerViewAsCard(spec)
- elseif spec.skill==""and suit==sgs.Card_NoSuit and number==0 then c=self:getEvaluationCard(name)
+ elseif spec.skill==""and suit==sgs.Card_NoSuit and number==0 then c=self:cloneEvaluationCard(name)
  else c=self:evaluateOwnerViewAsCard(spec)end
  if c then recipes[c]=spec end;return c
 end
@@ -112,21 +116,15 @@ local function can_to(self,c,from,to,targets)
  return self:cardTargetFilter(c,targets or{},to)
 end
 local function private_draw(self)ai_unsupported("source inspects undisclosed draw-pile faces","zhuide")end
-local function source_description(self,name)return known(known(self.world.strategy_facts.card_descriptions,"public card descriptions")[name],name)end
+local function source_description(self,name)ai_unsupported("card description text is not projected",name)end
 local function extra_targets(self,c)return known(self:getEvaluationCandidate(c):getExtraTargetCount(),"source extra target modifier")end
 local function residue(self,c)return known(c:getTargetModResidue(self.player),"source residue")end
 local function pingjian_catalog(self)
- if type(ai_response_choice_continuity)~="function"then ai_unsupported("Pingjian source catalog host unavailable","pingjian.catalog")end
- local row=ai_response_choice_continuity{op="pingjian_catalog"}
- if AIUnsupported.is(row)then error(row,0)end
- if type(row)~="table"or row.known~=true or type(row.skills)~="table"or type(row.descriptions)~="table"then ai_unsupported("Pingjian fixed current catalog unavailable","pingjian.catalog")end
- for _,entry in ipairs(row.skills)do
-  if type(entry)~="table"or type(entry.name)~="string"or(type(row.descriptions[entry.name])~="string"and row.descriptions[entry.name]~=false)then ai_unsupported("Pingjian catalog entry unavailable","pingjian.catalog")end
- end
- return row.skills,row.descriptions
+ -- The candidate pool comes from generals off the board; neither it nor their descriptions are projected.
+ ai_unsupported("Pingjian candidate skill catalog is not projected","pingjian.catalog")
 end
 local function pingjian_skill(self,name,rows)local text=rows[name];if text==false then return nil end;return{getDescription=function()return known(text,name)end}end
-local function pingjian_play(self,name)return known(known(fact(self,"pingjian_enabled_at_play"),"temporary skill enabled facts")[name],name)end
+local function pingjian_play(self,name)ai_unsupported("enabled-at-play of an unowned skill is not projected",name)end
 local function state_encode(self,v)
  if v==nil then return{type="nil"}end
  if AIValue.isPlayer(v)then return{type="player",name=v:objectName()}end
@@ -163,9 +161,9 @@ local function BeMan(room,owner,dead)
 end
 local function list_i2c(self,ids)local cards=AIList.new({});for _,id in ipairs(ids)do cards:append(visible(self,id))end;return cards end
 local function source_patterns(self,class)
- local names=known(self.world.strategy_facts.pattern_names,"public pattern names")
+ local names=known(AICardCatalog.patternNames(),"public pattern names")
  if type(class)~="string"then return names end
- local classes=known(self.world.strategy_facts.pattern_class_names,"public class-to-name catalog")
+ local classes=known(AICardCatalog.patternClassNames(),"public class-to-name catalog")
  return classes[class]or class
 end
 local function RandomList(items)
@@ -183,11 +181,8 @@ local function observation_mark(self,key)
  return __hc_value_call(self.player,"getMark",key)
 end
 local function pattern_card(self,name)
- if type(ai_sample_pattern_log_name)~="function"then ai_unsupported("public PatternsCard sampling endpoint missing",name)end
- local result=ai_sample_pattern_log_name(name)
- if type(result)~="table"or result.kind~="pattern_log_name"or result.pattern~=name or type(result.found)~="boolean"then ai_unsupported("invalid PatternsCard sample",name)end
- if not result.found then return nil end
- return CardView.new(known(result.printed_card,"sampled printed descriptor"))
+ -- Donor PatternsCard(name) yields a printed card of that name; callers read only its printed kind.
+ return self:getEvaluationCard(name)
 end
 
 sgs.ai_skill_invoke.yiyong = function(self,data)
@@ -571,12 +566,12 @@ sgs.ai_use_value.CaizhuangCard = 7.4
 sgs.ai_use_priority.CaizhuangCard = 5.8
 
 -- R51: membership is PUBLIC discard absence/presence, not unknown private place.
--- The native producer validates the current public pile's mapping, object and face.
+-- Read straight from the projected public discard pile.
 local function jijiao_in_discard(self,id)
- local rows=fact(self,"jijiao_discard")
- local v=rows[tostring(id)]
- if type(v)~="boolean"then return ai_unsupported("jijiao_discard","current public discard membership is unknown")end
- return v
+ local ids=self.room:getDiscardPile()
+ if not ids then return ai_unsupported("current public discard pile is unknown","jijiao_discard")end
+ for _,x in ipairs(ids)do if x==id then return true end end
+ return false
 end
 local function jijiao_discard_card(self,id)
  for _,card in sgs.list(self.room:getDiscardCards())do
@@ -987,7 +982,7 @@ sgs.ai_skill_playerchosen.tenyearluochong = function(self,players)
 		and self:doDisCard(target,"ej")
 		then return target end
 	end
-	if known(self.world.strategy_facts.draw_pile_count,"public draw pile count")>80
+	if known(self.world.draw_pile_count,"public draw pile count")>80
 	and __hc_value_call(self.player,"hasSkill","tenyearaichen")
 	and __hc_value_call(self.player,"getMark","luochongChosen-Clear")<1
 	and players:contains(self.player)
@@ -1690,16 +1685,10 @@ sgs.ai_fill_skill["xiaowu"]=function(self,inclusive,request)
 	return policy(self,"@XiaowuCard=.")
 end
 
+-- The donor sets this global for the follow-up question, which the gameplay SmartAI
+-- answers; the isolated VM cannot write the gameplay VM's globals.
 local function write_hc_source_global(self,key,value)
- local encoded
- if value==nil then encoded={kind='nil'}
- elseif AIValue.isPlayer(value)then encoded={kind='player',name=value:objectName()}
- elseif key=='xiaowu_n'and value==0 then encoded={kind='scalar',value=0}
- else ai_unsupported('fixed source global value is not representable',key)end
- if type(ai_response_choice_continuity)~='function'then ai_unsupported('actual source global writer unavailable',key)end
- local r=ai_response_choice_continuity{op='source_global',key=key,value=encoded}
- if AIUnsupported.is(r)then error(r,0)end
- if type(r)~='table'or r.known~=true or r.written~=true then ai_unsupported('actual source global write is not admitted',key)end
+ ai_unsupported('gameplay SmartAI global writer is not available',key)
 end
 
 sgs.ai_skill_use_func["XiaowuCard"] = function(card,use,self)
@@ -4291,6 +4280,17 @@ local function gongjianDoNotDis2(self,to)
 	if to:getCardCount(true)<=2 and self:needToThrowArmor(to) then return true end
 end
 
+-- The room tag holds the previous slash's targets, written at its CardFinished;
+-- read them back from the bounded event log.
+local function gongjian_slash_targets(self)
+ local events=known(self.world.events,"event log")
+ for i=#events,1,-1 do
+  local e=events[i];local card=type(e.details)=="table"and e.details.card
+  if e.kind=="card_use"and e.trigger_event==sgs.CardFinished and card and CardView.new(card):isKindOf("Slash")then return e.targets or{}end
+ end
+ ai_unsupported("previous slash is outside the bounded event log","gongjian_slash_targets")
+end
+
 sgs.ai_skill_invoke.gongjian = function(self,data)
 	local player = data:toPlayer()
 	if self:isFriend(player) then return false end
@@ -4307,7 +4307,7 @@ sgs.ai_skill_invoke.gongjian = function(self,data)
 	end
 
 	local players = {}
-	local names = fact(self,"gongjian_slash_targets")
+	local names = gongjian_slash_targets(self)
 	for _,p in sgs.qlist(use.to)do
 		if self:isFriend(p) or not table.contains(names,p:objectName()) then continue end
 		local n = __hc_value_call(p,"getHandcardNum")
@@ -4635,7 +4635,7 @@ end
 
 sgs.ai_skill_use["@@jijing"] = function(self,prompt)
 	local valid,ts = {},AIList.new({})
-	local jn = property(self,"jijing_judge")
+	local jn = property(self,"jijing_judge","Int")
 	local function toids(cs)
 		local ids = {}
 		for _,c1 in sgs.list(cs)do
@@ -5051,7 +5051,7 @@ sgs.ai_skill_invoke.pingjian = function(self,data)
 end
 
 local function PingjianSkill(self,player)
-	local pingjian_skills = property(self,"pingjian_has_used_skills")
+	local pingjian_skills = property(self,"pingjian_has_used_skills","StringList")
 	local sks,descriptions = pingjian_catalog(self)
 	for i=1,99 do
 		if #sks<1 then break end
@@ -5334,29 +5334,28 @@ sgs.ai_fill_skill["zunwei"] = function(self,inclusive,request)
 	return policy(self,"@ZunweiCard=.",request)
 end
 
+-- The donor writes these registries for the zunwei choice, which the gameplay SmartAI
+-- answers; the isolated VM cannot write the gameplay VM's registries.
 local function zunwei_source_prefix(self,registry,key,value)
- if type(ai_response_choice_continuity)~='function'then ai_unsupported('Zunwei actual source registry unavailable',key)end
- local r=ai_response_choice_continuity{op='source_prefix',registry=registry,key=key,value={kind='scalar',value=value}}
- if AIUnsupported.is(r)then error(r,0)end
- if type(r)~='table'or r.known~=true or r.written~=true then ai_unsupported('Zunwei actual source prefix is not admitted',key)end
+ ai_unsupported('gameplay SmartAI registry writer is not available',key)
 end
 sgs.ai_skill_use_func.ZunweiCard = function(card,use,self)
 	local recover_t,draw_t,equip_t = {},{},{}
-	if not property(self,"zunwei_draw") and self:canDraw() then
+	if not property(self,"zunwei_draw","Bool") and self:canDraw() then
 		for _,p in sgs.qlist(self.room:getOtherPlayers(self.player))do
 			if __hc_value_call(p,"getHandcardNum")>__hc_value_call(self.player,"getHandcardNum") then
 				table.insert(draw_t,p)
 			end
 		end
 	end
-	if not property(self,"zunwei_recover") and __hc_value_call(self.player,"getLostHp")>0 then
+	if not property(self,"zunwei_recover","Bool") and __hc_value_call(self.player,"getLostHp")>0 then
 		for _,p in sgs.qlist(self.room:getOtherPlayers(self.player))do
 			if __hc_value_call(p,"getHp")>__hc_value_call(self.player,"getHp") then
 				table.insert(recover_t,p)
 			end
 		end
 	end
-	if not property(self,"zunwei_equip") and self.player:hasEquipArea() then
+	if not property(self,"zunwei_equip","Bool") and self.player:hasEquipArea() then
 		for _,p in sgs.qlist(self.room:getOtherPlayers(self.player))do
 			if p:getEquips():length()>self.player:getEquips():length() then
 				table.insert(equip_t,p)
@@ -8138,6 +8137,9 @@ sgs.ai_use_value.ZhuningCard = 9.4
 sgs.ai_use_priority.ZhuningCard = 2.8
 
 sgs.ai_skill_askforag.zhuning = function(self,card_ids)
+	-- SmartAI's @@zhuning use reads the plan this choice saves. That prompt belongs to
+	-- a V1 view-as skill, which SmartAI answers, so SmartAI keeps both steps.
+	ai_unsupported("@@zhuning follow-up is answered by SmartAI","zhuning")
 	for _,id in sgs.list(card_ids)do
 		local c = known(self:getChoiceCard(id),"zhuning offered source face")
 		c = clone(self,c:objectName())
@@ -8151,6 +8153,8 @@ sgs.ai_skill_askforag.zhuning = function(self,card_ids)
 end
 
 sgs.ai_skill_use["@@zhuning"] = function(self,prompt)
+	-- A V1 view-as prompt; SmartAI answers it with the plan its own AG saved.
+	ai_unsupported("V1 view-as prompt is answered by SmartAI","@@zhuning")
 	self.zhuning_d = self:readZhuningSavedPlan()
 	if self.zhuning_d then
 		local tos = {}
@@ -9251,6 +9255,9 @@ sgs.ai_skill_invoke.yuanrong = function(self,data)
 end
 
 sgs.ai_skill_askforag.yuanrong = function(self,card_ids)
+	-- SmartAI's @@yuanrong! use reads the ids this choice saves. That prompt belongs
+	-- to a V1 view-as skill, which SmartAI answers, so SmartAI keeps both steps.
+	ai_unsupported("@@yuanrong! follow-up is answered by SmartAI","yuanrong")
     self:writeCurrentSourceIds(card_ids)
 	for _,id in sgs.list(card_ids)do
 		local c = visible(self,id)
@@ -9263,6 +9270,8 @@ sgs.ai_skill_askforag.yuanrong = function(self,card_ids)
 end
 
 sgs.ai_skill_use["@@yuanrong!"] = function(self,prompt)
+	-- A V1 view-as prompt; SmartAI answers it with the ids its own AG saved.
+	ai_unsupported("V1 view-as prompt is answered by SmartAI","@@yuanrong!")
 	local ids = tag(self,"yuanrongForAI","IntList");
 	for _,id in sgs.list(self:readCurrentSourceIds())do
 		local c = visible(self,id)
@@ -9501,6 +9510,9 @@ sgs.ai_use_value.GengduCard = 9.4
 sgs.ai_use_priority.GengduCard = 2.8
 
 sgs.ai_skill_askforag.gengdu = function(self,card_ids)
+	-- SmartAI's @@gengdu use reads the plan this choice saves. That prompt belongs to
+	-- a V1 view-as skill, which SmartAI answers, so SmartAI keeps both steps.
+	ai_unsupported("@@gengdu follow-up is answered by SmartAI","gengdu")
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	cards = self:sortByKeepValue(cards)
 	for _,id in sgs.list(card_ids)do
@@ -9537,6 +9549,8 @@ sgs.ai_skill_askforag.gengdu = function(self,card_ids)
 end
 
 sgs.ai_skill_use["@@gengdu"] = function(self,prompt)
+	-- A V1 view-as prompt; SmartAI answers it with the plan its own AG saved.
+	ai_unsupported("V1 view-as prompt is answered by SmartAI","@@gengdu")
 	self.gengduUse = self:readGengduSavedPlan()
 	local d = self.gengduUse
 	if d.card then

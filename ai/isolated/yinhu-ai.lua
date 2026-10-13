@@ -2,8 +2,8 @@
 local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("yinhu fact unknown",k)end;return v end
 local function q(o,k,...)if o==nil then error("attempt to index a nil value",0)end;if k=="getMark"and AIValue.isPlayer(o)then k="getStrategyMark"end;if k=="hasFlag"and AIValue.isPlayer(o)then k="getStrategyFlag"end;if type(o[k])~="function"then ai_unsupported("yinhu helper unavailable",k)end;return known(o[k](o,...),k)end
 local function known_card(self,id)return known(self:getKnownCardById(id),"disclosed card "..tostring(id))end
-local function fact(self,k)return known(known(self.world.strategy_facts.yinhu,"yinhu")[k],k)end
-local function property(self,k)return known(known(self.world.strategy_facts.owner_skill_properties,"owner properties")[k],k)end
+-- The viewer's own property, read like the donor's toString() (absent reads "").
+local function property(self,k)local v=self.player:getPropertyValue(k);if v==nil then return""end;return v end
 local function write(self,key,v)
  if key=="yhbianzhan_c"then v=v and v:getEffectiveId()
  elseif key=="yhyuren_to"then if v then local names={};for _,p in sgs.list(v)do names[#names+1]=p:objectName()end;v=names end
@@ -45,14 +45,8 @@ local function converted_use(self,skill,c,tos)
  return {kind="use_card",card_spec=known(paid,"selected response"):toCardSpec(),targets=tos}
 end
 local function visible_draw_cards(self)
- -- Native must supply source-ordered publicly witnessed draw cards with lawful candidate admission.
- local rows=fact(self,"visible_draw_cards");local cs={}
- for _,row in ipairs(rows)do
-  local card=known(self:getKnownCardById(row.id),"public draw card")
-  if row.authorized~=true then ai_unsupported("visible draw card has no issued action domain","yhbuque")end
-  cs[#cs+1]=card
- end
- return cs
+ -- The donor walks the draw pile, whose contents are not projected.
+ ai_unsupported("draw-pile contents are not projected","yhbuque")
 end
 local function foreign_plan(self,player,card)
  ai_unsupported("source calls another player's private SmartAI planning; no viewer-equivalent planner","yhmeiying")
@@ -760,7 +754,7 @@ sgs.ai_skill_playerchosen.yhchuzhu = function(self,players)
 	destlist = self:sort(destlist,"hp")
 	if self:getCardsNum("Peach")+self:getCardsNum("Analeptic")>0
 	then return end
-	local n = fact(self,"qingsi_num")
+	local n = tonumber(self.player:getTag("YHQingsiNum")) or 0
     for _,target in sgs.list(destlist)do
 		if known(self:isFriend(target),"yhchuzhu.isFriend")
 		and q(target,"getLostHp")>=n
@@ -780,7 +774,7 @@ sgs.ai_fill_skill.yhyuren = function(self,inclusive,request)
 		if q(c,"isKindOf","Slash") then table.insert(tocs,c) end
 	end
 	if #tocs<1 then return end
-	for dc,pn in sgs.list(known(self.world.strategy_facts.pattern_names,"patterns"))do
+	for dc,pn in sgs.list(known(AICardCatalog.patternNames(),"patterns"))do
 		dc = self:getEvaluationCard(pn)
 		if dc and q(dc,"isKindOf","BasicCard")
 		and q(dc,"isAvailable",self.player)

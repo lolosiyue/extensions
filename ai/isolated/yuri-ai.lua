@@ -1,31 +1,23 @@
 -- Fixed yuri b6025acc source policy. Readonly proposals never grant payment authority.
 local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("yuri fact unknown",k)end;return v end
 local function __yuri_value_call(o,k,...)if o==nil then error("attempt to index a nil value",0)end;if k=="getMark"and AIValue.isPlayer(o)then k="getStrategyMark"elseif k=="hasFlag"and AIValue.isPlayer(o)then k="getStrategyFlag"end;if type(o[k])~="function"then ai_unsupported("yuri method unavailable",k)end;return known(o[k](o,...),k)end
-local function fact(self,k)return known(known(self.world.strategy_facts.yuri,"yuri facts")[k],k)end
+local function fact(self,k)ai_unsupported("yuri fact is not projected",k)end
 local function visible(self,id)return known(self:getKnownCardById(id),"disclosed card")end
-local function property(self,k)return known(known(self.world.strategy_facts.owner_skill_properties,"owner properties")[k],k)end
+-- The viewer's own property; the reader uses toString, so absent reads as "".
+local function property(self,k)local v=self.player:getPropertyValue(k);if v==nil then return""end;return v end
 local function tag(self,k,kind)
- local r=fact(self,k);if r==false then return nil end
- -- R50 finite typed QVariant results. False pointer fields are native null,
- -- not a Player/Card value; absent scoped facts remain branded unknown above.
- if r.r50_type~=nil then
-  if r.r50_type~=kind then ai_unsupported("Yuri current tag type mismatch",k)end
-  local function player(n)if n==nil or n==false then return nil end;return known(self.room:findPlayerByObjectName(n,true),k)end
-  local function card(v)if v==nil or v==false then return nil end;return CardView.new(v)end
-  if kind=="CardUse"then
-   local to=AIList.new({});for _,n in ipairs(known(r.to,k))do to:append(player(n))end
-   return{from=player(r.from),to=to,card=card(r.card)}
-  elseif kind=="SlashEffect"then return{from=player(r.from),to=player(r.to),slash=card(r.slash),jink_num=r.jink_num,drank=r.drank,nature=r.nature}
-  elseif kind=="Damage"then return{from=player(r.from),to=player(r.to),card=card(r.card),damage=r.amount,nature=r.nature,chain=r.chain,transfer=r.transfer,by_user=r.by_user}
-  end
-  ai_unsupported("unsupported Yuri current tag type",k)
+ -- Only the viewer's own tags are projected; nil is an absent tag, whose QVariant
+ -- conversion is the default struct. Room tags are not projected.
+ if k=="SlashMissed"and kind=="SlashEffect"then
+  if self.player:getTag(k)~=nil then ai_unsupported("SlashEffectStruct tags are not projected",k)end
+  return{jink_num=1,drank=0,nature=sgs.DamageStruct_Normal}
  end
- if kind=="Player"then return known(self.room:findPlayerByObjectName(r,true),k)elseif kind=="IntList"or kind=="StringList"then return AIList.new(r)
- elseif kind=="CardUse"then local to=AIList.new({});for _,n in ipairs(r.to)do to:append(known(self.room:findPlayerByObjectName(n,true),k))end;return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=to,card=CardView.new(r.card)}
- elseif kind=="Dying"then return{who=r.who and self.room:findPlayerByObjectName(r.who,true),damage=r.damage}
- elseif kind=="SlashEffect"then return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=r.to and self.room:findPlayerByObjectName(r.to,true),slash=r.slash and CardView.new(r.slash),jink_num=r.jink_num,drank=r.drank,nature=r.nature}
- elseif kind=="Damage"then return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=r.to and self.room:findPlayerByObjectName(r.to,true),card=r.card and CardView.new(r.card),damage=r.amount,nature=r.nature,chain=r.chain,transfer=r.transfer}
- else return r end
+ if k~="owner_flexible"or kind~="CardUse"then ai_unsupported("Yuri tag is not projected",k)end
+ local r=self.player:getTag("flexible")
+ if type(r)~="table"or type(r.to)~="table"then return{to=AIList.new({})}end
+ local function player(n)if n==nil or n==""then return nil end;return known(self.room:findPlayerByObjectName(n,true),k)end
+ local to=AIList.new({});for _,n in ipairs(r.to)do to:append(player(n))end
+ return{from=player(r.from),to=to,card=type(r.card)=="table"and next(r.card)~=nil and CardView.new(r.card)or nil}
 end
 local function dummy_plan(value,extra,current)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;u.current_targets=current or {};return u end
 local recipes=setmetatable({},{__mode="k"})
@@ -89,7 +81,7 @@ local function can_to(self,c,from,to,targets)
 end
 local function pending_tag(self,name,value)ai_unsupported("temporary yb_zhuzhan2 input requires pure callback adapter",name)end
 local function private_draw(self)ai_unsupported("source inspects undisclosed draw-pile faces","zhachang")end
-local function source_description(self,name)return known(known(self.world.strategy_facts.card_descriptions,"public card descriptions")[name],name)end
+local function source_description(self,name)ai_unsupported("public card descriptions are not projected",name)end
 local function extra_targets(self,c)return known(self:getEvaluationCandidate(c):getExtraTargetCount(),"source extra target modifier")end
 local function residue(self,c)return known(c:getTargetModResidue(self.player),"source residue")end
 local function pingjian_catalog(self)return known(fact(self,"pingjian_skills"),"audited ordered AI skill catalog")end
@@ -133,9 +125,9 @@ local function BeMan(room,owner,dead)
 end
 local function list_i2c(self,ids)local cards=AIList.new({});for _,id in ipairs(ids)do cards:append(visible(self,id))end;return cards end
 local function source_patterns(self,class)
- local names=known(self.world.strategy_facts.pattern_names,"public pattern names")
+ local names=known(AICardCatalog.patternNames(),"public pattern names")
  if type(class)~="string"then return names end
- local classes=known(self.world.strategy_facts.pattern_class_names,"public class-to-name catalog")
+ local classes=known(AICardCatalog.patternClassNames(),"public class-to-name catalog")
  return classes[class]or class
 end
 local function RandomList(items)
@@ -148,11 +140,7 @@ local function observation_mark(self,key)
  return self:sourceImmediateEffect("heapridge","read",self.player,key)
 end
 local function pattern_card(self,name)
- if type(ai_sample_pattern_log_name)~="function"then ai_unsupported("public PatternsCard sampling endpoint missing",name)end
- local result=ai_sample_pattern_log_name(name)
- if type(result)~="table"or result.kind~="pattern_log_name"or result.pattern~=name or type(result.found)~="boolean"then ai_unsupported("invalid PatternsCard sample",name)end
- if not result.found then return nil end
- return CardView.new(known(result.printed_card,"sampled printed descriptor"))
+ ai_unsupported("public PatternsCard sampling is not projected",name)
 end
 
 local function printed(self,id)return known(self:getPrintedCardById(id),"lawful printed card descriptor")end
@@ -187,10 +175,7 @@ local function viewer_role(self,p)
 end
 local function forbidden_foreign_ai(self)ai_unsupported("other AI private state is not available","yuri")end
 local function role_event(self,p,kind,role)
- local all=known(self.world.strategy_facts.role_row_update_witness,"public role event witness")
- local names=known(all[kind],kind);local present=false
- for _,name in ipairs(names)do if name==p:objectName()then present=true;break end end
- if not present then ai_unsupported("source role event target lacks public witness",kind)end
+ -- Callers check the public skill/mark condition on p before reaching here.
  if role~="lord"and role~="loyalist"and role~="rebel"and role~="renegade"then ai_unsupported("source role event inference unresolved",kind)end
  local assigned=kind=="Cjiyongbing"and role or(role=="rebel"and"loyalist"or role)
  self:emitStrategyEffect({kind="role_row_update",player=p:objectName(),role=role,assigned_role=assigned,assigned_value=kind=="Cjiyongbing"and 1000 or 0,source_skill=kind})
@@ -4633,7 +4618,7 @@ sgs.ai_skill_cardask["@arkoraask"] = function(self,data,pattern,target)
 	if self:isFriend(target) then
 		if self:findLeijiTarget(self.player,50,target) then return getarkoraJink() end
 		if __yuri_value_call(self.player,"getLostHp")==0 and __yuri_value_call(self.player,"isMale") and __yuri_value_call(target,"hasSkill","jieyin") then return "." end
-		if not hasJueqingEffect(target,self.player) then
+		if not self:hasJueqingEffect(target,self.player) then
 			if (__yuri_value_call(target,"hasSkill","nosrende") or __yuri_value_call(target,"hasSkill","rende") and not target:hasUsed("RendeCard")) and __yuri_value_call(self.player,"hasSkill","jieming")
 			or __yuri_value_call(target,"hasSkill","pojun") and not __yuri_value_call(self.player,"faceUp")
 			then return "." end

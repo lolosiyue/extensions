@@ -12,20 +12,18 @@ local function q(object,key,...)
     if AIUnsupported and AIUnsupported.is(value)then error(value,0)end
     return known(value,key)
 end
-local function fact(self,key)
-    local row=self.world.strategy_facts and self.world.strategy_facts.bei
-    if type(row)~="table"then ai_unsupported("bei fact group unknown",key)end
-    return known(row[key],key)
-end
-local function fact_player(self,key)
-    local name=fact(self,key)
-    if name==false then return nil end
+-- The donor reads the viewer's own tags/properties; an absent one reads as the
+-- QVariant default (nil player, "" string, empty list).
+local function tag_player(self,key)
+    local name=self.player:getTag(key)
+    if name==nil then return nil end
+    if type(name)~="string"then ai_unsupported("owner player tag malformed",key)end
     return known(self.room:findPlayerByObjectName(name,true),key)
 end
 local function property(self,key)
-    local fields=self.world.strategy_facts and self.world.strategy_facts.owner_skill_properties
-    local value=type(fields)=="table"and fields[key]
-    if type(value)~="string"then ai_unsupported("owner property unknown",key)end
+    local value=self.player:getPropertyValue(key)
+    if value==nil then return "" end
+    if type(value)~="string"then ai_unsupported("owner property malformed",key)end
     return value
 end
 local function yinni(self,player)
@@ -87,9 +85,10 @@ end
 
 --宜室
 sgs.ai_skill_use["@@jinyishi"] = function(self,data)
-	local card_ids = fact(self,"jinyishi_card_ids")
+	local card_ids = self.player:getTag("jinyishiForAI") or {}
+	if not AIValue.isList(card_ids) then ai_unsupported("owner id-list tag malformed","jinyishiForAI") end
 	card_ids = sgs.QList2Table(card_ids)
-	local who = fact_player(self,"jinyishi_from")
+	local who = tag_player(self,"jinyishi_from")
 
 	if self:isLihunTarget(self.player,#card_ids-1) then return "." end
 	local invoke = (self:isFriend(who) and not (q(who,"hasSkill","kongcheng") and q(who,"isKongcheng")))
@@ -460,7 +459,7 @@ end
 
 --慈威
 sgs.ai_skill_cardask["@jinciwei-discard"] = function(self,data)
-	local player = fact_player(self,"jinciwei_player")
+	local player = tag_player(self,"jinciwei-player")
 	if self:isEnemy(player) then
 		local to_discard = self:askForDiscard("dummyreason",1,1,false,true)
 		if #to_discard>0 then return "$"..to_discard[1] end

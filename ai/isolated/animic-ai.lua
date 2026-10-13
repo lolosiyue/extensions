@@ -55,7 +55,8 @@ sgs.ai_skill_playerchosen.modao = function(self, targets)
     targets = copy(targets)
     targets = self:sort(targets, "handcard_defense")
     for _, target in ipairs(targets) do
-        if self:isEnemy(target) and self:doDisCard(target, "h", true, known(self.world.strategy_facts.animic.owner_modao,"owner modao tag")) then
+        -- Own tag; QVariant::toInt reads an absent or non-numeric choice as 0.
+        if self:isEnemy(target) and self:doDisCard(target, "h", true, tonumber(self.player:getTag("modao")) or 0) then
             return target
         end
     end

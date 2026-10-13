@@ -70,19 +70,16 @@ sgs.ai_skill_invoke.dandiao=function(self)
     return #condition>0
 end
 local function goodTarget(self,target)
-    local facts=self.world and self.world.strategy_facts
-    local global=facts and facts.lolihime_good_target
-    if type(global)~="table" or global.known~=true then ai_unsupported("effective sgs.isGoodTarget metadata is unknown","lolihime.isGoodTarget")end
-    if global.present==false then
+    -- The donor's global sgs.isGoodTarget has one definer, the Original Hegemony AI
+    -- (heg-standard_cards-ai.lua:61), loaded exactly when the hegemony facts say so.
+    local h=AIHegemony.facts(self.world)
+    if type(h)~="table" then ai_unsupported("effective sgs.isGoodTarget metadata is unknown","lolihime.isGoodTarget")end
+    if h.original_overrides_loaded~=true then
         q(self,"useKnowledgeEstimate",{status="estimate",value=true,viewer=q(self.player,"objectName"),
             basis="donor_error_repair.lolihime_missing_sgs_isGoodTarget_to_common_method"},"lolihime.dandiao")
         return q(self,"isGoodTarget",target)
     end
-    if global.source=="@lua/ai/original-hegemony/heg-standard_cards-ai.lua" and global.line==61 then
-        return q(self,"originalHegemonyGlobalGoodTargetWithoutSelf",target)
-    end
-    -- A replaced or unknown global is not this fixed provider.
-    ai_unsupported("effective global isGoodTarget provider is not migrated","lolihime.isGoodTarget")
+    return q(self,"originalHegemonyGlobalGoodTargetWithoutSelf",target)
 end
 sgs.ai_skill_playerchosen.dandiao=function(self)
     local enemies=known(self.enemies,"enemies")

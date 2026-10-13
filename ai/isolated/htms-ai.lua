@@ -1,21 +1,24 @@
 -- Fixed htms b6025acc source policy. Readonly proposals never grant payment authority.
 local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("htms fact unknown",k)end;return v end
 local function __htms_value_call(o,k,...)if o==nil then error("attempt to index a nil value",0)end;if k=="getMark"and AIValue.isPlayer(o)then k="getStrategyMark"elseif k=="hasFlag"and AIValue.isPlayer(o)then k="getStrategyFlag"end;if type(o[k])~="function"then ai_unsupported("htms method unavailable",k)end;return known(o[k](o,...),k)end
-local function fact(self,k)return known(known(self.world.strategy_facts.htms,"htms facts")[k],k)end
+-- The remaining htms facts (Room tags voidid/voidtarget, pingjian catalogs, use history,
+-- other players' properties) are not projected.
+local function fact(self,k)ai_unsupported("htms fact is not projected",k)end
 local function visible(self,id)return known(self:getKnownCardById(id),"disclosed card")end
-local function property(self,k)return known(known(self.world.strategy_facts.owner_skill_properties,"owner properties")[k],k)end
+-- Own dynamic property read as the donor's toString(): absent is "".
+local function property(self,k)local v=self.player:getPropertyValue(k);if v==nil then return""end;return known(type(v)=="string"and v or nil,k)end
+-- Room tags are not projected, except the two the decision context carries as its
+-- `damage` (CurrentDamageStruct) and `use` (CurrentUseStruct); these asks carry no
+-- struct data of their own. A missing one stays unknown here.
 local function tag(self,k,kind)
- local r=fact(self,k);if r==false then return nil end
- if r.current_event==true and (k=="CurrentDamageStruct"or k=="CurrentUseStruct"or k=="huanggui"or k=="tcmfs"or k=="htms_lunbian")then
-  local function who(n)if n==false then return nil end;return known(self.room:findPlayerByObjectName(known(n,k),true),k)end
-  local c;if r.card~=false then c=CardView.new(known(r.card,k))end
-  if kind=="CardUse"then local to=AIList.new({});for _,n in ipairs(known(r.to,k))do to:append(who(n))end;return{from=who(r.from),to=to,card=c}end
-  if kind=="Damage"then return{from=who(r.from),to=who(r.to),card=c,damage=known(r.amount,k),nature=known(r.nature,k),chain=known(r.chain,k),transfer=known(r.transfer,k)}end
- end
- if kind=="Player"then return known(self.room:findPlayerByObjectName(r,true),k)elseif kind=="IntList"or kind=="StringList"then return AIList.new(r)
- elseif kind=="CardUse"then local to=AIList.new({});for _,n in ipairs(r.to)do to:append(known(self.room:findPlayerByObjectName(n,true),k))end;return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=to,card=CardView.new(r.card)}
- elseif kind=="Damage"then return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=r.to and self.room:findPlayerByObjectName(r.to,true),card=r.card and CardView.new(r.card),damage=r.amount,nature=r.nature,chain=r.chain,transfer=r.transfer}
- else return r end
+ local key=(k=="CurrentDamageStruct"and"damage")or(k=="CurrentUseStruct"and"use")or nil
+ if not key then ai_unsupported("room tag is not projected",k)end
+ local v=known(self:getDecisionContext()[key],k)
+ local context=type(self.request.options)=="table"and self.request.options.context
+ local raw=type(context)=="table"and type(context[key])=="table"and context[key]or{}
+ for _,f in ipairs({"from","to"})do if raw[f]==""then v[f]=nil end end
+ if type(raw.card)~="table"or next(raw.card)==nil then v.card=nil end
+ return v
 end
 local function dummy_plan(value,extra,current)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;u.current_targets=current or {};return u end
 local recipes=setmetatable({},{__mode="k"})
@@ -83,7 +86,7 @@ local function can_to(self,c,from,to,targets)
 end
 local function pending_tag(self,name,value)ai_unsupported("temporary yb_zhuzhan2 input requires pure callback adapter",name)end
 local function private_draw(self)ai_unsupported("source inspects undisclosed draw-pile faces","zhachang")end
-local function source_description(self,name)return known(known(self.world.strategy_facts.card_descriptions,"public card descriptions")[name],name)end
+local function source_description(self,name)ai_unsupported("card descriptions are not projected",name)end
 local function extra_targets(self,c)return known(self:getEvaluationCandidate(c):getExtraTargetCount(),"source extra target modifier")end
 local function residue(self,c)return known(c:getTargetModResidue(self.player),"source residue")end
 local function pingjian_catalog(self)return known(fact(self,"pingjian_skills"),"audited ordered AI skill catalog")end
@@ -127,9 +130,9 @@ local function BeMan(room,owner,dead)
 end
 local function list_i2c(self,ids)local cards=AIList.new({});for _,id in ipairs(ids)do cards:append(visible(self,id))end;return cards end
 local function source_patterns(self,class)
- local names=known(self.world.strategy_facts.pattern_names,"public pattern names")
+ local names=known(AICardCatalog.patternNames(),"public pattern names")
  if type(class)~="string"then return names end
- local classes=known(self.world.strategy_facts.pattern_class_names,"public class-to-name catalog")
+ local classes=known(AICardCatalog.patternClassNames(),"public class-to-name catalog")
  return classes[class]or class
 end
 local function RandomList(items)
@@ -146,12 +149,9 @@ local function observation_mark(self,key)
  if present then return value end
  return __htms_value_call(self.player,"getMark",key)
 end
+-- PatternsCard scans Engine::getRandomCards, whose mode/banlist filtering is not projected.
 local function pattern_card(self,name)
- if type(ai_sample_pattern_log_name)~="function"then ai_unsupported("public PatternsCard sampling endpoint missing",name)end
- local result=ai_sample_pattern_log_name(name)
- if type(result)~="table"or result.kind~="pattern_log_name"or result.pattern~=name or type(result.found)~="boolean"then ai_unsupported("invalid PatternsCard sample",name)end
- if not result.found then return nil end
- return CardView.new(known(result.printed_card,"sampled printed descriptor"))
+ ai_unsupported("PatternsCard random card pool is not projected",name)
 end
 
 local function printed(self,id)return known(self:getPrintedCardById(id),"lawful printed card descriptor")end
@@ -173,7 +173,7 @@ local function history_use(self,id)
 end
 local function foreign_property(self,p,k)
  if p:objectName()==self.player:objectName()then return property(self,k)end
- local rows=fact(self,"public_player_properties");return known(known(rows[p:objectName()],"public target properties")[k],k)
+ ai_unsupported("other players' properties are not projected",k)
 end
 local function complete_hand(self,p)
  if p:objectName()==self.player:objectName()then return known(p:getHandcards(),"owner hand")end
@@ -186,10 +186,7 @@ local function viewer_role(self,p)
 end
 local function forbidden_foreign_ai(self)ai_unsupported("other AI private state is not available","htms")end
 local function role_event(self,p,kind,role)
- local all=known(self.world.strategy_facts.role_row_update_witness,"public role event witness")
- local names=known(all[kind],kind);local present=false
- for _,name in ipairs(names)do if name==p:objectName()then present=true;break end end
- if not present then ai_unsupported("source role event target lacks public witness",kind)end
+ -- Callers run on the skill's own event and pass a player whose skill is public.
  if role~="lord"and role~="loyalist"and role~="rebel"and role~="renegade"then ai_unsupported("source role event inference unresolved",kind)end
  local assigned=kind=="Cjiyongbing"and role or(role=="rebel"and"loyalist"or role)
  self:emitStrategyEffect({kind="role_row_update",player=p:objectName(),role=role,assigned_role=assigned,assigned_value=kind=="Cjiyongbing"and 1000 or 0,source_skill=kind})
@@ -5861,7 +5858,10 @@ sgs.ai_skill_use_func["#luakuaiqing"] = function(card, use, self)
 		if __htms_value_call(self.player,"getHp") < 3 then
 			local zcards = self.player:getCards("he")
 			local  keep_jink, keep_analeptic, keep_weapon =  false, false
-			local keep_slash = known(self.world.strategy_facts.standard.jilve_wansha,"JilveWansha")
+			-- Own tag holds the granted skill name; QVariant::toBool reads absent as false.
+			local wansha = self.player:getTag("JilveWansha")
+			if wansha ~= nil and type(wansha) ~= "string" then ai_unsupported("owner JilveWansha is unknown","JilveWansha") end
+			local keep_slash = wansha ~= nil and wansha ~= "" and wansha ~= "0" and wansha:lower() ~= "false"
 			for _, zcard in sgs.qlist(zcards) do
 				if self.player:isCardLimited(zcard, sgs.Card_MethodDiscard) then continue end
 				if not isCard("Peach", zcard, self.player) and not isCard("ExNihilo", zcard, self.player) then

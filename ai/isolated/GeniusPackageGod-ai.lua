@@ -62,7 +62,8 @@ local function final_parse(self,request,wire)
 end
 local function addAiSkills(name)local entry={name=name};package_skills[#package_skills+1]=entry;return entry end
 local function he_count(player)return q(player,'getHandcardNum')+#q(player,'getEquips')end
-local function owner_fact(self,key)return known(known(self.world.strategy_facts.genius,'genius')[key],key)end
+-- Viewer's own tag/property strings; absent reads as QVariant::toString() "".
+local function owner_string(value,key)if value==nil then return''end;if type(value)~='string'then ai_unsupported('owner string value malformed',key)end;return value end
 local function context_card(self,key)
  local row=known(q(self,'getDecisionContext')[key],key)
  if type(row)~='table'then ai_unsupported('current question has no disclosed card',key)end
@@ -100,7 +101,7 @@ local function RandomList(items)
  while #remaining>0 do local v=remaining[math.random(1,#remaining)];table.removeOne(remaining,v);table.removeOne(list,v);list[#list+1]=v end
  return list
 end
-local function patterns(self)return known(self.world.strategy_facts.pattern_names,'public pattern catalog')end
+local function patterns(self)return known(AICardCatalog.patternNames(),'public pattern catalog')end
 addAiSkills("f_henjue").getTurnUseCard=function(self,inclusive,request)
 	return parse(self,request,"#f_henjueCard:.:")
 end
@@ -323,7 +324,7 @@ sgs.ai_skill_use_func["#f_yanyiCard"] = function(card,use,self,request)
 end
 
 addAiSkills("f_yishi").getTurnUseCard=function(self,inclusive,request)
-	local sks = owner_fact(self,"yishi_skills"):split("+")
+	local sks = owner_string(self.player:getTag("f_yishi"),"f_yishi"):split("+")
 	if #sks > 0 and sgs.ai_skill_choice.f_yishi(self, "2+3") ~= "cancel"  then
     	return parse(self,request,"#f_yishiCard:.:")
 	end
@@ -588,7 +589,7 @@ sgs.ai_skill_invoke.f_jianyuanadd = function(self, data)
 end
 sgs.ai_skill_invoke.f_jianyuan = function(self, data)
 	if q(self.player,"getHandcardNum") > q(self.player,"getMark","&f_jianyuanX") + 4 + 2 then
-		local JianYuanLu = owner_fact(self,"jianyuan_record"):split("+")
+		local JianYuanLu = owner_string(self.player:getPropertyValue("SkillDescriptionRecord_f_jianyuan"),"SkillDescriptionRecord_f_jianyuan"):split("+")
 		if math.random() < 0.3 and #JianYuanLu > 0 then
 			return false
 		end
@@ -620,7 +621,7 @@ sgs.ai_skill_use["@@f_jianyuangive"] = function(self, prompt)
 			end
 			for _, p in ipairs(self.friends_noself) do
 				if q(p,"hasFlag","f_JYuan") then
-					local JianYuanLu = owner_fact(self,"jianyuan_record"):split("+")
+					local JianYuanLu = owner_string(self.player:getPropertyValue("SkillDescriptionRecord_f_jianyuan"),"SkillDescriptionRecord_f_jianyuan"):split("+")
 					if not table.contains(JianYuanLu, q(p,"getGeneralName")) then
 						return "#f_jianyuangiveCard:"..q(h,"getEffectiveId")..":->"..q(p,"objectName")
 					end
@@ -633,7 +634,7 @@ sgs.ai_skill_use["@@f_jianyuangive"] = function(self, prompt)
 			end
 			for _, p in ipairs(AIList.new(q(self.room,"getOtherPlayers",self.player))) do
 				if q(p,"hasFlag","f_JYuan") and not q(p,"hasFlag","f_JYuan_real") then
-					local JianYuanLu = owner_fact(self,"jianyuan_record"):split("+")
+					local JianYuanLu = owner_string(self.player:getPropertyValue("SkillDescriptionRecord_f_jianyuan"),"SkillDescriptionRecord_f_jianyuan"):split("+")
 					if not table.contains(JianYuanLu, q(p,"getGeneralName")) then
 						return "#f_jianyuangiveCard:"..q(h,"getEffectiveId")..":->"..q(p,"objectName")
 					end

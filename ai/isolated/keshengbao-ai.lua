@@ -18,13 +18,12 @@ local function sole_slash(self,player)
  return q(self,"useKnowledgeEstimate",{status="estimate",value=false,basis="keshengbao.liema_unobserved_single_hand_slash_inactive_prior",target=q(player,"objectName")},"keshengbao.liema.single_slash")
 end
 local function current_damage(self)
- local f=self.world and self.world.strategy_facts and self.world.strategy_facts.standard
- local raw=f and f.current_damage
- if raw==nil then ai_unsupported("CurrentDamageStruct is not projected","keshengbao.current_damage")end
- if raw==false then return{}end
- local d={};for k,v in pairs(raw)do d[k]=v end
- for _,k in ipairs({"from","to"})do if type(d[k])=="string"then d[k]=q(self.room,"findPlayerByObjectName",d[k],true)elseif d[k]==false then d[k]=nil end end
- return d
+ -- Room tag CurrentDamageStruct: a question's decision context carries it while the tag
+ -- holds one (absent reads as the donor's empty struct); event callbacks get no context.
+ if self.request.kind=="event"then ai_unsupported("CurrentDamageStruct is not projected to event callbacks","keshengbao.current_damage")end
+ local d=self:getDecisionContext().damage
+ if d==nil then return{}end
+ return{from=d.from,to=d.to,damage=d.amount,card=d.card,nature=d.nature}
 end
 --change
 

@@ -6,7 +6,7 @@ local original_query_methods={isWeak="originalHegemonyWeak",getOverflow="origina
     damageIsEffective="originalHegemonyDamageIsEffective",needKongcheng="originalHegemonyNeedKongcheng",
     hasCrossbowEffect="originalHegemonyCrossbowEffect"}
 local function q(o,method,...)
-    local facts=o and o.world and o.world.strategy_facts and o.world.strategy_facts.hegemony
+    local facts=o and o.world and AIHegemony.facts(o.world)
     local mapped=original_query_methods[method]
     if mapped and facts and facts.enabled and facts.original_overrides_loaded==true and type(o[mapped])=="function"then method=mapped end
     if AIValue.isPlayer(o) then
@@ -25,7 +25,7 @@ local function remember_pindian(self,id)
 end
 local function sort_in_place(self,t,key)local sorted=q(self,"sort",t,key);for i,v in ipairs(sorted)do t[i]=v end;return t end
 local function heg_facts(self)
-    local row=self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+    local row=self.world and AIHegemony.facts(self.world)
     if type(row)~="table" or type(row.enabled)~="boolean" then ai_unsupported("Hegemony mode facts missing","hegemony") end
     return row
 end
@@ -56,6 +56,68 @@ local function heg_kingdom(self,p)
         return known(heg_facts(self).own_kingdom,"own kingdom")
     end
     return public_kingdom(self,p)
+end
+-- Generic stand-ins for removed owner/public facts. Methods, not main-chunk locals:
+-- this chunk is at Lua's 200-local limit.
+-- Room::getLord(kingdom) from public views: an alive player whose shown head
+-- general is a heg_lord_ general (the only lord generals this build registers)
+-- of that kingdom. The viewer's own reveal state is not projected, so a lord
+-- viewer of that kingdom cannot answer it.
+function SmartAIView:originalHegemonyPublicLord(kingdom)
+    for _,p in ipairs(q(self.room,"getAlivePlayers"))do
+        if self:originalHegemonyIsLordGeneral(p) then
+            if q(p,"objectName")==q(self.player,"objectName") then
+                if q(self.player,"getKingdom")==kingdom then
+                    ai_unsupported("owner head-general reveal is not projected","Room.getLord")
+                end
+            elseif heg_player(self,p).shown_head and heg_player(self,p).public_kingdom==kingdom then return p end
+        end
+    end
+    return nil
+end
+function SmartAIView:originalHegemonyIsLordGeneral(p)
+    local general=type(p.getGeneralName)=="function" and p:getGeneralName()
+    return type(general)=="string" and general:sub(1,9)=="heg_lord_"
+end
+-- The owner facts the Original policies read, from generic owner views.
+function SmartAIView:originalHegemonyOwnerFact(key)
+    if key=="owner_current_card_use_reason" then return known(self.request.reason,key)
+    elseif key=="owner_can_slash_without_crossbow" then return known(self.player:canSlashWithoutCrossbow(),key)
+    elseif key=="owner_wenji_record" then return self.player:getPropertyValue("wenji_record") or "" -- absent: ""
+    elseif key=="owner_analeptic_available" then
+        -- Analeptic::IsAvailable(owner) is the printed Analeptic's owner rule.
+        return known(known(self:getEvaluationCard("analeptic"),"analeptic prototype"):isAnalepticAvailable(self.player),key)
+    elseif key=="owner_slash_count" then
+        -- Player::getSlashCount sums the raw history of every Slash class; the
+        -- no-limit properties zero the projected usedTimes instead.
+        if self.player:getPropertyValue("AllSkillNoLimitingTimes") or (self.player:getPropertyValue("SkillNoLimitingTimes") or "")~="" then
+            ai_unsupported("raw Slash history is not projected",key)
+        end
+        local count=0
+        for class,name in pairs(known(AICardCatalog.patternClassNames(),"card catalog"))do
+            local row=AICardCatalog.get(name)
+            if row and AIValue.isList(row.kind_of) and table.contains(row.kind_of,"Slash") then
+                count=count+known(self.player:usedTimes(class),key)
+            end
+        end
+        return count
+    elseif key=="owner_hegemony_lord" then
+        -- Player::getLord: the owner when it is a lord, else the shown lord of its kingdom.
+        if self:originalHegemonyIsLordGeneral(self.player) then return q(self.player,"objectName") end
+        local kingdom=q(self.player,"getKingdom")
+        if kingdom=="careerist" then ai_unsupported("careerist actual-general kingdom is not projected",key) end
+        local lord=self:originalHegemonyPublicLord(kingdom)
+        return lord and q(lord,"objectName") or ""
+    end
+    -- Room::countHistoryCards (owner_card_used_times/responded_times) is not projected.
+    ai_unsupported("owner fact is not projected",key)
+end
+-- Original getKnownNum: hand plus Wooden Ox cards this observer sees.
+function SmartAIView:originalHegemonyVisibleCount(player)
+    local ox=known(player:getPileCount("wooden_ox"),"Wooden Ox count")
+    if q(player,"objectName")==q(self.player,"objectName") then return q(player,"getHandcardNum"),ox end
+    if ox>0 then ai_unsupported("visible Wooden Ox subset is not projected","known_both") end
+    return #q(player,"getKnownCards"),0
 end
 local function current_for_cardneed(player)
     local room=rawget(player,"_room")
@@ -385,7 +447,7 @@ end
 -- calls the distinct SmartAI method. Preserve prior ordinary adapter behavior;
 -- admitted Original must select its actual global provider, not shadow methods.
 local function original_duoshi_good_target(self,enemy,targets)
-    local f=self.world.strategy_facts and self.world.strategy_facts.hegemony
+    local f=AIHegemony.facts(self.world)
     if f and f.enabled and known(f.original_overrides_loaded,"original_hegemony_ai_loaded")then
         return q(self,"originalHegemonyIsGoodTarget",enemy,targets)
     end
@@ -1468,7 +1530,7 @@ function SmartAIView:originalHegemonyEvaluateArmor(card,player)
     local value=0
     if shown(self,player,"jijiu") and q(ecard,"isRed")then value=value+0.5 end
     if original_shown_skills(self,player,"qixi|guidao") and q(ecard,"isBlack")then value=value+0.5 end
-    local presence=known(self.world.strategy_facts.hegemony.armor_value_presence,"original armor callback metadata")
+    local presence=known(AIHegemony.facts(self.world).armor_value_presence,"original armor callback metadata")
     for _,skill in ipairs(q(player,"getVisibleSkillList"))do
         local name=q(skill,"objectName")
         if known(presence[name],"original armor callback:"..name)then
@@ -1704,7 +1766,7 @@ end
 -- are per-request method bindings, matching the admitted mode's SmartAI
 -- overrides without mutating another viewer or ordinary-mode prototypes.
 function SmartAIView:installOriginalHegemonyHelpers()
-    local facts=self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+    local facts=self.world and AIHegemony.facts(self.world)
     if not facts or not facts.enabled then return false end
     if not known(facts.original_overrides_loaded,"original_hegemony_ai_loaded")then return false end
     self.keepValue=self.keepValue or{}
@@ -1788,9 +1850,9 @@ local function hs_q(object,method,...)
     if not object or type(object[method])~='function'then ai_unsupported('Original Slash dependency unavailable',method)end
     return hs_known(object[method](object,...),method)
 end
-local function hs_facts(self)return hs_known(self.world.strategy_facts and self.world.strategy_facts.hegemony,'hegemony facts')end
+local function hs_facts(self)return hs_known(AIHegemony.facts(self.world),'hegemony facts')end
 local function hs_fact(self,key)
-    if key:match('^owner_')then return hs_known(self.world.strategy_facts[key],key)end
+    if key:match('^owner_')then return self:originalHegemonyOwnerFact(key)end
     return hs_known(hs_facts(self)[key],key)
 end
 local function hs_row(self,p)return hs_known(hs_fact(self,'players')[hs_q(p,'objectName')],'public Hegemony player')end
@@ -1843,9 +1905,8 @@ end
 local function hs_no_response(self,card)return hs_q(self,'cardNoResponseNames',card)end
 local function hs_skill(self,name)
     if name==''then return nil end
-    local row=hs_known(self.world.strategy_facts.skill_catalog,'public skill catalog')[name]
-    if row==false then return nil end
-    return row and SkillView.new(row)or nil
+    -- Registered definitions are visible only for skills a visible player holds.
+    return hs_known(self.room:getPublicSkill(name),'skill definition outside the visible roster')
 end
 local function hs_ignore_armor(self,from,to)
     if not from or not to then return end
@@ -2919,7 +2980,7 @@ function SmartAIView:originalHegemonyEvaluateWeapon(card,player,target)
         if shown(self,player,"heg_kurou")then score=score+peach+wine+q(self.player,"getHp")end
         if original_equipment(player,"getWeapon")and not q(self,"hasCrossbowEffect",player)then
             local without
-            if player:objectName()==self.player:objectName()then without=known(self.world.strategy_facts.owner_can_slash_without_crossbow,"owner Crossbow-independent availability")
+            if player:objectName()==self.player:objectName()then without=self:originalHegemonyOwnerFact("owner_can_slash_without_crossbow")
             else without=self:useKnowledgeEstimate({value=true,status="estimate",viewer=self.player:objectName(),target=player:objectName(),
                 basis="foreign_slash_history_and_private_residue_unobserved; remaining_use_prior"},"Original.evaluateWeapon.crossbow")end
             if not without and slash>0 then
@@ -3062,36 +3123,9 @@ local original_owner_view_as_factory=function(query, constants, current_reason, 
 end
 
 function SmartAIView:originalHegemonyEvaluateViewAsSpec(spec)
-    if type(self.request)~='table'then ai_unsupported('Original evaluation has no current request','Original.materialize')end
-    self.scratch=self.scratch or{}
-    if self.scratch.original_owner_view_as_request~=self.request then
-        self.scratch.original_owner_view_as_evaluations={}
-        self.scratch.original_owner_view_as_request=self.request
-    end
-    local cache=self.scratch.original_owner_view_as_evaluations or{}
-    self.scratch.original_owner_view_as_evaluations=cache
-    local cache_key=table.concat({spec.source_key,spec.name,table.concat(spec.subcards,'+'),tostring(spec.suit),tostring(spec.number)},':')
-    local evaluated=cache[cache_key]
-    if evaluated then return evaluated end
-    if type(ai_evaluate_owner_view_as)~='function'then ai_unsupported('Original owner view-as evaluation endpoint unavailable',spec.source_key)end
-    local row=ai_evaluate_owner_view_as(spec)
-    if type(row)~='table'or row.kind~='owner_view_as_evaluation'or row.complete~=true
-        or type(row.limited)~='boolean'or type(row.handling_method)~='number'or type(row.card)~='table'
-        or row.card.evaluation_only~=true or row.card.evaluation_owner~=self.player:objectName()
-        or row.card.name~=spec.name or(spec.suit~=-1 and row.card.suit~=spec.suit)or row.card.number~=spec.number
-        or type(row.card.subcards)~='table'or#row.card.subcards~=#spec.subcards then
-        ai_unsupported('Original owner view-as evaluation rejected or incomplete',spec.source_key)
-    end
-    for i,id in ipairs(spec.subcards)do if row.card.subcards[i]~=id then ai_unsupported('Original view-as cost order changed',spec.source_key)end end
-    local card=CardView.new(row.card)
-    if type(row.candidate)=='table'then card._evaluation_candidate=row.candidate end
-    evaluated={card=card,limited=row.limited}
-    cache[cache_key]=evaluated
-    local payment={name=spec.name,skill=spec.skill,suit=q(card,'getSuit'),number=q(card,'getNumber'),subcards={}}
-    for i,id in ipairs(spec.subcards)do payment.subcards[i]=id end
-    self._original_selected_specs=self._original_selected_specs or{}
-    self._original_selected_specs[card]={spec=payment,class_name=q(card,'getClassName'),source_key=spec.source_key,request=self.request}
-    return evaluated
+    -- The native view-as evaluation (material face, limit state, candidate) is not
+    -- projected; a printed prototype carries no material-specific legality.
+    ai_unsupported('Original owner view-as evaluation is not projected',spec.source_key)
 end
 function SmartAIView:materializeOriginalSelectedCard(card)
     if not card or type(card.isEvaluationOnly)~='function'or not card:isEvaluationOnly()then return card end
@@ -3111,9 +3145,9 @@ function SmartAIView:originalHegemonyViewAsCard(key,class,card,player,place)
         if method=="hasShownSkill"then return shown(self,object,...)end
         return q(object,method,...)
     end,sgs,function()
-        return known(self.world.strategy_facts.owner_current_card_use_reason,'owner_current_card_use_reason')
+        return self:originalHegemonyOwnerFact('owner_current_card_use_reason')
     end,function()
-        local name=known(self.world.strategy_facts.owner_hegemony_lord,"owner_hegemony_lord")
+        local name=self:originalHegemonyOwnerFact("owner_hegemony_lord")
         if name==""then return nil end
         return known(self.room:findPlayerByObjectName(name),"owner Hegemony lord roster")
     end)
@@ -3165,13 +3199,15 @@ function SmartAIView:originalHegemonyAocaiPattern()
     self.scratch=self.scratch or{}
     local row=self.scratch.original_aocai_pattern
     if row==nil then
-        if type(ai_original_aocai_pattern)~="function"then ai_unsupported("Original Aocai literal query unavailable","Original.aocai_pattern")end
-        row=ai_original_aocai_pattern()
-        if type(row)~="table"or row.kind~="original_aocai_pattern"or row.known~=true
-            or type(row.slash)~="boolean"or type(row.jink)~="boolean"or(row.slash and row.jink)then
+        -- The live card-use pattern is this use/respond request's own pattern while
+        -- it answers a response; any other request does not carry it.
+        local r=self.request
+        if type(r)~="table"or(r.kind~="respond_card"and r.kind~="use_card")or type(r.pattern)~="string"
+            or(r.reason~=sgs.CardUseStruct_CARD_USE_REASON_RESPONSE and r.reason~=sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE)then
             ai_unsupported("Original Aocai current pattern is outside the authorized viewer scope","Original.aocai_pattern")
         end
-        self.scratch.original_aocai_pattern={kind=row.kind,known=true,slash=row.slash,jink=row.jink}
+        row={kind="original_aocai_pattern",known=true,slash=r.pattern=="slash",jink=r.pattern=="jink"}
+        self.scratch.original_aocai_pattern=row
     end
     if row.slash then return "slash"elseif row.jink then return "jink"end
 end
@@ -3203,7 +3239,7 @@ local function original_cardsview_count(self,class,player,other)
                 end
             elseif name=="heg_aocai"then
                 if player:objectName()==self.player:objectName()and q(player,"hasSkill","heg_aocai")and not q(player,"hasFlag","Global_AocaiFailed")and q(player,"getPhase")==sgs.Player_NotActive then
-                    local reason=known(self.world.strategy_facts.owner_current_card_use_reason,"Original Aocai current reason")
+                    local reason=self:originalHegemonyOwnerFact("owner_current_card_use_reason")
                     if (reason==sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE or reason==sgs.CardUseStruct_CARD_USE_REASON_RESPONSE)
                         and(class=="Slash"or class=="Jink")then
                         local pattern=self:originalHegemonyAocaiPattern()
@@ -3271,9 +3307,9 @@ local function ht_q(object,method,...)
     if not object or type(object[method])~='function'then ai_unsupported('Original Slash dependency unavailable',method)end
     return ht_known(object[method](object,...),method)
 end
-local function ht_facts(self)return ht_known(self.world.strategy_facts and self.world.strategy_facts.hegemony,'hegemony facts')end
+local function ht_facts(self)return ht_known(AIHegemony.facts(self.world),'hegemony facts')end
 local function ht_fact(self,key)
-    if key:match('^owner_')then return ht_known(self.world.strategy_facts[key],key)end
+    if key:match('^owner_')then return self:originalHegemonyOwnerFact(key)end
     return ht_known(ht_facts(self)[key],key)
 end
 local function ht_row(self,p)return ht_known(ht_fact(self,'players')[ht_q(p,'objectName')],'public Hegemony player')end
@@ -3326,9 +3362,8 @@ end
 local function ht_no_response(self,card)return ht_q(self,'cardNoResponseNames',card)end
 local function ht_skill(self,name)
     if name==''then return nil end
-    local row=ht_known(self.world.strategy_facts.skill_catalog,'public skill catalog')[name]
-    if row==false then return nil end
-    return row and SkillView.new(row)or nil
+    -- Registered definitions are visible only for skills a visible player holds.
+    return ht_known(self.room:getPublicSkill(name),'skill definition outside the visible roster')
 end
 local function ht_ignore_armor(self,from,to)
     if not from or not to then return end
@@ -4370,11 +4405,11 @@ local function hv_q(object,method,...)
     if not object or type(object[method])~='function'then ai_unsupported('Original Slash dependency unavailable',method)end
     return hv_known(object[method](object,...),method)
 end
-local function hv_facts(self)return hv_known(self.world.strategy_facts and self.world.strategy_facts.hegemony,'hegemony facts')end
+local function hv_facts(self)return hv_known(AIHegemony.facts(self.world),'hegemony facts')end
 local function hv_fact(self,key)
     -- Both fixed Original initializers (common349/5080) assign this exact category.
     if key=="need_kongcheng"then return "heg_kongcheng"end
-    if key:match('^owner_')then return hv_known(self.world.strategy_facts[key],key)end
+    if key:match('^owner_')then return self:originalHegemonyOwnerFact(key)end
     return hv_known(hv_facts(self)[key],key)
 end
 local function hv_row(self,p)return hv_known(hv_fact(self,'players')[hv_q(p,'objectName')],'public Hegemony player')end
@@ -4427,9 +4462,8 @@ end
 local function hv_no_response(self,card)return hv_q(self,'cardNoResponseNames',card)end
 local function hv_skill(self,name)
     if name==''then return nil end
-    local row=hv_known(self.world.strategy_facts.skill_catalog,'public skill catalog')[name]
-    if row==false then return nil end
-    return row and SkillView.new(row)or nil
+    -- Registered definitions are visible only for skills a visible player holds.
+    return hv_known(self.room:getPublicSkill(name),'skill definition outside the visible roster')
 end
 local function hv_ignore_armor(self,from,to)
     if not from or not to then return end
@@ -4805,7 +4839,7 @@ local function hkeep_q(object,method,...)
  return value
 end
 local function hkeep_fact(self,key)
- local facts=self.world.strategy_facts and self.world.strategy_facts.hegemony
+ local facts=AIHegemony.facts(self.world)
  local value=facts and facts[key]
  if value==nil then ai_unsupported('Original keep metadata unavailable',key)end
  return value
@@ -5168,7 +5202,7 @@ end
 local original_extra_cardsview_keys={heg_miewu=true,heg_yigui=true,huangjinsymbol=true,heg_huangjinsymbol=true}
 local function hc_lord(self,player)
     if player:objectName()==self.player:objectName()then
-        local name=known(self.world.strategy_facts.owner_hegemony_lord,'Original owner Player:getLord')
+        local name=self:originalHegemonyOwnerFact('owner_hegemony_lord')
         if name==''then return nil end
         return known(self.room:findPlayerByObjectName(name),'Original owner lord roster')
     end
@@ -5199,7 +5233,7 @@ function SmartAIView:originalHegemonyCardsViewProvider(key,class,player,other,co
     player=player or self.player
     local callbacks=original_extra_cardsview_factory{
         q=q,constants=sgs,shown=shown,
-        reason=function()return known(self.world.strategy_facts.owner_current_card_use_reason,'Original cardsView current reason')end,
+        reason=function()return self:originalHegemonyOwnerFact('owner_current_card_use_reason')end,
         visible=function(_,card,subject)
             -- Every enumerated card is in the viewer's disclosed snapshot; no
             -- unknown foreign hand is turned into an identity here.
@@ -5319,7 +5353,7 @@ function SmartAIView:originalHegemonyCardsViewValue(class,other)
                 end
             elseif key=='heg_aocai'then
                 if q(player,'hasSkill','heg_aocai')and not q(player,'hasFlag','Global_AocaiFailed')and q(player,'getPhase')==sgs.Player_NotActive then
-                    local reason=known(self.world.strategy_facts.owner_current_card_use_reason,'Original Aocai current reason')
+                    local reason=self:originalHegemonyOwnerFact('owner_current_card_use_reason')
                     if (reason==sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE or reason==sgs.CardUseStruct_CARD_USE_REASON_RESPONSE)
                         and(class=='Slash'or class=='Jink')then
                         local pattern=self:originalHegemonyAocaiPattern()
@@ -5362,7 +5396,7 @@ function SmartAIView:originalHegemonyGetCards(class,flag)
 end
 function SmartAIView:originalHegemonySelectCard(class,acard)
     local cards=acard and ho_list({acard})or ho_cards(self,'he',true)
-    local reason=known(self.world.strategy_facts.owner_current_card_use_reason,'Original card selection reason')
+    local reason=self:originalHegemonyOwnerFact('owner_current_card_use_reason')
     local cardask=class~='Slash'or reason==sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
     if cardask then
         if q(self.player,'getPhase')==sgs.Player_Play then self:sortByUseValue(cards,true)
@@ -5430,19 +5464,9 @@ local function hg_phase_removals(self, player, current)
         for _,card in ipairs(q(self.player,"getCards","he"))do
             if isCard("Snatch",card,self.player) and q(self.player,"distanceTo",player)==1
                 or isCard("Dismantlement",card,self.player)then
-                local rows=self.world.strategy_facts and self.world.strategy_facts.owner_phase_trick_probes
-                local row=type(rows)=="table" and rows[tostring(q(card,"getEffectiveId"))]
-                if type(row)~="table"then ai_unsupported("owner same-face phase-removal clone missing","Original.phase_trick_probe")end
-                -- Source clones the ORIGINAL material name/suit/rank, not the
-                -- class returned by isCard and not a Dismantlement with a cost.
-                local trick=CardView.new(row)
-                if q(trick,"objectName")~=q(card,"objectName") or q(trick,"getSuit")~=q(card,"getSuit")
-                    or q(trick,"getNumber")~=q(card,"getNumber") or not q(trick,"isEvaluationOnly")then
-                    ai_unsupported("phase-removal clone does not match owner material","Original.phase_trick_probe")
-                end
-                -- hasTrickEffective legitimately returns nil for a non-trick
-                -- material converted by e.g. Qixi; do not turn that into unknown.
-                if self:hasTrickEffective(trick,player)then total=total+1 end
+                -- Source clones the ORIGINAL material name/suit/rank; an evaluated
+                -- same-face clone (suit-dependent effectiveness) is not projected.
+                ai_unsupported("owner same-face phase-removal clone is not projected","Original.phase_trick_probe")
             end
         end
     end
@@ -5592,18 +5616,17 @@ local function kb_seen(self,target)
     local name=q(target,"objectName")
     local state=self:getStrategyMemory("original_known_both_seen")
     if type(state)=="table" and state[name]~=nil then
-        local epochs=self.world.strategy_facts.strategy_all_mark_clear_epochs
+        local epochs=AIWorldLifecycle.epochs(self.world,"all_mark")
         local epoch=known(type(epochs)=="table" and epochs[name],"KnownBoth all-mark clear epoch")
         if state[name].epoch==epoch then return state[name].value end
     end
-    local rows=self.world.strategy_facts.original_known_both_marks
-    if type(rows)~="table" then ai_unsupported("observer KnownBoth marks not projected","known_both") end
-    return known(rows[name],"KnownBoth observer mark")
+    -- The observer's KnownBoth marker is a mark on the target; PlayerView:getMark
+    -- raises when that mark is not visible to this observer.
+    return known(target:getMark("KnownBoth_"..q(self.player,"objectName").."_"..name),"KnownBoth observer mark")
 end
 local function kb_known_count(self,player)
-    local rows=self.world.strategy_facts.original_known_both_visible_counts
-    if type(rows)~="table"then ai_unsupported("Original hand/Wooden Ox visible count missing","known_both")end
-    return known(rows[q(player,"objectName")],"Original known card count")
+    local hand,ox=self:originalHegemonyVisibleCount(player)
+    return hand+ox
 end
 local function kb_sort(self,list)
     local sorted=q(self,"sort",list,"handcard",true)
@@ -5672,7 +5695,7 @@ sgs.ai_choicemade_filter.skillChoice.known_both=function(self,from,promptlist)
     if target==nil then ai_unsupported("KnownBoth event target witness missing","known_both")end
     if target then
         local memory=self:getStrategyMemory("original_known_both_seen")or{}
-        local epochs=self.world.strategy_facts.strategy_all_mark_clear_epochs
+        local epochs=AIWorldLifecycle.epochs(self.world,"all_mark")
         local epoch=known(type(epochs)=="table" and epochs[target],"KnownBoth all-mark clear epoch")
         memory[target]={value=1,epoch=epoch};self:setStrategyMemory("original_known_both_seen",memory)
     end
@@ -6125,16 +6148,8 @@ do
 sgs.ai_skill_exchange=sgs.ai_skill_exchange or{}
 local function printed(self,name)return known(self:cloneEvaluationCard(name),'MOL printed '..name)end
 local function material_plan(self,name,cost)
-    if type(ai_evaluate_owner_view_as)~='function'then ai_unsupported('Miewu planning constructor unavailable','heg_miewu_plan')end
-    local id=q(cost,'getEffectiveId')
-    local row=ai_evaluate_owner_view_as{source_key='heg_miewu_plan',skill='',name=name,suit=sgs.Card_NoSuit,number=0,subcards={id}}
-    local c=type(row)=='table'and row.card
-    if type(row)~='table'or row.kind~='owner_view_as_evaluation'or row.complete~=true or type(c)~='table'or c.evaluation_only~=true
-        or c.evaluation_owner~=q(self.player,'objectName')or c.name~=name or c.number~=q(cost,'getNumber') or c.suit~=q(cost,'getSuit')
-        or type(c.subcards)~='table'or#c.subcards~=1 or c.subcards[1]~=id or c.can_recast~=false then
-        ai_unsupported('Miewu readonly source hypothesis is incomplete','heg_miewu_plan')
-    end
-    local card=CardView.new(c);card._evaluation_candidate=row.candidate;return card
+    -- The native material-backed view-as evaluation is not projected.
+    ai_unsupported('Miewu material view-as evaluation is not projected','heg_miewu_plan')
 end
 original_policy(sgs.ai_fill_skill,'heg_miewu',function(self,inclusive,request)
     if q(self.player,'getMark','#heg_wuku')==0 or q(self.player,'hasFlag','MiewuUsed')or q(self.player,'isNude')then return end
@@ -6561,7 +6576,9 @@ local function r25_copy(list)local out={};for _,v in ipairs(list)do out[#out+1]=
 local function r25_sort(self,players,key,reverse)
     local sorted=q(self,'sort',players,key,reverse);for i,v in ipairs(sorted)do players[i]=v end;return players
 end
-local function r25_fact(self,name)return known(known(self.world.strategy_facts.original25,'Original family facts')[name],name)end
+-- Original family facts (general slots/definitions, lord-conversion config, attack
+-- range correction) are native engine/config reads that are not projected.
+local function r25_fact(self,name)ai_unsupported('Original family fact is not projected',name)end
 local function r25_slot(self,p,slot,skill)
     local row=known(r25_fact(self,'players')[q(p,'objectName')],'Original player slot')
     local skills=known(row.slots,'Original slots');local value=skills[skill]
@@ -6615,15 +6632,14 @@ local function r25_card_visible(self,card,player)
     if not card or not player then return false end
     if q(player,'objectName')==q(self.player,'objectName')then return true end
     if self:hasStrategyCardFlag(card,'visible')==true or self:hasStrategyCardFlag(card,'visible_'..q(self.player,'objectName')..'_'..q(player,'objectName'))==true then return true end
-    local ids=known(known(self.world.strategy_facts.source_visible_hand_ids,'source visible hands')[q(player,'objectName')],'source visible subject')
-    for _,id in ipairs(ids)do if id==q(card,'getEffectiveId')then return true end end;return false
+    -- Another player's known cards are the hand cards this viewer may see.
+    for _,c in ipairs(q(player,'getKnownCards'))do if q(c,'getEffectiveId')==q(card,'getEffectiveId')then return true end end;return false
 end
 local function r25_known_number_cards(self,player,cards,observer)
     if cards then return cards end
     if q(player,'objectName')==q(self.player,'objectName')then return q(player,'getHandcards')end
     -- Fixed common4749 ignores its observer argument, using current_self.player.
-    local ids=known(known(self.world.strategy_facts.source_visible_hand_ids,'source visible hands')[q(player,'objectName')],'source visible subject')
-    local out={};for _,id in ipairs(ids)do out[#out+1]=known(self:getKnownCardById(id),'source disclosed number card')end;return out
+    return q(player,'getKnownCards')
 end
 function SmartAIView:originalHegemonyMaxNumberCard(player,cards,observer)
     player=player or self.player;if q(player,'isKongcheng')then return nil end
@@ -6685,10 +6701,8 @@ local function r25_parse(self,text)
 end
 local function r25_clone(self,name,suit,number)
     if suit==nil and number==nil then return self:cloneEvaluationCard(name)end
-    if type(ai_evaluate_owner_view_as)~='function'then ai_unsupported('Original declared-card evaluation unavailable','heg_family_printed')end
-    local row=ai_evaluate_owner_view_as{source_key='heg_family_printed',skill='',name=name,suit=suit,number=number,subcards={}}
-    if type(row)~='table'or row.complete~=true or type(row.card)~='table'or type(row.candidate)~='table'or row.card.evaluation_only~=true then ai_unsupported('Original declared-card evaluation incomplete','heg_family_printed')end
-    local c=CardView.new(row.card);c._evaluation_candidate=row.candidate;return c
+    -- A suited/numbered declared-card evaluation is not projected.
+    ai_unsupported('Original declared-card evaluation is not projected','heg_family_printed')
 end
 local function r25_general(self,name)
     local defs=r25_fact(self,'general_definitions');local row=defs[name]
@@ -6731,12 +6745,18 @@ local function r25_general_pile(self,p,name)
     if row.known~=true or row.visible~=true then ai_unsupported('general pile is not disclosed',name)end;return known(row.names,'Original soul names')
 end
 local function r25_current_damage(self)
-    local raw=known(known(self.world.strategy_facts.standard,'current damage facts').current_damage,'current damage')
-    if raw==false then return{damage=1,nature=sgs.DamageStruct_Normal,chain=false,transfer=false,by_user=true}end
-    local out={};for k,v in pairs(raw)do out[k]=v end;out.damage=raw.amount or raw.damage
-    if raw.from then out.from=known(self.room:findPlayerByObjectName(raw.from),'damage source')end
-    if raw.to then out.to=known(self.room:findPlayerByObjectName(raw.to),'damage target')end
-    if raw.card then out.card=CardView.new(raw.card)end;return out
+    -- CurrentDamageStruct is set from DamageDone to DamageComplete and a trigger is
+    -- logged when its dispatch ends: only while a Damage/Damaged skill answers is the
+    -- latest damage event (its DamageDone or Damage stage) that struct.
+    local event=self:getLastEvent('damage')
+    local stage=event and q(event,'getTriggerEvent')
+    if stage~=sgs.DamageDone and stage~=sgs.Damage then ai_unsupported('CurrentDamageStruct is not projected','current damage')end
+    local raw=rawget(event,'_view')
+    local out={damage=raw.amount,nature=raw.nature,chain=raw.chain,transfer=raw.transfer,by_user=raw.by_user,reason=raw.reason}
+    if raw.from~=''then out.from=known(self.room:findPlayerByObjectName(raw.from),'damage source')end
+    if raw.to~=''then out.to=known(self.room:findPlayerByObjectName(raw.to),'damage target')end
+    local card=raw.details and raw.details.card
+    if type(card)=='table'and next(card)~=nil then out.card=CardView.new(card)end;return out
 end
 local function r25_tag_player(self,name)
     local row=known(known(self:getDecisionContext().original25,'Original tags').players,'Original player tags')
@@ -7270,7 +7290,7 @@ end
 sgs.ai_skill_invoke.heg_chengshang = true
 
 sgs.ai_skill_invoke.heg_kuangcai = function(self, data)
-  if known(self.world.strategy_facts.owner_card_used_times,"owner used history") == 0 then
+  if self:originalHegemonyOwnerFact("owner_card_used_times") == 0 then
     return true
   end
   return false
@@ -9333,7 +9353,7 @@ function SmartAI:shamokeUseWeaponPriority(card)
 		hcards = sgs.QList2Table(hcards)
 		self:sortByUsePriority(hcards)
 		local firstcard = hcards[1]
-		if known(self.world.strategy_facts.owner_card_used_times,'owner used history') + known(self.world.strategy_facts.owner_card_responded_times,'owner responded history') + 2 == sgs.weapon_range[class_name] + r25_fact(self,'owner_attack_range_correction')
+		if self:originalHegemonyOwnerFact('owner_card_used_times') + self:originalHegemonyOwnerFact('owner_card_responded_times') + 2 == sgs.weapon_range[class_name] + r25_fact(self,'owner_attack_range_correction')
 		and v ~= q(self,"getUsePriority",firstcard) then
 			if not (q(firstcard,"isKindOf","Weapon") and sgs.weapon_range[class_name] == sgs.weapon_range[firstcard:getClassName()]) then
 				v = q(self,"getUsePriority",firstcard) + 0.1
@@ -13162,14 +13182,10 @@ function SmartAI:askForSkillInvoke(skill_name,data)
         if AIUnsupported.is(value)then error(value,0)end
         return value==true
     end
-    local facts=self.world and self.world.strategy_facts
-    local catalog=facts and facts.skill_catalog
-    if type(catalog)~='table' or facts.skill_catalog_scope~='public_registered_skill_definitions'then
-        ai_unsupported('Original registered skill definition catalog unavailable','Original askForSkillInvoke')
-    end
-    local skill=catalog[skill_name]
-    if skill==nil or skill==false then return nil end
-    local frequency=type(skill)=='table'and skill.frequency
+    -- Registered definitions are visible only for skills a visible player holds.
+    local skill=self.room:getPublicSkill(skill_name)
+    if skill==nil then ai_unsupported('Original skill definition outside the visible roster','Original askForSkillInvoke')end
+    local frequency=skill:getFrequency()
     if type(frequency)~='number'then ai_unsupported('Original skill frequency unknown','Original askForSkillInvoke')end
     if frequency==sgs.Skill_Frequent then return true end
     return nil
@@ -13447,29 +13463,22 @@ local function r26_context(self,name,kind)
 end
 local function r26_property(self,p,name)
     if q(p,'objectName')~=q(self.player,'objectName')then ai_unsupported('Original source property belongs to another observer',name)end
-    if name=='wenji_record'then return known(known(self.world.strategy_facts.original26,'Original26 world')[name],name)end
-    return known(known(known(self:getDecisionContext().original26,'Original26 question').properties,'Original26 owner properties')[name],name)
+    -- The owner's own property; absent reads as QVariant::toString() "".
+    return self.player:getPropertyValue(name) or ""
 end
 local function r26_public_lord(self,kingdom)
-    local name=known(known(known(self.world.strategy_facts.original26,'Original26 world').public_lords,'Original26 public faction lords')[kingdom],'public lord '..kingdom)
-    if name==false then return nil end
-    return known(self.room:findPlayerByObjectName(name),'public faction lord')
+    return self:originalHegemonyPublicLord(kingdom)
 end
 local function r26_aocai_proposal(pattern)
     return {skill='heg_aocai',legacy_class='HAocaiCard',subcards={},user_string=pattern}
 end
 local function r26_general_pile(self,p,name)
-    if name=='massacre'and q(p,'objectName')==q(self.player,'objectName')then return AIList.new(known(known(self.world.strategy_facts.original26,'Original26 world').massacre,'massacre'))end
+    -- General piles (the owner's massacre included) are not projected.
     return r25_general_pile(self,p,name)
 end
 local function r26_general(self,name)
-    local facts=self.world.strategy_facts.original26
-    local row=facts and facts.general_definitions and facts.general_definitions[name]
-    if not row then return r25_general(self,name)end
-    local g={};function g:objectName()return name end;function g:getKingdom()return known(row.kingdom,'general kingdom')end
-    function g:isDoubleKingdoms()return known(row.double_kingdoms,'double kingdoms')end;function g:getKingdoms()return known(row.kingdoms,'general kingdoms')end
-    function g:getVisibleSkillList()local out=AIList.new{};for _,v in ipairs(known(row.skills,'general skills'))do out:append(SkillView.new(v))end;return out end
-    return g
+    -- Massacre-pile general definitions are not projected; use the family lookup.
+    return r25_general(self,name)
 end
 local function r26_null_fact(self,key)
     local row=known(self:getDecisionContext().original26_nullification,'Original26 public nullification frame')
@@ -17643,8 +17652,8 @@ end
 function sgs.ai_cardsview.heg_aocai(self, class_name, player)
   if self.player:objectName() ~= player:objectName() or not q(player,"hasSkill","heg_aocai") then return end
 	if q(player,"hasFlag","Global_AocaiFailed") or q(player,"getPhase") ~= sgs.Player_NotActive then return end
-  if known(self.world.strategy_facts.owner_current_card_use_reason,"current owner response reason") == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE
-  or known(self.world.strategy_facts.owner_current_card_use_reason,"current owner response reason") == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
+  if self:originalHegemonyOwnerFact("owner_current_card_use_reason") == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE
+  or self:originalHegemonyOwnerFact("owner_current_card_use_reason") == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then
     if class_name == "Slash" or class_name == "Jink" then
       local pattern = known(self.request.pattern,"current response pattern")
       if pattern and pattern == "slash" or pattern == "jink" then
@@ -18772,7 +18781,9 @@ install_r26_all()
 local function install_r27_all()
 local r27_active
 local r27_shown=shown
-local function r27_fact(self,key)return known(known(self.world.strategy_facts.original27,'Original27 world')[key],key)end
+-- Owner raw/actual general genders and the engine SkillCard prototype registry are
+-- not projected.
+local function r27_fact(self,key)ai_unsupported('Original27 owner fact is not projected',key)end
 local function r27_buqu(self,p)
     return shown(self,p,'heg_buqu') and #q(p,'getPile','scars')<=4
 end
@@ -18788,7 +18799,7 @@ local function r27_raw_general(self,head,actual)
     local g={};function g:isMale()return known(row.male,'raw general male')end;function g:isFemale()return known(row.female,'raw general female')end;return g
 end
 local function r27_owner_lord(self)
-    local name=known(self.world.strategy_facts.owner_hegemony_lord,'owner hegemony lord');if name==''then return nil end
+    local name=self:originalHegemonyOwnerFact('owner_hegemony_lord');if name==''then return nil end
     return known(self.room:findPlayerByObjectName(name,true),'owner hegemony lord roster')
 end
 local function r27_rule(self,skill)
@@ -20259,14 +20270,13 @@ local function r30_retrial_damage(self,judge)
         if judge.damage_from==""then return{}end
         return{from=known(self.room:findPlayerByObjectName(judge.damage_from,true),"Original.retrial.damage.from")}
     end
-    local facts=self.world.strategy_facts.standard
-    local value=type(facts)=="table"and facts.current_damage
-    if value==false then return{}end
-    if type(value)~="table"then ai_unsupported("Original current damage is unknown","Original.retrial.damage")end
-    local name=value.from
-    if name==false or name==""then return{}end
-    if type(name)~="string"then ai_unsupported("Original damage source is unknown","Original.retrial.damage")end
-    return{from=known(self.room:findPlayerByObjectName(name,true),"Original.retrial.damage.from")}
+    -- When the question's data is the judge, its damage context is the room's
+    -- CurrentDamageStruct; absent means no damage is being resolved.
+    local context=type(self.request.options)=="table"and self:getDecisionContext()
+    if not context or context.judge==nil then ai_unsupported("Original current damage is unknown","Original.retrial.damage")end
+    local damage=context.damage
+    if damage==nil or damage.from_name==nil or damage.from_name==""then return{}end
+    return{from=known(damage.from,"Original.retrial.damage.from")}
 end
 
 function SmartAIView:originalHegemonyNeedRetrial(judge)
@@ -20460,7 +20470,7 @@ end
   return strict(fn(object,...),method)
  end
  local function shown(self,player,name)
-  local facts=self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+  local facts=self.world and AIHegemony.facts(self.world)
   if type(facts)~='table' or facts.enabled~=true or facts.original_overrides_loaded~=true then
    ai_unsupported('Original saver provider is not admitted','hegemony')
   end
@@ -20615,20 +20625,17 @@ local function r34_count_query(object,method,...)
  return value
 end
 local function r34_count_facts(self)
- local facts=self.world and self.world.strategy_facts
- local row=facts and facts.original_card_counts
- if type(row)~='table'or row.complete~=true then ai_unsupported('Original engine/visible card count projection unavailable','Original.cardCounts')end
- return row
+ -- Engine deck composition and discarded engine faces are not projected.
+ ai_unsupported('Original engine card count projection is not projected','Original.cardCounts')
 end
 local function r34_count_number(n,key)
  if type(n)~='number'or n<0 or n%1~=0 or n==math.huge then ai_unsupported('Original card count metadata malformed',key)end
  return n
 end
 local function r34_count_knowledge(self,player)
- local name=r34_count_query(player,'objectName');local rows=r34_count_facts(self).knowledge
- local row=type(rows)=='table'and rows[name]
- if type(row)~='table'or row.complete~=true then ai_unsupported('Original visible hand/Ox count unavailable',name)end
- return row
+ -- Visible counts only; per-class counts of those cards are not derived here.
+ local hand,ox=self:originalHegemonyVisibleCount(player)
+ return{hand_visible_count=hand,wooden_ox_visible_count=ox}
 end
 local function r34_count_class(class)
  if type(class)=='number'then return tostring(class)end -- SWIG lua_tostring
@@ -20719,7 +20726,7 @@ end)() end
     local function r34_shown(self, player, skill)
         -- These three source names are already actual heg_* names; the fixed
         -- originalHegemonySkillNames alias helper returns {name} for each.
-        local facts = self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+        local facts = self.world and AIHegemony.facts(self.world)
         local rows = facts and facts.players
         local row = type(rows) == 'table' and rows[r34_query(player, 'objectName')]
         if type(row) ~= 'table' or type(row.shown_skills) ~= 'table' then
@@ -20846,7 +20853,7 @@ local function r34b_q(object,method,...)
  return r34b_known(value,method)
 end
 local function r34b_row(self,p)
- local f=self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+ local f=self.world and AIHegemony.facts(self.world)
  local rows=f and f.players
  return r34b_known(type(rows)=='table'and rows[r34b_q(p,'objectName')]or nil,'hegemony.players')
 end
@@ -20888,7 +20895,7 @@ local function r34b_ignore_armor(self,from,to)
 end
 
 function SmartAIView:originalHegemonyOwnKingdomValue()
- local facts=self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+ local facts=self.world and AIHegemony.facts(self.world)
  -- owner.cpp computes the exact source seeming/careerist/property precedence.
  local value=type(facts)=='table'and facts.own_kingdom
  if type(value)~='string'then ai_unsupported('Original own kingdom fact unavailable','hegemony.own_kingdom')end
@@ -21122,11 +21129,8 @@ local r34_numbers={}
 function r34_numbers.cards(self,player,cards)
     if cards then return cards end
     if q(player,"objectName")==q(self.player,"objectName")then return q(player,"getHandcards")end
-    local rows=known(self.world.strategy_facts.source_visible_hand_ids,"Original visible-hand rows")
-    local ids=known(rows[q(player,"objectName")],"Original visible-hand subject")
-    local result={}
-    for _,id in ipairs(ids)do result[#result+1]=known(self:getKnownCardById(id),"Original disclosed number card")end
-    return result
+    -- Another player's known cards are the hand cards this viewer may see.
+    return q(player,"getKnownCards")
 end
 function r34_numbers.visible(self,card,player)
     if not card or not player then return false end
@@ -21134,9 +21138,7 @@ function r34_numbers.visible(self,card,player)
     if self:hasStrategyCardFlag(card,"visible")==true then return true end
     local flag="visible_"..q(self.player,"objectName").."_"..q(player,"objectName")
     if self:hasStrategyCardFlag(card,flag)==true then return true end
-    local rows=known(self.world.strategy_facts.source_visible_hand_ids,"Original visible-hand rows")
-    local ids=known(rows[q(player,"objectName")],"Original visible-hand subject")
-    for _,id in ipairs(ids)do if id==q(card,"getEffectiveId")then return true end end
+    for _,c in ipairs(q(player,"getKnownCards"))do if q(c,"getEffectiveId")==q(card,"getEffectiveId")then return true end end
     return false
 end
 function SmartAIView:originalHegemonyIsValuableCard(card,player)
@@ -21732,17 +21734,16 @@ local function invoke(f,...)
 end
 local function callback(self,registry,key)
  if registry=='ai_skill_discard'then return call(self,'getDiscardCallback',key)end
- local facts=self.world and self.world.strategy_facts
- local all=facts and facts.original_ask_callback_types
- local catalog=type(all)=='table'and all[registry]
- if type(catalog)~='table'or catalog.complete~=true or type(catalog.entries)~='table'then ai_unsupported('Original callback catalogue is unknown',registry)end
- local kind=catalog.entries[key]
- if kind==nil then return nil end
+ -- This VM's own callback registry is authoritative for donor callback presence.
+ local entries=sgs[registry]
+ if type(entries)~='table'then ai_unsupported('Original callback catalogue is unknown',registry)end
+ local f=entries[key]
+ if f==nil then return nil end
+ local kind=type(f)
  if kind~='function'then
   if kind=='boolean'or kind=='number'or kind=='string'or kind=='table'then return false end
   ai_unsupported('Original callback type is unsupported',registry)
  end
- local f=sgs[registry]and sgs[registry][key]
  if ai_audited_aliases then f=ai_audited_aliases.resolve(self,f)end
  if type(f)~='function'then ai_unsupported('Original callback has no isolated implementation',key)end
  return f
@@ -22077,7 +22078,7 @@ local function r35_analeptic(self,card)
  return r35_call(card,'isAnalepticAvailable',self.player)
 end
 local function r35_can_recover(self)
- local row=self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+ local row=self.world and AIHegemony.facts(self.world)
  if type(row)~='table'then ai_unsupported('Original owner recovery projection missing','Original.Peach')end
  local value=row.owner_can_recover
  if type(value)~='boolean'then ai_unsupported('Original owner canRecover unavailable','Original.Peach')end
@@ -22092,17 +22093,8 @@ local function r35_niepan(self,p)
 end
 local function r35_visible_hand(self,p)
  if r35_call(p,'objectName')==r35_call(self.player,'objectName')then return r35_call(p,'getHandcards')end
- local facts=self.world and self.world.strategy_facts
- local rows=facts and facts.source_visible_hand_ids
- local ids=type(rows)=='table'and rows[r35_call(p,'objectName')]
- if not AIValue.isList(ids)then ai_unsupported('Original source-visible hand IDs unavailable','Original.FireAttack.visible')end
- local out={}
- for _,id in ipairs(ids)do
-  local c=r35_call(self,'getKnownCardById',id)
-  if r35_call(c,'getEffectiveId')~=id then ai_unsupported('Original source-visible material mismatch','Original.FireAttack.visible')end
-  out[#out+1]=c
- end
- return AIList.new(out)
+ -- Another player's known cards are the hand cards this viewer may see.
+ return r35_call(p,'getKnownCards')
 end
 local function r35_visible(self,card,p)
  if not card or not p then return false end
@@ -23483,7 +23475,7 @@ end)()
 -- Intentional fixed source ABI default, not execution of a legacy AI callback.
 function SmartAIView:originalHegemonyTrustCardDefault()
     local r=self.request
-    local h=self.world.strategy_facts and self.world.strategy_facts.hegemony
+    local h=AIHegemony.facts(self.world)
     local function unknown(why)ai_unsupported(why,'Original TrustAI askForCard ABI')end
     if type(r)~='table'or r.kind~='respond_card'or not h or h.enabled~=true
         or h.original_overrides_loaded~=true then unknown('source ABI default requires active Original response')end
@@ -23557,12 +23549,10 @@ local function r35_parse(self,value)
  end
  ai_unsupported('selected response has no lawful parse representation','Original.Card_Parse')
 end
+-- The donor reads the unkeyed Room tag "AmazingGrace", which this engine never
+-- fills (see r28_grace_ids in smart-ai-functions.lua): always empty.
 local function r35_grace_ids(self,trick)
- local ctx=r35_call(self,'getDecisionContext');local row=type(ctx.smart_common)=='table'and ctx.smart_common.amazing_grace
- if type(row)~='table'or row.known~=true or row.card_identity~=r35_q(trick,'getLegacyIdentityToken')or row.ids_complete~=true or not AIValue.isList(row.ids)then
-  ai_unsupported('unkeyed AmazingGrace membership is unknown','Original.askForNullification.AmazingGrace')
- end
- return row.ids
+ return {}
 end
 local function r35_visible_card(self,id)
  local card=r35_call(self,'getKnownCardById',tonumber(id))or r35_call(self,'getChoiceCard',tonumber(id))
@@ -23876,7 +23866,7 @@ end
 local ordinary_nullfilter=sgs.ai_skill_cardask.nullfilter
 if ordinary_nullfilter==nil then ordinary_nullfilter=SmartAIView.ordinaryNullFilter end
 sgs.ai_skill_cardask.nullfilter=function(self,...)
- local h=self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+ local h=self.world and AIHegemony.facts(self.world)
  if h and h.enabled==true and h.original_overrides_loaded==true then return self:originalHegemonyNullfilter(...)end
  return ordinary_nullfilter(self,...)
 end
@@ -24145,14 +24135,15 @@ local function q(o,m,...)
  return known(v,m)
 end
 local function shown(self,p,name)
- local f=self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+ local f=self.world and AIHegemony.facts(self.world)
  local row=f and f.players and f.players[q(p,'objectName')]
  if type(row)~='table'or type(row.shown_skills)~='table'then fail('hegemony.shown_skills')end
  return row.shown_skills[name]~=nil
 end
+-- General-pile contents, the engine kingdom list and the JadeSeal treasure effect
+-- are not projected.
 local function fact(self)
- local f=self.world and self.world.strategy_facts and self.world.strategy_facts.original37
- if type(f)~='table'then fail('original37')end;return f
+ fail('original37')
 end
 local function plainList(v,key)
  if not AIValue.isList(v) or getmetatable(v)~=nil then fail(key)end
@@ -24399,26 +24390,22 @@ function SmartAIView:originalHegemonyUseCardByClassName(card,use)
  end
  local class=q(card,'getClassName')
  local name='useCard'..class
- local catalog=fact(self).use_methods
- if type(catalog)~='table'or type(catalog.entries)~='table'then fail('Original.useCardByClassName.metadata')end
- local row=catalog.entries[name]
- if row==nil then if catalog.complete~=true then fail(name)end;return end
- if type(row)~='table'then fail(name)end
- if row.type=='boolean'and row.value==false then return end
- if row.type~='function'then
+ -- This VM's own SmartAIView methods stand in for the donor's SmartAI method
+ -- table; a name with an audited Original port must resolve to that port.
+ local provider=self[name]
+ if provider==nil or provider==false then return end
+ if type(provider)~='function'then
   -- Known truthy noncallable source method: preserve the ordinary call error.
   local value=true;value(self,card,use)
  end
- local provider=self[name]
- if type(provider)~='function'then fail(name)end
- if row.original==true then
+ if named[name]~=nil or table.contains(wrappedNames,name)then
   local expected=named[name]and SmartAIView[named[name]]or sealed[name]
   if type(expected)~='function'or (provider~=expected and
       (type(SmartAIView.isOwnerRangeProvider)~='function'or
        not SmartAIView.isOwnerRangeProvider(self,name,provider,expected)))then
    fail('Original.provider.'..name)
   end
- elseif row.original~=false then fail('Original.provider.origin')end
+ end
  local result=provider(self,card,use)
  if AIUnsupported.is(result)then error(result,0)end
  -- The original body deliberately discards ordinary callback return values.
@@ -24426,7 +24413,7 @@ end
 function SmartAIView:originalHegemonyIsBigKingdomPlayer(player)
  player=player or self.player
  if not player then return false end
- local h=self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+ local h=self.world and AIHegemony.facts(self.world)
  local function row(p)
   local r=h and h.players and h.players[q(p,'objectName')]
   if type(r)~='table'then fail('hegemony.player')end;return r
@@ -24498,13 +24485,16 @@ function SmartAIView:originalHegemonyRescueWireOrigin(value)
  return row~=nil and self.request~=nil and row.request==self.request and row.value==value
 end
 local function r37_damage(self)
- local standard=self.world.strategy_facts.standard
- local raw=type(standard)=='table'and standard.current_damage
- if raw==false then return{}end
- if type(raw)~='table'then ai_unsupported('Original rescue current damage is unknown','CurrentDamageStruct')end
+ -- The rescue question's data is the dying struct, so its damage context is the
+ -- room's CurrentDamageStruct; absent means no damage is being resolved.
+ if type(self.request.options)~='table'then ai_unsupported('Original rescue current damage is unknown','CurrentDamageStruct')end
+ local context=self:getDecisionContext()
+ if context.dying==nil then ai_unsupported('Original rescue current damage is unknown','CurrentDamageStruct')end
+ local raw=context.damage
+ if raw==nil then return{}end
  local result={}
  for _,key in ipairs{'from','to'}do
-  local name=raw[key]
+  local name=raw[key..'_name']
   if name~=nil and name~=false and name~=''then
    if type(name)~='string'then ai_unsupported('Original rescue damage player is malformed',key)end
    result[key]=self.room:findPlayerByObjectName(name,true)
@@ -25042,16 +25032,8 @@ end
 local function r37_visible_hand(self,p)
  local full=r37_q(p,'getHandcardNum')
  if r37_q(p,'objectName')==r37_q(self.player,'objectName')then return r37_q(p,'getHandcards'),full end
- local rows=self.world.strategy_facts.source_visible_hand_ids
- local ids=type(rows)=='table'and rows[r37_q(p,'objectName')]
- if not AIValue.isList(ids)then ai_unsupported('Original source visibility catalogue unavailable','Snatch.visible_hand')end
- local cards={}
- for _,id in ipairs(ids)do
-  local c=self:getKnownCardById(id)
-  if not c then ai_unsupported('Original source-visible hand face missing','Snatch.visible_hand')end
-  cards[#cards+1]=c
- end
- return cards,full
+ -- Another player's known cards are the hand cards this viewer may see.
+ return r37_q(p,'getKnownCards'),full
 end
 local function r37_yongsi(self,ids)
  self.yongsi_discard=ids

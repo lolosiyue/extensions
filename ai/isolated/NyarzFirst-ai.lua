@@ -30,13 +30,6 @@ local function hydrate_context(self,value,kind)
 end
 local nullable={useCardByClassName=true,updatePlayers=true,getCard=true,getArmor=true,getWeapon=true,getTreasure=true,findPlayerBySkillName=true,toPlayer=true,useEquipCard=true,useTrickCard=true,useBasicCard=true,moveField=true,getCurrent=true,getLord=true,getMaxCard=true,setStrategyMemory=true,getStrategyMemory=true,updateIntention=true,setStrategyCardFlag=true}
 local function q(o,k,...)
- if k=='hasFlag'and AIValue.isPlayer(o)then
-  local ai=o._room and o._room._ai;local fs=ai and ai.world.strategy_facts
-  local rows=fs and fs.NyarzFirst and fs.NyarzFirst.public_flags
-  local values=rows and rows[(...)];local v=values and values[o:objectName()]
-  local audited={['jitongxindraw']=true,['jitongxinda']=true,['spjinjintarget']=true,['hflanggutarget']=true,['drangjiejud']=true,['dwqingshidrawall']=true,['dwqingshiupcan']=true,['dmzhanmenggood']=true,['old_yifuta']=true,['shejifrom']=true,['shejito']=true,['xrxiaoruitarget']=true}
-  if audited[(...)]then if type(v)~='boolean'then ai_unsupported('public flag disclosure missing',(...))end;return v end
- end
  if not o or type(o[k])~='function'then ai_unsupported('NyarzFirst helper unavailable',k)end
  local m=k;if k=='getMark'and AIValue.isPlayer(o)then m='getStrategyMark'end
  local r=table.pack(o[m](o,...));if AIUnsupported.is(r[1])then error(r[1],0)end
@@ -45,7 +38,6 @@ local function q(o,k,...)
  if not nullable[k]then known(r[1],k)end;return table.unpack(r,1,r.n)
 end
 local function source_type(c)for _,name in ipairs{"BasicCard","TrickCard","EquipCard"}do if q(c,"isKindOf",name)then return name end end end
-local function facts(self)return known(self.world.strategy_facts and self.world.strategy_facts.NyarzFirst,'NyarzFirst')end
 local function face(self,id)return q(self,'getKnownCardById',id)end
 local function fullhand(p)local cs=q(p,'getHandcards');if #cs~=q(p,'getHandcardNum')then ai_unsupported('NyarzFirst source requires complete lawful foreign hand','NyarzFirst.foreign_hand')end;return cs end
 local function evaluation(self,name)return q(self,'getEvaluationCard',name or'slash')end
@@ -106,8 +98,10 @@ local function nested(self,reg,key,...)
 end
 local function view(self,wire)return printed(wire,self)end
 
-local function source_inverse(self) local row=facts(self).inverse; if type(row)~="table" or row.known~=true then ai_unsupported("source global inverse is unknown","NyarzFirst.inverse")end; return row.value end
-local function prop(self,key)return known(facts(self).properties and facts(self).properties[key],key)end
+-- The donor passes its Room-VM free global `inverse`; that VM's globals are not projected.
+local function source_inverse(self) ai_unsupported("source global inverse is not projected","NyarzFirst.inverse") end
+-- Own property; absent reads as the donor's empty toString().
+local function prop(self,key)local v=self.player:getPropertyValue(key);if v==nil then return""end;if type(v)~="string"then ai_unsupported("NyarzFirst owner property is not a string",key)end;return v end
 local function context(self)return known(q(self,'getDecisionContext').NyarzFirst,'NyarzFirst.context')end
 local function tagplayer(self,owner,key)
  local rows=context(self).player_tags;local row=rows and rows[key]
@@ -118,18 +112,9 @@ end
 local function tagids(self,key)local rows=context(self).id_tags;return AIList.new(known(rows and rows[key],key))end
 local function taguse(self,key)return hydrate_context(self,known(context(self)[key],key),'CardUse')end
 local function tagjudge(self,key)return hydrate_context(self,known(context(self)[key],key),'Judge')end
+-- Card tags are not projected.
 local function cardtag(self,c,key)
- if key=='dwqingshitarget'then
-  local raw=type(c)=='table'and rawget(c,'_view')
-  local identity=raw and raw.legacy_identity_token
-  local rows=facts(self).card_observations
-  local row=type(identity)=='string'and rows and rows[identity]
-  if type(row)~='table'or row.known~=true or type(row[key])~='string'then
-   ai_unsupported('source card tag lacks this observer card-lifecycle witness',key)
-  end
-  return row[key]
- end
- local rows=facts(self).card_tags;local row=rows and rows[tostring(q(c,'getEffectiveId'))];return known(row and row[key],key)
+ ai_unsupported('card tag is not projected',key)
 end
 local function role(self,p)if p==self.player then return q(p,'getRole')end;return q(self,'getRoleEstimate',p)end
 local function descriptor(c)local ids={};for _,id in ipairs(q(c,'getSubcards'))do ids[#ids+1]=id end;return{name=q(c,'objectName'),skill=q(c,'getSkillName',false),suit=q(c,'getSuit'),number=q(c,'getNumber'),subcards=ids}end
@@ -1965,7 +1950,8 @@ sgs.ai_skill_use_func["#dyizheng"] = function(card, use, self)
 	if not max_card then return end
 	local point = max_card:getNumber()
 	if q(self.player,"hasSkill","tianbian") and max_card:getSuit() == sgs.Card_Heart then point = 13 end
-	if (((q(self.player,"getHp") <= 2) or (known(facts(self).swap_pile,"SwapPile") ~= 0)) and point >=10) or point >= 7 or (q(self.player,"getHp") > 2 and known(facts(self).swap_pile,"SwapPile") == 0) then
+	-- Same truth table as the donor: the SwapPile room tag (not projected) only decides below 7.
+	if point >= 7 or (q(self.player,"getHp") > 2 and ai_unsupported("SwapPile room tag is not projected","SwapPile")) then
 		q(self,"sort",self.enemies, "handcard")
 		for _, p in ipairs(self.enemies) do
 			if not q(self.player,"canPindian",p)  then continue end

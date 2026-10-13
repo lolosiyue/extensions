@@ -1,33 +1,31 @@
 -- Fixed scarletayuhuo b6025acc source policy. Readonly proposals never grant payment authority.
 local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("scarletayuhuo fact unknown",k)end;return v end
 local function __scarletayuhuo_value_call(o,k,...)if o==nil then error("attempt to index a nil value",0)end;if k=="getMark"and AIValue.isPlayer(o)then k="getStrategyMark"elseif k=="hasFlag"and AIValue.isPlayer(o)then k="getStrategyFlag"end;if type(o[k])~="function"then ai_unsupported("scarletayuhuo method unavailable",k)end;return known(o[k](o,...),k)end
-local function fact(self,k)return known(known(self.world.strategy_facts.scarletayuhuo,"scarletayuhuo facts")[k],k)end
+local function fact(self,k)
+ if k=="ban_packages"then
+  -- Sanguosha:getBanPackages() as visible through the catalog's per-card banned flags.
+  local out,seen={},{}
+  for _,row in ipairs(known(ai_card_catalog,"card catalog"))do if row.banned and not seen[row.package]then seen[row.package]=true;out[#out+1]=row.package end end
+  return out
+ end
+ ai_unsupported("scarletayuhuo fact is not projected",k)
+end
 local function visible(self,id)
  local card=self:getKnownCardById(id)
  if not card and type(self.getChoiceCard)=="function"then card=self:getChoiceCard(id)end
- if not card then
-  local f=self.world.strategy_facts.scarletayuhuo
-  local rows=type(f)=="table"and f.disclosed_cards
-  local row=type(rows)=="table"and rows[tostring(id)]
-  if type(row)=="table"and row.effective_id==id then card=CardView.new(row)end
- end
  return known(card,"disclosed card")
 end
-local function property(self,k)return known(known(self.world.strategy_facts.owner_skill_properties,"owner properties")[k],k)end
+-- The viewer's own property; both readers use toString, so absent reads as "".
+local function property(self,k)local v=self.player:getPropertyValue(k);if v==nil then return""end;return v end
 local function tag(self,k,kind)
- local fact_key=(k=="CurrentUseStruct"and kind=="CardEffect")and"CurrentUseStruct_CardEffect"or(k=="s3_fans_jibian"and kind=="Player")and"s3_fans_jibian_Player"or k
- local r=fact(self,fact_key);if r==false then return nil end
- if kind=="Player"then return known(self.room:findPlayerByObjectName(r,true),k)elseif kind=="IntList"or kind=="StringList"then return AIList.new(r)
- elseif kind=="CardUse"then local to=AIList.new({});for _,n in ipairs(r.to)do to:append(known(self.room:findPlayerByObjectName(n,true),k))end;return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=to,card=CardView.new(r.card)}
- elseif kind=="CardEffect"then return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=r.to and self.room:findPlayerByObjectName(r.to,true),card=r.card and CardView.new(r.card),multiple=r.multiple,offset_num=r.offset_num}
- elseif kind=="Judge"then
-  local j={who=known(self.room:findPlayerByObjectName(r.who,true),k),card=CardView.new(known(r.card,k)),reason=r.reason,pattern=r.pattern,good=known(r.predicate_good,k),negative=r.negative,play_animation=r.play_animation}
-  function j:isGood(c)if c==nil then return known(r.good,k)end;local v=known(r.outcome_by_id,k)[tostring(c:getEffectiveId())];if type(v)~="boolean"then ai_unsupported("source judge outcome missing",k)end;return v end
-  function j:isBad(c)return not self:isGood(c)end;return j
- elseif kind=="Dying"then return{who=r.who and self.room:findPlayerByObjectName(r.who,true),damage=r.damage}
- elseif kind=="SlashEffect"then return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=r.to and self.room:findPlayerByObjectName(r.to,true),slash=r.slash and CardView.new(r.slash),jink_num=r.jink_num,drank=r.drank,nature=r.nature}
- elseif kind=="Damage"then return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=r.to and self.room:findPlayerByObjectName(r.to,true),card=r.card and CardView.new(r.card),damage=r.amount,nature=r.nature,chain=r.chain,transfer=r.transfer}
- else return r end
+ -- Room tags are not projected; CurrentDamageStruct/CurrentUseStruct reach the VM
+ -- only as the ask's context damage/use.
+ local field=(k=="CurrentDamageStruct"and kind=="Damage")and"damage"or(k=="CurrentUseStruct"and kind=="CardUse")and"use"or nil
+ if not field then ai_unsupported("room tag is not projected",k)end
+ local context=type(self.request.options)=="table"and self.request.options.context
+ local r=known(type(context)=="table"and context[field]or nil,k)
+ if kind=="CardUse"then local to=AIList.new({});for _,n in ipairs(r.to)do to:append(known(self.room:findPlayerByObjectName(n,true),k))end;return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=to,card=CardView.new(r.card)}
+ elseif kind=="Damage"then return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=r.to and self.room:findPlayerByObjectName(r.to,true),card=r.card and CardView.new(r.card),damage=r.amount,nature=r.nature,chain=r.chain,transfer=r.transfer} end
 end
 local function dummy_plan(value,extra,current)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;u.current_targets=current or {};return u end
 local recipes=setmetatable({},{__mode="k"})
@@ -91,7 +89,7 @@ local function can_to(self,c,from,to,targets)
 end
 local function pending_tag(self,name,value)ai_unsupported("temporary yb_zhuzhan2 input requires pure callback adapter",name)end
 local function private_draw(self)ai_unsupported("source inspects undisclosed draw-pile faces","zhachang")end
-local function source_description(self,name)return known(known(self.world.strategy_facts.card_descriptions,"public card descriptions")[name],name)end
+local function source_description(self,name)ai_unsupported("public card descriptions are not projected",name)end
 local function extra_targets(self,c)return known(self:getEvaluationCandidate(c):getExtraTargetCount(),"source extra target modifier")end
 local function residue(self,c)return known(c:getTargetModResidue(self.player),"source residue")end
 local function pingjian_catalog(self)return known(fact(self,"pingjian_skills"),"audited ordered AI skill catalog")end
@@ -135,9 +133,9 @@ local function BeMan(room,owner,dead)
 end
 local function list_i2c(self,ids)local cards=AIList.new({});for _,id in ipairs(ids)do cards:append(visible(self,id))end;return cards end
 local function source_patterns(self,class)
- local names=known(self.world.strategy_facts.pattern_names,"public pattern names")
+ local names=known(AICardCatalog.patternNames(),"public pattern names")
  if type(class)~="string"then return names end
- local classes=known(self.world.strategy_facts.pattern_class_names,"public class-to-name catalog")
+ local classes=known(AICardCatalog.patternClassNames(),"public class-to-name catalog")
  return classes[class]or class
 end
 local function RandomList(items)
@@ -155,11 +153,7 @@ local function observation_mark(self,key)
  return __scarletayuhuo_value_call(self.player,"getMark",key)
 end
 local function pattern_card(self,name)
- if type(ai_sample_pattern_log_name)~="function"then ai_unsupported("public PatternsCard sampling endpoint missing",name)end
- local result=ai_sample_pattern_log_name(name)
- if type(result)~="table"or result.kind~="pattern_log_name"or result.pattern~=name or type(result.found)~="boolean"then ai_unsupported("invalid PatternsCard sample",name)end
- if not result.found then return nil end
- return CardView.new(known(result.printed_card,"sampled printed descriptor"))
+ ai_unsupported("public PatternsCard sampling is not projected",name)
 end
 
 local function printed(self,id)return known(self:getPrintedCardById(id),"lawful printed card descriptor")end
@@ -194,13 +188,7 @@ local function viewer_role(self,p)
 end
 local function forbidden_foreign_ai(self)ai_unsupported("other AI private state is not available","scarletayuhuo")end
 local function role_event(self,p,kind,role)
- local all=known(self.world.strategy_facts.role_row_update_witness,"public role event witness")
- local names=known(all[kind],kind);local present=false
- for _,name in ipairs(names)do if name==p:objectName()then present=true;break end end
- if not present then ai_unsupported("source role event target lacks public witness",kind)end
- if role~="lord"and role~="loyalist"and role~="rebel"and role~="renegade"then ai_unsupported("source role event inference unresolved",kind)end
- local assigned=kind=="Cjiyongbing"and role or(role=="rebel"and"loyalist"or role)
- self:emitStrategyEffect({kind="role_row_update",player=p:objectName(),role=role,assigned_role=assigned,assigned_value=kind=="Cjiyongbing"and 1000 or 0,source_skill=kind})
+ ai_unsupported("public role event witness is not projected",kind)
 end
 
 -- Only package-local authored CardUseStruct values, not an unrestricted native QVariant/tag gateway.
@@ -248,7 +236,7 @@ local function player_data(p)return{toPlayer=function()return p end}end
 -- becomes one observer's atomic event memory; it never contains a Card object.
 local aoe_memory_key="original_hegemony.aoe_stack"
 local function aoe_enabled(self)
- local h=self.world.strategy_facts and self.world.strategy_facts.hegemony
+ local h=AIHegemony.facts(self.world)
  if type(h)~="table"or type(h.enabled)~="boolean"then ai_unsupported("hegemony load domain unknown","ai_AOE_data")end
  if not h.enabled then return false end
  if type(h.original_overrides_loaded)~="boolean"then ai_unsupported("original AOE writer load state unknown","ai_AOE_data")end
@@ -277,7 +265,7 @@ local function aoe_card(event)
 end
 local function aoe_frame(identity)return{identity=identity,targets={},confirmed=false,relevant=false}end
 local function aoe_shown(self,name,skill)
- local h=self.world.strategy_facts.hegemony
+ local h=AIHegemony.facts(self.world)
  local row=h.players and h.players[name]
  if type(row)~="table"or type(row.shown_skills)~="table"then ai_unsupported("AOE public shown skills unknown","ai_AOE_data.shown_skills")end
  return row.shown_skills[skill]~=nil

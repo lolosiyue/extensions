@@ -267,8 +267,7 @@ local function target_call(object, method, ...)
 end
 local scarlet_recommend_callbacks = setmetatable({}, {__mode = "k"})
 local function scarlet_metadata(self)
-    local facts = self.world and self.world.strategy_facts and self.world.strategy_facts.target_recommend
-    local value = type(facts) == "table" and facts.scarlet
+    local value = nil -- The Scarlet recommendation capture is not projected.
     if type(value) ~= "table" or value.captured ~= true then
         ai_unsupported("Scarlet recommendation source was not captured at initialization", "target_recommend:scarlet")
     end
@@ -504,24 +503,8 @@ function SmartAIView:getTargetBaseScore(target, card, from, flags)
 
     return score
 end
--- Cache entries retain the first function references, just as the donor VM.
--- Native history attests the epoch/first viewer; only primitive owner names
--- survive snapshots. A VM rebuild cannot reconstruct lost function references.
+-- Recommendation hooks are collected once per viewer and board revision.
 local target_recommend_cache = {}
-local function target_cache_query(proposal)
-    local query = rawget(_G, "ai_target_recommend_cache")
-    if type(query) ~= "function" then ai_unsupported("target recommendation cache host is unavailable", "getBestTarget:cache") end
-    local row = query(proposal)
-    if AIUnsupported.is(row) then error(row, 0) end
-    if type(row) ~= "table" or row.known ~= true then
-        ai_unsupported(type(row) == "table" and row.reason or "target recommendation cache history is unknown", "getBestTarget:cache")
-    end
-    if type(row.scope) ~= "string" or row.scope == "" or type(row.epoch) ~= "string" or row.epoch == ""
-        or (row.state ~= "empty" and row.state ~= "captured") then
-        ai_unsupported("target recommendation cache stamp is malformed", "getBestTarget:cache")
-    end
-    return row
-end
 local function target_estimate_counts(self)
     local log = self.request and self.request.scratch and self.request.scratch.knowledge_estimates or {}
     local counts = {}
@@ -541,10 +524,10 @@ local function target_estimate_delta(self, counts)
     return result
 end
 local function active_target_recommends(self)
-    local stamp = target_cache_query({op = "read"})
     local viewer = self.player:objectName()
+    local stamp = {scope = viewer, epoch = tostring(self.world.revision)}
     local saved = target_recommend_cache[stamp.scope]
-    if stamp.state == "empty" then
+    if not saved or saved.epoch ~= stamp.epoch then
         local before_estimates = target_estimate_counts(self)
         local entries = {}
         for _, owner in ipairs(target_call(self, "getCachedAlivePlayers")) do
@@ -553,15 +536,9 @@ local function active_target_recommends(self)
                 if callback then entries[#entries + 1] = {owner = owner:objectName(), eval = callback} end
             end
         end
-        local captured = target_cache_query({op = "capture", scope = stamp.scope, epoch = stamp.epoch})
-        if captured.scope ~= stamp.scope or captured.epoch ~= stamp.epoch or captured.state ~= "captured" then
-            ai_unsupported("target recommendation cache changed while capturing", "getBestTarget:cache")
-        end
         saved = {viewer = viewer, epoch = stamp.epoch, entries = entries,
             estimates = target_estimate_delta(self, before_estimates)}
         target_recommend_cache[stamp.scope] = saved
-    elseif not saved or saved.viewer ~= viewer or saved.epoch ~= stamp.epoch then
-        ai_unsupported("target recommendation function references were not retained in this VM", "getBestTarget:cache")
     else
         -- A cached observer estimate remains an estimate in every later result.
         -- Replay only its provenance, never the connections or policy value.
@@ -650,19 +627,16 @@ function SmartAIView:checkMasochismInvalid(from, to, card)
     if target_call(self, "hasJueqingEffect", from, to, nature) then return true end
     if to and target_call(from, "hasSkill", "nosqianxi") and target_call(from, "distanceTo", to) == 1
         and type(card) ~= "string" and card and target_call(card, "isKindOf", "Slash") then return true end
-    local facts = self.world and self.world.strategy_facts and self.world.strategy_facts.target_recommend
-    local rows = type(facts) == "table" and facts.general_descriptions
-    local row = type(rows) == "table" and rows[from:objectName()]
-    for _, slot in ipairs({"first", "second"}) do
-        local description = type(row) == "table" and row[slot]
-        if type(description) ~= "table" or description.known ~= true or type(description.present) ~= "boolean" then
-            ai_unsupported("original general description is not visible to this viewer", "checkMasochismInvalid:" .. slot)
-        end
-        if description.present then
-            local text = description.text
-            if type(text) ~= "string" then ai_unsupported("original general description is missing", "checkMasochismInvalid:" .. slot) end
-            if string.find(text, "技能失效") or string.find(text, "技失效") then return true end
-        end
+    -- The donor reads the general's description; the visible skills' descriptions
+    -- are the same text. Hidden hegemony skills leave the answer unknown.
+    local skills = target_known(from:getSkills(), "masochism source skills")
+    for _, skill in ipairs(skills) do
+        local text = skill._view.description
+        if type(text) ~= "string" then ai_unsupported("skill description is not projected", "checkMasochismInvalid") end
+        if string.find(text, "技能失效") or string.find(text, "技失效") then return true end
+    end
+    if from:areSkillsComplete() ~= true then
+        ai_unsupported("hidden skills may invalidate skills", "checkMasochismInvalid")
     end
     return false
 end

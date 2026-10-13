@@ -25,13 +25,13 @@ local function converted(self,skill,name,class,c,request)
 end
 local function acquired(self,id)return q(self,"getAcquiredCardEvaluation",q(self,"getChoiceCard",id))end
 local function pattern_names(self)
-    local rows=self.world.strategy_facts and self.world.strategy_facts.pattern_names
+    local rows=AICardCatalog.patternNames()
     if type(rows)~="table"then ai_unsupported("ordered public patterns are unavailable","jiejiu")end
     return rows
 end
+-- The viewer's own tag, read like the donor's toInt() (absent reads 0).
 local function owner_tag(self,key)
-    local f=self.world.strategy_facts and self.world.strategy_facts.doudizhu
-    return known(f and f.owner_tags and f.owner_tags[key],key)
+    return tonumber(self.player:getTag(key)) or 0
 end
 local function prior_cards(self)
     return q(self,"getPriorTurnUseCards")
@@ -182,9 +182,11 @@ sgs.ai_skill_invoke.shixian = function(self,data)
 end
 
 sgs.ai_skill_askforag.faqi = function(self,card_ids)
+    -- A plan from an earlier Faqi must not answer this one's @@faqi.
+    self:setStrategyMemory("doudizhu.faqiUse",nil)
     for _,id in sgs.list(card_ids)do
 		local offered=q(self,"getChoiceCard",id)
-        local dc=q(self,"evaluateSkillCard","faqi",q(offered,"objectName"),{})
+        local dc=q(self,"evaluateOwnerViewAsCard",{name=q(offered,"objectName"),skill="faqi",suit=sgs.Card_SuitToBeDecided,number=0,subcards={}})
 		if q(dc,"isAvailable",self.player) then
 			local d = q(self,"aiUseCard",dc)
 			if d.card then

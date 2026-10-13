@@ -1,23 +1,17 @@
--- The native issuer supplies only Room/viewer/question/revision/reset identity.
--- Ordered cache values below are computed from this observer's immutable views;
--- no legacy GameVM arrays or foreign completeness receipts are imported.
+-- Cache identity is one viewer, one question and one board revision, all read from
+-- the request. A new question or any board change misses, so a cached value never
+-- outlives the snapshot it was computed from.
 local function snapshot_cache_stamp(room,op,player)
-    local query=rawget(_G,"ai_target_recommend_cache")
-    if type(query)~="function" then ai_unsupported("observer cache stamp host unavailable",op)end
-    local proposal={op=op}
-    if player then proposal.player=player:objectName()end
-    local stamp=query(proposal)
-    if AIUnsupported.is(stamp)then error(stamp,0)end
     local world=room and rawget(room,"_world")
-    if type(stamp)~="table"or getmetatable(stamp)~=nil or stamp.known~=true or stamp.snapshot~=true
-        or type(stamp.scope)~="string"or stamp.scope==""
-        or type(stamp.epoch)~="string"or not stamp.epoch:match("^%d+$")
-        or type(stamp.revision)~="string"or not stamp.revision:match("^%d+$")
-        or type(stamp.question)~="string"or not stamp.question:match("^%a+:%d+$")
-        or type(world)~="table"or type(world.self)~="table"or stamp.viewer~=world.self.object_name then
-        ai_unsupported(type(stamp)=="table"and stamp.reason or "observer cache stamp malformed",op)
+    if type(world)~="table"or type(world.self)~="table"then
+        ai_unsupported("observer cache needs a world snapshot",op)
     end
-    return stamp
+    local ai=rawget(room,"_ai")
+    local request=ai and ai.request
+    local revision=tostring(world.revision)
+    return {known=true,snapshot=true,scope="revision",epoch=revision,revision=revision,
+        question=tostring(request and request.kind or "event")..":"..tostring(request and request.decision_id or 0),
+        viewer=world.self.object_name}
 end
 local function same_snapshot_cache(left,right)
     return left and right and left.scope==right.scope and left.epoch==right.epoch
@@ -164,6 +158,45 @@ function SmartAIView:cardSkillNamesKnowledge(card, context)
     return result
 end
 
+-- Equal estimate entries share one signature of their scalar fields (count
+-- aside). Each log keeps an index, caught up with entries appended elsewhere.
+local estimate_indexes = setmetatable({}, {__mode = "k"})
+local estimate_common_keys = {"context", "status", "value", "basis", "viewer", "observer"}
+local estimate_common = {count = true}
+for _, key in ipairs(estimate_common_keys) do estimate_common[key] = true end
+local function estimate_scalar(value)
+    if value == nil then return "~" end
+    if type(value) == "number" then return string.format("n%.17g", value) end
+    if type(value) == "boolean" then return value and "b1" or "b0" end
+    return "s" .. value
+end
+local function estimate_signature(entry)
+    local parts = {}
+    for index, key in ipairs(estimate_common_keys) do parts[index] = estimate_scalar(entry[key]) end
+    local extra
+    for key in pairs(entry) do
+        if not estimate_common[key] then extra = extra or {}; extra[#extra + 1] = key end
+    end
+    if extra then
+        table.sort(extra)
+        for _, key in ipairs(extra) do parts[#parts + 1] = key .. "=" .. estimate_scalar(entry[key]) end
+    end
+    return table.concat(parts, "\0")
+end
+local function estimate_lookup(log, entry)
+    local index = estimate_indexes[log]
+    if not index or index.size > #log then
+        index = {size = 0, by_signature = {}}
+        estimate_indexes[log] = index
+    end
+    for position = index.size + 1, math.min(#log, 255) do
+        local signature = estimate_signature(log[position])
+        index.by_signature[signature] = index.by_signature[signature] or log[position]
+    end
+    index.size = math.min(#log, 255)
+    return index.by_signature[estimate_signature(entry)], index
+end
+
 function SmartAIView:useKnowledgeEstimate(result, context)
     if type(result) ~= "table" or (result.status ~= "exact" and result.status ~= "estimate" and result.status ~= "unknown") then
         ai_unsupported("invalid knowledge result", context)
@@ -181,24 +214,8 @@ function SmartAIView:useKnowledgeEstimate(result, context)
         -- Bound native result size without hiding repeated decisions. Compare
         -- every scalar metadata field, so distinct subjects/values stay apart.
         local matching
-        local scan = true
-        -- This bounded pure-value primitive only finds the original first
-        -- matching row. Mutation, counters, capacity and policy stay in Lua.
-        local matcher = ai_find_knowledge_estimate
-        if type(matcher) == "function" then
-            local index = matcher(log, entry)
-            if type(index) ~= "number" or index ~= index or index < -1 or index > 256 or index % 1 ~= 0 then
-                ai_unsupported("invalid knowledge comparison result", context)
-            end
-            scan = index == -1
-            if index > 0 then
-                matching = log[index]
-                if type(matching) ~= "table" then ai_unsupported("knowledge comparison row is absent", context) end
-            end
-        end
-        -- Non-scalar/oversized inputs and runtimes without the optimization
-        -- retain the complete original Lua comparison, including count rules.
-        if scan then
+        if entry.count ~= nil then
+            -- A count carried by the result itself is compared as a field.
             for _, previous in ipairs(log) do
                 local same = true
                 for key, value in pairs(entry) do if previous[key] ~= value then same = false; break end end
@@ -209,6 +226,8 @@ function SmartAIView:useKnowledgeEstimate(result, context)
                 end
                 if same then matching = previous; break end
             end
+        else
+            matching = estimate_lookup(log, entry)
         end
         if matching then matching.count = (matching.count or 1) + 1
         elseif #log < 255 then log[#log + 1] = entry
@@ -1455,19 +1474,13 @@ local function discard_call(object, method, ...)
     return result
 end
 
+-- The isolated registry is the authority for discard callbacks.
 function SmartAIView:getDiscardCallback(reason)
-    local facts = self.world and self.world.strategy_facts
-    local catalog = facts and facts.owner_discard_callbacks
-    if type(catalog) ~= 'table' or catalog.complete ~= true or type(catalog.entries) ~= 'table' then
-        ai_unsupported('discard callback registry metadata is unavailable', 'discard.callback')
-    end
-    local row = catalog.entries[reason]
-    if row == nil then return nil end
-    if type(row) ~= 'table' or row.known ~= true then
-        ai_unsupported('discard callback value is not safely projected', 'discard.callback')
-    end
+    local value = sgs.ai_skill_discard and sgs.ai_skill_discard[reason]
+    if value == nil then return nil end
+    local row = {type = type(value), value = value}
     if row.type == 'function' then
-        local callback = sgs.ai_skill_discard and sgs.ai_skill_discard[reason]
+        local callback = value
         if ai_audited_aliases then callback = ai_audited_aliases.resolve(self, callback) end
         if type(callback) ~= 'function' then
             ai_unsupported('legacy discard callback has no isolated implementation', reason)
@@ -1493,18 +1506,25 @@ function SmartAIView:getDiscardCallback(reason)
     ai_unsupported('unsupported discard registry value', reason)
 end
 
+-- A discard question's card_ids are the authority's cards matching its pattern.
+-- A response question's candidates carry that match for every own hand/equip card.
 function SmartAIView:matchesDiscardPattern(pattern, card)
     if pattern == '.' then return true end
-    if type(pattern) ~= 'string' or type(ai_match_owner_discard_pattern) ~= 'function' then
-        ai_unsupported('owner discard pattern query is unavailable', 'discard.pattern')
+    local request = self.request
+    if type(request) == 'table' and request.kind == 'respond_card'
+        and (request.pattern or ''):gsub('!$', '') == pattern then
+        local id = discard_call(card, 'getId')
+        for _, candidate in ipairs(request.card_candidates or {}) do
+            if candidate.card_id == id then return candidate.available == true end
+        end
+        ai_unsupported('response pattern match is unknown for this card', 'discard.pattern')
     end
-    local ok, result = pcall(ai_match_owner_discard_pattern, pattern, discard_call(card, 'getId'))
-    if not ok then
-        if AIUnsupported and AIUnsupported.is(result) then error(result, 0) end
-        ai_unsupported('owner discard pattern query failed', 'discard.pattern')
-    end
-    if type(result) ~= 'boolean' then ai_unsupported('owner discard pattern result is unknown', 'discard.pattern') end
-    return result
+    local ids = type(request) == 'table' and request.kind == 'discard' and request.pattern == pattern
+        and type(request.options) == 'table' and request.options.card_ids
+    if not AIValue.isList(ids) then ai_unsupported('discard pattern is not the question pattern', 'discard.pattern') end
+    local id = discard_call(card, 'getId')
+    for _, candidate in ipairs(ids) do if candidate == id then return true end end
+    return false
 end
 
 function SmartAIView:askForDiscard(reason, max_num, min_num, optional, include_equip, pattern)
@@ -1845,163 +1865,30 @@ function SmartAIView:sortEnemies(players)
     -- Source sorts the same Lua array and returns nil.
 end
 
--- SmartAI:updatePlayers (fixed smart-ai.lua2118-2181). Mode-owned role/process
--- updates and ordered list construction execute in the trusted query; this
--- wrapper transports its complete state into the active pure strategy view.
-local function update_players_failure(reason)
-    ai_unsupported(reason, "updatePlayers")
-end
-local function update_players_copy(value, depth)
-    local kind = type(value)
-    if kind == "nil" or kind == "boolean" or kind == "string" then return value end
-    if kind == "number" and value == value and math.abs(value) < math.huge then return value end
-    depth = depth or 0
-    if kind ~= "table" or depth > 8 or getmetatable(value) ~= nil then
-        update_players_failure("invalid relation refresh value")
-    end
-    local copy = {}
-    for key, item in pairs(value) do
-        if type(key) ~= "string" and type(key) ~= "number" then update_players_failure("invalid relation refresh key") end
-        copy[key] = update_players_copy(item, depth + 1)
-    end
-    return copy
-end
+-- SmartAI:updatePlayers. The request's mode_policy is this decision's relation
+-- evaluation (the host does not re-evaluate mid-decision), so the ordered lists are
+-- rebuilt from it the same way SmartAIView.new builds them.
 function SmartAIView:updatePlayers(update)
     local policy = self.world and self.world.mode_policy
     if type(policy) ~= "table" or policy.managed ~= true or policy.error ~= nil then
-        update_players_failure("updatePlayers mode domain is not implemented")
+        ai_unsupported("updatePlayers mode domain is not implemented", "updatePlayers")
     end
-    local managed_wrapper = policy.legacy_managed == true
-    if not managed_wrapper and policy.standard_identity ~= true and policy.legacy_base_update ~= true then
-        update_players_failure("updatePlayers effective source domain is not implemented")
-    end
-    if type(ai_mode_update_players) ~= "function" or not managed_wrapper and type(self.getPriorTurnUseCount) ~= "function" then
-        update_players_failure("complete updatePlayers query is unavailable")
-    end
-    local count = managed_wrapper and 0 or self:getPriorTurnUseCount()
-    if type(count) ~= "number" or count < 0 or count % 1 ~= 0 or count == math.huge then
-        update_players_failure("invalid prior turn-use count")
-    end
-    local ok, result
-    if self.request and self.request.kind == "event" then
-        if type(self._event_policy_prefix) ~= "function" then update_players_failure("event relation prefix is unavailable") end
-        local deltas, effects = self:_event_policy_prefix()
-        if not AIValue.isList(deltas) or not AIValue.isList(effects) then update_players_failure("invalid event relation prefix") end
-        ok, result = pcall(ai_mode_update_players, count, update ~= false, deltas, effects)
+    if policy.standard_identity == true then
+        local friends, noself, enemies = AIList.asLuaTable(AIList.new({})),
+            AIList.asLuaTable(AIList.new({})), AIList.asLuaTable(AIList.new({}))
+        local row = (policy.relations or {})[self.player:objectName()] or {}
+        for _, player in ipairs(self.room:getAlivePlayers()) do
+            local relation = row[player:objectName()]
+            if relation == "friend" then
+                friends:append(player)
+                if player:objectName() ~= self.player:objectName() then noself:append(player) end
+            elseif relation == "enemy" then enemies:append(player) end
+        end
+        self.friends, self.friends_noself, self.enemies = friends, noself, enemies
     else
-        ok, result = pcall(ai_mode_update_players, count, update ~= false)
-    end
-    if not ok or type(result) ~= "table" or getmetatable(result) ~= nil or result.error ~= nil then
-        update_players_failure("complete updatePlayers query failed")
-    end
-    if result.value ~= 0 or type(result.owner_role) ~= "string" or result.owner_role == ""
-        or type(result.harsh_retain) ~= "boolean" or type(result.explicit_renegade) ~= "boolean"
-        or type(result.game_process) ~= "number" or result.game_process ~= result.game_process
-        or math.abs(result.game_process) == math.huge or type(result.process_label) ~= "string"
-        or not AIValue.isList(result.estimated_branches) then
-        update_players_failure("incomplete updatePlayers scalar state")
-    end
-    for _, key in ipairs({"relations", "strategy_marks", "role_values", "role_estimates", "role_counts"}) do
-        if type(result[key]) ~= "table" then update_players_failure("incomplete updatePlayers " .. key) end
-    end
-    local alive_players, all_players = self.room:getAlivePlayers(), self.room:getPlayers()
-    if not AIValue.isList(alive_players) or not AIValue.isList(all_players) then
-        update_players_failure("updatePlayers roster is unavailable")
-    end
-    local alive, roster = {}, {}
-    for _, player in ipairs(alive_players) do alive[player:objectName()] = player end
-    for _, player in ipairs(all_players) do roster[player:objectName()] = player end
-    if managed_wrapper then
-        -- This is one viewer's mode-policy matrix, not another AI's private mind.
-        -- Require every roster member, including dead players, before publishing.
-        local matrix = result.relation_matrix
-        if type(matrix) ~= "table" or getmetatable(matrix) ~= nil then
-            update_players_failure("missing managed relation matrix")
-        end
-        for name, row in pairs(matrix) do
-            if not roster[name] or type(row) ~= "table" or getmetatable(row) ~= nil then
-                update_players_failure("invalid managed relation matrix row")
-            end
-            for other, relation in pairs(row) do
-                if not roster[other] or relation ~= "friend" and relation ~= "enemy"
-                    and relation ~= "neutral" and relation ~= "unknown" then
-                    update_players_failure("invalid managed relation matrix cell")
-                end
-            end
-            for other in pairs(roster) do
-                if row[other] == nil then update_players_failure("incomplete managed relation matrix columns") end
-            end
-        end
-        for name in pairs(roster) do
-            if matrix[name] == nil then update_players_failure("incomplete managed relation matrix rows") end
-        end
-    end
-    for name, relation in pairs(result.relations) do
-        if not roster[name] or relation ~= "friend" and relation ~= "enemy" and relation ~= "neutral"
-            and not (managed_wrapper and relation == "unknown") then
-            update_players_failure("invalid updatePlayers relation")
-        end
-    end
-    for name in pairs(alive) do
-        if result.relations[name] == nil then update_players_failure("incomplete updatePlayers alive relations") end
-    end
-    local function players(key, relation)
-        local names, seen, list = result[key], {}, AIList.asLuaTable(AIList.new({}))
-        if not AIValue.isList(names) then update_players_failure("missing ordered updatePlayers list: " .. key) end
-        for _, name in ipairs(names) do
-            if type(name) ~= "string" or not alive[name] or seen[name] or result.relations[name] ~= relation then
-                update_players_failure("invalid ordered updatePlayers list: " .. key)
-            end
-            seen[name] = true
-            list:append(alive[name])
-        end
-        return list, seen
-    end
-    local friends, friend_names = players("friends", "friend")
-    local enemies, enemy_names = players("enemies", "enemy")
-    local noself = players("friends_noself", "friend")
-    local expected = {}
-    for _, player in ipairs(friends) do if player:objectName() ~= self.player:objectName() then expected[#expected+1] = player end end
-    if #noself ~= #expected then update_players_failure("incomplete ordered friends_noself") end
-    for i, player in ipairs(noself) do if player ~= expected[i] then update_players_failure("invalid ordered friends_noself") end end
-    for name in pairs(alive) do
-        if result.relations[name] == "friend" and not friend_names[name]
-            or result.relations[name] == "enemy" and not enemy_names[name] then
-            update_players_failure("ordered updatePlayers list omits a relation")
-        end
-    end
-    for _, basis in ipairs(result.estimated_branches) do
-        if type(basis) ~= "string" then update_players_failure("invalid relation estimate basis") end
-    end
-    local state = update_players_copy(result)
-    if managed_wrapper then
-        -- Effective mode-ai.lua711 updates only alive public compatibility roles.
-        -- Mode mind inferred_roles is separate; never seed this cache from it.
-        local previous, known = self:getStrategyMemory("managed_public_roles")
-        if known and type(previous) ~= "table" then update_players_failure("invalid managed public role memory") end
-        local public_roles = known and update_players_copy(previous) or {}
-        for name, role in pairs(public_roles) do
-            if type(name) ~= "string" or type(role) ~= "string" then update_players_failure("invalid managed public role entry") end
-        end
-        for name in pairs(alive) do
-            local role = state.role_estimates[name]
-            if type(role) ~= "string" or role == "" then update_players_failure("incomplete managed public role state") end
-            public_roles[name] = role
-        end
-        -- Unobserved dead entries remain absent, not inferred from private roles.
-        state.role_estimates = public_roles
-        self:setStrategyMemory("managed_public_roles", public_roles)
-    end
-    -- Validate/copy everything before replacing any current strategy list.
-    self.role, self.harsh_retain = state.owner_role, state.harsh_retain
-    self.friends, self.friends_noself, self.enemies = friends, noself, enemies
-    policy.relations = managed_wrapper and state.relation_matrix or policy.relations or {}
-    policy.relations[self.player:objectName()] = state.relations
-    policy.strategy_marks, policy.role_values, policy.role_estimates = state.strategy_marks, state.role_values, state.role_estimates
-    policy.explicit_renegade, policy.game_process, policy.process_label = state.explicit_renegade, state.game_process, state.process_label
-    self.world.role_counts = state.role_counts
-    for _, basis in ipairs(state.estimated_branches) do
-        self:useKnowledgeEstimate({value=0,status="estimate",basis=basis}, "updatePlayers")
+        self.friends = AIList.asLuaTable(self:getFriends())
+        self.friends_noself = AIList.asLuaTable(self:getFriends(nil, true))
+        self.enemies = AIList.asLuaTable(self:getEnemies())
     end
     return true -- isolated caller ABI; source callers ignore its nil return
 end
@@ -2425,7 +2312,7 @@ function isCard(class_name, card, player, classification_only)
     if type(class_name) ~= "string" or not card or type(card.isKindOf) ~= "function" then return nil end
     local original_room=player and rawget(player,"_room")
     local original_ai=original_room and original_room._ai
-    local original_mode=original_ai and original_ai.world and original_ai.world.strategy_facts and original_ai.world.strategy_facts.hegemony
+    local original_mode=original_ai and original_ai.world and AIHegemony.facts(original_ai.world)
     if original_mode and original_mode.enabled and original_mode.original_overrides_loaded==true then
         return original_ai:originalHegemonyIsCard(class_name,card,player)
     end
@@ -2448,10 +2335,8 @@ function isCard(class_name, card, player, classification_only)
             if strategy_call(skill, "inherits", "FilterSkill") and not filtered then
                 local place = room and room:getCardPlace(strategy_call(card, "getEffectiveId"))
                 if place ~= sgs.Player_PlaceEquip or place == nil then
-                    local facts = ai and ai.world and ai.world.strategy_facts
-                    local rows = facts and facts.card_filter_hand and facts.card_filter_hand[player:objectName()]
-                    local id = strategy_call(card, "getEffectiveId")
-                    local row = type(rows) == "table" and (rows[tostring(id)] or rows[id])
+                    -- The viewer's projected hand already carries filtered faces.
+                    local row = same_player(player, ai and ai.player) and {complete=true, card=card._view} or nil
                     if type(row) ~= "table" or row.complete ~= true or type(row.card) ~= "table" then
                         if ai and not same_player(player, ai.player) then return estimated_class_card(ai, card, player, class_name) end
                         ai_unsupported("hand-place filter classification is not projected", "isCard.CardFilter")
@@ -2501,7 +2386,7 @@ function SmartAIView:isCardForAcquisition(class_name,card)
     for _,candidate in ipairs(options.card_ids)do if candidate==id then offered=true;break end end
     local disclosed=self:getChoiceCard(id)
     if not offered or not disclosed then ai_unsupported("acquired card is outside the current disclosed choice","isCard.acquisition")end
-    local original=self.world.strategy_facts and self.world.strategy_facts.hegemony
+    local original=AIHegemony.facts(self.world)
     if original and original.enabled and original.original_overrides_loaded==true then
         -- Original checks limitation even for its printed-class fast path.
         -- Reuse only this offered face's native hypothetical acquisition rules.
@@ -2575,7 +2460,7 @@ function getCardsNum(class_name, player, observer)
         ai = room and rawget(room, "_ai")
     end
     if not ai then ai_unsupported("card-count viewer context is absent", "getCardsNum") end
-    local mode=ai.world and ai.world.strategy_facts and ai.world.strategy_facts.hegemony
+    local mode=ai.world and AIHegemony.facts(ai.world)
     if mode and mode.enabled and mode.original_overrides_loaded==true then
         return strategy_call(ai,"originalHegemonyCardsNum",class_name,player,observer)
     end
@@ -2587,7 +2472,7 @@ function getKnownCard(player, from, class_name, viewas, flags, return_table)
     if not player then return nil end
     local playerRoom=type(player)=="table" and rawget(player,"_room")
     local viewer=playerRoom and playerRoom._ai
-    local mode=viewer and viewer.world and viewer.world.strategy_facts and viewer.world.strategy_facts.hegemony
+    local mode=viewer and viewer.world and AIHegemony.facts(viewer.world)
     if mode and mode.enabled and mode.original_overrides_loaded==true then
         if type(viewer.originalHegemonyKnownCard)~="function" then ai_unsupported("Original known-card policy is not loaded","getKnownCard") end
         return viewer:originalHegemonyKnownCard(player,from,class_name,viewas,flags,return_table)
@@ -2680,6 +2565,45 @@ end
 function isLord(player)
     if not player or type(player.isLord) ~= "function" then return nil end
     return player:isLord()
+end
+
+-- SmartAI's getLord: the lord, else a same-role partner (which needs the roles), else
+-- the player itself. Hegemony has none.
+function getLord(player)
+    local room = AIValue.isPlayer(player) and rawget(player, "_room")
+    local world = room and rawget(room, "_world")
+    if type(world) ~= "table" or world.enable_hegemony ~= false then return nil end
+    local lord = room:getLord()
+    if lord then return lord end
+    local role = rawget(player, "_view").role
+    if type(role) ~= "string" then ai_unsupported("getLord needs the player's role", "getLord") end
+    if role ~= "renegade" then
+        for _, other in ipairs(room:getOtherPlayers(player)) do
+            local other_role = rawget(other, "_view").role
+            if type(other_role) ~= "string" then ai_unsupported("getLord needs every role", "getLord") end
+            if other_role == role then return other end
+        end
+    end
+    return player
+end
+
+-- addFunction.lua's CanToCard: card:targetFilter(tos, to, from), answered for the
+-- viewer's own use only.
+function CanToCard(card, from, to, tos)
+    local room = AIValue.isPlayer(from) and rawget(from, "_room")
+    local ai = room and room._ai
+    if not ai or not same_player(from, ai.player) then ai_unsupported("CanToCard needs the viewer as user", "CanToCard") end
+    return ai:cardTargetFilter(card, tos or {}, to)
+end
+
+-- SmartAI's isCurrent: whether `to` is already among the plan's current targets.
+function isCurrent(use, to)
+    if AIList.isNativeList(use.current_targets) then return use.current_targets:contains(to) end
+    if type(use.current_targets) == "table" then
+        for _, p in ipairs(use.current_targets) do
+            if p == to or p == to:objectName() then return true end
+        end
+    elseif type(use.current_targets) == "userdata" then return use.current_targets:contains(to) end
 end
 
 -- 策略探測用的類別替身，只回答類別與是否傷害牌。不能拿去出牌。
@@ -3078,11 +3002,9 @@ function SmartAIView:useSkillCard(card, use)
 end
 
 local function value_skill_tag(self, player, key, list)
-    local facts = self.world and self.world.strategy_facts
     if same_player(player, self.player) and (key == "BaiyiUsed" or key == "Jinglve_targets") then
-        local tags = facts and facts.owner_strategy_tags
-        local value = tags and tags[key]
-        if value == nil then ai_unsupported("owner awakening history tag is not projected", "isValueSkill." .. key) end
+        local value = player:getTag(key)
+        if value == nil then return list and {} or false end
         return value
     end
     local value = list and {} or false
@@ -3172,9 +3094,7 @@ function SmartAIView:isValueSkill(skill_name,player,HighValue)
 	end
 	local skill = self.room:getPublicSkill(skill_name)
 	if not skill then
-        local facts = self.world and self.world.strategy_facts
-        if type(facts) ~= "table" or facts.skill_catalog_scope ~= "public_registered_skill_definitions"
-            or type(facts.skill_catalog) ~= "table" then ai_unsupported("public skill catalogue is incomplete", "isValueSkill") end
+        -- Definitions are projected only for skills a visible player holds.
         return false
     end
 	if strategy_call(skill, "isLimitedSkill") and strategy_call(skill, "getLimitMark")~="" and strategy_call(player, "getMark", strategy_call(skill, "getLimitMark"))>0 then return true end
@@ -3569,10 +3489,8 @@ end
 
 -- 無實體殺時選額外目標。不造 dummy 牌；合法性仍交給 prohibit／effective。
 function SmartAIView:zeroCardSlashTarget(targets)
-    local facts = self.world and self.world.strategy_facts
-    local row = facts and facts.extra_target_slash
-    if row == nil then ai_unsupported("extra-target Slash tag is not projected", "zeroCardSlashTarget") end
-    local slash = row == false and self:classProbe("Slash") or CardView.new(row)
+    -- AI_ExtraTargetSlash has no writer, so SmartAI always uses a fresh Slash.
+    local slash = self:classProbe("Slash")
     slash = strategy_known(slash, "extra-target Slash descriptor")
 	local targetlist = AIList.new(targets)
 	--add
@@ -4143,11 +4061,6 @@ function SmartAIView:hasSkill(skill)
     -- registered-definition catalogue, never from absent owner membership.
     if type(skill) ~= "string" then error("source getSkill expects a string skill name", 0) end
     local definition = self.room:getPublicSkill(skill)
-    if definition == nil then
-        local facts = self.world and self.world.strategy_facts
-        if type(facts) ~= "table" or facts.skill_catalog_scope ~= "public_registered_skill_definitions"
-            or type(facts.skill_catalog) ~= "table" then ai_unsupported("public skill catalogue is incomplete", "hasSkill") end
-    end
     if definition and strategy_call(definition, "isLordSkill") then return strategy_call(self.player, "hasLordSkill", skill) end
     return strategy_call(self.player, "hasSkill", skill)
 end
@@ -4344,7 +4257,6 @@ function SmartAIView:getRestCardsNum(class_name, observer)
             known = known + self:useKnowledgeEstimate(self:estimateKnownCards(player, class_name, observer), "getRestCardsNum.known")
         end
     end
-    local facts = self.world and self.world.strategy_facts
     local function count(name)
         if type(name) == "table" then local total = 0; for _, entry in ipairs(name) do total = total + count(entry) end; return total end
         if type(name) ~= "string" then error("source PatternsCard name has no string match method", 0) end
@@ -4357,22 +4269,15 @@ function SmartAIView:getRestCardsNum(class_name, observer)
                 first = comma + 1
             end
         end
-        if type(facts) ~= "table" or facts.deck_definition_counts_complete ~= true or type(facts.deck_definition_counts) ~= "table" then
-            ai_unsupported("public configured deck definition counts are absent", "getRestCardsNum")
+        -- Unbanned engine copies whose name, class or kind matches (PatternsCard).
+        if type(ai_card_catalog) ~= "table" then ai_unsupported("card catalog is not projected", "getRestCardsNum") end
+        local total = 0
+        for _, row in ipairs(ai_card_catalog) do
+            if not row.banned and (row.name == name or table.contains(row.kind_of or {}, name)) then
+                total = total + (row.count or 0)
+            end
         end
-        -- Donor PatternsCard scans a shuffled public deck definition at each
-        -- scalar leaf. Its ordering is unused, but its gameplay RNG draws are
-        -- observable by later decisions. Consume them lazily in native scope.
-        if type(ai_consume_deck_count_shuffle) ~= "function" then
-            ai_unsupported("branch-time deck shuffle query is absent", "getRestCardsNum")
-        end
-        local shuffled = ai_consume_deck_count_shuffle()
-        if type(shuffled) ~= "table" or shuffled.kind ~= "deck_count_shuffle"
-            or type(shuffled.count) ~= "number" or shuffled.count < 0
-            or shuffled.count % 1 ~= 0 or shuffled.count ~= facts.deck_definition_size then
-            ai_unsupported("invalid or stale deck shuffle result", "getRestCardsNum")
-        end
-        return facts.deck_definition_counts[name] or 0
+        return total
     end
     local total = count(class_name)
     local humanized = strategy_known(self.world.ai_humanized, "ai_humanized")
@@ -4409,9 +4314,8 @@ function SmartAIView:justDamage(to, from, is_slash, lock)
         -- Source reads the property length BEFORE checking the skill.
         local ready
         if same_player(from, self.player) then
-            local facts = self.world and self.world.strategy_facts
-            local names = facts and facts.owner_duorui_skills
-            if type(names) ~= "table" then ai_unsupported("owner duorui skill state is absent", "duorui_skills") end
+            local names = self.player:getPropertyValue("duorui_skills") or {}
+            if type(names) ~= "table" then ai_unsupported("owner duorui skill state is malformed", "duorui_skills") end
             ready = #names < 1
         else
             ready = self:useKnowledgeEstimate({value = true, status = "estimate", viewer = self.player:objectName(), target = from:objectName(),
@@ -4521,20 +4425,28 @@ function SmartAIView:willSkipDrawPhase(player, without_nullification)
 end
 
 
+-- SmartAI's disabled_ids: visible cards of the target that this card_chosen
+-- question does not offer. Every other question offers no such list.
 function SmartAIView:refreshDiscardPreferences(sourceAssignment)
-    if type(ai_refresh_discard_preferences) ~= "function" then
-        ai_unsupported("discard preference query endpoint is unavailable", "refreshDiscardPreferences")
-    end
-    local row = sourceAssignment == true and ai_refresh_discard_preferences(true) or ai_refresh_discard_preferences()
-    if type(row) ~= "table" or row.kind ~= "discard_preferences" or not AIValue.isList(row.disabled_ids) then
-        ai_unsupported("discard preference query result is malformed", "refreshDiscardPreferences")
-    end
     local ids = {}
-    for _, id in ipairs(row.disabled_ids) do
-        if type(id) ~= "number" or id < 0 or id % 1 ~= 0 then
-            ai_unsupported("discard preference identity is invalid", "refreshDiscardPreferences")
+    local request = self.request
+    local options = type(request) == "table" and request.options
+    if type(request) == "table" and request.kind == "card_chosen" and type(options) == "table"
+        and AIValue.isList(options.card_ids) and type(options.context) == "table" then
+        local offered = {}
+        for _, id in ipairs(options.card_ids) do offered[id] = true end
+        local who = self.room:findPlayerByObjectName(options.context.who, true)
+        local flags = type(options.context.flags) == "string" and options.context.flags or ""
+        local zones = {}
+        if who and flags:find("e", 1, true) then zones[#zones + 1] = who:getEquips() end
+        if who and flags:find("j", 1, true) then zones[#zones + 1] = who:getJudgingArea() end
+        if who and flags:find("h", 1, true) then zones[#zones + 1] = who:getKnownCards() end
+        for _, zone in ipairs(zones) do
+            for _, card in ipairs(zone or {}) do
+                local id = card:getEffectiveId()
+                if type(id) == "number" and not offered[id] then ids[#ids + 1] = id end
+            end
         end
-        ids[#ids+1] = id
     end
     self.disabled_ids = AIList.new(ids)
     if type(self.setStrategyMemory) ~= "function" then ai_unsupported("card-choice observation cache is unavailable", "refreshDiscardPreferences") end
@@ -4846,7 +4758,20 @@ function SmartAIView:bindTurnConversion(skill, class_name, spec, request)
             selected.lazy=true
         end
     end
-    if not selected then ai_unsupported("turn conversion has no exact native source scope",skill) end
+    if not selected then
+        -- An owned V1 view-as skill enabled at play is evaluated only (registerViewAsReceipt).
+        local view
+        for _,row in ipairs(type(self.player._view.skills)=="table" and self.player._view.skills or {}) do
+            if row.name==skill then view=row break end
+        end
+        if request or not view or view.view_as_v2~=false or view.enabled_at_play~=true then
+            ai_unsupported("turn conversion has no exact native source scope",skill)
+        end
+        local face=self:evaluateOwnerViewAsCard({name=spec.name,skill=skill,suit=spec.suit,number=spec.number,
+            subcards=spec.subcards,can_recast=spec.can_recast})
+        if face:getClassName()~=class_name then ai_unsupported("turn conversion product class changed",skill) end
+        return self:registerViewAsReceipt(face._view)
+    end
     card=self:resolveResponseConversion(spec,selected)
     if not card or not matches(card) then ai_unsupported("turn conversion source identity changed",skill) end
     return card
@@ -4854,35 +4779,36 @@ end
 
 -- Resolve a single native scope for both hypothetical seeds and paid actions.
 -- A scope is not a card receipt and cannot itself authorize submission.
+-- The V2 skill action a proposal pays through: one the request offers for this
+-- activation skill, matching the legacy request's identity when one is given.
 function SmartAIView:getNativeSkillActionScope(skill, request)
+    local selected = self:findOfferedSkillAction(skill, request)
+    if not selected then ai_unsupported("skill action has no matching source scope", skill) end
+    return selected
+end
+function SmartAIView:findOfferedSkillAction(skill, request)
     if type(skill) ~= "string" or skill == "" then ai_unsupported("invalid skill action source", "getNativeSkillActionScope") end
     local identity_methods = {
         activation_owner="getActivationOwner", activation_skill="getActivationSkillName", activation_instance="getActivationInstanceId",
         source_owner="getSourceOwner", source_skill="getSourceSkillName", source_instance="getSourceInstanceID"
     }
-    local policy = self.request and self.request.conversion_policy
-    local rows = type(policy) == "table" and policy.skill_actions
-    if not AIValue.isList(rows) then ai_unsupported("skill action source scopes are not projected", skill) end
+    local actions = type(self._indexes) == "table" and self._indexes.skill_actions_by_name
+    -- Only a legacy skill request (with identity methods) scopes the action.
+    if request and type(request.getActivationSkillName) ~= "function" then request = nil end
     local activation = request and strategy_call(request,"getActivationSkillName") or skill
     local selected
-    for _, row in ipairs(rows) do
-        local identity = type(row) == "table" and row.identity
-        if type(identity) == "table" and identity.activation_owner == self.player:objectName()
-            and row.skill_name == activation then
+    for _, action in ipairs(actions and actions[activation] or {}) do
+        if action.activation_owner == self.player:objectName() then
             local matches = true
             for field, method in pairs(identity_methods) do
-                if identity[field] == nil then ai_unsupported("skill action source identity is incomplete", skill) end
-                if request and identity[field] ~= strategy_call(request, method) then matches = false end
+                if request and action[field] ~= strategy_call(request, method) then matches = false end
             end
             if matches then
-                if type(row.scope_id) ~= "number" or row.scope_id % 1 ~= 0 or row.scope_id < 0
-                    or row.request == nil then ai_unsupported("skill action native scope is incomplete", skill) end
                 if selected then ai_unsupported("skill action source is ambiguous", skill) end
-                selected = row
+                selected = {skill_name = activation, identity = action}
             end
         end
     end
-    if not selected then ai_unsupported("skill action has no matching source scope", skill) end
     return selected
 end
 
@@ -4911,33 +4837,18 @@ function SmartAIView:bindSkillCard(skill, costs, request, user_string, legacy_cl
         end
         seen[id], exact[#exact + 1] = true, id
     end
-    local selected = self:getNativeSkillActionScope(skill, request)
-    if type(ai_resolve_skill_action) ~= "function" then ai_unsupported("native skill action resolver is unavailable", skill) end
-    local result
-    if legacy_class then result = ai_resolve_skill_action(selected.scope_id, exact, user_string, legacy_class)
-    else result = ai_resolve_skill_action(selected.scope_id, exact, user_string or "") end
-    local ticket = type(result) == "table" and result.ticket
-    if type(ticket) ~= "table" or not AIValue.isList(ticket.subcards) then
-        ai_unsupported(type(result) == "table" and result.error or "native skill action was rejected", skill)
+    -- A V2 skill answers through its offered skill action. A V1 skill card needs
+    -- its card class for the evaluation face; submitting it falls back to SmartAI.
+    local selected = self:findOfferedSkillAction(skill, request)
+    if not selected and not legacy_class then
+        ai_unsupported("skill action is not offered and has no legacy card class", skill)
     end
-    if #ticket.subcards ~= #exact then ai_unsupported("native skill action changed the exact costs", skill) end
-    for index, id in ipairs(exact) do
-        if ticket.subcards[index] ~= id then ai_unsupported("native skill action reordered or changed exact costs", skill) end
-    end
-    local authority = self:registerResolvedConversion(result, selected.identity)
-    if legacy_class then
-        if type(result.legacy_policy) ~= "table" or (result.legacy_policy.legacy_selector or result.legacy_policy.class_name) ~= legacy_class
-            or result.legacy_policy.type_id ~= 0 then
-            ai_unsupported("native skill action has no matching legacy prototype", skill)
-        end
-        return self:legacyResponsePolicyCard(authority, result.legacy_policy)
-    end
-    return authority
+    return self:registerSkillActionReceipt({skill = skill, identity = selected and selected.identity,
+        costs = exact, user_string = user_string, legacy_class = legacy_class})
 end
 
 function SmartAIView:getFanConversionProbe(card)
-    local facts=self.world and self.world.strategy_facts
-    local probe=facts and facts.fan_conversion_probe
+    local probe=nil -- The Fan hypothetical conversion is not projected.
     if type(probe)~="table" or type(probe.source)~="table" or type(probe.card)~="table" then
         ai_unsupported("Fan hypothetical use-card probe is not projected","fan")
     end
@@ -4958,11 +4869,7 @@ function SmartAIView:getReasonSlash(reason, original)
     if original and strategy_call(original, "hasFlag", "Qinggang") then mask = mask + 1 end
     if original and strategy_call(original, "hasFlag", "SlashIgnoreArmor") then mask = mask + 2 end
     local function variant(skill, flags)
-        local facts = self.world and self.world.strategy_facts
-        local rows = facts and facts.reason_slash_probes
-        rows = rows and rows[skill]
-        rows = rows and rows[name]
-        local row = rows and rows[tostring(flags)]
+        local row = nil -- Reason/flag Slash probes are not projected.
         if type(row) ~= "table" then ai_unsupported("native reason/flag Slash probe is absent", skill .. ":" .. name .. ":" .. flags) end
         return row
     end
@@ -5134,10 +5041,7 @@ end
 function getDisplayCards(player, from)
     if not player then return {} end
     local ids = strategy_call(player, "getDisplayCards")
-    local room = rawget(player, "_room")
-    local facts = room and room._world.strategy_facts
-    local rows = facts and facts.public_display_cards
-    rows = rows and rows[player:objectName()]
+    local rows = nil -- Display card faces come from the visible hand below.
     local by_id = {}
     if type(rows) == "table" then
         for _, row in ipairs(rows) do
@@ -5155,10 +5059,11 @@ function getDisplayCards(player, from)
 end
 function hasDisplaySkills(player)
     if not player then return false end
+    -- display_cards lists the shown hand cards named by the public property.
     local view = rawget(player, "_view")
-    local value = type(view) == "table" and view.has_display_property
-    if type(value) ~= "boolean" then ai_unsupported("public display property presence is absent", "hasDisplaySkills") end
-    return value
+    local shown = type(view) == "table" and view.display_cards
+    if not AIValue.isList(shown) then ai_unsupported("public display cards are not projected", "hasDisplaySkills") end
+    return #shown > 0
 end
 function SmartAIView:getDisplayCards(player, observer) return getDisplayCards(player or self.player, observer or self.player) end
 function SmartAIView:hasDisplaySkills(player) return hasDisplaySkills(player or self.player) end
@@ -5191,8 +5096,7 @@ function canAiSkills(name, ai)
         for key, callback in pairs(registry) do if key == name then return {name = key, ai_fill_skill = callback} end end
         return nil
     end
-    local facts = ai and ai.world and ai.world.strategy_facts
-    local names = facts and facts.ordered_available_general_skills
+    local names = nil -- The selectable general-skill catalogue is not projected.
     if type(names) ~= "table" then ai_unsupported("public general-skill catalog needs an explicit AI context", "canAiSkills") end
     local result = {}
     for _, skill in ipairs(names) do
@@ -5373,14 +5277,9 @@ function SmartAIView:getLijianCard()
 end
 
 
+-- This VM's own cardask registry decides.
 function SmartAIView:hasLegacyCardAsk(skill_name)
-    local row=self.world and self.world.strategy_facts and self.world.strategy_facts.owner_cardask_hooks
-    local values=type(row)=="table" and row.by_skill
-    local value=type(values)=="table" and values[skill_name]
-    if type(row)~="table" or row.complete~=true or type(value)~="boolean" then
-        ai_unsupported("owner source cardask presence is not projected",tostring(skill_name))
-    end
-    return value
+    return type(sgs.ai_skill_cardask)=="table" and sgs.ai_skill_cardask[skill_name]~=nil
 end
 
 -- imagine-ai.lua:691/829 and its fixed yjcm2012 Jiangchi choice dependency.
@@ -5502,12 +5401,7 @@ function SmartAIView:ImitateResult_DrawNCards(player,skills,overall)
 				local choices = "jiang+chi+cancel"
 				local func = sgs.ai_skill_choice.jiangchi
                 if func == nil then
-                    local facts=self.world and self.world.strategy_facts
-                    local row=facts and facts.jiangchi_choice_presence
-                    if type(row)~="table" or row.known~=true or type(row.present)~="boolean" then
-                        ai_unsupported("source Jiangchi callback presence is unknown","ImitateResult_DrawNCards")
-                    end
-                    if row.present then func=function(ai) return ai:chooseJiangchiForDraw() end end
+                    if type(self.chooseJiangchiForDraw)=="function" then func=function(ai) return ai:chooseJiangchiForDraw() end end
                 end
 				if func then
 					local choice = func(self,choices)
@@ -5545,17 +5439,10 @@ end
 -- for this viewer or their authorized controlled actor.
 function SmartAIView:getAIControlAvailability(player)
     player=player or self.player
-    local facts=self.world and self.world.strategy_facts
-    local rows=type(facts)=="table" and facts.ai_control_availability
-    local row
-    if type(rows)=="table"then row=rows[strategy_call(player,"objectName")]end
-    if row~=nil then
-        if type(row)~="table" or type(row.known)~="boolean" or type(row.basis)~="string"
-            or row.known and type(row.has_ai)~="boolean" then
-            ai_unsupported("malformed AI control availability knowledge","AIControlAvailability")
-        end
-        if row.known then return {status="exact",value=row.has_ai,basis=row.basis}end
-        return {status="unknown",basis=row.basis}
+    -- Robots and trusted players are AI controlled; the state is public.
+    local state=strategy_call(player,"getState")
+    if state=="robot" or state=="trust" then
+        return {status="exact",value=true,basis="public_ai_state"}
     end
     -- Native's unconditional public-state branch is still provable when an
     -- older pure snapshot omits the narrow private-control metadata.
@@ -6485,8 +6372,7 @@ function SmartAIView:getYongdiTarget(targets,lord)
     for _,p in ipairs(targets)do
         if q(self,"isFriend",p)then
             if q(self,"hasSkills",sgs.need_maxhp_skill,p)then good[#good+1]=p;isgood[p]=true end
-            local facts=self.world.strategy_facts
-            local row=facts and facts.lei and facts.lei.general_skills and facts.lei.general_skills[p:objectName()]
+            local row=nil -- Printed general skill lists are not projected.
             if type(row)~="table" then ai_unsupported("printed general skills unknown","getYongdiTarget")end
             for _,part in ipairs({"primary","secondary"})do
                 if islord[p]then break end
@@ -7449,8 +7335,8 @@ sgs.ai_use_revises.tiaoxin = function(self,card,use)
 end
 end
 
--- R28 ordinary default nullification and can-damage-HP hooks. Unknown current
--- AmazingGrace observations are not fabricated from another question's offers.
+-- R28 ordinary default nullification and can-damage-HP hooks. The current
+-- AmazingGrace use comes from the projected use history.
 do
     local function r28_call(object,method,...)
         if object==nil then error("attempt to index a nil value",0) end
@@ -7458,40 +7344,42 @@ do
         if AIUnsupported and AIUnsupported.is(value) then error(value,0) end
         return value
     end
-    local function r28_grace(self,trick)
-        local context=r28_call(self,"getDecisionContext")
-        local row=type(context.smart_common)=="table" and context.smart_common.amazing_grace
-        if type(row)~="table" or row.known~=true or type(row.card_identity)~="string"
-            or row.card_identity~=r28_call(trick,"getLegacyIdentityToken") then
-            ai_unsupported("current AmazingGrace public use observation is unavailable","smart.AmazingGrace")
-        end
-        return row
-    end
+    -- Legacy getUseStruct(trick) reads Room tag "UseHistory"..trick:toString(). A
+    -- physical trick's string is its id; a virtual one is the only use with its face.
     local function r28_grace_use(self,trick)
-        local row=r28_grace(self,trick)
-        if not AIValue.isList(row.targets) then ai_unsupported("AmazingGrace ordered targets are unknown","smart.AmazingGrace.targets") end
+        local rows=self.world.use_history
+        if type(rows)~="table" then ai_unsupported("use history is not projected","smart.AmazingGrace.use") end
+        local face=rawget(trick,"_view")
+        if type(face)~="table" then ai_unsupported("AmazingGrace face is unknown","smart.AmazingGrace.use") end
+        local row
+        if face.virtual_card==false and type(face.id)=="number" and face.id>=0 then
+            row=rows[tostring(face.id)]
+        elseif face.virtual_card==true then
+            for _,use in pairs(rows) do
+                local card=type(use)=="table" and use.card
+                if type(card)=="table" and card.virtual_card==true and card.name==face.name
+                    and card.suit==face.suit and card.number==face.number and card.skill_name==face.skill_name then
+                    if row then ai_unsupported("virtual AmazingGrace use is ambiguous","smart.AmazingGrace.use") end
+                    row=use
+                end
+            end
+        end
+        if type(row)~="table" or not AIValue.isList(row.to) then
+            ai_unsupported("current AmazingGrace use is not projected","smart.AmazingGrace.use")
+        end
         local targets=AIList.new({})
-        for _,name in ipairs(row.targets) do
+        for _,name in ipairs(row.to) do
             if type(name)~="string" then ai_unsupported("malformed AmazingGrace target","smart.AmazingGrace.targets") end
             targets:append(strategy_known(self.room:findPlayerByObjectName(name,true),"AmazingGrace target"))
         end
         return {to=targets}
     end
-    local function r28_grace_ids(self,trick)
-        local row=r28_grace(self,trick)
-        if not AIValue.isList(row.ids) then ai_unsupported("AmazingGrace disclosed cards are unknown","smart.AmazingGrace.ids") end
-        for _,id in ipairs(row.ids) do
-            if type(id)~="number" or id<0 or id%1~=0 then ai_unsupported("malformed AmazingGrace card ID","smart.AmazingGrace.ids") end
-        end
-        return row.ids
-    end
+    -- Legacy counts Room tag "AmazingGrace". This engine keeps the shown cards under
+    -- "AmazingGrace"..toString(), and its one Lua writer (s2_lixian) only copies the
+    -- empty tag back, so the donor's list is always empty.
+    local function r28_grace_ids(self,trick) return {} end
     local function r28_grace_card(self,trick,id)
-        local row=r28_grace(self,trick)
-        if not AIValue.isList(row.cards) then ai_unsupported("AmazingGrace disclosed faces are unknown","smart.AmazingGrace.cards") end
-        for _,face in ipairs(row.cards) do
-            if type(face)=="table" and face.id==id and face.evaluation_only==true then return CardView.new(face) end
-        end
-        ai_unsupported("AmazingGrace selected public face is absent","smart.AmazingGrace.card")
+        ai_unsupported("AmazingGrace card face is not projected","smart.AmazingGrace.card")
     end
     sgs.ai_nullification=sgs.ai_nullification or {}
     sgs.ai_can_damagehp=sgs.ai_can_damagehp or {}
@@ -7810,9 +7698,7 @@ do
  local function role(self)return known(self.role,'owner role')end
  local function count(self,name)return known(q(self,'getRoleCounts')[name],'role count '..name)end
  local function kingdoms(self)
-  local facts=self.world and self.world.strategy_facts
-  local row=facts and facts.original37
-  local list=row and row.kingdoms
+  local list=nil -- The ordered kingdom catalogue is not projected.
   if not AIValue.isList(list)then ai_unsupported('Touhou ordered native kingdom catalogue unknown','kingdoms')end
   local copy={};for i,v in ipairs(list)do if type(v)~='string'then ai_unsupported('Touhou kingdom catalogue malformed','kingdoms')end;copy[i]=v end
   return copy
@@ -8193,11 +8079,8 @@ local function r54_throw_prefix(reason)
   if reason==nil then error('table index is nil',0)end
   ai_unsupported('ordinary card-choice reason is outside native string domain','askForCardChosen.throwData')
  end
- if type(ai_refresh_discard_preferences)~='function'then ai_unsupported('ordinary source prefix endpoint missing','askForCardChosen.throwData')end
- local row=ai_refresh_discard_preferences({op='increment_throw',key=reason})
- if AIUnsupported.is(row)then error(row,0)end
- if type(row)=='table'and type(row.source_error)=='string'then error(row.source_error,0)end
- if type(row)~='table'or row.written~=true then ai_unsupported(type(row)=='table'and row.error or 'ordinary source prefix unconfirmed','askForCardChosen.throwData')end
+ -- SmartAI bumps its global throw statistics here; this observer keeps its own
+ -- throw history from the events it sees instead.
 end
 local function r54_callback(fn,...)
  local result=fn(...);if AIUnsupported.is(result)then error(result,0)end;return result
@@ -8207,13 +8090,7 @@ local function r54_owner_sort(self,who,cards,inverse)
   -- The exact source returns before cache/toUse access for fewer than two
   -- cards. Only current public equips plus authenticated foreign bindings
   -- qualify; all cache-dependent lists retain their existing unknown result.
-  if #cards<2 then
-   local ids={};for _,card in ipairs(cards)do ids[#ids+1]=r54_call(card,'getEffectiveId')end
-   if type(ai_refresh_discard_preferences)~='function'then ai_unsupported('foreign keep-sort source endpoint missing','askForCardChosen.ownerSort')end
-   local row=ai_refresh_discard_preferences({op='foreign_keep_trivial',owner=r54_call(who,'objectName'),ids=ids})
-   if AIUnsupported.is(row)then error(row,0)end
-   if type(row)=='table'and row.certified==true then return cards end
-  end
+  if #cards<2 then return cards end -- Sorting fewer than two cards keeps their order.
   ai_unsupported('foreign AI keep cache and toUse ordering not observed','askForCardChosen.ownerSort')
  end
  return r54_call(self,'sortByKeepValue',cards,inverse)

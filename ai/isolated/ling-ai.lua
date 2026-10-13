@@ -27,13 +27,17 @@ local function set_ganglie_flag(self,player,enabled)
     self:setStrategyMemory("ling.ganglie_targets",row)
 end
 local function current_damage(self)
-    local facts=self.world and self.world.strategy_facts
-    local row=known(facts and facts.standard and facts.standard.current_damage,"current damage fact")
-    if row==false then return {} end
-    if type(row)~="table" then ai_unsupported("invalid current damage fact","neoganglie") end
+    -- CurrentDamageStruct is set from DamageDone to DamageComplete and a trigger is
+    -- logged when its dispatch ends, so while a Damaged skill answers the latest
+    -- damage event is that damage's DamageDone or Damage stage.
+    local event=self:getLastEvent("damage")
+    local stage=event and q(event,"getTriggerEvent")
+    if stage~=sgs.DamageDone and stage~=sgs.Damage then ai_unsupported("CurrentDamageStruct is not projected","neoganglie") end
+    local row=rawget(event,"_view")
     local result={}
-    if row.from~=false and row.from~="" then result.from=known(self.room:findPlayerByObjectName(known(row.from,"damage.from"),true),"damage source") end
-    if row.card and type(row.card)=="table" and next(row.card)~=nil then result.card=CardView.new(row.card) end
+    if row.from~="" then result.from=known(self.room:findPlayerByObjectName(known(row.from,"damage.from"),true),"damage source") end
+    local card=row.details and row.details.card
+    if type(card)=="table" and next(card)~=nil then result.card=CardView.new(card) end
     return result
 end
 

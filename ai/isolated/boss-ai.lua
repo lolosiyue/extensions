@@ -20,8 +20,7 @@ local function can_to(self,card,to,prefix)
     return q(self,"cardTargetFilter",card,prefix or{},to)
 end
 local function boss_player_fact(self,player,key)
-    local facts=self.world.strategy_facts
-    local row=facts and facts.boss and facts.boss.players and facts.boss.players[q(player,"objectName")]
+    local row=nil -- Boss public tags are not projected.
     local value=known(row and row[key],key)
     if key=="god_speel_count" and (type(value)~="number" or value<0 or value%1~=0)
         or key=="wanghun_active" and type(value)~="boolean" then ai_unsupported("invalid Boss public tag fact",key)end

@@ -59,20 +59,8 @@ end
 -- Both invoke writers are live under the fixed but package-dependent load
 -- order. Capture their actual source once; never revive an overwritten body.
 local function invoke_variant(self)
-    local capture = self.world.strategy_facts and self.world.strategy_facts.audited_aliases
-    local rows = type(capture) == "table" and capture.source_variants
-    local row = type(rows) == "table" and rows["ai_skill_invoke.aocai"]
-    if not capture or capture.captured ~= true or type(row) ~= "table" or row.known ~= true then
-        ai_unsupported("Aocai effective invoke source is unknown", "aocai.invoke")
-    end
-    if row.present == false then return nil end
-    local sources = {sp={"@lua/ai/sp-ai.lua",940},ol_qifu={"@lua/ai/ol_qifu-ai.lua",1}}
-    local origin = sources[row.variant]
-    if row.present ~= true or row.type ~= "function" or not origin
-        or row.source ~= origin[1] or row.line ~= origin[2] then
-        ai_unsupported("Aocai invoke source has no audited policy", "aocai.invoke")
-    end
-    return row.variant
+    -- The winner depends on the gameplay VM's load order, which is not projected.
+    ai_unsupported("Aocai effective invoke source is unknown", "aocai.invoke")
 end
 sgs.ai_skill_invoke.aocai = function(self, data)
     local variant = invoke_variant(self)
@@ -214,10 +202,9 @@ sgs.ai_skill_choice.jilei = function(self, choices)
     if q(self, "hasCrossbowEffect", source) and q(source, "inMyAttackRange", self.player) then return "BasicCard" end
     local limited
     if name == q(self.player, "objectName") then
-        local facts = self.world.strategy_facts and self.world.strategy_facts.sp_jilei
-        if type(facts) ~= "table" then ai_unsupported("Jilei owner hand limitation is missing", "jilei.owner_hand_limit") end
-        limited = known(facts.owner_ex_nihilo_hand_limited, "jilei.owner_hand_limit")
-        if type(limited) ~= "boolean" then ai_unsupported("Jilei owner hand limitation is malformed", "jilei.owner_hand_limit") end
+        -- Donor: source:isCardLimited(ex_nihilo, MethodUse, true) on the viewer's own rules.
+        limited = known(call(self.player, "isCardLimited", q(self, "getEvaluationCard", "ex_nihilo"),
+            sgs.Card_MethodUse, true), "jilei.owner_hand_limit")
     else
         -- Fixed sp.cpp writes the public mark together with the matching
         -- TrickCard|.|.|hand limit; zero never proves other limits absent.
@@ -329,15 +316,10 @@ local function xueji_target(self, card, who)
     local weapon = call(self.player, "getWeapon")
     local distance
     if weapon and q(weapon, "getEffectiveId") == q(card, "getEffectiveId") then
-        local facts = self.world.strategy_facts and self.world.strategy_facts.sp_xueji
-        local row = type(facts) == "table" and facts.weapon_cost_distance
-        if type(row) ~= "table" or row.known ~= true or row.cost_id ~= q(weapon,"getEffectiveId")
-            or type(row.exceeds_range) ~= "table" or not self.request or self.request.kind ~= "activate" then
-            ai_unsupported("Xueji source weapon-cost distance formula is not projected", "xueji.weapon_distance")
-        end
-        local exceeds = known(row.exceeds_range[q(who,"objectName")], "xueji.weapon_distance")
-        if type(exceeds) ~= "boolean" then ai_unsupported("Xueji weapon-cost reach fact is not boolean", "xueji.weapon_distance") end
-        if exceeds then return false end
+        -- Donor formula: distance with the paid weapon's range as fix, against the current range.
+        local row = AICardCatalog.get(q(weapon, "objectName"))
+        local range = known(row and row.weapon_range, "xueji.weapon_distance")
+        distance = q(self.player, "distanceTo", who, range - q(self.player, "getAttackRange", false))
     else
         local horse = call(self.player, "getOffensiveHorse")
         if horse and q(horse, "getEffectiveId") == q(card, "getEffectiveId") then
@@ -483,17 +465,7 @@ sgs.ai_fill_skill.songci = function(self,inclusive,request)
     return q(self,"bindSkillCard","songci",{},request,nil,"SongciCard")
 end
 local function songci_mark(self,player)
-    -- The per-giver key has a fixed public writer. Read only this viewer's
-    -- projected column; foreign prefixes and private V2 recipient state stay out.
-    if AIValue.isPlayer(player) then
-        local facts=self.world.strategy_facts and self.world.strategy_facts.sp_songci
-        local marks=type(facts)=="table" and facts.given_marks
-        local mark=type(marks)=="table" and marks[q(player,"objectName")]
-        if type(mark)~="number" or mark~=math.floor(mark) then
-            ai_unsupported("Songci public per-giver mark is not projected","songci.mark")
-        end
-        return mark
-    end
+    -- The per-giver key has a fixed public writer; getMark raises when its absence is not visible.
     return q(player,"getMark","songci"..q(self.player,"objectName"))
 end
 local function songci_card(self)
@@ -741,12 +713,9 @@ ai_response_scalar_choices=ai_response_scalar_choices or{}
 local scalar_choices=ai_response_scalar_choices
 local function scalar_host(op,key,row,from)
  if key~='xuhe'and key~='olxuhe'then ai_unsupported('Unaudited scalar choice name',key)end
- if type(ai_response_choice_continuity)~='function'then ai_unsupported('Scalar continuation host missing',key)end
- local value=ai_response_choice_continuity({op=op,key=key,row=row,from=from})
- if AIUnsupported.is(value)then error(value,0)end
- if type(value)~='table'or value.known~=true then ai_unsupported('Source scalar registry continuity unknown',key)end
- if op~='read'and value.recorded~=true then ai_unsupported('Source scalar registry write unconfirmed',key)end
- return value
+ -- The donor keeps this choice in the gameplay VM's registry, which its SmartAI also
+ -- writes; the isolated VM can neither read nor write it.
+ ai_unsupported('gameplay SmartAI scalar choice registry is not available',key)
 end
 function scalar_choices.read(self,key)return scalar_host('read',key)end
 function scalar_choices.write(self,key,row)scalar_host('record',key,row)end

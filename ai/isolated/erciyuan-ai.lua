@@ -71,7 +71,8 @@ local function player_disclosed(player,id)
  ai_unsupported('LuaChitian owner card not disclosed',tostring(id))
 end
 local function event_value(self,key,standard)
- local facts=self.world.strategy_facts;local row=known(standard and facts and facts.standard and facts.standard[key]or q(self,'getDecisionContext')[key],key)
+ -- The room's CurrentDamageStruct reaches the VM only as the ask's context damage.
+ local context=q(self,'getDecisionContext');local row=known(context[standard and 'damage' or key],key)
  if type(row)~='table'then ai_unsupported('erciyuan current event absent',key)end
  local result={};for k,v in pairs(row)do result[k]=v end
  for _,field in ipairs({'from','to','who'})do local v=result[field];if type(v)=='string'then result[field]=v~=''and known(self.room:findPlayerByObjectName(v),key..'.'..field)or nil elseif v==false then result[field]=nil end end
@@ -85,7 +86,7 @@ local function set_weixiao(self,p)self:setStrategyMemory('erciyuan.weixiao',p an
 local function get_weixiao_choice(self)return self:getStrategyMemory('erciyuan.weixiaochoice')end
 local function set_weixiao_choice(self,v)self:setStrategyMemory('erciyuan.weixiaochoice',v)end
 local function target_flag(self,p,value)
- local name=q(p,'objectName');local epochs=known(self.world.strategy_facts.strategy_flag_clear_epochs,'strategy_flag_clear_epochs');local epoch=known(epochs[name],'target clear epoch')
+ local name=q(p,'objectName');local epochs=known(AIWorldLifecycle.epochs(self.world,'flag'),'strategy_flag_clear_epochs');local epoch=known(epochs[name],'target clear epoch')
  local key='erciyuan.tiaojiao_target:'..name;local row=self:getStrategyMemory(key)
  if value~=nil then self:setStrategyMemory(key,{epoch=epoch,value=value});return end
  return row~=nil and row.epoch==epoch and row.value==true
@@ -93,9 +94,8 @@ end
 local function current_visible_hand(self,player)
  local current=q(self.room,'getCurrent')
  if q(current,'objectName')~=q(self.player,'objectName')then ai_unsupported('LuaBimie source visibility is another actor private observation','LuaBimie.current_observer')end
- local facts=known(self.world.strategy_facts.source_visible_hand_ids,'source_visible_hand_ids');local list=known(facts[q(player,'objectName')],'LuaBimie.visible_ids');local cards=AIList.new{}
- for _,id in ipairs(list)do cards[#cards+1]=disclosed(self,id)end
- return cards
+ -- Known cards are exactly the hand cards flagged visible to this viewer (or an open hand).
+ return q(player,'getKnownCards')
 end
 local function source_turn_spear(self,skill_name,request)
  -- Fixed caller passes inclusive as skill_name; do not repair its ignored third arg.

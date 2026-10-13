@@ -9,9 +9,19 @@ local function raw_call(o,k,...)
  if not o or type(o[k])~='function' then unsupported(k)end
  local v=table.pack(o[k](o,...));if AIUnsupported.is(v[1])then error(v[1],0)end;return table.unpack(v,1,v.n)
 end
+-- Donor tag reads: CurrentDamageStruct from the raw question context (invoke/
+-- choice/response asks only), the viewer's own tags as QVariant reads them.
+-- Room tags such as xinyan are not projected.
 local function fact(self,key)
- local all=self.world and self.world.strategy_facts;local p=all and all[PACKAGE];local v=p and p[key]
- if v==nil then unsupported(key)end;return v
+ if key=='CurrentDamageStruct'then
+  local c=self.request and self.request.options and self.request.options.context
+  local d=type(c)=='table'and c.damage;if type(d)~='table'then unsupported(key)end
+  local row={};for k,x in pairs(d)do row[k]=x end
+  for _,k in ipairs({'from','to'})do if row[k]==''then row[k]=nil end end;return row
+ end
+ if key=='KuileiSkills'then local v=self.player:getTag(key);if v==nil then return''end;return v end
+ if key=='zhuanzhu'then local v=self.player:getTag(key);if v==nil then return false end;return v end
+ unsupported(key)
 end
 local function clone(self,name,skill,suit,number)
  name=name or 'slash';local p=raw_call(self,'cloneEvaluationCard',name)
@@ -73,7 +83,7 @@ end
 local function dummy(value,extra,current)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;u.current_targets=current or{};return u end
 local function patterns_for(self,class)
  if class then return patterns(class)end
- local f=self.world and self.world.strategy_facts;local a=f and f.pattern_names
+ local a=AICardCatalog.patternNames()
  if not AIValue.isList(a)then unsupported('pattern_names')end;return a
 end
 local function source_fact(self,key,kind)
@@ -137,14 +147,17 @@ end
 local function clone_native(self,name,suit,number)return clone(self,name,nil,suit,number)end
 local function conversion_clone(self,name,skill,suit,number,ids)local c=clone(self,name,skill,suit,number);clone_states[c].costs=ids;return c end
 local function owner_ai(self,player)if player~=self.player then unsupported("foreign_ai")end;return self end
-local function source_player_fact(self,player,key)local rows=fact(self,"player_facts");local row=rows[package_known(player,"objectName")];if type(row)~="table"or row[key]==nil then unsupported("player_fact."..key)end;return row[key]end
+-- Another player's tags are not projected (getTag raises); the viewer's own
+-- read as QVariant::toString.
+local function source_player_fact(self,player,key)if not AIValue.isPlayer(player)then unsupported("player_fact."..key)end;local v=player:getTag(key);if v==nil then return""end;return v end
 local function source_error(key)ai_unsupported("fixed donor calls an unavailable method",PACKAGE..".donor_error."..key)end
 local function visible_hand(self,to)if to==self.player then return package_known(to,"getHandcards")end;local cards=package_known(self,"getKnownCards",to,self.player,"h");if #cards<package_known(to,"getHandcardNum")then package_known(self,"useKnowledgeEstimate",{value=#cards,status="estimate",basis="legends.shenyan known cards under viewer visibility; original current-player visibility unavailable",target=package_known(to,"objectName")},"legends.shenyan")end;return cards end
 local function turn_count(self)local v=self.world and self.world.turn_count;if type(v)~="number"then unsupported("turncount")end;return v end
 local function set_memory(self,key,value)package_call(self,"setStrategyMemory","legends."..key,value)end
 local function xieli_source(self)local v,known=package_call(self,"getStrategyMemory","legends.xielisource");if not known then package_known(self,"useKnowledgeEstimate",{value=false,status="estimate",basis="legends.xielisource unobserved prior history",viewer=package_known(self.player,"objectName")},"legends.xielisource");return nil end;return v~=false and package_known(self.room,"findPlayerByObjectName",v,true)or nil end
 local function set_thornmail(self,value)package_call(self,"setStrategyMemory","ai_Thornmail_effect",value)end
-local function source_fill_skills(self)local v=fact(self,"source_fill_skills");if not AIValue.isList(v)then unsupported("source_fill_skills")end;local out={};for _,n in ipairs(v)do out[#out+1]={name=n}end;return out end
+-- Donor sgs.ai_skills membership: this VM's own fill-skill registries are authoritative.
+local function source_fill_skills(self)local out={};for name in pairs(sgs.ai_fill_skill or{})do out[#out+1]={name=name}end;for _,s in ipairs(sgs.ai_skills or{})do out[#out+1]={name=s.name}end;return out end
 local function skill_proposal(selector,costs,user)local sk=SELECTORS[selector];if not sk then unsupported("selector."..selector)end;return{name=selector:sub(2),skill=sk,suit=sgs.Card_NoSuit,number=0,subcards=costs,user_string=user}end
 local function response_value(self,card)if package_known(card,"isEvaluationOnly")then card=package_known(self,"materializeResponseSelectedCard",card)end;if AIValue.isConversion(card)then return package_known(card,"toCardSpec")end;return package_known(card,"getEffectiveId")end
 

@@ -54,8 +54,8 @@ local function tongtang_player(self)
  return q(self.room,"findPlayerByObjectName",name)
 end
 local function mark_state(self)
- local facts=self.world.strategy_facts;local name=self.player:objectName()
- local all=facts and facts.strategy_all_mark_clear_epochs;local turn=facts and facts.strategy_turn_clear_epochs
+ local name=self.player:objectName()
+ local all=AIWorldLifecycle.epochs(self.world,"all_mark");local turn=AIWorldLifecycle.epochs(self.world,"turn")
  local epochs={all=type(all)=="table"and all[name]or nil,clear=type(turn)=="table"and turn[name]or nil}
  if type(epochs.all)~="number"or type(epochs.clear)~="number"then ai_unsupported("Shisheng requires actual mark-reset lifecycle","mountainrumour.shisheng")end
  local old,present=self:getStrategyMemory("mountainrumour.marks");local state={all=epochs.all,clear=epochs.clear,values={}}

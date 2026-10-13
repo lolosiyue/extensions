@@ -31,7 +31,7 @@ local function q(object,key,...)
     return known(value,key)
 end
 local function facts(self)
-    return known(self.world.strategy_facts and self.world.strategy_facts.dmpkancolle,"dmpkancolle")
+    ai_unsupported("dmpkancolle facts are not projected","dmpkancolle")
 end
 local function seed(self,skill,selector,request)
     return q(self,"legacySkillSeed",skill,selector,request or self.request)
@@ -87,13 +87,8 @@ end
 local function current_damage(self)
     -- Source ChoiceMade callback reads the *live* Room CurrentDamageStruct,
     -- not an unrelated inquiry/event damage argument or a previous request.
-    local standard=self.world.strategy_facts and self.world.strategy_facts.standard
-    local row=known(standard and standard.current_damage,"CurrentDamageStruct")
-    if row==false then return{}end
-    if type(row)~="table"then ai_unsupported("malformed current damage","CurrentDamageStruct")end
-    local damage={}
-    if row.to and row.to~=""then damage.to=q(self.room,"findPlayerByObjectName",row.to,true)end
-    return damage -- the fixed callback reads only damage.to
+    -- Room tags are not projected into event callbacks.
+    ai_unsupported("Room CurrentDamageStruct is not projected","CurrentDamageStruct")
 end
 local function evaluation(self,key,material)
     if key=="slash"then return q(self,"cloneEvaluationCard","slash")end

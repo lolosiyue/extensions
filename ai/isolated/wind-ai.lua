@@ -749,7 +749,7 @@ sgs.ai_fill_skill.guhuo=function(self,inclusive,request)
     end
     if math.random(1,5)<=3*ratio then
         local function patterns()
-            return known(self.world and self.world.strategy_facts and self.world.strategy_facts.pattern_names,"guhuo.patterns_order")
+            return known(self.world and AICardCatalog.patternNames(),"guhuo.patterns_order")
         end
         for pass=1,2 do
             for _,name in ipairs(patterns()) do

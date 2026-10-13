@@ -34,9 +34,8 @@ local function visible_card(self, id)
     ai_unsupported("standard policy card identity is not disclosed",tostring(id))
 end
 local function extra_slash(self)
-    local row = known(self.world.strategy_facts and self.world.strategy_facts.extra_target_slash,"extra-target Slash")
-    if row == false then return query(self,"getEvaluationCard","slash") end
-    return known(CardView.new(row),"extra-target Slash descriptor")
+    -- AI_ExtraTargetSlash has no writer, so SmartAI always uses a fresh Slash.
+    return query(self,"getEvaluationCard","slash")
 end
 -- These five source globals begin nil. Only their isolated package writers may
 -- update the viewer's shadow cache; no other AI's global state is consulted.
@@ -232,7 +231,7 @@ end
 
 sgs.ai_use_revises.kuanggu = function(self,card,use)
 	if query(card,"isKindOf","Peach")
-	and not hasJueqingEffect(self.player)
+	and not self:hasJueqingEffect(self.player)
 	and self.player:getOffensiveHorse()
 	and query(self.player,"getLostHp")==1
 	and query(self,"getOverflow")<1
@@ -884,7 +883,7 @@ sgs.ai_used_revises.jilve = function(self,use)
     end
 end
 sgs.ai_used_revises.duyi = function(self,use)
-    if query(use.card,"isDamageCard") and known(self.world.strategy_facts and self.world.strategy_facts.draw_pile_count,"draw pile count")>0
+    if query(use.card,"isDamageCard") and known(self.world.draw_pile_count,"draw pile count")>0
         and not query(self.player,"hasUsed","DuyiCard") and not use.isDummy then
         for _,to in ipairs(use.to) do
             if query(self,"isEnemy",to) and (query(to,"getHp")<=2 or query(self,"ajustDamage",self.player,to,1,use.card)>1) then
@@ -1055,7 +1054,7 @@ local function xiansi_answer(self,target,prompt_key)
     if prompt_key=="@niluan-slash" or not query(target,"hasSkills","xiansi|tenyearxiansi") then return nil end
     local pile=query(target,"getPile","counter")
     if #pile<2 then return nil end
-    local probe=known(self.world.strategy_facts and self.world.strategy_facts.xiansi_slash_probe,"Xiansi Slash probe")
+    local probe=known(nil,"Xiansi Slash probe") -- The Xiansi target probe is not projected.
     local candidate=known(CandidateView.new(probe.candidate),"Xiansi target-filter probe")
     if query(candidate,"canTargetWithEmptyPrefix",target) then
         -- Source always names XiansiSlashCard, even for tenyearxiansi. The native

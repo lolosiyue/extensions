@@ -27,13 +27,8 @@ local function pindianTargetTag(player, ctx)
     if not ai or player:objectName() ~= ai.player:objectName() then
         ai_unsupported("Foreign Pindian target tag is private", "ov_lvren.targets")
     end
-    local facts = ai.world.strategy_facts and ai.world.strategy_facts.pindian
-    local tags = facts and facts.owner_target_tags
-    if type(tags) ~= "table" then
-        ai_unsupported("Owner Pindian target tag is not projected", "ov_lvren.targets")
-    end
-    local value = tags[ctx.reason]
-    if value == nil and facts.owner_target_tags_complete == true then return "" end
+    local value = player:getTag(ctx.reason)
+    if value == nil then return "" end
     if type(value) ~= "string" then ai_unsupported("Owner Pindian target tag is not projected", "ov_lvren.targets") end
     return value
 end

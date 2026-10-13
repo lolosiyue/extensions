@@ -22,18 +22,18 @@ local function turn(self,skill,name,cards,request)
  return package_known(self,"evaluateTurnConversion",skill,package_known(proto,"getClassName"),{name=name,skill=skill,suit=sgs.Card_NoSuit,number=0,subcards=ids(cards)},request)
 end
 local function dummy(value,extra,current)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;u.current_targets=current or {};return u end
-local function fact(self,key)
- local f=self.world and self.world.strategy_facts and self.world.strategy_facts.kearmsxfyli;local v=f and f[key]
- if v==nil then ai_unsupported("owner source fact unavailable","kearmsxfyli."..key)end;return v
-end
-local function player_fact(self,key)local n=fact(self,key);if n==false then return nil end;return package_known(self.room,"findPlayerByObjectName",n,true)end
-local function use_fact(self,key)
- local d=fact(self,key);if d==false then return{to=AIList.new({})}end
- local u={card=d.card and CardView.new(d.card),from=d.from and package_known(self.room,"findPlayerByObjectName",d.from,true),to=AIList.new({})}
+-- The donor reads the viewer's own tags/properties; an absent one reads as the
+-- QVariant default (nil player, empty CardUseStruct).
+local function tag_player(self,key)local n=self.player:getTag(key);if n==nil then return nil end;return package_known(self.room,"findPlayerByObjectName",n,true)end
+local function tag_use(self,key)
+ local d=self.player:getTag(key);if d==nil then return{to=AIList.new({})}end
+ if type(d)~="table"then ai_unsupported("owner CardUse tag malformed","kearmsxfyli."..key)end
+ local u={card=type(d.card)=="table"and next(d.card)~=nil and CardView.new(d.card)or nil,
+  from=d.from and d.from~=""and package_known(self.room,"findPlayerByObjectName",d.from,true)or nil,to=AIList.new({})}
  for _,n in ipairs(d.to or{})do u.to:append(package_known(self.room,"findPlayerByObjectName",n,true))end;return u
 end
 local function pattern_names(self)
- local f=self.world and self.world.strategy_facts;local names=f and f.pattern_names;if not AIValue.isList(names)then ai_unsupported("ordered source patterns unavailable","pattern_names")end;return names
+ local names=AICardCatalog.patternNames();if not AIValue.isList(names)then ai_unsupported("ordered source patterns unavailable","pattern_names")end;return names
 end
 local function peiqi(self,data)
  local fn=sgs.ai_skill_invoke.peiqi;if type(fn)~="function"then ai_unsupported("source peiqi callback unavailable","kearmsxfyli.peiqi")end
@@ -109,8 +109,11 @@ end
 sgs.ai_skill_playerchosen.kesxchunlao = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	call(self,"sort",destlist,"card")
-	local count = fact(self,"kesxchunlaoToGetCount")
-    if type(count)~="number" or count<0 or count%1~=0 then ai_unsupported("owner stored list count unavailable","kearmsxfyli.kesxchunlaoToGetCount") end
+	-- The source stores an IntList QVariant, which the owner-tag projection does not
+	-- carry: nil cannot be told apart from an absent tag.
+	local stored = self.player:getTag("kesxchunlaoToGet")
+	if not AIValue.isList(stored) then ai_unsupported("owner stored list count unavailable","kearmsxfyli.kesxchunlaoToGetCount") end
+	local count = #stored
     -- Source caches toIntList once, then calls length at each reached comparison.
     local tag = {length=function() return count end}
     for _,target in sgs.list(destlist)do
@@ -550,7 +553,7 @@ sgs.ai_card_intention.kesxmingfaCard = 77
 
 sgs.ai_skill_playerschosen.kesxhuiji = function(self,players)
     local tos = {}
-	local use = use_fact(self,"kesxhuijiUse")
+	local use = tag_use(self,"kesxhuijiUse")
 	local d = package_known(self,"aiUseCard",use.card,dummy(true,1,use.to))
 	if d.card then
 		for _,p in sgs.list(players)do
@@ -811,7 +814,7 @@ end
 sgs.ai_skill_playerchosen.sxzuici = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
 	call(self,"sort",destlist)
-	local from = player_fact(self,"sxzuiciFrom")
+	local from = tag_player(self,"sxzuiciFrom")
 	if package_known(self,"isFriend",from) then
 		for _,p in sgs.list(destlist)do
 			if not package_known(self,"isFriend",p) then return p end
@@ -990,7 +993,7 @@ sgs.ai_skill_playerchosen.sxqiuyuan = function(self,players)
 end
 
 sgs.ai_skill_discard.sxqiuyuan = function(self,x,n)
-	local use = use_fact(self,"sxqiuyuanUse")
+	local use = tag_use(self,"sxqiuyuanUse")
 	for _,c in ipairs(call(self,"sortByKeepValue",package_known(self.player,"getCards","he")))do
 		if package_known(self,"slashIsEffective",use.card,self.player,use.from)
 		and (package_known(self,"isWeak") or package_known(self,"getCardsNum","Jink")<1)
@@ -2017,7 +2020,7 @@ end
 
 ai_skill_use["@@sxzhengjing!"]=function(self,prompt,request)
 	local cards = {}
-	for _,id in sgs.list(fact(self,"sxzhengjingIds"):split("+"))do
+	for _,id in sgs.list((self.player:getPropertyValue("sxzhengjingIds") or ""):split("+"))do
 		table.insert(cards,package_known(self,"getKnownCardById",tonumber(id)))
 	end
 	call(self,"sortByKeepValue",cards)
@@ -2099,7 +2102,7 @@ end
 
 sgs.ai_skill_discard.sxshejian = function(self,x,n)
 	local ids = {}
-	local use = use_fact(self,"sxshejianData")
+	local use = tag_use(self,"sxshejianData")
 	if package_known(use.from,"getStrategyMark","&sxshejian+#"..package_known(self.player,"objectName").."-Clear")<1
 	and package_known(self,"isEnemy",use.from) and package_known(self,"damageIsEffective",use.from,"N",self.player) then
 		for _,c in sgs.list(call(self,"sortByKeepValue",package_known(self.player,"getCards","h")))do

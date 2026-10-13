@@ -78,9 +78,8 @@ local function selected_response(self,text)
 end
 
 local function public_damage(self)
- local row=known(known(self.world.strategy_facts.standard,'standard public facts').current_damage,'CurrentDamageStruct')
- if row==false then return{}end
- return{from=row.from and row.from~=false and self.room:findPlayerByObjectName(row.from,true)or nil,to=row.to and self.room:findPlayerByObjectName(row.to,true),damage=row.amount,nature=row.nature,card=row.card and CardView.new(row.card)or nil}
+ -- Its only reader is a ChoiceMade filter; the live room tag is not projected there.
+ ai_unsupported('Room CurrentDamageStruct is not projected','CurrentDamageStruct')
 end
 local function guicai_card(self)
  return self:getGuicaiCardEvaluation(q(self.player,'getMark','bu_stwo_guicai'))

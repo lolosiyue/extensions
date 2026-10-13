@@ -26,8 +26,9 @@ local function reversed(cards)
     local result={};for i=#cards,1,-1 do result[#result+1]=cards[i]end;return AIList.new(result)
 end
 local function current_damage(self)
-    local raw=known(self.world.strategy_facts and self.world.strategy_facts.standard and self.world.strategy_facts.standard.current_damage,"yczh2016.current_damage")
-    if raw==false then return {} end
+    -- The room's CurrentDamageStruct reaches the VM only as the ask's context damage.
+    local options=self.request.options
+    local raw=known(type(options)=="table" and type(options.context)=="table" and options.context.damage or nil,"yczh2016.current_damage")
     local result={};for k,v in pairs(raw)do result[k]=v end
     for _,key in ipairs({"from","to"}) do
         local name=result[key];result[key]=name and name~="" and self.room:findPlayerByObjectName(name,true) or nil
@@ -106,27 +107,19 @@ local function remembered_player(self,key)
 end
 
 
-local function package_facts(self)
- return known(self.world.strategy_facts and self.world.strategy_facts.yczh2016,"yczh2016.facts")
-end
 local function level(self,player)
- return known(package_facts(self).jiaozhao_levels and package_facts(self).jiaozhao_levels[player:objectName()],"jiaozhao.public_level")
+ -- jiaozhaoSetLevel mirrors the jiaozhao_level property into this public mark.
+ return known(player:getMark("&jiaozhao_level"),"jiaozhao.public_level")
 end
 local function printed(self,id)
  local own=self:getPrintedCardById(id)
  if own then return own end
  local ctx=self:getDecisionContext();local row=ctx.yczh2016_printed_cards and ctx.yczh2016_printed_cards[tostring(id)]
- if not row then
-  local fact=package_facts(self).jiaozhao_declared_card
-  if fact and fact.id==id then row=fact end
- end
  return CardView.new(known(row,"yczh2016.authorized_printed_card"))
 end
 local function consume_hint(self,key)
- if type(ai_consume_player_hint)~="function"then ai_unsupported("accepted public AI hint bridge is unavailable","yczh2016.hint_bridge")end
- local row=ai_consume_player_hint(key)
- if type(row)~="table"or row.known~=true or row.source==nil then ai_unsupported("AI hint reader is not authorized","yczh2016.hint_reader")end
- return row.source~=false and known(self.room:findPlayerByObjectName(row.source,true),"yczh2016.hint_source")or nil
+ -- Hints staged by another viewer's AI are not projected.
+ ai_unsupported("cross-viewer AI hints are not projected","yczh2016.hint_reader")
 end
 local function stage_hint(self,key,target,use)
  if use and use.isDummy then return end -- speculative donor tag writes do not cross viewer boundaries
@@ -1082,7 +1075,7 @@ sgs.ai_fill_skill.taoluan = function(self,inclusive,request)
     cards = self:sortByKeepValue(cards) -- 按保留值排序
 	if #cards<2 then return end
    	sort_in_place(self,self.friends_noself,"card",true)
-    for _,name in ipairs(known(self.world.strategy_facts.pattern_names,"yczh2016.patterns"))do
+    for _,name in ipairs(known(AICardCatalog.patternNames(),"yczh2016.patterns"))do
         local card = self:getEvaluationCard(name)
         if card and self.player:getMark("taoluan_"..name)<1
 		and (card:isKindOf("BasicCard") or card:isNDTrick())
@@ -1100,7 +1093,7 @@ sgs.ai_fill_skill.taoluan = function(self,inclusive,request)
 		end
 	end
    	sort_in_place(self,self.enemies,"hp")
-    for _,name in ipairs(known(self.world.strategy_facts.pattern_names,"yczh2016.patterns"))do
+    for _,name in ipairs(known(AICardCatalog.patternNames(),"yczh2016.patterns"))do
         local card = self:getEvaluationCard(name)
         if card and self.player:getMark("taoluan_"..name)<1
 		and (card:isKindOf("BasicCard") or card:isNDTrick())
@@ -1175,7 +1168,7 @@ sgs.ai_fill_skill.tenyeartaoluan = function(self,inclusive,request)
 	if cid==nil then return end
    	sort_in_place(self,self.enemies,"hp")
    	sort_in_place(self,self.friends_noself,"card",true)
-    for _,name in ipairs(known(self.world.strategy_facts.pattern_names,"yczh2016.patterns"))do
+    for _,name in ipairs(known(AICardCatalog.patternNames(),"yczh2016.patterns"))do
         local card = self:getEvaluationCard(name)
         if card and card:isAvailable(self.player)
 		and self.player:getMark("tenyeartaoluan_"..name)<1
@@ -1196,7 +1189,7 @@ sgs.ai_fill_skill.tenyeartaoluan = function(self,inclusive,request)
 			end
 		end
 	end
-    for _,name in ipairs(known(self.world.strategy_facts.pattern_names,"yczh2016.patterns"))do
+    for _,name in ipairs(known(AICardCatalog.patternNames(),"yczh2016.patterns"))do
         local card = self:getEvaluationCard(name)
         if card and card:isAvailable(self.player)
 		and self.player:getMark("tenyeartaoluan_"..name)<1

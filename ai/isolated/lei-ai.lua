@@ -9,25 +9,15 @@ local function q(o,k,...)
     local v=o[k](o,...);if AIUnsupported and AIUnsupported.is(v)then error(v,0)end
     return known(v,k)
 end
-local function poxi_source_slot(self,operation,target)
- if type(ai_poxi_source_slot)~="function"then ai_unsupported("Poxi actual source slot bridge unavailable","poxi_target")end
- local row=ai_poxi_source_slot(operation,target and target:objectName()or "")
- if type(row)~="table"or row.known~=true then
-  ai_unsupported(type(row)=="table"and row.reason or "Poxi actual source slot unavailable","poxi_target")
- end
- if operation=="write"then return end
- if row.value==false then return nil end
- if type(row.value)~="string"or row.value==""then ai_unsupported("Poxi actual source slot malformed","poxi_target")end
- return known(self.room:findPlayerByObjectName(row.value,true),"poxi_target")
-end
+-- The donor kept poxi_target on its SmartAI object; memory holds the player's name.
 local function write(self,k,v)
- if k=="poxi_target"then return poxi_source_slot(self,"write",v)end
+ if k=="poxi_target"and v~=nil then v=v:objectName()end
  self:setStrategyMemory("lei."..k,v==nil and false or v)
 end
 local function read(self,k)
- if k=="poxi_target"then return poxi_source_slot(self,"read")end
  local v,p=self:getStrategyMemory("lei."..k)
  if not p or v==false then return nil end
+ if k=="poxi_target"then return known(self.room:findPlayerByObjectName(v,true),"poxi_target")end
  return v
 end
 local function paid(self,skill,class,costs,request)
@@ -45,25 +35,8 @@ local function equip_location(card)
     ai_unsupported("equipment location unavailable","huairou")
 end
 local function disclosed_hand(self,player)
-    local facts=self.world.strategy_facts.lei
-    local row=type(facts)=="table"and facts.poxi_disclosure
-    if type(row)~="table"or row.known~=true or row.target~=player:objectName()
-        or row.current_faces_complete~=true or row.decision_id~=self.request.decision_id
-        or row.state_revision~=self.request.state_revision or not AIValue.isList(row.card_ids)
-        or not AIValue.isList(row.cards)or #row.card_ids~=#row.cards then
-        ai_unsupported("Poxi current ordered hand face observation unavailable","poxi")
-    end
-    local cards=AIList.new({})
-    for index,face in ipairs(row.cards)do
-        if type(face)~="table"or face.effective_id~=row.card_ids[index]then
-            ai_unsupported("Poxi disclosed hand order changed","poxi")
-        end
-        local card=self:getAcquiredCardEvaluation(CardView.new(face))
-        if not card or card:getEffectiveId()~=face.effective_id or card:isVirtualCard()then
-            ai_unsupported("Poxi disclosed current card evaluation unavailable","poxi")
-        end
-        cards:append(card)
-    end
+    -- Poxi shows the target's hand to the user; this viewer must know all of it.
+    local cards=q(player,"getKnownCards")
     if #cards~=q(player,"getHandcardNum")then ai_unsupported("Poxi full hand not disclosed","poxi")end
     return cards
 end
@@ -73,27 +46,8 @@ local function weidi_mark(self,player)
 end
 local function duorui_invoke(self,data,ol)
     local player=data:toPlayer();if self:isFriend(player)then return false end
-    local facts=known(self.world.strategy_facts.lei,"lei")
-    local row=known(known(facts.general_skills,"general_skills")[player:objectName()],"public general skills")
-    local primary=known(row.primary,"primary general")
-    if primary==false then return false end
-    local function usable(skills)
-        for _,sk in ipairs(skills)do
-            if not known(sk.visible,"skill visible")then continue end
-            if not ol then
-                if known(sk.limited,"skill limited")then continue end
-                if known(sk.frequency,"skill frequency")==sgs.Skill_Wake then continue end
-                if known(sk.lord,"skill lord")then continue end
-            end
-            if string.find(sgs.bad_skills,known(sk.name,"skill name"))then continue end
-            return true
-        end
-        return false
-    end
-    if usable(primary)then return true end
-    local secondary=known(row.secondary,"secondary general")
-    if secondary~=false and usable(secondary)then return true end
-    return false
+    -- The engine General's skill list (not the player's current skills) is not projected.
+    ai_unsupported("General skill lists are not projected","lei.general_skills")
 end
 
 --往烈

@@ -37,16 +37,13 @@ local function visible_card(self,id)
     id=tonumber(id)
     return known(self:getChoiceCard(id) or self:getKnownCardById(id),"disclosed card "..tostring(id))
 end
-local function standard_fact(self,key)
-    return known(self.world.strategy_facts and self.world.strategy_facts.standard
-        and self.world.strategy_facts.standard[key],key)
-end
 local function player_name(self,name,key)
     if name==false or name=="" then return nil end
     return known(self.room:findPlayerByObjectName(known(name,key),true),key)
 end
-local function standard_event(self,key)
-    local row=standard_fact(self,key)
+-- A struct-valued own tag arrives as a plain row; wrap its player names and card.
+local function tag_event(self,key)
+    local row=self.player:getTag(key)
     if type(row)~="table" then ai_unsupported("standard event is absent",key) end
     local value={};for k,v in pairs(row)do value[k]=v end
     for _,k in ipairs{"from","to","who"}do
@@ -58,6 +55,10 @@ local function standard_event(self,key)
     if value.card then value.card=known(CardView.new(value.card),key..".card") end
     if value.amount~=nil then value.damage=value.amount end
     return value
+end
+-- CurrentDamageStruct reaches only a decision's context; an event-only view has none.
+local function current_damage(self)
+    return known(self:getDecisionContext().damage,"current damage")
 end
 local function current_role(self,player)
     return player==self.player and call(player,"getRole") or call(self,"getRoleEstimate",player)
@@ -2350,7 +2351,9 @@ function SmartAIView:selectZhihengCosts()
 
     if call(self.player,"getHp")<3 then
         local use_slash,keep_jink,keep_analeptic,keep_weapon = false,false,false,nil
-        local keep_slash = standard_fact(self,"jilve_wansha")
+        -- QVariant::toBool of the own tag (it holds the acquired skill name).
+        local wansha = self.player:getTag("JilveWansha")
+        local keep_slash = wansha~=nil and wansha~=false and wansha~=""
         for _,zcard in sgs.list(strategy_cards(self,self.player,"he"))do
             if not isCard("Peach",zcard,self.player)
             then
@@ -2675,7 +2678,7 @@ function SmartAIView:getJijiangSlashNum(player)
 end
 
 sgs.ai_choicemade_filter.cardChosen.nosfankui = function(self,player,promptlist)
-    local damage = standard_event(self,"current_damage")
+    local damage = current_damage(self)
     if damage.from then
         local intention = 10
         local card = visible_card(self,promptlist[3])
@@ -2711,7 +2714,7 @@ sgs.ai_skill_cardchosen.nosfankui = function(self,who,flags)
 end
 
 sgs.ai_choicemade_filter.cardChosen.fankui = function(self,player,promptlist)
-    local damage = standard_event(self,"current_damage")
+    local damage = current_damage(self)
     if damage.from then
         local intention = 10
         local card = visible_card(self,promptlist[3])
@@ -2747,7 +2750,7 @@ sgs.ai_skill_cardchosen.fankui = function(self,who,flags)
 end
 
 sgs.ai_choicemade_filter.skillInvoke.nosganglie = function(self,player,promptlist)
-    local damage = standard_event(self,"current_damage")
+    local damage = current_damage(self)
     if damage.from and damage.to then
         if promptlist[#promptlist]=="yes" then
             if not self:needToLoseHp(damage.from,player,damage.card) then
@@ -2760,7 +2763,7 @@ sgs.ai_choicemade_filter.skillInvoke.nosganglie = function(self,player,promptlis
 end
 
 sgs.ai_choicemade_filter.skillInvoke.ganglie = function(self,player,promptlist)
-    local damage = standard_event(self,"current_damage")
+    local damage = current_damage(self)
     if damage.from and damage.to then
         if promptlist[#promptlist]=="yes" then
             if not self:needToLoseHp(damage.from,player,damage.card) then
@@ -2773,7 +2776,7 @@ sgs.ai_choicemade_filter.skillInvoke.ganglie = function(self,player,promptlist)
 end
 
 sgs.ai_choicemade_filter.skillInvoke.wangxi = function(self,player,promptlist)
-    local damage = standard_event(self,"current_damage")
+    local damage = current_damage(self)
     local target = nil
     if damage.from==player then target = damage.to
     elseif damage.to==player then target = damage.from end
@@ -2980,7 +2983,7 @@ function SmartAIView:findLijianTarget(card_name,use)
     local shenguanyu = self.room:findPlayerBySkillName("wuhun")
     if shenguanyu and call(shenguanyu,"isMale") and call(shenguanyu,"objectName")~=call(self.player,"objectName") then
         if self.role=="rebel" and lord and call(lord,"isMale") and call(lord,"objectName")~=call(self.player,"objectName") and call(shenguanyu,"objectName")~=call(lord,"objectName")
-            and not hasJueqingEffect(lord,shenguanyu) and self:hasTrickEffective(duel,shenguanyu,lord) then
+            and not self:hasJueqingEffect(lord,shenguanyu) and self:hasTrickEffective(duel,shenguanyu,lord) then
             return shenguanyu,lord
         elseif self:isEnemy(shenguanyu) and #self.enemies>=2 then
             for _,enemy in ipairs(self.enemies)do
@@ -3190,7 +3193,7 @@ sgs.ai_skill_invoke.nosdanshou = function(self,data)
 end
 
 sgs.ai_skill_askforyiji.qingjian = function(self,card_ids,tos)
-    local move_skill = standard_fact(self,"qingjian_move_skill")
+    local move_skill = self.player:getTag("QingjianCurrentMoveSkill")
     if move_skill=="rende" or move_skill=="nosrende" then return nil,-1 end
     return sgs.ai_skill_askforyiji.nosyiji(self,card_ids,tos)
 end
@@ -4609,11 +4612,11 @@ getPriorFriendsOfLiyu=function(self,lvbu)
             end
         end
     elseif call(self.room,"getMode")=="06_XMode" then
-        local backup_info=known(standard_fact(self,"xmode_backup_counts")[call(lvbu,"objectName")],"XMode public backup count")
-        local leader = known(backup_info.has_leader,"XMode public leader")
+        -- XModeLeader/XModeBackup are player tags: only the viewer's own are projected.
+        local leader = player_name(self,lvbu:getTag("XModeLeader") or false,"XModeLeader")
         local backup = 0
         if leader then
-            backup = known(backup_info.count,"XMode backup count")
+            backup = #(leader:getTag("XModeBackup") or {})
             if backup==0 then
                 prior_friends = self:getFriends(lvbu,true)
             end
@@ -4681,7 +4684,7 @@ end
 do
 local select_response=function(self,prompt) -- extra target for Collateral
     local dummy_use = dummy()
-    dummy_use.current_targets = standard_fact(self,"extra_collateral")
+    dummy_use.current_targets = (self.player:getPropertyValue("extra_collateral") or ""):split("+")
     self:useCardCollateral(call(self,"getEvaluationCard","collateral"),dummy_use)
     if dummy_use.card and dummy_use.to:length()==2 then
         local first = dummy_use.to:at(0):objectName()
@@ -4843,13 +4846,13 @@ local select_response=function(self,prompt)
     local liuxie = self.room:findPlayerBySkillName("huangen")
     if liuxie and self:isFriend(liuxie) and not self:isWeak(liuxie) then return "." end
 
-    local card = standard_event(self,"fenwei_use").card
-    local from = standard_event(self,"fenwei_use").from
+    local card = tag_event(self,"fenwei").card
+    local from = tag_event(self,"fenwei").from
 
     local players = sgs.QList2Table(call(self.room,"getAllPlayers"))
     players = self:sort(players,"defense")
     local target_table = {}
-    local targetslist = standard_fact(self,"fenwei_targets")
+    local targetslist = (self.player:getPropertyValue("fenwei_targets") or ""):split("+")
     local value = 0
     for _,player in ipairs(players)do
         if not (call(player,"hasSkill","danlao") or (call(player,"hasSkills","jianxiong|nosjianxiong") and not self:isWeak(player)))
@@ -4868,9 +4871,9 @@ sgs.ai_skill_use["@@fenwei"]=function(self,prompt,method,pattern,request)return 
 end
 
 sgs.ai_card_intention.FenweiCard = function(self,card,from,tos)
-    if standard_fact(self,"fenwei_use")==false then return end
-    local cardx = standard_event(self,"fenwei_use").card
-    local from = standard_event(self,"fenwei_use").from
+    if self.player:getTag("fenwei")==nil then return end
+    local cardx = tag_event(self,"fenwei").card
+    local from = tag_event(self,"fenwei").from
     if not cardx then return end
     local intention = (call(cardx,"isKindOf","AOE") and -50 or 50)
     for _,to in ipairs(tos)do
@@ -4882,9 +4885,12 @@ end
 
 do
 local select_response=function(self,prompt)
-    local move = {reason={m_skillName=standard_fact(self,"lianying_move_reason")}}
+    -- LianyingMoveData (a card move) is not projected. Only Qianxun moves for reason
+    -- "qianxun", and it leaves the moved hand in the viewer's own qianxun pile.
+    if call(self.player,"hasSkill","qianxun") and (self.player:getPileCount("qianxun") or 0)>0 then
+        ai_unsupported("Lianying move reason is not projected","lianying_move_reason")
+    end
     local effect = nil
-    if move.reason.m_skillName=="qianxun" then effect = standard_event(self,"qianxun_effect") end
     local upperlimit = call(self.player,"getStrategyMark","lianying")
 
     local targets = {}
@@ -4935,7 +4941,7 @@ end
 do
 local select_response=function(self,prompt,method)
     local others = call(self.room,"getOtherPlayers",self.player)
-    local slash = CardView.new(standard_fact(self,"liuli_card"))
+    local slash = CardView.new(known(self.player:getTag("liuli-card"),"liuli-card"))
     others = sgs.QList2Table(others)
     local source
     for _,player in ipairs(others)do
@@ -5045,7 +5051,7 @@ end
 sgs.ai_skill_invoke.qianxun = function(self,data)
     local effect = data:toCardEffect()
     if call(effect.card,"isKindOf","Collateral") and self.player:getWeapon() then
-        local victim = player_name(self,standard_fact(self,"collateral_victim"),"collateral victim")
+        local victim = player_name(self,self.player:getTag("collateralVictim") or false,"collateral victim")
         if victim and self:selectCollateralSlash(victim,effect.from)~="." then return false end
     end
     if call(self.player,"getPhase")==sgs.Player_Judge then
@@ -5080,7 +5086,8 @@ sgs.ai_skill_invoke["tishen"] = function(self,data)
             end
         end
     end
-    local tishen_hp = standard_fact(self,"tishen_hp")
+    -- QVariant::toInt of the own property, as the donor reads it (0 when unset).
+    local tishen_hp = tonumber(self.player:getPropertyValue("tishen_hp")) or 0
 
     if call(self.player,"getHp")<=1 and tishen_hp-call(self.player,"getHp")>0 and peaches==0 then return true end
     if tishen_hp-call(self.player,"getHp")>1 and slashtarget>0 then return true end
@@ -5131,7 +5138,7 @@ sgs.ai_skill_playerchosen.liyu = function(self,targets)
         if self:isEnemy(target) then table.insert(enemies,target) end
     end
     -- should give one card to Lv Bu
-    local damage = standard_event(self,"current_damage")
+    local damage = current_damage(self)
     local lvbu = damage.from
     if not lvbu then return nil end
     local duel = call(self,"getEvaluationCard","duel")
@@ -5186,7 +5193,8 @@ end
 
 sgs.ai_skill_choice.nosguhuo = function(self,choices)
     local yuji = self.room:findPlayerBySkillName("nosguhuo")
-    local nosguhuoname = standard_fact(self,"nosguhuo_type")
+    -- The declaration lives in the NosGuhuoType room tag and the choice's string data.
+    local nosguhuoname = ai_unsupported("NosGuhuo declaration is not projected","nosguhuo_type")
     if nosguhuoname=="peach+analeptic" then nosguhuoname = "peach" end
     local nosguhuocard = call(self,"getEvaluationCard",nosguhuoname)
     if self:getRestCardsNum(call(nosguhuocard,"getClassName"),yuji)<1 and call(self.player,"getHp")>0 then return "question" end
@@ -5222,7 +5230,7 @@ sgs.ai_choicemade_filter.skillChoice.nosguhuo = function(self,player,promptlist)
         remember_source(self,"questioner",player)
         local yuji = self.room:findPlayerBySkillName("nosguhuo")
         if not yuji then return end
-        local nosguhuoname = standard_fact(self,"nosguhuo_type")
+        local nosguhuoname = ai_unsupported("NosGuhuo declaration is not projected","nosguhuo_type")
         if nosguhuoname=="peach+analeptic" or nosguhuoname=="peach" then
             sgs.updateIntention(player,yuji,80)
             return
@@ -5674,7 +5682,7 @@ sgs.ai_fill_skill.nosguhuo=function(self,inclusive,request)
         if call(ep,"getHp")>1 or #cards<2
         then can = false break end
     end
-    local ps=known(self.world.strategy_facts.pattern_names,"fixed pattern-name order")
+    local ps=known(AICardCatalog.patternNames(),"fixed pattern-name order")
     for i=1,9 do
         local name = ps[math.random(1,#ps)]
         local c = self:getEvaluationCard(name)
@@ -5832,14 +5840,13 @@ end
 
 sgs.ai_skill_use["@multi-jink-start"]=function(self,prompt,method,pattern,request)
     request=request or self.request
-    local context=self.world.decision_context or{}
-    if context.filter_card_effect_known~=true or context.filter_card_effect_present~=true
-        or type(context.last_filter_card_effect)~="table"then ai_unsupported("last public CardEffect is unavailable","multi-jink")end
+    local last_effect=self:getLastCardEffect()
+    if type(last_effect)~="table"then ai_unsupported("last public CardEffect is unavailable","multi-jink")end
     local adapted,options,immediate={},{},{}
     for key,value in pairs(request)do adapted[key]=value end
     for key,value in pairs(request.options or{})do options[key]=value end
     for key,value in pairs(options.context or{})do immediate[key]=value end
-    immediate.effect=context.last_filter_card_effect;immediate.effect_present=true;options.context=immediate;adapted.options=options
+    immediate.effect=last_effect;immediate.effect_present=true;options.context=immediate;adapted.options=options
     local prior=self.request;self.request=adapted
     local ok,selected=pcall(function()
         local data=self:getDecisionData();local effect=data:toCardEffect();local parts=prompt:split(":")

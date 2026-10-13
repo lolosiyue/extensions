@@ -34,9 +34,8 @@ end
 local function etushou_flag(self,player,name)
     local value=call(player,"hasFlag",name)
     if value~=nil then return value end
-    local facts=self.world.strategy_facts and self.world.strategy_facts.emjr
-    local values=facts and facts[name]
-    return known(values and values[q(player,"objectName")],"emjr."..name)
+    -- Flags are projected for every player; nil means the snapshot lacks them.
+    return known(nil,"emjr."..name)
 end
 local efusha_skill = {}
 efusha_skill.name = "efusha"

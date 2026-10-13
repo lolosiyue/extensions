@@ -15,7 +15,12 @@ local function sort_keep(self,t,...)return order(t,call(self,"sortByKeepValue",t
 local function sort_use(self,t,...)return order(t,call(self,"sortByUseValue",t,...))end
 local function sort_need(self,t,...)return order(t,call(self,"sortByCardNeed",t,...))end
 local function context(self,key)return known(self:getDecisionContext()[key],key)end
-local function fact(self,key)local f=self.world.strategy_facts;return known(f and f.yczh2017 and f.yczh2017[key],key)end
+-- Funan reads the viewer's own property and tag (an absent tag is no card).
+local function fact(self,key)
+ if key=="funan_level_up"then return self.player:getPropertyValue("funan_level_up")==true end
+ if key=="funan_card"then local v=self.player:getTag("FunanCard");if type(v)~="table"or next(v)==nil then return false end;return v end
+ ai_unsupported("yczh2017 fact is not projected",key)
+end
 local function visible(self,id)return known(self:getKnownCardById(tonumber(id)),"lawful card "..tostring(id))end
 local function evaluation(self,name)return self:getEvaluationCard(name or"slash")end
 local function role(self,p)return known(self:getRoleEstimate(p),"viewer role estimate")end
@@ -52,13 +57,8 @@ local function has_hand_equip(self,p)
  local hidden=call(p,"getHandcardNum")-#cards
  if hidden<0 then ai_unsupported("known hand exceeds public count","qingxian.hand")end
  if hidden==0 then return false end
- local f=known(self.world.strategy_facts,"public deck facts")
- if f.deck_definition_counts_complete~=true then ai_unsupported("public equipment distribution unknown","qingxian.hand")end
- local counts=known(f.deck_definition_counts,"public definition counts");local size=known(f.deck_definition_size,"public definition size")
- if size<=0 then ai_unsupported("empty public deck distribution","qingxian.hand")end
- local probability=1-(1-(counts.EquipCard or 0)/size)^hidden
- return self:useKnowledgeEstimate({status="estimate",value=probability>=0.5,known_count=#cards,hidden_count=hidden,
-  probability=probability,viewer=call(self.player,"objectName"),observer=call(p,"objectName"),basis="public_equipment_distribution_hidden_hand_prior"},"qingxian.hand_equip")
+ -- The configured deck definition's kind counts are not projected.
+ ai_unsupported("public equipment distribution is not projected","qingxian.hand")
 end
 local function fumian_card(self,name)
  return known(self:evaluateSkillCard("fumian",name,{}),"fumian_distance readonly clone")
@@ -118,9 +118,17 @@ local function funan_card(self)
  local value=fact(self,"funan_card");if value==false then return nil end
  return known(CardView.new(value),"Funan public response")
 end
+-- The AG discloses each offered card's face to the viewer.
 local function shouxi_printed(self,id)
- local rows=context(self,"shouxi_printed_cards")
- return known(CardView.new(known(rows[tostring(id)],"offered printed Shouxi card")),"Shouxi printed card")
+ return known(self:getChoiceCard(id),"offered Shouxi card")
+end
+-- from:canDiscard(from,"h"). Another player's answer depends on its hidden hand:
+-- none is false, otherwise the hand is estimated discardable.
+local function shouxi_hand_discardable(self,from)
+ if call(from,"objectName")==call(self.player,"objectName")then return call(from,"canDiscard",from,"h")end
+ if call(from,"getHandcardNum")==0 then return false end
+ return self:useKnowledgeEstimate({status="estimate",value=true,viewer=call(self.player,"objectName"),observer=call(from,"objectName"),
+  basis="foreign_hand_discard_limits_on_hidden_cards_assumed_absent"},"yczh2017.shouxi_from_discard")
 end
 
 local function source_dummy()local u=AIUsePlan.new();u.isDummy=true;u.extra_target=0;u.current_targets={};return u end
@@ -1146,7 +1154,7 @@ sgs.ai_skill_askforag.shouxi=function(self,card_ids)
 	local id = -1
 	local from = recall_player(self,"shouxi_from")
 	remember(self,"shouxi_from",nil)
-	if (not from or call(from,"isDead") or not call(from,"canDiscard",from,"h")) and #basic>0 then
+	if (not from or call(from,"isDead") or not shouxi_hand_discardable(self,from)) and #basic>0 then
 		sort_use(self,basic,true)
 		id = call(basic[1],"getEffectiveId")
 	else

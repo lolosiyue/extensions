@@ -9,10 +9,6 @@ local function raw_call(o,k,...)
  if not o or type(o[k])~='function' then unsupported(k)end
  local v=table.pack(o[k](o,...));if AIUnsupported.is(v[1])then error(v[1],0)end;return table.unpack(v,1,v.n)
 end
-local function fact(self,key)
- local all=self.world and self.world.strategy_facts;local p=all and all[PACKAGE];local v=p and p[key]
- if v==nil then unsupported(key)end;return v
-end
 local function clone(self,name,skill,suit,number)
  name=name or 'slash';local p=raw_call(self,'cloneEvaluationCard',name)
  if p==false then return nil end;if not p then unsupported('prototype.'..tostring(name))end
@@ -73,11 +69,16 @@ end
 local function dummy(value,extra,current)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;u.current_targets=current or{};return u end
 local function patterns_for(self,class)
  if class then return patterns(class)end
- local f=self.world and self.world.strategy_facts;local a=f and f.pattern_names
+ local a=AICardCatalog.patternNames()
  if not AIValue.isList(a)then unsupported('pattern_names')end;return a
 end
 local function source_fact(self,key,kind)
- local v=fact(self,key)
+ -- The viewer's own tag; absent reads as the donor's empty QVariant conversion.
+ local v=self.player:getTag(key)
+ if v==nil then
+  if kind=='toInt'then return 0 elseif kind=='toString'then return''elseif kind=='toBool'then return false elseif kind=='toIntList'then return AIList.new({})end
+  v=false
+ end
  if kind=='toPlayer'then return v~=false and package_known(self.room,'findPlayerByObjectName',v,true)or nil end
  if kind=='toInt'or kind=='toString'or kind=='toBool'then return v end
  if kind=='toIntList'then return AIList.new(v)end
@@ -172,9 +173,15 @@ end
 
 local function clone_native(self,name,suit,number)return clone(self,name,nil,suit,number)end
 local function memory(self,key)local v,known=package_call(self,"getStrategyMemory",PACKAGE.."."..key);if not known then unsupported("memory."..key)end;return v end
-local function unobserved_global(self,name)return fact(self,"global_"..name)end
-local function owner_reason(self)local f=self.world and self.world.strategy_facts;local n=f and f.owner_current_card_use_reason;if type(n)~="number"then unsupported("owner_current_card_use_reason")end;return n end
-local function source_card_count(self)return fact(self,"source_card_count")end
+-- The donor reads free globals of the gameplay VM, which are not projected.
+local function unobserved_global(self,name)unsupported("global_"..name)end
+-- Engine getCurrentCardUseReason() during a card question is that question's reason.
+local function owner_reason(self)
+ local r=self.request;local card_ask=type(r)=="table"and(r.kind=="activate"or r.kind=="use_card"or r.kind=="respond_card")
+ if not card_ask or type(r.reason)~="number"then unsupported("owner_current_card_use_reason")end;return r.reason
+end
+local function source_card_count(self)unsupported("source_card_count")end
+local function room_tag(self,key)unsupported("room_tag."..key)end
 local function candidate_skills(self,key)unsupported(key)end
 local function skill_meta(self,s,key)unsupported("candidate_skill."..key)end
 local function source_targets(self,card)unsupported("exact_card_targets")end
@@ -289,7 +296,7 @@ sgs.ai_skill_invoke.keqijishan = function(self, data)
 end
 
 sgs.ai_choicemade_filter.skillInvoke.keqijishan = function(self,player,promptlist)
-	local damage = source_fact(self,"keqijishan","toDamage")
+	local damage = room_tag(self,"keqijishan")
 	if damage.to and promptlist[3]=="yes" then
 		sgs.updateIntention(player,damage.to,-80)
 	end
@@ -312,7 +319,7 @@ sgs.double_slash_skill = sgs.double_slash_skill .. "|keqizhenqiao"
 
 
 sgs.ai_skill_discard.keqijuelietwo = function(self, discard_num, min_num, optional, include_equip)
-	local slashone = source_fact(self,"keqijuelietwoFrom","toPlayer")
+	local slashone = room_tag(self,"keqijuelietwoFrom")
 	local to_discard = {}
 	local cards = package_known(self.player,"getCards","he")
 	cards = sgs.QList2Table(cards)
@@ -350,7 +357,7 @@ sgs.ai_skill_discard.keqipingtao = function(self, discard_num, min_num, optional
 	cards = sgs.QList2Table(cards)
 	package_call(self,"sortByKeepValue",cards)
 	local room = package_known(self.player,"getRoom")
-	local sj = source_fact(self,"keqipingtaoFrom","toPlayer")
+	local sj = room_tag(self,"keqipingtaoFrom")
 	if package_known(self,"isFriend",sj) then
 	    table.insert(to_discard, package_known(cards[#cards],"getEffectiveId"))
 		return to_discard
@@ -412,7 +419,7 @@ sgs.ai_skill_invoke.keqishichong = function(self, data)
 end
 
 sgs.ai_skill_discard.keqishichong = function(self, discard_num, min_num, optional, include_equip)
-	local db = source_fact(self,"keqishichongFrom","toPlayer")
+	local db = room_tag(self,"keqishichongFrom")
 	local to_discard = {}
 	local cards = package_known(self.player,"getCards","h")
 	cards = sgs.QList2Table(cards)
@@ -673,7 +680,7 @@ end
 
 sgs.ai_skill_invoke.keqijuxia = function(self, data)
 	local to = package_call(data,"toPlayer")
-	local use = source_fact(self,"keqijuxiaData","toCardUse")
+	local use = room_tag(self,"keqijuxiaData")
 	return package_known(self,"isFriend",to) and (package_known(use.card,"isDamageCard") or package_known(use.to,"length")>1)
 end
 sgs.ai_choicemade_filter.skillInvoke.keqijuxia = function(self,player,promptlist)
@@ -1195,7 +1202,7 @@ sgs.ai_card_intention.keqishelunCard = 80
 sgs.ai_skill_playerchosen.keqifayi = sgs.ai_skill_playerchosen.damage
 
 sgs.ai_skill_discard.keqishelun = function(self)
-	local to = source_fact(self,"keqishelunTo","toPlayer")
+	local to = room_tag(self,"keqishelunTo")
 	local cards = package_known(self.player,"getCards","h")
 	cards = sgs.QList2Table(cards)
 	package_call(self,"sortByKeepValue",cards)
@@ -1329,7 +1336,7 @@ end
 sgs.ai_cardneed.keqiyizheng = sgs.ai_cardneed.bignumber
 
 sgs.ai_can_damagehp.keqirangjie = function(self,from,card,to)
-	return not(package_known(self,"isWeak",to) or (package_known(to,"hasSkill","keqizhaohan") and source_fact(self,"keqizhaohan","toInt") ~= 1))
+	return not(package_known(self,"isWeak",to) or (package_known(to,"hasSkill","keqizhaohan") and room_tag(self,"keqizhaohan") ~= 1))
 	and package_known(self,"ajustDamage",from,to,1,card)>0 and package_known(self,"canLoseHp",from,card,to)
 end
 
@@ -2614,11 +2621,13 @@ sgs.ai_skill_cardchosen.kezhuandingce = function(self,who)
 	return -1
 end
 
+-- Donor zhuanJfNames matches translated card names against skill text; card-name translations are not projected.
+local function zhuan_jf_names(self)unsupported("zhuanJfNames")end
 local kezhuanzhenfeng={}
 kezhuanzhenfeng.name="kezhuanzhenfeng"
 table.insert(package_skills,kezhuanzhenfeng)
 kezhuanzhenfeng.getTurnUseCard = function(self,inclusive,request)
-	for _,p in sgs.list(fact(self,"zhuanJfNames"))do do
+	for _,p in sgs.list(zhuan_jf_names(self))do do
 		local dc = clone(self,p)
 		package_call(dc,"setSkillName","kezhuanzhenfeng")
 		if package_known(dc,"isKindOf","Dongzhuxianji") and package_known(self.player,"hasSkill","kezhuandingce",true)
@@ -3916,7 +3925,7 @@ sgs.ai_skill_choice.kehejinfa = function(self, choices)
 end
 
 sgs.ai_skill_discard.kehejinfa = function(self)
-	local from = source_fact(self,"kehejinfaFrom","toPlayer")
+	local from = room_tag(self,"kehejinfaFrom")
 	if package_known(self,"isFriend",from) then
 		for _,c in sgs.qlist(package_known(self.player,"getCards","h")) do
 			if (package_known(c,"getColor")==memory(self,"jinfaColor")) then
@@ -4806,7 +4815,7 @@ end
 
 sgs.ai_skill_invoke.keshuaigangfen = function(self,data)
 	local str = package_known(data,"toString")
-	local use = source_fact(self,"keshuaigangfenData","toCardUse")
+	local use = room_tag(self,"keshuaigangfenData")
 	if package_known(str,"contains","ask2") then
 		if package_known(self,"isFriend",package_known(use.to,"at",0)) then
 			return true

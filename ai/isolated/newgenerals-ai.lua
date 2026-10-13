@@ -33,17 +33,16 @@ local function r42_response_dummy(extra)
     local use=AIUsePlan.new();use.isDummy=true;use.extra_target=extra or 0;use.current_targets={};return use
 end
 local function pattern_names(self,class)
-    local facts=known(self.world.strategy_facts,'pattern facts')
     if type(class)=='string'then
-        local mapping=known(facts.pattern_class_names,'exact last-write class/name catalog')
+        local mapping=known(AICardCatalog.patternClassNames(),'exact last-write class/name catalog')
         return mapping[class] or class
     end
-    return known(facts.pattern_names,'pattern names')
+    return known(AICardCatalog.patternNames(),'pattern names')
 end
 local function r45_handpile(self,flags)
     local cards=sgs.QList2Table(q(self.player,"getCards",flags))
-    local ids=known(self.world.strategy_facts.round45_hand_pile_ids,"actual complete owner hand-pile observation")
-    if ids==false or not AIValue.isList(ids)then ai_unsupported("actual hand-pile contains an unobserved material","newgenerals.hand_pile")end
+    local ids=self.player:getHandPile()
+    if not AIValue.isList(ids)then ai_unsupported("actual hand-pile contains an unobserved material","newgenerals.hand_pile")end
     for _,id in ipairs(ids)do table.insert(cards,q(self,"getKnownCardById",id))end
     return cards
 end
@@ -233,10 +232,7 @@ local function trigger_skill(self,name)
             return {hasEvent=function(_,event)return q(s,'hasTriggerEvent',event)end}
         end
     end end
-    local f=self.world.strategy_facts.newgenerals
-    local v=f and f.trigger_skills and f.trigger_skills[name]
-    if v==false then return nil end
-    if type(v)=='table' then return {hasEvent=function(_,e)return known(v[tostring(e)],'trigger event')end}end
+    -- Definitions of skills no visible player holds are not projected.
     ai_unsupported('public trigger-skill definition unavailable',name)
 end
 local function role_estimate(self,p)return q(self,'getRoleEstimate',p)end
@@ -396,23 +392,13 @@ local function materialize_action(self,c,request)
 end
 local function clone_preview(self,name,suit,number)return preview(self,name,'',suit or sgs.Card_NoSuit,number or 0)end
 local function printed_card(self,id)return q(self,'getPrintedCardById',id)end
-local function card_fact(self,c,key)
-    local f=self.world.strategy_facts.newgenerals
-    local rows=f and f.printed_card_properties
-    local row=rows and rows[tostring(q(c,'getEffectiveId'))]
-    return known(type(row)=='table'and row[key]or nil,key)
-end
+local function card_fact(self,c,key)ai_unsupported('card dynamic properties are not projected',key)end
 local function property_value(self,p,key)
-    local r=self.world.strategy_facts.newgenerals
-    local by=r and r.player_properties
-    local row=by and by[q(p,'objectName')]
-    if type(row)~='table' then ai_unsupported('scoped lawful property missing',key)end
-    return known(row[key],key)
+    -- Only the viewer's own properties are projected (a foreign read raises); absent reads as toString() "".
+    local v=p:getPropertyValue(key)
+    if v==nil then return '' end;return v
 end
-local function visible_top_id(self)
-    local f=self.world.strategy_facts.newgenerals
-    return known(f and f.visible_draw_top_id,'lawfully observed top card')
-end
+local function visible_top_id(self)ai_unsupported('draw-pile top card is not projected','newgenerals.draw_top')end
 local function judge_pattern(self,key)
     local patterns,yes=self:getEventMemory('judge_patterns')
     if not yes then ai_unsupported('judgestring source history unknown','zhiming')end
@@ -428,8 +414,8 @@ end
 failure_mark=function(self,p,key,increment)
     if p~=self.player then ai_unsupported('olxiaofan failure mark is owner-scoped',key)end
     local name=q(p,'objectName')
-    local facts=known(self.world.strategy_facts,'mark clear facts')
-    local epoch=known(facts.strategy_all_mark_clear_epochs and facts.strategy_all_mark_clear_epochs[name],'all-mark clear epoch')
+    local epochs=known(AIWorldLifecycle.epochs(self.world,'all_mark'),'mark clear facts')
+    local epoch=known(epochs[name],'all-mark clear epoch')
     local state,present=self:getStrategyMemory('newgenerals.olxiaofan_failures')
     if not present or state.epoch~=epoch then state={epoch=epoch,values={}}else state=copy(state)end
     local value=state.values[key]
@@ -4331,7 +4317,7 @@ sgs.ai_skill_use_func["#moulijianCard"] = function(card,use,self,request)
         local shenguanyu = self.room:findPlayerBySkillName("wuhun")
         if shenguanyu and q(shenguanyu,"objectName")~=q(self.player,"objectName") then
             if self.role=="rebel" and lord and q(lord,"objectName")~=q(self.player,"objectName") and q(shenguanyu,"objectName")~=q(lord,"objectName")
-                and not hasJueqingEffect(lord,shenguanyu) and q(self,"hasTrickEffective",duel,shenguanyu,lord) then
+                and not q(self,"hasJueqingEffect",lord,shenguanyu) and q(self,"hasTrickEffective",duel,shenguanyu,lord) then
                 table.insert(targets, shenguanyu)
             elseif q(self,"isEnemy",shenguanyu) and #self.enemies>=2 then
                 for _,enemy in ipairs(self.enemies)do

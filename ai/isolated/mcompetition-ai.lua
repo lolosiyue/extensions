@@ -39,8 +39,8 @@ end
 -- after the Weapon test; false veto and nil/no-op remain distinct.
 sgs.ai_use_revises.qishibusiyutushou = function(self, card, use)
     if card:isKindOf("Weapon") then
-        local facts=self.world.strategy_facts and self.world.strategy_facts.mcompetition
-        local value=facts and facts.qishibusiyutushou_equips
+        -- Absent property reads as the donor's empty toString().
+        local value=self.player:getPropertyValue("qishibusiyutushouEquips") or ""
         if type(value)~="string" then
             ai_unsupported("Owner equipment property is not projected", "qishibusiyutushouEquips")
         end

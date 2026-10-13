@@ -1,7 +1,8 @@
 -- Yitian fixed b6025acc: source strategies, pure request-local values.
 local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("yitian fact unknown",k)end;return v end
 local function q(o,k,...)if o==nil then error("attempt to index a nil value",0)end;if k=="getMark"and AIValue.isPlayer(o)then k="getStrategyMark"end;if k=="hasFlag"and AIValue.isPlayer(o)then k="getStrategyFlag"end;if type(o[k])~="function"then ai_unsupported("yitian helper unavailable",k)end;return known(o[k](o,...),k)end
-local function general_male(self,p)local facts=known(self.world.strategy_facts.yitian,"yitian");return known(known(facts.general_is_male,"printed general gender")[p:objectName()],"public printed general gender")end
+-- General::isMale (printed, not the player's current gender) is not projected.
+local function general_male(self,p)ai_unsupported("printed general gender is not projected","yitian.general_is_male")end
 local function known_card(self,id)return known(self:getKnownCardById(id),"disclosed card "..tostring(id))end
 local function memory(self,key)local v,ok=self:getStrategyMemory("yitian."..key);if ok then return v end end
 local function guixin_target(self)local name=known(self:getDecisionContext().guixin_modify_target,"Guixin2Modify");if name==false then return nil end;return known(self.room:findPlayerByObjectName(name,true),"Guixin2Modify target")end
@@ -959,8 +960,10 @@ sgs.ai_skill_use_func.YtYisheAskCard = function(card,use,self)
 end
 
 sgs.ai_event_callback[sgs.ChoiceMade].ytyishe_ask = function(self,player,data)
-	local parts=known(data.details and data.details.prompt_list,"ytyishe choice prompt")
-	if parts[1]=="skillChoice" and parts[2]=="ytyishe_ask" and parts[3]=="allow" then
+	-- Choice events carry "skillChoice:ytyishe_ask:allow" as kind, reason and answer.
+	local details=data.details
+	if data.kind=="choice" and type(details)=="table" and details.choice_kind=="skillChoice"
+		and data.reason=="ytyishe_ask" and details.answer=="allow" then
 		self:updateIntention(self.player,self.room:getCurrent(),-70)
 	end
 end

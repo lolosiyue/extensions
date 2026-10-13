@@ -702,24 +702,21 @@ sgs.ai_event_callback[sgs.CardFinished].azirshenjiCard = function(self, player, 
  local use=q(data,"toCardUse")
  if use.card and q(use.card,"objectName")=="azirshenjiCard" then
   local room=q(player,"getRoom")
-  local w=self.world.strategy_facts and self.world.strategy_facts.azirshenji_role_witness
-  if type(w)~="table" or w.actor~=q(player,"objectName") or not AIValue.isList(w.rows)then
-   ai_unsupported("Actual CardFinished role witness missing","kearcane.azirshenji.role")
-  end
-  local index=0
+  -- The witness is the public board: each head general must be disclosed, and
+  -- the solar disk's role revealed.
   for _,sb in sgs.qlist(q(room,"getOtherPlayers",player))do
-   index=index+1;local row=w.rows[index]
-   if type(row)~="table" or row.player~=q(sb,"objectName") or row.head_known~=true or type(row.solar)~="boolean"then
+   local name=sb:getGeneralName()
+   if q(sb,"objectName")~=q(self.player,"objectName") and (type(name)~="string" or name=="" or name=="anjiang")then
     ai_unsupported("Source-ordered public head witness unavailable","kearcane.azirshenji.head")
    end
-   if row.solar then
-    if row.role_known~=true or not ({lord=true,loyalist=true,rebel=true,renegade=true})[row.role]then
+   if name=="kesolardisk" then
+    local role=q(sb,"hasShownRole") and q(sb,"getRole")
+    if not ({lord=true,loyalist=true,rebel=true,renegade=true})[role]then
      ai_unsupported("Solar disk role has not been publicly revealed","kearcane.azirshenji.role")
     end
-    self:emitStrategyEffect({kind="azirshenji_role",player=row.player,role=row.role})
+    self:emitStrategyEffect({kind="azirshenji_role",player=q(sb,"objectName"),role=role})
    end
   end
-  if index~=#w.rows then ai_unsupported("Role witness roster changed","kearcane.azirshenji.head")end
  end
 end
 

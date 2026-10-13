@@ -382,8 +382,7 @@ local function kof_save(self,marks,state)
 end
 local function kof_start(self,marks,state)
     if query(self.player,"hasSkill","guanxing")or query(self.player,"hasSkill","super_guanxing")then
-        local facts=self.world and self.world.strategy_facts
-        local arrange=known(facts and facts.owner_1v1_arrange,"owner 1v1Arrange")
+        local arrange=known(nil,"owner 1v1Arrange") -- Future generals' skills are not projected.
         for follow,general in ipairs(arrange)do
             if general.exists~=true then ai_unsupported("donor 1v1Arrange references nonexistent general","guanxing")end
             local skills=known(general.has_skills,"future general skill membership")

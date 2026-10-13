@@ -32,13 +32,6 @@ local function hydrate_context(self,value,kind)
 end
 local nullable={getMinCard=true,getSameEquip=true,getOffensiveHorse=true,useCardByClassName=true,updatePlayers=true,getCard=true,getArmor=true,getWeapon=true,getTreasure=true,findPlayerBySkillName=true,toPlayer=true,useEquipCard=true,useTrickCard=true,useBasicCard=true,moveField=true,getCurrent=true,getLord=true,getMaxCard=true,setStrategyMemory=true,getStrategyMemory=true,updateIntention=true,setStrategyCardFlag=true}
 local function q(o,k,...)
- if k=='hasFlag'and AIValue.isPlayer(o)then
-  local ai=o._room and o._room._ai;local fs=ai and ai.world.strategy_facts
-  local rows=fs and fs.NyarzSecond and fs.NyarzSecond.public_flags
-  local values=rows and rows[(...)];local v=values and values[o:objectName()]
-  local audited={['jxjuxiangtarget']=true,['basuran']=true,['mjtongguantarget']=true,['gsgushetarget']=true,['ny_second_juanxia_target']=true,['nyarz_wangxi_target']=true,['nyarz_liuzhuan_target']=true,['nyarz_pojun_target']=true,['nyarz_juece_target']=true}
-  if audited[(...)]then if type(v)~='boolean'then ai_unsupported('public flag disclosure missing',(...))end;return v end
- end
  if not o or type(o[k])~='function'then ai_unsupported('NyarzSecond helper unavailable',k)end
  local m=k;if k=='getMark'and AIValue.isPlayer(o)then m='getStrategyMark'end
  local r=table.pack(o[m](o,...));if AIUnsupported.is(r[1])then error(r[1],0)end
@@ -47,7 +40,6 @@ local function q(o,k,...)
  if not nullable[k]then known(r[1],k)end;return table.unpack(r,1,r.n)
 end
 local function source_type(c)for _,name in ipairs{"BasicCard","TrickCard","EquipCard"}do if q(c,"isKindOf",name)then return name end end end
-local function facts(self)return known(self.world.strategy_facts and self.world.strategy_facts.NyarzSecond,'NyarzSecond')end
 local function face(self,id)return q(self,'getKnownCardById',id)end
 local function fullhe(p)local cs=q(p,"getCards","he");if #cs~=q(p,"getHandcardNum")+#q(p,"getEquips")then ai_unsupported("source requires complete lawful he","NyarzSecond.foreign_he")end;return cs end
 local function fullhand(p)local cs=q(p,'getHandcards');if #cs~=q(p,'getHandcardNum')then ai_unsupported('NyarzSecond source requires complete lawful foreign hand','NyarzSecond.foreign_hand')end;return cs end
@@ -104,8 +96,9 @@ local function nested(self,reg,key,...)
 end
 local function view(self,wire)return printed(wire,self)end
 
-local function source_inverse(self) local row=facts(self).inverse; if type(row)~="table" or row.known~=true then ai_unsupported("source global inverse is unknown","NyarzSecond.inverse")end; return row.value end
-local function prop(self,key)return known(facts(self).properties and facts(self).properties[key],key)end
+local function source_inverse(self) ai_unsupported("source global inverse is unknown","NyarzSecond.inverse") end
+-- Own dynamic property; QVariant::toString of an unset one is "".
+local function prop(self,key)local v=self.player:getPropertyValue(key);if v==nil then return''end;return v end
 local function context(self)return known(q(self,'getDecisionContext').NyarzSecond,'NyarzSecond.context')end
 local function tagplayer(self,owner,key)
  local rows=context(self).player_tags;local row=rows and rows[key]
@@ -116,7 +109,7 @@ end
 local function tagids(self,key)local rows=context(self).id_tags;return AIList.new(known(rows and rows[key],key))end
 local function taguse(self,key)return hydrate_context(self,known(context(self)[key],key),'CardUse')end
 local function tagjudge(self,key)return hydrate_context(self,known(context(self)[key],key),'Judge')end
-local function cardtag(self,c,key)local rows=facts(self).card_tags;local row=rows and rows[tostring(q(c,'getEffectiveId'))];return known(row and row[key],key)end
+local function cardtag(self,c,key)ai_unsupported('card tags are not projected',key)end
 local function role(self,p)if p==self.player then return q(p,'getRole')end;return q(self,'getRoleEstimate',p)end
 local function descriptor(c)local ids={};for _,id in ipairs(q(c,'getSubcards'))do ids[#ids+1]=id end;return{name=q(c,'objectName'),skill=q(c,'getSkillName',false),suit=q(c,'getSuit'),number=q(c,'getNumber'),subcards=ids}end
 
@@ -130,9 +123,10 @@ local function tagvalue(self,key,kind)
  if row.present==false and(kind=='Card'or kind=='Player')then return nil end;return hydrate_context(self,known(row.value,key),kind)
 end
 local function judge_match(self,judge,card)local rows=context(self).judge_nil_matches;local row=rows and rows[judge.pattern];local v=row and row[tostring(q(card,'getEffectiveId'))];if type(v)~='boolean'then ai_unsupported('exact nil-player judge matcher unknown',judge.pattern)end;return v end
-local function draw_iter(self)local f=facts(self);local count=known(f.draw_count,'draw_count');local i=-1;return function()i=i+1;if i<count then return i+1,known(f.observed_draw_ids and f.observed_draw_ids[tostring(i)],'draw_index:'..i)end end end
+-- The draw pile size is public; its card order is not projected.
+local function draw_iter(self)local count=known(self.world.draw_pile_count,'draw_count');local i=-1;return function()i=i+1;if i<count then return i+1,ai_unsupported('draw pile contents are not projected','draw_index:'..i)end end end
 local function skill_description(self,key)return q(self,'translatePublicKey',':'..key)end
-local function global_card_id(self)return known(facts(self).global_card_id,'source global card used by nyarz_longhun_god')end
+local function global_card_id(self)return ai_unsupported('gameplay-VM global card is not projected','source global card used by nyarz_longhun_god')end
 local function source_slash(self)local value,present=q(self,'getStrategyMemory','NyarzSecond.observed_global_slash');if not present then ai_unsupported('cross-viewer source global slash was not observed','nyarz_weipo')end;return value end
 local function write_source_slash(self,v)q(self,'setStrategyMemory','NyarzSecond.observed_global_slash',v)end
 local function rename_jiuchi(str)
@@ -2445,7 +2439,7 @@ end
 
 sgs.ai_fill_skill.nyarz_youlong=function(self,inclusive,request)
     if not q(self.player,"hasEquipArea") then return end
-	for _,name in sgs.list(known(self.world.strategy_facts.pattern_names,"pattern_names"))do
+	for _,name in sgs.list(known(AICardCatalog.patternNames(),"pattern_names"))do
         local c = evaluation(self,name)
         local mark = string.format("nyarz_youlong_%s_lun", name)
 		if c and q(c,"isAvailable",self.player)

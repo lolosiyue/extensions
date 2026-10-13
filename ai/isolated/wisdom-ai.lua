@@ -27,9 +27,14 @@ local function hydrate(self,row,players,cards)
  return result
 end
 local function current_damage(self)
- local facts=self.world.strategy_facts;local row=facts and facts.standard and facts.standard.current_damage
- if row==false then return{}end
- return hydrate(self,row,{"from","to"},{"card"})
+ -- CurrentDamageStruct is set from DamageDone to DamageComplete and a trigger is
+ -- logged when its dispatch ends, so while a Damaged skill answers the latest
+ -- damage event is that damage's DamageDone or Damage stage.
+ local event=self:getLastEvent("damage")
+ local stage=event and q(event,"getTriggerEvent")
+ if stage~=sgs.DamageDone and stage~=sgs.Damage then ai_unsupported("CurrentDamageStruct is not projected","CurrentDamageStruct")end
+ local row=rawget(event,"_view")
+ return hydrate(self,{from=row.from,to=row.to,card=row.details and row.details.card},{"from","to"},{"card"})
 end
 local function fuzuo_data(self)
  local c=q(self,"getDecisionContext").wisdom

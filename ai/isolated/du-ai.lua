@@ -9,31 +9,23 @@ local function q(o,k,...)
  if k=="hasSkill"or k=="hasSkills"or k=="hasLordSkill"then local p=AIValue.isPlayer(o)and o or select(2,...)or o.player;local r=type(p)=="table"and rawget(p,"_view");if v==false and r and r.skills_complete~=true then ai_unsupported("du foreign skill absence unknown",(...))end end
  if nullable[k]then return v end;return known(v,k)
 end
-local function facts(self)return known(self.world.strategy_facts and self.world.strategy_facts.du,"du")end
+-- Whether a legacy LuaSkillCard prototype parses is an engine query that is not projected.
 local function old_parse(self,selector,costs)
- local f=facts(self);local present=f.legacy_prototypes and f.legacy_prototypes[selector]
- if type(present)~="boolean"then ai_unsupported("du legacy prototype presence unavailable",selector)end
- if present==false then return nil end
- ai_unsupported("du legacy prototype unexpectedly exists outside audited baseline",selector)
+ ai_unsupported("du legacy prototype presence is not projected",selector)
 end
 local function old_response(self,selector,targets)
- local f=facts(self);local present=f.legacy_prototypes and f.legacy_prototypes[selector]
- if present==false then error(AIUnsupported.new("donor response terminal prototype is unavailable",selector,{donor_terminal_unavailable=true,terminal_response_selection=true,selected_targets=targets,selected_costs={}}),0)end
- ai_unsupported("du response prototype requires audited authority",selector)
+ ai_unsupported("du legacy prototype presence is not projected",selector)
 end
 local function role(self,p)return q(self,"getRoleEstimate",p)end
 local function true_role(self,p)return p==self.player and q(p,"getRole")or q(self,"getRoleEstimate",p)end
 local function pflag(self,p,key)
- if p==self.player then return q(p,"hasFlag",key)end
- local f=facts(self);local row=f.public_flags and f.public_flags[key]
- if not row or type(row[q(p,"objectName")])~="boolean"then ai_unsupported("du public flag scope missing",key)end
- return row[q(p,"objectName")]
+ -- Room::setPlayerFlag broadcasts, so every player's flags are projected.
+ return q(p,"hasFlag",key)
 end
 local function global_read(self,key)
  local value,present=self:getStrategyMemory("response_source:"..key)
  if AIUnsupported.is(value)then error(value,0)end
  if present then return value==false and nil or q(self.room,"findPlayerByObjectName",value)end
- if facts(self).global_initial_nil==true then return nil end
  ai_unsupported("du Room-global state has not been observed by this viewer",key)
 end
 local function global_write(self,key,p)return q(self,"setStrategyMemory","response_source:"..key,p and q(p,"objectName")or false)end

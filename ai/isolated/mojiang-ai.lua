@@ -33,9 +33,11 @@ local function response(self,skill,class,costs,targets)
 end
 local function nil_to_int(value) if value==nil then return 0 end;return value end
 local function owner_tag(self,key)
-    local facts=self.world.strategy_facts and self.world.strategy_facts.mojiang
-    local tags=facts and facts.owner_tags
-    return known(tags and tags[key],"mojiang.owner_tags."..key)
+    -- Viewer's own tag; absent reads as the donor's QVariant::toInt() 0.
+    local value=self.player:getTag(key)
+    if value==nil then return 0 end
+    if type(value)~="number" then ai_unsupported("mojiang owner tag malformed","mojiang.owner_tags."..key) end
+    return value
 end
 local function request_context(self) return q(self,"getDecisionContext") end
 local function quanqing_target(self)

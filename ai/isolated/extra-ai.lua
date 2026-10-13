@@ -489,9 +489,9 @@ local function aggregate(costs,suit,number)
 end
 local function clone_source(name,suit,number,skill)
  if name=='heg_threaten_emperor'then
-  local facts=known(owner().world.strategy_facts.extra28,'extra28 capabilities')
-  local row=known(known(facts.clone_names,'extra source clone names')[name],name)
-  if known(row.present,name..'.present')==false then return nil end
+  -- The printed-card catalog stands in for Engine::cloneCard's name lookup.
+  known(ai_card_catalog,'card catalog')
+  if AICardCatalog.get(name)==nil then return nil end
  end
  if type(suit)=='string'then skill=suit;suit=sgs.Card_NoSuit end
  local c={};previews[c]={name=name or'slash',suit=suit or sgs.Card_NoSuit,number=number or 0,skill=skill or'',costs={}};return c
@@ -574,10 +574,9 @@ local function source_can_to(card,from,to,prefix)return q(resolve_preview(card),
 local function source_helper(name,...)return q(owner(),name,...)end
 local function printed(self,name)return q(self,'getEvaluationCard',name)end
 local function history_available(self,c,n)return q(q(self,'getEvaluationCandidate',c),'isAvailableWithHistoryOffset',n,'Slash')end
+-- Whether the Room VM loaded this global helper is not projected.
 local function source_global(self,name,...)
- local f=known(self.world.strategy_facts.extra28,'extra28 capabilities')
- if known(known(f.source_globals,'source globals')[name],name)==false then error("attempt to call a nil value (global '"..name.."')",0)end
- ai_unsupported('loaded source global requires exact pure provider','extra.'..name)
+ ai_unsupported('Room-VM global presence is not projected','extra.'..name)
 end
 -- R29 finite constructor pairs. A source class is not an activation alias;
 -- both fill and use_func consume the actual request forwarded by decision-core.
@@ -605,9 +604,9 @@ local function parse_source(wire)
  local class,raw,user=wire:match('^(#[^:]+):([^:]*):(.*)$')
  if not class then class,raw=wire:match('^@([^=]+)=(.*)$')end
  if class then
-  local f=known(self.world.strategy_facts.extra28,'extra28 capabilities')
-  local present=known(known(f.legacy_prototypes,'extra prototypes')[class],'extra prototype '..class)
-  if not present then return nil end
+  -- Whether a legacy Card_Parse prototype exists is an engine query that is not
+  -- projected; the construction below stays for when it is.
+  ai_unsupported('legacy prototype presence is not projected','extra prototype '..class)
   local skill,request=source_activation(self,class)
   local costs={};for v in (raw or''):gmatch('%d+')do costs[#costs+1]=tonumber(v)end
   local r=q(self,'evaluateTurnSkillCard',skill,class,costs,request,user~=''and user or nil)
@@ -620,7 +619,7 @@ local function begin_range()range_pending=true end
 local function end_range()range_pending=nil end
 local shadow_flag_names={AI_doNotInvoke_yinghun=true,AI_heg_huyuanToChoose=true}
 local function flag_memory(self,player)
- local name=q(player,'objectName');local epochs=known(self.world.strategy_facts.strategy_flag_clear_epochs,'flag clear epochs')
+ local name=q(player,'objectName');local epochs=known(AIWorldLifecycle.epochs(self.world,'flag'),'flag clear epochs')
  local epoch=known(epochs[name],'flag clear epoch '..name)
  local saved=self:getStrategyMemory('extra.flags');local state={}
  if type(saved)=='table'then for k,v in pairs(saved)do state[k]=v end end
@@ -670,7 +669,11 @@ local function struct(row,kind)
 end
 local function tag_value(key,player_tag)
  local self=owner();local context=q(self,'getDecisionContext');local value
- if key=='CurrentDamageStruct'then value=known(self.world.strategy_facts.standard,'standard facts').current_damage
+ if key=='CurrentDamageStruct'then
+  -- Its asks carry no data, so the context damage is the CurrentDamageStruct room tag;
+  -- an absent tag reads as the donor's default DamageStruct.
+  local raw=type(self.request.options)=='table'and self.request.options.context
+  value=type(raw)=='table'and raw.damage or{amount=1,nature=sgs.DamageStruct_Normal}
  elseif key:match('^UseHistory')then
   local row=known(context.extra28_use_history,'extra current use history');if row.key~=key then ai_unsupported('current use history identity mismatch',key)end;value=row.use
  else value=known(context.extra28,'extra current question')[key]end
@@ -7429,7 +7432,7 @@ local function wrap(body,row)
   local args=table.pack(...);local ai=row.self_index>0 and args[row.self_index]
   if not ai then for _,value in ipairs(args)do if type(value)=='table'then local room=rawget(value,'_room');if room and rawget(room,'_ai')then ai=rawget(room,'_ai');break end end end end
   local key=row.registry..'.'..table.concat(row.path,'.')
-  local facts=ai and ai.world and ai.world.strategy_facts and ai.world.strategy_facts.hegemony
+  local facts=ai and ai.world and AIHegemony.facts(ai.world)
   if row.original_override and facts and facts.enabled==true and known(facts.original_overrides_loaded,'Original effective overrides') then
    local prior=prior_extra_hooks[key]
    if type(prior)=='function'then return prior(table.unpack(args,1,args.n))end
@@ -7877,7 +7880,7 @@ for _,row in ipairs(entries)do
    local previous=prior_extra_typed_uses[key]
    if previous then
     ai_skill_use[key]=function(self,prompt,request)
-     local facts=self.world.strategy_facts.hegemony
+     local facts=AIHegemony.facts(self.world)
      if row.original_override and facts and facts.enabled==true and known(facts.original_overrides_loaded,'Original effective overrides') then return previous(self,prompt,request)end
      return wrapped(self,prompt,request and request.handling_method,request and request.pattern,request and AILegacyRequest.new(request,self.room))
     end

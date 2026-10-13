@@ -29,7 +29,6 @@ local function q(o,k,...)
  if k=='hasSkill'or k=='hasSkills'then local p=AIValue.isPlayer(o)and o or select(2,...)or o.player;local row=type(p)=='table'and rawget(p,'_view');if r[1]==false and row and row.skills_complete~=true then ai_unsupported('Loong foreign skill absence unknown',(...))end end
  if not nullable[k]then known(r[1],k)end;return table.unpack(r,1,r.n)
 end
-local function facts(self)return known(self.world.strategy_facts and self.world.strategy_facts.Loong,'Loong')end
 local function own_ai(p)local a=p._room and p._room._ai;if not a or p~=a.player then ai_unsupported('Loong view-as requires owner legal materials','Loong.view_as')end;return a end
 local function face(self,id)return q(self,'getKnownCardById',id)end
 local function complete_hand(self,p)
@@ -69,7 +68,8 @@ end
 local function remember(self,key,v)return q(self,'setStrategyMemory','Loong.'..key,v)end
 local function recall(self,key)local v,p=q(self,'getStrategyMemory','Loong.'..key);if p then return v end end
 local function public_flag(self,p,key)
- local row=facts(self).public_flags;local flags=row and row[key];return known(flags and flags[q(p,'objectName')],key)
+ -- Player flags are projected for the viewer only; a foreign read stays unknown.
+ return q(p,'hasFlag',key)
 end
 local function call(self,reg,key,...)
  local f=q(self,'getHooks',reg)[key];if type(f)~='function'then ai_unsupported('Loong shared callback unavailable',reg..'.'..key)end
@@ -520,7 +520,7 @@ sgs.ai_skill_choice["lxtx_rende"] = function(self, choices, data)
 end
 
 sgs.ai_skill_use["@@lxtx_rende"] = function(self, prompt)
-    local pattern = known(facts(self).rende_property,"lxtx_rende.property")
+    local pattern = self.player:getPropertyValue("lxtx_rende") or ""
 
     if pattern == "peach" or pattern == "analeptic" then
         return response(self,"lxtx_rende_basic",{},{q(self.player,"objectName")})
@@ -571,17 +571,17 @@ sgs.ai_skill_invoke._lxtx_feilongduofeng = function(self, data)
 end
 
 local function apply_feilong_role(self,actor,target)
- local witness=self.world.strategy_facts and self.world.strategy_facts.loong_feilong_role_witness
  local actor_name=q(actor,'objectName');local target_name=q(target,'objectName')
- if type(witness)~='table'or witness.actor~=actor_name or actor_name~=q(self.player,'objectName')then
+ -- The skillInvoke choice reaches only its actor, so the role is the viewer's own;
+ -- the caller has already seen the target's flag.
+ if actor_name~=q(self.player,'objectName')then
   ai_unsupported('Feilong role effect lacks actor-private choice witness','Loong.feilong.role')
  end
- local found=false;for _,name in ipairs(witness.targets or{})do if name==target_name then found=true;break end end
+ local role=q(self.player,'getRole')
  local roles={lord=true,loyalist=true,rebel=true,renegade=true}
- if not found or not roles[witness.role]then ai_unsupported('Feilong target/role is outside witnessed source domain','Loong.feilong.role')end
- -- Actor-private native ChoiceMade exposes only the owner's already known role.
+ if not roles[role]then ai_unsupported('Feilong target/role is outside witnessed source domain','Loong.feilong.role')end
  -- Foreign source roles are not queried or silently estimated here.
- self:emitStrategyEffect{kind='loong_feilong_role',actor=actor_name,player=target_name,role=witness.role}
+ self:emitStrategyEffect{kind='loong_feilong_role',actor=actor_name,player=target_name,role=role}
 end
 
 sgs.ai_choicemade_filter.skillInvoke._lxtx_feilongduofeng_re=function(self,player,promptlist)

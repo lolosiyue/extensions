@@ -9,10 +9,10 @@ local function call(object,method,...)
     return known(object[method](object,...),method)
 end
 local function property(self,key)
-    local facts=self.world.strategy_facts
-    local fields=type(facts)=="table"and facts.owner_skill_properties
-    local value=type(fields)=="table"and fields[key]
-    if type(value)~="string"then ai_unsupported("owner skill property is not projected",key)end
+    -- The viewer's own property, read like the donor's toString() (absent reads "").
+    local value=self.player:getPropertyValue(key)
+    if value==nil then return "" end
+    if type(value)~="string"then ai_unsupported("owner skill property is not a string",key)end
     return value
 end
 local function clone(self,skill,name)

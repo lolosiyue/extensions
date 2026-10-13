@@ -10,12 +10,9 @@ local function q(o,k,...)
     return known(o[k](o,...),k)
 end
 local function missing_source_prototype(self,name)
-    local facts=self.world.strategy_facts
-    local row=facts and facts.arknights and facts.arknights.legacy_prototypes
-    if type(row)~="table"or row[name]~=false then
-        ai_unsupported("missing legacy prototype has not been established by native catalog",name)
-    end
-    return nil
+    -- Whether the source's skill-card class is registered (Card_Parse) is engine
+    -- registry state, not projected.
+    ai_unsupported("skill-card registry is not projected",name)
 end
 --过载
 

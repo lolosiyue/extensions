@@ -8,15 +8,42 @@ local function q(o,m,...)
  if not o or type(o[m])~="function"then ai_unsupported("Yongjian method unavailable: "..m,"yongjian")end
  return known(o[m](o,...),m)
 end
+-- The donor's scoped values live on the viewer's own property and tags.
+local own_scope={poison_use={"getPropertyValue","PoisonUse",""},tuixinzhifu_target={"getTag","yj_tuixinzhifu",""},
+ caochuan_effect={"getTag","Caochuanjiejian",false},jinchan_use={"getTag","Jinchan",false}}
 local function scope_value(self,key)
+ local own=own_scope[key]
+ if own then
+  local value=self.player[own[1]](self.player,own[2])
+  if value==nil then return own[3] end
+  -- The donor reads these two as QVariant::toString.
+  if type(own[3])=="string" then return tostring(value) end
+  return value
+ end
  local c=q(self,"getDecisionContext").yongjian
  if type(c)~="table"then ai_unsupported("Yongjian context missing","yongjian")end
  return known(c[key],"scoped "..key)
 end
+-- Fulei room-tag counts and hasDefensiveHorse (equip
+-- nullification/view-as) are not projected.
 local function fact(self,key,index)
- local f=self.world.strategy_facts;f=f and f.yongjian;local row=f and f[key]
- if type(row)~="table"then ai_unsupported("Yongjian facts missing: "..key,"yongjian")end
- return known(row[index],key..":"..tostring(index))
+ if key=="card_is_present" then
+  -- A gift card the viewer holds: its own card view says so.
+  local card=self:getKnownCardById(tonumber(index))
+  local gift=card and card._view.gift
+  if type(gift)~="boolean" then ai_unsupported("Yongjian gift status is not projected",tostring(index)) end
+  return gift
+ end
+ if key=="defensive_horse_zhanxiang" then
+  -- Equipment is public; a view-as-equip skill leaves the armor basis (and this) unknown.
+  local to=self.room:findPlayerByObjectName(index)
+  if not to or type(to._view.active_armor_name)~="string" then
+   ai_unsupported("Yongjian Zhanxiang basis is not projected",tostring(index))
+  end
+  local horse=to:getDefensiveHorse()
+  return horse~=nil and horse:objectName()=="yj_zhanxiang"
+ end
+ ai_unsupported("Yongjian fact is not projected: "..key,"yongjian")
 end
 local function scope_player(self,key)
  local name=scope_value(self,key);if name==false or name==""then return nil end

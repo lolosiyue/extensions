@@ -485,7 +485,7 @@ sgs.ai_use_priority["#feishejiCard"]   = 3.2
 sgs.ai_card_intention["#feishejiCard"] = 80
 
 sgs.ai_cardsview_valuable.feisheji = function(self, class_name, player)
-    local usereason = known(self.world.strategy_facts.owner_current_card_use_reason,"current use reason")
+    local usereason = known(self.request.reason,"current use reason")
     if usereason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE then return end
 
     local handcards = sgs.QList2Table(self.player:getCards("he"))

@@ -79,10 +79,11 @@ local function find_general(self,player)
  return nil
 end
 local function empty_state(self)
- local facts=known(self.world.strategy_facts,'strategy_facts');local name=q(self.player,'objectName')
- local specific=known(known(facts.lol2015,'lol2015').w_empty_clear_epoch,'lol2015.w_empty_clear_epoch')
- local all=known(known(facts.strategy_flag_clear_epochs,'strategy_flag_clear_epochs')[name],'owner flag clear epoch')
- local epoch=math.max(specific,all);local prior=self:getStrategyMemory('lol2015.w_empty')
+ -- Turn flag clears reset the remembered flag. The source's explicit "-lol_jwyh_w_empty"
+ -- at the end of the once-per-phase effect has no witness; no later read happens in that turn.
+ local name=q(self.player,'objectName')
+ local epoch=known(known(AIWorldLifecycle.epochs(self.world,'flag'),'strategy_flag_clear_epochs')[name],'owner flag clear epoch')
+ local prior=self:getStrategyMemory('lol2015.w_empty')
  if prior and prior.epoch==epoch then return prior.value,epoch end
  return q(self.player,'hasFlag','lol_jwyh_w_empty'),epoch
 end

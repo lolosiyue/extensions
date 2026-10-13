@@ -4,7 +4,7 @@ local function speech_unknown(message)
     return ai_unsupported(message, "speech")
 end
 local function speech_policy(self)
-    local policy = self.world and self.world.response_policy
+    local policy = type(self.getResponsePolicy) == "function" and self:getResponsePolicy()
     if type(policy) ~= "table" then return speech_unknown("speech policy is not projected") end
     return policy
 end
@@ -20,6 +20,8 @@ local function stage(self, effect)
     self._strategy_effects[#self._strategy_effects + 1] = effect
 end
 function SmartAIView:getSpeechDelay()
+    -- Without AI chat there is no speech to pace.
+    if self.world and self.world.ai_chat_enabled == false then return 0 end
     local delay = speech_policy(self).origin_ai_delay
     if not finite(delay) then return speech_unknown("OriginAIDelay is unknown") end
     return delay
@@ -32,11 +34,10 @@ function SmartAIView:canSpeak(player)
         if type(state) ~= "string" then return speech_unknown("speaker state is unknown") end
         if state ~= "robot" then return nil end
     end
-    local delay = self:getSpeechDelay()
-    if delay <= 0 then return false end
-    local humanized = speech_policy(self).humanized
-    if type(humanized) ~= "boolean" then return speech_unknown("humanization setting is unknown") end
-    return humanized
+    -- ai_chat_enabled already combines robot state, OriginAIDelay > 0 and AIHumanized.
+    local enabled = self.world and self.world.ai_chat_enabled
+    if type(enabled) ~= "boolean" then return speech_unknown("AI chat setting is unknown") end
+    return enabled
 end
 function AIChat(player, ai)
     ai = ai or player and player._room and player._room._ai
@@ -595,21 +596,10 @@ local function speech_role(self, name)
     return speech_known(self:getRoleEstimate(speech_known(player, "speech role player")), "speech role estimate")
 end
 local function speech_time(self)
-    if type(ai_source_clock) ~= "function" then return speech_unknown("source clock endpoint is unavailable") end
-    local key = self._speech_source_key
-    local row = ai_source_clock(key)
-    if type(row) ~= "table" or row.kind ~= "source_clock" or row.source_key ~= key
-        or not finite(row.seconds) or row.seconds % 1 ~= 0 then
-        return speech_unknown("source clock read is unavailable")
-    end
-    return row.seconds
+    return speech_unknown("the source wall clock is not available")
 end
 local function speech_pattern_log_name(pattern)
-    if type(ai_sample_pattern_log_name) ~= "function" then return speech_unknown("speech pattern sampling endpoint is missing") end
-    local result = ai_sample_pattern_log_name(pattern)
-    if type(result) ~= "table" or result.kind ~= "pattern_log_name" or result.pattern ~= pattern
-        or result.found ~= true or type(result.text) ~= "string" then return speech_unknown("invalid speech pattern sample") end
-    return result.text
+    return speech_unknown("pattern log names are not projected")
 end
 local function speech_event_data(self, event)
     local details = event.details or {}
@@ -661,8 +651,8 @@ local function speech_event_data(self, event)
     }
 end
 function SmartAIView:getSpeechCounter(player, name)
-    local facts = speech_known(self.world.strategy_facts, "public speech facts")
-    local counters = speech_known(facts.speech_counters, "public speech counters")
+    -- Chat counters are this observer's own bookkeeping.
+    local counters = self:getStrategyMemory("speech_counters") or {}
     local row = counters[player:objectName()]
     local value = row and row[name] or 0
     if not finite(value) or value < 0 or value % 1 ~= 0 then return speech_unknown("invalid speech counter") end
@@ -673,10 +663,11 @@ function SmartAIView:setSpeechCounter(player, name, value)
     local valid = name == "jink_count-Clear" and source == "chat:CardOffset:multi_jink"
         or name:match("^continuous_slash_count.+%-Clear$") and source == "chat:TargetSpecified:continuous_slash"
     if not valid or not finite(value) or value < 0 or value % 1 ~= 0 then return speech_unknown("invalid speech counter write") end
-    local counters = speech_known(speech_known(self.world.strategy_facts, "public speech facts").speech_counters, "public speech counters")
+    local counters = self:getStrategyMemory("speech_counters") or {}
     local actor = player:objectName()
     counters[actor] = counters[actor] or {}
     counters[actor][name] = value
+    self:setStrategyMemory("speech_counters", counters)
     stage(self,{kind="speech_counter",player=actor,name=name,value=value,source_key=source})
 end
 function SmartAIView:addSpeechCounter(player, name)

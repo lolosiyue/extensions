@@ -20,9 +20,12 @@ local function has_skill(self,player,names,multiple)
     return self:useKnowledgeEstimate({status="estimate",value=false,player=player:objectName(),
         basis="yjcm2012.undisclosed_skill_uses_visible_roster"},names)
 end
-local function fact(self,key)
-    return known(self.world.strategy_facts and self.world.strategy_facts.yjcm2012
-        and self.world.strategy_facts.yjcm2012[key],key)
+-- Own tag read through QVariant's conversion: absent is the default value.
+local function own_tag(self,key,kind,default)
+    local value=self.player:getTag(key)
+    if value==nil then return default end
+    if type(value)~=kind then ai_unsupported("YJCM2012 owner tag has an unexpected type",key) end
+    return value
 end
 local function visible_card(self,id)
     return known(self:getChoiceCard(id) or self:getKnownCardById(id),"disclosed card "..tostring(id))
@@ -74,7 +77,7 @@ end
 sgs.ai_skill_playerchosen.qianxi = function(self,targets)
 	local enemies = {}
 	local slash = self:getCard("Slash") or q(self,"getEvaluationCard","slash")
-	local isRed = (fact(self,"qianxi_color")=="red")
+	local isRed = (own_tag(self,"qianxi","string","")=="red")
 
 	for _,target in sgs.qlist(targets)do
 		if self:isEnemy(target) and not q(target,"isKongcheng") then
@@ -291,7 +294,7 @@ sgs.ai_skill_invoke.secondmiji = function(self,data)
 end
 
 sgs.ai_skill_askforyiji.secondmiji = function(self,card_ids,tos)
-	local optional = fact(self,"second_miji_optional")
+	local optional = own_tag(self,"SecondMijiOptional","boolean",false)
 	
 	if optional then
 		return sgs.ai_skill_askforyiji.nosyiji(self,card_ids,tos)
@@ -491,11 +494,12 @@ sgs.ai_skill_cardask["@jiefan-discard"] = function(self,data)
 
 	if not self.player:getWeapon() then return "." end
 	local count = 0
-	local range_fix = fact(self,"jiefan_weapon_range")-q(self.player,"getAttackRange",false)
-    if range_fix~=fact(self,"jiefan_range_fix") then ai_unsupported("Jiefan range snapshot changed","jiefan") end
+	-- This VM's sgs.weapon_range registry stands in for the donor's; SWIG truncates the fix to int.
+	local range_fix = ( sgs.weapon_range[q(self.player:getWeapon(),"getClassName")] or 1 )-q(self.player,"getAttackRange",false)
+	range_fix = range_fix<0 and math.ceil(range_fix) or math.floor(range_fix)
 
 	for _,p in sgs.qlist(self.room:getAllPlayers())do
-		if self:isEnemy(p) and known(fact(self,"jiefan_distances")[p:objectName()],"Jiefan target distance")>q(self.player,"getAttackRange") then count = count+1 end
+		if self:isEnemy(p) and known(self.player:distanceTo(p,range_fix),"Jiefan target distance")>q(self.player,"getAttackRange") then count = count+1 end
 	end
 
 	if count<=2 then return self.player:getWeapon():getEffectiveId() end
@@ -791,8 +795,8 @@ end
 function sgs.ai_cardsview_valuable.chunlao(self,class_name,player)
 	local dying = player:getRoom():getCurrentDyingPlayer()
 	if dying then
-		if fact(self,"dying_analeptic_locked") then return end
-		return {skill="chunlao",legacy_class="ChunlaoWineCard",subcards={q(player,"getPile","wine"):first()}}
+		-- Player::isLocked on a fresh Analeptic for the dying player is not projected.
+		ai_unsupported("dying player's analeptic lock is not projected","chunlao")
 	end
 end
 
@@ -833,9 +837,9 @@ sgs.ai_fill_skill.qice = function(self,inclusive,request)
 	if #self.toUse>2 then return end
 	local ids = q(self.player,"handCards")
 	local canCs = {}
-	for _,pn in ipairs(known(self.world.strategy_facts and self.world.strategy_facts.pattern_names,"patterns() order"))do
-		local metadata=known(fact(self,"qice_patterns")[pn],"Qice pattern "..pn)
-        if known(metadata.exists,"Qice clone presence") and known(metadata.nd_trick,"Qice clone class") then
+	for _,pn in ipairs(known(AICardCatalog.patternNames(),"patterns() order"))do
+		local metadata=known(AICardCatalog.get(pn),"Qice pattern "..pn)
+        if known(metadata.nd_trick,"Qice clone class") then
             local dc=q(self,"evaluateSkillCard","qice",pn,ids)
 			if q(dc,"isAvailable",self.player)
 			then table.insert(canCs,dc) end

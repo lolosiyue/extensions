@@ -9,10 +9,9 @@ local function raw_call(o,k,...)
  if not o or type(o[k])~='function' then unsupported(k)end
  local v=table.pack(o[k](o,...));if AIUnsupported.is(v[1])then error(v[1],0)end;return table.unpack(v,1,v.n)
 end
-local function fact(self,key)
- local all=self.world and self.world.strategy_facts;local p=all and all[PACKAGE];local v=p and p[key]
- if v==nil then unsupported(key)end;return v
-end
+-- Remaining package facts (Analeptic::IsAvailable, the 1v1 rule config) are native
+-- answers that are not projected.
+local function fact(self,key)unsupported(key)end
 local function clone(self,name,skill,suit,number)
  name=name or 'slash';local p=raw_call(self,'cloneEvaluationCard',name)
  if p==false then return nil end;if not p then unsupported('prototype.'..tostring(name))end
@@ -73,30 +72,36 @@ end
 local function dummy(value,extra,current)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;u.current_targets=current or{};return u end
 local function patterns_for(self,class)
  if class then return patterns(class)end
- local f=self.world and self.world.strategy_facts;local a=f and f.pattern_names
+ local a=AICardCatalog.patternNames()
  if not AIValue.isList(a)then unsupported('pattern_names')end;return a
 end
+-- Own tags read through the donor's QVariant conversions; an absent tag is the
+-- conversion's default. HpLost/MaxHp struct tags are not projected, and a projected
+-- CardsMoveOneTime tag lacks the from_places and hand-bound ids these consumers read.
 local function source_fact(self,key,kind)
- if key=='JilveWansha' and kind=='toBool' then
-  local facts=self.world and self.world.strategy_facts
-  local standard=facts and facts.standard
-  local value=standard and standard.jilve_wansha
-  if type(value)~='boolean' then unsupported('JilveWansha.owner_bool') end
-  return value
+ if kind=='toHpLost'or kind=='toMaxHp'or kind=='toMoveOneTime'then unsupported('struct_tag.'..key)end
+ local v=self.player:getTag(key)
+ local function player(name)return type(name)=='string'and name~=''and package_known(self.room,'findPlayerByObjectName',name,true)or nil end
+ local function card(row)return type(row)=='table'and next(row)~=nil and CardView.new(row)or nil end
+ if kind=='toPlayer'then if v~=nil and type(v)~='string'then unsupported(key..'.'..kind)end;return player(v)end
+ if kind=='toInt'then return tonumber(v)or 0 end
+ if kind=='toString'then if v==nil then return''end;if type(v)~='string'then unsupported(key..'.'..kind)end;return v end
+ if kind=='toBool'then
+  if v==nil then return false end;if type(v)=='boolean'then return v end
+  if type(v)=='string'then return v~=''and v~='0'and v:lower()~='false'end
+  unsupported(key..'.'..kind)
  end
- local v=fact(self,key)
- if kind=='toPlayer'then return v~=false and package_known(self.room,'findPlayerByObjectName',v,true)or nil end
- if kind=='toInt'or kind=='toString'or kind=='toBool'then return v end
- if kind=='toIntList'then return AIList.new(v)end
- if kind=='toHpLost'or kind=='toMaxHp'then return v~=false and v or nil end
- if kind=='toMoveOneTime'then if v==false then return nil end;local d={};for k,x in pairs(v)do d[k]=x end;for _,k in ipairs({'card_ids','from_places'})do if d[k]then d[k]=AIList.new(d[k])end end;for _,k in ipairs({'from','to'})do if d[k]then d[k]=package_known(self.room,'findPlayerByObjectName',d[k],true)end end;return d end
- if kind=='toJudge'then if v==false then return nil end;local j={};for k,x in pairs(v)do j[k]=x end;j.who=j.who and package_known(self.room,'findPlayerByObjectName',j.who,true);j.card=j.card and CardView.new(j.card);function j:isGood(c)if not c then return self.good end;if self.outcomes_complete~=true or type(self.outcome_by_id)~='table'then unsupported('judge_outcomes.'..key)end;local n=self.outcome_by_id[tostring(package_known(c,'getEffectiveId'))];if type(n)~='boolean'then unsupported('judge_outcome.'..key)end;return n end;function j:isBad(c)return not self:isGood(c)end;return j end
+ if kind=='toIntList'then return AIList.new(v or{})end
+ if kind=='toJudge'then if v==nil then return nil end;local j={};for k,x in pairs(v)do j[k]=x end;j.who=j.who and package_known(self.room,'findPlayerByObjectName',j.who,true);j.card=j.card and CardView.new(j.card);function j:isGood(c)if not c then return self.good end;if self.outcomes_complete~=true or type(self.outcome_by_id)~='table'then unsupported('judge_outcomes.'..key)end;local n=self.outcome_by_id[tostring(package_known(c,'getEffectiveId'))];if type(n)~='boolean'then unsupported('judge_outcome.'..key)end;return n end;function j:isBad(c)return not self:isGood(c)end;return j end
  if kind=='toCardUse'then
-  if v==false then return{to=AIList.new({})}end
-  local u={card=v.card and CardView.new(v.card),from=v.from and package_known(self.room,'findPlayerByObjectName',v.from,true),to=AIList.new({})}
+  if v==nil then return{to=AIList.new({})}end
+  local u={card=card(v.card),from=player(v.from),to=AIList.new({})}
   for _,n in ipairs(v.to or{})do u.to:append(package_known(self.room,'findPlayerByObjectName',n,true))end;return u
  end
- if kind=='toDamage'then local d={};for k,x in pairs(v)do d[k]=x end;for _,k in ipairs({'from','to'})do if d[k]then d[k]=package_known(self.room,'findPlayerByObjectName',d[k],true)end end;if d.card then d.card=CardView.new(d.card)end;return d end
+ if kind=='toDamage'then
+  if v==nil then return{damage=1,nature=sgs.DamageStruct_Normal}end -- DamageStruct()
+  local d={};for k,x in pairs(v)do d[k]=x end;d.from=player(v.from);d.to=player(v.to);d.card=card(v.card);d.damage=v.amount;return d
+ end
  unsupported(key..'.'..kind)
 end
 local function skill_source(self,selector,costs,request,user)
@@ -141,15 +146,19 @@ local function load_plan(self,key)
  for _,n in ipairs(row.targets)do p.to:append(package_known(self.room,'findPlayerByObjectName',n,true))end;return p
 end
 
-local function typo_natrue(self)local r=fact(self,"global_natrue");if type(r)~="table"or r.known~=true then unsupported("global_natrue")end;if r.present==false then return nil end;return r.value end
+-- The donor reads its Room-VM free global `natrue`; that VM's globals are not projected.
+local function typo_natrue(self)unsupported("global_natrue")end
 local function actor_ai(player)local a=player and player._room and player._room._ai;if not a or a.player~=player then unsupported("view_as_owner")end;return a end
-local function translation(self,name)local t=fact(self,"translations");if type(t[name])~="string"then unsupported("translation")end;return t[name]end
+-- Engine::translate is not projected.
+local function translation(self,name)unsupported("translation")end
 local function clone_native(self,name,suit,number)return clone(self,name,nil,suit,number)end
 local function conversion_clone(self,name,skill,suit,number,ids)local c=clone(self,name,skill,suit,number);clone_states[c].costs=ids;return c end
-local function owner_fact(self,player,key)if player~=self.player then unsupported("foreign_tag."..key)end;return fact(self,key)end
-local function public_property(self,player,key)local rows=fact(self,"public_properties");local row=rows[package_known(player,"objectName")];if not row or row[key]==nil then unsupported("public_property."..key)end;return row[key]end
+local function owner_fact(self,player,key)if player~=self.player then unsupported("foreign_tag."..key)end;return source_fact(self,key,"toString")end
+-- Only the viewer's own properties are projected; getPropertyValue rejects others.
+local function public_property(self,player,key)local v=player:getPropertyValue(key);if v==nil then return""end;if type(v)~="string"then unsupported("property."..key)end;return v end
 local function disclosed_top(self,skill)unsupported("hidden_top."..skill)end
-local function owner_reason(self)local f=self.world and self.world.strategy_facts;local n=f and f.owner_current_card_use_reason;if type(n)~="number"then unsupported("owner_current_card_use_reason")end;return n end
+-- Engine::getCurrentCardUseReason is the reason of the card ask being answered.
+local function owner_reason(self)local r=self.request;if type(r)~="table"or(r.kind~="activate"and r.kind~="use_card"and r.kind~="respond_card")or type(r.reason)~="number"then unsupported("current_card_use_reason")end;return r.reason end
 local function skill_proposal(selector,costs,user)local skill=SELECTORS[selector];if not skill then unsupported("response_selector."..selector)end;return{name=selector:sub(2),skill=skill,subcards=costs,suit=sgs.Card_NoSuit,number=0,user_string=user}end
 local function lawful_hand(self,player)
  if player==self.player then return package_known(player,"getHandcards")end

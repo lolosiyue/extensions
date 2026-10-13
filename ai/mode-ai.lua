@@ -25,6 +25,50 @@ local function finite(value)
     return type(value) == "number" and value == value and math.abs(value) < math.huge
 end
 
+-- What the evaluator needs beyond the snapshot, derived in this gameplay VM from
+-- public configuration and from the snapshot itself.
+local derived_facts = setmetatable({}, {__mode="k"})
+local function mode_facts(world)
+    local facts = derived_facts[world]
+    if facts then return facts end
+    facts = {}
+    local scenario = sgs.Sanguosha and sgs.Sanguosha:getScenario(world.mode_id)
+    local role_prefix = {["06_3v3"]=true, ["06_XMode"]=true, ["08_defense"]=true, ["04_2v2"]=true}
+    if scenario then
+        facts.legacy_relation_kind = "scenario"
+        local kinds = {couple="couple", zombie_mode="zombie", guandu="guandu"}
+        facts.legacy_scenario_relation = {kind=kinds[scenario:objectName()] or "identity_balance"}
+    elseif role_prefix[world.mode_id] then facts.legacy_relation_kind = "role_prefix"
+    elseif world.enable_hegemony then facts.legacy_relation_kind = "public_hegemony"
+    else facts.legacy_relation_kind = "identity_balance" end
+    facts.role_predictable_config = sgs.GetConfig("RolePredictable", false) == true
+    derived_facts[world] = facts
+    return facts
+end
+
+-- A player's flags and "-Clear" marks are cleared when its turn ends, "-PlayClear"
+-- marks when its Play phase ends, all marks at burial. Global_TurnCount is a
+-- broadcast mark, so the counts below only grow.
+local function lifecycle_epochs(world, kind)
+    local result = {}
+    local players = {world.self}
+    for _, player in ipairs(world.players or {}) do players[#players + 1] = player end
+    for _, view in ipairs(players) do
+        local turns = tonumber(view.public_marks and view.public_marks.Global_TurnCount) or 0
+        local in_turn = world.current_player == view.object_name
+            and world.current_phase ~= sgs.Player_NotActive
+        local dead = view.alive == false and 1 or 0
+        if kind == "all_mark" then result[view.object_name] = dead
+        elseif kind == "play" then
+            local in_play = in_turn and finite(world.current_phase) and world.current_phase <= sgs.Player_Play
+            result[view.object_name] = math.max(0, turns - (in_play and 1 or 0)) + dead
+        else
+            result[view.object_name] = math.max(0, turns - (in_turn and 1 or 0)) + dead
+        end
+    end
+    return result
+end
+
 local function policy_role(role, selector)
     assert(type(role) == "string" and role ~= "", "invalid policy role")
     if sgs.Sanguosha and not (selector and role == "unknown") then
@@ -219,7 +263,7 @@ local function alive_in_order(world)
 end
 
 local function role_counts(world)
-    local scenario=world.strategy_facts and world.strategy_facts.legacy_relation_kind=="scenario"
+    local scenario=mode_facts(world).legacy_relation_kind=="scenario"
     if scenario then
         local public={lord=0,loyalist=0,rebel=0,renegade=0}
         local complete=true
@@ -324,15 +368,14 @@ local function lord_hp(lord)
     return hp
 end
 
+-- SmartAI adds a sort-time defense baseline kept in the observer's own VM; this
+-- evaluator cannot read it, so the baseline is an explicit zero estimate.
 local function public_defense(world, player)
-    local source = world.strategy_facts and world.strategy_facts.defense_history
-    assert(type(source)=="table" and source.observer==world.self.object_name,
-        "same-observer defense publication is missing")
-    local baseline = source.baselines and source.baselines[player.object_name]
-    local estimates = source.estimates and source.estimates[player.object_name]
-    assert(type(baseline)=="number" and baseline==baseline and math.abs(baseline)<math.huge
-        and type(estimates)=="table", "defense baseline or its dependencies are missing")
-    return player.hp*2 + assert(player.handcard_count) + assert(player.hand_pile_count) + baseline, estimates
+    local pile = 0
+    for _, row in ipairs(player.piles or {}) do
+        if row.hand_pile and finite(row.count) then pile = pile + row.count end
+    end
+    return player.hp*2 + assert(player.handcard_count) + pile, {"mode.defense_baseline_unobserved"}
 end
 
 local function standard_process(world, state, arg, update)
@@ -370,12 +413,10 @@ local function standard_process(world, state, arg, update)
         if role=="rebel" then
             diff=diff-hp+math.max(defense(player)-hp*2,0)*0.5
             if lord then
-                local facts=world.strategy_facts and world.strategy_facts.yjcm2015
-                local rows=facts and facts.in_attack_range
-                local pair=rows and rows[player.object_name] and rows[player.object_name][lord.object_name]
-                assert(facts and facts.attack_range_known==true and pair and type(pair["0"])=="boolean",
-                    "native attack-range matrix is unavailable")
-                if pair["0"] then diff=diff-0.4 end
+                local row=world.distances and world.distances[player.object_name]
+                local distance=row and row[lord.object_name]
+                assert(finite(distance) and finite(player.attack_range),"public attack range is unavailable")
+                if distance<=player.attack_range then diff=diff-0.4 end
             end
         elseif role=="loyalist" or role=="lord" then diff=diff+hp+math.max(defense(player)-hp*2,0)*0.5 end
     end
@@ -661,9 +702,7 @@ end
 
 local function standard_predictable(world)
     if standard_classical(world) then return true end
-    local configured=world.strategy_facts and world.strategy_facts.role_predictable_config
-    assert(type(configured)=="boolean","public RolePredictable configuration is unknown")
-    return configured
+    return mode_facts(world).role_predictable_config
 end
 
 -- Source objectiveLevel uses only these methods. Wrappers contain snapshot
@@ -696,9 +735,7 @@ local function objective_context(world, state, process)
         if row and row[name]~=nil then return row[name] end
         for _,flag in ipairs(p.flags or {}) do if flag==name then return true end end
         if name=="Global_Dying" and p.object_name~=world.self.object_name then
-            local facts=world.strategy_facts or {}
-            if type(facts.dying_players)=="table" then
-                for _,id in ipairs(facts.dying_players) do if id==p.object_name then return true end end
+            if type(world.current_dying)=="string" then return world.current_dying==p.object_name
             else estimate("mode.objective_public_dying_estimate");return p.hp<=0 end
         end
         return false
@@ -776,9 +813,9 @@ local function objective_context(world, state, process)
             if count>0 then local cards=hand+#(own.equips or {});m=cards>count and math.min(m,cards-count) or 0 end
         end
         if skill("heg_keji") and mark_value(own,"heg_keji-Clear")==0 then m=hand end
-        local ignored=world.strategy_facts and world.strategy_facts.owner_ignore_limit_count
-        assert(finite(ignored),"unknown owner MethodIgnore count")
-        return hand-m-ignored
+        -- Cards exempt from the hand limit are not projected; count none.
+        estimate("mode.objective_ignore_limit_unobserved")
+        return hand-m
     end
     function self:sort(players,key)
         if #players<2 then return players end
@@ -794,7 +831,7 @@ local function objective_context(world, state, process)
     end
     local function relation(to)
         if to==wrapped[world.self.object_name] then return "friend" end
-        local facts=world.strategy_facts or {}
+        local facts=mode_facts(world)
         local kind=facts.legacy_relation_kind
         assert(kind=="scenario" or kind=="role_prefix" or kind=="public_hegemony" or kind=="identity_balance",
             "native relation rule family is unknown")
@@ -910,7 +947,7 @@ local function standard_refresh_relations(world,state,to_use_count,refresh_proce
     if refresh_process or not state.cached_process then
         standard_process(world,state,true,true)
     end
-    if not standard_classical(world) and world.strategy_facts and world.strategy_facts.role_predictable_config
+    if not standard_classical(world) and mode_facts(world).role_predictable_config
         and state.inferred_roles and state.inferred_roles[world.self.object_name]~=own_role and own_role~="lord" then
         standard_adjust_roles(world,state)
     end
@@ -1006,9 +1043,7 @@ local function standard_update_players(world,state,to_use_count,update)
     end
     local classical=standard_classical(world)
     if not classical then
-        local configured=world.strategy_facts and world.strategy_facts.role_predictable_config
-        assert(type(configured)=="boolean","public RolePredictable configuration is unknown")
-        if configured then
+        if mode_facts(world).role_predictable_config then
             if (not state.inferred_roles or state.inferred_roles[world.self.object_name]~=own_role)
                 and own_role~="lord" then standard_adjust_roles(world,state) end
         elseif update then
@@ -1324,8 +1359,7 @@ end
 -- independently acknowledges the monotonic native epochs before any query reads
 -- its shadow flags. Replacing one cloned mind commits clear+ack atomically.
 local function synchronize_mark_mind(world,epoch_key,mark_names)
-    local epochs=world.strategy_facts and world.strategy_facts[epoch_key]
-    if epochs==nil then return end -- Old snapshots cannot authorize new epoch-dependent helpers.
+    local epochs=lifecycle_epochs(world,epoch_key=="strategy_play_clear_epochs" and "play" or "turn")
     assert(type(epochs)=="table" and getmetatable(epochs)==nil,"invalid play-clear epochs")
     local original=mind(world.mode_id,world.self.object_name)
     local applied=original[epoch_key] or {}
@@ -1347,8 +1381,7 @@ end
 local function synchronize_flag_mind(world)
     synchronize_mark_mind(world,"strategy_play_clear_epochs",{"yhpodi_to-PlayClear"})
     synchronize_mark_mind(world,"strategy_turn_clear_epochs",{"AI_fangjian-Clear","AI_do_not_invoke_s2_longwei-Clear"})
-    local epochs = world.strategy_facts and world.strategy_facts.strategy_flag_clear_epochs
-    assert(type(epochs) == "table" and getmetatable(epochs) == nil, "invalid strategy flag-clear epochs")
+    local epochs = lifecycle_epochs(world, "flag")
     local _, roster = snapshot_players(world)
     for name, epoch in pairs(epochs) do
         assert(type(name) == "string" and roster[name] and finite(epoch) and epoch >= 0
@@ -1813,6 +1846,8 @@ local function valid_history_data(data)
     return true
 end
 
+-- The host passes only intention deltas now. Effect kinds that needed a native
+-- witness are rejected outright.
 local function valid_effect(effect, present, delta_count, previous, viewer, world)
     if type(effect) ~= "table" or getmetatable(effect) ~= nil then return false end
     local position = effect.after_delta
@@ -1846,14 +1881,14 @@ local function valid_effect(effect, present, delta_count, previous, viewer, worl
             fields={player=true,amount=true,source_key=true,scope=true,ordinal=true}
             if effect.source_key~="aocai:slash-jink" or type(effect.scope)~="string"
                 or not effect.scope:match("^[1-9]%d*$") or #effect.scope>20
-                or effect.scope~=(world and world.strategy_facts and world.strategy_facts.aocai_nojink_scope)
+                or effect.scope~=nil
                 or not finite(effect.ordinal) or effect.ordinal%1~=0
                 or effect.ordinal<1 or effect.ordinal>64 then return false end
         elseif effect.card_token~=nil then
             fields={player=true,card_token=true,amount=true}
             if type(effect.card_token)~="string" or #effect.card_token>128
                 or not effect.card_token:match("^native:[%x%-]+:%d+$")
-                or effect.card_token~=(world and world.strategy_facts and world.strategy_facts.response_effect_nojink_token) then return false end
+                or effect.card_token~=nil then return false end
         else
             fields={player=true,card_id=true,amount=true}
             if not finite(effect.card_id) or effect.card_id%1~=0
@@ -1876,7 +1911,7 @@ local function valid_effect(effect, present, delta_count, previous, viewer, worl
         if effect.adjust and (effect.force or effect.refresh) then return false end
     elseif effect.kind == "role_row_update" then
         fields={player=true,role=true,assigned_role=true,assigned_value=true,source_skill=true}
-        local witness=world.strategy_facts and world.strategy_facts.role_row_update_witness
+        local witness=nil
         local rows=type(witness)=="table" and witness[effect.source_skill]
         local roles={lord=true,loyalist=true,rebel=true,renegade=true}
         if not present[effect.player] or not roles[effect.role] or type(rows)~="table" then return false end
@@ -1886,7 +1921,7 @@ local function valid_effect(effect, present, delta_count, previous, viewer, worl
         if not found or effect.assigned_role~=assigned or effect.assigned_value~=(mercenary and 1000 or 0)then return false end
     elseif effect.kind == "loong_feilong_role" then
         fields={actor=true,player=true,role=true}
-        local witness=world.strategy_facts and world.strategy_facts.loong_feilong_role_witness
+        local witness=nil
         local roles={lord=true,loyalist=true,rebel=true,renegade=true}
         if type(witness)~="table" or effect.actor~=world.self.object_name
             or effect.actor~=witness.actor or effect.role~=witness.role
@@ -1895,11 +1930,11 @@ local function valid_effect(effect, present, delta_count, previous, viewer, worl
         if not found then return false end
     elseif effect.kind == "du_tongque_role" then
         fields={player=true}
-        local witness=world.strategy_facts and world.strategy_facts.du_tongque_role_witness
+        local witness=nil
         if not present[effect.player] or type(witness)~="table" or witness.player~=effect.player then return false end
     elseif effect.kind == "kaiyuan_role" or effect.kind == "quanxiang_role" or effect.kind == "sfofl_longmu_role" then
         fields = {player=true,source_player=true,source_role=true,target_role=true}
-        local witness=world.strategy_facts and world.strategy_facts[effect.kind.."_witness"]
+        local witness=nil
         local roles={lord=true,loyalist=true,rebel=true,renegade=true}
         if not present[effect.player] or not present[effect.source_player]
             or not roles[effect.source_role] or not roles[effect.target_role]
@@ -1909,7 +1944,7 @@ local function valid_effect(effect, present, delta_count, previous, viewer, worl
         if not found then return false end
     elseif effect.kind == "dongmanbao_dapo_role" then
         fields={player=true,source_player=true,role=true}
-        local witness=world.strategy_facts and world.strategy_facts.dongmanbao_dapo_role_witness
+        local witness=nil
         local found=false
         if type(witness)=="table" and witness.player==effect.player and witness.target_role_known==true and type(witness.sources)=="table" then
             for _,row in ipairs(witness.sources)do
@@ -1920,7 +1955,7 @@ local function valid_effect(effect, present, delta_count, previous, viewer, worl
             or not ({lord=true,loyalist=true,rebel=true,renegade=true})[effect.role]then return false end
     elseif effect.kind == "azirshenji_role" then
         fields={player=true,role=true}
-        local witness=world.strategy_facts and world.strategy_facts.azirshenji_role_witness
+        local witness=nil
         local found=false
         if type(witness)=="table" and type(witness.rows)=="table" then
             for _,row in ipairs(witness.rows)do
@@ -1932,7 +1967,7 @@ local function valid_effect(effect, present, delta_count, previous, viewer, worl
             or not ({lord=true,loyalist=true,rebel=true,renegade=true})[effect.role]then return false end
     elseif effect.kind == "tongling_role" then
         fields = {player=true,role=true}
-        local witness=world.strategy_facts and world.strategy_facts.tongling_role_witness
+        local witness=nil
         if not present[effect.player] or type(witness)~="table"
             or witness.player~=effect.player or witness.role~=effect.role
             or not ({lord=true,loyalist=true,rebel=true,renegade=true})[effect.role] then return false end
@@ -1956,8 +1991,7 @@ local function valid_effect(effect, present, delta_count, previous, viewer, worl
         local owner_only = {NosKurou_toDie=true, AI_doNotInvoke_luoshen=true, AI_doNotInvoke_qianxi=true,
             AI_Luoshen_Conflict_With_Guanxing=true, stack_overflow_jijiang=true,
             should_luawu=true, AI_doInvoke_luawu=true, vecter_friend=true, vecter_slash=true, AI_XiechanUsing=true}
-        local package_flag = name=='willSkipPlayPhase' and effect.player==viewer
-            and world and world.strategy_facts and world.strategy_facts.original_guanxing_flag_write==true
+        local package_flag = false
         if effect.player == viewer then
             package_flag = package_flag or owner_only[name] == true
             for _, prefix in ipairs({"nostuxi_isfriend_", "tuxi_isfriend_", "jieyin_isenemy_", "AI_XiansiToFriend_", "sp_qiangxi_isfriend_", "luajiejiang_isfriend_", "AI_TuxiToFriend_"}) do
@@ -1975,9 +2009,6 @@ local function valid_effect(effect, present, delta_count, previous, viewer, worl
                     end
                 end
             end
-            for _, pattern in ipairs(world and world.strategy_facts and world.strategy_facts.pattern_names or {}) do
-                if type(pattern)=="string" and name==pattern.."nosguhuoFailed" then package_flag=true;break end
-            end
         end
         local weapon_flag = "weapon_done_"..viewer.."_"..effect.player
         if not ordinary[name] and not package_flag and name ~= weapon_flag and not (name:sub(1,7) == "duelTo_" and present[name:sub(8)]) then return false end
@@ -1985,7 +2016,7 @@ local function valid_effect(effect, present, delta_count, previous, viewer, worl
         fields = {player=true, name=true, amount=true}
         local name = effect.name
         if not present[effect.player] or type(name) ~= "string" or not finite(effect.amount) or effect.amount % 1 ~= 0 then return false end
-        local focus=world.strategy_facts and world.strategy_facts.imagine_focus_event
+        local focus=nil
         local focus_allowed=(name=="FocusDamageCount" or name=="FocusRecoverCount") and type(focus)=="table"
             and focus.name==name and focus.player==effect.player and focus.amount==effect.amount and finite(focus.baseline)
         if not focus_allowed and name ~= "roleRobot" and not ((name=="yhpodi_to-PlayClear" or ((name=="AI_fangjian-Clear" or name=="AI_do_not_invoke_s2_longwei-Clear") and effect.player==world.self.object_name)) and effect.amount==1) and not (name:sub(1,9) == "Intention" and present[name:sub(10)])

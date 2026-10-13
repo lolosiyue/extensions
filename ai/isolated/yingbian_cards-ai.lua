@@ -31,7 +31,7 @@ local function is_current(use,to)
 end
 local function can_to(self,card,to)return q(self,"cardTargetFilter",card,{},to)end
 local function pattern_names(self)
-    local names=self.world.strategy_facts and self.world.strategy_facts.pattern_names
+    local names=AICardCatalog.patternNames()
     if not AIValue.isList(names)then ai_unsupported("ordered public pattern catalog missing","wuxinghelingshan")end;return names
 end
 --冰属性伤害效果

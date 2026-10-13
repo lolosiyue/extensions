@@ -11,20 +11,18 @@ local function q(object,key,...)
     if AIUnsupported and AIUnsupported.is(value)then error(value,0)end
     return known(value,key)
 end
-local function fact(self,key)
-    local row=self.world.strategy_facts and self.world.strategy_facts.li
-    if type(row)~="table"then ai_unsupported("li fact group unknown",key)end
-    return known(row[key],key)
-end
-local function fact_player(self,key)
-    local name=fact(self,key)
-    if name==false then return nil end
+-- The donor reads the viewer's own tags/properties; an absent one reads as the
+-- QVariant default (nil player, "" string, empty list).
+local function tag_player(self,key)
+    local name=self.player:getTag(key)
+    if name==nil then return nil end
+    if type(name)~="string"then ai_unsupported("owner player tag malformed",key)end
     return known(self.room:findPlayerByObjectName(name,true),key)
 end
 local function property(self,key,expected)
-    local fields=self.world.strategy_facts and self.world.strategy_facts.owner_skill_properties
-    local value=type(fields)=="table"and fields[key]
-    if type(value)~=(expected or "string")then ai_unsupported("owner property unknown",key)end
+    local value=self.player:getPropertyValue(key)
+    if value==nil then value=expected=="table"and{}or""end
+    if type(value)~=(expected or "string")then ai_unsupported("owner property malformed",key)end
     return value
 end
 local function yinni(self,player)
@@ -46,13 +44,8 @@ local function turn_skill(self,skill,class,ids,request,user)
     return self:evaluateTurnSkillCard(skill,class,ids,request,user)
 end
 local function disclosed_top(self,count)
-    local row=fact(self,"known_draw_top")
-    if type(row)~="table"or row.known~=true or not AIValue.isList(row.ids)
-        or (#row.ids<count and row.complete~=true)then
-        ai_unsupported("JinXiongzhi requires undisclosed top order; no private draw-pile access","jinxiongzhi")
-    end
-    local ids={};for i=1,math.min(count,#row.ids)do ids[i]=row.ids[i]end
-    return ids
+    -- Draw-pile contents are not projected.
+    ai_unsupported("JinXiongzhi requires undisclosed top order; no private draw-pile access","jinxiongzhi")
 end
 
 --不臣
@@ -239,7 +232,7 @@ sgs.ai_skill_playerchosen.xianzhu = function(self,targets)
 end
 
 sgs.ai_skill_playerchosen.xianzhu_target = function(self,targets)
-	local from = fact_player(self,"xianzhu_slash_from")
+	local from = tag_player(self,"xianzhu_slash_from")
 	local enemies,zhongli,friends = {},{},{}
 	local slash = clone(self,"_xianzhu","slash",{})
 	for _,p in sgs.qlist(targets)do
@@ -384,7 +377,7 @@ sgs.ai_fill_skill.caozhao = function(self,inclusive,request)
     cards = self:sortByKeepValue(cards)
 	if #cards<1 then return end
     local names = property(self,"CaozhaoNames","table")
-	for _,name in sgs.list(known(self.world.strategy_facts.pattern_names,"patterns() order"))do
+	for _,name in sgs.list(known(AICardCatalog.patternNames(),"patterns() order"))do
         if table.contains(names,name) then continue end
 		local card = self:getEvaluationCard(name)
 		if not card or q(card,"isKindOf","DelayedTrick") then continue end

@@ -179,23 +179,14 @@ local function q(o,k,...)
  end
  return v
 end
-local function fact(self,key)
- local facts=self.world and self.world.strategy_facts
- local row=facts and facts.inovation
- local v;if type(row)=="table"then v=row[key]end
- if v==nil then ai_unsupported("Inovation finite native fact unavailable",key)end
- return v
-end
 local function general2(self,p)
  local name=q(p,"getGeneral2Name")
  if type(name)~="string"then ai_unsupported("public deputy slot unknown","inovation.general2")end
  return name~="" and true or nil
 end
+-- Akarin membership lives in a Room tag that is not projected.
 local function akarin(self,p,observer)
- if observer~=self.player then ai_unsupported("foreign Akarin observer unavailable","inovation.akarin")end
- local rows=fact(self,"akarin");local v;if type(rows)=="table"then v=rows[q(p,"objectName")]end
- if type(v)~="boolean"then ai_unsupported("viewer Akarin status unknown","inovation.akarin")end
- return v
+ ai_unsupported("Akarin visibility is not projected","inovation.akarin")
 end
 local function death(self)
  local context=call(self,"getDecisionContext");local row=context and context.inovation_kuisi
@@ -209,7 +200,7 @@ local function death(self)
  return out
 end
 local function draw_count(self)
- local v=self.world and self.world.strategy_facts and self.world.strategy_facts.draw_pile_count
+ local v=self.world and self.world.draw_pile_count
  if type(v)~="number"or v<0 or v%1~=0 then ai_unsupported("public draw pile size unknown","draw_pile_count")end
  return v
 end
@@ -990,7 +981,7 @@ end
 
 end
 
--- R45 effective Inovation SmartAI bodies; installed per authentic native instance.
+-- R45 effective Inovation SmartAI bodies.
 do
 local providers={}
 local function call(o,k,...)
@@ -1021,17 +1012,11 @@ end
 local function clone_source_face(self,name,suit,number)
  return q(self,"evaluateOwnerViewAsCard",{source_key="inovation.skip_phase",name=name,skill="",suit=suit,number=number,subcards={}})
 end
-local function diagnostic(self,key)
- if type(ai_inovation_source_diagnostic)~="function"then ai_unsupported("Inovation source diagnostic is unavailable",key)end
- local ok=ai_inovation_source_diagnostic(key)
- if AIUnsupported.is(ok)then error(ok,0)end
- if ok~=true then ai_unsupported("Inovation source diagnostic denied",key)end
-end
+-- The donor's console-only diagnostics carry no decision input; this VM has no console sink.
+local function diagnostic(self,key)end
+-- Whether the Room VM defines the free global getPriorFriendsOfLiyu is not projected.
 local function prior_friends(self)
- local facts=self.world and self.world.strategy_facts
- local row=facts and facts.inovation and facts.inovation.providers and facts.inovation.providers.hasLiyuEffect
- if type(row)~="table"or row.prior_friends_function_absent~=true then ai_unsupported("Inovation free global binding is not known absent","getPriorFriendsOfLiyu")end
- error("attempt to call a nil value (global 'getPriorFriendsOfLiyu')",0)
+ ai_unsupported("Room-VM global presence is not projected","getPriorFriendsOfLiyu")
 end
 local function source_hand(self,p)
  if p==self.player then return q(p,"getHandcards")end
@@ -1656,19 +1641,9 @@ end
 
 -- Exact callable identities remain available to the central known-nil guard.
 for name,provider in pairs(providers)do SmartAIView["inovation_"..name]=provider end
-function SmartAIView:installInovationHelpers()
- local facts=self.world and self.world.strategy_facts
- local r=type(facts)=="table"and facts.inovation
- local rows=type(r)=="table"and r.providers
- for name,provider in pairs(providers)do
-  local row=type(rows)=="table"and rows[name]
-  if type(row)=="table"and row.known==true and row.source=="inovation"then
-   self[name]=provider
-  else
-   self[name]=function()ai_unsupported("effective Inovation provider is not authenticated",name)end
-  end
- end
-end
+-- The donor file replaced these SmartAI methods when it loaded; this file loads in
+-- the same package order, so a later package that redefines one still wins.
+for name,provider in pairs(providers)do SmartAIView[name]=provider end
 end
 
 -- R45 Inovation current-question callbacks using existing lawful DTOs.
@@ -1847,14 +1822,14 @@ local function q(o,k,...)
  if v==nil and not SmartAIView.isKnownNilStrategyResult(o,k,f)then ai_unsupported('Xinyang source input unknown',k)end
  return v
 end
-local function tag(op,id)
- if type(ai_inovation_xinyang)~='function'then ai_unsupported('Xinyang native tag protocol unavailable','xinyang.tag')end
- local row=ai_inovation_xinyang(op,id)
- if type(row)~='table'or row.known~=true then ai_unsupported(type(row)=='table'and row.reason or'Xinyang tag protocol unknown','xinyang.tag')end
- if op=='take' then
-  if type(row.value)~='number'or row.value%1~=0 then ai_unsupported('Xinyang native tag value malformed','xinyang.tag')end
-  return row.value
- end
+-- The donor passes its pick through the AI-only xinyang_judge_card Room tag;
+-- the same owner answers both questions, so this viewer's memory carries it.
+local function tag(self,op,id)
+ if op=='write' then self:remember('inovation.xinyang_judge_card',id) return end
+ local value=self:recall('inovation.xinyang_judge_card')
+ if type(value)~='number'then ai_unsupported('Xinyang pick was not remembered','xinyang.tag')end
+ self:remember('inovation.xinyang_judge_card',-1)
+ return value
 end
 sgs.ai_skill_invoke.xinyang_judge = function(self,data)
  local judge=q(data,'toJudge')
@@ -1864,12 +1839,12 @@ sgs.ai_skill_invoke.xinyang_judge = function(self,data)
   local newList={}
   for _,id in ipairs(cards_ids)do newList[#newList+1]=q(self,'getKnownCardById',id)end
   local id=q(self,'getRetrialCardId',newList,judge)
-  if id~=-1 then tag('write',id);return true end
+  if id~=-1 then tag(self,'write',id);return true end
  end
  return false
 end
 sgs.ai_skill_askforag.xinyang=function(self,card_ids)
- local id=tag('take',-1) -- exact native read followed immediately by setTag(-1).
+ local id=tag(self,'take',-1) -- read followed immediately by setTag(-1).
  if id~=-1 then return id end
  for _,value in sgs.list(card_ids)do if id==value then return id end end
  return card_ids[1]
@@ -1894,13 +1869,14 @@ local function manjuan(p)
  if v==nil then ai_unsupported('Shoushi global helper input unknown','hasManjuanEffect')end
  return v
 end
-local function state(op,name)
- if type(ai_inovation_shoushi)~='function'then ai_unsupported('Shoushi persistent source state unavailable','shoushi.state')end
- local row=ai_inovation_shoushi(op,name or'')
- if type(row)~='table'or row.known~=true then ai_unsupported(type(row)=='table'and row.reason or'Shoushi state unknown','shoushi.state')end
- return row
+-- The donor keeps both target slots on its SmartAI object; this viewer's memory
+-- holds them (false = cleared slot).
+local function save(self,slot,p)
+ local row=self:recall('inovation.shoushi')
+ if type(row)~='table'then row={}end
+ row[slot]=p and q(p,'objectName')or false
+ self:remember('inovation.shoushi',row)
 end
-local function save(slot,p)state(slot,p and q(p,'objectName')or'')end
 local function clone(self,card)
  -- Source has no intervening operation between cloneCard and setSkillName.
  local name=q(card,'objectName');local suit=q(card,'getSuit');local number=q(card,'getNumber')
@@ -1915,48 +1891,43 @@ sgs.ai_skill_choice.shoushi=function(self,choices,data)
  local use=q(data,'toCardUse')
  if q(use.card,'isKindOf','ExNihilo')then
   local friend=call(self,'findPlayerToDraw',false,2)
-  if friend then save('extra',friend);return'add'end
+  if friend then save(self,'extra',friend);return'add'end
  elseif q(use.card,'isKindOf','GodSalvation')then
   call(self,'sort',self.enemies,'hp')
   for _,enemy in ipairs(self.enemies)do
-   if q(enemy,'isWounded')and q(self,'hasTrickEffective',use.card,enemy,self.player)then save('remove',enemy);return'remove'end
+   if q(enemy,'isWounded')and q(self,'hasTrickEffective',use.card,enemy,self.player)then save(self,'remove',enemy);return'remove'end
   end
  elseif q(use.card,'isKindOf','AmazingGrace')then
   call(self,'sort',self.enemies)
   for _,enemy in ipairs(self.enemies)do
-   if q(self,'hasTrickEffective',use.card,enemy,self.player)and not manjuan(enemy)and not q(self,'needKongcheng',enemy,true)then save('remove',enemy);return'remove'end
+   if q(self,'hasTrickEffective',use.card,enemy,self.player)and not manjuan(enemy)and not q(self,'needKongcheng',enemy,true)then save(self,'remove',enemy);return'remove'end
   end
  elseif q(use.card,'isKindOf','AOE')then
   call(self,'sort',self.friends_noself)
   local lord=call(self.room,'getLord')
-  if lord and q(lord,'objectName')~=q(self.player,'objectName')and q(self,'isFriend',lord)and q(self,'isWeak',lord)then save('remove',lord);return'remove'end
+  if lord and q(lord,'objectName')~=q(self.player,'objectName')and q(self,'isFriend',lord)and q(self,'isWeak',lord)then save(self,'remove',lord);return'remove'end
   for _,friend in ipairs(self.friends_noself)do
-   if q(self,'hasTrickEffective',use.card,friend,self.player)then save('remove',friend);return'remove'end
+   if q(self,'hasTrickEffective',use.card,friend,self.player)then save(self,'remove',friend);return'remove'end
   end
  elseif q(use.card,'isKindOf','Snatch')or q(use.card,'isKindOf','Dismantlement')then
   local trick=clone(self,use.card);local d=dummy(use);call(self,'useCardSnatchOrDismantlement',trick,d)
-  if d.card and d.to:length()>0 then save('extra',d.to:first());return'add'end
+  if d.card and d.to:length()>0 then save(self,'extra',d.to:first());return'add'end
  elseif q(use.card,'isKindOf','Slash')then
   local slash=clone(self,use.card);local d=dummy(use);call(self,'useCardSlash',slash,d)
-  if d.card and d.to:length()>0 then save('extra',d.to:first());return'add'end
+  if d.card and d.to:length()>0 then save(self,'extra',d.to:first());return'add'end
  else
   local d=dummy(use);call(self,'useCardByClassName',use.card,d)
-  if d.card and d.to:length()>0 then save('extra',d.to:first());return'add'end
+  if d.card and d.to:length()>0 then save(self,'extra',d.to:first());return'add'end
  end
- save('extra',nil);save('remove',nil);return'cancel'
+ save(self,'extra',nil);save(self,'remove',nil);return'cancel'
 end
 sgs.ai_skill_playerchosen.shoushi=function(self,targets)
- local row=state('read')
- if row.value==false then
-  if type(ai_inovation_source_diagnostic)~='function'then ai_unsupported('Shoushi source diagnostic unavailable','shoushi.diagnostic')end
-  local result=ai_inovation_source_diagnostic('shoushi_missing')
-  if result~=true then ai_unsupported('Shoushi source diagnostic denied','shoushi.diagnostic')end
- end
- -- The source reads the slots again after its diagnostic (which may reenter).
- row=state('read')
- if row.value==false then if row.source_false==true then return false end;return nil end
- if type(row.value)~='string'or row.value==''then ai_unsupported('Shoushi source target malformed','shoushi.state')end
- return q(self.room,'findPlayerByObjectName',row.value,true)
+ local row=self:recall('inovation.shoushi')
+ if type(row)~='table'then ai_unsupported('Shoushi choice was not remembered','shoushi.state')end
+ -- Both slots empty: the donor only logs a console error and returns nil.
+ local name=row.extra or row.remove
+ if not name then return nil end
+ return q(self.room,'findPlayerByObjectName',name,true)
 end
 end
 
@@ -1969,11 +1940,9 @@ local function call(o,key,...)
  if value==nil then ai_unsupported('Goutong source input unknown',key)end
  return value
 end
+-- The ask's CardsMoveOneTimeStruct data is not projected into the decision context.
 local function host(op)
- if type(ai_inovation_goutong)~='function'then ai_unsupported('Goutong native source prefix unavailable','goutong.move')end
- local row=ai_inovation_goutong(op)
- if type(row)~='table'or row.known~=true then ai_unsupported(type(row)=='table'and row.reason or'Goutong source move unknown','goutong.move')end
- return row
+ ai_unsupported('Goutong move data is not projected','goutong.move')
 end
 local function endpoint(self,key)
  local row=host('read')
@@ -2020,11 +1989,11 @@ local function sort_source(self,key,cards)
   for i,card in ipairs(ordered)do cards[i]=card end
  end
 end
+-- Not projected: the ningju_color Room tag, the donor VM's sgs.kaiqi_ag_type, and
+-- the kaiqi Room player flags the donor's own discard callback reads (the isolated
+-- AI cannot write them). Ningju's console diagnostics carry no decision input.
 local function host(op,name)
- if type(ai_inovation_remaining)~='function'then ai_unsupported('Inovation finite source operation unavailable',op)end
- local row=ai_inovation_remaining(op,name or'')
- if type(row)~='table'or row.known~=true then ai_unsupported(type(row)=='table'and row.reason or'Inovation source operation unknown',op)end
- return row
+ ai_unsupported('Inovation source state is not projected',op)
 end
 sgs.ai_skill_cardchosen.ningju=function(self,who,flags)
  local status=host('ningju_tag').value
@@ -2055,9 +2024,7 @@ sgs.ai_skill_cardchosen.ningju=function(self,who,flags)
  return nil
 end
 sgs.ai_skill_playerchosen.kaiqi=function(self,targets)
- local row=host('kaiqi_self_flag')
- if type(row.value)~='boolean'then ai_unsupported('Kaiqi owner flag unknown','kaiqi_self_used')end
- if not row.value then
+ if not q(self.player,'hasFlag','kaiqi_self_used')then
   host('kaiqi_set_self')
   return self.player
  end

@@ -7,9 +7,7 @@
 local max_deltas = 64
 local active_sink
 local active_refresh
-local pending_memory
 local memory_key = "filter_event"
-local publish_defense = ai_publish_defense_snapshot
 -- Capture before packages register callbacks; the final commit cannot be replaced
 -- by a callback that mutates ai_memory methods during an event.
 local memory_prepare, memory_commit, memory_recall = ai_memory.prepare, ai_memory.commit, ai_memory.recall
@@ -38,10 +36,35 @@ local function finite(value)
         and value ~= math.huge and value ~= -math.huge
 end
 
+-- SmartAI sets these at GameReady. The host does not deliver GameReady to this VM,
+-- so a key nobody has written yet reads as its initial value.
+local initial_event_memory = {judge_good = {}, judge_patterns = {}, need_peach = {},
+    damage_data = {}, draw_data = {}, convert_data = {}, throw_data = {},
+    card_damage_nature = {}, aoe_lord = {}, estimation_branches = {},
+    ai_response = {Slash = "Jink"}, is_chained = 0,
+    ai_collateral = false, ai_liuli_effect = false, ai_lijian_effect = false, ai_quhu_effect = false}
+local initial_nil_event_memory = {card_effect = true, target_use = true, used_data = true,
+    filter_source = true, filter_intention = true, filter_level = true,
+    nullification_source = true, nullification_intention = true, nullification_level = true,
+    ai_liuli_user = true, ai_mobiletongji_user = true, shaoying_target = true, fenji_target = true}
+
+local function initial_value(value)
+    if type(value) ~= "table" then return value end
+    local result = {}
+    for k, v in pairs(value) do result[k] = v end
+    return result
+end
+
 function SmartAIView:getEventMemory(key)
     local state = rawget(self, "_event_state") or rawget(self, "_strategy_state")
-    if not state and type(self.recall) == "function" then state = self:recall(memory_key) end
+    if not state and type(self.recall) == "function" then
+        -- recall hands back a private copy; keep it for this decision's reads and writes.
+        state = self:recall(memory_key)
+        if state then self._strategy_state, self._strategy_state_owned = state, true end
+    end
     if type(state) ~= "table" or type(state.known) ~= "table" or state.known[key] ~= true then
+        if initial_event_memory[key] ~= nil then return initial_value(initial_event_memory[key]), true end
+        if initial_nil_event_memory[key] then return nil, true end
         return nil, false
     end
     return state[key], true
@@ -85,7 +108,7 @@ end
 -- opening the policy event transaction: a later callback failure must not revive
 -- stale flags. The acknowledgement and all affected caches share one replacement.
 local function synchronize_flag_memory(world, epochs)
-    assert(active_sink == nil and pending_memory == nil, "flag synchronization requires an idle event transaction")
+    assert(active_sink == nil, "flag synchronization requires an idle event transaction")
     local viewer = world.self.object_name
     local state = memory_recall(viewer, memory_key) or {known={}}
     local applied = state.strategy_flag_clear_epochs or {}
@@ -120,7 +143,7 @@ if type(ai_register_flag_clear_synchronizer) == "function" then
 end
 
 local function keep_state_format(self)
-    local facts = self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+    local facts = self.world and AIHegemony.facts(self.world)
     return facts and facts.enabled == true and facts.original_overrides_loaded == true
         and "original_hegemony" or "ordinary"
 end
@@ -195,7 +218,41 @@ end
 -- assignKeep mutates the donor's observer cache even if its eventual answer is
 -- rejected. Preserve that decision-time observation, but use the same atomic
 -- envelope when assignKeep is called while filtering a CardsMove event.
+-- A decision's first memory write copies the recalled state; later writes update
+-- that private copy in place. ai_decide persists it once (flushDecisionMemory).
+local function decision_state(self)
+    local state = rawget(self, "_strategy_state")
+    if not rawget(self, "_strategy_state_owned") then
+        state = copy_memory(state or self:recall(memory_key) or {known={}})
+        self._strategy_state, self._strategy_state_owned = state, true
+    end
+    state.known = state.known or {}
+    self._strategy_state_dirty = true
+    return state
+end
+
+-- A decision writes its keep state once, when its handler returns; an event
+-- writes it into its own memory envelope at once.
 function SmartAIView:persistKeepState()
+    if not rawget(self, "_event_state") then
+        self._keep_state_dirty = true
+        return true
+    end
+    return self:writeKeepState()
+end
+
+function SmartAIView:flushDecisionMemory()
+    if rawget(self, "_keep_state_dirty") then
+        self._keep_state_dirty = nil
+        self:writeKeepState()
+    end
+    if rawget(self, "_strategy_state_dirty") then
+        self._strategy_state_dirty = nil
+        return self:remember(memory_key, self._strategy_state)
+    end
+end
+
+function SmartAIView:writeKeepState()
     local skill_cache = keep_skill_cache(self, self._keep_skill_eval_cache)
     local scratch = self.request and self.request.scratch
     local value = {keepdata=copy_memory(self.keepdata), keepValue=copy_memory(self.keepValue),
@@ -221,11 +278,9 @@ function SmartAIView:persistKeepState()
         end
     end
     if rawget(self, "_event_state") then return self:setEventMemory("keep_state", value) end
-    local state = copy_memory(rawget(self, "_strategy_state") or self:recall(memory_key) or {known={}})
-    state.known = state.known or {}
+    local state = decision_state(self)
     state.keep_state, state.known.keep_state = value, true
-    self._strategy_state = state
-    return self:remember(memory_key, state)
+    return true
 end
 
 -- These are observational caches: like the donor, decision-time evaluation
@@ -243,11 +298,9 @@ function SmartAIView:setStrategyMemory(key, value)
         state["cache:"..key],state.known["cache:"..key]=copy_memory(value),true
         return
     end
-    local state = copy_memory(rawget(self, "_strategy_state") or self:recall(memory_key) or {known={}})
-    state.known = state.known or {}
+    local state = decision_state(self)
     state["cache:"..key], state.known["cache:"..key] = copy_memory(value), true
-    self._strategy_state = state
-    return self:remember(memory_key, state)
+    return true
 end
 
 -- Original decision callbacks write these globals before the engine accepts
@@ -262,10 +315,9 @@ function SmartAIView:setCommonEventMemory(key,value)
         assert(value==nil or type(value)=="string" and self.room:findPlayerByObjectName(value,true),"invalid observed player")
     else assert(type(value)=="boolean","invalid observed boolean") end
     if rawget(self,"_event_state") then return self:setEventMemory(key,value) end
-    local state=copy_memory(rawget(self,"_strategy_state") or self:recall(memory_key) or {known={}})
-    state.known=state.known or {};state[key],state.known[key]=value,true
-    self._strategy_state=state
-    return self:remember(memory_key,state)
+    local state=decision_state(self)
+    state[key],state.known[key]=value,true
+    return true
 end
 
 -- Source askForDiscard records the requested minimum before invoking a skill
@@ -274,8 +326,7 @@ function SmartAIView:recordDiscardDemand(reason, minimum)
     assert(type(reason)=="string" and finite(minimum) and minimum>=0 and minimum%1==0,
         "invalid discard demand statistic")
     local event_state=rawget(self,"_event_state")
-    local state=copy_memory(event_state or rawget(self,"_strategy_state")
-        or self:recall(memory_key) or {known={}})
+    local state=event_state and copy_memory(event_state) or decision_state(self)
     state.known=state.known or {}
     if state.known.throw_data~=true then
         state.throw_data={}
@@ -303,18 +354,15 @@ function SmartAIView:recordDiscardDemand(reason, minimum)
         self:setEventMemory("throw_data",state.throw_data)
         self:setEventMemory("throw_data_viewer_only",true)
         self:setEventMemory("throw_data_initial_history_unknown",state.throw_data_initial_history_unknown)
-    else
-        self._strategy_state=state
-        self:remember(memory_key,state)
     end
     return total
 end
 
 local function defense_refresh_cache(self,player)
-    local facts=self.world and self.world.strategy_facts
-    local now=facts and facts.clock_seconds
+    -- One cache per board revision stands in for SmartAI's one-second clock.
+    local now=self.world and self.world.revision
     local turn=self.world and self.world.turn_count
-    if not finite(now) or not finite(turn) then ai_unsupported("defense cache clock/turn is unknown","getDefense") end
+    if type(now)~="string" or not finite(turn) then ai_unsupported("defense cache revision/turn is unknown","getDefense") end
     local cache,known=self:getStrategyMemory("defense_refresh_cache")
     if not known or type(cache)~="table" or cache.clock~=now then
         cache={clock=now,values={}}
@@ -347,19 +395,14 @@ function SmartAIView:setDefenseRefreshCache(player,value)
     self:setStrategyMemory("defense_refresh_cache",cache)
 end
 
+-- The snapshot's controller field is already the root of the Controller_Name chain.
 function SmartAIView:getActualController(player)
     if not player then return nil end
-    local facts=self.world and self.world.strategy_facts
-    local state=facts and facts.intention_controller
-    local name=player:objectName()
-    if type(state)~="table" or type(state.roots)~="table" or type(state.cycles)~="table"
-        or type(state.roots[name])~="string" or type(state.cycles[name])~="boolean" then
-        ai_unsupported("source controller walk is not projected", "getActualController")
-    end
-    if state.cycles[name] then
-        ai_unsupported("source controller cycle requires a gameplay-tag repair", "getActualController.cycle")
-    end
-    local controller=self.room:findPlayerByObjectName(state.roots[name],true)
+    local view=rawget(player,"_view")
+    local name=type(view)=="table" and view.controller
+    if type(name)~="string" then ai_unsupported("controller root is not projected", "getActualController") end
+    if name=="" then return player end
+    local controller=self.room:findPlayerByObjectName(name,true)
     if not controller then ai_unsupported("controller root is outside the lawful roster", "getActualController") end
     return controller
 end
@@ -409,34 +452,31 @@ end
 
 function SmartAIView:refreshDefenseSnapshotForSort(players, initialize_only)
     if #players < 2 and not initialize_only then return true end
-    local facts = self.world and self.world.strategy_facts
-    local now = type(facts) == "table" and facts.clock_seconds
-    if not finite(now) then ai_unsupported("defense sort clock is not projected", "sort.defense") end
+    -- The board revision stands in for SmartAI's one-second sort clock: a sort
+    -- refreshes the baselines once per revision.
+    local now = self.world and self.world.revision
+    if type(now) ~= "string" then ai_unsupported("defense sort needs the board revision", "sort.defense") end
     local event_state = rawget(self, "_event_state")
-    local previous = rawget(self, "_strategy_state")
+    local previous, previous_owned = rawget(self, "_strategy_state"), rawget(self, "_strategy_state_owned")
     local state = copy_memory(event_state or previous or self:recall(memory_key) or {known={}})
     state.known = state.known or {}
-    local source = publish_defense() -- native retained history for this active observer only
-    if type(source) ~= "table" or source.observer ~= self.player:objectName()
-        or not finite(source.sequence) or not finite(source.sort_clock) then
-        ai_unsupported("same-observer defense source is unavailable", "sort.defense")
+    -- Baselines start at zero for each player this observer has not sorted yet.
+    state.defense_snapshot = state.defense_snapshot or {}
+    state.defense_estimates = state.defense_estimates or {}
+    for _, player in ipairs(self.room:getAllPlayers(true) or {}) do
+        local name = player:objectName()
+        if state.defense_snapshot[name] == nil then
+            state.defense_snapshot[name] = 0
+            state.defense_estimates[name] = {}
+        end
     end
-    do -- The source DTO also rejects unknown writers to generic strategy memory.
-        -- Only the native, same-observer publication can seed/rebase this cache.
-        state.defense_snapshot = copy_memory(source.baselines)
-        state.defense_estimates = copy_memory(source.estimates)
-        state.defense_sort_time = source.sort_clock
-        state.defense_origin = source.origin
-        state.defense_sequence = source.sequence
-        state.known.defense_snapshot, state.known.defense_sort_time = true, true
-        state.known.defense_estimates = true
-    end
+    state.known.defense_snapshot, state.known.defense_sort_time = true, true
+    state.known.defense_estimates = true
     local field = event_state and "_event_state" or "_strategy_state"
     self[field] = state
     self._defense_refresh_active = true
-    local refreshed = false
     local ok, failure = pcall(function()
-        if not initialize_only and now - state.defense_sort_time > 1 then
+        if not initialize_only and state.defense_sort_time ~= now then
             for _, player in ipairs(players) do
                 -- Collect this cell's dependencies independently of earlier cells.
                 local scratch = self.request and self.request.scratch
@@ -458,29 +498,22 @@ function SmartAIView:refreshDefenseSnapshotForSort(players, initialize_only)
                 state.defense_estimates[player:objectName()] = labels
             end
             state.defense_sort_time = now
-            refreshed = true
         end
     end)
     self._defense_refresh_active = nil
-    if not ok then self[field] = event_state or previous; error(failure,0) end
-    if refreshed then
-        local dto = {observer=self.player:objectName(), revision=self.world.revision,
-            sequence=state.defense_sequence, sort_clock=now, origin=state.defense_origin,
-            baselines=state.defense_snapshot, estimates=state.defense_estimates}
-        state.defense_sequence = publish_defense(dto)
-        -- Nested updatePlayers sees this transaction's own just-produced values.
-        self.world.strategy_facts.defense_history = copy_memory(dto)
-        self.world.strategy_facts.defense_history.sequence = state.defense_sequence
+    if not ok then
+        self[field] = event_state or previous
+        if not event_state then self._strategy_state_owned = previous_owned end
+        error(failure,0)
     end
     if not event_state then
         -- Decision-time sort updates are the source helper's own persistent
         -- strategy side effect. They contain only this observer's derived values.
-        self:remember(memory_key, state)
+        self._strategy_state_owned, self._strategy_state_dirty = true, true
     end
     return true
 end
 
-if ai_register_defense_writer then ai_register_defense_writer(SmartAIView.refreshDefenseSnapshotForSort) end
 
 function SmartAIView:ensureDefenseSnapshot()
     local snapshot, known = self:getEventMemory("defense_snapshot")
@@ -500,15 +533,6 @@ local function estimate_branch(self, name)
     if type(self.useKnowledgeEstimate) == "function" then
         self:useKnowledgeEstimate({value=true,status="estimate",basis=name,observer=self.player:objectName()}, "filterEvent")
     end
-end
-
-function ai_event_abort()
-    pending_memory = nil
-end
-
-function ai_event_commit()
-    if pending_memory then memory_commit(pending_memory) end
-    pending_memory = nil
 end
 
 local function memory_value(self, key)
@@ -534,7 +558,17 @@ local function source_attribution(self, event)
             end
             return ""
         end
-        ai_unsupported("event skill-owner attribution is not projected", "event.attribution")
+        -- The reason skill's holder among players whose skills this observer
+        -- sees in full; "" when nobody holds it.
+        local skill = event.reason ~= "" and event.reason or event.card_skill or ""
+        for _, player in ipairs(self.room:getAllPlayers(true) or {}) do
+            local has = player:hasSkill(skill)
+            if has == nil or player._view.skills_complete == false then
+                ai_unsupported("event skill-owner attribution is not projected", "event.attribution")
+            end
+            if has then return player:objectName() end
+        end
+        return ""
     end
     return details.intention_from
 end
@@ -544,21 +578,11 @@ local function card_use_value(event)
 end
 
 local function initialize_event_memory(self)
-    local function initialize(key, value)
-        if self._event_state.known[key] ~= true then self:setEventMemory(key, value) end
+    for key, value in pairs(initial_event_memory) do
+        if self._event_state.known[key] ~= true then self:setEventMemory(key, initial_value(value)) end
     end
-    for _, key in ipairs({"judge_good", "judge_patterns", "need_peach", "damage_data", "draw_data",
-        "convert_data", "throw_data", "card_damage_nature", "aoe_lord", "estimation_branches"}) do
-        initialize(key, {})
-    end
-    initialize("ai_response", {Slash = "Jink"})
-    initialize("is_chained", 0) -- absent initial Room tag converts to integer zero
-    for _, key in ipairs({"card_effect", "target_use", "used_data", "filter_source", "filter_intention",
-        "filter_level", "nullification_source", "nullification_intention", "nullification_level", "ai_liuli_user", "ai_mobiletongji_user", "shaoying_target", "fenji_target"}) do
-        initialize(key, nil)
-    end
-    for _, key in ipairs({"ai_collateral", "ai_liuli_effect", "ai_lijian_effect", "ai_quhu_effect"}) do
-        initialize(key, false)
+    for key in pairs(initial_nil_event_memory) do
+        if self._event_state.known[key] ~= true then self:setEventMemory(key, nil) end
     end
 end
 
@@ -808,12 +832,31 @@ function SmartAIView:shouldSuppressIntention(use)
     return suppress_card_intention(self,event,use.card,use.from,use.to or use.targets or {})
 end
 
+-- SmartAI credits intention only when TargetSpecified carries the card its user
+-- declared at the latest PreCardUsed; the event log holds both stages.
+local function use_matches_previous(world, event)
+    local events = type(world.events) == "table" and world.events or {}
+    for index = #events, 1, -1 do
+        local previous = events[index]
+        if previous.sequence < event.sequence and previous.trigger_event == sgs.PreCardUsed
+            and previous.kind == "card_use" then
+            if previous.from ~= event.from then return false end
+            local left, right = previous.card_ids or {}, event.card_ids or {}
+            if #left > 0 or #right > 0 then
+                if #left ~= #right then return false end
+                for i, id in ipairs(left) do if right[i] ~= id then return false end end
+                return true
+            end
+            return previous.card_name == event.card_name and previous.card_class == event.card_class
+                and previous.card_skill == event.card_skill
+        end
+    end
+    return false
+end
+
 local function card_intention(self, event, emit)
     local details = event.details or {}
-    if type(details.use_matches_previous) ~= "boolean" then
-        ai_unsupported("card use identity is unknown", "event.card_intention")
-    end
-    if not details.use_matches_previous then return end
+    if not use_matches_previous(self.world, event) then return end
     local from = self.room:findPlayerByObjectName(event.from, true)
     if not from then return end
     local card = assert(details.card and CardView.new(details.card), "card intention needs metadata")
@@ -885,7 +928,7 @@ end
 -- Both effective providers read the same lawful viewer snapshot, but their
 -- predicates and persistent source variables are deliberately distinct.
 local function original_intention_provider(self)
-    local facts=self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+    local facts=self.world and AIHegemony.facts(self.world)
     if not facts or not facts.enabled then return false end
     if type(facts.original_overrides_loaded)~="boolean" then
         ai_unsupported("Original intention provider loading is unknown","original_hegemony_ai_loaded")
@@ -1229,10 +1272,12 @@ local function death_intention(self, event, emit)
     end
     -- filterEvent credits a kill only when damage.from is the trigger player.
     if event.from ~= details.player then return end
-    if not finite(details.turn_count) then
+    local turn_count = details.turn_count
+    if not finite(turn_count) then turn_count = self.room:getTurnCount() end
+    if not finite(turn_count) then
         ai_unsupported("death turn count is unknown", "event.death")
     end
-    if details.turn_count <= 1 then return end
+    if turn_count <= 1 then return end
     if type(event.chain) ~= "boolean" or type(event.transfer) ~= "boolean" then
         ai_unsupported("death damage chain/transfer state is unknown", "event.death")
     end
@@ -1342,24 +1387,15 @@ end
 
 SmartAIView.CanUpdateIntention = can_update_intention
 
+-- Cross-game aggregate history is not read in this VM; the observer keeps its own.
 function SmartAIView:GetAiData()
-    local facts = self.world.strategy_facts
-    if type(facts) ~= "table" or facts.ai_data_known ~= true then
-        ai_unsupported("aggregate AI history is not projected", "GetAiData")
-    end
-    return type(facts.ai_data) == "table" and copy_memory(facts.ai_data) or nil
+    return nil
 end
 
 function SmartAIView:SetAiData(value)
     assert(type(value) == "table", "aggregate AI history must be a table")
     self:setEventMemory("defense_statistics", copy_memory(value))
-    local facts = self.world and self.world.strategy_facts
-    if facts and facts.ai_data_persistent == true then
-        assert(type(facts.ai_data_revision) == "string", "persistent AI history needs its snapshot revision")
-        self:emitStrategyEffect({kind="ai_data",revision=facts.ai_data_revision,data=copy_memory(value)})
-    else
-        estimate_branch(self,"ai_data.viewer_shadow_no_cross_room_write")
-    end
+    estimate_branch(self,"ai_data.viewer_shadow_no_cross_room_write")
 end
 
 local statistic_keys = {drawData="draw_data",convertData="convert_data",damageData="damage_data",throwData="throw_data"}
@@ -1623,7 +1659,7 @@ end
 -- original-hegemony/heg-common-ai.lua:61,196,252-297. This is its own
 -- observation history, never an alias for ordinary targeted no-Jink marks.
 local function original_lack_enabled(self)
-    local heg=self.world.strategy_facts and self.world.strategy_facts.hegemony
+    local heg=AIHegemony.facts(self.world)
     return type(heg)=='table' and heg.enabled==true and heg.original_overrides_loaded==true
 end
 local function original_lack_state(self)
@@ -1640,7 +1676,7 @@ function SmartAIView:getOriginalHegemonyCardLack(player,kind)
     local complete=state.known[name] and state.known[name][kind]==true
     -- The current native ChoiceMade envelope is actor-private. Other viewers
     -- cannot silently treat missing response notifications as observed zeros.
-    local facts=self.world.strategy_facts and self.world.strategy_facts.hegemony
+    local facts=AIHegemony.facts(self.world)
     if name~=self.player:objectName() and not(facts and facts.card_lack_responses_complete==true)then complete=false end
     if complete then return value end
     return self:useKnowledgeEstimate({status='estimate',value=value,target=name,
@@ -1691,7 +1727,7 @@ local function original_lack_move(self,player,event)
     if move.from~=player:objectName() or player:getPhase()~=sgs.Player_Discard
         or player:getHandcardNum()<2 or move.to_place~=sgs.Player_DiscardPile
         or move.reason~=sgs.CardMoveReason_S_REASON_RULEDISCARD then return end
-    local heg=self.world.strategy_facts.hegemony
+    local heg=AIHegemony.facts(self.world)
     local row=heg.players and heg.players[player:objectName()]
     if not row or type(row.shown_skills)~='table'then ai_unsupported('shown skill roster is missing','original_card_lack.nosleiji')end
     if row.shown_skills.nosleiji==nil then return end
@@ -1809,8 +1845,9 @@ local function skill_events(self, world, event, emit)
         if type(callback) == "function" then
             local ok,value=pcall(callback,self,player,data)
             if AIUnsupported.is(value) then
+                -- A callback whose inputs are not projected skips itself, as the
+                -- donor's per-callback pcall does; the event still commits.
                 event_callback_failure(self,event,key,"typed_unsupported",value)
-                error(value,0)
             elseif not ok then
                 if event_callback_resource_error(value)then
                     event_callback_failure(self,event,key,"resource_limit",value)
@@ -1826,13 +1863,9 @@ function ai_event(world, event)
     event_callback_diagnostics={}
     assert(type(world) == "table" and type(event) == "table", "event needs pure snapshots")
     assert(active_sink == nil, "nested isolated events are not supported")
-    if sync_flag_clears then sync_flag_clears(world)
-    elseif world.strategy_facts and world.strategy_facts.strategy_flag_clear_epochs ~= nil then
-        ai_unsupported("flag-clear synchronizer is unavailable", "event.flag_clear")
-    end
+    if sync_flag_clears then sync_flag_clears(world) end
     local self = assert(SmartAIView.new({kind = "event", viewer = world.self.object_name,
         world_view = world, scratch = {}}), "invalid event world")
-    pending_memory = nil
     local stored = type(self.recall) == "function" and self:recall(memory_key) or nil
     self._event_state = stored or {known = {}}
     self._event_input = event
@@ -1933,17 +1966,8 @@ function ai_event(world, event)
         elseif event.trigger_event == sgs.HpRecover then recover_intention(self, event, emit)
         elseif event.trigger_event == sgs.Death then
             death_intention(self, event, emit)
-            -- Source performs its second qlist-cache invalidation after Death
-            -- callbacks and intention, including deaths without credited damage.
-            if event.details.player == self.player:objectName() then
-                if type(ai_target_recommend_cache) ~= "function" then
-                    ai_unsupported("Death cache clear host is unavailable", "getBestTarget:cache")
-                end
-                local cleared=ai_target_recommend_cache({op="death_clear"})
-                if type(cleared)~="table" or cleared.known~=true then
-                    ai_unsupported("Death cache clear is unknown", "getBestTarget:cache")
-                end
-            end
+            -- Revision-scoped caches already miss after a death; only the
+            -- observer's remembered crossbow values need dropping.
             self:setStrategyMemory("crossbow_effect", {})
         elseif sgs.BeforeGameOverJudge~=nil and event.trigger_event==sgs.BeforeGameOverJudge
             or sgs.Revived~=nil and event.trigger_event==sgs.Revived then
@@ -1968,12 +1992,14 @@ function ai_event(world, event)
     end
     local estimates = self._event_estimates
     self._event_estimates, self._event_estimates_seen = nil, nil
-    if not ok then self._event_state = nil; error(failure, 0) end
-    -- Host finalizes only after every delta and the mode update are accepted.
-    -- Preparation validates pure values and budgets before either state changes.
+    -- An unprojected input stops this event's policy where it stood, as an
+    -- erroring donor filterEvent did; what ran before it still commits.
+    if not ok and not AIUnsupported.is(failure) then self._event_state = nil; error(failure, 0) end
+    -- The host takes the deltas but no longer calls ai_event_commit, so the
+    -- observer's event memory commits here once the event succeeded.
     local staged_state = self._event_state
     self._event_state = nil
-    pending_memory = memory_prepare(world.self.object_name, memory_key, staged_state)
+    memory_commit(memory_prepare(world.self.object_name, memory_key, staged_state))
     return deltas, effects, estimates
 end
 
@@ -2084,7 +2110,7 @@ if ai_audited_aliases then
 end
 
 function SmartAIView:applyDuTongqueRole(player)
-    local witness=self.world.strategy_facts and self.world.strategy_facts.du_tongque_role_witness
+    local witness=nil -- The Tongque choice is not projected.
     if type(witness)~="table" or witness.player~=player:objectName() then
         ai_unsupported("Tongque role effect lacks its current choice witness","du.tongque")
     end

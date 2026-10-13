@@ -60,9 +60,7 @@ end
 
 local function filtered_judge_values(self, player, card, estimate_basis)
     local id, name = card:getEffectiveId(), player:objectName()
-    local facts = self.world and self.world.strategy_facts
-    local rows = facts and facts.card_filter and facts.card_filter[name]
-    local row = lookup(rows,id)
+    local row = nil -- A filtered judge face is not projected separately.
     if type(row)=="table" and row.complete==true and type(row.card)=="table" then
         if type(row.donor_error_repair)=="string" then note_estimate(self,"donor_error_repair:"..row.donor_error_repair) end
         local value=card_view(row.card)
@@ -126,9 +124,7 @@ local function r33_good_judge_card(self, player, card, estimate_basis)
     card = card_view(card)
     if not card then ai_unsupported("goodJudge requires an authorized card view", "goodJudge") end
     local id, name = card:getEffectiveId(), player:objectName()
-    local facts = self.world and self.world.strategy_facts
-    local rows = facts and facts.card_filter and facts.card_filter[name]
-    local row = lookup(rows, id)
+    local row = nil -- A filtered judge face is not projected separately.
     if type(row) == "table" and row.complete == true and type(row.card) == "table" then
         if type(row.donor_error_repair) == "string" then note_estimate(self, "donor_error_repair:" .. row.donor_error_repair) end
         return card_view(row.card)
@@ -206,11 +202,7 @@ end
 function SmartAIView:CardFilter(card, owner, place)
     owner=player_view(self,owner)
     if not owner then ai_unsupported("CardFilter owner is unknown","CardFilter") end
-    local facts=self.world and self.world.strategy_facts
-    local projection_key = place ~= nil and place == sgs.Player_PlaceHand and "card_filter_hand"
-        or (place == nil or place == sgs.Player_PlaceJudge) and "card_filter" or nil
-    local projected_players = projection_key and facts and facts[projection_key]
-    local rows = projected_players and projected_players[owner:objectName()]
+    local rows = nil -- Filtered faces are projected on the cards themselves.
     if type(card)=="number" then
         local id=card
         local projected=lookup(rows,id)

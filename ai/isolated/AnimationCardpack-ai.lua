@@ -243,18 +243,15 @@ sgs.ai_skill_invoke.tywz = function(self, data)
     return false
 end
 sgs.ai_choicemade_filter.skillInvoke.tywz = function(self,player,promptlist)
-    local facts=self.world.strategy_facts
-    local damage=event_value(self,"CurrentDamageStruct",facts and facts.standard and facts.standard.current_damage)
-    if damage.from and promptlist[3]=="yes" then
-        self:updateIntention(player,damage.to,40)
-    end
+    -- The live Room CurrentDamageStruct is not projected into event callbacks.
+    ai_unsupported("Room CurrentDamageStruct is not projected","CurrentDamageStruct")
 end
 
 sgs.weapon_range.hqiangwei = 2
 sgs.ai_skill_discard.hqiangwei = function(self,discard_num,optional,include_equip)
-    local facts=self.world.strategy_facts
-    local name=known(facts and facts.animation_cardpack and facts.animation_cardpack.hqiangwei_target,"owner hqiangwei target")
-    local target=name~=false and known(self.room:findPlayerByObjectName(name,true),"hqiangwei target")or nil
+    -- The viewer's own hqiangwei tag; an absent tag is no target.
+    local name=self.player:getTag("hqiangwei")
+    local target=type(name)=="string" and name~="" and known(self.room:findPlayerByObjectName(name,true),"hqiangwei target")or nil
     if not target or self:isFriend(target) then return {} end
     local cards = copy(self.player:getHandcards())
     local to_discard = {}

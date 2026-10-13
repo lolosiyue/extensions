@@ -80,32 +80,23 @@ local function role(self,p)
  return q(self,"useKnowledgeEstimate",{status="estimate",value=q(self,"getRoleEstimate",p),basis="viewer_role_estimate_private_role",player=q(p,"objectName")},"FourJianxiong.role")
 end
 local function public_flag(self,player,name)
- local facts=self.world.strategy_facts.round41_skill_flags
- if type(facts)~="table" or facts.viewer~=q(self.player,"objectName") then
-  return known(nil,"scoped skill flag "..name)
- end
- local row=facts.flags and facts.flags[name]
- local value=row and row[q(player,"objectName")]
- if type(value)~="table" or type(value.value)~="boolean" then return known(nil,"scoped skill flag "..name) end
- if value.status=="exact" and value.basis=="current_owner_flag" and player==self.player then return value.value end
- if value.status=="estimate" and value.basis=="skill_flag_last_public_observation" then
-  return q(self,"useKnowledgeEstimate",{status="estimate",value=value.value,basis=value.basis,
-   player=q(player,"objectName"),flag=name},"biaofengold.public_flag")
- end
- return known(nil,"scoped skill flag provenance "..name)
+ -- Room::setPlayerFlag broadcasts, so every player's flags are projected.
+ return q(player,"hasFlag",name)
 end
 local function source_visible_hand(self,p)
- local all=self.world.strategy_facts.source_visible_hand_ids
- local ids=known(all and all[q(p,"objectName")],"source visible hand order")
- local faces={};for _,card in ipairs(q(p,"getKnownCards"))do faces[q(card,"getEffectiveId")]=card end
- local cards={};for _,id in ipairs(ids)do cards[#cards+1]=known(faces[id],"source visible card face")end
- return cards
+ -- Another player's known cards are the hand cards this viewer may see, in hand
+ -- order; the visible-flag subset of the viewer's own hand is not projected.
+ if q(p,"objectName")==q(self.player,"objectName") then
+  ai_unsupported("own visible-flag hand subset is not projected","source visible hand order")
+ end
+ return q(p,"getKnownCards")
 end
 local function aoe_truth(self)
- local facts=self.world.strategy_facts
- local f=facts.new and facts.new.aoe_data_truthy
- if type(f)~="table"or f.known~=true or type(f.truthy)~="boolean"then ai_unsupported("legacy AOE truthiness unavailable","FourGuidao")end
- return f.truthy
+ -- sgs.ai_AOE_data is written only by the original-hegemony AI; elsewhere it stays nil.
+ local h=AIHegemony.facts(self.world)
+ if type(h)~="table" or type(h.enabled)~="boolean" then ai_unsupported("hegemony load domain unknown","FourGuidao") end
+ if not(h.enabled and h.original_overrides_loaded==true) then return false end
+ ai_unsupported("original hegemony AOE stack is not projected","FourGuidao")
 end
 
 
@@ -521,7 +512,7 @@ sgs.ai_skill_use["@FourJianxiong"] = function(self, prompt)
         if role(self,dest) == "rebel" and q(self,"getOverflow") then
             for _,friend in ipairs(self.friends_noself) do
                 if friend then
-                    if not hasJueqingEffect(friend, dest, damage.nature) then
+                    if not q(self,"hasJueqingEffect",friend, dest, damage.nature) then
                         target = friend
                     end
                 end
@@ -634,7 +625,7 @@ sgs.ai_skill_invoke.FourFenyong = function(self, data)
 end
 
 function sgs.ai_slash_prohibit.FourFenyong(self, from, to)
-	if hasJueqingEffect(from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
+	if q(self,"hasJueqingEffect",from, to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to) == 1) then return false end
 	if q(from,"hasFlag","NosJiefanUsed") then return false end
 	return not q(to,"faceUp") and q(to,"hasSkill","FourFenyong")
 end

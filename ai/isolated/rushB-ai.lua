@@ -29,20 +29,18 @@ local function q(o,k,...)
  if k=='hasSkill'or k=='hasSkills'then local p=AIValue.isPlayer(o)and o or select(2,...)or o.player;local row=type(p)=='table'and rawget(p,'_view');if r[1]==false and row and row.skills_complete~=true then ai_unsupported('rushB foreign skill absence unknown',(...))end end
  if not nullable[k]then known(r[1],k)end;return table.unpack(r,1,r.n)
 end
-local function facts(self)return known(self.world.strategy_facts and self.world.strategy_facts.rushB,'rushB')end
 local function face(self,id)return q(self,'getKnownCardById',id)end
 local function engineface(self,id)
- local snapshot=self._rushB_source_catalogue;local row=snapshot and snapshot.request==self.request and snapshot.cards;local card=row and row[tostring(id)];if not card then ai_unsupported('public engine printed descriptor missing',tostring(id))end;return CardView.new(card,self.room)
+ -- The printed face is projected only where the card itself is visible.
+ return known(self:getPrintedCardById(id),'public engine printed descriptor '..tostring(id))
 end
 local function random_catalogue(self)
- if type(ai_response_catalogue)~='function'then ai_unsupported('source random catalog query unavailable','rushB_xiongsuan')end
- local row=ai_response_catalogue('rushB_xiongsuan');if AIUnsupported.is(row)then error(row,0)end
- if type(row)~='table'or row.known~=true or row.key~='rushB_xiongsuan'or type(row.cards)~='table'or type(row.ids)~='table'then ai_unsupported('source random catalog query rejected','rushB_xiongsuan')end
- self._rushB_source_catalogue={request=self.request,cards=row.cards}
- return AIList.new(row.ids)
+ -- Engine::getRandomCards order is not projected.
+ ai_unsupported('source random catalog is not projected','rushB_xiongsuan')
 end
-local function draw_count(self)return known(facts(self).draw_count,'draw_count')end
-local function draw_id(self,index)return known(facts(self).observed_draw_ids and facts(self).observed_draw_ids[tostring(index)],'draw_index:'..index)end
+local function draw_count(self)return known(self.world.draw_pile_count,'draw_count')end
+-- Draw pile contents are hidden.
+local function draw_id(self,index)ai_unsupported('draw pile contents are not projected','draw_index:'..index)end
 local function draw_iter(self)local index=-1;return function()index=index+1;if index<draw_count(self)then return index+1,draw_id(self,index)end end end
 local function fullhand(p)local cs=q(p,'getHandcards');if #cs~=q(p,'getHandcardNum')then ai_unsupported('rushB source requires complete lawful foreign hand','rushB.foreign_hand')end;return cs end
 local function evaluation(self,name)return q(self,'getEvaluationCard',name or'slash')end
@@ -949,7 +947,7 @@ sgs.ai_fill_skill.diy_k_qice=function(self,inclusive,request)
 	if #self.toUse>2 then return end
 	local ids = q(self.player,"handCards")
 	local canCs = {}
-	for _,pn in ipairs(known(self.world.strategy_facts and self.world.strategy_facts.pattern_names,"pattern_names"))do
+	for _,pn in ipairs(known(AICardCatalog.patternNames(),"pattern_names"))do
 		local dc = evaluation(self,pn)
 		if dc and q(dc,"isNDTrick") then
 			dc = named(self,"diy_k_qice",pn,sgs.QList2Table(ids))
@@ -1430,7 +1428,8 @@ sgs.ai_skill_askforag.diy_zuguangu = function(self,card_ids)
 end
 
 sgs.ai_skill_use["@@diy_zuguangu"] = function(self, prompt)
-	local pattern = known(facts(self).diy_zuguangu,"diy_zuguangu")
+	-- Own property; absent reads as the donor's empty toString().
+	local pattern = self.player:getPropertyValue("diy_zuguangu") or ""
 	local card = named(self,"diy_zuguangu",pattern,{})
     
     local dummy_use = q(self,"aiUseCard",card, dummy(true))

@@ -344,11 +344,12 @@ sgs.ai_skill_playerchosen.kexianguiyi = function(self, targets)
 	return nil
 end
 local function chanxin_wansha(self)
-    local facts=self.world.strategy_facts
-    local value
-    if type(facts)=="table" and type(facts.standard)=="table" then value=facts.standard.jilve_wansha end
-    if type(value)~="boolean" then ai_unsupported("owner JilveWansha is unknown","kejiexianchanxin") end
-    return value
+    -- Own tag holds the granted skill name; QVariant::toBool reads absent as false.
+    local value=self.player:getTag("JilveWansha")
+    if value==nil then return false end
+    if type(value)=="boolean" then return value end
+    if type(value)~="string" then ai_unsupported("owner JilveWansha is unknown","kejiexianchanxin") end
+    return value~="" and value~="0" and value:lower()~="false"
 end
 rawset(ai_skill_activate,"kejiexianchanxin",nil)
 sgs.ai_fill_skill.kejiexianchanxin=function(self,inclusive,request)

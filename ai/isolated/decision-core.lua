@@ -1197,7 +1197,8 @@ function SmartAIView:getNeedPeach(player)
     if known ~= true or type(values) ~= "table" then
         ai_unsupported("Peach reserve event memory is unknown", "getNeedPeach")
     end
-    return value_known(values[player:objectName()], "Peach reserve for player")
+    -- SmartAI starts every player at zero (ai_NeedPeach).
+    return values[player:objectName()] or 0
 end
 
 function SmartAIView:isWeak(player, getAP)
@@ -1579,7 +1580,10 @@ function AIUsePlan:toAnswer()
     local answer = {kind = "use_card"}
     -- 轉化送的是票。牌名／花色／點數／成本一起送，只是讓權威端能比對出不一致並拒絕；
     -- 授權來自票，不來自這些欄位，所以偽造其中任何一欄都只會被擋下。
-    if AIValue.isConversion(self.card) then
+    local receipt = AIValue.isConversion(self.card) and self.card._view.skill_action_answer
+    if receipt then
+        for key, value in pairs(receipt) do answer[key] = value end
+    elseif AIValue.isConversion(self.card) then
         answer.card_spec = self.card:toCardSpec()
     elseif self.card_spec ~= nil then
         answer.card_spec = self.card_spec
@@ -1699,27 +1703,7 @@ end
 -- Tianyi probes the actual Slash with a read-only native hypothetical scope.
 -- The returned descriptor is evaluation-only and never becomes an action ticket.
 function SmartAIView:evaluateTianyiSlash(card,use)
-    if type(ai_evaluate_tianyi_slash)~="function" then
-        ai_unsupported("Tianyi Slash hypothesis is not available","tianyi")
-    end
-    local authority=type(card.getAuthorityCard)=="function" and card:getAuthorityCard() or card
-    local row=ai_evaluate_tianyi_slash(authority:getEffectiveId())
-    if type(row)~="table" or type(row.card)~="table" or type(row.candidate)~="table"
-        or row.card.evaluation_only~=true then
-        ai_unsupported(type(row)=="table" and row.error or "invalid Tianyi Slash hypothesis","tianyi")
-    end
-    local projected=CardView.new(row.card)
-    projected._evaluation_candidate=row.candidate
-    local previous=self._evaluation_scope
-    self._evaluation_scope={card=projected,candidate=CandidateView.new(row.candidate)}
-    use=use or AIUsePlan.new()
-    use.extra_target,use.isDummy,use._evaluation_only=1,true,true
-    -- The donor calls useBasicCard directly here, not aiUseCard. In particular,
-    -- no generic revise callbacks or their humanization RNG draw are inserted.
-    local ok,result=pcall(self.useBasicCard,self,projected,use)
-    self._evaluation_scope=previous
-    if not ok then error(result,0) end
-    return use
+    ai_unsupported("Tianyi Slash hypothesis is not projected","tianyi")
 end
 
 function SmartAIView:evaluateAcquiredCard(card)
@@ -2229,16 +2213,9 @@ function SmartAIView:ajustDamage(from,to,dmg,card,nature,depth)
 	end
 	if card and damage_card_value(self,card,"midao_nature","") ~= "" then
 		local newnature = damage_card_value(self,card,"midao_nature","")
-        local facts=self.world and self.world.strategy_facts
-        local captured=facts and facts.legacy_midao_na
-        if type(captured)~="table" or captured.known~=true or captured.known_nil~=true then
-            ai_unsupported("fixed-source Midao global na nil is not authenticated","ajustDamage.midao")
-        end
-        -- Fixed smart-ai.lua8312 reads GLOBAL na: the local nature table ended
-        -- at 8201. Preserve its reached ordinary nil-index error (after the two
-        -- card-tag reads), rather than repairing the donor's strategy.
-        local legacy_na=nil
-        nature=legacy_na[newnature] or "N"
+        -- smart-ai.lua reads an undefined global here and errors; there is no
+        -- donor answer to reproduce.
+        ai_unsupported("Midao nature mapping reads an undefined donor global","ajustDamage.midao")
 	end
 
 	for _,s in ipairs(damage_call(self, "getConnections", to))do
@@ -2407,8 +2384,7 @@ function SmartAIView:canLoseHp(from, card, to)
         -- retain the explicit readiness prior, never an unmarked empty list.
         local duorui_ready
         if from:objectName() == self.player:objectName() then
-            local facts = self.world and self.world.strategy_facts
-            local names = damage_known(facts and facts.owner_duorui_skills, "owner duorui acquisition state")
+            local names = damage_known(self.player:getPropertyValue("duorui_skills") or {}, "owner duorui acquisition state")
             if not AIValue.isList(names) then ai_unsupported("invalid owner duorui acquisition state", "canLoseHp") end
             duorui_ready = #names < 1
         else
@@ -2913,18 +2889,8 @@ end
 function SmartAIView:hasCrossbowEffect(player)
     player = player or self.player
     if core_query(player,"hasSkills","paoxiao|tenyearpaoxiao|olpaoxiao") or core_query(player,"hasWeapon","crossbow") then return true end
-    -- Source invalidation is tied to actual filterEvent boundaries (including
-    -- Death's second clear), not every recorded native event or snapshot.
-    local query=rawget(_G,"ai_target_recommend_cache")
-    if type(query)~="function" then ai_unsupported("Crossbow live cache epoch host is unavailable","hasCrossbowEffect") end
-    local stamp=query({op="epoch"})
-    if AIUnsupported.is(stamp) then error(stamp,0) end
-    if type(stamp)~="table" or getmetatable(stamp)~=nil or stamp.known~=true
-        or type(stamp.scope)~="string" or stamp.scope==""
-        or type(stamp.epoch)~="string" or not stamp.epoch:match("^%d+$") then
-        ai_unsupported("Crossbow cache requires actual scoped source epoch","hasCrossbowEffect")
-    end
-    local scope,epoch=stamp.scope,stamp.epoch
+    -- The cache lives for one board revision; any state change recomputes it.
+    local scope,epoch="revision",tostring(self.world.revision)
     local cache
     if epoch ~= "0" then
         local stored, known = self:getStrategyMemory("crossbow_effect")
@@ -3200,20 +3166,7 @@ function SmartAIView:poisonCards(flags, owner)
 end
 
 function SmartAIView:randomHandDiscardToken(target)
-    local facts=self.world and self.world.strategy_facts
-    local rows=facts and facts.random_hand_discard
-    local name=target and target:objectName()
-    local capability=rows and rows[name]
-    if type(capability)~="table" or type(capability.token)~="string" or capability.token==""
-        or type(ai_sample_hidden_hand)~="function" then
-        ai_unsupported("random hand authority is unavailable","Dismantlement")
-    end
-    local ok,sample=pcall(ai_sample_hidden_hand,capability.token,name)
-    if not ok or type(sample)~="table" or sample.kind~="hand_discard_sample"
-        or sample.token~=capability.token or sample.target~=name or type(sample.empty)~="boolean" then
-        ai_unsupported("random hand authority rejected the query","Dismantlement")
-    end
-    return sample
+    ai_unsupported("random picks from a hidden hand are not projected","Dismantlement")
 end
 
 -- Native samples the full hand at the original getRandomHandCard call site.
@@ -3558,10 +3511,7 @@ function SmartAIView:comesBefore(a,b)
 end
 
 local function allocation_visible_hand(self, player)
-    local facts = self.world and self.world.strategy_facts
-    local scope = facts and facts.round31_choice
-    local rows = scope and scope.visible_hand_ids
-    local row = rows and rows[player:objectName()]
+    local row = nil -- The order of a foreign visible hand is not projected.
     if type(row) ~= "table" or row.known ~= true or not AIValue.isList(row.ids) then
         ai_unsupported("source visible-hand order/predicate is not projected", "findPlayerToDiscard")
     end
@@ -4445,11 +4395,10 @@ function SmartAIView:targetRevises(use)
                 for _, name in ipairs(core_query(self,"getConnections",target)) do
                     local isarmor = false
                     if ignore then
-                        local facts = self.world and self.world.strategy_facts
-                        local names = facts and facts.damage and facts.damage.armor_names
-                        if names then isarmor = table.contains(names,name)
+                        local row = AICardCatalog.get(name)
+                        if row then isarmor = table.contains(row.kind_of or {}, "Armor")
                         elseif type(sgs.armorName)=="table" then isarmor = sgs.armorName[name]
-                        else ai_unsupported("public armor name catalog is unknown","targetRevises") end
+                        elseif type(ai_card_catalog)~="table" then ai_unsupported("card catalog is not projected","targetRevises") end
                     end
                     if not isarmor then
                         local callback = self:getHooks("ai_target_revises")[name]
@@ -4664,6 +4613,13 @@ function SmartAIView:validateStrategyUsePlan(use, branch, evaluation)
     -- physical candidates carry a separate authoritative MethodUse limit bit.
     if not is_conversion and (type(candidate.isLimited) ~= "function" or candidate:isLimited() ~= false) then
         return AIUnsupported.new("proposed card is limited or limits are unknown", "candidate"), "unsupported"
+    end
+    local receipt = is_conversion and candidate._view.authority_validates_targets == true
+    if receipt then
+        -- A skill action receipt: costs were fixed when it was bound and the
+        -- authority validates its targets on submission.
+        use.candidate_id = nil
+        return use, "planned"
     end
     if is_conversion then
         local proposed, authority = use.card:toCardSpec(), candidate:toCardSpec()
@@ -5924,12 +5880,10 @@ end
 function SmartAIView:isViewAsEnabledAtPlayEstimate(skill, player)
     local known = value_call(skill,"isViewAsEnabledAtPlay",player)
     if type(known)=="boolean" then return known end
-    local facts = self.world and self.world.strategy_facts
-    local rows = facts and facts.damage and facts.damage.view_as_skills
-    local row = rows and rows[plan_query(skill,"objectName")]
-    if type(row)~="table" or type(row.exists)~="boolean" then ai_unsupported("view-as skill definition is unknown","Indulgence") end
-    if not row.exists then return false end
-    if player:objectName()==self.player:objectName() then return value_known(row.owner_enabled_at_play,"owner view-as availability") end
+    local view = rawget(skill,"_view")
+    if type(view)~="table" or type(view.has_view_as_skill)~="boolean" then ai_unsupported("view-as skill definition is unknown","Indulgence") end
+    if not view.has_view_as_skill then return false end
+    if player:objectName()==self.player:objectName() then return value_known(view.enabled_at_play,"owner view-as availability") end
     return plan_query(self,"useKnowledgeEstimate",{value=true,status="estimate",viewer=self.player:objectName(),target=player:objectName(),
         basis="public view-as skill assumed active; private opponent costs and enablement excluded"},"Indulgence.view_as_enabled")
 end
@@ -6206,6 +6160,10 @@ function SmartAIView:fillSkillCards(cards)
         if context.has_view_as then
             if context.enabled_at_play == nil then ai_unsupported("view-as play availability is unknown", name) end
             if not context.enabled_at_play then return end
+            -- A usable V1 view-as skill hands this Play decision to SmartAI.
+            if instance == 0 and self.request.kind == "activate" then
+                ai_unsupported("V1 skill falls back to SmartAI", name)
+            end
         end
         local filled = callback(self, #cards < 1, request)
         if AIUnsupported.is(filled) then error(filled, 0) end
@@ -6217,7 +6175,9 @@ function SmartAIView:fillSkillCards(cards)
                 local seed=is_strategy_seed(card)
                 local candidate = strategy_candidate(self, card)
                 if not candidate and not seed then ai_unsupported("fill callback returned an unauthorized card", name) end
-                if seed and (not request or instance<1) then ai_unsupported("strategy seed lacks an active source instance",name) end
+                -- A V2 seed needs its offered instance; a V1 seed (instance 0) pays
+                -- through its legacy card class in bindSkillCard.
+                if seed and instance~=0 and (not request or instance<1) then ai_unsupported("strategy seed lacks an active source instance",name) end
                 if instance > 0 and value_known(value_call(card, "isVirtualCard"), "filled virtual identity") then
                     if readonly_turn_conversion(self, card) then
                         if value_call(self, "readonlyTurnConversionMatchesRequest", card, request) ~= true then
@@ -6460,54 +6420,11 @@ function SmartAIView:recordTurnUse(cards)
     return cards
 end
 
-function SmartAIView:refreshModeForActivate()
-    if not self.request or self.request.kind~="activate" then return end
-    local policy=self.world and self.world.mode_policy
-    if type(policy)~="table" or policy.standard_identity~=true then return end
-    if type(self.getStrategyMemory)~="function" or type(ai_mode_refresh)~="function" then
-        ai_unsupported("Activate relation refresh bridge is unavailable","updatePlayers")
-    end
-    local count,known=self:getStrategyMemory("turn_use_count")
-    if not known then count=0 end -- SmartAI initialization sets toUse={}.
-    if not finite_number(count) or count<0 or count%1~=0 then
-        ai_unsupported("invalid previous turn-use count","updatePlayers")
-    end
-    local ok,result=pcall(ai_mode_refresh,count)
-    if not ok or type(result)~="table" or type(result.relations)~="table"
-        or type(result.strategy_marks)~="table" or not AIValue.isList(result.estimated_branches) then
-        ai_unsupported("Activate relation refresh failed","updatePlayers")
-    end
-    for name,relation in pairs(result.relations) do
-        if type(name)~="string" or not self.room:findPlayerByObjectName(name)
-            or relation~="friend" and relation~="enemy" and relation~="neutral" then
-            ai_unsupported("invalid refreshed relation row","updatePlayers")
-        end
-    end
-    policy.strategy_marks=copy_strategy_state(result.strategy_marks)
-    policy.relations=policy.relations or {}
-    policy.relations[self.player:objectName()]=copy_strategy_state(result.relations)
-    for _,basis in ipairs(result.estimated_branches) do
-        if type(basis)~="string" then ai_unsupported("invalid refresh estimate basis","updatePlayers") end
-        value_known(value_call(self,"useKnowledgeEstimate",{value=0,status="estimate",basis=basis},"updatePlayers"),"refresh estimate")
-    end
-end
 
 -- BEGIN R37 ORIGINAL INITIALIZE PRESENCE
 -- R37 owner-only source lifecycle. Absence of a witness is never constructor {}.
 local function original_turn_presence(self,write)
-    if type(ai_original_turn_use_presence)~='function'then return nil end
-    local row=write and ai_original_turn_use_presence(write)or ai_original_turn_use_presence()
-    if AIUnsupported.is(row)then error(row,0)end
-    local request=self.request
-    if type(row)~='table'or getmetatable(row)~=nil or row.kind~='original_turn_use_presence'
-        or type(row.known)~='boolean'or(row.state~='empty'and row.state~='nil'and row.state~='unknown')
-        or row.known~=(row.state~='unknown')or type(request)~='table'
-        or row.viewer~=request.viewer or row.decision_id~=request.decision_id
-        or row.state_revision~=request.state_revision or type(row.continuity_stamp)~='string'
-        or not row.continuity_stamp:match('^%d+$')or(write and row.state~=write)then
-        return nil
-    end
-    return row
+    return nil -- The original-hegemony turn-use witness is not projected.
 end
 function SmartAIView:restoreOriginalHegemonyTurnUsePresence()
     if self._original_to_use_restored then return end
@@ -6583,7 +6500,7 @@ local function hpipe_q(object,method,...)
  return value
 end
 local function hpipe_owner_fact(self,key)
- local value=self.world.strategy_facts and self.world.strategy_facts[key]
+ local value=nil -- Original-hegemony pipeline facts are not projected.
  if value==nil then ai_unsupported('Original owner pipeline fact unavailable',key)end
  return value
 end
@@ -6706,7 +6623,7 @@ end
 
 
 local function original_turn_pipeline(self)
-    local facts=self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+    local facts=self.world and AIHegemony.facts(self.world)
     return facts and facts.enabled==true and facts.original_overrides_loaded==true
 end
 function SmartAIView:clearOriginalHegemonyTurnUse()
@@ -6866,18 +6783,22 @@ function SmartAIView:planTurnUse()
                 first.card = value_known(paid, "selected turn conversion authority")
             end
             local candidate=authority_candidate(self,first.card)
-            if not candidate or value_call(candidate,"hasCompleteCoverage")~=true then
-                ai_unsupported("activate target authority is incomplete","planning")
-            end
-            local legal
-            if value_call(candidate,"targetFixed") then
-                legal=#names==0 and value_call(candidate,"isFeasibleWithNoTarget")==true
-            else
-                local _,finish=candidate:getTargetSelection(names)
-                legal=finish==true
-            end
-            if not legal then
-                ai_unsupported("source cached targets do not belong to the first card authority","planning")
+            -- A skill-action receipt has its targets checked by the authority.
+            local receipt=AIValue.isConversion(candidate) and candidate._view.authority_validates_targets==true
+            if not receipt then
+                if not candidate or value_call(candidate,"hasCompleteCoverage")~=true then
+                    ai_unsupported("activate target authority is incomplete","planning")
+                end
+                local legal
+                if value_call(candidate,"targetFixed") then
+                    legal=#names==0 and value_call(candidate,"isFeasibleWithNoTarget")==true
+                else
+                    local _,finish=candidate:getTargetSelection(names)
+                    legal=finish==true
+                end
+                if not legal then
+                    ai_unsupported("source cached targets do not belong to the first card authority","planning")
+                end
             end
             first.to=targets
             local validated,status=self:validateStrategyUsePlan(first)
@@ -6949,20 +6870,10 @@ ai_register_handler("activate", function(self, request)
         for _, action in ipairs(request.skill_actions) do
             local key = type(action) == "table" and action.activation_skill or nil
             if type(key) == "string" and key ~= "" and not ai_skill_activate[key] then
-                -- Limu's fixed complete fill/revise/usefunc family runs in
-                -- planTurnUse below. A source nil fill is a covered decline,
-                -- not evidence that a native conversion must already exist.
-                -- This finite acknowledgement grants no candidate/authority;
-                -- all collector unknowns and final validation remain below.
-                local covered = (key == "xuanzhu" or key == "xufa" or key == "olspxixiang" or key == "limu" or key == "fuzhai" or key == "olquxi" or key == "miuyan" or key == "huiyun" or key == "zonglve") and type(sgs.ai_fill_skill[key]) == "function"
-                -- The fixed original Zunwei fill uses an issued readonly seed,
-                -- so an empty native conversion catalog is not missing strategy.
-                -- Require both existing family entries; planning and all source
-                -- unknowns/final authority checks still run below.
-                if key == "zunwei" and type(sgs.ai_fill_skill.zunwei) == "function"
-                    and type(sgs.ai_skill_use_func.ZunweiCard) == "function" then
-                    covered = true
-                end
+                -- A fill strategy runs in planTurnUse below; a nil fill is a
+                -- covered decline. It grants no authority: the receipt and
+                -- final validation still run below.
+                local covered = type(sgs.ai_fill_skill[key]) == "function"
                 -- 列不完就不能宣稱覆蓋：那是「不知道這個技能變得出什麼」。
                 if self:hasEnumeratedConversions() and conversion_by_skill[key] then
                     covered = true
@@ -7339,7 +7250,7 @@ end
 
 -- SmartAI6297 getLord is a source helper, separate from Room's actual lord.
 function SmartAIView:getSourceLord(player)
-    local enabled=self.world.strategy_facts and self.world.strategy_facts.source_enable_hegemony
+    local enabled=self.world.enable_hegemony
     if type(enabled)~="boolean" then ai_unsupported("source hegemony config is unknown","getSourceLord")end
     if enabled then return nil end
     local lord=self.room:getLord()

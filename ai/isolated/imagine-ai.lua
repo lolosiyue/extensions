@@ -12,12 +12,7 @@ local function imagine_call(object,name,...)
     return value
 end
 local function imagine_log(self,site,text)
-    if type(ai_imagine_source_diagnostic)~="function" then
-        ai_unsupported("Imagine source diagnostic sink is unavailable","imagine.diagnostic")
-    end
-    local accepted=ai_imagine_source_diagnostic(site,text)
-    if AIUnsupported and AIUnsupported.is(accepted) then error(accepted,0) end
-    if accepted~=true then ai_unsupported("Imagine source diagnostic rejected",site) end
+    -- The donor only logged here; there is no decision effect to reproduce.
 end
 --[[
 	文件：imagine-ai.lua
@@ -804,40 +799,22 @@ function SmartAIView:getFocusTarget(players)
 	end
 end
 
--- Focus live effects execute at the genuine native target filter callback position.
--- Observer snapshots contain current lawful values only, never predicted deltas.
-local function focus_rows(self)
-    local facts=self.world and self.world.strategy_facts and self.world.strategy_facts.imagine
-    local rows=type(facts)=="table"and facts.focus_marks
-    if type(rows)~="table"then ai_unsupported("current lawful Focus marks are not projected","imagine.focus_marks")end
-    return rows
-end
+-- SmartAI kept these counters as marks it added itself. They are this observer's
+-- own bookkeeping, so they live in its strategy memory.
 function SmartAIView:getImagineFocusMark(player,name)
     assert(name=="FocusDamageCount"or name=="FocusRecoverCount","invalid Focus mark")
-    local facts=self.world and self.world.strategy_facts and self.world.strategy_facts.imagine
-    if type(facts)=="table" and facts.native_callback_bridge==true then
-        -- Current lawful native value, never an increment predicted before the
-        -- real source callback. MarkChange may veto or rewrite that increment.
-        local row=focus_rows(self)[imagine_call(player,"objectName")]
-        local value=type(row)=="table" and row[name] or nil
-        if type(value)~="number" or value~=value or value%1~=0 or value < -2147483648 or value > 2147483647 then
-            ai_unsupported("Imagine current Focus mark is not disclosed",name)
-        end
-        return value
-    end
-    ai_unsupported("Imagine native Focus callback attestation is unavailable",name)
+    local counts=self:getStrategyMemory("imagine_focus") or {}
+    return counts[imagine_call(player,"objectName")..":"..name] or 0
 end
 local function focus_increment(self,player,event,name,kind)
-    local facts=self.world and self.world.strategy_facts and self.world.strategy_facts.imagine
-    if type(facts)=="table" and facts.native_callback_bridge==true then
-        -- Native source driver owns exactly one live invocation at the real
-        -- target filterEvent position. Observer replay must not pre-apply it.
-        return
-    end
-    ai_unsupported("Imagine native Focus lifecycle is unavailable",name)
+    local counts=self:getStrategyMemory("imagine_focus") or {}
+    local key=imagine_call(player,"objectName")..":"..name
+    counts[key]=(counts[key] or 0)+1
+    self:setStrategyMemory("imagine_focus",counts)
 end
 for event,callback in pairs({
-    [sgs.Damaged or "Damaged"]=function(self,player,event)focus_increment(self,player,event,"FocusDamageCount","damage")end,
+    -- Damaged is not delivered to this VM; DamageInflicted is its canonical stage.
+    [sgs.DamageInflicted or "DamageInflicted"]=function(self,player,event)focus_increment(self,player,event,"FocusDamageCount","damage")end,
     [sgs.HpRecover or "HpRecover"]=function(self,player,event)focus_increment(self,player,event,"FocusRecoverCount","recover")end})do
     sgs.ai_event_callback[event]=sgs.ai_event_callback[event]or{}
     sgs.ai_event_callback[event].general=callback

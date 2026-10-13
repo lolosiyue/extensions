@@ -11,13 +11,29 @@ local function q(object,method,...)
     return table.unpack(values,1,values.n)
 end
 local tiangong_frequent_timings,tiangong_frequent_targets,tiangong_negative_effects,tiangong_gainskill_effects,tiangong_basic_effects
-local function facts(self)
- local f=self.world and self.world.strategy_facts and self.world.strategy_facts.hunliesp
- if type(f)~="table"then ai_unsupported("hunliesp owner facts unavailable","hunliesp")end;return f
-end
+-- Owner tags as the donor's QVariant conversions read them (absent string "",
+-- default structs). MaxHpStruct/HpLostStruct tags are not projected, but linglong
+-- sets each only around its own ask, whose prompt carries the amount.
+local linglong_kind={linglong_maxhpData="maxhp",linglong_losehpData="lose"}
 local function owner_fact(self,key)
- local v=facts(self)[key];if v==nil then ai_unsupported("hunliesp owner field unavailable",key)end
- if v==false then return nil end;return v
+ local kind=linglong_kind[key]
+ if kind then
+  local prompt=self.request and self.request.prompt
+  local k,n=nil,nil;if type(prompt)=="string"then k,n=prompt:match("^@linglong_(%a+):(.*)$")end
+  if not k then ai_unsupported("linglong struct tag is not projected",key)end
+  if k~=kind then return kind=="maxhp"and{change=0}or{lose=1}end
+  n=tonumber(n);if not n then ai_unsupported("linglong prompt amount is unknown",key)end
+  return kind=="maxhp"and{change=-n}or{lose=n}
+ end
+ local v=self.player:getTag(key)
+ if key=="linglong_damageData"then
+  if v==nil then return{damage=1}end
+  if type(v)~="table"or type(v.amount)~="number"then ai_unsupported("linglong damage tag is unknown",key)end
+  return{damage=v.amount}
+ end
+ if v==nil then return""end
+ if type(v)~="string"then ai_unsupported("hunliesp owner tag is not a string",key)end
+ return v
 end
 local function incoming(self,key)
  local c=self.request and self.request.options and self.request.options.context
@@ -25,16 +41,11 @@ local function incoming(self,key)
  if type(v)~="table"then ai_unsupported("hunliesp incoming event field unavailable",key)end;return v
 end
 local function undefined_player(self)
- local v=facts(self).global_player
- if type(v)=="table"and v.known==true and v.present==false then ai_unsupported("donor_error: undefined global player","sgkgodlinglong.player")end
  ai_unsupported("donor free global player is not a legal viewer capability","sgkgodlinglong.player")
 end
 local function eagle(to,card)
- local self=to and to._room and to._room._ai
- if not self then ai_unsupported("cardneed observer unavailable","jlyingshi_eagle")end
- local map=facts(self).jlyingshi_eagle
- local value;if type(map)=="table"then value=map[tostring(q(card,"getEffectiveId"))]end
- if type(value)~="boolean"then ai_unsupported("eagle card tag is not disclosed","jlyingshi_eagle")end;return value
+ -- Card tags are not projected.
+ ai_unsupported("eagle card tag is not projected","jlyingshi_eagle")
 end
 local function response(self,skill,class,names,request)
  if request and type(request.getActivationSkillName)~="function"then request=AILegacyRequest.new(request,self.room)end

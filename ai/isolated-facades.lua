@@ -196,23 +196,35 @@ local function to_pascal_case(field_name)
     return string.gsub(converted, "^%l", string.upper)
 end
 
+-- Both are pure in their arguments; facades are built per query, so cache them.
+local scalar_method_names = setmetatable({}, {__mode = "k"})
 local function scalar_method_name(field_name, value_type, aliases)
-    local alias = aliases[field_name]
-    if alias then
-        return alias
+    local by_aliases = scalar_method_names[aliases]
+    if not by_aliases then
+        by_aliases = {[true] = {}, [false] = {}}
+        scalar_method_names[aliases] = by_aliases
     end
-    local prefix = value_type == "boolean" and "is" or "get"
-    return prefix .. to_pascal_case(field_name)
+    local boolean = value_type == "boolean"
+    local cached = by_aliases[boolean][field_name]
+    if cached then return cached end
+    local name = aliases[field_name] or ((boolean and "is" or "get") .. to_pascal_case(field_name))
+    by_aliases[boolean][field_name] = name
+    return name
 end
 
+local scalar_getters = {}
 local function make_scalar_getter(field_name)
-    return function(self)
+    local getter = scalar_getters[field_name]
+    if getter then return getter end
+    getter = function(self)
         local view = rawget(self, "_view")
         if type(view) ~= "table" then
             return nil
         end
         return view[field_name]
     end
+    scalar_getters[field_name] = getter
+    return getter
 end
 
 local function lua_facade_index(facade, self, key)
@@ -229,7 +241,7 @@ end
 
 -- The native primitive implements this exact table lookup, without caching or
 -- native-object access. Bind it directly to avoid an extra Lua call per lookup.
-local facade_index = type(ai_facade_index) == "function" and ai_facade_index or lua_facade_index
+local facade_index = lua_facade_index
 
 local function new_facade(facade, view, aliases)
     if type(view) ~= "table" then
@@ -263,16 +275,9 @@ SkillView.__index = function(self, key)
     return facade_index(SkillView, self, key)
 end
 
-function PlayerView:screenName()
-    local facts = self._room and self._room._world and self._room._world.strategy_facts
-    local row = facts and facts.player_labels and facts.player_labels[self:objectName()]
-    return row and row.screen_name
-end
-function PlayerView:getLogName()
-    local facts = self._room and self._room._world and self._room._world.strategy_facts
-    local row = facts and facts.player_labels and facts.player_labels[self:objectName()]
-    return row and row.log_name
-end
+-- Display labels are not projected; nil means unknown.
+function PlayerView:screenName() return self._view.screen_name end
+function PlayerView:getLogName() return self._view.log_name end
 
 function PlayerView:speak(text)
     local ai = self._room and self._room._ai
@@ -318,8 +323,14 @@ end
 
 -- Equality keys reproduce legacy sorting only; they never grant card authority.
 function CardView:getLegacyIdentityToken()
-    local value = self._view and self._view.legacy_identity_token
-    return type(value) == "string" and value ~= "" and value or nil
+    local view = self._view
+    local value = view and view.legacy_identity_token
+    if type(value) == "string" and value ~= "" then return value end
+    -- A physical card is one engine object, as SmartAI's userdata equality sees it.
+    if view and view.virtual_card == false and type(view.effective_id) == "number" and view.effective_id >= 0 then
+        return "card:" .. view.effective_id
+    end
+    return nil
 end
 
 function CardView:getLegacyStringKey()
@@ -415,7 +426,7 @@ local function standard_strategy_flag(player, name)
     local world = room and room._world
     if type(name) ~= "string" or not world or not world.self
         or player:objectName() ~= world.self.object_name then return false end
-    local h=world.strategy_facts and world.strategy_facts.hegemony
+    local h=AIHegemony.facts(world)
     if name=='willSkipPlayPhase' and h and h.enabled==true and h.original_overrides_loaded==true then return true end
     if name == "NosKurou_toDie" or name == "AI_doNotInvoke_qianxi" or name == "AI_doNotInvoke_luoshen"
         or name == "AI_Luoshen_Conflict_With_Guanxing" or name == "stack_overflow_jijiang"
@@ -438,7 +449,7 @@ local function standard_strategy_flag(player, name)
     end
     local suffix = "nosguhuoFailed"
     if name:sub(-#suffix) == suffix then
-        local patterns = world.strategy_facts and world.strategy_facts.pattern_names
+        local patterns = AICardCatalog.patternNames()
         for _, pattern in ipairs(patterns or {}) do
             if name == pattern .. suffix then return true end
         end
@@ -483,7 +494,10 @@ function PlayerView:hasSkill(skill_name, include_lose)
     if type(skill_name) ~= "string" or skill_name == "" then
         return false
     end
-    local base_name, instance_text = string.match(skill_name, "^(.-)#(%d+)$")
+    local base_name, instance_text
+    if string.find(skill_name, "#", 1, true) then
+        base_name, instance_text = string.match(skill_name, "^(.-)#(%d+)$")
+    end
     local instance_id
     if base_name then
         instance_id = tonumber(instance_text)
@@ -622,10 +636,9 @@ end
 
 function PlayerView:getAliveSiblings(include_self)
     assert(include_self == nil or type(include_self) == "boolean", "invalid sibling self selector")
+    -- Siblings follow the Room roster; player_order is that roster.
     local room = self._room
-    local facts = room and room._world and room._world.strategy_facts
-    local rows = type(facts) == "table" and facts.player_sibling_order
-    local order = type(rows) == "table" and rows[self:objectName()]
+    local order = room and room._world and room._world.player_order
     if not AIValue.isList(order) then return nil end
     local result, seen = {}, {}
     for _, name in ipairs(order) do
@@ -680,12 +693,24 @@ function PlayerView:isAllNude()
 end
 
 -- Authority facts preserve discard locks; a nonempty zone alone is not legality.
+-- The viewer's Player::canDiscard(who, zones); zones is one of h/e/j/he/hj/ej/hej.
 function PlayerView:canDiscard(who, flags)
     who = who or self
     if not AIValue.isPlayer(who) then return nil end
     local rows = self._view.can_discard
     local row = type(rows) == "table" and rows[who:objectName()]
     if type(row) ~= "table" then return nil end
+    if type(flags) == "number" then
+        -- canDiscard(to, card_id): the viewer's own card is its jilei bit; a public
+        -- card of another player follows that player's zone answer.
+        local card = self._room._ai and self._room._ai:getKnownCardById(flags)
+        if not card then return nil end
+        if who:objectName() == self:objectName() and card._view.jilei ~= nil then return not card._view.jilei end
+        local place = self._room:getCardPlace(flags)
+        local zone = place == sgs.Player_PlaceEquip and "e" or place == sgs.Player_PlaceDelayedTrick and "j"
+            or place == sgs.Player_PlaceHand and "h" or nil
+        return zone and row[zone] or nil
+    end
     return row[tostring(flags)]
 end
 
@@ -733,13 +758,24 @@ end
 function PlayerView:hasArmorEffect(name, source)
     -- The snapshot covers the source-independent equipped armor query only.
     if source ~= nil then return nil end
+    -- With a view-as equipment source the authority lists every effective armor
+    -- name; a class name matches the physical armor only, as in Player.
+    local effects = self._view.armor_effect_names
+    if AIValue.isList(effects) then
+        if name == nil or name == "" then return #effects > 0 end
+        local physical = self:getArmor()
+        for _, effect in ipairs(effects) do
+            if effect == name or physical and physical:objectName() == effect and physical:isKindOf(name) then return true end
+        end
+        return false
+    end
     local active = self._view.active_armor_name
     if type(active) ~= "string" then
         -- Finite Original source names only. A pure host proof may establish
         -- absence from an empty public equipment domain; never infer true or
         -- read foreign private armor/nullification state.
         local ai=self._room and self._room._ai
-        local h=ai and ai.world and ai.world.strategy_facts and ai.world.strategy_facts.hegemony
+        local h=ai and ai.world and AIHegemony.facts(ai.world)
         if (name=='SilverLion'or name=='EightDiagram'or name=='bazhen'or name=='Vine'or name=='IronArmor'or name=='RenwangShield'or name=='PeaceSpell'or name=='Breastplate')
             and ai.request and ai.request.kind~='event'
             and h and h.enabled==true and h.original_overrides_loaded==true
@@ -756,7 +792,7 @@ end
 
 function PlayerView:hasFlag(name)
     local kurouAI=self._room and self._room._ai
-    local kurouFacts=kurouAI and kurouAI.world.strategy_facts.hegemony
+    local kurouFacts=kurouAI and AIHegemony.facts(kurouAI.world)
     if name=='Kurou_toDie' and kurouAI and kurouFacts and kurouFacts.enabled==true and kurouFacts.original_overrides_loaded==true then
         if self:objectName()~=kurouAI.player:objectName()then
             ai_unsupported('foreign Original Kurou policy flag is private','Kurou_toDie')
@@ -764,8 +800,7 @@ function PlayerView:hasFlag(name)
         return kurouAI:getOriginalKurouToDie()
     end
     local ai=self._room and self._room._ai
-    local facts=ai and ai.world and ai.world.strategy_facts
-    local h=facts and facts.hegemony
+    local h=ai and AIHegemony.facts(ai.world)
     if name=='willSkipPlayPhase' and ai and self:objectName()==ai.player:objectName()
         and h and h.enabled==true and h.original_overrides_loaded==true then
         return ai:readOriginalGuanxingShadow()
@@ -906,32 +941,10 @@ local function pile_entry(view, pile_name)
 end
 
 -- Notified selection piles are viewer disclosures, not real owned piles.
-function PlayerView:getNotifiedPile(name)
-    local room = self._room
-    if not room or room._world.self.object_name ~= self:objectName() then return nil end
-    local facts = room._world.strategy_facts
-    local rows = type(facts) == "table" and facts.notified_piles
-    local row = type(rows) == "table" and rows[name]
-    return type(row) == "table" and row.complete ~= false and AIValue.isList(row.card_ids) and AIList.new(copy_value(row.card_ids)) or nil
-end
-function PlayerView:getNotifiedPileCards(name)
-    local room = self._room
-    if not room or room._world.self.object_name ~= self:objectName() then return nil end
-    local facts = room._world.strategy_facts
-    local rows = type(facts) == "table" and facts.notified_piles
-    local row = type(rows) == "table" and rows[name]
-    return type(row) == "table" and row.complete ~= false and wrap_values(row.cards, CardView.new) or nil
-end
-function PlayerView:getNotifiedTag(key)
-    local room = self._room
-    if not room or room._world.self.object_name ~= self:objectName() then return nil end
-    local facts = room._world.strategy_facts
-    local rows = type(facts) == "table" and facts.notified_piles
-    for name, row in pairs(type(rows) == "table" and rows or {}) do
-        if row.tag_key == key then return self:getNotifiedPile(name) end
-    end
-    return nil
-end
+-- Piles notified to the viewer without being its own are not projected: unknown.
+function PlayerView:getNotifiedPile(name) return nil end
+function PlayerView:getNotifiedPileCards(name) return nil end
+function PlayerView:getNotifiedTag(key) return nil end
 
 function PlayerView:getPileNames()
     local view = rawget(self, "_view")
@@ -945,14 +958,14 @@ end
 function PlayerView:getPile(pile_name)
     -- 關閉的牌堆沒有 card_ids：那是「看不到」，不是「沒有牌」。
     local pile = pile_entry(rawget(self, "_view"), pile_name)
-    if not pile and self._view.piles_complete == true then return AIList.new({}) end
+    if not pile and AIValue.isList(self._view.piles) then return AIList.new({}) end
     if not pile or not AIValue.isList(pile.card_ids) then return nil end
     return AIList.new(pile.card_ids)
 end
 
 function PlayerView:getPileCount(pile_name)
     local pile = pile_entry(rawget(self, "_view"), pile_name)
-    if not pile and self._view.piles_complete == true then return 0 end
+    if not pile and AIValue.isList(self._view.piles) then return 0 end
     return pile and pile.count or nil
 end
 
@@ -1010,7 +1023,7 @@ function PlayerView:getPileName(card_id)
     local view = rawget(self, "_view")
     local piles = type(view) == "table" and view.piles or nil
     if not AIValue.isList(piles) then return nil end
-    local complete = view.piles_complete == true
+    local complete = true -- every pile is listed; a closed one clears this below
     for _, pile in ipairs(piles) do
         if AIValue.isList(pile.card_ids) then
             for _, id in ipairs(pile.card_ids) do
@@ -1058,17 +1071,7 @@ end
 function PlayerView:getSkills()
     local view = rawget(self, "_view")
     if type(view) ~= "table" or not AIValue.isList(view.skills) then return nil end
-    local rows = copy_value(view.skills)
-    local world = self._room and self._room._world
-    local facts = type(world) == "table" and world.strategy_facts
-    if type(facts) == "table" and self:objectName() == world.self.object_name
-        and facts.owner_view_as_equips_complete == true then
-        for _, row in ipairs(rows) do
-            local names = facts.owner_view_as_equips[row.name]
-            if AIValue.isList(names) then row.view_as_equip_names = copy_value(names) end
-        end
-    end
-    return wrap_values(rows, SkillView.new)
+    return wrap_values(copy_value(view.skills), SkillView.new)
 end
 
 -- Player::getVisibleSkillList uses the deduplicated, name-ordered skill map.
@@ -1076,9 +1079,14 @@ end
 function PlayerView:getVisibleSkillList(include_equip)
     local skills = self:getSkills()
     if not skills then return nil end
-    local world = self._room and self._room._world
-    local facts = type(world) == "table" and world.strategy_facts
-    local equips = type(facts) == "table" and facts.public_equip_skill_names
+    -- Player::hasEquipSkill: a skill named after an equipment card.
+    local equips
+    if type(ai_card_catalog) == "table" then
+        equips = {}
+        for _, row in ipairs(ai_card_catalog) do
+            if row.type_id == sgs.Card_TypeEquip then equips[row.name] = true end
+        end
+    end
     local rows, seen = {}, {}
     for _, skill in sgs.qlist(skills) do
         local name = skill:objectName()
@@ -1228,6 +1236,8 @@ function CardView:subcardsLength()
     if type(count)=="number" and count>=0 and count<math.huge and count%1==0 then return count end
 end
 
+function SkillView:getLimitMark() return self._view.limit_mark end
+function SkillView:getDescription() return self._view.description end
 function SkillView:isLimitedSkill()
     local frequency = self._view.frequency
     if type(frequency) ~= "number" or type(sgs.Skill_Limited) ~= "number" then return nil end
@@ -1365,21 +1375,6 @@ local function index_card_locations(room)
         for _, view in ipairs(world.players) do add_player(view) end
     end
     add_cards(world.discard_pile, nil, sgs.Player_DiscardPile)
-    local facts = world.strategy_facts
-    local notified = type(facts) == "table" and facts.notified_piles
-    for _, pile in pairs(type(notified) == "table" and notified or {}) do
-        local disclosed = {}
-        for _, card in ipairs(type(pile.cards) == "table" and pile.cards or {}) do
-            if type(card) == "table" and type(card.id) == "number" then disclosed[card.id] = true end
-        end
-        for _, id in ipairs(pile.card_ids or {}) do
-            local location = type(pile.locations) == "table" and (pile.locations[tostring(id)] or pile.locations[id])
-            if type(location) == "table" then add(id, location.owner, location.place)
-            elseif disclosed[id] then
-                add(id, nil, nil) -- Disclosed identity remains known; a stale location does not.
-            end
-        end
-    end
     return locations
 end
 
@@ -1391,15 +1386,6 @@ function RoomView.new(world)
     local function add(view)
         if type(view) ~= "table" or type(view.object_name) ~= "string"
             or view.object_name == "" or room._players[view.object_name] then return false end
-        local facts = world.strategy_facts
-        local public = type(facts) == "table" and facts.public_player_properties
-        local properties = type(public) == "table" and public[view.object_name]
-        if type(properties) == "table" then
-            view = copy_value(view)
-            for _, key in ipairs({"zhafu_from", "equip_areas", "has_display_property", "newtype_pattern"}) do
-                if properties[key] ~= nil then view[key] = copy_value(properties[key]) end
-            end
-        end
         room._players[view.object_name] = PlayerView.new(view)
         room._players[view.object_name]._room = room
         room._player_order[#room._player_order + 1] = view.object_name
@@ -1441,10 +1427,9 @@ function RoomView:getCurrent()
 end
 
 function RoomView:getCurrentDyingPlayer()
-    local facts = self._world.strategy_facts
-    local name = facts and facts.current_dying_player
+    local name = self._world.current_dying
     if type(name) ~= "string" then
-        ai_unsupported("current dying stack is not projected", "current_dying_player")
+        ai_unsupported("current dying player is not projected", "current_dying")
     end
     if name == "" then return nil end
     local player = self._players[name]
@@ -1540,7 +1525,135 @@ function RoomView:getCardPlace(card_id)
 end
 
 function RoomView:isCardKnown(card_id)
-    return self._card_locations[card_id] ~= nil
+    if self._card_locations[card_id] ~= nil then return true end
+    -- A card the current question discloses is known even without a location.
+    return self._ai ~= nil and self._ai:getChoiceCard(card_id) ~= nil
+end
+
+-- Lifecycle epochs from public turn structure. GameRule clears a player's flags and
+-- "-Clear" marks when that player's turn ends, "-PlayClear" marks when its Play phase
+-- ends, and every mark at burial. Global_TurnCount is a broadcast mark, so a missing
+-- entry is zero. The counters only ever grow, which is all an observer cache needs.
+AIWorldLifecycle = {}
+
+local function lifecycle_epoch(world, view, kind)
+    local marks = type(view.public_marks) == "table" and view.public_marks or {}
+    local turns = tonumber(marks.Global_TurnCount) or 0
+    local in_turn = world.current_player == view.object_name
+        and world.current_phase ~= sgs.Player_NotActive
+    local dead = view.alive == false and 1 or 0
+    if kind == "all_mark" then return dead end
+    if kind == "play" then
+        local in_play = in_turn and type(world.current_phase) == "number"
+            and world.current_phase <= sgs.Player_Play
+        return math.max(0, turns - (in_play and 1 or 0)) + dead
+    end
+    return math.max(0, turns - (in_turn and 1 or 0)) + dead
+end
+
+-- Static engine card kinds, pushed once by the host as ai_card_catalog (engine
+-- order, one row per card name). Nil means the host did not provide it.
+AICardCatalog = {}
+
+-- The catalog never changes after initialization, so its indexes are built once.
+local catalog_index
+local function catalog()
+    if catalog_index then return catalog_index end
+    if type(ai_card_catalog) ~= "table" then return nil end
+    local by_name, names, classes = {}, {}, {}
+    for _, row in ipairs(ai_card_catalog) do
+        by_name[row.name] = by_name[row.name] or row
+        classes[row.class_name] = row.name
+        if not row.banned and row.name:sub(1, 1) ~= "_" and row.type_id < sgs.Card_TypeEquip then
+            names[#names + 1] = row.name
+        end
+    end
+    catalog_index = {by_name = by_name, names = names, classes = classes}
+    return catalog_index
+end
+
+function AICardCatalog.get(name)
+    local index = catalog()
+    return index and index.by_name[name] or nil
+end
+
+-- SmartAI's patterns(): unbanned basic and trick names without a leading "_".
+function AICardCatalog.patternNames()
+    local index = catalog()
+    return index and copy_value(index.names) or nil
+end
+
+-- SmartAI's class_to_name: the last card name registered for each class.
+function AICardCatalog.patternClassNames()
+    local index = catalog()
+    return index and copy_value(index.classes) or nil
+end
+
+-- One class_to_name entry, without copying the whole map.
+function AICardCatalog.patternName(class_name)
+    local index = catalog()
+    if not index then return nil end
+    return index.classes[class_name] or false
+end
+
+-- Hegemony facts from the viewer's snapshot and this VM's own registries. The
+-- original-hegemony overrides load exactly when hegemony is enabled.
+AIHegemony = {}
+
+local function registry_presence(registry)
+    return setmetatable({}, {__index = function(_, name)
+        local callbacks = sgs[registry]
+        return type(callbacks) == "table" and type(callbacks[name]) == "function"
+    end})
+end
+
+local hegemony_cache = setmetatable({}, {__mode = "k"})
+function AIHegemony.facts(world)
+    if type(world) ~= "table" or type(world.enable_hegemony) ~= "boolean" then return nil end
+    if hegemony_cache[world] then return hegemony_cache[world] end
+    local enabled = world.enable_hegemony
+    local players = {}
+    local function add(view)
+        if type(view) ~= "table" or type(view.object_name) ~= "string" then return end
+        local head = type(view.general) == "string" and view.general ~= "" and view.general ~= "anjiang"
+        local deputy = type(view.general2) == "string" and view.general2 ~= "" and view.general2 ~= "anjiang"
+        local kingdom = (head or deputy or not enabled) and view.kingdom or ""
+        players[view.object_name] = {shown_head = head, shown_deputy = deputy,
+            shown_one = head or deputy, shown_all = head and (deputy or not enabled and view.general2 == ""),
+            public_kingdom = kingdom or "",
+            public_careerist = enabled and (head or deputy) and view.role == "careerist"}
+    end
+    add(world.self)
+    for _, view in ipairs(type(world.players) == "table" and world.players or {}) do add(view) end
+    local trick_prohibit = {}
+    for name, callback in pairs(type(sgs.ai_trick_prohibit) == "table" and sgs.ai_trick_prohibit or {}) do
+        if type(name) == "string" and type(callback) == "function" then trick_prohibit[#trick_prohibit + 1] = name end
+    end
+    local own = world.self and world.self.kingdom
+    if world.self and world.self.role == "careerist" then own = "careerist" end
+    local facts = {enabled = enabled, original_overrides_loaded = enabled, players = players,
+        own_kingdom = (type(own) == "string" and own ~= "") and own or "unknown",
+        view_as_presence = registry_presence("ai_view_as"),
+        cardsview_presence = registry_presence("ai_cardsview"),
+        need_damaged_presence = registry_presence("ai_need_damaged"),
+        armor_value_presence = registry_presence("ai_armor_value"),
+        trick_prohibit_functions = trick_prohibit}
+    hegemony_cache[world] = facts
+    return facts
+end
+
+-- kind: "flag" (alias "turn"), "play" or "all_mark". Returns name -> epoch.
+function AIWorldLifecycle.epochs(world, kind)
+    if type(world) ~= "table" or type(world.self) ~= "table"
+        or not AIValue.isList(world.players) then return nil end
+    local result = {}
+    result[world.self.object_name] = lifecycle_epoch(world, world.self, kind)
+    for _, view in ipairs(world.players) do
+        if type(view) == "table" and type(view.object_name) == "string" then
+            result[view.object_name] = lifecycle_epoch(world, view, kind)
+        end
+    end
+    return result
 end
 
 SmartAIView = {}
@@ -1601,7 +1714,12 @@ function SmartAIView.new(request)
     local conversions = request.card_conversions
     if AIValue.isList(conversions) then
         indexes.conversions = {}
-        for _, row in ipairs(conversions) do
+        for _, source in ipairs(conversions) do
+            -- Each issued conversion is its own product, distinct across requests.
+            local row = copy_value(source)
+            if type(row.conversion_id) == "number" and row.legacy_identity_token == nil then
+                row.legacy_identity_token = "conversion:" .. tostring(request.decision_id) .. ":" .. row.conversion_id
+            end
             local conversion = ConversionView.new(copy_value(row))
             if conversion then
                 indexes.conversions[#indexes.conversions + 1] = copy_value(row)
@@ -1654,10 +1772,6 @@ function SmartAIView.new(request)
     facade_kinds[ai] = "ai"
     -- Activate rebuilds relations from the prior completed planner before the
     -- current request's friend/enemy lists are materialized.
-    if request.kind == "activate" and type(ai.world.mode_policy) == "table"
-        and ai.world.mode_policy.standard_identity == true then
-        ai:refreshModeForActivate()
-    end
     if ai:isModeManaged() then
         if ai.world.mode_policy.standard_identity == true then
             -- These stored lists are updatePlayers' objective-sign lists.
@@ -1677,12 +1791,6 @@ function SmartAIView.new(request)
             ai.enemies = AIList.asLuaTable(ai:getEnemies())
         end
     end
-    local facts = ai.world.strategy_facts
-    if type(facts) == "table" and type(facts.owner_yinni) == "table"
-        and facts.owner_yinni.viewer == request.viewer then
-        ai.player._view.yinni_original_skill_groups = copy_value(facts.owner_yinni)
-    end
-    if type(ai.installInovationHelpers) == "function" then ai:installInovationHelpers() end
     if type(ai.installOriginalHegemonyHelpers) == "function" then ai:installOriginalHegemonyHelpers() end
     if type(ai.restoreEventKeepState) == "function" then ai:restoreEventKeepState() end
     return ai
@@ -1705,11 +1813,40 @@ end
 
 -- Question context is an explicit pure-value schema. Wrap only named player/card
 -- fields; never imitate an unrestricted QVariant conversion or native tag lookup.
+-- SmartAI keeps the last CardEffect it saw (sgs.cardEffect). The event log holds it
+-- as the latest card_effect event; an effect older than the log reads as absent.
+-- Returns {from=name, to=name, card=row} or nil.
+function SmartAIView:getLastCardEffect()
+    local events = self.world.events
+    for index = AIValue.isList(events) and #events or 0, 1, -1 do
+        local event = events[index]
+        if event.trigger_event == sgs.CardEffect and event.kind == "card_effect" then
+            local details = type(event.details) == "table" and event.details or {}
+            return {from = event.from, to = event.to, card = copy_value(details.card),
+                offset_num = details.offset_num, no_respond = details.no_respond,
+                no_offset = details.no_offset}
+        end
+    end
+    return nil
+end
+
+-- Room tag "UseHistory"..key: a card use still in flight, as {from, to, card,
+-- nullified_list} with player names and a public card row; nil when there is none.
+function SmartAIView:getUseHistory(key)
+    local rows = self.world.use_history
+    if type(rows) ~= "table" then ai_unsupported("use history is not projected", "UseHistory") end
+    return copy_value(rows[key])
+end
+
 function SmartAIView:getDecisionContext()
     local options = self.request.options
     local raw = type(options) == "table" and options.context or nil
     local context = copy_value(self.world.decision_context or {})
     for key, value in pairs(raw or {}) do context[key] = copy_value(value) end
+    local last_effect = self:getLastCardEffect()
+    if context.effect == nil then
+        if last_effect then context.effect = last_effect else context.effect_present = false end
+    end
     local function wrap_event(event)
         if type(event) ~= "table" then return end
         for _, key in ipairs({"who", "from", "to"}) do
@@ -1987,6 +2124,10 @@ function SmartAIView:getDecisionData()
         toPindian = function() return context.pindian end,
         toMoveOneTime = function() return context.move end,
         toStringList = function()
+            -- Native projects QStringList decision data as context.string_list.
+            if AIValue.isList(context.string_list) then
+                return AIList.new(copy_value(context.string_list))
+            end
             -- Finite original CardAsked input from the active Goddess writer.
             -- This does not expose arbitrary QVariant string lists or tags.
             local request=ai.request
@@ -2016,6 +2157,13 @@ function SmartAIView:getDecisionData()
                 ai_unsupported("LianliSlash asked data is unavailable","lianli_slash.invoke")
             end
             return copy_value(invocation.asked)
+        end,
+        toString = function()
+            -- Native projects QString decision data as context.value; other kinds stay unknown.
+            if type(context.value) ~= "string" then
+                ai_unsupported("decision string data is unavailable","toString")
+            end
+            return context.value
         end,
         toPlayer = function() return context.player end,
         toDying = function() return context.dying end,
@@ -2147,7 +2295,9 @@ function SmartAIView:getCardCandidate(card_id)
         return self:getConversion(-card_id)
     end
     local row = self._indexes and self._indexes.candidates_by_card[card_id]
-    return row and CandidateView.new(copy_value(row)) or nil
+    local candidate = row and CandidateView.new(copy_value(row)) or nil
+    if candidate then rawset(candidate, "_ai", self) end
+    return candidate
 end
 
 -- 已授權的轉化：權威端自己用玩家真的持有的那個技能實例造出一張牌，再把那張牌的身分
@@ -2196,6 +2346,17 @@ function ConversionView:isKindOf(name)
         if entry == name then return true end
     end
     return false
+end
+
+-- 牌型同樣取自那張牌的 meta chain；認不出時回 nil。
+function ConversionView:getTypeId()
+    for _, row in ipairs({{"SkillCard", sgs.Card_TypeSkill}, {"BasicCard", sgs.Card_TypeBasic},
+        {"TrickCard", sgs.Card_TypeTrick}, {"EquipCard", sgs.Card_TypeEquip}}) do
+        local kind = self:isKindOf(row[1])
+        if kind == nil then return nil end
+        if kind then return row[2] end
+    end
+    return nil
 end
 
 
@@ -2353,8 +2514,9 @@ function ConversionView:getPhysicalProductId()
 end
 
 -- 值型答案。送出去的是票；牌名、花色、點數與成本一起送，只是讓權威端能比對出不一致
--- 並拒絕，不是授權來源。
+-- 並拒絕，不是授權來源。V1 技能的評估收據沒有答案，送出時改由 SmartAI 回答。
 function ConversionView:toCardSpec()
+    if self._view.legacy_v1 then ai_unsupported("V1 skill falls back to SmartAI", self:getActivationSkillName()) end
     local subcards = self:getSubcards()
     local ids = {}
     if subcards then
@@ -2362,7 +2524,8 @@ function ConversionView:toCardSpec()
     end
     return {conversion_id = self:getConversionId(), name = self:objectName(),
         suit = self:getSuit(), number = self:getNumber(),
-        skill = self:getActivationSkillName(), subcards = ids}
+        skill = self:getActivationSkillName(), subcards = ids,
+        receipt_answer = copy_value(self._view.skill_action_answer)}
 end
 
 -- A donor's planning placeholder is a strategy value, never a payment
@@ -2478,6 +2641,52 @@ function SmartAIView:getConversions()
     local result = AIList.new({})
     for _, conversion in ipairs(self._indexes.conversions) do result:append(ConversionView.new(copy_value(conversion))) end
     return result
+end
+
+-- A skill card the strategy proposes. The authority builds it on submission: a V2
+-- instance from its skill action, costs and user string (canActivate and quota are
+-- rechecked). A V1 skill card is evaluated only; submitting it falls back to SmartAI.
+-- Targets are the authority's to validate, so the receipt claims no target legality
+-- of its own.
+local skill_action_receipt_base = 1000000
+function SmartAIView:registerSkillActionReceipt(spec)
+    local indexes = self._indexes
+    if type(indexes) ~= "table" or type(indexes.conversions) ~= "table" then
+        ai_unsupported("conversion index is unavailable", spec.skill)
+    end
+    local identity = spec.identity or {}
+    -- Same face as a readonly turn seed of this class (evaluateTurnSkillCard).
+    local lua_card = spec.legacy_class and spec.legacy_class:sub(1, 1) == "#"
+    local class_name = lua_card and "LuaSkillCard" or spec.legacy_class or "SkillCard"
+    local name = lua_card and spec.legacy_class:sub(2) or spec.legacy_class or spec.skill
+    local costs = copy_value(spec.costs)
+    local ids = #costs > 0 and table.concat(costs, "+") or "."
+    local user = spec.user_string and spec.user_string ~= "" and (":" .. spec.user_string) or ""
+    local prototype = spec.legacy_class or spec.skill
+    -- The legacy card string doubles as the planner's sort key.
+    local wire = prototype:sub(1, 1) == "#" and (prototype .. ":" .. ids .. ":" .. (spec.user_string or ""))
+        or ("@" .. prototype .. "=" .. ids .. user)
+    local answer = spec.identity and {skill_action = {skill = identity.activation_skill,
+        instance = identity.activation_instance, owner = identity.activation_owner},
+        cards = costs, user_string = spec.user_string} or nil
+    local id = skill_action_receipt_base + #indexes.conversions + 1
+    local row = {conversion_id = id, name = name, class_name = class_name,
+        kind_of_names = {class_name, "SkillCard", "Card"}, type_id = sgs.Card_TypeSkill,
+        suit = sgs.Card_NoSuit, number = 0, skill_name = spec.skill, subcards = costs,
+        activation_owner = identity.activation_owner or self.player:objectName(),
+        activation_skill = identity.activation_skill or spec.skill,
+        activation_instance = identity.activation_instance,
+        source_owner = identity.source_owner or self.player:objectName(),
+        source_skill = identity.source_skill or spec.skill,
+        source_instance = identity.source_instance,
+        available = true, declared_name = spec.user_string, can_recast = false, virtual_card = true,
+        legacy_string_key = wire, legacy_sort_key = wire,
+        legacy_identity_token = fresh_policy_identity(policy_identity_scope(self)),
+        authority_validates_targets = true, skill_action_answer = answer,
+        legacy_v1 = answer == nil}
+    indexes.conversions[#indexes.conversions + 1] = row
+    indexes.conversions_by_id[id] = row
+    return ConversionView.new(copy_value(row))
 end
 
 function SmartAIView:getConversion(conversion_id)
@@ -2619,47 +2828,25 @@ function RoomView:distanceTo(from, to)
     return row[to:objectName()]
 end
 
--- Native Player::distanceTo is either fix-independent or max(raw + fix, 1).
--- Only use already lawful values; the clamped (1,1) pair is ambiguous.
 local function r34_distance_integer(value)
     return type(value)=="number" and value==value and value~=math.huge
         and value~=-math.huge and value%1==0
 end
-local function r34_fixed_witness(player,name)
-    local room=rawget(player,"_room")
-    local world=room and rawget(room,"_world")
-    local rows=world and world.strategy_facts and world.strategy_facts.distance_fixed_witness
-    local row=type(rows)=="table" and rows[player:objectName()]
-    return type(row)=="table" and row[name]==true
-end
-local function r34_distance_two(zero,one,fixed)
-    if not r34_distance_integer(zero) then return nil end
-    if fixed then return zero end
-    if not r34_distance_integer(one) then return nil end
-    if one==zero and zero~=1 then return zero end
-    if one==zero+1 and one>1 then return one+1 end
-    return nil
-end
+-- Server Player::distanceTo adds the fix before clamping at 1. A projected distance
+-- above 1 is unclamped; at 1 a positive fix cannot be recovered. Fixed distances
+-- (which ignore the fix) are not projected separately.
 function PlayerView:distanceTo(other, fix)
     if fix~=nil and fix~=0 then
-        if fix~=1 and fix~=2 then return nil end
         local world=self._room and self._room._world
         local name=type(other)=="string" and other or other and other:objectName()
         if not name then return nil end
         local from=self:objectName()
-        local rows=world and world.strategy_facts and world.strategy_facts.distance_fix_one
-        local row=type(rows)=="table" and rows[from]
-        local one=type(row)=="table" and row[name] or nil
+        if from==name then return 0 end
         local base=world and world.distances and world.distances[from]
         local zero=type(base)=="table" and base[name] or nil
-        local fixed=r34_fixed_witness(self,name)
-        if fix==1 then
-            if one~=nil then return one end
-            if fixed and r34_distance_integer(zero) then return zero end
-            return nil
-        end
-        if from==name then return 0 end
-        return r34_distance_two(zero,one,fixed)
+        if not r34_distance_integer(zero) then return nil end
+        if zero>1 or fix<0 then return math.max(zero+fix,1) end
+        return nil
     end
     local room=rawget(self,"_room")
     if not room then return nil end
@@ -2719,16 +2906,6 @@ end
 function PlayerView:canPindian(other, except_self)
     if except_self == nil then except_self = true end
     local ai = self._room and self._room._ai
-    local facts = ai and ai.world.strategy_facts
-    local own = ai and self:objectName() == ai.player:objectName()
-    local row = own and type(facts) == "table" and facts.owner_can_pindian
-    if type(row) == "table" then
-        if other == nil then return row[except_self and "any" or "any_including_self"] end
-        local targets = row[except_self and "targets" or "targets_including_self"]
-        if type(targets) == "table" then return targets[other:objectName()] end
-        return nil
-    end
-    if own then return nil end
     if not other or type(other.isKongcheng) ~= "function" then return nil end
     local self_empty = self:isKongcheng()
     if self_empty == nil then return nil end
@@ -2745,9 +2922,8 @@ end
 function PlayerView:getShuangxiongColors()
     local ai = self._room and self._room._ai
     if not ai or self:objectName() ~= ai.player:objectName() then return nil end
-    local facts = ai.world.strategy_facts
-    local value = type(facts) == "table" and facts.owner_shuangxiong_colors_turn
-    if type(value) ~= "string" then return nil end
+    local value = self:getPropertyValue("shuangxiong_colors_turn")
+    if type(value) ~= "string" or value == "" then return nil end
     local result = {}
     for color in (value .. "+"):gmatch("(.-)%+") do result[#result+1] = color end
     return AIList.new(result)
@@ -2774,7 +2950,8 @@ function SmartAIView:getKnownCardById(id)
             end
         end
     end
-    return nil
+    -- The current question's disclosed cards (an AG or Guanxing domain) are known too.
+    return self:getChoiceCard(id)
 end
 
 -- 可見攻擊範圍內才視為能殺。距離或範圍沒投影時不猜；禁出牌仍由權威端重驗。
@@ -2792,15 +2969,20 @@ function PlayerView:canSlash(other, card, distance_limit, range_fix)
         else return nil end
     end
     local room = rawget(self, "_room")
-    local facts = room and room._world.strategy_facts
-    local rows = type(facts) == "table" and facts.slash_checks
-    rows = type(rows) == "table" and rows[self:objectName()]
-    rows = type(rows) == "table" and rows[other:objectName()]
-    rows = type(rows) == "table" and rows[key]
-    rows = type(rows) == "table" and rows[tostring(distance_limit)]
-    if type(rows) == "table" then return rows[tostring(range_fix)] end
-    if room and room._ai and self:objectName() ~= room._world.self.object_name
-        and type(distance_limit) == "boolean" and type(range_fix) == "number" then
+    -- The viewer's own physical card with a request candidate: its legal targets are
+    -- the authority's answer to the plain question.
+    if room and room._ai and self:objectName() == room._world.self.object_name
+        and distance_limit == true and range_fix == 0 and key:sub(1, 3) == "id:" then
+        local candidate = room._ai:getCardCandidate(tonumber(key:sub(4)))
+        local legal = candidate and candidate:getLegalTargets()
+        if legal then
+            for _, target in ipairs(legal) do
+                if target:objectName() == other:objectName() then return true end
+            end
+            return false
+        end
+    end
+    if room and room._ai and type(distance_limit) == "boolean" and type(range_fix) == "number" then
         local alive = other:isAlive()
         if alive == false then return false end
         if alive ~= true then return nil end
@@ -3249,28 +3431,7 @@ function SmartAIView:objectiveLevel(other)
     if type(policy) ~= "table" or not policy.managed or policy.error ~= nil then return nil end
     if not other then return 0 end
     local name=other:objectName()
-    if policy.standard_identity then
-        if type(ai_mode_objective)~="function" then ai_unsupported("lazy native objective bridge unavailable","objectiveLevel") end
-        local result
-        if self.request and self.request.kind=="event" then
-            if type(self._event_policy_prefix)~="function" then ai_unsupported("event objective prefix unavailable","objectiveLevel") end
-            local deltas,effects=self._event_policy_prefix()
-            result=ai_mode_objective(name,deltas,effects)
-        else result=ai_mode_objective(name) end
-        if type(result)~="table" or type(result.value)~="number" or result.value~=result.value or math.abs(result.value)==math.huge then
-            ai_unsupported("invalid lazy native objective result","objectiveLevel")
-        end
-        if type(result.strategy_marks)=="table" then policy.strategy_marks=result.strategy_marks end
-        if type(result.relations)=="table" then
-            policy.relations=policy.relations or {}
-            policy.relations[self.player:objectName()]=result.relations
-        end
-        policy.objectives=policy.objectives or {};policy.objectives[name]=result.value
-        for _,basis in ipairs(result.estimated_branches or {}) do
-            self:useKnowledgeEstimate({status="estimate",value=result.value,basis=basis,player=name},"objectiveLevel")
-        end
-        return result.value
-    end
+    -- The mode policy evaluated every objective for this decision.
     return (policy.objectives or {})[name]
 end
 
@@ -3551,6 +3712,16 @@ local function normalize_card_spec(spec)
 end
 
 local function normalize_card_action(value)
+    -- A locally registered receipt answers with its own skill action; it has no
+    -- conversion ticket the authority issued.
+    local receipt = type(value.card_spec) == "table" and value.card_spec.receipt_answer
+    if type(receipt) == "table" then
+        local merged = {}
+        for key, item in pairs(value) do merged[key] = item end
+        merged.card_spec = nil
+        for key, item in pairs(receipt) do if merged[key] == nil then merged[key] = item end end
+        value = merged
+    end
     local result = {kind = "use_card"}
     if value.card ~= nil then
         assert(type(value.card) == "string", "AI result card must be a card string")
@@ -3766,32 +3937,59 @@ function CardView:getSkillNames()
 end
 ConversionView.getSkillNames = CardView.getSkillNames
 function CardView:getEquipOccupyLocations()
-    return AIValue.isList(self._view.equip_occupy_locations) and AIList.new(self._view.equip_occupy_locations) or nil
+    local locations = self._view.equip_occupy_locations
+    if not AIValue.isList(locations) then
+        local row = AICardCatalog.get(self._view.name)
+        locations = row and row.occupy_locations
+    end
+    return AIValue.isList(locations) and AIList.new(locations) or nil
 end
 ConversionView.getEquipOccupyLocations = CardView.getEquipOccupyLocations
 function CardView:getTargetResidue(target)
     local rows = self._view.target_residue
     return type(rows) == "table" and rows[AIValue.isPlayer(target) and target:objectName() or target] or nil
 end
-function PlayerView:getHandPileCount() return self._view.hand_pile_count end
+-- The viewer's own tags and dynamic properties as plain values: gameplay structs are
+-- tables with player names and public card rows. Another player's are not projected.
+function PlayerView:getTag(name)
+    local tags = self._view.tags
+    if type(tags) ~= "table" then ai_unsupported("only the viewer's own tags are projected", "tag:" .. tostring(name)) end
+    return copy_value(tags[name])
+end
+function PlayerView:getPropertyValue(name)
+    local properties = self._view.properties
+    if type(properties) ~= "table" then
+        ai_unsupported("only the viewer's own properties are projected", "property:" .. tostring(name))
+    end
+    return copy_value(properties[name])
+end
+-- Pile sizes are public even when a pile is closed.
+function PlayerView:getHandPileCount()
+    local piles = self._view.piles
+    if not AIValue.isList(piles) then return nil end
+    local count = 0
+    for _, pile in ipairs(piles) do
+        if pile.hand_pile then
+            if type(pile.count) ~= "number" then return nil end
+            count = count + pile.count
+        end
+    end
+    return count
+end
 function PlayerView:areSkillsComplete() return self._view.skills_complete end
+-- SmartAI's temporary aiNoTo property: set around one nested planning call and
+-- cleared after it, so it lives on this decision's view only.
 local function target_revise_property(self, target, op, value)
-    if not AIValue.isPlayer(target) or target._room ~= self.room
-        or type(ai_target_revise_property) ~= "function" then
-        ai_unsupported("target revise property requires current roster and native witness", "targetRevises.aiNoTo")
+    if not AIValue.isPlayer(target) then
+        ai_unsupported("target revise property requires a player", "targetRevises.aiNoTo")
     end
-    local spec={kind="target_revise_property",op=op,target=target:objectName()}
-    if op=="write" then
+    self._ai_no_to = self._ai_no_to or {}
+    if op == "write" then
         assert(type(value)=="boolean", "target revise property requires boolean")
-        spec.value=value
+        self._ai_no_to[target:objectName()] = value or nil
+        return value
     end
-    local row=ai_target_revise_property(spec)
-    if type(row)~="table" or row.known~=true or row.kind~="target_revise_property"
-        or row.target~=spec.target or row.viewer~=self.player:objectName()
-        or type(row.value)~="boolean" then
-        ai_unsupported(type(row)=="table" and (row.reason or row.error) or "target revise property is unknown", "targetRevises.aiNoTo")
-    end
-    return row.value
+    return self._ai_no_to[target:objectName()] == true
 end
 function SmartAIView:getTargetRevisesProperty(target)
     return target_revise_property(self,target,"read")
@@ -3805,33 +4003,25 @@ function PlayerView:isAiNoTo()
     return ai:getTargetRevisesProperty(self)
 end
 
-function PlayerView:hasShuangxiongColors() return self._view.shuangxiong_colors end
-function PlayerView:hasUsed(name)
-    local ai = self._room and self._room._ai
-    if ai and self:objectName() == ai.player:objectName() then
-        local facts = ai.world.strategy_facts
-        local history = type(facts) == "table" and facts.owner_used_history
-        if type(history) == "table" and history.complete == true and type(history.values) == "table" then
-            local used = history.values[name]
-            if used ~= nil then return used end
-            return false
-        end
-    end
+-- SmartAI: property("shuangxiong_colors_turn"):toString() ~= "" (the viewer's own).
+function PlayerView:hasShuangxiongColors()
+    local value = self:getPropertyValue("shuangxiong_colors_turn")
+    return value ~= nil and tostring(value) ~= ""
+end
+-- used_history is the viewer's own Player::usedTimes per history key; a key that is
+-- not there was not used. Other players' history is not projected.
+function PlayerView:usedTimes(name)
     local rows = self._view.used_history
     if type(rows) ~= "table" then return nil end
-    return rows[name]
-end
-function PlayerView:usedTimes(name)
-    local ai = self._room and self._room._ai
-    if not ai or self:objectName() ~= ai.player:objectName() then return nil end
-    local facts = ai.world.strategy_facts
-    local history = type(facts) == "table" and facts.owner_used_history
-    local counts = type(history) == "table" and history.complete == true and history.counts
-    if type(counts) ~= "table" then return nil end
-    local value = counts[name]
+    local value = rows[name]
     if value == nil then return 0 end
     if type(value) ~= "number" or value ~= value or value % 1 ~= 0 then return nil end
     return value
+end
+function PlayerView:hasUsed(name)
+    local times = self:usedTimes(name)
+    if times == nil then return nil end
+    return times > 0
 end
 function SkillView:hasEvent(event)
     if event == sgs.AskForRetrial then return self._view.retrial_trigger end
@@ -3854,12 +4044,30 @@ function CandidateView:canTargetWithEmptyPrefix(target)
 end
 ConversionView.getExtraTargetCount = CandidateView.getExtraTargetCount
 ConversionView.canTargetWithEmptyPrefix = CandidateView.canTargetWithEmptyPrefix
-ConversionView.canRecast = make_scalar_getter("can_recast")
+-- A conversion row without the field recasts as its printed card does.
+function ConversionView:canRecast()
+    local value = self._view.can_recast
+    if value ~= nil then return value end
+    local row = AICardCatalog.get(self._view.name)
+    if row then return row.can_recast end
+    return nil
+end
 ConversionView.willThrow = make_scalar_getter("will_throw")
 ConversionView.containsJinchantuoqiao = make_scalar_getter("contains_jinchantuoqiao")
 ConversionView.matchesResponsePattern = make_scalar_getter("matches_response_pattern")
+-- Personality settings are this VM's own AI settings; timing comes from the world.
 function SmartAIView:getResponsePolicy()
-    return type(self.world.response_policy) == "table" and copy_value(self.world.response_policy) or nil
+    local function lines(name)
+        local value = rawget(_G, name)
+        return type(value) == "table" and copy_value(value) or nil
+    end
+    local invoke, peach = lines("jl_bingfen1"), lines("jl_bingfen3")
+    return {humanized = self.world.ai_humanized, turn_count = self.world.turn_count,
+        jl_bingfen = sgs.jl_bingfen == true,
+        bingfen_invoke_lines_present = invoke ~= nil, bingfen_invoke_lines = invoke,
+        bingfen_invoke_line_count = invoke and #invoke or 0,
+        bingfen_peach_lines_present = peach ~= nil, bingfen_peach_lines = peach,
+        bingfen_peach_line_count = peach and #peach or 0}
 end
 function SmartAIView:getGameProcess()
     local policy = self.world.mode_policy
@@ -3883,12 +4091,21 @@ ConversionView.getColorString = CardView.getColorString
 ConversionView.getColor = CardView.getColor
 ConversionView.sameColorWith = CardView.sameColorWith
 ConversionView.hasSuit = CardView.hasSuit
-ConversionView.hasFlag = CardView.hasFlag
+-- A conversion is a freshly built product: no flag row means no flags.
+function ConversionView:hasFlag(name)
+    if type(rawget(self, "_view")) == "table" and self._view.flags == nil then return false end
+    return CardView.hasFlag(self, name)
+end
 ConversionView.subcardsLength = function(self) local cards = self:getSubcards(); return cards and #cards or nil end
 ConversionView.getSkillName = make_scalar_getter("skill_name")
 ConversionView.isRed = make_scalar_getter("red")
 ConversionView.isBlack = make_scalar_getter("black")
-ConversionView.isVirtualCard = make_scalar_getter("virtual_card")
+-- A conversion is a card its skill built; rows without the field are virtual.
+function ConversionView:isVirtualCard()
+    local value = rawget(self, "_view") and self._view.virtual_card
+    if value == nil then return true end
+    return value
+end
 ConversionView.getType = CardView.getType
 function SkillView:getDescription() return self._view.description end
 function SkillView:hasTriggerEvent(event)
@@ -3909,32 +4126,46 @@ function PlayerView:isAdjacentTo(other)
     return nextp:objectName() == other:objectName() or previous:objectName() == self:objectName()
 end
 
+-- An AG question evaluates each offered name's printed card for the viewer.
+local function printed_card_evaluation(ai, name)
+    local options = type(ai.request) == "table" and ai.request.options
+    local context = type(options) == "table" and options.context
+    local rows = type(context) == "table" and context.printed_card_evaluations
+    local row = type(rows) == "table" and rows[name]
+    if type(row) == "table" and type(row.card_rules) == "table" and type(row.candidate) == "table" then return row end
+    return nil
+end
+
+-- A printed prototype built from the static card catalog: the card kind's class,
+-- type and rule flags, without an id, suit, number or target legality. Legality
+-- belongs to request candidates, which a prototype has only when the question
+-- evaluated that name (printed_card_evaluations).
 function SmartAIView:getEvaluationCard(name)
-    local catalog = self.world.evaluation_cards
-    local row = type(catalog) == "table" and catalog[name]
-    if type(row) == "table" then return CardView.new(copy_value(row)) end
-    if row == false then return nil end
-    local names = self.world.strategy_facts and self.world.strategy_facts.pattern_names
-    local common = {jink=true,slash=true,peach=true,fire_slash=true,thunder_slash=true,
-        archery_attack=true,savage_assault=true,duel=true,analeptic=true}
-    local classes=self.world.strategy_facts and self.world.strategy_facts.pattern_class_names
-    local issued = common[name] == true or (type(classes)=="table" and classes[name]~=nil)
-    for _,value in ipairs(names or {}) do if value == name then issued = true;break end end
-    if not issued then ai_unsupported("printed prototype is outside the disclosed catalog",name) end
-    if type(ai_evaluate_skill_card) ~= "function" then ai_unsupported("printed evaluation query unavailable",name) end
+    if type(ai_card_catalog) ~= "table" then ai_unsupported("card catalog is not projected", name) end
+    local row = AICardCatalog.get(name)
+    if not row then return nil end
     self._printed_evaluations = self._printed_evaluations or {}
-    local result = self._printed_evaluations[name]
-    if result == nil then
-        result = ai_evaluate_skill_card("",name,{})
-        if type(result) ~= "table" or (result.exists ~= false and
-            (type(result.card) ~= "table" or type(result.candidate) ~= "table")) then
-            ai_unsupported(type(result)=="table" and result.error or "invalid printed evaluation",name)
-        end
-        self._printed_evaluations[name] = copy_value(result)
+    local view = self._printed_evaluations[name]
+    if view == nil then
+        view = {id = -1, effective_id = -1, name = row.name, class_name = row.class_name,
+            kind_of = copy_value(row.kind_of), type_id = row.type_id, subtype = row.subtype,
+            suit = sgs.Card_NoSuit, number = 0, red = false, black = false, skill_name = "",
+            -- A fresh clone's Card::getSkillNames is its own empty skill name.
+            skill_names = {""}, skill_names_complete = true, flags = {},
+            virtual_card = true, evaluation_only = true, subcards = {},
+            target_fixed = row.target_fixed, damage_card = row.damage_card,
+            can_recast = row.can_recast, single_target = row.single_target,
+            equip_slot = row.equip_slot, weapon_range = row.weapon_range,
+            handling_method = sgs.Card_MethodUse}
+        self._printed_evaluations[name] = view
     end
-    if result.exists == false then return nil end
-    local card = CardView.new(copy_value(result.card))
-    card._evaluation_candidate = copy_value(result.candidate)
+    local face, printed = copy_value(view), printed_card_evaluation(self, name)
+    if printed then
+        face.available, face.evaluation_owner = printed.card_rules.available, self.player:objectName()
+        face.evaluation_rules, face.printed_evaluation = copy_value(printed.card_rules), true
+    end
+    local card = CardView.new(face)
+    if printed then card._evaluation_candidate = copy_value(printed.candidate) end
     return card
 end
 -- Each source clone is a new strategy object even when its immutable printed
@@ -3951,8 +4182,21 @@ local function projected_card_rule(player, card)
     if type(card) ~= "table" then return nil end
     local key, row = nil, rawget(card, "_view")
     if type(row) == "table" and type(row.evaluation_rules) == "table" then
-        if (row.evaluation_owner or row.activation_owner) ~= player:objectName() then return nil end
-        return row.evaluation_rules
+        if (row.evaluation_owner or row.activation_owner) == player:objectName() then return row.evaluation_rules end
+        -- A printed card the question evaluated for the viewer still has every
+        -- other player's prototype rules below.
+        if row.printed_evaluation ~= true then return nil end
+    end
+    -- A locally evaluated face carries its owner's availability; a basic face
+    -- takes its prototype's corrections (every Slash the Slash's).
+    if type(row) == "table" and row.evaluation_only == true and type(row.available) == "boolean"
+        and row.evaluation_owner == player:objectName() then
+        local prototypes = type(player._view.prototype_rules) == "table" and player._view.prototype_rules or {}
+        local rules = prototypes[row.class_name]
+        for _, kind in ipairs(row.kind_of or {}) do if kind == "Slash" then rules = prototypes.Slash end end
+        rules = type(rules) == "table" and rules or {}
+        return {available = row.available, target_mod_residue = rules.target_mod_residue,
+            target_mod_distance = rules.target_mod_distance, target_mod_extra = rules.target_mod_extra}
     end
     if type(row) == "table" and row.evaluation_only == true then key = "name:" .. row.name
     elseif type(card.getEffectiveId) == "function" and type(card:getEffectiveId()) == "number" and card:getEffectiveId() >= 0 then
@@ -3962,9 +4206,47 @@ local function projected_card_rule(player, card)
         local name = names[card:getClassName()]
         if name then key = "name:" .. name end
     end
-    local rules = player._view.card_rules
-    return type(rules) == "table" and key and rules[key] or nil
+    -- The viewer's own physical cards carry their limits and prohibitions.
+    if type(row) == "table" and key and key:sub(1, 3) == "id:" and type(row.limits) == "table"
+        and player:objectName() == (player._room and player._room._world.self.object_name) then
+        return {limits = row.limits, limits_hand = row.limits_hand, prohibited = row.prohibited,
+            available = row.available, target_mod_residue = row.target_mod_residue,
+            target_mod_distance = row.target_mod_distance, target_mod_extra = row.target_mod_extra}
+    end
+    -- A card the viewer may take in this question carries its taker's rules.
+    if key and key:sub(1, 3) == "id:" and player:objectName() == (player._room and player._room._world.self.object_name) then
+        local ai = player._room._ai
+        local options = ai and type(ai.request) == "table" and ai.request.options
+        local rows = type(options) == "table" and type(options.context) == "table" and options.context.acquired_card_evaluations
+        local acquired = type(rows) == "table" and rows[key:sub(4)]
+        if type(acquired) == "table" and type(acquired.card_rules) == "table" then return acquired.card_rules end
+    end
+    -- A printed basic prototype: every player's projected rules for that class.
+    local class_name = type(row) == "table" and row.class_name
+        or type(card.getClassName) == "function" and card:getClassName()
+    local prototypes = key and key:sub(1, 5) == "name:" and player._view.prototype_rules
+    local rules = type(prototypes) == "table" and prototypes[class_name]
+    if type(rules) == "table" then
+        local limits = {[tostring(sgs.Card_MethodUse)] = rules.use_limited,
+            [tostring(sgs.Card_MethodResponse)] = rules.response_limited}
+        return {limits = limits, limits_hand = limits, available = rules.available,
+            target_mod_residue = rules.target_mod_residue, target_mod_distance = rules.target_mod_distance,
+            target_mod_extra = rules.target_mod_extra}
+    end
+    return nil
 end
+
+-- SmartAI's Slash_IsAvailable / Analeptic_IsAvailable on the printed prototype.
+local function prototype_available(player, class_name)
+    local rules = AIValue.isPlayer(player) and type(player._view.prototype_rules) == "table"
+        and player._view.prototype_rules[class_name]
+    if type(rules) ~= "table" or type(rules.available) ~= "boolean" then
+        ai_unsupported(class_name .. " prototype availability is not projected", class_name)
+    end
+    return rules.available
+end
+function sgs.Slash_IsAvailable(player) return prototype_available(player, "Slash") end
+function sgs.Analeptic_IsAvailable(player) return prototype_available(player, "Analeptic") end
 function CardView:getTargetModResidue(player)
     local rule
     if player then rule = projected_card_rule(player, self) else rule = self._view.evaluation_rules end
@@ -4018,11 +4300,8 @@ function SmartAIView:getEvaluationCandidate(card)
     if ((AIValue.isCard(card) and card:isEvaluationOnly()) or AIValue.isConversion(card)) and type(scoped) == "table" then
         return CandidateView.new(copy_value(scoped))
     end
-    if AIValue.isConversion(card) then return nil end
-    local facts = self.world.strategy_facts
-    local rows = type(facts) == "table" and facts.evaluation_candidates
-    local row = type(rows) == "table" and rows[card:objectName()]
-    return type(row) == "table" and CandidateView.new(copy_value(row)) or nil
+    -- A printed prototype has no target legality of its own.
+    return nil
 end
 function SmartAIView:getAcquiredCardEvaluation(card)
     if type(card) ~= "table" then return nil end
@@ -4074,27 +4353,59 @@ function SmartAIView:getResponsePlanningCard(conversion, variant)
     return CardView.new(card), CandidateView.new(copy_value(candidate)), true
 end
 function ConversionView:getUserString() return self._view.declared_name end
+-- After `offset` more uses of `class`: the viewer's own card stays available while
+-- some target's Residue still covers the history (Player::canSlashWithoutCrossbow).
 function CandidateView:isAvailableWithHistoryOffset(offset, class)
     if type(offset) ~= "number" or offset % 1 ~= 0 then return nil end
     local rows = self._view.history_available
-    if type(rows) ~= "table" then return nil end
-    return rows[tostring(offset)]
+    if type(rows) == "table" then return rows[tostring(offset)] end
+    local ai = rawget(self, "_ai")
+    if not ai or type(class) ~= "string" then return nil end
+    if self._view.available ~= true then return false end
+    if offset == 0 then return true end
+    local card = ai:getKnownCardById(self._view.card_id)
+    local residue = card and card._view.target_residue
+    local used = ai.player:usedTimes(class)
+    if type(residue) ~= "table" or type(used) ~= "number" then return nil end
+    for _, value in pairs(residue) do
+        if used + offset <= value then return true end
+    end
+    return false
 end
 CandidateView.getAvailabilityWithHistoryOffset = CandidateView.isAvailableWithHistoryOffset
+-- fillSkillCards' view of one skill at Play. An activatable V2 instance comes from
+-- request.skill_actions with its play-time action; a V2 skill without one has
+-- instance -1; any other skill is instance 0 with its owner-only view-as fields.
 function SmartAIView:getFillSkillContext(name)
-    local facts = self.world.strategy_facts
-    local contexts = type(facts) == "table" and facts.fill_skill_contexts
-    local row = type(contexts) == "table" and contexts[name]
-    if type(row) ~= "table" then return nil end
-    row = copy_value(row)
-    if type(row.request) == "table" then row.request = AILegacyRequest.new(row.request, self.room) end
-    return row
+    local owner = self.player:objectName()
+    local actions = type(self._indexes) == "table" and self._indexes.skill_actions_by_name
+    for _, action in ipairs(actions and actions[name] or {}) do
+        if action.activation_owner == owner then
+            local request = {viewer = self.request.viewer, decision_id = self.request.decision_id,
+                state_revision = self.request.state_revision, kind = self.request.kind,
+                reason = sgs.CardUseStruct_CARD_USE_REASON_PLAY, pattern = "", prompt = "",
+                handling_method = sgs.Card_MethodUse, skill_action = copy_value(action)}
+            return {known = true, instance_id = action.activation_instance, has_view_as = true,
+                enabled_at_play = true, request = AILegacyRequest.new(request, self.room)}
+        end
+    end
+    local view
+    for _, skill in ipairs(type(self.player._view.skills) == "table" and self.player._view.skills or {}) do
+        if skill.name == name then view = skill break end
+    end
+    if view and view.view_as_v2 == true then return {known = true, instance_id = -1} end
+    return {known = true, instance_id = 0, has_view_as = view and view.has_view_as_skill,
+        enabled_at_play = view and view.enabled_at_play}
 end
+-- A skill definition is projected only where a visible player holds the skill.
 function RoomView:getPublicSkill(name)
-    local facts = self._world.strategy_facts
-    local catalog = type(facts) == "table" and facts.skill_catalog
-    local row = type(catalog) == "table" and catalog[name]
-    return type(row) == "table" and SkillView.new(copy_value(row)) or nil
+    for _, player_name in ipairs(self._player_order) do
+        local view = self._players[player_name]._view
+        for _, row in ipairs(type(view.skills) == "table" and view.skills or {}) do
+            if row.name == name then return SkillView.new(copy_value(row)) end
+        end
+    end
+    return nil
 end
 function SmartAIView:hasStrategyPlayerFlag(player, name)
     local policy = self.world.mode_policy
@@ -4107,9 +4418,9 @@ function SmartAIView:hasStrategyPlayerFlag(player, name)
 end
 function SmartAIView:setStrategyPlayerFlag(player, name, value)
     if name=='willSkipPlayPhase' then
-        local facts=self.world.strategy_facts
-        assert(player==self.player and self.request.kind=='guanxing' and facts
-            and facts.original_guanxing_flag_write==true,'Original Guanxing strategy flag scope')
+        local hegemony=AIHegemony.facts(self.world)
+        assert(player==self.player and self.request.kind=='guanxing' and hegemony
+            and hegemony.original_overrides_loaded==true,'Original Guanxing strategy flag scope')
         return self:writeOriginalGuanxingShadow(value)
     end
     assert(AIValue.isPlayer(player) and type(value) == "boolean", "invalid strategy flag")
@@ -4158,6 +4469,13 @@ function PlayerView:canUse(card, target)
         local candidate = ai:getCardCandidate(card:getEffectiveId())
         if not candidate and card:isEvaluationOnly() then candidate = ai:getEvaluationCandidate(card) end
         values = candidate and candidate._view.can_use_targets
+        -- The request candidate's legal targets are Player::canUse with no selection.
+        local legal = type(values) ~= "table" and candidate and candidate._view.legal_targets
+        if AIValue.isList(legal) then
+            values = {}
+            for _, name in ipairs(legal) do values[name] = true end
+            if target and values[target:objectName()] == nil then return false end
+        end
     end
     if type(values) ~= "table" then return nil end
     if target then return values[target:objectName()] end
@@ -4166,24 +4484,30 @@ function PlayerView:canUse(card, target)
 end
 function RoomView:hasCurrent(active)
     if active then
-        local facts = self._world.strategy_facts
-        if type(facts) ~= "table" then return nil end
-        return facts.has_current_active
+        -- Room::hasCurrent(true): the current player is alive and in its turn.
+        local current = self:getCurrent()
+        if not current then return false end
+        return current:isAlive() == true and self._world.current_phase ~= sgs.Player_NotActive
     end
     return type(self._world.current_player) == "string" and self._world.current_player ~= ""
 end
 
+-- Damage bookkeeping facts are not projected; callers see unknown.
 local function damage_facts(room)
-    local facts = room and room._world.strategy_facts
-    return type(facts) == "table" and facts.damage or nil
+    return nil
 end
+-- Only the Guandu scenario writes its event tag; other modes have none.
 function RoomView:getGuanduEvent()
-    local facts = damage_facts(self)
-    return type(facts) == "table" and facts.guandu_event or nil
+    if self._world.mode_id ~= "guandu" then return "" end
+    return nil
 end
+-- keqiyanhuo sets its room tag to 1 when its owner dies, with a public log.
 function RoomView:getKeqiyanhuoCount()
-    local facts = damage_facts(self)
-    return type(facts) == "table" and facts.keqiyanhuo_count or nil
+    for _, name in ipairs(self._player_order) do
+        local player = self._players[name]
+        if player:isDead() == true and player:hasSkill("keqiyanhuo") == true then return 1 end
+    end
+    return 0
 end
 function PlayerView:getDjianxiongRecord()
     local facts = damage_facts(self._room)
@@ -4223,9 +4547,10 @@ function PlayerView:hasTreasure(name)
     return card ~= nil and (name == nil or card:objectName() == name or card:isKindOf(name))
 end
 
+-- Engine::getPlayerCount(mode) is the size of this room's roster.
 function RoomView:getModePlayerCount()
-    local facts = damage_facts(self)
-    return type(facts) == "table" and facts.mode_player_count or nil
+    local order = self._world.player_order
+    return AIValue.isList(order) and #order or nil
 end
 function PlayerView:getJianyuanRecord()
     local facts = damage_facts(self._room)
@@ -4233,15 +4558,23 @@ function PlayerView:getJianyuanRecord()
     local names = type(records) == "table" and records[self:objectName()]
     return AIValue.isList(names) and AIList.new(names) or nil
 end
+-- A Dismantlement converted from this card is not projected: unknown.
 function SmartAIView:getDismantlementProbe(card)
-    local facts = self.world.strategy_facts
-    local rows = type(facts) == "table" and facts.dismantlement_probes_by_cost
-    local row = type(rows) == "table" and rows[tostring(card:getEffectiveId())]
-    return type(row) == "table" and CardView.new(copy_value(row)) or nil
+    return nil
 end
+-- Every armor name among the engine's cards, from the (fixed) card catalog.
+local catalog_armor_names
 function RoomView:getArmorNames()
-    local facts = damage_facts(self)
-    return type(facts) == "table" and AIValue.isList(facts.armor_names) and AIList.new(facts.armor_names) or nil
+    if type(ai_card_catalog) ~= "table" then return nil end
+    if not catalog_armor_names then
+        catalog_armor_names = {}
+        for _, row in ipairs(ai_card_catalog) do
+            for _, kind in ipairs(type(row.kind_of) == "table" and row.kind_of or {}) do
+                if kind == "Armor" then catalog_armor_names[#catalog_armor_names + 1] = row.name break end
+            end
+        end
+    end
+    return AIList.new(copy_value(catalog_armor_names))
 end
 
 function RoomView:findPlayersBySkillName(name)
@@ -4272,45 +4605,64 @@ end
 
 function PlayerView:getRoom() return self._room end
 
+-- Player::getRandomHandCard: a uniform pick from the viewer's own hand.
 function PlayerView:getRandomHandCard()
     local ai = self._room and self._room._ai
-    if not ai or self:objectName() ~= ai.player:objectName() or type(ai_sample_own_hand) ~= "function" then
-        ai_unsupported("owner hand sampler unavailable", "getRandomHandCard")
-    end
-    local result = ai_sample_own_hand()
-    if type(result) ~= "table" or result.error or type(result.empty) ~= "boolean" then
-        ai_unsupported(type(result)=="table" and result.error or "invalid owner hand sample", "getRandomHandCard")
-    end
-    if result.empty then return nil end
-    local card = ai:getKnownCardById(result.card_id)
-    if not card then ai_unsupported("sample is absent from owner hand", "getRandomHandCard") end
-    return card
+    local hand = ai and self:objectName() == ai.player:objectName() and self:getHandcards()
+    if not hand then ai_unsupported("only the viewer's own hand can be sampled", "getRandomHandCard") end
+    if #hand == 0 then return nil end
+    return hand[math.random(1, #hand)]
 end
 
 -- A strategy seed deliberately has no payment capability. Source use_func must
 -- replace it with bindSkillCard's real receipt after choosing its actual costs.
-function SmartAIView:legacySkillSeed(skill, class_name, request)
-    local scope = self:getNativeSkillActionScope(skill, request)
-    if type(ai_evaluate_skill_seed) ~= "function" then ai_unsupported("native strategy seed query unavailable", skill) end
-    local response = ai_evaluate_skill_seed(scope.scope_id, class_name)
-    if type(response) ~= "table" or response.error or type(response.card) ~= "table"
-        or type(response.identity) ~= "table" or response.scope_id ~= scope.scope_id then
-        ai_unsupported(type(response)=="table" and response.error or "invalid native strategy seed",skill)
+-- The evaluation face of a skill card this player could activate now. A V2
+-- skill is usable when the authority offers its action; a V1 skill card when
+-- its owner view-as skill is enabled at play. Targets and the final product are
+-- checked by the authority when the selected card is bound.
+function SmartAIView:skillCardFace(skill, class_name, costs, request, user_string)
+    local selected = self:findOfferedSkillAction(skill, request)
+    local available = selected ~= nil
+    if not selected then
+        local view
+        for _, skill_view in ipairs(type(self.player._view.skills) == "table" and self.player._view.skills or {}) do
+            if skill_view.name == skill then view = skill_view break end
+        end
+        if not view or type(view.view_as_v2) ~= "boolean" or type(view.enabled_at_play) ~= "boolean" then
+            ai_unsupported("skill action has no matching source scope", skill)
+        end
+        available = not view.view_as_v2 and view.enabled_at_play
     end
+    local identity = selected and selected.identity or {}
+    local lua_card = class_name:sub(1, 1) == "#"
+    local face = lua_card and "LuaSkillCard" or class_name
+    local ids = #costs > 0 and table.concat(costs, "+") or "."
+    local wire = lua_card and (class_name .. ":" .. ids .. ":" .. (user_string or ""))
+        or ("@" .. class_name .. "=" .. ids .. (user_string and user_string ~= "" and (":" .. user_string) or ""))
+    -- Synthetic ids stay clear of conversion ids (getCardCandidate maps negatives).
+    self._turn_seed_serial = (self._turn_seed_serial or 0) + 1
+    local seed_id = -(2000000 + self._turn_seed_serial)
+    local row = {id = seed_id, effective_id = costs[1] or seed_id, name = lua_card and class_name:sub(2) or class_name,
+        class_name = face, kind_of = {face, "SkillCard", "Card"}, type_id = sgs.Card_TypeSkill,
+        suit = sgs.Card_NoSuit, number = 0, skill_name = skill, subcards = copy_value(costs),
+        user_string = user_string, virtual_card = true, evaluation_only = true, strategy_seed = false,
+        available = available, legacy_string_key = wire, legacy_sort_key = wire, flags = {}, can_recast = false,
+        evaluation_owner = self.player:objectName()}
+    for key, value in pairs({activation_owner = identity.activation_owner, activation_skill = identity.activation_skill,
+        activation_instance = identity.activation_instance, source_owner = identity.source_owner,
+        source_skill = identity.source_skill, source_instance = identity.source_instance}) do
+        row[key] = value
+    end
+    return row
+end
+
+function SmartAIView:legacySkillSeed(skill, class_name, request)
+    local row = self:skillCardFace(skill, class_name, {}, request)
+    row.strategy_seed = true
+    local seed = CardView.new(row)
     local fields = {activation_owner="getActivationOwner",activation_skill="getActivationSkillName",
         activation_instance="getActivationInstanceId",source_owner="getSourceOwner",
         source_skill="getSourceSkillName",source_instance="getSourceInstanceID"}
-    for key in pairs(fields) do
-        if response.identity[key] ~= scope.identity[key] or response.card[key] ~= scope.identity[key] then
-            ai_unsupported("strategy seed source identity changed",skill)
-        end
-    end
-    local row = copy_value(response.card)
-    if row.evaluation_only ~= true or row.strategy_seed ~= true or row.conversion_id ~= nil
-        or not AIValue.isList(row.subcards) or #row.subcards ~= 0 then
-        ai_unsupported("strategy seed must remain non-action metadata",skill)
-    end
-    local seed = CardView.new(row)
     for key, method in pairs(fields) do
         local field = key
         seed[method] = function() return row[field] end
@@ -4421,41 +4773,91 @@ SmartAIView.isQiuxinSourceQueryPlan=SmartAIView.isAuditedExtra99SourceQueryPlan
 -- Exact public printing of an owner-observed view-as material. This returns
 -- knowledge for planning; callers bind a new native receipt after selection.
 function SmartAIView:evaluateOwnerViewAsCard(spec)
-    if type(spec) ~= "table" or type(ai_evaluate_owner_view_as) ~= "function" then
-        ai_unsupported("owner view-as evaluation endpoint unavailable", "evaluateOwnerViewAsCard")
+    -- The owner's view-as product: the printed catalog face with this skill's
+    -- printing, like Card::Parse of its legacy string. The authority rebuilds
+    -- and checks the real product when the selected card is submitted.
+    if type(spec) ~= "table" or type(spec.name) ~= "string" or type(spec.skill) ~= "string"
+        or type(spec.suit) ~= "number" or type(spec.number) ~= "number" or not AIValue.isList(spec.subcards) then
+        ai_unsupported("owner view-as face is incomplete", "evaluateOwnerViewAsCard")
     end
-    local row = ai_evaluate_owner_view_as(copy_value(spec))
-    if (spec.source_key=='original_guanxing' or spec.source_key=='yhbozhi' or spec.source_key=='yhduwei' or spec.source_key=='@@s_newtypeOther' or ({fengying=true,fuping=true,jingong=true,tenyearjingong=true,choulve=true,['@@choulve!']=true})[spec.source_key]) and type(row)=='table'
-        and row.kind=='owner_view_as_evaluation' and row.complete==true and row.exists==false then return nil end
-    local face = type(row) == "table" and row.card
-    -- Fuhui's source mutates a NoSuit/0 clone one material at a time. Card's
-    -- native getters may inherit number from that material; compare the
-    -- audited constructor rather than pretending its resulting face is 0.
-    local constructor = type(face)=="table" and face.source_constructor
-    local fuhui_constructor = type(constructor)=="table"
-        and constructor.source_key==spec.source_key and constructor.name==spec.name
-        and constructor.skill==spec.skill and constructor.suit==spec.suit
-        and constructor.number==spec.number and constructor.can_recast==spec.can_recast
-    local htms_duel_alias = fuhui_constructor and spec.source_key=="jiasuduijue"
-        and spec.name=="Duel" and face.name=="duel" and face.class_name=="Duel"
-    if type(face) ~= "table" or row.kind ~= "owner_view_as_evaluation" or row.complete ~= true
-        or face.evaluation_only ~= true or face.evaluation_owner ~= self.player:objectName()
-        or (face.name ~= spec.name and not htms_duel_alias) or face.skill_name ~= spec.skill
-        or (not fuhui_constructor and (face.suit ~= spec.suit or face.number ~= spec.number))
-        or (spec.can_recast ~= nil and face.can_recast ~= spec.can_recast)
-        or not AIValue.isList(face.subcards) or not AIValue.isList(spec.subcards)
-        or #face.subcards ~= #spec.subcards then
-        ai_unsupported(type(row)=="table" and row.error or "owner view-as face is incomplete", "evaluateOwnerViewAsCard")
+    local base = self:getEvaluationCard(spec.name)
+    if not base then ai_unsupported("owner view-as product is outside the card catalog", spec.name) end
+    local materials = {}
+    for index, id in ipairs(spec.subcards) do
+        materials[index] = self:getKnownCardById(id)
+        if not materials[index] then ai_unsupported("owner view-as material is not visible", "evaluateOwnerViewAsCard") end
     end
-    for i,id in ipairs(spec.subcards) do
-        if face.subcards[i] ~= id then ai_unsupported("owner view-as changed material", "evaluateOwnerViewAsCard") end
+    -- Card::getSuit/getNumber: an unset printing derives from the material.
+    local suit, number = spec.suit, spec.number
+    if suit < 0 or suit > 5 then
+        suit = sgs.Card_NoSuit
+        if #materials == 1 then
+            suit = materials[1]:getSuit()
+        elseif #materials > 1 then
+            local color = materials[1]:getColor()
+            for index = 2, #materials do
+                if materials[index]:getColor() ~= color then color = nil break end
+            end
+            if color == 0 then suit = sgs.Card_NoSuitRed elseif color == 1 then suit = sgs.Card_NoSuitBlack end
+        end
     end
-    local card = CardView.new(copy_value(face))
-    if type(row.candidate) == "table" then card._evaluation_candidate = copy_value(row.candidate) end
+    if number <= 0 then number = #materials == 1 and materials[1]:getNumber() or 0 end
+    if type(suit) ~= "number" or type(number) ~= "number" then
+        ai_unsupported("owner view-as material printing is unknown", "evaluateOwnerViewAsCard")
+    end
+    local suits = {[0] = "spade", "club", "heart", "diamond", "no_suit_black", "no_suit_red"}
+    local number_string = number == 10 and "10" or number > 13 and "JOKER"
+        or string.sub("0A23456789-JQK", number + 1, number + 1)
+    local wire = spec.name .. ":" .. spec.skill .. "[" .. (suits[suit] or "no_suit") .. ":" .. number_string
+        .. "]=" .. (#spec.subcards > 0 and table.concat(spec.subcards, "+") or ".")
+    local face = copy_value(base._view)
+    face.suit, face.number = suit, number
+    face.red = suit == sgs.Card_Heart or suit == sgs.Card_Diamond or suit == sgs.Card_NoSuitRed
+    face.black = suit == sgs.Card_Spade or suit == sgs.Card_Club or suit == sgs.Card_NoSuitBlack
+    face.skill_name, face.skill_names = spec.skill, {spec.skill}
+    face.subcards = copy_value(spec.subcards)
+    if spec.can_recast ~= nil then face.can_recast = spec.can_recast end
+    face.evaluation_owner = self.player:objectName()
+    -- A basic product follows its printed prototype's rules (every Slash the Slash's).
+    local prototypes = type(self.player._view.prototype_rules) == "table" and self.player._view.prototype_rules or {}
+    local rules = prototypes[face.class_name]
+    for _, kind in ipairs(face.kind_of or {}) do if kind == "Slash" then rules = prototypes.Slash end end
+    face.available = type(rules) ~= "table" or (rules.available == true and rules.use_limited ~= true)
+    -- Without materials the product is the printed card the question may have
+    -- evaluated: its rules and complete targets. Otherwise targets are unknown.
+    local printed = #spec.subcards == 0 and printed_card_evaluation(self, spec.name) or nil
+    face.evaluation_rules = printed and copy_value(printed.card_rules) or nil
+    if printed then face.available = printed.card_rules.available end
+    face.legacy_identity_token = fresh_policy_identity(policy_identity_scope(self))
+    face.legacy_string_key, face.legacy_sort_key = wire, wire
+    local card = CardView.new(face)
+    card._evaluation_candidate = printed and copy_value(printed.candidate) or {card_id = -1,
+        available = face.available, limited = false, complete_coverage = false,
+        target_filter_empty = type(rules) == "table" and copy_value(rules.target_filter_empty) or nil,
+        extra_target_count = type(rules) == "table" and rules.extra_target or nil}
     card.getAuthorityCard = function() return nil end
     card.toCardSpec = function() ai_unsupported("owner view-as evaluation has no submission receipt", "evaluateOwnerViewAsCard") end
     qiuxin_register(self,card,spec)
     return card
+end
+
+-- A V1 view-as product is evaluated only; the receipt keeps the evaluated face,
+-- and submitting it falls back to SmartAI.
+function SmartAIView:registerViewAsReceipt(face)
+    local indexes = self._indexes
+    if type(indexes) ~= "table" or type(indexes.conversions) ~= "table" then
+        ai_unsupported("conversion index is unavailable", face.skill_name)
+    end
+    local id = skill_action_receipt_base + #indexes.conversions + 1
+    local row = copy_value(face)
+    row.id, row.effective_id, row.evaluation_only, row.evaluation_owner = nil, nil, nil, nil
+    row.conversion_id, row.kind_of_names, row.available = id, copy_value(face.kind_of), true
+    row.activation_owner, row.activation_skill = self.player:objectName(), face.skill_name
+    row.source_owner, row.source_skill = self.player:objectName(), face.skill_name
+    row.authority_validates_targets, row.legacy_v1 = true, true
+    indexes.conversions[#indexes.conversions + 1] = row
+    indexes.conversions_by_id[id] = row
+    return ConversionView.new(copy_value(row))
 end
 
 -- Named turn hypotheses are never receipts. Keep the binding recipe outside
@@ -4655,8 +5057,7 @@ function SmartAIView:evaluateTurnConversion(skill,class_name,spec,request)
     -- The two fixed current-name records select their literal clone name. The
     -- native readonly authorizer independently rechecks that record and cost.
     if (skill=="jingong"or skill=="tenyearjingong")and type(spec)=="table"then
-        local props=(self.world.strategy_facts or{}).owner_skill_properties
-        local names=type(props)=="table"and props[skill.."_tricks"]
+        local names=self.player:getPropertyValue(skill.."_tricks")
         if type(names)=="string"and type(class_name)=="string"then
             for _,name in ipairs(names:split("+"))do if name==spec.name then hc49Product={class_name,name};audited[skill]=hc49Product;break end end
         end
@@ -4730,7 +5131,7 @@ function SmartAIView:evaluateTurnConversion(skill,class_name,spec,request)
     local overseas=overseasProducts[skill]
     if skill=="ov_bimeng" and type(spec)=="table" then
         local declared=false
-        for _,name in ipairs((self.world.strategy_facts or {}).pattern_names or{})do if name==spec.name then declared=true end end
+        for _,name in ipairs(AICardCatalog.patternNames() or{})do if name==spec.name then declared=true end end
         if declared then overseas={[spec.name]=class_name} end
     end
     if overseas and type(spec)=="table" and overseas[spec.name]==class_name then product={class_name,spec.name} end
@@ -4835,30 +5236,9 @@ function SmartAIView:evaluateTurnSkillCard(skill,class_name,costs,request,user_s
         ai_unsupported("readonly SkillCard is outside audited source vocabulary",skill)
     end
     local stamp,source=turn_snapshot(self),turn_source(request)
-    local scope=self:getNativeSkillActionScope(skill,request)
-    if type(ai_evaluate_skill_seed)~="function" then ai_unsupported("readonly native seed query unavailable",skill) end
-    local response
-    if user_string~=nil then response=ai_evaluate_skill_seed(scope.scope_id,class_name,copy_value(costs),user_string)
-    else response=ai_evaluate_skill_seed(scope.scope_id,class_name,copy_value(costs)) end
-    if type(response)~="table" or response.error or type(response.card)~="table"
-        or type(response.candidate)~="table" or type(response.identity)~="table"
-        or response.scope_id~=scope.scope_id then
-        ai_unsupported(type(response)=="table" and response.error or "invalid readonly SkillCard seed",skill)
-    end
-    local row=copy_value(response.card)
-    for key in pairs(turn_identity_methods) do
-        if response.identity[key]~=scope.identity[key] or row[key]~=scope.identity[key] then
-            ai_unsupported("readonly SkillCard source identity changed",skill)
-        end
-    end
-    if row.evaluation_only~=true or row.strategy_seed~=true or row.conversion_id~=nil
-        or not turn_same(row.subcards,costs) or type(row.available)~="boolean" then
-        ai_unsupported("readonly SkillCard source product changed",skill)
-    end
-    row.strategy_seed=false
+    local row=self:skillCardFace(skill,class_name,costs,request,user_string)
     local card=CardView.new(row)
-    if not card:isKindOf("SkillCard") then ai_unsupported("readonly source is not a SkillCard",skill) end
-    card._evaluation_candidate=copy_value(response.candidate)
+    card._evaluation_candidate={card_id=-1,available=row.available,limited=false}
     card.getAuthorityCard=function()return nil end
     card.toCardSpec=function()ai_unsupported("readonly source SkillCard has no authority",skill)end
     local entries=readonly_turn_cards[self]
@@ -4876,7 +5256,7 @@ function PlayerView:canSlashWithoutCrossbow(slash)
     if not self._room or self:objectName()~=self._room._world.self.object_name then
         ai_unsupported("canSlashWithoutCrossbow requires owner context","canSlashWithoutCrossbow")
     end
-    return self._room._world.strategy_facts.owner_can_slash_without_crossbow
+    return self._room._world.self.can_slash_without_crossbow
 end
 function SmartAIView:readonlyTurnConversionMatchesRequest(card,request)
     return turn_same(turn_saved(self,card).source,turn_source(request))
@@ -5013,11 +5393,9 @@ function SmartAIView:evaluateSkillCard(skill_name, name, costs)
     return card
 end
 
+-- The printed face of a card is projected only where the card itself is visible.
 function SmartAIView:getPrintedCardById(id)
-    local facts = self.world.strategy_facts
-    local rows = type(facts) == "table" and facts.owner_printed_cards
-    local row = type(rows) == "table" and rows[tostring(id)]
-    return type(row) == "table" and CardView.new(copy_value(row)) or nil
+    return self:getKnownCardById(id)
 end
 
 function CardView:getEquipSlot() return self._view.equip_slot end
@@ -5046,21 +5424,17 @@ function CardView:nameLength()
 end
 ConversionView.nameLength = CardView.nameLength
 
-local function public_player_capability(player)
-    local ai = player._room and player._room._ai
-    local facts = ai and ai.world.strategy_facts
-    local rows = facts and facts.player_public_capabilities
-    return type(rows)=="table" and rows[player:objectName()] or nil
-end
 function PlayerView:hasJudgeArea()
-    local row=public_player_capability(self)
-    if type(row)=="table" and type(row.judge_area)=="boolean" then return row.judge_area end
+    local value=self._view.has_judge_area
+    if type(value)=="boolean" then return value end
 end
+-- Player::getChangeSkillState: an unset or non-positive state reads as 1.
 function PlayerView:getChangeSkillState(skill)
-    local row=public_player_capability(self)
-    local states=type(row)=="table" and row.change_skill_states
-    local n=type(states)=="table" and states[skill]
-    if type(n)=="number" and n>=1 and n%1==0 then return n end
+    local states=self._view.change_skill_states
+    if type(states)~="table" then return nil end
+    local n=states[skill]
+    if type(n)~="number" or n<=0 then return 1 end
+    return n
 end
 
 function CardView:isNDTrick()
@@ -5072,16 +5446,14 @@ end
 ConversionView.isNDTrick = CardView.isNDTrick
 
 function PlayerView:hasShownOneGeneral()
-    local ai = self._room and self._room._ai
-    local facts = ai and ai.world.strategy_facts
-    local relations = type(facts) == "table" and facts.public_revealed_relationships
-    local shown = type(relations) == "table" and relations.shown_one
-    if type(shown) == "table" then return shown[self:objectName()] end
+    local room = self._room
+    local hegemony = room and AIHegemony.facts(room._world)
+    local row = hegemony and hegemony.players[self:objectName()]
+    if row then return row.shown_one end
 end
 function PlayerView:hasShownAllGenerals()
-    local ai=self._room and self._room._ai
-    local facts=ai and ai.world.strategy_facts
-    local hegemony=type(facts)=="table" and facts.hegemony
+    local room=self._room
+    local hegemony=room and AIHegemony.facts(room._world)
     local players=type(hegemony)=="table" and hegemony.players
     local row=type(players)=="table" and players[self:objectName()]
     if type(row)~="table" then return nil end
@@ -5090,12 +5462,14 @@ function PlayerView:hasShownAllGenerals()
 end
 function PlayerView:isPublicHegemonyFriend(other)
     if not AIValue.isPlayer(other) then return nil end
-    local ai = self._room and self._room._ai
-    local facts = ai and ai.world.strategy_facts
-    local relations = type(facts) == "table" and facts.public_revealed_relationships
-    local friends = type(relations) == "table" and relations.friends
-    local row = type(friends) == "table" and friends[self:objectName()]
-    if type(row) == "table" then return row[other:objectName()] end
+    -- Both shown and the same public kingdom; careerists befriend nobody.
+    local hegemony = self._room and AIHegemony.facts(self._room._world)
+    local a = hegemony and hegemony.players[self:objectName()]
+    local b = hegemony and hegemony.players[other:objectName()]
+    if not a or not b then return nil end
+    if not a.shown_one or not b.shown_one then return false end
+    if a.public_careerist or b.public_careerist then return self:objectName() == other:objectName() end
+    return a.public_kingdom ~= "" and a.public_kingdom == b.public_kingdom
 end
 
 -- Readonly native prefix test for an already-issued physical/conversion card.
@@ -5116,6 +5490,20 @@ function SmartAIView:cardTargetFilter(card, prefix, target)
         local result=type(values)=="table" and values[target:objectName()]
         if type(result)~="boolean" then ai_unsupported("readonly empty-prefix target filter is unknown","targetFilter") end
         return result
+    end
+    -- An issued card, or an evaluation card with its own candidate, answers from
+    -- complete legal combinations: the target may come next after this prefix.
+    local issued = AIValue.isConversion(card) and card
+        or AIValue.isCard(card) and (card:isEvaluationOnly() ~= true and self:getCardCandidate(card:getEffectiveId())
+            or card:isEvaluationOnly() == true and self:getEvaluationCandidate(card))
+    if issued and type(issued.hasCompleteCoverage) == "function" and issued:hasCompleteCoverage() == true then
+        local selected = {}
+        for _,p in ipairs(prefix or {}) do selected[#selected+1] = p:objectName() end
+        local following = issued:getTargetSelection(AIList.new(selected))
+        if following then
+            for _,name in ipairs(following) do if name == target:objectName() then return true end end
+            return false
+        end
     end
     if type(ai_card_target_filter) ~= "function" then ai_unsupported("native target prefix query unavailable", "targetFilter") end
     local names = {}
@@ -5156,7 +5544,7 @@ function SmartAIView:cardNoResponseNames(card)
     local authority = type(card.getAuthorityCard)=="function" and card:getAuthorityCard() or card
     local rule = projected_card_rule(self.player,authority)
     if type(rule)=="table" and AIValue.isList(rule.no_response) then return AIList.new(rule.no_response) end
-    local rows = self.world.strategy_facts and self.world.strategy_facts.owner_card_no_response
+    local rows = nil -- Per-card NoResponse tags are not projected.
     local names = type(rows)=="table" and rows[tostring(card:getEffectiveId())]
     return AIValue.isList(names) and AIList.new(names) or nil
 end
@@ -5221,7 +5609,7 @@ end
 function SmartAIView:addStrategyPlayerMark(player,name,amount)
     assert(AIValue.isPlayer(player) and (name=="yhpodi_to-PlayClear" or ((name=="AI_fangjian-Clear" or name=="AI_do_not_invoke_s2_longwei-Clear") and player:objectName()==self.player:objectName())) and amount==1,"unknown strategy mark")
     local epoch_key=name=="yhpodi_to-PlayClear" and "strategy_play_clear_epochs" or "strategy_turn_clear_epochs"
-    local epochs=self.world.strategy_facts and self.world.strategy_facts[epoch_key]
+    local epochs=AIWorldLifecycle.epochs(self.world,epoch_key=="strategy_play_clear_epochs" and "play" or "turn")
     if type(epochs)~="table" or type(epochs[player:objectName()])~="number" then
         ai_unsupported("AI play mark requires native lifecycle witness","strategy_play_clear_epochs")
     end
@@ -5484,8 +5872,7 @@ function PlayerView:distanceTo(other,fix)
         local data=owner_range_states[ai].data
         local value
         if fix==2 then
-            -- Never borrow the baseline pair while a hypothetical profile is active.
-            value=r34_distance_two(data.distance_to[name],data.distance_fix_one[name],r34_fixed_witness(self,name))
+            ai_unsupported("distance fix 2 is not projected for a hypothetical range","olqimou")
         else
             value=(fix==1 and data.distance_fix_one or data.distance_to)[name]
         end
@@ -5993,42 +6380,18 @@ function SmartAIView:writeOverseasXiafengFlag(card,enabled)
     self:setStrategyCardFlag(card,'AIGlobal_KillOff',enabled)
 end
 
+-- The draw pile's top card is hidden; its preview is not projected.
 function SmartAIView:getShicaiPreviewEvaluation()
-    local facts=self.world.strategy_facts.extra29
-    local witness=type(facts)=='table' and facts.shicai_preview
-    if type(witness)~='table' or witness.known~=true or type(witness.card)~='table'
-        or type(witness.serial)~='string' or type(ai_evaluate_extra_shicai)~='function' then
-        ai_unsupported('Shicai top card is not currently witnessed','guandu_shicai')
-    end
-    local result=ai_evaluate_extra_shicai()
-    if AIUnsupported.is(result) then error(result,0) end
-    if type(result)~='table' or result.error or type(result.card)~='table'
-        or type(result.candidate)~='table' then
-        ai_unsupported(type(result)=='table' and result.error or 'invalid Shicai readonly result','guandu_shicai')
-    end
-    local row=result.card
-    for _,key in ipairs{'effective_id','name','class_name','suit','number'}do
-        if row[key]~=witness.card[key] then ai_unsupported('Shicai witnessed face changed',key)end
-    end
-    if row.evaluation_only~=true or row.virtual_card~=false or row.conversion_id~=nil then
-        ai_unsupported('Shicai preview is not a readonly physical face','guandu_shicai')
-    end
-    local card=CardView.new(copy_value(row))
-    card._evaluation_candidate=copy_value(result.candidate)
-    card.getAuthorityCard=function()return nil end
-    card.toCardSpec=function()ai_unsupported('Shicai preview has no payment authority','guandu_shicai')end
-    return card
+    ai_unsupported('Shicai top card is not projected','guandu_shicai')
 end
 
+-- SmartAI's getUseValue recursion guard; it only has to live for one decision.
 function SmartAIView:getUseValueRecursionFlag()
-    if type(ai_use_value_flag)~='function' then ai_unsupported('valuation flag host unavailable','getUseValue') end
-    local value=ai_use_value_flag()
-    if type(value)~='boolean' then ai_unsupported('invalid valuation flag result','getUseValue') end
-    return value
+    return rawget(self,'_use_value_recursion')==true
 end
 function SmartAIView:setUseValueRecursionFlag(value)
-    if type(value)~='boolean' or type(ai_use_value_flag)~='function' then ai_unsupported('valuation flag writer unavailable','getUseValue') end
-    if ai_use_value_flag(value)~=value then ai_unsupported('valuation flag acknowledgement mismatch','getUseValue') end
+    if type(value)~='boolean' then ai_unsupported('valuation flag must be boolean','getUseValue') end
+    self._use_value_recursion=value
 end
 
 -- Finite Original source diagnostics and offered-card class probes.
@@ -6040,7 +6403,7 @@ function SmartAIView:recordSourceWarning(message,source)
 end
 function SmartAIView:getOriginalGuanxingClone(name,suit,number)
     local request=self.request or{}
-    local h=self.world.strategy_facts and self.world.strategy_facts.hegemony
+    local h=AIHegemony.facts(self.world)
     if request.kind~='guanxing'or not h or h.enabled~=true or h.original_overrides_loaded~=true then
         ai_unsupported('Original Guanxing clone requires its active question','Original Guanxing clone')
     end
@@ -6080,10 +6443,8 @@ function SmartAIView:writeOriginalGuanxingShadow(value)
 end
 
 function PlayerView:getFormation()
-    local world=self._room and self._room._world
-    local facts=world and world.strategy_facts
-    local catalog=facts and facts.original_public_formation
-    local row=type(catalog)=='table'and catalog.complete==true and type(catalog.rows)=='table'and catalog.rows[self:objectName()]
+    -- Hegemony formations are not projected.
+    local row=nil
     if type(row)~='table'or row.known~=true or not AIValue.isList(row.names)
         or row.names[1]~=self:objectName()then
         ai_unsupported(type(row)=='table'and row.reason or'public formation is unavailable','getFormation')
@@ -6122,7 +6483,7 @@ local active=setmetatable({},{__mode='k'})
 local handles=setmetatable({},{__mode='k'})
 local answers=setmetatable({},{__mode='k'})
 local function host(self,s)
- local h=self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+ local h=self.world and AIHegemony.facts(self.world)
  if not h or h.enabled~=true or h.original_overrides_loaded~=true then ai_unsupported('Original SD provider admission missing','Original SD')end
  if type(ai_original_sd_choice)~='function'then ai_unsupported('Original SD finite host unavailable','Original SD')end
  local result=ai_original_sd_choice(s)
@@ -6572,50 +6933,26 @@ local function faqi_host(self,mode,payload)
  end
  return result
 end
-function SmartAIView:rememberFaqiUse(card,targets,offered,sourcePlan)
- local view=type(card)=='table'and rawget(card,'_view')
+-- SmartAI kept the AG plan on self.faqiUse; this viewer's memory holds the card
+-- name and targets, and @@faqi answers with the authorized Faqi conversion.
+function SmartAIView:rememberFaqiUse(card,targets)
  if not AIValue.isCard(card)and not AIValue.isConversion(card)then ai_unsupported('Faqi source did not select a policy card','faqiUse')end
- if type(view)~='table'or not AIValue.isList(targets)then ai_unsupported('Faqi selected observation shape missing','faqiUse')end
- local selector
- if type(view.readonly_recipe_key)=='string'and view.readonly_recipe_key~=''then selector={readonly_recipe_key=view.readonly_recipe_key}
- elseif AIValue.isConversion(card)then selector={conversion_id=card:getConversionId(),legacy_identity_token=view.legacy_identity_token}
- else selector={physical_id=card:getEffectiveId(),legacy_identity_token=view.legacy_identity_token}end
+ if not AIValue.isList(targets)then ai_unsupported('Faqi selected observation shape missing','faqiUse')end
  local names={}
  for _,target in ipairs(targets)do
   if not AIValue.isPlayer(target)or type(target:objectName())~='string'then ai_unsupported('Faqi target is not a player observation','faqiUse')end
   names[#names+1]=target:objectName()
  end
- local payload={selector=selector,targets=names,offered_id=offered}
- if sourcePlan~=nil then
-  if type(sourcePlan)~='table' or sourcePlan.card~=card or sourcePlan.to~=targets or sourcePlan.isDummy~=true then ai_unsupported('Faqi source dummy plan identity unavailable','faqiUse')end
-  -- Only these adapter-owned fields are absent from the donor's dummy table.
-  local internal={_evaluation_only=true,context=true,scratch=true,candidate_id=true}
-  local source={card=true,to=true,isDummy=true,extra_target=true,current_targets=true}
-  for key in pairs(sourcePlan)do if not internal[key]and not source[key]then ai_unsupported('Faqi source plan field has no exact native representation: '..tostring(key),'faqiUse')end end
-  local extra=sourcePlan.extra_target
-  if extra==nil then extra=0 end -- donor dummy() initialization
-  if type(extra)~='number'or extra~=extra or extra%1~=0 or extra < -2147483648 or extra > 2147483647 then ai_unsupported('Faqi extra_target source field malformed','faqiUse')end
-  local current=sourcePlan.current_targets
-  if current~=nil and (type(current)~='table'or next(current)~=nil)then ai_unsupported('Faqi nonempty current_targets native representation unavailable','faqiUse')end
-  payload.source_fields={isDummy=true,extra_target=extra,current_targets_empty=true}
- end
- local result=faqi_host(self,'capture',payload)
- if type(result.token)~='string'or result.token==''then ai_unsupported('Faqi capture lacks native token','faqiUse')end
- self:setStrategyMemory('doudizhu.faqiUse',{token=result.token})
- return result.token
+ self:setStrategyMemory('doudizhu.faqiUse',{name=card:objectName(),targets=names})
+ return true
 end
 function SmartAIView:materializeFaqiUse()
  local saved,present=self:getStrategyMemory('doudizhu.faqiUse')
  if AIUnsupported.is(saved)then error(saved,0)end
- if not present or type(saved)~='table'or type(saved.token)~='string'then ai_unsupported('source Faqi plan was not observed by this viewer','faqiUse')end
- local result=faqi_host(self,'select',{token=saved.token})
- if type(result.source_error)=='string'then error(result.source_error,0)end
- if result.source_pass==true then return{kind='pass'}end
- if not AIValue.isList(result.targets)then ai_unsupported('selected Faqi target sequence missing','faqiUse')end
- if type(result.card_spec)~='table' or type(result.card_spec.conversion_id)~='number' then
-  ai_unsupported('selected Faqi source has no fresh finite receipt','faqiUse')
- end
- return{kind='use_card',card_spec=result.card_spec,targets=result.targets}
+ if not present or type(saved)~='table'or type(saved.name)~='string'then ai_unsupported('source Faqi plan was not observed by this viewer','faqiUse')end
+ local conversion=self:newCard(saved.name,{skill='faqi'})
+ if not conversion then ai_unsupported('selected Faqi card has no authorized conversion','faqiUse')end
+ return{kind='use_card',card_spec=conversion:toCardSpec(),targets=copy_value(saved.targets)}
 end
 function SmartAIView:evaluateFaqiReviseCard(kind,costs)
  if kind~='limu'and kind~='spear'then ai_unsupported('Faqi revise constructor is not audited','faqiUse')end
@@ -6988,15 +7325,39 @@ end
 do
  local slots={wannawin=true,jiewq_lose=true,s3_fans_handou_card=true,s3_jxwj_ganglichoice=true,
   guanxu_friends=true,isfriend=true,qianlong_use=true,thwuyanDp=true,thwuyanHs=true,shilie_n=true,yuanrongIds=true}
+ -- SmartAI kept these fields on its per-player object. This observer's memory is
+ -- their isolated home, so they persist across the viewer's decisions.
  local function query(self,key,op,value)
-  if getmetatable(self)~=SmartAIView or not slots[key] or type(ai_current_source_slot)~='function' then
-   error(AIUnsupported.new('current source slot host unavailable',tostring(key)),0)
+  if getmetatable(self)~=SmartAIView or not slots[key] then
+   error(AIUnsupported.new('source slot is not declared',tostring(key)),0)
   end
-  local row=ai_current_source_slot(key,op,value)
-  if type(row)~='table' or row.known~=true then
-   error(AIUnsupported.new(type(row)=='table' and row.reason or 'invalid source slot response',key),0)
+  local memory_key='source_slot:'..key
+  local stored=self:recall(memory_key)
+  if op=='read' then
+   if type(stored)~='table' then return {known=true,type='nil'} end
+   return {known=true,type=stored.type,value=stored.value}
+  elseif op=='write' then
+   if value.ids then self:remember(memory_key,{type='ids',value=value.ids})
+   elseif value.type=='nil' then self:remember(memory_key,nil)
+   else self:remember(memory_key,{type=value.type,value=value.value}) end
+   return {known=true}
+  elseif op=='reset' then
+   self:remember(memory_key,{type='ids',value={}})
+   return {known=true,type='ids'}
   end
-  return row
+  if type(stored)~='table' then return {known=true,type='nil'} end
+  local ids=stored.type=='ids' and stored.value or {}
+  if op=='length' then return {known=true,type='number',value=#ids} end
+  if op=='contains' then
+   for _,id in ipairs(ids) do if id==value.id then return {known=true,type='boolean',value=true} end end
+   return {known=true,type='boolean',value=false}
+  end
+  if op=='append' then
+   ids[#ids+1]=value.id
+   self:remember(memory_key,{type='ids',value=ids})
+   return {known=true,type='ids'}
+  end
+  error(AIUnsupported.new('source slot operation is unknown',key),0)
  end
  function SmartAIView:writeCurrentSourceSlot(key,value)
   local t=type(value)
@@ -7036,19 +7397,31 @@ do
 
 end
 
--- R53 two finite actual-gameplay-Self target slots. No viewer-memory fallback.
+-- R53 two finite actual-gameplay-Self target slots.
 do
  local slots={luochong_to=true,cl_to=true,diting_to=true,youlong_to=true,secondjinzhi_to=true,xiaoxinf_to=true,fengying_to=true,fuping_to=true,jiusiTo=true,fuhui_to=true,jg_to=true,mx_to=true,shouli_to=true,tj_to=true,shouxingTo=true,geassTarget=true,tychendeTo=true}
+ -- SmartAI kept these targets on its per-player object. Like the scalar slots
+ -- above, this observer's memory is their isolated home (player names only).
  local function query(self,key,op,value)
-  if getmetatable(self)~=SmartAIView or not slots[key] or type(ai_current_source_slot)~='function'then
-   error(AIUnsupported.new('actual source target slot host unavailable',tostring(key)),0)
+  if getmetatable(self)~=SmartAIView or not slots[key] then
+   error(AIUnsupported.new('source target slot is not declared',tostring(key)),0)
   end
-  local row=ai_current_source_slot(key,op,value or{})
-  if AIUnsupported.is(row)then error(row,0)end
-  if type(row)~='table'or row.known~=true then
-   error(AIUnsupported.new(type(row)=='table'and row.reason or'invalid target slot response',key),0)
+  local memory_key='source_target:'..key
+  if op=='write' then
+   self:remember(memory_key,value.type~='nil' and {type=value.type,value=value.value} or nil)
+   return {known=true}
+  elseif op=='clear' then
+   self:remember(memory_key,nil)
+   return {known=true}
   end
-  return row
+  local stored=self:recall(memory_key)
+  if type(stored)~='table' then stored={type='nil'} end
+  if op=='read' then return {known=true,type=stored.type,value=stored.value} end
+  if op=='truth' then
+   -- A stored player or target list is truthy, as the source field was.
+   return {known=true,type='boolean',value=stored.type~='nil' and stored.value~=nil and stored.value~=false}
+  end
+  error(AIUnsupported.new('source target slot operation is unknown',key),0)
  end
  local function player(self,name,key)
   if type(name)~='string'then error(AIUnsupported.new('source target name malformed',key),0)end
@@ -7190,9 +7563,7 @@ function SmartAIView:round50Prefix(card,prefix,target,operation)
  return v.accepted
 end
 function SmartAIView:round50SkillDescription(skill,player)
- local all=self.world and self.world.strategy_facts and self.world.strategy_facts.round50_descriptions
- local row=type(all)=='table' and all[player:objectName()]
- local value=type(row)=='table' and row[skill:objectName()]
+ local value=nil -- Skill descriptions are not projected.
  if type(value)~='string'then ai_unsupported('actor-specific public skill description unavailable','chenfusui')end
  return value
 end

@@ -109,14 +109,10 @@ local function complete_hand(self,p)
  local cards=known(p:getKnownCards(),'disclosed hand');if #cards~=q(p,'getHandcardNum')then ai_unsupported('source branch requires undisclosed foreign hand faces','OverseasVersion.hand')end;return cards
 end
 local function list_i2c(self,ids)local r=AIList.new({});for _,id in ipairs(ids)do r:append(visible(self,id))end;return r end
-local function source_patterns(self)return known(self.world.strategy_facts.pattern_names,'public source patterns')end
+local function source_patterns(self)return known(AICardCatalog.patternNames(),'public source patterns')end
+-- PatternsCard scans Engine::getRandomCards, whose mode/banlist filtering is not projected.
 local function pattern_card(self,name,islist,derivative)
- if islist then ai_unsupported('whole pattern list is not requested by audited Overseas callsites','PatternsCard')end
- if type(ai_sample_pattern_log_name)~='function'then ai_unsupported('source pattern sampler unavailable','PatternsCard')end
- local r=ai_sample_pattern_log_name(name,derivative==true)
- if type(r)~='table'or r.pattern~=name or type(r.found)~='boolean'then ai_unsupported('source pattern sample malformed',name)end
- if derivative==true and r.derivative~=true then ai_unsupported('derivative source shuffle not proven',name)end
- if not r.found then return nil end;return CardView.new(known(r.printed_card,'sampled printed face'))
+ ai_unsupported('PatternsCard random card pool is not projected',name)
 end
 local function encode(self,v)
  if v==nil then return{kind='nil'}end
@@ -142,12 +138,9 @@ local source_prefix_keys={
 local function dynamic(self,registry,key,v)
  local keys=source_prefix_keys[registry]
  if keys and keys[key]then
-  if type(ai_response_choice_continuity)~='function'then ai_unsupported('actual named source registry assignment unavailable',key)end
-  local out=ai_response_choice_continuity{op='source_prefix',registry=registry,key=key,value=encode(self,v)}
-  if AIUnsupported.is(out)then error(out,0)end
-  if type(out)~='table'or out.known~=true or out.written~=true then
-   ai_unsupported('actual named source registry assignment is not admitted',key)
-  end
+  -- The donor assigns this value into the Room VM's registry for a later question;
+  -- the isolated AI cannot write there.
+  ai_unsupported('Room-VM registry assignment is not available',key)
  end
  self:setStrategyMemory('OverseasVersion.registry:'..registry..':'..key,{value=encode(self,v),decision_id=self.request.decision_id,state_revision=self.request.state_revision})
 end
@@ -160,7 +153,7 @@ local function remember_function(reg,key,fn,read,write)
  authored[#authored+1]={reg=reg,key=key,fn=fn,read=read,write=write}
 end
 local function increment_yujue(self)
- local epochs=known(self.world.strategy_facts.strategy_play_clear_epochs,'Play clear epochs');local epoch=known(epochs[self.player:objectName()],'owner Play clear epoch')
+ local epochs=known(AIWorldLifecycle.epochs(self.world,'play'),'Play clear epochs');local epoch=known(epochs[self.player:objectName()],'owner Play clear epoch')
  local prior,seen=self:getStrategyMemory('OverseasVersion.yujue_mark')
  local amount=seen and prior.epoch==epoch and prior.amount or 0
  self:setStrategyMemory('OverseasVersion.yujue_mark',{epoch=epoch,amount=amount+1})
@@ -173,15 +166,13 @@ end
 local function yujue_mark(self)
  local native=q(self.player,'getMark','ov_yujue_use-PlayClear')
  local v,ok=self:getStrategyMemory('OverseasVersion.yujue_mark');if not ok then return native end
- local epochs=known(self.world.strategy_facts.strategy_play_clear_epochs,'Play clear epochs');local epoch=known(epochs[self.player:objectName()],'owner Play clear epoch')
+ local epochs=known(AIWorldLifecycle.epochs(self.world,'play'),'Play clear epochs');local epoch=known(epochs[self.player:objectName()],'owner Play clear epoch')
  return native+(v.epoch==epoch and v.amount or 0)
 end
 
+-- Engine::getCardNames filters by the random card pool, which is not projected.
 local function card_names(self)
- if type(ai_response_catalogue)~='function'then ai_unsupported('source getCardNames sampler unavailable','ov_qinyi')end
- local row=ai_response_catalogue('ov_qinyi_names');if AIUnsupported.is(row)then error(row,0)end
- if type(row)~='table'or row.known~=true or row.key~='ov_qinyi_names'then ai_unsupported('source getCardNames result malformed','ov_qinyi')end
- return known(row.names,'ov_qinyi names')
+ ai_unsupported('getCardNames random card pool is not projected','ov_qinyi')
 end
 
 local function promote_fill(self,key,c,request)

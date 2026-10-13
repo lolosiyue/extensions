@@ -23,9 +23,9 @@ local function sort_in_place(self,list,key)
     for i,value in ipairs(ordered) do list[i]=value end
 end
 local function source_global_slash(self)
-    local fact=known(self.world.strategy_facts and self.world.strategy_facts.typemoon_global_slash,"global slash")
-    if fact.known~=true or fact.present~=false then ai_unsupported("Typemoon source global slash is not a known nil","global slash") end
-    return nil
+    -- The donor reads an undeclared global `slash` of the gameplay VM; that VM's
+    -- globals are not projected.
+    ai_unsupported("Typemoon source global slash is not projected","global slash")
 end
 sgs.ai_skill_invoke["yinyang"] = function(self, data)
 	local counter
@@ -144,20 +144,9 @@ end
 -- Jiuzi has two distinct live bodies under the fixed package load order.
 -- Select each key from the immutable startup origin, never ai_skills aliases.
 local function jiuzi_variant(self, registry, key)
-    local capture = self.world.strategy_facts and self.world.strategy_facts.audited_aliases
-    local entries = type(capture) == "table" and capture.source_variants
-    local row = type(entries) == "table" and entries[registry .. "." .. key]
-    if not capture or capture.captured ~= true or type(row) ~= "table" or row.known ~= true then
-        ai_unsupported("Jiuzi effective callback origin was not captured", registry .. "." .. key)
-    end
-    if row.present == false then return nil end
-    local lines = registry == "ai_fill_skill" and {typemoon=27,touhou=6307} or {typemoon=56,touhou=6319}
-    local files = {typemoon="@lua/ai/typemoon-ai.lua",touhou="@lua/ai/touhouproject-ai.lua"}
-    if row.present ~= true or row.type ~= "function" or row.source ~= files[row.variant]
-        or row.line ~= lines[row.variant] or files[row.variant] == nil then
-        ai_unsupported("Jiuzi effective callback is not an audited source body", registry .. "." .. key)
-    end
-    return row.variant
+    -- Which package's donor body won the gameplay VM's load order is that VM's
+    -- registry state, not projected.
+    ai_unsupported("Jiuzi effective callback origin is not projected", registry .. "." .. key)
 end
 local function jiuzi_seed(self,request)
     return q(self,"legacySkillSeed","Jiuzi","#JiuziCard",request)

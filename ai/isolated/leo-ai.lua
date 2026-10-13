@@ -103,24 +103,15 @@ end
 local function context_value(self,key)local context=q(self,'getDecisionContext');local value=known(context[key],key);if value==false then return nil end;return value end
 local function context_player(self,key)local name=context_value(self,key);if name==nil then return nil end;return known(self.room:findPlayerByObjectName(name),key)end
 local function public_flag(self,player,name)
- local facts=self.world.strategy_facts.round41_skill_flags
- if type(facts)~="table" or facts.viewer~=q(self.player,"objectName") then
-  return known(nil,"scoped skill flag "..name)
- end
- local row=facts.flags and facts.flags[name]
- local value=row and row[q(player,"objectName")]
- if type(value)~="table" or type(value.value)~="boolean" then return known(nil,"scoped skill flag "..name) end
- if value.status=="exact" and value.basis=="current_owner_flag" and player==self.player then return value.value end
- if value.status=="estimate" and value.basis=="skill_flag_last_public_observation" then
-  return q(self,"useKnowledgeEstimate",{status="estimate",value=value.value,basis=value.basis,
-   player=q(player,"objectName"),flag=name},"leo.public_flag")
- end
- return known(nil,"scoped skill flag provenance "..name)
+ -- Player flags are broadcast and projected for every player.
+ return q(player,"hasFlag",name)
 end
 local function source_visible_hand(self,player)
- local map=self.world.strategy_facts.source_visible_hand_ids;local cards={};local faces={}
- for _,c in ipairs(q(player,'getKnownCards'))do faces[q(c,'getEffectiveId')]=c end
- for _,id in ipairs(known(map and map[q(player,'objectName')],'source-visible hand order'))do cards[#cards+1]=known(faces[id],'source-visible face')end
+ -- Known hand cards that carry a visibility flag toward this viewer, in hand order.
+ local flag=string.format("visible_%s_%s",q(self.player,'objectName'),q(player,'objectName'));local cards={}
+ for _,c in ipairs(q(player,'getKnownCards'))do
+  if q(c,'hasFlag','visible') or q(c,'hasFlag',flag) then cards[#cards+1]=c end
+ end
  return cards
 end
 local function first_hand(self,player)

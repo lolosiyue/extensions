@@ -1309,8 +1309,8 @@ function sgs.ai_skill_invoke.MeowZhenlie(self, data)
                 or (use.from:hasSkill("dahe") and self.player:hasFlag("dahe") and not hasHeart) then
                 if use.card:isKindOf("NatureSlash") and self.player:isChained() and not self:isGoodChainTarget(self.player, use.card, use.from) then return true end
                 if use.from:hasSkill("nosqianxi") and use.from:distanceTo(self.player) == 1 then return true end
-                if self:isFriend(use.from) and self.role == "loyalist" and not hasJueqingEffect(use.from, self.player, sgs.card_damage_nature[use.card:getClassName()]) and use.from:isLord() and self.player:getHp() == 1 then return true end
-                if (not (self:hasSkills(sgs.masochism_skill) or (self.player:hasSkill("tianxiang") and getKnownCard(self.player, self.player, "heart") > 0)) or hasJueqingEffect(use.from, self.player, sgs.card_damage_nature[use.card:getClassName()]))
+                if self:isFriend(use.from) and self.role == "loyalist" and not self:hasJueqingEffect(use.from, self.player, sgs.card_damage_nature[use.card:getClassName()]) and use.from:isLord() and self.player:getHp() == 1 then return true end
+                if (not (self:hasSkills(sgs.masochism_skill) or (self.player:hasSkill("tianxiang") and getKnownCard(self.player, self.player, "heart") > 0)) or self:hasJueqingEffect(use.from, self.player, sgs.card_damage_nature[use.card:getClassName()]))
                     and self:doDisCard(use.from, "he") then
                     return true
                 end
@@ -1334,13 +1334,13 @@ function sgs.ai_skill_invoke.MeowZhenlie(self, data)
             if not self:damageIsEffective(self.player, sgs.DamageStruct_Normal, from) then return false end
             if use.from:hasSkill("drwushuang") and self.player:getCardCount() == 1 and self:hasLoseHandcardEffective() then return true end
             if sj_num == 0 and friend_null <= 0 then
-                if self:isEnemy(from) and hasJueqingEffect(from, self.player, sgs.card_damage_nature[use.card:getClassName()]) then
+                if self:isEnemy(from) and self:hasJueqingEffect(from, self.player, sgs.card_damage_nature[use.card:getClassName()]) then
                     return self:doDisCard(from, "he")
                 end
-                if self:isFriend(from) and self.role == "loyalist" and from:isLord() and self.player:getHp() == 1 and not hasJueqingEffect(from, self.player, sgs.card_damage_nature[use.card:getClassName()]) then
+                if self:isFriend(from) and self.role == "loyalist" and from:isLord() and self.player:getHp() == 1 and not self:hasJueqingEffect(from, self.player, sgs.card_damage_nature[use.card:getClassName()]) then
                     return self:doDisCard(from, "he")
                 end
-                if (not (self:hasSkills(sgs.masochism_skill) or (self.player:hasSkill("tianxiang") and getKnownCard(self.player, self.player, "heart") > 0)) or hasJueqingEffect(from, self.player, sgs.card_damage_nature[use.card:getClassName()])
+                if (not (self:hasSkills(sgs.masochism_skill) or (self.player:hasSkill("tianxiang") and getKnownCard(self.player, self.player, "heart") > 0)) or self:hasJueqingEffect(from, self.player, sgs.card_damage_nature[use.card:getClassName()])
                         and self:doDisCard(use.from, "he")) then
                     return true
                 end
@@ -1474,12 +1474,10 @@ sgs.MeowTianxiang_suit_value={heart=4.9}
 -- Source cardResponded @MeowBeige, scoped by the actual event callback key.
 -- The shared public current-damage projection supplies no private response card.
 sgs.ai_choicemade_filter.cardResponded["@MeowBeige"]=function(self,player,promptlist)
-    local standard=self.world.strategy_facts and self.world.strategy_facts.standard
-    local row=standard and standard.current_damage
-    if row==nil then ai_unsupported("current public damage is unknown","MeowBeige.intention") end
-    if row==false then return end
-    if type(row)~="table" then ai_unsupported("current damage shape is invalid","MeowBeige.intention") end
-    local target=row.to and self.room:findPlayerByObjectName(row.to,true)
-    if row.to and not target then ai_unsupported("current damage target is absent","MeowBeige.intention") end
+    -- CurrentDamageStruct reaches only a decision's context; an event-only view has none.
+    local row=self:getDecisionContext().damage
+    if type(row)~="table" then ai_unsupported("current public damage is unknown","MeowBeige.intention") end
+    local target=row.to
+    if (row.to_name or "")~="" and not target then ai_unsupported("current damage target is absent","MeowBeige.intention") end
     if target and promptlist[#promptlist]~="" then sgs.updateIntention(player,target,-80) end
 end

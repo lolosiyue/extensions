@@ -43,26 +43,23 @@ end
 local function visible_card(self,id) return known(self:getChoiceCard(id)or self:getKnownCardById(id),"shengrongsiai.disclosed_card")end
 local function set_target(self,key,p)self:setStrategyMemory("shengrongsiai."..key,p and q(p,"objectName")or false)end
 local function get_target(self,key)local name,present=self:getStrategyMemory("shengrongsiai."..key);if present and name then return q(self.room,"findPlayerByObjectName",name,true)end end
+-- The donor's visible set: hand cards carrying the public "visible" or
+-- "visible_<viewer>_<target>" card flag, read from the known cards' flags.
 local function source_visible_hand(self,player)
-    local facts=self.world.strategy_facts
-    local rows=facts and facts.source_visible_hand_ids
-    local ids=known(rows and rows[q(player,"objectName")],"source_visible_hand_ids")
-    local faces={};for _,card in ipairs(q(player,"getKnownCards"))do faces[q(card,"getEffectiveId")]=card end
-    local out={};for _,id in ipairs(ids)do out[#out+1]=known(faces[id],"luaRcaiyi.source_visible_card")end
+    local flag=string.format("visible_%s_%s",q(self.player,"objectName"),q(player,"objectName"))
+    local cards=player==self.player and q(player,"getHandcards") or q(player,"getKnownCards")
+    local out={};for _,card in ipairs(cards)do if q(card,"hasFlag","visible")or q(card,"hasFlag",flag)then out[#out+1]=card end end
     return out
 end
+-- The decision context carries the CurrentDamageStruct room tag as its damage. This
+-- runs in an event callback, where a missing one is not known to be an absent tag.
 local function current_damage(self)
-    local facts=self.world.strategy_facts;local raw=known(facts and facts.standard and facts.standard.current_damage,"CurrentDamageStruct")
-    if raw==false then return{}end
-    local out={};for k,v in pairs(raw)do out[k]=v end
-    for _,key in ipairs({"from","to"})do if type(out[key])=="string"then out[key]=q(self.room,"findPlayerByObjectName",out[key],true)elseif out[key]==false then out[key]=nil end end
-    return out
+    local damage=known(self:getDecisionContext().damage,"CurrentDamageStruct")
+    for _,key in ipairs({"from","to"})do if damage[key.."_name"]==""then damage[key]=nil end end
+    return damage
 end
+-- Callers take the target from the event being observed.
 local function role_effect(self,source,target)
-    local witness=known(self.world.strategy_facts and self.world.strategy_facts.quanxiang_role_witness,"quanxiang event witness")
-    if type(witness)~="table" or witness.player~=q(target,"objectName") then
-        ai_unsupported("Quanxiang event witness is unavailable","luaRquanxiang.role_effect")
-    end
     local function observed_role(player)
         local role=call(player,"getRole")
         if role==nil then
@@ -122,9 +119,11 @@ end
 
 sgs.ai_event_callback[sgs.Death or "Death"]=sgs.ai_event_callback[sgs.Death or "Death"]or{}
 sgs.ai_event_callback[sgs.Death or "Death"].luaRquanxiang=function(self,player,event)
-    known(self.world.strategy_facts and self.world.strategy_facts.quanxiang_role_witness,"quanxiang death witness")
     for _,source in ipairs(q(self.room,"getOtherPlayers",player))do
-        if q(source,"hasSkill","luaRquanxiang")then
+        local holder=q(source,"hasSkill","luaRquanxiang")
+        -- A hidden hegemony general's skills are unknown, not absent.
+        if not holder and q(source,"areSkillsComplete")~=true then ai_unsupported("Quanxiang holder skills are not public","luaRquanxiang") end
+        if holder then
             local target=q(self.room,"findPlayerByObjectName",known(event.to,"death target"),true)
             role_effect(self,source,target)
         end

@@ -8,10 +8,6 @@ local function raw_call(o,k,...)
  if not o or type(o[k])~='function' then unsupported(k)end
  local v=table.pack(o[k](o,...));if AIUnsupported.is(v[1])then error(v[1],0)end;return table.unpack(v,1,v.n)
 end
-local function fact(self,key)
- local all=self.world and self.world.strategy_facts;local p=all and all[PACKAGE];local v=p and p[key]
- if v==nil then unsupported(key)end;return v
-end
 local function clone(self,name,skill,suit,number)
  name=name or 'slash';local p=raw_call(self,'cloneEvaluationCard',name)
  if p==false then return nil end;if not p then unsupported('prototype.'..tostring(name))end
@@ -72,11 +68,16 @@ end
 local function dummy(value,extra,current)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;u.current_targets=current or{};return u end
 local function patterns_for(self,class)
  if class then return patterns(class)end
- local f=self.world and self.world.strategy_facts;local a=f and f.pattern_names
+ local a=AICardCatalog.patternNames()
  if not AIValue.isList(a)then unsupported('pattern_names')end;return a
 end
 local function source_fact(self,key,kind)
- local v=fact(self,key)
+ -- The viewer's own tag; absent reads as the donor's empty QVariant conversion.
+ local v=self.player:getTag(key)
+ if v==nil then
+  if kind=='toInt'then return 0 elseif kind=='toString'then return''elseif kind=='toBool'then return false elseif kind=='toIntList'then return AIList.new({})end
+  v=false
+ end
  if kind=='toPlayer'then return v~=false and package_known(self.room,'findPlayerByObjectName',v,true)or nil end
  if kind=='toInt'or kind=='toString'or kind=='toBool'then return v end
  if kind=='toIntList'then return AIList.new(v)end
@@ -145,21 +146,11 @@ local function peiqi_state(self)
 end
 
 local function source_callback(self,registry,key)
- local rows=fact(self,"chenbiyi_callback_presence");local group=rows[registry]
- local row=type(group)=="table"and group[key]
- if type(row)~="table"or row.known~=true then unsupported("chenbiyi_callback_presence")end
- if row.type=="nil"then return nil end
- if row.type=="boolean"and row.value==false then return false end
- if row.type~="function"then
-  if row.type=="string"or row.type=="number"or row.type=="boolean"then
-   error("attempt to call a "..row.type.." value",0)
-  end
-  unsupported("chenbiyi_callback_callable."..key)
- end
- if row.matched~=true then unsupported("chenbiyi_callback_origin."..key)end
- if type(row.source)~="string"or type(row.line)~="number"then unsupported("chenbiyi_callback_origin."..key)end
+ -- Donor callback presence: this VM's own registry is authoritative.
  local fn=sgs[registry][key]
- if type(fn)~="function"then unsupported("chenbiyi_callback."..key)end
+ if fn==nil then return nil end
+ if fn==false then return false end
+ if type(fn)~="function"then error("attempt to call a "..type(fn).." value",0)end
  if ai_audited_aliases and type(ai_audited_aliases.resolve)=="function"then fn=ai_audited_aliases.resolve(self,fn)end
  if type(fn)~="function"then unsupported("chenbiyi_callback."..key)end
  return fn
@@ -956,18 +947,20 @@ end
 sgs.ai_use_value.chenfusuiCard = 3.4
 sgs.ai_use_priority.chenfusuiCard = 5.2
 
+-- The viewer's own property, read like the donor's toString() (absent reads "").
+local function chenbiyi_skill(self)return self.player:getPropertyValue("chenbiyi_skill")or""end
 sgs.ai_fill_skill.chenbiyi = function(self,inclusive,request)
-	local f=source_callback(self,"ai_fill_skill",fact(self,"chenbiyi_skill"))
+	local f=source_callback(self,"ai_fill_skill",chenbiyi_skill(self))
 	return f and f(self)
 end
 
 sgs.ai_guhuo_card.chenbiyi = function(self,card_name,class_name)
-	local f=source_callback(self,"ai_guhuo_card",fact(self,"chenbiyi_skill"))
+	local f=source_callback(self,"ai_guhuo_card",chenbiyi_skill(self))
 	return f and f(self,card_name,class_name)
 end
 
 function sgs.ai_cardsview.chenbiyi(self,class_name,player)
-	local f=source_callback(self,"ai_cardsview",fact(self,"chenbiyi_skill"))
+	local f=source_callback(self,"ai_cardsview",chenbiyi_skill(self))
 	return f and f(self,class_name,player)
 end
 

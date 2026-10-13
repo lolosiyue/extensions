@@ -16,6 +16,8 @@ local function q(o,k,...)
         if v==false and row and row.skills_complete~=true then ai_unsupported("goddess foreign skill absence is unknown",(...))end
     end
     if nullable[k]then return v end
+    -- An audited provider's nil is the donor's falsy result, not an unknown.
+    if v==nil and SmartAIView.isKnownNilStrategyResult(o,method,o[method])then return nil end
     return known(v,k)
 end
 local function dummy(isDummy,extra)
@@ -41,41 +43,31 @@ local function nullfilter(self,data,pattern,target)
     if type(f)~="function"then ai_unsupported("effective nullfilter unavailable","goddess")end
     return result(f(self,data,pattern,target))
 end
-local function facts(self)return known(self.world.strategy_facts and self.world.strategy_facts.goddess,"goddess")end
 local function current_damage(self)
     local raw=known(q(self,"getDecisionContext").damage,"CurrentDamageStruct")
     local copy={};for k,v in pairs(raw)do copy[k]=v end
     copy.damage=known(raw.amount~=nil and raw.amount or raw.damage,"CurrentDamageStruct.damage")
     return copy
 end
-local function tag_card(self,key,nullable_tag)
-    local rows=facts(self).tag_cards;local row=rows and rows[key]
-    if type(row)~="table"or row.known~=true then ai_unsupported("goddess public tag card not projected",key)end
-    if row.present==false and nullable_tag then return nil end
-    return CardView.new(known(row.card,key))
-end
+local function tag_card(self,key,nullable_tag)ai_unsupported("goddess room tag is not projected",key)end
 -- Fixed PoAskPo reads toCard() only as a truth value. A finite native producer
 -- window attests presence; no unused card face or subcard identity is required.
-local function tag_present(self,key)
-    local rows=facts(self).tag_cards;local row=rows and rows[key]
-    if type(row)~="table"or row.known~=true or type(row.present)~="boolean"then
-        ai_unsupported("goddess public tag presence not projected",key)
-    end
-    return row.present
-end
+local function tag_present(self,key)ai_unsupported("goddess room tag is not projected",key)end
+-- Room tag UseHistory<index>; an absent tag reads as the donor's empty CardUseStruct.
 local function history_use(self,index)
-    local c=q(self,"getDecisionContext");local row=c.goddess and c.goddess.use_history
-    if type(row)~="table"or row.known~=true or row.index~=index then ai_unsupported("goddess UseHistory not projected for this inquiry","Kai-Jink")end
-    if row.present==false then return {}end
-    local u=known(row.use,"UseHistory");return{from=u.from and q(self.room,"findPlayerByObjectName",u.from,true),card=u.card and CardView.new(u.card)}
+    local u=self:getUseHistory(index)
+    if u==nil then return {}end
+    return{from=u.from~=""and q(self.room,"findPlayerByObjectName",u.from,true)or nil,
+        card=type(u.card)=="table"and u.card.name~=nil and CardView.new(u.card)or nil}
 end
 local function humanized(self)
     local policy=q(self,"getResponsePolicy")
     return known(policy.humanized,"AIHumanized")
 end
 local function owner_property(self,key)
-    local properties=self.world.strategy_facts and self.world.strategy_facts.owner_skill_properties
-    return known(properties and properties[key],key)
+    -- The viewer's own property, read like the donor's toString() (absent reads "").
+    local v=self.player:getPropertyValue(key)
+    if v==nil then return "" end;return v
 end
 local function persistent_effect_card(self)
     local context=q(self,"getDecisionContext")
@@ -561,24 +553,19 @@ sgs.ai_keep_value.xianzhencard = 3.44
 
 
 
--- Finite owner/target state lives in the Room, not the reconstructible Lua VM.
--- The host checks active owner/revision/roster and keeps reached source writes
--- across errors and VM reset; legacy/external entry invalidates continuity.
+-- The donor sets a real flag on its own player, live until that player's next flag
+-- clear. The isolated VM cannot set it, so its own writes go to viewer memory stamped
+-- with the flag lifecycle epoch; a flag set by a gameplay-VM decision is read directly.
 local function manbing_flag(self,target,write)
     local name=q(target,"objectName")
     if self.room:findPlayerByObjectName(name,true)~=target then
         ai_unsupported("Manbing target is outside the current roster","manbingTo_")
     end
-    local host=rawget(_G,"ai_manbing_flag")
-    if type(host)~="function"then ai_unsupported("Manbing Room state host unavailable","manbingTo_")end
-    local row
-    if write then row=host(name,true)else row=host(name)end
-    row=result(row)
-    if type(row)~="table"or getmetatable(row)~=nil or row.kind~="manbing_flag"or row.known~=true
-        or type(row.value)~="boolean"then
-        ai_unsupported(type(row)=="table"and row.reason or "Manbing owner state is unknown","manbingTo_")
-    end
-    return row.value
+    local epochs=known(AIWorldLifecycle.epochs(self.world,"flag"),"manbingTo_")
+    local epoch=known(epochs[q(self.player,"objectName")],"manbingTo_")
+    local key="goddess.manbingTo_"..name
+    if write then q(self,"remember",key,epoch);return true end
+    return q(self.player,"hasFlag","manbingTo_"..name) or self:recall(key)==epoch
 end
 
 function SmartAIView:useCardmanbing(manbing,use)

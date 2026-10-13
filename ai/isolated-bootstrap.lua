@@ -312,10 +312,9 @@ local function sync_strategy_flag_clears(world)
         or type(world.self.object_name) ~= "string" or world.self.object_name == "" then
         missing("strategy flag-clear synchronization needs a viewer snapshot")
     end
-    local facts = world.strategy_facts
-    local epochs = type(facts) == "table" and facts.strategy_flag_clear_epochs
-    if type(epochs) ~= "table" or getmetatable(epochs) ~= nil then
-        missing("actual player flag-clear epochs are unavailable")
+    local epochs = type(AIWorldLifecycle) == "table" and AIWorldLifecycle.epochs(world, "flag")
+    if type(epochs) ~= "table" then
+        missing("player flag-clear epochs cannot be derived from the world view")
     end
     local roster = {[world.self.object_name] = true}
     if type(world.players) ~= "table" then missing("flag-clear roster is unavailable") end
@@ -386,6 +385,11 @@ function ai_decide(request)
     -- 未覆蓋是新版決策缺口：回 nil 並記錄原因，不能當作已處理或合法 pass。
     -- host 的故障保底不屬於策略；錯誤仍往上丟，記成 AI_RUNTIME_ERROR。
     local ok, answer = pcall(handler, self_view, request)
+    -- Decision memory persists even when the decision is not covered.
+    if type(self_view.flushDecisionMemory) == "function" then
+        local flushed, failure = pcall(self_view.flushDecisionMemory, self_view)
+        if not flushed and ok then ok, answer = false, failure end
+    end
     if not ok and not AIUnsupported.is(answer) then
         record_outcome(request.kind, "error")
         error(answer, 0)

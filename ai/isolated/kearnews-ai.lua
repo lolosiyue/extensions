@@ -17,18 +17,25 @@ end
 local function spec(name,skill,c)return{name=name,skill=skill,suit=q(c,"getSuit"),number=q(c,"getNumber"),subcards={q(c,"getEffectiveId")}}end
 local function dummy(value,extra)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;return u end
 local function analeptic_available(self,card)
- local f=self.world and self.world.strategy_facts and self.world.strategy_facts.kearnews
- if not card then local v=f and f.analeptic_available;if type(v)~="boolean"then ai_unsupported("source static Analeptic availability unknown","kearnews.analeptic_available")end;return v end
+ -- Analeptic::IsAvailable without a card is a native rule answer that is not projected.
+ if not card then ai_unsupported("source static Analeptic availability is not projected","kearnews.analeptic_available")end
  local v=card._view and card._view.source_analeptic_available;if type(v)~="boolean"then ai_unsupported("source clone Analeptic availability unknown","kearnews.analeptic_available")end;return v
 end
+-- Own tags are projected; the keceyin/kenewmieyao room tags are not. A discard ask
+-- carries no data, so its context damage is the CurrentDamageStruct room tag.
 local function fact(self,key,standard)
- local f=self.world and self.world.strategy_facts;local group=f and f[standard and "standard"or"kearnews"]
- local raw=group and group[key];if raw==nil then ai_unsupported("scoped source tag unavailable","kearnews."..key)end
- if raw==false then return{}end
+ if standard and key=="current_damage"then
+  local damage=self:getDecisionContext().damage
+  if damage==nil then return{}end -- absent tag: the donor's default struct has no from/to
+  for _,k in ipairs({"from","to"})do if damage[k.."_name"]==""then damage[k]=nil end end
+  return damage
+ end
+ if standard or key~="newhujiaaDamage"then ai_unsupported("room tag is not projected","kearnews."..key)end
+ local raw=self.player:getTag(key)
+ if raw==nil then return{}end -- the donor's toDamage() default has no from/card
  local d={};for k,v in pairs(raw)do d[k]=v end
- for _,k in ipairs({"from","to"})do if type(d[k])=="string"then d[k]=q(self.room,"findPlayerByObjectName",d[k],true)elseif d[k]==false then d[k]=nil end end
- if type(d.card)=="table"then d.card=CardView.new(d.card)end
- if type(d.to)=="table"and not AIValue.isPlayer(d.to)then local ps=AIList.new({});for _,name in ipairs(d.to)do ps:append(q(self.room,"findPlayerByObjectName",name,true))end;d.to=ps end
+ for _,k in ipairs({"from","to"})do if type(d[k])=="string"then d[k]=d[k]~=""and q(self.room,"findPlayerByObjectName",d[k],true)or nil end end
+ if type(d.card)=="table"then d.card=next(d.card)and CardView.new(d.card)or nil end
  return d
 end
 local function trigger(self,skill)

@@ -35,15 +35,12 @@ local function reversed(cards)
     local result={};for i=#cards,1,-1 do result[#result+1]=cards[i]end;return AIList.new(result)
 end
 local function current_damage(self)
-    local raw=known(self.world.strategy_facts and self.world.strategy_facts.standard and self.world.strategy_facts.standard.current_damage,"yjcm.current_damage")
-    if raw==false then return {} end
-    local result={};for k,v in pairs(raw)do result[k]=v end
-    for _,key in ipairs({"from","to"}) do
-        local name=result[key];result[key]=name and name~="" and self.room:findPlayerByObjectName(name,true) or nil
-    end
-    result.damage=result.amount
-    if result.card then result.card=CardView.new(result.card)end
-    return result
+    -- Room tag CurrentDamageStruct: a question's decision context carries it while the tag
+    -- holds one (absent reads as the donor's empty struct); event callbacks get no context.
+    if self.request.kind=="event"then ai_unsupported("CurrentDamageStruct is not projected to event callbacks","yjcm.current_damage")end
+    local d=self:getDecisionContext().damage
+    if d==nil then return {} end
+    return {from=d.from,to=d.to,damage=d.amount,card=d.card,nature=d.nature}
 end
 local function material(self,id)
     return known(self:getKnownCardById(id) or self:getChoiceCard(id),"yjcm.disclosed_material")

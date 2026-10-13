@@ -60,7 +60,7 @@ end
 
 -- Fixed Original heg-common1483/2459; mode facts are native admission evidence.
 local function r35_original(self)
-    local facts=self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+    local facts=self.world and AIHegemony.facts(self.world)
     if type(facts)~='table' or facts.enabled==false then return false end
     if facts.enabled~=true or type(facts.original_overrides_loaded)~='boolean' then
         ai_unsupported('Original provider admission is unknown','Original choice')
@@ -298,26 +298,11 @@ local function alias_path(table_value, path)
     end
     return table_value
 end
+-- An alias is this VM's own registration and always calls its canonical policy.
 function ai_audited_aliases.resolve(self, callback)
     local binding = audited_alias_callbacks[callback]
     if not binding then return callback end
-    local facts = self and self.world and self.world.strategy_facts
-    local snapshot = facts and facts.audited_aliases
-    local row = snapshot and snapshot.entries and snapshot.entries[binding.id]
-    if type(snapshot) ~= "table" or snapshot.captured ~= true or type(row) ~= "table" or row.known ~= true then
-        ai_unsupported("audited alias identity is unknown", binding.id)
-    end
-    if row.present == false then return nil end
-    if row.present ~= true or row.enabled ~= true or row.matched ~= true or row.source_matches ~= true
-        or row.registry ~= binding.registry or row.canonical_registry ~= binding.canonical_registry then
-        ai_unsupported("audited alias is present without matching source identity", binding.id)
-    end
-    for _, key in ipairs{"path", "canonical_path"} do
-        local expected, actual = binding[key], row[key]
-        if type(actual) ~= "table" or #actual ~= #expected then ai_unsupported("audited alias path differs", binding.id) end
-        for i, value in ipairs(expected) do if actual[i] ~= value then ai_unsupported("audited alias path differs", binding.id) end end
-    end
-    local callback = binding.callback
+    callback = binding.callback
     if binding.defer_canonical then callback = alias_path(sgs[binding.canonical_registry], binding.canonical_path) end
     if type(callback) ~= "function" then ai_unsupported("audited alias canonical policy is unavailable", binding.id) end
     return callback
@@ -364,7 +349,7 @@ local function make_registry(kind, default_name, name)
         local reason = options and options.reason
         -- Original asks own the full callback/default algorithm. This route is
         -- before typed reason handlers/personality gates, not a second callback.
-        local original = self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+        local original = self.world and AIHegemony.facts(self.world)
         if original and original.enabled == true and original.original_overrides_loaded == true
             and (kind=='discard'or kind=='suit'or kind=='player_chosen'or kind=='yiji') then
             if kind=='discard'then
@@ -372,14 +357,7 @@ local function make_registry(kind, default_name, name)
             end
             if type(options)~='table'then return ai_unsupported('Original ask options missing',kind)end
             if kind=='suit'then
-                local ok,value=pcall(self.askForSuit,self,reason)
-                if AIUnsupported.is(value)then error(value,0)end
-                if type(ai_original_suit_result)~='function'then ai_unsupported('Original Suit native result bridge unavailable',kind)end
-                local result=ai_original_suit_result(value,not ok)
-                if type(result)~='table'or result.kind~='original_suit_result'or type(result.value)~='number'then
-                    ai_unsupported(type(result)=='table'and result.error or'Original Suit result unknown',kind)
-                end
-                return finish_registry(self,kind,{kind='answer',original_suit_value=result.value})
+                ai_unsupported('Original Suit result conversion is not projected',kind)
             end
             if not AIValue.isList(options.players)then
                 return ai_unsupported('Original ask target domain unknown',kind)
@@ -430,10 +408,7 @@ local function make_registry(kind, default_name, name)
                 return finish_registry(self,kind,answer)
             end
             if type(answer)~='number'then ai_unsupported('Original card choice nonnumeric result',kind)end
-            if type(ai_original_cardchosen_result)~='function'then ai_unsupported('Original numeric result boundary unavailable',kind)end
-            answer=ai_original_cardchosen_result(answer)
-            if answer<0 then return finish_registry(self,kind,{kind='pass'})end
-            return finish_registry(self,kind,answer)
+            ai_unsupported('Original numeric card choice conversion is not projected',kind)
         end
 
         -- SmartAI exits an empty AG domain before invoking any reason hook.
@@ -531,17 +506,7 @@ local function make_registry(kind, default_name, name)
                 local ok,value=pcall(legacy_call,self,kind,callback,options,request)
                 if AIUnsupported.is(value)then error(value,0)end
                 if not ok then
-                    if type(value)~='string' or type(ai_lianli_cardask_error)~='function'then
-                        ai_unsupported('Lianli source error diagnostic is unavailable','lianli.source_error')
-                    end
-                    local reported=ai_lianli_cardask_error(value)
-                    if AIUnsupported.is(reported)then error(reported,0)end
-                    if type(reported)~='table' or reported.kind~='lianli_source_error'
-                        or reported.error_class~='ordinary_lua_error' or reported.message~=value
-                        or reported.invoke~=false then
-                        ai_unsupported('Lianli source error diagnostic rejected','lianli.source_error')
-                    end
-                    return false
+                    ai_unsupported('Lianli source error diagnostic is not projected','lianli.source_error')
                 end
                 result=value
             else result = legacy_call(self, kind, callback, options, request) end
@@ -596,7 +561,7 @@ local respond_defaults = {}
 ai_register_handler("respond_card", function(self, request)
     local options = type(request.options) == "table" and request.options or nil
     local question = options and options.question
-    local original=self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+    local original=self.world and AIHegemony.facts(self.world)
     if original and original.enabled==true and original.original_overrides_loaded==true
         and question=="askForSinglePeach"then return original_single_peach_entry(self,options,request)end
     if original and original.enabled==true and original.original_overrides_loaded==true
@@ -944,7 +909,8 @@ ai_general_choice_default = ai_general_choice_default or function(self, options)
         end
         local catalog = options.context and options.context.general_catalog
         if type(catalog) ~= "table" then return unsupported("general catalog is not projected", "general") end
-        local role, lord_kingdom = self.player:getRole(), options.context.lord_general_kingdom
+        -- The context carries the lord's kingdom only once the lord has a general.
+        local role, lord_kingdom = self.player:getRole(), options.context.lord_general_kingdom or ""
         if role == nil or type(lord_kingdom) ~= "string" then return unsupported("lord-general role/kingdom is unknown", "general") end
         local best, best_score
         for _, name in ipairs(selectable) do
@@ -1036,12 +1002,7 @@ ai_skill_discard_default = ai_skill_discard_default or function(self, options, r
             options.optional,include_equip,request.pattern)
         if AIUnsupported.is(value)then error(value,0)end
         if not ok then
-            if type(ai_original_discard_error)~='function'then ai_unsupported('Original discard error bridge unavailable','discard')end
-            local result=ai_original_discard_error(value)
-            if type(result)~='table'or result.kind~='original_discard_error_result'or not AIValue.isList(result.cards)then
-                ai_unsupported(type(result)=='table'and result.error or'Original discard fallback unknown','discard')
-            end
-            return{kind='answer',original_discard_error=true,cards=result.cards}
+            ai_unsupported('Original discard error fallback is not projected','discard')
         end
         if options.optional and type(value)~='table'then return{kind='pass'}end
         selected=value
@@ -2062,7 +2023,8 @@ local function record_no_jink(self, slash, primitive_data)
         -- Each donor dummy Slash is a new native card. A request-scoped ordinal
         -- preserves that fresh mark identity without inventing a physical ID or
         -- merging all readonly dummy cards into the same negative-ID mark.
-        scope=self.world.strategy_facts and self.world.strategy_facts.aocai_nojink_scope
+        -- The decision id keeps each request's dummy Slash marks apart.
+        scope=self.request and self.request.decision_id
         if type(scope)~="string"or not scope:match("^[1-9]%d*$")then
             return unsupported("nested no-Jink request scope is unknown","aocai:slash-jink")
         end
@@ -2077,7 +2039,7 @@ local function record_no_jink(self, slash, primitive_data)
             -- Native proof distinguishes a genuinely empty virtual product
             -- from a public descriptor whose private costs were redacted.
             card_token=slash:getLegacyIdentityToken()
-            local projected=self.world.strategy_facts and self.world.strategy_facts.response_effect_nojink_token
+            local projected=nil -- Virtual no-Jink card identities are not projected.
             if type(card_token)~="string"or card_token==""or projected~=card_token then
                 return unsupported("no-Jink virtual effect identity is unknown","cardask_no_jink")
             end
@@ -2188,7 +2150,7 @@ local function common_slash_jink(self, options, request, target, primitive_data,
 	if self:isFriend(target) then
 		if self:findLeijiTarget(self.player,50,target) then return getJink() end
 		if self.player:getLostHp()==0 and self.player:isMale() and target:hasSkill("jieyin") then return "." end
-		if not hasJueqingEffect(target,self.player) then
+		if not self:hasJueqingEffect(target,self.player) then
 			if (target:hasSkill("nosrende") or target:hasSkill("rende") and not target:hasUsed("RendeCard")) and self.player:hasSkill("jieming")
 			or target:hasSkill("pojun") and not self.player:faceUp()
 			then return "." end
@@ -2683,8 +2645,9 @@ respond_defaults.askForSinglePeach = function(self, options, request)
         end
         return peach or pass()
     elseif setting("humanized") then
-        -- Preserve the actual donor's fractional-bound error; do not round it.
-        self:stageSpeechDelay(self:getSpeechDelay() * math.random(1.5, 2.5), "single_peach:humanized_wait")
+        -- SmartAI's math.random(1.5, 2.5) errors under Lua 5.4; the wait is only
+        -- presentation, so draw the intended uniform factor instead.
+        self:stageSpeechDelay(self:getSpeechDelay() * (1.5 + math.random()), "single_peach:humanized_wait")
     end
     local process = inquiry_known(inquiry_call(self, "getGameProcess"), "game process")
     local roles = inquiry_known(inquiry_call(self, "getRoleCounts"), "role counts")
@@ -3267,25 +3230,7 @@ function SmartAIView:askForCard(pattern,prompt,data,method)
                 if result=="." then
                     if not compulsory then return "."end
                 else
-                    if type(ai_inspect_nested_cardask_string)~="function"then
-                        return unsupported("nested readonly Card_Parse classifier is unavailable",parts[1])
-                    end
-                    local parsed=ai_inspect_nested_cardask_string(result)
-                    if AIUnsupported and AIUnsupported.is(parsed)then error(parsed,0)end
-                    if type(parsed)~="table"or parsed.kind~="nested_card_parse"then
-                        return unsupported("nested readonly Card_Parse classification is unknown",parts[1])
-                    end
-                    if parsed.outcome=="invalid"then
-                        if not compulsory then return "."end
-                        -- The donor sets should_discard, but then immediately
-                        -- calls checklist:isKindOf on that nil parse result.
-                        error("donor askForCard: invalid Card_Parse result dereferenced",0)
-                    elseif parsed.outcome=="requires_nil_method"then
-                        error("donor askForCard: Player_isCardLimited received nil HandlingMethod",0)
-                    elseif parsed.outcome=="empty_virtual"then
-                        return result
-                    end
-                    return unsupported("invalid nested Card_Parse classification",parts[1])
+                    return unsupported("nested Card_Parse classification is not projected",parts[1])
                 end
             elseif type(result)=="boolean" then
                 if result then compulsory=true elseif not compulsory then return "."end

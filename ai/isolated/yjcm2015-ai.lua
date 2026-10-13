@@ -15,32 +15,26 @@ local function replace_order(t,sorted)for i,v in ipairs(sorted)do t[i]=v end;ret
 local function sort_players(self,t,...)return replace_order(t,call(self,"sort",t,...))end
 local function sort_keep(self,t,...)return replace_order(t,call(self,"sortByKeepValue",t,...))end
 local function sort_use(self,t,...)return replace_order(t,call(self,"sortByUseValue",t,...))end
-local function pattern_names(self)return known(self.world.strategy_facts and self.world.strategy_facts.pattern_names,"public pattern order")end
+local function pattern_names(self)return known(AICardCatalog.patternNames(),"public pattern order")end
 local function evaluation(self,name)
     local names={ArcheryAttack="archery_attack",SavageAssault="savage_assault",Duel="duel",Slash="slash"}
     name=names[name or "slash"]or name or "slash"
     return self:getEvaluationCard(name)
 end
+-- PatternsCard scans Engine::getRandomCards, whose mode/banlist filtering is not projected.
 local function pattern_card(self,name)
-    if type(ai_sample_pattern_log_name)~="function"then ai_unsupported("public PatternsCard sampling endpoint missing",name)end
-    local result=ai_sample_pattern_log_name(name)
-    if type(result)~="table"or result.kind~="pattern_log_name"or result.pattern~=name or type(result.found)~="boolean"then
-        ai_unsupported("invalid public PatternsCard sample",name)
-    end
-    if not result.found then return nil end
-    if type(result.printed_card)~="table"then ai_unsupported("PatternsCard printed descriptor missing",name)end
-    result.printed_card.evaluation_only=true
-    return known(CardView.new(result.printed_card),"public sampled printed card")
+    ai_unsupported("PatternsCard random card pool is not projected",name)
 end
-local function fact(self,key)return known(self.world.strategy_facts and self.world.strategy_facts.yjcm2015 and self.world.strategy_facts.yjcm2015[key],key)end
+-- Own TaoxiId tag; QVariant::toInt reads absent as 0, as the donor does.
+local function own_taoxi_id(self)return tonumber(self.player:getTag("TaoxiId"))or 0 end
 local function visible_card(self,id)return known(self:getKnownCardById(id),"lawfully disclosed card "..tostring(id))end
 local function taoxi_id(self,player)
     if call(player,"objectName")~=call(self.player,"objectName")then ai_unsupported("Taoxi tag belongs to a different owner","taoxi.owner")end
-    return fact(self,"taoxi_id")
+    return own_taoxi_id(self)
 end
 local function taoxi_use(self)
-    local value=fact(self,"taoxi_use")
-    if type(value)~="table"then ai_unsupported("Taoxi source requires current use","taoxi.use")end
+    local value=self.player:getTag("taoxi_carduse")
+    if type(value)~="table"or type(value.card)~="table"or next(value.card)==nil then ai_unsupported("Taoxi source requires current use","taoxi.use")end
     return {card=CardView.new(known(value.card,"Taoxi public used card"))}
 end
 local function disclosed_hand(self,player)
@@ -110,10 +104,12 @@ local function taoxi_available(self,card)
     return call(candidate,"isAvailable")
 end
 
+-- Player::inMyAttackRange(to, fix) ends in distanceTo(to, fix) <= getAttackRange(); the
+-- facade estimates the unfixed case the same way.
 local function public_range(self,from,to,offset)
-    if fact(self,"attack_range_known")~=true then ai_unsupported("public range rules are incomplete","yjcm2015.attack_range")end
-    local rows=fact(self,"in_attack_range");local row=rows[call(from,"objectName")];row=row and row[call(to,"objectName")]
-    return known(row and row[tostring(offset or 0)],"YJCM2015 exact public range offset")
+    if (offset or 0)==0 then return call(from,"inMyAttackRange",to) end
+    if call(from,"objectName")==call(to,"objectName")then return false end
+    return call(from,"distanceTo",to,offset)<=call(from,"getAttackRange")
 end
 
 sgs.ai_skill_playerchosen.huituo = function(self,targets)
@@ -528,7 +524,7 @@ register_fill(taoxi)
 taoxi.getTurnUseCard = function(self)
     if call(self.player,"hasFlag","TaoxiRecord")
 	then
-        local c = fact(self,"taoxi_id")
+        local c = own_taoxi_id(self)
         if c and c>=0
 		then
             c = visible_card(self,c)

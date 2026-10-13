@@ -119,7 +119,7 @@ local tag_keys={FansheDamage='dongmanbao_fanshe_damage',SE_Zhihui='dongmanbao_zh
 local function tag(self,key)
  local value
  if key:match('^ai_se_chenyan_card_')then value=self:getStrategyMemory('dongmanbao.'..key);if value==nil then value=key=='ai_se_chenyan_card_name'and''or 0 end
- elseif key=='CurrentDamageStruct'then value=known(self.world.strategy_facts.standard,'standard facts').current_damage
+ elseif key=='CurrentDamageStruct'then value=self:getDecisionContext().damage
  elseif key:match('^UseHistory')then local row=known(self:getDecisionContext().dongmanbao_use_history,'current use history');if row.key~=key then ai_unsupported('current use history key differs',key)end;value=row.use
  else value=self:getDecisionContext()[known(tag_keys[key],key)]end
  value=known(value,key)
@@ -130,14 +130,14 @@ end
 local function set_tag(self,key,value)if not key:match('^ai_se_chenyan_card_')then ai_unsupported('unapproved tag write',key)end;self:setStrategyMemory('dongmanbao.'..key,value)end
 local function remove_tag(self,key)set_tag(self,key,nil)end
 local function chenyan_mark(self,key,operation,value)
- local epoch=known(known(self.world.strategy_facts.strategy_turn_clear_epochs,'turn mark clear epochs')[pq(self.player,'objectName')],'owner mark clear epoch')
+ local epoch=known(known(AIWorldLifecycle.epochs(self.world,'turn'),'turn mark clear epochs')[pq(self.player,'objectName')],'owner mark clear epoch')
  local row=self:getStrategyMemory('dongmanbao.mark.'..key);local base=pq(self.player,'getMark',key);local offset=row and row.epoch==epoch and row.offset or 0
  if operation=='set'then offset=value-base elseif operation=='add'then offset=offset+value end
  if operation then self:setStrategyMemory('dongmanbao.mark.'..key,{epoch=epoch,offset=offset})end
  return base+offset
 end
 local function dushe_flag(self,p,name,set)
- local epochs=known(self.world.strategy_facts.strategy_flag_clear_epochs,'flag clear epochs');local epoch=known(epochs[pq(p,'objectName')],'target clear epoch')
+ local epochs=known(AIWorldLifecycle.epochs(self.world,'flag'),'flag clear epochs');local epoch=known(epochs[pq(p,'objectName')],'target clear epoch')
  local key='dongmanbao.'..name..'.'..pq(p,'objectName');local old=self:getStrategyMemory(key)
  if set then self:setStrategyMemory(key,{epoch=epoch,value=true});return end
  if old and old.epoch==epoch then return old.value end
@@ -154,23 +154,22 @@ local function role_write(self,skill,target,source,reset)
  if role=='rebel' then role='loyalist';value=-1000 end
  local assigned=pq(source,'getRole')
  local inferred=pq(source,'getRole')
- local witness=self.world.strategy_facts and self.world.strategy_facts.dongmanbao_dapo_role_witness
  local targetName,sourceName=pq(target,'objectName'),pq(source,'objectName')
- local witnessed
- if type(witness)=='table' and witness.player==targetName and witness.target_role_known==true
-  and type(witness.sources)=='table' then
-  for _,row in ipairs(witness.sources)do
-   if row.player==sourceName and row.role_known==true then witnessed=row.role;break end
-  end
+ -- The witness is the public board: a role counts only when it is the viewer's
+ -- own or visible to it. The caller already checked SE_Dapo and HP 1.
+ local roles={lord=true,loyalist=true,rebel=true,renegade=true}
+ local function seen_role(p,name)
+  if name~=pq(self.player,'objectName') and not pq(p,'isRoleVisible') then return nil end
+  local r=pq(p,'getRole');return roles[r] and r or nil
  end
- if not ({lord=true,loyalist=true,rebel=true,renegade=true})[witnessed]
-  or assigned~=witnessed or inferred~=witnessed then
+ local witnessed=seen_role(target,targetName) and seen_role(source,sourceName)
+ if not roles[witnessed] or assigned~=witnessed or inferred~=witnessed then
   ai_unsupported('Current Dying role witness unavailable','dongmanbao.SE_Dapo.role')
  end
  call(self,'emitStrategyEffect',{kind='dongmanbao_dapo_role',player=targetName,
   source_player=sourceName,role=assigned})
 end
-local function generateAllCardObjectNameTablePatterns(self)return known(self.world.strategy_facts.pattern_names,'registered card pattern list')end
+local function generateAllCardObjectNameTablePatterns(self)return known(AICardCatalog.patternNames(),'registered card pattern list')end
 local function peiqi(self)
  local fn=sgs.ai_skill_invoke.peiqi;if type(fn)~='function'then ai_unsupported('effective peiqi policy missing','dongmanbao.peiqi')end
  local ok,value=pcall(fn,self,nil)
@@ -5405,7 +5404,7 @@ end
 
 sgs.ai_card_intention["se_poyicard"]  = function(card, from, to)
  local self=card
- local legacy=known(self.world.strategy_facts.dongmanbao_poyi_history,"public poyi history")
+ local legacy=ai_unsupported("public poyi history is not projected","dongmanbao_poyi_history")
  local poyi1=resolve(self,legacy.first);local poyi2=resolve(self,legacy.second)
 	if poyi1 then
 		call(self,"updateIntention",poyi1, from, -50)

@@ -119,13 +119,8 @@ local source_general_choices={ov_lusu=true,ov_zhaoe=true,heg_qingcheng=true,mobi
 -- registry overwrite or a guessed absent callback.
 local recommendation_sources={mobilemou_machao={'mobile-ai.lua',5565,5576},mobilemou_lvmeng={'mobile-ai.lua',5579,5598},mobilemou_caoren={'mobile-ai.lua',5601,5606},mobilemou_gaoshun={'mobile-ai.lua',5609,5614},xizhicai={'sp-ai.lua',11115,11130},sp_machao={'sp-ai.lua',11133,11144},tw_machao={'sp-ai.lua',11147,11158}}
 local function lord_general(self,lord)
- local facts=known(self.world.strategy_facts.target_recommend,'general description facts')
- local rows=known(facts.general_descriptions,'general descriptions')
- local row=known(known(rows[q(lord,'objectName')],'lord description').first,'lord first general')
- if row.known~=true then ai_unsupported('OL recommendation lord general is not disclosed','ol.general')end
- if row.present==false then return nil end
- if row.present~=true then ai_unsupported('OL recommendation general presence unknown','ol.general')end
- return{getSkillDescription=function(_,includeName)if includeName~=true then ai_unsupported('OL exact description flag differs','ol.general')end;return known(row.text,'lord skill description')end}
+ -- General::getSkillDescription of the lord's head general is not projected.
+ ai_unsupported('OL recommendation lord general description is not projected','ol.general')
 end
 local recommendations={}
 recommendations.mobilemou_machao=function(ai,lord,role)
@@ -366,7 +361,7 @@ sgs.ai_fill_skill.ollongdan = function(self,inclusive,request)
 	end
 	for _,c in ipairs(cards)do
 		if q(c,"isKindOf","Peach") then
-			return known(self.world.strategy_facts.ol_st_standard and self.world.strategy_facts.ol_st_standard.analeptic_available,"ollongdan.Analeptic_IsAvailable") and turn(self,"ollongdan","analeptic",{},c,request)
+			return q(q(self,"getEvaluationCard","analeptic"),"isAnalepticAvailable",self.player) and turn(self,"ollongdan","analeptic",{},c,request)
 		end
 	end
 	for _,c in ipairs(cards)do
@@ -685,7 +680,7 @@ sgs.ai_fill_skill.olguhuo = function(self,inclusive,request)
 	end
 	if math.random(1,5)<=3*ratio
 	then
-		for c,pn in ipairs(known(self.world.strategy_facts.pattern_names,"patterns"))do
+		for c,pn in ipairs(known(AICardCatalog.patternNames(),"patterns"))do
 			c = evaluation(self,pn)
 			if c and (q(c,"getTypeId")==1 or q(c,"isNDTrick"))
 			and q(self,"getRestCardsNum",q(c,"getClassName"))>0
@@ -705,7 +700,7 @@ sgs.ai_fill_skill.olguhuo = function(self,inclusive,request)
 				end
 			end
 		end
-		for c,pn in ipairs(known(self.world.strategy_facts.pattern_names,"patterns"))do
+		for c,pn in ipairs(known(AICardCatalog.patternNames(),"patterns"))do
 			c = evaluation(self,pn)
 			if c and (q(c,"getTypeId")==1 or q(c,"isNDTrick"))
 			and q(self,"getRestCardsNum",q(c,"getClassName"))>0
@@ -833,20 +828,9 @@ sgs.ai_skill_discard.olguhuo = function(self,discard_num,min_num,optional,includ
 end
 
 local function shebian_slot(self,op,key,value)
- if type(ai_response_choice_continuity)~='function'then ai_unsupported('Shebian global continuation host missing',key)end
- local row=op=='record'and{known=true,present=true,value=value}or nil
- local result=ai_response_choice_continuity({op=op,key=key,row=row})
- if AIUnsupported.is(result)then error(result,0)end
- if type(result)~='table'or result.known~=true then ai_unsupported('Shebian source registry continuation unknown',key)end
- if op=='record'then if result.recorded~=true then ai_unsupported('Shebian source write unconfirmed',key)end;return end
- if type(result.present)~='boolean'then ai_unsupported('Shebian source registry presence unknown',key)end
- if not result.present then return nil end
- if key=='olshebian'then
-  if type(result.value)~='number'then ai_unsupported('Shebian numeric slot changed type',key)end
-  return result.value
- end
- if type(result.value)~='string'then ai_unsupported('Shebian player slot changed type',key)end
- return known(q(self.room,'findPlayerByObjectName',result.value,true),key)
+ -- The donor keeps these slots in the gameplay VM's registries, which its SmartAI also
+ -- writes; the isolated VM can neither read nor write them.
+ ai_unsupported('gameplay SmartAI registry slot is not available',key)
 end
 sgs.ai_skill_invoke.olshebian = function(self,data)
 	local from,card,to = q(self,"moveField",nil,"e")

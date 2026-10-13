@@ -9,23 +9,20 @@ local function q(o,k,...)
  if k=="hasSkill"or k=="hasSkills"then local p=AIValue.isPlayer(o)and o or select(2,...)or o.player;local r=type(p)=="table"and rawget(p,"_view");if v==false and r and r.skills_complete~=true then ai_unsupported("new foreign skill absence unknown",(...))end end
  if nullable[k]then return v end;return known(v,k)
 end
-local function facts(self)return known(self.world.strategy_facts and self.world.strategy_facts.new,"new")end
+-- Whether a legacy LuaSkillCard prototype parses is an engine query that is not projected.
 local function old_parse(self,name,costs)
- local f=facts(self);local present=f.legacy_prototypes and f.legacy_prototypes[name]
- if present==false then return nil end
- ai_unsupported(present==nil and"legacy prototype presence unknown"or"unexpected legacy prototype needs an audited authority",name)
+ ai_unsupported("legacy prototype presence is not projected",name)
 end
 local function terminal(self,wire)
  if wire=="."then return wire end
- if facts(self).legacy_prototypes and facts(self).legacy_prototypes['#luajiejiang']==false then
-  error(AIUnsupported.new("donor luajiejiang terminal prototype is unavailable","#luajiejiang",{donor_terminal_unavailable=true,terminal_response_selection=true,source_wire=wire}),0)
- end
- ai_unsupported("luajiejiang response prototype not classified","#luajiejiang")
+ ai_unsupported("legacy prototype presence is not projected","#luajiejiang")
 end
+-- sgs.ai_AOE_data has a writer only in the original-hegemony overrides.
 local function aoe_truth(self)
- local f=facts(self).aoe_data_truthy
- if type(f)~="table"or f.known~=true or type(f.truthy)~="boolean"then ai_unsupported("legacy ai_AOE_data truthiness unavailable","ai_AOE_data")end
- return f.truthy
+ local h=AIHegemony.facts(self.world)
+ if type(h)~="table"or type(h.original_overrides_loaded)~="boolean"then ai_unsupported("original override domain unknown","ai_AOE_data")end
+ if not h.original_overrides_loaded then return false end
+ ai_unsupported("legacy ai_AOE_data stack is not projected","ai_AOE_data")
 end
 local function complete_he(self,p)
  local cards=q(p,"getCards","he")

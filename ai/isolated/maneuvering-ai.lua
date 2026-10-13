@@ -174,8 +174,7 @@ function SmartAIView:searchForAnaleptic(slash,enemy)
     for _,wine in ipairs(query(self,"getCard","Analeptic",true)) do
         local skip=false
         if query(wine,"isKindOf","SkillCard") then
-            local facts=self.world and self.world.strategy_facts
-            skip=not known(facts and facts.owner_analeptic_available,"Analeptic static availability")
+            skip=not known(nil,"Analeptic static availability") -- Not projected for a skill-card wine.
         end
         if not skip and query(wine,"getEffectiveId")~=query(slash,"getEffectiveId") and query(wine,"isAvailable",self.player) then
             local planned={}

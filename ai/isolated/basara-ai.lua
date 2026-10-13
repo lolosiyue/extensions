@@ -42,7 +42,11 @@ local function show(self,row)
     if self.player:getDefensiveHorse()and self.player:getArmor()and not self:isWeak()then return'yes'end
 end
 sgs.ai_skill_choice.RevealGeneral=function(self,choices)
-    local row=need(self.world.strategy_facts.basara,'basara')
+    -- Ordinary RevealGeneral outside a trigger: no hegemony variant, no queued generals.
+    local tagged=self.player:getTag("roles")~=nil or self.player:getTag("triggerEvent")~=nil
+        or self.player:getTag("triggerEventData")~=nil
+    local row=need(not tagged and {hegemony_variant=self.world.enable_hegemony==true,
+        trigger_event="other",generals={}} or nil,'basara')
     if need(row.hegemony_variant,'load-time RevealGeneral variant')~=false then
         ai_unsupported('alternate legacy hegemony model is not this effective callback','RevealGeneral')
     end

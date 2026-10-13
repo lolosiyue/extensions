@@ -29,7 +29,8 @@ local function q(o,k,...)
  if k=='hasSkill'or k=='hasSkills'then local p=AIValue.isPlayer(o)and o or select(2,...)or o.player;local row=type(p)=='table'and rawget(p,'_view');if r[1]==false and row and row.skills_complete~=true then ai_unsupported('tenyear_xd foreign skill absence unknown',(...))end end
  if not nullable[k]then known(r[1],k)end;return table.unpack(r,1,r.n)
 end
-local function prop(self,k)local f=self.world.strategy_facts.tenyear_xd;return known(f and f.properties and f.properties[k],k)end
+-- Own dynamic property; QVariant::toString of an unset one is "".
+local function prop(self,k)local v=self.player:getPropertyValue(k);if v==nil then return''end;return v end
 local function face(self,id)if type(id)=='string'then id=tonumber(id)end;return q(self,'getKnownCardById',id)end
 local function named(self,skill,name,costs)return q(self,'evaluateSkillCard',skill,name,costs or{})end
 local function evaluation(self,name)return q(self,'getEvaluationCard',name or'slash')end
@@ -1395,7 +1396,7 @@ sgs.ai_fill_skill.shugang = function(self)
 	for _,c in sgs.list(q(self.player,"getCards","he"))do
 		if q(c,"hasTip","shugang") then
 			local cs = {}
-			for _,cn in sgs.list(known(self.world.strategy_facts.pattern_names,"pattern_names"))do
+			for _,cn in sgs.list(known(AICardCatalog.patternNames(),"pattern_names"))do
 				local dc = evaluation(self,cn)
 				if q(dc,"isDamageCard") then
 					dc = named(self,"shugang",cn,{q(c,"getEffectiveId")})

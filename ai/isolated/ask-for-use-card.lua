@@ -289,10 +289,6 @@ end
 
 function SmartAIView:getConversionPolicy(class_name, context)
     local projected = self.request.conversion_policy
-    if self.request.kind == "event" then
-        local facts = self.world and self.world.strategy_facts
-        projected = facts and facts.event_conversion_policy
-    end
     local policy = type(projected) == "table" and type(projected.by_class) == "table"
         and projected.by_class[class_name] or nil
     if policy then
@@ -309,18 +305,55 @@ function SmartAIView:getConversionPolicy(class_name, context)
         end
         return policy
     end
-    -- Registry absence in the isolated VM cannot prove that the donor has no
-    -- callback. Only a complete, actually empty skill roster proves this phase
-    -- empty without native legacy-hook metadata.
+    -- This VM's registries decide which skills can convert: a skill without an
+    -- isolated view-as, cardsView or guhuo callback contributes nothing. Whether a
+    -- V1 view-as is enabled at this response is not projected, so a skill that
+    -- does have a callback stays unknown until that field exists.
     local skills = policy_known(self.player:getSkills(), "skill roster")
-    if type(self.player.areSkillsComplete) ~= "function"
-        or self.player:areSkillsComplete() ~= true then
-        ai_unsupported("response skill roster completeness is unknown", "conversion_policy")
+    local registries = {"ai_view_as", "ai_cardsview_valuable", "ai_cardsview", "ai_guhuo_card"}
+    -- SmartAI asks isEnabledAtResponse with the class's card name (peach+analeptic
+    -- while the viewer is dying); the owner's skill views carry the basic ones.
+    local pattern = AICardCatalog.patternName(class_name) or nil
+    local dying = (class_name == "Peach" or class_name == "Analeptic") and self.room:getCurrentDyingPlayer()
+    if dying and dying:objectName() == self.player:objectName() then
+        pattern = "peach+analeptic"
     end
-    if #skills ~= 0 then
-        ai_unsupported("legacy response callback presence requires native class policy", class_name)
+    local rows, seen = {}, {}
+    for _, skill in ipairs(skills) do
+        local name = skill:objectName()
+        if type(name) == "string" and not seen[name] then
+            seen[name] = true
+            local hooks, keys, any = {}, {}, false
+            for _, registry in ipairs(registries) do
+                local callbacks = sgs[registry]
+                hooks[registry] = type(callbacks) == "table" and type(callbacks[name]) == "function"
+                keys[registry] = name
+                any = any or hooks[registry]
+            end
+            if any then
+                -- A V2 skill offered for this request answers with the request's own
+                -- conversion tickets; a V1 skill's response enablement is not projected.
+                local action = self:getSkillAction(name)
+                local identity
+                if action and type(action._view) == "table" then
+                    identity = {}
+                    for key, value in pairs(action._view) do identity[key] = value end
+                end
+                local ids = {}
+                for _, row in ipairs(self.request.card_conversions or {}) do
+                    if row.activation_skill == name then ids[#ids + 1] = row.conversion_id end
+                end
+                local responses = skill._view and skill._view.enabled_at_response
+                local enabled = identity and true or nil
+                if enabled == nil and type(responses) == "table" and pattern then enabled = responses[pattern] end
+                rows[#rows + 1] = {skill_name = name, legacy_hooks = hooks, legacy_hook_keys = keys,
+                    request = false, view_as_exists = skill._view and skill._view.has_view_as_skill,
+                    enabled_at_response = enabled, identity = identity,
+                    conversion_ids = ids}
+            end
+        end
     end
-    return {complete = true, skills = {}}
+    return {complete = true, skills = rows, card_name = AICardCatalog.patternName(class_name) or nil}
 end
 
 local function policy_has_callback(row, registry)
@@ -466,90 +499,9 @@ function SmartAIView:resolveResponseConversion(proposal, row)
     if AIUnsupported.is(proposal) then error(proposal, 0) end
     if proposal == nil or proposal == false then return nil end
     if type(proposal) == "table" and getmetatable(proposal) == nil and proposal.legacy_class ~= nil then
-        local contracts = {
-            jijiang={class="JijiangCard",costs=0},
-            nosjiefan={class="NosJiefanCard",costs=0},
-            nosrenxin={class="NosRenxinCard",costs=0},
-            jinxianwan={class="JinXianwanCard",costs=0,declared=true},
-            qinwang={class="QinwangCard",costs=1,declared=true},
-            zhenshan={class="ZhenshanCard",costs=0,declared=true},
-            huomo={class="HuomoCard",costs=1,declared=true},
-            chunlao={class="ChunlaoWineCard",costs=1},
-            olchunlao={class="OLChunlaoCard",costs=1},
-            ejisi={class="LuaSkillCard",selector="#ejisiCard",costs=0},
-            kezhuanmanjuan={class="LuaSkillCard",selector="#kezhuanmanjuanVsCard",costs=0,declared=true},
-            inovation_fengzhu={class="InovationFengzhuCard",costs=0,declared=true},
-            guhuo={class="GuhuoCard",costs=1,declared=true},
-            aocai={class="AocaiCard",costs=0,declared=true},
-            heg_aocai={class="HAocaiCard",costs=0,declared=true},
-            ov_yingji={class="LuaSkillCard",selector="#ov_yingjiCard",costs=0,declared=true,overseas_type="basic_ndtrick"},
-            ov_mouli={class="LuaSkillCard",selector="#ov_mouliCard",costs=0,declared=true,overseas_type="basic"},
-            ov_fushu={class="LuaSkillCard",selector="#ov_fushuCard",costs=1,classes={Peach=true}},
-            sr_fangxin={class="LuaSkillCard",selector="#sr_fangxincard",costs=1,classes={Peach=true}},
-            sr_qingcheng={class="LuaSkillCard",selector="#sr_qingchengcard",costs=0,classes={Slash=true,Jink=true}},
-            sr_xiahou={class="LuaSkillCard",selector="#sr_xiahoucard",costs=0,classes={Slash=true,Jink=true,Peach=true,Analeptic=true}},
-            tongyiTQ={class="LuaSkillCard",selector="#tongyiTQ",costs=0,declared=true},
-        }
-        local contract=contracts[proposal.skill]
-        if not contract or proposal.legacy_class~=(contract.selector or contract.class) or proposal.skill~=row.skill_name
-            or not AIValue.isList(proposal.subcards) or #proposal.subcards~=contract.costs then
-            ai_unsupported("legacy response proposal does not match its audited source/cost contract",row.skill_name)
-        end
-        if contract.overseas_type then
-            local card=self:getEvaluationCard(row.class_name)
-            if not card then ai_unsupported("Overseas declared printed class is absent",proposal.skill)end
-            local basic=card:getTypeId()
-            if type(basic)~="number" then ai_unsupported("Overseas declared type is unknown",proposal.skill)end
-            if basic~=1 then
-                local nd=card:isNDTrick()
-                if contract.overseas_type~="basic_ndtrick" or nd~=true then
-                    ai_unsupported("Overseas declaration is outside its source type gate",proposal.skill)
-                end
-            end
-        end
-        if contract.classes and not contract.classes[row.class_name] then
-            ai_unsupported("legacy response is outside its exact source classes",proposal.skill)
-        end
-        local allowed = {skill=true, legacy_class=true, subcards=true}
-        if contract.declared then
-            if type(proposal.user_string)~="string" or proposal.user_string=="" then
-                ai_unsupported("legacy response declaration is missing",proposal.skill)
-            end
-            if proposal.skill=="jinxianwan" and proposal.user_string~="slash" and proposal.user_string~="jink" then
-                ai_unsupported("JinXianwan declaration is outside its native response products","jinxianwan")
-            end
-            allowed.user_string=true
-        end
-        for field in pairs(proposal) do
-            if not allowed[field] then ai_unsupported("legacy response proposal has an unrepresented field",tostring(field)) end
-        end
-        -- Native still checks each concrete ID, declaration, source instance,
-        -- current context and receipt. These counts are source ABI validation,
-        -- never an authorization or a replacement for the actual skill rules.
-        local identity = type(row.request) == "table" and row.request.skill_action or row.identity
-        if type(identity) ~= "table" or row.lazy ~= true or type(row.scope_id) ~= "number"
-            or type(row.class_name) ~= "string" or type(ai_resolve_conversion) ~= "function"
-            or type(self.legacyResponsePolicyCard) ~= "function" then
-            ai_unsupported("native legacy response authority is unavailable", row.skill_name)
-        end
-        local result = ai_resolve_conversion(row.class_name, row.scope_id, proposal)
-        if AIUnsupported.is(result) then error(result, 0) end
-        if type(result) == "table" and result.error then
-            if result.native_rejected == true then rejected_response(result.error, result.key or row.skill_name) end
-            ai_unsupported(result.error, result.key or row.skill_name)
-        end
-        if type(result) ~= "table" or type(result.legacy_policy) ~= "table"
-            or result.legacy_policy.class_name ~= contract.class
-            or (contract.selector and result.legacy_policy.legacy_selector ~= contract.selector) then
-            ai_unsupported(type(result) == "table" and result.error
-                or "native legacy response policy identity is unavailable", row.skill_name)
-        end
-        local authority = self:registerResolvedConversion(result, identity)
-        local card = self:legacyResponsePolicyCard(authority, result.legacy_policy)
-        if not card or card:getClassName() ~= contract.class then
-            ai_unsupported("native legacy response policy identity changed", row.skill_name)
-        end
-        return card
+        -- A legacy skill-card response was built by a native resolver; the authority
+        -- accepts only its own conversion tickets for a response.
+        ai_unsupported("legacy skill-card response is not projected", tostring(proposal.skill or row.skill_name))
     end
     local spec, proposed_identity
     if AIValue.isConversion(proposal) then
@@ -586,45 +538,6 @@ function SmartAIView:resolveResponseConversion(proposal, row)
                 ai_unsupported("response policy ticket belongs to another source instance", row.skill_name)
             end
         end
-    end
-    if row.lazy == true then
-        if type(ai_resolve_conversion) ~= "function" or type(row.scope_id) ~= "number"
-            or type(row.class_name) ~= "string" then
-            ai_unsupported("native conversion policy resolver is unavailable", row.skill_name)
-        end
-        if spec.conversion_id ~= nil then
-            local prior = covered_value(self:getConversion(spec.conversion_id))
-            if not prior then ai_unsupported("response policy selected an unissued receipt", row.skill_name) end
-            for _, field in ipairs(response_identity) do
-                if policy_scalar(prior, field[2], field[1]) ~= identity[field[1]] then
-                    ai_unsupported("response policy selected another source receipt", row.skill_name)
-                end
-            end
-            if prior:objectName() ~= spec.name or prior:getSuit() ~= spec.suit or prior:getNumber() ~= spec.number
-                or not same_costs(prior:getSubcards(), spec.subcards) then
-                ai_unsupported("response policy changed an issued receipt", row.skill_name)
-            end
-        end
-        local proposal_spec = {}
-        for key, value in pairs(spec) do if key ~= "conversion_id" then proposal_spec[key] = value end end
-        local result = ai_resolve_conversion(row.class_name, row.scope_id, proposal_spec)
-        local authority = self:registerResolvedConversion(result, identity)
-        if row.skill_name=="secondjincaiwang" then
-            return second_material_policy(self,authority,result.source_material_policy,proposal_spec)
-        end
-        if result.source_material_policy~=nil then
-            ai_unsupported("unexpected source material policy on another provider",row.skill_name)
-        end
-        local ticket = result.ticket
-        local issued = {}
-        for key, value in pairs(row) do issued[key] = value end
-        issued.lazy = false
-        issued.authority_validated_costs = true
-        issued.conversion_ids = {ticket.conversion_id}
-        local exact = {}
-        for key, value in pairs(spec) do exact[key] = value end
-        exact.conversion_id = ticket.conversion_id
-        return self:resolveResponseConversion(exact, issued)
     end
     local owned, seen = {}, {}
     for _, card in ipairs(policy_known(self:addHandPile("he"), "owned payment cards")) do owned[card:getEffectiveId()] = true end
@@ -723,41 +636,7 @@ function SmartAIView:evaluateResponseConversion(proposal, row)
 end
 
 function SmartAIView:evaluateTongyiResponsePolicy(proposal, row)
-    if type(proposal)~="table" or getmetatable(proposal)~=nil or proposal.skill~="tongyiTQ"
-        or proposal.legacy_class~="#tongyiTQ" or not AIValue.isList(proposal.subcards) or #proposal.subcards~=0
-        or type(proposal.user_string)~="string" or proposal.user_string=="" or row.skill_name~="tongyiTQ"
-        or row.lazy~=true or type(row.scope_id)~="number" or type(row.class_name)~="string"
-        or type(ai_evaluate_tongyi_policy)~="function" then
-        ai_unsupported("Tongyi readonly policy has no exact declared source scope", "tongyiTQ")
-    end
-    local allowed={skill=true,legacy_class=true,subcards=true,user_string=true}
-    for field in pairs(proposal)do
-        if not allowed[field]then ai_unsupported("Tongyi readonly policy has an unrepresented field",tostring(field))end
-    end
-    local result=covered_value(ai_evaluate_tongyi_policy(row.class_name,row.scope_id,proposal.user_string))
-    if type(result)=="table" and result.error then
-        ai_unsupported(result.error,result.key or "tongyiTQ")
-    end
-    local face=type(result)=="table" and result.card
-    if type(face)~="table" or result.kind~="tongyi_policy_evaluation" or result.evaluation_only~=true
-        or result.scope_id~=row.scope_id or result.class_name~=row.class_name or result.declaration~=proposal.user_string
-        or face.evaluation_only~=true or face.evaluation_owner~=self.player:objectName()
-        or face.virtual_card~=true or face.class_name~="LuaSkillCard" or face.type_id~=0
-        or face.legacy_selector~="#tongyiTQ" or face.suit~=sgs.Card_NoSuit or face.number~=0
-        or not AIValue.isList(face.subcards) or #face.subcards~=0
-        or type(face.name)~="string" or type(face.skill_name)~="string"
-        or type(face.legacy_string_key)~="string" or type(face.locked)~="boolean" then
-        ai_unsupported("native Tongyi readonly prototype is incomplete or changed", "tongyiTQ")
-    end
-    local card=CardView.new(copy_response_policy(face))
-    if type(result.candidate)=="table"then card._evaluation_candidate=copy_response_policy(result.candidate)end
-    if type(result.card_rules)=="table"then card._view.evaluation_rules=copy_response_policy(result.card_rules)end
-    card.getAuthorityCard=function()return nil end
-    card.toCardSpec=function()ai_unsupported("Tongyi readonly policy has no submission receipt","tongyiTQ")end
-    self._response_selected_specs=self._response_selected_specs or{}
-    self._response_selected_specs[card]={spec=copy_response_policy(proposal),row=copy_response_policy(row),request=self.request,
-        identity_spec={name=face.name,skill=face.skill_name,suit=face.suit,number=face.number,subcards={}}}
-    return card
+    ai_unsupported("Tongyi readonly policy evaluation is not projected", "tongyiTQ")
 end
 
 function SmartAIView:materializeResponseSelectedCard(card)
@@ -963,97 +842,47 @@ function SmartAIView:createCardsViewSourceCard(skill, class_name, costs)
         call.row,call.registry,call.hook,true)
 end
 
+-- The authority's fixed-cost ticket of this skill for the same product and material.
+local function offered_ticket(self, skill, spec)
+    for _, row in ipairs(self.request.card_conversions or {}) do
+        if row.activation_skill == skill and row.cost_count == 0
+            and (row.name == spec.name or row.class_name == spec.name)
+            and same_costs(row.subcards, spec.subcards) then
+            return self:getConversion(row.conversion_id)
+        end
+    end
+end
+
+-- A policy callback names an owned card by ID, or a view-as product by its
+-- legacy string name:skill[suit:number]=ids or as a spec table. A product the
+-- request issued a V2 ticket for answers with that ticket; any other product is
+-- evaluated locally, and submitting it falls back to SmartAI.
 function SmartAIView:evaluateCollectedResponsePolicy(proposal, row, registry, hook_key, attach)
-    local original
-    if AIValue.isCard(proposal) or AIValue.isConversion(proposal) then
-        local proof=cardsview_source_objects[proposal]
-        if AIValue.isConversion(proposal) or not proof or proof.owner~=self or proof.request~=self.request
-            or not stamp_matches(proof.stamp,self.request) or not attach or registry~=proof.registry
-            or hook_key~=proof.hook or row.scope_id~=proof.scope or row.class_name~=proof.class
-            or not same_policy_value(proof.face,copy_response_policy(proposal._view)) then
-            ai_unsupported("Card-object attachment has no current detached source provenance",row.skill_name)
-        end
-        original=proposal
-        proposal={source_object_key=proof.key}
+    local skill = type(row) == "table" and row.skill_name or "response_policy"
+    if type(proposal) == "number" or type(proposal) == "string" and proposal:match("^%d+$") then
+        local card = self:getKnownCardById(tonumber(proposal))
+        if not card then ai_unsupported("response policy card is not visible to the viewer", skill) end
+        return card
     end
-    if type(ai_evaluate_response_policy)~="function" or type(row.scope_id)~="number"
-        or row.lazy~=true or type(row.class_name)~="string" then
-        ai_unsupported("readonly response parser has no exact issued source scope",row.skill_name)
+    local spec
+    if type(proposal) == "string" then
+        local name, source, suit, number, ids = proposal:match("^([%w_]+):([%w_]*)%[([%w_]+):([%w%-]*)%]=([%d%+%.]*)$")
+        local suits = {spade = 0, club = 1, heart = 2, diamond = 3, no_suit_black = 4, no_suit_red = 5, no_suit = 6}
+        local numbers = {A = 1, J = 11, Q = 12, K = 13, ["-"] = 0, [""] = 0}
+        spec = name and {name = name, skill = source, suit = suits[suit],
+            number = numbers[number] or tonumber(number), subcards = {}}
+        if spec then for id in ids:gmatch("%d+") do spec.subcards[#spec.subcards + 1] = tonumber(id) end end
+    elseif source_spec(proposal) and type(proposal.name) == "string" then
+        spec = {name = proposal.name, skill = proposal.skill, suit = proposal.suit, number = proposal.number, subcards = {}}
+        for _, id in ipairs(proposal.subcards) do spec.subcards[#spec.subcards + 1] = id end
     end
-    local result=covered_value(ai_evaluate_response_policy(row.class_name,row.scope_id,registry,hook_key,
-        source_spec(proposal) and copy_response_policy(proposal) or proposal,attach))
-    if type(result)=="table" and result.error then ai_unsupported(result.error,result.key or row.skill_name) end
-    if type(result)~="table" or result.kind~="response_policy_evaluation" or result.known~=true
-        or result.scope_id~=row.scope_id or result.class_name~=row.class_name
-        or result.registry~=registry or result.hook_key~=hook_key or result.attach_request~=attach
-        or type(result.exists)~="boolean" then
-        ai_unsupported("readonly response parser changed its callback scope",row.skill_name)
+    if not spec or type(spec.suit) ~= "number" or type(spec.number) ~= "number" then
+        ai_unsupported("readonly response policy evaluation is not projected", skill)
     end
-    if not result.exists then return nil end
-    local face=result.card
-    if type(face)~="table" or type(face.name)~="string" or type(face.skill_name)~="string"
-        or type(face.class_name)~="string" or type(face.suit)~="number" or type(face.number)~="number"
-        or type(face.virtual_card)~="boolean" or not AIValue.isList(face.subcards)
-        or type(face.legacy_string_key)~="string" or type(face.locked)~="boolean" then
-        ai_unsupported("readonly response parser did not project the exact source face",row.skill_name)
-    end
-    if result.physical==true then
-        if face.virtual_card or type(result.binding_spec)~="table"
-            or (attach and result.binding_spec.physical_request_attached~=true)
-            or result.binding_spec.physical_id~=face.effective_id then
-            ai_unsupported("physical response source provenance is not represented",row.skill_name)
-        end
-        local physical=covered_value(self:getKnownCardById(face.effective_id))
-        if not AIValue.isCard(physical) or AIValue.isConversion(physical) or physical:isVirtualCard()
-            or physical:objectName()~=face.name or physical:getSuit()~=face.suit
-            or physical:getNumber()~=face.number or physical:getSkillName(false)~=face.skill_name then
-            ai_unsupported("physical response source face changed",row.skill_name)
-        end
-        if attach then
-            physical=self:acceptRushBPhysicalResponseAttachment(physical,face)
-        end
-        return physical
-    end
-    if result.evaluation_only~=true or face.evaluation_only~=true
-        or face.evaluation_owner~=self.player:objectName() or not face.virtual_card
-        or type(result.binding_spec)~="table" then
-        ai_unsupported("readonly response parser did not return a detached hypothesis",row.skill_name)
-    end
-    local phase=result.source_object_phase
-    local creating=type(proposal)=="table" and proposal.source_object_create~=nil
-    local attaching=original~=nil
-    if (creating or attaching) and (phase~=(creating and "created" or "attached")
-        or type(face.readonly_recipe_key)~="string" or face.readonly_recipe_key==""
-        or type(face.legacy_identity_token)~="string" or face.legacy_identity_token=="") then
-        ai_unsupported("Card-object response lost its exact native identity",row.skill_name)
-    end
-    if attaching then
-        local before=cardsview_source_objects[original]
-        if face.readonly_recipe_key~=before.key or face.legacy_identity_token~=before.face.legacy_identity_token
-            or face.id~=before.face.id or face.name~=before.face.name or face.class_name~=before.face.class_name
-            or face.suit~=before.face.suit or face.number~=before.face.number
-            or not same_costs(face.subcards,before.face.subcards) then
-            ai_unsupported("Card-object attachment replaced its source object or ordered materials",row.skill_name)
-        end
-    end
-    local card=original or CardView.new(copy_response_policy(face))
-    if original then card._view=copy_response_policy(face) end
-    if type(result.candidate)=="table" then card._evaluation_candidate=copy_response_policy(result.candidate) end
-    if type(result.card_rules)=="table" then card._view.evaluation_rules=copy_response_policy(result.card_rules) end
-    card.getAuthorityCard=function()return nil end
-    card.toCardSpec=function()ai_unsupported("readonly response hypothesis has no payment receipt",row.skill_name)end
-    if creating or attaching then
-        cardsview_source_objects[card]={owner=self,request=self.request,stamp=response_stamp(self.request),
-            registry=registry,hook=hook_key,scope=row.scope_id,class=row.class_name,
-            key=face.readonly_recipe_key,face=copy_response_policy(card._view)}
-        if creating then return card end
-    end
-    self._response_selected_specs=self._response_selected_specs or {}
-    self._response_selected_specs[card]={spec=copy_response_policy(result.binding_spec),row=copy_response_policy(row),
-        request=self.request,stamp=response_stamp(self.request),
-        identity_spec={name=face.name,skill=face.skill_name,suit=face.suit,number=face.number,
-            subcards=copy_response_policy(face.subcards)}}
-    return card
+    local ticket = offered_ticket(self, skill, spec)
+    if ticket then return ticket end
+    local face = self:evaluateOwnerViewAsCard(spec)
+    return self:registerViewAsReceipt(face._view)
 end
 
 local function parse_collected_response(self, value, index, values, cardsview)
@@ -1234,15 +1063,55 @@ function SmartAIView:bindOriginalSelectedConversion(spec, class_name, source_key
     return finish(self:resolveResponseConversion(authority_spec, selected))
 end
 
+-- Legacy asks isEnabledAtResponse(player, patterns(class)) before it runs a V1
+-- response callback; the projection covers the basic patterns only. An unknown
+-- answer is settled by running the callback: one that proposes nothing for this
+-- class has the same outcome whether or not the skill was enabled.
+local function proposes_nothing(value)
+    if value == nil or value == false then return true end
+    return type(value) == "table" and not source_spec(value) and not AIValue.isCard(value)
+        and not AIValue.isConversion(value) and value[1] == nil
+end
+
+-- Whether a view-as proposal is of class_name: true/false, or nil when unknown.
+local function proposal_of_class(self, proposal, class_name)
+    if AIValue.isCard(proposal) or AIValue.isConversion(proposal) then return proposal:isKindOf(class_name) end
+    local id = tonumber(proposal)
+    if id then
+        local card = self:getKnownCardById(id)
+        if not card then return nil end
+        return card:isKindOf(class_name)
+    end
+    local name = type(proposal) == "string" and proposal:match("^([%w_]+):")
+        or type(proposal) == "table" and proposal.name
+    local row = type(name) == "string" and AICardCatalog.get(name)
+    if type(row) ~= "table" or not AIValue.isList(row.kind_of) then return nil end
+    for _, kind in ipairs(row.kind_of) do if kind == class_name then return true end end
+    return false
+end
+
+-- run reports whether the callbacks proposed anything relevant.
+local function settle_unknown_enablement(run)
+    local ok, proposed = pcall(run)
+    if not ok and AIUnsupported.is(proposed) then error(proposed, 0) end
+    if not ok or proposed then policy_known(nil, "response enablement") end
+end
+
 function SmartAIView:getGuhuoCard(class_name)
     local policy, result = self:getConversionPolicy(class_name), {}
     for _, row in ipairs(policy.skills) do
+        local enabled = row.enabled_at_response
         if policy_has_callback(row, "ai_guhuo_card")
-            and policy_known(row.view_as_exists, "view-as existence")
-            and policy_known(row.enabled_at_response, "response enablement") then
+            and policy_known(row.view_as_exists, "view-as existence") and enabled ~= false then
             local callback, hook_key = policy_callback(row, "ai_guhuo_card")
-            append_policy_result(self, callback(self, policy_known(policy.card_name, "class pattern"), class_name),
-                direct_policy_row(row), result, "ai_guhuo_card", hook_key, false)
+            local function propose()
+                return callback(self, policy_known(policy.card_name, "class pattern"), class_name)
+            end
+            if enabled == true then
+                append_policy_result(self, propose(), direct_policy_row(row), result, "ai_guhuo_card", hook_key, false)
+            else
+                settle_unknown_enablement(function() return not proposes_nothing(covered_value(propose())) end)
+            end
         end
     end
     return result
@@ -1253,7 +1122,10 @@ function SmartAIView:cardsView(class_name, context)
     for _, row in ipairs(policy.skills) do
         if policy_known(row.view_as_exists, "view-as existence") then
             local request = policy_request(self, row, context)
-            if request or policy_known(row.enabled_at_response, "response enablement") then
+            local enabled = row.enabled_at_response
+            -- Without append, run only reports whether a callback proposed anything.
+            local function run(append)
+                local proposed = false
                 for _, registry in ipairs({"ai_cardsview_valuable", "ai_cardsview"}) do
                     local callback, hook_key = policy_callback(row, registry, request)
                     if callback then
@@ -1263,10 +1135,14 @@ function SmartAIView:cardsView(class_name, context)
                         local ok,value=pcall(callback,self,class_name,self.player,request)
                         cardsview_invocations[self]=previous
                         if not ok then error(value,0) end
-                        append_policy_result(self,value,row,result,registry,hook_key,request~=nil)
+                        if append then append_policy_result(self,value,row,result,registry,hook_key,request~=nil)
+                        else proposed = proposed or not proposes_nothing(covered_value(value)) end
                     end
                 end
+                return proposed
             end
+            if request or enabled == true then run(true)
+            elseif enabled == nil then settle_unknown_enablement(function() return run(false) end) end
         end
     end
     return result
@@ -1297,29 +1173,41 @@ local function visit_skill_view_as(self, class_name, card, player, place, consum
     end
     local policy = self:getConversionPolicy(class_name)
     for _, row in ipairs(policy.skills) do
+        local enabled = row.enabled_at_response
         if policy_has_callback(row, "ai_view_as")
-            and policy_known(row.view_as_exists, "view-as existence")
-            and policy_known(row.enabled_at_response, "response enablement") then
+            and policy_known(row.view_as_exists, "view-as existence") and enabled ~= false then
             local callback, hook_key = policy_callback(row, "ai_view_as")
-            local actual_place = place
-            if not actual_place then actual_place = self.room:getCardPlace(card:getId()) end
-            actual_place = policy_known(actual_place, "card place")
-            if actual_place == sgs.Player_PlaceSpecial then
-                local pile = policy_known(player:getHandPile(), "hand pile")
-                if pile:contains(card:getId()) and (self.request.reason == 0x12 or self.request.reason == 0x02) then
-                    actual_place = policy_known(sgs.Player_PlaceHand, "hand place enum")
+            local function propose()
+                local actual_place = place
+                if not actual_place then actual_place = self.room:getCardPlace(card:getId()) end
+                actual_place = policy_known(actual_place, "card place")
+                if actual_place == sgs.Player_PlaceSpecial then
+                    local pile = policy_known(player:getHandPile(), "hand pile")
+                    if pile:contains(card:getId()) and (self.request.reason == 0x12 or self.request.reason == 0x02) then
+                        actual_place = policy_known(sgs.Player_PlaceHand, "hand place enum")
+                    end
                 end
+                local proposal = covered_value(callback(card, player, actual_place, class_name))
+                -- Unlike cardsView/getGuhuoCard, this donor skips only nil before
+                -- Card_Parse. SWIG rejects either boolean as an ordinary argument
+                -- error; false must not silently become a known absent conversion.
+                if type(proposal) == "boolean" then
+                    error("getSkillViewCard: Card_Parse rejects a boolean callback result", 0)
+                end
+                return proposal
             end
-            local proposal = covered_value(callback(card, player, actual_place, class_name))
-            -- Unlike cardsView/getGuhuoCard, this donor skips only nil before
-            -- Card_Parse. SWIG rejects either boolean as an ordinary argument
-            -- error; false must not silently become a known absent conversion.
-            if type(proposal) == "boolean" then
-                error("getSkillViewCard: Card_Parse rejects a boolean callback result", 0)
-            end
-            if proposal ~= nil then
-                local value = consume(proposal, row, hook_key)
-                if value ~= nil and value ~= false then return value end
+            if enabled == true then
+                local proposal = propose()
+                if proposal ~= nil then
+                    local value = consume(proposal, row, hook_key)
+                    if value ~= nil and value ~= false then return value end
+                end
+            else
+                -- The donor keeps only products of this class.
+                settle_unknown_enablement(function()
+                    local proposal = propose()
+                    return proposal ~= nil and proposal_of_class(self, proposal, class_name) ~= false
+                end)
             end
         end
     end
@@ -1448,6 +1336,9 @@ local function generic_response_use(self, request)
     if physical_order ~= nil then
         if not AIValue.isList(physical_order) then
             ai_unsupported("response physical class order is malformed", "getCard")
+        end
+        if request.conversion_policy.physical_class_order_complete ~= true then
+            mark_unknown("response physical class order is incomplete", "getCard")
         end
         classes, seen = {}, {}
         for _, class in ipairs(physical_order) do
@@ -1633,18 +1524,15 @@ local function decline_damage_effect(self, request, pattern, compulsory)
     if type(effect.card.isDamageCard) == "function" then damage = effect.card:isDamageCard() end
     if type(damage) ~= "boolean" then ai_unsupported("response damage classification is unknown", "cardEffect") end
     if not damage then return false end
-    local wanted = covered_value(self:canDamageHp(effect.from, effect.card))
-    if type(wanted) ~= "boolean" then ai_unsupported("response damage preference is unknown", "cardEffect") end
-    return wanted
+    -- canDamageHp raises when an input is unknown; its nil is SmartAI's "no".
+    return covered_value(self:canDamageHp(effect.from, effect.card)) == true
 end
 
 -- standard_cards-ai.lua:904 reads the last *original* CardEffect data, not
 -- SmartAI's separately cloned sgs.cardEffect used by the decline above.
 ai_skill_use["slash-jink"] = function(self, prompt, request)
-    local context = self.world.decision_context or {}
-    local effect = context.last_filter_card_effect
-    if context.filter_card_effect_known ~= true or context.filter_card_effect_present ~= true
-        or type(effect) ~= "table" then
+    local effect = self:getLastCardEffect()
+    if type(effect) ~= "table" then
         ai_unsupported("last original CardEffect is unavailable", "slash-jink")
     end
     local callback = self.selectSlashJink
@@ -1748,13 +1636,43 @@ local function generated_response_use(self, request, row)
     end
 end
 
-ai_register_handler("use_card", function(self, request)
-    local context = covered_value(self:getDecisionContext())
-    local metadata = type(context) == "table" and context.use_card_dispatch
-    if type(metadata) ~= "table" or metadata.known ~= true
-        or (metadata.entry_variant ~= "ordinary" and metadata.entry_variant ~= "original") then
-        ai_unsupported("effective askForUseCard dispatch was not projected", "use_card_dispatch")
+-- Dispatch reads this VM's own registries (spec 15.2.3). Like SmartAI, a card name
+-- or class pattern and a physical card id also get the generated response handler.
+local function isolated_use_row(key)
+    if type(key) ~= "string" or key == "" then return {known=true, key=key, present=false} end
+    if pattern_handlers[key] ~= nil or legacy_pattern_handlers[key] ~= nil then
+        return {known=true, key=key, present=true, kind="callback"}
     end
+    local classes = AICardCatalog.patternClassNames()
+    if classes then
+        if classes[key] then return {known=true, key=key, present=true, kind="class", class_name=key} end
+        for class_name, name in pairs(classes) do
+            if name == key then return {known=true, key=key, present=true, kind="class", class_name=class_name} end
+        end
+    end
+    local id = tonumber(key)
+    if id and id >= 0 and id % 1 == 0 and tostring(id) == key then
+        return {known=true, key=key, present=true, kind="physical", card_id=id}
+    end
+    return {known=true, key=key, present=false}
+end
+
+local function isolated_use_dispatch(self, request)
+    local variant = self.world.enable_hegemony == true and "original" or "ordinary"
+    local metadata = {known=true, entry_variant=variant,
+        request_present=type(request.skill_action) == "table"}
+    if metadata.request_present then
+        local legacy = AILegacyRequest.new(request, self.room)
+        metadata.request_valid = legacy ~= nil and legacy:isValid() == true
+    end
+    metadata.raw = isolated_use_row(request.pattern)
+    metadata.prompt = isolated_use_row(type(request.prompt) == "string"
+        and string.match(request.prompt, "^[^:]*") or "")
+    return metadata
+end
+
+ai_register_handler("use_card", function(self, request)
+    local metadata = isolated_use_dispatch(self, request)
     local original = metadata.entry_variant == "original"
     local raw_pattern = type(request.pattern) == "string" and request.pattern or ""
     local compulsory = not original and string.sub(raw_pattern, -1) == "!"

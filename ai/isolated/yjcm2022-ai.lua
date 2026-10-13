@@ -13,10 +13,6 @@ local function q(object,method,...)
     if not object or type(object[method])~='function' then ai_unsupported('yjcm2022 method unavailable',method) end
     return known(object[method](object,...),method)
 end
-local function fact(self,key)
-    local facts=self.world.strategy_facts and self.world.strategy_facts.yjcm2022
-    return known(facts and facts[key],key)
-end
 local function saved_estimates(self)
     local result={}
     for _,entry in ipairs(self.request and self.request.scratch and self.request.scratch.knowledge_estimates or{})do
@@ -96,7 +92,13 @@ local function sangu_available(self,card,target)
         target=q(target,'objectName'),card_name=name},'sangu')
 end
 local function biejun_received(self,to)
-    if to==self.player then return fact(self,'owner_biejun_received_hand') end
+    if to==self.player then
+        -- The owner's own hand and marks are complete.
+        for _,card in ipairs(q(to,'getHandcards'))do
+            if q(to,'getMark','biejunGetCard_'..q(card,'getEffectiveId')..'-Clear')>0 then return true end
+        end
+        return false
+    end
     local cards=q(self,'getKnownCards',to,self.player,'h')
     for _,card in ipairs(cards)do
         if q(to,'getMark','biejunGetCard_'..q(card,'getEffectiveId')..'-Clear')>0 then return true end
@@ -380,7 +382,9 @@ sgs.ai_skill_discard.koujing = function(self,max,min,optional)
 end
 
 sgs.ai_skill_invoke.koujing = function(self,data)
-	local ids = fact(self,"owner_koujing_shown_count")
+	local shown = self.player:getTag("KoujingShowCards") or {}
+	if not AIValue.isList(shown) then ai_unsupported("owner id-list tag malformed","KoujingShowCards") end
+	local ids = #shown
 	if ids>0
 	then
 		return q(self.player,"getHp")+self:getCardsNum("Peach")+self:getCardsNum("Analeptic")<=ids

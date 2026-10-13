@@ -854,22 +854,15 @@ sgs.ai_skill_choice.kezuyunshen=function(self)return recall(self,"choice.kezuyun
 -- evaluate only reached candidates. Read-only values cannot be submitted: the
 -- chosen original ID is subsequently bound by its real native response scope.
 local function notified_cards(self,skill)
-    local rows=self.world and self.world.strategy_facts and self.world.strategy_facts.notified_piles
-    local row=type(rows)=="table" and rows["#"..skill]
-    if type(row)~="table" or row.complete~=true or row.tag_key~=skill.."ForAI"
-        or not AIValue.isList(row.card_ids) or not AIValue.isList(row.current_card_ids)
-        or not AIValue.isList(row.cards) or #row.card_ids~=#row.cards
-        or #row.current_card_ids~=#row.card_ids then
-        ai_unsupported("olClan notification is absent, incomplete, or only remembered",skill)
-    end
-    local out,seen={},{}
-    for i,id in ipairs(row.card_ids)do
-        local face=row.cards[i]
-        if type(id)~="number" or id<0 or id%1~=0 or seen[id] or row.current_card_ids[i]~=id
-            or type(face)~="table" or face.id~=id or face.effective_id~=id then
-            ai_unsupported("olClan notification changed physical identity or source order",skill)
-        end
-        seen[id]=true;out[i]=known(CardView.new(face),"olClan.notified_card")
+    -- Source order is the viewer's own "<skill>ForAI" tag (Room::notifyMoveToPile);
+    -- an absent tag is the donor's empty toIntList(). A face is used only while this
+    -- viewer can see the card; notified-only faces are not projected.
+    local ids=self.player:getTag(skill.."ForAI") or {}
+    if not AIValue.isList(ids) then ai_unsupported("olClan notification tag malformed",skill) end
+    local out={}
+    for i,id in ipairs(ids)do
+        if type(id)~="number" or id<0 or id%1~=0 then ai_unsupported("olClan notification tag malformed",skill) end
+        out[i]=known(self:getKnownCardById(id) or self:getChoiceCard(id),"olClan.notified_card")
     end
     return AIList.new(out)
 end
@@ -1226,7 +1219,7 @@ sgs.ai_fill_skill.kezujiexuan=function(self,inclusive,request)
 end
 
 sgs.ai_fill_skill.kezushengmo=function(self,inclusive,request)
-    for _,pn in ipairs(known(self.world.strategy_facts.pattern_names,"pattern_names"))do
+    for _,pn in ipairs(known(AICardCatalog.patternNames(),"pattern_names"))do
         if mark(self,self.player,"kezushengmo_guhuo_remove_"..pn)>0 then continue end
         local dc=self:cloneEvaluationCard(pn)
         if dc and call(dc,"getTypeId")==1 and call(self,"getCardsNum",call(dc,"getClassName"))<1 then
@@ -1608,7 +1601,7 @@ local function scoped(self,key)
  if value==nil then ai_unsupported('olClan D scoped observation absent',key)end
  return value
 end
-local function patterns(self)return known(self.world.strategy_facts.pattern_names,'pattern_names')end
+local function patterns(self)return known(AICardCatalog.patternNames(),'pattern_names')end
 local function clone(self,name)
  -- The only non-card choice emitted by ny_shenjun's fixed native writer.
  if name=='cancel'then return nil end

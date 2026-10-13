@@ -50,18 +50,8 @@ local function visible_single_hand(self,player)
     return cards
 end
 local function nengchen_preview(self,material)
-    if type(ai_evaluate_nengchen_preview)~="function" then ai_unsupported("Nengchen native preview missing","LuaNengchen") end
-    local row=ai_evaluate_nengchen_preview(q(material,"getEffectiveId"))
-    if type(row)~="table" or row.error then ai_unsupported(type(row)=="table" and row.error or "invalid Nengchen preview","LuaNengchen") end
-    for _,key in ipairs({"name","class_name","is_iron_chain","limited_use_hand","available_checked","estimated"}) do known(row[key],"Nengchen "..key) end
-    if row.available_checked~=not row.limited_use_hand then
-        ai_unsupported("Nengchen availability query did not preserve the limitation short circuit","LuaNengchen")
-    end
-    if row.available_checked then known(row.available,"Nengchen availability") end
-    if row.estimated then
-        self:useKnowledgeEstimate({value=row.name,status="estimate",basis="newstar.nengchen_last_public_declaration_hidden_current_face"},"LuaNengchen")
-    end
-    return row
+    -- A hypothetical Nengchen clone's limitation/availability is a native rule evaluation.
+    ai_unsupported("Nengchen conversion preview is not projected","LuaNengchen")
 end
 -- LuaSkillCard::toString omits m_skillName. Preserve both its exact policy
 -- printing and strategy identity while changing the one source-mutated field.
@@ -747,31 +737,8 @@ end
 
 sgs.hit_skill = sgs.hit_skill .. "|os_chitu"
 
--- newstar's literal alias captures whichever audited slash body has already
--- loaded. Use that immutable source identity, never the later canonical key.
-sgs.ai_cardneed.os_chitu = function(to,card,self)
-    local facts=self.world and self.world.strategy_facts
-    local aliases=facts and facts.audited_aliases
-    local row=aliases and aliases.entries and aliases.entries["ai_cardneed.os_chitu"]
-    if not aliases or aliases.captured~=true or type(row)~="table"
-        or row.alias_known~=true or row.present~=true or row.alias_type~="function"
-        or row.alias_source_matches~=true then
-        ai_unsupported("os_chitu captured source body is not proven","os_chitu")
-    end
-    local original=row.alias_variant=="smart_ai" and row.alias_source=="@lua/ai/smart-ai.lua" and row.alias_line==4110
-    local sijyu=row.alias_variant=="sijyu" and row.alias_source=="@lua/ai/sijyu-ai.lua" and row.alias_line==1
-    if not original and not sijyu then
-        ai_unsupported("os_chitu captured source variant is not proven","os_chitu")
-    end
-    if not self:willSkipPlayPhase(to) then
-        if original then
-            return isCard("Slash",card,to) and getKnownCard(to,self.player,"Slash",true)==0
-        end
-        -- Preserve sijyu-ai.lua:1's three arguments. The ordinary donor helper
-        -- returns 0 for its boolean class argument; do not repair that source call.
-        return isCard("Slash",card,to) and getKnownCard(to,"Slash",true)==0
-    end
-end
+-- The donor's literal alias captures whichever slash body this VM has loaded.
+sgs.ai_cardneed.os_chitu = sgs.ai_cardneed.slash
 
 sgs.ai_skill_invoke.LuaHuaji = function(self, data)
 	local current = self.room:getCurrent()

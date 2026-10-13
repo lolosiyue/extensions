@@ -2,13 +2,6 @@
 local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported('sk input unknown',k)end;return v end
 local nullable={toPlayer=true,getLord=true,getCurrent=true,getArmor=true,getWeapon=true,getMaxCard=true,getSameEquip=true,findPlayerBySkillName=true,findPlayerByObjectName=true,AssistTarget=true,useBasicCard=true,updatePlayers=true,updateIntention=true,setStrategyCardFlag=true,writeToConsole=true}
 local function q(o,k,...)
- if k=='hasFlag'and AIValue.isPlayer(o)then
-  local ai=o._room and o._room._ai;local fs=ai and ai.world.strategy_facts
-  local rows=fs and fs.sk and fs.sk.public_flags
-  local values=rows and rows[(...)];local v=values and values[o:objectName()]
-  local audited={['sk_pudu_target']=true,['kuangao_target']=true,['lirang_Target']=true,['shejian_used']=true}
-  if audited[(...)]then if type(v)~='boolean'then ai_unsupported('public flag disclosure missing',(...))end;return v end
- end
  if not o or type(o[k])~='function'then ai_unsupported('sk helper unavailable',k)end
  local method=k;if k=='getMark'and AIValue.isPlayer(o)then method='getStrategyMark'end
  local r=table.pack(o[method](o,...));if AIUnsupported.is(r[1])then error(r[1],0)end
@@ -16,7 +9,6 @@ local function q(o,k,...)
  if k=='hasSkill'or k=='hasSkills'then local p=AIValue.isPlayer(o)and o or select(2,...)or o.player;local row=type(p)=='table'and rawget(p,'_view');if r[1]==false and row and row.skills_complete~=true then ai_unsupported('sk foreign skill absence unknown',(...))end end
  if not nullable[k]then known(r[1],k)end;return table.unpack(r,1,r.n)
 end
-local function facts(self)return known(self.world.strategy_facts and self.world.strategy_facts.sk,'sk')end
 local function own_ai(p)local a=p._room and p._room._ai;if not a or p~=a.player then ai_unsupported('sk view-as material is not owner-authorized','sk.view_as')end;return a end
 local function face(self,id)return q(self,'getKnownCardById',id)end
 local function seed(self,wire)
@@ -752,7 +744,8 @@ sgs.ai_playerchosen_intention["sk_yaoming"] = 50
 sgs.ai_skill_invoke.sk_diezhang = true
 
 sgs.ai_card_priority.sk_diezhang = function(self,card,v)
-	if known(facts(self).diezhang_point,"diezhang_point")<q(card,"getNumber")
+	-- Own tag; QVariant::toInt reads absent as 0.
+	if (tonumber(self.player:getTag("diezhang_point")) or 0)<q(card,"getNumber")
 	then return 10 end
 end
 

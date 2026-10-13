@@ -12,7 +12,12 @@ local function skill_suit_table(self,name)
  return value
 end
 local function dummy()return AIUsePlan.new({isDummy=true})end
-local function fact(self,group,key)local row=self.world.strategy_facts and self.world.strategy_facts[group];return known(row and row[key],group..":"..key)end
+-- jilve_wansha is the viewer's own JilveWansha tag read through toBool(); whether the
+-- engine registers olwansha (has_olwansha_definition) is not projected.
+local function fact(self,group,key)
+ if group=="standard"and key=="jilve_wansha"then return self.player:getTag("JilveWansha")==true end
+ ai_unsupported("engine skill registry is not projected",group..":"..key)
+end
 local function scope(self,key)local row=q(self,"getDecisionContext").MRmou;if type(row)~="table"then ai_unsupported("MRmou scoped data missing",key)end;return known(row[key],key)end
 local function scoped_player(self,key)local name=scope(self,key);if name==false or name==""then return nil end;return q(self.room,"findPlayerByObjectName",name)end
 local function scoped_use(self,key)

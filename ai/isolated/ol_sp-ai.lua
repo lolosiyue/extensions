@@ -2,13 +2,6 @@
 local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported('ol_sp input unknown',k)end;return v end
 local nullable={setGuowuDecisionContext=true,getCardNeedPlayer=true,getMinCard=true,getTreasure=true,toCardUse=true,toCardResponse=true,findPlayerByObjectName=true,updateIntention=true,getMaxCard=true,getCurrent=true,getArmor=true,getWeapon=true,getEquip=true,toPlayer=true,toJudge=true,getStrategyMemory=true,setStrategyMemory=true,useBasicCard=true,useTrickCard=true}
 local function call(o,k,...)
- if k=='hasFlag'and AIValue.isPlayer(o)then
-  local ai=o._room and o._room._ai;local fs=ai and ai.world.strategy_facts
-  local rows=fs and fs.ol_sp and fs.ol_sp.public_flags
-  local values=rows and rows[(...)];local v=values and values[o:objectName()]
-  local audited={['xiongmang_target']=true,['olqingshiTo']=true}
-  if audited[(...)]then if type(v)~='boolean'then ai_unsupported('public flag disclosure missing',(...))end;return v end
- end
  if not o or type(o[k])~='function'then ai_unsupported('ol_sp helper unavailable',k)end
  local m=k;if k=='getMark'and AIValue.isPlayer(o)then m='getStrategyMark'end
  local r=table.pack(o[m](o,...));if AIUnsupported.is(r[1])then error(r[1],0)end
@@ -16,7 +9,6 @@ local function call(o,k,...)
  if k=='hasSkill'or k=='hasSkills'then local p=AIValue.isPlayer(o)and o or select(2,...)or o.player;local row=type(p)=='table'and rawget(p,'_view');if r[1]==false and row and row.skills_complete~=true then ai_unsupported('ol_sp foreign skill absence unknown',(...))end end
  if not nullable[k]then known(r[1],k)end;return table.unpack(r,1,r.n)
 end
-local function facts(self)return known(self.world.strategy_facts.ol_sp,'ol_sp.facts')end
 local function context(self)return known(call(self,'getDecisionContext').ol_sp,'ol_sp.context')end
 local function face(self,id)return call(self,'getKnownCardById',tonumber(id)or id)end
 local function evaluation(self,name)return call(self,'getEvaluationCard',name or 'slash')end
@@ -97,17 +89,9 @@ local function nested(self,reg,key,...)
  if AIUnsupported.is(result[2])then error(result[2],0)end;return table.unpack(result,2,result.n)
 end
 local function save_choice(self,key,v)memory(self,'choice.'..key,v,true);sgs.ai_skill_choice[key]=function(ai)return known(memory(ai,'choice.'..key),key)end end
+-- The donor's choice values set in the Room VM are not projected.
 local function source_choice_continuity(self,op,key,row)
- if type(ai_response_choice_continuity)~='function'then ai_unsupported('native source choice continuity unavailable',key)end
- local result=ai_response_choice_continuity({op=op,key=key,row=row})
- if AIUnsupported.is(result)then error(result,0)end
- if type(result)~='table'or result.known~=true then
-  if op=='record'then return end -- observation unavailable; never erase reached own source write
-  ai_unsupported('source global choice continuation is unobserved',key)
- end
- if op=='record'then if result.recorded~=true then ai_unsupported('invalid source choice record',key)end;return end
- if type(result.present)~='boolean'or(result.present and type(result.value)~='string')then ai_unsupported('invalid source choice value',key)end
- return result.present and result.value or nil
+ ai_unsupported('Room-VM source choice continuation is not projected',key)
 end
 local function capture_choice(self,key,from)
  if key=='olxuhe'and from=='xuhe'then
@@ -143,15 +127,15 @@ local function tag(self,key,kind,owner)
  if kind=='IntList'then return AIList.new(known(row.value,key))end
  return hydrate(self,known(row.value,key),kind)
 end
+-- Own dynamic property read as the donor's toString() (absent is ""); getPropertyValue
+-- rejects other players, whose properties are not projected.
 local function property(self,p,key)
- local rows=facts(self).properties;local row=rows and rows[call(p,'objectName')];return known(row and row[key],key)
+ local v=p:getPropertyValue(key);if v==nil then return''end
+ return known(type(v)=='string'and v or nil,key)
 end
+-- Engine::getCardNames filters by the random card pool, which is not projected.
 local function cardnames(self,class)
- local keys={BasicCard='ol_sp_basic_names',['TrickCard+^DelayedTrick']='ol_sp_ndtrick_names'}
- if type(ai_response_catalogue)~='function'then ai_unsupported('source public catalog query unavailable',class)end
- local row=ai_response_catalogue(known(keys[class],class));if AIUnsupported.is(row)then error(row,0)end
- if type(row)~='table'or row.known~=true or row.key~=keys[class]then ai_unsupported('source public catalog query rejected',class)end
- return known(row.names,class)
+ ai_unsupported('getCardNames random card pool is not projected',class)
 end
 local function matches(self,pattern,p,c)
  if p~=self.player then ai_unsupported('source matcher receiver not owner','ol_sp.matcher')end
@@ -201,7 +185,7 @@ local function judge_reason(self,key)
  if patterns[key]~=nil then return patterns[key]end
  -- Fixed initial registry differs when the original-hegemony loader ran.
  -- StartJudge overrides above remain authoritative in either source variant.
- local mode=self.world and self.world.strategy_facts and self.world.strategy_facts.hegemony
+ local mode=self.world and AIHegemony.facts(self.world)
  if type(mode)~='table'or type(mode.enabled)~='boolean' then ai_unsupported('source judge registry mode is not projected','tianhou0.judge_patterns')end
  local defaults={indulgence='.|heart',supply_shortage='.|club',lightning={'.|spade|2~9',false}}
  if mode.enabled then
@@ -210,7 +194,8 @@ local function judge_reason(self,key)
  end
  return defaults[key]
 end
-local function source_global_jc(self)return face(self,known(facts(self).global_jc_id,'tianhou0.source_global_jc'))end
+-- The donor reads its Room-VM free global `jc`; that VM's globals are not projected.
+local function source_global_jc(self)ai_unsupported('Room-VM global jc is not projected','tianhou0.source_global_jc')end
 local function RandomList(items)local copy={};for _,v in ipairs(items)do copy[#copy+1]=v end;while #copy>0 do local v=copy[math.random(1,#copy)];table.removeOne(copy,v);table.removeOne(items,v);items[#items+1]=v end;return items end
 
 local function material_proposal(c,name,skill)return{name=name,skill=skill,suit=call(c,'getSuit'),number=call(c,'getNumber'),subcards={call(c,'getEffectiveId')}}end
@@ -2621,7 +2606,7 @@ end
 sgs.ai_fill_skill.xuanzhu = function(self)
 	local n = call(self.player,"getChangeSkillState","xuanzhu")
 	if n==1 then
-		for _,pn in sgs.list(known(self.world.strategy_facts.pattern_names,"pattern_names"))do
+		for _,pn in sgs.list(known(AICardCatalog.patternNames(),"pattern_names"))do
 			local dc = self:evaluateXuanzhuSource(pn)
 			if dc:getTypeId()==1 and call(dc,"isAvailable",self.player) then
 				local d = self:aiUseCard(dc)
@@ -2632,7 +2617,7 @@ sgs.ai_fill_skill.xuanzhu = function(self)
 			end
 		end
 	else
-		for _,pn in sgs.list(known(self.world.strategy_facts.pattern_names,"pattern_names"))do
+		for _,pn in sgs.list(known(AICardCatalog.patternNames(),"pattern_names"))do
 			local dc = self:evaluateXuanzhuSource(pn)
 			if dc:getTypeId()==2 and call(dc,"isKindOf","SingleTargetTrick") and call(dc,"isAvailable",self.player) then
 				local d = self:aiUseCard(dc)
@@ -2978,7 +2963,7 @@ sgs.ai_fill_skill.leiluan = function(self)
 		end
 	end
 	if #ids<n or #ids>2 then return end
-	for _,pc in sgs.list(known(self.world.strategy_facts.pattern_names,"pattern_names"))do
+	for _,pc in sgs.list(known(AICardCatalog.patternNames(),"pattern_names"))do
 		if call(self.player,"getMark","leiluan_guhuo_remove_"..pc.."_lun")<1 then
 			local dc = evaluation(self,pc)
 			if call(dc,"getTypeId")~=1
@@ -4406,7 +4391,7 @@ sgs.ai_skill_invoke.fulve = function(self,data)
 end
 
 sgs.ai_fill_skill.lucun = function(self)
-  	for _,pn in sgs.list(RandomList(known(self.world.strategy_facts.pattern_names,"pattern_names")))do
+  	for _,pn in sgs.list(RandomList(known(AICardCatalog.patternNames(),"pattern_names")))do
 		if call(self.player,"getMark","lucun_guhuo_remove_"..pn.."_lun")>0 then continue end
 		local dc = named(self,"lucun",pn,{})
 		if (call(dc,"getTypeId")==1 or call(dc,"isNDTrick"))

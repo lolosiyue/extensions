@@ -16,12 +16,8 @@ local function paid(self,skill,selector,request,old)
     return card
 end
 local function slash_available(self)
-    local facts=self.world and self.world.strategy_facts
-    local row=facts and facts.zhenghuo_cmt
-    if type(row)~="table" or type(row.slash_available)~="boolean" then
-        ai_unsupported("owner static Slash availability is unknown","zhenghuo_cmt.slash_available")
-    end
-    return row.slash_available
+    -- Slash::IsAvailable(owner) is the printed Slash's owner availability rule.
+    return q(q(self,"getEvaluationCard","slash"),"isAvailable",self.player)
 end
 --神技
 sgs.ai_fill_skill.shenjiZHCMT=function(self,inclusive,request)

@@ -18,13 +18,9 @@ end
 local function material(c,name,skill)return{name=name,skill=skill,suit=q(c,"getSuit"),number=q(c,"getNumber"),subcards={q(c,"getEffectiveId")}}end
 local function seed(self,skill,class,request)return self:legacySkillSeed(skill,class,request)end
 local function paid(self,skill,class,costs,request)return self:bindSkillCard(skill,costs,request,nil,class)end
-local function standard_fact(self,key)return known(self.world.strategy_facts and self.world.strategy_facts.standard and self.world.strategy_facts.standard[key],key)end
+-- CurrentDamageStruct reaches only a decision's context; an event-only view has none.
 local function current_damage(self)
-    local row=standard_fact(self,"current_damage");if row==false then return{}end
-    local d={};for k,v in pairs(row)do d[k]=v end
-    for _,k in ipairs{"from","to"}do if type(d[k])=="string"then d[k]=known(self.room:findPlayerByObjectName(d[k],true),k)elseif d[k]==false then d[k]=nil end end
-    if d.card and not AIValue.isCard(d.card)then d.card=known(CardView.new(d.card),"damage card")end
-    d.damage=d.amount or d.damage;return d
+    return known(self:getDecisionContext().damage,"current damage")
 end
 local function visible_hand(self,p)
     if AIValue.sameLegacyIdentity(p,self.player)then return q(p,"getHandcards")end
@@ -44,10 +40,9 @@ local function retrial_hand(self,p)
     return cards
 end
 local function missing_jiuyuan_prototype(self)
-    local f=self.world.strategy_facts and self.world.strategy_facts.dragon
-    local exists=known(f and f.promote_jiuyuan_skill_prototype,"#Promote_jiuyuanCard prototype")
-    if exists then ai_unsupported("unexpected legacy prototype registration","#Promote_jiuyuanCard")end
-    return nil -- source Card_Parse cannot parse the registered BasicCard as a SkillCard
+    -- Whether a #Promote_jiuyuanCard skill-card class is registered (the source
+    -- Card_Parse) is engine registry state, not projected.
+    ai_unsupported("skill-card registry is not projected","#Promote_jiuyuanCard")
 end
 local function current_target(use,to)
     for _,p in ipairs(use.current_targets or{})do
@@ -354,10 +349,12 @@ local card_finished=sgs.CardFinished or "CardFinished"
 sgs.ai_event_callback[card_finished]=sgs.ai_event_callback[card_finished]or{}
 sgs.ai_event_callback[card_finished].tonglingCard = function(self,player,event)
     if event.card_name=="tonglingCard" then
-        local witness=known(self.world.strategy_facts and self.world.strategy_facts.tongling_role_witness,"tongling public role witness")
-        if witness.player~=q(player,"objectName")then ai_unsupported("tongling witness actor mismatch","tongling")end
-        local role=known(witness.role,"tongling public role")
-        self:emitStrategyEffect({kind="tongling_role",player=q(player,"objectName"),role=role})
+        -- The witness is the public board: tonglingCard broadcasts its user's role.
+        local name=q(player,"objectName")
+        if event.from~=name then ai_unsupported("tongling witness actor mismatch","tongling")end
+        local role=q(player,"hasShownRole") and q(player,"getRole")
+        if not ({lord=true,loyalist=true,rebel=true,renegade=true})[role] then ai_unsupported("tongling public role is unknown","tongling")end
+        self:emitStrategyEffect({kind="tongling_role",player=name,role=role})
     end
 end
 
@@ -794,7 +791,9 @@ sgs.ai_skill_use_func["#Promote_zhihengCard"] = function(card,use,self)
 
     if q(self.player,"getHp")<3 then
         local use_slash,keep_jink,keep_analeptic,keep_weapon = false,false,false,nil
-        local keep_slash = standard_fact(self,"jilve_wansha")
+        -- QVariant::toBool of the own tag (it holds the acquired skill name).
+        local wansha = self.player:getTag("JilveWansha")
+        local keep_slash = wansha~=nil and wansha~=false and wansha~=""
         for _,zcard in sgs.list(self.player:getCards("he"))do
             if not isCard("Peach",zcard,self.player)
             then
@@ -1166,7 +1165,7 @@ function SmartAIView:useCardDragonPeach(card,use)
     end
     self.friends = self:sort(self.friends,"hp")
     if #self.friends>0 and AIValue.sameLegacyIdentity(self.friends[1],self.player)
-    or q(self.player,"getHp")<2 then use.card = card return end
+    or q(self.player,"getHp")<2 then use.card = card use.to:append(self.player) return end
     if #self.friends>1 and (not hasBuquEffect(self.friends[2]) and q(self.friends[2],"getHp")<3 and of<2
     or not hasBuquEffect(self.friends[1]) and q(self.friends[1],"getHp")<2 and self:getCardsNum("DragonPeach","h")<=1 and of<3)
     then return end

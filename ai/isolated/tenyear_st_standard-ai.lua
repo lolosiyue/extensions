@@ -4,10 +4,16 @@ local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then
 local function q(o,k,...)if o==nil then error("attempt to index a nil value",0)end;if k=="getMark"and AIValue.isPlayer(o)then k="getStrategyMark"end;if k=="hasFlag"and AIValue.isPlayer(o)then k="getStrategyFlag"end;if type(o[k])~="function"then ai_unsupported("tenyear standard helper unavailable",k)end;return known(o[k](o,...),k)end
 local function known_card(self,id)return known(self:getKnownCardById(id),"disclosed card "..tostring(id))end
 local function visible_hand(self,p)local cards=known(p:getKnownCards(),"known hand");if #cards~=q(p,"getHandcardNum")then ai_unsupported("source enumerates undisclosed dead hand","mobilexingshang")end;return cards end
-local function property(self,k)return known(known(self.world.strategy_facts.owner_skill_properties,"owner properties")[k],k)end
+-- The viewer's own dynamic property, converted like the donor's QVariant read (absent reads empty).
+local function property(self,k,kind)
+ local v=self.player:getPropertyValue(k)
+ if kind=="Bool"then return v==true elseif kind=="Int"then return tonumber(v)or 0 end
+ if v==nil then return""end;return v
+end
+-- The viewer's own tag; absent reads as the donor's empty toInt/toIntList, otherwise nil.
 local function tag(self,k,kind)
- local row=known(known(self.world.strategy_facts.tenyear_st_standard,"tenyear standard owner facts")[k],k)
- if row==false then return nil end
+ local row=self.player:getTag(k)
+ if row==nil then if kind=="Int"then return 0 elseif kind=="IntList"then return AIList.new({})end;return nil end
  if kind=="Player"then return known(self.room:findPlayerByObjectName(row,true),k)
  elseif kind=="Card"then return CardView.new(row)
  elseif kind=="CardUse"then local to=AIList.new({});for _,name in ipairs(row.to or{})do to:append(known(self.room:findPlayerByObjectName(name,true),k))end;return{card=row.card and CardView.new(row.card),from=row.from and self.room:findPlayerByObjectName(row.from,true),to=to,no_respond_list=row.no_respond_list,no_offset_list=row.no_offset_list}
@@ -65,7 +71,6 @@ local function response_wire(self,wire)
  else paid=selected_policy(self,text)end
  return{kind="use_card",card_spec=paid:toCardSpec(),targets=targets and targets:split("+")or{}}
 end
-local function fact(self,k)return known(known(self.world.strategy_facts.tenyear_st_standard,"tenyear facts")[k],k)end
 local function printed_card(self,id)return known(self:getPrintedCardById(id),"offered printed face")end
 local function value_variant()local v;return{setValue=function(_,x)v=x end,toCardUse=function()return v end,toString=function()return""end}end
 local function set_used_data(self)ai_unsupported("source global UsedData/yb_zhuzhan2 temporary input has no exported pure adapter","tenyearxianzhen")end
@@ -78,9 +83,12 @@ local function can_to(self,c,from,to,targets)
  return self:cardTargetFilter(c,targets or{},to)
 end
 local function current_damage(self)
- local r=known(known(self.world.strategy_facts.standard,"standard public facts").current_damage,"current damage")
- if r==false then return{}end
- return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=r.to and self.room:findPlayerByObjectName(r.to,true),damage=r.amount,card=r.card and CardView.new(r.card),nature=r.nature}
+ -- Room tag CurrentDamageStruct: a question's decision context carries it while the tag
+ -- holds one (absent reads as the donor's empty struct); event callbacks get no context.
+ if self.request.kind=="event"then ai_unsupported("CurrentDamageStruct is not projected to event callbacks","current_damage")end
+ local d=self:getDecisionContext().damage
+ if d==nil then return{}end
+ return{from=d.from,to=d.to,damage=d.amount,card=d.card,nature=d.nature}
 end
 local function extra_card(self,wire)
  -- Reached after the source sort. Native parses this exact first raw token;
@@ -2335,7 +2343,7 @@ end
 
 --奔袭
 sgs.ai_skill_use["@@tenyearbenxi!"] = function(self,prompt)
-	local valid = fact(self,"extra_collateral_current"):split("+")
+	local valid = property(self,"extra_collateral"):split("+")
 	local destlist = self.room:getOtherPlayers(self.player)
     destlist = sgs.QList2Table(destlist) -- 将列表转换为表
     destlist = self:sort(destlist,"hp")
@@ -2428,7 +2436,7 @@ sgs.ai_fill_skill["tenyearyanzhu"] = function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func.TenyearYanzhuCard = function(card,use,self)
-	if property(self,"tenyearyanzhu_level_up") then
+	if property(self,"tenyearyanzhu_level_up","Bool") then
 		self.enemies = self:sort(self.enemies,"defense")
 		for _,p in ipairs(self.enemies)do
 			if self:doDisCard(p,"he") then
@@ -2472,7 +2480,7 @@ end
 
 --兴学
 sgs.ai_skill_use["@@tenyearxingxue"] = function(self)
-    local n = (property(self,"tenyearyanzhu_level_up")) and q(self.player,"getMaxHp") or q(self.player,"getHp")
+    local n = (property(self,"tenyearyanzhu_level_up","Bool")) and q(self.player,"getMaxHp") or q(self.player,"getHp")
     n = math.min(n,#self.friends)
 	if n<=0 then return "." end
 	self.friends = self:sort(self.friends,"defense")
@@ -3585,13 +3593,13 @@ sgs.ai_skill_use_func.TenyearJiefanCard = function(card,use,self)
 		end
 	end
 
-	if (target and max_value>=self.player:aliveCount()/2) or fact(self,"turn_length_count")==1 then
+	if (target and max_value>=self.player:aliveCount()/2) or q(self.room,"getTurnCount")==1 then
 		use.card = card
 		use.to:append(target)
 		return
 	end
 
-	if (self:isWeak() and p_count>0) or fact(self,"turn_length_count")==1 then
+	if (self:isWeak() and p_count>0) or q(self.room,"getTurnCount")==1 then
 		use.card = card
 		use.to:append(self.player)
 		return
@@ -3961,7 +3969,7 @@ sgs.ai_fill_skill["tenyearjiaozhao"] = function(self,inclusive,request)
 		end
 	end
 	self:setPriorityValue("TenyearJiaozhaoCard",6.8,"tenyear_st_standard")
-	local level = property(self,"tenyearjiaozhao_level")
+	local level = property(self,"tenyearjiaozhao_level","Int")
 	level = type(level)=="number" and level or 0
   	for _,c in sgs.list(cards)do
 		if self.player:hasUsed("TenyearJiaozhaoCard") and level<2
@@ -3991,7 +3999,7 @@ sgs.ai_guhuo_card.tenyearjiaozhao = function(self,toname,class_name)
 end
 
 sgs.ai_skill_use_func["TenyearJiaozhaoCard"] = function(card,use,self)
-	local level = property(self,"tenyearjiaozhao_level")
+	local level = property(self,"tenyearjiaozhao_level","Int")
 	level = type(level)=="number" and level or 0
 	if level>1 then use.card = card return end
 	local n = 998
@@ -4041,7 +4049,7 @@ sgs.ai_skill_askforag.tenyearjiaozhao = function(self,card_ids)
 	end
    	local target = self.room:getCurrent()
     cards = self:sortByUseValue(cards,self:isEnemy(target))
-	local level = property(self,"tenyearjiaozhao_level")
+	local level = property(self,"tenyearjiaozhao_level","Int")
 	if target:objectName()==self.player:objectName()
 	then
 		for d,c in sgs.list(cards)do

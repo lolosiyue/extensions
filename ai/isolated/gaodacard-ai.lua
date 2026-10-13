@@ -18,10 +18,18 @@ local function real_horse(self,horse)
  if type(row)~="table"then ai_unsupported("Guard exact real horse face missing","gaodacard")end
  return CardView.new(row)
 end
+-- The donor reads its own "ronghe" property: card ids joined by "+".
 local function ronghe_cards(self)
- local rows=context(self).ronghe_cards
- if not AIValue.isList(rows)then ai_unsupported("Guard lawful ordered ronghe faces missing","gaodacard")end
- local result={};for _,row in ipairs(rows)do result[#result+1]=CardView.new(row)end;return result
+ local value=self.player:getPropertyValue("ronghe")
+ local result={}
+ if value==nil or value==""then return result end
+ if type(value)~="string"then ai_unsupported("Guard ronghe property is not a string","gaodacard")end
+ for _,id in ipairs(value:split("+"))do
+  local card=self:getKnownCardById(tonumber(id))
+  if not card then ai_unsupported("Guard ronghe card face is unknown","gaodacard")end
+  result[#result+1]=card
+ end
+ return result
 end
 if not sgs.ai_nullification then
 	sgs.ai_nullification = {}

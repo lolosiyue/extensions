@@ -25,15 +25,12 @@ end
 local function reversed(cards)
     local result={};for i=#cards,1,-1 do result[#result+1]=cards[i]end;return AIList.new(result)
 end
+-- The ask's data is the Damaged struct the donor reads from the CurrentDamageStruct room tag.
 local function current_damage(self)
-    local raw=known(self.world.strategy_facts and self.world.strategy_facts.standard and self.world.strategy_facts.standard.current_damage,"yjcm2013.current_damage")
-    if raw==false then return {} end
-    local result={};for k,v in pairs(raw)do result[k]=v end
+    local result=known(self:getDecisionContext().damage,"yjcm2013.current_damage")
     for _,key in ipairs({"from","to"}) do
-        local name=result[key];result[key]=name and name~="" and self.room:findPlayerByObjectName(name,true) or nil
+        if result[key.."_name"]=="" then result[key]=nil end
     end
-    result.damage=result.amount
-    if result.card then result.card=CardView.new(result.card)end
     return result
 end
 local function material(self,id)

@@ -13,16 +13,18 @@ end
 local function dummy(is_dummy,extra,current)
  local use=AIUsePlan.new();use.isDummy=is_dummy~=false;use.extra_target=extra or 0;use.current_targets=current or {};return use
 end
+-- The viewer's own tags; nil is an absent tag (toBool false).
 local function owner_fact(self,key)
- local f=self.world and self.world.strategy_facts and self.world.strategy_facts.kearwangushengxiang
- local value;if type(f)=="table"then value=f[key]end
- if value==nil then ai_unsupported("owner package field unavailable",key)end;return value
+ return self.player:getTag(key)
 end
 local function owner_damage(self)
- local row=owner_fact(self,"kenewgirlshibingDamage");if type(row)~="table"or type(row.damage)~="number"then ai_unsupported("owner damage tag malformed","kenewgirlshibingDamage")end
- local d={damage=row.damage,nature=row.nature}
- for _,key in ipairs({"from","to"})do if row[key]and row[key]~=false then d[key]=q(self.room,"findPlayerByObjectName",row[key])end end
- if type(row.card)=="table"then d.card=CardView.new(row.card)end;return d
+ local row=owner_fact(self,"kenewgirlshibingDamage")
+ -- An absent tag converts to the default DamageStruct.
+ if row==nil then return{damage=1,nature=sgs.DamageStruct_Normal}end
+ if type(row)~="table"or type(row.amount)~="number"then ai_unsupported("owner damage tag malformed","kenewgirlshibingDamage")end
+ local d={damage=row.amount,nature=row.nature}
+ for _,key in ipairs({"from","to"})do if type(row[key])=="string"and row[key]~=""then d[key]=q(self.room,"findPlayerByObjectName",row[key])end end
+ if type(row.card)=="table"and next(row.card)~=nil then d.card=CardView.new(row.card)end;return d
 end
 local function role(self,p)
  local value=call(p,"getRole");if value~=nil then return value end

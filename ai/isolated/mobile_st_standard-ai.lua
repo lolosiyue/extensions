@@ -3,10 +3,16 @@ local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then
 local function q(o,k,...)if o==nil then error("attempt to index a nil value",0)end;if k=="getMark"and AIValue.isPlayer(o)then k="getStrategyMark"end;if k=="hasFlag"and AIValue.isPlayer(o)then k="getStrategyFlag"end;if type(o[k])~="function"then ai_unsupported("mobile standard helper unavailable",k)end;return known(o[k](o,...),k)end
 local function known_card(self,id)return known(self:getKnownCardById(id),"disclosed card "..tostring(id))end
 local function visible_hand(self,p)local cards=known(p:getKnownCards(),"known hand");if #cards~=q(p,"getHandcardNum")then ai_unsupported("source enumerates undisclosed dead hand","mobilexingshang")end;return cards end
-local function property(self,k)return known(known(self.world.strategy_facts.owner_skill_properties,"owner properties")[k],k)end
+-- The viewer's own dynamic property, converted like the donor's QVariant read (absent reads empty).
+local function property(self,k,kind)
+ local v=self.player:getPropertyValue(k)
+ if kind=="Bool"then return v==true end
+ if v==nil then return""end;return v
+end
+-- The viewer's own tag; an absent list reads as the donor's empty toIntList, otherwise nil.
 local function tag(self,k,kind)
- local row=known(known(self.world.strategy_facts.mobile_st_standard,"mobile standard owner facts")[k],k)
- if row==false then return nil end
+ local row=self.player:getTag(k)
+ if row==nil then if kind=="IntList"then return AIList.new({})end;return nil end
  if kind=="Player"then return known(self.room:findPlayerByObjectName(row,true),k)
  elseif kind=="Card"then return CardView.new(row)
  elseif kind=="CardUse"then local to=AIList.new({});for _,name in ipairs(row.to or{})do to:append(known(self.room:findPlayerByObjectName(name,true),k))end;return{card=row.card and CardView.new(row.card),from=row.from and self.room:findPlayerByObjectName(row.from,true),to=to,no_respond_list=known(row.no_respond_list,k.." no respond"),no_offset_list=known(row.no_offset_list,k.." no offset")}
@@ -616,7 +622,7 @@ sgs.ai_skill_use_func.MobileZhijianCard = function(card,use,self)
 				local slash = self:getCard("Slash")
 				for _,enemy in ipairs(self.enemies)do
 					if self.player:canSlash(enemy,slash,true) and not self:slashProhibit(slash,enemy) and
-						self:slashIsEffective(slash,enemy) and not hasJueqingEffect(self.player,enemy) and enemy:isKongcheng() then
+						self:slashIsEffective(slash,enemy) and not self:hasJueqingEffect(self.player,enemy) and enemy:isKongcheng() then
 							HeavyDamage = true
 							break
 					end
@@ -1774,7 +1780,7 @@ sgs.ai_fill_skill["mobilejianying"] = function(self,inclusive,request)
     cards = sgs.QList2Table(cards) -- 将列表转换为表
     cards = self:sortByKeepValue(cards)
 	if #cards<1 then return end
-	for _,name in sgs.list(known(self.world.strategy_facts.pattern_names,"patterns"))do
+	for _,name in sgs.list(known(AICardCatalog.patternNames(),"patterns"))do
 		local c = self:getEvaluationCard(name)
 		local card = tag(self,"mobilejianying","Card")
 		if card then c = clone(self,"mobilejianying","",name,q(card,"getSuit"),0,{})end
@@ -1861,7 +1867,7 @@ sgs.ai_skill_use["@@mobilexingxue"] = function(self,prompt)
 	local destlist = self.room:getAllPlayers()
     destlist = sgs.QList2Table(destlist) -- 将列表转换为表
     destlist = self:sort(destlist,"hp")
-	local xingxue = property(self,"MobileXingxueLevelUp")
+	local xingxue = property(self,"MobileXingxueLevelUp","Bool")
     local n = xingxue and q(self.player,"getMaxHp") or q(self.player,"getHp")
 	for _,friend in sgs.list(destlist)do
 		if #valid>=n then break end
