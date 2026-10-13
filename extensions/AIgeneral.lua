@@ -1196,9 +1196,12 @@ tongyiTQ = sgs.CreateViewAsSkillV2 {
 }
 -- ServerPlayer::hasNullification 只問舊 response_pattern 探針（同引擎 V2 Kanpo 做法一樣）
 tongyiTQ.response_pattern = "nullification"
-tongyiAIWJ_prohibit = sgs.CreateProhibitSkill {
+tongyiAIWJ_prohibit = sgs.CreateProhibitSkillV2 {
 	name = "#tongyiAIWJ_prohibit",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "flag:tongyiTQ-using" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if from:hasFlag("tongyiTQ-using") then
 			if to:getMark("tongyiTQ-using") == 0 then
 				return true

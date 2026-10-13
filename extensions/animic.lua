@@ -460,9 +460,11 @@ caiduanMaxCards = sgs.CreateMaxCardsSkillV2{
 	end
 }
 
-caiduanProhibit = sgs.CreateProhibitSkill{
+caiduanProhibit = sgs.CreateProhibitSkillV2{
 	name = "#caiduanProhibit" ,
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_AllHolders,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		for _, p in sgs.qlist(from:getAliveSiblings()) do
 			if p:hasSkill("caiduan") and from:hasFlag("caiduan"..p:objectName()) and card:targetFixed() then
 				return from:objectName() == to:objectName()
@@ -704,6 +706,7 @@ shenni = sgs.CreateTriggerSkillV2{
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("#caiduanMaxCards") then skills:append(caiduanMaxCards) end
 if not sgs.Sanguosha:getSkill("#caiduanProhibit") then skills:append(caiduanProhibit) end
+extension:insertRelatedSkills("caiduan", "#caiduanProhibit")
 sgs.Sanguosha:addSkills(skills)
 nakamura:addSkill(caiduan)
 extension:insertRelatedSkills("caiduan", "#caiduanMaxCards")

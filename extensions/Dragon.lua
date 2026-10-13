@@ -516,8 +516,7 @@ Dragon_mashuthrow = sgs.CreateTriggerSkillV2{
 
 Dragon_mashu = sgs.CreateDistanceSkillV2{
 	name = "Dragon_mashu",
-	-- 旧版距离技全局生效并自行以 hasSkill 判定；System 选择器保留该语义
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
@@ -1790,9 +1789,11 @@ Dragon_qiankun = sgs.CreateTriggerSkillV2{
 	end,
 }
 
-Dragon_qiankunSlash = sgs.CreateProhibitSkill{ 
+Dragon_qiankunSlash = sgs.CreateProhibitSkillV2{ 
 	name = "#Dragon_qiankunSlash", 
-	is_prohibited = function(self, from, to, card) 
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx) 
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill("Dragon_qiankun") and card:isKindOf("Slash") and (from:distanceTo(to) > 1 --[[and (card:getSkillName() == "" ]]or table.contains(card:getSkillNames(), "spear") or table.contains(card:getSkillNames(), "fan") or table.contains(card:getSkillNames(), "halberd"))
 	end
 }
@@ -2633,6 +2634,7 @@ Dragon_Horse = sgs.CreateDistanceSkillV2{
 	name = "Dragon_Horse",
 	-- 旧版距离技对所有距离计算全局生效；System 选择器保留该语义
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:Equips_Nullified_to_Yourself", "mark:Equips_of_Others_Nullified_to_You", "secondary.mark:Equips_Nullified_to_Yourself", "secondary.mark:Equips_of_Others_Nullified_to_You" },
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
@@ -3149,8 +3151,7 @@ Promote_machao = sgs.General(extensionP, "Promote_machao", "shu", "4")
 
 Promote_mashu = sgs.CreateDistanceSkillV2{
 	name = "#Promote_mashu",
-	-- 旧版距离技全局生效并自行以 hasSkill 判定；System 选择器保留该语义
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()

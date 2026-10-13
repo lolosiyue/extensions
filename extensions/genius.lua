@@ -1188,10 +1188,12 @@ f_leji = sgs.CreateTriggerSkillV2{
 }
 f_shenliushan:addSkill(f_leji)
 
-f_wuyou = sgs.CreateProhibitSkill{
+f_wuyou = sgs.CreateProhibitSkillV2{
 	name = "f_wuyou",
 	frequency = sgs.Skill_Frequent,
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to and to:hasSkill(self:objectName()) and ((card:isKindOf("Slash") or card:isKindOf("Duel")) and not card:isVirtualCard()) and to:containsTrick("indulgence")
 	end,
 }
@@ -4429,9 +4431,12 @@ f_lijian = sgs.CreateTriggerSkillV2{
 		return false
 	end,
 }
-f_lijian_limited = sgs.CreateProhibitSkill{
+f_lijian_limited = sgs.CreateProhibitSkillV2{
 	name = "f_lijian_limited&",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:f_lijian_cantusefrom-Clear" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return from:getMark("f_lijian_cantusefrom-Clear") > 0 and to:getMark("f_lijian_cantuseto-Clear") > 0 and card and not card:isKindOf("SkillCard")
 	end,
 }

@@ -2159,9 +2159,11 @@ s_w_juling = sgs.CreateTriggerSkillV2{
 		return on_trigger_func(skill, event, ctx.invoker, ctx.original_data, room)
 	end,
 }
-s_w_juling_tg = sgs.CreateProhibitSkill{
+s_w_juling_tg = sgs.CreateProhibitSkillV2{
 	name = "#s_w_juling_tg",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill("s_w_juling") and (card:isKindOf("TrickCard") and not card:isNDTrick())
 	end
 }
@@ -12073,9 +12075,11 @@ sgs.LoadTranslationTable{
 
 s2_z_lukang = sgs.General(extension_jx,"s2_z_lukang","wu","4")
 
-s2_qiande = sgs.CreateProhibitSkill{
+s2_qiande = sgs.CreateProhibitSkillV2{
 	name = "s2_qiande",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill(self:objectName()) and (card:isKindOf("Snatch") or (card:isKindOf("TrickCard") and not card:isNDTrick()))
 	end
 }
@@ -13389,9 +13393,11 @@ sgs.LoadTranslationTable{
 
 s2_shenzhugeliang = sgs.General(extension_jx,"s2_shenzhugeliang","god","3")
 
-s2_shenji = sgs.CreateProhibitSkill{
+s2_shenji = sgs.CreateProhibitSkillV2{
 	name = "s2_shenji" ,
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill(self:objectName()) and (card:isKindOf("TrickCard")) 
 		and card:getSuit() ~= sgs.Card_Heart 
 	end
@@ -17772,9 +17778,11 @@ s3_yt_shixuMod = sgs.CreateTargetModSkillV2{
 }
 
 
-s3_yt_huangyiProhibit = sgs.CreateProhibitSkill{
+s3_yt_huangyiProhibit = sgs.CreateProhibitSkillV2{
 	name = "#s3_yt_huangyiProhibit" ,
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Primary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if table.contains(card:getSkillNames(), "s3_yt_huangyi") then
 			if from:hasSkill("s3_yt_huangyi") then
 				return not to:hasFlag("s3_yt_huangyi_T")
@@ -17931,6 +17939,7 @@ s3_yt_liuyan:addSkill(s3_yt_shixu)
 s3_yt_liuyan:addSkill(s3_yt_shixuMod)
 s3_yt_liuyan:addSkill(s3_yt_huangyi)
 s3_yt_liuyan:addSkill(s3_yt_huangyiProhibit)
+extension_bf:insertRelatedSkills("s3_yt_huangyi", "#s3_yt_huangyiProhibit")
 
 
 
@@ -18247,7 +18256,7 @@ s3_yt_zhengtao = sgs.CreateTriggerSkillV2{
 s3_yt_zhengtao_tm = sgs.CreateTargetModSkillV2{
 	name = "#s3_yt_zhengtao_tm",
 	frequency = sgs.Skill_NotCompulsory,
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local mod_type = ctx:getModType()
 		local from = ctx:getPrimary()
@@ -18321,6 +18330,7 @@ if not sgs.Sanguosha:getSkill("#s3_yt_zhengtao_tm") then
 end
 
 s3_yt_zhangyi:addSkill(s3_yt_zhengtao)
+extension_bf:insertRelatedSkills("s3_yt_zhengtao", "#s3_yt_zhengtao_tm")
 s3_yt_zhangyi:addSkill(s3_yt_kangrui)
 
 sgs.LoadTranslationTable{
@@ -20120,9 +20130,11 @@ sgs.LoadTranslationTable{
 s3_fans_chengyuanzhi=sgs.General(extension_bf, "s3_fans_chengyuanzhi", "qun", "4", true)
 
 
-s3_fans_caomin = sgs.CreateProhibitSkill{
+s3_fans_caomin = sgs.CreateProhibitSkillV2{
 	name = "s3_fans_caomin" ,
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill(self:objectName()) and (card:isKindOf("TrickCard") or card:isKindOf("QiceCard")) 
 		and (card:isKindOf("Duel") or card:isKindOf("FireAttack") ) and card:getSkillName() ~= "nosguhuo" --特别注意旧蛊惑
 	end
@@ -21767,9 +21779,11 @@ s3_fans_shangji = sgs.CreateTriggerSkillV2{
 		return on_trigger_func(skill, event, ctx.invoker, ctx.original_data, room)
 	end,
 }
-s3_fans_yunceProhibit = sgs.CreateProhibitSkill{
+s3_fans_yunceProhibit = sgs.CreateProhibitSkillV2{
 	name = "#s3_fans_yunceProhibit" ,
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Primary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if table.contains(card:getSkillNames(), "s3_fans_yunce") then
 			if from:hasSkill("s3_fans_yunce") then
 				return not to:hasFlag("s3_fans_yunce_T")
@@ -22782,9 +22796,11 @@ sgs.LoadTranslationTable{
 s3_jxwj_lukang =sgs.General(extension_fg_jxyj, "s3_jxwj_lukang", "wu", "3")
 
 
-s3_jxwj_qiande = sgs.CreateProhibitSkill{
+s3_jxwj_qiande = sgs.CreateProhibitSkillV2{
 	name = "s3_jxwj_qiande",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill("s3_jxwj_qiande") and (card:isKindOf("TrickCard") and not card:isNDTrick())
 	end
 }

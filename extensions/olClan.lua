@@ -6841,6 +6841,7 @@ zushizenf = sgs.CreateAttackRangeSkillV2 {
 	name = "#zushizenf",
 	-- 舊版 AttackRangeSkill::getExtra 為全域修正（不依賴持有者）：用 System 每次查詢跑一次
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:&zushize" },
 	correct_func = function(skill, ctx)
 		local primary = ctx:getPrimary()
 		if not primary then return nil end

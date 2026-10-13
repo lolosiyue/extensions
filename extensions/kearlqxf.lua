@@ -942,10 +942,11 @@ tyfuwei = sgs.CreateTriggerSkillV2 {
 	end,
 }
 ty_guanyu:addSkill(tyfuwei)
---DEFER:tychengshibf:CreateProhibitSkill 無 V2 API
-tychengshibf = sgs.CreateProhibitSkill {
+tychengshibf = sgs.CreateProhibitSkillV2 {
 	name = "#tychengshibf",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if card:isDamageCard() then
 			for _, p in sgs.qlist(from:getAliveSiblings()) do
 				if from:getMark("&tychengshi+#" .. p:objectName() .. "-PlayClear") > 0 and to ~= p then
@@ -1265,6 +1266,7 @@ ty_tanxiong:addSkill(tysheju)
 tyshejubf = sgs.CreateAttackRangeSkillV2 {
 	name = "#tyshejubf",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:&tysheju-Clear" },
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player then
@@ -2047,10 +2049,12 @@ tyqianshou = sgs.CreateTriggerSkillV2 {
 		return false
 	end,
 }
---DEFER:tyqianshoubf:CreateProhibitSkill 無 V2 API
-tyqianshoubf = sgs.CreateProhibitSkill {
+tyqianshoubf = sgs.CreateProhibitSkillV2 {
 	name = "#tyqianshoubf",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "secondary.mark:&tyqianshou-Clear" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:getMark("&tyqianshou-Clear") > 0
 	end,
 }

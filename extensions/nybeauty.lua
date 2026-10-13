@@ -188,9 +188,11 @@ nyyuqidamage = sgs.CreateTriggerSkillV2{
     end,
 }
 
-nyshanshen = sgs.CreateProhibitSkill{
+nyshanshen = sgs.CreateProhibitSkillV2{
     name = "nyshanshen",
-    is_prohibited = function(self, from, to, card)
+    holder_selector = sgs.CorrectSkill_Secondary,
+    is_prohibited = function(self, ctx)
+        local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
         if to:hasSkill("nyshanshen") and to:getMark("&nyshanshen-Clear") > 0 then
             return card:isKindOf("Slash") or card:isKindOf("TrickCard")
         end
@@ -2601,9 +2603,11 @@ extension:insertRelatedSkills("nyzhennan", "#nyzhennan_more")
 
 ny_yanfuren = sgs.General(extension, "ny_yanfuren", "qun", 3, false, false, false)
 
-ny_nifu = sgs.CreateProhibitSkill{
+ny_nifu = sgs.CreateProhibitSkillV2{
     name = "ny_nifu",
-    is_prohibited = function(self, from, to, card)
+    holder_selector = sgs.CorrectSkill_Secondary,
+    is_prohibited = function(self, ctx)
+        local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
         if card:isKindOf("Slash") or card:isNDTrick() then
             return to:hasSkill(self:objectName()) and (not from:inMyAttackRange(to)) and (from:objectName() ~= to:objectName())
         end

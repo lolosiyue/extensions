@@ -1403,9 +1403,12 @@ ark_zhige_other = sgs.CreateTriggerSkillV2{
     end,
 }
 
-ark_zhige_limit = sgs.CreateProhibitSkill{
+ark_zhige_limit = sgs.CreateProhibitSkillV2{
     name = "#ark_zhige_limit",
-    is_prohibited = function(self, from, to, card)
+    holder_selector = sgs.CorrectSkill_System,
+    gate = { "mark:&ark_zhige-Clear" },
+    is_prohibited = function(self, ctx)
+        local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
         return from:getMark("&ark_zhige-Clear") > 0 and from:objectName() ~= to:objectName()
         and (not card:isKindOf("SkillCard"))
     end,

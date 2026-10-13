@@ -362,9 +362,11 @@ lybeixi = sgs.CreateTriggerSkillV2{
 	end,
 }
 
-lymouduan = sgs.CreateProhibitSkill{
+lymouduan = sgs.CreateProhibitSkillV2{
 	name = "lymouduan",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill(self:objectName()) and (card:isKindOf("IronChain") or card:isKindOf("Duel"))
 		--禁止技是没有配音的
 	end,
@@ -1593,9 +1595,11 @@ qingyue = sgs.CreateTriggerSkillV2 {
 	end,
 }
 
-cqingxin = sgs.CreateProhibitSkill {
+cqingxin = sgs.CreateProhibitSkillV2 {
 	name = "cqingxin",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if to:hasSkill(self:objectName()) then
 			return card:isKindOf("TrickCard") and not card:isNDTrick()
 		end

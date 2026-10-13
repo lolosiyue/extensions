@@ -77,6 +77,7 @@ hunlie_tarmod = sgs.CreateTargetModSkillV2{
 	name = "hunlie_tarmod",
 	pattern = ".",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_skill:qianqi_slash", "card_skill:sgkgodliegong", "mark:hunlie_global_slashtime", "skill:sgkgodshayi" },
 	correct_func = function(skill, ctx)
 		local mod = ctx:getModType()
 		if mod ~= sgs.TargetModSkill_Residue and mod ~= sgs.TargetModSkill_DistanceLimit then return false end
@@ -102,6 +103,7 @@ hunlie_tarmod = sgs.CreateTargetModSkillV2{
 hunlie_maxcards = sgs.CreateMaxCardsSkillV2{
 	name = "#hunlie_maxcards",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "pile:xing", "skill:sgkgodjuejing", "skill:sgkgodtianzi" },
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if not target then return false end
@@ -2672,10 +2674,11 @@ sgkgodfeiying = sgs.CreateTargetModSkillV2{
 	end
 }
 
---DEFER:sgkgodfeiyingSlash:CreateProhibitSkill 無 V2 API
-sgkgodfeiyingSlash = sgs.CreateProhibitSkill{
+sgkgodfeiyingSlash = sgs.CreateProhibitSkillV2{
     name = "#sgkgodfeiying",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+	    local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 	    if to:hasSkill("sgkgodfeiying") and (not to:faceUp()) then
 		    return card:isKindOf("Slash")
 		end
@@ -8961,6 +8964,7 @@ jlsgliantiMark = sgs.CreateTriggerSkillV2{
 jlsgliantiMXC = sgs.CreateMaxCardsSkillV2{
 	name = "jlsgliantiMXC",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:&jlsglianti" },
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if not target then return false end

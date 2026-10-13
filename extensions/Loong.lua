@@ -228,9 +228,9 @@ lxtx_jiangchi = sgs.CreateTriggerSkillV2{
 	end,
 }
 lxtx_jiangchi_maxcards = sgs.CreateMaxCardsSkillV2{
-	name = "lxtx_jiangchi_maxcards",
+	name = "#lxtx_jiangchi_maxcards",
 	frequency = sgs.Skill_Compulsory,
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if not target then return false end
@@ -255,6 +255,7 @@ lxtx_jiangchi_slash = sgs.CreateTargetModSkillV2{
 	pattern = "Card",
 	frequency = sgs.Skill_Compulsory,
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:lxtx_jiangchi_draw-Clear", "mark:lxtx_jiangchi_recast-Clear" },
 	correct_func = function(skill, ctx)
 		local from, card = ctx:getPrimary(), ctx:getCard()
 		if not (from and card) then return false end
@@ -383,7 +384,8 @@ lxtx_zhangwu = sgs.CreateViewAsSkillV2{
 	end,
 }
 lxtx_caozhang:addSkill(lxtx_jiangchi)
-if not sgs.Sanguosha:getSkill("lxtx_jiangchi_maxcards") then skills:append(lxtx_jiangchi_maxcards) end
+if not sgs.Sanguosha:getSkill("#lxtx_jiangchi_maxcards") then skills:append(lxtx_jiangchi_maxcards) end
+extension:insertRelatedSkills("lxtx_jiangchi", "#lxtx_jiangchi_maxcards")
 if not sgs.Sanguosha:getSkill("lxtx_jiangchi_slash") then skills:append(lxtx_jiangchi_slash) end
 if not sgs.Sanguosha:getSkill("#lxtx_zhangwu_use") then skills:append(lxtx_zhangwu_use) end
 extension:insertRelatedSkills("lxtx_zhangwu", "#lxtx_zhangwu_use")
@@ -851,6 +853,7 @@ lxtx_shouyue_slash = sgs.CreateTargetModSkillV2{
 	pattern = "Card",
 	frequency = sgs.Skill_Compulsory,
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "skill:lxtx_shouyue_liegong", "skill:lxtx_shouyue_paoxiao" },
 	correct_func = function(skill, ctx)
 		local player, card = ctx:getPrimary(), ctx:getCard()
 		if not (player and card) then return false end
@@ -1356,6 +1359,7 @@ lxtx_wupao_slash = sgs.CreateTargetModSkillV2{
 	pattern = "Card",
 	frequency = sgs.Skill_Compulsory,
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_skill:lxtx_wupao", "mark:lxtx_wupao-Clear", "skill:lxtx_wupao" },
 	correct_func = function(skill, ctx)
 		local player, card = ctx:getPrimary(), ctx:getCard()
 		if not (player and card) then return false end
@@ -1777,13 +1781,16 @@ lxtx_lianheng = sgs.CreateViewAsSkillV2{
 		return true
 	end,
 }
-lxtx_lianheng_useto = sgs.CreateProhibitSkill{
-	name = "lxtx_lianheng_useto",
-	is_prohibited = function(self, from, to, card)
+lxtx_lianheng_useto = sgs.CreateProhibitSkillV2{
+	name = "#lxtx_lianheng_useto",
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill("lxtx_lianheng") and from:isChained() and from:objectName() ~= to:objectName()
 	end,
 }
-if not sgs.Sanguosha:getSkill("lxtx_lianheng_useto") then skills:append(lxtx_lianheng_useto) end
+if not sgs.Sanguosha:getSkill("#lxtx_lianheng_useto") then skills:append(lxtx_lianheng_useto) end
+extension:insertRelatedSkills("lxtx_lianheng", "#lxtx_lianheng_useto")
 lxtx_pangtong:addSkill(lxtx_manjuan)
 lxtx_pangtong:addSkill(lxtx_lianheng)
 sgs.LoadTranslationTable{
@@ -1803,7 +1810,7 @@ sgs.LoadTranslationTable{
 	["$lxtx_manjuan1"] = "雏凤展翼，当一飞冲天。",
 	["$lxtx_manjuan2"] = "浴火而生，可期凤舞九天。",
 	["lxtx_lianheng"] = "连横",
-	["lxtx_lianheng_useto"] = "连横",
+	["#lxtx_lianheng_useto"] = "连横",
     [":lxtx_lianheng"] = "出牌阶段限一次，你可以选择一名未进入横置状态的其他角色，令其进入横置状态。锁定技，处于横置状态的角色使用的牌不能指定你为目标。",
 	["$lxtx_lianheng1"] = "拔石助长，智者自力。",
 	["$lxtx_lianheng2"] = "卿欲使我评点一二乎？",
@@ -2041,9 +2048,11 @@ lxtx_xianzhen = sgs.CreateTriggerSkillV2{
 		return false
 	end,
 }
-lxtx_xianzhen_extra = sgs.CreateProhibitSkill{
-	name = "lxtx_xianzhen_extra",
-	is_prohibited = function(self, from, to, card)
+lxtx_xianzhen_extra = sgs.CreateProhibitSkillV2{
+	name = "#lxtx_xianzhen_extra",
+	holder_selector = sgs.CorrectSkill_Primary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if from:hasSkill("lxtx_xianzhen") and from:hasFlag("xianzhenCard") and from:getMark("lxtx_xianzhen-Clear") > 0 then
 		    return from:objectName() ~= to:objectName() and card:isKindOf("Slash") and not card:isKindOf("SkillCard") and not to:hasFlag("xianzhenTarget")
 		end
@@ -2076,6 +2085,7 @@ lxtx_gaoshun_extra = sgs.CreateTargetModSkillV2{
 	pattern = "Card",
 	frequency = sgs.Skill_Compulsory,
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "secondary.flag:xianzhenTarget", "skill:lxtx_jinjiu" },
 	correct_func = function(skill, ctx)
 		local from, card, to = ctx:getPrimary(), ctx:getCard(), ctx:getSecondary()
 		if not (from and card) then return false end
@@ -2139,7 +2149,8 @@ lxtx_jinjiu_extra = sgs.CreateTriggerSkillV2{
 		return false
 	end,
 }
-if not sgs.Sanguosha:getSkill("lxtx_xianzhen_extra") then skills:append(lxtx_xianzhen_extra) end
+if not sgs.Sanguosha:getSkill("#lxtx_xianzhen_extra") then skills:append(lxtx_xianzhen_extra) end
+extension:insertRelatedSkills("lxtx_xianzhen", "#lxtx_xianzhen_extra")
 if not sgs.Sanguosha:getSkill("#lxtx_jinjiu_extra") then skills:append(lxtx_jinjiu_extra) end
 extension:insertRelatedSkills("lxtx_jinjiu", "#lxtx_jinjiu_extra")
 if not sgs.Sanguosha:getSkill("lxtx_gaoshun_extra") then skills:append(lxtx_gaoshun_extra) end
@@ -2153,7 +2164,7 @@ sgs.LoadTranslationTable{
 	["cv:lxtx_gaoshun"] = "官方",
 	["illustrator:lxtx_gaoshun"] = "枭瞳", --皮肤：九州河山
 	["lxtx_xianzhen"] = "陷阵",
-	["lxtx_xianzhen_extra"] = "陷阵",
+	["#lxtx_xianzhen_extra"] = "陷阵",
 	[":lxtx_xianzhen"] = "出牌阶段，你可以选择一张手牌并与一名角色拼点（若可选择的角色数大于1则改为你可以选择一张手牌并与至少一名角色拼点），若你拼点结果为：" ..
 	"胜，则你于此阶段内无视其防具且对其使用牌无距离和次数限制；平，“陷阵”可额外指定一名角色；负，你此阶段内无法使用【杀】指定其他角色为目标。然后你可以选择令目标获得两张拼点牌。",
 	["$lxtx_xianzhen1"] = "踏阵无归，至死方休！",
@@ -2241,8 +2252,8 @@ lxtx_zhuiji = sgs.CreateTriggerSkillV2{
 	end,
 }
 lxtx_zhuiji_extra = sgs.CreateDistanceSkillV2{
-	name = "lxtx_zhuiji_extra",
-	holder_selector = sgs.CorrectSkill_System,
+	name = "#lxtx_zhuiji_extra",
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local from, to = ctx:getPrimary(), ctx:getSecondary()
 		if not (from and to) then return false end
@@ -2366,7 +2377,8 @@ lxtx_shichou = sgs.CreateTriggerSkillV2{
 		return false
 	end,
 }
-if not sgs.Sanguosha:getSkill("lxtx_zhuiji_extra") then skills:append(lxtx_zhuiji_extra) end
+if not sgs.Sanguosha:getSkill("#lxtx_zhuiji_extra") then skills:append(lxtx_zhuiji_extra) end
+extension:insertRelatedSkills("lxtx_zhuiji", "#lxtx_zhuiji_extra")
 lxtx_machao:addSkill(lxtx_zhuiji)
 lxtx_machao:addSkill(lxtx_shichou)
 sgs.LoadTranslationTable{

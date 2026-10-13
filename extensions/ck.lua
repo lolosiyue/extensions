@@ -156,14 +156,15 @@ ckkuroko = sgs.General(extension, "ckkuroko", "science", 3, false)
 
 cksunyi = sgs.CreateDistanceSkillV2 {
 	name = "cksunyi",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Participants,
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
-		if from and from:hasSkill(skill:objectName()) then
+		local holder = ctx:getHolder()
+		if holder == from and from:hasSkill(skill:objectName()) then
 			return -1000
 		end
-		if to and to:hasSkill(skill:objectName()) then
+		if holder == to and to:hasSkill(skill:objectName()) then
 			return 2
 		end
 		return nil
@@ -940,7 +941,7 @@ ckqishan = sgs.CreateTriggerSkillV2 {
 ckqishan2 = sgs.CreateTargetModSkillV2 {
 	name = "#ckqishan",
 	pattern = "Slash",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_ExtraTarget then
 			return nil
@@ -1109,6 +1110,7 @@ ckjinjie_clear = sgs.CreateTriggerSkillV2 {
 ckjinjieDS = sgs.CreateDistanceSkillV2 {
 	name = "#ckjinjieDS",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@jinjie", "secondary.mark:@jinjie" },
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()

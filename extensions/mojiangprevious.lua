@@ -269,9 +269,12 @@ sy_old_clear = sgs.CreateTriggerSkillV2{
 }
 
 
-sy_old_tianyouPro = sgs.CreateProhibitSkill{
+sy_old_tianyouPro = sgs.CreateProhibitSkillV2{
     name = "#sy_old_tianyouPro",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "secondary.pile:you" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		local you = to:getPile("you")
 		local X = you:length()
 		if X > 0 then

@@ -850,7 +850,7 @@ sr_benxi = sgs.CreateTriggerSkillV2{
 
 sr_benxitm = sgs.CreateDistanceSkillV2{
 	name = "#sr_benxitm",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		if from and from:hasSkill("sr_benxi") then
@@ -1505,7 +1505,7 @@ sr_zhangfei:addSkill(sr_xujin)
 sr_xujintm = sgs.CreateTargetModSkillV2{
 	name = "#sr_xujintm",
 	frequency = sgs.Skill_NotFrequent,
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local modType = ctx:getModType()
 		local from = ctx:getPrimary()
@@ -3582,10 +3582,11 @@ sr_youxia = sgs.CreateViewAsSkillV2{
 -- 		return target and target:isAlive()
 -- 	end
 -- }
---DEFER:#sr_youxiaPro:CreateProhibitSkill 無 V2 API，依遷移指南保留 legacy。
-sr_youxiaPro = sgs.CreateProhibitSkill{
+sr_youxiaPro = sgs.CreateProhibitSkillV2{
 	name = "#sr_youxiaPro",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill("sr_youxia") and (card:isKindOf("Slash") or card:isKindOf("Duel")) and not to:faceUp()
 	end
 }
@@ -6673,7 +6674,7 @@ sr_jiwu = sgs.CreateTriggerSkillV2{
 sr_jiwutm = sgs.CreateTargetModSkillV2{
 	name = "#sr_jiwutm",
 	pattern = "Slash",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		if not from or not from:hasSkill("sr_jiwu") then return nil end
@@ -6728,7 +6729,7 @@ sr_lvbu:addSkill(sr_sheji)
 --攻击范围
 sr_shejitm = sgs.CreateTargetModSkillV2{
 	name = "#sr_shejitm",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		if not from or not from:hasSkill("sr_sheji") then return nil end

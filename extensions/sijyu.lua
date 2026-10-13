@@ -707,6 +707,7 @@ sijyu_zhanjiangTM = sgs.CreateTargetModSkillV2 {
     name = "#sijyu_zhanjiangTM",
     pattern = "Slash",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "mark:&sijyu_zhanjiang-PlayClear" },
     correct_func = function(self, ctx)
         if ctx:getModType() ~= sgs.TargetModSkill_Residue then return 0 end
         local player = ctx:getPrimary()
@@ -1285,6 +1286,7 @@ sijyu_zhuluan = sgs.CreateTriggerSkillV2 {
 sijyu_zhuluanBuff = sgs.CreateTargetModSkillV2 {
     name = "#sijyu_zhuluanBuff",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_flag:sijyu_zhuluan" },
     correct_func = function(skill, ctx)
         if ctx:getModType() ~= sgs.TargetModSkill_Residue then return nil end
         local card = ctx:getCard()
@@ -1661,6 +1663,7 @@ sijyu_zhizhiBuff = sgs.CreateTargetModSkillV2 {
     name = "#sijyu_zhizhiBuff",
     pattern = "Slash",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "secondary.mark:&sijyu_zhizhi_lun" },
     correct_func = function(skill, ctx)
         local modType = ctx:getModType()
         if modType ~= sgs.TargetModSkill_Residue and modType ~= sgs.TargetModSkill_DistanceLimit then return nil end
@@ -1766,7 +1769,7 @@ sijyu_yuanshao:addRelateSkill("sijyu_zhongxing")
 ]] --
 sijyu_lijianBuff = sgs.CreateAttackRangeSkillV2 {
     name = "#sijyu_lijianBuff",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
         local n = 0
         local target = ctx:getPrimary()

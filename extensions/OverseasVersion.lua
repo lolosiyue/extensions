@@ -812,6 +812,7 @@ ov_wuban:addSkill(ov_jintao)
 ov_jintaobf = sgs.CreateTargetModSkillV2 {
 	name = "#ov_jintaobf",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_flag:ov_jiange", "card_flag:ov_sidai", "card_skill:ov_jiange", "card_skill:ov_liyuan", "card_skill:ov_sidai", "flag:CurrentPlayer", "mark:@ov_qiyiju", "mark:ov_chuebf", "mark:ov_zhilvebf-Clear", "secondary.mark:@ov_qiyiju", "pile:ov_shi", "skill:ov_dengjian", "skill:ov_gongqi", "skill:ov_jintao", "skill:ov_lihuo", "skill:ov_zhongyi" },
 	correct_func = function(self, ctx)
 		local mt = ctx:getModType()
 		local from = ctx:getPrimary()
@@ -1519,7 +1520,7 @@ ov_hejin:addSkill(ov_yanhuo)
 ov_hucheer = sgs.General(extensionSp, "ov_hucheer", "qun")
 ov_shenxing = sgs.CreateDistanceSkillV2 {
 	name = "ov_shenxing",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(self, ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
@@ -1534,6 +1535,7 @@ ov_shenxing = sgs.CreateDistanceSkillV2 {
 ov_shenxingbf = sgs.CreateMaxCardsSkillV2 {
 	name = "#ov_shenxingbf",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:&ov_dingyi2", "mark:&ov_xiafeng-Clear", "mark:ov_gezhibf2", "mark:ov_mibeidebf-Clear", "mark:ov_xieweidebf-Clear", "skill:ov_shenxing" },
 	correct_func = function(self, ctx)
 		local target = ctx:getPrimary()
 
@@ -2140,6 +2142,7 @@ ov_liuhong:addSkill(ov_gezhi)
 ov_gezhibf1 = sgs.CreateAttackRangeSkillV2 {
 	name = "#ov_gezhibf1",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:ov_gezhibf1" },
 	correct_func = function(self, ctx)
 		local target = ctx:getPrimary()
 
@@ -2425,7 +2428,7 @@ ov_yiju = sgs.CreateTriggerSkillV2 {
 ov_zhangmancheng:addSkill(ov_yiju)
 ov_yijubf1 = sgs.CreateAttackRangeSkillV2 {
 	name = "#ov_yijubf1",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	fixed_func = function(self, ctx)
 		local target = ctx:getPrimary()
 
@@ -3268,7 +3271,7 @@ ov_yangshi = sgs.CreateTriggerSkillV2 {
 ov_tianyu:addSkill(ov_yangshi)
 ov_yangshibf = sgs.CreateAttackRangeSkillV2 {
 	name = "#ov_yangshibf",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(self, ctx)
 		local target = ctx:getPrimary()
 
@@ -5373,9 +5376,11 @@ ov_xiewei = sgs.CreateTriggerSkillV2 {
 		end
 		return false	end,}
 ov_furong:addSkill(ov_xiewei)
-ov_xieweibf = sgs.CreateProhibitSkill {
+ov_xieweibf = sgs.CreateProhibitSkillV2 {
 	name = "#ov_xieweibf",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return card:isKindOf("Slash") and to and from:getMark(to:objectName() .. "_ov_xieweidebf-Clear") > 0
 	end,
 }
@@ -6502,9 +6507,11 @@ ov_dingzhen = sgs.CreateTriggerSkillV2 {
 			end
 		end
 		return false	end,}
-ov_dingzhenbf = sgs.CreateProhibitSkill {
+ov_dingzhenbf = sgs.CreateProhibitSkillV2 {
 	name = "#ov_dingzhenbf",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return card:getTypeId() ~= 0 and to and from:getMark(to:objectName() .. "ov_dingzhen-Clear") > 0 and to:hasSkill("ov_dingzhen")
 	end,
 }
@@ -9804,7 +9811,7 @@ ov_shoushou = sgs.CreateTriggerSkillV2 {
 ov_gongsunfan:addSkill(ov_shoushou)
 ov_shoushoubf = sgs.CreateDistanceSkillV2 {
 	name = "#ov_shoushoubf",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Secondary,
 	correct_func = function(self, ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
@@ -9885,9 +9892,12 @@ ov_zhiqu = sgs.CreateTriggerSkillV2 {
 		end
 		return false	end,}
 ov_yangang:addSkill(ov_zhiqu)
-ov_zhiqubf = sgs.CreateProhibitSkill {
+ov_zhiqubf = sgs.CreateProhibitSkillV2 {
 	name = "#ov_zhiqubf",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_flag:ov_zhiqubf" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return card:hasFlag("ov_zhiqubf") and to and to:getMark("ov_zhiqubf") < 1 and not to:hasSkill("ov_zhiqu")
 	end,
 }
@@ -11312,13 +11322,16 @@ ov_duwang = sgs.CreateTriggerSkillV2 {
 		end
 		return false	end,}
 ov_yanliang:addSkill(ov_duwang)
-ov_duwangbf = sgs.CreateProhibitSkill {
+ov_duwangbf = sgs.CreateProhibitSkillV2 {
 	name = "#ov_duwangbf",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return card:isKindOf("Peach") and from ~= to and to:getMark("ov_duwangWin") < 1 and to:hasFlag("Global_Dying") and to:hasSkill("ov_duwang")
 	end,
 }
 ov_yanliang:addSkill(ov_duwangbf)
+extensionSp:insertRelatedSkills("ov_duwang", "#ov_duwangbf")
 ov_yanshiYLCard = sgs.CreateSkillCard {
 	name = "ov_yanshiYLCard",
 	will_throw = false,
@@ -13926,6 +13939,7 @@ extensionShiji:insertRelatedSkills("ov_dingyi", "#ov_dingyibf1")
 ov_dingyibf3 = sgs.CreateAttackRangeSkillV2 {
 	name = "#ov_dingyibf3",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:&ov_dingyi3" },
 	correct_func = function(self, ctx)
 		local target = ctx:getPrimary()
 
@@ -15743,7 +15757,7 @@ ov_gongqi = sgs.CreateViewAsSkillV2 {
 ov_handang:addSkill(ov_gongqi)
 ov_gongqibf = sgs.CreateAttackRangeSkillV2 {
 	name = "#ov_gongqibf",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(self, ctx)
 		local target = ctx:getPrimary()
 
@@ -16707,7 +16721,7 @@ ov_zhangfei:addSkill(ov_xuhe)
 ov_caoxiu = sgs.General(extensionJie, "ov_caoxiu", "wei")
 ov_qianju = sgs.CreateDistanceSkillV2 {
 	name = "ov_qianju",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(self, ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
@@ -17063,9 +17077,11 @@ ov_chongwang = sgs.CreateTriggerSkillV2 {
 				end
 			end
 		end	end,}
-ov_chongwangbf = sgs.CreateProhibitSkill {
+ov_chongwangbf = sgs.CreateProhibitSkillV2 {
 	name = "#ov_chongwangbf",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Participants,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if card:isKindOf("Slash") or card:isKindOf("TrickCard") and card:isDamageCard() then
 			if from:hasLordSkill("ov_chongwang") then
 				if to and to:getMark("&ov_chongwang+#" .. from:objectName()) > 0 then

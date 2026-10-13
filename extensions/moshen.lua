@@ -618,6 +618,7 @@ hidden_exdraw = sgs.CreateDrawCardsSkill {
 hidden_maxcard = sgs.CreateMaxCardsSkillV2 {
 	name = "hidden_maxcard",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@renpo", "mark:niyuan_over", "mark:shoubing_maxcards" },
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if not target then
@@ -644,6 +645,7 @@ hidden_extarget = sgs.CreateTargetModSkillV2 {
 	name = "hidden_extarget",
 	pattern = ".",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:moren_losthp", "skill:ss_shenjian" },
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_ExtraTarget then
 			return false
@@ -670,6 +672,7 @@ hidden_extarget = sgs.CreateTargetModSkillV2 {
 hidden_atkrange = sgs.CreateAttackRangeSkillV2 {
 	name = "hidden_atkrange",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@renpo", "mark:moren_atk", "skill:ss_shenjian" },
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if not player then
@@ -2221,9 +2224,11 @@ ms_menghuan = sgs.CreateTriggerSkillV2 {
 	priority = 10,
 }
 
-ms_menghuanNo = sgs.CreateProhibitSkill {
+ms_menghuanNo = sgs.CreateProhibitSkillV2 {
 	name = "#ms_menghuan",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to and to:hasSkill("ms_menghuan") and (card:isKindOf("Dismantlement") or card:isKindOf("Snatch") or card:isKindOf("DelayedTrick"))
 	end,
 }

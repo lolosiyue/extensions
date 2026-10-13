@@ -3453,6 +3453,7 @@ bs_ohb = sgs.CreateTargetModSkillV2{--or (from:isMale() and from:hasSkill("chang
 	name = "#bs_ohb",
 	pattern = "Slash",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_skill:LuaZhenlie", "card_skill:reedship", "flag:tomowodaji", "mark:@SuperLimitBreak", "mark:Hponeguys", "mark:losing_offensive_horse", "skill:changesexual", "skill:hb_yitain", "skill:japenknifejile" },
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		local card = ctx:getCard()
@@ -3906,6 +3907,7 @@ sa_snatch = sgs.CreateTargetModSkillV2{--or (from:isMale() and from:hasSkill("ch
 	name = "#sa_snatch",
 	pattern = "Snatch",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "skill:changesexual" },
 	correct_func = function(skill, ctx)
 		-- extra_target_func = function(self, player, card)
 			-- if player and player:isFemale() and player:hasSkill("changesexual") then
@@ -4881,6 +4883,7 @@ waterfairymc = sgs.CreateTriggerSkillV2{
 maxCardSkill = sgs.CreateMaxCardsSkillV2{
 	name = "#maxCardSkill" ,
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "flag:ForAllyMaggot", "flag:Yuejianbuff", "mark:@SuperLimitBreak", "mark:@sizukana_mark", "mark:@yuri_hengjiang", "mark:AddMaxHandCards", "mark:Hponeguys", "mark:WaterfairyMaxcards", "mark:okanemochi_maxh", "pile:Maggots", "pile:books", "skill:PoisonMaggots", "skill:lovesweet", "skill:witty", "skill:zerodifference" },
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if not target then return 0 end
@@ -5107,6 +5110,7 @@ slashtimesskill = sgs.CreateTargetModSkillV2{
 	name = "slashtimesskill",
 	frequency = sgs.Skill_NotCompulsory,
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "skill:bloodfight", "skill:moveliketrigger" },
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return nil end
 		local player = ctx:getPrimary()
@@ -5561,10 +5565,11 @@ events = {sgs.TurnedOver, sgs.ChainStateChanged},
 	end
 } 
 
--- DEFER:optimisticps：CreateProhibitSkill 無 V2 對應 API，保留 legacy。
-optimisticps = sgs.CreateProhibitSkill{ --公用技能(公廁)_免疫特定卡牌
+optimisticps = sgs.CreateProhibitSkillV2{ --公用技能(公廁)_免疫特定卡牌
 	name = "#optimisticps",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return ((to:hasSkill("optimistic") or to:hasSkill("ys_qianjie")) and card:isKindOf("DelayedTrick")) 
 		or (to:hasSkill("miyadokyo") and to:objectName() ~= from:objectName() and to:getMark("&liketoask") == 0 and card:isKindOf("TrickCard") 
 		and not (card:isKindOf("AOE") or card:isKindOf("AmazingGrace") or card:isKindOf("GodSalvation") or card:isKindOf("DelayedTrick")))
@@ -7601,6 +7606,7 @@ purgatoryfire = sgs.CreateViewAsSkillV2{
 distancechange = sgs.CreateDistanceSkillV2{ -- 改距離_公廁
 	name = "#distancechange",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:Hponeguys", "skill:blooddry", "skill:semeruki", "skill:sportsw", "skill:yusha" },
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
@@ -9815,6 +9821,7 @@ iris = sgs.CreateTriggerSkillV2{
 shywithpeople = sgs.CreateDistanceSkillV2{
 	name = "shywithpeople" ,
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "skill:hidethepath", "skill:shywithpeople", "secondary.skill:shywithpeople" },
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
@@ -18666,6 +18673,10 @@ end
 if not sgs.Sanguosha:getSkill("godbow") then sgskills:append(godbow) end
 if not sgs.Sanguosha:getSkill("bloodfight") then sgskills:append(bloodfight) end
 if not sgs.Sanguosha:getSkill("#optimisticps") then sgskills:append(optimisticps) end
+extension:insertRelatedSkills("optimistic", "#optimisticps")
+extension:insertRelatedSkills("ys_qianjie", "#optimisticps")
+extension:insertRelatedSkills("miyadokyo", "#optimisticps")
+extension:insertRelatedSkills("japenknifejile", "#optimisticps")
 -- if not sgs.Sanguosha:getSkill("#equippro_dh") then sgskills:append(equippro_dh) end
 if not sgs.Sanguosha:getSkill("slashtimesskill") then sgskills:append(slashtimesskill) end
 if not sgs.Sanguosha:getSkill("#distancechange") then sgskills:append(distancechange) end

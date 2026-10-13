@@ -4902,9 +4902,11 @@ local function yaoyiChangeState(player)
 	return 2
 end
 
-ny_10th_yaoyi = sgs.CreateProhibitSkill {
+ny_10th_yaoyi = sgs.CreateProhibitSkillV2 {
 	name = "ny_10th_yaoyi",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_AllHolders,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if from:objectName() == to:objectName() then
 			return false
 		end
@@ -12809,9 +12811,11 @@ ny_10th_weiwan_buff = sgs.CreateTargetModSkillV2{
 	holder_selector = sgs.CorrectSkill_Primary,
 }
 
-ny_10th_weiwan_limit = sgs.CreateProhibitSkill {
+ny_10th_weiwan_limit = sgs.CreateProhibitSkillV2 {
 	name = "#ny_10th_weiwan_limit",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return from and to and (to:getMark("&ny_10th_weiwan_limit+#" .. from:objectName() .. "-Clear") > 0)
 	end,
 }
@@ -13110,9 +13114,12 @@ ny_tenth_shiji = sgs.CreateTriggerSkillV2{
 	end,
 }
 
-ny_tenth_shiji_limit = sgs.CreateProhibitSkill {
+ny_tenth_shiji_limit = sgs.CreateProhibitSkillV2 {
 	name = "#ny_tenth_shiji_limit",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_skill:ny_tenth_shiji" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return (from and to and from:objectName() == to:objectName()) and (card and table.contains(card:getSkillNames(), "ny_tenth_shiji"))
 	end,
 }

@@ -436,6 +436,7 @@ extension:insertRelatedSkills("jinxchange", "#kejinxguner")
 kejinxcannon = sgs.CreateTargetModSkillV2{
 	name = "kejinxcannon",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@jinxcannon" },
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local from = ctx:getPrimary()
@@ -1061,8 +1062,8 @@ if not sgs.Sanguosha:getSkill("kebengneng") then skills:append(kebengneng) end
 
 
 kebengnengextwo = sgs.CreateTargetModSkillV2{
-	name = "kebengnengextwo",
-	holder_selector = sgs.CorrectSkill_System,
+	name = "#kebengnengextwo",
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local from = ctx:getPrimary()
@@ -1073,7 +1074,8 @@ kebengnengextwo = sgs.CreateTargetModSkillV2{
 		return false
 	end,
 }
-if not sgs.Sanguosha:getSkill("kebengnengextwo") then skills:append(kebengnengextwo) end
+if not sgs.Sanguosha:getSkill("#kebengnengextwo") then skills:append(kebengnengextwo) end
+extension:insertRelatedSkills("kebengneng", "#kebengnengextwo")
 
 --戒严
 
@@ -2110,6 +2112,7 @@ kedariusKeep = sgs.CreateMaxCardsSkillV2{
 	name = "kedariusKeep",
 	frequency = sgs.Skill_Compulsory,
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@shixue" },
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if not target then return false end
@@ -3799,9 +3802,11 @@ kesolardisk:addSkill(kejiguaner)
 extension:insertRelatedSkills("kejiguan", "#kejiguaner")
 
 --不能杀阿兹尔
-kejiguansi = sgs.CreateProhibitSkill{
+kejiguansi = sgs.CreateProhibitSkillV2{
 	name = "#kejiguansi",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to and to:hasSkill(self:objectName()) and (card:isKindOf("Slash")) and from and (from:hasSkill("kejiguan"))
 	end
 }
@@ -3809,9 +3814,11 @@ keazir:addSkill(kejiguansi)
 extension:insertRelatedSkills("kejiguan", "#kejiguansi")
 
 --其他牌不能对防御塔使用
-kejiguanliu = sgs.CreateProhibitSkill{
+kejiguanliu = sgs.CreateProhibitSkillV2{
 	name = "#kejiguanliu",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to and to:hasSkill(self:objectName()) and not card:isKindOf("Slash")
 	end
 }

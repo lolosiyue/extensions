@@ -16885,10 +16885,12 @@ sfofl_cuiji = sgs.CreateTriggerSkillV2{
 		return false
 	end,
 }
--- DEFER:sfofl_cuiji_prohibit：CreateProhibitSkill 無 V2 對應 API，保留 legacy。
-sfofl_cuiji_prohibit = sgs.CreateProhibitSkill {
+sfofl_cuiji_prohibit = sgs.CreateProhibitSkillV2 {
 	name = "#sfofl_cuiji_prohibit",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_skill:sfofl_cuiji" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if card:isKindOf("Slash") and table.contains(card:getSkillNames(), "sfofl_cuiji") then
 			if not to:hasFlag("CurrentPlayer") then
 				return true
@@ -20815,7 +20817,7 @@ sfofl_chuce = sgs.CreateTriggerSkillV2{
 }
 sfofl_chuce_buff = sgs.CreateTargetModSkillV2 {
     name = "#sfofl_chuce_buff",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
         local mod = ctx:getModType()
         if mod ~= sgs.TargetModSkill_Residue and mod ~= sgs.TargetModSkill_DistanceLimit then return false end
@@ -23093,7 +23095,7 @@ sfofl_caesar = sgs.General(extension_e, "sfofl_caesar$", "west", 4)
 
 sfofl_ducai = sgs.CreateTargetModSkillV2{
 	name = "sfofl_ducai",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local mod = ctx:getModType()
 		if mod ~= sgs.TargetModSkill_Residue and mod ~= sgs.TargetModSkill_DistanceLimit then return false end
@@ -23259,7 +23261,7 @@ sfofl_macrinus = sgs.General(extension_e, "sfofl_macrinus", "west", 4)
 
 sfofl_dengtian_cardmax = sgs.CreateMaxCardsSkillV2 {
 	name = "#sfofl_dengtian_cardmax",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if target and target:hasSkill("sfofl_dengtian") and target:getMark("sfofl_dengtian_cardmax") > 0 then
@@ -27190,6 +27192,7 @@ sfofl_hefa_buff = sgs.CreateTargetModSkillV2{
 	name = "#sfofl_hefa_buff",
 	pattern = "Slash",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_skill:sfofl_hefa" },
 	correct_func = function(skill, ctx)
 		local mod = ctx:getModType()
 		local card = ctx:getCard()
@@ -29179,6 +29182,7 @@ sfofl_jianji_buff = sgs.CreateTargetModSkillV2{
     name = "#sfofl_jianji_buff",
     pattern = ".",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_flag:sfofl_jianji" },
     correct_func = function(skill, ctx)
         if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local card, to = ctx:getCard(), ctx:getSecondary()
@@ -29186,10 +29190,12 @@ sfofl_jianji_buff = sgs.CreateTargetModSkillV2{
         return false
     end,
 }
--- DEFER:sfofl_jianji_prohibit：CreateProhibitSkill 無 V2 對應 API，保留 legacy。
-sfofl_jianji_prohibit = sgs.CreateProhibitSkill {
+sfofl_jianji_prohibit = sgs.CreateProhibitSkillV2 {
 	name = "#sfofl_jianji_prohibit",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_flag:sfofl_jianji" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if card and card:hasFlag("sfofl_jianji") then
 			if to and to:getMark("&dianhu") == 0 then
 				return true
@@ -30425,7 +30431,7 @@ sfofl_buzhan = sgs.CreateCardLimitSkill{
 }
 sfofl_buzhan_range = sgs.CreateAttackRangeSkillV2 {
 	name = "#sfofl_buzhan_range",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player and player:hasSkill("sfofl_buzhan") then return player:getLostHp() end
@@ -32137,10 +32143,11 @@ sfofl_nanbing = sgs.CreateViewAsSkillV2 {
 	技能描述：继承技，你不会成为黑色牌的目标，你的黑色牌目标数+1。
 	引用：sfofl_sunshou
 ]] -- 
--- DEFER:sfofl_sunshou_prohibit：CreateProhibitSkill 無 V2 對應 API，保留 legacy。
-sfofl_sunshou_prohibit = sgs.CreateProhibitSkill {
+sfofl_sunshou_prohibit = sgs.CreateProhibitSkillV2 {
 	name = "#sfofl_sunshou_prohibit",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if card:isBlack() and to and to:hasSkill("sfofl_sunshou") then
 			return true
 		end
@@ -32150,7 +32157,7 @@ sfofl_sunshou_prohibit = sgs.CreateProhibitSkill {
 sfofl_sunshou = sgs.CreateTargetModSkillV2 {
 	name = "sfofl_sunshou",
 	pattern = ".",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_ExtraTarget then return false end
 		local from, card = ctx:getPrimary(), ctx:getCard()
@@ -33446,7 +33453,7 @@ sfofl_nw_shenlvbu = sgs.General(extension_war, "sfofl_nw_shenlvbu", "god", 5, tr
 sfofl_n_shenji = sgs.CreateTargetModSkillV2 {
 	name = "sfofl_n_shenji",
 	pattern = "Slash",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_ExtraTarget then return false end
 		local from = ctx:getPrimary()
@@ -35517,6 +35524,7 @@ sfofl_jixin_buff = sgs.CreateTriggerSkillV2{
 sfofl_jixin_targetmod = sgs.CreateTargetModSkillV2 {
 	name = "#sfofl_jixin_targetmod",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_flag:sfofl_jixin" },
 	correct_func = function(skill, ctx)
 		local mod = ctx:getModType()
 		local card = ctx:getCard()
@@ -36270,7 +36278,7 @@ sfofl_jinghong = sgs.CreateTriggerSkillV2{
 }
 sfofl_jinghong_buff = sgs.CreateTargetModSkillV2{
     name = "#sfofl_jinghong_buff",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
 		local player, card = ctx:getPrimary(), ctx:getCard()
@@ -36747,6 +36755,7 @@ sfofl_magic_ruiji_change = sgs.General(extension_e, "sfofl_magic_ruiji_change", 
 sfofl_shengcai_buff = sgs.CreateTargetModSkillV2{
     name = "#sfofl_shengcai_buff",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_skill:sfofl_shengcai" },
     correct_func = function(skill, ctx)
 		local mod = ctx:getModType()
 		local card = ctx:getCard()
@@ -36972,6 +36981,7 @@ sfofl_henghui_buff = sgs.CreateTargetModSkillV2{
     name = "#sfofl_henghui_buff",
     pattern = "Slash",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "mark:&sfofl_henghui_first", "mark:&sfofl_henghui_sec" },
     correct_func = function(skill, ctx)
 		local mod = ctx:getModType()
 		local from = ctx:getPrimary()

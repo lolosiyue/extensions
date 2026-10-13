@@ -205,10 +205,13 @@ rushB_zhihengVS = sgs.CreateViewAsSkillV2{
 		end
 	end,
 }
-zhihengRes = sgs.CreateProhibitSkill{
+zhihengRes = sgs.CreateProhibitSkillV2{
 	name = "#zhihengRes",
-	is_prohibited = function(self, from, to, card)
-		return table.contains(card:getSkillNames(), "rushB_zhiheng") and to
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_skill:rushB_zhiheng" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
+		return table.contains(card:getSkillNames(), "rushB_zhiheng") and to ~= nil
 	end,
 }
 rushB_zhiheng = sgs.CreateTriggerSkillV2{
@@ -1242,9 +1245,11 @@ wen_zemin = sgs.CreateTriggerSkillV2{
 		return false
 	end,
 }
-wen_zemin_ex = sgs.CreateProhibitSkill{
+wen_zemin_ex = sgs.CreateProhibitSkillV2{
 	name = "#wen_zemin_ex",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill("wen_zemin") and from:getMark("&zeminto") > 0 and to:getMark("&zeminfrom") > 0
 	end,
 }
@@ -1942,6 +1947,7 @@ diy_f_xionglieDis = sgs.CreateDistanceSkillV2{
 	name = "#diy_f_xionglieDis",
 	frequency = sgs.Skill_Compulsory,
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "skill:diy_f_zhuiji", "secondary.skill:diy_f_xionglie" },
 	correct_func = function(self, ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
@@ -5308,17 +5314,19 @@ rushB_moutongye = sgs.CreateTriggerSkillV2{
 		return false
 	end,
 }
-rushB_moutongye_ex = sgs.CreateProhibitSkill{
+rushB_moutongye_ex = sgs.CreateProhibitSkillV2{
 	name = "#rushB_moutongye_ex",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Participants,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		local n, x = from:getChangeSkillState("rushB_moutongye"), to:getChangeSkillState("rushB_moutongye")
 		if from:hasSkill("rushB_moutongye") then
 			if n == 1 then
-		    	return card:isKindOf("BasicCard") and from and from:hasSkill("rushB_moutongye") and to
+		    	return card:isKindOf("BasicCard") and from and from:hasSkill("rushB_moutongye") and to ~= nil
 			elseif n == 2 then
-		    	return card:isKindOf("TrickCard") and from and from:hasSkill("rushB_moutongye") and to
+		    	return card:isKindOf("TrickCard") and from and from:hasSkill("rushB_moutongye") and to ~= nil
 			elseif n == 3 then
-		    	return card:isKindOf("EquipCard") and from and from:hasSkill("rushB_moutongye") and to
+		    	return card:isKindOf("EquipCard") and from and from:hasSkill("rushB_moutongye") and to ~= nil
 			end
 		elseif to:hasSkill("rushB_moutongye") then
 			if x == 1 then
@@ -6988,14 +6996,17 @@ DIT_heg_yigui_extra = sgs.CreateTargetModSkillV2{
 		return n
 	end,
 }
-DIT_heg_yigui_ex = sgs.CreateProhibitSkill{
-	name = "DIT_heg_yigui_ex",
-	is_prohibited = function(self, from, to, card)
+DIT_heg_yigui_ex = sgs.CreateProhibitSkillV2{
+	name = "#DIT_heg_yigui_ex",
+	holder_selector = sgs.CorrectSkill_Primary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return from:hasSkill("DIT_heg_yigui") and to and from:getMark("&DIT_heg_jihun_hun"..to:getKingdom()) == 0 and card and table.contains(card:getSkillNames(), "DIT_heg_yigui")
 	end,
 }
 if not sgs.Sanguosha:getSkill("DIT_heg_yigui_extra") then skills:append(DIT_heg_yigui_extra) end
-if not sgs.Sanguosha:getSkill("DIT_heg_yigui_ex") then skills:append(DIT_heg_yigui_ex) end
+if not sgs.Sanguosha:getSkill("#DIT_heg_yigui_ex") then skills:append(DIT_heg_yigui_ex) end
+extension:insertRelatedSkills("DIT_heg_yigui", "#DIT_heg_yigui_ex")
 DIT_heg_yigui:setGuhuoDialog("lr")
 DIT_heg_zuoci:addSkill(DIT_heg_jihun)
 DIT_heg_zuoci:addSkill(DIT_heg_yigui)

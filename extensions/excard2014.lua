@@ -138,6 +138,7 @@ if EquipCard_wlj == 1 then
 		name = "EXCard_WLJ_SkillTM",
 		pattern = "Slash",
 		holder_selector = sgs.CorrectSkill_System,
+		gate = { "mark:@EXCard_WLJ" },
 		correct_func = function(skill, ctx)
 			if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return nil end
 			local from = ctx:getPrimary()

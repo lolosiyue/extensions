@@ -1145,9 +1145,12 @@ kenewgirltanyan = sgs.CreateTriggerSkillV2{
 }
 kenewgirlniangzhaoyun:addSkill(kenewgirltanyan)
 
-kenewgirltanyanex = sgs.CreateProhibitSkill{
+kenewgirltanyanex = sgs.CreateProhibitSkillV2{
 	name = "kenewgirltanyanex",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:usecardtanyan-PlayClear" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return from and (from:getMark("usecardtanyan-PlayClear") > 0)
 		and to and (to:getMark("tanyanshunxu-PlayClear") ~= from:getMark("usecardtanyan-PlayClear"))
 	end

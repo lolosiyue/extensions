@@ -555,9 +555,11 @@ luaRjianxiongTargetMod = sgs.CreateTargetModSkillV2 {
 		end
 	end,
 }
-luaRjianxiongProhibit = sgs.CreateProhibitSkill {
+luaRjianxiongProhibit = sgs.CreateProhibitSkillV2 {
 	name = "#luaRjianxiongProhibit",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Primary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return from:hasSkill("luaRjianxiong") and card and (card:hasFlag("luaRjianxiong")) and not to:hasFlag("luaRjianxiong")
 	end,
 }

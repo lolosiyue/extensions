@@ -477,7 +477,7 @@ sgs.LoadTranslationTable {
 --夏娜
 ZhenaDistance = sgs.CreateDistanceSkillV2 {
 	name = "#ZhenaDistance",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
@@ -660,7 +660,7 @@ sgs.LoadTranslationTable {
 
 XuwuDistance = sgs.CreateDistanceSkillV2 {
 	name = "#XuwuDistance",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Secondary,
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
@@ -1472,7 +1472,7 @@ se_shixianMark = sgs.CreateTriggerSkillV2 {
 
 se_shixianKeep = sgs.CreateMaxCardsSkillV2 {
 	name = "#se_shixianKeep",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if target and target:hasSkill(skill:objectName()) then
@@ -2221,7 +2221,7 @@ SE_Dixian = sgs.CreateTriggerSkillV2 {
 
 SE_ShanguangX = sgs.CreateDistanceSkillV2 {
 	name = "SE_ShanguangX",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		if from and from:hasSkill("SE_ShanguangX") then
@@ -2792,6 +2792,7 @@ se_shunshancard = sgs.CreateSkillCard {
 se_shunshanKeep = sgs.CreateMaxCardsSkillV2 {
 	name = "#se_shunshanKeep",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@Stop" },
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if target and target:getMark("@Stop") > 0 then
@@ -2808,6 +2809,7 @@ se_shunshanKeep = sgs.CreateMaxCardsSkillV2 {
 se_shunshanStopped = sgs.CreateDistanceSkillV2 {
 	name = "#se_shunshanStopped",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@Stop" },
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		if from and from:getMark("@Stop") > 0 and from:getMark("Stopped") > 0 then
@@ -5159,7 +5161,7 @@ se_Baiyi = sgs.CreateTriggerSkillV2 {
 
 Wangluo = sgs.CreateMaxCardsSkillV2 {
 	name = "Wangluo",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if target and target:hasSkill("Wangluo") then
@@ -5509,7 +5511,7 @@ SE_Weigong = sgs.CreateTriggerSkillV2 {
 
 SE_Weigong_end = sgs.CreateMaxCardsSkillV2 {
 	name = "#SE_Weigong_end",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player and player:hasSkill("#SE_Weigong_end") then
@@ -5870,14 +5872,15 @@ sgs.LoadTranslationTable {
 
 SE_Pasheng = sgs.CreateDistanceSkillV2 {
 	name = "SE_Pasheng",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Participants,
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
-		if from and from:hasSkill("SE_Pasheng") then
+		local holder = ctx:getHolder()
+		if holder == from and from:hasSkill("SE_Pasheng") then
 			return 100
 		end
-		if to and to:hasSkill("SE_Pasheng") then
+		if holder == to and to:hasSkill("SE_Pasheng") then
 			return 100
 		end
 		return false
@@ -6086,6 +6089,7 @@ se_zhiling_S = sgs.CreateTriggerSkillV2 {
 se_zhiling_C = sgs.CreateMaxCardsSkillV2 {
 	name = "se_zhiling_C",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@Neko_C" },
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if target and target:getMark("@Neko_C") > 0 then
@@ -7347,7 +7351,7 @@ SE_Mafuyu_Do = sgs.CreateTriggerSkillV2 {
 
 SE_Haremu = sgs.CreateMaxCardsSkillV2 {
 	name = "SE_Haremu",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player and player:hasSkill("SE_Haremu") then
@@ -9100,6 +9104,7 @@ SE_Shenmin = sgs.CreateTriggerSkillV2 {
 SE_ShenminKeep = sgs.CreateMaxCardsSkillV2 {
 	name = "#SE_ShenminKeep",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@shenmin" },
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if target and target:getMark("@shenmin") > 0 then
@@ -11413,7 +11418,7 @@ SE_Kuluo = sgs.CreateMaxCardsSkillV2 {
 			return 52 - player:getHp()
 		end
 	end,]]
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	fixed_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if target and target:hasSkill(skill:objectName()) then
@@ -13417,7 +13422,7 @@ SE_Guiyin = sgs.CreateTriggerSkillV2 {
 
 SE_GuiyinDis = sgs.CreateDistanceSkillV2 {
 	name = "#SE_GuiyinDis",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		-- DistanceSkillV2 ctx uses getPrimary (not getFrom); nil-guard for empty ctx
 		if not ctx then return false end
@@ -13986,7 +13991,7 @@ SE_Lingshang = sgs.CreateTriggerSkillV2 {
 
 SE_Lingshang_end = sgs.CreateMaxCardsSkillV2 {
 	name = "#SE_Lingshang_end",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player and player:hasSkill("#SE_Lingshang_end") then
@@ -14191,7 +14196,7 @@ SE_Wuwei = sgs.CreateTriggerSkillV2 {
 SE_Wuwei_tmod = sgs.CreateTargetModSkillV2 {
 	name = "#SE_Wuwei_tmod",
 	pattern = "Slash",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
 		local player = ctx:getPrimary()
@@ -14402,7 +14407,7 @@ se_gate:setViewAsSkill(se_gatevs)
 se_gateTargetMod = sgs.CreateTargetModSkillV2 {
 	name = "#se_gate-target",
 	pattern = "Slash",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local player = ctx:getPrimary()
@@ -14598,7 +14603,7 @@ se_origin_tg = sgs.CreateTriggerSkillV2 {
 se_origin_tmod = sgs.CreateTargetModSkillV2 {
 	name = "#se_origin_tmod",
 	pattern = "Slash",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
 		local player = ctx:getPrimary()

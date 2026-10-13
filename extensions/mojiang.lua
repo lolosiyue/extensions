@@ -125,10 +125,12 @@ sy_old_clear = sgs.CreateTriggerSkillV2 {
 }
 
 --防止成为目标（天佑）
---DEFER: CreateProhibitSkill 無 V2 對應 API，保留 legacy。
-sy_pro = sgs.CreateProhibitSkill {
+sy_pro = sgs.CreateProhibitSkillV2 {
 	name = "#sy_pro",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "secondary.pile:you" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		local you = to:getPile("you")
 		local X = you:length()
 		if X > 0 then
@@ -188,6 +190,7 @@ sy_global_targetMod = sgs.CreateTargetModSkillV2 {
 	name = "#sy_global_targetMod",
 	pattern = ".",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:mcc_defaultslash_num", "mark:mcc_defaultslash_num_" },
 	correct_func = function(self, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_Residue then
 			return nil

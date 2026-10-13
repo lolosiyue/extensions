@@ -112,9 +112,11 @@ tulong = sgs.CreateTriggerSkillV2{
 		return false
 	end
 }
-pojia_lol = sgs.CreateProhibitSkill{ 
+pojia_lol = sgs.CreateProhibitSkillV2{ 
 	name = "pojia_lol",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill(self:objectName()) and (card:isKindOf("Armor") or card:isKindOf("DefensiveHorse"))
 	end
 }
@@ -824,9 +826,11 @@ sgs.LoadTranslationTable{
 
 --刀锋意志·艾瑞莉娅
 Irelia = sgs.General(extension, "Irelia", "shu", "4", false, false, false)
-recheng = sgs.CreateProhibitSkill{
+recheng = sgs.CreateProhibitSkillV2{
 	name = "recheng",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if to:hasSkill(self:objectName()) then
 			if to:getJudgingArea():length() > 0 then
 				return card:isKindOf("DelayedTrick")
@@ -3316,9 +3320,12 @@ huanghun = sgs.CreateTriggerSkillV2{
 		end
 	end
 }
-huanghunPS = sgs.CreateProhibitSkill{
+huanghunPS = sgs.CreateProhibitSkillV2{
 	name = "#huanghunPS",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "secondary.mark:huanghun" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if to:getMark("huanghun") > 0 then
 			return card:isKindOf("DelayedTrick")
 		end
@@ -5597,9 +5604,11 @@ lingtiC = sgs.CreateTriggerSkillV2{
 		return false
 	end
 }
-lingtiP = sgs.CreateProhibitSkill{
+lingtiP = sgs.CreateProhibitSkillV2{
 	name = "#lingtiP",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if to:hasSkill("lol_lingti") and to:getMark("bsyz") > 0 then
 			if to:objectName() ~= from:objectName() then
 				return card:isKindOf("BasicCard") or card:isKindOf("TrickCard")

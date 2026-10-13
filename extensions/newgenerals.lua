@@ -8674,9 +8674,11 @@ create_card = function(self, request)
 end,
 }
 
-olweimu = sgs.CreateProhibitSkill {
+olweimu = sgs.CreateProhibitSkillV2 {
 	name = "olweimu",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return card:isKindOf("TrickCard") and card:isBlack() and to:hasSkill(self)
 	end,
 }
@@ -17426,9 +17428,11 @@ on_effect = function(self, event, room, player, ctx)
 	end,
 }
 mouwusheng:setJuguanDialog("all_slashs")
-mouwusheng_afterThreeSlashs = sgs.CreateProhibitSkill {
+mouwusheng_afterThreeSlashs = sgs.CreateProhibitSkillV2 {
 	name = "#mouwusheng_afterThreeSlashs",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return card:isKindOf("Slash") and to and from:getMark(to:objectName() .. "mouwushengTarget-PlayClear") >= 3
 	end,
 }
@@ -22367,9 +22371,12 @@ on_effect = function(self, event, room, player, ctx)
 	end)(self, event, ctx.invoker, ctx.original_data, room)
 	end,
 }
-rensongshuFlag = sgs.CreateProhibitSkill {
+rensongshuFlag = sgs.CreateProhibitSkillV2 {
 	name = "#rensongshuFlag",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "flag:rensongshuBf" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return from:hasFlag("rensongshuBf") and from ~= to and card:getTypeId() > 0
 	end,
 }
@@ -23021,9 +23028,11 @@ on_effect = function(self, event, room, player, ctx)
 	end,
 }
 mobile_shenhuatuo:addSkill(mobile_wuling)
-mobile_wulingbf = sgs.CreateProhibitSkill {
+mobile_wulingbf = sgs.CreateProhibitSkillV2 {
 	name = "#mobile_wulingbf",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if card:isKindOf("DelayedTrick") and to:getMark("wl_lu_mark") > 0 then
 			self:setObjectName("wl_lu_mark")
 			return true
@@ -24576,9 +24585,11 @@ correct_func = function(self, ctx)
 	end)(self, ctx:getPrimary(), ctx:includesWeapon())
 end,
 }
-lianpojxbf4 = sgs.CreateProhibitSkill {
+lianpojxbf4 = sgs.CreateProhibitSkillV2 {
 	name = "#lianpojxbf4",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_AllHolders,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if card:isKindOf("Peach") and from ~= to then
 			local hasr = { loyalist = 0 }
 			for _, p in sgs.qlist(from:getAliveSiblings()) do
@@ -24624,6 +24635,7 @@ shenjiaxu:addSkill(lianpojxbf1)
 shenjiaxu:addSkill(lianpojxbf2)
 shenjiaxu:addSkill(lianpojxbf3)
 shenjiaxu:addSkill(lianpojxbf4)
+extension:insertRelatedSkills("lianpojx", "#lianpojxbf4")
 zhaoluanCard = sgs.CreateSkillCard {
 	name = "zhaoluanCard",
 	target_fixed = false,
@@ -26340,6 +26352,9 @@ for i = 0, 99 do
 
 	
 can_trigger = function(self, event, room, player, data)
+	-- No SkillEvent uses ChoiceMade. Triggering on it recurses forever:
+	-- every trigger order prompt dispatches another ChoiceMade.
+	if event == sgs.ChoiceMade then return false end
 	if not (function(self, player)
 			return player and player:isAlive()
 		end)(self, player, room, event, player, data) then
@@ -31423,7 +31438,11 @@ ofquanweiCard = sgs.CreateSkillCard {
 				end
 				for _, p in sgs.qlist(room:getAllPlayers()) do
 					if table.contains(ys_data.tos, p:objectName()) then
-						if ysdata.to2color[p:objectName()]:contains(ysdata.to2color[player:objectName()]) or ysdata.to2color[player:objectName()]:contains(ysdata.to2color[p:objectName()]) then
+						local participant_color = ys_data.to2color[p:objectName()] or ""
+						local player_color = ys_data.to2color[player:objectName()] or ""
+						if participant_color ~= "" and player_color ~= ""
+							and (string.find(participant_color, player_color, 1, true)
+								or string.find(player_color, participant_color, 1, true)) then
 							continue
 						end
 						local dc = dummyCard()
@@ -31531,10 +31550,17 @@ ofquanshu = sgs.CreateTriggerSkillV2 {
 
 	name = "ofquanshu",
 
-	events = { sgs.EventForDiy, sgs.Damaged },
+	events = { sgs.YishiFinished, sgs.Damaged },
 
 
 can_trigger = function(self, event, room, player, data)
+	if event == sgs.YishiFinished then
+		local yishi = data:toYishi()
+		if yishi and player and yishi:containsParticipant(player) and player:hasSkill(self:objectName()) then
+			return self:objectName()
+		end
+		return false
+	end
 	if not (function(self, target)
 		return target and target:isAlive()
 	end)(self, player, room, event, player, data) then
@@ -31551,21 +31577,17 @@ can_trigger = function(self, event, room, player, data)
 end,
 on_effect = function(self, event, room, player, ctx)
 	return (function(self, event, player, data, room)
-		if event == sgs.EventForDiy then
-			local str = data:toString()
-			if str:startsWith("yishiresult:") then
-				str = str:split(":")
-				for _, p in sgs.qlist(room:getAllPlayers()) do
-					if table.contains(str[4]:split("+"), p:objectName()) and p:hasSkill(self:objectName()) then
-						local n = p:getCards("ej"):length()
-						if n > 0 and p:askForSkillInvoke(self) then
-							p:drawCards(n, self:objectName())
-							local dc = room:askForExchange(p, self:objectName(), 99, 1, false, "ofquanshu0", true)
-							if dc then
-								xumouCard(p, dc)
-							end
-						end
-					end
+		if event == sgs.YishiFinished then
+			local yishi = data:toYishi()
+			if not yishi or not yishi:containsParticipant(player) or not player:hasSkill(self:objectName()) then
+				return false
+			end
+			local n = player:getCards("ej"):length()
+			if n > 0 and player:askForSkillInvoke(self) then
+				player:drawCards(n, self:objectName())
+				local dc = room:askForExchange(player, self:objectName(), 99, 1, false, "ofquanshu0", true)
+				if dc then
+					xumouCard(player, dc)
 				end
 			end
 		elseif player:hasSkill(self:objectName()) then
@@ -32100,7 +32122,7 @@ of_liubei:addSkill(ofhuji)
 
 ofhoufa_range = sgs.CreateAttackRangeSkillV2 {
 	name = "#ofhoufa_range",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if target and target:hasSkill("ofhoufa") then
@@ -32526,7 +32548,7 @@ ofxiefang_gs = sgs.CreateDistanceSkillV2 {
 ofxiefang_gs_mod = sgs.CreateTargetModSkillV2 {
 	name = "#ofxiefang_gs_mod",
 	pattern = "BasicCard,TrickCard",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_ExtraTarget then return false end
 		local from = ctx:getPrimary()
@@ -33115,7 +33137,7 @@ ofjunshen = sgs.CreateTriggerSkillV2 {
 ofjunshen_mod = sgs.CreateTargetModSkillV2 {
 	name = "#ofjunshen_mod",
 	pattern = "Slash",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local mod = ctx:getModType()
 		local from = ctx:getPrimary()
@@ -33551,7 +33573,7 @@ ofhuxiao = sgs.CreateTriggerSkillV2 {
 ofhuxiao_mod = sgs.CreateTargetModSkillV2 {
 	name = "#ofhuxiao_mod",
 	pattern = ".",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
 		local from = ctx:getPrimary()
@@ -34515,6 +34537,7 @@ ofzhongjue_mod = sgs.CreateTargetModSkillV2 {
 	name = "#ofzhongjue_mod",
 	pattern = ".",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:ofzhongjue_unlimited" },
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
 		local from = ctx:getPrimary()
@@ -34528,25 +34551,44 @@ extension:insertRelatedSkills("ofzhongjue", "#ofzhongjue_mod")
 
 ofqingming = sgs.CreateTriggerSkillV2 {
 	name = "ofqingming",
-	events = { sgs.EventPhaseStart },
+	events = { sgs.EventPhaseStart, sgs.YishiStart, sgs.YishiResultConfirmed },
 	can_trigger = function(self, event, room, player, data)
-		if player and player:hasSkill(self:objectName()) and player:getPhase() == sgs.Player_Play then
-			return self:objectName()
+		if event == sgs.EventPhaseStart then
+			if player and player:hasSkill(self:objectName()) and player:getPhase() == sgs.Player_Play then
+				return self:objectName()
+			end
+		elseif event == sgs.YishiStart or event == sgs.YishiResultConfirmed then
+			local yishi = data:toYishi()
+			if yishi and yishi.reason == self:objectName() and player and yishi.initiator == player and yishi:containsParticipant(player)
+				and player:hasSkill(self:objectName()) then
+				return self:objectName()
+			end
 		end
 		return false
 	end,
 	on_effect = function(self, event, room, player, ctx)
-		local t = player:getTag("ofzhongjue_target"):toPlayer()
-		if not t or t:isDead() or not player:askForSkillInvoke(self, ToData(t)) then return end
-		-- 议事 simplified: both pick color; player uses last used card color
-		local last = room:getTag("of_last_card_color"):toString()
-		if last == "" then last = "red" end
-		local my = last
-		local their = room:askForChoice(t, self:objectName(), "red+black")
-		if my == their then
-			player:drawCards(2, self:objectName())
-			room:acquireSkill(player, "ofliefa")
-			player:skip(sgs.Player_Discard)
+		if event == sgs.EventPhaseStart then
+			local t = player:getTag("ofzhongjue_target"):toPlayer()
+			if not t or t:isDead() or not player:askForSkillInvoke(self, ToData(t)) then return end
+			local participants = sgs.SPlayerList()
+			participants:append(player)
+			participants:append(t)
+			room:askForYishi(player, participants, self:objectName())
+		elseif event == sgs.YishiStart then
+			local yishi = ctx.original_data:toYishi()
+			if not yishi then return false end
+			local last = room:getTag("of_last_card_color"):toString()
+			yishi:setCardCount(player, 0)
+			yishi:setOpinion(player, (last == "red" or last == "black") and last or "no_opinion")
+		elseif event == sgs.YishiResultConfirmed then
+			local yishi = ctx.original_data:toYishi()
+			local t = player:getTag("ofzhongjue_target"):toPlayer()
+			if not yishi or not t or t:isDead() or not yishi:containsParticipant(t) then return false end
+			if yishi:sharesOpinion(player, t) then
+				player:drawCards(2, self:objectName())
+				room:acquireSkill(player, "ofliefa")
+				player:skip(sgs.Player_Discard)
+			end
 		end
 	end,
 }
@@ -34603,7 +34645,10 @@ of_lastcolor = sgs.CreateTriggerSkillV2 {
 	on_effect = function(self, event, room, player, ctx)
 		local data = ctx.original_data
 		local card = (event == sgs.CardUsed) and data:toCardUse().card or data:toCardResponse().m_card
-		if card then room:setTag("of_last_card_color", ToData(card:getColorString())) end
+		if not card or card:isKindOf("SkillCard") then return false end
+		local color = card:getColorString()
+		if color ~= "red" and color ~= "black" then color = "no_opinion" end
+		room:setTag("of_last_card_color", ToData(color))
 	end,
 }
 of_huoyi:addSkill(of_lastcolor)
@@ -38968,6 +39013,7 @@ extension:addSkills(yuanjue_distance)
 -- These are rules of the transformed card, including users who do not own yuanjue.
 local yuanjue_unlimited = sgs.CreateTargetModSkillV2{
     name = "#yuanjue-unlimited", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_skill:yuanjue" },
     correct_func = function(self, ctx)
         local card = ctx:getCard()
         if ctx:getModType() == sgs.TargetModSkill_Residue and card

@@ -2372,6 +2372,7 @@ zyfashijl = sgs.CreateTargetModSkillV2 {
 	
 
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@zhiyefs" },
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -2901,7 +2902,7 @@ zangsongTargetMod = sgs.CreateTargetModSkillV2 {
 	pattern = "Slash",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -3145,7 +3146,7 @@ xianxsy_cishu  = sgs.CreateTargetModSkillV2 {
 	frequency = sgs.Skill_NotCompulsory,
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -3168,6 +3169,7 @@ xianxsy_range  = sgs.CreateAttackRangeSkillV2 {
 	
 
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:chanlz" },
 	correct_func = function(skill, ctx)
 		local self = skill
 		local player = ctx:getPrimary()
@@ -3185,6 +3187,7 @@ xianxsy_target = sgs.CreateTargetModSkillV2 {
 	
 
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:chanlz" },
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -3618,7 +3621,7 @@ wangzheEX = sgs.CreateTargetModSkillV2 {
 	name = "#wangzhe",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -3730,7 +3733,7 @@ doubleslashMod = sgs.CreateTargetModSkillV2 {
 	
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -4203,9 +4206,12 @@ frozenpuppet = sgs.CreateTriggerSkillV2 {
 		end
 	end,
 }
-frozenpuppetPS = sgs.CreateProhibitSkill {
+frozenpuppetPS = sgs.CreateProhibitSkillV2 {
 	name = "#frozenpuppetPS",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "secondary.mark:@frozenpuppettarg" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if to:getMark("@frozenpuppettarg") > 0 and from:objectName() ~= to:objectName() then
 			return card:isKindOf("DelayedTrick")
 		end
@@ -4587,6 +4593,7 @@ Luabei1 = sgs.CreateAttackRangeSkillV2 {
 	
 
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@Luazuihou" },
 	correct_func = function(skill, ctx)
 		local self = skill
 		local player = ctx:getPrimary()
@@ -4606,6 +4613,7 @@ Luabei2 = sgs.CreateMaxCardsSkillV2 {
 	
 
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@Luazuihou" },
 	correct_func = function(skill, ctx)
 		local self = skill
 		local target = ctx:getPrimary()
@@ -5316,9 +5324,11 @@ juedoujiasu = sgs.CreateTriggerSkillV2 {
 	end,
 }
 --蜻蜓切
-qingtq = sgs.CreateProhibitSkill {
+qingtq = sgs.CreateProhibitSkillV2 {
 	name = "qingtq",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill(self:objectName()) and (card:isKindOf("Weapon"))
 	end
 }
@@ -5369,7 +5379,7 @@ qingtq_keep_keep = sgs.CreateAttackRangeSkillV2 {
 	name = "#qingtqAR",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local player = ctx:getPrimary()
@@ -7125,7 +7135,7 @@ Luayihang = sgs.CreateDistanceSkillV2 {
 	name = "Luayihang",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -7143,7 +7153,7 @@ Luayihangpai = sgs.CreateMaxCardsSkillV2 {
 	name = "#Luayihangpai",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local target = ctx:getPrimary()
@@ -8229,6 +8239,7 @@ hxss_mod = sgs.CreateTargetModSkillV2 {
 	
 
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_skill:hxss" },
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -9224,6 +9235,7 @@ tmsp_more_slash = sgs.CreateTargetModSkillV2
 		
 
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "flag:tmsp" },
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -9577,7 +9589,7 @@ zhou = sgs.CreateDistanceSkillV2 {
 	name = "zhou",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Secondary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -10353,9 +10365,11 @@ bczzrClear = sgs.CreateTriggerSkillV2 {
 		end
 	end,
 }
-bczzrProhibit = sgs.CreateProhibitSkill {
+bczzrProhibit = sgs.CreateProhibitSkillV2 {
 	name = "#bczzr",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return card:isKindOf("TrickCard") and to:hasSkill("bczzr") and to:getMark("bczzr") <= 0
 	end,
 }
@@ -10441,9 +10455,12 @@ mozybuff = sgs.CreateTriggerSkillV2 {
 		end
 	end,
 }
-mozyProhibit = sgs.CreateProhibitSkill {
+mozyProhibit = sgs.CreateProhibitSkillV2 {
 	name = "#mozy",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:mozy-SelfClear", "secondary.mark:mozy-SelfClear" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if not card:isKindOf("Peach") then return false end
 		if from:getMark("mozy-SelfClear") > 0 and (not to) then return true end
 		if to and to:getMark("mozy-SelfClear") > 0 then return true end
@@ -10828,7 +10845,7 @@ nidaorenDis = sgs.CreateDistanceSkillV2 {
 	name = "#nidaorenDis",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -10948,18 +10965,19 @@ feils = sgs.CreateDistanceSkillV2 {
 	name = "feils",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Participants,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
+		local holder = ctx:getHolder()
 		local function __correct_func(self, from, to)
 
 		local correct = 0
-		if from:hasSkill(self:objectName()) and (from:getHp() >= from:getHandcardNum()) then
+		if holder == from and from:hasSkill(self:objectName()) and (from:getHp() >= from:getHandcardNum()) then
 			correct = correct - 2
 		end
-		if to:hasSkill(self:objectName()) and (to:getHp() < from:getHandcardNum()) then
+		if holder == to and to:hasSkill(self:objectName()) and (to:getHp() < from:getHandcardNum()) then
 			correct = correct + 2
 		end
 		return correct
@@ -11562,12 +11580,12 @@ qrdag = sgs.CreateTriggerSkillV2 {
 	end,
 }
 qrdagEx = sgs.CreateTargetModSkillV2 {
-	name = "qrdag_ex",
+	name = "#qrdag_ex",
 	pattern = "Slash",
 	
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -13076,7 +13094,7 @@ lanyuhuaAtR = sgs.CreateAttackRangeSkillV2 {
 	name = "#lanyuhuaAtR",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local player = ctx:getPrimary()
@@ -13095,7 +13113,7 @@ lanyuhuaSla = sgs.CreateTargetModSkillV2 {
 	pattern = "Slash",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -14184,6 +14202,7 @@ fanyiAttackRange = sgs.CreateAttackRangeSkillV2 {
 	
 
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "flag:1range_ad", "flag:1range_re" },
 	correct_func = function(skill, ctx)
 		local self = skill
 		local player = ctx:getPrimary()
@@ -14206,6 +14225,7 @@ fanyiMaxCards = sgs.CreateMaxCardsSkillV2 {
 	
 
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "flag:2maxcard_ad", "flag:2maxcard_re" },
 	correct_func = function(skill, ctx)
 		local self = skill
 		local target = ctx:getPrimary()
@@ -14236,6 +14256,7 @@ fanyiTargetMod = sgs.CreateTargetModSkillV2 {
 	
 
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "flag:3available_ad", "flag:3available_re", "flag:FanyiExtraTarget" },
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -16672,6 +16693,7 @@ yueyingMaxCard = sgs.CreateMaxCardsSkillV2
 		
 
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "flag:yueying" },
 	correct_func = function(skill, ctx)
 		local self = skill
 		local target = ctx:getPrimary()
@@ -18167,17 +18189,18 @@ meipengyou = sgs.CreateDistanceSkillV2 {
 	name = "meipengyou",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Participants,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
+		local holder = ctx:getHolder()
 		local function __correct_func(self, from, to)
 
-		if to:hasSkill(self:objectName()) then
+		if holder == to and to:hasSkill(self:objectName()) then
 			return 1
 		else
-			if from:hasSkill(self:objectName()) then
+			if holder == from and from:hasSkill(self:objectName()) then
 				return 1
 			end
 		end
@@ -20246,7 +20269,7 @@ duandai_targetmod = sgs.CreateTargetModSkillV2 {
 	frequency = sgs.Skill_NotCompulsory,
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -20270,7 +20293,7 @@ duandai_range = sgs.CreateAttackRangeSkillV2 {
 	name = "#duandai_range",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local player = ctx:getPrimary()
@@ -20721,6 +20744,7 @@ qiyuan_cardMAX = sgs.CreateMaxCardsSkillV2 {
 	
 
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@htms_qiyuan" },
 	correct_func = function(skill, ctx)
 		local self = skill
 		local target = ctx:getPrimary()
@@ -22279,6 +22303,7 @@ hanrenzdMaxCard = sgs.CreateMaxCardsSkillV2
 		name = "#hanrenzdMaxCard",
 		
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@hanrenzdbj" },
 	correct_func = function(skill, ctx)
 		local self = skill
 		local target = ctx:getPrimary()
@@ -25023,7 +25048,7 @@ Sdorica_MiLing_card = sgs.CreateMaxCardsSkillV2 {
 	name = "#Sdorica_MiLing_card",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local target = ctx:getPrimary()
@@ -25727,7 +25752,7 @@ htms_mozhidis = sgs.CreateDistanceSkillV2 {
 	name = "#htms_mozhidis",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -27611,7 +27636,7 @@ chaogzmax = sgs.CreateMaxCardsSkillV2 {
 	name = "#chaogzmax",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local target = ctx:getPrimary()
@@ -27630,7 +27655,7 @@ chaogz_cishu = sgs.CreateTargetModSkillV2 {
 	frequency = sgs.Skill_NotCompulsory,
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -27758,7 +27783,7 @@ shengqiang_cishu = sgs.CreateTargetModSkillV2 {
 	frequency = sgs.Skill_NotCompulsory,
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -27780,7 +27805,7 @@ shengqiang_range = sgs.CreateAttackRangeSkillV2 {
 	name = "#shengqiang_range",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local player = ctx:getPrimary()
@@ -28058,7 +28083,7 @@ lianxie_cishu = sgs.CreateTargetModSkillV2 {
 	frequency = sgs.Skill_NotCompulsory,
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()
@@ -29136,9 +29161,11 @@ s_polie_InTempMoving = sgs.CreateTriggerSkillV2 {
 	end,
 }
 --睡眠
-s_shuimian = sgs.CreateProhibitSkill {
+s_shuimian = sgs.CreateProhibitSkillV2 {
 	name = "s_shuimian",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill("s_shuimian") and (card:isKindOf("Indulgence"))
 	end
 }
@@ -30811,7 +30838,8 @@ if not sgs.Sanguosha:getSkill("slash_defence") then skills:append(slash_defence)
 if not sgs.Sanguosha:getSkill("loyal_inu_damage") then skills:append(loyal_inu_damage) end
 if not sgs.Sanguosha:getSkill("jueduiyazhi") then skills:append(jueduiyazhi) end
 if not sgs.Sanguosha:getSkill("fzndz_skip") then skills:append(fzndz_skip) end
-if not sgs.Sanguosha:getSkill("qrdag_ex") then skills:append(qrdagEx) end
+if not sgs.Sanguosha:getSkill("#qrdag_ex") then skills:append(qrdagEx) end
+extension:insertRelatedSkills("qrdag", "#qrdag_ex")
 --if not sgs.Sanguosha:getSkill("hxss_i") then skills:append(hxss_i) end
 if not sgs.Sanguosha:getSkill("#hxss_Clear") then skills:append(hxss_Clear) end
 if not sgs.Sanguosha:getSkill("yohaneFakeMove") then skills:append(yohaneFakeMove) end
@@ -31217,7 +31245,7 @@ htms_ranxin_buff = sgs.CreateTargetModSkillV2 { --红桃无视距离
 	name = "#htms_ranxin_buff",
 	
 
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()

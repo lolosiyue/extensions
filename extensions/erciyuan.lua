@@ -2222,9 +2222,11 @@ LuaJiguangAsk = sgs.CreateTriggerSkillV2 {
 	end,
 }
 --------------------------------------------------------------无杀@redo
-LuaRedoNoSlash = sgs.CreateProhibitSkill {
+LuaRedoNoSlash = sgs.CreateProhibitSkillV2 {
 	name = "#LuaRedoNoSlash",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill("LuaChamberMove") and card:isKindOf("Slash") and to:getMark("@Chamber") == 0
 	end
 }

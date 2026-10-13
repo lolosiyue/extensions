@@ -408,6 +408,7 @@ hunliesp_targetmod = sgs.CreateTargetModSkillV2{
 	name = "#hunliesp_targetmod",
 	pattern = ".",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "skill:sgkgodyingshi" },
 	correct_func = function(skill, ctx)
 		local mod = ctx:getModType()
 		if mod ~= sgs.TargetModSkill_Residue and mod ~= sgs.TargetModSkill_DistanceLimit then return false end

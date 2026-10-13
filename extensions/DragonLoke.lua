@@ -501,8 +501,8 @@ dl_liuli = sgs.CreateTriggerSkillV2{
 	end
 }
 dl_yanxiao_extra = sgs.CreateMaxCardsSkillV2{
-	name = "dl_yanxiao_extra",
-	holder_selector = sgs.CorrectSkill_System,
+	name = "#dl_yanxiao_extra",
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(self, ctx)
 		local n = 0
 		local player = ctx:getPrimary()
@@ -516,7 +516,8 @@ dl_yanxiao_extra = sgs.CreateMaxCardsSkillV2{
 		return n
 	end,
 }
-if not sgs.Sanguosha:getSkill("dl_yanxiao_extra") then skills:append(dl_yanxiao_extra) end
+if not sgs.Sanguosha:getSkill("#dl_yanxiao_extra") then skills:append(dl_yanxiao_extra) end
+extension:insertRelatedSkills("dl_yanxiao", "#dl_yanxiao_extra")
 dl_daqiao:addSkill(dl_yanxiao)
 dl_daqiao:addSkill(dl_liuli)
 sgs.LoadTranslationTable{

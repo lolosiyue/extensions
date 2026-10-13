@@ -1015,10 +1015,11 @@ ge_xuanming:addSkill(ge_zirun)
 ge_chuanxi = sgs.General(extension_exam, "ge_chuanxi", "god", 4, true, true)
 ge_chuanxi:addSkill("ge_shenyi")
 ge_chuanxi:addSkill("ge_shenen")
--- ProhibitSkill has no SkillV2 counterpart (no V2 factory in sgs_ex.lua); kept as legacy.
-ge_zaoyi = sgs.CreateProhibitSkill{
+ge_zaoyi = sgs.CreateProhibitSkillV2{
 	name = "ge_zaoyi",
-	is_prohibited = function(self,from,to,card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if not to:isYourFriend(from) and to:hasSkill(self) then
 			if card:getTypeId()==1 then
 				for _,p in sgs.qlist(to:getAliveSiblings()) do
@@ -1483,10 +1484,11 @@ sgs.LoadTranslationTable{
 extension_yanluo = sgs.Package("~BossYanluo")
 
 yl_qinguang = sgs.General(extension_yanluo, "yl_qinguang", "qun", 3, true, true)
--- ProhibitSkill has no SkillV2 counterpart (no V2 factory in sgs_ex.lua); kept as legacy.
-yl_panguan = sgs.CreateProhibitSkill{
+yl_panguan = sgs.CreateProhibitSkillV2{
 	name = "yl_panguan",
-	is_prohibited = function(self,from,to,card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return card:isKindOf("DelayedTrick")
 		and to:hasSkill(self)
 	end
@@ -2452,19 +2454,21 @@ yl_diting = sgs.CreateTriggerSkillV2{
 yl_dizang:addSkill(yl_diting)
 yl_ditingbf = sgs.CreateDistanceSkillV2{
 	name = "#yl_ditingbf",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Participants,
 	correct_func = function(self,ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
+		local holder = ctx:getHolder()
 		local n = 0
-		if from and from:hasSkill("yl_diting")
+		if holder == from and from:hasSkill("yl_diting")
 		then n = n-1 end
-		if to and to:hasSkill("yl_diting")
+		if holder == to and to:hasSkill("yl_diting")
 		then n = n+1 end
 		return n
 	end
 }
 yl_dizang:addSkill(yl_ditingbf)
+extension_yanluo:insertRelatedSkills("yl_diting", "#yl_ditingbf")
 
 yl_huihun = sgs.CreateTrickCard{
 	name = "_yl_huihun",

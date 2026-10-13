@@ -115,6 +115,7 @@ card_tarmod = sgs.CreateTargetModSkillV2{
 	pattern = "Slash",
 	frequency = sgs.Skill_Compulsory,
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_flag:llq_jiwu_ex", "card_flag:llq_jiwu_residue" },
 	correct_func = function(skill, ctx)
 		local card = ctx:getCard()
 		if not card then return false end
@@ -223,9 +224,11 @@ sk_zhangning:addSkill(sk_leiji)
 
 
 --闪戏：锁定技，你不能成为【闪电】的目标，【闪电】的判定牌生效后，你获得之。
-sk_shanxi = sgs.CreateProhibitSkill{
+sk_shanxi = sgs.CreateProhibitSkillV2{
     name = "sk_shanxi",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+	    local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 	    return to:hasSkill("sk_shanxi") and card:isKindOf("Lightning")
 	end
 }

@@ -16369,23 +16369,8 @@ heg_fofl_zhuoshengCard = sgs.CreateSkillCard{
 		use_card:addSubcards(self:getSubcards())
 		use_card:deleteLater()
 
-		-- 收集所有应变效果
-		local yingbian_effects = {}
-		for _, id in sgs.qlist(self:getSubcards()) do
-			local yingbian = sgs.Sanguosha:getEngineCard(id):property("YingBianEffects"):toString()
-            if yingbian ~= "" then
-				table.insert(yingbian_effects, yingbian)
-			end
-		end
-		-- 如果有应变效果，使用通用系统处理
-		if #yingbian_effects > 0 then
-			local card_ids = {}
-			for _, id in sgs.qlist(self:getSubcards()) do
-				table.insert(card_ids, id)
-			end
-			setYingBianEffectsForCard(player, room, use_card, card_ids)
-		end
-
+		-- Material lookup and composition are owned by the native rule.
+		room:setYingBianEffectsForCard(player, use_card, self:getSubcards())
 
 		return use_card
 	end,
@@ -16433,23 +16418,8 @@ heg_fofl_zhuoshengCard = sgs.CreateSkillCard{
 		use_card:setSkillName("heg_fofl_zhuosheng")
 		use_card:addSubcards(self:getSubcards())
 		
-		-- 收集所有应变效果
-		local yingbian_effects = {}
-		for _, id in sgs.qlist(self:getSubcards()) do
-			local yingbian = sgs.Sanguosha:getEngineCard(id):property("YingBianEffects"):toString()
-            if yingbian ~= "" then
-				table.insert(yingbian_effects, yingbian)
-			end
-		end
-		-- 如果有应变效果，使用通用系统处理
-		if #yingbian_effects > 1 then
-			local card_ids = {}
-			for _, id in sgs.qlist(self:getSubcards()) do
-				table.insert(card_ids, id)
-			end
-			setYingBianEffectsForCard(user, room, use_card, card_ids)
-		end
-		
+		room:setYingBianEffectsForCard(user, use_card, self:getSubcards())
+
 		use_card:deleteLater()
 		return use_card
 	end
@@ -16801,7 +16771,7 @@ heg_fofl_caiwang = sgs.CreateTriggerSkill{
 			local yingbian = sgs.Sanguosha:getEngineCard(use.card:getEffectiveId()):property("YingBianEffects"):toString()
 			if string.startsWith(yingbian, "yb_zhuzhan") then
 				use.card:setSkillName(self:objectName())
-				setYingBianEffectsForCard(player, room, use.card, use.card:getSubcards())
+				room:setYingBianEffectsForCard(player, use.card, use.card:getSubcards())
 				data:setValue(use)
 			end
 		end
@@ -16818,7 +16788,7 @@ heg_fofl_naxiang_buff = sgs.CreateTriggerSkill{
 			local yingbian = sgs.Sanguosha:getEngineCard(use.card:getEffectiveId()):property("YingBianEffects"):toString()
 			if not string.startsWith(yingbian, "yb_zhuzhan") then
 				use.card:setSkillName("heg_fofl_naxiang")
-				setYingBianEffectsForCard(player, room, use.card, use.card:getSubcards())
+				room:setYingBianEffectsForCard(player, use.card, use.card:getSubcards())
 				data:setValue(use)
 			end
 		end

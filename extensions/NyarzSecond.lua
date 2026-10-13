@@ -274,6 +274,7 @@ jxyangjie = sgs.CreateTriggerSkillV2{
 jxyangjiebuff = sgs.CreateTargetModSkillV2{
     name = "#jxyangjiebuff",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_skill:jxyangjie" },
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -706,6 +707,7 @@ jjjijingive = sgs.CreateTriggerSkillV2{
 jjjijinmax = sgs.CreateMaxCardsSkillV2{
     name = "#jjjijinmax",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "mark:&jjjijin-Clear" },
     correct_func = function(skill, ctx)
     	local target = ctx:getPrimary()
          return target:getMark("&jjjijin-Clear")
@@ -886,9 +888,11 @@ bajuweibuff = sgs.CreateTriggerSkillV2{
     end,
 }
 
-bajuweilimit = sgs.CreateProhibitSkill{
+bajuweilimit = sgs.CreateProhibitSkillV2{
     name = "#bajuweilimit",
-    is_prohibited = function(self, from, to, card)
+    holder_selector = sgs.CorrectSkill_Secondary,
+    is_prohibited = function(self, ctx)
+        local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
         if from:getMark("bajuweifrom"..to:objectName()) > 0 and to:hasSkill("bajuwei") then
             return card:isKindOf("Slash") or card:isKindOf("TrickCard")
         end
@@ -2308,7 +2312,7 @@ bnjiuchiCard = sgs.CreateSkillCard
 bnjiuchi_target = sgs.CreateTargetModSkillV2{
     name = "#bnjiuchi_target",
     pattern = "Analeptic",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -2702,6 +2706,7 @@ ty_tuoyu_distance = sgs.CreateTargetModSkillV2{
     name = "#ty_tuoyu_distance",
     pattern = ".",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "mark:ty_tuoyu_expand" },
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -2911,6 +2916,7 @@ jjjuanjia_start = sgs.CreateTriggerSkillV2{
 jjjuanjia_buff = sgs.CreateTargetModSkillV2{
     name = "#jjjuanjia_buff",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_skill:jjjuanjia" },
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -4215,6 +4221,7 @@ nyarz_pojun = sgs.CreateTriggerSkillV2{
 nyarz_pojun_buff = sgs.CreateTargetModSkillV2{
     name = "#nyarz_pojun_buff",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_skill:nyarz_pojun" },
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -4394,9 +4401,12 @@ nyarz_miejiCard = sgs.CreateSkillCard
     end
 }
 
-nyarz_mieji_limit = sgs.CreateProhibitSkill{
+nyarz_mieji_limit = sgs.CreateProhibitSkillV2{
     name = "#nyarz_mieji_limit",
-    is_prohibited = function(self, from, to, card)
+    holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_flag:nyarz_mieji" },
+    is_prohibited = function(self, ctx)
+        local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
         return card:hasFlag("nyarz_mieji") and from:objectName() ~= to:objectName() and to:getMark("&nyarz_mieji-PlayClear") == 0
     end,
 }
@@ -5988,6 +5998,7 @@ nyarz_longnuCard = sgs.CreateSkillCard
 nyarz_longnu_buff = sgs.CreateTargetModSkillV2{
     name = "#nyarz_longnu_buff",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_skill:nyarz_longnu", "mark:nyarz_longnu_slash-PlayClear" },
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -6313,7 +6324,7 @@ nyarz_jianying = sgs.CreateTriggerSkillV2{
 nyarz_jianying_buff = sgs.CreateTargetModSkillV2{
     name = "#nyarz_jianying_buff",
     pattern = ".",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -6446,6 +6457,7 @@ nyarz_ronghuo_mou = sgs.CreateTriggerSkillV2{
 nyarz_ronghuo_mou_buff = sgs.CreateTargetModSkillV2{
     name = "#nyarz_ronghuo_mou_buff",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_flag:nyarz_ronghuo_mou" },
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -6769,6 +6781,7 @@ nyarz_yingmou_mou_buff = sgs.CreateTargetModSkillV2{
     name = "#nyarz_yingmou_mou_buff",
     pattern = ".",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "flag:nyarz_yingmou_mou" },
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -7310,6 +7323,7 @@ nyarz_tiandu = sgs.CreateTriggerSkillV2{
 nyarz_tiandu_max = sgs.CreateMaxCardsSkillV2{
     name = "#nyarz_tiandu_max",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "mark:&nyarz_tiandu" },
     correct_func = function(skill, ctx)
     	local target = ctx:getPrimary()
         return target:getMark("&nyarz_tiandu")
@@ -7538,7 +7552,7 @@ nyarz_funing = sgs.CreateTriggerSkillV2{
 
 nyarz_funing_buff = sgs.CreateTargetModSkillV2{
     name = "#nyarz_funing_buff",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -8216,6 +8230,7 @@ nyarz_wuqian_godCard = sgs.CreateSkillCard
 nyarz_wuqian_god_buff = sgs.CreateTargetModSkillV2{
     name = "#nyarz_wuqian_god_buff",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_skill:nyarz_wuqian_god" },
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -8457,7 +8472,7 @@ nyarz_wushuang_god = sgs.CreateTriggerSkillV2{
 nyarz_shenji_god = sgs.CreateTargetModSkillV2{
     name = "nyarz_shenji_god",
     pattern = "Slash,Duel",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -8524,7 +8539,7 @@ nyarz_shenwei_god = sgs.CreateTriggerSkillV2{
 
 nyarz_shenwei_god_max = sgs.CreateMaxCardsSkillV2{
     name = "#nyarz_shenwei_god_max",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
     	local target = ctx:getPrimary()
         if target:hasSkill("nyarz_shenwei_god") then return target:getLostHp() + 2 end
@@ -8905,9 +8920,11 @@ nyarz_jianheCard = sgs.CreateSkillCard
     end 
 }
 
-nyarz_jianhe_buff = sgs.CreateProhibitSkill{
+nyarz_jianhe_buff = sgs.CreateProhibitSkillV2{
     name = "#nyarz_jianhe_buff",
-    is_prohibited = function(self, from, to, card)
+    holder_selector = sgs.CorrectSkill_System,
+    is_prohibited = function(self, ctx)
+        local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
         if from and to and card and (not card:isKindOf("SkillCard")) then
             local mark = string.format("&nyarz_jianhe_%s+#%s-PlayClear", "card", from:objectName())
             return to:getMark(mark) > 0
@@ -9246,6 +9263,7 @@ nyarz_lianying = sgs.CreateTriggerSkillV2{
 nyarz_lianying_buff = sgs.CreateMaxCardsSkillV2{
     name = "#nyarz_lianying_buff",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "mark:&nyarz_lianying" },
     correct_func = function(skill, ctx)
     	local target = ctx:getPrimary()
         return target:getMark("&nyarz_lianying")
@@ -10088,6 +10106,7 @@ nyarz_wusheng = sgs.CreateTriggerSkillV2{
 nyarz_wusheng_buff = sgs.CreateTargetModSkillV2{
     name = "#nyarz_wusheng_buff",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_flag:nyarz_wusheng" },
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -10237,7 +10256,7 @@ nyarz_duwang_buff = sgs.CreateTargetModSkillV2
 {
     name = "#nyarz_duwang_buff",
     pattern = "BasicCard",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -10938,6 +10957,7 @@ nyarz_tongwei_dis = sgs.CreateTargetModSkillV2{
     name = "#nyarz_tongwei_dis",
     pattern = ".",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_skill:nyarz_tongwei" },
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -12040,7 +12060,7 @@ nyarz_caixia = sgs.CreateTriggerSkillV2{
 nyarz_caixia_buff = sgs.CreateTargetModSkillV2{
     name = "#nyarz_caixia_buff",
     pattern = ".",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -12391,6 +12411,7 @@ nyarz_shajve_other = sgs.CreateTriggerSkillV2{
 nyarz_shajve_buff = sgs.CreateTargetModSkillV2{
     name = "#nyarz_shajve_buff",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "flag:nyarz_shajve" },
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -12613,6 +12634,7 @@ nyarz_fanyin_buff = sgs.CreateTargetModSkillV2{
     name = "#nyarz_fanyin_buff",
     pattern = ".",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "flag:nyarz_fanyin" },
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -12977,6 +12999,7 @@ nyarz_shensu = sgs.CreateTriggerSkillV2{
 nyarz_shensu_buff = sgs.CreateTargetModSkillV2{
     name = "#nyarz_shensu_buff",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_skill:nyarz_shensu" },
     correct_func = function(skill, ctx)
     	local from, to, card = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
     	local mod = ctx:getModType()
@@ -13164,7 +13187,7 @@ nyarz_quanji = sgs.CreateTriggerSkillV2{
 
 nyarz_quanji_max = sgs.CreateMaxCardsSkillV2{
     name = "#nyarz_quanji_max",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
     	local target = ctx:getPrimary()
         if target:hasSkill("nyarz_quanji") then return target:getPile("nyarz_quanji"):length() end

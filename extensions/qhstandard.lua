@@ -381,6 +381,7 @@ sgs.LoadTranslationTable { -- 翻译表
 qhstandardMaxCardsExtra = sgs.CreateMaxCardsSkillV2 { -- 手牌上限技
     name = "qhstandardMaxCardsExtra",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "mark:&mythliunian_usedTimes", "mark:&qhMaxcards_sub-SelfClear", "mark:&qhstandardluoshen-Clear", "mark:@qhstandardMaxcards", "mark:qhstandardkeji-Clear", "skill:mythaichen", "skill:mythliunian", "skill:mythxialei", "skill:mythyuqi" },
     correct_func = function(skill, ctx)             -- 修改手牌上限
         local target = ctx:getPrimary()
         if not target then return false end
@@ -424,6 +425,7 @@ qhstandardMaxCardsExtra = sgs.CreateMaxCardsSkillV2 { -- 手牌上限技
 qhstandardMaxCardFixed = sgs.CreateMaxCardsSkillV2 { -- 手牌上限技
     name = "qhstandardMaxCardFixed",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "pile:qhwindbuqu", "skill:qhstandardyingzi" },
     fixed_func = function(skill, ctx)              -- 锁定手牌上限
         local target = ctx:getPrimary()
         if not target then return false end
@@ -443,6 +445,7 @@ qhstandardTargetMod = sgs.CreateTargetModSkillV2 {  -- 目标增强技
     name = "qhstandardTargetMod",
     pattern = ".",                                -- 全部类型
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_skill:qhwindshensu", "mark:qhfiretianyi_success-Clear", "mark:qhstandardkurou_extra_distance", "mark:qhstandardkurou_residue", "secondary.mark:qhfireyeyanTarget-Clear", "skill:mythbeifen", "skill:mythliunian", "skill:mythmumu", "skill:mythqicai", "skill:qhstandardqixi", "skill:qhwindwushen" },
     correct_func = function(skill, ctx)
         local from, card, to = ctx:getPrimary(), ctx:getCard(), ctx:getSecondary()
         if not (from and card) then return false end
@@ -539,6 +542,7 @@ qhstandardTargetMod = sgs.CreateTargetModSkillV2 {  -- 目标增强技
 qhstandardAttackRange = sgs.CreateAttackRangeSkillV2 {
     name = "qhstandardAttackRange",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "skill:qhstandardyanyue", "skill:qhwindgongshu" },
     correct_func = function(skill, ctx)
         local target = ctx:getPrimary()
         if not target then return false end
@@ -557,6 +561,7 @@ qhstandardAttackRange = sgs.CreateAttackRangeSkillV2 {
 qhDistance = sgs.CreateDistanceSkillV2 {
     name = "qhDistance",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "secondary.mark:&qhDistance_add-Clear", "skill:mythshuangjia", "secondary.skill:mythshuangjia" },
     correct_func = function(skill, ctx)
         local from, to = ctx:getPrimary(), ctx:getSecondary()
         if not (from and to) then return false end
@@ -4639,9 +4644,11 @@ qhstandardliuli = sgs.CreateTriggerSkillV2 { -- 流离 触发技
 }
 
 -- 标准版-强化 陆逊-谦逊
-qhstandardqianxun = sgs.CreateProhibitSkill { -- 禁止技
+qhstandardqianxun = sgs.CreateProhibitSkillV2 { -- 禁止技
     name = "qhstandardqianxun",
-    is_prohibited = function(self, from, to, card)
+    holder_selector = sgs.CorrectSkill_Secondary,
+    is_prohibited = function(self, ctx)
+        local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
         if to:hasSkill(self:objectName()) then
             -- 顺手牵羊 乐不思蜀 决斗 万箭齐发
             return card:isKindOf("Snatch") or card:isKindOf("Indulgence") or card:isKindOf("QhstandardIndulgence") or
@@ -8980,9 +8987,11 @@ mythzhixi = sgs.CreateTriggerSkillV2 {
     end
 }
 
-mythzhixiprohibit = sgs.CreateProhibitSkill { --止息 禁止技
-    name = "mythzhixiprohibit",
-    is_prohibited = function(self, from, to, card)
+mythzhixiprohibit = sgs.CreateProhibitSkillV2 { --止息 禁止技
+    name = "#mythzhixiprohibit",
+    holder_selector = sgs.CorrectSkill_Primary,
+    is_prohibited = function(self, ctx)
+        local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
         if from:hasSkill("mythzhixi") and not card:isKindOf("SkillCard") then
             if card:getSubtype() == "aoe" or card:getSubtype() == "global_effect" then
                 return false
@@ -9676,9 +9685,10 @@ end
 if not sgs.Sanguosha:getSkill("mythzhixi") then
     skills:append(mythzhixi)
 end
-if not sgs.Sanguosha:getSkill("mythzhixiprohibit") then
+if not sgs.Sanguosha:getSkill("#mythzhixiprohibit") then
     skills:append(mythzhixiprohibit)
 end
+extension:insertRelatedSkills("mythzhixi", "#mythzhixiprohibit")
 if not sgs.Sanguosha:getSkill("qhwindhuangtianvs") then
     skills:append(qhwindhuangtianVS)
 end
@@ -10489,7 +10499,7 @@ sgs.LoadTranslationTable {
     [":mythmeibu"] = "其他角色的出牌阶段开始时，你可令该角色获得“止息”，然后令其失去1点体力。\
 ★每个出牌阶段只能有一人发动魅步",
     ["mythzhixi"] = "止息",
-    ["mythzhixiprohibit"] = "止息",
+    ["#mythzhixiprohibit"] = "止息",
     [":mythzhixi"] = "锁定技，出牌阶段你使用的第X张牌结算后结束出牌阶段（X为你的体力值且至多为4）。你使用的[AOE]和[全局效果]之外的牌只能指定令你获得“止息”的角色为目标。你的回合结束时，你失去此技能。",
     ["mythmumu"] = "穆穆",
     [":mythmumu"] = "出牌阶段开始时，你可以选择一项：1.获得一名其他角色至多三张牌，然后你本回合可使用【杀】的次数-1；2.摸三张牌，然后你本回合可使用【杀】的次数+1。",

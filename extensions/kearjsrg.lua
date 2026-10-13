@@ -432,6 +432,7 @@ keqiliubei:addSkill(keqizhenqiao)
 keqizhenqiaoex = sgs.CreateAttackRangeSkillV2 {
 	name = "keqizhenqiaoex",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:&xinglangan", "skill:keqizhenqiao", "skill:xingzuodan" },
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if not target then return false end
@@ -1167,94 +1168,92 @@ keqikongrong:addSkill(keqimingshi)
 ---@field colors string[] 輸出參數：所有展示牌的顏色列表
 ---@field to2color table<string, string> 輸出參數：角色對應展示牌顏色的映射
 
----發起「議事」事件。所有參與者同時展示一張手牌，根據顏色數量確定議事結果。
----@param ysdata YishiData 議事數據表
----@return YishiData|nil
-function askYishi(ysdata)
-	if type(ysdata.from) ~= "userdata" then
+local yishi_stack = {}
+
+local function syncYishiData(ysdata, yishi)
+	if not yishi.started then
+		ysdata.result = yishi.result or "no_result"
+		ysdata.all_same = false
+		ysdata.tos, ysdata.ids, ysdata.colors = {}, {}, {}
+		ysdata.color_num, ysdata.to2color = {}, {}
 		return
 	end
-	local log = sgs.LogMessage()
-	log.type = "$askYishi"
-	log.from = ysdata.from
-	log.arg = ysdata.reason
+	ysdata.result = yishi.result
+	ysdata.all_same = yishi:allOpinionsSame()
+	ysdata.tos, ysdata.ids, ysdata.colors = {}, {}, {}
+	ysdata.color_num, ysdata.to2color = {}, {}
+	for _, p in sgs.qlist(yishi.participants) do
+		local name = p:objectName()
+		table.insert(ysdata.tos, name)
+		local opinions = yishi:getOpinions(p)
+		local colors = {}
+		for _, opinion in sgs.list(opinions) do
+			table.insert(colors, opinion)
+			table.insert(ysdata.colors, opinion)
+			ysdata.color_num[opinion] = (ysdata.color_num[opinion] or 0) + 1
+		end
+		ysdata.to2color[name] = table.concat(colors, "|")
+		local dummy = sgs.DummyCard(yishi:getCards(p))
+		table.insert(ysdata.ids, dummy:toString())
+		dummy:deleteLater()
+	end
+end
+
+yishiAdapter = sgs.CreateRuleSkillV2 {
+	name = "#kear_yishi_adapter",
+	events = { sgs.YishiResultConfirmed },
+	can_trigger = function(skill, event, room, player, data)
+		local yishi = data:toYishi()
+		local frame = yishi_stack[#yishi_stack]
+		if event == sgs.YishiResultConfirmed and frame and not frame.callback_done
+			and yishi and yishi.initiator then
+			local initiator = yishi.initiator
+			local same_room = tostring(frame.room) == tostring(initiator:getRoom())
+			if frame.data.from:objectName() == initiator:objectName()
+				and tostring(frame.data.reason) == tostring(yishi.reason) and same_room then
+				return skill:objectName()
+			end
+		end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local yishi = ctx.original_data:toYishi()
+		local frame = yishi_stack[#yishi_stack]
+		if not frame or frame.callback_done or not yishi or not yishi.initiator then return false end
+		local initiator = yishi.initiator
+		local same_room = tostring(frame.room) == tostring(initiator:getRoom())
+		if frame.data.from:objectName() ~= initiator:objectName()
+			or tostring(frame.data.reason) ~= tostring(yishi.reason) or not same_room then return false end
+		frame.yishi = yishi
+		frame.callback_done = true
+		syncYishiData(frame.data, yishi)
+		if type(frame.data.effect) == "function" then frame.data.effect(frame.data) end
+		return false
+	end,
+}
+extension_qi:addSkills(yishiAdapter)
+
+---发起原生议事，并将 YishiStruct 转为旧技能回调使用的数据表。
+---@param ysdata YishiData 议事数据表
+---@return YishiData|nil
+function askYishi(ysdata)
+	if type(ysdata.from) ~= "userdata" then return end
+	local participants = sgs.SPlayerList()
 	for _, p in sgs.list(ysdata.tos) do
-		if p:isKongcheng() then
-			continue
-		end
-		log.to:append(p)
+		if p and not participants:contains(p) then participants:append(p) end
 	end
-	ysdata.tos = {}
 	ysdata.result = "no_result"
-	if log.to:isEmpty() then
-		return ysdata
-	end
 	local room = ysdata.from:getRoom()
-	room:sortByActionOrder(log.to)
-	room:sendLog(log)
-	local yscards = {}
-	for _, p in sgs.qlist(log.to) do
-		table.insert(ysdata.tos, p:objectName())
-		room:doAnimate(1, ysdata.from:objectName(), p:objectName())
+	local frame = { data = ysdata, room = room, callback_done = false }
+	table.insert(yishi_stack, frame)
+	local ok, result = pcall(function()
+		return room:askForYishi(ysdata.from, participants, ysdata.reason, 1)
+	end)
+	table.remove(yishi_stack)
+	if not ok then
+		error(result, 0)
 	end
-	ysdata.color_num = {}
-	for _, p in sgs.qlist(log.to) do
-		local data = sgs.QVariant("askyishicard:" .. ysdata.reason .. ":" .. ysdata.from:objectName() .. ":" .. table.concat(ysdata.tos, "+"))
-		room:getThread():trigger(sgs.EventForDiy, room, p, data)
-		local ask = data:toString():split(":")
-		if #ask > 4 then
-			yscards[p:objectName()] = sgs.Card_Parse(ask[5])
-		end
-		if type(yscards[p:objectName()]) ~= "userdata" then
-			local n = 1
-			if #ask > 5 then
-				n = tonumber(ask[6])
-			end
-			yscards[p:objectName()] = room:askForExchange(p, ysdata.reason .. "_yishi", n, n, false, "askyishicard:" .. n)
-		end
-	end
-	local x = 0
-	ysdata.ids = {}
-	ysdata.tos = {}
-	ysdata.colors = {}
-	ysdata.to2color = {}
-	room:getThread():delay(800)
-	for _, p in sgs.qlist(log.to) do
-		local dc = yscards[p:objectName()]
-		if type(dc) == "userdata" then
-			room:showCard(p, dc:getSubcards())
-			table.insert(ysdata.ids, dc:toString())
-			table.insert(ysdata.tos, p:objectName())
-			local colors = {}
-			for _, id in sgs.qlist(dc:getSubcards()) do
-				local cs = sgs.Sanguosha:getCard(id):getColorString()
-				ysdata.color_num[cs] = (ysdata.color_num[cs] or 0) + 1
-				x = math.max(x, ysdata.color_num[cs])
-				table.insert(ysdata.colors, cs)
-				table.insert(colors, cs)
-			end
-			ysdata.to2color[p:objectName()] = table.concat(colors, "|")
-		end
-	end
-	local m = 0
-	for r, n in pairs(ysdata.color_num) do
-		if n >= x then
-			m = m + 1
-			ysdata.result = m < 2 and r or "no_result"
-		end
-	end
-	room:getThread():delay(1200)
-	log.type = "$yishiresult"
-	log.arg = ysdata.result
-	log.from = ysdata.from
-	room:sendLog(log)
-	room:doLightbox("$keyishi" .. ysdata.result)
-	if type(ysdata.effect) == "function" then
-		ysdata.effect(ysdata)
-	end
-	local data =
-		sgs.QVariant("yishiresult:" .. ysdata.reason .. ":" .. ysdata.from:objectName() .. ":" .. table.concat(ysdata.tos, "+") .. ":" .. table.concat(ysdata.ids, "+") .. ":" .. ysdata.result)
-	room:getThread():trigger(sgs.EventForDiy, room, ysdata.from, data)
+	if result then syncYishiData(ysdata, result) end
 	return ysdata
 end
 
@@ -1303,7 +1302,7 @@ keqichaozheng = sgs.CreateTriggerSkillV2 {
 			end
 		end
 		askYishi(ys)
-		if #ys.colors == 1 then
+		if ys.all_same then
 			player:drawCards(#ys.tos, skill:objectName())
 		end
 		return false
@@ -1514,10 +1513,11 @@ keqitongjue = sgs.CreateViewAsSkillV2 {
 }
 keqiliuyan:addSkill(keqitongjue)
 
---DEFER:keqitongjueex:CreateProhibitSkill 無 V2 API
-keqitongjueex = sgs.CreateProhibitSkill {
+keqitongjueex = sgs.CreateProhibitSkillV2 {
 	name = "#keqitongjueex",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return from:getMark(to:objectName() .. "usekeqitongjue-Clear") > 0 and not card:isKindOf("SkillCard")
 	end,
 }
@@ -1898,55 +1898,20 @@ keqiwangyun:addSkill(keqishelun)
 keqifayi = sgs.CreateTriggerSkillV2 {
 	name = "keqifayi",
 	frequency = sgs.Skill_Frequent,
-	events = { sgs.EventForDiy },
+	events = { sgs.YishiFinished },
 	can_trigger = function(skill, event, room, player, data)
-		if event == sgs.EventForDiy and player then
-			local ys = data:toString()
-			if ys:startsWith("yishiresult:") then
-				local sts = ys:split(":")
-				local tos = sts[4]:split("+")
-				local list_skill, list_who = {}, {}
-				for i, pn in sgs.list(tos) do
-					local to = room:findPlayerByObjectName(pn)
-					if to and to:isAlive() and to:hasSkill(skill:objectName()) then
-						table.insert(list_skill, skill:objectName())
-						table.insert(list_who, to:objectName())
-					end
-				end
-				if #list_skill > 0 then
-					return table.concat(list_skill, "|"), table.concat(list_who, "|")
-				end
-			end
+		local yishi = data:toYishi()
+		if event == sgs.YishiFinished and yishi and player and yishi:containsParticipant(player)
+			and player:hasSkill(skill:objectName()) then
+			return skill:objectName()
 		end
 		return false
 	end,
 	on_cost = function(skill, event, room, player, ctx)
-		local ys = ctx.original_data:toString()
-		local sts = ys:split(":")
-		local tos = sts[4]:split("+")
-		local ids = sts[5]:split("+")
-		local color1
-		for i, pn in sgs.list(tos) do
-			if pn == player:objectName() then
-				color1 = ids[i]
-				local c = sgs.Card_Parse(ids[i])
-				if c then
-					color1 = c:getColorString()
-				end
-				break
-			end
-		end
+		local yishi = ctx.original_data:toYishi()
 		local players = sgs.SPlayerList()
-		for n, qn in sgs.list(tos) do
-			local q = room:findPlayerByObjectName(qn)
-			local color2 = ids[n]
-			local c = sgs.Card_Parse(ids[n])
-			if c then
-				color2 = c:getColorString()
-			end
-			if q and q:isAlive() and color1 ~= color2 then
-				players:append(q)
-			end
+		for _, q in sgs.qlist(yishi.participants) do
+			if q:isAlive() and q ~= player and not yishi:sharesOpinion(player, q) then players:append(q) end
 		end
 		local eny = room:askForPlayerChosen(player, players, skill:objectName(), "keqifayi-ask", true, true)
 		if eny then
@@ -6414,7 +6379,7 @@ kezhuanzhangren:addSkill(kezhuanfuni)
 
 kezhuanfuniex = sgs.CreateAttackRangeSkillV2 {
 	name = "#kezhuanfuniex",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	fixed_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if not target then return false end
@@ -6425,6 +6390,7 @@ kezhuanfuniex = sgs.CreateAttackRangeSkillV2 {
 	end,
 }
 kezhuanzhangren:addSkill(kezhuanfuniex)
+extension_zhuan:insertRelatedSkills("kezhuanfuni", "#kezhuanfuniex")
 
 kezhuanchuanxinCard = sgs.CreateSkillCard {
 	name = "kezhuanchuanxinCard",
@@ -9091,14 +9057,16 @@ kehejinfa = sgs.CreateViewAsSkillV2 {
 }
 kehejiangwei:addSkill(kehejinfa)
 
---DEFER:kehefumouex:CreateProhibitSkill 無 V2 API
-kehefumouex = sgs.CreateProhibitSkill {
+kehefumouex = sgs.CreateProhibitSkillV2 {
 	name = "#kehefumouex",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Primary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return card:getSkillName() == "kehefumou" and card:isKindOf("Chuqibuyi") and to and to:getMark("&kehefumou+red") + to:getMark("&kehefumou+black") < 1 and from:hasSkill("kehefumou")
 	end,
 }
 kehejiangwei:addSkill(kehefumouex)
+extension_he:insertRelatedSkills("kehefumou", "#kehefumouex")
 
 kehefumouVS = sgs.CreateViewAsSkillV2 {
 	name = "kehefumou",
@@ -9132,60 +9100,56 @@ kehefumou = sgs.CreateTriggerSkillV2 {
 	view_as_skill = kehefumouVS,
 	frequency = sgs.Skill_Frequent,
 	waked_skills = "#kehefumouex",
-	events = { sgs.EventForDiy, sgs.EventPhaseChanging },
+	events = { sgs.YishiFinished },
 	on_record = function(skill, event, room, player, ctx)
 		if not player then return end
-		local first = room:findPlayersBySkillName(skill:objectName()):at(0)
-		if not first or ctx.owner ~= first then return end
-		if event == sgs.EventPhaseChanging then
-			local change = ctx.original_data:toPhaseChange()
-			if change.to == sgs.Player_NotActive then
-				for _, p in sgs.qlist(room:getAllPlayers()) do
-					local ct = p:getTag("kehefumouColor"):toString()
-					if p:getMark("&kehefumou+" .. ct) > 0 then
-						room:removePlayerMark(p, "&kehefumou+" .. ct)
-						room:removePlayerCardLimitation(p, "use,response", ".|" .. ct)
+		if event == sgs.YishiFinished then
+			local yishi = ctx.original_data:toYishi()
+			if not yishi or not ctx.owner or ctx.owner:objectName() ~= player:objectName()
+				or not yishi:containsParticipant(player) or not player:hasSkill(skill)
+				or player:getKingdom() ~= "wei" then return end
+			for _, q in sgs.qlist(yishi.participants) do
+				if q ~= player and q:isAlive() and not yishi:sharesOpinion(player, q) then
+					for _, opinion in sgs.list(yishi:getOpinions(q)) do
+						if opinion == "red" or opinion == "black" then
+							if q:getMark("&kehefumou+" .. opinion) < 1 then
+								room:setPlayerMark(q, "&kehefumou+" .. opinion, 1)
+								room:setPlayerCardLimitation(q, "use,response", ".|" .. opinion, false)
+							end
+						end
 					end
 				end
 			end
-		end
-		if event == sgs.EventForDiy then
-			local str = ctx.original_data:toString()
-			if str:startsWith("yishiresult:") then
-				local strs = str:split(":")
-				local tos = strs[4]:split("+")
-				local ids = strs[5]:split("+")
-				for i, pt in sgs.list(tos) do
-					local p = room:findPlayerByObjectName(pt)
-					if p and p:hasSkill(skill) and p:getKingdom() == "wei" then
-						local cc = sgs.Card_Parse(ids[i])
-						if cc == nil then
-							continue
-						end
-						cc = cc:getColorString()
-						for n, pr in sgs.list(tos) do
-							local tc = sgs.Card_Parse(ids[n])
-							if tc == nil then
-								continue
-							end
-							tc = tc:getColorString()
-							if pr ~= pt and cc ~= tc then
-								local q = room:findPlayerByObjectName(pr)
-								if q then
-									room:setPlayerMark(q, "&kehefumou+" .. tc, 1)
-									room:setPlayerCardLimitation(q, "use,response", ".|" .. tc, false)
-									q:setTag("kehefumouColor", sgs.QVariant(tc))
-								end
-							end
-						end
-						room:askForUseCard(p, "@@kehefumou", "kehefumoucpby-ask")
-					end
-				end
-			end
+			room:askForUseCard(player, "@@kehefumou", "kehefumoucpby-ask")
 		end
 	end,
 }
 kehejiangwei:addSkill(kehefumou)
+
+kehefumouCleanup = sgs.CreateRuleSkillV2 {
+	name = "#kehefumou_cleanup",
+	global = true,
+	events = { sgs.EventPhaseChanging },
+	can_trigger = function(skill, event, room, player, data)
+		if player then return skill:objectName() end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local change = ctx.original_data:toPhaseChange()
+		if change.to ~= sgs.Player_NotActive then return false end
+		for _, p in sgs.qlist(room:getAllPlayers()) do
+			for _, opinion in ipairs({ "red", "black" }) do
+				if p:getMark("&kehefumou+" .. opinion) > 0 then
+					room:removePlayerMark(p, "&kehefumou+" .. opinion)
+					room:removePlayerCardLimitation(p, "use,response", ".|" .. opinion)
+				end
+			end
+			p:removeTag("kehefumouColor")
+		end
+		return false
+	end,
+}
+extension_he:addSkills(kehefumouCleanup)
 
 kehexuanfengVS = sgs.CreateViewAsSkillV2 {
 	name = "kehexuanfeng",
@@ -10168,7 +10132,7 @@ kehesunjun:addSkill(keheyaoyan)
 
 kehebazheng = sgs.CreateTriggerSkillV2 {
 	name = "kehebazheng",
-	events = { sgs.Damage, sgs.EventForDiy },
+	events = { sgs.Damage, sgs.YishiBeforeReveal },
 	frequency = sgs.Skill_Compulsory,
 	on_record = function(skill, event, room, player, ctx)
 		if not player then return end
@@ -10177,70 +10141,16 @@ kehebazheng = sgs.CreateTriggerSkillV2 {
 			if ctx.owner == player and player:isAlive() and player ~= damage.to and player:hasSkill(skill:objectName()) then
 				room:setPlayerMark(damage.to, "&kehebazheng+#" .. player:objectName() .. "-Clear", 1)
 			end
-		else
-			local str = ctx.original_data:toString()
-			if str:startsWith("yishiresult:") then
-				local first = room:findPlayersBySkillName(skill:objectName()):at(0)
-				if not first or ctx.owner ~= first then return end
-				local strs = str:split(":")
-				for _, pn in sgs.list(strs[4]:split("+")) do
-					local p = room:findPlayerByObjectName(pn)
-					if not p then
-						continue
-					end
-					local id = p:getMark("kehebazhengTid")
-					if id > 0 then
-						local cs = sgs.CardList()
-						cs:append(sgs.Sanguosha:getCard(id - 1))
-						room:filterCards(p, cs, true)
-						p:setMark("kehebazhengTid", 0)
-					end
-					p:setMark("kehebazhengFid", 0)
+		elseif event == sgs.YishiBeforeReveal then
+			local yishi = ctx.original_data:toYishi()
+			if not yishi or not ctx.owner or ctx.owner:objectName() ~= player:objectName()
+				or not yishi:containsParticipant(player) or not player:hasSkill(skill:objectName()) then return end
+			local owner = player
+			for _, p in sgs.qlist(yishi.participants) do
+				if p ~= owner and p:getMark("&kehebazheng+#" .. owner:objectName() .. "-Clear") > 0 then
+					yishi:setOpinions(p, yishi:getOpinions(owner))
+					room:sendCompulsoryTriggerLog(owner, skill)
 				end
-			elseif str:startsWith("askyishicard:") then
-				local first = room:findPlayersBySkillName(skill:objectName()):at(0)
-				if not first or ctx.owner ~= first then return end
-				local strs = str:split(":")
-				if player:hasSkill(skill) then
-					local dc = room:askForExchange(player, strs[2], 1, 1, false, "askyishicard")
-					table.insert(strs, dc:getEffectiveId())
-					player:setMark("kehebazhengFid", strs[5] + 1)
-					for _, p in sgs.qlist(room:getAllPlayers()) do
-						if table.contains(strs[4]:split("+"), p:objectName()) and p:getMark("&kehebazheng+#" .. player:objectName() .. "-Clear") > 0 then
-							local tid = p:getMark("kehebazhengTid")
-							if tid < 1 then
-								continue
-							end
-							tid = tid - 1
-							room:sendCompulsoryTriggerLog(player, skill)
-							local wc = sgs.Sanguosha:getWrappedCard(tid)
-							wc:setSkillName(skill:objectName())
-							wc:setSuit(dc:getSuit())
-							room:broadcastUpdateCard(room:getPlayers(), tid, wc)
-						end
-					end
-				end
-				for _, p in sgs.qlist(room:getAllPlayers()) do
-					if p:hasSkill(skill) and table.contains(strs[4]:split("+"), p:objectName()) and player:getMark("&kehebazheng+#" .. p:objectName() .. "-Clear") > 0 then
-						if #strs < 5 then
-							local dc = room:askForExchange(player, strs[2], 1, 1, false, "askyishicard")
-							table.insert(strs, dc:getEffectiveId())
-							player:setMark("kehebazhengTid", strs[5] + 1)
-						end
-						local fid = p:getMark("kehebazhengFid")
-						if fid < 1 then
-							continue
-						end
-						fid = fid - 1
-						room:sendCompulsoryTriggerLog(p, skill)
-						local c = sgs.Sanguosha:getCard(fid)
-						local wc = sgs.Sanguosha:getWrappedCard(strs[5])
-						wc:setSkillName(skill:objectName())
-						wc:setSuit(c:getSuit())
-						room:broadcastUpdateCard(room:getPlayers(), strs[5], wc)
-					end
-				end
-				ctx.original_data:setValue(table.concat(strs, ":"))
 			end
 		end
 	end,
@@ -12560,10 +12470,12 @@ keshuaiyansha = sgs.CreateTriggerSkillV2 {
 	end,
 }
 keshuailiubiao:addSkill(keshuaiyansha)
---DEFER:keshuaiyanshaslashex:CreateProhibitSkill 無 V2 API
-keshuaiyanshaslashex = sgs.CreateProhibitSkill {
+keshuaiyanshaslashex = sgs.CreateProhibitSkillV2 {
 	name = "#keshuaiyanshaslashex",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_skill:xingkuangjian", "card_skill:keshuaiyansha" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if card:getSkillName() == "xingkuangjian" then
 			return from == to
 		end
@@ -14554,50 +14466,35 @@ xingshanzheng = sgs.CreateViewAsSkillV2 {
 xing_jiananfeng:addSkill(xingshanzheng)
 xingxiongbao = sgs.CreateTriggerSkillV2 {
 	name = "xingxiongbao",
-	events = { sgs.EventForDiy },
+	events = { sgs.YishiStart },
 	priority = { 3 },
 	can_trigger = function(skill, event, room, player, data)
-		if event ~= sgs.EventForDiy or not (player and player:isAlive()) then return false end
-		local str = data:toString()
-		if str:startsWith("askyishicard:") and player:getHandcardNum() > 1 then
-			return skill:objectName()
-		end
+		local yishi = data:toYishi()
+		if event == sgs.YishiStart and yishi and player and yishi:containsParticipant(player)
+			and player:hasSkill(skill:objectName()) and yishi:getCardCount(player) > 0
+			and player:getHandcardNum() > 1 then return skill:objectName() end
 		return false
 	end,
 	on_cost = function(skill, event, room, player, ctx)
 		return player:askForSkillInvoke(skill)
 	end,
 	on_effect = function(skill, event, room, player, ctx)
-		local str = ctx.original_data:toString()
-		local strs = str:split(":")
-		player:setFlags("xingxiongbaoFrom")
-		for _, p in sgs.list(room:getOtherPlayers(player)) do
-			if table.contains(strs[4]:split("+"), p:objectName()) then
-				p:setFlags("xingxiongbaoTo")
+		local yishi = ctx.original_data:toYishi()
+		yishi:setCardCount(player, 2)
+		for _, p in sgs.qlist(yishi.participants) do
+			if p ~= player and yishi:getCardCount(p) == 1 and yishi:getCards(p):isEmpty() then
+				local id = p:getRandomHandCardId()
+				if id >= 0 then
+					local ids = sgs.IntList()
+					ids:append(id)
+					yishi:setCards(p, ids)
+				end
 			end
 		end
+		return false
 	end,
 }
 xing_jiananfeng:addSkill(xingxiongbao)
-xingxiongbaobf = sgs.CreateTriggerSkillV2 {
-	name = "#xingxiongbaobf",
-	events = { sgs.EventForDiy },
-	on_record = function(skill, event, room, player, ctx)
-		if not (player and player:isAlive()) then return end
-		local data = ctx.original_data
-		local str = data:toString()
-		if not str:startsWith("askyishicard:") then return end
-		if player:hasFlag("xingxiongbaoFrom") then
-			player:setFlags("-xingxiongbaoFrom")
-			data:setValue(str .. ":-1:2")
-		end
-		if player:hasFlag("xingxiongbaoTo") then
-			player:setFlags("-xingxiongbaoTo")
-			data:setValue(str .. ":" .. player:getRandomHandCardId())
-		end
-	end,
-}
-xing_jiananfeng:addSkill(xingxiongbaobf)
 xingliedu = sgs.CreateTriggerSkillV2 {
 	name = "xingliedu",
 	frequency = sgs.Skill_Compulsory,

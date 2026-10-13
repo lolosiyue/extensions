@@ -468,9 +468,11 @@ LuaYanling = sgs.CreateTriggerSkillV2 {
 	end,
 }
 
-LuaShandie = sgs.CreateProhibitSkill {
+LuaShandie = sgs.CreateProhibitSkillV2 {
 	name = "LuaShandie",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill(self:objectName()) and findMyOE(to) and not getOEList(to):contains(from) and
 			(card:isKindOf("Slash") or card:isKindOf("DelayedTrickCard"))
 	end

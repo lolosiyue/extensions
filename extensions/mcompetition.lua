@@ -1819,10 +1819,11 @@ zzy_weimian = sgs.CreateViewAsSkillV2{
 	end,
 }
 
--- DEFER:huanxingProhibit: CreateProhibitSkill has no V2 equivalent
-huanxingProhibit = sgs.CreateProhibitSkill{
+huanxingProhibit = sgs.CreateProhibitSkillV2{
 	name = "#huanxing-Prohibit",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill("huanxing") and card:isKindOf("Slash") and from:hasFlag("huanxing")
 	end
 }
@@ -2417,6 +2418,7 @@ feitianshuangzhanmod = sgs.CreateTargetModSkillV2{
 name = "feitianshuangzhanmod",
 pattern = "Slash",
 holder_selector = sgs.CorrectSkill_System,
+gate = { "card_skill:feitianshuangzhan" },
 correct_func = function(skill, ctx)
 if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return nil end
 local card = ctx:getCard()

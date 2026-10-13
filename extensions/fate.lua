@@ -733,9 +733,11 @@ end,
 }
 
 --机智 锁定技，当你的装备区内无防具时，你无法成为【过河拆桥】,【顺手牵羊】及【借刀杀人】的目标。
-fatejizhi=sgs.CreateProhibitSkill{
+fatejizhi=sgs.CreateProhibitSkillV2{
 name = "fatejizhi",
-is_prohibited=function(self,from,to,card)
+holder_selector = sgs.CorrectSkill_Secondary,
+is_prohibited=function(self, ctx)
+	local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 	if to:getArmor()  then return end
     if (to:hasSkill(self:objectName())) then
         return (card:isKindOf("Snatch") or card:isKindOf("Dismantlement") or card:isKindOf("Collateral")) 

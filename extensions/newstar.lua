@@ -826,9 +826,11 @@ xingzhouyu:addSkill(LuaFanjian)
 xingluxun = sgs.General(extension, "xingluxun", "wu", 3)
 --星包陆逊
 
-LuaRusheng = sgs.CreateProhibitSkill {
+LuaRusheng = sgs.CreateProhibitSkillV2 {
 	name = "LuaRusheng",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill(self:objectName()) and (card:isKindOf("Snatch") or card:isKindOf("Indulgence"))
 	end
 }

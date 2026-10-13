@@ -658,9 +658,11 @@ rotenburo = sgs.CreateTrickCard{
 
 	shuugakulyukou:setParent(extension)
 
-	shuugakulyukou_prohibit = sgs.CreateProhibitSkill{
+	shuugakulyukou_prohibit = sgs.CreateProhibitSkillV2{
 	name = "shuugakulyukou_prohibit",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if to and from then
 			if not hasRemoved(from) and hasRemoved(to) then
 				return card:isKindOf("AOE")

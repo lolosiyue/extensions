@@ -790,9 +790,11 @@ luaqinglong = sgs.CreateTriggerSkillV2 {
 		return false
 	end,
 }
-luawuwu = sgs.CreateProhibitSkill { --无误
+luawuwu = sgs.CreateProhibitSkillV2 { --无误
 	name = "luawuwu",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if to:hasSkill(self:objectName()) then
 			return (card:isKindOf("Snatch") or card:isKindOf("Dismantlement") or card:isKindOf("Collateral"))
 		end

@@ -12841,10 +12841,12 @@ SixMingduan = sgs.CreateTriggerSkillV2 {
 		return false
 	end
 }
--- DEFER:SixMingduanPro: CreateProhibitSkill has no V2 equivalent
-SixMingduanPro = sgs.CreateProhibitSkill { --Prohibit的BUG
+SixMingduanPro = sgs.CreateProhibitSkillV2 { --Prohibit的BUG
 	name = "#SixMingduanPro",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "flag:SixMingduanSource" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if card:isKindOf("Slash") then
 			if from:hasFlag("SixMingduanSource") and not to:hasFlag("SixMingduanTarget") then
 				return true
@@ -13990,7 +13992,7 @@ SixLongdanProtect = sgs.CreateTriggerSkillV2 {
 SixLongdanNDL = sgs.CreateTargetModSkillV2 {
 	name = "#SixLongdan-slash-ndl",
 	pattern = "Slash",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local player = ctx:getPrimary()
@@ -15773,7 +15775,7 @@ SixJianCe = sgs.CreateTriggerSkillV2 {
 
 SixShouLue = sgs.CreateMaxCardsSkillV2 {
 	name = "SixShouLue",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if target and target:hasSkill(skill:objectName()) then
@@ -16702,7 +16704,7 @@ CaoZhen_Seven = sgs.General(extension_six, "CaoZhen_Seven", "wei", 4, true)
 SevenXiaoRui = sgs.CreateTargetModSkillV2 {
 	name = "SevenXiaoRui",
 	pattern = "Slash",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local mod = ctx:getModType()
 		if mod == sgs.TargetModSkill_DistanceLimit then
@@ -16986,10 +16988,11 @@ SevenYiZe = sgs.CreateTriggerSkillV2 {
 	end
 }
 
--- DEFER:SevenYinBing: CreateProhibitSkill has no V2 equivalent
-SevenYinBing = sgs.CreateProhibitSkill {
+SevenYinBing = sgs.CreateProhibitSkillV2 {
 	name = "SevenYinBing",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_AllHolders,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if card:isKindOf("Slash") then
 			local rangefix = 0
 			--[[if card:isVirtualCard() then

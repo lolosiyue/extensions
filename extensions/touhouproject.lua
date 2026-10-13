@@ -718,7 +718,7 @@ TH_huimie = sgs.CreateDistanceSkillV2{--毁灭
 
 TH_fulanhandcard = sgs.CreateMaxCardsSkillV2{
 	name = "#TH_fulanhandcard",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player and player:hasSkill(skill:objectName()) and player:getMaxHp() < 4 then
@@ -1200,13 +1200,13 @@ TH_hongsebuyecheng = sgs.CreateTriggerSkillV2{--红色不夜城
 --------●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●------------------remiliascarlet_nos
 TH_feixing = sgs.CreateDistanceSkillV2{--飞行
 	name = "TH_feixing",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Participants,
 	correct_func = function(skill, ctx)
-		local from, to = ctx:getPrimary(), ctx:getSecondary()
-		if from and from:hasSkill("TH_feixing") then
+		local from, to, holder = ctx:getPrimary(), ctx:getSecondary(), ctx:getHolder()
+		if holder == from and from:hasSkill("TH_feixing") then
 			return -1
 		end
-		if to and to:hasSkill("TH_feixing") then
+		if holder == to and to:hasSkill("TH_feixing") then
 			return 1
 		end
 		return nil
@@ -1599,7 +1599,7 @@ TH_wujiecao=sgs.CreateTriggerSkillV2{--无节操
 ------------------------------------------------
 TH_saiqianxiang = sgs.CreateMaxCardsSkillV2{--赛钱箱
 	name = "TH_saiqianxiang",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player and player:hasSkill(skill:objectName()) then
@@ -2651,7 +2651,7 @@ TH_penglaiyuzhi = sgs.CreateTriggerSkillV2{--蓬莱
 ---------------------------------------------------------------●●●●●●●●●●●●●●●●---------------------------------------------------------------------yagokoroeirin
 TH_yongye = sgs.CreateDistanceSkillV2{--永夜
 	name = "TH_yongye",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Secondary,
 	correct_func = function(skill, ctx)
 		local to = ctx:getSecondary()
 		if to and to:hasSkill(skill:objectName()) then
@@ -2826,6 +2826,7 @@ TH_xiepohuanjue = sgs.CreateTargetModSkillV2{
 	pattern = "Slash,Snatch",
 	-- distance_limit_func 判定 TH_GreatestTreasure（跨技能）→ System selector
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "skill:TH_GreatestTreasure", "skill:TH_xiepohuanjue" },
     correct_func = function(skill, ctx)
 		local from, card = ctx:getPrimary(), ctx:getCard()
 		if not (from and card) then return nil end
@@ -3450,12 +3451,12 @@ TH_fengshenshaonv = sgs.CreateTriggerSkillV2{--风神少女
 
 TH_fengshenshaonvdis = sgs.CreateDistanceSkillV2{----风神少女distance
 	name = "#TH_fengshenshaonvdis",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Participants,
 	correct_func = function(skill, ctx)
-		local from, to = ctx:getPrimary(), ctx:getSecondary()
-		if from and from:hasSkill(skill:objectName()) then
+		local from, to, holder = ctx:getPrimary(), ctx:getSecondary(), ctx:getHolder()
+		if holder == from and from:hasSkill(skill:objectName()) then
 			return -1
-		elseif to and to:hasSkill(skill:objectName()) then
+		elseif holder == to and to:hasSkill(skill:objectName()) then
 			return 1
 		end
 		return nil

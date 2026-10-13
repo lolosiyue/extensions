@@ -699,16 +699,18 @@ yijizhi = sgs.CreateTriggerSkillV2{
 	end
 }
 yi_xunyu:addSkill(yijizhi)
--- DEFER:yijizhibf:sgs.CreateProhibitSkill has no SkillV2 equivalent
-yijizhibf = sgs.CreateProhibitSkill{
+yijizhibf = sgs.CreateProhibitSkillV2{
 	name = "#yijizhibf",
-	is_prohibited = function(self,from,to,card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if card:isKindOf("Peach") then
 			return from~=to and to and to:hasSkill("yijizhi")
 		end
 	end
 }
 yi_xunyu:addSkill(yijizhibf)
+shixinrumo_yi:insertRelatedSkills("yijizhi", "#yijizhibf")
 
 yi_fuhuanghou = sgs.General(shixinrumo_yi,"yi_fuhuanghou","qun",4,false,false,false,3)
 yimitu = sgs.CreateTriggerSkillV2{
@@ -2434,10 +2436,11 @@ chenmieguo = sgs.CreateTriggerSkillV2{
 	end
 }
 chen_zhouyu:addSkill(chenmieguo)
--- DEFER:chenmieguobf:sgs.CreateProhibitSkill has no SkillV2 equivalent
-chenmieguobf = sgs.CreateProhibitSkill{
+chenmieguobf = sgs.CreateProhibitSkillV2{
 	name = "#chenmieguobf",
-	is_prohibited = function(self,from,to,card)
+	holder_selector = sgs.CorrectSkill_System,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if card:getTypeId()>0 then
 			return to and to:getMark("&chenmieguo_ban+#"..from:objectName())>0
 		end

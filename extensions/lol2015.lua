@@ -4,6 +4,7 @@ extension = sgs.Package("lol2015")
 lol_jiansu = sgs.CreateDistanceSkillV2{
 	name = "#lol_jiansu",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "pile:lol_jiansu", "pile:lol_jiasu", "secondary.pile:lol_jiansu", "secondary.pile:lol_jiasu" },
 	correct_func = function(self, ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()

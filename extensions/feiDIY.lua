@@ -6,6 +6,7 @@ feimore = sgs.CreateTargetModSkillV2 {
     name = "feimore",
     pattern = ".",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "secondary.mark:feizuijiao" },
     correct_func = function(skill, ctx)
         local modType = ctx:getModType()
         if modType ~= sgs.TargetModSkill_Residue and modType ~= sgs.TargetModSkill_DistanceLimit then
@@ -23,6 +24,7 @@ feislashmore = sgs.CreateTargetModSkillV2 {
     name = "feislashmore",
     pattern = "Slash",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "skill:feijiangchi", "skill:feisheji", "skill:feiwusheng" },
     correct_func = function(skill, ctx)
         if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then
             return nil
@@ -923,10 +925,12 @@ feifenhu = sgs.CreateTriggerSkillV2 {
     end,
 }
 feiwanghou:addSkill(feifenhu)
---DEFER: CreateProhibitSkill 無 V2 對應 API，保留 legacy。
-feifenhuex = sgs.CreateProhibitSkill {
+feifenhuex = sgs.CreateProhibitSkillV2 {
     name = "#feifenhuex",
-    is_prohibited = function(self, from, to, card)
+    holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_skill:feifenhuCard" },
+    is_prohibited = function(self, ctx)
+        local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
         return to and card and table.contains(card:getSkillNames(), "feifenhuCard") and (to:getMark("feifenhu") == 0) and
             card:isKindOf("AmazingGrace")
     end

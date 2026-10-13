@@ -406,124 +406,104 @@ sgs.LoadTranslationTable {
 	["fuckyoka2"] = "<(.-)><b>锁定技",
 	["fuckyoka3"] = "<(.-)><b>(.-)</b></font><(.-)><b>锁定技",
 }
+local zhenzu_yishi_frames = {}
+
 zhenzuZHCMT = sgs.CreateTriggerSkillV2 {
 	name = "zhenzuZHCMT",
 	frequency = sgs.Skill_NotFrequent,
 	events = { sgs.EventPhaseStart },
-
 	can_trigger = function(skill, event, room, player, data)
-		if not (player and player:hasSkill(skill:objectName())) then return false end
-		if player:getPhase() ~= sgs.Player_Play then return false end
-		return skill:objectName()
+		if player and player:isAlive() and player:hasSkill(skill:objectName())
+			and player:getPhase() == sgs.Player_Play then return skill:objectName() end
+		return false
 	end,
-
 	on_cost = function(skill, event, room, player, ctx)
 		return room:askForSkillInvoke(player, skill:objectName(), sgs.QVariant())
 	end,
-
 	on_effect = function(skill, event, room, player, ctx)
 		room:broadcastSkillInvoke(skill:objectName())
 		room:sendCompulsoryTriggerLog(player, skill:objectName())
-		-- 第一阶段：所有玩家选择意见牌
-		for _, p in sgs.qlist(room:getAlivePlayers()) do
-			if not p:isKongcheng() then
-				-- 让玩家选择一张手牌作为意见牌
-				local id = room:askForExchange(p, "zhenzuZHCMT", 1, 1, false, "zhenzuZHCMT_yishi"):getSubcards():first()
-				local card = sgs.Sanguosha:getCard(id)
-				room:obtainCard(player, card, true)
-				local use = room:askForUseCard(player, "#" .. id, "@zhenzuZHCMT-use")
-				-- 标记牌的颜色
-				if not use and card:isRed() then
-					room:setPlayerMark(p, "zhenzuZHCMT_red", 1)
-					room:obtainCard(p, card, true)
-				elseif not use and card:isBlack() then
-					room:setPlayerMark(p, "zhenzuZHCMT_black", 1)
-					room:obtainCard(p, card, true)
-				end
+		local frame = { initiator = player, used = {} }
+		table.insert(zhenzu_yishi_frames, frame)
+		local ok, result = pcall(function()
+			return room:askForYishi(player, room:getAlivePlayers(), skill:objectName(), 1)
+		end)
+		table.remove(zhenzu_yishi_frames)
+		if not ok then error(result, 0) end
+		return false
+	end,
+}
 
-				-- 标记已选择的牌
-				room:setCardFlag(card, "zhenzuZHCMT_opinion")
-				room:setPlayerMark(p, "zhenzuZHCMT_chose", 1)
-			end
-		end
-
-		-- 第二阶段：展示所有意见牌
-		local red_count = 0
-		local black_count = 0
-		for _, p in sgs.qlist(room:getAlivePlayers()) do
-			if p:getMark("zhenzuZHCMT_chose") > 0 then
-				-- 找到被标记的意见牌并展示
-				for _, card in sgs.qlist(p:getHandcards()) do
-					if card:hasFlag("zhenzuZHCMT_opinion") then
-						room:showCard(p, card:getEffectiveId())
-						room:setCardFlag(card, "-zhenzuZHCMT_opinion")
-
-						-- 统计颜色
-						if card:isRed() then
-							red_count = red_count + 1
-						elseif card:isBlack() then
-							black_count = black_count + 1
+zhenzuZHCMT_yishi = sgs.CreateRuleSkillV2 {
+	name = "#zhenzuZHCMT_yishi",
+	events = { sgs.YishiBeforeReveal, sgs.YishiResultConfirmed },
+	can_trigger = function(skill, event, room, player, data)
+		local yishi = data:toYishi()
+		local frame = zhenzu_yishi_frames[#zhenzu_yishi_frames]
+		if not yishi or not frame or yishi.reason ~= "zhenzuZHCMT"
+			or yishi.initiator ~= frame.initiator then return false end
+		if event == sgs.YishiBeforeReveal and not frame.before_done then return skill:objectName() end
+		if event == sgs.YishiResultConfirmed and not frame.result_done then return skill:objectName() end
+		return false
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local yishi = ctx.original_data:toYishi()
+		local frame = zhenzu_yishi_frames[#zhenzu_yishi_frames]
+		local initiator = frame.initiator
+		if event == sgs.YishiBeforeReveal then
+			frame.before_done = true
+			for _, p in sgs.qlist(yishi.participants) do
+				local ids = yishi:getCards(p)
+				local old_opinions = yishi:getOpinions(p)
+				local remaining, opinions = sgs.IntList(), {}
+				for index = 0, ids:length() - 1 do
+					local id, used = ids:at(index), false
+					local card = sgs.Sanguosha:getCard(id)
+					if initiator:isAlive() and p:isAlive() and room:getCardOwner(id) == p
+						and room:getCardPlace(id) == sgs.Player_PlaceHand then
+						room:obtainCard(initiator, card, true)
+						used = room:askForUseCard(initiator, "#" .. id, "@zhenzuZHCMT-use")
+						if used then frame.used[p:objectName()] = true end
+						if not used and p:isAlive() and room:getCardOwner(id) == initiator
+							and room:getCardPlace(id) == sgs.Player_PlaceHand then
+							room:obtainCard(p, card, true)
 						end
-						break
+					end
+					if not used and p:isAlive() and room:getCardOwner(id) == p
+						and room:getCardPlace(id) == sgs.Player_PlaceHand then
+						remaining:append(id)
+						table.insert(opinions, old_opinions[math.min(index + 1, #old_opinions)] or "no_opinion")
 					end
 				end
+				-- 已使用的牌不展示、不计票；被用牌者不执行本技能的结果效果。
+				yishi:setCards(p, remaining)
+				yishi:setOpinions(p, remaining:length() == ids:length() and old_opinions or opinions)
 			end
+			return false
 		end
 
-		-- 延迟让玩家看清结果
-		room:getThread():delay(1500)
-
-		-- 宣布议事结果
-		local result = 0 -- 0:平局, 1:红色多, 2:黑色多
-		if red_count > black_count then
-			result = 1
-			local log = sgs.LogMessage()
-			log.type = "#zhenzuZHCMTRedWin"
-			log.from = player
-			room:sendLog(log)
-			room:doLightbox("$zhenzuZHCMT_red", 1000)
-		elseif black_count > red_count then
-			result = 2
-			local log = sgs.LogMessage()
-			log.type = "#zhenzuZHCMTBlackWin"
-			log.from = player
-			room:sendLog(log)
-			room:doLightbox("$zhenzuZHCMT_black", 1000)
-		else
-			local log = sgs.LogMessage()
-			log.type = "#zhenzuZHCMTTie"
-			log.from = player
-			room:sendLog(log)
-			room:doLightbox("$zhenzuZHCMT_tie", 1000)
-		end
-		-- 清理标记
-		for _, p in sgs.qlist(room:getAlivePlayers()) do
-			if result == 1 and p:getMark("zhenzuZHCMT_red") > 0 then
+		frame.result_done = true
+		for _, p in sgs.qlist(yishi.participants) do
+			if not p:isAlive() or frame.used[p:objectName()] then continue end
+			if yishi.result == "red" and yishi:hasOpinion(p, "red") then
 				room:setPlayerMark(p, "&zhenzuZHCMT_no_recover", 1)
-			end
-			if result == 2 and p:getMark("zhenzuZHCMT_black") > 0 then
+			elseif yishi.result == "black" and yishi:hasOpinion(p, "black") then
 				room:setPlayerMark(p, "&zhenzuZHCMT_no_derivative", 1)
 				room:setPlayerMark(p, "@skill_invalidity", 1)
 				local lose_skills = p:getTag("zhenzuZHCMTSkills"):toString():split("+")
-				local skills = p:getVisibleSkillList()
-				for _, sk in sgs.qlist(skills) do
+				for _, sk in sgs.qlist(p:getVisibleSkillList()) do
 					if not p:hasInnateSkill(sk) then
 						room:addPlayerMark(p, "Qingcheng" .. sk:objectName())
-						-- 将技能名加入失效列表
 						table.insert(lose_skills, sk:objectName())
 					end
 				end
 				p:setTag("zhenzuZHCMTSkills", sgs.QVariant(table.concat(lose_skills, "+")))
 			end
-			room:setPlayerMark(p, "zhenzuZHCMT_participating", 0)
-			room:setPlayerMark(p, "zhenzuZHCMT_red", 0)
-			room:setPlayerMark(p, "zhenzuZHCMT_black", 0)
-			room:setPlayerMark(p, "zhenzuZHCMT_chose", 0)
 		end
-
 		return false
 	end,
 }
+extension:addSkills(zhenzuZHCMT_yishi)
 
 -- 添加对体力回复的限制
 zhenzuZHCMT_global = sgs.CreateTriggerSkillV2 {

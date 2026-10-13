@@ -644,9 +644,12 @@ GodManwuClear = sgs.CreateTriggerSkillV2{
 		return false
 	end
 }
-GodManwuCantdo = sgs.CreateProhibitSkill{
+GodManwuCantdo = sgs.CreateProhibitSkillV2{
 	name = "#GodManwuCantdo",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "pile:&GodManwuPile" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if from and from:getPhase() == sgs.Player_NotActive then
 			return sgs.Sanguosha:matchExpPattern(".|.|.|&GodManwuPile", from, card)
 		end
@@ -1498,6 +1501,7 @@ gongcheng_skill = sgs.CreateTargetModSkillV2{
 	name = "gongcheng_skill",
 	frequency = sgs.Skill_Compulsory,
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@GongchengM" },
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
 		local player = ctx:getPrimary()

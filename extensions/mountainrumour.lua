@@ -365,6 +365,7 @@ luashitu = sgs.CreateTriggerSkillV2 {
 luashitu_dis = sgs.CreateDistanceSkillV2 {
 	name = "luashitu_dis",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "flag:luashitu", "secondary.flag:luashitu" },
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		local to = ctx:getSecondary()
@@ -582,8 +583,8 @@ luaqilin_hid = sgs.CreateTriggerSkillV2 {
 }
 
 luaqilin_dis = sgs.CreateDistanceSkillV2 {
-	name = "luaqilin_dis",
-	holder_selector = sgs.CorrectSkill_System,
+	name = "#luaqilin_dis",
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		if from and from:hasSkill("luaqilin") then
@@ -599,11 +600,12 @@ luajiangwei_qilin:addSkill(luaqilin)
 
 extension:insertRelatedSkills(luaqilin:objectName(), luaqilin_hid:objectName())
 
-if not sgs.Sanguosha:getSkill("luaqilin_dis") then
+if not sgs.Sanguosha:getSkill("#luaqilin_dis") then
 	local skillList = sgs.SkillList()
 	skillList:append(luaqilin_dis)
 	sgs.Sanguosha:addSkills(skillList)
 end
+extension:insertRelatedSkills("luaqilin", "#luaqilin_dis")
 
 --require("bit")
 
@@ -819,8 +821,8 @@ luasunce_bawang:addSkill(luajiebing)
 luawuguotai_tongtang = sgs.General(extension, "luawuguotai_tongtang", "wu", 3, false) --, true)
 
 luatongtang_mxc = sgs.CreateMaxCardsSkillV2 {
-	name = "luatongtang_mxc",
-	holder_selector = sgs.CorrectSkill_System,
+	name = "#luatongtang_mxc",
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player and player:hasSkill("luatongtang") then
@@ -838,11 +840,12 @@ luatongtang_mxc = sgs.CreateMaxCardsSkillV2 {
 	end,
 }
 
-if not sgs.Sanguosha:getSkill("luatongtang_mxc") then
+if not sgs.Sanguosha:getSkill("#luatongtang_mxc") then
 	local skillList = sgs.SkillList()
 	skillList:append(luatongtang_mxc)
 	sgs.Sanguosha:addSkills(skillList)
 end
+extension:insertRelatedSkills("luatongtang", "#luatongtang_mxc")
 
 luatongtang = sgs.CreateTriggerSkillV2 {
 	name = "luatongtang",
@@ -1325,6 +1328,7 @@ luazuoci_caokong:addSkill(luaxianti)
 luaxianti_mxc = sgs.CreateMaxCardsSkillV2 {
 	name = "luaxianti_mxc",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "flag:xianti_discard" },
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player and player:hasFlag("xianti_discard") then
@@ -1452,7 +1456,7 @@ luashenyuanshao_mengzhu = sgs.General(extension, "luashenyuanshao_mengzhu", "god
 
 luamingmen = sgs.CreateMaxCardsSkillV2 {
 	name = "luamingmen",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player and player:hasSkill(skill:objectName()) then

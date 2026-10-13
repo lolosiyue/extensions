@@ -6240,13 +6240,16 @@ sgs.LoadTranslationTable {
 --MEIZLG 008 神大乔＆小乔
 meizlshendaqiaoxiaoqiao = sgs.General(extension, "meizlshendaqiaoxiaoqiao", "god", 3, false, true)
 
-meizlpingtingprevent = sgs.CreateProhibitSkill {
+meizlpingtingprevent = sgs.CreateProhibitSkillV2 {
 	name = "#meizlpingtingprevent",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "secondary.pile:meizlpingting" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		for _, p in sgs.qlist(to:getPile("meizlpingting")) do
 			local cd = sgs.Sanguosha:getCard(p)
 			if cd:objectName() == card:objectName() then
-				return card
+				return true
 			end
 		end
 	end
@@ -6989,9 +6992,11 @@ meispshuzhuang = sgs.CreateTriggerSkillV2 {
 	end
 }
 
-meispshuzhuangeffect = sgs.CreateProhibitSkill {
+meispshuzhuangeffect = sgs.CreateProhibitSkillV2 {
 	name = "#meispshuzhuangeffect",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill(self:objectName()) and (card:isKindOf("TrickCard") or card:isKindOf("QiceCard"))
 			and from:isMale() and not to:faceUp()
 	end
@@ -13929,9 +13934,11 @@ meispzlbhshuzhuang = sgs.CreateTriggerSkillV2 {
 	end
 }
 
-meispzlbhshuzhuangeffect = sgs.CreateProhibitSkill {
+meispzlbhshuzhuangeffect = sgs.CreateProhibitSkillV2 {
 	name = "#meispzlbhshuzhuangeffect",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return ((to:getGeneralName() == "meispdiaochan" and to:getGeneral2Name() == "meispnianglvbu") or (to:getGeneral2Name() == "meispdiaochan" and to:getGeneralName() == "meispnianglvbu")) and
 			to:hasSkill(self:objectName()) and (card:isKindOf("TrickCard") or card:isKindOf("QiceCard"))
 			and from:isMale() and not to:faceUp()

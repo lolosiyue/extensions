@@ -440,7 +440,7 @@ dlimuCard = sgs.CreateSkillCard
 Dlimubuff = sgs.CreateTargetModSkillV2{
     name = "#Dlimubuff",
     pattern = "BasicCard,TrickCard",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
         local mod = ctx:getModType()
         if mod ~= sgs.TargetModSkill_Residue and mod ~= sgs.TargetModSkill_DistanceLimit then return false end
@@ -689,6 +689,7 @@ Godjieyingget = sgs.CreateTriggerSkillV2{
 Godjieyingslash = sgs.CreateTargetModSkillV2{
     name = "#Godjieyingslash",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "mark:&Godying" },
     correct_func = function(skill, ctx)
         if ctx:getModType() ~= sgs.TargetModSkill_Residue then return 0 end
         local from = ctx:getPrimary()
@@ -728,6 +729,7 @@ Godjieyingdraw = sgs.CreateTriggerSkillV2{
 Godjieyingmax = sgs.CreateMaxCardsSkillV2{
     name = "#Godjieyingmax",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "mark:&Godying" },
     correct_func = function(skill, ctx)
         local target = ctx:getPrimary()
         if target and target:getMark("&Godying") > 0 then return target:getMark("&Godying")*2 end
@@ -1575,7 +1577,7 @@ godjuejin = sgs.CreateTriggerSkillV2{
 
 godjuejinmax = sgs.CreateMaxCardsSkillV2{
     name = "#godjuejinmax",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
         local target = ctx:getPrimary()
         if target and target:hasSkill("godjuejin") then return 3 end
@@ -1910,7 +1912,7 @@ exquanji = sgs.CreateTriggerSkillV2{
 
 exquanjimax = sgs.CreateMaxCardsSkillV2{
     name = "#exquanjimax",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
          local target = ctx:getPrimary()
          if target and target:hasSkill("exquanji") then 
@@ -2091,9 +2093,9 @@ spzhiheng = sgs.CreateTriggerSkillV2{
 }
 
 spzhihengbuff = sgs.CreateTargetModSkillV2{
-    name = "spzhihengbuff",
+    name = "#spzhihengbuff",
     pattern = "BasicCard,TrickCard",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
         local mod = ctx:getModType()
         if mod ~= sgs.TargetModSkill_Residue and mod ~= sgs.TargetModSkill_DistanceLimit then return false end
@@ -2973,6 +2975,7 @@ gfengyingCard = sgs.CreateSkillCard
 gfengyingtarget = sgs.CreateTargetModSkillV2{
     name = "#gfengyingtarget",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_skill:gfengying" },
     correct_func = function(skill, ctx)
         local mod = ctx:getModType()
         if mod ~= sgs.TargetModSkill_Residue and mod ~= sgs.TargetModSkill_DistanceLimit then return false end
@@ -3160,6 +3163,7 @@ exqiangwuta = sgs.CreateTargetModSkillV2{
     name = "#exexqiangwuta",
     pattern = "BasicCard,TrickCard",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "mark:&exqiangwu-PlayClear" },
     correct_func = function(skill, ctx)
         local from, card = ctx:getPrimary(), ctx:getCard()
         if not (from and card) then return false end
@@ -3982,6 +3986,7 @@ spyingzi = sgs.CreateTriggerSkillV2{
 spyingzimax = sgs.CreateMaxCardsSkillV2{
     name = "#spyingzimax",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "mark:&spyingzi-Clear" },
     correct_func = function(skill, ctx)
         local target = ctx:getPrimary()
         if not target then return false end
@@ -4336,9 +4341,12 @@ spjilvedea = sgs.CreateTriggerSkillV2{
 	end,
 }
 
-spjilvepr = sgs.CreateProhibitSkill{
+spjilvepr = sgs.CreateProhibitSkillV2{
     name = "#spjilvepr",
-    is_prohibited = function(self, from, to, card)
+    holder_selector = sgs.CorrectSkill_System,
+    gate = { "secondary.mark:jilvedeath-Clear" },
+    is_prohibited = function(self, ctx)
+        local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
         return to:getMark("jilvedeath-Clear") > 0 and card:objectName() == "peach" and from:objectName() ~= to:objectName()
     end,
 }
@@ -4530,6 +4538,7 @@ sppingxiangSlashCard = sgs.CreateSkillCard
 sppingxiangbf = sgs.CreateTargetModSkillV2{
     name = "#sppingxiangbf",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_skill:sppingxiang" },
     correct_func = function(skill, ctx)
         local mod = ctx:getModType()
         if mod ~= sgs.TargetModSkill_Residue and mod ~= sgs.TargetModSkill_DistanceLimit then return false end
@@ -4841,7 +4850,7 @@ miyund = sgs.CreateTriggerSkillV2{
 miyundmax = sgs.CreateMaxCardsSkillV2
 {
     name = "#miyundmax",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     fixed_func = function(skill, ctx)
         local target = ctx:getPrimary()
         if not target then return false end
@@ -6491,7 +6500,7 @@ godlongnustart = sgs.CreateTriggerSkillV2{
 
 godlongnubuff = sgs.CreateTargetModSkillV2{
     name = "#godlongnubuff",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
         local mod = ctx:getModType()
         local from, card = ctx:getPrimary(), ctx:getCard()
@@ -6707,7 +6716,7 @@ xiaorenfu = sgs.CreateTriggerSkillV2{
 
 xiaorenfudistance = sgs.CreateDistanceSkillV2{
     name = "#xiaorenfudistance",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
         local from, to = ctx:getPrimary(), ctx:getSecondary()
         if from and to and from:hasSkill("xiaorenfu") and to:getMark("xiaoyifufrom"..from:objectName()) > 0 then
@@ -6762,6 +6771,7 @@ xiaoyifubuff = sgs.CreateTriggerSkillV2{
 xiaoyifuslash = sgs.CreateTargetModSkillV2{
     name = "#xiaoyifuslash",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_skill:xiaoyizi" },
     correct_func = function(skill, ctx)
         if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
         local card = ctx:getCard()
@@ -6818,9 +6828,11 @@ xiaosheji = sgs.CreateTriggerSkillV2{
 	end,
 }
 
-xiaoshejisave = sgs.CreateProhibitSkill{
+xiaoshejisave = sgs.CreateProhibitSkillV2{
     name = "#xiaoshejisave",
-    is_prohibited = function(self, from, to, card)
+    holder_selector = sgs.CorrectSkill_System,
+    is_prohibited = function(self, ctx)
+        local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
         return to:getMark("xiaoshejifrom"..from:objectName().."-Clear") > 0
     end,
 }
@@ -7665,6 +7677,7 @@ xrshanjia = sgs.CreateTriggerSkillV2{
 xrshanjiabuff = sgs.CreateTargetModSkillV2{
     name = "#xrshanjiabuff",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "card_skill:xrshanjia" },
     correct_func = function(skill, ctx)
         local mod = ctx:getModType()
         if mod ~= sgs.TargetModSkill_Residue and mod ~= sgs.TargetModSkill_DistanceLimit then return false end
@@ -8212,7 +8225,7 @@ lgliegong = sgs.CreateTriggerSkillV2{
 
 lgliegongbuff = sgs.CreateTargetModSkillV2{
     name = "#lgliegongbuff",
-    holder_selector = sgs.CorrectSkill_System,
+    holder_selector = sgs.CorrectSkill_Primary,
     correct_func = function(skill, ctx)
         if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
         local from = ctx:getPrimary()
@@ -8249,7 +8262,8 @@ extension:insertRelatedSkills("lgliegong", "#lgliegonglimit")
 local skills = sgs.SkillList()
 
 if not sgs.Sanguosha:getSkill("jn") then skills:append(jn) end
-if not sgs.Sanguosha:getSkill("spzhihengbuff") then skills:append(spzhihengbuff) end
+if not sgs.Sanguosha:getSkill("#spzhihengbuff") then skills:append(spzhihengbuff) end
+extension:insertRelatedSkills("spzhiheng", "#spzhihengbuff")
 if not sgs.Sanguosha:getSkill("paiyiex") then skills:append(paiyiex) end
 if not sgs.Sanguosha:getSkill("spyinghun") then skills:append(spyinghun) end
 if not sgs.Sanguosha:getSkill("spyingzi") then skills:append(spyingzi) end

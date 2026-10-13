@@ -336,9 +336,11 @@ keyaosimayi:addSkill(keyaoguimou)
 
 keyaozhoutai = sgs.General(extension, "keyaozhoutai", "keyao", 4, true)
 
-keyaobuhui = sgs.CreateProhibitSkill {
+keyaobuhui = sgs.CreateProhibitSkillV2 {
 	name = "keyaobuhui",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill(self:objectName()) and (card:isKindOf("Slash"))
 	end
 }
@@ -1113,9 +1115,9 @@ kejieyaozhabing = sgs.CreateTriggerSkillV2 {
 kejieyaosimayi:addSkill(kejieyaozhabing)
 
 kejieyaozhabingexjl = sgs.CreateDistanceSkillV2 {
-	name = "kejieyaozhabingexjl",
+	name = "#kejieyaozhabingexjl",
 	global = true,
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Secondary,
 	correct_func = function(skill, ctx)
 		local to = ctx:getSecondary()
 		if to and to:hasSkill("kejieyaozhabing") and (to:getMark("&keyaozhabing") > 0) then
@@ -1125,12 +1127,16 @@ kejieyaozhabingexjl = sgs.CreateDistanceSkillV2 {
 		end
 	end
 }
-if not sgs.Sanguosha:getSkill("kejieyaozhabingexjl") then skills:append(kejieyaozhabingexjl) end
+if not sgs.Sanguosha:getSkill("#kejieyaozhabingexjl") then skills:append(kejieyaozhabingexjl) end
+extension:insertRelatedSkills("kejieyaozhabing", "#kejieyaozhabingexjl")
 
-kejieyaozhabingex = sgs.CreateProhibitSkill {
+kejieyaozhabingex = sgs.CreateProhibitSkillV2 {
 	name = "kejieyaozhabingex",
 	global = true,
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "secondary.mark:&keyaozhabing" },
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return (to:getMark("&keyaozhabing") > 0) and (card:isDamageCard())
 	end
 }
@@ -1169,9 +1175,11 @@ kejieyaosimayi:addSkill(kejieyaoguimou)
 
 kejieyaozhoutai = sgs.General(extension, "kejieyaozhoutai", "keyao", 5, true)
 
-kejieyaobuhui = sgs.CreateProhibitSkill {
+kejieyaobuhui = sgs.CreateProhibitSkillV2 {
 	name = "kejieyaobuhui",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill(self:objectName()) and (card:isKindOf("Slash") or card:isKindOf("Peach"))
 	end
 }
@@ -1512,6 +1520,7 @@ kejieyaozhongshangtwokeep = sgs.CreateMaxCardsSkillV2 {
 	frequency = sgs.Skill_Compulsory,
 	global = true,
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:&kejieyaozhongshangtwo" },
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if target and target:getMark("&kejieyaozhongshangtwo") > 0 then

@@ -720,6 +720,7 @@ sy_maxcards = sgs.CreateMaxCardsSkillV2{
 	name = "#sy_maxcards",
 	-- 旧版手牌上限技全局生效；System 选择器保留该语义，无需持有者
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:&sy_taiping", "skill:sy_jiancheng" },
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if not target then return false end
@@ -763,6 +764,7 @@ sy_clear = sgs.CreateTriggerSkillV2{
 sy_distance_from = sgs.CreateDistanceSkillV2{
 	name = "#sy_distance_from",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:jiuqian_mark" },
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		if from and from:getMark("jiuqian_mark") >= 1 then return -1 end
@@ -775,6 +777,7 @@ sy_distance_from = sgs.CreateDistanceSkillV2{
 sy_distance_to = sgs.CreateDistanceSkillV2{
 	name = "#sy_distance_to",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "secondary.pile:jiancheng" },
 	correct_func = function(skill, ctx)
 		local to = ctx:getSecondary()
 		if to and to:getPile("jiancheng"):length() > 0 then return 1 end
@@ -787,6 +790,7 @@ sy_distance_to = sgs.CreateDistanceSkillV2{
 sy_atk = sgs.CreateAttackRangeSkillV2{
 	name = "#sy_atk",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:jiuqian_mark", "skill:sy_baodao" },
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if not player then return false end
@@ -1028,7 +1032,7 @@ sy_xiuluo = sgs.CreateTriggerSkillV2{
 sy_shenji = sgs.CreateTargetModSkillV2{
     name = "sy_shenji",
 	pattern = ".",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		local card = ctx:getCard()

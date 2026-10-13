@@ -2234,9 +2234,11 @@ OnSkillTrigger = sgs.CreateTriggerSkillV2 {
 		end
 	end,
 }
-IsProhibited = sgs.CreateProhibitSkill {
+IsProhibited = sgs.CreateProhibitSkillV2 {
 	name = "IsProhibited",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return card:getTypeId() > 0 and to and to:property("aiNoTo"):toBool()
 	end,
 }

@@ -609,10 +609,11 @@ keguizhuangshen = sgs.CreateTriggerSkillV2 {
 }
 keguizhugeliang:addSkill(keguizhuangshen)
 
---DEFER:keguiqimen:ProhibitSkill 暫無 V2 API，保留 legacy
-keguiqimen = sgs.CreateProhibitSkill {
+keguiqimen = sgs.CreateProhibitSkillV2 {
 	name = "keguiqimen",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill(self:objectName()) and (card:isKindOf("DelayedTrick"))
 	end,
 }
@@ -1229,10 +1230,11 @@ kejieguizhuangshen = sgs.CreateTriggerSkillV2 {
 }
 kejieguizhugeliang:addSkill(kejieguizhuangshen)
 
---DEFER:kejieguiqimen:ProhibitSkill 暫無 V2 API，保留 legacy
-kejieguiqimen = sgs.CreateProhibitSkill {
+kejieguiqimen = sgs.CreateProhibitSkillV2 {
 	name = "kejieguiqimen",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill(self:objectName()) and (card:isKindOf("DelayedTrick"))
 	end,
 }
@@ -1726,6 +1728,7 @@ kejieguijueqiaojl = sgs.CreateDistanceSkillV2 {
 	global = true,
 	-- 全局規則技能：無持有者實例，按 (from,to) 每次評估一次
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "secondary.mark:&kejieguijueqiao" },
 	correct_func = function(skill, ctx)
 		local to = ctx:getSecondary()
 		if to and to:getMark("&kejieguijueqiao") > 0 then

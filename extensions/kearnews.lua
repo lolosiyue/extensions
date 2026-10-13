@@ -7,6 +7,7 @@ kenewslashmore = sgs.CreateTargetModSkillV2 {
 	name = "kenewslashmore",
 	pattern = ".",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_skill:kerongchang" },
 	--[[residue_func = function(self, from, card, to)
 		local n = 0
 		return n
@@ -179,6 +180,7 @@ if not sgs.Sanguosha:getSkill("kejianxiongai") then skills:append(kejianxiongai)
 kejianxiongjl = sgs.CreateTargetModSkillV2 {
 	name = "kejianxiongjl",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_flag:zhuangzhicard", "flag:zhuangzhicard" },
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local from, card = ctx:getPrimary(), ctx:getCard()
@@ -1107,8 +1109,8 @@ kenewliubei:addSkill(kenewzahuo)
 xiafcchengtiandi = sgs.General(extension, "xiafcchengtiandi", "kexian", 4, true, true, true)
 
 xiatiananex = sgs.CreateTargetModSkillV2 {
-	name = "xiatiananex",
-	holder_selector = sgs.CorrectSkill_System,
+	name = "#xiatiananex",
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local from, card = ctx:getPrimary(), ctx:getCard()
@@ -1118,12 +1120,13 @@ xiatiananex = sgs.CreateTargetModSkillV2 {
 		return false
 	end
 }
-if not sgs.Sanguosha:getSkill("xiatiananex") then skills:append(xiatiananex) end
+if not sgs.Sanguosha:getSkill("#xiatiananex") then skills:append(xiatiananex) end
+extension:insertRelatedSkills("xiatianan", "#xiatiananex")
 
 xiatiananextwo = sgs.CreateTargetModSkillV2 {
-	name = "xiatiananextwo",
+	name = "#xiatiananextwo",
 	pattern = "TrickCard",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local from = ctx:getPrimary()
@@ -1133,7 +1136,8 @@ xiatiananextwo = sgs.CreateTargetModSkillV2 {
 		return false
 	end,
 }
-if not sgs.Sanguosha:getSkill("xiatiananextwo") then skills:append(xiatiananextwo) end
+if not sgs.Sanguosha:getSkill("#xiatiananextwo") then skills:append(xiatiananextwo) end
+extension:insertRelatedSkills("xiatianan", "#xiatiananextwo")
 
 xiatianan = sgs.CreateTriggerSkillV2 {
 	name = "xiatianan",
@@ -2969,6 +2973,7 @@ kenewsunjian:addSkill(kexihuo)
 kexihuoKeep = sgs.CreateMaxCardsSkillV2 {
 	name = "kexihuoKeep",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@kexihuo" },
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if target and (target:getMark("@kexihuo") > 0) then
@@ -3449,8 +3454,8 @@ kenewpaoxiao = sgs.CreateTargetModSkillV2 {
 kenewzhangfei:addSkill(kenewpaoxiao)
 
 kenewpaoxiaojl = sgs.CreateTargetModSkillV2 {
-	name = "kenewpaoxiaojl",
-	holder_selector = sgs.CorrectSkill_System,
+	name = "#kenewpaoxiaojl",
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local from = ctx:getPrimary()
@@ -3461,7 +3466,8 @@ kenewpaoxiaojl = sgs.CreateTargetModSkillV2 {
 		return false
 	end,
 }
-if not sgs.Sanguosha:getSkill("kenewpaoxiaojl") then skills:append(kenewpaoxiaojl) end
+if not sgs.Sanguosha:getSkill("#kenewpaoxiaojl") then skills:append(kenewpaoxiaojl) end
+extension:insertRelatedSkills("kenewpaoxiao", "#kenewpaoxiaojl")
 
 
 
@@ -3470,7 +3476,7 @@ kenewsunshangxiang = sgs.General(extension, "kenewsunshangxiang", "wu", 3, false
 kerongchangjl = sgs.CreateTargetModSkillV2 {
 	name = "#kerongchangjl",
 	pattern = "Slash",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local player = ctx:getPrimary()
@@ -3482,6 +3488,7 @@ kerongchangjl = sgs.CreateTargetModSkillV2 {
 	end
 }
 if not sgs.Sanguosha:getSkill("kerongchangjl") then skills:append(kerongchangjl) end
+extension:insertRelatedSkills("kerongchang", "#kerongchangjl")
 
 kerongchangVS = sgs.CreateViewAsSkillV2 {
 	name = "kerongchang",
@@ -3842,6 +3849,7 @@ kenewcaoying:addSkill(kequshang)
 kequshangKeep = sgs.CreateMaxCardsSkillV2 {
 	name = "kequshangKeep",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:&kequshang" },
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if target and (target:getMark("&kequshang") > 0) then
@@ -5074,8 +5082,8 @@ kenewzhonghuitj:addSkill("kezhenggong")
 
 
 kezhenggongKeep = sgs.CreateMaxCardsSkillV2 {
-	name = "kezhenggongKeep",
-	holder_selector = sgs.CorrectSkill_System,
+	name = "#kezhenggongKeep",
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local target = ctx:getPrimary()
 		if target and (target:hasSkill("kezhenggong")) then
@@ -5084,7 +5092,8 @@ kezhenggongKeep = sgs.CreateMaxCardsSkillV2 {
 		return false
 	end
 }
-if not sgs.Sanguosha:getSkill("kezhenggongKeep") then skills:append(kezhenggongKeep) end
+if not sgs.Sanguosha:getSkill("#kezhenggongKeep") then skills:append(kezhenggongKeep) end
+extension:insertRelatedSkills("kezhenggong", "#kezhenggongKeep")
 
 kezili = sgs.CreateTriggerSkillV2 {
 	name = "kezili",
@@ -5818,13 +5827,16 @@ kemingjian = sgs.CreateViewAsSkillV2 {
 kenewcaorui:addSkill(kemingjian)
 kenewcaoruimjcg:addSkill("kemingjian")
 
-kemingjianpro = sgs.CreateProhibitSkill {
-	name = "kemingjianpro",
-	is_prohibited = function(self, from, to, card)
+kemingjianpro = sgs.CreateProhibitSkillV2 {
+	name = "#kemingjianpro",
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return to:hasSkill("kemingjian") and (to:hasFlag("themingjianfrom")) and from:hasFlag("themingjianto")
 	end
 }
-if not sgs.Sanguosha:getSkill("kemingjianpro") then skills:append(kemingjianpro) end
+if not sgs.Sanguosha:getSkill("#kemingjianpro") then skills:append(kemingjianpro) end
+extension:insertRelatedSkills("kemingjian", "#kemingjianpro")
 
 
 kexingshuai = sgs.CreateTriggerSkillV2 {
@@ -7715,6 +7727,7 @@ if not sgs.Sanguosha:getSkill("xiajianxinex") then skills:append(xiajianxinex) e
 xiajianxinjl = sgs.CreateTargetModSkillV2 {
 	name = "xiajianxinjl",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "flag:jxsource" },
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local from = ctx:getPrimary()
@@ -7731,6 +7744,7 @@ xiajianxinjlex = sgs.CreateTargetModSkillV2 {
 	name = "xiajianxinjlex",
 	pattern = "TrickCard",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "flag:jxsource" },
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_DistanceLimit then return false end
 		local from = ctx:getPrimary()

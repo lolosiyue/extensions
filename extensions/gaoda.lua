@@ -7029,10 +7029,12 @@ fansheTM = sgs.CreateTargetModSkillV2{
 	end,
 }
 
-fansheP = sgs.CreateProhibitSkill
+fansheP = sgs.CreateProhibitSkillV2
 {
 	name = "#fansheP",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Primary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if from and from:hasSkill("fanshe") and from:hasUsed("#fanshe") and to then
 			for _,p in sgs.qlist(from:getAliveSiblings()) do
 				if p:getPile("INCOM"):length() > 0 then
@@ -7218,6 +7220,7 @@ EX_S:addSkill(ALICE)
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("#fansheTM") then skills:append(fansheTM) end
 if not sgs.Sanguosha:getSkill("#fansheP") then skills:append(fansheP) end
+extension:insertRelatedSkills("fanshe", "#fansheP")
 sgs.Sanguosha:addSkills(skills)
 extension:insertRelatedSkills("fanshe", "#fansheD")
 
@@ -9162,10 +9165,12 @@ yindun = sgs.CreateTriggerSkillV2
 	end,
 }
 
-yindunp = sgs.CreateProhibitSkill
+yindunp = sgs.CreateProhibitSkillV2
 {
 	name = "#yindunp",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if(to and to:hasSkill("yindun") and not to:faceUp()) then
 			return card:isKindOf("Slash")
 		end
@@ -9501,10 +9506,12 @@ saoshet = sgs.CreateTargetModSkillV2{
 	end
 }
 
-saoshep = sgs.CreateProhibitSkill
+saoshep = sgs.CreateProhibitSkillV2
 {
 	name = "#saoshep",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Primary,
+	is_prohibited = function(self, ctx)
+		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if from and from:hasSkill("saoshe") and to and from:hasFlag("ssp_" .. to:objectName()) and from:getPhase() == sgs.Player_Play then
 			return card:objectName():endsWith("shoot")
 		end
@@ -9610,6 +9617,7 @@ HAC:addSkill(saoshe)
 HAC:addSkill(saoshet)
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("#saoshep") then skills:append(saoshep) end
+extension:insertRelatedSkills("saoshe", "#saoshep")
 sgs.Sanguosha:addSkills(skills)
 extension:insertRelatedSkills("saoshe", "#saoshet")
 
@@ -11142,7 +11150,7 @@ yinxian = sgs.CreateTriggerSkillV2
 
 yinxiand = sgs.CreateDistanceSkillV2{
 	name = "#yinxiand",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Secondary,
 	correct_func = function(skill, ctx)
 		local to = ctx:getSecondary()
 		if to and to:hasSkill("yinxian") and to:getMark("@yinxian") > 0 then
@@ -12340,6 +12348,7 @@ meiying = sgs.CreateRuleSkillV2
 meiyingslash = sgs.CreateAttackRangeSkillV2{
 	name = "#meiyingslash",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@meiying" },
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player and player:getMark("@meiying") > 0 then
@@ -12352,6 +12361,7 @@ meiyingslash2 = sgs.CreateTargetModSkillV2{
 	name = "#meiyingslash2",
 	pattern = "Slash",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@meiying" },
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return nil end
 		local player = ctx:getPrimary()
@@ -12403,6 +12413,7 @@ jianyingg = sgs.CreateRuleSkillV2
 jianyinggslash = sgs.CreateAttackRangeSkillV2{
 	name = "#jianyinggslash",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@jianyingg" },
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player and player:getMark("@jianyingg") > 0 then
@@ -12436,6 +12447,7 @@ jiying = sgs.CreateRuleSkillV2
 jiyingslash = sgs.CreateAttackRangeSkillV2{
 	name = "#jiyingslash",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:@jiying" },
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if player and player:getMark("@jiying") > 0 then
@@ -12828,7 +12840,7 @@ gaoda_shanzhuan = sgs.CreateTriggerSkillV2{
 gaoda_shanzhuanred = sgs.CreateTargetModSkillV2{
 	name = "#gaoda_shanzhuanred",
 	pattern = "Slash",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_ExtraTarget then return nil end
 		local player = ctx:getPrimary()
@@ -12864,6 +12876,7 @@ zhongcheng = sgs.CreateTriggerSkillV2
 
 SAVIOUR:addSkill(gaoda_shanzhuan)
 SAVIOUR:addSkill(gaoda_shanzhuanred)
+extension:insertRelatedSkills("gaoda_shanzhuan", "#gaoda_shanzhuanred")
 SAVIOUR:addSkill(zhongcheng)
 
 DESTROY = sgs.General(extension, "DESTROY", "OMNI", 5, false, false) --全都是锁定技，不用写AI，倍儿爽！
@@ -13267,7 +13280,7 @@ dajiu = sgs.CreateTriggerSkillV2{
 dajiured = sgs.CreateTargetModSkillV2{
 	name = "#dajiured",
 	pattern = "Slash|red",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_ExtraTarget then return nil end
 		local player = ctx:getPrimary()
@@ -13279,7 +13292,7 @@ dajiured = sgs.CreateTargetModSkillV2{
 
 dajiudistance = sgs.CreateDistanceSkillV2{
 	name = "#dajiudistance",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		if from and from:hasSkill("dajiu") then
@@ -13292,6 +13305,8 @@ if not sgs.Sanguosha:getSkill("bachi") then AKATSUKI_OOWASHI:addSkill(bachi) end
 AKATSUKI_OOWASHI:addSkill(dajiu)
 AKATSUKI_OOWASHI:addSkill(dajiured)
 AKATSUKI_OOWASHI:addSkill(dajiudistance)
+extension:insertRelatedSkills("dajiu", "#dajiured")
+extension:insertRelatedSkills("dajiu", "#dajiudistance")
 
 SF = sgs.General(extension, "SF", "ORB", 4, true, false)
 
@@ -13448,7 +13463,7 @@ daijina = sgs.CreateTriggerSkillV2
 daijins = sgs.CreateTargetModSkillV2{
 	name = "#daijins",
 	pattern = "Slash",
-	holder_selector = sgs.CorrectSkill_System,
+	holder_selector = sgs.CorrectSkill_Primary,
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		local card = ctx:getCard()
@@ -13548,6 +13563,7 @@ chaoqi = sgs.CreateTriggerSkillV2{
 SF:addSkill(daijin)
 SF:addSkill(daijina)
 SF:addSkill(daijins)
+extension:insertRelatedSkills("daijin", "#daijins")
 SF:addSkill(zhongzisf)
 local skills = sgs.SkillList()
 if not sgs.Sanguosha:getSkill("chaoqi") then skills:append(chaoqi) end
