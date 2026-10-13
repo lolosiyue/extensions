@@ -101,7 +101,7 @@ sy_old_zongyu_lose = sgs.CreateTriggerSkillV2{
 --[[
 	技能名：嗜杀
 	相关武将：魔孙皓[旧]
-	技能描述：锁定技，当你使用【杀】指定目标后，目标角色选择一项：①弃置两张牌，取消此【杀】对其的结算；②此【杀】不可被【闪】响应。
+	技能描述：锁定技，你将其他角色响应你对其使用【杀】的方式由使用【闪】改为弃置两张牌。
 	引用：sy_old_shisha
 ]]--
 sy_old_shisha = sgs.CreateTriggerSkillV2{
@@ -302,7 +302,7 @@ sgs.Sanguosha:addSkills(sy_old_hiddenskills)
 
 sgs.LoadTranslationTable{
 	["sy_old_shisha"] = "嗜杀",
-	[":sy_old_shisha"] = "锁定技，其他角色响应你使用的【杀】时选择一项：①弃置两张牌并取消之；②此【杀】不可被【闪】响应。",
+	[":sy_old_shisha"] = "锁定技，你将其他角色响应你对其使用【杀】的方式由使用【闪】改为弃置两张牌。",
 	["$sy_old_shisha"] = "净是些碍眼的家伙，都杀！都杀！",
 	["shishadiscard"] = "%src的<font color = 'yellow'><b>【嗜杀】</b></font>被触发，你须弃置2张牌取消此【杀】对你的结算，否则此【杀】不可被【闪】响应。",
 	["#WushuangTagTest"] = "%from 的Wushuang_的tag是 %arg",
@@ -440,7 +440,7 @@ mo_dongzhuo_old = sgs.General(extension, "mo_dongzhuo_old", "sgk_magic", 4, true
 --[[
 	技能名：纵欲
 	相关武将：魔董卓[旧]
-	技能描述：出牌阶段限一次，你可以失去一点体力，视为你使用一张【酒】。
+	技能描述：出牌阶段，你可以失去1点体力，视为使用【酒】。
 	引用：sy_old_zongyu
 ]]--
 sy_old_zongyu = sgs.CreateViewAsSkillV2{
@@ -451,7 +451,7 @@ sy_old_zongyu = sgs.CreateViewAsSkillV2{
 		if not player then return false end
 		local reason = request:getReason()
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY then
-			return sgs.Analeptic_IsAvailable(player) and player:getHp() >= 2
+			return sgs.Analeptic_IsAvailable(player)
 		end
 		if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE
 			or reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
@@ -476,7 +476,7 @@ sy_old_zongyu = sgs.CreateViewAsSkillV2{
 --[[
 	技能名：凌虐
 	相关武将：魔董卓[旧]
-	技能描述：出牌阶段，每当你使用【杀】造成伤害后，你可以进行一次判定，若判定结果为黑色，你获得该判定牌且该【杀】不计入每回合使用限制。
+	技能描述：出牌阶段，当你使用【杀】对目标角色造成伤害后，你可以判定，若结果为黑色，你获得判定牌，然后令你此阶段内使用【杀】的次数上限+1。
 	引用：sy_old_lingnue
 ]]--
 sy_old_lingnue = sgs.CreateTriggerSkillV2{
@@ -516,8 +516,7 @@ sy_old_lingnue = sgs.CreateTriggerSkillV2{
 		judge.good = true
 		room:judge(judge)
 		if judge:isGood() then
-			local use = ctx.original_data:toCardUse()
-			if use.m_addHistory then room:addPlayerHistory(player, damage.card:getClassName(), -1) end
+			room:addPlayerHistory(player, damage.card:getClassName(), -1)
 		end
 		return false
 	end
@@ -527,7 +526,7 @@ sy_old_lingnue = sgs.CreateTriggerSkillV2{
 --[[
 	技能名：暴政
 	相关武将：魔董卓[旧]
-	技能描述：锁定技，其他角色摸牌阶段结束时，若该角色手牌数大于你，则须选择一项：交给你一张方块牌或受到你造成的1点伤害。
+	技能描述：锁定技，其他角色的摸牌阶段结束时，若其手牌数大于你，除非其交给你一张方片牌，否则你对其造成1点伤害。
 	引用：sy_old_baozheng
 ]]--
 sy_old_baozheng = sgs.CreateTriggerSkillV2{
@@ -576,8 +575,8 @@ sy_old_baozheng = sgs.CreateTriggerSkillV2{
 --[[
 	技能名：逆施
 	相关武将：魔董卓[旧]
-	技能描述：锁定技，摸牌阶段，你摸X张牌（X为你的当前体力值且至多为4）。
-	引用：sy_old_shenwei
+	技能描述：锁定技，摸牌阶段，你将摸牌数改为X（X为你的体力值且至多为4）。
+	引用：sy_old_nishi
 ]]--
 sy_old_nishi = sgs.CreateTriggerSkillV2{
 	name = "sy_old_nishi",
@@ -594,7 +593,7 @@ sy_old_nishi = sgs.CreateTriggerSkillV2{
 	on_effect = function(skill, event, room, player, ctx)
 		local draw = ctx.original_data:toDraw()
 		room:sendCompulsoryTriggerLog(player, skill:objectName(), true, true)
-		draw.num = draw.num - 2 + math.min(4, player:getHp())
+		draw.num = math.min(4, player:getHp())
 		ctx.original_data:setValue(draw)
 		return false
 	end
@@ -604,7 +603,7 @@ sy_old_nishi = sgs.CreateTriggerSkillV2{
 --[[
 	技能名：横行
 	相关武将：魔董卓[旧]
-	技能描述：当其他角色使用【杀】指定你为目标时，你可以弃置X张牌（X为你当前体力值），则该【杀】对你无效。
+	技能描述：当你成为【杀】的目标后，你可以弃置Y张牌（Y为你的体力值），令此【杀】对你无效。
 	引用：sy_old_hengxing
 ]]--
 sy_old_hengxing = sgs.CreateTriggerSkillV2{
@@ -663,20 +662,20 @@ sgs.LoadTranslationTable{
 	["~mo_dongzhuo_old"] = "那酒池肉林……都是我的……",
 	["sy_old_zongyu"] = "纵欲",
 	["$sy_old_zongyu"] = "呃……好酒！再来一壶！",
-	[":sy_old_zongyu"] = "出牌阶段限一次，你可以失去1点体力，视为使用【酒】。",
+	[":sy_old_zongyu"] = "出牌阶段，你可以失去1点体力，视为使用【酒】。",
 	["sy_old_lingnue"] = "凌虐",
 	["$sy_old_lingnue"] = "来人！活捉了他！斩首祭旗！",
-	[":sy_old_lingnue"] = "出牌阶段，每当你使用【杀】造成伤害后，你可以判定，若结果为黑色，你获得该判定牌，然后令你此阶段内可使用【杀】的次数上限+1。",
+	[":sy_old_lingnue"] = "出牌阶段，当你使用【杀】对目标角色造成伤害后，你可以判定，若结果为黑色，你获得判定牌，然后令你此阶段内使用【杀】的次数上限+1。",
 	["sy_old_baozheng"] = "暴政",
 	["$sy_old_baozheng"] = "顺我者昌，逆我者亡！",
 	[":sy_old_baozheng"] = "锁定技，其他角色摸牌阶段结束时，若其手牌数大于你，除非其交给你一张方片牌，否则你对其造成1点伤害。",
 	["@baozheng_old"] = "【暴政】效果触发，请交给%src一张方块牌，否则受到一点伤害。",
 	["sy_old_nishi"] = "逆施",
 	["$sy_old_nishi"] = "看我不活剐了你们！",
-	[":sy_old_nishi"] = "锁定技，摸牌阶段，你摸X张牌（X为你的体力值且至多为4）。",
+	[":sy_old_nishi"] = "锁定技，摸牌阶段，你将摸牌数改为X（X为你的体力值且至多为4）。",
 	["sy_old_hengxing"] = "横行",
 	["$sy_old_hengxing"] = "都被我踏平吧！哈哈哈哈哈哈哈哈！",
-	[":sy_old_hengxing"] = "当成为【杀】的目标后，你可以弃置X张牌（X为你的体力值），取消此【杀】对你的结算。",
+	[":sy_old_hengxing"] = "当你成为【杀】的目标后，你可以弃置Y张牌（Y为你的体力值），令此【杀】对你无效。",
 	["designer:mo_dongzhuo_old"] = "极略三国",
 	["illustrator:mo_dongzhuo_old"] = "极略三国",
 	["cv:mo_dongzhuo_old"] = "极略三国",
@@ -690,7 +689,7 @@ mo_zhangjiao_old = sgs.General(extension, "mo_zhangjiao_old", "sgk_magic", 4, tr
 --[[
 	技能名：布教
 	相关武将：魔张角[旧]
-	技能描述：锁定技，其他角色出牌阶段开始时，其须交给你一张手牌，然后摸一张牌。
+	技能描述：锁定技，其他角色的出牌阶段开始时，你令其交给你一张手牌，然后其摸一张牌。
 	引用：sy_old_bujiao
 ]]--
 sy_old_bujiao = sgs.CreateTriggerSkillV2{
@@ -946,7 +945,7 @@ sgs.LoadTranslationTable{
 	["~mo_zhangjiao_old"] = "逆道者，必遭天谴而亡！",
 	["sy_old_bujiao"] = "布教",
 	["$sy_old_bujiao"] = "众星熠熠，不若一日之明。",
-	[":sy_old_bujiao"] = "锁定技，其他角色的出牌阶段开始时，你令其交给你一张手牌，然后摸一张牌。",
+	[":sy_old_bujiao"] = "锁定技，其他角色的出牌阶段开始时，你令其交给你一张手牌，然后其摸一张牌。",
 	["@bujiao"] = "请交给%src一张手牌，然后摸一张牌。",
 	["sy_old_taiping"] = "太平",
 	["$sy_old_taiping"] = "行大舜之道，救苍生万民。",
@@ -1573,7 +1572,7 @@ sy_old_zuijiu = sgs.CreateTriggerSkillV2{
 --[[
 	技能名：归命
 	相关武将：魔孙皓[旧]
-	技能描述：限定技，当你进入濒死状态时，你可以令体力值最少的一名其他角色将体力值补至体力上限，然后你回复体力至4点。
+	技能描述：限定技，当你进入濒死状态时，你可以令体力值最小的一名其他角色将手牌数补至其体力上限，然后你回复体力至4点。
 	引用：sy_old_guiming
 ]]--
 sy_old_guiming = sgs.CreateTriggerSkillV2{
@@ -1595,55 +1594,33 @@ sy_old_guiming = sgs.CreateTriggerSkillV2{
 	on_effect = function(skill, event, room, player, ctx)
 		room:broadcastSkillInvoke(skill:objectName())
 		local _min = 9999
-		local players = sgs.SPlayerList()
 		for _, _player in sgs.qlist(room:getOtherPlayers(player)) do
-			if _player:isWounded() then players:append(_player) end
+			_min = math.min(_player:getHp(), _min)
 		end
-		if not players:isEmpty() then
-			for _, p in sgs.qlist(players) do
-				_min = math.min(p:getHp(), _min)
+		local foes = sgs.SPlayerList()
+		for _, _player in sgs.qlist(room:getOtherPlayers(player)) do
+			if _player:getHp() == _min then
+				foes:append(_player)
 			end
-			local foes = sgs.SPlayerList()
-			for _, _player in sgs.qlist(players) do
-				if _player:getHp() == _min and _player:isWounded() then
-					foes:append(_player)
-				end
-			end
-			if foes:isEmpty() then
-				local guiming_self = sgs.RecoverStruct()
-				guiming_self.recover = 4 - player:getHp()
-				guiming_self.who = player
-				room:recover(player, guiming_self, true)
-				player:loseMark("@guiming")
-				return false
+		end
+		if not foes:isEmpty() then
+			local foe
+			if foes:length() == 1 then
+				foe = foes:first()
 			else
-				local foe
-				if foes:length() == 1 then
-					foe = foes:first()
-				else
-					foe = room:askForPlayerChosen(player, foes, skill:objectName())
-				end
-				if foe:isWounded() then
-					local guiming_to = sgs.RecoverStruct()
-					guiming_to.recover = foe:getLostHp()
-					guiming_to.who = player
-					room:recover(foe, guiming_to, true)
-				end
-				local guiming_self = sgs.RecoverStruct()
-				guiming_self.recover = 4 - player:getHp()
-				guiming_self.who = player
-				room:recover(player, guiming_self, true)
-				player:loseMark("@guiming")
-				return false
+				foe = room:askForPlayerChosen(player, foes, skill:objectName())
 			end
-		else
-			local guiming_self = sgs.RecoverStruct()
-			guiming_self.recover = 4 - player:getHp()
-			guiming_self.who = player
-			room:recover(player, guiming_self, true)
-			player:loseMark("@guiming")
-			return false
+			if foe then
+				local drawnum = foe:getMaxHp() - foe:getHandcardNum()
+				if drawnum > 0 then foe:drawCards(drawnum) end
+			end
 		end
+		local guiming_self = sgs.RecoverStruct()
+		guiming_self.recover = 4 - player:getHp()
+		guiming_self.who = player
+		room:recover(player, guiming_self, true)
+		player:loseMark("@guiming")
+		return false
 	end
 }
 
@@ -1677,7 +1654,7 @@ sgs.LoadTranslationTable{
 	["sy_old_guiming"] = "归命",
 	["@guiming"] = "归命",
 	["$sy_old_guiming"] = "你们！难道忘了朝廷之恩吗！",
-	[":sy_old_guiming"] = "限定技，当你进入濒死状态时，你可以令体力值最少的一名其他角色将体力值补至体力上限，然后你回复体力至4点。",
+	[":sy_old_guiming"] = "限定技，当你进入濒死状态时，你可以令体力值最小的一名其他角色将手牌数补至其体力上限，然后你回复体力至4点。",
 	["designer:mo_sunhao_old"] = "极略三国",
 	["illustrator:mo_sunhao_old"] = "极略三国",
 	["cv:mo_sunhao_old"] = "极略三国",
