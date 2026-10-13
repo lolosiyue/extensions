@@ -2399,9 +2399,11 @@ local diyba_duji=sgs.CreateTriggerSkillV2{
         return false
     end
 }
-local diyba_shipo=sgs.CreateProhibitSkill{
+local diyba_shipo=sgs.CreateProhibitSkillV2{
     name="diyba_shipo",
-    is_prohibited=function(self,from,to,card)
+    holder_selector = sgs.CorrectSkill_Secondary,
+    is_prohibited=function(self,ctx)
+        local to, card = ctx:getTo(), ctx:getCard()
         return to:hasSkill(self:objectName()) and card:getSuit()==sgs.Card_Spade
             and (card:isKindOf("Slash") or card:isKindOf("TrickCard"))
     end

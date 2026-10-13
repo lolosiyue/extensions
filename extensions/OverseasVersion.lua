@@ -18112,19 +18112,25 @@ ov_xiyan = sgs.CreateTriggerSkillV2 {
 		return false
 	end,
 }
-ov_xiyanMax = sgs.CreateMaxCardsSkill {
+ov_xiyanMax = sgs.CreateMaxCardsSkillV2 {
 	name = "#ov_xiyan-max",
-	extra_func = function(self, target)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:&ov_xiyan_max-Clear", "mark:&ov_xiyan_debuff-Clear" },
+	correct_func = function(self, ctx)
+		local target = ctx:getPrimary()
 		local extra = target:getMark("&ov_xiyan_max-Clear") or 0
 		local debuff = target:getMark("&ov_xiyan_debuff-Clear") or 0
 		return extra - debuff
 	end,
 }
-ov_xiyanMod = sgs.CreateTargetModSkill {
+ov_xiyanMod = sgs.CreateTargetModSkillV2 {
 	name = "#ov_xiyan-mod",
-	residue_func = function(self, from, card)
-		if from and from:getMark("&ov_xiyan_free-Clear") > 0 then return 1000 end
-		return 0
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:&ov_xiyan_free-Clear" },
+	correct_func = function(self, ctx)
+		local from = ctx:getPrimary()
+		if ctx:getModType() == sgs.TargetModSkill_Residue and from:getMark("&ov_xiyan_free-Clear") > 0 then return 1000 end
+		return nil
 	end,
 }
 ov_xiyanClear = sgs.CreateTriggerSkillV2 {

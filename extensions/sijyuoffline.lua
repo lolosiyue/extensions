@@ -38388,9 +38388,11 @@ sfofl_e4_chenjie = sgs.CreateTriggerSkillV2{
 		return false
 	end,
 }
-sfofl_e4_chenjie_prohibit = sgs.CreateProhibitSkill {
+sfofl_e4_chenjie_prohibit = sgs.CreateProhibitSkillV2 {
 	name = "#sfofl_e4_chenjie_prohibit",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_Secondary,
+	is_prohibited = function(self, ctx)
+		local from, to = ctx:getFrom(), ctx:getTo()
 		return from and to and to:hasSkill("sfofl_e4_chenjie") and from:getMark("sfofl_e4_chenjie"..to:objectName().."_lun") > 0
 	end,
 }
@@ -41313,9 +41315,12 @@ if not sgs.Sanguosha:getSkill("#sfofl_kc_jietian_ban") then skills:append(sfofl_
 if not sgs.Sanguosha:getSkill("#sfofl_kc_jietian_limit") then skills:append(sfofl_kc_jietian_limit) end
 
 -- 截天辅助：锁定使用牌目标（仅可对指定角色使用牌）
-sfofl_kc_jietian_prohibit = sgs.CreateProhibitSkill{
+sfofl_kc_jietian_prohibit = sgs.CreateProhibitSkillV2{
 	name = "#sfofl_kc_jietian_prohibit",
-	is_prohibited = function(self, from, to, card)
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "flag:sfofl_kc_jietian_lock" },
+	is_prohibited = function(self, ctx)
+		local from, to = ctx:getFrom(), ctx:getTo()
 		if from and from:hasFlag("sfofl_kc_jietian_lock") and to then
 			local room = from:getRoom()
 			local allowed = room:getTag("sfofl_kc_jietian_"..from:objectName())

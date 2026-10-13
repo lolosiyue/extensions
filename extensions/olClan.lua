@@ -6413,14 +6413,17 @@ zutanfeng = sgs.CreateTriggerSkillV2 {
 	end,
 }
 zu_lujing:addSkill(zutanfeng)
-zutanfengMod = sgs.CreateTargetModSkill {
+zutanfengMod = sgs.CreateTargetModSkillV2 {
 	name = "#zutanfeng-mod",
 	pattern = "Slash",
-	residue_func = function(self, from, card)
-		if card and card:getSkillName() == "zutanfeng" then
-			return -1
+	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_skill:zutanfeng" },
+	correct_func = function(self, ctx)
+		local card = ctx:getCard()
+		if ctx:getModType() == sgs.TargetModSkill_Residue and card and card:getSkillName() == "zutanfeng" then
+			return sgs.CorrectSkillResult.unlimitedResidue()
 		end
-		return 0
+		return nil
 	end,
 }
 zu_lujing:addSkill(zutanfengMod)

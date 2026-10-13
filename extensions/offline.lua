@@ -432,9 +432,12 @@ ofgu_liaoliao = gu_trigger("ofgu_liaoliao", {sgs.TurnStart}, function(self, even
     local c = room:askForCard(owner, "..", "@ofgu_liaoliao", data, sgs.Card_MethodDiscard, p, false, self:objectName())
     if c then room:setPlayerMark(owner, "ofgu_liaoliao-Clear", c:getNumber()) end
 end)
-ofgu_liaoliao_prohibit = sgs.CreateProhibitSkill {
+ofgu_liaoliao_prohibit = sgs.CreateProhibitSkillV2 {
     name = "#ofgu_liaoliao_prohibit",
-    is_prohibited = function(self, from, to, card)
+    holder_selector = sgs.CorrectSkill_System,
+    gate = { "secondary.mark:ofgu_liaoliao-Clear" },
+    is_prohibited = function(self, ctx)
+        local to, card = ctx:getTo(), ctx:getCard()
         return to:getMark("ofgu_liaoliao-Clear") > 0 and card:getNumber() > to:getMark("ofgu_liaoliao-Clear")
     end,
 }
@@ -981,14 +984,12 @@ ofgu_benghuai = gu_trigger("ofgu_benghuai", {sgs.EventPhaseStart}, function(self
     if room:askForChoice(owner, self:objectName(), "hp+maxhp") == "hp" then room:loseHp(owner, 1, true, nil, self:objectName())
     else room:loseMaxHp(owner, 1, self:objectName()) end
 end, true)
-ofgu_tongji = sgs.CreateProhibitSkill {
+ofgu_tongji = sgs.CreateProhibitSkillV2 {
     name = "ofgu_tongji",
-    is_prohibited = function(self, from, to, card)
-        if not from or not card:isKindOf("Slash") then return false end
-        for _, q in sgs.qlist(from:getAliveSiblings(true)) do
-            if q:hasSkill(self:objectName()) and q:getHandcardNum() > q:getHp() and q ~= to then return true end
-        end
-        return false
+    holder_selector = sgs.CorrectSkill_AllHolders,
+    is_prohibited = function(self, ctx)
+        local holder, to, card = ctx:getHolder(), ctx:getTo(), ctx:getCard()
+        return card:isKindOf("Slash") and holder:getHandcardNum() > holder:getHp() and holder ~= to
     end,
 }
 ofgu_bihun = gu_trigger("ofgu_bihun", {sgs.TargetSpecified}, function(self, event, room, p, data, owner)
@@ -1097,11 +1098,13 @@ ofgu_jiuji_record = gu_record("#ofgu_jiuji_record", {sgs.TurnStart, sgs.EventPha
         p:removeTag("ofgu_jiuji_active")
     end
 end)
-ofgu_jiuji_prohibit = sgs.CreateProhibitSkill {
+ofgu_jiuji_prohibit = sgs.CreateProhibitSkillV2 {
     name = "#ofgu_jiuji_prohibit",
-    is_prohibited = function(self, from, to, card)
-        local partner = from and from:getTag("ofgu_jiuji_active"):toPlayer()
-        return partner and partner ~= to
+    holder_selector = sgs.CorrectSkill_System,
+    is_prohibited = function(self, ctx)
+        local from, to = ctx:getFrom(), ctx:getTo()
+        local partner = from:getTag("ofgu_jiuji_active"):toPlayer()
+        return partner ~= nil and partner ~= to
     end,
 }
 extension:addSkills(ofgu_jiuji_record); extension:addSkills(ofgu_jiuji_prohibit)
@@ -1607,16 +1610,18 @@ ofgu_jinjiu_trigger = gu_trigger("#ofgu_jinjiu_trigger", {sgs.DamageInflicted, s
         elseif pd.to == owner and pd.from_card:isKindOf("Analeptic") then pd.from_number = 1; data:setValue(pd) end
     end
 end, true)
-ofgu_jinjiu_prohibit = sgs.CreateProhibitSkill {
+ofgu_jinjiu_prohibit = sgs.CreateProhibitSkillV2 {
     name = "#ofgu_jinjiu_prohibit",
-    is_prohibited = function(self, from, to, card)
-        if not from or not card:isKindOf("Analeptic") then return false end
-        for _, q in sgs.qlist(from:getAliveSiblings()) do if q:hasSkill("ofgu_jinjiu") and q:getPhase() ~= sgs.Player_NotActive then return true end end
-        return false
+    holder_selector = sgs.CorrectSkill_AllHolders,
+    is_prohibited = function(self, ctx)
+        local holder, from, card = ctx:getHolder(), ctx:getFrom(), ctx:getCard()
+        return card:isKindOf("Analeptic") and holder ~= from and holder:hasSkill("ofgu_jinjiu")
+            and holder:getPhase() ~= sgs.Player_NotActive
     end,
 }
 ofmou_gaoshun:addSkill(ofgu_xianzhen); ofmou_gaoshun:addSkill(ofgu_xianzhen_mod); ofmou_gaoshun:addSkill(ofgu_xianzhen_trigger)
 ofmou_gaoshun:addSkill(ofgu_jinjiu_filter); ofmou_gaoshun:addSkill(ofgu_jinjiu_trigger); ofmou_gaoshun:addSkill(ofgu_jinjiu_prohibit)
+extension:insertRelatedSkills("ofgu_jinjiu", "#ofgu_jinjiu_prohibit")
 
 sgs.LoadTranslationTable {
     ["ofmou_gongsunzan"] = "公孫瓚[謀攻線下]",
