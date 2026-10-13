@@ -1206,7 +1206,7 @@ function SmartAI:useCardDragonPeach(card,use)
 	end
 	self:sort(self.friends,"hp")
 	if #self.friends>0 and self.friends[1]==self.player
-	or self.player:getHp()<2 then use.card = card return end
+	or self.player:getHp()<2 then use.card = card use.to:append(self.player) return end
 	if #self.friends>1 and (not hasBuquEffect(self.friends[2]) and self.friends[2]:getHp()<3 and of<2
 	or not hasBuquEffect(self.friends[1]) and self.friends[1]:getHp()<2 and self:getCardsNum("DragonPeach","h")<=1 and of<3)
 	then return end
