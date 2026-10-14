@@ -7304,7 +7304,6 @@ end
 diyba_10j_xuelingyun = sgs.General(extension, "diyba_10j_xuelingyun", "wei", 3, false)
 diyba_10j_luoxian = sgs.General(extension, "diyba_10j_luoxian", "shu", 4)
 diyba_10j_zhangti = sgs.General(extension, "diyba_10j_zhangti", "wu", 3)
-diyba_10j_zhugejing = sgs.General(extension, "diyba_10j_zhugejing", "wei", 4)
 
 -- 薛灵芸 涟洏
 diyba_lianer = diyba_trigger("diyba_lianer", {sgs.CardFinished}, function(self, event, room, p, data, owner)
@@ -7473,82 +7472,6 @@ end)
 diyba_10j_zhangti:addSkill(diyba_nishi)
 diyba_10j_zhangti:addSkill(diyba_fujiang)
 
--- 诸葛靓 三思 / 竭忠
-local function diyba_sansi_switch(room, owner)
-    room:setPlayerMark(owner, "diyba_sansi_state", (owner:getMark("diyba_sansi_state") + 1) % 3)
-end
-local diyba_sansiCard = sgs.CreateSkillCard {
-    name = "diyba_sansiCard", will_throw = false,
-    filter = function(self, targets, to, source) return #targets == 0 end,
-    feasible = function(self, targets, source) return #targets == 1 end,
-    on_use = function(self, room, source, targets)
-        local ids = sgs.IntList()
-        for _, id in sgs.qlist(self:getSubcards()) do ids:append(id) end
-        diyba_sansi_switch(room, source)
-        room:recastCards(source, ids, "diyba_sansi")
-        if targets[1] and targets[1]:isAlive() then targets[1]:drawCards(3, "diyba_sansi") end
-    end,
-}
-local function diyba_sansi_ok(state, cards, final)
-    local n = #cards
-    if state == 0 then return final and n == 2 or n < 2 end
-    local seen = {}
-    for _, c in ipairs(cards) do
-        local k = state == 1 and c:getTypeId() or c:getSuit()
-        if seen[k] then return false end
-        seen[k] = true
-    end
-    local need = state == 1 and 3 or 4
-    if final then return n == need end
-    return n < need
-end
-diyba_sansi = sgs.CreateViewAsSkillV2 {
-    name = "diyba_sansi",
-    limit_scope = sgs.Skill_Limit_Phase, phase_name = "Play", max_usage_limit = 1,
-    can_activate = function(self, request)
-        return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
-    end,
-    can_select_card = function(self, request, c)
-        local p = request:getInitiator()
-        if c:isEquipped() or p:isJilei(c) then return false end
-        local cards = {}
-        for _, id in sgs.qlist(request:getSelectedCardIds()) do table.insert(cards, sgs.Sanguosha:getCard(id)) end
-        table.insert(cards, c)
-        return diyba_sansi_ok(p:getMark("diyba_sansi_state"), cards, false)
-    end,
-    card_selection_feasible = function(self, request)
-        local cards = {}
-        for _, id in sgs.qlist(request:getSelectedCardIds()) do table.insert(cards, sgs.Sanguosha:getCard(id)) end
-        return diyba_sansi_ok(request:getInitiator():getMark("diyba_sansi_state"), cards, true)
-    end,
-    create_card = function(self, request)
-        local c = diyba_sansiCard:clone()
-        c:addSubcards(request:getSelectedCardIds())
-        c:setSkillName("diyba_sansi")
-        return c
-    end,
-}
-diyba_jiezhong = diyba_trigger("diyba_jiezhong", {sgs.EnterDying, sgs.RoundStart}, function(self, event, room, p, data, owner)
-    if event == sgs.RoundStart then
-        room:setPlayerMark(owner, "diyba_jiezhong_used", 0)
-        return
-    end
-    if p == owner or owner:getMark("diyba_jiezhong_used") > 0 or not owner:askForSkillInvoke(self:objectName(), data) then return end
-    room:setPlayerMark(owner, "diyba_jiezhong_used", 1)
-    if p:getHp() < 1 then
-        room:recover(p, sgs.RecoverStruct(self:objectName(), owner, 1 - p:getHp()))
-    end
-    diyba_sansi_switch(room, owner)
-    local state = owner:getMark("diyba_sansi_state")
-    if state == 0 then
-        room:loseHp(owner, 1)
-    elseif state == 2 then
-        room:setPlayerMark(owner, "diyba_jiezhong_used", 0)
-    end
-end)
-diyba_10j_zhugejing:addSkill(diyba_sansi)
-diyba_10j_zhugejing:addSkill(diyba_jiezhong)
-
 sgs.LoadTranslationTable {
     ["diyba_10j_xuelingyun"] = "薛灵芸", ["#diyba_10j_xuelingyun"] = "玉壶垂霞泪", ["designer:diyba_10j_xuelingyun"] = "GENTOVA07",
     ["diyba_lianer"] = "涟洏",
@@ -7565,11 +7488,6 @@ sgs.LoadTranslationTable {
     ["@diyba_nishi"] = "逆势：选择一名手牌少于你的其他角色，与其交换手牌",
     ["diyba_fujiang"] = "覆江",
     [":diyba_fujiang"] = "其他角色获得你的牌时，若其装备区里：有牌，你可以弃置其中一张牌；没有牌，你可以对该角色造成1点伤害。",
-    ["diyba_10j_zhugejing"] = "诸葛靓", ["#diyba_10j_zhugejing"] = "失恨咽漆", ["designer:diyba_10j_zhugejing"] = "绝代倾国倾城貌",
-    ["diyba_sansi"] = "三思",
-    [":diyba_sansi"] = "转换技，出牌阶段限一次，你可以重铸①两张牌②三种类别的牌③四种花色的牌，令一名角色摸三张牌。",
-    ["diyba_jiezhong"] = "竭忠",
-    [":diyba_jiezhong"] = "每轮限一次，其他角色进入濒死时，你可以令其将体力值回复至1点，然后你转换“三思”的状态；然后若“三思”状态：为①，你失去1点体力；为③，重置此技能。",
 }
 end
 
