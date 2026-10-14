@@ -502,3 +502,237 @@ sgs.ai_use_priority.ofwz_zhongjianCard = 1
 sgs.ai_skill_choice.ofwz_zhanshen21 = function(self, choices)
     for _, c in ipairs({"damage", "target", "draw"}) do if choices:find(c) then return c end end
 end
+
+-- ===== diyba b01 =====
+do
+-- diyba b01: default AI behaviour is sufficient; invoke hooks below.
+sgs.ai_skill_invoke.diyba_lianer = true
+sgs.ai_skill_invoke.diyba_anzhi = true
+sgs.ai_skill_invoke.diyba_fujiang = function(self, data) return true end
+sgs.ai_skill_invoke.diyba_jiezhong = function(self, data)
+    local dying = data:toDying()
+    return dying and dying.who and self:isFriend(dying.who)
+end
+end
+
+-- ===== diyba b02 =====
+do
+-- diyba b02 ai
+sgs.ai_skill_use["@@diyba_dangu"] = function(self, prompt)
+    return "."
+end
+sgs.ai_skill_invoke.diyba_dangu = true
+end
+
+-- ===== diyba b03 =====
+do
+-- diyba b03 AI hooks
+sgs.ai_skill_invoke.diyba_mingye_give = true
+sgs.ai_skill_cardask["@diyba-mingye-discard"] = function(self, data, pattern)
+    if self.player:isWounded() then
+        local cards = sgs.QList2Table(self.player:getCards("he"))
+        self:sortByKeepValue(cards)
+        for _, c in ipairs(cards) do
+            if c:getSuit() == sgs.Card_Heart then return c:toString() end
+        end
+    end
+    return "."
+end
+sgs.ai_skill_playerchosen.diyba_dangshu = function(self, targets)
+    for _, p in sgs.qlist(targets) do
+        if self:isFriend(p) then return p end
+    end
+    return nil
+end
+sgs.ai_skill_playerchosen.diyba_xiaheng = function(self, targets)
+    for _, p in sgs.qlist(targets) do
+        if self:isEnemy(p) then return p end
+    end
+    return targets:first()
+end
+end
+
+-- ===== diyba b04 =====
+do
+-- diyba b04 AI hooks
+sgs.ai_skill_invoke.diyba_langzhi = true
+sgs.ai_skill_invoke.diyba_bailei = function(self, data)
+    return true
+end
+sgs.ai_skill_choice.diyba_langzhi = "obtain"
+sgs.ai_skill_choice.diyba_bailei = function(self, choices, data)
+    if string.find(choices, "kill") then
+        for _, p in ipairs(self.enemies or {}) do
+            if p:getHp() == 1 then return "kill" end
+        end
+    end
+    if string.find(choices, "damage") then return "damage" end
+    return "kill"
+end
+end
+
+-- ===== diyba b05 =====
+do
+-- diyba b05 ai
+sgs.ai_skill_invoke.diyba_yeshen = function(self, data)
+    local cur = self.room:getCurrent()
+    return cur and self:isFriend(cur) or false
+end
+sgs.ai_skill_playerchosen.diyba_jungui = function(self, targets)
+    for _, p in sgs.qlist(targets) do
+        if self:isFriend(p) then return p end
+    end
+    return nil
+end
+sgs.ai_skill_invoke.diyba_jungui = true
+end
+
+-- ===== diyba b06 =====
+do
+-- diyba b06
+sgs.ai_skill_invoke.diyba_wanwan = true
+sgs.ai_skill_invoke.diyba_ranran = true
+sgs.ai_skill_invoke.diyba_linlin = function(self, data) return false end
+sgs.ai_skill_invoke.diyba_chutu = function(self, data) return false end
+sgs.ai_skill_invoke.diyba_tanlan = true
+sgs.ai_skill_choice.diyba_chutu = "diyba_chutu_use"
+end
+
+-- ===== diyba b07 =====
+do
+-- diyba b07: default AI behaviour is sufficient; invoke hooks below.
+sgs.ai_skill_invoke.diyba_qingxian = true
+sgs.ai_skill_invoke.diyba_miaojin = true
+sgs.ai_skill_invoke.diyba_chiheng = function(self, data) return true end
+end
+
+-- ===== diyba b08 =====
+do
+-- b08 AI hooks for diyba_raolue
+sgs.ai_skill_choice.diyba_raolue = function(self, choices, data)
+    local source = data:toPlayer()
+    if source and self:isFriend(source) and self.player:getHandcardNum() < source:getHandcardNum() then return "swap" end
+    if source and not self:isFriend(source) and self.player:getHandcardNum() > source:getHandcardNum() then return "noswap" end
+    return "noswap"
+end
+sgs.ai_skill_invoke.diyba_raolue_draw = true
+sgs.ai_skill_invoke.diyba_raolue = function(self, data)
+    local to = data:toPlayer()
+    return to and self:isEnemy(to) and self.player:getHp() > 1
+end
+end
+
+-- ===== diyba b09 =====
+do
+-- diyba b09: default AI is sufficient for locked skills; invoke hooks below.
+sgs.ai_skill_invoke.diyba_minglie = true
+sgs.ai_skill_invoke.diyba_guoyi = true
+sgs.ai_skill_choice.diyba_guoyi = "diyba_guoyi_give"
+end
+
+-- ===== diyba b10 =====
+do
+-- b10 AI hooks
+sgs.ai_skill_choice.diyba_gengshou = function(self, choices, data)
+    local owner = data:toPlayer()
+    if not owner then return "cancel" end
+    if self:isFriend(owner) then return "draw" end
+    if self:isEnemy(owner) and not owner:isNude() then return "discard" end
+    return "cancel"
+end
+sgs.ai_skill_invoke.diyba_gengshou_slash = true
+sgs.ai_skill_playerchosen.diyba_gengshou = function(self, targets)
+    local list = sgs.QList2Table(targets)
+    self:sort(list, "defense")
+    for _, p in ipairs(list) do if self:isEnemy(p) then return p end end
+    return nil
+end
+sgs.ai_skill_playerchosen.diyba_panyue = function(self, targets)
+    local list = sgs.QList2Table(targets)
+    self:sort(list, "defense")
+    for _, p in ipairs(list) do if self:isEnemy(p) then return p end end
+    return list[1]
+end
+end
+
+-- ===== diyba b11 =====
+do
+-- diyba b11: default AI behaviour is sufficient; invoke hooks below.
+sgs.ai_skill_invoke.diyba_weisui = true
+sgs.ai_skill_invoke.diyba_weisui_move = false
+sgs.ai_skill_invoke.diyba_weisui_put = true
+sgs.ai_skill_choice.diyba_weisui = "diyba_weisui3"
+end
+
+-- ===== diyba b12 =====
+do
+-- diyba batch b12 AI hooks (minimal)
+sgs.ai_skill_invoke.diyba_tuiji = true
+sgs.ai_skill_invoke.diyba_yingtan = true
+sgs.ai_skill_invoke.diyba_yingtan_get = true
+sgs.ai_skill_invoke.diyba_yingtan_show = true
+sgs.ai_skill_invoke.diyba_fuding_get = true
+sgs.ai_skill_invoke.diyba_xushi_extra = function(self, data) return true end
+sgs.ai_skill_invoke.diyba_xuyi = function(self, data) return true end
+sgs.ai_skill_invoke.diyba_xuyi_accept = function(self, data) return true end
+sgs.ai_skill_invoke.diyba_xuyi2_draw = true
+sgs.ai_skill_invoke.diyba_shangyi = function(self, data)
+    local damage = data:toDamage()
+    if damage and damage.to then return not self:isEnemy(damage.to) or damage.to == self.player end
+    return true
+end
+sgs.ai_skill_choice.diyba_tuiji = "yj_tuixinzhifu"
+end
+
+-- ===== diyba b17 =====
+do
+-- b17 AI hooks
+sgs.ai_skill_invoke["diyba_canggu"] = function(self, data)
+    local damage = data:toDamage()
+    return damage and damage.from and self:isEnemy(damage.from) or false
+end
+sgs.ai_skill_invoke["diyba_xuanwen"] = true
+sgs.ai_skill_choice["diyba_canggu"] = "diyba_canggu_recover"
+end
+
+-- ===== diyba b18 =====
+do
+-- b18: minimal AI hooks
+sgs.ai_skill_invoke.diyba_zhuizhenjia = true
+sgs.ai_skill_invoke.diyba_xiushixu = true
+end
+
+-- ===== diyba b20 =====
+do
+-- b20 AI hooks
+sgs.ai_skill_invoke.diyba_huahai = function(self, data)
+    local card
+    local ok, d = pcall(function() return data:toDamage() end)
+    if ok and d and d.card then
+        return d.from ~= nil and self:isFriend(d.from) and d.to ~= nil and self:isEnemy(d.to)
+    end
+    local ok2, r = pcall(function() return data:toRecover() end)
+    if ok2 and r and r.who then return self:isFriend(r.who) end
+    return false
+end
+sgs.ai_skill_invoke.diyba_ougezhu = function(self, data)
+    return self.player:getHp() <= 2
+end
+end
+
+-- ===== diyba b21 =====
+do
+-- b21 diyba_12j_qianzhao AI
+sgs.ai_skill_invoke.diyba_zhirong = function(self, data) return true end
+sgs.ai_skill_choice.diyba_yuanzhen = function(self, choices, data)
+    local src = data:toPlayer()
+    if src and self:isFriend(src) then return "draw" end
+    return self.player:getCardCount(true) > 2 and "discard" or "draw"
+end
+sgs.ai_skill_playerchosen.diyba_zhirong = function(self, targets)
+    for _, p in sgs.qlist(targets) do
+        if self:isEnemy(p) and p:hasEquip() then return p end
+    end
+    return targets:first()
+end
+end
