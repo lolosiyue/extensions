@@ -33,3 +33,15 @@ Same-file repeated `name =` (sk.lua, srkill.lua, etc.) are ViewAs+Trigger pairs,
 - sv2_lint on changed extensions: TOTAL_ERRORS 0
 - No new duplicate sgs.General names vs b5648a5
 - headless/server smoke: NOT RUN (not required by brief)
+
+## Follow-up 2026-10-15 (管家)
+### qs-claude/gu-diyba-20261015 b6bb63d (merge commit c23c6e0)
+- Merged; conflicts in extensions/offline.lua, ai/offline-ai.lua resolved by taking b6bb63d versions (replaces old 2b69c85 diyba content; net 7 diyba generals in offline.lua: zhangti, dingfei, budugen, dengfang, zhuyi, qianzhao + zhugejing).
+- diyba_10j_zhugejing: b6bb63d still has kingdom wei (not explicitly settled) -> per 管家 decision kept cdiy.lua 吳 version, removed offline copy (skills diyba_sansi/diyba_jiezhong collided) + its AI hook.
+- diyba_10j_xuelingyun, diyba_12j_sunhe: dropped by b6bb63d and earlier removed from cdiy.lua by 871b781 dedup, so they existed nowhere -> restored main's (b5648a5) cdiy.lua/cdiy-ai.lua blocks verbatim.
+- zhangti/qianzhao/budugen remain only in offline.lua.
+### sheji 25f6352 (merge commit, see tip)
+- Append/append conflicts in offline.lua / offline-ai.lua: kept both (diyba then sheji), single final return incl. extension_sj.
+- 5 sheji generals duplicated olddiy.lua (main): sj2_haigelisi, sj2_lisailiu, sj2_hannibal, sj5_eleanor, sj7_sunba -> kept olddiy, removed offline copies + AI. 13 sheji generals kept. Details: dedup-sheji.md.
+### Checks
+- sv2_syntax OK on cdiy/offline/cdiy-ai/offline-ai; sv2_lint TOTAL_ERRORS 0; no new duplicate sgs.General names vs b5648a5.
