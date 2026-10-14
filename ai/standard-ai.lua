@@ -5887,3 +5887,41 @@ end
 
 sgs.ai_general_choice_for_lord["caopi"] = caopi_lord_strategy
 sgs.ai_general_choice_for_lord["mobile_caopi"] = caopi_lord_strategy
+
+-- BEGIN official WeChat audit variants
+-- WeChat standard variants. Keep these callbacks in the standard package AI load.
+sgs.ai_cardneed.xcx_wusheng = sgs.ai_cardneed.wusheng
+sgs.ai_view_as.xcx_wusheng = function(card, player, place)
+	if card:isRed() and not card:isKindOf("Peach") and place ~= sgs.Player_PlaceSpecial then
+		return string.format("slash:xcx_wusheng[%s:%s]=%d", card:getSuitString(), card:getNumberString(), card:getEffectiveId())
+	end
+end
+
+local xcx_wusheng_skill = {}
+xcx_wusheng_skill.name = "xcx_wusheng"
+table.insert(sgs.ai_skills, xcx_wusheng_skill)
+xcx_wusheng_skill.getTurnUseCard = function(self)
+	local cards = self:addHandPile("he")
+	cards = self:sortByUseValue(cards, true)
+	for _, card in ipairs(cards) do
+		if card:isRed() and not card:isKindOf("Peach") then
+			local slash = sgs.Card_Parse(string.format("slash:xcx_wusheng[%s:%s]=%d", card:getSuitString(), card:getNumberString(), card:getEffectiveId()))
+			if slash and slash:isAvailable(self.player) then return slash end
+		end
+	end
+end
+
+sgs.ai_skill_invoke.xcx_jianxiong = true
+sgs.ai_cardneed.xcx_shemao = function(to, card)
+	return card:isKindOf("Slash") or card:isKindOf("Jink") or card:isKindOf("Peach")
+end
+
+sgs.ai_fill_skill.xcx_shemao = function(self, _, request)
+	if not request or not request:isValid() or self.player:hasUsed("XcxShemaoCard") then return nil end
+	local cards = sgs.QList2Table(self.player:getHandcards())
+	if #cards < 2 then return nil end
+	table.sort(cards, function(a, b) return self:getKeepValue(a) < self:getKeepValue(b) end)
+	return sgs.Card_Parse(string.format("slash:xcx_shemao[no_suit:0]=%d+%d", cards[1]:getEffectiveId(), cards[2]:getEffectiveId()))
+end
+
+sgs.ai_use_priority.xcx_shemao = sgs.ai_use_priority.Slash
