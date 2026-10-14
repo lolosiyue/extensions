@@ -1,0 +1,287 @@
+[
+ {
+  "id": "b01",
+  "generals": [
+   "sj2_yase",
+   "sj2_yalishanda",
+   "sj2_dafenqi",
+   "sj2_keliaobateluo"
+  ],
+  "names": [
+   "亚瑟·潘德拉贡",
+   "亚历山大",
+   "达·芬奇",
+   "克利奥帕特拉七世"
+  ],
+  "line_ranges": [
+   [
+    43,
+    45
+   ],
+   [
+    46,
+    48
+   ],
+   [
+    54,
+    56
+   ],
+   [
+    57,
+    59
+   ]
+  ]
+ },
+ {
+  "id": "b02",
+  "generals": [
+   "sj2_beimihu",
+   "sj5_wudawei",
+   "sj5_hexieede",
+   "sj5_danduoluo"
+  ],
+  "names": [
+   "卑弥呼",
+   "屋大维",
+   "赫西俄德",
+   "恩里克·丹多洛"
+  ],
+  "line_ranges": [
+   [
+    60,
+    63
+   ],
+   [
+    74,
+    78
+   ],
+   [
+    82,
+    85
+   ],
+   [
+    86,
+    88
+   ]
+  ]
+ },
+ {
+  "id": "b03",
+  "generals": [
+   "sj5_duer",
+   "sj5_nuochadanmasi",
+   "sj5_gongbenwuzang",
+   "sj5_maladuona"
+  ],
+  "names": [
+   "穆罕默德·杜尔",
+   "诺查丹玛斯",
+   "宫本武藏",
+   "马拉多纳"
+  ],
+  "line_ranges": [
+   [
+    89,
+    91
+   ],
+   [
+    92,
+    94
+   ],
+   [
+    95,
+    97
+   ],
+   [
+    98,
+    101
+   ]
+  ]
+ },
+ {
+  "id": "b04",
+  "generals": [
+   "sj5_beiduofen",
+   "sj9_caoxiu",
+   "sj9_xizhicai",
+   "sj9_luoxian"
+  ],
+  "names": [
+   "贝多芬",
+   "曹休",
+   "戏志才",
+   "罗宪"
+  ],
+  "line_ranges": [
+   [
+    102,
+    104
+   ],
+   [
+    110,
+    111
+   ],
+   [
+    112,
+    114
+   ],
+   [
+    115,
+    116
+   ]
+  ]
+ },
+ {
+  "id": "b05",
+  "generals": [
+   "sj9_qinmi",
+   "sj9_chengpu",
+   "sj9_hansui",
+   "sj9_liuyan"
+  ],
+  "names": [
+   "秦宓",
+   "程普",
+   "韩遂",
+   "刘焉"
+  ],
+  "line_ranges": [
+   [
+    117,
+    119
+   ],
+   [
+    120,
+    121
+   ],
+   [
+    125,
+    127
+   ],
+   [
+    128,
+    130
+   ]
+  ]
+ },
+ {
+  "id": "b06",
+  "generals": [
+   "sj9_fuxie",
+   "sj9_qiaomao",
+   "sj9_renkai",
+   "sj9_shichong"
+  ],
+  "names": [
+   "傅燮",
+   "桥瑁",
+   "任恺",
+   "石崇"
+  ],
+  "line_ranges": [
+   [
+    131,
+    133
+   ],
+   [
+    134,
+    136
+   ],
+   [
+    137,
+    139
+   ],
+   [
+    140,
+    141
+   ]
+  ]
+ },
+ {
+  "id": "b07",
+  "generals": [
+   "sj7_dengyangdingmi",
+   "sj7_zhaozhi",
+   "sj7_ruanxian",
+   "sj7_liudai"
+  ],
+  "names": [
+   "邓飏丁谧",
+   "赵直",
+   "阮咸",
+   "刘岱"
+  ],
+  "line_ranges": [
+   [
+    147,
+    149
+   ],
+   [
+    150,
+    152
+   ],
+   [
+    156,
+    158
+   ],
+   [
+    159,
+    160
+   ]
+  ]
+ },
+ {
+  "id": "b08",
+  "generals": [
+   "sj7_malong",
+   "sj11_weiboyang",
+   "sj11_simalun",
+   "sj11_maohuanghou"
+  ],
+  "names": [
+   "马隆",
+   "魏伯阳",
+   "司马伦",
+   "毛皇后"
+  ],
+  "line_ranges": [
+   [
+    161,
+    163
+   ],
+   [
+    171,
+    173
+   ],
+   [
+    174,
+    176
+   ],
+   [
+    177,
+    179
+   ]
+  ]
+ },
+ {
+  "id": "b09",
+  "generals": [
+   "sj11_liushao",
+   "sj11_anshigao"
+  ],
+  "names": [
+   "刘劭",
+   "安世高"
+  ],
+  "line_ranges": [
+   [
+    180,
+    182
+   ],
+   [
+    183,
+    185
+   ]
+  ]
+ }
+]
