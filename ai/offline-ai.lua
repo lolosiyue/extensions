@@ -427,3 +427,78 @@ end
 
 -- Correspondence has no additional gameplay effect; keep the native defaults.
 sgs.ai_skill_invoke.ofgu_huamao_reassign = false
+
+-- GU 王者之战 (wangzhan.md).
+sgs.ai_skill_invoke.ofwz_guanxing = true
+sgs.ai_skill_invoke.ofwz_luoshen = true
+sgs.ai_skill_invoke.ofwz_shouye = function(self, data)
+    local use = data:toCardUse()
+    return use.from ~= self.player and not (self:isFriend(use.from) and (use.card:isKindOf("Peach") or use.card:isKindOf("ExNihilo")))
+end
+sgs.ai_skill_playerschosen.ofwz_liezhi = function(self, targets)
+    local chosen = {}
+    for _, p in sgs.qlist(targets) do
+        if #chosen < 2 and (self:isEnemy(p) and not p:isNude() or self:isFriend(p) and not p:getJudgingArea():isEmpty()) then
+            table.insert(chosen, p)
+        end
+    end
+    return chosen
+end
+sgs.ai_fill_skill.ofwz_qiangxi = function(self)
+    if self.player:getMark("ofwz_qiangxi_weapon-PlayClear") == 0 then
+        for _, c in sgs.qlist(self.player:getCards("he")) do
+            if c:isKindOf("Weapon") and not self.player:isJilei(c) then return sgs.Card_Parse("#ofwz_qiangxiCard:" .. c:getEffectiveId() .. ":") end
+        end
+    end
+    if self.player:getMark("ofwz_qiangxi_hp-PlayClear") == 0 and self.player:getHp() > 2 then return sgs.Card_Parse("#ofwz_qiangxiCard:.:") end
+end
+sgs.ai_skill_use_func["#ofwz_qiangxiCard"] = function(card, use, self)
+    self:sort(self.enemies, "hp")
+    for _, p in ipairs(self.enemies) do
+        if p:getMark("ofwz_qiangxi_" .. self.player:objectName() .. "-PlayClear") == 0
+            and self.player:inMyAttackRange(p, card:getSubcards()) and self:damageIsEffective(p) then
+            use.card = card; use.to:append(p); return
+        end
+    end
+end
+sgs.ai_use_priority.ofwz_qiangxiCard = 2.5
+sgs.ai_fill_skill.ofwz_duanliang = function(self)
+    local cards = sgs.QList2Table(self.player:getCards("he")); self:sortByUseValue(cards, true)
+    for _, c in ipairs(cards) do
+        if c:isBlack() and (c:isKindOf("BasicCard") or c:isKindOf("EquipCard")) and not self.player:isJilei(c) and self:getUseValue(c) < 6 then
+            return sgs.Card_Parse("supply_shortage:ofwz_duanliang[" .. c:getSuitString() .. ":" .. c:getNumberString() .. "]=" .. c:getEffectiveId())
+        end
+    end
+end
+sgs.ai_fill_skill.ofwz_zhongyi = function(self)
+    if self.player:getHandcardNum() <= self.player:getHp() then return end
+    local cards = sgs.QList2Table(self.player:getCards("h")); self:sortByKeepValue(cards)
+    for _, c in ipairs(cards) do
+        if c:isRed() and not c:isKindOf("Peach") then return sgs.Card_Parse("#ofwz_zhongyiCard:" .. c:getEffectiveId() .. ":") end
+    end
+end
+sgs.ai_skill_use_func["#ofwz_zhongyiCard"] = function(card, use) use.card = card end
+sgs.ai_use_priority.ofwz_zhongyiCard = 0.5
+sgs.ai_skill_invoke.ofwz_zhongyi = function(self, data) return self:isEnemy(data:toDamage().to) end
+sgs.ai_skill_playerchosen.ofwz_choujin = function(self, targets) return gu_ai_enemy(self, targets) or targets:first() end
+sgs.ai_skill_playerchosen.ofwz_choujin21 = sgs.ai_skill_playerchosen.ofwz_choujin
+-- 忠谏 has no use limit; the AI stops after two gifts so its turn ends.
+local function wz_ai_ally(a, b)
+    local mode = a:getGameMode()
+    return (mode:startsWith("06_") or mode:startsWith("04_") or mode == "08_defense") and a:getRole():sub(1, 1) == b:getRole():sub(1, 1)
+end
+sgs.ai_fill_skill.ofwz_zhongjian = function(self)
+    if #self.friends_noself == 0 or self.player:isNude() or self.player:usedTimes("#ofwz_zhongjianCard") >= 2 then return end
+    local c = gu_ai_low(self)
+    if c then return sgs.Card_Parse("#ofwz_zhongjianCard:" .. c:getEffectiveId() .. ":") end
+end
+sgs.ai_skill_use_func["#ofwz_zhongjianCard"] = function(card, use, self)
+    self:sort(self.friends_noself, "handcard")
+    for _, p in ipairs(self.friends_noself) do
+        if wz_ai_ally(self.player, p) and not p:hasSkill("manjuan") then use.card = card; use.to:append(p); return end
+    end
+end
+sgs.ai_use_priority.ofwz_zhongjianCard = 1
+sgs.ai_skill_choice.ofwz_zhanshen21 = function(self, choices)
+    for _, c in ipairs({"damage", "target", "draw"}) do if choices:find(c) then return c end end
+end
