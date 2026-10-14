@@ -1,0 +1,14 @@
+18 of the 41 entries in sheji.md are ported into `extensions/offline.lua` and `ai/offline-ai.lua` and committed as `187dc06` (not pushed). 23 were skipped. The syntax check was a Lua `load` of both files (via `lupa`), which passed; nothing was run in the engine.
+
+- **Reused (5):** 海格力斯, 黎塞留, 汉尼拔, 埃莉诺 and 孙霸, taken from `codex/gu-sheji-20261013`.
+- **New ports (13):** 亚历山大, 克利奥帕特拉七世, 贝多芬, 曹休, 罗宪, 程普, 韩遂, 任恺, 石崇, 邓飏丁谧, 阮咸, 马隆 and 毛皇后, from 9 Sonnet batches of 4.
+- **Skipped (23):** reasons are in `evidence/GU-sheji-20261015/REPORT.md`. Examples are 鹅毛笔 (an equipment card, not a general), the unnamed 3S9J 091 entry, and generals that need unsupported mechanics, such as 国战 deputy removal or new card objects.
+- **Assumptions:** several ports resolve ambiguous skill text or kingdoms by assumption; 毛皇后 is set to wei, and 汉/晋 generals are mapped to qun. Each batch's `report.md` lists its deviations.
+
+Two things for you:
+- **Report edit:** `REPORT.md` has an uncommitted commit-hash line, because writing it after the commit would have meant amending the single commit.
+- **Package name:** the new generals sit in a new package, `sheji`, returned from `offline.lua`. I assumed that is how the engine loads them, but did not check.
+
+`.staging/` is left untracked as instructed.
+
+RESULT 187dc06 18/41

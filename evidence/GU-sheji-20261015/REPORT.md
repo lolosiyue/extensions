@@ -18,3 +18,4 @@ Syntax: loaded via Lua `load` (lupa) — OK. Not run in engine.
 - 赵直 (称梦 cancel ambiguous), 刘岱 (identity-card reveal)
 - 魏伯阳 (【毒】 card), 司马伦 (【虚妄之冕】 card), 刘劭 / 安世高 (底牌 undefined)
 Note: skip reasons for b02 recorded by parent (report.md write was blocked for that subagent).
+Commit: 187dc06
