@@ -11442,3 +11442,565 @@ end
 
 
 
+
+-- BEGIN official WeChat audit variants
+-- WeChat bamboo-grove policies, through the existing SmartAI decisions.
+sgs.ai_skill_invoke.xcx_jieshen = function(self)
+    return self.player:getHandcardNum() <= self.player:getMaxCards() or self.player:isWounded()
+end
+sgs.ai_skill_playerchosen.xcx_jieshen = function(self, targets)
+    local players = sgs.QList2Table(targets)
+    self:sort(players, "handcard")
+    for i = #players, 1, -1 do if self:isFriend(players[i]) then return players[i] end end
+    return self.player
+end
+sgs.ai_skill_use["@@xcx_qishi"] = function(self)
+    local names = self.player:getMark("xcx_qishi_offer") == 1
+        and {"peach", "analeptic", "slash"} or {"ex_nihilo", "dismantlement", "snatch", "duel"}
+    for _, name in ipairs(names) do
+        local card = sgs.Sanguosha:cloneCard(name, sgs.Card_NoSuit, 0)
+        if card then
+            card:setSkillName("xcx_qishi")
+            local use = self:aiUseCard(card)
+            if use.card then
+                local targets = {}
+                for _, target in sgs.qlist(use.to) do table.insert(targets, target:objectName()) end
+                local answer = card:toString() .. (#targets > 0 and "->" .. table.concat(targets, "+") or "")
+                card:deleteLater()
+                return answer
+            end
+            card:deleteLater()
+        end
+    end
+    return "."
+end
+sgs.ai_skill_invoke.xcx_maotao = function(self, data)
+    local use = data:toCardUse()
+    local target = use.to:first()
+    if not target or not use.card then return false end
+    return (use.card:isDamageCard() and self:isFriend(target))
+        or (not use.card:isDamageCard() and self:isEnemy(target))
+end
+sgs.ai_view_as.xcx_jiusong = function(card, player, place)
+    if card:isKindOf("TrickCard") and place == sgs.Player_PlaceHand then
+        return string.format("analeptic:xcx_jiusong[%s:%s]=%d", card:getSuitString(), card:getNumberString(), card:getEffectiveId())
+    end
+end
+local xcx_jiusong_skill = {name = "xcx_jiusong"}
+table.insert(sgs.ai_skills, xcx_jiusong_skill)
+xcx_jiusong_skill.getTurnUseCard = function(self)
+    local cards = self:sortByUseValue(self.player:getHandcards(), true)
+    for _, card in ipairs(cards) do
+        if card:isKindOf("TrickCard") and self:getUseValue(card) < sgs.ai_use_value.Analeptic then
+            return sgs.Card_Parse(sgs.ai_view_as.xcx_jiusong(card, self.player, sgs.Player_PlaceHand))
+        end
+    end
+end
+
+sgs.ai_fill_skill.xcx_xionghuo = function(self)
+    if self.player:getMark("&xcx_baoli") == 0 then return nil end
+    local card = sgs.ActiveSkillCard()
+    card:setSkillName("xcx_xionghuo")
+    return card
+end
+sgs.ai_skill_use_func.xcx_xionghuo = function(card, use, self)
+    for _, enemy in ipairs(self.enemies) do
+        if enemy:getMark("&xcx_baoli") == 0 then use.card = card; use.to:append(enemy); return end
+    end
+end
+sgs.ai_skill_choice.xcx_xionghuo = function(self, choices)
+    return choices:find("two", 1, true) and "two" or "one"
+end
+
+-- Official WeChat Zhi decisions use the existing SmartAI surfaces.
+-- Native V2 activation discovery and legality remain shared with other skills.
+sgs.ai_fill_skill.xcx_zhi_luchou = function(self)
+    if self.player:getMark("xcx_zhi_shizhu_play") == 0 then return nil end
+    for _, choice in ipairs({ "chain", "draw", "slash" }) do
+        if self.player:getMark("xcx_zhi_luchou_" .. choice .. "_lun") == 0 then
+            local card = sgs.ActiveSkillCard()
+            card:setSkillName("xcx_zhi_luchou")
+            return card
+        end
+    end
+    return nil
+end
+sgs.ai_skill_use_func.xcx_zhi_luchou = function(card, use, self)
+    if self.player:getMark("xcx_zhi_shizhu_play") > 0 then use.card = card end
+end
+sgs.ai_skill_invoke.xcx_zhi_luchou = true
+sgs.ai_skill_invoke.xcx_zhi_xunjing = true
+sgs.ai_skill_choice.xcx_zhi_shizhu = function(self, choices)
+    local available = choices:split("+")
+    if table.contains(available, "play") then return "play" end
+    return available[1]
+end
+sgs.ai_skill_choice.xcx_zhi_luchou = function(self, choices)
+    local available = choices:split("+")
+    if table.contains(available, "slash") and self:getCardsNum("Slash") > 0 then
+        for _, enemy in ipairs(self.enemies) do
+            if self.player:canSlash(enemy) then return "slash" end
+        end
+    end
+    if table.contains(available, "draw") then return "draw" end
+    if table.contains(available, "chain") then return "chain" end
+    return available[1]
+end
+sgs.ai_skill_playerschosen.xcx_zhi_luchou = function(self, targets, maximum)
+    local result = {}
+    for _, target in sgs.qlist(targets) do
+        if #result < maximum and self:isEnemy(target) and not target:isChained() then
+            table.insert(result, target)
+        end
+    end
+    return result
+end
+sgs.ai_skill_playerchosen.xcx_zhi_xunjing = function(self, targets)
+    local candidates = sgs.QList2Table(targets)
+    self:sort(candidates, "handcard")
+    for _, target in ipairs(candidates) do
+        if self:isFriend(target) then return target end
+    end
+    return candidates[1]
+end
+sgs.ai_skill_askforag.xcx_zhi_xunjing = function(self, card_ids)
+    return card_ids[1]
+end
+
+-- SmartAI callbacks for native V2 WeChat extreme variants.
+local function xcxFebActive(name)
+    local card = sgs.ActiveSkillCard()
+    card:setSkillName(name)
+    return card
+end
+
+sgs.ai_fill_skill.xcx_xiaojie = function(self)
+    if self.player:getMark("xcx_xiaojie_invalid-Clear") > 0 then return end
+    local card = sgs.Card_Parse("slash:xcx_xiaojie[no_suit:0]=.")
+    if self.player:canDiscard(self.player, "hej") then card:setFlags("xcx_xiaojie_unlimited") end
+    return card
+end
+
+sgs.ai_skill_playerchosen.xcx_xiaojie = function(self, targets)
+    local candidates = sgs.QList2Table(targets)
+    local ordinary = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+    local ordinaryAvailable = ordinary:isAvailable(self.player)
+    ordinary:deleteLater()
+    if not ordinaryAvailable then
+        for _, p in ipairs(candidates) do
+            if p:objectName() == self.player:objectName() then return p end
+        end
+    end
+    self:sort(candidates, "defense")
+    for _, p in ipairs(candidates) do
+        if self:isEnemy(p) and self.player:canDiscard(p, "e") then return p end
+    end
+    for _, p in ipairs(candidates) do
+        if self:isFriend(p) and not p:getJudgingArea():isEmpty() and self.player:canDiscard(p, "j") then return p end
+    end
+    for _, p in ipairs(candidates) do
+        if p:objectName() == self.player:objectName() then return p end
+    end
+    return candidates[1]
+end
+
+sgs.ai_skill_cardchosen.xcx_xiaojie = function(self, who, flags)
+    local cards = sgs.QList2Table(who:getCards(flags))
+    if who:objectName() == self.player:objectName() then
+        table.sort(cards, function(a, b) return self:getKeepValue(a) < self:getKeepValue(b) end)
+        if self:needToThrowArmor() and who:getArmor() and self.player:canDiscard(who, who:getArmor():getEffectiveId()) then
+            return who:getArmor():getEffectiveId()
+        end
+    elseif self:isFriend(who) then
+        for _, c in ipairs(cards) do
+            if c:isKindOf("DelayedTrick") and not c:isKindOf("YanxiaoCard") and self.player:canDiscard(who, c:getEffectiveId()) then
+                return c:getEffectiveId()
+            end
+        end
+    else
+        table.sort(cards, function(a, b) return self:getUseValue(a) > self:getUseValue(b) end)
+    end
+    for _, c in ipairs(cards) do
+        if self.player:canDiscard(who, c:getEffectiveId()) then return c:getEffectiveId() end
+    end
+    return -1
+end
+
+sgs.ai_fill_skill.xcx_jiaohao = function(self)
+    if self.player:isKongcheng() then return end
+    return xcxFebActive("xcx_jiaohao")
+end
+sgs.ai_skill_use_func.xcx_jiaohao = function(card, use, self)
+    local enemies = {}
+    for _, p in ipairs(self.enemies) do
+        if not p:isKongcheng() and math.abs(p:getHandcardNum() - self.player:getHandcardNum()) <= 3 then
+            table.insert(enemies, p)
+        end
+    end
+    table.sort(enemies, function(a, b) return a:getHandcardNum() > b:getHandcardNum() end)
+    if enemies[1] then use.card = card; if use.to then use.to:append(enemies[1]) end end
+end
+sgs.ai_skill_askforag.xcx_jiaohao = function(self, ids)
+    local best, value = ids[1], -1000
+    for _, id in ipairs(ids) do
+        local score = self:getKeepValue(sgs.Sanguosha:getCard(id))
+        if score > value then best, value = id, score end
+    end
+    return best
+end
+sgs.ai_use_priority.xcx_jiaohao = 5
+sgs.ai_use_value.xcx_jiaohao = 6
+
+sgs.ai_skill_playerchosen.xcx_jiaofeng = function(self, targets)
+    local candidates = sgs.QList2Table(targets)
+    self:sort(candidates, "defense")
+    for _, p in ipairs(candidates) do if self:isEnemy(p) then return p end end
+    for _, p in ipairs(candidates) do if self:isFriend(p) then return p end end
+end
+sgs.ai_skill_choice.xcx_jiaofeng = function(self, choices, data)
+    local p = data:toPlayer()
+    return p and self:isFriend(p) and "slash" or "target"
+end
+
+sgs.ai_skill_playerchosen.xcx_jizhi_taishici = function(self, targets)
+    local friends = {}
+    for _, p in sgs.qlist(targets) do if self:isFriend(p) then table.insert(friends, p) end end
+    self:sort(friends, "handcard")
+    return friends[1]
+end
+
+sgs.ai_fill_skill.xcx_kangyong = function(self)
+    if self.player:getHp() <= 1 or (self:isWeak() and self.player:getLostHp() < 2) then return end
+    return xcxFebActive("xcx_kangyong")
+end
+sgs.ai_skill_use_func.xcx_kangyong = function(card, use, self) use.card = card end
+sgs.ai_skill_invoke.xcx_kangyong = true
+sgs.ai_skill_askforag.xcx_kangyong = function(self, ids)
+    local best, value = ids[1], -1000
+    for _, id in ipairs(ids) do
+        local score = self:getUseValue(sgs.Sanguosha:getCard(id))
+        if score > value then best, value = id, score end
+    end
+    return best
+end
+sgs.ai_skill_playerchosen.xcx_kangyong = function(self, targets)
+    for _, p in sgs.qlist(targets) do if self:isFriend(p) then return p end end
+    return targets:first()
+end
+sgs.ai_skill_choice.xcx_kangyong = function(self, choices, data)
+    local p = data:toPlayer()
+    if p and self:isFriend(p) and p:getLostHp() > 1 then return "remainder" end
+    return "selected"
+end
+sgs.ai_use_priority.xcx_kangyong = 4
+sgs.ai_use_value.xcx_kangyong = 5
+sgs.ai_skill_invoke.xcx_qingqu = true
+
+-- Official WeChat variants: legacy SmartAI policies only.
+local function xcxLaterActiveCard(name)
+    local card = sgs.ActiveSkillCard()
+    card:setSkillName(name)
+    return card
+end
+local function xcxLaterContains(choices, name)
+    for _, item in ipairs(choices:split("+")) do if item == name then return true end end
+    return false
+end
+sgs.ai_skill_invoke.xcx_caiyi = true
+sgs.ai_skill_choice.xcx_caiyi = function(self, choices, data)
+    local red, black = 0, 0
+    for _, id in sgs.qlist(data:toIntList()) do
+        local card = sgs.Sanguosha:getCard(id)
+        local value = math.max(0.1, self:getUseValue(card))
+        if card:isRed() then red = red + value else black = black + value end
+    end
+    return red >= black and "red" or "black"
+end
+sgs.ai_skill_invoke.xcx_yaoxiang = function(self)
+    if not self.player:faceUp() then return true end
+    if self.player:getPhase() ~= sgs.Player_Play then return self.player:getHandcardNum() < 2 end
+    return self:getCardsNum("Slash") > 0 or self.player:getHandcardNum() < 3
+end
+sgs.ai_skill_choice.xcx_yaoxiang = function(self, choices)
+    if xcxLaterContains(choices, "invalidate_caiyi") then return "invalidate_caiyi" end
+    return "turn_down"
+end
+local xcx_hupo_skill = { name = "xcx_hupo" }
+table.insert(sgs.ai_skills, xcx_hupo_skill)
+xcx_hupo_skill.getTurnUseCard = function(self)
+    if self.player:getMark("xcx_hupo_common-PlayClear") > 0 and self.player:getMark("xcx_hupo_absent-PlayClear") > 0 then return end
+    for _, enemy in ipairs(self.enemies) do
+        if not enemy:isKongcheng() and self.player:canDiscard(enemy, "h") then return xcxLaterActiveCard("xcx_hupo") end
+    end
+end
+sgs.ai_skill_use_func.xcx_hupo = function(card, use, self)
+    self:sort(self.enemies, "handcard")
+    for _, enemy in ipairs(self.enemies) do
+        if not enemy:isKongcheng() and self.player:canDiscard(enemy, "h") then
+            use.card = card
+            if use.to then use.to:append(enemy) end
+            return
+        end
+    end
+end
+sgs.ai_skill_choice.xcx_hupo = function(self, choices)
+    if xcxLaterContains(choices, "absent") then return "absent" end
+    if xcxLaterContains(choices, "common") then return "common" end
+    local best, cost = nil, 100000
+    for _, name in ipairs(choices:split("+")) do
+        local value = 0
+        for _, card in sgs.qlist(self.player:getHandcards()) do
+            if card:objectName() == name then value = value + self:getKeepValue(card) end
+        end
+        if value < cost then cost, best = value, name end
+    end
+    return best or choices:split("+")[1]
+end
+sgs.ai_use_value.xcx_hupo = 5
+sgs.ai_use_priority.xcx_hupo = 5
+local xcx_zuoqing_skill = { name = "xcx_zuoqing" }
+table.insert(sgs.ai_skills, xcx_zuoqing_skill)
+xcx_zuoqing_skill.getTurnUseCard = function(self)
+    if self.player:getHp() <= 1 and self.player:getEquips():isEmpty() then return end
+    local used = self.player:getTag("XcxZuoqingRecipients"):toStringList()
+    for _, friend in ipairs(self.friends) do
+        if not used:contains(friend:objectName()) then return xcxLaterActiveCard("xcx_zuoqing") end
+    end
+end
+sgs.ai_skill_use_func.xcx_zuoqing = function(card, use, self)
+    local used = self.player:getTag("XcxZuoqingRecipients"):toStringList()
+    local best, score = nil, -1000
+    for _, friend in ipairs(self.friends) do
+        if not used:contains(friend:objectName()) then
+            local value = friend:getHandcardNum() + (friend:objectName() == self.player:objectName() and 2 or 0)
+            if value > score then best, score = friend, value end
+        end
+    end
+    if best then use.card = card; if use.to then use.to:append(best) end end
+end
+sgs.ai_skill_choice.xcx_zuoqing = function(self, choices)
+    if xcxLaterContains(choices, "use_slash") then
+        return self.player:getPhase() == sgs.Player_Play and "use_slash" or "respond_slash"
+    end
+    if xcxLaterContains(choices, "discard_equips") then
+        if self.player:getHp() <= 1 or (self.player:getEquips():length() == 1 and self:needToThrowArmor()) then return "discard_equips" end
+    end
+    return "losehp"
+end
+sgs.ai_use_value.xcx_zuoqing = 4
+sgs.ai_use_priority.xcx_zuoqing = 6
+sgs.ai_skill_invoke.xcx_jianchou = function(self, data)
+    local damage = data:toDamage()
+    if not damage.to or not damage.from then return false end
+    if self:isFriend(damage.to) and self:isEnemy(damage.from) then
+        return self:getCardsNum("Slash", damage.to, self.player) >= self:getCardsNum("Slash", damage.from, self.player)
+    end
+    return self:isEnemy(damage.to) and self:isEnemy(damage.from)
+end
+sgs.ai_skill_invoke.xcx_longyi = true
+sgs.ai_skill_choice.xcx_longyi = function(self, choices)
+    -- A single revealed card maximizes the probability of obtaining it.
+    return choices:split("+")[1]
+end
+sgs.ai_skill_playerchosen.xcx_longyi = function(self, targets)
+    local friends = {}
+    for _, target in sgs.qlist(targets) do if self:isFriend(target) then table.insert(friends, target) end end
+    self:sort(friends, "handcard")
+    for _, friend in ipairs(friends) do if not self:needKongcheng(friend, true) then return friend end end
+    return self.player
+end
+sgs.ai_skill_invoke.xcx_jueya = true
+sgs.ai_skill_playerchosen.xcx_juejue = function(self, targets)
+    local enemies = {}
+    for _, target in sgs.qlist(targets) do if self:isEnemy(target) then table.insert(enemies, target) end end
+    self:sort(enemies, "hp")
+    if #enemies > 0 then return enemies[1] end
+    return targets:first()
+end
+sgs.ai_skill_invoke.xcx_qingshi = function(self, data)
+    local use = data:toCardUse()
+    if not use.from or use.to:length() ~= 1 then return false end
+    local other = use.from:objectName() == self.player:objectName() and use.to:first() or use.from
+    return self:isEnemy(other) and (self.player:getLostHp() < 2 or self.player:getCardCount() <= self.player:getLostHp())
+end
+sgs.ai_skill_discard.xcx_qingshi = function(self, max_num, min_num, optional, include_equip)
+    local cards = sgs.QList2Table(self.player:getCards("he"))
+    self:sortByKeepValue(cards)
+    local result = {}
+    for _, card in ipairs(cards) do
+        if #result >= min_num then break end
+        if self.player:canDiscard(self.player, card:getEffectiveId()) then table.insert(result, card:getEffectiveId()) end
+    end
+    return result
+end
+sgs.ai_skill_invoke.xcx_qingjue = true
+
+-- Native V2 SmartAI hooks. All generated activations use the engine's normal
+-- ActiveSkillRequest reconstruction, quota checks, and skill instance binding.
+local function xcx_active(name, cards)
+    local card = sgs.ActiveSkillCard()
+    card:setSkillName(name)
+    for _, id in ipairs(cards or {}) do card:addSubcard(id) end
+    return card
+end
+
+for _, name in ipairs({ "xcx_delu", "xcx_chaowei", "xcx_weicheng", "xcx_zongxi" }) do
+    local skill_name = name
+    sgs.ai_fill_skill[skill_name] = function(self)
+        if skill_name ~= "xcx_zongxi" and self.player:isKongcheng() then return nil end
+        return xcx_active(skill_name)
+    end
+    sgs.ai_use_priority[skill_name] = 4.2
+    sgs.ai_use_value[skill_name] = 5
+end
+
+local function xcx_contest_targets(card, use, self, maximum, hp_limit)
+    local high = self:getMaxCard()
+    if not high then return end
+    local bonus = card:getSkillName() == "xcx_delu" and 2 or self.player:getTag("xcx_enshe_recipients"):toStringList():length()
+    if high:getNumber() + bonus < 9 then return end
+    local candidates = {}
+    for _, p in ipairs(self.enemies) do
+        if not p:isKongcheng() and (not hp_limit or p:getHp() <= self.player:getHp()) then table.insert(candidates, p) end
+    end
+    self:sort(candidates, "handcard")
+    for _, p in ipairs(candidates) do
+        if use.to:length() >= maximum then break end
+        use.to:append(p)
+    end
+    if use.to:length() > 0 then use.card = card end
+end
+
+sgs.ai_skill_use_func.xcx_delu = function(card, use, self)
+    xcx_contest_targets(card, use, self, 4, true)
+end
+sgs.ai_skill_use_func.xcx_chaowei = function(card, use, self)
+    xcx_contest_targets(card, use, self, 3, false)
+end
+sgs.ai_skill_use_func.xcx_weicheng = function(card, use, self)
+    xcx_contest_targets(card, use, self, math.ceil(self.room:alivePlayerCount() / 2), false)
+end
+-- The zero-payment solo option is legal: self wins and draws two cards.
+sgs.ai_skill_use_func.xcx_zongxi = function(card, use, self)
+    if not self.player:isKongcheng() then
+        use.card = card
+        use.to:append(self.player)
+    else
+        for _, friend in ipairs(self.friends_noself) do
+            if not friend:isKongcheng() then use.card = card; use.to:append(friend); return end
+        end
+    end
+end
+
+sgs.ai_fill_skill.xcx_zhujiu = function(self)
+    local cards = sgs.QList2Table(self.player:getHandcards())
+    self:sortByKeepValue(cards)
+    for _, c in ipairs(cards) do
+        if not c:isKindOf("Peach") and not c:isKindOf("Analeptic") then return xcx_active("xcx_zhujiu", { c:getEffectiveId() }) end
+    end
+end
+sgs.ai_skill_use_func.xcx_zhujiu = function(card, use, self)
+    for _, enemy in ipairs(self.enemies) do
+        if not enemy:isKongcheng() then use.card = card; use.to:append(enemy); return end
+    end
+    if self.player:isWounded() then
+        for _, friend in ipairs(self.friends_noself) do
+            if not friend:isKongcheng() then use.card = card; use.to:append(friend); return end
+        end
+    end
+end
+sgs.ai_use_priority.xcx_zhujiu = 4.8
+sgs.ai_use_value.xcx_zhujiu = 5
+
+for _, name in ipairs({ "xcx_delu", "xcx_guizhi", "xcx_zongxi", "xcx_chaowei", "xcx_weicheng", "xcx_bianguan" }) do
+    sgs.ai_skill_pindian[name] = function(minusecard, self)
+        return self:getMaxCard() or minusecard
+    end
+end
+
+sgs.ai_skill_playerschosen.xcx_guizhi = function(self, targets, maximum)
+    local result = sgs.SPlayerList()
+    local high = self:getMaxCard()
+    if not high or high:getNumber() < 8 then return result end
+    local candidates = sgs.QList2Table(targets)
+    self:sort(candidates, "handcard")
+    for _, p in ipairs(candidates) do
+        if self:isEnemy(p) and result:length() < maximum then result:append(p) end
+    end
+    return result
+end
+sgs.ai_skill_invoke.xcx_hengyi = true
+sgs.ai_skill_choice.xcx_hengyi = function(self, choices)
+    if string.find(choices, "give", 1, true) and #self.friends_noself > 0 then return "give" end
+    return "draw"
+end
+sgs.ai_skill_playerchosen.xcx_hengyi = function(self, targets)
+    local candidates = sgs.QList2Table(targets)
+    self:sort(candidates, "handcard")
+    for _, p in ipairs(candidates) do if self:isFriend(p) then return p end end
+    return candidates[1]
+end
+sgs.ai_skill_invoke.xcx_ji_jianxiong = true
+sgs.ai_skill_invoke.xcx_yinren = function(self)
+    return self.player:getHandcardNum() <= 3 or self.player:getHp() <= 1
+end
+sgs.ai_skill_playerchosen.xcx_duoquan = function(self, targets)
+    local candidates = sgs.QList2Table(targets)
+    self:sort(candidates, "handcard", true)
+    for _, p in ipairs(candidates) do if self:isEnemy(p) then return p end end
+    return nil
+end
+sgs.ai_skill_choice.xcx_duoquan = function(self, choices, data)
+    local target = data:toPlayer()
+    if target then
+        local counts = { basic = 0, trick = 0, equip = 0 }
+        for _, card in ipairs(getKnownCards(target, self.player, "h")) do
+            local kind = card:isKindOf("BasicCard") and "basic" or card:isKindOf("TrickCard") and "trick" or "equip"
+            counts[kind] = counts[kind] + 1
+        end
+        if counts.trick > counts.basic and counts.trick >= counts.equip then return "trick" end
+        if counts.equip > counts.basic then return "equip" end
+    end
+    return "basic"
+end
+sgs.ai_skill_use["@@xcx_duoquan"] = function(self, prompt, method, pattern, request)
+    if not request or not request:isValid() then return "." end
+    local name = prompt:split(":")[2]
+    if not name then return "." end
+    local preview = sgs.Sanguosha:cloneCard(name, sgs.Card_NoSuit, 0)
+    if not preview then return "." end
+    preview:setSkillName("xcx_duoquan")
+    preview:deleteLater()
+    local use = self:aiUseCard(preview)
+    if not use or not use.card then return "." end
+    local targets = {}
+    if use.to then for _, p in sgs.qlist(use.to) do table.insert(targets, p:objectName()) end end
+    return { accepted = true, cards = {}, targets = targets }
+end
+sgs.ai_skill_playerchosen.xcx_luheng = function(self, targets)
+    local candidates = sgs.QList2Table(targets)
+    self:sort(candidates, "defenseSlash")
+    for _, p in ipairs(candidates) do if self:isEnemy(p) then return p end end
+    return nil
+end
+sgs.ai_skill_invoke.xcx_enshe = function(self, data)
+    local target = data:toPlayer()
+    if not target then return false end
+    if target:objectName() == self.player:objectName() then return true end
+    if self:isFriend(target) then return not self:needToLoseHp(target, self.player) end
+    return not target:isKongcheng() and target:getHp() > 1
+end
+sgs.ai_skill_invoke.xcx_weicheng = function(self)
+    return #self.enemies > 0
+end
+sgs.ai_skill_choice.xcx_chaowei = function(self, choices, data)
+    if not string.find(choices, "give", 1, true) then return "damage" end
+    local source = data:toPlayer()
+    if source and (self:isFriend(source) or source:objectName() == self.player:objectName()) then return "give" end
+    if self:needToLoseHp(self.player, source) and self.player:getHp() > 1 then return "damage" end
+    return "give"
+end
+sgs.ai_skill_discard.xcx_zhujiu = function(self, maximum, minimum, optional, include_equip)
+    return self:askForDiscard("dummy", maximum, minimum, optional, include_equip)
+end
+sgs.ai_skill_discard.xcx_chaowei = sgs.ai_skill_discard.xcx_zhujiu
