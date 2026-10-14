@@ -1,0 +1,3 @@
+{"diyba_15j_xumiao":{"status":"skipped","note":"绘骨 has no timing restriction in the text (usable at response timings, Collateral/multi-target cards) and 清贤 depends on MarkChanged tracking; cannot be made literal, so removed."},
+"diyba_15j_yangxi":{"status":"skipped","note":"妙锦 must support Collateral and multi-target cards (unsupported by the helper) so a literal implementation is not feasible; removed with 弛衡."},
+"diyba_re0_lihuowang":{"status":"skipped","note":"登长阶 extra target for the next card cannot be literally implemented for Collateral/fixed-target cards; removed whole general."}}

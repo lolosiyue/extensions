@@ -1,0 +1,14 @@
+{
+ "diyba_15j_zhangjuzhangchun": {
+  "status": "skipped",
+  "note": "Health cards (flip, per-card gouyu, excluded from max HP) cannot be expressed literally; previous mark simulation was an approximation."
+ },
+ "diyba_xj_pangyu": {
+  "status": "skipped",
+  "note": "Fenzhong depends on Guozhan-only concepts (ambitious, small kingdom, besieged) that do not exist in identity mode; only approximations possible."
+ },
+ "diyba_xj_dengfang": {
+  "status": "fixed",
+  "note": "Option 1 is offered only if the target has 2+ cards (no free exemption), colour limit now forbids every colour (red/black/colourless) not among the given cards, option 2 triggers after each card the owner uses this turn."
+ }
+}

@@ -1,0 +1,6 @@
+{
+"diyba_17j_lihui": {"status":"skipped","note":"推己 extra give/discard of arbitrary cards and 复定 viewing as 闪 (plus hand-adjust/reveal chain) cannot be implemented literally in the engine."},
+"diyba_17j_jiangqin": {"status":"skipped","note":"蓄矢 deferred multi-turn slash scheduling with extra targets who lost cards, and 尚义 per-round per-item last-damage-source tracking, are only approximable."},
+"diyba_17j_heji": {"status":"skipped","note":"恤遗 triggers on any hand-less character at any time and hand-to-limit draw semantics cannot be matched literally; 序仪 depends on it."},
+"diyba_17j_weifeng": {"status":"skipped","note":"荧谈 (round-wide discard-phase pickup, uncounterable via revealed hand) and 掖反 (repeat flow with instant-card use) not expressible literally; prior code was an approximation."}
+}
