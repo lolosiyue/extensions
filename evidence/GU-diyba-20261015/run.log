@@ -1,0 +1,12 @@
+33 of the 81 diyba generals are ported and committed as 48ae5f2 on `qs-claude/gu-diyba-20261015`. It has not been pushed, and nothing was run in the engine.
+
+- **Syntax:** both Lua files load cleanly under `lupa` (no `luac` here).
+- **Pre-skipped (4):** 赵昂, 陈寿, 梁习 and 赵娥 are already in the PAUSE stash drafts.
+- **Skipped (44):** these need mechanics SkillV2 can't express without inventing rules, have hp 1.5, or have truncated or garbled text. Per-general reasons are in `evidence/GU-diyba-20261015/batch-reports.md`.
+- **Approximations:** many of the 33 are partial or approximate, and several kingdoms were assumed where the excerpt gave none. Both are logged in the batch reports.
+- **牵招:** I re-ran it as batch b21 after the first run skipped it for a missing edition code. 娄圭 stays skipped.
+- **Placement:** generals sit in the existing `offline` package, because only `offline-ai.lua` was writable and a new package needs its own AI file.
+- **Commit contents:** the commit also includes `evidence/GU-diyba-20261015/` (batches, batch reports, prompt, log). `.staging` is not committed.
+- **REPORT.md:** it is written but uncommitted, since the commit hash had to exist first.
+
+RESULT 48ae5f2 33/81
