@@ -2920,6 +2920,227 @@ sgs.LoadTranslationTable{
     ["diyba_lianman_draw"]="摸一张牌，额外结算一次",["diyba_lianman_skip"]="弃置一张牌，跳过结算",
 }
 
+-- 3D10J 薛灵芸：弃牌批次由全局规则记录，技能失效不撤销已接受的回合效果。
+local function diyba_anzhiBlack(room)
+    local latest,black=0,false
+    for _,id in sgs.qlist(room:getDiscardPile()) do
+        local batch=room:getTag("diyba_anzhi_batch_"..id):toInt()
+        if batch>latest then latest=batch;black=false end
+        if batch==latest and sgs.Sanguosha:getCard(id):isBlack() then black=true end
+    end
+    -- 上面的遍历会在遇到较新批次时重置，顺序不限。
+    return black
+end
+local diyba_lianer=sgs.CreateTriggerSkillV2{
+    name="diyba_lianer",events={sgs.CardFinished},
+    can_trigger=function(self,event,room,player,data)
+        local card=data:toCardUse().card
+        if card and card:isRed() and not card:isKindOf("SkillCard") and not diyba_materials(card):isEmpty() then
+            return own(self,event,room,player,data)
+        end
+        return ""
+    end,
+    on_cost=invoke,
+    on_effect=function(self,event,room,player,ctx)
+        local card=ctx.original_data:toCardUse().card
+        local number=card:getNumber()
+        local ids=diyba_materials(card)
+        local dummy=sgs.DummyCard();dummy:addSubcards(ids)
+        room:obtainCard(player,dummy,true);dummy:deleteLater()
+        if player:isAlive() then
+            -- 每次限制均持续本回合，交集自然保留其中最严格的上界。
+            room:setPlayerCardLimitation(player,"use",".|.|"..number.."~13",true,self:objectName())
+        end
+        return false
+    end
+}
+local diyba_anzhi=sgs.CreateTriggerSkillV2{
+    name="diyba_anzhi",events={sgs.TurnStart},
+    can_trigger=function(self,event,room,player,data)
+        if diyba_anzhiBlack(room) then return owners(self,room) end
+        return ""
+    end,
+    on_cost=function(self,event,room,player,ctx)
+        local target=room:askForPlayerChosen(player,room:getAlivePlayers(),self:objectName(),"@diyba-anzhi",true,true)
+        if not target then return false end
+        ctx.targets:append(target);return true
+    end,
+    on_effect=function(self,event,room,player,ctx)
+        local target=ctx.targets:first()
+        if target and target:isAlive() then room:setPlayerMark(target,"&diyba_anzhi-Clear",1) end
+        return false
+    end
+}
+local diyba_anzhi_rule=sgs.CreateRuleSkillV2{
+    name="#diyba_anzhi_rule",events={sgs.CardsMoveOneTime,sgs.TargetConfirming},
+    on_record=function(self,event,room,player,ctx)
+        local data=ctx.original_data
+        if event==sgs.CardsMoveOneTime then
+            local move=data:toMoveOneTime()
+            if move.to_place~=sgs.Player_DiscardPile or move.card_ids:isEmpty() then return end
+            local batch=room:getTag("diyba_anzhi_batch"):toInt()+1
+            room:setTag("diyba_anzhi_batch",sgs.QVariant(batch))
+            for _,id in sgs.qlist(move.card_ids) do room:setTag("diyba_anzhi_batch_"..id,sgs.QVariant(batch)) end
+        elseif player and player:getMark("&diyba_anzhi-Clear")>0 then
+            local use=data:toCardUse()
+            if use.card:isBlack() and use.to:contains(player) then
+                room:setPlayerMark(player,"&diyba_anzhi-Clear",0)
+                local nullified=use.nullified_list
+                if not table.contains(nullified,player:objectName()) then
+                    table.insert(nullified,player:objectName());use.nullified_list=nullified;data:setValue(use)
+                end
+            end
+        end
+    end
+}
+addToSkills(diyba_anzhi_rule)
+local diyba_xuelingyun=sgs.General(extension,"diyba_10j_xuelingyun","wei",3,false)
+diyba_xuelingyun:setImage("xuelingyun")
+diyba_xuelingyun:addSkill(diyba_lianer)
+diyba_xuelingyun:addSkill(diyba_anzhi)
+extension:insertRelatedSkills("diyba_anzhi","#diyba_anzhi_rule")
+sgs.LoadTranslationTable{
+    ["diyba_10j_xuelingyun"]="薛灵芸",["&diyba_10j_xuelingyun"]="薛灵芸",["#diyba_10j_xuelingyun"]="玉壶垂霞泪·3D十将",
+    ["designer:diyba_10j_xuelingyun"]="GENTOVA07",
+    ["diyba_lianer"]="涟洏",[":diyba_lianer"]="当你使用红色牌后，你可以获得之，然后你只能使用点数小于此牌的牌直到回合结束。",
+    ["diyba_anzhi"]="暗织",[":diyba_anzhi"]="一名角色的回合开始时，若最近进入并在弃牌堆的牌包含黑色，你可以指定一名角色，此回合其第一次成为黑色牌的目标时，此牌对其无效。",
+    ["@diyba-anzhi"]="暗织：选择一名角色，令本回合首张以其为目标的黑色牌对其无效",
+}
+
+-- 3D12J 孙和：回合内/外轮次配额独立；临时命也按授予的实例精确移除。
+local function diyba_isSunhe(player)
+    return player:getGeneralName()=="diyba_12j_sunhe" or player:getGeneral2Name()=="diyba_12j_sunhe"
+end
+local function diyba_mingyeSlot(room,player)
+    return room:getCurrent()==player and player:getPhase()~=sgs.Player_NotActive and "inside" or "outside"
+end
+local function diyba_mingyeCard(event,data)
+    if event==sgs.CardUsed then return data:toCardUse().card end
+    local response=data:toCardResponse()
+    if response.m_isUse then return response.m_card end
+end
+local diyba_mingye=sgs.CreateTriggerSkillV2{
+    name="diyba_mingye",frequency=sgs.Skill_Compulsory,events={sgs.CardUsed,sgs.CardResponded},
+    can_trigger=function(self,event,room,player,data)
+        local card=diyba_mingyeCard(event,data)
+        if card and (card:isKindOf("BasicCard") or card:isNDTrick()) then return own(self,event,room,player,data) end
+        return ""
+    end,
+    on_cost=function(self,event,room,player,ctx)
+        local slot=diyba_mingyeSlot(room,player)
+        local round=tostring(room:historyScopes().round_id)
+        if state(player,ctx:getActivationRef(),slot):toString()==round then return false end
+        ctx.choice=slot;ctx.extra_data=sgs.QVariant(round);return true
+    end,
+    on_pay=function(self,event,room,player,ctx)
+        -- Consume before drawing/healing can cause a nested use of a basic card.
+        setstate(player,ctx:getActivationRef(),ctx.choice,ctx.extra_data:toString())
+        return true
+    end,
+    on_effect=function(self,event,room,player,ctx)
+        local card=diyba_mingyeCard(event,ctx.original_data)
+        if not card then return false end
+        if event==sgs.CardUsed then
+            local use=ctx.original_data:toCardUse()
+            local nullified=use.nullified_list
+            if not table.contains(nullified,"_ALL_TARGETS") then table.insert(nullified,"_ALL_TARGETS") end
+            use.nullified_list=nullified
+            if use.m_addHistory then
+                room:addPlayerHistory(player,card:getClassName(),-1)
+                use.m_addHistory=false
+            end
+            ctx.original_data:setValue(use)
+        else
+            local response=ctx.original_data:toCardResponse()
+            response.nullified=true;ctx.original_data:setValue(response)
+        end
+        player:drawCards(2,self:objectName())
+        if player:isAlive() then
+            if diyba_isSunhe(player) then
+                if player:isWounded() and room:askForCard(player,".|heart", "@diyba-mingye-heal",
+                    ctx.original_data,sgs.Card_MethodDiscard) then
+                    if player:isAlive() then room:recover(player,sgs.RecoverStruct(player,nil,1)) end
+                end
+            else
+                local candidates=sgs.SPlayerList()
+                for _,p in sgs.qlist(room:getAlivePlayers()) do if diyba_isSunhe(p) then candidates:append(p) end end
+                local target
+                if not candidates:isEmpty() then
+                    target=room:askForPlayerChosen(player,candidates,self:objectName(),"@diyba-mingye-give",true,true)
+                end
+                if target and target:isAlive() then
+                    local ids=card:isVirtualCard() and card:getSubcards() or sgs.IntList()
+                    if not card:isVirtualCard() then ids:append(card:getEffectiveId()) end
+                    local available=sgs.IntList()
+                    for _,id in sgs.qlist(ids) do
+                        if room:getCardPlace(id)==sgs.Player_PlaceTable then available:append(id) end
+                    end
+                    if not available:isEmpty() then
+                        local dummy=sgs.DummyCard();dummy:addSubcards(available)
+                        room:obtainCard(target,dummy,true);dummy:deleteLater()
+                    end
+                end
+            end
+        end
+        -- CardUsed stops before GameRule's normal card effects; CardFinished and
+        -- native table cleanup still run. Response-use cancellation uses nullified.
+        return event==sgs.CardUsed
+    end
+}
+local diyba_danghu=sgs.CreateTriggerSkillV2{
+    name="diyba_danghu",events={sgs.HpChanged},limit_scope=sgs.Skill_Limit_Round,max_usage_limit=1,
+    can_trigger=own,
+    on_cost=function(self,event,room,player,ctx)
+        if not self:isUsable(ctx) then return false end
+        local target=room:askForPlayerChosen(player,room:getOtherPlayers(player),self:objectName(),"@diyba-danghu",true,true)
+        if not target then return false end
+        ctx.targets:append(target);return true
+    end,
+    on_pay=function(self,event,room,player,ctx)
+        if not self:isUsable(ctx) then return false end
+        self:addUsage(ctx);return true
+    end,
+    on_effect=function(self,event,room,player,ctx)
+        local target=ctx.targets:first()
+        if not target or not target:isAlive() or target:hasSkill("diyba_mingye",true) then return false end
+        local id=room:acquireSkill(target,"diyba_mingye")
+        if id>0 then
+            local grants=room:getTag("diyba_danghu_grants"):toString()
+            local entry=target:objectName()..":"..id
+            room:setTag("diyba_danghu_grants",sgs.QVariant(grants=="" and entry or grants.."|"..entry))
+        end
+        return false
+    end
+}
+local diyba_danghu_rule=sgs.CreateRuleSkillV2{
+    name="#diyba_danghu_rule",events={sgs.RoundEnd},
+    on_record=function(self,event,room,player,ctx)
+        local grants=room:getTag("diyba_danghu_grants"):toString()
+        room:removeTag("diyba_danghu_grants")
+        for name,id in string.gmatch(grants,"([^|:]+):(%d+)") do
+            local target=room:findPlayerByObjectName(name,true)
+            if target and target:hasSkillInstance("diyba_mingye",tonumber(id)) then
+                room:detachSkillFromPlayer(target,"diyba_mingye#"..id)
+            end
+        end
+    end
+}
+addToSkills(diyba_danghu_rule)
+local diyba_sunhe=sgs.General(extension,"diyba_12j_sunhe","wu",3)
+diyba_sunhe:setImage("sunhe")
+diyba_sunhe:addSkill(diyba_mingye)
+diyba_sunhe:addSkill(diyba_danghu)
+extension:insertRelatedSkills("diyba_danghu","#diyba_danghu_rule")
+sgs.LoadTranslationTable{
+    ["diyba_12j_sunhe"]="孙和",["&diyba_12j_sunhe"]="孙和",["#diyba_12j_sunhe"]="季子绝途·3D十二将",
+    ["designer:diyba_12j_sunhe"]="再見末日基因",
+    ["diyba_mingye"]="命也",[":diyba_mingye"]="锁定技，回合内外每轮各限一次，你使用基本牌或普通锦囊牌时，你取消此牌，且令之不计限制次数，然后摸两张牌。若如此做，若你为孙和，则你可弃置一张红桃牌，回复1点体力；否则你可令孙和获得被取消的牌。",
+    ["diyba_danghu"]="党乎",[":diyba_danghu"]="每轮限一次，你的体力值改变后，你可令一名其他角色于本轮中拥有“命也”。",
+    ["@diyba-mingye-heal"]="命也：你可弃置一张红桃牌，回复1点体力",
+    ["@diyba-mingye-give"]="命也：你可令一名孙和获得被取消的牌",
+    ["@diyba-danghu"]="党乎：你可令一名其他角色于本轮内拥有命也",
+}
+
 
 -- 3D9J 濮阳兴。辛土用原实体牌，保留原牌目标规则与正常用牌流程。
 local function diyba_xintuCompletion(room,player,card,selected)

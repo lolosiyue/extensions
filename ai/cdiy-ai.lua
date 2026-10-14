@@ -270,6 +270,39 @@ sgs.ai_skill_playerchosen.diyba_xiemeng = function(self,targets)
     end
 end
 
+sgs.ai_skill_invoke.diyba_lianer = function(self,data)
+    local card=data:toCardUse().card
+    if card:getNumber()<=3 then return self:isWeak() and card:isKindOf("Peach") end
+    return card:isKindOf("Peach") or card:isKindOf("ExNihilo") or card:isKindOf("Snatch")
+        or card:isKindOf("Dismantlement") or card:getNumber()>=10
+end
+sgs.ai_skill_playerchosen.diyba_anzhi = function(self,targets)
+    local friends={}
+    for _,p in sgs.qlist(targets) do if self:isFriend(p) then table.insert(friends,p) end end
+    self:sort(friends,"defense")
+    return friends[1]
+end
+
+sgs.ai_skill_cardask["@diyba-mingye-heal"] = function(self,data,pattern)
+    if not self.player:isWounded() then return "." end
+    local cards=sgs.QList2Table(self.player:getCards("he"));self:sortByKeepValue(cards)
+    for _,card in ipairs(cards) do
+        if card:getSuit()==sgs.Card_Heart and not self.player:isJilei(card) then return "$"..card:getEffectiveId() end
+    end
+    return "."
+end
+sgs.ai_skill_playerchosen.diyba_mingye = function(self,targets)
+    for _,p in sgs.qlist(targets) do if self:isFriend(p) then return p end end
+end
+sgs.ai_skill_playerchosen.diyba_danghu = function(self,targets)
+    local friends={}
+    for _,p in sgs.qlist(targets) do
+        if self:isFriend(p) and not p:hasSkill("diyba_mingye") then table.insert(friends,p) end
+    end
+    self:sort(friends,"handcard")
+    for _,p in ipairs(friends) do if p:getHandcardNum()<=2 then return p end end
+end
+
 sgs.ai_skill_playerchosen.diyba_sili = function(self,targets)
     local enemies={}
     for _,p in sgs.qlist(targets) do if self:isEnemy(p) then table.insert(enemies,p) end end

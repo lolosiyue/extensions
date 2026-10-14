@@ -1,0 +1,5 @@
+{
+ "diyba_xj_kebineng": {"status":"skipped","note":"Lord skill 附义 depends on the reward/punishment (奖惩) system and 枭行's weapon-slot abolition plus 狼志's show/replace semantics cannot be expressed literally; clean skip."},
+ "diyba_xj_zhangkai": {"status":"skipped","note":"限定技 劫行 requires replacing other players' HP recovery and equipment placement with skill-count reset; the engine has no literal hook for this, so skipped along with 拜泪."},
+ "diyba_19j_yanzhenqing": {"status":"skipped","note":"玄文 needs card-name character-count selection, flexible X and trigger-value shifting, and multi-target tricks, which cannot be implemented literally; skipped."}
+}

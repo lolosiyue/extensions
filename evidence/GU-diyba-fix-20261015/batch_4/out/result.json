@@ -1,0 +1,5 @@
+{
+ "diyba_14j_lie": {"status":"skipped","note":"巧锻 needs unrealistic tracking, 冶身 needs real bottom-of-pile reveal, a true recast and a hard target-count cap; none expressible literally, so removed."},
+ "diyba_14j_zhangcheng": {"status":"skipped","note":"聚贤 (per-option-once, zone swap with colour-conditional chaining to another target) not literally implementable; 隽轨 per-suit forced discard and end-of-turn suit record also approximate, so removed."},
+ "diyba_14j_baoxin": {"status":"skipped","note":"先觉 X must count cards that actually cause damage and the extra phases after the X count are not literally expressible with the engine's phase API, so removed."}
+}

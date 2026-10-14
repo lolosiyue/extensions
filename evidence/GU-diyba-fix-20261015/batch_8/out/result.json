@@ -1,0 +1,18 @@
+{
+ "diyba_xj_zhuyi": {
+  "status": "fixed",
+  "note": "更狩 end-phase check now tracks ids of cards obtained this Play phase and only allows the Slash if none of them is still in hand; removed the used-up mark logic."
+ },
+ "diyba_xj_yanxing": {
+  "status": "skipped",
+  "note": "叛约 needs custom 勠力同心 targeting (targets must include self plus others), actual-draw detection and undefined slash target; cannot be literal."
+ },
+ "diyba_17j_jiangxu": {
+  "status": "skipped",
+  "note": "峙围 shown-cards-in-yishi and 恪义 exclusive restriction/duel-on-self cannot be expressed literally with current engine hooks."
+ },
+ "diyba_17j_mazhong": {
+  "status": "skipped",
+  "note": "威绥 needs draw-pile-bottom placement, all-zone moves and correct recover which are not reliably supported; clean skip."
+ }
+}
