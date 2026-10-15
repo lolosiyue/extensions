@@ -58,6 +58,1240 @@ E鸣惊人扩展包 v1.0
 module("extensions.emjr", package.seeall)
 extension = sgs.Package("emjr")
 
+-- Keep the campaign self-contained in the externally managed extension.
+-- Local closures isolate its data, skills and progress from the original generals.
+do
+    local caocao_catalog = (function()
+        -- Keep this file as data only; scenario logic consumes these stable seat indices.
+        -- A '*' entry is resolved from the corresponding episode-specific general pool.
+        return {
+            stages = {
+                { name = '颖川之战', allies = { 'caocao', 'emjr_cc_bubing' }, enemies = { '*', 'zhangjiao', '*' }, commander = 1, protect = { 1 }, target = 'zhangjiao' },
+                { name = '汜水关之战', allies = { 'caocao', 'sunjian' }, enemies = { '*', 'yuanshao', '*' }, commander = 1, protect = { 1 } },
+                { name = '虎牢关之战', allies = { 'caocao', '*' }, enemies = { '*', 'lvbu', '*' }, commander = 1, protect = { 1 } },
+                { name = '董卓追击战', allies = { 'caocao', '*' }, enemies = { 'emjr_cc_liru', 'dongzhuo', 'lvbu' }, commander = 1, protect = { 1 } },
+                { name = '徐州复仇战', allies = { '*', 'caocao', '*' }, enemies = { 'zhangfei', 'guanyu', 'jiaxu', 'liubei', 'zhaoyun' }, commander = 2, protect = { 2 } },
+                { name = '濮阳之战', allies = { 'caocao', '*' }, enemies = { 'lvbu', 'zhangliao', '*' }, commander = 1, protect = { 1 } },
+                { name = '献帝救出战', allies = { 'emjr_cc_xiandi', 'caocao', '*' }, enemies = { '*', 'xuhuang', '*' }, commander = 2, protect = { 1, 2 } },
+                { name = '张绣讨伐战', allies = { 'caocao', 'dianwei' }, enemies = { 'emjr_cc_hucheer', 'emjr_cc_zhangxiu', '*' }, commander = 1, protect = { 1 }, loss = 'dianwei' },
+                { name = '徐州入侵战', allies = { 'caocao', '*' }, enemies = { 'zhangfei', 'guanyu', 'liubei' }, commander = 1, protect = { 1 } },
+                { name = '白马之战', allies = { 'caocao', 'guanyu' }, enemies = { '*', 'yanliangwenchou', '*' }, commander = 1, protect = { 1 } },
+                { name = '官渡之战', allies = { 'caocao', '*' }, enemies = { 'diaochan', 'yuanshao', '*' }, commander = 1, protect = { 1 } },
+                { name = '仓亭之战', allies = { 'caocao', 'xuchu' }, enemies = { 'jiaxu', 'yuanshao', '*' }, commander = 1, protect = { 1 } },
+                { name = '穰山之战', allies = { '*', 'caocao', '*' }, enemies = { '*', 'guanyu', 'liubei', 'zhangfei', '*' }, commander = 2, protect = { 2 } },
+                { name = '黎阳之战', allies = { 'caocao', 'guojia' }, enemies = { 'huatuo', 'yuanshao', '*' }, commander = 1, protect = { 1 } },
+                { name = '邺城之战', allies = { 'caocao', '*' }, enemies = { 'zhangjiao', 'yuanshao', '*' }, commander = 1, protect = { 1 } },
+                { name = '柳城平定战', allies = { 'caocao', 'guojia' }, enemies = { 'lvbu', 'yuanshao', '*' }, commander = 1, protect = { 1 }, loss = 'guojia' },
+                { name = '博望坡之战', allies = { 'xiahoudun', '*' }, enemies = { 'zhangfei', 'wolong', 'guanyu' }, commander = 1, protect = { 1 } },
+                { name = '长坂坡之战', allies = { 'caocao', '*' }, enemies = { 'zhangfei', 'zhaoyun', 'guanyu' }, commander = 1, protect = { 1 } },
+                { name = '赤壁之战', allies = { '*', 'caocao', '*' }, enemies = { 'zhangfei', 'zhouyu', 'huanggai', 'lvmeng', 'zhaoyun' }, commander = 2, protect = { 2 } },
+                { name = '合淝之战', allies = { 'caocao', '*' }, enemies = { 'sunquan', 'taishici', '*' }, commander = 1, protect = { 1 } },
+                { name = '逍遥津之战', allies = { 'zhangliao', '*' }, enemies = { 'lvmeng', 'sunquan', 'ganning' }, commander = 1, protect = { 1 } },
+                { name = '濡须口之战', allies = { 'caocao', '*' }, enemies = { 'luxun', 'sunquan', 'daqiao' }, commander = 1, protect = { 1 } },
+                { name = '定军山之战', allies = { '*', 'caocao', 'xiahouyuan' }, enemies = { 'machao', 'zhaoyun', 'huangzhong', 'zhangfei', '*' }, commander = 2, protect = { 2 } },
+                { name = '汉水之战', allies = { 'caocao', '*' }, enemies = { 'guanyu', 'liubei', '*' }, commander = 1, protect = { 1 } },
+                { name = '斜谷之战', allies = { 'caocao', '*' }, enemies = { 'zhangfei', 'zhugeliang', '*' }, commander = 1, protect = { 1 } },
+                { name = '樊城救援战', allies = { 'caocao', 'pangde' }, enemies = { 'zhaoyun', 'guanyu', '*' }, commander = 1, protect = { 1 } },
+                { name = '阳平关之战', allies = { 'caocao', 'simayi' }, enemies = { 'zhaoyun', 'weiyan', '*' }, commander = 1, protect = { 1 } },
+                { name = '剑阁之战', allies = { '*', 'caocao', '*' }, enemies = { 'weiyan', 'zhurong', 'menghuo', 'zhaoyun', 'pangtong' }, commander = 2, protect = { 2 } },
+                { name = '成都侵攻战', allies = { '*', 'caocao', '*' }, enemies = { 'huangyueying', 'guanyu', 'liubei', 'zhangfei', 'wolong' }, commander = 2, protect = { 2 } },
+                { name = '建业入侵战', allies = { '*', 'caocao', '*' }, enemies = { 'sunshangxiang', 'lvmeng', 'sunquan', 'luxun', 'taishici' }, commander = 2, protect = { 2 } },
+            },
+            allies = {
+                'xiahoudun', 'zhangliao', 'xuchu', 'guojia', 'dianwei', 'caoren', 'xiahouyuan', 'xuhuang',
+                'zhanghe', 'zhangchunhua', 'yujin', 'yuejin', 'simayi', 'pangde', 'emjr_cc_bubing', 'emjr_cc_gongbing',
+            },
+            enemies = {
+                'emjr_cc_bubing', 'emjr_cc_gongbing', 'emjr_cc_huangjin', 'emjr_cc_menghu',
+                'emjr_cc_qibing', 'emjr_cc_qiangbing', 'emjr_cc_tengjia', 'emjr_cc_tieqi',
+            },
+            beast_chance = 20,
+        }
+    end)()
+    local caocao_skills = (function()
+        -- E鸣惊人曹操传 skills. Loaded only when the host extension calls install().
+        local M = {}
+
+        local slashAttributeFlags = {
+            poison = "emjr_cc_poison_slash",
+            curse = "emjr_cc_curse_slash",
+            paralysis = "emjr_cc_paralysis_slash",
+        }
+
+        function M.flagSlashAttribute(card, attribute)
+            local flag = slashAttributeFlags[attribute]
+            assert(card and flag, "invalid E鸣惊人 Slash attribute")
+            card:setFlags(flag)
+        end
+
+        M.generals = {
+            { key = "emjr_cc_bubing", skills = { "emjr_cc_renwang" } },
+            { key = "emjr_cc_gongbing", skills = { "emjr_cc_yuanshe" }, hp = 3, female = true },
+            { key = "emjr_cc_hucheer", skills = { "emjr_cc_duji", "emjr_cc_fanji" } },
+            { key = "emjr_cc_huangjin", skills = { "emjr_cc_duji" } },
+            { key = "emjr_cc_liru", skills = { "emjr_cc_baoyan" }, hp = 3 },
+            { key = "emjr_cc_menghu", skills = { "emjr_cc_chuanji" } },
+            { key = "emjr_cc_qibing", skills = { "emjr_cc_jingkai" } },
+            { key = "emjr_cc_qiangbing", skills = { "emjr_cc_huiqiang" } },
+            { key = "emjr_cc_tengjia", skills = { "emjr_cc_vine" } },
+            { key = "emjr_cc_tieqi", skills = { "emjr_cc_tiebi" } },
+            { key = "emjr_cc_xiandi", skills = { "emjr_cc_huangming", "#emjr_cc_huangming-heal", "emjr_cc_yuanshi" } },
+            { key = "emjr_cc_zhangxiu", skills = { "emjr_cc_duji", "emjr_cc_huiqiang" } },
+        }
+
+        M.beasts = {
+            { key = "emjr_cc_qinglong", skill = "emjr_cc_jinglei", immunity = "emjr_cc_qinglong_guard" },
+            { key = "emjr_cc_baihu", skill = "emjr_cc_diyou", immunity = "emjr_cc_baihu_guard" },
+            { key = "emjr_cc_zhuque", skill = "emjr_cc_tianhuo", immunity = "emjr_cc_zhuque_guard" },
+            { key = "emjr_cc_xuanwu", skill = "emjr_cc_hundun", immunity = "emjr_cc_xuanwu_guard" },
+        }
+
+        local function sideOf(player)
+            return player and player:getMark("emjr_cc_side") or 0
+        end
+
+        local function onBoard(player)
+            return player and player:isAlive() and sideOf(player) > 0
+        end
+
+        local function noArmor(player)
+            return player and not player:getArmor()
+        end
+
+        local function makeDamage(room, source, target, amount, nature, skillName)
+            local damage = sgs.DamageStruct(skillName, source, target, amount, nature)
+            room:damage(damage)
+        end
+
+        local function isMarkedBeast(player)
+            return player and player:getMark("emjr_cc_beast") == 1
+        end
+
+        local function hasTreasureAccess(player, treasureId)
+            if not onBoard(player) then return false end
+            return isMarkedBeast(player) or player:getMark("emjr_cc_treasure") == treasureId
+        end
+
+        local function canSpendSpirit(player)
+            return isMarkedBeast(player) or player:getMark("@emjr_cc_spirit") > 0
+        end
+
+        local function loseSpirit(room, player)
+            if not isMarkedBeast(player) then
+                room:removePlayerMark(player, "@emjr_cc_spirit")
+            end
+        end
+
+        local function allLiving(room)
+            local result = {}
+            for _, player in sgs.qlist(room:getAllPlayers()) do
+                if player:isAlive() then result[#result + 1] = player end
+            end
+            return result
+        end
+
+        local function isSlashCard(card)
+            return card and card:isKindOf("Slash")
+        end
+
+        local function makeGeneral(extension, key, hp, female)
+            local general = sgs.General(extension, key, "qun", hp or 4, not female, true)
+            return general
+        end
+
+        local function createSkillCard(className, targetFixed, onUse)
+            return sgs.CreateSkillCard {
+                name = className,
+                target_fixed = targetFixed,
+                will_throw = true,
+                on_use = onUse,
+            }
+        end
+
+        local function activeTreasureSkill(name, cardClass, treasureId, cardKind, onUse, canActivateExtra)
+            local card = createSkillCard(cardClass, true, onUse)
+            return sgs.CreateViewAsSkillV2 {
+                name = name,
+                n = 1,
+                limit_scope = sgs.Skill_Limit_Phase,
+                max_usage_limit = 1,
+                can_activate = function(skill, request)
+                    local player = request:getInitiator()
+                    if not player or request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_PLAY then return false end
+                    return hasTreasureAccess(player, treasureId) and canSpendSpirit(player)
+                        and (not canActivateExtra or canActivateExtra(player, request))
+                end,
+                can_select_card = function(skill, request, candidate)
+                    return candidate and candidate:isKindOf(cardKind)
+                        and request:getSelectedCardIds():isEmpty()
+                end,
+                card_selection_feasible = function(skill, request)
+                    return request:getSelectedCardIds():length() == 1
+                end,
+                create_card = function(skill, request)
+                    local ids = request:getSelectedCardIds()
+                    if ids:length() ~= 1 then return nil end
+                    local result = card:clone()
+                    result:addSubcard(ids:first())
+                    result:setSkillName(skill:objectName())
+                    return result
+                end,
+                pay = function(skill, room, ctx, request)
+                    local player = ctx.owner or ctx.invoker or request:getInitiator()
+                    if not player or not hasTreasureAccess(player, treasureId) or not canSpendSpirit(player) then
+                        return false
+                    end
+                    loseSpirit(room, player)
+                    return true
+                end,
+            }
+        end
+
+        local function groupTargets(room, source, sameSide)
+            local result = {}
+            local side = sideOf(source)
+            if side <= 0 then return result end
+            for _, player in ipairs(allLiving(room)) do
+                if sideOf(player) > 0 and (sideOf(player) == side) == sameSide then
+                    result[#result + 1] = player
+                end
+            end
+            return result
+        end
+
+        local function hitFlag(target)
+            return "emjr_cc_hit_" .. target:objectName()
+        end
+
+        local function applyTurnRestriction(room, player, attribute)
+            local mark = "@emjr_cc_state_" .. attribute
+            if player:getMark(mark) == 0 then room:setPlayerMark(player, mark, 1) end
+            local pendingMark = "emjr_cc_state_" .. attribute .. "_pending"
+            if player:getPhase() == sgs.Player_NotActive then
+                -- Effects inflicted outside the victim's turn begin next RoundStart.
+                room:setPlayerMark(player, pendingMark, 1)
+                return
+            end
+            -- Effects inflicted during the victim's turn apply now and expire at its end.
+            room:setPlayerMark(player, pendingMark, 0)
+            room:setPlayerCardLimitation(player, attribute == "curse" and "use,recast" or "use",
+                attribute == "curse" and "TrickCard" or "Slash", true, "emjr_cc_state_" .. attribute)
+            room:setPlayerMark(player, "emjr_cc_state_" .. attribute .. "_active", 1)
+        end
+
+        local function treasureDamageRule()
+            local function qualifyingSlash(card, treasureId)
+                if not isSlashCard(card) then return false end
+                local kind = card:objectName()
+                return kind == "slash" or (treasureId == 1 and kind == "thunder_slash")
+                    or (treasureId == 3 and kind == "fire_slash")
+            end
+            return sgs.CreateRuleSkillV2 {
+                name = "emjr_cc_damage_dispatcher",
+                events = { sgs.Damage, sgs.CardFinished },
+                global = true,
+                on_record = function(skill, event, room, player, ctx)
+                    if event == sgs.Damage then
+                        local damage = ctx.original_data:toDamage()
+                        if damage.card and isSlashCard(damage.card) and damage.from and sideOf(damage.from) > 0
+                            and damage.to and sideOf(damage.to) > 0 then
+                            room:setCardFlag(damage.card, hitFlag(damage.to))
+                        end
+                    end
+                end,
+                can_trigger = function(skill, event, room, player, data)
+                    if event ~= sgs.CardFinished then return "" end
+                    local use = data:toCardUse()
+                    if not use.card or not isSlashCard(use.card) or not use.from or sideOf(use.from) <= 0 then return "" end
+                    for _, target in sgs.qlist(room:getAllPlayers(true)) do
+                        if sideOf(target) > 0 and use.card:hasFlag(hitFlag(target)) then
+                            local decisionPlayer = use.from or player or room:getAllPlayers():first()
+                            return skill:objectName(), decisionPlayer
+                        end
+                    end
+                    return ""
+                end,
+                on_effect = function(skill, event, room, player, ctx)
+                    if event ~= sgs.CardFinished then return false end
+                    local use = ctx.original_data:toCardUse()
+                    local source, hitTargets, hitEnemies = use.from, {}, {}
+                    for _, target in sgs.qlist(room:getAllPlayers(true)) do
+                        if use.card:hasFlag(hitFlag(target)) then
+                            hitTargets[#hitTargets + 1] = target
+                            if source and sideOf(source) > 0 and sideOf(target) > 0 and sideOf(target) ~= sideOf(source) then
+                                hitEnemies[#hitEnemies + 1] = target
+                            end
+                        end
+                    end
+                    if source and source:isAlive() and sideOf(source) > 0 and source:hasSkill("emjr_cc_chuanji") then
+                        for _, damaged in ipairs(hitTargets) do
+                            if not source:isAlive() then break end
+                            local candidates = sgs.SPlayerList()
+                            local seen = {}
+                            for _, neighbor in ipairs({ damaged:getNextAlive(), damaged:getPreviousAlive() }) do
+                                if neighbor and neighbor ~= source and sideOf(neighbor) > 0 and not seen[neighbor:objectName()]
+                                    and source:canSlash(neighbor, use.card, false) then
+                                    seen[neighbor:objectName()] = true
+                                    candidates:append(neighbor)
+                                end
+                            end
+                            if not candidates:isEmpty() and room:askForSkillInvoke(source, "emjr_cc_chuanji", ToData(damaged)) then
+                                local chosen = room:askForPlayerChosen(source, candidates, "emjr_cc_chuanji",
+                                    "@emjr_cc_chuanji:" .. damaged:objectName(), true, true)
+                                if chosen then
+                                    local followup = sgs.Sanguosha:cloneCard(use.card:objectName(), use.card:getSuit(), use.card:getNumber())
+                                    followup:setSkillName("_emjr_cc_chuanji")
+                                    room:useCard(sgs.CardUseStruct(followup, source, chosen), false)
+                                    followup:deleteLater()
+                                end
+                            end
+                        end
+                    end
+                    for _, damaged in ipairs(hitTargets) do
+                        if damaged:hasSkill("emjr_cc_fanji") and damaged:isAlive() and source and source:isAlive()
+                            and sideOf(damaged) > 0 and sideOf(source) > 0
+                            and source ~= damaged and damaged:inMyAttackRange(source)
+                            and damaged:canSlash(source, nil, false)
+                            and room:askForSkillInvoke(damaged, "emjr_cc_fanji", ToData(source)) then
+                            room:askForUseSlashTo(damaged, source,
+                                "@emjr_cc_fanji:" .. source:objectName(), true, false, true)
+                        end
+                    end
+                    local id = source and source:getMark("emjr_cc_treasure") or 0
+                    if id == 0 and source and isMarkedBeast(source) then
+                        if source:hasSkill("emjr_cc_jinglei") then id = 1
+                        elseif source:hasSkill("emjr_cc_tianhuo") then id = 3 end
+                    end
+                    local skillName, nature
+                    if id == 1 then skillName, nature = "emjr_cc_jinglei", sgs.DamageStruct_Thunder
+                    elseif id == 3 then skillName, nature = "emjr_cc_tianhuo", sgs.DamageStruct_Fire end
+                    if skillName and qualifyingSlash(use.card, id) then
+                        for _, damaged in ipairs(hitEnemies) do
+                            if source:isAlive() and source:hasSkill(skillName) and hasTreasureAccess(source, id)
+                                and canSpendSpirit(source) and room:askForSkillInvoke(source, skillName, ToData(damaged)) then
+                                loseSpirit(room, source)
+                                for _, target in ipairs(groupTargets(room, source, false)) do
+                                    if target ~= damaged then makeDamage(room, nil, target, 1, nature, skillName) end
+                                end
+                            end
+                        end
+                    end
+                    for _, target in sgs.qlist(room:getAllPlayers()) do
+                        room:setCardFlag(use.card, "-" .. hitFlag(target))
+                    end
+                    return false
+                end,
+            }
+        end
+
+        local function createStatusRule()
+            return sgs.CreateRuleSkillV2 {
+                name = "emjr_cc_status_rule",
+                events = { sgs.EventPhaseStart, sgs.EventPhaseEnd, sgs.EventPhaseChanging, sgs.Damage, sgs.CardFinished },
+                global = true,
+                on_record = function(skill, event, room, player, ctx)
+                    if event == sgs.Damage then
+                        local damage = ctx.original_data:toDamage()
+                        if damage.card and isSlashCard(damage.card) and damage.from and sideOf(damage.from) > 0
+                            and damage.to and sideOf(damage.to) > 0 then
+                            for attribute, flag in pairs(slashAttributeFlags) do
+                                if damage.card:hasFlag(flag) then
+                                    local mark = "@emjr_cc_state_" .. attribute
+                                    if damage.to:getMark(mark) == 0 then
+                                        if attribute == "curse" or attribute == "paralysis" then
+                                            applyTurnRestriction(room, damage.to, attribute)
+                                        else
+                                            room:setPlayerMark(damage.to, mark, 1)
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    elseif event == sgs.CardFinished then
+                        local use = ctx.original_data:toCardUse()
+                        if use.card and use.from and sideOf(use.from) > 0 then
+                            for _, flag in pairs(slashAttributeFlags) do room:setCardFlag(use.card, "-" .. flag) end
+                        end
+                    end
+                end,
+                can_trigger = function(skill, event, room, player, data)
+                    if not onBoard(player) then return "" end
+                    if event == sgs.EventPhaseStart then
+                        if player:getPhase() == sgs.Player_RoundStart and
+                            (player:getMark("@emjr_cc_state_curse") > 0 or player:getMark("@emjr_cc_state_paralysis") > 0) then
+                            return skill:objectName(), player
+                        end
+                    elseif event == sgs.EventPhaseEnd then
+                        if player:getPhase() == sgs.Player_Judge and player:getMark("@emjr_cc_state_poison") > 0 then
+                            return skill:objectName(), player
+                        end
+                    elseif event == sgs.EventPhaseChanging then
+                        local change = data:toPhaseChange()
+                        if change.to == sgs.Player_NotActive and
+                            ((player:getMark("@emjr_cc_state_curse") > 0 and player:getMark("emjr_cc_state_curse_pending") == 0)
+                            or (player:getMark("@emjr_cc_state_paralysis") > 0 and player:getMark("emjr_cc_state_paralysis_pending") == 0)) then
+                            return skill:objectName(), player
+                        end
+                    end
+                    return ""
+                end,
+                on_effect = function(skill, event, room, player, ctx)
+                    -- Status timers only belong to the story-mode sides; ordinary mode
+                    -- players must never have restrictions or marks changed by this rule.
+                    if not onBoard(player) then return false end
+                    if event == sgs.EventPhaseStart then
+                        if player:getMark("@emjr_cc_state_curse") > 0 then
+                            room:setPlayerMark(player, "emjr_cc_state_curse_pending", 0)
+                            room:setPlayerCardLimitation(player, "use,recast", "TrickCard", true, "emjr_cc_state_curse")
+                            room:setPlayerMark(player, "emjr_cc_state_curse_active", 1)
+                        end
+                        if player:getMark("@emjr_cc_state_paralysis") > 0 then
+                            room:setPlayerMark(player, "emjr_cc_state_paralysis_pending", 0)
+                            room:setPlayerCardLimitation(player, "use", "Slash", true, "emjr_cc_state_paralysis")
+                            room:setPlayerMark(player, "emjr_cc_state_paralysis_active", 1)
+                        end
+                        return false
+                    end
+                    if event == sgs.EventPhaseEnd and player:getPhase() == sgs.Player_Judge then
+                        if player:getMark("@emjr_cc_state_poison") > 0 then
+                            local judge = sgs.JudgeStruct()
+                            judge.who = player
+                            judge.reason = skill:objectName()
+                            judge.pattern = ".|club"
+                            judge.good = true
+                            room:judge(judge)
+                            room:setPlayerMark(player, "@emjr_cc_state_poison", 0)
+                            if judge:isGood() then makeDamage(room, nil, player, 1, sgs.DamageStruct_Normal, skill:objectName()) end
+                        end
+                        return false
+                    end
+                    local change = ctx.original_data:toPhaseChange()
+                    if change.to == sgs.Player_NotActive then
+                        if player:getMark("@emjr_cc_state_curse") > 0 then
+                            if player:getMark("emjr_cc_state_curse_pending") == 0 and player:getMark("emjr_cc_state_curse_active") > 0 then
+                                room:removePlayerCardLimitationByReason(player, "emjr_cc_state_curse")
+                                room:setPlayerMark(player, "@emjr_cc_state_curse", 0)
+                                room:setPlayerMark(player, "emjr_cc_state_curse_active", 0)
+                            end
+                        end
+                        if player:getMark("@emjr_cc_state_paralysis") > 0 then
+                            if player:getMark("emjr_cc_state_paralysis_pending") == 0 and player:getMark("emjr_cc_state_paralysis_active") > 0 then
+                                room:removePlayerCardLimitationByReason(player, "emjr_cc_state_paralysis")
+                                room:setPlayerMark(player, "@emjr_cc_state_paralysis", 0)
+                                room:setPlayerMark(player, "emjr_cc_state_paralysis_active", 0)
+                            end
+                        end
+                    end
+                    return false
+                end,
+            }
+        end
+
+        function M.install(extension)
+            assert(extension, "M.install requires the host extension Package")
+            if M._installed then return M.generals, M.beasts end
+
+            local generals = {}
+            for _, spec in ipairs(M.generals) do
+                local hp = spec.hp or (spec.key == "emjr_cc_xiandi" and 3 or 4)
+                generals[spec.key] = makeGeneral(extension, spec.key, hp, spec.female)
+            end
+
+            local function attach(generalKey, skill)
+                generals[generalKey]:addSkill(skill)
+            end
+
+            -- A virtual Renwang Shield is supplied only while the armor slot is empty.
+            local renwangArmor = sgs.CreateViewAsEquipSkill {
+                name = "emjr_cc_renwang",
+                view_as_equip = function(self, player)
+                    if onBoard(player) and noArmor(player) then return "renwang_shield" end
+                    return ""
+                end,
+            }
+            attach("emjr_cc_bubing", renwangArmor)
+
+            local longRange = sgs.CreateTargetModSkillV2 {
+                name = "emjr_cc_yuanshe",
+                pattern = "Slash",
+                holder_selector = sgs.CorrectSkill_Primary,
+                correct_func = function(skill, ctx)
+                    local holder = ctx:getPrimary()
+                    if onBoard(holder) and holder:hasSkill("emjr_cc_yuanshe")
+                        and ctx:getModType() == sgs.TargetModSkill_DistanceLimit then
+                        return 1000
+                    end
+                    return nil
+                end,
+            }
+            attach("emjr_cc_gongbing", longRange)
+
+            local poisonSlash = sgs.CreateTriggerSkillV2 {
+                name = "emjr_cc_duji",
+                frequency = sgs.Skill_Compulsory,
+                events = { sgs.DamageCaused },
+                can_trigger = function(skill, event, room, player, data)
+                    if not onBoard(player) or not player:hasSkill(skill:objectName()) then return false end
+                    local damage = data:toDamage()
+                    if damage.from ~= player or not isSlashCard(damage.card) then
+                        return false
+                    end
+                    return skill:objectName()
+                end,
+                on_effect = function(skill, event, room, player, ctx)
+                    local damage = ctx.original_data:toDamage()
+                    if damage.card then M.flagSlashAttribute(damage.card, "poison") end
+                    if damage.nature == sgs.DamageStruct_Normal then damage.nature = sgs.DamageStruct_Poison end
+                    ctx.original_data:setValue(damage)
+                    return false
+                end,
+            }
+            attach("emjr_cc_hucheer", poisonSlash)
+            attach("emjr_cc_huangjin", poisonSlash)
+            attach("emjr_cc_zhangxiu", poisonSlash)
+
+            local counterSlash = sgs.CreateTriggerSkillV2 {
+                name = "emjr_cc_fanji", events = { sgs.GameStart },
+                can_trigger = function() return false end,
+            }
+            attach("emjr_cc_hucheer", counterSlash)
+
+            local fireSlash = sgs.CreateFilterSkill {
+                name = "emjr_cc_baoyan",
+                view_filter = function(skill, card)
+                    return card and card:objectName() == "slash"
+                end,
+                view_as = function(skill, card)
+                    local fire = sgs.Sanguosha:cloneCard("fire_slash", card:getSuit(), card:getNumber())
+                    fire:addSubcard(card:getId())
+                    fire:setSkillName(skill:objectName())
+                    return fire
+                end,
+            }
+            attach("emjr_cc_liru", fireSlash)
+
+            local piercingSlash = sgs.CreateTriggerSkillV2 {
+                name = "emjr_cc_chuanji", events = { sgs.GameStart },
+                can_trigger = function() return false end,
+            }
+            attach("emjr_cc_menghu", piercingSlash)
+
+            local goldenArmorSkill = sgs.CreateEquipSkillV2 {
+                name = "emjr_cc_golden_armor",
+                equipment = "_emjr_cc_golden_armor",
+                equipment_type = "armor",
+                frequency = sgs.Skill_Compulsory,
+                events = { sgs.DamageInflicted },
+                can_trigger = function(skill, event, room, player, data)
+                    local damage = data:toDamage()
+                    if onBoard(player) and damage.nature ~= sgs.DamageStruct_Normal then
+                        return skill:objectName(), player
+                    end
+                    return ""
+                end,
+                on_effect = function(skill, event, room, player, ctx)
+                    room:sendCompulsoryTriggerLog(player, skill:objectName())
+                    return true
+                end,
+            }
+            local goldenArmor = sgs.CreateArmor {
+                name = "_emjr_cc_golden_armor", class_name = "_emjr_cc_golden_armor",
+                suit = sgs.Card_Spade, number = 2, equip_skill = goldenArmorSkill,
+            }
+            goldenArmor:setParent(sgs.Sanguosha:getPackage("exclusive_cards"))
+            M._goldenArmor = goldenArmor -- Match the existing exclusive_cards virtual-armor registration.
+            local mirrorArmor = sgs.CreateViewAsEquipSkill {
+                name = "emjr_cc_jingkai",
+                view_as_equip = function(self, player)
+                    if onBoard(player) and noArmor(player) then return "_emjr_cc_golden_armor" end
+                    return ""
+                end,
+            }
+            attach("emjr_cc_qibing", mirrorArmor)
+
+            local returnSpear = sgs.CreateTriggerSkillV2 {
+                name = "emjr_cc_huiqiang",
+                frequency = sgs.Skill_NotFrequent,
+                events = { sgs.SlashMissed },
+                can_trigger = function(skill, event, room, player, data)
+                    if not onBoard(player) or not player:hasSkill(skill:objectName()) then return false end
+                    local effect = data:toSlashEffect()
+                    return effect.from == player and effect.to and effect.to:isAlive() and skill:objectName() or false
+                end,
+                on_cost = function(skill, event, room, player, ctx)
+                    local effect = ctx.original_data:toSlashEffect()
+                    return room:askForSkillInvoke(player, skill:objectName(), ToData(effect.to))
+                end,
+                on_effect = function(skill, event, room, player, ctx)
+                    if not player:isAlive() then return false end
+                    local effect = ctx.original_data:toSlashEffect()
+                    local target = effect.to
+                    if not target or not target:isAlive() then return false end
+                    room:setPlayerFlag(player, "emjr_cc_huiqiang_active")
+                    room:askForUseSlashTo(player, target,
+                        "@emjr_cc_huiqiang:" .. target:objectName(), true, false, true)
+                    room:setPlayerFlag(player, "-emjr_cc_huiqiang_active")
+                    return false
+                end,
+            }
+            attach("emjr_cc_qiangbing", returnSpear)
+            attach("emjr_cc_zhangxiu", returnSpear)
+
+            local returnSpearRange = sgs.CreateTargetModSkillV2 {
+                name = "#emjr_cc_huiqiang_range",
+                pattern = "Slash",
+                holder_selector = sgs.CorrectSkill_Primary,
+                correct_func = function(skill, ctx)
+                    local holder = ctx:getPrimary()
+                    if onBoard(holder) and holder:hasSkill("emjr_cc_huiqiang")
+                        and holder:hasFlag("emjr_cc_huiqiang_active")
+                        and ctx:getModType() == sgs.TargetModSkill_DistanceLimit then
+                        return 1000
+                    end
+                    return nil
+                end,
+            }
+            attach("emjr_cc_qiangbing", returnSpearRange)
+            attach("emjr_cc_zhangxiu", returnSpearRange)
+            extension:insertRelatedSkills("emjr_cc_huiqiang", "#emjr_cc_huiqiang_range")
+
+            local vineArmor = sgs.CreateViewAsEquipSkill {
+                name = "emjr_cc_vine",
+                view_as_equip = function(self, player)
+                    if onBoard(player) and noArmor(player) then return "vine" end
+                    return ""
+                end,
+            }
+            attach("emjr_cc_tengjia", vineArmor)
+
+            local ironWall = sgs.CreateDistanceSkillV2 {
+                name = "emjr_cc_tiebi",
+                holder_selector = sgs.CorrectSkill_Participants,
+                correct_func = function(skill, ctx)
+                    local holder = ctx:getHolder()
+                    if not onBoard(holder) then return nil end
+                    if ctx:getPrimary() == holder then return -1 end
+                    if ctx:getSecondary() == holder then return 1 end
+                    return nil
+                end,
+            }
+            attach("emjr_cc_tieqi", ironWall)
+
+            local prohibitSlashAndTrick = sgs.CreateProhibitSkillV2 {
+                name = "emjr_cc_huangming",
+                holder_selector = sgs.CorrectSkill_Primary,
+                is_prohibited = function(skill, ctx)
+                    local holder = ctx:getHolder()
+                    local from = ctx:getFrom()
+                    local card = ctx:getCard()
+                    if not onBoard(holder) or from ~= holder or not card then return false end
+                    return card:isKindOf("Slash") or (card:isKindOf("TrickCard") and card:isDamageCard())
+                end,
+            }
+            attach("emjr_cc_xiandi", prohibitSlashAndTrick)
+
+            local emperorHeal = sgs.CreateTriggerSkillV2 {
+                name = "#emjr_cc_huangming-heal",
+                frequency = sgs.Skill_Compulsory,
+                events = { sgs.EventPhaseStart },
+                can_trigger = function(skill, event, room, player, data)
+                    if onBoard(player) and player:hasSkill(skill:objectName())
+                        and player:getPhase() == sgs.Player_Start and player:isWounded() then
+                        return skill:objectName()
+                    end
+                    return false
+                end,
+                on_effect = function(skill, event, room, player, ctx)
+                    room:sendCompulsoryTriggerLog(player, "emjr_cc_huangming")
+                    local recover = sgs.RecoverStruct()
+                    recover.who = player
+                    recover.recover = 1
+                    room:recover(player, recover)
+                    return false
+                end,
+            }
+            attach("emjr_cc_xiandi", emperorHeal)
+            extension:insertRelatedSkills("emjr_cc_huangming", "#emjr_cc_huangming-heal")
+
+            local emperorVision = sgs.CreateDistanceSkillV2 {
+                name = "emjr_cc_yuanshi",
+                holder_selector = sgs.CorrectSkill_Secondary,
+                correct_func = function(skill, ctx)
+                    local holder = ctx:getSecondary()
+                    if onBoard(holder) and holder:hasSkill("emjr_cc_yuanshi") then return 1 end
+                    return nil
+                end,
+            }
+            attach("emjr_cc_xiandi", emperorVision)
+
+            local genericBeastGuard = {}
+            local function createBeastGuard(spec, nature, cap)
+                return sgs.CreateTriggerSkillV2 {
+                    name = spec.immunity,
+                    frequency = sgs.Skill_Compulsory,
+                    events = { sgs.DamageInflicted },
+                    can_trigger = function(skill, event, room, player, data)
+                        if not onBoard(player) or not isMarkedBeast(player)
+                            or not player:hasSkill(spec.skill) then return false end
+                        local damage = data:toDamage()
+                        if nature and damage.nature ~= nature then return false end
+                        if cap and damage.damage <= cap then return false end
+                        if spec.key == "emjr_cc_xuanwu" and
+                            (not damage.card or damage.card:objectName() ~= "slash"
+                                or damage.nature ~= sgs.DamageStruct_Normal) then return false end
+                        return skill:objectName()
+                    end,
+                    on_effect = function(skill, event, room, player, ctx)
+                        local damage = ctx.original_data:toDamage()
+                        room:sendCompulsoryTriggerLog(player, spec.skill)
+                        if cap then
+                            damage.damage = cap
+                            ctx.original_data:setValue(damage)
+                            return false
+                        end
+                        damage.prevented = true
+                        ctx.original_data:setValue(damage)
+                        return true
+                    end,
+                }
+            end
+
+            local qinglongGuard = createBeastGuard(M.beasts[1], sgs.DamageStruct_Thunder)
+            local baihuGuard = createBeastGuard(M.beasts[2], nil, 1)
+            local zhuqueGuard = createBeastGuard(M.beasts[3], sgs.DamageStruct_Fire)
+            local xuanwuGuard = createBeastGuard(M.beasts[4], nil)
+            genericBeastGuard = { qinglongGuard, baihuGuard, zhuqueGuard, xuanwuGuard }
+
+            local damageDispatcher = treasureDamageRule()
+            local jinglei = sgs.CreateTriggerSkillV2 {
+                name = "emjr_cc_jinglei", events = { sgs.GameStart }, can_trigger = function() return false end,
+            }
+            local tianhuo = sgs.CreateTriggerSkillV2 {
+                name = "emjr_cc_tianhuo", events = { sgs.GameStart }, can_trigger = function() return false end,
+            }
+
+            local function healFriends(cardName)
+                return function(card, room, source)
+                    if not hasTreasureAccess(source, 2) then return end
+                    for _, target in ipairs(groupTargets(room, source, true)) do
+                        if target:isWounded() then
+                            local recover = sgs.RecoverStruct()
+                            recover.who = source
+                            recover.recover = 1
+                            room:recover(target, recover)
+                        end
+                    end
+                end
+            end
+
+            local diyou = activeTreasureSkill("emjr_cc_diyou", "emjr_cc_diyouCard", 2, "BasicCard",
+                healFriends("emjr_cc_diyouCard"), function(player, request)
+                    if player:isWounded() then return true end
+                    -- Activation also runs in clients, whose Player has no server Room.
+                    for _, friend in sgs.qlist(player:getAliveSiblings()) do
+                        if sideOf(friend) == sideOf(player) and friend:isWounded() then return true end
+                    end
+                    return false
+                end)
+
+            local stateChoices = {
+                "@emjr_cc_state_poison", "@emjr_cc_state_curse", "@emjr_cc_state_paralysis",
+                "@emjr_cc_state_chain", "@emjr_cc_state_flip",
+            }
+            local hundun = activeTreasureSkill("emjr_cc_hundun", "emjr_cc_hundunCard", 4, "TrickCard",
+                function(card, room, source)
+                    if not hasTreasureAccess(source, 4) then return end
+                    for _, target in ipairs(groupTargets(room, source, false)) do
+                        local available = {}
+                        for _, mark in ipairs(stateChoices) do
+                            local eligible = target:getMark(mark) == 0
+                            if mark == "@emjr_cc_state_chain" then
+                                eligible = not target:isChained()
+                                if eligible then room:setPlayerMark(target, mark, 0) end
+                            elseif mark == "@emjr_cc_state_flip" then
+                                eligible = target:faceUp()
+                                if eligible then room:setPlayerMark(target, mark, 0) end
+                            end
+                            if eligible then available[#available + 1] = mark end
+                        end
+                        if #available > 0 then
+                            local mark = available[math.random(#available)]
+                            room:setPlayerMark(target, mark, 1)
+                            if mark == "@emjr_cc_state_curse" or mark == "@emjr_cc_state_paralysis" then
+                                local attribute = mark == "@emjr_cc_state_curse" and "curse" or "paralysis"
+                                applyTurnRestriction(room, target, attribute)
+                            end
+                            if mark == "@emjr_cc_state_chain" then room:setPlayerChained(target, true) end
+                            if mark == "@emjr_cc_state_flip" then target:turnOver() end
+                        end
+                    end
+                end)
+
+            local treasureSkills = sgs.SkillList()
+            for _, skill in ipairs({ damageDispatcher, jinglei, tianhuo, diyou, hundun, createStatusRule() }) do
+                treasureSkills:append(skill)
+            end
+            for _, skill in ipairs(genericBeastGuard) do treasureSkills:append(skill) end
+            sgs.Sanguosha:addSkills(treasureSkills)
+
+            for _, spec in ipairs(M.beasts) do
+                local general = sgs.General(extension, spec.key, "god", 6, false, true)
+                general:addSkill(spec.skill)
+                general:addSkill(spec.immunity)
+                -- Game mode setup owns the side/beast marks; the general provides its matching item skill.
+            end
+
+            sgs.LoadTranslationTable {
+                ["emjr_cc_bubing"] = "曹操傳步兵",
+                ["emjr_cc_gongbing"] = "曹操傳弓兵",
+                ["emjr_cc_hucheer"] = "曹操傳胡車兒",
+                ["emjr_cc_huangjin"] = "曹操傳黃巾賊",
+                ["emjr_cc_liru"] = "曹操傳李儒",
+                ["emjr_cc_menghu"] = "曹操傳猛虎兵",
+                ["emjr_cc_qibing"] = "曹操傳騎兵",
+                ["emjr_cc_qiangbing"] = "曹操傳槍兵",
+                ["emjr_cc_tengjia"] = "曹操傳藤甲兵",
+                ["emjr_cc_tieqi"] = "曹操傳鐵騎兵",
+                ["emjr_cc_xiandi"] = "獻帝",
+                ["emjr_cc_zhangxiu"] = "張繡",
+                ["emjr_cc_qinglong"] = "青龍",
+                ["emjr_cc_baihu"] = "白虎",
+                ["emjr_cc_zhuque"] = "朱雀",
+                ["emjr_cc_xuanwu"] = "玄武",
+
+                ["emjr_cc_renwang"] = "仁王",
+                [":emjr_cc_renwang"] = "鎖定技，若你的防具欄沒有牌，你視為裝備【仁王盾】。",
+                ["emjr_cc_yuanshe"] = "遠射",
+                [":emjr_cc_yuanshe"] = "鎖定技，你使用【殺】無距離限制。",
+                ["emjr_cc_duji"] = "毒擊",
+                [":emjr_cc_duji"] = "鎖定技，你使用【殺】造成傷害後，目標獲得中毒；普通傷害改為毒傷，原有火焰或雷電屬性保留。",
+                ["emjr_cc_fanji"] = "反擊",
+                [":emjr_cc_fanji"] = "其他角色使用【殺】結算結束後，若此【殺】對你造成傷害且該角色在你的攻擊範圍內，你可以對其使用一張【殺】。",
+                ["@emjr_cc_fanji"] = "你可以對 %src 使用一張【殺】",
+                ["emjr_cc_baoyan"] = "爆炎",
+                [":emjr_cc_baoyan"] = "鎖定技，你使用普通【殺】時，將其視為火【殺】。",
+                ["emjr_cc_chuanji"] = "穿擊",
+                [":emjr_cc_chuanji"] = "你使用【殺】結算結束後，若此【殺】對目標角色造成傷害，你可以視為對該角色座次上家或下家使用一張相同的【殺】。",
+                ["@emjr_cc_chuanji"] = "你可以發動「穿擊」，選擇 %src 座次相鄰的一名角色",
+                ["emjr_cc_jingkai"] = "鏡鎧",
+                [":emjr_cc_jingkai"] = "鎖定技，若你的防具欄沒有牌，你視為裝備【黃金鎧】。",
+                ["_emjr_cc_golden_armor"] = "黃金鎧",
+                [":emjr_cc_golden_armor"] = "鎖定技，防止你受到的屬性傷害。",
+                ["emjr_cc_huiqiang"] = "回槍",
+                [":emjr_cc_huiqiang"] = "你使用的【殺】被【閃】抵消後，可以再使用一張【殺】；此【殺】無距離限制。",
+                ["@emjr_cc_huiqiang"] = "你可以對 %src 再使用一張【殺】",
+                ["emjr_cc_vine"] = "藤甲",
+                [":emjr_cc_vine"] = "鎖定技，若你的防具欄沒有牌，你視為裝備【藤甲】。",
+                ["emjr_cc_tiebi"] = "鐵壁",
+                [":emjr_cc_tiebi"] = "鎖定技，其他角色計算與你的距離時+1；你計算與其他角色的距離時-1。",
+                ["emjr_cc_huangming"] = "皇命",
+                [":emjr_cc_huangming"] = "鎖定技，你不能使用【殺】或能造成傷害的錦囊牌；準備階段開始時，若你已受傷，你回復1點體力。",
+                ["#emjr_cc_huangming-heal"] = "皇命",
+                ["emjr_cc_yuanshi"] = "遠視",
+                [":emjr_cc_yuanshi"] = "鎖定技，其他角色計算與你的距離時+1。",
+
+                ["emjr_cc_jinglei"] = "驚雷",
+                [":emjr_cc_jinglei"] = "你使用普通【殺】或雷【殺】結算完且實際對敵方造成傷害後，可以消耗1點靈氣，對除受傷敵方外的所有敵方角色各造成1點無來源雷電傷害。神獸發動此技能不消耗靈氣。",
+                ["emjr_cc_diyou"] = "地佑",
+                [":emjr_cc_diyou"] = "出牌階段限一次，你可以棄置一張基本牌，消耗1點靈氣，令所有友方角色各回復1點體力。神獸發動此技能不消耗靈氣。",
+                ["emjr_cc_tianhuo"] = "天火",
+                [":emjr_cc_tianhuo"] = "你使用普通【殺】或火【殺】結算完且實際對敵方造成傷害後，可以消耗1點靈氣，對除受傷敵方外的所有敵方角色各造成1點無來源火焰傷害。神獸發動此技能不消耗靈氣。",
+                ["emjr_cc_hundun"] = "混沌",
+                [":emjr_cc_hundun"] = "出牌階段限一次，你可以棄置一張錦囊牌，消耗1點靈氣，令所有敵方角色各隨機獲得一種其尚未有的狀態。神獸發動此技能不消耗靈氣。",
+                ["emjr_cc_qinglong_guard"] = "青龍護佑",
+                [":emjr_cc_qinglong_guard"] = "鎖定技，你防止雷電傷害。",
+                ["emjr_cc_baihu_guard"] = "白虎護佑",
+                [":emjr_cc_baihu_guard"] = "鎖定技，你受到的每次傷害至多為1點。",
+                ["emjr_cc_zhuque_guard"] = "朱雀護佑",
+                [":emjr_cc_zhuque_guard"] = "鎖定技，你防止火焰傷害。",
+                ["emjr_cc_xuanwu_guard"] = "玄武護佑",
+                [":emjr_cc_xuanwu_guard"] = "鎖定技，你防止普通【殺】造成的傷害。",
+                ["emjr_cc_status_rule"] = "狀態結算",
+                ["emjr_cc_damage_dispatcher"] = "曹操傳傷害結算",
+                ["emjr_cc_diyouCard"] = "地佑",
+                ["emjr_cc_hundunCard"] = "混沌",
+                ["emjr_cc_chain_added"] = "連環狀態",
+                ["@emjr_cc_spirit"] = "靈氣",
+                ["@emjr_cc_treasure"] = "所持寶物",
+                ["@emjr_cc_state_poison"] = "中毒",
+                ["@emjr_cc_state_curse"] = "禁咒",
+                ["@emjr_cc_state_paralysis"] = "麻痹",
+                ["@emjr_cc_state_chain"] = "連環",
+                ["@emjr_cc_state_flip"] = "翻面",
+                ["@emjr_cc_state_poison.effect"] = "下個判定階段結束時進行判定：若結果為梅花，受到1點無來源普通傷害；然後移除此狀態",
+                ["@emjr_cc_state_curse.effect"] = "若在你回合內施加，立即生效；否則於下回合開始生效。不能使用或重鑄錦囊牌（不限制回應），持續至下回合結束後解除",
+                ["@emjr_cc_state_paralysis.effect"] = "若在你回合內施加，立即生效；否則於下回合開始生效。不能使用【殺】（不限制回應），持續至下回合結束後解除",
+                ["@emjr_cc_state_chain.effect"] = "立即橫置；不會在回合結束時自動解除",
+                ["@emjr_cc_state_flip.effect"] = "立即翻面；不會在回合結束時自動翻回",
+            }
+
+            M._installed = true
+            return M.generals, M.beasts
+        end
+
+        return M
+    end)()
+    local caocao_campaign = (function()
+        -- Cao Cao campaign rules. All mutable battle state belongs to the Room.
+        local M = {}
+        local catalog = caocao_catalog
+        local treasures = { "emjr_cc_jinglei", "emjr_cc_diyou", "emjr_cc_tianhuo", "emjr_cc_hundun" }
+        local beasts = { "emjr_cc_qinglong", "emjr_cc_baihu", "emjr_cc_zhuque", "emjr_cc_xuanwu" }
+        local mode_stages = {}
+        local hidden_mode = "3_emjr_cc_beast"
+
+        local function has_bit(value, bit)
+            return math.floor(value / bit) % 2 == 1
+        end
+
+        local function add_bit(value, bit)
+            return has_bit(value, bit) and value or value + bit
+        end
+
+        local function log(room, kind, from, arg, arg2)
+            local message = sgs.LogMessage()
+            message.type, message.from = kind, from
+            message.arg, message.arg2 = tostring(arg or ""), tostring(arg2 or "")
+            room:sendLog(message)
+        end
+
+        local function profile_key(owner)
+            -- Screen names are encoded so punctuation cannot create QSettings subgroups.
+            local name = owner:screenName()
+            local encoded = name:gsub(".", function(c) return string.format("%02x", string.byte(c)) end)
+            return "EmjrCaocao/v1/" .. encoded
+        end
+
+        local function read_profile(key)
+            local raw = sgs.GetConfig(key, "1:0:0:0:0")
+            local version, cleared, lost, owned, pending = raw:match("^(%d+):(%d+):(%d+):(%d+):(%d+)$")
+            version, cleared, lost, owned, pending = tonumber(version), tonumber(cleared), tonumber(lost), tonumber(owned), tonumber(pending)
+            if version ~= 1 or not cleared or cleared > 30 or lost > 3 or owned > 15 or pending > 4 then
+                return nil -- Preserve unknown/corrupt saves; never silently reset progress.
+            end
+            return { cleared = cleared, lost = lost, owned = owned, pending = pending, raw = raw }
+        end
+
+        local function write_profile(key, profile)
+            -- Bit masks can come from exponentiation (a Lua float); save integer fields.
+            profile.raw = string.format("1:%d:%d:%d:%d", profile.cleared, profile.lost, profile.owned, profile.pending)
+            sgs.SetConfig(key, profile.raw)
+        end
+
+        local function eligible(name, profile)
+            return not ((name == "dianwei" and has_bit(profile.lost, 1))
+                or (name == "guojia" and has_bit(profile.lost, 2)))
+        end
+
+        local function resolve_roster(room, commander, stage, profile)
+            local friends, enemies, used = {}, {}, {}
+            -- Reserve fixed generals before choices, so a deputy cannot duplicate one.
+            for _, list in ipairs({ stage.allies, stage.enemies }) do
+                for _, name in ipairs(list) do
+                    if name ~= "*" then
+                        if not sgs.Sanguosha:getGeneral(name) then return nil, name end
+                        used[name] = true
+                    end
+                end
+            end
+            for i, name in ipairs(stage.allies) do
+                if name == "*" then
+                    local choices = {}
+                    for _, candidate in ipairs(catalog.allies) do
+                        if not used[candidate] and eligible(candidate, profile) and sgs.Sanguosha:getGeneral(candidate) then
+                            choices[#choices + 1] = candidate
+                        end
+                    end
+                    if #choices == 0 then return nil, "emjr_cc_deputy" end
+                    name = room:askForGeneral(commander, table.concat(choices, "+"))
+                    local valid = false
+                    for _, candidate in ipairs(choices) do if candidate == name then valid = true end end
+                    if not valid then name = choices[1] end
+                    used[name] = true
+                end
+                friends[i] = name
+            end
+            for i, name in ipairs(stage.enemies) do
+                if name == "*" then
+                    local choices = {}
+                    for _, candidate in ipairs(catalog.enemies) do
+                        if sgs.Sanguosha:getGeneral(candidate) then choices[#choices + 1] = candidate end
+                    end
+                    if #choices == 0 then return nil, "emjr_cc_soldier" end
+                    name = choices[math.random(#choices)]
+                end
+                enemies[i] = name
+            end
+            return { friends = friends, enemies = enemies }
+        end
+
+        local function equip_treasure(room, commander, profile)
+            local choices = { "emjr_cc_none" }
+            for i, name in ipairs(treasures) do
+                if has_bit(profile.owned, 2 ^ (i - 1)) then choices[#choices + 1] = name end
+            end
+            local choice = #choices > 1 and room:askForChoice(commander, "emjr_cc_treasure", table.concat(choices, "+")) or choices[1]
+            room:setPlayerMark(commander, "@emjr_cc_spirit", 0)
+            for i, name in ipairs(treasures) do
+                if name == choice then
+                    room:setPlayerMark(commander, "emjr_cc_treasure", i)
+                    room:handleAcquireDetachSkills(commander, name)
+                    log(room, "#EmjrCcTreasure", commander, name)
+                end
+            end
+        end
+
+        local function prepare(room, index)
+            local owner = room:getOwner() or room:getLord()
+            if not owner then return false end
+            local key = profile_key(owner)
+            local profile = read_profile(key)
+            if not profile then
+                log(room, "#EmjrCcSaveInvalid", owner)
+                room:gameOver(".")
+                return false
+            end
+            local hidden = room:getMode() == hidden_mode
+            if (hidden and profile.pending == 0) or (not hidden and profile.cleared < 30 and index ~= profile.cleared + 1) then
+                log(room, hidden and "#EmjrCcNoEncounter" or "#EmjrCcLocked", owner, math.min(30, profile.cleared + 1))
+                room:gameOver(".")
+                return false
+            end
+            local stage = hidden and { allies = { "caocao", "*" }, enemies = { beasts[profile.pending] }, commander = 1, protect = { 1 } }
+                or catalog.stages[index]
+            local roster, missing = resolve_roster(room, owner, stage, profile)
+            if not roster then
+                log(room, "#EmjrCcMissingGeneral", owner, missing)
+                room:gameOver(".")
+                return false
+            end
+            local players = sgs.QList2Table(room:getPlayers())
+            if #players ~= #roster.friends + #roster.enemies then
+                log(room, "#EmjrCcRosterInvalid", owner)
+                room:gameOver(".")
+                return false
+            end
+            -- The host controls the protected commander, including the middle-seat maps.
+            if players[stage.commander]:objectName() ~= owner:objectName() then
+                room:swapSeat(owner, players[stage.commander])
+                players = sgs.QList2Table(room:getPlayers())
+            end
+            room:setTag("emjr_cc_profile_key", sgs.QVariant(key))
+            room:setTag("emjr_cc_stage", sgs.QVariant(index or 0))
+            room:setTag("emjr_cc_encounter", sgs.QVariant(hidden and profile.pending or 0))
+            room:setTag("emjr_cc_commander", sgs.QVariant(owner:objectName()))
+            room:setTag("emjr_cc_lost", sgs.QVariant(0))
+            if not hidden and profile.pending > 0 then
+                log(room, "#EmjrCcSkipEncounter", owner, beasts[profile.pending])
+                profile.pending = 0
+                write_profile(key, profile)
+            end
+            room:setTag("emjr_cc_profile_snapshot", sgs.QVariant(profile.raw))
+            for i, player in ipairs(players) do
+                local friendly = i <= #roster.friends
+                local name = friendly and roster.friends[i] or roster.enemies[i - #roster.friends]
+                local role = friendly and (i == stage.commander and "lord" or "loyalist") or "rebel"
+                room:setPlayerProperty(player, "role", sgs.QVariant(role))
+                room:setPlayerMark(player, "emjr_cc_side", friendly and 1 or 2)
+                room:setPlayerMark(player, "emjr_cc_treasure", 0)
+                room:setPlayerMark(player, "@emjr_cc_spirit", 0)
+                room:changeHero(player, name, true, false, false, false)
+                if friendly then
+                    for _, protected in ipairs(stage.protect) do
+                        if protected == i then room:setPlayerMark(player, "emjr_cc_protected", 1) end
+                    end
+                    if stage.loss and name == stage.loss then
+                        room:setPlayerMark(player, "emjr_cc_retirement", stage.loss == "dianwei" and 1 or 2)
+                    end
+                else
+                    if hidden then
+                        room:setPlayerMark(player, "emjr_cc_beast", 1)
+                        room:setPlayerMark(player, "emjr_cc_treasure", profile.pending)
+                    end
+                    if stage.target == name then room:setPlayerMark(player, "emjr_cc_target", 1) end
+                end
+            end
+            room:updateStateItem()
+            equip_treasure(room, owner, profile)
+            room:setTag("emjr_cc_ready", sgs.QVariant(true))
+            log(room, "#EmjrCcStage", owner, hidden and beasts[profile.pending] or "emjr_cc_stage_" .. index,
+                tostring(profile.cleared) .. "/30")
+            log(room, "#EmjrCcObjective", owner, stage.target and "emjr_cc_kill_target" or "emjr_cc_eliminate",
+                not hidden and index == 7 and "emjr_cc_protect_emperor" or "emjr_cc_protect_commander")
+            return true
+        end
+
+        local function record_death(room, death)
+            if not death or not death.who then return end
+            local victim = death.who
+            local token = "emjr_cc_death_" .. victim:objectName()
+            if room:getTag(token):toBool() then return end
+            room:setTag(token, sgs.QVariant(true))
+            local loss = victim:getMark("emjr_cc_retirement")
+            if loss > 0 then
+                room:setTag("emjr_cc_lost", sgs.QVariant(add_bit(room:getTag("emjr_cc_lost"):toInt(), loss)))
+            end
+            local killer = death.damage and death.damage.from
+            if killer and killer:objectName() ~= victim:objectName() and killer:getMark("emjr_cc_treasure") > 0
+                and killer:getMark("emjr_cc_beast") == 0 then
+                room:setPlayerMark(killer, "@emjr_cc_spirit", math.min(3, killer:getMark("@emjr_cc_spirit") + 1))
+            end
+        end
+
+        local function winner(room)
+            local enemies, target_alive, target_exists = 0, false, false
+            -- Check every protected seat before accepting a completed victory objective.
+            for _, player in sgs.qlist(room:getAllPlayers(true)) do
+                if player:getMark("emjr_cc_protected") > 0 and player:isDead() then return "rebel" end
+                if player:getMark("emjr_cc_side") == 2 and player:isAlive() then enemies = enemies + 1 end
+                if player:getMark("emjr_cc_target") > 0 then
+                    target_exists = true
+                    target_alive = player:isAlive()
+                end
+            end
+            if enemies == 0 or (target_exists and not target_alive) then return "lord+loyalist" end
+            return ""
+        end
+
+        local function settle(room, result)
+            if room:getTag("emjr_cc_saved"):toBool() then return end
+            room:setTag("emjr_cc_saved", sgs.QVariant(true))
+            local key = room:getTag("emjr_cc_profile_key"):toString()
+            local profile = read_profile(key)
+            if not profile or profile.raw ~= room:getTag("emjr_cc_profile_snapshot"):toString() then
+                log(room, "#EmjrCcSaveConflict", nil)
+                return
+            end
+            local encounter = room:getTag("emjr_cc_encounter"):toInt()
+            -- Only a result produced by the campaign objective can grant progress/rewards.
+            local won = result == "lord+loyalist" and room:getTag("emjr_cc_result"):toString() == result
+            if encounter > 0 then
+                if result == "." or result == "" then return end
+                profile.pending = 0
+                if won then
+                    profile.owned = add_bit(profile.owned, 2 ^ (encounter - 1))
+                    log(room, "#EmjrCcReward", nil, treasures[encounter])
+                end
+            elseif won then
+                local index = room:getTag("emjr_cc_stage"):toInt()
+                if profile.cleared < 30 then
+                    if index ~= profile.cleared + 1 then return end
+                    profile.cleared = index
+                    local loss = room:getTag("emjr_cc_lost"):toInt()
+                    for _, bit in ipairs({ 1, 2 }) do
+                        if has_bit(loss, bit) then profile.lost = add_bit(profile.lost, bit) end
+                    end
+                end
+                -- Unspecified encounter probability defaults to 20%; never roll on defeat.
+                if index < 30 and math.random(100) <= catalog.beast_chance then
+                    local candidates = {}
+                    for i = 1, 4 do if not has_bit(profile.owned, 2 ^ (i - 1)) then candidates[#candidates + 1] = i end end
+                    if #candidates > 0 then
+                        profile.pending = candidates[math.random(#candidates)]
+                        log(room, "#EmjrCcEncounter", nil, beasts[profile.pending])
+                    end
+                end
+                log(room, profile.cleared == 30 and "#EmjrCcComplete" or "#EmjrCcNext", nil,
+                    math.min(profile.cleared + 1, 30))
+            else
+                return -- Defeat/abort cannot advance a normal stage or retire a deputy.
+            end
+            write_profile(key, profile)
+        end
+
+        function M.install(extension)
+            caocao_skills.install(extension)
+            local translations = {
+                emjr_cc_campaign = "曹操传", emjr_cc_beast = "曹操传·神兽挑战",
+                emjr_cc_treasure = "宝物", emjr_cc_none = "不装备宝物",
+                emjr_cc_deputy = "副将", emjr_cc_soldier = "兵种",
+                emjr_cc_kill_target = "击败张角", emjr_cc_eliminate = "全歼敌人",
+                emjr_cc_protect_commander = "主将阵亡即失败", emjr_cc_protect_emperor = "曹操或献帝阵亡即失败",
+                ["#EmjrCcStage"] = "%from 进入【%arg】（已通关 %arg2）。",
+                ["#EmjrCcObjective"] = "胜利条件：%arg；失败条件：%arg2。",
+                ["#EmjrCcLocked"] = "%from 尚未解锁此关，请先挑战第 %arg 关；全部通关后可自由选关。",
+                ["#EmjrCcNoEncounter"] = "%from 目前没有待挑战的神兽。",
+                ["#EmjrCcTreasure"] = "%from 装备宝物【%arg】，初始灵气为0，上限为3。",
+                ["#EmjrCcReward"] = "神兽挑战成功，获得宝物【%arg】。",
+                ["#EmjrCcEncounter"] = "发现神兽【%arg】！开始下一普通关前，可在曹操传分组选择「神兽挑战」。",
+                ["#EmjrCcSkipEncounter"] = "%from 开始普通关卡，跳过本次【%arg】挑战。",
+                ["#EmjrCcNext"] = "进度已保存，下次请选择曹操传第 %arg 关。",
+                ["#EmjrCcComplete"] = "曹操传30关全部通关！现可自由选择任意关卡。",
+                ["#EmjrCcSaveInvalid"] = "%from 的曹操传存档格式无法识别，已保留原存档并停止开局。",
+                ["#EmjrCcSaveConflict"] = "曹操传进度已被另一房间修改，本局结果未覆盖存档。",
+                ["#EmjrCcMissingGeneral"] = "曹操传所需武将【%arg】未加载，已停止开局。",
+                ["#EmjrCcRosterInvalid"] = "曹操传房间人数与本关阵容不符，已停止开局。",
+            }
+            for i, stage in ipairs(catalog.stages) do translations["emjr_cc_stage_" .. i] = stage.name end
+            sgs.LoadTranslationTable(translations)
+            local ids = {}
+            for i, stage in ipairs(catalog.stages) do
+                local roles = {}
+                for seat = 1, #stage.allies do roles[#roles + 1] = seat == stage.commander and "Z" or "C" end
+                for _ = 1, #stage.enemies do roles[#roles + 1] = "F" end
+                createMode {
+                    name = string.format("曹操传·%02d %s", i, stage.name), class = string.format("emjr_cc%02d", i),
+                    roles = table.concat(roles), skipChooseGeneral = true, shuffleSeats = false,
+                    showRole = true, lordWelfare = false, rewardPolicy = "none",
+                    teams = { friendly = { "lord", "loyalist" }, hostile = { "rebel" } },
+                    getWinner = function() return "" end,
+                }
+                -- createMode writes callbacks even when Room VM registration finds an existing ID.
+                local id = (#stage.allies + #stage.enemies) .. "_" .. string.format("emjr_cc%02d", i)
+                mode_stages[id] = i
+                ids[#ids + 1] = id
+            end
+            createMode {
+                name = sgs.Sanguosha:translate("emjr_cc_beast"), class = "emjr_cc_beast", roles = "ZCF",
+                skipChooseGeneral = true, shuffleSeats = false, showRole = true, lordWelfare = false,
+                rewardPolicy = "none", teams = { friendly = { "lord", "loyalist" }, hostile = { "rebel" } },
+                getWinner = function() return "" end,
+            }
+            ids[#ids + 1] = hidden_mode
+            if not sgs.Sanguosha:isGameLuaRuntime() then
+                sgs.Sanguosha:addModeGroup(sgs.Sanguosha:translate("emjr_cc_campaign"), ids)
+            end
+            local rule = sgs.CreateRuleSkillV2 {
+                name = "#emjr_cc_campaign_rule", global = true, priority = 5, frequency = sgs.Skill_Compulsory,
+                events = { sgs.GameReady, sgs.GameOverJudge, sgs.GameOver },
+                can_trigger = function(self, event, room, player, data)
+                    if not mode_stages[room:getMode()] and room:getMode() ~= hidden_mode then return end
+                    if event == sgs.GameReady then
+                        if player or room:getTag("emjr_cc_ready"):toBool() then return end
+                    elseif not room:getTag("emjr_cc_ready"):toBool() then return end
+                    return self:objectName(), player or room:getOwner() or room:getAllPlayers(true):first()
+                end,
+                on_record = function(self, event, room, player, ctx)
+                    if event == sgs.GameOverJudge and room:getTag("emjr_cc_ready"):toBool()
+                        and (mode_stages[room:getMode()] or room:getMode() == hidden_mode) then
+                        record_death(room, ctx.original_data:toDeath())
+                    end
+                end,
+                on_effect = function(self, event, room, player, ctx)
+                    if event == sgs.GameReady then
+                        prepare(room, mode_stages[room:getMode()])
+                    elseif event == sgs.GameOverJudge then
+                        local result = winner(room)
+                        if result ~= "" then
+                            room:setTag("emjr_cc_result", sgs.QVariant(result))
+                            room:gameOver(result)
+                        end
+                    elseif event == sgs.GameOver then
+                        settle(room, ctx.original_data:toString())
+                    end
+                    return false
+                end,
+            }
+            local skills = sgs.SkillList()
+            if not sgs.Sanguosha:getSkill(rule:objectName()) then skills:append(rule) end
+            sgs.Sanguosha:addSkills(skills)
+        end
+
+        return M
+    end)()
+    caocao_campaign.install(extension)
+end
+
 --程昱
 echengyu = sgs.General(extension, "echengyu", "wei", "3")
 --程昱【伏杀】

@@ -434,3 +434,149 @@ sgs.ai_use_value["#etiaoboCard"] = 0
 sgs.ai_card_intention["#etiaoboCard"] = 80
 
 for _,skill in ipairs(package_skills) do sgs.ai_fill_skill[skill.name]=skill.getTurnUseCard end
+
+-- 曹操傳 E鳴驚人技能的 Isolated AI；只使用 viewer 可見的 mark 與純值 view。
+local function value(player, method, ...)
+    if not player or type(player[method]) ~= "function" then return nil end
+    return player[method](player, ...)
+end
+
+local function side(player)
+    return value(player, "getStrategyMark", "emjr_cc_side")
+        or value(player, "getMark", "emjr_cc_side") or 0
+end
+
+local function is_friend(self, player)
+    local own_side, target_side = side(self.player), side(player)
+    if own_side > 0 and target_side > 0 then return own_side == target_side end
+    return player and self:isFriend(player) or false
+end
+
+local function is_enemy(self, player)
+    local own_side, target_side = side(self.player), side(player)
+    if own_side > 0 and target_side > 0 then return own_side ~= target_side end
+    return player and self:isEnemy(player) or false
+end
+
+local function choose_enemy(self, candidates)
+    for _, target in ipairs(candidates or {}) do
+        if is_enemy(self, target) then return target end
+    end
+    return nil
+end
+
+-- 技能候選由 Room 提供；關係使用曹操傳全局隊伍 mark，避免身份局內奸推測。
+for _, skill in ipairs({ "emjr_cc_fanji", "emjr_cc_chuanji", "emjr_cc_huiqiang" }) do
+    if skill == "emjr_cc_fanji" then
+        sgs.ai_skill_invoke[skill] = function(self, data)
+            local attacker = data and type(data.toPlayer) == "function" and data:toPlayer() or nil
+            return attacker and is_enemy(self, attacker) or false
+        end
+    elseif skill == "emjr_cc_huiqiang" then
+        sgs.ai_skill_invoke[skill] = function(self, data)
+            local target = data and type(data.toPlayer) == "function" and data:toPlayer() or nil
+            return target and is_enemy(self, target) or false
+        end
+    else
+        -- TriggerSkill 已確認有合法相鄰敵軍候選；穿擊不消耗資源，可直接發動。
+        sgs.ai_skill_invoke[skill] = function(self)
+            return true
+        end
+        sgs.ai_skill_playerchosen[skill] = choose_enemy
+    end
+end
+
+local function spirit(player)
+    return value(player, "getStrategyMark", "@emjr_cc_spirit")
+        or value(player, "getMark", "@emjr_cc_spirit") or 0
+end
+
+local function beast(player)
+    return (value(player, "getStrategyMark", "emjr_cc_beast")
+        or value(player, "getMark", "emjr_cc_beast") or 0) == 1
+end
+
+local function can_spend(player)
+    return beast(player) or spirit(player) > 0
+end
+
+local function treasure(player)
+    return value(player, "getStrategyMark", "emjr_cc_treasure")
+        or value(player, "getMark", "emjr_cc_treasure") or 0
+end
+
+-- 青龍雷擊／朱雀天火只在敵人受傷且尚有靈氣時消耗觸發資源。
+sgs.ai_skill_invoke["emjr_cc_jinglei"] = function(self, data)
+    local damaged = data and type(data.toPlayer) == "function" and data:toPlayer() or nil
+    local access = beast(self.player) or treasure(self.player) == 1
+    if not access or not can_spend(self.player) then return false end
+    for _, enemy in ipairs(self.enemies or {}) do
+        if is_enemy(self, enemy) and (not damaged or enemy:objectName() ~= damaged:objectName()) then return true end
+    end
+    return false
+end
+sgs.ai_skill_invoke["emjr_cc_tianhuo"] = function(self, data)
+    local damaged = data and type(data.toPlayer) == "function" and data:toPlayer() or nil
+    local access = beast(self.player) or treasure(self.player) == 3
+    if not access or not can_spend(self.player) then return false end
+    for _, enemy in ipairs(self.enemies or {}) do
+        if is_enemy(self, enemy) and (not damaged or enemy:objectName() ~= damaged:objectName()) then return true end
+    end
+    return false
+end
+
+local function use_skill(self, skill, card_class, card_kind, useful, request)
+    if not useful(self) then return nil end
+    local cards = self.player:getCards("he")
+    if cards == nil then return nil end
+    cards = sgs.QList2Table(cards)
+    cards = self:sortByKeepValue(cards)
+    for _, card in ipairs(cards) do
+        if card:isKindOf(card_kind) and value(self.player, "isJilei", card) == false then
+            local cost = card:getEffectiveId()
+            if type(cost) == "number" then
+                local receipt = self:bindSkillCard(skill, { cost }, request, nil, card_class)
+                if receipt then
+                    local use = AIUsePlan.new()
+                    use.card = receipt
+                    return use:toAnswer()
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- 地佑值得用於至少一名受傷友軍；混沌對至少一名敵軍可施加狀態時使用。
+ai_skill_activate["emjr_cc_diyou"] = function(self, request)
+    local available = (beast(self.player) or treasure(self.player) == 2) and can_spend(self.player)
+    if not available then return nil end
+    local injured = value(self.player, "isWounded") == true
+    for _, friend in ipairs(self.friends or {}) do
+        if is_friend(self, friend) and value(friend, "isWounded") == true then injured = true break end
+    end
+    if not injured then return nil end
+    return use_skill(self, "emjr_cc_diyou", "#emjr_cc_diyouCard", "BasicCard",
+        function() return true end, request)
+end
+
+ai_skill_activate["emjr_cc_hundun"] = function(self, request)
+    local available = (beast(self.player) or treasure(self.player) == 4) and can_spend(self.player)
+    if not available then return nil end
+    local has_enemy = false
+    for _, enemy in ipairs(self.enemies or {}) do
+        if is_enemy(self, enemy) then
+            for _, mark in ipairs({ "@emjr_cc_state_poison", "@emjr_cc_state_curse",
+                "@emjr_cc_state_paralysis", "@emjr_cc_state_chain", "@emjr_cc_state_flip" }) do
+                if (value(enemy, "getStrategyMark", mark) or value(enemy, "getMark", mark) or 0) == 0 then
+                    has_enemy = true
+                    break
+                end
+            end
+        end
+        if has_enemy then break end
+    end
+    if not has_enemy then return nil end
+    return use_skill(self, "emjr_cc_hundun", "#emjr_cc_hundunCard", "TrickCard",
+        function() return true end, request)
+end

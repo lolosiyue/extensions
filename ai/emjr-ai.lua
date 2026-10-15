@@ -398,3 +398,152 @@ end
 sgs.ai_use_priority["#etiaoboCard"] = 0
 sgs.ai_use_value["#etiaoboCard"] = 0
 sgs.ai_card_intention["#etiaoboCard"] = 80
+
+-- E鳴驚人曹操傳：陣營 mark 是全局隊伍 ID，同隊優先於身份推測。
+local function emjr_cc_side(player)
+	if not player then return 0 end
+	return player:getMark("emjr_cc_side") or 0
+end
+
+local function emjr_cc_is_friend(self, player)
+	local own_side, other_side = emjr_cc_side(self.player), emjr_cc_side(player)
+	if own_side > 0 and other_side > 0 then return own_side == other_side end
+	return player and self:isFriend(player) or false
+end
+
+local function emjr_cc_is_enemy(self, player)
+	local own_side, other_side = emjr_cc_side(self.player), emjr_cc_side(player)
+	if own_side > 0 and other_side > 0 then return own_side ~= other_side end
+	return player and self:isEnemy(player) or false
+end
+
+local function emjr_cc_has_enemy(self, targets)
+	for _, target in ipairs(targets or {}) do
+		if emjr_cc_is_enemy(self, target) then return true end
+	end
+	return false
+end
+
+-- 反擊／穿擊／回槍由技能各自的 askForPlayerChosen 候選表限制合法目標。
+local function emjr_cc_choose_enemy(self, targets)
+	local candidates = sgs.QList2Table(targets)
+	self:sort(candidates, "hp")
+	for _, target in ipairs(candidates) do
+		if emjr_cc_is_enemy(self, target) then return target end
+	end
+	return nil
+end
+
+sgs.ai_skill_invoke["emjr_cc_fanji"] = function(self, data)
+	local attacker = data and data:toPlayer() or nil
+	return attacker and emjr_cc_is_enemy(self, attacker) or false
+end
+sgs.ai_skill_invoke["emjr_cc_chuanji"] = function(self)
+	return true -- can_trigger 已確認有相鄰敵軍候選；技能本身不消耗靈氣。
+end
+sgs.ai_skill_playerchosen["emjr_cc_chuanji"] = emjr_cc_choose_enemy
+sgs.ai_skill_invoke["emjr_cc_huiqiang"] = function(self, data)
+	local target = data and data:toPlayer() or nil
+	return target and emjr_cc_is_enemy(self, target) or false
+end
+
+local function emjr_cc_has_other_enemy(self, damaged)
+	for _, enemy in ipairs(self.enemies) do
+		if emjr_cc_is_enemy(self, enemy)
+			and (not damaged or enemy:objectName() ~= damaged:objectName()) then return true end
+	end
+	return false
+end
+
+local function emjr_cc_can_spend(self)
+	return (self.player:getMark("emjr_cc_beast") or 0) == 1
+		or (self.player:getMark("@emjr_cc_spirit") or 0) > 0
+end
+
+local function emjr_cc_treasure_invoke(treasure_id)
+	return function(self, data)
+		local beast = (self.player:getMark("emjr_cc_beast") or 0) == 1
+		local treasure = self.player:getMark("emjr_cc_treasure") or 0
+		local damaged = data and type(data.toPlayer) == "function" and data:toPlayer() or nil
+		return (beast or treasure == treasure_id) and emjr_cc_can_spend(self)
+			and emjr_cc_has_other_enemy(self, damaged)
+	end
+end
+
+sgs.ai_skill_invoke["emjr_cc_jinglei"] = emjr_cc_treasure_invoke(1)
+sgs.ai_skill_invoke["emjr_cc_tianhuo"] = emjr_cc_treasure_invoke(3)
+
+local function emjr_cc_turn_use(skill_name, card_kind, should_use)
+	return function(self, inclusive, request)
+		if not should_use(self) then return nil end
+		local cards = sgs.QList2Table(self.player:getCards("he"))
+		self:sortByKeepValue(cards)
+		for _, cost in ipairs(cards) do
+			if cost:isKindOf(card_kind) and not self.player:isJilei(cost) then
+				local card = sgs.ActiveSkillCard()
+				card:setSkillName(skill_name)
+				card:addSubcard(cost:getEffectiveId())
+				return card
+			end
+		end
+		return nil
+	end
+end
+
+local diyou_skill = {
+	name = "emjr_cc_diyou",
+	getTurnUseCard = emjr_cc_turn_use("emjr_cc_diyou", "BasicCard", function(self)
+		local beast = (self.player:getMark("emjr_cc_beast") or 0) == 1
+		local treasure = (self.player:getMark("emjr_cc_treasure") or 0) == 2
+		if not (beast or treasure) or not emjr_cc_can_spend(self) then return false end
+		if self.player:isWounded() then return true end
+		for _, friend in ipairs(self.friends) do
+			if friend:isWounded() then return true end
+		end
+		return false
+	end),
+}
+table.insert(sgs.ai_skills, diyou_skill)
+
+local hundun_skill = {
+	name = "emjr_cc_hundun",
+	getTurnUseCard = emjr_cc_turn_use("emjr_cc_hundun", "TrickCard", function(self)
+		local beast = (self.player:getMark("emjr_cc_beast") or 0) == 1
+		local treasure = (self.player:getMark("emjr_cc_treasure") or 0) == 4
+		if not (beast or treasure) or not emjr_cc_can_spend(self) then return false end
+		local states = { "@emjr_cc_state_poison", "@emjr_cc_state_curse",
+			"@emjr_cc_state_paralysis", "@emjr_cc_state_chain", "@emjr_cc_state_flip" }
+		for _, enemy in ipairs(self.enemies) do
+			for _, mark in ipairs(states) do
+				if (enemy:getMark(mark) or 0) == 0 then return true end
+			end
+		end
+		return false
+	end),
+}
+table.insert(sgs.ai_skills, hundun_skill)
+
+for _, skill_name in ipairs({ "emjr_cc_diyou", "emjr_cc_hundun" }) do
+	sgs.ai_skill_use_func[skill_name] = function(card, use)
+		use.card = card
+	end
+	sgs.ai_use_priority[skill_name] = 2
+end
+
+-- 回槍的詢問沿用普通 Slash 牌與隊伍目標判斷；技能旗標放寬攻擊距離。
+sgs.ai_skill_use["@emjr_cc_huiqiang"] = function(self)
+	local cards = sgs.QList2Table(self.player:getCards("h"))
+	self:sortByKeepValue(cards)
+	self:sort(self.enemies, "hp")
+	for _, target in ipairs(self.enemies) do
+		if emjr_cc_is_enemy(self, target) then
+			for _, card in ipairs(cards) do
+				if card:isKindOf("Slash") and not self:slashProhibit(card, target)
+					and self:slashIsEffective(card, target) then
+					return card:toString() .. "->" .. target:objectName()
+				end
+			end
+		end
+	end
+	return nil -- let SmartAI's normal Slash/view-as planner handle any remaining route.
+end
