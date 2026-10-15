@@ -707,7 +707,10 @@ end
 
 -- Source objectiveLevel uses only these methods. Wrappers contain snapshot
 -- values, never native Players or another AI's private policy state.
-local function objective_context(world, state, process)
+-- With shared, the context is built once and later calls rebind it to a fresh
+-- copy of the same state, so each target of one evaluation skips the rebuild.
+local function objective_context(world, state, process, shared)
+    if shared and shared.rebind then return shared.rebind(state) end
     local estimates = {}
     local function estimate(key) estimates[key] = true end
     local wrapped, alive = {}, {}
@@ -919,12 +922,36 @@ local function objective_context(world, state, process)
     function self.lua_ai:isFriend(to) return to==wrapped[world.self.object_name] or relation(to)=="friend" end
     function self.lua_ai:isEnemy(to) return relation(to)=="enemy" end
     function self.lua_ai:relationTo(to) return relation(to) end
-    function self.lua_ai:getEnemies() local r={};for _,p in ipairs(alive) do if p~=self.player and relation(p)=="enemy" then r[#r+1]=p end end;return list(r) end
-    return self,wrapped,local_sgs,function() return classical end,function(_,p) return p end,estimates
+    -- Relations read only inferred roles, which no objective query writes, so one
+    -- enemy list serves the whole context; its estimates replay on every call.
+    local enemies
+    function self.lua_ai:getEnemies()
+        if not enemies then
+            local outer=estimates;estimates={}
+            local r={};for _,p in ipairs(alive) do if p~=self.player and relation(p)=="enemy" then r[#r+1]=p end end
+            enemies={players=r,estimates=estimates};estimates=outer
+        end
+        for key in pairs(enemies.estimates) do estimates[key]=true end
+        local r={};for i,p in ipairs(enemies.players) do r[i]=p end;return list(r)
+    end
+    local function predictable() return classical end
+    local function be_man(_,p) return p end
+    if shared then
+        -- Only the fields an objective query writes are rebound here.
+        shared.rebind=function(next_state)
+            state,estimates=next_state,{}
+            if composition_prior then estimate("mode.scenario_public_composition_prior") end
+            local_sgs.roleValue=state.role_values or {}
+            for name in pairs(wrapped) do local_sgs.roleValue[name]=local_sgs.roleValue[name] or {loyalist=0,renegade=0} end
+            local_sgs.UnknownRebel=state.unknown_rebel
+            return self,wrapped,local_sgs,predictable,be_man,estimates
+        end
+    end
+    return self,wrapped,local_sgs,predictable,be_man,estimates
 end
 
-local function standard_objective(world, target_id, state, process)
-    local self,wrapped,local_sgs,predictable,be_man,estimates=objective_context(world,state,process)
+local function standard_objective(world, target_id, state, process, shared)
+    local self,wrapped,local_sgs,predictable,be_man,estimates=objective_context(world,state,process,shared)
     local target=wrapped[target_id]
     if not target then return nil end
     -- The wrapper installed at smart-ai.lua:2030 precedes the original method.
@@ -1334,6 +1361,20 @@ local function clone_value(value, seen)
     return copy
 end
 
+-- An objective query writes only role_values (default rows), the mark offsets,
+-- unknown_rebel and cached_process; a copy shares every other field read-only.
+local function objective_query_state(state)
+    local copy={}
+    for key,value in pairs(state) do copy[key]=value end
+    if state.role_values then
+        copy.role_values={}
+        for name,row in pairs(state.role_values) do copy.role_values[name]=row end
+    end
+    copy.strategy_mark_offsets=clone_value(state.strategy_mark_offsets)
+    copy.cached_process=clone_value(state.cached_process)
+    return copy
+end
+
 local function valid_state(value, seen, depth, budget)
     budget = budget or {remaining=1024}
     budget.remaining = budget.remaining - 1
@@ -1526,13 +1567,18 @@ function sgs.evaluateModeAI(world, options, state_override)
         end
     end
     local objectives = {}
+    -- Every target is scored against the same state: copy it once, share one context.
+    local objective_base, objective_shared
     for _, to in ipairs(players) do
         local process = {value=result.game_process, label=result.process_label}
         local role_policy=world.self.role_visible and policy and policy.roles[world.self.role]
         local builtin=(role_policy and role_policy.objective or policy and policy.objective)==standard_objective
         local accepted,value,extra,hook_error
         if builtin then
-            accepted,value,extra=pcall(standard_objective,world,to.object_name,clone_value(state),process)
+            objective_base=objective_base or clone_value(state)
+            objective_shared=objective_shared or {}
+            accepted,value,extra=pcall(standard_objective,world,to.object_name,
+                objective_query_state(objective_base),process,objective_shared)
             if not accepted then hook_error="objective_hook" end
             if accepted then
                 local seen={};for _,key in ipairs(result.estimated_branches or {}) do seen[key]=true end
