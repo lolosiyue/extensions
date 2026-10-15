@@ -629,24 +629,28 @@ ofgu_nianjun_record = gu_record("#ofgu_nianjun_record", {sgs.CardsMoveOneTime, s
     end
     local move = data:toMoveOneTime()
     if not move.from then return end
-    local lost = false
+    local lost, any = false, false
+    local linked = {}
     for _, owner in sgs.qlist(room:getAllPlayers()) do
         local ids = owner:getTag("ofgu_nianjun_ids"):toIntList()
-        for i, id in sgs.qlist(move.card_ids) do
-            if move.from_places:at(i) == sgs.Player_PlaceHand and ids:contains(id) then
-                ids:removeOne(id); lost = true
+        if not ids:isEmpty() then
+            any = true
+            local changed = false
+            for i, id in sgs.qlist(move.card_ids) do
+                if move.from_places:at(i) == sgs.Player_PlaceHand and ids:contains(id) then
+                    ids:removeOne(id); lost = true; changed = true
+                end
+            end
+            if changed then owner:setTag("ofgu_nianjun_ids", ToData(ids)) end
+            for _, id in sgs.qlist(ids) do
+                local q = room:getCardOwner(id)
+                if q and room:getCardPlace(id) == sgs.Player_PlaceHand then linked[q:objectName()] = true end
             end
         end
-        owner:setTag("ofgu_nianjun_ids", ToData(ids))
     end
+    if not any then return end
     for _, q in sgs.qlist(room:getAllPlayers()) do
-        local linked = false
-        for _, owner in sgs.qlist(room:getAllPlayers()) do
-            for _, id in sgs.qlist(owner:getTag("ofgu_nianjun_ids"):toIntList()) do
-                if room:getCardOwner(id) == q and room:getCardPlace(id) == sgs.Player_PlaceHand then linked = true end
-            end
-        end
-        room:setPlayerMark(q, "ofgu_nianjun_link", linked and 1 or 0)
+        room:setPlayerMark(q, "ofgu_nianjun_link", linked[q:objectName()] and 1 or 0)
     end
     if lost and not room:getTag("ofgu_nianjun_lost"):toBool() then
         room:setTag("ofgu_nianjun_lost", sgs.QVariant(true))

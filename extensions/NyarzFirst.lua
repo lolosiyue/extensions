@@ -648,6 +648,7 @@ Godjieying = sgs.CreateTriggerSkillV2{
 
 Godjieyingget = sgs.CreateTriggerSkillV2{
     name = "#Godjieyingget",
+    global = true,
     events = {sgs.EventPhaseStart},
     frequency = sgs.Skill_NotFrequent,
 	on_effect = function(skill, event, room, player, ctx)
@@ -2861,6 +2862,7 @@ spduorui = sgs.CreateTriggerSkillV2{
 
 spduoruireturn = sgs.CreateTriggerSkillV2{
     name = "#spduoruireturn",
+    global = true,
     events = {sgs.RoundEnd},
     frequency = sgs.Skill_Compulsory,
 	on_effect = function(skill, event, room, player, ctx)
@@ -3087,6 +3089,7 @@ shenxianex = sgs.CreateTriggerSkillV2{
 
 shenxianjudge = sgs.CreateTriggerSkillV2{
     name = "#shenxianjudge",
+    global = true,
     events = {sgs.PreCardUsed, sgs.CardResponded},
     frequency = sgs.Skill_Compulsory,
 	on_record = function(skill, event, room, player, ctx)
@@ -4290,6 +4293,7 @@ spjilveda = sgs.CreateTriggerSkillV2{
 
 spjilvedea = sgs.CreateTriggerSkillV2{
     name = "#spjilvedea",
+    global = true,
     events = {sgs.EnterDying,sgs.AskForPeaches},
     frequency = sgs.Skill_NotFrequent,
     priority = 4,
@@ -4403,6 +4407,7 @@ sptianren = sgs.CreateTriggerSkillV2{
 
 sptianrenup = sgs.CreateTriggerSkillV2{
     name = "#sptianrenup",
+    global = true,
     events = {sgs.EventPhaseChanging},
     frequency = sgs.Skill_Compulsory,
 	on_effect = function(skill, event, room, player, ctx)
@@ -5334,6 +5339,7 @@ dyizhengCard = sgs.CreateSkillCard
 
 dyizhengskip = sgs.CreateTriggerSkillV2{
     name = "#dyizhengskip",
+    global = true,
     events = {sgs.EventPhaseChanging},
     frequency = sgs.Skill_Compulsory,
 	on_effect = function(skill, event, room, player, ctx)
@@ -6093,6 +6099,7 @@ dmwumei = sgs.CreateTriggerSkillV2{
 
 dmwumeibuff = sgs.CreateTriggerSkillV2{
     name = "#dmwumeibuff",
+    global = true,
     events = {sgs.TurnStart,sgs.EventPhaseChanging},
     frequency = sgs.Skill_NotFrequent,
 	on_effect = function(skill, event, room, player, ctx)
@@ -6520,6 +6527,7 @@ godlongnubuff = sgs.CreateTargetModSkillV2{
 
 godlongnukill = sgs.CreateTriggerSkillV2{
     name = "#godlongnukill",
+    global = true,
     events = {sgs.Death},
     frequency = sgs.Skill_NotFrequent,
 	on_effect = function(skill, event, room, player, ctx)
@@ -6728,6 +6736,7 @@ xiaorenfudistance = sgs.CreateDistanceSkillV2{
 
 xiaoyifubuff = sgs.CreateTriggerSkillV2{
     name = "#xiaoyifubuff",
+    global = true,
     events = {sgs.EventPhaseStart},
     frequency = sgs.Skill_NotFrequent,
 	on_effect = function(skill, event, room, player, ctx)
@@ -7109,6 +7118,7 @@ jfjifengCard = sgs.CreateSkillCard
 
 jfjifengbuff = sgs.CreateTriggerSkillV2{
     name = "#jfjifengbuff",
+    global = true,
     events = {sgs.CardEffected},
     frequency = sgs.Skill_Compulsory,
     priority = 1,
@@ -7198,6 +7208,7 @@ jfjifengbuff = sgs.CreateTriggerSkillV2{
 
 jfjifengdamage = sgs.CreateTriggerSkillV2{
     name = "#jfjifengdamage",
+    global = true,
     events = {sgs.DamageInflicted},
     frequency = sgs.Skill_NotFrequent,
 	on_effect = function(skill, event, room, player, ctx)

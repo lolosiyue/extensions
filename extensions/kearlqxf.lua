@@ -902,6 +902,7 @@ tychengshi = sgs.CreateTriggerSkillV2 {
 				damage.card:setFlags("tychengshiBf")
 			elseif damage.to:isAlive() then
 				room:setPlayerMark(damage.to, "&tychengshi+#" .. player:objectName() .. "-PlayClear", 1)
+				room:setPlayerMark(damage.to, "tychengshi_bf-PlayClear", 1)
 			end
 		end
 		return false
@@ -947,7 +948,7 @@ tychengshibf = sgs.CreateProhibitSkillV2 {
 	holder_selector = sgs.CorrectSkill_System,
 	is_prohibited = function(self, ctx)
 		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
-		if card:isDamageCard() then
+		if from:getMark("tychengshi_bf-PlayClear") > 0 and card:isDamageCard() then
 			for _, p in sgs.qlist(from:getAliveSiblings()) do
 				if from:getMark("&tychengshi+#" .. p:objectName() .. "-PlayClear") > 0 and to ~= p then
 					return true
