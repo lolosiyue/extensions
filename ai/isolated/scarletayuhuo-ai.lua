@@ -6118,9 +6118,10 @@ sgs.ai_skill_invoke.s3_fans_shanlan = function(self, data)
 	local current = self.room:getCurrent()
 	if current and self:isFriend(current) and self.player:isChained() and self:isGoodChainTarget(self.player, current) then return false end --內奸跳反會有問題，非屬性殺也有問題。但狀況特殊，八卦陣原碼資訊不足，暫時這樣寫。
 
+	local hujia_requester = self:getHujiaRequester(data)
 	if self:hasSkills("tiandu|leiji|nosleiji|olleiji|gushou") then
 		if __scarletayuhuo_value_call(self.player,"hasFlag","dahe") and not heart_jink then return true end
-		if response_source(self,"hujiasource") and not self:isFriend(response_source(self,"hujiasource")) and (response_source(self,"hujiasource"):hasFlag("dahe") or __scarletayuhuo_value_call(self.player,"hasFlag","dahe")) then return true end
+		if hujia_requester and not self:isFriend(hujia_requester) and (hujia_requester:hasFlag("dahe") or __scarletayuhuo_value_call(self.player,"hasFlag","dahe")) then return true end
 		if response_source(self,"lianlisource") and not self:isFriend(response_source(self,"lianlisource")) and (response_source(self,"lianlisource"):hasFlag("dahe") or __scarletayuhuo_value_call(self.player,"hasFlag","dahe")) then return true end
 		if __scarletayuhuo_value_call(self.player,"hasFlag","dahe") and handang and self:isFriend(handang) and dying > 0 then return true end
 	end
@@ -6130,7 +6131,7 @@ sgs.ai_skill_invoke.s3_fans_shanlan = function(self, data)
 	end
 	if handang and self:isFriend(handang) and dying > 0 then return false end
 	if __scarletayuhuo_value_call(self.player,"hasFlag","dahe") then return false end
-	if response_source(self,"hujiasource") and (not self:isFriend(response_source(self,"hujiasource")) or response_source(self,"hujiasource"):hasFlag("dahe")) then return false end
+	if hujia_requester and (not self:isFriend(hujia_requester) or hujia_requester:hasFlag("dahe")) then return false end
 	if response_source(self,"lianlisource") and (not self:isFriend(response_source(self,"lianlisource")) or response_source(self,"lianlisource"):hasFlag("dahe")) then return false end
 	if self:needToLoseHp(self.player, nil, true, true) then return false end
 	if self:getCardsNum("Jink") == 0 then return true end

@@ -6063,9 +6063,10 @@ sgs.ai_skill_invoke.s3_fans_shanlan = function(self, data)
 	--	slash = sgs.Sanguosha:cloneCard("fire_slash")
 	--	if slash and slash:isKindOf("NatureSlash") and self.player:isChained() and self:isGoodChainTarget(self.player, self.room:getCurrent(), nil, nil, slash) then return false end
 
+	local hujia_requester = self:getHujiaRequester(data)
 	if self:hasSkills("tiandu|leiji|nosleiji|olleiji|gushou") then
 		if self.player:hasFlag("dahe") and not heart_jink then return true end
-		if sgs.hujiasource and not self:isFriend(sgs.hujiasource) and (sgs.hujiasource:hasFlag("dahe") or self.player:hasFlag("dahe")) then return true end
+		if hujia_requester and not self:isFriend(hujia_requester) and (hujia_requester:hasFlag("dahe") or self.player:hasFlag("dahe")) then return true end
 		if sgs.lianlisource and not self:isFriend(sgs.lianlisource) and (sgs.lianlisource:hasFlag("dahe") or self.player:hasFlag("dahe")) then return true end
 		if self.player:hasFlag("dahe") and handang and self:isFriend(handang) and dying > 0 then return true end
 	end
@@ -6075,7 +6076,7 @@ sgs.ai_skill_invoke.s3_fans_shanlan = function(self, data)
 	end
 	if handang and self:isFriend(handang) and dying > 0 then return false end
 	if self.player:hasFlag("dahe") then return false end
-	if sgs.hujiasource and (not self:isFriend(sgs.hujiasource) or sgs.hujiasource:hasFlag("dahe")) then return false end
+	if hujia_requester and (not self:isFriend(hujia_requester) or hujia_requester:hasFlag("dahe")) then return false end
 	if sgs.lianlisource and (not self:isFriend(sgs.lianlisource) or sgs.lianlisource:hasFlag("dahe")) then return false end
 	if self:needToLoseHp(self.player, nil, true, true) then return false end
 	if self:getCardsNum("Jink") == 0 then return true end

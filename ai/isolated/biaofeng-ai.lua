@@ -961,7 +961,8 @@ sgs.ai_skill_invoke.PlusHuwei = function(self, data)
 	end
 	if handang and pq(self,"isFriend",handang) and dying > 0 then return false end
 	if pq(self.player,"hasFlag","dahe") then return false end
-	if sgs.hujiasource and (not pq(self,"isFriend",sgs.hujiasource) or pq(sgs.hujiasource,"hasFlag","dahe")) then return false end
+	local hujia_requester = self:getHujiaRequester(data)
+	if hujia_requester and (not pq(self,"isFriend",hujia_requester) or pq(hujia_requester,"hasFlag","dahe")) then return false end
 	if sgs.lianlisource and (not pq(self,"isFriend",sgs.lianlisource) or pq(sgs.lianlisource,"hasFlag","dahe")) then return false end
 	if pq(self,"needToLoseHp",self.player, nil, nil, true, true) then return false end
 	if pq(self,"getCardsNum","Jink") == 0 then

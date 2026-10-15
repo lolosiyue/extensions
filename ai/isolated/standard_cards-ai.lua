@@ -37,8 +37,7 @@ local function extra_slash(self)
     -- AI_ExtraTargetSlash has no writer, so SmartAI always uses a fresh Slash.
     return query(self,"getEvaluationCard","slash")
 end
--- These five source globals begin nil. Only their isolated package writers may
--- update the viewer's shadow cache; no other AI's global state is consulted.
+-- Other ally-response sources retain their existing viewer-local caches.
 local function response_source(self,key)
     local name, present = self:getStrategyMemory("response_source:"..key)
     if not present then return nil end
@@ -709,8 +708,18 @@ sgs.ai_skill_cardask["duel-slash"] = function(self,data,pattern,target)
 end
 
 
+function SmartAIView:getHujiaRequester(data)
+    if not data then return nil end
+    local asked=data:toStringList()
+    if not AIValue.isList(asked) then ai_unsupported("CardAsked fields are unavailable","getHujiaRequester") end
+    if asked[1]~="jink" or type(asked[2])~="string" then return nil end
+    local name=asked[2]:match("^@hujia%-jink:([^:]+)")
+    -- Resolve only this request's public player name; never retain it in memory.
+    return name and self.room:findPlayerByObjectName(name,false) or nil
+end
+
 sgs.ai_skill_invoke.eight_diagram = function(self,data)
-    local hujiasource,lianlisource,SevenJiujia,tongpaoJink,tongpao = response_source(self,"hujiasource"),response_source(self,"lianlisource"),response_source(self,"SevenJiujia"),response_source(self,"tongpaoJink"),response_source(self,"tongpao")
+    local lianlisource,SevenJiujia,tongpaoJink,tongpao = response_source(self,"lianlisource"),response_source(self,"SevenJiujia"),response_source(self,"tongpaoJink"),response_source(self,"tongpao")
 	local dying = 0
 	local handang = self.room:findPlayerBySkillName("nosjiefan")
 	for _,aplayer in sgs.list(query(self.room,"getAlivePlayers"))do
@@ -726,9 +735,10 @@ sgs.ai_skill_invoke.eight_diagram = function(self,data)
 		end
 	end
 
+	local hujia_requester=self:getHujiaRequester(data)
 	if query(self,"hasSkills","tiandu|leiji|nosleiji|gushou") then
 		if query(self.player,"getStrategyFlag","dahe") and not heart_jink then return true end
-		if hujiasource and not query(self,"isFriend",hujiasource) and (query(hujiasource,"getStrategyFlag","dahe") or query(self.player,"getStrategyFlag","dahe")) then return true end
+		if hujia_requester and not query(self,"isFriend",hujia_requester) and (query(hujia_requester,"getStrategyFlag","dahe") or query(self.player,"getStrategyFlag","dahe")) then return true end
 		if lianlisource and not query(self,"isFriend",lianlisource) and (query(lianlisource,"getStrategyFlag","dahe") or query(self.player,"getStrategyFlag","dahe")) then return true end
 		if query(self.player,"getStrategyFlag","dahe") and handang and query(self,"isFriend",handang) and dying>0 then return true end
 	end
@@ -738,7 +748,7 @@ sgs.ai_skill_invoke.eight_diagram = function(self,data)
 	end
 	if handang and query(self,"isFriend",handang) and dying>0 then return false end
 	if query(self.player,"getStrategyFlag","dahe") then return false end
-	if hujiasource and (not query(self,"isFriend",hujiasource) or query(hujiasource,"getStrategyFlag","dahe")) then return false end
+	if hujia_requester and (not query(self,"isFriend",hujia_requester) or query(hujia_requester,"getStrategyFlag","dahe")) then return false end
 	if lianlisource and (not query(self,"isFriend",lianlisource) or query(lianlisource,"getStrategyFlag","dahe")) then return false end
 	if SevenJiujia and (not query(self,"isFriend",SevenJiujia) or query(SevenJiujia,"getStrategyFlag","dahe")) then return false end
 	if tongpaoJink and (not query(self,"isFriend",tongpaoJink) or query(tongpaoJink,"getStrategyFlag","dahe")) then return false end

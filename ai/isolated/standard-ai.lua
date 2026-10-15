@@ -247,8 +247,25 @@ sgs.ai_skill_choice.jianxiong=function(self,choices,data)
         or call(self.player,"getHandcardNum")<=call(self.player,"getHp")) then return "draw" end
     return "obtain"
 end
+sgs.registerTargetRecommend("hujia",function(self,from,to,card,owner,ctx)
+    if not ctx.isDamage or ctx.isVirtual or not card or not from
+    or not owner or call(owner,"objectName")~=call(to,"objectName") or not call(to,"hasLordSkill","hujia") then return 0 end
+    local slash=call(card,"isKindOf","Slash")
+    if not slash and not call(card,"isKindOf","ArcheryAttack") then return 0 end
+    if slash and call(self,"canLiegong",to,from) then return 0 end
+    local support=0
+    for _,liege in sgs.qlist(call(self.room,"getLieges","wei",to))do
+        if call(liege,"isAlive") and call(self,"isFriend",liege,to) then
+            -- getCardsNum records viewer-visible estimate provenance itself.
+            support=support+known(getCardsNum("Jink",liege,self.player),"hujia target support")
+            if call(self,"hasEightDiagramEffect",liege) then support=support+0.8 end
+            if support>=3 then return -3 end
+        end
+    end
+    return -support
+end)
+
 sgs.ai_skill_invoke.hujia=function(self,data)
-    if source_player(self,"hujiasource") then return false end
     for _,friend in ipairs(self.friends_noself)do
         if call(friend,"getKingdom")=="wei" and call(self,"hasEightDiagramEffect",friend) then return true end
     end
@@ -259,9 +276,6 @@ sgs.ai_skill_invoke.hujia=function(self,data)
         if call(self,"isFriend",player) or current_role(self,player)=="neutral" then return true end
     end
 end
-sgs.ai_choicemade_filter.skillInvoke.hujia=function(self,player,promptlist)
-    if promptlist[#promptlist]=="yes" then remember_source(self,"hujiasource",player) end
-end
 sgs.ai_slash_prohibit.hujia=function(self,from,to)
     if call(self,"isFriend",to,from) then return false end
     local guojia=self.room:findPlayerBySkillName("tiandu")
@@ -270,22 +284,16 @@ sgs.ai_slash_prohibit.hujia=function(self,from,to)
     end
 end
 sgs.ai_choicemade_filter.cardResponded["@hujia-jink"]=function(self,player,promptlist)
-    local source=source_player(self,"hujiasource")
-    if promptlist[#promptlist]~="" then
-        sgs.updateIntention(player,source,-80)
-        remember_source(self,"hujiasource",nil)
-    elseif source then
-        local lieges=call(self.room,"getLieges","wei",source)
-        if #lieges>0 and call(player,"objectName")==call(lieges[#lieges],"objectName") then remember_source(self,"hujiasource",nil) end
-    end
+    local source=promptlist[4] and self.room:findPlayerByObjectName(promptlist[4],true)
+    if not source or #promptlist<5 then return end
+    local answer=promptlist[#promptlist]
+    local supplied=type(answer)=="string" and answer~="" and answer~="." and answer~="_nil_"
+    if supplied then sgs.updateIntention(player,source,-80) end
 end
-sgs.ai_skill_cardask["@hujia-jink"]=function(self)
-    local lord=self.room:getLord()
-    if not lord then return "." end
-    local source=source_player(self,"hujiasource")
-    local yuanshu=self.room:findPlayerBySkillName("weidi")
-    if not source and not yuanshu then source=lord;remember_source(self,"hujiasource",source) end
-    if not source or not call(self,"isFriend",source) or call(self,"needBear") then return "." end
+sgs.ai_skill_cardask["@hujia-jink"]=function(self,data)
+    local source=data and data:toPlayer()
+    if not source or not call(source,"isAlive") then return "." end
+    if not call(self,"isFriend",source) or call(self,"needBear") then return "." end
     local dahe=self.room:findPlayerBySkillName("dahe")
     if dahe and call(dahe,"isAlive") and call(source,"getStrategyFlag","dahe") then
         for _,card in ipairs(call(self,"getCards","Jink"))do
@@ -716,6 +724,57 @@ sgs.ai_skill_invoke.nosjianxiong = function(self,data)
     if self.nosjianxiong then self.nosjianxiong = nil return true end
     return not self:needKongcheng(self.player,true)
 end
+
+sgs.ai_target_revises.nosjianxiong = function(to,card,self,use)
+    -- Share the canonical material policy only while a valid copy is present.
+    if call(to,"hasSkill","nosjianxiong") then
+        return known(sgs.ai_target_revises.jianxiong,"jianxiong target policy")(to,card,self,use)
+    end
+end
+
+sgs.ai_can_damagehp.nosjianxiong = function(self,from,card,to)
+    if not from or not card or not call(to,"hasSkill","nosjianxiong") then return end
+    if self:hasJueqingEffect(from,to) or known(hasManjuanEffect(to),"nosjianxiong card retention")
+    or self:needKongcheng(to,true) or self:isWeak(to) then return end
+    local damage = self:ajustDamage(from,to,1,card)
+    if damage<=0 or damage>=call(to,"getHp") or not self:canLoseHp(from,card,to) then return end
+    local virtual=call(card,"isVirtualCard")
+    local ids=virtual and call(card,"getSubcards") or {call(card,"getEffectiveId")}
+    if #ids<1 then return end
+    -- Missing material locations are unsupported, never assumed recoverable.
+    for _,id in ipairs(ids)do
+        if call(self.room,"getCardPlace",id)~=sgs.Player_PlaceTable then return end
+    end
+    -- A virtual damage card yields its materials; a zero-cost card yields none.
+    if virtual then
+        if #ids>1 then return true end
+        return
+    end
+    if call(card,"getEffectiveId")<0 or self:willSkipPlayPhase(to) then return end
+    if call(card,"isKindOf","Duel") then return true end
+    -- Preserve the viewer boundary instead of valuing an enemy's hidden plans.
+    if call(card,"isKindOf","AOE") and call(to,"objectName")==call(self.player,"objectName")
+    and self:getAoeValue(card,to)>0 then return true end
+end
+
+sgs.registerTargetRecommend("nosjianxiong",function(self,from,to,card,owner,ctx)
+    if not ctx.isDamage or ctx.isVirtual or not card or not from
+    or not owner or call(owner,"objectName")~=call(to,"objectName") then return 0 end
+    if call(self,"checkMasochismInvalid",from,to,card)
+    or known(hasManjuanEffect(to),"nosjianxiong target retention") or self:needKongcheng(to,true) then return 0 end
+    local damage=self:ajustDamage(from,to,1,card)
+    if damage<=0 or damage>=call(to,"getHp") then return 0 end
+    -- Score the declared materials before use, without querying hidden locations.
+    local count=call(card,"isVirtualCard") and call(card,"subcardsLength")
+        or (call(card,"getEffectiveId")>=0 and 1 or 0)
+    if count<1 then return 0 end
+    local benefit=math.min(3,count)
+    if call(self,"isEnemy",to,from) then return -benefit end
+    if call(self,"isFriend",to,from) and not call(self,"isWeak",to) and self:canLoseHp(from,card,to) then
+        return benefit
+    end
+    return 0
+end)
 
 
 sgs.ai_skill_invoke.nosfankui = function(self,data)

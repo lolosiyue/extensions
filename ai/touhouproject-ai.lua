@@ -4160,7 +4160,8 @@ sgs.ai_skill_invoke.TH_CatWalk = function(self, data)
 		if sgs.jijiangsource then return self:isFriend(sgs.jijiangsource) end
 		if self.player:hasFlag("JijiangTarget") then return self:needToLoseHp(self.player, use.from, use.card) end
 	elseif str[1] == "jink" then
-		if sgs.hujiasource then return self:isFriend(sgs.hujiasource) end
+		local hujia_requester = self:getHujiaRequester(data)
+		if hujia_requester then return self:isFriend(hujia_requester) end
 		local prompt = str[2]:split(":")
 		if prompt[1] == "slash-jink" and sgs.NatureSlash_data and self.player:isChained() then
 			local use = sgs.NatureSlash_data:toCardUse()
@@ -4470,7 +4471,8 @@ sgs.ai_skill_invoke.TH_PhilosophersStone = function(self, data)
 		if sgs.jijiangsource then return self:isFriend(sgs.jijiangsource) end
 		if self.player:hasFlag("JijiangTarget") then return self:needToLoseHp(self.player, use.from, use.card) end
 	elseif str[1] == "jink" then
-		if sgs.hujiasource then return self:isFriend(sgs.hujiasource) end
+		local hujia_requester = self:getHujiaRequester(data)
+		if hujia_requester then return self:isFriend(hujia_requester) end
 		local prompt = str[2]:split(":")
 		if prompt[1] == "slash-jink" and sgs.NatureSlash_data and self.player:isChained() then
 			local use = sgs.NatureSlash_data:toCardUse()

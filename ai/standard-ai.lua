@@ -1148,6 +1148,54 @@ sgs.ai_skill_invoke.nosjianxiong = function(self,data)
 	return not self:needKongcheng(self.player,true)
 end
 
+sgs.ai_target_revises.nosjianxiong = function(to,card,self,use)
+	if to:hasSkill("nosjianxiong") then
+		return sgs.ai_target_revises.jianxiong(to,card,self,use)
+	end
+end
+
+sgs.ai_can_damagehp.nosjianxiong = function(self,from,card,to)
+	if not from or not card or not to:hasSkill("nosjianxiong") then return end
+	if self:hasJueqingEffect(from,to) or hasManjuanEffect(to)
+	or self:needKongcheng(to,true) or self:isWeak(to) then return end
+	local damage = self:ajustDamage(from,to,1,card)
+	if damage<=0 or damage>=to:getHp() or not self:canLoseHp(from,card,to) then return end
+	local virtual = card:isVirtualCard()
+	local ids = virtual and sgs.QList2Table(card:getSubcards()) or {card:getEffectiveId()}
+	if #ids<1 then return end
+	for _,id in ipairs(ids)do
+		if self.room:getCardPlace(id)~=sgs.Player_PlaceTable then return end
+	end
+	if virtual then
+		if #ids>1 then return true end
+		return
+	end
+	if card:getEffectiveId()<0 or self:willSkipPlayPhase(to) then return end
+	if card:isKindOf("Duel") then return true end
+	if card:isKindOf("AOE") and to:objectName()==self.player:objectName()
+	and self:getAoeValue(card,to)>0 then return true end
+end
+
+sgs.registerTargetRecommend("nosjianxiong", function(self,from,to,card,owner,ctx)
+	-- Each holder contributes only to its own target, even with several holders.
+	if not ctx.isDamage or ctx.isVirtual or not card or not from
+	or not owner or owner:objectName()~=to:objectName() then return 0 end
+	if checkMasochismInvalid(from,to,card) or hasManjuanEffect(to)
+	or self:needKongcheng(to,true) then return 0 end
+	local damage = self:ajustDamage(from,to,1,card)
+	if damage<=0 or damage>=to:getHp() then return 0 end
+	-- This is a pre-use forecast; materials need not be on the table yet.
+	local count = card:isVirtualCard() and card:subcardsLength()
+		or (card:getEffectiveId()>=0 and 1 or 0)
+	if count<1 then return 0 end
+	local benefit = math.min(3,count)
+	if self:isEnemy(to,from) then return -benefit end
+	if self:isFriend(to,from) and not self:isWeak(to) and self:canLoseHp(from,card,to) then
+		return benefit
+	end
+	return 0
+end)
+
 sgs.ai_skill_invoke.nosfankui = function(self,data)
 	local target = data:toPlayer()
 	if sgs.ai_need_damaged.nosfankui(self,target,self.player) then return true end
@@ -2142,8 +2190,25 @@ sgs.ai_skill_choice.jianxiong = function(self,choices,data)
 	return "obtain"
 end
 
+sgs.registerTargetRecommend("hujia", function(self,from,to,card,owner,ctx)
+	if not ctx.isDamage or ctx.isVirtual or not card or not from
+	or not owner or owner:objectName()~=to:objectName() or not to:hasLordSkill("hujia") then return 0 end
+	local slash = card:isKindOf("Slash")
+	if not slash and not card:isKindOf("ArcheryAttack") then return 0 end
+	if slash and self:canLiegong(to,from) then return 0 end
+	local support = 0
+	for _,liege in sgs.qlist(self.room:getLieges("wei",to))do
+		if liege:isAlive() and self:isFriend(liege,to) then
+			-- Count from this AI's knowledge, including the existing hand estimate.
+			support = support+getCardsNum("Jink",liege,self.player)
+			if self:hasEightDiagramEffect(liege) then support = support+0.8 end
+			if support>=3 then return -3 end
+		end
+	end
+	return -support
+end)
+
 sgs.ai_skill_invoke.hujia = function(self,data)
-	if sgs.hujiasource then return false end
 	for _,friend in ipairs(self.friends_noself)do
 		if friend:getKingdom()=="wei" and self:hasEightDiagramEffect(friend) then return true end
 	end
@@ -2162,12 +2227,6 @@ sgs.ai_skill_invoke.hujia = function(self,data)
 	end
 end
 
-sgs.ai_choicemade_filter.skillInvoke.hujia = function(self,player,promptlist)
-	if promptlist[#promptlist]=="yes" then
-		sgs.hujiasource = player
-	end
-end
-
 function sgs.ai_slash_prohibit.hujia(self,from,to)
 	if self:isFriend(to,from) then return false end
 	local guojia = self.room:findPlayerBySkillName("tiandu")
@@ -2175,28 +2234,20 @@ function sgs.ai_slash_prohibit.hujia(self,from,to)
 end
 
 sgs.ai_choicemade_filter.cardResponded["@hujia-jink"] = function(self,player,promptlist)
-	if promptlist[#promptlist]~="" then
-		sgs.updateIntention(player,sgs.hujiasource,-80)
-		sgs.hujiasource = nil
-	elseif sgs.hujiasource then
-		local lieges = player:getRoom():getLieges("wei",sgs.hujiasource)
-		if lieges and not lieges:isEmpty() then
-			if player:objectName()==lieges:last():objectName() then
-				sgs.hujiasource = nil
-			end
-		end
-	end
+	local source = promptlist[4] and self.room:findPlayerByObjectName(promptlist[4],true)
+	if not source or #promptlist<5 then return end
+	local answer = promptlist[#promptlist]
+	local supplied = type(answer)=="string" and answer~="" and answer~="." and answer~="_nil_"
+	if supplied then sgs.updateIntention(player,source,-80) end
 end
 
-sgs.ai_skill_cardask["@hujia-jink"] = function(self)
-	if not self.room:getLord() then return "." end
-	local yuanshu = self.room:findPlayerBySkillName("weidi")
-	if not sgs.hujiasource and not yuanshu then sgs.hujiasource = self.room:getLord() end
-	if not sgs.hujiasource then return "." end
-	if not self:isFriend(sgs.hujiasource) then return "." end
+sgs.ai_skill_cardask["@hujia-jink"] = function(self,data)
+	local source = data and data:toPlayer()
+	if not source or not source:isAlive() then return "." end
+	if not self:isFriend(source) then return "." end
 	if self:needBear() then return "." end
 	local bgm_zhangfei = self.room:findPlayerBySkillName("dahe")
-	if bgm_zhangfei and bgm_zhangfei:isAlive() and sgs.hujiasource:hasFlag("dahe") then
+	if bgm_zhangfei and bgm_zhangfei:isAlive() and source:hasFlag("dahe") then
 		for _,card in ipairs(self:getCards("Jink"))do
 			if card:getSuit()==sgs.Card_Heart then
 				return card:toString()

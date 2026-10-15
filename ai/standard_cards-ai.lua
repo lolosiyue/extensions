@@ -1468,6 +1468,15 @@ function sgs.ai_weapon_value.kylin_bow(self,enemy)
 	if enemy and (enemy:getOffensiveHorse() or enemy:getDefensiveHorse()) then return 1 end
 end
 
+function SmartAI:getHujiaRequester(data)
+	-- CardAsked carries the requester in this prompt, including nested asks.
+	if not data then return nil end
+	local asked = data:toStringList()
+	if asked[1]~="jink" or type(asked[2])~="string" then return nil end
+	local name = asked[2]:match("^@hujia%-jink:([^:]+)")
+	return name and self.room:findPlayerByObjectName(name,false) or nil
+end
+
 sgs.ai_skill_invoke.eight_diagram = function(self,data)
 	local dying = 0
 	local handang = self.room:findPlayerBySkillName("nosjiefan")
@@ -1484,9 +1493,10 @@ sgs.ai_skill_invoke.eight_diagram = function(self,data)
 		end
 	end
 
+	local hujia_requester = self:getHujiaRequester(data)
 	if self:hasSkills("tiandu|leiji|nosleiji|gushou") then
 		if self.player:hasFlag("dahe") and not heart_jink then return true end
-		if sgs.hujiasource and not self:isFriend(sgs.hujiasource) and (sgs.hujiasource:hasFlag("dahe") or self.player:hasFlag("dahe")) then return true end
+		if hujia_requester and not self:isFriend(hujia_requester) and (hujia_requester:hasFlag("dahe") or self.player:hasFlag("dahe")) then return true end
 		if sgs.lianlisource and not self:isFriend(sgs.lianlisource) and (sgs.lianlisource:hasFlag("dahe") or self.player:hasFlag("dahe")) then return true end
 		if self.player:hasFlag("dahe") and handang and self:isFriend(handang) and dying>0 then return true end
 	end
@@ -1496,7 +1506,7 @@ sgs.ai_skill_invoke.eight_diagram = function(self,data)
 	end
 	if handang and self:isFriend(handang) and dying>0 then return false end
 	if self.player:hasFlag("dahe") then return false end
-	if sgs.hujiasource and (not self:isFriend(sgs.hujiasource) or sgs.hujiasource:hasFlag("dahe")) then return false end
+	if hujia_requester and (not self:isFriend(hujia_requester) or hujia_requester:hasFlag("dahe")) then return false end
 	if sgs.lianlisource and (not self:isFriend(sgs.lianlisource) or sgs.lianlisource:hasFlag("dahe")) then return false end
 	if sgs.SevenJiujia and (not self:isFriend(sgs.SevenJiujia) or sgs.SevenJiujia:hasFlag("dahe")) then return false end
 	if sgs.tongpaoJink and (not self:isFriend(sgs.tongpaoJink) or sgs.tongpaoJink:hasFlag("dahe")) then return false end
