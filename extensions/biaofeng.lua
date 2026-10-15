@@ -16455,7 +16455,7 @@ SevenWeiYuan = sgs.CreateViewAsSkillV2 {
 			and request:getReason() ~= sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then return false end
 		local pattern = request:getPattern()
 		if pattern ~= "peach" or not player:canDiscard(player, "he") or player:getHp() <= 1 then return false end
-		local dyingobj = player:property("currentdying"):toString()
+		local dyingobj = sgs.Sanguosha:getDyingSaveTarget(player)
 		local who = nil
 		for _, p in sgs.qlist(player:getAliveSiblings()) do
 			if p:objectName() == dyingobj then
