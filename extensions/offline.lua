@@ -1743,7 +1743,7 @@ ofgu_queying = sgs.CreateViewAsSkillV2 {
     name = "ofgu_queying", response_or_use = true, n = 0,
     can_activate = function(self, request)
         local p = request:getInitiator()
-        local room = sgs.Sanguosha:currentRoom(); if not room or p:getHandcardNum() >= p:getMaxHp() or not gu_ying_id(room) then return false end
+        if p:getHandcardNum() >= p:getMaxHp() or not gu_ying_id(p:getRoom()) then return false end
         if request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY then return sgs.Slash_IsAvailable(p) end
         return request:getPattern() == "slash" or request:getPattern() == "jink"
     end,
