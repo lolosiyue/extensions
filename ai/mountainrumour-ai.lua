@@ -83,11 +83,11 @@ function sgs.getCardNeedPlayerFromCertainPlayers(self, players, cards)
 		end
 	end
 
-	if (self.player:hasSkill("nosrende") and self.player:isWounded() and self.player:getMark("nosrende") < 2) then
-		if (self.player:getHandcardNum() < 2 and self.player:getMark("nosrende") == 0) then return end
+	if (self.player:hasSkill("nosrende") and self.player:isWounded() and self:getNosRendeGiven() < 2) then
+		if (self.player:getHandcardNum() < 2 and self:getNosRendeGiven() == 0) then return end
 
-		if ((self.player:getHandcardNum() == 2 and self.player:getMark("nosrende") == 0) or
-			(self.player:getHandcardNum() == 1 and self.player:getMark("nosrende") == 1)) and self:getOverflow() <= 0 then
+		if ((self.player:getHandcardNum() == 2 and self:getNosRendeGiven() == 0) or
+			(self.player:getHandcardNum() == 1 and self:getNosRendeGiven() == 1)) and self:getOverflow() <= 0 then
 			for _, enemy in ipairs(self.enemies) do
 				if enemy:hasWeapon("guding_blade")
 					and (enemy:canSlash(self.player)
@@ -258,7 +258,7 @@ function sgs.getCardNeedPlayerFromCertainPlayers(self, players, cards)
 			if not self:needKongcheng(friend) and not (friend:hasSkill("manjuan") and friend:getPhase() == sgs.Player_NotActive) then
 				if friend:getHandcardNum() <= 3
 					and (self:getOverflow() > 0 or self.player:getHandcardNum() > 3
-						or (self.player:hasSkill("nosrende") and self.player:isWounded() and self.player:getMark("nosrende") < 2)
+						or (self.player:hasSkill("nosrende") and self.player:isWounded() and self:getNosRendeGiven() < 2)
 						or (self.player:hasSkill("rende") and not self.player:hasUsed("RendeCard") and self.player:isWounded() and self.player:getMark("rende") < 2)) then
 					return hcard, friend
 				end
@@ -278,7 +278,7 @@ function sgs.getCardNeedPlayerFromCertainPlayers(self, players, cards)
 	end
 
 	if #cards > 0 and ((self.player:hasSkill("rende") and not self.player:hasUsed("RendeCard") and self.player:getMark("rende") < 2)
-						or (self.player:hasSkill("nosrende") and self.player:getMark("nosrende") < 2)) then
+						or (self.player:hasSkill("nosrende") and self:getNosRendeGiven() < 2)) then
 		local need_rende = (sgs.playerRoles["rebel"] == 0 and sgs.playerRoles["loyalist"]  > 0 and self.player:isWounded())
 							or (sgs.playerRoles["rebel"] > 0 and sgs.playerRoles["renegade"] > 0
 								and sgs.playerRoles["loyalist"]  == 0 and self:isWeak())

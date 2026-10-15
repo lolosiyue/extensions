@@ -147,11 +147,11 @@ local function card_need_player(self, players, cards)
         end
     end
 
-    if (q(self.player,"hasSkill","nosrende") and q(self.player,"isWounded") and q(self.player,"getMark","nosrende") < 2) then
-        if (q(self.player,"getHandcardNum") < 2 and q(self.player,"getMark","nosrende") == 0) then return end
+    if (q(self.player,"hasSkill","nosrende") and q(self.player,"isWounded") and self:getNosRendeGiven() < 2) then
+        if (q(self.player,"getHandcardNum") < 2 and self:getNosRendeGiven() == 0) then return end
 
-        if ((q(self.player,"getHandcardNum") == 2 and q(self.player,"getMark","nosrende") == 0) or
-            (q(self.player,"getHandcardNum") == 1 and q(self.player,"getMark","nosrende") == 1)) and q(self,"getOverflow") <= 0 then
+        if ((q(self.player,"getHandcardNum") == 2 and self:getNosRendeGiven() == 0) or
+            (q(self.player,"getHandcardNum") == 1 and self:getNosRendeGiven() == 1)) and q(self,"getOverflow") <= 0 then
             for _, enemy in ipairs(self.enemies) do
                 if q(enemy,"hasWeapon","guding_blade")
                     and (q(enemy,"canSlash",self.player)
@@ -317,7 +317,7 @@ local function card_need_player(self, players, cards)
             if not q(self,"needKongcheng",friend) and not (q(friend,"hasSkill","manjuan") and q(friend,"getPhase") == sgs.Player_NotActive) then
                 if q(friend,"getHandcardNum") <= 3
                     and (q(self,"getOverflow") > 0 or q(self.player,"getHandcardNum") > 3
-                        or (q(self.player,"hasSkill","nosrende") and q(self.player,"isWounded") and q(self.player,"getMark","nosrende") < 2)
+                        or (q(self.player,"hasSkill","nosrende") and q(self.player,"isWounded") and self:getNosRendeGiven() < 2)
                         or (q(self.player,"hasSkill","rende") and not q(self.player,"hasUsed","RendeCard") and q(self.player,"isWounded") and q(self.player,"getMark","rende") < 2)) then
                     return hcard, friend
                 end
@@ -337,7 +337,7 @@ local function card_need_player(self, players, cards)
     end
 
     if #cards > 0 and ((q(self.player,"hasSkill","rende") and not q(self.player,"hasUsed","RendeCard") and q(self.player,"getMark","rende") < 2)
-                        or (q(self.player,"hasSkill","nosrende") and q(self.player,"getMark","nosrende") < 2)) then
+                        or (q(self.player,"hasSkill","nosrende") and self:getNosRendeGiven() < 2)) then
         local need_rende = (role_count(self,"rebel") == 0 and role_count(self,"loyalist")  > 0 and q(self.player,"isWounded"))
                             or (role_count(self,"rebel") > 0 and role_count(self,"renegade") > 0
                                 and role_count(self,"loyalist")  == 0 and q(self,"isWeak"))

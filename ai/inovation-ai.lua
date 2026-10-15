@@ -1555,7 +1555,7 @@ function SmartAI:shouldUseRende()
 		end
 	end
 	local keepNum = 1
-	if self.player:getMark("rende") == 0 and self.player:getMark("nosrende") == 0 then
+	if self.player:getMark("rende") == 0 and self:getNosRendeGiven() == 0 then
 		if self.player:getHandcardNum() == 3 then
 			keepNum = 0
 		end
@@ -1576,8 +1576,8 @@ function SmartAI:shouldUseRende()
 		and (2 - self.player:getMark("rende")) >=  (self.player:getHandcardNum() - keepNum) then
 		return true
 	end
-	if self.player:getMark("nosrende") ~= 0 and self.player:getMark("nosrende") < 2
-		and (2 - self.player:getMark("nosrende")) >=  (self.player:getHandcardNum() - keepNum) then
+	if self:getNosRendeGiven() ~= 0 and self:getNosRendeGiven() < 2
+		and (2 - self:getNosRendeGiven()) >=  (self.player:getHandcardNum() - keepNum) then
 		return true
 	end
 end

@@ -4372,8 +4372,8 @@ function SmartAI:getCardNeedPlayer(cards,include_self,tos)
 		end
 	end
 
-	if self.player:isWounded() and self.player:getMark("nosrende")<2 and self.player:hasSkill("nosrende") then
-		if self.player:getHandcardNum()<2 and self.player:getMark("nosrende")<1 then return end
+	if self.player:isWounded() and self:getNosRendeGiven()<2 and self.player:hasSkill("nosrende") then
+		if self.player:getHandcardNum()<2 and self:getNosRendeGiven()<1 then return end
 	end
 	if self.player:isWounded() and self.player:getMark("rende")<2
 	and self.player:hasSkill("rende") and not self.player:hasUsed("RendeCard") then
@@ -4543,7 +4543,7 @@ function SmartAI:getCardNeedPlayer(cards,include_self,tos)
 	end
 
 	local shoulduse = self.player:isWounded() and (self.player:hasSkill("rende") and not self.player:hasUsed("RendeCard") and self.player:getMark("rende")<2)
-	or (self.player:hasSkill("nosrende") and self.player:getMark("nosrende")<2)
+	or (self.player:hasSkill("nosrende") and self:getNosRendeGiven()<2)
 
 	if #cardtogive<1 and shoulduse then cardtogive = cards end
 

@@ -152,6 +152,29 @@ end
 
 local getNosFenchengValue,getKurouCard,getFenweiValue,getPriorFriendsOfLiyu
 
+-- Instance state stays viewer-scoped; never reconstruct a player-wide mark.
+function SmartAIView:getNosRendeGiven(request)
+    local action = request
+    if not action or action:getActivationSkillName() ~= "nosrende" then
+        action = self:getSkillAction()
+    end
+    if not action or action:getActivationSkillName() ~= "nosrende" then
+        action = self:getSkillAction("nosrende")
+    end
+    local instance = action and action:getActivationInstanceId()
+    if not instance or instance < 0 then
+        local ids = self.player:getSkillInstanceIds("nosrende")
+        if ids == nil then ai_unsupported("nosrende instance projection is unknown", "given") end
+        for _, id in ipairs(ids) do
+            if self.player:isSkillInvalid("nosrende", id) == false then instance = id break end
+        end
+    end
+    if not instance or instance < 0 then return 0 end
+    local value = self.player:getSkillInstanceStateValue("nosrende", instance, "given", 0)
+    if type(value) ~= "number" then ai_unsupported("nosrende instance state is unknown", "given") end
+    return value
+end
+
 local function response_choice(self,value)
     if value==nil or value=="."then return {kind="pass"}end
     if type(value)~="string"then return value end
@@ -443,7 +466,7 @@ end
 
 sgs.ai_use_revises.nosrende = function(self,card,use)
     if call(self.player,"getLostHp")>1 and self:findFriendsByType(sgs.Friend_Draw)
-    and call(self.player,"getStrategyMark","nosrende")<2
+    and self:getNosRendeGiven()<2
     and #self.friends_noself>0
     then
         if call(card,"getTypeId")==1
@@ -1465,7 +1488,7 @@ sgs.ai_skill_use["@@rende"] = function(self,prompt)
 
         local usecard = rende_card(self,{call(card,"getId")})
         if call(friend,"hasSkill","enyuan") and #cards>0
-        and not (call(self.room,"getMode")=="04_1v3" and call(self.player,"getStrategyMark","nosrende")==1)
+        and not (call(self.room,"getMode")=="04_1v3" and self:getNosRendeGiven()==1)
         then usecard = rende_card(self,{call(card,"getId"), call(cards[1],"getId")}) end
         return answer_skill(self,usecard,{friend})
     end
@@ -2650,7 +2673,7 @@ function SmartAIView:shouldUseRende()
         or call(player,"hasSkill","jijiu") then return true end
     end
     local keepNum = 1
-    if call(self.player,"getStrategyMark","rende")+call(self.player,"getStrategyMark","nosrende")<1 then
+    if call(self.player,"getStrategyMark","rende")+self:getNosRendeGiven()<1 then
         if call(self.player,"getHandcardNum")==3 then keepNum = 0 end
         if call(self.player,"getHandcardNum")>3 then keepNum = 3 end
     end
@@ -2660,8 +2683,8 @@ function SmartAIView:shouldUseRende()
     if call(self.player,"getStrategyMark","rende")>0 and call(self.player,"getStrategyMark","rende")<2
     and (2-call(self.player,"getStrategyMark","rende"))>=(call(self.player,"getHandcardNum")-keepNum)
     then return true end
-    if call(self.player,"getStrategyMark","nosrende")>0 and call(self.player,"getStrategyMark","nosrende")<2
-    and (2-call(self.player,"getStrategyMark","nosrende"))>=(call(self.player,"getHandcardNum")-keepNum)
+    if self:getNosRendeGiven()>0 and self:getNosRendeGiven()<2
+    and (2-self:getNosRendeGiven())>=(call(self.player,"getHandcardNum")-keepNum)
     then return true end
 end
 
@@ -3448,14 +3471,14 @@ sgs.ai_skill_use_func.NosRendeCard = function(card,use,self)
         and self:getEnemyNumBySeat(self.player,friend)>0
         and self:aiUseCard(h).card then continue end
         if #cards>1 and call(friend,"hasSkill","enyuan")
-        and not(call(self.room,"getMode")=="04_1v3" and call(self.player,"getStrategyMark","nosrende")==1)
+        and not(call(self.room,"getMode")=="04_1v3" and self:getNosRendeGiven()==1)
         then use.card = selected_skill(self,"@NosRendeCard="..call(h,"getId").."+"..call(cards[1],"getId"))
         else use.card = selected_skill(self,"@NosRendeCard="..call(h,"getId")) end
         use.to:append(friend)
         return
     end
     if notFound and call(self.player,"isWounded")
-    and self:getOverflow()>0 and call(self.player,"getStrategyMark","nosrende")<2 then
+    and self:getOverflow()>0 and self:getNosRendeGiven()<2 then
         cards = self:sortByUseValue(strategy_cards(self,self.player,"h"),true)
         for _,p in sgs.qlist(call(self.room,"getOtherPlayers",self.player))do
             if not self:isFriend(p) and hasManjuanEffect(p) then
@@ -3463,7 +3486,7 @@ sgs.ai_skill_use_func.NosRendeCard = function(card,use,self)
                 for _,h in ipairs(cards)do
                     if not isCard("Peach,ExNihilo",h,self.player)
                     then table.insert(to_give,call(h,"getId")) end
-                    if #to_give>=2-call(self.player,"getStrategyMark","nosrende")
+                    if #to_give>=2-self:getNosRendeGiven()
                     then break end
                 end
                 if #to_give>0 then

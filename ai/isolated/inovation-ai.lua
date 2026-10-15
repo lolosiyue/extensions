@@ -1545,7 +1545,7 @@ providers.shouldUseRende = function(self)
 		end
 	end
 	local keepNum = 1
-	if q(self.player,"getMark","rende") == 0 and q(self.player,"getMark","nosrende") == 0 then
+	if q(self.player,"getMark","rende") == 0 and self:getNosRendeGiven() == 0 then
 		if q(self.player,"getHandcardNum") == 3 then
 			keepNum = 0
 		end
@@ -1566,8 +1566,8 @@ providers.shouldUseRende = function(self)
 		and (2 - q(self.player,"getMark","rende")) >=  (q(self.player,"getHandcardNum") - keepNum) then
 		return true
 	end
-	if q(self.player,"getMark","nosrende") ~= 0 and q(self.player,"getMark","nosrende") < 2
-		and (2 - q(self.player,"getMark","nosrende")) >=  (q(self.player,"getHandcardNum") - keepNum) then
+	if self:getNosRendeGiven() ~= 0 and self:getNosRendeGiven() < 2
+		and (2 - self:getNosRendeGiven()) >=  (q(self.player,"getHandcardNum") - keepNum) then
 		return true
 	end
 end

@@ -40,7 +40,7 @@ function SmartAI:shouldUseIkShenai()
 		end
 	end
 
-	if (self.player:hasSkill("nosrende") and self.player:getMark("nosrende") < 2)
+	if (self.player:hasSkill("nosrende") and self:getNosRendeGiven() < 2)
 		or self:getOverflow() > 0 then
 		return true
 	end
