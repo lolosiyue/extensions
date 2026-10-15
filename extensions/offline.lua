@@ -31527,4 +31527,4 @@ sgs.LoadTranslationTable {
 }
 end
 
-return { extension, extension_card, extension_wz, extension_hl, extension_hd }
+return { extension, extension_card, extension_wz, extension_hl, extension_sj, extension_hd }
