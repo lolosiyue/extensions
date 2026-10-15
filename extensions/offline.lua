@@ -29936,5 +29936,1599 @@ sgs.LoadTranslationTable {
 }
 end
 
+-- GU 活动模式 (huodong.md)
+extension_hd = sgs.Package("huodong", sgs.Package_GeneralPack)
+sgs.LoadTranslationTable { ["huodong"] = "活动模式" }
 
-return { extension, extension_card, extension_wz, extension_hl, extension_sj }
+-- ==================== d01
+do
+-- d01: only Cui Yan has complete, verifiable non-mode metadata.
+hd_zhongdancuiyan = sgs.General(extension_hd, "hd_zhongdancuiyan", "wei", 3)
+-- Exact counterpart: extensions/yongjian.lua, zd_xunzhi.
+hd_zhongdancuiyan:addSkill("zd_xunzhi")
+
+local function hd_yawang_count(room, owner)
+    local n = 0
+    for _, p in sgs.qlist(room:getAlivePlayers()) do
+        if p:getHp() == owner:getHp() then n = n + 1 end
+    end
+    return n
+end
+
+hd_yawang = gu_trigger("hd_yawang", {sgs.DrawNCards, sgs.CardUsed, sgs.CardResponded, sgs.CardFinished},
+    function(self, event, room, player, data, owner)
+        if player ~= owner then return end
+        if event == sgs.DrawNCards then
+            local draw = data:toDraw()
+            draw.num = hd_yawang_count(room, owner)
+            data:setValue(draw)
+            return
+        end
+        if owner:getPhase() ~= sgs.Player_Play then return end
+        if event == sgs.CardFinished then
+            local card = data:toCardUse().card
+            local flag = "hd_yawang_stop_" .. owner:objectName()
+            if card and card:hasFlag(flag) then
+                room:setCardFlag(card, "-" .. flag)
+                room:setPlayerCardLimitation(owner, "use", ".", true, self:objectName())
+            end
+            return
+        end
+        local card
+        if event == sgs.CardUsed then
+            card = data:toCardUse().card
+        else
+            local response = data:toCardResponse()
+            if response.m_isUse then card = response.m_card end
+        end
+        if not card then return end
+        room:addPlayerMark(owner, "hd_yawang_count-PlayClear")
+        if owner:getMark("hd_yawang_count-PlayClear") ~= hd_yawang_count(room, owner) then return end
+        if event == sgs.CardUsed then
+            room:setCardFlag(card, "hd_yawang_stop_" .. owner:objectName())
+        else
+            room:setPlayerCardLimitation(owner, "use", ".", true, self:objectName())
+        end
+    end, true)
+hd_zhongdancuiyan:addSkill(hd_yawang)
+
+-- Cleanup survives loss of the visible skill and interrupted play phases.
+hd_yawang_cleanup = gu_record("#hd_yawang_cleanup", {sgs.EventPhaseChanging},
+    function(self, event, room, player, data)
+        if player and data:toPhaseChange().from == sgs.Player_Play then
+            room:removePlayerCardLimitationByReason(player, "hd_yawang")
+            room:setPlayerMark(player, "hd_yawang_count-PlayClear", 0)
+        end
+    end)
+hd_zhongdancuiyan:addSkill(hd_yawang_cleanup)
+extension_hd:insertRelatedSkills("hd_yawang", "#hd_yawang_cleanup")
+
+sgs.LoadTranslationTable {
+    ["hd_zhongdancuiyan"] = "忠胆崔琰[活动]",
+    ["&hd_zhongdancuiyan"] = "忠胆崔琰",
+    ["hd_yawang"] = "雅望",
+    [":hd_yawang"] = "锁定技，摸牌阶段，你改为摸X张牌（X为与你体力值相等的角色数）；当你于你的出牌阶段内使用第X张牌后，你本阶段不能再使用牌。",
+}
+end
+
+-- ==================== d02
+do
+-- SP蒲元: last/current block, including obtaining the judgment card.
+hd_sppuyuan = sgs.General(extension_hd, "hd_sppuyuan", "shu", 4)
+hd_biancai = gu_trigger("hd_biancai", {sgs.EventPhaseStart}, function(self, event, room, p, data, owner)
+    if p:getPhase() ~= sgs.Player_RoundStart or not gu_invoke(owner, self:objectName(), data) then return end
+    local judge = sgs.JudgeStruct()
+    judge.who = owner; judge.reason = self:objectName(); judge.pattern = "."; judge.good = true
+    room:judge(judge)
+    if not judge.card or not owner:isAlive() then return end
+    local red, black = judge.card:isRed(), judge.card:isBlack()
+    room:obtainCard(owner, judge.card, self:objectName(), true)
+    local pool = red and room:getDrawPile() or (black and room:getDiscardPile() or sgs.IntList())
+    local ids = sgs.IntList()
+    for _, id in sgs.qlist(pool) do
+        if sgs.Sanguosha:getCard(id):isKindOf("EquipCard") then ids:append(id) end
+    end
+    if not ids:isEmpty() and owner:isAlive() then
+        room:fillAG(ids, owner)
+        local id = room:askForAG(owner, ids, false, self:objectName())
+        room:clearAG(owner)
+        room:obtainCard(owner, id, self:objectName(), true)
+    end
+end)
+hd_cuiren = gu_active("hd_cuiren", 1, 1, 1,
+    function() return false end, function(self, targets) return #targets == 0 end,
+    function(self, room, source)
+        local card = sgs.Sanguosha:getCard(self:getSubcards():first())
+        local mode = card:isKindOf("Weapon") and "weapon" or (card:isKindOf("Armor") and "armor"
+            or ((card:isKindOf("OffensiveHorse") or card:isKindOf("DefensiveHorse")) and "horse" or nil))
+        gu_throw(room, source, self:getSubcards(), "hd_cuiren")
+        if mode and source:isAlive() then room:setPlayerMark(source, "hd_cuiren_" .. mode .. "-Clear", 1) end
+    end,
+    function(self, request, card)
+        local p = request:getInitiator()
+        return card:isKindOf("EquipCard") and p:canDiscard(p, card:getEffectiveId())
+    end)
+hd_cuiren_mod = sgs.CreateTargetModSkillV2 {
+    name = "#hd_cuiren_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System,
+    correct_func = function(self, ctx)
+        local p, card = ctx:getPrimary(), ctx:getCard()
+        if not p or not card or card:getTypeId() == sgs.Card_TypeSkill then return 0 end
+        if p:getMark("hd_cuiren_weapon-Clear") > 0 then
+            if ctx:getModType() == sgs.TargetModSkill_Residue then return sgs.CorrectSkillResult.unlimitedResidue() end
+            if ctx:getModType() == sgs.TargetModSkill_DistanceLimit then return 1000 end
+        end
+        if p:getMark("hd_cuiren_horse-Clear") > 0 and ctx:getModType() == sgs.TargetModSkill_ExtraTarget then return 1000 end
+        return 0
+    end,
+}
+hd_cuiren_record = gu_record("#hd_cuiren_record", {sgs.PreCardUsed}, function(self, event, room, p, data)
+    local use = data:toCardUse()
+    if not p or p:getMark("hd_cuiren_armor-Clear") == 0 or not use.card
+        or use.card:getTypeId() == sgs.Card_TypeSkill then return end
+    local list = use.no_respond_list
+    table.insert(list, "_ALL_TARGETS"); use.no_respond_list = list; data:setValue(use)
+end)
+hd_shenfeng = gu_trigger("hd_shenfeng", {sgs.TargetSpecified}, function(self, event, room, p, data, owner)
+    local use = data:toCardUse()
+    if p ~= owner or not use.card or not use.card:isKindOf("Slash") then return end
+    if not room:askForCard(owner, "EquipCard", "@hd_shenfeng", data, sgs.Card_MethodDiscard,
+        nil, false, self:objectName()) then return end
+    local choice = room:askForChoice(owner, self:objectName(), "damage+losehp+discard", data)
+    if choice == "damage" then
+        use.card:setTag("hd_shenfeng_damage", sgs.QVariant(use.card:getTag("hd_shenfeng_damage"):toInt() + 1))
+    elseif choice == "losehp" then
+        room:setCardFlag(use.card, "hd_shenfeng_losehp")
+    else
+        for _, q in sgs.qlist(use.to) do
+            if q:isAlive() then room:askForDiscard(q, self:objectName(), 2, 2, false, true) end
+        end
+    end
+end)
+hd_shenfeng_record = gu_record("#hd_shenfeng_record", {sgs.ConfirmDamage, sgs.CardFinished}, function(self, event, room, p, data)
+    if event == sgs.CardFinished then
+        local use = data:toCardUse()
+        if use.card then
+            use.card:removeTag("hd_shenfeng_damage")
+            room:setCardFlag(use.card, "-hd_shenfeng_losehp")
+        end
+        return
+    end
+    local damage = data:toDamage()
+    if not damage.card then return end
+    if event == sgs.ConfirmDamage then
+        local n = damage.card:getTag("hd_shenfeng_damage"):toInt()
+        if n > 0 then damage.damage = damage.damage + n; data:setValue(damage) end
+
+    end
+end)
+-- A cancelling damage effect must run in on_effect, never on_record.
+hd_shenfeng_losehp = sgs.CreateRuleSkillV2 {
+    name = "#hd_shenfeng_losehp", global = true, frequency = sgs.Skill_Compulsory,
+    events = {sgs.Predamage},
+    can_trigger = function(self, event, room, player, data)
+        local damage = data:toDamage()
+        if damage.card and damage.card:hasFlag("hd_shenfeng_losehp") then return self:objectName(), damage.to end
+        return false
+    end,
+    on_effect = function(self, event, room, player, ctx)
+        local damage = ctx.original_data:toDamage()
+        room:loseHp(damage.to, damage.damage, true, damage.from, "hd_shenfeng")
+        return true
+    end,
+}
+hd_sppuyuan:addSkill(hd_biancai)
+hd_sppuyuan:addSkill(hd_cuiren)
+hd_sppuyuan:addSkill(hd_cuiren_mod)
+hd_sppuyuan:addSkill(hd_cuiren_record)
+hd_sppuyuan:addSkill(hd_shenfeng)
+hd_sppuyuan:addSkill(hd_shenfeng_record)
+hd_sppuyuan:addSkill(hd_shenfeng_losehp)
+extension_hd:insertRelatedSkills("hd_cuiren", "#hd_cuiren_mod")
+extension_hd:insertRelatedSkills("hd_cuiren", "#hd_cuiren_record")
+extension_hd:insertRelatedSkills("hd_shenfeng", "#hd_shenfeng_record")
+extension_hd:insertRelatedSkills("hd_shenfeng", "#hd_shenfeng_losehp")
+sgs.LoadTranslationTable {
+    ["hd_sppuyuan"] = "SP蒲元[活动]", ["&hd_sppuyuan"] = "SP蒲元",
+    ["hd_biancai"] = "辨材",
+    [":hd_biancai"] = "每个角色的回合开始时，你可以进行一次判定并获得判定牌，若判定结果为：红色，你从牌堆中获得一张装备牌；黑色，你从弃牌堆中获得一张装备牌。",
+    ["hd_cuiren"] = "淬刃",
+    [":hd_cuiren"] = "出牌阶段限一次，你可以弃置一张装备牌，并根据弃置牌的类别获得对应的效果直到回合结束：武器：你使用牌无距离和次数限制；防具：你使用的牌无法被响应；马匹：你使用牌指定目标时，可以多指定任意个目标。",
+    ["hd_shenfeng"] = "神锋",
+    [":hd_shenfeng"] = "当你使用【杀】指定目标后，你可以弃置一张装备牌，然后选择一项：1.令此【杀】伤害+1；2.令此【杀】造成的伤害视为失去体力；3.令目标角色弃置两张牌。",
+    ["@hd_shenfeng"] = "神锋：你可以弃置一张装备牌",
+    ["hd_shenfeng:damage"] = "此【杀】伤害+1",
+    ["hd_shenfeng:losehp"] = "此【杀】的伤害视为失去体力",
+    ["hd_shenfeng:discard"] = "目标角色各弃置两张牌",
+}
+end
+
+-- ==================== d03
+do
+-- Complete supplied generals already exist as ddz_rendengai / ddz_youzhugeliang.
+end
+
+-- ==================== d04
+do
+-- d04: source metadata and literal text are recorded in report.md.
+hd_shuangbisunce = sgs.General(extension_hd, "hd_shuangbisunce", "wu", 4, true)
+hd_shicenhun = sgs.General(extension_hd, "hd_shicenhun", "wu", 3, true)
+hd_gudingdaoshaonv = sgs.General(extension_hd, "hd_gudingdaoshaonv", "qun", 3, false)
+
+hd_shuangbi = gu_active("hd_shuangbi", 1, 0, 0,
+    function() return false end, function(self, targets) return #targets == 0 end,
+    function(self, room, source)
+        local n = room:alivePlayerCount()
+        local choice = room:askForChoice(source, "hd_shuangbi", "hd_shuangbi:jie+hd_shuangbi:shen+hd_shuangbi:mou")
+        if choice == "hd_shuangbi:jie" then
+            room:addPlayerMark(source, "hd_shuangbi-Clear", n)
+            source:drawCards(n, "hd_shuangbi")
+        elseif choice == "hd_shuangbi:shen" then
+            local discard = room:askForDiscard(source, "hd_shuangbi", n, 0, true, true, "@hd_shuangbi-discard")
+            local count = discard and discard:subcardsLength() or 0
+            for i = 1, count do
+                if not source:isAlive() then break end
+                local alive = room:getAlivePlayers()
+                if alive:isEmpty() then break end
+                local target = alive:at(math.random(0, alive:length() - 1))
+                room:damage(sgs.DamageStruct("hd_shuangbi", source, target, 1, sgs.DamageStruct_Fire))
+            end
+        else
+            for i = 1, n do
+                if not source:isAlive() then break end
+                local options, targets = {}, {}
+                for _, name in ipairs({"fire_slash", "fire_attack"}) do
+                    local card = sgs.Sanguosha:cloneCard(name, sgs.Card_NoSuit, 0)
+                    card:setSkillName("hd_shuangbi")
+                    local candidates = sgs.SPlayerList()
+                    for _, p in sgs.qlist(room:getAlivePlayers()) do
+                        if source:canUse(card, p, true) and not room:isProhibited(source, p, card) then candidates:append(p) end
+                    end
+                    card:deleteLater()
+                    if not candidates:isEmpty() then
+                        table.insert(options, name); targets[name] = candidates
+                    end
+                end
+                if #options == 0 then break end
+                local name = room:askForChoice(source, "hd_shuangbi", table.concat(options, "+"))
+                local target = room:askForPlayerChosen(source, targets[name], "hd_shuangbi", "@hd_shuangbi-target", false, true)
+                if not target then break end
+                local card = sgs.Sanguosha:cloneCard(name, sgs.Card_NoSuit, 0)
+                card:setSkillName("hd_shuangbi")
+                room:useCard(sgs.CardUseStruct(card, source, target), false)
+                card:deleteLater()
+            end
+        end
+    end)
+hd_shuangbi_max = sgs.CreateMaxCardsSkillV2 {
+    name = "#hd_shuangbi_max", base_amount = 0,
+    correct_func = function(self, ctx)
+        local p = ctx:getPrimary()
+        return p and p:getMark("hd_shuangbi-Clear") or 0
+    end,
+}
+hd_shuangbisunce:addSkill(hd_shuangbi)
+hd_shuangbisunce:addSkill(hd_shuangbi_max)
+extension_hd:insertRelatedSkills("hd_shuangbi", "#hd_shuangbi_max")
+
+-- Revealed cards stay on the table; an over-ten reveal obtains none.
+hd_baoshi = gu_trigger("hd_baoshi", {sgs.EventPhaseEnd}, function(self, event, room, p, data, owner)
+    if p ~= owner or p:getPhase() ~= sgs.Player_Draw or not gu_invoke(owner, "hd_baoshi") then return end
+    local shown = sgs.IntList()
+    local sum, count, obtain = 0, 2, false
+    while owner:isAlive() do
+        local ids = room:getNCards(count, false)
+        if ids:isEmpty() then break end
+        room:moveCardsAtomic(sgs.CardsMoveStruct(ids, nil, sgs.Player_PlaceTable,
+            sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_TURNOVER, owner:objectName(), "hd_baoshi", "")), true)
+        for _, id in sgs.qlist(ids) do
+            shown:append(id)
+            local card = sgs.Sanguosha:getCard(id)
+            if not card:isKindOf("Peach") and not card:isKindOf("Analeptic") then
+                local text = sgs.Sanguosha:translate(card:objectName())
+                sum = sum + (utf8.len(text) or #text)
+            end
+        end
+        if sum > 10 then break end
+        if room:askForChoice(owner, "hd_baoshi", "hd_baoshi:obtain+hd_baoshi:again") == "hd_baoshi:obtain" then
+            obtain = true; break
+        end
+        count = 1
+    end
+    local remaining = sgs.IntList()
+    for _, id in sgs.qlist(shown) do
+        if room:getCardPlace(id) == sgs.Player_PlaceTable then remaining:append(id) end
+    end
+    if obtain and owner:isAlive() then gu_obtain(room, owner, remaining, "hd_baoshi")
+    elseif not remaining:isEmpty() then
+        local dummy = gu_dummy(remaining)
+        room:throwCard(dummy, "hd_baoshi", nil)
+        dummy:deleteLater()
+    end
+end)
+hd_xinggong_record = gu_record("#hd_xinggong_record", {sgs.CardsMoveOneTime, sgs.EventPhaseChanging},
+    function(self, event, room, p, data)
+        if event == sgs.EventPhaseChanging then
+            if data:toPhaseChange().to == sgs.Player_NotActive then room:removeTag("hd_xinggong_ids") end
+            return
+        end
+        local move = data:toMoveOneTime()
+        if move.to_place ~= sgs.Player_DiscardPile then return end
+        local ids = room:getTag("hd_xinggong_ids"):toIntList()
+        for _, id in sgs.qlist(move.card_ids) do if not ids:contains(id) then ids:append(id) end end
+        room:setTag("hd_xinggong_ids", sgs.QVariant(ids))
+    end)
+hd_xinggong = gu_active("hd_xinggong", 1, 0, 0,
+    function() return false end, function(self, targets) return #targets == 0 end,
+    function(self, room, source)
+        local candidates, chosen = sgs.IntList(), sgs.IntList()
+        for _, id in sgs.qlist(room:getTag("hd_xinggong_ids"):toIntList()) do
+            if room:getCardPlace(id) == sgs.Player_DiscardPile then candidates:append(id) end
+        end
+        while not candidates:isEmpty() do
+            room:fillAG(candidates, source)
+            local id = room:askForAG(source, candidates, true, "hd_xinggong")
+            room:clearAG(source)
+            if id == -1 then break end
+            chosen:append(id); candidates:removeOne(id)
+        end
+        local count = chosen:length()
+        gu_obtain(room, source, chosen, "hd_xinggong")
+        local damage = count - source:getHp()
+        if count > 0 and damage > 0 and source:isAlive() then
+            room:damage(sgs.DamageStruct("hd_xinggong", source, source, damage))
+        end
+    end)
+hd_shicenhun:addSkill(hd_baoshi)
+hd_shicenhun:addSkill(hd_xinggong)
+hd_shicenhun:addSkill(hd_xinggong_record)
+extension_hd:insertRelatedSkills("hd_xinggong", "#hd_xinggong_record")
+
+local hd_haojiu_name = "hd_haojiu"
+hd_haojiu = sgs.CreateViewAsSkillV2 {
+    name = hd_haojiu_name, n = 1, response_or_use = true,
+    can_activate = function(self, request)
+        local room = sgs.Sanguosha:currentRoom()
+        local p = request:getInitiator()
+        if not room or not p then return false end
+        local name = p:getChangeSkillState("hd_haojiu") <= 1 and "analeptic" or "ex_nihilo"
+        local card = sgs.Sanguosha:cloneCard(name, sgs.Card_NoSuit, 0)
+        local reason = request:getReason()
+        local ok = reason == sgs.CardUseStruct_CARD_USE_REASON_PLAY and card:isAvailable(p)
+        if reason == sgs.CardUseStruct_CARD_USE_REASON_RESPONSE_USE then
+            ok = sgs.Sanguosha:matchExpPattern(request:getPattern(), p, card)
+        end
+        card:deleteLater()
+        return ok
+    end,
+    can_select_card = function(self, request, card)
+        return request:getSelectedCardIds():isEmpty() and card:getNumber() == 9
+    end,
+    card_selection_feasible = function(self, request) return request:getSelectedCardIds():length() == 1 end,
+    create_card = function(self, request)
+        local p = request:getInitiator()
+        if not p then return nil end
+        local material = sgs.Sanguosha:getCard(request:getSelectedCardIds():first())
+        local name = p:getChangeSkillState("hd_haojiu") <= 1 and "analeptic" or "ex_nihilo"
+        local card = sgs.Sanguosha:cloneCard(name, material:getSuit(), material:getNumber())
+        card:addSubcards(request:getSelectedCardIds()); card:setSkillName("hd_haojiu")
+        return card
+    end,
+}
+hd_haojiu_viewas = hd_haojiu
+hd_haojiu = sgs.CreateTriggerSkillV2 {
+    name = "hd_haojiu", change_skill = true,
+    view_as_skill = hd_haojiu_viewas, events = {sgs.PreCardUsed},
+    can_trigger = function(self, event, room, p, data)
+        local use = data:toCardUse()
+        return p and p:hasSkill(self:objectName()) and use.card
+            and use.card:getSkillName() == self:objectName()
+    end,
+    on_cost = function() return true end,
+    on_effect = function(self, event, room, p, ctx)
+        room:setChangeSkillState(p, "hd_haojiu", p:getChangeSkillState("hd_haojiu") <= 1 and 2 or 1)
+        return false
+    end,
+}
+hd_gudingdaoshaonv:addSkill(hd_haojiu)
+
+sgs.LoadTranslationTable {
+    ["hd_shuangbisunce"] = "双璧孙策[活动]", ["&hd_shuangbisunce"] = "双璧孙策",
+    ["hd_shicenhun"] = "食岑昏[活动]", ["&hd_shicenhun"] = "食岑昏",
+    ["hd_gudingdaoshaonv"] = "古锭刀少女[活动]", ["&hd_gudingdaoshaonv"] = "古锭刀少女",
+    ["hd_shuangbi"] = "双璧",
+    [":hd_shuangbi"] = "出牌阶段限一次，你可以选择一名“周瑜”助战：界周瑜：摸X张牌，本回合手牌上限+X；神周瑜：弃置至多X张牌，随机造成等量火焰伤害；谋周瑜：视为使用X张火【杀】或【火攻】。（X为场上存活人数）",
+    ["hd_shuangbi:jie"] = "界周瑜", ["hd_shuangbi:shen"] = "神周瑜", ["hd_shuangbi:mou"] = "谋周瑜",
+    ["@hd_shuangbi-discard"] = "双璧：你可以弃置至多X张牌，随机造成等量火焰伤害",
+    ["@hd_shuangbi-target"] = "双璧：选择此牌的目标",
+    ["hd_baoshi"] = "暴食",
+    [":hd_baoshi"] = "摸牌阶段结束时，你可以亮出牌堆顶的两张牌。若亮出牌的牌名字数之和小于等于10（【桃】或【酒】不计入牌名字数统计），你选择一项：1.获得所有亮出的牌；2.再亮出一张。",
+    ["hd_baoshi:obtain"] = "获得所有亮出的牌", ["hd_baoshi:again"] = "再亮出一张",
+    ["hd_xinggong"] = "兴功",
+    [":hd_xinggong"] = "出牌阶段限一次，你可以选择本回合进入弃牌堆的任意张牌获得。若你以此法获得牌张数大于当前体力值，每超出一张对自己造成一点伤害。",
+    ["hd_haojiu"] = "好酒",
+    [":hd_haojiu"] = "转换技，你可以将一张点数为9的牌当作一张：阳：【酒】；阴：【无中生有】使用。",
+}
+end
+
+-- ==================== d05
+do
+-- d05: material metadata supplies kingdom, gender and HP for all three generals.
+local function hd_d05_discard(room, owner, target, n, skill, optional)
+    local available = 0
+    for _, c in sgs.qlist(target:getCards("hej")) do
+        if owner:canDiscard(target, c:getEffectiveId()) then available = available + 1 end
+    end
+    n = math.min(n, available)
+    if n == 0 then return sgs.IntList() end
+    local ids = room:askForCardsChosen(owner, target, "hej", skill, optional and 0 or n, n,
+        false, sgs.Card_MethodDiscard, sgs.IntList(), optional)
+    if not ids:isEmpty() then
+        local dummy = gu_dummy(ids)
+        room:throwCard(dummy, skill, target, owner)
+        dummy:deleteLater()
+    end
+    return ids
+end
+hd_hanbingjianshaonv = sgs.General(extension_hd, "hd_hanbingjianshaonv", "qun", 3, false)
+local function hd_d05_length(card)
+    local name = sgs.Sanguosha:translate(card:objectName())
+    local _, n = name:gsub("[^\128-\193]", "")
+    return n
+end
+hd_bingling = gu_trigger("hd_bingling", {sgs.TargetSpecified}, function(self, event, room, p, data, owner)
+    local use = data:toCardUse()
+    if p ~= owner or not use.card or not use.card:isKindOf("Slash") then return end
+    for _, q in sgs.qlist(use.to) do
+        if owner:isAlive() and q:isAlive() and q:getCardCount(true) + q:getJudgingArea():length() >= 2
+            and owner:canDiscard(q, "hej") and gu_invoke(owner, self:objectName(), sgs.QVariant(q)) then
+            local ids = hd_d05_discard(room, owner, q, 2, self:objectName(), false)
+            if ids:length() == 2 then
+                local a, b = sgs.Sanguosha:getCard(ids:first()), sgs.Sanguosha:getCard(ids:last())
+                local kind = a:getTypeId() == b:getTypeId()
+                local suit = a:getSuit() == b:getSuit()
+                local length = hd_d05_length(a) == hd_d05_length(b)
+                local number = a:getNumber() == b:getNumber()
+                if kind then
+                    local available = sgs.IntList()
+                    for _, id in sgs.qlist(ids) do
+                        if room:getCardPlace(id) == sgs.Player_DiscardPile then available:append(id) end
+                    end
+                    gu_obtain(room, owner, available, self:objectName())
+                end
+                if suit and owner:isAlive() then
+                    local recover = sgs.RecoverStruct(); recover.who = owner; recover.recover = 1
+                    room:recover(owner, recover)
+                end
+                if length and owner:isAlive() then owner:drawCards(hd_d05_length(a), self:objectName()) end
+                if number and q:isAlive() and q:getHp() > 0 then room:loseHp(q, q:getHp(), true, owner, self:objectName()) end
+                if not (kind or suit or length or number) and owner:isAlive() then
+                    local damage = sgs.DamageStruct(); damage.to = owner; damage.damage = 1
+                    damage.nature = sgs.DamageStruct_Fire; damage.reason = self:objectName(); room:damage(damage)
+                end
+            end
+        end
+    end
+end)
+hd_hanbingjianshaonv:addSkill(hd_bingling)
+
+hd_weiqing = sgs.General(extension_hd, "hd_weiqing", "qun", 3)
+hd_beijin = gu_active("hd_beijin", nil, 0, 0,
+    function() return false end, function(self, targets) return #targets == 0 end,
+    function(self, room, source)
+        local held = false
+        for _, c in sgs.qlist(source:getHandcards()) do
+            if source:getMark("hd_beijin_id_" .. c:getEffectiveId()) > 0 then held = true end
+        end
+        local ids = source:drawCardsList(1, "hd_beijin")
+        for _, id in sgs.qlist(ids) do
+            room:setPlayerMark(source, "hd_beijin_id_" .. id, 1)
+            if not held then room:setPlayerMark(source, "hd_beijin_pending_" .. id .. "-Clear", 1) end
+        end
+        if held and source:isAlive() then room:loseHp(source, 1, true, source, "hd_beijin") end
+    end)
+hd_weiqing:addSkill(hd_beijin)
+hd_beijin_record = gu_record("#hd_beijin_record", {sgs.PreCardUsed}, function(self, event, room, p, data)
+    local use = data:toCardUse()
+    if not use.card or use.card:getTypeId() == sgs.Card_TypeSkill then return end
+    local id = use.card:getEffectiveId()
+    local missed = 0
+    for _, name in sgs.qlist(p:getMarkNames()) do
+        if name:match("^hd_beijin_pending_%d+%-Clear$") and p:getMark(name) > 0 then
+            local expected = tonumber(name:match("pending_(%d+)"))
+            if expected ~= id then missed = missed + 1 end
+            room:setPlayerMark(p, name, 0)
+        end
+    end
+    for i = 1, missed do if p:isAlive() then room:loseHp(p, 1, true, p, "hd_beijin") end end
+end)
+hd_beijin_mod = sgs.CreateTargetModSkillV2 {
+    name = "#hd_beijin_mod", holder_selector = sgs.CorrectSkill_System,
+    correct_func = function(self, ctx)
+        local room = sgs.Sanguosha:currentRoom()
+        if not room then return 0 end
+        local p, c = ctx:getPrimary(), ctx:getCard()
+        if p and c and p:getMark("hd_beijin_id_" .. c:getEffectiveId()) > 0
+            and ctx:getModType() == sgs.TargetModSkill_Residue then return 1000 end
+        return 0
+    end,
+}
+hd_weiqing:addSkill(hd_beijin_record); hd_weiqing:addSkill(hd_beijin_mod)
+extension_hd:insertRelatedSkills("hd_beijin", "#hd_beijin_record")
+extension_hd:insertRelatedSkills("hd_beijin", "#hd_beijin_mod")
+
+hd_xiaoyuehankehan = sgs.General(extension_hd, "hd_xiaoyuehankehan", "qun", 3)
+hd_tongliao = gu_trigger("hd_tongliao", {sgs.EventPhaseEnd}, function(self, event, room, p, data, owner)
+    if p ~= owner or p:getPhase() ~= sgs.Player_Draw or p:isKongcheng() or not gu_invoke(p, self:objectName()) then return end
+    local minimum = 14
+    for _, c in sgs.qlist(p:getHandcards()) do minimum = math.min(minimum, c:getNumber()) end
+    local disabled = sgs.IntList()
+    for _, c in sgs.qlist(p:getHandcards()) do if c:getNumber() ~= minimum then disabled:append(c:getEffectiveId()) end end
+    local id = room:askForCardChosen(p, p, "h", self:objectName(), true, sgs.Card_MethodNone, disabled)
+    room:setPlayerMark(p, "hd_tongliao_id_" .. id, 1)
+end)
+hd_tongliao_record = gu_record("#hd_tongliao_record", {sgs.CardsMoveOneTime}, function(self, event, room, p, data)
+    local move = data:toMoveOneTime()
+    if not move.from or move.from:objectName() ~= p:objectName() then return end
+    local n = 0
+    for _, id in sgs.qlist(move.card_ids) do
+        local mark = "hd_tongliao_id_" .. id
+        if p:getMark(mark) > 0 and (not move.to or move.to:objectName() ~= p:objectName()) then
+            room:setPlayerMark(p, mark, 0); n = n + sgs.Sanguosha:getCard(id):getNumber()
+        end
+    end
+    if n > 0 and p:isAlive() then p:drawCards(n, "hd_tongliao") end
+end)
+hd_wudao = gu_trigger("hd_wudao", {sgs.TargetSpecified}, function(self, event, room, p, data, owner)
+    local use = data:toCardUse()
+    if p ~= owner or not use.card then return end
+    local kind = use.card:getTypeId()
+    if kind ~= sgs.Card_TypeBasic and kind ~= sgs.Card_TypeTrick then return end
+    if use.card:hasFlag("hd_wudao_repeat") and owner:getMark("hd_wudao_used_" .. kind .. "-Clear") == 0
+        and gu_invoke(owner, self:objectName(), data) then
+        room:setPlayerMark(owner, "hd_wudao_used_" .. kind .. "-Clear", 1)
+        room:setCardFlag(use.card, "hd_wudao_pending")
+    end
+end)
+hd_wudao_record = gu_record("#hd_wudao_record", {sgs.PreCardUsed, sgs.CardFinished, sgs.DamageCaused}, function(self, event, room, p, data)
+    if event == sgs.DamageCaused then
+        local damage = data:toDamage()
+        if damage.card and damage.card:hasFlag("hd_wudao_boost") then damage.damage = damage.damage + 1; data:setValue(damage) end
+        return
+    end
+    local use = data:toCardUse()
+    if not use.card then return end
+    local kind = use.card:getTypeId()
+    if event == sgs.CardFinished then
+        if use.card:hasFlag("hd_wudao_pending") then
+            room:setCardFlag(use.card, "-hd_wudao_pending")
+            room:setPlayerMark(p, "hd_wudao_active_" .. kind .. "-Clear", 1)
+        end
+        room:setCardFlag(use.card, "-hd_wudao_boost")
+        room:setCardFlag(use.card, "-hd_wudao_repeat")
+        return
+    end
+    if kind == sgs.Card_TypeSkill then return end
+    if p:getMark("hd_wudao_previous") == kind then room:setCardFlag(use.card, "hd_wudao_repeat") end
+    room:setPlayerMark(p, "hd_wudao_previous", kind)
+    if p:getMark("hd_wudao_active_" .. kind .. "-Clear") > 0 then
+        room:setCardFlag(use.card, "hd_wudao_boost")
+        local list = use.no_respond_list; table.insert(list, "_ALL_TARGETS"); use.no_respond_list = list
+        data:setValue(use)
+    end
+end)
+hd_xiaoyuehankehan:addSkill(hd_tongliao); hd_xiaoyuehankehan:addSkill(hd_tongliao_record)
+hd_xiaoyuehankehan:addSkill(hd_wudao); hd_xiaoyuehankehan:addSkill(hd_wudao_record)
+extension_hd:insertRelatedSkills("hd_tongliao", "#hd_tongliao_record")
+extension_hd:insertRelatedSkills("hd_wudao", "#hd_wudao_record")
+sgs.LoadTranslationTable {
+    ["hd_hanbingjianshaonv"] = "寒冰剑少女[活动]", ["&hd_hanbingjianshaonv"] = "寒冰剑少女",
+    ["hd_weiqing"] = "卫青[活动]", ["&hd_weiqing"] = "卫青",
+    ["hd_xiaoyuehankehan"] = "小约翰可汗[活动]", ["&hd_xiaoyuehankehan"] = "小约翰可汗",
+    ["hd_bingling"] = "冰伶", [":hd_bingling"] = "当你使用杀指定目标时，你可弃置目标角色2张牌。若这两张牌类别/花色/牌名字数/点数相同，则你获得这两张牌/回复一点体力/摸相当于其中一张牌名字数的牌/令其失去所有体力；若皆不同，则你受到一点无来源的火焰伤害。",
+    ["hd_beijin"] = "北进", [":hd_beijin"] = "出牌阶段，你可以摸一张牌（此牌使用时无次数限制），然后若你本回合：使用的下一张牌不为以此法摸的牌，或发动此技能时手牌中有以此法摸的牌，你失去1点体力。",
+    ["hd_tongliao"] = "通辽", [":hd_tongliao"] = "摸牌阶段结束时，你可以将手牌中点数最小的一张牌标记为“通辽”牌（当你失去“通辽”牌时，你摸等同于“通辽”牌的点数张牌）。",
+    ["hd_wudao"] = "悟道", [":hd_wudao"] = "每回合每种类别限一次，当你使用基本牌或锦囊牌指定目标后，若此牌与你使用的上一张牌类别相同，你可以令当前结算结束后，你本回合使用此类型的牌不能被响应且造成的伤害+1。",
+}
+end
+
+-- ==================== d06
+do
+-- d06: 朱铁雄 / 变装 is skipped: its literal text requires skin mechanics.
+-- No general or partial skill is registered; see report.md.
+end
+
+-- ==================== d07
+do
+-- d07: material text only; engine-identical Tian Ji skills are reused.
+hd_yumimao = sgs.General(extension_hd, "hd_yumimao", "qun", 3, true)
+hd_kenyuCard = sgs.CreateSkillCard {
+    name = "hd_kenyuCard", will_throw = false,
+    filter = function() return false end,
+    feasible = function(self, targets) return #targets == 0 end,
+    on_use = function(self, room, source, targets)
+        local n = self:subcardsLength()
+        gu_throw(room, source, self:getSubcards(), "hd_kenyu")
+        if n == 0 then return end
+        local ids = room:getNCards(n)
+        local shown = gu_dummy(ids)
+        room:moveCardTo(shown, nil, sgs.Player_PlaceTable, true)
+        shown:deleteLater()
+        local corn, rest = sgs.IntList(), sgs.IntList()
+        local capacity = math.max(0, 5 - source:getPile("hd_yumidui"):length())
+        for _, id in sgs.qlist(ids) do
+            local c = sgs.Sanguosha:getCard(id)
+            if source:isAlive() and corn:length() < capacity and (c:isKindOf("Slash") or c:isKindOf("Jink")) then
+                corn:append(id)
+            else rest:append(id) end
+        end
+        if not corn:isEmpty() then source:addToPile("hd_yumidui", corn, true) end
+        if not rest:isEmpty() then
+            local c = gu_dummy(rest)
+            room:moveCardTo(c, nil, sgs.Player_DiscardPile, true)
+            c:deleteLater()
+        end
+        if source:isAlive() then room:recover(source, sgs.RecoverStruct("hd_kenyu", source, n)) end
+    end,
+}
+hd_kenyu = sgs.CreateViewAsSkillV2 {
+    name = "hd_kenyu", limit_scope = sgs.Skill_Limit_Phase, phase_name = "Play", max_usage_limit = 1,
+    can_activate = function(self, request)
+        return request:getReason() == sgs.CardUseStruct_CARD_USE_REASON_PLAY
+    end,
+    can_select_card = function(self, request, c)
+        if request:getSelectedCardIds():length() >= 5 then return false end
+        local p = request:getInitiator()
+        local room = sgs.Sanguosha:currentRoom()
+        return room and p and room:getCardPlace(c:getEffectiveId()) == sgs.Player_PlaceHand
+            and room:getCardOwner(c:getEffectiveId()) == p and not p:isJilei(c, true) and p:canDiscard(p, c:getEffectiveId())
+    end,
+    card_selection_feasible = function(self, request) return request:getSelectedCardIds():length() <= 5 end,
+    create_card = function(self, request)
+        local card = hd_kenyuCard:clone()
+        card:addSubcards(request:getSelectedCardIds())
+        card:setSkillName("hd_kenyu")
+        return card
+    end,
+}
+-- The corn is a physical Slash/Jink. Transfer it out of the pile and remember its recipient.
+hd_touwei = gu_trigger("hd_touwei", {sgs.EventPhaseStart}, function(self, event, room, p, data, owner)
+    if not p or p == owner or p:getPhase() ~= sgs.Player_Play or owner:getPile("hd_yumidui"):isEmpty()
+        or not gu_invoke(owner, self:objectName(), ToData(p)) then return end
+    local ids = owner:getPile("hd_yumidui")
+    room:fillAG(ids, owner)
+    local id = room:askForAG(owner, ids, false, self:objectName())
+    room:clearAG(owner)
+    if id < 0 then return end
+    local key = "hd_touwei_" .. tostring(id)
+    owner:setTag(key, sgs.QVariant(p:objectName()))
+    room:obtainCard(p, id, false)
+end)
+hd_touwei_loss = gu_record("#hd_touwei_loss", {sgs.CardsMoveOneTime}, function(self, event, room, p, data)
+    local move = data:toMoveOneTime()
+    if not move.from or move.from == move.to then return end
+    -- Clear every matching record before drawing (drawing can recursively move cards).
+    local draws = {}
+    for _, owner in sgs.qlist(room:getAlivePlayers()) do
+        local n = 0
+        for _, id in sgs.qlist(move.card_ids) do
+            local key = "hd_touwei_" .. tostring(id)
+            if owner:getTag(key):toString() == move.from:objectName() then
+                owner:removeTag(key); n = n + 2
+            end
+        end
+        if n > 0 then table.insert(draws, {owner, n}) end
+    end
+    for _, item in ipairs(draws) do if item[1]:isAlive() then item[1]:drawCards(item[2], "hd_touwei") end end
+end)
+hd_zhamao = gu_trigger("hd_zhamao", {sgs.Damaged}, function(self, event, room, p, data, owner)
+    if p ~= owner or not gu_invoke(owner, self:objectName(), data) then return end
+    local damage = data:toDamage()
+    local ids = owner:getPile("hd_yumidui")
+    local n = ids:length()
+    gu_throw(room, owner, ids, self:objectName())
+    if n > 0 and damage.from and damage.from:isAlive() then
+        room:damage(sgs.DamageStruct(self:objectName(), owner, damage.from, n))
+    end
+    if owner:isAlive() then owner:turnOver() end
+end)
+hd_yumimao:addSkill(hd_kenyu)
+hd_yumimao:addSkill(hd_touwei)
+hd_yumimao:addSkill(hd_touwei_loss)
+hd_yumimao:addSkill(hd_zhamao)
+extension_hd:insertRelatedSkills("hd_touwei", "#hd_touwei_loss")
+
+hd_tengjiananhai = sgs.General(extension_hd, "hd_tengjiananhai", "qun", 4, true, false, false, 1)
+hd_tenggu = gu_trigger("hd_tenggu", {sgs.EnterDying}, function(self, event, room, p, data, owner)
+    local dying = data:toDying()
+    if dying.who ~= owner or not dying.damage or dying.damage.nature == sgs.DamageStruct_Fire then return end
+    room:loseMaxHp(owner, 1, self:objectName())
+    if owner:isAlive() then room:setPlayerProperty(owner, "hp", sgs.QVariant(owner:getMaxHp())) end
+end, true)
+hd_tenggu_equip = gu_record("#hd_tenggu_equip",
+    {sgs.GameStart, sgs.EventAcquireSkill, sgs.EventLoseSkill, sgs.Revived},
+    function(self, event, room, p, data)
+        for _, owner in sgs.qlist(room:getAlivePlayers()) do
+            local active = owner:hasSkill("hd_tenggu")
+            if active and owner:getMark("hd_tenggu_vine") == 0 then
+                room:setPlayerMark(owner, "hd_tenggu_vine", 1)
+                owner:ViewAsEquip("vine", true)
+            elseif not active and owner:getMark("hd_tenggu_vine") > 0 then
+                room:setPlayerMark(owner, "hd_tenggu_vine", 0)
+                owner:removeViewAsEquip("vine", false)
+            end
+        end
+    end)
+hd_tenggu_limit = sgs.CreateCardLimitSkill {
+    name = "#hd_tenggu_limit",
+    limit_list = function() return "use" end,
+    limit_pattern = function(self, p, card)
+        local room = sgs.Sanguosha:currentRoom()
+        if room and p and p:hasSkill("hd_tenggu") and card and card:isKindOf("Armor") then return "Armor" end
+        return ""
+    end,
+}
+hd_dunyong = gu_trigger("hd_dunyong", {sgs.Damage, sgs.EnterDying}, function(self, event, room, p, data, owner)
+    if event == sgs.EnterDying then
+        local dying = data:toDying()
+        if not dying.who then return end
+        room:setPlayerMark(owner, "hd_dunyong-Clear", 1)
+        local n = dying.who:getMaxHp()
+        if n > 0 then owner:drawCards(n, self:objectName()) end
+        return
+    end
+    local damage = data:toDamage()
+    if damage.from ~= owner or not damage.to or damage.to == owner then return end
+    local unique = true
+    for _, q in sgs.qlist(room:getOtherPlayers(owner)) do
+        if q:getMaxHp() <= owner:getMaxHp() then unique = false; break end
+    end
+    if not unique then
+        -- Unattributed damage, with the original amount and nature; no invented source.
+        room:damage(sgs.DamageStruct(self:objectName(), nil, owner, damage.damage, damage.nature))
+    end
+end)
+hd_dunyong_mod = sgs.CreateTargetModSkillV2 {
+    name = "#hd_dunyong_mod", pattern = ".", holder_selector = sgs.CorrectSkill_Primary,
+    correct_func = function(self, ctx)
+        local p = ctx:getPrimary()
+        if not p or p:getMark("hd_dunyong-Clear") == 0 then return 0 end
+        if ctx:getModType() == sgs.TargetModSkill_Residue then return sgs.CorrectSkillResult.unlimitedResidue() end
+        if ctx:getModType() == sgs.TargetModSkill_DistanceLimit then return 1000 end
+        return 0
+    end,
+}
+hd_tengjiananhai:addSkill(hd_tenggu)
+hd_tengjiananhai:addSkill(hd_tenggu_equip)
+hd_tengjiananhai:addSkill(hd_tenggu_limit)
+hd_tengjiananhai:addSkill(hd_dunyong)
+hd_tengjiananhai:addSkill(hd_dunyong_mod)
+extension_hd:insertRelatedSkills("hd_tenggu", "#hd_tenggu_equip")
+extension_hd:insertRelatedSkills("hd_tenggu", "#hd_tenggu_limit")
+extension_hd:insertRelatedSkills("hd_dunyong", "#hd_dunyong_mod")
+
+sgs.LoadTranslationTable {
+    ["hd_yumimao"] = "玉米猫[活动]", ["&hd_yumimao"] = "玉米猫",
+    ["hd_kenyu"] = "啃玉", ["hd_kenyuCard"] = "啃玉",
+    [":hd_kenyu"] = "出牌阶段限一次，你可以弃置任意数量的手牌（至多5张），然后从牌堆顶亮出等量的牌，将其中的【杀】和【闪】当作“玉米粒”置入你的“玉米堆”（“玉米堆”最多存有5个“玉米粒”）。每弃置1张牌，你回复1点体力。",
+    ["hd_yumidui"] = "玉米堆",
+    ["hd_touwei"] = "投喂",
+    [":hd_touwei"] = "其他角色的出牌阶段开始时，你可以消耗1个“玉米堆”中的“玉米粒”，令其获得1张【杀】或【闪】。当其失去此牌时，你摸2张牌。",
+    ["hd_zhamao"] = "炸毛",
+    [":hd_zhamao"] = "当你受到伤害后，你可以消耗“玉米堆”中的所有“玉米粒”，对伤害来源造成X点伤害（X为消耗的“玉米粒”数量），然后你翻面。",
+    ["hd_tengjiananhai"] = "藤甲男孩[活动]", ["&hd_tengjiananhai"] = "藤甲男孩",
+    ["hd_tenggu"] = "藤固",
+    [":hd_tenggu"] = "锁定技，你不能使用防具牌且你视为装备着【藤甲】；当你因非火焰伤害进入濒死时，你减一点体力上限，然后将体力值调整至体力上限。",
+    ["hd_dunyong"] = "钝勇",
+    [":hd_dunyong"] = "当你对其他角色造成伤害时，若你的体力上限不为全场唯一最低，则你也受到同等伤害；当场上有角色进入濒死时，你摸X张牌且你本回合使用牌无距离和次数限制（X为濒死角色的体力上限）。",
+}
+end
+
+-- ==================== d08
+do
+-- d08: material text and metadata are authoritative.
+local function hd_d08_player(room, name)
+    for _, p in sgs.qlist(room:getAllPlayers()) do
+        if p:objectName() == name then return p end
+    end
+end
+hd_xiangjiaomao = sgs.General(extension_hd, "hd_xiangjiaomao", "qun", 3, true)
+hd_kuku = gu_trigger("hd_kuku", {sgs.TargetSpecified, sgs.TargetConfirmed}, function(self, event, room, p, data, owner)
+    local use = data:toCardUse()
+    if p ~= owner or not use.card or use.card:getTypeId() == sgs.Card_TypeSkill
+        or use.card:isKindOf("DelayedTrick") then return end
+    local targets = {}
+    if event == sgs.TargetSpecified and use.from == owner then
+        for _, t in sgs.qlist(use.to) do if t ~= owner then table.insert(targets, t) end end
+    elseif event == sgs.TargetConfirmed and use.to:contains(owner) and use.from and use.from ~= owner then
+        table.insert(targets, use.from)
+    end
+    for _, t in ipairs(targets) do
+        if owner:isAlive() and t:isAlive() and gu_invoke(owner, self:objectName(), sgs.QVariant(t:objectName())) then
+            local pairs = use.card:getTag("hd_kuku_pairs"):toString()
+            local pair = owner:objectName() .. ":" .. t:objectName()
+            use.card:setTag("hd_kuku_pairs", sgs.QVariant(pairs == "" and pair or pairs .. "+" .. pair))
+            room:swapCards(owner, t, "h", self:objectName(), false)
+        end
+    end
+end)
+hd_kuku_return = gu_record("#hd_kuku_return", {sgs.CardFinished}, function(self, event, room, p, data)
+    local use = data:toCardUse()
+    if not use.card then return end
+    local value = use.card:getTag("hd_kuku_pairs"):toString()
+    use.card:removeTag("hd_kuku_pairs")
+    if value == "" then return end
+    local pairs = value:split("+")
+    for i = #pairs, 1, -1 do
+        local names = pairs[i]:split(":")
+        local a, b = hd_d08_player(room, names[1]), hd_d08_player(room, names[2])
+        if a and b and a:isAlive() and b:isAlive() then room:swapCards(a, b, "h", "hd_kuku", false) end
+    end
+end)
+hd_anwei = gu_trigger("hd_anwei", {sgs.CardsMoveOneTime}, function(self, event, room, p, data, owner)
+    local move = data:toMoveOneTime()
+    if move.from and move.from:objectName() == owner:objectName() and owner:getPhase() == sgs.Player_NotActive
+        and not move.card_ids:isEmpty() then owner:drawCards(1, self:objectName()) end
+end, true)
+hd_xiangjiaomao:addSkill(hd_kuku)
+hd_xiangjiaomao:addSkill(hd_kuku_return)
+hd_xiangjiaomao:addSkill(hd_anwei)
+extension_hd:insertRelatedSkills("hd_kuku", "#hd_kuku_return")
+
+hd_bozai = sgs.General(extension_hd, "hd_bozai", "qun", 4, true)
+hd_quanjia = gu_trigger("hd_quanjia", {sgs.Damage}, function(self, event, room, p, data, owner)
+    local damage = data:toDamage()
+    local source = damage.from
+    if not source or source == owner or not damage.to or damage.to == source
+        or source:getPhase() == sgs.Player_NotActive or source:isDead()
+        or not gu_invoke(owner, self:objectName(), data) then return end
+    local cards = {}
+    for _, c in sgs.qlist(source:getHandcards()) do table.insert(cards, c:getEffectiveId()) end
+    for i = #cards, 2, -1 do
+        local j = math.random(i); cards[i], cards[j] = cards[j], cards[i]
+    end
+    local viewed, slashes = sgs.IntList(), {}
+    local n = math.min(#cards, 2 + owner:getMark("&hd_quanjia"))
+    for i = 1, n do
+        viewed:append(cards[i])
+        if sgs.Sanguosha:getCard(cards[i]):isKindOf("Slash") then table.insert(slashes, cards[i]) end
+    end
+    if not viewed:isEmpty() then
+        room:fillAG(viewed, owner)
+        room:askForAG(owner, viewed, false, self:objectName())
+        room:clearAG(owner)
+    end
+    -- The bonus belongs to the next activation only; another miss renews/increases it.
+    local bonus = owner:getMark("&hd_quanjia")
+    room:setPlayerMark(owner, "&hd_quanjia", #slashes == 0 and bonus + 1 or 0)
+    for _, id in ipairs(slashes) do
+        if owner:isDead() or source:isDead() then break end
+        local c = sgs.Sanguosha:getCard(id)
+        if room:getCardOwner(id) == source and room:getCardPlace(id) == sgs.Player_PlaceHand
+            and not owner:isCardLimited(c, sgs.Card_MethodUse) and not room:isProhibited(owner, source, c) then
+            local use = sgs.CardUseStruct(); use.card = c; use.from = owner; use.to:append(source)
+            room:useCard(use, false)
+        end
+    end
+end)
+hd_bozai:addSkill(hd_quanjia)
+
+hd_xiangjiaoduanwu = sgs.General(extension_hd, "hd_xiangjiaoduanwu", "qun", 4, false)
+local hd_d08_slots = {weapon = 0, armor = 1, defensive_horse = 2, offensive_horse = 3, treasure = 4}
+hd_xuyuan = gu_trigger("hd_xuyuan", {sgs.EventPhaseStart}, function(self, event, room, p, data, owner)
+    if p ~= owner or p:getPhase() ~= sgs.Player_Play or not gu_invoke(owner, self:objectName()) then return end
+    local suit = room:askForChoice(owner, self:objectName(), "spade+club+heart+diamond")
+    local subtype = room:askForChoice(owner, self:objectName(), "weapon+armor+defensive_horse+offensive_horse+treasure")
+    local ids = {}
+    for _, id in sgs.qlist(room:getDrawPile()) do
+        local c = sgs.Sanguosha:getCard(id)
+        if c:isKindOf("EquipCard") and c:getSuitString() == suit and c:getSubtype() == subtype then table.insert(ids, id) end
+    end
+    local slot = hd_d08_slots[subtype]
+    if #ids == 0 or not owner:hasEquipArea(slot) then return end
+    local card = sgs.Sanguosha:getCard(ids[math.random(#ids)])
+    local old = owner:getEquip(slot)
+    if old then room:throwCard(old, owner, owner) end
+    if owner:isAlive() and owner:hasEquipArea(slot) and room:getCardPlace(card:getEffectiveId()) == sgs.Player_DrawPile then
+        room:moveCardTo(card, owner, sgs.Player_PlaceEquip, true)
+    end
+end)
+hd_xiaomian = gu_trigger("hd_xiaomian", {sgs.CardUsed}, function(self, event, room, p, data, owner)
+    local use = data:toCardUse()
+    if p ~= owner or use.from ~= owner or not use.card or use.card:getTypeId() == sgs.Card_TypeSkill then return end
+    local n = 0
+    for _, c in sgs.qlist(owner:getEquips()) do if c:getSuit() == use.card:getSuit() then n = n + 1 end end
+    if not gu_invoke(owner, self:objectName(), data) then return end
+    owner:drawCards(n, self:objectName())
+    if owner:isAlive() and not owner:getEquips():isEmpty() then
+        local id = room:askForCardChosen(owner, owner, "e", self:objectName())
+        room:throwCard(sgs.Sanguosha:getCard(id), owner, owner)
+    end
+end)
+hd_xiangjiaoduanwu:addSkill(hd_xuyuan)
+hd_xiangjiaoduanwu:addSkill(hd_xiaomian)
+sgs.LoadTranslationTable {
+    ["hd_xiangjiaomao"] = "香蕉猫[活动]", ["&hd_xiangjiaomao"] = "香蕉猫",
+    ["hd_kuku"] = "哭哭", [":hd_kuku"] = "当你成为其他角色使用非延时牌目标后/使用非延时牌指定其他角色为目标后，你可以交换你与来源角色/目标角色的所有手牌直到此牌结算完成。",
+    ["#hd_kuku_return"] = "哭哭（归还）",
+    ["hd_anwei"] = "安慰", [":hd_anwei"] = "当你于回合外失去牌时，你摸一张牌。",
+    ["hd_bozai"] = "波仔[活动]", ["&hd_bozai"] = "波仔",
+    ["hd_quanjia"] = "劝架", ["&hd_quanjia"] = "劝架增量",
+    [":hd_quanjia"] = "其他角色于其回合内对另一名角色造成伤害后，你可以随机观看伤害来源两张手牌，若其中有【杀】你对其使用之；若没有【杀】，则下次发动此技能时观看数量+1。",
+    ["hd_xiangjiaoduanwu"] = "香蕉端午[活动]", ["&hd_xiangjiaoduanwu"] = "香蕉端午",
+    ["hd_xuyuan"] = "许愿", [":hd_xuyuan"] = "出牌阶段开始时，你可选择一个花色和一个装备的副类别，然后从牌堆中随机将一张满足要求的装备牌置入你的装备区。",
+    ["hd_xiaomian"] = "笑面", [":hd_xiaomian"] = "你使用牌时，可以摸X张牌（X为你装备区里与此牌花色相同的牌数）。若如此做，弃置你装备区里的一张牌。",
+    ["hd_xuyuan:spade"] = "黑桃", ["hd_xuyuan:club"] = "梅花", ["hd_xuyuan:heart"] = "红桃", ["hd_xuyuan:diamond"] = "方块",
+    ["hd_xuyuan:weapon"] = "武器", ["hd_xuyuan:armor"] = "防具", ["hd_xuyuan:defensive_horse"] = "防御坐骑", ["hd_xuyuan:offensive_horse"] = "进攻坐骑", ["hd_xuyuan:treasure"] = "宝物",
+}
+end
+
+-- ==================== d09
+do
+-- d09: only the three per-general material blocks are authoritative.
+hd_tizhongzhishen = sgs.General(extension_hd, "hd_tizhongzhishen", "god", 5, false)
+hd_gunyuan = gu_trigger("hd_gunyuan", {sgs.EnterDying}, function(self, event, room, p, data, owner)
+    if p ~= owner or owner:getMark("hd_gunyuan_lun") > 0 then return end
+    room:setPlayerMark(owner, "hd_gunyuan_lun", 1)
+    if owner:getHp() < 1 then
+        local recover = sgs.RecoverStruct(); recover.who = owner; recover.recover = 1 - owner:getHp()
+        room:recover(owner, recover)
+    end
+    if owner:getMark("hd_gunyuan_gain") < 3 then
+        room:addPlayerMark(owner, "hd_gunyuan_gain")
+        room:gainMaxHp(owner, 1, self:objectName())
+    end
+end, true)
+hd_gunyuan_max = sgs.CreateMaxCardsSkillV2 {
+    name = "#hd_gunyuan_max", holder_selector = sgs.CorrectSkill_Primary,
+    fixed_func = function(self, ctx)
+        local p = ctx:getPrimary()
+        if p and p:hasSkill("hd_gunyuan") then return p:getMaxHp() end
+        return -1
+    end,
+}
+hd_zuandai = gu_trigger("hd_zuandai", {sgs.EventPhaseStart}, function(self, event, room, p, data, owner)
+    if p ~= owner or p:getPhase() ~= sgs.Player_Play or not gu_invoke(owner, self:objectName()) then return end
+    local ids = {}
+    for _, pile in ipairs({room:getDrawPile(), room:getDiscardPile()}) do
+        for _, id in sgs.qlist(pile) do
+            local c = sgs.Sanguosha:getCard(id)
+            if c:isKindOf("EquipCard") and c:isAvailable(owner)
+                and not owner:isCardLimited(c, sgs.Card_MethodUse) and not room:isProhibited(owner, owner, c) then
+                table.insert(ids, id)
+            end
+        end
+    end
+    if #ids > 0 then
+        local use = sgs.CardUseStruct(); use.from = owner
+        use.card = sgs.Sanguosha:getCard(ids[math.random(#ids)]); use.to:append(owner)
+        room:useCard(use, false)
+    end
+    if owner:isAlive() then owner:drawCards(1, self:objectName()); owner:endPlayPhase() end
+end)
+hd_tizhongzhishen:addSkill(hd_gunyuan)
+hd_tizhongzhishen:addSkill(hd_gunyuan_max)
+hd_tizhongzhishen:addSkill(hd_zuandai)
+extension_hd:insertRelatedSkills("hd_gunyuan", "#hd_gunyuan_max")
+
+hd_keaizhishen = sgs.General(extension_hd, "hd_keaizhishen", "god", 3, false)
+hd_maimeng = gu_trigger("hd_maimeng", {sgs.HpChanged}, function(self, event, room, p, data, owner)
+    if p ~= owner or not gu_invoke(owner, self:objectName(), data) then return end
+    room:addPlayerMark(owner, "hd_maimeng-Clear")
+    local n = owner:getMark("hd_maimeng-Clear")
+    local choices = room:getOtherPlayers(owner):isEmpty() and "draw" or "draw+give"
+    if room:askForChoice(owner, self:objectName(), choices) == "draw" then
+        owner:drawCards(n, self:objectName())
+        if owner:isAlive() then room:addPlayerMark(owner, "hd_maimeng_prevent-Clear") end
+    else
+        local to = room:askForPlayerChosen(owner, room:getOtherPlayers(owner), self:objectName(), "@hd_maimeng", false, true)
+        if not to then return end
+        local count = math.min(n, to:getCardCount(true))
+        if count > 0 then
+            local cards = room:askForExchange(to, self:objectName(), count, count, true, "@hd_maimeng-give")
+            if cards then room:obtainCard(owner, cards, false); cards:deleteLater() end
+        end
+        if to:isAlive() then room:addPlayerMark(to, "hd_maimeng_nullify-Clear") end
+    end
+end)
+-- Pending effects survive loss of the originating skill and apply once per occurrence.
+hd_maimeng_pending = sgs.CreateRuleSkillV2 {
+    name = "#hd_maimeng_pending", global = true, frequency = sgs.Skill_Compulsory,
+    events = {sgs.DamageInflicted, sgs.CardUsed},
+    can_trigger = function(self, event, room, p, data)
+        if not p then return false end
+        local mark = event == sgs.DamageInflicted and "hd_maimeng_prevent-Clear" or "hd_maimeng_nullify-Clear"
+        if p:getMark(mark) > 0 then return self:objectName(), p end
+        return false
+    end,
+    on_effect = function(self, event, room, p, ctx)
+        if event == sgs.DamageInflicted then
+            room:setPlayerMark(p, "hd_maimeng_prevent-Clear", 0)
+            return true
+        end
+        room:setPlayerMark(p, "hd_maimeng_nullify-Clear", 0)
+        local data = ctx.original_data
+        local use = data:toCardUse()
+        local nullified = use.nullified_list; table.insert(nullified, "_ALL_TARGETS")
+        use.nullified_list = nullified; data:setValue(use)
+        return false
+    end,
+}
+hd_keaizhishen:addSkill(hd_maimeng)
+extension_hd:addSkills(hd_maimeng_pending)
+extension_hd:insertRelatedSkills("hd_maimeng", "#hd_maimeng_pending")
+
+hd_weiquzhishen = sgs.General(extension_hd, "hd_weiquzhishen", "god", 3, false)
+hd_weiqu = gu_trigger("hd_weiqu", {sgs.TargetConfirmed}, function(self, event, room, p, data, owner)
+    local use = data:toCardUse()
+    if p ~= owner or not use.card or use.card:isVirtualCard() or use.card:getTypeId() == sgs.Card_TypeSkill
+        or use.to:length() ~= 1 or not use.to:contains(owner) or owner:getMark("hd_weiqu-Clear") >= 2
+        or not gu_invoke(owner, self:objectName(), data) then return end
+    room:addPlayerMark(owner, "hd_weiqu-Clear")
+    local choice = room:askForChoice(owner, self:objectName(), "equip+hand", data)
+    room:setPlayerMark(owner, "hd_weiqu_" .. choice .. "-Clear", 1)
+    if choice == "equip" then
+        owner:throwAllEquips(self:objectName())
+        -- Re-read after nested card-move triggers before changing the current use.
+        use = data:toCardUse()
+        local nullified = use.nullified_list; table.insert(nullified, owner:objectName())
+        use.nullified_list = nullified; data:setValue(use)
+    else
+        local n = owner:getHandcardNum()
+        owner:throwAllHandCards(self:objectName())
+        if owner:isAlive() then owner:drawCards(n, self:objectName()) end
+    end
+    if owner:isAlive() and owner:getMark("hd_weiqu_equip-Clear") > 0 and owner:getMark("hd_weiqu_hand-Clear") > 0 then
+        owner:drawCards(2, self:objectName())
+    end
+end)
+hd_weiquzhishen:addSkill(hd_weiqu)
+sgs.LoadTranslationTable {
+    ["hd_tizhongzhishen"] = "体重之神[活动]", ["&hd_tizhongzhishen"] = "体重之神",
+    ["hd_gunyuan"] = "滚圆", ["#hd_gunyuan_max"] = "滚圆（手牌上限）",
+    [":hd_gunyuan"] = "锁定技，①你每轮首次进入濒死时将体力值回复至1点并增加1点体力上限（至多+3）；②你的手牌上限等于你的体力上限。",
+    ["hd_zuandai"] = "钻袋", [":hd_zuandai"] = "你的出牌阶段开始时，你可以从牌堆或弃牌堆随机使用1张装备牌并摸1张牌，然后立即结束出牌阶段。",
+    ["hd_keaizhishen"] = "可爱之神[活动]", ["&hd_keaizhishen"] = "可爱之神",
+    ["hd_maimeng"] = "卖萌", ["#hd_maimeng_pending"] = "卖萌（后续效果）",
+    [":hd_maimeng"] = "你的体力值变化后，你可选择一项执行：1.摸X张牌并防止你本回合下次受到的伤害；2.令一名其他角色交给你X张牌且其本回合使用的下一张牌无效。（X为本回合此技能发动次数）",
+    ["hd_maimeng:draw"] = "摸牌并防止下次伤害", ["hd_maimeng:give"] = "令其他角色交牌且下一张牌无效",
+    ["@hd_maimeng"] = "卖萌：选择交给你牌的其他角色", ["@hd_maimeng-give"] = "卖萌：请交出指定数量的牌",
+    ["hd_weiquzhishen"] = "委屈之神[活动]", ["&hd_weiquzhishen"] = "委屈之神", ["hd_weiqu"] = "委屈",
+    [":hd_weiqu"] = "每回合限两次，你成为实体牌的唯一目标时，可选择一项执行：1.弃置装备区所有牌令此牌无效；2.弃置所有手牌井摸等量牌。（当你在一回合内执行过不同的两项结算完时，你摸2张牌）",
+    ["hd_weiqu:equip"] = "弃置所有装备令此牌无效", ["hd_weiqu:hand"] = "弃置所有手牌并摸等量牌",
+}
+end
+
+-- ==================== d10
+do
+-- d10: literal texts and unresolved 瞌睡 semantics are documented in report.md.
+hd_juezezhishen = sgs.General(extension_hd, "hd_juezezhishen", "god", 4, false)
+hd_meituizhishen = sgs.General(extension_hd, "hd_meituizhishen", "god", 3, true)
+
+hd_huibian = gu_active("hd_huibian", nil, 0, 0,
+    function(self, targets, to, from) return #targets < 2 and not to:isKongcheng() end,
+    function(self, targets) return #targets == 2 end,
+    function(self, room, source, targets)
+        local ids = sgs.IntList()
+        for _, p in ipairs(targets) do
+            if p:isKongcheng() then return end
+            ids:append(room:askForCardChosen(source, p, "h", "hd_huibian"))
+        end
+        local guess = room:askForChoice(source, "hd_huibian", "hd_huibian:same+hd_huibian:different")
+        local a, b = sgs.Sanguosha:getCard(ids:at(0)), sgs.Sanguosha:getCard(ids:at(1))
+        local same = a:getColor() == b:getColor()
+        if same == (guess == "hd_huibian:same") then
+            gu_obtain(room, source, ids, "hd_huibian")
+            room:showCard(source, ids)
+        else
+            room:setPlayerMark(source, "hd_huibian_disabled-Clear", 1)
+            for i, p in ipairs(targets) do
+                room:throwCard(ids:at(i - 1), "hd_huibian", p, source)
+            end
+        end
+    end, nil, function(p) return p:getMark("hd_huibian_disabled-Clear") == 0 end)
+hd_juezezhishen:addSkill(hd_huibian)
+
+-- No duration is stated for the attack range increase: it accumulates permanently.
+hd_shentui = gu_active("hd_shentui", 1, 0, 0,
+    function(self, targets, to, from)
+        if #targets ~= 0 then return false end
+        local room = sgs.Sanguosha:currentRoom()
+        if not room then return false end
+        local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+        slash:setSkillName("hd_shentui")
+        -- Select using the range after the promised +1, while respecting prohibitions.
+        local legal = from:canSlash(to, slash, false) and not from:isCardLimited(slash, sgs.Card_MethodUse)
+            and from:distanceTo(to) <= from:getAttackRange() + 1
+        slash:deleteLater()
+        return legal
+    end, gu_one_feasible,
+    function(self, room, source, targets)
+        room:addPlayerMark(source, "&hd_shentui_range", 1)
+        local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
+        slash:setSkillName("hd_shentui")
+        room:useCard(sgs.CardUseStruct(slash, source, targets[1]), true)
+        slash:deleteLater()
+    end)
+hd_shentui_range = sgs.CreateAttackRangeSkillV2 {
+    name = "#hd_shentui_range", holder_selector = sgs.CorrectSkill_Primary,
+    correct_func = function(self, ctx)
+        local p = ctx:getPrimary()
+        return p and p:getMark("&hd_shentui_range") or 0
+    end,
+}
+hd_shentui_mod = sgs.CreateTargetModSkillV2 {
+    name = "#hd_shentui_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_Primary,
+    correct_func = function(self, ctx)
+        local p, c = ctx:getPrimary(), ctx:getCard()
+        if not p or not c or not p:hasSkill("hd_shentui") then return 0 end
+        if c:getNumber() <= p:getAttackRange() and ctx:getModType() == sgs.TargetModSkill_Residue then
+            return sgs.CorrectSkillResult.unlimitedResidue()
+        end
+        if c:getNumber() > p:getAttackRange() and ctx:getModType() == sgs.TargetModSkill_DistanceLimit then return 1000 end
+        return 0
+    end,
+}
+hd_shentui_effect = gu_trigger("#hd_shentui_effect", {sgs.TargetSpecified, sgs.DamageCaused},
+    function(self, event, room, p, data, owner)
+        if not owner:hasSkill("hd_shentui") then return end
+        if event == sgs.TargetSpecified then
+            local use = data:toCardUse()
+            if use.from ~= owner or not use.card or not use.card:isKindOf("Slash")
+                or use.card:getNumber() > owner:getAttackRange() then return end
+            local list = use.no_respond_list
+            table.insert(list, "_ALL_TARGETS")
+            use.no_respond_list = list
+            data:setValue(use)
+        else
+            local damage = data:toDamage()
+            if damage.from ~= owner or not damage.card or not damage.card:isKindOf("Slash")
+                or damage.card:getNumber() <= owner:getAttackRange() then return end
+            damage.damage = damage.damage + 1
+            data:setValue(damage)
+        end
+    end, true)
+hd_xurui_record = gu_record("#hd_xurui_record", {sgs.Damage}, function(self, event, room, p, data)
+    local damage = data:toDamage()
+    if damage.from and room:getCurrent() then room:setPlayerMark(damage.from, "hd_xurui_damage-Clear", 1) end
+end)
+hd_xurui = gu_trigger("hd_xurui", {sgs.EventPhaseChanging}, function(self, event, room, p, data, owner)
+    if p ~= owner or data:toPhaseChange().to ~= sgs.Player_NotActive or owner:getMark("hd_xurui_damage-Clear") > 0 then return end
+    room:sendCompulsoryTriggerLog(owner, "hd_xurui", true)
+    owner:drawCards(math.min(5, owner:getAttackRange()), "hd_xurui")
+end, true)
+hd_meituizhishen:addSkill(hd_shentui)
+hd_meituizhishen:addSkill(hd_shentui_range)
+hd_meituizhishen:addSkill(hd_shentui_mod)
+hd_meituizhishen:addSkill(hd_shentui_effect)
+hd_meituizhishen:addSkill(hd_xurui)
+extension_hd:addSkills(hd_xurui_record)
+extension_hd:insertRelatedSkills("hd_shentui", "#hd_shentui_range")
+extension_hd:insertRelatedSkills("hd_shentui", "#hd_shentui_mod")
+extension_hd:insertRelatedSkills("hd_shentui", "#hd_shentui_effect")
+extension_hd:insertRelatedSkills("hd_xurui", "#hd_xurui_record")
+sgs.LoadTranslationTable {
+    ["hd_juezezhishen"] = "抉择之神[活动]", ["&hd_juezezhishen"] = "抉择之神",
+    ["hd_meituizhishen"] = "美腿之神[活动]", ["&hd_meituizhishen"] = "美腿之神",
+    ["hd_huibian"] = "慧辨",
+    [":hd_huibian"] = "出牌阶段，你可选择两名角色各一张手牌并猜测这两张牌颜色是否相同，若你猜对，你获得并展示这两张牌；若你猜错，你弃置这两张牌且此技能失效至本回合结束。",
+    ["hd_huibian:same"] = "颜色相同", ["hd_huibian:different"] = "颜色不同",
+    ["hd_shentui"] = "伸腿",
+    [":hd_shentui"] = "出牌阶段限一次，令你的攻击范围+1并视为对一名角色使用一张【杀】。你使用点数小于等于你攻击范围的【杀】不限次数且无法响应；你使用点数大于你攻击范围的【杀】不限距离且伤害+1。",
+    ["&hd_shentui_range"] = "伸腿·攻击范围",
+    ["hd_xurui"] = "蓄锐",
+    [":hd_xurui"] = "锁定技，你的回合结束时，若你本回合未造成过伤害，你摸攻击范围张牌。（至多5张）",
+}
+end
+
+-- ==================== d11
+do
+-- d11: current material texts; initial/max HP follows explicit metadata.
+hd_nizhuanzhishen = sgs.General(extension_hd, "hd_nizhuanzhishen", "god", 5, true, false, false, 4)
+hd_gongbaiwan = sgs.General(extension_hd, "hd_gongbaiwan", "qun", 4, false)
+
+hd_fanzhuan = gu_trigger("hd_fanzhuan", {sgs.TurnStart}, function(self, event, room, p, data, owner)
+    if owner:getMark("hd_fanzhuan_lun") > 0 or not gu_invoke(owner, self:objectName()) then return end
+    room:setPlayerMark(owner, "hd_fanzhuan_lun", 1)
+    local before = owner:getHp()
+    local after = owner:getLostHp()
+    room:setPlayerProperty(owner, "hp", sgs.QVariant(after))
+    local n = math.abs(after - before)
+    if n > 0 and owner:isAlive() then owner:drawCards(n, self:objectName()) end
+    if owner:isAlive() and owner:getHp() <= 0 then room:enterDying(owner, nil) end
+end)
+hd_niyun = sgs.CreateAttackRangeSkillV2 {
+    name = "hd_niyun", frequency = sgs.Skill_Compulsory,
+    holder_selector = sgs.CorrectSkill_Primary,
+    correct_func = function(self, ctx)
+        local p = ctx:getPrimary()
+        return p and p:hasSkill(self:objectName()) and p:getLostHp() or 0
+    end,
+}
+hd_niyun_mod = sgs.CreateTargetModSkillV2 {
+    name = "#hd_niyun_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_Primary,
+    correct_func = function(self, ctx)
+        local p = ctx:getPrimary()
+        if p and p:hasSkill("hd_niyun") and ctx:getModType() == sgs.TargetModSkill_Residue then
+            return p:getLostHp()
+        end
+        return 0
+    end,
+}
+hd_nizhuanzhishen:addSkill(hd_fanzhuan)
+hd_nizhuanzhishen:addSkill(hd_niyun)
+hd_nizhuanzhishen:addSkill(hd_niyun_mod)
+extension_hd:insertRelatedSkills("hd_niyun", "#hd_niyun_mod")
+
+hd_haoshi = gu_trigger("hd_haoshi", {sgs.Damage, sgs.Damaged, sgs.EventPhaseChanging},
+    function(self, event, room, p, data, owner)
+        if event == sgs.EventPhaseChanging then
+            if data:toPhaseChange().to ~= sgs.Player_NotActive then return end
+            local total = 0
+            for _, id in sgs.qlist(owner:getPile("hd_haoshi")) do
+                total = total + sgs.Sanguosha:getCard(id):getNumber()
+            end
+            if total < 100 then return end
+            owner:gainAnExtraTurn()
+            gu_obtain(room, owner, owner:getPile("hd_haoshi"), self:objectName())
+            return
+        end
+        if p ~= owner then return end
+        owner:drawCards(1, self:objectName())
+        if owner:isDead() or owner:isNude() then return end
+        local card = room:askForExchange(owner, self:objectName(), 1, 1, true, "@hd_haoshi-put")
+        if card then
+            owner:addToPile("hd_haoshi", card, true)
+            card:deleteLater()
+        end
+    end)
+hd_gongbaiwan:addSkill(hd_haoshi)
+
+sgs.LoadTranslationTable {
+    ["hd_nizhuanzhishen"] = "逆转之神[活动]", ["&hd_nizhuanzhishen"] = "逆转之神",
+    ["hd_gongbaiwan"] = "宫百万[活动]", ["&hd_gongbaiwan"] = "宫百万",
+    ["hd_fanzhuan"] = "反转",
+    [":hd_fanzhuan"] = "每轮限一次，每个回合开始时，你可将你的体力值调整为你已损失体力值并摸变化值张牌。",
+    ["hd_niyun"] = "逆运",
+    [":hd_niyun"] = "锁定技，你的攻击范围、使用【杀】次数均+X（X为你已损失体力值）。",
+    ["hd_haoshi"] = "好食",
+    [":hd_haoshi"] = "你受到或造成伤害后，你摸一张牌并将一张牌放置武将牌上，每回合结束时，若你武将牌上的牌点数总计大于等于100，你获得一个额外回合并获得你所有武将牌上的牌。",
+    ["@hd_haoshi-put"] = "好食：将一张牌放置于武将牌上",
+}
+end
+
+-- ==================== d12
+do
+-- OL latest material matches the complete existing ol_peixiu skill text.
+-- Reuse native skill implementations, including Maozhu's registered corrections.
+hd_ddz_peixiu = sgs.General(extension_hd, "hd_ddz_peixiu", "wei", 4, true)
+hd_ddz_peixiu:addSkill("maozhu")
+hd_ddz_peixiu:addSkill("jinlan")
+
+sgs.LoadTranslationTable {
+    ["hd_ddz_peixiu"] = "裴秀[限时地主新版]",
+    ["&hd_ddz_peixiu"] = "裴秀",
+}
+end
+
+-- ==================== d13
+do
+-- d13: current OL limited-landlord texts; engine counterparts provide metadata.
+hd_ddz_caocao = sgs.General(extension_hd, "hd_ddz_caocao", "qun", 4)
+hd_ddz_lvbu = sgs.General(extension_hd, "hd_ddz_lvbu", "qun", 5)
+local hd_d13_pending = {}
+hd_dingxi = gu_trigger("hd_dingxi", {sgs.CardsMoveOneTime, sgs.EventPhaseStart}, function(self, event, room, p, data, owner)
+    if event == sgs.EventPhaseStart then
+        if p == owner and p:getPhase() == sgs.Player_Finish then
+            local n = p:getPile("dingxi"):length()
+            if n > 0 then p:drawCards(n, self:objectName()) end
+        end
+        return
+    end
+    local move = data:toMoveOneTime()
+    if move.to_place ~= sgs.Player_DiscardPile or move.from ~= owner
+        or bit32.band(move.reason.m_reason, sgs.CardMoveReason_S_MASK_BASIC_REASON) ~= sgs.CardMoveReason_S_REASON_USE then return end
+    local previous = owner:getNextAlive(room:alivePlayerCount() - 1)
+    local ids = sgs.IntList()
+    for _, id in sgs.qlist(move.card_ids) do
+        local c = sgs.Sanguosha:getCard(id)
+        if not hd_d13_pending[id] and c:isDamageCard() and room:getCardPlace(id) == sgs.Player_DiscardPile
+            and owner:canUse(c, previous) then ids:append(id) end
+    end
+    if ids:isEmpty() or not room:askForSkillInvoke(owner, self:objectName(), sgs.QVariant(previous)) then return end
+    room:fillAG(ids, owner)
+    local id = room:askForAG(owner, ids, false, self:objectName())
+    room:clearAG(owner)
+    if not ids:contains(id) then return end
+    hd_d13_pending[id] = true
+    local use = sgs.CardUseStruct()
+    use.card = sgs.Sanguosha:getCard(id); use.from = owner; use.to:append(previous)
+    local used = room:useCard(use, false)
+    if used and owner:isAlive() then owner:addToPile("dingxi", id) end
+    hd_d13_pending[id] = nil
+end)
+hd_huojie_record = gu_record("#hd_huojie_record", {sgs.Damaged}, function(self, event, room, p, data)
+    local d = data:toDamage()
+    if d.reason == "hd_huojie" and d.to and d.to:hasFlag("hd_huojie_pending") then
+        room:setPlayerFlag(d.to, "hd_huojie_hit")
+        gu_obtain(room, d.to, d.to:getPile("dingxi"), "hd_huojie")
+    end
+end)
+hd_huojie = gu_trigger("hd_huojie", {sgs.EventPhaseStart}, function(self, event, room, p, data, owner)
+    if p ~= owner or p:getPhase() ~= sgs.Player_Play or p:getPile("dingxi"):length() <= 3 then return end
+    local n = p:getPile("dingxi"):length()
+    room:setPlayerFlag(p, "hd_huojie_pending")
+    room:setPlayerFlag(p, "-hd_huojie_hit")
+    for i = 1, n do
+        if not p:isAlive() or p:hasFlag("hd_huojie_hit") then break end
+        local judge = sgs.JudgeStruct()
+        judge.who = p; judge.reason = "lightning"; judge.pattern = ".|spade|2~9"
+        judge.good = false; judge.negative = true
+        room:judge(judge)
+        if judge:isBad() and p:isAlive() then
+            room:damage(sgs.DamageStruct("hd_huojie", nil, p, 3, sgs.DamageStruct_Thunder))
+        end
+    end
+    room:setPlayerFlag(p, "-hd_huojie_pending")
+    room:setPlayerFlag(p, "-hd_huojie_hit")
+end, true)
+hd_ddz_caocao:addSkill(hd_dingxi)
+hd_ddz_caocao:addSkill("nengchen")
+hd_ddz_caocao:addSkill(hd_huojie)
+hd_ddz_caocao:addSkill(hd_huojie_record)
+extension_hd:insertRelatedSkills("hd_huojie", "#hd_huojie_record")
+
+hd_fengzhu = gu_trigger("hd_fengzhu", {sgs.EventPhaseStart}, function(self, event, room, p, data, owner)
+    if p ~= owner or p:getPhase() ~= sgs.Player_Start then return end
+    local targets = sgs.SPlayerList()
+    for _, q in sgs.qlist(room:getOtherPlayers(owner)) do
+        if q:isMale() and q:getMark("&hd_yifu") == 0 then targets:append(q) end
+    end
+    if targets:isEmpty() then return end
+    local q = room:askForPlayerChosen(owner, targets, self:objectName(), "@hd_fengzhu", false, true)
+    if q then room:setPlayerMark(q, "&hd_yifu", 1); owner:drawCards(3, self:objectName()) end
+end, true)
+hd_yuyu = gu_trigger("hd_yuyu", {sgs.EventPhaseChanging, sgs.Damaged, sgs.CardsMoveOneTime}, function(self, event, room, p, data, owner)
+    if event == sgs.EventPhaseChanging then
+        if p ~= owner or data:toPhaseChange().to ~= sgs.Player_NotActive then return end
+        local targets = sgs.SPlayerList()
+        for _, q in sgs.qlist(room:getAlivePlayers()) do
+            if q:getMark("&hd_yifu") > 0 then targets:append(q) end
+        end
+        if targets:isEmpty() then return end
+        local q = room:askForPlayerChosen(owner, targets, self:objectName(), "@hd_yuyu", false, true)
+        if q then room:addPlayerMark(q, "&hd_hen") end
+        return
+    end
+    local current = room:getCurrent()
+    if not current or current:getPhase() == sgs.Player_NotActive or current:getMark("&hd_yifu") == 0 then return end
+    local n = 0
+    if event == sgs.Damaged then
+        if p == owner then n = data:toDamage().damage end
+    else
+        local move = data:toMoveOneTime()
+        if move.from == owner then n = move.card_ids:length() end
+    end
+    if n > 0 then room:addPlayerMark(current, "&hd_hen", n) end
+end, true)
+-- Store bonuses on the card, separately for each source and target, across nested uses.
+hd_zhiji = gu_trigger("hd_zhiji", {sgs.TargetSpecifying}, function(self, event, room, p, data, owner)
+    local use = data:toCardUse()
+    if p ~= owner or not use.card or not (use.card:isKindOf("BasicCard") or use.card:isNDTrick()) then return end
+    for _, q in sgs.qlist(use.to) do
+        if q:getMark("&hd_yifu") > 0 then
+            local n = q:getMark("&hd_hen")
+            if use.card:isDamageCard() then
+                room:setPlayerMark(q, "&hd_hen", 0)
+                use.card:setTag("hd_zhiji_" .. owner:objectName() .. "_" .. q:objectName(), sgs.QVariant(n))
+            else
+                local judged = sgs.IntList()
+                local equip, duel = false, false
+                for i = 1, n do
+                    if not owner:isAlive() then break end
+                    local judge = sgs.JudgeStruct()
+                    judge.who = owner; judge.reason = self:objectName(); judge.pattern = "Slash,Duel,EquipCard"
+                    room:judge(judge)
+                    local c = judge.card
+                    if c then
+                        judged:append(c:getEffectiveId())
+                        equip = equip or c:isKindOf("EquipCard")
+                        duel = duel or c:isKindOf("Slash") or c:isKindOf("Duel")
+                    end
+                end
+                if owner:isAlive() then
+                    if equip and not owner:hasSkill("shenji") then room:acquireSkill(owner, "shenji") end
+                    if duel and not owner:hasSkill("wushuang") then room:acquireSkill(owner, "wushuang") end
+                    gu_obtain(room, owner, judged, self:objectName())
+                end
+            end
+        end
+    end
+end, true)
+hd_zhiji_record = gu_record("#hd_zhiji_record", {sgs.ConfirmDamage, sgs.PreCardUsed, sgs.CardFinished}, function(self, event, room, p, data)
+    if event == sgs.ConfirmDamage then
+        local d = data:toDamage()
+        if not d.card or not d.from or not d.to then return end
+        local n = d.card:getTag("hd_zhiji_" .. d.from:objectName() .. "_" .. d.to:objectName()):toInt()
+        if n > 0 then d.damage = d.damage + n; data:setValue(d) end
+    else
+        local use = data:toCardUse()
+        if not use.card or not use.from then return end
+        for _, q in sgs.qlist(room:getAllPlayers(true)) do
+            use.card:removeTag("hd_zhiji_" .. use.from:objectName() .. "_" .. q:objectName())
+        end
+    end
+end)
+hd_ddz_lvbu:addSkill(hd_fengzhu)
+hd_ddz_lvbu:addSkill(hd_yuyu)
+hd_ddz_lvbu:addSkill(hd_zhiji)
+hd_ddz_lvbu:addSkill(hd_zhiji_record)
+extension_hd:insertRelatedSkills("hd_zhiji", "#hd_zhiji_record")
+hd_ddz_lvbu:addSkill("jiejiu")
+hd_ddz_lvbu:addSkill("#jiejiu-limit")
+sgs.LoadTranslationTable {
+    ["hd_ddz_caocao"] = "汉曹操[限时地主新版]", ["&hd_ddz_caocao"] = "汉曹操",
+    ["hd_ddz_lvbu"] = "战神吕布[限时地主新版]", ["&hd_ddz_lvbu"] = "战神吕布",
+    ["hd_dingxi"] = "定西",
+    [":hd_dingxi"] = "当你使用的伤害牌进入弃牌堆后，你可以对你的上家使用其中一张牌（以此法使用的牌无次数限制），然后将此牌置于你的武将牌上；结束阶段，你摸“定西”牌数张牌。",
+    ["hd_huojie"] = "祸结",
+    [":hd_huojie"] = "锁定技，出牌阶段开始时，若“定西”牌数大于3，你执行等量次【闪电】判定直到你以此法受到伤害。若你因此受到了伤害，你获得所有“定西”牌。",
+    ["hd_fengzhu"] = "逢主",
+    [":hd_fengzhu"] = "锁定技，准备阶段，你令一名没有“义父”标记的其他男性角色获得“义父”标记，然后摸三张牌。",
+    ["hd_yuyu"] = "郁郁",
+    [":hd_yuyu"] = "锁定技，回合结束时，你令一名拥有“义父”标记的角色获得一个“恨”标记；当你于拥有“义父”标记的角色的回合内受到伤害后或失去牌后，其获得X枚“恨”标记（X为伤害值或失去的牌数）。",
+    ["hd_zhiji"] = "掷戟",
+    [":hd_zhiji"] = "锁定技，当你使用基本牌或普通锦囊牌指定拥有“义父”标记的角色为目标时，若此牌为伤害牌，则其移去所有“恨”标记，然后当你对其造成伤害时，此伤害+Y（Y为其移去的“恨”标记数），否则你进行其“恨”标记数次判定，若判定牌包含：装备牌，你获得技能“神戟”；【杀】或【决斗】，你获得技能“无双”，然后获得判定牌。",
+    ["@hd_fengzhu"] = "逢主：令一名其他男性角色获得“义父”标记",
+    ["@hd_yuyu"] = "郁郁：令一名拥有“义父”标记的角色获得一个“恨”标记",
+    ["hd_yifu"] = "义父", ["hd_hen"] = "恨",
+}
+end
+
+-- ==================== d14
+do
+local function hd_d14_hit(room, owner, target)
+    if not owner or not owner:isAlive() or not owner:hasSkill("hd_sanou") or not target or target == owner then return end
+    owner:drawCards(1, "hd_sanou")
+    room:addPlayerMark(target, "&hd_jidao")
+    if target:getMark("&hd_jidao") >= 3 then
+        room:setPlayerMark(target, "&hd_jidao", 0)
+        room:setPlayerMark(target, "&hd_jidaozhuangtai", 1)
+        room:setPlayerMark(target, "hd_jidao_moves", 0)
+    end
+end
+
+hd_ddz_hanwuhu = sgs.General(extension_hd, "hd_ddz_hanwuhu", "wei", 5)
+hd_juejue = gu_trigger("hd_juejue", {sgs.PreCardUsed, sgs.CardResponded}, function(self, event, room, p, data, owner)
+    if p ~= owner then return end
+    local card
+    if event == sgs.PreCardUsed then card = data:toCardUse().card
+    else
+        local response = data:toCardResponse()
+        if not response.m_isUse or response.nullified then return end
+        card = response.m_card
+    end
+    if not card or not card:isKindOf("BasicCard") then return end
+    local key = "hd_juejue_seen_" .. card:objectName()
+    if owner:getMark(key) > 0 then return end
+    room:setPlayerMark(owner, key, 1)
+    card:setTag("hd_juejue_owner", sgs.QVariant(owner:objectName()))
+    if event == sgs.PreCardUsed then
+        local use = data:toCardUse(); use.m_addHistory = false; data:setValue(use)
+    end
+end, true)
+hd_juejue_limit = sgs.CreateTargetModSkillV2 {
+    name = "#hd_juejue_limit", pattern = "BasicCard",
+    correct_func = function(self, ctx)
+        local p, c = ctx:getPrimary(), ctx:getCard()
+        if ctx:getModType() == sgs.TargetModSkill_Residue and p and c and p:hasSkill("hd_juejue")
+            and p:getMark("hd_juejue_seen_" .. c:objectName()) == 0 then
+            return sgs.CorrectSkillResult.unlimitedResidue()
+        end
+        return sgs.CorrectSkillResult.noEffect()
+    end,
+}
+hd_ddz_hanwuhu:addSkill(hd_juejue)
+hd_ddz_hanwuhu:addSkill(hd_juejue_limit)
+extension_hd:insertRelatedSkills("hd_juejue", "#hd_juejue_limit")
+hd_ddz_hanwuhu:addSkill("pimi")
+
+hd_ddz_liru = sgs.General(extension_hd, "hd_ddz_liru", "qun", 4)
+hd_huaquan = gu_trigger("hd_huaquan", {sgs.TargetSpecified}, function(self, event, room, p, data, owner)
+    local use = data:toCardUse()
+    if p ~= owner or use.from ~= owner or not use.card or use.card:isKindOf("SkillCard") then return end
+    local others = {}
+    for _, target in sgs.qlist(use.to) do if target ~= owner then table.insert(others, target) end end
+    if #others == 0 then return end
+    local choice = room:askForChoice(owner, "hd_huaquan", "hd_zhongquan+hd_qingquan", data)
+    use.card:setTag("hd_huaquan_owner", sgs.QVariant(owner:objectName()))
+    use.card:setTag("hd_huaquan_choice", sgs.QVariant(choice))
+    for _, target in ipairs(others) do
+        if target:isAlive() then
+            local guess = room:askForChoice(target, "hd_huaquan_guess", "hd_zhongquan+hd_qingquan", data)
+            if guess ~= choice then hd_d14_hit(room, owner, target) end
+        end
+    end
+end, true)
+hd_sanou = gu_trigger("hd_sanou", {sgs.Damaged}, function(self, event, room, p, data, owner)
+    local damage = data:toDamage()
+    if damage.from == owner and damage.to ~= owner and damage.damage > 0 then hd_d14_hit(room, owner, damage.to) end
+end, true)
+hd_ddz_liru:addSkill(hd_huaquan)
+hd_ddz_liru:addSkill(hd_sanou)
+
+-- Applied card effects and knockdown persist independently of skill ownership.
+hd_d14_effects = gu_record("#hd_d14_effects", {sgs.ConfirmDamage, sgs.PreHpRecover, sgs.CardFinished,
+    sgs.PostCardResponded, sgs.CardsMoveOneTime, sgs.EventPhaseChanging}, function(self, event, room, p, data)
+    if event == sgs.CardsMoveOneTime then
+        local move = data:toMoveOneTime()
+        local n = 0
+        for i = 0, move.card_ids:length() - 1 do
+            if move.from_places:at(i) == sgs.Player_DrawPile or move.to_place == sgs.Player_DiscardPile then n = n + 1 end
+        end
+        for _, target in sgs.qlist(room:getAlivePlayers()) do
+            if target:getMark("&hd_jidaozhuangtai") > 0 then
+                room:addPlayerMark(target, "hd_jidao_moves", n)
+                if target:getMark("hd_jidao_moves") >= 10 then
+                    room:setPlayerMark(target, "&hd_jidaozhuangtai", 0)
+                    room:setPlayerMark(target, "hd_jidao_moves", 0)
+                end
+            end
+        end
+        return
+    elseif event == sgs.EventPhaseChanging then
+        if p and p:getMark("&hd_jidaozhuangtai") > 0 and data:toPhaseChange().to == sgs.Player_Play then p:skip(sgs.Player_Play) end
+        return
+    end
+    local card
+    if event == sgs.ConfirmDamage then card = data:toDamage().card
+    elseif event == sgs.PreHpRecover then card = data:toRecover().card
+    elseif event == sgs.PostCardResponded then card = data:toCardResponse().m_card
+    else card = data:toCardUse().card end
+    if not card then return end
+    local jue = card:getTag("hd_juejue_owner"):toString()
+    local hua = card:getTag("hd_huaquan_owner"):toString()
+    local choice = card:getTag("hd_huaquan_choice"):toString()
+    if event == sgs.ConfirmDamage then
+        local damage = data:toDamage()
+        damage.damage = damage.damage + (jue ~= "" and 1 or 0) + (hua ~= "" and choice == "hd_zhongquan" and 1 or 0)
+        data:setValue(damage)
+    elseif event == sgs.PreHpRecover then
+        if jue ~= "" then local recover = data:toRecover(); recover.recover = recover.recover + 1; data:setValue(recover) end
+    else
+        card:removeTag("hd_juejue_owner")
+        card:removeTag("hd_huaquan_owner")
+        card:removeTag("hd_huaquan_choice")
+        if jue ~= "" then
+            local owner = room:findPlayerByObjectName(jue)
+            if owner and owner:isAlive() then
+                local ids = sgs.IntList()
+                local all = card:isVirtualCard() and card:getSubcards() or gu_ids({card})
+                for _, id in sgs.qlist(all) do
+                    local place = room:getCardPlace(id)
+                    if place == sgs.Player_DiscardPile or place == sgs.Player_PlaceTable then ids:append(id) end
+                end
+                gu_obtain(room, owner, ids, "hd_juejue")
+            end
+        end
+        if hua ~= "" and choice == "hd_qingquan" then
+            local owner = room:findPlayerByObjectName(hua)
+            if owner and owner:isAlive() then owner:drawCards(1, "hd_huaquan") end
+        end
+    end
+end)
+extension_hd:addSkills(hd_d14_effects)
+sgs.LoadTranslationTable {
+    ["hd_ddz_hanwuhu"] = "韩氏五虎[限时地主新版]", ["&hd_ddz_hanwuhu"] = "韩氏五虎",
+    ["hd_juejue"] = "玨玨",
+    [":hd_juejue"] = "锁定技，当你第一次使用一种牌名的基本牌时，你令此牌不计入次数限制且回复值或伤害值+1，然后你于此牌结算结束后重新获得之。",
+    ["hd_ddz_liru"] = "狂李儒[限时地主新版]", ["&hd_ddz_liru"] = "狂李儒",
+    ["hd_huaquan"] = "花拳",
+    [":hd_huaquan"] = "锁定技，你使用牌指定其他角色后，为此牌秘密选择一个效果：1.重拳，造成的伤害加1，2.轻拳，使用后你摸一张牌。然后其他目标角色依次猜测你选择的效果。",
+    ["hd_sanou"] = "三殴",
+    [":hd_sanou"] = "锁定技，其他角色受到你的伤害后或猜错“花拳”的效果后，你摸一张牌并令其获得一个“击倒”标记。一名角色获得至少3个“击倒”标记后移除此标记并进入“击倒”状态。“击倒”状态的角色始终跳过出牌阶段。角色于“击倒”状态时，有10张牌离开牌堆或进入弃牌堆后，其脱离“击倒”状态。",
+    ["hd_huaquan_guess"] = "花拳：猜测效果", ["hd_zhongquan"] = "重拳", ["hd_qingquan"] = "轻拳",
+    ["hd_jidao"] = "击倒", ["hd_jidaozhuangtai"] = "击倒状态",
+}
+end
+
+return { extension, extension_card, extension_wz, extension_hl, extension_sj, extension_hd }
