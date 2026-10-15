@@ -1741,7 +1741,7 @@ sgs.ai_skill_playerschosen.hlxg_canshi_beimihu = function(self, targets)
     end
     return result
 end
-sgs.ai_skill_exchange.hlxg_mingren = function(self)
+sgs.ai_skill_discard.hlxg_mingren = function(self)
     local cards = sgs.QList2Table(self.player:getHandcards()); self:sortByKeepValue(cards)
     if cards[1] then return {cards[1]:getEffectiveId()} end
     return {}
@@ -1816,7 +1816,7 @@ sgs.ai_fill_skill.hlxg_fuhai = function(self)
 end
 sgs.ai_skill_use_func["#hlxg_fuhaiCard"] = function(card, use) use.card = card end
 sgs.ai_use_priority.hlxg_fuhaiCard = 8
-sgs.ai_skill_exchange.hlxg_fuhai = function(self)
+sgs.ai_skill_discard.hlxg_fuhai = function(self)
     local cards = sgs.QList2Table(self.player:getHandcards()); self:sortByKeepValue(cards)
     return cards[1] and {cards[1]:getEffectiveId()} or {}
 end
@@ -1971,7 +1971,7 @@ sgs.ai_fill_skill.hlxg_kanji = function(self)
 end
 sgs.ai_skill_use_func["#hlxg_kanjiCard"] = function(card, use) use.card = card end
 sgs.ai_use_priority.hlxg_kanjiCard = 6
-sgs.ai_skill_exchange.hlxg_qianzheng = function(self)
+sgs.ai_skill_discard.hlxg_qianzheng = function(self)
     local cards = sgs.QList2Table(self.player:getCards("he"))
     self:sortByKeepValue(cards)
     if #cards >= 2 and self:getKeepValue(cards[2]) < 5 then return {cards[1]:getEffectiveId(), cards[2]:getEffectiveId()} end
@@ -2023,13 +2023,14 @@ sgs.ai_skill_use["@@#hlxg_tunan_use"] = function(self)
     return hl06_ai_use(self, hl06_ai_card(self, self.player:getMark("hlxg_tunan_slash") > 0))
 end
 sgs.ai_skill_askforag.hlxg_tunan = function(self, ids) return ids[1] or -1 end
-sgs.ai_skill_exchange.hlxg_bijing = function(self)
-    local cards = sgs.QList2Table(self.player:getHandcards()); self:sortByKeepValue(cards)
-    local ids = {}
-    for i = 1, math.min(2, #cards) do ids[#ids + 1] = cards[i]:getEffectiveId() end
-    return ids
-end
 sgs.ai_skill_discard.hlxg_bijing = function(self, max_num, min_num)
+    -- Exchange and discard share the reason; keep their original selection rules.
+    if self.player:hasFlag("Global_AIDiscardExchanging") then
+        local cards = sgs.QList2Table(self.player:getHandcards()); self:sortByKeepValue(cards)
+        local ids = {}
+        for i = 1, math.min(2, #cards) do ids[#ids + 1] = cards[i]:getEffectiveId() end
+        return ids
+    end
     local cards = sgs.QList2Table(self.player:getCards("he")); self:sortByKeepValue(cards)
     local ids = {}
     for _, c in ipairs(cards) do
@@ -2554,7 +2555,7 @@ sgs.ai_skill_use_func["#hljx_kuangbiCard"] = function(card, use, self)
         if not p:isNude() then use.card = card; if use.to then use.to:append(p) end; return end
     end
 end
-sgs.ai_skill_exchange.hljx_kuangbi = function(self, pattern, max_num, min_num, expand_pile)
+sgs.ai_skill_discard.hljx_kuangbi = function(self, max_num, min_num, optional, include_equip, pattern)
     local cards = sgs.QList2Table(self.player:getCards("he")); self:sortByKeepValue(cards)
     local result = {}
     max_num = max_num or 3
@@ -4089,7 +4090,7 @@ end
 sgs.ai_skill_invoke.hlxg_shunshi = function(self)
     return #self.friends_noself > 0
 end
-sgs.ai_skill_exchange.hlxg_shunshi = function(self)
+sgs.ai_skill_discard.hlxg_shunshi = function(self)
     local cards = sgs.QList2Table(self.player:getCards("he"))
     self:sortByKeepValue(cards)
     return cards[1] and {cards[1]:getEffectiveId()} or {}
@@ -4311,7 +4312,7 @@ sgs.ai_skill_playerchosen.hljx_xuanhuo = function(self, targets)
     for _, p in sgs.qlist(targets) do if self:isEnemy(p) then return p end end
     return targets:first()
 end
-sgs.ai_skill_exchange.hljx_xuanhuo = function() return {} end
+sgs.ai_skill_discard.hljx_xuanhuo = function() return {} end
 sgs.ai_skill_choice.hljx_xuanhuo = function(self, choices)
     return "take"
 end
@@ -4433,6 +4434,12 @@ sgs.ai_skill_choice.hlxg_feijun = function(self, choices, data)
     return "give"
 end
 sgs.ai_skill_discard.hlxg_feijun = function(self, max, min, optional, equip)
+    -- The exchange payment uses hand/equip; ordinary discard keeps its zone below.
+    if self.player:hasFlag("Global_AIDiscardExchanging") then
+        local cards = sgs.QList2Table(self.player:getCards("he"))
+        self:sortByKeepValue(cards)
+        return cards[1] and {cards[1]:getEffectiveId()} or {}
+    end
     local cards = sgs.QList2Table(self.player:getCards(equip and "e" or "h"))
     self:sortByKeepValue(cards)
     local ids = {}
@@ -4440,11 +4447,6 @@ sgs.ai_skill_discard.hlxg_feijun = function(self, max, min, optional, equip)
         if not self.player:isJilei(c) and #ids < min then table.insert(ids, c:getEffectiveId()) end
     end
     return ids
-end
-sgs.ai_skill_exchange.hlxg_feijun = function(self)
-    local cards = sgs.QList2Table(self.player:getCards("he"))
-    self:sortByKeepValue(cards)
-    return cards[1] and {cards[1]:getEffectiveId()} or {}
 end
 sgs.ai_skill_invoke.hljx_miji = true
 sgs.ai_skill_askforyiji.hljx_miji = function(self, ids, tos)
@@ -4483,7 +4485,7 @@ sgs.ai_skill_choice.hlxg_huguan = function(self, choices, data)
     end
     return best
 end
-sgs.ai_skill_exchange.hlxg_huguan = function(self, pattern)
+sgs.ai_skill_discard.hlxg_huguan = function(self, max_num, min_num, optional, include_equip, pattern)
     local ids = {}
     for _, c in sgs.qlist(self.player:getHandcards()) do
         if sgs.Sanguosha:matchExpPattern(pattern or ".", self.player, c) then table.insert(ids, c:getEffectiveId()) end
@@ -4572,7 +4574,7 @@ sgs.ai_view_as.hlxg_qingguo_zhenji = function(card, player, place, class_name)
         return ("jink:hlxg_qingguo_zhenji[%s:%s]=%d"):format(card:getSuitString(), card:getNumberString(), card:getEffectiveId())
     end
 end
-sgs.ai_skill_exchange.hlxg_qiai = function(self)
+sgs.ai_skill_discard.hlxg_qiai = function(self)
     local cards = sgs.QList2Table(self.player:getCards("he"))
     self:sortByKeepValue(cards)
     return cards[1] and {cards[1]:getEffectiveId()} or {}
@@ -4778,7 +4780,7 @@ sgs.ai_skill_playerchosen.hlxg_juedi = function(self, targets)
     for _, p in ipairs(players) do if self:isFriend(p) then return p end end
     return players[1]
 end
-sgs.ai_skill_exchange.hlxg_yinbing = function(self, pattern, max_num, min_num, expand_pile)
+sgs.ai_skill_discard.hlxg_yinbing = function(self, max_num, min_num, optional, include_equip, pattern)
     local cards = sgs.QList2Table(self.player:getCards("he"))
     self:sortByKeepValue(cards)
     local ids = {}
@@ -4839,7 +4841,7 @@ sgs.ai_skill_askforag.hlxg_chunlao = function(self, ids)
     if not dying or not self:isFriend(dying) then return -1 end
     return ids[1] or -1
 end
-sgs.ai_skill_exchange.hlxg_chunlao = function(self)
+sgs.ai_skill_discard.hlxg_chunlao = function(self)
     local ids = {}
     for _, c in sgs.qlist(self.player:getHandcards()) do if c:isKindOf("Slash") then table.insert(ids, c:getEffectiveId()) end end
     return ids
@@ -5175,7 +5177,7 @@ sgs.ai_skill_use_func["#hlxg_zhafuCard"] = function(card, use, self)
     if best and best:getHandcardNum() > 2 then use.card = card; use.to:append(best) end
 end
 sgs.ai_use_priority.hlxg_zhafuCard = 3
-sgs.ai_skill_exchange.hlxg_zhafu = function(self, pattern, max_num, min_num, expand_pile)
+sgs.ai_skill_discard.hlxg_zhafu = function(self, max_num, min_num, optional, include_equip, pattern)
     local cards = sgs.QList2Table(self.player:getHandcards()); self:sortByKeepValue(cards, true)
     if cards[1] then return {cards[1]:getEffectiveId()} end
     return {}
@@ -5201,7 +5203,7 @@ sgs.ai_skill_choice.hlxg_bingzheng = function(self, choices, data)
     if p and self:isEnemy(p) and choices:find("discard") then return "discard" end
     return "draw"
 end
-sgs.ai_skill_exchange.hlxg_bingzheng = function() return {} end
+sgs.ai_skill_discard.hlxg_bingzheng = function() return {} end
 sgs.ai_skill_choice.hlxg_sheyan = function(self, choices, data)
     local use = data:toCardUse()
     if not use.card then return "cancel" end
@@ -5370,7 +5372,7 @@ sgs.ai_skill_cardchosen.hlxg_shangyi = function(self, who)
     end
     return best or -1
 end
-sgs.ai_skill_exchange.hlxg_shangyi = function(self)
+sgs.ai_skill_discard.hlxg_shangyi = function(self)
     local cards = sgs.QList2Table(self.player:getHandcards())
     self:sortByKeepValue(cards)
     return cards[1] and {cards[1]:getEffectiveId()} or {}
@@ -5393,7 +5395,7 @@ sgs.ai_skill_invoke.hlxg_shenshi = function(self, data)
     local p = data:toDamage().from
     return p and (self:isFriend(p) or self.player:getHandcardNum() < 4)
 end
-sgs.ai_skill_exchange.hlxg_shenshi = function(self)
+sgs.ai_skill_discard.hlxg_shenshi = function(self)
     local cards = sgs.QList2Table(self.player:getCards("he"))
     self:sortByKeepValue(cards)
     return cards[1] and {cards[1]:getEffectiveId()} or {}
@@ -6236,7 +6238,7 @@ sgs.ai_skill_invoke.hlxg_koujing_exchange = function(self, data)
     local d = data:toDamage()
     return d.from and self:isEnemy(d.from) and self.player:getHandcardNum() <= 2
 end
-sgs.ai_skill_exchange.hlxg_koujing = function(self, pattern, max_num, min_num)
+sgs.ai_skill_discard.hlxg_koujing = function(self, max_num, min_num, optional, include_equip, pattern)
     local ids = {}
     for _, c in sgs.qlist(self.player:getHandcards()) do
         if not c:isKindOf("Peach") and not c:isKindOf("Jink") and self:getKeepValue(c) < 5 then table.insert(ids, c:getEffectiveId()) end
@@ -6274,7 +6276,7 @@ sgs.ai_fill_skill.hlxg_jixi = function(self)
         return sgs.Card_Parse("snatch:hlxg_jixi[no_suit:0]=" .. id)
     end
 end
-sgs.ai_skill_exchange.hlxg_pingduan = function(self)
+sgs.ai_skill_discard.hlxg_pingduan = function(self)
     local cards = sgs.QList2Table(self.player:getEquips())
     self:sortByKeepValue(cards)
     if cards[1] then return {cards[1]:getEffectiveId()} end
@@ -6396,7 +6398,7 @@ sgs.ai_skill_use_func["#hlxg_qiangzhiCard"] = function(card, use, self)
     end
 end
 sgs.ai_use_priority.hlxg_qiangzhiCard = 3
-sgs.ai_skill_yiji.hljx_yiji = function(self, ids)
+sgs.ai_skill_askforyiji.hljx_yiji = function(self, ids)
     local friends = {}
     for _, p in ipairs(self.friends_noself or {}) do
         if p:isAlive() then table.insert(friends, p) end
@@ -6630,13 +6632,13 @@ sgs.ai_skill_playerchosen.hlxg_xiashu = function(self, targets)
     return best
 end
 sgs.ai_skill_choice.hlxg_xiashu = function() return "hidden" end
-sgs.ai_skill_exchange.hlxg_xiashu = function() return {} end
+sgs.ai_skill_discard.hlxg_xiashu = function() return {} end
 sgs.ai_skill_playerchosen.hlxg_kuanshi = function(self, targets)
     for _, p in sgs.qlist(targets) do if self:isFriend(p) and p:isWounded() then return p end end
     return self.player
 end
 sgs.ai_skill_invoke.hlxg_xingzuo = true
-sgs.ai_skill_exchange.hlxg_xingzuo = function() return {} end
+sgs.ai_skill_discard.hlxg_xingzuo = function() return {} end
 sgs.ai_skill_playerchosen.hlxg_xingzuo = function(self, targets)
     for _, p in sgs.qlist(targets) do if self:isFriend(p) and p:getHandcardNum() < 3 then return p end end
     for _, p in sgs.qlist(targets) do if self:isEnemy(p) and p:getHandcardNum() > 3 then return p end end
@@ -6750,7 +6752,7 @@ sgs.ai_skill_invoke.hlxg_zhiwei = function(self, data)
     local p = data:toPlayer()
     return p and self:isFriend(p)
 end
-sgs.ai_skill_exchange.hlxg_zhiwei = function(self)
+sgs.ai_skill_discard.hlxg_zhiwei = function(self)
     local name = self.player:getTag("hlxg_zhiwei_target"):toString()
     local friend = false
     for _, p in ipairs(self.friends) do if p:objectName() == name then friend = true end end
