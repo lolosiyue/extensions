@@ -523,4 +523,127 @@ sgs.ai_skill_playerchosen.fcmk_jlsg_meihuo = function(self, targets)
 end
 
 sgs.ai_skill_invoke.fcmk_jlsg_miluan = true
+
+--魔策
+local mo_moce_skill = {}
+mo_moce_skill.name = "mo_moce"
+table.insert(package_skills, mo_moce_skill)
+mo_moce_skill.getTurnUseCard = function(self,inclusive,request)
+	if #self.enemies == 0 then return nil end
+	local has_spade = false
+	for _, p in sgs.qlist(q(self.room,"getAlivePlayers")) do
+		for _, c in sgs.qlist(q(p,"getCards","he")) do
+			if q(c,"getSuit") == sgs.Card_Spade then has_spade = true break end
+		end
+		if has_spade then break end
+	end
+	if not has_spade then return nil end
+	return seed(self,"mo_moce","#mo_moceCard",request)
+end
+
+sgs.ai_skill_use_func["#mo_moceCard"] = function(card,use,self,request)
+	sort_players(self,self.enemies,"handcard")
+	for _, enemy in ipairs(self.enemies) do
+		if not q(enemy,"isAllNude") then
+			use.card = q(self,"inheritLegacyCardIdentity",bind(self,"mo_moce","#mo_moceCard",{},request),card)
+			if use.to then call(use.to,"append",enemy) end
+			return
+		end
+	end
+	return nil
+end
+
+sgs.ai_use_value.mo_moceCard = 8
+sgs.ai_use_priority.mo_moceCard = 8.5
+sgs.ai_card_intention.mo_moceCard = 80
+
+--焚劫（锁定技，无需AI）
+--烬灭
+sgs.ai_skill_invoke.mo_jinmie = function(self, data)
+	local to = data and call(data,"toPlayer")
+	return to ~= nil and q(self,"isEnemy",to)
+end
+
+--僭天
+sgs.ai_skill_invoke.mo_jiantian = function(self, data)
+	local use = data and call(data,"toCardUse")
+	if not (use and use.to) then return false end
+	local enemies, others = 0, 0
+	for _, t in sgs.qlist(use.to) do
+		if q(self,"isEnemy",t) then enemies = enemies + 1 else others = others + 1 end
+	end
+	return enemies > 0 and enemies >= others
+end
+
+--冢骨
+sgs.ai_skill_invoke.mo_zhonggu = function(self, data)
+	return #self.enemies > #self.friends_noself
+end
+
+--妄断
+local function mo_wangduan_score(self, kindof)
+	local v = 0
+	for _, e in ipairs(self.enemies) do
+		local n = 0
+		for _, c in sgs.qlist(q(e,"getCards","h")) do
+			if not q(c,"isKindOf",kindof) then n = n + 1 end
+		end
+		if n > 0 then v = v + n + 1 end
+	end
+	for _, f in ipairs(self.friends_noself) do
+		for _, c in sgs.qlist(q(f,"getCards","h")) do
+			if not q(c,"isKindOf",kindof) then v = v - 1 end
+		end
+	end
+	for _, c in sgs.qlist(q(self.player,"getCards","h")) do
+		if not q(c,"isKindOf",kindof) then v = v - 1 end
+	end
+	return v
+end
+
+local mo_wangduan_skill = {}
+mo_wangduan_skill.name = "mo_wangduan"
+table.insert(package_skills, mo_wangduan_skill)
+mo_wangduan_skill.getTurnUseCard = function(self,inclusive,request)
+	if q(self.player,"hasUsed","#mo_wangduanCard") then return end
+	local best = -9999
+	for _, kindof in ipairs({"BasicCard","TrickCard","EquipCard"}) do
+		best = math.max(best, mo_wangduan_score(self, kindof))
+	end
+	if best >= 2 then
+		return seed(self,"mo_wangduan","#mo_wangduanCard",request)
+	end
+end
+
+sgs.ai_skill_use_func["#mo_wangduanCard"] = function(card,use,self,request)
+    use.card = q(self,"inheritLegacyCardIdentity",bind(self,"mo_wangduan","#mo_wangduanCard",{},request),card)
+end
+
+sgs.ai_use_value.mo_wangduanCard = 7.5
+sgs.ai_use_priority.mo_wangduanCard = 6.5
+
+sgs.ai_skill_choice.mo_wangduan = function(self, choices, data)
+	local best_choice, best_v = "basic", -9999
+	local kinds = {basic="BasicCard", trick="TrickCard", equip="EquipCard"}
+	for name, kindof in pairs(kinds) do
+		local v = mo_wangduan_score(self, kindof)
+		if v > best_v then best_v = v best_choice = name end
+	end
+	return best_choice
+end
+
+--华宠（兩個效果共用一個技能名：draw 標記 = 摸牌改偷牌；數字 = 傷害值）
+sgs.ai_skill_invoke.mo_huachong = function(self, data)
+	local s = data and call(data,"toString") or ""
+	if s == "draw" then
+		for _, e in ipairs(self.enemies) do
+			if not q(e,"isAllNude") then return true end
+		end
+		return false
+	end
+	local n = tonumber(s) or 1
+	if q(self.player,"getHp") - n <= 0 or q(self,"isWeak",self.player) then return true end
+	return #self.enemies > #self.friends_noself
+end
+
 for _,skill in ipairs(package_skills)do sgs.ai_fill_skill[skill.name]=skill.getTurnUseCard end

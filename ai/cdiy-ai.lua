@@ -205,57 +205,6 @@ sgs.ai_skill_invoke.diyba_xiaoguo = function(self,data)
     return self:isEnemy(effect.to) and effect.to:hasJudgeArea() and not effect.to:containsTrick(name)
 end
 
-sgs.ai_skill_invoke.diyba_zhirong = function(self)
-    for _,p in ipairs(self.enemies) do
-        for _,c in sgs.qlist(p:getEquips()) do
-            local index=c:getRealCard():toEquipCard():location()
-            for _,q in ipairs(self.enemies) do
-                if q~=p and q:hasEquipArea(index) and not q:getEquip(index) then return true end
-            end
-        end
-    end
-    return false
-end
-sgs.ai_skill_askforag.diyba_zhirong = function(self,ids)
-    for _,id in ipairs(ids) do
-        local owner=self.room:getCardOwner(id)
-        if owner and self:isEnemy(owner) then return id end
-    end
-    return ids[1]
-end
-sgs.ai_skill_playerchosen.diyba_zhirong = function(self,targets)
-    local enemies={}
-    for _,p in sgs.qlist(targets) do if self:isEnemy(p) then table.insert(enemies,p) end end
-    self:sort(enemies,"defense")
-    return enemies[1] or targets:first()
-end
-sgs.ai_skill_cardask["@diyba-yuanzhen"] = function(self,data,pattern,target)
-    if target and self:isFriend(target) then return "." end
-    local cards=sgs.QList2Table(self.player:getCards("he"));self:sortByKeepValue(cards)
-    for _,c in ipairs(cards) do
-        if not self.player:isJilei(c) and not self:isValuableCard(c) then return "$"..c:getEffectiveId() end
-    end
-    return "."
-end
-
-sgs.ai_skill_playerchosen.diyba_nishi = function(self,targets)
-    local friends={}
-    for _,p in sgs.qlist(targets) do if self:isFriend(p) then table.insert(friends,p) end end
-    self:sort(friends,"handcard")
-    if friends[1] then return friends[1] end
-    local others=sgs.QList2Table(targets);self:sort(others,"handcard",true)
-    return others[1]
-end
-sgs.ai_skill_invoke.diyba_fujiang = function(self,data)
-    local move=data:toMoveOneTime()
-    local target=move.to and self.room:findPlayerByObjectName(move.to:objectName())
-    if not target then return false end
-    if self:isEnemy(target) then
-        return not target:getEquips():isEmpty() or self:damageIsEffective(target,sgs.DamageStruct_Normal,self.player)
-    end
-    return self:isFriend(target) and target:getEquips():length()==1 and self:needToThrowArmor(target)
-end
-
 sgs.ai_fill_skill.diyba_sansi = function(self)
     local ids=self.player:getValidSkillInstanceIds("diyba_sansi")
     if ids:isEmpty() then return end
@@ -286,35 +235,6 @@ sgs.ai_skill_invoke.diyba_jiezhong = function(self,data)
     return who and self:isFriend(who)
 end
 sgs.ai_use_priority.diyba_sansi = 4
-
-sgs.ai_fill_skill.diyba_raolue = function(self)
-    local card=sgs.ActiveSkillCard();card:setSkillName("diyba_raolue");return card
-end
-sgs.ai_skill_use_func.diyba_raolue = function(card,use,self)
-    local duel=sgs.Sanguosha:cloneCard("duel")
-    self:sort(self.enemies,"defense")
-    for _,p in ipairs(self.enemies) do
-        if p:getHandcardNum()>=self.player:getHandcardNum() and not self.player:isProhibited(p,duel)
-            and self:damageIsEffective(p,sgs.DamageStruct_Normal,self.player)
-            and self:getCardsNum("Slash")>=self:getCardsNum("Slash",p) then
-            use.card=card;if use.to then use.to:append(p) end
-            break
-        end
-    end
-    duel:deleteLater()
-end
-sgs.ai_skill_choice.diyba_raolue = function(self,choices,data)
-    local from=self.room:findPlayerByObjectName(data:toString())
-    if from and from:getHandcardNum()>self.player:getHandcardNum() then return "diyba_raolue_swap" end
-    return "diyba_raolue_refuse"
-end
-sgs.ai_skill_invoke.diyba_raolue_draw = true
-sgs.ai_skill_invoke.diyba_raolue_repeat = function(self,data)
-    local target=self.room:findPlayerByObjectName(data:toString())
-    return target and self:isEnemy(target) and self:getCardsNum("Slash")>=self:getCardsNum("Slash",target)
-        and self:damageIsEffective(target,sgs.DamageStruct_Normal,self.player)
-end
-sgs.ai_use_priority.diyba_raolue = 3
 
 sgs.ai_skill_choice.diyba_lianman = function(self,choices,data)
     local use=data:toCardUse()

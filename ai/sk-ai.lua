@@ -1794,3 +1794,194 @@ sgs.ai_skill_invoke["sk_yingbing"] = function(self, data)
 	local player = data:toPlayer()
 	return self:isEnemy(player)
 end
+
+
+--关索：征南/同心
+local sk_zhengnan_skill = {}
+sk_zhengnan_skill.name = "sk_zhengnan"
+table.insert(sgs.ai_skills, sk_zhengnan_skill)
+sk_zhengnan_skill.getTurnUseCard = function(self, inclusive)
+	if self.player:hasUsed("#sk_zhengnanCard") then return nil end
+	return sgs.Card_Parse("#sk_zhengnanCard:.:")
+end
+sgs.ai_skill_use_func["#sk_zhengnanCard"] = function(card, use, self)
+	if #self.enemies <= #self.friends_noself then return end
+	use.card = card
+	if use.to then use.to:append(self.player) end
+end
+sgs.ai_use_value["sk_zhengnanCard"] = 6
+sgs.ai_use_priority["sk_zhengnanCard"] = 4
+
+sgs.ai_skill_invoke.sk_tongxin = true
+
+
+--鲍三娘：镇南（剑舞为被动技）
+sgs.ai_skill_playerchosen.sk_zhennan = function(self, targets)
+	local enemies = {}
+	for _, t in sgs.qlist(targets) do
+		if self:isEnemy(t) then table.insert(enemies, t) end
+	end
+	if #enemies == 0 then return nil end
+	self:sort(enemies, "hp")
+	return enemies[1]
+end
+sgs.ai_playerchosen_intention.sk_zhennan = 80
+
+
+--谯周：识命/星卜
+sgs.ai_skill_invoke.sk_shiming = function(self, data)
+	local move = data:toMoveOneTime()
+	if move.to then return self:isEnemy(move.to) end
+	return false
+end
+sgs.ai_skill_choice["sk_shiming"] = function(self, choices, data)
+	return "sk_shiming_obtain"
+end
+
+sgs.ai_skill_invoke.sk_xingbu = true
+sgs.ai_skill_playerchosen.sk_xingbu = function(self, targets)
+	local friends = {}
+	for _, t in sgs.qlist(targets) do
+		if self:isFriend(t) then table.insert(friends, t) end
+	end
+	if #friends == 0 then return nil end
+	self:sort(friends, "handcard")
+	return friends[1]
+end
+sgs.ai_playerchosen_intention.sk_xingbu = -60
+
+
+--孙策：昂扬/威风
+sgs.ai_skill_invoke.sk_angyang = true
+
+sgs.ai_skill_playerchosen.sk_weifeng = function(self, targets)
+	targets = sgs.QList2Table(targets)
+	local max_card = self:getMaxCard()
+	local max_point = max_card and max_card:getNumber() or 0
+	if max_point >= 10 then
+		local enemies = {}
+		for _, t in ipairs(targets) do
+			if self:isEnemy(t) then table.insert(enemies, t) end
+		end
+		if #enemies > 0 then
+			self:sort(enemies, "handcard")
+			return enemies[1]
+		end
+	end
+	local friends = {}
+	for _, t in ipairs(targets) do
+		if self:isFriend(t) and t:getHandcardNum() <= 1 then table.insert(friends, t) end
+	end
+	if #friends > 0 then
+		self:sort(friends, "handcard")
+		return friends[1]
+	end
+	return nil
+end
+
+
+--步骘：折节/风雅
+sgs.ai_skill_cardask["@sk_zhejie-discard"] = function(self, data)
+	local current = self.room:getCurrent()
+	if not current then return "." end
+	if not (self:isEnemy(current) and not current:isNude()) then return "." end
+	local cards = sgs.QList2Table(self.player:getHandcards())
+	if #cards == 0 then return "." end
+	self:sortByKeepValue(cards)
+	return "$" .. cards[1]:getEffectiveId()
+end
+
+sgs.ai_skill_cardchosen.sk_zhejie = function(self, who, flags, reason, method)
+	local cards = sgs.QList2Table(who:getCards("he"))
+	if #cards == 0 then return -1 end
+	self:sortByKeepValue(cards)
+	if self:isFriend(who) then
+		return cards[1]:getEffectiveId()
+	end
+	for i = #cards, 1, -1 do
+		if cards[i]:isKindOf("EquipCard") then return cards[i]:getEffectiveId() end
+	end
+	return cards[#cards]:getEffectiveId()
+end
+
+sgs.ai_skill_playerchosen.sk_zhejie = function(self, targets)
+	for _, t in sgs.qlist(targets) do
+		if t:objectName() == self.player:objectName() then return t end
+	end
+	for _, t in sgs.qlist(targets) do
+		if self:isFriend(t) then return t end
+	end
+	return nil
+end
+
+sgs.ai_skill_invoke.sk_fengya = true
+
+sgs.ai_skill_invoke.sk_fengya_reduce = function(self, data)
+	local who = data:toPlayer()
+	return who and self:isFriend(who)
+end
+
+
+--董袭：断缆
+local sk_duanlan_skill = {}
+sk_duanlan_skill.name = "sk_duanlan"
+table.insert(sgs.ai_skills, sk_duanlan_skill)
+sk_duanlan_skill.getTurnUseCard = function(self, inclusive)
+	if self.player:hasUsed("#sk_duanlanCard") then return nil end
+	return sgs.Card_Parse("#sk_duanlanCard:.:")
+end
+
+sgs.ai_skill_use_func["#sk_duanlanCard"] = function(card, use, self)
+	local has_victim = false
+	for _, p in ipairs(self.enemies) do
+		if not (p:isNude() and p:getJudgingArea():isEmpty()) then has_victim = true break end
+	end
+	if not has_victim then return end
+	local max_point, total = 0, self.player:getCards("he"):length()
+	for _, c in sgs.qlist(self.player:getCards("he")) do
+		if c:getNumber() > max_point then max_point = c:getNumber() end
+	end
+	if max_point <= 10 and not (self.player:getHp() > 2 and total >= 3) then return end
+	use.card = card
+end
+sgs.ai_use_value["sk_duanlanCard"] = 6
+sgs.ai_use_priority["sk_duanlanCard"] = 5
+
+sgs.ai_skill_playerchosen.sk_duanlan = function(self, targets)
+	local enemies = {}
+	for _, t in sgs.qlist(targets) do
+		if self:isEnemy(t) then table.insert(enemies, t) end
+	end
+	if #enemies == 0 then return nil end
+	local best, best_n
+	for _, t in ipairs(enemies) do
+		local n = t:getEquips():length()
+		if not best_n or n > best_n then best, best_n = t, n end
+	end
+	return best or enemies[1]
+end
+
+sgs.ai_skill_cardchosen.sk_duanlan = function(self, who, flags, reason, method)
+	local cards = sgs.QList2Table(who:getCards("hej"))
+	if #cards == 0 then return -1 end
+	self:sortByKeepValue(cards)
+	if self:isFriend(who) then
+		return cards[1]:getEffectiveId()
+	end
+	return cards[#cards]:getEffectiveId()
+end
+
+sgs.ai_skill_cardask["@sk_duanlan-pay"] = function(self, data, pattern)
+	local need = 14
+	if type(pattern) == "string" then
+		need = tonumber(pattern:match("%d+")) or 14
+	end
+	local best
+	for _, c in sgs.qlist(self.player:getCards("he")) do
+		if c:getNumber() >= need then
+			if not best or c:getNumber() < best:getNumber() then best = c end
+		end
+	end
+	if best then return "$" .. best:getEffectiveId() end
+	return "."
+end

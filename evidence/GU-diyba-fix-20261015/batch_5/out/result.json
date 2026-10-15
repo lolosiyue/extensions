@@ -1,0 +1,3 @@
+{"diyba_14j_yuanxi":{"status":"skipped","note":"Replacing phases with exact use-two-cards/same-type tracking and forced targeting of the virtual tricks cannot be expressed literally; removed."},
+"diyba_15j_dingfei":{"status":"fixed","note":"Option 2 now only forbids using cards on other players (prohibit skill with mark), option 1 text corrected, discard of four hand cards chosen by the target."},
+"diyba_15j_qinlang":{"status":"skipped","note":"The four-stage chained conversion tied to cards obtained from prior uses is not implemented literally and not feasible; removed."}}

@@ -941,7 +941,7 @@ sy_wushuang = sgs.CreateTriggerSkillV2{
 --[[
 	技能名：神威
 	相关武将：神吕布
-	技能描述：锁定技，你攻击范围内的所有其他角色手牌上限-1。
+	技能描述：锁定技，与你距离为1的其他角色的手牌上限-1。
 	引用：sy_shenwei
 ]]--
 sy_shenwei = sgs.CreateMaxCardsSkillV2{
@@ -959,7 +959,7 @@ sy_shenwei = sgs.CreateMaxCardsSkillV2{
 			end
 		end
 		if shenwei_lvbu then
-			if shenwei_lvbu:inMyAttackRange(player) then n = n - 1 end
+			if shenwei_lvbu:distanceTo(player) == 1 then n = n - 1 end
 		end
 		return n
 	end,
@@ -1092,7 +1092,7 @@ sgs.LoadTranslationTable{
 	["sy_shenwei"] = "神威",
 	["#sy_shenwei"] = "神威",
 	["$sy_shenwei"] = "唔唔唔唔唔唔——！！！",
-	[":sy_shenwei"] = "锁定技，你攻击范围内的所有其他角色手牌上限-1。",
+	[":sy_shenwei"] = "锁定技，与你距离为1的其他角色的手牌上限-1。",
 	["sy_wushuang"] = "无双",
 	["$sy_wushuang1"] = "你的人头，我要定了！",
 	["$sy_wushuang2"] = "这就让你去死！",
@@ -1102,7 +1102,7 @@ sgs.LoadTranslationTable{
 	[":sy_shenji"] = "锁定技，你使用【杀】的目标上限+2。",
 	["sy_xiuluo"] = "修罗",
 	["$sy_xiuluo"] = "不可饶恕，不可饶恕！",
-	[":sy_xiuluo"] = "当你成为【杀】或非延时锦囊的唯一目标时，你可摸一张牌，若此牌不为【决斗】，则将此牌的效果改为【决斗】。",
+	[":sy_xiuluo"] = "当你成为【杀】或非延时锦囊牌的唯一目标后，你可以摸一张牌，然后将此牌的效果改成【决斗】。",
 	["#XiuluoDuel"] = "由于 %from 的“%arg”效果，%to 对 %from 使用的 %card 的效果被改为 <font color = \"yellow\"><b>决斗</b></font>",
 	["#W_recast"] = "装备重铸",
 	["#SkillEffect_Recast"] = "%from 由于“%arg”的效果，重铸了 %card",
@@ -1133,7 +1133,8 @@ sy_zongyu = sgs.CreateTriggerSkillV2{
 		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
 		local use = data:toCardUse()
 		local current = room:getCurrent()
-		if use.from and use.from:objectName() == player:objectName() and current and use.from:objectName() == current:objectName() then
+		if use.from and use.from:objectName() == player:objectName() and current and use.from:objectName() == current:objectName()
+			and player:getPhase() == sgs.Player_Play then
 			if use.card:isKindOf("TrickCard") then
 				return skill:objectName()
 			end
@@ -1145,7 +1146,7 @@ sy_zongyu = sgs.CreateTriggerSkillV2{
 		analeptic:setSkillName(skill:objectName())
 		room:sendCompulsoryTriggerLog(player, skill:objectName())
 		room:broadcastSkillInvoke("analeptic")
-		room:useCard(sgs.CardUseStruct(analeptic, player, sgs.SPlayerList(), true))
+		room:useCard(sgs.CardUseStruct(analeptic, player, sgs.SPlayerList(), true), false)
 		analeptic:deleteLater()
 		return false
 	end
@@ -1229,7 +1230,7 @@ sy_baozheng = sgs.CreateTriggerSkillV2{
 	    else
 			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 			slash:setSkillName(skill:objectName())
-			if not s:isProhibited(target, slash) then
+			if s:canSlash(target, slash, false) then
 				room:sendCompulsoryTriggerLog(s, skill:objectName())
 				room:notifySkillInvoked(s, "sy_baozheng")
 				room:doAnimate(1, s:objectName(), target:objectName())
@@ -1271,7 +1272,7 @@ sy_nishi = sgs.CreateTriggerSkillV2{
 		if damage.from:getCards("e"):isEmpty() then table.removeOne(choices, "clearEquipArea") end
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName(skill:objectName())
-		if player:isProhibited(damage.from, slash) then table.removeOne(choices, "ViewAsUseSlash="..player:objectName()) end
+		if not player:canSlash(damage.from, slash, false) then table.removeOne(choices, "ViewAsUseSlash="..player:objectName()) end
 		if #choices > 0 then
 			local item = room:askForChoice(damage.from, skill:objectName(), table.concat(choices, "+"))
 			if item == "clearEquipArea" then
@@ -1335,22 +1336,22 @@ sgs.LoadTranslationTable{
 	["~sy_dongzhuo2"] = "那酒池肉林……都是我的……",
 	["sy_zongyu"] = "纵欲",
 	["$sy_zongyu"] = "呃……好酒！再来一壶！",
-	[":sy_zongyu"] = "锁定技，出牌阶段，当你使用锦囊牌后，你视为使用【酒】。",
+	[":sy_zongyu"] = "锁定技，当你于出牌阶段使用一张锦囊牌后，你视为使用一张不计入次数的【酒】。",
 	["sy_lingnue"] = "凌虐",
 	["$sy_lingnue"] = "来人！活捉了他！斩首祭旗！",
 	[":sy_lingnue"] = "当你造成不小于2点伤害时，你可以摸两张牌并加1点体力上限。",
 	["sy_baozheng"] = "暴政",
 	["$sy_baozheng"] = "顺我者昌，逆我者亡！",
-	[":sy_baozheng"] = "锁定技，其他角色摸牌阶段结束时，其选择一项：交给你一张锦囊牌，或视为你对其使用【杀】。",
+	[":sy_baozheng"] = "锁定技，其他角色的摸牌阶段结束时，其选择一项：1.交给你一张锦囊牌；2.你视为对其使用一张无距离限制的【杀】。",
 	["@baozheng"] = "【暴政】效果触发，请交给%src一张锦囊牌，否则视为%src对你使用【杀】。",
 	["sy_nishi"] = "逆施",
 	["$sy_nishi"] = "看我不活剐了你们！",
-	[":sy_nishi"] = "锁定技，当你受到其他角色造成的伤害后，其选择一项：弃置装备区里的所有牌，或视为你对其使用【杀】。",
+	[":sy_nishi"] = "锁定技，当你受到其他角色造成的伤害时，伤害来源选择一项：1.弃置装备区内的所有牌；2.你视为对其使用一张无距离限制的【杀】。",
 	["clearEquipArea"] = "弃置装备区内的所有牌",
 	["sy_nishi:ViewAsUseSlash"] = "视为%src对你使用【杀】",
 	["sy_hengxing"] = "横行",
 	["$sy_hengxing"] = "都被我踏平吧！哈哈哈哈哈哈哈哈！",
-	[":sy_hengxing"] = "锁定技，当你于出牌阶段外造成伤害时，你令此伤害+1。",
+	[":sy_hengxing"] = "锁定技，你于出牌阶段外造成伤害时，该伤害值+1。",
 }
 
 
@@ -1647,21 +1648,20 @@ sgs.LoadTranslationTable{
 	["~sy_zhangjiao2"] = "逆道者，必遭天谴而亡！",
 	["sy_bujiao"] = "布教",
 	["$sy_bujiao"] = "众星熠熠，不若一日之明。",
-	[":sy_bujiao"] = "其他角色的准备阶段，你可令其摸1张牌并获得1个“太平”标记。其他角色的手牌上限-X（X为其“太平”标记数）。",
+	[":sy_bujiao"] = "其他角色的准备阶段，你可以令其摸一张牌并获得一个“太平”标记。其他角色的手牌上限-X（X为其“太平”标记数）。",
 	["sy_taiping"] = "太平",
 	["taiping_damage"] = "对所有其他角色造成1点伤害",
 	["$sy_taiping"] = "行大舜之道，救苍生万民。",
-	[":sy_taiping"] = "准备阶段，你可以弃置所有其他角色的“太平”标记并摸等量的牌，然后若你的手牌数大于其他角色的手牌数之和，你可以对其他角色各造成1点伤害。",
+	[":sy_taiping"] = "准备阶段，你可以弃置所有角色的“太平”标记并摸与标记数等量的牌；然后若你的手牌数大于其他角色的手牌数之和，你可以对所有其他角色各造成1点伤害。",
 	["sy_yaohuo"] = "妖惑",
 	["sy_yaohuoCard"] = "妖惑",
 	["$sy_yaohuo"] = "存恶害义，善必诛之！",
-	[":sy_yaohuo"] = "出牌阶段限一次，你选择一名其他角色，然后选择一项：①弃置等同于其手牌数的牌，获得其所有手牌；②弃置等同于其技能数的牌，然后偷取其所有技能"..
-	"，直至其下个回合开始或死亡。",
+	[":sy_yaohuo"] = "出牌阶段限一次，你可以选择一名其他角色并执行一项：1.弃置与其技能数等量的牌，然后获得其所有技能，其技能失效，直到其回合开始或死亡；2.弃置与其手牌数等量的牌，然后获得其所有手牌。",
 	["yaohuo_card"] = "获得其所有手牌",
 	["yaohuo_skill"] = "获得其所有技能且其失去所有技能",
 	["sy_sanzhi"] = "三治",
 	["$sy_sanzhi"] = "三气集，万物治！",
-	[":sy_sanzhi"] = "当你使用3种不同类型的牌后，你可令所有其他角色获得1个“太平”标记。",
+	[":sy_sanzhi"] = "当你使用牌时，若未记录此类别，则记录之，然后若已记录三种类别，你清除记录，然后可以令所有其他角色各获得1个“太平”标记。",
 }
 
 
@@ -2056,16 +2056,15 @@ sgs.LoadTranslationTable{
 	["sy_chanxianeCard"] = "谗陷",
 	["$sy_chanxian1"] = "懂不懂宫里的规矩？",
 	["$sy_chanxian2"] = "活得不耐烦了吧？",
-	[":sy_chanxian"] = "出牌阶段限一次，你可以移动一名角色区域里的一张牌，若如此做，视为失去牌的角色对获得牌的角色使用【决斗】，然后你获得受到此【决斗】伤"..
-	"害的角色的一张牌。",
+	[":sy_chanxian"] = "出牌阶段限一次，你可以移动一名角色的一张牌至另一名角色的对应区域，然后失去牌的角色视为对获得牌的角色使用一张【决斗】；此牌结算后，你获得受到此牌伤害的角色的一张牌。",
 	["sy_canlue"] = "残掠",
 	["$sy_canlue"] = "没钱？没钱，就拿命来抵吧！",
-	[":sy_canlue"] = "当你从其他角色处获得一张牌后，你可对其造成1点伤害。当其他角色获得的一张牌时，你令其弃置1张牌。",
+	[":sy_canlue"] = "当你获得其他角色的一张牌后，你可以对其造成1点伤害；当其他角色获得你的一张牌后，你可以令其弃置一张牌。",
 	["sy_luanzheng"] = "乱政",
 	["#LuanzhengExTarget"] = "%from 令 %to 成为 %card 的额外目标",
 	["$sy_luanzheng1"] = "陛下，都、都是他们干的！",
 	["$sy_luanzheng2"] = "大、大、大事不好！有人造反了！",
-	[":sy_luanzheng"] = "每回合限一次，一名角色使用基本牌或非延时锦囊牌指定唯一目标时，你可令另一名角色也成为此牌的目标。",
+	[":sy_luanzheng"] = "每回合限一次，当一名角色使用基本牌或普通锦囊牌指定唯一目标时，你可以令另一名角色也成为此牌的目标。",
 	["@luanzheng-extra"] = "你可以发动【乱政】为此%src[%dest%arg]选择一名其他角色作为额外目标",
 }
 
@@ -2101,7 +2100,7 @@ sy_shiao = sgs.CreateTriggerSkillV2{
 		local slash = dummyCard()
 		slash:setSkillName("sy_shiao")
 		for _,p in sgs.qlist(room:getOtherPlayers(player)) do
-			if not sgs.Sanguosha:isProhibited(player, p, slash) then
+			if player:canSlash(p, slash, false) then
 				players:append(p)
 			end
 		end
@@ -2266,16 +2265,15 @@ sgs.LoadTranslationTable{
 	["shiao-slash"] = "恃傲",
 	["$sy_shiao1"] = "靠手里的家伙来说话吧。",
 	["$sy_shiao2"] = "少废话！真有本事就来打！",
-	[":sy_shiao"] = "准备阶段或回合结束阶段开始时，你可以视为对一名其他角色使用一张【杀】（不计次、无距离限制）。",
+	[":sy_shiao"] = "准备阶段或结束阶段，你可以视为使用一张无距离限制的【杀】。",
 	["sy_fangu"] = "反骨",
 	["fangu"] = "反骨",
 	["$sy_fangu"] = "一群胆小之辈，成天坏我大事！",
-	[":sy_fangu"] = "锁定技，当你受到的伤害结算完毕后，你令当前回合结束，然后你进行一个额外的回合。",
+	[":sy_fangu"] = "锁定技，当你受到的伤害结算后，你结束当前回合，然后执行一个额外的回合。",
 	["sy_kuangxi"] = "狂袭",
 	["$sy_kuangxi1"] = "敢挑战老子，你就后悔去吧！",
 	["$sy_kuangxi2"] = "凭你们，是阻止不了老子的！",
-	[":sy_kuangxi"] = "当你使用锦囊牌指定其他角色为目标后，你可以视为对这些目标使用一张【杀】（不计入出牌阶段使用次数限制）。若以此法使用的【杀】未造成伤害，"..
-	"你失去1点体力。",
+	[":sy_kuangxi"] = "当你使用的锦囊牌结算后，你可以视为对此牌的目标角色使用一张无距离与次数限制的【杀】；然后若此牌未造成伤害，你失去1点体力。",
 }
 
 
@@ -2360,7 +2358,7 @@ sy_mingzheng = sgs.CreateTriggerSkillV2{
 			room:sendCompulsoryTriggerLog(player, skill:objectName())
 		    room:notifySkillInvoked(player, "sy_mingzheng")
 		    room:broadcastSkillInvoke("sy_mingzheng")
-			player:drawCards(player:getMark("&"..skill:objectName()), skill:objectName())
+			player:drawCards(math.max(1, player:getMark("&"..skill:objectName())), skill:objectName())
 			room:setPlayerMark(player, "&"..skill:objectName(), 0)
 			if not player:hasSkill("sy_mingzheng") then return false end
 		    if not player:hasSkill("sy_shisha") then room:acquireSkill(player, "sy_shisha") end
@@ -2379,7 +2377,7 @@ sy_mingzheng = sgs.CreateTriggerSkillV2{
 ]]--
 sy_huangyin = sgs.CreateTriggerSkillV2{
     name = "sy_huangyin",
-	frequency = sgs.Skill_Frequent,
+	frequency = sgs.Skill_Compulsory,
 	events = {sgs.CardsMoveOneTime},
 	can_trigger = function(skill, event, room, player, data)
 		if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
@@ -2390,9 +2388,6 @@ sy_huangyin = sgs.CreateTriggerSkillV2{
 			end
 		end
 		return false
-	end,
-	on_cost = function(skill, event, room, player, ctx)
-		return player:askForSkillInvoke(skill:objectName(), ctx.original_data)
 	end,
 	on_effect = function(skill, event, room, player, ctx)
 		local move = ctx.original_data:toMoveOneTime()
@@ -2562,7 +2557,7 @@ sy_guiming = sgs.CreateTriggerSkillV2{
 			room:doAnimate(1, player:objectName(), pe:objectName())
 		end
 		for _, pe in sgs.qlist(room:getOtherPlayers(player)) do
-			throwRandomCards(true, player, pe, math.random(1, x), "he", skill:objectName())
+			throwRandomCards(true, player, pe, x, "he", skill:objectName())
 		end
 		return false
 	end
@@ -2593,10 +2588,10 @@ sgs.LoadTranslationTable{
 	["#sy_sunhao1"] = "末世暴君",
 	["~sy_sunhao2"] = "乱臣贼子，不得好死！",
 	["sy_mingzheng"] = "明政",
-	[":sy_mingzheng"] = "锁定技，其他角色/你的摸牌阶段摸牌数+1/+2。当你受到伤害后，你摸X张牌（X为已进行的回合数）并失去“明政”，然后获得“嗜杀”。",
+	[":sy_mingzheng"] = "锁定技，所有角色摸牌阶段额外摸一张牌；若为你，则额外摸两张。当你受到伤害后，你摸X张牌并失去“明政”（X为已进行的回合数，至少为1），然后你获得技能“嗜杀”。",
 	["$sy_mingzheng"] = "开仓放粮，赈济百姓！",
 	["sy_shisha"] = "嗜杀",
-	[":sy_shisha"] = "锁定技，当你使用【杀】指定目标后，你随机弃置目标角色1-3张牌。",
+	[":sy_shisha"] = "锁定技，当你使用【杀】指定目标后，你随机弃置目标角色的一至三张牌。",
 	["$sy_shisha"] = "净是些碍眼的家伙，都杀！都杀！",
 	["sy_zuijiu"] = "醉酒",
 	["$sy_zuijiu"] = "酒……酒呢！拿酒来！",
@@ -2604,14 +2599,14 @@ sgs.LoadTranslationTable{
 	["sy_zuijiuNormalSlashCard"] = "醉酒",
 	["@sy_zuijiuNormalSlash"] = "你可以视为对一名其他角色使用不计入次数限制的【杀】",
 	["~sy_zuijiuNormalSlash"] = "选择目标角色，点击“确定”",
-	[":sy_zuijiu"] = "出牌阶段，你可以随机弃置X张手牌（X为你于本阶段内再次发动“醉酒”的次数），然后视为随机使用【酒】或【杀】，以此法使用的牌不计入次数限制。",
+	[":sy_zuijiu"] = "出牌阶段，若你的手牌数不小于X，你可以随机弃置X张手牌，然后随机视为一张不计入次数的【酒】或【杀】（X为你本回合已发动“醉酒”的次数）。",
 	["sy_huangyin"] = "荒淫",
 	["$sy_huangyin"] = "美人儿来来来，让朕瞧瞧！",
-	[":sy_huangyin"] = "当你弃置其他角色的牌时，你可以从这些牌里随机获得一张牌。",
+	[":sy_huangyin"] = "锁定技，当你弃置其他角色的牌后，你随机获得这些牌的其中一张。",
 	["sy_guiming"] = "归命",
 	["@guiming"] = "归命",
 	["$sy_guiming"] = "你们！难道忘了朝廷之恩吗！",
-	[":sy_guiming"] = "限定技，当你进入濒死状态时，你可以回复体力至X点，然后你依次弃置所有其他角色随机X张牌（X为存活角色数）。",
+	[":sy_guiming"] = "限定技，当你进入濒死状态时，你可以回复体力至X点（或体力上限），然后你随机弃置所有其他角色的各X张牌（X为存活角色数，不足则全弃）。",
 }
 
 
@@ -2807,7 +2802,7 @@ sy_luansi = sgs.CreateTriggerSkillV2{
 		for _, l in sgs.qlist(losers) do
 			if not l:isNude() then
 				local jink = sgs.Sanguosha:cloneCard("jink", sgs.Card_SuitToBeDecided, -1)
-				for i = 1, math.max(1, l:getCards("he"):length()) do
+				for i = 1, math.min(2, l:getCards("he"):length()) do
 					if l:isNude() then break end
 					local c = room:askForCardChosen(cfr, l, "he", "sy_luansi", false, sgs.Card_MethodDiscard, jink:getSubcards())
 					jink:addSubcard(c)
@@ -2896,13 +2891,13 @@ sgs.LoadTranslationTable{
 	["$sy_dihui2"] = "养虎为患，须尽早除之！",
 	["$sy_luansi1"] = "教你见识一下我的手段！",
 	["$sy_luansi2"] = "求饶？呵呵……晚了！",
-	[":sy_dihui"] = "出牌阶段限一次，你可以令一名角色对另一名体力较少的角色造成1点伤害。若你不是伤害来源，你回复1点体力。",
+	[":sy_dihui"] = "出牌阶段限一次，你可以选择两名体力值不相等的角色，然后令其中体力值较大的角色对另一名角色造成1点伤害；若伤害来源不是你，你回复1点体力。",
 	["dihuiothers-choose"] = "请选择因“诋毁”受到伤害的另一名其他角色。",
 	["sy_luansi"] = "乱嗣",
-	[":sy_luansi"] = "出牌阶段限一次，你可以令两名有手牌的角色拼点：当一名角色没赢后，你弃置其两张牌。若拼点赢的角色不是你，你摸两张牌。",
+	[":sy_luansi"] = "出牌阶段限一次，你可以令两名角色拼点，然后你弃置以此法拼点没赢的角色两张牌；若你未以此法拼点赢，你摸两张牌。",
 	["sy_huoxin"] = "祸心",
 	["$sy_huoxin"] = "别敬酒不吃吃罚酒！",
-	[":sy_huoxin"] = "锁定技，当你即将受到伤害时，伤害来源选择一项：①令你获得其区域里各一张牌；②失去1点体力，然后防止此伤害。",
+	[":sy_huoxin"] = "锁定技，当你受到伤害时，伤害来源选择一项：1.防止此伤害并失去1点体力；2.令你获得其区域内的各一张牌。",
 	["obtain_equip"] = "该角色获得你每个区域各一张牌",
 	["lose_hp"] = "防止此伤害，然后失去一点体力",
 }
@@ -3209,22 +3204,22 @@ sgs.LoadTranslationTable{
 	["$sy_bolue2"] = "无用之物，老夫毫无兴趣。",
 	["$sy_bolue3"] = "杀人伎俩，偶尔一用无妨。",
 	["$sy_bolue4"] = "此种事态，老夫早有准备。",
-	[":sy_bolue"] = "锁定技，回合开始前，你随机获得你一个你拥有的魏/蜀/吴势力的技能，直至下个回合开始。",
+	[":sy_bolue"] = "锁定技，回合开始时，你随机获得魏、蜀、吴势力的各一个技能，直到你的下一个回合开始。",
 	["sy_renji"] = "忍忌",
 	["$sy_renji1"] = "老夫也不得不认真起来了。",
 	["$sy_renji2"] = "你们，是要置老夫于死地吗？",
 	["$sy_renji3"] = "休要聒噪，吵得老夫头疼！",
-	[":sy_renji"] = "当你受到伤害后，你可以摸一张牌，则你发动“博略”时额外随机获得一个你拥有的与来源势力相同的技能。",
+	[":sy_renji"] = "当你受到伤害后，你可以摸一张牌，且你发动“博略”时额外获得一个与伤害来源势力相同的技能。",
 	["#RenjiRecNew"] = "%from 记录了 %arg 势力，共计 %arg2 个",
 	["#RenjiRec"] = "%from 记录了 %arg 势力，共计 %arg2 个",
 	["sy_biantian"] = "变天",
 	["$sy_biantian"] = "雷起！喝！",
-	[":sy_biantian"] = "锁定技，其他角色的判定阶段，你令其进行【闪电】判定。",
+	[":sy_biantian"] = "锁定技，其他角色的判定阶段开始时，你令其额外进行一次【闪电】的判定。",
 	["sy_tianyou"] = "天佑",
 	["$sy_tianyou"] = "好好看着吧！",
 	["#TianyouDraw"] = "%from 的“%arg”被触发，本局游戏中【<font color=\"gold\"><b>闪电</b></font>】已一共造成了 %arg2 次伤害，将摸 %arg2 张牌",
 	["you"] = "佑",
-	[":sy_tianyou"] = "锁定技，回合结束阶段，若没有角色受到过【闪电】伤害，你回复1点体力，否则你摸X张牌（X为全场所有角色受到的【闪电】伤害次数）。"
+	[":sy_tianyou"] = "锁定技，结束阶段，若没有角色因【闪电】受到伤害，你回复1点体力；否则你摸X张牌（X为场上角色因【闪电】受伤的次数）。"
 }
 
 
@@ -3241,7 +3236,7 @@ sy_yuanshao2:addSkill("#W_recast")
 --[[
 	技能名：魔箭
 	相关武将：神袁绍
-	技能描述：锁定技，准备阶段，你视为使用【万箭齐发】，若有角色打出【闪】响应此牌，回合结束阶段，你视为使用【万箭齐发】。
+	技能描述：锁定技，准备阶段，你视为使用一张【万箭齐发】；若此牌被【闪】响应，结束阶段，你视为使用一张【万箭齐发】。
 	引用：sy_mojian
 ]]--
 sy_mojian = sgs.CreateTriggerSkillV2{
@@ -3294,7 +3289,7 @@ sy_mojian = sgs.CreateTriggerSkillV2{
 --[[
 	技能名：主宰
 	相关武将：神袁绍
-	技能描述：锁定技，你受到锦囊牌造成的伤害-1，以你为来源的锦囊牌造成的伤害+1。
+	技能描述：锁定技，你使用锦囊牌造成伤害时，此伤害+1，当你受到锦囊牌造成的伤害时，此伤害-1。
 	引用：sy_zhuzai
 ]]--
 sy_zhuzai = sgs.CreateTriggerSkillV2{
@@ -3343,7 +3338,7 @@ sy_zhuzai = sgs.CreateTriggerSkillV2{
 --[[
 	技能名：夺冀
 	相关武将：神袁绍
-	技能描述：锁定技，当你杀死其他角色时，若其有手牌，你获得其所有手牌和武将技能。
+	技能描述：锁定技，当你杀死其他角色时，你获得其所有手牌和技能。
 	引用：sy_duoji
 ]]--
 sy_duoji = sgs.CreateTriggerSkillV2{
@@ -3406,15 +3401,15 @@ sgs.LoadTranslationTable{
 	["$sy_mojian1"] = "血肉之躯，怎可挡我万箭穿心！",
 	["$sy_mojian2"] = "全都去死，去死吧！",
 	["mojian_jink"] = "魔箭被闪响应",
-	[":sy_mojian"] = "锁定技，准备阶段，你视为使用【万箭齐发】，若有角色打出【闪】响应此牌，回合结束阶段，你视为使用【万箭齐发】。",
+	[":sy_mojian"] = "锁定技，准备阶段，你视为使用一张【万箭齐发】；若此牌被【闪】响应，结束阶段，你视为使用一张【万箭齐发】。",
 	["sy_zhuzai"] = "主宰",
 	["$sy_zhuzai1"] = "天命在我，尔等凡人还不跪拜！",
 	["$sy_zhuzai2"] = "四世三公，名动天下！",
-	[":sy_zhuzai"] = "锁定技，你受到锦囊牌造成的伤害-1，以你为来源的锦囊牌造成的伤害+1。",
+	[":sy_zhuzai"] = "锁定技，你使用锦囊牌造成伤害时，此伤害+1，当你受到锦囊牌造成的伤害时，此伤害-1。",
 	["sy_duoji"] = "夺冀",
 	["$sy_duoji1"] = "冀州已得，这天下迟早是我的！",
 	["$sy_duoji2"] = "属于我的东西，不如趁早双手奉上！",
-	[":sy_duoji"] = "锁定技，当你杀死其他角色时，你获得其所有手牌和武将技能。",
+	[":sy_duoji"] = "锁定技，当你杀死其他角色时，你获得其所有手牌和技能。",
 }
 
 
