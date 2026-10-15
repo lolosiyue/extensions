@@ -217,7 +217,7 @@ sgs.ai_skill_playerchosen.hd_maimeng = function(self, targets)
     for _, p in ipairs(players) do if self:isEnemy(p) then return p end end
     return players[1]
 end
-sgs.ai_skill_exchange.hd_maimeng = function(self, pattern, max_num, min_num)
+sgs.ai_skill_discard.hd_maimeng = function(self, max_num, min_num, optional, include_equip, pattern)
     local cards = sgs.QList2Table(self.player:getCards("he"))
     self:sortByKeepValue(cards)
     local ids = {}

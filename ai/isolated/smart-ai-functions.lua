@@ -96,6 +96,19 @@ local function strategy_call(object, method, ...)
     end
     return strategy_known(value, method)
 end
+-- strategy_call that also rejects an unsupported signal coming back as a value
+-- (the hasUsed estimate path returns one without raising it).
+local function checked_strategy_call(object, method, ...)
+    local value = strategy_call(object, method, ...)
+    if AIUnsupported.is(value) then error(value, 0) end
+    return value
+end
+-- Stand-in for a donor `object:method(...)` written as donor_call(object, "method", ...).
+-- A nil receiver raises the same plain Lua error the donor would, not an unsupported signal.
+local function donor_call(object, method, ...)
+    if object == nil then error("attempt to index a nil value", 0) end
+    return checked_strategy_call(object, method, ...)
+end
 local function strategy_pile_count(player, name)
     if type(player.getPileCount) == "function" then return strategy_call(player, "getPileCount", name) end
     return #strategy_call(player, "getPile", name)
@@ -1468,12 +1481,6 @@ function SmartAIView:findPlayerToUseSlash(distance_limit, players, reason, slash
     return nil
 end
 
-local function discard_call(object, method, ...)
-    local result = strategy_call(object, method, ...)
-    if AIUnsupported and AIUnsupported.is(result) then error(result, 0) end
-    return result
-end
-
 -- The isolated registry is the authority for discard callbacks.
 function SmartAIView:getDiscardCallback(reason)
     local value = sgs.ai_skill_discard and sgs.ai_skill_discard[reason]
@@ -1513,7 +1520,7 @@ function SmartAIView:matchesDiscardPattern(pattern, card)
     local request = self.request
     if type(request) == 'table' and request.kind == 'respond_card'
         and (request.pattern or ''):gsub('!$', '') == pattern then
-        local id = discard_call(card, 'getId')
+        local id = checked_strategy_call(card, 'getId')
         for _, candidate in ipairs(request.card_candidates or {}) do
             if candidate.card_id == id then return candidate.available == true end
         end
@@ -1522,13 +1529,13 @@ function SmartAIView:matchesDiscardPattern(pattern, card)
     local ids = type(request) == 'table' and request.kind == 'discard' and request.pattern == pattern
         and type(request.options) == 'table' and request.options.card_ids
     if not AIValue.isList(ids) then ai_unsupported('discard pattern is not the question pattern', 'discard.pattern') end
-    local id = discard_call(card, 'getId')
+    local id = checked_strategy_call(card, 'getId')
     for _, candidate in ipairs(ids) do if candidate == id then return true end end
     return false
 end
 
 function SmartAIView:askForDiscard(reason, max_num, min_num, optional, include_equip, pattern)
-    local exchange = discard_call(self.player, 'hasFlag', 'Global_AIDiscardExchanging')
+    local exchange = checked_strategy_call(self.player, 'hasFlag', 'Global_AIDiscardExchanging')
     if not (optional or exchange) then
         local result = self:recordDiscardDemand(reason, min_num)
         if AIUnsupported and AIUnsupported.is(result) then error(result, 0) end
@@ -1545,45 +1552,45 @@ function SmartAIView:askForDiscard(reason, max_num, min_num, optional, include_e
     end
     local to_discard = {}
     if type(callback) == 'number' then
-        if exchange or discard_call(self.player, 'canDiscard', self.player, callback) then
+        if exchange or checked_strategy_call(self.player, 'canDiscard', self.player, callback) then
             to_discard = {callback}
         end
     elseif type(callback) == 'table' then
         for _, id in ipairs(callback) do
-            if type(id) ~= 'number' then id = discard_call(id, 'getId') end
-            if exchange or discard_call(self.player, 'canDiscard', self.player, id) then
+            if type(id) ~= 'number' then id = checked_strategy_call(id, 'getId') end
+            if exchange or checked_strategy_call(self.player, 'canDiscard', self.player, id) then
                 to_discard[#to_discard + 1] = id
             end
         end
     elseif optional and include_equip then
-        for _, card in ipairs(discard_call(self, 'poisonCards', 'e')) do
-            if (exchange or discard_call(self.player, 'canDiscard', self.player, discard_call(card, 'getId')))
-                and discard_call(self, 'matchesDiscardPattern', pattern, card) then
-                to_discard[#to_discard + 1] = discard_call(card, 'getId')
+        for _, card in ipairs(checked_strategy_call(self, 'poisonCards', 'e')) do
+            if (exchange or checked_strategy_call(self.player, 'canDiscard', self.player, checked_strategy_call(card, 'getId')))
+                and checked_strategy_call(self, 'matchesDiscardPattern', pattern, card) then
+                to_discard[#to_discard + 1] = checked_strategy_call(card, 'getId')
             end
             if #to_discard >= max_num then break end
         end
     end
     if #to_discard < min_num then
         if optional then return {} end
-        local cards = discard_call(self.player, 'getCards', include_equip and 'he' or 'h')
+        local cards = checked_strategy_call(self.player, 'getCards', include_equip and 'he' or 'h')
         if exchange then
-            for _, card in ipairs(discard_call(self, 'poisonCards', cards)) do
+            for _, card in ipairs(checked_strategy_call(self, 'poisonCards', cards)) do
                 if #to_discard < min_num then
-                    local id = discard_call(card, 'getId')
+                    local id = checked_strategy_call(card, 'getId')
                     if not table.contains(to_discard, id) then to_discard[#to_discard + 1] = id end
                 end
             end
         end
         local deferred = {}
-        local sorted = discard_call(self, 'sortByKeepValue', cards, nil, not exchange and 'j')
+        local sorted = checked_strategy_call(self, 'sortByKeepValue', cards, nil, not exchange and 'j')
         for _, card in ipairs(sorted) do
-            if #to_discard < min_num and not table.contains(to_discard, discard_call(card, 'getId')) then
-                if discard_call(self, 'matchesDiscardPattern', pattern, card) then
-                    if discard_call(self.player, 'hasEquip', card) and discard_call(self, 'loseEquipEffect')
-                        or discard_call(self, 'getUseValue', card) < 6 then
-                        to_discard[#to_discard + 1] = discard_call(card, 'getId')
-                    else deferred[#deferred + 1] = discard_call(card, 'getId') end
+            if #to_discard < min_num and not table.contains(to_discard, checked_strategy_call(card, 'getId')) then
+                if checked_strategy_call(self, 'matchesDiscardPattern', pattern, card) then
+                    if checked_strategy_call(self.player, 'hasEquip', card) and checked_strategy_call(self, 'loseEquipEffect')
+                        or checked_strategy_call(self, 'getUseValue', card) < 6 then
+                        to_discard[#to_discard + 1] = checked_strategy_call(card, 'getId')
+                    else deferred[#deferred + 1] = checked_strategy_call(card, 'getId') end
                 end
             end
         end
@@ -1599,9 +1606,9 @@ end
 sgs.ai_skill_discard = sgs.ai_skill_discard or {}
 sgs.ai_skill_discard.gamerule = function(self, maximum, minimum)
     local discard = {}
-    for _, card in ipairs(discard_call(self, 'sortByKeepValue', discard_call(self.player, 'getHandcards'))) do
-        if not discard_call(self.player, 'isCardLimited', card, sgs.Card_MethodDiscard, true) then
-            discard[#discard + 1] = discard_call(card, 'getEffectiveId')
+    for _, card in ipairs(checked_strategy_call(self, 'sortByKeepValue', checked_strategy_call(self.player, 'getHandcards'))) do
+        if not checked_strategy_call(self.player, 'isCardLimited', card, sgs.Card_MethodDiscard, true) then
+            discard[#discard + 1] = checked_strategy_call(card, 'getEffectiveId')
             if #discard >= minimum then break end
         end
     end
@@ -6406,12 +6413,6 @@ end
 -- R28 fixed smart-ai.lua default damage/dontHurt registries. Package files load
 -- afterward and retain donor override order. No callback is run at registration.
 do
-    local function r28_call(object, method, ...)
-        if object==nil then error("attempt to index a nil value",0) end
-        local value=strategy_call(object,method,...)
-        if AIUnsupported and AIUnsupported.is(value) then error(value,0) end
-        return value
-    end
     sgs.ai_ajustdamage_from=sgs.ai_ajustdamage_from or {}
     sgs.ai_ajustdamage_to=sgs.ai_ajustdamage_to or {}
     sgs.ai_dont_hurt_to=sgs.ai_dont_hurt_to or {}
@@ -6437,92 +6438,92 @@ sgs.ai_dont_hurt_from["LuaRevenge"] = true
 sgs.ai_dont_hurt_to["&beketinghu"] = true
 
 sgs.ai_dont_hurt_to["meispliwu"] = function(self, to, from)
-	return r28_call(to,"getMark","@meispliwuprevent") > 0
+	return donor_call(to,"getMark","@meispliwuprevent") > 0
 end
 
 sgs.ai_dont_hurt_to["meispshliwu"] = function(self, to, from)
-    return r28_call(to,"getMark","@meispshliwuprevent") > 0
+    return donor_call(to,"getMark","@meispshliwuprevent") > 0
 end
 
 sgs.ai_dont_hurt_to["meispshfengdan"] = function(self, to, from)
-    return r28_call(to,"getMark","@meispshfeng") > 0
+    return donor_call(to,"getMark","@meispshfeng") > 0
 end
 
 sgs.ai_dont_hurt_to["meispshengguangjiahu"] = function(self, to, from)
-    return r28_call(to,"getMark","@meispniangzhaoyunmark") >= 2
+    return donor_call(to,"getMark","@meispniangzhaoyunmark") >= 2
 end
 
 sgs.ai_dont_hurt_to["kejieguiqideng"] = function(self, to, from)
-    return r28_call(to,"getMark","@kedeng") > 0
+    return donor_call(to,"getMark","@kedeng") > 0
 end
 
 sgs.ai_dont_hurt_to["kexianfenshen"] = function(self, to, from)
-    return r28_call(to,"getMark","&kexianfenshen") > 0
+    return donor_call(to,"getMark","&kexianfenshen") > 0
 end
 
 sgs.ai_dont_hurt_to["kejiexianfenshen"] = function(self, to, from)
-    return r28_call(to,"getMark","&kexianfenshen") > 0
+    return donor_call(to,"getMark","&kexianfenshen") > 0
 end
 
 sgs.ai_dont_hurt_to["SE_Wuwei"] = function(self, to, from)
-    return r28_call(to,"getMark","@Wuwei") >= 2
+    return donor_call(to,"getMark","@Wuwei") >= 2
 end
 
 sgs.ai_dont_hurt_to["fateheijian"] = function(self, to, from)
-    return not (r28_call(to,"getPileCount","fateheijiancards")==0)
+    return not (donor_call(to,"getPileCount","fateheijiancards")==0)
 end
 
 sgs.ai_dont_hurt_to["betacheater"] = function(self, to, from)
-    return not (r28_call(to,"getPileCount","hide")==0)
+    return not (donor_call(to,"getPileCount","hide")==0)
 end
 
 sgs.ai_dont_hurt_to["sandun"] = function(self, to, from)
-    return (#r28_call(to,"getEquips")==0) and r28_call(to,"getHandcardNum") > 2
+    return (#donor_call(to,"getEquips")==0) and donor_call(to,"getHandcardNum") > 2
 end
 
 sgs.ai_dont_hurt_to["ckshengyu"] = function(self, to, from)
-    return r28_call(to,"getMark","ckshengyu-Clear") == 0
+    return donor_call(to,"getMark","ckshengyu-Clear") == 0
 end
 
 sgs.ai_dont_hurt_to["danyind"] = function(self, to, from)
-    return r28_call(to,"hasSkill","miyund") and r28_call(to,"getMark","danyind-Clear") == 1
+    return donor_call(to,"hasSkill","miyund") and donor_call(to,"getMark","danyind-Clear") == 1
 end
 
 sgs.ai_dont_hurt_to["langke"] = function(self, to, from)
-    return r28_call(to,"getMark","@langke") >= 4
+    return donor_call(to,"getMark","@langke") >= 4
 end
 
 sgs.ai_dont_hurt_to["tieren"] = function(self, to, from)
-    return r28_call(to,"getMark","@tie") > 0
+    return donor_call(to,"getMark","@tie") > 0
 end
 
 sgs.ai_dont_hurt_to["machiko"] = function(self, to, from)
-    return r28_call(to,"getMark","@waked") == 0
+    return donor_call(to,"getMark","@waked") == 0
 end
 
 sgs.ai_dont_hurt_to["s4_s_zhanchuan"] = function(self, to, from)
-    return not (r28_call(to,"getPileCount","s4_s_zhanchuan")==0)
+    return not (donor_call(to,"getPileCount","s4_s_zhanchuan")==0)
 end
 
 sgs.ai_dont_hurt_to["heg_qiuan"] = function(self, to, from)
-    return (r28_call(to,"getPileCount","heg_qiuan_han")==0)
+    return (donor_call(to,"getPileCount","heg_qiuan_han")==0)
 end
 
 sgs.ai_dont_hurt_to["heg_caiyuan"] = function(self, to, from)
-    return r28_call(to,"getMark","&heg_caiyuan+fail-Self" .. sgs.Player_Finish .. "Clear") == 0
+    return donor_call(to,"getMark","&heg_caiyuan+fail-Self" .. sgs.Player_Finish .. "Clear") == 0
 end
 
 sgs.ai_dont_hurt_to["TH_guilty"] = function(self, to, from)
-    return r28_call(from,"getMark","@TH_Guilty") > 0
+    return donor_call(from,"getMark","@TH_Guilty") > 0
 end
 
 sgs.ai_ajustdamage_to.shenjun = function(self,from,to,card,nature)
-	if r28_call(to,"getGender")~=r28_call(from,"getGender") and nature~="T"
+	if donor_call(to,"getGender")~=donor_call(from,"getGender") and nature~="T"
 	then return -99 end
 end
 
 sgs.ai_ajustdamage_to.fenyong = function(self,from,to,card,nature)
-	if r28_call(to,"getMark","@fenyong")>0
+	if donor_call(to,"getMark","@fenyong")>0
 	then return -99 end
 end
 
@@ -6548,39 +6549,39 @@ sgs.ai_ajustdamage_to["&jinxuanmu-Clear"] = function(self,from,to,card,nature)
 end
 
 sgs.ai_ajustdamage_from.tenyearzishou = function(self,from,to,card,nature)
-	if r28_call(from,"objectName")~=r28_call(to,"objectName")
+	if donor_call(from,"objectName")~=donor_call(to,"objectName")
 	then return -99 end
 end
 
 sgs.ai_ajustdamage_from.olzishou = function(self,from,to,card,nature)
-	if r28_call(from,"hasFlag","olzishou") and r28_call(from,"objectName")~=r28_call(to,"objectName")
+	if donor_call(from,"hasFlag","olzishou") and donor_call(from,"objectName")~=donor_call(to,"objectName")
 	then return -99 end
 end
 
 sgs.ai_ajustdamage_from.olchezheng = function(self,from,to,card,nature)
-	if r28_call(from,"getPhase")==sgs.Player_Play and not r28_call(to,"inMyAttackRange",from)
+	if donor_call(from,"getPhase")==sgs.Player_Play and not donor_call(to,"inMyAttackRange",from)
 	then return -99 end
 end
 
 sgs.ai_ajustdamage_to.shichou = function(self,from,to,card,nature)
-	if r28_call(to,"getMark","xhate")>0 then
-		for _,p in sgs.list(r28_call(self.room,"getOtherPlayers",to))do
-			if r28_call(p,"getMark","hate_"..r28_call(to,"objectName"))>0 and r28_call(p,"getMark","@hate_to")>0
-			then return r28_call(self,"ajustDamage",from,p,0,card,nature) end
+	if donor_call(to,"getMark","xhate")>0 then
+		for _,p in sgs.list(donor_call(self.room,"getOtherPlayers",to))do
+			if donor_call(p,"getMark","hate_"..donor_call(to,"objectName"))>0 and donor_call(p,"getMark","@hate_to")>0
+			then return donor_call(self,"ajustDamage",from,p,0,card,nature) end
 		end
 	end
 end
 
 sgs.ai_ajustdamage_to.yuce = function(self,from,to,card,nature)
-	if not r28_call(to,"isKongcheng") and r28_call(to,"getHp")>1 then
-		if r28_call(self,"isFriend",to,from) then return -1
+	if not donor_call(to,"isKongcheng") and donor_call(to,"getHp")>1 then
+		if donor_call(self,"isFriend",to,from) then return -1
 		else
-			if r28_call(from,"objectName")~=r28_call(self.player,"objectName") then
-				if r28_call(from,"getHandcardNum")<=2
+			if donor_call(from,"objectName")~=donor_call(self.player,"objectName") then
+				if donor_call(from,"getHandcardNum")<=2
 				then return -1 end
 			else
-				if getKnownCard(to,self.player,"TrickCard,EquipCard",false,"h")<r28_call(to,"getHandcardNum")
-				and getCardsNum("TrickCard,EquipCard",from,self.player)-#r28_call(from,"getEquips")<1
+				if getKnownCard(to,self.player,"TrickCard,EquipCard",false,"h")<donor_call(to,"getHandcardNum")
+				and getCardsNum("TrickCard,EquipCard",from,self.player)-#donor_call(from,"getEquips")<1
 				or getCardsNum("BasicCard",from,self.player)<2
 				then return -1 end
 			end
@@ -6590,17 +6591,17 @@ end
 
 sgs.ai_ajustdamage_to.shibei = function(self,from,to,card,nature)
 	if getKnownCard(from,self.player,"TrickCard")>1
-	or getKnownCard(from,self.player,"Slash")>1 and (getKnownCard(from,self.player,"Crossbow")>0 or r28_call(from,"hasSkills",sgs.double_slash_skill))
-	or r28_call(from,"hasSkills",sgs.straight_damage_skill)
-	or r28_call(self,"getOverflow",from)>0 then
+	or getKnownCard(from,self.player,"Slash")>1 and (getKnownCard(from,self.player,"Crossbow")>0 or donor_call(from,"hasSkills",sgs.double_slash_skill))
+	or donor_call(from,"hasSkills",sgs.straight_damage_skill)
+	or donor_call(self,"getOverflow",from)>0 then
 	else
-		return r28_call(to,"getMark","shibei")<1
+		return donor_call(to,"getMark","shibei")<1
 	end
 end
 
 sgs.ai_ajustdamage_to.heg_mingshi = function(self,from,to,card,nature)
     -- V2 Mingshi checks the damage source's revealed generals, not equipment counts.
-    if from and not r28_call(from,"hasShownAllGenerals") then return -1 end
+    if from and not donor_call(from,"hasShownAllGenerals") then return -1 end
 end
 
 sgs.ai_ajustdamage_to.ranshang = function(self,from,to,card,nature)
@@ -6619,126 +6620,126 @@ sgs.ai_ajustdamage_to.vine = function(self,from,to,card,nature)
 end
 
 sgs.ai_ajustdamage_to.gongqing = function(self,from,to,card,nature)
-	if r28_call(from,"getAttackRange")>3
+	if donor_call(from,"getAttackRange")>3
 	then return 1 end
 end
 
 sgs.ai_ajustdamage_from.xionghuo = function(self,from,to,card,nature)
-	if r28_call(to,"getMark","@brutal")>0
+	if donor_call(to,"getMark","@brutal")>0
 	then return 1 end
 end
 
 sgs.ai_ajustdamage_from.jinjian = function(self,from,to,card,nature)
-	if r28_call(from,"getMark","&jinjianreduce-Clear")>0
-	then return -r28_call(from,"getMark","&jinjianreduce-Clear") end
-	if not r28_call(self,"isFriend",from)
+	if donor_call(from,"getMark","&jinjianreduce-Clear")>0
+	then return -donor_call(from,"getMark","&jinjianreduce-Clear") end
+	if not donor_call(self,"isFriend",from)
 	then return 1 end
 end
 
 sgs.ai_ajustdamage_to.jinjian = function(self,from,to,card,nature)
-	if r28_call(to,"getMark","&jinjianadd-Clear")>0
-	then return r28_call(to,"getMark","&jinjianadd-Clear") end
+	if donor_call(to,"getMark","&jinjianadd-Clear")>0
+	then return donor_call(to,"getMark","&jinjianadd-Clear") end
 end
 
 sgs.ai_ajustdamage_from.jieyuan = function(self,from,to,card,nature)
-	if not r28_call(self,"beFriend",to,from)
-	and (r28_call(to,"getHp")>=r28_call(from,"getHp") or r28_call(from,"getMark","jieyuan_rebel-Keep")>0)
-	and (r28_call(from,"getHandcardNum")>=3 or (r28_call(from,"getMark","jieyuan_renegade-Keep")>0 and not r28_call(from,"isNude")))
+	if not donor_call(self,"beFriend",to,from)
+	and (donor_call(to,"getHp")>=donor_call(from,"getHp") or donor_call(from,"getMark","jieyuan_rebel-Keep")>0)
+	and (donor_call(from,"getHandcardNum")>=3 or (donor_call(from,"getMark","jieyuan_renegade-Keep")>0 and not donor_call(from,"isNude")))
 	then return 1 end
 end
 
 sgs.ai_ajustdamage_to.chouhai = function(self,from,to,card,nature)
-	if r28_call(to,"isKongcheng")
+	if donor_call(to,"isKongcheng")
 	then return 1 end
 end
 
 sgs.ai_ajustdamage_from.jiedao = function(self,from,to,card,nature)
-	if r28_call(from,"getLostHp")>0 and not r28_call(self,"beFriend",to,from)
-	then return r28_call(from,"getLostHp") end
+	if donor_call(from,"getLostHp")>0 and not donor_call(self,"beFriend",to,from)
+	then return donor_call(from,"getLostHp") end
 end
 
 sgs.ai_ajustdamage_from.lingren = function(self,from,to,card,nature)
-	if r28_call(from,"getPhase")==sgs.Player_Play and r28_call(to,"hasFlag","lingren_damage_to")
+	if donor_call(from,"getPhase")==sgs.Player_Play and donor_call(to,"hasFlag","lingren_damage_to")
 	then return 1 end
 end
 
 sgs.ai_ajustdamage_from.zhuixi = function(self,from,to,card,nature)
-	if r28_call(from,"faceUp")~=r28_call(to,"faceUp")
+	if donor_call(from,"faceUp")~=donor_call(to,"faceUp")
 	then return 1 end
 end
 
 sgs.ai_ajustdamage_to.zhuixi = function(self,from,to,card,nature)
-	if r28_call(from,"faceUp")~=r28_call(to,"faceUp")
+	if donor_call(from,"faceUp")~=donor_call(to,"faceUp")
 	then return 1 end
 end
 
 sgs.ai_ajustdamage_from["@luoyi"] = function(self,from,to,card,nature)
-	if card and r28_call(card,"isKindOf","Duel")
+	if card and donor_call(card,"isKindOf","Duel")
 	then return 1 end
 end
 
 sgs.ai_ajustdamage_to.yj_yinfengyi = function(self,from,to,card,nature)
-	if card and r28_call(card,"isKindOf","TrickCard")
+	if card and donor_call(card,"isKindOf","TrickCard")
 	then return 1 end
 end
 
 sgs.ai_ajustdamage_to.zl_yinfengjia = function(self,from,to,card,nature)
-	if card and r28_call(card,"isKindOf","TrickCard")
+	if card and donor_call(card,"isKindOf","TrickCard")
 	then return 1 end
 end
 
 sgs.ai_ajustdamage_to.yinshi = function(self,from,to,card,nature)
-	if card and hasYinshiEffect(to) and (r28_call(card,"getTypeId")==2 or r28_call(card,"isKindOf","NatureSlash") or nature~="N")
+	if card and hasYinshiEffect(to) and (donor_call(card,"getTypeId")==2 or donor_call(card,"isKindOf","NatureSlash") or nature~="N")
 	then return -99 end
 end
 
 sgs.ai_ajustdamage_from.wenjiu = function(self,from,to,slash,nature)
-	if slash and r28_call(slash,"isKindOf","Slash") and r28_call(slash,"isBlack")
+	if slash and donor_call(slash,"isKindOf","Slash") and donor_call(slash,"isBlack")
 	then return 1 end
 end
 
 sgs.ai_ajustdamage_from.shenli = function(self,from,to,slash,nature)
-	if slash and r28_call(slash,"isKindOf","Slash") and r28_call(from,"getMark","@struggle")>0
-	then return math.min(3,r28_call(from,"getMark","@struggle")) end
+	if slash and donor_call(slash,"isKindOf","Slash") and donor_call(from,"getMark","@struggle")>0
+	then return math.min(3,donor_call(from,"getMark","@struggle")) end
 end
 
 sgs.ai_ajustdamage_from["&mobileliyong"] = function(self,from,to,slash,nature)
-	if slash and r28_call(slash,"isKindOf","Slash")
+	if slash and donor_call(slash,"isKindOf","Slash")
 	then return 1 end
 end
 
 sgs.ai_ajustdamage_from.wangong = function(self,from,to,slash,nature)
-	if slash and r28_call(slash,"isKindOf","Slash") and r28_call(from,"getMark","&wangong")+r28_call(from,"getMark","wangong")>0
+	if slash and donor_call(slash,"isKindOf","Slash") and donor_call(from,"getMark","&wangong")+donor_call(from,"getMark","wangong")>0
 	then return 1 end
 end
 
 sgs.ai_ajustdamage_from["&kannan"] = function(self,from,to,slash,nature)
-	if slash and r28_call(slash,"isKindOf","Slash")
-	then return r28_call(from,"getMark","&kannan") end
+	if slash and donor_call(slash,"isKindOf","Slash")
+	then return donor_call(from,"getMark","&kannan") end
 end
 
 sgs.ai_ajustdamage_from.jie = function(self,from,to,slash,nature)
-	if slash and r28_call(slash,"isKindOf","Slash") and r28_call(slash,"isRed")
+	if slash and donor_call(slash,"isKindOf","Slash") and donor_call(slash,"isRed")
 	then return 1 end
 end
 
 sgs.ai_ajustdamage_from.zonghuo = function(self,from,to,slash,nature)
-	if slash and r28_call(slash,"isKindOf","Slash")
+	if slash and donor_call(slash,"isKindOf","Slash")
 	then nature = "F" end
 end
 
 sgs.ai_ajustdamage_from.anjian = function(self,from,to,slash,nature)
-	if slash and r28_call(slash,"isKindOf","Slash") and not r28_call(to,"inMyAttackRange",from)
+	if slash and donor_call(slash,"isKindOf","Slash") and not donor_call(to,"inMyAttackRange",from)
 	then return 1 end
 end
 
 sgs.ai_ajustdamage_to.jiaojin = function(self,from,to,slash,nature)
-	if slash and r28_call(slash,"isKindOf","Slash") and r28_call(from,"isMale") and #r28_call(to,"getEquips")>0
+	if slash and donor_call(slash,"isKindOf","Slash") and donor_call(from,"isMale") and #donor_call(to,"getEquips")>0
 	then return -1 end
 end
 
 sgs.ai_ajustdamage_from.guding_blade = function(self,from,to,slash,nature)
-	if slash and r28_call(slash,"isKindOf","Slash") and r28_call(to,"isKongcheng")
+	if slash and donor_call(slash,"isKindOf","Slash") and donor_call(to,"isKongcheng")
 	then return 1 end
 end
 end
@@ -6746,160 +6747,154 @@ end
 -- R28 source default priority and target-revision callbacks. Repeated source
 -- assignments intentionally keep the final body (kuanggu, shuangxiong).
 do
-    local function r28_call(object,method,...)
-        if object==nil then error("attempt to index a nil value",0) end
-        local value=strategy_call(object,method,...)
-        if AIUnsupported and AIUnsupported.is(value) then error(value,0) end
-        return value
-    end
     sgs.ai_card_priority=sgs.ai_card_priority or {}
     sgs.ai_target_revises=sgs.ai_target_revises or {}
 sgs.ai_card_priority.jianying = function(self,card,v)
-	if r28_call(self.player,"getMark","JianyingSuit")==r28_call(card,"getSuit")+1
-	or r28_call(self.player,"getMark","JianyingNumber")==r28_call(card,"getNumber")
+	if donor_call(self.player,"getMark","JianyingSuit")==donor_call(card,"getSuit")+1
+	or donor_call(self.player,"getMark","JianyingNumber")==donor_call(card,"getNumber")
 	then return 10 end
 end
 
 sgs.ai_card_priority.yanxiao = function(self,card,v)
-	if r28_call(card,"isKindOf","YanxiaoCard") and r28_call(self.player,"containsTrick","YanxiaoCard")
+	if donor_call(card,"isKindOf","YanxiaoCard") and donor_call(self.player,"containsTrick","YanxiaoCard")
 	then v = 0.10 end
 end
 
 sgs.ai_card_priority.luanji = function(self,card,v)
-	if r28_call(card,"isKindOf","ArcheryAttack")
+	if donor_call(card,"isKindOf","ArcheryAttack")
 	then return 6 end
 end
 
 sgs.ai_card_priority.sp_moonspear = function(self,card,v)
-	if r28_call(card,"isBlack") and r28_call(self.player,"getPhase")==sgs.Player_NotActive
+	if donor_call(card,"isBlack") and donor_call(self.player,"getPhase")==sgs.Player_NotActive
 	then return 5 end
 end
 
 sgs.ai_card_priority.moon_spear = function(self,card,v)
-	if r28_call(card,"isBlack") and r28_call(self.player,"getPhase")==sgs.Player_NotActive
+	if donor_call(card,"isBlack") and donor_call(self.player,"getPhase")==sgs.Player_NotActive
 	then return 5 end
 end
 
 sgs.ai_card_priority.shuangxiong = function(self,card,v)
-	if r28_call(card,"isKindOf","Duel")
+	if donor_call(card,"isKindOf","Duel")
 	then return 6.3 end
 end
 
 sgs.ai_card_priority.cihuai = function(self,card,v)
-	if r28_call(card,"isKindOf","Slash")
-	and r28_call(self.player,"getMark","@cihuai")>0
+	if donor_call(card,"isKindOf","Slash")
+	and donor_call(self.player,"getMark","@cihuai")>0
 	then return 9 end
 end
 
 sgs.ai_card_priority.danshou = function(self,card,v)
-	if (r28_call(card,"isDamageCard") or sgs.dynamic_value.damage_card[r28_call(card,"getClassName")])
-	and not r28_call(self.player,"hasSkill","jueqing")
+	if (donor_call(card,"isDamageCard") or sgs.dynamic_value.damage_card[donor_call(card,"getClassName")])
+	and not donor_call(self.player,"hasSkill","jueqing")
 	then v = 0 end
 end
 
 sgs.ai_card_priority.kuanggu = function(self,card,v)
-	if r28_call(card,"isKindOf","Peach")
+	if donor_call(card,"isKindOf","Peach")
 	then v = 1.09 end
 end
 
 sgs.ai_card_priority.kofkuanggu = function(self,card,v)
-	if r28_call(card,"isKindOf","Peach")
+	if donor_call(card,"isKindOf","Peach")
 	then v = 1.09 end
 end
 
 sgs.ai_card_priority.zhulou = function(self,card,v)
 	if self.useValue
-	and r28_call(card,"isKindOf","Weapon")
+	and donor_call(card,"isKindOf","Weapon")
 	then v = 2 end
 end
 
 sgs.ai_card_priority.taichen = function(self,card,v)
 	if self.useValue
-	and r28_call(card,"isKindOf","Weapon")
+	and donor_call(card,"isKindOf","Weapon")
 	then v = 2 end
 end
 
 sgs.ai_card_priority.qiangxi = function(self,card,v)
 	if self.useValue
-	and r28_call(card,"isKindOf","Weapon")
+	and donor_call(card,"isKindOf","Weapon")
 	then v = 2 end
 end
 
 sgs.ai_card_priority.kurou = function(self,card,v)
 	if self.useValue
-	and r28_call(card,"isKindOf","Crossbow")
+	and donor_call(card,"isKindOf","Crossbow")
 	then return 9 end
 end
 
 sgs.ai_card_priority.yizhong = function(self,card,v)
 	if self.useValue
-	and r28_call(card,"isKindOf","Armor")
+	and donor_call(card,"isKindOf","Armor")
 	then v = 2 end
 end
 
 sgs.ai_card_priority.bazhen = function(self,card,v)
 	if self.useValue
-	and r28_call(card,"isKindOf","Armor")
+	and donor_call(card,"isKindOf","Armor")
 	then v = 2 end
 end
 
 sgs.ai_card_priority.kuanggu = function(self,card,v)
 	if self.useValue
-	and r28_call(card,"isKindOf","Shit")
-	and r28_call(card,"getSuit")~=sgs.Card_Spade
+	and donor_call(card,"isKindOf","Shit")
+	and donor_call(card,"getSuit")~=sgs.Card_Spade
 	then v = 0.1 end
 end
 
 sgs.ai_card_priority.jizhi = function(self,card,v)
 	if self.useValue
-	and r28_call(card,"isKindOf","TrickCard")
+	and donor_call(card,"isKindOf","TrickCard")
 	then v = v+3 end
 end
 
 sgs.ai_card_priority.nosjizhi = function(self,card,v)
 	if self.useValue
-	and r28_call(card,"isNDTrick")
+	and donor_call(card,"isNDTrick")
 	then v = v+4 end
 end
 
 sgs.ai_card_priority.shuangxiong = function(self,card,v)
 	if self.useValue
-	and table.contains(r28_call(card,"getSkillNames"), "shuangxiong")
+	and table.contains(donor_call(card,"getSkillNames"), "shuangxiong")
 	then v = 6 end
 end
 
 sgs.ai_card_priority.wumou = function(self,card,v)
-	if self.useValue and r28_call(card,"isNDTrick") and not r28_call(card,"isKindOf","AOE")
-	and not (r28_call(card,"isKindOf","Duel") and r28_call(self.player,"hasUsed","WuqianCard"))
+	if self.useValue and donor_call(card,"isNDTrick") and not donor_call(card,"isKindOf","AOE")
+	and not (donor_call(card,"isKindOf","Duel") and donor_call(self.player,"hasUsed","WuqianCard"))
 	then v = 1 end
 end
 
 sgs.ai_card_priority.tenyearchouhai = function(self,card,v)
 	if self.useValue
-	and r28_call(self.player,"getHandcardNum")<=1
+	and donor_call(self.player,"getHandcardNum")<=1
 	then v = 1 end
 end
 
 sgs.ai_card_priority.chouhai = function(self,card,v)
 	if self.useValue
-	and r28_call(self.player,"hasFlag","canshi")
-	and r28_call(self.player,"getHandcardNum")<=2
+	and donor_call(self.player,"hasFlag","canshi")
+	and donor_call(self.player,"getHandcardNum")<=2
 	then v = 1 end
 end
 
 sgs.ai_card_priority.canshi = function(self,card,v)
-	if self.useValue and r28_call(self.player,"hasFlag","canshi")
+	if self.useValue and donor_call(self.player,"hasFlag","canshi")
 	then v = v-2 end
 end
 
 sgs.ai_card_priority.halberd = function(self,card,v)
-	if self.useValue and r28_call(card,"isKindOf","Slash")
-	and r28_call(self.player,"isLastHandCard",card)
+	if self.useValue and donor_call(card,"isKindOf","Slash")
+	and donor_call(self.player,"isLastHandCard",card)
 	then v = 10 end
 end
 
 sgs.ai_card_priority.spear = function(self,card)
-	if table.contains(r28_call(card,"getSkillNames"), "spear")
+	if table.contains(donor_call(card,"getSkillNames"), "spear")
 	then
 		if self.useValue
 		then return -1 end
@@ -6908,12 +6903,12 @@ sgs.ai_card_priority.spear = function(self,card)
 end
 
 sgs.ai_card_priority.jie = function(self,card)
-	if r28_call(card,"isKindOf","Slash") and r28_call(card,"isRed")
+	if donor_call(card,"isKindOf","Slash") and donor_call(card,"isRed")
 	then return 0.16 end
 end
 
 sgs.ai_card_priority.chongzhen = function(self,card)
-	if table.contains(r28_call(card,"getSkillNames"), "longdan")
+	if table.contains(donor_call(card,"getSkillNames"), "longdan")
 	then
 		if self.useValue
 		then return 1 end
@@ -6922,113 +6917,113 @@ sgs.ai_card_priority.chongzhen = function(self,card)
 end
 
 sgs.ai_card_priority.fuhun = function(self,card)
-	if table.contains(r28_call(card,"getSkillNames"), "fuhun")
+	if table.contains(donor_call(card,"getSkillNames"), "fuhun")
 	then
 		if self.useValue
-		then return r28_call(self.player,"getPhase")==sgs.Player_Play and 1 or -1 end
-		return r28_call(self.player,"getPhase")==sgs.Player_Play and 0.06 or -0.05
+		then return donor_call(self.player,"getPhase")==sgs.Player_Play and 1 or -1 end
+		return donor_call(self.player,"getPhase")==sgs.Player_Play and 0.06 or -0.05
 	end
 end
 
 sgs.ai_card_priority.jiang = function(self,card)
-	if r28_call(card,"isKindOf","Slash") and r28_call(card,"isRed")
+	if donor_call(card,"isKindOf","Slash") and donor_call(card,"isRed")
 	then return 0.05 end
 end
 
 sgs.ai_card_priority.wushen = function(self,card)
-	if r28_call(card,"isKindOf","Slash") and r28_call(card,"getSuit")==sgs.Card_Heart
+	if donor_call(card,"isKindOf","Slash") and donor_call(card,"getSuit")==sgs.Card_Heart
 	then return 0.03 end
 end
 
 sgs.ai_card_priority.olwushen = function(self,card)
-	if r28_call(card,"isKindOf","Slash") and r28_call(card,"getSuit")==sgs.Card_Heart
+	if donor_call(card,"isKindOf","Slash") and donor_call(card,"getSuit")==sgs.Card_Heart
 	then return 0.03 end
 end
 
 sgs.ai_card_priority.lihuo = function(self,card)
-	if table.contains(r28_call(card,"getSkillNames"), "lihuo")
+	if table.contains(donor_call(card,"getSkillNames"), "lihuo")
 	then return -0.02 end
 end
 
 sgs.ai_card_priority.mingzhe = function(self,card)
-	if r28_call(card,"isRed") then return r28_call(self.player,"getPhase")~=sgs.Player_NotActive and 0.05 or -0.05 end
+	if donor_call(card,"isRed") then return donor_call(self.player,"getPhase")~=sgs.Player_NotActive and 0.05 or -0.05 end
 end
 
 sgs.ai_card_priority.zenhui = function(self,card)
-	if r28_call(card,"isBlack") and (r28_call(card,"isKindOf","Slash") or r28_call(card,"isNDTrick"))
-	and r28_call(card,"getTargetModExtra",self.player)<1
-	and not r28_call(self.player,"hasFlag","zenhui")
+	if donor_call(card,"isBlack") and (donor_call(card,"isKindOf","Slash") or donor_call(card,"isNDTrick"))
+	and donor_call(card,"getTargetModExtra",self.player)<1
+	and not donor_call(self.player,"hasFlag","zenhui")
 	then return 0.1 end
 end
 
 sgs.ai_target_revises.god_diagram = function(to,card)
-	if r28_call(card,"isKindOf","Slash")
+	if donor_call(card,"isKindOf","Slash")
 	then return true end
 end
 
 sgs.ai_target_revises.vine = function(to,card)
-	if r28_call(card,"isKindOf","SavageAssault")
-	or r28_call(card,"isKindOf","ArcheryAttack")
-	or r28_call(card,"isKindOf","Chuqibuyi")
-	or r28_call(card,"objectName")=="slash"
+	if donor_call(card,"isKindOf","SavageAssault")
+	or donor_call(card,"isKindOf","ArcheryAttack")
+	or donor_call(card,"isKindOf","Chuqibuyi")
+	or donor_call(card,"objectName")=="slash"
 	then return true end
 end
 
 sgs.ai_target_revises["dream"] = function(to,card)
-	if r28_call(to,"isLocked",card) then return true end
+	if donor_call(to,"isLocked",card) then return true end
 end
 
 sgs.ai_target_revises.huoshou = function(to,card)
-	if r28_call(card,"isKindOf","SavageAssault")
+	if donor_call(card,"isKindOf","SavageAssault")
 	then return true end
 end
 
 sgs.ai_target_revises.danlao = function(to,card,self,use)
-	if r28_call(card,"isKindOf","TrickCard") and r28_call(use.to,"length")>1
-	and not r28_call(self,"isFriend",to)
+	if donor_call(card,"isKindOf","TrickCard") and donor_call(use.to,"length")>1
+	and not donor_call(self,"isFriend",to)
 	then return true end
 end
 
 sgs.ai_target_revises.xiemu = function(to,card,self,use)
-	if r28_call(card,"getTypeId")>0 and r28_call(card,"isBlack") and r28_call(self,"isEnemy",to)
-	and r28_call(to,"getMark","@xiemu_"..r28_call(self.player,"getKingdom"))>0
-	and not(r28_call(self,"isWeak",to) and r28_call(card,"isDamageCard"))
+	if donor_call(card,"getTypeId")>0 and donor_call(card,"isBlack") and donor_call(self,"isEnemy",to)
+	and donor_call(to,"getMark","@xiemu_"..donor_call(self.player,"getKingdom"))>0
+	and not(donor_call(self,"isWeak",to) and donor_call(card,"isDamageCard"))
 	then return true end
 end
 
 sgs.ai_target_revises.juxiang = function(to,card)
-	if r28_call(card,"isKindOf","SavageAssault")
+	if donor_call(card,"isKindOf","SavageAssault")
 	then return true end
 end
 
 sgs.ai_target_revises.manyi = function(to,card)
-	if r28_call(card,"isKindOf","SavageAssault")
+	if donor_call(card,"isKindOf","SavageAssault")
 	then return true end
 end
 
 sgs.ai_target_revises.olzhennan = function(to,card)
-	if r28_call(card,"isKindOf","SavageAssault")
+	if donor_call(card,"isKindOf","SavageAssault")
 	then return true end
 end
 
 sgs.ai_target_revises.tenyearzongshi = function(to,card)
-	if (r28_call(card,"isKindOf","DelayedTrick") or not r28_call(card,"isBlack") and not r28_call(card,"isRed"))
-	and r28_call(to,"getPhase")==sgs.Player_NotActive and r28_call(to,"getHandcardNum")>=r28_call(to,"getMaxCards")
+	if (donor_call(card,"isKindOf","DelayedTrick") or not donor_call(card,"isBlack") and not donor_call(card,"isRed"))
+	and donor_call(to,"getPhase")==sgs.Player_NotActive and donor_call(to,"getHandcardNum")>=donor_call(to,"getMaxCards")
 	then return true end
 end
 
 sgs.ai_target_revises["@late"] = function(to,card,self)
-	return r28_call(card,"isKindOf","Slash") or r28_call(card,"isNDTrick")
+	return donor_call(card,"isKindOf","Slash") or donor_call(card,"isNDTrick")
 end
 
 sgs.ai_target_revises.noswuyan = function(to,card,self)
-	return r28_call(card,"isNDTrick") and self.player~=to
-	and not r28_call(self,"hasJueqingEffect",self.player,to)
+	return donor_call(card,"isNDTrick") and self.player~=to
+	and not donor_call(self,"hasJueqingEffect",self.player,to)
 end
 
 sgs.ai_target_revises.wuyan = function(to,card,self)
-	return r28_call(card,"isNDTrick") and r28_call(card,"isDamageCard")
-	and not r28_call(self,"hasJueqingEffect",self.player,to)
+	return donor_call(card,"isNDTrick") and donor_call(card,"isDamageCard")
+	and not donor_call(self,"hasJueqingEffect",self.player,to)
 end
 end
 
@@ -7036,182 +7031,183 @@ end
 -- evaluating an alternative never issues an action receipt or pays its cost.
 do
     local nullable={getSameEquip=true,setStrategyCardFlag=true,addStrategyPlayerMark=true}
-    local function r28_call(object,method,...)
+    -- Like donor_call, except the nullable methods skip strategy_call: they may
+    -- legitimately return nil and must not be remapped to strategy marks/flags.
+    -- A nil receiver is an unsupported signal here rather than a Lua error.
+    local function revision_call(object,method,...)
         if nullable[method] then
             if not object or type(object[method])~="function" then ai_unsupported("shared revision method is unavailable",method) end
             local value=object[method](object,...)
-            if AIUnsupported and AIUnsupported.is(value) then error(value,0) end
+            if AIUnsupported.is(value) then error(value,0) end
             return value
         end
-        local value=strategy_call(object,method,...)
-        if AIUnsupported and AIUnsupported.is(value) then error(value,0) end
-        return value
+        return checked_strategy_call(object,method,...)
     end
     local function r28_find_skill(self,name)
-        for _,player in ipairs(r28_call(self.room,"getAlivePlayers")) do
-            if r28_call(player,"hasSkill",name) then return player end
+        for _,player in ipairs(revision_call(self.room,"getAlivePlayers")) do
+            if revision_call(player,"hasSkill",name) then return player end
         end
     end
     sgs.ai_use_revises=sgs.ai_use_revises or {}
 sgs.ai_use_revises.god_sword = function(self,card,use)
-	if r28_call(card,"isKindOf","Slash") then
-		r28_call(self,"setStrategyCardFlag",card,"Qinggang",true)
+	if revision_call(card,"isKindOf","Slash") then
+		revision_call(self,"setStrategyCardFlag",card,"Qinggang",true)
 	end
 end
 
 sgs.ai_use_revises.qinggang_sword = function(self,card,use)
-	if r28_call(card,"isKindOf","Slash") then
-		r28_call(self,"setStrategyCardFlag",card,"Qinggang",true)
+	if revision_call(card,"isKindOf","Slash") then
+		revision_call(self,"setStrategyCardFlag",card,"Qinggang",true)
 	end
 end
 
 sgs.ai_use_revises.wuyan = function(self,card,use)
-	if r28_call(card,"isKindOf","SavageAssault") then
+	if revision_call(card,"isKindOf","SavageAssault") then
 		local menghuo = r28_find_skill(self,"huoshou")
-		if menghuo and (not r28_call(menghuo,"hasSkill","wuyan") or r28_call(self,"hasJueqingEffect",menghuo))
+		if menghuo and (not revision_call(menghuo,"hasSkill","wuyan") or revision_call(self,"hasJueqingEffect",menghuo))
 		then else return false end
-	elseif r28_call(card,"isKindOf","AOE") then
-		if r28_call(self,"hasHuangenEffect",self.friends_noself)
+	elseif revision_call(card,"isKindOf","AOE") then
+		if revision_call(self,"hasHuangenEffect",self.friends_noself)
 		then else return false end
-	elseif r28_call(card,"isNDTrick") and r28_call(card,"isDamageCard")
-	and not r28_call(self,"hasJueqingEffect",self.player)
+	elseif revision_call(card,"isNDTrick") and revision_call(card,"isDamageCard")
+	and not revision_call(self,"hasJueqingEffect",self.player)
 	then return false end
 end
 
 sgs.ai_use_revises.noswuyan = function(self,card,use)
-	if r28_call(card,"isKindOf","AOE") then
-		if r28_call(self,"hasHuangenEffect",self.friends_noself)
+	if revision_call(card,"isKindOf","AOE") then
+		if revision_call(self,"hasHuangenEffect",self.friends_noself)
 		then else return false end
-	elseif r28_call(card,"isKindOf","AmazingGrace") then use.card = card
-	elseif r28_call(card,"isKindOf","GlobalEffect") then
-		if r28_call(self.player,"isWounded") or r28_call(self.player,"hasSkills","nosjizhi|jizhi")
+	elseif revision_call(card,"isKindOf","AmazingGrace") then use.card = card
+	elseif revision_call(card,"isKindOf","GlobalEffect") then
+		if revision_call(self.player,"isWounded") or revision_call(self.player,"hasSkills","nosjizhi|jizhi")
 		then use.card = card else return false end
-	elseif r28_call(card,"isNDTrick") and not r28_call(card,"targetFixed")
+	elseif revision_call(card,"isNDTrick") and not revision_call(card,"targetFixed")
 	then use.card = nil return false end
 end
 
 sgs.ai_use_revises.luanji = function(self,card,use)
-	if r28_call(card,"isKindOf","AOE") and r28_call(self.player,"getRole")=="lord" and strategy_known(self.world.turn_count,"turncount")<2 and math.random()>0.7
-	then r28_call(self,"addStrategyPlayerMark",self.player,"AI_fangjian-Clear",1) end
+	if revision_call(card,"isKindOf","AOE") and revision_call(self.player,"getRole")=="lord" and strategy_known(self.world.turn_count,"turncount")<2 and math.random()>0.7
+	then revision_call(self,"addStrategyPlayerMark",self.player,"AI_fangjian-Clear",1) end
 end
 
 sgs.ai_use_revises.nosgongqi = function(self,card,use)
-	if r28_call(card,"isKindOf","EquipCard") and r28_call(self,"getSameEquip",card)
-	and r28_call(self,"slashIsAvailable",nil,false)
+	if revision_call(card,"isKindOf","EquipCard") and revision_call(self,"getSameEquip",card)
+	and revision_call(self,"slashIsAvailable",nil,false)
 	then return false end
 end
 
 sgs.ai_use_revises.xiaoji = function(self,card,use)
-	if r28_call(card,"isKindOf","EquipCard") and r28_call(self,"evaluateArmor",card)>-5
+	if revision_call(card,"isKindOf","EquipCard") and revision_call(self,"evaluateArmor",card)>-5
 	then use.card = card return true end
 end
 
 sgs.ai_use_revises.kofxiaoji = function(self,card,use)
-	if r28_call(card,"isKindOf","EquipCard") and r28_call(self,"evaluateArmor",card)>-5
+	if revision_call(card,"isKindOf","EquipCard") and revision_call(self,"evaluateArmor",card)>-5
 	then use.card = card return true end
 end
 
 sgs.ai_use_revises.yongsi = function(self,card,use)
-	if r28_call(card,"isKindOf","EquipCard") and r28_call(self,"getOverflow")<2
+	if revision_call(card,"isKindOf","EquipCard") and revision_call(self,"getOverflow")<2
 	then return false end
 end
 
 sgs.ai_use_revises.qixi = function(self,card,use)
-	if r28_call(card,"isKindOf","EquipCard")
-	and r28_call(card,"isBlack")
+	if revision_call(card,"isKindOf","EquipCard")
+	and revision_call(card,"isBlack")
 	then
-		local same = r28_call(self,"getSameEquip",card)
-		if same and r28_call(same,"isBlack")
+		local same = revision_call(self,"getSameEquip",card)
+		if same and revision_call(same,"isBlack")
 		then return false end
 	end
 end
 
 sgs.ai_use_revises.duanliang = function(self,card,use)
-	if r28_call(card,"isKindOf","EquipCard")
-	and r28_call(card,"isBlack")
+	if revision_call(card,"isKindOf","EquipCard")
+	and revision_call(card,"isBlack")
 	then
-		local same = r28_call(self,"getSameEquip",card)
-		if same and r28_call(same,"isBlack")
+		local same = revision_call(self,"getSameEquip",card)
+		if same and revision_call(same,"isBlack")
 		then return false end
 	end
 end
 
 sgs.ai_use_revises.yinling = function(self,card,use)
-	if r28_call(card,"isKindOf","EquipCard")
-	and r28_call(card,"isBlack")
+	if revision_call(card,"isKindOf","EquipCard")
+	and revision_call(card,"isBlack")
 	then
-		local same = r28_call(self,"getSameEquip",card)
-		if same and r28_call(same,"isBlack")
+		local same = revision_call(self,"getSameEquip",card)
+		if same and revision_call(same,"isBlack")
 		then return false end
 	end
 end
 
 sgs.ai_use_revises.guose = function(self,card,use)
-	if r28_call(card,"isKindOf","EquipCard")
-	and r28_call(card,"getSuit")==sgs.Card_Diamond
+	if revision_call(card,"isKindOf","EquipCard")
+	and revision_call(card,"getSuit")==sgs.Card_Diamond
 	then
-		local same = r28_call(self,"getSameEquip",card)
-		if same and r28_call(same,"getSuit")==sgs.Card_Diamond
+		local same = revision_call(self,"getSameEquip",card)
+		if same and revision_call(same,"getSuit")==sgs.Card_Diamond
 		then return false end
 	end
 end
 
 sgs.ai_use_revises.longhun = function(self,card,use)
-	if r28_call(card,"isKindOf","EquipCard")
-	and r28_call(card,"getSuit")==sgs.Card_Diamond
+	if revision_call(card,"isKindOf","EquipCard")
+	and revision_call(card,"getSuit")==sgs.Card_Diamond
 	then
-		local same = r28_call(self,"getSameEquip",card)
-		if same and r28_call(same,"getSuit")==sgs.Card_Diamond
+		local same = revision_call(self,"getSameEquip",card)
+		if same and revision_call(same,"getSuit")==sgs.Card_Diamond
 		then return false end
 	end
 end
 
 sgs.ai_use_revises.jijiu = function(self,card,use)
-	if r28_call(card,"isKindOf","EquipCard") and r28_call(card,"isRed") then
-		local same = r28_call(self,"getSameEquip",card)
-		if same and r28_call(same,"isRed") then return false end
+	if revision_call(card,"isKindOf","EquipCard") and revision_call(card,"isRed") then
+		local same = revision_call(self,"getSameEquip",card)
+		if same and revision_call(same,"isRed") then return false end
 	end
 end
 
 sgs.ai_use_revises.guidao = function(self,card,use)
-	if r28_call(card,"isKindOf","EquipCard")
-	and r28_call(card,"isBlack")
+	if revision_call(card,"isKindOf","EquipCard")
+	and revision_call(card,"isBlack")
 	then
-		local same = r28_call(self,"getSameEquip",card)
-		if same and r28_call(same,"isBlack")
+		local same = revision_call(self,"getSameEquip",card)
+		if same and revision_call(same,"isBlack")
 		then return false end
 	end
 end
 
 sgs.ai_use_revises.junxing = function(self,card,use)
-	if r28_call(card,"isKindOf","EquipCard")
-	and r28_call(self,"getSameEquip",card)
+	if revision_call(card,"isKindOf","EquipCard")
+	and revision_call(self,"getSameEquip",card)
 	then return false end
 end
 
 sgs.ai_use_revises.jiehuo = function(self,card,use)
-	if (r28_call(card,"isKindOf","Weapon") or r28_call(card,"isKindOf","OffensiveHorse"))
-	and r28_call(self.player,"getMark","jiehuo")<0 and r28_call(card,"isRed")
+	if (revision_call(card,"isKindOf","Weapon") or revision_call(card,"isKindOf","OffensiveHorse"))
+	and revision_call(self.player,"getMark","jiehuo")<0 and revision_call(card,"isRed")
 	then return false end
 end
 
 sgs.ai_use_revises.zhulou = function(self,card,use)
-	if r28_call(card,"isKindOf","Weapon") and r28_call(self,"getSameEquip",card)
+	if revision_call(card,"isKindOf","Weapon") and revision_call(self,"getSameEquip",card)
 	then return false end
 end
 
 sgs.ai_use_revises.taichen = function(self,card,use)
-	if r28_call(card,"isKindOf","Weapon")
+	if revision_call(card,"isKindOf","Weapon")
 	then
-		local same = r28_call(self,"getSameEquip",card)
+		local same = revision_call(self,"getSameEquip",card)
 		if same
 		then
-			local source_cost = r28_call(same,"getEffectiveId")
+			local source_cost = revision_call(same,"getEffectiveId")
             -- Fixed yitian V2 retained the history key but removed the V1
             -- TaichenCard constructor. Source Card_Parse returns nil, then
             -- aiUseCard(nil).card errors. Do not invent a proxy as that card.
             ai_unsupported("fixed source TaichenCard parse is unavailable before aiUseCard(nil).card", "source.TaichenCard")
-			if r28_call(self,"aiUseCard",same).card
+			if revision_call(self,"aiUseCard",same).card
 			then return false end
 		end
 	end
@@ -7275,58 +7271,58 @@ local function r33_revise_plan(self,skill,class,costs,use)
 end
 
 sgs.ai_use_revises.qiangxi = function(self,card,use)
-	if r28_call(card,"isKindOf","Weapon")
-	and not r28_call(self.player,"hasUsed","QiangxiCard")
+	if revision_call(card,"isKindOf","Weapon")
+	and not revision_call(self.player,"hasUsed","QiangxiCard")
 	then
-		local same = r28_call(self,"getSameEquip",card)
+		local same = revision_call(self,"getSameEquip",card)
 		if same
 		then
-			same = r33_revise_plan(self,"qiangxi","QiangxiCard",{r28_call(same,"getEffectiveId")})
-			if same.card and r28_call(same.card,"subcardsLength")==1
+			same = r33_revise_plan(self,"qiangxi","QiangxiCard",{revision_call(same,"getEffectiveId")})
+			if same.card and revision_call(same.card,"subcardsLength")==1
 			then return false end
 		end
 	end
 end
 
 sgs.ai_use_revises.paoxiao = function(self,card,use)
-	if r28_call(card,"isKindOf","Crossbow")
+	if revision_call(card,"isKindOf","Crossbow")
 	then return false end
 end
 
 sgs.ai_use_revises.tenyearpaoxiao = function(self,card,use)
-	if r28_call(card,"isKindOf","Crossbow")
+	if revision_call(card,"isKindOf","Crossbow")
 	then return false end
 end
 
 sgs.ai_use_revises.olpaoxiao = function(self,card,use)
-	if r28_call(card,"isKindOf","Crossbow")
+	if revision_call(card,"isKindOf","Crossbow")
 	then return false end
 end
 
 sgs.ai_use_revises.nosfuhun = function(self,card,use)
-	if r28_call(card,"isKindOf","Crossbow")
+	if revision_call(card,"isKindOf","Crossbow")
 	then return false end
 end
 
 sgs.ai_use_revises.zhiheng = function(self,card,use)
-	if r28_call(card,"isKindOf","Weapon")
-	and not r28_call(card,"isKindOf","Crossbow")
-	and r28_call(self,"getSameEquip",card)
-	and not r28_call(self.player,"hasUsed","ZhihengCard")
+	if revision_call(card,"isKindOf","Weapon")
+	and not revision_call(card,"isKindOf","Crossbow")
+	and revision_call(self,"getSameEquip",card)
+	and not revision_call(self.player,"hasUsed","ZhihengCard")
 	then return false end
 end
 
 sgs.ai_use_revises.jilve = function(self,card,use)
-	if r28_call(card,"isKindOf","Weapon")
-	and r28_call(self.player,"getMark","&bear")>0
-	and not r28_call(card,"isKindOf","Crossbow")
-	and r28_call(self,"getSameEquip",card)
-	and not r28_call(self.player,"hasUsed","ZhihengCard")
+	if revision_call(card,"isKindOf","Weapon")
+	and revision_call(self.player,"getMark","&bear")>0
+	and not revision_call(card,"isKindOf","Crossbow")
+	and revision_call(self,"getSameEquip",card)
+	and not revision_call(self.player,"hasUsed","ZhihengCard")
 	then return false end
 end
 
 sgs.ai_use_revises.tiaoxin = function(self,card,use)
-	if r28_call(card,"isKindOf","DefensiveHorse") then
+	if revision_call(card,"isKindOf","DefensiveHorse") then
 		local dummy = {isDummy=true,to=AIList.new({})}
 		dummy.defHorse = true
 		if r33_revise_plan(self,"tiaoxin","TiaoxinCard",{},dummy).card
@@ -7338,12 +7334,6 @@ end
 -- R28 ordinary default nullification and can-damage-HP hooks. The current
 -- AmazingGrace use comes from the projected use history.
 do
-    local function r28_call(object,method,...)
-        if object==nil then error("attempt to index a nil value",0) end
-        local value=strategy_call(object,method,...)
-        if AIUnsupported and AIUnsupported.is(value) then error(value,0) end
-        return value
-    end
     -- Legacy getUseStruct(trick) reads Room tag "UseHistory"..trick:toString(). A
     -- physical trick's string is its id; a virtual one is the only use with its face.
     local function r28_grace_use(self,trick)
@@ -7384,13 +7374,13 @@ do
     sgs.ai_nullification=sgs.ai_nullification or {}
     sgs.ai_can_damagehp=sgs.ai_can_damagehp or {}
 sgs.ai_nullification.FireAttack = function(self,trick,from,to,positive,null_num)
-	if r28_call(to,"isKongcheng") or r28_call(from,"isKongcheng") or self.player==from and r28_call(self.player,"getHandcardNum")==1
+	if donor_call(to,"isKongcheng") or donor_call(from,"isKongcheng") or self.player==from and donor_call(self.player,"getHandcardNum")==1
 	then return false
 	elseif positive then
-		if r28_call(self,"isEnemy",from)
-		and r28_call(self,"isFriend",to) then
-			if r28_call(from,"getHandcardNum")>2
-			or r28_call(to,"isChained") and not r28_call(self,"isGoodChainTarget",to,trick,from)
+		if donor_call(self,"isEnemy",from)
+		and donor_call(self,"isFriend",to) then
+			if donor_call(from,"getHandcardNum")>2
+			or donor_call(to,"isChained") and not donor_call(self,"isGoodChainTarget",to,trick,from)
 			then return true end
 		end
 	else
@@ -7400,8 +7390,8 @@ end
 
 sgs.ai_nullification.ExNihilo = function(self,trick,from,to,positive,null_num)
 	if positive then
-		if r28_call(self,"isEnemy",to) and (r28_call(self,"isWeak",to) or r28_call(to,"hasSkills",sgs.cardneed_skill) or ZishuEffect(to)>0 or r28_call(to,"hasSkill","manjuan"))
-		and not(self.role=="rebel" and not r28_call(self,"hasExplicitRebel") and strategy_known(self.world.turn_count,"turncount")<1 and r28_call(r28_call(self.room,"getCurrent"),"getNextAlive")~=self.player)
+		if donor_call(self,"isEnemy",to) and (donor_call(self,"isWeak",to) or donor_call(to,"hasSkills",sgs.cardneed_skill) or ZishuEffect(to)>0 or donor_call(to,"hasSkill","manjuan"))
+		and not(self.role=="rebel" and not donor_call(self,"hasExplicitRebel") and strategy_known(self.world.turn_count,"turncount")<1 and donor_call(donor_call(self.room,"getCurrent"),"getNextAlive")~=self.player)
 		then return true end--敌方在虚弱、需牌技、漫卷中使用无中生有->命中
 	else
 
@@ -7410,8 +7400,8 @@ end
 
 sgs.ai_nullification.IronChain = function(self,trick,from,to,positive,null_num)
 	if positive then
-		if r28_call(self,"isEnemy",from) and r28_call(self,"isFriend",to)
-		and not r28_call(to,"isChained") and r28_call(self,"hasHeavyDamage",from,nil,to,"F")
+		if donor_call(self,"isEnemy",from) and donor_call(self,"isFriend",to)
+		and not donor_call(to,"isChained") and donor_call(self,"hasHeavyDamage",from,nil,to,"F")
 		then return true end--铁索连环的目标有加伤->命中
 	else
 
@@ -7421,35 +7411,35 @@ end
 sgs.ai_nullification.Duel = function(self,trick,from,to,positive,null_num)
 	if positive then
 		if to==self.player then
-			if r28_call(self,"hasSkills",sgs.masochism_skill)
-			and (r28_call(self.player,"getHp")>1 or r28_call(self,"getCardsNum","Analeptic,Peach")>0)
-			then elseif r28_call(self,"getCardsNum","Slash")<1 then return true end
+			if donor_call(self,"hasSkills",sgs.masochism_skill)
+			and (donor_call(self.player,"getHp")>1 or donor_call(self,"getCardsNum","Analeptic,Peach")>0)
+			then elseif donor_call(self,"getCardsNum","Slash")<1 then return true end
 		end
-		if r28_call(to,"getHp")<2 and r28_call(self,"getRoleEstimate",to)=="rebel"
-		and r28_call(self,"getRoleEstimate",from)=="rebel"
+		if donor_call(to,"getHp")<2 and donor_call(self,"getRoleEstimate",to)=="rebel"
+		and donor_call(self,"getRoleEstimate",from)=="rebel"
 		then return end
-		if r28_call(self,"isFriend",to) then
-			if r28_call(self,"isEnemy",from) and r28_call(self,"isWeak",to)
-			or (r28_call(self,"isWeak",to) or null_num>1 or r28_call(self,"getOverflow")>0 or not r28_call(self,"isWeak"))
+		if donor_call(self,"isFriend",to) then
+			if donor_call(self,"isEnemy",from) and donor_call(self,"isWeak",to)
+			or (donor_call(self,"isWeak",to) or null_num>1 or donor_call(self,"getOverflow")>0 or not donor_call(self,"isWeak"))
 			then return true end
 		end
 	else
-		if r28_call(self,"isEnemy",to)
-		and (r28_call(self,"isWeak",to) or null_num>1 or r28_call(self,"getOverflow")>0 or not r28_call(self,"isWeak"))
+		if donor_call(self,"isEnemy",to)
+		and (donor_call(self,"isWeak",to) or null_num>1 or donor_call(self,"getOverflow")>0 or not donor_call(self,"isWeak"))
 		then return true end
 	end
 end
 
 sgs.ai_nullification.Indulgence = function(self,trick,from,to,positive,null_num)
 	if positive then
-		if r28_call(self,"isFriend",to)
-		and not(r28_call(self,"hasGuanxingEffect",to) or r28_call(to,"isSkipped",sgs.Player_Play))
+		if donor_call(self,"isFriend",to)
+		and not(donor_call(self,"hasGuanxingEffect",to) or donor_call(to,"isSkipped",sgs.Player_Play))
 		then--无观星友方判定区有乐不思蜀->视“突袭”、“巧变”情形而定
-			if r28_call(to,"getHp")-r28_call(to,"getHandcardNum")>=2
-			or r28_call(to,"getHp")>2 and r28_call(to,"hasSkill","tuxi")
-			or null_num<2 and r28_call(self,"getOverflow",to)<-1
-			or not r28_call(to,"isKongcheng") and r28_call(to,"hasSkill","qiaobian")
-			and (r28_call(to,"containsTrick","supply_shortage") or r28_call(self,"willSkipDrawPhase",to))
+			if donor_call(to,"getHp")-donor_call(to,"getHandcardNum")>=2
+			or donor_call(to,"getHp")>2 and donor_call(to,"hasSkill","tuxi")
+			or null_num<2 and donor_call(self,"getOverflow",to)<-1
+			or not donor_call(to,"isKongcheng") and donor_call(to,"hasSkill","qiaobian")
+			and (donor_call(to,"containsTrick","supply_shortage") or donor_call(self,"willSkipDrawPhase",to))
 			then else return true end
 		end
 	else
@@ -7459,14 +7449,14 @@ end
 
 sgs.ai_nullification.SupplyShortage = function(self,trick,from,to,positive,null_num)
 	if positive then
-		if r28_call(self,"isFriend",to)
-		and not(r28_call(self,"hasGuanxingEffect",to) or r28_call(to,"isSkipped",sgs.Player_Draw))
+		if donor_call(self,"isFriend",to)
+		and not(donor_call(self,"hasGuanxingEffect",to) or donor_call(to,"isSkipped",sgs.Player_Draw))
 		then--无观星友方判定区有兵粮寸断->视“鬼道”、“天妒”、“溃围”、“巧变”情形而定
-			if r28_call(self,"hasSkills","guidao|tiandu",to)
-			or r28_call(to,"getMark","@kuiwei")<1
-			or null_num<=1 and r28_call(self,"getOverflow",to)>1
-			or not r28_call(to,"isKongcheng") and r28_call(to,"hasSkill","qiaobian")
-			and (r28_call(to,"containsTrick","indulgence") or r28_call(self,"willSkipPlayPhase",to))
+			if donor_call(self,"hasSkills","guidao|tiandu",to)
+			or donor_call(to,"getMark","@kuiwei")<1
+			or null_num<=1 and donor_call(self,"getOverflow",to)>1
+			or not donor_call(to,"isKongcheng") and donor_call(to,"hasSkill","qiaobian")
+			and (donor_call(to,"containsTrick","indulgence") or donor_call(self,"willSkipPlayPhase",to))
 			then else return true end
 		end
 	else
@@ -7476,8 +7466,8 @@ end
 
 sgs.ai_nullification.GodSalvation = function(self,trick,from,to,positive,null_num)
 	if positive then
-		if r28_call(self,"isEnemy",to) and r28_call(self,"isWeak",to)
-		and r28_call(to,"getLostHp")>0
+		if donor_call(self,"isEnemy",to) and donor_call(self,"isWeak",to)
+		and donor_call(to,"getLostHp")>0
 		then return true end
 	else
 
@@ -7487,13 +7477,13 @@ end
 sgs.ai_nullification.AmazingGrace = function(self,trick,from,to,positive,null_num)
 	if positive then
 		local use = r28_grace_use(self,trick)
-		if r28_call(use.to,"last")~=to and r28_call(self,"isEnemy",to) then
+		if donor_call(use.to,"last")~=to and donor_call(self,"isEnemy",to) then
 			for i=1,null_num do
-				local NP = r28_call(to,"getNextAlive",i)
-				while not r28_call(use.to,"contains",NP) do
-					NP = r28_call(NP,"getNextAlive")
+				local NP = donor_call(to,"getNextAlive",i)
+				while not donor_call(use.to,"contains",NP) do
+					NP = donor_call(NP,"getNextAlive")
 				end
-				if r28_call(self,"isFriend",NP) then
+				if donor_call(self,"isFriend",NP) then
 					local t = {p=0,e=0,s=0,a=0,c=0,i=0}
 					for _,id in sgs.list(r28_grace_ids(self,trick))do
 						local c = r28_grace_card(self,trick,id)
@@ -7503,34 +7493,34 @@ sgs.ai_nullification.AmazingGrace = function(self,trick,from,to,positive,null_nu
 						if isCard("Analeptic",c,NP) then t.a = t.a+1 end
 						if isCard("Crossbow",c,NP) then t.c = t.c+1 end
 						if isCard("Indulgence",c,NP) then t.i = t.i+1 end
-						if r28_call(c,"isDamageCard") then
+						if donor_call(c,"isDamageCard") then
 							for _,friend in sgs.list(self.friends)do
-								if r28_call(to,"canUse",c,friend) and r28_call(to,"getHandcardNum")>2
-								and r28_call(self,"ajustDamage",to,friend,1,c)>1
+								if donor_call(to,"canUse",c,friend) and donor_call(to,"getHandcardNum")>2
+								and donor_call(self,"ajustDamage",to,friend,1,c)>1
 								then return true end
 							end
 						end
 					end
-					if t.p==1 and r28_call(to,"getHp")<r28_call(self,"getBestHp",to)
-					or t.p>0 and (r28_call(self,"isWeak",to) or r28_call(NP,"getHp")<r28_call(self,"getBestHp",NP) and r28_call(self,"getOverflow",NP)<1)
+					if t.p==1 and donor_call(to,"getHp")<donor_call(self,"getBestHp",to)
+					or t.p>0 and (donor_call(self,"isWeak",to) or donor_call(NP,"getHp")<donor_call(self,"getBestHp",NP) and donor_call(self,"getOverflow",NP)<1)
 					then return true end
-					if t.p<1 and not r28_call(self,"willSkipPlayPhase",NP) then
+					if t.p<1 and not donor_call(self,"willSkipPlayPhase",NP) then
 						if t.p>0 then
-							if r28_call(NP,"hasSkills","nosjizhi|jizhi|nosrende|zhiheng")
-							or r28_call(NP,"hasSkill","rende") and not r28_call(NP,"hasUsed","RendeCard")
-							or r28_call(NP,"hasSkill","jilve") and r28_call(NP,"getMark","&bear")>0
+							if donor_call(NP,"hasSkills","nosjizhi|jizhi|nosrende|zhiheng")
+							or donor_call(NP,"hasSkill","rende") and not donor_call(NP,"hasUsed","RendeCard")
+							or donor_call(NP,"hasSkill","jilve") and donor_call(NP,"getMark","&bear")>0
 							then return true end
 						else
 							for _,enemy in sgs.list(self.enemies)do
-								if t.i>0 and not r28_call(self,"willSkipPlayPhase",enemy,true)
-								or t.s>0 and r28_call(to,"distanceTo",enemy)==1 and (r28_call(self,"willSkipPlayPhase",enemy,true) or r28_call(self,"willSkipDrawPhase",enemy,true))
-								or t.a>0 and (r28_call(enemy,"hasWeapon","Axe") or getCardsNum("Axe",enemy,self.player)>0)
+								if t.i>0 and not donor_call(self,"willSkipPlayPhase",enemy,true)
+								or t.s>0 and donor_call(to,"distanceTo",enemy)==1 and (donor_call(self,"willSkipPlayPhase",enemy,true) or donor_call(self,"willSkipDrawPhase",enemy,true))
+								or t.a>0 and (donor_call(enemy,"hasWeapon","Axe") or getCardsNum("Axe",enemy,self.player)>0)
 								then return true
 								elseif t.c>0
 								and getCardsNum("Slash",enemy,self.player)>2 then
 									for _,friend in sgs.list(self.friends)do
-										if r28_call(enemy,"distanceTo",friend)==1
-										and r28_call(self,"slashIsEffective",r28_call(self,"cloneEvaluationCard","slash"),friend,enemy)
+										if donor_call(enemy,"distanceTo",friend)==1
+										and donor_call(self,"slashIsEffective",donor_call(self,"cloneEvaluationCard","slash"),friend,enemy)
 										then return true end
 									end
 								end
@@ -7546,35 +7536,35 @@ sgs.ai_nullification.AmazingGrace = function(self,trick,from,to,positive,null_nu
 end
 
 sgs.ai_can_damagehp.zili = function(self,from,card,to)
-	return not(r28_call(self,"isWeak",to) or r28_call(to,"hasSkill","paiyi"))
-	and r28_call(self,"ajustDamage",from,to,1,card)>0
+	return not(donor_call(self,"isWeak",to) or donor_call(to,"hasSkill","paiyi"))
+	and donor_call(self,"ajustDamage",from,to,1,card)>0
 end
 
 sgs.ai_can_damagehp.wumou = function(self,from,card,to)
-	return r28_call(to,"getMark","&wrath")<7 and not r28_call(self,"isWeak",to)
-	and r28_call(self,"ajustDamage",from,to,1,card)>0
+	return donor_call(to,"getMark","&wrath")<7 and not donor_call(self,"isWeak",to)
+	and donor_call(self,"ajustDamage",from,to,1,card)>0
 end
 
 sgs.ai_can_damagehp.longhun = function(self,from,card,to)
-	return r28_call(to,"getHp")>1 and r28_call(self,"ajustDamage",from,to,1,card)~=0
+	return donor_call(to,"getHp")>1 and donor_call(self,"ajustDamage",from,to,1,card)~=0
 end
 
 sgs.ai_can_damagehp.tianxiang = function(self,from,card,to)
 	local d = {damage=1}
-	d.nature = card and sgs.card_damage_nature[r28_call(card,"getClassName")] or sgs.DamageStruct_Normal
-	return r28_call(self,"canTianxiangHypothesis",d,sgs.Card_MethodDiscard)
+	d.nature = card and sgs.card_damage_nature[donor_call(card,"getClassName")] or sgs.DamageStruct_Normal
+	return donor_call(self,"canTianxiangHypothesis",d,sgs.Card_MethodDiscard)
 end
 
 sgs.ai_nullification.kongcheng = function(self,trick,from,to,positive,null_num)
-	if positive and from and r28_call(self,"isEnemy",from) and r28_call(self,"isFriend",to)
-	and r28_call(self,"getRoleEstimate",from)~="neutral"
-	and r28_call(self.player,"getHandcardNum")<=null_num
+	if positive and from and donor_call(self,"isEnemy",from) and donor_call(self,"isFriend",to)
+	and donor_call(self,"getRoleEstimate",from)~="neutral"
+	and donor_call(self.player,"getHandcardNum")<=null_num
 	then return true end
 end
 
 sgs.ai_nullification.wumou = function(self,trick,from,to,positive,null_num)
-	if r28_call(self.player,"getMark","&wrath")<1 and r28_call(self,"isWeak")
-	or not r28_call(self,"isWeak") and r28_call(to,"objectName")==r28_call(self.player,"objectName") and r28_call(trick,"isDamageCard")
+	if donor_call(self.player,"getMark","&wrath")<1 and donor_call(self,"isWeak")
+	or not donor_call(self,"isWeak") and donor_call(to,"objectName")==donor_call(self.player,"objectName") and donor_call(trick,"isDamageCard")
 	then return false end
 end
 end

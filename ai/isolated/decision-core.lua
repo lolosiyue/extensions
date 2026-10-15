@@ -2886,9 +2886,17 @@ function SmartAIView:canLiegong(to, from)
     return false
 end
 
+-- Slashes without a use limit (any skill, not a skill-name list); nil when the
+-- prototype rules are not projected.
+function SmartAIView:hasUnlimitedSlash(player)
+    player = player or self.player
+    if type(player.isResidueUnlimited) ~= "function" then return nil end
+    return player:isResidueUnlimited("Slash")
+end
+
 function SmartAIView:hasCrossbowEffect(player)
     player = player or self.player
-    if core_query(player,"hasSkills","paoxiao|tenyearpaoxiao|olpaoxiao") or core_query(player,"hasWeapon","crossbow") then return true end
+    if self:hasUnlimitedSlash(player) or core_query(player,"hasWeapon","crossbow") then return true end
     -- The cache lives for one board revision; any state change recomputes it.
     local scope,epoch="revision",tostring(self.world.revision)
     local cache

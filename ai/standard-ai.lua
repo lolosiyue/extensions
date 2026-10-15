@@ -1726,7 +1726,7 @@ sgs.ai_need_damaged.nosyiji = function (self,attacker,player)
 	if not player:hasSkills("nosyiji|tenyearyiji") then return end
 	local need_card = false
 	local current = self.room:getCurrent()
-	if self:hasCrossbowEffect(current) or current:hasSkill("paoxiao") or current:hasFlag("shuangxiong") then need_card = true end
+	if self:hasCrossbowEffect(current) or current:hasFlag("shuangxiong") then need_card = true end
 	if self:hasSkills("jieyin|jijiu",current) and self:getOverflow(current)<=0 then need_card = true end
 	if self:isFriend(current,player) and need_card then return true end
 
@@ -1781,11 +1781,11 @@ noskurou_skill.getTurnUseCard=function(self,inclusive)
 	end
 	local slash = dummyCard()
 	if self.player:getWeapon() and self.player:getWeapon():isKindOf("Crossbow")
-	or self.player:hasSkill("paoxiao") then
+	or self:hasUnlimitedSlash() then
 		for _,enemy in ipairs(self.enemies)do
 			if self.player:canSlash(enemy,slash,true) and self:slashIsEffective(slash,enemy)
 				and not (enemy:hasSkill("kongcheng") and enemy:isKongcheng())
-				and not (enemy:hasSkills("fankui|guixin") and not self.player:hasSkill("paoxiao"))
+				and not (enemy:hasSkills("fankui|guixin") and not self:hasUnlimitedSlash())
 				and not enemy:hasSkills("fenyong|jilei|zhichi")
 				and self:isGoodTarget(enemy,self.enemies,slash) and not self:slashProhibit(slash,enemy) and self.player:getHp()>1 then
 				return sgs.Card_Parse("@NosKurouCard=.")
@@ -3192,7 +3192,7 @@ wusheng_skill.getTurnUseCard = function(self,inclusive)
 
 	local disCrossbow = false
 	if self:getCardsNum("Slash")<2
-	or self.player:hasSkills("paoxiao|tenyearpaoxiao|olpaoxiao")
+	or self:hasUnlimitedSlash()
 	then disCrossbow = true end
 
 	local nuzhan_equip = false
@@ -3441,6 +3441,16 @@ sgs.paoxiao_keep_value = {
 	ThunderSlash = 5.5,
 	ExNihilo = 4.7
 }
+
+sgs.registerTargetRecommend("paoxiao", function(self, from, to, card, skill_owner, ctx)
+	if ctx.isDraw or ctx.isBuff then
+		return 2
+	end
+	if ctx.isTurnOver or ctx.isDebuff or ctx.isDecrease then
+		return getCardsNum("Slash", to, from) >= 2 and 3 or 2
+	end
+	return 0
+end)
 
 sgs.ai_skill_invoke["tishen"] = function(self,data)
 	local cards = self.player:getHandcards()

@@ -1053,7 +1053,7 @@ sgs.ai_need_damaged.nosyiji = function (self,attacker,player)
     if not call(player,"hasSkills","nosyiji|tenyearyiji") then return end
     local need_card = false
     local current = self.room:getCurrent()
-    if self:hasCrossbowEffect(current) or call(current,"hasSkill","paoxiao") or call(current,"getStrategyFlag","shuangxiong") then need_card = true end
+    if self:hasCrossbowEffect(current) or call(current,"getStrategyFlag","shuangxiong") then need_card = true end
     if call(self,"hasSkills","jieyin|jijiu",current) and self:getOverflow(current)<=0 then need_card = true end
     if self:isFriend(current,player) and need_card then return true end
 
@@ -4133,6 +4133,15 @@ sgs.paoxiao_keep_value = {
     ThunderSlash = 5.5,
     ExNihilo = 4.7
 }
+sgs.registerTargetRecommend("paoxiao", function(self, from, to, card, skill_owner, ctx)
+    if ctx.isDraw or ctx.isBuff then
+        return 2
+    end
+    if ctx.isTurnOver or ctx.isDebuff or ctx.isDecrease then
+        return getCardsNum("Slash", to, from) >= 2 and 3 or 2
+    end
+    return 0
+end)
 sgs.longdan_keep_value = {
     Peach = 6,
     Analeptic = 5.8,
@@ -4319,11 +4328,11 @@ sgs.ai_fill_skill.noskurou=function(self,inclusive,request)
     end
     local slash = call(self,"getEvaluationCard","slash")
     if self.player:getWeapon() and self.player:getWeapon():isKindOf("Crossbow")
-    or call(self.player,"hasSkill","paoxiao") then
+    or self:hasUnlimitedSlash() then
         for _,enemy in ipairs(self.enemies)do
             if call(self.player,"canSlash",enemy,slash,true) and self:slashIsEffective(slash,enemy)
                 and not (call(enemy,"hasSkill","kongcheng") and call(enemy,"isKongcheng"))
-                and not (call(enemy,"hasSkills","fankui|guixin") and not call(self.player,"hasSkill","paoxiao"))
+                and not (call(enemy,"hasSkills","fankui|guixin") and not self:hasUnlimitedSlash())
                 and not call(enemy,"hasSkills","fenyong|jilei|zhichi")
                 and self:isGoodTarget(enemy,self.enemies,slash) and not self:slashProhibit(slash,enemy) and call(self.player,"getHp")>1 then
                 return skill_seed(self,"noskurou","NosKurouCard",request)
@@ -5551,7 +5560,7 @@ sgs.ai_fill_skill.wusheng=function(self,inclusive,request)
 
     local disCrossbow = false
     if self:getCardsNum("Slash")<2
-    or call(self.player,"hasSkills","paoxiao|tenyearpaoxiao|olpaoxiao")
+    or self:hasUnlimitedSlash()
     then disCrossbow = true end
 
     local nuzhan_equip = false

@@ -4219,9 +4219,14 @@ function SmartAI:hasLoseHandcardEffective(player,num)
 	return num>self:getLeastHandcardNum(player)
 end
 
+-- 出殺無次數限制（任何技能，不靠技能名單）；國戰只計明置來源，連弩的大額次數不算
+function SmartAI:hasUnlimitedSlash(player)
+	return sgs.Sanguosha:hasResidueUnlimited(player or self.player, dummyCard())
+end
+
 function SmartAI:hasCrossbowEffect(player)
 	player = player or self.player
-	if player:hasSkills("paoxiao|tenyearpaoxiao|olpaoxiao")
+	if self:hasUnlimitedSlash(player)
 	or player:hasWeapon("crossbow") then return true end
 	-- 下面是 已知殺數 × 敵人數 次 correctCardTarget, 每次都要跑全部 TargetMod 技能的 Lua 回呼;
 	-- getUseValue 對每張殺都會問一次, 手牌多時成為平方級熱點。結果在同一個 event 內不變, 故快取。

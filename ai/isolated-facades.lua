@@ -5258,6 +5258,13 @@ function PlayerView:canSlashWithoutCrossbow(slash)
     end
     return self._room._world.self.can_slash_without_crossbow
 end
+-- Engine::hasResidueUnlimited on the printed prototype; nil where prototype rules
+-- are not projected (events), so callers treat it as unknown.
+function PlayerView:isResidueUnlimited(class_name)
+    local rules = type(self._view.prototype_rules) == "table" and self._view.prototype_rules[class_name]
+    if type(rules) ~= "table" or type(rules.residue_unlimited) ~= "boolean" then return nil end
+    return rules.residue_unlimited
+end
 function SmartAIView:readonlyTurnConversionMatchesRequest(card,request)
     return turn_same(turn_saved(self,card).source,turn_source(request))
 end
