@@ -12,5 +12,5 @@ end
 
 -- ===== sk_03
 do
--- sk_moulue is compulsory and has no decisions; no AI callbacks are needed.
+-- skdj_moulue is compulsory and has no decisions; no AI callbacks are needed.
 end

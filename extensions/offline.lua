@@ -31537,11 +31537,11 @@ sgs.LoadTranslationTable { ["shikong"] = "时空对决" }
 
 -- ===== sk_01
 do
-sk_caoxiu = sgs.General(extension_sk, "sk_caoxiu", "wei", 4, true)
-sk_litong = sgs.General(extension_sk, "sk_litong", "wei", 4, true)
-sk_zhoucang = sgs.General(extension_sk, "sk_zhoucang", "shu", 4, true)
+skdj_caoxiu = sgs.General(extension_sk, "skdj_caoxiu", "wei", 4, true)
+skdj_litong = sgs.General(extension_sk, "skdj_litong", "wei", 4, true)
+skdj_zhoucang = sgs.General(extension_sk, "skdj_zhoucang", "shu", 4, true)
 
-sk_zhengzhan = gu_trigger("sk_zhengzhan", {sgs.CardEffected}, function(self, event, room, player, data, owner)
+skdj_zhengzhan = gu_trigger("skdj_zhengzhan", {sgs.CardEffected}, function(self, event, room, player, data, owner)
     local effect = data:toCardEffect()
     if effect.to == owner and effect.card and
         (effect.card:isKindOf("SavageAssault") or effect.card:isKindOf("ArcheryAttack")) then
@@ -31549,9 +31549,9 @@ sk_zhengzhan = gu_trigger("sk_zhengzhan", {sgs.CardEffected}, function(self, eve
         return true
     end
 end, true)
-sk_caoxiu:addSkill(sk_zhengzhan)
+skdj_caoxiu:addSkill(skdj_zhengzhan)
 
-sk_suixia = gu_trigger("sk_suixia", {sgs.DrawNCards}, function(self, event, room, player, data, owner)
+skdj_suixia = gu_trigger("skdj_suixia", {sgs.DrawNCards}, function(self, event, room, player, data, owner)
     if player ~= owner then return end
     local draw = data:toDraw()
     if draw.reason ~= "draw_phase" then return end
@@ -31559,33 +31559,33 @@ sk_suixia = gu_trigger("sk_suixia", {sgs.DrawNCards}, function(self, event, room
     draw.num = draw.num + 1
     data:setValue(draw)
 end, true)
-sk_litong:addSkill(sk_suixia)
+skdj_litong:addSkill(skdj_suixia)
 
-sk_qiangjian = gu_trigger("sk_qiangjian", {sgs.GameStart}, function(self, event, room, player, data, owner)
+skdj_qiangjian = gu_trigger("skdj_qiangjian", {sgs.GameStart}, function(self, event, room, player, data, owner)
     room:sendCompulsoryTriggerLog(owner, self:objectName(), true)
     room:setPlayerProperty(owner, "maxhp", sgs.QVariant(owner:getMaxHp() + 1))
 end, true)
-sk_zhoucang:addSkill(sk_qiangjian)
+skdj_zhoucang:addSkill(skdj_qiangjian)
 
 sgs.LoadTranslationTable {
-    ["sk_caoxiu"] = "曹休[时空对决]", ["&sk_caoxiu"] = "曹休",
-    ["sk_litong"] = "李通[时空对决]", ["&sk_litong"] = "李通",
-    ["sk_zhoucang"] = "周倉[时空对决]", ["&sk_zhoucang"] = "周倉",
-    ["sk_zhengzhan"] = "征戰", [":sk_zhengzhan"] = "鎖定技，南蠻入侵和萬箭齊發對你無效",
-    ["sk_suixia"] = "遂俠", [":sk_suixia"] = "鎖定技，摸牌階段多摸一張",
-    ["sk_qiangjian"] = "強健", [":sk_qiangjian"] = "遊戲開始時增加 1 點體力上限",
+    ["skdj_caoxiu"] = "曹休[时空对决]", ["&skdj_caoxiu"] = "曹休",
+    ["skdj_litong"] = "李通[时空对决]", ["&skdj_litong"] = "李通",
+    ["skdj_zhoucang"] = "周倉[时空对决]", ["&skdj_zhoucang"] = "周倉",
+    ["skdj_zhengzhan"] = "征戰", [":skdj_zhengzhan"] = "鎖定技，南蠻入侵和萬箭齊發對你無效",
+    ["skdj_suixia"] = "遂俠", [":skdj_suixia"] = "鎖定技，摸牌階段多摸一張",
+    ["skdj_qiangjian"] = "強健", [":skdj_qiangjian"] = "遊戲開始時增加 1 點體力上限",
 }
 end
 
 -- ===== sk_02
 do
 -- shikong.md L178-L180: each general has one passive skill.
-sk_dingfeng = sgs.General(extension_sk, "sk_dingfeng", "wu", 4, true)
-sk_quancong = sgs.General(extension_sk, "sk_quancong", "wu", 4, true)
-sk_panfeng = sgs.General(extension_sk, "sk_panfeng", "qun", 4, true)
+skdj_dingfeng = sgs.General(extension_sk, "skdj_dingfeng", "wu", 4, true)
+skdj_quancong = sgs.General(extension_sk, "skdj_quancong", "wu", 4, true)
+skdj_panfeng = sgs.General(extension_sk, "skdj_panfeng", "qun", 4, true)
 
-sk_yongwu = sgs.CreateTargetModSkillV2 {
-    name = "sk_yongwu",
+skdj_yongwu = sgs.CreateTargetModSkillV2 {
+    name = "skdj_yongwu",
     frequency = sgs.Skill_Compulsory,
     pattern = "Slash",
     holder_selector = sgs.CorrectSkill_Primary,
@@ -31595,8 +31595,8 @@ sk_yongwu = sgs.CreateTargetModSkillV2 {
     end,
 }
 
-sk_yaoming = sgs.CreateMaxCardsSkillV2 {
-    name = "sk_yaoming",
+skdj_yaoming = sgs.CreateMaxCardsSkillV2 {
+    name = "skdj_yaoming",
     frequency = sgs.Skill_Compulsory,
     holder_selector = sgs.CorrectSkill_Primary,
     fixed_func = function(self, ctx)
@@ -31604,7 +31604,7 @@ sk_yaoming = sgs.CreateMaxCardsSkillV2 {
     end,
 }
 
-sk_kuangzhan = gu_trigger("sk_kuangzhan", {sgs.Death},
+skdj_kuangzhan = gu_trigger("skdj_kuangzhan", {sgs.Death},
     function(self, event, room, player, data, owner)
         local death = data:toDeath()
         if not death.who or death.who == owner then return end
@@ -31613,42 +31613,42 @@ sk_kuangzhan = gu_trigger("sk_kuangzhan", {sgs.Death},
         room:recover(owner, sgs.RecoverStruct(self:objectName(), owner, 1))
     end, true)
 
-sk_dingfeng:addSkill(sk_yongwu)
-sk_quancong:addSkill(sk_yaoming)
-sk_panfeng:addSkill(sk_kuangzhan)
+skdj_dingfeng:addSkill(skdj_yongwu)
+skdj_quancong:addSkill(skdj_yaoming)
+skdj_panfeng:addSkill(skdj_kuangzhan)
 
 sgs.LoadTranslationTable {
-    ["sk_dingfeng"] = "丁奉[时空对决]",
-    ["&sk_dingfeng"] = "丁奉",
-    ["sk_quancong"] = "全琮[时空对决]",
-    ["&sk_quancong"] = "全琮",
-    ["sk_panfeng"] = "潘鳳[时空对决]",
-    ["&sk_panfeng"] = "潘鳳",
-    ["sk_yongwu"] = "勇武",
-    [":sk_yongwu"] = "鎖定技，殺無距離限制",
-    ["sk_yaoming"] = "邀名",
-    [":sk_yaoming"] = "鎖定技，手牌上限等於體力上限",
-    ["sk_kuangzhan"] = "狂戰",
-    [":sk_kuangzhan"] = "鎖定技，其他角色死亡後回 1 體",
+    ["skdj_dingfeng"] = "丁奉[时空对决]",
+    ["&skdj_dingfeng"] = "丁奉",
+    ["skdj_quancong"] = "全琮[时空对决]",
+    ["&skdj_quancong"] = "全琮",
+    ["skdj_panfeng"] = "潘鳳[时空对决]",
+    ["&skdj_panfeng"] = "潘鳳",
+    ["skdj_yongwu"] = "勇武",
+    [":skdj_yongwu"] = "鎖定技，殺無距離限制",
+    ["skdj_yaoming"] = "邀名",
+    [":skdj_yaoming"] = "鎖定技，手牌上限等於體力上限",
+    ["skdj_kuangzhan"] = "狂戰",
+    [":skdj_kuangzhan"] = "鎖定技，其他角色死亡後回 1 體",
 }
 end
 
 -- ===== sk_03
 do
 -- shikong.md L181: 伏完，謀略（OCR name uncertain）.
-sk_fuwan = sgs.General(extension_sk, "sk_fuwan", "qun", 4, true)
+skdj_fuwan = sgs.General(extension_sk, "skdj_fuwan", "qun", 4, true)
 
-sk_moulue = gu_trigger("sk_moulue", {sgs.EventPhaseStart}, function(self, event, room, player, data, owner)
+skdj_moulue = gu_trigger("skdj_moulue", {sgs.EventPhaseStart}, function(self, event, room, player, data, owner)
     if player ~= owner or owner:getPhase() ~= sgs.Player_Finish then return end
     owner:drawCards(1, self:objectName())
 end, true)
-sk_fuwan:addSkill(sk_moulue)
+skdj_fuwan:addSkill(skdj_moulue)
 
 sgs.LoadTranslationTable {
-    ["sk_fuwan"] = "伏完[时空对决]",
-    ["&sk_fuwan"] = "伏完",
-    ["sk_moulue"] = "謀略",
-    [":sk_moulue"] = "鎖定技，結束階段摸一張",
+    ["skdj_fuwan"] = "伏完[时空对决]",
+    ["&skdj_fuwan"] = "伏完",
+    ["skdj_moulue"] = "謀略",
+    [":skdj_moulue"] = "鎖定技，結束階段摸一張",
 }
 end
 
