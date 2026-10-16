@@ -23,6 +23,44 @@ function AIValue.isDecisionData(value) return AIValue.kind(value) == 'decision_d
 function AIValue.isCard(value) return AIValue.kind(value) == "card" end
 function AIValue.isSkill(value) return AIValue.kind(value) == "skill" end
 
+-- Shared value boundary for direct isolated calls.  Keep this explicit instead
+-- of manufacturing methods from __index: callers can still probe optional
+-- APIs with type(object.method), and provider methods retain their full ABI.
+function AIValue.requireKnown(value, key)
+    if AIUnsupported and AIUnsupported.is(value) then error(value, 0) end
+    if value == nil then ai_unsupported("isolated AI value is unknown", key) end
+    return value
+end
+
+local function call_values(object, method, ...)
+    if object == nil then ai_unsupported("isolated AI receiver is unavailable", method) end
+    local provider = object[method]
+    if type(provider) ~= "function" then
+        ai_unsupported("isolated AI method is unavailable", method)
+    end
+    local result = table.pack(provider(object, ...))
+    if AIUnsupported and AIUnsupported.is(result[1]) then error(result[1], 0) end
+    return result, provider
+end
+
+-- Dynamic source operations may legitimately return nil and multiple values.
+-- Static skill queries call the facade method directly.
+function AIValue.callOptional(object, method, ...)
+    local result = call_values(object, method, ...)
+    return table.unpack(result, 1, result.n)
+end
+
+function AIValue.callKnown(object, method, ...)
+    local result, provider = call_values(object, method, ...)
+    if result[1] == nil then
+        local known_nil = type(SmartAIView) == "table"
+            and type(SmartAIView.isKnownNilStrategyResult) == "function"
+            and SmartAIView.isKnownNilStrategyResult(object, method, provider)
+        if not known_nil then ai_unsupported("isolated AI value is unknown", method) end
+    end
+    return table.unpack(result, 1, result.n)
+end
+
 -- Legacy pointer equality is distinct from card names, printed faces and action
 -- receipts. Players have one stable object per request RoomView; cards require
 -- the native/policy opaque identity explicitly carried by their descriptor.
@@ -191,6 +229,20 @@ local skill_scalar_aliases = {
     amount = "getAmount"
 }
 
+-- Only these raw facade results are required by the value contract.  Optional
+-- lookups (equipment slots, current/lord/player searches, pile names and
+-- constructor probes) remain nil-capable; unknown method names remain absent.
+local required_scalar_methods = {
+    [PlayerView] = {objectName=true, getHp=true, getMaxHp=true, getPhase=true,
+        getHandcardNum=true, getSeat=true, faceUp=true, isLord=true},
+    [CardView] = {objectName=true, getClassName=true, getSuit=true,
+        getNumber=true,
+        isVirtualCard=true, isRed=true, isBlack=true, targetFixed=true},
+    [SkillView] = {objectName=true, isInvalid=true},
+    [RoomView] = {getMode=true, getTurnCount=true}
+}
+local required_missing_methods = setmetatable({}, {__mode = "k"})
+
 local function to_pascal_case(field_name)
     local converted = string.gsub(field_name, "_(%l)", string.upper)
     return string.gsub(converted, "^%l", string.upper)
@@ -234,7 +286,17 @@ local function lua_facade_index(facade, self, key)
     end
     local scalar_methods = rawget(self, "_scalar_methods")
     if type(scalar_methods) == "table" then
-        return scalar_methods[key]
+        local getter = scalar_methods[key]
+        if getter ~= nil then return getter end
+    end
+    local required = required_scalar_methods[facade]
+    if required and required[key] then
+        local missing = required_missing_methods[facade]
+        if not missing then missing = {}; required_missing_methods[facade] = missing end
+        missing[key] = missing[key] or function()
+            ai_unsupported("required facade value is unavailable", key)
+        end
+        return missing[key]
     end
     return nil
 end
@@ -253,7 +315,14 @@ local function new_facade(facade, view, aliases)
         if value_type == "string" or value_type == "number" or value_type == "boolean" then
             local method_name = scalar_method_name(field_name, value_type, aliases)
             if rawget(facade, method_name) == nil and scalar_methods[method_name] == nil then
-                scalar_methods[method_name] = make_scalar_getter(field_name)
+                local raw_getter = make_scalar_getter(field_name)
+                if required_scalar_methods[facade] and required_scalar_methods[facade][method_name] then
+                    scalar_methods[method_name] = function(self)
+                        return AIValue.requireKnown(raw_getter(self), method_name)
+                    end
+                else
+                    scalar_methods[method_name] = raw_getter
+                end
             end
         end
     end
@@ -476,16 +545,31 @@ function PlayerView:getStrategyFlag(name)
         basis="unobserved_private_flag_inactive_prior"}, "Player.getStrategyFlag")
 end
 
+local function foreign_skill_absence_unknown(player)
+    local ai = player._room and player._room._ai
+    local view = rawget(player, "_view")
+    return ai and player:objectName() ~= ai.player:objectName()
+        and (type(view) ~= "table" or view.skills_complete ~= true)
+end
+
 function PlayerView:hasLordSkill(skill_name)
     if type(skill_name) ~= "string" or skill_name == "" then return false end
     local skills = self:getSkills()
-    if not skills then return nil end
+    if not skills then
+        if foreign_skill_absence_unknown(self) then
+            ai_unsupported("foreign skill absence is unknown", skill_name)
+        end
+        return nil
+    end
     for _, skill in ipairs(skills) do
         if skill:objectName() == skill_name then
             local effective = skill:isLordSkillEffective()
             if type(effective) ~= "boolean" then return nil end
             return effective
         end
+    end
+    if foreign_skill_absence_unknown(self) then
+        ai_unsupported("foreign skill absence is unknown", skill_name)
     end
     return false
 end
@@ -504,9 +588,11 @@ function PlayerView:hasSkill(skill_name, include_lose)
     else
         base_name = skill_name
     end
-    local view = rawget(self, "_view")
     local index = rawget(self, "_skill_index")
     if type(index) ~= "table" then
+        if foreign_skill_absence_unknown(self) then
+            ai_unsupported("foreign skill absence is unknown", skill_name)
+        end
         return nil
     end
     if instance_id ~= nil then
@@ -514,10 +600,16 @@ function PlayerView:hasSkill(skill_name, include_lose)
         if type(skill) == "table" and (include_lose == true or not skill.invalid) then
             return true
         end
+        if foreign_skill_absence_unknown(self) then
+            ai_unsupported("foreign skill absence is unknown", skill_name)
+        end
         return false
     end
     for _, skill in ipairs(index.by_name[base_name] or {}) do
         if include_lose == true or not skill.invalid then return true end
+    end
+    if foreign_skill_absence_unknown(self) then
+        ai_unsupported("foreign skill absence is unknown", skill_name)
     end
     return false
 end
@@ -1110,13 +1202,25 @@ function PlayerView:hasSkills(skill_names)
     local view = rawget(self, "_view")
     if type(view) ~= "table" or not AIValue.isList(view.skills) then return nil end
     -- Match Player::hasSkills: OR groups of AND terms, including empty terms.
+    local unknown = false
     for group in string.gmatch(skill_names .. "|", "(.-)|") do
         local matches = true
         for name in string.gmatch(group .. "+", "(.-)%+") do
-            if not self:hasSkill(name) then matches = false break end
+            local ok, value = pcall(self.hasSkill, self, name)
+            if not ok then
+                if AIUnsupported and AIUnsupported.is(value) then
+                    unknown = true
+                    matches = false
+                    break
+                end
+                error(value, 0)
+            end
+            if value == nil then unknown = true; matches = false; break end
+            if not value then matches = false; break end
         end
         if matches then return true end
     end
+    if unknown then ai_unsupported("skill absence is unknown", skill_names) end
     return false
 end
 
@@ -1273,7 +1377,10 @@ end
 function PlayerView:getEquip(slot)
     local view = rawget(self, "_view")
     local slots = type(view) == "table" and view.equip_slots or nil
-    if type(slots) ~= "table" or type(slot) ~= "number" then return nil end
+    if type(slot) ~= "number" then return nil end
+    if type(slots) ~= "table" then
+        ai_unsupported("equipment slots are unavailable", "getEquip")
+    end
     return slots[slot + 1]
 end
 
@@ -2304,6 +2411,7 @@ end
 -- 與造它的成本記下來的一筆紀錄。作者不能把名字變成牌——只能指名一個 conversion_id，
 -- 權威端照自己的紀錄重造同一張並逐欄比對。牌名、class_name 與技能名都不是授權。
 ConversionView = {}
+required_scalar_methods[ConversionView] = {targetFixed=true}
 ConversionView.__index = function(self, key)
     return facade_index(ConversionView, self, key)
 end
@@ -3298,14 +3406,17 @@ function RoomView:getLord()
 end
 
 function RoomView:getLieges(kingdom, lord)
-    if type(kingdom) ~= "string" or (lord ~= nil and not AIValue.isPlayer(lord)) then return nil end
-    local players = self:getAllPlayers()
-    if not players then return nil end
+    if type(kingdom) ~= "string" or (lord ~= nil and not AIValue.isPlayer(lord)) then
+        ai_unsupported("liege query arguments are unavailable", "getLieges")
+    end
+    local players = AIValue.requireKnown(self:getAllPlayers(), "getLieges.players")
     local result = AIList.new({})
     for _, player in ipairs(players) do
         if not lord or player:objectName() ~= lord:objectName() then
             local player_kingdom = player._view.kingdom
-            if type(player_kingdom) ~= "string" then return nil end
+            if type(player_kingdom) ~= "string" then
+                ai_unsupported("liege kingdom is unknown", player:objectName())
+            end
             if player_kingdom == kingdom then result:append(player) end
         end
     end
@@ -3376,53 +3487,65 @@ end
 local function legacy_managed_relation(ai, other, another)
     local policy = ai.world and ai.world.mode_policy
     if type(policy) ~= "table" or policy.legacy_managed ~= true then return false end
-    if not policy.managed or policy.error ~= nil or not other then return true, nil end
+    -- An explicit unknown matrix entry is a legal negative predicate answer;
+    -- unavailable policy, targets and omitted entries remain data gaps.
+    if not policy.managed or policy.error ~= nil then
+        ai_unsupported("legacy managed relation policy is unavailable", "relationTo")
+    end
+    if not other then ai_unsupported("relation target is unavailable", "relationTo") end
     local from = another or ai.player
     if objective_controller_linked(ai, from, other) then return true, "friend" end
     local rows = policy.relations
     local row = type(rows) == "table" and from and rows[from:objectName()]
+    if type(row) ~= "table" then
+        ai_unsupported("legacy managed relation row is unavailable", "relationTo")
+    end
     local relation = type(row) == "table" and row[other:objectName()]
     if relation == "friend" or relation == "enemy" or relation == "neutral" or relation == "unknown" then
         return true, relation
     end
     -- A missing matrix row is a missing capability, distinct from a provided
     -- source-level unknown relation whose friend/enemy predicates are false.
-    return true, nil
+    ai_unsupported("legacy managed relation is unavailable", "relationTo")
 end
 
 function SmartAIView:isFriend(other, another)
     local managed, relation = legacy_managed_relation(self, other, another)
     if managed then
-        if relation == nil then return nil end
+        if relation == "unknown" then return false end
         return relation == "friend"
     end
     if another then
         if objective_controller_linked(self,other,another) then return true end
         local first, second = self:isFriend(other), self:isFriend(another)
-        if first == nil or second == nil then return nil end
+        if first == nil or second == nil then ai_unsupported("friend relation is unavailable", "isFriend") end
         return first == second
     end
     if objective_controller_linked(self,self.player,other) then return true end
     local relation = self:relationTo(other)
-    if relation ~= "friend" and relation ~= "enemy" and relation ~= "neutral" then return nil end
+    if relation ~= "friend" and relation ~= "enemy" and relation ~= "neutral" then
+        ai_unsupported("friend relation is unavailable", "isFriend")
+    end
     return relation == "friend"
 end
 
 function SmartAIView:isEnemy(other, another)
     local managed, relation = legacy_managed_relation(self, other, another)
     if managed then
-        if relation == nil then return nil end
+        if relation == "unknown" then return false end
         return relation == "enemy"
     end
     if another then
         if objective_controller_linked(self,other,another) then return false end
         local first, second = self:isFriend(other), self:isEnemy(another)
-        if first == nil or second == nil then return nil end
+        if first == nil or second == nil then ai_unsupported("enemy relation is unavailable", "isEnemy") end
         return first == second
     end
     if objective_controller_linked(self,self.player,other) then return false end
     local relation = self:relationTo(other)
-    if relation ~= "friend" and relation ~= "enemy" and relation ~= "neutral" then return nil end
+    if relation ~= "friend" and relation ~= "enemy" and relation ~= "neutral" then
+        ai_unsupported("enemy relation is unavailable", "isEnemy")
+    end
     return relation == "enemy"
 end
 
@@ -4079,6 +4202,30 @@ function SmartAIView:getRoleEstimate(player)
     return type(rows) == "table" and AIValue.isPlayer(player) and rows[player:objectName()] or nil
 end
 SmartAIView.assessedRole = SmartAIView.getRoleEstimate
+function PlayerView:getStrategyRole()
+    local getter = self.getRole
+    local public = type(getter) == "function" and getter(self) or nil
+    if public ~= nil then
+        if type(public) ~= "string" or public == "" or public == "unknown" or public == "neutral" then
+            ai_unsupported("public role is unknown", "Player.getStrategyRole")
+        end
+        return public
+    end
+    local ai = self._room and self._room._ai
+    if not ai or type(ai.getRoleEstimate) ~= "function"
+        or type(ai.useKnowledgeEstimate) ~= "function" then
+        ai_unsupported("role estimate is unavailable", "Player.getStrategyRole")
+    end
+    local estimate = ai:getRoleEstimate(self)
+    if AIUnsupported and AIUnsupported.is(estimate) then error(estimate, 0) end
+    if type(estimate) ~= "string" or estimate == "" or estimate == "unknown" or estimate == "neutral" then
+        ai_unsupported("role estimate is unknown", "Player.getStrategyRole")
+    end
+    return ai:useKnowledgeEstimate({value = estimate, status = "estimate",
+        basis = "viewer_role_inference_replaces_private_role",
+        viewer = ai.player:objectName(), observer = ai.player:objectName(),
+        player = self:objectName()}, "Player.getStrategyRole")
+end
 function SmartAIView:getRoleCounts()
     local rows = self.world.role_counts
     return type(rows) == "table" and copy_value(rows) or nil
@@ -8446,33 +8593,113 @@ function SmartAIView:readNamedSourcePriority(key)
  return true,r.value,false
 end
 
--- OLJijiang keeps policy memory as observer-owned values. Only the real native
--- askForCard operation identifies a liege's current source; saved names cannot
--- make a new operation or authorize a response/payment.
-local function oljijiang_source_operation(op)
-    if type(ai_ol_jijiang_state) ~= "function" then
-        ai_unsupported("OLJijiang native response source is unavailable", "oljijiang")
+-- A finite raw-query contract.  These wrappers guard only methods whose result
+-- is required to be complete; optional lookups and strategy projections keep
+-- their existing nil semantics.  Capture the class provider once so a wrapper
+-- never re-enters facade __index or fabricates an unknown method.
+local required_raw_methods = {
+    [PlayerView] = {
+        isAlive=true, isKongcheng=true, isWounded=true, isNude=true,
+        isAllNude=true, getLostHp=true, getCardCount=true,
+        canDiscard=true, containsTrick=true, getJudgingAreaID=true,
+        hasWeapon=true, hasArmorEffect=true, isSkipped=true,
+        isLastHandCard=true, isJilei=true, isLocked=true,
+        isHandVisible=true, canSeeHandcard=true, hasCard=true,
+        distanceTo=true, inMyAttackRange=true, canSlash=true,
+        canPindian=true, aliveCount=true, isMale=true, isFemale=true,
+        isSameKingdom=true, isControlledBy=true, isYourFriend=true,
+        isPublicHegemonyFriend=true, hasEquip=true,
+        hasSkill=true, hasSkills=true, hasLordSkill=true,
+        hasShownSkill=true, hasShownOneGeneral=true,
+        isAdjacentTo=true, isCardLimited=true, isProhibited=true,
+        hasEquipArea=true, hasJudgeArea=true, hasTreasure=true, getChangeSkillState=true,
+        getMark=true, getStrategyMark=true,
+        getStrategyFlag=true, getEquips=true, getJudgingArea=true,
+        getHandcards=true, handCards=true, getCards=true,
+        getVisibleSkillList=true, getAliveSiblings=true, getMarkNames=true,
+        getKnownCards=true, getPileNames=true, getPile=true,
+        getHandPile=true, getHandPileCards=true
+    },
+    [CardView] = {isKindOf=true, isVirtualCard=true, hasFlag=true,
+        getStrategyFlag=true, getNumberString=true, getSuitString=true,
+        getColor=true, getColorString=true, isNDTrick=true, getSubcards=true,
+        isAvailable=true, isAnalepticAvailable=true, isDamageCard=true,
+        targetFilter=true, targetsFeasible=true, canRecast=true},
+    [ConversionView] = {getStrategyFlag=true, hasFlag=true,
+        isKindOf=true, canRecast=true},
+    [RoomView] = {
+        getMode=true, getTurnCount=true, getPlayers=true, getAlivePlayers=true,
+        getAllPlayers=true, getOtherPlayers=true, getDiscardPile=true,
+        getDiscardCards=true
+    }
+}
+
+local required_raw_wrapped = setmetatable({}, {__mode = "k"})
+local function install_required_raw_method(facade, method_name)
+    local provider = rawget(facade, method_name)
+    if type(provider) ~= "function" then return end
+    local wrapped = required_raw_wrapped[facade]
+    if not wrapped then wrapped = {}; required_raw_wrapped[facade] = wrapped end
+    if wrapped[method_name] then return end
+    wrapped[method_name] = true
+    facade[method_name] = function(self, ...)
+        local result = table.pack(provider(self, ...))
+        if AIUnsupported and AIUnsupported.is(result[1]) then error(result[1], 0) end
+        if result[1] == nil then
+            ai_unsupported("required facade value is unavailable", method_name)
+        end
+        return table.unpack(result, 1, result.n)
     end
-    local row = ai_ol_jijiang_state(op)
-    if type(row) ~= "table" or row.kind ~= "ol_jijiang_state" or row.known ~= true then
-        ai_unsupported(type(row) == "table" and row.reason or "invalid OLJijiang response source", "oljijiang")
-    end
-    return row
 end
-function SmartAIView:getOLJijiangResponseSource()
-    local row = oljijiang_source_operation("source_read")
-    if row.present == false then return nil end
-    if row.present ~= true or type(row.player) ~= "string" or type(row.operation) ~= "string" then
-        ai_unsupported("invalid OLJijiang operation source", "oljijiang")
-    end
-    local player = self.room:findPlayerByObjectName(row.player, true)
-    if not player then ai_unsupported("OLJijiang source is absent from the current roster", "oljijiang") end
-    self:remember("ol_jijiang.source", row.player)
-    self:remember("ol_jijiang.operation", row.operation)
-    return player
+
+-- A required strategy history query is distinct from hasUsed's nullable raw
+-- projection, which the shared inference helper still probes explicitly.
+function PlayerView:getStrategyHasUsed(name)
+    return AIValue.requireKnown(self:hasUsed(name), "hasUsed")
 end
-function SmartAIView:clearOLJijiangResponseSource()
-    local row = oljijiang_source_operation("source_clear")
-    if row.present ~= false then ai_unsupported("OLJijiang source clear failed", "oljijiang") end
-    return true
+function PlayerView:getStrategyUsedTimes(name)
+    return AIValue.requireKnown(self:usedTimes(name), "usedTimes")
+end
+
+-- Required source selections are distinct from ordinary nullable lookups.
+function RoomView:getKnownCurrent()
+    return AIValue.requireKnown(self:getCurrent(), "getCurrent")
+end
+function RoomView:getKnownCardPlace(card_id)
+    return AIValue.requireKnown(self:getCardPlace(card_id), "getCardPlace")
+end
+for name, method in pairs({getRequiredKnownCardById="getKnownCardById",
+    getRequiredChoiceCard="getChoiceCard"}) do
+    SmartAIView[name] = function(self, ...)
+        return AIValue.callKnown(self, method, ...)
+    end
+end
+
+-- Raw identity getters remain nullable so shared code can probe visibility.
+-- A strategy that previously required a disclosed identity uses the explicit
+-- known getter; it does not acquire an estimate or any extra private data.
+for name, method in pairs({getKnownRole="getRole", getKnownKingdom="getKingdom",
+    getKnownGeneralName="getGeneralName"}) do
+    PlayerView[name] = function(self, ...)
+        return AIValue.callKnown(self, method, ...)
+    end
+end
+for name, method in pairs({getKnownId="getId", getKnownEffectiveId="getEffectiveId",
+    getKnownSkillName="getSkillName", getKnownTargetModExtra="getTargetModExtra",
+    getKnownTargetModResidue="getTargetModResidue"}) do
+    CardView[name] = function(self, ...)
+        return AIValue.callKnown(self, method, ...)
+    end
+    ConversionView[name] = CardView[name]
+end
+
+-- Cards already expose their viewer-scoped flags through hasFlag.  The explicit
+-- strategy spelling therefore preserves card callers as well as player callers.
+CardView.getStrategyFlag = CardView.hasFlag
+ConversionView.getStrategyFlag = ConversionView.hasFlag or CardView.hasFlag
+
+for facade, methods in pairs(required_raw_methods) do
+    for method_name in pairs(methods) do
+        install_required_raw_method(facade, method_name)
+    end
 end

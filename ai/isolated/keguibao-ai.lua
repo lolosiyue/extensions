@@ -1,6 +1,6 @@
 -- Fixed b6025acc source bodies; request-scoped readonly planning and selected payment.
 local function known(v,k) if AIUnsupported.is(v) then error(v,0) end;if v==nil then ai_unsupported('keguibao value is not observed',k) end;return v end
-local function q(o,k,...) if o==nil then error('attempt to index a nil value',0) end;if AIValue.isPlayer(o) then if k=='getMark' then k='getStrategyMark' elseif k=='hasFlag' then k='getStrategyFlag' end end;if type(o[k])~='function' then ai_unsupported('keguibao method missing',k) end;return known(o[k](o,...),k) end
+
 local function visible(self,id)
  local c=self:getKnownCardById(id);if not c and type(self.getChoiceCard)=='function'then c=self:getChoiceCard(id)end
  return known(c,'keguibao disclosed physical card')
@@ -32,7 +32,7 @@ local function clone(self,name,suit,number,skill)
  if c then recipes[c]=spec end;return c
 end
 local function mutate(self,c,k,v)
- local spec=copy(known(recipes[c],'source readonly constructor'));if k=='add' then spec.subcards[#spec.subcards+1]=type(v)=='number' and v or q(v,'getEffectiveId') else spec[k]=v end
+ local spec=copy(known(recipes[c],'source readonly constructor'));if k=='add' then spec.subcards[#spec.subcards+1]=type(v)=='number' and v or v:getKnownEffectiveId() else spec[k]=v end
  local n=self:evaluateOwnerViewAsCard(spec);self:inheritLegacyCardIdentity(n,c);recipes[n]=spec;return n
 end
 local function proposal(text)if type(text)~='string'or text=='.'then return text end;return printed_spec(text)or text end
@@ -79,8 +79,8 @@ end
 local function nested_kuangfeng(self,prompt)
 	local friendly_fire
 	for _,friend in sgs.list(self.friends_noself)do
-                if q(friend,"getMark","&kuangfeng")==0 and self:damageIsEffective(friend,sgs.DamageStruct_Fire) and friend:faceUp() and not self:willSkipPlayPhase(friend)
-			and (friend:hasSkill("huoji") or friend:hasWeapon("Fan") or (friend:hasSkill("yeyan") and q(friend,"getMark","@flame")>0)) then
+                if friend:getStrategyMark("&kuangfeng")==0 and self:damageIsEffective(friend,sgs.DamageStruct_Fire) and friend:faceUp() and not self:willSkipPlayPhase(friend)
+			and (friend:hasSkill("huoji") or friend:hasWeapon("Fan") or (friend:hasSkill("yeyan") and friend:getStrategyMark("@flame")>0)) then
 			friendly_fire = true
 			break
 		end
@@ -89,7 +89,7 @@ local function nested_kuangfeng(self,prompt)
 	local is_chained = 0
 	local target = {}
 	for _,enemy in sgs.list(self.enemies)do
-                if q(enemy,"getMark","&kuangfeng")==0 and self:damageIsEffective(enemy,sgs.DamageStruct_Fire) then
+                if enemy:getStrategyMark("&kuangfeng")==0 and self:damageIsEffective(enemy,sgs.DamageStruct_Fire) then
 			if enemy:isChained() then
 				is_chained = is_chained+1
 				table.insert(target,enemy)
@@ -119,13 +119,13 @@ local function nested_dawu(self,prompt)
 	local targets = {}
 	local lord = self.room:getLord()
 	self.friends_noself = self:sort(self.friends_noself,"defense")
-        if lord and q(lord,"getMark","&dawu")==0 and self:isFriend(lord) and not sgs.isLordHealthy() and not self.player:isLord() and not lord:hasSkill("buqu")
-		and not (lord:hasSkill("hunzi") and q(lord,"getMark","hunzi")==0 and lord:getHp()>1) then
+        if lord and lord:getStrategyMark("&dawu")==0 and self:isFriend(lord) and not sgs.isLordHealthy() and not self.player:isLord() and not lord:hasSkill("buqu")
+		and not (lord:hasSkill("hunzi") and lord:getStrategyMark("hunzi")==0 and lord:getHp()>1) then
 			table.insert(targets,lord:objectName())
 	else
 		for _,friend in sgs.list(self.friends_noself)do
-                        if q(friend,"getMark","&dawu")==0 and self:isWeak(friend) and not friend:hasSkill("buqu")
-				and not (friend:hasSkill("hunzi") and q(friend,"getMark","hunzi")==0 and friend:getHp()>1) then
+                        if friend:getStrategyMark("&dawu")==0 and self:isWeak(friend) and not friend:hasSkill("buqu")
+				and not (friend:hasSkill("hunzi") and friend:getStrategyMark("hunzi")==0 and friend:getHp()>1) then
 					table.insert(targets,friend:objectName())
 					break
 			end
@@ -169,13 +169,13 @@ end
 
 
 sgs.ai_fill_skill["keguixianjiVS"] = function(self,inclusive,request)
-	if q(self.player,"hasFlag","Forbidkeguixianji") then return false end
+	if self.player:getStrategyFlag("Forbidkeguixianji") then return false end
 	local cards = self.player:getCards("h")
 	cards = sgs.QList2Table(cards)
 	cards = self:sortByUseValue(cards, true)
 	for _, acard in ipairs(cards) do
-		if q(acard,"isKindOf","TrickCard") then
-			return policy(self,"#keguixianjiCard:" .. q(acard,"getEffectiveId")..":")
+		if acard:isKindOf("TrickCard") then
+			return policy(self,"#keguixianjiCard:" .. acard:getKnownEffectiveId()..":")
 		end
 	end
 end
@@ -186,8 +186,8 @@ sgs.ai_skill_use_func["#keguixianjiCard"] = function(card, use, self)
 	end
 	local targets = {}
 	for _, friend in ipairs(self.friends_noself) do
-		if q(friend,"hasLordSkill","keguixianji") then
-			if not q(friend,"hasFlag","keguixianjiInvoked") then
+		if friend:hasLordSkill("keguixianji") then
+			if not friend:getStrategyFlag("keguixianjiInvoked") then
 				if not hasManjuanEffect(friend) then
 					table.insert(targets, friend)
 				end
@@ -215,11 +215,11 @@ function sgs.ai_cardneed.keguihuxiao(to, card, self)
 	local slash_num = 0
 	for _, c in sgs.list(cards) do
 		local flag = string.format("%s_%s_%s", "visible", self.room:getCurrent():objectName(), to:objectName())
-		if q(c,"hasFlag","visible") or q(c,"hasFlag",flag) then
-			if q(c,"isKindOf","Slash") then slash_num = slash_num + 1 end
+		if c:getStrategyFlag("visible") or c:getStrategyFlag(flag) then
+			if c:isKindOf("Slash") then slash_num = slash_num + 1 end
 		end
 	end
-	return card:isRed() and ( q(card,"isKindOf","Slash") or (slash_num > 1 and q(card,"isKindOf","Analeptic")))
+	return card:isRed() and ( card:isKindOf("Slash") or (slash_num > 1 and card:isKindOf("Analeptic")))
 end
 
 function sgs.ai_cardneed.keguilongyin(to, card, self)
@@ -227,11 +227,11 @@ function sgs.ai_cardneed.keguilongyin(to, card, self)
 	local slash_num = 0
 	for _, c in sgs.list(cards) do
 		local flag = string.format("%s_%s_%s", "visible", self.room:getCurrent():objectName(), to:objectName())
-		if q(c,"hasFlag","visible") or q(c,"hasFlag",flag) then
-			if q(c,"isKindOf","Slash") then slash_num = slash_num + 1 end
+		if c:getStrategyFlag("visible") or c:getStrategyFlag(flag) then
+			if c:isKindOf("Slash") then slash_num = slash_num + 1 end
 		end
 	end
-	return card:isBlack() and ( q(card,"isKindOf","Slash") or (slash_num > 1 and q(card,"isKindOf","Analeptic")))
+	return card:isBlack() and ( card:isKindOf("Slash") or (slash_num > 1 and card:isKindOf("Analeptic")))
 end
 
 --鬼关羽
@@ -254,7 +254,7 @@ sgs.ai_skill_playerchosen.keguituodao = function(self, targets)
 		else
 			local inin = 1
 			for _,pp in sgs.qlist(theweaktwo) do
-				if (q(pp,"getHp") < q(qq,"getHp")) then
+				if (pp:getHp() < qq:getHp()) then
 					inin = 0
 				end
 			end
@@ -274,15 +274,15 @@ function sgs.ai_cardneed.keguisheji(to, card, self)
 	local slash_num = 0
 	for _, c in sgs.list(cards) do
 		local flag = string.format("%s_%s_%s", "visible", self.room:getCurrent():objectName(), to:objectName())
-		if q(c,"hasFlag","visible") or q(c,"hasFlag",flag) then
-			if q(c,"isKindOf","Slash") then slash_num = slash_num + 1 end
+		if c:getStrategyFlag("visible") or c:getStrategyFlag(flag) then
+			if c:isKindOf("Slash") then slash_num = slash_num + 1 end
 		end
 	end
-	return  ( q(card,"isKindOf","Slash") or (slash_num > 1 and q(card,"isKindOf","Analeptic")))
+	return  ( card:isKindOf("Slash") or (slash_num > 1 and card:isKindOf("Analeptic")))
 end
 
 sgs.ai_canliegong_skill.keguisheji = function(self, from, to)
-	return q(from,"getPhase") == sgs.Player_Play and q(from,"inMyAttackRange",to, 0, true) and q(to,"inMyAttackRange",from, 0, true)
+	return from:getPhase() == sgs.Player_Play and from:inMyAttackRange(to, 0, true) and to:inMyAttackRange(from, 0, true)
 end
 
 sgs.ai_cardneed.keguijueluone = function(to,card,self)
@@ -292,7 +292,7 @@ end
 
 --鬼华雄
 sgs.ai_can_damagehp.keguixiaoshou = function(self, from, card, to)
-	if from and q(to,"getHp") + self:getAllPeachNum() - self:ajustDamage(from, to, 1, card) > 0
+	if from and to:getHp() + self:getAllPeachNum() - self:ajustDamage(from, to, 1, card) > 0
 		and self:canLoseHp(from, card, to)
 	then
 		return from:getEquips():length() > 0 and self:doDisCard(from, "he", true)
@@ -397,13 +397,13 @@ sgs.ai_skill_use_func["#keguitiqiCard"] = function(card, use, self)
 	end
 
 	for _, card in ipairs(cards) do
-		if not table.contains(use_card, q(card,"getEffectiveId")) then
+		if not table.contains(use_card, card:getKnownEffectiveId()) then
 			table.insert(use_card, card:getId())
 		end
 	end
 	for _,enemy in sgs.list(self.enemies)do
 		if self:objectiveLevel(enemy)>3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy)
-		and q(self.player,"getHp")>q(enemy,"getHp") and q(self.player,"getHp")>1
+		and self.player:getHp()>enemy:getHp() and self.player:getHp()>1
 		then
 			targets:append(enemy)
 			if targets:length() >= #use_card then
@@ -445,7 +445,7 @@ sgs.ai_fill_skill["keguishouye"] = function(self,inclusive,request)
 	cards = self:sortByKeepValue(cards)
 	local to_throw = AIList.new({})
 	for _, acard in ipairs(cards) do
-		to_throw:append(q(acard,"getEffectiveId"))
+		to_throw:append(acard:getKnownEffectiveId())
 	end
 	card_id = to_throw:at(0)
 	if not card_id then
@@ -458,12 +458,12 @@ end
 
 sgs.ai_skill_use_func["#keguishouyeCard"] = function(card, use, self)
 	if not self.player:hasUsed("#keguishouyeCard") then
-		if q(self.player,"getMark","@guijiehuo") > 0  then
+		if self.player:getStrategyMark("@guijiehuo") > 0  then
 			local deathplayer = {}
 			for _,p in sgs.qlist(self.room:getPlayers()) do
-				if q(p,"isDead") and ((source_role(self,p) == source_role(self,self.player))
-				or (source_role(self,p) == "loyalist" and q(self.player,"isLord"))) then
-					table.insert(deathplayer,q(p,"getGeneralName"))
+				if p:isDead() and ((source_role(self,p) == source_role(self,self.player))
+				or (source_role(self,p) == "loyalist" and self.player:isLord())) then
+					table.insert(deathplayer,p:getKnownGeneralName())
 				end
 			end
 			if #deathplayer>0 then
@@ -500,22 +500,22 @@ sgs.ai_use_priority.keguishouyeCard = 9.5
 sgs.ai_card_intention.keguishouyeCard = -80
 
 sgs.ai_fill_skill["keguijiehuo"] = function(self,inclusive,request)
-	if q(self.player,"getMark","@guijiehuo") == 0 then return end
+	if self.player:getStrategyMark("@guijiehuo") == 0 then return end
 	local deathplayer = {}
 	for _,p in sgs.qlist(self.room:getPlayers()) do
-		if q(p,"isDead") and ((source_role(self,p) == source_role(self,self.player))
-		 or (source_role(self,p) == "loyalist" and q(self.player,"isLord"))) then
-			table.insert(deathplayer,q(p,"getGeneralName"))
+		if p:isDead() and ((source_role(self,p) == source_role(self,self.player))
+		 or (source_role(self,p) == "loyalist" and self.player:isLord())) then
+			table.insert(deathplayer,p:getKnownGeneralName())
 		end
 	end
 	if #deathplayer==0 then return end
-	if q(self.player,"getHandcardNum")>=4 then
+	if self.player:getHandcardNum()>=4 then
 		local spade,club,heart,diamond
 		for _,card in sgs.list(self.player:getHandcards())do
-			if q(card,"getSuit")==sgs.Card_Spade then spade = true
-			elseif q(card,"getSuit")==sgs.Card_Club then club = true
-			elseif q(card,"getSuit")==sgs.Card_Heart then heart = true
-			elseif q(card,"getSuit")==sgs.Card_Diamond then diamond = true
+			if card:getSuit()==sgs.Card_Spade then spade = true
+			elseif card:getSuit()==sgs.Card_Club then club = true
+			elseif card:getSuit()==sgs.Card_Heart then heart = true
+			elseif card:getSuit()==sgs.Card_Diamond then diamond = true
 			end
 		end
 		if spade and club and diamond and heart then
@@ -531,10 +531,10 @@ sgs.ai_skill_use_func["#keguijiehuoCard"] = function(card,use,self)
 	local need_cards = {}
 	local spade,club,heart,diamond
 	for _,card in sgs.list(cards)do
-		if q(card,"getSuit")==sgs.Card_Spade and not spade then spade = true table.insert(need_cards,card:getId())
-		elseif q(card,"getSuit")==sgs.Card_Club and not club then club = true table.insert(need_cards,card:getId())
-		elseif q(card,"getSuit")==sgs.Card_Heart and not heart then heart = true table.insert(need_cards,card:getId())
-		elseif q(card,"getSuit")==sgs.Card_Diamond and not diamond then diamond = true table.insert(need_cards,card:getId())
+		if card:getSuit()==sgs.Card_Spade and not spade then spade = true table.insert(need_cards,card:getId())
+		elseif card:getSuit()==sgs.Card_Club and not club then club = true table.insert(need_cards,card:getId())
+		elseif card:getSuit()==sgs.Card_Heart and not heart then heart = true table.insert(need_cards,card:getId())
+		elseif card:getSuit()==sgs.Card_Diamond and not diamond then diamond = true table.insert(need_cards,card:getId())
 		end
 	end
 	if #need_cards<4 then return end
@@ -551,8 +551,8 @@ sgs.ai_skill_choice["kexianjishi-ask"] = function(self, choices, data)
 	local items = choices:split("+")
 	for _, p_name in ipairs(items) do
 		for _,p in sgs.qlist(self.room:getPlayers()) do
-			if q(p,"getGeneralName") == p_name and ((source_role(self,p) == source_role(self,self.player))
-			 or (source_role(self,p) == "loyalist" and q(self.player,"isLord"))) then
+			if p:getKnownGeneralName() == p_name and ((source_role(self,p) == source_role(self,self.player))
+			 or (source_role(self,p) == "loyalist" and self.player:isLord())) then
 				return p_name
 			end
 		end
@@ -568,7 +568,7 @@ sgs.ai_skill_invoke.keguiqinwang = function(self, data)
 	local damage = source_damage(self)
 	if not self:isFriend(target) or (damage.from and self:isFriend(damage.from)) then return false end
 	if self:needToLoseHp(target, damage.from, damage.card) then return false end
-	if q(self.player,"getHandcardNum") + self.player:getEquips():length() < 2 and not self:isWeak(target) then return false end
+	if self.player:getHandcardNum() + self.player:getEquips():length() < 2 and not self:isWeak(target) then return false end
 
 
 	if self:isWeak(target) and not self:isWeak() then return true end
@@ -578,8 +578,8 @@ end
 
 
 sgs.ai_ajustdamage_from.keguiqinwang = function(self, from, to, card, nature)
-    if card and (q(card,"isKindOf","Slash") or q(card,"isKindOf","Duel")) and q(from,"getPhase") == sgs.Player_Play then
-        return q(from,"getMark","@guiqinwang")
+    if card and (card:isKindOf("Slash") or card:isKindOf("Duel")) and from:getPhase() == sgs.Player_Play then
+        return from:getStrategyMark("@guiqinwang")
     end
 end
 
@@ -607,8 +607,8 @@ sgs.ai_fill_skill["kejieguixianjiVS"] = function(self,inclusive,request)
 	cards = sgs.QList2Table(cards)
 	cards = self:sortByUseValue(cards, true)
 	for _, acard in ipairs(cards) do
-		if q(acard,"isKindOf","TrickCard") then
-			return policy(self,"#kejieguixianjiCard:" .. q(acard,"getEffectiveId")..":")
+		if acard:isKindOf("TrickCard") then
+			return policy(self,"#kejieguixianjiCard:" .. acard:getKnownEffectiveId()..":")
 		end
 	end
 end
@@ -619,8 +619,8 @@ sgs.ai_skill_use_func["#kejieguixianjiCard"] = function(card, use, self)
 	end
 	local targets = {}
 	for _, friend in ipairs(self.friends_noself) do
-		if q(friend,"hasLordSkill","kejieguixianji") then
-			if not q(friend,"hasFlag","kejieguixianjiInvoked") then
+		if friend:hasLordSkill("kejieguixianji") then
+			if not friend:getStrategyFlag("kejieguixianjiInvoked") then
 				if not hasManjuanEffect(friend) then
 					table.insert(targets, friend)
 				end
@@ -718,7 +718,7 @@ end
 
 sgs.ai_skill_invoke.kejieguiqideng = function(self, data)
 	local damage = data:toDying().damage
-	return self:getAllPeachNum() < q(self.player,"getHp") or (damage and damage.card and q(damage.card,"hasFlag","zhashicardflag"))
+	return self:getAllPeachNum() < self.player:getHp() or (damage and damage.card and damage.card:getStrategyFlag("zhashicardflag"))
 end
 
 sgs.ai_fill_skill["kejieguizhashi"] = function(self,inclusive,request)
@@ -733,7 +733,7 @@ sgs.ai_skill_use_func["#kejieguizhashiCard"] = function(card, use, self)
 		local targets = {}
 		local distance = use.DefHorse and 1 or 0
 	for _,enemy in ipairs(self.enemies)do
-		if q(enemy,"distanceTo",self.player,distance)<=q(enemy,"getAttackRange") and self:isTiaoxinTarget(enemy)
+		if enemy:distanceTo(self.player, distance)<=enemy:getAttackRange() and self:isTiaoxinTarget(enemy)
 		and self:objectiveLevel(enemy)>3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy, sgs.DamageStruct_Thunder, self.player)
 		then
 			table.insert(targets,enemy)
@@ -745,7 +745,7 @@ sgs.ai_skill_use_func["#kejieguizhashiCard"] = function(card, use, self)
 	self:setPriorityValue("#kejieguizhashiCard",8,"keguibao")
 	if not self.player:getArmor() and not self.player:isKongcheng() then
 		for _,card in sgs.qlist(self.player:getCards("h"))do
-			if q(card,"isKindOf","Armor") and self:evaluateArmor(card)>3 then
+			if card:isKindOf("Armor") and self:evaluateArmor(card)>3 then
 				self:setPriorityValue("#kejieguizhashiCard",5.9,"keguibao")
 				break
 			end
@@ -787,7 +787,7 @@ sgs.ai_skill_playerchosen.kejieguilongyin = function(self, targets)
 		else
 			local inin = 1
 			for _,pp in sgs.qlist(theweaktwo) do
-				if (q(pp,"getHp") < q(qq,"getHp")) then
+				if (pp:getHp() < qq:getHp()) then
 					inin = 0
 				end
 			end
@@ -808,7 +808,7 @@ end
 
 
 sgs.ai_ajustdamage_from.kejieguixiaoyin = function(self, from, to, card, nature)
-	if card and q(card,"isKindOf","Slash") and card:isRed()
+	if card and card:isKindOf("Slash") and card:isRed()
 	then
 		return 1
 	end
@@ -818,11 +818,11 @@ function sgs.ai_cardneed.kejieguixiaoyin(to, card, self)
 	local slash_num = 0
 	for _, c in sgs.list(cards) do
 		local flag = string.format("%s_%s_%s", "visible", self.room:getCurrent():objectName(), to:objectName())
-		if q(c,"hasFlag","visible") or q(c,"hasFlag",flag) then
-			if q(c,"isKindOf","Slash") then slash_num = slash_num + 1 end
+		if c:getStrategyFlag("visible") or c:getStrategyFlag(flag) then
+			if c:isKindOf("Slash") then slash_num = slash_num + 1 end
 		end
 	end
-	return ( q(card,"isKindOf","Slash") or (slash_num > 1 and q(card,"isKindOf","Analeptic")))
+	return ( card:isKindOf("Slash") or (slash_num > 1 and card:isKindOf("Analeptic")))
 end
 
 
@@ -838,12 +838,12 @@ sgs.ai_cardneed.kejieguiwumo = function(to,card,self)
 	return (isCard("Slash",card,to) and card:isRed())
 end
 sgs.ai_card_priority.kejieguiwumo = function(self,card)
-	if q(card,"isKindOf","Slash") and card:isRed()
+	if card:isKindOf("Slash") and card:isRed()
 	then return 0.05 end
 end
 
 sgs.ai_skill_choice.kejieguituodao = function(self, choices, data)
-	if self:getEnemyNumBySeat(self.room:getCurrent(),self.player,self.player,true)>self.room:getAlivePlayers():length()/2 and q(self.player,"getMark","&jieguiwumozhuangbei-SelfClear") == 0 then
+	if self:getEnemyNumBySeat(self.room:getCurrent(),self.player,self.player,true)>self.room:getAlivePlayers():length()/2 and self.player:getStrategyMark("&jieguiwumozhuangbei-SelfClear") == 0 then
 		return "dao"
 	end
 	local players = AIList.new({})
@@ -898,10 +898,10 @@ function sgs.ai_skill_pindian.kejieguisheji(minusecard,self,requestor,maxcard)
 	cards = self:sortByKeepValue(cards)
 	max_value = self:getKeepValue(cards[#cards])
 	local function compare_func1(a,b)
-		return q(a,"getNumber")>q(b,"getNumber")
+		return a:getNumber()>b:getNumber()
 	end
 	local function compare_func2(a,b)
-		return q(a,"getNumber")<q(b,"getNumber")
+		return a:getNumber()<b:getNumber()
 	end
 	if target and self:isFriend(target) and self:isWeak(target) and self.player:objectName() ~= req:objectName() then
 	--if self:isFriend(req) and q(self.player,"getHp")>q(req,"getHp") then
@@ -910,7 +910,7 @@ function sgs.ai_skill_pindian.kejieguisheji(minusecard,self,requestor,maxcard)
 		table.sort(cards,compare_func1)
 	end
 	for _,card in sgs.list(cards)do
-		if max_value>7 or self:getKeepValue(card)<7 or q(card,"isKindOf","EquipCard") then maxcard = card break end
+		if max_value>7 or self:getKeepValue(card)<7 or card:isKindOf("EquipCard") then maxcard = card break end
 	end
 	return maxcard or cards[1]
 end
@@ -921,7 +921,7 @@ sgs.ai_cardneed.kejieguijuelu = sgs.ai_cardneed.slash
 --界鬼华雄
 
 sgs.ai_can_damagehp.kejieguixiaoshou = function(self, from, card, to)
-	if from and q(to,"getHp") + self:getAllPeachNum() - self:ajustDamage(from, to, 1, card) > 0
+	if from and to:getHp() + self:getAllPeachNum() - self:ajustDamage(from, to, 1, card) > 0
 		and self:canLoseHp(from, card, to)
 	then
 		return from:getEquips():length() > 0 and self:doDisCard(from, "e", true)
@@ -969,7 +969,7 @@ sgs.ai_skill_playerchosen.kejieguixiaoshou = function(self, targets)
 end
 
 sgs.ai_can_damagehp.kejieguifuwang = function(self, from, card, to)
-	return q(to,"getHp") + self:getAllPeachNum() - self:ajustDamage(from, to, 1, card) > 0
+	return to:getHp() + self:getAllPeachNum() - self:ajustDamage(from, to, 1, card) > 0
 		and self:canLoseHp(from, card, to) and self.room:getLord():isMale() and from and from:isFemale()
 end
 
@@ -986,7 +986,7 @@ sgs.ai_fill_skill["kejieguishouye"] = function(self,inclusive,request)
 	cards = self:sortByKeepValue(cards)
 	local to_throw = AIList.new({})
 	for _, acard in ipairs(cards) do
-		to_throw:append(q(acard,"getEffectiveId"))
+		to_throw:append(acard:getKnownEffectiveId())
 	end
 	card_id = to_throw:at(0)
 	if not card_id then
@@ -999,12 +999,12 @@ end
 
 sgs.ai_skill_use_func["#kejieguishouyeCard"] = function(card, use, self)
 	if not self.player:hasUsed("#kejieguishouyeCard") then
-		if q(self.player,"getMark","&kejieguijiehuo") < 4 and q(self.player,"hasSkill","kejieguijiehuo")  then
+		if self.player:getStrategyMark("&kejieguijiehuo") < 4 and self.player:hasSkill("kejieguijiehuo")  then
 			local deathplayer = {}
 			for _,p in sgs.qlist(self.room:getPlayers()) do
-				if q(p,"isDead") and ((source_role(self,p) == source_role(self,self.player))
-				or (source_role(self,p) == "loyalist" and q(self.player,"isLord"))) then
-					table.insert(deathplayer,q(p,"getGeneralName"))
+				if p:isDead() and ((source_role(self,p) == source_role(self,self.player))
+				or (source_role(self,p) == "loyalist" and self.player:isLord())) then
+					table.insert(deathplayer,p:getKnownGeneralName())
 				end
 			end
 			if #deathplayer>0 then
@@ -1041,22 +1041,22 @@ sgs.ai_use_priority.kejieguishouyeCard = 9.5
 sgs.ai_card_intention.kejieguishouyeCard = -80
 
 sgs.ai_fill_skill["kejieguijiehuo"] = function(self,inclusive,request)
-	if q(self.player,"getMark","&kejieguijiehuo") >= 4 then return end
+	if self.player:getStrategyMark("&kejieguijiehuo") >= 4 then return end
 	local deathplayer = {}
 	for _,p in sgs.qlist(self.room:getPlayers()) do
-		if q(p,"isDead") and ((source_role(self,p) == source_role(self,self.player))
-		 or (source_role(self,p) == "loyalist" and q(self.player,"isLord"))) then
-			table.insert(deathplayer,q(p,"getGeneralName"))
+		if p:isDead() and ((source_role(self,p) == source_role(self,self.player))
+		 or (source_role(self,p) == "loyalist" and self.player:isLord())) then
+			table.insert(deathplayer,p:getKnownGeneralName())
 		end
 	end
 	if #deathplayer==0 then return end
-	if q(self.player,"getHandcardNum")>=3 then
+	if self.player:getHandcardNum()>=3 then
 		local spade,club,heart,diamond
 		for _,card in sgs.list(self.player:getHandcards())do
-			if q(card,"getSuit")==sgs.Card_Spade then spade = true
-			elseif q(card,"getSuit")==sgs.Card_Club then club = true
-			elseif q(card,"getSuit")==sgs.Card_Heart then heart = true
-			elseif q(card,"getSuit")==sgs.Card_Diamond then diamond = true
+			if card:getSuit()==sgs.Card_Spade then spade = true
+			elseif card:getSuit()==sgs.Card_Club then club = true
+			elseif card:getSuit()==sgs.Card_Heart then heart = true
+			elseif card:getSuit()==sgs.Card_Diamond then diamond = true
 			end
 		end
 		local suit = 0
@@ -1085,10 +1085,10 @@ sgs.ai_skill_use_func["#kejieguijiehuoCard"] = function(card,use,self)
 	local need_cards = {}
 	local spade,club,heart,diamond
 	for _,card in sgs.list(cards)do
-		if q(card,"getSuit")==sgs.Card_Spade and not spade and #need_cards < 3 then spade = true table.insert(need_cards,card:getId())
-		elseif q(card,"getSuit")==sgs.Card_Club and not club and #need_cards < 3 then club = true table.insert(need_cards,card:getId())
-		elseif q(card,"getSuit")==sgs.Card_Heart and not heart and #need_cards < 3 then heart = true table.insert(need_cards,card:getId())
-		elseif q(card,"getSuit")==sgs.Card_Diamond and not diamond and #need_cards < 3 then diamond = true table.insert(need_cards,card:getId())
+		if card:getSuit()==sgs.Card_Spade and not spade and #need_cards < 3 then spade = true table.insert(need_cards,card:getId())
+		elseif card:getSuit()==sgs.Card_Club and not club and #need_cards < 3 then club = true table.insert(need_cards,card:getId())
+		elseif card:getSuit()==sgs.Card_Heart and not heart and #need_cards < 3 then heart = true table.insert(need_cards,card:getId())
+		elseif card:getSuit()==sgs.Card_Diamond and not diamond and #need_cards < 3 then diamond = true table.insert(need_cards,card:getId())
 		end
 	end
 	if #need_cards<3 then return end

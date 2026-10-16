@@ -1,31 +1,31 @@
 -- Fixed b6025acc Maotu effective source; no global Card/Player caches.
 local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("maotu fact unknown",k)end;return v end
-local function q(o,k,...)if o==nil then error("attempt to index a nil value",0)end;if type(o[k])~="function"then ai_unsupported("maotu helper unavailable",k)end;if k=="getMark"and AIValue.isPlayer(o)then k="getStrategyMark"end;return known(o[k](o,...),k)end
+
 local function known_card(self,id)return known(self:getKnownCardById(id),"disclosed card "..tostring(id))end
 -- The viewer's own property; both readers use toString, so absent reads as "".
 local function property(self,key)local v=self.player:getPropertyValue(key);if v==nil then return""end;return v end
 local function clone(self,skill,name,ids)
     return self:evaluateOwnerViewAsCard({source_key=skill,skill=skill,name=name,suit=sgs.Card_NoSuit,number=0,subcards=ids})
 end
-local function proposal(card,skill)return{name=q(card,"objectName"),skill=skill,suit=q(card,"getSuit"),number=q(card,"getNumber"),subcards=q(card,"getSubcards")}end
+local function proposal(card,skill)return{name=card:objectName(),skill=skill,suit=card:getSuit(),number=card:getNumber(),subcards=card:getSubcards()}end
 local function response_cost(self,skill,ids)
     if skill=="mtweiqie" then
         -- The source returns a Slash proposal. Native MTWeiqie creates a
         -- DummyCard selection; do not silently replace the source policy card.
-        return q(clone(self,skill,"slash",ids),"getLegacyStringKey")
+        return (clone(self,skill,"slash",ids)):getLegacyStringKey()
     end
     return self:bindSkillCard(skill,ids)
 end
 local function response_use(self,skill,ids,names,request,policy)
     if skill=="mtxianzheng" then
-        request=q(self,"getSkillAction")
-        if q(request,"getActivationSkillName")~=skill then ai_unsupported("Maotu selected inquiry differs",skill)end
+        request=self:getSkillAction()
+        if request:getActivationSkillName()~=skill then ai_unsupported("Maotu selected inquiry differs",skill)end
     end
     local card=self:bindSkillCard(skill,ids,request)
-    if policy and (q(card,"objectName")~=q(policy,"objectName") or q(card,"getClassName")~=q(policy,"getClassName")
-        or q(card,"getSuit")~=q(policy,"getSuit") or q(card,"getNumber")~=q(policy,"getNumber")
-        or q(card,"getSkillName",false)~=skill)then ai_unsupported("Maotu native selected face differs",skill)end
-    local spec=q(card,"toCardSpec")
+    if policy and (card:objectName()~=policy:objectName() or card:getClassName()~=policy:getClassName()
+        or card:getSuit()~=policy:getSuit() or card:getNumber()~=policy:getNumber()
+        or card:getKnownSkillName(false)~=skill)then ai_unsupported("Maotu native selected face differs",skill)end
+    local spec=card:toCardSpec()
     if policy then
         if not AIValue.isList(spec.subcards)or #spec.subcards~=#ids then ai_unsupported("Maotu selected costs differ",skill)end
         for i,id in ipairs(ids)do if spec.subcards[i]~=id then ai_unsupported("Maotu selected order differs",skill)end end
@@ -50,14 +50,14 @@ end
 
 sgs.ai_skill_choice.mtwenqi = function(self,choices,data)
 	local items = choices:split("+")
-	if not q(self.player,"faceUp")
+	if not self.player:faceUp()
 	then return items[2] end
 	local to = data:toPlayer()
 	local suits = {}
 	for c,id in sgs.list(to:getPile("yhjyye"))do
 		c = known_card(self,id)
-		if not table.contains(suits,q(c,"getSuit"))
-		then table.insert(suits,q(c,"getSuit")) end
+		if not table.contains(suits,c:getSuit())
+		then table.insert(suits,c:getSuit()) end
 	end
 	suits = 4-#suits
 	if to:objectName()==self.player:objectName()
@@ -70,14 +70,14 @@ sgs.ai_guhuo_card.mtzhihe = function(self,cname,class_name)
 	local suits = {}
 	for c,id in sgs.list(self.player:getPile("yhjyye"))do
 		c = known_card(self,id)
-		if not table.contains(suits,q(c,"getSuit"))
-		then table.insert(suits,q(c,"getSuit")) end
+		if not table.contains(suits,c:getSuit())
+		then table.insert(suits,c:getSuit()) end
 	end
 	suits = 4-#suits
 	if suits<1 then suits = 1 end
 	for d,h in sgs.list(self:sortByKeepValue(self.player:getCards("h"),nil,"l"))do
-		if cs:length()<1 or q(h,"getSuit")==known_card(self,cs:at(0)):getSuit()
-		then cs:append(q(h,"getEffectiveId")) end
+		if cs:length()<1 or h:getSuit()==known_card(self,cs:at(0)):getSuit()
+		then cs:append(h:getKnownEffectiveId()) end
 		if cs:length()>=suits
 		then
 			d = clone(self,"mtzhihe",cname,cs)
@@ -91,9 +91,9 @@ sgs.ai_fill_skill.mtzhihe = function(self,inclusive,request)
 	local suits = {}
 	for c,id in sgs.list(self.player:getPile("yhjyye"))do
 		c = known_card(self,id)
-		if not table.contains(suits,q(c,"getSuit"))
-		then table.insert(suits,q(c,"getSuit")) end
-		if q(c,"isKindOf","BasicCard") or c:isNDTrick()
+		if not table.contains(suits,c:getSuit())
+		then table.insert(suits,c:getSuit()) end
+		if c:isKindOf("BasicCard") or c:isNDTrick()
 		then table.insert(cards,c) end
 	end
 	if #cards<1 then return end
@@ -101,18 +101,18 @@ sgs.ai_fill_skill.mtzhihe = function(self,inclusive,request)
 	local cs = AIList.new({})
 	if suits<1 then suits = 1 end
 	for d,h in sgs.list(self:sortByKeepValue(self.player:getCards("h"),nil,"l"))do
-		if cs:length()<1 or q(h,"getSuit")==known_card(self,cs:at(0)):getSuit()
-		then cs:append(q(h,"getEffectiveId")) end
+		if cs:length()<1 or h:getSuit()==known_card(self,cs:at(0)):getSuit()
+		then cs:append(h:getKnownEffectiveId()) end
 		if cs:length()>=suits then break end
 	end
 	if cs:length()<suits then return end
 	suits = {}
 	for d,c in sgs.list(cards)do
-		d = self:evaluateTurnConversion("mtzhihe",q(c,"getClassName"),{name=c:objectName(),skill="mtzhihe",suit=sgs.Card_NoSuit,number=0,subcards=cs},request)
+		d = self:evaluateTurnConversion("mtzhihe",c:getClassName(),{name=c:objectName(),skill="mtzhihe",suit=sgs.Card_NoSuit,number=0,subcards=cs},request)
 		local dc = self:aiUseCard(d)
 		if dc.card
 		then
-			if dc.to:length()<1 and q(d,"canRecast")
+			if dc.to:length()<1 and d:canRecast()
 			then continue end
 			return d
 		end
@@ -129,39 +129,39 @@ sgs.ai_skill_cardask["@mtjiye"] = function(self,data,pattern,prompt)
 		then
 			for d,id in sgs.list(yhjyye)do
 				d = known_card(self,id)
-				if q(d,"getSuit")==q(c,"getSuit")
+				if d:getSuit()==c:getSuit()
 				then can = false break end
 			end
 			for d,id in sgs.list(tocs)do
 				d = known_card(self,id)
-				if q(d,"getSuit")==q(c,"getSuit")
+				if d:getSuit()==c:getSuit()
 				then can = false break end
 			end
 			if can
 			then
-				table.insert(tocs,q(c,"getEffectiveId"))
+				table.insert(tocs,c:getKnownEffectiveId())
 			end
 		end
 	end
 	for can,c in sgs.list(cs)do
     	if #tocs<#cs/2
-		and (q(c,"isKindOf","BasicCard") or c:isNDTrick())
+		and (c:isKindOf("BasicCard") or c:isNDTrick())
 		then
 			for d,id in sgs.list(yhjyye)do
 				d = known_card(self,id)
-				if q(d,"getSuit")==q(c,"getSuit")
+				if d:getSuit()==c:getSuit()
 				or d:objectName()==c:objectName()
 				then can = false break end
 			end
 			for d,id in sgs.list(tocs)do
 				d = known_card(self,id)
-				if q(d,"getSuit")==q(c,"getSuit")
+				if d:getSuit()==c:getSuit()
 				or d:objectName()==c:objectName()
 				then can = false break end
 			end
 			if can
 			then
-				table.insert(tocs,q(c,"getEffectiveId"))
+				table.insert(tocs,c:getKnownEffectiveId())
 			end
 		end
 	end
@@ -177,15 +177,15 @@ sgs.ai_skill_cardask["@mtlunhuan-discard"] = function(self,data,pattern,prompt)
     local selected = {}
 	local to = data:toPlayer()
 	for _,c in sgs.list(self:sortByKeepValue(self.player:getCards("he")))do
-		if table.contains(record,q(c,"getSuitString"))
+		if table.contains(record,c:getSuitString())
 		then
-			table.insert(selected,q(c,"getEffectiveId"))
-			table.removeOne(record,q(c,"getSuitString"))
+			table.insert(selected,c:getKnownEffectiveId())
+			table.removeOne(record,c:getSuitString())
 		end
 	end
-    if #selected>=q(to,"getHp")
+    if #selected>=to:getHp()
 	and #selected>=#record
-	and #selected-q(to,"getHp")<2
+	and #selected-to:getHp()<2
 	and self:isEnemy(to) then return response_cost(self,"mtlunhuan",selected) end
 	return "."
 end
@@ -194,12 +194,12 @@ sgs.ai_skill_playerchosen.mtlunhuan = function(self,players)
 	local destlist = self:sort(players,"hp")
 	for _,target in sgs.list(destlist)do
 		if self:isEnemy(target)
-		and q(target,"getHandcardNum")>=q(target,"getHp")
+		and target:getHandcardNum()>=target:getHp()
 		then return target end
 	end
 	for _,target in sgs.list(destlist)do
 		if not self:isFriend(target)
-		and q(target,"getHandcardNum")>=q(target,"getHp")
+		and target:getHandcardNum()>=target:getHp()
 		then return target end
 	end
 end
@@ -221,17 +221,17 @@ sgs.ai_skill_cardask["@mtguqu-discard1"] = function(self,data,pattern,prompt)
     local selected = {}
 	local cs = {}
 	for _,c in sgs.list(self:sortByKeepValue(self.player:getCards("he")))do
-		if table.contains(record,q(c,"getSuitString"))
+		if table.contains(record,c:getSuitString())
 		then
 			local can = true
 			for _,d in sgs.list(cs)do
-				if q(d,"getSuit")==q(c,"getSuit")
+				if d:getSuit()==c:getSuit()
 				then can = false break end
 			end
 			if can
 			then
 				table.insert(cs,c)
-				table.insert(selected,q(c,"getEffectiveId"))
+				table.insert(selected,c:getKnownEffectiveId())
 			end
 		end
 	end
@@ -247,10 +247,10 @@ end
 
 sgs.ai_skill_use_func.mtguzhao = function(card,use,self)
 	local mc = self:getMaxCard()
-	if not (mc and q(mc,"getNumber")>9) then return end
+	if not (mc and mc:getNumber()>9) then return end
 	self.enemies = self:sort(self.enemies,"hp")
 	for _,p in sgs.list(self.enemies)do
-		if q(self.player,"canPindian",p)
+		if self.player:canPindian(p)
 		then
 			if use.to:length()<1
 			then
@@ -258,7 +258,7 @@ sgs.ai_skill_use_func.mtguzhao = function(card,use,self)
 				use.to:append(p)
 			else
 				for _,to in sgs.list(use.to)do
-					if q(p,"isAdjacentTo",to)
+					if p:isAdjacentTo(to)
 					then use.to:append(p) break end
 				end
 			end
@@ -276,7 +276,7 @@ sgs.ai_skill_invoke.mtjiawei = function(self,data)
 	local to = self.room:findPlayerByObjectName(str[2])
 	if to and self:isFriend(to)
 	then
-		return q(self.player,"getHandcardNum")>q(to,"getHandcardNum")
+		return self.player:getHandcardNum()>to:getHandcardNum()
 	end
 end
 
@@ -284,7 +284,7 @@ sgs.ai_skill_playerchosen.mtjiawei = function(self,players)
 	local destlist = self:sort(players,"hp")
 	for _,target in sgs.list(destlist)do
 		if self:isFriend(target)
-		and q(target,"getHandcardNum")>q(self.player,"getHandcardNum")
+		and target:getHandcardNum()>self.player:getHandcardNum()
 		then return target end
 	end
 end
@@ -293,12 +293,12 @@ sgs.ai_skill_playerchosen.mtfengshang = function(self,players)
 	local destlist = self:sort(players,"hp")
 	for _,target in sgs.list(destlist)do
 		if self:isFriend(target)
-		and q(target,"getHandcardNum")<=q(self.player,"getHandcardNum")
+		and target:getHandcardNum()<=self.player:getHandcardNum()
 		then return target end
 	end
 	for _,target in sgs.list(destlist)do
 		if not self:isEnemy(target)
-		and q(target,"getHandcardNum")<=q(self.player,"getHandcardNum")
+		and target:getHandcardNum()<=self.player:getHandcardNum()
 		then return target end
 	end
 end
@@ -308,7 +308,7 @@ sgs.ai_skill_invoke.mtrenyu_jin = function(self,data)
     if self:isFriend(use.from)
 	then return true
 	elseif self:isWeak()
-	and q(use.card,"isDamageCard")
+	and use.card:isDamageCard()
 	then return true end
 end
 
@@ -323,7 +323,7 @@ end
 sgs.ai_skill_playerchosen.mtfuzhan = function(self,players)
 	local destlist = self:sort(players,"hp")
 	local mc = self:getMaxCard()
-	if not (mc and q(mc,"getNumber")>9)
+	if not (mc and mc:getNumber()>9)
 	then return end
 	for _,to in sgs.list(destlist)do
 		if self:isEnemy(to)
@@ -341,21 +341,21 @@ sgs.ai_skill_cardask["@mtfeiren"] = function(self,data)
 	cards = self:sortByKeepValue(cards)
 	local use = data:toCardUse()
    	for _,h in sgs.list(cards)do
-   		if self:getUseValue(h)<self:getUseValue(use.card) and q(use.card,"isAvailable",self.player)
-		or use.card:subcardsLength()>1 then return q(h,"getEffectiveId") end
+        if self:getUseValue(h)<self:getUseValue(use.card) and use.card:isAvailable(self.player)
+		or use.card:subcardsLength()>1 then return h:getKnownEffectiveId() end
 	end
 end
 
 sgs.ai_view_as.mtfeiren = function(card,player,card_place,class_name)
-	if q(card,"isKindOf","EquipCard")
+	if card:isKindOf("EquipCard")
 	and card_place~=sgs.Player_PlaceSpecial
 	then
-    	return {name="slash",skill="mtfeiren",suit=sgs.Card_NoSuit,number=0,subcards={q(card,"getEffectiveId")}}
+        return {name="slash",skill="mtfeiren",suit=sgs.Card_NoSuit,number=0,subcards={card:getKnownEffectiveId()}}
 	end
 end
 
 sgs.ai_skill_use["@@mtrenyi2"] = function(self,prompt,method,pattern,request)
-	local d = q(self.player,"getMark","mtrenyi_id-Clear")-1
+	local d = self.player:getStrategyMark("mtrenyi_id-Clear")-1
 	d = known_card(self,d)
     local c = clone(self,"_mtrenyi",d:objectName(),{})
     local dummy = self:aiUseCard(c)
@@ -386,11 +386,11 @@ sgs.ai_skill_use["@@mtrenyi1"] = function(self,prompt,method,pattern,request)
     local cs = self.player:getCards("he")
     cs = self:sortByUseValue(cs,true)
     local tocs = {}
-	local n = q(self.player,"getMark","mtrenyiShowNum-Clear")
+	local n = self.player:getStrategyMark("mtrenyiShowNum-Clear")
 	for _,c in sgs.list(cs)do
     	if #tocs<n
 		then
-			table.insert(tocs,q(c,"getEffectiveId"))
+			table.insert(tocs,c:getKnownEffectiveId())
 		end
 	end
 	cs = {}
@@ -401,7 +401,7 @@ sgs.ai_skill_use["@@mtrenyi1"] = function(self,prompt,method,pattern,request)
 		end
 	end
 	for _,p in sgs.list(self.room:getOtherPlayers(self.player))do
-		if #cs<n and not self:isEnemy(p) and #tocs<q(self.player,"getCardCount")/2
+		if #cs<n and not self:isEnemy(p) and #tocs<self.player:getCardCount()/2
 		and not table.contains(cs,p:objectName())
 		then table.insert(cs,p:objectName()) end
 	end
@@ -420,12 +420,12 @@ sgs.ai_skill_discard.mtdianpei = function(self,x,n)
    	for _,h in sgs.list(cards)do
    		if #to_cards<n
 		then
-         	table.insert(to_cards,q(h,"getEffectiveId"))
+            table.insert(to_cards,h:getKnownEffectiveId())
 		end
 	end
 	local to = self.room:getCurrent()
 	if #to_cards<#cards/2 and self:isEnemy(to)
-	and q(to,"getHp")<3 then return to_cards end
+	and to:getHp()<3 then return to_cards end
 	return {}
 end
 
@@ -437,7 +437,7 @@ sgs.ai_skill_playerchosen.mtdianpei = function(self,players)
 	end
 	for _,target in sgs.list(destlist)do
 		if self:isEnemy(target)
-		and q(self.player,"getHandcardNum")<q(self.player,"getHp")
+		and self.player:getHandcardNum()<self.player:getHp()
 		then return target end
 	end
 	for _,target in sgs.list(destlist)do
@@ -469,7 +469,7 @@ end
 
 sgs.ai_skill_use_func.mtzhilie = function(card,use,self)
 	for _,p in sgs.list(self.enemies)do
-		if q(p,"getHandcardNum")>0
+		if p:getHandcardNum()>0
 		and use.to
 		then
 			use.card = self:bindSkillCard("mtzhilie",{},nil,nil,"ActiveSkillCard")
@@ -504,7 +504,7 @@ sgs.ai_skill_cardask["@mtweiqie"] = function(self,data,pattern,prompt)
 	end
 	for can,c in sgs.list(cs)do
 		for _,d in sgs.list(tocs)do
-			if Judge(q(c,"getNumber"),q(d,"getNumber"))~=1
+			if Judge(c:getNumber(),d:getNumber())~=1
 			then can = false break end
 		end
     	if can
@@ -514,7 +514,7 @@ sgs.ai_skill_cardask["@mtweiqie"] = function(self,data,pattern,prompt)
 	end
 	if #tocs>0
 	then
-		local ids={};for _,c in ipairs(tocs)do ids[#ids+1]=q(c,"getEffectiveId")end
+		local ids={};for _,c in ipairs(tocs)do ids[#ids+1]=c:getKnownEffectiveId()end
         return response_cost(self,"mtweiqie",ids)
 	end
 	return "."
@@ -538,8 +538,8 @@ sgs.ai_fill_skill.mtjieli = function(self,inclusive,request)
 	local cs = {}
 	for _,h in sgs.list(self:sortByUseValue(cards,nil,"l"))do
 		if #cs<1
-		or q(h,"getColor")==known_card(self,cs[1]):getColor()
-		then table.insert(cs,q(h,"getEffectiveId")) end
+		or h:getColor()==known_card(self,cs[1]):getColor()
+		then table.insert(cs,h:getKnownEffectiveId()) end
 	end
 	if #cs<1 then return end
 	-- The proxy declares the colour; every hand card of it becomes the Duel.
@@ -549,9 +549,9 @@ end
 sgs.ai_skill_use_func.mtjieli = function(card,use,self)
 	local ids = {}
 	for _,h in sgs.list(self.player:getHandcards())do
-		if card:getUserString()=="red" and q(h,"isRed")
-		or card:getUserString()=="black" and q(h,"isBlack")
-		then table.insert(ids,q(h,"getEffectiveId")) end
+		if card:getUserString()=="red" and h:isRed()
+		or card:getUserString()=="black" and h:isBlack()
+		then table.insert(ids,h:getKnownEffectiveId()) end
 	end
 	local d = self:aiUseCard(clone(self,"mtjieli","duel",ids))
 	if d.card
@@ -606,7 +606,7 @@ sgs.ai_skill_invoke.mtxianzheng = function(self,data)
 		if p and c
 		then
 			write(self,"mtxianzheng_to",p)
-			write(self,"mtxianzheng_cid",q(c,"getEffectiveId"))
+			write(self,"mtxianzheng_cid",c:getKnownEffectiveId())
 			return true
 		end
 	end
@@ -615,7 +615,7 @@ end
 sgs.ai_skill_use["@@mtxianzheng"] = function(self,prompt)
 	local cards = self:addHandPile("he")
 	cards = self:sortByKeepValue(cards,nil,"l")
-    local ids={q(cards[1],"getEffectiveId")}
+    local ids={cards[1]:getKnownEffectiveId()}
     local c = clone(self,"mtxianzheng","slash",ids)
     local dummy = self:aiUseCard(c)
    	if dummy.card
@@ -637,12 +637,12 @@ sgs.ai_skill_choice.mtliaoshi = function(self,choices,data)
 	local items = choices:split("+")
 	write(self,"mttongyi_to",nil)
 	if table.contains(items,"lose")
-	and q(self.player,"hasSkill","mttongyi")
+	and self.player:hasSkill("mttongyi")
 	and not self:isWeak()
 	then
 		for _,ep in sgs.list(self.enemies)do
-			if q(ep,"getHp")<2
-			and q(ep,"getMark","mttongyi_target-Keep")<1
+			if ep:getHp()<2
+			and ep:getStrategyMark("mttongyi_target-Keep")<1
 			then
 				write(self,"mttongyi_to",ep)
 				return "lose"
@@ -650,12 +650,12 @@ sgs.ai_skill_choice.mtliaoshi = function(self,choices,data)
 		end
 	end
 	if table.contains(items,"discard")
-	and q(self.player,"hasSkill","mttongyi")
-	and q(self.player,"getCardCount")>2
+	and self.player:hasSkill("mttongyi")
+	and self.player:getCardCount()>2
 	then
 		for _,ep in sgs.list(self.enemies)do
-			if q(ep,"getCardCount")==2
-			and q(ep,"getMark","mttongyi_target-Keep")<1
+			if ep:getCardCount()==2
+			and ep:getStrategyMark("mttongyi_target-Keep")<1
 			then
 				write(self,"mttongyi_to",ep)
 				return "discard"
@@ -663,12 +663,12 @@ sgs.ai_skill_choice.mtliaoshi = function(self,choices,data)
 		end
 	end
 	if table.contains(items,"recover")
-	and q(self.player,"hasSkill","mttongyi")
-	and q(self.player,"getCardCount")>2
+	and self.player:hasSkill("mttongyi")
+	and self.player:getCardCount()>2
 	then
 		for _,ep in sgs.list(self.friends_noself)do
-			if self:isWeak(ep) and q(ep,"getLostHp")>0
-			and q(ep,"getMark","mttongyi_target-Keep")<1
+			if self:isWeak(ep) and ep:getLostHp()>0
+			and ep:getStrategyMark("mttongyi_target-Keep")<1
 			then
 				write(self,"mttongyi_to",ep)
 				return "recover"

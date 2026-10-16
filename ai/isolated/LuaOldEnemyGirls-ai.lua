@@ -1,17 +1,4 @@
 -- Fixed b6025acc LuaOldEnemyGirls policy. No native userdata or parsed action strings.
-local function checked(v)
-    if AIUnsupported and AIUnsupported.is(v) then error(v,0) end
-    return v
-end
-local function call(o,m,...)
-    if not o or type(o[m])~="function" then ai_unsupported("OldEnemyGirls query unavailable",m) end
-    return checked(o[m](o,...))
-end
-local function q(o,m,...)
-    local v=call(o,m,...)
-    if v==nil then ai_unsupported("OldEnemyGirls fact is unknown",m) end
-    return v
-end
 local function context(self)
     local c=self.request and self.request.options and self.request.options.context
     local row=c and c.lua_old_enemy_girls
@@ -20,7 +7,7 @@ local function context(self)
 end
 local function mark(player,name)
     -- getStrategyMark records an explicit viewer prior when a public zero was not projected.
-    return q(player,"getStrategyMark",name)
+    return player:getStrategyMark(name)
 end
 local function getOEMark(player)
     if mark(player,"@LuaPublicEnemy")>0 then return nil end
@@ -28,7 +15,7 @@ local function getOEMark(player)
 end
 local function others(player,room)
     -- All package callers use only membership/emptiness; room ordering has no effect.
-    return q(room,"getOtherPlayers",player)
+    return room:getOtherPlayers(player)
 end
 local function findMyOE(player,room)
     local key=getOEMark(player)
@@ -46,34 +33,34 @@ local function getOEList(player,room)
     return list
 end
 local function paid(self,skill,costs,request)
-    return q(self,"bindSkillCard",skill,costs,request,nil,"#"..skill.."Card")
+    return self:bindSkillCard(skill, costs, request, nil, "#"..skill.."Card")
 end
 local function answer(self,id,target,request)
     if request and type(request.getActivationSkillName)~="function" then request=AILegacyRequest.new(request,self.room) end
     local plan=AIUsePlan.new()
     plan.card=paid(self,"LuaHuowei",{id},request)
     plan.to=AIList.new({target})
-    return q(plan,"toAnswer")
+    return plan:toAnswer()
 end
 local function yanling(self)
     local row=context(self)
     if row.targetlist_known_nil~=true then ai_unsupported("donor free targetlist is not known nil","LuaYanling.targetlist") end
-    if row.yanling_card==false then return q(self,"getEvaluationCard","slash") end
+    if row.yanling_card==false then return self:getEvaluationCard("slash") end
     if type(row.yanling_card)~="table" then ai_unsupported("owner LuaYanling card tag unknown","LuaYanling") end
     return CardView.new(row.yanling_card)
 end
 sgs.ai_fill_skill.LuaFengxi = function(self,inclusive,request)
-    if not getOEList(self.player,self.room):isEmpty() and not q(self.player,"hasUsed","#LuaFengxiCard") then
-        return q(self,"legacySkillSeed","LuaFengxi","#LuaFengxiCard",request)
+    if not getOEList(self.player,self.room):isEmpty() and not self.player:getStrategyHasUsed("#LuaFengxiCard") then
+        return self:legacySkillSeed("LuaFengxi", "#LuaFengxiCard", request)
     end
 end
 
 sgs.ai_skill_use_func["#LuaFengxiCard"] = function(card, use, self,request)
-    call(self,"sort",self.enemies, "handcard")
+    self:sort(self.enemies, "handcard")
     for _, p in ipairs(self.enemies) do
-        if getOEList(self.player,self.room):contains(p) and not q(p,"isNude") then
+        if getOEList(self.player,self.room):contains(p) and not p:isNude() then
             use.card = paid(self,"LuaFengxi",{},request)
-            if use.to then call(use.to,"append",p) end
+            if use.to then use.to:append(p) end
             return
         end
     end
@@ -83,22 +70,22 @@ sgs.ai_use_priority["LuaFengxiCard"] = sgs.ai_use_priority.Dismantlement + 0.1
 sgs.ai_use_value["LuaFengxiCard"] = 8.5
 
 function sgs.ai_skill_invoke.LuaLinying(self, data)
-    return (call(self,"isWeak") and q(self.player,"getMaxHp") - q(self.player,"getHandcardNum") > 2) or
-        sgs.ai_skill_playerchosen.LuaLinying(self, q(self.room,"getOtherPlayers",self.player)) ~= nil
+    return (self:isWeak() and self.player:getMaxHp() - self.player:getHandcardNum() > 2) or
+        sgs.ai_skill_playerchosen.LuaLinying(self, self.room:getOtherPlayers(self.player)) ~= nil
 end
 
 sgs.ai_skill_playerchosen.LuaLinying = function(self, targets)
-    call(self,"updatePlayers")
-    call(self,"sort",self.friends_noself, "handcard")
+    self:updatePlayers()
+    self:sort(self.friends_noself, "handcard")
     local target = nil
     local n = 1
     for _, friend in ipairs(self.friends_noself) do
-        if not q(friend,"faceUp") and getOEList(self.player,self.room):contains(friend) then
+        if not friend:faceUp() and getOEList(self.player,self.room):contains(friend) then
             target = friend
             break
         end
         if not target then
-            if not call(self,"toTurnOver",friend, n, "LuaLinying") and getOEList(self.player,self.room):contains(friend) then
+            if not self:toTurnOver(friend, n, "LuaLinying") and getOEList(self.player,self.room):contains(friend) then
                 target = friend
                 break
             end
@@ -106,26 +93,26 @@ sgs.ai_skill_playerchosen.LuaLinying = function(self, targets)
     end
     if not target then
         if n >= 3 then
-            target = call(self,"findPlayerToDraw",false, n)
+            target = self:findPlayerToDraw(false, n)
             if not target then
                 for _, enemy in ipairs(self.enemies) do
-                    if call(self,"toTurnOver",enemy, n, "LuaLinying") and hasManjuanEffect(enemy) and getOEList(self.player,self.room):contains(enemy) then
+                    if self:toTurnOver(enemy, n, "LuaLinying") and hasManjuanEffect(enemy) and getOEList(self.player,self.room):contains(enemy) then
                         target = enemy
                         break
                     end
                 end
             end
         else
-            call(self,"sort",self.enemies)
+            self:sort(self.enemies)
             for _, enemy in ipairs(self.enemies) do
-                if call(self,"toTurnOver",enemy, n, "LuaLinying") and hasManjuanEffect(enemy) and getOEList(self.player,self.room):contains(enemy) then
+                if self:toTurnOver(enemy, n, "LuaLinying") and hasManjuanEffect(enemy) and getOEList(self.player,self.room):contains(enemy) then
                     target = enemy
                     break
                 end
             end
             if not target then
                 for _, enemy in ipairs(self.enemies) do
-                    if call(self,"toTurnOver",enemy, n, "LuaLinying") and call(self,"hasSkills",sgs.priority_skill, enemy) and getOEList(self.player,self.room):contains(enemy) then
+                    if self:toTurnOver(enemy, n, "LuaLinying") and self:hasSkills(sgs.priority_skill, enemy) and getOEList(self.player,self.room):contains(enemy) then
                         target = enemy
                         break
                     end
@@ -133,7 +120,7 @@ sgs.ai_skill_playerchosen.LuaLinying = function(self, targets)
             end
             if not target then
                 for _, enemy in ipairs(self.enemies) do
-                    if call(self,"toTurnOver",enemy, n, "LuaLinying") and getOEList(self.player,self.room):contains(enemy) then
+                    if self:toTurnOver(enemy, n, "LuaLinying") and getOEList(self.player,self.room):contains(enemy) then
                         target = enemy
                         break
                     end
@@ -148,45 +135,45 @@ end
 sgs.ai_playerchosen_intention.LuaLinying = function(self, from, to)
     if hasManjuanEffect(to) then sgs.updateIntention(from, to, 80) end
     local intention = 80
-    if not call(self,"toTurnOver",to, 1) then intention = -intention end
+    if not self:toTurnOver(to, 1) then intention = -intention end
     sgs.updateIntention(from, to, intention)
 end
 
 sgs.ai_fill_skill.LuaLinlu = function(self,inclusive,request)
     if mark(self.player,"@LuaLinlu") == 0 then return end
-    if q(self.player,"hasUsed","#LuaLinluCard") then return end
+    if self.player:getStrategyHasUsed("#LuaLinluCard") then return end
     if #self.enemies < 1 then return end
-    return q(self,"legacySkillSeed","LuaLinlu","#LuaLinluCard",request)
+    return self:legacySkillSeed("LuaLinlu", "#LuaLinluCard", request)
 end
 
 sgs.ai_skill_use_func["#LuaLinluCard"] = function(card, use, self,request)
-    local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+    local cards = sgs.QList2Table(self.player:getCards("he"))
     local to_discard_black = {}
     local to_discard_red = {}
     local to_discard = {}
-    call(self,"sortByKeepValue",cards)
+    self:sortByKeepValue(cards)
     for _, card in ipairs(cards) do
-        if q(card,"isBlack") and #to_discard_black < 2 then
-            table.insert(to_discard_black, q(card,"getEffectiveId"))
+        if card:isBlack() and #to_discard_black < 2 then
+            table.insert(to_discard_black, card:getKnownEffectiveId())
         end
     end
     for _, card in ipairs(cards) do
-        if q(card,"isRed") and #to_discard_red < 2 then
-            table.insert(to_discard_red, q(card,"getEffectiveId"))
+        if card:isRed() and #to_discard_red < 2 then
+            table.insert(to_discard_red, card:getKnownEffectiveId())
         end
     end
     if #to_discard_black == 2 or #to_discard_red == 2 then
-        call(self,"sort",self.enemies)
+        self:sort(self.enemies)
         local target
         for _, enemy in ipairs(self.enemies) do
-            if call(self,"objectiveLevel",enemy) > 3 and not call(self,"canAttack",enemy, self.player) and call(self,"damageIsEffective",enemy) and not getOEMark(enemy)  then
+            if self:objectiveLevel(enemy) > 3 and not self:canAttack(enemy, self.player) and self:damageIsEffective(enemy) and not getOEMark(enemy)  then
                 target = enemy
                 break
             end
         end
         if not target then
             for _, enemy in ipairs(self.enemies) do
-                if call(self,"objectiveLevel",enemy) > 3 and not call(self,"canAttack",enemy, self.player) and call(self,"damageIsEffective",enemy) then
+                if self:objectiveLevel(enemy) > 3 and not self:canAttack(enemy, self.player) and self:damageIsEffective(enemy) then
                     target = enemy
                     break
                 end
@@ -201,7 +188,7 @@ sgs.ai_skill_use_func["#LuaLinluCard"] = function(card, use, self,request)
             end
             local card_str = string.format("#LuaLinluCard:%s:", table.concat(to_discard, "+"))
             use.card = paid(self,"LuaLinlu",to_discard,request)
-            if use.to then call(use.to,"append",target) end
+            if use.to then use.to:append(target) end
             return
         end
     end
@@ -230,37 +217,37 @@ local function huowei(self, data, method, request)
     if not dmg then
         return "."
     end
-    if q(dmg.to,"objectName") ~= q(self.player,"objectName") then return "." end
+    if dmg.to:objectName() ~= self.player:objectName() then return "." end
 
-    local cards = q(self.player,"getCards","h")
+    local cards = self.player:getCards("h")
     cards = sgs.QList2Table(cards)
-    call(self,"sortByUseValue",cards, true)
+    self:sortByUseValue(cards, true)
     for _, card in ipairs(cards) do
-        if not q(self.player,"isCardLimited",card, method) and q(card,"isRed") and not q(card,"isKindOf","Peach") then
-            card_id = q(card,"getId")
+        if not self.player:isCardLimited(card, method) and card:isRed() and not card:isKindOf("Peach") then
+            card_id = card:getKnownId()
             break
         end
     end
     if not card_id then return "." end
 
-    call(self,"sort",self.enemies, "hp")
+    self:sort(self.enemies, "hp")
 
     for _, enemy in ipairs(self.enemies) do
-        if getOEList(self.player,self.room):contains(enemy) and (q(enemy,"getHp") <= dmg.damage and q(enemy,"isAlive")) then
-            if (q(enemy,"getHandcardNum") <= 2 or q(enemy,"hasSkills","guose|leiji|ganglie|enyuan|qingguo|wuyan|kongcheng") or q(enemy,"containsTrick","indulgence"))
-                and call(self,"canAttack",enemy, dmg.from or q(self.room,"getCurrent"), dmg.nature)
-                and not (dmg.card and q(dmg.card,"getTypeId") == sgs.Card_TypeTrick and q(enemy,"hasSkill","wuyan")) then
+        if getOEList(self.player,self.room):contains(enemy) and (enemy:getHp() <= dmg.damage and enemy:isAlive()) then
+            if (enemy:getHandcardNum() <= 2 or enemy:hasSkills("guose|leiji|ganglie|enyuan|qingguo|wuyan|kongcheng") or enemy:containsTrick("indulgence"))
+                and self:canAttack(enemy, dmg.from or self.room:getCurrent(), dmg.nature)
+                and not (dmg.card and dmg.card:getTypeId() == sgs.Card_TypeTrick and enemy:hasSkill("wuyan")) then
                 return answer(self,card_id,enemy,request)
             end
         end
     end
 
     for _, enemy in ipairs(self.enemies) do
-        if getOEList(self.player,self.room):contains(enemy) and (q(enemy,"getLostHp") <= 1 or dmg.damage > 1) and q(enemy,"isAlive") then
-            if (q(enemy,"getHandcardNum") <= 2)
-                or q(enemy,"containsTrick","indulgence") or q(enemy,"hasSkills","guose|leiji|vsganglie|ganglie|enyuan|qingguo|wuyan|kongcheng")
-                and call(self,"canAttack",enemy, (dmg.from or q(self.room,"getCurrent")), dmg.nature)
-                and not (dmg.card and q(dmg.card,"getTypeId") == sgs.Card_TypeTrick and q(enemy,"hasSkill","wuyan")) then
+        if getOEList(self.player,self.room):contains(enemy) and (enemy:getLostHp() <= 1 or dmg.damage > 1) and enemy:isAlive() then
+            if (enemy:getHandcardNum() <= 2)
+                or enemy:containsTrick("indulgence") or enemy:hasSkills("guose|leiji|vsganglie|ganglie|enyuan|qingguo|wuyan|kongcheng")
+                and self:canAttack(enemy, (dmg.from or self.room:getCurrent()), dmg.nature)
+                and not (dmg.card and dmg.card:getTypeId() == sgs.Card_TypeTrick and enemy:hasSkill("wuyan")) then
                 return answer(self,card_id,enemy,request)
             end
         end
@@ -268,9 +255,9 @@ local function huowei(self, data, method, request)
 
     for i = #self.enemies, 1, -1 do
         local enemy = self.enemies[i]
-        if getOEList(self.player,self.room):contains(enemy) and not q(enemy,"isWounded") and not call(self,"hasSkills",sgs.masochism_skill, enemy) and q(enemy,"isAlive")
-            and call(self,"canAttack",enemy, dmg.from or q(self.room,"getCurrent"), dmg.nature)
-            and (not (dmg.card and q(dmg.card,"getTypeId") == sgs.Card_TypeTrick and q(enemy,"hasSkill","wuyan") and q(enemy,"getLostHp") > 0) or call(self,"isWeak")) then
+        if getOEList(self.player,self.room):contains(enemy) and not enemy:isWounded() and not self:hasSkills(sgs.masochism_skill, enemy) and enemy:isAlive()
+            and self:canAttack(enemy, dmg.from or self.room:getCurrent(), dmg.nature)
+            and (not (dmg.card and dmg.card:getTypeId() == sgs.Card_TypeTrick and enemy:hasSkill("wuyan") and enemy:getLostHp() > 0) or self:isWeak()) then
             return answer(self,card_id,enemy,request)
         end
     end
@@ -279,17 +266,17 @@ local function huowei(self, data, method, request)
 end
 
 function sgs.ai_cardneed.LuaHuowei(to,card,self)
-	return (q(card,"isRed"))
+	return (card:isRed())
 	and (getKnownCard(to,self.player,"heart",false)+getKnownCard(to,self.player,"diamond",false))<2
 end
 
 function sgs.ai_skill_invoke.LuaYinyan(self, data)
-    local target = call(data,"toPlayer")
-    local maxcard = call(self,"getMaxCard")
-    local number = q(maxcard,"getNumber")
-    if target and call(self,"isEnemy",target) and q(self.player,"canPindian",target) and number >= 7
-        and call(self,"objectiveLevel",target) > 3 and not call(self,"cantbeHurt",target)
-        and call(self,"damageIsEffective",target, sgs.DamageStruct_Fire, self.player) then
+    local target = data:toPlayer()
+    local maxcard = self:getMaxCard()
+    local number = maxcard:getNumber()
+    if target and self:isEnemy(target) and self.player:canPindian(target) and number >= 7
+        and self:objectiveLevel(target) > 3 and not self:cantbeHurt(target)
+        and self:damageIsEffective(target, sgs.DamageStruct_Fire, self.player) then
         return true
     end
     return false
@@ -299,12 +286,12 @@ sgs.ai_cardneed.LuaYinyan = sgs.ai_cardneed.bignumber
 sgs.ai_skill_playerchosen.LuaYanling = function(self, targets)
     local slash = yanling(self)
     targets = sgs.QList2Table(targets)
-    call(self,"sort",targets, "defenseSlash")
+    self:sort(targets, "defenseSlash")
     for _, target in sgs.list(targets) do
-        if call(self,"isEnemy",target) and getOEList(self.player,self.room):contains(target)
-            and not call(self,"slashProhibit",slash, target)
-            and call(self,"isGoodTarget",target, nil, slash)
-            and call(self,"slashIsEffective",slash, target)
+        if self:isEnemy(target) and getOEList(self.player,self.room):contains(target)
+            and not self:slashProhibit(slash, target)
+            and self:isGoodTarget(target, nil, slash)
+            and self:slashIsEffective(slash, target)
         then
             return target
         end
@@ -316,11 +303,11 @@ sgs.ai_cardneed.LuaYanling = sgs.ai_cardneed.slash
 
 
 sgs.ai_fill_skill.LuaDuanjian = function(self,inclusive,request)
-	if q(self.player,"isNude") then return end
-	local cards = sgs.QList2Table(q(self.player,"getCards","he"))
+	if self.player:isNude() then return end
+	local cards = sgs.QList2Table(self.player:getCards("he"))
 	local card
-	for _,c in ipairs(cards) do if q(c,"isKindOf","Weapon") then card = c end end
-	if card then return paid(self,"LuaDuanjian",{q(card,"getEffectiveId")},request) end
+	for _,c in ipairs(cards) do if c:isKindOf("Weapon") then card = c end end
+	if card then return paid(self,"LuaDuanjian",{card:getKnownEffectiveId()},request) end
 end
 
 sgs.ai_skill_use_func["#LuaDuanjianCard"] = function(card, use, self,request)
@@ -331,7 +318,7 @@ sgs.ai_skill_use_func["#LuaDuanjianCard"] = function(card, use, self,request)
 		target2 = myoldenemy
 	end
 	if not (target1 and target2) then
-		call(self,"sort",self.enemies, "threat")
+		self:sort(self.enemies, "threat")
 		for _, enemy in ipairs(self.enemies) do
 			local theoldenemy = findMyOE(enemy, self.room)
 			if theoldenemy then
@@ -344,8 +331,8 @@ sgs.ai_skill_use_func["#LuaDuanjianCard"] = function(card, use, self,request)
 	if target1 and target2 then
 		use.card = card
 		if use.to then
-			call(use.to,"append",target1)
-			call(use.to,"append",target2)
+			use.to:append(target1)
+			use.to:append(target2)
 		end
 	end
 end
@@ -369,7 +356,7 @@ ai_skill_use["@@LuaHuowei"]=function(self,prompt,request)
         for _,key in ipairs({"damage","nature","from","to","card"}) do damage[key]=raw[key] end
         for _,key in ipairs({"from","to"}) do
             local value=damage[key]
-            if type(value)=="string" then damage[key]=q(self.room,"findPlayerByObjectName",value,true)
+            if type(value)=="string" then damage[key]=self.room:findPlayerByObjectName(value, true)
             elseif value==false then damage[key]=nil end
         end
         if damage.card==false then damage.card=nil

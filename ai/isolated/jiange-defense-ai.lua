@@ -1,6 +1,6 @@
 -- Fixed b6025acc jiange-defense effective source, pure values only.
 local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("jiange fact unknown",k)end;return v end
-local function q(o,k,...)if not o or type(o[k])~="function"then ai_unsupported("jiange helper missing",k)end;if k=="getMark"and AIValue.isPlayer(o)then k="getStrategyMark"end;return known(o[k](o,...),k)end
+
 local function dummy(is_dummy,extra,current)local u=AIUsePlan.new();u.isDummy=is_dummy~=false;u.extra_target=extra or 0;u.current_targets=current or{};return u end
 --[[********************************************************************
 	Copyright (c) 2013-2014-QSanguosha-Rara
@@ -36,7 +36,7 @@ sgs.ai_playerchosen_intention.jglingfeng = 80
 sgs.ai_skill_invoke.jgbiantian = true
 
 sgs.ai_slash_prohibit.jgbiantian = function(self,from,enemy,card)
-        if q(enemy,"getMark","&dawu")>0 and not q(card,"isKindOf","ThunderSlash") then return false end
+        if enemy:getStrategyMark("&dawu")>0 and not card:isKindOf("ThunderSlash") then return false end
 	return true
 end
 
@@ -44,14 +44,14 @@ sgs.ai_skill_choice.jggongshen = function(self,choice)
 	self.friends_noself = self:sort(self.friends_noself)
 	local target = nil
 	for _,enemy in ipairs(self.enemies)do
-		if string.find(q(enemy,"getGeneralName"),"machine") then
-                        if q(enemy,"hasArmorEffect","Vine") or q(enemy,"getMark","&kuangfeng")>0 or q(enemy,"getHp")==1 then
+		if string.find(enemy:getKnownGeneralName(),"machine") then
+                        if enemy:hasArmorEffect("Vine") or enemy:getStrategyMark("&kuangfeng")>0 or enemy:getHp()==1 then
 				return "damage"
 			end
 		end
 	end
 	for _,friend in ipairs(self.friends_noself)do
-		if string.find(q(friend,"getGeneralName"),"machine") and q(friend,"getLostHp")>0 then
+		if string.find(friend:getKnownGeneralName(),"machine") and friend:getLostHp()>0 then
 			if self:isWeak(friend) then
 				return "recover"
 			end
@@ -64,8 +64,8 @@ sgs.ai_skill_invoke.jgzhinang = true
 
 sgs.ai_skill_playerchosen.jgzhinang = function(self,targets)
 	for _,friend in ipairs(self.friends_noself)do
-		if q(friend,"faceUp") and not self:isWeak(friend) then
-			if not friend:getWeapon() or q(friend,"hasSkills","rende|jizhi") then
+		if friend:faceUp() and not self:isWeak(friend) then
+			if not friend:getWeapon() or friend:hasSkills("rende|jizhi") then
 				return friend
 			end
 		end
@@ -85,7 +85,7 @@ sgs.ai_skill_playerchosen.jgqiwu = function(self,targets)
 	local target
 	self.friends = self:sort(self.friends,"hp")
 	for _,friend in ipairs(self.friends)do
-		if  q(friend,"getLostHp")>0 then
+		if  friend:getLostHp()>0 then
 			target = friend
 		end
 	end
@@ -97,7 +97,7 @@ sgs.ai_skill_playerchosen.jgtianyun = function(self,targets)
 	local chained = 0
 	self.enemies = self:sort(self.enemies,"hp")
 	for _,enemy in ipairs(self.enemies)do
-        if enemy:getCards("e"):length()>=2 or q(enemy,"getHp")<=1
+        if enemy:getCards("e"):length()>=2 or enemy:getHp()<=1
 		or self:ajustDamage(self.player,enemy,1,nil,"F")>1
 		then target = enemy break end
 	end
@@ -121,16 +121,16 @@ sgs.ai_playerchosen_intention.jgtianyun = 80
 function sgs.ai_skill_invoke.jglingyu(self,data)
 	local weak = 0
 	for _,friend in ipairs(self.friends)do
-		if q(friend,"getLostHp")>0 then
+		if friend:getLostHp()>0 then
 			weak = weak+1
 			if self:isWeak(friend) then
 				weak = weak+1
 			end
 		end
 	end
-	if not q(self.player,"faceUp") then return true end
+	if not self.player:faceUp() then return true end
 	for _,friend in ipairs(self.friends)do
-		if q(friend,"hasSkills","fangzhu") then return true end
+		if friend:hasSkills("fangzhu") then return true end
 	end
 	return weak>=2
 end
@@ -169,7 +169,7 @@ sgs.ai_skill_playerchosen.jgchuanyun = function(self,targets)
 	local target
 	self.enemies = self:sort(self.enemies,"defense")
 	for _,enemy in ipairs(self.enemies)do
-		if  q(enemy,"getHp")>q(self.player,"getHp") then
+		if  enemy:getHp()>self.player:getHp() then
 			target = enemy
 			break
 		end
@@ -187,7 +187,7 @@ sgs.ai_skill_playerchosen.jghuodi = function(self,targets)
 	local target
 	self.enemies = self:sort(self.enemies,"defense")
 	for _,enemy in ipairs(self.enemies)do
-		if q(enemy,"hasSkills","jgtianyu|jgtianyun") and not q(enemy,"faceUp") then
+		if enemy:hasSkills("jgtianyu|jgtianyun") and not enemy:faceUp() then
 			target = enemy
 			break
 		end
@@ -195,8 +195,8 @@ sgs.ai_skill_playerchosen.jghuodi = function(self,targets)
 	if not target then
 		self.enemies = self:sort(self.enemies)
 		for _,enemy in ipairs(self.enemies)do
-			if self:toTurnOver(enemy) and q(enemy,"hasSkills",sgs.priority_skill)
-                        and not (q(enemy,"getMark","&dawu")>0 and q(enemy,"hasSkill","jgbiantian")) then
+			if self:toTurnOver(enemy) and enemy:hasSkills(sgs.priority_skill)
+                        and not (enemy:getStrategyMark("&dawu")>0 and enemy:hasSkill("jgbiantian")) then
 				target = enemy
 				break
 			end
@@ -204,7 +204,7 @@ sgs.ai_skill_playerchosen.jghuodi = function(self,targets)
 		if not target then
 			for _,enemy in ipairs(self.enemies)do
 				if self:toTurnOver(enemy)
-                                and not (q(enemy,"getMark","&dawu")>0 and q(enemy,"hasSkill","jgbiantian")) then
+                                and not (enemy:getStrategyMark("&dawu")>0 and enemy:hasSkill("jgbiantian")) then
 					target = enemy
 					break
 				end
@@ -222,7 +222,7 @@ sgs.ai_skill_playerchosen.jgdidong = function(self,targets)
 	local target
 	self.enemies = self:sort(self.enemies,"defense")
 	for _,enemy in ipairs(self.enemies)do
-		if q(enemy,"hasSkills","jgtianyu|jgtianyun") and not self:isWeak(enemy) and not q(enemy,"faceUp") then
+		if enemy:hasSkills("jgtianyu|jgtianyun") and not self:isWeak(enemy) and not enemy:faceUp() then
 			target = enemy
 			break
 		end
@@ -230,14 +230,14 @@ sgs.ai_skill_playerchosen.jgdidong = function(self,targets)
 	if not target then
 		self.enemies = self:sort(self.enemies)
 		for _,enemy in ipairs(self.enemies)do
-                        if self:toTurnOver(enemy) and q(enemy,"hasSkills",sgs.priority_skill) and not (q(enemy,"getMark","&dawu")>0 and q(enemy,"hasSkill","jgbiantian")) then
+                        if self:toTurnOver(enemy) and enemy:hasSkills(sgs.priority_skill) and not (enemy:getStrategyMark("&dawu")>0 and enemy:hasSkill("jgbiantian")) then
 				target = enemy
 				break
 			end
 		end
 		if not target then
 			for _,enemy in ipairs(self.enemies)do
-                                if self:toTurnOver(enemy) and not (q(enemy,"getMark","&dawu")>0 and q(enemy,"hasSkill","jgbiantian")) then
+                                if self:toTurnOver(enemy) and not (enemy:getStrategyMark("&dawu")>0 and enemy:hasSkill("jgbiantian")) then
 					target = enemy
 					break
 				end
@@ -256,9 +256,9 @@ function sgs.ai_skill_invoke.jgdixian(self,data)
 	for _,enemy in ipairs(self.enemies)do
 		throw = throw+enemy:getCards("e"):length()
 	end
-	if not q(self.player,"faceUp") then return true end
+	if not self.player:faceUp() then return true end
 	for _,friend in ipairs(self.friends)do
-		if q(friend,"hasSkills","fangzhu") then return true end
+		if friend:hasSkills("fangzhu") then return true end
 	end
 	return throw>=3
 end
@@ -273,7 +273,7 @@ end
 sgs.ai_skill_use_func["JGJiaoxieCard"] = function(card,use,self)
 	self.enemies = self:sort(self.enemies,"handcard")
 	for _,p in sgs.list(self.enemies)do
-		if use.to:length()<2 and q(p,"getGeneralName"):contains("jg_machine_") and q(p,"getCardCount")>0 then
+		if use.to:length()<2 and p:getKnownGeneralName():contains("jg_machine_") and p:getCardCount()>0 then
 			use.card = card
 			use.to:append(p)
 		end
@@ -286,11 +286,11 @@ sgs.ai_use_priority.JGJiaoxieCard = 9.2
 
 sgs.ai_skill_invoke.jgbashi = function(self,data)
 	local use = data:toCardUse()
-	if q(use.card,"isKindOf","Slash") then
+	if use.card:isKindOf("Slash") then
 		return self:getCardsNum("Jink")<1 and self:isWeak()
 	end
-	if q(use.card,"isDamageCard") then
-		local tcn = sgs.aiResponse[q(use.card,"getClassName")] or "Nullification"
+	if use.card:isDamageCard() then
+		local tcn = sgs.aiResponse[use.card:getClassName()] or "Nullification"
 		return self:getCardsNum(tcn)<1 and self:isWeak()
 	end
 end
@@ -329,7 +329,7 @@ end
 sgs.ai_skill_use_func["JGHanjunCard"] = function(card,use,self)
 	local n = 0
 	for _,p in sgs.list(self.enemies)do
-		if q(p,"getCardCount")>0 then
+		if p:getCardCount()>0 then
 			n = n+1
 		end
 	end

@@ -62,14 +62,19 @@ end
 -- Audited strategy functions may return a source no-result nil. Raw facade
 -- inputs never inherit that permission; provider identity is checked below.
 local source_nil_providers = {}
+local required_query_providers = setmetatable({}, {__mode = "k"})
+local function query_provider(provider)
+    return required_query_providers[provider] or provider
+end
 local original_nil_providers = {willUsePeachTo="originalHegemonyWillUsePeachTo",willUseLightning="originalHegemonyWillUseLightning",findLijianTarget="originalHegemonyFindLijianTarget",useCardByClassName="originalHegemonyUseCardByClassName",useCardGodSalvation="originalHegemonyUseCardGodSalvation",getCardRandomly="originalHegemonyGetCardRandomly",askForSkillInvoke="originalHegemonyAskForSkillInvoke",askForCard="originalHegemonyAskForCard",askForNullification="originalHegemonyAskForNullification",askForPlayerChosen="originalHegemonyAskForPlayerChosen",askForSuit="originalHegemonyAskForSuit",askForYiji="originalHegemonyAskForYiji",getCardNeedPlayer="originalHegemonyGetCardNeedPlayer",getMaxNumberCard="originalHegemonyMaxNumberCard",getMinNumberCard="originalHegemonyMinNumberCard",getLijianCard="originalHegemonyGetLijianCard",toTurnOver="originalHegemonyToTurnOver",isValuableCard="originalHegemonyIsValuableCard",getMaxCard="originalHegemonyGetMaxCard",getMinCard="originalHegemonyGetMinCard",hasTrickEffective = "originalHegemonyHasTrickEffective", hasWizard = "originalHegemonyHasWizard"}
 function SmartAIView.isKnownNilStrategyResult(object, method, provider)
     if type(object) ~= "table" or getmetatable(object) ~= SmartAIView or type(provider) ~= "function" then return false end
-    if source_nil_providers[method] == provider then return true end
+    provider = query_provider(provider)
+    if query_provider(source_nil_providers[method]) == provider then return true end
     local inovation_nil = {isValuableCard=true,shouldUseRende=true,getLijianCard=true,findLijianTarget=true}
-    if inovation_nil[method] and provider == SmartAIView["inovation_"..method] then return true end
+    if inovation_nil[method] and provider == query_provider(SmartAIView["inovation_"..method]) then return true end
     local original = original_nil_providers[method]
-    return original ~= nil and provider == SmartAIView[original]
+    return original ~= nil and provider == query_provider(SmartAIView[original])
 end
 local function strategy_known(value, label)
     if value == nil then ai_unsupported("shared strategy input is unknown: " .. label, label) end
@@ -8314,3 +8319,54 @@ end
 -- integer (including -1) on all normal paths, so no nil-provider exemption.
 end
 -- End R54 ordinary card-choice helper.
+
+-- Source strategies sometimes sort a Lua array for its side effect.  Keep that
+-- operation explicit; ordinary sort methods continue to return a fresh list.
+local function sort_in_place(self, method, values, ...)
+    local ordered = AIValue.callKnown(self, method, values, ...)
+    for index, value in ipairs(ordered) do values[index] = value end
+    return values
+end
+for _, method in ipairs({"sort", "sortByKeepValue", "sortByUseValue",
+    "sortByUsePriority", "sortByDynamicUsePriority", "sortByCardNeed"}) do
+    SmartAIView[method .. "InPlace"] = function(self, values, ...)
+        return sort_in_place(self, method, values, ...)
+    end
+end
+
+-- These public queries require a result.  Absence-returning lookups and planning
+-- APIs keep their nil contract; audited source callbacks retain their provider
+-- identity and may also return an ordinary no-result nil.
+local required_strategy_queries = {
+    isWeak=true, getOverflow=true, getCardsNum=true, getAllPeachNum=true,
+    getUseValue=true, getKeepValue=true, getUsePriority=true,
+    getDynamicUsePriority=true, getDefense=true, getDefenseSlash=true,
+    getBestHp=true, getLeastHandcardNum=true, getMaxCards=true,
+    getKnownNum=true, getKnownCard=true, getExpectedJinkNum=true,
+    getFriends=true, getEnemies=true, getChainedEnemies=true,
+    needKongcheng=true, needToLoseHp=true, needToThrowArmor=true,
+    needToThrowLastHandcard=true, hasManjuanEffect=true,
+    hasZhenguEffect=true, hasJieyingyEffect=true, hasCrossbowEffect=true,
+    damageIsEffective=true, slashIsEffective=true, slashProhibit=true,
+    canAttack=true, canSlash=true, canPindian=true, canDraw=true,
+    canLiegong=true, isTiaoxinTarget=true, isLordHealthy=true,
+    hasTuntianEffect=true, canCanmou=true, objectiveLevel=true,
+    isRolePredictable=true, sort=true, sortByKeepValue=true,
+    sortByUseValue=true, sortByUsePriority=true, sortByCardNeed=true,
+    sortByDynamicUsePriority=true
+}
+for method in pairs(required_strategy_queries) do
+    local provider = rawget(SmartAIView, method)
+    if type(provider) == "function" then
+        local checked = function(self, ...)
+            local result = table.pack(provider(self, ...))
+            if AIUnsupported.is(result[1]) then error(result[1], 0) end
+            if result[1] == nil and not SmartAIView.isKnownNilStrategyResult(self, method, provider) then
+                ai_unsupported("required strategy query is unknown", method)
+            end
+            return table.unpack(result, 1, result.n)
+        end
+        required_query_providers[checked] = provider
+        SmartAIView[method] = checked
+    end
+end

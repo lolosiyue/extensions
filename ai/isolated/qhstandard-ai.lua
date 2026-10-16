@@ -1,6 +1,6 @@
 -- Fixed qhstandard b6025acc source strategy. No hidden authority or legacy fallback.
 local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("qhstandard input unknown",k)end;return v end
-local function q(o,k,...)if o==nil then error("attempt to index a nil value",0)end;if k=="getMark"and AIValue.isPlayer(o)then k="getStrategyMark"elseif k=="hasFlag"and AIValue.isPlayer(o)then k="getStrategyFlag"end;if type(o[k])~="function"then ai_unsupported("qhstandard helper unavailable",k)end;return known(o[k](o,...),k)end
+
 -- Own dynamic property; QVariant::toString of an unset one is "".
 local function property(self,k)local v=self.player:getPropertyValue(k);if v==nil then return""end;return v end
 local function visible(self,id)
@@ -21,7 +21,7 @@ local function used_card(self,text,key)
  end
  return known(nil,key.." card face")
 end
-local function full_hand(self,p)if p:objectName()==self.player:objectName()then return p:getHandcards()end;local cs=known(p:getKnownCards(),"known hand");if#cs~=q(p,"getHandcardNum")then ai_unsupported("source reads undisclosed target hand","qhstandardtiandu")end;return cs end
+local function full_hand(self,p)if p:objectName()==self.player:objectName()then return p:getHandcards()end;local cs=known(p:getKnownCards(),"known hand");if#cs~=p:getHandcardNum()then ai_unsupported("source reads undisclosed target hand","qhstandardtiandu")end;return cs end
 local function use_fact(self,k)local r=known(self.player:getTag(k),k);local to=AIList.new({});for _,n in ipairs(r.to)do to:append(known(self.room:findPlayerByObjectName(n,true),k))end;return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=to,card=CardView.new(r.card)}end
 local function dummy_plan()local u=AIUsePlan.new();u.isDummy=true;return u end
 local function readonly_clone(self,key,name,suit,number)return self:evaluateOwnerViewAsCard({source_key=key,skill="",name=name,suit=suit,number=number,subcards={}})end
@@ -45,8 +45,8 @@ end
 local function raw_kuangfeng(self,prompt)
 	local friendly_fire
 	for _,friend in sgs.list(self.friends_noself)do
-                if q(friend,"getMark","&kuangfeng")==0 and self:damageIsEffective(friend,sgs.DamageStruct_Fire) and friend:faceUp() and not self:willSkipPlayPhase(friend)
-			and (friend:hasSkill("huoji") or friend:hasWeapon("Fan") or (friend:hasSkill("yeyan") and q(friend,"getMark","@flame")>0)) then
+                if friend:getStrategyMark("&kuangfeng")==0 and self:damageIsEffective(friend,sgs.DamageStruct_Fire) and friend:faceUp() and not self:willSkipPlayPhase(friend)
+			and (friend:hasSkill("huoji") or friend:hasWeapon("Fan") or (friend:hasSkill("yeyan") and friend:getStrategyMark("@flame")>0)) then
 			friendly_fire = true
 			break
 		end
@@ -55,7 +55,7 @@ local function raw_kuangfeng(self,prompt)
 	local is_chained = 0
 	local target = {}
 	for _,enemy in sgs.list(self.enemies)do
-                if q(enemy,"getMark","&kuangfeng")==0 and self:damageIsEffective(enemy,sgs.DamageStruct_Fire) then
+                if enemy:getStrategyMark("&kuangfeng")==0 and self:damageIsEffective(enemy,sgs.DamageStruct_Fire) then
 			if enemy:isChained() then
 				is_chained = is_chained+1
 				table.insert(target,enemy)
@@ -86,13 +86,13 @@ local function raw_dawu(self,prompt)
 	local targets = {}
 	local lord = self.room:getLord()
 	self.friends_noself=self:sort(self.friends_noself,"defense")
-        if lord and q(lord,"getMark","&dawu")==0 and self:isFriend(lord) and not self:isLordHealthy() and not self.player:isLord() and not lord:hasSkill("buqu")
-		and not (lord:hasSkill("hunzi") and q(lord,"getMark","hunzi")==0 and lord:getHp()>1) then
+        if lord and lord:getStrategyMark("&dawu")==0 and self:isFriend(lord) and not self:isLordHealthy() and not self.player:isLord() and not lord:hasSkill("buqu")
+		and not (lord:hasSkill("hunzi") and lord:getStrategyMark("hunzi")==0 and lord:getHp()>1) then
 			table.insert(targets,lord:objectName())
 	else
 		for _,friend in sgs.list(self.friends_noself)do
-                        if q(friend,"getMark","&dawu")==0 and self:isWeak(friend) and not friend:hasSkill("buqu")
-				and not (friend:hasSkill("hunzi") and q(friend,"getMark","hunzi")==0 and friend:getHp()>1) then
+                        if friend:getStrategyMark("&dawu")==0 and self:isWeak(friend) and not friend:hasSkill("buqu")
+				and not (friend:hasSkill("hunzi") and friend:getStrategyMark("hunzi")==0 and friend:getHp()>1) then
 					table.insert(targets,friend:objectName())
 					break
 			end
@@ -111,27 +111,27 @@ local function raw_dawu(self,prompt)
 end
 
 local function yuqi_getMark(player)
-    local usableTimes = q(player,"getMark","SkillDescriptionArg1_mythyuqi")
+    local usableTimes = player:getStrategyMark("SkillDescriptionArg1_mythyuqi")
     if usableTimes == 0 then
         usableTimes = 2
     end
-    local juli = q(player,"getMark","SkillDescriptionArg2_mythyuqi")
+    local juli = player:getStrategyMark("SkillDescriptionArg2_mythyuqi")
     if juli == 0 then
         juli = 1
     end
-    local guankan = q(player,"getMark","SkillDescriptionArg3_mythyuqi")
+    local guankan = player:getStrategyMark("SkillDescriptionArg3_mythyuqi")
     if guankan == 0 then
         guankan = 3
     end
-    local geipai = q(player,"getMark","SkillDescriptionArg4_mythyuqi")
+    local geipai = player:getStrategyMark("SkillDescriptionArg4_mythyuqi")
     if geipai == 0 then
         geipai = 1
     end
-    local huode = q(player,"getMark","SkillDescriptionArg5_mythyuqi")
+    local huode = player:getStrategyMark("SkillDescriptionArg5_mythyuqi")
     if huode == 0 then
         huode = 1
     end
-    local maxCard = q(player,"getMark","SkillDescriptionArg6_mythyuqi")
+    local maxCard = player:getStrategyMark("SkillDescriptionArg6_mythyuqi")
     if maxCard == 0 then
         maxCard = 2
     end
@@ -178,14 +178,14 @@ end
 sgs.ai_target_revises.qhstandardjianxiong = sgs.ai_target_revises.jianxiong
 
 sgs.ai_can_damagehp.qhstandardjianxiong = function(self, from, card, to)
-	if from and q(to,"getHp") + self:getAllPeachNum() - self:ajustDamage(from, to, 1, card) > 0
+	if from and to:getHp() + self:getAllPeachNum() - self:ajustDamage(from, to, 1, card) > 0
 		and self:canLoseHp(from, card, to)
 	then
-		return (card and (q(card,"isKindOf","Duel") or q(card,"isKindOf","AOE"))) or q(to,"getHandcardNum") < 4
+		return (card and (card:isKindOf("Duel") or card:isKindOf("AOE"))) or to:getHandcardNum() < 4
 	end
 end
 sgs.ai_ajustdamage_from.qhstandardjianxiong = function(self, from, to, card, nature)
-	return q(from,"getMark","&qhstandardjianxiong")
+	return from:getStrategyMark("&qhstandardjianxiong")
 end
 
 
@@ -208,7 +208,7 @@ sgs.ai_skill_invoke.qhstandardhujia = function(self, data)        --是否发动
 		return true                                               --发动
 	end
 	for _, card in sgs.qlist(cards) do                            --对手牌进行扫描
-		if q(card,"isKindOf","Jink") then                             --若有闪
+		if card:isKindOf("Jink") then                             --若有闪
 			return false                                          --不发动
 		end
 	end
@@ -222,14 +222,14 @@ sgs.ai_skill_cardask["#askForqhstandardhujia"] = function(self, data) --询问�
 	if handcards:isEmpty() then return "." end                        --没牌则不出
 	local cards = {}
 	for _, card in sgs.qlist(handcards) do                            --对手牌进行扫描
-		if q(card,"isKindOf","Jink") then                                 --类型是闪,isKindOf要大写
+		if card:isKindOf("Jink") then                                 --类型是闪,isKindOf要大写
 			table.insert(cards, card)
 		end
 	end
 	if #cards == 0 then return "." end --没闪则不出
 	cards = self:sortByKeepValue(cards)
 	local card = cards[1]
-	return q(card,"getEffectiveId")    --出闪
+	return card:getKnownEffectiveId()    --出闪
 end
 
 --标准版-强化 司马懿-反馈
@@ -253,7 +253,7 @@ end
 
 
 sgs.ai_can_damagehp.qhstandardfankui = function(self,from,card,to)
-	if q(to,"getHp")+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
+	if to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
 	and self:canLoseHp(from,card,to)
 	then
 		return (from and self:isEnemy(from)) or not from
@@ -298,7 +298,7 @@ end
 
 
 sgs.ai_fill_skill["qhstandardguicai"] = function(self,inclusive,request)             --考虑使用视为技的可能性
-	if q(self.player,"hasFlag","qhstandardguicai_used") then return nil end --有标志则不用
+	if self.player:getStrategyFlag("qhstandardguicai_used") then return nil end --有标志则不用
 	return policy(self,"#qhstandardguicaiCARD:.:")                --返回技能卡
 	--注意技能卡前面+#号，后面连接用:号
 end
@@ -307,8 +307,8 @@ sgs.ai_skill_use_func["#qhstandardguicaiCARD"] = function(card, use, self) --技
 	local enemies = self.enemies                                           --获取所有敌方角色
 	local getvalue = function(enemy)                                       --新建函数 获得修改综合值
 		local value = sgs.getValue(enemy)
-		local start = q(enemy,"getMark","Player_Start")
-		local finish = q(enemy,"getMark","Player_Finish")
+		local start = enemy:getStrategyMark("Player_Start")
+		local finish = enemy:getStrategyMark("Player_Finish")
 		if start > 0 or finish > 0 then
 			value = value + 20
 		end
@@ -334,7 +334,7 @@ sgs.ai_fill_skill["qhstandardtianming"] = function(self,inclusive,request)      
 	local cards = sgs.QList2Table(self.player:getHandcards())                          --获取手牌
 	if #cards < 2 then return nil end
 	cards = self:sortByUseValue(cards, true)
-	return policy(self,"#qhstandardtianmingCARD:" .. q(cards[1],"getEffectiveId") .. ":") --返回技能卡
+	return policy(self,"#qhstandardtianmingCARD:" .. cards[1]:getKnownEffectiveId() .. ":") --返回技能卡
 end
 
 sgs.ai_skill_use_func["#qhstandardtianmingCARD"] = function(card, use, self) --技能卡的使用函数(不完整)
@@ -358,7 +358,7 @@ sgs.ai_skill_invoke.qhstandardganglie = function(self, data) --是否发动技�
 	end
 end
 sgs.ai_can_damagehp.qhstandardganglie = function(self,from,card,to)
-	if q(to,"getHp")+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
+	if to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
 	and self:canLoseHp(from,card,to)
 	then
 		return (from and self:isEnemy(from) and not self:cantbeHurt(from) and self:damageIsEffective(from)) or not from
@@ -381,7 +381,7 @@ end
 
 --标准版-强化 张辽-突袭
 sgs.ai_skill_use["@qhstandardtuxi"] = function(self, prompt) --被动技能卡的使用函数
-	local Int = q(self.player,"getMark","qhstandardtuxi_length") --获取标记
+	local Int = self.player:getStrategyMark("qhstandardtuxi_length") --获取标记
 	Int = Int + 1                                            --加1
 	self:updatePlayers()
 	local enemies = self.enemies                             --获取所有敌方角色
@@ -408,10 +408,10 @@ sgs.ai_skill_discard.qhstandardtuxiCARD = function(self, discard_num, min_num, o
 		local id = tonumber(value)
 		if id then
 			local c = visible(self,id)
-			if q(c,"isKindOf","Slash") and self:getCardsNum("Slash") >= 2 then
+			if c:isKindOf("Slash") and self:getCardsNum("Slash") >= 2 then
 				table.insert(to_discard, id)
 			end
-			if q(c,"isKindOf","Jink") and self:getCardsNum("Jink") >= 2 then
+			if c:isKindOf("Jink") and self:getCardsNum("Jink") >= 2 then
 				table.insert(to_discard, id)
 			end
 		end
@@ -439,7 +439,7 @@ sgs.ai_skill_choice.qhstandardluoyi = function(self, choices, data) --进行选�
 	local othertarget = 0
 	self.enemies = self:sort(self.enemies, "hp")
 	for _, card in ipairs(cards) do
-		if q(card,"isKindOf","Slash") then --杀
+		if card:isKindOf("Slash") then --杀
 			for _, enemy in ipairs(self.enemies) do
 				if self.player:canSlash(enemy, card, true) and self:slashIsEffective(card, enemy) then
 					if getCardsNum("Jink", enemy) < 1 or (self:isEquip("Axe") and self.player:getCards("he"):length() > 4) then
@@ -448,14 +448,14 @@ sgs.ai_skill_choice.qhstandardluoyi = function(self, choices, data) --进行选�
 				end
 			end
 		end
-		if q(card,"isKindOf","Duel") then --决斗
+		if card:isKindOf("Duel") then --决斗
 			for _, enemy in ipairs(self.enemies) do
 				if not self:cantbeHurt(enemy) and self:getCardsNum("Slash") >= getCardsNum("Slash", enemy) and self:damageIsEffective(enemy) then
 					dueltarget = dueltarget + 1
 				end
 			end
 		end
-		if q(card,"isKindOf","SavageAssault") or q(card,"isKindOf","ArcheryAttack") then --南蛮 万箭
+		if card:isKindOf("SavageAssault") or card:isKindOf("ArcheryAttack") then --南蛮 万箭
 			othertarget = othertarget + 1
 		end
 	end
@@ -468,7 +468,7 @@ end
 
 sgs.ai_cardneed.qhstandardluoyi = sgs.ai_cardneed.luoyi
 sgs.ai_ajustdamage_from.qhstandardluoyi = function(self, from, to, card, nature)
-	if q(from,"getMark","Luoyi_shao") > 0 and card and (q(card,"isKindOf","BasicCard") or q(card,"isKindOf","TrickCard")) then
+	if from:getStrategyMark("Luoyi_shao") > 0 and card and (card:isKindOf("BasicCard") or card:isKindOf("TrickCard")) then
 		return 1
 	end
 end
@@ -477,17 +477,17 @@ end
 sgs.ai_skill_invoke.qhstandardtiandu = function(self, data) --是否发动技能
 	local use = data:toCardUse()
 	local target = use.to:at(0)                             --目标
-	local HandcardNum = q(target,"getHandcardNum")             --手牌数
+	local HandcardNum = target:getHandcardNum()             --手牌数
 	if HandcardNum < 3 then
 		return true                                         --发动
 	end
-	if q(use.card,"isKindOf","DelayedTrickCard") then           --延时性锦囊
+	if use.card:isKindOf("DelayedTrickCard") then           --延时性锦囊
 		return true                                         --发动
 	end
 	local cards = sgs.QList2Table(full_hand(self,target))     --获取手牌
 	cards = self:sortByKeepValue(cards)
 	for _, card in ipairs(cards) do                         --对卡牌进行扫描
-		if not q(card,"isKindOf","Peach") and self:getKeepValue(card) < self:getKeepValue(use.card) then
+		if not card:isKindOf("Peach") and self:getKeepValue(card) < self:getKeepValue(use.card) then
 			return true                                     --发动
 		end
 	end
@@ -498,7 +498,7 @@ sgs.ai_skill_discard.qhstandardtiandu = function(self) --弃牌选择
 	local cards = self.player:getCards("h")
 	cards = sgs.QList2Table(cards)
 	cards = self:sortByKeepValue(cards)
-	table.insert(to_discard, q(cards[1],"getEffectiveId"))
+	table.insert(to_discard, cards[1]:getKnownEffectiveId())
 	return to_discard
 end
 
@@ -507,7 +507,7 @@ sgs.ai_skill_invoke.qhstandardyiji = function(self, data) --是否发动技能
 	return true                                           --发动
 end
 sgs.ai_can_damagehp.qhstandardyiji = function (self,attacker,player)
-	if not q(player,"hasSkill","yiji") then return end
+	if not player:hasSkill("yiji") then return end
 	local friends = {}
 	for _,ap in sgs.list(self.room:getAlivePlayers())do
 		if self:isFriend(ap,player) then
@@ -518,7 +518,7 @@ sgs.ai_can_damagehp.qhstandardyiji = function (self,attacker,player)
 
 	if #friends>0 and friends[1]:objectName()==player:objectName() and self:isWeak(player) and getCardsNum("Peach",player,(attacker or self.player))==0 then return false end
 
-	return q(player,"getHp")>2 and known(self.world.turn_count,"turn count")>2 and #friends>1 and not self:isWeak(player) and q(player,"getHandcardNum")>=2
+	return player:getHp()>2 and known(self.world.turn_count,"turn count")>2 and #friends>1 and not self:isWeak(player) and player:getHandcardNum()>=2
 end
 
 sgs.ai_can_damagehp.qhstandardyiji = sgs.ai_can_damagehp.yiji
@@ -530,17 +530,17 @@ end
 
 --倾国
 sgs.ai_view_as.qhstandardqingguo = function(card, player, card_place) --重写视为技
-	local suit = q(card,"getSuitString")
+	local suit = card:getSuitString()
 	local number = card:getNumberString()
-	local card_id = q(card,"getEffectiveId")
-	if q(card,"getSuit") ~= sgs.Card_Heart then
+	local card_id = card:getKnownEffectiveId()
+	if card:getSuit() ~= sgs.Card_Heart then
 		return ("jink:qhstandardqingguo[%s:%s]=%d"):format(suit, number, card_id)
 	end
 end
 
 function sgs.ai_cardneed.qhstandardqingguo(to, card, self)
 	--在分牌时，自己 to 的友方玩家 self 先将自己需要的卡牌 card 交给自己
-	return q(to,"getHandcardNum") < 3 and q(card,"getSuit") ~= sgs.Card_Heart
+	return to:getHandcardNum() < 3 and card:getSuit() ~= sgs.Card_Heart
 end
 
 sgs.qingguo_suit_value = {
@@ -564,11 +564,11 @@ sgs.ai_skill_use["@qhwindshensu"] = function(self, prompt) --被动技能卡的�
 			local eff = self:slashIsEffective(slash, enemy) and self:isGoodTarget(enemy, self.enemies, slash)
 			if not self.player:canSlash(enemy, slash, false) then
 			elseif self:slashProhibit(nil, enemy) then
-			elseif def < 6 and q(enemy,"getHp") < 3 and eff then
+			elseif def < 6 and enemy:getHp() < 3 and eff then
 				return "#qhwindshensuCARD:.:->" .. enemy:objectName() --低防御用技能
-			elseif q(self.player,"getHp") - q(self.player,"getHandcardNum") >= 2 then
+			elseif self.player:getHp() - self.player:getHandcardNum() >= 2 then
 				return "."
-			elseif q(self.player,"getHandcardNum") <= 2 then
+			elseif self.player:getHandcardNum() <= 2 then
 				return "."
 			elseif sgs.getDefense(self.player) < 6 then
 				return "."
@@ -580,28 +580,28 @@ sgs.ai_skill_use["@qhwindshensu"] = function(self, prompt) --被动技能卡的�
 		local cards = sgs.QList2Table(self.player:getHandcards())
 		local shouldUseCard, range_fix = 0, 0
 		local hasCrossbow = false
-		if q(self.player,"getHandcardNum") <= 2 and not self:getCardsNum("Peach") and q(self.player,"getHp") > 1 then
+		if self.player:getHandcardNum() <= 2 and not self:getCardsNum("Peach") and self.player:getHp() > 1 then
 			shouldUseCard = shouldUseCard - 10
 		end
 		for _, card in ipairs(cards) do
-			if q(card,"isKindOf","TrickCard") and self:getUseValue(card) > 3.69 then --锦囊
+			if card:isKindOf("TrickCard") and self:getUseValue(card) > 3.69 then --锦囊
 				local dummy_use = self:aiUseCard(card, dummy_plan())
-				if dummy_use.card then shouldUseCard = shouldUseCard + (q(card,"isKindOf","ExNihilo") and 2 or 1) end
+				if dummy_use.card then shouldUseCard = shouldUseCard + (card:isKindOf("ExNihilo") and 2 or 1) end
 			end
-			if q(card,"isKindOf","Weapon") then
-				local new_range = sgs.weapon_range[q(card,"getClassName")] or 0
-				local current_range = q(self.player,"getAttackRange")
+			if card:isKindOf("Weapon") then
+				local new_range = sgs.weapon_range[card:getClassName()] or 0
+				local current_range = self.player:getAttackRange()
 				range_fix = math.min(current_range - new_range, 0)
 			end
-			if q(card,"isKindOf","Peach") and q(self.player,"isWounded") then --桃
+			if card:isKindOf("Peach") and self.player:isWounded() then --桃
 				shouldUseCard = shouldUseCard + 2
 			end
-			if q(card,"isKindOf","OffensiveHorse") and not self.player:getOffensiveHorse() then range_fix = range_fix - 1 end
-			if q(card,"isKindOf","DefensiveHorse") or q(card,"isKindOf","Armor") and not self:getSameEquip(card) and (self:isWeak() or self:getCardsNum("Jink") == 0) then
+			if card:isKindOf("OffensiveHorse") and not self.player:getOffensiveHorse() then range_fix = range_fix - 1 end
+			if card:isKindOf("DefensiveHorse") or card:isKindOf("Armor") and not self:getSameEquip(card) and (self:isWeak() or self:getCardsNum("Jink") == 0) then
 				shouldUseCard =
 					shouldUseCard + 1
 			end
-			if q(card,"isKindOf","Crossbow") or self:hasCrossbowEffect() then hasCrossbow = true end
+			if card:isKindOf("Crossbow") or self:hasCrossbowEffect() then hasCrossbow = true end
 			local slashs = self:getCards("Slash")
 			for _, enemy in ipairs(self.enemies) do
 				for _, slash in ipairs(slashs) do
@@ -653,14 +653,14 @@ end
 sgs.ai_choicemade_filter.cardChosen.qhwindshensu = sgs.ai_choicemade_filter.cardChosen.snatch --卡牌选择
 
 sgs.ai_can_damagehp.qhwindshensu = function(self,from,card,to)
-	return q(to,"getHp")+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
+	return to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
 	and self:canLoseHp(from,card,to) and not sgs.ai_skill_use["@qhwindshensu"](self, "#askForUseqhwindshensuVS3") == "."
 end
 
 
 --风包-强化 曹仁-据守
 sgs.ai_skill_invoke.qhwindjushou = function(self, data) --是否发动技能
-	if q(self.player,"hasSkill","qhwindjiewei") then
+	if self.player:hasSkill("qhwindjiewei") then
 		return true                                     --发动
 	end
 	return false
@@ -675,7 +675,7 @@ sgs.ai_skill_use["@qhwindjiewei-AI"] = function(self, prompt, method) --被动�
 	local cards = sgs.QList2Table(self.player:getHandcards())
 	cards = self:sortByUseValue(cards)
 	for _, card in ipairs(cards) do
-		if q(card,"getTypeId") == sgs.Card_TypeTrick and not q(card,"isKindOf","Nullification") then
+		if card:getTypeId() == sgs.Card_TypeTrick and not card:isKindOf("Nullification") then
 			local dummy_use = self:aiUseCard(card, dummy_plan())
 			if dummy_use.card then
 				if dummy_use.to:isEmpty() then
@@ -688,7 +688,7 @@ sgs.ai_skill_use["@qhwindjiewei-AI"] = function(self, prompt, method) --被动�
 					return dummy_use.card:getLegacyStringKey() .. "->" .. table.concat(target_objectname, "+")
 				end
 			end
-		elseif q(card,"getTypeId") == sgs.Card_TypeBasic and not q(card,"isKindOf","Jink") then
+		elseif card:getTypeId() == sgs.Card_TypeBasic and not card:isKindOf("Jink") then
 			local dummy_use = self:aiUseCard(card, dummy_plan())
 			if dummy_use.card then
 				if dummy_use.to:isEmpty() then
@@ -701,7 +701,7 @@ sgs.ai_skill_use["@qhwindjiewei-AI"] = function(self, prompt, method) --被动�
 					return dummy_use.card:getLegacyStringKey() .. "->" .. table.concat(target_objectname, "+")
 				end
 			end
-		elseif q(card,"getTypeId") == sgs.Card_TypeEquip then
+		elseif card:getTypeId() == sgs.Card_TypeEquip then
 			local dummy_use = self:aiUseCard(card, dummy_plan())
 			if dummy_use.card then
 				return dummy_use.card:getLegacyStringKey()
@@ -719,7 +719,7 @@ sgs.ai_choicemade_filter.cardChosen.qhwindjiewei = sgs.ai_choicemade_filter.card
 
 --火包-强化 典韦-强袭
 sgs.ai_fill_skill["qhfireqiangxi"] = function(self,inclusive,request) --考虑使用视为技的可能性
-	if q(self.player,"getHp") > 1 then
+	if self.player:getHp() > 1 then
 		return policy(self,"#qhfireqiangxiCARD:.:") --返回技能卡，子卡在 ai_skill_use_func 中添加
 	end
 end
@@ -731,10 +731,10 @@ sgs.ai_skill_use_func["#qhfireqiangxiCARD"] = function(card, use, self)
 		enemies = self:sort(enemies, "hp")
 		for _,enemy in sgs.list(self.enemies)do
 			if self:objectiveLevel(enemy)>3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy) then
-				if q(self.player,"getMark","qhfireqiangxi_card-Clear") == 0 then --弃牌
+				if self.player:getStrategyMark("qhfireqiangxi_card-Clear") == 0 then --弃牌
 					for _, handcard in sgs.qlist(handcards) do
-						if q(handcard,"isKindOf","EquipCard") then
-							use.card = policy(self,"#qhfireqiangxiCARD:" .. q(handcard,"getEffectiveId") .. ":")
+						if handcard:isKindOf("EquipCard") then
+							use.card = policy(self,"#qhfireqiangxiCARD:" .. handcard:getKnownEffectiveId() .. ":")
 							if use.to then --不可省略，因为在找出可用卡牌时use.to不为QList，添加角色时会出错
 								use.to:append(enemy)
 							end
@@ -742,8 +742,8 @@ sgs.ai_skill_use_func["#qhfireqiangxiCARD"] = function(card, use, self)
 						end
 					end
 				end
-				if q(self.player,"getMark","qhfireqiangxi_lose-Clear") == 0 then --失去体力
-					if q(self.player,"getHp") > 0 then
+				if self.player:getStrategyMark("qhfireqiangxi_lose-Clear") == 0 then --失去体力
+					if self.player:getHp() > 0 then
 						use.card = policy(self,"#qhfireqiangxiCARD:.:")
 						if use.to then --不可省略，因为在找出可用卡牌时use.to不为QList，添加角色时会出错
 							use.to:append(enemy)
@@ -772,17 +772,17 @@ sgs.qiangxi_keep_value = {
 sgs.ai_fill_skill["qhfirequhu"] = function(self,inclusive,request) --考虑使用视为技的可能性
 	if self.player:hasUsed("#qhfirequhuCARD") then return end
 	if self:needBear() then return end
-	if q(self.player,"getHp") == 1 then return end
+	if self.player:getHp() == 1 then return end
 	local mcard
 	local num = 0
 	for _, card in sgs.qlist(self.player:getHandcards()) do
-		if not q(card,"isKindOf","Peach") and q(card,"getNumber") > num then
-			num = q(card,"getNumber")
+		if not card:isKindOf("Peach") and card:getNumber() > num then
+			num = card:getNumber()
 			mcard = card
 		end
 	end
 	if mcard then
-		return policy(self,"#qhfirequhuCARD:" .. q(mcard,"getEffectiveId") .. ":")
+		return policy(self,"#qhfirequhuCARD:" .. mcard:getKnownEffectiveId() .. ":")
 	end
 end
 
@@ -791,7 +791,7 @@ sgs.ai_skill_use_func["#qhfirequhuCARD"] = function(card, use, self)
 	if #enemies > 0 then
 		enemies = self:sort(enemies, "handcard")
 		for _, enemy in sgs.list(self.enemies) do
-			if not enemy:isKongcheng() and q(self.player,"canPindian",enemy) then
+			if not enemy:isKongcheng() and self.player:canPindian(enemy) then
 				use.card = card
 				if use.to then --不可省略，因为在找出可用卡牌时use.to不为QList，添加角色时会出错
 					use.to:append(enemy)
@@ -811,7 +811,7 @@ sgs.ai_choicemade_filter.cardChosen.qhfirequhu = sgs.ai_choicemade_filter.cardCh
 
 --节命
 sgs.ai_skill_playerchosen.qhfirejieming = function(self, targets)
-	if q(self.player,"getHandcardNum") < 3 then
+	if self.player:getHandcardNum() < 3 then
 		return self.player
 	end
 	local targetTable = sgs.QList2Table(targets)
@@ -824,16 +824,16 @@ sgs.ai_skill_playerchosen.qhfirejieming = function(self, targets)
 end
 sgs.ai_playerchosen_intention["qhfirejieming"] = -40
 sgs.ai_need_damaged.qhfirejieming = function (self,attacker,player)
-	return q(player,"hasSkill","qhfirejieming") and self:getJiemingChaofeng(player)<=-6
+	return player:hasSkill("qhfirejieming") and self:getJiemingChaofeng(player)<=-6
 end
 sgs.ai_can_damagehp.qhfirejieming = function(self,from,card,to)
 	if self:isFriend(to)
 	and self:canLoseHp(from,card,to)
-	and q(to,"getHp")+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
+	and to:getHp()+self:getAllPeachNum()-self:ajustDamage(from,to,1,card)>0
 	then
 		for _,fp in sgs.list(self.friends)do
-			if q(fp,"getHandcardNum")<5
-			and q(fp,"getHandcardNum")<q(fp,"getMaxHp")
+			if fp:getHandcardNum()<5
+			and fp:getHandcardNum()<fp:getMaxHp()
 			then return true end
 		end
 	end
@@ -858,11 +858,11 @@ sgs.ai_skill_use_func["#qhstandardrendeCARD"] = function(card, use, self)
 	local friend2 = friends[2]
 	local Max
 	if friend2 then
-		Max = q(friend2,"getHandcardNum") - q(friend1,"getHandcardNum") + 1
+		Max = friend2:getHandcardNum() - friend1:getHandcardNum() + 1
 	else
 		Max = 20
 	end
-	local Int = q(self.player,"getMark","qhstandardrende") --获取标记
+	local Int = self.player:getStrategyMark("qhstandardrende") --获取标记
 	if #cards > Num and Num + Int == (1 or 3) then
 		Num = Num + 1
 	end
@@ -894,10 +894,10 @@ sgs.ai_card_intention["qhstandardrendeCARD"] = -50 --仇恨值
 
 --激将
 sgs.ai_fill_skill["qhstandardjijiang"] = function(self,inclusive,request)             --考虑使用视为技的可能性
-	if q(self.player,"hasFlag","qhstandardjijiang_used") then return nil end --有标志则不发动
+	if self.player:getStrategyFlag("qhstandardjijiang_used") then return nil end --有标志则不发动
 	local cards = self.player:getHandcards()                          --获取手牌
 	for _, card in sgs.qlist(cards) do                                --对手牌进行扫描
-		if q(card,"isKindOf","Slash") then                                --若有杀
+		if card:isKindOf("Slash") then                                --若有杀
 			return nil                                                --不发动
 		end
 	end
@@ -918,7 +918,7 @@ sgs.ai_use_priority["qhstandardjijiangCARD"] = 1             --使用优先值
 sgs.ai_skill_invoke.qhstandardjijiang = function(self, data) --是否发动技能
 	local cards = self.player:getHandcards()                 --获取手牌
 	for _, card in sgs.qlist(cards) do                       --对手牌进行扫描
-		if q(card,"isKindOf","Slash") then                       --若有杀
+		if card:isKindOf("Slash") then                       --若有杀
 			return nil                                       --不发动
 		end
 	end
@@ -935,23 +935,23 @@ sgs.ai_skill_cardask["#askForqhstandardjijiang"] = function(self, data) --询问
 	if handcards:isEmpty() then return "." end                          --没牌则不出
 	local cards = {}
 	for _, card in sgs.qlist(handcards) do                              --对手牌进行扫描
-		if q(card,"isKindOf","Slash") then                                  --类型是杀,isKindOf要大写
+		if card:isKindOf("Slash") then                                  --类型是杀,isKindOf要大写
 			table.insert(cards, card)
 		end
 	end
 	if #cards == 0 then return "." end --没杀则不出
 	cards = self:sortByKeepValue(cards)
 	local card = cards[1]
-	return q(card,"getEffectiveId")
+	return card:getKnownEffectiveId()
 end
 
 --标准版-强化 关羽-武圣
 sgs.ai_view_as.qhstandardwusheng = function(card, player, card_place) --重写视为技
-	local suit = q(card,"getSuitString")
+	local suit = card:getSuitString()
 	local number = card:getNumberString()
-	local card_id = q(card,"getEffectiveId")
-	if card:isRed() and not q(card,"isKindOf","Peach") and not q(card,"hasFlag","using") --红色且不是桃
-		and not (q(card,"isKindOf","WoodenOx") and player:getPile("wooden_ox"):length() > 0) then
+	local card_id = card:getKnownEffectiveId()
+	if card:isRed() and not card:isKindOf("Peach") and not card:getStrategyFlag("using") --红色且不是桃
+		and not (card:isKindOf("WoodenOx") and player:getPile("wooden_ox"):length() > 0) then
 		return ("slash:qhstandardwusheng[%s:%s]=%d"):format(suit, number, card_id)
 	end
 end
@@ -966,14 +966,14 @@ sgs.ai_fill_skill["qhstandardwusheng"] = function(self,inclusive,request) --考�
 	local use_card
 	cards = self:sortByUseValue(cards, true)
 	local use_cardtype
-	if q(self.player,"getMark","qhstandardwusheng-Clear") == 0 then
+	if self.player:getStrategyMark("qhstandardwusheng-Clear") == 0 then
 		for _, card in ipairs(cards) do --对卡牌进行扫描
-			if q(card,"getSuit") == sgs.Card_Spade and q(self.player,"isWounded") then
+			if card:getSuit() == sgs.Card_Spade and self.player:isWounded() then
 				use_card = card   --出桃
 				use_cardtype = "peach"
 				break
 			end
-			if q(card,"getSuit") == sgs.Card_Club and self:getCardsNum("Slash") > 0 then
+			if card:getSuit() == sgs.Card_Club and self:getCardsNum("Slash") > 0 then
 				use_card = card --出酒
 				use_cardtype = "analeptic"
 				break
@@ -990,9 +990,9 @@ sgs.ai_fill_skill["qhstandardwusheng"] = function(self,inclusive,request) --考�
 		end
 	end
 	if use_card then
-		local suit = q(use_card,"getSuitString")
+		local suit = use_card:getSuitString()
 		local number = use_card:getNumberString()
-		local card_id = q(use_card,"getEffectiveId")
+		local card_id = use_card:getKnownEffectiveId()
 		local card_str = ("%s:qhstandardwusheng[%s:%s]=%d"):format(use_cardtype, suit, number, card_id)
 		local acard = policy(self,card_str)
 		return acard
@@ -1017,35 +1017,35 @@ sgs.ai_cardsview_valuable.qhstandardwusheng = function(self, class_name, player)
 	end
 	if cards:isEmpty() then return end
 	for _, c in sgs.qlist(cards) do
-		if q(c,"isKindOf",class_name) then
+		if c:isKindOf(class_name) then
 			return --有牌就不用
 		end
 	end
 	if class_name == "Slash" then
 		for _, c in sgs.qlist(cards) do
 			if c:isRed() and not player:isCardLimited(c, sgs.Card_MethodUse) then
-				local suit = q(c,"getSuitString")
+				local suit = c:getSuitString()
 				local number = c:getNumberString()
-				local card_id = q(c,"getEffectiveId")
+				local card_id = c:getKnownEffectiveId()
 				return ("slash:qhstandardwusheng[%s:%s]=%d"):format(suit, number, card_id)
 			end
 		end
 	end
-	if q(self.player,"getMark","qhstandardwusheng-Clear") == 1 then return end
+	if self.player:getStrategyMark("qhstandardwusheng-Clear") == 1 then return end
 	for _, c in sgs.qlist(cards) do
 		if not player:isCardLimited(c, sgs.Card_MethodUse) then
-			local suit = q(c,"getSuitString")
+			local suit = c:getSuitString()
 			local number = c:getNumberString()
-			local card_id = q(c,"getEffectiveId")
+			local card_id = c:getKnownEffectiveId()
 			return ("%s:qhstandardwusheng[%s:%s]=%d"):format(name, suit, number, card_id)
 		end
 	end
 end
 function sgs.ai_armor_value.qhstandardqinglong(player, self, card)
-    if card and q(card,"isKindOf","Blade") then return 4 end
+    if card and card:isKindOf("Blade") then return 4 end
 end
 sgs.ai_ajustdamage_from.qhstandardqinglong = function(self, from, to, card, nature)
-	if card and q(card,"isKindOf","Slash") and from:hasWeapon("Blade") then
+	if card and card:isKindOf("Slash") and from:hasWeapon("Blade") then
 		return 1
 	end
 end
@@ -1055,11 +1055,11 @@ sgs.append_skill_list("double_slash_skill","qhstandardpaoxiao")
 sgs.ai_cardneed.qhstandardpaoxiao = sgs.ai_cardneed.slash
 sgs.ai_cardneed.qhstandardzhangba = sgs.ai_cardneed.slash
 sgs.ai_view_as.qhstandardzhangba = function(card, player, card_place) --重写视为技
-	local suit = q(card,"getSuitString")
+	local suit = card:getSuitString()
 	local number = card:getNumberString()
-	local card_id = q(card,"getEffectiveId")
-	if q(player,"getMark","qhstandardzhangbaUsed-Clear") == 0 and not q(card,"isKindOf","Peach") and not q(card,"hasFlag","using")
-		and not (q(card,"isKindOf","WoodenOx") and player:getPile("wooden_ox"):length() > 0) then
+	local card_id = card:getKnownEffectiveId()
+	if player:getStrategyMark("qhstandardzhangbaUsed-Clear") == 0 and not card:isKindOf("Peach") and not card:getStrategyFlag("using")
+		and not (card:isKindOf("WoodenOx") and player:getPile("wooden_ox"):length() > 0) then
 		return ("slash:qhstandardzhangba[%s:%s]=%d"):format(suit, number, card_id)
 	end
 end
@@ -1074,9 +1074,9 @@ sgs.ai_fill_skill["qhstandardzhangba"] = function(self,inclusive,request) --考�
 	cards = self:sortByUseValue(cards, true)
 	if #cards > 1 then
 		local card = cards[1]
-		local suit = q(card,"getSuitString")
+		local suit = card:getSuitString()
 		local number = card:getNumberString()
-		local card_id = q(card,"getEffectiveId")
+		local card_id = card:getKnownEffectiveId()
 		local card_str = ("slash:qhstandardzhangba[%s:%s]=%d"):format(suit, number, card_id)
 		local acard = policy(self,card_str)
 		return acard
@@ -1085,7 +1085,7 @@ end
 
 
 sgs.ai_ajustdamage_from.qhstandardzhangba = function(self, from, to, card, nature)
-	if card and q(card,"isKindOf","Slash") and q(from,"getMark","qhstandardzhangbaMiss-Clear") == 1 then
+	if card and card:isKindOf("Slash") and from:getStrategyMark("qhstandardzhangbaMiss-Clear") == 1 then
 		return 1
 	end
 end
@@ -1106,7 +1106,7 @@ sgs.ai_skill_use_func["#qhstandardguanxingCARD"] = function(card, use, self) --�
 	local players = sgs.QList2Table(self.room:getOtherPlayers(self.player))  --获取其他角色
 	local playersB = {}
 	for _, play in ipairs(players) do
-		if q(play,"getMark","@qhstandardguanxing_target") == 0 then --无标记
+		if play:getStrategyMark("@qhstandardguanxing_target") == 0 then --无标记
 			table.insert(playersB, play)                  --添加
 		end
 	end
@@ -1131,19 +1131,19 @@ sgs.ai_use_priority["qhstandardguanxingCARD"] = 1 --使用优先值
 
 --标准版-强化 赵云-龙胆
 sgs.ai_view_as.qhstandardlongdan = function(card, player, card_place) --重写视为技
-	local suit = q(card,"getSuitString")
+	local suit = card:getSuitString()
 	local number = card:getNumberString()
-	local card_id = q(card,"getEffectiveId")
-	if q(card,"isKindOf","Slash") then --是杀
+	local card_id = card:getKnownEffectiveId()
+	if card:isKindOf("Slash") then --是杀
 		return ("jink:qhstandardlongdan[%s:%s]=%d"):format(suit, number, card_id)
 	end
-	if q(card,"isKindOf","Jink") then --是闪
+	if card:isKindOf("Jink") then --是闪
 		return ("slash:qhstandardlongdan[%s:%s]=%d"):format(suit, number, card_id)
 	end
-	if q(card,"isKindOf","Analeptic") then --是酒
+	if card:isKindOf("Analeptic") then --是酒
 		return ("peach:qhstandardlongdan[%s:%s]=%d"):format(suit, number, card_id)
 	end
-	if q(card,"isKindOf","Peach") then --是桃
+	if card:isKindOf("Peach") then --是桃
 		return ("analeptic:qhstandardlongdan[%s:%s]=%d"):format(suit, number, card_id)
 	end
 end
@@ -1154,26 +1154,26 @@ sgs.ai_fill_skill["qhstandardlongdan"] = function(self,inclusive,request)    --�
 	cards = self:sortByUseValue(cards, true)
 	local use_cardtype
 	for _, card in ipairs(cards) do                        --对卡牌进行扫描
-		if q(card,"isKindOf","Peach") and self:getCardsNum("Slash") > 0 and (not q(self.player,"isWounded")) then
+		if card:isKindOf("Peach") and self:getCardsNum("Slash") > 0 and (not self.player:isWounded()) then
 			use_card = card                                --出酒
 			use_cardtype = "analeptic"
 			break
 		end
-		if q(card,"isKindOf","Analeptic") and q(self.player,"isWounded") then
+		if card:isKindOf("Analeptic") and self.player:isWounded() then
 			use_card = card --出桃
 			use_cardtype = "peach"
 			break
 		end
-		if q(card,"isKindOf","Jink") then
+		if card:isKindOf("Jink") then
 			use_card = card --出杀
 			use_cardtype = "slash"
 			break
 		end
 	end
 	if use_card then
-		local suit = q(use_card,"getSuitString")
+		local suit = use_card:getSuitString()
 		local number = use_card:getNumberString()
-		local card_id = q(use_card,"getEffectiveId")
+		local card_id = use_card:getKnownEffectiveId()
 		local card_str = ("%s:qhstandardlongdan[%s:%s]=%d"):format(use_cardtype, suit, number, card_id)
 		local acard = policy(self,card_str)
 		return acard
@@ -1187,7 +1187,7 @@ end
 
 --标准版-强化 马超-铁骑
 sgs.ai_skill_invoke.qhstandardtieqi = function(self, data) --是否发动技能
-	if q(self.player,"hasFlag","use_from") then
+	if self.player:getStrategyFlag("use_from") then
 		local target = data:toPlayer()
 		if not self:isFriend(target) then return true end
 		return false
@@ -1204,14 +1204,14 @@ sgs.ai_skill_invoke.qhstandardjizhi = function(self, data) --是否发动技能
 end
 sgs.ai_card_priority.qhstandardjizhi = function(self,card,v)
 	if self.useValue
-	and q(card,"isKindOf","TrickCard")
+	and card:isKindOf("TrickCard")
 	then v = v+3 end
 end
 function sgs.ai_cardneed.qhstandardjizhi(to,card)
-	return q(card,"getTypeId")==sgs.Card_TypeTrick
+	return card:getTypeId()==sgs.Card_TypeTrick
 end
 function sgs.ai_cardneed.qhstandardqicai(to,card)
-	return q(card,"isKindOf","SingleTargetTrick")
+	return card:isKindOf("SingleTargetTrick")
 end
 
 sgs.ai_skill_invoke.qhstandardjizhi2 = function(self, data) --是否发动技能
@@ -1225,13 +1225,13 @@ end
 
 --风包-强化 黄忠-烈弓
 sgs.ai_skill_invoke.qhwindliegong = function(self, data) --是否发动技能
-	if q(self.player,"hasFlag","qhwindliegong_TargetSpecified") then
+	if self.player:getStrategyFlag("qhwindliegong_TargetSpecified") then
 		if self:isEnemy(data:toPlayer()) then
 			return true --发动
 		end
 	else
 		local damage = data:toDamage()
-		if q(self.player,"getHp") > q(damage.to,"getHp") then
+		if self.player:getHp() > damage.to:getHp() then
 			return true --发动
 		elseif self:isEnemy(damage.to) then
 			return true --发动
@@ -1239,7 +1239,7 @@ sgs.ai_skill_invoke.qhwindliegong = function(self, data) --是否发动技能
 	end
 end
 sgs.ai_ajustdamage_from.qhwindliegong = function(self, from, to, card, nature)
-	if card and q(card,"isKindOf","Slash") and from and to and q(from,"getHp") <= q(to,"getHp") then
+	if card and card:isKindOf("Slash") and from and to and from:getHp() <= to:getHp() then
 		return 1
 	end
 end
@@ -1247,35 +1247,35 @@ end
 sgs.ai_cardneed.qhwindliegong = sgs.ai_cardneed.slash
 
 sgs.ai_canliegong_skill.qhwindliegong = function(self, from, to)
-	return q(to,"getHandcardNum") <= q(from,"getAttackRange")
+	return to:getHandcardNum() <= from:getAttackRange()
 end
 sgs.ai_cardneed.qhwindgongshu = sgs.ai_cardneed.weapon
 
 sgs.ai_card_priority.qhwindkuanggu = function(self,card,v)
-	if q(card,"isKindOf","Peach")
+	if card:isKindOf("Peach")
 	then v = 1.09 end
 end
 sgs.ai_use_revises.qhwindkuanggu = function(self,card,use)
-	if q(card,"isKindOf","Peach")
-	and not q(self,"hasJueqingEffect",self.player)
+	if card:isKindOf("Peach")
+	and not self:hasJueqingEffect(self.player)
 	and self.player:getOffensiveHorse()
-	and q(self.player,"getLostHp")==1
+	and self.player:getLostHp()==1
 	and self:getOverflow()<1
 	then return false end
 end
 function sgs.ai_cardneed.qhwindkuanggu(to,card,self)
-	return q(card,"isKindOf","OffensiveHorse") and not (to:getOffensiveHorse() or getKnownCard(to,self.player,"OffensiveHorse",false)>0)
+	return card:isKindOf("OffensiveHorse") and not (to:getOffensiveHorse() or getKnownCard(to,self.player,"OffensiveHorse",false)>0)
 end
 
 
 --风包-强化 神关羽-武魂
 sgs.ai_use_revises.qhwindwushen = function(self,card,use)
-	if q(card,"isKindOf","Slash") and q(card,"getSuit") == sgs.Card_Heart then
+	if card:isKindOf("Slash") and card:getSuit() == sgs.Card_Heart then
 		self:setStrategyCardFlag(card,"Qinggang",true)
 	end
 end
 sgs.ai_card_priority.qhwindwushen = function(self,card)
-	if q(card,"isKindOf","Slash") and q(card,"getSuit")==sgs.Card_Heart
+	if card:isKindOf("Slash") and card:getSuit()==sgs.Card_Heart
 	then return 0.03 end
 end
 sgs.ai_suit_priority.qhwindwushen= "club|spade|diamond|heart"
@@ -1285,27 +1285,27 @@ sgs.ai_skill_playerchosen.qhwindwuhun = function(self, targets) --选择目标
 	local target
 	local lord
 	for _, player in ipairs(targets) do
-		if q(player,"isLord") then lord = player end
+		if player:isLord() then lord = player end
 		if self:isEnemy(player) and not target then
 			target = player
 		end
 	end
-	if q(self.player,"getRole") == "rebel" and lord then return lord end
+	if self.player:getKnownRole() == "rebel" and lord then return lord end
 	if target then return target end
-	if self.player:getRole() == "loyalist" and q(targets[1],"isLord") then return targets[2] end
+	if self.player:getRole() == "loyalist" and targets[1]:isLord() then return targets[2] end
 	return targets[1]
 end
 
 sgs.ai_canNiepan_skill.qhwindwuhun = function(player)
-	return q(player,"getMark","qhwindwuhun_limit") > 0
+	return player:getStrategyMark("qhwindwuhun_limit") > 0
 end
 
 --火包-强化 庞统-连环
 sgs.ai_view_as.qhfirelianhuan = function(card, player, card_place) --重写视为技
-	local suit = q(card,"getSuitString")
+	local suit = card:getSuitString()
 	local number = card:getNumberString()
-	local card_id = q(card,"getEffectiveId")
-	if q(card,"getSuit") == sgs.Card_Spade then
+	local card_id = card:getKnownEffectiveId()
+	if card:getSuit() == sgs.Card_Spade then
 		return ("thunder_slash:qhfirelianhuan[%s:%s]=%d"):format(suit, number, card_id)
 	end
 end
@@ -1316,8 +1316,8 @@ sgs.ai_fill_skill["qhfirelianhuan"] = function(self,inclusive,request)       --�
 	cards = self:sortByUseValue(cards, true)
 	local use_cardtype
 	for _, card in ipairs(cards) do                        --对卡牌进行扫描
-		if q(card,"getSuit") == sgs.Card_Spade then
-			local usecard = readonly_clone(self,"qhfirelianhuan","thunder_slash",sgs.Card_Spade,q(card,"getNumber"))
+		if card:getSuit() == sgs.Card_Spade then
+			local usecard = readonly_clone(self,"qhfirelianhuan","thunder_slash",sgs.Card_Spade,card:getNumber())
 
 			local dummy_use = self:aiUseCard(usecard, dummy_plan())
 			if dummy_use.card then
@@ -1326,16 +1326,16 @@ sgs.ai_fill_skill["qhfirelianhuan"] = function(self,inclusive,request)       --�
 				break
 			end
 		end
-		if q(card,"getSuit") == sgs.Card_Club then
+		if card:getSuit() == sgs.Card_Club then
 			use_card = card --铁索
 			use_cardtype = "iron_chain"
 			break
 		end
 	end
 	if use_card then
-		local suit = q(use_card,"getSuitString")
+		local suit = use_card:getSuitString()
 		local number = use_card:getNumberString()
-		local card_id = q(use_card,"getEffectiveId")
+		local card_id = use_card:getKnownEffectiveId()
 		local card_str = ("%s:qhfirelianhuan[%s:%s]=%d"):format(use_cardtype, suit, number, card_id)
 		local acard = policy(self,card_str)
 		return acard
@@ -1344,7 +1344,7 @@ end
 
 sgs.ai_cardneed.qhfirelianhuan = function(to, card, self)
 	--在分牌时，自己 to 的友方玩家 self 先将自己需要的卡牌 card 交给自己
-	return card:isBlack() and q(to,"getHandcardNum") <= 2
+	return card:isBlack() and to:getHandcardNum() <= 2
 end
 
 --涅槃
@@ -1363,12 +1363,12 @@ sgs.ai_skill_invoke.qhfireniepan_endPlay = function(self, data) --是否发动�
 end
 
 sgs.ai_canNiepan_skill.qhfireniepan = function(player)
-	return q(player,"getMark","qhfireniepan_limit") > 0
+	return player:getStrategyMark("qhfireniepan_limit") > 0
 end
 
 --火包-强化 诸葛亮-火计
 sgs.ai_fill_skill["qhfirehuoji"] = function(self,inclusive,request) --考虑使用视为技的可能性
-	if q(self.player,"getMark","qhfirehuoji-Clear") ~= 0 then
+	if self.player:getStrategyMark("qhfirehuoji-Clear") ~= 0 then
 		return nil
 	end
 	local card_str = ("fire_attack:qhfirehuoji[%s:%s]=."):format("no_suit_red", 0) --无子卡虚拟火攻
@@ -1377,14 +1377,14 @@ sgs.ai_fill_skill["qhfirehuoji"] = function(self,inclusive,request) --考虑使�
 end
 
 sgs.ai_cardneed.qhfirehuoji = function(to,card,self)
-	return q(to,"getHandcardNum")>=2
+	return to:getHandcardNum()>=2
 end
 
 --看破
 sgs.ai_view_as.qhfirekanpo = function(card, player, card_place) --重写视为技
-	local suit = q(card,"getSuitString")
+	local suit = card:getSuitString()
 	local number = card:getNumberString()
-	local card_id = q(card,"getEffectiveId")
+	local card_id = card:getKnownEffectiveId()
 	if card:isBlack() then
 		return ("nullification:qhfirekanpo[%s:%s]=%d"):format(suit, number, card_id)
 	end
@@ -1416,7 +1416,7 @@ sgs.ai_skill_use["@@qhfirekuangfeng"] = function(self, prompt)
 			return str
 		end
 		for _, enemy in ipairs(enemies) do
-			if q(enemy,"getMark","&qhfirekuangfeng") > 0 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy,"F", self.player) then
+			if enemy:getStrategyMark("&qhfirekuangfeng") > 0 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy,"F", self.player) then
 				return "#qhfirekuangfengCARD:" .. self.player:getPile("stars"):first() .. ":->" .. enemy:objectName()
 			end
 		end
@@ -1451,7 +1451,7 @@ sgs.ai_skill_use["@@qhfiredawu"] = function(self, prompt)
 	end
 
 	for _, friend in ipairs(friends) do
-		if q(friend,"getLostHp") > 0 then
+		if friend:getLostHp() > 0 then
 			return "#qhfiredawuCARD:" .. self.player:getPile("stars"):first() .. ":->" .. friend:objectName()
 		end
 	end
@@ -1470,12 +1470,12 @@ end
 
 --标准版-强化 孙权-制衡
 sgs.ai_fill_skill["qhstandardzhiheng"] = function(self,inclusive,request) --考虑使用视为技的可能性
-	local maxhp = q(self.player,"getMaxHp")
-	local hp = q(self.player,"getHp")
+	local maxhp = self.player:getMaxHp()
+	local hp = self.player:getHp()
 	local MaxHpXin = maxhp / 1.5                  --体力上限除以1.5
 	local MaxHpceil = math.ceil(MaxHpXin)
-	local HandcardNum = q(self.player,"getHandcardNum") --手牌数
-	local Mark = q(self.player,"getMark","@qhstandardzhiheng")
+	local HandcardNum = self.player:getHandcardNum() --手牌数
+	local Mark = self.player:getStrategyMark("@qhstandardzhiheng")
 	if HandcardNum < MaxHpceil and HandcardNum < 3 and Mark == 1 then
 		return nil                                   --不发动
 	end
@@ -1493,14 +1493,14 @@ sgs.ai_skill_use_func["#qhstandardzhihengCARD"] = function(card, use, self) --�
 		if self:getCardsNum("Peach") + self:getCardsNum("Analeptic") + self:getCardsNum("Nullification") + self:getCardsNum("SavageAssault") + self:getCardsNum("ArcheryAttack") + self:getCardsNum("Duel") == 0 then
 			local use_zhiheng_cards = {}
 			for _, c in ipairs(sgs.QList2Table(self.player:getCards("h"))) do
-				table.insert(use_zhiheng_cards, q(c,"getEffectiveId"))
+				table.insert(use_zhiheng_cards, c:getKnownEffectiveId())
 			end
 			for _, e in ipairs(sgs.QList2Table(self.player:getCards("e"))) do
-				if not q(e,"isKindOf","Armor") and not q(e,"isKindOf","DefensiveHorse") then
-					table.insert(use_zhiheng_cards, q(e,"getEffectiveId"))
+				if not e:isKindOf("Armor") and not e:isKindOf("DefensiveHorse") then
+					table.insert(use_zhiheng_cards, e:getKnownEffectiveId())
 				end
 			end
-			if self.player:getArmor() and self.player:hasArmorEffect("silver_lion") and q(self.player,"isWounded") then
+			if self.player:getArmor() and self.player:hasArmorEffect("silver_lion") and self.player:isWounded() then
 				table.insert(use_zhiheng_cards, self.player:getArmor():getEffectiveId())
 			end
 			use.card = policy(self,"#qhstandardzhihengCARD:" .. table.concat(use_zhiheng_cards, "+") .. ":")
@@ -1508,7 +1508,7 @@ sgs.ai_skill_use_func["#qhstandardzhihengCARD"] = function(card, use, self) --�
 		end
 	end
 
-	if q(self.player,"getHp") < 3 then
+	if self.player:getHp() < 3 then
 		local zcards = self.player:getCards("he")
 		local use_slash, keep_jink, keep_analeptic, keep_weapon = false, false, false, false
 		-- QVariant::toBool of the own tag (it holds the acquired skill name).
@@ -1523,9 +1523,9 @@ sgs.ai_skill_use_func["#qhstandardzhihengCARD"] = function(card, use, self) --�
 						if keep_slash then shouldUse = false end
 						if dummy_use.to then
 							for _, p in sgs.qlist(dummy_use.to) do
-								if q(p,"getHp") <= 1 then
+								if p:getHp() <= 1 then
 									shouldUse = false
-									if q(self.player,"distanceTo",p) > 1 then keep_weapon = self.player:getWeapon() end
+									if self.player:distanceTo(p) > 1 then keep_weapon = self.player:getWeapon() end
 									break
 								end
 							end
@@ -1535,23 +1535,23 @@ sgs.ai_skill_use_func["#qhstandardzhihengCARD"] = function(card, use, self) --�
 						if not shouldUse then use_slash = true end
 					end
 				end
-				if q(zcard,"getTypeId") == sgs.Card_TypeTrick then
+				if zcard:getTypeId() == sgs.Card_TypeTrick then
 					local dummy_use = self:aiUseCard(zcard, dummy_plan())
 					if dummy_use.card then shouldUse = false end
 				end
-				if q(zcard,"getTypeId") == sgs.Card_TypeEquip and not self.player:hasEquip(zcard) then
+				if zcard:getTypeId() == sgs.Card_TypeEquip and not self.player:hasEquip(zcard) then
 					local dummy_use = self:aiUseCard(zcard, dummy_plan())
 					if dummy_use.card then shouldUse = false end
-					if keep_weapon and q(zcard,"getEffectiveId") == q(keep_weapon,"getEffectiveId") then shouldUse = false end
+					if keep_weapon and zcard:getKnownEffectiveId() == keep_weapon:getKnownEffectiveId() then shouldUse = false end
 				end
-				if self.player:hasEquip(zcard) and q(zcard,"isKindOf","Armor") and not self:needToThrowArmor() then shouldUse = false end
-				if self.player:hasEquip(zcard) and q(zcard,"isKindOf","DefensiveHorse") and not self:needToThrowArmor() then shouldUse = false end
-				if self.player:hasEquip(zcard) and q(zcard,"isKindOf","WoodenOx") and self.player:getPile("wooden_ox"):length() > 0 then shouldUse = false end
+				if self.player:hasEquip(zcard) and zcard:isKindOf("Armor") and not self:needToThrowArmor() then shouldUse = false end
+				if self.player:hasEquip(zcard) and zcard:isKindOf("DefensiveHorse") and not self:needToThrowArmor() then shouldUse = false end
+				if self.player:hasEquip(zcard) and zcard:isKindOf("WoodenOx") and self.player:getPile("wooden_ox"):length() > 0 then shouldUse = false end
 				if isCard("Jink", zcard, self.player) and not keep_jink then
 					keep_jink = true
 					shouldUse = false
 				end
-				if q(self.player,"getHp") == 1 and isCard("Analeptic", zcard, self.player) and not keep_analeptic then
+				if self.player:getHp() == 1 and isCard("Analeptic", zcard, self.player) and not keep_analeptic then
 					keep_analeptic = true
 					shouldUse = false
 				end
@@ -1564,7 +1564,7 @@ sgs.ai_skill_use_func["#qhstandardzhihengCARD"] = function(card, use, self) --�
 		local use_slash_num = 0
 		cards = self:sortByKeepValue(cards)
 		for _, card in ipairs(cards) do
-			if q(card,"isKindOf","Slash") then
+			if card:isKindOf("Slash") then
 				local will_use = false
 				if use_slash_num <= known(card:getTargetModResidue(self.player),"card residue") then
 					local dummy_use = self:aiUseCard(card, dummy_plan())
@@ -1581,23 +1581,23 @@ sgs.ai_skill_use_func["#qhstandardzhihengCARD"] = function(card, use, self) --�
 		if self.player:getArmor() then num = num + 1 end
 		if num > 0 then
 			for _, card in ipairs(cards) do
-				if q(card,"isKindOf","Jink") and num > 0 then
+				if card:isKindOf("Jink") and num > 0 then
 					table.insert(unpreferedCards, card:getId())
 					num = num - 1
 				end
 			end
 		end
 		for _, card in ipairs(cards) do
-			if (q(card,"isKindOf","Weapon") and q(self.player,"getHandcardNum") < 3) or q(card,"isKindOf","OffensiveHorse")
-				or self:getSameEquip(card, self.player) or q(card,"isKindOf","AmazingGrace") then
+			if (card:isKindOf("Weapon") and self.player:getHandcardNum() < 3) or card:isKindOf("OffensiveHorse")
+				or self:getSameEquip(card, self.player) or card:isKindOf("AmazingGrace") then
 				table.insert(unpreferedCards, card:getId())
-			elseif q(card,"getTypeId") == sgs.Card_TypeTrick then
+			elseif card:getTypeId() == sgs.Card_TypeTrick then
 				local dummy_use = self:aiUseCard(card, dummy_plan())
 				if not dummy_use.card then table.insert(unpreferedCards, card:getId()) end
 			end
 		end
 
-		if self.player:getWeapon() and q(self.player,"getHandcardNum") < 3 then
+		if self.player:getWeapon() and self.player:getHandcardNum() < 3 then
 			table.insert(unpreferedCards, self.player:getWeapon():getId())
 		end
 
@@ -1633,11 +1633,11 @@ end
 sgs.ai_use_value["qhstandardzhihengCARD"] = 9.1    --使用价值
 sgs.ai_use_priority["qhstandardzhihengCARD"] = 2.1 --使用优先值
 function sgs.ai_cardneed.qhstandardzhiheng(to,card)
-	return not q(card,"isKindOf","Jink")
+	return not card:isKindOf("Jink")
 end
 sgs.ai_use_revises.qhstandardzhiheng = function(self,card,use)
-	if q(card,"isKindOf","Weapon")
-	and not q(card,"isKindOf","Crossbow")
+	if card:isKindOf("Weapon")
+	and not card:isKindOf("Crossbow")
 	and self:getSameEquip(card)
 	and not self.player:hasUsed("#qhstandardzhihengCARD")
 	then return false end
@@ -1649,15 +1649,15 @@ sgs.ai_fill_skill["qhstandardqixi"] = function(self,inclusive,request) --考虑�
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	cards = self:sortByKeepValue(cards)
 	for _, c in sgs.list(cards) do
-		local fs = turn_clone(self,"qhstandardqixi","dismantlement",sgs.Card_NoSuit,0,{q(c,"getEffectiveId")},request)
-		if c:isBlack() and q(fs,"isAvailable",self.player) then
+		local fs = turn_clone(self,"qhstandardqixi","dismantlement",sgs.Card_NoSuit,0,{c:getKnownEffectiveId()},request)
+		if c:isBlack() and fs:isAvailable(self.player) then
 			return fs
 		end
 
 	end
 end
 sgs.ai_use_revises.qhstandardqixi = function(self,card,use)
-	if q(card,"isKindOf","EquipCard")
+	if card:isKindOf("EquipCard")
 	and card:isBlack()
 	then
 		local same = self:getSameEquip(card)
@@ -1699,7 +1699,7 @@ sgs.ai_skill_use["@qhstandardpoxi"] = function(self, prompt)                    
 			else
 				local cards = sgs.QList2Table(self.player:getHandcards())
 				cards = self:sortByUseValue(cards, true)
-				local id = q(cards[1],"getEffectiveId")
+				local id = cards[1]:getKnownEffectiveId()
 				return ("#qhstandardpoxiCARD:" .. id .. ":->" .. enemy:objectName()) --格式为 技能卡:发动卡牌:->目标
 			end
 		end
@@ -1711,7 +1711,7 @@ sgs.ai_skill_invoke.qhstandardkeji = function(self, data) --是否发动技能
 	return true                                           --发动
 end
 sgs.ai_use_revises.qhstandardkeji = function(self,card,use)
-	if q(card,"isKindOf","Slash") and not self:hasCrossbowEffect()
+	if card:isKindOf("Slash") and not self:hasCrossbowEffect()
 	and (#self.enemies>1 or #self.friends>1) and self:getOverflow()>1
 	then return false end
 end
@@ -1720,9 +1720,9 @@ end
 sgs.ai_fill_skill["qhstandardkurou"] = function(self,inclusive,request)                     --考虑使用视为技的可能性
 	if self.player:usedTimes("#qhstandardkurouCARD") > 4 then return nil end --使用次数大于4则不用
 	if #self.enemies == 0 then return nil end                             --无敌方则不用
-	if q(self.player,"getHp") < 3 then return nil end                        --血少则不用
+	if self.player:getHp() < 3 then return nil end                        --血少则不用
 	local canuse_skill = false
-	if q(self.player,"getHp") > 3 and q(self.player,"getHandcardNum") < 3 then
+	if self.player:getHp() > 3 and self.player:getHandcardNum() < 3 then
 		canuse_skill = true
 	end
 	local slash = self:getEvaluationCard("slash")
@@ -1749,7 +1749,7 @@ sgs.ai_use_value["qhstandardkurouCARD"] = 5    --使用价值
 sgs.ai_use_priority["qhstandardkurouCARD"] = 8 --使用优先值
 sgs.ai_card_priority.qhstandardkurou = function(self,card,v)
 	if self.useValue
-	and q(card,"isKindOf","Crossbow")
+	and card:isKindOf("Crossbow")
 	then return 9 end
 end
 
@@ -1760,13 +1760,13 @@ end
 
 --反间
 sgs.ai_fill_skill["qhstandardfanjian"] = function(self,inclusive,request)               --考虑使用视为技的可能性
-	if q(self.player,"getHandcardNum") < 3 then return nil end           --牌少则不用
+	if self.player:getHandcardNum() < 3 then return nil end           --牌少则不用
 	if self.player:hasUsed("#qhstandardfanjianCARD") then return nil end --用过则不用
 	local cards = sgs.QList2Table(self.player:getHandcards())
 	cards = self:sortByUseValue(cards, true)
 	for _, card in ipairs(cards) do
-		if not q(card,"isKindOf","Peach") then                            --不是桃
-			local cardid = q(card,"getEffectiveId")
+		if not card:isKindOf("Peach") then                            --不是桃
+			local cardid = card:getKnownEffectiveId()
 			return policy(self,"#qhstandardfanjianCARD:" .. cardid .. ":") --返回技能卡
 		end
 	end
@@ -1818,18 +1818,18 @@ sgs.ai_fill_skill["qhstandardguose"] = function(self,inclusive,request) --考虑
 	local has_weapon, has_armor = false, false
 
 	for _, acard in ipairs(cards) do
-		if q(acard,"isKindOf","Weapon") and not (q(acard,"getSuit") == sgs.Card_Diamond) then has_weapon = true end
+		if acard:isKindOf("Weapon") and not (acard:getSuit() == sgs.Card_Diamond) then has_weapon = true end
 	end
 
 	for _, acard in ipairs(cards) do
-		if q(acard,"isKindOf","Armor") and not (q(acard,"getSuit") == sgs.Card_Diamond) then has_armor = true end
+		if acard:isKindOf("Armor") and not (acard:getSuit() == sgs.Card_Diamond) then has_armor = true end
 	end
 
 	for _, acard in ipairs(cards) do
-		if (q(acard,"getSuit") == sgs.Card_Diamond) and ((self:getUseValue(acard) < sgs.ai_use_value.QhstandardIndulgence) or inclusive) then
+		if (acard:getSuit() == sgs.Card_Diamond) and ((self:getUseValue(acard) < sgs.ai_use_value.QhstandardIndulgence) or inclusive) then
 			local shouldUse = true
 
-			if q(acard,"isKindOf","Armor") then
+			if acard:isKindOf("Armor") then
 				if not self.player:getArmor() then
 					shouldUse = false
 				elseif self.player:hasEquip(acard) and not has_armor and self:evaluateArmor() > 0 then
@@ -1837,7 +1837,7 @@ sgs.ai_fill_skill["qhstandardguose"] = function(self,inclusive,request) --考虑
 				end
 			end
 
-			if q(acard,"isKindOf","Weapon") then
+			if acard:isKindOf("Weapon") then
 				if not self.player:getWeapon() then
 					shouldUse = false
 				elseif self.player:hasEquip(acard) and not has_weapon then
@@ -1854,7 +1854,7 @@ sgs.ai_fill_skill["qhstandardguose"] = function(self,inclusive,request) --考虑
 
 	if not card then return nil end
 	local number = card:getNumberString()
-	local card_id = q(card,"getEffectiveId")
+	local card_id = card:getKnownEffectiveId()
 	local card_str = ("qhstandard_indulgence:qhstandardguose[diamond:%s]=%d"):format(number, card_id)
 	local indulgence = policy(self,card_str)
 	assert(indulgence)
@@ -1863,7 +1863,7 @@ end
 
 function sgs.ai_cardneed.qhstandardguose(to, card, self)
 	--在分牌时，自己 to 的友方玩家 self 先将自己需要的卡牌 card 交给自己
-	return q(card,"getSuit") == sgs.Card_Diamond
+	return card:getSuit() == sgs.Card_Diamond
 end
 
 sgs.qhstandardguose_suit_value = { --花色保留值
@@ -1877,7 +1877,7 @@ end
 --流离
 sgs.ai_skill_use["@qhstandardliuli"] = function(self, prompt, method) --被动技能卡的使用函数
 	local canChoicefrom = false                                       --低血可以选使用者
-	if q(self.player,"getHp") <= 2 then
+	if self.player:getHp() <= 2 then
 		canChoicefrom = true
 	end
 	local others = self.room:getOtherPlayers(self.player)
@@ -1885,7 +1885,7 @@ sgs.ai_skill_use["@qhstandardliuli"] = function(self, prompt, method) --被动�
 	others = sgs.QList2Table(others)
 	local source
 	for _, player in ipairs(others) do
-		if q(player,"hasFlag","qhstandardLiuliSlashSource") then
+		if player:getStrategyFlag("qhstandardLiuliSlashSource") then
 			source = player
 			break
 		end
@@ -1899,8 +1899,8 @@ sgs.ai_skill_use["@qhstandardliuli"] = function(self, prompt, method) --被动�
 		cards = self:sortByKeepValue(cards)
 		for _, card in ipairs(cards) do
 			if not self.player:isCardLimited(card, method) and
-				q(self.player,"distanceTo",who, -1) <= q(self.player,"getAttackRange") then
-				return ("#qhstandardliuliCARD:%d:->%s"):format(q(card,"getEffectiveId"), who:objectName()) --格式为 技能卡:发动卡牌:->目标
+				self.player:distanceTo(who, -1) <= self.player:getAttackRange() then
+				return ("#qhstandardliuliCARD:%d:->%s"):format(card:getKnownEffectiveId(), who:objectName()) --格式为 技能卡:发动卡牌:->目标
 			end
 		end
 		cards = self.player:getCards("e") --装备
@@ -1908,15 +1908,15 @@ sgs.ai_skill_use["@qhstandardliuli"] = function(self, prompt, method) --被动�
 		cards = self:sortByKeepValue(cards)
 		for _, card in ipairs(cards) do
 			local range_fix = -1
-			if q(card,"isKindOf","Weapon") then
-				range_fix = range_fix + sgs.weapon_range[q(card,"getClassName")] - 1
+			if card:isKindOf("Weapon") then
+				range_fix = range_fix + sgs.weapon_range[card:getClassName()] - 1
 			end
-			if q(card,"isKindOf","OffensiveHorse") then
+			if card:isKindOf("OffensiveHorse") then
 				range_fix = range_fix + 1
 			end
 			if not self.player:isCardLimited(card, method) and
-				q(self.player,"distanceTo",who, range_fix) <= q(self.player,"getAttackRange") then
-				return ("#qhstandardliuliCARD:%d:->%s"):format(q(card,"getEffectiveId"), who:objectName()) --格式为 技能卡:发动卡牌:->目标
+				self.player:distanceTo(who, range_fix) <= self.player:getAttackRange() then
+				return ("#qhstandardliuliCARD:%d:->%s"):format(card:getKnownEffectiveId(), who:objectName()) --格式为 技能卡:发动卡牌:->目标
 			end
 		end
 		return "."
@@ -1934,7 +1934,7 @@ sgs.ai_skill_use["@qhstandardliuli"] = function(self, prompt, method) --被动�
 	end
 	local cards = self.player:getCards("h") --手牌
 	for _, card in sgs.qlist(cards) do   --对手牌进行扫描
-		if q(card,"isKindOf","Jink") then    --若有闪
+		if card:isKindOf("Jink") then    --若有闪
 			return "."                   --不发动
 		end
 	end
@@ -1957,10 +1957,10 @@ end
 
 function sgs.ai_slash_prohibit.qhstandardliuli(self, from, to, card) --返回 true 表明在策略上不宜对 to 使用【杀】 card
 	if self:isFriend(to, from) then return false end
-	if q(from,"hasFlag","NosJiefanUsed") then return false end
+	if from:getStrategyFlag("NosJiefanUsed") then return false end
 	if to:isNude() then return false end
 	for _, friend in ipairs(self:getFriends(from, true)) do
-		if q(to,"distanceTo",friend, -1) <= q(to,"getAttackRange") and self:slashIsEffective(card, friend, from) then return true end
+		if to:distanceTo(friend, -1) <= to:getAttackRange() and self:slashIsEffective(card, friend, from) then return true end
 	end
 end
 
@@ -1975,10 +1975,10 @@ sgs.ai_nullification.qhstandard_indulgence = function(self,trick,from,to,positiv
 		if self:isFriend(to)
 		and not(self:hasGuanxingEffect(to) or to:isSkipped(sgs.Player_Play))
 		then--无观星友方判定区有乐不思蜀->视“突袭”、“巧变”情形而定
-			if q(to,"getHp")-q(to,"getHandcardNum")>=2
-			or q(to,"getHp")>2 and q(to,"hasSkill","tuxi")
+			if to:getHp()-to:getHandcardNum()>=2
+			or to:getHp()>2 and to:hasSkill("tuxi")
 			or null_num<2 and self:getOverflow(to)<-1
-			or not to:isKongcheng() and q(to,"hasSkill","qiaobian")
+			or not to:isKongcheng() and to:hasSkill("qiaobian")
 			and (to:containsTrick("supply_shortage") or self:willSkipDrawPhase(to))
 			then else return true end
 		end
@@ -2002,13 +2002,13 @@ sgs.ai_skill_discard.qhstandardlianying = function(self) --弃牌选择
 	cards = sgs.QList2Table(cards)
 	for _, card in ipairs(cards) do
 		if self:getKeepValue(card) < 3.5 then
-			table.insert(to_discard, q(card,"getEffectiveId"))
+			table.insert(to_discard, card:getKnownEffectiveId())
 			table.removeOne(cards, card)
 		end
 	end
 	if #cards - #to_discard == 2 then                 --弃完剩2张
 		cards = self:sortByKeepValue(cards)
-		table.insert(to_discard, q(cards[1],"getEffectiveId")) --多弃1张
+		table.insert(to_discard, cards[1]:getKnownEffectiveId()) --多弃1张
 	end
 
 	if #cards - #to_discard >= 3 then --弃完剩3张以上
@@ -2025,25 +2025,25 @@ end
 
 --标准版-强化 孙尚香-结姻
 sgs.ai_fill_skill["qhstandardjieyin"] = function(self,inclusive,request)                                        --考虑使用视为技的可能性
-	if q(self.player,"getHandcardNum") + self.player:getCards("e"):length() < 2 then return nil end --牌少则不用
+	if self.player:getHandcardNum() + self.player:getCards("e"):length() < 2 then return nil end --牌少则不用
 	if self.player:hasUsed("#qhstandardjieyinCARD") then return nil end                       --使用过技能卡则不用
 	local cards = sgs.QList2Table(self.player:getHandcards())                                 --获取手牌
 	local Equip = sgs.QList2Table(self.player:getCards("e"))                                  --获取装备牌
 	local cardid
 	cards = self:sortByUseValue(cards, true)
-	if q(self.player,"hasSkill","qhstandardxiaoji") then                                          --枭姬
+	if self.player:hasSkill("qhstandardxiaoji") then                                          --枭姬
 		if #Equip >= 2 then
 			Equip = self:sortByUseValue(Equip, true)
-			cardid = q(Equip[1],"getEffectiveId") .. "+" .. q(Equip[2],"getEffectiveId")
+			cardid = Equip[1]:getKnownEffectiveId() .. "+" .. Equip[2]:getKnownEffectiveId()
 		end
 		if #Equip == 1 then
-			cardid = q(Equip[1],"getEffectiveId") .. "+" .. q(cards[1],"getEffectiveId")
+			cardid = Equip[1]:getKnownEffectiveId() .. "+" .. cards[1]:getKnownEffectiveId()
 		end
 		if #Equip == 0 then
-			cardid = q(cards[1],"getEffectiveId") .. "+" .. q(cards[2],"getEffectiveId")
+			cardid = cards[1]:getKnownEffectiveId() .. "+" .. cards[2]:getKnownEffectiveId()
 		end
 	else
-		cardid = q(cards[1],"getEffectiveId") .. "+" .. q(cards[2],"getEffectiveId")
+		cardid = cards[1]:getKnownEffectiveId() .. "+" .. cards[2]:getKnownEffectiveId()
 	end
 	return policy(self,"#qhstandardjieyinCARD:" .. cardid .. ":") --返回技能卡
 end
@@ -2052,7 +2052,7 @@ sgs.ai_skill_use_func["#qhstandardjieyinCARD"] = function(card, use, self) --技
 	local friends = self.friends                                           --获取所有友方角色
 	local targets = {}
 	for _, friend in ipairs(friends) do                                    --对所有友方角色进行扫描
-		if q(friend,"isWounded") then                                         --若受伤
+		if friend:isWounded() then                                         --若受伤
 			table.insert(targets, friend)                                  --加入目标table
 		end
 	end
@@ -2076,7 +2076,7 @@ sgs.ai_skill_invoke.qhstandardxiaoji = function(self, data) --是否发动技能
 	return true                                             --发动
 end
 sgs.ai_use_revises.qhstandardxiaoji = function(self,card,use)
-	if q(card,"isKindOf","EquipCard") and self:evaluateArmor(card)>-5
+	if card:isKindOf("EquipCard") and self:evaluateArmor(card)>-5
 	then use.card = card return true end
 end
 
@@ -2097,12 +2097,12 @@ sgs.qhwindhongyan_suit_value = { --花色保留值
 	heart = 7,
 }
 sgs.ai_ajustdamage_from.qhwindhongyan = function(self, from, to, card, nature)
-	if card and q(card,"getSuit") == sgs.Card_Heart then
+	if card and card:getSuit() == sgs.Card_Heart then
 		return 1
 	end
 end
 function sgs.ai_cardneed.qhwindhongyan(to,card,self)
-	return (q(card,"getSuit")==sgs.Card_Heart)
+	return (card:getSuit()==sgs.Card_Heart)
 	and (getKnownCard(to,self.player,"heart",false))<2
 end
 --天香
@@ -2113,7 +2113,7 @@ sgs.ai_skill_use["@qhwindtianxiang"] = function(self, prompt, method) --被动�
 	local card_id
 	for _, card in ipairs(cards) do
 		if not self.player:isCardLimited(card, method) then
-			if q(card,"getSuit") == sgs.Card_Heart or q(card,"getSuit") == sgs.Card_Spade then
+			if card:getSuit() == sgs.Card_Heart or card:getSuit() == sgs.Card_Spade then
 				card_id = card:getId()
 				break
 			end
@@ -2135,7 +2135,7 @@ end
 
 sgs.ai_can_damagehp.qhwindtianxiang = function(self,from,card,to)
 	local d = {damage=1}
-	d.nature = card and sgs.card_damage_nature[q(card,"getClassName")] or sgs.DamageStruct_Normal
+	d.nature = card and sgs.card_damage_nature[card:getClassName()] or sgs.DamageStruct_Normal
 	return sgs.ai_skill_use["@qhwindtianxiang"](self,d,sgs.Card_MethodDiscard)~="."
 end
 sgs.qhwindtianxiang_suit_value = {
@@ -2144,13 +2144,13 @@ sgs.qhwindtianxiang_suit_value = {
 	spade = 6
 }
 function sgs.ai_slash_prohibit.qhwindtianxiang(self,from,to)
-	if q(self,"hasJueqingEffect",from,to) or (q(from,"hasSkill","nosqianxi") and q(from,"distanceTo",to)==1) then return false end
-	if q(from,"hasFlag","NosJiefanUsed") then return false end
+	if self:hasJueqingEffect(from, to) or (from:hasSkill("nosqianxi") and from:distanceTo(to)==1) then return false end
+	if from:getStrategyFlag("NosJiefanUsed") then return false end
 	if self:isFriend(to,from) then return false end
 	return self:cantbeHurt(to,from)
 end
 function sgs.ai_cardneed.qhwindtianxiang(to,card,self)
-	return (q(card,"getSuit")==sgs.Card_Heart or (q(card,"getSuit")==sgs.Card_Spade))
+	return (card:getSuit()==sgs.Card_Heart or (card:getSuit()==sgs.Card_Spade))
 	and (getKnownCard(to,self.player,"heart",false)+getKnownCard(to,self.player,"spade",false))<2
 end
 sgs.ai_card_intention["qhwindtianxiangCARD"] = function(self,card,from,tos)
@@ -2158,8 +2158,8 @@ sgs.ai_card_intention["qhwindtianxiangCARD"] = function(self,card,from,tos)
 	if self:needToLoseHp(to) then return end
 	local intention = 10
 	if hasBuquEffect(to) then intention = 0
-	elseif (q(to,"getHp")>=2 and to:hasSkills("yiji|shuangxiong|zaiqi|yinghun|jianxiong|fangzhu"))
-		or (q(to,"getHandcardNum")<3 and (q(to,"hasSkill","nosrende") or (q(to,"hasSkill","rende") and not to:hasUsed("RendeCard")))) then
+	elseif (to:getHp()>=2 and to:hasSkills("yiji|shuangxiong|zaiqi|yinghun|jianxiong|fangzhu"))
+		or (to:getHandcardNum()<3 and (to:hasSkill("nosrende") or (to:hasSkill("rende") and not to:hasUsed("RendeCard")))) then
 		intention = 0
 	end
 	self:updateIntention(from,to,intention)
@@ -2214,15 +2214,15 @@ end
 
 sgs.ai_skill_cardchosen.qhwindgongxin = function(self, who, flags) --卡牌选择
 	if self:isFriend(who) then                                     --友方
-		if not who:containsTrick("YanxiaoCard") and not (q(who,"hasSkill","qiaobian") and q(who,"getHandcardNum") > 0) then
+		if not who:containsTrick("YanxiaoCard") and not (who:hasSkill("qiaobian") and who:getHandcardNum() > 0) then
 			local tricks = who:getCards("j")
 			local lightning, indulgence, supply_shortage
 			for _, trick in sgs.qlist(tricks) do
-				if q(trick,"isKindOf","Lightning") then
+				if trick:isKindOf("Lightning") then
 					lightning = trick:getId()
-				elseif q(trick,"isKindOf","Indulgence") then
+				elseif trick:isKindOf("Indulgence") then
 					indulgence = trick:getId()
-				elseif not q(trick,"isKindOf","Disaster") then
+				elseif not trick:isKindOf("Disaster") then
 					supply_shortage = trick:getId()
 				end
 			end
@@ -2232,7 +2232,7 @@ sgs.ai_skill_cardchosen.qhwindgongxin = function(self, who, flags) --卡牌选�
 			end
 
 			if indulgence and supply_shortage then
-				if q(who,"getHp") < q(who,"getHandcardNum") then
+				if who:getHp() < who:getHandcardNum() then
 					return indulgence
 				else
 					return supply_shortage
@@ -2252,7 +2252,7 @@ sgs.ai_skill_cardchosen.qhwindgongxin = function(self, who, flags) --卡牌选�
 		cards = sgs.QList2Table(cards)
 		if #cards > 0 then
 			cards = self:sortByUseValue(cards)
-			return q(cards[1],"getEffectiveId")
+			return cards[1]:getKnownEffectiveId()
 		end
 	end
 end
@@ -2267,16 +2267,16 @@ sgs.ai_fill_skill["qhfiretianyi"] = function(self,inclusive,request) --考虑使
 		local mcard
 		local num = 0
 		for _, card in sgs.qlist(self.player:getHandcards()) do
-			if not q(card,"isKindOf","Peach") and q(card,"getNumber") > num then
-				num = q(card,"getNumber")
+			if not card:isKindOf("Peach") and card:getNumber() > num then
+				num = card:getNumber()
 				mcard = card
 			end
 		end
 		if mcard then
-			return policy(self,"#qhfiretianyiCARD:" .. q(mcard,"getEffectiveId") .. ":")
+			return policy(self,"#qhfiretianyiCARD:" .. mcard:getKnownEffectiveId() .. ":")
 		end
 	end
-	if q(self.player,"getMark","qhfiretianyi_slash-Clear") == 1 then
+	if self.player:getStrategyMark("qhfiretianyi_slash-Clear") == 1 then
 		local card_str = ("slash:qhfiretianyi[%s:%s]=."):format("no_suit", 0) --无子卡虚拟火攻
 		local acard = policy(self,card_str)
 		return acard
@@ -2288,7 +2288,7 @@ sgs.ai_skill_use_func["#qhfiretianyiCARD"] = function(card, use, self)
 	if #enemies > 0 then
 		enemies = self:sort(enemies, "handcard")
 		for _, enemy in sgs.list(self.enemies) do
-			if q(self.player,"canPindian",enemy) then
+			if self.player:canPindian(enemy) then
 				use.card = card
 				if use.to then --不可省略，因为在找出可用卡牌时use.to不为QList，添加角色时会出错
 					use.to:append(enemies[1])
@@ -2304,7 +2304,7 @@ sgs.ai_use_value["qhfiretianyiCARD"] = 9      --使用价值
 sgs.ai_use_priority["qhfiretianyiCARD"] = 9.8 --使用优先值
 
 sgs.ai_use_revises.qhfiretianyi = function(self,card,use)
-	if q(card,"isKindOf","Slash") and q(self.player,"getMark","qhfiretianyi_success-Clear") == 1
+	if card:isKindOf("Slash") and self.player:getStrategyMark("qhfiretianyi_success-Clear") == 1
 	then self:setStrategyCardFlag(card,"Qinggang",true) end
 end
 --酣战
@@ -2336,7 +2336,7 @@ sgs.ai_skill_invoke.qhfireqinyin = function(self, data) --是否发动技能
 end
 
 sgs.ai_skill_choice.qhfireqinyin = function(self, choices, data) --进行选择
-	if q(self.player,"getLostHp") >= 2 then
+	if self.player:getLostHp() >= 2 then
 		return "recover"
 	end
 	return "lose"
@@ -2365,7 +2365,7 @@ sgs.ai_cardshow.qhfirexinhuo = function(self, requestor)
 	local suitrRecord = (self.player:getTag("qhfirexinhuo") or ""):split("+")
 	local hcards = self.player:getHandcards()
 	for _, hcard in sgs.qlist(hcards) do
-		local suit = q(hcard,"getSuitString")
+		local suit = hcard:getSuitString()
 		if not table.contains(suitrRecord, suit) then
 			return hcard
 		end
@@ -2375,16 +2375,16 @@ end
 
 --标准版-强化 华佗-青囊
 sgs.ai_fill_skill["qhstandardqingnang"] = function(self,inclusive,request)               --考虑使用视为技的可能性
-	if q(self.player,"getHandcardNum") < 1 then return nil end            --牌少则不用
+	if self.player:getHandcardNum() < 1 then return nil end            --牌少则不用
 	if self.player:hasUsed("#qhstandardqingnangCARD") then return nil end --使用过技能卡则不用
 	local cards = sgs.QList2Table(self.player:getHandcards())          --获取手牌
 	local compare_func = function(a, b)                                --获得一张卡牌的保留值+[为红色+50]+[为桃+50]
-		local v1 = self:getKeepValue(a) + (a:isRed() and 50 or 0) + (q(a,"isKindOf","Peach") and 50 or 0)
-		local v2 = self:getKeepValue(b) + (b:isRed() and 50 or 0) + (q(b,"isKindOf","Peach") and 50 or 0)
+		local v1 = self:getKeepValue(a) + (a:isRed() and 50 or 0) + (a:isKindOf("Peach") and 50 or 0)
+		local v2 = self:getKeepValue(b) + (b:isRed() and 50 or 0) + (b:isKindOf("Peach") and 50 or 0)
 		return v1 < v2
 	end
 	table.sort(cards, compare_func)                                 --排序
-	local cardid = q(cards[1],"getEffectiveId")
+	local cardid = cards[1]:getKnownEffectiveId()
 	return policy(self,"#qhstandardqingnangCARD:" .. cardid .. ":") --返回技能卡
 end
 
@@ -2392,7 +2392,7 @@ sgs.ai_skill_use_func["#qhstandardqingnangCARD"] = function(card, use, self) --�
 	local friends = self.friends                                             --获取所有友方角色
 	local targets = {}
 	for _, friend in ipairs(friends) do                                      --对所有友方角色进行扫描
-		if q(friend,"isWounded") then                                           --若受伤
+		if friend:isWounded() then                                           --若受伤
 			table.insert(targets, friend)                                    --加入目标table
 		end
 	end
@@ -2411,7 +2411,7 @@ sgs.ai_use_value["qhstandardqingnangCARD"] = 7         --使用价值
 sgs.ai_use_priority["qhstandardqingnangCARD"] = 2      --使用优先值
 sgs.ai_card_intention["qhstandardqingnangCARD"] = -100 --仇恨值
 sgs.ai_use_revises.qhstandardqingnang = function(self,card,use)
-	if q(card,"isKindOf","Slash") and self:isWeak()
+	if card:isKindOf("Slash") and self:isWeak()
 	and self:getOverflow()<=0
 	then return false end
 end
@@ -2419,9 +2419,9 @@ sgs.append_skill_list("notActive_cardneed_skill","qhstandardqingnang")
 sgs.append_skill_list("recover_hp_skill","qhstandardqingnang")
 --急救
 sgs.ai_view_as.qhstandardjijiu = function(card, player, card_place) --重写视为技
-	local suit = q(card,"getSuitString")
+	local suit = card:getSuitString()
 	local number = card:getNumberString()
-	local card_id = q(card,"getEffectiveId")
+	local card_id = card:getKnownEffectiveId()
 	if card:isRed() then --红色
 		return ("peach:qhstandardjijiu[%s:%s]=%d"):format(suit, number, card_id)
 	end
@@ -2437,10 +2437,10 @@ sgs.qhstandardjijiu_suit_value = {
 
 function sgs.ai_cardneed.qhstandardjijiu(to, card, self)
 	--在分牌时，自己 to 的友方玩家 self 先将自己需要的卡牌 card 交给自己
-	return q(to,"getHandcardNum") < 3 and card:isRed()
+	return to:getHandcardNum() < 3 and card:isRed()
 end
 sgs.ai_use_revises.qhstandardjijiu = function(self,card,use)
-	if q(card,"isKindOf","EquipCard")
+	if card:isKindOf("EquipCard")
 	and card:isRed()
 	then
 		local same = self:getSameEquip(card)
@@ -2453,7 +2453,7 @@ sgs.append_skill_list("save_skill","qhstandardjijiu")
 --仁心
 sgs.ai_fill_skill["qhstandardrenxin"] = function(self,inclusive,request)             --考虑使用视为技的可能性
 	if self.player:hasUsed("#qhstandardrenxinCARD") then return nil end --使用过技能卡则不用
-	if q(self.player,"getMark","@qhstandardrenxin") < 2 then return nil end --小于2则不用
+	if self.player:getStrategyMark("@qhstandardrenxin") < 2 then return nil end --小于2则不用
 	return policy(self,"#qhstandardrenxinCARD:.:")                --返回技能卡
 end
 
@@ -2461,7 +2461,7 @@ sgs.ai_skill_use_func["#qhstandardrenxinCARD"] = function(card, use, self) --技
 	local friends = self.friends                                           --获取所有友方角色
 	local targets = {}
 	for _, friend in ipairs(friends) do                                    --对所有友方角色进行扫描
-		if q(friend,"isWounded") then                                         --若受伤
+		if friend:isWounded() then                                         --若受伤
 			table.insert(targets, friend)                                  --加入目标table
 		end
 	end
@@ -2483,7 +2483,7 @@ sgs.append_skill_list("recover_hp_skill","qhstandardrenxin")
 --标准版-强化 吕布-无双
 sgs.ai_skill_cardask["#askForqhstandardWushuang-1"] = function(self, data, pattern, target) --询问使用或打出一张卡牌
 	if sgs.ai_skill_cardask.nullfilter(self, data, pattern, target) then return "." end
-	if self:getCardsNum("Slash") < 2 and not (q(self.player,"getHandcardNum") == 1 and self:hasSkills(sgs.need_kongcheng)) then
+	if self:getCardsNum("Slash") < 2 and not (self.player:getHandcardNum() == 1 and self:hasSkills(sgs.need_kongcheng)) then
 		return "."
 	end
 end
@@ -2492,8 +2492,8 @@ sgs.ai_skill_cardask["#qhstandardWushuang-discard"] = function(self, data) --询
 	local target = data:toPlayer()
 	if self:isFriend(target) and not self:findLeijiTarget(target, 50, self.player) then return "." end
 	for _, card in sgs.qlist(self.player:getHandcards()) do
-		if q(card,"isKindOf","Slash") then
-			return q(card,"getEffectiveId")
+		if card:isKindOf("Slash") then
+			return card:getKnownEffectiveId()
 		end
 	end
 	return "."
@@ -2511,7 +2511,7 @@ function sgs.ai_slash_prohibit.qhstandardWushuang(self, from, to) --不宜用杀
 	return slash_num < 2
 end
 sgs.ai_target_revises.qhstandardWushuang = function(to,card,self,use)
-	if q(card,"isKindOf","Slash")
+	if card:isKindOf("Slash")
 	and self:getCardsNum("Slash")<2
 	then return true end
 end
@@ -2539,8 +2539,8 @@ function SmartAIView:findqhLijianTarget(card_name, use) --删除了部分判断
 		local nos_fazheng, fazheng
 		for _, friend in ipairs(self.friends) do
 			if self:hasTrickEffective(duel, first, friend) then
-				if q(friend,"hasSkill","nosenyuan") and q(friend,"getHp") > 1 then nos_fazheng = friend end
-				if q(friend,"hasSkill","enyuan") and q(friend,"getHp") > 1 then fazheng = friend end
+				if friend:hasSkill("nosenyuan") and friend:getHp() > 1 then nos_fazheng = friend end
+				if friend:hasSkill("enyuan") and friend:getHp() > 1 then fazheng = friend end
 				if (getCardsNum("Slash", friend) > maxSlash) then
 					maxSlash = getCardsNum("Slash", friend)
 					friend_maxSlash = friend
@@ -2551,7 +2551,7 @@ function SmartAIView:findqhLijianTarget(card_name, use) --删除了部分判断
 		if friend_maxSlash then
 			local safe = false
 			if self:hasSkills("neoganglie|vsganglie|fankui|enyuan|ganglie|nosenyuan", first) and not self:hasSkills("wuyan|noswuyan", first) then
-				if (q(first,"getHp") <= 1 and q(first,"getHandcardNum") == 0) then safe = true end
+				if (first:getHp() <= 1 and first:getHandcardNum() == 0) then safe = true end
 			elseif (getCardsNum("Slash", friend_maxSlash) >= getCardsNum("Slash", first)) then
 				safe = true
 			end
@@ -2563,7 +2563,7 @@ function SmartAIView:findqhLijianTarget(card_name, use) --删除了部分判断
 		return nil
 	end
 
-	if q(self.player,"getRole") == "rebel" or (q(self.player,"getRole") == "renegade" and known(self:getRoleCounts().loyalist,"role count")  + 1 > known(self:getRoleCounts().rebel,"role count")) then
+	if self.player:getKnownRole() == "rebel" or (self.player:getKnownRole() == "renegade" and known(self:getRoleCounts().loyalist,"role count")  + 1 > known(self:getRoleCounts().rebel,"role count")) then
 		if lord and not lord:isNude() and lord:objectName() ~= self.player:objectName() then -- 优先离间1血忠和主
 			self.enemies = self:sort(self.enemies, "handcard")
 			local e_peaches = 0
@@ -2571,7 +2571,7 @@ function SmartAIView:findqhLijianTarget(card_name, use) --删除了部分判断
 
 			for _, enemy in ipairs(self.enemies) do
 				e_peaches = e_peaches + getCardsNum("Peach", enemy)
-				if q(enemy,"getHp") == 1 and self:hasTrickEffective(duel, enemy, lord) and enemy:objectName() ~= lord:objectName()
+				if enemy:getHp() == 1 and self:hasTrickEffective(duel, enemy, lord) and enemy:objectName() ~= lord:objectName()
 					and not loyalist then
 					loyalist = enemy
 					break
@@ -2598,7 +2598,7 @@ function SmartAIView:findqhLijianTarget(card_name, use) --删除了部分判断
 				self.enemies = self:sort(self.enemies, "hp")
 
 				for _, a_friend in ipairs(self.friends_noself) do -- 目标1：寻找1血友方
-					if q(a_friend,"getHp") == 1 and a_friend:isKongcheng() and not self:hasSkills("kongcheng|yuwen", a_friend) then
+					if a_friend:getHp() == 1 and a_friend:isKongcheng() and not self:hasSkills("kongcheng|yuwen", a_friend) then
 						for _, b_friend in ipairs(self.friends) do --目标2：寻找位于我之后，离我最近的友方
 							if b_friend:objectName() ~= a_friend:objectName() and self:playerGetRound(b_friend) < round
 								and self:hasTrickEffective(duel, a_friend, b_friend) then
@@ -2616,7 +2616,7 @@ function SmartAIView:findqhLijianTarget(card_name, use) --删除了部分判断
 		end
 	end
 
-	if lord and self:isFriend(lord) and q(lord,"hasSkill","hunzi") and q(lord,"getHp") == 2 and q(lord,"getMark","hunzi") == 0 and lord:objectName() ~= self.player:objectName() then
+	if lord and self:isFriend(lord) and lord:hasSkill("hunzi") and lord:getHp() == 2 and lord:getStrategyMark("hunzi") == 0 and lord:objectName() ~= self.player:objectName() then
 		local enemycount = self:getEnemyNumBySeat(self.player, lord)
 		local peaches = self:getAllPeachNum()
 		if peaches >= enemycount then
@@ -2650,7 +2650,7 @@ function SmartAIView:findqhLijianTarget(card_name, use) --删除了部分判断
 
 	local shenguanyu = self.room:findPlayerBySkillName("wuhun")
 	if shenguanyu and shenguanyu:objectName() ~= self.player:objectName() then
-		if q(self.player,"getRole") == "rebel" and lord and lord:objectName() ~= self.player:objectName() and not q(lord,"hasSkill","jueqing") and self:hasTrickEffective(duel, shenguanyu, lord) then
+		if self.player:getKnownRole() == "rebel" and lord and lord:objectName() ~= self.player:objectName() and not lord:hasSkill("jueqing") and self:hasTrickEffective(duel, shenguanyu, lord) then
 			return shenguanyu, lord
 		elseif self:isEnemy(shenguanyu) and #self.enemies >= 2 then
 			for _, enemy in ipairs(self.enemies) do
@@ -2670,15 +2670,15 @@ function SmartAIView:findqhLijianTarget(card_name, use) --删除了部分判断
 
 		for _, enemy in ipairs(self.enemies) do
 			if not enemy:hasSkills("wuyan|noswuyan") then
-				if q(enemy,"hasSkill","kongcheng") and enemy:isKongcheng() then
+				if enemy:hasSkill("kongcheng") and enemy:isKongcheng() then
 					zhugeliang_kongcheng = enemy
-				elseif q(enemy,"hasSkill","jieming") then
+				elseif enemy:hasSkill("jieming") then
 					xunyu = enemy
 				else
 					for _, anotherenemy in ipairs(self.enemies) do
 						if anotherenemy:objectName() ~= enemy:objectName() then
 							if #males == 0 and self:hasTrickEffective(duel, enemy, anotherenemy) then
-								if not (q(enemy,"hasSkill","hunzi") and q(enemy,"getMark","hunzi") < 1 and q(enemy,"getHp") == 2) then
+								if not (enemy:hasSkill("hunzi") and enemy:getStrategyMark("hunzi") < 1 and enemy:getHp() == 2) then
 									table.insert(males, enemy)
 								else
 									table.insert(others, enemy)
@@ -2699,12 +2699,12 @@ function SmartAIView:findqhLijianTarget(card_name, use) --删除了部分判断
 			end
 		end
 
-		if #males >= 1 and known(self:getRoleEstimate(males[1]),"role estimate") == "rebel" and q(males[1],"getHp") == 1 then
+		if #males >= 1 and known(self:getRoleEstimate(males[1]),"role estimate") == "rebel" and males[1]:getHp() == 1 then
 			if lord and self:isFriend(lord) and lord:objectName() ~= males[1]:objectName() and self:hasTrickEffective(duel, males[1], lord)
 				and not lord:isLocked(duel) and lord:objectName() ~= self.player:objectName() and lord:isAlive()
 				and (getCardsNum("Slash", males[1]) < 1
 					or getCardsNum("Slash", males[1]) < getCardsNum("Slash", lord)
-					or self:getKnownNum(males[1]) == q(males[1],"getHandcardNum") and getKnownCard(males[1], self.player, "Slash", true, "he") == 0)
+					or self:getKnownNum(males[1]) == males[1]:getHandcardNum() and getKnownCard(males[1], self.player, "Slash", true, "he") == 0)
 			then
 				return males[1], lord
 			end
@@ -2716,12 +2716,12 @@ function SmartAIView:findqhLijianTarget(card_name, use) --删除了部分判断
 		end
 
 		if #males == 1 then
-			if isLord(males[1]) and known(self.world.turn_count,"turn count") <= 1 and q(self.player,"getRole") == "rebel" and self.player:aliveCount() >= 3 then
+			if isLord(males[1]) and known(self.world.turn_count,"turn count") <= 1 and self.player:getKnownRole() == "rebel" and self.player:aliveCount() >= 3 then
 				local p_slash, max_p, max_pp = 0, 0, 0
 				for _, p in sgs.qlist(self.room:getAllPlayers()) do
 					if not self:isFriend(p) and p:objectName() ~= males[1]:objectName() and self:hasTrickEffective(duel, males[1], p) and not p:isLocked(duel)
 						and p_slash < getCardsNum("Slash", p) then
-						if q(p,"getKingdom") == q(males[1],"getKingdom") then
+						if p:getKnownKingdom() == males[1]:getKnownKingdom() then
 							max_p = p
 							break
 						elseif not max_pp then
@@ -2743,8 +2743,8 @@ function SmartAIView:findqhLijianTarget(card_name, use) --删除了部分判断
 				else
 					local drawcards = 0
 					for _, enemy in ipairs(self.enemies) do
-						local x = q(enemy,"getMaxHp") > q(enemy,"getHandcardNum") and
-							math.min(5, q(enemy,"getMaxHp") - q(enemy,"getHandcardNum")) or 0
+						local x = enemy:getMaxHp() > enemy:getHandcardNum() and
+							math.min(5, enemy:getMaxHp() - enemy:getHandcardNum()) or 0
 						if x > drawcards then drawcards = x end
 					end
 					if drawcards <= 2 then
@@ -2768,15 +2768,15 @@ function SmartAIView:findqhLijianTarget(card_name, use) --删除了部分判断
 		if #males >= 2 then
 			first = males[1]
 			second = males[2]
-			if lord and q(first,"getHp") <= 1 then
-				if q(self.player,"isLord") or sgs.isRolePredictable() then
+			if lord and first:getHp() <= 1 then
+				if self.player:isLord() or sgs.isRolePredictable() then
 					local friend_maxSlash = findFriend_maxSlash(self, first)
 					if friend_maxSlash then second = friend_maxSlash end
 				elseif not self:hasSkills("wuyan|noswuyan", lord) then
-					if q(self.player,"getRole") == "rebel" and not q(first,"isLord") and self:hasTrickEffective(duel, first, lord) then
+					if self.player:getKnownRole() == "rebel" and not first:isLord() and self:hasTrickEffective(duel, first, lord) then
 						second = lord
 					else
-						if ((q(self.player,"getRole") == "loyalist" or q(self.player,"getRole") == "renegade") and not self:hasSkills("ganglie|enyuan|neoganglie|nosenyuan", first))
+						if ((self.player:getKnownRole() == "loyalist" or self.player:getKnownRole() == "renegade") and not self:hasSkills("ganglie|enyuan|neoganglie|nosenyuan", first))
 							and (getCardsNum("Slash", first) <= getCardsNum("Slash", second)) then
 							second = lord
 						end
@@ -2805,7 +2805,7 @@ end
 sgs.ai_use_value["qhstandardLijianCARD"] = 8.5  --使用价值
 sgs.ai_use_priority["qhstandardLijianCARD"] = 4 --使用优先值
 local qhstandardLijian_filter = function(self,player,carduse)
-	if q(carduse.card,"isKindOf","qhstandardLijianCARD") then
+	if carduse.card:isKindOf("qhstandardLijianCARD") then
 		ai_unsupported("source ZenhuiEffect writer lacks observed consumer contract","qhstandardLijian_filter")
 	end
 end
@@ -2842,9 +2842,9 @@ sgs.ai_playerchosen_intention["qhwindleiji"] = 80                --仇恨值
 
 function sgs.ai_slash_prohibit.qhwindleiji(self, from, to, card) --返回 true 表明在策略上不宜对 to 使用【杀】 card
 	if self:isFriend(to) then return false end
-	if q(to,"getMark","@qhwindGuibing") >= 1 then return false end
+	if to:getStrategyMark("@qhwindGuibing") >= 1 then return false end
 	if getCardsNum("Jink", to, self.player) > 0 then return true end
-	local hcard = q(to,"getHandcardNum")
+	local hcard = to:getHandcardNum()
 	if getKnownCard(to, self.player, "Jink", true) >= 1 or (self:hasSuit("spade", true, to) and hcard >= 3) or hcard >= 4 then return true end
 end
 
@@ -2864,10 +2864,10 @@ function sgs.ai_cardneed.qhwindleiji(to,card,self)
 	for _,p in sgs.qlist(self.room:getAllPlayers())do
 		if self:getFinalRetrial(to)==1 then
 			if p:containsTrick("lightning") and not p:containsTrick("YanxiaoCard") then
-				return q(card,"getSuit")==sgs.Card_Spade and q(card,"getNumber")>=2 and q(card,"getNumber")<=9 and not self:hasSkills("hongyan|olhongyan|wuyan")
+				return card:getSuit()==sgs.Card_Spade and card:getNumber()>=2 and card:getNumber()<=9 and not self:hasSkills("hongyan|olhongyan|wuyan")
 			end
 			if self:isFriend(p) and self:willSkipDrawPhase(p) then
-				return q(card,"getSuit")==sgs.Card_Club and self:hasSuit("club",true,to)
+				return card:getSuit()==sgs.Card_Club and self:hasSuit("club",true,to)
 			end
 		end
 	end
@@ -2885,7 +2885,7 @@ sgs.ai_fill_skill["qhwindGuibing"] = function(self,inclusive,request)           
 	local handcards = sgs.QList2Table(self.player:getHandcards()) --获取手牌
 	handcards = self:sortByUseValue(handcards, true)
 	for _, card in ipairs(handcards) do
-		if q(card,"isKindOf","Jink") then                             --是闪
+		if card:isKindOf("Jink") then                             --是闪
 			cardid = card:getId()
 			break
 		end
@@ -2916,13 +2916,13 @@ sgs.ai_fill_skill["qhwindhuangtianvs"] = function(self,inclusive,request) --考�
 	local card
 	cards = self:sortByUseValue(cards, true)
 	for _, acard in ipairs(cards) do
-		if q(acard,"isKindOf","Jink") then
+		if acard:isKindOf("Jink") then
 			card = acard
 			break
 		end
 	end
 	if not card then return nil end
-	local card_id = q(card,"getEffectiveId")
+	local card_id = card:getKnownEffectiveId()
 	local card_str = "#qhwindhuangtianVSCARD:" .. card_id .. ":"
 	local skillcard = policy(self,card_str)
 	assert(skillcard)
@@ -2935,7 +2935,7 @@ sgs.ai_skill_use_func["#qhwindhuangtianVSCARD"] = function(card, use, self) --�
 	end
 	local targets = {}
 	for _, friend in ipairs(self.friends_noself) do
-		if q(friend,"hasLordSkill","qhwindhuangtian") then
+		if friend:hasLordSkill("qhwindhuangtian") then
 			table.insert(targets, friend)
 		end
 	end
@@ -2971,7 +2971,7 @@ sgs.ai_cardsview_valuable.qhwindguhuo = function(self, class_name, player) --多
 	end
 	if cards:isEmpty() then return end
 	for _, c in sgs.qlist(cards) do
-		if q(c,"isKindOf",class_name) then
+		if c:isKindOf(class_name) then
 			return --有牌就不用
 		end
 	end
@@ -2981,25 +2981,25 @@ sgs.ai_cardsview_valuable.qhwindguhuo = function(self, class_name, player) --多
 		cards = sgs.QList2Table(cards)
 		if #cards == 0 then return end
 		cards = self:sortByUseValue(cards, true)
-		local suit = q(cards[1],"getSuitString")
+		local suit = cards[1]:getSuitString()
 		local number = cards[1]:getNumberString()
-		local card_id = q(cards[1],"getEffectiveId")
-		if q(player,"hasSkill","qhwindguhuo") then
+		local card_id = cards[1]:getKnownEffectiveId()
+		if player:hasSkill("qhwindguhuo") then
 			return ("%s:qhwindguhuo[%s:%s]=%d"):format(name, suit, number, card_id)
 		end
 	end
 end
 
 sgs.ai_fill_skill["qhwindguhuo"] = function(self,inclusive,request)                                      --考虑使用视为技的可能性
-	if self.player:isKongcheng() or q(self.player,"getMark","qhwindguhuoNum") > 3 then return end
+	if self.player:isKongcheng() or self.player:getStrategyMark("qhwindguhuoNum") > 3 then return end
 	local qhwindguhuoused = property(self,"qhwindguhuoused"):split("+") --获取属性
 	local cards = sgs.QList2Table(self.player:getHandcards())
 	cards = self:sortByUseValue(cards, true)
 	local card = cards[1]
-	local suit = q(card,"getSuit")
-	local suitString = q(card,"getSuitString")
-	local point = q(card,"getNumber")
-	local card_id = q(card,"getEffectiveId")
+	local suit = card:getSuit()
+	local suitString = card:getSuitString()
+	local point = card:getNumber()
+	local card_id = card:getKnownEffectiveId()
 	local usecardTable = { "ex_nihilo", "snatch", "peach", "slash", "archery_attack", "savage_assault", "dismantlement"
 	, "fire_attack" } --使用卡牌table
 	local usecardName
@@ -3007,14 +3007,14 @@ sgs.ai_fill_skill["qhwindguhuo"] = function(self,inclusive,request)             
 		if not table.contains(qhwindguhuoused, value) then
 			local usecard = readonly_clone(self,"qhwindguhuo",value,suit,point)
 
-			if q(usecard,"getTypeId") == sgs.Card_TypeTrick then
+			if usecard:getTypeId() == sgs.Card_TypeTrick then
 				local dummy_use = { isDummy = true, to = AIList.new({}) }
 				self:useTrickCard(usecard, dummy_use)
 				if dummy_use.card then
 					usecardName = value
 					break
 				end
-			elseif q(usecard,"getTypeId") == sgs.Card_TypeBasic then
+			elseif usecard:getTypeId() == sgs.Card_TypeBasic then
 				local dummy_use = { isDummy = true, to = AIList.new({}) }
 				self:useBasicCard(usecard, dummy_use)
 				if dummy_use.card then
@@ -3035,14 +3035,14 @@ sgs.ai_fill_skill["qhfireluanji"] = function(self,inclusive,request)
 	local archery = self:getEvaluationCard("archery_attack")
 	local first_found, second_found = false, false
 	local first_card, second_card
-	if q(self.player,"getHandcardNum") >= 2 then
+	if self.player:getHandcardNum() >= 2 then
 		local cards = self.player:getHandcards()
 		local same_suit = false
 		cards = sgs.QList2Table(cards)
 		cards = self:sortByKeepValue(cards)
 		local useAll = false
 		for _, enemy in ipairs(self.enemies) do
-			if q(enemy,"getHp") == 1 and not enemy:hasArmorEffect("Vine") and not self:hasEightDiagramEffect(enemy) and self:damageIsEffective(enemy, nil, self.player)
+			if enemy:getHp() == 1 and not enemy:hasArmorEffect("Vine") and not self:hasEightDiagramEffect(enemy) and self:damageIsEffective(enemy, nil, self.player)
 				and self:isWeak(enemy) and getCardsNum("Jink", enemy, self.player) + getCardsNum("Peach", enemy, self.player) + getCardsNum("Analeptic", enemy, self.player) == 0 then
 				useAll = true
 			end
@@ -3056,7 +3056,7 @@ sgs.ai_fill_skill["qhfireluanji"] = function(self,inclusive,request)
 				for _, scard in ipairs(cards) do
 					local svalueCard = (isCard("Peach", scard, self.player) or isCard("ExNihilo", scard, self.player) or isCard("ArcheryAttack", scard, self.player))
 					if useAll then svalueCard = (isCard("ArcheryAttack", scard, self.player)) end
-					if first_card ~= scard and q(scard,"getSuit") == q(first_card,"getSuit")
+					if first_card ~= scard and scard:getSuit() == first_card:getSuit()
 						and not svalueCard then
 						local card_str = ("archery_attack:qhfireluanji[%s:%s]=%d+%d"):format("to_be_decided", 0,
 							first_card:getId(), scard:getId())
@@ -3094,11 +3094,11 @@ sgs.ai_skill_playerschosen.qhfireluanji = function(self, targets, max_num, min_n
 	targets = self:sort(targets, "defense")
 	local tos = {}
 	local use=use_fact(self,"qhfireluanji-AI")
-	if q(use.card,"isKindOf","IronChain") then
+	if use.card:isKindOf("IronChain") then
 		return {}
 	end
 	for _, target in ipairs(targets) do
-		if q(use.card,"isDamageCard") then
+		if use.card:isDamageCard() then
 			if self:isFriend(target) and not self:needToLoseHp(target, self.player, use.card) then
 				table.insert(tos, target)
 				max_num = max_num - 1
@@ -3120,11 +3120,11 @@ sgs.ai_skill_invoke.qhfireluanji = function(self, data) --是否发动技能
 	return true                                         --发动
 end
 sgs.ai_card_priority.qhfireluanji = function(self,card,v)
-	if q(card,"isKindOf","ArcheryAttack")
+	if card:isKindOf("ArcheryAttack")
 	then return 6 end
 end
 sgs.ai_use_revises.qhfireluanji = function(self,card,use)
-	if q(card,"isKindOf","AOE") and self.player:getRole()=="lord" and known(self.world.turn_count,"turn count")<2 and math.random()>0.7
+	if card:isKindOf("AOE") and self.player:getRole()=="lord" and known(self.world.turn_count,"turn count")<2 and math.random()>0.7
 	then self:addStrategyPlayerMark(self.player,"AI_fangjian-Clear",1) end
 end
 
@@ -3135,31 +3135,31 @@ sgs.ai_skill_invoke.qhfireshuangxiong = function(self, data) --是否发动技�
 end
 
 sgs.ai_view_as.qhfireshuangxiong = function(card, player, card_place) --重写视为技
-	if q(player,"getMark","&qhfireshuangxiong_damage-Clear") == 2 then
+	if player:getStrategyMark("&qhfireshuangxiong_damage-Clear") == 2 then
 		return
 	end
 	local color
-	if q(player,"getMark","&qhfireshuangxiong_red-Clear") == 1 then
+	if player:getStrategyMark("&qhfireshuangxiong_red-Clear") == 1 then
 		color = sgs.Card_Red
-	elseif q(player,"getMark","&qhfireshuangxiong_black-Clear") == 1 then
+	elseif player:getStrategyMark("&qhfireshuangxiong_black-Clear") == 1 then
 		color = sgs.Card_Black
 	end
-	local suit = q(card,"getSuitString")
+	local suit = card:getSuitString()
 	local number = card:getNumberString()
-	local card_id = q(card,"getEffectiveId")
+	local card_id = card:getKnownEffectiveId()
 	if card:getColor() == color and not card:isEquipped() then
 		return ("slash:qhfireshuangxiong[%s:%s]=%d"):format(suit, number, card_id)
 	end
 end
 
 sgs.ai_fill_skill["qhfireshuangxiong"] = function(self,inclusive,request) --考虑使用视为技的可能性
-	if q(self.player,"getMark","&qhfireshuangxiong_damage-Clear") == 2 then
+	if self.player:getStrategyMark("&qhfireshuangxiong_damage-Clear") == 2 then
 		return
 	end
 	local color
-	if q(self.player,"getMark","&qhfireshuangxiong_red-Clear") == 1 then
+	if self.player:getStrategyMark("&qhfireshuangxiong_red-Clear") == 1 then
 		color = sgs.Card_Red
-	elseif q(self.player,"getMark","&qhfireshuangxiong_black-Clear") == 1 then
+	elseif self.player:getStrategyMark("&qhfireshuangxiong_black-Clear") == 1 then
 		color = sgs.Card_Black
 	end
 	local cards = self.player:getHandcards()
@@ -3169,7 +3169,7 @@ sgs.ai_fill_skill["qhfireshuangxiong"] = function(self,inclusive,request) --考�
 	local use_cardtype
 	for _, card in ipairs(cards) do --对卡牌进行扫描
 		if card:getColor() ~= color then
-			local usecard = readonly_clone(self,"qhfireshuangxiong","duel",q(card,"getSuit"),q(card,"getNumber"))
+			local usecard = readonly_clone(self,"qhfireshuangxiong","duel",card:getSuit(),card:getNumber())
 
 			local dummy_use = { isDummy = true, to = AIList.new({}) }
 			self:useTrickCard(usecard, dummy_use)
@@ -3180,7 +3180,7 @@ sgs.ai_fill_skill["qhfireshuangxiong"] = function(self,inclusive,request) --考�
 			end
 		end
 		if card:getColor() == color then
-			local usecard = readonly_clone(self,"qhfireshuangxiong","slash",q(card,"getSuit"),q(card,"getNumber"))
+			local usecard = readonly_clone(self,"qhfireshuangxiong","slash",card:getSuit(),card:getNumber())
 
 			local dummy_use = { isDummy = true, to = AIList.new({}) }
 			self:useBasicCard(usecard, dummy_use)
@@ -3192,9 +3192,9 @@ sgs.ai_fill_skill["qhfireshuangxiong"] = function(self,inclusive,request) --考�
 		end
 	end
 	if use_card then
-		local suit = q(use_card,"getSuitString")
+		local suit = use_card:getSuitString()
 		local number = use_card:getNumberString()
-		local card_id = q(use_card,"getEffectiveId")
+		local card_id = use_card:getKnownEffectiveId()
 		local card_str = ("%s:qhfireshuangxiong[%s:%s]=%d"):format(use_cardtype, suit, number, card_id)
 		local acard = policy(self,card_str)
 		return acard
@@ -3215,11 +3215,11 @@ sgs.ai_skill_invoke.qhfiremengjin = function(self, data) --是否发动技能
 	local player = data:toPlayer()
 	if self:isEnemy(player) then
 		local use = use_fact(self,"qhfiremengjin-AI")
-		if q(use.card,"isKindOf","Slash") then
+		if use.card:isKindOf("Slash") then
 			return self:doDisCard(player, "he", true) --发动
 		end
 		if player:getCards("he"):length() <= 1 then
-			if q(use.card,"isKindOf","FireAttack") or q(use.card,"isKindOf","Snatch") or q(use.card,"isKindOf","Dismantlement") then
+			if use.card:isKindOf("FireAttack") or use.card:isKindOf("Snatch") or use.card:isKindOf("Dismantlement") then
 				return false
 			end
 		end
@@ -3233,11 +3233,11 @@ sgs.ai_cardneed.qhfiremengjin = sgs.ai_cardneed.slash
 --神话降临 黄月英-机巧
 sgs.ai_card_priority.mythjizhi = function(self,card,v)
 	if self.useValue
-	and q(card,"isKindOf","TrickCard")
+	and card:isKindOf("TrickCard")
 	then v = v+3 end
 end
 function sgs.ai_cardneed.mythjizhi(to,card)
-	return q(card,"getTypeId")==sgs.Card_TypeTrick
+	return card:getTypeId()==sgs.Card_TypeTrick
 end
 sgs.ai_fill_skill["mythjiqiao"] = function(self,inclusive,request) --考虑使用视为技的可能性
 	if self.player:hasUsed("#mythjiqiaoCard") then return end
@@ -3265,10 +3265,10 @@ sgs.ai_skill_use_func["#mythjiqiaoCard"] = function(card, use, self) --技能卡
 end
 
 sgs.ai_view_as.mythjiqiao = function(card, player, card_place)
-	local suit = q(card,"getSuitString")
+	local suit = card:getSuitString()
 	local number = card:getNumberString()
-	local card_id = q(card,"getEffectiveId")
-	if q(card,"isKindOf","TrickCard") then
+	local card_id = card:getKnownEffectiveId()
+	if card:isKindOf("TrickCard") then
 		return ("nullification:mythjiqiao[%s:%s]=%d"):format(suit, number, card_id)
 	end
 end
@@ -3288,14 +3288,14 @@ end
 sgs.append_skill_list("double_slash_skill","mythbeifen")
 
 sgs.ai_card_priority.mythbeifen = function(self,card,v)
-	if q(card,"hasFlag","mythhujia")
+	if card:getStrategyFlag("mythhujia")
 	then v = v+3 end
 end
 
 --神话降临 滕公主-幸宠
 sgs.ai_skill_discard["mythxingchong"] = function(self, data) --askForExchange 处理
 	local handcards = sgs.QList2Table(self.player:getHandcards())
-	local maxhp = q(self.player,"getMaxHp")
+	local maxhp = self.player:getMaxHp()
 	local min = math.min(maxhp, #handcards)
 	handcards = self:sortByKeepValue(handcards)
 	local cards = {}
@@ -3305,7 +3305,7 @@ sgs.ai_skill_discard["mythxingchong"] = function(self, data) --askForExchange �
 	return cards
 end
 sgs.ai_card_priority.mythxingchong = function(self,card,v)
-	if q(self.player,"getMark","mythxingchong_" .. q(card,"getEffectiveId") .. "_lun") == 1
+	if self.player:getStrategyMark("mythxingchong_" .. card:getKnownEffectiveId() .. "_lun") == 1
 	then v = v+3 end
 end
 
@@ -3315,14 +3315,14 @@ sgs.ai_skill_choice.mythluochong = function(self, choices, data) --进行选择
 	if table.contains(items, "discard") then
 		local current = self.room:getCurrent()
 		if self:isEnemy(current) then
-			if current:hasWeapon("crossbow") or q(current,"getHandcardNum") <= 3 then
+			if current:hasWeapon("crossbow") or current:getHandcardNum() <= 3 then
 				return "discard"
 			end
 		end
 	end
 	if table.contains(items, "recover") then
 		for _, friend in ipairs(self.friends) do
-			if q(friend,"isWounded") then
+			if friend:isWounded() then
 				return "recover"
 			end
 		end
@@ -3349,7 +3349,7 @@ sgs.ai_skill_playerchosen.mythluochong = function(self, targets) --选择目标
 	local choice = property(self,"mythluochong_choice")
 	--self.player:speak(choice)
 	if choice == "recover" then
-		if q(self.player,"isWounded") then
+		if self.player:isWounded() then
 			return self.player
 		end
 		targetTable = self:sort(targetTable, "hp")
@@ -3375,7 +3375,7 @@ sgs.ai_skill_playerchosen.mythluochong = function(self, targets) --选择目标
 		if target then
 			return target
 		else
-			if self.role == "loyalist" and q(targetTable[1],"isLord") then
+			if self.role == "loyalist" and targetTable[1]:isLord() then
 				if #targetTable >= 2 then
 					return targetTable[2]
 				end
@@ -3385,7 +3385,7 @@ sgs.ai_skill_playerchosen.mythluochong = function(self, targets) --选择目标
 		end
 	end
 	if choice == "draw" then
-		if q(self.player,"getHandcardNum") <= 3 then
+		if self.player:getHandcardNum() <= 3 then
 			return self.player
 		end
 		targetTable = self:sort(targetTable, "value")
@@ -3401,7 +3401,7 @@ sgs.ai_choicemade_filter.cardChosen.mythluochong = sgs.ai_choicemade_filter.card
 
 --神话降临 曹金玉-隅泣
 sgs.ai_skill_use["@@mythyuqi"] = function(self, prompt) --被动技能卡的使用函数
-	local num = q(self.player,"getMark","mythyuqi_num")
+	local num = self.player:getStrategyMark("mythyuqi_num")
 	local list = self.player:getPropertyValue("mythyuqi_AI") or {}
 	local pile = {}
 	for _, id in sgs.qlist(list) do
@@ -3462,17 +3462,17 @@ end
 
 --善身
 sgs.ai_fill_skill["mythshanshen"] = function(self,inclusive,request)               --考虑使用视为技的可能性
-	if q(self.player,"getHp") < 3 then return nil end               --血少则不用
+	if self.player:getHp() < 3 then return nil end               --血少则不用
 	if self.player:hasUsed("#mythshanshenCARD") then return nil end --使用过技能卡则不用
 	return policy(self,"#mythshanshenCARD:.:")                --返回技能卡
 end
 
 sgs.ai_skill_use_func["#mythshanshenCARD"] = function(card, use, self) --技能卡的使用函数
 	local enemies = {}
-	if q(self.player,"hasSkill","mythyuqi") then
+	if self.player:hasSkill("mythyuqi") then
 		local usableTimes, juli, guankan, geipai, huode, maxCard = yuqi_getMark(self.player)
 		for _, enemy in ipairs(self.enemies) do
-			if q(self.player,"distanceTo",enemy) <= juli then
+			if self.player:distanceTo(enemy) <= juli then
 				table.insert(enemies, enemy)
 			end
 		end
@@ -3571,8 +3571,8 @@ sgs.ai_skill_playerchosen.mythanzhi = function(self, players) --选择目标
 end
 
 sgs.ai_fill_skill["mythanzhi"] = function(self,inclusive,request) --考虑使用视为技的可能性
-	if q(self.player,"getMark","&mythanzhi-Clear") > 0 then return nil end
-	if q(self.player,"getMark","&mythxialei-Clear") > 0 then
+	if self.player:getStrategyMark("&mythanzhi-Clear") > 0 then return nil end
+	if self.player:getStrategyMark("&mythxialei-Clear") > 0 then
 		local did = ai_unsupported("the draw pile top is not projected","mythanzhi public draw top")
 		if visible(self,did):isRed() then --判红
 			return policy(self,"#mythanzhiCARD:.:") --返回技能卡
@@ -3589,22 +3589,22 @@ sgs.ai_fill_skill["mythanzhi"] = function(self,inclusive,request) --考虑使用
 		end
 	end
 	for _, card in ipairs(cards) do
-		if q(card,"isAvailable",self.player) then
-			if q(card,"getTypeId") == sgs.Card_TypeTrick and not q(card,"isKindOf","Nullification") then
+		if card:isAvailable(self.player) then
+			if card:getTypeId() == sgs.Card_TypeTrick and not card:isKindOf("Nullification") then
 				local dummy_use = { isDummy = true, to = AIList.new({}) }
 				self:useTrickCard(card, dummy_use)
 				if dummy_use.card then
 					n = n + 1
 					break
 				end
-			elseif q(card,"getTypeId") == sgs.Card_TypeBasic and not q(card,"isKindOf","Jink") then
+			elseif card:getTypeId() == sgs.Card_TypeBasic and not card:isKindOf("Jink") then
 				local dummy_use = { isDummy = true, to = AIList.new({}) }
 				self:useBasicCard(card, dummy_use)
 				if dummy_use.card then
 					n = n + 1
 					break
 				end
-			elseif q(card,"getTypeId") == sgs.Card_TypeEquip then
+			elseif card:getTypeId() == sgs.Card_TypeEquip then
 				local dummy_use = { isDummy = true }
 				self:useEquipCard(card, dummy_use)
 				if dummy_use.card then
@@ -3635,10 +3635,10 @@ sgs.ai_nullification.QhstandardIndulgence = function(self,trick,from,to,positive
 		if self:isFriend(to)
 		and not(self:hasGuanxingEffect(to) or to:isSkipped(sgs.Player_Play))
 		then--无观星友方判定区有乐不思蜀->视“突袭”、“巧变”情形而定
-			if q(to,"getHp")-q(to,"getHandcardNum")>=2
-			or q(to,"getHp")>2 and q(to,"hasSkill","tuxi")
+			if to:getHp()-to:getHandcardNum()>=2
+			or to:getHp()>2 and to:hasSkill("tuxi")
 			or null_num<2 and self:getOverflow(to)<-1
-			or not to:isKongcheng() and q(to,"hasSkill","qiaobian")
+			or not to:isKongcheng() and to:hasSkill("qiaobian")
 			and (to:containsTrick("supply_shortage") or self:willSkipDrawPhase(to))
 			then else return true end
 		end

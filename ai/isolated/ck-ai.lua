@@ -6,15 +6,8 @@ local function known(value,key)
     if value==nil then ai_unsupported("ck policy input is unknown",key) end
     return value
 end
-local function call(object,method,...)
-    if not object or type(object[method])~="function" then ai_unsupported("ck policy helper unavailable",method) end
-    local result=table.pack(object[method](object,...))
-    if AIUnsupported.is(result[1]) then error(result[1],0) end
-    return table.unpack(result,1,result.n)
-end
-local function q(object,method,...) return known(call(object,method,...),method) end
 local function sorted(self,cards,method,...)
-    local result=q(self,method,cards,...)
+    local result=AIValue.callKnown(self,method,cards,...)
     for i,c in ipairs(result) do cards[i]=c end
     return cards
 end
@@ -25,26 +18,26 @@ local function action_request(self,request)
     if request and type(request.getActivationSkillName)~="function" then return AILegacyRequest.new(request,self.room) end
     return request
 end
-local function seed(self,skill,class,request) return q(self,"legacySkillSeed",skill,class,action_request(self,request)) end
-local function bind(self,skill,class,costs,request) return q(self,"bindSkillCard",skill,costs,action_request(self,request),nil,class) end
+local function seed(self,skill,class,request) return (self:legacySkillSeed(skill,class,action_request(self,request))) end
+local function bind(self,skill,class,costs,request) return (self:bindSkillCard(skill,costs,action_request(self,request),nil,class)) end
 local function response(self,skill,class,costs,targets)
     local use=AIUsePlan.new();use.card=bind(self,skill,class,costs,nil);use.to=AIList.new(targets)
     return use:toAnswer()
 end
 local function response_names(self,skill,class,names)
     local targets={}
-    for _,name in ipairs(names)do targets[#targets+1]=q(self.room,"findPlayerByObjectName",name)end
+    for _,name in ipairs(names)do targets[#targets+1]=(self.room:findPlayerByObjectName(name))end
     return response(self,skill,class,{},targets)
 end
-local function context(self,key) return known(q(self,"getDecisionContext")[key],"ck.context."..key) end
+local function context(self,key) return known((self:getDecisionContext())[key],"ck.context."..key) end
 local function dummy(is_dummy,extra,targets)
     local use=AIUsePlan.new();use.isDummy=is_dummy~=false;use.extra_target=extra or 0;use.current_targets=targets or {};return use
 end
 local function visible_role(self,player)
-    local role=call(player,"getRole")
+    local role=player:getRole()
     if role~=nil then return role end
-    role=q(self,"getRoleEstimate",player)
-    return q(self,"useKnowledgeEstimate",{status="estimate",value=role,basis="viewer_role_estimate_private_role",player=q(player,"objectName")},"ckxueni.role")
+    role=(self:getRoleEstimate(player))
+    return (self:useKnowledgeEstimate({status="estimate",value=role,basis="viewer_role_estimate_private_role",player=(player:objectName())},"ckxueni.role"))
 end
 sgs.ai_ajustdamage_to.ckleiti = function(self,from,to,card,nature)
 	if nature == sgs.DamageStruct_Thunder
@@ -53,7 +46,7 @@ end
 
 sgs.ai_can_damagehp.ckleiti = function(self,from,card,to)
     if card then
-        local nature = sgs.card_damage_nature[q(card,"getClassName")] or sgs.DamageStruct_Normal
+        local nature = sgs.card_damage_nature[(card:getClassName())] or sgs.DamageStruct_Normal
         if nature == sgs.DamageStruct_Thunder
         then
             return true
@@ -65,30 +58,30 @@ local ckdianji_skill = {}
 ckdianji_skill.name= "ckdianji"
 table.insert(package_skills,ckdianji_skill)
 ckdianji_skill.getTurnUseCard=function(self,inclusive,request)
-    if not q(self.player,"canDiscard",self.player, "he") then return end
+    if not (self.player:canDiscard(self.player,"he")) then return end
 	return seed(self,"ckdianji","#ckdianjicard",request)
 end
 
 sgs.ai_skill_use_func["#ckdianjicard"] = function(card,use,self,request)
-	local cards = AIList.new(q(self.player,"getCards","he"))
+	local cards = AIList.new((self.player:getCards("he")))
 	sort_keep(self,cards)
     sort_players(self,self.enemies)
     for _,enemy in sgs.list(self.enemies)do
-        if q(self,"objectiveLevel",enemy)>3 and not q(self,"cantbeHurt",enemy) and q(self,"damageIsEffective",enemy, sgs.DamageStruct_Thunder, self.player) and q(self,"canDamage",enemy,self.player,nil) then
-            use.card = bind(self,"ckdianji","#ckdianjicard",{q(cards[1],"getEffectiveId")},request)
-            call(use.to,"append",enemy)
+        if (self:objectiveLevel(enemy))>3 and not (self:cantbeHurt(enemy)) and (self:damageIsEffective(enemy,sgs.DamageStruct_Thunder,self.player)) and (self:canDamage(enemy,self.player,nil)) then
+            use.card = bind(self,"ckdianji","#ckdianjicard",{(cards[1]:getKnownEffectiveId())},request)
+            use.to:append(enemy)
             return
         end
     end
-    if q(self.player,"getHp")<getBestHp(self.player) and q(self.player,"hasSkill","ckleiti") then
-        use.card = bind(self,"ckdianji","#ckdianjicard",{q(cards[1],"getEffectiveId")},request)
-        call(use.to,"append",self.player)
+    if (self.player:getHp())<getBestHp(self.player) and (self.player:hasSkill("ckleiti")) then
+        use.card = bind(self,"ckdianji","#ckdianjicard",{(cards[1]:getKnownEffectiveId())},request)
+        use.to:append(self.player)
         return
     end
-    local target = call(self,"findBestDamageTarget",1, "T", 0, nil)
+    local target = self:findBestDamageTarget(1,"T",0,nil)
     if target then
-        use.card = bind(self,"ckdianji","#ckdianjicard",{q(cards[1],"getEffectiveId")},request)
-        call(use.to,"append",target)
+        use.card = bind(self,"ckdianji","#ckdianjicard",{(cards[1]:getKnownEffectiveId())},request)
+        use.to:append(target)
         return
     end
 end
@@ -102,44 +95,44 @@ local ckluolei_skill = {}
 ckluolei_skill.name = "ckluolei"
 table.insert(package_skills, ckluolei_skill)
 ckluolei_skill.getTurnUseCard = function(self,inclusive,request)
-	if q(self.player,"getMark","@thunder") <= 0 then return end
-	if q(self.room,"getMode") == "_mini_13" then return nil -- Fixed Card_Parse has no ck luolei prototype (no alias repair).
+	if (self.player:getMark("@thunder")) <= 0 then return end
+	if (self.room:getMode()) == "_mini_13" then return nil -- Fixed Card_Parse has no ck luolei prototype (no alias repair).
     end
 	local good, bad = 0, 0
-	local lord = call(self.room,"getLord")
-	if lord and self.role ~= "rebel" and q(self,"isWeak",lord) then return end
-	for _, player in sgs.qlist(q(self.room,"getOtherPlayers",self.player)) do
-		if q(self,"isWeak",player) then
-			if q(self,"isFriend",player) then bad = bad + 1
+	local lord = self.room:getLord()
+	if lord and self.role ~= "rebel" and (self:isWeak(lord)) then return end
+	for _, player in sgs.qlist((self.room:getOtherPlayers(self.player))) do
+		if (self:isWeak(player)) then
+			if (self:isFriend(player)) then bad = bad + 1
 			else good = good + 1
 			end
 		end
 	end
 	if good == 0 then return end
 
-	for _, player in sgs.qlist(q(self.room,"getOtherPlayers",self.player)) do
-		local hp = math.max(q(player,"getHp"), 1)
+	for _, player in sgs.qlist((self.room:getOtherPlayers(self.player))) do
+		local hp = math.max((player:getHp()), 1)
 		if getCardsNum("Analeptic", player) > 0 then
-			if q(self,"isFriend",player) then good = good + 1.0 / hp
+			if (self:isFriend(player)) then good = good + 1.0 / hp
 			else bad = bad + 1.0 / hp
 			end
 		end
 
-		if q(self,"damageIsEffective",player, sgs.DamageStruct_Thunder, self.player) then
+		if (self:damageIsEffective(player,sgs.DamageStruct_Thunder,self.player)) then
 			local lost_value = 0
-			if q(self,"hasSkills",sgs.masochism_skill, player) then lost_value = q(player,"getHp")/2 end
-			local hp = math.max(q(player,"getHp"), 1)
-			if q(self,"isFriend",player) then bad = bad + (lost_value + 1) / hp
+			if (self:hasSkills(sgs.masochism_skill,player)) then lost_value = (player:getHp())/2 end
+			local hp = math.max((player:getHp()), 1)
+			if (self:isFriend(player)) then bad = bad + (lost_value + 1) / hp
 			else good = good + (lost_value + 1) / hp
 			end
 		end
 	end
 
-	if good > bad and q(self,"isWeak") and self:getHandcardNum() < 4 then return seed(self,"ckluolei","#ckluoleicard",request) end
+	if good > bad and (self:isWeak()) and self:getHandcardNum() < 4 then return seed(self,"ckluolei","#ckluoleicard",request) end
 end
 
 sgs.ai_skill_use_func["#ckluoleicard"]=function(card,use,self,request)
-	use.card = q(self,"inheritLegacyCardIdentity",bind(self,"ckluolei","#ckluoleicard",{},request),card)
+	use.card = (self:inheritLegacyCardIdentity(bind(self,"ckluolei","#ckluoleicard",{},request),card))
 end
 
 sgs.dynamic_value.damage_card["#ckluoleicard"] = true
@@ -148,31 +141,31 @@ local cksilie_skill = {}
 cksilie_skill.name = "cksilie"
 table.insert(package_skills,cksilie_skill)
 cksilie_skill.getTurnUseCard = function(self,inclusive,request)
-	if q(self.player,"isKongcheng") then return nil end
+	if (self.player:isKongcheng()) then return nil end
 	return seed(self,"cksilie","#cksiliecard",request)
 end
 
 sgs.ai_skill_use_func["#cksiliecard"] = function(card,use,self,request)
-	local cards = AIList.new(q(self.player,"getHandcards"))
+	local cards = AIList.new((self.player:getHandcards()))
 	sort_use(self,cards,true)
 	sort_players(self,self.enemies,"defense")
-	if q(self,"getOverflow")<=0 then return end
-	q(self,"setPriorityValue","cksiliecard",0.2,"ck.cksilie")
+	if (self:getOverflow())<=0 then return end
+	self:setPriorityValue("cksiliecard",0.2,"ck.cksilie")
 	local suit_table = { "spade","club","heart","diamond" }
 	local equip_val_table = { 1.2,1.5,0.5,1,1.3 }
 	for _,enemy in ipairs(self.enemies)do
-		if q(enemy,"getHandcardNum")>2 and q(self,"objectiveLevel",enemy)>3 and not q(self,"cantbeHurt",enemy) and q(self,"damageIsEffective",enemy, sgs.DamageStruct_Normal, self.player) and q(self,"canDamage",enemy,self.player,nil) then
+		if (enemy:getHandcardNum())>2 and (self:objectiveLevel(enemy))>3 and not (self:cantbeHurt(enemy)) and (self:damageIsEffective(enemy,sgs.DamageStruct_Normal,self.player)) and (self:canDamage(enemy,self.player,nil)) then
 			local max_suit_num,max_suit = 0,{}
 			for i = 0,3,1 do
 				local suit_num = getKnownCard(enemy,self.player,suit_table[i+1])
 				for j = 0,4,1 do
-					if call(enemy,"getEquip",j) and q(call(enemy,"getEquip",j),"getSuit")==i then
+					if enemy:getEquip(j) and (enemy:getEquip(j):getSuit())==i then
 						local val = equip_val_table[j+1]
-						if j==1 and q(self,"needToThrowArmor",enemy) then val = -0.5
+						if j==1 and (self:needToThrowArmor(enemy)) then val = -0.5
 						else
-							if q(enemy,"hasSkills",sgs.lose_equip_skill) then val = val/8 end
-							if q(call(enemy,"getEquip",j),"getEffectiveId")==call(self,"getValuableCard",enemy) then val = val*1.1 end
-							if q(call(enemy,"getEquip",j),"getEffectiveId")==call(self,"getDangerousCard",enemy) then val = val*1.1 end
+							if (enemy:hasSkills(sgs.lose_equip_skill)) then val = val/8 end
+							if (enemy:getEquip(j):getKnownEffectiveId())==self:getValuableCard(enemy) then val = val*1.1 end
+							if (enemy:getEquip(j):getKnownEffectiveId())==self:getDangerousCard(enemy) then val = val*1.1 end
 						end
 						suit_num = suit_num+j
 					end
@@ -188,9 +181,9 @@ sgs.ai_skill_use_func["#cksiliecard"] = function(card,use,self,request)
 				max_suit = {}
 				local suit_value = { 1,1,1.3,1.5 }
 				for _,skill in ipairs(sgs.getPlayerSkillList(enemy))do
-					if sgs[q(skill,"objectName").."_suit_value"] then
+					if sgs[(skill:objectName()).."_suit_value"] then
 						for i = 1,4,1 do
-							local v = sgs[q(skill,"objectName").."_suit_value"][suit_table[i]]
+							local v = sgs[(skill:objectName()).."_suit_value"][suit_table[i]]
 							if v then suit_value[i] = suit_value[i]+v end
 						end
 					end
@@ -207,17 +200,17 @@ sgs.ai_skill_use_func["#cksiliecard"] = function(card,use,self,request)
 				end
 			end
 			for _,card in ipairs(cards)do
-				if q(self,"getUseValue",card)<6 and table.contains(max_suit,q(card,"getSuit")) then
-					use.card = bind(self,"cksilie","#cksiliecard",{q(card,"getEffectiveId")},request)
-					call(use.to,"append",enemy)
+				if (self:getUseValue(card))<6 and table.contains(max_suit,(card:getSuit())) then
+					use.card = bind(self,"cksilie","#cksiliecard",{(card:getKnownEffectiveId())},request)
+					use.to:append(enemy)
 					return
 				end
 			end
 			if getCardsNum("Peach",enemy,self.player)<2 then
 				for _,card in ipairs(cards)do
-					if q(self,"getUseValue",card)<6 and not q(self,"isValuableCard",card) then
-						use.card = bind(self,"cksilie","#cksiliecard",{q(card,"getEffectiveId")},request)
-						call(use.to,"append",enemy)
+					if (self:getUseValue(card))<6 and not (self:isValuableCard(card)) then
+						use.card = bind(self,"cksilie","#cksiliecard",{(card:getKnownEffectiveId())},request)
+						use.to:append(enemy)
 						return
 					end
 				end
@@ -233,12 +226,12 @@ sgs.ai_use_priority["cksiliecard"] = 0.2
 sgs.ai_skill_use["@@ckbaihe"] = function(self,prompt)
     sort_players(self,self.friends,"defense")
     for _,friend in ipairs(self.friends)do
-        if q(self,"doDisCard",friend, "e") then
+        if (self:doDisCard(friend,"e")) then
             return response(self,"ckbaihe","#ckbaihecard",{}, {friend})
         end
     end
     for _,friend in ipairs(self.friends)do
-        if q(friend,"hasEquip") and q(self.player,"canDiscard",friend, "e") and q(self,"isWeak",friend) then
+        if (friend:hasEquip()) and (self.player:canDiscard(friend,"e")) and (self:isWeak(friend)) then
             return response(self,"ckbaihe","#ckbaihecard",{}, {friend})
         end
     end
@@ -246,32 +239,32 @@ sgs.ai_skill_use["@@ckbaihe"] = function(self,prompt)
 end
 
 sgs.ai_ajustdamage_from.ckdalian = function(self,from,to,card,nature)
-	if from and q(from,"distanceTo",to)<=1 and not beFriend(to,from)
+	if from and (from:distanceTo(to))<=1 and not beFriend(to,from)
 	then return 1 end
 end
 
 sgs.ai_skill_invoke.ckdalian = function(self, data)
-    local target = call(data,"toPlayer")
-    if target and q(self,"isFriend",target) then return false end
+    local target = data:toPlayer()
+    if target and (self:isFriend(target)) then return false end
 	return true
 end
 
 sgs.ai_target_revises.ckhuansha = function(to,card)
-	if q(card,"getTypeId")==sgs.Card_TypeSkill or q(card,"getSkillName")~="" or q(card,"isVirtualCard") or q(card,"isKindOf","SkillCard")
+	if (card:getTypeId())==sgs.Card_TypeSkill or (card:getKnownSkillName())~="" or (card:isVirtualCard()) or (card:isKindOf("SkillCard"))
 	then return true end
 end
 sgs.ai_target_revises.ckshiliang = function(to,card)
-	if q(to,"getMark","ckshiliang-Clear") == 0
+	if (to:getMark("ckshiliang-Clear")) == 0
 	then return true end
 end
 
 sgs.ai_skill_use["@@ckshiliang"] = function(self,prompt)
-    local parsed = q(prompt,"split",":")
+    local parsed = (prompt:split(":"))
     local use = context(self,"use")
     if parsed[1]=="@ckshiliangCard" then
         if use then
             local card = use.card
-            local dummy_use = q(self,"aiUseCard",card, dummy(true, 0, use.to))
+            local dummy_use = (self:aiUseCard(card,dummy(true, 0, use.to)))
 			if dummy_use.card and dummy_use.to then
                 for _,p in sgs.qlist(dummy_use.to)do
                     return response(self,"ckshiliang","#ckshiliangcard",{}, {p})
@@ -279,7 +272,7 @@ sgs.ai_skill_use["@@ckshiliang"] = function(self,prompt)
             end
         end
     else
-        if use.from and q(self,"isEnemy",use.from) then
+        if use.from and (self:isEnemy(use.from)) then
             for _, enemy in ipairs(self.enemies) do
                 return response(self,"ckshiliang","#ckshiliangcard",{}, {enemy})
             end
@@ -289,15 +282,15 @@ sgs.ai_skill_use["@@ckshiliang"] = function(self,prompt)
 end
 
 sgs.ai_skill_invoke.ckxueni = function(self, data)
-    local target = call(data,"toPlayer")
+    local target = data:toPlayer()
     if target  then 
-        if q(self,"isEnemy",target) then
+        if (self:isEnemy(target)) then
 			return true
 		end
-        if q(self,"isFriend",target) and visible_role(self,target) == "rebel" then
+        if (self:isFriend(target)) and visible_role(self,target) == "rebel" then
 			for _, friend in ipairs(self.friends) do
 				if getKnownCard(friend, self.player, "Peach", true, "h") > 0 then return false end
-				if q(friend,"getHandcardNum") > 3 then return false end
+				if (friend:getHandcardNum()) > 3 then return false end
 			end
             return true
 		end
@@ -308,22 +301,22 @@ end
 sgs.ai_skill_invoke.ckyongchang = function(self, data)
 	local effect = context(self,"effect")
     local dest = effect.to
-    if dest and q(self,"isEnemy",dest) then return false end
-	if effect.card and q(effect.card,"hasFlag","NosJiefanUsed") then return false  end
+    if dest and (self:isEnemy(dest)) then return false end
+	if effect.card and (effect.card:hasFlag("NosJiefanUsed")) then return false  end
 
 	if not effect.from or sgs.ai_skill_cardask.nullfilter(self,data,pattern,effect.from)
-		or q(effect.card,"isKindOf","NatureSlash") and q(self.player,"isChained") and q(self,"isGoodChainTarget",dest,effect.card,effect.from)
-		or q(self,"needToLoseHp",dest,effect.from,effect.card) and q(self,"ajustDamage",effect.from,dest,1,effect.card)==1 then return false end
-	if q(self,"needToLoseHp",dest, effect.from,effect.card, true, true) then return false end
-	if q(self,"getCardsNum","Jink") == 0 then return true end
+		or (effect.card:isKindOf("NatureSlash")) and (self.player:isChained()) and (self:isGoodChainTarget(dest,effect.card,effect.from))
+		or (self:needToLoseHp(dest,effect.from,effect.card)) and (self:ajustDamage(effect.from,dest,1,effect.card))==1 then return false end
+	if (self:needToLoseHp(dest,effect.from,effect.card,true,true)) then return false end
+	if (self:getCardsNum("Jink")) == 0 then return true end
 	
 	return true
 end
 
 sgs.ai_choicemade_filter.skillInvoke.ckyongchang = function(self,player,promptlist)
 	if promptlist[#promptlist]=="yes" then
-		local target = call(self.room,"findPlayerByObjectName",promptlist[#promptlist-1])
-		if target then call(self,"updateIntention",player,target,-50) end
+		local target = self.room:findPlayerByObjectName(promptlist[#promptlist-1])
+		if target then self:updateIntention(player,target,-50) end
 	end
 end
 
@@ -335,20 +328,20 @@ cklongxi_skill.getTurnUseCard=function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#cklongxicard"] = function(card,use,self,request)
-	local cards = AIList.new(q(self.player,"getCards","he"))
+	local cards = AIList.new((self.player:getCards("he")))
 	sort_keep(self,cards)
     sort_players(self,self.enemies)
     for _,enemy in sgs.list(self.enemies)do
-        if q(self,"objectiveLevel",enemy)>3 and not q(self,"cantbeHurt",enemy) and q(self,"damageIsEffective",enemy, sgs.DamageStruct_Normal, self.player) and not q(self,"cantDamageMore",self.player, enemy) and (q(enemy,"getHp") <= 3 or q(self,"isWeak")) and q(self,"canDamage",enemy,self.player,nil) then
+        if (self:objectiveLevel(enemy))>3 and not (self:cantbeHurt(enemy)) and (self:damageIsEffective(enemy,sgs.DamageStruct_Normal,self.player)) and not (self:cantDamageMore(self.player,enemy)) and ((enemy:getHp()) <= 3 or (self:isWeak())) and (self:canDamage(enemy,self.player,nil)) then
             use.card = bind(self,"cklongxi","#cklongxicard",{},request)
-            call(use.to,"append",enemy)
+            use.to:append(enemy)
             return
         end
     end
-    local target = call(self,"findBestDamageTarget",3, "N", 0, nil)
+    local target = self:findBestDamageTarget(3,"N",0,nil)
     if target then
         use.card = bind(self,"cklongxi","#cklongxicard",{},request)
-        call(use.to,"append",target)
+        use.to:append(target)
         return
     end
 end
@@ -371,31 +364,31 @@ ckweishan_skill.getTurnUseCard=function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#ckweishancard"] = function(card,use,self,request)
-	local cards = AIList.new(q(self.player,"getCards","he"))
+	local cards = AIList.new((self.player:getCards("he")))
 	sort_keep(self,cards)
     sort_players(self,self.enemies)
     local use_cards = {}
     local types = {}
     
 	for _,c in ipairs(cards) do
-		if not table.contains(types, q(c,"getTypeId"))  then
-            table.insert(types, q(c,"getTypeId"))
-            table.insert(use_cards, q(c,"getEffectiveId"))
+		if not table.contains(types, (c:getTypeId()))  then
+            table.insert(types, (c:getTypeId()))
+            table.insert(use_cards, (c:getKnownEffectiveId()))
 		end
 	end
     if #use_cards < 3 then return end
 
-	local enemies = q(self,"findPlayerToDamage",3, self.player, "N")
-	enemies = table.filter(enemies, function(p) return not q(self,"cantDamageMore",self.player, p) end)
+	local enemies = (self:findPlayerToDamage(3,self.player,"N"))
+	enemies = table.filter(enemies, function(p) return not (self:cantDamageMore(self.player,p)) end)
 	for _,enemy in ipairs(enemies) do
 		use.card = bind(self,"ckweishan","#ckweishancard",use_cards,request)
-        call(use.to,"append",enemy)
+        use.to:append(enemy)
         return
 	end
-    local target = call(self,"findBestDamageTarget",3, "N", 0, nil)
+    local target = self:findBestDamageTarget(3,"N",0,nil)
     if target then
         use.card = bind(self,"ckweishan","#ckweishancard",use_cards,request)
-        call(use.to,"append",target)
+        use.to:append(target)
         return
     end
 end
@@ -406,23 +399,23 @@ sgs.dynamic_value.damage_card["ckweishancard"] = true
 
 sgs.ai_skill_use["@@ckjinjie"] = function(self,prompt)
     local targets = {}
-    table.insert(targets, q(self.player,"objectName"))
+    table.insert(targets, (self.player:objectName()))
     sort_players(self,self.friends_noself, "handcard")
     for _, friend in ipairs(self.friends_noself) do
         if #targets < 3 then
-            table.insert(targets, q(friend,"objectName"))
+            table.insert(targets, (friend:objectName()))
             break
         end
     end
     sort_players(self,self.enemies, "defense")
     for _, enemy in ipairs(self.enemies) do
-        if #targets < 3 and not q(self.player,"inMyAttackRange",enemy) then
-            table.insert(targets, q(enemy,"objectName"))
+        if #targets < 3 and not (self.player:inMyAttackRange(enemy)) then
+            table.insert(targets, (enemy:objectName()))
         end
     end
     for _, enemy in ipairs(self.enemies) do
         if #targets < 3 then
-            table.insert(targets, q(enemy,"objectName"))
+            table.insert(targets, (enemy:objectName()))
         end
     end
     if #targets > 0 then

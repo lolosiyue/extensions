@@ -3652,8 +3652,8 @@ function SmartAIView:getCardNeedPlayer(cards,include_self,tos)
 		end
 	end
 
-	if allocation_query(self.player,"isWounded") and allocation_query(self.player,"getMark","nosrende")<2 and allocation_query(self.player,"hasSkill","nosrende") then
-		if allocation_query(self.player,"getHandcardNum")<2 and allocation_query(self.player,"getMark","nosrende")<1 then return end
+	if allocation_query(self.player,"isWounded") and allocation_query(self.player,"hasSkill","nosrende") and allocation_query(self,"getNosRendeGiven")<2 then
+		if allocation_query(self.player,"getHandcardNum")<2 and allocation_query(self,"getNosRendeGiven")<1 then return end
 	end
 	if allocation_query(self.player,"isWounded") and allocation_query(self.player,"getMark","rende")<2
 	and allocation_query(self.player,"hasSkill","rende") and not allocation_query(self.player,"hasUsed","RendeCard") then
@@ -3823,7 +3823,7 @@ function SmartAIView:getCardNeedPlayer(cards,include_self,tos)
 	end
 
 	local shoulduse = allocation_query(self.player,"isWounded") and (allocation_query(self.player,"hasSkill","rende") and not allocation_query(self.player,"hasUsed","RendeCard") and allocation_query(self.player,"getMark","rende")<2)
-	or (allocation_query(self.player,"hasSkill","nosrende") and allocation_query(self.player,"getMark","nosrende")<2)
+	or (allocation_query(self.player,"hasSkill","nosrende") and allocation_query(self,"getNosRendeGiven")<2)
 
 	if #cardtogive<1 and shoulduse then cardtogive = cards end
 
@@ -4883,9 +4883,9 @@ function SmartAIView:JijiangSlash(player)
     if not player then return 0 end
     if not plan_query(player, "hasLordSkill", "jijiang") then return 0 end
     local total = 0
-    for _, other in ipairs(plan_query(self.room, "getOtherPlayers", player)) do
+    for _, other in ipairs(plan_query(self.room, "getLieges", "shu", player)) do
         local count = plan_estimate(self, "Slash", other)
-        if plan_query(other, "getKingdom") == "shu" and count >= 1 and
+        if count >= 1 and
             (plan_query(self.room, "getTurnCount") <= 1 and plan_role(self, other) == "neutral"
                 or plan_query(self, "isFriend", player, other)) then total = total + count end
     end

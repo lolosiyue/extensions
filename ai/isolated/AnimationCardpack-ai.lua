@@ -1,12 +1,7 @@
 -- Complete fixed b6025acc AnimationCardpack source bodies. All generated
 -- material costs remain explicit proposals until native source validation.
 local function known(v,k)if v==nil then ai_unsupported("AnimationCardpack value is unknown",k)end return v end
-local function q(o,k,...)
-    if not o then ai_unsupported("AnimationCardpack object is unknown",k)end
-    if k=="getMark"and type(o.getStrategyMark)=="function"then k="getStrategyMark"end
-    if type(o[k])~="function"then ai_unsupported("AnimationCardpack helper unavailable",k)end
-    return known(o[k](o,...),k)
-end
+
 local function copy(t)local out={};for _,v in ipairs(known(t,"card list"))do out[#out+1]=v end return out end
 local function reverse(t)local out={};for i=#t,1,-1 do out[#out+1]=t[i]end return out end
 local function event_value(self,key,row)
@@ -28,11 +23,11 @@ end
 local function chopper_spec(player)
     local cards=known(player:getHandcards(),"chopper complete owner hand")
     local spec={name="slash",skill="chopper",suit=sgs.Card_NoSuit,number=0,subcards={}}
-    for _,card in ipairs(cards)do spec.subcards[#spec.subcards+1]=q(card,"getEffectiveId")end
-    if #cards==1 then spec.suit=q(cards[1],"getSuit");spec.number=q(cards[1],"getNumber")
+    for _,card in ipairs(cards)do spec.subcards[#spec.subcards+1]=card:getKnownEffectiveId()end
+    if #cards==1 then spec.suit=cards[1]:getSuit();spec.number=cards[1]:getNumber()
     elseif #cards>1 then
         local red,black=true,true
-        for _,card in ipairs(cards)do red=red and q(card,"isRed");black=black and q(card,"isBlack")end
+        for _,card in ipairs(cards)do red=red and card:isRed();black=black and card:isBlack()end
         spec.suit=red and sgs.Card_NoSuitRed or black and sgs.Card_NoSuitBlack or sgs.Card_NoSuit
     end
     return spec
@@ -66,21 +61,21 @@ sgs.ai_skill_invoke.htms_rishi = function(self, data)
 end
 
 sgs.ai_canliegong_skill.htms_rishi = function(self, from, to)
-    return q(from,"getHandcardNum") < q(to,"getHandcardNum")
+    return from:getHandcardNum() < to:getHandcardNum()
 end
 
 sgs.weapon_range.chopper = 3
 
 
 sgs.ai_fill_skill.chopper = function(self,inclusive,request)
-    if q(self.player,"getHandcardNum")>q(self.player,"getHp")
-    or q(self.player,"isKongcheng") then return end
+    if self.player:getHandcardNum()>self.player:getHp()
+    or self.player:isKongcheng() then return end
     local spec=chopper_spec(self.player)
     return self:bindTurnConversion("chopper","Slash",spec,request)
 end
 
 function sgs.ai_cardsview.chopper(self, class_name, player)
-    if q(player,"getPhase") ~= sgs.Player_NotActive then return end
+    if player:getPhase() ~= sgs.Player_NotActive then return end
     if class_name == "Slash"then
         local slashs = {}
         for _, c in ipairs(player:getCards("h")) do
@@ -107,23 +102,23 @@ sgs.ai_skill_discard.Rho_Aias_trigger = function(self,discard_num,optional,inclu
     table.sort(cards,compare_func)
     for _,card in ipairs(cards)do
         if #to_discard>=1 then break end
-        table.insert(to_discard,q(card,"getId"))
+        table.insert(to_discard,card:getKnownId())
     end
 
     return to_discard
 end
 sgs.ai_view_as.Rho_Aias = function(card,player,card_place)
-    local suit = q(card,"getSuitString")
-    local number = q(card,"getNumberString")
-    local card_id = q(card,"getEffectiveId")
+    local suit = card:getSuitString()
+    local number = card:getNumberString()
+    local card_id = card:getKnownEffectiveId()
     if player:getPile("ring"):contains(card_id) then
-        return{name="jink",skill="Rho_Aias",suit=q(card,"getSuit"),number=q(card,"getNumber"),subcards={card_id}}
+        return{name="jink",skill="Rho_Aias",suit=card:getSuit(),number=card:getNumber(),subcards={card_id}}
     end
 end
 --使用结构
 
 function SmartAIView:useCardmouthgun(card, use)
-    if q(self.player,"hasSkill","noswuyan") then return end
+    if self.player:hasSkill("noswuyan") then return end
     --暂且忽略对队友使用嘴炮的可能性
 
     --注意的技能：【屯田】，【纵适】，【鹰扬】
@@ -140,13 +135,13 @@ function SmartAIView:useCardmouthgun(card, use)
     end
     local max_card = self:getMaxCard(self.player, cards)
     if not max_card then return end
-    local max_point = q(max_card,"getNumber")
+    local max_point = max_card:getNumber()
 
     --目标选择
     self.enemies = self:sort(self.enemies, "handcard")
     self.enemies = reverse(self.enemies)
     for _, enemy in ipairs(self.enemies) do
-        if q(enemy,"getHandcardNum") < 5 and not q(enemy,"isKongcheng") and q(self.player,"distanceTo",enemy) <= math.max(1, q(self.player,"getHp")) then
+        if enemy:getHandcardNum() < 5 and not enemy:isKongcheng() and self.player:distanceTo(enemy) <= math.max(1, self.player:getHp()) then
             use.card = card
             if use.to then use.to:append(enemy) end
             return
@@ -158,20 +153,20 @@ function SmartAIView:useCardmouthgun(card, use)
 end
 
 function sgs.ai_skill_pindian.mouthgun(minusecard, self, requestor)
-    if q(requestor,"getHandcardNum") == 1 then
+    if requestor:getHandcardNum() == 1 then
         local cards = copy(self.player:getHandcards())
         cards = self:sortByKeepValue(cards)
         return cards[1]
     end
     local maxcard = self:getMaxCard()
-    return self:isFriend(requestor) and self:getMinCard() or ( q(maxcard,"getNumber") < 6 and  minusecard or maxcard )
+    return self:isFriend(requestor) and self:getMinCard() or ( maxcard:getNumber() < 6 and  minusecard or maxcard )
 end
 sgs.ai_skill_choice["mouthgun"] = function(self, choices, data)
     local card = self:getEvaluationCard("mouthgun")
 
     local pindian = event_value(self,"pindian",self:getDecisionContext().pindian)
-    local fromNumber = q(pindian.from_card,"getNumber")
-    local toNumber = q(pindian.to_card,"getNumber")
+    local fromNumber = pindian.from_card:getNumber()
+    local toNumber = pindian.to_card:getNumber()
     local winner, loser
     if fromNumber ~= toNumber then
         if fromNumber > toNumber then
@@ -209,14 +204,14 @@ sgs.ai_skill_cardask["@murasamekilla"] = function(self,data,pattern)
     if self:ajustDamage(use.from,self.player,1,use.card) and self:getCardsNum("Peach")>0 then return "." end
     if self:getCardsNum("Jink")==0 or not sgs.isJinkAvailable(use.from,self.player,use.card,true) then return "." end
     local jiangqin = self.room:findPlayerBySkillName("niaoxiang")
-    local need_double_jink = q(use.from,"hasSkill","wushuang")
-        or (q(use.from,"hasSkill","roulin") and q(self.player,"isFemale"))
-        or (q(self.player,"hasSkill","roulin") and q(use.from,"isFemale"))
-        or (jiangqin and jiangqin:isAdjacentTo(self.player) and q(use.from,"isAdjacentTo",self.player) and self:isEnemy(jiangqin))
+    local need_double_jink = use.from:hasSkill("wushuang")
+        or (use.from:hasSkill("roulin") and self.player:isFemale())
+        or (self.player:hasSkill("roulin") and use.from:isFemale())
+        or (jiangqin and jiangqin:isAdjacentTo(self.player) and use.from:isAdjacentTo(self.player) and self:isEnemy(jiangqin))
     local cards = copy(self.player:getHandcards())
     cards = self:sortByKeepValue(cards)
     for _,card in ipairs(cards)do
-        if q(card,"getColorString")~=colour or (not self:isWeak() and (self:getKeepValue(card)>8 or self:isValuableCard(card)))
+        if card:getColorString()~=colour or (not self:isWeak() and (self:getKeepValue(card)>8 or self:isValuableCard(card)))
             or (isCard("Jink",card,self.player) and self:getCardsNum("Jink")-1<(need_double_jink and 2 or 1)) then continue end
         return "$"..card:getEffectiveId()
     end
@@ -261,7 +256,7 @@ sgs.ai_skill_discard.hqiangwei = function(self,discard_num,optional,include_equi
     table.sort(cards,compare_func)
     for _,card in ipairs(cards)do
         if #to_discard>=1 then break end
-        table.insert(to_discard,q(card,"getId"))
+        table.insert(to_discard,card:getKnownId())
     end
 
     return to_discard
@@ -278,13 +273,13 @@ sgs.ai_keep_value.strike_the_death = 3.24
 sgs.ai_use_value.mouthgun = 4.9
 
 sgs.ai_ajustdamage_from["@std"] = function(self, from, to, card, nature)
-    return q(from,"getMark","@std")
+    return from:getStrategyMark("@std")
 end
 
 sgs.ai_skill_use["@strike_the_death"] = function(self, prompt)
     local dying = self.room:getCurrentDyingPlayer()
     if dying then
-        local peaches = 1-q(dying,"getHp")
+        local peaches = 1-dying:getHp()
         if self:getCardsNum("Peach")+self:getCardsNum("Analeptic")<peaches then
             local cards = copy(self.player:getCards("he"))
             cards = self:sortByKeepValue(cards)
@@ -293,7 +288,7 @@ sgs.ai_skill_use["@strike_the_death"] = function(self, prompt)
             cards = copy(cards)
 
             for _,acard in ipairs(cards)  do
-                if q(acard,"isKindOf","strike_the_death") then
+                if acard:isKindOf("strike_the_death") then
                     card = acard
                     break
                 end
@@ -318,7 +313,7 @@ end
 function SmartAIView:useCardrotenburo(card,use)
     local n = 0
     for _,p in ipairs(self.room:getAlivePlayers())do
-        if q(self.player,"canUse",card,p) then
+        if self.player:canUse(card, p) then
             if self:isFriend(p) then
                 n = n+1
                 if self:isWeak(p) then
@@ -345,9 +340,9 @@ function SmartAIView:useCardbunkasai(card,use)
     local min = 999
     local target
     for _,p in ipairs(self.room:getAlivePlayers())do
-        if q(self.player,"canUse",card,p) then
-            if q(p,"getHandcardNum") < min then
-                min = q(p,"getHandcardNum")
+        if self.player:canUse(card, p) then
+            if p:getHandcardNum() < min then
+                min = p:getHandcardNum()
                 target = p
             end
         end
@@ -369,8 +364,8 @@ sgs.ai_skill_discard.bunkasai = function(self,discard_num,optional,include_equip
         local min = 999
         local target
         for _,p in ipairs(use.to)do
-            if q(p,"getHandcardNum") < min then
-                min = q(p,"getHandcardNum")
+            if p:getHandcardNum() < min then
+                min = p:getHandcardNum()
                 target = p
             end
         end
@@ -380,9 +375,9 @@ sgs.ai_skill_discard.bunkasai = function(self,discard_num,optional,include_equip
     end
     for _,card in ipairs(cards)do
         if #to_discard>=discard_num then break end
-        if table.contains(suit,q(card,"getSuitString")) then continue end
-        table.insert(to_discard,q(card,"getId"))
-        table.insert(suit,q(card,"getSuitString"))
+        if table.contains(suit,card:getSuitString()) then continue end
+        table.insert(to_discard,card:getKnownId())
+        table.insert(suit,card:getSuitString())
     end
 
     return to_discard
@@ -398,7 +393,7 @@ function SmartAIView:useCardtogether_go_die(card,use)
         local dummy_use = self:aiUseCard(slash,{isDummy=true,extra_target=0,current_targets={},to=AIList.new({})})
         if dummy_use and dummy_use.card and not dummy_use.to:isEmpty() then
             for _, p in ipairs(dummy_use.to) do
-                if q(p,"getHandcardNum") >= q(self.player,"getHandcardNum") then
+                if p:getHandcardNum() >= self.player:getHandcardNum() then
                     use.card = card
                     if use.to then use.to:append(p) end
                         return
@@ -412,7 +407,7 @@ sgs.ai_use_priority.together_go_die = sgs.ai_use_priority.Slash + 2
 function SmartAIView:useCardshuugakulyukou(card,use)
     self.friends_noself = self:sort(self.friends_noself,"defense")
     for _,friend in ipairs(self.friends_noself)do
-        if  not q(friend,"containsTrick","shuugakulyukou")
+        if  not friend:containsTrick("shuugakulyukou")
         then
             use.card = card
             use.to:append(friend)

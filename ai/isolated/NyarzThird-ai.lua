@@ -4,10 +4,7 @@ local function known(v,key)
     if v==nil then ai_unsupported("NyarzThird policy fact is unknown",key)end
     return v
 end
-local function call(object,method,...)
-    if not object or type(object[method])~="function"then ai_unsupported("NyarzThird policy method is unavailable",method)end
-    return known(object[method](object,...),method)
-end
+
 local function property(self,key)
     -- The viewer's own property, read like the donor's toString() (absent reads "").
     local value=self.player:getPropertyValue(key)
@@ -42,22 +39,22 @@ end
 local function can_to(self,card,target)
     -- Native readonly cards expose the exact empty-prefix rule in their owner
     -- evaluation; physical/issued cards use the same narrow facade endpoint.
-    return call(self,"cardTargetFilter",card,{},target)
+    return self:cardTargetFilter(card, {}, target)
 end
 local function sort_enemies(self)
     local current=known(self.enemies,"enemies")
-    local sorted=call(self,"sort",current)
+    local sorted=self:sort(current)
     for i,p in ipairs(sorted)do current[i]=p end
 end
 local function response(self,skill,card,use,needs_target)
     if not use.card then return "."end
     if needs_target and (not use.to or #use.to==0)then return "."end
-    local paid=call(self,"bindSkillCard",skill,{})
+    local paid=self:bindSkillCard(skill, {})
     local targets={}
-    for _,p in ipairs(use.to or{})do targets[#targets+1]=call(p,"objectName")end
+    for _,p in ipairs(use.to or{})do targets[#targets+1]=p:objectName()end
     -- Source returns the original hypothetical card, even if planning wrote a
     -- different use.card. Native scope must reproduce that original declaration.
-    if call(paid,"objectName")~=call(card,"objectName")then
+    if paid:objectName()~=card:objectName()then
         ai_unsupported("selected response declaration changed","NyarzThird.response")
     end
     return {kind="use_card",card_spec=paid:toCardSpec(),targets=targets}
@@ -76,30 +73,30 @@ end
 
 sgs.ai_skill_discard.nyarz_yuheng = function(self, max, min)
     local disCards = {}
-    if call(self.player,"isKongcheng") then return disCards end
-    if (not call(self.player,"hasSkill","nyarz_tongye")) and call(self.player,"getPhase") == sgs.Player_NotActive then return disCards end
+    if self.player:isKongcheng() then return disCards end
+    if (not self.player:hasSkill("nyarz_tongye")) and self.player:getPhase() == sgs.Player_NotActive then return disCards end
 
-    if (not call(self.player,"hasSkill","nyarz_tongye")) then
-        local num = math.min(3,math.ceil(call(self.player,"getHandcardNum")/2))
+    if (not self.player:hasSkill("nyarz_tongye")) then
+        local num = math.min(3,math.ceil(self.player:getHandcardNum()/2))
         if num == 0 then return disCards end
-        local handcards = call(self,"sortByUseValue",AIList.new(call(self.player,"getHandcards")))
+        local handcards = self:sortByUseValue(AIList.new(self.player:getHandcards()))
         for i = 1, num, 1 do
-            table.insert(disCards, call(handcards[i],"getEffectiveId"))
+            table.insert(disCards, handcards[i]:getKnownEffectiveId())
         end
         return disCards
     end
 
     local maxValue = 0
     local bestNum = 0
-    local target = call(self.room,"getCurrent")
+    local target = self.room:getKnownCurrent()
 
-    for i = 1, math.min(3,call(self.player,"getHandcardNum")),1 do
+    for i = 1, math.min(3,self.player:getHandcardNum()),1 do
         --先考虑自己弃牌可能带来的收益
         local value = -1*i
-        local temHandcardNum = call(self.player,"getHandcardNum") - i
+        local temHandcardNum = self.player:getHandcardNum() - i
         local others = {}
-        for _,other in ipairs(call(self.room,"getOtherPlayers",self.player)) do
-            table.insert(others,call(other,"getHandcardNum"))
+        for _,other in ipairs(self.room:getOtherPlayers(self.player)) do
+            table.insert(others,other:getHandcardNum())
         end
 
         local temDraw = getDrawNumForNYTongYe(temHandcardNum,others)
@@ -107,22 +104,22 @@ sgs.ai_skill_discard.nyarz_yuheng = function(self, max, min)
         value = value + temDraw
         temHandcardNum = temHandcardNum + temDraw
 
-        local disNum = math.min(i,call(target,"getHandcardNum"))
-        local temTargetNum = {call(target,"getHandcardNum") + i, call(target,"getHandcardNum") - disNum}
+        local disNum = math.min(i,target:getHandcardNum())
+        local temTargetNum = {target:getHandcardNum() + i, target:getHandcardNum() - disNum}
         local temValue = {0,0}
         local canDraw = false
         --令当前回合角色摸牌收益
-        if call(self,"isFriend",target) then temValue[1] = temValue[1] + i end
-        if call(self,"isEnemy",target) then temValue[1] = temValue[1] - i end
+        if self:isFriend(target) then temValue[1] = temValue[1] + i end
+        if self:isEnemy(target) then temValue[1] = temValue[1] - i end
 
-        table.removeOne(others,call(target,"getHandcardNum"))
+        table.removeOne(others,target:getHandcardNum())
         table.insert(others,temTargetNum[1])
         if temTargetNum[1] == temHandcardNum then
             canDraw = true
         else
-            for _,other in ipairs(call(self.room,"getOtherPlayers",target)) do
-                if call(other,"getHandcardNum") == temTargetNum[1]
-                and call(other,"objectName") ~= call(self.player,"objectName") then
+            for _,other in ipairs(self.room:getOtherPlayers(target)) do
+                if other:getHandcardNum() == temTargetNum[1]
+                and other:objectName() ~= self.player:objectName() then
                     canDraw = true
                     break
                 end
@@ -135,8 +132,8 @@ sgs.ai_skill_discard.nyarz_yuheng = function(self, max, min)
         end
 
         --令当前回合角色弃牌收益
-        if call(self,"isFriend",target) then temValue[2] = temValue[2] - disNum end
-        if call(self,"isEnemy",target) then temValue[2] = temValue[2] + disNum end
+        if self:isFriend(target) then temValue[2] = temValue[2] - disNum end
+        if self:isEnemy(target) then temValue[2] = temValue[2] + disNum end
 
         table.removeOne(others,temTargetNum[1])
         table.insert(others,temTargetNum[2])
@@ -144,9 +141,9 @@ sgs.ai_skill_discard.nyarz_yuheng = function(self, max, min)
         if temTargetNum[2] == temHandcardNum then
             canDraw = true
         else
-            for _,other in ipairs(call(self.room,"getOtherPlayers",target)) do
-                if call(other,"getHandcardNum") == temTargetNum[2]
-                and call(other,"objectName") ~= call(self.player,"objectName") then
+            for _,other in ipairs(self.room:getOtherPlayers(target)) do
+                if other:getHandcardNum() == temTargetNum[2]
+                and other:objectName() ~= self.player:objectName() then
                     canDraw = true
                     break
                 end
@@ -169,14 +166,14 @@ sgs.ai_skill_discard.nyarz_yuheng = function(self, max, min)
 
     if bestNum == 0 then
         local num = {}
-        for _,pl in ipairs(call(self.room,"getOtherPlayers",self.player)) do
-            table.insert(num,call(pl,"getHandcardNum"))
+        for _,pl in ipairs(self.room:getOtherPlayers(self.player)) do
+            table.insert(num,pl:getHandcardNum())
         end
-        if call(self.player,"getHandcardNum") > (math.max(table.unpack(num)) + 5) then
-            if call(self.player,"getPhase") == sgs.Player_NotActive then
-                if call(self,"isEnemy",target) then
-                    bestNum = math.min(3,call(target,"getHandcardNum"))
-                elseif call(self,"isFriend",target) then
+        if self.player:getHandcardNum() > (math.max(table.unpack(num)) + 5) then
+            if self.player:getPhase() == sgs.Player_NotActive then
+                if self:isEnemy(target) then
+                    bestNum = math.min(3,target:getHandcardNum())
+                elseif self:isFriend(target) then
                     bestNum = 3
                 end
             else
@@ -187,14 +184,14 @@ sgs.ai_skill_discard.nyarz_yuheng = function(self, max, min)
     end
 
     if bestNum ~= 0 then
-        local handcards = AIList.new(call(self.player,"getHandcards"))
-        if call(self.player,"getPhase") == sgs.Player_NotActive then
-            handcards = call(self,"sortByKeepValue",handcards)
+        local handcards = AIList.new(self.player:getHandcards())
+        if self.player:getPhase() == sgs.Player_NotActive then
+            handcards = self:sortByKeepValue(handcards)
         else
-            handcards = call(self,"sortByUseValue",handcards,true)
+            handcards = self:sortByUseValue(handcards, true)
         end
         for i = 1, bestNum, 1 do
-            table.insert(disCards, call(handcards[i],"getEffectiveId"))
+            table.insert(disCards, handcards[i]:getKnownEffectiveId())
         end
     end
 
@@ -203,47 +200,47 @@ sgs.ai_skill_discard.nyarz_yuheng = function(self, max, min)
 end
 
 sgs.ai_skill_choice.nyarz_yuheng = function(self, choices, data)
-    local num = known(call(self,"getDecisionContext").nyarz_yuheng_count,"nyarz_yuheng count")
-    local target = call(self.room,"getCurrent")
+    local num = known(self:getDecisionContext().nyarz_yuheng_count,"nyarz_yuheng count")
+    local target = self.room:getKnownCurrent()
 
-    if (not call(self.player,"hasSkill","nyarz_tongye")) then
-        if call(self,"isEnemy",target) then return "discard"
+    if (not self.player:hasSkill("nyarz_tongye")) then
+        if self:isEnemy(target) then return "discard"
         else return "draw" end
     end
 
     local value = {0,0}
-    if call(self,"isEnemy",target) then
+    if self:isEnemy(target) then
         value[1] = -1*num
         value[2] = num
-    elseif call(self,"isFriend",target) then
-        value[1] = math.min(num,call(target,"getHandcardNum"))
-        value[2] = -1*math.min(num,call(target,"getHandcardNum"))
+    elseif self:isFriend(target) then
+        value[1] = math.min(num,target:getHandcardNum())
+        value[2] = -1*math.min(num,target:getHandcardNum())
     end
 
-    local temNum = {call(target,"getHandcardNum")+num,call(target,"getHandcardNum")-math.min(num,call(target,"getHandcardNum"))}
+    local temNum = {target:getHandcardNum()+num,target:getHandcardNum()-math.min(num,target:getHandcardNum())}
     for i = 1,2,1 do
         local canDraw = false
-        for _,other in ipairs(call(self.room,"getOtherPlayers",target)) do
-            if call(other,"getHandcardNum") == temNum[i] then
+        for _,other in ipairs(self.room:getOtherPlayers(target)) do
+            if other:getHandcardNum() == temNum[i] then
                 canDraw = true
                 break
             end
         end
         local others = {}
-        for _,other in ipairs(call(self.room,"getOtherPlayers",self.player)) do
-            table.insert(others,call(other,"getHandcardNum"))
+        for _,other in ipairs(self.room:getOtherPlayers(self.player)) do
+            table.insert(others,other:getHandcardNum())
         end
         if i == 1 then
-            table.removeOne(others,call(target,"getHandcardNum"))
+            table.removeOne(others,target:getHandcardNum())
             table.insert(others,temNum[1])
         else
             table.removeOne(others,temNum[1])
             table.insert(others,temNum[2])
         end
         if canDraw then
-            value[i] = value[i] + 1 + getDrawNumForNYTongYe(call(self.player,"getHandcardNum")+1,others)
+            value[i] = value[i] + 1 + getDrawNumForNYTongYe(self.player:getHandcardNum()+1,others)
         else
-            value[i] = value[i] + getDrawNumForNYTongYe(call(self.player,"getHandcardNum"),others)
+            value[i] = value[i] + getDrawNumForNYTongYe(self.player:getHandcardNum(),others)
         end
     end
 
@@ -264,11 +261,11 @@ function SmartAIView:useCardRetribution(card,use)
 
 	if #enemies<1 then return end
 
-	local extraTarget = call(card,"getTargetModExtra",self.player)
+	local extraTarget = card:getKnownTargetModExtra(self.player)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
     for _,enemy in ipairs(enemies)do
 		use.to:append(enemy)
-		if call(use.to,"length")>extraTarget
+		if use.to:length()>extraTarget
 		then
             use.card = card
             return
@@ -285,14 +282,14 @@ sgs.dynamic_value.damage_card.Retribution = true
 sgs.ai_card_intention.Retribution = 80
 
 sgs.ai_nullification.Retribution = function(self,trick,from,to,positive)
-    local null_num = call(self,"getCardsNum","Nullification")
+    local null_num = self:getCardsNum("Nullification")
 	if positive then
         if to==self.player then
 			return true
 		end
-		return call(self,"isFriend",to) and (null_num>1 and call(self,"isWeak",to))
+		return self:isFriend(to) and (null_num>1 and self:isWeak(to))
 	else
-        return call(self,"isEnemy",to) and call(self,"isWeak",to)
+        return self:isEnemy(to) and self:isWeak(to)
 	end
 end
 
@@ -301,7 +298,7 @@ ai_card_use.Retribution=SmartAIView.useCardRetribution
 
 -- 治世
 sgs.ai_skill_use["@@nyarz_zhishi"]=function(self,prompt)
-    if call(self,"isWeak")and call(self.player,"getPhase")==sgs.Player_Finish then return "."end
+    if self:isWeak()and self.player:getPhase()==sgs.Player_Finish then return "."end
     local card=clone(self,"nyarz_zhishi",property(self,"nyarz_zhishi"))
     local use={isDummy=true,to=AIList.new({})}
     use_clone(self,card,use)
@@ -321,7 +318,7 @@ sgs.ai_skill_choice.nyarz_zhishi_slash=function(self,choices,data)
 end
 sgs.ai_skill_choice.nyarz_zhishi=function(self,choices,data)
     local patterns=choices:split("+")
-    if call(self.player,"getPhase")==sgs.Player_Finish then
+    if self.player:getPhase()==sgs.Player_Finish then
         if table.contains(patterns,"cancel")and table.contains(patterns,"slash")then
             if #patterns==2 then return "cancel"else table.removeOne(patterns,"slash")end
         end

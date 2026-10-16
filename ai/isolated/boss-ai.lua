@@ -4,20 +4,15 @@ local function known(value,label)
     if value==nil then ai_unsupported("boss requires "..label,"boss") end
     return value
 end
-local function q(object,method,...)
-    if not object or type(object[method])~="function" then ai_unsupported("boss requires "..method,"boss") end
-    if method=="getMark" and type(object.getStrategyMark)=="function" then method="getStrategyMark" end
-    if method=="hasFlag" and AIValue.isPlayer(object) and type(object.getStrategyFlag)=="function" then method="getStrategyFlag" end
-    return known(object[method](object,...),method)
-end
+
 local function current(use,to)
     for _,p in ipairs(use.current_targets or{})do
-        if p==q(to,"objectName")or AIValue.isPlayer(p)and AIValue.sameLegacyIdentity(p,to)then return true end
+        if p==to:objectName()or AIValue.isPlayer(p)and AIValue.sameLegacyIdentity(p,to)then return true end
     end
     return false
 end
 local function can_to(self,card,to,prefix)
-    return q(self,"cardTargetFilter",card,prefix or{},to)
+    return self:cardTargetFilter(card, prefix or{}, to)
 end
 local function boss_player_fact(self,player,key)
     local row=nil -- Boss public tags are not projected.
@@ -26,7 +21,7 @@ local function boss_player_fact(self,player,key)
         or key=="wanghun_active" and type(value)~="boolean" then ai_unsupported("invalid Boss public tag fact",key)end
     if row.status=="estimate"then
         if type(row.basis)~="string"then ai_unsupported("Boss tag estimate has no basis",key)end
-        return self:useKnowledgeEstimate({value=value,status="estimate",basis=row.basis,observer=q(player,"objectName")},"boss."..key)
+        return self:useKnowledgeEstimate({value=value,status="estimate",basis=row.basis,observer=player:objectName()},"boss."..key)
     end
     if row.status~="exact"then ai_unsupported("Boss tag knowledge status missing",key)end
     return value
@@ -39,14 +34,14 @@ end
 sgs.ai_skill_playerchosen.bossdidong = function(self,targets)
 	self:sort(self.enemies)
 	for _,enemy in sgs.list(self.enemies)do
-		if q(enemy,"faceUp") then return enemy end
+		if enemy:faceUp() then return enemy end
 	end
 end
 
 sgs.ai_skill_playerchosen.bossluolei = function(self,targets)
 	self:sort(self.enemies)
 	for _,enemy in sgs.list(self.enemies)do
-		if q(self,"canAttack",enemy,self.player,sgs.DamageStruct_Thunder) then
+		if self:canAttack(enemy, self.player, sgs.DamageStruct_Thunder) then
 			return enemy
 		end
 	end
@@ -55,12 +50,12 @@ end
 sgs.ai_skill_playerchosen.bossguihuo = function(self,targets)
 	self:sort(self.enemies)
 	for _,enemy in sgs.list(self.enemies)do
-		if q(self,"canAttack",enemy,self.player,sgs.DamageStruct_Fire)
-        and (q(enemy,"hasArmorEffect","Vine") or q(enemy,"getMark","&kuangfeng")>0)
+		if self:canAttack(enemy, self.player, sgs.DamageStruct_Fire)
+        and (enemy:hasArmorEffect("Vine") or enemy:getStrategyMark("&kuangfeng")>0)
 		then return enemy end
 	end
 	for _,enemy in sgs.list(self.enemies)do
-		if q(self,"canAttack",enemy,self.player,sgs.DamageStruct_Fire)
+		if self:canAttack(enemy, self.player, sgs.DamageStruct_Fire)
 		then return enemy end
 	end
 end
@@ -68,7 +63,7 @@ end
 sgs.ai_skill_playerchosen.bossxiaoshou = function(self,targets)
 	self:sort(self.enemies)
 	for _,enemy in sgs.list(self.enemies)do
-		if q(enemy,"getHp")>q(self.player,"getHp") and q(self,"canAttack",enemy,self.player) then
+		if enemy:getHp()>self.player:getHp() and self:canAttack(enemy, self.player) then
 			return enemy
 		end
 	end
@@ -86,11 +81,11 @@ end
 sgs.ai_skill_invoke.bosslianyu = function(self,data)
 	local value,avail = 0,0
 	for _,enemy in sgs.list(self.enemies)do
-		if not q(self,"damageIsEffective",enemy,sgs.DamageStruct_Fire,self.player) then continue end
+		if not self:damageIsEffective(enemy, sgs.DamageStruct_Fire, self.player) then continue end
 		avail = avail+1
-		if q(self,"canAttack",enemy,self.player,sgs.DamageStruct_Fire) then
+		if self:canAttack(enemy, self.player, sgs.DamageStruct_Fire) then
 			value = value+1
-			if q(enemy,"hasArmorEffect","Vine") or q(enemy,"getMark","&kuangfeng")>0 then
+			if enemy:hasArmorEffect("Vine") or enemy:getStrategyMark("&kuangfeng")>0 then
 				value = value+1
 			end
 		end
@@ -101,7 +96,7 @@ end
 sgs.ai_skill_invoke.bosssuoming = function(self,data)
 	local value = 0
 	for _,enemy in sgs.list(self.enemies)do
-		if q(self,"isGoodTarget",enemy,self.enemies) then
+		if self:isGoodTarget(enemy, self.enemies) then
 			value = value+1
 		end
 	end
@@ -111,7 +106,7 @@ end
 sgs.ai_skill_playerchosen.bossxixing = function(self,targets)
 	self:sort(self.enemies)
 	for _,enemy in sgs.list(self.enemies)do
-		if q(enemy,"isChained") and q(self,"canAttack",enemy,self.player,sgs.DamageStruct_Thunder) then
+		if enemy:isChained() and self:canAttack(enemy, self.player, sgs.DamageStruct_Thunder) then
 			return enemy
 		end
 	end
@@ -120,7 +115,7 @@ end
 sgs.ai_skill_invoke.bossqiangzheng = function(self,data)
 	local value = 0
 	for _,enemy in sgs.list(self.enemies)do
-		if q(enemy,"getHandcardNum")==1 and (q(enemy,"hasSkill","kongcheng") or (q(enemy,"hasSkill","zhiji") and q(enemy,"getMark","zhiji")==0)) then
+		if enemy:getHandcardNum()==1 and (enemy:hasSkill("kongcheng") or (enemy:hasSkill("zhiji") and enemy:getStrategyMark("zhiji")==0)) then
 			value = value+1
 		end
 	end
@@ -128,29 +123,29 @@ sgs.ai_skill_invoke.bossqiangzheng = function(self,data)
 end
 
 sgs.ai_skill_invoke.bossqushou = function(self,data)
-	local sa = q(self,"getEvaluationCard","savage_assault")
+	local sa = self:getEvaluationCard("savage_assault")
 	local dummy_use = AIUsePlan.new();dummy_use.isDummy=true
 	self:useTrickCard(sa,dummy_use)
 	return (dummy_use.card~=nil)
 end
 
 sgs.ai_skill_invoke.bossmojian = function(self,data)
-	local aa = q(self,"getEvaluationCard","archery_attack")
+	local aa = self:getEvaluationCard("archery_attack")
 	local dummy_use = AIUsePlan.new();dummy_use.isDummy=true
 	self:useTrickCard(aa,dummy_use)
 	return (dummy_use.card~=nil)
 end
 
 sgs.ai_skill_invoke.bossdanshu = function(self,data)
-	if not q(self.player,"isWounded") then return false end
+	if not self.player:isWounded() then return false end
 	local zj = self.room:findPlayerBySkillName("guidao")
-	if q(self.player,"getHp")/q(self.player,"getMaxHp")>=0.5 and zj and q(self,"isEnemy",zj) and self:canRetrial(zj) then return false end
+	if self.player:getHp()/self.player:getMaxHp()>=0.5 and zj and self:isEnemy(zj) and self:canRetrial(zj) then return false end
 	return true
 end
 
 sgs.ai_fill_skill.kuangxi=function(self,inclusive,request)
-    if not q(self.player,"hasFlag","KuangxiEnterDying")then
-        return q(self,"legacySkillSeed","kuangxi","KuangxiCard",request)
+    if not self.player:getStrategyFlag("KuangxiEnterDying")then
+        return self:legacySkillSeed("kuangxi", "KuangxiCard", request)
     end
 end
 
@@ -158,14 +153,14 @@ sgs.ai_skill_use_func.KuangxiCard = function(card, use, self, request)
 	self:sort(self.enemies, "hp")
 	local can_invoke = false
 	for _, friend in ipairs(self.friends) do
-		if q(friend,"hasSkill","baoying") and q(friend,"getMark","@baoying") > 0 then
+		if friend:hasSkill("baoying") and friend:getStrategyMark("@baoying") > 0 then
 			can_invoke = true
 		end
 	end
 	for _, enemy in ipairs(self.enemies) do
-		if q(self,"objectiveLevel",enemy) > 3 and not q(self,"cantbeHurt",enemy) and q(self,"damageIsEffective",enemy) then
-			if q(self.player,"getHp") >= q(enemy,"getHp") and (q(self.player,"getHp") > 1 or can_invoke) then
-				use.card = q(self,"bindSkillCard","kuangxi",{},request,nil,"KuangxiCard")
+		if self:objectiveLevel(enemy) > 3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy) then
+			if self.player:getHp() >= enemy:getHp() and (self.player:getHp() > 1 or can_invoke) then
+				use.card = self:bindSkillCard("kuangxi", {}, request, nil, "KuangxiCard")
 				use.to:append(enemy)
 				return
 			end
@@ -174,9 +169,9 @@ sgs.ai_skill_use_func.KuangxiCard = function(card, use, self, request)
 end
 
 sgs.ai_skill_invoke.baoying = function(self, data)
-	local dying = q(data,"toDying")
-	local peaches = 1 - q(dying.who,"getHp")
-	return (peaches > 1  or q(self,"getCardsNum","Peach") + q(self,"getCardsNum","Analeptic") < peaches) and q(self,"isFriend",dying.who)
+	local dying = data:toDying()
+	local peaches = 1 - dying.who:getHp()
+	return (peaches > 1  or self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches) and self:isFriend(dying.who)
 end
 
 sgs.ai_use_value.KuangxiCard = 2.5
@@ -190,18 +185,18 @@ end
 function SmartAIView:useCardGodNihilo(card, use)
 	if can_to(self,card,self.player) then
 		local xiahou = self.room:findPlayerBySkillName("yanyu")
-		if xiahou and q(self,"isEnemy",xiahou) and q(xiahou,"getMark","YanyuDiscard2") > 0 then return end
-		if q(self.player,"getKingdom")=="god" then
-		elseif q(self.player,"hasCard",card) then
-			if q(self.player,"getHandcardNum")>math.min(5,q(self.player,"getMaxHp"))
+		if xiahou and self:isEnemy(xiahou) and xiahou:getStrategyMark("YanyuDiscard2") > 0 then return end
+		if self.player:getKnownKingdom()=="god" then
+		elseif self.player:hasCard(card) then
+			if self.player:getHandcardNum()>math.min(5,self.player:getMaxHp())
 			then return end
-		elseif q(self.player,"getHandcardNum")>=math.min(5,q(self.player,"getMaxHp"))
+		elseif self.player:getHandcardNum()>=math.min(5,self.player:getMaxHp())
 		then return end
 		use.card = card
 		use.to:append(self.player)
 		for _,p in sgs.list(self.friends_noself)do
 			if can_to(self,card,p,use.to)
-			and q(self,"canDraw",p) and q(p,"getHandcardNum")<math.min(5,q(p,"getMaxHp"))
+			and self:canDraw(p) and p:getHandcardNum()<math.min(5,p:getMaxHp())
 			then use.to:append(p) end
 		end
 	end
@@ -216,11 +211,11 @@ sgs.ai_use_priority.GodNihilo = 1
 sgs.dynamic_value.benefit.GodNihilo = true
 
 function SmartAIView:useCardGodFlower(card,use)
-	local extraTarget = q(card,"getTargetModExtra",self.player)
+	local extraTarget = card:getTargetModExtra(self.player)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
 	local function addTarget(to,ft)
 		if current(use,to) then return end
-		if not use.to:contains(to) and q(self,"doDisCard",to,ft,true,2) then
+		if not use.to:contains(to) and self:doDisCard(to, ft, true, 2) then
 			use.card = card
 			use.to:append(to)
 			if use.to:length()>extraTarget then return true end
@@ -228,47 +223,47 @@ function SmartAIView:useCardGodFlower(card,use)
 	end
 	local players = self:exclude(self.room:getOtherPlayers(self.player),card)
 	local dummy = self:getCard("Slash")
-	if dummy and q(dummy,"isAvailable",self.player) then
+	if dummy and dummy:isAvailable(self.player) then
 		dummy = self:aiUseCard(dummy)
 		if dummy.card then
 			for _,to in sgs.qlist(dummy.to)do
-				if table.contains(players,to) and q(to,"getHp")<=2
-				and q(to,"getHandcardNum")<=q(to,"getHp")
+				if table.contains(players,to) and to:getHp()<=2
+				and to:getHandcardNum()<=to:getHp()
 				and addTarget(to,"h") then return end
 			end
 		end
 	end
 	self:sort(players,"defense")
 	for _,enemy in ipairs(players)do
-		if q(enemy,"hasEquip") and addTarget(enemy,"he")
+		if enemy:hasEquip() and addTarget(enemy,"he")
 		then return end
 	end
 	for _,enemy in ipairs(players)do
 		local n = 0
-		for _,h in sgs.qlist(q(self,"getKnownCards",enemy,self.player,"h"))do
-			if (q(h,"hasFlag","visible") or q(h,"hasFlag","visible_"..q(self.player,"objectName").."_"..q(enemy,"objectName")))
+		for _,h in sgs.qlist(self:getKnownCards(enemy, self.player, "h"))do
+			if (h:getStrategyFlag("visible") or h:getStrategyFlag("visible_"..self.player:objectName().."_"..enemy:objectName()))
 			and isCard("Peach,Analeptic",h,enemy) then
 				n = n+1
-				if n>=q(enemy,"getHandcardNum")/2 and addTarget(enemy,"h")
+				if n>=enemy:getHandcardNum()/2 and addTarget(enemy,"h")
 				then return end
 			end
 		end
 	end
 	for _,enemy in ipairs(players)do
-		if q(enemy,"getHandcardNum")>0 and q(enemy,"hasSkills",sgs.cardneed_skill)
+		if enemy:getHandcardNum()>0 and enemy:hasSkills(sgs.cardneed_skill)
 		and addTarget(enemy,"h")
 		then return end
 	end
 	for _,enemy in ipairs(players)do
-		if q(enemy,"getHandcardNum")>0 and q(self,"isEnemy",enemy)
+		if enemy:getHandcardNum()>0 and self:isEnemy(enemy)
 		and addTarget(enemy,"h") then return end
 	end
 	for _,enemy in ipairs(players)do
-		if q(enemy,"getHandcardNum")>0 and not q(self,"isFriend",enemy)
+		if enemy:getHandcardNum()>0 and not self:isFriend(enemy)
 		and addTarget(enemy,"h") then return end
 	end
 	for _,enemy in ipairs(players)do
-		if q(enemy,"getHandcardNum")>0
+		if enemy:getHandcardNum()>0
 		and addTarget(enemy,"h") then return end
 	end
 end
@@ -293,7 +288,7 @@ sgs.ai_use_value.GodSword = 9
 sgs.ai_skill_invoke.god_double_sword = function(self,data)
 	local target = data:toPlayer()
 	if target then
-		return not q(self,"isFriend",target)
+		return not self:isFriend(target)
 	end
 end
 sgs.ai_use_value.GodDoubleSword = 4
@@ -301,7 +296,7 @@ sgs.ai_use_priority.GodDoubleSword = 3
 
 sgs.ai_skill_playerchosen.god_bow = function(self,players)
     for _,target in sgs.list(players)do
-		if q(self,"doDisCard",target,"he",false,2)
+		if self:doDisCard(target, "he", false, 2)
 		then return target end
 	end
 end
@@ -309,18 +304,18 @@ sgs.ai_use_value.GodBow = 4.4
 sgs.ai_use_priority.GodBow = 6.6
 
 sgs.ai_skill_cardask["god_axe0"] = function(self,data)
-    local use = q(data,"toCardUse")
+    local use = data:toCardUse()
     local cards = self.player:getCards("he")
     cards = sgs.QList2Table(cards)
     self:sortByKeepValue(cards)
 	local to = use.to:first()
-	if #cards>2 and q(to,"getMark","god_axeArmorNullified-Clear")<1 and q(use.card,"isDamageCard")
-	and (q(to,"getCardCount")>0 and q(self,"isWeak",to) or q(to,"getHandcardNum")>0 or q(to,"hasArmorEffect",nil))
-	and q(self,"isEnemy",to) then
+	if #cards>2 and to:getStrategyMark("god_axeArmorNullified-Clear")<1 and use.card:isDamageCard()
+	and (to:getCardCount()>0 and self:isWeak(to) or to:getHandcardNum()>0 or to:hasArmorEffect(nil))
+	and self:isEnemy(to) then
 		local dc = {}
 		for _,c in sgs.list(cards)do
-			if q(c,"objectName")~="god_axe"
-			then dc[#dc+1]=q(c,"getEffectiveId") end
+			if c:objectName()~="god_axe"
+			then dc[#dc+1]=c:getKnownEffectiveId() end
 			if  #dc>1
 			then return "$"..table.concat(dc,"+") end
 		end
@@ -330,16 +325,16 @@ end
 sgs.ai_use_value.GodAxe = 5.4
 sgs.ai_use_priority.GodAxe = 6.6
 sgs.ai_use_revises.god_axe = function(self,card,use)
-	if q(card,"isDamageCard") and use.to:length()==1 and q(self.player,"getCardCount")>3
+	if card:isDamageCard() and use.to:length()==1 and self.player:getCardCount()>3
 	then self:setStrategyCardFlag(card,"Qinggang",true) end
 end
 
 sgs.ai_skill_invoke.god_edict = function(self,data)
 	local target = data:toPlayer()
-	if q(self,"isFriend",target) then
-		return #q(self,"poisonCards","he",target)>0 or q(self,"isWeak",target)
+	if self:isFriend(target) then
+		return #self:poisonCards("he", target)>0 or self:isWeak(target)
 	end
-	return #q(self,"poisonCards","he",target)<1
+	return #self:poisonCards("he", target)<1
 end
 sgs.ai_use_value.GodEdict = 3
 sgs.ai_use_priority.GodEdict = 2
@@ -349,24 +344,24 @@ sgs.ai_skill_cardask["god_edict0"] = function(self,data)
     local cards = self.player:getCards("he")
     cards = sgs.QList2Table(cards)
     self:sortByKeepValue(cards)
-	if q(self,"isFriend",target) then
-		local pc = q(self,"poisonCards","e")
+	if self:isFriend(target) then
+		local pc = self:poisonCards("e")
 		if #pc>0 then return pc[1]:getId() end
-		if #cards>q(target,"getCardCount") then
+		if #cards>target:getCardCount() then
 			for i,c in sgs.list(cards)do
-				if i>#cards/2 and q(c,"objectName")~="god_edict"
-				then return q(c,"getId") end
+				if i>#cards/2 and c:objectName()~="god_edict"
+				then return c:getKnownId() end
 			end
 		end
 	else
-		cards = q(self,"poisonCards","h")
+		cards = self:poisonCards("h")
 		if #cards>0 then return cards[1]:getId() end
 	end
     return "."
 end
 
 sgs.ai_skill_invoke.god_headdress = function(self,data)
-	return q(self,"getOverflow")~=9
+	return self:getOverflow()~=9
 end
 sgs.ai_use_value.GodEdict = 3
 sgs.ai_use_priority.GodEdict = 2
@@ -375,10 +370,10 @@ sgs.ai_skill_cardask["god_headdress0"] = function(self,data)
     local cards = self.player:getCards("h")
     cards = sgs.QList2Table(cards)
     self:sortByKeepValue(cards)
-	local n = q(self.player,"getMaxCards")
-	if q(self.player,"hasSkill","shenfu")
+	local n = self.player:getMaxCards()
+	if self.player:hasSkill("shenfu")
   	then
-		if q(self,"getOverflow")<0
+		if self:getOverflow()<0
 		then
 			if #cards%2==0
 			then
@@ -392,10 +387,10 @@ sgs.ai_skill_cardask["god_headdress0"] = function(self,data)
 			return cards[n]:getId()
 		end
 	end
-	if q(self,"getOverflow")>0
+	if self:getOverflow()>0
 	then
 		n = n+1
-		if q(self,"getKeepValue",cards[n])>6
+		if self:getKeepValue(cards[n])>6
 		then return cards[n]:getId() end
 	end
     return "."
@@ -404,9 +399,9 @@ end
 sgs.ai_skill_invoke.GodDamage = function(self,data)
 	local items = data:toString():split(":")
     local target = self.room:findPlayerByObjectName(items[2])
-	if target and q(self,"isEnemy",target)
+	if target and self:isEnemy(target)
 	then
-		return q(target,"getLostHp")<1 or not q(self,"isWeak",target)
+		return target:getLostHp()<1 or not self:isWeak(target)
 	end
 end
 
@@ -415,7 +410,7 @@ function SmartAIView:useCardGodSpeel(card,use)
 	for _,ep in sgs.list(self.enemies)do
 		if current(use,ep) then continue end
 		if boss_player_fact(self,ep,"god_speel_count")<1
-		and q(ep,"getVisibleSkillList"):length()>0
+		and ep:getVisibleSkillList():length()>0
 	   	and can_to(self,card,ep,use.to) then
 	    	use.card = card
 	    	use.to:append(ep)
@@ -427,7 +422,7 @@ sgs.ai_keep_value.GodSpeel = 4
 sgs.ai_use_value.GodSpeel = 3.7
 
 sgs.ai_nullification.GodSpeel = function(self,trick,from,to,positive)
-    return q(self,"isFriend",to) and (q(to,"getHandcardNum")>3 or to==self.player)
+    return self:isFriend(to) and (to:getHandcardNum()>3 or to==self.player)
 	and positive
 end
 
@@ -444,10 +439,10 @@ sgs.ai_ajustdamage_from.god_deer = function(self,from,to,card,nature)
 end
 
 sgs.ai_target_revises.yl_remen = function(to,card)
-    if q(to,"hasEquipArea") and to:getArmor()==nil then
-		if q(card,"isKindOf","SavageAssault")
-		or q(card,"isKindOf","ArcheryAttack")
-		or q(card,"objectName")=="slash"
+    if to:hasEquipArea() and to:getArmor()==nil then
+		if card:isKindOf("SavageAssault")
+		or card:isKindOf("ArcheryAttack")
+		or card:objectName()=="slash"
 		then return true end
 	end
 end
@@ -455,18 +450,18 @@ end
 
 sgs.ai_skill_playerchosen.god_ship = function(self,players)
     for _,target in sgs.list(players)do
-		if q(self,"doDisCard",target,"ej",false)
+		if self:doDisCard(target, "ej", false)
 		then return target end
 	end
 end
 
 
 sgs.ai_skill_invoke.yl_shiyou = function(self,data)
-	return q(self,"canDraw")
+	return self:canDraw()
 end
 
 sgs.ai_skill_invoke.yl_dayuan = function(self,data)
-    local judge=q(data,"toJudge")
+    local judge=data:toJudge()
     local context=self:getDecisionContext()
     local outcomes=context.judge and context.judge.candidate_outcomes
     if type(outcomes)~="table"then ai_unsupported("Dayuan hypothetical judgement outcomes missing","yl_dayuan")end
@@ -478,8 +473,8 @@ sgs.ai_skill_invoke.yl_dayuan = function(self,data)
                 if type(value)~="boolean"then ai_unsupported("Dayuan hypothetical judgement is unknown","yl_dayuan")end
                 return value
             end
-            if q(self,"isFriend",judge.who)and good()
-                or q(self,"isEnemy",judge.who)and not good()then
+            if self:isFriend(judge.who)and good()
+                or self:isEnemy(judge.who)and not good()then
                 return self:needRetrial(judge)
             end
         end
@@ -493,8 +488,8 @@ sgs.ai_fill_skill.yl_diting = function(self,inclusive,request)
     cards = sgs.QList2Table(cards)
     self:sortByKeepValue(cards)
 	for _,c in sgs.list(cards)do
-		if q(c,"isKindOf","Horse") and not q(self.player,"isCardLimited",c,sgs.Card_MethodRecast) then
-			return q(self,"bindSkillCard","yl_diting",{q(c,"getId")},request,nil,"#yl_ditingCard")
+		if c:isKindOf("Horse") and not self.player:isCardLimited(c, sgs.Card_MethodRecast) then
+			return self:bindSkillCard("yl_diting", {c:getKnownId()}, request, nil, "#yl_ditingCard")
 		end
 	end
 end
@@ -518,7 +513,7 @@ sgs.ai_keep_value.Huihun = 2
 sgs.ai_use_value.Huihun = 3.7
 
 sgs.ai_nullification.Huihun = function(self,trick,from,to,positive)
-    return q(self,"isEnemy",to) and positive
+    return self:isEnemy(to) and positive
 end
 
 sgs.ai_card_intention.Huihun = 80

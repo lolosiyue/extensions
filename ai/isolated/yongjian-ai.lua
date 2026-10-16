@@ -3,11 +3,7 @@ local function known(v,key)
  if AIUnsupported.is(v)then error(v,0)end
  if v==nil then ai_unsupported("Yongjian requires "..key,"yongjian")end;return v
 end
-local function q(o,m,...)
- if AIValue.isPlayer(o)then if m=="getMark"then m="getStrategyMark"elseif m=="hasFlag"then m="getStrategyFlag"end end
- if not o or type(o[m])~="function"then ai_unsupported("Yongjian method unavailable: "..m,"yongjian")end
- return known(o[m](o,...),m)
-end
+
 -- The donor's scoped values live on the viewer's own property and tags.
 local own_scope={poison_use={"getPropertyValue","PoisonUse",""},tuixinzhifu_target={"getTag","yj_tuixinzhifu",""},
  caochuan_effect={"getTag","Caochuanjiejian",false},jinchan_use={"getTag","Jinchan",false}}
@@ -20,7 +16,7 @@ local function scope_value(self,key)
   if type(own[3])=="string" then return tostring(value) end
   return value
  end
- local c=q(self,"getDecisionContext").yongjian
+ local c=self:getDecisionContext().yongjian
  if type(c)~="table"then ai_unsupported("Yongjian context missing","yongjian")end
  return known(c[key],"scoped "..key)
 end
@@ -66,7 +62,7 @@ local function target_specified_history(self)
  end
  local r=self.request
  if not r or r.kind~="skill_invoke" or not r.options or r.options.reason~="zd_zhungangshuo"
-  or row.viewer~=q(self.player,"objectName") or row.decision_id~=tostring(r.decision_id)
+  or row.viewer~=self.player:objectName() or row.decision_id~=tostring(r.decision_id)
   or row.state_revision~=tostring(r.state_revision) then
   ai_unsupported("TargetSpecified history question is stale or mismatched","yongjian.target_history.scope")
  end
@@ -92,7 +88,7 @@ local function disabled(self,id)
  return table.contains(ids,id)
 end
 local function hidden_hand_choice(self,who)
- local sample=q(self,"randomHandDiscardToken",who)
+ local sample=self:randomHandDiscardToken(who)
  if sample.empty or type(sample.disabled)~="boolean" or type(sample.selected_choice)~="table" then
   ai_unsupported("Tuixinzhifu selected hand receipt is unavailable","yj_tuixinzhifu")
  end
@@ -100,9 +96,9 @@ local function hidden_hand_choice(self,who)
 end
 local function public_random_card(self,who)
  local cards
- if who~=self.player and q(who,"getHandcardNum")>0 then
-  local row=q(self,"getDecisionContext").yongjian_third_pass
-  if type(row)~="table"or row.known~=true or row.target~=q(who,"objectName")or not AIValue.isList(row.ordered_card_ids)then
+ if who~=self.player and who:getHandcardNum()>0 then
+  local row=self:getDecisionContext().yongjian_third_pass
+  if type(row)~="table"or row.known~=true or row.target~=who:objectName()or not AIValue.isList(row.ordered_card_ids)then
    ai_unsupported("Tuixinzhifu third-pass ordered hand domain is not completely disclosed","yj_tuixinzhifu.third_pass")
   end
   cards=AIList.new({})
@@ -113,16 +109,16 @@ local function public_random_card(self,who)
    end
    seen[id]=true;cards:append(disclosed_card(self,id))
   end
- else cards=q(who,"getCards","hej")end
+ else cards=who:getCards("hej")end
  if who==self.player then
-  for _,c in ipairs(self:sortByKeepValue(cards))do local id=q(c,"getEffectiveId");if not disabled(self,id)then return id end end
+  for _,c in ipairs(self:sortByKeepValue(cards))do local id=c:getKnownEffectiveId();if not disabled(self,id)then return id end end
   return -1
  end
  local ids,byid={},{}
- for _,c in ipairs(cards)do local id=q(c,"getEffectiveId");byid[id]=c;if not disabled(self,id)then ids[#ids+1]=id end end
+ for _,c in ipairs(cards)do local id=c:getKnownEffectiveId();byid[id]=c;if not disabled(self,id)then ids[#ids+1]=id end end
  if #ids==0 then return -1 end
  local mr=math.random(1,#ids);local id=ids[mr]
- if q(byid[id],"isKindOf","SilverLion")and q(who,"isWounded")and q(self,"isEnemy",who)and q(who,"hasArmorEffect","SilverLion")then
+ if byid[id]:isKindOf("SilverLion")and who:isWounded()and self:isEnemy(who)and who:hasArmorEffect("SilverLion")then
   if mr~=#ids then id=ids[mr+1]elseif mr>1 then id=ids[mr-1]end
  end
  return id
@@ -141,22 +137,22 @@ local function other_poison(self,to,ids)
  ai_unsupported("Zhulutianxia requires another AI's poison-card policy","Zhulutianxia")
 end
 local function other_armor(self,to,c)
- if to==self.player then return q(self,"evaluateArmor",c)end
+ if to==self.player then return self:evaluateArmor(c)end
  ai_unsupported("Zhulutianxia requires another AI's current armor evaluation and skill callbacks","Zhulutianxia")
 end
 
 function SmartAIView:useCardPoison(card,use)
-    if not table.contains(scope_value(self,"poison_use"):split(","),q(card,"getLegacyStringKey"))
+    if not table.contains(scope_value(self,"poison_use"):split(","),card:getLegacyStringKey())
     then return end
     self:sort(self.enemies)
     for i,ep in sgs.list(self.enemies)do
-        if i>#self.enemies/2 and q(self,"cardTargetFilter",card,use.to,ep) then
+        if i>#self.enemies/2 and self:cardTargetFilter(card, use.to, ep) then
             use.card = card
             use.to:append(ep)
         end
     end
     for _,ep in sgs.list(self:sort(self.room:getAlivePlayers(),nil,true))do
-        if not q(self,"isFriend",ep) and q(self,"cardTargetFilter",card,use.to,ep) then
+        if not self:isFriend(ep) and self:cardTargetFilter(card, use.to, ep) then
             use.card = card
             use.to:append(ep)
         end
@@ -182,32 +178,32 @@ sgs.ai_skill_discard.yj_stabs_slash = function(self,max,min)
     cards = self:sortByKeepValue(cards,nil,"j")
     for _,h in sgs.list(cards)do
         if #to_cards>=min then break end
-        table.insert(to_cards,q(h,"getEffectiveId"))
+        table.insert(to_cards,h:getKnownEffectiveId())
     end
     return to_cards
 end
 
 function SmartAIView:useCardChenhuodajie(card,use)
     self:sort(self.enemies)
-    local extraTarget = q(card,"getTargetModExtra",self.player)
+    local extraTarget = card:getTargetModExtra(self.player)
     if use.extra_target then extraTarget = extraTarget+use.extra_target end
     for _,ep in sgs.list(self.enemies)do
         if isCurrent(use,ep) then continue end
-        if q(self.player,"canUse",card,ep)
-        and q(self,"isGoodTarget",ep,self.enemies,card) then
+        if self.player:canUse(card, ep)
+        and self:isGoodTarget(ep, self.enemies, card) then
             use.card = card
             use.to:append(ep)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
     for _,ep in sgs.list(self.friends_noself)do
         if isCurrent(use,ep) then continue end
-        if q(self.player,"canUse",card,ep)
-        and q(self,"needToLoseHp",ep,self.player,card) then
+        if self.player:canUse(card, ep)
+        and self:needToLoseHp(ep, self.player, card) then
             use.card = card
             use.to:append(ep)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
@@ -218,16 +214,16 @@ sgs.ai_use_value.Chenhuodajie = 3.7
 sgs.ai_card_intention.Chenhuodajie = 44
 
 sgs.ai_nullification.Chenhuodajie = function(self,trick,from,to,positive)
-    return positive and q(self,"isFriend",to) and not q(self,"isFriend",from)
-    and (to==self.player or q(self,"isWeak",to))
+    return positive and self:isFriend(to) and not self:isFriend(from)
+    and (to==self.player or self:isWeak(to))
 end
 
 sgs.ai_skill_cardask["yj_chenhuodajie0"] = function(self,data,pattern)
     local c = self:getKnownCardById(tonumber(pattern))
     if c then
         local effect = data:toCardEffect()
-        local n = q(self,"ajustDamage",effect.from,effect.to,1,effect.card)
-        if n==0 or n<2 and (q(self,"isWeak") and isCard("Peach,Analeptic",c,self.player) or q(self,"getKeepValue",c)>6 and q(c,"isAvailable",self.player))
+        local n = self:ajustDamage(effect.from, effect.to, 1, effect.card)
+        if n==0 or n<2 and (self:isWeak() and isCard("Peach,Analeptic",c,self.player) or self:getKeepValue(c)>6 and c:isAvailable(self.player))
         then return "." end
         return pattern
     end
@@ -235,14 +231,14 @@ end
 
 function SmartAIView:useCardGuaguliaodu(card,use)
     self:sort(self.friends,"hp")
-    local extraTarget = q(card,"getTargetModExtra",self.player)
+    local extraTarget = card:getTargetModExtra(self.player)
     if use.extra_target then extraTarget = extraTarget+use.extra_target end
     for _,ep in sgs.list(self.friends)do
         if isCurrent(use,ep) then continue end
-        if q(self.player,"canUse",card,ep) then
+        if self.player:canUse(card, ep) then
             use.card = card
             use.to:append(ep)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
@@ -254,11 +250,11 @@ sgs.ai_card_intention.Guaguliaodu = -33
 
 sgs.ai_nullification.Guaguliaodu = function(self,trick,from,to,positive)
     if positive then
-        return q(self,"isEnemy",to) and q(to,"isWounded")
-        and (q(self,"isWeak",to) or q(self,"getCardsNum","Nullification")>1)
+        return self:isEnemy(to) and to:isWounded()
+        and (self:isWeak(to) or self:getCardsNum("Nullification")>1)
     else
-        return q(self,"isFriend",to) and q(to,"isWounded")
-        and (q(self,"isWeak",to) or q(self,"getCardsNum","Nullification")>1)
+        return self:isFriend(to) and to:isWounded()
+        and (self:isWeak(to) or self:getCardsNum("Nullification")>1)
     end
 end
 
@@ -275,12 +271,12 @@ sgs.ai_use_priority.Yitianjian = 3
 function SmartAIView:useCardShushangkaihua(card,use)
     local n = #self:poisonCards("e")
     for _,c in sgs.list(self.player:getHandcards())do
-        if q(self,"wasPreviouslyPlannedCard",c)
-        or q(self,"getKeepValue",c)>7
+        if self:wasPreviouslyPlannedCard(c)
+        or self:getKeepValue(c)>7
         then else n = n+1 end
         if n>1 then use.card = card return end
     end
-    if q(self,"getPriorTurnUseCount")<2 and (q(self.player,"getCardCount")>4 or q(self,"getOverflow")>0) then
+    if self:getPriorTurnUseCount()<2 and (self.player:getCardCount()>4 or self:getOverflow()>0) then
         use.card = card
     end
 end
@@ -294,52 +290,52 @@ sgs.ai_skill_discard.yj_shushangkaihua = function(self)
     cards = self:sortByCardNeed(cards,nil,"j")
     local discard = {}
     for i,c in sgs.list(cards)do
-        if #discard<2 and q(self.player,"hasEquip",c) and q(self,"evaluateArmor",c)<-5
-        then table.insert(discard,q(c,"getEffectiveId")) continue end
-        if #cards/2>i and #discard<1 and q(c,"isKindOf","EquipCard")
-        then table.insert(discard,q(c,"getEffectiveId")) end
+        if #discard<2 and self.player:hasEquip(c) and self:evaluateArmor(c)<-5
+        then table.insert(discard,c:getKnownEffectiveId()) continue end
+        if #cards/2>i and #discard<1 and c:isKindOf("EquipCard")
+        then table.insert(discard,c:getKnownEffectiveId()) end
     end
     cards = self.player:getCards("he")
     cards = self:sortByKeepValue(cards,nil,"j")
     for i,c in sgs.list(cards)do
-        if table.contains(discard,q(c,"getEffectiveId")) then continue end
-        if #discard<2 then table.insert(discard,q(c,"getEffectiveId")) end
+        if table.contains(discard,c:getKnownEffectiveId()) then continue end
+        if #discard<2 then table.insert(discard,c:getKnownEffectiveId()) end
     end
     return discard
 end
 
 function SmartAIView:useCardTuixinzhifu(card,use)
     self:sort(self.friends_noself,"hp")
-    local extraTarget = q(card,"getTargetModExtra",self.player)
+    local extraTarget = card:getTargetModExtra(self.player)
     if use.extra_target then extraTarget = extraTarget+use.extra_target end
     for _,p in sgs.list(self.friends_noself)do
         if isCurrent(use,p) or use.to:contains(p) then continue end
-        if q(self,"cardTargetFilter",card,{},p)
-        and q(self,"doDisCard",p,"ej") then
+        if self:cardTargetFilter(card, {}, p)
+        and self:doDisCard(p, "ej") then
             use.card = card
             use.to:append(p)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
     self:sort(self.enemies,"hp")
     for _,p in sgs.list(self.enemies)do
         if isCurrent(use,p) or use.to:contains(p) then continue end
-        if q(self,"cardTargetFilter",card,{},p)
-        and q(self,"doDisCard",p,"ej") then
+        if self:cardTargetFilter(card, {}, p)
+        and self:doDisCard(p, "ej") then
             use.card = card
             use.to:append(p)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
     for _,p in sgs.list(self.enemies)do
         if isCurrent(use,p) or use.to:contains(p) then continue end
-        if q(self,"cardTargetFilter",card,{},p)
-        and q(self,"doDisCard",p,"hej") then
+        if self:cardTargetFilter(card, {}, p)
+        and self:doDisCard(p, "hej") then
             use.card = card
             use.to:append(p)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
@@ -347,11 +343,11 @@ function SmartAIView:useCardTuixinzhifu(card,use)
     tos = self:sort(tos,"card",true)
     for _,p in sgs.list(tos)do
         if isCurrent(use,p) or use.to:contains(p) then continue end
-        if q(self,"cardTargetFilter",card,{},p)
-        and q(p,"getCardCount")>1 then
+        if self:cardTargetFilter(card, {}, p)
+        and p:getCardCount()>1 then
             use.card = card
             use.to:append(p)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
@@ -362,17 +358,17 @@ sgs.ai_use_value.Tuixinzhifu = 4.7
 
 sgs.ai_skill_cardchosen.yj_tuixinzhifu = function(self,who)
     for _,c in sgs.list(who:getCards("ej"))do
-        if q(self,"doDisCard",who,q(c,"getEffectiveId"),true)
-        then return q(c,"getEffectiveId") end
+        if self:doDisCard(who, c:getKnownEffectiveId(), true)
+        then return c:getKnownEffectiveId() end
     end
-    for i=1,q(who,"getHandcardNum")do
+    for i=1,who:getHandcardNum()do
         local sample = hidden_hand_choice(self,who)
         if sample.disabled then continue end
         return {kind="answer",random_card_choice=sample.selected_choice}
     end
     for i=1,99 do
         local id = public_random_card(self,who)
-        if q(self,"doDisCard",who,id,true)
+        if self:doDisCard(who, id, true)
         then return id end
     end
     return -1
@@ -385,40 +381,40 @@ sgs.ai_skill_discard.yj_tuixinzhifu = function(self,x,n)
     cards = self:sortByKeepValue(cards)
     for _,h in sgs.list(cards)do
         if #to_cards>=n then return to_cards end
-        if table.contains(self:poisonCards(),h) and not q(self,"isFriend",target)
-        then table.insert(to_cards,q(h,"getEffectiveId")) end
+        if table.contains(self:poisonCards(),h) and not self:isFriend(target)
+        then table.insert(to_cards,h:getKnownEffectiveId()) end
     end
     for i,h in sgs.list(cards)do
         if #to_cards>=n then return to_cards end
-        if table.contains(to_cards,q(h,"getEffectiveId")) then continue end
-        if i>=#cards/2 and q(self,"isFriend",target)
-        then table.insert(to_cards,q(h,"getEffectiveId")) end
+        if table.contains(to_cards,h:getKnownEffectiveId()) then continue end
+        if i>=#cards/2 and self:isFriend(target)
+        then table.insert(to_cards,h:getKnownEffectiveId()) end
     end
     for _,h in sgs.list(cards)do
         if #to_cards>=n then return to_cards end
-        if table.contains(to_cards,q(h,"getEffectiveId")) then continue end
-        table.insert(to_cards,q(h,"getEffectiveId"))
+        if table.contains(to_cards,h:getKnownEffectiveId()) then continue end
+        table.insert(to_cards,h:getKnownEffectiveId())
     end
 end
 
 sgs.ai_nullification.Tuixinzhifu = function(self,trick,from,to,positive)
-    local n = q(self,"getCardsNum","Nullification")
-    if n>1 and (q(to,"hasEquip") or to:getJudgingArea():length()>0) then
+    local n = self:getCardsNum("Nullification")
+    if n>1 and (to:hasEquip() or to:getJudgingArea():length()>0) then
         if positive then
-            return q(self,"isFriend",to)
-            and q(self,"isEnemy",from)
+            return self:isFriend(to)
+            and self:isEnemy(from)
         else
-            return q(self,"isEnemy",to)
-            and q(self,"isEnemy",from)
+            return self:isEnemy(to)
+            and self:isEnemy(from)
         end
-    elseif q(to,"getCardCount",true,true)>0
-    and (to:getArmor() or to:getDefensiveHorse() or q(to,"getHandcardNum")<2 or to:getJudgingArea():length()>0) then
+    elseif to:getCardCount(true, true)>0
+    and (to:getArmor() or to:getDefensiveHorse() or to:getHandcardNum()<2 or to:getJudgingArea():length()>0) then
         if positive then
-            return q(self,"isFriend",to)
-            and q(self,"isEnemy",from)
+            return self:isFriend(to)
+            and self:isEnemy(from)
         else
-            return q(self,"isEnemy",to)
-            and q(self,"isEnemy",from)
+            return self:isEnemy(to)
+            and self:isEnemy(from)
         end
     end
 end
@@ -443,7 +439,7 @@ function SmartAIView:useCardQixingbaodao(card,use)
 end
 
 function SmartAIView:useCardOffensiveHorse(card,use)
-    if q(card,"objectName")=="yj_numa"
+    if card:objectName()=="yj_numa"
     then return true end
 end
 
@@ -464,30 +460,30 @@ sgs.ai_fill_skill.yj_xinge = function(self,inclusive,request)
     for _,c in sgs.list(self:sortByKeepValue(cards))do
         if table.contains(pcs,c)
         then self.yjxg_to = self.enemies[1]
-        elseif q(c,"isKindOf","Slash") then
-            if q(self,"wasPreviouslyPlannedCard",c)
-            or q(self.player,"getHandcardNum")<2 then continue end
+        elseif c:isKindOf("Slash") then
+            if self:wasPreviouslyPlannedCard(c)
+            or self.player:getHandcardNum()<2 then continue end
             self.yjxg_to = self.friends_noself[1]
-        elseif q(c,"isKindOf","Jink") then
-            if q(self,"getCardsNum","Jink","h")<1 then continue end
+        elseif c:isKindOf("Jink") then
+            if self:getCardsNum("Jink", "h")<1 then continue end
             self.yjxg_to = self.friends_noself[1]
-        elseif q(c,"isKindOf","Peach") then
-            if q(self,"isWeak") and q(self,"wasPreviouslyPlannedCard",c) then continue end
+        elseif c:isKindOf("Peach") then
+            if self:isWeak() and self:wasPreviouslyPlannedCard(c) then continue end
             self.yjxg_to = self.friends_noself[1]
-        elseif q(self.player,"getHandcardNum")>q(self.player,"getMaxCards")
+        elseif self.player:getHandcardNum()>self.player:getMaxCards()
         then self.yjxg_to = self.friends_noself[1] end
         if not self.yjxg_to then continue end
-        return q(self,"bindSkillCard","yj_xinge",{q(c,"getEffectiveId")},request,nil,"#yj_xingecard")
+        return self:bindSkillCard("yj_xinge", {c:getKnownEffectiveId()}, request, nil, "#yj_xingecard")
     end
     local c,p = self:getCardNeedPlayer()
     if c and p then
         self.yjxg_to = p
-        return q(self,"bindSkillCard","yj_xinge",{q(c,"getEffectiveId")},request,nil,"#yj_xingecard")
+        return self:bindSkillCard("yj_xinge", {c:getKnownEffectiveId()}, request, nil, "#yj_xingecard")
     end
 end
 
 sgs.ai_skill_use_func["#yj_xingecard"] = function(card,use,self,request)
-    if q(self.yjxg_to,"isAlive") then
+    if self.yjxg_to:isAlive() then
         use.card = card
         use.to:append(self.yjxg_to)
     end
@@ -500,26 +496,26 @@ sgs.ai_armor_value.zl_yinfengjia = -8
 sgs.ai_armor_value.zl_wufengjian = -6
 
 sgs.ai_poison_card.zl_wufengjian = function(self,c,player)
-    if q(player,"hasEquip",c) then return getCardsNum("Slash",player,self.player)>0 end
+    if player:hasEquip(c) then return getCardsNum("Slash",player,self.player)>0 end
 end
 
 sgs.ai_poison_card.zl_jinhe = function(self,c,player)
-    if q(player,"hasEquip",c) then return q(player,"getHandcardNum")<1 end
+    if player:hasEquip(c) then return player:getHandcardNum()<1 end
 end
 
 sgs.ai_poison_card.zl_nvzhuang = function(self,c,player)
-    if not q(player,"hasEquip",c) then return q(player,"isMale") end
+    if not player:hasEquip(c) then return player:isMale() end
 end
 
 sgs.ai_poison_card.zl_numa = function(self,c,player)
-    return not q(player,"hasEquip",c) and q(player,"hasEquip")
+    return not player:hasEquip(c) and player:hasEquip()
 end
 
 function SmartAIView:useCardCaochuanjiejian(card,use)
     local ce = scope_use(self,"caochuan_effect")
     if ce and ce.card and not known(ce.nullified,"Caochuanjiejian nullified")
-    and q(self,"hasTrickEffective",ce.card,ce.to,ce.from)
-    and not q(self,"canDamageHp",ce.from,ce.card,ce.to)
+    and self:hasTrickEffective(ce.card, ce.to, ce.from)
+    and not self:canDamageHp(ce.from, ce.card, ce.to)
     then use.card = card end
 end
 sgs.ai_keep_value.Caochuanjiejian = 9.6
@@ -528,25 +524,25 @@ sgs.ai_use_priority.Caochuanjiejian = 6.6
 
 sgs.ai_nullification.Caochuanjiejian = function(self,trick,from,to,positive,null_num)
     if positive then
-        return q(self,"isEnemy",from)
-        and (q(self,"isWeak",from) or null_num>1)
+        return self:isEnemy(from)
+        and (self:isWeak(from) or null_num>1)
     else
-        return q(self,"isFriend",from)
-        and q(self,"isWeak",from)
+        return self:isFriend(from)
+        and self:isWeak(from)
     end
 end
 
 function SmartAIView:useCardJiejiaguitian(card,use)
     self:sort(self.friends,"hp")
-    local extraTarget = q(card,"getTargetModExtra",self.player)
+    local extraTarget = card:getTargetModExtra(self.player)
     if use.extra_target then extraTarget = extraTarget+use.extra_target end
     for _,ep in sgs.list(self.friends)do
         if isCurrent(use,ep) then continue end
-        if q(self,"cardTargetFilter",card,{},ep)
+        if self:cardTargetFilter(card, {}, ep)
         and #self:poisonCards("e",ep)>=ep:getEquips():length()/2 then
             use.card = card
             use.to:append(ep)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
@@ -556,10 +552,10 @@ function SmartAIView:useCardJiejiaguitian(card,use)
         for _,e in sgs.list(p:getEquips())do
             if table.contains(pc,e)
             then x = x-2 continue end
-            if q(e,"isKindOf","Weapon")
-            or q(e,"isKindOf","OffensiveHorse") then x = x+2
-            elseif q(e,"isKindOf","Armor") then x = x+4
-            elseif q(e,"isKindOf","DefensiveHorse") then x = x+3
+            if e:isKindOf("Weapon")
+            or e:isKindOf("OffensiveHorse") then x = x+2
+            elseif e:isKindOf("Armor") then x = x+4
+            elseif e:isKindOf("DefensiveHorse") then x = x+3
             else x = x+1+p:getPile("wooden_ox"):length() end
         end
         return x
@@ -570,11 +566,11 @@ function SmartAIView:useCardJiejiaguitian(card,use)
     table.sort(self.enemies,func)
     for _,ep in sgs.list(self.enemies)do
         if isCurrent(use,ep) then continue end
-        if q(self,"cardTargetFilter",card,{},ep)
+        if self:cardTargetFilter(card, {}, ep)
         and #self:poisonCards("e",ep)<=ep:getEquips():length()/2 then
             use.card = card
             use.to:append(ep)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
@@ -583,13 +579,13 @@ function SmartAIView:useCardJiejiaguitian(card,use)
     table.sort(tos,func)
     for _,ep in sgs.list(tos)do
         if isCurrent(use,ep) then continue end
-        if q(self,"cardTargetFilter",card,{},ep)
+        if self:cardTargetFilter(card, {}, ep)
         and #self:poisonCards("e",ep)<ep:getEquips():length()/2
-        and not q(self,"isFriend",ep)
+        and not self:isFriend(ep)
         then
             use.card = card
             use.to:append(ep)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
@@ -616,19 +612,19 @@ sgs.ai_use_value.Zhulutianxia = 4.7
 sgs.ai_nullification.Zhulutianxia = function(self,trick,from,to,positive,null_num)
     if positive then
         local ids = scope_value(self,"zhulutianxia_ids")
-        if q(self,"isEnemy",to) then
+        if self:isEnemy(to) then
             local NP = to:getNextAlive()
-            if not q(self,"isEnemy",NP) then
+            if not self:isEnemy(NP) then
                 for _,id in sgs.list(ids)do
                     local c = disclosed_card(self,id)
                     if isCard("Crossbow",c,NP)
-                    and q(to,"hasEquipArea",0) then
+                    and to:hasEquipArea(0) then
                         for _,enemy in sgs.list(self.enemies)do
                             if getCardsNum("Slash",enemy,self.player)>1 then
-                                local slash = q(self,"getEvaluationCard","slash")
+                                local slash = self:getEvaluationCard("slash")
                                 for _,friend in sgs.list(self.friends)do
-                                    if q(enemy,"distanceTo",friend)==1
-                                    and q(self,"slashIsEffective",slash,friend,enemy)
+                                    if enemy:distanceTo(friend)==1
+                                    and self:slashIsEffective(slash, friend, enemy)
                                     then return true end
                                 end
                             end
@@ -636,12 +632,12 @@ sgs.ai_nullification.Zhulutianxia = function(self,trick,from,to,positive,null_nu
                     end
                 end
             end
-        elseif q(self,"isFriend",to) then
+        elseif self:isFriend(to) then
             local c = other_ag(self,to,ids)
             c = c and c>=0 and disclosed_card(self,c)or nil
             local pc = other_poison(self,to,ids)
             if table.contains(pc,c) or other_armor(self,to,c)<-5
-            then return q(self,"isWeak",to) or null_num>1 end
+            then return self:isWeak(to) or null_num>1 end
         end
     else
     end
@@ -653,77 +649,77 @@ sgs.ai_skill_askforag.zl_zhulutianxia = function(self,card_ids)
     for _,id in sgs.list(card_ids)do
         local c = disclosed_card(self,id)
         c = self:getAcquiredCardEvaluation(c)or c
-        local n = q(c,"getEquipSlot")
-        if q(self.player,"hasEquipArea",n)
+        local n = c:getEquipSlot()
+        if self.player:hasEquipArea(n)
         then table.insert(cs,c) end
     end
     self:sortByUseValue(cs)
     for _,c in sgs.list(cs)do
         if table.contains(pc,c)
-        or q(self,"evaluateArmor",c)<-5
+        or self:evaluateArmor(c)<-5
         then continue end
-        local n = q(c,"getEquipSlot")
+        local n = c:getEquipSlot()
         n = self.player:getEquip(n)
-        if n and q(self,"evaluateArmor",n)>-5
+        if n and self:evaluateArmor(n)>-5
         then continue end
-        if n and q(self,"evaluateArmor",n)<-5
-        then return q(c,"getEffectiveId") end
+        if n and self:evaluateArmor(n)<-5
+        then return c:getKnownEffectiveId() end
     end
     for _,c in sgs.list(cs)do
         if table.contains(pc,c)
-        or q(self,"evaluateArmor",c)<-5
+        or self:evaluateArmor(c)<-5
         then continue end
-        local n = q(c,"getEquipSlot")
+        local n = c:getEquipSlot()
         n = self.player:getEquip(n)
-        if n and q(self,"evaluateArmor",n)>-5
+        if n and self:evaluateArmor(n)>-5
         then continue end
-        if q(self,"evaluateAcquiredCard",c).card
-        then return q(c,"getEffectiveId") end
+        if self:evaluateAcquiredCard(c).card
+        then return c:getKnownEffectiveId() end
     end
     for _,c in sgs.list(cs)do
         if table.contains(pc,c)
-        or q(self,"evaluateArmor",c)<-5
+        or self:evaluateArmor(c)<-5
         then continue end
-        if q(self.player,"getPhase")<=sgs.Player_Play
-        and q(self,"evaluateAcquiredCard",c).card
-        then return q(c,"getEffectiveId") end
+        if self.player:getPhase()<=sgs.Player_Play
+        and self:evaluateAcquiredCard(c).card
+        then return c:getKnownEffectiveId() end
     end
     for _,c in sgs.list(cs)do
         if table.contains(pc,c)
-        or q(self,"evaluateArmor",c)<-5
+        or self:evaluateArmor(c)<-5
         then continue end
-        local n = q(c,"getEquipSlot")
+        local n = c:getEquipSlot()
         n = self.player:getEquip(n)
-        if n and q(self,"evaluateArmor",n)>-5
+        if n and self:evaluateArmor(n)>-5
         then continue end
-        return q(c,"getEffectiveId")
+        return c:getKnownEffectiveId()
     end
     for _,c in sgs.list(cs)do
         if table.contains(pc,c)
-        or q(self,"evaluateArmor",c)<-5
+        or self:evaluateArmor(c)<-5
         then continue end
-        return q(c,"getEffectiveId")
+        return c:getKnownEffectiveId()
     end
     return #cs>0 and cs[1]:getEffectiveId()
 end
 
 sgs.ai_target_revises.zl_yexingyi = function(to,card)
-    if q(card,"isKindOf","TrickCard") and q(card,"isBlack")
+    if card:isKindOf("TrickCard") and card:isBlack()
     then return true end
 end
 
 sgs.ai_skill_invoke.zl_yajiaoqiang = true
 sgs.ai_armor_value.zl_yajiaoqiang = 2
 sgs.ai_card_priority.zl_yajiaoqiang = function(self,card)
-    if q(self.player,"getPhase")==sgs.Player_NotActive
-    and q(card,"isBlack") and q(self.player,"getMark","zl_yajiaoqiang-Clear")<1
+    if self.player:getPhase()==sgs.Player_NotActive
+    and card:isBlack() and self.player:getStrategyMark("zl_yajiaoqiang-Clear")<1
     then return 3 end
 end
 
 sgs.ai_fill_skill.zl_jinhe = function(self,inclusive,request)
     local zl_li = self.player:getPile("zl_li")
-    if q(zl_li,"length")>0 and #self.enemies>0
-    and (q(self.player,"getHandcardNum")<2 or q(self.player,"getHandcardNum")>q(self.player,"getMaxCards"))
+    if zl_li:length()>0 and #self.enemies>0
+    and (self.player:getHandcardNum()<2 or self.player:getHandcardNum()>self.player:getMaxCards())
     then return incompatible_jinhe(self,zl_li:at(0)) end
 end
 
@@ -737,11 +733,11 @@ sgs.ai_use_priority.zl_jinheCard = -4.8
 
 
 sgs.ai_skill_invoke.zd_xunzhi = function(self,data)
-    return not q(self,"isWeak") and q(self,"getOverflow")>1
+    return not self:isWeak() and self:getOverflow()>1
 end
 
 sgs.ai_fill_skill.zd_fenyue = function(self,inclusive,request)
-    return q(self,"legacySkillSeed","zd_fenyue","#zd_fenyueCard",request)
+    return self:legacySkillSeed("zd_fenyue", "#zd_fenyueCard", request)
 end
 
 sgs.ai_skill_use_func["#zd_fenyueCard"] = function(card,use,self,request)
@@ -750,9 +746,9 @@ sgs.ai_skill_use_func["#zd_fenyueCard"] = function(card,use,self,request)
         self:sort(self.enemies,"handcard")
         for _,p in sgs.list(self.enemies)do
             local emc = self:getMaxCard(p)
-            if emc and q(emc,"getNumber")<q(mc,"getNumber")
+            if emc and emc:getNumber()<mc:getNumber()
             then
-                use.card = q(self,"bindSkillCard","zd_fenyue",{q(mc,"getEffectiveId")},request,nil,"#zd_fenyueCard")
+                use.card = self:bindSkillCard("zd_fenyue", {mc:getKnownEffectiveId()}, request, nil, "#zd_fenyueCard")
                 use.to:append(p)
                 return
             end
@@ -767,7 +763,7 @@ sgs.ai_skill_choice.zd_fenyue = function(self,choices,data)
     local target = data:toPlayer()
     local items = choices:split("+")
     if table.contains(items,"zd_fenyue2") then
-        local d = q(self,"evaluateSkillCard","_zd_fenyue","slash",{})
+        local d = self:evaluateSkillCard("_zd_fenyue", "slash", {})
         local use = AIUsePlan.new()
         use.card = d
         use.from = self.player
@@ -776,7 +772,7 @@ sgs.ai_skill_choice.zd_fenyue = function(self,choices,data)
             return "zd_fenyue2"
         end
     end
-    if q(target,"getHandcardNum")>0 then
+    if target:getHandcardNum()>0 then
         return "zd_fenyue1"
     end
 end
@@ -785,31 +781,31 @@ sgs.ai_skill_playerchosen.zd_dongcha = function(self,players)
     local destlist = sgs.QList2Table(players) -- 将列表转换为表
     self:sort(destlist,"card")
     for _,target in sgs.list(destlist)do
-        if q(self,"doDisCard",target,"ej",true)
+        if self:doDisCard(target, "ej", true)
         then return target end
     end
 end
 
 
 function SmartAIView:useCardShengdongjixi(card,use)
-    if q(self.player,"getHandcardNum")<2 then return end
+    if self.player:getHandcardNum()<2 then return end
     local toList = self:sort(self.room:getAlivePlayers(),"handcard",true)
     local fromList = sgs.QList2Table(self.room:getOtherPlayers(self.player))
-    local extraTarget = q(card,"getTargetModExtra",self.player)
+    local extraTarget = card:getTargetModExtra(self.player)
     if use.extra_target then extraTarget = extraTarget+use.extra_target end
     extraTarget = extraTarget*2
     for _,enemy in ipairs(fromList)do
         if isCurrent(use,enemy) or use.to:contains(enemy) then continue end
-        if q(self,"cardTargetFilter",card,{},enemy) and q(self,"objectiveLevel",enemy)>=0
-        and not(q(enemy,"hasEquip") and q(self,"loseEquipEffect",enemy) or q(enemy,"hasSkill","tuntian+zaoxian"))
+        if self:cardTargetFilter(card, {}, enemy) and self:objectiveLevel(enemy)>=0
+        and not(enemy:hasEquip() and self:loseEquipEffect(enemy) or enemy:hasSkill("tuntian+zaoxian"))
         and #self:poisonCards("he",enemy)<1
-        and q(enemy,"getCardCount")>0 then
+        and enemy:getCardCount()>0 then
             for _,p in ipairs(toList)do
-                if enemy~=p and (p~=self.player or q(enemy,"getCardCount")>0) and q(self,"isFriend",p) then
+                if enemy~=p and (p~=self.player or enemy:getCardCount()>0) and self:isFriend(p) then
                     use.card = card
                     use.to:append(enemy)
                     use.to:append(p)
-                    if q(use.to,"length")>extraTarget
+                    if use.to:length()>extraTarget
                     then return end
                     break
                 end
@@ -818,15 +814,15 @@ function SmartAIView:useCardShengdongjixi(card,use)
     end
     for _,friend in ipairs(fromList)do
         if isCurrent(use,friend) or use.to:contains(friend) then continue end
-        if q(self,"cardTargetFilter",card,{},friend) and q(self,"objectiveLevel",friend)<0
+        if self:cardTargetFilter(card, {}, friend) and self:objectiveLevel(friend)<0
         and #self:poisonCards("h",friend)>0 then
             for _,enemy in ipairs(toList)do
-                if enemy~=friend and (p~=self.player or q(friend,"getCardCount")>0)
-                and q(self,"objectiveLevel",enemy)>1 then
+                if enemy~=friend and (p~=self.player or friend:getCardCount()>0)
+                and self:objectiveLevel(enemy)>1 then
                     use.card = card
                     use.to:append(friend)
                     use.to:append(enemy)
-                    if q(use.to,"length")>extraTarget
+                    if use.to:length()>extraTarget
                     then return end
                     break
                 end
@@ -835,15 +831,15 @@ function SmartAIView:useCardShengdongjixi(card,use)
     end
     for _,friend in ipairs(fromList)do
         if isCurrent(use,friend) or use.to:contains(friend) then continue end
-        if q(self,"cardTargetFilter",card,{},friend) and q(self,"objectiveLevel",friend)<0
+        if self:cardTargetFilter(card, {}, friend) and self:objectiveLevel(friend)<0
         and #self:poisonCards("e",friend)>0 then
             for _,p in sgs.list(self.room:getAlivePlayers())do
-                if p~=friend and (p~=self.player or q(friend,"getCardCount")>0)
-                and q(self,"objectiveLevel",p)<=0  then
+                if p~=friend and (p~=self.player or friend:getCardCount()>0)
+                and self:objectiveLevel(p)<=0  then
                     use.card = card
                     use.to:append(friend)
                     use.to:append(p)
-                    if q(use.to,"length")>extraTarget
+                    if use.to:length()>extraTarget
                     then return end
                     break
                 end
@@ -852,15 +848,15 @@ function SmartAIView:useCardShengdongjixi(card,use)
     end
     for _,friend in ipairs(fromList)do
         if isCurrent(use,friend) or use.to:contains(friend) then continue end
-        if q(self,"cardTargetFilter",card,{},friend) and q(self,"objectiveLevel",friend)<=0
+        if self:cardTargetFilter(card, {}, friend) and self:objectiveLevel(friend)<=0
         and #self:poisonCards("h",friend)<1 then
             for _,p in ipairs(toList)do
-                if p~=friend and (p~=self.player or q(friend,"getCardCount")>0)
-                and q(self,"objectiveLevel",p)<0 then
+                if p~=friend and (p~=self.player or friend:getCardCount()>0)
+                and self:objectiveLevel(p)<0 then
                     use.card = card
                     use.to:append(friend)
                     use.to:append(p)
-                    if q(use.to,"length")>extraTarget
+                    if use.to:length()>extraTarget
                     then return end
                     break
                 end
@@ -875,8 +871,8 @@ sgs.ai_keep_value.Shengdongjixi = 3.40
 
 sgs.ai_nullification.Shengdongjixi = function(self,trick,from,to,positive,null_num)
     if positive then
-        if q(self,"isEnemy",from) and (q(self,"isFriend",to) or q(self,"isEnemy",to))
-        and (null_num>1 or q(self,"isWeak",to) or to==self.player)
+        if self:isEnemy(from) and (self:isFriend(to) or self:isEnemy(to))
+        and (null_num>1 or self:isWeak(to) or to==self.player)
         then return true end
     else
 
@@ -886,13 +882,13 @@ end
 sgs.ai_skill_playerchosen.zd_shengdongjixi = function(self,players)
     local destlist = self:sort(players)
     for _,target in sgs.list(destlist)do
-        if q(self,"isFriend",target)
-        and q(self,"canDraw",target)
+        if self:isFriend(target)
+        and self:canDraw(target)
         then return target end
     end
     for _,target in sgs.list(destlist)do
-        if not q(self,"isEnemy",target)
-        and q(self,"canDraw",target)
+        if not self:isEnemy(target)
+        and self:canDraw(target)
         then return target end
     end
     return destlist[#destlist]
@@ -903,8 +899,8 @@ function SmartAIView:useCardCaomujiebing(card,use)
     self:sort(self.enemies,"hp",true)
     for _,ep in sgs.list(self.enemies)do
         if isCurrent(use,ep) then continue end
-        if q(self,"cardTargetFilter",card,{},ep)
-        and not q(ep,"containsTrick","supply_shortage") then
+        if self:cardTargetFilter(card, {}, ep)
+        and not ep:containsTrick("supply_shortage") then
             use.card = card
             use.to:append(ep)
             return
@@ -912,7 +908,7 @@ function SmartAIView:useCardCaomujiebing(card,use)
     end
     for _,ep in sgs.list(self.enemies)do
         if isCurrent(use,ep) then continue end
-        if q(self,"cardTargetFilter",card,{},ep) then
+        if self:cardTargetFilter(card, {}, ep) then
             use.card = card
             use.to:append(ep)
             return
@@ -928,45 +924,45 @@ sgs.ai_judgestring.zd_caomujiebing = ".|club"
 sgs.ai_nullification.Caomujiebing = function(self,trick,from,to,positive,null_num)
     if positive then
         if to==self.player
-        or q(self,"isFriend",to) and (null_num>1 or q(self,"isWeak",to))
+        or self:isFriend(to) and (null_num>1 or self:isWeak(to))
         then return true end
     else
-        if q(self,"isEnemy",to)
-        and (null_num>1 or q(self,"isWeak",to))
+        if self:isEnemy(to)
+        and (null_num>1 or self:isWeak(to))
         then return true end
     end
 end
 
 function SmartAIView:useCardZengbingjianzao(card,use)
     self:sort(self.friends,nil,true)
-    local extraTarget = q(card,"getTargetModExtra",self.player)
+    local extraTarget = card:getTargetModExtra(self.player)
     if use.extra_target then extraTarget = extraTarget+use.extra_target end
     for _,fp in sgs.list(self.friends)do
         if isCurrent(use,fp) or use.to:contains(fp) then continue end
-        if q(self,"cardTargetFilter",card,{},fp)
-        and q(self,"canDraw",fp) and q(self,"isWeak",fp) then
+        if self:cardTargetFilter(card, {}, fp)
+        and self:canDraw(fp) and self:isWeak(fp) then
             use.card = card
             use.to:append(fp)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
-    if not isCurrent(use,self.player) and q(self,"getCardsNum","EquipCard,TrickCard","he")>1 then
+    if not isCurrent(use,self.player) and self:getCardsNum("EquipCard,TrickCard", "he")>1 then
         if CanToCard(card,self.player,self.player) and not use.to:contains(self.player) then
             use.card = card
             use.to:append(self.player)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
     self:sort(self.friends)
     for _,fp in sgs.list(self.friends)do
         if isCurrent(use,fp) or use.to:contains(fp) then continue end
-        if q(self,"cardTargetFilter",card,{},fp)
-        and q(self,"canDraw",fp) then
+        if self:cardTargetFilter(card, {}, fp)
+        and self:canDraw(fp) then
             use.card = card
             use.to:append(fp)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
@@ -978,47 +974,47 @@ sgs.ai_card_intention.Zengbingjianzao = -66
 
 sgs.ai_nullification.Zengbingjianzao = function(self,trick,from,to,positive,null_num)
     if positive then
-        if q(self,"isEnemy",to)
-        and (null_num>1 or q(self,"isWeak",to))
+        if self:isEnemy(to)
+        and (null_num>1 or self:isWeak(to))
         then return true end
     else
         if to==self.player
-        or q(self,"isFriend",to) and (null_num>1 or q(self,"isWeak",to))
+        or self:isFriend(to) and (null_num>1 or self:isWeak(to))
         then return true end
     end
 end
 
 sgs.ai_skill_use["@@Zengbing!"] = function(self,prompt)
     for _,h in sgs.list(self:sortByKeepValue(self.player:getCards("he"),nil,"j"))do
-        if q(h,"getTypeId")<2 then continue end
-        return "#ZengbingCard:"..q(h,"getId")..":"
+        if h:getTypeId()<2 then continue end
+        return "#ZengbingCard:"..h:getKnownId()..":"
     end
 end
 
 function SmartAIView:useCardQijiayebing(card,use)
     self:sort(self.enemies,"equip",true)
-    local extraTarget = q(card,"getTargetModExtra",self.player)
+    local extraTarget = card:getTargetModExtra(self.player)
     if use.extra_target then extraTarget = extraTarget+use.extra_target end
     for _,ep in sgs.list(self.enemies)do
         if isCurrent(use,ep) then continue end
-        if q(self.player,"canUse",card,ep) and not use.to:contains(ep)
+        if self.player:canUse(card, ep) and not use.to:contains(ep)
         and (ep:getTreasure()==nil or ep:getEquips():length()>1)
         and ep:getEquips():length()/2>#self:poisonCards("e",ep)
-        and q(self,"isWeak",ep) then
+        and self:isWeak(ep) then
             use.card = card
             use.to:append(ep)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
     for _,ep in sgs.list(self.enemies)do
         if isCurrent(use,ep) then continue end
-        if q(self.player,"canUse",card,ep) and not use.to:contains(ep)
+        if self.player:canUse(card, ep) and not use.to:contains(ep)
         and (ep:getTreasure()==nil or ep:getEquips():length()>1)
         and ep:getEquips():length()/2>#self:poisonCards("e",ep) then
             use.card = card
             use.to:append(ep)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
@@ -1029,42 +1025,42 @@ sgs.ai_use_value.Qijiayebing = 5.7
 sgs.ai_card_intention.Qijiayebing = 99
 
 sgs.ai_skill_choice.zd_qijiayebing = function(self,choices)
-    if q(self,"getCardsNum","Weapon,OffensiveHorse","he")>q(self,"getCardsNum","Armor,DefensiveHorse","he")
+    if self:getCardsNum("Weapon,OffensiveHorse", "he")>self:getCardsNum("Armor,DefensiveHorse", "he")
     then return "Qijia2" end
     return "Qijia1"
 end
 
 sgs.ai_nullification.Qijiayebing = function(self,trick,from,to,positive,null_num)
     if positive then
-        if q(self,"isFriend",to)
-        and (null_num>1 or q(self,"isWeak",to) or to==self.player)
+        if self:isFriend(to)
+        and (null_num>1 or self:isWeak(to) or to==self.player)
         then return true end
     else
-        if q(self,"isEnemy",to) and (null_num>1 or q(self,"isWeak",to))
+        if self:isEnemy(to) and (null_num>1 or self:isWeak(to))
         then return true end
     end
 end
 
 sgs.ai_skill_use["Jinchan0"] = function(self,prompt)
     local use = scope_use(self,"jinchan_use")
-    if q(use.card,"isDamageCard") or q(self,"isEnemy",use.from) and not q(use.card,"isKindOf","GlobalEffect") then
-        if table.contains(use.nullified_list,q(self.player,"objectName"))
-        or not q(self,"hasTrickEffective",use.card,self.player,use.from)
+    if use.card:isDamageCard() or self:isEnemy(use.from) and not use.card:isKindOf("GlobalEffect") then
+        if table.contains(use.nullified_list,self.player:objectName())
+        or not self:hasTrickEffective(use.card, self.player, use.from)
         or table.contains(use.nullified_list,"_ALL_TARGETS") then return end
         for _,h in sgs.list(self:getCard("Jinchantuoqiao",true))do
-            return q(h,"getLegacyStringKey")
+            return h:getLegacyStringKey()
         end
     end
 end
 
 sgs.ai_nullification.Jinchantuoqiao = function(self,trick,from,to,positive,null_num)
     if positive then
-        if q(self,"isEnemy",from)
-        and (null_num>1 or q(self,"isWeak",from))
+        if self:isEnemy(from)
+        and (null_num>1 or self:isWeak(from))
         then return true end
     else
         if from==self.player
-        or q(self,"isFriend",from) and (null_num>1 or q(self,"isWeak",from))
+        or self:isFriend(from) and (null_num>1 or self:isWeak(from))
         then return true end
     end
 end
@@ -1074,7 +1070,7 @@ sgs.ai_use_value.Jinchantuoqiao = 9.7
 sgs.ai_card_intention.Jinchantuoqiao = -99
 
 function SmartAIView:useCardFulei(card,use)
-    if q(self,"willUseLightning",card)
+    if self:willUseLightning(card)
     then use.card = card end
 end
 sgs.ai_use_priority.Fulei = -4
@@ -1085,22 +1081,22 @@ sgs.ai_card_intention.Fulei = 77
 sgs.ai_judgestring.zd_fulei = {".|spade",false}
 
 sgs.ai_poison_card.zd_fulei = function(self,c,owner)
-    local n = fact(self,"fulei_counts",q(c,"getLegacyStringKey"))
-    if q(self,"isFriend",owner) or #self.friends_noself>0 and not q(self,"isEnemy",owner)
-    then return n>=q(owner,"getHp") end
+    local n = fact(self,"fulei_counts",c:getLegacyStringKey())
+    if self:isFriend(owner) or #self.friends_noself>0 and not self:isEnemy(owner)
+    then return n>=owner:getHp() end
 end
 
 sgs.ai_view_as.zd_lanyinjia = function(card,player,card_place,class_name)
     if card_place==sgs.Player_PlaceHand and class_name=="Jink" then
-        return "jink:zd_lanyinjia[no_suit:0]="..q(card,"getLegacyStringKey")
+        return "jink:zd_lanyinjia[no_suit:0]="..card:getLegacyStringKey()
     end
 end
 
 sgs.ai_skill_invoke.zd_zhungangshuo = function(self,data)
     local target = data:toPlayer()
-    if target and q(target,"getHandcardNum")>0 then
+    if target and target:getHandcardNum()>0 then
         local use = target_specified_history(self)
-        if table.contains(use.nullified_list,q(target,"objectName"))
+        if table.contains(use.nullified_list,target:objectName())
         or table.contains(use.nullified_list,"_ALL_TARGETS")
         then return false end
         if type(self.doDisCard)~="function"then ai_unsupported("doDisCard provider missing","yongjian.target_history")end
@@ -1114,7 +1110,7 @@ end
 
 function SmartAIView:useCardLuanwu(card,use)
     if #self.enemies>#self.friends_noself
-    or q(self,"isWeak",self.enemies)
+    or self:isWeak(self.enemies)
     then use.card = card end
 end
 sgs.ai_use_priority.Luanwu = 4
@@ -1122,31 +1118,31 @@ sgs.ai_keep_value.Luanwu = 1
 sgs.ai_use_value.Luanwu = 1.7
 
 function SmartAIView:useCardDouzhuanxingyi(card,use)
-    local extraTarget = q(card,"getTargetModExtra",self.player)
+    local extraTarget = card:getTargetModExtra(self.player)
     if use.extra_target then extraTarget = extraTarget+use.extra_target end
     for _,ep in sgs.list(self.enemies)do
         if isCurrent(use,ep) then continue end
-        if q(self.player,"canUse",card,ep)
+        if self.player:canUse(card, ep)
         and not use.to:contains(ep)
-        and q(ep,"getHp")>q(self.player,"getHp")
-        and q(self.player,"isWounded")
-        and q(self,"isWeak",ep) then
+        and ep:getHp()>self.player:getHp()
+        and self.player:isWounded()
+        and self:isWeak(ep) then
             use.card = card
             use.to:append(ep)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
     for _,ep in sgs.list(self.enemies)do
         if isCurrent(use,ep) then continue end
-        if q(self.player,"canUse",card,ep)
+        if self.player:canUse(card, ep)
         and not use.to:contains(ep)
-        and q(ep,"getHp")>=q(self.player,"getHp")
-        and q(self.player,"isWounded")
-        and q(self,"isWeak",ep) then
+        and ep:getHp()>=self.player:getHp()
+        and self.player:isWounded()
+        and self:isWeak(ep) then
             use.card = card
             use.to:append(ep)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
@@ -1156,26 +1152,26 @@ sgs.ai_keep_value.Douzhuanxingyi = 1
 sgs.ai_use_value.Douzhuanxingyi = 1.7
 
 function SmartAIView:useCardLidaitaojing(card,use)
-    local extraTarget = q(card,"getTargetModExtra",self.player)
+    local extraTarget = card:getTargetModExtra(self.player)
     if use.extra_target then extraTarget = extraTarget+use.extra_target end
     for _,ep in sgs.list(self.enemies)do
         if isCurrent(use,ep) then continue end
-        if q(self.player,"canUse",card,ep) and not use.to:contains(ep)
-        and q(ep,"getHandcardNum")>q(self.player,"getHandcardNum")
-        and q(self,"isWeak",ep) then
+        if self.player:canUse(card, ep) and not use.to:contains(ep)
+        and ep:getHandcardNum()>self.player:getHandcardNum()
+        and self:isWeak(ep) then
             use.card = card
             use.to:append(ep)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
     for _,ep in sgs.list(self.enemies)do
         if isCurrent(use,ep) then continue end
-        if q(self.player,"canUse",card,ep) and not use.to:contains(ep)
-        and q(ep,"getHandcardNum")>=q(self.player,"getHandcardNum") then
+        if self.player:canUse(card, ep) and not use.to:contains(ep)
+        and ep:getHandcardNum()>=self.player:getHandcardNum() then
             use.card = card
             use.to:append(ep)
-            if q(use.to,"length")>extraTarget
+            if use.to:length()>extraTarget
             then return end
         end
     end
@@ -1208,33 +1204,33 @@ function SmartAIView:AlPresentCardTo(c,enemie)
     local tos = enemie and self.enemies or self.friends_noself
     self:sort(tos,nil,enemie)
     for _,to in sgs.list(tos)do
-        if math.random()<0.8 and fact(self,"defensive_horse_zhanxiang",q(to,"objectName")) then continue end
-        if q(c,"isKindOf","EquipCard") then
-            local e = q(c,"getEquipSlot")
-            if q(to,"hasEquipArea",e) then else continue end
+        if math.random()<0.8 and fact(self,"defensive_horse_zhanxiang",to:objectName()) then continue end
+        if c:isKindOf("EquipCard") then
+            local e = c:getEquipSlot()
+            if to:hasEquipArea(e) then else continue end
             e = to:getEquip(e)
             if e then
-                e = q(self,"evaluateArmor",e,to)
+                e = self:evaluateArmor(e, to)
                 if e<=-5 and enemie
                 then continue end
             end
         elseif hasManjuanEffect(to)
-        or not enemie and not q(self,"canDraw",to)
+        or not enemie and not self:canDraw(to)
         then continue end
-        if q(c,"isKindOf","Qixingbaodao") then
+        if c:isKindOf("Qixingbaodao") then
             if enemie and to:getEquips():isEmpty() then continue end
             if not enemie and to:getEquips():length()>to:getJudgingArea():length() then continue end
         end
-        if q(c,"objectName")=="zl_numa"
+        if c:objectName()=="zl_numa"
         and to:getEquips():length()<2
         then continue end
-        if q(c,"isKindOf","Poison") then
+        if c:isKindOf("Poison") then
             if enemie and to:getTreasure()
             and to:getTreasure():isKindOf("Xinge") then continue end
         end
-        if q(c,"isKindOf","Nvzhuang") then
-            if q(to,"isMale") then else continue end
-            if q(c,"objectName")=="zl_nvzhuang" and q(to,"getCardCount")<1 then continue end
+        if c:isKindOf("Nvzhuang") then
+            if to:isMale() then else continue end
+            if c:objectName()=="zl_nvzhuang" and to:getCardCount()<1 then continue end
         end
         return to
     end
@@ -1242,33 +1238,33 @@ function SmartAIView:AlPresentCardTo(c,enemie)
         tos = self.room:getOtherPlayers(self.player)
         self:sort(tos,nil,enemie)
         for _,to in sgs.list(tos)do
-            if math.random()<0.8 and fact(self,"defensive_horse_zhanxiang",q(to,"objectName")) or q(self,"isFriend",to) then continue end
-            if q(c,"isKindOf","EquipCard") then
-                local e = q(c,"getEquipSlot")
-                if q(to,"hasEquipArea",e) then else continue end
+            if math.random()<0.8 and fact(self,"defensive_horse_zhanxiang",to:objectName()) or self:isFriend(to) then continue end
+            if c:isKindOf("EquipCard") then
+                local e = c:getEquipSlot()
+                if to:hasEquipArea(e) then else continue end
                 e = to:getEquip(e)
                 if e then
-                    e = q(self,"evaluateArmor",e,to)
+                    e = self:evaluateArmor(e, to)
                     if e<=-5 and enemie
                     then continue end
                 end
             elseif hasManjuanEffect(to)
-            and not(enemie or q(self,"canDraw",to))
+            and not(enemie or self:canDraw(to))
             then continue end
-            if q(c,"isKindOf","Qixingbaodao") then
+            if c:isKindOf("Qixingbaodao") then
                 if enemie and to:getEquips():isEmpty() then continue end
                 if not enemie and to:getEquips():length()>to:getJudgingArea():length() then continue end
             end
-            if q(c,"objectName")=="zl_numa"
+            if c:objectName()=="zl_numa"
             and to:getEquips():length()<2
             then continue end
-            if q(c,"isKindOf","Poison") then
+            if c:isKindOf("Poison") then
                 if enemie and to:getTreasure()
                 and to:getTreasure():isKindOf("Xinge") then continue end
             end
-            if q(c,"isKindOf","Nvzhuang") then
-                if q(to,"isMale") then else continue end
-                if q(c,"objectName")=="zl_nvzhuang" and q(to,"getCardCount")<1 then continue end
+            if c:isKindOf("Nvzhuang") then
+                if to:isMale() then else continue end
+                if c:objectName()=="zl_nvzhuang" and to:getCardCount()<1 then continue end
             end
             return to
         end
@@ -1279,46 +1275,46 @@ sgs.ai_fill_skill.yj_zhengyu = function(self,inclusive,request)
     self:setPriorityValue("yj_zhengyuCard",0.8,"yj_zhengyu")
     self.yjzy_to = nil
     for _,c in sgs.list(self:sortByKeepValue(self.player:getHandcards()))do
-        if fact(self,"card_is_present",tostring(q(c,"getId"))) then
-            if q(c,"isKindOf","Slash") then
-                if q(self,"wasPreviouslyPlannedCard",c)
-                or q(self,"getCardsNum","Slash")<2 and q(self,"getOverflow")<1
+        if fact(self,"card_is_present",tostring(c:getKnownId())) then
+            if c:isKindOf("Slash") then
+                if self:wasPreviouslyPlannedCard(c)
+                or self:getCardsNum("Slash")<2 and self:getOverflow()<1
                 then continue end
                 self.yjzy_to = self:AlPresentCardTo(c)
-            elseif q(c,"isKindOf","Jink") then
-                if q(self,"getCardsNum","Jink","h")<1 then continue end
+            elseif c:isKindOf("Jink") then
+                if self:getCardsNum("Jink", "h")<1 then continue end
                 self.yjzy_to = self:AlPresentCardTo(c)
-            elseif q(c,"isKindOf","Peach") then
-                if q(self,"getCardsNum","Peach")<2
-                and q(self,"wasPreviouslyPlannedCard",c)
+            elseif c:isKindOf("Peach") then
+                if self:getCardsNum("Peach")<2
+                and self:wasPreviouslyPlannedCard(c)
                 then continue end
                 self.yjzy_to = self:AlPresentCardTo(c)
-            elseif q(c,"isKindOf","Poison") then
-                local can = q(self,"isWeak") and math.random()<0.97
-                local n = q(self,"getOverflow")
+            elseif c:isKindOf("Poison") then
+                local can = self:isWeak() and math.random()<0.97
+                local n = self:getOverflow()
                 if n>0 then
                     n = self:askForDiscard("Poison",n,n,false,false)
-                    if table.contains(n,q(c,"getId")) then can = false end
+                    if table.contains(n,c:getKnownId()) then can = false end
                 end
                 if can then continue end
-                if q(self.player,"hasArmorEffect","yj_yinfengyi")
-                and (q(self.player,"getHp")<4 or q(self.player,"getMaxCards")>=q(self.player,"getHandcardNum")/2)
+                if self.player:hasArmorEffect("yj_yinfengyi")
+                and (self.player:getHp()<4 or self.player:getMaxCards()>=self.player:getHandcardNum()/2)
                 and math.random()<0.9 then continue end
                 self.yjzy_to = self:AlPresentCardTo(c,true)
                 self:setPriorityValue("yj_zhengyuCard",0.8,"yj_zhengyu")
-            elseif q(c,"isKindOf","Qixingbaodao")
+            elseif c:isKindOf("Qixingbaodao")
             then self.yjzy_to = self:AlPresentCardTo(c,true) or self:AlPresentCardTo(c)
-            elseif q(c,"isKindOf","EquipCard") then
-                if q(self,"wasPreviouslyPlannedCard",c) then continue end
-                local enemie = sgs.ai_poison_card[q(c,"objectName")] or q(self,"evaluateArmor",c)<-5
+            elseif c:isKindOf("EquipCard") then
+                if self:wasPreviouslyPlannedCard(c) then continue end
+                local enemie = sgs.ai_poison_card[c:objectName()] or self:evaluateArmor(c)<-5
                 self.yjzy_to = self:AlPresentCardTo(c,enemie)
                 self:setPriorityValue("yj_zhengyuCard",8,"yj_zhengyu")
             else
-                if q(self,"wasPreviouslyPlannedCard",c) then continue end
-                self.yjzy_to = self:AlPresentCardTo(c,sgs.ai_poison_card[q(c,"objectName")])
+                if self:wasPreviouslyPlannedCard(c) then continue end
+                self.yjzy_to = self:AlPresentCardTo(c,sgs.ai_poison_card[c:objectName()])
             end
-            if not self.yjzy_to or q(self.player,"hasFlag",q(self.yjzy_to,"objectName").."yj_zhengyuUse"..q(c,"getId")) then continue end
-            return q(self,"bindSkillCard","yj_zhengyu&",{q(c,"getId")},request,nil,"#yj_zhengyuCard")
+            if not self.yjzy_to or self.player:getStrategyFlag(self.yjzy_to:objectName().."yj_zhengyuUse"..c:getKnownId()) then continue end
+            return self:bindSkillCard("yj_zhengyu&", {c:getKnownId()}, request, nil, "#yj_zhengyuCard")
         end
     end
 end
@@ -1328,7 +1324,7 @@ sgs.ai_skill_use_func["#yj_zhengyuCard"] = function(card,use,self,request)
         use.card = card
         use.to:append(self.yjzy_to)
         if use.from then
-            self:setStrategyPlayerFlag(use.from,q(self.yjzy_to,"objectName").."yj_zhengyuUse"..q(card,"getEffectiveId"),true)
+            self:setStrategyPlayerFlag(use.from,self.yjzy_to:objectName().."yj_zhengyuUse"..card:getKnownEffectiveId(),true)
         end
     end
 end

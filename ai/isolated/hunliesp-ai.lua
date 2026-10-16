@@ -1,15 +1,6 @@
 -- Fixed b6025acc package policy; all selection uses pure views and native-issued receipts.
-local function call(object,method,...)
-    if not object or type(object[method])~="function" then ai_unsupported("package helper unavailable",method) end
-    local values=table.pack(object[method](object,...))
-    if AIUnsupported.is(values[1]) then error(values[1],0) end
-    return table.unpack(values,1,values.n)
-end
-local function q(object,method,...)
-    local values=table.pack(call(object,method,...))
-    if values[1]==nil then ai_unsupported("package input is unknown",method) end
-    return table.unpack(values,1,values.n)
-end
+
+
 local tiangong_frequent_timings,tiangong_frequent_targets,tiangong_negative_effects,tiangong_gainskill_effects,tiangong_basic_effects
 -- Owner tags as the donor's QVariant conversions read them (absent string "",
 -- default structs). MaxHpStruct/HpLostStruct tags are not projected, but linglong
@@ -49,9 +40,9 @@ local function eagle(to,card)
 end
 local function response(self,skill,class,names,request)
  if request and type(request.getActivationSkillName)~="function"then request=AILegacyRequest.new(request,self.room)end
- local use=AIUsePlan.new();use.card=q(self,"bindSkillCard",skill,{},request,nil,class);use.to=AIList.new({})
- for _,name in ipairs(names)do call(use.to,"append",q(self.room,"findPlayerByObjectName",name))end
- return q(use,"toAnswer")
+ local use=AIUsePlan.new();use.card=self:bindSkillCard(skill, {}, request, nil, class);use.to=AIList.new({})
+ for _,name in ipairs(names)do use.to:append(self.room:findPlayerByObjectName(name))end
+ return use:toAnswer()
 end
 --妖智
 sgs.ai_skill_invoke.sgkgodyaozhi = true
@@ -59,33 +50,33 @@ sgs.ai_skill_invoke.sgkgodyaozhi = true
 
 --杀绝
 sgs.ai_fill_skill.sgkgodshajue = function(self,inclusive,request)
-	if q(self.player,"hasUsed","#sgkgodshajueCard") or q(self.player,"isKongcheng") then return end
+	if self.player:getStrategyHasUsed("#sgkgodshajueCard") or self.player:isKongcheng() then return end
 	if #self.enemies == 0 then return end
-	if q(self.player,"hasSkills","wushen|sgkgodwushen") or ((not q(self.player,"hasSkill","sgkgodguiqu")) and q(self,"getCardsNum","Peach") + q(self,"getCardsNum","Analeptic") < 1) then return end
-	return q(self,"legacySkillSeed","sgkgodshajue","#sgkgodshajueCard",request)
+	if self.player:hasSkills("wushen|sgkgodwushen") or ((not self.player:hasSkill("sgkgodguiqu")) and self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < 1) then return end
+	return self:legacySkillSeed("sgkgodshajue", "#sgkgodshajueCard", request)
 end
 
 sgs.ai_skill_use_func["#sgkgodshajueCard"] = function(card, use, self, request)
-	call(self,"sort",self.enemies, "hp")
+	self:sort(self.enemies, "hp")
 	local inicards = AIList.new({})
-	for _, c in sgs.qlist(q(self.player,"getCards","h")) do
-		if not q(self.player,"isJilei",c) then
-			call(inicards,"append",c)
+	for _, c in sgs.qlist(self.player:getCards("h")) do
+		if not self.player:isJilei(c) then
+			inicards:append(c)
 		end
 	end
-	local x = q(inicards,"length")
+	local x = inicards:length()
 	local target
 	for _, enemy in ipairs(self.enemies) do
-		if not (q(enemy,"hasSkill","kongcheng")) and q(self.player,"canSlash",enemy, nil, false) and (not q(self,"canLiuli",enemy, self.friends_noself)) then
-			if x >= q(enemy,"getHp") then
+		if not (enemy:hasSkill("kongcheng")) and self.player:canSlash(enemy, nil, false) and (not self:canLiuli(enemy, self.friends_noself)) then
+			if x >= enemy:getHp() then
 				target = enemy
 				break
 			end
 		end
 	end
 	if target then
-		use.card=q(self,"bindSkillCard","sgkgodshajue",{},request,nil,"#sgkgodshajueCard")
-		if use.to then call(use.to,"append",target) end
+		use.card=self:bindSkillCard("sgkgodshajue", {}, request, nil, "#sgkgodshajueCard")
+		if use.to then use.to:append(target) end
 		return
 	end
 end
@@ -99,7 +90,7 @@ sgs.ai_card_intention["sgkgodshajueCard"] = 100
 --鬼驱
 sgs.ai_cardsview["sgkgodguiqu"] = function(self, class_name, player)
 	if class_name == "Peach" then
-		if q(player,"hasSkill","sgkgodguiqu") and q(player,"getStrategyFlag","Global_Dying") and q(player,"getVisibleSkillList"):length() > 0 then
+		if player:hasSkill("sgkgodguiqu") and player:getStrategyFlag("Global_Dying") and player:getVisibleSkillList():length() > 0 then
 			return {name="peach",skill="sgkgodguiqu",suit=sgs.Card_NoSuit,number=0,subcards={}}
 		end
 	end
@@ -107,7 +98,7 @@ end
 
 sgs.ai_skill_choice["sgkgodguiqu"] = function(self, choices, data)
 	local room = self.room
-	local skills = q(choices,"split","+")
+	local skills = choices:split("+")
 	local bad_skills = {"shiyong", "sk_shiyong", "longnu", "jinjiu", "sgkgodwushen", "wushen", "tongji"}  --几个与【杀】有关的负面技
 	local lvbu_initial = {"sgkgodshajue", "sgkgodluocha", "sgkgodguiqu"}
 	local to_lose
@@ -142,13 +133,13 @@ end
 
 --函数1：判断SP神张角当前所处的“阴阳生”状态
 local function getYinyangState(player)
-	if q(player,"getHp") > q(player,"getLostHp") then  --体力值大于损失体力，阳
+	if player:getHp() > player:getLostHp() then  --体力值大于损失体力，阳
 		return "hp_Yang"
 	end
-	if q(player,"getHp") == q(player,"getLostHp") then  --体力值等于损失体力，生
+	if player:getHp() == player:getLostHp() then  --体力值等于损失体力，生
 		return "hp_Sheng"
 	end
-	if q(player,"getHp") < q(player,"getLostHp") then  --体力值小于损失体力，阴
+	if player:getHp() < player:getLostHp() then  --体力值小于损失体力，阴
 		return "hp_Yin"
 	end
 end
@@ -160,7 +151,7 @@ local function canChangeYinyangState(player, add_or_lose)
 		if getYinyangState(player) == "hp_Sheng" then  --处在“生”状态下，只要增加体力上限，必定打破平衡
 			return true
 		elseif getYinyangState(player) == "hp_Yang" then  --处在“阳”状态下，只有hp比lost多1时，再加1点就从“阳”变为“生”
-			if q(player,"getHp") == q(player,"getLostHp") + 1 then return true end
+			if player:getHp() == player:getLostHp() + 1 then return true end
 		elseif getYinyangState(player) == "hp_Yin" then  --处在“阴”状态下，如果只是增加体力上限，这是无论如何都无法改变“阴阳生”状态的
 			return false
 		end
@@ -170,7 +161,7 @@ local function canChangeYinyangState(player, add_or_lose)
 		elseif getYinyangState(player) == "hp_Yang" then  --处在“阳”状态下，如果只是减少体力上限，这是无论如何都无法改变“阴阳生”状态的
 			return false
 		elseif getYinyangState(player) == "hp_Yin" then  --处在“阴”状态下，只有hp=losthp-1时，再减1点就会从“阴”变成“生”
-			if q(player,"getHp") + 1 == q(player,"getLostHp") then return true end
+			if player:getHp() + 1 == player:getLostHp() then return true end
 		end
 	end
 end
@@ -180,13 +171,13 @@ end
 sgs.ai_skill_playerchosen.sgkgodjiyang = function(self, targets)
 	local jiyang = {}
 	for _, _player in sgs.qlist(targets) do
-	    if q(self,"isFriend",_player) then 
-			if (not (q(_player,"hasSkill","hunzi") and q(_player,"getHp") == 1)) then table.insert(jiyang, _player) end
+	    if self:isFriend(_player) then
+			if (not (_player:hasSkill("hunzi") and _player:getHp() == 1)) then table.insert(jiyang, _player) end
 		end
 	end
-	call(self,"sort",jiyang, "value")
+	self:sort(jiyang, "value")
 	if #jiyang > 0 then
-	    call(self,"sort",jiyang, "value")
+	    self:sort(jiyang, "value")
 	    return jiyang[1]
 	end
 end
@@ -195,17 +186,17 @@ end
 --极阴
 sgs.ai_skill_playerchosen.sgkgodjiyin = function(self, targets)
 	local jiyin = {}
-	if q(self.player,"isWounded") and (not q(self.player,"hasSkill","jueqing")) and canChangeYinyangState(self.player, "lose") then return self.player end
+	if self.player:isWounded() and (not self.player:hasSkill("jueqing")) and canChangeYinyangState(self.player, "lose") then return self.player end
 	for _, _player in sgs.qlist(targets) do
-	    if q(self,"isEnemy",_player) then 
-			if (not q(_player,"hasSkills","sgkgodyinshi|sgkgodleihun")) or (q(_player,"hasSkill","sr_weiwo") and q(_player,"isKongcheng")) then
+	    if self:isEnemy(_player) then
+			if (not _player:hasSkills("sgkgodyinshi|sgkgodleihun")) or (_player:hasSkill("sr_weiwo") and _player:isKongcheng()) then
 				table.insert(jiyin, _player)
 			end
 		end
 	end
-	call(self,"sort",jiyin, "value")
+	self:sort(jiyin, "value")
 	if #jiyin > 0 then
-	    call(self,"sort",jiyin, "value")
+	    self:sort(jiyin, "value")
 	    return jiyin[1]
 	end
 end
@@ -213,45 +204,45 @@ end
 
 --定命
 sgs.ai_skill_invoke.sgkgoddingming = function(self, data)
-	local to = call(data,"toPlayer")
-	local x = math.abs(q(to,"getHp") - q(to,"getLostHp"))
-	if q(self.player,"getMaxHp") == 1 then return false end
+	local to = data:toPlayer()
+	local x = math.abs(to:getHp() - to:getLostHp())
+	if self.player:getMaxHp() == 1 then return false end
 	--情形1：自己的准备阶段
-	if q(self.player,"getSeat") == q(to,"getSeat") and q(self.player,"getPhase") == sgs.Player_Start then
+	if self.player:getSeat() == to:getSeat() and self.player:getPhase() == sgs.Player_Start then
 		--有【桃】或【酒】，想炸血卖
-		if getYinyangState(self.player) == "hp_Yang" and q(self,"getCardsNum","Peach") + q(self,"getCardsNum","Analeptic") >= 1 then
+		if getYinyangState(self.player) == "hp_Yang" and self:getCardsNum("Peach") + self:getCardsNum("Analeptic") >= 1 then
 			if x >= 2 then return true end
 			--有界黄盖的【诈降】，哪怕差值只有1也卖
-			if q(self,"hasZhaxiangEffect",self.player) then return true end
+			if self:hasZhaxiangEffect(self.player) then return true end
 			--能触发夏侯霸的【豹变】也卖了
-			if q(self.player,"hasSkill","baobian") and q(self.player,"getHp") - x <= 3 then return true end
+			if self.player:hasSkill("baobian") and self.player:getHp() - x <= 3 then return true end
 			--如果有【英魂】/【再起】也卖
-			if q(self.player,"hasSkills","yinghun|zaiqi") and q(self.player,"getLostHp") + x >= 2 and q(self.player,"getHp") - x >= 0 then return true end
+			if self.player:hasSkills("yinghun|zaiqi") and self.player:getLostHp() + x >= 2 and self.player:getHp() - x >= 0 then return true end
 			--有神孙策的【冯河】，必须得卖，否则保不住手牌上限
-			if q(self.player,"hasSkill","f_pinghe") and q(self.player,"getHp") - x >= 0 then return true end
+			if self.player:hasSkill("f_pinghe") and self.player:getHp() - x >= 0 then return true end
 		end
 		--自己刚好状态很残
 		if getYinyangState(self.player) == "hp_Yin" and x >= 2 then return true end
 	end
 	--情形2：伤害类
-	local damage = call(data,"toDamage")
+	local damage = data:toDamage()
 	--分支2-1：自己受到伤害时
-	if q(self.player,"getSeat") == q(to,"getSeat") then
+	if self.player:getSeat() == to:getSeat() then
 		if getYinyangState(self.player) == "hp_Yin" and x >= 1 then return true end
 		--特殊：自己有孙策的【魂姿】且没觉醒的时候，即使自己处在“阳”也要炸血，并且压得越多越好，先保证能觉醒
-		if getYinyangState(self.player) == "hp_Yang" and q(self.player,"getStrategyMark","@waked") == 0 and q(self.player,"hasSkill","hunzi") then
-			if q(self,"getCardsNum","Peach") + q(self,"getCardsNum","Analeptic") >= 1 and q(self.player,"getHp") - x <= 1 then return true end
+		if getYinyangState(self.player) == "hp_Yang" and self.player:getStrategyMark("@waked") == 0 and self.player:hasSkill("hunzi") then
+			if self:getCardsNum("Peach") + self:getCardsNum("Analeptic") >= 1 and self.player:getHp() - x <= 1 then return true end
 		end
 	else
 	--分支2-2：对其他角色造成伤害时
-		if q(self,"isEnemy",to) then
-			if getYinyangState(to) == "hp_Yang" and not (q(to,"hasSkill","hunzi") and q(to,"getStrategyMark","@waked") == 0) then
-				if (x >= 2 or q(to,"getHp") - x <= 1) and q(self.player,"getMaxHp") > 1 and canChangeYinyangState(self.player, "lose") then return true end
+		if self:isEnemy(to) then
+			if getYinyangState(to) == "hp_Yang" and not (to:hasSkill("hunzi") and to:getStrategyMark("@waked") == 0) then
+				if (x >= 2 or to:getHp() - x <= 1) and self.player:getMaxHp() > 1 and canChangeYinyangState(self.player, "lose") then return true end
 			end
-		elseif q(self,"isFriend",to) then
+		elseif self:isFriend(to) then
 			--特例：如果这个人是没觉醒且有【魂姿】的孙策
-			if getYinyangState(to) == "hp_Yang" and not (q(to,"hasSkill","hunzi") and q(to,"getStrategyMark","@waked") == 0) then
-				if q(self.player,"getMaxHp") > 1 and q(to,"getLostHp") == 1 then return true end
+			if getYinyangState(to) == "hp_Yang" and not (to:hasSkill("hunzi") and to:getStrategyMark("@waked") == 0) then
+				if self.player:getMaxHp() > 1 and to:getLostHp() == 1 then return true end
 			else
 				if getYinyangState(to) == "hp_Yin" then return true end
 			end
@@ -265,14 +256,14 @@ sgs.ai_skill_playerchosen.sgkgodfengying = function(self, targets)
 	if #self.enemies == 0 then return nil end
 	local room = self.room
 	local tos = {}
-	local tslash = q(self,"getEvaluationCard","thunder_slash")
+	local tslash = self:getEvaluationCard("thunder_slash")
 	for _, p in sgs.qlist(targets) do
-		if q(self,"isEnemy",p) then
-			if not q(self.player,"isProhibited",p,tslash) and q(self,"damageIsEffective",p, sgs.DamageStruct_Thunder, self.player) then table.insert(tos, p) end
+		if self:isEnemy(p) then
+			if not self.player:isProhibited(p, tslash) and self:damageIsEffective(p, sgs.DamageStruct_Thunder, self.player) then table.insert(tos, p) end
 		end
 	end
 	if #tos > 0 then
-		call(self,"sort",tos, "defenseSlash")
+		self:sort(tos, "defenseSlash")
 		return tos[1]
 	else
 	    return nil
@@ -283,8 +274,8 @@ end
 
 --止啼
 sgs.ai_skill_invoke.sgkgodzhiti = function(self, data)
-	local to = call(data,"toPlayer")
-	return q(self,"isEnemy",to)
+	local to = data:toPlayer()
+	return self:isEnemy(to)
 end
 
 
@@ -298,26 +289,26 @@ end
 sgs.ai_skill_choice["sgkgodzhiti"] = function(self, choices, data)
 	local imba = evil()
 	local steal = false
-	local target = call(data,"toPlayer")
+	local target = data:toPlayer()
 	if string.find(choices, "_stealOneSkill") then
 		
-		for _, sk in sgs.qlist(q(target,"getVisibleSkillList")) do
-			if string.find(table.concat(imba, "+"), q(sk,"objectName")) then
+		for _, sk in sgs.qlist(target:getVisibleSkillList()) do
+			if string.find(table.concat(imba, "+"), sk:objectName()) then
 				steal = true
 				break
 			end
 		end
 		if not steal then
-			for _, sk in sgs.qlist(q(target,"getVisibleSkillList")) do
-				if q(self,"isValueSkill",q(sk,"objectName"), target, true) then
+			for _, sk in sgs.qlist(target:getVisibleSkillList()) do
+				if self:isValueSkill(sk:objectName(), target, true) then
 					steal = true
 					break
 				end
 			end
 		end
 		if not steal then
-			for _, sk in sgs.qlist(q(target,"getVisibleSkillList")) do
-				if q(self,"isValueSkill",q(sk,"objectName"), target) then
+			for _, sk in sgs.qlist(target:getVisibleSkillList()) do
+				if self:isValueSkill(sk:objectName(), target) then
 					steal = true
 					break
 				end
@@ -325,15 +316,15 @@ sgs.ai_skill_choice["sgkgodzhiti"] = function(self, choices, data)
 		end
 		if steal then return "spgodzl_stealOneSkill" end
 	end
-	local zhiti = q(choices,"split","+")
+	local zhiti = choices:split("+")
 	for i = 1, #zhiti, 1 do
-		if q(self,"isWeak") and string.find(zhiti[i], "_stealOneHpAndMaxhp") then
+		if self:isWeak() and string.find(zhiti[i], "_stealOneHpAndMaxhp") then
 			return zhiti[i]
 		end
-		if q(self,"isEnemy",target) and q(target,"hasSkills",sgs.need_equip_skill .. "|" .. sgs.lose_equip_skill) and string.find(zhiti[i], "_banEquip") then
+		if self:isEnemy(target) and target:hasSkills(sgs.need_equip_skill .. "|" .. sgs.lose_equip_skill) and string.find(zhiti[i], "_banEquip") then
 			return zhiti[i]
 		end
-		if q(self,"isEnemy",target) and q(self,"hasSkills",sgs.priority_skill, target) and string.find(zhiti[i], "_turnOver") then
+		if self:isEnemy(target) and self:hasSkills(sgs.priority_skill, target) and string.find(zhiti[i], "_turnOver") then
 			return zhiti[i]
 		end
 	end
@@ -341,8 +332,8 @@ sgs.ai_skill_choice["sgkgodzhiti"] = function(self, choices, data)
 end
 
 sgs.ai_skill_choice["zhiti_stealWhat"] = function(self, choices, data)
-	local target = call(data,"toPlayer")
-	local skills = q(choices,"split","+")
+	local target = data:toPlayer()
+	local skills = choices:split("+")
 	local imba = evil()
 	for _, sk in ipairs(skills) do
 		if table.contains(imba, sk) then
@@ -350,12 +341,12 @@ sgs.ai_skill_choice["zhiti_stealWhat"] = function(self, choices, data)
 		end
 	end
 	for _, sk in ipairs(skills) do
-		if q(self,"isValueSkill",sk, target, true) then
+		if self:isValueSkill(sk, target, true) then
 			return sk
 		end
 	end
 	for _, sk in ipairs(skills) do
-		if q(self,"isValueSkill",sk, target) then
+		if self:isValueSkill(sk, target) then
 			return sk
 		end
 	end
@@ -384,14 +375,14 @@ end
 sgs.ai_skill_playerchosen.sgkgodjieying = function(self, targets)
 	local target
 	for _, pe in sgs.qlist(targets) do
-		if q(self,"isEnemy",pe) and q(pe,"hasSkills","yongsi|tenyearzhiheng|zhiheng|sgkgodluocha|noszishou|xiaoji|haoshi|mou_yingzi|yingzi|sgkgodguixin|fenyin|pingcai|tenyearfenyin") then
+		if self:isEnemy(pe) and pe:hasSkills("yongsi|tenyearzhiheng|zhiheng|sgkgodluocha|noszishou|xiaoji|haoshi|mou_yingzi|yingzi|sgkgodguixin|fenyin|pingcai|tenyearfenyin") then
 			target = pe
 			break
 		end
 	end
 	if not target then
 		for _, pe in sgs.qlist(targets) do
-			if q(self,"isEnemy",pe) and q(pe,"hasSkills","sgkgodyinyang|sgkgodjiyang|sgkgodxiangsheng|sgkgodyaozhi|sgkgodzhitian|sy_mingzheng|hunzi|zhiji|wuji|zhengnan|tenyearzhengnan|sgkgodzhiti") then
+			if self:isEnemy(pe) and pe:hasSkills("sgkgodyinyang|sgkgodjiyang|sgkgodxiangsheng|sgkgodyaozhi|sgkgodzhitian|sy_mingzheng|hunzi|zhiji|wuji|zhengnan|tenyearzhengnan|sgkgodzhiti") then
 				target = pe
 				break
 			end
@@ -400,9 +391,9 @@ sgs.ai_skill_playerchosen.sgkgodjieying = function(self, targets)
 	if not target then
 		local es = {}
 		for _, pe in sgs.qlist(targets) do
-			if q(self,"isEnemy",pe) then table.insert(es, pe) end
+			if self:isEnemy(pe) then table.insert(es, pe) end
 		end
-		call(self,"sort",es, "chaofeng")
+		self:sort(es, "chaofeng")
 		target = es[1]
 	end
 	return target
@@ -413,8 +404,8 @@ end
 sgs.ai_skill_askforag.sgkgodyingshi = function(self, card_ids)
 	local result_id = -1
 	for _,id in sgs.list(card_ids)do
-		local card = q(self,"getChoiceCard",id)
-		if q(card,"isKindOf","Peach") then
+		local card = self:getChoiceCard(id)
+		if card:isKindOf("Peach") then
 			result_id = id
 			break
 		end
@@ -431,8 +422,8 @@ ai_skill_use["@@sgkgodlangxi"] = function(self,prompt,request)
     if #self.enemies == 0 then return "." end
 	local room = self.room
 	local langxi_tar = {}
-	for _, pe in sgs.qlist(q(self.room,"getOtherPlayers",self.player)) do
-		if (not q(self,"isFriend",pe)) and q(pe,"getStrategyMark","jllangxi_target") > 0 then table.insert(langxi_tar, q(pe,"objectName")) end
+	for _, pe in sgs.qlist(self.room:getOtherPlayers(self.player)) do
+		if (not self:isFriend(pe)) and pe:getStrategyMark("jllangxi_target") > 0 then table.insert(langxi_tar, pe:objectName()) end
 	end
 	if #langxi_tar > 0 then return response(self,"sgkgodlangxi","#sgkgodlangxiCard",langxi_tar,request) else return "." end
 end
@@ -440,8 +431,8 @@ end
 sgs.ai_skill_askforag.sgkgodlangxi = function(self, card_ids)
 	local result_id = -1
 	for _,id in sgs.list(card_ids)do
-		local card = q(self,"getChoiceCard",id)
-		if q(card,"isKindOf","Snatch") then
+		local card = self:getChoiceCard(id)
+		if card:isKindOf("Snatch") then
 			result_id = id
 			break
 		end
@@ -450,11 +441,11 @@ sgs.ai_skill_askforag.sgkgodlangxi = function(self, card_ids)
 end
 
 sgs.ai_skill_invoke.sgkgodlangxi = function(self, data)
-	local use = q(data,"toCardUse")
-	if q(use.card,"isKindOf","ExNihilo") or q(use.card,"isKindOf","GodSalvation") or q(use.card,"isKindOf","IronChain") or q(use.card,"isKindOf","AmazingGrace") or q(use.card,"isKindOf","Collateral") then
+	local use = data:toCardUse()
+	if use.card:isKindOf("ExNihilo") or use.card:isKindOf("GodSalvation") or use.card:isKindOf("IronChain") or use.card:isKindOf("AmazingGrace") or use.card:isKindOf("Collateral") then
 		return false
 	end
-	if q(use.card,"isKindOf","Dongzhuxianji") or q(use.card,"isKindOf","Chuqibuyi") then return false end
+	if use.card:isKindOf("Dongzhuxianji") or use.card:isKindOf("Chuqibuyi") then return false end
 	return true
 end
 
@@ -470,11 +461,11 @@ sgs.sgkgodlangxi_keep_value = {
 
 --神隐
 sgs.ai_skill_invoke.sgkgodshenyin = function(self, data)
-	if q(self.player,"getPhase") == sgs.Player_Start and q(self.player,"getStrategyMark","&sgkgodshenyin") > 0 then return true end
-	local dying = q(data,"toDying")
-	if q(dying.who,"objectName") == q(self.player,"objectName") then
-		local peaches = 1 - q(self.player,"getHp")
-		return q(self,"getCardsNum","Peach") + q(self,"getCardsNum","Analeptic") < peaches
+	if self.player:getPhase() == sgs.Player_Start and self.player:getStrategyMark("&sgkgodshenyin") > 0 then return true end
+	local dying = data:toDying()
+	if dying.who:objectName() == self.player:objectName() then
+		local peaches = 1 - self.player:getHp()
+		return self:getCardsNum("Peach") + self:getCardsNum("Analeptic") < peaches
 	end
 end
 
@@ -483,12 +474,12 @@ sgs.ai_skill_invoke["#sgkgodshenyinLose"] = true
 
 --潜渊
 sgs.ai_skill_invoke.sgkgodqianyuan = function(self, data)
-	if q(data,"toString") and q(data,"toString"):startsWith("sgkgodjiguan_") then return false end
-	if q(self.player,"getStrategyMark","sgkgodhualong") < 8 then return true end
+	if data:toString() and data:toString():startsWith("sgkgodjiguan_") then return false end
+	if self.player:getStrategyMark("sgkgodhualong") < 8 then return true end
 end
 
 sgs.ai_skill_invoke["#sgkgodqianyuanLose"] = function(self, data)
-	if q(data,"toString"):startsWith("sgkgodjiguan_") then return false end
+	if data:toString():startsWith("sgkgodjiguan_") then return false end
 	return true
 end
 
@@ -502,9 +493,9 @@ end
 sgs.ai_skill_playerchosen.sgkgodhualong = function(self, targets)
 	local enemies = {}
 	for _, pe in sgs.qlist(targets) do
-		if q(self,"isEnemy",pe) then table.insert(enemies, pe) end
+		if self:isEnemy(pe) then table.insert(enemies, pe) end
 	end
-	call(self,"sort",enemies)
+	self:sort(enemies)
 	return enemies[1]
 end
 
@@ -512,7 +503,7 @@ end
 sgs.ai_skill_invoke.sgkgodtiangong = true  --组装机关是一定要组装的，OL南华老仙是一定要跪下唱征服的
 
 sgs.ai_skill_choice["tiangong_targets"] = function(self, choices, data)
-	local targets = q(choices,"split","+")
+	local targets = choices:split("+")
 	if table.contains(targets, "niziji") then return "niziji" end
 	for _, frequent_target in ipairs(tiangong_frequent_targets) do
 		if table.contains(targets, frequent_target) then return frequent_target end
@@ -530,7 +521,7 @@ tiangong_frequent_timings = {  --天工机关常用时机
 }
 
 sgs.ai_skill_choice["tiangong_timings"] = function(self, choices, data)
-	local timings = q(choices,"split","+")
+	local timings = choices:split("+")
 	for _, frequent_timing in ipairs(tiangong_frequent_timings) do
 		if table.contains(timings, frequent_timing) then return frequent_timing end
 	end
@@ -557,7 +548,7 @@ tiangong_basic_effects = {  --天工机关基础增益（视为使用【桃】/�
 }
 
 sgs.ai_skill_choice["tiangong_effects"] = function(self, choices, data)
-	local effects = q(choices,"split","+")
+	local effects = choices:split("+")
 	local to = owner_fact(self,"tiangong_targets_AI")
 	if to == "niziji" then
 		for _, _gainskill in ipairs(tiangong_gainskill_effects) do  --能设法获得技能肯定优先选这个，一个是膨胀自身强度，二来能给“玲珑”提供更多的减伤防扣上限的护盾
@@ -573,8 +564,8 @@ sgs.ai_skill_choice["tiangong_effects"] = function(self, choices, data)
 		end
 		for _, _basiceffects in ipairs(tiangong_basic_effects) do
 			if table.contains(effects, _basiceffects) then
-				if q(_basiceffects,"startsWith","mopait") or q(_basiceffects,"startsWith","mopaif") then return _basiceffects end  --首选能即时摸牌的效果
-				if q(_basiceffects,"startsWith","suijitwo") then return _basiceffects end  --次选随机两张定向牌
+				if _basiceffects:startsWith("mopait") or _basiceffects:startsWith("mopaif") then return _basiceffects end  --首选能即时摸牌的效果
+				if _basiceffects:startsWith("suijitwo") then return _basiceffects end  --次选随机两张定向牌
 				if _basiceffects == "addonemaxhp" or _basiceffects == "recoveronehp" or _basiceffects == "recovertwohp" then return _basiceffects end  --然后考虑续航效果
 				return _basiceffects
 			end
@@ -582,9 +573,9 @@ sgs.ai_skill_choice["tiangong_effects"] = function(self, choices, data)
 		for _, _negativeeffects in ipairs(tiangong_negative_effects) do
 			if table.contains(effects, _negativeeffects) then
 				if _negativeeffects == "suijishiquyigejineng" then return _negativeeffects end  --首选随机失去一个技能
-				if q(_negativeeffects,"startsWith","lose") then return _negativeeffects end  --次选失去1点体力/2点体力/1点体力上限
-				if q(_negativeeffects,"startsWith","one") then return _negativeeffects end  --再次选受到1点普通/雷电/火焰/冰冻伤害
-				if q(_negativeeffects,"startsWith","suijiqizhi") then return _negativeeffects end  --再次一级选择随机弃置2/3/4张牌
+				if _negativeeffects:startsWith("lose") then return _negativeeffects end  --次选失去1点体力/2点体力/1点体力上限
+				if _negativeeffects:startsWith("one") then return _negativeeffects end  --再次选受到1点普通/雷电/火焰/冰冻伤害
+				if _negativeeffects:startsWith("suijiqizhi") then return _negativeeffects end  --再次一级选择随机弃置2/3/4张牌
 				return _negativeeffects
 			end
 		end
@@ -600,9 +591,9 @@ sgs.ai_skill_choice["tiangong_effects"] = function(self, choices, data)
 			for _, _negativeeffects in ipairs(tiangong_negative_effects) do
 				if table.contains(effects, _negativeeffects) then
 					if _negativeeffects == "suijishiquyigejineng" then return _negativeeffects end  --首选随机失去一个技能
-					if q(_negativeeffects,"startsWith","lose") then return _negativeeffects end  --次选失去1点体力/2点体力/1点体力上限
-					if q(_negativeeffects,"startsWith","one") then return _negativeeffects end  --再次选受到1点普通/雷电/火焰/冰冻伤害
-					if q(_negativeeffects,"startsWith","suijiqizhi") then return _negativeeffects end  --再次一级选择随机弃置2/3/4张牌
+					if _negativeeffects:startsWith("lose") then return _negativeeffects end  --次选失去1点体力/2点体力/1点体力上限
+					if _negativeeffects:startsWith("one") then return _negativeeffects end  --再次选受到1点普通/雷电/火焰/冰冻伤害
+					if _negativeeffects:startsWith("suijiqizhi") then return _negativeeffects end  --再次一级选择随机弃置2/3/4张牌
 					return _negativeeffects
 				end
 			end
@@ -624,33 +615,33 @@ end
 
 sgs.ai_skill_playerchosen.sgkgodtiangong = function(self, targets)
 	local setup = owner_fact(self,"tiangong_schemesetup_AI"):split("+")
-	local room = q(self.player,"getRoom")
+	local room = self.player:getRoom()
 	--[1]机关技能名、[2]发动时机、[3]执行目标、[4]技能效果、[5]限制次数（0代表不限制）
 	local timing, exe, effect = setup[2], setup[3], setup[4]
-	if q(self.player,"getRole") == "loyalist" then
+	if self.player:getKnownRole() == "loyalist" then
 		if table.contains(tiangong_basic_effects, effect) then
-			if youAreVictim(exe, q(self.player,"getKingdom")) then
-				return call(room,"getLord")
+			if youAreVictim(exe, self.player:getKnownKingdom()) then
+				return room:getLord()
 			end
 		end
 		if table.contains(tiangong_gainskill_effects) and exe == "niziji" then
-			return call(room,"getLord")
+			return room:getLord()
 		end
 	end
 	if #self.enemies == 0 then
 		if table.contains(tiangong_negative_effects, effect) then  --如果这个执行效果是负面的
 			if exe == "niziji" then  --如果这个机关的执行主体是“你”
 				for _, t in sgs.qlist(targets) do
-					if q(t,"objectName") ~= q(self.player,"objectName") and q(t,"hasSkills","wuhun|sgkgodsuohun|duanchang|sgkgodyinshi|sgkgodyaozhi|sgkgodshenyin") then
+					if t:objectName() ~= self.player:objectName() and t:hasSkills("wuhun|sgkgodsuohun|duanchang|sgkgodyinshi|sgkgodyaozhi|sgkgodshenyin") then
 						return t
 					end
 				end
-			elseif (exe == "suoyounvxingjuese" and q(self.player,"isFemale")) or (exe == "suoyounanxingjuese" and q(self.player,"isMale")) or youAreVictim(exe, q(self.player,"getKingdom")) then
-				return q(self.player,"getNextAlive",q(room,"getAlivePlayers"):length() - 1)
+			elseif (exe == "suoyounvxingjuese" and self.player:isFemale()) or (exe == "suoyounanxingjuese" and self.player:isMale()) or youAreVictim(exe, self.player:getKnownKingdom()) then
+				return self.player:getNextAlive(room:getAlivePlayers():length() - 1)
 			end
 			local players = sgs.QList2Table(targets)
 			table.removeOne(players, self.player)
-			call(self,"sort",players, "value")
+			self:sort(players, "value")
 			return players[1]
 		else
 			if table.contains(tiangong_gainskill_effects, effect) or table.contains(tiangong_basic_effects, effect) then
@@ -662,40 +653,40 @@ sgs.ai_skill_playerchosen.sgkgodtiangong = function(self, targets)
 			if exe == "niziji" then
 				local players = sgs.QList2Table(targets)
 				table.removeOne(players, self.player)
-				call(self,"sort",players, "value")
+				self:sort(players, "value")
 				for _, enemy in ipairs(players) do
-					if q(self,"isEnemy",enemy) then
-						if q(timing,"startsWith","playergainskill") then
-							if q(enemy,"hasSkills","sgkgodtongtian|sgkgodzhitian|sgkgodyaozhi|sgkgodluocha|sgkgodzhiti|sgkgodjieying") then
+					if self:isEnemy(enemy) then
+						if timing:startsWith("playergainskill") then
+							if enemy:hasSkills("sgkgodtongtian|sgkgodzhitian|sgkgodyaozhi|sgkgodluocha|sgkgodzhiti|sgkgodjieying") then
 								return enemy
 							end
 							return enemy
-						elseif q(timing,"startsWith","gaincard") or q(timing,"startsWith","afteruse") then
-							if q(enemy,"hasSkills","sgkgodjilue|zishu|qinzheng|yongsi|zhiheng|tenyearzhiheng|jizhi|qiangzhi|guixin|sgkgodguixin|sgkgodshajue|sgkgodluocha") then
+						elseif timing:startsWith("gaincard") or timing:startsWith("afteruse") then
+							if enemy:hasSkills("sgkgodjilue|zishu|qinzheng|yongsi|zhiheng|tenyearzhiheng|jizhi|qiangzhi|guixin|sgkgodguixin|sgkgodshajue|sgkgodluocha") then
 								return enemy
 							end
-							if q(enemy,"hasSkills","feiyang|bahu|moujizhi|paiyi|luoshen|yiji|new_jilue|jilve|tongli|shezang||ny_10th_zhangcai|ny_10th_qingbei|ny_10th_sujun|zhizhe") then
+							if enemy:hasSkills("feiyang|bahu|moujizhi|paiyi|luoshen|yiji|new_jilue|jilve|tongli|shezang||ny_10th_zhangcai|ny_10th_qingbei|ny_10th_sujun|zhizhe") then
 								return enemy
 							end
 						end
 						return enemy
 					end
 				end
-			elseif (exe == "suoyounvxingjuese" and q(self.player,"isFemale")) or (exe == "suoyounanxingjuese" and q(self.player,"isMale")) or youAreVictim(exe, q(self.player,"getKingdom")) then
+			elseif (exe == "suoyounvxingjuese" and self.player:isFemale()) or (exe == "suoyounanxingjuese" and self.player:isMale()) or youAreVictim(exe, self.player:getKnownKingdom()) then
 				local players = sgs.QList2Table(targets)
 				table.removeOne(players, self.player)
-				call(self,"sort",players, "value")
+				self:sort(players, "value")
 				for _, enemy in ipairs(players) do
-					if q(self,"isEnemy",enemy) and ((exe == "suoyounvxingjuese" and q(enemy,"isFemale")) or (exe == "suoyounanxingjuese" and q(enemy,"isMale")) or youAreVictim(exe, q(enemy,"getKingdom"))) then
+					if self:isEnemy(enemy) and ((exe == "suoyounvxingjuese" and enemy:isFemale()) or (exe == "suoyounanxingjuese" and enemy:isMale()) or youAreVictim(exe, enemy:getKnownKingdom())) then
 						return enemy
 					end
 				end
 			end
 			local players = sgs.QList2Table(targets)
 			table.removeOne(players, self.player)
-			call(self,"sort",players, "value")
+			self:sort(players, "value")
 			for _, enemy in ipairs(players) do
-				if q(self,"isEnemy",enemy) and (not youAreVictim(exe, q(self.player,"getKingdom"))) then
+				if self:isEnemy(enemy) and (not youAreVictim(exe, self.player:getKnownKingdom())) then
 					return enemy
 				end
 			end
@@ -705,9 +696,9 @@ sgs.ai_skill_playerchosen.sgkgodtiangong = function(self, targets)
 			end
 			if table.contains(tiangong_basic_effects, effect) and exe == "niziji" then
 				local players = sgs.QList2Table(targets)
-				call(self,"sort",players, "hp")
+				self:sort(players, "hp")
 				for _, friend in ipairs(players) do
-					if q(self,"isFriend",friend) then return friend end
+					if self:isFriend(friend) then return friend end
 				end
 			end
 		end
@@ -726,13 +717,13 @@ sgs.ai_skill_invoke.sgkgodlinglong = function(self, data)
 	if incoming(self,"maxhp").change < 0 then return true end
 	if incoming(self,"hp_lost").lose > 0 then return true end
 	if undefined_player(self) and #self.enemies > 0 then return true end
-	if call(data,"toDamage").damage > 0 and (not q(self,"needToLoseHp",self.player)) then return true end
+	if data:toDamage().damage > 0 and (not self:needToLoseHp(self.player)) then return true end
 end
 
 local function hasSchemeSkill(target)
 	local has = false
-	for _, skill in sgs.qlist(q(target,"getVisibleSkillList")) do
-		if string.find(q(skill,"objectName"), "sgkgodjiguan_") then
+	for _, skill in sgs.qlist(target:getVisibleSkillList()) do
+		if string.find(skill:objectName(), "sgkgodjiguan_") then
 			has = true
 			break
 		end
@@ -742,16 +733,16 @@ end
 
 local function getSchemeSkills(target)
 	local schemes = {}
-	for _, sk in sgs.qlist(q(target,"getVisibleSkillList")) do
-		if string.find(q(sk,"objectName"), "sgkgodjiguan_") then table.insert(schemes, q(sk,"objectName")) end
+	for _, sk in sgs.qlist(target:getVisibleSkillList()) do
+		if string.find(sk:objectName(), "sgkgodjiguan_") then table.insert(schemes, sk:objectName()) end
 	end
 	return schemes
 end
 
 local function getOtherSkills(player)
 	local others = {}
-	for _, skill in sgs.qlist(q(player,"getVisibleSkillList")) do
-		if not q(player,"hasInnateSkill",q(skill,"objectName")) then table.insert(others, q(skill,"objectName")) end
+	for _, skill in sgs.qlist(player:getVisibleSkillList()) do
+		if not player:hasInnateSkill(skill:objectName()) then table.insert(others, skill:objectName()) end
 	end
 	return others
 end
@@ -761,35 +752,35 @@ sgs.ai_skill_playerchosen.sgkgodlinglong = function(self, targets)
 	local mhp = owner_fact(self,"linglong_maxhpData")
 	if mhp and mhp.change < 0 then
 		local players = sgs.QList2Table(targets)
-		call(self,"sort",players, "maxhp")
+		self:sort(players, "maxhp")
 		for _, t in ipairs(players) do
-			if q(self,"isEnemy",t) then return t end
+			if self:isEnemy(t) then return t end
 		end
 	end
 	--失去体力
 	local lose = owner_fact(self,"linglong_losehpData")
-	if lose and lose.lose > 0 and (not q(self,"needToLoseHp",self.player)) then
+	if lose and lose.lose > 0 and (not self:needToLoseHp(self.player)) then
 		local players = sgs.QList2Table(targets)
-		call(self,"sort",players, "hp")
+		self:sort(players, "hp")
 		for _, t in ipairs(players) do
-			if q(self,"isEnemy",t) then return t end
+			if self:isEnemy(t) then return t end
 		end
 	end
 	--受到伤害
 	local damage = owner_fact(self,"linglong_damageData")
 	if damage then
-		if damage.damage > 0 and (not q(self,"needToLoseHp",self.player)) then
+		if damage.damage > 0 and (not self:needToLoseHp(self.player)) then
 			local players = sgs.QList2Table(targets)
-			call(self,"sort",players, "hp")
+			self:sort(players, "hp")
 			for _, t in ipairs(players) do
-				if q(self,"isEnemy",t) then return t end
+				if self:isEnemy(t) then return t end
 			end
 		end
-		if damage.damage >= q(self.player,"getHp") then
+		if damage.damage >= self.player:getHp() then
 			local players = sgs.QList2Table(targets)
-			call(self,"sort",players, "hp")
+			self:sort(players, "hp")
 			for _, t in ipairs(players) do
-				if q(self,"isEnemy",t) then return t end
+				if self:isEnemy(t) then return t end
 			end
 		end
 	end
@@ -797,9 +788,9 @@ sgs.ai_skill_playerchosen.sgkgodlinglong = function(self, targets)
 	local skill = owner_fact(self,"linglong_loseskillData")
 	if skill and skill ~= "" and skill ~= nil then
 		local players = sgs.QList2Table(targets)
-		call(self,"sort",players, "value")
+		self:sort(players, "value")
 		for _, t in ipairs(players) do
-			if q(self,"isEnemy",t) then return t end
+			if self:isEnemy(t) then return t end
 		end
 	end
 	local others = getOtherSkills(self.player)
@@ -817,9 +808,9 @@ local value_skills = {
 }
 
 sgs.ai_skill_choice.sgkgodlinglong = function(self, choices, data)
-	local to = call(data,"toPlayer")
-	local skills = q(choices,"split","+")
-	if q(self.player,"objectName") == q(to,"objectName") then
+	local to = data:toPlayer()
+	local skills = choices:split("+")
+	if self.player:objectName() == to:objectName() then
 		for _, skill in ipairs(skills) do
 			if string.find(sgs.bad_skills, skill) then return skill end
 			if not table.contains(value_skills, skill) then return skill end
@@ -831,51 +822,51 @@ sgs.ai_skill_choice.sgkgodlinglong = function(self, choices, data)
 end
 
 sgs.ai_skill_invoke.sgkgodzhanyue = function(self, data)
-	local to = call(data,"toPlayer")
-	return q(self,"isEnemy",to)
+	local to = data:toPlayer()
+	return self:isEnemy(to)
 end
 
 sgs.ai_skill_playerchosen.sgkgodzhanyue = function(self, targets)
-	local slash = q(self,"getEvaluationCard","slash")
+	local slash = self:getEvaluationCard("slash")
 	targets = sgs.QList2Table(targets)
-	call(self,"sort",targets,"defenseSlash")
+	self:sort(targets, "defenseSlash")
 	for _,target in sgs.list(targets)do
-		if q(self,"isEnemy",target)
-		and not q(self,"slashProhibit",slash,target)
-		and q(self,"isGoodTarget",target,targets,slash)
-		and q(self,"slashIsEffective",slash,target)
+		if self:isEnemy(target)
+		and not self:slashProhibit(slash, target)
+		and self:isGoodTarget(target, targets, slash)
+		and self:slashIsEffective(slash, target)
 		then return target end
 	end
 	return nil
 end
 
 sgs.ai_skill_invoke.sgkgodfengtian = function(self, data)
-	local to = call(data,"toPlayer")
-	return q(self,"isEnemy",to)
+	local to = data:toPlayer()
+	return self:isEnemy(to)
 end
 
 sgs.ai_skill_discard.sgkgodfengtian = function(self, discard_num, min_num, optional, include_equip)
 	local give = {}
-	local cards = sgs.QList2Table(q(self.player,"getCards","he"))
-	call(self,"sortByKeepValue",cards, true)
+	local cards = sgs.QList2Table(self.player:getCards("he"))
+	self:sortByKeepValue(cards, true)
 	for _, c in ipairs(cards) do
-		if q(c,"isKindOf","Slash") then
-			table.insert(give, q(c,"getEffectiveId"))
+		if c:isKindOf("Slash") then
+			table.insert(give, c:getKnownEffectiveId())
 			break
 		end
 	end
 	if #give == 0 then
-		if q(self,"needToThrowArmor") then
-			table.insert(give,call(self.player,"getArmor"):getEffectiveId())
+		if self:needToThrowArmor() then
+			table.insert(give,self.player:getArmor():getEffectiveId())
 			for _,c in ipairs(cards)do
-				if q(c,"getEffectiveId")~=call(self.player,"getArmor"):getEffectiveId() then
-				 table.insert(give,q(c,"getEffectiveId"));break end
+				if c:getKnownEffectiveId()~=self.player:getArmor():getEffectiveId() then
+				 table.insert(give,c:getKnownEffectiveId());break end
 			end
 		end
 	end
 	if #give == 0 then
 		for _,c in ipairs(cards)do
-			table.insert(give,q(c,"getEffectiveId"))
+			table.insert(give,c:getKnownEffectiveId())
 			if #give==1 then break end
 		end
 	end

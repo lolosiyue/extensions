@@ -3,13 +3,9 @@ local function known(v,key)
  if AIUnsupported.is(v)then error(v,0)end
  if v==nil then ai_unsupported("EXCard requires "..key,"excard2014")end;return v
 end
-local function q(o,m,...)
- if AIValue.isPlayer(o)and m=="getMark"then m="getStrategyMark"end
- if not o or type(o[m])~="function"then ai_unsupported("EXCard source method unavailable: "..m,"excard2014")end
- return known(o[m](o,...),m)
-end
+
 local function ex_context(self)
- local c=q(self,"getDecisionContext").excard2014
+ local c=self:getDecisionContext().excard2014
  if type(c)~="table"then ai_unsupported("EXCard scoped context missing","excard2014")end;return c
 end
 local function wwjz_use(self)
@@ -40,17 +36,17 @@ end
 
 ------------
 function SmartAIView:useCardEXCard_WWJZ(card, use)
-	if self.room:alivePlayerCount() <= 2 or #self.friends == 0 and q(self.room,"getTurnCount") > 1 then
+	if self.room:alivePlayerCount() <= 2 or #self.friends == 0 and self.room:getTurnCount() > 1 then
 		use.card = card
 		if use.to then use.to = sgs.SPlayerList() end
 		return
 	end
-	local n = q(self,"getOverflow")
+	local n = self:getOverflow()
 	if n > 0 then
 		local cards = sgs.QList2Table(self.player:getHandcards())
 		self:sortByKeepValue(cards)
 		for i = 1, n do
-			if cards[i]:getEffectiveId() == q(card,"getEffectiveId") then
+			if cards[i]:getEffectiveId() == card:getKnownEffectiveId() then
 				use.card = card
 				if use.to then use.to = sgs.SPlayerList() end
 				return
@@ -63,14 +59,14 @@ sgs.ai_skill_use.EXCard_WWJZ = function(self, prompt, method)
 	if not use or not use.from then return "." end
 	local id = self:getCardId("EXCard_WWJZ")
 	if not id then return "." end
-	local slash = q(self,"getEvaluationCard","slash")
-	if not q(self,"slashIsEffective",slash, use.from, self.player) then return "." end
-	local cardparse = (id .. "->" .. q(use.from,"objectName"))
+	local slash = self:getEvaluationCard("slash")
+	if not self:slashIsEffective(slash, use.from, self.player) then return "." end
+	local cardparse = (id .. "->" .. use.from:objectName())
 	local isFriend, needDamaged, needLeiji
 	for _, p in sgs.qlist(use.to) do
-		if q(self,"isFriend",p) then
-			needDamaged = q(self,"getDamagedEffects",p, use.from, true) or q(self,"needToLoseHp",p, use.from, true)
-			needLeiji = q(self,"needLeiji",p, use.from)
+		if self:isFriend(p) then
+			needDamaged = self:getDamagedEffects(p, use.from, true) or self:needToLoseHp(p, use.from, true)
+			needLeiji = self:needLeiji(p, use.from)
 			isFriend = true
 		end
 	end
@@ -78,28 +74,28 @@ sgs.ai_skill_use.EXCard_WWJZ = function(self, prompt, method)
 		return isFriend and cardparse or "."
 	end
 	if isFriend then
-		if not q(self,"isFriend",use.from) then return cardparse end
-		if q(self,"isFriend",use.from) then
-			if q(self,"getDamagedEffects",use.from, self.player, true) or q(self,"needToLoseHp",use.from, self.player, true, true) then
+		if not self:isFriend(use.from) then return cardparse end
+		if self:isFriend(use.from) then
+			if self:getDamagedEffects(use.from, self.player, true) or self:needToLoseHp(use.from, self.player, true, true) then
 				return cardparse end
 			if use.to:length() > 1 then return cardparse end
 			if needDamaged then return "." end
-			if not q(self,"isWeak",use.from) then return cardparse end
+			if not self:isWeak(use.from) then return cardparse end
 		end
 	end
 	return "."
 end
 sgs.ai_nullification.EXCard_WWJZ = function(self, card, from, to, positive)
 	if positive then
-		if q(self,"isFriend",to) then
-			if q(self,"needToLoseHp",to, from, true) or q(self,"getDamagedEffects",to, from, true) then return end
-			if q(self,"isFriend",from) then
-				if q(self,"needToLoseHp",from, self.player, true) or q(self,"getDamagedEffects",from, self.player, true) then return true end
-				if not q(self,"isWeak",from) and q(self,"isWeak",to) then return true end
+		if self:isFriend(to) then
+			if self:needToLoseHp(to, from, true) or self:getDamagedEffects(to, from, true) then return end
+			if self:isFriend(from) then
+				if self:needToLoseHp(from, self.player, true) or self:getDamagedEffects(from, self.player, true) then return true end
+				if not self:isWeak(from) and self:isWeak(to) then return true end
 			else return true end
 		end
 	else
-		if q(self,"isEnemy",to) and q(self,"isFriend",from) then return true end
+		if self:isEnemy(to) and self:isFriend(from) then return true end
 	end
 	return
 end
@@ -109,7 +105,7 @@ sgs.ai_card_intention.EXCard_WWJZ = function(self, card, from, tos)
 	local use = wwjz_use(self)
 	if use then
 		for _, to in sgs.qlist(use.to) do
-			if q(to,"hasSkill","leiji|nosleiji") then return end
+			if to:hasSkill("leiji|nosleiji") then return end
 		end
 	end
 	for _,to in ipairs(tos)do self:updateIntention(from,to,20)end
@@ -121,11 +117,11 @@ sgs.weapon_range.EXCard_SJLRD = 3
 sgs.ai_use_priority.EXCard_SJLRD = 5.673
 function sgs.ai_weapon_value.EXCard_SJLRD(self, enemy, player)
 	if not enemy then return 1 end
-	if enemy and q(player,"getHandcardNum") > 2 then return math.min(3.8, q(player,"getHandcardNum") - 1) end
+	if enemy and player:getHandcardNum() > 2 then return math.min(3.8, player:getHandcardNum() - 1) end
 end
 function sgs.ai_slash_weaponfilter.EXCard_SJLRD(self, to, player)
-	if q(player,"distanceTo",to) > math.max(sgs.weapon_range.EXCard_SJLRD, q(player,"getAttackRange")) then return end
-	return not q(player,"hasWeapon","TH_Weapon_SpearTheGungnir") and getCardsNum("Jink", to, self.player) == 0
+	if player:distanceTo(to) > math.max(sgs.weapon_range.EXCard_SJLRD, player:getAttackRange()) then return end
+	return not player:hasWeapon("TH_Weapon_SpearTheGungnir") and getCardsNum("Jink", to, self.player) == 0
 end
 -- QVariant:toDamage() returns SWIG userdata in the fixed engine. The donor
 -- explicitly requires a Lua table, so its discard body is unreachable.
@@ -134,14 +130,14 @@ sgs.ai_skill_discard.EXCard_SJLRD_Skill=function(self,discard_num,min_num,option
 sgs.ai_skill_playerchosen.EXCard_SJLRD_Skill = function(self, targets)
 	if self.EXCard_SJLRD_target then return self.EXCard_SJLRD_target end
 	for _, target in sgs.qlist(targets) do
-		if q(self,"isEnemy",target) and q(self,"damageIsEffective",target, nil, self.player) and not q(self,"getDamagedEffects",target, self.player)
-			and not q(self,"needToLoseHp",target, self.player) then
+		if self:isEnemy(target) and self:damageIsEffective(target, nil, self.player) and not self:getDamagedEffects(target, self.player)
+			and not self:needToLoseHp(target, self.player) then
 			return target
 		end
 	end
 	for _, target in sgs.qlist(targets) do
-		if q(self,"isFriend",target) and q(self,"damageIsEffective",target, nil, self.player)
-			and (q(self,"getDamagedEffects",target, self.player) or q(self,"needToLoseHp",target, self.player, nil, true)) then
+		if self:isFriend(target) and self:damageIsEffective(target, nil, self.player)
+			and (self:getDamagedEffects(target, self.player) or self:needToLoseHp(target, self.player, nil, true)) then
 			return target
 		end
 	end
@@ -153,24 +149,24 @@ end
 sgs.weapon_range.EXCard_WLJ = 2
 sgs.ai_use_priority.EXCard_WLJ = 5.673
 function sgs.ai_weapon_value.EXCard_WLJ(self, enemy, player)
-	if not q(self,"slashIsAvailable",player) then return 5 end
+	if not self:slashIsAvailable(player) then return 5 end
 	if #self:getFriends(player) > 0 then return 2.8 end
 end
 
 sgs.ai_fill_skill.EXCard_WLJ=function(self,inclusive,request)
 		for _, player in sgs.qlist(self.room:getAlivePlayers()) do
-			if q(self,"isFriend",player) then
-				if q(player,"getMark","@EXCard_WLJ") == 0 then return q(self,"legacySkillSeed","EXCard_WLJ","#EXCard_WLJ_SkillCARD",request) end
+			if self:isFriend(player) then
+				if player:getStrategyMark("@EXCard_WLJ") == 0 then return self:legacySkillSeed("EXCard_WLJ", "#EXCard_WLJ_SkillCARD", request) end
 			else
-				if q(player,"getMark","@EXCard_WLJ") > 0 then return q(self,"legacySkillSeed","EXCard_WLJ","#EXCard_WLJ_SkillCARD",request) end
+				if player:getStrategyMark("@EXCard_WLJ") > 0 then return self:legacySkillSeed("EXCard_WLJ", "#EXCard_WLJ_SkillCARD", request) end
 			end
 		end
 end
 sgs.ai_skill_use_func["#EXCard_WLJ_SkillCARD"] = function(card, use, self,request)
 	for _, friend in ipairs(self.friends) do
 		if not use.card then
-            local bound=q(self,"bindSkillCard","EXCard_WLJ",{},request,nil,"#EXCard_WLJ_SkillCARD")
-            use.card=q(self,"inheritLegacyCardIdentity",bound,card)
+            local bound=self:bindSkillCard("EXCard_WLJ", {}, request, nil, "#EXCard_WLJ_SkillCARD")
+            use.card=self:inheritLegacyCardIdentity(bound, card)
         end
 		if use.to then use.to:append(friend) end
 	end
@@ -182,24 +178,24 @@ sgs.ai_card_intention.EXCard_WLJ_SkillCARD = -10
 sgs.weapon_range.EXCard_FLDF = 2
 sgs.ai_use_priority.EXCard_FLDF = 5.400
 function sgs.ai_weapon_value.EXCard_FLDF(self, enemy, player)
-	if enemy and q(enemy,"getHp") <= 1 and getCardsNum("Jink", enemy, self.player) == 0 then
+	if enemy and enemy:getHp() <= 1 and getCardsNum("Jink", enemy, self.player) == 0 then
 		return 4.1
 	end
 end
 function sgs.ai_slash_weaponfilter.EXCard_FLDF(self, to, player)
-	if q(player,"distanceTo",to) > math.max(sgs.weapon_range.EXCard_FLDF, q(player,"getAttackRange")) then return end
+	if player:distanceTo(to) > math.max(sgs.weapon_range.EXCard_FLDF, player:getAttackRange()) then return end
 	return getCardsNum("Peach", to, self.player) + getCardsNum("Jink", to, self.player) < 1
 		and getCardsNum("Jink", to, self.player) == 0
 end
 sgs.ai_skill_invoke.EXCard_FLDF_revive = function(self, data)
-	if not q(self.player,"isLord") and q(self.player,"getRole") == "renegade" then return false end
+	if not self.player:isLord() and self.player:getKnownRole() == "renegade" then return false end
 	return true
 end
 sgs.ai_skill_invoke.EXCard_FLDF = function(self, data)
 	local use = data:toCardUse()
 	for _, to in sgs.qlist(use.to) do
-		local eff = q(self,"doDisCard",to)
-		return eff and q(self,"isEnemy",to)
+		local eff = self:doDisCard(to)
+		return eff and self:isEnemy(to)
 	end
 	return
 end
@@ -218,7 +214,7 @@ end
 -------------------------------
 
 sgs.ai_slash_prohibit.EXCard_TPYS = function(self, from, enemy, card)
-	if q(enemy,"hasArmorEffect","EXCard_TPYS") and q(card,"isKindOf","NatureSlash") then return true end
+	if enemy:hasArmorEffect("EXCard_TPYS") and card:isKindOf("NatureSlash") then return true end
 	return
 end
 function sgs.ai_armor_value.EXCard_TPYS(player, self)
@@ -237,12 +233,12 @@ function SmartAIView:useCardEXCard_YYDL(card, use)
 	use.card = card
 	if use.to then use.to:append(self.player) end
 	for _, player in ipairs(self.friends_noself) do
-		if use.to and not q(player,"hasSkill","manjuan") and not q(player,"isKongcheng") then
+		if use.to and not player:hasSkill("manjuan") and not player:isKongcheng() then
 			use.to:append(player)
 		end
 	end
 	for _, enemy in ipairs(self.enemies) do
-		if use.to and q(enemy,"hasSkill","manjuan") and not q(enemy,"isKongcheng") then
+		if use.to and enemy:hasSkill("manjuan") and not enemy:isKongcheng() then
 			use.to:append(enemy)
 		end
 	end
@@ -253,21 +249,21 @@ sgs.ai_use_value.EXCard_YYDL = 4
 sgs.ai_keep_value.EXCard_YYDL = 1
 sgs.ai_card_intention.EXCard_YYDL = function(self, card, from, tos)
 	for _, to in ipairs(tos) do
-		local intention = q(to,"hasSkill","manjuan") and 10 or -10
+		local intention = to:hasSkill("manjuan") and 10 or -10
 		self:updateIntention(from,to,intention)
 	end
 end
 sgs.ai_nullification.EXCard_YYDL = function(self, card, from, to, positive)
 	if positive then
-		if q(self,"isEnemy",to) then
+		if self:isEnemy(to) then
 			if hasManjuanEffect(to) then return true end
-			if q(to,"isWounded") and q(to,"hasArmorEffect","SilverLion") then return true end
-			if q(self,"getOverflow") > 0 and q(self,"getCardsNum","Nullification") > 1 then return true end
+			if to:isWounded() and to:hasArmorEffect("SilverLion") then return true end
+			if self:getOverflow() > 0 and self:getCardsNum("Nullification") > 1 then return true end
 		end
 	else
-		if q(self,"isFriend",to) then
-			if q(self,"getOverflow") > 0 and q(self,"getCardsNum","Nullification") > 1 then return true end
-			if q(to,"isWounded") and q(to,"hasArmorEffect","SilverLion") then return true end
+		if self:isFriend(to) then
+			if self:getOverflow() > 0 and self:getCardsNum("Nullification") > 1 then return true end
+			if to:isWounded() and to:hasArmorEffect("SilverLion") then return true end
 		end
 	end
 	return
@@ -303,9 +299,9 @@ sgs.ai_card_intention.EXCard_YJJG = function(self, card, from, tos)
 end
 sgs.ai_nullification.EXCard_YJJG = function(self, card, from, to, positive)
 	if positive then
-		if q(self,"isEnemy",to) and q(self,"isEnemy",from) then return true end
+		if self:isEnemy(to) and self:isEnemy(from) then return true end
 	else
-		if q(self,"isFriend",to) and q(self,"isFriend",from) then return true end
+		if self:isFriend(to) and self:isFriend(from) then return true end
 	end
 	return
 end
@@ -314,18 +310,18 @@ end
 
 function SmartAIView:useCardEXCard_ZJZB(card, use)
 	set_choice(self,nil)
-	if not q(self,"isRolePredictable") and not q(self,"isRolePredictable",true) then
+	if not self:isRolePredictable() and not self:isRolePredictable(true) then
 		for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
-			if not q(self,"isFriend",p) and not q(self,"isEnemy",p) and not q(p,"isLord") then
+			if not self:isFriend(p) and not self:isEnemy(p) and not p:isLord() then
 				use.card = card
 				if use.to then use.to:append(p) end
 				set_choice(self,"ZJZB_showrole")
 				return
 			end
 		end
-		if q(self,"getRoleCountValue","rebel") == 0 then
+		if self:getRoleCountValue("rebel") == 0 then
 			for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
-				if not q(p,"isLord") then
+				if not p:isLord() then
 					use.card = card
 					if use.to then use.to:append(p) end
 					set_choice(self,"ZJZB_showrole")
@@ -337,7 +333,7 @@ function SmartAIView:useCardEXCard_ZJZB(card, use)
 	self:sort(self.enemies, "handcard")
 	self.enemies = sgs.reverse(self.enemies)
 	for _, enemy in ipairs(self.enemies) do
-		if q(enemy,"getHandcardNum") - q(self,"getKnownNum",enemy) > 1 then
+		if enemy:getHandcardNum() - self:getKnownNum(enemy) > 1 then
 			use.card = card
 			if use.to then use.to:append(enemy) end
 			set_choice(self,"ZJZB_showhandcards")
@@ -356,9 +352,9 @@ sgs.ai_use_value.EXCard_ZJZB = 5.4
 sgs.ai_keep_value.EXCard_ZJZB = 3.33
 sgs.ai_nullification.EXCard_ZJZB = function(self, card, from, to, positive)
 	if positive then
-		if q(self,"isFriend",to) and not q(self,"isFriend",from) and q(self.player,"objectName") ~= q(from,"objectName") and (q(self,"getOverflow") > 0 and q(self,"getCardsNum","Nullification") > 1) then return true end
+		if self:isFriend(to) and not self:isFriend(from) and self.player:objectName() ~= from:objectName() and (self:getOverflow() > 0 and self:getCardsNum("Nullification") > 1) then return true end
 	else
-		if q(self,"isEnemy",to) and (q(self,"getOverflow") > 0 and q(self,"getCardsNum","Nullification") > 1) then return true end
+		if self:isEnemy(to) and (self:getOverflow() > 0 and self:getCardsNum("Nullification") > 1) then return true end
 	end
 	return
 end
@@ -369,15 +365,15 @@ function SmartAIView:useCardEXCard_DHLS(card, use)
 	if #self.friends_noself > 0 then
 		local nextp
 		for _, p in sgs.qlist(self.room:getOtherPlayers(self.player)) do
-			if q(self,"isEnemy",p) then nextp = p break end
+			if self:isEnemy(p) then nextp = p break end
 		end
 		if nextp then
 			self:sort(self.friends_noself, "chaofeng")
 			for _, friend in ipairs(self.friends_noself) do
-				if q(self,"playerGetRound",friend) > q(self,"playerGetRound",nextp) then
-					local range_fix = 1 + q(friend,"getAttackRange") - q(nextp,"getAttackRange")
+				if self:playerGetRound(friend) > self:playerGetRound(nextp) then
+					local range_fix = 1 + friend:getAttackRange() - nextp:getAttackRange()
 					for _, enemy in ipairs(self.enemies) do
-						if q(nextp,"distanceTo",enemy) <= range_fix then
+						if nextp:distanceTo(enemy) <= range_fix then
 							use.card = card
 							if use.to then use.to:append(friend) use.to:append(nextp) end
 							self:setPriorityValue("EXCard_DHLS",9,"EXCard_DHLS")
@@ -387,7 +383,7 @@ function SmartAIView:useCardEXCard_DHLS(card, use)
 				end
 			end
 			for _, friend in ipairs(self.friends_noself) do
-				if q(self,"playerGetRound",friend) > q(self,"playerGetRound",nextp) and (getCardsNum("Weapon", friend, self.player) or q(friend,"getHandcardNum") - friend:getKnownCard() >= 4) then
+				if self:playerGetRound(friend) > self:playerGetRound(nextp) and (getCardsNum("Weapon", friend, self.player) or friend:getHandcardNum() - friend:getKnownCard() >= 4) then
 					use.card = card
 					if use.to then use.to:append(friend) use.to:append(nextp) end
 					self:setPriorityValue("EXCard_DHLS",0,"EXCard_DHLS")
@@ -397,17 +393,17 @@ function SmartAIView:useCardEXCard_DHLS(card, use)
 		end
 	end
 
-	if self.room:alivePlayerCount() <= 2 or #self.friends == 0 and q(self.room,"getTurnCount") > 1 then
+	if self.room:alivePlayerCount() <= 2 or #self.friends == 0 and self.room:getTurnCount() > 1 then
 		use.card = card
 		if use.to then use.to = sgs.SPlayerList() end
 		return
 	end
-	local n = q(self,"getOverflow")
+	local n = self:getOverflow()
 	if n > 0 then
 		local cards = sgs.QList2Table(self.player:getHandcards())
 		self:sortByKeepValue(cards)
 		for i = 1, n do
-			if cards[i]:getEffectiveId() == q(card,"getEffectiveId") then
+			if cards[i]:getEffectiveId() == card:getKnownEffectiveId() then
 				use.card = card
 				if use.to then use.to = sgs.SPlayerList() end
 				return
@@ -427,19 +423,19 @@ sgs.ai_nullification.EXCard_DHLS = function(self, card, from, to, positive)
 	if #targets ~= 2 then return false end
 	local t1, t2 = targets[1], targets[2]
 	if positive then
-		if q(self,"isFriend",t1) and q(self,"isFriend",t2) then
+		if self:isFriend(t1) and self:isFriend(t2) then
 			return false
-		elseif q(self,"isFriend",t1) and q(self,"playerGetRound",t1) < q(self,"playerGetRound",t2) then
+		elseif self:isFriend(t1) and self:playerGetRound(t1) < self:playerGetRound(t2) then
 			return true
-		elseif q(self,"isFriend",t2) and q(self,"playerGetRound",t2) < q(self,"playerGetRound",t1) then
+		elseif self:isFriend(t2) and self:playerGetRound(t2) < self:playerGetRound(t1) then
 			return true
 		end
 	else
-		if q(self,"isFriend",t1) and q(self,"isFriend",t2) then
+		if self:isFriend(t1) and self:isFriend(t2) then
 			return false
-		elseif q(self,"isFriend",t1) and q(self,"playerGetRound",t1) > q(self,"playerGetRound",t2) then
+		elseif self:isFriend(t1) and self:playerGetRound(t1) > self:playerGetRound(t2) then
 			return true
-		elseif q(self,"isFriend",t2) and q(self,"playerGetRound",t2) > q(self,"playerGetRound",t1) then
+		elseif self:isFriend(t2) and self:playerGetRound(t2) > self:playerGetRound(t1) then
 			return true
 		end
 	end
@@ -451,10 +447,10 @@ end
 function SmartAIView:useCardEXCard_TJBZ(card, use)
 	local good, bad = 0, 0
 	for _, player in sgs.qlist(self.room:getAlivePlayers()) do
-		if not hasManjuanEffect(player) and q(player,"getHandcardNum") < 6 then
-			local value = 6 - q(player,"getHandcardNum")
-			value = value + (self.room:alivePlayerCount() - q(self,"playerGetRound",player)) / 4
-			if q(self,"isFriend",player) then good = good + value
+		if not hasManjuanEffect(player) and player:getHandcardNum() < 6 then
+			local value = 6 - player:getHandcardNum()
+			value = value + (self.room:alivePlayerCount() - self:playerGetRound(player)) / 4
+			if self:isFriend(player) then good = good + value
 			else bad = bad + value
 			end
 		end
@@ -469,9 +465,9 @@ sgs.ai_use_priority.EXCard_TJBZ = 0
 sgs.ai_keep_value.EXCard_TJBZ = 3.7
 sgs.ai_nullification.EXCard_TJBZ = function(self, card, from, to, positive)
 	if positive then
-		if q(self,"isEnemy",to) and 6 - q(to,"getHandcardNum") >= 3 then return true end
+		if self:isEnemy(to) and 6 - to:getHandcardNum() >= 3 then return true end
 	else
-		if q(self,"isFriend",to) and 6 - q(to,"getHandcardNum") >= 3 then return true end
+		if self:isFriend(to) and 6 - to:getHandcardNum() >= 3 then return true end
 	end
 	return
 end

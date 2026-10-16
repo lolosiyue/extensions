@@ -3,13 +3,9 @@ local function known(v,key)
  if AIUnsupported.is(v)then error(v,0)end
  if v==nil then ai_unsupported("Joyequip requires "..key,"joyequip")end;return v
 end
-local function q(o,m,...)
- if AIValue.isPlayer(o)and m=="getMark"then m="getStrategyMark"end
- if not o or type(o[m])~="function"then ai_unsupported("Joyequip getter missing: "..m,"joyequip")end
- return known(o[m](o,...),m)
-end
+
 local function yx_damage(self)
- local ctx=q(self,"getDecisionContext").joyequip
+ local ctx=self:getDecisionContext().joyequip
  local row=type(ctx)=="table"and ctx.yx_sword_damage
  if type(row)~="table"then ai_unsupported("YxSwordData exact scoped damage missing","yx_sword")end
  local d={};for k,v in pairs(row)do d[k]=v end
@@ -22,14 +18,14 @@ end
 local function role_of(self,p)
  local role=p.getRole and p:getRole()
  if role~=nil then return role end
- return self:useKnowledgeEstimate({status="estimate",value=q(self,"getRoleEstimate",p),
+ return self:useKnowledgeEstimate({status="estimate",value=self:getRoleEstimate(p),
   basis="joyequip.getLord.foreign_role_viewer_inference",player=p:objectName()},"yx_sword.getLord")
 end
 local function legacy_lord(self,p)
  if known(self.world.enable_hegemony,"EnableHegemony")then return end
  local lord=self.room:getLord();if lord then return lord end
  if role_of(self,p)~="renegade"then
-  for _,other in ipairs(q(self.room,"getOtherPlayers",p))do
+  for _,other in ipairs(self.room:getOtherPlayers(p))do
    if role_of(self,other)==role_of(self,p)then return other end
   end
  end
@@ -41,149 +37,149 @@ end
 ]]--
 local function useShit_LoseHp(self,card,use)
     local lose = 1
-    local hp = q(self.player,"getHp")
+    local hp = self.player:getHp()
     local amSafe = ( lose<hp )
     if not amSafe then
-        amSafe = ( lose<hp+q(self,"getCardsNum","Peach") )
+        amSafe = ( lose<hp+self:getCardsNum("Peach") )
     end
     if amSafe then
-        if q(self,"hasZhaxiangEffect",self.player) then
+        if self:hasZhaxiangEffect(self.player) then
             use.card = card
             return 
-        elseif q(self.player,"getHandcardNum")==1 and q(self.player,"getLostHp")==0 and q(self,"needKongcheng") then
+        elseif self.player:getHandcardNum()==1 and self.player:getLostHp()==0 and self:needKongcheng() then
             use.card = card
             return 
-        elseif getBestHp(self.player)>q(self.player,"getHp") and q(self,"getOverflow")<=0 then
+        elseif getBestHp(self.player)>self.player:getHp() and self:getOverflow()<=0 then
             use.card = card
             return 
         end
     else
-        if q(self.player,"getRole")=="renegade" or q(self.player,"getRole")=="lord" then
+        if self.player:getKnownRole()=="renegade" or self.player:getKnownRole()=="lord" then
             return
-        elseif q(self,"getAllPeachNum")>0 or q(self,"getOverflow")<=0 then
+        elseif self:getAllPeachNum()>0 or self:getOverflow()<=0 then
             return 
-        elseif q(self.player,"hasSkill","wuhun") and q(self,"needDeath",self.player) then
+        elseif self.player:hasSkill("wuhun") and self:needDeath(self.player) then
             use.card = card
             return 
         end
     end
 end
 local function useShit_FireDamage(self,card,use)
-    if q(self.player,"isChained") then
-        if #(q(self,"getChainedFriends"))>#(q(self,"getChainedEnemies")) then
+    if self.player:isChained() then
+        if #(self:getChainedFriends())>#(self:getChainedEnemies()) then
             return 
         end
     end
     local damage = 1
-    if q(self.player,"hasSkill","chouhai") and q(self.player,"isKongcheng") then
+    if self.player:hasSkill("chouhai") and self.player:isKongcheng() then
         damage = damage+1
     end
-    if q(self.player,"hasArmorEffect","gale_shell") then
+    if self.player:hasArmorEffect("gale_shell") then
         damage = damage+1
-    elseif q(self.player,"hasArmorEffect","Vine") then
+    elseif self.player:hasArmorEffect("Vine") then
         damage = damage+1
-    elseif q(self.player,"hasArmorEffect","bossmanjia") then
+    elseif self.player:hasArmorEffect("bossmanjia") then
         damage = damage+1
     end
     local JinXuanDi = self.room:findPlayerBySkillName("wuling")
-    if JinXuanDi and q(JinXuanDi,"getMark","@wind")>0 then
+    if JinXuanDi and JinXuanDi:getStrategyMark("@wind")>0 then
         damage = damage+1
     end
-    if damage>1 and q(self.player,"hasArmorEffect","SilverLion") then
+    if damage>1 and self.player:hasArmorEffect("SilverLion") then
         damage = 1
     end
-    local hp = q(self.player,"getHp")
+    local hp = self.player:getHp()
     local amSafe = ( damage<hp )
     local peachNum = nil
     if not amSafe then
-        peachNum = q(self,"getCardsNum","Peach")
+        peachNum = self:getCardsNum("Peach")
         amSafe = ( damage<hp+peachNum )
     end
     if amSafe then
         if self:hasSkills("kuanggu") then
             use.card = card
             return 
-        elseif q(self.player,"hasSkill","kuangbao") and hp>3 then
+        elseif self.player:hasSkill("kuangbao") and hp>3 then
             use.card = card
             return 
         end
-        peachNum = peachNum or q(self,"getCardsNum","Peach")
+        peachNum = peachNum or self:getCardsNum("Peach")
         if self:hasSkills("guixin|yiji|nosyiji|chengxiang|noschengxiang") and peachNum>0 then
             use.card = card
             return 
-        elseif q(self.player,"hasSkill","jieming") and peachNum>0 and q(self,"getJiemingChaofeng",self.player)>0 then
+        elseif self.player:hasSkill("jieming") and peachNum>0 and self:getJiemingChaofeng(self.player)>0 then
             use.card = card
             return 
-        elseif q(self.player,"getHandcardNum")==1 and q(self.player,"getLostHp")==0 and q(self,"needKongcheng") then
+        elseif self.player:getHandcardNum()==1 and self.player:getLostHp()==0 and self:needKongcheng() then
             use.card = card
             return 
-        elseif getBestHp(self.player)>q(self.player,"getHp") and q(self,"getOverflow")<=0 then
+        elseif getBestHp(self.player)>self.player:getHp() and self:getOverflow()<=0 then
             use.card = card
             return 
         end
     else
-        if q(self.player,"getRole")=="renegade" or q(self.player,"getRole")=="lord" then
+        if self.player:getKnownRole()=="renegade" or self.player:getKnownRole()=="lord" then
             return
-        elseif q(self,"getAllPeachNum")>0 or q(self,"getOverflow")<=0 then
+        elseif self:getAllPeachNum()>0 or self:getOverflow()<=0 then
             return 
-        elseif q(self.player,"hasSkill","wuhun") and q(self,"needDeath",self.player) then
+        elseif self.player:hasSkill("wuhun") and self:needDeath(self.player) then
             use.card = card
             return 
         end
     end
 end
 local function useShit_ThunderDamage(self,card,use)
-    if q(self.player,"isChained") then
-        if #(q(self,"getChainedFriends"))>#(q(self,"getChainedEnemies")) then
+    if self.player:isChained() then
+        if #(self:getChainedFriends())>#(self:getChainedEnemies()) then
             return 
         end
     end
     local damage = 1
-    if q(self.player,"hasSkill","chouhai") and q(self.player,"isKongcheng") then
+    if self.player:hasSkill("chouhai") and self.player:isKongcheng() then
         damage = damage+1
     end
     local JinXuanDi = self.room:findPlayerBySkillName("wuling")
-    if JinXuanDi and q(JinXuanDi,"getMark","@thunder")>0 then
+    if JinXuanDi and JinXuanDi:getStrategyMark("@thunder")>0 then
         damage = damage+1
     end
-    if damage>1 and q(self.player,"hasArmorEffect","SilverLion") then
+    if damage>1 and self.player:hasArmorEffect("SilverLion") then
         damage = 1
     end
-    local hp = q(self.player,"getHp")
+    local hp = self.player:getHp()
     local amSafe = ( damage<hp )
     local peachNum = nil
     if not amSafe then
-        peachNum = q(self,"getCardsNum","Peach")
+        peachNum = self:getCardsNum("Peach")
         amSafe = ( damage<hp+peachNum )
     end
     if amSafe then
         if self:hasSkills("kuanggu") then
             use.card = card
             return 
-        elseif q(self.player,"hasSkill","kuangbao") and hp>3 then
+        elseif self.player:hasSkill("kuangbao") and hp>3 then
             use.card = card
             return 
         end
-        peachNum = peachNum or q(self,"getCardsNum","Peach")
+        peachNum = peachNum or self:getCardsNum("Peach")
         if self:hasSkills("guixin|yiji|nosyiji|chengxiang|noschengxiang") and peachNum>0 then
             use.card = card
             return 
-        elseif q(self.player,"hasSkill","jieming") and peachNum>0 and q(self,"getJiemingChaofeng",self.player)>0 then
+        elseif self.player:hasSkill("jieming") and peachNum>0 and self:getJiemingChaofeng(self.player)>0 then
             use.card = card
             return 
-        elseif q(self.player,"getHandcardNum")==1 and q(self.player,"getLostHp")==0 and q(self,"needKongcheng") then
+        elseif self.player:getHandcardNum()==1 and self.player:getLostHp()==0 and self:needKongcheng() then
             use.card = card
             return 
-        elseif getBestHp(self.player)>q(self.player,"getHp") and q(self,"getOverflow")<=0 then
+        elseif getBestHp(self.player)>self.player:getHp() and self:getOverflow()<=0 then
             use.card = card
             return 
         end
     else
-        if q(self.player,"getRole")=="renegade" or q(self.player,"getRole")=="lord" then
+        if self.player:getKnownRole()=="renegade" or self.player:getKnownRole()=="lord" then
             return
-        elseif q(self,"getAllPeachNum")>0 or q(self,"getOverflow")<=0 then
+        elseif self:getAllPeachNum()>0 or self:getOverflow()<=0 then
             return 
-        elseif q(self.player,"hasSkill","wuhun") and q(self,"needDeath",self.player) then
+        elseif self.player:hasSkill("wuhun") and self:needDeath(self.player) then
             use.card = card
             return 
         end
@@ -191,64 +187,64 @@ local function useShit_ThunderDamage(self,card,use)
 end
 local function useShit_NormalDamage(self,card,use)
     local damage = 1
-    if q(self.player,"hasSkill","chouhai") and q(self.player,"isKongcheng") then
+    if self.player:hasSkill("chouhai") and self.player:isKongcheng() then
         damage = damage+1
     end
-    if damage>1 and q(self.player,"hasArmorEffect","SilverLion") then
+    if damage>1 and self.player:hasArmorEffect("SilverLion") then
         damage = 1
     end
-    local hp = q(self.player,"getHp")
+    local hp = self.player:getHp()
     local amSafe = ( damage<hp )
     local peachNum = nil
     if not amSafe then
-        peachNum = q(self,"getCardsNum","Peach")
+        peachNum = self:getCardsNum("Peach")
         amSafe = ( damage<hp+peachNum )
     end
     if amSafe then
         if self:hasSkills("kuanggu") then
             use.card = card
             return 
-        elseif q(self.player,"hasSkill","kuangbao") and hp>3 then
+        elseif self.player:hasSkill("kuangbao") and hp>3 then
             use.card = card
             return 
         end
-        peachNum = peachNum or q(self,"getCardsNum","Peach")
+        peachNum = peachNum or self:getCardsNum("Peach")
         if self:hasSkills("guixin|yiji|nosyiji|chengxiang|noschengxiang") and peachNum>0 then
             use.card = card
             return 
-        elseif q(self.player,"hasSkill","jieming") and peachNum>0 and q(self,"getJiemingChaofeng",self.player)>0 then
+        elseif self.player:hasSkill("jieming") and peachNum>0 and self:getJiemingChaofeng(self.player)>0 then
             use.card = card
             return 
-        elseif q(self.player,"getHandcardNum")==1 and q(self.player,"getLostHp")==0 and q(self,"needKongcheng") then
+        elseif self.player:getHandcardNum()==1 and self.player:getLostHp()==0 and self:needKongcheng() then
             use.card = card
             return 
-        elseif getBestHp(self.player)>q(self.player,"getHp") and q(self,"getOverflow")<=0 then
+        elseif getBestHp(self.player)>self.player:getHp() and self:getOverflow()<=0 then
             use.card = card
             return 
         end
     else
-        if q(self.player,"getRole")=="renegade" or q(self.player,"getRole")=="lord" then
+        if self.player:getKnownRole()=="renegade" or self.player:getKnownRole()=="lord" then
             return
-        elseif q(self,"getAllPeachNum")>0 or q(self,"getOverflow")<=0 then
+        elseif self:getAllPeachNum()>0 or self:getOverflow()<=0 then
             return 
-        elseif q(self.player,"hasSkill","wuhun") and q(self,"needDeath",self.player) then
+        elseif self.player:hasSkill("wuhun") and self:needDeath(self.player) then
             use.card = card
             return 
         end
     end
 end
 function SmartAIView:useCardShit(card,use)
-    if q(self.player,"hasSkill","jueqing") then
+    if self.player:hasSkill("jueqing") then
         useShit_LoseHp(self,card,use)
         return 
     end
-    local suit = q(card,"getSuit")
+    local suit = card:getSuit()
     if suit==sgs.Card_Spade then
         useShit_LoseHp(self,card,use)
         return 
     end
     local JinXuanDi = self.room:findPlayerBySkillName("wuling")
-    if JinXuanDi and q(JinXuanDi,"getMark","@fire")>0 then
+    if JinXuanDi and JinXuanDi:getStrategyMark("@fire")>0 then
         useShit_FireDamage(self,card,use)
     elseif suit==sgs.Card_Heart then
         useShit_FireDamage(self,card,use)
@@ -267,7 +263,7 @@ sgs.ai_keep_value["Shit"] = 10
 ]]--
 sgs.ai_skill_invoke.grab_peach = function(self,data)
     local from = data:toCardUse().from
-    return q(self,"isEnemy",from)
+    return self:isEnemy(from)
 end
 --[[
     卡牌：杨修剑
@@ -278,30 +274,30 @@ sgs.weapon_range.YxSword = 3
 sgs.ai_skill_playerchosen["yx_sword"] = function(self,targets)
     local damage = yx_damage(self)
     local victim = damage.to
-    local willKillVictim = ( q(victim,"getHp")+q(self,"getAllPeachNum",victim)<=damage.damage )
+    local willKillVictim = ( victim:getHp()+self:getAllPeachNum(victim)<=damage.damage )
     local friends,enemies = {},{}
     for _,p in sgs.list(targets)do
-        if q(self,"isFriend",p) then
+        if self:isFriend(p) then
             table.insert(friends,p)
         else
             table.insert(enemies,p)
         end
     end
     if willKillVictim then
-        if q(victim,"hasSkill","yuwen") then
+        if victim:hasSkill("yuwen") then
             return nil
-        elseif q(victim,"hasSkill","duanchang") then
+        elseif victim:hasSkill("duanchang") then
             local bad_skills = "benghuai|wumou|shiyong|yaowu|zaoyao|chanyuan|chouhai"
             local function hasOtherSkills(player)
-                local skills = q(player,"getVisibleSkillList")
+                local skills = player:getVisibleSkillList()
                 for _,skill in sgs.list(skills)do
-                    if q(skill,"inherits","SPConvertSkill") then
-                    elseif q(skill,"isAttachedLordSkill") then
-                    elseif q(skill,"isLordSkill") then
-                        if q(player,"hasLordSkill",q(skill,"objectName")) then
+                    if skill:inherits("SPConvertSkill") then
+                    elseif skill:isAttachedLordSkill() then
+                    elseif skill:isLordSkill() then
+                        if player:hasLordSkill(skill:objectName()) then
                             return true
                         end
-                    elseif not string.find(bad_skills,q(skill,"objectName")) then
+                    elseif not string.find(bad_skills,skill:objectName()) then
                         return true
                     end
                 end
@@ -326,13 +322,13 @@ sgs.ai_skill_playerchosen["yx_sword"] = function(self,targets)
                 end
             end
         end
-        local role = q(self,"getRoleEstimate",victim)
+        local role = self:getRoleEstimate(victim)
         if role=="rebel" then
             if #friends>0 then
                 local drawTargets = self:findPlayerToDraw(true,3,true)
                 for _,target in sgs.list(drawTargets)do
                     for _,friend in sgs.list(friends)do
-                        if q(target,"objectName")==q(friend,"objectName") then
+                        if target:objectName()==friend:objectName() then
                             return friend
                         end
                     end
@@ -340,36 +336,36 @@ sgs.ai_skill_playerchosen["yx_sword"] = function(self,targets)
             end
         elseif role=="loyalist" then
             local lord = legacy_lord(self,victim)
-            if lord and q(lord,"objectName")~=q(victim,"objectName") and #enemies>0 then
+            if lord and lord:objectName()~=victim:objectName() and #enemies>0 then
                 for _,enemy in sgs.list(enemies)do
-                    if q(lord,"objectName")==q(enemy,"objectName") then
+                    if lord:objectName()==enemy:objectName() then
                         return enemy
                     end
                 end
             end
         end
     end
-    if q(self,"cantbeHurt",victim,self.player,damage.damage) then
+    if self:cantbeHurt(victim, self.player, damage.damage) then
         if #friends>0 then
             for _,friend in sgs.list(friends)do
-                if not q(self,"cantbeHurt",victim,friend,damage.damage) then
+                if not self:cantbeHurt(victim, friend, damage.damage) then
                     return friend
                 end
             end
         end
         if #enemies>0 then
             for _,enemy in sgs.list(enemies)do
-                if q(self,"cantbeHurt",victim,enemy,damage.damage) then
+                if self:cantbeHurt(victim, enemy, damage.damage) then
                     return enemy
                 end
             end
         end
     end
     if not willKillVictim then
-        if q(self,"needToLoseHp",victim,self.player,damage.card) then
+        if self:needToLoseHp(victim, self.player, damage.card) then
             if #friends>0 then
                 for _,friend in sgs.list(friends)do
-                    if not q(self,"needToLoseHp",victim,friend,damage.card)
+                    if not self:needToLoseHp(victim, friend, damage.card)
                     then return friend end
                 end
             end
@@ -384,7 +380,7 @@ sgs.ai_skill_playerchosen["yx_sword"] = function(self,targets)
         local weapon,priorTarget = self:getCardNeedPlayer(cards,false)
         if weapon and priorTarget then
             for _,friend in sgs.list(friends)do
-                if q(priorTarget,"objectName")==q(friend,"objectName") then
+                if priorTarget:objectName()==friend:objectName() then
                     return friend
                 end
             end
@@ -410,26 +406,26 @@ function SmartAIView:useCardGaleShell(card,use)
     self:sort(self.enemies,"threat")
     local targets = {}
     for _,enemy in sgs.list(self.enemies)do
-        if q(self.player,"distanceTo",enemy)==1 then
+        if self.player:distanceTo(enemy)==1 then
             table.insert(targets,enemy)
         end
     end
     if #targets>0 then
         local function getArmorUseValue(target)
             local value = 0
-            if q(target,"getMark","&kuangfeng")>0 then
+            if target:getStrategyMark("&kuangfeng")>0 then
                 value = value+2
             end
             local armor = target:getArmor()
             if armor then
                 value = value+10
-                if q(target,"hasArmorEffect","SilverLion") and q(target,"isWounded") then
+                if target:hasArmorEffect("SilverLion") and target:isWounded() then
                     value = value-4
                 end
                 if self:hasSkills(sgs.lose_equip_skill,target) then
                     value = value-1.5
                 end
-                if q(target,"hasSkill","tuntian") then
+                if target:hasSkill("tuntian") then
                     value = value-1
                 end
             else
@@ -454,16 +450,16 @@ function SmartAIView:useCardGaleShell(card,use)
         end
         local values = {}
         for _,enemy in sgs.list(targets)do
-            values[q(enemy,"objectName")] = getArmorUseValue(enemy)
+            values[enemy:objectName()] = getArmorUseValue(enemy)
         end
         local compare_func = function(a,b)
-            local valueA = values[q(a,"objectName")] or 0
-            local valueB = values[q(b,"objectName")] or 0
+            local valueA = values[a:objectName()] or 0
+            local valueB = values[b:objectName()] or 0
             return valueA>valueB
         end
         table.sort(targets,compare_func)
         local target = targets[1]
-        local value = values[q(target,"objectName")] or 0
+        local value = values[target:objectName()] or 0
         if value>0 then
             use.card = card
             use.to:append(target)
@@ -475,9 +471,9 @@ end
     效果：将【地震】放置于你的判定区里，回合判定阶段进行判定：若判定结果为♣2~9之间，与当前角色距离为1以内的角色(无视+1马)弃置装备区里的所有牌，将【地震】置入弃牌堆。若判定结果不为♣2~9之间，将【地震】移动到当前角色下家的判定区里
 ]]--
 function SmartAIView:useCardEarthquake(card,use)
-    if q(self.player,"containsTrick","earthquake") then return
-    elseif q(self.player,"isProhibited",self.player,card) then return
-    elseif q(self.player,"containsTrick","YanxiaoCard") and q(self,"getOverflow")>0
+    if self.player:containsTrick("earthquake") then return
+    elseif self.player:isProhibited(self.player, card) then return
+    elseif self.player:containsTrick("YanxiaoCard") and self:getOverflow()>0
     then use.card = card return end
     local value = 0
     local finalRetrial,wizard = self:getFinalRetrial()
@@ -493,14 +489,14 @@ function SmartAIView:useCardEarthquake(card,use)
         local weapon = player:getWeapon()
         if weapon then
             v = v+5
-            if danID and q(weapon,"getEffectiveId")==danID then
+            if danID and weapon:getKnownEffectiveId()==danID then
                 value = value+2
             end
         end
         local armor = player:getArmor()
         if armor then
             v = v+8
-            if danID and q(armor,"getEffectiveId")==danID then
+            if danID and armor:getKnownEffectiveId()==danID then
                 value = value+2
             end
         end
@@ -526,19 +522,19 @@ function SmartAIView:useCardEarthquake(card,use)
             if self:hasSkills("guanxing|super_guanxing",enemy) then
                 value = value+2
             end
-            if q(enemy,"hasSkill","xinzhan") then
+            if enemy:hasSkill("xinzhan") then
                 value = value-1
             end
-            local equips = q(enemy,"getEquips")
+            local equips = enemy:getEquips()
             if not equips:isEmpty() then
                 value = value+getEquipsValue(enemy)
                 if self:hasSkills(sgs.lose_equip_skill,enemy) then
                     value = value-equips:length()*2
                 end
-                if enemy:getArmor() and q(self,"needToThrowArmor",enemy) then
+                if enemy:getArmor() and self:needToThrowArmor(enemy) then
                     value = value-1.5
                 end
-                if q(enemy,"hasSkill","tuntian") then
+                if enemy:hasSkill("tuntian") then
                     value = value-1
                 end
             end
@@ -552,19 +548,19 @@ function SmartAIView:useCardEarthquake(card,use)
             if self:hasSkills("guanxing|super_guanxing",friend) then
                 value = value-2
             end
-            if q(friend,"hasSkill","xinzhan") then
+            if friend:hasSkill("xinzhan") then
                 value = value+1
             end
-            local equips = q(friend,"getEquips")
+            local equips = friend:getEquips()
             if not equips:isEmpty() then
                 value = value-getEquipsValue(friend)
                 if self:hasSkills(sgs.lose_equip_skill,friend) then
                     value = value+equips:length()*2
                 end
-                if friend:getArmor() and q(self,"needToThrowArmor",friend) then
+                if friend:getArmor() and self:needToThrowArmor(friend) then
                     value = value+1.5
                 end
-                if q(friend,"hasSkill","tuntian") then
+                if friend:hasSkill("tuntian") then
                     value = value+1
                 end
             end
@@ -572,7 +568,7 @@ function SmartAIView:useCardEarthquake(card,use)
     end
     local HanHaoShiHuan = self.room:findPlayerBySkillName("yonglve")
     if HanHaoShiHuan then
-        if q(self,"isFriend",HanHaoShiHuan) then
+        if self:isFriend(HanHaoShiHuan) then
             value = value+10
         else
             value = value-10
@@ -587,10 +583,10 @@ end
     效果：将【台风】放置于你的判定区里，回合判定阶段进行判定：若判定结果为♦2~9之间，与当前角色距离为1的角色弃置6张手牌，将【台风】置入弃牌堆。若判定结果不为♦2~9之间，将【台风】移动到当前角色下家的判定区里
 ]]--
 function SmartAIView:useCardTyphoon(card,use)
-    if q(self.player,"containsTrick","typhoon") then return 
-    elseif q(self.player,"isProhibited",self.player,card) 
+    if self.player:containsTrick("typhoon") then return
+    elseif self.player:isProhibited(self.player, card)
     then return
-    elseif q(self.player,"containsTrick","YanxiaoCard") and q(self,"getOverflow")>0
+    elseif self.player:containsTrick("YanxiaoCard") and self:getOverflow()>0
     then use.card = card return end
     local finalRetrial,wizard = self:getFinalRetrial()
     known(finalRetrial,"final retrial result")
@@ -600,17 +596,17 @@ function SmartAIView:useCardTyphoon(card,use)
         use.card = card
         return 
     end
-    local alives = q(self.room,"getAlivePlayers")
+    local alives = self.room:getAlivePlayers()
     local value = 0
     for _,p in sgs.list(alives)do
         local v = 0
-        local num = q(p,"getHandcardNum")
+        local num = p:getHandcardNum()
         local discard = math.min(6,num)
         if discard>0 then
             local keep = num-discard
             v = v+discard*1.5
             if keep==0 then
-                if q(self,"needKongcheng",p) then
+                if self:needKongcheng(p) then
                     v = v-4
                 end
                 v = v+10
@@ -624,21 +620,21 @@ function SmartAIView:useCardTyphoon(card,use)
         if self:hasSkills("guanxing|super_guanxing",p) then
             v = v+2
         end
-        if q(self,"isFriend",p) then
+        if self:isFriend(p) then
             v =-v
         end
         value = value+v
     end
     local HanHaoShiHuan = self.room:findPlayerBySkillName("yonglve")
     if HanHaoShiHuan then
-        if q(self,"isFriend",HanHaoShiHuan) then
+        if self:isFriend(HanHaoShiHuan) then
             value = value+10
         else
             value = value-10
         end
     end
     if value>0 then
-        if q(self,"getOverflow")>0 or value>6 then
+        if self:getOverflow()>0 or value>6 then
             use.card = card
         end
     end
@@ -648,8 +644,8 @@ sgs.ai_need_retrial_func["typhoon"] = function(self,judge,isGood,who,isFriend,lo
     local others = self.room:getOtherPlayers(who)
     local friends,enemies = {},{}
     for _,p in sgs.list(others)do
-        if q(who,"distanceTo",p)==1 then
-            if q(self,"isFriend",p) then
+        if who:distanceTo(p)==1 then
+            if self:isFriend(p) then
                 table.insert(friends,p)
             else
                 table.insert(enemies,p)
@@ -658,12 +654,12 @@ sgs.ai_need_retrial_func["typhoon"] = function(self,judge,isGood,who,isFriend,lo
     end
     local friend_discard_num,enemy_discard_num = 0,0
     for _,friend in sgs.list(friends)do
-        local num = q(friend,"getHandcardNum")
+        local num = friend:getHandcardNum()
         num = math.min(6,num)
         friend_discard_num = friend_discard_num+num
     end
     for _,enemy in sgs.list(enemies)do
-        local num = q(enemy,"getHandcardNum")
+        local num = enemy:getHandcardNum()
         num = math.min(6,num)
         enemy_discard_num = enemy_discard_num+num
     end
@@ -691,9 +687,9 @@ end
     效果：将【火山】放置于你的判定区里，回合判定阶段进行判定：若判定结果为♥2~9之间，当前角色受到2点火焰伤害，与当前角色距离为1的角色(无视+1马)受到1点火焰伤害，【火山】生效后即置入弃牌堆。若判定结果不为♥2~9之间，将【火山】移动到当前角色下家的判定区里
 ]]--
 function SmartAIView:useCardVolcano(card,use)
-    if q(self.player,"containsTrick","volcano")  then return 
-    elseif q(self.player,"isProhibited",self.player,card)  then return
-    elseif q(self.player,"containsTrick","YanxiaoCard") and q(self,"getOverflow")>0
+    if self.player:containsTrick("volcano")  then return
+    elseif self.player:isProhibited(self.player, card)  then return
+    elseif self.player:containsTrick("YanxiaoCard") and self:getOverflow()>0
     then use.card = card return end
     local finalRetrial,wizard = self:getFinalRetrial()
     known(finalRetrial,"final retrial result")
@@ -703,32 +699,32 @@ function SmartAIView:useCardVolcano(card,use)
         use.card = card
         return 
     end
-    local careLord = q(self.player,"getRole")=="renegade" and q(self.room,"alivePlayerCount")>2
-    local alives = q(self.room,"getAlivePlayers")
+    local careLord = self.player:getKnownRole()=="renegade" and self.room:alivePlayerCount()>2
+    local alives = self.room:getAlivePlayers()
     local value = 0
     for _,p in sgs.list(alives)do
         local v = 0
         local damage = 0
         local deathFlag = false
         local can_transfer = false
-        local isFriend = q(self,"isFriend",p)
-        if q(self,"damageIsEffective",p,sgs.DamageStruct_Fire) then
+        local isFriend = self:isFriend(p)
+        if self:damageIsEffective(p, sgs.DamageStruct_Fire) then
             damage = 2
-            if q(p,"hasArmorEffect","Vine") or q(p,"hasArmorEffect","gale_shell") then
+            if p:hasArmorEffect("Vine") or p:hasArmorEffect("gale_shell") then
                 damage = damage+1
-            elseif q(p,"hasSkill","bossmanjia") then
+            elseif p:hasSkill("bossmanjia") then
                 damage = damage+1
             end
-            if q(p,"hasArmorEffect","SilverLion") then
+            if p:hasArmorEffect("SilverLion") then
                 damage = 1
             end
-            if q(p,"hasSkill","tianxiang") then
+            if p:hasSkill("tianxiang") then
                 can_transfer = true
-            elseif q(p,"hasLordSkill","shichou") then
+            elseif p:hasLordSkill("shichou") then
                 local others = self.room:getOtherPlayers(p)
                 for _,victim in sgs.list(others)do
-                    if q(victim,"getMark","@hate_to")>0 then
-                        if q(victim,"getMark","hate_"..q(p,"objectName"))>0 then
+                    if victim:getStrategyMark("@hate_to")>0 then
+                        if victim:getStrategyMark("hate_"..p:objectName())>0 then
                             can_transfer = true
                             break
                         end
@@ -737,9 +733,9 @@ function SmartAIView:useCardVolcano(card,use)
             end
         end
         if damage>0 and not can_transfer then
-            local hp = q(p,"getHp")
+            local hp = p:getHp()
             if hp<=damage then
-                if hp+q(self,"getAllPeachNum",p)<=damage then
+                if hp+self:getAllPeachNum(p)<=damage then
                     deathFlag = true
                 end
             end
@@ -749,7 +745,7 @@ function SmartAIView:useCardVolcano(card,use)
                 if self:hasSkills("jianxiong|yiji|nosyiji|fangzhu|jieming|guixin|chengxiang|noschengxiang",p) then
                     v = v-damage
                 end
-                if q(self,"isWeak",p) then
+                if self:isWeak(p) then
                     v = v+1
                 end
             end
@@ -770,21 +766,21 @@ function SmartAIView:useCardVolcano(card,use)
                 v = v-5
             end
         end
-        if deathFlag and careLord and q(p,"isLord") then
+        if deathFlag and careLord and p:isLord() then
             v = v-100
         end
         value = value+v
     end
     local HanHaoShiHuan = self.room:findPlayerBySkillName("yonglve")
     if HanHaoShiHuan then
-        if q(self,"isFriend",HanHaoShiHuan) then
+        if self:isFriend(HanHaoShiHuan) then
             value = value+10
         else
             value = value-10
         end
     end
     if value>0 then
-        if q(self,"getOverflow")>0 or value>6 then
+        if self:getOverflow()>0 or value>6 then
             use.card = card
         end
     end
@@ -794,9 +790,9 @@ end
     效果：将【洪水】放置于你的判定区里，回合判定阶段进行判定：若判定结果为 A,K，从当前角色的牌随机取出和场上存活人数相等的数量置于桌前，从下家开始，每人选一张收为手牌，将【洪水】置入弃牌堆。若判定结果不为AK，将【洪水】移到当前角色下家的判定区里
 ]]--
 function SmartAIView:useCardDeluge(card,use)
-    if q(self.player,"containsTrick","deluge") then return 
-    elseif q(self.player,"isProhibited",self.player,card) then return
-    elseif q(self.player,"containsTrick","YanxiaoCard") and q(self,"getOverflow")>0
+    if self.player:containsTrick("deluge") then return
+    elseif self.player:isProhibited(self.player, card) then return
+    elseif self.player:containsTrick("YanxiaoCard") and self:getOverflow()>0
     then use.card = card return end
     local finalRetrial,wizard = self:getFinalRetrial()
     known(finalRetrial,"final retrial result")
@@ -806,13 +802,13 @@ function SmartAIView:useCardDeluge(card,use)
         use.card = card
         return 
     end
-    local alives = q(self.room,"getAlivePlayers")
+    local alives = self.room:getAlivePlayers()
     local count = alives:length()
     local value = 0
     local function getValue(target)
         local v = 0
-        local isFriend = q(self,"isFriend",target)
-        local card_count = q(target,"getCardCount",true)
+        local isFriend = self:isFriend(target)
+        local card_count = target:getCardCount(true)
         local throw_count = math.min(card_count,count)
         if throw_count>0 then
             if isFriend then
@@ -820,29 +816,29 @@ function SmartAIView:useCardDeluge(card,use)
             else
                 v = v+throw_count
             end
-            local the_lucky = q(target,"getNextAlive")
+            local the_lucky = target:getNextAlive()
             for i=1,throw_count,1 do
-                if q(the_lucky,"hasSkill","manjuan") then
-                elseif q(self,"isFriend",the_lucky) then
+                if the_lucky:hasSkill("manjuan") then
+                elseif self:isFriend(the_lucky) then
                     v = v+1
                 else
                     v = v-1
                 end
-                the_lucky = q(the_lucky,"getNextAlive")
+                the_lucky = the_lucky:getNextAlive()
             end
         end
         if isFriend then
-            if q(target,"hasSkill","tiandu") then
+            if target:hasSkill("tiandu") then
                 v = v+1
             end
-            if q(target,"hasSkill","luoying") then
+            if target:hasSkill("luoying") then
                 v = v+0.5
             end
         else
-            if q(target,"hasSkill","tiandu") then
+            if target:hasSkill("tiandu") then
                 v = v-1
             end
-            if q(target,"hasSkill","luoying") then
+            if target:hasSkill("luoying") then
                 v = v-0.5
             end
         end
@@ -850,28 +846,28 @@ function SmartAIView:useCardDeluge(card,use)
     end
     local values,targets = {},{}
     for _,p in sgs.list(alives)do
-        values[q(p,"objectName")] = getValue(p) or 0
+        values[p:objectName()] = getValue(p) or 0
         table.insert(targets,p)
     end
     local compare_func = function(a,b)
-        local valueA = values[q(a,"objectName")] or 0
-        local valueB = values[q(b,"objectName")] or 0
+        local valueA = values[a:objectName()] or 0
+        local valueB = values[b:objectName()] or 0
         return valueA>valueB
     end
     table.sort(targets,compare_func)
     local target = targets[1]
-    local target_value = values[q(target,"objectName")] or 0
+    local target_value = values[target:objectName()] or 0
     value = value+target_value
     local HanHaoShiHuan = self.room:findPlayerBySkillName("yonglve")
     if HanHaoShiHuan then
-        if q(self,"isFriend",HanHaoShiHuan) then
+        if self:isFriend(HanHaoShiHuan) then
             value = value+10
         else
             value = value-10
         end
     end
     if value>0 then
-        if q(self,"getOverflow")>0 or value>6 then
+        if self:getOverflow()>0 or value>6 then
             use.card = card
         end
     end
@@ -881,9 +877,9 @@ end
     效果：将【泥石流】放置于你的判定区里，回合判定阶段进行判定：若判定结果为黑桃或梅花A,K,4,7，从当前角色开始，每名角色依次按顺序弃置武器、防具、+1马、-1马，无装备者受到1点无属性伤害，当总共被弃置的装备达到4件或你上家结算完成时，【泥石流】停止结算并置入弃牌堆。若判定牌不为黑色AK47，将【泥石流】移动到下家的判定区里
 ]]--
 function SmartAIView:useCardMudslide(card,use)
-    if q(self.player,"containsTrick","mudslide") then return 
-    elseif q(self.player,"isProhibited",self.player,card) then return
-    elseif q(self.player,"containsTrick","YanxiaoCard") and q(self,"getOverflow")>0
+    if self.player:containsTrick("mudslide") then return
+    elseif self.player:isProhibited(self.player, card) then return
+    elseif self.player:containsTrick("YanxiaoCard") and self:getOverflow()>0
     then use.card = card return end
     local finalRetrial,wizard = self:getFinalRetrial()
     known(finalRetrial,"final retrial result")
@@ -892,30 +888,30 @@ function SmartAIView:useCardMudslide(card,use)
         use.card = card
         return 
     end
-    local alives = q(self.room,"getAlivePlayers")
+    local alives = self.room:getAlivePlayers()
     local value = 0
     local values = {}
     for _,p in sgs.list(alives)do
-        values[q(p,"objectName")] = {}
+        values[p:objectName()] = {}
     end
-    local starter = q(self.player,"objectName")
+    local starter = self.player:objectName()
     local function getMudSlideValue(target,task)
         if task>0 then
             local v = 0
-            local isFriend = q(self,"isFriend",target)
-            local e_num = q(target,"getEquips"):length()
+            local isFriend = self:isFriend(target)
+            local e_num = target:getEquips():length()
             if e_num==0 then --make damage
                 if isFriend then
                     v = v-4
                     if self:hasSkills("jianxiong|yiji|nosyiji|fangzhu|jieming|guixin|chengxiang|noschengxiang",target) then
-                        if not q(self,"isWeak",target) then
+                        if not self:isWeak(target) then
                             v = v+3
                         end
                     end
                 else
                     v = v+4
                     if self:hasSkills("jianxiong|yiji|nosyiji|fangzhu|jieming|guixin|chengxiang|noschengxiang",target) then
-                        if not q(self,"isWeak",target) then
+                        if not self:isWeak(target) then
                             v = v-3
                         end
                     end
@@ -925,37 +921,37 @@ function SmartAIView:useCardMudslide(card,use)
                     if self:hasSkills(sgs.lose_equip_skill,target) then
                         v = v+e_num*2
                     end
-                    if target:getArmor() and q(self,"needToThrowArmor",target) then
+                    if target:getArmor() and self:needToThrowArmor(target) then
                         v = v+1.5
                     end
                 else
                     if self:hasSkills(sgs.lose_equip_skill,target) then
                         v = v-e_num*2
                     end
-                    if target:getArmor() and q(self,"needToThrowArmor",target) then
+                    if target:getArmor() and self:needToThrowArmor(target) then
                         v = v-1.5
                     end
                 end
             end
             if isFriend then
-                if q(target,"hasSkill","tiandu") then
+                if target:hasSkill("tiandu") then
                     v = v+1
                 end
-                if q(target,"hasSkill","luoying") then
+                if target:hasSkill("luoying") then
                     v = v+0.5
                 end
             else
-                if q(target,"hasSkill","tiandu") then
+                if target:hasSkill("tiandu") then
                     v = v-1
                 end
-                if q(target,"hasSkill","luoying") then
+                if target:hasSkill("luoying") then
                     v = v-0.5
                 end
             end
-            table.insert(values[q(target,"objectName")],v)
+            table.insert(values[target:objectName()],v)
             task = task-e_num
-            local next_target = q(target,"getNextAlive")
-            if q(next_target,"objectName")~=starter and task>0 then
+            local next_target = target:getNextAlive()
+            if next_target:objectName()~=starter and task>0 then
                 getMudSlideValue(next_target,task)
             end
         end
@@ -965,7 +961,7 @@ function SmartAIView:useCardMudslide(card,use)
     end
     for _,p in sgs.list(alives)do
         local pv,pc = 0,0
-        for _,v in sgs.list(values[q(p,"objectName")])do
+        for _,v in sgs.list(values[p:objectName()])do
             pv = pv+v
             pc = pc+1
         end
@@ -975,14 +971,14 @@ function SmartAIView:useCardMudslide(card,use)
     end
     local HanHaoShiHuan = self.room:findPlayerBySkillName("yonglve")
     if HanHaoShiHuan then
-        if q(self,"isFriend",HanHaoShiHuan) then
+        if self:isFriend(HanHaoShiHuan) then
             value = value+5
         else
             value = value-5
         end
     end
     if value>0 then
-        if q(self,"getOverflow")>0 or value>4 then
+        if self:getOverflow()>0 or value>4 then
             use.card = card
         end
     end

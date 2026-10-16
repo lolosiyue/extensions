@@ -4,13 +4,10 @@ local function known(v,key)
     if v==nil then ai_unsupported("Jie input unavailable",key) end
     return v
 end
-local function q(o,m,...)
-    if type(o)~="table" or type(o[m])~="function" then ai_unsupported("Jie method unavailable",m) end
-    return known(o[m](o,...),m)
-end
+
 local function color(card)
-    if q(card,"isRed") then return "red" end
-    if q(card,"isBlack") then return "black" end
+    if card:isRed() then return "red" end
+    if card:isBlack() then return "black" end
     return "colorless" -- Both native color predicates were explicitly false.
 end
 local function request_view(self,r)
@@ -23,7 +20,7 @@ local function find(self,name)
     return known(self.room:findPlayerByObjectName(name,true),"saved target "..tostring(name))
 end
 local function scoped(self,key)
-    local context=q(self,"getDecisionContext")
+    local context=self:getDecisionContext()
     if type(context.jie_package)~="table" then ai_unsupported("Jie scoped context unavailable",key) end
     return known(context.jie_package[key],key)
 end
@@ -41,7 +38,7 @@ local function tagged_use(self,key)
 end
 local function source_damage(card)
     if card==nil then error("fixed Jie missing tag dereferences nil CardUse card",0)end
-    return q(card,"isDamageCard")
+    return card:isDamageCard()
 end
 local function patterns(self)return known(AICardCatalog.patternNames(),"pattern_names")end
 local function pattern_card(self,name)
@@ -50,12 +47,12 @@ local function pattern_card(self,name)
     return self:cloneEvaluationCard(name)
 end
 local function preview(self,name)
-    return q(self,"evaluateOwnerViewAsCard",{source_key="jinbingxin",skill="jinbingxin",name=name,
+    return self:evaluateOwnerViewAsCard({source_key="jinbingxin",skill="jinbingxin",name=name,
         suit=sgs.Card_NoSuit,number=0,subcards={}})
 end
 local function save_plan(self,plan)
     self.jinbingxinUse=plan
-    local names={};for _,p in ipairs(known(plan.to,"jinbingxin targets"))do names[#names+1]=q(p,"objectName")end
+    local names={};for _,p in ipairs(known(plan.to,"jinbingxin targets"))do names[#names+1]=p:objectName()end
     local estimates={}
     for _,entry in ipairs(self.request and self.request.scratch and self.request.scratch.knowledge_estimates or {})do
         local row={};for k,v in pairs(entry)do if type(v)~="table"then row[k]=v end end;estimates[#estimates+1]=row
@@ -81,10 +78,10 @@ sgs.ai_skill_invoke.jinbolan = function(self,data)
 end
 
 sgs.ai_fill_skill.jinbolan_skill = function(self,inclusive,request)
-	if q(self,"isWeak") or q(self.player,"getHp")<2 then return end
+	if self:isWeak() or self.player:getHp()<2 then return end
     for _,ep in sgs.list(self.room:getOtherPlayers(self.player))do
-		if q(ep,"hasSkill","jinbolan") and q(ep,"getStrategyMark","jinbolan-PlayClear")<1
-		and (not q(self,"isEnemy",ep) or math.random()<0.3) then
+		if ep:hasSkill("jinbolan") and ep:getStrategyMark("jinbolan-PlayClear")<1
+		and (not self:isEnemy(ep) or math.random()<0.3) then
 			self.jinbolan_to=ep
             remember(self,"jinbolan_to",ep:objectName())
 			return self:evaluateTurnSkillCard("jinbolan_skill","JinBolanSkillCard",{},request_view(self,request))
@@ -107,67 +104,67 @@ sgs.ai_skill_playerchosen.jincanmou = function(self,players)
 	if use.to:contains(use.from)
 	and not source_damage(use.card) then
 		for _,target in sgs.list(destlist)do
-			if q(self,"isFriend",target)
+			if self:isFriend(target)
 			and self:canCanmou(target,use)
 			then return target end
 		end
 		for _,target in sgs.list(destlist)do
-			if not q(self,"isEnemy",target)
-			and q(self,"isWeak",target)
+			if not self:isEnemy(target)
+			and self:isWeak(target)
 			and self:canCanmou(target,use)
 			then return target end
 		end
 	elseif source_damage(use.card) then
 		for _,target in sgs.list(destlist)do
-			if q(self,"isEnemy",target)
+			if self:isEnemy(target)
 			and self:canCanmou(target,use)
 			then return target end
 		end
 		for _,target in sgs.list(destlist)do
-			if not q(self,"isFriend",target)
-			and not q(self,"isWeak",target)
+			if not self:isFriend(target)
+			and not self:isWeak(target)
 			and self:canCanmou(target,use)
 			then return target end
 		end
-	elseif not q(self,"isFriend",use.from) then
+	elseif not self:isFriend(use.from) then
 		for _,to in sgs.list(use.to)do
-			if q(self,"isFriend",to) then
+			if self:isFriend(to) then
 				for _,target in sgs.list(destlist)do
-					if q(self,"isEnemy",target)
+					if self:isEnemy(target)
 				and self:canCanmou(target,use)
 					then return target end
 				end
 				for _,target in sgs.list(destlist)do
-					if not q(self,"isFriend",target)
-					and not q(self,"isWeak",target)
+					if not self:isFriend(target)
+					and not self:isWeak(target)
 					and self:canCanmou(target,use)
 					then return target end
 				end
 			end
 		end
-	elseif q(self,"isFriend",use.from) then
+	elseif self:isFriend(use.from) then
 		for _,to in sgs.list(use.to)do
-			if q(self,"isFriend",to) then
+			if self:isFriend(to) then
 				for _,target in sgs.list(destlist)do
-					if q(self,"isFriend",target)
+					if self:isFriend(target)
 					and self:canCanmou(target,use)
 					then return target end
 				end
 				for _,target in sgs.list(destlist)do
-					if not q(self,"isEnemy",target)
-					and q(self,"isWeak",target)
+					if not self:isEnemy(target)
+					and self:isWeak(target)
 					and self:canCanmou(target,use)
 					then return target end
 				end
-			elseif q(self,"isEnemy",to) then
+			elseif self:isEnemy(to) then
 				for _,target in sgs.list(destlist)do
-					if q(self,"isEnemy",target)
+					if self:isEnemy(target)
 					and self:canCanmou(target,use)
 					then return target end
 				end
 				for _,target in sgs.list(destlist)do
-					if not q(self,"isFriend",target)
-					and not q(self,"isWeak",target)
+					if not self:isFriend(target)
+					and not self:isWeak(target)
 					and self:canCanmou(target,use)
 					then return target end
 				end
@@ -184,7 +181,7 @@ sgs.ai_skill_invoke.jincongjian = function(self,data)
 	then return self:canCanmou(self.player,use)
 	elseif source_damage(use.card)
 	then
-		self.jcj_can = not q(self,"isWeak"); remember(self,"jcj_can",self.jcj_can)
+		self.jcj_can = not self:isWeak(); remember(self,"jcj_can",self.jcj_can)
 		return self.jcj_can
 		and self:canCanmou(self.player,use)
 		and self:canDamageHp(use.from,use.card)
@@ -202,10 +199,10 @@ end
 
 sgs.ai_skill_invoke.jinxiongshu = function(self,data)
 	local target = self:getDecisionData():toPlayer()
-	if target and not q(target,"isKongcheng")
+	if target and not target:isKongcheng()
 	then
-		return q(self,"isEnemy",target)
-		or (not q(self,"isFriend",target)) and #self.enemies<2
+		return self:isEnemy(target)
+		or (not self:isFriend(target)) and #self.enemies<2
 	end
 end
 
@@ -213,7 +210,7 @@ sgs.ai_skill_discard.jinxiongshu = function(self,x,n)
 	local cards = self.player:getCards("he")
 	cards = self:sortByKeepValue(cards,nil,"j")
    	local target = self.room:getCurrent()
-	if n>#cards/2 or q(self,"isFriend",target)
+	if n>#cards/2 or self:isFriend(target)
 	then return {} end
 	local to_cards = {}
    	for _,h in sgs.list(cards)do
@@ -228,18 +225,18 @@ sgs.ai_skill_invoke.jinxiongshu_guess = function(self,data)
 	local row=scoped(self,"JinXiongshuShowCard")
     if row==false then error("fixed jinxiongshu_guess missing show-card tag yields card -1",0)end
     local c=known(CardView.new(row),"JinXiongshuShowCard")
-	if q(c,"isAvailable",target)
+	if c:isAvailable(target)
 	then
 		for _,to in sgs.list(self.room:getAllPlayers())do
 			if CanToCard(c,target,to)
 			then
-				if (q(c,"isDamageCard") or q(c,"isKindOf","SingleTargetTrick"))
-				and q(self,"isEnemy",target,to)
+				if (c:isDamageCard() or c:isKindOf("SingleTargetTrick"))
+				and self:isEnemy(target, to)
 				then return true end
 			end
 		end
-		if q(c,"targetFixed")
-		and not q(c,"isDamageCard")
+		if c:targetFixed()
+		and not c:isDamageCard()
 		then return true end
 	end
 end
@@ -247,7 +244,7 @@ end
 sgs.ai_fill_skill.jinbingxin = function(self,inclusive,request)
 	local cards = self.player:getCards("h")
 	cards = self:sortByKeepValue(cards)
-	local can = #cards==q(self.player,"getHp")
+	local can = #cards==self.player:getHp()
   	for _,c in sgs.list(cards)do
 		if color(c)==color(cards[1])
 		then continue end
@@ -257,12 +254,12 @@ sgs.ai_fill_skill.jinbingxin = function(self,inclusive,request)
 	then
 		for c,pn in sgs.list(patterns(self))do
 			c = pattern_card(self,pn)
-			if c and q(c,"getTypeId")==1
-			and q(self.player,"getStrategyMark","jinbingxin_guhuo_remove_"..pn.."-Clear")<1
+			if c and c:getTypeId()==1
+			and self.player:getStrategyMark("jinbingxin_guhuo_remove_"..pn.."-Clear")<1
 			then
 				c = preview(self,pn)
 				local d = self:aiUseCard(c)
-				if q(c,"isAvailable",self.player)
+				if c:isAvailable(self.player)
 				and d.card and d.to
 				then
 					save_plan(self,d)
@@ -298,7 +295,7 @@ sgs.ai_skill_cardask["@@jinbingxin"] = function(self,data,pattern)
 		for _,to in sgs.list(saved.to)do
 			table.insert(tos,to:objectName())
 		end
-		return q(saved.card,"getLegacyStringKey").."->"..table.concat(tos,"+")
+		return saved.card:getLegacyStringKey().."->"..table.concat(tos,"+")
 	end
     return "."
 end

@@ -3,14 +3,7 @@ local function known(value,key)
     if value==nil then ai_unsupported("guo strategy fact is unknown",key)end
     return value
 end
-local function q(object,key,...)
-    if not object or type(object[key])~="function"then ai_unsupported("guo helper unavailable",key)end
-    if key=="getMark"and AIValue.isPlayer(object)then key="getStrategyMark"end
-    if key=="hasFlag"and AIValue.isPlayer(object)then key="getStrategyFlag"end
-    local value=object[key](object,...)
-    if AIUnsupported and AIUnsupported.is(value)then error(value,0)end
-    return known(value,key)
-end
+
 -- The viewer's own player tag; an absent tag is no player.
 local function fact_player(self,key)
     local name=self.player:getTag(key)
@@ -75,7 +68,7 @@ end
 sgs.ai_can_damagehp.jintuishi = function(self,from,card,to)
 	local gc = self.room:getCurrent()
 	for _,p in sgs.list(gc:getAliveSiblings())do
-		if q(gc,"inMyAttackRange",p)
+		if gc:inMyAttackRange(p)
 		and yinni(self,to)
 		then
 			if self:isEnemy(p) and not self:isFriend(gc)
@@ -94,7 +87,7 @@ sgs.ai_skill_use_func.JinChoufaCard = function(card,use,self)
 	self.friends_noself = self:sort(self.friends_noself,"handcard")
 	self.friends_noself = sgs.reverse(self.friends_noself)
 	for _,p in sgs.list(self.friends_noself)do
-		if q(p,"isKongcheng") then continue end
+		if p:isKongcheng() then continue end
 		if self:hasCrossbowEffect(p) then
 			use.card = self:bindSkillCard("jinchoufa",{},nil,nil,"JinChoufaCard")
 			use.to:append(p)
@@ -104,7 +97,7 @@ sgs.ai_skill_use_func.JinChoufaCard = function(card,use,self)
 	self.enemies = self:sort(self.enemies,"handcard")
 	self.enemies = sgs.reverse(self.enemies)
 	for _,p in sgs.list(self.enemies)do
-		if q(p,"isKongcheng") or self:hasCrossbowEffect(p) then continue end
+		if p:isKongcheng() or self:hasCrossbowEffect(p) then continue end
 		use.card = self:bindSkillCard("jinchoufa",{},nil,nil,"JinChoufaCard")
 		use.to:append(p)
 		return
@@ -168,14 +161,14 @@ sgs.ai_skill_use_func.JinSanchenCard = function(card,use,self)
 	self.friends = self:sort(self.friends,"handcard")
 	self.friends = sgs.reverse(self.friends)
 	for _,p in sgs.list(self.friends)do
-		if not self:doDisCard(p,"h") and q(p,"getMark","jinsanchen_target-Clear")==0 then
+		if not self:doDisCard(p,"h") and p:getStrategyMark("jinsanchen_target-Clear")==0 then
 			use.card = self:bindSkillCard("jinsanchen",{},nil,nil,"JinSanchenCard")
 			use.to:append(p)
 			return
 		end
 	end
 	for _,p in sgs.list(self.friends)do
-		if q(p,"getMark","jinsanchen_target-Clear")>0 then continue end
+		if p:getStrategyMark("jinsanchen_target-Clear")>0 then continue end
 		use.card = self:bindSkillCard("jinsanchen",{},nil,nil,"JinSanchenCard")
 		use.to:append(p)
 		return
@@ -195,10 +188,10 @@ sgs.ai_fill_skill.jinpozhu = function(self,inclusive,request)
 	cards = self:sortByUseValue(cards,true,"l")
 	if #cards<1 then return end
 	if self:getUseValue(cards[1])>sgs.ai_use_value.Chuqibuyi then return end
-	local suit = q(cards[1],"getSuitString")
-	local number = q(cards[1],"getNumberString")
-	local card_id = q(cards[1],"getEffectiveId")
-    return self:evaluateTurnConversion("jinpozhu","Chuqibuyi",{name="chuqibuyi",skill="jinpozhu",suit=q(cards[1],"getSuit"),number=q(cards[1],"getNumber"),subcards={card_id}},request)
+	local suit = cards[1]:getSuitString()
+	local number = cards[1]:getNumberString()
+	local card_id = cards[1]:getKnownEffectiveId()
+    return self:evaluateTurnConversion("jinpozhu","Chuqibuyi",{name="chuqibuyi",skill="jinpozhu",suit=cards[1]:getSuit(),number=cards[1]:getNumber(),subcards={card_id}},request)
 end
 
 sgs.ai_skill_cardask["@jinshenpin-card"] = function(self,data)
@@ -207,7 +200,7 @@ sgs.ai_skill_cardask["@jinshenpin-card"] = function(self,data)
 	if #all_cards<1 then return "." end
 	local cards = {}
 	for _,c in sgs.list(all_cards)do
-		if q(c,"getColor")~=q(judge.card,"getColor")
+		if c:getColor()~=judge.card:getColor()
 		then table.insert(cards,c) end
 	end
 	if #cards<1 then return "." end
@@ -225,7 +218,7 @@ sgs.ai_skill_choice.jinzhongyun = function(self,choices)
 	if table.contains(items,"discard")
 	then
 		for _,ep in sgs.list(self.enemies)do
-			if self:isWeak(ep) or q(ep,"hasEquip")
+			if self:isWeak(ep) or ep:hasEquip()
 			then return "discard" end
 		end
 	end
@@ -238,7 +231,7 @@ sgs.ai_skill_playerchosen.jinzhongyun = function(self,players)
 	destlist = self:sort(destlist,"card")
     for _,target in sgs.list(destlist)do
 		if self:isEnemy(target)
-		and (self:isWeak(target) or q(target,"hasEquip"))
+		and (self:isWeak(target) or target:hasEquip())
 		then return target end
 	end
     for _,target in sgs.list(destlist)do
@@ -253,12 +246,12 @@ sgs.ai_skill_playerchosen.jingaoling = function(self,players)
 	destlist = self:sort(destlist,"hp")
     for _,target in sgs.list(destlist)do
 		if self:isFriend(target)
-		and q(target,"isWounded")
+		and target:isWounded()
 		then return target end
 	end
     for _,target in sgs.list(destlist)do
 		if not self:isEnemy(target)
-		and q(target,"isWounded")
+		and target:isWounded()
 		then return target end
 	end
 --	return destlist[1]
@@ -266,7 +259,7 @@ end
 
 sgs.ai_can_damagehp.jingaoling = function(self,from,card,to)
     for _,p in sgs.list(self.friends)do
-		if q(p,"isWounded") and not self:isFriend(self.room:getCurrent())
+		if p:isWounded() and not self:isFriend(self.room:getCurrent())
 		or self:isWeak(p) then return yinni(self,to) end
 	end
 end
@@ -276,25 +269,25 @@ sgs.ai_skill_playerchosen.jinqimei = function(self,players)
 	destlist = self:sort(destlist,"hp",true)
     for _,target in sgs.list(destlist)do
 		if self:isFriend(target)
-		and q(target,"isWounded")
+		and target:isWounded()
 		then return target end
 	end
     for _,target in sgs.list(destlist)do
 		if not self:isEnemy(target)
-		and q(target,"isWounded")
+		and target:isWounded()
 		then return target end
 	end
 --	return destlist[1]
 end
 
 sgs.ai_skill_invoke.jinzhuiji = function(self,data)
-    return self:isWeak() or q(self.player,"getHandcardNum")<5 and not self:isWeak()
+    return self:isWeak() or self.player:getHandcardNum()<5 and not self:isWeak()
 end
 
 sgs.ai_skill_choice.jinzhuiji = function(self,choices)
 	local items = choices:split("+")
 	if table.contains(items,"draw")
-	and q(self.player,"getHandcardNum")<4 and not self:isWeak()
+	and self.player:getHandcardNum()<4 and not self:isWeak()
 	then return "draw" end
 	if table.contains(items,"recover")
 	and self:isWeak()

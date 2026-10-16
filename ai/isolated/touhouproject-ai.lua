@@ -12,17 +12,11 @@ end
 -- R49: complete fixed Guanglong fill/use/invoke/intention family.
 do
  sgs.ai_skillInvoke_intention=sgs.ai_skillInvoke_intention or{}
- local function q(o,k,...)
-  if o==nil then error('attempt to index a nil value',0)end
-  local f=o[k];if type(f)~='function'then ai_unsupported('Guanglong source helper unavailable',k)end
-  local v=f(o,...);if AIUnsupported.is(v)then error(v,0)end
-  if v==nil and not SmartAIView.isKnownNilStrategyResult(o,k,f)then ai_unsupported('Guanglong source input unknown',k)end
-  return v
- end
+
  local function list(v,k)if not AIValue.isList(v)then ai_unsupported('Guanglong source player list unknown',k)end;return v end
 sgs.ai_fill_skill.TH_guanglongzhitanxi = function(self, inclusive, request)
-	if q(self.player,"getMark","@TH_yuyi") >= q(self.player,"aliveCount") - 1 and q(self.player,"getMark","@TH_yuyi") >= 3 then
-		local TH_skillcard = q(self,"evaluateTurnSkillCard","TH_guanglongzhitanxi","#TH_guanglongzhitanxiCARD",{},request)
+	if self.player:getMark("@TH_yuyi") >= self.player:aliveCount() - 1 and self.player:getMark("@TH_yuyi") >= 3 then
+		local TH_skillcard = self:evaluateTurnSkillCard("TH_guanglongzhitanxi", "#TH_guanglongzhitanxiCARD", {}, request)
 		assert(TH_skillcard)
 		return TH_skillcard
 	end
@@ -31,16 +25,16 @@ sgs.ai_skill_use_func["#TH_guanglongzhitanxiCARD"] = function(card, use, self)
 
 	local targets = AIList.new({})
 	for _, enemy in ipairs(list(self.enemies,"enemies")) do
-		if q(self,"damageIsEffective",enemy, sgs.DamageStruct_Thunder, self.player) and not q(self,"needToLoseHp",enemy, self.player)
-			and (not q(enemy,"isChained") or q(self,"isGoodChainTarget",enemy,sgs.DamageStruct_Thunder, self.player)) then
+		if self:damageIsEffective(enemy, sgs.DamageStruct_Thunder, self.player) and not self:needToLoseHp(enemy, self.player)
+			and (not enemy:isChained() or self:isGoodChainTarget(enemy, sgs.DamageStruct_Thunder, self.player)) then
 			targets:append(enemy)
 			if targets:length() >= 5 then break end
 		end
 	end
 	if targets:length() < 5 then
 		for _, friend in ipairs(list(self.friends_noself,"friends_noself")) do
-			if q(self,"damageIsEffective",friend, sgs.DamageStruct_Thunder, self.player) and q(self,"needToLoseHp",friend, self.player)
-				and (not q(friend,"isChained") or q(self,"isGoodChainTarget",friend, sgs.DamageStruct_Thunder, self.player)) then
+			if self:damageIsEffective(friend, sgs.DamageStruct_Thunder, self.player) and self:needToLoseHp(friend, self.player)
+				and (not friend:isChained() or self:isGoodChainTarget(friend, sgs.DamageStruct_Thunder, self.player)) then
 				targets:append(friend)
 				if targets:length() >= 5 then break end
 			end
@@ -57,14 +51,14 @@ sgs.ai_use_value["TH_guanglongzhitanxiCARD"] = 5
 sgs.ai_use_priority["TH_guanglongzhitanxiCARD"]  = 3.5
 
 sgs.ai_skill_invoke.TH_guanglongzhitanxi = function(self, data)
-	local da = q(data,"toDamage")
-	return q(self,"isEnemy",da.to) and q(self,"TheWuhun",da.to) >= 0
+	local da = data:toDamage()
+	return self:isEnemy(da.to) and self:TheWuhun(da.to) >= 0
 end
 
 sgs.ai_skillInvoke_intention.TH_guanglongzhitanxi = function(from, to, yesorno, self)
 	if yesorno ~= "yes" then return end
-	for _, p in sgs.qlist(q(self.room,"getOtherPlayers",from)) do
-		if q(p,"hasFlag","TH_guanglongzhitanxi_target") then sgs.updateIntention(from, p, 10) end
+	for _, p in sgs.qlist(self.room:getOtherPlayers(from)) do
+		if p:hasFlag("TH_guanglongzhitanxi_target") then sgs.updateIntention(from, p, 10) end
 	end
 end
 
@@ -76,7 +70,7 @@ sgs.ai_choicemade_filter.skillInvoke.TH_guanglongzhitanxi=function(self,from,pro
  local to=f(self.room);if AIUnsupported.is(to)then error(to,0)end
  local callback=sgs.ai_skillInvoke_intention[reason]
  if callback then
-  if type(callback)=="number" and promptlist[#promptlist]=="yes" and q(to,"objectName")~=q(from,"objectName")then
+  if type(callback)=="number" and promptlist[#promptlist]=="yes" and to:objectName()~=from:objectName()then
    sgs.updateIntention(from,to,sgs.ai_skillInvoke_intention[reason])
   elseif type(callback)=="function"then callback(from,to,promptlist[#promptlist],self)end
  end

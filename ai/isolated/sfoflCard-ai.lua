@@ -12,10 +12,7 @@ initial_callbacks.ai_skill_use={};for key,value in pairs(ai_skill_use)do initial
 local active_requests=setmetatable({},{__mode="k"})
 local clone_states=setmetatable({},{__mode='k'})
 local function unsupported(key)ai_unsupported('source capability is not projected',PACKAGE..'.'..key)end
-local function raw_call(o,k,...)
- if not o or type(o[k])~='function' then unsupported(k)end
- local v=table.pack(o[k](o,...));if AIUnsupported.is(v[1])then error(v[1],0)end;return table.unpack(v,1,v.n)
-end
+
 -- Only the viewer's own tags are projected (absent reads as false); a room tag
 -- reaches the VM only as the ask's context damage.
 local OWN_TAGS={sfofl_zongfan=true,sfofl_bianchiForAI=true,sfofl_boss_wushuang=true,PresentCard=true,sfofl_YellowTurbanRebels0=true}
@@ -30,9 +27,9 @@ local function fact(self,key)
  if v==nil then return false end;return v
 end
 local function clone(self,name,skill,suit,number)
- name=name or 'slash';local p=raw_call(self,'cloneEvaluationCard',name)
+ name=name or 'slash';local p=self:cloneEvaluationCard(name)
  if p==false then return nil end;if not p then unsupported('prototype.'..tostring(name))end
- local v={};clone_states[v]={self=self,name=raw_call(p,'objectName'),skill=skill or '',suit=suit==nil and sgs.Card_NoSuit or suit,number=number or 0,costs={},prototype=p,flags={}}
+ local v={};clone_states[v]={self=self,name=p:objectName(),skill=skill or '',suit=suit==nil and sgs.Card_NoSuit or suit,number=number or 0,costs={},prototype=p,flags={}}
  return v
 end
 local function materialize(v)
@@ -44,20 +41,20 @@ local function materialize(v)
  if rangeKey then
   if s.range_cached then return s.range_cached end
   local ids={};for i,id in ipairs(s.costs)do ids[i]=id end
-  local card=raw_call(s.self,'evaluateOwnerViewAsCard',{source_key='owner_range:'..rangeKey,name=s.name,
+  local card=s.self:evaluateOwnerViewAsCard({source_key='owner_range:'..rangeKey,name=s.name,
     skill=s.skill,suit=s.suit,number=s.number,subcards=ids})
   s.range_cached=card;return card
  end
  local card
  if s.skill=='' and #s.costs==0 and s.suit==sgs.Card_NoSuit and s.number==0 then card=s.prototype
- else card=raw_call(s.self,'evaluateSkillCard',s.skill,s.name,s.costs)end
+ else card=s.self:evaluateSkillCard(s.skill, s.name, s.costs)end
  if not card then unsupported('clone.'..s.skill..'.'..s.name)end
- if s.can_recast~=nil and raw_call(card,'canRecast')~=s.can_recast then unsupported('clone_recast.'..s.skill)end
+ if s.can_recast~=nil and card:canRecast()~=s.can_recast then unsupported('clone_recast.'..s.skill)end
  -- Current narrow endpoint has no arbitrary face parameters. A mismatched native
  -- clone is unknown, never a substitute with different suit/rank.
  local expected_suit=(s.suit>=0 and s.suit<6)and s.suit or sgs.Card_NoSuit
  local expected_number=s.number>0 and s.number or 0
- if #s.costs==0 and (raw_call(card,'getSuit')~=expected_suit or raw_call(card,'getNumber')~=expected_number)then unsupported('clone_face.'..s.skill)end
+ if #s.costs==0 and (card:getSuit()~=expected_suit or card:getNumber()~=expected_number)then unsupported('clone_face.'..s.skill)end
  if card~=s.prototype then clone_states[card]=s end;return card
 end
 local function copied_spec(s)
@@ -67,12 +64,12 @@ end
 local function finish_turn(self,v,request)
  local s=clone_states[v];if not s then return v end
  if next(s.flags)then unsupported('turn_clone_flags.'..s.skill)end
- return raw_call(self,'evaluateTurnConversion',s.skill,raw_call(s.prototype,'getClassName'),copied_spec(s),request)
+ return self:evaluateTurnConversion(s.skill, s.prototype:getClassName(), copied_spec(s), request)
 end
 local function proposal(self,v)
  local s=clone_states[v];if s then return copied_spec(s)end
- if AIValue.isConversion(v)then return raw_call(v,'toCardSpec')end
- return raw_call(v,'getEffectiveId')
+ if AIValue.isConversion(v)then return v:toCardSpec()end
+ return v:getEffectiveId()
 end
 local function package_call(o,k,...)
  local args=table.pack(...);local s=clone_states[o]
@@ -85,8 +82,8 @@ local function package_call(o,k,...)
   if k=='canRecast'and s.can_recast~=nil then return s.can_recast end
   if k=='deleteLater'then return end
   if k=='clearSubcards'then s.costs={};return end
-  if k=='addSubcard'then local x=args[1];s.costs[#s.costs+1]=type(x)=='number'and x or raw_call(x,'getEffectiveId');return end
-  if k=='addSubcards'then for _,x in ipairs(args[1])do s.costs[#s.costs+1]=type(x)=='number'and x or raw_call(x,'getEffectiveId')end;return end
+  if k=='addSubcard'then local x=args[1];s.costs[#s.costs+1]=type(x)=='number'and x or x:getEffectiveId();return end
+  if k=='addSubcards'then for _,x in ipairs(args[1])do s.costs[#s.costs+1]=type(x)=='number'and x or x:getEffectiveId()end;return end
   if k=='setFlags'then s.flags[args[1]]=true;return end
   if k=='subcardsLength'then return #s.costs end
   if k=='getSubcards'then return AIList.new(copied_spec(s).subcards)end
@@ -99,7 +96,7 @@ local function package_call(o,k,...)
   elseif AIValue.isList(args[i])then for j,v in ipairs(args[i])do if clone_states[v]then args[i][j]=materialize(v)end end end
  end
  if k=='toString' and (AIValue.isCard(o)or AIValue.isConversion(o))then k='getLegacyStringKey'end
- return raw_call(o,k,table.unpack(args,1,args.n))
+ return AIValue.callOptional(o, k, table.unpack(args,1,args.n))
 end
 local function package_known(o,k,...)
  local v=table.pack(package_call(o,k,...));if v[1]==nil then unsupported(k)end;return table.unpack(v,1,v.n)

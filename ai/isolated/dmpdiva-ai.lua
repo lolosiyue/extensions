@@ -1,14 +1,8 @@
 -- Fixed dmpdiva-ai.lua policy. Source bugs and first-result ordering are retained.
 -- Only scoped disclosed question data and current native-issued skill authority are consumed.
-local function q(object, method, ...)
-    if type(object)~="table" or type(object[method])~="function" then ai_unsupported("Dmpdiva requires "..method,"dmpdiva") end
-    local value=object[method](object,...)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("Dmpdiva requires "..method,"dmpdiva") end
-    return value
-end
+
 local function context(self,key)
-    local data=q(self,"getDecisionContext")
+    local data=self:getDecisionContext()
     local row=type(data.dmpdiva)=="table" and data.dmpdiva[key]
     if row==nil then ai_unsupported("Dmpdiva question data missing: "..key,"dmpdiva") end
     return row
@@ -25,18 +19,18 @@ end
 
 sgs.ai_skill_discard.se_nitian = function(self, discard_num, min_num, optional, include_equip)
 	local judge = nitian_judge(self)
-	if q(self.player,"getHandcardNum") == 0 then return {} end
-	if not q(judge.who,"isWounded") then return {} end
-	if q(judge.who,"getLostHp") == 1 and q(judge.card,"isRed") and judge.reason == "se_guwu" then return {} end
-	if not q(self,"isFriend",judge.who) then return {} end
+	if self.player:getHandcardNum() == 0 then return {} end
+	if not judge.who:isWounded() then return {} end
+	if judge.who:getLostHp() == 1 and judge.card:isRed() and judge.reason == "se_guwu" then return {} end
+	if not self:isFriend(judge.who) then return {} end
 	local to_discard = {}
 
-	local cards = sgs.QList2Table(q(self.player,"getCards","h"))
+	local cards = sgs.QList2Table(self.player:getCards("h"))
 	self:sortByKeepValue(cards)
-	if q(cards[1],"isKindOf","Peach") then
+	if cards[1]:isKindOf("Peach") then
 		return {}
 	end
-	table.insert(to_discard, q(cards[1],"getEffectiveId"))
+	table.insert(to_discard, cards[1]:getKnownEffectiveId())
 	self:updateIntention(self.player, judge.who, -80)
 	return to_discard
 end
@@ -49,7 +43,7 @@ sgs.ai_skill_choice["se_nitian"] = function(self, choices, data)
 	local lightonly = true
 	for _, face in ipairs(cards) do
         local card = CardView.new(face)
-		if q(card,"isKindOf","DelayedTrick") and not q(card,"isKindOf","Lightning") then
+		if card:isKindOf("DelayedTrick") and not card:isKindOf("Lightning") then
 			lightonly = false
 			break
 		end
@@ -65,7 +59,7 @@ sgs.save_skill = sgs.save_skill .. "|se_guwu"
 sgs.ai_skill_invoke.se_guwu = function(self, data)
 	--local dying_data = data:toDying()
 	local target = data:toPlayer()
-	if q(self,"isFriend",target) then return true end
+	if self:isFriend(target) then return true end
 	return false
 end
 
@@ -79,18 +73,18 @@ end
 
 --鸟神
 sgs.ai_fill_skill.se_zhifu = function(self, inclusive, request)
-	if q(self.player,"isKongcheng") then return end
+	if self.player:isKongcheng() then return end
 	for _, p in ipairs(self.friends) do
-		if (p:getArmor() and p:getArmor():isKindOf("SilverLion") and q(p,"isWounded")) or (q(p,"getHp") == 1 and q(self.player,"getHandcardNum") > 1) then
+		if (p:getArmor() and p:getArmor():isKindOf("SilverLion") and p:isWounded()) or (p:getHp() == 1 and self.player:getHandcardNum() > 1) then
 			return self:legacySkillSeed("se_zhifu", "#se_zhifucard", request)
 		end
 	end
-	if q(self,"getCardsNum","BasicCard") + q(self,"getCardsNum","Nullification") == q(self.player,"getHandcardNum") and q(self.player,"getHandcardNum") <= q(self.player,"getHp") then return end
-	local handcards = sgs.QList2Table(q(self.player,"getHandcards"))
+	if self:getCardsNum("BasicCard") + self:getCardsNum("Nullification") == self.player:getHandcardNum() and self.player:getHandcardNum() <= self.player:getHp() then return end
+	local handcards = sgs.QList2Table(self.player:getHandcards())
 	self:sortByKeepValue(handcards)
-	if q(handcards[1],"isKindOf","Peach") then return end
+	if handcards[1]:isKindOf("Peach") then return end
 	for _, p in ipairs(self.friends) do
-		if not p:getArmor() and q(p,"isWounded") then
+		if not p:getArmor() and p:isWounded() then
 			return self:legacySkillSeed("se_zhifu", "#se_zhifucard", request)
 		end
 	end
@@ -102,7 +96,7 @@ sgs.ai_skill_use_func["#se_zhifucard"] = function(card, use, self, request)
 	local card
 
 
-	if q(self.player,"isKongcheng") then return end
+	if self.player:isKongcheng() then return end
 
 	if not target then
 		for _, p in ipairs(self.friends) do
@@ -116,7 +110,7 @@ sgs.ai_skill_use_func["#se_zhifucard"] = function(card, use, self, request)
 
 	if not target then
 		for _, p in ipairs(self.friends) do
-			if q(p,"getHp") == 1 and q(self.player,"getHandcardNum") > 1 and not p:getArmor() then
+			if p:getHp() == 1 and self.player:getHandcardNum() > 1 and not p:getArmor() then
 				target = p
 				break
 			end
@@ -133,7 +127,7 @@ sgs.ai_skill_use_func["#se_zhifucard"] = function(card, use, self, request)
 	end
 	if not target then
 		for _, p in ipairs(self.friends) do
-			if q(self,"hasSkills",sgs.lose_equip_skill,p) then
+			if self:hasSkills(sgs.lose_equip_skill, p) then
 				target = p
 				break
 			end
@@ -141,14 +135,14 @@ sgs.ai_skill_use_func["#se_zhifucard"] = function(card, use, self, request)
 	end
 
 	if not target then return end
-	local handcards = sgs.QList2Table(q(self.player,"getHandcards"))
+	local handcards = sgs.QList2Table(self.player:getHandcards())
 	self:sortByKeepValue(handcards)
 
-	if not q(handcards[1],"isKindOf","Peach") then
+	if not handcards[1]:isKindOf("Peach") then
 		card = handcards[1]
 	end
 	if card and target then
-		use.card = self:bindSkillCard("se_zhifu", {q(card,"getEffectiveId")}, request, nil, "#se_zhifucard")
+		use.card = self:bindSkillCard("se_zhifu", {card:getKnownEffectiveId()}, request, nil, "#se_zhifucard")
 		if use.to then use.to:append(target) end
 		return
 	end
@@ -165,18 +159,18 @@ sgs.ai_skill_choice["se_zhifucard"]    = function(self, choices, data)
     if not AIValue.isList(catalog) then ai_unsupported("ordered printed armor catalog is unavailable", "se_zhifucard") end
     for _, face in ipairs(catalog) do
         local card = CardView.new(face)
-		if q(card,"isKindOf","Armor") and table.contains(items, q(card,"objectName")) then
+		if card:isKindOf("Armor") and table.contains(items, card:objectName()) then
 			if target then
-				if q(self,"isFriend",target) and q(self,"evaluateArmor",card,target) > 3 and not (q(target,"hasArmorEffect","silver_lion") and q(target,"isWounded")) then
-					return q(card,"objectName")
-				elseif q(self,"isEnemy",target) and q(self,"evaluateArmor",card,target) < -5 then
-					return q(card,"objectName")
+				if self:isFriend(target) and self:evaluateArmor(card, target) > 3 and not (target:hasArmorEffect("silver_lion") and target:isWounded()) then
+					return card:objectName()
+				elseif self:isEnemy(target) and self:evaluateArmor(card, target) < -5 then
+					return card:objectName()
 				end
 			end
 		end
 	end
 	-- if table.contains(items, "silver_lion") then return "silver_lion" end
-	if target and q(self,"isFriend",target) and getBestHp(target) > q(target,"getHp") and table.contains(items, "SilverLion") then
+	if target and self:isFriend(target) and getBestHp(target) > target:getHp() and table.contains(items, "SilverLion") then
 		return
 		"SilverLion"
 	end
@@ -186,16 +180,16 @@ end
 
 --妮可
 sgs.ai_fill_skill.se_nike = function(self, inclusive, request)
-	if q(self.player,"isNude") then return end
-	if q(self.player,"hasUsed","#se_nikecard") then return end
+	if self.player:isNude() then return end
+	if self.player:getStrategyHasUsed("#se_nikecard") then return end
 	local hurtF = 0
 	local notHurtE = 0
-	if q(self.player,"getHp") < q(self.player,"getMaxHp") then return self:legacySkillSeed("se_nike", "#se_nikecard", request) end
+	if self.player:getHp() < self.player:getMaxHp() then return self:legacySkillSeed("se_nike", "#se_nikecard", request) end
 	for _, p in ipairs(self.friends_noself) do
-		if q(p,"getHp") < q(p,"getMaxHp") then hurtF = hurtF + 1 end
+		if p:getHp() < p:getMaxHp() then hurtF = hurtF + 1 end
 	end
 	for _, p in ipairs(self.enemies) do
-		if q(p,"getHp") == q(p,"getMaxHp") and not q(p,"isNude") then notHurtE = notHurtE + 1 end
+		if p:getHp() == p:getMaxHp() and not p:isNude() then notHurtE = notHurtE + 1 end
 	end
 	if hurtF > 0 then return self:legacySkillSeed("se_nike", "#se_nikecard", request) end
 	if notHurtE > 0 then return self:legacySkillSeed("se_nike", "#se_nikecard", request) end
@@ -204,28 +198,28 @@ end
 
 sgs.ai_skill_use_func["#se_nikecard"] = function(card, use, self, request)
 	local targets = AIList.new({})
-	local numMax = (q(self.player,"getHandcardNum") + q(self.player,"getEquips"):length()) * 2
+	local numMax = (self.player:getHandcardNum() + self.player:getEquips():length()) * 2
 
 	local notHurtE = 0
 	for _, p in ipairs(self.enemies) do
-		if q(p,"getHp") == q(p,"getMaxHp") then notHurtE = notHurtE + 1 end
+		if p:getHp() == p:getMaxHp() then notHurtE = notHurtE + 1 end
 	end
 	if notHurtE > 2 then
 		notHurtE = 0
 		for _, p in ipairs(self.enemies) do
-			if q(p,"getHp") == q(p,"getMaxHp") then notHurtE = notHurtE + 1 end
-			if q(p,"getHp") == q(p,"getMaxHp") and notHurtE <= numMax then targets:append(p) end
+			if p:getHp() == p:getMaxHp() then notHurtE = notHurtE + 1 end
+			if p:getHp() == p:getMaxHp() and notHurtE <= numMax then targets:append(p) end
 		end
 	else
 		local hurtF = 0
 		for _, p in ipairs(self.friends_noself) do
-			if q(p,"getHp") < q(p,"getMaxHp") then hurtF = hurtF + 1 end
-			if q(p,"getHp") < q(p,"getMaxHp") and hurtF <= 2 then targets:append(p) end
+			if p:getHp() < p:getMaxHp() then hurtF = hurtF + 1 end
+			if p:getHp() < p:getMaxHp() and hurtF <= 2 then targets:append(p) end
 		end
 		if hurtF < 2 then
 			for _, p in ipairs(self.enemies) do
-				if q(p,"getHp") == q(p,"getMaxHp") then hurtF = hurtF + 1 end
-				if q(p,"getHp") == q(p,"getMaxHp") and hurtF <= 2 then targets:append(p) end
+				if p:getHp() == p:getMaxHp() then hurtF = hurtF + 1 end
+				if p:getHp() == p:getMaxHp() and hurtF <= 2 then targets:append(p) end
 			end
 		end
 	end
@@ -233,12 +227,12 @@ sgs.ai_skill_use_func["#se_nikecard"] = function(card, use, self, request)
 	if targets:length() == 0 then
 		notHurtE = 0
 		for _, p in ipairs(self.enemies) do
-			if q(p,"getHp") == q(p,"getMaxHp") then notHurtE = notHurtE + 1 end
-			if q(p,"getHp") == q(p,"getMaxHp") and notHurtE <= numMax then targets:append(p) end
+			if p:getHp() == p:getMaxHp() then notHurtE = notHurtE + 1 end
+			if p:getHp() == p:getMaxHp() and notHurtE <= numMax then targets:append(p) end
 		end
 		if notHurtE == 2 then
 			for _, p in ipairs(self.enemies) do
-				if q(p,"getHp") < q(p,"getMaxHp") and not q(self,"hasSkills",sgs.masochism_skill,p) then
+				if p:getHp() < p:getMaxHp() and not self:hasSkills(sgs.masochism_skill, p) then
 					targets:append(p)
 					break
 				end

@@ -6,22 +6,10 @@ local function known(value,key)
     if value==nil then ai_unsupported("lol2015 policy input is unknown",key) end
     return value
 end
-local function call(object,method,...)
-    if not object or type(object[method])~="function" then ai_unsupported("lol2015 policy helper unavailable",method) end
-    local result=table.pack(object[method](object,...))
-    if AIUnsupported.is(result[1]) then error(result[1],0) end
-    return table.unpack(result,1,result.n)
-end
-local function q(object,method,...)
-    local value=call(object,method,...)
-    if value==false and (method=="hasSkill"or method=="hasSkills"or method=="hasLordSkill")and AIValue.isPlayer(object)then
-        local row=rawget(object,"_view")
-        if row and row.skills_complete~=true then ai_unsupported("foreign skill absence is unknown",(...))end
-    end
-    return known(value,method)
-end
+
+
 local function sorted(self,cards,method,...)
-    local result=q(self,method,cards,...)
+    local result=AIValue.callKnown(self, method, cards, ...)
     for i,c in ipairs(result) do cards[i]=c end
     return cards
 end
@@ -32,7 +20,7 @@ local function action_request(self,request)
     if request and type(request.getActivationSkillName)~="function" then return AILegacyRequest.new(request,self.room) end
     return request
 end
-local function seed(self,skill,class,request) return q(self,"legacySkillSeed",skill,class,action_request(self,request)) end
+local function seed(self,skill,class,request) return self:legacySkillSeed(skill, class, action_request(self,request)) end
 local skill_cards={['#lol_ayjm_rCard']='lol_ayjm_r',['#lol_bjfh_eCard']='lol_bjfh_e',['#lol_bjfh_qCard']='lol_bjfh_q',['#lol_bjfh_rCard']='lol_bjfh_r',['#lol_bzll_eCard']='lol_bzll_e',['#lol_hbss_eCard']='lol_hbss_e',['#lol_hbss_qCard']='lol_hbss_q',['#lol_jwyh_eCard']='lol_jwyh_e',['#lol_jwyh_qCard']='lol_jwyh_q',['#lol_jwyh_rCard']='lol_jwyh_r',['#lol_jwyh_wCard']='lol_jwyh_w',['#lol_mzzw_qCard']='lol_mzzw_q',['#lol_mzzw_rCard']='lol_mzzw_r',['#lol_mzzw_wCard']='lol_mzzw_w',['#lol_smss_eCard']='lol_smss_e',['#lol_smss_qCard']='lol_smss_q',['#lol_smss_rCard']='lol_smss_r',['#lol_smss_wCard']='lol_smss_w',['#lol_sxls_eCard']='lol_sxls_e',['#lol_sxls_rCard']='lol_sxls_r',['#lol_sxls_wCard']='lol_sxls_w',['#lol_tqz_eCard']='lol_tqz_e',['#lol_tqz_rCard']='lol_tqz_r',['#lol_tqz_wCard']='lol_tqz_w',['#lol_xlnw_eCard']='lol_xlnw_e',['#lol_xlnw_rCard']='lol_xlnw_r',['#lol_xlnw_wCard']='lol_xlnw_w'}
 local function disclosed(self,id)return known(self:getKnownCardById(id)or self:getChoiceCard(id),'lol2015 source card '..tostring(id))end
 local function parts(wire)
@@ -44,48 +32,48 @@ local function parse(self,request,wire)
  local class,costs,user=parts(wire)
  if class then local skill=known(skill_cards[class],class)
   if #costs==0 and user==nil then return seed(self,skill,class,request)end
-  return q(self,'evaluateTurnSkillCard',skill,class,costs,action_request(self,request),user)
+  return self:evaluateTurnSkillCard(skill, class, costs, action_request(self,request), user)
  end
  local name,skill,raw=wire:match('^([^:]+):([^%[]+)%[[^%]]+%]=(.*)$')
  if not name then ai_unsupported('unrecognized source card grammar',wire)end
  costs={};local cards={};for id in raw:gmatch('%d+')do costs[#costs+1]=tonumber(id);cards[#cards+1]=disclosed(self,tonumber(id))end
  local suit,number=sgs.Card_NoSuit,0
- if #cards==1 then suit,number=q(cards[1],'getSuit'),q(cards[1],'getNumber')
- elseif #cards>1 then local red,black=true,true;for _,c in ipairs(cards)do red=red and q(c,'isRed');black=black and q(c,'isBlack')end;suit=red and sgs.Card_NoSuitRed or black and sgs.Card_NoSuitBlack or sgs.Card_NoSuit end
- return q(self,'evaluateTurnConversion',skill,q(q(self,'getEvaluationCard',name),'getClassName'),{name=name,skill=skill,suit=suit,number=number,subcards=costs},action_request(self,request))
+ if #cards==1 then suit,number=cards[1]:getSuit(),cards[1]:getNumber()
+ elseif #cards>1 then local red,black=true,true;for _,c in ipairs(cards)do red=red and c:isRed();black=black and c:isBlack()end;suit=red and sgs.Card_NoSuitRed or black and sgs.Card_NoSuitBlack or sgs.Card_NoSuit end
+ return self:evaluateTurnConversion(skill, (self:getEvaluationCard(name)):getClassName(), {name=name,skill=skill,suit=suit,number=number,subcards=costs}, action_request(self,request))
 end
 local function final_parse(self,request,wire)
  local class,costs,user=parts(wire)
- return q(self,'bindSkillCard',known(skill_cards[class],class),costs,action_request(self,request),user,class)
+ return self:bindSkillCard(known(skill_cards[class],class), costs, action_request(self,request), user, class)
 end
 local function whole_hand(self,player)
- if q(player,'objectName')==q(self.player,'objectName')then return q(player,'getHandcards')end
- local cards=q(player,'getKnownCards')
- if #cards~=q(player,'getHandcardNum')then ai_unsupported('lol2015 source requires full foreign hand sorting','lol2015.whole_hand')end
+ if player:objectName()==self.player:objectName()then return player:getHandcards()end
+ local cards=player:getKnownCards()
+ if #cards~=player:getHandcardNum()then ai_unsupported('lol2015 source requires full foreign hand sorting','lol2015.whole_hand')end
  return cards
 end
 local function is_pet(self,player)
- local name=call(player,'getGeneral2Name')
+ local name=player:getGeneral2Name()
  if name=='lol_xlnw_pks'then return true end
- if q(player,'getMark','@lol_xlnw_t')>0 then return true end
+ if player:getMark('@lol_xlnw_t')>0 then return true end
  if name==nil then ai_unsupported('pet general is not disclosed','lol_xlnw_e.general2')end
  return false
 end
 local function find_general(self,player)
- local name=q(player,'getGeneralName');local names=name:split('+')
- for _,p in ipairs(q(self.room,'getAlivePlayers'))do
-  if table.contains(names,q(p,'getGeneralName'))then return p end
+ local name=player:getKnownGeneralName();local names=name:split('+')
+ for _,p in ipairs(self.room:getAlivePlayers())do
+  if table.contains(names,p:getKnownGeneralName())then return p end
  end
  return nil
 end
 local function empty_state(self)
  -- Turn flag clears reset the remembered flag. The source's explicit "-lol_jwyh_w_empty"
  -- at the end of the once-per-phase effect has no witness; no later read happens in that turn.
- local name=q(self.player,'objectName')
+ local name=self.player:objectName()
  local epoch=known(known(AIWorldLifecycle.epochs(self.world,'flag'),'strategy_flag_clear_epochs')[name],'owner flag clear epoch')
  local prior=self:getStrategyMemory('lol2015.w_empty')
  if prior and prior.epoch==epoch then return prior.value,epoch end
- return q(self.player,'hasFlag','lol_jwyh_w_empty'),epoch
+ return self.player:hasFlag('lol_jwyh_w_empty'),epoch
 end
 local function get_empty(self)local value=empty_state(self);return value end
 local function set_empty(self,value)local _,epoch=empty_state(self);self:setStrategyMemory('lol2015.w_empty',{epoch=epoch,value=value})end
@@ -93,41 +81,41 @@ local lol_jwyh_q_skill = {}
 lol_jwyh_q_skill.name = "lol_jwyh_q"
 table.insert(package_skills, lol_jwyh_q_skill)
 lol_jwyh_q_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.player,"isKongcheng") then return end
-	if not q(self.player,"hasUsed","#lol_jwyh_qCard") then
+	if self.player:isKongcheng() then return end
+	if not self.player:getStrategyHasUsed("#lol_jwyh_qCard") then
 		return parse(self,request,"#lol_jwyh_qCard:.:")
 	end
 end
 
 sgs.ai_skill_use_func["#lol_jwyh_qCard"] = function(card,use,self,request)
-	call(self,"updatePlayers")
-	local handcards = AIList.new(q(self.player,"getCards","h"))
+	self:updatePlayers()
+	local handcards = AIList.new(self.player:getCards("h"))
 	sort_players(self,self.enemies, "handcard")
-	q(self,"sortByCardNeed",handcards, true)
+	self:sortByCardNeed(handcards, true)
 	local targets = {}
 	local use_card = nil
 	for _,c in ipairs(handcards) do
-		if not q(c,"isKindOf","Peach") and q(c,"isRed") then
+		if not c:isKindOf("Peach") and c:isRed() then
 			use_card = c
 		end
 	end
 	if use_card == nil then return end
 	for _, enemy in ipairs(self.enemies) do
-		if q(enemy,"getHandcardNum") >= q(self.player,"getHandcardNum") and q(enemy,"hasFlag","lol_jwyh_e") and q(self,"damageIsEffective",enemy, sgs.DamageStruct_Normal) and not q(self,"cantbeHurt",enemy) and q(self,"doDisCard",enemy, "h", true)   then
+		if enemy:getHandcardNum() >= self.player:getHandcardNum() and enemy:hasFlag("lol_jwyh_e") and self:damageIsEffective(enemy, sgs.DamageStruct_Normal) and not self:cantbeHurt(enemy) and self:doDisCard(enemy, "h", true)   then
 			table.insert(targets, enemy)
 		end
 	end
 	for _, enemy in ipairs(self.enemies) do
-		if q(enemy,"getHandcardNum") >= q(self.player,"getHandcardNum") and q(self,"damageIsEffective",enemy, sgs.DamageStruct_Normal) and not q(self,"cantbeHurt",enemy) and q(self,"doDisCard",enemy, "h", true)   then
+		if enemy:getHandcardNum() >= self.player:getHandcardNum() and self:damageIsEffective(enemy, sgs.DamageStruct_Normal) and not self:cantbeHurt(enemy) and self:doDisCard(enemy, "h", true)   then
 			table.insert(targets, enemy)
 		end
 	end
 	if #targets == 0 then return end
 	
-	local card_str =   string.format("#lol_jwyh_qCard:%s:", q(use_card,"getEffectiveId"))
+	local card_str =   string.format("#lol_jwyh_qCard:%s:", use_card:getKnownEffectiveId())
 	local acard=final_parse(self,request,card_str)
 	use.card = acard
-	if use.to then call(use.to,"append",targets[1]) end
+	if use.to then use.to:append(targets[1]) end
 end
 
 sgs.ai_use_priority["lol_jwyh_qCard"] = 7
@@ -135,22 +123,22 @@ sgs.ai_use_value["lol_jwyh_qCard"] = 7
 sgs.ai_card_intention["lol_jwyh_qCard"] = 30
 
 sgs.ai_skill_invoke["lol_jwyh_q"] = function(self, data)
-	local target = q(data,"toPlayer")
-	if q(self,"isEnemy",target) and not q(self,"cantbeHurt",target) and q(self,"damageIsEffective",target) then 
+	local target = data:toPlayer()
+	if self:isEnemy(target) and not self:cantbeHurt(target) and self:damageIsEffective(target) then
 		return true
 	end
 	return false
 end
 
 sgs.ai_skill_cardchosen["lol_jwyh_qCard"] = function(self, who, flags)
-	call(self,"updatePlayers")
+	self:updatePlayers()
 	local handcards = AIList.new(whole_hand(self,who))
 	sort_use(self,handcards)
-	if q(self,"isEnemy",who) then
-		if q(who,"hasFlag","lol_jwyh_e") then
+	if self:isEnemy(who) then
+		if who:hasFlag("lol_jwyh_e") then
 			for _,c in ipairs(handcards) do
-				if q(c,"isRed") then
-					return q(c,"getEffectiveId")
+				if c:isRed() then
+					return c:getKnownEffectiveId()
 				end
 			end
 		end
@@ -162,21 +150,21 @@ local lol_jwyh_w_skill = {}
 lol_jwyh_w_skill.name = "lol_jwyh_w"
 table.insert(package_skills, lol_jwyh_w_skill)
 lol_jwyh_w_skill.getTurnUseCard=function(self,inclusive,request)
-	if not q(self.player,"hasUsed","#lol_jwyh_wCard") then
+	if not self.player:getStrategyHasUsed("#lol_jwyh_wCard") then
 		return parse(self,request,"#lol_jwyh_wCard:.:")
 	end
 end
 
 sgs.ai_skill_use_func["#lol_jwyh_wCard"] = function(card,use,self,request)
-	call(self,"updatePlayers")
+	self:updatePlayers()
 	local tos = AIList.new({})
-	for _,p in sgs.qlist(q(self.room,"getAlivePlayers")) do
-			    if q(self.player,"distanceTo",p) <= 1 and q(p,"objectName") ~= q(self.player,"objectName")  and q(self,"damageIsEffective",p, sgs.DamageStruct_Fire) and not q(self,"cantbeHurt",p) and q(self,"isEnemy",p) then call(tos,"append",p) end
+	for _,p in sgs.qlist(self.room:getAlivePlayers()) do
+			    if self.player:distanceTo(p) <= 1 and p:objectName() ~= self.player:objectName()  and self:damageIsEffective(p, sgs.DamageStruct_Fire) and not self:cantbeHurt(p) and self:isEnemy(p) then tos:append(p) end
             end
-	if q(tos,"isEmpty") then 
+	if tos:isEmpty() then
 	set_empty(self,true)
 	end
-	if q(self,"isWeak") or not q(tos,"isEmpty") then
+	if self:isWeak() or not tos:isEmpty() then
 		local card_str =   "#lol_jwyh_wCard:.:"
 		local acard=final_parse(self,request,card_str)
 		use.card = acard
@@ -187,39 +175,39 @@ sgs.ai_use_priority["lol_jwyh_wCard"] = 0
 sgs.ai_use_value["lol_jwyh_wCard"] = 4
 
 sgs.ai_skill_cardask["@lol_jwyh_w_discard"] =function(self, data, pattern, target, target2)
-	local num = q(data,"toInt")
-	local handcards = AIList.new(q(self.player,"getCards","h"))
-	q(self,"sortByCardNeed",handcards, true)
-	local overflow = q(self,"getOverflow")
-		if q(self.player,"hasSkill","lol_jwyh_t") and q(self.player,"getMark","@lol_jwyh_t") < 8 - overflow  and q(self,"isWeak") then
+	local num = data:toInt()
+	local handcards = AIList.new(self.player:getCards("h"))
+	self:sortByCardNeed(handcards, true)
+	local overflow = self:getOverflow()
+		if self.player:hasSkill("lol_jwyh_t") and self.player:getMark("@lol_jwyh_t") < 8 - overflow  and self:isWeak() then
 			local use_card = nil
 			for _,c in ipairs(handcards) do
-				if not q(c,"isKindOf","Peach") then
+				if not c:isKindOf("Peach") then
 					use_card = c
 				end
 			end
 			if use_card == nil then return "." end
-			return "$" .. q(use_card,"getEffectiveId")
+			return "$" .. use_card:getKnownEffectiveId()
 		end
-		if not (q(self.player,"hasFlag","lol_jwyh_wR") and q(self.player,"hasFlag","lol_jwyh_wB")) and not get_empty(self)  then
+		if not (self.player:hasFlag("lol_jwyh_wR") and self.player:hasFlag("lol_jwyh_wB")) and not get_empty(self)  then
 			local use_card = nil
-			if q(self.player,"hasFlag","lol_jwyh_wR") then
+			if self.player:hasFlag("lol_jwyh_wR") then
 				for _,c in ipairs(handcards) do
-					if not q(c,"isKindOf","Peach") and q(c,"isRed") then
+					if not c:isKindOf("Peach") and c:isRed() then
 						use_card = c
 					end
 				end
 				if use_card == nil then return "." end
-				return "$" .. q(use_card,"getEffectiveId")
+				return "$" .. use_card:getKnownEffectiveId()
 			end
-			if q(self.player,"hasFlag","lol_jwyh_wR") then
+			if self.player:hasFlag("lol_jwyh_wR") then
 				for _,c in ipairs(handcards) do
-					if q(c,"isBlack") then
+					if c:isBlack() then
 						use_card = c
 					end
 				end
 				if use_card == nil then return "." end
-				return "$" .. q(use_card,"getEffectiveId")
+				return "$" .. use_card:getKnownEffectiveId()
 			end
 		end
 	return "."
@@ -230,7 +218,7 @@ sgs.ai_skill_playerchosen["lol_jwyh_wCard"] = function(self, targets)
 	targets = AIList.new(targets)
 	sort_players(self,self.enemies, "defense") 
 	for _,enemy in ipairs(targets) do
-		if enemy and q(self,"isEnemy",enemy) and q(self,"damageIsEffective",enemy, sgs.DamageStruct_Fire, self.player) and not q(self,"cantbeHurt",enemy)  then
+		if enemy and self:isEnemy(enemy) and self:damageIsEffective(enemy, sgs.DamageStruct_Fire, self.player) and not self:cantbeHurt(enemy)  then
 			target= enemy
 			break
 		end
@@ -244,37 +232,37 @@ local lol_jwyh_e_skill = {}
 lol_jwyh_e_skill.name = "lol_jwyh_e"
 table.insert(package_skills, lol_jwyh_e_skill)
 lol_jwyh_e_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.player,"isKongcheng") then return end
-	if q(self,"getOverflow") < 2 then return end
-	if not q(self.player,"hasUsed","#lol_jwyh_eCard") then
+	if self.player:isKongcheng() then return end
+	if self:getOverflow() < 2 then return end
+	if not self.player:getStrategyHasUsed("#lol_jwyh_eCard") then
 		return parse(self,request,"#lol_jwyh_eCard:.:")
 	end
 end
 
 sgs.ai_skill_use_func["#lol_jwyh_eCard"] = function(card,use,self,request)
-	call(self,"updatePlayers")
-	local handcards = AIList.new(q(self.player,"getCards","h"))
+	self:updatePlayers()
+	local handcards = AIList.new(self.player:getCards("h"))
 	sort_players(self,self.enemies, "handcard")
 	self.enemies = sgs.reverse(self.enemies)
-	q(self,"sortByCardNeed",handcards, true)
+	self:sortByCardNeed(handcards, true)
 	local targets = {}
 	local use_card = nil
 	for _,c in ipairs(handcards) do
-		if not q(c,"isKindOf","Peach") and q(c,"isRed") then
+		if not c:isKindOf("Peach") and c:isRed() then
 			use_card = c
 		end
 	end
 	if use_card == nil then return end
 	for _, enemy in ipairs(self.enemies) do
-		if q(enemy,"getHandcardNum") >= q(self.player,"getHandcardNum") then
+		if enemy:getHandcardNum() >= self.player:getHandcardNum() then
 			table.insert(targets, enemy)
 		end
 	end
 	if #targets == 0 then return end
-	local card_str =   string.format("#lol_jwyh_eCard:%s:", q(use_card,"getEffectiveId"))
+	local card_str =   string.format("#lol_jwyh_eCard:%s:", use_card:getKnownEffectiveId())
 	local acard=final_parse(self,request,card_str)
 	use.card = acard
-	if use.to then call(use.to,"append",targets[1]) end
+	if use.to then use.to:append(targets[1]) end
 end
 
 sgs.ai_use_priority["lol_jwyh_eCard"] = 8
@@ -282,19 +270,19 @@ sgs.ai_use_value["lol_jwyh_eCard"] = 3
 sgs.ai_card_intention["lol_jwyh_eCard"] = 10
 
 sgs.ai_skill_use["@@lol_jwyh_r"] = function(self, prompt)
-    local all_cards = AIList.new(q(self.player,"getCards","h"))
+    local all_cards = AIList.new(self.player:getCards("h"))
 	sort_keep(self,all_cards)
 	local use_card
 	local spade = 0
 	for _, c in ipairs(all_cards) do
-		if q(c,"getSuit") == sgs.Card_Spade then
+		if c:getSuit() == sgs.Card_Spade then
 			spade = spade + 1
 			use_card = c
 		end
 	end
-	local mark = q(self.player,"getMark","lol_jwyh_r123")
-	if (mark + spade >= 3 or q(self,"isWeak")) and use_card then
-    return string.format("#lol_jwyh_rCard:%s:", q(use_card,"getEffectiveId"))
+	local mark = self.player:getMark("lol_jwyh_r123")
+	if (mark + spade >= 3 or self:isWeak()) and use_card then
+    return string.format("#lol_jwyh_rCard:%s:", use_card:getKnownEffectiveId())
 	end
 	return "."
 end
@@ -302,7 +290,7 @@ end
 
 
 sgs.ai_ajustdamage_from.lol_hbss_t = function(self, from, to, card, nature)
-	if card and q(card,"isKindOf","Slash") and from and q(from,"getMark","@lol_hbss_t_Mark") == 100
+	if card and card:isKindOf("Slash") and from and from:getMark("@lol_hbss_t_Mark") == 100
 	then
 		return 1
 	end
@@ -312,39 +300,39 @@ local lol_hbss_q_skill = {}
 lol_hbss_q_skill.name = "lol_hbss_q"
 table.insert(package_skills, lol_hbss_q_skill)
 lol_hbss_q_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.player,"isKongcheng") then return end
-	if q(self.player,"hasFlag","lol_hbss_q") then return end
-	if q(self,"getOverflow") < 1 then return end
-	if q(self,"getCardsNum","Slash") < 1 then return end
-	if not q(self.player,"hasUsed","#lol_hbss_qCard") then
+	if self.player:isKongcheng() then return end
+	if self.player:hasFlag("lol_hbss_q") then return end
+	if self:getOverflow() < 1 then return end
+	if self:getCardsNum("Slash") < 1 then return end
+	if not self.player:getStrategyHasUsed("#lol_hbss_qCard") then
 		return parse(self,request,"#lol_hbss_qCard:.:")
 	end
 end
 
 sgs.ai_skill_use_func["#lol_hbss_qCard"] = function(card,use,self,request)
-	call(self,"updatePlayers")
-	local handcards = AIList.new(q(self.player,"getCards","h"))
-	q(self,"sortByCardNeed",handcards, true)
+	self:updatePlayers()
+	local handcards = AIList.new(self.player:getCards("h"))
+	self:sortByCardNeed(handcards, true)
 	local can_invoke = false
 	local targets = {}
 	local use_card = nil
 	for _,c in ipairs(handcards) do
-		if not q(c,"isKindOf","Peach")  then
+		if not c:isKindOf("Peach")  then
 			use_card = c
 		end
 	end
 	if use_card == nil then return end
-	for _, slash in ipairs(q(self,"getCards","Slash")) do
-		if  q(slash,"isAvailable",self.player) and q(slash,"getEffectiveId") ~= use_card then
-			local dummy = q(self,"aiUseCard",slash)
-			if dummy.card and not q(dummy.to,"isEmpty") then
+	for _, slash in ipairs(self:getCards("Slash")) do
+		if  slash:isAvailable(self.player) and slash:getKnownEffectiveId() ~= use_card then
+			local dummy = self:aiUseCard(slash)
+			if dummy.card and not dummy.to:isEmpty() then
 				can_invoke = true
 			end
 		end
 	end
 	
 	if not can_invoke then return end 
-	local card_str =   string.format("#lol_hbss_qCard:%s:", q(use_card,"getEffectiveId"))
+	local card_str =   string.format("#lol_hbss_qCard:%s:", use_card:getKnownEffectiveId())
 	local acard=final_parse(self,request,card_str)
 	use.card = acard
 end
@@ -357,16 +345,16 @@ local lol_hbss_w_skill = {}
 lol_hbss_w_skill.name = "lol_hbss_w"
 table.insert(package_skills, lol_hbss_w_skill)
 lol_hbss_w_skill.getTurnUseCard=function(self,inclusive,request)
-	local archery = q(self,"getEvaluationCard","archery_attack")
+	local archery = self:getEvaluationCard("archery_attack")
 	local first_found, second_found = false, false
 	local first_card, second_card
-	if q(self.player,"getHandcardNum") + q(self.player,"getPile","wooden_ox"):length() >= 2 then
-		local cards = q(self.player,"getHandcards")
+	if self.player:getHandcardNum() + self.player:getPile("wooden_ox"):length() >= 2 then
+		local cards = self.player:getHandcards()
 		local same_suit = false
 		cards = AIList.new(cards)
 		
-		if q(self.player,"getPile","wooden_ox"):length() > 0 then
-			for _, id in sgs.qlist(q(self.player,"getPile","wooden_ox")) do
+		if self.player:getPile("wooden_ox"):length() > 0 then
+			for _, id in sgs.qlist(self.player:getPile("wooden_ox")) do
 				table.insert(cards ,disclosed(self,id))
 			end
 		end
@@ -374,28 +362,28 @@ lol_hbss_w_skill.getTurnUseCard=function(self,inclusive,request)
 		sort_keep(self,cards)
 		local useAll = false
 		for _, enemy in ipairs(self.enemies) do
-			if q(enemy,"getHp") == 1 and not q(enemy,"hasArmorEffect","vine") and not q(self,"hasEightDiagramEffect",enemy) and q(self,"damageIsEffective",enemy, nil, self.player)
-				and q(self,"isWeak",enemy) and getCardsNum("Jink", enemy, self.player) + getCardsNum("Peach", enemy, self.player) + getCardsNum("Analeptic", enemy, self.player) == 0 then
+			if enemy:getHp() == 1 and not enemy:hasArmorEffect("vine") and not self:hasEightDiagramEffect(enemy) and self:damageIsEffective(enemy, nil, self.player)
+				and self:isWeak(enemy) and getCardsNum("Jink", enemy, self.player) + getCardsNum("Peach", enemy, self.player) + getCardsNum("Analeptic", enemy, self.player) == 0 then
 				useAll = true
 			end
 		end
 		for _, fcard in ipairs(cards) do
-			local fvalueCard = (q(self,"isCard","Peach", fcard, self.player) or q(self,"isCard","ExNihilo", fcard, self.player) or q(self,"isCard","ArcheryAttack", fcard, self.player))
-			if useAll then fvalueCard = q(self,"isCard","ArcheryAttack", fcard, self.player) end
+			local fvalueCard = (self:isCard("Peach", fcard, self.player) or self:isCard("ExNihilo", fcard, self.player) or self:isCard("ArcheryAttack", fcard, self.player))
+			if useAll then fvalueCard = self:isCard("ArcheryAttack", fcard, self.player) end
 			if not fvalueCard then
 				first_card = fcard
 				first_found = true
 				for _, scard in ipairs(cards) do
-					local svalueCard = (q(self,"isCard","Peach", scard, self.player) or q(self,"isCard","ExNihilo", scard, self.player) or q(self,"isCard","ArcheryAttack", scard, self.player))
-					if useAll then svalueCard = (q(self,"isCard","ArcheryAttack", scard, self.player)) end
+					local svalueCard = (self:isCard("Peach", scard, self.player) or self:isCard("ExNihilo", scard, self.player) or self:isCard("ArcheryAttack", scard, self.player))
+					if useAll then svalueCard = (self:isCard("ArcheryAttack", scard, self.player)) end
 					if first_card ~= scard			and not svalueCard then
 
-						local card_str = ("archery_attack:lol_hbss_w[%s:%s]=%d+%d"):format("to_be_decided", 0, q(first_card,"getId"), q(scard,"getId"))
+						local card_str = ("archery_attack:lol_hbss_w[%s:%s]=%d+%d"):format("to_be_decided", 0, first_card:getKnownId(), scard:getKnownId())
 						local archeryattack = parse(self,request,card_str)
 
 						assert(archeryattack)
 						
-						local dummy = q(self,"aiUseCard",archeryattack)
+						local dummy = self:aiUseCard(archeryattack)
 						if dummy.card then
 							second_card = scard
 							second_found = true
@@ -408,9 +396,9 @@ lol_hbss_w_skill.getTurnUseCard=function(self,inclusive,request)
 		end
 	end
 
-	if first_found and second_found and not q(self.player,"hasFlag","lol_hbss_w") then
-		local first_id = q(first_card,"getId")
-		local second_id = q(second_card,"getId")
+	if first_found and second_found and not self.player:hasFlag("lol_hbss_w") then
+		local first_id = first_card:getKnownId()
+		local second_id = second_card:getKnownId()
 		local card_str = ("archery_attack:lol_hbss_w[%s:%s]=%d+%d"):format("to_be_decided", 0, first_id, second_id)
 		local archeryattack = parse(self,request,card_str)
 		assert(archeryattack)
@@ -423,37 +411,37 @@ local lol_hbss_e_skill = {}
 lol_hbss_e_skill.name = "lol_hbss_e"
 table.insert(package_skills, lol_hbss_e_skill)
 lol_hbss_e_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.player,"isKongcheng") then return end
-	if q(self,"getOverflow") < 3 then return end
-	if not q(self.player,"hasUsed","#lol_hbss_eCard") then
+	if self.player:isKongcheng() then return end
+	if self:getOverflow() < 3 then return end
+	if not self.player:getStrategyHasUsed("#lol_hbss_eCard") then
 		return parse(self,request,"#lol_hbss_eCard:.:")
 	end
 end
 
 sgs.ai_skill_use_func["#lol_hbss_eCard"] = function(card,use,self,request)
-	call(self,"updatePlayers")
-	local handcards = AIList.new(q(self.player,"getCards","h"))
-	q(self,"sortByCardNeed",handcards, true)
+	self:updatePlayers()
+	local handcards = AIList.new(self.player:getCards("h"))
+	self:sortByCardNeed(handcards, true)
 	sort_players(self,self.enemies, "handcard")
 	local use_card = nil
 	for _,c in ipairs(handcards) do
-		if not q(c,"isKindOf","Peach")  then
+		if not c:isKindOf("Peach")  then
 			use_card = c
 		end
 	end
 	if use_card == nil then return end
 	local targets = {}
 	for _, enemy in ipairs(self.enemies) do
-		if not q(enemy,"isKongcheng") then
+		if not enemy:isKongcheng() then
 			table.insert(targets, enemy)
 		end
 	end
 	if #targets == 0 then return end
 	
-	local card_str =   string.format("#lol_hbss_eCard:%s:", q(use_card,"getEffectiveId"))
+	local card_str =   string.format("#lol_hbss_eCard:%s:", use_card:getKnownEffectiveId())
 	local acard=final_parse(self,request,card_str)
 	use.card = acard
-	if use.to then call(use.to,"append",targets[1]) end
+	if use.to then use.to:append(targets[1]) end
 end
 
 sgs.ai_use_priority["lol_hbss_eCard"] = 3
@@ -465,20 +453,20 @@ table.insert(package_skills,lol_hbss_r_skill)
 lol_hbss_r_skill.getTurnUseCard=function(self,inclusive,request)
 	if #self.enemies < 1 then return end
 	sort_players(self,self.enemies, "hp")
-	if q(self.player,"getMark","@lol_hbss_r") < 1 then return end
+	if self.player:getMark("@lol_hbss_r") < 1 then return end
 
-	local cards = AIList.new(q(self.player,"getHandcards"))
+	local cards = AIList.new(self.player:getHandcards())
 	sort_keep(self,cards)
 	if #cards == 0 then return end
 	local cardToUse = cards[1]
 	if not cardToUse then
 		return
 	end
-	if q(cardToUse,"isKindOf","Peach") then return end
-	if not(self.enemies[1]:getHandcardNum() == 0 or q(self,"canLiegong",self.enemies[1], self.player) ) or not q(self,"slashIsEffective",q(self,"getEvaluationCard","slash"), self.enemies[1]) then return end 
-	local suit = q(cardToUse,"getSuitString")
-	local number = q(cardToUse,"getNumberString")
-	local card_id = q(cardToUse,"getEffectiveId")
+	if cardToUse:isKindOf("Peach") then return end
+	if not(self.enemies[1]:getHandcardNum() == 0 or self:canLiegong(self.enemies[1], self.player) ) or not self:slashIsEffective(self:getEvaluationCard("slash"), self.enemies[1]) then return end
+	local suit = cardToUse:getSuitString()
+	local number = cardToUse:getNumberString()
+	local card_id = cardToUse:getKnownEffectiveId()
 	local card_str = ("slash:lol_hbss_r[%s:%s]=%d"):format(suit, number, card_id)
 	return parse(self,request,card_str)
 end
@@ -488,16 +476,16 @@ local lol_mzzw_q_skill = {}
 lol_mzzw_q_skill.name = "lol_mzzw_q"
 table.insert(package_skills, lol_mzzw_q_skill)
 lol_mzzw_q_skill.getTurnUseCard=function(self,inclusive,request)
-	if not q(self,"isWeak") then return end
-	if  q(self.player,"getMark","@lol_mzzw_t") < 50 then return end
-	if q(self.player,"getMark","lol_mzzw_r_damage") == 1 then return end
-	if not q(self.player,"hasUsed","#lol_mzzw_qCard") then
+	if not self:isWeak() then return end
+	if  self.player:getMark("@lol_mzzw_t") < 50 then return end
+	if self.player:getMark("lol_mzzw_r_damage") == 1 then return end
+	if not self.player:getStrategyHasUsed("#lol_mzzw_qCard") then
 		return parse(self,request,"#lol_mzzw_qCard:.:")
 	end
 end
 
 sgs.ai_skill_use_func["#lol_mzzw_qCard"] = function(card,use,self,request)
-	call(self,"updatePlayers")
+	self:updatePlayers()
 
 
 	local acard=final_parse(self,request,"#lol_mzzw_qCard:.:")
@@ -515,25 +503,25 @@ lol_mzzw_w_skill.getTurnUseCard=function(self,inclusive,request)
 	if #self.enemies < 1 then return end 
 	local x = 0
 	for _, enemy in ipairs(self.enemies) do
-		if not q(enemy,"isKongcheng") then
+		if not enemy:isKongcheng() then
 			x = x + 1
 		end
 	end
-	if not q(self.player,"hasUsed","#lol_mzzw_wCard") and x > 0 then
+	if not self.player:getStrategyHasUsed("#lol_mzzw_wCard") and x > 0 then
 		return parse(self,request,"#lol_mzzw_wCard:.:")
 	end
 end
 
 sgs.ai_skill_use_func["#lol_mzzw_wCard"] = function(card,use,self,request)
-	call(self,"updatePlayers")
+	self:updatePlayers()
 	sort_players(self,self.enemies, "handcard")
 	for _, enemy in ipairs(self.enemies) do
-		if not q(enemy,"isKongcheng") then
-			if use.to then call(use.to,"append",enemy) end
+		if not enemy:isKongcheng() then
+			if use.to then use.to:append(enemy) end
 		end
 	end
 	use.card=final_parse(self,request,"#lol_mzzw_wCard:.:")
-	if use.to and q(use.to,"length") > 0 then 
+	if use.to and use.to:length() > 0 then
 	
 	return end
 end
@@ -545,12 +533,12 @@ sgs.ai_use_value["lol_mzzw_wCard"] = 4
 sgs.ai_skill_cardchosen.lol_mzzw_w = function(self, who, flags)
 	local cards = AIList.new(whole_hand(self,who))
 		for _, card in ipairs(cards) do
-			if not q(card,"isKindOf","Jink") and not q(card,"isKindOf","Slash") then
+			if not card:isKindOf("Jink") and not card:isKindOf("Slash") then
 				 return card 
 			end
 		end
 	for _, card in ipairs(cards) do
-			if  not q(card,"isKindOf","Slash") then
+			if  not card:isKindOf("Slash") then
 				 return card 
 			end
 		end
@@ -636,15 +624,15 @@ local lol_mzzw_r_skill = {}
 lol_mzzw_r_skill.name = "lol_mzzw_r"
 table.insert(package_skills, lol_mzzw_r_skill)
 lol_mzzw_r_skill.getTurnUseCard=function(self,inclusive,request)
-	if not q(self,"isWeak") then return end
-	if  q(self.player,"getMark","@lol_mzzw_r") < 1 then return end
-	if not q(self.player,"hasUsed","#lol_mzzw_rCard") then
+	if not self:isWeak() then return end
+	if  self.player:getMark("@lol_mzzw_r") < 1 then return end
+	if not self.player:getStrategyHasUsed("#lol_mzzw_rCard") then
 		return parse(self,request,"#lol_mzzw_rCard:.:")
 	end
 end
 
 sgs.ai_skill_use_func["#lol_mzzw_rCard"] = function(card,use,self,request)
-	call(self,"updatePlayers")
+	self:updatePlayers()
 
 
 	local acard=final_parse(self,request,"#lol_mzzw_rCard:.:")
@@ -655,7 +643,7 @@ sgs.ai_use_priority["lol_mzzw_rCard"] = sgs.ai_use_priority["lol_mzzw_qCard"] - 
 sgs.ai_use_value["lol_mzzw_rCard"] = 1
 
 sgs.ai_hasBuquEffect_skill.lol_mzzw_r = function(player)
-	return q(player,"getMark","lol_mzzw_r_damage") > 0
+	return player:getMark("lol_mzzw_r_damage") > 0
 end
 
 
@@ -667,31 +655,31 @@ lol_tqz_q_skill.getTurnUseCard=function(self,inclusive,request)
 	if #self.enemies < 1 then return end
 	sort_players(self,self.enemies, "hp")
 	
-	local cards = AIList.new(q(self.player,"getHandcards"))
+	local cards = AIList.new(self.player:getHandcards())
 	sort_keep(self,cards)
 	if #cards == 0 then return end
 	local cardToUse = cards[1]
 	if not cardToUse then
 		return
 	end
-	if q(cardToUse,"isKindOf","Peach") or  not q(cardToUse,"isRed") then return end
-	if q(self.player,"getMark","@lol_tqz_r") > 0 then
-		call(self,"setPriorityValue","lol_tqz_rCard",q(self,"getPriorityValue","FireAttack")+0.1)
+	if cardToUse:isKindOf("Peach") or  not cardToUse:isRed() then return end
+	if self.player:getMark("@lol_tqz_r") > 0 then
+		self:setPriorityValue("lol_tqz_rCard", self:getPriorityValue("FireAttack")+0.1)
 	end
-	local suit = q(cardToUse,"getSuitString")
-	local number = q(cardToUse,"getNumberString")
-	local card_id = q(cardToUse,"getEffectiveId")
+	local suit = cardToUse:getSuitString()
+	local number = cardToUse:getNumberString()
+	local card_id = cardToUse:getKnownEffectiveId()
 	local card_str = ("fire_attack:lol_tqz_q[%s:%s]=%d"):format(suit, number, card_id)
 	return parse(self,request,card_str)
 end
 
 
 sgs.ai_skill_choice["lol_tqz_q"] = function(self, choices, data)
-	local items = q(choices,"split","+")
+	local items = choices:split("+")
 	 if table.contains(items, "lol_tqz_q_draw") then
 		return "lol_tqz_q_draw"
    end
-   if table.contains(items, "lol_tqz_q_damage") and q(self.player,"getHandcardNum") > 2 then
+   if table.contains(items, "lol_tqz_q_damage") and self.player:getHandcardNum() > 2 then
 	return "lol_tqz_q_damage"
    end
    
@@ -704,24 +692,24 @@ local lol_tqz_w_skill = {}
 lol_tqz_w_skill.name = "lol_tqz_w"
 table.insert(package_skills, lol_tqz_w_skill)
 lol_tqz_w_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.player,"isKongcheng") then return end
-	if q(self,"getOverflow") < 1 then return end
-		if not q(self.player,"hasUsed","#lol_tqz_wCard") then
-			if q(self.player,"getMark","@lol_tqz_r") > 0 then
-				call(self,"setPriorityValue","lol_tqz_rCard",q(self,"getPriorityValue","lol_tqz_eCard")+0.1)
+	if self.player:isKongcheng() then return end
+	if self:getOverflow() < 1 then return end
+		if not self.player:getStrategyHasUsed("#lol_tqz_wCard") then
+			if self.player:getMark("@lol_tqz_r") > 0 then
+				self:setPriorityValue("lol_tqz_rCard", self:getPriorityValue("lol_tqz_eCard")+0.1)
 			end
 			return parse(self,request,"#lol_tqz_wCard:.:")
 		end
 end
 
 sgs.ai_skill_use_func["#lol_tqz_wCard"] = function(card,use,self,request)
-	call(self,"updatePlayers")
-	local handcards = AIList.new(q(self.player,"getCards","h"))
-	q(self,"sortByCardNeed",handcards, true)
+	self:updatePlayers()
+	local handcards = AIList.new(self.player:getCards("h"))
+	self:sortByCardNeed(handcards, true)
 	sort_players(self,self.enemies, "handcard")
 	local use_card = nil
 	for _,c in ipairs(handcards) do
-		if not q(c,"isKindOf","Peach")  then
+		if not c:isKindOf("Peach")  then
 			use_card = c
 		end
 	end
@@ -729,16 +717,16 @@ sgs.ai_skill_use_func["#lol_tqz_wCard"] = function(card,use,self,request)
 
 	local target
 	for _, enemy in ipairs(self.enemies) do
-		if not q(enemy,"isKongcheng") then
+		if not enemy:isKongcheng() then
 			target = enemy
 			break
 		end
 	end
 	if target then
-		local card_str =   string.format("#lol_tqz_wCard:%s:", q(use_card,"getEffectiveId"))
+		local card_str =   string.format("#lol_tqz_wCard:%s:", use_card:getKnownEffectiveId())
 		local acard=final_parse(self,request,card_str)
 		use.card = acard
-		if use.to then call(use.to,"append",target) end
+		if use.to then use.to:append(target) end
 	end
 end
 
@@ -746,8 +734,8 @@ sgs.ai_use_priority["lol_tqz_wCard"] = 3
 sgs.ai_use_value["lol_tqz_wCard"] = 1
 
 sgs.ai_skill_choice["lol_tqz_wCard"] = function(self, choices, data)
-	local items = q(choices,"split","+")
-	 if table.contains(items, "lol_tqz_w_hp") and q(self.player,"isWounded") then
+	local items = choices:split("+")
+	 if table.contains(items, "lol_tqz_w_hp") and self.player:isWounded() then
 		return "lol_tqz_w_hp"
    end
    if table.contains(items, "lol_tqz_w_throw")  then
@@ -761,23 +749,23 @@ local lol_tqz_e_skill = {}
 lol_tqz_e_skill.name = "lol_tqz_e"
 table.insert(package_skills, lol_tqz_e_skill)
 lol_tqz_e_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.player,"isKongcheng") then return end
-	if q(self.player,"getMark","@lol_tqz_r") > 0 then
-		call(self,"setPriorityValue","lol_tqz_rCard",q(self,"getPriorityValue","lol_tqz_eCard")+0.1)
+	if self.player:isKongcheng() then return end
+	if self.player:getMark("@lol_tqz_r") > 0 then
+		self:setPriorityValue("lol_tqz_rCard", self:getPriorityValue("lol_tqz_eCard")+0.1)
 	end
-	if not q(self.player,"hasUsed","#lol_tqz_eCard") then
+	if not self.player:getStrategyHasUsed("#lol_tqz_eCard") then
 		return parse(self,request,"#lol_tqz_eCard:.:")
 	end
 end
 
 sgs.ai_skill_use_func["#lol_tqz_eCard"] = function(card,use,self,request)
-	call(self,"updatePlayers")
-	local handcards = AIList.new(q(self.player,"getCards","h"))
-	q(self,"sortByCardNeed",handcards, true)
+	self:updatePlayers()
+	local handcards = AIList.new(self.player:getCards("h"))
+	self:sortByCardNeed(handcards, true)
 	sort_players(self,self.friends, "handcard")
 	local use_card = nil
 	for _,c in ipairs(handcards) do
-		if not q(c,"isKindOf","Peach") and q(c,"getSuit") == sgs.Card_Diamond  then
+		if not c:isKindOf("Peach") and c:getSuit() == sgs.Card_Diamond  then
 			use_card = c
 		end
 	end
@@ -785,24 +773,24 @@ sgs.ai_skill_use_func["#lol_tqz_eCard"] = function(card,use,self,request)
 
 	local target
 	for _, friend in ipairs(self.friends) do
-		if  q(self,"isWeak",friend) then
+		if  self:isWeak(friend) then
 			target = friend
 			break
 		end
 	end
 	if not target then
 		for _, friend in ipairs(self.friends) do
-			if not q(self,"needToLoseHp",friend) then
+			if not self:needToLoseHp(friend) then
 				target = friend
 				break
 			end
 		end
 	end
 	if target then
-		local card_str =   string.format("#lol_tqz_eCard:%s:", q(use_card,"getEffectiveId"))
+		local card_str =   string.format("#lol_tqz_eCard:%s:", use_card:getKnownEffectiveId())
 		local acard=final_parse(self,request,card_str)
 		use.card = acard
-		if use.to then call(use.to,"append",target) end
+		if use.to then use.to:append(target) end
 	end
 end
 
@@ -810,7 +798,7 @@ sgs.ai_use_priority["lol_tqz_eCard"] = 3
 sgs.ai_use_value["lol_tqz_eCard"] = 1
 
 sgs.ai_skill_choice["lol_tqz_eCard"] = function(self, choices, data)
-	local items = q(choices,"split","+")
+	local items = choices:split("+")
 	 if table.contains(items, "lol_tqz_e_hudun") then
 		return "lol_tqz_e_hudun"
    end
@@ -832,14 +820,14 @@ table.insert(package_skills, lol_tqz_r_skill)
 lol_tqz_r_skill.getTurnUseCard=function(self,inclusive,request)
 	if #self.enemies < 1 then return end
 	
-	if  q(self.player,"getMark","@lol_tqz_r") < 1 then return end
-	if not q(self.player,"hasUsed","#lol_tqz_rCard") then
+	if  self.player:getMark("@lol_tqz_r") < 1 then return end
+	if not self.player:getStrategyHasUsed("#lol_tqz_rCard") then
 		return parse(self,request,"#lol_tqz_rCard:.:")
 	end
 end
 
 sgs.ai_skill_use_func["#lol_tqz_rCard"] = function(card,use,self,request)
-	call(self,"updatePlayers")
+	self:updatePlayers()
 
 
 	local acard=final_parse(self,request,"#lol_tqz_rCard:.:")
@@ -852,7 +840,7 @@ sgs.ai_use_value["lol_tqz_rCard"] = 1
 
 
 sgs.ai_card_priority["lol_xlnw_q"] = function(self, card)
-	if card and q(card,"isKindOf","Slash") and table.contains(q(card,"getSkillNames"), "lol_xlnw_q")
+	if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "lol_xlnw_q")
 	then
 		return 0.1
 	end
@@ -862,9 +850,9 @@ local lol_xlnw_q_skill={}
 lol_xlnw_q_skill.name="lol_xlnw_q"
 table.insert(package_skills,lol_xlnw_q_skill)
 lol_xlnw_q_skill.getTurnUseCard=function(self,inclusive,request)
-    if q(self.player,"getHandcardNum")<1 then return nil end
-    if q(self.player,"hasFlag","lol_xlnw_q") then return nil end
-    local cards = q(self.player,"getHandcards")
+    if self.player:getHandcardNum()<1 then return nil end
+    if self.player:hasFlag("lol_xlnw_q") then return nil end
+    local cards = self.player:getHandcards()
     cards=AIList.new(cards)
     sort_keep(self,cards)
 	local card
@@ -872,14 +860,14 @@ lol_xlnw_q_skill.getTurnUseCard=function(self,inclusive,request)
 	sort_use(self,cards,true)
 
 	for _,acard in ipairs(cards)  do
-		if (q(acard,"getSuit") == sgs.Card_Club)  then
+		if (acard:getSuit() == sgs.Card_Club)  then
 			card = acard
 			break
 		end
 	end
 	
-	if q(self.player,"getPile","wooden_ox"):length() > 0 then
-		for _, id in sgs.qlist(q(self.player,"getPile","wooden_ox")) do
+	if self.player:getPile("wooden_ox"):length() > 0 then
+		for _, id in sgs.qlist(self.player:getPile("wooden_ox")) do
 			if disclosed(self,id):getSuit() == sgs.Card_Club		then
 				card = disclosed(self,id)
 			end
@@ -887,9 +875,9 @@ lol_xlnw_q_skill.getTurnUseCard=function(self,inclusive,request)
 	end
 
 	if not card then return nil end
-	local suit = q(card,"getSuitString")
-	local number = q(card,"getNumberString")
-	local card_id = q(card,"getEffectiveId")
+	local suit = card:getSuitString()
+	local number = card:getNumberString()
+	local card_id = card:getKnownEffectiveId()
 	local card_str = ("slash:lol_xlnw_q[%s:%s]=%d"):format(suit, number, card_id)
 	local skillcard = parse(self,request,card_str)
 
@@ -903,23 +891,23 @@ local lol_xlnw_w_skill = {}
 lol_xlnw_w_skill.name = "lol_xlnw_w"
 table.insert(package_skills, lol_xlnw_w_skill)
 lol_xlnw_w_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.player,"hasUsed","#lol_xlnw_wCard") then return end
+	if self.player:getStrategyHasUsed("#lol_xlnw_wCard") then return end
 
 	local card
 	if not card then
-		local hcards = q(self.player,"getCards","h")
+		local hcards = self.player:getCards("h")
 		hcards = AIList.new(hcards)
 		sort_use(self,hcards, true)
 
 		for _, hcard in ipairs(hcards) do
-			if q(hcard,"getSuit") == sgs.Card_Heart then
+			if hcard:getSuit() == sgs.Card_Heart then
 				card = hcard
 				break
 			end
 		end
 	end
 	if card then
-		card = parse(self,request,"#lol_xlnw_wCard:" .. q(card,"getEffectiveId")..":")
+		card = parse(self,request,"#lol_xlnw_wCard:" .. card:getKnownEffectiveId()..":")
 		return card
 	end
 
@@ -933,7 +921,7 @@ sgs.ai_skill_use_func["#lol_xlnw_wCard"] = function(card,use,self,request)
 	sort_players(self,friends, "handcard", true)
 	
 	for _, friend in ipairs(friends) do
-		if  not q(self,"needKongcheng",friend, true) and not hasManjuanEffect(friend) and q(friend,"getPileCount","lol_jiasu") == 0 then
+		if  not self:needKongcheng(friend, true) and not hasManjuanEffect(friend) and friend:getPileCount("lol_jiasu") == 0 then
 					target = friend
 				end
 		if target then break end
@@ -942,7 +930,7 @@ sgs.ai_skill_use_func["#lol_xlnw_wCard"] = function(card,use,self,request)
 	if not target then
 		sort_players(self,friends, "defense")
 		for _, friend in ipairs(friends) do
-			if  not q(self,"needKongcheng",friend, true) and not hasManjuanEffect(friend) then
+			if  not self:needKongcheng(friend, true) and not hasManjuanEffect(friend) then
 				target = friend
 				break
 			end
@@ -952,7 +940,7 @@ sgs.ai_skill_use_func["#lol_xlnw_wCard"] = function(card,use,self,request)
 	if target then
 		use.card = card
 		if use.to then
-			call(use.to,"append",target)
+			use.to:append(target)
 		end
 	end
 end
@@ -961,19 +949,19 @@ sgs.ai_use_value["lol_xlnw_wCard"] = 3
 
 
 sgs.ai_skill_invoke.lol_xlnw_e = function(self, data)
-	local target = q(data,"toPlayer")
-	if not q(self,"isEnemy",target) then return false end
+	local target = data:toPlayer()
+	if not self:isEnemy(target) then return false end
 	local pks
-	for _,pet in sgs.qlist(q(self.room,"getAlivePlayers")) do
+	for _,pet in sgs.qlist(self.room:getAlivePlayers()) do
 		if is_pet(self,pet) then pks = pet end
 	end
 	if pks then
-		if q(self,"doDisCard",pks, "h") then return true end
-		if q(self,"isWeak",pks) then
+		if self:doDisCard(pks, "h") then return true end
+		if self:isWeak(pks) then
 			return false
 		end
 	end
-	if not q(self,"isEnemy",target) then return false end
+	if not self:isEnemy(target) then return false end
 	return true
 end
 
@@ -981,7 +969,7 @@ local lol_xlnw_e_skill = {}
 lol_xlnw_e_skill.name = "lol_xlnw_e"
 table.insert(package_skills, lol_xlnw_e_skill)
 lol_xlnw_e_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.player,"hasUsed","#lol_xlnw_eCard") then return end
+	if self.player:getStrategyHasUsed("#lol_xlnw_eCard") then return end
 	if #self.friends_noself < 1 then return end
 	local card = parse(self,request,"#lol_xlnw_eCard:.:")
 	
@@ -995,7 +983,7 @@ sgs.ai_skill_use_func["#lol_xlnw_eCard"] = function(card,use,self,request)
 
 	
 	for _, friend in ipairs(self.friends_noself) do
-		if q(self,"hasHeavyDamage",friend, nil, nil) then
+		if self:hasHeavyDamage(friend, nil, nil) then
 					target = friend
 				end
 		if target then break end
@@ -1010,7 +998,7 @@ sgs.ai_skill_use_func["#lol_xlnw_eCard"] = function(card,use,self,request)
 	if target then
 		use.card = card
 		if use.to then
-			call(use.to,"append",target)
+			use.to:append(target)
 		end
 	end
 end
@@ -1023,8 +1011,8 @@ local lol_xlnw_r_skill = {}
 lol_xlnw_r_skill.name = "lol_xlnw_r"
 table.insert(package_skills, lol_xlnw_r_skill)
 lol_xlnw_r_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.player,"hasUsed","#lol_xlnw_rCard") then return end
-	if q(self.player,"getMark","@lol_xlnw_r") < 1 then return end
+	if self.player:getStrategyHasUsed("#lol_xlnw_rCard") then return end
+	if self.player:getMark("@lol_xlnw_r") < 1 then return end
 	if #self.friends_noself < 1 then return end
 	local card = parse(self,request,"#lol_xlnw_rCard:.:")
 	
@@ -1038,29 +1026,29 @@ sgs.ai_skill_use_func["#lol_xlnw_rCard"] = function(card,use,self,request)
 
 	
 	for _, friend in ipairs(self.friends) do
-		if q(self,"isWeak",friend) then
+		if self:isWeak(friend) then
 					target = friend
 				end
 		if target then break end
 	end
 	if not target then return end 
-	local handcards = AIList.new(q(self.player,"getCards","h"))
-	q(self,"sortByCardNeed",handcards, true)
+	local handcards = AIList.new(self.player:getCards("h"))
+	self:sortByCardNeed(handcards, true)
 	sort_players(self,self.friends, "handcard")
 	local use_card = {}
 	for _,c in ipairs(handcards) do
-		if not q(c,"isKindOf","Peach") and #use_card < q(target,"getHp")  then
-			table.insert(use_card, q(c,"getEffectiveId"))
+		if not c:isKindOf("Peach") and #use_card < target:getHp()  then
+			table.insert(use_card, c:getKnownEffectiveId())
 		end
 	end
-	if #use_card ~= q(target,"getHp") then return end
+	if #use_card ~= target:getHp() then return end
 	
 	if target then
 		local card_str = string.format("#lol_xlnw_rCard:%s:", table.concat(use_card, "+"))
 		local acard=final_parse(self,request,card_str)
 		use.card = acard
 		if use.to then
-			call(use.to,"append",target)
+			use.to:append(target)
 		end
 	end
 end
@@ -1069,23 +1057,23 @@ end
 
 
 sgs.ai_ajustdamage_from.lol_smss_q = function(self, from, to, card, nature)
-	if (card and (q(card,"isKindOf","Slash"))) and q(from,"hasFlag","lol_smss_q")
+	if (card and (card:isKindOf("Slash"))) and from:hasFlag("lol_smss_q")
 	then
-		return q(from,"getMark","@lol_smss_q")
+		return from:getMark("@lol_smss_q")
 	end
 end
 
 sgs.ai_used_revises.lol_smss_q = function(self, use)
-	if q(use.card,"isKindOf","Slash")
-		and not q(self.player,"hasFlag","lol_smss_q")
+	if use.card:isKindOf("Slash")
+		and not self.player:hasFlag("lol_smss_q")
 		and not use.isDummy
-		and not q(self.player,"hasUsed","#lol_smss_qCard")
+		and not self.player:getStrategyHasUsed("#lol_smss_qCard")
 	then
 		for _, to in sgs.list(use.to) do
-			if q(self,"isEnemy",to) and q(to,"getHp") < 2 
+			if self:isEnemy(to) and to:getHp() < 2
 				and getCardsNum("Jink", to, self.player) < 1 
 			then
-				local handcards = AIList.new(q(self.player,"getCards","h"))
+				local handcards = AIList.new(self.player:getCards("h"))
 				local card_str = string.format("#lol_smss_qCard:%s:", handcards[1]:getEffectiveId())
 				local acard=final_parse(self,request,card_str)
 				use.card = acard
@@ -1100,7 +1088,7 @@ local lol_smss_q_skill = {}
 lol_smss_q_skill.name = "lol_smss_q"
 table.insert(package_skills, lol_smss_q_skill)
 lol_smss_q_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.player,"hasUsed","#lol_smss_qCard") then return end
+	if self.player:getStrategyHasUsed("#lol_smss_qCard") then return end
 	local card = parse(self,request,"#lol_smss_qCard:.:")
 	
 
@@ -1108,16 +1096,16 @@ lol_smss_q_skill.getTurnUseCard=function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#lol_smss_qCard"] = function(card,use,self,request)
-	if q(self,"isWeak") then	
-	local handcards = AIList.new(q(self.player,"getCards","h"))
-	q(self,"sortByCardNeed",handcards, true)
+	if self:isWeak() then
+	local handcards = AIList.new(self.player:getCards("h"))
+	self:sortByCardNeed(handcards, true)
 	local invoke = false
 	local use_card = {}
 	for _,c in ipairs(handcards) do
-		if q(c,"isKindOf","Slash") then
+		if c:isKindOf("Slash") then
 			sort_players(self,self.enemies, "defense")
 			for _, enemy in ipairs(self.enemies) do
-				if  q(self.player,"getMark","@lol_smss_q") > 0 and q(self,"slashIsEffective",c, enemy) then
+				if  self.player:getMark("@lol_smss_q") > 0 and self:slashIsEffective(c, enemy) then
 					invoke = true
 					break
 				end
@@ -1139,23 +1127,23 @@ local lol_smss_w_skill = {}
 lol_smss_w_skill.name = "lol_smss_w"
 table.insert(package_skills, lol_smss_w_skill)
 lol_smss_w_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.player,"hasUsed","#lol_smss_wCard") then return end
+	if self.player:getStrategyHasUsed("#lol_smss_wCard") then return end
 
 	local card
 	if not card then
-		local hcards = q(self.player,"getCards","h")
+		local hcards = self.player:getCards("h")
 		hcards = AIList.new(hcards)
 		sort_use(self,hcards, true)
 
 		for _, hcard in ipairs(hcards) do
-			if q(hcard,"getSuit") == sgs.Card_Spade then
+			if hcard:getSuit() == sgs.Card_Spade then
 				card = hcard
 				break
 			end
 		end
 	end
 	if card then
-		card = parse(self,request,"#lol_smss_wCard:" .. q(card,"getEffectiveId")..":")
+		card = parse(self,request,"#lol_smss_wCard:" .. card:getKnownEffectiveId()..":")
 		return card
 	end
 
@@ -1170,7 +1158,7 @@ sgs.ai_skill_use_func["#lol_smss_wCard"] = function(card,use,self,request)
 	if not target then
 		sort_players(self,self.enemies, "defense")
 		for _, enemy in ipairs(self.enemies) do
-			if  q(self,"isWeak",enemy) and q(enemy,"getPileCount","lol_jiansu") == 0 then
+			if  self:isWeak(enemy) and enemy:getPileCount("lol_jiansu") == 0 then
 				target = enemy
 				break
 			end
@@ -1179,7 +1167,7 @@ sgs.ai_skill_use_func["#lol_smss_wCard"] = function(card,use,self,request)
 	if not target then
 		sort_players(self,self.enemies, "defense")
 		for _, enemy in ipairs(self.enemies) do
-			if  q(self,"getOverflow") > 0 and q(enemy,"getPileCount","lol_jiansu") == 0 then
+			if  self:getOverflow() > 0 and enemy:getPileCount("lol_jiansu") == 0 then
 				target = enemy
 				break
 			end
@@ -1189,7 +1177,7 @@ sgs.ai_skill_use_func["#lol_smss_wCard"] = function(card,use,self,request)
 	if target then
 		use.card = card
 		if use.to then
-			call(use.to,"append",target)
+			use.to:append(target)
 		end
 	end
 end
@@ -1204,7 +1192,7 @@ local lol_smss_e_skill = {}
 lol_smss_e_skill.name= "lol_smss_e"
 table.insert(package_skills,lol_smss_e_skill)
 lol_smss_e_skill.getTurnUseCard=function(self,inclusive,request)
-	if not q(self.player,"hasUsed","#lol_smss_eCard") then
+	if not self.player:getStrategyHasUsed("#lol_smss_eCard") then
 		return parse(self,request,"#lol_smss_eCard:.:")
 	end
 end
@@ -1213,9 +1201,9 @@ sgs.ai_skill_use_func["#lol_smss_eCard"] = function(card,use,self,request)
 		local use_card
 		local  cards
 		local target
-		cards = q(self.player,"getHandcards")
+		cards = self.player:getHandcards()
 		for _, card in sgs.qlist(cards) do
-			if q(card,"getSuit") == sgs.Card_Heart and not q(card,"isKindOf","Peach") then
+			if card:getSuit() == sgs.Card_Heart and not card:isKindOf("Peach") then
 				use_card = card
 				break
 			end
@@ -1224,9 +1212,9 @@ sgs.ai_skill_use_func["#lol_smss_eCard"] = function(card,use,self,request)
 		local max= 0
 		for _, enemy in ipairs(self.enemies) do
 			local x = 0
-			if q(self,"objectiveLevel",enemy) > 3 and not q(self,"cantbeHurt",enemy) and q(self,"damageIsEffective",enemy, sgs.DamageStruct_Fire) then
-				for _, p in sgs.qlist(q(self.room,"getAlivePlayers")) do
-					if q(enemy,"distanceTo",p) <= 1 then
+			if self:objectiveLevel(enemy) > 3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy, sgs.DamageStruct_Fire) then
+				for _, p in sgs.qlist(self.room:getAlivePlayers()) do
+					if enemy:distanceTo(p) <= 1 then
 						x = x + 1
 					end
 				end
@@ -1239,9 +1227,9 @@ sgs.ai_skill_use_func["#lol_smss_eCard"] = function(card,use,self,request)
 		end
 		
 				if use_card and target  then
-					use.card=final_parse(self,request,"#lol_smss_eCard:" .. q(use_card,"getId")..":")
+					use.card=final_parse(self,request,"#lol_smss_eCard:" .. use_card:getKnownId()..":")
 					if use.to then
-						call(use.to,"append",target)
+						use.to:append(target)
 					end
 	end
 end
@@ -1255,8 +1243,8 @@ local lol_smss_r_skill = {}
 lol_smss_r_skill.name = "lol_smss_r"
 table.insert(package_skills, lol_smss_r_skill)
 lol_smss_r_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.player,"hasUsed","#lol_smss_rCard") then return end
-	if q(self.player,"getMark","@lol_smss_r") < 1 then return end
+	if self.player:getStrategyHasUsed("#lol_smss_rCard") then return end
+	if self.player:getMark("@lol_smss_r") < 1 then return end
 	local card = parse(self,request,"#lol_smss_rCard:.:")
 	
 
@@ -1264,16 +1252,16 @@ lol_smss_r_skill.getTurnUseCard=function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#lol_smss_rCard"] = function(card,use,self,request)
-	if q(self,"isWeak") then	
-	local handcards = AIList.new(q(self.player,"getCards","h"))
-	q(self,"sortByCardNeed",handcards, true)
+	if self:isWeak() then
+	local handcards = AIList.new(self.player:getCards("h"))
+	self:sortByCardNeed(handcards, true)
 	local use_card = {}
 	for _,c in ipairs(handcards) do
-		if q(c,"isBlack") and #use_card < q(self.player,"getHp")  then
-			table.insert(use_card, q(c,"getEffectiveId"))
+		if c:isBlack() and #use_card < self.player:getHp()  then
+			table.insert(use_card, c:getKnownEffectiveId())
 		end
 	end
-	if #use_card ~= q(self.player,"getHp") then return end
+	if #use_card ~= self.player:getHp() then return end
 	
 	
 		local card_str = string.format("#lol_smss_rCard:%s:", table.concat(use_card, "+"))
@@ -1288,17 +1276,17 @@ end
 
 
 sgs.ai_canNiepan_skill.lol_ayjm_t = function(player)
-	return q(player,"getMark","@lol_ayjm_t") > 0
+	return player:getMark("@lol_ayjm_t") > 0
 end
 
 local lol_ayjm_q_skill={}
 lol_ayjm_q_skill.name="lol_ayjm_q"
 table.insert(package_skills,lol_ayjm_q_skill)
 lol_ayjm_q_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self,"isWeak") then return nil end
-	 if q(self.player,"getHp") <= 1 then return nil end
+	if self:isWeak() then return nil end
+	 if self.player:getHp() <= 1 then return nil end
     
-    if q(self.player,"hasFlag","lol_ayjm_q") then return nil end
+    if self.player:hasFlag("lol_ayjm_q") then return nil end
    
 
 
@@ -1313,15 +1301,15 @@ end
 
 
 sgs.ai_skill_choice["lol_ayjm_w"] = function(self, choices, data)
-	local items = q(choices,"split","+")
-	local target = q(data,"toDamage").to
+	local items = choices:split("+")
+	local target = data:toDamage().to
 	if #items == 1 then
 		return items[1]
 	end
-	if target and q(self,"isEnemy",target) and ((q(self,"getCardsNum","Peach") + q(self.player,"getHp") >= 2) or q(self,"getOverflow") == 0) and  table.contains(items, "lol_ayjm_w_damage")  then
+	if target and self:isEnemy(target) and ((self:getCardsNum("Peach") + self.player:getHp() >= 2) or self:getOverflow() == 0) and  table.contains(items, "lol_ayjm_w_damage")  then
 		return "lol_ayjm_w_damage"
 	end
-	if  target and (q(self,"isFriend",target) or q(self,"isWeak")) and  table.contains(items, "lol_ayjm_w_hp")  then
+	if  target and (self:isFriend(target) or self:isWeak()) and  table.contains(items, "lol_ayjm_w_hp")  then
 		return "lol_ayjm_w_hp"
 	end
 	return "cancel"
@@ -1335,9 +1323,9 @@ local lol_ayjm_e_skill={}
 lol_ayjm_e_skill.name="lol_ayjm_e"
 table.insert(package_skills,lol_ayjm_e_skill)
 lol_ayjm_e_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self,"isWeak") then return nil end
-    if q(self.player,"hasFlag","lol_ayjm_e") then return nil end
-    if q(self.player,"getHp") <= 1 then return nil end
+	if self:isWeak() then return nil end
+    if self.player:hasFlag("lol_ayjm_e") then return nil end
+    if self.player:getHp() <= 1 then return nil end
     
 	local card_str = ("slash:lol_ayjm_e[%s:%s]=."):format(sgs.Card_NoSuit, 0)
 	local skillcard = parse(self,request,card_str)
@@ -1358,8 +1346,8 @@ local lol_ayjm_r_skill = {}
 lol_ayjm_r_skill.name = "lol_ayjm_r"
 table.insert(package_skills, lol_ayjm_r_skill)
 lol_ayjm_r_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.player,"hasUsed","#lol_ayjm_rCard") then return end
-	if q(self.player,"getMark","@lol_ayjm_r") < 1 then return end
+	if self.player:getStrategyHasUsed("#lol_ayjm_rCard") then return end
+	if self.player:getMark("@lol_ayjm_r") < 1 then return end
 	local card = parse(self,request,"#lol_ayjm_rCard:.:")
 	
 
@@ -1367,16 +1355,16 @@ lol_ayjm_r_skill.getTurnUseCard=function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#lol_ayjm_rCard"] = function(card,use,self,request)
-	if q(self,"isWeak") then	
-	local handcards = AIList.new(q(self.player,"getCards","h"))
-	q(self,"sortByCardNeed",handcards, true)
+	if self:isWeak() then
+	local handcards = AIList.new(self.player:getCards("h"))
+	self:sortByCardNeed(handcards, true)
 	local invoke = false
 	local use_card = {}
 	for _,c in ipairs(handcards) do
-		if q(c,"isKindOf","Slash") then
+		if c:isKindOf("Slash") then
 			sort_players(self,self.enemies, "defense")
 			for _, enemy in ipairs(self.enemies) do
-				if  q(self,"isWeak",enemy) and q(self,"slashIsEffective",c, enemy) then
+				if  self:isWeak(enemy) and self:slashIsEffective(c, enemy) then
 					invoke = true
 					break
 				end
@@ -1406,20 +1394,20 @@ end
 sgs.ai_skill_use_func["#lol_bjfh_qCard"] = function(card,use,self,request)
 	
 	local use_card,cards
-	cards = q(self.player,"getHandcards")
+	cards = self.player:getHandcards()
 	for _,card in sgs.qlist(cards)do
-		if q(card,"isRed") then
+		if card:isRed() then
 			use_card = card
 			break
 		end
 	end
 	sort_players(self,self.enemies)
 	for _,enemy in sgs.list(self.enemies)do
-		if q(self,"objectiveLevel",enemy)>3 and not q(self,"cantbeHurt",enemy) and q(self,"damageIsEffective",enemy)
+		if self:objectiveLevel(enemy)>3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy)
 		then
 			if use_card then
-				use.card=final_parse(self,request,"#lol_bjfh_qCard:"..q(use_card,"getId")..":")
-				if use.to then call(use.to,"append",enemy) end
+				use.card=final_parse(self,request,"#lol_bjfh_qCard:"..use_card:getKnownId()..":")
+				if use.to then use.to:append(enemy) end
 				break
 			end
 		end
@@ -1433,19 +1421,19 @@ sgs.dynamic_value.damage_card["#lol_bjfh_qCard"] = true
 
 
 sgs.ai_skill_cardask["@lol_bjfh_q-card"]=function(self,data)
-	local judge = q(data,"toJudge")
-	local all_cards = q(self,"addHandPile","h")
+	local judge = data:toJudge()
+	local all_cards = self:addHandPile("h")
 	if #all_cards<1 then return "." end
 	local cards = {}
 	for _,card in sgs.list(all_cards)do
-		if q(card,"isRed") and not q(card,"hasFlag","using") then
+		if card:isRed() and not card:hasFlag("using") then
 			table.insert(cards,card)
 		end
 	end
 	if #cards<1 then return "." end
-	local card_id = q(self,"getRetrialCardId",cards,judge,nil,true)
-	if card_id>=0 and q(self,"needRetrial",judge)
-	or q(self,"getUseValue",judge.card)>q(self,"getUseValue",disclosed(self,card_id))
+	local card_id = self:getRetrialCardId(cards, judge, nil, true)
+	if card_id>=0 and self:needRetrial(judge)
+	or self:getUseValue(judge.card)>self:getUseValue(disclosed(self,card_id))
 	then return "$"..card_id end
 	return "."
 end
@@ -1460,29 +1448,29 @@ end
 sgs.ai_skill_use_func["#lol_bjfh_eCard"] = function(card,use,self,request)
 	
 	local use_card,cards
-	cards = q(self.player,"getHandcards")
+	cards = self.player:getHandcards()
 	for _,card in sgs.qlist(cards)do
 		use_card = card
 		break
 	end
 	sort_players(self,self.enemies)
 	for _,enemy in sgs.list(self.enemies)do
-		if q(self,"objectiveLevel",enemy)>3 and not q(self,"cantbeHurt",enemy) and q(self,"damageIsEffective",enemy) and q(enemy,"getPileCount","lol_jiansu")>0
+		if self:objectiveLevel(enemy)>3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy) and enemy:getPileCount("lol_jiansu")>0
 		then
 			if use_card then
-				use.card=final_parse(self,request,"#lol_bjfh_eCard:"..q(use_card,"getId")..":")
-				if use.to then call(use.to,"append",enemy) end
+				use.card=final_parse(self,request,"#lol_bjfh_eCard:"..use_card:getKnownId()..":")
+				if use.to then use.to:append(enemy) end
 				return
 				
 			end
 		end
 	end
 	for _,enemy in sgs.list(self.enemies)do
-		if q(self,"objectiveLevel",enemy)>3 and not q(self,"cantbeHurt",enemy) and q(self,"damageIsEffective",enemy)
+		if self:objectiveLevel(enemy)>3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy)
 		then
 			if use_card then
-				use.card=final_parse(self,request,"#lol_bjfh_eCard:"..q(use_card,"getId")..":")
-				if use.to then call(use.to,"append",enemy) end
+				use.card=final_parse(self,request,"#lol_bjfh_eCard:"..use_card:getKnownId()..":")
+				if use.to then use.to:append(enemy) end
 				return
 				
 			end
@@ -1498,15 +1486,15 @@ local lol_bjfh_r_skill = {}
 lol_bjfh_r_skill.name= "lol_bjfh_r"
 table.insert(package_skills,lol_bjfh_r_skill)
 lol_bjfh_r_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.room,"getTurnCount")<=1 then return end
-	if q(self.player,"getMark","@lol_bjfh_r") == 0 then return end
+	if self.room:getTurnCount()<=1 then return end
+	if self.player:getMark("@lol_bjfh_r") == 0 then return end
 	return parse(self,request,"#lol_bjfh_rCard:.:")
 end
 
 sgs.ai_skill_use_func["#lol_bjfh_rCard"] = function(card,use,self,request)
 	
 	local use_card,cards
-	cards = q(self.player,"getHandcards")
+	cards = self.player:getHandcards()
 	for _,card in sgs.qlist(cards)do
 		use_card = card
 		break
@@ -1514,18 +1502,18 @@ sgs.ai_skill_use_func["#lol_bjfh_rCard"] = function(card,use,self,request)
 	local targets = {}
 	sort_players(self,self.enemies)
 	for _,enemy in sgs.list(self.enemies)do
-		if q(self,"objectiveLevel",enemy)>3 and not q(self,"cantbeHurt",enemy) and q(self,"damageIsEffective",enemy)
+		if self:objectiveLevel(enemy)>3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy)
 		then
 			table.insert(targets, enemy)
 		end
 	end
 	if #targets > 0 then
 		if use_card then
-			use.card=final_parse(self,request,"#lol_bjfh_rCard:"..q(use_card,"getId")..":")
+			use.card=final_parse(self,request,"#lol_bjfh_rCard:"..use_card:getKnownId()..":")
 			
 			if use.to then 
 				for _,enemy in sgs.list(targets)do 
-					call(use.to,"append",enemy) 
+					use.to:append(enemy)
 					end 
 				end
 			return
@@ -1560,9 +1548,9 @@ local lol_sxls_q_skill={}
 lol_sxls_q_skill.name="lol_sxls_q"
 table.insert(package_skills,lol_sxls_q_skill)
 lol_sxls_q_skill.getTurnUseCard=function(self,inclusive,request)
-    if q(self.player,"getHandcardNum")<1 then return nil end
-    if q(self.player,"hasFlag","lol_sxls_q") then return nil end
-    local cards = q(self.player,"getHandcards")
+    if self.player:getHandcardNum()<1 then return nil end
+    if self.player:hasFlag("lol_sxls_q") then return nil end
+    local cards = self.player:getHandcards()
     cards=AIList.new(cards)
     sort_keep(self,cards)
 	local card
@@ -1570,14 +1558,14 @@ lol_sxls_q_skill.getTurnUseCard=function(self,inclusive,request)
 	sort_use(self,cards,true)
 
 	for _,acard in ipairs(cards)  do
-		if (q(acard,"getSuit") == sgs.Card_Heart)  then
+		if (acard:getSuit() == sgs.Card_Heart)  then
 			card = acard
 			break
 		end
 	end
 	
-	if q(self.player,"getPile","wooden_ox"):length() > 0 then
-		for _, id in sgs.qlist(q(self.player,"getPile","wooden_ox")) do
+	if self.player:getPile("wooden_ox"):length() > 0 then
+		for _, id in sgs.qlist(self.player:getPile("wooden_ox")) do
 			if disclosed(self,id):getSuit() == sgs.Card_Heart		then
 				card = disclosed(self,id)
 			end
@@ -1585,9 +1573,9 @@ lol_sxls_q_skill.getTurnUseCard=function(self,inclusive,request)
 	end
 
 	if not card then return nil end
-	local suit = q(card,"getSuitString")
-	local number = q(card,"getNumberString")
-	local card_id = q(card,"getEffectiveId")
+	local suit = card:getSuitString()
+	local number = card:getNumberString()
+	local card_id = card:getKnownEffectiveId()
 	local card_str = ("slash:lol_sxls_q[%s:%s]=%d"):format(suit, number, card_id)
 	local skillcard = parse(self,request,card_str)
 
@@ -1606,7 +1594,7 @@ local lol_sxls_w_skill = {}
 lol_sxls_w_skill.name = "lol_sxls_w"
 table.insert(package_skills, lol_sxls_w_skill)
 lol_sxls_w_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.player,"hasUsed","#lol_sxls_wCard") then return end
+	if self.player:getStrategyHasUsed("#lol_sxls_wCard") then return end
 
 	local card = parse(self,request,"#lol_sxls_wCard:.:")
 	
@@ -1616,33 +1604,33 @@ end
 
 sgs.ai_skill_use_func["#lol_sxls_wCard"] = function(card,use,self,request)
 
-	local handcards = AIList.new(q(self.player,"getCards","h"))
-	q(self,"sortByCardNeed",handcards, true)
+	local handcards = AIList.new(self.player:getCards("h"))
+	self:sortByCardNeed(handcards, true)
 	local invoke = false
 	local use_card = {}
-	local slashes = q(self,"getCards","Slash")
-	for _,e in sgs.list(q(self.player,"getEquips"))do
+	local slashes = self:getCards("Slash")
+	for _,e in sgs.list(self.player:getEquips())do
 		for _,slash in sgs.list(AIList.new(slashes))do
-			if q(slash,"getEffectiveId")==q(e,"getId")
-			or table.contains(q(slash,"getSkillNames"), q(e,"objectName"))
-			or not q(slash,"isAvailable",self.player)
+			if slash:getKnownEffectiveId()==e:getKnownId()
+			or table.contains(slash:getSkillNames(), e:objectName())
+			or not slash:isAvailable(self.player)
 			then table.removeOne(slashes,slash) end
 		end
 	end
 	if #slashes<1 then return end
 	for _,enemy in sgs.list(self.enemies)do
 		for _,slash in sgs.list(slashes)do
-			local d = q(self,"aiUseCard",slash)
-			if d.card and q(d.to,"contains",enemy)
-			and not(q(self,"hasEightDiagramEffect",enemy)) then
+			local d = self:aiUseCard(slash)
+			if d.card and d.to:contains(enemy)
+			and not(self:hasEightDiagramEffect(enemy)) then
 			invoke = true
 			break
 			end
 		end
 	end
 	for _,c in ipairs(handcards) do
-		if (#use_card < 1) and not (#q(self,"getCards","Slash") <= 1 and q(c,"isKindOf","Slash")) then
-			table.insert(use_card, q(c,"getEffectiveId"))
+		if (#use_card < 1) and not (#self:getCards("Slash") <= 1 and c:isKindOf("Slash")) then
+			table.insert(use_card, c:getKnownEffectiveId())
 		end
 	end
 	if #use_card ~= 1 then return end
@@ -1661,8 +1649,8 @@ local lol_sxls_e_skill = {}
 lol_sxls_e_skill.name = "lol_sxls_e"
 table.insert(package_skills, lol_sxls_e_skill)
 lol_sxls_e_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.player,"hasUsed","#lol_sxls_eCard") then return end
-	if q(self.player,"getMark","@lol_sxls_e") == 1 then return end
+	if self.player:getStrategyHasUsed("#lol_sxls_eCard") then return end
+	if self.player:getMark("@lol_sxls_e") == 1 then return end
 	local card = parse(self,request,"#lol_sxls_eCard:.:")
 	
 
@@ -1683,22 +1671,22 @@ lol_sxls_r_skill.getTurnUseCard=function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#lol_sxls_rCard"] = function(card,use,self,request)
-	local slashes = q(self,"getCards","Slash")
-	for _,e in sgs.list(q(self.player,"getEquips"))do
+	local slashes = self:getCards("Slash")
+	for _,e in sgs.list(self.player:getEquips())do
 		for _,slash in sgs.list(AIList.new(slashes))do
-			if q(slash,"getEffectiveId")==q(e,"getId")
-			or table.contains(q(slash,"getSkillNames"), q(e,"objectName"))
-			or not q(slash,"isAvailable",self.player)
+			if slash:getKnownEffectiveId()==e:getKnownId()
+			or table.contains(slash:getSkillNames(), e:objectName())
+			or not slash:isAvailable(self.player)
 			then table.removeOne(slashes,slash) end
 		end
 	end
 	if #slashes<1 then return end
 	sort_players(self,self.enemies,"hp")
-	local cards = AIList.new(q(self.player,"getCards","h"))
+	local cards = AIList.new(self.player:getCards("h"))
 	sort_keep(self,cards)
 	local use_card
 	for _, card in ipairs(cards) do
-		if not q(card,"isKindOf","Slash") then
+		if not card:isKindOf("Slash") then
 			use_card = card
 		end
 	end
@@ -1706,13 +1694,13 @@ sgs.ai_skill_use_func["#lol_sxls_rCard"] = function(card,use,self,request)
 	for _,enemy in sgs.list(self.enemies)do
 		local n = 0
 		for _,slash in sgs.list(slashes)do
-			local d = q(self,"aiUseCard",slash)
-			if d.card and q(d.to,"contains",enemy)
-			and not(q(self,"hasEightDiagramEffect",enemy)) then
+			local d = self:aiUseCard(slash)
+			if d.card and d.to:contains(enemy)
+			and not(self:hasEightDiagramEffect(enemy)) then
 				n = n+1
-				if n>=q(enemy,"getHp") then
+				if n>=enemy:getHp() then
 					use.card=final_parse(self,request,"#lol_sxls_rCard:.:")
-					call(use.to,"append",enemy)
+					use.to:append(enemy)
 					return
 				end
 			end
@@ -1725,7 +1713,7 @@ sgs.ai_use_value["lol_sxls_rCard"] = 3
 
 
 sgs.ai_card_priority["lol_bzll_w_skill"] = function(self, card)
-	if card and q(card,"isKindOf","Slash") and table.contains(q(card,"getSkillNames"), "lol_bzll_w")
+	if card and card:isKindOf("Slash") and table.contains(card:getSkillNames(), "lol_bzll_w")
 	then
 		return 0.1
 	end
@@ -1738,10 +1726,10 @@ local lol_bzll_w_skill={}
 lol_bzll_w_skill.name="lol_bzll_w"
 table.insert(package_skills,lol_bzll_w_skill)
 lol_bzll_w_skill.getTurnUseCard=function(self,inclusive,request)
-    if q(self.player,"getHandcardNum")<1 then return nil end
-    if q(self.player,"hasFlag","lol_bzll_w") then return nil end
-    if q(self.player,"getMark","lol_bzll_q") == 0 then return nil end
-    local cards = q(self.player,"getHandcards")
+    if self.player:getHandcardNum()<1 then return nil end
+    if self.player:hasFlag("lol_bzll_w") then return nil end
+    if self.player:getMark("lol_bzll_q") == 0 then return nil end
+    local cards = self.player:getHandcards()
     cards=AIList.new(cards)
     sort_keep(self,cards)
 	local card
@@ -1749,24 +1737,24 @@ lol_bzll_w_skill.getTurnUseCard=function(self,inclusive,request)
 	sort_use(self,cards,true)
 
 	for _,acard in ipairs(cards)  do
-		if (q(acard,"getNumber") > q(self.player,"getMark","lol_bzll_q") )  then
+		if (acard:getNumber() > self.player:getMark("lol_bzll_q") )  then
 			card = acard
 			break
 		end
 	end
 	
-	if q(self.player,"getPile","wooden_ox"):length() > 0 then
-		for _, id in sgs.qlist(q(self.player,"getPile","wooden_ox")) do
-			if disclosed(self,id):getNumber() > q(self.player,"getMark","lol_bzll_q") 		then
+	if self.player:getPile("wooden_ox"):length() > 0 then
+		for _, id in sgs.qlist(self.player:getPile("wooden_ox")) do
+			if disclosed(self,id):getNumber() > self.player:getMark("lol_bzll_q") 		then
 				card = disclosed(self,id)
 			end
 		end
 	end
 
 	if not card then return nil end
-	local suit = q(card,"getSuitString")
-	local number = q(card,"getNumberString")
-	local card_id = q(card,"getEffectiveId")
+	local suit = card:getSuitString()
+	local number = card:getNumberString()
+	local card_id = card:getKnownEffectiveId()
 	local card_str = ("slash:lol_bzll_w[%s:%s]=%d"):format(suit, number, card_id)
 	local skillcard = parse(self,request,card_str)
 
@@ -1780,8 +1768,8 @@ local lol_bzll_e_skill = {}
 lol_bzll_e_skill.name = "lol_bzll_e"
 table.insert(package_skills, lol_bzll_e_skill)
 lol_bzll_e_skill.getTurnUseCard=function(self,inclusive,request)
-	if q(self.player,"hasUsed","#lol_bzll_eCard") then return end
-	if q(self.player,"getMark","@lol_bzll_e") ~= 0 then return end
+	if self.player:getStrategyHasUsed("#lol_bzll_eCard") then return end
+	if self.player:getMark("@lol_bzll_e") ~= 0 then return end
 	local card = parse(self,request,"#lol_bzll_eCard:.:")
 	
 
@@ -1789,13 +1777,13 @@ lol_bzll_e_skill.getTurnUseCard=function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#lol_bzll_eCard"] = function(card,use,self,request)
-	local handcards = AIList.new(q(self.player,"getCards","h"))
-	q(self,"sortByCardNeed",handcards, true)
+	local handcards = AIList.new(self.player:getCards("h"))
+	self:sortByCardNeed(handcards, true)
 	local use_card = {}
 	
 	for _,c in ipairs(handcards) do
 		if #use_card < 1  then
-			table.insert(use_card, q(c,"getEffectiveId"))
+			table.insert(use_card, c:getKnownEffectiveId())
 		end
 	end
 	if #use_card ~= 1 then return end
@@ -1809,12 +1797,12 @@ end
 
 
 sgs.ai_skill_invoke.lol_bzll_e = function(self, data)
-	local move = q(data,"toMoveOneTime")
+	local move = data:toMoveOneTime()
 	local dest
-	if q(move.from,"objectName") == q(self.player,"objectName") then dest = call(self.room,"getCurrent") 
+	if move.from:objectName() == self.player:objectName() then dest = self.room:getCurrent()
 	else dest = find_general(self,move.from)
 	end
-	if dest and q(self,"isEnemy",dest) then
+	if dest and self:isEnemy(dest) then
 		return true
 	end
 	return false
@@ -1827,10 +1815,10 @@ local lol_bzll_r_skill={}
 lol_bzll_r_skill.name="lol_bzll_r"
 table.insert(package_skills,lol_bzll_r_skill)
 lol_bzll_r_skill.getTurnUseCard=function(self,inclusive,request)
-    if q(self.player,"getHandcardNum")<1 then return nil end
-    if q(self.player,"getMark","lol_bzll_q") == 0 then return nil end
-    if q(self.player,"getMark","@lol_bzll_r") == 0 then return nil end
-    local cards = q(self.player,"getHandcards")
+    if self.player:getHandcardNum()<1 then return nil end
+    if self.player:getMark("lol_bzll_q") == 0 then return nil end
+    if self.player:getMark("@lol_bzll_r") == 0 then return nil end
+    local cards = self.player:getHandcards()
     cards=AIList.new(cards)
     sort_keep(self,cards)
 	local card
@@ -1838,24 +1826,24 @@ lol_bzll_r_skill.getTurnUseCard=function(self,inclusive,request)
 	sort_use(self,cards,true)
 
 	for _,acard in ipairs(cards)  do
-		if (q(acard,"getNumber") == q(self.player,"getMark","lol_bzll_q") )  then
+		if (acard:getNumber() == self.player:getMark("lol_bzll_q") )  then
 			card = acard
 			break
 		end
 	end
 	
-	if q(self.player,"getPile","wooden_ox"):length() > 0 then
-		for _, id in sgs.qlist(q(self.player,"getPile","wooden_ox")) do
-			if disclosed(self,id):getNumber() == q(self.player,"getMark","lol_bzll_q") 		then
+	if self.player:getPile("wooden_ox"):length() > 0 then
+		for _, id in sgs.qlist(self.player:getPile("wooden_ox")) do
+			if disclosed(self,id):getNumber() == self.player:getMark("lol_bzll_q") 		then
 				card = disclosed(self,id)
 			end
 		end
 	end
 
 	if not card then return nil end
-	local suit = q(card,"getSuitString")
-	local number = q(card,"getNumberString")
-	local card_id = q(card,"getEffectiveId")
+	local suit = card:getSuitString()
+	local number = card:getNumberString()
+	local card_id = card:getKnownEffectiveId()
 	local card_str = ("slash:lol_bzll_r[%s:%s]=%d"):format(suit, number, card_id)
 	local skillcard = parse(self,request,card_str)
 
@@ -1864,7 +1852,7 @@ lol_bzll_r_skill.getTurnUseCard=function(self,inclusive,request)
 	return skillcard
 end
 sgs.ai_ajustdamage_from.lol_bzll_r = function(self, from, to, card, nature)
-	if card and table.contains(q(card,"getSkillNames"), "lol_bzll_r") and to and q(to,"distanceTo",from) >= 2
+	if card and table.contains(card:getSkillNames(), "lol_bzll_r") and to and to:distanceTo(from) >= 2
 	then
 		return 1
 	end

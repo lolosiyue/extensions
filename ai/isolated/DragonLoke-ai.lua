@@ -5,15 +5,8 @@ local function known(value,key)
     if value==nil then ai_unsupported("DragonLoke fact is not projected",key) end
     return value
 end
-local function call(object,method,...)
-    if not object or type(object[method])~="function" then ai_unsupported("DragonLoke helper unavailable",method) end
-    local value=object[method](object,...)
-    if AIUnsupported and AIUnsupported.is(value) then error(value,0) end
-    return value
-end
-local function q(object,method,...) return known(call(object,method,...),method) end
 local function sort_in_place(self,values,key)
-    local ordered=q(self,"sort",values,key)
+    local ordered=(self:sort(values,key))
     for i,value in ipairs(ordered) do values[i]=value end
 end
 local function missing_prototype(self,selector)
@@ -22,7 +15,7 @@ local function missing_prototype(self,selector)
     ai_unsupported("DragonLoke source Card_Parse absence is not projected",selector)
 end
 local function cache_target(self,player)
-    call(self,"setStrategyMemory","dragonloke.dl_liuli",player and q(player,"objectName") or false)
+    self:setStrategyMemory("dragonloke.dl_liuli",player and (player:objectName()) or false)
 end
 local function cached_target(self)
     local name,present=self:getStrategyMemory("dragonloke.dl_liuli")
@@ -31,7 +24,7 @@ local function cached_target(self)
     return known(self.room:findPlayerByObjectName(name),"dl_liuli cached target")
 end
 local function liuli_context(self)
-    local row=q(self,"getDecisionContext").dragonloke_liuli
+    local row=(self:getDecisionContext()).dragonloke_liuli
     if type(row)~="table" or row.known~=true or type(row.use)~="table"
         or not AIValue.isList(row.source_marked_names) then
         ai_unsupported("DragonLoke current public use is not projected","dl_liuli")
@@ -39,15 +32,15 @@ local function liuli_context(self)
     return row
 end
 local function can_slash_cost(self,row,card,target,range_fix)
-    local id=q(card,"getEffectiveId")
+    local id=(card:getKnownEffectiveId())
     local rows=row.can_slash_by_cost
     local facts=type(rows)=="table" and rows[tostring(id)]
-    local value=type(facts)=="table" and facts[q(target,"objectName")]
+    local value=type(facts)=="table" and facts[(target:objectName())]
     if type(value)~="boolean" then ai_unsupported("DragonLoke exact cost range check is unknown","dl_liuli:"..id) end
     return value
 end
 local function response(self,card,target,request)
-    local id,name=q(card,"getEffectiveId"),q(target,"objectName")
+    local id,name=(card:getKnownEffectiveId()),(target:objectName())
     local wire="#dl_liuli:"..id..":->"..name
     missing_prototype(self,"#dl_liuli")
     local signal=AIUnsupported.new("DragonLoke donor terminal SkillCard prototype is unavailable","@@dl_liuli")
@@ -66,7 +59,7 @@ end
 
 sgs.ai_skill_use_func["#dl_chaju"] = function(card, use, self)
     for _,friend in ipairs(self.friends_noself)do
-        if q(friend,"getHandcardNum") <= q(self.player,"getHandcardNum") and q(self,"doDisCard",friend, "h", true) and not q(friend,"isKongcheng") then
+        if (friend:getHandcardNum()) <= (self.player:getHandcardNum()) and (self:doDisCard(friend,"h",true)) and not (friend:isKongcheng()) then
             use.card = card
             if use.to then
                 use.to:append(friend)
@@ -75,7 +68,7 @@ sgs.ai_skill_use_func["#dl_chaju"] = function(card, use, self)
         end
     end
     for _,friend in ipairs(self.friends_noself)do
-        if q(friend,"getHandcardNum") <= q(self.player,"getHandcardNum") and not q(friend,"isKongcheng") then
+        if (friend:getHandcardNum()) <= (self.player:getHandcardNum()) and not (friend:isKongcheng()) then
             use.card = card
             if use.to then
                 use.to:append(friend)
@@ -88,8 +81,8 @@ sgs.ai_use_priority["dl_chaju"] = sgs.ai_use_priority.RendeCard
 
 sgs.ai_skill_choice.dl_chaju = function(self,choices,data)
     local target = data:toPlayer()
-    local x = q(self.player,"getMaxHp") - q(self.player,"getHandcardNum")
-    if target and q(self,"isFriend",target) then
+    local x = (self.player:getMaxHp()) - (self.player:getHandcardNum())
+    if target and (self:isFriend(target)) then
         x = x + target:getMaxHp() - target:getHandcardNum()
     end
     if x > 0 then
@@ -109,32 +102,32 @@ sgs.ai_use_priority["dl_pindi"] = 6.8
 
 
 sgs.ai_fill_skill.dl_yanxiao = function(self)
-	local cards = q(self.player,"getCards","he")
+	local cards = (self.player:getCards("he"))
 	cards=sgs.QList2Table(cards)
 	local use_card
-	cards=q(self,"sortByUseValue",cards,true)
+	cards=(self:sortByUseValue(cards,true))
 
 	for _,card in sgs.list(cards)  do
-		if q(card,"isRed") then
+		if (card:isRed()) then
 			use_card = card
 			break
 		end
 	end
 
 	if use_card then
-		local id=q(use_card,"getEffectiveId") -- source reads the selected ID before Parse
+		local id=(use_card:getKnownEffectiveId()) -- source reads the selected ID before Parse
         return missing_prototype(self,"#dl_yanxiao")
 	end
 end
 sgs.ai_skill_use_func["#dl_yanxiao"] = function(card,use,self)
-    if q(self.player,"hasSkill","dl_liuli") then
+    if (self.player:hasSkill("dl_liuli")) then
         sort_in_place(self,self.friends_noself,"defense")
-        if q(self,"getOverflow")>0 then
-            local lord = call(self.room,"getLord")
-            if lord and q(self,"isFriend",lord)  then
+        if (self:getOverflow())>0 then
+            local lord = self.room:getLord()
+            if lord and (self:isFriend(lord))  then
                 local can_invoke = true
-                for _,c in sgs.qlist(q(lord,"getJudgingArea"))do
-                    if string.find(q(c,"objectName"),"kehexumou") then 
+                for _,c in sgs.qlist((lord:getJudgingArea()))do
+                    if string.find((c:objectName()),"kehexumou") then
                         can_invoke = false
                         break
                     end
@@ -148,8 +141,8 @@ sgs.ai_skill_use_func["#dl_yanxiao"] = function(card,use,self)
 
             for _,friend in sgs.list(self.friends_noself)do
                 local can_invoke = true
-                for _,c in sgs.qlist(q(friend,"getJudgingArea"))do
-                    if string.find(q(c,"objectName"),"kehexumou") then 
+                for _,c in sgs.qlist((friend:getJudgingArea()))do
+                    if string.find((c:objectName()),"kehexumou") then
                         can_invoke = false
                         break
                     end
@@ -161,8 +154,8 @@ sgs.ai_skill_use_func["#dl_yanxiao"] = function(card,use,self)
                 end
             end
             local can_invoke = true
-            for _,c in sgs.qlist(q(self.player,"getJudgingArea"))do
-                if string.find(q(c,"objectName"),"kehexumou") then 
+            for _,c in sgs.qlist((self.player:getJudgingArea()))do
+                if string.find((c:objectName()),"kehexumou") then
                     can_invoke = false
                     break
                 end
@@ -180,7 +173,7 @@ end
 
 ai_skill_use["@@dl_liuli"] = function(self,prompt,request)
     local method=known(self.request and self.request.handling_method,"dl_liuli method")
-	local others = q(self.room,"getOtherPlayers",self.player)
+	local others = (self.room:getOtherPlayers(self.player))
     local context=liuli_context(self)
     local use=context.use
     local slash=use.card and CardView.new(use.card)
@@ -188,25 +181,25 @@ ai_skill_use["@@dl_liuli"] = function(self,prompt,request)
 	others = sgs.QList2Table(others)
 	local source
 	for _,player in ipairs(others)do
-		if table.contains(context.source_marked_names,q(player,"objectName")) then
+		if table.contains(context.source_marked_names,(player:objectName())) then
 			source = player
 			break
 		end
 	end
 	sort_in_place(self,self.enemies,"defense")
     local doLiuli = function(who)
-        if not q(self,"isFriend",who) and q(who,"hasSkills","leiji|nosleiji|olleiji")
-            and (q(self,"hasSuit","spade",true,who) or q(who,"getHandcardNum")>=3)
-            and (getKnownCard(who,self.player,"Jink",true)>=1 or q(self,"hasEightDiagramEffect",who)) then
+        if not (self:isFriend(who)) and (who:hasSkills("leiji|nosleiji|olleiji"))
+            and ((self:hasSuit("spade",true,who)) or (who:getHandcardNum())>=3)
+            and (getKnownCard(who,self.player,"Jink",true)>=1 or (self:hasEightDiagramEffect(who))) then
             return "."
         end
 
-        local cards = q(self.player,"getCards","h")
+        local cards = (self.player:getCards("h"))
         cards = sgs.QList2Table(cards)
-        cards=q(self,"sortByKeepValue",cards)
+        cards=(self:sortByKeepValue(cards))
         for _,card in ipairs(cards)do
-            if not q(self.player,"isCardLimited",card,method) and q(self.player,"canSlash",who) then
-                if q(self,"isFriend",who) and not (isCard("Peach",card,self.player) or isCard("Analeptic",card,self.player)) then
+            if not (self.player:isCardLimited(card,method)) and (self.player:canSlash(who)) then
+                if (self:isFriend(who)) and not (isCard("Peach",card,self.player) or isCard("Analeptic",card,self.player)) then
                     return response(self,card,who,request)
                 else
                     return response(self,card,who,request)
@@ -214,30 +207,30 @@ ai_skill_use["@@dl_liuli"] = function(self,prompt,request)
             end
         end
 
-        local cards = q(self.player,"getCards","e")
+        local cards = (self.player:getCards("e"))
         cards=sgs.QList2Table(cards)
-        cards=q(self,"sortByKeepValue",cards)
+        cards=(self:sortByKeepValue(cards))
         for _,card in ipairs(cards)do
             local range_fix = 0
-            if q(card,"isKindOf","Weapon") then range_fix = range_fix+sgs.weapon_range[q(card,"getClassName")]-q(self.player,"getAttackRange",false) end
-            if q(card,"isKindOf","OffensiveHorse") then range_fix = range_fix+1 end
-            if not q(self.player,"isCardLimited",card,method) and can_slash_cost(self,context,card,who,range_fix) then
+            if (card:isKindOf("Weapon")) then range_fix = range_fix+sgs.weapon_range[(card:getClassName())]-(self.player:getAttackRange(false)) end
+            if (card:isKindOf("OffensiveHorse")) then range_fix = range_fix+1 end
+            if not (self.player:isCardLimited(card,method)) and can_slash_cost(self,context,card,who,range_fix) then
                 return response(self,card,who,request)
             end
         end
         return "."
     end
-    if slash and q(slash,"isKindOf","Slash") then
+    if slash and (slash:isKindOf("Slash")) then
 
         for _,enemy in ipairs(self.enemies)do
-            if not (source and q(source,"objectName")==q(enemy,"objectName")) then
+            if not (source and (source:objectName())==(enemy:objectName())) then
                 local ret = doLiuli(enemy)
                 if ret~="." then return ret end
             end
         end
 
         for _,player in ipairs(others)do
-            if q(self,"objectiveLevel",player)==0 and not (source and q(source,"objectName")==q(player,"objectName")) then
+            if (self:objectiveLevel(player))==0 and not (source and (source:objectName())==(player:objectName())) then
                 local ret = doLiuli(player)
                 if ret~="." then return ret end
             end
@@ -249,8 +242,8 @@ ai_skill_use["@@dl_liuli"] = function(self,prompt,request)
 
 
         for _,friend in ipairs(self.friends_noself)do
-            if not q(self,"slashIsEffective",slash,friend) or call(self,"findLeijiTarget",friend,50,source) then
-                if not (source and q(source,"objectName")==q(friend,"objectName")) then
+            if not (self:slashIsEffective(slash,friend)) or self:findLeijiTarget(friend,50,source) then
+                if not (source and (source:objectName())==(friend:objectName())) then
                     local ret = doLiuli(friend)
                     if ret~="." then return ret end
                 end
@@ -258,17 +251,17 @@ ai_skill_use["@@dl_liuli"] = function(self,prompt,request)
         end
 
         for _,friend in ipairs(self.friends_noself)do
-            if source~=friend and q(self,"needToLoseHp",friend,source,q(self,"getEvaluationCard","slash")) then
+            if source~=friend and (self:needToLoseHp(friend,source,(self:getEvaluationCard("slash")))) then
                 local ret = doLiuli(friend)
                 if ret~="." then return ret end
             end
         end
 
-        if (q(self,"isWeak") or q(self,"ajustDamage",source,nil,1,slash)>1) and q(source,"hasWeapon","axe") and (q(source,"getHandcardNum")+q(source,"getEquips"):length())>2
-        and not call(self,"getCardId","Peach") and not call(self,"getCardId","Analeptic") then
+        if ((self:isWeak()) or (self:ajustDamage(source,nil,1,slash))>1) and (source:hasWeapon("axe")) and ((source:getHandcardNum())+(source:getEquips()):length())>2
+        and not self:getCardId("Peach") and not self:getCardId("Analeptic") then
             for _,friend in ipairs(self.friends_noself)do
-                if not q(self,"isWeak",friend) then
-                    if not (source and q(source,"objectName")==q(friend,"objectName")) then
+                if not (self:isWeak(friend)) then
+                    if not (source and (source:objectName())==(friend:objectName())) then
                         local ret = doLiuli(friend)
                         if ret~="." then return ret end
                     end
@@ -276,10 +269,10 @@ ai_skill_use["@@dl_liuli"] = function(self,prompt,request)
             end
         end
 
-        if (q(self,"isWeak") or q(self,"ajustDamage",source,nil,1,slash)>1) and not call(self,"getCardId","Jink") then
+        if ((self:isWeak()) or (self:ajustDamage(source,nil,1,slash))>1) and not self:getCardId("Jink") then
             for _,friend in ipairs(self.friends_noself)do
-                if not q(self,"isWeak",friend) or (q(self,"hasEightDiagramEffect",friend) and getCardsNum("Jink",friend)>=1) then
-                    if not (source and q(source,"objectName")==q(friend,"objectName")) then
+                if not (self:isWeak(friend)) or ((self:hasEightDiagramEffect(friend)) and getCardsNum("Jink",friend)>=1) then
+                    if not (source and (source:objectName())==(friend:objectName())) then
                         local ret = doLiuli(friend)
                         if ret~="." then return ret end
                     end
