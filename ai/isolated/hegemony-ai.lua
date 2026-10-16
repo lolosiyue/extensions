@@ -3656,7 +3656,8 @@ end
 function SmartAIView:originalHegemonyFindLeijiTarget(player, leiji_value, slasher)
 	if not ht_shown(self,player,"nosleiji") then return end
 	if slasher then
-		if not self:originalHegemonySlashIsEffective(sgs.cloneCard("slash"),player,slasher,slasher:hasWeapon("QinggangSword")) then return nil end
+		-- Query the pure-value printed Slash; native factories are unavailable in this VM.
+		if not self:originalHegemonySlashIsEffective(known(self:getEvaluationCard("slash"),"printed Slash"),player,slasher,slasher:hasWeapon("QinggangSword")) then return nil end
 		if self:originalHegemonyCanLiegong(player, slasher) and self:isEnemy(player,slasher) then
 			return nil
 		end
@@ -3953,7 +3954,7 @@ function SmartAIView:originalHegemonyGetValuableCard(who)
 	end
 
 	if defhorse and not self:originalHegemonyDoNotDiscard(who,"e")
-		and not (self.player:hasWeapon("KylinBow") and self.player:canSlash(who) and self:originalHegemonySlashIsEffective(sgs.cloneCard("slash"),who,self.player)
+		and not (self.player:hasWeapon("KylinBow") and self.player:canSlash(who) and self:originalHegemonySlashIsEffective(known(self:getEvaluationCard("slash"),"printed Slash"),who,self.player)
 				and (getCardsNum("Jink", who, self.player) < 1 or ht_original_lack(self,who,"Jink") == 1 )) then
 		return defhorse:getEffectiveId()
 	end

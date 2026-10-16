@@ -447,7 +447,9 @@ sgs.ai_skill_playerchosen.shuangren = function(self, targets)
 	local max_card = self:getMaxCard()
 	local max_point = max_card:getNumber()
 
-	local slash = sgs.cloneCard("slash")
+	-- Use Engine directly with the original clone defaults and managed cleanup.
+	local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+	slash:deleteLater()
 	local dummy_use = { isDummy = true, to = sgs.SPlayerList() }
 	self.player:setFlags("slashNoDistanceLimit")
 	self:useBasicCard(slash, dummy_use)
@@ -596,7 +598,8 @@ sgs.ai_fill_skill.heg_qingcheng = function(self, inclusive)
 end
 
 sgs.ai_skill_use_func.heg_qingcheng = function(card, use, self)
-    local slash = sgs.cloneCard("slash")
+    local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+    slash:deleteLater()
     local dummy_use = {isDummy = true, to = sgs.SPlayerList()}
     self:useBasicCard(slash, dummy_use)
     if not dummy_use.card then return end

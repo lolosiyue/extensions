@@ -1568,7 +1568,9 @@ thyanxing_skill.getTurnUseCard = function(self)
 			if c:isKindOf("FireSlash") then
 				card = c
 			else
-				card = sgs.cloneCard("fire_slash")
+				-- Use Engine directly with the original clone defaults and managed cleanup.
+				card = sgs.Sanguosha:cloneCard("fire_slash", sgs.Card_SuitToBeDecided, -1)
+				card:deleteLater()
 				card:addSubcard(c)
 			end
 			if not self:slashIsAvailable(self.player, card) then
@@ -1736,7 +1738,8 @@ end
 
 sgs.ai_skill_use_func.ThSangzhiCard = function(card, use, self)
 	local dummy_use = {isDummy = true, to = sgs.SPlayerList()}
-	local slash = sgs.cloneCard("Slash")
+	local slash = sgs.Sanguosha:cloneCard("Slash", sgs.Card_SuitToBeDecided, -1)
+	slash:deleteLater()
 	self:useBasicCard(slash, dummy_use)
 	if (dummy_use.card and dummy_use.to:length() > 0) then
 		for _, p in sgs.qlist(dummy_use.to) do

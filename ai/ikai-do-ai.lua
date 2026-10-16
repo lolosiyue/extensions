@@ -181,7 +181,9 @@ sgs.ai_skill_use_func.IkXinqiCard = function(card, use, self)
 			end
 		end
 	end
-	local slash = sgs.cloneCard("slash")
+	-- Use Engine directly with the original clone defaults and managed cleanup.
+	local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+	slash:deleteLater()
 	self:useCardSlash(slash, dummy_use)
 	if dummy_use.card and dummy_use.to:length() > 0 then
 		use.card = card
@@ -292,12 +294,19 @@ ikchilian_skill.getTurnUseCard = function(self, inclusive)
 	end
 	cards = sgs.QList2Table(cards)
 
+	-- Clone only when a residue branch is reached; the temporary keeps its wrapper lease.
+	local function has_extra_residue(name)
+		local probe = sgs.Sanguosha:cloneCard(name, sgs.Card_SuitToBeDecided, -1)
+		probe:deleteLater()
+		return sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_Residue, self.player, probe) > 0
+	end
+
 	local red_card, red_slash2
 	self:sortByUseValue(cards, true)
 	for _, card in ipairs(cards) do
 		if card:isRed() and not card:isKindOf("Slash")
 			and not isCard("Peach", card, self.player) and not isCard("ExNihilo", card, self.player)
-			and (self:getUseValue(card) < sgs.ai_use_value.Slash or inclusive or sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_Residue, self.player, sgs.cloneCard("slash")) > 0) then
+			and (self:getUseValue(card) < sgs.ai_use_value.Slash or inclusive or has_extra_residue("slash")) then
 			red_card = card
 			break
 		end
@@ -305,7 +314,7 @@ ikchilian_skill.getTurnUseCard = function(self, inclusive)
 	for _, card in ipairs(cards) do
 		if card:isRed() and not card:isKindOf("FireSlash")
 			and not isCard("Peach", card, self.player) and not isCard("ExNihilo", card, self.player)
-			and (self:getUseValue(card) < sgs.ai_use_value.FireSlash or inclusive or sgs.Sanguosha:correctCardTarget(sgs.TargetModSkill_Residue, self.player, sgs.cloneCard("fire_slash")) > 0) then
+			and (self:getUseValue(card) < sgs.ai_use_value.FireSlash or inclusive or has_extra_residue("fire_slash")) then
 			red_slash2 = card
 			break
 		end
@@ -1111,7 +1120,8 @@ end
 function sgs.ai_cardneed.ikluoyi(to, card, self)
 	local slash_num = 0
 	local target
-	local slash = sgs.cloneCard("slash")
+	local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+	slash:deleteLater()
 
 	local cards = to:getHandcards()
 	local need_slash = true

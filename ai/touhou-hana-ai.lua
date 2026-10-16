@@ -329,7 +329,9 @@ sgs.ai_skill_use_func.ThXihuaCard = function(card, use, self)
 	if not (not_slash or slash) then use.card = nil end
 	if slash and self:getCardsNum("Slash") > self.slashAvail then
 		self:sort(self.enemies, "defense")
-		local duel = sgs.cloneCard("duel")
+		-- Use Engine directly with the original clone defaults and managed cleanup.
+		local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_SuitToBeDecided, -1)
+		duel:deleteLater()
 		for _, p in ipairs(self.enemies) do
 			if self:hasTrickEffective(duel, p, self.player) and sgs.card_lack[p:objectName()]["Slash"] == 1 then
 				sgs.thxihua_choice = "duel"
@@ -340,7 +342,8 @@ sgs.ai_skill_use_func.ThXihuaCard = function(card, use, self)
 				return
 			end
 		end
-		local aslash = sgs.cloneCard("slash")
+		local aslash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+		aslash:deleteLater()
 		for _, p in ipairs(self.enemies) do
 			if self.player:canSlash(p, aslash, false) and self:slashIsEffective(aslash, p) then
 				sgs.thxihua_choice = "slash"
@@ -353,7 +356,8 @@ sgs.ai_skill_use_func.ThXihuaCard = function(card, use, self)
 		end
 	elseif slash then
 		self:sort(self.enemies, "defenseSlash")
-		local aslash = sgs.cloneCard("slash")
+		local aslash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+		aslash:deleteLater()
 		for _, p in ipairs(self.enemies) do
 			if self.player:canSlash(p, aslash, false) and self:slashIsEffective(aslash, p) then
 				sgs.thxihua_choice = "slash"
@@ -366,7 +370,8 @@ sgs.ai_skill_use_func.ThXihuaCard = function(card, use, self)
 		end
 	elseif not_slash and self:getOverflow() > 0 then
 		self:sort(self.enemies, "handcard")
-		local aslash = sgs.cloneCard("slash")
+		local aslash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+		aslash:deleteLater()
 		for _, p in ipairs(self.enemies) do
 			if self.player:canSlash(p, aslash, false) and self:slashIsEffective(aslash, p) then
 				sgs.thxihua_choice = ""
@@ -384,11 +389,13 @@ end
 sgs.ai_skill_choice.thxihua = function(self, choices, data)
 	if string.find(choices, sgs.thxihua_choice) then return sgs.thxihua_choice end
 	local target = data:toPlayer()
-	local duel = sgs.cloneCard("duel")
+	local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_SuitToBeDecided, -1)
+	duel:deleteLater()
 	if self:hasTrickEffective(duel, target, self.player) and sgs.card_lack[target:objectName()]["Slash"] == 1 and string.find(choices, "duel") then
 		return "duel"
 	end
-	local aslash = sgs.cloneCard("slash")
+	local aslash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+	aslash:deleteLater()
 	if self.player:canSlash(target, aslash, false) and self:slashIsEffective(aslash, target) and sgs.card_lack[target:objectName()]["Jink"] == 1 and string.find(choices, "slash") then
 		return "slash"
 	end
@@ -425,7 +432,8 @@ thmimeng_skill.getTurnUseCard = function(self)
 	local thmimengs = thmimeng:split("|")
 	for i = 1, #thmimengs do
 		local forbiden = thmimengs[i]
-		forbid = sgs.cloneCard(forbiden, card:getSuit(), card:getNumber())
+		forbid = sgs.Sanguosha:cloneCard(forbiden, card:getSuit(), card:getNumber())
+		forbid:deleteLater()
 		if not self.player:isCardLimited(forbid, sgs.Card_MethodUse, true) and forbid:isAvailable(self.player) then
 			table.insert(choices, thmimengs[i])
 		end
@@ -436,7 +444,9 @@ thmimeng_skill.getTurnUseCard = function(self)
 
 	local uses = {}
 	for _, str in ipairs(choices) do
-		table.insert(uses, sgs.cloneCard(str, card:getSuit(), card:getNumber()))
+		local candidate = sgs.Sanguosha:cloneCard(str, card:getSuit(), card:getNumber())
+		candidate:deleteLater()
+		table.insert(uses, candidate)
 	end
 	if #uses > 0 then
 		self:sortByUseValue(uses, true)
@@ -584,7 +594,8 @@ sgs.ai_skill_use_func.ThDuanzuiCard = function(card, use, self)
 	if not target and #slash_targets > 0 then
 		self:sort(slash_targets, "defenseSlash")
 		for _, p in pairs(slash_targets) do
-			local slash = sgs.cloneCard("slash")
+			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+			slash:deleteLater()
 			if not self:slashProhibit(slash, p, self.player) then
 				use.card = card
 				if use.to then

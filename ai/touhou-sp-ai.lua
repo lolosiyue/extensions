@@ -387,7 +387,9 @@ local findThHuanlongResult = function(self)
 		table.insert(choices, "thhuanlong3")
 	end
 	if #choices == 0 then return "cancel" end
-	local slash = sgs.cloneCard("slash")
+	-- Use Engine directly with the original clone defaults and managed cleanup.
+	local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+	slash:deleteLater()
 	local use = { isDummy = true }
 	self:useCardSlash(slash, use)
 	if self:getCardsNum("Slash") == 0 and use.card and player:getHandcardNum() > 1 and table.contains(choices, "thhuanlong3") then
@@ -731,7 +733,8 @@ sgs.ai_use_priority.ThYingshiCard = sgs.ai_use_priority.Slash + 0.1
 
 --葬魂：每当你使用【杀】造成伤害后，你可以摸一张牌，然后你计算与其他角色的距离+1，直到回合结束。
 sgs.ai_skill_invoke.thzanghun = function(self)
-	local slash = sgs.cloneCard("slash")
+	local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+	slash:deleteLater()
 	slash:setSkillName("thzanghun")
 	local use = { isDummy = true }
 	self:useCardSlash(slash, use)

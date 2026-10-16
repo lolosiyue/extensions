@@ -688,7 +688,9 @@ sgs.ai_skill_choice.thzhehui = function(self, choices)
 	self:sort(self.enemies, "defenseSlash")
 	for _, enemy in ipairs(self.enemies) do
 		local def = sgs.getDefenseSlash(enemy, self)
-		local slash = sgs.cloneCard("slash")
+		-- Use Engine directly with the original clone defaults and managed cleanup.
+		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+		slash:deleteLater()
 		local eff = self:slashIsEffective(slash, enemy) and sgs.isGoodTarget(enemy, self.enemies, self)
 
 		if self.player:canSlash(enemy, nil, false) and not self:slashProhibit(nil, enemy) and eff and def < 5 then
@@ -698,7 +700,8 @@ sgs.ai_skill_choice.thzhehui = function(self, choices)
 	end
 	if self:isEnemy(current) then
 		for _, enemy in ipairs(self.enemies) do
-			local slash = sgs.cloneCard("slash")
+			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+			slash:deleteLater()
 			local eff = self:slashIsEffective(slash, enemy)
 
 			if self.player:canSlash(enemy, nil, false) and not self:slashProhibit(nil, enemy) and self:hasHeavySlashDamage(self.player, slash, enemy) then
@@ -712,7 +715,8 @@ sgs.ai_skill_choice.thzhehui = function(self, choices)
 	if self:isFriend(current) then
 		if n == 1 and self:needToThrowArmor(current) then return "discard" end
 		for _, enemy in ipairs(self.enemies) do
-			local slash = sgs.cloneCard("slash")
+			local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+			slash:deleteLater()
 			local eff = self:slashIsEffective(slash, enemy)
 
 			if self.player:canSlash(enemy, nil, false) and not self:slashProhibit(nil, enemy) then
@@ -982,7 +986,8 @@ thhuilve_skill.getTurnUseCard = function(self)
 	local huilve_table = sgs.GetProperty(self.player, "thhuilve"):split("+")
 	if #huilve_table ~= 2 then return end
 	local asuit = tonumber(huilve_table[2])
-	local trick = sgs.cloneCard(huilve_table[1], asuit)
+	local trick = sgs.Sanguosha:cloneCard(huilve_table[1], asuit or sgs.Card_SuitToBeDecided, -1)
+	trick:deleteLater()
 	if not trick:isAvailable(self.player) then return end
 
 	local acard

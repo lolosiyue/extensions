@@ -403,7 +403,9 @@ sgs.ai_skill_invoke.thpanghun = function(self, data)
 	end
 	local snatch = self:getCard("Snatch")
 	if snatch then
-		snatch = sgs.cloneCard("snatch")
+		-- Use Engine directly with the original clone defaults and managed cleanup.
+		snatch = sgs.Sanguosha:cloneCard("snatch", sgs.Card_SuitToBeDecided, -1)
+		snatch:deleteLater()
 		local use = { isDummy = true }
 		self:useCardSnatchOrDismantlement(snatch, use)
 		if not use.card then
@@ -416,7 +418,8 @@ sgs.ai_skill_invoke.thpanghun = function(self, data)
 	end
 	local slash = self:getCard("Slash")
 	if slash then
-		slash = sgs.cloneCard("slash")
+		slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+		slash:deleteLater()
 		local use = { isDummy = true }
 		self:useCardSlash(slash, use)
 		if not use.card then
@@ -726,7 +729,11 @@ sgs.ai_skill_use_func.ThJinluCard = function(card, use, self)
 		end
 
 		if not target and (self:hasCrossbowEffect() or self:getCardsNum("Crossbow") > 0) then
-			local slash = self:getCard("Slash") or sgs.cloneCard("slash")
+			local slash = self:getCard("Slash")
+			if not slash then
+				slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+				slash:deleteLater()
+			end
 			for _, enemy in ipairs(self.enemies) do
 				if self:slashIsEffective(slash, enemy) and self.player:distanceTo(enemy) == 1
 					and not enemy:hasSkills("thzhehui|ikzhichi|ikhuanji|nosfankui|ikaoli|vsganglie|nosganglie|enyuan|thfusheng|langgu|guixin|ikjingyou")
@@ -1192,7 +1199,8 @@ sgs.ai_skill_use_func.ThLingyunCard = function(card, use, self)
 	local original_card = sgs.Sanguosha:getCard(card:getEffectiveId())
 	--ex_nihilo
 	if not self.player:hasSkill("ikbenghuai") and self:getUseValue(original_card) < sgs.ai_use_value.ExNihilo then
-		local ex_nihilo = sgs.cloneCard("ex_nihilo")
+		local ex_nihilo = sgs.Sanguosha:cloneCard("ex_nihilo", sgs.Card_SuitToBeDecided, -1)
+		ex_nihilo:deleteLater()
 		ex_nihilo:setSkillName("_thlingyun")
 		if ex_nihilo:isAvailable(self.player) and not self.player:isCardLimited(ex_nihilo, sgs.Card_MethodUse) then
 			local dummy_use = { isDummy = true, to = sgs.SPlayerList() }
@@ -1208,7 +1216,8 @@ sgs.ai_skill_use_func.ThLingyunCard = function(card, use, self)
 	end
 	--iron_chain
 	if not self.player:hasSkill("ikjinlian") and self:getUseValue(original_card) < sgs.ai_use_value.IronChain then
-		local iron_chain = sgs.cloneCard("iron_chain")
+		local iron_chain = sgs.Sanguosha:cloneCard("iron_chain", sgs.Card_SuitToBeDecided, -1)
+		iron_chain:deleteLater()
 		iron_chain:setSkillName("_thlingyun")
 		if iron_chain:isAvailable(self.player) and not self.player:isCardLimited(iron_chain, sgs.Card_MethodUse) then
 			local dummy_use = { isDummy = true, to = sgs.SPlayerList() }
@@ -1224,7 +1233,8 @@ sgs.ai_skill_use_func.ThLingyunCard = function(card, use, self)
 	end
 	--dismantlement
 	if not self.player:hasSkill("ikxinshang") and self:getUseValue(original_card) < sgs.ai_use_value.Dismantlement then
-		local dismantlement = sgs.cloneCard("dismantlement")
+		local dismantlement = sgs.Sanguosha:cloneCard("dismantlement", sgs.Card_SuitToBeDecided, -1)
+		dismantlement:deleteLater()
 		dismantlement:setSkillName("_thlingyun")
 		if dismantlement:isAvailable(self.player) and not self.player:isCardLimited(dismantlement, sgs.Card_MethodUse) then
 			local dummy_use = { isDummy = true, to = sgs.SPlayerList() }
@@ -1245,7 +1255,8 @@ sgs.ai_skill_use_func.ThLingyunCard = function(card, use, self)
 		n = n + 1
 	end
 	if not self.player:hasSkill("thsanling") and n >= 5 and #self.friends_noself > 0 then
-		local fire_attack = sgs.cloneCard("fire_attack")
+		local fire_attack = sgs.Sanguosha:cloneCard("fire_attack", sgs.Card_SuitToBeDecided, -1)
+		fire_attack:deleteLater()
 		fire_attack:setSkillName("_thlingyun")
 		if fire_attack:isAvailable(self.player) and not self.player:isCardLimited(fire_attack, sgs.Card_MethodUse) then
 			local dummy_use = { isDummy = true, to = sgs.SPlayerList() }

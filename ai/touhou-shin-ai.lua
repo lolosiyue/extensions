@@ -496,7 +496,9 @@ sgs.ai_skill_use_func.ThLianyingCard = function(card, use, self)
 	local canUseSlash = self:slashIsAvailable()
 	if canUseSlash then
 		local must_use = false
-		local slash = sgs.cloneCard("slash")
+		-- Use Engine directly with the original clone defaults and managed cleanup.
+		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+		slash:deleteLater()
 		local use = { isDummy = true }
 		self:useCardSlash(slash, use)
 		if not use.card then
@@ -722,7 +724,8 @@ sgs.ai_playerchosen_intention.thliaogan = -50
 
 --戋月：摸牌/出牌阶段开始时，你可以视为使用【心网密葬】→当目标因执行此【心网密葬】的效果而弃置牌后，你可以选择一项：1.令其获取此牌▶其于此回合内不能使用或打出之；2.令其将人物牌横置，然后结束此阶段。
 sgs.ai_skill_use["@@thjianyue"] = function(self, prompt, method)
-	local dismantlement = sgs.cloneCard("dismantlement")
+	local dismantlement = sgs.Sanguosha:cloneCard("dismantlement", sgs.Card_SuitToBeDecided, -1)
+	dismantlement:deleteLater()
 	dismantlement:setSkillName("thjianyue")
 	local use = { isDummy = true, to = sgs.SPlayerList() }
 	self:useCardSnatchOrDismantlement(dismantlement, use)
@@ -1009,7 +1012,8 @@ end
 sgs.ai_skill_invoke.thhuikuang = true
 
 sgs.ai_skill_discard.thhuikuang = function(self)
-	local sa = sgs.cloneCard("savage_assault")
+	local sa = sgs.Sanguosha:cloneCard("savage_assault", sgs.Card_SuitToBeDecided, -1)
+	sa:deleteLater()
 	local use = { isDummy = true }
 	self:useTrickCard(sa, use)
 	if not use.card then return {} end
@@ -1036,7 +1040,8 @@ end
 
 sgs.ai_skill_invoke.thhuikuang_sa = function(self, data)
 	local str = data:toString()
-	local sa = sgs.cloneCard("savage_assault")
+	local sa = sgs.Sanguosha:cloneCard("savage_assault", sgs.Card_SuitToBeDecided, -1)
+	sa:deleteLater()
 	local use = { isDummy = true }
 	self:useTrickCard(sa, use)
 	if not use.card then return false end

@@ -488,7 +488,9 @@ thmoji_skill.getTurnUseCard = function(self)
 end
 
 sgs.ai_skill_use_func.ThMojiCard = function(card, use, self)
-	local slash = sgs.cloneCard("slash")
+	-- Use Engine directly with the original clone defaults and managed cleanup.
+	local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
+	slash:deleteLater()
 	for _, id in sgs.qlist(card:getSubcards()) do
 		slash:addSubcard(id)
 	end
@@ -627,7 +629,8 @@ end
 sgs.ai_skill_choice.thqingming = function(self, choices, data)
 	local target = data:toPlayer()
 	if string.find(choices, "duel") then
-		local duel = sgs.cloneCard("duel")
+		local duel = sgs.Sanguosha:cloneCard("duel", sgs.Card_SuitToBeDecided, -1)
+		duel:deleteLater()
 		if self:hasTrickEffective(duel, target, self.player) then
 			if self:getCardsNum("Slash", "he", true) > getCardsNum("Slash", target, self.player) then
 				return "duel"
@@ -635,19 +638,22 @@ sgs.ai_skill_choice.thqingming = function(self, choices, data)
 		end
 	end
 	if string.find(choices, "snatch") then
-		local snatch = sgs.cloneCard("snatch")
+		local snatch = sgs.Sanguosha:cloneCard("snatch", sgs.Card_SuitToBeDecided, -1)
+		snatch:deleteLater()
 		if self:hasTrickEffective(snatch, target, self.player) then
 			return "snatch"
 		end
 	end
 	if string.find(choices, "rout") then
-		local rout = sgs.cloneCard("rout")
+		local rout = sgs.Sanguosha:cloneCard("rout", sgs.Card_SuitToBeDecided, -1)
+		rout:deleteLater()
 		if self:hasTrickEffective(rout, target, self.player) then
 			return "rout"
 		end
 	end
 	if string.find(choices, "dismantlement") then
-		local dismantlement = sgs.cloneCard("dismantlement")
+		local dismantlement = sgs.Sanguosha:cloneCard("dismantlement", sgs.Card_SuitToBeDecided, -1)
+		dismantlement:deleteLater()
 		if self:hasTrickEffective(dismantlement, target, self.player) then
 			return "dismantlement"
 		end
