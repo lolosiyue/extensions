@@ -5456,6 +5456,7 @@ hl_tieqi = gu_trigger("hl_tieqi", {sgs.TargetSpecified}, function(self, event, r
 end)
 hl_tieqi_invalid = sgs.CreateInvaliditySkill {
     name = "#hl_tieqi_invalid",
+    validity_mark = "hl_tieqi_invalid-Clear",
     skill_valid = function(self, p, skill)
         local f = skill:getFrequency(p)
         return p:getMark("hl_tieqi_invalid-Clear") == 0 or f == sgs.Skill_Compulsory or f == sgs.Skill_Wake
@@ -8397,6 +8398,7 @@ hlxg_zhangwu = sgs.CreateViewAsSkillV2 {
 }
 hlxg_rende_liubei3_invalid = sgs.CreateInvaliditySkill {
     name = "#hlxg_rende_liubei3_invalid",
+    validity_mark = "hlxg_rende_disabled-Clear",
     skill_valid = function(self, p, skill)
         return skill:objectName() ~= "hlxg_rende_liubei3" or p:getMark("hlxg_rende_disabled-Clear") == 0
     end,
@@ -26383,6 +26385,7 @@ hlxg_huoshui = gu_active("hlxg_huoshui", nil, 0, 0,
     end)
 hlxg_huoshui_invalid = sgs.CreateInvaliditySkill {
     name = "#hlxg_huoshui_invalid",
+    validity_mark = "hlxg_huoshui_invalid-Clear",
     skill_valid = function(self, p, skill)
         return p:getMark("hlxg_huoshui_invalid-Clear") == 0
             or skill:getFrequency(p) == sgs.Skill_Compulsory or skill:getFrequency(p) == sgs.Skill_Wake
@@ -29475,6 +29478,7 @@ hlxg_fuqi = gu_trigger("hlxg_fuqi", {sgs.CardUsed, sgs.Damage}, function(self, e
 end, true)
 hlxg_fuqi_invalid = sgs.CreateInvaliditySkill {
     name = "#hlxg_fuqi_invalid",
+    validity_mark = "&hlxg_fuqi-Clear",
     skill_valid = function(self, p, skill)
         return p:getMark("&hlxg_fuqi-Clear") == 0 or skill:getFrequency(p) == sgs.Skill_Compulsory
     end,
