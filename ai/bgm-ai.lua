@@ -1224,23 +1224,23 @@ table.insert(sgs.ai_skills,hantong_skill)
 hantong_skill.getTurnUseCard = function(self)
 	if self.player:hasLordSkill("jijiang") then return end
 	local can_invoke = false
-	for _,friend in sgs.list(self.friends_noself)do
-		if friend:getKingdom()=="shu" and getCardsNum("Slash",friend)>0 then can_invoke = true end
+	for _,friend in sgs.list(self.room:getLieges("shu",self.player))do
+		if self:isFriend(friend) and getCardsNum("Slash",friend)>0 then can_invoke = true end
 	end
 	if not can_invoke then return end
 	return sgs.Card_Parse("@HantongCard=.")
 end
 
 sgs.ai_skill_use_func.HantongCard = function(card,use,self)
-	local jcard = sgs.Card_Parse("@JijiangCard=.")
 	local dummy_use = dummy()
-	self:useSkillCard(jcard,dummy_use)
+	-- Evaluate the grant's attack plan without manufacturing a legacy Jijiang card.
+	self:planJijiang(card,dummy_use)
 	if dummy_use.card then use.card = card end
 end
 
-sgs.ai_use_value.HantongCard = sgs.ai_use_value.JijiangCard
-sgs.ai_use_priority.HantongCard = sgs.ai_use_priority.JijiangCard
-sgs.ai_card_intention.HantongCard = sgs.ai_card_intention.JijiangCard
+sgs.ai_use_value.HantongCard = sgs.ai_use_value.jijiang
+sgs.ai_use_priority.HantongCard = sgs.ai_use_priority.jijiang
+sgs.ai_card_intention.HantongCard = sgs.ai_card_intention.jijiang
 
 function sgs.ai_cardsview_valuable.hantong(self,class_name,player)
 	if player:getPile("edict"):length()>0 and not player:hasSkill("jijiang")

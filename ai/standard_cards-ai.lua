@@ -1738,9 +1738,9 @@ function SmartAI:JijiangSlash(player)
 	if not player then self.room:writeToConsole(debug.traceback()) return 0 end
 	if not player:hasLordSkill("jijiang") then return 0 end
 	local slashs = 0
-	for _,p in sgs.list(self.room:getOtherPlayers(player))do
+	for _,p in sgs.list(self.room:getLieges("shu",player))do
 		local slash_num = getCardsNum("Slash",p,self.player)
-		if p:getKingdom()=="shu" and slash_num>=1 and
+		if slash_num>=1 and
 			(sgs.turncount<=1 and sgs.ai_role[p:objectName()]=="neutral" or self:isFriend(player,p)) then
 				slashs = slashs+slash_num
 		end

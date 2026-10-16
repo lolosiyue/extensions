@@ -186,7 +186,10 @@ Dragon_jijiang = sgs.CreateTriggerSkillV2{
 		end
 		local slash = false
 		local _data = sgs.QVariant()
-		_data:setValue(source)
+		-- 供牌策略读取本次求杀者；伤害来源仍由原询问参数处理。
+		local provision = sgs.CardUseStruct()
+		provision.from = player
+		_data:setValue(provision)
 		local lieges = room:getLieges("shu", player)
 		if lieges:isEmpty() then return false end
 		if not room:askForSkillInvoke(player, skill:objectName(), data) then return false end

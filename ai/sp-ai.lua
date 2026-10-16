@@ -25,38 +25,20 @@ function sgs.ai_slash_prohibit.weidi(self,from,to,card)
 	end
 end
 
-sgs.ai_skill_use["@jijiang"] = function(self,prompt)
-	if self.player:hasFlag("Global_JijiangFailed") then return "." end
-	local card = sgs.Card_Parse("@JijiangCard=.")
-	local dummy_use = dummy()
-	self:useSkillCard(card,dummy_use)
-	if dummy_use.card then
-		local jijiang = {}
-		if sgs.jijiangtarget then
-			for _,p in ipairs(sgs.jijiangtarget)do
-				table.insert(jijiang,p:objectName())
-			end
-			return "@JijiangCard=.->"..table.concat(jijiang,"+")
-		end
-	end
-	return "."
-end
 
-sgs.ai_skill_use["@oljijiang"] = function(self,prompt)
-	if self.player:hasFlag("Global_JijiangFailed") then return "." end
-	local card = sgs.Card_Parse("@OLJijiangCard=.")
-	local dummy_use = dummy()
-	self:useSkillCard(card,dummy_use)
-	if dummy_use.card then
-		local jijiang = {}
-		if sgs.oljijiangtarget then
-			for _,p in ipairs(sgs.oljijiangtarget)do
-				table.insert(jijiang,p:objectName())
-			end
-			return "@OLJijiangCard=.->"..table.concat(jijiang,"+")
-		end
-	end
-	return "."
+for _,skill in ipairs({"jijiang","oljijiang"})do
+    local entry = skill
+    sgs.ai_skill_use["@"..entry] = function(self,prompt,method,pattern,request)
+        if not request or not request:isValid() then return "." end
+        local card = sgs.ActiveSkillCard()
+        card:setSkillName(request:getActivationSkillName())
+        local plan = dummy()
+        sgs.ai_skill_use_func[entry](card,plan,self,request)
+        if not plan.card or plan.to:isEmpty() then return "." end
+        local names = {}
+        for _,target in sgs.list(plan.to)do table.insert(names,target:objectName()) end
+        return {cards={},targets=names,user_string=""}
+    end
 end
 
 --[[

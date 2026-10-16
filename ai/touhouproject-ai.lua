@@ -4157,8 +4157,12 @@ sgs.ai_skill_invoke.TH_CatWalk = function(self, data)
 	end
 	if #str == 0 then return true end
 	if str[1] == "slash" then
-		if sgs.jijiangsource then return self:isFriend(sgs.jijiangsource) end
-		if self.player:hasFlag("JijiangTarget") then return self:needToLoseHp(self.player, use.from, use.card) end
+		local requester = self:getJijiangRequester(data)
+		if requester then return self:isFriend(requester) end
+		if use and use.card and use.to:contains(self.player)
+		and (use.card:getSkillName()=="jijiang" or use.card:getSkillName()=="oljijiang") then
+			return self:needToLoseHp(self.player,use.from,use.card)
+		end
 	elseif str[1] == "jink" then
 		local hujia_requester = self:getHujiaRequester(data)
 		if hujia_requester then return self:isFriend(hujia_requester) end
@@ -4468,8 +4472,12 @@ sgs.ai_skill_invoke.TH_PhilosophersStone = function(self, data)
 	end
 	if #str == 0 then return true end
 	if str[1] == "slash" then
-		if sgs.jijiangsource then return self:isFriend(sgs.jijiangsource) end
-		if self.player:hasFlag("JijiangTarget") then return self:needToLoseHp(self.player, use.from, use.card) end
+		local requester = self:getJijiangRequester(data)
+		if requester then return self:isFriend(requester) end
+		if use and use.card and use.to:contains(self.player)
+		and (use.card:getSkillName()=="jijiang" or use.card:getSkillName()=="oljijiang") then
+			return self:needToLoseHp(self.player,use.from,use.card)
+		end
 	elseif str[1] == "jink" then
 		local hujia_requester = self:getHujiaRequester(data)
 		if hujia_requester then return self:isFriend(hujia_requester) end

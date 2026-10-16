@@ -11093,7 +11093,8 @@ function SmartAI:getTargetBaseScore(target, card, from, flags)
             if not self:needKongcheng(target) then
                 score = score + (isFriend and 2 or -2)
             end
-			if self:needDraw(to,notDraw) then
+			local notDraw = type(flags)=="table" and flags.notDraw==true
+			if self:needDraw(target,notDraw) then
 				score = score + (isFriend and 2 or -2)
 			end
         else

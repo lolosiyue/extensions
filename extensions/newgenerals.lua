@@ -29640,7 +29640,7 @@ offunanCard = sgs.CreateSkillCard {
 		room:addPlayerMark(use.from, "offunanUse-Clear")
 		use.from:skillInvoked("jijiang", -1)
 		for _, p in sgs.qlist(room:getLieges("shu", use.from)) do
-			local slash = room:askForCard(p, "slash", "@jijiang-slash:" .. use.from:objectName(), ToData(use.from), sgs.Card_MethodResponse, use.from, false, "", true)
+			local slash = room:askForCard(p, "slash", "@jijiang-slash:" .. use.from:objectName(), ToData(use), sgs.Card_MethodResponse, use.from, false, "", true)
 			if slash then
 				return slash
 			end
@@ -29746,8 +29746,10 @@ on_effect = function(self, event, room, player, ctx)
 		end
 		room:addPlayerMark(player, "offunanUse-Clear")
 		player:skillInvoked("jijiang", -1)
+		local provision = sgs.CardUseStruct()
+		provision.from = player
 		for _, liege in sgs.qlist(lieges) do
-			local slash = room:askForCard(liege, "slash", "@jijiang-slash:" .. player:objectName(), ToData(player), sgs.Card_MethodResponse, player)
+			local slash = room:askForCard(liege, "slash", "@jijiang-slash:" .. player:objectName(), ToData(provision), sgs.Card_MethodResponse, player)
 			if slash then
 				room:provide(slash)
 				return true
