@@ -1,8 +1,5 @@
 -- Fixed excard2014 source; incompatibilities are not repaired by substitution.
-local function known(v,key)
- if AIUnsupported.is(v)then error(v,0)end
- if v==nil then ai_unsupported("EXCard requires "..key,"excard2014")end;return v
-end
+local known = AIValue.requireKnown
 
 local function ex_context(self)
  local c=self:getDecisionContext().excard2014

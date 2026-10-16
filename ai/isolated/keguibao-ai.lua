@@ -1,12 +1,12 @@
 -- Fixed b6025acc source bodies; request-scoped readonly planning and selected payment.
-local function known(v,k) if AIUnsupported.is(v) then error(v,0) end;if v==nil then ai_unsupported('keguibao value is not observed',k) end;return v end
+local known = AIValue.requireKnown
 
 local function visible(self,id)
  local c=self:getKnownCardById(id);if not c and type(self.getChoiceCard)=='function'then c=self:getChoiceCard(id)end
  return known(c,'keguibao disclosed physical card')
 end
 local function copy(t) local r={} for k,v in pairs(t)do r[k]=type(v)=='table' and copy(v) or v end;return r end
-local function dummy_plan(v,extra,current) local u=AIUsePlan.new();u.isDummy=v~=false;u.extra_target=extra or 0;u.current_targets=current or {};return u end
+local dummy_plan = AIUsePlan.dummy
 local classes={['#keguixianjiCard']='keguixianjiVS',['#kejieguixianjiCard']='kejieguixianjiVS',['#keguitiqiCard']='keguitiqi',['#keguishouyeCard']='keguishouye',['#keguijiehuoCard']='keguijiehuo',['#kejieguishouyeCard']='kejieguishouye',['#kejieguijiehuoCard']='kejieguijiehuo',['#kejieguizhashiCard']='kejieguizhashi'}
 local recipes=setmetatable({},{__mode='k'})
 local function ids(s)local r={}if s~='.' and s~='' then for n in s:gmatch('[^+]+')do r[#r+1]=assert(tonumber(n))end end;return r end

@@ -1,9 +1,7 @@
 -- Fixed b6025acc package policy; all selection uses pure views and native-issued receipts.
 
 
-local function dummy(is_dummy,extra,current)
- local use=AIUsePlan.new();use.isDummy=is_dummy~=false;use.extra_target=extra or 0;use.current_targets=current or {};return use
-end
+local dummy = AIUsePlan.dummy
 -- The viewer's own tags; nil is an absent tag (toBool false).
 local function owner_fact(self,key)
  return self.player:getTag(key)

@@ -1,9 +1,6 @@
 -- Fixed b6025acc AIgeneral strategy bodies. Native authorization is separate
 -- from source planning; foreign private roles use an explicit viewer estimate.
-local function known(v,key)
-    if v==nil then ai_unsupported("AIgeneral value is unknown",key)end
-    return v
-end
+local known = AIValue.requireKnown
 
 local function visible_role(self,player)
     local role=player:getRole()

@@ -1,8 +1,5 @@
 -- Fixed joyequip donor; complete scoring branches, with pure scoped data.
-local function known(v,key)
- if AIUnsupported.is(v)then error(v,0)end
- if v==nil then ai_unsupported("Joyequip requires "..key,"joyequip")end;return v
-end
+local known = AIValue.requireKnown
 
 local function yx_damage(self)
  local ctx=self:getDecisionContext().joyequip

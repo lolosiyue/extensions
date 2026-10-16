@@ -1,8 +1,5 @@
 -- Fixed Typemoon policies; colliding Jiuzi bodies route by captured native source origin.
-local function known(value,key)
-    if value==nil then ai_unsupported("Typemoon fact is not projected",key) end
-    return value
-end
+local known = AIValue.requireKnown
 
 local function has_skill(self,player,name,multiple)
     local value=AIValue.callKnown(player, multiple and "hasSkills" or "hasSkill", name)
@@ -11,10 +8,6 @@ local function has_skill(self,player,name,multiple)
     if player:objectName()==self.player:objectName() then ai_unsupported("Typemoon owner skill roster incomplete",name) end
     return self:useKnowledgeEstimate({status="estimate",value=false,player=player:objectName(),
         basis="typemoon.undisclosed_skill_uses_visible_roster"},name)
-end
-local function sort_in_place(self,list,key)
-    local ordered=self:sort(list, key)
-    for i,value in ipairs(ordered) do list[i]=value end
 end
 local function source_global_slash(self)
     -- The donor reads an undeclared global `slash` of the gameplay VM; that VM's
@@ -64,7 +57,7 @@ function sgs.ai_cardneed.sinzhisi(to, card, self)
 end
 
 sgs.ai_skill_invoke["Tohnozhisi"] = function(self, data)
-	sort_in_place(self,self.enemies,"defense")
+	self:sortInPlace(self.enemies, "defense")
 	local slash = self:getEvaluationCard("slash")
 	if self:getCardsNum("Slash") > 0 then
 		for _, enemy in ipairs(self.enemies) do
@@ -85,7 +78,7 @@ sgs.ai_fill_skill.jisha = function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#jishaCard"] = function(card, use, self,request)
-	sort_in_place(self,self.enemies,"defense")
+	self:sortInPlace(self.enemies, "defense")
 	local slash = self:getEvaluationCard("slash")
 	if self:getCardsNum("Slash") ~= 0 then
 		for _, enemy in ipairs(self.enemies) do
@@ -116,7 +109,7 @@ sgs.ai_skill_use_func["#jishaCard"] = function(card, use, self,request)
 				return
 			end
 		end
-		sort_in_place(self,self.friends,"handcard")
+		self:sortInPlace(self.friends, "handcard")
 		for _, friend in ipairs(self.friends) do
 			use.card = self:bindSkillCard("jisha", {}, request, nil, "#jishaCard")
 			if use.to then
@@ -163,7 +156,7 @@ sgs.ai_fill_skill.Jiuzi = function(self,inclusive,request)
     end
     local slash=self:getEvaluationCard("slash")
     if player:getStrategyMark("@jianding")>0 and used<player:getHp() then
-        sort_in_place(self,self.enemies,"defense")
+        self:sortInPlace(self.enemies, "defense")
         for _,enemy in ipairs(self.enemies) do
             if has_skill(self,player,"sinzhisi",false) and player:canSlash(enemy, slash, false)
                 and enemy:getStrategyMark("@sharengui")==1 then
@@ -183,7 +176,7 @@ end
 sgs.ai_skill_use_func["#JiuziCard"] = function(card,use,self,request)
     local variant=jiuzi_variant(self,"ai_skill_use_func","#JiuziCard")
     if not variant then return end
-    sort_in_place(self,self.enemies,"defense")
+    self:sortInPlace(self.enemies, "defense")
     if variant=="touhou" then
         local function eligible(enemy,marked)
             return self.player:canSlash(enemy, nil, false) and self:slashIsEffective(card,enemy)

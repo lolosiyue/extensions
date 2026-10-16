@@ -1,8 +1,5 @@
 -- Maneuvering package policy. Source: b6025acc ai/maneuvering-ai.lua.
-local function known(value,key)
-    if value==nil then ai_unsupported("maneuvering fact is unknown",key) end
-    return value
-end
+local known = AIValue.requireKnown
 local function query(object,method,...)
     if AIValue.isPlayer(object) then
         if method=="getMark" and type(object.getStrategyMark)=="function" then method="getStrategyMark" end

@@ -1,6 +1,6 @@
 -- ol_qifu, fixed b6025acc. Only effective live registries are installed.
 -- Shadow Aocai invoke/AG and Duwu bodies belong to the effective source owner.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported('ol_qifu input unavailable',k)end;return v end
+local known = AIValue.requireKnown
 local nullable={recordAocaiSourceDrawIdentity=true,toPlayer=true,getStrategyMemory=true,getCurrentDyingPlayer=true,getCurrent=true,getArmor=true,getWeapon=true,getOffensiveHorse=true,getDefensiveHorse=true,findPlayerBySkillName=true,getCardNeedPlayer=true,aiUseCard=true,updateIntention=true,setStrategyCardFlag=true,setStrategyPlayerFlag=true,setStrategyMemory=true}
 
 -- The viewer's own property and tag, read like the donor's toString()/toIntList() (absent reads empty).

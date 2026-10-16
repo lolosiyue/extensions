@@ -1,11 +1,7 @@
 -- Fixed donor: fire-ai.lua at b6025acc983331337614289d8cac79b078c003af.
 -- Fire callback branches use pure views and native-issued conversion/action receipts.
 -- Private-derived global priorities stay viewer-local with estimate provenance.
-local function known(value, label)
-    if AIUnsupported and AIUnsupported.is and AIUnsupported.is(value) then error(value,0) end
-    if value == nil then ai_unsupported("fire strategy requires " .. label, "fire") end
-    return value
-end
+local known = AIValue.requireKnown
 local function query(object, method, ...)
     if not object or type(object[method]) ~= "function" then
         ai_unsupported("fire strategy requires " .. method, "fire")
@@ -130,16 +126,6 @@ end
 -- Complete Fire strategy callbacks. Legacy policy identities are kept apart
 -- from the native receipt: only the latter can authorize costs or targets.
 sgs.ai_choicemade_filter.cardUsed=sgs.ai_choicemade_filter.cardUsed or {}
-local function sort_in_place(self,cards,key,reverse)
-    local ordered=query(self,"sort",cards,key,reverse)
-    for i=1,#cards do cards[i]=ordered[i] end
-    return cards
-end
-local function cards_in_place(self,method,cards,...)
-    local ordered=query(self,method,cards,...)
-    for i=1,#cards do cards[i]=ordered[i] end
-    return cards
-end
 local function own_card(self,id)
     for _,card in ipairs(query(self,"addHandPile","he")) do
         if query(card,"getEffectiveId")==id then return card end
@@ -207,7 +193,7 @@ sgs.ai_skill_use_func.QuhuCard = function(card,use,self,request)
 	local max_point = query(max_card,"getNumber")
 
 	if #self.enemies==0 then return end
-	sort_in_place(self,self.enemies,"handcard")
+	self:sortInPlace(self.enemies, "handcard")
 
 	for _,enemy in ipairs(self.enemies)do
 		if query(enemy,"getHp")>query(self.player,"getHp") and query(self.player,"canPindian",enemy) then
@@ -236,7 +222,7 @@ sgs.ai_skill_use_func.QuhuCard = function(card,use,self,request)
 		local use_quhu
 		for _,friend in ipairs(self.friends)do
 			if math.min(5,query(friend,"getMaxHp"))-query(friend,"getHandcardNum")>=2 then
-				sort_in_place(self,self.enemies,"handcard")
+				self:sortInPlace(self.enemies, "handcard")
 				if query(self.player,"canPindian",self.enemies[#self.enemies]) then use_quhu = true break end
 			end
 		end
@@ -245,7 +231,7 @@ sgs.ai_skill_use_func.QuhuCard = function(card,use,self,request)
 				if query(self.player,"canPindian",enemy) and query(self.player,"getHp")<query(enemy,"getHp") and not query(enemy,"hasSkill","jueqing") then
 					local cards = query(self.player,"getHandcards")
 					cards = AIList.new(cards)
-					cards_in_place(self,"sortByUseValue",cards,true)
+					self:sortByUseValueInPlace(cards, true)
 					remember_pindian(self,"quhu",query(cards[1],"getEffectiveId"))
 					use.card = skill_card(self,"quhu","QuhuCard",{},request)
 					use.to:append(enemy)
@@ -276,7 +262,7 @@ sgs.ai_skill_playerchosen.jieming = function(self,targets)
 			table.insert(friends,player)
 		end
 	end
-	sort_in_place(self,friends)
+	self:sortInPlace(friends)
 
 	local max_x = 0
 	local target
@@ -367,7 +353,7 @@ sgs.ai_skill_use_func.QiangxiCard = function(card,use,self,request)
 				break
 			end
 		end
-		sort_in_place(self,self.enemies)
+		self:sortInPlace(self.enemies)
 		self.equipsToDec = hand_weapon and 0 or 1
 		for _,enemy in ipairs(self.enemies)do
 			if query(self,"objectiveLevel",enemy)>3 and not query(self,"cantbeHurt",enemy) and query(self,"damageIsEffective",enemy)
@@ -388,7 +374,7 @@ sgs.ai_skill_use_func.QiangxiCard = function(card,use,self,request)
 		end
 		self.equipsToDec = 0
 	else
-		sort_in_place(self,self.enemies,"hp")
+		self:sortInPlace(self.enemies, "hp")
 		for _,enemy in ipairs(self.enemies)do
 			if query(self,"objectiveLevel",enemy)>3 and not query(self,"cantbeHurt",enemy) and query(self,"damageIsEffective",enemy)
 			and query(self.player,"distanceTo",enemy)<=query(self.player,"getAttackRange") and query(self.player,"getHp")>query(enemy,"getHp") and query(self.player,"getHp")>1
@@ -416,7 +402,7 @@ sgs.qiangxi_keep_value = {
 
 
 sgs.ai_skill_use_func.TianyiCard = function(card,use,self,request)
-	sort_in_place(self,self.enemies,"handcard")
+	self:sortInPlace(self.enemies, "handcard")
 	local cards = AIList.new({})
 	local peach = 0
 	for _,c in ipairs(query(self.player,"getHandcards"))do
@@ -485,7 +471,7 @@ sgs.ai_skill_use_func.TianyiCard = function(card,use,self,request)
 		end
 		if #self.enemies<1 then return end
 		if dummy_use.to:length()>1 then
-			sort_in_place(self,self.friends_noself,"handcard")
+			self:sortInPlace(self.friends_noself, "handcard")
 			for index = #self.friends_noself,1,-1 do
 				local friend = self.friends_noself[index]
 				if query(self.player,"canPindian",friend) then
@@ -527,7 +513,7 @@ sgs.ai_skill_use_func.TianyiCard = function(card,use,self,request)
 	end
 
 	cards = AIList.new(cards)
-	cards_in_place(self,"sortByUseValue",cards,true)
+	self:sortByUseValueInPlace(cards, true)
 	if zhugeliang and query(self,"isFriend",zhugeliang) and query(zhugeliang,"getHandcardNum")==1
 		and query(zhugeliang,"objectName")~=query(self.player,"objectName") and query(self,"getEnemyNumBySeat",self.player,zhugeliang)>=1 and query(self.player,"canPindian",zhugeliang) then
 		if isCard("Jink",cards[1],self.player) and query(self,"getCardsNum","Jink")==1 then return end
@@ -553,7 +539,7 @@ end
 function sgs.ai_skill_pindian.tianyi(minusecard,self,requestor)
 	if query(requestor,"getHandcardNum")==1 then
 		local cards = AIList.new(query(self.player,"getHandcards"))
-		cards_in_place(self,"sortByKeepValue",cards)
+		self:sortByKeepValueInPlace(cards)
 		return cards[1]
 	end
 	local maxcard = self:getMaxCard()
@@ -604,7 +590,7 @@ sgs.ai_fill_skill.luanji = function(self,inclusive,request)
 	then
 		local cards = query(self,"addHandPile")
 		local same_suit = false
-		cards_in_place(self,"sortByKeepValue",cards)
+		self:sortByKeepValueInPlace(cards)
 		local useAll = false
 		for _,enemy in ipairs(self.enemies)do
 			if query(enemy,"getHp")==1 and not query(enemy,"hasArmorEffect","Vine")
@@ -678,7 +664,7 @@ sgs.ai_fill_skill.shuangxiong=function(self,inclusive,request)
 	local colors = query(self.player,"getShuangxiongColors")
 
 	local cards = query(self,"addHandPile")
-	cards_in_place(self,"sortByUseValue",cards,true)
+	self:sortByUseValueInPlace(cards, true)
 
 	local card
 	for _,acard in ipairs(cards)  do
@@ -721,8 +707,8 @@ sgs.ai_suit_priority.kanpo= "diamond|heart|club|spade"
 
 
 sgs.ai_skill_invoke.qinyin = function(self,data)
-	sort_in_place(self,self.friends,"hp")
-	sort_in_place(self,self.enemies,"hp")
+	self:sortInPlace(self.friends, "hp")
+	self:sortInPlace(self.enemies, "hp")
 	local up = 0
 	local down = 0
 
@@ -792,7 +778,7 @@ sgs.ai_fill_skill.yeyan=function(self,inclusive,request)
 			end
 		end
 		if spade and club and diamond and heart then
-			sort_in_place(self,self.enemies,"hp")
+			self:sortInPlace(self.enemies, "hp")
 			local target_num = 0
 			for _,enemy in ipairs(self.enemies)do
 				if ((query(enemy,"hasArmorEffect","Vine") or query(enemy,"getHp")<=3) and not query(enemy,"isChained"))
@@ -841,7 +827,7 @@ sgs.ai_skill_use_func.GreatYeyanCard = function(card,use,self,request)
 	if query(self.player,"getRole")=="renegade" and query(self.room,"alivePlayerCount")>2 and query(self,"getCardsNum","Peach")<3-query(self.player,"getHp") then return end
 	local cards = query(self.player,"getHandcards")
 	cards = AIList.new(cards)
-	cards_in_place(self,"sortByUseValue",cards,true)
+	self:sortByUseValueInPlace(cards, true)
 	local need_cards = {}
 	local spade,club,heart,diamond
 	for _,card in ipairs(cards)do
@@ -856,7 +842,7 @@ sgs.ai_skill_use_func.GreatYeyanCard = function(card,use,self,request)
 	assert(greatyeyan)
 
 	local first
-	sort_in_place(self,self.enemies,"hp")
+	self:sortInPlace(self.enemies, "hp")
 	for _,enemy in ipairs(self.enemies)do
 		if not query(enemy,"hasArmorEffect","SilverLion") and query(self,"objectiveLevel",enemy)>3
 		and query(self,"damageIsEffective",enemy,sgs.DamageStruct_Fire)
@@ -913,7 +899,7 @@ sgs.ai_card_intention.GreatYeyanCard = 200
 sgs.ai_skill_use_func.SmallYeyanCard = function(card,use,self,request)
 	if query(self.player,"getStrategyMark","@flame")==0 then return end
 	local targets = AIList.new({})
-	sort_in_place(self,self.enemies,"hp")
+	self:sortInPlace(self.enemies, "hp")
 	for _,enemy in ipairs(self.enemies)do
 		if not (query(enemy,"hasSkill","tianxiang") and query(enemy,"getHandcardNum")>0) and query(self,"damageIsEffective",enemy,sgs.DamageStruct_Fire)
         and query(enemy,"isChained") and query(self,"isGoodChainTarget",enemy) and (query(enemy,"hasArmorEffect","Vine") or query(enemy,"getStrategyMark","&kuangfeng")>0)
@@ -992,8 +978,8 @@ sgs.ai_skill_use["@@qixing"] = function(self,prompt)
 	end
 	local exchange_to_pile = {}
 	local exchange_to_handcard = {}
-	cards_in_place(self,"sortByCardNeed",cards)
-	cards_in_place(self,"sortByCardNeed",piles)
+	self:sortByCardNeedInPlace(cards)
+	self:sortByCardNeedInPlace(piles)
 	for i = 1 ,max_num,1 do
 		if query(self,"cardNeed",piles[#piles])>query(self,"cardNeed",cards[1]) then
 			table.insert(exchange_to_handcard,piles[#piles])
@@ -1043,7 +1029,7 @@ sgs.ai_skill_use["@@kuangfeng"] = function(self,prompt)
 	end
 	local usecard=false
 	if friendly_fire and is_chained>1 then usecard=true end
-	sort_in_place(self,self.friends,"hp")
+	self:sortInPlace(self.friends, "hp")
 	if target[1] and not query(self,"isWeak",self.friends[1]) then
 		if query(target[1],"hasArmorEffect","Vine") and friendly_fire then usecard = true end
 	end
@@ -1058,10 +1044,10 @@ end
 sgs.ai_card_intention.KuangfengCard = 80
 
 sgs.ai_skill_use["@@dawu"] = function(self,prompt)
-	sort_in_place(self,self.friends_noself,"hp")
+	self:sortInPlace(self.friends_noself, "hp")
 	local targets = {}
 	local lord = self.room:getLord()
-	sort_in_place(self,self.friends_noself,"defense")
+	self:sortInPlace(self.friends_noself, "defense")
         if lord and query(lord,"getStrategyMark","&dawu")==0 and query(self,"isFriend",lord) and not query(self,"isLordHealthy") and not query(self.player,"isLord") and not query(lord,"hasSkill","buqu")
 		and not (query(lord,"hasSkill","hunzi") and query(lord,"getStrategyMark","hunzi")==0 and query(lord,"getHp")>1) then
 			table.insert(targets,query(lord,"objectName"))

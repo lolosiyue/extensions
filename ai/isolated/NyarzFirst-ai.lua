@@ -1,5 +1,5 @@
 -- NyarzFirst fixed b6025acc. Readonly hypotheses are never payment receipts.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported('NyarzFirst source input unknown',k)end;return v end
+local known = AIValue.requireKnown
 local function hydrate_context(self,value,kind)
  if value==nil then return nil end
  if kind=='Player' then

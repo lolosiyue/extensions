@@ -1,7 +1,7 @@
 -- Fixed b6025acc jiange-defense effective source, pure values only.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("jiange fact unknown",k)end;return v end
+local known = AIValue.requireKnown
 
-local function dummy(is_dummy,extra,current)local u=AIUsePlan.new();u.isDummy=is_dummy~=false;u.extra_target=extra or 0;u.current_targets=current or{};return u end
+local dummy = AIUsePlan.dummy
 --[[********************************************************************
 	Copyright (c) 2013-2014-QSanguosha-Rara
 

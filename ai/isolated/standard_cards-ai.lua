@@ -1,10 +1,7 @@
 -- Standard-card package policies. Source: b6025acc ai/standard_cards-ai.lua.
 -- Family planners, shared helpers, and Slash/Peach/Duel intentions remain in
 -- their common modules; this file supplies the remaining effective registries.
-local function known(value, key)
-    if value==nil then ai_unsupported("standard equipment fact is unknown",key) end
-    return value
-end
+local known = AIValue.requireKnown
 local function query(object, method, ...)
     if not object or type(object[method])~="function" then ai_unsupported("standard equipment method is unavailable",method) end
     local provider=object[method]
@@ -13,11 +10,7 @@ local function query(object, method, ...)
     if value==nil and SmartAIView.isKnownNilStrategyResult(object,method,provider) then return nil end
     return known(value,method)
 end
-local function dummy(is_dummy, extra, current)
-    local use = AIUsePlan.new()
-    use.isDummy, use.extra_target, use.current_targets = is_dummy ~= false, extra or 0, current or {}
-    return use
-end
+local dummy = AIUsePlan.dummy
 local function visible_card(self, id)
     local card = self:getChoiceCard(id)
     if card then return card end

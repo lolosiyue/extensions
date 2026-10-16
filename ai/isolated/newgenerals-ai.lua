@@ -1,10 +1,6 @@
 -- Fixed b6025acc newgenerals. Native simulations are readonly; final selected
 -- materials are rebound through issued scopes. No source registry fallback.
-local function known(v,k)
-    if AIUnsupported.is(v) then error(v,0) end
-    if v==nil then ai_unsupported('Newgenerals missing '..k,'newgenerals') end
-    return v
-end
+local known = AIValue.requireKnown
 local function copy(v)
     if type(v)~='table' then return v end
     local r={};for k,x in pairs(v) do r[k]=copy(x) end;return r
@@ -20,17 +16,7 @@ local function source_query(o,m,...)
     local args={...};for i=1,select('#',...) do if preview_specs[args[i]] then args[i]=resolve_preview(args[i]) end end
     return (AIValue.callKnown(o, m, table.unpack(args,1,select('#',...))))
 end
-local function dummy(isDummy,extra,current)
-    return AIUsePlan.new({isDummy=isDummy~=false,extra_target=extra,current_targets=current})
-end
--- AIUsePlan.new has no options overload: preserve the fixed source dummy
--- fields explicitly for these complete three response callbacks.
-local function r44_range_dummy(extra,current)
-    local use=AIUsePlan.new();use.isDummy=true;use.extra_target=extra or 0;use.current_targets=current or {};return use
-end
-local function r42_response_dummy(extra)
-    local use=AIUsePlan.new();use.isDummy=true;use.extra_target=extra or 0;use.current_targets={};return use
-end
+local dummy = AIUsePlan.dummy
 local function pattern_names(self,class)
     if type(class)=='string'then
         local mapping=known(AICardCatalog.patternClassNames(),'exact last-write class/name catalog')
@@ -4944,7 +4930,7 @@ sgs.ai_skill_playerchosen.mouwusheng = function(self, targets)
         local slash = self:getCard("Slash")
         assert(slash)
         local dummy_use = source_query(self, "withOwnerRange", "InfinityAttackRange", "mouwusheng", function()
-            return use_card(self,slash,r44_range_dummy(99))
+            return use_card(self,slash,dummy(true,99))
         end)
         if dummy_use.card and dummy_use.to:length() > 0 then
             for _,enemy in sgs.qlist(dummy_use.to) do
@@ -5153,7 +5139,7 @@ sgs.ai_skill_use["@@moulveying"] = function(self,prompt)
     local dismantlement = clone_preview(self,"dismantlement")
     mutate(self,dismantlement,"skill","moulveying")
 
-    local dummy_use = use_card(self,dismantlement, r42_response_dummy())
+    local dummy_use = use_card(self,dismantlement, dummy(true))
     if dummy_use.card and dummy_use.to and not dummy_use.to:isEmpty() then
         local targets = {}
         for _,p in sgs.list(dummy_use.to)do
@@ -5169,7 +5155,7 @@ sgs.ai_skill_use["@@mouyingwu"] = function(self,prompt)
     local slash = clone_preview(self,"slash")
     mutate(self,slash,"skill","mouyingwu")
 
-    local dummy_use = use_card(self,slash, r42_response_dummy())
+    local dummy_use = use_card(self,slash, dummy(true))
     if dummy_use.card and dummy_use.to and not dummy_use.to:isEmpty() then
         local targets = {}
         for _,p in sgs.list(dummy_use.to)do
@@ -5301,7 +5287,7 @@ sgs.ai_skill_use["@@mouxieji"] = function(self,prompt)
     local slash = clone_preview(self,"slash")
     mutate(self,slash,"skill","_mouxieji")
 
-    local dummy_use = use_card(self,slash, r42_response_dummy(2))
+    local dummy_use = use_card(self,slash, dummy(true,2))
     if dummy_use.card and dummy_use.to and not dummy_use.to:isEmpty() then
         local targets = {}
         for _,p in sgs.list(dummy_use.to)do
@@ -5385,7 +5371,7 @@ sgs.ai_skill_cardask["@mouxianchou-slash"] = function(self, data, pattern, targe
     local dc = preview(self)
     mutate(self,dc,"skill","_mouxianchou")
     local dummy_use = source_query(self, "withOwnerRange", "InfinityAttackRange", "@mouxianchou-slash", function()
-        return use_card(self,dc,r44_range_dummy(0,self.room:getOtherPlayers(damage.from)))
+        return use_card(self,dc,dummy(true,0,self.room:getOtherPlayers(damage.from)))
     end)
     if dummy_use.card and dummy_use and dummy_use.to and dummy_use.to:contains(damage.from) then
         return true
@@ -5461,7 +5447,7 @@ sgs.ai_skill_playerchosen.moujiang = function(self, targets)
         return nil
     end
     local use = scoped_struct(self,"moujiang","use")
-    local dummy_use = use_card(self,source_query(self, 'evaluateSkillCard', 'newgenerals_context:moujiang', use.card:objectName(), {}),r44_range_dummy(99,use.to))
+    local dummy_use = use_card(self,source_query(self, 'evaluateSkillCard', 'newgenerals_context:moujiang', use.card:objectName(), {}),dummy(true,99,use.to))
     if not dummy_use.to:isEmpty() then
         for _, p in sgs.qlist(dummy_use.to) do
             if targets:contains(p) then
@@ -7145,7 +7131,7 @@ sgs.ai_skill_use_func["#ofsifenCard"] = function(card,use,self,request)
                 if source_query(self.player, "getMark", p:objectName().."ofsifenDuel-PlayClear")<1
                 then table.insert(btps,p) end
             end
-            local d = use_card(self,dc,r44_range_dummy(0,btps))
+            local d = use_card(self,dc,dummy(true,0,btps))
             if d.card then
                 use.to = d.to
                 use.card = parse_action(self,"#ofsifenCard:"..table.concat(ids,"+")..":")

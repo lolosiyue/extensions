@@ -1,14 +1,6 @@
 -- Yue, effective donor b6025acc. Policy identities stay distinct from native
 -- V2 products; only issued receipts can become submitted actions.
-local function known(value,key)
-    if value==nil then ai_unsupported("Yue policy fact unknown",key) end
-    return value
-end
-local function sorted_in_place(self,list,key)
-    local sorted=(self:sort(known(list,key),key))
-    for i,p in ipairs(sorted) do list[i]=p end
-    return list
-end
+local known = AIValue.requireKnown
 local function legacy(self,skill,class,request,user_string)
     -- Native projects the original SkillCard's owner lock and evaluation rules;
     -- borrowing the ordinary V2 product's rules would change source decisions.
@@ -18,7 +10,7 @@ sgs.ai_fill_skill.jinxuanbei=function(self,inclusive,request)
     return (self:legacySkillSeed("jinxuanbei","JinXuanbeiCard",request))
 end
 sgs.ai_skill_use_func.JinXuanbeiCard=function(card,use,self,request)
-    sorted_in_place(self,self.enemies,"hp")
+    self:sortInPlace(known(self.enemies, "hp"), "hp")
     local can=(self:getCardsNum("Jink"))>0 or not (self:isWeak())
     local function choose(target)
         use.card=(self:inheritLegacyCardIdentity(legacy(self,"jinxuanbei","JinXuanbeiCard",request),card))

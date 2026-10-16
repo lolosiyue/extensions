@@ -555,14 +555,7 @@ end
 source_query=function(object,method,...)
  return source_call(object,method,true,...)
 end
-local function sorted(self,cards,method,...)
- local result=source_query(self,method,cards,...);for i,c in ipairs(result)do cards[i]=c end;return cards
-end
-local function sort_players(self,cards,...)return sorted(self,cards,'sort',...)end
-local function sort_keep(self,cards,...)return sorted(self,cards,'sortByKeepValue',...)end
-local function sort_use(self,cards,...)return sorted(self,cards,'sortByUseValue',...)end
-local function sort_priority(self,cards,...)return sorted(self,cards,'sortByUsePriority',...)end
-local function dummy(value,extra,targets)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;u.current_targets=targets or{};return u end
+local dummy = AIUsePlan.dummy
 local function isCurrent(use,to)
  if type(use.current_targets)=='table'then for _,p in ipairs(use.current_targets)do if p==to or p==source_query(to,'objectName')then return true end end end
 end
@@ -700,7 +693,7 @@ end
 
 sgs.ai_skill_use_func["#guandu_shicai"] = function(card,use,self,request)
 	local usable_cards = AIList.new(self.player:getCards("he"))
-	sort_use(self,usable_cards)
+	source_query(self, 'sortByUseValueInPlace', usable_cards)
 	local use_card = {}
 	for _,c in ipairs(usable_cards) do
 		if source_query(self,"getUseValue",c) < 5 then
@@ -755,7 +748,7 @@ end
 
 sgs.ai_skill_use_func["#gd_zezhu"] = function(card,use,self,request)
 	self:updatePlayers()
-	sort_players(self,self.enemies, "defense")
+	source_query(self, 'sortInPlace', self.enemies, "defense")
 	local targets = {}
 	if self.player:isLord() then
 		for _, enemy in ipairs(self.enemies) do
@@ -794,7 +787,7 @@ sgs.ai_use_value["gd_zezhu"] = 7
 
 sgs.ai_skill_cardask["@gd_zezhu-give"] = function(self, data, pattern, target, target2)
 	local handcards = AIList.new(self.player:getCards("h"))
-	sort_use(self,handcards, true)
+	source_query(self, 'sortByUseValueInPlace', handcards, true)
 	for _,c in ipairs(handcards) do
 		return source_query(c,"getLegacyStringKey")
 	end
@@ -811,7 +804,7 @@ guandu_yuanlue_skill.getTurnUseCard = function(self,inclusive,request)
 	local card_id
 	local cards = self.player:getCards("he")
 	cards = AIList.new(cards)
-	sort_keep(self,cards)
+	source_query(self, 'sortByKeepValueInPlace', cards)
 	for _, acard in ipairs(cards) do
 		if not source_query(acard,"isKindOf","EquipCard") then
 			card_id = source_query(acard,"getEffectiveId")
@@ -827,7 +820,7 @@ end
 
 sgs.ai_skill_use_func["#guandu_yuanlue"] = function(card,use,self,request)
     if not self.player:isNude() then
-        sort_players(self,self.friends_noself)
+        source_query(self, 'sortInPlace', self.friends_noself)
 		for _, friend in ipairs(self.friends_noself) do
 		    if friend and not source_query(self,"needKongcheng",friend,true) then
 				use.card = card
@@ -863,7 +856,7 @@ end
 sgs.ai_skill_playerchosen.guandu_zhongjie = function(self,targets)
 	local first,second
 	targets = AIList.new(targets)
-	sort_players(self,targets,"defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	for _,friend in ipairs(targets)do
 		if source_query(self,"isFriend",friend) and source_query(friend,"isAlive") and source_query(self,"canDraw",friend,self.player) then
 			if isLord(friend) and source_query(self,"isWeak",friend) then return friend end
@@ -882,7 +875,7 @@ sgs.exclusive_skill = sgs.exclusive_skill .. "|guandu_zhongjie"
 sgs.ai_skill_cardask["@guandu_jieliang"] = function(self, data, pattern, target)
 	local current = self.room:getCurrent()
 	local usable_cards = AIList.new(self.player:getCards("he"))
-	sort_keep(self,usable_cards)
+	source_query(self, 'sortByKeepValueInPlace', usable_cards)
 	if current and source_query(self,"isEnemy",current) then
 		for _, c in ipairs(usable_cards) do
 				return source_query(c,"getLegacyStringKey")
@@ -902,7 +895,7 @@ sgs.ai_skill_invoke.guandu_jieliang = true
 
 
 function SmartAIView:useCardYuanjun(card,use)
-	sort_players(self,self.friends,"hp")
+	source_query(self, 'sortInPlace', self.friends, "hp")
 	local extraTarget = 1 + source_query(card,"getTargetModExtra",self.player)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
 	for _,ep in sgs.list(self.friends_noself)do do 
@@ -923,7 +916,7 @@ sgs.ai_card_intention.Yuanjun = -33
 
 
 function SmartAIView:useCardTunliang(card,use)
-	sort_players(self,self.friends,"hp")
+	source_query(self, 'sortInPlace', self.friends, "hp")
 	local extraTarget = 2 + source_query(card,"getTargetModExtra",self.player)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
 	for _,ep in sgs.list(self.friends)do do 
@@ -1056,7 +1049,7 @@ sgs.ai_skill_playerchosen.yinghun_po = function(self, targets)
 	local player = self:AssistTarget()
 
 	if x == 1 then
-		sort_players(self,self.friends_noself, "handcard")
+		source_query(self, 'sortInPlace', self.friends_noself, "handcard")
 		self.friends_noself = sgs.reverse(self.friends_noself)
 		for _, friend in ipairs(self.friends_noself) do
 			if source_query(self,"hasSkills",sgs.lose_equip_skill,friend) and source_query(friend,"getCards","e"):length() > 0
@@ -1111,7 +1104,7 @@ sgs.ai_skill_playerchosen.yinghun_po = function(self, targets)
 			end
 		end
 	elseif #self.friends > 1 then
-		sort_players(self,self.friends_noself, "chaofeng")
+		source_query(self, 'sortInPlace', self.friends_noself, "chaofeng")
 		for _, friend in ipairs(self.friends_noself) do
 			if source_query(self,"hasSkills",sgs.lose_equip_skill,friend) and source_query(friend,"getCards","e"):length() > 0
 			  and not source_query(friend,"hasSkill","manjuan") then
@@ -1152,7 +1145,7 @@ sgs.ai_skill_playerchosen.yinghun_po = function(self, targets)
 			end
 
 			if not wf then
-				sort_players(self,self.enemies, "chaofeng")
+				source_query(self, 'sortInPlace', self.enemies, "chaofeng")
 				for _, enemy in ipairs(self.enemies) do
 					if source_query(enemy,"getCards","he"):length() == n
 						and source_query(self,"doDisCard",enemy,"he",false,n) then
@@ -1189,7 +1182,7 @@ sgs.ai_skill_playerchosen.yinghun_po = function(self, targets)
 		if self.yinghun_po then self.yinghun_pochoice = "yinghun2" end
 	end
 	if not self.yinghun_po and x > 1 and #self.enemies > 0 then
-		sort_players(self,self.enemies, "handcard")
+		source_query(self, 'sortInPlace', self.enemies, "handcard")
 		for _, enemy in ipairs(self.enemies) do
 			if source_query(enemy,"getCards","he"):length() >= n
 				and source_query(self,"doDisCard",enemy,"he",false,n) then
@@ -1258,7 +1251,7 @@ sgs.ai_fill_skill.heg_xianqu = function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#heg_xianqu"] = function(card,use,self,request)
-	sort_players(self,self.enemies, "handcard")
+	source_query(self, 'sortInPlace', self.enemies, "handcard")
 	for _,enemy in ipairs(self.enemies) do
 		if not source_query(enemy,"isKongcheng") then
 			use.card = card
@@ -1340,7 +1333,7 @@ extra_alias{ id="ai_choicemade_filter.cardChosen.heg_mouduan",registry="ai_choic
 sgs.ai_skill_playerchosen["heg_mouduan"] = function(self, targets)
 	local ol_jiewei_target = room_tag("heg_mouduanTarget"):toPlayer()
 	local targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	if source_query(self,"isFriend",ol_jiewei_target) then
 		for _,p in ipairs(targets) do
 			if source_query(self,"isEnemy",p) then
@@ -1381,7 +1374,7 @@ table.insert(package_skills,heg_longdan_skill)
 heg_longdan_skill.getTurnUseCard=function(self,inclusive,request)
 	local cards = self:addHandPile()
 	local jink_card
-	sort_use(self,cards,true)
+	source_query(self, 'sortByUseValueInPlace', cards, true)
 	for _,card in ipairs(cards)  do
 		if source_query(card,"isKindOf","Jink") then
 			jink_card = card
@@ -1467,7 +1460,7 @@ table.insert(package_skills,heg_duanliang_skill)
 heg_duanliang_skill.getTurnUseCard=function(self,inclusive,request)
 	local cards = self:addHandPile("he")
 	local card
-	sort_use(self,cards,true)
+	source_query(self, 'sortByUseValueInPlace', cards, true)
 	for _,acard in ipairs(cards)  do
 		if (source_query(acard,"isBlack")) and (source_query(acard,"isKindOf","BasicCard") or source_query(acard,"isKindOf","EquipCard")) and (source_query(self,"getDynamicUsePriority",acard)<sgs.ai_use_value.SupplyShortage)then
 			card = acard
@@ -1496,7 +1489,7 @@ local function getKurouCard(self,not_slash)
 	local hold_crossbow = (self:getCardsNum("Slash")>1)
 	local cards = self.player:getHandcards()
 	cards = AIList.new(cards)
-	sort_keep(self,cards)
+	source_query(self, 'sortByKeepValueInPlace', cards)
 	local lightning = self:getCard("Lightning")
 
 	if self:needToThrowArmor() then
@@ -1588,7 +1581,7 @@ sgs.double_slash_skill = sgs.double_slash_skill .. "|heg_kurou"
 
 
 source_use_registry["@@heg_shensu1"] = function(self,prompt)
-	sort_players(self,self.enemies,"defense")
+	source_query(self, 'sortInPlace', self.enemies, "defense")
 	if self.player:containsTrick("lightning") and self.player:getCards("j"):length()==1
 	and source_query(self,"hasWizard",self.friends) and not source_query(self,"hasWizard",self.enemies,true)
 	then return "." end
@@ -1620,7 +1613,7 @@ source_use_registry["@@heg_shensu2"] = function(self,prompt,method)
 end
 
 source_use_registry["@@heg_shensu3"] = function(self,prompt)
-	sort_players(self,self.enemies,"defense")
+	source_query(self, 'sortInPlace', self.enemies, "defense")
 	if self:needBear() then return "." end
 	local selfSub = self:getOverflow()
 	local selfDef = source_query(self,"getDefense",self.player)
@@ -1661,7 +1654,7 @@ sgs.ai_card_intention.heg_shensuCard = sgs.ai_card_intention.ShensuCard
 sgs.heg_shensu_keep_value = sgs.shensu_keep_value
 sgs.ai_skill_cardask["@heg_luoyi"] = function(self,data)
 	local cards = AIList.new(self.player:getHandcards())
-	sort_use(self,cards,true)
+	source_query(self, 'sortByUseValueInPlace', cards, true)
 	if sgs.ai_skill_invoke.nosluoyi(self, data) then
 		return "$"..cards[1]:getEffectiveId()
 	end
@@ -1688,7 +1681,7 @@ sgs.ai_skill_use_func["#heg_qiangxi"] = function(card,use,self,request)
 				break
 			end
 		end
-		sort_players(self,self.enemies)
+		source_query(self, 'sortInPlace', self.enemies)
 		self.equipsToDec = hand_weapon and 0 or 1
 		for _,enemy in sgs.list(self.enemies)do
 			if source_query(self,"objectiveLevel",enemy)>3 and not source_query(self,"cantbeHurt",enemy) and source_query(self,"damageIsEffective",enemy)
@@ -1705,7 +1698,7 @@ sgs.ai_skill_use_func["#heg_qiangxi"] = function(card,use,self,request)
 		end
 		self.equipsToDec = 0
 	else
-		sort_players(self,self.enemies,"hp")
+		source_query(self, 'sortInPlace', self.enemies, "hp")
 		for _,enemy in sgs.list(self.enemies)do
 			if source_query(self,"objectiveLevel",enemy)>3 and not source_query(self,"cantbeHurt",enemy) and source_query(self,"damageIsEffective",enemy)
 			and self.player:getHp()>source_query(enemy,"getHp") and self.player:getHp()>1
@@ -1792,8 +1785,8 @@ source_use_registry["@@heg_tianxiang"] = function(self, prompt, method)
 	local use_card = nil
 	local target = nil
 	self:updatePlayers()
-	sort_players(self,self.enemies, "hp")
-	sort_players(self,self.friends_noself, "hp")
+	source_query(self, 'sortInPlace', self.enemies, "hp")
+	source_query(self, 'sortInPlace', self.friends_noself, "hp")
 	self.friends_noself = sgs.reverse(self.friends_noself)
 	for _,c in ipairs(handcards) do
 		if source_query(c,"getSuit") == sgs.Card_Heart and not source_query(c,"isKindOf","Peach") then
@@ -1861,7 +1854,7 @@ end
 sgs.ai_skill_playerschosen.heg_duoshi = function(self, targets, max, min)
     local selected = AIList.new{}
     local can_choose = AIList.new(targets)
-    sort_players(self,can_choose, "defense")
+    source_query(self, 'sortInPlace', can_choose, "defense")
     for _,target in ipairs(can_choose) do
         if source_query(self,"isFriend",target) then
             source_call(selected,"append",false,target)
@@ -1887,7 +1880,7 @@ local function heg_huyuan_validate(self,equip_type,is_handcard)
 			end
 		end
 		if not has_equip and not ((equip_type=="Armor" or equip_type=="SilverLion") and source_query(friend,"hasSkills","yizhong|bazhen")) then
-			sort_players(self,self.enemies,"defense")
+			source_query(self, 'sortInPlace', self.enemies, "defense")
 			for _,enemy in sgs.list(self.enemies)do
 				if source_query(friend,"distanceTo",enemy)==1 and source_query(self.player,"canDiscard",enemy,"he") then
 					source_flag(self,enemy,"AI_heg_huyuanToChoose")
@@ -1902,7 +1895,7 @@ end
 source_use_registry["@@heg_huyuan"] = function(self,prompt)
 	local cards = self.player:getCards("he")
 	cards = AIList.new(cards)
-	sort_keep(self,cards)
+	source_query(self, 'sortByKeepValueInPlace', cards)
 	if self.player:hasArmorEffect("SilverLion") then
 		local player = heg_huyuan_validate(self,"SilverLion",false)
 		if player then return "#heg_huyuan:"..self.player:getArmor():getEffectiveId()..":->"..source_query(player,"objectName") end
@@ -1993,7 +1986,7 @@ heg_duanxie_skill.getTurnUseCard = function(self,inclusive,request)
 end
 sgs.ai_skill_use_func["#heg_duanxie"] = function(card,use,self,request)
 	local x = math.max(self.player:getLostHp(), 1)
-	sort_players(self,self.enemies,"handcard")
+	source_query(self, 'sortInPlace', self.enemies, "handcard")
 	local targets = AIList.new{}
 
 	for _,enemy in sgs.list(self.enemies)do
@@ -2029,7 +2022,7 @@ heg_nos_guishu_skill.name = "heg_nos_guishu"
 table.insert(package_skills,heg_nos_guishu_skill)
 heg_nos_guishu_skill.getTurnUseCard = function(self,inclusive,request)
 	local cards = self:addHandPile()
-	sort_use(self,cards,true)
+	source_query(self, 'sortByUseValueInPlace', cards, true)
 	for _,acard in sgs.list(cards)do
 		if source_query(acard,"getSuit") == sgs.Card_Spade then
 			local c 
@@ -2076,7 +2069,7 @@ heg_guishu_skill.name = "heg_guishu"
 table.insert(package_skills,heg_guishu_skill)
 heg_guishu_skill.getTurnUseCard = function(self,inclusive,request)
 	local cards = self:addHandPile()
-	sort_use(self,cards,true)
+	source_query(self, 'sortByUseValueInPlace', cards, true)
 	for _,acard in sgs.list(cards)do
 		if source_query(acard,"getSuit") == sgs.Card_Spade then
 			local c 
@@ -2120,7 +2113,7 @@ end
 sgs.ai_skill_playerschosen.heg_zhuihuan = function(self, targets, max, min)
 	local selected = AIList.new{}
     local can_choose = AIList.new(targets)
-    sort_players(self,can_choose, "defense")
+    source_query(self, 'sortInPlace', can_choose, "defense")
     for _,target in ipairs(can_choose) do
         if source_query(self,"isFriend",target) and source_query(selected,"length") < max then
             source_call(selected,"append",false,target)
@@ -2155,7 +2148,7 @@ end
 
 sgs.ai_skill_playerchosen.heg_chengshang = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "handcard")
+	source_query(self, 'sortInPlace', targets, "handcard")
 	for _,p in sgs.list(targets)do
 		if source_query(self,"isEnemy",p) and source_query(self,"doDisCard",p,"he",true) and source_query(p,"getHandcardNum") < 4 then
 			return p
@@ -2170,7 +2163,7 @@ sgs.ai_skill_cardask["heg_chengshang"] = function(self, data)
 	if source_query(self,"isEnemy",target) then
 		local cards = self.player:getCards("he")
 		cards = AIList.new(cards)
-		sort_use(self,cards, true)
+		source_query(self, 'sortByUseValueInPlace', cards, true)
 		for _,card in ipairs(cards) do
 			if source_query(card,"getSuit") == source_query(use.card,"getSuit") or source_query(card,"getNumber") == source_query(use.card,"getNumber") then
 				return "$"..source_query(card,"getEffectiveId")
@@ -2204,7 +2197,7 @@ end
 sgs.ai_fill_skill.heg_zhuangrong = function(self,inclusive,request)
 	local use_card
     local cards = self.player:getCards("h")
-    cards = sort_use(self,cards,true) 
+    cards = source_query(self, 'sortByUseValueInPlace', cards, true)
 	for i,h in sgs.list(cards)do
 		if source_query(h,"isKindOf","TrickCard") then
 			use_card = h
@@ -2241,7 +2234,7 @@ end
 
 sgs.ai_skill_playerchosen.heg_lianyou = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	for _,p in sgs.list(targets)do
 		if source_query(self,"isFriend",p) then
 			return p
@@ -2266,7 +2259,7 @@ end
 sgs.ai_skill_playerschosen.heg_gongxiu = function(self, targets, max, min)
 	local selected = AIList.new{}
 	local can_choose = AIList.new(targets)
-	sort_players(self,can_choose, "defense")
+	source_query(self, 'sortInPlace', can_choose, "defense")
 	local choicelist = {}
 	if self.player:getMark("heg_gongxiu_draw") == 0 then
 		table.insert(choicelist, "draw")
@@ -2526,7 +2519,7 @@ end
 
 sgs.ai_skill_discard["bf_wanwei"] = function(self, discard_num, min_num, optional, include_equip)
 	local usable_cards = AIList.new(self.player:getCards("he"))
-	sort_keep(self,usable_cards)
+	source_query(self, 'sortByKeepValueInPlace', usable_cards)
 	local to_discard = {}
 	local count = 0
 	for _,c in ipairs(usable_cards) do
@@ -2559,7 +2552,7 @@ sgs.lose_equip_skill = sgs.lose_equip_skill .. "|bf_xuanlve"
 extra_alias{ id="ai_cardneed.bf_xuanlve",registry="ai_cardneed",path={"bf_xuanlve"},canonical_registry="ai_cardneed",canonical_path={"equip"},self_index=3,defer_canonical=true}
 sgs.ai_skill_playerchosen["bf_xuanlve"] = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	targets = sgs.reverse(targets)
 	for _,p in ipairs(targets) do
 		if source_query(self,"isEnemy",p) then
@@ -2607,7 +2600,7 @@ end
 source_use_registry["@@bf_yongjin!"] = function(self, prompt, method)
 	local equip_cards = AIList.new(self.player:getCards("h"))
 	self:updatePlayers()
-	sort_players(self,self.friends, "defense")
+	source_query(self, 'sortInPlace', self.friends, "defense")
 	for _, e in ipairs(equip_cards) do
 		if source_query(e,"hasFlag","bf_yongjin") then
 			local equip_index = source_query(e,"getRealCard"):toEquipCard():location()
@@ -2636,7 +2629,7 @@ sgs.ai_choicemade_filter.skillInvoke.bf_tiaodu = function(self,player,promptlist
 end
 sgs.ai_skill_playerchosen["bf_tiaodu"] = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	for _,p in ipairs(targets) do
 		if source_query(self,"isFriend",p) then
 			return p
@@ -2660,7 +2653,7 @@ end
 sgs.ai_skill_use_func["#bf_nos_tiaodu"] = function(card,use,self,request)
 	local targets = {}
 	self:updatePlayers()
-	sort_players(self,self.friends, "defense")
+	source_query(self, 'sortInPlace', self.friends, "defense")
 	for _, friend in ipairs(self.friends) do
 		table.insert(targets, friend)
 	end
@@ -2718,7 +2711,7 @@ end
 
 sgs.ai_skill_playerchosen["bf_nos_tiaodu"] = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	for _,p in ipairs(targets) do
 		if source_query(self,"isFriend",p) then
 			return p
@@ -2775,11 +2768,11 @@ end
 
 sgs.ai_skill_use_func["#bf_xiongsuan"] = function(card,use,self,request)
 	self:updatePlayers()
-	sort_players(self,self.enemies, "handcard")
+	source_query(self, 'sortInPlace', self.enemies, "handcard")
 	local usable_cards = AIList.new(self.player:getCards("h"))
 	local use_card = {}
 	local target = {}
-	sort_use(self,usable_cards, true)
+	source_query(self, 'sortByUseValueInPlace', usable_cards, true)
 	for _,c in ipairs(usable_cards) do
 		if not source_query(c,"isKindOf","Peach") then
 			table.insert(use_card, c)
@@ -2844,8 +2837,8 @@ end
 
 sgs.ai_skill_use_func["#twyj_rangyi"] = function(card,use,self,request)
 	self:updatePlayers()
-	sort_players(self,self.friends_noself, "hp")
-	sort_players(self,self.enemies, "hp")
+	source_query(self, 'sortInPlace', self.friends_noself, "hp")
+	source_query(self, 'sortInPlace', self.enemies, "hp")
 	local handcards = AIList.new(self.player:getCards("h"))
 	if self.player:getWeapon() then
 		for _,c in ipairs(handcards) do
@@ -2942,8 +2935,8 @@ sgs.ai_use_value["twyj_rangyi"] = 0
 
 source_use_registry["@@twyj_rangyi"] = function(self, prompt, method)
 	self:updatePlayers()
-	sort_players(self,self.friends_noself, "hp")
-	sort_players(self,self.enemies, "hp")
+	source_query(self, 'sortInPlace', self.friends_noself, "hp")
+	source_query(self, 'sortInPlace', self.enemies, "hp")
 	local current = self.room:getCurrent()
 	local handcards = AIList.new(self.player:getCards("h"))
 	local useable_cards = {}
@@ -2952,7 +2945,7 @@ source_use_registry["@@twyj_rangyi"] = function(self, prompt, method)
 			table.insert(useable_cards, c)
 		end
 	end
-	sort_use(self,useable_cards, false)
+	source_query(self, 'sortByUseValueInPlace', useable_cards, false)
 	if #useable_cards > 0 then
 		
 		local use_card = useable_cards[1]
@@ -3011,7 +3004,7 @@ end
 
 sgs.ai_skill_use_func["#twyj_qijia"] = function(card,use,self,request)
 	self:updatePlayers()
-	sort_players(self,self.enemies, "hp")
+	source_query(self, 'sortInPlace', self.enemies, "hp")
 	local equipments = AIList.new(self.player:getCards("e"))
 	local targets = {}
 	local use_cards = {}
@@ -3021,7 +3014,7 @@ sgs.ai_skill_use_func["#twyj_qijia"] = function(card,use,self,request)
 			table.insert(use_cards, e)
 		end
 	end
-	sort_keep(self,use_cards)
+	source_query(self, 'sortByKeepValueInPlace', use_cards)
 	local rangefix = 0
 	if #use_cards > 0 then
 		if use_cards[1]:isKindOf("Weapon") then
@@ -3079,7 +3072,7 @@ end
 
 sgs.ai_skill_use_func["#twyj_zhuchen"] = function(card,use,self,request)
 	self:updatePlayers()
-	sort_players(self,self.enemies, "hp")
+	source_query(self, 'sortInPlace', self.enemies, "hp")
 	local targets = {}
 	local handcards = AIList.new(self.player:getCards("h"))
 	local use_cards = {}
@@ -3122,7 +3115,7 @@ end
 
 sgs.ai_skill_use_func["#twyj_huzhu"] = function(card,use,self,request)
 	self:updatePlayers()
-	sort_players(self,self.friends_noself, "hp")
+	source_query(self, 'sortInPlace', self.friends_noself, "hp")
 	local targets = {}
 	for _, friend in ipairs(self.friends_noself) do
 		if source_query(friend,"getHp") <= self.player:getHp() and source_query(friend,"getHp") < 3 and source_query(friend,"getHandcardNum") > 1 and source_query(friend,"isWounded") then
@@ -3163,7 +3156,7 @@ end
 
 sgs.ai_skill_cardask["@twyj_huzhu"] = function(self, data, pattern, target, target2)
 	local handcards = AIList.new(self.player:getCards("h"))
-	sort_keep(self,handcards)
+	source_query(self, 'sortByKeepValueInPlace', handcards)
 	for _,c in ipairs(handcards) do
 		return source_query(c,"getLegacyStringKey")
 	end
@@ -3207,7 +3200,7 @@ sgs.ai_skill_askforag["twyj_liancai"] = function(self, card_ids)
 			end
 		end
 	end
-	sort_use(self,cards, true)
+	source_query(self, 'sortByUseValueInPlace', cards, true)
 	if #cards > 0 then
 		return cards[1]:getEffectiveId()
 	end
@@ -3217,7 +3210,7 @@ sgs.ai_skill_invoke["twyj_liancai_turnover"] = true
 
 sgs.ai_skill_discard["command"] = function(self, discard_num, min_num, optional, include_equip)
 	local usable_cards = AIList.new(self.player:getCards("he"))
-	sort_keep(self,usable_cards)
+	source_query(self, 'sortByKeepValueInPlace', usable_cards)
 	local to_discard = {}
 	for _,c in ipairs(usable_cards) do
 		if #to_discard < discard_num then
@@ -3278,12 +3271,12 @@ end
 extra_alias{ id="ai_skill_playerchosen.command1",registry="ai_skill_playerchosen",path={"command1"},canonical_registry="ai_skill_playerchosen",canonical_path={"damage"},self_index=1,defer_canonical=true}
 source_use_registry["@@command6!"] = function(self, prompt, method)
 	self:updatePlayers()
-	sort_players(self,self.enemies, "defense")
+	source_query(self, 'sortInPlace', self.enemies, "defense")
 	local ids = {}
 	local hand_discard = self.player:getHandcardNum() - 1
 	local equip_discard = self.player:getEquips():length() - 1
 	local cards = AIList.new(self.player:getCards("he"))
-	sort_keep(self,cards)
+	source_query(self, 'sortByKeepValueInPlace', cards)
 	for _,c in ipairs(cards) do
 		if source_query(c,"isEquipped") then
 			if equip_discard > 0 then
@@ -3310,7 +3303,7 @@ end
 
 sgs.ai_skill_playerchosen.heg_jieyue = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	for _,p in ipairs(targets) do
 		if source_query(self,"isEnemy",p) then
 			return p
@@ -3333,7 +3326,7 @@ end
 sgs.ai_skill_playerschosen.heg_fengying = function(self, targets, max, min)
 	local selected = AIList.new{}
     local can_choose = AIList.new(targets)
-    sort_players(self,can_choose, "defense")
+    source_query(self, 'sortInPlace', can_choose, "defense")
 	for _,target in ipairs(can_choose) do
 		if source_query(self,"isFriend",target) and source_query(self,"canDraw",target) then
 			source_call(selected,"append",false,target)
@@ -3375,9 +3368,9 @@ end
 
 sgs.ai_skill_playerchosen.heg_zhengbi = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	local cards = AIList.new(self.player:getCards("h"))
-	sort_use(self,cards)
+	source_query(self, 'sortByUseValueInPlace', cards)
 	for _, c in ipairs(cards) do
 		if source_query(c,"isKindOf","Slash") then
 			begin_range(self)
@@ -3403,7 +3396,7 @@ sgs.ai_playerchosen_intention.heg_zhengbi = 40
 source_use_registry["@@zhengbidiscard!"] = function(self, prompt, method)
 	local cards = self.player:getCards("he")
 	cards = AIList.new(cards)
-	sort_keep(self,cards)
+	source_query(self, 'sortByKeepValueInPlace', cards)
 	local basic = {}
 	local nonbasic = {}
 	local discard = {}
@@ -3442,7 +3435,7 @@ end
 
 source_use_registry["@@heg_zhengbi"] = function(self, prompt, method)
 	local cards = AIList.new(self.player:getCards("h"))
-	sort_keep(self,cards)
+	source_query(self, 'sortByKeepValueInPlace', cards)
 	local use_card
     for _, acard in ipairs(cards) do
 		if source_query(acard,"isKindOf","BasicCard") then
@@ -3480,7 +3473,7 @@ sgs.ai_use_priority["heg_jianglue"] = 9.31
 sgs.ai_skill_playerschosen.heg_jianglue = function(self, targets, max, min)
 	local selected = AIList.new{}
     local can_choose = AIList.new(targets)
-    sort_players(self,can_choose, "defense")
+    source_query(self, 'sortInPlace', can_choose, "defense")
 	for _,target in ipairs(can_choose) do
 		if source_query(self,"isFriend",target) then
 			source_call(selected,"append",false,target)
@@ -3520,7 +3513,7 @@ end
 
 sgs.ai_skill_use_func["#heg_xuanhuo"] = function(card,use,self,request)
 	local cards = AIList.new(self.player:getCards("h"))
-	sort_keep(self,cards)
+	source_query(self, 'sortByKeepValueInPlace', cards)
 	for _, friend in ipairs(self.friends_noself) do
 		if source_query(friend,"hasSkill","heg_xuanhuo") and source_query(self,"canDraw",friend,self.player) and source_query(friend,"getMark","heg_xuanhuo"..self.player:objectName().."-PlayClear") == 0 then
 			use.card = parse_source("#heg_xuanhuo:"..cards[1]:getEffectiveId()..":")
@@ -3538,7 +3531,7 @@ sgs.ai_skill_discard.heg_enyuan = sgs.ai_skill_discard.enyuan
 
 source_use_registry["@@heg_keshou"] = function(self,prompt,method)
 	local cards = AIList.new(self.player:getCards("h"))
-	sort_keep(self,cards)
+	source_query(self, 'sortByKeepValueInPlace', cards)
 	local damage = room_tag("heg_keshou"):toDamage()
 	if source_query(self,"needToLoseHp",self.player,damage.from,damage.card) then
 		return "."
@@ -3592,7 +3585,7 @@ end
 
 sgs.ai_skill_use_func["#heg_weidi"] = function(card,use,self,request)
 	self:updatePlayers()
-	sort_players(self,self.enemies, "defense")
+	source_query(self, 'sortInPlace', self.enemies, "defense")
 	for _, enemy in ipairs(self.enemies) do
 		if not source_query(enemy,"isKongcheng") and source_query(self,"doDisCard",enemy,"h",true) and source_query(enemy,"getMark","heg_weidi-Clear") > 0 then
 			use.card = card
@@ -3693,7 +3686,7 @@ end
 
 sgs.ai_skill_playerchosen.heg_wenji = function(self,targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets,"handcard")
+	source_query(self, 'sortInPlace', targets, "handcard")
 	
 	targets = sgs.reverse(targets)
 	for _,p in ipairs(targets)do
@@ -3755,7 +3748,7 @@ end
 
 sgs.ai_skill_playerchosen.heg_bushi = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	return self:findPlayerToDraw(true,1)
 end
 
@@ -3820,7 +3813,7 @@ end
 
 sgs.ai_fill_skill.heg_quanjin = function(self,inclusive,request)
 	local cards = AIList.new(self.player:getCards("h"))
-    sort_use(self,cards, true)
+    source_query(self, 'sortByUseValueInPlace', cards, true)
     for _, card in ipairs(cards) do
         return parse_source("#heg_quanjin:" .. source_query(card,"getEffectiveId") .. ":")
     end
@@ -3842,7 +3835,7 @@ sgs.ai_fill_skill.heg_zaoyun = function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#heg_zaoyun"] = function(card,use,self,request)
-	sort_players(self,self.enemies, "hp")
+	source_query(self, 'sortInPlace', self.enemies, "hp")
 	local targets = AIList.new{}
 	for _, enemy in ipairs(self.enemies) do
 		if source_query(self.player,"distanceTo",enemy) > 1 then
@@ -3854,7 +3847,7 @@ sgs.ai_skill_use_func["#heg_zaoyun"] = function(card,use,self,request)
 	if not target then return end
 	local use_cards = {}
 	local cards = AIList.new(self.player:getCards("he"))
-	sort_keep(self,cards)
+	source_query(self, 'sortByKeepValueInPlace', cards)
 	for _,c in ipairs(cards)do
 		if source_query(self,"getKeepValue",c) <= 6 then
 			table.insert(use_cards,source_query(c,"getEffectiveId"))
@@ -3918,10 +3911,10 @@ end
 
 sgs.ai_skill_playerchosen.heg_zhidao = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	self:getTurnUse()
 	if #self.toUse > 1 then
-		for _,c in sgs.list(sort_keep(self,self.player:getHandcards()))do
+		for _,c in sgs.list(source_query(self, 'sortByKeepValueInPlace', self.player:getHandcards()))do
 			if table.contains(self.toUse,c) then
 				begin_range(self)
 				local dummy_use = source_call(self,"aiUseCard",false,c,dummy())
@@ -3954,7 +3947,7 @@ sgs.ai_playerchosen_intention.heg_zhidao = 80
 
 sgs.ai_fill_skill.heg_jinfa = function(self,inclusive,request)
 	local cards = AIList.new(self.player:getCards("he"))
-	sort_use(self,cards, true)
+	source_query(self, 'sortByUseValueInPlace', cards, true)
 	for _, card in ipairs(cards) do
 		return parse_source("#heg_jinfa:" .. source_query(card,"getEffectiveId") .. ":")
 	end
@@ -3991,7 +3984,7 @@ sgs.ai_skill_cardask["@heg_jinfa"] = function(self, data, pattern, target, targe
 			source_call(slash,"setSkillName",false,"heg_jinfa")
 			source_call(slash,"deleteLater",false)
 			if source_query(self,"slashIsEffective",slash,target,self.player) then
-				for _,c in ipairs(sort_keep(self,AIList.new(self.player:getCards("he"))))do
+				for _,c in ipairs(source_query(self, 'sortByKeepValueInPlace', AIList.new(self.player:getCards("he"))))do
 					if match_pattern(pattern,self.player,c)
 					and source_query(c,"getSuit") == sgs.Card_Spade
 					then return source_query(c,"getLegacyStringKey") end
@@ -4005,7 +3998,7 @@ end
 sgs.ai_skill_playerschosen.heg_baolie = function(self, targets, max, min)
 	local selected = AIList.new{}
 	local can_choose = AIList.new(targets)
-	sort_players(self,can_choose, "defense")
+	source_query(self, 'sortInPlace', can_choose, "defense")
 	for _,target in ipairs(can_choose) do
 		if source_query(self,"isEnemy",target) and source_query(self,"doDisCard",target,"he") and source_query(self,"isTiaoxinTarget",target) then
 			source_call(selected,"append",false,target)
@@ -4049,7 +4042,7 @@ end
 
 sgs.ai_skill_playerchosen.heg_chenglue = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	local to  = self:findPlayerToDraw(true,1)
 	if to then return to end
 	for _,p in ipairs(targets)do
@@ -4076,7 +4069,7 @@ sgs.ai_playerchosen_intention.heg_chenglue = -50
 
 sgs.ai_skill_playerchosen.heg_lianpian = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	for _,p in ipairs(targets)do
 		if source_query(self,"isFriend",p) and source_query(self,"canDraw",p) then
 			return p
@@ -4120,7 +4113,7 @@ sgs.ai_skill_invoke.heg_congcha = true
 
 sgs.ai_skill_playerchosen.heg_congcha = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	for _,p in ipairs(targets)do
 		if source_query(self,"isFriend",p) and source_query(self,"canDraw",p) then
 			return p
@@ -4160,7 +4153,7 @@ sgs.ai_skill_playerchosen.heg_tongling = function(self, targets)
 		return nil
 	end
 	targets = AIList.new(targets)
-	sort_players(self,targets, "handcard", true)
+	source_query(self, 'sortInPlace', targets, "handcard", true)
 	local max = 0
 	for _,p in sgs.list(targets)do do 
 		if not source_query(self,"isFriend",p) then goto package_continue_5 end
@@ -4226,7 +4219,7 @@ end
 
 sgs.ai_skill_playerchosen.heg_nos_daming = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	for _,p in ipairs(targets)do
 		if source_query(self,"isEnemy",p) and not source_query(p,"isChained") then
 			return p
@@ -4237,7 +4230,7 @@ end
 
 sgs.ai_skill_playerchosen.heg_nos_daming_slash = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	local thunder_slash = clone_source("thunder_slash", sgs.Card_NoSuit, 0)
 	source_call(thunder_slash,"setSkillName",false,"heg_nos_daming")
 	source_call(thunder_slash,"deleteLater",false)
@@ -4306,7 +4299,7 @@ end
 
 sgs.ai_skill_discard.heg_juejue = function(self, discard_num, min_num, optional, include_equip)
 	local cards = AIList.new(self.player:getCards("he"))
-	sort_keep(self,cards)
+	source_query(self, 'sortByKeepValueInPlace', cards)
 	local to_discard = {}
 	local current = self.room:getCurrent()
 	if not current or not source_query(current,"isAlive") then
@@ -4380,7 +4373,7 @@ sgs.ai_skill_use_func["#heg_duwu"] = function(card,use,self,request)
 		end
 	end
 	if #targets == 0 then return end
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	use.card = card
 	for i = 1, #targets do
 		source_call(use.to,"append",false,targets[i])
@@ -4420,7 +4413,7 @@ end
 extra_alias{ id="ai_card_priority.heg_suzhi",registry="ai_card_priority",path={"heg_suzhi"},canonical_registry="ai_card_priority",canonical_path={"jizhi"},self_index=1,defer_canonical=true}
 sgs.ai_skill_playerchosen.heg_zhaoxin = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	for _, p in ipairs(targets) do
 		if source_query(p,"getHandcardNum")>1 and source_query(self,"isFriend",p) and (hasTuntianEffect(p) or source_query(self,"hasLoseHandcardEffective",p)) then
 			return p
@@ -4464,7 +4457,7 @@ sgs.ai_skill_use_func["#heg_paiyi"] = function(card,use,self,request)
 	end
 	
 	if not target then
-		sort_players(self,targets,"hp")
+		source_query(self, 'sortInPlace', targets, "hp")
 		targets = sgs.reverse(targets)
 		for _,friend in ipairs(targets)do
 			if source_query(friend,"getHandcardNum")+self.player:getPile("heg_quanji_power"):length() - 1>self.player:getHandcardNum()
@@ -4474,7 +4467,7 @@ sgs.ai_skill_use_func["#heg_paiyi"] = function(card,use,self,request)
 			if target then break end
 		end
 	end
-	sort_players(self,self.enemies,"defense")
+	source_query(self, 'sortInPlace', self.enemies, "defense")
 	if not target and self.player:getPile("heg_quanji_power"):length() - 1 <= 2 then
 		for _,enemy in ipairs(self.enemies)do
 			if source_helper("hasManjuanEffect",enemy) 
@@ -4548,7 +4541,7 @@ sgs.ai_skill_invoke.heg_xiongnve = function(self, data)
 		local general_list = self.player:property("heg_shilus_generals"):toString():split("+")
 		self:getTurnUse()
 		if #self.toUse > 1 then
-			for _,c in sgs.list(sort_keep(self,self:addHandPile("he")))do
+			for _,c in sgs.list(source_query(self, 'sortByKeepValueInPlace', self:addHandPile("he")))do
 				if table.contains(self.toUse,c) and source_query(c,"isDamageCard") then
 					local dummy_use = source_call(self,"aiUseCard",false,c,dummy())
 					if dummy_use and dummy_use.card and not source_query(dummy_use.to,"isEmpty") then
@@ -4625,7 +4618,7 @@ end
 sgs.ai_skill_playerschosen.heg_huaiyi = function(self, targets, max, min)
 	local selected = AIList.new{}
 	local can_choose = AIList.new(targets)
-	sort_players(self,can_choose, "defense")
+	source_query(self, 'sortInPlace', can_choose, "defense")
 	local targets = self:findPlayerToDiscard("he",false,true)
     for _,target in ipairs(targets)do
 		source_call(selected,"append",false,target)
@@ -4707,7 +4700,7 @@ extra_alias{ id="ai_skill_choice.heg_nos_huaiyi",registry="ai_skill_choice",path
 extra_alias{ id="ai_skill_playerschosen.heg_nos_huaiyi",registry="ai_skill_playerschosen",path={"heg_nos_huaiyi"},canonical_registry="ai_skill_playerschosen",canonical_path={"heg_huaiyi"},self_index=1,defer_canonical=true}
 sgs.ai_skill_playerchosen.heg_yingshi = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "handcard", true)
+	source_query(self, 'sortInPlace', targets, "handcard", true)
 	for _, p in ipairs(targets) do
 		if source_query(self,"isFriend",p) then
 			return p
@@ -4755,7 +4748,7 @@ end
 
 sgs.ai_skill_use_func["#heg_shunfu"] = function(card,use,self,request)
 	local targets = {}
-	sort_players(self,self.friends_noself, "handcard", true)
+	source_query(self, 'sortInPlace', self.friends_noself, "handcard", true)
 	local friends = self.friends_noself
 	
 	for i = 1, 3 do
@@ -4780,7 +4773,7 @@ sgs.ai_skill_use_func["#heg_shunfu"] = function(card,use,self,request)
 		end
 	end
 	if #targets == 0 then return end
-	sort_players(self,targets, "defense")
+	source_query(self, 'sortInPlace', targets, "defense")
 	use.card = card
 	for i = 1, #targets do
 		source_call(use.to,"append",false,targets[i])
@@ -4809,7 +4802,7 @@ sgs.ai_skill_use_func["#heg_ruilve"] = function(card,use,self,request)
     for _,p in ipairs(self.friends_noself) do
         if source_query(p,"hasSkill","heg_ruilve") and source_query(p,"getMark","heg_ruilve-PlayClear") == 0 and source_query(self,"canDraw",p,self.player) then
             local cards = self.player:getCards("he")
-	        cards = sort_keep(self,cards)
+	        cards = source_query(self, 'sortByKeepValueInPlace', cards)
             for _,c in ipairs(cards)do
                 if source_query(c,"isDamageCard") then
                     use.card = parse_source("#heg_ruilve:"..source_query(c,"getEffectiveId")..":")
@@ -4904,7 +4897,7 @@ end
 sgs.ai_skill_playerschosen.heg_gongzhi = function(self, targets, max, min)
 	local selected = AIList.new{}
 	local can_choose = AIList.new(targets)
-	sort_players(self,can_choose, "defense")
+	source_query(self, 'sortInPlace', can_choose, "defense")
 	for _,target in ipairs(can_choose)do
 		if source_query(self,"canDraw",target) and source_query(self,"isFriend",target) then
 			source_call(selected,"append",false,target)
@@ -5060,7 +5053,7 @@ sgs.ai_skill_invoke.heg_shiren = function(self, data)
 end
 
 source_use_registry["@@heg_jiantong"] = function(self, prompt, method)
-	sort_players(self,self.enemies, "handcard", true)
+	source_query(self, 'sortInPlace', self.enemies, "handcard", true)
 	for _, enemy in ipairs(self.enemies) do
 		if source_query(self,"doDisCard",enemy,"h",true,2) and not source_query(self,"loseEquipEffect",enemy) then
 			return "#heg_jiantong:.:->"..source_query(enemy,"objectName")
@@ -5078,7 +5071,7 @@ sgs.ai_skill_invoke.heg_jiantong = true
 
 sgs.ai_skill_playerchosen.heg_chengxi = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "handcard", true)
+	source_query(self, 'sortInPlace', targets, "handcard", true)
 	for _, p in ipairs(targets) do
 		if source_query(self,"isEnemy",p) and not source_query(self,"canDraw",p) then
 			return p
@@ -5097,7 +5090,7 @@ sgs.ai_playerchosen_intention.heg_chengxi = 60
 sgs.ai_skill_playerschosen.heg_chengxi = function(self, targets, max, min)
 	local selected = AIList.new{}
 	local can_choose = AIList.new(targets)
-	sort_players(self,can_choose, "defense")
+	source_query(self, 'sortInPlace', can_choose, "defense")
 	for _,target in ipairs(can_choose)do
 		if source_query(self,"canDamage",target,self.player,nil) and source_query(self,"doDisCard",target,"he")  then
 			source_call(selected,"append",false,target)
@@ -5136,7 +5129,7 @@ end
 
 sgs.ai_skill_playerchosen.heg_zhefu  = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "handcard", true)
+	source_query(self, 'sortInPlace', targets, "handcard", true)
 	for _, p in ipairs(targets) do
 		if source_query(self,"isEnemy",p) and source_query(self,"doDisCard",p,"h") then
 			return p
@@ -5148,7 +5141,7 @@ end
 extra_alias{ id="ai_choicemade_filter.cardChosen.heg_zhefu",registry="ai_choicemade_filter",path={"cardChosen","heg_zhefu"},canonical_registry="ai_choicemade_filter",canonical_path={"cardChosen","snatch"},self_index=1,defer_canonical=true}
 sgs.ai_skill_playerchosen.heg_yidu  = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "handcard", true)
+	source_query(self, 'sortInPlace', targets, "handcard", true)
 	for _, p in ipairs(targets) do
 		if source_query(self,"isEnemy",p) and source_query(self,"doDisCard",p,"h") then
 			return p
@@ -5274,7 +5267,7 @@ end
 
 sgs.ai_skill_playerchosen.heg_neiji = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "handcard", true)
+	source_query(self, 'sortInPlace', targets, "handcard", true)
 	if self:getCardsNum("Slash") > 0 then
 		if sgs.ai_role[self.player:objectName()] == "neutral" then return nil end
 		for _, p in ipairs(targets) do
@@ -5315,7 +5308,7 @@ sgs.ai_skill_discard.heg_neiji = function(self, discard_num, min_num, optional, 
 		if current then target = current end
 	end
 	local cards = AIList.new(self.player:getCards("h"))
-	sort_keep(self,cards)
+	source_query(self, 'sortByKeepValueInPlace', cards)
 	local to_discard = {}
 	if target then
 		if source_query(self,"isFriend",target) then
@@ -5382,7 +5375,7 @@ end
 sgs.ai_skill_playerschosen.heg_limeng = function(self, targets, max, min)
 	local selected = AIList.new{}
 	local can_choose = AIList.new(targets)
-	sort_players(self,can_choose, "defense")
+	source_query(self, 'sortInPlace', can_choose, "defense")
 	for _,target in ipairs(can_choose)do
 		for _,target2 in ipairs(can_choose)do
 			if target ~= target2 and source_query(self,"canDamage",target,target2,nil) and source_query(self,"canDamage",target2,target,nil) then
@@ -5413,7 +5406,7 @@ sgs.ai_fill_skill.heg_xiejian = function(self,inclusive,request)
 	return parse_source("#heg_xiejian:.:")
 end
 sgs.ai_skill_use_func["#heg_xiejian"] = function(card,use,self,request)
-	sort_players(self,self.enemies, "defense")
+	source_query(self, 'sortInPlace', self.enemies, "defense")
 	for _,enemy in ipairs(self.enemies) do
 		use.card = card
 		source_call(use.to,"append",false,enemy)
@@ -5438,7 +5431,7 @@ sgs.ai_fill_skill.heg_sanchen = function(self,inclusive,request)
 	return parse_source("#heg_sanchen:.:")
 end
 sgs.ai_skill_use_func["#heg_sanchen"] = function(card,use,self,request)
-	sort_players(self,self.friends,"handcard")
+	source_query(self, 'sortInPlace', self.friends, "handcard")
 	self.friends = sgs.reverse(self.friends)
 	for _,p in sgs.list(self.friends)do
 		if source_query(self,"doDisCard",p,"he") and source_query(p,"getMark","heg_sanchen_target-PlayClear")==0 then
@@ -5459,7 +5452,7 @@ sgs.ai_card_intention["heg_sanchen"] = -50
 
 source_use_registry["@@heg_pozhu"] = function(self, prompt)
 	local cards = AIList.new(self:addHandPile("he"))
-    sort_keep(self,cards)
+    source_query(self, 'sortByKeepValueInPlace', cards)
     for _, c in ipairs(cards) do
 		local slash = clone_source("slash", sgs.Card_SuitToBeDecided, -1)
 		source_call(slash,"addSubcard",false,c)
@@ -5500,7 +5493,7 @@ sgs.ai_card_intention["heg_fk_bushi"] = -50
 sgs.ai_skill_cardask["@heg_fk_bushi-put"] = function(self, data, pattern, target, target2)
 	if source_query(self,"isFriend",target) then
 		local cards = AIList.new(self.player:getCards("he"))
-		sort_keep(self,cards)
+		source_query(self, 'sortByKeepValueInPlace', cards)
 		for _,c in ipairs(cards)do do 
 			if source_query(self,"getKeepValue",c) > 6 then goto package_continue_8 end
 			return "$"..source_query(c,"getEffectiveId")
@@ -5649,7 +5642,7 @@ end
 
 sgs.ai_fill_skill.heg_lord_shouyue_wusheng = function(self,inclusive,request)
 	local cards = self:addHandPile("he")
-	cards = sort_use(self,cards,true)
+	cards = source_query(self, 'sortByUseValueInPlace', cards, true)
 	if self.player:getKnownKingdom() ~= "shu" then return nil end
 	local skill_name = ""
 	for _,sk in sgs.list(self.player:getVisibleSkillList())do do
@@ -5670,7 +5663,7 @@ sgs.ai_fill_skill.heg_lord_shouyue_wusheng = function(self,inclusive,request)
 	if not can_invoke then return nil end
 	local use_card = {}
 	local useAll = false
-	sort_players(self,self.enemies,"defense")
+	source_query(self, 'sortInPlace', self.enemies, "defense")
 	for _,enemy in ipairs(self.enemies)do
 		if source_query(enemy,"getHp")<2 and not source_query(enemy,"hasArmorEffect","EightDiagram")
 		and source_query(self.player,"distanceTo",enemy)<=self.player:getAttackRange() and source_query(self,"isWeak",enemy)
@@ -5681,7 +5674,7 @@ sgs.ai_fill_skill.heg_lord_shouyue_wusheng = function(self,inclusive,request)
 	if self:getCardsNum("Slash")<2
 	or self.player:hasSkills("paoxiao|tenyearpaoxiao|olpaoxiao")
 	then disCrossbow = true end
-	sort_players(self,self.enemies,"defense")
+	source_query(self, 'sortInPlace', self.enemies, "defense")
 
 	for _,card in ipairs(cards)do
 		if (not source_helper("isCard","Peach",card,self.player) and not source_helper("isCard","ExNihilo",card,self.player) and not useAll)
@@ -5742,7 +5735,7 @@ addAiSkills("heg_lord_hongfa_Attach").getTurnUseCard = function(self,inclusive,r
 					source_call(cards,"append",false,disclosed(id))
 				end
 				cards = AIList.new(cards) 
-				sort_keep(self,cards) 
+				source_query(self, 'sortByKeepValueInPlace', cards)
 				for _,h in sgs.list(cards)do
 					source_call(dc,"addSubcard",false,h)
 					if source_query(dc,"isAvailable",self.player) then
@@ -5781,7 +5774,7 @@ sgs.ai_fill_skill.heg_lord_wendao = function(self,inclusive,request)
 	if not to_get then return nil end
 	local use_card
     local cards = self.player:getCards("h")
-    cards = sort_use(self,cards,true) 
+    cards = source_query(self, 'sortByUseValueInPlace', cards, true)
 	if self.player:hasSkill("heg_lord_hongfa") and self.player:getPile("heg_lord_hongfa"):length() > 0 then
 		for i,h in sgs.list(cards)do
 			if source_query(h,"isKindOf","PeaceSpell") then
@@ -5820,7 +5813,7 @@ end
 
 sgs.ai_fill_skill.heg_lord_jiahe_Attach = function(self,inclusive,request)
 	local cards = self.player:getCards("he")
-	cards = sort_use(self,cards,true)
+	cards = source_query(self, 'sortByUseValueInPlace', cards, true)
 	local use_card = nil
 	for _,c in ipairs(cards)do
 		if source_query(c,"isKindOf","EquipCard") then
@@ -5876,7 +5869,7 @@ sgs.dynamic_value.benefit.heg_zhiheng = true
 
 sgs.ai_fill_skill.heg_lord_lianzi = function(self,inclusive,request)
 	local cards = self.player:getCards("h")
-	cards = sort_use(self,cards,true)
+	cards = source_query(self, 'sortByUseValueInPlace', cards, true)
 	if #cards > 0 then
 		return parse_source("#heg_lord_lianzi:"..cards[1]:getEffectiveId()..":")
 	end
@@ -5890,7 +5883,7 @@ sgs.ai_use_priority["heg_lord_lianzi"] = sgs.ai_use_priority.ZhihengCard + 1
 
 sgs.ai_skill_discard.heg_lord_jianan = function(self, discard_num, min_num, optional, include_equip)
 	local cards = AIList.new(self.player:getCards("he"))
-	sort_keep(self,cards)
+	source_query(self, 'sortByKeepValueInPlace', cards)
 	local to_discard = {}
 	if source_query(self.player,"hasSkills",sgs.bad_skills) or math.random() < 0.3 then
 		for _,c in ipairs(cards) do
@@ -5926,7 +5919,7 @@ sgs.ai_fill_skill.heg_lord_huibian = function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#heg_lord_huibian"] = function(card,use,self,request)
-    sort_players(self,self.friends_noself, "hp")
+    source_query(self, 'sortInPlace', self.friends_noself, "hp")
     local target1, target2
     for _, friend in ipairs(self.friends_noself) do
         if source_query(friend,"getHp") > 1 and source_query(self,"canDamage",friend,self.player,nil) and source_query(self,"canDraw",friend) and source_query(friend,"getKingdom") == "wei" then
@@ -5986,7 +5979,7 @@ sgs.ai_fill_skill.heg_guikuang = function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#heg_guikuang"] = function(card,use,self,request)
-	sort_players(self,self.enemies,"handcard")
+	source_query(self, 'sortInPlace', self.enemies, "handcard")
 	local target
 	local target2
 	for _,enemy in sgs.list(self.enemies)do
@@ -6073,7 +6066,7 @@ sgs.ai_skill_use_func["#heg_mobile_paiyi"] = function(card,use,self,request)
 	end
 	
 	if not target then
-		sort_players(self,targets,"hp")
+		source_query(self, 'sortInPlace', targets, "hp")
 		targets = sgs.reverse(targets)
 		for _,friend in ipairs(targets)do
 			if source_query(friend,"getHandcardNum")+2>self.player:getHandcardNum()
@@ -6083,7 +6076,7 @@ sgs.ai_skill_use_func["#heg_mobile_paiyi"] = function(card,use,self,request)
 			if target then break end
 		end
 	end
-	sort_players(self,self.enemies,"defense")
+	source_query(self, 'sortInPlace', self.enemies, "defense")
 	if not target and 2 <= 2 then
 		for _,enemy in ipairs(self.enemies)do
 			if source_helper("hasManjuanEffect",enemy) 
@@ -6116,7 +6109,7 @@ end
 
 source_use_registry["@@heg_mobile_keshou"] = function(self,prompt,method)
 	local cards = AIList.new(self.player:getCards("he"))
-	sort_keep(self,cards)
+	source_query(self, 'sortByKeepValueInPlace', cards)
 	local damage = room_tag("heg_mobile_keshou"):toDamage()
 	if source_query(self,"needToLoseHp",self.player,damage.from,damage.card) then
 		return "."
@@ -6223,7 +6216,7 @@ sgs.ai_fill_skill.heg_mobile_duoshi = function(self,inclusive,request)
 	local red_card
 	if self.player:getHandcardNum()<=2 then return end
 	if self:needBear() then return end
-	sort_use(self,cards,true)
+	source_query(self, 'sortByUseValueInPlace', cards, true)
 
 	for _,card in ipairs(cards)do
 		if source_query(card,"isRed") then
@@ -6343,7 +6336,7 @@ sgs.ai_skill_cardask["@heg_ov_zhenxi"] = function(self, data, pattern, target, t
 	if target and source_query(self,"isEnemy",target) then
 		local cards = self.player:getCards("he")
 		cards = AIList.new(cards)
-		sort_keep(self,cards) 
+		source_query(self, 'sortByKeepValueInPlace', cards)
 		local acard = clone_source("indulgence", sgs.Card_NoSuitRed, 0)
 		source_call(acard,"deleteLater",false)
 		source_call(acard,"setSkillName",false,"heg_ov_zhenxi")
@@ -6543,7 +6536,7 @@ end
 sgs.ai_skill_playerschosen.heg_tenyear_jianliang = function(self, targets, max, min)
 	local selected = AIList.new{}
     local can_choose = AIList.new(targets)
-    sort_players(self,can_choose, "defense")
+    source_query(self, 'sortInPlace', can_choose, "defense")
 	for _,target in ipairs(can_choose) do
 		if source_query(self,"isFriend",target) and source_query(self,"canDraw",target) then
 			source_call(selected,"append",false,target)
@@ -6611,7 +6604,7 @@ sgs.ai_skill_use_func["#heg_tenyear_boyan"] = function(card,use,self,request)
 	else
 		self:setPriorityValue("heg_tenyear_boyan",9,"extra.heg_tenyear_boyan")
 		if #self.toUse > 0 then
-			for _,c in sgs.list(sort_keep(self,self.player:getHandcards()))do
+			for _,c in sgs.list(source_query(self, 'sortByKeepValueInPlace', self.player:getHandcards()))do
 				if table.contains(self.toUse,c) then
 					local dummy_use = source_call(self,"aiUseCard",false,c,dummy())
 					if dummy_use.card and dummy_use.to and source_query(dummy_use.to,"length") > 0 then
@@ -6670,7 +6663,7 @@ end
 
 sgs.ai_fill_skill.heg_tenyear_fenglue = function(self,inclusive,request)
 	local cards = self.player:getCards("h")
-	sort_keep(self,cards)
+	source_query(self, 'sortByKeepValueInPlace', cards)
   	for _,c in sgs.list(cards)do
 		if source_query(c,"getNumber")>9
 		then
@@ -6680,7 +6673,7 @@ sgs.ai_fill_skill.heg_tenyear_fenglue = function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#heg_tenyear_fenglue"] = function(card,use,self,request)
-	sort_players(self,self.enemies,"card",true)
+	source_query(self, 'sortInPlace', self.enemies, "card", true)
 	for _,ep in sgs.list(self.enemies)do
 		if source_query(self.player,"canPindian",ep)
 		and source_query(ep,"getCardCount",true,true)>1
@@ -6700,7 +6693,7 @@ sgs.ai_skill_use_func["#heg_tenyear_fenglue"] = function(card,use,self,request)
 			return
 		end
 	end
-	sort_players(self,self.friends_noself,"card",true)
+	source_query(self, 'sortInPlace', self.friends_noself, "card", true)
 	for _,ep in sgs.list(self.friends_noself)do
 		if source_query(self.player,"canPindian",ep)
 		and source_query(self,"doDisCard",ep,"ej")
@@ -6772,7 +6765,7 @@ end
 
 
 function SmartAIView:useCardheg_known_both(card, use)
-	sort_players(self,self.enemies, "handcard")
+	source_query(self, 'sortInPlace', self.enemies, "handcard")
 	self.enemies = sgs.reverse(self.enemies)
 	local extraTarget = source_query(card,"getTargetModExtra",self.player)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
@@ -6802,7 +6795,7 @@ end
 
 function SmartAIView:useCardheg_befriend_attacking(card, use)
 	local friends = self:findPlayerToDraw(false,1,true)
-	sort_players(self,self.friends,nil,true)
+	source_query(self, 'sortInPlace', self.friends, nil, true)
 	local extraTarget = source_query(card,"getTargetModExtra",self.player)
 	if use.extra_target then extraTarget = extraTarget+use.extra_target end
 	for _,fp in sgs.list(friends)do do 
@@ -6893,7 +6886,7 @@ sgs.ai_skill_discard.heg_triblade_Skill = function(self, discard_num, min_num, o
 	if source_query(targets,"isEmpty") then return {} end
 	local id
 	local cards = AIList.new(self.player:getHandcards())
-	sort_keep(self,cards)
+	source_query(self, 'sortByKeepValueInPlace', cards)
 	for _, c in ipairs(cards) do
 		if not source_query(self.player,"isCardLimited",c,sgs.Card_MethodDiscard) then id = source_query(c,"getEffectiveId") break end
 	end
@@ -6929,7 +6922,7 @@ sgs.ai_fill_skill.heg_six_swords = function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#heg_six_swords_Skill"] = function(card,use,self,request)
-	sort_players(self,self.friends,"defense")
+	source_query(self, 'sortInPlace', self.friends, "defense")
 	local invoke = false
 	for _,friend in ipairs(self.friends)do
 		if source_query(friend,"getMark","@heg_six_swords") == 0 then
@@ -6971,7 +6964,7 @@ end
 sgs.ai_skill_cardask["@heg_threaten_emperor"] = function(self)
 	if self.player:isKongcheng() then return "." end
 	local cards = AIList.new(self.player:getCards("h"))
-	sort_use(self,cards,true)
+	source_query(self, 'sortByUseValueInPlace', cards, true)
 	if self.player:getHandcardNum() > 0 then
 		return true
 	end
@@ -7353,7 +7346,7 @@ sgs.ai_fill_skill.heg_transfer = function(self,inclusive,request)
 	self.yjzy_to = nil
 	local use_cards = {}
 	local cards = self.player:getCards("h")
-	cards = sort_keep(self,cards)
+	cards = source_query(self, 'sortByKeepValueInPlace', cards)
   	for _,c in sgs.list(cards)do
 		if CardIsHezong(c) then
 			local card,player = source_call(self,"getCardNeedPlayer",false,{c},false)

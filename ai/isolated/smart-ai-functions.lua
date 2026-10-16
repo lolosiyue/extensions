@@ -1,3 +1,34 @@
+-- Responsibility: shared pure-value queries, source adapters and default hooks.
+-- Value/ranking algorithms and turn orchestration belong to decision-core.lua.
+-- Named SmartAIView methods have one owner across these two files.
+-- Sections are navigation boundaries; retain lexical scope and registration order.
+-- Contract: docs/isolated-ai-common-layer.md (Shared core ownership).
+-- S01  Snapshot identity, query contracts and knowledge estimates
+-- S02  Visible card selection, keep decisions and pindian
+-- S03  Seat relations, effect queries and Slash predicates
+-- S04  Loss benefits, turnover and play-phase prediction
+-- S05  Discard requests and authorized conversion adapters
+-- S06  Slash defense, relation refresh and nested card answers
+-- S07  Lord identity, danger and recovery helpers
+-- S08  Value utilities, card knowledge and legacy global helpers
+-- S09  Survival, saving and skill-card utility
+-- S10  Skill value, equipment targets and chain effects
+-- S11  Connection cache, action order, rescue and AOE predicates
+-- S12  Friend selection, equipment loss and phase queries
+-- S13  Discard preferences, field movement and assist target
+-- S14  Skill-action binding, target modifiers and display helpers
+-- S15  Source metadata: suit values and card-need availability
+-- S16  Default damage and dont-hurt hook registrations
+-- S17  Default priority and target-revision hook registrations
+-- S18  Default use revision and skill-card evaluation
+-- S19  Default nullification and damage-HP hook registrations
+-- S20  Named source helper adaptations
+-- S21  Ordinary card-choice strategies
+-- S22  Explicit in-place sorting and required-query decorators
+
+-- ============================================================================
+-- [S01] Snapshot identity, query contracts and knowledge estimates
+-- ============================================================================
 -- Cache identity is one viewer, one question and one board revision, all read from
 -- the request. A new question or any board change misses, so a cached value never
 -- outlives the snapshot it was computed from.
@@ -76,10 +107,7 @@ function SmartAIView.isKnownNilStrategyResult(object, method, provider)
     local original = original_nil_providers[method]
     return original ~= nil and provider == query_provider(SmartAIView[original])
 end
-local function strategy_known(value, label)
-    if value == nil then ai_unsupported("shared strategy input is unknown: " .. label, label) end
-    return value
-end
+local strategy_known = AIValue.requireKnown
 local function strategy_call(object, method, ...)
     if AIValue.isPlayer(object) then
         if method == "getMark" and type(object.getStrategyMark) == "function" then method = "getStrategyMark" end
@@ -372,10 +400,7 @@ function SmartAIView:getKnownNum(player)
     return #known
 end
 
-local function card_selection_known(value, field)
-    if value == nil then ai_unsupported("card selection projection is unknown: " .. field, "getCards") end
-    return value
-end
+local card_selection_known = AIValue.requireKnownFor("getCards", "card selection projection is unknown: ")
 
 local function physical_selection_only(self, include_guhuo)
     local skills = card_selection_known(self.player:getSkills(), "skills")
@@ -476,6 +501,9 @@ local function selection_locked(self, card)
     return card_selection_known(self.player:isLocked(card), "locked")
 end
 
+-- ============================================================================
+-- [S02] Visible card selection, keep decisions and pindian
+-- ============================================================================
 function SmartAIView:getCards(class_name, flags, acards)
     if type(class_name) ~= "string" then return {} end
     if string.find(class_name, ",", 1, true) then
@@ -593,10 +621,7 @@ function SmartAIView:isValuableCard(card, player)
     return false -- donor's known nil/no; shared predicate ABI preserves truthiness
 end
 
-local function pindian_known(value, field)
-    if value == nil then ai_unsupported("Pindian projection is unknown: " .. field, "getPindianCard") end
-    return value
-end
+local pindian_known = AIValue.requireKnownFor("getPindianCard", "Pindian projection is unknown: ")
 
 local function point_of(player, card)
     local point = pindian_known(card:getNumber(), "number")
@@ -777,6 +802,9 @@ end
 -- viewer predicates (including controller links), never a foreign AI matrix.
 -- Keep the donor's getter order: friends are tested before seat arithmetic;
 -- enemies after it, and getNumBySeat recomputes the destination per player.
+-- ============================================================================
+-- [S03] Seat relations, effect queries and Slash predicates
+-- ============================================================================
 function SmartAIView:getEnemyNumBySeat(from, to, target, include_neutral)
     local players = strategy_call(self.room, "getAlivePlayers")
     local to_seat = (strategy_call(to, "getSeat") - strategy_call(from, "getSeat"))
@@ -1061,6 +1089,9 @@ local function r32_optional_selected_card(self,name)
     if AIUnsupported.is(card) then error(card,0) end
     return card
 end
+-- ============================================================================
+-- [S04] Loss benefits, turnover and play-phase prediction
+-- ============================================================================
 function SmartAIView:needToThrowArmor(player,reason)
     player=player or self.player
     if not AIValue.isPlayer(player) or not strategy_call(player,"hasArmorEffect",nil) then return false end
@@ -1486,6 +1517,9 @@ function SmartAIView:findPlayerToUseSlash(distance_limit, players, reason, slash
     return nil
 end
 
+-- ============================================================================
+-- [S05] Discard requests and authorized conversion adapters
+-- ============================================================================
 -- The isolated registry is the authority for discard callbacks.
 function SmartAIView:getDiscardCallback(reason)
     local value = sgs.ai_skill_discard and sgs.ai_skill_discard[reason]
@@ -1723,6 +1757,9 @@ end
 -- 武將名不寫在這層。只計看得見的【閃】；暗牌不估算，缺投影回 nil。
 sgs.ai_defense_slash = sgs.ai_defense_slash or {}
 
+-- ============================================================================
+-- [S06] Slash defense, relation refresh and nested card answers
+-- ============================================================================
 function SmartAIView:getDefenseSlash(to)
     to = to or self.player
     local function call(object, method, ...) return strategy_call(object, method, ...) end
@@ -2028,6 +2065,40 @@ local function male_player(player)
 end
 
 -- 沒有可見主公時沿用原版：視為健康。主公體力讀不到才是未知。
+-- ============================================================================
+-- [S07] Lord identity, danger and recovery helpers
+-- ============================================================================
+-- The room facade identifies the projected lord; inferred roles do not.
+-- Keep the default bootstrap policy here as the only danger definition.
+function SmartAIView:isLordInDanger()
+    local lord = self.room:getLord()
+    if not lord then return false end
+    local hp = strategy_call(lord, "getHp")
+    if hp > 4 and strategy_call(lord, "hasSkill", "benghuai") then hp = 4 end
+    return hp < 3
+end
+
+-- SmartAI6297 getLord is a source helper, separate from Room's actual lord.
+function SmartAIView:getSourceLord(player)
+    local enabled=self.world.enable_hegemony
+    if type(enabled)~="boolean" then ai_unsupported("source hegemony config is unknown","getSourceLord")end
+    if enabled then return nil end
+    local lord=self.room:getLord()
+    if lord then return lord end
+    local function role(p)
+        local value=p:getRole()
+        if value~=nil then return value end
+        return self:useKnowledgeEstimate({value=self:getRoleEstimate(p),status="estimate",
+            basis="getLord:viewer_role_inference",observer=p:objectName(),viewer=self.player:objectName()},"getSourceLord")
+    end
+    local own=role(player)
+    if own==nil or own=="neutral" then ai_unsupported("source lord role cannot be resolved","getSourceLord")end
+    if own~="renegade" then
+        for _,p in ipairs(self.room:getOtherPlayers(player)) do if role(p)==role(player) then return p end end
+    end
+    return player
+end
+
 function SmartAIView:isLordHealthy()
     local lord = self.room:getLord()
     if not lord then return true end
@@ -2198,6 +2269,9 @@ if sgs.ai_cardneed.slash == nil then
     end
 end
 
+-- ============================================================================
+-- [S08] Value utilities, card knowledge and legacy global helpers
+-- ============================================================================
 -- 套件可覆寫的 SmartAI 相等工具。只讀快照；缺資料回 nil。不造引擎牌、不改 Room。
 
 if type(sgs.weapon_range) ~= "table" then
@@ -2655,6 +2729,9 @@ end
 
 function SmartAIView:log() end
 
+-- ============================================================================
+-- [S09] Survival, saving and skill-card utility
+-- ============================================================================
 function SmartAIView:isGoodHp(to)
     to=to or self.player
     if strategy_call(to,"getHp")>1 or strategy_known(hasBuquEffect(to),"Buqu effect")
@@ -3096,6 +3173,9 @@ local function r32_value_skill_lord_excludes(self, fragment)
     return not strategy_call(self.room:getLord(), "getGeneral2Name"):find(fragment)
 end
 
+-- ============================================================================
+-- [S10] Skill value, equipment targets and chain effects
+-- ============================================================================
 function SmartAIView:isValueSkill(skill_name,player,HighValue)
 	player = player or self.player
 	if string.find(sgs.bad_skills,skill_name) then return false end
@@ -3560,6 +3640,9 @@ function SmartAIView:zeroCardSlashTarget(targets)
 	return targetlist[1] or false
 end
 
+-- ============================================================================
+-- [S11] Connection cache, action order, rescue and AOE predicates
+-- ============================================================================
 -- Replace SmartAIView:getConnections with this block. Also supplies the exact
 -- admitted-room counterpart of sgs.getCachedAlivePlayers (smart-ai457).
 do
@@ -3979,13 +4062,6 @@ function SmartAIView:compareRoleEvaluation(player, first, second)
     if role == first then return first end
     return "neutral"
 end
-function SmartAIView:isLordInDanger()
-    local lord = self.room:getLord()
-    if not lord then return false end
-    local hp = strategy_call(lord, "getHp")
-    if hp > 4 and strategy_call(lord, "hasSkill", "benghuai") then hp = 4 end
-    return hp < 3
-end
 
 function SmartAIView:hasQiuyuanEffect(from, to)
     from = from or self.player
@@ -4039,13 +4115,11 @@ function SmartAIView:isPriorFriendOfSlash(friend, card, source)
 end
 
 
+-- ============================================================================
+-- [S12] Friend selection, equipment loss and phase queries
+-- ============================================================================
 -- Remaining common selection helpers preserve donor traversal and sorting
 -- side effects. Isolated sort returns a copy, so write that order back here.
-local function common_sort_in_place(self, players, key, reverse)
-    local sorted = strategy_known(self:sort(players, key, reverse), "common helper sort")
-    for i, player in ipairs(sorted) do players[i] = player end
-    return players
-end
 
 function SmartAIView:getPriorTarget()
     if #strategy_known(self.enemies, "enemies") < 1 then return nil end
@@ -4114,13 +4188,13 @@ end
 
 function SmartAIView:findPlayerToLoseHp(must)
     local second
-    common_sort_in_place(self, strategy_known(self.enemies, "enemies"), "hp")
+    self:sortInPlace(strategy_known(self.enemies, "enemies"), "hp")
     for _, enemy in ipairs(self.enemies) do
         if not strategy_call(self, "hasZhaxiangEffect", enemy) and not strategy_call(self, "needToLoseHp", enemy, self.player, false, true) then return enemy end
         if must and not second then second = enemy end
     end
     if must then
-        common_sort_in_place(self, strategy_known(self.friends_noself, "friends without self"), "hp", true)
+        self:sortInPlace(strategy_known(self.friends_noself, "friends without self"), "hp", true)
         for _, friend in ipairs(self.friends_noself) do
             if strategy_call(self, "hasZhaxiangEffect", friend) and not strategy_call(self, "isWeak", friend)
                 or strategy_call(self, "needToLoseHp", friend, self.player, false, true) then return friend end
@@ -4437,6 +4511,9 @@ function SmartAIView:willSkipDrawPhase(player, without_nullification)
 end
 
 
+-- ============================================================================
+-- [S13] Discard preferences, field movement and assist target
+-- ============================================================================
 -- SmartAI's disabled_ids: visible cards of the target that this card_chosen
 -- question does not offer. Every other question offers no such list.
 function SmartAIView:refreshDiscardPreferences(sourceAssignment)
@@ -4568,7 +4645,7 @@ function SmartAIView:card_for_qiaobian(who,flag,to_friends,to_enemies)
 				if card then
 					local index = strategy_call(card, "getEquipSlot")
 					if #strategy_call(self, "poisonCards",{card},who)>0 then
-						common_sort_in_place(self,to_enemies,"defense")
+						self:sortInPlace(to_enemies, "defense")
 						for _,friend in ipairs(to_enemies)do
 							if not strategy_call(friend, "hasEquipArea",index) then continue end
 							if not self:getSameEquip(card,friend) and strategy_call(friend, "objectName")~=strategy_call(who, "objectName")
@@ -4577,9 +4654,9 @@ function SmartAIView:card_for_qiaobian(who,flag,to_friends,to_enemies)
 					else
 						if strategy_call(card, "isKindOf","Armor")
 						or strategy_call(card, "isKindOf","DefensiveHorse") then
-							common_sort_in_place(self,to_friends,"defense")
+							self:sortInPlace(to_friends, "defense")
 						else
-							common_sort_in_place(self,to_friends,"handcard",true)
+							self:sortInPlace(to_friends, "handcard", true)
 						end
 						for _,friend in ipairs(to_friends)do
 							if not strategy_call(friend, "hasEquipArea",index) then continue end
@@ -4623,9 +4700,9 @@ function SmartAIView:card_for_qiaobian(who,flag,to_friends,to_enemies)
 				local index = strategy_call(card, "getEquipSlot")
 				if strategy_call(card, "isKindOf","Armor")
 				or strategy_call(card, "isKindOf","DefensiveHorse") then
-					common_sort_in_place(self,to_friends,"defense")
+					self:sortInPlace(to_friends, "defense")
 				else
-					common_sort_in_place(self,to_friends,"handcard",true)
+					self:sortInPlace(to_friends, "handcard", true)
 				end
 				for _,friend in ipairs(to_friends)do
 					if not strategy_call(friend, "hasEquipArea",index) then continue end
@@ -4662,9 +4739,9 @@ function SmartAIView:moveField(player,flag,froms,tos)
 		if strategy_call(p, "objectName")==strategy_call(player, "objectName") then continue end
 		table.insert(from_friends_noself,p)
 	end
-	common_sort_in_place(self,from_enemies)
-	common_sort_in_place(self,from_friends)
-	common_sort_in_place(self,from_friends_noself)
+	self:sortInPlace(from_enemies)
+	self:sortInPlace(from_friends)
+	self:sortInPlace(from_friends_noself)
 	if flag:find("j") then
 		for _,friend in ipairs(from_friends)do
 			if strategy_call(friend, "getJudgingArea"):length()>0
@@ -4695,7 +4772,7 @@ function SmartAIView:moveField(player,flag,froms,tos)
 			then table.insert(targets,enemy) end
 		end
 		if #targets>0 then
-			common_sort_in_place(self,targets)
+			self:sortInPlace(targets)
 			local to,c = r32_qiaobian(self,targets[1],flag,to_friends,to_enemies)
 			if to and c then return targets[1],c,to end
 		end
@@ -4727,6 +4804,9 @@ end
 
 
 
+-- ============================================================================
+-- [S14] Skill-action binding, target modifiers and display helpers
+-- ============================================================================
 -- A bounded native hypothetical descriptor, with only request-local mutable
 -- flags. Switching variants switches their owner-bound rule facts as well.
 -- Bind a strategy-selected exact cost set to an existing or lazily issued native
@@ -5589,6 +5669,9 @@ end
 
 -- Fixed b6025acc normal-bootstrap public suit metadata (74 tables).
 -- Generated from /tmp/round17-static-metadata-runtime.json, no policy calls.
+-- ============================================================================
+-- [S15] Source metadata: suit values and card-need availability
+-- ============================================================================
 local source_suit_value_catalog={
  ["FourGuidao_suit_value"]={["club"]=2.7,["spade"]=3.9},
  ["FourQixi_suit_value"]={["club"]=3.9,["spade"]=3.9},
@@ -6415,6 +6498,9 @@ function SmartAIView:getYongdiTarget(targets,lord)
     return good[1]or lords[1]or weaks[1]
 end
 
+-- ============================================================================
+-- [S16] Default damage and dont-hurt hook registrations
+-- ============================================================================
 -- R28 fixed smart-ai.lua default damage/dontHurt registries. Package files load
 -- afterward and retain donor override order. No callback is run at registration.
 do
@@ -6749,6 +6835,9 @@ sgs.ai_ajustdamage_from.guding_blade = function(self,from,to,slash,nature)
 end
 end
 
+-- ============================================================================
+-- [S17] Default priority and target-revision hook registrations
+-- ============================================================================
 -- R28 source default priority and target-revision callbacks. Repeated source
 -- assignments intentionally keep the final body (kuanggu, shuangxiong).
 do
@@ -7032,6 +7121,9 @@ sgs.ai_target_revises.wuyan = function(to,card,self)
 end
 end
 
+-- ============================================================================
+-- [S18] Default use revision and skill-card evaluation
+-- ============================================================================
 -- R28 full fixed default use-revision bodies. Construction remains readonly;
 -- evaluating an alternative never issues an action receipt or pays its cost.
 do
@@ -7336,6 +7428,9 @@ sgs.ai_use_revises.tiaoxin = function(self,card,use)
 end
 end
 
+-- ============================================================================
+-- [S19] Default nullification and damage-HP hook registrations
+-- ============================================================================
 -- R28 ordinary default nullification and can-damage-HP hooks. The current
 -- AmazingGrace use comes from the projected use history.
 do
@@ -7580,6 +7675,9 @@ for _, name in ipairs({"damageStruct", "damageIsEffective", "needToLoseHp", "has
     if type(SmartAIView[name]) == "function" then source_nil_providers[name] = SmartAIView[name] end
 end
 
+-- ============================================================================
+-- [S20] Named source helper adaptations
+-- ============================================================================
 -- R43 fixed Inovation source helper. Duplicate self is the actual donor ABI.
 do
 local function query(object, method, ...)
@@ -7657,11 +7755,7 @@ end
 -- R49: fixed Touhou common helpers; complete bodies on lawfully known inputs.
 do
  local nullable={}
- local function known(v,k)
-  if AIUnsupported.is(v)then error(v,0)end
-  if v==nil then ai_unsupported('Touhou fixed source input unknown',k)end
-  return v
- end
+ local known = AIValue.requireKnown
  local function q(o,k,...)
   local f=o and o[k]
   if type(f)~='function'then ai_unsupported('Touhou fixed source helper unavailable',k)end
@@ -8055,6 +8149,9 @@ end
 end
 -- End R49 Touhou common helpers.
 
+-- ============================================================================
+-- [S21] Ordinary card-choice strategies
+-- ============================================================================
 -- R54 ordinary SmartAI card-choice strategy method, distinct from a native
 -- CardChosen request handler. Fixed smart-ai.lua:3403-3623 branch order;
 -- shared counter/numeric consumption and foreign keep-cache paths fail closed.
@@ -8320,6 +8417,9 @@ end
 end
 -- End R54 ordinary card-choice helper.
 
+-- ============================================================================
+-- [S22] Explicit in-place sorting and required-query decorators
+-- ============================================================================
 -- Source strategies sometimes sort a Lua array for its side effect.  Keep that
 -- operation explicit; ordinary sort methods continue to return a fresh list.
 local function sort_in_place(self, method, values, ...)

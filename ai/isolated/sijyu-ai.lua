@@ -9,15 +9,6 @@ end
 -- R47b complete fixed Xuanmeng / Zhanshi / Zuotai AI family (sijyu311–359).
 do
 
- local function sort_source(self,k,cards,...)
-  local f=self[k];if type(f)~='function'then ai_unsupported('Sijyu sorter unavailable',k)end
-  local result=f(self,cards,...);if AIUnsupported.is(result)then error(result,0)end
-  if result~=nil and result~=cards then
-   if not AIValue.isList(result)then ai_unsupported('Sijyu sorted-copy malformed',k)end
-   for i=#cards,1,-1 do cards[i]=nil end
-   for i,v in ipairs(result)do cards[i]=v end
-  end
- end
  sgs.ai_skill_invoke.sijyu_xuanmeng=true
  sgs.ai_skill_use['@@sijyu_xuanmeng']=function(self,prompt,method)
   -- The fixed source returns its sole zero-cost Lua SkillCard immediately;
@@ -38,7 +29,7 @@ do
    and not self:cantbeHurt(target)then
    local cards=sgs.QList2Table(self.player:getCards('h'))
    local patterns=pattern:split(',')
-   sort_source(self,'sortByKeepValue',cards)
+   self:sortByKeepValueInPlace(cards)
    for _,card in ipairs(cards)do
     for _,name in ipairs(patterns)do
      if card:getClassName()==name then return card:toString()end
@@ -52,7 +43,7 @@ do
   targets=sgs.QList2Table(targets)
   if self:canDraw(self.player)and table.contains(targets,self.player)then return self.player end
   if not AIValue.isList(self.friends_noself)then ai_unsupported('Sijyu friends list unknown','sijyu_zuotai')end
-  sort_source(self,'sort',self.friends_noself,'defense')
+  self:sortInPlace(self.friends_noself, 'defense')
   self.friends_noself=sgs.reverse(self.friends_noself)
   for _,friend in ipairs(self.friends_noself)do
    if not self:canDraw(friend)then continue end
@@ -85,17 +76,6 @@ do
   end
   return damage
  end
- local function sort_keep(self,cards)
-  local f=self.sortByKeepValue
-  if type(f)~='function'then ai_unsupported('Sijyu Lijian sorter missing','sortByKeepValue')end
-  local sorted=f(self,cards)
-  if AIUnsupported.is(sorted)then error(sorted,0)end
-  if sorted~=nil and sorted~=cards then
-   if not AIValue.isList(sorted)then ai_unsupported('Sijyu Lijian sorted-copy malformed','sortByKeepValue')end
-   for i=#cards,1,-1 do cards[i]=nil end
-   for i,v in ipairs(sorted)do cards[i]=v end
-  end
- end
  sgs.ai_skill_invoke.sijyu_lijian=function(self,data)
   local damage=data:toDamage()
   if not self:isFriend(damage.to)then return true end
@@ -106,7 +86,7 @@ do
   local damage=current_damage(self)
   if damage then
    if not self:needToLoseHp(self.player,damage.from,damage.card)then
-    sort_keep(self,cards)
+    self:sortByKeepValueInPlace(cards)
     local out={}
     for _,card in ipairs(cards)do
      if #out<discard_num and not card:isKindOf('Peach')then out[#out+1]=card:getEffectiveId()end
@@ -122,17 +102,6 @@ end
 -- R47d: fixed full Qixing/Fengyi bodies, sijyu-ai.lua641–737.
 do
 
- local function source_sort(self,cards,...)
-  local provider=self.sort
-  if type(provider)~='function'then ai_unsupported('Sijyu player sort unavailable','sort')end
-  local sorted=provider(self,cards,...)
-  if AIUnsupported.is(sorted)then error(sorted,0)end
-  if sorted==nil then ai_unsupported('Sijyu player sort input unknown','sort')end
-  if sorted~=nil and sorted~=cards then
-   if not AIValue.isList(sorted)then ai_unsupported('Sijyu player ordering malformed','sort')end
-   for i=#cards,1,-1 do cards[i]=nil end;for i,p in ipairs(sorted)do cards[i]=p end
-  end
- end
  local function manjuan(player)
   if type(hasManjuanEffect)~='function'then ai_unsupported('Sijyu global Manjuan helper unavailable','hasManjuanEffect')end
   local v=hasManjuanEffect(player)
@@ -176,7 +145,7 @@ do
  -- Fixed native Death producer is unreachable; retain the full source body,
  -- never manufacture that question or reconnect it under an alias.
  sgs.ai_skill_playerchosen.sijyu_fengyi=function(self,targets)
-  source_sort(self,self.friends_noself,'handcard')
+  self:sortInPlace(self.friends_noself, 'handcard')
   local target=nil
   local n=self.player:getPile('sijyu_xing'):length()
   for _,friend in ipairs(self.friends_noself)do
@@ -192,7 +161,7 @@ do
      end
     end
    else
-    source_sort(self,self.enemies)
+    self:sortInPlace(self.enemies)
     for _,enemy in ipairs(self.enemies)do
      if self:toTurnOver(enemy,n,'sijyu_fengyi') and manjuan(enemy)then target=enemy;break end
     end

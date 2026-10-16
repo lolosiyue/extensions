@@ -36,10 +36,7 @@ sgs.ai_card_intention.kejiexianfenshenCard = -80
 sgs.ai_use_value.kexianjishiCard = 8
 sgs.ai_use_priority.kexianjishiCard = 9.5
 
-local function known(value, key, reason)
-    if value == nil then ai_unsupported(reason or (key .. " is unknown"), key) end
-    return value
-end
+local known = AIValue.requireKnown
 
 local function relation_friend(self, player, key)
     return known(self:isFriend(player), key, key .. " relation is unknown")

@@ -13,14 +13,9 @@ standard_initial_aliases["sgs.ai_use_priority.RendeCard"]=sgs.ai_use_priority.Re
 standard_initial_aliases["sgs.ai_card_intention.RendeCard"]=sgs.ai_card_intention.RendeCard
 standard_initial_aliases["sgs.xiaoji_keep_value"]=sgs.xiaoji_keep_value
 
-local function known(value,key)
-    if value==nil then ai_unsupported("standard general fact is unknown",key) end
-    return value
-end
+local known = AIValue.requireKnown
 
-local function dummy(is_dummy,extra,current)
-    local use=AIUsePlan.new();use.isDummy=is_dummy~=false;use.extra_target=extra or 0;use.current_targets=current or {};return use
-end
+local dummy = AIUsePlan.dummy
 local function source_player(self,key)
     local name,present=self:getStrategyMemory("response_source:"..key)
     if not present or not name then return nil end
@@ -474,9 +469,9 @@ sgs.ai_use_revises.nosrende = function(self,card,use)
     and self:getNosRendeGiven()<2
     and #self.friends_noself>0
     then
-        if card:getTypeId()==1
-        or card:getTypeId()==3 and self:getSameEquip(card)
-        or card:getTypeId()==2 and not (card:targetFixed() and card:isDamageCard())
+        if card:isKindOf("BasicCard")
+        or card:isKindOf("EquipCard") and self:getSameEquip(card)
+        or card:isKindOf("TrickCard") and not (card:targetFixed() and card:isDamageCard())
         then return false end
     end
     local xy = self:hasSkills("jieming|oljieming", self.friends_noself)
@@ -3492,31 +3487,30 @@ sgs.ai_skill_use_func.nosrende = function(card,use,self,request)
     local cards = sgs.QList2Table(strategy_cards(self,self.player,"h"))
     cards = self:sortByUseValue(cards,true)
     local notFound = false
-    -- Each rejected recipient is removed before asking for a new card/recipient pair.
+    -- Ordinary recipients are compared together by the allocation helper.
     for i = 1,self.player:getHandcardNum()+#candidates do
         if #cards==0 then break end
         local h,friend = self:getCardNeedPlayer(cards,false,candidates)
         if h and friend then cards = self:resetCards(cards,h)
         else notFound = true break end
         if friend==self.player or not self.player:handCards():contains(h:getKnownEffectiveId()) then continue end
-        -- Recommendation applies only to ordinary allied gifts, preserving exceptional policies.
-        if self:isFriend(friend) and not self:needKongcheng(friend) and not hasManjuanEffect(friend)
-        and not self:getBestTarget({friend},"nosrende",self.player,{notDraw=true}) then
-            table.removeOne(candidates,friend)
-            table.insert(cards,h)
-            cards = self:sortByUseValue(cards,true)
-            continue
-        end
-        local canJijiang = self.player:hasLordSkill("jijiang") and self.room:getLieges("shu", self.player):contains(friend) and self:isFriend(friend)
+        local isSlash = h:isKindOf("Slash")
+        local isDelayedTrick = h:isKindOf("DelayedTrick")
+        local canJijiang = isSlash and self.player:hasLordSkill("jijiang") and self.room:getLieges("shu", self.player):contains(friend) and self:isFriend(friend)
+        -- Delayed tricks keep their own timing policy, including damaging ones.
+        local isDamage = not isDelayedTrick and h:isDamageCard() and not canJijiang
+        local isControl = not isDelayedTrick and sgs.dynamic_value.control_card[h:getClassName()]
         if h:isAvailable(self.player)
-        and (h:isKindOf("Slash") and not canJijiang or h:isKindOf("Duel") or h:isKindOf("Snatch") or h:isKindOf("Dismantlement")) then
+        and (isDamage or isControl) then
             local dummy_use = self:aiUseCard(h)
             if dummy_use.card then
-                if h:isKindOf("Slash") or h:isKindOf("Duel") then
+                if isDamage then
                     local t1 = dummy_use.to:first()
                     if not t1 or dummy_use.to:length()>1 then continue
-                    elseif t1:getHp()<2 or getCardsNum("Jink",t1,self.player)<1
-                    or t1:isCardLimited(self:getEvaluationCard("jink"), sgs.Card_MethodResponse)
+                    elseif t1:getHp()<=self:ajustDamage(self.player,t1,1,h)
+                    -- Jink availability only describes Slash, not other damage cards.
+                    or isSlash and (getCardsNum("Jink",t1,self.player)<1
+                        or t1:isCardLimited(self:getEvaluationCard("jink"), sgs.Card_MethodResponse))
                     then continue end
                 elseif self:getEnemyNumBySeat(self.player,friend)>0 then
                     local hasDelayedTrick
@@ -3528,7 +3522,7 @@ sgs.ai_skill_use_func.nosrende = function(card,use,self,request)
                 end
             end
         elseif h:isAvailable(self.player)
-        and (h:isKindOf("Indulgence") or h:isKindOf("SupplyShortage"))
+        and isDelayedTrick
         and self:getEnemyNumBySeat(self.player,friend)>0
         and self:aiUseCard(h).card then continue end
         local ids = {h:getKnownId()}
@@ -6011,7 +6005,8 @@ end)
 
 sgs.registerTargetRecommend("rende", function(self, from, to, card, skill_owner, ctx)
     -- 只对摸牌行为生效
-    if not ctx.isDraw then
+    if not ctx.isDraw or not self:isFriend(to,from)
+    or skill_owner and skill_owner:objectName()~=to:objectName() then
         return 0
     end
 

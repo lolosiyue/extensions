@@ -1,5 +1,5 @@
 -- new, fixed b6025acc. Exact source policies; no repair of removed legacy cards.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("new package input unknown",k)end;return v end
+local known = AIValue.requireKnown
 local nullable={getLord=true,getCurrent=true,getSameEquip=true,getMaxCard=true,getArmor=true,getTreasure=true,getCard=true,findLeijiTarget=true,findPlayerBySkillName=true,findPlayerToDraw=true,updatePlayers=true,updateIntention=true,setStrategyPlayerFlag=true}
 
 -- Whether a legacy LuaSkillCard prototype parses is an engine query that is not projected.

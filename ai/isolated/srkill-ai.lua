@@ -1,12 +1,12 @@
 -- Fixed b6025acc source bodies; request-scoped readonly planning and selected payment.
-local function known(v,k) if AIUnsupported.is(v) then error(v,0) end;if v==nil then ai_unsupported('srkill value is not observed',k) end;return v end
+local known = AIValue.requireKnown
 local function sget(o,k,...) if o==nil then error('attempt to index a nil value',0) end;if AIValue.isPlayer(o) then if k=='getMark' then k='getStrategyMark' elseif k=='hasFlag' then k='getStrategyFlag' end end;if type(o[k])~='function' then ai_unsupported('srkill method missing',k) end;return known(o[k](o,...),k) end
 local function visible(self,id)
  local c=self:getKnownCardById(id);if not c and type(self.getChoiceCard)=='function'then c=self:getChoiceCard(id)end
  local ctx=self:getDecisionContext();local row=ctx.round26_choice;local face=row and row.ag_faces and row.ag_faces[tostring(id)];if not c and face then c=CardView.new(face)end;return known(c,'srkill disclosed physical card')
 end
 local function copy(t) local r={} for k,v in pairs(t)do r[k]=type(v)=='table' and copy(v) or v end;return r end
-local function dummy_plan(v,extra,current) local u=AIUsePlan.new();u.isDummy=v~=false;u.extra_target=extra or 0;u.current_targets=current or {};return u end
+local dummy_plan = AIUsePlan.dummy
 local classes={['#sr_chouxicard']='sr_chouxi',['#sr_shoujicard']='sr_shouji',['#sr_yaozhancard']='sr_yaozhan',['#sr_wenjiucard']='sr_wenjiu',['#sr_sanfencard']='sr_sanfen',['#sr_quanhengCard']='sr_quanheng',['#sr_xionglvecard']='sr_xionglve',['#sr_dailaocard']='sr_dailao',['#sr_weibaocard']='sr_weibao',['#sr_choulvecard']='sr_choulve',['#sr_jiexicard']='sr_jiexi',['#sr_youxiacard']='sr_youxia',['#sr_zhouyancard']='sr_zhouyan',['#sr_zhaxiangcard']='sr_zhaxiang',['#sr_fangxincard']='sr_fangxin',['#sr_yinmengcard']='sr_yinmeng',['#sr_jueliecard']='sr_juelie',['#sr_zhishicard']='sr_zhishi',['#sr_aozhanCard']='sr_aozhan',['#sr_liuyuncard']='sr_liuyun',['#sr_qingchengcard']='sr_qingcheng',['#sr_xiahoucard']='sr_xiahou',['#sr_lijiancard']='sr_lijian',['#sr_manwucard']='sr_manwu',['#sr_xingyicard']='sr_xingyi',['#sr_jiwucard']='sr_jiwu',['#sr_quanheng_slashCard']='sr_quanheng_slash',['#sr_quanheng_ex_nihiloCard']='sr_quanheng_ex_nihilo',['#sr_shuixicard']='sr_shuixi',['#sr_fuzhengcard']='sr_fuzheng',['#sr_youdicard']='sr_youdi',['#jiwu_extarget']='jiwu_extarget'}
 local recipes=setmetatable({},{__mode='k'})
 local function ids(s)local r={}if s~='.' and s~='' then for n in s:gmatch('[^+]+')do r[#r+1]=assert(tonumber(n))end end;return r end

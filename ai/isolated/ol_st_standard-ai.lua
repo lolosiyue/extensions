@@ -1,5 +1,5 @@
 -- Fixed b6025acc ol_st_standard policy; native source scopes own construction.
-local function known(v,k) if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported('OL standard source input is unknown',k)end;return v end
+local known = AIValue.requireKnown
 local nullable={AssistTarget=true,withOwnerDistanceAdjustment=true,getStrategyMemory=true,getCurrent=true,getCurrentDyingPlayer=true,getLord=true,getArmor=true,getWeapon=true,getEquip=true,getMaxCard=true,getMinCard=true,getSameEquip=true,getCard=true,getCardId=true,getCardNeedPlayer=true,findPlayerByObjectName=true,findPlayerBySkillName=true,toPlayer=true,updateIntention=true,updatePlayers=true,moveField=true,aiUseCard=true,useCardSlash=true,useBasicCard=true,useTrickCard=true,useEquipCard=true,useCardByClassName=true,setStrategyMemory=true,setStrategyPlayerFlag=true,setStrategyCardFlag=true}
 
 local function callback(self,registry,key,...)

@@ -1,10 +1,6 @@
 -- Fixed b6025acc yjcm2022-ai.lua effective callbacks, including its yjcm2023
 -- registrations. Pure strategy state is separate from native action receipts.
-local function known(value,key)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported('yjcm2022 fact is unknown',key) end
-    return value
-end
+local known = AIValue.requireKnown
 
 local function saved_estimates(self)
     local result={}
@@ -39,9 +35,7 @@ end
 local function skill_card(self,skill,class,costs,request)
     return self:bindSkillCard(skill, costs, request, nil, class)
 end
-local function dummy()
-    local use=AIUsePlan.new();use.isDummy=true;return use
-end
+local dummy = AIUsePlan.dummy
 local function evaluate(self,card,use)
     return self:evaluateCard(card, use or dummy())
 end

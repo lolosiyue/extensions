@@ -1,21 +1,9 @@
 -- Fixed challengedeveloper-ai.lua b6025acc983331337614289d8cac79b078c003af.
 -- Decisions preserve donor loop/short-circuit order; native scopes own authority.
 local package_skills={}
-local function known(value,key)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("challengedeveloper policy input is unknown",key) end
-    return value
-end
+local known = AIValue.requireKnown
 
 
-local function sorted(self,cards,method,...)
-    local result=AIValue.callKnown(self, method, cards, ...)
-    for i,c in ipairs(result) do cards[i]=c end
-    return cards
-end
-local function sort_players(self,cards,...) return sorted(self,cards,"sort",...) end
-local function sort_use(self,cards,...) return sorted(self,cards,"sortByUseValue",...) end
-local function sort_keep(self,cards,...) return sorted(self,cards,"sortByKeepValue",...) end
 local function action_request(self,request)
     if request and type(request.getActivationSkillName)~="function" then return AILegacyRequest.new(request,self.room) end
     return request
@@ -51,7 +39,7 @@ end
 local function turn(self,skill,class,costs,request,user)
     return self:evaluateTurnSkillCard(skill, class, costs, action_request(self,request), user)
 end
-local function dummy()local use=AIUsePlan.new();use.isDummy=true;return use end
+local dummy = AIUsePlan.dummy
 local function qinyin_choice(self)
     local value,present=self:getStrategyMemory("fire.qinyin_choice")
     if not present then ai_unsupported("Qinyin source choice unavailable","dev_pofeng")end
@@ -172,7 +160,7 @@ sgs.ai_skill_discard.dev_caiyi = function(self)
 	if self:needToLoseHp(self.player, use.from, use.card)
 	or self:getCardsNum("Jink")<1 then return {} end
 	local handcards = AIList.new(self.player:getCards("h"))
-    sort_keep(self,handcards) -- 按保留值排序
+    self:sortByKeepValueInPlace(handcards) -- 按保留值排序
    	for _,h in sgs.list(handcards)do
 		if h:isKindOf("Slash") then return {h:getKnownEffectiveId()} end
 	end
@@ -223,7 +211,7 @@ sgs.ai_skill_askforyiji.dev_cangdao = function(self,card_ids)
 		if #enemies>0 then break end
 	end
 	if #enemies>0 and id>0 then
-		sort_players(self,enemies,"defenseSlash")
+		self:sortInPlace(enemies, "defenseSlash")
 		for _,enemy in sgs.list(enemies)do
 			if self:isGoodTarget(enemy, enemies, self:getEvaluationCard("slash")) then
 				return enemy,id
@@ -349,7 +337,7 @@ sgs.ai_skill_discard.dev_pofeng = function(self,discard_num,min_num,optional,inc
 		end
 	end
 	if #discards>0 then
-		sort_keep(self,discards)
+		self:sortByKeepValueInPlace(discards)
 		return {discards[1]:getEffectiveId()}
 	end
 	
@@ -363,7 +351,7 @@ table.insert(package_skills,dev_xiaohun_skill)
 dev_xiaohun_skill.getTurnUseCard = function(self,inclusive,request)
 	local cards = AIList.new(self.player:getCards("h"))
 	if self.player:getHandcardNum()<self.room:getOtherPlayers(self.player):length()/2 then return end
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	local xiaohun_ids={};remember(self,"xiaohun_ids",xiaohun_ids)
 	local targets = {}
 	local f,e = 0,0
@@ -417,7 +405,7 @@ sgs.ai_skill_cardask["@dev_saiche-give"] = function(self,data)
 	if target:isSkipped(sgs.Player_Play) or self:willSkipPlayPhase(target) then return "." end
 	
 	local cards = AIList.new(self.player:getHandcards())
-	sort_use(self,cards,true)
+	self:sortByUseValueInPlace(cards, true)
 	
 	if isCard("Peach",cards[1],self.player) or isCard("Jink",cards[1],self.player) then return "." end
 	
@@ -469,7 +457,7 @@ sgs.ai_skill_discard.dev_jiayao = function(self,discard_num,min_num,optional,inc
 		end
 	end
 	if all_peaches>=2 and self:getOverflow()<=0 then return {} end
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 
 	for i = 1,#cards do
 		local card = cards[i]
@@ -505,7 +493,7 @@ function sgs.ai_cardsview_valuable.dev_chengzhi(self,class_name,player)
 			end
 		end
 		if #slashs>0 then
-			sort_keep(self,slashs,true)
+			self:sortByKeepValueInPlace(slashs, true)
 			return {skill="dev_chengzhi",legacy_class="DevChengzhiCard",subcards={slashs[1]:getEffectiveId()}}
 		end
 	end
@@ -527,7 +515,7 @@ sgs.ai_skill_use_func.DevBanchengCard = function(card,use,self,request)
 	local num = 2+self.player:getLostHp()
 	
 	if num==2 then
-		sort_players(self,self.friends_noself,"handcard")
+		self:sortInPlace(self.friends_noself, "handcard")
 		for _,p in sgs.list(self.friends_noself)do
 			if not self:canDraw(p) then continue end
 			if self:damageIsEffective(p, nil, self.player) then continue end
@@ -558,7 +546,7 @@ sgs.ai_skill_use_func.DevBanchengCard = function(card,use,self,request)
 			table.insert(enemies,p)
 		end
 		if #enemies==0 then return end
-		sort_players(self,enemies,"hp")
+		self:sortInPlace(enemies, "hp")
 		
 		for _,p in sgs.list(enemies)do
 			local damage = self:ajustDamage(self.player, p, 1)
@@ -643,7 +631,7 @@ dev_nini_skill.getTurnUseCard = function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func.DevNiniCard = function(card,use,self,request)
-	sort_players(self,self.enemies,"handcard")
+	self:sortInPlace(self.enemies, "handcard")
 	for _,p in sgs.list(self.enemies)do
 		if not(self.player:canPindian(p) and self:doDisCard(p, "h")) then continue end
 		use.card = turn(self,"dev_nini","DevNiniCard",{},request)
@@ -656,7 +644,7 @@ sgs.ai_use_priority.DevNiniCard = sgs.ai_use_priority.RendeCard+0.15
 
 function sgs.ai_skill_pindian.dev_nini(minusecard,self,requestor)
 	local cards = AIList.new(self.player:getHandcards())
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	if requestor:objectName()==self.player:objectName() then
 		return cards[1]:getId()
 	end
@@ -800,7 +788,7 @@ end
 --女神
 sgs.ai_skill_playerchosen.dev_nvshen = function(self,targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets,"HP")
+	self:sortInPlace(targets, "HP")
 	for _,p in sgs.list(targets)do
 		if self:isEnemy(p) then
 			return p
@@ -873,7 +861,7 @@ sgs.ai_skill_discard.dev_saodong = function(self,discard_num,min_num,optional,in
 		table.insert(diamond,c)
 	end
 	if #diamond==0 then return {} end
-	sort_use(self,diamond,true)
+	self:sortByUseValueInPlace(diamond, true)
 	
 	local nature = sgs.DamageStruct_Normal
 	if damage.card:isKindOf("FireAttack") then nature = sgs.DamageStruct_Fire
@@ -901,7 +889,7 @@ sgs.ai_skill_cardask["@dev_saodong"] = function(self,data)
 		table.insert(heart,c)
 	end
 	if #heart==0 then return {} end
-	sort_use(self,heart,true)
+	self:sortByUseValueInPlace(heart, true)
 	
 	for _,c in sgs.list(heart)do
 		local peach = clone(self,"dev_saodong","dev_saodong","peach",{c:getKnownEffectiveId()})
@@ -932,7 +920,7 @@ end
 --治愈
 sgs.ai_skill_playerchosen.dev_zhiyu = function(self,targets)
 	targets = AIList.new(targets)
-    sort_players(self,targets,"hp")
+    self:sortInPlace(targets, "hp")
 	for _,p in sgs.list(targets)do
 		if self:isFriend(p) then
 		    if p:getLostHp()>1 or self:isWeak(p) then
@@ -1020,7 +1008,7 @@ end
 sgs.ai_skill_playerchosen.dev_qiliao = function(self,targets)
 	targets = AIList.new(targets)
 	
-	sort_players(self,targets,"hp")
+	self:sortInPlace(targets, "hp")
 	for _,p in sgs.list(targets)do
 		if not self:isFriend(p) then continue end
 		if p:getLostHp()>0 and self:isWeak(p) then
@@ -1102,7 +1090,7 @@ sgs.ai_skill_use["@@dev_jiaohua"] = function(self,prompt)
 	end
 	if #cards==0 then return "." end
 	
-	sort_use(self,cards,true)
+	self:sortByUseValueInPlace(cards, true)
 	
 	local targets = {}
 	local slash = clone(self,"dev_jiaohua","dev_jiaohua","slash",{cards[1]:getEffectiveId()})
@@ -1125,7 +1113,7 @@ dev_tumou.name = "dev_tumou"
 table.insert(package_skills,dev_tumou)
 dev_tumou.getTurnUseCard = function(self,inclusive,request)
 	local cards = AIList.new(self.player:getCards("h"))
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	local id = -1
 	for _,h in sgs.list(cards)do
 		if self.player:isLocked(h, true)
@@ -1189,7 +1177,7 @@ sgs.ai_use_priority.DevTumouCard = 3
 sgs.ai_guhuo_card.dev_tumou = function(self,toname,class_name)
 	if self:getCardsNum(class_name)>1 then return end
 	local cards = AIList.new(self.player:getCards("h"))
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	local id = -1
 	for _,h in sgs.list(cards)do
 		if self.player:isLocked(h, true)

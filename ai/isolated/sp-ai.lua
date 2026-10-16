@@ -1,10 +1,6 @@
 -- SP response policies from the effective fixed source b6025acc.
 -- Native source scopes authorize cards; these callbacks only choose policy.
-local function known(value, key)
-    if AIUnsupported.is(value) then error(value, 0) end
-    if value == nil then ai_unsupported("SP response fact is not projected", key) end
-    return value
-end
+local known = AIValue.requireKnown
 -- Each V2 response keeps its own plan and binds its own native action receipt.
 for _,skill in ipairs({"jijiang","oljijiang"})do
     local entry=skill
@@ -388,11 +384,6 @@ sgs.ai_use_value.XuejiCard = 3
 sgs.ai_use_priority.XuejiCard = 2.35
 
 -- SP Bifa/Songci source sp-ai.lua:464–548. Append after SP local q/call.
-local function sp_sort_players(self, players, key)
-    local ordered = (self:sort(players,key))
-    for i, player in ipairs(ordered) do players[i] = player end
-    return players
-end
 local function sp_skill_request(self, request)
     if request and type(request.getActivationSkillName) ~= "function" then
         return AILegacyRequest.new(request,self.room)
@@ -401,7 +392,7 @@ local function sp_skill_request(self, request)
 end
 ai_skill_use["@@bifa"] = function(self,prompt,request)
     local cards = (self:sortByKeepValue((self.player:getHandcards())))
-    sp_sort_players(self,self.enemies,"hp")
+    self:sortInPlace(self.enemies, "hp")
     -- Source's #enemies<0 guard can never hold; retain its fall-through nil.
     for _, enemy in ipairs(self.enemies) do
         -- The source only reads pile cardinality. Closed pile IDs stay private.
@@ -451,13 +442,13 @@ local function songci_card(self)
     return (self:bindSkillCard("songci",{},context.request,nil,"SongciCard"))
 end
 sgs.ai_skill_use_func.SongciCard = function(card,use,self)
-    sp_sort_players(self,self.friends,"handcard")
+    self:sortInPlace(self.friends, "handcard")
     for _,friend in ipairs(self.friends) do
         if songci_mark(self,friend)==0 and (friend:getHandcardNum())<(friend:getHp()) and (self:canDraw(friend)) then
             use.card=songci_card(self);use.to:append(friend);return
         end
     end
-    sp_sort_players(self,self.enemies,"handcard")
+    self:sortInPlace(self.enemies, "handcard")
     -- Unlike sort, donor reverse replaces the list identity.
     local reverse={};for i=#self.enemies,1,-1 do reverse[#reverse+1]=self.enemies[i] end
     self.enemies=reverse

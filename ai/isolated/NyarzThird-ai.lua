@@ -1,9 +1,6 @@
 -- Fixed b6025acc NyarzThird source policies. Hypothetical clones are readonly;
 -- only the selected @@ response binds its actual owner V2 action.
-local function known(v,key)
-    if v==nil then ai_unsupported("NyarzThird policy fact is unknown",key)end
-    return v
-end
+local known = AIValue.requireKnown
 
 local function property(self,key)
     -- The viewer's own property, read like the donor's toString() (absent reads "").
@@ -40,11 +37,6 @@ local function can_to(self,card,target)
     -- Native readonly cards expose the exact empty-prefix rule in their owner
     -- evaluation; physical/issued cards use the same narrow facade endpoint.
     return self:cardTargetFilter(card, {}, target)
-end
-local function sort_enemies(self)
-    local current=known(self.enemies,"enemies")
-    local sorted=self:sort(current)
-    for i,p in ipairs(sorted)do current[i]=p end
 end
 local function response(self,skill,card,use,needs_target)
     if not use.card then return "."end
@@ -251,7 +243,7 @@ end
 --天下负我
 
 function SmartAIView:useCardRetribution(card,use)
-	sort_enemies(self)
+	self:sortInPlace(known(self.enemies, "enemies"))
 	local enemies = {}
 	for _,enemy in ipairs(self.enemies)do
 		if can_to(self,card,enemy) then

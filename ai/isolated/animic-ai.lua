@@ -1,6 +1,6 @@
 -- Complete fixed b6025acc animic callback bodies. Readonly planning is kept
 -- separate from native activation receipts; public equipment/judges only.
-local function known(v,key)if v==nil then ai_unsupported("animic value is unknown",key)end return v end
+local known = AIValue.requireKnown
 
 local function copy(xs)local out={};for _,v in ipairs(known(xs,"card/player list"))do out[#out+1]=v end return out end
 local function material(card)return{name="analeptic",skill="guihao",suit=card:getSuit(),number=card:getNumber(),subcards={card:getKnownEffectiveId()}}end

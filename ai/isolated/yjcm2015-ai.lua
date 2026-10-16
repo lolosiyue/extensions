@@ -1,5 +1,5 @@
 -- Fixed donor b6025acc: YJCM2015 policy; all action authority stays native.
-local function known(v,key)if v==nil then ai_unsupported("YJCM2015 value unknown",key)end;return v end
+local known = AIValue.requireKnown
 
 local function register_fill(row)
     setmetatable(row,{__newindex=function(t,k,v)rawset(t,k,v);if k=="getTurnUseCard"then sgs.ai_fill_skill[t.name]=v end end})
@@ -7,10 +7,6 @@ local function register_fill(row)
     return row
 end
 local function addAiSkills(name)return register_fill({name=name})end
-local function replace_order(t,sorted)for i,v in ipairs(sorted)do t[i]=v end;return t end
-local function sort_players(self,t,...)return replace_order(t,self:sort(t, ...))end
-local function sort_keep(self,t,...)return replace_order(t,self:sortByKeepValue(t, ...))end
-local function sort_use(self,t,...)return replace_order(t,self:sortByUseValue(t, ...))end
 local function pattern_names(self)return known(AICardCatalog.patternNames(),"public pattern order")end
 local function evaluation(self,name)
     local names={ArcheryAttack="archery_attack",SavageAssault="savage_assault",Duel="duel",Slash="slash"}
@@ -109,7 +105,7 @@ local function public_range(self,from,to,offset)
 end
 
 sgs.ai_skill_playerchosen.huituo = function(self,targets)
-    sort_players(self,self.friends)
+    self:sortInPlace(self.friends)
 	for _,p in sgs.list(self.friends)do
 		if p:isWounded() then
 			return p
@@ -128,7 +124,7 @@ sgs.ai_playerchosen_intention.huituo = -80
 sgs.ai_skill_playerchosen.nosmingjian = function(self,targets)
     if (sgs.ai_skill_invoke.fangquan(self) or self:needKongcheng(self.player)) then
         local cards = sgs.QList2Table(self.player:getHandcards())
-        sort_keep(self,cards)
+        self:sortByKeepValueInPlace(cards)
         if known(self:getRoleCounts(),"role counts").rebel==0 then
             local lord = self.room:getLord()
             if lord and self:isFriend(lord) and lord:objectName()~=self.player:objectName() then
@@ -141,7 +137,7 @@ sgs.ai_skill_playerchosen.nosmingjian = function(self,targets)
             return AssistTarget
         end
 
-        sort_players(self,self.friends_noself,"chaofeng")
+        self:sortInPlace(self.friends_noself, "chaofeng")
         return self.friends_noself[1]
     end
     return nil
@@ -154,7 +150,7 @@ addAiSkills("mingjian").getTurnUseCard = function(self)
 end
 
 sgs.ai_skill_use_func["MingjianCard"] = function(card,use,self)
-	sort_players(self,self.friends_noself)
+	self:sortInPlace(self.friends_noself)
 	for _,p in sgs.list(self.friends_noself)do
 		if self:isWeak(p) then
 			use.card = card
@@ -162,7 +158,7 @@ sgs.ai_skill_use_func["MingjianCard"] = function(card,use,self)
 			return
 		end
 	end
-	sort_players(self,self.friends_noself,nil,true)
+	self:sortInPlace(self.friends_noself, nil, true)
 	for _,p in sgs.list(self.friends_noself)do
 		if not self:isWeak(p) then
 			use.card = card
@@ -731,7 +727,7 @@ addAiSkills("qinwang").getTurnUseCard = function(self)
 		then can = true break end
 	end
     local cards = self.player:getCards("he")
-    cards = sort_keep(self,cards)
+    cards = self:sortByKeepValueInPlace(cards)
     if self.player:getStrategyMark("qinwang-PlayClear")>0
 	or not self.player:hasLordSkill("qinwang")
 	or self.player:getStrategyFlag("qinwangjijiang")
@@ -766,7 +762,7 @@ sgs.ai_guhuo_card.qinwang = function(self,toname,class_name)
 		then can = getCardsNum(class_name,target,self.player)>0 end
 	end
     local cards = self.player:getCards("he")
-    cards = sort_keep(self,cards,nil,true) -- 按保留值排序
+    cards = self:sortByKeepValueInPlace(cards, nil, true) -- 按保留值排序
 	if can and #cards>0 and self:getCardsNum(class_name)<1 and self.player:hasLordSkill("qinwang")
 	then return "@QinwangCard="..cards[1]:getKnownEffectiveId()..":"..toname end
 end
@@ -795,7 +791,7 @@ end
 
 sgs.ai_skill_playerchosen.zhenshan = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
-	sort_players(self,destlist,"hp")
+	self:sortInPlace(destlist, "hp")
     for _,target in sgs.list(destlist)do
 		if self:isFriend(target)
 		then return target end
@@ -804,7 +800,7 @@ sgs.ai_skill_playerchosen.zhenshan = function(self,players)
 		if not self:isEnemy(target)
 		then return target end
 	end
-	sort_players(self,destlist,"handcard",true)
+	self:sortInPlace(destlist, "handcard", true)
 	return destlist[1]
 end
 
@@ -872,7 +868,7 @@ end
 
 sgs.ai_skill_use_func.YanzhuCard = function(card,use,self)
 
-    sort_players(self,self.enemies,"threat")
+    self:sortInPlace(self.enemies, "threat")
     for _,p in ipairs(self.enemies)do
         if not p:isNude() then
             use.card = card
@@ -919,7 +915,7 @@ sgs.ai_skill_use["@@xingxue"] = function(self)
 	n = math.min(n,#self.friends)
 	if n<=0 then return "." end
 
-	sort_players(self,self.friends,"defense",true)
+	self:sortInPlace(self.friends, "defense", true)
 
     local l = AIList.new({})
     local s = {}
@@ -993,7 +989,7 @@ end
 
 sgs.ai_skill_playerchosen.yjyanyu = function(self)
 
-    sort_players(self,self.friends_noself,"handcard")
+    self:sortInPlace(self.friends_noself, "handcard")
 
     for i = #self.friends_noself,1,-1 do
         if self.friends_noself[i]:isMale() then
@@ -1197,16 +1193,16 @@ sgs.ai_skill_use_func.WurongCard = function(card,use,self)
         --只是为了看牌……
         if not target and #my_cards>0 and self:getOverflow()>0 then
             if #enemies>0 then
-                sort_players(self,enemies,"handcard")
+                self:sortInPlace(enemies, "handcard")
                 need_slash,target = false,enemies[1]
             elseif #others>0 then
-                sort_players(self,others,"threat")
+                self:sortInPlace(others, "threat")
                 need_slash,target = false,others[1]
             end
         end
 
         if not target and #enemies>0 then
-            sort_players(self,enemies,"defense",true)
+            self:sortInPlace(enemies, "defense", true)
             need_slash,target = (math.random(0,1)==0),enemies[1]
         end
     end
@@ -1214,7 +1210,7 @@ sgs.ai_skill_use_func.WurongCard = function(card,use,self)
     if target and not target:isKongcheng() and target~=self.player then
         local use_cards = need_slash and my_slashes or my_cards
         if #use_cards>0 then
-            sort_use(self,use_cards,true)
+            self:sortByUseValueInPlace(use_cards, true)
             use.card = authored(self,"@WurongCard="..use_cards[1]:getKnownEffectiveId())
             use.to:append(target)
         end
@@ -1227,7 +1223,7 @@ sgs.ai_use_value["WurongCard"] = 4.5
 
 sgs.ai_guhuo_card.huomo = function(self,toname,class_name)
     local cards = self.player:getCards("he")
-    cards = sort_keep(self,cards) -- 按保留值排序
+    cards = self:sortByKeepValueInPlace(cards) -- 按保留值排序
    	for d,c in sgs.list(cards)do
        	d = evaluation(self,toname)
         if c:isBlack() and c:getTypeId()~=1
@@ -1242,7 +1238,7 @@ local huomo_skill = {name = "huomo"}
 register_fill(huomo_skill)
 huomo_skill.getTurnUseCard = function(self)
     local handcards = self.player:getCards("he")
-	handcards = sort_keep(self,handcards)
+	handcards = self:sortByKeepValueInPlace(handcards)
     for _,h in sgs.list(handcards)do
         if h:isBlack() and h:getTypeId()~=1
 		then
@@ -1294,7 +1290,7 @@ sgs.ai_skill_playerchosen.zuoding = function(self,targets)
 
     if #l==0 then return nil end
 
-    sort_players(self,l,"defense")
+    self:sortInPlace(l, "defense")
     return l[#l]
 end
 
@@ -1359,7 +1355,7 @@ sgs.ai_skill_use_func.AnguoCard = function(card,use,self)
         end
     end
 
-    sort_players(self,self.enemies,"threat")
+    self:sortInPlace(self.enemies, "threat")
     for _,p in ipairs(self.enemies)do
         if (p:getArmor() and not p:getArmor():isKindOf("GaleShell")) then
             filluse(p,p:getArmor():getEffectiveId())
@@ -1449,7 +1445,7 @@ sgs.ai_use_value.OLzhaofuCard = 3
 
 sgs.ai_skill_playerchosen.yaoming = function(self,players)
 	local destlist = sgs.QList2Table(players) -- 将列表转换为表
-	sort_players(self,destlist,"card")
+	self:sortInPlace(destlist, "card")
     for _,target in sgs.list(destlist)do
 		if self:isFriend(target)
 		and target:getHandcardNum()<self.player:getHandcardNum()

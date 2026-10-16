@@ -1,16 +1,6 @@
 -- Fixed moshen-ai.lua at b6025acc983331337614289d8cac79b078c003af.
 -- Policy seeds carry no action authority; each selected action binds native costs.
 
-local function sort_players(self,players,key)
-    local sorted=self:sort(players, key)
-    for i,p in ipairs(sorted) do players[i]=p end
-    return players
-end
-local function sort_cards(self,cards,...)
-    local sorted=self:sortByKeepValue(cards, ...)
-    for i,c in ipairs(sorted) do cards[i]=c end
-    return cards
-end
 local function action_request(self,request)
     -- Common callbacks receive an AILegacyRequest; direct Activate adapters may
     -- supply the outer decision DTO. Only its actual skill_action can become
@@ -33,7 +23,7 @@ sgs.ai_skill_playerchosen.ms_huangwei=function(self,targets)
     for _,enemy in ipairs(self.enemies) do
         if not enemy:isNude() then ts[#ts+1]=enemy end
     end
-    if #ts>0 then sort_players(self,ts,"defense");return ts[1] end
+    if #ts>0 then self:sortInPlace(ts, "defense");return ts[1] end
 end
 sgs.ai_fill_skill.ms_mimou=function(self,inclusive,request)
     if not self.player:getStrategyHasUsed("#ms_mimou") then
@@ -43,7 +33,7 @@ end
 sgs.ai_skill_use_func["#ms_mimou"]=function(card,use,self,request)
     if #self.enemies<=0 and self.player:hasSkill("sy_canlue") then return nil end
     local cards=AIList.new(self.player:getHandcards())
-    sort_cards(self,cards)
+    self:sortByKeepValueInPlace(cards)
     local target
     local function select_for(chosen,relation)
         local will_use
@@ -59,14 +49,14 @@ sgs.ai_skill_use_func["#ms_mimou"]=function(card,use,self,request)
         end
     end
     if self.player:hasSkill("sy_canlue") then
-        sort_players(self,self.enemies,"hp");target=self.enemies[1]
+        self:sortInPlace(self.enemies, "hp");target=self.enemies[1]
         if target then select_for(target,"isEnemy");return end
     else
         target=self.friends_noself[1]
         if target then select_for(target,"isFriend");return end
     end
     if not target then
-        sort_players(self,self.enemies,"hp");target=self.enemies[1]
+        self:sortInPlace(self.enemies, "hp");target=self.enemies[1]
         if target then select_for(target,"isEnemy");return end
     end
 end
@@ -92,7 +82,7 @@ end
 sgs.ai_skill_use_func["#ms_yonghengCard"]=function(card,use,self,request)
     -- Source updatePlayers must precede sorting and every role/target observation.
     self:updatePlayers()
-    sort_players(self,self.friends,"hp")
+    self:sortInPlace(self.friends, "hp")
     local reversed={}
     for i=#self.friends,1,-1 do reversed[#reversed+1]=self.friends[i] end
     self.friends=reversed
@@ -120,7 +110,7 @@ sgs.ai_fill_skill.ms_guimou=function(self,inclusive,request)
 end
 sgs.ai_skill_use_func["#ms_guimou"]=function(card,use,self,request)
     local cards=AIList.new(self.player:getCards("he"))
-    sort_cards(self,cards,false,true)
+    self:sortByKeepValueInPlace(cards, false, true)
     local costs={};local spade,club,heart,diamond
     for _,c in ipairs(cards) do
         if c:getSuit()==sgs.Card_Spade then

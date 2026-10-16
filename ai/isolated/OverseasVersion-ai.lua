@@ -1,12 +1,12 @@
 -- Fixed b6025acc source bodies; request-scoped readonly planning and selected payment.
-local function known(v,k) if AIUnsupported.is(v) then error(v,0) end;if v==nil then ai_unsupported('overseas value is not observed',k) end;return v end
+local known = AIValue.requireKnown
 
 local function visible(self,id)
  local c=self:getKnownCardById(id);if not c and type(self.getChoiceCard)=='function'then c=self:getChoiceCard(id)end
  return known(c,'overseas disclosed physical card')
 end
 local function copy(t) local r={} for k,v in pairs(t)do r[k]=type(v)=='table' and copy(v) or v end;return r end
-local function dummy_plan(v,extra,current) local u=AIUsePlan.new();u.isDummy=v~=false;u.extra_target=extra or 0;u.current_targets=current or {};return u end
+local dummy_plan = AIUsePlan.dummy
 local classes={['#ov_lingbaoCard']='ov_lingbao',['#ov_beiniCard']='ov_beini',['#ov_weipoCard']='ov_weipo',['#ov_weipobfCard']='ov_weipobf',['#ov_mouzhuCard']='ov_mouzhu',['#ov_daojiCard']='ov_daoji',['#ov_yujuevsCard']='ov_yujuevs',['#ov_sfzhouhuCard']='ov_sfzhouhu',['#ov_sffengqiCard']='ov_sffengqi',['#ov_gongqiCard']='ov_gongqi',['#ov_jiefanCard']='ov_jiefan',['#ov_fuzuanCard']='ov_fuzuan',['#ov_zhuiduCard']='ov_zhuidu',['#ov_luannianCard']='ov_luannianvs',['#ov_bingdeCard']='ov_bingde',['#ov_xiongsiCard']='ov_xiongsi',['#ov_xiongxiCard']='ov_xiongxi',['#ov_juxiangCard']='ov_juxiangvs',['#ov_shijunCard']='ov_shijunvs',['#ov_xingzhuiCard']='ov_xingzhui',['#ov_luanlveCard']='ov_luanlve',['#ov_jichouCard']='ov_jichou',['#ov_mutaoCard']='ov_mutao',['#ov_kujianCard']='ov_kujian',['#ov_bomingCard']='ov_boming',['#ov_jinglveCard']='ov_jinglve',['#ov_fumanCard']='ov_fuman',['#ov_mouliCard']='ov_mouli',['#ov_yuanhuCard']='ov_yuanhu',['#ov_qingceCard']='ov_qingce',['#ov_luanchouCard']='ov_luanchou',['#ov_gongxinCard']='ov_gongxin',['#ov_kaizengCard']='ov_kaizengvs',['#ov_xiechangCard']='ov_xiechang',['#ov_yuejianCard']='ov_yuejian',['#ov_muyueCard']='ov_muyue',['#ov_fubiCard']='ov_fubi',['#ov_quanqianCard']='ov_quanqian',['#ov_chengxiCard']='ov_chengxi',['#ov_danlieCard']='ov_danlie',['#ov_huajingCard']='ov_huajing',['#ov_jieqiuCard']='ov_jieqiu',['#ov_enchouCard']='ov_enchou',['#ov_yanshiYLCard']='ov_yanshiYL',['#ov_huanjiCard']='ov_huanji',['#ov_qinghanCard']='ov_qinghan',['#ov_xianyuanCard']='ov_xianyuan',['#ov_lifengCard']='ov_lifeng',['#ov_guihanCard']='ov_guihan',['#ov_renxianCard']='ov_renxian',['#ov_liaoluanCard']='ov_liaoluanvs',['#ov_fenxianCard']='ov_fenxian',['#ov_shiyiCard']='ov_shiyi',['#ov_miyongCard']='ov_miyong',['#ov_hanhongCard']='ov_hanhong',['#ov_qianxiongCard']='ov_qianxiong',['#ov_fushuCard']='ov_fushu',['#ov_zhenjunCard']='ov_zhenjun',['#ov_yanhuoCard']='ov_yanhuo',['#ov_kaijiCard']='ov_kaiji',['#ov_fenghanCard']='ov_fenghan',['#ov_yingjiCard']='ov_yingji',['#ov_xiongzhengCard']='ov_xiongzheng',['#ov_poluCard']='ov_polu',['#ov_dingzhenCard']='ov_dingzhen',['#ov_chaofengCard']='ov_chaofeng',['#ov_zhenhuCard']='ov_zhenhu',['#ov_xuanhuoCard']='ov_xuanhuo',['#ov_hongjuCard']='ov_hongju',['#ov_xingluanCard']='ov_xingluan',['#ov_zaoliCard']='ov_zaoli',['#ov_liexiCard']='ov_liexi',['#ov_xingwuCard']='ov_xingwu',['#ov_lijianCard']='ov_lijian',['#ov_niwoCard']='ov_niwo',['#ov_xiumuCard']='ov_xiumu'}
 local recipes=setmetatable({},{__mode='k'})
 local function ids(s)local r={}if s~='.' and s~='' then for n in s:gmatch('[^+]+')do r[#r+1]=assert(tonumber(n))end end;return r end
@@ -5290,10 +5290,7 @@ do
 -- Fixed b6025acc OverseasVersion necessary dependency slice: ov_muyue only.
 -- This supplies AgCardsToName's complete ACTN writer; the surrounding package
 -- is not claimed ported. Persist scalar names, never cross-snapshot proxies.
-local function known(value, key)
-    if value == nil then ai_unsupported("ov_muyue value is unknown", key) end
-    return value
-end
+local known = AIValue.requireKnown
 
 local function remember(self, card, target)
     self:setStrategyMemory("ACTN", card:objectName())

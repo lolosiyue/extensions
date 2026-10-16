@@ -1,9 +1,6 @@
 -- Lolihime source b6025acc. Preserve the fixed first-201 discard scan and the
 -- source's ordered table.remove(1) behavior; neither is a suit-count heuristic.
-local function known(value,key)
-    if value==nil then ai_unsupported("Lolihime fact unknown",key) end
-    return value
-end
+local known = AIValue.requireKnown
 sgs.ai_fill_skill.shouji=function(self,inclusive,request)
     if (self.player:getStrategyHasUsed("#shoujicard")) then return end
     if (self.player:getHandcardNum())<(self.player:getHp())+1 then return end

@@ -1,10 +1,6 @@
 -- Fixed ling-ai.lua donor b6025acc983331337614289d8cac79b078c003af.
 -- First source costs are preserved even when current native V2 rejects them.
-local function known(value,label)
-    if AIUnsupported and AIUnsupported.is and AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("ling requires "..label,"ling") end
-    return value
-end
+local known = AIValue.requireKnown
 
 local function paid(self,skill,class,id,request)
     return self:bindSkillCard(skill, {id}, request, nil, class)

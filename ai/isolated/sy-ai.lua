@@ -1,5 +1,5 @@
 -- Fixed b6025acc sy policies. Original malformed proposals remain malformed outcomes.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("Sy missing "..k,"sy")end;return v end
+local known = AIValue.requireKnown
 
 local function known_card(self,id)return self:getKnownCardById(id)end
 local function scoped_use(self)

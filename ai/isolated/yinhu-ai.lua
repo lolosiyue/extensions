@@ -1,5 +1,5 @@
 -- Yinhu: fixed b6025acc source. Cross-inquiry state contains only primitives.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("yinhu fact unknown",k)end;return v end
+local known = AIValue.requireKnown
 
 local function known_card(self,id)return known(self:getKnownCardById(id),"disclosed card "..tostring(id))end
 -- The viewer's own property, read like the donor's toString() (absent reads "").

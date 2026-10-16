@@ -1,5 +1,5 @@
 -- Yitian fixed b6025acc: source strategies, pure request-local values.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("yitian fact unknown",k)end;return v end
+local known = AIValue.requireKnown
 
 -- General::isMale (printed, not the player's current gender) is not projected.
 local function general_male(self,p)ai_unsupported("printed general gender is not projected","yitian.general_is_male")end
@@ -7,7 +7,7 @@ local function known_card(self,id)return known(self:getKnownCardById(id),"disclo
 local function memory(self,key)local v,ok=self:getStrategyMemory("yitian."..key);if ok then return v end end
 local function guixin_target(self)local name=known(self:getDecisionContext().guixin_modify_target,"Guixin2Modify");if name==false then return nil end;return known(self.room:findPlayerByObjectName(name,true),"Guixin2Modify target")end
 local function hujia_count(self,p)local v,ok=self:getStrategyMemory("yitian.hujia:"..p:objectName());if ok then return v end;return p:getStrategyMark("caizhaoji_hujia")end
-local function dummy_plan()local use=AIUsePlan.new();use.isDummy=true;return use end
+local dummy_plan = AIUsePlan.dummy
 local source_classes={JuejiCard="jueji",LianliSlashCard="lianli-slash",GuihanCard="guihan",LexueCard="lexue",XunzhiCard="xunzhi",YtYisheCard="ytyishe",YtYisheAskCard="ytyishe_ask",TaichenCard="taichen",YTChengxiangCard="ytchengxiang",TouduCard="toudu"}
 local function decode(text)
  local cl,raw=text:match("^@([%w_]+)=(.*)$");if not cl or not source_classes[cl]then ai_unsupported("unexpected authored skill card wire","yitian")end

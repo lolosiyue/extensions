@@ -1,5 +1,5 @@
 -- Fixed scarletayuhuo b6025acc source policy. Readonly proposals never grant payment authority.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("scarletayuhuo fact unknown",k)end;return v end
+local known = AIValue.requireKnown
 local function __scarletayuhuo_value_call(o,k,...)if o==nil then error("attempt to index a nil value",0)end;if k=="getMark"and AIValue.isPlayer(o)then k="getStrategyMark"elseif k=="hasFlag"and AIValue.isPlayer(o)then k="getStrategyFlag"end;if type(o[k])~="function"then ai_unsupported("scarletayuhuo method unavailable",k)end;return known(o[k](o,...),k)end
 local function fact(self,k)
  if k=="ban_packages"then
@@ -27,7 +27,7 @@ local function tag(self,k,kind)
  if kind=="CardUse"then local to=AIList.new({});for _,n in ipairs(r.to)do to:append(known(self.room:findPlayerByObjectName(n,true),k))end;return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=to,card=CardView.new(r.card)}
  elseif kind=="Damage"then return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=r.to and self.room:findPlayerByObjectName(r.to,true),card=r.card and CardView.new(r.card),damage=r.amount,nature=r.nature,chain=r.chain,transfer=r.transfer} end
 end
-local function dummy_plan(value,extra,current)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;u.current_targets=current or {};return u end
+local dummy_plan = AIUsePlan.dummy
 local recipes=setmetatable({},{__mode="k"})
 local function copy(t)local r={}for k,v in pairs(t)do if type(v)=="table"then r[k]=copy(v)else r[k]=v end end;return r end
 local function clone(self,name,suit,number,skill)
@@ -222,8 +222,7 @@ local function set_public_count(self,p,k,v)self:setStrategyMemory("scarletayuhuo
 
 local function sort_actor_keep(self,player,cards)
  if not AIValue.sameLegacyIdentity(player,self.player)then ai_unsupported("foreign AI keep cache is private","s_w_2_wenjiu")end
- local sorted=self:sortByKeepValue(cards)
- for i,c in ipairs(sorted)do cards[i]=c end
+ self:sortByKeepValueInPlace(cards)
 end
 local function effect_data(self,k)
  local effect=room_tag(self,k,"CardEffect")

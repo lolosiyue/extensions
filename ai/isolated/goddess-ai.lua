@@ -1,13 +1,11 @@
 -- Fixed b6025acc goddess source policies. No hidden-card lookup or donor error repair.
 local function result(v)if AIUnsupported.is(v)then error(v,0)end;return v end
-local function known(v,k)result(v);if v==nil then ai_unsupported("goddess fact is unknown",k)end;return v end
+local known = AIValue.requireKnown
 local nullable={getWeapon=true,getCard=true,getCardId=true,findPlayerBySkillName=true,getCurrent=true,speak=true,setStrategyPlayerFlag=true,
     useCardshot=true,getSameEquip=true,getEvaluationCandidate=true,getCardCandidate=true,updateIntention=true}
 local sorted={sort=true,sortByKeepValue=true,sortByUseValue=true}
 
-local function dummy(isDummy,extra)
-    return {isDummy=isDummy==nil and true or isDummy,extra_target=extra or 0,to=AIList.new({}),current_targets={}}
-end
+local dummy = AIUsePlan.dummy
 local function role(self,p)return p==self.player and p:getKnownRole()or self:getRoleEstimate(p)end
 local function is_current(use,target)
     for _,p in ipairs(use.current_targets or{})do if p==target or p==target:objectName()then return true end end

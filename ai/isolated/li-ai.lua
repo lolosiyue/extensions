@@ -1,8 +1,5 @@
 -- Fixed b6025acc li policy bodies. Private draw order is never inspected.
-local function known(value,key)
-    if value==nil then ai_unsupported("li strategy fact is unknown",key)end
-    return value
-end
+local known = AIValue.requireKnown
 
 -- The donor reads the viewer's own tags/properties; an absent one reads as the
 -- QVariant default (nil player, "" string, empty list).

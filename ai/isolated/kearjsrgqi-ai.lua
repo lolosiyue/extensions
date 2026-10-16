@@ -63,7 +63,7 @@ end
 local function package_known(o,k,...)
  local v=table.pack(package_call(o,k,...));if v[1]==nil then unsupported(k)end;return table.unpack(v,1,v.n)
 end
-local function dummy(value,extra,current)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;u.current_targets=current or{};return u end
+local dummy = AIUsePlan.dummy
 local function patterns_for(self,class)
  if class then return patterns(class)end
  local a=AICardCatalog.patternNames()

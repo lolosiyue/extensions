@@ -6,7 +6,7 @@ local function getYongdiTarget(self,targets)
  ai_unsupported("source getYongdiTarget general/lord-skill capability unavailable","kearnews.kexihuo.yongdi")
 end
 local function spec(name,skill,c)return{name=name,skill=skill,suit=c:getSuit(),number=c:getNumber(),subcards={c:getKnownEffectiveId()}}end
-local function dummy(value,extra)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;return u end
+local dummy = AIUsePlan.dummy
 local function analeptic_available(self,card)
  -- Analeptic::IsAvailable without a card is a native rule answer that is not projected.
  if not card then ai_unsupported("source static Analeptic availability is not projected","kearnews.analeptic_available")end

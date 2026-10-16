@@ -1,9 +1,6 @@
 -- Christmas AI at b6025acc. Source policy is preserved; its removed LuaSkillCard
 -- serialization is explicitly repaired through the current RLiwa V2 authority.
-local function known(value, key)
-    if value == nil then ai_unsupported("Christmas policy fact is unknown", key) end
-    return value
-end
+local known = AIValue.requireKnown
 
 sgs.ai_skill_invoke.RLiwa = function(self)
     return not (self.player:isKongcheng() and self:needKongcheng(self.player))

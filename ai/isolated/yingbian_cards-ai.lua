@@ -1,5 +1,5 @@
 -- Fixed yingbian_cards policy: ordered source branches and RNG are retained.
-local function known(v,key)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("Yingbian requires "..key,"yingbian_cards")end;return v end
+local known = AIValue.requireKnown
 
 local function scope(self)
     local c=self:getDecisionContext().yingbian

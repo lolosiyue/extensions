@@ -1,5 +1,5 @@
 -- Fixed b6025acc Maotu effective source; no global Card/Player caches.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("maotu fact unknown",k)end;return v end
+local known = AIValue.requireKnown
 
 local function known_card(self,id)return known(self:getKnownCardById(id),"disclosed card "..tostring(id))end
 -- The viewer's own property; both readers use toString, so absent reads as "".

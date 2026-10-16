@@ -1,5 +1,5 @@
 -- MRmou fixed b6025acc effective policies. Native scopes and disclosed DTOs only.
-local function known(v,key)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("MRmou missing "..key,"MRmou")end;return v end
+local known = AIValue.requireKnown
 
 local function skill_suit_table(self,name)
  if type(self.getSourceSuitValueTable)~="function"then ai_unsupported("Fixed source suit catalog unavailable",name)end
@@ -7,7 +7,7 @@ local function skill_suit_table(self,name)
  if present~=true or value~=nil and type(value)~="table"then ai_unsupported("Invalid fixed source suit catalog result",name)end
  return value
 end
-local function dummy()return AIUsePlan.new({isDummy=true})end
+local dummy = AIUsePlan.dummy
 -- jilve_wansha is the viewer's own JilveWansha tag read through toBool(); whether the
 -- engine registers olwansha (has_olwansha_definition) is not projected.
 local function fact(self,group,key)

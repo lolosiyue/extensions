@@ -1,20 +1,12 @@
 -- Thicket package, fixed b6025acc authority. No shared toTurnOver override.
 sgs.ai_choicemade_filter.skillChoice=sgs.ai_choicemade_filter.skillChoice or {}
-local function known(value,key)
-    if value==nil then ai_unsupported("thicket fact is unknown",key) end
-    return value
-end
+local known = AIValue.requireKnown
 
 -- Legacy sort mutates the caller's Lua list; the common value API returns a
 -- sorted copy. Retain shared friend/enemy array identity for later callbacks.
-local function sort_in_place(self, players, key)
-    local sorted=self:sort(players, key)
-    for i=1,#sorted do players[i]=sorted[i] end
-    return players
-end
 sgs.ai_skill_invoke.xingshang=true
 sgs.ai_skill_playerchosen.fangzhu=function(self,targets)
-    sort_in_place(self,self.friends_noself,"handcard")
+    self:sortInPlace(self.friends_noself, "handcard")
     for _,friend in ipairs(self.friends_noself) do if not friend:faceUp() then return friend end end
     local count=self.player:getLostHp()
     for _,friend in ipairs(self.friends_noself) do if not self:toTurnOver(friend, count, "fangzhu") then return friend end end
@@ -25,7 +17,7 @@ sgs.ai_skill_playerchosen.fangzhu=function(self,targets)
             if self:toTurnOver(enemy, count, "fangzhu") and known(hasManjuanEffect(enemy),"Manjuan") then return enemy end
         end
     else
-        sort_in_place(self,self.enemies)
+        self:sortInPlace(self.enemies)
         for _,enemy in ipairs(self.enemies) do
             if self:toTurnOver(enemy, count, "fangzhu") and known(hasManjuanEffect(enemy),"Manjuan") then return enemy end
         end
@@ -166,7 +158,7 @@ local function choose_yinghun(self,targets)
 	local player = self:AssistTarget()
 
 	if x==1 then
-		sort_in_place(self,self.friends_noself,"handcard")
+		self:sortInPlace(self.friends_noself, "handcard")
 		self.friends_noself = reverse(self.friends_noself)
 		for _,friend in ipairs(self.friends_noself)do
 			if self:hasSkills(sgs.lose_equip_skill, friend) and #friend:getEquips()>0
@@ -221,7 +213,7 @@ local function choose_yinghun(self,targets)
 			end
 		end
 	elseif #self.friends>1 then
-		sort_in_place(self,self.friends_noself,"chaofeng")
+		self:sortInPlace(self.friends_noself, "chaofeng")
 		for _,friend in ipairs(self.friends_noself)do
 			if self:hasSkills(sgs.lose_equip_skill, friend) and #friend:getEquips()>0
 			  and not friend:hasSkill("manjuan") then
@@ -262,7 +254,7 @@ local function choose_yinghun(self,targets)
 			end
 
 			if not wf then
-				sort_in_place(self,self.enemies,"chaofeng")
+				self:sortInPlace(self.enemies, "chaofeng")
 				for _,enemy in ipairs(self.enemies)do
 					if enemy:getCardCount(true)==n
 					and self:doDisCard(enemy, "nil", true, n) then
@@ -299,7 +291,7 @@ local function choose_yinghun(self,targets)
 		if self.yinghun then self.yinghunchoice = "dxt1" end
 	end
 	if not self.yinghun and x>1 and #self.enemies>0 then
-		sort_in_place(self,self.enemies,"handcard")
+		self:sortInPlace(self.enemies, "handcard")
 		for _,enemy in ipairs(self.enemies)do
 			if enemy:getCardCount(true)>=n
 			and self:doDisCard(enemy, "nil", true, n) then
@@ -373,7 +365,7 @@ end
 local function getBeggar(self)
 	local least = getLowerBoundOfHandcard(self)
 
-	sort_in_place(self,self.friends_noself)
+	self:sortInPlace(self.friends_noself)
 	for _,friend in ipairs(self.friends_noself)do
 		if friend:getHandcardNum()==least then
 			return friend
@@ -497,9 +489,7 @@ local dimeng_discard = function(self,discard_num,mycards)
 end
 
 
-local function dummy()
-    local use=AIUsePlan.new();use.isDummy=true;return use
-end
+local dummy = AIUsePlan.dummy
 local function thicket_card(self,skill,class,costs,request)
     local receipt=self:bindSkillCard(skill, costs, request)
     local suit,number=sgs.Card_NoSuit,0
@@ -551,7 +541,7 @@ sgs.ai_skill_use_func.DimengCard = function(card,use,self,request)
 	if #mycards==0 then return end
 	mycards = self:sortByKeepValue(mycards) --桃的keepValue是5，useValue是6；顺手牵羊的keepValue是1.9，useValue是9
 
-	sort_in_place(self,self.enemies,"handcard")
+	self:sortInPlace(self.enemies, "handcard")
 	local friends = {}
 	for _,player in ipairs(self.friends_noself)do
 		if not player:hasSkill("manjuan") then
@@ -568,7 +558,7 @@ sgs.ai_skill_use_func.DimengCard = function(card,use,self,request)
 	end
 	table.sort(friends,cmp_HandcardNum)
 
-	sort_in_place(self,self.enemies,"defense")
+	self:sortInPlace(self.enemies, "defense")
 	for _,enemy in ipairs(self.enemies)do
 		if enemy:hasSkill("manjuan") then
 			local e_hand = enemy:getHandcardNum()

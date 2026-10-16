@@ -1,10 +1,7 @@
 -- YJCM2012. Effective source: b6025acc ai/yjcm2012-ai.lua.
 -- Policy choices retain source order; SkillCard identities come from native
 -- audited prototypes and every submitted product carries an issued receipt.
-local function known(value,key)
-    if value==nil then ai_unsupported("YJCM2012 fact is not projected",key) end
-    return value
-end
+local known = AIValue.requireKnown
 local function has_skill(self,player,names,multiple)
     local value=AIValue.callKnown(player,multiple and "hasSkills" or "hasSkill",names)
     local view=type(player)=="table" and rawget(player,"_view")
@@ -25,14 +22,7 @@ end
 local function visible_card(self,id)
     return known(self:getChoiceCard(id) or self:getKnownCardById(id),"disclosed card "..tostring(id))
 end
-local function dummy()
-    local use=AIUsePlan.new();use.isDummy=true;use.extra_target=0;use.current_targets={};return use
-end
-local function sort_in_place(self,method,list,...)
-    local ordered=AIValue.callKnown(self,method,list,...)
-    for i,value in ipairs(ordered) do list[i]=value end
-    return list
-end
+local dummy = AIUsePlan.dummy
 local function legacy(self,skill,class,costs,request,user_string)
     return (self:bindSkillCard(skill,costs,request,user_string,class))
 end
@@ -83,7 +73,7 @@ sgs.ai_skill_playerchosen.qianxi = function(self,targets)
 	if #enemies==1 then
 		return enemies[1]
 	else
-		sort_in_place(self,"sort",enemies,"defense")
+		self:sortInPlace(enemies, "defense")
 		if not isRed then
 			for _,enemy in ipairs(enemies)do
 				if has_skill(self,enemy,"qingguo") and self:slashIsEffective(slash,enemy) then return enemy end
@@ -262,20 +252,20 @@ sgs.ai_skill_askforyiji.miji = function(self,card_ids)
 	end
 
 	local cards = #toGive>0 and toGive or allcards
-	sort_in_place(self,"sortByKeepValue",cards,true)
+	self:sortByKeepValueInPlace(cards, true)
 	local id = cards[1]:getId()
 
 	local card,friend = self:getCardNeedPlayer(cards)
 	if card and friend and table.contains(available_friends,friend) then return friend,(card:getKnownId()) end
 
 	if #available_friends>0 then
-		sort_in_place(self,"sort",available_friends,"handcard")
+		self:sortInPlace(available_friends, "handcard")
 		for _,afriend in ipairs(available_friends)do
 			if not self:needKongcheng(afriend,true) then
 				return afriend,id
 			end
 		end
-		sort_in_place(self,"sort",available_friends,"defense")
+		self:sortInPlace(available_friends, "defense")
 		return available_friends[1],id
 	end
 	return nil,-1
@@ -334,7 +324,7 @@ sgs.ai_skill_choice.jiangchi = function(self,choices)
 	end
 
 	if slashnum>1 or (slashnum>0 and goodtarget>0) then needburst = 1 end
-	sort_in_place(self,"sort",self.enemies,"defenseSlash")
+	self:sortInPlace(self.enemies, "defenseSlash")
 	local can_save_card_num = (self.player:getMaxCards())-(self.player:getHandcardNum())
 	if target==0 or can_save_card_num>1 or (self.player:isSkipped(sgs.Player_Play)) then return "jiang" end
 	if self:needBear() then return "jiang" end
@@ -391,8 +381,8 @@ sgs.ai_fill_skill.gongqi = function(self,inclusive,request)
 	end
 
 	if self:getOverflow()>0 and self:getCardsNum("Slash")>=1 then
-		sort_in_place(self,"sortByKeepValue",handcards)
-		sort_in_place(self,"sort",self.enemies,"defense")
+		self:sortByKeepValueInPlace(handcards)
+		self:sortInPlace(self.enemies, "defense")
 		for _,c in ipairs(handcards)do
 			if (c:isKindOf("Snatch")) or (c:isKindOf("Dismantlement")) then
 				local use = dummy()
@@ -522,7 +512,7 @@ sgs.ai_skill_use_func.AnxuCard = function(card,use,self,request)
 			table.insert(friends,friend)
 		end
 	end
-	sort_in_place(self,"sort",friends,"handcard")
+	self:sortInPlace(friends, "handcard")
 
 	local least_friend,most_friend
 	if #friends>0 then
@@ -545,7 +535,7 @@ sgs.ai_skill_use_func.AnxuCard = function(card,use,self,request)
 		end
 	end
 
-	sort_in_place(self,"sort",enemies,"handcard")
+	self:sortInPlace(enemies, "handcard")
 	enemies = sgs.reverse(enemies)
 	local most_enemy
 	if #enemies>0 then most_enemy = enemies[1] end
@@ -592,7 +582,7 @@ sgs.ai_skill_use_func.AnxuCard = function(card,use,self,request)
 		end
 	end
 
-	sort_in_place(self,"sort",enemies,"defense")
+	self:sortInPlace(enemies, "defense")
 	if least_friend then
 		for _,enemy in ipairs(enemies)do
 			local hand1 = (enemy:getHandcardNum())
@@ -609,7 +599,7 @@ sgs.ai_skill_use_func.AnxuCard = function(card,use,self,request)
 
 
 
-	sort_in_place(self,"sort",enemies,"handcard",true)
+	self:sortInPlace(enemies, "handcard", true)
 	-- Friend -> Friend
 	if #friends>=2 then
 		if need_kongcheng_friend and (least_friend:isKongcheng()) then
@@ -698,7 +688,7 @@ sgs.ai_use_priority.AnxuCard = 9.6
 sgs.ai_skill_playerchosen.zhuiyi = function(self,targets)
 	local first,second
 	targets = sgs.QList2Table(targets)
-	sort_in_place(self,"sort",targets,"defense")
+	self:sortInPlace(targets, "defense")
 	for _,friend in ipairs(targets)do
 		if self:isFriend(friend) and (friend:isAlive()) and not (has_skill(self,friend,"manjuan") and (friend:getPhase())==sgs.Player_NotActive and (friend:getLostHp())==0) then
 			if isLord(friend) and self:isWeak(friend) then return friend end
@@ -841,7 +831,7 @@ sgs.ai_fill_skill.qice = function(self,inclusive,request)
 		end
 	end
 	ids = sgs.QList2Table(ids)
-	sort_in_place(self,"sortByUseValue",canCs)
+	self:sortByUseValueInPlace(canCs)
 	self:setPriorityValue("QiceCard",4-#ids,"qice")
 	if #ids<3 then
 		for _,c in ipairs(canCs)do

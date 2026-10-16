@@ -1,5 +1,5 @@
 -- Fixed b6025acc hayate. Preserve source terminal errors; no private priors.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("hayate fact is unknown",k)end;return v end
+local known = AIValue.requireKnown
 local nullable={findPlayerToDamage=true,findPlayerToDraw=true,findPlayerToDiscard=true,findPlayerBySkillName=true,setStrategyPlayerFlag=true,toPlayer=true}
 local sorted={sort=true,sortByKeepValue=true,sortByUseValue=true}
 

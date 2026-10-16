@@ -1,7 +1,7 @@
 -- Fixed b6025acc Mountainrumour; private helpers retain the original branch order.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("Mountainrumour missing "..k,"mountainrumour")end;return v end
+local known = AIValue.requireKnown
 
-local function dummy()local use=AIUsePlan.new();use.isDummy=true;return use end
+local dummy = AIUsePlan.dummy
 local function r45_shisheng(self,name,costs,preview)
  return self:evaluateOwnerViewAsCard({source_key=preview and "mountainrumour.shisheng_preview" or "mountainrumour.shisheng",
   name=name,skill=preview and "" or "shisheng",suit=preview and sgs.Card_NoSuit or sgs.Card_SuitToBeDecided,

@@ -246,11 +246,7 @@ end
 -- Target recommendation failures are distinct from an empty ranked result:
 -- unknown classification/relation/projection, missing evaluators, malformed hooks,
 -- and non-finite scores must raise unsupported, never choose the fallback.
-local function target_known(value, key)
-    if AIUnsupported.is(value) then error(value, 0) end
-    if value == nil then ai_unsupported("target recommendation projection is unknown", key) end
-    return value
-end
+local target_known = AIValue.requireKnown
 local function target_number(value, key)
     if type(value) ~= "number" or value ~= value or value == math.huge or value == -math.huge then
         ai_unsupported("target recommendation score is not finite", key)

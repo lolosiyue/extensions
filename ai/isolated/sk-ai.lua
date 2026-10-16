@@ -1,5 +1,5 @@
 -- sk fixed b6025acc. Preserve source policy quirks and ordered material selection.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported('sk input unknown',k)end;return v end
+local known = AIValue.requireKnown
 local nullable={toPlayer=true,getLord=true,getCurrent=true,getArmor=true,getWeapon=true,getMaxCard=true,getSameEquip=true,findPlayerBySkillName=true,findPlayerByObjectName=true,AssistTarget=true,useBasicCard=true,updatePlayers=true,updateIntention=true,setStrategyCardFlag=true,writeToConsole=true}
 
 local function own_ai(p)local a=p._room and p._room._ai;if not a or p~=a.player then ai_unsupported('sk view-as material is not owner-authorized','sk.view_as')end;return a end

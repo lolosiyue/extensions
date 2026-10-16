@@ -1,9 +1,6 @@
 -- Fixed boss-ai.lua donor b6025acc983331337614289d8cac79b078c003af.
 -- Source policy order is preserved; submitted costs require native receipts.
-local function known(value,label)
-    if value==nil then ai_unsupported("boss requires "..label,"boss") end
-    return value
-end
+local known = AIValue.requireKnown
 
 local function current(use,to)
     for _,p in ipairs(use.current_targets or{})do

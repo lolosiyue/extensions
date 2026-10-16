@@ -1,5 +1,5 @@
 -- Mobile Standard fixed b6025acc. Native authority remains separate from source plans.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("mobile standard fact unknown",k)end;return v end
+local known = AIValue.requireKnown
 
 local function known_card(self,id)return known(self:getKnownCardById(id),"disclosed card "..tostring(id))end
 local function visible_hand(self,p)local cards=known(p:getKnownCards(),"known hand");if #cards~=p:getHandcardNum()then ai_unsupported("source enumerates undisclosed dead hand","mobilexingshang")end;return cards end
@@ -29,7 +29,13 @@ local function read(self,k)
  elseif k~="mobileqiaoshui_collateral"then return known(self.room:findPlayerByObjectName(v,true),k)end;return v
 end
 local function diagnostic(self,text)self.request.scratch=self.request.scratch or{};self.request.scratch.source_diagnostics=self.request.scratch.source_diagnostics or{};table.insert(self.request.scratch.source_diagnostics,text)end
-local function dummy_plan(isDummy,extra,targets)local d=AIUsePlan.new();d.isDummy=isDummy~=false;d.extra_target=extra or 0;d.current_targets={};for _,p in sgs.list(targets or{})do d.current_targets[#d.current_targets+1]=type(p)=="string"and p or p:objectName()end;return d end
+local function dummy_plan(isDummy, extra, targets)
+    local current = {}
+    for _, player in sgs.list(targets or {}) do
+        current[#current + 1] = type(player) == "string" and player or player:objectName()
+    end
+    return AIUsePlan.dummy(isDummy, extra, current)
+end
 local function clone(self,key,skill,name,suit,number,ids)return self:evaluateOwnerViewAsCard({source_key=key,skill=skill,name=name,suit=suit,number=number,subcards=ids})end
 local function turn_clone(self,skill,name,suit,number,ids,request)local base=self:getEvaluationCard(name);if not base then return nil end;return self:evaluateTurnConversion(skill,base:getClassName(),{name=name,skill=skill,suit=suit,number=number,subcards=ids},request)end
 local function contains_identity(cs,c)for _,v in sgs.list(cs)do if AIValue.sameLegacyIdentity(v,c)then return true end end;return false end

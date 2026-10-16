@@ -1,21 +1,9 @@
 -- Fixed erciyuan-ai.lua b6025acc983331337614289d8cac79b078c003af.
 -- Decisions preserve donor loop/short-circuit order; native scopes own authority.
 local package_skills={}
-local function known(value,key)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("erciyuan policy input is unknown",key) end
-    return value
-end
+local known = AIValue.requireKnown
 
 
-local function sorted(self,cards,method,...)
-    local result=AIValue.callKnown(self, method, cards, ...)
-    for i,c in ipairs(result) do cards[i]=c end
-    return cards
-end
-local function sort_players(self,cards,...) return sorted(self,cards,"sort",...) end
-local function sort_use(self,cards,...) return sorted(self,cards,"sortByUseValue",...) end
-local function sort_keep(self,cards,...) return sorted(self,cards,"sortByKeepValue",...) end
 local function action_request(self,request)
     if request and type(request.getActivationSkillName)~="function" then return AILegacyRequest.new(request,self.room) end
     return request
@@ -163,7 +151,7 @@ sgs.ai_skill_discard.ak_renzha = function(self)
 	local to_discard = {}
 	local cards = self.player:getHandcards()
 	cards = AIList.new(cards)
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	table.insert(to_discard, cards[1]:getEffectiveId())
 	return to_discard
 end
@@ -312,7 +300,7 @@ sgs.ai_skill_discard.weixiao            = function(self)
 		if x == 1 then
 			set_weixiao(self,self.player)
 		elseif #self.friends > 1 then
-			sort_players(self,self.friends, "chaofeng")
+			self:sortInPlace(self.friends, "chaofeng")
 			if not get_weixiao(self) and (self:isWeak(self.player) or self.player:getHandcardNum() <= 4) and not self:needKongcheng(self.player, true) then
 				set_weixiao(self,self.player)
 			end
@@ -333,7 +321,7 @@ sgs.ai_skill_discard.weixiao            = function(self)
 				end
 
 				if not wf then
-					sort_players(self,self.enemies, "chaofeng")
+					self:sortInPlace(self.enemies, "chaofeng")
 					for _, enemy in ipairs(self.enemies) do
 						if he_count(enemy) == n
 							and self:doDisCard(enemy, "he", false, n) then
@@ -379,7 +367,7 @@ sgs.ai_skill_discard.weixiao            = function(self)
 			if get_weixiao(self) then set_weixiao_choice(self,"a") end
 		end
 		if not get_weixiao(self) and x > 1 and #self.enemies > 0 then
-			sort_players(self,self.enemies, "handcard")
+			self:sortInPlace(self.enemies, "handcard")
 			for _, enemy in ipairs(self.enemies) do
 				if he_count(enemy) >= n
 					and self:doDisCard(enemy, "he", false, n) then
@@ -482,7 +470,7 @@ end
 
 sgs.ai_skill_use_func["#luagongluecard"] = function(card,use,self,request)
 	local target
-	sort_players(self,self.enemies, "defense")
+	self:sortInPlace(self.enemies, "defense")
 	local lord = self.room:getLord()
 	if self.player:getKnownRole() == "rebel" then
 		if not lord:isKongcheng() then
@@ -511,7 +499,7 @@ sgs.ai_card_intention["luagongluecard"]  = 60
 sgs.ai_skill_playerchosen.LuaChigui = function(self, targets)
 	if self:isWeak(self.player) then return nil end
 	targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	self:sortInPlace(targets, "defense")
 	local dest
 	local temp = 0
 	for _, target in ipairs(targets) do
@@ -590,7 +578,7 @@ LuaWangxiang_skill.getTurnUseCard=function(self,inclusive,request)
 	if wxhcn > losehp then return end
 	local cards = self.player:getCards("h")
 	cards = AIList.new(cards)
-	sort_use(self,cards, true)
+	self:sortByUseValueInPlace(cards, true)
 	local card_nd = cards[1]
 	return parse(self,request,("ex_nihilo:LuaWangxiang[%s:%s]=%d"):format(card_nd:getSuitString(), card_nd:getNumberString(),
 		card_nd:getKnownEffectiveId()))
@@ -611,7 +599,7 @@ luablackflame_skill.getTurnUseCard=function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#luablackflamecard"] = function(card,use,self,request)
-	sort_players(self,self.enemies, "hp")
+	self:sortInPlace(self.enemies, "hp")
 	for _, enemy in ipairs(self.enemies) do
 		if self:objectiveLevel(enemy) > 3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy, sgs.DamageStruct_Fire, self.player) then
 			if self.player:getHp() > enemy:getHp() and self.player:getHp() > 1 and self:canDamage(enemy, self.player, nil) then
@@ -642,7 +630,7 @@ end
 sgs.ai_skill_cardchosen.LuaGqset            = function(self, who, flags)
 	local cards = self.player:getCards("h")
 	cards = AIList.new(cards)
-	sort_use(self,cards, true)
+	self:sortByUseValueInPlace(cards, true)
 	for _, card in ipairs(cards) do
 		if card:isKindOf("BasicCard") then
 			return card
@@ -657,7 +645,7 @@ sgs.ai_skill_discard.LuaGqset               = function(self)
 	local to_discard = {}
 	local cards = self.player:getHandcards()
 	cards = AIList.new(cards)
-	sort_use(self,cards)
+	self:sortByUseValueInPlace(cards)
 	for _, card in ipairs(cards) do
 		if card:isKindOf("BasicCard") then
 			table.insert(to_discard, card:getKnownEffectiveId())
@@ -745,7 +733,7 @@ sgs.ai_card_intention.luatiaojiaocard     = 30
 
 sgs.ai_skill_playerchosen.luatiaojiaocard = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets, "defense")
+	self:sortInPlace(targets, "defense")
 	for _, p in ipairs(targets) do
 		if target_flag(self,p) then
 			target_flag(self,p,false)
@@ -855,7 +843,7 @@ LuaYaojing_skill.getTurnUseCard=function(self,inclusive,request)
 	local can = false
 	local cards = AIList.new(self.player:getHandcards())
 	local subcards = {}
-	sort_use(self,cards, true)
+	self:sortByUseValueInPlace(cards, true)
 	local cardsq = {}
 	for _, card in ipairs(cards) do
 		if not (isCard("Peach", card, self.player) or isCard("ExNihilo", card, self.player)) then
@@ -876,7 +864,7 @@ sgs.recover_hp_skill = sgs.recover_hp_skill .. "|LuaYaojing"
 
 sgs.ai_skill_playerchosen.LuaGongming = function(self, targets)
 	targets = AIList.new(targets)
-	sort_players(self,targets)
+	self:sortInPlace(targets)
 	for _, friend in ipairs(targets) do
 		if not self:isFriend(friend) then
 			table.removeOne(targets, friend)
@@ -1114,7 +1102,7 @@ LuaGongqi_skill.getTurnUseCard=function(self,inclusive,request)
 	end
 
 	local equip_card
-	sort_use(self,cards, true)
+	self:sortByUseValueInPlace(cards, true)
 
 	for _, card in ipairs(cards) do
 		if card:getTypeId() == sgs.Card_TypeEquip and (self:getUseValue(card) < sgs.ai_use_value.Slash or inclusive)
@@ -1165,7 +1153,7 @@ luajianyu_skill.getTurnUseCard=function(self,inclusive,request)
 			table.insert(cards, disclosed(self,id))
 		end
 	end
-	sort_use(self,cards, true)
+	self:sortByUseValueInPlace(cards, true)
 	if #cards == 0 or ((alivenum > 4) and (alivenum / yong:length()) < 1.5) then return end
 	for i = 1, alivenum, 1 do
 		table.insert(subcards, cards[i]:getId())
@@ -1184,7 +1172,7 @@ LuaChitian_skill.name = "LuaChitian"
 table.insert(package_skills, LuaChitian_skill)
 LuaChitian_skill.getTurnUseCard=function(self,inclusive,request)
 	self:updatePlayers()
-	sort_players(self,self.enemies, "defense")
+	self:sortInPlace(self.enemies, "defense")
 	local no_have = true
 	local cardsq = self.player:getCards("he")
 	if self.player:getPile("wooden_ox"):length() > 0 then
@@ -1206,7 +1194,7 @@ LuaChitian_skill.getTurnUseCard=function(self,inclusive,request)
 			table.insert(cards, disclosed(self,id))
 		end
 	end
-	sort_use(self,cards, true)
+	self:sortByUseValueInPlace(cards, true)
 	local use_cards = {}
 
 	if #cards > 0 then
@@ -1321,7 +1309,7 @@ sgs.ai_skill_cardask["@jiguang"] = function(self, data, pattern)
 	end
 
 	local cards = AIList.new(self.player:getHandcards())
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	for _, card in ipairs(cards) do
 		if (not self:isWeak() and (self:getKeepValue(card) > 8 or self:isValuableCard(card))) then continue end
 		if card:isKindOf("BasicCard") then continue end
@@ -1345,7 +1333,7 @@ sgs.ai_skill_discard.LuaWenle = function(self)
 	local to_discard = {}
 	local cards = self.player:getHandcards()
 	cards = AIList.new(cards)
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	for i = 1, x do
 		table.insert(to_discard, cards[i]:getEffectiveId())
 	end
@@ -1671,23 +1659,23 @@ sgs.ai_skill_askforag["slyanhuo"] = function(self, card_ids)
 	end
 	if self:isFriend(damage.from) then
 		if self:isWeak(damage.from) and #spade > 0 then
-			sort_use(self,spade)
+			self:sortByUseValueInPlace(spade)
 			return spade[1]:getId()
 		elseif #club > 0 then
-			sort_use(self,club)
+			self:sortByUseValueInPlace(club)
 			return club[1]:getId()
 		end
 	else
 		if #heart > 0 then
-			sort_use(self,heart)
+			self:sortByUseValueInPlace(heart)
 			return heart[1]:getId()
 		end
 		if #diamond > 0 then
-			sort_use(self,diamond)
+			self:sortByUseValueInPlace(diamond)
 			return diamond[1]:getId()
 		end
 	end
-	sort_use(self,cards)
+	self:sortByUseValueInPlace(cards)
 	return cards[1]:getId()
 end
 
@@ -1702,7 +1690,7 @@ end
 
 sgs.ai_skill_use_func["#slyanhuocard"] = function(card,use,self,request)
 	local cards = AIList.new(self.player:getHandcards())
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	if cards[1]:isKindOf("Peach") or cards[1]:isKindOf("Nullification") or cards[1]:isKindOf("Analeptic") then return end
 	use.card=final_parse(self,request,"#slyanhuocard:" .. cards[1]:getEffectiveId() .. ":")
 	return
@@ -1836,7 +1824,7 @@ sgs.ai_skill_playerchosen["luasynchrogazer_Friend"] = function(self, targets)
 	end
 	if #friends == 0 then return targets:first() end
 
-	sort_players(self,friends, "defense")
+	self:sortInPlace(friends, "defense")
 	for _, friend in ipairs(friends) do
 		if friend:getHandcardNum() < 2 and not self:needKongcheng(friend) and not self:willSkipPlayPhase(friend) and not hasManjuanEffect(friend) then
 			return friend
@@ -1858,7 +1846,7 @@ sgs.ai_skill_playerchosen["luasynchrogazer_Friend"] = function(self, targets)
 		end
 	end
 
-	sort_players(self,friends, "handcard")
+	self:sortInPlace(friends, "handcard")
 	for _, friend in ipairs(friends) do
 		if not self:needKongcheng(friend) and not self:willSkipPlayPhase(friend) and not hasManjuanEffect(friend) then
 			return friend
@@ -1907,7 +1895,7 @@ LuaCangshan_skill.getTurnUseCard=function(self,inclusive,request)
 	end
 
 	local equip_card
-	sort_use(self,cards, true)
+	self:sortByUseValueInPlace(cards, true)
 
 	for _, card in ipairs(cards) do
 		if card:getTypeId() == sgs.Card_TypeEquip and (self:getUseValue(card) < sgs.ai_use_value.Slash or inclusive)
@@ -1992,7 +1980,7 @@ sgs.ai_skill_cardask["@jmdiscard"] = function(self, data, pattern, target, targe
 		local card_id
 		local hcards = self.player:getCards("h")
 		hcards = AIList.new(hcards)
-		sort_keep(self,hcards)
+		self:sortByKeepValueInPlace(hcards)
 		if self:isFriend(p) then
 			if isEquip("Crossbow", p) then return "." end
 			if p:getHp() + p:getHandcardNum() >= 4 then return "." end

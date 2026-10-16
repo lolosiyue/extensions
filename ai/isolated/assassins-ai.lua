@@ -1,8 +1,7 @@
 -- Assassins fixed b6025acc, full source policy with value-only dependencies.
-local function known(v,key) if AIUnsupported and AIUnsupported.is(v) then error(v,0) end;if v==nil then ai_unsupported("Assassins value is unknown",key) end;return v end
+local known = AIValue.requireKnown
 
 local function reverse(t)local result={}for i=#t,1,-1 do result[#result+1]=t[i]end;return result end
-local function sort_in_place(self,t,key)local sorted=self:sort(t, key);for i,v in ipairs(sorted)do t[i]=v end;return t end
 local function response_answer(self,card,options)
     if not card then return {kind="pass"} end
     if AIValue.isCard(card) and card:isEvaluationOnly() then
@@ -126,7 +125,7 @@ sgs.ai_skill_use_func.MizhaoCard = function(card,use,self,request)
 		if not enemy:isKongcheng() then count = count+1 end
 	end
 	if self.player:getHandcardNum()==1 and trash and count>=1 and #self.enemies>1 then
-		sort_in_place(self,self.enemies,"handcard")
+		self:sortInPlace(self.enemies, "handcard")
 		for _,enemy in ipairs(self.enemies)do
 			if not (enemy:hasSkill("manjuan") and enemy:isKongcheng())
 			and not self:hasTuntianEffect(enemy, true)
@@ -134,7 +133,7 @@ sgs.ai_skill_use_func.MizhaoCard = function(card,use,self,request)
 		end
 	end
 	if not target then
-		sort_in_place(self,self.friends_noself,"defense")
+		self:sortInPlace(self.friends_noself, "defense")
 		self.friends_noself = reverse(self.friends_noself)
 		if count<1 then return end
 		for _,friend in ipairs(self.friends_noself)do
@@ -173,7 +172,7 @@ sgs.ai_skill_playerchosen.mizhao = function(self,targets)
 			break
 		end
 	end
-	sort_in_place(self,self.enemies,"defense")
+	self:sortInPlace(self.enemies, "defense")
 	if from then
 		local slash = known(self:getEvaluationCard("slash"),"Mizhao evaluation Slash")
 		for _,to in ipairs(self.enemies)do

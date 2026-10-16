@@ -39,11 +39,7 @@ sgs.append_skill_list("double_slash_skill", "s4_xianfeng")
 sgs.append_skill_list("bad_skills", "s4_neiji")
 
 -- 天下霸武單挑點數。只加在 Scarlet，基礎層的 getMaxCard 不認識這些技能。
-local function general_duel_known(value, key)
-    if AIUnsupported.is(value) then error(value, 0) end
-    if value == nil then ai_unsupported("general duel input is unknown", key) end
-    return value
-end
+local general_duel_known = AIValue.requireKnown
 
 function SmartAIView:getGeneralDuelPoint(player, card)
     if not card then return nil end
@@ -430,11 +426,7 @@ ai_skill_invoke.s4_cloud_tuxi = function(self, options, request)
 end
 
 -- 原版：敵方且體力>1 就拒棄（改失體力）；體力<=1 才 dummy 棄 1。非敵或無當前回合拒棄。
-local function s4_discard_known(value, key)
-    if AIUnsupported.is(value) then error(value, 0) end
-    if value == nil then ai_unsupported("discard policy input is unknown", key) end
-    return value
-end
+local s4_discard_known = AIValue.requireKnown
 
 sgs.ai_skill_discard.s4_cloud_tuxi = function(self, discard_num, min_num, optional, include_equip)
     local target = self.room:getCurrent()
@@ -1595,11 +1587,7 @@ sgs.ai_ajustdamage_from.s4_juxiang = function(_, from, to, card)
     if from:getMark(mark) > 0 then return 1 end
 end
 
-local function benxi_known(value, key)
-    if AIUnsupported.is(value) then error(value, 0) end
-    if value == nil then ai_unsupported("s4_benxi source fact is unknown", key) end
-    return value
-end
+local benxi_known = AIValue.requireKnown
 sgs.ai_ajustdamage_from.s4_benxi = function(self, from, to, card)
     if card and benxi_known(card:isKindOf("Slash"), "s4_benxi.class")
         and (benxi_known(card:hasFlag("s4_benxi" .. to:objectName()), "s4_benxi.flag")

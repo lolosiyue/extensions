@@ -66,11 +66,7 @@ local function bind_use(name, handler)
     sgs.ai_skill_use_func[name] = handler
 end
 
-local function meow_rule(value,key)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("Meow source predicate is unknown",key) end
-    return value
-end
+local meow_rule = AIValue.requireKnown
 
 rawset(ai_skill_cardask,"@MeowBeige",nil)
 sgs.ai_skill_cardask["@MeowBeige"] = function(self, data)
@@ -160,11 +156,7 @@ end
 
 
 -- Full fixed meow-ai.lua:99-301, retaining source sorting and target order.
-local function meow_lijian_known(value, key)
-    if AIUnsupported.is(value) then error(value, 0) end
-    if value == nil then ai_unsupported("Meowlijian source fact is unknown", key) end
-    return value
-end
+local meow_lijian_known = AIValue.requireKnown
 local function meow_lijian_locked(player, card)
     return meow_lijian_known(player:isLocked(card), "Meowlijian.isLocked")
 end

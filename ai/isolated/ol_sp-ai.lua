@@ -1,5 +1,5 @@
 -- ol_sp fixed b6025acc. Owner/public policy and ordered source hypotheses.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported('ol_sp input unknown',k)end;return v end
+local known = AIValue.requireKnown
 
 local function context(self)return known(self:getDecisionContext().ol_sp,'ol_sp.context')end
 local function face(self,id)return self:getRequiredKnownCardById(tonumber(id)or id)end

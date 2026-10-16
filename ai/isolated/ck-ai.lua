@@ -1,19 +1,7 @@
 -- Fixed ck-ai.lua b6025acc983331337614289d8cac79b078c003af.
 -- Decisions preserve donor loop/short-circuit order; native scopes own authority.
 local package_skills={}
-local function known(value,key)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("ck policy input is unknown",key) end
-    return value
-end
-local function sorted(self,cards,method,...)
-    local result=AIValue.callKnown(self,method,cards,...)
-    for i,c in ipairs(result) do cards[i]=c end
-    return cards
-end
-local function sort_players(self,cards,...) return sorted(self,cards,"sort",...) end
-local function sort_use(self,cards,...) return sorted(self,cards,"sortByUseValue",...) end
-local function sort_keep(self,cards,...) return sorted(self,cards,"sortByKeepValue",...) end
+local known = AIValue.requireKnown
 local function action_request(self,request)
     if request and type(request.getActivationSkillName)~="function" then return AILegacyRequest.new(request,self.room) end
     return request
@@ -30,9 +18,7 @@ local function response_names(self,skill,class,names)
     return response(self,skill,class,{},targets)
 end
 local function context(self,key) return known((self:getDecisionContext())[key],"ck.context."..key) end
-local function dummy(is_dummy,extra,targets)
-    local use=AIUsePlan.new();use.isDummy=is_dummy~=false;use.extra_target=extra or 0;use.current_targets=targets or {};return use
-end
+local dummy = AIUsePlan.dummy
 local function visible_role(self,player)
     local role=player:getRole()
     if role~=nil then return role end
@@ -64,8 +50,8 @@ end
 
 sgs.ai_skill_use_func["#ckdianjicard"] = function(card,use,self,request)
 	local cards = AIList.new((self.player:getCards("he")))
-	sort_keep(self,cards)
-    sort_players(self,self.enemies)
+	self:sortByKeepValueInPlace(cards)
+    self:sortInPlace(self.enemies)
     for _,enemy in sgs.list(self.enemies)do
         if (self:objectiveLevel(enemy))>3 and not (self:cantbeHurt(enemy)) and (self:damageIsEffective(enemy,sgs.DamageStruct_Thunder,self.player)) and (self:canDamage(enemy,self.player,nil)) then
             use.card = bind(self,"ckdianji","#ckdianjicard",{(cards[1]:getKnownEffectiveId())},request)
@@ -147,8 +133,8 @@ end
 
 sgs.ai_skill_use_func["#cksiliecard"] = function(card,use,self,request)
 	local cards = AIList.new((self.player:getHandcards()))
-	sort_use(self,cards,true)
-	sort_players(self,self.enemies,"defense")
+	self:sortByUseValueInPlace(cards, true)
+	self:sortInPlace(self.enemies, "defense")
 	if (self:getOverflow())<=0 then return end
 	self:setPriorityValue("cksiliecard",0.2,"ck.cksilie")
 	local suit_table = { "spade","club","heart","diamond" }
@@ -224,7 +210,7 @@ sgs.ai_card_intention["cksiliecard"] = 60
 sgs.ai_use_priority["cksiliecard"] = 0.2
 
 sgs.ai_skill_use["@@ckbaihe"] = function(self,prompt)
-    sort_players(self,self.friends,"defense")
+    self:sortInPlace(self.friends, "defense")
     for _,friend in ipairs(self.friends)do
         if (self:doDisCard(friend,"e")) then
             return response(self,"ckbaihe","#ckbaihecard",{}, {friend})
@@ -329,8 +315,8 @@ end
 
 sgs.ai_skill_use_func["#cklongxicard"] = function(card,use,self,request)
 	local cards = AIList.new((self.player:getCards("he")))
-	sort_keep(self,cards)
-    sort_players(self,self.enemies)
+	self:sortByKeepValueInPlace(cards)
+    self:sortInPlace(self.enemies)
     for _,enemy in sgs.list(self.enemies)do
         if (self:objectiveLevel(enemy))>3 and not (self:cantbeHurt(enemy)) and (self:damageIsEffective(enemy,sgs.DamageStruct_Normal,self.player)) and not (self:cantDamageMore(self.player,enemy)) and ((enemy:getHp()) <= 3 or (self:isWeak())) and (self:canDamage(enemy,self.player,nil)) then
             use.card = bind(self,"cklongxi","#cklongxicard",{},request)
@@ -365,8 +351,8 @@ end
 
 sgs.ai_skill_use_func["#ckweishancard"] = function(card,use,self,request)
 	local cards = AIList.new((self.player:getCards("he")))
-	sort_keep(self,cards)
-    sort_players(self,self.enemies)
+	self:sortByKeepValueInPlace(cards)
+    self:sortInPlace(self.enemies)
     local use_cards = {}
     local types = {}
     
@@ -400,14 +386,14 @@ sgs.dynamic_value.damage_card["ckweishancard"] = true
 sgs.ai_skill_use["@@ckjinjie"] = function(self,prompt)
     local targets = {}
     table.insert(targets, (self.player:objectName()))
-    sort_players(self,self.friends_noself, "handcard")
+    self:sortInPlace(self.friends_noself, "handcard")
     for _, friend in ipairs(self.friends_noself) do
         if #targets < 3 then
             table.insert(targets, (friend:objectName()))
             break
         end
     end
-    sort_players(self,self.enemies, "defense")
+    self:sortInPlace(self.enemies, "defense")
     for _, enemy in ipairs(self.enemies) do
         if #targets < 3 and not (self.player:inMyAttackRange(enemy)) then
             table.insert(targets, (enemy:objectName()))

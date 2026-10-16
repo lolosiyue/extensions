@@ -1,8 +1,5 @@
 -- Fixed b6025acc guo effective callbacks. Earlier same-key definitions are superseded.
-local function known(value,key)
-    if value==nil then ai_unsupported("guo strategy fact is unknown",key)end
-    return value
-end
+local known = AIValue.requireKnown
 
 -- The viewer's own player tag; an absent tag is no player.
 local function fact_player(self,key)

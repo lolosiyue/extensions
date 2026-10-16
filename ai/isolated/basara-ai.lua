@@ -1,6 +1,6 @@
 -- b6025acc basara: census-effective non-hegemony RevealGeneral body (line 40).
 -- The alternate legacy global hegemony model is not installed into ordinary AI.
-local function need(v,key)if v==nil then ai_unsupported('basara fact unavailable',key)end return v end
+local need = AIValue.requireKnown
 local function query(o,key,...)
     if not o or type(o[key])~='function'then ai_unsupported('basara method unavailable',key)end
     local v=o[key](o,...);if AIUnsupported.is(v)then error(v,0)end;return need(v,key)

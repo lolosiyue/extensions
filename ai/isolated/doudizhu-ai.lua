@@ -1,5 +1,5 @@
 -- Fixed b6025acc doudizhu policies. Hypotheses never confer payment authority.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("doudizhu fact is unknown",k)end;return v end
+local known = AIValue.requireKnown
 local sorted={sort=true,sortByKeepValue=true}
 
 local function callback(reg,key,...)

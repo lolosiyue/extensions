@@ -1,7 +1,7 @@
 -- Fixed b6025acc Arknights strategies. The two old Lua SkillCard prototypes
 -- disappeared in the native V2 migration: retain source Card_Parse nil rather
 -- than manufacture action receipts or claim an accepted activation.
-local function known(v,k)if v==nil then ai_unsupported("arknights value is unknown",k)end return v end
+local known = AIValue.requireKnown
 
 local function missing_source_prototype(self,name)
     -- Whether the source's skill-card class is registered (Card_Parse) is engine

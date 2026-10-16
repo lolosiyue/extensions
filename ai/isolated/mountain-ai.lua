@@ -1,8 +1,5 @@
 -- Fixed Mountain effective callbacks; all costs require native authority.
-local function known(v,key)
-    if v==nil then ai_unsupported("Mountain policy input is not projected",key) end
-    return v
-end
+local known = AIValue.requireKnown
 local function skill(self,player,names)
     if type(names)=="table" then names=names:objectName() end
     local value=player:hasSkills(names)
@@ -11,14 +8,7 @@ local function skill(self,player,names)
     if player:objectName()==self.player:objectName() then ai_unsupported("owner skill roster is incomplete","mountain.skills") end
     return self:useKnowledgeEstimate({status="estimate",value=false,basis="mountain.undisclosed_skill_uses_visible_roster",target=player:objectName()},"mountain.skills")
 end
-local function dummy()
-    local use=AIUsePlan.new();use.isDummy=true;use.extra_target=0;use.current_targets={};return use
-end
-local function sort_in_place(self,players,key,reverse)
-    local ordered=self:sort(players,key,reverse)
-    for i,player in ipairs(ordered) do players[i]=player end
-    return players
-end
+local dummy = AIUsePlan.dummy
 local function reversed(cards)
     local result={};for i=#cards,1,-1 do result[#result+1]=cards[i] end;return AIList.new(result)
 end
@@ -153,7 +143,7 @@ sgs.ai_skill_invoke.fangquan = function(self,data)
 			return true
 		end
 
-		self.friends_noself = sort_in_place(self,self.friends_noself,"handcard")
+		self.friends_noself = self:sortInPlace(self.friends_noself, "handcard")
 		self.friends_noself = reversed(self.friends_noself)
 		for _,target in ipairs(self.friends_noself)do
 			if not skill(self,target,"dawu") and skill(self,target,"yongsi|zhiheng|"..sgs.priority_skill.."|shensu")
@@ -609,7 +599,7 @@ ai_skill_use["@@fangquan"] = function(self,prompt,request)
 		return action(self,"fangquan",{cards[1]:getEffectiveId()},{AssistTarget},request)
 	end
 
-	self.friends_noself = sort_in_place(self,self.friends_noself,"chaofeng")
+	self.friends_noself = self:sortInPlace(self.friends_noself, "chaofeng")
 	for _,target in ipairs(self.friends_noself)do
 		if not skill(self,target,"dawu") and skill(self,target,"yongsi|zhiheng|"..sgs.priority_skill.."|shensu")
 			and (not self:willSkipPlayPhase(target) or skill(self,target,"shensu")) then
@@ -815,7 +805,7 @@ function SmartAIView:card_for_qiaobian(who,flag,to_friends,to_enemies)
 				if card then
 					local index = card:getEquipSlot()
 					if #self:poisonCards({card},who)>0 then
-						to_enemies = sort_in_place(self,to_enemies,"defense")
+						to_enemies = self:sortInPlace(to_enemies, "defense")
 						for _,friend in ipairs(to_enemies)do
 							if not friend:hasEquipArea(index) then continue end
 							if not self:getSameEquip(card,friend) and friend:objectName()~=who:objectName()
@@ -824,9 +814,9 @@ function SmartAIView:card_for_qiaobian(who,flag,to_friends,to_enemies)
 					else
 						if card:isKindOf("Armor")
 						or card:isKindOf("DefensiveHorse") then
-							to_friends = sort_in_place(self,to_friends,"defense")
+							to_friends = self:sortInPlace(to_friends, "defense")
 						else
-							to_friends = sort_in_place(self,to_friends,"handcard",true)
+							to_friends = self:sortInPlace(to_friends, "handcard", true)
 						end
 						for _,friend in ipairs(to_friends)do
 							if not friend:hasEquipArea(index) then continue end
@@ -872,9 +862,9 @@ function SmartAIView:card_for_qiaobian(who,flag,to_friends,to_enemies)
 				local index = card:getEquipSlot()
 				if card:isKindOf("Armor")
 				or card:isKindOf("DefensiveHorse") then
-					to_friends = sort_in_place(self,to_friends,"defense")
+					to_friends = self:sortInPlace(to_friends, "defense")
 				else
-					to_friends = sort_in_place(self,to_friends,"handcard",true)
+					to_friends = self:sortInPlace(to_friends, "handcard", true)
 				end
 				for _,friend in ipairs(to_friends)do
 					if not friend:hasEquipArea(index) then continue end
@@ -954,9 +944,9 @@ sgs.ai_skill_discard.qiaobian = function(self,discard_num,min_num,optional,inclu
 		table.remove(to_discard)
 		table.insert(to_discard,cards[1]:getEffectiveId())
 
-		self.enemies = sort_in_place(self,self.enemies,"defense")
-		self.friends = sort_in_place(self,self.friends,"defense")
-		self.friends_noself = sort_in_place(self,self.friends_noself,"defense")
+		self.enemies = self:sortInPlace(self.enemies, "defense")
+		self.friends = self:sortInPlace(self.friends, "defense")
+		self.friends_noself = self:sortInPlace(self.friends_noself, "defense")
 
 		for _,friend in ipairs(self.friends)do
 			if not friend:getCards("j"):isEmpty() and not friend:containsTrick("YanxiaoCard")
@@ -993,7 +983,7 @@ sgs.ai_skill_discard.qiaobian = function(self,discard_num,min_num,optional,inclu
 		end
 
 		if #targets>0 then
-			targets = sort_in_place(self,targets,"defense")
+			targets = self:sortInPlace(targets, "defense")
 			return to_discard
 		end
 	elseif current_phase==sgs.Player_Discard and not self.player:isSkipped(sgs.Player_Discard) then
@@ -1033,7 +1023,7 @@ ai_skill_use["@@qiaobian"] = function(self,prompt,request)
 	if prompt=="@qiaobian-3" then
 
 
-		self.enemies = sort_in_place(self,self.enemies,"defense")
+		self.enemies = self:sortInPlace(self.enemies, "defense")
 		for _,friend in ipairs(self.friends)do
 			if not friend:getCards("j"):isEmpty() and not friend:containsTrick("YanxiaoCard")
 			and self:card_for_qiaobian(friend)
@@ -1077,7 +1067,7 @@ ai_skill_use["@@qiaobian"] = function(self,prompt,request)
 		end
 
 		if #targets>0 then
-			targets = sort_in_place(self,targets,"defense")
+			targets = self:sortInPlace(targets, "defense")
 
 			return action(self,"qiaobian",{},{targets[#targets]},request)
 		end
@@ -1153,7 +1143,7 @@ sgs.ai_skill_use_func.TiaoxinCard = function(card,use,self,request)
 		end
 	end
 
-	targets = sort_in_place(self,targets,"defenseSlash")
+	targets = self:sortInPlace(targets, "defenseSlash")
 	use.to:append(targets[1])
 	use.card = bind_legacy(self,"tiaoxin","TiaoxinCard",{},request)
 end
@@ -1252,7 +1242,7 @@ sgs.ai_skill_use_func.ZhibaCard = function(card,use,self,request)
 		end
 	end
 	if #lords==0 then return end
-	lords = sort_in_place(self,lords,"defense")
+	lords = self:sortInPlace(lords, "defense")
 	for _,lord in ipairs(lords)do
 		local zhiba_str
 		local cards = self.player:getHandcards()

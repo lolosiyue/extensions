@@ -1,19 +1,7 @@
 -- Fixed mojiangprevious-ai.lua b6025acc983331337614289d8cac79b078c003af.
 -- Decisions preserve donor loop/short-circuit order; native scopes own authority.
 local package_skills={}
-local function known(value,key)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("mojiangprevious policy input is unknown",key) end
-    return value
-end
-local function sorted(self,cards,method,...)
-    local result=AIValue.callKnown(self,method,cards,...)
-    for i,c in ipairs(result) do cards[i]=c end
-    return cards
-end
-local function sort_players(self,cards,...) return sorted(self,cards,"sort",...) end
-local function sort_use(self,cards,...) return sorted(self,cards,"sortByUseValue",...) end
-local function sort_keep(self,cards,...) return sorted(self,cards,"sortByKeepValue",...) end
+local known = AIValue.requireKnown
 local function action_request(self,request)
     if request and type(request.getActivationSkillName)~="function" then return AILegacyRequest.new(request,self.room) end
     return request
@@ -98,7 +86,7 @@ sgs.ai_skill_playerchosen.sy_old_shiao = function(self, targets)
 		end
 	end
 	if #tos > 0 then
-		sort_players(self,tos, "defenseSlash")
+		self:sortInPlace(tos, "defenseSlash")
 		return tos[1]
 	else
 	    return nil
@@ -162,7 +150,7 @@ end
 --布教（旧）
 sgs.ai_skill_cardask["@bujiao"] = function(self, data, pattern)
 	local cards = AIList.new((self.player:getHandcards()))
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	local zhangjiao = data:toPlayer()
 	local bujiaocard
 	if (self:isEnemy(zhangjiao)) or (not (self:isFriend(zhangjiao)))then
@@ -257,7 +245,7 @@ sgs.ai_skill_use_func["#sy_old_yaohuoCard"] = function(card,use,self,request)
 	local cards = (self.player:getHandcards())
 	cards = AIList.new(cards)
 	if (self.player:getStrategyHasUsed("#sy_old_yaohuoCard")) then return nil end
-	sort_players(self,self.enemies, "handcard")
+	self:sortInPlace(self.enemies, "handcard")
 	self.enemies = sgs.reverse(self.enemies)
 	local target
 	local a = (self.player:getHandcardNum()) + #(self.player:getEquips())
@@ -318,10 +306,10 @@ end
 sgs.ai_skill_use_func["#sy_old_sanzhiCard"] = function(card,use,self,request)
     if (self.player:getStrategyHasUsed("#sy_old_sanzhiCard")) then return nil end
 	if (self.player:isKongcheng()) then return nil end
-	sort_players(self,self.enemies)
+	self:sortInPlace(self.enemies)
 	local need_cards = {}
 	local cards = AIList.new((self.player:getHandcards()))
-	sort_use(self,cards)
+	self:sortByUseValueInPlace(cards)
 	for _,c in ipairs(cards) do
 	    if #need_cards == 0 then
 		    table.insert(need_cards, (c:getKnownEffectiveId()))
@@ -399,7 +387,7 @@ sgs.double_slash_skill = sgs.double_slash_skill .. "|sy_old_lingnue"
 --暴政
 sgs.ai_skill_cardask["@baozheng_old"] = function(self, data, pattern)
 	local cards = AIList.new((self.player:getCards("he")))
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	local dongzhuo = data:toPlayer()
 	local baozhengcard
 	local diamond_cards = {}
@@ -410,7 +398,7 @@ sgs.ai_skill_cardask["@baozheng_old"] = function(self, data, pattern)
 			end
 		end
 		if #diamond_cards > 0 then
-			sort_keep(self,diamond_cards)
+			self:sortByKeepValueInPlace(diamond_cards)
 			baozhengcard = diamond_cards[1]
 		else
 			return "."
@@ -462,7 +450,7 @@ sgs.ai_skill_cardask["@baozheng_old"] = function(self, data, pattern)
 					end
 				end
 				if #diamond_cards > 0 then
-					sort_keep(self,diamond_cards)
+					self:sortByKeepValueInPlace(diamond_cards)
 					baozhengcard = diamond_cards[1]
 				else
 					return "."
@@ -551,7 +539,7 @@ sgs.ai_skill_playerchosen["huangyin-invoke"] = function(self, targets)
 		end
 	end
 	if #tos == 0 then return nil end
-	sort_players(self,tos, "defense")	
+	self:sortInPlace(tos, "defense")
 	return tos[1]
 end
 
@@ -654,7 +642,7 @@ sgs.ai_skill_playerchosen["dihuiothers-choose"] = function(self, targets)
 		    table.insert(tos, p)
 		end
 	end
-	sort_players(self,tos, "hp")
+	self:sortInPlace(tos, "hp")
 	return tos[1]
 end
 
@@ -680,7 +668,7 @@ sgs.ai_skill_use_func["#sy_old_chanxianCard"] = function(card,use,self,request)
     if #self.enemies <= 0 then return nil end
     local cards = (self.player:getHandcards())
 	cards = AIList.new(cards)
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	local target
 	local enemy_target = {}
 	if #self.friends_noself <= 0 then
@@ -745,7 +733,7 @@ sgs.ai_skill_discard.sy_old_shisha = function(self, discard_num, min_num, option
 		    return to_discard
 		else
 		    local cards = AIList.new((self.player:getCards("he")))
-			sort_keep(self,cards)
+			self:sortByKeepValueInPlace(cards)
 			local index = 0
 			for i = #cards, 1, -1 do
 			    local card = cards[i]
@@ -761,7 +749,7 @@ sgs.ai_skill_discard.sy_old_shisha = function(self, discard_num, min_num, option
 		end
 	else
 	    local cards = AIList.new((self.player:getCards("he")))
-		sort_keep(self,cards, true)
+		self:sortByKeepValueInPlace(cards, true)
 		local index = 0
 		for i = #cards, 1, -1 do
 		    local card = cards[i]

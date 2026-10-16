@@ -1,10 +1,6 @@
 -- Pure counterparts of exclusive_cards-ai.lua. Native receipts authorize every
 -- response action; pending strategies retain only names and ordered players.
-local function known(value, label)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value == nil then ai_unsupported("exclusive card requires " .. label,"exclusive_cards") end
-    return value
-end
+local known = AIValue.requireKnown
 local function query(object, method, ...)
     if type(object) ~= "table" or type(object[method]) ~= "function" then
         ai_unsupported("exclusive card requires " .. method,"exclusive_cards")

@@ -1,5 +1,5 @@
 -- Fixed b6025acc yin effective bodies, with per-viewer primitive state.
-local function known(value,key)if value==nil then ai_unsupported("yin fact unknown",key)end return value end
+local known = AIValue.requireKnown
 
 local player_fields={feijun_target=true,shenshi_from=true}
 local function write(self,key,value)

@@ -1,11 +1,7 @@
 -- Five effective berserk callbacks, from b6025acc983331337614289d8cac79b078c003af.
 -- Preserve the donor's policy domain and short-circuit order. Native inquiry
 -- admission remains separate from these pure-value selections.
-local function known(value, key)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value == nil then ai_unsupported("berserk policy input is unknown", key) end
-    return value
-end
+local known = AIValue.requireKnown
 
 
 sgs.ai_skill_invoke.berserk_jichang = function(self, data)

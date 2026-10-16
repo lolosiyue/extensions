@@ -1,6 +1,6 @@
 -- Complete fixed b6025acc AnimationCardpack source bodies. All generated
 -- material costs remain explicit proposals until native source validation.
-local function known(v,k)if v==nil then ai_unsupported("AnimationCardpack value is unknown",k)end return v end
+local known = AIValue.requireKnown
 
 local function copy(t)local out={};for _,v in ipairs(known(t,"card list"))do out[#out+1]=v end return out end
 local function reverse(t)local out={};for i=#t,1,-1 do out[#out+1]=t[i]end return out end

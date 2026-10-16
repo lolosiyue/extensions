@@ -1,19 +1,11 @@
 -- Fixed Wind callbacks: source planning, retrial, targeting, intention and values.
 -- No Engine lookup, native card parsing, payment fabrication or hidden tag read.
-local function known(value, key)
-    if value == nil then ai_unsupported("wind policy input is not projected", key) end
-    return value
-end
+local known = AIValue.requireKnown
 
 local function dummy_use()
     local use=AIUsePlan.new()
     use.isDummy=true;use.extra_target=0;use.current_targets={}
     return use
-end
-local function sort_in_place(self,players,key,reverse)
-    local ordered=self:sort(players, key, reverse)
-    for i,player in ipairs(ordered) do players[i]=player end
-    return players
 end
 local function skill(self, player, names)
     local value = player:hasSkills(names)
@@ -387,7 +379,7 @@ local function tianxiang_select(self,damage,method)
         end
     end
     if not id then return end
-    self.enemies=sort_in_place(self,self.enemies,"hp")
+    self.enemies=self:sortInPlace(self.enemies, "hp")
     local amount=known(damage.damage or damage.amount,"tianxiang.damage")
     local nature=known(damage.nature,"tianxiang.nature")
     local source=damage.from or self.room:getCurrent()
@@ -592,7 +584,7 @@ sgs.ai_skill_use_func.HuangtianCard=function(card,use,self)
         if friend:hasLordSkill("huangtian") and not flag(self,friend,"HuangtianInvoked") and not self:hasManjuanEffect(friend) then targets[#targets+1]=friend end
     end
     if #targets>0 then
-        use.card=card;targets=sort_in_place(self,targets,"defense");use.to:append(targets[1])
+        use.card=card;targets=self:sortInPlace(targets, "defense");use.to:append(targets[1])
     elseif self:getCardsNum("Slash", "he")>=2 then
         for _,enemy in ipairs(self.enemies) do
             if enemy:hasLordSkill("huangtian") and not flag(self,enemy,"HuangtianInvoked") and not self:hasManjuanEffect(enemy, true)
@@ -607,7 +599,7 @@ sgs.ai_skill_use_func.HuangtianCard=function(card,use,self)
             if enabled then
                 local maximum=self:getMaxCard(self.player)
                 if maximum:getNumber()>card:getNumber() then
-                    targets=sort_in_place(self,targets,"defense",true)
+                    targets=self:sortInPlace(targets, "defense", true)
                     for _,enemy in ipairs(targets) do
                         if self.player:canSlash(enemy, nil, false, 0) then
                             use.card=card;self:setStrategyPlayerFlag(enemy,"AI_HuangtianPindian",true);use.to:append(enemy);break
@@ -632,7 +624,7 @@ sgs.ai_fill_skill.gongxin=function(self,inclusive,request)
     return legacy_policy(self,bind_skill(self,"gongxin",{},request),"GongxinCard",{})
 end
 sgs.ai_skill_use_func.GongxinCard=function(card,use,self)
-    self.enemies=sort_in_place(self,self.enemies,"handcard")
+    self.enemies=self:sortInPlace(self.enemies, "handcard")
     local reverse={};for i=#self.enemies,1,-1 do reverse[#reverse+1]=self.enemies[i] end;self.enemies=AIList.new(reverse)
     for _,enemy in ipairs(self.enemies) do
         if not enemy:isKongcheng() and self:objectiveLevel(enemy)>0
@@ -659,7 +651,7 @@ local function shensu_plan(self,costs,request,proposal_only)
     return "."
 end
 local function shensu_one(self,prompt,request,proposal_only)
-    self.enemies=sort_in_place(self,self.enemies,"defense")
+    self.enemies=self:sortInPlace(self.enemies, "defense")
     if self.player:containsTrick("lightning") and #self.player:getCards("j")==1
         and self:hasWizard(self.friends) and not self:hasWizard(self.enemies, true) then return "." end
     if self:needBear() then return "." end

@@ -26,10 +26,19 @@ function AIValue.isSkill(value) return AIValue.kind(value) == "skill" end
 -- Shared value boundary for direct isolated calls.  Keep this explicit instead
 -- of manufacturing methods from __index: callers can still probe optional
 -- APIs with type(object.method), and provider methods retain their full ABI.
-function AIValue.requireKnown(value, key)
+-- Preserve known false/zero/empty values and the original unsupported object.
+function AIValue.requireKnown(value, key, reason)
     if AIUnsupported and AIUnsupported.is(value) then error(value, 0) end
-    if value == nil then ai_unsupported("isolated AI value is unknown", key) end
+    if value == nil then ai_unsupported(reason or "isolated AI value is unknown", key) end
     return value
+end
+
+-- Bind fixed coverage metadata once; format diagnostics only for missing values.
+function AIValue.requireKnownFor(key, reason_prefix)
+    return function(value, field)
+        local reason = value == nil and (reason_prefix .. field) or nil
+        return AIValue.requireKnown(value, key, reason)
+    end
 end
 
 local function call_values(object, method, ...)
@@ -5015,11 +5024,7 @@ local turn_identity_methods = {
     source_owner="getSourceOwner",source_skill="getSourceSkillName",source_instance="getSourceInstanceID"
 }
 local turn_request_fields={"viewer","decision_id","state_revision","kind","reason","pattern","handling_method"}
-local function turn_checked(value,key)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("readonly turn input is unknown",key) end
-    return value
-end
+local turn_checked = AIValue.requireKnown
 local function turn_same(a,b)
     if type(a)~=type(b) then return false end
     if type(a)~="table" then return a==b end

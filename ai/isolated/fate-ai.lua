@@ -1,21 +1,9 @@
 -- Fixed fate-ai.lua b6025acc983331337614289d8cac79b078c003af.
 -- Decisions preserve donor loop/short-circuit order; native scopes own authority.
 local package_skills={}
-local function known(value,key)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("fate policy input is unknown",key) end
-    return value
-end
+local known = AIValue.requireKnown
 
 
-local function sorted(self,cards,method,...)
-    local result=AIValue.callKnown(self, method, cards, ...)
-    for i,c in ipairs(result) do cards[i]=c end
-    return cards
-end
-local function sort_players(self,cards,...) return sorted(self,cards,"sort",...) end
-local function sort_use(self,cards,...) return sorted(self,cards,"sortByUseValue",...) end
-local function sort_keep(self,cards,...) return sorted(self,cards,"sortByKeepValue",...) end
 local function action_request(self,request)
     if request and type(request.getActivationSkillName)~="function" then return AILegacyRequest.new(request,self.room) end
     return request
@@ -74,7 +62,7 @@ local function final_parse(self,request,wire)
  local class,costs,user=wire_parts(wire)
  return self:bindSkillCard(known(skill_cards[class],class), costs, action_request(self,request), user, class)
 end
-local function dummy()local use=AIUsePlan.new();use.isDummy=true;return use end
+local dummy = AIUsePlan.dummy
 local function role(self,player)local value=player:getRole();if value~=nil then return value end
  return self:useKnowledgeEstimate({status='estimate',value=self:getRoleEstimate(player),basis='viewer_role_estimate_private_role',player=player:objectName()}, 'fate.role')end
 local function context_value(self,key)local value=known(self:getDecisionContext()[key],key);if value==false then return nil end;return value end
@@ -125,7 +113,7 @@ fatetouying_skill.getTurnUseCard=function(self,inclusive,request)
 			table.insert(usable_cards, disclosed(self,id))
 		end
 	end
-	sort_use(self,usable_cards, true)
+	self:sortByUseValueInPlace(usable_cards, true)
 	local cards = {}
 	for _,c in ipairs(usable_cards) do
 		local cardex=owner_eval(self,"fatetouying",disclosed(self,self.player:getMark("fatetouyingskill")):objectName(),{},c:getSuit(),c:getNumber())
@@ -295,7 +283,7 @@ sgs.ai_skill_use["@fatewangzhe"] = function(self, prompt, method)
         end
     end
     
-    sort_use(self,drawpile)
+    self:sortByUseValueInPlace(drawpile)
 	for _, c in ipairs(drawpile) do
         table.insert(discard_cards, c:getKnownEffectiveId())
     end
@@ -321,7 +309,7 @@ fateqiuzhan_skill.getTurnUseCard=function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#fateqiuzhan_card"]=function(card,use,self,request)
-	sort_players(self,self.enemies, "hp") 
+	self:sortInPlace(self.enemies, "hp")
 	local duel=owner_eval(self,"fateqiuzhan_card","duel",{},sgs.Card_NoSuit,0)
 	
 	local dummy_use = self:aiUseCard(duel, dummy())
@@ -385,10 +373,10 @@ sgs.ai_skill_use_func["#fateshenjian_card"]=function(card,use,self,request)
 	local x = math.min(self.player:getLostHp(), 2)
 	if self.player:getMark("@shenjian_mark") == 0 then return end
 	local targets = AIList.new({})
-	sort_players(self,self.enemies, "hp")
+	self:sortInPlace(self.enemies, "hp")
 	local cards = self.player:getHandcards()
 	cards = AIList.new(cards)
-	sort_use(self,cards, true)
+	self:sortByUseValueInPlace(cards, true)
 	local need_cards = {}
 	for _, card in ipairs(cards) do
 		if not card:isKindOf("Peach")  then
@@ -450,7 +438,7 @@ fatetiangong_skill.getTurnUseCard=function(self,inclusive,request)
     if self.player:getStrategyHasUsed("#fatetiangong_card") then return nil end
     local cards = self.player:getHandcards()
     cards=AIList.new(cards)
-    sort_keep(self,cards)
+    self:sortByKeepValueInPlace(cards)
 	local card_str = ("#fatetiangong_card:%d:"):format(cards[1]:getId())
     return parse(self,request,card_str)
 end
@@ -459,7 +447,7 @@ sgs.ai_skill_use_func["#fatetiangong_card"]=function(card,use,self,request)
 	local first
 	local slash = self:getEvaluationCard("fire_slash")
 	
-	sort_players(self,self.enemies, "hp") 
+	self:sortInPlace(self.enemies, "hp")
 	for _, enemy in ipairs(self.enemies) do
 		if self:objectiveLevel(enemy) > 3 and not self:cantbeHurt(enemy) and self.player:canSlash(enemy, slash) and not self:slashProhibit(slash, enemy) and self:canDamage(enemy, self.player, slash)
 						and self:slashIsEffective(slash, enemy) and self:isGoodTarget(enemy, self.enemies, slash) then
@@ -509,7 +497,7 @@ sgs.ai_skill_cardask["@fatejianzhong1"] = function(self, data, pattern, target)
 	end
 	if targets:isEmpty() then return "." end
 	if sgs.ai_skill_playerchosen["@fatejianzhong2"](self, targets) == nil then return "." end
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	for _,card in sgs.list(cards)do
 		return "$"..card:getKnownEffectiveId()
 	end
@@ -754,7 +742,7 @@ end
 
 
 sgs.ai_skill_use_func["#fateloli_card"]=function(card,use,self,request)
-	sort_players(self,self.enemies, "hp") 
+	self:sortInPlace(self.enemies, "hp")
 		for _, enemy in ipairs(self.enemies) do
 			if not enemy:isKongcheng() then
 				use.card=final_parse(self,request,"#fateloli_card:.:") 
@@ -855,7 +843,7 @@ end
 sgs.ai_skill_discard["fateduoluo"] = function(self, discard_num, min_num, optional, include_equip)
 	local current = self.room:getCurrent()
 	local handcards = AIList.new(self.player:getCards("h"))
-	sort_keep(self,handcards)
+	self:sortByKeepValueInPlace(handcards)
 	local to_discard = {}
 	for _,c in ipairs(handcards) do
 		if not c:isKindOf("Peach")
@@ -897,7 +885,7 @@ fateyanfan_vs_skill.getTurnUseCard=function(self,inclusive,request)
     
     local diamond_card
     
-    sort_use(self,cards,true)
+    self:sortByUseValueInPlace(cards, true)
     
     for _,card in ipairs(cards) do
         if card:getSuit()== sgs.Card_Diamond and not card:isKindOf("Slash") and not card:isKindOf("Peach")
@@ -955,7 +943,7 @@ fateheijian_skill.getTurnUseCard=function(self,inclusive,request)
 	if not self.player:getStrategyHasUsed("#fateheijian_card") and not self.player:isKongcheng() and (self.player:getPile("fateheijiancards")):length() < 5 then
 	    local cards = self.player:getCards("h")
 	    cards = AIList.new(cards)
-	    sort_keep(self,cards)
+	    self:sortByKeepValueInPlace(cards)
 	    for _, c in ipairs(cards) do
 			if c:isBlack() and not (c:isKindOf("Nullification") and self:getCardsNum("Nullification") == 1 and self.player:getHp() > 1) then
                 return parse(self,request,"#fateheijian_card:" .. c:getKnownEffectiveId()..":")
@@ -1029,7 +1017,7 @@ fatefanshi_skill.getTurnUseCard=function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#fatefanshi_card"]=function(card,use,self,request)
-	sort_players(self,self.enemies, "hp") 
+	self:sortInPlace(self.enemies, "hp")
 		for _, enemy in ipairs(self.enemies) do
 			if self:objectiveLevel(enemy) > 3 and self.player:distanceTo(enemy) <= self.player:getAttackRange() then
 				use.card=final_parse(self,request,"#fatefanshi_card:.:") 
@@ -1055,7 +1043,7 @@ fatexinyin_skill.getTurnUseCard=function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#fatexinyin_card"]=function(card,use,self,request)
-	sort_players(self,self.enemies, "hp") 
+	self:sortInPlace(self.enemies, "hp")
 		for _, enemy in ipairs(self.enemies) do
 			if self:objectiveLevel(enemy) > 3 and self.player:distanceTo(enemy) <= 1 then
 				use.card=final_parse(self,request,"#fatexinyin_card:.:") 
@@ -1111,7 +1099,7 @@ sgs.ai_skill_invoke["fateqingxing"] = function(self, data)
     cards=AIList.new(cards)
     local card
 	local i=0
-    sort_use(self,cards,true)
+    self:sortByUseValueInPlace(cards, true)
     for _,acard in ipairs(cards)  do
         if (acard:getSuit() == sgs.Card_Heart) then
 			i=i+1
@@ -1125,7 +1113,7 @@ sgs.ai_skill_cardask["@fateqingxing1"] = function(self, data, pattern, target)
 	local cards = self.player:getCards("he")
 	local i=0
 	cards = AIList.new(cards)
-	sort_use(self,cards, true)
+	self:sortByUseValueInPlace(cards, true)
 	local heart = {}
 	for _, c in ipairs(cards) do
 		if c:getSuit()==sgs.Card_Heart or c:isKindOf("Jink")then
@@ -1155,7 +1143,7 @@ sgs.ai_skill_cardask["@fateqingxing1"] = function(self, data, pattern, target)
     cards=AIList.new(cards)
     local card
 	local i=0
-    sort_use(self,cards,true)
+    self:sortByUseValueInPlace(cards, true)
     for _,acard in ipairs(cards)  do
         if (acard:getSuit() == sgs.Card_Heart) then
 			i=i+1
@@ -1212,7 +1200,7 @@ fatebumo_skill.getTurnUseCard=function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#fatebumo_card"]=function(card,use,self,request)
-    sort_players(self,self.friends_noself, "hp")
+    self:sortInPlace(self.friends_noself, "hp")
     local lord = self.room:getLord()
     if self:isFriend(lord) and not self:isLordHealthy()  and lord:isMale() and lord:isWounded() then
         use.card=card
@@ -1241,7 +1229,7 @@ fatechuyi_vs_skill.getTurnUseCard=function(self,inclusive,request)
     cards=AIList.new(cards)
     
     local first, second
-    sort_use(self,cards,true)
+    self:sortByUseValueInPlace(cards, true)
     for _, card in ipairs(cards) do
         if card:getTypeId() ~= sgs.Card_Equip then
             if not first then first  = cards[1]:getEffectiveId()
@@ -1258,7 +1246,7 @@ fatechuyi_vs_skill.getTurnUseCard=function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#fatechuyi_card"]=function(card,use,self,request)
-    sort_players(self,self.friends_noself, "defense")
+    self:sortInPlace(self.friends_noself, "defense")
     local lord = self.room:getLord()
     if self:isFriend(lord) and not self:isLordHealthy() and lord:isWounded() then
         use.card=card
@@ -1275,7 +1263,7 @@ sgs.ai_skill_use_func["#fatechuyi_card"]=function(card,use,self,request)
         end
     end
 	if self:getOverflow()>0 then
-		sort_players(self,self.friends_noself, "handcard")
+		self:sortInPlace(self.friends_noself, "handcard")
 		for _, friend in ipairs(self.friends_noself) do 
             if not (friend:hasSkill("kongcheng") and friend:isKongcheng()) then
         	    use.card=card
@@ -1378,7 +1366,7 @@ sgs.ai_skill_use_func["#fateyaoshu"]=function(card,use,self,request)
 					end
 				end
 			end
-			sort_players(self,self.enemies)
+			self:sortInPlace(self.enemies)
 			for _,enemy in ipairs(self.enemies)do
 				if self:toTurnOver(enemy, 0, "fateyaoshu") then
 					target = enemy
@@ -1451,7 +1439,7 @@ sgs.ai_skill_use_func["#fateyaoshu1"]=function(card,use,self,request)
 end
 
 sgs.ai_skill_use_func["#fateyaoshu2"]=function(card,use,self,request)
-	sort_players(self,self.enemies, "chaofeng") 
+	self:sortInPlace(self.enemies, "chaofeng")
 		for _, enemy in ipairs(self.enemies) do
 			if self:objectiveLevel(enemy) > 3 and enemy:faceUp() then
 				use.card = card 
@@ -1483,7 +1471,7 @@ end
 
 
 sgs.ai_skill_use_func["#fateyaoshu4"]=function(card,use,self,request)
-	sort_players(self,self.enemies, "hp") 
+	self:sortInPlace(self.enemies, "hp")
 		for _, enemy in ipairs(self.enemies) do
 			if self:getOverflow()<1 and enemy:getHp()>1 then return end
 			if self:objectiveLevel(enemy) > 3 then
@@ -1520,7 +1508,7 @@ fateluanshe_vs_skill.getTurnUseCard=function(self,inclusive,request)
     local cards = self.player:getCards("h")
     cards=AIList.new(cards)
     local heart_card
-    sort_use(self,cards,true)
+    self:sortByUseValueInPlace(cards, true)
     for _,card in ipairs(cards) do
         if card:getSuit()== sgs.Card_Heart then
             heart_card = card
@@ -1543,7 +1531,7 @@ sgs.ai_skill_cardask["@fatechuanxin1"] = function(self, data, pattern, target, t
 	local card = AIList.new(self.player:getHandcards())
 	if #card == 0 then return "." end
 	if sgs.ai_skill_playerchosen.zero_card_as_slash(self, self.room:getOtherPlayers(self.player)) ~= nil then
-		sort_keep(self,card)
+		self:sortByKeepValueInPlace(card)
 		return "$"..card[1]:getEffectiveId()
 	end
 	return "."
@@ -1677,7 +1665,7 @@ sgs.ai_skill_cardask["@fateshengqi-card"]=function(self, data)
 	if card_id == -1 then
 		if self:needRetrial(judge) and judge.reason ~= "beige" then
 			if self:needToThrowArmor() and self.player:getArmor():isRed() then return "$" .. self.player:getArmor():getEffectiveId() end
-			sort_use(self,cards, true)
+			self:sortByUseValueInPlace(cards, true)
 			if self:getUseValue(judge.card) > self:getUseValue(cards[1]) then
 				return "$" .. cards[1]:getId()
 			end
@@ -1720,10 +1708,10 @@ sgs.ai_skill_playerchosen["#fatehuyoubad_target"] = function(self, targets)
 				table.insert(choices, target)
 			end
 		end
-		sort_players(self,choices, "hp", true) 
+		self:sortInPlace(choices, "hp", true)
 		return choices[1] 
 	end
-	sort_players(self,choices, "hp")
+	self:sortInPlace(choices, "hp")
 	return choices[1]
 end
 
@@ -1743,7 +1731,7 @@ sgs.ai_skill_playerchosen["#fatehuyougood_target"] = function(self, targets)
 			table.insert(choices, target)
 		end
 	end
-	sort_players(self,choices, "hp")
+	self:sortInPlace(choices, "hp")
 	return choices[1]
 end
 
@@ -1774,7 +1762,7 @@ sgs.ai_skill_playerchosen["fatehuyou"] = function(self, targets)
 		if self:isWeak(lord) and self.player:getKnownRole() == "loyalist" and self:hasTrickEffective(card, effect.from, lord)  and table.contains(targets, lord) then
 			return lord
 		end
-		sort_players(self,self.friends, "hp")
+		self:sortInPlace(self.friends, "hp")
 		if self:isWeak() and self:hasTrickEffective(card, effect.from, self.player)  then
 			return nil
 		else
@@ -1790,8 +1778,8 @@ sgs.ai_skill_playerchosen["fatehuyou"] = function(self, targets)
 		if card:isKindOf("FireAttack") then
 			nature = sgs.DamageStruct_Fire
 		end
-		sort_players(self,self.enemies, "hp")
-		sort_players(self,self.friends, "hp")
+		self:sortInPlace(self.enemies, "hp")
+		self:sortInPlace(self.friends, "hp")
 		for _, enemy in ipairs(self.enemies) do
 			if not enemy:hasSkills(sgs.masochism_skill) and self:hasTrickEffective(card, effect.from, enemy) and not self:cantbeHurt(enemy) and self:canDamage(enemy, effect.from, nil) and self:damageIsEffective(enemy, nature) and  table.contains(targets, enemy)	then
 				return enemy
@@ -1813,8 +1801,8 @@ sgs.ai_skill_playerchosen["fatehuyou"] = function(self, targets)
 		if card:isKindOf("FireAttack") then
 			nature = sgs.DamageStruct_Fire
 		end
-		sort_players(self,self.enemies, "hp")
-		sort_players(self,self.friends, "hp")
+		self:sortInPlace(self.enemies, "hp")
+		self:sortInPlace(self.friends, "hp")
 		for _, enemy in ipairs(self.enemies) do
 			if not enemy:hasSkills(sgs.masochism_skill) and self:hasTrickEffective(card, effect.from, enemy) and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy, nature) and self:canDamage(enemy, effect.from, nil) and not enemy:hasArmorEffect("vine") and  table.contains(targets, enemy) 	then
 				return enemy
@@ -1832,7 +1820,7 @@ sgs.ai_skill_playerchosen["fatehuyou"] = function(self, targets)
 		end
 		return targets[1]
 	elseif card:isKindOf("Collateral") then
-		sort_players(self,self.enemies, "handcard")
+		self:sortInPlace(self.enemies, "handcard")
 		for _, enemy in ipairs(self.enemies) do
 			if not (self:hasSkills(sgs.lose_equip_skill, enemy) and enemy:getWeapon()) and self:hasTrickEffective(card, effect.from, enemy) and  table.contains(targets, enemy)	then
 				return enemy
@@ -1843,7 +1831,7 @@ sgs.ai_skill_playerchosen["fatehuyou"] = function(self, targets)
 			return nil
 		end
 			if card:isKindOf("Dismantlement") then
-				sort_players(self,self.enemies, "handcard")
+				self:sortInPlace(self.enemies, "handcard")
 				for _, enemy in ipairs(self.enemies) do
 					if self:doDisCard(enemy) and self:hasTrickEffective(card, effect.from, enemy) and  table.contains(targets, enemy)	then
 						return enemy
@@ -1856,7 +1844,7 @@ sgs.ai_skill_playerchosen["fatehuyou"] = function(self, targets)
 				end
 			end
 	elseif card:isKindOf("GodFlower") or card:isKindOf("Snatch") then
-		sort_players(self,self.enemies, "handcard")
+		self:sortInPlace(self.enemies, "handcard")
 		for _, enemy in ipairs(self.enemies) do
 			if self:isEnemy(effect.from) and self:hasTrickEffective(card, effect.from, enemy) and (enemy:getJudgingArea():length() < 1 or not self:hasSkills(sgs.lose_equip_skill, enemy)) and  table.contains(targets, enemy)	then
 				return enemy
@@ -1917,13 +1905,13 @@ fatemoshu_skill.getTurnUseCard=function(self,inclusive,request)
     if self.player:getStrategyHasUsed("#fatemoshu_card") then return nil end
     local cards = self.player:getHandcards()
     cards=AIList.new(cards)
-    sort_keep(self,cards)
+    self:sortByKeepValueInPlace(cards)
 	local card_str = ("#fatemoshu_card:%d:"):format(cards[1]:getId())
     return parse(self,request,card_str)
 end
 
 sgs.ai_skill_use_func["#fatemoshu_card"]=function(card,use,self,request)
-	sort_players(self,self.enemies, "hp") 
+	self:sortInPlace(self.enemies, "hp")
 	for _, enemy in ipairs(self.enemies) do
 		if not enemy:isKongcheng() and not enemy:hasSkill("tiandu") and self:doDisCard(enemy, "he") then
 			use.card=final_parse(self,request,"#fatemoshu_card:" .. card:getKnownEffectiveId()..":")
@@ -1959,7 +1947,7 @@ fatejuntuan_skill.getTurnUseCard=function(self,inclusive,request)
     if self.player:getStrategyHasUsed("#fatejuntuan_card") then return nil end
 	local cards = self.player:getCards("h")
 	cards = AIList.new(cards)
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	for _, c in ipairs(cards) do
 		if c:isBlack() then
             return parse(self,request,"#fatejuntuan_card:" .. c:getKnownEffectiveId()..":")
@@ -1969,7 +1957,7 @@ end
 
 sgs.ai_skill_use_func["#fatejuntuan_card"]=function(card,use,self,request)
 	local first
-	sort_players(self,self.enemies, "hp") 
+	self:sortInPlace(self.enemies, "hp")
 	for _, enemy in ipairs(self.enemies) do
 		if self:objectiveLevel(enemy) > 3 and not self:cantbeHurt(enemy) and self:canDamage(enemy, self.player, nil) and self:damageIsEffective(enemy, sgs.DamageStruct_Normal, self.player) and self.player:distanceTo(enemy) < 2
 		then
@@ -2032,7 +2020,7 @@ sgs.ai_skill_playerchosen["@fatehuwei"] = function(self, targets)
 			table.insert(choices, target)
 		end
 	end
-	sort_players(self,choices, "hp")
+	self:sortInPlace(choices, "hp")
 	return choices[1]
 end
 
@@ -2060,7 +2048,7 @@ sgs.ai_skill_playerchosen["@fatepomo"] = function(self, targets)
 			return enemy
 		end
 	end
-	sort_players(self,self.enemies, "hp") 
+	self:sortInPlace(self.enemies, "hp")
 	
 	
 	
@@ -2171,7 +2159,7 @@ end
 
 sgs.ai_skill_cardask["@fatetuci"] = function(self, data, pattern, target)
 	local cards = AIList.new(self.player:getCards("h"))
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	for _, card in ipairs(cards) do
 		return "$" .. card:getKnownEffectiveId()
 	end
@@ -2189,7 +2177,7 @@ fatesiji_skill.getTurnUseCard=function(self,inclusive,request)
 	if self.player:getLostHp()<2 then return nil end
 	local cards = self.player:getCards("he")
 	cards = AIList.new(cards)
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	for _, c in ipairs(cards) do
 		if c:isKindOf("Weapon") then
             return parse(self,request,"#fatesiji_card:" .. c:getKnownEffectiveId()..":")
@@ -2198,7 +2186,7 @@ fatesiji_skill.getTurnUseCard=function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#fatesiji_card"]=function(card,use,self,request)
-	sort_players(self,self.enemies, "hp") 
+	self:sortInPlace(self.enemies, "hp")
 	for _, enemy in ipairs(self.enemies) do
 		if self:objectiveLevel(enemy) > 3 and not self:cantbeHurt(enemy)  and self:canDamage(enemy, self.player, nil) and self:damageIsEffective(enemy, sgs.DamageStruct_Normal, self.player) and self.player:distanceTo(enemy) < 3 then
 			use.card=final_parse(self,request,"#fatesiji_card:" .. card:getKnownEffectiveId()..":")
@@ -2254,7 +2242,7 @@ sgs.ai_skill_playerchosen.fateqiangtui = function(self, targets)
 			end
 		end
 		if #choices ~= 0 then
-			sort_players(self,choices, "hp")
+			self:sortInPlace(choices, "hp")
 			return choices[1]
 		else
 			for _, target in sgs.qlist(targets) do
@@ -2262,7 +2250,7 @@ sgs.ai_skill_playerchosen.fateqiangtui = function(self, targets)
 					table.insert(choices, target)
 				end
 			end
-			sort_players(self,choices, "hp", true)
+			self:sortInPlace(choices, "hp", true)
 			return choices[1]
 		end
 	end
@@ -2273,7 +2261,7 @@ sgs.ai_skill_playerchosen.fateqiangtui = function(self, targets)
 		end
 	end
 	
-	sort_players(self,choices, "hp")
+	self:sortInPlace(choices, "hp")
 	return choices[1]
 end
 
@@ -2288,13 +2276,13 @@ fatechongshu_skill.getTurnUseCard=function(self,inclusive,request)
     if self.player:getStrategyHasUsed("#fatechongshu_card") then return nil end
     local cards = self.player:getHandcards()
     cards=AIList.new(cards)
-    sort_keep(self,cards)
+    self:sortByKeepValueInPlace(cards)
 	local card_str = ("#fatechongshu_card:%d:"):format(cards[1]:getId())
     return parse(self,request,card_str)
 end
 
 sgs.ai_skill_use_func["#fatechongshu_card"]=function(card,use,self,request)
-	sort_players(self,self.enemies, "hp") 
+	self:sortInPlace(self.enemies, "hp")
 	for _, enemy in ipairs(self.enemies) do
 		if enemy:getHp()<2 and self:objectiveLevel(enemy) > 3 and not self:cantbeHurt(enemy) and self:canDamage(enemy, self.player, nil) and self:damageIsEffective(enemy, sgs.DamageStruct_Normal, self.player) and enemy:getHandcardNum()<2
 		then
@@ -2343,7 +2331,7 @@ sgs.ai_skill_playerchosen["@fatejiushu"]= function(self, targets)
 	if self.player:getKnownRole() == "loyalist" and self.room:getLord() then
 		return self.room:getLord()
 	end
-	sort_players(self,self.friends_noself, "chaofeng")
+	self:sortInPlace(self.friends_noself, "chaofeng")
 	for _, friend in ipairs(self.friends_noself) do
         if (friend:hasSkill("qingnang") or friend:hasSkill("jieyin") or friend:hasSkill("fateqingxing") or friend:hasSkill("fatechuyi_vs")) and role(self,friend)~="renegade" then
             return friend

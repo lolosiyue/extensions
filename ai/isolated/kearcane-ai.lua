@@ -1,9 +1,7 @@
 -- Fixed b6025acc package policy; all selection uses pure views and native-issued receipts.
 
 
-local function dummy(is_dummy,extra,current)
- local u=AIUsePlan.new();u.isDummy=is_dummy~=false;u.extra_target=extra or 0;u.current_targets=current or {};return u
-end
+local dummy = AIUsePlan.dummy
 local function reuse(self,card,request)
  if self:isReadonlyTurnConversion(card)then return card end
  if not card:isStrategySeed()then ai_unsupported("source seed identity unavailable","kearcane.seed")end

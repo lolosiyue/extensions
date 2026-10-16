@@ -1,7 +1,7 @@
 -- Fixed b6025acc keyaobao, server QSAN_ENGINE_BUILD domain.
-local function known(v,key)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("Keyaobao missing "..key,"keyaobao")end;return v end
+local known = AIValue.requireKnown
 
-local function dummy()return AIUsePlan.new({isDummy=true})end
+local dummy = AIUsePlan.dummy
 local function source_pair(self,skill,name,ids)
  -- Card::Parse maps source's literal "to_be_decided" to NoSuit, then
  -- its two material getters derive the resulting color. Preserve construction.

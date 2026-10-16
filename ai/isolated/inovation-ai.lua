@@ -951,7 +951,7 @@ do
 local providers={}
 
 
-local function scalar(v,key)if v==nil then ai_unsupported("Inovation source fact unavailable",key)end return v end
+local scalar = AIValue.requireKnown
 local function turns(self)return scalar(self.world.turn_count,"turn_count")end
 local function role(self,p)return self:getRoleEstimate(p)end
 local function counts(self)return self:getRoleCounts()end
@@ -1815,9 +1815,9 @@ local function clone(self,card)
  return self:evaluateOwnerViewAsCard({source_key='shoushi',name=name,skill='shoushi',suit=suit,number=number,subcards={}})
 end
 local function dummy(use)
- local r={isDummy=true,to=AIList.new({}),current_targets={}}
- for _,p in sgs.list(use.to)do r.current_targets[#r.current_targets+1]=p:objectName()end
- return r
+    local current = {}
+    for _, player in sgs.list(use.to) do current[#current + 1] = player:objectName() end
+    return AIUsePlan.dummy(true, nil, current)
 end
 sgs.ai_skill_choice.shoushi=function(self,choices,data)
  local use=data:toCardUse()
@@ -1898,14 +1898,6 @@ end
 do
 
 
-local function sort_source(self,key,cards)
- local ordered=self[key](self,cards)
- if ordered~=nil and ordered~=cards then
-  if not AIValue.isList(ordered)then ai_unsupported('Inovation sorted-copy result malformed',key)end
-  for i=#cards,1,-1 do cards[i]=nil end
-  for i,card in ipairs(ordered)do cards[i]=card end
- end
-end
 -- Not projected: the ningju_color Room tag, the donor VM's sgs.kaiqi_ag_type, and
 -- the kaiqi Room player flags the donor's own discard callback reads (the isolated
 -- AI cannot write them). Ningju's console diagnostics carry no decision input.
@@ -1930,7 +1922,7 @@ sgs.ai_skill_cardchosen.ningju=function(self,who,flags)
  local cards=self.player:getHandcards()
  for _,card in sgs.list(self.player:getEquips())do cards:append(card)end
  cards=sgs.QList2Table(cards)
- sort_source(self,'sortByKeepValue',cards)
+ self:sortByKeepValueInPlace(cards)
  if need=='Red'then
   host('ningju_red')
   for _,card in ipairs(cards)do if card:isRed()then return card:getKnownEffectiveId()end end
@@ -1966,7 +1958,7 @@ sgs.ai_skill_askforag.kaiqi=function(self,card_ids)
    table.insert(selected,card)
   end
  end
- sort_source(self,'sortByUseValue',selected)
+ self:sortByUseValueInPlace(selected)
  if #selected>0 then return (selected[1]):getKnownId()end
  return card_ids[1]
 end

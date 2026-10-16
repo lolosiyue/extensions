@@ -1,10 +1,6 @@
 -- Fixed b6025acc dmpkancolle policies. Source wire incompatibilities are not repaired.
 local function result(value) if AIUnsupported.is(value)then error(value,0)end;return value end
-local function known(value,key)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("dmpkancolle fact is unknown",key) end
-    return value
-end
+local known = AIValue.requireKnown
 local nullable={getSameEquip=true,getWeapon=true,getLord=true,getCurrentDyingPlayer=true,findBestDamageTarget=true,
     findPlayerToDraw=true,getPriorTarget=true,findLeijiTarget=true,updatePlayers=true,setStrategyMemory=true,
     updateIntention=true,getCard=true}

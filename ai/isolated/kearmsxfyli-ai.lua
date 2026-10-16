@@ -16,7 +16,7 @@ local function turn(self,skill,name,cards,request)
  local proto=package_known(self,"getEvaluationCard",name)
  return package_known(self,"evaluateTurnConversion",skill,package_known(proto,"getClassName"),{name=name,skill=skill,suit=sgs.Card_NoSuit,number=0,subcards=ids(cards)},request)
 end
-local function dummy(value,extra,current)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;u.current_targets=current or {};return u end
+local dummy = AIUsePlan.dummy
 -- The donor reads the viewer's own tags/properties; an absent one reads as the
 -- QVariant default (nil player, empty CardUseStruct).
 local function tag_player(self,key)local n=self.player:getTag(key);if n==nil then return nil end;return package_known(self.room,"findPlayerByObjectName",n,true)end

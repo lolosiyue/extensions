@@ -1,10 +1,6 @@
 -- Fixed donor newstar-ai.lua, b6025acc983331337614289d8cac79b078c003af.
 -- Source ordering is retained. Native authority is bound only after cost selection.
-local function known(value, label)
-    if AIUnsupported and AIUnsupported.is and AIUnsupported.is(value) then error(value,0) end
-    if value == nil then ai_unsupported("newstar requires "..label,"newstar") end
-    return value
-end
+local known = AIValue.requireKnown
 
 local function visible_card(self,id)
     return known(self:getKnownCardById(id),"lawfully disclosed card "..tostring(id))

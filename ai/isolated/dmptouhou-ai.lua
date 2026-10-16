@@ -1,16 +1,8 @@
 -- Fixed b6025acc dmptouhou effective policies; no repair of absent old prototypes.
-local function known(v,k)
-    if AIUnsupported.is(v) then error(v,0) end
-    if v==nil then ai_unsupported("dmptouhou fact is unknown",k) end
-    return v
-end
+local known = AIValue.requireKnown
 local function parse_nil(self,selector)
     -- Whether LuaSkillCard::Parse knows the old selector is not projected.
     ai_unsupported("legacy prototype presence is not projected",selector)
-end
-local function sort_in_place(self,values,key)
-    local sorted=(self:sort(values,key))
-    for i,value in ipairs(sorted)do values[i]=value end
 end
 local function skills(self,player,names)
     local value=(player:hasSkills(names))
@@ -62,7 +54,7 @@ end
 sgs.ai_skill_use_func["#se_mopaocard"] = function(card, use, self)
 	local target
 	self:updatePlayers()
-	sort_in_place(self,self.enemies,"hp")
+	self:sortInPlace(self.enemies, "hp")
 	for _, enemy in ipairs(self.enemies) do
 		if (self:damageIsEffective(enemy,sgs.DamageStruct_Normal)) and not (self:cantDamageMore(self.player,enemy)) then
 			target = enemy
@@ -257,7 +249,7 @@ sgs.ai_skill_playerchosen.se_fuzhi = function(self, targets)
 			end
 		end
 
-		sort_in_place(self,self.friends_noself,"chaofeng")
+		self:sortInPlace(self.friends_noself, "chaofeng")
 		for _, friend in ipairs(self.friends_noself) do
 			if not known(hasManjuanEffect(friend),"hasManjuanEffect") and (friend:getKnownKingdom()) == "touhou" then
 				return friend

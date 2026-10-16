@@ -1,8 +1,5 @@
 -- Fixed wisdom policy; private source values stay in scoped DTOs or marked memory.
-local function known(v,key)
- if AIUnsupported.is(v)then error(v,0)end
- if v==nil then ai_unsupported("Wisdom requires "..key,"wisdom")end;return v
-end
+local known = AIValue.requireKnown
 
 local function own_first_keep(self)
  local disabled=self.disabled_ids

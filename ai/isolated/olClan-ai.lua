@@ -1,24 +1,10 @@
 -- Fixed olClan policy over disclosed values. Runtime owns all card authority.
 -- This file is being extended by dependency group; see the named /tmp inventory.
-local function known(value,key)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("olClan input is not projected",key) end
-    return value
-end
+local known = AIValue.requireKnown
 
 local function copy_list(values)
     local out={};for i,value in ipairs(known(values,"olClan.list"))do out[i]=value end
     return AIList.new(out)
-end
-local function sort_in_place(self,values,key,reverse)
-    local result=self:sort(values, key, reverse)
-    for i,value in ipairs(result)do values[i]=value end
-    return values
-end
-local function sort_cards(self,values,method,...)
-    local result=(AIValue.callKnown(self, method, values, ...))
-    for i,value in ipairs(result)do values[i]=value end
-    return values
 end
 local function has_skill(self,player,name,include_lose)
     local value=player:hasSkill(name,include_lose)
@@ -40,7 +26,7 @@ sgs.ai_skill_discard.zuyuzhi = function(self)
 	local to_cards = {}
 	local cards = self.player:getCards("h")
 	cards = copy_list(cards)
-	sort_cards(self,cards,"sortByKeepValue")
+	self:sortByKeepValueInPlace(cards)
 	local n = 0
    	for _,c in ipairs(cards)do
 		local x = c:nameLength()
@@ -68,7 +54,7 @@ sgs.ai_skill_discard.zuxieshu = function(self,max,min)
 	local cards = self.player:getCards("he")
 	cards = copy_list(cards)
 	if self.player:getLostHp()>max/2 then
-		sort_cards(self,cards,"sortByKeepValue")
+		self:sortByKeepValueInPlace(cards)
 		for _,h in ipairs(cards)do
 			if #to_cards>min then break end
 			table.insert(to_cards,h:getEffectiveId())
@@ -143,7 +129,7 @@ end
 sgs.ai_skill_cardask["@zuqiajue-invoke"] = function(self,data,pattern)
 	local cards = self.player:getCards("he")
 	cards = copy_list(cards)
-    sort_cards(self,cards,"sortByKeepValue")--按保留值排序
+    self:sortByKeepValueInPlace(cards)--按保留值排序
 	local n = 0
    	for _,c in ipairs(cards)do
 		n = n+c:getNumber()
@@ -173,7 +159,7 @@ sgs.ai_skill_playerchosen.kezudaojie = function(self, targets)
         end
     end
     if #fri > 0 then
-        sort_in_place(self,fri, "handcard")
+        self:sortInPlace(fri, "handcard")
         return fri[1]
     end
     for _,target in ipairs(targets) do
@@ -202,7 +188,7 @@ end
 -- Source olClan-ai.lua:528
 sgs.ai_skill_playerchosen.kezulieshi = function(self, players)
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist,"handcard",true)
+	self:sortInPlace(destlist, "handcard", true)
     for _,target in ipairs(destlist)do
 		if self:isEnemy(target)
 		then return target end
@@ -227,10 +213,10 @@ sgs.ai_skill_playerchosen.kezuliuju = function(self, players)
     local cards = self.player:getCards("h")
     cards = copy_list(cards)--将列表转换为表
 	if #cards<2 then return end
-    sort_cards(self,cards,"sortByKeepValue")--按保留值排序
+    self:sortByKeepValueInPlace(cards)--按保留值排序
 	self:remember("kezuliuju_card",cards[1]:getEffectiveId())
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist,"handcard")
+	self:sortInPlace(destlist, "handcard")
     for _,target in ipairs(destlist)do
 		if self:isEnemy(target)
 		then return target end
@@ -244,7 +230,7 @@ end
 -- Source olClan-ai.lua:635
 sgs.ai_skill_playerschosen.kezulianhe = function(self,players,x,n)
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist,"handcard")
+	self:sortInPlace(destlist, "handcard")
 	local tos = {}
     for _,p in ipairs(destlist)do
 		if self:isEnemy(p) and #tos<x
@@ -280,10 +266,10 @@ sgs.ai_skill_playerchosen.kezuhuanjia = function(self, players)
     local cards = self.player:getCards("h")
     cards = copy_list(cards)--将列表转换为表
 	if #cards<2 then return end
-    sort_cards(self,cards,"sortByKeepValue")--按保留值排序
+    self:sortByKeepValueInPlace(cards)--按保留值排序
 	self:remember("kezuliuju_card",cards[1]:getEffectiveId())
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist,"handcard")
+	self:sortInPlace(destlist, "handcard")
     for _,target in ipairs(destlist)do
 		if self:isEnemy(target)
 		then return target end
@@ -325,7 +311,7 @@ end
 -- Source olClan-ai.lua:1304
 sgs.ai_skill_playerchosen.zuchengqi = function(self, players)
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist,"handcard")
+	self:sortInPlace(destlist, "handcard")
     for _,target in ipairs(destlist)do
 		if self:isFriend(target)
 		then return target end
@@ -339,7 +325,7 @@ end
 -- Source olClan-ai.lua:1317
 sgs.ai_skill_playerchosen.zujieli = function(self, players)
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist)
+	self:sortInPlace(destlist)
     for _,target in ipairs(destlist)do
 		self:writeOlClanPlayerSlot("zujieliTo",target)
 		if self:isFriend(target)
@@ -355,7 +341,7 @@ end
 -- Source olClan-ai.lua:1366
 sgs.ai_skill_playerchosen.kezutanque = function(self, players)
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist)
+	self:sortInPlace(destlist)
     for _,target in ipairs(destlist)do
 		if self:isEnemy(target)
 		then return target end
@@ -386,7 +372,7 @@ end
 -- Source olClan-ai.lua:1477
 sgs.ai_skill_playerschosen.zuanran = function(self, players,x,n)
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist)
+	self:sortInPlace(destlist)
 	local tos = {}
     for _,p in ipairs(destlist)do
 		if #tos<x and self:isFriend(p) and self:canDraw(p)
@@ -405,7 +391,7 @@ end
 -- Source olClan-ai.lua:1527
 sgs.ai_skill_playerchosen.zuquhuo = function(self, players)
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist)
+	self:sortInPlace(destlist)
     for _,target in ipairs(destlist)do
 		if self:isFriend(target)
 		then return target end
@@ -420,7 +406,7 @@ end
 -- Source olClan-ai.lua:1541
 sgs.ai_skill_playerchosen.zujiewu = function(self, players)
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist,nil,true)
+	self:sortInPlace(destlist, nil, true)
     for _,target in ipairs(destlist)do
 		if not self:isFriend(target)
 		then return target end
@@ -467,7 +453,7 @@ end
 -- Source olClan-ai.lua:1641
 sgs.ai_skill_playerchosen.zujuetu = function(self, players)
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist)
+	self:sortInPlace(destlist)
     for _,p in ipairs(destlist)do
 		if self:isEnemy(p)
 		then return p end
@@ -487,7 +473,7 @@ end
 -- Source olClan-ai.lua:1725
 sgs.ai_skill_playerchosen.zujiannan = function(self, players)
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist)
+	self:sortInPlace(destlist)
     for _,p in ipairs(destlist)do
 		if mark(self,self.player,"zujiannan2-Clear")<1
 		and self:isFriend(p) and self:canDraw(p)
@@ -523,7 +509,7 @@ end
 -- Source olClan-ai.lua:1758
 sgs.ai_skill_playerchosen.zuyichi = function(self, players)
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist)
+	self:sortInPlace(destlist)
     for _,p in ipairs(destlist)do
 		if self:isEnemy(p)
 		then return p end
@@ -538,7 +524,7 @@ end
 -- Source olClan-ai.lua:1772
 sgs.ai_skill_playerschosen.zufennu = function(self, players,x,n)
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist)
+	self:sortInPlace(destlist)
 	local tos = {}
     for _,p in ipairs(destlist)do
 		if #tos<x and self:isEnemy(p) then table.insert(tos,p) end
@@ -553,7 +539,7 @@ end
 -- Source olClan-ai.lua:1786
 sgs.ai_skill_playerchosen.zuzelie = function(self, players)
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist)
+	self:sortInPlace(destlist)
     for _,p in ipairs(destlist)do
 		remember(self,"choice.zuzelie","zuzelie1")
 		if self:isFriend(p) and self:canDraw(p)
@@ -599,7 +585,7 @@ end
 -- Source olClan-ai.lua:1849
 sgs.ai_skill_playerschosen.zudingan = function(self, players)
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist)
+	self:sortInPlace(destlist)
 	local tps = {}
     for i,p in ipairs(destlist)do
 		if i==#destlist or self:isFriend(p) and self:canDraw(p)
@@ -641,7 +627,7 @@ end
 -- Source olClan-ai.lua:2000
 sgs.ai_skill_playerchosen.zushize = function(self, players)
 	local destlist = copy_list(players)--将列表转换为表
-	sort_in_place(self,destlist,nil,true)
+	self:sortInPlace(destlist, nil, true)
     for _,p in ipairs(destlist)do
 		if self:isFriend(p)
 		then return p end
@@ -689,7 +675,7 @@ local function select_zuguangu(card,use,self)
 	if self.player:getChangeSkillState("zuguangu")==1 then
 		use.card = card
 	else
-		sort_in_place(self,self.enemies,"handcard",true)
+		self:sortInPlace(self.enemies, "handcard", true)
 		for _,p in ipairs(self.enemies)do
 			if p:getHandcardNum()>0 then
 				use.card = card
@@ -697,14 +683,14 @@ local function select_zuguangu(card,use,self)
 				return
 			end
 		end
-		for _,p in ipairs(sort_in_place(self,self.room:getOtherPlayers(self.player),"handcard",true))do
+		for _,p in ipairs(self:sortInPlace(self.room:getOtherPlayers(self.player), "handcard", true))do
 			if p:getHandcardNum()>0 and not self:isFriend(p) then
 				use.card = card
 				use.to:append(p)
 				return
 			end
 		end
-		sort_in_place(self,self.friends_noself,"handcard",true)
+		self:sortInPlace(self.friends_noself, "handcard", true)
 		for _,p in ipairs(self.friends_noself)do
 			if p:getHandcardNum()>0 then
 				use.card = card
@@ -750,7 +736,7 @@ end
 
 -- Source olClan-ai.lua:451
 local function select_kezuyunshen(card,use,self)
-	sort_in_place(self,self.enemies,"hp")
+	self:sortInPlace(self.enemies, "hp")
 	for _,ep in ipairs(self.enemies)do
 		if not ep:isWounded() then
 			use.card = card
@@ -830,7 +816,7 @@ local function select_zukaiji(card,use,self)
 		use.to:append(self.player)
 		return
 	end
-	sort_in_place(self,self.friends,nil,true)
+	self:sortInPlace(self.friends, nil, true)
 	for _,p in ipairs(self.friends)do
 		if mark(self,p,"sgszukaijiTo_lun")>0
 		then continue end
@@ -884,7 +870,7 @@ local function notified_answer(self,skill,card,targets,request)
 end
 local function choose_notified(self,skill,request,method,reverse)
     local cards=notified_cards(self,skill)
-    sort_cards(self,cards,method,reverse)
+    AIValue.callKnown(self, method .. "InPlace", cards, reverse)
     for _,original in ipairs(cards)do
         local c,candidate=notified_evaluation(self,original)
         if c:isAvailable(self.player)then
@@ -988,7 +974,7 @@ local function select_kezufuxun(card,use,self)
             and p:getHandcardNum()-self.player:getHandcardNum()==-2 then
             local cards=copy_list(self.player:getCards("h"))
             if #cards<2 then continue end
-            sort_cards(self,cards,"sortByKeepValue")
+            self:sortByKeepValueInPlace(cards)
             use.to:append(p);use.card=card;return {cards[1]:getKnownEffectiveId()}
         end
     end
@@ -998,7 +984,7 @@ local function select_kezufuxun(card,use,self)
             and p:getHandcardNum()-self.player:getHandcardNum()==-2 then
             local cards=copy_list(self.player:getCards("h"))
             if #cards<3 then continue end
-            sort_cards(self,cards,"sortByKeepValue")
+            self:sortByKeepValueInPlace(cards)
             use.to:append(p);use.card=card;return {cards[1]:getKnownEffectiveId()}
         end
     end
@@ -1104,7 +1090,7 @@ end
 local function select_ag_plan(self,ids,key)
     local cards={}
     for _,id in ipairs(ids) do cards[#cards+1]=known(self:getChoiceCard(id),"olClan.ag.offered_card") end
-    sort_cards(self,cards,"sortByUseValue")
+    self:sortByUseValueInPlace(cards)
     for _,card in ipairs(cards) do
         local projected,candidate=notified_evaluation(self,card)
         local plan=notified_plan(self,projected,candidate)
@@ -1192,7 +1178,7 @@ sgs.ai_fill_skill.kezujiexuan=function(self,inclusive,request)
         return self:evaluateTurnConversion("kezujiexuan", class, {name=name,skill="kezujiexuan",suit=sgs.Card_NoSuit,number=0,subcards={id}}, action_request(self,request))
     end
     if can then
-        local cards=copy_list(self.player:getCards("he"));sort_cards(self,cards,"sortByKeepValue")
+        local cards=copy_list(self.player:getCards("he"));self:sortByKeepValueInPlace(cards)
         for _,c in ipairs(cards)do
             if c:getKnownEffectiveId()==can:getKnownEffectiveId()then continue end
             local dc=make(c:getKnownEffectiveId())
@@ -1207,7 +1193,7 @@ sgs.ai_fill_skill.kezujiexuan=function(self,inclusive,request)
         local dc=make(id)
         if (AIValue.callKnown(dc, n==1 and "isRed" or "isBlack")) and dc:isAvailable(self.player)then return dc end
     end
-    local cards=copy_list(self.player:getCards("e"));sort_cards(self,cards,"sortByKeepValue")
+    local cards=copy_list(self.player:getCards("e"));self:sortByKeepValueInPlace(cards)
     for _,e in ipairs(cards)do
         local dc=make(e:getKnownEffectiveId())
         if (AIValue.callKnown(dc, n==1 and "isRed" or "isBlack")) and dc:isAvailable(self.player)then return dc end
@@ -1247,7 +1233,7 @@ end
 
 sgs.ai_fill_skill.zukudu=function(self,inclusive,request)
     local cards=copy_list(self.player:getCards("he"))
-    sort_cards(self,cards,"sortByKeepValue",nil,"j")
+    self:sortByKeepValueInPlace(cards, nil, "j")
     local ids={}
     for _,c1 in ipairs(cards)do
         if self:wasPreviouslyPlannedCard(c1) or self:getKeepValue(c1)>6 then continue end
@@ -1294,7 +1280,7 @@ end
 sgs.ai_fill_skill.kezulilun=function(self,inclusive,request)
     local dc=seed(self,"kezulilun","#kezulilunCard",request)
     local cards=copy_list(self.player:getCards("he"))
-    sort_cards(self,cards,"sortByDynamicUsePriority")
+    self:sortByDynamicUsePriorityInPlace(cards)
     local function selected(h,r)
         local result=remaining_seed(self,"kezulilun","#kezulilunCard",{h:getKnownEffectiveId(),r:getKnownEffectiveId()},request)
         return self:inheritLegacyCardIdentity(result,dc)
@@ -1311,7 +1297,7 @@ sgs.ai_fill_skill.kezulilun=function(self,inclusive,request)
             end
         end
     end
-    sort_cards(self,cards,"sortByKeepValue")
+    self:sortByKeepValueInPlace(cards)
     for i,h in ipairs(cards)do
         if i>#cards/2 or self:wasPreviouslyPlannedCard(h)
             or self.player:isCardLimited(h, sgs.Card_MethodRecast)then continue end
@@ -1328,7 +1314,7 @@ sgs.ai_use_priority.kezulilunCard=11.2
 -- Source1002: name length compares to current hand count; sorted upper half
 -- exclusion is evaluated before Recast legality and length.
 sgs.ai_skill_use["@@kezuchenyacz"]=function(self,prompt,request)
-    local cards=copy_list(self.player:getCards("he"));sort_cards(self,cards,"sortByKeepValue")
+    local cards=copy_list(self.player:getCards("he"));self:sortByKeepValueInPlace(cards)
     local valid={}
     for i,h in ipairs(cards)do
         if i>#cards/2 or self.player:isCardLimited(h, sgs.Card_MethodRecast)
@@ -1340,7 +1326,7 @@ sgs.ai_skill_use["@@kezuchenyacz"]=function(self,prompt,request)
 end
 -- Source1170: same ordered mechanics but a distinct source mark and scope.
 sgs.ai_skill_use["@@kezujianyuancz"]=function(self,prompt,request)
-    local cards=copy_list(self.player:getCards("he"));sort_cards(self,cards,"sortByKeepValue")
+    local cards=copy_list(self.player:getCards("he"));self:sortByKeepValueInPlace(cards)
     local valid={}
     for i,h in ipairs(cards)do
         if i>#cards/2 or self.player:isCardLimited(h, sgs.Card_MethodRecast)
@@ -1353,7 +1339,7 @@ end
 -- Source1626: one first card per suit, covering every hand suit. There is no
 -- invented keep threshold, and final native selection validates the coverage.
 sgs.ai_skill_use["@@zujuetu!"]=function(self,prompt,request)
-    local cards=copy_list(self.player:getCards("h"));sort_cards(self,cards,"sortByKeepValue")
+    local cards=copy_list(self.player:getCards("h"));self:sortByKeepValueInPlace(cards)
     local valid,suits={},{}
     for _,h in ipairs(cards)do
         local suit=h:getSuit()
@@ -1366,7 +1352,7 @@ end
 -- Source1860: source thresholds are not the provider's LostHp threshold.
 -- Preserve a native rejection if the first chosen source cost count differs.
 sgs.ai_skill_use["@@zufuning"]=function(self,prompt,request)
-    local cards=copy_list(self.player:getCards("he"));sort_cards(self,cards,"sortByKeepValue")
+    local cards=copy_list(self.player:getCards("he"));self:sortByKeepValueInPlace(cards)
     local valid,first={},nil
     for _,h in ipairs(cards)do
         if #valid>0 and self:isWeak()then
@@ -1376,14 +1362,14 @@ sgs.ai_skill_use["@@zufuning"]=function(self,prompt,request)
         if #valid>mark(self,self.player,"zufuningDoneNum-Clear") or #valid>#cards/2 then break end
     end
     if #valid<1 then return end
-    sort_in_place(self,self.friends_noself)
+    self:sortInPlace(self.friends_noself)
     for _,p in ipairs(self.friends_noself)do
         if self:canDraw(p)then return a_response(self,"zufuning","#zufuningCard",valid,{p},request)end
     end
 end
 -- Source1962 and1977 intentionally differ only by the previous-plan exclusion.
 sgs.ai_skill_use["@@zumingdian"]=function(self,prompt,request)
-    local cards=copy_list(self.player:getCards("he"));sort_cards(self,cards,"sortByKeepValue")
+    local cards=copy_list(self.player:getCards("he"));self:sortByKeepValueInPlace(cards)
     local valid={}
     for _,h in ipairs(cards)do
         if h:getTypeId()~=1 or mark(self,self.player,h:objectName().."zumingdianRecast_lun")>0
@@ -1395,7 +1381,7 @@ sgs.ai_skill_use["@@zumingdian"]=function(self,prompt,request)
     return a_response(self,"zumingdian","#zumingdianCard",valid,{},request)
 end
 sgs.ai_fill_skill.zumingdian=function(self,inclusive,request)
-    local cards=copy_list(self.player:getCards("he"));sort_cards(self,cards,"sortByKeepValue")
+    local cards=copy_list(self.player:getCards("he"));self:sortByKeepValueInPlace(cards)
     local valid={}
     for _,h in ipairs(cards)do
         if h:getTypeId()~=1 or mark(self,self.player,h:objectName().."zumingdianRecast_lun")>0
@@ -1413,17 +1399,8 @@ sgs.ai_use_priority.zumingdianCard=2.8
 
 -- Round22 B/C/F: exact fixed olClan source branches. Root merges this scope.
 do
-local function known(value,key)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported('olClan BCF input is unknown',key) end
-    return value
-end
+local known = AIValue.requireKnown
 
-local function sorted(self,list,method,...)
-    local result=(AIValue.callKnown(self, method, list, ...))
-    for i,v in ipairs(result)do list[i]=v end
-    return list
-end
 local function cards(self,zone)
     local out={};for _,c in ipairs(self.player:getCards(zone))do out[#out+1]=c end
     return out
@@ -1449,7 +1426,7 @@ end
 -- available policy is returned; only the common final selection can pay it.
 sgs.ai_fill_skill.zuzhanding=function(self,inclusive,request)
     if self:getCardsNum('Slash')>0 and self.player:getHandcardNum()>self.player:getMaxCards()then return end
-    local hand=sorted(self,cards(self,'he'),'sortByKeepValue')
+    local hand=self:sortByKeepValueInPlace(cards(self,'he'))
     for _,material in ipairs(hand)do
         local slash=self:evaluateTurnConversion('zuzhanding', 'Slash', {name='slash',skill='zuzhanding',suit=sgs.Card_NoSuit,number=0,subcards={material:getKnownEffectiveId()}}, request)
         if slash:isAvailable(self.player)then return slash end
@@ -1460,14 +1437,14 @@ sgs.ai_fill_skill.zulianzhuvs=function(self,inclusive,request)
     return empty(self,'zulianzhuvs','#zulianzhuCard',request)
 end
 sgs.ai_skill_use_func['#zulianzhuCard']=function(card,use,self,request)
-    sorted(self,self.enemies,'sort','handcard')
+    self:sortInPlace(self.enemies, 'handcard')
     for _,p in ipairs(self:sort(self.room:getAlivePlayers(), 'handcard', true))do
         if has_parent(self,p) and self:isFriend(p)then
             local state=p:getChangeSkillState('zulianzhu')
             if state==1 then
                 local hand=cards(self,'he')
                 if #hand>2 and p:getCardCount()>2 then
-                    sorted(self,hand,'sortByKeepValue')
+                    self:sortByKeepValueInPlace(hand)
                     for _,c in ipairs(hand)do
                         if self.player:isCardLimited(c, sgs.Card_MethodRecast)then continue end
                         use.card=recast_card(self,card,c,request);use.to:append(p);return
@@ -1489,7 +1466,7 @@ sgs.ai_skill_use_func['#zulianzhuCard']=function(card,use,self,request)
             if state==1 then
                 local hand=cards(self,'he')
                 if #hand>2 and p:getCardCount()>0 then
-                    sorted(self,hand,'sortByKeepValue')
+                    self:sortByKeepValueInPlace(hand)
                     for _,c in ipairs(hand)do
                         if self.player:isCardLimited(c, sgs.Card_MethodRecast)then continue end
                         use.card=recast_card(self,card,c,request);use.to:append(p);return
@@ -1510,7 +1487,7 @@ end
 -- transfer the one-card AmazingGrace probe material into its final payment.
 sgs.ai_fill_skill.kezuxumin=function(self,inclusive,request)return empty(self,'kezuxumin','#kezuxuminCard',request)end
 sgs.ai_skill_use_func['#kezuxuminCard']=function(card,use,self)
-    local hand=sorted(self,cards(self,'he'),'sortByKeepValue')
+    local hand=self:sortByKeepValueInPlace(cards(self,'he'))
     for _,h in ipairs(hand)do
         local grace=hypothesis(self,'kezuxumin','amazing_grace','kezuxumin',{h:getKnownEffectiveId()})
         if grace:isAvailable(self.player)then
@@ -1540,7 +1517,7 @@ end
 sgs.ai_skill_use.zuyangji0=function(self,prompt)
     local hand={}
     for _,h in ipairs(self.player:getHandcards())do if h:isBlack()then hand[#hand+1]=h end end
-    sorted(self,hand,'sortByUseValue')
+    self:sortByUseValueInPlace(hand)
     for _,c in ipairs(hand)do
         if c:isAvailable(self.player)then
             local dummy=self:aiUseCard(c)
@@ -1572,11 +1549,7 @@ end
 
 -- Fixed b6025acc olClan-ai.lua D12. Self-contained registration fragment.
 do
-local function known(v,key)
- if AIUnsupported.is(v)then error(v,0)end
- if v==nil then ai_unsupported('olClan D requires '..key,key)end
- return v
-end
+local known = AIValue.requireKnown
 
 local function copy(xs)local out={};for _,x in ipairs(known(xs,'list'))do out[#out+1]=x end;return out end
 local function sorted(self,zone,method)
@@ -1758,11 +1731,7 @@ end
 
 -- Round22 olClan E: fixed b6025 source-scoped observations, eight callbacks.
 do
-local function known(value,key)
-    if AIUnsupported.is(value)then error(value,0)end
-    if value==nil then ai_unsupported("olClan scoped observation is unavailable",key)end
-    return value
-end
+local known = AIValue.requireKnown
 
 local function optional(object,method,...)
     if type(object)~="table" or type(object[method])~="function"then ai_unsupported("olClan E helper is unavailable",method)end

@@ -86,7 +86,7 @@ local function package_known(o,k,...)
 end
 -- Donor sgs.Slash_IsAvailable(self.player): the core's generic owner slash availability.
 local function slash_available(self)return package_known(self,'slashIsAvailable')end
-local function dummy(value,extra,current)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;u.current_targets=current or{};return u end
+local dummy = AIUsePlan.dummy
 local function patterns_for(self,class)
  if class then return patterns(class)end
  local a=AICardCatalog.patternNames()

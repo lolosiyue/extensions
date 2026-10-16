@@ -1,19 +1,7 @@
 -- Fixed emjr-ai.lua b6025acc983331337614289d8cac79b078c003af.
 -- Decisions preserve donor loop/short-circuit order; native scopes own authority.
 local package_skills={}
-local function known(value,key)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("emjr policy input is unknown",key) end
-    return value
-end
-local function sorted(self,cards,method,...)
-    local result=AIValue.callKnown(self,method,cards,...)
-    for i,c in ipairs(result) do cards[i]=c end
-    return cards
-end
-local function sort_players(self,cards,...) return sorted(self,cards,"sort",...) end
-local function sort_use(self,cards,...) return sorted(self,cards,"sortByUseValue",...) end
-local function sort_keep(self,cards,...) return sorted(self,cards,"sortByKeepValue",...) end
+local known = AIValue.requireKnown
 local function action_request(self,request)
     if request and type(request.getActivationSkillName)~="function" then return AILegacyRequest.new(request,self.room) end
     return request
@@ -41,9 +29,9 @@ end
 
 sgs.ai_skill_use_func["#efusha"] = function(card,use,self,request)
 	local cards = AIList.new((self.player:getHandcards()))
-	sort_use(self,cards, true)
+	self:sortByUseValueInPlace(cards, true)
 
-	sort_players(self,self.enemies, "hp")
+	self:sortInPlace(self.enemies, "hp")
 
 	--if (self:getOverflow()) <= 0 then return end
 	self:setPriorityValue("#efusha",0.2,"emjr.efusha")
@@ -97,7 +85,7 @@ sgs.notActive_cardneed_skill = sgs.notActive_cardneed_skill .."|eqiehu"
 sgs.ai_skill_cardask["@eqiehu1"] = function(self, data, pattern, target)
 	local current = self.room:getCurrent()
 	local usable_cards = AIList.new((self.player:getCards("he")))
-	sort_keep(self,usable_cards)
+	self:sortByKeepValueInPlace(usable_cards)
 	if current and (self:isFriend(current)) then
 		for _, c in ipairs(usable_cards) do
 			if (c:isKindOf("BasicCard")) then
@@ -112,7 +100,7 @@ end
 sgs.ai_skill_cardask["@eqiehu2"] = function(self, data, pattern, target)
 	local current = self.room:getCurrent()
 	local usable_cards = AIList.new((self.player:getCards("he")))
-	sort_keep(self,usable_cards)
+	self:sortByKeepValueInPlace(usable_cards)
 	if current and (self:isEnemy(current)) and (self:doDisCard(current,"he")) then
 		if (self.player:hasArmorEffect("silver_lion")) and (self.player:isWounded()) then
 			for _, c in ipairs(usable_cards) do
@@ -123,7 +111,7 @@ sgs.ai_skill_cardask["@eqiehu2"] = function(self, data, pattern, target)
 		end
 		if (self.player:hasSkills(sgs.lose_equip_skill)) and #(self.player:getEquips()) > 0 then
 			local equipments = AIList.new((self.player:getCards("e")))
-			sort_keep(self,equipments)
+			self:sortByKeepValueInPlace(equipments)
 			for _, e in ipairs(equipments) do
 				return e
 			end
@@ -204,7 +192,7 @@ sgs.ai_skill_use["@@erangwai"] = function(self, prompt, method)
 	local card
 	local hcards = (self.player:getCards("h"))
 	hcards = AIList.new(hcards)
-	sort_use(self,hcards, true)
+	self:sortByUseValueInPlace(hcards, true)
 	for _, c in ipairs(hcards) do
 		if (c:isKindOf("BasicCard")) and not (c:isKindOf("Peach")) then
 			card = c
@@ -314,7 +302,7 @@ end
 sgs.ai_skill_playerchosen.etushou = function(self, targets)
 	local targetlist = AIList.new(targets)
 	local target
-	sort_players(self,targetlist, "hp")
+	self:sortInPlace(targetlist, "hp")
 	for _, player in ipairs(targetlist) do
 		if (self:isFriend(player)) and (self:canDraw(player,self.player)) then
 			target = player
@@ -370,7 +358,7 @@ local etiaobo_skill = {
 		if (self.player:getStrategyHasUsed("#etiaoboCard")) then return end
 		if (self.player:isNude()) then return end
 		local can_use = false
-		sort_players(self,self.enemies, "chaofeng")
+		self:sortInPlace(self.enemies, "chaofeng")
 		local slash = (self:getEvaluationCard("slash"))
 			for _, enemy in ipairs(self.enemies) do
 			if (self:slashIsEffective(slash,enemy)) and not (enemy:isKongcheng()) then
@@ -387,7 +375,7 @@ table.insert(package_skills, etiaobo_skill) --加入AI可用技能表
 sgs.ai_skill_use_func["#etiaoboCard"] = function(card,use,self,request)
 	local slash = (self:getEvaluationCard("slash"))
 	local slasher, target
-	sort_players(self,self.enemies, "defense")
+	self:sortInPlace(self.enemies, "defense")
 	for _, enemy_a in ipairs(self.enemies) do
 		for _, enemy_b in ipairs(self.enemies) do
 			if (enemy_b:canSlash(enemy_a)) and not (self:slashProhibit(slash,enemy_a)) and (self:getDefenseSlash(enemy_a)) <= 2

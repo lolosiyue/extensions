@@ -1,8 +1,5 @@
 -- Fixed gaodacard donor; native authority stays in the ordinary cardask pipeline.
-local function known(v,key)
- if AIUnsupported.is(v)then error(v,0)end
- if v==nil then ai_unsupported("Gaoda requires "..key,"gaodacard")end;return v
-end
+local known = AIValue.requireKnown
 
 local function context(self)
  local c=self:getDecisionContext().gaodacard

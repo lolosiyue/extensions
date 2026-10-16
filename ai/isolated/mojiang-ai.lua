@@ -1,19 +1,7 @@
 -- Fixed mojiang-ai.lua b6025acc983331337614289d8cac79b078c003af.
 -- Decisions preserve donor loop/short-circuit order; native scopes own authority.
 local package_skills={}
-local function known(value,key)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("mojiang policy input is unknown",key) end
-    return value
-end
-local function sorted(self,cards,method,...)
-    local result=AIValue.callKnown(self,method,cards,...)
-    for i,c in ipairs(result) do cards[i]=c end
-    return cards
-end
-local function sort_players(self,cards,...) return sorted(self,cards,"sort",...) end
-local function sort_use(self,cards,...) return sorted(self,cards,"sortByUseValue",...) end
-local function sort_keep(self,cards,...) return sorted(self,cards,"sortByKeepValue",...) end
+local known = AIValue.requireKnown
 local function action_request(self,request)
     if request and type(request.getActivationSkillName)~="function" then return AILegacyRequest.new(request,self.room) end
     return request
@@ -158,7 +146,7 @@ end
 sgs.ai_skill_use_func["#sy_quanqingCard"] = function(card,use,self,request)
 	local target = nil
 	if #self.enemies > 0 then
-		sort_players(self,self.enemies, "chaofeng")
+		self:sortInPlace(self.enemies, "chaofeng")
 		for _, enemy in ipairs(self.enemies) do
 			if (enemy:getMark("sy_quanqingTarget-PlayClear")) == 0 then
 				target = enemy
@@ -167,7 +155,7 @@ sgs.ai_skill_use_func["#sy_quanqingCard"] = function(card,use,self,request)
 		end
 	else
 		if #self.friends_noself > 0 then
-			sort_players(self,self.friends_noself)
+			self:sortInPlace(self.friends_noself)
 			for _, friend in ipairs(self.friends_noself) do
 				if (friend:getMark("sy_quanqingTarget-PlayClear")) == 0 then
 					target = friend
@@ -189,7 +177,7 @@ sgs.ai_use_priority["sy_quanqingCard"] = sgs.ai_use_priority.ExNihilo - 0.1
 
 sgs.ai_skill_cardask["@sy_quanqing"] = function(self, data, pattern)
 	local cards = AIList.new((self.player:getCards("he")))
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	local num = (data:toInt())
 	local sunluban = self.room:findPlayerBySkillName("sy_quanqing")
 	local qqcard
@@ -355,7 +343,7 @@ sgs.ai_skill_discard.sy_yongjie = function(self, discard_num, min_num, optional,
 	    return to_discard
 	else
 	    local cards = AIList.new((self.player:getCards("he")))
-		sort_keep(self,cards)
+		self:sortByKeepValueInPlace(cards)
 		local index = 0
 		for i = #cards, 1, -1 do
 		    local card = cards[i]
@@ -446,7 +434,7 @@ fcmk_jlsg_meihuo_skill.getTurnUseCard = function(self,inclusive,request)
 	local card_id
 	local cards = (self.player:getHandcards())
 	cards = AIList.new(cards)
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	local lightning = self:getCard("Lightning")
 	if lightning and ((lightning:isRed()) or ((lightning:getSuit()) == sgs.Card_Spade and (self.player:hasSkill("mouhongyann"))))
 	and not (self:willUseLightning(lightning)) then --优先给最废牌闪电
@@ -477,7 +465,7 @@ end
 
 sgs.ai_skill_use_func["#fcmk_jlsg_meihuoCard"] = function(card,use,self,request)
     if not (self.player:getStrategyHasUsed("#fcmk_jlsg_meihuoCard")) and not (self.player:isKongcheng()) and #self.enemies >= 2 then
-        sort_players(self,self.enemies)
+        self:sortInPlace(self.enemies)
 		for _, enemy in ipairs(self.enemies) do
 		    if enemy and (enemy:isMale()) and (enemy:getHandcardNum()) > 3 then --先找手牌多的
 				use.card = card
@@ -535,7 +523,7 @@ mo_moce_skill.getTurnUseCard = function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func["#mo_moceCard"] = function(card,use,self,request)
-	sort_players(self,self.enemies,"handcard")
+	self:sortInPlace(self.enemies, "handcard")
 	for _, enemy in ipairs(self.enemies) do
 		if not (enemy:isAllNude()) then
 			use.card = (self:inheritLegacyCardIdentity(bind(self,"mo_moce","#mo_moceCard",{},request),card))

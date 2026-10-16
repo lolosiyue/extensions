@@ -1,5 +1,5 @@
 -- Fixed yuri b6025acc source policy. Readonly proposals never grant payment authority.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("yuri fact unknown",k)end;return v end
+local known = AIValue.requireKnown
 local function __yuri_value_call(o,k,...)if o==nil then error("attempt to index a nil value",0)end;if k=="getMark"and AIValue.isPlayer(o)then k="getStrategyMark"elseif k=="hasFlag"and AIValue.isPlayer(o)then k="getStrategyFlag"end;if type(o[k])~="function"then ai_unsupported("yuri method unavailable",k)end;return known(o[k](o,...),k)end
 local function fact(self,k)ai_unsupported("yuri fact is not projected",k)end
 local function visible(self,id)return known(self:getKnownCardById(id),"disclosed card")end
@@ -19,7 +19,7 @@ local function tag(self,k,kind)
  local to=AIList.new({});for _,n in ipairs(r.to)do to:append(player(n))end
  return{from=player(r.from),to=to,card=type(r.card)=="table"and next(r.card)~=nil and CardView.new(r.card)or nil}
 end
-local function dummy_plan(value,extra,current)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;u.current_targets=current or {};return u end
+local dummy_plan = AIUsePlan.dummy
 local recipes=setmetatable({},{__mode="k"})
 local function copy(t)local r={}for k,v in pairs(t)do if type(v)=="table"then r[k]=copy(v)else r[k]=v end end;return r end
 local function clone(self,name,suit,number,skill)

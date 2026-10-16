@@ -1,14 +1,6 @@
 -- Fixed b6025acc DragonLoke policies. Old SkillCard parse failures remain nil;
 -- selected response wires preserve the donor terminal failure; no V2 repair.
-local function known(value,key)
-    if AIUnsupported and AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("DragonLoke fact is not projected",key) end
-    return value
-end
-local function sort_in_place(self,values,key)
-    local ordered=(self:sort(values,key))
-    for i,value in ipairs(ordered) do values[i]=value end
-end
+local known = AIValue.requireKnown
 local function missing_prototype(self,selector)
     -- Whether the source's skill-card class is registered (Card_Parse) is engine
     -- registry state, not projected.
@@ -121,7 +113,7 @@ sgs.ai_fill_skill.dl_yanxiao = function(self)
 end
 sgs.ai_skill_use_func["#dl_yanxiao"] = function(card,use,self)
     if (self.player:hasSkill("dl_liuli")) then
-        sort_in_place(self,self.friends_noself,"defense")
+        self:sortInPlace(self.friends_noself, "defense")
         if (self:getOverflow())>0 then
             local lord = self.room:getLord()
             if lord and (self:isFriend(lord))  then
@@ -186,7 +178,7 @@ ai_skill_use["@@dl_liuli"] = function(self,prompt,request)
 			break
 		end
 	end
-	sort_in_place(self,self.enemies,"defense")
+	self:sortInPlace(self.enemies, "defense")
     local doLiuli = function(who)
         if not (self:isFriend(who)) and (who:hasSkills("leiji|nosleiji|olleiji"))
             and ((self:hasSuit("spade",true,who)) or (who:getHandcardNum())>=3)
@@ -237,7 +229,7 @@ ai_skill_use["@@dl_liuli"] = function(self,prompt,request)
         end
 
 
-        sort_in_place(self,self.friends_noself,"defense")
+        self:sortInPlace(self.friends_noself, "defense")
         self.friends_noself = sgs.reverse(self.friends_noself)
 
 

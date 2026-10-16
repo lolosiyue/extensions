@@ -1,5 +1,5 @@
 -- du, fixed b6025acc: preserve policy order and donor terminal incompatibilities.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("du fact is unknown",k)end;return v end
+local known = AIValue.requireKnown
 local nullable={getCard=true,getMaxCard=true,findPlayerBySkillName=true,getLord=true,getCurrent=true,getSourceLord=true,toPlayer=true,updateIntention=true,updatePlayers=true,setStrategyPlayerFlag=true}
 
 -- Whether a legacy LuaSkillCard prototype parses is an engine query that is not projected.

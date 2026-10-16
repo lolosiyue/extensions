@@ -1,5 +1,5 @@
 -- Loong fixed b6025acc. Policy proposals are readonly until final selection.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported('Loong input unknown',k)end;return v end
+local known = AIValue.requireKnown
 local function hydrate_context(self,value,kind)
  if value==nil then return nil end
  if kind=='Player' then

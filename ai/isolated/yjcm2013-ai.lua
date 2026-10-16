@@ -1,10 +1,7 @@
 -- Fixed YJCM2013 source policies. Native receipts alone authorize card costs.
 sgs.ai_choicemade_filter.skillInvoke=sgs.ai_choicemade_filter.skillInvoke or {}
 sgs.ai_choicemade_filter.cardChosen=sgs.ai_choicemade_filter.cardChosen or {}
-local function known(value,key)
-    if value==nil then ai_unsupported("YJCM2013 input is not projected",key) end
-    return value
-end
+local known = AIValue.requireKnown
 local function skill(self,player,names)
     local value=player:hasSkills(names)
     local row=rawget(player,"_view")
@@ -16,11 +13,6 @@ local function flag(self,player,name)
     local value=player:getStrategyFlag(name)
     if value~=nil then return value end
     return self:useKnowledgeEstimate({status="estimate",value=false,basis="yjcm2013.unknown_foreign_flag_uses_public_state",target=player:objectName(),flag=name},"yjcm2013.flag")
-end
-local function sort_in_place(self,players,key,reverse)
-    local ordered=self:sort(players,key,reverse)
-    for i,player in ipairs(ordered) do players[i]=player end
-    return players
 end
 local function reversed(cards)
     local result={};for i=#cards,1,-1 do result[#result+1]=cards[i]end;return AIList.new(result)
@@ -72,9 +64,7 @@ local function remove_one(list,value)
  for i,item in ipairs(list)do if item==value then table.remove(list,i);return true end end
  return false
 end
-local function dummy(is_dummy,extra,targets)
- return {isDummy=is_dummy~=false,extra_target=extra or 0,current_targets=targets or {},to=AIList.new({})}
-end
+local dummy = AIUsePlan.dummy
 local classes={JunxingCard="junxing",DanshouCard="danshou",MiejiCard="mieji",FenchengCard="fencheng",XiansiCard="xiansi",XiansiSlashCard="xiansi_slash",QiaoshuiCard="qiaoshui",ExtraCollateralCard="qiaoshui"}
 local function parse_source_costs(text)
  local costs={};if text~="." then for id in text:gmatch("[^+]+")do costs[#costs+1]=known(tonumber(id),"yjcm2013.authored_cost")end end;return costs
@@ -196,7 +186,7 @@ sgs.ai_skill_use_func.JunxingCard = function(card,use,self,request)
 	if #use_cards==0 then return end
 
 	-- to friends
-	sort_in_place(self,self.friends_noself,"defense")
+	self:sortInPlace(self.friends_noself, "defense")
 	for _,friend in ipairs(self.friends_noself)do
 		if not self:toTurnOver(friend,#use_cards) then
 			use.card = source_card(self,"@JunxingCard="..table.concat(use_cards,"+"),request)
@@ -224,7 +214,7 @@ sgs.ai_skill_use_func.JunxingCard = function(card,use,self,request)
 		end
 		if basic and trick and equip then break end
 	end
-	sort_in_place(self,self.enemies,"handcard")
+	self:sortInPlace(self.enemies, "handcard")
 	local other_enemy
 	for _,enemy in ipairs(self.enemies)do
 		local id = nil
@@ -579,7 +569,7 @@ local function policy___qiaoshui(self,prompt)
 	for _,card in ipairs(self.player:getHandcards())do
 		if card:isNDTrick() and not card:isKindOf("Nullification") then trick_num = trick_num+1 end
 	end
-	sort_in_place(self,self.enemies,"handcard")
+	self:sortInPlace(self.enemies, "handcard")
 	local max_card = self:getMaxCard()
 	local max_point = max_card:getNumber()
 
@@ -602,7 +592,7 @@ local function policy___qiaoshui(self,prompt)
 		end
 	end
 
-	sort_in_place(self,self.friends_noself,"handcard")
+	self:sortInPlace(self.friends_noself, "handcard")
 	for index = #self.friends_noself,1,-1 do
 		local friend = self.friends_noself[index]
 		if self.player:canPindian(friend) then
@@ -661,7 +651,7 @@ sgs.ai_skill_choice.qiaoshui = function(self,choices,data)
 			return "add"
 		end
 	elseif use.card:isKindOf("Peach") and choices:contains("add") then
-		sort_in_place(self,self.friends_noself,"hp")
+		self:sortInPlace(self.friends_noself, "hp")
 		for _,friend in ipairs(self.friends_noself)do
 			if friend:isWounded() and friend:getHp()<getBestHp(friend) then
 				self:setStrategyMemory("yjcm2013.qiaoshui_target",(friend):objectName())
@@ -669,7 +659,7 @@ sgs.ai_skill_choice.qiaoshui = function(self,choices,data)
 			end
 		end
 	elseif use.card:isKindOf("GodSalvation") and choices:contains("remove") then
-		sort_in_place(self,self.enemies,"hp")
+		self:sortInPlace(self.enemies, "hp")
 		for _,enemy in ipairs(self.enemies)do
 			if use.to:contains(enemy) and enemy:isWounded()
 			and self:hasTrickEffective(use.card,enemy,self.player) then
@@ -678,7 +668,7 @@ sgs.ai_skill_choice.qiaoshui = function(self,choices,data)
 			end
 		end
 	elseif use.card:isKindOf("AmazingGrace") and choices:contains("remove") then
-		sort_in_place(self,self.enemies)
+		self:sortInPlace(self.enemies)
 		for _,enemy in ipairs(self.enemies)do
 			if self:hasTrickEffective(use.card,enemy,self.player) and not self:hasManjuanEffect(enemy)
 			and not self:needKongcheng(enemy,true) then
@@ -687,7 +677,7 @@ sgs.ai_skill_choice.qiaoshui = function(self,choices,data)
 			end
 		end
 	elseif use.card:isKindOf("AOE") and choices:contains("remove") then
-		sort_in_place(self,self.friends_noself)
+		self:sortInPlace(self.friends_noself)
 		local lord = self.room:getLord()
 		if lord and use.to:contains(lord) and self:isFriend(lord) and self:isWeak(lord) then
 			self:setStrategyMemory("yjcm2013.qiaoshui_target",(lord):objectName())
@@ -935,7 +925,7 @@ sgs.ai_skill_playerchosen.zhiyan = function(self,targets)
 	local card = top_card(self)
 	if card then -- the projected top descriptor is already authorized visible
 		if card:isKindOf("EquipCard") then
-			sort_in_place(self,self.friends,"hp")
+			self:sortInPlace(self.friends, "hp")
 			for _,friend in ipairs(self.friends)do
 				if (not self:getSameEquip(card,friend) or card:isKindOf("DefensiveHorse") or card:isKindOf("OffensiveHorse"))
 					and not (card:isKindOf("Armor") and (skill(self,friend,"bazhen|yizhong") or self:evaluateArmor(card,friend)<0)) then
@@ -951,14 +941,14 @@ sgs.ai_skill_playerchosen.zhiyan = function(self,targets)
 			if player then
 				return player
 			else
-				sort_in_place(self,self.friends)
+				self:sortInPlace(self.friends)
 				for _,friend in ipairs(self.friends)do
 					if not self:needKongcheng(friend,true) and not self:hasManjuanEffect(friend) then return friend end
 				end
 			end
 		end
 	else
-		sort_in_place(self,self.friends)
+		self:sortInPlace(self.friends)
 		for _,friend in ipairs(self.friends)do
 			if not self:needKongcheng(friend,true) and not self:hasManjuanEffect(friend) then return friend end
 		end
@@ -994,7 +984,7 @@ end
 
 sgs.ai_skill_playerchosen.qiuyuan = function(self,targets)
 	local targetlist = AIList.new(targets)
-	sort_in_place(self,targetlist,"handcard")
+	self:sortInPlace(targetlist, "handcard")
 	local enemy
 	for _,p in ipairs(targetlist)do
 		local jink = getKnownCard(p,self.player,"Jink",true,"he")
@@ -1047,7 +1037,7 @@ end
 
 sgs.ai_skill_playerchosen.juece = function(self,targetlist)
 	local targets = AIList.new(targetlist)
-	sort_in_place(self,targets)
+	self:sortInPlace(targets)
 	local friends,enemies = {},{}
 	for _,target in ipairs(targets)do
 		if self:cantbeHurt(target,self.player) or not self:damageIsEffective(target,nil,self.player) then continue end

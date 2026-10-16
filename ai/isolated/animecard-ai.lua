@@ -1,10 +1,6 @@
 -- Complete fixed b6025acc animecard policy bodies. Readonly native evaluations
 -- supply hypothetical card rules; every eventual action retains native gates.
-local function known(value, key)
-    if AIUnsupported and AIUnsupported.is(value) then error(value, 0) end
-    if value == nil then ai_unsupported("animecard value is unknown", key) end
-    return value
-end
+local known = AIValue.requireKnown
 
 local function has_skill(self, player, name)
     local value=player:hasSkill(name)

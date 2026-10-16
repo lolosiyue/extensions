@@ -1,10 +1,6 @@
 -- Source Guanxing/XinZhan policies and their classical-control dependency.
 -- Only disclosed cards and viewer-local strategy memory cross inquiries.
-local function known(value,label)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("guanxing requires "..label,"guanxing") end
-    return value
-end
+local known = AIValue.requireKnown
 local function query(object,method,...)
     if type(object)~="table" or type(object[method])~="function" then ai_unsupported("guanxing requires "..method,"guanxing") end
     return known(object[method](object,...),method)
@@ -34,10 +30,6 @@ local function card_by_id(self,id)
 end
 local function cards_from_ids(self,ids)local cards={}for _,id in ipairs(ids)do cards[#cards+1]=card_by_id(self,id)end;return cards end
 local function ids_from_cards(cards)local ids={}for _,card in ipairs(cards)do ids[#ids+1]=query(card,"getId")end;return ids end
-local function sorted(self,cards,inverse)
-    local ordered=query(self,"sortByUseValue",cards,inverse)
-    for i=1,#cards do cards[i]=ordered[i]end
-end
 local function note(self,basis,value)
     return query(self,"useKnowledgeEstimate",{status="estimate",value=value,basis=basis},"guanxing")
 end
@@ -174,7 +166,7 @@ local function evaluate(self,card)return query(self,"evaluateAcquiredCard",card)
 -- Source policy bodies. Preserve table-removal and judged-class collision order.
 local function GuanXing(self,cards)
 	local up,bottom = {},cards_from_ids(self,cards)
-	sorted(self,bottom,true)
+	self:sortByUseValueInPlace(bottom, true)
 	if query(self.player,"hasSkill","myjincui") then
 		local cs = {}
 		for _,c in ipairs(AIList.new(bottom))do
@@ -271,7 +263,7 @@ local function GuanXing(self,cards)
 			end
 		end
 	end
-	sorted(self,bottom)
+	self:sortByUseValueInPlace(bottom)
 	if #bottom>0 and query(self.player,"hasSkill","myjincui") then
 		local cs = {}
 		for _,c in ipairs(AIList.new(bottom))do

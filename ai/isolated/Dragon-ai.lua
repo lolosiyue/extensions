@@ -1,6 +1,6 @@
 -- Complete fixed b6025acc Dragon source policy bodies. Native receipts remain
 -- authoritative; known source-unreachable/invalid-prototype branches are explicit.
-local function known(v,k)if v==nil then ai_unsupported("Dragon fact is unknown",k)end return v end
+local known = AIValue.requireKnown
 
 -- Donor consults another player's private response limitations. A missing
 -- lawful projection uses the authorized inactive prior and records the change.

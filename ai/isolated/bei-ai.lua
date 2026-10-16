@@ -1,9 +1,6 @@
 -- Fixed b6025acc bei source bodies, including legacy-native ABI differences.
 -- State stores only primitive IDs/names and disclosed value descriptors.
-local function known(value,key)
-    if value==nil then ai_unsupported("bei strategy fact is unknown",key)end
-    return value
-end
+local known = AIValue.requireKnown
 
 -- The donor reads the viewer's own tags/properties; an absent one reads as the
 -- QVariant default (nil player, "" string, empty list).

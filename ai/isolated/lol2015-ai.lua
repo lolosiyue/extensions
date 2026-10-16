@@ -1,21 +1,9 @@
 -- Fixed lol2015-ai.lua b6025acc983331337614289d8cac79b078c003af.
 -- Decisions preserve donor loop/short-circuit order; native scopes own authority.
 local package_skills={}
-local function known(value,key)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("lol2015 policy input is unknown",key) end
-    return value
-end
+local known = AIValue.requireKnown
 
 
-local function sorted(self,cards,method,...)
-    local result=AIValue.callKnown(self, method, cards, ...)
-    for i,c in ipairs(result) do cards[i]=c end
-    return cards
-end
-local function sort_players(self,cards,...) return sorted(self,cards,"sort",...) end
-local function sort_use(self,cards,...) return sorted(self,cards,"sortByUseValue",...) end
-local function sort_keep(self,cards,...) return sorted(self,cards,"sortByKeepValue",...) end
 local function action_request(self,request)
     if request and type(request.getActivationSkillName)~="function" then return AILegacyRequest.new(request,self.room) end
     return request
@@ -90,7 +78,7 @@ end
 sgs.ai_skill_use_func["#lol_jwyh_qCard"] = function(card,use,self,request)
 	self:updatePlayers()
 	local handcards = AIList.new(self.player:getCards("h"))
-	sort_players(self,self.enemies, "handcard")
+	self:sortInPlace(self.enemies, "handcard")
 	self:sortByCardNeed(handcards, true)
 	local targets = {}
 	local use_card = nil
@@ -133,7 +121,7 @@ end
 sgs.ai_skill_cardchosen["lol_jwyh_qCard"] = function(self, who, flags)
 	self:updatePlayers()
 	local handcards = AIList.new(whole_hand(self,who))
-	sort_use(self,handcards)
+	self:sortByUseValueInPlace(handcards)
 	if self:isEnemy(who) then
 		if who:hasFlag("lol_jwyh_e") then
 			for _,c in ipairs(handcards) do
@@ -216,7 +204,7 @@ end
 sgs.ai_skill_playerchosen["lol_jwyh_wCard"] = function(self, targets)
 	local target
 	targets = AIList.new(targets)
-	sort_players(self,self.enemies, "defense") 
+	self:sortInPlace(self.enemies, "defense")
 	for _,enemy in ipairs(targets) do
 		if enemy and self:isEnemy(enemy) and self:damageIsEffective(enemy, sgs.DamageStruct_Fire, self.player) and not self:cantbeHurt(enemy)  then
 			target= enemy
@@ -242,7 +230,7 @@ end
 sgs.ai_skill_use_func["#lol_jwyh_eCard"] = function(card,use,self,request)
 	self:updatePlayers()
 	local handcards = AIList.new(self.player:getCards("h"))
-	sort_players(self,self.enemies, "handcard")
+	self:sortInPlace(self.enemies, "handcard")
 	self.enemies = sgs.reverse(self.enemies)
 	self:sortByCardNeed(handcards, true)
 	local targets = {}
@@ -271,7 +259,7 @@ sgs.ai_card_intention["lol_jwyh_eCard"] = 10
 
 sgs.ai_skill_use["@@lol_jwyh_r"] = function(self, prompt)
     local all_cards = AIList.new(self.player:getCards("h"))
-	sort_keep(self,all_cards)
+	self:sortByKeepValueInPlace(all_cards)
 	local use_card
 	local spade = 0
 	for _, c in ipairs(all_cards) do
@@ -359,7 +347,7 @@ lol_hbss_w_skill.getTurnUseCard=function(self,inclusive,request)
 			end
 		end
 		
-		sort_keep(self,cards)
+		self:sortByKeepValueInPlace(cards)
 		local useAll = false
 		for _, enemy in ipairs(self.enemies) do
 			if enemy:getHp() == 1 and not enemy:hasArmorEffect("vine") and not self:hasEightDiagramEffect(enemy) and self:damageIsEffective(enemy, nil, self.player)
@@ -422,7 +410,7 @@ sgs.ai_skill_use_func["#lol_hbss_eCard"] = function(card,use,self,request)
 	self:updatePlayers()
 	local handcards = AIList.new(self.player:getCards("h"))
 	self:sortByCardNeed(handcards, true)
-	sort_players(self,self.enemies, "handcard")
+	self:sortInPlace(self.enemies, "handcard")
 	local use_card = nil
 	for _,c in ipairs(handcards) do
 		if not c:isKindOf("Peach")  then
@@ -452,11 +440,11 @@ lol_hbss_r_skill.name="lol_hbss_r"
 table.insert(package_skills,lol_hbss_r_skill)
 lol_hbss_r_skill.getTurnUseCard=function(self,inclusive,request)
 	if #self.enemies < 1 then return end
-	sort_players(self,self.enemies, "hp")
+	self:sortInPlace(self.enemies, "hp")
 	if self.player:getMark("@lol_hbss_r") < 1 then return end
 
 	local cards = AIList.new(self.player:getHandcards())
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	if #cards == 0 then return end
 	local cardToUse = cards[1]
 	if not cardToUse then
@@ -514,7 +502,7 @@ end
 
 sgs.ai_skill_use_func["#lol_mzzw_wCard"] = function(card,use,self,request)
 	self:updatePlayers()
-	sort_players(self,self.enemies, "handcard")
+	self:sortInPlace(self.enemies, "handcard")
 	for _, enemy in ipairs(self.enemies) do
 		if not enemy:isKongcheng() then
 			if use.to then use.to:append(enemy) end
@@ -653,10 +641,10 @@ lol_tqz_q_skill.name="lol_tqz_q"
 table.insert(package_skills,lol_tqz_q_skill)
 lol_tqz_q_skill.getTurnUseCard=function(self,inclusive,request)
 	if #self.enemies < 1 then return end
-	sort_players(self,self.enemies, "hp")
+	self:sortInPlace(self.enemies, "hp")
 	
 	local cards = AIList.new(self.player:getHandcards())
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	if #cards == 0 then return end
 	local cardToUse = cards[1]
 	if not cardToUse then
@@ -706,7 +694,7 @@ sgs.ai_skill_use_func["#lol_tqz_wCard"] = function(card,use,self,request)
 	self:updatePlayers()
 	local handcards = AIList.new(self.player:getCards("h"))
 	self:sortByCardNeed(handcards, true)
-	sort_players(self,self.enemies, "handcard")
+	self:sortInPlace(self.enemies, "handcard")
 	local use_card = nil
 	for _,c in ipairs(handcards) do
 		if not c:isKindOf("Peach")  then
@@ -762,7 +750,7 @@ sgs.ai_skill_use_func["#lol_tqz_eCard"] = function(card,use,self,request)
 	self:updatePlayers()
 	local handcards = AIList.new(self.player:getCards("h"))
 	self:sortByCardNeed(handcards, true)
-	sort_players(self,self.friends, "handcard")
+	self:sortInPlace(self.friends, "handcard")
 	local use_card = nil
 	for _,c in ipairs(handcards) do
 		if not c:isKindOf("Peach") and c:getSuit() == sgs.Card_Diamond  then
@@ -854,10 +842,10 @@ lol_xlnw_q_skill.getTurnUseCard=function(self,inclusive,request)
     if self.player:hasFlag("lol_xlnw_q") then return nil end
     local cards = self.player:getHandcards()
     cards=AIList.new(cards)
-    sort_keep(self,cards)
+    self:sortByKeepValueInPlace(cards)
 	local card
 
-	sort_use(self,cards,true)
+	self:sortByUseValueInPlace(cards, true)
 
 	for _,acard in ipairs(cards)  do
 		if (acard:getSuit() == sgs.Card_Club)  then
@@ -897,7 +885,7 @@ lol_xlnw_w_skill.getTurnUseCard=function(self,inclusive,request)
 	if not card then
 		local hcards = self.player:getCards("h")
 		hcards = AIList.new(hcards)
-		sort_use(self,hcards, true)
+		self:sortByUseValueInPlace(hcards, true)
 
 		for _, hcard in ipairs(hcards) do
 			if hcard:getSuit() == sgs.Card_Heart then
@@ -918,7 +906,7 @@ sgs.ai_skill_use_func["#lol_xlnw_wCard"] = function(card,use,self,request)
 	local target
 	local friends = self.friends_noself
 	
-	sort_players(self,friends, "handcard", true)
+	self:sortInPlace(friends, "handcard", true)
 	
 	for _, friend in ipairs(friends) do
 		if  not self:needKongcheng(friend, true) and not hasManjuanEffect(friend) and friend:getPileCount("lol_jiasu") == 0 then
@@ -928,7 +916,7 @@ sgs.ai_skill_use_func["#lol_xlnw_wCard"] = function(card,use,self,request)
 	end
 
 	if not target then
-		sort_players(self,friends, "defense")
+		self:sortInPlace(friends, "defense")
 		for _, friend in ipairs(friends) do
 			if  not self:needKongcheng(friend, true) and not hasManjuanEffect(friend) then
 				target = friend
@@ -979,7 +967,7 @@ end
 
 sgs.ai_skill_use_func["#lol_xlnw_eCard"] = function(card,use,self,request)
 	local target
-	sort_players(self,self.friends_noself, "handcard", true)
+	self:sortInPlace(self.friends_noself, "handcard", true)
 
 	
 	for _, friend in ipairs(self.friends_noself) do
@@ -1022,7 +1010,7 @@ end
 
 sgs.ai_skill_use_func["#lol_xlnw_rCard"] = function(card,use,self,request)
 	local target
-	sort_players(self,self.friends, "hp")
+	self:sortInPlace(self.friends, "hp")
 
 	
 	for _, friend in ipairs(self.friends) do
@@ -1034,7 +1022,7 @@ sgs.ai_skill_use_func["#lol_xlnw_rCard"] = function(card,use,self,request)
 	if not target then return end 
 	local handcards = AIList.new(self.player:getCards("h"))
 	self:sortByCardNeed(handcards, true)
-	sort_players(self,self.friends, "handcard")
+	self:sortInPlace(self.friends, "handcard")
 	local use_card = {}
 	for _,c in ipairs(handcards) do
 		if not c:isKindOf("Peach") and #use_card < target:getHp()  then
@@ -1103,7 +1091,7 @@ sgs.ai_skill_use_func["#lol_smss_qCard"] = function(card,use,self,request)
 	local use_card = {}
 	for _,c in ipairs(handcards) do
 		if c:isKindOf("Slash") then
-			sort_players(self,self.enemies, "defense")
+			self:sortInPlace(self.enemies, "defense")
 			for _, enemy in ipairs(self.enemies) do
 				if  self.player:getMark("@lol_smss_q") > 0 and self:slashIsEffective(c, enemy) then
 					invoke = true
@@ -1133,7 +1121,7 @@ lol_smss_w_skill.getTurnUseCard=function(self,inclusive,request)
 	if not card then
 		local hcards = self.player:getCards("h")
 		hcards = AIList.new(hcards)
-		sort_use(self,hcards, true)
+		self:sortByUseValueInPlace(hcards, true)
 
 		for _, hcard in ipairs(hcards) do
 			if hcard:getSuit() == sgs.Card_Spade then
@@ -1156,7 +1144,7 @@ sgs.ai_skill_use_func["#lol_smss_wCard"] = function(card,use,self,request)
 	
 
 	if not target then
-		sort_players(self,self.enemies, "defense")
+		self:sortInPlace(self.enemies, "defense")
 		for _, enemy in ipairs(self.enemies) do
 			if  self:isWeak(enemy) and enemy:getPileCount("lol_jiansu") == 0 then
 				target = enemy
@@ -1165,7 +1153,7 @@ sgs.ai_skill_use_func["#lol_smss_wCard"] = function(card,use,self,request)
 		end
 	end
 	if not target then
-		sort_players(self,self.enemies, "defense")
+		self:sortInPlace(self.enemies, "defense")
 		for _, enemy in ipairs(self.enemies) do
 			if  self:getOverflow() > 0 and enemy:getPileCount("lol_jiansu") == 0 then
 				target = enemy
@@ -1208,7 +1196,7 @@ sgs.ai_skill_use_func["#lol_smss_eCard"] = function(card,use,self,request)
 				break
 			end
 		end
-		sort_players(self,self.enemies)
+		self:sortInPlace(self.enemies)
 		local max= 0
 		for _, enemy in ipairs(self.enemies) do
 			local x = 0
@@ -1362,7 +1350,7 @@ sgs.ai_skill_use_func["#lol_ayjm_rCard"] = function(card,use,self,request)
 	local use_card = {}
 	for _,c in ipairs(handcards) do
 		if c:isKindOf("Slash") then
-			sort_players(self,self.enemies, "defense")
+			self:sortInPlace(self.enemies, "defense")
 			for _, enemy in ipairs(self.enemies) do
 				if  self:isWeak(enemy) and self:slashIsEffective(c, enemy) then
 					invoke = true
@@ -1401,7 +1389,7 @@ sgs.ai_skill_use_func["#lol_bjfh_qCard"] = function(card,use,self,request)
 			break
 		end
 	end
-	sort_players(self,self.enemies)
+	self:sortInPlace(self.enemies)
 	for _,enemy in sgs.list(self.enemies)do
 		if self:objectiveLevel(enemy)>3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy)
 		then
@@ -1453,7 +1441,7 @@ sgs.ai_skill_use_func["#lol_bjfh_eCard"] = function(card,use,self,request)
 		use_card = card
 		break
 	end
-	sort_players(self,self.enemies)
+	self:sortInPlace(self.enemies)
 	for _,enemy in sgs.list(self.enemies)do
 		if self:objectiveLevel(enemy)>3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy) and enemy:getPileCount("lol_jiansu")>0
 		then
@@ -1500,7 +1488,7 @@ sgs.ai_skill_use_func["#lol_bjfh_rCard"] = function(card,use,self,request)
 		break
 	end
 	local targets = {}
-	sort_players(self,self.enemies)
+	self:sortInPlace(self.enemies)
 	for _,enemy in sgs.list(self.enemies)do
 		if self:objectiveLevel(enemy)>3 and not self:cantbeHurt(enemy) and self:damageIsEffective(enemy)
 		then
@@ -1552,10 +1540,10 @@ lol_sxls_q_skill.getTurnUseCard=function(self,inclusive,request)
     if self.player:hasFlag("lol_sxls_q") then return nil end
     local cards = self.player:getHandcards()
     cards=AIList.new(cards)
-    sort_keep(self,cards)
+    self:sortByKeepValueInPlace(cards)
 	local card
 
-	sort_use(self,cards,true)
+	self:sortByUseValueInPlace(cards, true)
 
 	for _,acard in ipairs(cards)  do
 		if (acard:getSuit() == sgs.Card_Heart)  then
@@ -1681,9 +1669,9 @@ sgs.ai_skill_use_func["#lol_sxls_rCard"] = function(card,use,self,request)
 		end
 	end
 	if #slashes<1 then return end
-	sort_players(self,self.enemies,"hp")
+	self:sortInPlace(self.enemies, "hp")
 	local cards = AIList.new(self.player:getCards("h"))
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	local use_card
 	for _, card in ipairs(cards) do
 		if not card:isKindOf("Slash") then
@@ -1731,10 +1719,10 @@ lol_bzll_w_skill.getTurnUseCard=function(self,inclusive,request)
     if self.player:getMark("lol_bzll_q") == 0 then return nil end
     local cards = self.player:getHandcards()
     cards=AIList.new(cards)
-    sort_keep(self,cards)
+    self:sortByKeepValueInPlace(cards)
 	local card
 
-	sort_use(self,cards,true)
+	self:sortByUseValueInPlace(cards, true)
 
 	for _,acard in ipairs(cards)  do
 		if (acard:getNumber() > self.player:getMark("lol_bzll_q") )  then
@@ -1820,10 +1808,10 @@ lol_bzll_r_skill.getTurnUseCard=function(self,inclusive,request)
     if self.player:getMark("@lol_bzll_r") == 0 then return nil end
     local cards = self.player:getHandcards()
     cards=AIList.new(cards)
-    sort_keep(self,cards)
+    self:sortByKeepValueInPlace(cards)
 	local card
 
-	sort_use(self,cards,true)
+	self:sortByUseValueInPlace(cards, true)
 
 	for _,acard in ipairs(cards)  do
 		if (acard:getNumber() == self.player:getMark("lol_bzll_q") )  then

@@ -1,5 +1,5 @@
 -- nybeauty fixed b6025acc: original policy order, pure public/owner inputs.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported('nybeauty input unknown',k)end;return v end
+local known = AIValue.requireKnown
 local nullable={toPlayer=true,getArmor=true,getMaxCard=true,getMinCard=true,useBasicCard=true,useTrickCard=true,useEquipCard=true,useSkillCard=true,useCardByClassName=true,updateIntention=true,setStrategyMemory=true,getStrategyMemory=true}
 
 -- Own dynamic property; QVariant::toString of an unset one is "".

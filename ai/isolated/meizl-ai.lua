@@ -1,10 +1,6 @@
 -- Fixed b6025acc meizl. Native simulations are readonly; final selected
 -- materials are rebound through issued scopes. No source registry fallback.
-local function known(v,k)
-    if AIUnsupported.is(v) then error(v,0) end
-    if v==nil then ai_unsupported('Meizl missing '..k,'meizl') end
-    return v
-end
+local known = AIValue.requireKnown
 local function copy(v)
     if type(v)~='table' then return v end
     local r={};for k,x in pairs(v) do r[k]=copy(x) end;return r
@@ -18,9 +14,7 @@ local function source_query(o,m,...)
     local args={...};for i=1,select('#',...) do if preview_specs[args[i]] then args[i]=resolve_preview(args[i]) end end
     return (AIValue.callKnown(o, m, table.unpack(args,1,select('#',...))))
 end
-local function dummy(isDummy,extra,current)
-    return AIUsePlan.new({isDummy=isDummy~=false,extra_target=extra,current_targets=current})
-end
+local dummy = AIUsePlan.dummy
 local function pattern_names(self,class)
     if type(class)=='string'then
         local mapping=known(AICardCatalog.patternClassNames(),'exact last-write class/name catalog')

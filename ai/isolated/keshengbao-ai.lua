@@ -1,7 +1,7 @@
 -- Fixed b6025acc package policy; all selection uses pure views and native-issued receipts.
 
 
-local function dummy(value)local u=AIUsePlan.new();u.isDummy=value;return u end
+local dummy = AIUsePlan.dummy
 local function sole_slash(self,player)
  if player==self.player then return (player:getHandcards():at(0)):isKindOf("Slash")end
  local known=player:getKnownCards()

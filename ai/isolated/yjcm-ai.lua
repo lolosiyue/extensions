@@ -1,10 +1,7 @@
 -- Fixed YJCM source policies. Native receipts alone authorize card costs.
 sgs.ai_choicemade_filter.skillInvoke=sgs.ai_choicemade_filter.skillInvoke or {}
 sgs.ai_choicemade_filter.cardChosen=sgs.ai_choicemade_filter.cardChosen or {}
-local function known(value,key)
-    if value==nil then ai_unsupported("YJCM input is not projected",key) end
-    return value
-end
+local known = AIValue.requireKnown
 local function skill(self,player,names)
     local value=player:hasSkills(names)
     local row=rawget(player,"_view")
@@ -25,11 +22,6 @@ local function flag(self,player,name)
     local value=player:getStrategyFlag(name)
     if value~=nil then return value end
     return self:useKnowledgeEstimate({status="estimate",value=false,basis="yjcm.unknown_foreign_flag_uses_public_state",target=player:objectName(),flag=name},"yjcm.flag")
-end
-local function sort_in_place(self,players,key,reverse)
-    local ordered=self:sort(players,key,reverse)
-    for i,player in ipairs(ordered) do players[i]=player end
-    return players
 end
 local function reversed(cards)
     local result={};for i=#cards,1,-1 do result[#result+1]=cards[i]end;return AIList.new(result)
@@ -298,7 +290,7 @@ end
 
 sgs.ai_skill_playerchosen.xuanhuo = function(self,targets)
 	local lord = self.room:getLord()
-	sort_in_place(self,self.enemies,"defense")
+	self:sortInPlace(self.enemies, "defense")
 	if lord and self:isEnemy(lord) then  --killloyal
 		for _,enemy in ipairs(self.enemies)do
 			if (self:getDangerousCard(lord) or self:getValuableCard(lord))
@@ -322,7 +314,7 @@ sgs.ai_skill_playerchosen.xuanhuo = function(self,targets)
 	end
 
 	if #self.friends_noself==0 then return nil end
-	sort_in_place(self,self.friends_noself,"defense")
+	self:sortInPlace(self.friends_noself, "defense")
 
 	for _,friend in ipairs(self.friends_noself)do
 		if self:hasSkills(sgs.lose_equip_skill,friend) and not friend:getEquips():isEmpty() and not skill(self,friend,"manjuan") then
@@ -419,7 +411,7 @@ end
 
 sgs.ai_skill_playerchosen.xuanfeng = function(self,targets)
 	targets = AIList.new(targets)
-	sort_in_place(self,targets,"defense")
+	self:sortInPlace(targets, "defense")
 	for _,enemy in ipairs(self.enemies)do
 		if (self:doDisCard(enemy,"he") or self:getDangerousCard(enemy) or self:getValuableCard(enemy)) and not enemy:isNude() and
 		not (skill(self,enemy,"guzheng") and self.room:getCurrent():getPhase()==sgs.Player_Discard) then
@@ -673,7 +665,7 @@ sgs.ai_skill_use_func.MingceCard = function(card,use,self)
 		return canGive or (not canGive and self:getEnemyNumBySeat(self.player,player)==0)
 	end
 
-	sort_in_place(self,self.enemies,"defense")
+	self:sortInPlace(self.enemies, "defense")
 	for _,friend in ipairs(friends)do
 		if canMingceTo(friend) then
 			for _,enemy in ipairs(self.enemies)do
@@ -690,7 +682,7 @@ sgs.ai_skill_use_func.MingceCard = function(card,use,self)
 	end
 
 	if not target then
-		sort_in_place(self,friends,"defense")
+		self:sortInPlace(friends, "defense")
 		for _,friend in ipairs(friends)do
 			if canMingceTo(friend) then
 				target = friend
@@ -733,7 +725,7 @@ sgs.ai_card_intention.MingceCard = -70
 sgs.ai_cardneed.mingce = sgs.ai_cardneed.equip
 
 sgs.ai_skill_use_func.XianzhenCard = function(card,use,self,request)
-	sort_in_place(self,self.enemies,"handcard")
+	self:sortInPlace(self.enemies, "handcard")
 	local max_card = self:getMaxCard()
 	local max_point = max_card:getNumber()
 	local slashcount = self:getCardsNum("Slash")
@@ -818,7 +810,7 @@ end
 
 sgs.ai_skill_use_func.PaiyiCard = function(card,use,self,request)
 	local target
-	sort_in_place(self,self.friends_noself,"defense")
+	self:sortInPlace(self.friends_noself, "defense")
 	for _,friend in ipairs(self.friends_noself)do
 		if friend:getHandcardNum()<2 and friend:getHandcardNum()+1<self.player:getHandcardNum()
 		  and not self:needKongcheng(friend,true) and not skill(self,friend,"manjuan") then
@@ -831,7 +823,7 @@ sgs.ai_skill_use_func.PaiyiCard = function(card,use,self,request)
 			target = self.player
 		end
 	end
-	sort_in_place(self,self.friends_noself,"hp")
+	self:sortInPlace(self.friends_noself, "hp")
 	self.friends_noself = reversed(self.friends_noself)
 	if not target then
 		for _,friend in ipairs(self.friends_noself)do
@@ -843,7 +835,7 @@ sgs.ai_skill_use_func.PaiyiCard = function(card,use,self,request)
 			if target then break end
 		end
 	end
-	sort_in_place(self,self.enemies,"defense")
+	self:sortInPlace(self.enemies, "defense")
 	if not target then
 		for _,enemy in ipairs(self.enemies)do
 			if skill(self,enemy,"manjuan")
@@ -942,7 +934,7 @@ ai_skill_use["@@jujian"]=function(self,prompt,request)
 		end
 	end
 	if nobasiccard<0 or needfriend<1 then return "." end
-	sort_in_place(self,self.friends_noself,"defense")
+	self:sortInPlace(self.friends_noself, "defense")
 	for _,friend in ipairs(self.friends_noself)do
 		if not friend:faceUp() then
 			return action(self,"jujian",{nobasiccard},{friend},request)

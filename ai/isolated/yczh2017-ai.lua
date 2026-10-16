@@ -1,15 +1,10 @@
 -- Fixed b6025acc YCZH2017 source policies. Native scopes own all actions.
-local function known(v,key)if v==nil then ai_unsupported("YCZH2017 value unknown",key)end;return v end
+local known = AIValue.requireKnown
 
 local function register_fill(row)
  setmetatable(row,{__newindex=function(t,k,v)rawset(t,k,v);if k=="getTurnUseCard"then sgs.ai_fill_skill[t.name]=v end end})
  if row.getTurnUseCard then sgs.ai_fill_skill[row.name]=row.getTurnUseCard end
 end
-local function order(t,sorted)for i,v in ipairs(sorted)do t[i]=v end;return t end
-local function sort_players(self,t,...)return order(t,self:sort(t, ...))end
-local function sort_keep(self,t,...)return order(t,self:sortByKeepValue(t, ...))end
-local function sort_use(self,t,...)return order(t,self:sortByUseValue(t, ...))end
-local function sort_need(self,t,...)return order(t,self:sortByCardNeed(t, ...))end
 local function context(self,key)return known(self:getDecisionContext()[key],key)end
 -- Funan reads the viewer's own property and tag (an absent tag is no card).
 local function fact(self,key)
@@ -147,7 +142,7 @@ sgs.ai_skill_cardask["jianzheng-put"] = function(self,data)
 	if not willSave then return "." end
 	local cards = sgs.QList2Table(self.player:getCards("h"))
 	if #cards<2 then return "." end
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	if slash:isBlack() or not self:isWeak() or not self:slashIsEffective(slash,self.player,from) or self:getOverflow()>0 then
 		for _,card in ipairs(cards)do
 			if not card:isKindOf("Peach") then
@@ -351,11 +346,11 @@ sgs.ai_skill_use["@@fumian"] = function(self,prompt,method)
 	local extra_players = {}
 	if self:isFriend(extra_table[1]) then
 		if card_name=="peach" then
-			sort_players(self,extra_table,"hp")
+			self:sortInPlace(extra_table, "hp")
 		elseif card_name=="ex_nihilo" then
-			sort_players(self,extra_table,"handcard")
+			self:sortInPlace(extra_table, "handcard")
 		else
-			sort_players(self,extra_table,"defense")
+			self:sortInPlace(extra_table, "defense")
 		end
 		for i=1,math.min(maxnum,#extra_table)do
 			table.insert(extra_players,extra_table[i]:objectName())
@@ -365,7 +360,7 @@ sgs.ai_skill_use["@@fumian"] = function(self,prompt,method)
 		end
 	end
 	if self:isEnemy(extra_table[1]) then
-		sort_players(self,extra_table,"defense")
+		self:sortInPlace(extra_table, "defense")
 		for i=1,math.min(maxnum,#extra_table)do
 			table.insert(extra_players,extra_table[i]:objectName())
 		end
@@ -378,7 +373,7 @@ end
 
 --怠宴
 sgs.ai_skill_playerchosen.daiyan = function(self,targets)
-	sort_players(self,self.friends_noself,"defense")
+	self:sortInPlace(self.friends_noself, "defense")
 	for _,friend in ipairs(self.friends_noself)do
 		if hasManjuanEffect(friend) then continue end
 		if self:needKongcheng(friend,true) then continue end
@@ -410,7 +405,7 @@ end
 sgs.ai_skill_use_func.ZhongjianCard = function(card,use,self)
 	if self.player:isKongcheng() then return end
 	local handcards = sgs.QList2Table(self.player:getCards("h"))
-	sort_use(self,handcards,true)
+	self:sortByUseValueInPlace(handcards, true)
 	self.zhongjian_target = nil
 	local n = 0
 	for _,p in sgs.qlist(self.room:getOtherPlayers(self.player))do
@@ -443,7 +438,7 @@ sgs.ai_skill_invoke.caishi=function(self,data)
 		self.caishi_choice = "max"
 	else
 		local cards = sgs.QList2Table(self.player:getHandcards())
-		sort_keep(self,cards)
+		self:sortByKeepValueInPlace(cards)
 		for _,card in ipairs(cards)do
 			if card:isKindOf("Slash") then
 				if self:willUse(self.player,card,false,false,true) then
@@ -480,7 +475,7 @@ end
 sgs.ai_skill_use_func.OLZhongjianCard = function(card,use,self)
 	if self.player:isKongcheng() then return end
 	local handcards = sgs.QList2Table(self.player:getCards("h"))
-	sort_use(self,handcards,true)
+	self:sortByUseValueInPlace(handcards, true)
 	local others = sgs.QList2Table(self.room:getOtherPlayers(self.player))
 	local targets = {}
 	for _,p in ipairs(others)do
@@ -488,7 +483,7 @@ sgs.ai_skill_use_func.OLZhongjianCard = function(card,use,self)
 		table.insert(targets,p)
 	end
 	if #targets==0 then return end
-	sort_players(self,targets,"handcard")
+	self:sortInPlace(targets, "handcard")
 	use.card = authored(self,"@OLZhongjianCard="..handcards[1]:getKnownEffectiveId())
 	use.to:append(targets[#targets])
 end
@@ -579,7 +574,7 @@ sgs.ai_skill_invoke.qingxian = function(self,data)
 end
 
 sgs.ai_skill_playerchosen.qingxian = function(self,targets)
-	local tos = sort_players(self,targets,"defense")
+	local tos = self:sortInPlace(targets, "defense")
 	self.qingxian_choice = nil
 	local new_data = source_variant()
 
@@ -660,7 +655,7 @@ end
 --绝响
 sgs.ai_skill_playerchosen.juexiang = function(self,targets)
 	targets = sgs.QList2Table(targets)
-	sort_players(self,targets,"defense")
+	self:sortInPlace(targets, "defense")
 	for _,to in ipairs(targets)do
 		if self:isFriend(to) then return to end
 	end
@@ -677,7 +672,7 @@ end
 --烈弦
 sgs.ai_skill_playerchosen.liexian = function(self,targets)
 	targets = sgs.QList2Table(targets)
-	sort_players(self,targets,"defense")
+	self:sortInPlace(targets, "defense")
 
 	for _,to in ipairs(targets)do
 		if self:isEnemy(to) and self:qingxianLose(to) then return to end
@@ -698,7 +693,7 @@ end
 --和弦
 sgs.ai_skill_playerchosen.hexian = function(self,targets)
 	targets = sgs.QList2Table(targets)
-	sort_players(self,targets,"defense")
+	self:sortInPlace(targets, "defense")
 
 	for _,to in ipairs(targets)do
 		if self:isFriend(to) and self:qingxianRecover(to) then return to end
@@ -721,7 +716,7 @@ end
 sgs.ai_skill_use_func.MobileQingxianCard = function(card,use,self)
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	local useable_cards = {}
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	local use_silver_lion = 0
 	if self.player:getArmor() and self:needToThrowArmor() then
 		table.insert(useable_cards,self.player:getArmor():getEffectiveId())
@@ -733,8 +728,8 @@ sgs.ai_skill_use_func.MobileQingxianCard = function(card,use,self)
 		end
 	end
 	if #useable_cards==0 then return end
-	sort_players(self,self.friends_noself,"hp")
-	sort_players(self,self.enemies,"hp")
+	self:sortInPlace(self.friends_noself, "hp")
+	self:sortInPlace(self.enemies, "hp")
 	local targets = {}
 	for _,enemy in ipairs(self.enemies)do
 		if enemy:getEquips():length()>self.player:getEquips():length()-use_silver_lion and #targets<#useable_cards and not self:needToLoseHp(enemy,self.player,nil,true) and not self:hasZhaxiangEffect(enemy) then
@@ -788,7 +783,7 @@ end
 --手杀绝响
 sgs.ai_skill_playerchosen.mobilejuexiang = function(self,targets)
 	local targets = sgs.QList2Table(targets)
-	sort_players(self,targets,"defense")
+	self:sortInPlace(targets, "defense")
 	for _,p in ipairs(targets)do
 		if self:isFriend(p) then
 			return p
@@ -802,7 +797,7 @@ sgs.ai_skill_playerchosen.mobilejuexiang_discard = function(self,targets)
 	if target then return target end
 
 	local targets = sgs.QList2Table(targets)
-	sort_players(self,targets,"defense")
+	self:sortInPlace(targets, "defense")
 	for _,p in ipairs(targets)do
 		if not self:isFriend(p) and self:doDisCard(p,"ej") then
 			return p
@@ -831,7 +826,7 @@ end
 sgs.ai_skill_use_func.MobileCanyunCard = function(card,use,self)
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	local useable_cards = {}
-	sort_keep(self,cards)
+	self:sortByKeepValueInPlace(cards)
 	local use_silver_lion = 0
 	if self.player:getArmor() and self:needToThrowArmor() then
 		table.insert(useable_cards,self.player:getArmor():getEffectiveId())
@@ -843,8 +838,8 @@ sgs.ai_skill_use_func.MobileCanyunCard = function(card,use,self)
 		end
 	end
 	if #useable_cards==0 then return end
-	sort_players(self,self.friends_noself,"hp")
-	sort_players(self,self.enemies,"hp")
+	self:sortInPlace(self.friends_noself, "hp")
+	self:sortInPlace(self.enemies, "hp")
 	local targets = {}
 	for _,enemy in ipairs(self.enemies)do
 		if enemy:getStrategyMark("mobilecanyun_used"..self.player:objectName())>0 then continue end
@@ -910,7 +905,7 @@ end
 sgs.ai_skill_use_func.WenguaCard = function(card,use,self)
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	local id = -1
-	sort_use(self,cards,true)
+	self:sortByUseValueInPlace(cards, true)
 	if self:needToThrowArmor() then
 		id = self.player:getArmor():getEffectiveId()
 	end
@@ -964,7 +959,7 @@ sgs.ai_skill_use_func.WenguagiveCard = function(card,use,self)
 
 	local cards = sgs.QList2Table(self.player:getCards("he"))
 	local id = -1
-	sort_use(self,cards,true)
+	self:sortByUseValueInPlace(cards, true)
 	if self:needToThrowArmor() then
 		id = self.player:getArmor():getEffectiveId()
 	end
@@ -1093,8 +1088,8 @@ sgs.ai_skill_playerchosen.jiexun = function(self,targets)
 	end
 	local use_time = self.player:getStrategyMark("&jiexun-Keep")
 
-	sort_players(self,self.enemies,"handcard")
-	sort_players(self,self.friends_noself,"handcard")
+	self:sortInPlace(self.enemies, "handcard")
+	self:sortInPlace(self.friends_noself, "handcard")
 	local second
 	if use_time>diamond_count then
 		local n = use_time-diamond_count
@@ -1151,10 +1146,10 @@ sgs.ai_skill_askforag.shouxi=function(self,card_ids)
 	local from = recall_player(self,"shouxi_from")
 	remember(self,"shouxi_from",nil)
 	if (not from or from:isDead() or not shouxi_hand_discardable(self,from)) and #basic>0 then
-		sort_use(self,basic,true)
+		self:sortByUseValueInPlace(basic, true)
 		id = basic[1]:getKnownEffectiveId()
 	else
-		sort_use(self,cards,true)
+		self:sortByUseValueInPlace(cards, true)
 		id = cards[1]:getKnownEffectiveId()
 	end
 	if id>-1 then
@@ -1213,7 +1208,7 @@ sgs.ai_skill_use["@@huimin!"] = function(self,prompt)
 		table.insert(hand,c)
 	end
 	length = math.min(#hand,length)
-	sort_keep(self,hand)
+	self:sortByKeepValueInPlace(hand)
 	for i=1,length do
 		table.insert(show,hand[i]:getKnownEffectiveId())
 	end
@@ -1257,8 +1252,8 @@ sgs.ai_skill_use["@@tongbo"] = function(self,prompt,method)
 		table.insert(piles,visible(self,id))
 	end
 	local exchange = {}
-	sort_need(self,cards)
-	sort_need(self,piles)
+	self:sortByCardNeedInPlace(cards)
+	self:sortByCardNeedInPlace(piles)
 	local max_num = math.max(pile:length(),#cards)
 	for i=1,max_num do
 		if #piles>0 and #cards>0

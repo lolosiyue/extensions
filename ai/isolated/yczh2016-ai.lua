@@ -1,10 +1,7 @@
 -- Fixed YCZH2016 source policies. Native receipts alone authorize card costs.
 sgs.ai_choicemade_filter.skillInvoke=sgs.ai_choicemade_filter.skillInvoke or {}
 sgs.ai_choicemade_filter.cardChosen=sgs.ai_choicemade_filter.cardChosen or {}
-local function known(value,key)
-    if value==nil then ai_unsupported("YCZH2016 input is not projected",key) end
-    return value
-end
+local known = AIValue.requireKnown
 local function skill(self,player,names)
     local value=player:hasSkills(names)
     local row=rawget(player,"_view")
@@ -16,11 +13,6 @@ local function flag(self,player,name)
     local value=player:getStrategyFlag(name)
     if value~=nil then return value end
     return self:useKnowledgeEstimate({status="estimate",value=false,basis="yczh2016.unknown_foreign_flag_uses_public_state",target=player:objectName(),flag=name},"yczh2016.flag")
-end
-local function sort_in_place(self,players,key,reverse)
-    local ordered=self:sort(players,key,reverse)
-    for i,player in ipairs(ordered) do players[i]=player end
-    return players
 end
 local function reversed(cards)
     local result={};for i=#cards,1,-1 do result[#result+1]=cards[i]end;return AIList.new(result)
@@ -80,9 +72,7 @@ local function remove_one(list,value)
  for i,item in ipairs(list)do if item==value then table.remove(list,i);return true end end
  return false
 end
-local function dummy(is_dummy,extra,targets)
- return {isDummy=is_dummy~=false,extra_target=extra or 0,current_targets=targets or {},to=AIList.new({})}
-end
+local dummy = AIUsePlan.dummy
 local classes={JiaozhaoCard="jiaozhao",JiyuCard="jiyu",DuliangCard="duliang",QinqingCard="qinqing",HuishengCard="huisheng",KuangbiCard="kuangbi",JisheDrawCard="jishe",JisheCard="jishe",ZhigeCard="zhige",TaoluanCard="taoluan",TenyearTaoluanCard="tenyeartaoluan"}
 local function parse_source_costs(text)
  local costs={};if text~="." then for id in text:gmatch("[^+]+")do costs[#costs+1]=known(tonumber(id),"yczh2016.authored_cost")end end;return costs
@@ -364,9 +354,9 @@ sgs.ai_fill_skill.jiyu = function(self,inclusive,request)
 end
 
 sgs.ai_skill_use_func.JiyuCard = function(card,use,self,request)
-	sort_in_place(self,self.friends,"handcard")
+	self:sortInPlace(self.friends, "handcard")
 	self.friends = reversed(self.friends)
-	sort_in_place(self,self.enemies,"handcard")
+	self:sortInPlace(self.enemies, "handcard")
 	if self.player:isKongcheng() then return end
 	
 	
@@ -498,7 +488,7 @@ sgs.ai_skill_use_func.DuliangCard = function(card,use,self,request)
 	
 	if #friends==0 and #enemies==0 and #others==0 then return end
 	local target
-	sort_in_place(self,friends,"handcard")
+	self:sortInPlace(friends, "handcard")
 	friends = reversed(friends)
 	
 	for _,friend in ipairs(friends)do
@@ -509,7 +499,7 @@ sgs.ai_skill_use_func.DuliangCard = function(card,use,self,request)
 	end
 	
 	if not target then
-		sort_in_place(self,enemies,"defense")
+		self:sortInPlace(enemies, "defense")
 		for _,enemy in ipairs(enemies)do
 			if self:hasManjuanEffect(enemy) then
 				target = enemy
@@ -731,7 +721,7 @@ sgs.ai_skill_use_func.KuangbiCard = function(card,use,self,request)
 	
 	if #friends==0 and #enemies==0 and #others==0 then return end
 	local target
-	sort_in_place(self,friends,"handcard")
+	self:sortInPlace(friends, "handcard")
 	friends = reversed(friends)
 	
 	for _,friend in ipairs(friends)do
@@ -742,7 +732,7 @@ sgs.ai_skill_use_func.KuangbiCard = function(card,use,self,request)
 	end
 	
 	if not target then
-		sort_in_place(self,enemies,"handcard")
+		self:sortInPlace(enemies, "handcard")
 		for _,enemy in ipairs(enemies)do
 			if self:hasManjuanEffect(enemy) then
 				target = enemy
@@ -875,7 +865,7 @@ end
 
 sgs.ai_skill_use_func.JisheDrawCard = function(card,use,self,request)
 	if self.player:getHandcardNum()<self.player:getMaxCards() then use.card = policy_card(self,"jishe","JisheDrawCard",{},request) end
-	sort_in_place(self,self.enemies,"defense")
+	self:sortInPlace(self.enemies, "defense")
 	local num = 0
 	for _,enemy in ipairs(self.enemies)do
 		if not enemy:isChained() and not skill(self,enemy,"qianjie|jieying") then
@@ -889,7 +879,7 @@ sgs.ai_skill_use_func.JisheDrawCard = function(card,use,self,request)
 end
 
 local function policy___jishe(self,prompt)
-	sort_in_place(self,self.enemies,"defense")
+	self:sortInPlace(self.enemies, "defense")
 	local targets = {}
 	local n = 0
 	for _,enemy in ipairs(self.enemies)do
@@ -1007,7 +997,7 @@ sgs.ai_skill_use_func.ZhigeCard = function(card,use,self,request)
 	if best_enemy then
 		use.to:append(best_enemy)
 	else
-		sort_in_place(self,targets,"defenseSlash")
+		self:sortInPlace(targets, "defenseSlash")
 		use.to:append(targets[1])
 	end
 end
@@ -1074,7 +1064,7 @@ sgs.ai_fill_skill.taoluan = function(self,inclusive,request)
     local cards = self:addHandPile("he")
     cards = self:sortByKeepValue(cards) -- 按保留值排序
 	if #cards<2 then return end
-   	sort_in_place(self,self.friends_noself,"card",true)
+	self:sortInPlace(self.friends_noself, "card", true)
     for _,name in ipairs(known(AICardCatalog.patternNames(),"yczh2016.patterns"))do
         local card = self:getEvaluationCard(name)
         if card and self.player:getMark("taoluan_"..name)<1
@@ -1092,7 +1082,7 @@ sgs.ai_fill_skill.taoluan = function(self,inclusive,request)
 			end
 		end
 	end
-   	sort_in_place(self,self.enemies,"hp")
+	self:sortInPlace(self.enemies, "hp")
     for _,name in ipairs(known(AICardCatalog.patternNames(),"yczh2016.patterns"))do
         local card = self:getEvaluationCard(name)
         if card and self.player:getMark("taoluan_"..name)<1
@@ -1119,7 +1109,7 @@ end
 sgs.ai_skill_playerchosen.taoluan = function(self,players)
 	local destlist = players
     destlist = AIList.new(destlist) -- 将列表转换为表
-	sort_in_place(self,destlist,"card",true)
+	self:sortInPlace(destlist, "card", true)
     for _,target in ipairs(destlist)do
     	if self:isFriend(target)
 		and not target:isNude()
@@ -1166,8 +1156,8 @@ sgs.ai_fill_skill.tenyeartaoluan = function(self,inclusive,request)
 		then cid = c:getEffectiveId() break end
 	end
 	if cid==nil then return end
-   	sort_in_place(self,self.enemies,"hp")
-   	sort_in_place(self,self.friends_noself,"card",true)
+	self:sortInPlace(self.enemies, "hp")
+	self:sortInPlace(self.friends_noself, "card", true)
     for _,name in ipairs(known(AICardCatalog.patternNames(),"yczh2016.patterns"))do
         local card = self:getEvaluationCard(name)
         if card and card:isAvailable(self.player)
@@ -1218,7 +1208,7 @@ end
 sgs.ai_skill_playerchosen.tenyeartaoluan = function(self,players)
 	local destlist = players
     destlist = AIList.new(destlist) -- 将列表转换为表
-	sort_in_place(self,destlist,"card",true)
+	self:sortInPlace(destlist, "card", true)
     for _,target in ipairs(destlist)do
     	if self:isFriend(target)
 		and not target:isNude()

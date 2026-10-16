@@ -1,8 +1,5 @@
 -- Fixed b6025acc Yongjian bodies. No legacy VM objects or hidden card identities enter this module.
-local function known(v,key)
- if AIUnsupported.is(v)then error(v,0)end
- if v==nil then ai_unsupported("Yongjian requires "..key,"yongjian")end;return v
-end
+local known = AIValue.requireKnown
 
 -- The donor's scoped values live on the viewer's own property and tags.
 local own_scope={poison_use={"getPropertyValue","PoisonUse",""},tuixinzhifu_target={"getTag","yj_tuixinzhifu",""},

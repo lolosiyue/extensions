@@ -1,9 +1,5 @@
 -- Fixed b6025acc jie_package policies. Observations never carry payment authority.
-local function known(v,key)
-    if AIUnsupported.is(v) then error(v,0) end
-    if v==nil then ai_unsupported("Jie input unavailable",key) end
-    return v
-end
+local known = AIValue.requireKnown
 
 local function color(card)
     if card:isRed() then return "red" end

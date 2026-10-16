@@ -1,5 +1,5 @@
 -- Fixed qhstandard b6025acc source strategy. No hidden authority or legacy fallback.
-local function known(v,k)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("qhstandard input unknown",k)end;return v end
+local known = AIValue.requireKnown
 
 -- Own dynamic property; QVariant::toString of an unset one is "".
 local function property(self,k)local v=self.player:getPropertyValue(k);if v==nil then return""end;return v end
@@ -23,7 +23,7 @@ local function used_card(self,text,key)
 end
 local function full_hand(self,p)if p:objectName()==self.player:objectName()then return p:getHandcards()end;local cs=known(p:getKnownCards(),"known hand");if#cs~=p:getHandcardNum()then ai_unsupported("source reads undisclosed target hand","qhstandardtiandu")end;return cs end
 local function use_fact(self,k)local r=known(self.player:getTag(k),k);local to=AIList.new({});for _,n in ipairs(r.to)do to:append(known(self.room:findPlayerByObjectName(n,true),k))end;return{from=r.from and self.room:findPlayerByObjectName(r.from,true),to=to,card=CardView.new(r.card)}end
-local function dummy_plan()local u=AIUsePlan.new();u.isDummy=true;return u end
+local dummy_plan = AIUsePlan.dummy
 local function readonly_clone(self,key,name,suit,number)return self:evaluateOwnerViewAsCard({source_key=key,skill="",name=name,suit=suit,number=number,subcards={}})end
 local function turn_clone(self,key,name,suit,number,ids,request)local base=known(self:getEvaluationCard(name),"printed prototype");return self:evaluateTurnConversion(key,base:getClassName(),{name=name,skill=key,suit=suit,number=number,subcards=ids},request)end
 local classes={['qhstandardguicaiCARD']='qhstandardguicai',['qhstandardtianmingCARD']='qhstandardtianming',['qhstandardtuxiCARD']='qhstandardtuxi',['qhwindshensuCARD']='qhwindshensu',['qhfireqiangxiCARD']='qhfireqiangxi',['qhfirequhuCARD']='qhfirequhu',['qhstandardrendeCARD']='qhstandardrende',['usecard']='use',['qhstandardjijiangCARD']='qhstandardjijiang',['qhstandardguanxingCARD']='qhstandardguanxing',['qhfirekuangfengCARD']='qhfirekuangfeng',['qhfiredawuCARD']='qhfiredawu',['qhstandardzhihengCARD']='qhstandardzhiheng',['unpreferedCard']='unprefered',['use_card']='use_',['qhstandardpoxiCARD']='qhstandardpoxi',['qhstandardkurouCARD']='qhstandardkurou',['qhstandardfanjianCARD']='qhstandardfanjian',['qhstandardliuliCARD']='qhstandardliuli',['to_discard']='to_dis',['qhstandardjieyinCARD']='qhstandardjieyin',['qhwindtianxiangCARD']='qhwindtianxiang',['qhwindgongxinCARD']='qhwindgongxin',['qhfiretianyiCARD']='qhfiretianyi',['qhstandardqingnangCARD']='qhstandardqingnang',['qhstandardrenxinCARD']='qhstandardrenxin',['qhstandardLijianCARD']='qhstandardLijian',['qhwindGuibingCARD']='qhwindGuibing',['qhwindhuangtianVSCARD']='qhwindhuangtianvs',['mythjiqiaoCard']='mythjiqiao',['handcard']='hand',['mythyuqiCARD']='mythyuqi',['mythshanshenCARD']='mythshanshen',['mythanzhiCARD']='mythanzhi'}

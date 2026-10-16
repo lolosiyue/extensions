@@ -1,6 +1,6 @@
 -- Fixed b6025acc lei source bodies. Public values and primitive viewer state only.
-local function dummy()local use=AIUsePlan.new();use.isDummy=true;use.extra_target=0;use.current_targets={};return use end
-local function known(v,k)if v==nil then ai_unsupported("lei fact unknown",k)end return v end
+local dummy = AIUsePlan.dummy
+local known = AIValue.requireKnown
 
 -- The donor kept poxi_target on its SmartAI object; memory holds the player's name.
 local function write(self,k,v)

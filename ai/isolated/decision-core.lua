@@ -1,8 +1,29 @@
+-- Responsibility: value/ranking algorithms, use plans and turn orchestration.
+-- Shared observation/effect queries belong to smart-ai-functions.lua.
+-- Named SmartAIView methods have one owner across these two files.
+-- Sections are navigation boundaries; retain lexical scope and registration order.
+-- Contract: docs/isolated-ai-common-layer.md (Shared core ownership).
+-- C01  Card values and shared value access
+-- C02  Priority state, stable sorting and keep assignment
+-- C03  Player ranking, card counts, defense and equipment scores
+-- C04  Offered actions, target ranking and value use plans
+-- C05  Hand economy and preferred HP inputs to valuation
+-- C06  Damage estimates, survival and attack value
+-- C07  Discard loss, poison cards and card demand
+-- C08  Allocation, draw, discard and damage target ranking
+-- C09  Card dispatch, revision hooks and plan validation
+-- C10  Standard card policies and AOE valuation
+-- C11  Turn candidate collection, planning state and activate
+-- C12  Card threat and paid nullification decisions
+
 -- 通用決策流程的隔離版本：估值、排序、威脅評估與回合候選。
 -- 全部只靠快照與 request 的候選運作，沒有 gameplay 全域，也不查 Engine。
 -- 個別武將策略仍然用註冊表擴充，不寫進這裡。
 
 -- 值型規則註冊表。鍵是牌名或類別名，值是數字或 function(self, card) 回數字。
+-- ============================================================================
+-- [C01] Card values and shared value access
+-- ============================================================================
 ai_keep_value = ai_keep_value or {}
 ai_use_value = ai_use_value or {}
 ai_use_priority = ai_use_priority or {}
@@ -72,11 +93,7 @@ local function value_call(object, method, ...)
     return result
 end
 
-local function value_known(value, label)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value == nil then ai_unsupported("card valuation requires " .. label, "valuation") end
-    return value
-end
+local value_known = AIValue.requireKnownFor("valuation", "card valuation requires ")
 
 local function core_query(object, method, ...)
     local provider=object and object[method]
@@ -429,6 +446,9 @@ function SmartAIView:getUseValue(card)
 	return v
 end
 
+-- ============================================================================
+-- [C02] Priority state, stable sorting and keep assignment
+-- ============================================================================
 function SmartAIView:adjustUsePriority(card,v)
 	local suits_value,suits = false,{"club","spade","diamond","heart"}
 	for _,s in ipairs(sgs.getPlayerSkillList(self.player))do
@@ -871,6 +891,9 @@ local function scalar(player, method_name, fallback)
     return value
 end
 
+-- ============================================================================
+-- [C03] Player ranking, card counts, defense and equipment scores
+-- ============================================================================
 -- Fixed smart-ai.lua:1159-1178 comparator bodies. Player views remain
 -- viewer-bound; native-only hidden canSlash inputs retain the existing query bound.
 sgs.ai_compare_funcs = sgs.ai_compare_funcs or {}
@@ -1258,11 +1281,7 @@ function SmartAIView:getChaofeng(player)
 end
 
 -- Original equipment value callback ABI and arithmetic, smart-ai.lua:6421-6492.
-local function equipment_known(value, field)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value == nil then ai_unsupported("equipment value input is unknown", field) end
-    return value
-end
+local equipment_known = AIValue.requireKnown
 local function equipment_call(object, method, ...)
     if not object or type(object[method]) ~= "function" then ai_unsupported("equipment value method missing", method) end
     return equipment_known(value_call(object,method,...), method)
@@ -1356,6 +1375,9 @@ function SmartAIView:evaluateArmor(card, owner)
     return value
 end
 
+-- ============================================================================
+-- [C04] Offered actions, target ranking and value use plans
+-- ============================================================================
 function SmartAIView:bindConversionCosts(conversion, owned_by_id)
     if not AIValue.isConversion(conversion) then
         ai_unsupported("conversion cost binding needs a conversion", "conversion")
@@ -1567,8 +1589,21 @@ end
 AIUsePlan = {}
 AIUsePlan.__index = AIUsePlan
 
-function AIUsePlan.new()
+function AIUsePlan.new(...)
+    -- Reject ignored initializers so a preview cannot silently become a live plan.
+    if select("#", ...) ~= 0 then
+        error("AIUsePlan.new takes no arguments; use AIUsePlan.dummy(isDummy, extra, current)", 2)
+    end
     return setmetatable({to = AIList.new({})}, AIUsePlan)
+end
+
+function AIUsePlan.dummy(is_dummy, extra, current)
+    local use = AIUsePlan.new()
+    -- Explicit false remains a live plan; preserve caller-owned target lists as-is.
+    use.isDummy = is_dummy ~= false
+    use.extra_target = extra or 0
+    use.current_targets = current or {}
+    return use
 end
 
 -- 轉成值型答案。目標只送 object name，權威端自己重查人、重驗完整目標；
@@ -1730,6 +1765,9 @@ function SmartAIView.resetPlanning(request)
     planning[request] = nil
 end
 
+-- ============================================================================
+-- [C05] Hand economy and preferred HP inputs to valuation
+-- ============================================================================
 -- Shared SmartAI helper compatibility.  These helpers consume only value facades;
 -- skill/card callbacks are optional pure hooks and never receive engine userdata.
 -- Preserve each legacy callback ABI explicitly; never infer arguments from strings.
@@ -1947,11 +1985,10 @@ function SmartAIView:getBestHp(player)
 end
 
 -- Mandatory damage inputs stay distinct from explicitly marked viewer estimates.
-local function damage_known(value, label)
-    if AIUnsupported.is(value) then error(value,0) end
-    if value == nil then ai_unsupported("damage projection is unknown: " .. label, "ajustDamage") end
-    return value
-end
+-- ============================================================================
+-- [C06] Damage estimates, survival and attack value
+-- ============================================================================
+local damage_known = AIValue.requireKnownFor("ajustDamage", "damage projection is unknown: ")
 
 local function damage_call(object, method, ...)
     local getter = object and object[method]
@@ -3061,6 +3098,9 @@ local function harmful_card(self, card, owner, zone)
     return false
 end
 
+-- ============================================================================
+-- [C07] Discard loss, poison cards and card demand
+-- ============================================================================
 local function discard_query(object, method, ...)
     return value_known(value_call(object, method, ...), "discard " .. method)
 end
@@ -3487,6 +3527,9 @@ function SmartAIView:willUse(player,card,ignoreDistance,disWeapon,play)
 end
 
 
+-- ============================================================================
+-- [C08] Allocation, draw, discard and damage target ranking
+-- ============================================================================
 function SmartAIView:getRoleCountValue(role)
     local counts = core_query(self,"getRoleCounts")
     return value_known(counts[role],"role count "..role)
@@ -4154,10 +4197,7 @@ end
 
 -- Full smart-ai.lua:7344 donor algorithm; actual damage/relationship helpers
 -- remain owner-provided dependencies. No native userdata or hidden hand reads.
-local function damage_target_known(value, name)
-    if value == nil then ai_unsupported("damage-target input is unknown", name) end
-    return value
-end
+local damage_target_known = AIValue.requireKnown
 local function damage_target_call(object, method, ...)
     if not object or type(object[method]) ~= "function" then ai_unsupported("damage-target method is missing", method) end
     return damage_target_known(value_call(object,method,...), method)
@@ -4322,6 +4362,9 @@ end
 
 -- Revises use legacy positional ABIs. Merely registering an empty table never
 -- supplies a strategy; only an explicit use.card proposal does.
+-- ============================================================================
+-- [C09] Card dispatch, revision hooks and plan validation
+-- ============================================================================
 function SmartAIView:useCardByClassName(card, use)
     local names = core_query(self, "getConnections", self.player)
     for _, name in ipairs(names) do
@@ -4717,6 +4760,9 @@ if type(ai_coverage) == "table" then
     end)
 end
 
+-- ============================================================================
+-- [C10] Standard card policies and AOE valuation
+-- ============================================================================
 -- Standard-card policies below preserve SmartAI's branch order. Authority
 -- supplies legality; strategy helpers only rank visible state and AI estimates.
 local function plan_query(object, method, ...)
@@ -5490,16 +5536,6 @@ local function plan_cost_card(self, class_name, id, owner)
     if not card then ai_unsupported("AOE payment card is not visible", "getAoeValue") end
     return isCard(class_name, card, owner)
 end
-function SmartAIView:isLordInDanger()
-    for _, player in ipairs(plan_query(self, "getCachedAlivePlayers")) do
-        if damage_role(self,player)=="lord" then
-            local hp = plan_query(player, "getHp")
-            if hp > 4 and plan_query(player, "hasSkill", "benghuai") then hp = 4 end
-            return hp < 3
-        end
-    end
-    return false
-end
 function SmartAIView:getAoeValueTo(card,to,from)
 	local value,sj_num = 0,0
 	if plan_query(card, "isKindOf", "ArcheryAttack") then
@@ -6149,6 +6185,9 @@ ai_card_use.SupplyShortage = function(self,card,use) return self:useCardSupplySh
 ai_card_use.Lightning = lightning
 ai_card_use.IronChain = function(self,card,use) return self:useCardIronChain(card,use) end
 
+-- ============================================================================
+-- [C11] Turn candidate collection, planning state and activate
+-- ============================================================================
 -- 通用出牌流程：照優先序問每一張牌的策略，第一個提出計劃的就是答案。
 -- 這裡不自己挑目標——activate 與 aiUseCard 是同一條路徑，同一張牌的判斷只有一份。
 -- Owner skill callbacks choose which conversions enter the legacy turn list.
@@ -6903,6 +6942,9 @@ ai_register_handler("activate", function(self, request)
 end)
 
 
+-- ============================================================================
+-- [C12] Card threat and paid nullification decisions
+-- ============================================================================
 -- R31: optional equipment is source nil when absent, but a missing public
 -- equipment snapshot is not evidence of absence. Keep each original getter call.
 local function nullify_equipment(player, method)
@@ -7253,26 +7295,4 @@ function SmartAIView:shouldInvokeCostNullifySkill(use, need_discard, need_losehp
         cost_value = cost_value + (discard_num * 1.5)
 	end
 	return threat_level > cost_value
-end
-
-
--- SmartAI6297 getLord is a source helper, separate from Room's actual lord.
-function SmartAIView:getSourceLord(player)
-    local enabled=self.world.enable_hegemony
-    if type(enabled)~="boolean" then ai_unsupported("source hegemony config is unknown","getSourceLord")end
-    if enabled then return nil end
-    local lord=self.room:getLord()
-    if lord then return lord end
-    local function role(p)
-        local value=p:getRole()
-        if value~=nil then return value end
-        return self:useKnowledgeEstimate({value=self:getRoleEstimate(p),status="estimate",
-            basis="getLord:viewer_role_inference",observer=p:objectName(),viewer=self.player:objectName()},"getSourceLord")
-    end
-    local own=role(player)
-    if own==nil or own=="neutral" then ai_unsupported("source lord role cannot be resolved","getSourceLord")end
-    if own~="renegade" then
-        for _,p in ipairs(self.room:getOtherPlayers(player)) do if role(p)==role(player) then return p end end
-    end
-    return player
 end

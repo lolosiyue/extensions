@@ -1,9 +1,5 @@
 -- Happy2v2 source b6025acc; package policy only, no mode/rule changes.
-local function known(value,key)
-    if AIUnsupported and AIUnsupported.is(value) then error(value,0) end
-    if value==nil then ai_unsupported("Happy2v2 query is unknown",key) end
-    return value
-end
+local known = AIValue.requireKnown
 
 local function discard(self,target,flags)
     if type(self.doDisCard)~="function" then ai_unsupported("Happy2v2 discard helper unavailable","doDisCard") end

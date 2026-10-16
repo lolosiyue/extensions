@@ -1,11 +1,7 @@
 -- Fixed b6025acc FeiDIY source bodies; source errors are not repaired.
-local function known(v,key)if AIUnsupported.is(v)then error(v,0)end;if v==nil then ai_unsupported("FeiDIY missing "..key,"feiDIY")end;return v end
+local known = AIValue.requireKnown
 
-local function dummy(_,extra)
- local use=AIUsePlan.new()
- use.isDummy,use.extra_target,use.current_targets=true,extra or 0,{}
- return use
-end
+local dummy = AIUsePlan.dummy
 local function source_clone(self,source,printed,name)
  return self:evaluateOwnerViewAsCard({source_key=source,skill=printed,name=name,
   suit=sgs.Card_NoSuit,number=0,subcards={}})

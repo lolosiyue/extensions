@@ -1,7 +1,7 @@
 -- Fixed b6025acc package policy; all selection uses pure views and native-issued receipts.
 
 
-local function dummy(value,extra)local u=AIUsePlan.new();u.isDummy=value~=false;u.extra_target=extra or 0;return u end
+local dummy = AIUsePlan.dummy
 local function isCurrent(use,to)
  for _,p in ipairs(use.current_targets or {})do if p==to or p==to:objectName()then return true end end
 end

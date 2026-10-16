@@ -937,10 +937,7 @@ end
 -- Read-only default selection for nested skill planners. This does not invent an
 -- inquiry or an offered domain; the eventual action still needs native costs.
 function SmartAIView:recommendDiscard(max_count,min_count,optional,equiped)
-    local function require_value(value,key)
-        if value==nil then ai_unsupported("nested discard input is unknown",key) end
-        return value
-    end
+    local require_value = AIValue.requireKnown
     local exchange=require_value(self.player:hasFlag("Global_AIDiscardExchanging"),"exchange")
     local chosen,seen={},{}
     local function append(card)
