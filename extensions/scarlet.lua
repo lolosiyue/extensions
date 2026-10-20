@@ -11408,6 +11408,7 @@ s4_wuhu_heduanbuff = sgs.CreateTargetModSkillV2{
     name = "#s4_wuhu_heduanbuff",
     pattern = "Slash",
     holder_selector = sgs.CorrectSkill_System,
+    gate = { "skill:s4_wuhu_heduan" },
     correct_func = function(skill, ctx)
         if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
         local from, card = ctx:getPrimary(), ctx:getCard()
@@ -13640,8 +13641,27 @@ s4_adouSkill = sgs.CreateRuleSkillV2{
     frequency = sgs.Skill_Compulsory,
     events = { sgs.BeforeCardsMove, sgs.HpLost, sgs.CardsMoveOneTime },
     can_trigger = function(skill, event, room, player, data)
-        if player then return skill:objectName(), player end
-        return false
+        if not player then return false end
+        -- Fire only for Adou leaving this player's equip area, an unrecorded HP loss
+        -- or a pending re-equip; every other event leaves on_effect a no-op.
+        if event == sgs.BeforeCardsMove then
+            local move = data:toMoveOneTime()
+            if not (move.from and move.from:objectName() == player:objectName()
+                and move.from_places:contains(sgs.Player_PlaceEquip)) then return false end
+            local found = false
+            for i,id in sgs.list(move.card_ids)do
+                if move.from_places:at(i) == sgs.Player_PlaceEquip then
+                    local equip = sgs.Sanguosha:getEngineCard(id)
+                    if equip and equip:isKindOf("Adou") then found = true break end
+                end
+            end
+            if not found then return false end
+        elseif event == sgs.HpLost then
+            if player:getMark("s4_adou_LoseHp-Clear") ~= 0 then return false end
+        elseif event == sgs.CardsMoveOneTime then
+            if player:getMark("_s4_adou-Clear") == 0 then return false end
+        end
+        return skill:objectName(), player
     end,
     on_effect = function(skill, event, room, player, ctx)
         local data = ctx.original_data

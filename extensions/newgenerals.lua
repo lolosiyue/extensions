@@ -15685,6 +15685,21 @@ XLeffect = sgs.CreateRuleSkillV2 {
 	events = { sgs.DamageComplete, sgs.CardsMoveOneTime, sgs.GameStart, sgs.CardUsed, sgs.CardResponded, sgs.BuryVictim, sgs.Dying },
 	can_trigger = function(self, event, room, player, data)
 		if not player then return false end
+		-- Fire only when a cooperation record or rule in on_effect has work to do.
+		if event == sgs.DamageComplete then
+			local damage = data:toDamage()
+			if damage.prevented then return false end
+			if not ((damage.from and damage.from:getMark("&XL_tongchou") > 0) or damage.reason == "lightning") then return false end
+		elseif event == sgs.GameStart then
+			if not player:isLord() then return false end
+		elseif event == sgs.CardsMoveOneTime then
+			if player:getMark("&XL_bingjin") < 1 and player:getMark("&XL_shucai") < 1 then return false end
+		elseif event == sgs.Dying then
+			local dy = data:toDying()
+			if dy.who == player or not dy.who:hasFlag("Global_Dying") or not player:isAlive() then return false end
+		elseif event == sgs.CardUsed or event == sgs.CardResponded then
+			if player:getMark("&XL_luli") < 1 then return false end
+		end
 		return self:objectName(), player
 	end,
 	on_effect = function(self, event, room, player, ctx)
@@ -30704,6 +30719,7 @@ nyarz_zhenyi_buff = sgs.CreateTargetModSkillV2 {
 
 
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:nyarz_zhenyi_spade", "mark:nyarz_zhenyi_heart", "mark:nyarz_zhenyi_club", "mark:nyarz_zhenyi_diamond", "mark:nyarz_zhenyi_no_suit_black", "mark:nyarz_zhenyi_no_suit_red", "mark:nyarz_zhenyi_no_suit" },
 correct_func = function(self, ctx)
 	local mt = ctx:getModType()
 	if mt == sgs.TargetModSkill_DistanceLimit then
@@ -34765,6 +34781,7 @@ ofjianxi_mod = sgs.CreateTargetModSkillV2 {
 	name = "#ofjianxi_mod",
 	pattern = "BasicCard",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:ofjianxi_basic-Keep" },
 	correct_func = function(skill, ctx)
 		local mod = ctx:getModType()
 		if mod ~= sgs.TargetModSkill_Residue and mod ~= sgs.TargetModSkill_ExtraTarget then return false end

@@ -1377,6 +1377,7 @@ kejieguizhugeliangtwo:addSkill(kejieguiqideng)
 
 kejieguiqidengex = sgs.CreateTriggerSkillV2 {
 	name = "#kejieguiqidengex",
+	record_once = true,
 	global = true,
 	events = { sgs.EventPhaseStart, sgs.Damaged, sgs.MarkChanged },
 	frequency = sgs.Skill_Compulsory,

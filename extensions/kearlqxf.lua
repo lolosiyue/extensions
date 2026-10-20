@@ -946,6 +946,7 @@ ty_guanyu:addSkill(tyfuwei)
 tychengshibf = sgs.CreateProhibitSkillV2 {
 	name = "#tychengshibf",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:tychengshi_bf-PlayClear" },
 	is_prohibited = function(self, ctx)
 		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if from:getMark("tychengshi_bf-PlayClear") > 0 and card:isDamageCard() then

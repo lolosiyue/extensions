@@ -40548,6 +40548,7 @@ sfofl_kc_yinyueqiang_residue = sgs.CreateTargetModSkillV2{
 	name = "#sfofl_kc_yinyueqiang_residue",
 	pattern = "Slash",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:&sfofl_nengliang" },
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
 		local player = ctx:getPrimary()

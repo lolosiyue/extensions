@@ -310,8 +310,18 @@ gdsvoice = sgs.CreateRuleSkillV2{
 	global = true,
 	frequency = sgs.Skill_Compulsory,
 	can_trigger = function(self, event, room, player, data)
-		if player and animation == true then return self:objectName() end
-		return false
+		if not player or animation ~= true then return false end
+		-- Fire only where on_effect animates: Start/Finish phase lighting for every
+		-- seat, and initial hands or choices of a human (online/trust) player.
+		if event == sgs.EventPhaseStart then
+			local phase = player:getPhase()
+			if phase ~= sgs.Player_Start and phase ~= sgs.Player_Finish then return false end
+		else
+			local state = player:getState()
+			if state ~= "online" and state ~= "trust" then return false end
+			if event == sgs.AfterDrawNCards and data:toDraw().reason ~= "InitialHandCards" then return false end
+		end
+		return self:objectName()
 	end,
 	on_effect = function(self, event, room, player, ctx)
 		local data = ctx.original_data

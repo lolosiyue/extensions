@@ -172,6 +172,7 @@ yj_zhanxiangMk = sgs.CreateTriggerSkillV2{
 }
 yj_zhanxiangTr = sgs.CreateTriggerSkillV2{
 	name = "#yj_zhanxiang",
+	record_once = true,
 	global = true,
 	events = {sgs.BeforeCardsMove},
 	frequency = sgs.Skill_Compulsory,
@@ -394,6 +395,7 @@ yj_nvzhuangMk = sgs.CreateTriggerSkillV2{
 }
 yj_nvzhuangTr = sgs.CreateTriggerSkillV2{
 	name = "#yj_nvzhuang",
+	record_once = true,
 	global = true,
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.TargetConfirmed,sgs.DamageForseen},
@@ -731,6 +733,7 @@ yj_zhengyu = sgs.CreateViewAsSkillV2{
 yongjian:addSkills(yj_zhengyu)
 yj_on_trigger = sgs.CreateTriggerSkillV2{
 	name = "#yj_on_trigger",
+	record_once = true,
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.CardOffset,sgs.EventPhaseProceeding,sgs.EventPhaseEnd,sgs.CardsMoveOneTime},
 	priority = {4},
@@ -1443,6 +1446,7 @@ zl_yinfengjia:setParent(zhulu)
 
 zlCardOnTrigger = sgs.CreateTriggerSkillV2{
 	name = "#zlCardOnTrigger",
+	record_once = true,
 	events = {sgs.CardsMoveOneTime,sgs.CardEffected,sgs.EventPhaseEnd,sgs.EventPhaseProceeding,sgs.CardFinished},
 	frequency = sgs.Skill_Compulsory,
 	global = true,
@@ -2294,6 +2298,7 @@ zd_zhungangshuoMk = sgs.CreateTriggerSkillV2{
 }
 zd_zhungangshuoTr = sgs.CreateTriggerSkillV2{
 	name = "#zd_zhungangshuo",
+	record_once = true,
 	global = true,
 	events = {sgs.TargetConfirmed},
 	can_trigger = function(self,event,room,player,data)
@@ -2573,6 +2578,7 @@ sgs.Sanguosha:addScenario(zhongdanScenario)--]]
 local canZhongdan
 ZhongdanOnTrigger = sgs.CreateTriggerSkillV2{
 	name = "#ZhongdanOnTrigger",
+	record_once = true,
 	events = {sgs.GameReady,sgs.BuryVictim,sgs.BeforeGameOverJudge,
 	sgs.DrawNCards,sgs.EventPhaseEnd,sgs.EventPhaseChanging,sgs.TargetConfirming,sgs.CardsMoveOneTime},
 	frequency = sgs.Skill_Compulsory,
@@ -3006,6 +3012,7 @@ wl_toulianghuanzhu:clone(0,13):setParent(wenheluanwu)
 local banWenhe,WL_Round
 WenheOnTrigger = sgs.CreateTriggerSkillV2{
 	name = "#WenheOnTrigger",
+	record_once = true,
 	frequency = sgs.Skill_Compulsory,
 	global = true,
 	events = {sgs.ConfirmDamage,sgs.RoundStart,sgs.GameReady,sgs.Death,sgs.CardsMoveOneTime,

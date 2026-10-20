@@ -1086,7 +1086,12 @@ Dragon_change_weapon = sgs.CreateRuleSkillV2{
 	view_as_skill = Dragon_change_weaponVS,
 	global = true,
 	can_trigger = function(skill, event, room, player, data)
-		if player then return skill:objectName() end
+		if not player then return false end
+		-- on_effect acts only while a collateral source holds its flag and source tag.
+		if room:getTag("collateralSource"):toIntList():isEmpty() then return false end
+		for _, p in sgs.qlist(room:getAllPlayers()) do
+			if p:hasFlag("Dragon_collateral") then return skill:objectName() end
+		end
 		return false
 	end,
 	on_effect = function(skill, event, room, player, ctx)
@@ -3001,6 +3006,7 @@ Dragon_lightning:setParent(extensionC)
 
 Dragon_Lightning = sgs.CreateTriggerSkillV2{
 	name = "#Dragon_Lightning",
+	record_once = true,
 	global = true,
 	events = {sgs.CardsMoveOneTime},
 	can_trigger = function(skill, event, room, player, data)

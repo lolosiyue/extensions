@@ -7918,6 +7918,7 @@ mythlinglong = sgs.CreateTriggerSkillV2 {
 
 globallinglong = sgs.CreateTriggerSkillV2 {
     name = "#globallinglong",
+    record_once = true,
     frequency = sgs.Skill_Frequent,
     events = { sgs.CardsMoveOneTime, sgs.TargetConfirming },
     priority = 1,
@@ -8501,6 +8502,7 @@ mythluochong = sgs.CreateTriggerSkillV2 {
 
 qhFakeMove = sgs.CreateTriggerSkillV2 { --假移动
     name = "#qhFakeMove",
+    record_once = true,
     events = { sgs.BeforeCardsMove, sgs.CardsMoveOneTime },
     priority = 100,
     global = true,
@@ -9334,6 +9336,7 @@ mythanzhi = sgs.CreateTriggerSkillV2 { -- 暗织 触发技
 -- 暗织弃牌堆记录（记录逻辑与持有者无关，需全局实例）
 mythanzhiRecord = sgs.CreateTriggerSkillV2 {
     name = "#mythanzhiRecord",
+    record_once = true,
     global = true,
     events = { sgs.CardsMoveOneTime, sgs.EventPhaseChanging },
     can_trigger = function(skill, event, room, player, data)

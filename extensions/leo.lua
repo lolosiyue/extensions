@@ -112,6 +112,7 @@ end
 
 leo_InTempMoving = sgs.CreateTriggerSkillV2 {
 	name = "#leo_InTempMoving",
+	record_once = true,
 	events = { sgs.BeforeCardsMove, sgs.CardsMoveOneTime },
 	priority = 10,
 	global = true,

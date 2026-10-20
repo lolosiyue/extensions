@@ -390,6 +390,7 @@ end
 
 akn_BeforeFrozen = sgs.CreateTriggerSkillV2 {
 	name = "#akn_BeforeFrozen",
+	record_once = true,
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.MarkChanged },
 	global = true,
@@ -527,6 +528,7 @@ ms_jingji = sgs.CreateViewAsSkillV2 {
 
 hidden_shisha = sgs.CreateTriggerSkillV2 {
 	name = "#hidden_shisha",
+	record_once = true,
 	frequency = sgs.Skill_Compulsory,
 	global = true,
 	events = { sgs.CardUsed, sgs.TargetConfirmed },
@@ -697,6 +699,7 @@ hidden_atkrange = sgs.CreateAttackRangeSkillV2 {
 
 hidden_clearcardflag = sgs.CreateTriggerSkillV2 {
 	name = "#hidden_clearcardflag",
+	record_once = true,
 	global = true,
 	frequency = sgs.Skill_Compulsory,
 	events = { sgs.CardsMoveOneTime, sgs.CardFinished },

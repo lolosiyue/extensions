@@ -2515,6 +2515,7 @@ yl_huihun:clone(3,3):setParent(extension_yanluo)
 
 YanluoOnTrigger = sgs.CreateTriggerSkillV2{
 	name = "#YanluoOnTrigger",
+	record_once = true,
 	events = {sgs.CardsMoveOneTime},
 	frequency = sgs.Skill_Compulsory,
 	global = true,

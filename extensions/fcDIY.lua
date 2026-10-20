@@ -20758,6 +20758,7 @@ fcmouwusheng_buff = sgs.CreateTargetModSkillV2
 {
 	name = "#fcmouwusheng_buff",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "skill:fcmouwusheng" },
 	correct_func = function(skill, ctx)
 		local self = skill
 		local from = ctx:getPrimary()

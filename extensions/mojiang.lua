@@ -485,6 +485,7 @@ mo_shenji = sgs.CreateTargetModSkillV2 {
 	name = "mo_shenji",
 	pattern = ".",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "skill:mo_shenji" },
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		local card = ctx:getCard()
@@ -3541,6 +3542,7 @@ mo_wangzun_slash = sgs.CreateTargetModSkillV2 {
 	name = "#mo_wangzun_slash",
 	pattern = "Slash",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "pile:mo_wangzun_xi" },
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if ctx:getModType() == sgs.TargetModSkill_Residue
@@ -4178,6 +4180,7 @@ mo_wangduan_tm = sgs.CreateTargetModSkillV2 {
 	name = "#mo_wangduan_tm",
 	pattern = "Slash",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_flag:mo_wangduan_temp" },
 	correct_func = function(skill, ctx)
 		if ctx:getModType() == sgs.TargetModSkill_Residue then
 			local card = ctx:getCard()
@@ -4393,6 +4396,7 @@ mo_youmo_slash_tm = sgs.CreateTargetModSkillV2 {
 	name = "#mo_youmo_slash",
 	pattern = "Slash",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:mo_youmo_slash" },
 	correct_func = function(skill, ctx)
 		if ctx:getModType() == sgs.TargetModSkill_Residue then
 			local player = ctx:getPrimary()

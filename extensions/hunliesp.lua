@@ -443,6 +443,7 @@ hunliesp_global_resistLoseSkill = sgs.CreateTriggerSkillV2{
 
 hunliesp_global_breakTempCards = sgs.CreateTriggerSkillV2{
 	name = "#hunliesp_global_breakTempCards",
+	record_once = true,
 	events = {sgs.GameStart, sgs.CardsMoveOneTime},
 	frequency = sgs.Skill_Compulsory,
 	global = true,
@@ -5315,6 +5316,14 @@ local sgkgodjiguan_slashtime = sgs.CreateTargetModSkillV2{
 	name = "#sgkgodjiguan_scheme_slashtime",
 	pattern = ".",
 	holder_selector = sgs.CorrectSkill_System,
+	-- scheme_mark_total is non-zero only while some <scheme>hunlie_global_schemeslashtime mark is.
+	gate = (function()
+		local atoms = {}
+		for _, skname in ipairs(scheme_sknames) do
+			table.insert(atoms, "mark:" .. skname .. "hunlie_global_schemeslashtime")
+		end
+		return atoms
+	end)(),
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
 		local from, card = ctx:getPrimary(), ctx:getCard()

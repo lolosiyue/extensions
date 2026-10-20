@@ -432,6 +432,7 @@ end
 -- 全局触发器：统一处理所有明置牌的清理和选择逻辑
 universal_card_display_global = sgs.CreateTriggerSkillV2{
 	name = "#universal_card_display_global",
+	record_once = true,
 	events = {sgs.CardsMoveOneTime, sgs.BeforeCardsMove},
 	frequency = sgs.Skill_Compulsory,
 	global = true,
@@ -1722,6 +1723,7 @@ local banGuandu
 
 GuanduOnTrigger = sgs.CreateTriggerSkillV2{
 	name = "#GuanduOnTrigger",
+	record_once = true,
 	frequency = sgs.Skill_Compulsory,
 	global = true,
 	events = {sgs.ConfirmDamage,sgs.GameReady,sgs.Death,sgs.CardsMoveOneTime, sgs.DamageCaused, sgs.RoundStart,

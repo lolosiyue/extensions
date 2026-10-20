@@ -77,6 +77,7 @@ end
 
 clear_cardbuff = sgs.CreateTriggerSkillV2{
 	name = "#clear_cardbuff",
+	record_once = true,
 	global = true,
 	frequency = sgs.Skill_Compulsory,
 	events = {sgs.CardsMoveOneTime, sgs.CardFinished},
@@ -6613,6 +6614,7 @@ sk_yinggeTM = sgs.CreateTargetModSkillV2{
 	pattern = "Slash",
 	frequency = sgs.Skill_Compulsory,
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:sk_yingge_point-Clear" },
 	correct_func = function(skill, ctx)
 		local from, card = ctx:getPrimary(), ctx:getCard()
 		if not (from and card) then return false end
@@ -7420,6 +7422,7 @@ sk_xingbuTM = sgs.CreateTargetModSkillV2{
 	pattern = "Slash",
 	frequency = sgs.Skill_Compulsory,
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "mark:&sk_xingbu_lv" },
 	correct_func = function(skill, ctx)
 		local player = ctx:getPrimary()
 		if not player then return false end
@@ -12473,7 +12476,7 @@ sk_jijun = sgs.CreateViewAsSkillV2{
  end,
 }
 sk_jijunMod = sgs.CreateTargetModSkillV2{
- name = "#sk_jijun", pattern = "BasicCard", holder_selector = sgs.CorrectSkill_System,
+ name = "#sk_jijun", pattern = "BasicCard", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:sk_jijun" },
  correct_func = function(skill, ctx)
   local card = ctx:getCard()
   if card and card:getSkillName() == "sk_jijun" and
@@ -13539,7 +13542,7 @@ sk_choujue = sgs.CreateTriggerSkillV2{
  end,
 }
 sk_choujueMod = sgs.CreateTargetModSkillV2{
- name = "#sk_choujue", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+ name = "#sk_choujue", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:sk_choujue" },
  correct_func = function(skill, ctx)
   if ctx:getCard() and ctx:getCard():getSkillName() == "sk_choujue" and (ctx:getModType() == sgs.TargetModSkill_DistanceLimit or ctx:getModType() == sgs.TargetModSkill_Residue) then return 9999 end
   return false
@@ -13595,7 +13598,7 @@ sk_jiaozhao = sgs.CreateViewAsSkillV2{
  end,
 }
 sk_jiaozhaoMod = sgs.CreateTargetModSkillV2{
- name = "#sk_jiaozhao", pattern = ".", holder_selector = sgs.CorrectSkill_System,
+ name = "#sk_jiaozhao", pattern = ".", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:sk_jiaozhao" },
  correct_func = function(skill, ctx)
   local c = ctx:getCard()
   if c and c:getSkillName() == "sk_jiaozhao" then return 9999 end
@@ -13603,7 +13606,7 @@ sk_jiaozhaoMod = sgs.CreateTargetModSkillV2{
  end,
 }
 sk_jiaozhaoProhibit = sgs.CreateProhibitSkillV2{
- name = "#sk_jiaozhao_self", holder_selector = sgs.CorrectSkill_System,
+ name = "#sk_jiaozhao_self", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:sk_jiaozhao" },
  is_prohibited = function(skill, ctx)
   return ctx:getCard() and ctx:getCard():getSkillName() == "sk_jiaozhao" and ctx:getPrimary() == ctx:getSecondary()
  end,
@@ -14774,7 +14777,7 @@ sk_qinguoVS = sgs.CreateViewAsSkillV2{
  end,
 }
 sk_qinguoMod = sgs.CreateTargetModSkillV2{
- name = "#sk_qinguo", pattern = "BasicCard", holder_selector = sgs.CorrectSkill_System,
+ name = "#sk_qinguo", pattern = "BasicCard", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:sk_qinguo" },
  correct_func = function(skill, ctx)
   if ctx:getModType() == sgs.TargetModSkill_Residue and ctx:getCard() and ctx:getCard():getSkillName() == "sk_qinguo" then return 9999 end
   return false
@@ -15413,7 +15416,7 @@ sk_tianbian = sgs.CreateTriggerSkillV2{
  end,
 }
 sk_jianzhengMod = sgs.CreateTargetModSkillV2{
- name = "#sk_jianzheng_distance", pattern = ".", holder_selector = sgs.CorrectSkill_System,
+ name = "#sk_jianzheng_distance", pattern = ".", holder_selector = sgs.CorrectSkill_System, gate = { "flag:sk_jianzheng_reselect" },
  correct_func = function(skill, ctx)
   if ctx:getModType() == sgs.TargetModSkill_DistanceLimit and ctx:getPrimary() and ctx:getPrimary():hasFlag("sk_jianzheng_reselect") then return 9999 end
   return false
@@ -15488,7 +15491,7 @@ sgs.LoadTranslationTable{
 -- 极略54 吕凯：jilue.md L2664-L2666
 sk_lvkai = sgs.General(extension, "sk_lvkai", "shu", 3, true)
 sk_tunanMod = sgs.CreateTargetModSkillV2{
- name = "#sk_tunan", pattern = ".", holder_selector = sgs.CorrectSkill_System,
+ name = "#sk_tunan", pattern = ".", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:sk_tunan" },
  correct_func = function(skill, ctx)
   local c = ctx:getCard()
   if c and c:getSkillName() == "sk_tunan" and (ctx:getModType() == sgs.TargetModSkill_Residue or ctx:getModType() == sgs.TargetModSkill_DistanceLimit) then return 9999 end
@@ -16030,7 +16033,7 @@ sk_junbingRange = sgs.CreateAttackRangeSkillV2{
  correct_func = function(skill, ctx) local p = ctx:getPrimary(); if p then return p:getMark("&sk_junbing") end; return false end,
 }
 sk_junbingMod = sgs.CreateTargetModSkillV2{
- name = "#sk_junbing_slash", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+ name = "#sk_junbing_slash", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "mark:&sk_junbing" },
  correct_func = function(skill, ctx)
   local p = ctx:getPrimary()
   if p and ctx:getModType() == sgs.TargetModSkill_Residue then return p:getMark("&sk_junbing") end
@@ -16477,6 +16480,13 @@ sgs.LoadTranslationTable{
 -- 极略62 马岱：jilue.md L2777
 sk_madai = sgs.General(extension, "sk_madai", "shu", 4, true)
 local function sk_qianxi_refresh(room)
+ -- With no owner casting and no limit left on anyone, the pass below changes nothing.
+ local pending = false
+ for _, p in sgs.qlist(room:getAllPlayers(true)) do
+  if (p:isAlive() and p:getMark("sk_qianxi_active") > 0) or p:getMark("sk_qianxi_limit_red") > 0
+   or p:getMark("sk_qianxi_limit_black") > 0 then pending = true; break end
+ end
+ if not pending then return end
  for _, target in sgs.qlist(room:getAllPlayers(true)) do
   local red, black = false, false
   for _, owner in sgs.qlist(room:getAlivePlayers()) do
@@ -16557,7 +16567,7 @@ sk_qianxi = sgs.CreateTriggerSkillV2{
  end,
 }
 sk_qianxiMod = sgs.CreateTargetModSkillV2{
- name = "#sk_qianxi", pattern = ".", holder_selector = sgs.CorrectSkill_System,
+ name = "#sk_qianxi", pattern = ".", holder_selector = sgs.CorrectSkill_System, gate = { "mark:sk_qianxi_active" },
  correct_func = function(skill, ctx)
   local p, c = ctx:getPrimary(), ctx:getCard()
   if p and c and p:getMark("sk_qianxi_active") > 0 and c:objectName() == p:getTag("sk_qianxi_name"):toString() and ctx:getModType() == sgs.TargetModSkill_Residue then return 9999 end
@@ -16918,7 +16928,7 @@ sk_duanfa = sgs.CreateTriggerSkillV2{
  end,
 }
 sk_duanfaMod = sgs.CreateTargetModSkillV2{
- name = "#sk_duanfa", pattern = "Snatch", holder_selector = sgs.CorrectSkill_System,
+ name = "#sk_duanfa", pattern = "Snatch", holder_selector = sgs.CorrectSkill_System, gate = { "card_flag:sk_duanfa_temp" },
  correct_func = function(skill, ctx)
   local card = ctx:getCard()
   if card and card:hasFlag("sk_duanfa_temp") and ctx:getModType() == sgs.TargetModSkill_DistanceLimit then return 9999 end

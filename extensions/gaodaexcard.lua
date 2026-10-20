@@ -189,6 +189,7 @@ end
 
 gaodaexcard_skill = sgs.CreateTriggerSkillV2 {
 	name = "#gaodaexcard_skill",
+	record_once = true,
 	events = { sgs.BeforeCardsMove },
 	global = true,
 	priority = 3,

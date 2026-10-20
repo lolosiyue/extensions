@@ -1840,6 +1840,7 @@ end
 --SpecialPublicPart-RemoveGeneral
 RemoveGeneral_Skill = sgs.CreateTriggerSkillV2{
 	name = "#RemoveGeneral_Skill",
+	record_once = true,
 	events = {sgs.MarkChanged, sgs.TurnStart},
 	global = true,
 	frequency = sgs.Skill_Compulsory, 

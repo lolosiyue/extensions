@@ -104,11 +104,14 @@ local function gu_obtain(room, p, ids, skill)
     room:obtainCard(p, c, skill, false)
     c:deleteLater()
 end
-local function gu_trigger(name, events, effect, compulsory, frequency, limit_mark)
+local function gu_trigger(name, events, effect, compulsory, frequency, limit_mark, change_skill)
     return sgs.CreateRuleSkillV2 {
         name = name, events = events, global = true,
         frequency = frequency or (compulsory and sgs.Skill_Compulsory or sgs.Skill_NotFrequent), limit_mark = limit_mark,
+        change_skill = change_skill,
         can_trigger = function(self, event, room, player, data)
+            -- The roster's skill index answers "nobody holds it" without a per-player scan.
+            if not room:findPlayerBySkillName(self:objectName()) then return false end
             for _, p in sgs.qlist(room:getAlivePlayers()) do
                 if p:hasSkill(self:objectName()) then return self:objectName(), p end
             end
@@ -125,16 +128,52 @@ local function gu_trigger(name, events, effect, compulsory, frequency, limit_mar
         end,
     }
 end
-local function gu_record(name, events, fn)
-    return sgs.CreateRuleSkillV2 {
-        name = name, events = events, global = true,
-        can_trigger = function() return false end,
-        on_record = function(self, event, room, player, ctx)
-            fn(self, event, room, player, ctx.original_data)
-        end,
+local gu_record
+do
+    -- No general, related skill or runtime grant holds these, so they keep
+    -- recording for every seat. Every other record runs only for its holders.
+    local unheld = {
+        ["#ofgu_qiangxi_clear"] = true, ["#ofgu_qishen_expire"] = true, ["#ofgu_huamao_expire"] = true, ["#ofgu_huoxin_clear"] = true,
+        ["#ofgu_quzhong_record"] = true, ["#ofgu_quzhong_clear"] = true, ["#ofgu_qiongshan_round"] = true, ["#ofgu_xianfeng_record"] = true,
+        ["#ofgu_discard_suits_clear"] = true, ["#ofgu_jiuji_record"] = true, ["#ofgu_lianying_clear"] = true, ["#ofgu_jiefan_reset"] = true,
+        ["#ofgu_huhaibi_record"] = true, ["#ofgu_huhaibi_damage"] = true, ["#ofgu_xiangxing_record"] = true, ["#ofgu_lianhuan_record"] = true,
+        ["#ofgu_niepan_reset"] = true, ["#ofgu_xingshang_record"] = true, ["#ofgu_moufangzhu_record"] = true, ["#ofwz_liezhi_restore"] = true,
+        ["#hlxg_keji_lvmeng_record"] = true, ["#hl_lizhan_effect"] = true, ["#hl_lizhan_damage"] = true, ["#hl_sanlian_record"] = true,
+        ["#hl_zuzhou_clear"] = true, ["#hl_lianshi_last"] = true, ["#hl_benyue_record"] = true, ["#hljx_xiangle_record"] = true,
+        ["#sj2_tuotujun_record"] = true, ["#sj9_record"] = true, ["#sj11_xiti_round"] = true, ["#hlxg_chenghao_snapshot"] = true,
+        ["#hlxg_wujian_sunshangxiang3_record"] = true, ["#hljx_zhiba_attach"] = true, ["#hlxg_panqin_record"] = true, ["#hljx_kanpo_response"] = true,
+        ["#hlxg_xingshuai_settle"] = true, ["#hlxg_mingjian_turn"] = true, ["#hlxg_lingren_effect"] = true, ["#hlxg_jianying_record"] = true,
+        ["#hlxg_shibei_record"] = true, ["#hlxg_weidi_record"] = true, ["#hljx_luanzhan_history"] = true, ["#hlxg_koujing_record"] = true,
+        ["#hlxg_yinju_init"] = true, ["#hlxg_zuoding_record"] = true, ["#hljx_xianzhen_record"] = true, ["#hd_d14_effects"] = true,
     }
+    -- The engine records once per holder; the first holder in seat order runs it.
+    local function first_holder(room, name)
+        for _, p in sgs.qlist(room:getAllPlayers(true)) do
+            if p:hasSkill(name, true) then return p end
+        end
+    end
+    function gu_record(name, events, fn, frequency)
+        if unheld[name] then
+            return sgs.CreateRuleSkillV2 {
+                name = name, events = events, global = true, frequency = frequency,
+                can_trigger = function() return false end,
+                on_record = function(self, event, room, player, ctx)
+                    fn(self, event, room, player, ctx.original_data)
+                end,
+            }
+        end
+        return sgs.CreateTriggerSkillV2 {
+            name = name, events = events, global = false, frequency = frequency,
+            can_trigger = function() return false end,
+            on_record = function(self, event, room, player, ctx)
+                if ctx.owner ~= first_holder(room, self:objectName()) then return end
+                fn(self, event, room, player, ctx.original_data)
+            end,
+        }
+    end
 end
-local function gu_active(name, quota, nmin, nmax, target_filter, target_feasible, effect, select_card, activate)
+-- opts (optional): frequency, limit_mark, change_skill, passed to the skill spec.
+local function gu_active(name, quota, nmin, nmax, target_filter, target_feasible, effect, select_card, activate, opts)
     local card = sgs.CreateSkillCard {
         name = name .. "Card", will_throw = false,
         filter = target_filter, feasible = target_feasible,
@@ -165,6 +204,9 @@ local function gu_active(name, quota, nmin, nmax, target_filter, target_feasible
         spec.limit_scope = sgs.Skill_Limit_Phase
         spec.phase_name = "Play"
         spec.max_usage_limit = quota
+    end
+    if opts then
+        spec.frequency, spec.limit_mark, spec.change_skill = opts.frequency, opts.limit_mark, opts.change_skill
     end
     return sgs.CreateViewAsSkillV2(spec)
 end
@@ -458,7 +500,7 @@ ofgu_duanliang = sgs.CreateViewAsSkillV2 {
     end,
 }
 ofgu_duanliang_mod = sgs.CreateTargetModSkillV2 {
-    name = "#ofgu_duanliang_mod", pattern = "SupplyShortage", holder_selector = sgs.CorrectSkill_System,
+    name = "#ofgu_duanliang_mod", pattern = "SupplyShortage", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:ofgu_duanliang" },
     correct_func = function(self, ctx)
         if ctx:getModType() == sgs.TargetModSkill_DistanceLimit and ctx:getCard():getSkillName() == "ofgu_duanliang" then return 999 end
         return 0
@@ -597,7 +639,8 @@ ofgu_yishi = gu_active("ofgu_yishi", nil, 0, 0, function(self, targets) return f
             gu_fangzhu(room, source, to, "ofgu_yishi")
             if to:isAlive() then room:acquireSkill(to, "ofgu_fangzhu") end
         end
-    end, nil, function(p) return p:getMark("@ofgu_yishi") > 0 end)
+    end, nil, function(p) return p:getMark("@ofgu_yishi") > 0 end,
+    { frequency = sgs.Skill_Limited, limit_mark = "@ofgu_yishi" })
 ofgu_yishi_init = gu_record("#ofgu_yishi_init", {sgs.GameStart}, function(self, event, room, p, data)
     for _, q in sgs.qlist(room:getAlivePlayers()) do
         if q:hasSkill("ofgu_yishi") then room:setPlayerMark(q, "@ofgu_yishi", 1) end
@@ -659,7 +702,7 @@ ofgu_nianjun_record = gu_record("#ofgu_nianjun_record", {sgs.CardsMoveOneTime, s
     end
 end)
 ofgu_nianjun_mod = sgs.CreateTargetModSkillV2 {
-    name = "#ofgu_nianjun_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System,
+    name = "#ofgu_nianjun_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System, gate = { "mark:ofgu_nianjun_link" },
     correct_func = function(self, ctx)
         local from, to = ctx:getPrimary(), ctx:getSecondary()
         if ctx:getModType() == sgs.TargetModSkill_Residue and from and to
@@ -689,7 +732,7 @@ ofgu_qianqian = gu_record("ofgu_qianqian", {sgs.TurnStart, sgs.EventPhaseChangin
             end
         end
     end
-end)
+end, sgs.Skill_Compulsory)
 of_wencaopi:addSkill(ofgu_yishi); of_wencaopi:addSkill(ofgu_yishi_init); of_wencaopi:addSkill(ofgu_nianjun)
 of_wencaopi:addSkill(ofgu_nianjun_record); of_wencaopi:addSkill(ofgu_nianjun_mod); of_wencaopi:addSkill(ofgu_qianqian)
 
@@ -2673,7 +2716,7 @@ end)
 hljx_fenxun:setViewAsSkill(c201_fenxun("hljx_fenxun"))
 -- First sentence: one extra Slash target at distance 1 (same rule as the engine's 短兵 TargetMod).
 hljx_duanbing_tm = sgs.CreateTargetModSkillV2 {
-    name = "#hljx_duanbing_tm", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hljx_duanbing_tm", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "skill:hljx_duanbing" },
     correct_func = function(skill, ctx)
         local from, to = ctx:getPrimary(), ctx:getSecondary()
         if ctx:getModType() == sgs.TargetModSkill_ExtraTarget and from and to and from:hasSkill("hljx_duanbing")
@@ -2784,7 +2827,7 @@ hlxg_guanchao = gu_trigger("hlxg_guanchao", {sgs.EventPhaseStart, sgs.CardUsed},
     end
 end)
 hlxg_guanchao_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_guanchao_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_guanchao_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "mark:&hlxg_guanchao_up-PlayClear" },
     correct_func = function(skill, ctx)
         local from = ctx:getPrimary()
         if ctx:getModType() == sgs.TargetModSkill_Residue and from and from:getMark("&hlxg_guanchao_up-PlayClear") > 0 then return 1 end
@@ -3173,7 +3216,7 @@ hlxg_zhuikong = gu_trigger("hlxg_zhuikong", {sgs.EventPhaseStart}, function(self
     end
 end)
 hlxg_zhuikong_prohibit = sgs.CreateProhibitSkillV2 {
-    name = "#hlxg_zhuikong_prohibit", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_zhuikong_prohibit", holder_selector = sgs.CorrectSkill_System, gate = { "mark:&hlxg_zhuikong_self-Clear" },
     is_prohibited = function(skill, ctx)
         local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
         return from ~= nil and to ~= nil and card ~= nil and card:getTypeId() ~= sgs.Card_TypeSkill
@@ -4264,7 +4307,7 @@ hlxg_fumian = gu_trigger("hlxg_fumian", {sgs.TurnStart, sgs.EventPhaseStart, sgs
     data:setValue(use)
 end)
 hlxg_fumian_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_fumian_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_fumian_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System, gate = { "card_flag:hlxg_fumian_distance" },
     correct_func = function(self, ctx)
         local card = ctx:getCard()
         if ctx:getModType() == sgs.TargetModSkill_DistanceLimit and card and card:hasFlag("hlxg_fumian_distance") then return 1000 end
@@ -5482,7 +5525,7 @@ hl_haiji_distance = sgs.CreateDistanceSkillV2 {
     end,
 }
 hl_haiji_target = sgs.CreateTargetModSkillV2 {
-    name = "#hl_haiji_target", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hl_haiji_target", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "skill:hl_haiji" },
     correct_func = function(self, ctx)
         local from = ctx:getPrimary()
         if ctx:getModType() == sgs.TargetModSkill_ExtraTarget and from and from:hasSkill("hl_haiji") and from:getMark("hl_haiji_slash-Clear") == 0 then return 1 end
@@ -5588,7 +5631,7 @@ hl_lizhan_damage = gu_record("#hl_lizhan_damage", {sgs.DamageCaused, sgs.Damage}
     elseif event == sgs.Damage and d.from and d.from:isAlive() then c104_followup(room, d.from, d.to) end
 end)
 hl_lizhan_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hl_lizhan_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System,
+    name = "#hl_lizhan_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System, gate = { "flag:hl_lizhan_followup" },
     correct_func = function(self, ctx)
         local from, card = ctx:getPrimary(), ctx:getCard()
         if from and card and from:hasFlag("hl_lizhan_followup") and card:getSkillName() == "hl_lizhan" and (ctx:getModType() == sgs.TargetModSkill_DistanceLimit or ctx:getModType() == sgs.TargetModSkill_Residue) then return 1000 end
@@ -6313,7 +6356,7 @@ hl_quanxue_clear = gu_record("#hl_quanxue_clear", {sgs.TurnStart}, function(self
     else room:setPlayerMark(player, "hl_quanxue_restrict-Clear", 1) end
 end)
 hl_quanxue_prohibit = sgs.CreateProhibitSkillV2 {
-    name = "#hl_quanxue_prohibit", holder_selector = sgs.CorrectSkill_System,
+    name = "#hl_quanxue_prohibit", holder_selector = sgs.CorrectSkill_System, gate = { "mark:hl_quanxue_restrict-Clear" },
     is_prohibited = function(self, ctx)
         local from, to = ctx:getFrom(), ctx:getTo()
         return from and to and from ~= to and from:getPhase() == sgs.Player_Play
@@ -6819,7 +6862,7 @@ hl_moyu_max = sgs.CreateMaxCardsSkillV2 {
     end,
 }
 hl_moyu_prohibit = sgs.CreateProhibitSkillV2 {
-    name = "#hl_moyu_prohibit", holder_selector = sgs.CorrectSkill_System,
+    name = "#hl_moyu_prohibit", holder_selector = sgs.CorrectSkill_System, gate = { "mark:hl_moyu-Clear" },
     is_prohibited = function(self, ctx)
         local from, to = ctx:getFrom(), ctx:getTo()
         return from and to and from ~= to and from:getMark("hl_moyu-Clear") > 0
@@ -7404,7 +7447,7 @@ hlxg_wushen_damage = gu_trigger("#hlxg_wushen_damage", {sgs.DamageCaused}, funct
     c202_red_damage(room, data, owner, true)
 end)
 hlxg_wushen_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_wushen_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_wushen_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "skill:hlxg_wushen" },
     correct_func = function(self, ctx)
         local from, card = ctx:getPrimary(), ctx:getCard()
         if ctx:getModType() == sgs.TargetModSkill_DistanceLimit and from and from:hasSkill("hlxg_wushen")
@@ -7526,7 +7569,7 @@ hlxg_nuzhan = gu_trigger("hlxg_nuzhan", {sgs.DamageCaused, sgs.CardFinished, sgs
         end
     end, true)
 hlxg_nuzhan_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_nuzhan_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_nuzhan_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "mark:hlxg_nuzhan_phase" },
     correct_func = function(self, ctx)
         local p = ctx:getPrimary()
         if p and p:hasSkill("hlxg_nuzhan") and ctx:getModType() == sgs.TargetModSkill_Residue then
@@ -7573,7 +7616,7 @@ hlxg_wusheng_guanyu3_effect = gu_trigger("#hlxg_wusheng_guanyu3_effect", {sgs.Ev
         end
     end, true)
 hlxg_wusheng_guanyu3_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_wusheng_guanyu3_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_wusheng_guanyu3_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "skill:hlxg_wusheng_guanyu3" },
     correct_func = function(self, ctx)
         local p, c = ctx:getPrimary(), ctx:getCard()
         if p and p:hasSkill("hlxg_wusheng_guanyu3") and c and c:getSuit() == sgs.Card_Diamond
@@ -8549,7 +8592,7 @@ hlxg_zhuning = sgs.CreateViewAsSkillV2 {
     end,
 }
 hlxg_zhuning_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_zhuning_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_zhuning_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:hlxg_zhuning" },
     correct_func = function(self, ctx)
         local c = ctx:getCard()
         if ctx:getModType() == sgs.TargetModSkill_Residue and c and c:getSkillName() == "hlxg_zhuning"
@@ -8593,7 +8636,7 @@ hlxg_yinlang = gu_trigger("hlxg_yinlang", {sgs.EventPhaseEnd}, function(self, ev
     end
 end)
 hlxg_yinlang_prohibit = sgs.CreateProhibitSkillV2 {
-    name = "#hlxg_yinlang_prohibit", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_yinlang_prohibit", holder_selector = sgs.CorrectSkill_System, gate = { "mark:&hlxg_yinlang_sheng" },
     is_prohibited = function(self, ctx)
         local from, to = ctx:getFrom(), ctx:getTo()
         return from and to and from:getMark("&hlxg_yinlang_sheng") > 0 and to:getMark("&hlxg_yinlang_sheng") == 0
@@ -9148,7 +9191,7 @@ hlxg_dushi = sgs.CreateTriggerSkillV2 {
     end,
 }
 hlxg_dushi_prohibit = sgs.CreateProhibitSkillV2 {
-    name = "#hlxg_dushi_prohibit", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_dushi_prohibit", holder_selector = sgs.CorrectSkill_System, gate = { "secondary.skill:hlxg_dushi" },
     is_prohibited = function(self, ctx)
         local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
         return from and to and from ~= to and card and card:isKindOf("Peach")
@@ -9309,7 +9352,7 @@ hljx_yangwei_record = gu_record("#hljx_yangwei_record", {sgs.CardUsed}, function
 end)
 extension_hl:addSkills(hljx_yangwei_record)
 hljx_yangwei_residue = sgs.CreateTargetModSkillV2 {
-    name = "#hljx_yangwei_residue", holder_selector = sgs.CorrectSkill_System,
+    name = "#hljx_yangwei_residue", holder_selector = sgs.CorrectSkill_System, gate = { "mark:hljx_yangwei_color-Clear" },
     correct_func = function(self, ctx)
         if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
         local p, c = ctx:getPrimary(), ctx:getCard()
@@ -9547,6 +9590,8 @@ local function diyba_trigger(name, events, effect, compulsory)
         name = name, events = events, global = true,
         frequency = compulsory and sgs.Skill_Compulsory or sgs.Skill_NotFrequent,
         can_trigger = function(self, event, room, player, data)
+            -- The roster's skill index answers "nobody holds it" without a per-player scan.
+            if not room:findPlayerBySkillName(self:objectName()) then return false end
             for _, p in sgs.qlist(room:getAlivePlayers()) do
                 if p:hasSkill(self:objectName()) then return self:objectName(), p end
             end
@@ -9564,13 +9609,7 @@ local function diyba_trigger(name, events, effect, compulsory)
     }
 end
 local function diyba_record(name, events, fn)
-    return sgs.CreateRuleSkillV2 {
-        name = name, events = events, global = true,
-        can_trigger = function() return false end,
-        on_record = function(self, event, room, player, ctx)
-            fn(self, event, room, player, ctx.original_data)
-        end,
-    }
+    return gu_record(name, events, fn)
 end
 
 diyba_10j_zhangti = sgs.General(extension, "diyba_10j_zhangti", "wu", 3)
@@ -9653,6 +9692,8 @@ local function diyba_b06_trigger(name, events, effect, compulsory)
         name = name, events = events, global = true,
         frequency = compulsory and sgs.Skill_Compulsory or sgs.Skill_NotFrequent,
         can_trigger = function(self, event, room, player, data)
+            -- The roster's skill index answers "nobody holds it" without a per-player scan.
+            if not room:findPlayerBySkillName(self:objectName()) then return false end
             for _, p in sgs.qlist(room:getAlivePlayers()) do
                 if p:hasSkill(self:objectName()) then return self:objectName(), p end
             end
@@ -9865,6 +9906,8 @@ local function diyba_trigger(name, events, effect, compulsory)
         name = name, events = events, global = true,
         frequency = compulsory and sgs.Skill_Compulsory or sgs.Skill_NotFrequent,
         can_trigger = function(self, event, room, player, data)
+            -- The roster's skill index answers "nobody holds it" without a per-player scan.
+            if not room:findPlayerBySkillName(self:objectName()) then return false end
             for _, p in sgs.qlist(room:getAlivePlayers()) do
                 if p:hasSkill(self:objectName()) then return self:objectName(), p end
             end
@@ -9882,13 +9925,7 @@ local function diyba_trigger(name, events, effect, compulsory)
     }
 end
 local function diyba_record(name, events, fn)
-    return sgs.CreateRuleSkillV2 {
-        name = name, events = events, global = true,
-        can_trigger = function() return false end,
-        on_record = function(self, event, room, player, ctx)
-            fn(self, event, room, player, ctx.original_data)
-        end,
-    }
+    return gu_record(name, events, fn)
 end
 
 diyba_xj_dengfang = sgs.General(extension, "diyba_xj_dengfang", "qun", 2)
@@ -9974,6 +10011,8 @@ local function diyba10_trigger(name, events, effect)
         name = name, events = events, global = true,
         frequency = sgs.Skill_NotFrequent,
         can_trigger = function(self, event, room, player, data)
+            -- The roster's skill index answers "nobody holds it" without a per-player scan.
+            if not room:findPlayerBySkillName(self:objectName()) then return false end
             for _, p in sgs.qlist(room:getAlivePlayers()) do
                 if p:hasSkill(self:objectName()) then return self:objectName(), p end
             end
@@ -9991,13 +10030,7 @@ local function diyba10_trigger(name, events, effect)
     }
 end
 local function diyba10_record(name, events, fn)
-    return sgs.CreateRuleSkillV2 {
-        name = name, events = events, global = true,
-        can_trigger = function() return false end,
-        on_record = function(self, event, room, player, ctx)
-            fn(self, event, room, player, ctx.original_data)
-        end,
-    }
+    return gu_record(name, events, fn)
 end
 
 -- 朱异
@@ -11055,7 +11088,7 @@ sj7_qingtan = sgs.CreateViewAsSkillV2 {
     end,
 }
 sj7_qingtan_mod = sgs.CreateTargetModSkillV2 {
-    name = "#sj7_qingtan_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#sj7_qingtan_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:sj7_qingtan" },
     correct_func = function(self, ctx)
         local c = ctx:getCard()
         if c and c:getSkillName() == "sj7_qingtan" then
@@ -12063,7 +12096,7 @@ hlxg_tunan_use = sgs.CreateViewAsSkillV2 {
     create_card = function(self, request) return hl06_tunan_card(request:getInitiator()) end,
 }
 hlxg_tunan_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_tunan_mod", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_tunan_mod", holder_selector = sgs.CorrectSkill_System, gate = { "card_flag:hlxg_tunan_distance" },
     correct_func = function(self, ctx)
         local c = ctx:getCard()
         if c and c:hasFlag("hlxg_tunan_distance") and ctx:getModType() == sgs.TargetModSkill_DistanceLimit then return 1000 end
@@ -12163,7 +12196,7 @@ hlxg_qinguo_use = sgs.CreateViewAsSkillV2 {
     end,
 }
 hlxg_qinguo_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_qinguo_mod", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_qinguo_mod", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:hlxg_qinguo" },
     correct_func = function(self, ctx)
         local c = ctx:getCard()
         if c and c:getSkillName() == "hlxg_qinguo" and ctx:getModType() == sgs.TargetModSkill_Residue then return sgs.CorrectSkillResult.unlimitedResidue() end
@@ -12567,7 +12600,7 @@ hlxg_yanxiao_judge = gu_record("#hlxg_yanxiao_judge", {sgs.EventPhaseStart, sgs.
     elseif judge.card:isBlack() then room:addPlayerMark(p, "hlxg_yanxiao_slash-Clear") end
 end)
 hlxg_yanxiao_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_yanxiao_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_yanxiao_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "mark:hlxg_yanxiao_slash-Clear" },
     correct_func = function(self, ctx)
         if ctx:getModType() == sgs.TargetModSkill_Residue and ctx:getPrimary() then
             return ctx:getPrimary():getMark("hlxg_yanxiao_slash-Clear")
@@ -12691,6 +12724,7 @@ hljx_tianyi = gu_trigger("hljx_tianyi", {sgs.EventPhaseStart, sgs.Damage, sgs.Ta
 local function c205_02_mod(name, main)
     return sgs.CreateTargetModSkillV2 {
         name = name, pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+        gate = { "mark:" .. main .. "_residue-Clear", "mark:" .. main .. "_reach-Clear" },
         correct_func = function(self, ctx)
             local p = ctx:getPrimary(); if not p then return 0 end
             if ctx:getModType() == sgs.TargetModSkill_Residue then return p:getMark(main .. "_residue-Clear") end
@@ -12855,7 +12889,7 @@ hlxg_shenzhu = gu_trigger("hlxg_shenzhu", {sgs.EventPhaseStart, sgs.CardFinished
     end
 end, true)
 hlxg_shenzhu_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_shenzhu_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_shenzhu_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "mark:hlxg_shenzhu_extra-Clear" },
     correct_func = function(self, ctx)
         if ctx:getModType() == sgs.TargetModSkill_Residue then return ctx:getPrimary():getMark("hlxg_shenzhu_extra-Clear") end
         return false
@@ -13081,7 +13115,7 @@ hlxg_zhaxiang_jiangwei3 = gu_trigger("hlxg_zhaxiang_jiangwei3", {sgs.HpLost, sgs
     end
 end, true)
 hlxg_zhaxiang_jiangwei3_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_zhaxiang_jiangwei3_mod", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_zhaxiang_jiangwei3_mod", holder_selector = sgs.CorrectSkill_System, gate = { "mark:hlxg_zhaxiang_jiangwei3-Clear" },
     correct_func = function(self, ctx)
         local p, c = ctx:getPrimary(), ctx:getCard()
         if not p or not c or not c:isKindOf("Slash") then return 0 end
@@ -13314,7 +13348,7 @@ hlxg_chezheng = gu_trigger("hlxg_chezheng", {sgs.EventPhaseEnd}, function(self, 
     owner:drawCards(math.max(2, n), self:objectName())
 end, true)
 hlxg_chezheng_prohibit = sgs.CreateProhibitSkillV2 {
-    name = "#hlxg_chezheng_prohibit", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_chezheng_prohibit", holder_selector = sgs.CorrectSkill_System, gate = { "skill:hlxg_chezheng" },
     is_prohibited = function(self, ctx)
         local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
         return from and to and card and from ~= to and from:hasSkill("hlxg_chezheng")
@@ -13807,7 +13841,7 @@ hlxg_wujian_sunshangxiang2_record = gu_record("#hlxg_wujian_sunshangxiang2_recor
     end
 end)
 hlxg_wujian_sunshangxiang2_residue = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_wujian_sunshangxiang2_residue", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_wujian_sunshangxiang2_residue", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:hlxg_wujian_sunshangxiang2" },
     correct_func = function(self, ctx)
         local c = ctx:getCard()
         if ctx:getModType() == sgs.TargetModSkill_Residue and c and c:getSkillName() == "hlxg_wujian_sunshangxiang2" then
@@ -13953,7 +13987,7 @@ hlxg_wujian_sunshangxiang3_record = gu_record("#hlxg_wujian_sunshangxiang3_recor
 end)
 extension_hl:addSkills(hlxg_wujian_sunshangxiang3_record)
 hlxg_wujian_sunshangxiang3_residue = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_wujian_sunshangxiang3_residue", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_wujian_sunshangxiang3_residue", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:hlxg_wujian_sunshangxiang3" },
     correct_func = function(self, ctx)
         local c = ctx:getCard()
         if ctx:getModType() == sgs.TargetModSkill_Residue and c and c:getSkillName() == "hlxg_wujian_sunshangxiang3" then return sgs.CorrectSkillResult.unlimitedResidue() end
@@ -15042,7 +15076,7 @@ local function c207_basic(p, name, ids)
     c:deleteLater(); return c
 end
 hlxg_heqia_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_heqia_mod", pattern = "BasicCard", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_heqia_mod", pattern = "BasicCard", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:hlxg_heqia" },
     correct_func = function(self, ctx)
         local c, p = ctx:getCard(), ctx:getPrimary()
         if not c or not p or c:getSkillName() ~= "hlxg_heqia" then return 0 end
@@ -15859,7 +15893,7 @@ hlxg_qiangwu_record = gu_record("#hlxg_qiangwu_record", {sgs.FinishJudge, sgs.Pr
     end
 end)
 hlxg_qiangwu_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_qiangwu_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_qiangwu_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "mark:hlxg_qiangwu_number-Clear" },
     correct_func = function(self, ctx)
         local p, c = ctx:getPrimary(), ctx:getCard()
         if not p or not c or p:getMark("hlxg_qiangwu_number-Clear") == 0 then return 0 end
@@ -16505,7 +16539,7 @@ hlxg_zhiti = gu_trigger("hlxg_zhiti", {sgs.DrawNCards}, function(self, event, ro
     if p == owner and hl208_wounded(room) > 1 then local draw = data:toDraw(); draw.num = draw.num + 1; data:setValue(draw) end
 end, true)
 hlxg_zhiti_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_zhiti_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_zhiti_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "skill:hlxg_zhiti" },
     correct_func = function(self, ctx)
         local p = ctx:getPrimary()
         local room = sgs.Sanguosha:currentRoom()
@@ -17690,7 +17724,7 @@ hlxg_mingjian_max = sgs.CreateMaxCardsSkillV2 {
     correct_func = function(self, ctx) return ctx:getPrimary():getMark("hlxg_mingjian_active") end,
 }
 hlxg_mingjian_slash = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_mingjian_slash", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_mingjian_slash", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "mark:hlxg_mingjian_active" },
     correct_func = function(self, ctx)
         if ctx:getModType() == sgs.TargetModSkill_Residue then return ctx:getPrimary():getMark("hlxg_mingjian_active") end
         return 0
@@ -17892,7 +17926,7 @@ hlxg_jiangchi_max = sgs.CreateMaxCardsSkillV2 {
     correct_func = function(self, ctx) return ctx:getPrimary():getMark("hlxg_jiangchi_max-Clear") end,
 }
 hlxg_jiangchi_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_jiangchi_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_jiangchi_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "mark:hlxg_jiangchi_slash-Clear", "mark:hlxg_jiangchi_distance-PlayClear" },
     correct_func = function(self, ctx)
         local p = ctx:getPrimary()
         if not p then return 0 end
@@ -17934,7 +17968,7 @@ hlxg_liushi_max = sgs.CreateMaxCardsSkillV2 {
     correct_func = function(self, ctx) return -ctx:getPrimary():getMark("&hlxg_liushi") end,
 }
 hlxg_liushi_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_liushi_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_liushi_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:hlxg_liushi" },
     correct_func = function(self, ctx)
         local c = ctx:getCard()
         if c and table.contains(c:getSkillNames(), "hlxg_liushi") and ctx:getModType() == sgs.TargetModSkill_DistanceLimit then return 1000 end
@@ -18453,7 +18487,7 @@ hlxg_jujiang = gu_trigger("hlxg_jujiang", {sgs.CardsMoveOneTime}, function(self,
     if current and current:isAlive() and current:getPhase() ~= sgs.Player_NotActive then room:addPlayerMark(current, "hlxg_jujiang-Clear", n) end
 end)
 hlxg_jujiang_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_jujiang_mod", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_jujiang_mod", holder_selector = sgs.CorrectSkill_System, gate = { "mark:hlxg_jujiang-Clear" },
     correct_func = function(self, ctx)
         local p, c = ctx:getPrimary(), ctx:getCard()
         if p and c and c:isKindOf("Slash") and ctx:getModType() == sgs.TargetModSkill_Residue then return p:getMark("hlxg_jujiang-Clear") end
@@ -18746,7 +18780,8 @@ local function c209_fencheng(name, revised)
                     if not discarded then room:damage(sgs.DamageStruct(name, source, to, 2, sgs.DamageStruct_Fire)) end
                 end
             end
-        end, nil, function(p) return p:getMark("@" .. name) > 0 end)
+        end, nil, function(p) return p:getMark("@" .. name) > 0 end,
+        { frequency = sgs.Skill_Limited, limit_mark = "@" .. name })
     return skill
 end
 hlxg_liru = sgs.General(extension_hl, "hlxg_liru", "qun", 3)
@@ -18998,7 +19033,7 @@ hlxg_shunshi_effect = gu_record("#hlxg_shunshi_effect", {sgs.DrawNCards, sgs.Tar
         elseif data:toPhaseChange().to == sgs.Player_NotActive then room:setPlayerMark(p, "&hlxg_shunshi", 0) end
     end)
 hlxg_shunshi_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_shunshi_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_shunshi_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "mark:&hlxg_shunshi" },
     correct_func = function(self, ctx)
         local p = ctx:getPrimary()
         if p and p:getPhase() == sgs.Player_Play and ctx:getModType() == sgs.TargetModSkill_Residue then return p:getMark("&hlxg_shunshi") end
@@ -19869,7 +19904,7 @@ hlxg_kuangfu = gu_active("hlxg_kuangfu", 1, 0, 0,
     end)
 
 hlxg_kuangfu_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_kuangfu_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_kuangfu_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:hlxg_kuangfu" },
     correct_func = function(self, ctx)
         local c = ctx:getCard()
         if c and c:getSkillName() == "hlxg_kuangfu" and (ctx:getModType() == sgs.TargetModSkill_DistanceLimit or ctx:getModType() == sgs.TargetModSkill_Residue) then return 1000 end
@@ -20064,7 +20099,7 @@ hlxg_zhuilie = gu_trigger("hlxg_zhuilie", {sgs.TargetSpecified, sgs.ConfirmDamag
         end
     end, true)
 hlxg_zhuilie_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_zhuilie_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_zhuilie_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "skill:hlxg_zhuilie" },
     correct_func = function(self, ctx)
         local p = ctx:getPrimary()
         if p and p:hasSkill("hlxg_zhuilie") and ctx:getModType() == sgs.TargetModSkill_DistanceLimit then return 1000 end
@@ -20660,7 +20695,7 @@ hlxg_qixian = gu_trigger("hlxg_qixian", {sgs.EventPhaseEnd, sgs.EventPhaseChangi
     elseif event == sgs.EventPhaseChanging and data:toPhaseChange().to == sgs.Player_NotActive then
         gu_obtain(room, owner, owner:getPile("hlxg_qixian"), self:objectName())
     end
-end)
+end, true)
 hlxg_qixian_max = sgs.CreateMaxCardsSkillV2 {
     name = "#hlxg_qixian_max", holder_selector = sgs.CorrectSkill_System,
     correct_func = function() return false end,
@@ -20985,7 +21020,7 @@ hlxg_jieying_ganning2_max = sgs.CreateMaxCardsSkillV2 {
     correct_func = function(self, ctx) local p = ctx:getPrimary(); return p and p:getMark("&hlxg_jieying_ganning2") > 0 and 1 or 0 end,
 }
 hlxg_jieying_ganning2_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_jieying_ganning2_mod", holder_selector = sgs.CorrectSkill_System, pattern = "Slash",
+    name = "#hlxg_jieying_ganning2_mod", holder_selector = sgs.CorrectSkill_System, gate = { "mark:&hlxg_jieying_ganning2" }, pattern = "Slash",
     correct_func = function(self, ctx)
         local p, c = ctx:getPrimary(), ctx:getCard()
         if p and c and c:isKindOf("Slash") and ctx:getModType() == sgs.TargetModSkill_Residue and p:getMark("&hlxg_jieying_ganning2") > 0 then return 1 end
@@ -21192,7 +21227,7 @@ hljx_zhangbiao = sgs.CreateViewAsSkillV2 {
     end,
 }
 hljx_zhangbiao_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hljx_zhangbiao_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hljx_zhangbiao_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:hljx_zhangbiao" },
     correct_func = function(self, ctx)
         if ctx:getModType() == sgs.TargetModSkill_DistanceLimit and ctx:getCard():getSkillName() == "hljx_zhangbiao" then return 999 end
         return 0
@@ -21367,7 +21402,7 @@ hlxg_qiaoshuo = gu_active("hlxg_qiaoshuo", nil, 0, 0,
         else room:setPlayerMark(source, "hlxg_qiaoshuo_failed-Clear", 1) end
     end, nil, function(p) return p:getMark("hlxg_qiaoshuo_failed-Clear") == 0 and not p:isKongcheng() end)
 hlxg_qiaoshuo_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_qiaoshuo_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_qiaoshuo_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System, gate = { "card_flag:hlxg_qiaoshuo_select" },
     correct_func = function(self, ctx)
         local c = ctx:getCard()
         if c and c:hasFlag("hlxg_qiaoshuo_select") and ctx:getModType() == sgs.TargetModSkill_DistanceLimit then return 1000 end
@@ -21621,7 +21656,8 @@ hlxg_cunsi = gu_active("hlxg_cunsi", nil, 0, 0, gu_one, gu_one_feasible,
         local x = source:getTag("hlxg_cunsi_lost"):toInt()
         source:removeTag("hlxg_cunsi_lost")
         if to:isAlive() then to:drawCards(x + 1, "hlxg_cunsi") end
-    end, nil, function(p) return p:getMark("@hlxg_cunsi") > 0 end)
+    end, nil, function(p) return p:getMark("@hlxg_cunsi") > 0 end,
+    { frequency = sgs.Skill_Limited, limit_mark = "@hlxg_cunsi" })
 hlxg_cunsi_loss = gu_record("#hlxg_cunsi_loss", {sgs.HpLost}, function(self, event, room, player, data)
     local lost = data:toHpLost()
     if lost.to and lost.reason == "hlxg_cunsi" then
@@ -21919,7 +21955,7 @@ hlxg_wuyuan_record = gu_record("#hlxg_wuyuan_record", {sgs.EventPhaseStart, sgs.
         end
     end)
 hlxg_wuyuan_slash = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_wuyuan_slash", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_wuyuan_slash", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "mark:hlxg_wuyuan_active" },
     correct_func = function(self, ctx)
         if ctx:getModType() == sgs.TargetModSkill_Residue then
             return ctx:getPrimary():getMark("hlxg_wuyuan_active")
@@ -22765,7 +22801,7 @@ hljx_jiuchi = gu_trigger("hljx_jiuchi", {sgs.Damage}, function(self, event, room
 end)
 hljx_jiuchi:setViewAsSkill(hljx_jiuchi_vs)
 hljx_jiuchi_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hljx_jiuchi_mod", pattern = "Analeptic", holder_selector = sgs.CorrectSkill_System,
+    name = "#hljx_jiuchi_mod", pattern = "Analeptic", holder_selector = sgs.CorrectSkill_System, gate = { "skill:hljx_jiuchi" },
     correct_func = function(self, ctx)
         local p, c = ctx:getPrimary(), ctx:getCard()
         if ctx:getModType() == sgs.TargetModSkill_Residue and p and p:hasSkill("hljx_jiuchi") and c and c:isKindOf("Analeptic") then
@@ -22861,7 +22897,7 @@ hlxg_jiaoxia_record = gu_record("#hlxg_jiaoxia_record", {sgs.PreCardUsed, sgs.Ca
     end
 end)
 hlxg_jiaoxia_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_jiaoxia_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_jiaoxia_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "skill:hlxg_jiaoxia" },
     correct_func = function(self, ctx)
         local p, to, c = ctx:getPrimary(), ctx:getSecondary(), ctx:getCard()
         if not p or not p:hasSkill("hlxg_jiaoxia") or p:getPhase() ~= sgs.Player_Play or not c or not c:isKindOf("Slash") then return false end
@@ -24311,6 +24347,7 @@ hlxg_biaozhao_mod = sgs.CreateTargetModSkillV2 {
 local function c213_04_kongcheng(name)
     return sgs.CreateProhibitSkillV2 {
         name = name, frequency = sgs.Skill_Compulsory, holder_selector = sgs.CorrectSkill_System,
+        gate = { "secondary.skill:" .. name },
         is_prohibited = function(self, ctx)
             local to, c = ctx:getTo(), ctx:getCard()
             return to and c and to:hasSkill(self:objectName()) and to:isKongcheng()
@@ -25215,7 +25252,7 @@ hlxg_duanbing_heqi = gu_trigger("hlxg_duanbing_heqi", {sgs.TargetSpecified}, fun
     local v = sgs.QVariant(); v:setValue(new); p:setTag(key, v)
 end)
 hlxg_duanbing_heqi_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_duanbing_heqi_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_duanbing_heqi_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "skill:hlxg_duanbing_heqi" },
     correct_func = function(self, ctx)
         local p, q = ctx:getPrimary(), ctx:getSecondary()
         if ctx:getModType() == sgs.TargetModSkill_ExtraTarget and p and q and p:hasSkill("hlxg_duanbing_heqi") and p:distanceTo(q) == 1 then return 1 end
@@ -25387,7 +25424,7 @@ hlxg_wansha_jiaxu_limit = sgs.CreateCardLimitSkill {
     end,
 }
 hlxg_weimu = sgs.CreateProhibitSkillV2 {
-    name = "hlxg_weimu", holder_selector = sgs.CorrectSkill_System,
+    name = "hlxg_weimu", holder_selector = sgs.CorrectSkill_System, gate = { "secondary.skill:hlxg_weimu" },
     is_prohibited = function(self, ctx)
         local p, c = ctx:getTo(), ctx:getCard()
         return p and p:hasSkill("hlxg_weimu") and c and c:isBlack() and c:isKindOf("TrickCard")
@@ -25479,7 +25516,7 @@ hljx_luanwu_slash = sgs.CreateViewAsSkillV2 {
     end,
 }
 hljx_luanwu_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hljx_luanwu_mod", holder_selector = sgs.CorrectSkill_System,
+    name = "#hljx_luanwu_mod", holder_selector = sgs.CorrectSkill_System, gate = { "card_flag:hljx_luanwu_extra" },
     correct_func = function(self, ctx)
         local c = ctx:getCard()
         if c and c:hasFlag("hljx_luanwu_extra") and ctx:getModType() == sgs.TargetModSkill_DistanceLimit then return 1000 end
@@ -25531,7 +25568,7 @@ hljx_weimu = gu_trigger("hljx_weimu", {sgs.DamageInflicted}, function(self, even
     end
 end, true)
 hljx_weimu_prohibit = sgs.CreateProhibitSkillV2 {
-    name = "#hljx_weimu_prohibit", holder_selector = sgs.CorrectSkill_System,
+    name = "#hljx_weimu_prohibit", holder_selector = sgs.CorrectSkill_System, gate = { "secondary.skill:hljx_weimu" },
     is_prohibited = function(self, ctx)
         local q, c = ctx:getTo(), ctx:getCard()
         return q and q:hasSkill("hljx_weimu") and c and c:isBlack() and c:isKindOf("TrickCard")
@@ -25570,7 +25607,7 @@ hlxg_zhenlve = gu_trigger("hlxg_zhenlve", {sgs.CardUsed}, function(self, event, 
     end
 end, true)
 hlxg_zhenlve_prohibit = sgs.CreateProhibitSkillV2 {
-    name = "#hlxg_zhenlve_prohibit", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_zhenlve_prohibit", holder_selector = sgs.CorrectSkill_System, gate = { "secondary.skill:hlxg_zhenlve" },
     is_prohibited = function(self, ctx)
         local q, c = ctx:getTo(), ctx:getCard()
         return q and q:hasSkill("hlxg_zhenlve") and c and c:isKindOf("DelayedTrick")
@@ -26016,7 +26053,7 @@ hlxg_koujing_record = gu_record("#hlxg_koujing_record", {sgs.CardUsed, sgs.Cards
     end
 end)
 hlxg_koujing_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_koujing_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_koujing_mod", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:hlxg_koujing" },
     correct_func = function(self, ctx)
         local c = ctx:getCard()
         if c and c:getSkillName() == "hlxg_koujing" and ctx:getModType() == sgs.TargetModSkill_Residue then return 1000 end
@@ -26047,7 +26084,8 @@ hlxg_yinju = gu_active("hlxg_yinju", nil, 0, 0, gu_one, gu_one_feasible,
     function(self, room, source, targets)
         room:removePlayerMark(source, "@hlxg_yinju")
         room:setPlayerMark(targets[1], "hlxg_yinju_" .. source:objectName() .. "-Clear", 1)
-    end, nil, function(p) return p:getMark("@hlxg_yinju") > 0 end)
+    end, nil, function(p) return p:getMark("@hlxg_yinju") > 0 end,
+    { frequency = sgs.Skill_Limited, limit_mark = "@hlxg_yinju" })
 hlxg_yinju_effect = gu_trigger("#hlxg_yinju_effect", {sgs.TargetSpecified, sgs.DamageCaused}, function(self, event, room, player, data, p)
     if event == sgs.TargetSpecified then
         local u = data:toCardUse()
@@ -26220,7 +26258,7 @@ local function c21407_open(p)
     return {}
 end
 hlxg_cuixin_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_cuixin_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_cuixin_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:hlxg_cuixin" },
     correct_func = function(self, ctx)
         local card, mod = ctx:getCard(), ctx:getModType()
         if card and card:getSkillName() == "hlxg_cuixin"
@@ -27317,7 +27355,7 @@ hlxg_jueyan = gu_active("hlxg_jueyan", 1, 0, 0, function() return false end, fun
         end
     end, nil, function(p) return p:hasEquipArea(0) or p:hasEquipArea(1) or p:hasEquipArea(2) or p:hasEquipArea(3) end)
 hlxg_jueyan_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_jueyan_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_jueyan_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System, gate = { "mark:hlxg_jueyan_jizhi-PlayClear", "mark:hlxg_jueyan_slash-Clear" },
     correct_func = function(self, ctx)
         local p, c = ctx:getPrimary(), ctx:getCard()
         if ctx:getModType() == sgs.TargetModSkill_DistanceLimit and p:getMark("hlxg_jueyan_jizhi-PlayClear") > 0 then return 999 end
@@ -27806,7 +27844,7 @@ hljx_mingce_effect = gu_record("#hljx_mingce_effect", {sgs.Damage, sgs.TurnStart
     end
 end)
 hljx_mingce_residue = sgs.CreateTargetModSkillV2 {
-    name = "#hljx_mingce_residue", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hljx_mingce_residue", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "mark:&hljx_mingce_active" },
     correct_func = function(self, ctx)
         local p = ctx:getPrimary()
         if p and ctx:getModType() == sgs.TargetModSkill_Residue then return p:getMark("&hljx_mingce_active") end
@@ -28415,7 +28453,7 @@ end)
 -- The trigger and its view-as component share the public skill name.
 hlxg_shenduan:setViewAsSkill(hlxg_shenduan_vs)
 hlxg_shenduan_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_shenduan_mod", pattern = "SupplyShortage", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_shenduan_mod", pattern = "SupplyShortage", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:hlxg_shenduan" },
     correct_func = function(self, ctx)
         local card = ctx:getCard()
         if card and card:getSkillName() == "hlxg_shenduan" and ctx:getModType() == sgs.TargetModSkill_DistanceLimit then return 1000 end
@@ -29009,7 +29047,7 @@ hlxg_shichou_record = gu_record("#hlxg_shichou_record", {sgs.PreCardUsed, sgs.Da
     end
 end)
 hlxg_shichou_targets = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_shichou_targets", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_shichou_targets", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "skill:hlxg_shichou" },
     correct_func = function(self, ctx)
         local p = ctx:getPrimary()
         if p and p:hasSkill("hlxg_shichou") and ctx:getModType() == sgs.TargetModSkill_ExtraTarget then return p:getLostHp() + 1 end
@@ -29119,6 +29157,7 @@ local function c216_07_jinjiu(general, name, king)
     local modname, prohibitname = "#" .. name .. "_mod", "#" .. name .. "_prohibit"
     local mod = sgs.CreateTargetModSkillV2 {
         name = modname, pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+        gate = { "skill:" .. name },
         correct_func = function(self, ctx)
             local from, card = ctx:getPrimary(), ctx:getCard()
             if from and from:hasSkill(name) and card and card:getSkillName() == name and ctx:getModType() == sgs.TargetModSkill_Residue then
@@ -29218,7 +29257,7 @@ hljx_xianzhen = gu_active("hljx_xianzhen", nil, 0, 0,
         end
     end, nil, function(p) return p:getMark("hljx_xianzhen_used-Clear") == 0 and p:canPindian() end)
 hljx_xianzhen_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hljx_xianzhen_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System,
+    name = "#hljx_xianzhen_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System, gate = { "skill:hljx_xianzhen" },
     correct_func = function(self, ctx)
         local from, to = ctx:getPrimary(), ctx:getSecondary()
         if not from or not from:hasSkill("hljx_xianzhen") or not to or to:getMark("hljx_xianzhen_" .. from:objectName() .. "-Clear") == 0 then return 0 end
@@ -29319,7 +29358,7 @@ hljx_qimou_distance = sgs.CreateDistanceSkillV2 {
     end,
 }
 hljx_qimou_residue = sgs.CreateTargetModSkillV2 {
-    name = "#hljx_qimou_residue", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hljx_qimou_residue", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "mark:hljx_qimou_bonus-Clear" },
     correct_func = function(self, ctx)
         local p = ctx:getPrimary()
         if p and ctx:getModType() == sgs.TargetModSkill_Residue then return p:getMark("hljx_qimou_bonus-Clear") end
@@ -29600,7 +29639,7 @@ hljx_jizhi_max = sgs.CreateMaxCardsSkillV2 {
     end,
 }
 hljx_jizhi_slash = sgs.CreateTargetModSkillV2 {
-    name = "#hljx_jizhi_slash", pattern = "Slash", holder_selector = sgs.CorrectSkill_System,
+    name = "#hljx_jizhi_slash", pattern = "Slash", holder_selector = sgs.CorrectSkill_System, gate = { "mark:&hljx_jizhi_slash-Clear" },
     correct_func = function(self, ctx)
         local p = ctx:getPrimary()
         if p and ctx:getModType() == sgs.TargetModSkill_Residue then return p:getMark("&hljx_jizhi_slash-Clear") end
@@ -29783,7 +29822,7 @@ hljx_zhaxiang = gu_trigger("hljx_zhaxiang", {sgs.TargetSpecified}, function(self
     owner:setTag("Jink_" .. use.card:toString(), value)
 end, true)
 hljx_zhaxiang_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hljx_zhaxiang_mod", holder_selector = sgs.CorrectSkill_System,
+    name = "#hljx_zhaxiang_mod", holder_selector = sgs.CorrectSkill_System, gate = { "skill:hljx_zhaxiang" },
     correct_func = function(self, ctx)
         local p, c = ctx:getPrimary(), ctx:getCard()
         if not p or not p:hasSkill("hljx_zhaxiang") or not c or not c:isKindOf("Slash") then return 0 end
@@ -29854,7 +29893,7 @@ hlxg_zhaxiang_huanggai2 = gu_trigger("hlxg_zhaxiang_huanggai2", {sgs.HpLost, sgs
     end
 end, true)
 hlxg_zhaxiang_huanggai2_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_zhaxiang_huanggai2_mod", holder_selector = sgs.CorrectSkill_System, pattern = ".",
+    name = "#hlxg_zhaxiang_huanggai2_mod", holder_selector = sgs.CorrectSkill_System, gate = { "skill:hlxg_zhaxiang_huanggai2" }, pattern = ".",
     correct_func = function(self, ctx)
         local p, c = ctx:getPrimary(), ctx:getCard()
         if not p or not c or c:isKindOf("SkillCard") or not p:hasSkill("hlxg_zhaxiang_huanggai2") then return 0 end
@@ -29887,7 +29926,7 @@ hlxg_jinggong = sgs.CreateViewAsSkillV2 {
     end,
 }
 hlxg_jinggong_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hlxg_jinggong_mod", holder_selector = sgs.CorrectSkill_System,
+    name = "#hlxg_jinggong_mod", holder_selector = sgs.CorrectSkill_System, gate = { "card_skill:hlxg_jinggong" },
     correct_func = function(self, ctx)
         local c = ctx:getCard()
         if c and c:getSkillName() == "hlxg_jinggong" and ctx:getModType() == sgs.TargetModSkill_DistanceLimit then return 1000 end
@@ -30053,7 +30092,7 @@ hd_cuiren = gu_active("hd_cuiren", 1, 1, 1,
         return card:isKindOf("EquipCard") and p:canDiscard(p, card:getEffectiveId())
     end)
 hd_cuiren_mod = sgs.CreateTargetModSkillV2 {
-    name = "#hd_cuiren_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System,
+    name = "#hd_cuiren_mod", pattern = ".", holder_selector = sgs.CorrectSkill_System, gate = { "mark:hd_cuiren_weapon-Clear", "mark:hd_cuiren_horse-Clear" },
     correct_func = function(self, ctx)
         local p, card = ctx:getPrimary(), ctx:getCard()
         if not p or not card or card:getTypeId() == sgs.Card_TypeSkill then return 0 end
