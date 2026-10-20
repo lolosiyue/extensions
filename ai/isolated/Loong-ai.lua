@@ -685,7 +685,7 @@ end
 
 
 -- audited alias ai_cardneed.lxtx_shouyue_tieqi
--- audited alias ai_skill_invoke.lxtx_shouyue_tieqi
+ai_skill_invoke.lxtx_shouyue_tieqi = ai_skill_invoke.nostieji
 sgs.hit_skill = sgs.hit_skill .. "|lxtx_shouyue_tieqi"
 
 
@@ -1276,5 +1276,3 @@ ai_audited_aliases.register({id="ai_cardneed.lxtx_shouyue_liegong",registry="ai_
 ai_audited_aliases.register({id="ai_skill_invoke.lxtx_shouyue_liegong",registry="ai_skill_invoke",path={"lxtx_shouyue_liegong"},canonical_registry="ai_skill_invoke",canonical_path={"liegong"},self_index=1,defer_canonical=true})
 
 ai_audited_aliases.register({id="ai_cardneed.lxtx_shouyue_tieqi",registry="ai_cardneed",path={"lxtx_shouyue_tieqi"},canonical_registry="ai_cardneed",canonical_path={"slash"},self_index=3,defer_canonical=true})
-
-ai_audited_aliases.register({id="ai_skill_invoke.lxtx_shouyue_tieqi",registry="ai_skill_invoke",path={"lxtx_shouyue_tieqi"},canonical_registry="ai_skill_invoke",canonical_path={"nostieji"},self_index=1,defer_canonical=true})

@@ -1181,7 +1181,7 @@ end
 
 sgs.ai_can_damagehp.nosjianxiong = function(self,from,card,to)
 	if not from or not card or not to:hasSkill("nosjianxiong") then return end
-	if self:hasJueqingEffect(from,to) or hasManjuanEffect(to)
+	if hasJueqingEffect(from,to) or hasManjuanEffect(to)
 	or self:needKongcheng(to,true) or self:isWeak(to) then return end
 	local damage = self:ajustDamage(from,to,1,card)
 	if damage<=0 or damage>=to:getHp() or not self:canLoseHp(from,card,to) then return end

@@ -758,7 +758,7 @@ sgs.ai_skill_invoke.Dragon_kylin_bowSkill = function(self,data)
 end
 
 
--- Existing common immutable-source alias gate owns: sgs.ai_skill_invoke.Promote_tieji = sgs.ai_skill_invoke.nostieji
+ai_skill_invoke.Promote_tieji = ai_skill_invoke.nostieji
 sgs.hit_skill = sgs.hit_skill .. "|Promote_tieji"
 sgs.ai_cardneed.Promote_tieji = sgs.ai_cardneed.slash
 

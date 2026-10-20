@@ -450,12 +450,28 @@ function SmartAIView:updateAlivePlayerRoles()
     return self.playerRoles
 end
 
+local function defense_snapshot_complete(self)
+    local snapshot, known = self:getEventMemory("defense_snapshot")
+    if known ~= true or type(snapshot) ~= "table" then return false end
+    for _, player in ipairs(self.room:getAllPlayers(true) or {}) do
+        if snapshot[player:objectName()] == nil then return false end
+    end
+    return true
+end
+
 function SmartAIView:refreshDefenseSnapshotForSort(players, initialize_only)
     if #players < 2 and not initialize_only then return true end
     -- The board revision stands in for SmartAI's one-second sort clock: a sort
     -- refreshes the baselines once per revision.
     local now = self.world and self.world.revision
     if type(now) ~= "string" then ai_unsupported("defense sort needs the board revision", "sort.defense") end
+    -- A complete baseline already refreshed at this revision would come out of
+    -- the pass below unchanged; skip its deep copy of the viewer memory.
+    if defense_snapshot_complete(self) then
+        if initialize_only then return true end
+        local sorted_at, sorted_known = self:getEventMemory("defense_sort_time")
+        if sorted_known == true and sorted_at == now then return true end
+    end
     local event_state = rawget(self, "_event_state")
     local previous, previous_owned = rawget(self, "_strategy_state"), rawget(self, "_strategy_state_owned")
     local state = copy_memory(event_state or previous or self:recall(memory_key) or {known={}})

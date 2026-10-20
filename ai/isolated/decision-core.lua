@@ -3591,6 +3591,23 @@ function SmartAIView:getCardNeedPlayer(cards,include_self,tos)
 	tos = tos or include_self and allocation_query(self.room,"getAlivePlayers") or allocation_query(self.room,"getOtherPlayers",self.player)
 	tos = sgs.QList2Table(tos)
 	if #tos<1 then return end
+	local recommendation,request
+	if self.getCardGiftContext then recommendation,request=self:getCardGiftContext() end
+	local function choose_gift(gift,recipients,card_need_skills)
+		if not gift or #recipients==0 then return end
+		local recipient = recipients[1]
+		local bundle
+		if recommendation then
+			-- Compare the same physical gift within its existing allocation tier.
+			local flags = {notDraw=true,giftCardsByTarget={},cardNeedSkills=card_need_skills}
+			for _,target in ipairs(recipients)do
+				flags.giftCardsByTarget[target:objectName()] = self:getCardGiftCards(recommendation,gift,cards,target,request)
+			end
+			recipient = self:getBestTarget(recipients,recommendation,self.player,flags)
+			if recipient then bundle=flags.giftCardsByTarget[recipient:objectName()] end
+		end
+		if recipient then return gift,recipient,bundle end
+	end
 
 	local pcs = allocation_query(self,"poisonCards",cards)
 
@@ -3751,7 +3768,7 @@ function SmartAIView:getCardNeedPlayer(cards,include_self,tos)
 		if value_known(getKnownCard(friend,self.player,"Crossbow"),"allocation known Crossbow count")>0 then
 			for _,p in sgs.list(self.enemies)do
 				if allocation_query(self,"isGoodTarget",p,self.enemies,allocation_query(self,"cloneEvaluationCard","slash"))
-				and allocation_query(friend,"distanceTo",p)<=1 then
+				and allocation_query(self,"getStrategyDistance",friend,p)<=1 then
 					for _,hcard in sgs.list(cards)do
 						if isCard("Slash",hcard,friend)
 						then return hcard,friend end
@@ -3768,21 +3785,21 @@ function SmartAIView:getCardNeedPlayer(cards,include_self,tos)
 		if allocation_query(friend,"faceUp") then
 			local can_slash = false
 			for _,p in sgs.list(self.enemies)do
-				if allocation_query(self,"isGoodTarget",p,self.enemies,allocation_query(self,"cloneEvaluationCard","slash")) and allocation_query(friend,"distanceTo",p)<=allocation_query(friend,"getAttackRange")
+				if allocation_query(self,"isGoodTarget",p,self.enemies,allocation_query(self,"cloneEvaluationCard","slash")) and allocation_query(self,"getStrategyDistance",friend,p)<=allocation_query(friend,"getAttackRange")
 				then can_slash = true break end
 			end
 			if not can_slash then
 				local flag = string.format("weapon_done_%s_%s",allocation_query(self.player,"objectName"),allocation_query(friend,"objectName"))
 				for _,p in sgs.list(self.enemies)do
 					if allocation_query(self,"isGoodTarget",p,self.enemies,allocation_query(self,"cloneEvaluationCard","slash"))
-					and allocation_query(friend,"distanceTo",p)>allocation_query(friend,"getAttackRange") then
+					and allocation_query(self,"getStrategyDistance",friend,p)>allocation_query(friend,"getAttackRange") then
 						for _,hcard in sgs.list(cardtogive)do
-							if allocation_query(hcard,"isKindOf","Weapon") and allocation_query(friend,"distanceTo",p)<=allocation_query(friend,"getAttackRange")+(sgs.weapon_range[allocation_query(hcard,"getClassName")] or 0)
+							if allocation_query(hcard,"isKindOf","Weapon") and allocation_query(self,"getStrategyDistance",friend,p)<=allocation_query(friend,"getAttackRange")+(sgs.weapon_range[allocation_query(hcard,"getClassName")] or 0)
 							and not friend:getWeapon() and not allocation_query(self,"hasStrategyPlayerFlag",friend,flag) then
 								self:setStrategyPlayerFlag(friend,flag,true)
 								return hcard,friend
 							end
-							if allocation_query(hcard,"isKindOf","OffensiveHorse") and allocation_query(friend,"distanceTo",p)<=allocation_query(friend,"getAttackRange")+1
+							if allocation_query(hcard,"isKindOf","OffensiveHorse") and allocation_query(self,"getStrategyDistance",friend,p)<=allocation_query(friend,"getAttackRange")+1
 							and not friend:getOffensiveHorse() and not allocation_query(self,"hasStrategyPlayerFlag",friend,flag) then
 								self:setStrategyPlayerFlag(friend,flag,true)
 								return hcard,friend
@@ -3799,14 +3816,46 @@ function SmartAIView:getCardNeedPlayer(cards,include_self,tos)
 	end
 	table.sort(cardtogive,cmpByNumber)
 
-	for _,friend in sgs.list(friends)do
-		if allocation_query(friend,"faceUp") and not allocation_query(self,"needKongcheng",friend,true) then
-			for _,askill in sgs.list(allocation_query(friend,"getVisibleSkillList",true))do
-				local callback = sgs.ai_cardneed[allocation_query(askill,"objectName")]
-				if type(callback)=="function" then
-					for _,hcard in sgs.list(cardtogive)do
-						if allocation_callback(callback,friend,hcard,self)
-						then return hcard,friend end
+	if recommendation then
+		local gifts,by_id = {},{}
+		for _,friend in sgs.list(friends)do
+			if allocation_query(friend,"faceUp") and not allocation_query(self,"needKongcheng",friend,true) then
+				for _,askill in sgs.list(allocation_query(friend,"getVisibleSkillList",true))do
+					local name = allocation_query(askill,"objectName")
+					local callback = sgs.ai_cardneed[name]
+					if type(callback)=="function" then
+						for _,hcard in sgs.list(cardtogive)do
+							if allocation_callback(callback,friend,hcard,self) then
+								local id,owner = hcard:getKnownEffectiveId(),friend:objectName()
+								local row = by_id[id]
+								if not row then
+									row = {card=hcard,recipients={},needs={}}
+									by_id[id]=row;gifts[#gifts+1]=row
+								end
+								if not row.needs[owner] then
+									row.needs[owner]={};row.recipients[#row.recipients+1]=friend
+								end
+								row.needs[owner][name]=true
+							end
+						end
+					end
+				end
+			end
+		end
+		for _,row in ipairs(gifts)do
+			local gift,recipient,bundle = choose_gift(row.card,row.recipients,row.needs)
+			if recipient then return gift,recipient,bundle end
+		end
+	else
+		for _,friend in sgs.list(friends)do
+			if allocation_query(friend,"faceUp") and not allocation_query(self,"needKongcheng",friend,true) then
+				for _,askill in sgs.list(allocation_query(friend,"getVisibleSkillList",true))do
+					local callback = sgs.ai_cardneed[allocation_query(askill,"objectName")]
+					if type(callback)=="function" then
+						for _,hcard in sgs.list(cardtogive)do
+							if allocation_callback(callback,friend,hcard,self)
+							then return hcard,friend end
+						end
 					end
 				end
 			end
@@ -3857,13 +3906,16 @@ function SmartAIView:getCardNeedPlayer(cards,include_self,tos)
 	end
 
 	allocation_query(self,"sort",friends)
+	local recipients = {}
 	for _,friend in sgs.list(friends)do
 		if #cardtogive<1 then break end
 		if not allocation_query(self,"needKongcheng",friend,true) and not allocation_query(friend,"hasSkill","manjuan")
 		and not allocation_query(self,"willSkipPlayPhase",friend) and allocation_query(self,"hasSkills",sgs.priority_skill,friend)
 		and (allocation_query(self,"getOverflow")>0 or allocation_query(self.player,"getHandcardNum")>3) and allocation_query(friend,"getHandcardNum")<=3
-		then return cardtogive[1],friend end
+		then recipients[#recipients+1]=friend end
 	end
+	local gift,recipient,bundle = choose_gift(cardtogive[1],recipients)
+	if recipient then return gift,recipient,bundle end
 
 	local shoulduse = allocation_query(self.player,"isWounded") and (allocation_query(self.player,"hasSkill","rende") and not allocation_query(self.player,"hasUsed","RendeCard") and allocation_query(self.player,"getMark","rende")<2)
 	or (allocation_query(self.player,"hasSkill","nosrende") and allocation_query(self,"getNosRendeGiven")<2)
@@ -3871,30 +3923,39 @@ function SmartAIView:getCardNeedPlayer(cards,include_self,tos)
 	if #cardtogive<1 and shoulduse then cardtogive = cards end
 
 	allocation_query(self,"sort",friends,"handcard")
+	recipients = {}
 	for _,friend in sgs.list(friends)do
 		if #cardtogive<1 then break end
 		if not allocation_query(self,"needKongcheng",friend,true) and not allocation_query(friend,"hasSkill","manjuan") then
 			if allocation_query(friend,"getHandcardNum")<=3 and (allocation_query(self,"getOverflow")>0 or allocation_query(self.player,"getHandcardNum")>3 or shoulduse)
-			then return hcard,friend end
+			then recipients[#recipients+1]=friend end
 		end
 	end
+	gift,recipient,bundle = choose_gift(cardtogive[1],recipients)
+	if recipient then return gift,recipient,bundle end
 
+	recipients = {}
 	for _,friend in sgs.list(friends)do
 		if #cardtogive<1 then break end
 		if (not allocation_query(self,"needKongcheng",friend,true) or #friends==1) and not allocation_query(friend,"hasSkill","manjuan") then
 			if shoulduse or allocation_query(self.player,"getHandcardNum")>3 or allocation_query(self,"getOverflow")>0
-			then return hcard,friend end
+			then recipients[#recipients+1]=friend end
 		end
 	end
+	gift,recipient,bundle = choose_gift(cardtogive[1],recipients)
+	if recipient then return gift,recipient,bundle end
 
+	recipients = {}
 	for _,friend in sgs.list(tos)do
 		if #cardtogive<1 then break end
 		if allocation_query(self.room,"getTurnCount")>1 and (not allocation_query(self,"needKongcheng",friend,true) or #tos==1)
 		and not allocation_query(self,"isEnemy",friend) and not allocation_query(self,"hasManjuanEffect",friend) then
 			if allocation_query(self,"getOverflow")>0 or shoulduse
-			then return hcard,friend end
+			then recipients[#recipients+1]=friend end
 		end
 	end
+	gift,recipient,bundle = choose_gift(cardtogive[1],recipients)
+	if recipient then return gift,recipient,bundle end
 
 	if #cardtogive>0 then cards = cardtogive end
 
@@ -4572,12 +4633,15 @@ function SmartAIView:tryUseCard(card, use, evaluation, proposal_only)
     if state.depth >= 8 or state.candidates > 128 then
         return AIUnsupported.new("planning budget exceeded", "planning"), "unsupported"
     end
-    -- Check coverage before a strategy can decline on an empty/partial projection.
+    -- Skill-action receipts carry costs and identity; native submission validates their targets.
     local offered = strategy_candidate(self, card)
+    local receipt = AIValue.isConversion(offered)
+        and offered._view.authority_validates_targets == true
     local qiuxin_source_query = evaluation == true
         and type(self.isAuditedExtra99SourceQueryPlan) == "function"
         and self:isAuditedExtra99SourceQueryPlan(card, use)
-    if offered and not qiuxin_source_query and (offered:hasCompleteCoverage() ~= true
+    -- Ordinary candidates still require a complete target projection before strategy evaluation.
+    if offered and not receipt and not qiuxin_source_query and (offered:hasCompleteCoverage() ~= true
         or offered:getTargetCombinations() == nil) then
         return AIUnsupported.new("target combinations are incomplete", "targets"), "unsupported"
     end
@@ -6765,7 +6829,11 @@ function SmartAIView:getTurnUse(allow_partial)
             end
             if status == "unsupported" then unknown = unknown or result; return end
             if result and result.card then
-                if not self:sameLegacyCard(result.card, card) then
+                -- Rebinding a skill receipt selects costs, not a replacement Card.
+                -- Native skill submission owns its handling method and limitations.
+                local receipt = AIValue.isConversion(result.card)
+                    and result.card._view.authority_validates_targets == true
+                if not receipt and not self:sameLegacyCard(result.card, card) then
                     local limit_ok, limited = pcall(function()
                         local method = value_known(value_call(result.card, "getHandlingMethod"), "replacement handling method")
                         return value_known(value_call(self.player, "isCardLimited", result.card, method), "replacement card limit")
@@ -6875,11 +6943,54 @@ if type(ai_coverage) == "table" then
     end)
 end
 
+local function distance_reveal_action(self, probe)
+    local identity = {
+        activation_owner="getActivationOwner", activation_skill="getActivationSkillName",
+        activation_instance="getActivationInstanceId", source_owner="getSourceOwner",
+        source_skill="getSourceSkillName", source_instance="getSourceInstanceID"
+    }
+    for _, card in ipairs(self:getConversions() or {}) do
+        if card:isKindOf("ShowDistanceCard") then
+            local matches = true
+            if probe then
+                for field, method in pairs(identity) do
+                    if value_call(card, method) ~= probe[field] then matches = false; break end
+                end
+            end
+            if matches then
+                local strategy = ai_card_use.ShowDistanceCard
+                if type(strategy) ~= "function" then
+                    ai_unsupported("shared distance reveal policy is unavailable", "ShowDistanceCard")
+                end
+                -- Reveal is a command, not a played card: do not run card-use
+                -- revises or fabricate a per-skill fill callback. Retain the ticket.
+                local use = AIUsePlan.new()
+                use.card = card
+                local plan, status = self:validateStrategyUsePlan(use)
+                if status == "unsupported" then error(plan, 0) end
+                use.card = nil
+                strategy(self, card, use)
+                -- One timing decision per request, even with multiple instances.
+                if not use.card then return probe and {kind="pass"} or nil end
+                plan, status = self:validateStrategyUsePlan(use)
+                if status == "unsupported" then error(plan, 0) end
+                local answer = status == "planned" and plan:toAnswer()
+                if not answer then ai_unsupported("distance reveal has no authorized answer", "ShowDistanceCard") end
+                return answer
+            end
+        end
+    end
+end
+
 ai_register_handler("activate", function(self, request)
     -- 逐實例探測（request.skill_action）問的是「要不要啟動這個實例」：只派給
     -- 該技能的 handler，沒註冊或拒答就回 nil 記錄未處理，不讓通用規劃的答案
     -- 套到不相干的實例上。
     local probe = type(request.skill_action) == "table" and request.skill_action or nil
+    -- All DistanceSkillV2 names share the issued card family, including probes.
+    -- Reveal first so the next request rebuilds distance-dependent candidates.
+    local reveal = distance_reveal_action(self, probe)
+    if reveal then return reveal end
     if probe then
         local handler = ai_skill_activate[probe.activation_skill]
         return handler and handler(self, request) or nil
@@ -7296,3 +7407,5 @@ function SmartAIView:shouldInvokeCostNullifySkill(use, need_discard, need_losehp
 	end
 	return threat_level > cost_value
 end
+
+

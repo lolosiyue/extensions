@@ -388,7 +388,9 @@ local function make_registry(kind, default_name, name)
             return finish_registry(self,kind,{kind='answer',cards={id},targets={selected:objectName()}})
         end
 
-        if r35_original(self) and (kind=='skill_invoke'or kind=='card_chosen')then
+        -- Explicit value handlers also own Original skill-invoke decisions.
+        if r35_original(self) and (kind=='card_chosen'
+            or kind=='skill_invoke' and not handlers[reason])then
             if type(options)~='table'then ai_unsupported('Original ask options missing',kind)end
             if kind=='skill_invoke'then
                 local data=type(self.getDecisionData)=='function'and self:getDecisionData()or decision_context(self,options,request)

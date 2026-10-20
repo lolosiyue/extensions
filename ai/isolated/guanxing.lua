@@ -1,4 +1,4 @@
--- Source Guanxing/XinZhan policies and their classical-control dependency.
+-- Source Guanxing policies and their classical-control dependency.
 -- Only disclosed cards and viewer-local strategy memory cross inquiries.
 local known = AIValue.requireKnown
 local function query(object,method,...)
@@ -163,8 +163,27 @@ local function available(self,card)
     return query(known(projected,"acquired card evaluation"),"isAvailable",self.player)
 end
 local function evaluate(self,card)return query(self,"evaluateAcquiredCard",card)end
--- Source policy bodies. Preserve table-removal and judged-class collision order.
-local function GuanXing(self,cards)
+local function drawer_relation(self,player)
+    if same_player(player,self.player) or query(self,"isFriend",player) then return "friend" end
+    if query(self,"isEnemy",player) then return "enemy" end
+end
+-- Bottom is ordered best first. Friends draw the best cards, the viewer
+-- preferring one it can use; enemies draw the least useful ones.
+local function feed_draws(self,up,bottom,count,relation,own)
+    for _=1,count do
+        if #bottom<1 then break end
+        local pick=relation=="enemy" and #bottom or 1
+        if own then
+            for i,c in ipairs(bottom)do if evaluate(self,c).card then pick=i break end end
+        end
+        table.insert(up,table.remove(bottom,pick))
+    end
+end
+-- Top cards are consumed in turn order from the current player: its pending
+-- judgments and draw, then the next acting player's judgments and draw. Only
+-- phases still ahead count, so Guanxing outside one's own Start phase works.
+-- Each pending judgment owns a separate slot, even for repeated trick names.
+local function GuanXing(self,cards,up_only)
 	local up,bottom = {},cards_from_ids(self,cards)
 	self:sortByUseValueInPlace(bottom, true)
 	if query(self.player,"hasSkill","myjincui") then
@@ -179,12 +198,14 @@ local function GuanXing(self,cards)
 	end
 	local lightnings = {}
    	local target = self.room:getCurrent() or self.player
+	local phase = query(target,"getPhase")
 	local judge = AIList.new(query(target,"getJudgingArea"))
 	local self_has_judged,willSkipDrawPhase,willSkipPlayPhase
-	if #judge>0 and query(target,"getPhase")<sgs.Player_Play and not query(target,"containsTrick","YanxiaoCard") then
+	if #judge>0 and phase<=sgs.Player_Judge and not query(target,"isSkipped",sgs.Player_Judge)
+	and not query(target,"containsTrick","YanxiaoCard") then
 		judge = reverse(judge)
 		local judged_list = {}
-		for _,jc in ipairs(judge)do
+		for i,jc in ipairs(judge)do
 			if query(jc,"isKindOf","Indulgence") then
 				willSkipPlayPhase = true
 				if query(target,"isSkipped",sgs.Player_Play) then continue end
@@ -199,7 +220,7 @@ local function GuanXing(self,cards)
 				local cf = query(self,"CardFilter",c,target)
 				if query(self,"matchGuanxingPattern",judge_str[1],target,cf)==judge_str[2] and query(self,"isFriend",target)
 				or query(self,"matchGuanxingPattern",judge_str[1],target,cf)~=judge_str[2] and query(self,"isEnemy",target) then
-					judged_list[query(jc,"objectName")] = c
+					judged_list[i] = c
 					if query(jc,"isKindOf","SupplyShortage")
 					then willSkipDrawPhase = false
 					elseif query(jc,"isKindOf","Indulgence")
@@ -211,12 +232,12 @@ local function GuanXing(self,cards)
 			end
 		end
 		for i,jc in ipairs(judge)do
-			local c = judged_list[query(jc,"objectName")]
+			local c = judged_list[i]
 			if c then table.insert(up,c)
 			else table.insert(up,table.remove(bottom,1)) end
 		end
 	end
-	if effect_bonus(self) then
+	if not up_only and effect_bonus(self) then
 		for _,c in ipairs(AIList.new(bottom))do
 			if query(self.player,"getPhase")<=sgs.Player_Play and query(self,"cardNeed",c)>6
 			and available(self,c) and evaluate(self,c).card
@@ -230,34 +251,48 @@ local function GuanXing(self,cards)
 		end
 	end
 	local drawCards = query(self,"ImitateResult_DrawNCards",target,query(target,"getVisibleSkillList",true))
-	if willSkipDrawPhase or query(target,"getPhase")>sgs.Player_Draw then drawCards = 0 end
+	if willSkipDrawPhase or phase>sgs.Player_Draw then drawCards = 0 end
+	-- Whoever draws next takes the following cards; with an unreadable
+	-- relation those draws stay unplanned and so does everything after them.
+	local drawer = drawCards>0 and drawer_relation(self,target)
 
 	local np = query(target,"getNextAlive")
 	while not same_player(np,target) do
 		if query(np,"faceUp") then break end
 		np = query(np,"getNextAlive")
 	end
-	judge = AIList.new(query(np,"getJudgingArea"))
-	for i,jc in ipairs(lightnings)do
-		if query(np,"containsTrick",query(jc,"objectName")) then continue end
-		table.insert(judge,jc)
+	judge = {}
+	if drawCards==0 or drawer then
+		judge = AIList.new(query(np,"getJudgingArea"))
+		for i,jc in ipairs(lightnings)do
+			if query(np,"containsTrick",query(jc,"objectName")) then continue end
+			table.insert(judge,jc)
+		end
 	end
 	judge = reverse(judge)
 	local judged_list = {}
+	-- Unknown allegiance is not an enemy judgment-control opportunity.
+	local next_relation
+	if #judge>0 and #bottom>drawCards then
+		next_relation = query(self,"relationTo",np)
+		if next_relation~="friend" and next_relation~="enemy" then
+			ai_unsupported("next judgment target relation is unknown","guanxing")
+		end
+	end
 	for x,jc in ipairs(judge)do
 		local n = x-1
 		if #bottom-drawCards-n<1 then break end
 		local judge_str = judge_pattern(self,jc)
 		for _,c in ipairs(AIList.new(bottom))do
 			local cf = query(self,"CardFilter",c,np)
-			if query(self,"isFriend",np) then
+			if next_relation=="friend" then
 				if query(self,"matchGuanxingPattern",judge_str[1],np,cf)==judge_str[2] then
-					judged_list[query(jc,"objectName")] = c
+					judged_list[x] = c
 					remove_one(bottom,c)
 					break
 				end
 			elseif query(self,"matchGuanxingPattern",judge_str[1],np,cf)~=judge_str[2] then
-				judged_list[query(jc,"objectName")] = c
+				judged_list[x] = c
 				remove_one(bottom,c)
 				break
 			end
@@ -274,87 +309,31 @@ local function GuanXing(self,cards)
 		end
 		append_all(bottom,cs)
 	end
-	if drawCards>0 and same_player(target,self.player) then
-		for n=1,drawCards do
-		local nocan = true
-			if #bottom<1 then break end
-			for _,c in ipairs(AIList.new(bottom))do
-			if evaluate(self,c).card then
-				nocan = false
-					table.insert(up,c)
-					remove_one(bottom,c)
-				break
-			end
-		end
-		if nocan then
-			table.insert(up,table.remove(bottom,1))
+	if drawer then feed_draws(self,up,bottom,drawCards,drawer,same_player(target,self.player)) end
+	local next_draws = phase>sgs.Player_Play and phase<sgs.Player_NotActive
+	for i,jc in ipairs(judge)do
+		local c = judged_list[i]
+		if not c and #bottom>0 then c = table.remove(bottom,#bottom) end
+		if c then table.insert(up,c) else next_draws = false end
+		-- The planned card decides whether the next player still draws.
+		if c and query(jc,"isKindOf","SupplyShortage") then
+			local judge_str = judge_pattern(self,jc)
+			local cf = query(self,"CardFilter",c,np)
+			if query(self,"matchGuanxingPattern",judge_str[1],np,cf)~=judge_str[2] then next_draws = false end
 		end
 	end
-	end
-	for _,jc in ipairs(judge)do
-		local c = judged_list[query(jc,"objectName")]
-		if c then table.insert(up,c)
-		elseif #bottom>0 then table.insert(up,table.remove(bottom,#bottom)) end
+	-- Once the current turn is past its Play phase nothing else draws before
+	-- the next acting player's Draw phase, e.g. Guanxing in a Finish phase.
+	if next_draws and #bottom>0 then
+		local relation = drawer_relation(self,np)
+		if relation then
+			local count = query(self,"ImitateResult_DrawNCards",np,query(np,"getVisibleSkillList",true))
+			feed_draws(self,up,bottom,count,relation,same_player(np,self.player))
+		end
 	end
 	--query(self.player,"speak","GuanXing="..#up.."="..#bottom)
 	return ids_from_cards(up),ids_from_cards(bottom)
 end
-
-local function XinZhan(self,cards)
-	local judged_list,has_judged = {},false
-	local up,bottom = {},cards_from_ids(self,cards)
-	local np = query(self.player,"getNextAlive")
-	local judge = query(np,"getCards","j")
-	judge = AIList.new(judge)
-	for i,j in ipairs(reverse(judge))do
-		local judge_str = judge_pattern(self,j)
-		local index = 1
-		local lightning_flag = false
-
-		for _,for_judge in ipairs(bottom)do
-			local cf = query(self,"CardFilter",for_judge,np)
-			if string.find(judge_str[1],"spade") and not lightning_flag then
-				if query(cf,"getNumber")>=2 and query(cf,"getNumber")<=9 then lightning_flag = true end
-			end
-			if query(self,"isFriend",np) then
-				if query(self,"matchGuanxingPattern",judge_str[1],np,cf)==judge_str[2] then
-					if not lightning_flag then
-						table.insert(up,for_judge)
-						table.remove(bottom,index)
-						judged_list[i] = 1
-						has_judged = true
-						break
-					end
-				end
-			else
-				if query(self,"matchGuanxingPattern",judge_str[1],np,cf)~=judge_str[2]
-				and lightning_flag then
-					table.insert(up,for_judge)
-					table.remove(bottom,index)
-					judged_list[i] = 1
-					has_judged = true
-				end
-			end
-			index = index+1
-		end
-		judged_list[i] = judged_list[i] or 0
-	end
-
-	if has_judged then
-		for index = 1,#judged_list do
-			if judged_list[index]==0 then
-				table.insert(up,index,table.remove(bottom))
-			end
-		end
-	end
-
-	while #bottom>0 do
-		table.insert(up,table.remove(bottom))
-	end
-
-	return ids_from_cards(up),{}
-end
-
 
 -- Classical control state is viewer-local. The donor's cross-viewer globals
 -- cannot carry another viewer's private future-general arrangement.
@@ -432,7 +411,9 @@ local function kof_guanxing(self,cards,marks,state)
     return up,bottom
 end
 function SmartAIView:askForGuanxing(cards,guanxing_type)
-    if guanxing_type~=sgs.Room_GuanxingDownOnly and guanxing_type~=sgs.Room_GuanxingUpOnly then
+    -- Future-general control only belongs to duel mode. Ordinary Guanxing
+    -- must not require the unprojected private 1v1Arrange roster.
+    if guanxing_type==sgs.Room_GuanxingBothSides and query(self.room,"getMode")=="02_1v1" then
         local marks,state=kof_state(self)
         if kof_mark(self,marks,"KFC_Forbidden")==0 then
             note(self,"viewer_local_classical_control_without_private_cross_viewer_globals",0)
@@ -442,9 +423,49 @@ function SmartAIView:askForGuanxing(cards,guanxing_type)
         end
     end
     if guanxing_type==sgs.Room_GuanxingBothSides then return GuanXing(self,cards)
-    elseif guanxing_type==sgs.Room_GuanxingUpOnly then return XinZhan(self,cards)
+    elseif guanxing_type==sgs.Room_GuanxingUpOnly then
+        -- Same consumer plan; cards it would leave at the bottom follow on top.
+        local up,bottom=GuanXing(self,cards,true)
+        append_all(up,bottom)
+        return up,{}
     elseif guanxing_type==sgs.Room_GuanxingDownOnly then return {},cards end
     return cards,{}
+end
+
+-- Native Guanxing uses this reason for every source skill. Keep the current
+-- request's offered IDs and direction; no legacy callback or cached card IDs.
+ai_skill_guanxing.guanxing = function(self, options, request)
+    if type(options)~="table" or not AIValue.isList(options.card_ids) then
+        ai_unsupported("guanxing cards are missing","guanxing")
+    end
+    local mode=tonumber(options.default_choice)
+    if mode~=sgs.Room_GuanxingBothSides and mode~=sgs.Room_GuanxingUpOnly
+        and mode~=sgs.Room_GuanxingDownOnly then
+        ai_unsupported("guanxing direction is unknown","guanxing")
+    end
+    local remaining={}
+    for _,id in ipairs(options.card_ids)do
+        if type(id)~="number" or id<0 or id%1~=0 or remaining[id] then
+            ai_unsupported("invalid guanxing offered card domain","guanxing")
+        end
+        remaining[id]=true
+    end
+    local up,down=self:askForGuanxing(AIList.new(options.card_ids),mode)
+    if not AIValue.isList(up) or not AIValue.isList(down) then
+        ai_unsupported("invalid guanxing ordered piles","guanxing")
+    end
+    -- A judgment allocation must partition the request exactly once.
+    for _,pile in ipairs({up,down})do
+        for _,id in ipairs(pile)do
+            if not remaining[id] then ai_unsupported("guanxing repeated or unoffered card","guanxing") end
+            remaining[id]=nil
+        end
+    end
+    if next(remaining)~=nil or mode==sgs.Room_GuanxingUpOnly and #down>0
+        or mode==sgs.Room_GuanxingDownOnly and #up>0 then
+        ai_unsupported("guanxing result violates the request","guanxing")
+    end
+    return {kind="answer",cards=up,bottom_cards=down}
 end
 function SmartAIView:getValuableCardForGuanxing(cards)
     local id=self:selectAmazingGracePolicy(ids_from_cards(cards))

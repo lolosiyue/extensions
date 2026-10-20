@@ -291,6 +291,14 @@ local function hegemonyWillShow(self,defence)
     return show_attack(self)
 end
 
+ai_card_use.ShowDistanceCard = function(self, card, use)
+    if not heg_enabled(self) then return end
+    -- The native ticket already selects a revealable exact source. Distance
+    -- skills can aid either side of a distance check; share reveal timing only,
+    -- without assuming every skill is Mashu or simulating concealed effects.
+    if show_attack(self) or show_defence(self) then use.card = card end
+end
+
 sgs.ai_skill_cardask["@xiaoguo"] = function(self,data)
 	local currentplayer = self.room:getCurrent()
 

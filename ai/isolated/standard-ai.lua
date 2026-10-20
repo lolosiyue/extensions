@@ -167,6 +167,40 @@ function SmartAIView:getNosRendeGiven(request)
     return value
 end
 
+function SmartAIView:getCardGiftContext()
+    local request = self:getSkillAction()
+    if request and request:isValid() then
+        local skill = request:getActivationSkillName()
+        if skill~="rende" and skill~="nosrende" then skill=request:getSourceSkillName() end
+        if skill=="rende" or skill=="nosrende" then return skill,request end
+    end
+    -- Continuation prompts retain their own request instead of guessing by ownership.
+    local pattern = self.request.pattern
+    if type(pattern)=="string" and pattern:match("^@@rende!?$") then return "rende",request end
+end
+
+function SmartAIView:getCardGiftCards(skill,gift,cards,to,request)
+    local bundle = {gift}
+    if not self:isFriend(to) or not to:hasSkill("enyuan") then return bundle end
+    local given = skill=="nosrende" and self:getNosRendeGiven(request) or self.player:getStrategyMark("rende")
+    if self.room:getMode()=="04_1v3" and given==1 then return bundle end
+    local remaining = {}
+    for _,card in ipairs(cards)do
+        if card:getKnownEffectiveId()~=gift:getKnownEffectiveId() then remaining[#remaining+1]=card end
+    end
+    local jinks = self:getCardsNum("Jink") - (isCard("Jink",gift,self.player) and 1 or 0)
+    -- Score and submit the same Enyuan bundle, retaining emergency resources.
+    for _,extra in ipairs(self:sortByKeepValue(remaining))do
+        if not isCard("Peach,ExNihilo",extra,self.player)
+        and not (isCard("Jink",extra,self.player) and jinks<=1)
+        and not (isCard("Analeptic",extra,self.player) and self:isWeak()) then
+            bundle[#bundle+1]=extra
+            break
+        end
+    end
+    return bundle
+end
+
 local function response_choice(self,value)
     if value==nil or value=="."then return {kind="pass"}end
     if type(value)~="string"then return value end
@@ -726,7 +760,7 @@ end
 
 sgs.ai_can_damagehp.nosjianxiong = function(self,from,card,to)
     if not from or not card or not to:hasSkill("nosjianxiong") then return end
-    if self:hasJueqingEffect(from,to) or known(hasManjuanEffect(to),"nosjianxiong card retention")
+    if known(hasManjuanEffect(to),"nosjianxiong card retention")
     or self:needKongcheng(to,true) or self:isWeak(to) then return end
     local damage = self:ajustDamage(from,to,1,card)
     if damage<=0 or damage>=to:getHp() or not self:canLoseHp(from,card,to) then return end
@@ -1123,24 +1157,17 @@ sgs.ai_need_damaged.nosyiji = function (self,attacker,player)
 end
 
 
-sgs.ai_skill_invoke.nostieji = function(self,data)
-    local target = data:toPlayer()
-    if self:isFriend(target) then return false end
+ai_skill_invoke.nostieji = function(self,options,request)
+    local target = known(self:getDecisionContext().player,"Nostieji target")
+    -- An unclassified player is not an enemy; keep friendly Slash plans intact.
+    if not target:isAlive() or not self:isEnemy(target) then return false end
 
-    local zj = self.room:findPlayerBySkillName("guidao")
-    if zj and self:isEnemy(zj) and self:canRetrial(zj) then return false end
-
-    --[[
-    if call(target,"hasArmorEffect","eight_diagram") and not IgnoreArmor(self.player,target) then return true end
-    if call(target,"hasLordSkill","hujia") then
-        for _,p in ipairs(self.enemies)do
-            if call(p,"getKingdom")=="wei" and (call(p,"hasArmorEffect","eight_diagram") or call(p,"getHandcardNum")>0) then return true end
-        end
+    -- Guidao can exchange a cheap card for the judgment card. A later allied
+    -- retrial does not undo that gain; ordinary paid retrials are not a veto.
+    for _,player in sgs.qlist(self.room:getAlivePlayers())do
+        if player:hasSkill("guidao") and self:isEnemy(player)
+        and self:canRetrial(player,options.reason) then return false end
     end
-    if call(target,"hasSkill","longhun") and call(target,"getHp")==1 and self:hasSuit("club",true,target) then return true end
-
-    if call(target,"isKongcheng") or (self:getKnownNum(target)==call(target,"getHandcardNum") and getKnownCard(target,self.player,"Jink",true)==0) then return false end
-    ]]
     return true
 end
 
@@ -1504,7 +1531,7 @@ sgs.ai_skill_use["@@rende"] = function(self,prompt)
 
     for i=1,self.player:getHandcardNum() do
         if #cards<1 then return "." end
-        local card,friend = self:getCardNeedPlayer(cards)
+        local card,friend,gifts = self:getCardNeedPlayer(cards)
         if card and friend then table.removeOne(cards,card)
         else return "." end
 
@@ -1537,10 +1564,9 @@ sgs.ai_skill_use["@@rende"] = function(self,prompt)
             end
         end
 
-        local usecard = rende_card(self,{card:getKnownId()})
-        if friend:hasSkill("enyuan") and #cards>0
-        and not (self.room:getMode()=="04_1v3" and self:getNosRendeGiven()==1)
-        then usecard = rende_card(self,{card:getKnownId(), cards[1]:getKnownId()}) end
+        local ids = {}
+        for _,gift in ipairs(gifts or self:getCardGiftCards("rende",card,cards,friend))do ids[#ids+1]=gift:getKnownId()end
+        local usecard = rende_card(self,ids)
         return answer_skill(self,usecard,{friend})
     end
 end
@@ -3490,7 +3516,7 @@ sgs.ai_skill_use_func.nosrende = function(card,use,self,request)
     -- Ordinary recipients are compared together by the allocation helper.
     for i = 1,self.player:getHandcardNum()+#candidates do
         if #cards==0 then break end
-        local h,friend = self:getCardNeedPlayer(cards,false,candidates)
+        local h,friend,gifts = self:getCardNeedPlayer(cards,false,candidates)
         if h and friend then cards = self:resetCards(cards,h)
         else notFound = true break end
         if friend==self.player or not self.player:handCards():contains(h:getKnownEffectiveId()) then continue end
@@ -3525,20 +3551,8 @@ sgs.ai_skill_use_func.nosrende = function(card,use,self,request)
         and isDelayedTrick
         and self:getEnemyNumBySeat(self.player,friend)>0
         and self:aiUseCard(h).card then continue end
-        local ids = {h:getKnownId()}
-        -- Preserve emergency resources when adding Enyuan's optional card.
-        if #cards>0 and self:isFriend(friend) and friend:hasSkill("enyuan")
-        and not(self.room:getMode()=="04_1v3" and given==1) then
-            local jinks = self:getCardsNum("Jink") - (isCard("Jink",h,self.player) and 1 or 0)
-            for _,extra in ipairs(self:sortByKeepValue(cards))do
-                if not isCard("Peach,ExNihilo",extra,self.player)
-                and not (isCard("Jink",extra,self.player) and jinks<=1)
-                and not (isCard("Analeptic",extra,self.player) and self:isWeak()) then
-                    table.insert(ids,extra:getKnownId())
-                    break
-                end
-            end
-        end
+        local ids = {}
+        for _,gift in ipairs(gifts or self:getCardGiftCards("nosrende",h,cards,friend,request))do ids[#ids+1]=gift:getKnownId()end
         -- Bind selected costs to this exact offered V2 request, without a legacy face.
         use.card = self:bindSkillCard(request:getActivationSkillName(), ids, request)
         use.to:append(friend)
@@ -3639,7 +3653,7 @@ sgs.ai_skill_use_func.rende = function(card,use,self)
     cards = self:sortByUseValue(cards,true)
     local notFound
     for i=1,self.player:getHandcardNum() do
-        local h,friend = self:getCardNeedPlayer(cards)
+        local h,friend,gifts = self:getCardNeedPlayer(cards)
         if h and friend then table.removeOne(cards,h)
         else notFound = true break end
         if friend==self.player
@@ -3671,10 +3685,9 @@ sgs.ai_skill_use_func.rende = function(card,use,self)
             and self:aiUseCard(h).card
             then continue end
         end
-        if friend:hasSkill("enyuan") and #cards>0
-        and not(self.room:getMode()=="04_1v3" and self.player:getStrategyMark("rende")==1)
-        then use.card = rende_card(self,{h:getKnownId(), cards[1]:getKnownId()})
-        else use.card = rende_card(self,{h:getKnownId()}) end
+        local ids = {}
+        for _,gift in ipairs(gifts or self:getCardGiftCards("rende",h,cards,friend))do ids[#ids+1]=gift:getKnownId()end
+        use.card = rende_card(self,ids)
         use.to:append(friend)
         return
     end
@@ -5995,6 +6008,47 @@ sgs.ai_skill_defense.jieyin = -2.3
 
 if sgs.ai_skill_cardask["@multi-jink-start"]~=nil then sgs.ai_skill_cardask["@multi-jink"] = sgs.ai_skill_cardask["@multi-jink-start"] end
 
+local function conversion_gift_context(self,from,to,owner,ctx)
+    -- Receiver-owned conversion benefits apply once, never as damage defense.
+    if not ctx.isDraw or not self:isFriend(to,from)
+    or owner and owner:objectName()~=to:objectName() then return false end
+    local flags = type(ctx.flags)=="table" and ctx.flags or {}
+    local gifts = flags.giftCardsByTarget and flags.giftCardsByTarget[to:objectName()] or flags.giftCards
+    local needs = flags.cardNeedSkills and flags.cardNeedSkills[to:objectName()] or {}
+    return gifts,needs
+end
+sgs.registerTargetRecommend("longdan",function(self,from,to,card,owner,ctx)
+    local gifts,needs = conversion_gift_context(self,from,to,owner,ctx)
+    if gifts==false then return 0 end
+    if not gifts then return 1 end
+    local attack = to:faceUp() and not self:willSkipPlayPhase(to)
+    local score = 0
+    for index,gift in ipairs(gifts)do
+        if gift:isKindOf("Slash") then
+            -- Only the new Slash adds defense; existing defense is already valued.
+            score = score+1
+        elseif gift:isKindOf("Jink") and attack then
+            -- A red Jink already selected for Wusheng is the same Slash benefit.
+            if not (index==1 and needs.wusheng and gift:isRed() and to:hasSkill("wusheng")) then score=score+1 end
+        end
+    end
+    return score
+end)
+sgs.registerTargetRecommend("wusheng",function(self,from,to,card,owner,ctx)
+    local gifts,needs = conversion_gift_context(self,from,to,owner,ctx)
+    if gifts==false or not to:faceUp() or self:willSkipPlayPhase(to) then return 0 end
+    -- Generic draw flexibility and red-Jink conversion overlap with Longdan.
+    if not gifts then return to:hasSkill("longdan") and 0 or 1 end
+    local score = 0
+    for index,gift in ipairs(gifts)do
+        if gift:isRed() and not gift:isKindOf("Slash") and not gift:isKindOf("Peach")
+        and not (index==1 and needs.wusheng)
+        and not (gift:isKindOf("Jink") and to:hasSkill("longdan")) then score=score+1 end
+    end
+    return score
+end)
+
+sgs.registerSkillCardType("rende", "draw")
 sgs.registerSkillCardType("nosrende", "draw")
 sgs.registerTargetRecommend("nosrende", function(self, from, to, card, skill_owner, ctx)
     -- Apply the receiving holder's recovery synergy once for that holder.
@@ -6039,8 +6093,6 @@ if ai_audited_aliases then
  ai_audited_aliases.register{id="ai_cardneed.Luayezhan",registry="ai_cardneed",path={"Luayezhan"},canonical_registry="ai_cardneed",canonical_path={"nosluoyi"},self_index=3}
  ai_audited_aliases.register{id="ai_cardneed.Promote_luoyi",registry="ai_cardneed",path={"Promote_luoyi"},canonical_registry="ai_cardneed",canonical_path={"nosluoyi"},self_index=3}
  ai_audited_aliases.register{id="ai_cardneed.heg_luoyi",registry="ai_cardneed",path={"heg_luoyi"},canonical_registry="ai_cardneed",canonical_path={"nosluoyi"},self_index=3}
- ai_audited_aliases.register{id="ai_skill_invoke.Promote_tieji",registry="ai_skill_invoke",path={"Promote_tieji"},canonical_registry="ai_skill_invoke",canonical_path={"nostieji"},self_index=1}
- ai_audited_aliases.register{id="ai_skill_invoke.lxtx_shouyue_tieqi",registry="ai_skill_invoke",path={"lxtx_shouyue_tieqi"},canonical_registry="ai_skill_invoke",canonical_path={"nostieji"},self_index=1}
  ai_audited_aliases.register{id="ai_skill_invoke.PlusTiandu",registry="ai_skill_invoke",path={"PlusTiandu"},canonical_registry="ai_skill_invoke",canonical_path={"jianxiong"},self_index=1}
  ai_audited_aliases.register{id="ai_skill_invoke.PlusLangmou",registry="ai_skill_invoke",path={"PlusLangmou"},canonical_registry="ai_skill_invoke",canonical_path={"fankui"},self_index=1}
  ai_audited_aliases.register{id="ai_skill_invoke.SixLangmou",registry="ai_skill_invoke",path={"SixLangmou"},canonical_registry="ai_skill_invoke",canonical_path={"fankui"},self_index=1}
