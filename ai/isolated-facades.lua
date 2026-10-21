@@ -1655,13 +1655,17 @@ AIWorldLifecycle = {}
 local function lifecycle_epoch(world, view, kind)
     local marks = type(view.public_marks) == "table" and view.public_marks or {}
     local turns = tonumber(marks.Global_TurnCount) or 0
+    -- The phase cannot tell TurnStart (count already grown, phase NotActive) from a
+    -- finished turn, and reads PhaseNone between phases; the host's lifecycle can.
     local in_turn = world.current_player == view.object_name
         and world.current_phase ~= sgs.Player_NotActive
+    if type(view.turn_open) == "boolean" then in_turn = view.turn_open end
     local dead = view.alive == false and 1 or 0
     if kind == "all_mark" then return dead end
     if kind == "play" then
         local in_play = in_turn and type(world.current_phase) == "number"
             and world.current_phase <= sgs.Player_Play
+        if type(view.play_open) == "boolean" then in_play = view.play_open end
         return math.max(0, turns - (in_play and 1 or 0)) + dead
     end
     return math.max(0, turns - (in_turn and 1 or 0)) + dead
@@ -5766,8 +5770,9 @@ function SmartAIView:resolvePriorTurnPlan(card)
 end
 
 function SmartAIView:addStrategyPlayerMark(player,name,amount)
-    assert(AIValue.isPlayer(player) and (name=="yhpodi_to-PlayClear" or ((name=="AI_fangjian-Clear" or name=="AI_do_not_invoke_s2_longwei-Clear") and player:objectName()==self.player:objectName())) and amount==1,"unknown strategy mark")
-    local epoch_key=name=="yhpodi_to-PlayClear" and "strategy_play_clear_epochs" or "strategy_turn_clear_epochs"
+    -- AI-only memory marks; mode-ai.lua validates and clears the same names.
+    assert(AIValue.isPlayer(player) and (name=="yhpodi_to-PlayClear" or name=="anliao_to-PlayClear" or name=="luochongChosen-Clear" or ((name=="AI_fangjian-Clear" or name=="AI_do_not_invoke_s2_longwei-Clear") and player:objectName()==self.player:objectName())) and amount==1,"unknown strategy mark")
+    local epoch_key=name:sub(-10)=="-PlayClear" and "strategy_play_clear_epochs" or "strategy_turn_clear_epochs"
     local epochs=AIWorldLifecycle.epochs(self.world,epoch_key=="strategy_play_clear_epochs" and "play" or "turn")
     if type(epochs)~="table" or type(epochs[player:objectName()])~="number" then
         ai_unsupported("AI play mark requires native lifecycle witness","strategy_play_clear_epochs")

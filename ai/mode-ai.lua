@@ -55,12 +55,15 @@ local function lifecycle_epochs(world, kind)
     for _, player in ipairs(world.players or {}) do players[#players + 1] = player end
     for _, view in ipairs(players) do
         local turns = tonumber(view.public_marks and view.public_marks.Global_TurnCount) or 0
+        -- Same host lifecycle as isolated-facades.lua lifecycle_epoch.
         local in_turn = world.current_player == view.object_name
             and world.current_phase ~= sgs.Player_NotActive
+        if type(view.turn_open) == "boolean" then in_turn = view.turn_open end
         local dead = view.alive == false and 1 or 0
         if kind == "all_mark" then result[view.object_name] = dead
         elseif kind == "play" then
             local in_play = in_turn and finite(world.current_phase) and world.current_phase <= sgs.Player_Play
+            if type(view.play_open) == "boolean" then in_play = view.play_open end
             result[view.object_name] = math.max(0, turns - (in_play and 1 or 0)) + dead
         else
             result[view.object_name] = math.max(0, turns - (in_turn and 1 or 0)) + dead
@@ -1420,8 +1423,8 @@ local function synchronize_mark_mind(world,epoch_key,mark_names)
     end
 end
 local function synchronize_flag_mind(world)
-    synchronize_mark_mind(world,"strategy_play_clear_epochs",{"yhpodi_to-PlayClear"})
-    synchronize_mark_mind(world,"strategy_turn_clear_epochs",{"AI_fangjian-Clear","AI_do_not_invoke_s2_longwei-Clear"})
+    synchronize_mark_mind(world,"strategy_play_clear_epochs",{"yhpodi_to-PlayClear","anliao_to-PlayClear"})
+    synchronize_mark_mind(world,"strategy_turn_clear_epochs",{"AI_fangjian-Clear","AI_do_not_invoke_s2_longwei-Clear","luochongChosen-Clear"})
     local epochs = lifecycle_epochs(world, "flag")
     local _, roster = snapshot_players(world)
     for name, epoch in pairs(epochs) do
@@ -2065,7 +2068,7 @@ local function valid_effect(effect, present, delta_count, previous, viewer, worl
         local focus=nil
         local focus_allowed=(name=="FocusDamageCount" or name=="FocusRecoverCount") and type(focus)=="table"
             and focus.name==name and focus.player==effect.player and focus.amount==effect.amount and finite(focus.baseline)
-        if not focus_allowed and name ~= "roleRobot" and not ((name=="yhpodi_to-PlayClear" or ((name=="AI_fangjian-Clear" or name=="AI_do_not_invoke_s2_longwei-Clear") and effect.player==world.self.object_name)) and effect.amount==1) and not (name:sub(1,9) == "Intention" and present[name:sub(10)])
+        if not focus_allowed and name ~= "roleRobot" and not ((name=="yhpodi_to-PlayClear" or name=="anliao_to-PlayClear" or name=="luochongChosen-Clear" or ((name=="AI_fangjian-Clear" or name=="AI_do_not_invoke_s2_longwei-Clear") and effect.player==world.self.object_name)) and effect.amount==1) and not (name:sub(1,9) == "Intention" and present[name:sub(10)])
             and not (name:sub(1,7)=="revenge" and present[name:sub(8)] and effect.player==viewer) then return false end
     else return false end
     for key in pairs(effect) do if not common[key] and not fields[key] then return false end end
@@ -2324,17 +2327,18 @@ function sgs.prepareModeAIIntentions(world, deltas, effects)
             local marks = shadow.strategy_marks and shadow.strategy_marks[delta.to]
             local key = "Intention" .. delta.from
             if marks and marks[key] ~= nil then level = level + marks[key]; marks[key] = 0 end
-            local ok, callback_error
+            local ok, callback_error, raised
             if standard_modes[mode]=="identity" then
-                local accepted, _, _, reason=invoke(policy, "onIntention",query_world,
+                local accepted, value, _, reason=invoke(policy, "onIntention",query_world,
                     delta.from,delta.to,level,shadow,delta.defer_refresh,presentation,position+1)
-                ok,callback_error=accepted,reason
+                ok,callback_error,raised=accepted,reason,value
             else
-                local accepted, _, _, reason=invoke(policy, "onIntention",query_world,
+                local accepted, value, _, reason=invoke(policy, "onIntention",query_world,
                     delta.from,delta.to,level,shadow,delta.defer_refresh)
-                ok,callback_error=accepted,reason
+                ok,callback_error,raised=accepted,reason,value
             end
-            if not ok then return callback_error end
+            -- Still a non-token failure; the host logs the hook's own error after the class.
+            if not ok then return tostring(callback_error)..": "..tostring(raised):sub(1,300) end
         end
     end
     local state_budget=standard_modes[mode]=="identity" and 32768 or 1024
