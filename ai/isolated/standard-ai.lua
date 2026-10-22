@@ -936,6 +936,29 @@ function sgs.ai_slash_prohibit.nosganglie(self,from,to)
 end
 
 
+sgs.ai_skill_playerschosen.nostuxi=function(self,targets,max_num,min_num)
+    local result={}
+    for _,view in ipairs(self:selectNosTuxiTargets("@nostuxi-card"))do
+        for _,p in sgs.list(targets)do
+            if p:objectName()==view:objectName() then table.insert(result,p) end
+        end
+    end
+    return result
+end
+
+sgs.ai_playerschosen_intention.nostuxi=function(self,from,prompt)
+    local tos={}
+    for name in prompt:gmatch("[^+]+")do
+        local to=self.room:findPlayerByObjectName(name,true)
+        if to then table.insert(tos,to) end
+    end
+    sgs.ai_card_intention.NosTuxiCard(self,nil,from,tos)
+end
+
+sgs.ai_playerchosen_intention.nostuxi=function(self,from,to)
+    sgs.ai_card_intention.NosTuxiCard(self,nil,from,{to})
+end
+
 sgs.ai_card_intention.NosTuxiCard = function(self,card,from,tos)
     local lord = getLord(self.player)
     local nostuxi_lord = false

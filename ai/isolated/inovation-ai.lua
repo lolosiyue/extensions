@@ -1531,6 +1531,8 @@ end
 -- Fixed inovation-ai.lua:1488-1513
 providers.willSkipDrawPhase = function(self, player, NotContains_Null)
 	local player = player or self.player
+	-- Removal and Nullification estimates matter only when this delayed trick exists.
+	if not player:containsTrick("supply_shortage") then return false end
 	local friend_null = 0
 	local friend_snatch_dismantlement = 0
 	local cp = self.room:getCurrent()
@@ -1570,6 +1572,8 @@ providers.willSkipPlayPhase = function(self, player, NotContains_Null)
 		if (max_card and player_max_card and max_card:getNumber() > player_max_card:getNumber()) or (max_card and max_card:getNumber() >= 12) then return true end
 	end
 
+	-- Keep Zhuikong above, but do not evaluate a hypothetical removal card without Indulgence.
+	if not player:containsTrick("Indulgence") then return false end
 	local friend_null = 0
 	local friend_snatch_dismantlement = 0
 	local cp = self.room:getCurrent()

@@ -863,9 +863,16 @@ end
 
 function SmartAIView:strategyProhibited(from, to, card)
     if type(from.isProhibited) ~= "function" then ai_unsupported("prohibition query is unavailable", "strategyProhibited") end
-    local value = from:isProhibited(to, card)
+    local hypothetical = AIValue.isCard(card) and card:isEvaluationOnly() == true
+    local known, value = AIUnsupported.capture(from.isProhibited, from, to, card)
+    if not known then
+        -- Required getters also signal missing rules for readonly hypothetical
+        -- faces. Neither those nor foreign estimates authorize a played card.
+        if same_player(from, self.player) and not hypothetical or value.key ~= "isProhibited" then error(value, 0) end
+        value = nil
+    end
     if type(value) == "boolean" then return value end
-    if same_player(from, self.player) then ai_unsupported("owner prohibition rule is absent", "strategyProhibited") end
+    if same_player(from, self.player) and not hypothetical then ai_unsupported("owner prohibition rule is absent", "strategyProhibited") end
     strategy_call(from, "getSkills")
     strategy_call(to, "getSkills")
     -- The remaining Slash/Trick pipeline still evaluates public prohibit and
@@ -873,7 +880,8 @@ function SmartAIView:strategyProhibited(from, to, card)
     -- explicit prior; the estimate grants no authority to play a card.
     return self:useKnowledgeEstimate({value = false, status = "estimate", viewer = self.player:objectName(),
         source = from:objectName(), target = to:objectName(), card = strategy_call(card, "objectName"),
-        basis = "unobserved_private_prohibition_assumed_absent_public_ai_rules_evaluated_by_consumer"}, "strategyProhibited")
+        basis = hypothetical and "hypothetical_card_prohibition_unprojected_public_ai_rules_evaluated_by_consumer"
+            or "unobserved_private_prohibition_assumed_absent_public_ai_rules_evaluated_by_consumer"}, "strategyProhibited")
 end
 
 function SmartAIView:slashProhibit(card, to, from)
@@ -3079,7 +3087,10 @@ function SmartAIView:useSkillCard(card, use)
             if AIUnsupported.is(result) then error(result, 0) end
         end
     end
-    if use.card and strategy_call(use.card, "willThrow")
+    -- A skill-action receipt is not a constructed Card; its native skill owns
+    -- cost handling. Card-only discard heuristics require an actual card face.
+    local receipt = AIValue.isConversion(use.card) and use.card._view.authority_validates_targets == true
+    if use.card and not receipt and strategy_call(use.card, "willThrow")
         and strategy_call(use.card, "subcardsLength") > 0 then
         local hp = strategy_call(self.player, "getHp")
         for _, id in ipairs(strategy_call(use.card, "getSubcards")) do
@@ -3393,6 +3404,31 @@ function SmartAIView:canPindian(left, right)
         end
     end
     return false
+end
+
+-- Strategy geometry may compare two foreign players even when the request only
+-- projects viewer-relative distances. Keep that estimate outside raw rule getters.
+function SmartAIView:getStrategyDistance(from, to)
+    local known, distance = AIUnsupported.capture(from.distanceTo, from, to)
+    if known then return strategy_known(distance, "distanceTo") end
+    if distance.key ~= "distanceTo" or same_player(from, self.player) or same_player(to, self.player) then
+        error(distance, 0)
+    end
+    local alive = strategy_call(self.room, "getAlivePlayers")
+    local source_index, target_index
+    for index, player in ipairs(alive) do
+        if same_player(player, from) then source_index = index end
+        if same_player(player, to) then target_index = index end
+    end
+    if not source_index or not target_index then error(distance, 0) end
+    if source_index == target_index then return 0 end
+    local steps = math.abs(source_index - target_index)
+    local value = math.min(steps, #alive - steps)
+    if from:getOffensiveHorse() then value = value - 1 end
+    if to:getDefensiveHorse() then value = value + 1 end
+    return self:useKnowledgeEstimate({value = math.max(1, value), status = "estimate",
+        viewer = self.player:objectName(), source = from:objectName(), target = to:objectName(),
+        basis = "foreign_distance_public_alive_seat_ring_and_mounts_unprojected_modifiers_unobserved"}, "getStrategyDistance")
 end
 
 function SmartAIView:canSlash(from, to, card, distance_limit)

@@ -1583,6 +1583,32 @@ sgs.ai_skill_use["@@nostuxi"] = function(self,prompt)
 	return "."
 end
 
+sgs.ai_skill_playerschosen.nostuxi = function(self,targets,max_num,min_num)
+	local result = {}
+	local cardstr = sgs.ai_skill_use["@@nostuxi"](self,"@nostuxi-card")
+	local names = type(cardstr)=="string" and cardstr:match("%->(.+)$")
+	if not names then return result end
+	for _,name in ipairs(names:split("+"))do
+		for _,p in sgs.list(targets)do
+			if p:objectName()==name then table.insert(result,p) end
+		end
+	end
+	return result
+end
+
+sgs.ai_playerschosen_intention.nostuxi = function(self,from,prompt)
+	local tos = {}
+	for _,name in ipairs(prompt:split("+"))do
+		local to = self.room:findPlayerByObjectName(name)
+		if to then table.insert(tos,to) end
+	end
+	sgs.ai_card_intention.NosTuxiCard(self,nil,from,tos)
+end
+
+sgs.ai_playerchosen_intention.nostuxi = function(self,from,to)
+	sgs.ai_card_intention.NosTuxiCard(self,nil,from,{to})
+end
+
 sgs.ai_card_intention.NosTuxiCard = function(self,card,from,tos)
 	local lord = getLord(self.player)
 	local nostuxi_lord = false
