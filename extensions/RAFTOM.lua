@@ -89,7 +89,7 @@ function gainCardRandomly(player, pattern, num)
 			dummy:addSubcard(card_id)
 			card_ids:removeOne(card_id)
 		end
-		room:obtainCard(player, dummy, false)
+		room:obtainCard(player, dummy, "reward", false)
 		dummy:deleteLater()
 	end
 end

@@ -467,7 +467,7 @@ FiveFanjian_Card = sgs.CreateSkillCard {
 	on_effect = function(self, effect)
 		local source = effect.from
 		local target = effect.to
-		target:obtainCard(effect.card)
+		source:getRoom():obtainCard(target, effect.card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), target:objectName(), "FiveFanjian", ""))
 		local room = source:getRoom()
 		local targets = sgs.SPlayerList()
 		local others = room:getOtherPlayers(target)
@@ -618,6 +618,7 @@ FiveGuidaoA_Card = sgs.CreateSkillCard {
 		damage.card = nil
 		damage.damage = 2
 		damage.from = source
+		damage.reason = "FiveGuidaoA"
 		damage.to = target
 		damage.nature = sgs.DamageStruct_Thunder
 		room:damage(damage)
@@ -689,7 +690,7 @@ FiveGuidaoA = sgs.CreateTriggerSkillV2 {
 		local card_id = room:getNCards(1):first()
 		local card = sgs.Sanguosha:getCard(card_id)
 		room:setCardFlag(card, "FiveGuidaoA_Dao")
-		room:obtainCard(player, card_id, false)
+		room:obtainCard(player, card_id, "FiveGuidaoA", false)
 		player:addToPile("dao", card_id)
 		return false
 	end,
@@ -736,7 +737,7 @@ FiveHuangtianA_Card = sgs.CreateSkillCard {
 		local zhangjiao = targets[1]
 		if zhangjiao:hasLordSkill("FiveHuangtianA") then
 			room:setPlayerFlag(zhangjiao, "FiveHuangtianAInvoked")
-			zhangjiao:obtainCard(self)
+			room:obtainCard(zhangjiao, self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), zhangjiao:objectName(), "FiveHuangtianA", ""))
 			local subcards = self:getSubcards()
 			for _, card_id in sgs.qlist(subcards) do
 				room:setCardFlag(card_id, "visible")
@@ -912,6 +913,7 @@ FiveLeiji_Card = sgs.CreateSkillCard {
 		damage.card = nil
 		damage.damage = 1
 		damage.from = source
+		damage.reason = "FiveLeiji"
 		damage.to = target
 		damage.nature = sgs.DamageStruct_Thunder
 		room:damage(damage)
@@ -1139,7 +1141,7 @@ FourJianxiong = sgs.CreateTriggerSkillV2 {
 				msg.from = player
 				msg.arg = skill:objectName()
 				room:sendLog(msg)
-				player:obtainCard(card)
+				room:obtainCard(player, card, "FourJianxiong")
 			elseif choice == "FourJianxiong_choice2" then --弃1张牌然后摸X张牌
 				msg.type = "#FourJianxiong2"
 				msg.from = player
@@ -1203,7 +1205,7 @@ FourJiaozhao_Card = sgs.CreateSkillCard {
 		room:doLightbox("$FourJiaozhao", 3000)
 		room:getThread():delay(4000)
 		source:loseMark("@jiaozhao", 1)
-		room:obtainCard(dest, self)
+		room:obtainCard(dest, self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), dest:objectName(), "FourJiaozhao", ""))
 		local LordSkills = {}
 		for _, skill in sgs.qlist(dest:getVisibleSkillList()) do
 			if skill:isLordSkill() then
@@ -1702,7 +1704,7 @@ FourHuoji_Card = sgs.CreateSkillCard {
 		local target = effect.to
 		local room = target:getRoom()
 		local card_id = effect.card:getEffectiveId()
-		room:showCard(source, card_id)
+		room:showCard(source, card_id, sgs.SPlayerList(), "FourHuoji")
 		local fireattack = sgs.Sanguosha:cloneCard("FireAttack", sgs.Card_NoSuit, 0)
 		fireattack:setSkillName("FourHuoji")
 		local use = sgs.CardUseStruct()
@@ -1802,6 +1804,7 @@ FourNiepan_Card = sgs.CreateSkillCard {
 		damage.card = nil
 		damage.damage = 1
 		damage.from = source
+		damage.reason = "FourNiepan"
 		damage.to = target
 		damage.nature = sgs.DamageStruct_Fire
 		room:damage(damage)
@@ -2103,8 +2106,8 @@ FourFanjian_Card = sgs.CreateSkillCard {
 		end
 		room:sendLog(msg)
 		room:getThread():delay()
-		target:obtainCard(self)
-		room:showCard(target, card_id)
+		room:obtainCard(target, self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), target:objectName(), "FourFanjian", ""))
+		room:showCard(target, card_id, sgs.SPlayerList(), "FourFanjian")
 		if card:getSuit() ~= suit then
 			room:loseHp(target, 1, true, source, self:objectName())
 		end
@@ -2816,6 +2819,7 @@ FourTianxiang_Card = sgs.CreateSkillCard {
 			room:throwCard(effect.card, source)
 			local damage = sgs.DamageStruct()
 			damage.from = source
+			damage.reason = "FourTianxiang"
 			damage.to = target
 			room:damage(damage)
 			if target:isAlive() then
@@ -2823,7 +2827,7 @@ FourTianxiang_Card = sgs.CreateSkillCard {
 				target:drawCards(count)
 			end
 		elseif choice == "FourTianxiang_Recover" then
-			room:obtainCard(target, effect.card)
+			room:obtainCard(target, effect.card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), target:objectName(), "FourTianxiang", ""))
 			local recover = sgs.RecoverStruct()
 			recover.who = source
 			room:recover(source, recover)
@@ -3016,7 +3020,7 @@ FourGuidao = sgs.CreateTriggerSkillV2 {
 					return false
 				end
 			end
-			room:obtainCard(zhangjiao, id)
+			room:obtainCard(zhangjiao, id, "FourGuidao")
 		end
 		return false
 	end,
@@ -3125,7 +3129,7 @@ FourTaiping_Card = sgs.CreateSkillCard {
 		local yuji = targets[1]
 		if yuji:hasSkill("FourTaiping") then
 			room:setPlayerFlag(yuji, "FourTaipingInvoked")
-			yuji:obtainCard(self)
+			room:obtainCard(yuji, self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), yuji:objectName(), "FourTaiping", ""))
 			local subcards = self:getSubcards()
 			for _, card_id in sgs.qlist(subcards) do
 				room:setCardFlag(card_id, "visible")

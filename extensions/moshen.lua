@@ -1525,7 +1525,7 @@ ms_huangwei = sgs.CreateTriggerSkillV2 {
 		if event == sgs.EventPhaseStart then
 			local targets = sgs.SPlayerList()
 			for _, pe in sgs.qlist(room:getOtherPlayers(player)) do
-				if not pe:isNude() then
+				if player:canMove(pe, "he") then
 					targets:append(pe)
 				end
 			end
@@ -1544,19 +1544,20 @@ ms_huangwei = sgs.CreateTriggerSkillV2 {
 		return false
 	end,
 	on_effect = function(skill, event, room, player, ctx)
-		if event == sgs.EventPhaseStart then
-			if not ctx.targets:isEmpty() then
-				local t = ctx.targets:first()
-				room:broadcastSkillInvoke(skill:objectName())
-				local id = room:askForCardChosen(player, t, "he", skill:objectName())
-				player:addToPile("Emp", id, true)
-			end
-		elseif event == sgs.DrawNCards then
+		if event == sgs.DrawNCards then
 			local draw = ctx.original_data:toDraw()
 			room:notifySkillInvoked(player, skill:objectName())
 			room:sendCompulsoryTriggerLog(player, skill:objectName())
 			draw.num = draw.num + 1
 			ctx.original_data:setValue(draw)
+		end
+		return false
+	end,
+	on_effect_target = function(skill, event, room, player, ctx, t)
+		room:broadcastSkillInvoke(skill:objectName())
+		local id = room:askForCardChosen(player, t, "he", skill:objectName(), false, sgs.Card_MethodMove)
+		if player:canMove(t, id) then
+			player:addToPile("Emp", id, true)
 		end
 		return false
 	end,
@@ -1814,7 +1815,7 @@ ms_jinshu = sgs.CreateTriggerSkillV2 {
 				room:moveCardsAtomic(move, true)
 				local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
 				dummy:addSubcard(j)
-				room:obtainCard(player, dummy)
+				room:obtainCard(player, dummy, "ms_jinshu")
 				dummy:deleteLater()
 			end
 		end
@@ -2095,7 +2096,7 @@ ms_yonghengCard = sgs.CreateSkillCard {
 				local k = math.random(0, ids:length() - 1)
 				local r_id = ids:at(k)
 				local acard = sgs.Sanguosha:getCard(r_id)
-				target:obtainCard(acard)
+				room:obtainCard(target, acard, "ms_yongheng")
 			end
 		elseif suit == sgs.Card_Heart then
 			msg.type = "#yongheng_heart"
@@ -2354,7 +2355,7 @@ ms_mimouCard = sgs.CreateSkillCard {
 	end,
 	on_use = function(self, room, source, targets)
 		local target = targets[1]
-		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, target:objectName(), "ms_mimou", "")
+		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), target:objectName(), "ms_mimou", "")
 		room:obtainCard(target, self, reason, true)
 		local _data = sgs.QVariant()
 		_data:setValue(source)
@@ -2367,7 +2368,7 @@ ms_mimouCard = sgs.CreateSkillCard {
 			if choice == "giveself2" then
 				local prom = string.format("@mimou_to:%s", source:objectName())
 				local cards = room:askForExchange(target, "ms_mimou", 2, 2, false, prom)
-				room:obtainCard(source, cards, false)
+				room:obtainCard(source, cards, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, target:objectName(), source:objectName(), "ms_mimou", ""), false)
 				target:drawCards(1)
 			else
 				source:drawCards(3)

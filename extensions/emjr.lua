@@ -1580,7 +1580,7 @@ ehuwu = sgs.CreateTriggerSkillV2 {
 				choice = "ehuwu2=" .. user:objectName()
 			end
 			if choice:startsWith("ehuwu1") then
-				player:obtainCard(card)
+				room:obtainCard(player, card, "ehuwu")
 			elseif choice:startsWith("ehuwu2") then
 				user:drawCards(1)
 			end
@@ -1633,14 +1633,14 @@ echineiGive = sgs.CreateTriggerSkillV2 {
 				for _, id in sgs.qlist(to_give) do
 					dummy:addSubcard(id)
 				end
-				target:obtainCard(dummy)
+				room:obtainCard(target, dummy, "echinei")
 			end
 			dummy:clearSubcards()
 			if not card_ids:isEmpty() then
 				for _, id in sgs.qlist(card_ids) do
 					dummy:addSubcard(id)
 				end
-				player:obtainCard(dummy)
+				room:obtainCard(player, dummy, "echinei")
 			end
 			dummy:deleteLater()
 			room:clearAG()
@@ -2232,11 +2232,10 @@ etushou = sgs.CreateTriggerSkillV2 {
 				end
 			end
 			local to_give = room:askForPlayerChosen(player, to_givelist, skill:objectName())
-			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName())
-			reason.m_playerId = to_give:objectName()
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), to_give:objectName(), skill:objectName(), "")
 			local id = room:askForCardChosen(player, player, "h", skill:objectName())
 			local card = sgs.Sanguosha:getCard(id)
-			room:moveCardTo(card, to_give, sgs.Player_PlaceHand, false)
+			room:obtainCard(to_give, card, reason, false)
 			local equips = player:getEquips()
 			local cardsNum = player:getHandcardNum() + equips:length()
 			local x = player:getMaxHp() - cardsNum
@@ -2337,8 +2336,8 @@ etiaoboCard = sgs.CreateSkillCard {
 		local card1 = sgs.Sanguosha:getCard(id1)
 		local id2 = room:askForCardChosen(playerB, playerB, "h", self:objectName())
 		local card2 = sgs.Sanguosha:getCard(id2)
-		room:showCard(playerA, id1)
-		room:showCard(playerB, id2)
+		room:showCard(playerA, id1, sgs.SPlayerList(), "etiaobo")
+		room:showCard(playerB, id2, sgs.SPlayerList(), "etiaobo")
 		if card1:getSuit() ~= card2:getSuit() then
 			if playerA:getHandcardNum() ~= playerB:getHandcardNum() then
 				local from

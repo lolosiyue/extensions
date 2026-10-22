@@ -35,7 +35,7 @@ yikuxin = sgs.CreateTriggerSkillV2{
 				for i,p in sgs.qlist(room:getOtherPlayers(player))do
 					local sc = room:askForExchange(p,skill:objectName(),p:getHandcardNum(),1,false,"yikuxin0",true)
 					if sc then
-						room:showCard(p,sc:getSubcards())
+						room:showCard(p,sc:getSubcards(),sgs.SPlayerList(),"yikuxin")
 						dc:addSubcards(sc:getSubcards())
 					end
 				end
@@ -52,10 +52,16 @@ yikuxin = sgs.CreateTriggerSkillV2{
 					end
 					dc = dc2
 				end
-				player:obtainCard(dc,false)
+				local dc3 = dummyCard()
+				for i,id in sgs.qlist(dc:getSubcards())do
+					local owner = room:getCardOwner(id)
+					if owner and player:canGet(owner,id) then dc3:addSubcard(id) end
+				end
+				dc = dc3
+				room:obtainCard(player,dc,"yikuxin",false)
 				if player:isDead() then return end
 				if tp then
-					room:showCard(player,dc:getSubcards())
+					room:showCard(player,dc:getSubcards(),sgs.SPlayerList(),"yikuxin")
 					if player:isDead() then return end
 				end
 				local dc2 = dummyCard()
@@ -253,6 +259,7 @@ yi_huatuo:addSkill(yimiehai)
 yimiehaibf = sgs.CreateTargetModSkillV2{
     name = "#yimiehaibf",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_skill:yimiehai", "mark_prefix:&manhuaibing+:+" },
 	correct_func = function(skill, ctx)
 		local modType = ctx:getModType()
 		local card = ctx:getCard()
@@ -409,7 +416,7 @@ yijugu = sgs.CreateTriggerSkillV2{
 					for _,id in sgs.qlist(room:getDrawPile())do
 						if ids:contains(id) then dc:addSubcard(id) end
 					end
-					p:obtainCard(dc,true)
+					room:obtainCard(p,dc,"yijugu",true)
 					aps:append(p)
 				end
 				room:drawCards(aps,1,skill:objectName())
@@ -471,7 +478,7 @@ yizhengsiCard = sgs.CreateSkillCard{
 		local dc = room:askForCardShow(use.to:first(),source,"yizhengsi")
 		local max,min = dc:getNumber(),dc:getNumber()
 		nums[use.to:first():objectName()] = dc:getNumber()
-		room:showCard(use.to:first(),dc:getEffectiveId())
+		room:showCard(use.to:first(),dc:getEffectiveId(),sgs.SPlayerList(),"yizhengsi")
 		for i,p in sgs.qlist(use.to)do
 			p:addMark("yizhengsiUse-PlayClear")
 			if i>0 then
@@ -484,7 +491,7 @@ yizhengsiCard = sgs.CreateSkillCard{
 		end
 		for i,p in sgs.qlist(use.to)do
 			if i>0 then
-				room:showCard(p,ids[p:objectName()])
+				room:showCard(p,ids[p:objectName()],sgs.SPlayerList(),"yizhengsi")
 			end
 		end
 		for i,p in sgs.qlist(use.to)do
@@ -539,9 +546,9 @@ yichengming = sgs.CreateTriggerSkillV2{
 				end
 				if hp2>hp and player:askForSkillInvoke(skill,ToData("yichengming2")) then
 					for i,p in sgs.qlist(room:getOtherPlayers(player))do
-						if p:getMark("yizhengsiUse-PlayClear")>0 and p:getCardCount()>0 and player:isAlive() then
-							local id = room:askForCardChosen(player,p,"he",skill:objectName())
-							if id>-1 then room:obtainCard(player,id,false) end
+						if p:getMark("yizhengsiUse-PlayClear")>0 and player:canGet(p,"he") and player:isAlive() then
+							local id = room:askForCardChosen(player,p,"he",skill:objectName(),false,sgs.Card_MethodGet)
+							if id>-1 and player:canGet(p,id) then room:obtainCard(player,sgs.Sanguosha:getCard(id),sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION,player:objectName(),p:objectName(),skill:objectName(),""),false) end
 						end
 					end
 				end
@@ -735,7 +742,7 @@ yimitu = sgs.CreateTriggerSkillV2{
 					for _,p in sgs.qlist(tps)do
 						local id = room:drawCardsList(p,1,skill:objectName()):first()
 						shown[p:objectName()] = id
-						room:showCard(p,id)
+						room:showCard(p,id,sgs.SPlayerList(),"yimitu")
 					end
 					local tps2 = sgs.SPlayerList()
 					for _,p in sgs.list(room:getAlivePlayers())do
@@ -890,7 +897,7 @@ yizongheng = sgs.CreateTriggerSkillV2{
 			if player:getPhase()==sgs.Player_Start then
 				local tps = sgs.SPlayerList()
 				for _,p in sgs.qlist(room:getOtherPlayers(player))do
-					if p:getHandcardNum()>0 then tps:append(p) end
+					if player:canGet(p,"h") then tps:append(p) end
 				end
 				if tps:length()<2 then return end
 				tps = room:askForPlayersChosen(player,tps,skill:objectName(),-1,2,"yizongheng0",true,true)
@@ -906,7 +913,8 @@ yizongheng = sgs.CreateTriggerSkillV2{
 				local cid = room:askForAG(player,ids,false,skill:objectName(),"yizongheng1")
 				local tps2 = sgs.SPlayerList()
 				tps2:append(player)
-				room:showCard(room:getCardOwner(cid),cid)
+				local cowner = room:getCardOwner(cid)
+				room:showCard(cowner,cid,sgs.SPlayerList(),skill:objectName())
 				local c1 = sgs.Sanguosha:getCard(cid)
 				room:takeAG(player,cid,false,tps2)
 				for _,id in sgs.list(InsertList({},ids))do
@@ -917,7 +925,7 @@ yizongheng = sgs.CreateTriggerSkillV2{
 						ids:removeOne(id)
 					end
 				end
-				player:obtainCard(c1)
+				if cowner and player:canGet(cowner,cid) then room:obtainCard(player,c1,skill:objectName()) end
 				local dc = dummyCard()
 				for i=1,3 do
 					if ids:isEmpty() then break end
@@ -1114,7 +1122,7 @@ manhanguo = sgs.CreateTriggerSkillV2{
 			if ids:length()>0 then
 				local dc = dummyCard()
 				dc:addSubcards(ids)
-				invoker:obtainCard(dc,false)
+				room:obtainCard(invoker,dc,"manhanguo",false)
 			end
 		elseif event==sgs.CardAsked then
     		local pattern = data:toStringList()
@@ -1130,9 +1138,9 @@ manhanguo = sgs.CreateTriggerSkillV2{
 							c = room:askForCard(p,"jink","@hujia-jink:"..invoker:objectName(),ToData(invoker),sgs.Card_MethodResponse,invoker,false,"",true)
 							if c then
 								room:provide(c)
-								if use.from:getCardCount()>0 then
-									x = room:askForCardChosen(p,use.from,"he",skill:objectName())
-									if x>=0 then room:obtainCard(p,x,false) end
+								if p:canGet(use.from,"he") then
+									x = room:askForCardChosen(p,use.from,"he",skill:objectName(),false,sgs.Card_MethodGet)
+									if x>=0 and p:canGet(use.from,x) then room:obtainCard(p,sgs.Sanguosha:getCard(x),sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION,p:objectName(),use.from:objectName(),skill:objectName(),""),false) end
 								end
 								return true
 							end
@@ -1517,15 +1525,15 @@ mankongzhi = sgs.CreateTriggerSkillV2{
 		local data = ctx.original_data
 		if event==sgs.TargetSpecified then
 	     	local use = data:toCardUse()
-			if use.card:isKindOf("Slash") and use.to:length()==1 and use.to:last():getCardCount()>0 then
+			if use.card:isKindOf("Slash") and use.to:length()==1 and player:canGet(use.to:last(),"he") then
 				room:sendCompulsoryTriggerLog(player,skill)
 				local dc = dummyCard()
 				for i=1,math.min(3,use.to:last():getCardCount()) do
-					local id = room:askForCardChosen(player,use.to:last(),"he",skill:objectName(),false,sgs.Card_MethodNone,dc:getSubcards(),true)
-					if id<0 then break end
+					local id = room:askForCardChosen(player,use.to:last(),"he",skill:objectName(),false,sgs.Card_MethodGet,dc:getSubcards(),true)
+					if id<0 or not player:canGet(use.to:last(),id) then break end
 					dc:addSubcard(id)
 				end
-				player:obtainCard(dc,false)
+				if dc:subcardsLength()>0 then room:obtainCard(player,dc,sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION,player:objectName(),use.to:last():objectName(),skill:objectName(),""),false) end
 			end
 		elseif event==sgs.CardEffect then
 	     	local effect = data:toCardEffect()
@@ -1710,17 +1718,17 @@ manhuaibing = sgs.CreateTriggerSkillV2{
 			if invoker:getPhase()==sgs.Player_Start and invoker:hasSkill(skill) then
 				local tps = sgs.SPlayerList()
 				for _,p in sgs.qlist(room:getAlivePlayers())do
-					if p:getHandcardNum()>0 then tps:append(p) end
+					if (p==invoker and p:getHandcardNum()>0) or invoker:canGet(p,"h") then tps:append(p) end
 				end
 				local tps = room:askForPlayersChosen(invoker,tps,skill:objectName(),-1,2,"manhuaibing0",true,true)
 				if tps:length()>0 then
 					local dc = dummyCard()
 					for _,p in sgs.qlist(tps)do
 						if p==invoker then continue end
-						local id = room:askForCardChosen(invoker,p,"h",skill:objectName())
-						dc:addSubcard(id)
+						local id = room:askForCardChosen(invoker,p,"h",skill:objectName(),false,sgs.Card_MethodGet)
+						if invoker:canGet(p,id) then dc:addSubcard(id) end
 					end
-					invoker:obtainCard(dc,false)
+					if dc:subcardsLength()>0 then room:obtainCard(invoker,dc,"manhuaibing",false) end
 					room:showAllCards(invoker)
 					local n = 0
 					for _,h in sgs.qlist(invoker:getHandcards())do
@@ -1808,7 +1816,7 @@ manhuoe = sgs.CreateTriggerSkillV2{
 				if dc:subcardsLength()>0 then
 					room:fillAG(dc:getSubcards(),invoker)
 					local tp = room:askForPlayerChosen(invoker,room:getAlivePlayers(),skill:objectName(),"manhuoe1")
-					if tp then tp:obtainCard(dc) end
+					if tp then room:obtainCard(tp,dc,"manhuoe") end
 					room:clearAG(invoker)
 				end
 				if n<13 then
@@ -1820,7 +1828,7 @@ manhuoe = sgs.CreateTriggerSkillV2{
 			if effect.card:isKindOf("FireAttack") and table.contains(effect.card:getSkillNames(),skill:objectName()) then
 				if effect.to:getHandcardNum()>0 and effect.from:getMark("manhuoeBanTo-Clear")<1 then
 					local sc = room:askForCardShow(effect.to,effect.from,"fire_attack")
-					room:showCard(effect.to,sc:getEffectiveId())
+					room:showCard(effect.to,sc:getEffectiveId(),sgs.SPlayerList(),"manhuoe")
 					effect.card:setTag("manhuoeSC-"..effect.to:objectName(),ToData(sc))
 					local suit = sc:getSuitString()
 					local suit_png = suit
@@ -2406,19 +2414,19 @@ chenmieguo = sgs.CreateTriggerSkillV2{
 					if invoker:getMark("chenmieguo")<1 and invoker:hasSkill(skill) then
 						local tps = sgs.SPlayerList()
 						for i,p in sgs.qlist(room:getOtherPlayers(invoker))do
-							if p:getCardCount()>0 then tps:append(p) end
+							if invoker:canGet(p,"he") then tps:append(p) end
 						end
 						local tp = room:askForPlayerChosen(invoker,tps,skill:objectName(),"chenmieguo0",true,true)
 						if tp then
 							local dc = dummyCard()
 							for i=1,3 do
-								local id = room:askForCardChosen(invoker,tp,"he",skill:objectName(),false,sgs.Card_MethodNone,dc:getSubcards(),true)
-								if id<0 then break end
+								local id = room:askForCardChosen(invoker,tp,"he",skill:objectName(),false,sgs.Card_MethodGet,dc:getSubcards(),true)
+								if id<0 or not invoker:canGet(tp,id) then break end
 								dc:addSubcard(id)
 								if dc:subcardsLength()>=tp:getCardCount()
 								then break end
 							end
-							invoker:obtainCard(dc,false)
+							if dc:subcardsLength()>0 then room:obtainCard(invoker,dc,sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION,invoker:objectName(),tp:objectName(),skill:objectName(),""),false) end
 							local x = dc:subcardsLength()
 							local tps = room:askForPlayersChosen(tp,room:getAlivePlayers(),skill:objectName(),x,x,"chenmieguo1:"..x)
 							for i,p in sgs.qlist(tps)do
@@ -2439,6 +2447,7 @@ chen_zhouyu:addSkill(chenmieguo)
 chenmieguobf = sgs.CreateProhibitSkillV2{
 	name = "#chenmieguobf",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "secondary.mark:&chenmieguo_ban+#{primary}" },
 	is_prohibited = function(self, ctx)
 		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if card:getTypeId()>0 then
@@ -2587,13 +2596,13 @@ chenzhaduo = sgs.CreateTriggerSkillV2{
 			if invoker:getPhase()==sgs.Player_Finish then
 				local tps = sgs.SPlayerList()
 				for i,p in sgs.list(room:getOtherPlayers(invoker))do
-					if p:getCardCount()>0 then tps:append(p) end
+					if invoker:canGet(p,"he") then tps:append(p) end
 				end
 				tps = room:askForPlayersChosen(invoker,tps,skill:objectName(),-1,2,"chenzhaduo0",true,false)
 				if tps:length()<2 then return false end
 				for i,p in sgs.list(tps)do
-					local id = room:askForCardChosen(invoker,p,"he",skill:objectName())
-					room:obtainCard(invoker,id,false)
+					local id = room:askForCardChosen(invoker,p,"he",skill:objectName(),false,sgs.Card_MethodGet)
+					if invoker:canGet(p,id) then room:obtainCard(invoker,sgs.Sanguosha:getCard(id),sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION,invoker:objectName(),p:objectName(),skill:objectName(),""),false) end
 				end
 				local dc = dummyCard(nil,"_chenzhaduo")
 				if invoker:canSlash(tps:first(),dc,false) then
@@ -2791,7 +2800,7 @@ chenqishi = sgs.CreateTriggerSkillV2{
 				end
 				room:clearAG(invoker)
 				room:setPlayerMark(invoker,"&chenqishi+#bf",1)
-				invoker:obtainCard(dc)
+				room:obtainCard(invoker,dc,"chenqishi")
 			end
 		elseif event==sgs.EventPhaseChanging then
 	     	local change = data:toPhaseChange()
@@ -3062,14 +3071,15 @@ chenlanjiaoCard = sgs.CreateSkillCard{
 	on_use = function(self,room,source,targets)
 		for i,p in sgs.list(targets)do
 			room:addPlayerMark(source,p:objectName().."chenlanjiaoBan-Clear")
+			if not source:canGet(p,"h") then continue end
 			local dc = dummyCard()
 			for i=1,math.min(2,p:getHandcardNum()) do
-				local id = room:askForCardChosen(source,p,"h","chenlanjiao",false,sgs.Card_MethodNone,dc:getSubcards())
-				if id<0 then break end
+				local id = room:askForCardChosen(source,p,"h","chenlanjiao",false,sgs.Card_MethodGet,dc:getSubcards())
+				if id<0 or not source:canGet(p,id) then break end
 				dc:addSubcard(id)
 			end
 			if dc:subcardsLength()<1 then continue end
-			room:showCard(p,dc:getSubcards())
+			room:showCard(p,dc:getSubcards(),sgs.SPlayerList(),"chenlanjiao")
 			p:setTag("chenlanjiaoIds",ToData(dc:getSubcards()))
 			while p:askForSkillInvoke("chenlanjiao",ToData("0:"..source:objectName()),false) do
 				room:loseHp(p,1,true,p,"chenlanjiao")
@@ -3077,18 +3087,18 @@ chenlanjiaoCard = sgs.CreateSkillCard{
 				dc:clearSubcards()
 				p:drawCards(1,"chenlanjiao")
 				for i=1,math.min(2,p:getHandcardNum()) do
-					local id = room:askForCardChosen(source,p,"h","chenlanjiao",false,sgs.Card_MethodNone,dc:getSubcards())
-					if id<0 then break end
+					local id = room:askForCardChosen(source,p,"h","chenlanjiao",false,sgs.Card_MethodGet,dc:getSubcards())
+					if id<0 or not source:canGet(p,id) then break end
 					dc:addSubcard(id)
 				end
-				room:showCard(p,dc:getSubcards())
+				room:showCard(p,dc:getSubcards(),sgs.SPlayerList(),"chenlanjiao")
 				p:setTag("chenlanjiaoIds",ToData(dc:getSubcards()))
 			end
 			if p:isDead() or dc:subcardsLength()<1 then continue end
 			for i,id in sgs.qlist(dc:getSubcards())do
 				source:addMark(sgs.Sanguosha:getCard(id):getSuitString().."chenlanjiaoSuit-Clear")
 			end
-			source:obtainCard(dc)
+			room:obtainCard(source,dc,sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION,source:objectName(),p:objectName(),"chenlanjiao",""))
 			if source:getMark("heartchenlanjiaoSuit-Clear")>0 and source:getMark("diamondchenlanjiaoSuit-Clear")>0 then
 				room:addPlayerMark(source,"chenlanjiaoBan-Clear")
 			end
@@ -3231,7 +3241,7 @@ chenjiaozong = sgs.CreateTriggerSkillV2{
 				local tps = sgs.SPlayerList()
 				for _,p in sgs.qlist(room:getAlivePlayers())do
 					for _,e in sgs.qlist(p:getCards("ej"))do
-						if e:getTypeId()~=3 then continue end
+						if e:getTypeId()~=3 or not invoker:canMove(p,e:getId()) then continue end
 						local n = e:getRealCard():toEquipCard():location()
 						for _,q in sgs.qlist(room:getAlivePlayers())do
 							if q:getEquip(n) or invoker:isProhibited(q,e) then continue end
@@ -3245,7 +3255,7 @@ chenjiaozong = sgs.CreateTriggerSkillV2{
 					invoker:skillInvoked(skill)
 					local ids = sgs.IntList()
 					for _,e in sgs.qlist(tp:getCards("ej"))do
-						if e:getTypeId()~=3 then
+						if e:getTypeId()~=3 or not invoker:canMove(tp,e:getId()) then
 							ids:append(e:getId())
 							continue
 						end
@@ -3261,8 +3271,8 @@ chenjiaozong = sgs.CreateTriggerSkillV2{
 						end
 					end
 					room:doAnimate(1,invoker:objectName(),tp:objectName())
-					local id = room:askForCardChosen(invoker,tp,"ej",skill:objectName(),false,sgs.Card_MethodNone,ids)
-					if id>=0 then
+					local id = room:askForCardChosen(invoker,tp,"ej",skill:objectName(),false,sgs.Card_MethodMove,ids)
+					if id>=0 and invoker:canMove(tp,id) then
 						tps:clear()
 						local e = sgs.Sanguosha:getCard(id)
 						local n = e:getRealCard():toEquipCard():location()

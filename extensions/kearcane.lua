@@ -217,6 +217,7 @@ kejinxmark = sgs.CreateTriggerSkillV2{
 						room:sendLog(log)
 						local damage = sgs.DamageStruct()
 						damage.from = jinx
+						damage.reason = "kejinxmark"
 						damage.to = player
 						damage.damage = 1
 						damage.nature = sgs.DamageStruct_Fire
@@ -1652,7 +1653,7 @@ kegonghuan = sgs.CreateTriggerSkillV2{
 				if will_use then
 					room:broadcastSkillInvoke(skill:objectName())
 					local num = player:getHandcardNum()
-					room:obtainCard(friend,player:wholeHandCards(),false)
+					room:obtainCard(friend,player:wholeHandCards(),sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), friend:objectName(), skill:objectName(), ""),false)
 					if num >= 3 then
 						room:recover(friend, sgs.RecoverStruct())
 					end
@@ -1798,7 +1799,7 @@ kesilang = sgs.CreateTriggerSkillV2{
 					if depai then
 						local card = room:askForExchange(player, skill:objectName(), 100, math.min(1,player:getHandcardNum()), false, "silangxuanpai")
 						if card and (card:getSubcards():length() > 0) then
-							room:obtainCard(depai, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), player:objectName(), skill:objectName(), ""), false)
+							room:obtainCard(depai, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), depai:objectName(), skill:objectName(), ""), false)
 						end
 					end
 					if player:objectName() ~= depai:objectName() then
@@ -2294,6 +2295,7 @@ keduantouCard = sgs.CreateSkillCard{
 		room:addPlayerMark(target, "Armor_Nullified")
 		local damage = sgs.DamageStruct() 
 		damage.from = player
+		damage.reason = "keduantou"
 		damage.to = target
 		if (target:getMark("@xueyuan") > 0) then
 			if not player:hasSkill("keduantou_extra") then
@@ -2614,6 +2616,7 @@ kezhengyi = sgs.CreateTriggerSkillV2{
 				room:removePlayerMark(player,"@kezhengyi")
 				local damage = sgs.DamageStruct()
 				damage.from = player
+				damage.reason = "kezhengyi"
 				damage.to = eny
 			--	damage.damage = math.min(eny:getLostHp(),3)  
 				damage.damage = eny:getLostHp() 
@@ -2995,6 +2998,7 @@ keguangfuCard = sgs.CreateSkillCard{
 					room:setEmotion(target, "Arcane/luxr")
 					local damage = sgs.DamageStruct()
 					damage.from = player
+					damage.reason = "kelux_r"
 					damage.to = target
 					damage.damage = 1
 					damage.nature = sgs.DamageStruct_Fire

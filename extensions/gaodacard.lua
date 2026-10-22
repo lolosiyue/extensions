@@ -645,7 +645,7 @@ laplace_box_skill = sgs.CreateTriggerSkillV2{
 			local damage = ctx.original_data:toDamage()
 			if damage.from and damage.from:isAlive() then
 				room:sendCompulsoryTriggerLog(player, "laplace_box")
-				room:obtainCard(damage.from, player:getTreasure():getRealCard())
+				room:obtainCard(damage.from, player:getTreasure():getRealCard(), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), damage.from:objectName(), "laplace_box", ""), true)
 			end
 		end
 		return false

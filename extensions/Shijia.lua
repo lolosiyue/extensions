@@ -673,7 +673,7 @@ ShiJiaKill = sgs.CreateRuleSkillV2{
 						for _,card in sgs.qlist(cards) do
 							allcard:addSubcard(card)
 						end
-						room:obtainCard(killer, allcard)
+						room:obtainCard(killer, allcard, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, killer:objectName(), player:objectName(), "ShiJiaKill", ""))
                         allcard:deleteLater()
 					end
 				elseif killer:getRole() == "rebel" and player:getRole()=="rebel" then--反杀反获取对方所有牌
@@ -683,7 +683,7 @@ ShiJiaKill = sgs.CreateRuleSkillV2{
 						for _,card in sgs.qlist(cards) do
 							allcard:addSubcard(card)
 						end
-						room:obtainCard(killer, allcard)
+						room:obtainCard(killer, allcard, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, killer:objectName(), player:objectName(), "ShiJiaKill", ""))
                         allcard:deleteLater()
 					end
 				--elseif killer:getRole() == "rebel" and player:getRole()=="lord" then--反杀主身份互换，朝代更迭
@@ -1199,12 +1199,22 @@ YuHuMouPi = sgs.CreateTrickCard{
 				if to:canPindian(p) then
 					local result= to:pindianInt(p, self:objectName())
 					if result == -1  then
-						room:obtainCard(p, to:wholeHandCards(), false)
+						local allcard = sgs.DummyCard()
+						for _, c in sgs.qlist(to:getHandcards()) do
+							if p:canGet(to, c:getEffectiveId()) then allcard:addSubcard(c) end
+						end
+						room:obtainCard(p, allcard, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, p:objectName(), to:objectName(), self:objectName(), ""), false)
+						allcard:deleteLater()
 						--p:drawCards(2)
 					end
 					if result == 1 then
 						--to:drawCards(2)
-						room:obtainCard(to, p:wholeHandCards(), false)
+						local allcard = sgs.DummyCard()
+						for _, c in sgs.qlist(p:getHandcards()) do
+							if to:canGet(p, c:getEffectiveId()) then allcard:addSubcard(c) end
+						end
+						room:obtainCard(to, allcard, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, to:objectName(), p:objectName(), self:objectName(), ""), false)
+						allcard:deleteLater()
 					end		
 				end
 			end		
@@ -2424,7 +2434,7 @@ ShiJia_on_trigger = sgs.CreateRuleSkillV2{
 				if cs:length()>0
 				then
 					cs = cs:at(0)
-					player:obtainCard(cs)
+					room:obtainCard(player, cs, "ShiJia_on_trigger")
 					if room:getCardOwner(cs:getEffectiveId())==player then
 						room:moveCardTo(cs,player,sgs.Player_PlaceEquip)
 					end

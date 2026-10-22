@@ -33,7 +33,7 @@ end
 local function dummy(ids) local c = sgs.Sanguosha:cloneCard("slash"); c:addSubcards(ints(ids)); return c end
 local function obtain(room, p, ids, name)
     if #ids == 0 then return end
-    local c = dummy(ids); room:obtainCard(p, c, false); c:deleteLater()
+    local c = dummy(ids); room:obtainCard(p, c, name, false); c:deleteLater()
 end
 local function random_ids(q, n)
     local t, out = list(q), {}
@@ -52,9 +52,13 @@ local function take(room, from, to, n, zone, name, discard)
     for i = 1, n do
         if not from:isAlive() or to:getCards(zone):isEmpty() then break end
         if discard and not from:canDiscard(to, zone) then break end
-        local id = room:askForCardChosen(from, to, zone, name, false, discard and sgs.Card_MethodDiscard or sgs.Card_MethodNone)
+        if not discard and not from:canGet(to, zone) then break end
+        local id = room:askForCardChosen(from, to, zone, name, false, discard and sgs.Card_MethodDiscard or sgs.Card_MethodGet)
         if id < 0 then break end
-        if discard then room:throwCard(id, to, from) else room:obtainCard(from, id, false) end
+        if discard then room:throwCard(id, to, from) else
+            if not from:canGet(to, id) then break end
+            room:obtainCard(from, id, name, false)
+        end
     end
 end
 local function choose(room, p, name, predicate, optional)
@@ -65,7 +69,7 @@ end
 local function give(room, p, to, n, name)
     n = math.min(n, p:getHandcardNum()); if n <= 0 or not to:isAlive() then return end
     local c = room:askForExchange(p, name, n, n, false, "nuyan_give", false)
-    if c then room:obtainCard(to, c, false); c:deleteLater() end
+    if c then room:obtainCard(to, c, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, p:objectName(), to:objectName(), name, ""), false); c:deleteLater() end
 end
 local function deck_card(room, p, name, predicate, n, discard_too)
     local ids = {}; for _, id in sgs.qlist(room:getDrawPile()) do
@@ -99,7 +103,7 @@ local function add_rage(room, p, n, source)
         for id, sp in pairs(specs) do
             if sp.mode == "shouxi" and p:hasSkill(id) and rage(p) >= 2 and invoke(room, p, id) then
                 local q = choose(room, p, id, function(t) return t ~= p end, true)
-                if q then add_rage(room, p, -2, p); room:loseHp(q, rage(p) + 1) end
+                if q then add_rage(room, p, -2, p); room:loseHp(q, rage(p) + 1, true, p, id) end
             end
         end
     end
@@ -133,9 +137,10 @@ local function swap_equips(room, a, b, name)
     return #aid, #bid
 end
 local function move_field(room, p, name)
-    local a = choose(room, p, name, function(q) return not q:getCards("ej"):isEmpty() end, true)
+    local a = choose(room, p, name, function(q) return p:canMove(q, "ej") end, true)
     if not a then return end
-    local id = room:askForCardChosen(p, a, "ej", name); local c = sgs.Sanguosha:getCard(id)
+    local id = room:askForCardChosen(p, a, "ej", name, false, sgs.Card_MethodMove); local c = sgs.Sanguosha:getCard(id)
+    if not p:canMove(a, id) then return end
     local place = room:getCardPlace(id)
     local b = choose(room, p, name, function(q)
         if q == a then return false end
@@ -202,21 +207,21 @@ local function active_effect(sp, room, p, targets, card)
     local m, id, q = sp.mode, sp.id, targets[1]; local selected = list(card:getSubcards())
     room:addPlayerMark(p, id .. "_used-PlayClear")
     if m == "qiangxi" then
-        room:addPlayerMark(q, id .. "_hit-PlayClear"); if #selected == 0 then room:loseHp(p, 1) end
+        room:addPlayerMark(q, id .. "_hit-PlayClear"); if #selected == 0 then room:loseHp(p, 1, true, p, id) end
         damage(room, p, q, sp.classic and 1 or 2, id)
-    elseif m == "xuanhuo" then room:obtainCard(q, card, false); take(room, p, q, rage(q), "he", id)
+    elseif m == "xuanhuo" then room:obtainCard(q, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, p:objectName(), q:objectName(), id, ""), false); take(room, p, q, rage(q), "he", id)
     elseif m == "kurou" then
-        room:loseHp(p, 1); draw(p, 2, id)
+        room:loseHp(p, 1, true, p, id); draw(p, 2, id)
         if sp.classic then room:setPlayerMark(p, "nuyan_kurou-Clear", 1) else room:addPlayerMark(p, "nuyan_slash-PlayClear") end
     elseif m == "luoyi" then
         if sp.jie then room:addPlayerMark(p, id .. "_type" .. sgs.Sanguosha:getCard(selected[1]):getTypeId() .. "-PlayClear") end
         room:addPlayerMark(p, "nuyan_luoyi-Clear"); if sp.jie then room:addPlayerMark(p, "nuyan_luoyi_others-Clear") end
     elseif m == "renxin" then add_rage(room, q, -1, p); recover(room, q, rage(q), p, id)
     elseif m == "zhiman" then room:loseHp(q, 1,true,p,id)
-    elseif m == "baoli" then room:loseHp(p, 1); if p:isAlive() then add_rage(room, p, 2, p) end
+    elseif m == "baoli" then room:loseHp(p, 1, true, p, id); if p:isAlive() then add_rage(room, p, 2, p) end
     elseif m == "quhu" then if p:pindian(q, id, nil) then damage(room, p, q, 1, id) end
     elseif m == "zhenjun" then
-        room:obtainCard(q, card, false)
+        room:obtainCard(q, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, p:objectName(), q:objectName(), id, ""), false)
         local slash = room:askForUseSlashTo(q, room:getOtherPlayers(q), "nuyan_slash", true, false, false)
         -- A non-black response is enforced by a temporary limitation at request time (see factory).
         if slash then draw(p, 1, id) else
@@ -239,7 +244,7 @@ local function active_effect(sp, room, p, targets, card)
         if m == "qiangwu" then room:setPlayerMark(p, "nuyan_qiangwu-Clear", 1) else
             room:setPlayerMark(p, id .. "_jizhen-Clear", 1)
             if c:isKindOf("EquipCard") then add_rage(room, p, 1, p) elseif c:isKindOf("BasicCard") then
-                if invoke(room, p, id) and room:getCardPlace(cid) == sgs.Player_DiscardPile then room:obtainCard(p, cid) end
+                if invoke(room, p, id) and room:getCardPlace(cid) == sgs.Player_DiscardPile then room:obtainCard(p, cid, id) end
             else draw(p, 1, id) end
         end
     elseif m == "xuehen" then
@@ -255,7 +260,7 @@ local function active_effect(sp, room, p, targets, card)
         damage(room, p, q, 1, id)
         if q:getMark(id .. "_dying") > 0 then
             room:setPlayerMark(q, id .. "_dying", 0)
-            if q:isAlive() then room:loseHp(p, 1); room:setPlayerMark(p, id .. "_ban-Clear", 1) end
+            if q:isAlive() then room:loseHp(p, 1, true, p, id); room:setPlayerMark(p, id .. "_ban-Clear", 1) end
         end
     elseif m == "zhijian" then
         local ids = {}; for _, pile in ipairs({room:getDrawPile(),room:getDiscardPile()}) do for _, cid in sgs.qlist(pile) do
@@ -275,11 +280,12 @@ local function active_effect(sp, room, p, targets, card)
         if got>sent then room:addPlayerMark(p,"nuyan_slash-Clear") elseif sent>got then recover(room,p,1,p,id) else draw(p,1,id);add_rage(room,p,1,p) end
     elseif m == "zhongjian" then
         local c=sgs.Sanguosha:getCard(selected[1]); local ids=random_ids(q:handCards(),sp.classic and 4 or star(p)); local matches={}
-        room:showCard(p,selected[1]); for _,cid in ipairs(ids) do room:showCard(q,cid); local t=sgs.Sanguosha:getCard(cid)
+        room:showCard(p,selected[1],sgs.SPlayerList(),id); for _,cid in ipairs(ids) do room:showCard(q,cid,sgs.SPlayerList(),id); local t=sgs.Sanguosha:getCard(cid)
             if (sp.classic and c:isRed()==t:isRed()) or (not sp.classic and c:getSuit()==t:getSuit()) then matches[#matches+1]=cid end
         end
         if #matches>0 then local d=dummy(matches);room:throwCard(d,q,p);d:deleteLater() else
-            local pool=ints(ids); for i=1,math.min(2,#ids) do room:fillAG(pool,p);local cid=room:askForAG(p,pool,false,id);room:clearAG(p);pool:removeOne(cid);room:obtainCard(p,cid,false) end
+            local gettable={}; for _,cid in ipairs(ids) do if p:canGet(q,cid) then gettable[#gettable+1]=cid end end
+            local pool=ints(gettable); for i=1,math.min(2,#gettable) do room:fillAG(pool,p);local cid=room:askForAG(p,pool,false,id);room:clearAG(p);pool:removeOne(cid);room:obtainCard(p,cid,id,false) end
         end
     elseif m == "pianchong" then
         local choice=room:askForChoice(p,id,"nuyan_red+nuyan_black");room:setPlayerMark(p,"nuyan_pianchong",choice=="nuyan_red" and 1 or 2)
@@ -314,7 +320,7 @@ local function active_effect(sp, room, p, targets, card)
     elseif m == "wenji" then
         room:setPlayerMark(q,id .. "_hit-PlayClear",1)
         local c=room:askForExchange(q,id,1,1,true,"nuyan_give",false)
-        if c then local t=sgs.Sanguosha:getCard(c:getSubcards():first()); room:addPlayerMark(p,"nuyan_wenji" .. t:getTypeId() .. "-Clear");room:obtainCard(p,c,false);c:deleteLater() end
+        if c then local t=sgs.Sanguosha:getCard(c:getSubcards():first()); room:addPlayerMark(p,"nuyan_wenji" .. t:getTypeId() .. "-Clear");room:obtainCard(p,c,sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE,q:objectName(),p:objectName(),id,""),false);c:deleteLater() end
     end
 end
 local function make_active(sp)
@@ -331,7 +337,7 @@ local function make_active(sp)
                 for _,cid in sgs.qlist(self:getSubcards()) do local place=room:getCardPlace(cid);if place==sgs.Player_PlaceHand then h=h+1 elseif place==sgs.Player_PlaceEquip then e=e+1 end end
                 room:setPlayerMark(use.from,sp.id .. "_allhand",h>0 and h==use.from:getHandcardNum() and 1 or 0)
                 room:setPlayerMark(use.from,sp.id .. "_allequip",e>0 and e==use.from:getEquips():length() and 1 or 0)
-            elseif sp.mode=="zhongjian" then room:showCard(use.from,self:getSubcards():first()) end
+            elseif sp.mode=="zhongjian" then room:showCard(use.from,self:getSubcards():first(),sgs.SPlayerList(),sp.id) end
             self:cardOnUse(room,use)
         end,
         on_use=function(self,room,p,ts)
@@ -477,7 +483,7 @@ local function target(event,room,p,o,data) local u=data:toCardUse();return p==o 
 local function dealt(event,room,p,o,data) local d=data:toDamage();return d.from==o end
 handler("ganglie",{sgs.Damaged},function(e,r,p,o,d)return p==o and d:toDamage().from and d:toDamage().from:isAlive() end,function(sp,e,r,p,o,d)
     local q=d:toDamage().from;local options=q:getHandcardNum()>=2 and "nuyan_discard+nuyan_losehp" or "nuyan_losehp"
-    if r:askForChoice(q,sp.id,options)=="nuyan_discard" then random_discard(r,q,2,"h",sp.id) else r:loseHp(q,1) end
+    if r:askForChoice(q,sp.id,options)=="nuyan_discard" then random_discard(r,q,2,"h",sp.id) else r:loseHp(q,1,true,o,sp.id) end
 end)
 handler("yiji",{sgs.Damaged},own,function(sp,e,r,p,o,d)local q=choose(r,o,sp.id);if q then draw(q,2*d:toDamage().damage,sp.id) end end)
 handler("mengjin",{sgs.SlashMissed},function(e,r,p,o,d)return d:toSlashEffect().from==o end,function(sp,e,r,p,o,d)
@@ -513,7 +519,7 @@ handler("jianxiong",{sgs.Damaged},own,function(sp,e,r,p,o,d)
 end)
 handler("tuxi",{sgs.DrawNCards},own,function(sp,e,r,p,o,d)
     local n=draw_count(d);local used={};local count=0
-    for i=1,n do local q=choose(r,o,sp.id,function(q)return q~=o and not q:isKongcheng() and not used[q:objectName()] end,true)
+    for i=1,n do local q=choose(r,o,sp.id,function(q)return q~=o and o:canGet(q,"h") and not used[q:objectName()] end,true)
         if not q then break end;used[q:objectName()]=true;take(r,o,q,1,"h",sp.id);count=count+1
     end
     set_draw_count(d,n-count)
@@ -530,13 +536,13 @@ handler("jiangchi",{sgs.DrawNCards},own,function(sp,e,r,p,o,d)
     else r:addPlayerMark(o,"nuyan_slash-Clear",2);r:setPlayerMark(o,"nuyan_distance-Clear",1) end
 end)
 handler("miji",{sgs.TargetConfirmed},target,function(sp,e,r,p,o,d)
-    if invoke(r,o,sp.id,d) then local from=d:toCardUse().from;r:loseHp(o,1);nullify(d,o);if o:isAlive() and from:isAlive() then take(r,o,from,2,"he",sp.id,true) end end
+    if invoke(r,o,sp.id,d) then local from=d:toCardUse().from;r:loseHp(o,1,true,o,sp.id);nullify(d,o);if o:isAlive() and from:isAlive() then take(r,o,from,2,"he",sp.id,true) end end
 end)
 handler("duanliang",{sgs.EventPhaseSkipping},function(e,r,p,o,d)return phase(p,sgs.Player_Draw) end,function(sp,e,r,p,o,d)draw(o,1,sp.id) end)
 handler("kangkai",{sgs.TargetConfirmed},function(e,r,p,o,d)local u=d:toCardUse();return u.card:isKindOf("Slash") and u.to:contains(p) and o:distanceTo(p)<=1 end,function(sp,e,r,p,o,d)
     if invoke(r,o,sp.id,d) then
         draw(o,1,sp.id);local c=r:askForExchange(o,sp.id,1,1,true,"nuyan_give",false)
-        if c then local cid=c:getSubcards():first();r:obtainCard(p,c,false);c:deleteLater();r:showCard(p,cid)
+        if c then local cid=c:getSubcards():first();r:obtainCard(p,c,sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE,o:objectName(),p:objectName(),sp.id,""),false);c:deleteLater();r:showCard(p,cid,sgs.SPlayerList(),sp.id)
             local eq=sgs.Sanguosha:getCard(cid);if eq:isKindOf("EquipCard") and eq:isAvailable(p) and invoke(r,p,sp.id) then local u=sgs.CardUseStruct();u.from=p;u.card=eq;r:useCard(u) end
         end
     end
@@ -584,7 +590,7 @@ handler("fenji",{sgs.CardsMoveOneTime},function(e,r,p,o,d)
     local m=d:toMoveOneTime();return m.from and m.from:getPhase()==sgs.Player_NotActive and m.from_places:contains(sgs.Player_PlaceHand)
 end,function(sp,e,r,p,o,d)
     local q=r:findPlayerByObjectName(d:toMoveOneTime().from:objectName());if not q or not q:isAlive() or not invoke(r,o,sp.id,d) then return end
-    r:loseHp(o,1);if not o:isAlive() then return end
+    r:loseHp(o,1,true,o,sp.id);if not o:isAlive() then return end
     local c=judge(r,o,sp.id);draw(q,c:isRed() and 2 or 1,sp.id);if o:getHp()<q:getHp() then draw(o,1,sp.id) end
 end)
 handler("haoshi",{sgs.DrawNCards,sgs.EventPhaseEnd},function(e,r,p,o,d)return p==o and (e==sgs.DrawNCards or phase(o,sgs.Player_Draw)) end,function(sp,e,r,p,o,d)
@@ -634,7 +640,7 @@ end)
 handler("yongsi",{sgs.DrawNCards,sgs.EventPhaseStart},function(e,r,p,o,d)return p==o and (e==sgs.DrawNCards or phase(o,sgs.Player_Discard)) end,function(sp,e,r,p,o,d)
     if e==sgs.DrawNCards then local kingdoms={};for _,q in sgs.qlist(r:getAlivePlayers()) do kingdoms[q:getKingdom()]=true end;local n=1;for _ in pairs(kingdoms) do n=n+1 end;set_draw_count(d,draw_count(d)+n)
     else local options=o:canDiscard(o,"he") and "nuyan_discard+nuyan_losehp" or "nuyan_losehp"
-        if r:askForChoice(o,sp.id,options)=="nuyan_discard" then r:askForDiscard(o,sp.id,1,1,false,true) else r:loseHp(o,1) end
+        if r:askForChoice(o,sp.id,options)=="nuyan_discard" then r:askForDiscard(o,sp.id,1,1,false,true) else r:loseHp(o,1,true,o,sp.id) end
     end
 end)
 handler("xiahui",{sgs.CardsMoveOneTime},function(e,r,p,o,d)local m=d:toMoveOneTime();return m.from and m.from:objectName()==o:objectName() and m.to and m.to:objectName()~=o:objectName() and m.to_place==sgs.Player_PlaceHand end,function(sp,e,r,p,o,d)
@@ -651,7 +657,7 @@ handler("jianying",{sgs.CardUsed},function(e,r,p,o,d)return p==o and phase(o,sgs
     if same then draw(o,1,sp.id) end
 end)
 handler("luoshen",{sgs.EventPhaseStart},function(e,r,p,o,d)return p==o and phase(p,sgs.Player_RoundStart) end,function(sp,e,r,p,o,d)
-    repeat local c=judge(r,o,sp.id);if r:getCardPlace(c:getEffectiveId())==sgs.Player_DiscardPile or r:getCardPlace(c:getEffectiveId())==sgs.Player_PlaceJudge then r:obtainCard(o,c) end
+    repeat local c=judge(r,o,sp.id);if r:getCardPlace(c:getEffectiveId())==sgs.Player_DiscardPile or r:getCardPlace(c:getEffectiveId())==sgs.Player_PlaceJudge then r:obtainCard(o,c,sp.id) end
         if not c:isBlack() or not o:isAlive() then break end
     until false
 end)
@@ -781,7 +787,7 @@ handler("zenhui",{sgs.TargetSpecifying},function(e,r,p,o,d)local u=d:toCardUse()
     end
     r:addPlayerMark(o,sp.id .. "_used-PlayClear")
     local opt=q:isKongcheng() and "target" or "give+target"
-    if r:askForChoice(q,sp.id,opt)=="give" then obtain(r,o,random_ids(q:handCards(),1),sp.id);u.from=q else u.to:append(q);r:sortByActionOrder(u.to) end
+    if r:askForChoice(q,sp.id,opt)=="give" then local gid=random_ids(q:handCards(),1);if #gid>0 then local gc=dummy(gid);r:obtainCard(o,gc,sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE,q:objectName(),o:objectName(),sp.id,""),false);gc:deleteLater() end;u.from=q else u.to:append(q);r:sortByActionOrder(u.to) end
     d:setValue(u)
 end)
 handler("meibu",{sgs.EventPhaseStart},function(e,r,p,o,d)return p~=o and phase(p,sgs.Player_Play) end,function(sp,e,r,p,o,d)
@@ -820,12 +826,12 @@ handler("kongsheng",{sgs.EventPhaseStart,sgs.EventPhaseChanging},function(e,r,p,
         if o:isNude() then return end
         local c=r:askForExchange(o,sp.id,o:getCardCount(true),1,true,"nuyan_give",true)
         if not c then return end;local n=c:subcardsLength();o:addToPile("nuyan_kong",c,false);c:deleteLater()
-        local q=choose(r,o,sp.id,function(q)return q~=o and not q:isNude() end,true)
-        if q then local ids={};for _,t in sgs.qlist(q:getCards("he")) do ids[#ids+1]=t:getEffectiveId() end
+        local q=choose(r,o,sp.id,function(q)return q~=o and o:canMove(q,"he") end,true)
+        if q then local ids={};for _,t in sgs.qlist(q:getCards("he")) do if o:canMove(q,t:getEffectiveId()) then ids[#ids+1]=t:getEffectiveId() end end
             local taken=random_ids(ints(ids),n);o:addToPile("nuyan_kong",ints(taken),false);o:setTag(sp.id .. "_target",sgs.QVariant(q:objectName()));r:setPlayerMark(o,sp.id .. "_return",#taken)
         end
     else local q=r:findPlayerByObjectName(o:getTag(sp.id .. "_target"):toString());local n=o:getMark(sp.id .. "_return");local pool=o:getPile("nuyan_kong");local out={}
-        if q and q:isAlive() then for i=1,math.min(n,pool:length()) do r:fillAG(pool,o);local cid=r:askForAG(o,pool,false,sp.id);r:clearAG(o);pool:removeOne(cid);out[#out+1]=cid end;obtain(r,q,out,sp.id) end
+        if q and q:isAlive() then for i=1,math.min(n,pool:length()) do r:fillAG(pool,o);local cid=r:askForAG(o,pool,false,sp.id);r:clearAG(o);pool:removeOne(cid);out[#out+1]=cid end;if #out>0 then local gc=dummy(out);r:obtainCard(q,gc,sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE,o:objectName(),q:objectName(),sp.id,""),false);gc:deleteLater() end end
         r:setPlayerMark(o,sp.id .. "_return",0);o:removeTag(sp.id .. "_target")
     end
 end)
@@ -892,7 +898,7 @@ local function draw_until_slash(room,p,id)
 end
 handler("dangxian",{sgs.EventPhaseStart},function(e,r,p,o,d)return p==o and phase(p,sgs.Player_RoundStart) end,function(sp,e,r,p,o,d)
     draw(o,1,sp.id);local phases=sgs.PhaseList();phases:append(sgs.Player_Play);o:play(phases)
-    if sp.extreme and invoke(r,o,sp.id,d) then r:loseHp(o,1);draw_until_slash(r,o,sp.id) end
+    if sp.extreme and invoke(r,o,sp.id,d) then r:loseHp(o,1,true,o,sp.id);draw_until_slash(r,o,sp.id) end
 end)
 handler("jizhen",{sgs.EventPhaseStart},function(e,r,p,o,d)return p==o and phase(p,sgs.Player_RoundStart)  end,function(sp,e,r,p,o,d)
     if o:getMark(sp.id .. "_jizhen-Clear")>0 then return end
@@ -943,10 +949,10 @@ handler("ts_guizhou",{sgs.CardsMoveOneTime},function(e,r,p,o,d)local m=d:toMoveO
     r:setPlayerMark(o,sp.id .. "_count",n%step);r:setPlayerMark(o,sp.id .. "_busy",1);random_discard(r,o,math.floor(n/step),"he",sp.id);r:setPlayerMark(o,sp.id .. "_busy",0)
 end)
 handler("ts_leifa_book",{sgs.CardUsed,sgs.CardResponded},function(e,r,p,o,d)local c=e==sgs.CardUsed and d:toCardUse().card or d:toCardResponse().m_card;return p==o and c and c:getSuit()==sgs.Card_Diamond end,function(sp,e,r,p,o,d)
-    local q=choose(r,o,sp.id,function(q)return q~=o end);if q then if o:getMark(sp.id .. "_level")>=2 then r:loseHp(q,1) else damage(r,o,q,1,sp.id,sgs.DamageStruct_Thunder) end end
+    local q=choose(r,o,sp.id,function(q)return q~=o end);if q then if o:getMark(sp.id .. "_level")>=2 then r:loseHp(q,1,true,o,sp.id) else damage(r,o,q,1,sp.id,sgs.DamageStruct_Thunder) end end
 end)
 handler("ts_shouyi",{sgs.EventPhaseStart,sgs.EventPhaseEnd},function(e,r,p,o,d)return p==o and phase(o,sgs.Player_Play) end,function(sp,e,r,p,o,d)
-    if o:getMark(sp.id .. "_level")>=2 then r:loseHp(o,1) else damage(r,nil,o,1,sp.id,sgs.DamageStruct_Thunder) end
+    if o:getMark(sp.id .. "_level")>=2 then r:loseHp(o,1,true,o,sp.id) else damage(r,nil,o,1,sp.id,sgs.DamageStruct_Thunder) end
 end)
 handler("ts_fue",{sgs.DamageInflicted,sgs.PreHpLost},own,function(sp,e,r,p,o,d)
     if e==sgs.PreHpLost then if o:getMark(sp.id .. "_level")>=2 then local x=d:toHpLost();x.lose=x.lose+1;d:setValue(x) end
@@ -966,7 +972,7 @@ handler("bond_hand",{sgs.GameStart},function()return false end,function()end)
 handler("bond_initial_rage",{sgs.GameStart},own,function(sp,e,r,p,o,d)add_rage(r,o,1,o) end)
 handler("bond_initial_hp",{sgs.GameStart},own,function(sp,e,r,p,o,d)r:setPlayerProperty(o,"maxhp",sgs.QVariant(o:getMaxHp()+1));r:setPlayerProperty(o,"hp",sgs.QVariant(o:getHp()+1)) end)
 handler("bond_judge",{sgs.FinishJudge},function(e,r,p,o,d)return d:toJudge().who==o end,function(sp,e,r,p,o,d)
-    local c=d:toJudge().card;if c and (r:getCardPlace(c:getEffectiveId())==sgs.Player_PlaceJudge or r:getCardPlace(c:getEffectiveId())==sgs.Player_DiscardPile) then r:obtainCard(o,c) end
+    local c=d:toJudge().card;if c and (r:getCardPlace(c:getEffectiveId())==sgs.Player_PlaceJudge or r:getCardPlace(c:getEffectiveId())==sgs.Player_DiscardPile) then r:obtainCard(o,c,sp.id) end
     if sp.extra_rage then add_rage(r,o,1,o) end
 end)
 handler("bond_hplost_draw",{sgs.HpLost},own,function(sp,e,r,p,o,d)draw(o,1,sp.id) end)
@@ -976,7 +982,7 @@ handler("bond_immune",{sgs.DamageInflicted},function(e,r,p,o,d,sp)return p==o an
 end)
 handler("bond_end_attack",{sgs.EventPhaseStart},finish,function(sp,e,r,p,o,d)
     local q=choose(r,o,sp.id,function(q)return q~=o and (sp.jie and q:getHandcardNum()<=o:getHandcardNum() or not sp.jie and q:getHandcardNum()<o:getHandcardNum()) end,true)
-    if q then if sp.jie then r:loseHp(q,1) else damage(r,o,q,1,sp.id) end end
+    if q then if sp.jie then r:loseHp(q,1,true,o,sp.id) else damage(r,o,q,1,sp.id) end end
 end)
 handler("bond_draw_slash",{sgs.DrawNCards},own,function(sp,e,r,p,o,d)deck_card(r,o,sp.id,function(c)return c:isKindOf("Slash") end,1,false) end)
 handler("bond_death_heal",{sgs.Death},function(e,r,p,o,d)return d:toDeath().who~=o and o:isWounded() end,function(sp,e,r,p,o,d)recover(r,o,1,o,sp.id) end)
@@ -1044,7 +1050,7 @@ end,function(sp,e,r,p,o,d)
     end
 end)
 handler("zhuhai",{sgs.MarkChanged},function(e,r,p,o,d)local m=d:toMark();return p~=o and p and p:getPhase()~=sgs.Player_NotActive and m.name=="@nuyan_nuqi" and m.gain>0 end,function(sp,e,r,p,o,d)
-    if r:askForCard(o,"..","nuyan_discard",d,sgs.Card_MethodDiscard) then r:loseHp(p,1) end
+    if r:askForCard(o,"..","nuyan_discard",d,sgs.Card_MethodDiscard) then r:loseHp(p,1,true,o,sp.id) end
 end)
 handler("bond_dying_maxhp",{sgs.AskForPeaches},function(e,r,p,o,d)return d:toDying().who==o end,function(sp,e,r,p,o,d)
     if o:getMark(sp.id .. "_spent")>0 then return end;r:setPlayerMark(o,sp.id .. "_spent",1)
@@ -1083,10 +1089,10 @@ handler("bond_heart_give",{sgs.Damaged},damaged_source,function(sp,e,r,p,o,d)
     if sp.limited and o:getMark(sp.id .. "_spent")>0 then return end
     if sp.limited then r:setPlayerMark(o,sp.id .. "_spent",1) end
     local q=d:toDamage().from;local c=r:askForCard(q,".|diamond|.|hand","nuyan_give",d,sgs.Card_MethodNone)
-    if c then r:obtainCard(o,c,false) else r:loseHp(q,1,true,o,sp.id) end
+    if c then r:obtainCard(o,c,sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE,q:objectName(),o:objectName(),sp.id,""),false) else r:loseHp(q,1,true,o,sp.id) end
 end)
 handler("bond_red_judge",{sgs.CardsMoveOneTime},function(e,r,p,o,d)local m=d:toMoveOneTime();return phase(o,sgs.Player_NotActive) and m.from and m.from:objectName()==o:objectName() end,function(sp,e,r,p,o,d)
-    if invoke(r,o,sp.id,d) then local c=judge(r,o,sp.id);if c:getSuit()==sgs.Card_Heart then r:obtainCard(o,c) end end
+    if invoke(r,o,sp.id,d) then local c=judge(r,o,sp.id);if c:getSuit()==sgs.Card_Heart then r:obtainCard(o,c,sp.id) end end
 end)
 handler("bond_recover_draw",{sgs.HpRecover},function(e,r,p,o,d)return p and phase(p,sgs.Player_Play) end,function(sp,e,r,p,o,d)
     if invoke(r,o,sp.id,d) then if r:askForChoice(o,sp.id,"other+self")=="other" then draw(p,2,sp.id) else draw(o,1,sp.id) end end
@@ -1142,8 +1148,8 @@ handler("bond_end_thunder",{sgs.EventPhaseEnd},function(e,r,p,o,d)return p==o an
 end)
 handler("bond_damage_colours",{sgs.EventPhaseChanging},function(e,r,p,o,d)return p==o and d:toPhaseChange().to==sgs.Player_NotActive end,function(sp,e,r,p,o,d)
     local colors={};for _,c in sgs.qlist(o:getHandcards()) do if c:isRed() then colors.red=true elseif c:isBlack() then colors.black=true end end
-    local n=0;for _ in pairs(colors) do n=n+1 end;local q=choose(r,o,sp.id,function(q)return q~=o and not q:isKongcheng() end,true)
-    if q then obtain(r,o,random_ids(q:handCards(),n),sp.id) end
+    local n=0;for _ in pairs(colors) do n=n+1 end;local q=choose(r,o,sp.id,function(q)return q~=o and o:canGet(q,"h") end,true)
+    if q then local gettable={};for _,cid in sgs.qlist(q:handCards()) do if o:canGet(q,cid) then gettable[#gettable+1]=cid end end;obtain(r,o,random_ids(ints(gettable),n),sp.id) end
 end)
 handler("bond_nuqi_guowu",{sgs.DamageCaused},function(e,r,p,o,d)local x=d:toDamage();return x.from==o and x.card and x.card:isKindOf("Slash") end,function(sp,e,r,p,o,d)
     local x=d:toDamage();x.damage=x.damage+math.max(0,o:getMark("nuyan_play_slashes-PlayClear"));d:setValue(x)

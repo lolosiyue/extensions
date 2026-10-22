@@ -99,7 +99,7 @@ RLiwa = sgs.CreateTriggerSkillV2 {
 				end
 			end
 			pile_owner:setTag("RLiwa", sgs.QVariant(table.concat(RLiwa_types, ",")))
-			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, pile_owner:objectName())
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, pile_owner:objectName(), skill:objectName(), "")
 			local move = sgs.CardsMoveStruct(pile_owner:getPile("liwas"), pile_owner, sgs.Player_PlaceHand, reason)
 			room:moveCardsAtomic(move, true)
 		elseif event == sgs.CardFinished then

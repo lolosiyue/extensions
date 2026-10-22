@@ -313,12 +313,12 @@ luaRcaiyi = sgs.CreateTriggerSkillV2 {
 	on_effect_target = function(skill, event, room, player, ctx, target)
 		room:broadcastSkillInvoke(skill:objectName())
 		room:obtainCard(target, player:wholeHandCards(), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), target:objectName(), skill:objectName(), ""), false)
-		if not target:isNude() then
+		if player:canGet(target, "h") then
 			--local cards = room:askForExchange(target, skill:objectName(), target:getHandcardNum(), 1, false, "@luaRcaiyi")
 			local cards = room:askForExchange(target, skill:objectName(), target:getHandcardNum(), 1, false, "@luaRcaiyi-invoke")
 			local list = target:getCards("h")
 			for _, id in sgs.qlist(cards:getSubcards()) do
-				room:showCard(target, id)
+				room:showCard(target, id, sgs.SPlayerList(), skill:objectName())
 				list:removeOne(sgs.Sanguosha:getCard(id))
 			end
 			local choices = { "luaRcaiyi1" }
@@ -330,9 +330,9 @@ luaRcaiyi = sgs.CreateTriggerSkillV2 {
 			local choice = room:askForChoice(player, skill:objectName(), table.concat(choices, "+"))
 			ChoiceLog(player, choice)
 			if choice == "luaRcaiyi1" then
-				room:obtainCard(player, cards, true)
+				room:obtainCard(player, cards, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), target:objectName(), skill:objectName(), ""), true)
 			else
-				room:obtainCard(player, dummy, false)
+				room:obtainCard(player, dummy, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), target:objectName(), skill:objectName(), ""), false)
 			end
 			dummy:deleteLater()
 		end
@@ -401,14 +401,14 @@ luaRsihuCard = sgs.CreateSkillCard {
 		if (not targets:isEmpty()) and effect.from:isAlive() then
 			target = room:askForPlayerChosen(effect.from, targets, "luaRsihu", "@dummy-slash2:" .. effect.to:objectName())
 		end
-		effect.to:obtainCard(self)
+		room:obtainCard(effect.to, self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, effect.from:objectName(), effect.to:objectName(), "luaRsihu", ""), true)
 		local temp = target
 		local dest = sgs.QVariant()
 		dest:setValue(effect.to)
 		while true do
 			local card = room:askForCard(temp, "EquipCard,Slash|.|.|.|", "@luaRsihu", dest, sgs.Card_MethodNone)
 			if card then
-				effect.to:obtainCard(card)
+				room:obtainCard(effect.to, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, temp:objectName(), effect.to:objectName(), "luaRsihu", ""), true)
 				if temp:objectName() == target:objectName() then
 					temp = effect.from
 				else
@@ -949,7 +949,7 @@ luaRzhangshicard = sgs.CreateSkillCard {
 	on_use = function(self, room, source, targets)
 		local target = targets[1]
 		local choicelist = "slash"
-		if not target:isNude() then
+		if source:canGet(target, "he") then
 			choicelist = string.format("%s+%s", choicelist, "obtain")
 		end
 		local choice = room:askForChoice(target, "luaRzhangshi", choicelist)
@@ -959,9 +959,11 @@ luaRzhangshicard = sgs.CreateSkillCard {
 				room:askForUseSlashTo(p, target, prompt, false)
 			end
 		else
-			if not target:isNude() then
-				local card_id = room:askForCardChosen(source, target, "he", "luaRzhangshi")
-				room:obtainCard(source, card_id, true)
+			if source:canGet(target, "he") then
+				local card_id = room:askForCardChosen(source, target, "he", "luaRzhangshi", false, sgs.Card_MethodGet)
+				if source:canGet(target, card_id) then
+					room:obtainCard(source, card_id, "luaRzhangshi", true)
+				end
 			end
 		end
 	end,

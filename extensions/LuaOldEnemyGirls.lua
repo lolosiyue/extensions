@@ -187,7 +187,7 @@ LuaLinluCard = sgs.CreateSkillCard {
 
 	on_use = function(self, room, source, targets)
 		source:loseMark("@LuaLinlu")
-		room:damage(sgs.DamageStruct("LuaLinLu", source, targets[1]))
+		room:damage(sgs.DamageStruct("LuaLinlu", source, targets[1]))
 	end,
 }
 

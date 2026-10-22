@@ -40,6 +40,7 @@ kelqxfslashmore = sgs.CreateTargetModSkillV2 {
 	name = "kelqxfslashmore",
 	pattern = ".",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "card_skill:kelqjuesui", "skill:tyzhuiling", "skill:tyxiongren", "skill:kelqjunshen", "skill:tylengjian", "card_skill:tyxingsha", "secondary.mark:&ty2chengshi+#{primary}_lun" },
 	correct_func = function(skill, ctx)
 		local from = ctx:getPrimary()
 		local card = ctx:getCard()
@@ -147,7 +148,7 @@ kelqchaojue = sgs.CreateTriggerSkillV2 {
 			local todis =
 				room:askForExchange(p, "kelqchaojue_show", 1, 1, false, "kelqchaojue_show:" .. player:objectName() .. "::" .. suit, true, ".|" .. suit)
 			if todis then
-				room:showCard(p, todis:getEffectiveId())
+				room:showCard(p, todis:getEffectiveId(), sgs.SPlayerList(), skill:objectName())
 				room:giveCard(p, player, todis, skill:objectName(), true)
 			else
 				room:addPlayerMark(p, player:objectName() .. "kelqchaojue-Clear")
@@ -1045,7 +1046,7 @@ tychendeCard = sgs.CreateSkillCard {
 		return to_selec ~= source and #targets < 1
 	end,
 	on_use = function(self, room, source, targets)
-		room:showCard(source, self:getSubcards())
+		room:showCard(source, self:getSubcards(), sgs.SPlayerList(), self:getSkillName())
 		for i, to in sgs.list(targets) do
 			room:giveCard(source, to, self, self:getSkillName(), true)
 		end
@@ -1695,7 +1696,7 @@ tyfenwu = sgs.CreateTriggerSkillV2 {
 	end,
 	on_effect = function(skill, event, room, player, ctx)
 		local ids = player:drawCardsList(1, skill:objectName())
-		room:showCard(player, ids)
+		room:showCard(player, ids, sgs.SPlayerList(), skill:objectName())
 		local c = sgs.Sanguosha:getCard(ids:at(0))
 		local choices = {}
 		for _, pn in sgs.list(patterns()) do
@@ -1760,7 +1761,7 @@ tyqingkou = sgs.CreateTriggerSkillV2 {
 	end,
 	on_effect = function(skill, event, room, player, ctx)
 		local ids = player:drawCardsList(1, skill:objectName(), false)
-		room:showCard(player, ids)
+		room:showCard(player, ids, sgs.SPlayerList(), skill:objectName())
 		local c = sgs.Sanguosha:getCard(ids:at(0))
 		local choices = {}
 		for _, pn in sgs.list(patterns()) do
@@ -2020,7 +2021,7 @@ tyqianshou = sgs.CreateTriggerSkillV2 {
 						if c then
 							p:skillInvoked(skill)
 							room:setChangeSkillState(p, skill:objectName(), 2)
-							room:showCard(p, c:getEffectiveId())
+							room:showCard(p, c:getEffectiveId(), sgs.SPlayerList(), skill:objectName())
 							room:giveCard(p, turner, c, skill:objectName(), true)
 							room:setPlayerCardLimitation(p, "use", ".|.|.|hand", false, "tyqianshou")
 							room:setPlayerMark(turner, "&tyqianshou-Clear", 1)
@@ -2033,7 +2034,7 @@ tyqianshou = sgs.CreateTriggerSkillV2 {
 							if not c then
 								c = turner:getCards("he"):first()
 							end
-							room:showCard(turner, c:getEffectiveId())
+							room:showCard(turner, c:getEffectiveId(), sgs.SPlayerList(), skill:objectName())
 							room:giveCard(turner, p, c, skill:objectName(), true)
 							if not c:isBlack() then
 								room:loseHp(p, 1, true, turner, skill:objectName())
@@ -2073,7 +2074,7 @@ tytanlongCard = sgs.CreateSkillCard {
 				local pd = source:PinDian(to, self:getSkillName())
 				if pd.success then
 					if source:isAlive() and room:getCardOwner(pd.to_card:getEffectiveId()) == nil and source:askForSkillInvoke(self:getSkillName(), ToData(pd.to_card), false) then
-						source:obtainCard(pd.to_card)
+						room:obtainCard(source, pd.to_card, self:getSkillName())
 						local dc = dummyCard("iron_chain")
 						dc:setSkillName("_tytanlong")
 						if source:isAlive() and source:canUse(dc, source) then
@@ -2082,7 +2083,7 @@ tytanlongCard = sgs.CreateSkillCard {
 					end
 				else
 					if to:isAlive() and room:getCardOwner(pd.from_card:getEffectiveId()) == nil and to:askForSkillInvoke(self:getSkillName(), ToData(pd.from_card), false) then
-						to:obtainCard(pd.from_card)
+						room:obtainCard(to, pd.from_card, self:getSkillName())
 						local dc = dummyCard("iron_chain")
 						dc:setSkillName("_tytanlong")
 						if to:isAlive() and to:canUse(dc, to) then
@@ -2152,7 +2153,7 @@ tyxibei = sgs.CreateTriggerSkillV2 {
 			if player:getPhase() == sgs.Player_Play then
 				local c = room:askForCard(player, "TrickCard", "tyxibei0", ctx.original_data, sgs.Card_MethodNone)
 				if c then
-					room:showCard(player, c:getEffectiveId())
+					room:showCard(player, c:getEffectiveId(), sgs.SPlayerList(), skill:objectName())
 					if player:handCards():contains(c:getEffectiveId()) then
 						local dc = sgs.Sanguosha:cloneCard("_tyhuoshaolianying", c:getSuit(), c:getNumber())
 						if dc then
@@ -2447,7 +2448,7 @@ tychengming = sgs.CreateTriggerSkillV2 {
 		for _, c in sgs.list(player:getCards("hej")) do
 			dc:addSubcard(c)
 		end
-		to:obtainCard(dc, false)
+		room:obtainCard(to, dc, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), to:objectName(), skill:objectName(), ""), false)
 		room:recover(player, sgs.RecoverStruct(skill:objectName(), player, 1 - player:getHp()))
 		for _, s in sgs.list(to:getVisibleSkillList()) do
 			if s:isAttachedLordSkill() then

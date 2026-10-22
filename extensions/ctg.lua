@@ -112,7 +112,7 @@ local ctg_faqi=sgs.CreateTriggerSkillV2 {
     end,
     on_effect=function(skill,event,room,player,ctx)
         local id=player:getDerivativeCard(ctx.extra_data:toString(),sgs.Player_PlaceTable)
-        if id>0 then room:obtainCard(player,id); room:useCard(sgs.CardUseStruct(sgs.Sanguosha:getCard(id),player,player)) end
+        if id>0 then room:obtainCard(player,id,skill:objectName(),true); room:useCard(sgs.CardUseStruct(sgs.Sanguosha:getCard(id),player,player)) end
         return false
     end,
 }
@@ -202,8 +202,8 @@ local ctg_kuijue=sgs.CreateTriggerSkillV2 {
         room:sendCompulsoryTriggerLog(player,skill:objectName())
         -- 保留 donor 死亡座次算法及主公重复受到失去体力的语义。
         local nextPlayer=player:getNextAlive(); local previous=player:getPreviousAlive():getNextAlive()
-        for _,p in ipairs({nextPlayer,previous}) do if p and p~=player then room:loseHp(p,1); log(room,"#ctg_kuijue_adjacent",player,p) end end
-        local lord=room:getLord(); if lord and lord~=player then room:loseHp(lord,1); log(room,"#ctg_kuijue_lord",player,lord) end
+        for _,p in ipairs({nextPlayer,previous}) do if p and p~=player then room:loseHp(p,1,true,player,skill:objectName()); log(room,"#ctg_kuijue_adjacent",player,p) end end
+        local lord=room:getLord(); if lord and lord~=player then room:loseHp(lord,1,true,player,skill:objectName()); log(room,"#ctg_kuijue_lord",player,lord) end
         return false
     end,
 }
@@ -361,15 +361,15 @@ local function elemental_action(name,general,nature)
     general:addSkill(once_action {
         name=name,target_mode=sgs.ViewAsSkillV2_SelectTargets,can_select_target=single_other,targets_feasible=one_target,
         on_effect_target=function(skill,ctx,target)
-            ctx.invoker:getRoom():damage(sgs.DamageStruct("",ctx.invoker,target,1,nature))
+            ctx.invoker:getRoom():damage(sgs.DamageStruct(name,ctx.invoker,target,1,nature))
         end,
     })
 end
 elemental_action("ctg_huozhuo",ctg_nanlong,sgs.DamageStruct_Fire)
 elemental_action("ctg_leiyao",ctg_donglong,sgs.DamageStruct_Thunder)
-local function random_cards(target)
-    local available={}; for _,id in sgs.qlist(target:handCards()) do table.insert(available,id) end
-    for _,card in sgs.qlist(target:getEquips()) do table.insert(available,card:getEffectiveId()) end
+local function random_cards(target, getter)
+    local available={}; for _,id in sgs.qlist(target:handCards()) do if not getter or getter:canGet(target,id) then table.insert(available,id) end end
+    for _,card in sgs.qlist(target:getEquips()) do if not getter or getter:canGet(target,card:getEffectiveId()) then table.insert(available,card:getEffectiveId()) end end
     local selected={}
     for i=1,math.min(math.random(1,2),#available) do local index=math.random(#available); table.insert(selected,available[index]); table.remove(available,index) end
     return selected
@@ -387,7 +387,7 @@ local ctg_fengcheVS=sgs.CreateViewAsSkillV2 {
         setstate(p,skill:objectName(),ctx.instanceID,"used",used+1); return true
     end,
     on_effect_target=function(skill,ctx,target)
-        for _,id in ipairs(random_cards(target)) do ctx.invoker:getRoom():obtainCard(ctx.invoker,id) end
+        for _,id in ipairs(random_cards(target,ctx.invoker)) do ctx.invoker:getRoom():obtainCard(ctx.invoker,id,skill:objectName(),true) end
     end,
 }
 local ctg_fengche=sgs.CreateTriggerSkillV2 {

@@ -460,13 +460,13 @@ zhenzuZHCMT_yishi = sgs.CreateRuleSkillV2 {
 					local id, used = ids:at(index), false
 					local card = sgs.Sanguosha:getCard(id)
 					if initiator:isAlive() and p:isAlive() and room:getCardOwner(id) == p
-						and room:getCardPlace(id) == sgs.Player_PlaceHand then
-						room:obtainCard(initiator, card, true)
+						and room:getCardPlace(id) == sgs.Player_PlaceHand and initiator:canGet(p, id) then
+						room:obtainCard(initiator, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, initiator:objectName(), p:objectName(), "zhenzuZHCMT", ""), true)
 						used = room:askForUseCard(initiator, "#" .. id, "@zhenzuZHCMT-use")
 						if used then frame.used[p:objectName()] = true end
 						if not used and p:isAlive() and room:getCardOwner(id) == initiator
 							and room:getCardPlace(id) == sgs.Player_PlaceHand then
-							room:obtainCard(p, card, true)
+							room:obtainCard(p, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, initiator:objectName(), p:objectName(), "zhenzuZHCMT", ""), true)
 						end
 					end
 					if not used and p:isAlive() and room:getCardOwner(id) == p
@@ -682,10 +682,11 @@ XiansiZHCMTCard = sgs.CreateSkillCard {
 	on_effect = function(self, effect)
 		effect.from:getRoom():broadcastSkillInvoke("XiansiZHCMT")
 		effect.from:getRoom():sendCompulsoryTriggerLog(effect.from, "XiansiZHCMT")
-		if effect.to:isNude() then
+		if not effect.from:canMove(effect.to, "he") then
 			return
 		end
-		local id = effect.from:getRoom():askForCardChosen(effect.from, effect.to, "he", "XiansiZHCMT")
+		local id = effect.from:getRoom():askForCardChosen(effect.from, effect.to, "he", "XiansiZHCMT", false, sgs.Card_MethodMove)
+		if id < 0 or not effect.from:canMove(effect.to, id) then return end
 		effect.from:addToPile("counter", id)
 		effect.from:getRoom():acquireSkill(effect.to, "zhengsiZHCMT")
 	end,
@@ -911,16 +912,18 @@ dangzhengZHCMTCard = sgs.CreateSkillCard {
 				source:turnOver()
 				room:broadcastSkillInvoke("xiansi")
 				local t = room:askForPlayerChosen(sq, room:getOtherPlayers(sq), "xiansi")
-				if t:isNude() then
+				if not sq:canMove(t, "he") then
 					return
 				end
-				local id = room:askForCardChosen(sq, t, "he", "XiansiZHCMT")
+				local id = room:askForCardChosen(sq, t, "he", "XiansiZHCMT", false, sgs.Card_MethodMove)
+				if id < 0 or not sq:canMove(t, id) then return end
 				sq:addToPile("counter", id)
 				local t2 = room:askForPlayerChosen(sq, room:getOtherPlayers(sq, t), "xiansi")
-				if t2:isNude() then
+				if not sq:canMove(t2, "he") then
 					return
 				end
-				local id2 = room:askForCardChosen(sq, t2, "he", "XiansiZHCMT")
+				local id2 = room:askForCardChosen(sq, t2, "he", "XiansiZHCMT", false, sgs.Card_MethodMove)
+				if id2 < 0 or not sq:canMove(t2, id2) then return end
 				sq:addToPile("counter", id2)
 			elseif choice == "newyongdi" then
 				source:turnOver()
@@ -1091,7 +1094,7 @@ zhengsiZHCMTCard = sgs.CreateSkillCard {
 		local first = room:askForPlayerChosen(source, target_list, "@zhengsiZHCMT")
 		local card_id = room:askForCardChosen(first, first, "h", "zhengsiZHCMT")
 		local card = sgs.Sanguosha:getCard(card_id)
-		room:showCard(first, card_id)
+		room:showCard(first, card_id, sgs.SPlayerList(), "zhengsiZHCMT")
 		-- 记录点数
 		local point = card:getNumber()
 		local max_point = point
@@ -1102,7 +1105,7 @@ zhengsiZHCMTCard = sgs.CreateSkillCard {
 			if p:objectName() ~= first:objectName() and not p:hasFlag("second") then
 				local card_id2 = room:askForCardChosen(p, p, "h", "zhengsiZHCMT")
 				local card2 = sgs.Sanguosha:getCard(card_id2)
-				room:showCard(p, card_id2)
+				room:showCard(p, card_id2, sgs.SPlayerList(), "zhengsiZHCMT")
 				local point2 = card2:getNumber()
 				if point2 > max_point then
 					max_point = point2
@@ -1114,7 +1117,7 @@ zhengsiZHCMTCard = sgs.CreateSkillCard {
 			elseif p:objectName() ~= first:objectName() and not p:hasFlag("second") then
 				local card_id3 = room:askForCardChosen(p, p, "h", "zhengsiZHCMT")
 				local card3 = sgs.Sanguosha:getCard(card_id3)
-				room:showCard(p, card_id3)
+				room:showCard(p, card_id3, sgs.SPlayerList(), "zhengsiZHCMT")
 				local point3 = card3:getNumber()
 				if point3 > max_point then
 					max_point = point3
@@ -1497,7 +1500,7 @@ liancaiZHCMT = sgs.CreateTriggerSkillV2 {
 			for _, id in sgs.qlist(selected) do
 				dummy:addSubcard(id)
 			end
-			room:obtainCard(player, dummy, false)
+			room:obtainCard(player, dummy, "liancaiZHCMT", false)
 		end
 		dummy:clearSubcards()
 		room:clearAG()
@@ -1777,6 +1780,7 @@ zhaniZHCMT = sgs.CreateTriggerSkillV2 {
 					local damage = sgs.DamageStruct()
 					damage.from = player
 					damage.to = p
+					damage.reason = "zhaniZHCMT"
 					damage.damage = p:getMark("&zhaniZHCMT1")
 					room:damage(damage)
 					room:setPlayerMark(p, "&zhaniZHCMT1", 0)

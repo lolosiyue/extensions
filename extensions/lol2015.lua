@@ -128,12 +128,13 @@ lol_jwyh_qCard = sgs.CreateSkillCard{
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
-		room:showCard(effect.from, self:getEffectiveId())
-	    room:obtainCard(effect.to, self, true)
-		if effect.to:isKongcheng() then return false end
-		local card_id = room:askForCardChosen(effect.from, effect.to, "h", self:objectName())
-		room:obtainCard(effect.from, card_id)
-        room:showCard(effect.from, card_id)
+		room:showCard(effect.from, self:getEffectiveId(), sgs.SPlayerList(), "lol_jwyh_q")
+	    room:obtainCard(effect.to, self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, effect.from:objectName(), effect.to:objectName(), "lol_jwyh_q", ""), true)
+		if not effect.from:canGet(effect.to, "h") then return false end
+		local card_id = room:askForCardChosen(effect.from, effect.to, "h", self:objectName(), false, sgs.Card_MethodGet)
+		if not effect.from:canGet(effect.to, card_id) then return false end
+		room:obtainCard(effect.from, sgs.Sanguosha:getCard(card_id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, effect.from:objectName(), effect.to:objectName(), "lol_jwyh_q", ""))
+        room:showCard(effect.from, card_id, sgs.SPlayerList(), "lol_jwyh_q")
 		if self:getSuit() ~= sgs.Sanguosha:getCard(card_id):getSuit() then return false end
 		local dest = sgs.QVariant()
 		dest:setValue(effect.to)
@@ -804,7 +805,7 @@ lol_mzzw_wCard = sgs.CreateSkillCard{
 	    local room = effect.from:getRoom()
 		local id = room:askForCardChosen(effect.to, effect.to, "h", "lol_mzzw_w")
 		card = sgs.Sanguosha:getCard(id) 
-        room:showCard(effect.to, card:getEffectiveId())
+        room:showCard(effect.to, card:getEffectiveId(), sgs.SPlayerList(), "lol_mzzw_w")
         if card:isKindOf("Slash") then
 		    room:throwCard(card, reason, nil)
 		elseif card:isKindOf("Jink") then
@@ -1107,7 +1108,7 @@ lol_tqz_wCard = sgs.CreateSkillCard{
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
 		card_id = room:askForCardChosen(effect.from, effect.to, "h", self:objectName())
-		room:showCard(effect.to, card_id)
+		room:showCard(effect.to, card_id, sgs.SPlayerList(), "lol_tqz_w")
         if effect.from:hasFlag("lol_hbss_r") then lol_tqz_w_choice = {"lol_tqz_w_shufu", "lol_tqz_w_throw", "lol_tqz_w_hp"} 
 		else lol_tqz_w_choice = {"lol_tqz_w_shufu", "lol_tqz_w_throw"} 
 		end
@@ -1428,7 +1429,7 @@ lol_xlnw_wCard = sgs.CreateSkillCard{
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
-		room:obtainCard(effect.to, self, false)
+		room:obtainCard(effect.to, self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, effect.from:objectName(), effect.to:objectName(), "lol_xlnw_w", ""), false)
 		room:acquireSkill(effect.to, "#lol_turn")	
 		room:acquireSkill(effect.to, "lol_jiansu")		
 		if self:getSuit() == sgs.Card_Heart then
@@ -1611,7 +1612,7 @@ lol_xlnw_rCard = sgs.CreateSkillCard{
 		room:recover(effect.to, recover)
         for _,p in sgs.qlist(room:getAlivePlayers()) do
 		    if effect.to:distanceTo(p) == 1 then
-				for _,equip in sgs.qlist(p:getEquips()) do p:obtainCard(equip) end
+				for _,equip in sgs.qlist(p:getEquips()) do room:obtainCard(p, equip, "lol_xlnw_r") end
             end				
 		end	
 	end
@@ -1874,9 +1875,9 @@ lol_smss_rCard = sgs.CreateSkillCard{
 	    room:doLightbox("$lol_smss_image", 1500)
 		room:removePlayerMark(player, "@lol_smss_r")
 		for _,p in sgs.qlist(room:getOtherPlayers(player)) do
-			if player:distanceTo(p) <= 1 and not p:isKongcheng() then
-				local card_id = room:askForCardChosen(player, p, "h", self:objectName())
-				room:obtainCard(player, card_id, true)
+			if player:distanceTo(p) <= 1 and player:canGet(p, "h") then
+				local card_id = room:askForCardChosen(player, p, "h", self:objectName(), false, sgs.Card_MethodGet)
+				if player:canGet(p, card_id) then room:obtainCard(player, sgs.Sanguosha:getCard(card_id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), p:objectName(), "lol_smss_r", ""), true) end
 			end
 		end
 		local mhp = sgs.QVariant(player:getMaxHp() + 1)
@@ -2012,7 +2013,7 @@ lol_ayjm_q = sgs.CreateTriggerSkillV2{
 		room:loseHp(player, 1, true, player, skill:objectName())
 		room:setPlayerMark(player, "@lol_ayjm_t", player:getMark("@lol_ayjm_t") + 1)
 		for _,p in sgs.qlist(use.to) do
-			for _,equip in sgs.qlist(p:getEquips()) do p:obtainCard(equip) end
+			for _,equip in sgs.qlist(p:getEquips()) do room:obtainCard(p, equip, "lol_ayjm_q") end
 		end
 		return false
 	end
@@ -3256,15 +3257,15 @@ lol_kpds_wCard = sgs.CreateSkillCard{
 	    local room = player:getRoom()
 		if player:getPile("lol_kpds_w_blue"):length() == 1 then 
 		    card = sgs.Sanguosha:getCard(player:getPile("lol_kpds_w_blue"):first())
-            player:obtainCard(card)						
+            room:obtainCard(player, card, "lol_kpds_w")						
 			player:addToPile("lol_kpds_w_red", card:getEffectiveId())
 		elseif player:getPile("lol_kpds_w_red"):length() == 1 then
 		    card = sgs.Sanguosha:getCard(player:getPile("lol_kpds_w_red"):first())
-            player:obtainCard(card)						
+            room:obtainCard(player, card, "lol_kpds_w")						
 			player:addToPile("lol_kpds_w_gold", card:getEffectiveId())		
 		elseif player:getPile("lol_kpds_w_gold"):length() == 1 then
 			card = sgs.Sanguosha:getCard(player:getPile("lol_kpds_w_gold"):first())
-            player:obtainCard(card)						
+            room:obtainCard(player, card, "lol_kpds_w")						
 			player:addToPile("lol_kpds_w_blue", card:getEffectiveId())
 		elseif player:getPile("lol_kpds_w_blue"):length() + player:getPile("lol_kpds_w_red"):length() + player:getPile("lol_kpds_w_gold"):length() == 0 then
 			local card = room:askForCard(player, ".", "@lol_kpds_w_ask", sgs.QVariant(), sgs.NonTrigger)

@@ -194,7 +194,7 @@ keguixianjiCard = sgs.CreateSkillCard {
 		if caocao:hasLordSkill("keguixianji") then
 			room:setPlayerFlag(caocao, "keguixianjiInvoked")
 			room:notifySkillInvoked(caocao, "keguixianji")
-			caocao:obtainCard(self)
+			room:obtainCard(caocao, self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), caocao:objectName(), "keguixianji", ""))
 			room:setPlayerFlag(source, "Forbidkeguixianji")
 		end
 	end,
@@ -506,7 +506,7 @@ keguixiaoshou = sgs.CreateTriggerSkillV2 {
 		end
 		local damage = data:toDamage()
 		local target = damage.from
-		if target and target:hasEquip() then
+		if target and player:canGet(target, "e") then
 			return skill:objectName()
 		end
 		return false
@@ -517,13 +517,13 @@ keguixiaoshou = sgs.CreateTriggerSkillV2 {
 	on_effect = function(skill, event, room, player, ctx)
 		local damage = ctx.original_data:toDamage()
 		local target = damage.from
-		if target and target:hasEquip() then
+		if target and player:canGet(target, "e") then
 			local equiplist = {}
 			for i = 0, 3, 1 do
 				if not target:getEquip(i) then
 					continue
 				end
-				if player:canDiscard(target, target:getEquip(i):getEffectiveId()) or (player:getEquip(i) == nil) then
+				if player:canGet(target, target:getEquip(i):getEffectiveId()) then
 					table.insert(equiplist, tostring(i))
 				end
 			end
@@ -536,12 +536,12 @@ keguixiaoshou = sgs.CreateTriggerSkillV2 {
 			local card = target:getEquip(equip_index)
 			local card_id = card:getEffectiveId()
 			room:broadcastSkillInvoke(skill:objectName())
-			player:obtainCard(card)
+			room:obtainCard(player, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), target:objectName(), "keguixiaoshou", ""))
 			local choice = room:askForChoice(player, skill:objectName(), "give+move+cancel")
 			if choice == "give" then
 				local fri = room:askForPlayerChosen(player, room:getAllPlayers(), skill:objectName(), "xiaoshou-ask", true, true)
 				if fri then
-					fri:obtainCard(card)
+					room:obtainCard(fri, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), fri:objectName(), "keguixiaoshou", ""))
 				end
 			end
 			if choice == "move" then
@@ -550,7 +550,7 @@ keguixiaoshou = sgs.CreateTriggerSkillV2 {
 					if fri:getEquip(equip_index) == nil then
 						room:moveCardTo(card, fri, sgs.Player_PlaceEquip)
 					else
-						fri:obtainCard(card)
+						room:obtainCard(fri, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), fri:objectName(), "keguixiaoshou", ""))
 					end
 				end
 			end
@@ -1034,7 +1034,7 @@ kejieguixianjiCard = sgs.CreateSkillCard {
 		if caocao:hasLordSkill("kejieguixianji") then
 			room:setPlayerFlag(caocao, "kejieguixianjiInvoked")
 			room:notifySkillInvoked(caocao, "kejieguixianji")
-			caocao:obtainCard(self)
+			room:obtainCard(caocao, self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), caocao:objectName(), "kejieguixianji", ""))
 			local id = self:getSubcards():first()
 			if sgs.Sanguosha:getCard(id):isAvailable(caocao) then
 				--room:askForUseCard(caocao, ""..id, "jieguixianji-ask")
@@ -2168,7 +2168,7 @@ kejieguixiaoshou = sgs.CreateTriggerSkillV2 {
 		if target and target:isAlive() and target:hasEquip() then
 			for i = 0, 3, 1 do
 				if target:getEquip(i)
-					and (player:canDiscard(target, target:getEquip(i):getEffectiveId()) or (player:getEquip(i) == nil)) then
+					and player:canGet(target, target:getEquip(i):getEffectiveId()) then
 					return skill:objectName()
 				end
 			end
@@ -2192,7 +2192,7 @@ kejieguixiaoshou = sgs.CreateTriggerSkillV2 {
 				if not target:getEquip(i) then
 					continue
 				end
-				if player:canDiscard(target, target:getEquip(i):getEffectiveId()) or (player:getEquip(i) == nil) then
+				if player:canGet(target, target:getEquip(i):getEffectiveId()) then
 					table.insert(equiplist, tostring(i))
 				end
 			end
@@ -2205,13 +2205,13 @@ kejieguixiaoshou = sgs.CreateTriggerSkillV2 {
 			local card = target:getEquip(equip_index)
 			local card_id = card:getEffectiveId()
 			room:broadcastSkillInvoke(skill:objectName())
-			player:obtainCard(card)
+			room:obtainCard(player, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), target:objectName(), "kejieguixiaoshou", ""))
 			player:drawCards(1)
 			local choice = room:askForChoice(player, skill:objectName(), "give+move+cancel")
 			if choice == "give" then
 				local fri = room:askForPlayerChosen(player, room:getAllPlayers(), skill:objectName(), "xiaoshou-ask", true, true)
 				if fri then
-					fri:obtainCard(card)
+					room:obtainCard(fri, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), fri:objectName(), "kejieguixiaoshou", ""))
 				end
 			end
 			if choice == "move" then
@@ -2220,7 +2220,7 @@ kejieguixiaoshou = sgs.CreateTriggerSkillV2 {
 					if fri:getEquip(equip_index) == nil then
 						room:moveCardTo(card, fri, sgs.Player_PlaceEquip)
 					else
-						fri:obtainCard(card)
+						room:obtainCard(fri, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), fri:objectName(), "kejieguixiaoshou", ""))
 					end
 				end
 			end
@@ -2325,9 +2325,9 @@ kejieguilifengex = sgs.CreateTriggerSkillV2 {
 					end
 					if not slashs:isEmpty() then
 						local numone = math.random(0, slashs:length() - 1)
-						player:obtainCard(sgs.Sanguosha:getCard(slashs:at(numone)))
+						room:obtainCard(player, sgs.Sanguosha:getCard(slashs:at(numone)), "kejieguilifeng")
 						local numtwo = math.random(0, slashs:length() - 1)
-						player:obtainCard(sgs.Sanguosha:getCard(slashs:at(numtwo)))
+						room:obtainCard(player, sgs.Sanguosha:getCard(slashs:at(numtwo)), "kejieguilifeng")
 					end
 					local noslashs = sgs.IntList()
 					for _, id in sgs.qlist(room:getDrawPile()) do
@@ -2337,7 +2337,7 @@ kejieguilifengex = sgs.CreateTriggerSkillV2 {
 					end
 					if not noslashs:isEmpty() then
 						local numthree = math.random(0, noslashs:length() - 1)
-						player:obtainCard(sgs.Sanguosha:getCard(noslashs:at(numthree)))
+						room:obtainCard(player, sgs.Sanguosha:getCard(noslashs:at(numthree)), "kejieguilifeng")
 					end
 				end
 				if result == "mopai" then
@@ -2349,7 +2349,7 @@ kejieguilifengex = sgs.CreateTriggerSkillV2 {
 					end
 					if not slashs:isEmpty() then
 						local numone = math.random(0, slashs:length() - 1)
-						player:obtainCard(sgs.Sanguosha:getCard(slashs:at(numone)))
+						room:obtainCard(player, sgs.Sanguosha:getCard(slashs:at(numone)), "kejieguilifeng")
 					end
 					local noslashs = sgs.IntList()
 					for _, id in sgs.qlist(room:getDrawPile()) do
@@ -2359,9 +2359,9 @@ kejieguilifengex = sgs.CreateTriggerSkillV2 {
 					end
 					if not noslashs:isEmpty() then
 						local numtwo = math.random(0, noslashs:length() - 1)
-						player:obtainCard(sgs.Sanguosha:getCard(noslashs:at(numtwo)))
+						room:obtainCard(player, sgs.Sanguosha:getCard(noslashs:at(numtwo)), "kejieguilifeng")
 						local numthree = math.random(0, noslashs:length() - 1)
-						player:obtainCard(sgs.Sanguosha:getCard(noslashs:at(numthree)))
+						room:obtainCard(player, sgs.Sanguosha:getCard(noslashs:at(numthree)), "kejieguilifeng")
 					end
 				end
 				room:setPlayerMark(player, "&lfnotdamage", 0)
@@ -2423,7 +2423,7 @@ kejieguishiyong = sgs.CreateTriggerSkillV2 {
 			end
 			if not jius:isEmpty() then
 				local numone = math.random(0, jius:length() - 1)
-				damage.from:obtainCard(sgs.Sanguosha:getCard(jius:at(numone)))
+				room:obtainCard(damage.from, sgs.Sanguosha:getCard(jius:at(numone)), "kejieguishiyong")
 			end
 		end
 		return false

@@ -587,17 +587,14 @@ function MovePlayerCard(player, players, Pile, reason, prompt)
 	local room = player:getRoom()
 	local totos = sgs.SPlayerList()
 	for _, p in sgs.list(players) do
-		local can = false
-		for _, c in sgs.qlist(p:getCards(Pile)) do
-			can = true
-			break
-		end
+		local can = player:canMove(p, Pile)
 		if can then
 			totos:append(p)
 		end
 	end
 	totos = room:askForPlayerChosen(player, totos, reason, prompt)
-	local id = room:askForCardChosen(player, totos, Pile, reason)
+	local id = room:askForCardChosen(player, totos, Pile, reason, false, sgs.Card_MethodMove)
+	if id < 0 or not player:canMove(totos, id) then return end
 	local card = sgs.Sanguosha:getCard(id)
 	local place = room:getCardPlace(id)
 	local index = -1
@@ -937,7 +934,7 @@ function ExchangePileCard(self, player, name, n, can_equipped, will, compulsory)
 				c:addSubcard(id)
 			end
 			player:addToPile(name, ids)
-			room:obtainCard(player, c)
+			room:obtainCard(player, c, self)
 		end
 	end
 end
@@ -1489,7 +1486,7 @@ function MoveFieldCard(self, player, flags, froms, tos)
 	froms = froms or sgs.SPlayerList()
 	if froms:isEmpty() then
 		for i, p in sgs.qlist(room:getAlivePlayers()) do
-			if p:getCards(mfc.flags):length() > 0 then
+			if player:canMove(p, mfc.flags) then
 				froms:append(p)
 			end
 		end
@@ -1514,12 +1511,12 @@ function MoveFieldCard(self, player, flags, froms, tos)
 			end
 			has = false
 		end
-		if has then
+		if has or not player:canMove(mfc.from, c:getEffectiveId()) then
 			noids:append(c:getEffectiveId())
 		end
 	end
-	noids = room:askForCardChosen(player, mfc.from, mfc.flags, self, false, sgs.Card_MethodNone, noids)
-	if noids < 0 then
+	noids = room:askForCardChosen(player, mfc.from, mfc.flags, self, false, sgs.Card_MethodMove, noids)
+	if noids < 0 or not player:canMove(mfc.from, noids) then
 		return
 	end
 	mfc.to_place = room:getCardPlace(noids)
@@ -2237,6 +2234,7 @@ OnSkillTrigger = sgs.CreateTriggerSkillV2 {
 IsProhibited = sgs.CreateProhibitSkillV2 {
 	name = "IsProhibited",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "secondary.property:aiNoTo" },
 	is_prohibited = function(self, ctx)
 		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		return card:getTypeId() > 0 and to and to:property("aiNoTo"):toBool()

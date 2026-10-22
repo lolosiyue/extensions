@@ -36,9 +36,13 @@ kehuisuanCard = sgs.CreateSkillCard {
 				log.type = "$caochongcaidui"
 				log.from = player
 				room:sendLog(log)
-				local card_id = room:askForCardChosen(player, target, "he", self:objectName())
-				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName())
-				room:obtainCard(player, sgs.Sanguosha:getCard(card_id), reason, room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
+				if player:canGet(target, "he") then
+					local card_id = room:askForCardChosen(player, target, "he", self:objectName(), false, sgs.Card_MethodGet)
+					if player:canGet(target, card_id) then
+						local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), target:objectName(), "kehuisuan", "")
+						room:obtainCard(player, sgs.Sanguosha:getCard(card_id), reason, room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
+					end
+				end
 				--room:drawCards(player, 1, self:objectName())
 			end
 			if sum < 13 then
@@ -51,6 +55,7 @@ kehuisuanCard = sgs.CreateSkillCard {
 				damage.from = target
 				damage.to = player
 				damage.damage = 1
+				damage.reason = "kehuisuan"
 				room:damage(damage)
 			end
 		end
@@ -65,9 +70,13 @@ kehuisuanCard = sgs.CreateSkillCard {
 				log.type = "$caochongcaidui"
 				log.from = player
 				room:sendLog(log)
-				local card_id = room:askForCardChosen(player, target, "he", self:objectName())
-				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName())
-				room:obtainCard(player, sgs.Sanguosha:getCard(card_id), reason, room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
+				if player:canGet(target, "he") then
+					local card_id = room:askForCardChosen(player, target, "he", self:objectName(), false, sgs.Card_MethodGet)
+					if player:canGet(target, card_id) then
+						local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), target:objectName(), "kehuisuan", "")
+						room:obtainCard(player, sgs.Sanguosha:getCard(card_id), reason, room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
+					end
+				end
 				--room:drawCards(player, 1, self:objectName())
 			end
 			if sum >= 13 then
@@ -80,6 +89,7 @@ kehuisuanCard = sgs.CreateSkillCard {
 				damage.from = target
 				damage.to = player
 				damage.damage = 1
+				damage.reason = "kehuisuan"
 				room:damage(damage)
 			end
 		end
@@ -259,7 +269,7 @@ kemiji = sgs.CreateTriggerSkillV2 {
 			if depai then
 				local card = room:askForExchange(player, skill:objectName(), 100, 0, true, "#kemiji:" .. depai:getGeneralName())
 				if card then
-					room:obtainCard(depai, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), player:objectName(), skill:objectName(), ""), false)
+					room:obtainCard(depai, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), depai:objectName(), skill:objectName(), ""), false)
 				end
 			end
 		end
@@ -301,7 +311,7 @@ ketianduoo = sgs.CreateTriggerSkillV2 {
 	on_effect = function(skill, event, room, player, ctx)
 		if event == sgs.FinishJudge then
 			local judge = ctx.original_data:toJudge()
-			player:obtainCard(judge.card)
+			room:obtainCard(player, judge.card, skill:objectName(), true)
 			room:broadcastSkillInvoke(skill:objectName())
 		elseif event == sgs.EventPhaseStart then
 			local judge = sgs.JudgeStruct()
@@ -317,6 +327,7 @@ ketianduoo = sgs.CreateTriggerSkillV2 {
 				local damage = sgs.DamageStruct()
 				damage.to = player
 				damage.damage = 1
+				damage.reason = skill:objectName()
 				damage.nature = sgs.DamageStruct_Thunder
 				room:damage(damage)
 			end
@@ -354,7 +365,7 @@ keyijideath = sgs.CreateTriggerSkillV2 {
 	end,
 	on_effect_target = function(skill, event, room, player, ctx, target)
 		room:drawCards(target, 2, skill:objectName())
-		room:obtainCard(target, player:wholeHandCards(), false)
+		room:obtainCard(target, player:wholeHandCards(), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), target:objectName(), skill:objectName(), ""), false)
 		return false
 	end,
 }

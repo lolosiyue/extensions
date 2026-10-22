@@ -702,7 +702,7 @@ guanzhuCard = sgs.CreateSkillCard{
 		local dest = effect.to
 		local source = effect.from
 		local room = dest:getRoom()
-		dest:obtainCard(self)
+		room:obtainCard(dest, self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), dest:objectName(), "guanzhu", ""))
 		if self:getSuit() == sgs.Card_Spade then
 			local damage = sgs.DamageStruct()
 			damage.reason = "guanzhu"
@@ -3578,6 +3578,7 @@ jiaohuo = sgs.CreateTriggerSkillV2{
 			room:judge(judge)
 			if judge:isGood() then
 				local jh_damage = sgs.DamageStruct()
+				jh_damage.reason = "jiaohuo"
 				jh_damage.nature = sgs.DamageStruct_Fire
 				jh_damage.from = damage.from
 				jh_damage.to = target
@@ -3668,7 +3669,7 @@ moguCard = sgs.CreateSkillCard{
 		local subs = self:getSubcards()
 		if subs:isEmpty() then
 			for _,card_id in sgs.qlist(muthroom) do
-				room:obtainCard(source, card_id)
+				room:obtainCard(source, card_id, "mogu")
 			end
 		else
 			for _,card_id in sgs.qlist(subs) do
@@ -3989,7 +3990,7 @@ shabingCard = sgs.CreateSkillCard{
 		local subs = self:getSubcards()
 		if subs:isEmpty() then
 			for _,card_id in sgs.qlist(soldier) do
-				room:obtainCard(source, card_id)
+				room:obtainCard(source, card_id, "shabing")
 			end
 		else
 			for _,card_id in sgs.qlist(subs) do
@@ -4825,7 +4826,19 @@ zhouchu = sgs.CreateTriggerSkillV2{
 	view_as_skill = zhouchuVS,
 	events = {sgs.DamageInflicted, sgs.Damaged},
 	can_trigger = function(self, event, room, player, data)
-		return legends_self_can_trigger(self, player)
+		local name = legends_self_can_trigger(self, player)
+		if name and event == sgs.Damaged then
+			local damage = data:toDamage()
+			if damage.damage < 1 or player:isKongcheng() then return false end
+			return name .. "*" .. damage.damage
+		end
+		return name
+	end,
+	on_cost = function(self, event, room, player, ctx)
+		if event == sgs.Damaged then
+			return room:askForUseCard(player, "@@zhouchu", "@zhouchu", -1, sgs.Card_MethodDiscard, false) ~= nil
+		end
+		return true
 	end,
 	on_effect = function(self, event, room, player, ctx)
 		local data = ctx.original_data
@@ -4847,12 +4860,6 @@ zhouchu = sgs.CreateTriggerSkillV2{
 				room:broadcastSkillInvoke("zhouchu", math.random(1, 2))
 				if damage.damage < 1 then return true end
 				data:setValue(damage)
-			end
-		elseif event == sgs.Damaged then
-			for i=1, damage.damage, 1 do
-				if not player:isKongcheng() then
-					room:askForUseCard(player, "@@zhouchu","@zhouchu", -1,sgs.Card_MethodDiscard,false)
-				end
 			end
 		end
 	end
@@ -5817,7 +5824,18 @@ lol_fushi = sgs.CreateTriggerSkillV2{
 	frequency = sgs.Skill_NotFrequent, 
 	events = {sgs.Damage, sgs.Damaged},
 	can_trigger = function(self, event, room, player, data)
-		return legends_self_can_trigger(self, player)
+		local name = legends_self_can_trigger(self, player)
+		if not name then return false end
+		local damage = data:toDamage()
+		if damage.damage < 1 or not damage.from then return false end
+		if damage.to:objectName() == damage.from:objectName() then return false end
+		if not (damage.to:isAlive() and damage.from:isAlive()) then return false end
+		local target = (event == sgs.Damage) and damage.to or damage.from
+		if target:getHandcardNum() <= 0 then return false end
+		return name .. "*" .. damage.damage
+	end,
+	on_cost = function(self, event, room, player, ctx)
+		return player:askForSkillInvoke(self:objectName(), ctx.original_data)
 	end,
 	on_effect = function(self, event, room, player, ctx)
 		local data = ctx.original_data
@@ -5830,18 +5848,8 @@ lol_fushi = sgs.CreateTriggerSkillV2{
 		elseif event == sgs.Damaged then
 			target = damage.from
 		end
-		if damage.to:objectName() ~= damage.from:objectName() then
-			if damage.to:isAlive() and damage.from:isAlive() then
-				for i=1, damage.damage, 1 do
-					if target:getHandcardNum() > 0 then
-						if player:askForSkillInvoke(self:objectName(), data) then
-							room:showAllCards(target)
-							room:askForCard(target, ".!", "@lol_fushidis:", sgs.QVariant(), sgs.CardDiscarded)
-						end
-					end
-				end
-			end
-		end
+		room:showAllCards(target)
+		room:askForCard(target, ".!", "@lol_fushidis:", sgs.QVariant(), sgs.CardDiscarded)
 	end
 }
 jingxi = sgs.CreateTriggerSkillV2{
@@ -6776,27 +6784,20 @@ Thornmailkeep = sgs.CreateTriggerSkillV2{
 	name = "Thornmailkeep",  
 	events = {sgs.Damaged}, 
 	frequency = sgs.Skill_NotFrequent,
+	on_cost = function(self, event, room, player, ctx)
+		return room:askForSkillInvoke(player, "Thornmail", ctx.original_data)
+	end,
 	on_effect = function(self, event, room, player, ctx)
 		local data = ctx.original_data
 		local player = ctx.invoker
 		local room = player:getRoom()
 		local damage = data:toDamage()
 		local from = damage.from
-		local Armor = player:getArmor()
-		if Armor and Armor:isKindOf("Thornmail") then
-			if damage.card and damage.card:isKindOf("Slash") then
-				for a = 1, damage.damage, 1 do
-					if (not from) or from:isDead() then return end
-					if room:askForSkillInvoke(player, "Thornmail", data) then
-						if from:getHandcardNum() < 2 then
-							room:damage(sgs.DamageStruct(self:objectName(), player, from))
-						else
-							if not room:askForDiscard(from, self:objectName(), 2, 2, true) then
-								room:damage(sgs.DamageStruct(self:objectName(), player, from))
-							end
-						end
-					end
-				end
+		if from:getHandcardNum() < 2 then
+			room:damage(sgs.DamageStruct(self:objectName(), player, from))
+		else
+			if not room:askForDiscard(from, self:objectName(), 2, 2, true) then
+				room:damage(sgs.DamageStruct(self:objectName(), player, from))
 			end
 		end
 	end,
@@ -6805,7 +6806,15 @@ Thornmailkeep = sgs.CreateTriggerSkillV2{
 		if player:getMark("Armor_Nullified")==0 and not player:hasFlag("WuqianTarget") then
 			if player:getMark("Equips_Nullified_to_Yourself") == 0 then
 				local list = player:getTag("Qinggang"):toStringList()
-				if #list == 0 then return self:objectName() end
+				if #list == 0 then
+					local damage = data:toDamage()
+					local Armor = player:getArmor()
+					if damage.damage > 0 and damage.from and damage.from:isAlive()
+						and Armor and Armor:isKindOf("Thornmail")
+						and damage.card and damage.card:isKindOf("Slash") then
+						return self:objectName() .. "*" .. damage.damage
+					end
+				end
 			end
 		end
 		return false

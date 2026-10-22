@@ -114,12 +114,13 @@ shouji = sgs.CreateViewAsSkillV2{
 		local room = source:getRoom()
 		room:doLightbox("shouji$", 1000)
 		for _,p in sgs.qlist(room:getOtherPlayers(source)) do
-			if not p:getCards("h"):isEmpty() then
+			if source:canGet(p, "h") then
 				local list = p:handCards()
 				room:fillAG(list,source)
 				local card_id = room:askForAG(source,list,true,skill:objectName())
-				local card = sgs.Sanguosha:getCard(card_id)
-				room:obtainCard(source,card,false)
+				if card_id ~= -1 and source:canGet(p, card_id) then
+					room:obtainCard(source,card_id,skill:objectName(),false)
+				end
 				room:clearAG(source)
 			end
 		end
@@ -136,12 +137,13 @@ shoujicard = sgs.CreateSkillCard{
 		--room:broadcastSkillInvoke("shouji")
 		room:doLightbox("shouji$", 1000)
 		for _,p in sgs.qlist(room:getOtherPlayers(source)) do
-			if not p:getCards("h"):isEmpty() then
+			if source:canGet(p, "h") then
 				local list = p:handCards()
 				room:fillAG(list,source)
 				local card_id = room:askForAG(source,list,true,self:objectName())
-				local card = sgs.Sanguosha:getCard(card_id)
-				room:obtainCard(source,card,false)
+				if card_id ~= -1 and source:canGet(p, card_id) then
+					room:obtainCard(source,card_id,"shouji",false)
+				end
 				room:clearAG(source)
 			end
 		end
@@ -197,7 +199,7 @@ spreadillness = sgs.CreateTriggerSkillV2{
 
 			if not target:hasSkill("spring") then
 				room:broadcastSkillInvoke("spreadillness", 6)
-				room:loseHp(target)
+				room:loseHp(target, 1, true, nil, skill:objectName())
 			end
 		elseif target:getMark("@immune") > 0 then
 			local z = math.random(1,2)
@@ -295,7 +297,7 @@ youpian = sgs.CreateViewAsSkillV2{
 		if y==1 then
 			local choice = room:askForChoice(target,"youpianCARD","youpianyes+youpianno")
 			if choice == "youpianyes" then
-				room:loseHp(target)
+				room:loseHp(target, 1, true, nil, skill:objectName())
 				return
 			elseif choice == "youpianno" then
 				return
@@ -303,7 +305,7 @@ youpian = sgs.CreateViewAsSkillV2{
 		elseif y==2 then
 			local choice = room:askForChoice(target,"youpianCARD","youpianno+youpianyes")
 			if choice == "youpianyes" then
-				room:loseHp(target)
+				room:loseHp(target, 1, true, nil, skill:objectName())
 				return
 			elseif choice == "youpianno" then
 				room:acquireSkill(target,spreadillness)
@@ -433,7 +435,7 @@ mengxian= sgs.CreateTriggerSkillV2
 		elseif event == sgs.FinishJudge then
 			local judge = ctx.original_data:toJudge()
 			local card = judge.card
-			player:obtainCard(card)
+			room:obtainCard(player, card, skill:objectName(), true)
 			return true
 		end
 		return false
@@ -486,7 +488,7 @@ LLJ_force= sgs.CreateTriggerSkillV2
 		elseif event == sgs.FinishJudge then
 			local judge = ctx.original_data:toJudge()
 			local card = judge.card
-			player:obtainCard(card)
+			room:obtainCard(player, card, skill:objectName(), true)
 			return true
 		end
 		return false
@@ -560,7 +562,7 @@ LLJ_DN = sgs.CreateTriggerSkillV2{-----罪
 		if event== sgs.Damaged then
 			if da.from:getMark("@LLJ_guilty") > 0 then
 			local hp = da.from:getHp()
-			room:loseHp(da.from,hp)
+			room:loseHp(da.from, hp, true, player, skill:objectName())
 			end
 		end
 		return false

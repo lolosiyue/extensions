@@ -127,7 +127,7 @@ lxtx_taoxi = sgs.CreateTriggerSkillV2{
                 room:fillAG(ids, player)
                 local id = room:askForAG(player, ids, false, "lxtx_taoxi")
                 room:clearAG(player)
-                room:showCard(p, id)
+                room:showCard(p, id, sgs.SPlayerList(), "lxtx_taoxi")
 				room:setPlayerMark(player, "taoxiName-Clear", id)
 				room:setPlayerMark(player, "&lxtx_taoxi+:+"..sgs.Sanguosha:getCard(id):objectName().."-Clear", 1)
 		        table.insert(taoxi, sgs.Sanguosha:getCard(id):objectName())
@@ -429,7 +429,7 @@ lxtx_zhengpiCard = sgs.CreateSkillCard{
 		return #targets == 1
 	end,
 	on_use = function(self, room, source, targets)
-	    room:obtainCard(targets[1], self, false)
+	    room:obtainCard(targets[1], self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), targets[1]:objectName(), "lxtx_zhengpi", ""), false)
 		if targets[1]:getState() == "online" then
 			if not room:askForDiscard(targets[1], self:objectName(), 1, 1, true, true, "TrickCard,EquipCard") then
 		    	room:askForDiscard(targets[1], self:objectName(), 2, 2, false, true, "BasicCard")
@@ -1131,7 +1131,7 @@ lxtx_rendeCard = sgs.CreateSkillCard{
 		return (#selected == 0) and (to_select:objectName() ~= player:objectName())
 	end,
 	on_use = function(self, room, source, targets)
-		room:obtainCard(targets[1], self, false)
+		room:obtainCard(targets[1], self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), targets[1]:objectName(), "lxtx_rende", ""), false)
 		local old_value = source:getMark("lxtx_rende-Clear")
 		local new_value = old_value + 1
 		if old_value < 1 then
@@ -2034,8 +2034,8 @@ lxtx_xianzhen = sgs.CreateTriggerSkillV2{
 		if event == sgs.Pindian then
 			local pindian = ctx.original_data:toPindian()
 	        room:broadcastSkillInvoke("lxtx_xianzhen")
-            room:obtainCard(pindian.to, pindian.from_card, false)
-		    room:obtainCard(pindian.to, pindian.to_card, false)
+            room:obtainCard(pindian.to, pindian.from_card, "lxtx_xianzhen", false)
+		    room:obtainCard(pindian.to, pindian.to_card, "lxtx_xianzhen", false)
 		elseif event == sgs.CardUsed then
 			room:addPlayerMark(player, "lxtx_xianzhen-Clear")
 		else
@@ -2369,7 +2369,7 @@ lxtx_shichou = sgs.CreateTriggerSkillV2{
 	        room:sendCompulsoryTriggerLog(player, "lxtx_shichou")
 		    room:broadcastSkillInvoke("lxtx_shichou")
 			room:setCardFlag(use.card, "-shichou")
-			room:obtainCard(player, use.card, false)
+			room:obtainCard(player, use.card, "lxtx_shichou", false)
 		elseif event == sgs.Damage then
 			local damage = ctx.original_data:toDamage()
 			room:setCardFlag(damage.card, "-shichou")
@@ -2557,7 +2557,7 @@ lxtx_shicai = sgs.CreateTriggerSkillV2{
 			    end
 	            for i = 0, move.card_ids:length() - 1, 1 do
 			        local card_id = room:getDrawPile():last()
-			        room:obtainCard(player, card_id, false)
+			        room:obtainCard(player, card_id, "lxtx_shicai", false)
 	            end
 			    room:removePlayerMark(player, "lxtx_shicai".."engine")
 		    end
@@ -2616,14 +2616,16 @@ lxtx_fushiCard = sgs.CreateSkillCard{
 		end
 	end,
 	on_use = function(self, room, source, targets)
-		if not targets[1]:isNude() then
-		    local id = room:askForCardChosen(source, targets[1], "he", self:objectName())
-		    room:obtainCard(source, id, false)
+		if source:canGet(targets[1], "he") then
+		    local id = room:askForCardChosen(source, targets[1], "he", self:objectName(), false, sgs.Card_MethodGet)
+		    if source:canGet(targets[1], id) then
+		        room:obtainCard(source, sgs.Sanguosha:getCard(id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, source:objectName(), targets[1]:objectName(), "lxtx_fushi", ""), false)
+		    end
 		else
 		    source:drawCards(1)
 		end
 		local card_id = room:askForExchange(source, self:objectName(), 1, 1, true, "", false)
-		room:obtainCard(targets[1], card_id, false)
+		room:obtainCard(targets[1], card_id, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), targets[1]:objectName(), "lxtx_fushi", ""), false)
 	end,
 }
 lxtx_fushi = sgs.CreateViewAsSkillV2{
@@ -2694,14 +2696,14 @@ lxtx_yanpoCard = sgs.CreateSkillCard{
 	on_use = function(self, room, source, targets)
 		local id = nil
 		for _, c in sgs.qlist(self:getSubcards()) do
-			room:showCard(source, c)
+			room:showCard(source, c, sgs.SPlayerList(), "lxtx_yanpo")
 			room:setCardFlag(c, "lxtx_yanpo_showcard")
 		end
 		local n = self:subcardsLength()
 		while n > 0 do
 			if targets[1]:isDead() or targets[1]:isKongcheng() then return false end
 			id = room:askForCardChosen(source, targets[1], "h", self:objectName())
-			room:showCard(targets[1], id)
+			room:showCard(targets[1], id, sgs.SPlayerList(), "lxtx_yanpo")
 		    local card, card_id = sgs.Sanguosha:getCard(id), nil
 		    if card:getSuit() == sgs.Card_Heart then
 		        card_id = room:askForUseCard(source, "@@lxtx_yanpoheart", "@lxtx_yanpoheart")

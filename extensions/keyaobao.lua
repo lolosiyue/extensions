@@ -565,7 +565,7 @@ keyaoyaohou = sgs.CreateTriggerSkillV2 {
 	on_cost = function(skill, event, room, player, ctx)
 		local eny = ctx.invoker
 		local choicelist = "mopai"
-		if eny and eny:getCardCount(true) > 0 then
+		if eny and player:canGet(eny, "he") then
 			choicelist = string.format("%s+%s", choicelist, "huode")
 		end
 		choicelist = string.format("%s+%s", choicelist, "cancel")
@@ -577,10 +577,12 @@ keyaoyaohou = sgs.CreateTriggerSkillV2 {
 	on_effect = function(skill, event, room, player, ctx)
 		local eny = ctx.invoker
 		if ctx.choice == "huode" and eny then
-			local card_id = room:askForCardChosen(player, eny, "he", skill:objectName())
-			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName())
-			room:obtainCard(player, sgs.Sanguosha:getCard(card_id), reason,
-				room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
+			local card_id = room:askForCardChosen(player, eny, "he", skill:objectName(), false, sgs.Card_MethodGet)
+			if player:canGet(eny, card_id) then
+				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), eny:objectName(), "keyaoyaohou", "")
+				room:obtainCard(player, sgs.Sanguosha:getCard(card_id), reason,
+					room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
+			end
 		elseif ctx.choice == "mopai" then
 			player:drawCards(1)
 		end
@@ -679,6 +681,7 @@ keyaoshidubuff = sgs.CreateTriggerSkillV2 {
 
 				damage.to = victim
 				damage.damage = 1
+				damage.reason = "keyaoshidu"
 				if target then
 					log.from = target
 					damage.from = target
@@ -1162,7 +1165,7 @@ kejieyaoguimou = sgs.CreateTriggerSkillV2 {
 			room:broadcastSkillInvoke(skill:objectName())
 			for _, id in sgs.qlist(room:getDrawPile()) do
 				if (sgs.Sanguosha:getCard(id):isKindOf("TrickCard")) then
-					room:obtainCard(player, id, true)
+					room:obtainCard(player, id, "kejieyaoguimou", true)
 					break
 				end
 			end
@@ -1619,6 +1622,7 @@ kejieyaoshidu = sgs.CreateTriggerSkillV2 {
 				local damage = sgs.DamageStruct()
 				damage.from = nil
 				damage.to = victim
+				damage.reason = "kejieyaoshidu"
 				if target then
 					damage.from = target
 				end

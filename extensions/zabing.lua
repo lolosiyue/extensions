@@ -256,18 +256,22 @@ huanji = sgs.CreateTriggerSkillV2{
 		return false
 	end,
 	on_cost = function(skill, event, room, player, ctx)
-		return room:askForCard(player, ".|red", "@@huanji", ctx.original_data,
-			sgs.Card_MethodDiscard, nil, false, skill:objectName(), false) ~= nil
+		local from = ctx.original_data:toDamage().from
+		if not from then return false end
+		if room:askForCard(player, ".|red", "@@huanji", ctx.original_data,
+			sgs.Card_MethodDiscard, nil, false, skill:objectName(), false) == nil then
+			return false
+		end
+		ctx.targets:append(from)
+		return true
 	end,
-	on_effect = function(skill, event, room, player, ctx)
-		local damage = ctx.original_data:toDamage()
-		if not damage.from then return false end
+	on_effect_target = function(skill, event, room, player, ctx, target)
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName(skill:objectName())
 		local use = sgs.CardUseStruct()
 		use.card = slash
 		use.from = player
-		use.to:append(damage.from)
+		use.to:append(target)
 		room:useCard(use)
 		return false
 	end

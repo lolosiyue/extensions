@@ -184,7 +184,7 @@ cksiliecard = sgs.CreateSkillCard {
 		local card = sgs.Sanguosha:getCard(subid)
 		local target_suit = card:getSuit()
 		room:broadcastSkillInvoke("cksilie")
-		room:obtainCard(effect.to, subid, true)
+		room:obtainCard(effect.to, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, effect.from:objectName(), effect.to:objectName(), "cksilie", ""), true)
 		if not effect.to:isKongcheng() then
 			local ids = sgs.IntList()
 			for _, cardtmp in sgs.qlist(effect.to:getHandcards()) do

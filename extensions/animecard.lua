@@ -177,6 +177,7 @@ if reijyuuUse then
 				damage.from = target1
 				damage.to = target2
 				damage.damage = 1
+				damage.reason = "reijyuu"
 				room:damage(damage)
 			end
 			target2:setFlags("-reijyuuT")
@@ -487,7 +488,7 @@ tacos = sgs.CreateBasicCard {
 			return false
 		end
 		local j = math.random(0, n - 1)
-		effect.to:obtainCard(sgs.Sanguosha:getCard(room:getDiscardPile():at(j)))
+		room:obtainCard(effect.to, room:getDiscardPile():at(j), "tacos", true)
 
 		n = math.floor((room:getDiscardPile():length()) * 3 / 4)
 		if n == 0 then

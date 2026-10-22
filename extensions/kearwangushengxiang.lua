@@ -45,7 +45,7 @@ kenewgirlshixieCard = sgs.CreateSkillCard{
 			room:broadcastSkillInvoke("kenewgirlshixie",4)
 			room:setPlayerMark(player,"useshixiespade-Clear",1)
 			room:setPlayerMark(target,"banshixie-Clear",1)
-			room:damage(sgs.DamageStruct(self:objectName(), player, target, 2))
+			room:damage(sgs.DamageStruct("kenewgirlshixie", player, target, 2))
 		elseif (card:getSuit() == sgs.Card_Club) then
 			room:broadcastSkillInvoke("kenewgirlshixie",math.random(1,2))
 			room:setPlayerMark(player,"useshixieclub-Clear",1)
@@ -165,11 +165,11 @@ kenewgirlcongrong = sgs.CreateTriggerSkillV2{
 		room:removePlayerMark(player,"@kenewgirlcongrong")
 		local to_get = sgs.IntList()
 		for _,c in sgs.qlist(victim:getCards("e")) do
-			to_get:append(c:getEffectiveId())
+			if player:canGet(victim, c:getEffectiveId()) then to_get:append(c:getEffectiveId()) end
 		end
 		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		dummy:addSubcards(getCardList(to_get))
-		player:obtainCard(dummy)
+		room:obtainCard(player, dummy, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), victim:objectName(), "kenewgirlcongrong", ""))
 		player:gainHujia(to_get:length())
 		--room:recover(player, sgs.RecoverStruct())
 		dummy:deleteLater()
@@ -451,7 +451,7 @@ kenewgirlzhenyi = sgs.CreateTriggerSkillV2{
 						end
 						use.from:drawCards(use.to:length(),skill:objectName())
 						if zf:getHandcardNum() < use.from:getHandcardNum() then
-							zf:obtainCard(use.card)
+							room:obtainCard(zf, use.card, "kenewgirlzhenyi")
 						end
 					end
 				end
@@ -615,7 +615,7 @@ kenewgirljingmuCard = sgs.CreateSkillCard{
 				end
 			end
 			if get == 1 then
-			    player:obtainCard(dummy)
+			    room:obtainCard(player, dummy, "kenewgirljingmu")
 			end
 			dummy:deleteLater()
 			if gettwo > 0 then
@@ -626,7 +626,7 @@ kenewgirljingmuCard = sgs.CreateSkillCard{
 			end
 			dummytwo:deleteLater()
 		else
-			room:showCard(player,player:getPile("kenewgirljingmu"))
+			room:showCard(player, player:getPile("kenewgirljingmu"), sgs.SPlayerList(), "kenewgirljingmu")
 			local get = 0
 			local gettwo = 0
 			local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
@@ -641,7 +641,7 @@ kenewgirljingmuCard = sgs.CreateSkillCard{
 				end
 			end
 			if (get > 0) then
-			    player:obtainCard(dummy)
+			    room:obtainCard(player, dummy, "kenewgirljingmu")
 			end
 			dummy:deleteLater()
 			if (gettwo == 1) then
@@ -1869,7 +1869,7 @@ kenewgirlchenjiCard = sgs.CreateSkillCard{
 				if --[[(room:getCardPlace(id) == sgs.Player_DrawPile) and not]]  sgs.Sanguosha:getCard(id):isKindOf("TrickCard") then
 					willda = 0
 				end
-				room:obtainCard(target,id)
+				room:obtainCard(target, id, "kenewgirlchenji")
 			end
 		end
 		--处理牌堆的其他牌
@@ -1891,7 +1891,7 @@ kenewgirlchenjiCard = sgs.CreateSkillCard{
 		dummy:deleteLater()
 		room:clearAG()
 		if willda == 1 then
-			room:damage(sgs.DamageStruct(self:objectName(),target,player))
+			room:damage(sgs.DamageStruct("kenewgirlchenji", target, player))
 		else
 			local log = sgs.LogMessage()
 			log.type = "$kenewgirlchenjilog"

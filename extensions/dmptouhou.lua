@@ -45,7 +45,7 @@ se_mingqie = sgs.CreateTriggerSkillV2{
 			return false
 		end
 		local to = use.to:at(0)
-		if to:getEquips():length() == 0 then
+		if to:getEquips():length() == 0 or not use.from:canGet(to, "he") then
 			return false
 		end
 		if to:hasFlag("se_mingqie_used") then
@@ -65,8 +65,14 @@ se_mingqie = sgs.CreateTriggerSkillV2{
 		local from = use.from
 		local to = use.to:at(0)
 		room:broadcastSkillInvoke(skill:objectName())
-		local id = room:askForCardChosen(from, to, "he", skill:objectName())
-		room:obtainCard(from, id)
+		if not from:canGet(to, "he") then
+			return false
+		end
+		local id = room:askForCardChosen(from, to, "he", skill:objectName(), false, sgs.Card_MethodGet)
+		if not from:canGet(to, id) then
+			return false
+		end
+		room:obtainCard(from, id, skill:objectName(), true)
 		to:setFlags("se_mingqie_used")
 		if sgs.Sanguosha:getCard(id):isBlack() then
 			from:gainMark("@p_point")
@@ -139,6 +145,7 @@ se_mopao = sgs.CreateViewAsSkillV2{
 		local direction = room:askForChoice(source, "se_mopaocard", "left+right")
 		local damage = sgs.DamageStruct()
 		damage.from = source
+		damage.reason = skill:objectName()
 		if direction == "right" then
 			local next_man = source:getNextAlive()
 			while next_man:objectName() ~= target:objectName() do
@@ -321,7 +328,7 @@ se_huixiangVS = sgs.CreateViewAsSkillV2{
 			return
 		end
 		local room = source:getRoom()
-		room:obtainCard(source, ctx.use_card)
+		room:obtainCard(source, ctx.use_card, skill:objectName(), true)
 		if source:getPile("satori_memory"):length() > 0 then
 			local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 			dummy:deleteLater()

@@ -233,7 +233,7 @@ yinyang_lose = sgs.CreateTriggerSkillV2{
 					table.removeOne(red_cards, red_cards[j])
 					if #red_cards == 0 then break end
 				end
-				if dummy:subcardsLength() > 0 then room:obtainCard(player, dummy, false) end
+				if dummy:subcardsLength() > 0 then room:obtainCard(player, dummy, "sgkgodjiyang", false) end
 				dummy:deleteLater()
 			end
 		end
@@ -255,7 +255,7 @@ yinyang_lose = sgs.CreateTriggerSkillV2{
 					table.removeOne(black_cards, black_cards[j])
 					if #black_cards == 0 then break end
 				end
-				if dummy:subcardsLength() > 0 then room:obtainCard(player, dummy, false) end
+				if dummy:subcardsLength() > 0 then room:obtainCard(player, dummy, "sgkgodjiyin", false) end
 				dummy:deleteLater()
 			end
 		end
@@ -1475,7 +1475,7 @@ sgkgodxiangsheng = sgs.CreateTriggerSkillV2{
 							local random_black = bcards[math.random(1, #bcards)]
 							jink:addSubcard(random_black)
 						end
-						room:obtainCard(player, jink, false)
+						room:obtainCard(player, jink, "sgkgodxiangsheng", false)
 						jink:deleteLater()
 					end
 				end
@@ -2367,7 +2367,7 @@ sgkgodyingshi = sgs.CreateTriggerSkillV2{
 				for _, _id in sgs.qlist(room:getDrawPile()) do
 					local card = sgs.Sanguosha:getCard(_id)
 					if card:objectName() == name then
-						player:obtainCard(card)
+						room:obtainCard(player, card, "sgkgodyingshi")
 						break
 					end
 				end
@@ -2522,7 +2522,7 @@ sgkgodyingshiRob = sgs.CreateTriggerSkillV2{
 				end
 				if yingshi:subcardsLength() > 0 then
 					room:sendCompulsoryTriggerLog(smy, "sgkgodyingshi", true, true)
-					room:obtainCard(smy, yingshi, false)
+					room:obtainCard(smy, yingshi, "sgkgodyingshi", false)
 					for _, _id in sgs.qlist(yingshi:getSubcards()) do
 						if not sgs.Sanguosha:getCard(_id):hasTip("jlyingshi_eagle") then room:setCardTip(_id, "jlyingshi_eagle") end
 					end
@@ -2999,7 +2999,7 @@ qianyuanDoDebuff = function(spshenzhaoyun, exe)
 			spshenzhaoyun:setTag("qianyuan_recorded_debuff", sgs.QVariant(table.concat(qy_recorded, "+")))
 		end
 	elseif exe == "qianyuan_damaged" then
-		room:damage(sgs.DamageStruct(nil, nil, spshenzhaoyun, 1, sgs.DamageStruct_Normal))
+		room:damage(sgs.DamageStruct("sgkgodqianyuan", nil, spshenzhaoyun, 1, sgs.DamageStruct_Normal))
 		if not table.contains(qy_recorded, exe) then
 			table.insert(qy_recorded, exe)
 			spshenzhaoyun:setTag("qianyuan_recorded_debuff", sgs.QVariant(table.concat(qy_recorded, "+")))
@@ -3224,9 +3224,9 @@ sgkgodqianyuan = sgs.CreateTriggerSkillV2{
 						local db = debuffs[math.random(1, #debuffs)]
 						if db == "qianyuan_damaged" then
 							if not lose.from then
-								room:damage(sgs.DamageStruct(nil, nil, player, 1, sgs.DamageStruct_Normal))
+								room:damage(sgs.DamageStruct("sgkgodqianyuan", nil, player, 1, sgs.DamageStruct_Normal))
 							else
-								room:damage(sgs.DamageStruct(nil, lose.from, player, 1, sgs.DamageStruct_Normal))
+								room:damage(sgs.DamageStruct("sgkgodqianyuan", lose.from, player, 1, sgs.DamageStruct_Normal))
 							end
 							if not table.contains(qy_recorded, db) then table.insert(qy_recorded, db) end
 							player:setTag("qianyuan_recorded_debuff", sgs.QVariant(table.concat(qy_recorded, "+")))
@@ -3297,7 +3297,7 @@ sgkgodqianyuan = sgs.CreateTriggerSkillV2{
 						room:sendLog(msg)
 						local db = debuffs[math.random(1, #debuffs)]
 						if db == "qianyuan_damaged" then
-							room:damage(sgs.DamageStruct(nil, nil, player, 1, sgs.DamageStruct_Normal))
+							room:damage(sgs.DamageStruct("sgkgodqianyuan", nil, player, 1, sgs.DamageStruct_Normal))
 							if not table.contains(qy_recorded, db) then table.insert(qy_recorded, db) end
 							player:setTag("qianyuan_recorded_debuff", sgs.QVariant(table.concat(qy_recorded, "+")))
 						elseif db == "qianyuan_losehp" then
@@ -3378,9 +3378,9 @@ sgkgodqianyuan = sgs.CreateTriggerSkillV2{
 						local db = debuffs[math.random(1, #debuffs)]
 						if db == "qianyuan_damaged" then
 							if source == -1 then
-								room:damage(sgs.DamageStruct(nil, nil, player, 1, sgs.DamageStruct_Normal))
+								room:damage(sgs.DamageStruct("sgkgodqianyuan", nil, player, 1, sgs.DamageStruct_Normal))
 							else
-								room:damage(sgs.DamageStruct(nil, source, player, 1, sgs.DamageStruct_Normal))
+								room:damage(sgs.DamageStruct("sgkgodqianyuan", source, player, 1, sgs.DamageStruct_Normal))
 							end
 							if not table.contains(qy_recorded, db) then table.insert(qy_recorded, db) end
 							player:setTag("qianyuan_recorded_debuff", sgs.QVariant(table.concat(qy_recorded, "+")))
@@ -4882,7 +4882,7 @@ TG_Effect["suijitwored"] = function(self, room, player, source)  --随机从牌�
 	for i = 1, #rcards do
 		dummy:addSubcard(rcards[i])
 	end
-	player:obtainCard(dummy, false)
+	room:obtainCard(player, dummy, self:objectName(), false)
 	dummy:deleteLater()
 end
 
@@ -4906,7 +4906,7 @@ TG_Effect["suijitwoblack"] = function(self, room, player, source)  --随机从�
 	for i = 1, #rcards do
 		dummy:addSubcard(rcards[i])
 	end
-	player:obtainCard(dummy, false)
+	room:obtainCard(player, dummy, self:objectName(), false)
 	dummy:deleteLater()
 end
 
@@ -4930,7 +4930,7 @@ TG_Effect["suijitwobasic"] = function(self, room, player, source)  --随机从�
 	for i = 1, #rcards do
 		dummy:addSubcard(rcards[i])
 	end
-	player:obtainCard(dummy, false)
+	room:obtainCard(player, dummy, self:objectName(), false)
 	dummy:deleteLater()
 end
 
@@ -4954,7 +4954,7 @@ TG_Effect["suijitwotrick"] = function(self, room, player, source)  --随机从�
 	for i = 1, #rcards do
 		dummy:addSubcard(rcards[i])
 	end
-	player:obtainCard(dummy, false)
+	room:obtainCard(player, dummy, self:objectName(), false)
 	dummy:deleteLater()
 end
 
@@ -4978,7 +4978,7 @@ TG_Effect["suijitwoequip"] = function(self, room, player, source)  --随机从�
 	for i = 1, #rcards do
 		dummy:addSubcard(rcards[i])
 	end
-	player:obtainCard(dummy, false)
+	room:obtainCard(player, dummy, self:objectName(), false)
 	dummy:deleteLater()
 end
 
@@ -5067,9 +5067,11 @@ end
 
 TG_Effect["suijiguixin"] = function(self, room, player, source)  --随机获得其他角色各一张牌
 	for _, pe in sgs.qlist(room:getOtherPlayers(player)) do
-		local tcards = pe:getCards("he")
-		tcards = sgs.QList2Table(tcards)
-		if #tcards > 0 then player:obtainCard(tcards[math.random(1, #tcards)], false) end
+		local tcards = {}
+		for _, c in sgs.qlist(pe:getCards("he")) do
+			if player:canGet(pe, c:getId()) then table.insert(tcards, c) end
+		end
+		if #tcards > 0 then room:obtainCard(player, tcards[math.random(1, #tcards)], sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), pe:objectName(), self:objectName(), ""), false) end
 	end
 end
 
@@ -5317,13 +5319,7 @@ local sgkgodjiguan_slashtime = sgs.CreateTargetModSkillV2{
 	pattern = ".",
 	holder_selector = sgs.CorrectSkill_System,
 	-- scheme_mark_total is non-zero only while some <scheme>hunlie_global_schemeslashtime mark is.
-	gate = (function()
-		local atoms = {}
-		for _, skname in ipairs(scheme_sknames) do
-			table.insert(atoms, "mark:" .. skname .. "hunlie_global_schemeslashtime")
-		end
-		return atoms
-	end)(),
+	gate = { "mark_suffix:hunlie_global_schemeslashtime" },
 	correct_func = function(skill, ctx)
 		if ctx:getModType() ~= sgs.TargetModSkill_Residue then return false end
 		local from, card = ctx:getPrimary(), ctx:getCard()

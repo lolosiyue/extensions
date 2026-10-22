@@ -97,6 +97,7 @@ on_effect_target = function(skill, event, room, player, ctx, target)
 		damage.to = target
 		damage.damage = 1
 		damage.nature = sgs.DamageStruct_Normal
+		damage.reason = "fateyezhan"
 		room:damage(damage)
 	end
 	return false
@@ -220,7 +221,7 @@ fatewangzhe=sgs.CreateTriggerSkillV2{
             for _,id in sgs.qlist(yiji_cards) do
                 if sgs.Sanguosha:getCard(id):hasFlag("fatewangzhe_get") then
                     room:setCardFlag(sgs.Sanguosha:getCard(id), "-fatewangzhe_get")
-                    room:obtainCard(player,sgs.Sanguosha:getCard(id))
+                    room:obtainCard(player, sgs.Sanguosha:getCard(id), "fatewangzhe")
                 else
                     newdrawpile:append(id)
                 end
@@ -335,6 +336,7 @@ fateshenjian_card = sgs.CreateSkillCard
 			damage.from = from
 			damage.to=effect.to	
 			damage.nature = sgs.DamageStruct_Normal
+			damage.reason = "fateshenjian"
 			room:damage(damage)
 		    return false 
 		end
@@ -725,7 +727,7 @@ on_effect=function(skill,event,room,player,ctx)
 	if target:objectName() == player:objectName() then
 	 	local cards=target:getJudgingArea()
 		for _,cd in sgs.qlist(cards) do
-			target:obtainCard(cd)
+			room:obtainCard(target, cd, "fateqingxing")
 		end
 	end
 	return false
@@ -940,6 +942,7 @@ fateyaoshucard = sgs.CreateSkillCard
 			damage.from = from
 			damage.to=effect.to	
 			damage.nature = sgs.DamageStruct_Thunder
+			damage.reason = "fateyaoshu"
 			room:damage(damage)
 		    return false 
 		end
@@ -1088,14 +1091,16 @@ can_trigger = function(skill, event, room, player, data)
 end,
 on_effect=function(skill,event,room,player,ctx)
 	local target = player:getNextAlive()
-	if not target:isAllNude() then
+	if player:canGet(target, "hej") then
 		local log= sgs.LogMessage()
 		log.type = "#TriggerSkill"
 		log.from = player
 		log.arg = skill:objectName()
 		room:sendLog(log)
-		local card_id = room:askForCardChosen(player, target, "hej", "@fatexineng")
-		room:moveCardTo(sgs.Sanguosha:getCard(card_id), player, sgs.Player_PlaceHand, false)
+		local card_id = room:askForCardChosen(player, target, "hej", "@fatexineng", false, sgs.Card_MethodGet)
+		if player:canGet(target, card_id) then
+			room:obtainCard(player, sgs.Sanguosha:getCard(card_id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), target:objectName(), "fatexineng", ""), false)
+		end
 	end
 	--choice = room:askForChoice(player, "xnchoice", "xnchoice1+xnchoice2")
 	--if(choice == "xnchoice1") then
@@ -1409,7 +1414,7 @@ fateloli_card = sgs.CreateSkillCard
 		local choice_id = room:askForAG(from, card_ids, true, "fateloli_vs")
 		if choice_id ~= -1 then
 		cards:append(choice_id)
-		room:showCard(to, choice_id)
+		room:showCard(to, choice_id, sgs.SPlayerList(), "fateloli_vs")
 		room:moveCardTo(sgs.Sanguosha:getCard(choice_id), effect.to, nil ,sgs.Player_DrawPile, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_PUT, effect.from:objectName(), "fateloli", ""), true)
 		--room:returnToTopDrawPile(cards)
 		--	room:moveCardTo(sgs.Sanguosha:getCard(choice_id), from, sgs.Player_DrawPile, true)
@@ -1860,7 +1865,7 @@ fatexinyin_card = sgs.CreateSkillCard
 		room:judge(judge)
 		if not judge:isGood() then
 		local choicelist = "xychoice1"
-		if not to:isAllNude() then 
+		if from:canGet(to, "hej") then 
 		choicelist  = string.format("%s+%s", choicelist, "xychoice2")
 		end
 			local choice = room:askForChoice(from, "fatexinyin_card", choicelist)
@@ -1870,11 +1875,14 @@ fatexinyin_card = sgs.CreateSkillCard
 				damage.to = to
 				damage.damage = 1
 				damage.nature = sgs.DamageStruct_Normal
+				damage.reason = "fatexinyin"
 				room:damage(damage)
 			elseif (choice == "xychoice2") then
-				if not to:isAllNude() then
-					local card_id = room:askForCardChosen(from, to, "hej", "fatexinyin_card")
-					room:moveCardTo(sgs.Sanguosha:getCard(card_id), from, sgs.Player_PlaceHand, false)
+				if from:canGet(to, "hej") then
+					local card_id = room:askForCardChosen(from, to, "hej", "fatexinyin_card", false, sgs.Card_MethodGet)
+					if from:canGet(to, card_id) then
+						room:obtainCard(from, sgs.Sanguosha:getCard(card_id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, from:objectName(), to:objectName(), "fatexinyin", ""), false)
+					end
 				end
 			end
 		end	
@@ -2024,9 +2032,11 @@ fatemoshu_card = sgs.CreateSkillCard
 		judge.play_animation = false
 		room:judge(judge)
 		if judge.card:getSuit() == sgs.Card_Heart then
-			if not to:isNude() then
-				local card_id = room:askForCardChosen(from, to, "he", "fatexinyin_card")
-				room:moveCardTo(sgs.Sanguosha:getCard(card_id), from, sgs.Player_PlaceHand, false)
+			if from:canGet(to, "he") then
+				local card_id = room:askForCardChosen(from, to, "he", "fatexinyin_card", false, sgs.Card_MethodGet)
+				if from:canGet(to, card_id) then
+					room:obtainCard(from, sgs.Sanguosha:getCard(card_id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, from:objectName(), to:objectName(), "fatemoshu_vs", ""), false)
+				end
 			end
 		elseif judge.card:getSuit() == sgs.Card_Spade then 
 			if to:faceUp() then 
@@ -2136,6 +2146,7 @@ fatejuntuan_card = sgs.CreateSkillCard
 				damage.to = to
 				damage.damage = 1
 				damage.nature = sgs.DamageStruct_Normal
+				damage.reason = "fatejuntuan_vs"
 				room:damage(damage)
 				return false
 			end
@@ -2537,24 +2548,25 @@ fateqiangtui = sgs.CreateTriggerSkillV2
 		local draw = ctx.original_data:toDraw()
 		local targets = room:getOtherPlayers(player)
 		for _, target in sgs.qlist(targets) do --因为在此删掉了链表中一个元素之后，其下个元素将不参与for循环，对10人局必须进行3遍循环才行，我去！！！当然最好能直接在空表里插入，但不知道怎么写。
-	      	if not (target:getSeat()==(player:getNextAlive()):getSeat() or player:getSeat()==(target:getNextAlive()):getSeat()) or target:isKongcheng() then
+	      	if not (target:getSeat()==(player:getNextAlive()):getSeat() or player:getSeat()==(target:getNextAlive()):getSeat()) or not player:canGet(target, "h") then
          		targets:removeOne(target)
 			end
         end
 		for _, target in sgs.qlist(targets) do
-	      	if not (target:getSeat()==(player:getNextAlive()):getSeat() or player:getSeat()==(target:getNextAlive()):getSeat()) or target:isKongcheng() then
+	      	if not (target:getSeat()==(player:getNextAlive()):getSeat() or player:getSeat()==(target:getNextAlive()):getSeat()) or not player:canGet(target, "h") then
          		targets:removeOne(target)
 			end
         end
 		for _, target in sgs.qlist(targets) do
-	      	if not (target:getSeat()==(player:getNextAlive()):getSeat() or player:getSeat()==(target:getNextAlive()):getSeat()) or target:isKongcheng() then
+	      	if not (target:getSeat()==(player:getNextAlive()):getSeat() or player:getSeat()==(target:getNextAlive()):getSeat()) or not player:canGet(target, "h") then
          		targets:removeOne(target)
 			end
         end
 		local target = room:askForPlayerChosen(player, targets, skill:objectName())
-		if not target:isKongcheng() then
-			local card_id = room:askForCardChosen(player, target, "h", "@fateqiangtui")
-			room:moveCardTo(sgs.Sanguosha:getCard(card_id), player, sgs.Player_PlaceHand, false)
+		if player:canGet(target, "h") then
+			local card_id = room:askForCardChosen(player, target, "h", "@fateqiangtui", false, sgs.Card_MethodGet)
+			if not player:canGet(target, card_id) then return false end
+			room:obtainCard(player, sgs.Sanguosha:getCard(card_id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), target:objectName(), "fateqiangtui", ""), false)
 			draw.num = draw.num - 1
 			ctx.original_data:setValue(draw)
 			if target:isFemale() then

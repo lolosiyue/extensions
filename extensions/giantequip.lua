@@ -101,11 +101,9 @@ local QixingJitanTrigger = sgs.CreateEquipSkillV2{
         ctx.targets = room:askForPlayersChosen(player, room:getAlivePlayers(), "QixingJitan", 0, room:getAlivePlayers():length(), "@qixingjitan-choose", false, true)
         return true
     end,
-    on_effect=function(self, event, room, player, ctx)
-        for _, target in sgs.qlist(ctx.targets) do
-            room:addPlayerMark(target, "&kuangfeng")
-            target:setTag("qixingjitan_kuangfeng", sgs.QVariant(target:getTag("qixingjitan_kuangfeng"):toInt() + 1))
-        end
+    on_effect_target=function(self, event, room, player, ctx, target)
+        room:addPlayerMark(target, "&kuangfeng")
+        target:setTag("qixingjitan_kuangfeng", sgs.QVariant(target:getTag("qixingjitan_kuangfeng"):toInt() + 1))
         return false
     end,
 }

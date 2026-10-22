@@ -435,70 +435,77 @@ se_yanyi = sgs.CreateTriggerSkillV2 {
 		if not iid then
 			return false
 		end
+		if event == sgs.Damaged then
+			local damage = data:toDamage()
+			if damage.damage <= 0 then
+				return false
+			end
+			return skill:objectName() .. "#" .. iid .. "*" .. damage.damage
+		end
 		return skill:objectName() .. "#" .. iid
 	end,
 	on_effect = function(skill, event, room, player, ctx)
 		if event == sgs.Damaged then
 			local damage = ctx.original_data:toDamage()
-			room:broadcastSkillInvoke("se_yanyi")
-			for i = 1, damage.damage do
-				local players = room:getAlivePlayers()
-				local skill_name = ""
-				local sks = {}
-				local all_generals = sgs.Sanguosha:getLimitedGeneralNames()
-				for i = 1, #all_generals do
-					if
-						all_generals[i] == "Tukasa"
-						or all_generals[i] == "mianma"
-						or all_generals[i] == "Sakura"
-						or all_generals[i] == "Riko"
-						or all_generals[i] == "Nanami"
-						or all_generals[i] == "Koishi"
-						or all_generals[i] == "Mikoto"
-						or all_generals[i] == "Natsume_Rin"
-						or all_generals[i] == "Kazehaya"
-						or all_generals[i] == "AiAstin"
-						or all_generals[i] == "Reimu"
-						or all_generals[i] == "Louise"
-					then
-						table.remove(all_generals, i)
-						i = i - 1
-					end
-				end
-
-				for _, general_name in ipairs(all_generals) do
-					local general = sgs.Sanguosha:getGeneral(general_name)
-					for _, sk in sgs.qlist(general:getVisibleSkillList()) do
-						if not sk:isLordSkill() then
-							if sk:getFrequency() ~= sgs.Skill_Wake and sk:getFrequency() ~= sgs.Skill_Limited then
-								table.insert(sks, sk:objectName())
-							end
-						end
-					end
-				end
-
-				for _, pl in sgs.qlist(players) do
-					for _, ske in sgs.qlist(pl:getVisibleSkillList()) do
-						if table.contains(sks, ske:objectName()) then
-							table.removeOne(sks, ske:objectName())
-						end
-					end
-				end
-
-				if #sks == 0 then
-					return false
-				end
-				local ran = math.random(1, #sks)
-				skill_name = sks[ran]
-				room:handleAcquireDetachSkills(damage.to, skill_name)
-				local randomYanyi = math.random(1, 10)
-				room:doLightbox("se_yanyi" .. randomYanyi .. "$", 800)
-				room:doLightbox(skill_name, 600)
-				local msg = sgs.LogMessage()
-				msg.type = "#se_yanyi_use"
-				msg.arg = skill_name
-				room:sendLog(msg)
+			if ctx.trigger_count == 0 then
+				room:broadcastSkillInvoke("se_yanyi")
 			end
+			local players = room:getAlivePlayers()
+			local skill_name = ""
+			local sks = {}
+			local all_generals = sgs.Sanguosha:getLimitedGeneralNames()
+			for i = 1, #all_generals do
+				if
+					all_generals[i] == "Tukasa"
+					or all_generals[i] == "mianma"
+					or all_generals[i] == "Sakura"
+					or all_generals[i] == "Riko"
+					or all_generals[i] == "Nanami"
+					or all_generals[i] == "Koishi"
+					or all_generals[i] == "Mikoto"
+					or all_generals[i] == "Natsume_Rin"
+					or all_generals[i] == "Kazehaya"
+					or all_generals[i] == "AiAstin"
+					or all_generals[i] == "Reimu"
+					or all_generals[i] == "Louise"
+				then
+					table.remove(all_generals, i)
+					i = i - 1
+				end
+			end
+
+			for _, general_name in ipairs(all_generals) do
+				local general = sgs.Sanguosha:getGeneral(general_name)
+				for _, sk in sgs.qlist(general:getVisibleSkillList()) do
+					if not sk:isLordSkill() then
+						if sk:getFrequency() ~= sgs.Skill_Wake and sk:getFrequency() ~= sgs.Skill_Limited then
+							table.insert(sks, sk:objectName())
+						end
+					end
+				end
+			end
+
+			for _, pl in sgs.qlist(players) do
+				for _, ske in sgs.qlist(pl:getVisibleSkillList()) do
+					if table.contains(sks, ske:objectName()) then
+						table.removeOne(sks, ske:objectName())
+					end
+				end
+			end
+
+			if #sks == 0 then
+				return false
+			end
+			local ran = math.random(1, #sks)
+			skill_name = sks[ran]
+			room:handleAcquireDetachSkills(damage.to, skill_name)
+			local randomYanyi = math.random(1, 10)
+			room:doLightbox("se_yanyi" .. randomYanyi .. "$", 800)
+			room:doLightbox(skill_name, 600)
+			local msg = sgs.LogMessage()
+			msg.type = "#se_yanyi_use"
+			msg.arg = skill_name
+			room:sendLog(msg)
 		elseif event == sgs.PreHpRecover then
 			local re = ctx.original_data:toRecover()
 			local choices = {}

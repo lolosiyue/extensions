@@ -688,7 +688,7 @@ kangqin_zhangzheng = sgs.CreateTriggerSkillV2{
                     room:askForDiscard(p, self:objectName(), 1, 1, false, true)
                 else
                     -- 失去1点体力
-                    room:loseHp(p, 1)
+                    room:loseHp(p, 1, true, player, self:objectName())
                 end
             end
         end
@@ -810,7 +810,7 @@ kangqin_youmie = sgs.CreateViewAsSkillV2{
         if ids:length() ~= 1 or targets:length() ~= 1 or not targets:first():isAlive() then return false end
         local id = ids:first()
         if room:getCardOwner(id) ~= ctx.invoker or room:getCardPlace(id) ~= sgs.Player_PlaceHand then return false end
-        room:obtainCard(targets:first(), sgs.Sanguosha:getCard(id), false)
+        room:obtainCard(targets:first(), sgs.Sanguosha:getCard(id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, ctx.invoker:objectName(), targets:first():objectName(), self:objectName(), ""), false)
         return true
     end,
     on_effect_target = function(self, ctx, target)

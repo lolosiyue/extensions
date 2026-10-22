@@ -58,8 +58,8 @@ dl_chajuvs = sgs.CreateViewAsSkillV2{
 			    end
 			    local card_id = room:askForExchange(player, self:objectName(), fewer:getHandcardNum(), 1, false, "", false)
 			    local id2 = room:askForExchange(to, self:objectName(), fewer:getHandcardNum(), 1, false, "", false)
-			    room:obtainCard(player, id2, false)
-			    room:obtainCard(to, card_id, false)
+			    room:obtainCard(player, id2, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, to:objectName(), player:objectName(), "dl_chaju", ""), false)
+			    room:obtainCard(to, card_id, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), to:objectName(), "dl_chaju", ""), false)
 			end
 		else
 			local dest = sgs.QVariant()
@@ -68,8 +68,8 @@ dl_chajuvs = sgs.CreateViewAsSkillV2{
 			if choice == "1" then
 			    local card_id = room:askForExchange(player, self:objectName(), to:getHandcardNum(), 1, false, "", false)
 			    local id2 = room:askForExchange(to, self:objectName(), player:getHandcardNum(), 1, false, "", false)
-			    room:obtainCard(player, id2, false)
-			    room:obtainCard(to, card_id, false)
+			    room:obtainCard(player, id2, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, to:objectName(), player:objectName(), "dl_chaju", ""), false)
+			    room:obtainCard(to, card_id, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), to:objectName(), "dl_chaju", ""), false)
 			else
 			    room:throwCard(player:wholeHandCards(), player, nil)
 			    room:throwCard(to:wholeHandCards(), to, nil)
@@ -412,7 +412,7 @@ dl_yanxiao = sgs.CreateTriggerSkillV2{
 			for _, card in sgs.qlist(player:getJudgingArea()) do
 				if card:isKindOf("Xumou") then
 					room:setPlayerMark(player, "dl_yanxiao", 1)
-					room:obtainCard(player, card, true)
+					room:obtainCard(player, card, self:objectName(), true)
 				else
 					room:throwCard(card, player, nil)
 				end

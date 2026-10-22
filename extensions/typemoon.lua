@@ -54,7 +54,7 @@ yinyang = sgs.CreateTriggerSkillV2 {
 				player:addToPile("femaleshiki", player:handCards(), false)
 			end
 			if not player:getPile("maleshiki"):isEmpty() then
-				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, player:objectName())
+				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, player:objectName(), "yinyang", "")
 				local move = sgs.CardsMoveStruct(player:getPile("maleshiki"), player, sgs.Player_PlaceHand, reason)
 				room:moveCardsAtomic(move, false)
 			end
@@ -64,7 +64,7 @@ yinyang = sgs.CreateTriggerSkillV2 {
 				player:addToPile("maleshiki", player:handCards(), false)
 			end
 			if not player:getPile("femaleshiki"):isEmpty() then
-				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, player:objectName())
+				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, player:objectName(), "yinyang", "")
 				local move = sgs.CardsMoveStruct(player:getPile("femaleshiki"), player, sgs.Player_PlaceHand, reason)
 				room:moveCardsAtomic(move, false)
 			end
@@ -89,7 +89,7 @@ yinyangDetach = sgs.CreateTriggerSkillV2 {
 			player:setGender(sgs.General_Female)
 			player:throwAllHandCards()
 			if not player:getPile("femaleshiki"):isEmpty() then
-				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, player:objectName())
+				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, player:objectName(), "yinyang", "")
 				local move = sgs.CardsMoveStruct(player:getPile("femaleshiki"), player, sgs.Player_PlaceHand, reason)
 				room:moveCardsAtomic(move, false)
 			end
@@ -436,7 +436,7 @@ jishamod = sgs.CreateTriggerSkillV2 {
 			if p:getPile("ren"):length() > 0 and accepted[p:objectName()] then
 				jink_table[index] = 0
 				room:broadcastSkillInvoke(skill:objectName())
-				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, p:objectName())
+				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, player:objectName(), "jisha", "")
 				local move = sgs.CardsMoveStruct(p:getPile("ren"), player, sgs.Player_PlaceHand, reason)
 				room:moveCardsAtomic(move, false)
 				room:removeFixedDistance(player, p, 1)
@@ -465,7 +465,7 @@ jishaDetach = sgs.CreateTriggerSkillV2 {
 		for _, p in sgs.qlist(room:getAlivePlayers()) do
 			if p:getPile("ren"):length() > 0 then
 				room:broadcastSkillInvoke(skill:objectName())
-				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, p:objectName())
+				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, p:objectName(), "jisha", "")
 				local move = sgs.CardsMoveStruct(p:getPile("ren"), p, sgs.Player_PlaceHand, reason)
 				room:moveCardsAtomic(move, false)
 				room:removeFixedDistance(player, p, 1)

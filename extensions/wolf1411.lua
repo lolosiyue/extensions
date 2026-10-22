@@ -36,7 +36,7 @@ lalong = sgs.CreateViewAsSkillV2 {
 		local room = source:getRoom()
 		if not room then return end
 		if ctx.use_card then
-			target:obtainCard(ctx.use_card)
+			room:obtainCard(target, ctx.use_card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), target:objectName(), self:objectName(), ""), true)
 		end
 		source:drawCards(1)
 		local others = room:getOtherPlayers(target)
@@ -95,17 +95,18 @@ renzha = sgs.CreateTriggerSkillV2 {
 	end,
 	on_cost = function(self, event, room, player, ctx)
 		local invoker = ctx.invoker or ctx.initiator
-		if not invoker or invoker:isAllNude() then return false end
+		if not invoker or not player:canGet(invoker, "hej") then return false end
 		local liubeis = sgs.SPlayerList()
 		liubeis:append(player)
 		return room:askForPlayerChosen(invoker, liubeis, self:objectName(), "@renzha-to", true) ~= nil
 	end,
 	on_effect = function(self, event, room, player, ctx)
 		local invoker = ctx.invoker or ctx.initiator
-		if not invoker or invoker:isAllNude() then return false end
+		if not invoker or not player:canGet(invoker, "hej") then return false end
 		room:broadcastSkillInvoke(self:objectName())
-		local card_id = room:askForCardChosen(player, invoker, "hej", self:objectName())
-		room:obtainCard(player, sgs.Sanguosha:getCard(card_id), room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
+		local card_id = room:askForCardChosen(player, invoker, "hej", self:objectName(), false, sgs.Card_MethodGet)
+		if not player:canGet(invoker, card_id) then return false end
+		room:obtainCard(player, card_id, self:objectName(), room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
 		return false
 	end,
 }
@@ -414,7 +415,7 @@ shejiVS = sgs.CreateViewAsSkillV2 {
 		for _, id in sgs.qlist(source:handCards()) do
 			dummy:addSubcard(id)
 		end
-		target:obtainCard(dummy, false)
+		room:obtainCard(target, dummy, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), target:objectName(), self:objectName(), ""), false)
 		dummy:deleteLater()
 		local slash = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		slash:setSkillName(self:objectName())
@@ -697,7 +698,7 @@ xionglie = sgs.CreateTriggerSkillV2 {
 		elseif player:getPhase() == sgs.Player_Finish then
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				if not p:getPile("xionglie_lie"):isEmpty() then
-					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, p:objectName())
+					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GOTCARD, p:objectName(), self:objectName(), "")
 					local move = sgs.CardsMoveStruct(p:getPile("xionglie_lie"), p, sgs.Player_PlaceHand, reason)
 					room:moveCardsAtomic(move, false)
 				end
@@ -739,6 +740,7 @@ jieffan = sgs.CreateTriggerSkillV2 {
 		if not dying.who then return false end
 		local killer = sgs.DamageStruct()
 		killer.from = player
+		killer.reason = self:objectName()
 		room:killPlayer(dying.who, killer)
 		return false
 	end,

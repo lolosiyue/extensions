@@ -205,7 +205,7 @@ krskitgjiamian = sgs.CreateTriggerSkillV2 {
 			return false
 		end
 		for _, sp in sgs.qlist(room:getAlivePlayers()) do
-			if not sp:isKongcheng() then
+			if player:canGet(sp, "h") then
 				return skill:objectName()
 			end
 		end
@@ -214,7 +214,7 @@ krskitgjiamian = sgs.CreateTriggerSkillV2 {
 	on_cost = function(skill, event, room, player, ctx)
 		local splist = sgs.SPlayerList()
 		for _, sp in sgs.qlist(room:getAlivePlayers()) do
-			if not sp:isKongcheng() then
+			if player:canGet(sp, "h") then
 				splist:append(sp)
 			end
 		end
@@ -229,8 +229,14 @@ krskitgjiamian = sgs.CreateTriggerSkillV2 {
 		return true
 	end,
 	on_effect_target = function(skill, event, room, player, ctx, target)
-		local cdid = room:askForCardChosen(player, target, "h", skill:objectName())
-		room:obtainCard(player, cdid, false)
+		if not player:canGet(target, "h") then
+			return false
+		end
+		local cdid = room:askForCardChosen(player, target, "h", skill:objectName(), false, sgs.Card_MethodGet)
+		if not player:canGet(target, cdid) then
+			return false
+		end
+		room:obtainCard(player, cdid, skill:objectName(), false)
 		return false
 	end,
 }

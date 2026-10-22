@@ -80,7 +80,7 @@ modao = sgs.CreateTriggerSkillV2{
 				if player:getMark("modao") >= num then
 					local targets = sgs.SPlayerList()
 					for _,p in sgs.qlist(room:getOtherPlayers(player)) do
-						if not p:isKongcheng() then
+						if player:canGet(p, "h") then
 							targets:append(p)
 						end
 					end
@@ -91,14 +91,14 @@ modao = sgs.CreateTriggerSkillV2{
 					for i = 1, num do--进行多次执行
 						local id = room:askForCardChosen(player, target, "h", "modao",
 							false,--选择卡牌时手牌不可见
-							sgs.Card_MethodNone,--设置为弃置类型
+							sgs.Card_MethodGet,--设置为获得类型
 							discards,--将子卡表设置为不可选卡牌id表（保证每张卡只能被选择一次）
 							false)--只有执行过一次选择才可取消
-						if id < 0 then break end--如果卡牌id无效就结束多次执行
+						if id < 0 or not player:canGet(target, id) then break end--如果卡牌id无效就结束多次执行
 						discards:append(id)--将选择的id添加到虚拟卡的子卡表
 						to_obtain:addSubcard(sgs.Sanguosha:getCard(id))
 					end	
-					player:obtainCard(to_obtain)
+					room:obtainCard(player, to_obtain, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), target:objectName(), "modao", ""), true)
 				end
 			end
 			room:setPlayerMark(player, "modao",0)
@@ -342,7 +342,7 @@ luafenwei = sgs.CreateTriggerSkillV2{
 		if event == sgs.TargetConfirmed and use.to:contains(player) then
 			if not use.card or use.card:getTypeId() == 0 or not player:isKongcheng() then return false end
 			for _,p in sgs.qlist(room:getAlivePlayers()) do
-				if p:getEquips():length() + p:getJudgingArea():length() > 0 then
+				if player:canGet(p, "ej") then
 					return "luafenwei"
 				end
 			end
@@ -352,7 +352,7 @@ luafenwei = sgs.CreateTriggerSkillV2{
 	on_cost = function(skill, event, room, player, ctx)
 		local targets = sgs.SPlayerList()
 		for _,p in sgs.qlist(room:getAlivePlayers()) do
-			if p:getEquips():length() + p:getJudgingArea():length() > 0 then
+			if player:canGet(p, "ej") then
 				targets:append(p)
 			end
 		end
@@ -363,9 +363,10 @@ luafenwei = sgs.CreateTriggerSkillV2{
 		return true
 	end,
 	on_effect_target = function(skill, event, room, player, ctx, target)
-		if not target then return false end
-		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName())
-		local card_id = room:askForCardChosen(player, target, "ej", "luafenwei")
+		if not target or not player:canGet(target, "ej") then return false end
+		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), target:objectName(), "luafenwei", "")
+		local card_id = room:askForCardChosen(player, target, "ej", "luafenwei", false, sgs.Card_MethodGet)
+		if not player:canGet(target, card_id) then return false end
 		room:obtainCard(player, sgs.Sanguosha:getCard(card_id), reason, room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
 		return false
 	end,

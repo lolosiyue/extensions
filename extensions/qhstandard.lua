@@ -1006,7 +1006,7 @@ qhstandardjianxiong = sgs.CreateTriggerSkillV2 {
                 room:broadcastSkillInvoke("jianxiong")              -- 播放配音
                 room:drawCards(player, drawCard, self:objectName()) -- 摸牌
                 if canobtainCard then                               -- 如果有伤害牌
-                    player:obtainCard(card)                         -- 获得伤害牌
+                    room:obtainCard(player, card, "qhstandardjianxiong") -- 获得伤害牌
                 end
             end
         elseif event == sgs.ConfirmDamage then
@@ -1055,6 +1055,7 @@ qhstandardfenxue = sgs.CreateTriggerSkillV2 {
                 damage.from = target
                 damage.to = player
                 damage.damage = 1
+                damage.reason = "qhstandardfenxue"
                 damagedata:setValue(damage)
                 local msg = sgs.LogMessage()
                 msg.type = "#qhstandardfenxuemsg"
@@ -1136,20 +1137,24 @@ qhstandardfankui = sgs.CreateTriggerSkillV2 {
         local dianshu = damage.damage                                   -- 获取伤害点数
         if room:askForSkillInvoke(player, self:objectName(), data) then -- 询问发动技能
             room:broadcastSkillInvoke("fankui")                         -- 播放配音
-            if not from or from:isNude() then                           -- 没牌
+            if not from or not player:canGet(from, "he") then          -- 没牌
                 room:drawCards(player, 2, self:objectName())
             else
-                local id = room:askForCardChosen(player, from, "he", self:objectName())
-                room:obtainCard(player, id, false) -- 获得
-                room:drawCards(player, 1, self:objectName())
+                local id = room:askForCardChosen(player, from, "he", self:objectName(), false, sgs.Card_MethodGet)
+                if player:canGet(from, id) then
+                    room:obtainCard(player, sgs.Sanguosha:getCard(id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), from:objectName(), "qhstandardfankui", ""), false) -- 获得
+                    room:drawCards(player, 1, self:objectName())
+                end
             end
             if dianshu > 1 then                   -- 伤害点数大于1
-                if not from or from:isNude() then -- 没牌
+                if not from or not player:canGet(from, "he") then -- 没牌
                     room:drawCards(player, 2, self:objectName())
                 else
-                    local id = room:askForCardChosen(player, from, "he", self:objectName())
-                    room:obtainCard(player, id, false) -- 获得
-                    room:drawCards(player, 1, self:objectName())
+                    local id = room:askForCardChosen(player, from, "he", self:objectName(), false, sgs.Card_MethodGet)
+                    if player:canGet(from, id) then
+                        room:obtainCard(player, sgs.Sanguosha:getCard(id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), from:objectName(), "qhstandardfankui", ""), false) -- 获得
+                        room:drawCards(player, 1, self:objectName())
+                    end
                 end
             end
         end
@@ -1242,8 +1247,7 @@ qhstandardguicai = sgs.CreateTriggerSkillV2 { -- 鬼才 触发技
                 local playerlist = room:getAllPlayers()            -- 获取所有角色名单
                 local SPlayerList = sgs.SPlayerList()              -- 新建 player list
                 for _, dest in sgs.qlist(playerlist) do            -- 对名单中的所有角色进行扫描
-                    local DelayedTrickCard = dest:getJudgingArea() -- 获取判定区卡牌
-                    if DelayedTrickCard:length() > 0 then          -- 判定区有牌
+                    if player:canMove(dest, "j") then              -- 判定区有牌
                         SPlayerList:append(dest)                   -- 加入名单
                     end
                 end
@@ -1263,10 +1267,13 @@ qhstandardguicai = sgs.CreateTriggerSkillV2 { -- 鬼才 触发技
                 room:broadcastSkillInvoke("guicai")                                       -- 播放配音
                 local cards = from:getJudgingArea()                                       -- 获取判定区卡牌
                 for _, card in sgs.qlist(cards) do                                        -- 对名单中的所有卡牌进行扫描
-                    local reason = sgs.CardMoveReason()                                   -- 卡牌移动原因结构体
-                    reason.m_reason = sgs.CardMoveReason_S_REASON_TRANSFER                -- 移动
-                    reason.m_playerId = from:objectName()
-                    room:moveCardTo(card, to, sgs.Player_PlaceDelayedTrick, reason, true) -- 移动到判定区
+                    if player:canMove(from, card:getEffectiveId()) then
+                        local reason = sgs.CardMoveReason()                                   -- 卡牌移动原因结构体
+                        reason.m_reason = sgs.CardMoveReason_S_REASON_TRANSFER                -- 移动
+                        reason.m_playerId = from:objectName()
+                        reason.m_skillName = "qhstandardguicai"
+                        room:moveCardTo(card, to, sgs.Player_PlaceDelayedTrick, reason, true) -- 移动到判定区
+                    end
                 end
             end
             if player:getPhase() == sgs.Player_Finish then                -- 若是结束阶段
@@ -1430,6 +1437,7 @@ qhstandardganglie = sgs.CreateTriggerSkillV2 {
                 damage.to = from
                 damage.damage = 1
                 damage.nature = sgs.DamageStruct_Normal
+                damage.reason = "qhstandardganglie"
                 room:damage(damage)       -- 造成伤害
                 if not from:isNude() then -- 有牌
                     local id = room:askForCardChosen(player, from, "he", self:objectName())
@@ -1463,9 +1471,13 @@ qhstandardtuxiCARD = sgs.CreateSkillCard {                  -- 突袭 技能卡
         room:broadcastSkillInvoke("tuxi")                        -- 播放配音
         local pattern = ""                                       -- 记录id
         for _, target in ipairs(targets) do                      -- 对被选择的所有角色进行扫描
-            local id = room:askForCardChosen(source, target, "h", self:objectName())
-            room:obtainCard(source, id, false)                   -- 获得
-            pattern = pattern .. id .. ","
+            if source:canGet(target, "h") then
+                local id = room:askForCardChosen(source, target, "h", self:objectName(), false, sgs.Card_MethodGet)
+                if source:canGet(target, id) then
+                    room:obtainCard(source, sgs.Sanguosha:getCard(id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, source:objectName(), target:objectName(), "qhstandardtuxi", ""), false) -- 获得
+                    pattern = pattern .. id .. ","
+                end
+            end
         end
         room:setPlayerProperty(source, "qhstandardtuxi_card", sgs.QVariant(pattern)) -- AI
         local cards = room:askForDiscard(source, self:objectName(), targetsNum, 1, true, false, "#qhstandardtuxidis",
@@ -1516,7 +1528,7 @@ qhstandardtuxi = sgs.CreateTriggerSkillV2 { -- 突袭 触发技
         local playerlist = room:getOtherPlayers(player) -- 获取其他角色名单
         local SPlayerList = sgs.SPlayerList()           -- 新建 player list
         for _, dest in sgs.qlist(playerlist) do         -- 对名单中的所有角色进行扫描
-            if not dest:isKongcheng() then              -- 有手牌
+            if player:canGet(dest, "h") then            -- 有手牌
                 SPlayerList:append(dest)                -- 加入名单
             end
         end
@@ -1652,7 +1664,7 @@ qhstandardtiandu = sgs.CreateTriggerSkillV2 {
             end
             if Invoke then
                 room:broadcastSkillInvoke("tiandu") -- 播放配音
-                player:obtainCard(card)
+                room:obtainCard(player, card, "qhstandardtiandu")
             end
         end
     end
@@ -1734,7 +1746,7 @@ qhstandardluoshen = sgs.CreateTriggerSkillV2 {
                     judge.reason = self:objectName()     -- 判定原因
                     judge.who = player                   -- 判定对象
                     room:judge(judge)                    -- 进行判定
-                    player:obtainCard(judge.card)
+                    room:obtainCard(player, judge.card, "qhstandardluoshen")
                     if judge:isGood() then               -- 判定成功
                         room:addPlayerMark(player, "&qhstandardluoshen-Clear", 1)
                     elseif n == 1 then
@@ -2043,6 +2055,7 @@ qhfireqiangxiCARD = sgs.CreateSkillCard { -- 强袭 技能卡
         damage.from = effect.from
         damage.to = effect.to
         damage.damage = 1
+        damage.reason = "qhfireqiangxi"
         room:damage(damage) -- 造成伤害
     end
 }
@@ -2129,26 +2142,32 @@ qhfirejieming = sgs.CreateTriggerSkillV2 {
     frequency = sgs.Skill_Frequent,
     events = { sgs.Damaged },
     can_trigger = function(skill, event, room, player, data)
-    	return player and player:isAlive() and player:hasSkill(skill:objectName()) and skill:objectName() or false
+    	if not (player and player:isAlive() and player:hasSkill(skill:objectName())) then return false end
+    	local damage = data:toDamage()
+    	if damage.damage < 1 then return false end
+    	return skill:objectName() .. "*" .. damage.damage
+    end,
+    on_cost = function(self, event, room, player, ctx)
+        if ctx.trigger_count == 0 then
+            if not room:askForSkillInvoke(player, self:objectName(), ctx.original_data) then
+                return false
+            end
+            room:broadcastSkillInvoke("jieming") -- 播放配音
+        end
+        local target = room:askForPlayerChosen(player, room:getAllPlayers(), "qhfirejieming",
+            "#qhfirejieming", true)
+        if not target then
+            return false
+        end
+        ctx.extra_data:setValue(target)
+        return true
     end,
     on_effect = function(self, event, room, player, ctx)
-    	local data = ctx.original_data
-        local damage = data:toDamage()           -- 获取伤害结构体
-        local dianshu = damage.damage            -- 获取伤害点数
-        if room:askForSkillInvoke(player, self:objectName(), data) then
-            room:broadcastSkillInvoke("jieming") -- 播放配音
-            for i = 1, dianshu, 1 do
-                local target = room:askForPlayerChosen(player, room:getAllPlayers(), "qhfirejieming",
-                    "#qhfirejieming", true)
-                if not target then
-                    break
-                end
-                room:drawCards(target, 4, self:objectName()) -- 摸牌
-                if target:getHandcardNum() > 5 then
-                    local num = math.min(target:getHandcardNum() - 5, 3)
-                    room:askForDiscard(target, self:objectName(), num, num)
-                end
-            end
+        local target = ctx.extra_data:toPlayer()
+        room:drawCards(target, 4, self:objectName()) -- 摸牌
+        if target:getHandcardNum() > 5 then
+            local num = math.min(target:getHandcardNum() - 5, 3)
+            room:askForDiscard(target, self:objectName(), num, num)
         end
     end
 }
@@ -2209,8 +2228,8 @@ qhstandardrendeCARD = sgs.CreateSkillCard {                                    -
     end,
     on_use = function(self, room, source, targets)
         local target = targets[1]
-        local MoveReason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), self:objectName(),
-            nil)
+        local MoveReason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), target:objectName(),
+            "qhstandardrende", "")
         local move = sgs.CardsMoveStruct()
         move.card_ids = self:getSubcards()
         move.to = target
@@ -2319,6 +2338,7 @@ qhstandardjijiangCARD = sgs.CreateSkillCard {           -- 激将 技能卡
                 local reason = sgs.CardMoveReason()                                                         -- 卡牌移动原因结构体
                 reason.m_reason = sgs.CardMoveReason_S_REASON_TRANSFER                                      -- 移动
                 reason.m_playerId = dest:objectName()
+                reason.m_skillName = "qhstandardjijiang"
                 room:moveCardTo(Card, source, sgs.Player_PlaceHand, reason, false)                          -- 移动到手牌
                 if dest:getKingdom() == "shu" then                                                          -- 如果是蜀势力
                     local msg = sgs.LogMessage()                                                            -- 创建消息
@@ -2554,7 +2574,7 @@ qhstandardyanyue = sgs.CreateTriggerSkillV2 { -- 偃月 触发技
                 msg.arg = color
                 msg.card_str = judge.card:toString()
                 room:sendLog(msg) -- 发送消息
-                player:obtainCard(judge.card)
+                room:obtainCard(player, judge.card, "qhstandardyanyue")
                 for _, play in sgs.qlist(room:getOtherPlayers(player)) do
                     room:setPlayerMark(play, "qhstandardyanyue_" .. color .. "-Clear", 1)
                 end
@@ -2613,7 +2633,7 @@ qhstandardqinglong = sgs.CreateTriggerSkillV2 {
                     local card = sgs.Sanguosha:getCard(cardid) -- 获取卡牌信息
                     if card:isKindOf("Blade") then             -- 如果是青龙偃月刀
                         room:broadcastSkillInvoke("yijue")     -- 播放配音
-                        room:obtainCard(player, card)          -- 获得
+                        room:obtainCard(player, card, "qhstandardqinglong") -- 获得
                     end
                 end
             end
@@ -3716,7 +3736,7 @@ qhfiremanjuann = sgs.CreateTriggerSkillV2 {
                             room:sendLog(msg) -- 发送消息
                             room:addPlayerMark(player, "qhfiremanjuann-Clear", 1)
                             room:addPlayerMark(player, "&qhfiremanjuann-Clear", 1)
-                            room:obtainCard(player, id)
+                            room:obtainCard(player, id, "qhfiremanjuann")
                             room:setPlayerFlag(player, "-qhfiremanjuann_using")
                             break
                         end
@@ -4134,6 +4154,7 @@ qhstandardpoxiCARD = sgs.CreateSkillCard {              -- 破袭 技能卡
         damage.from = source
         damage.to = targets[1]
         damage.damage = 1
+        damage.reason = "qhstandardpoxi"
         room:damage(damage)
     end
 }
@@ -4431,7 +4452,7 @@ qhstandardfanjianCARD = sgs.CreateSkillCard {                                  -
         room:broadcastSkillInvoke("fanjian")                    -- 播放配音
         local suit = room:askForSuit(target, self:objectName()) -- 询问花色
         room:getThread():delay(800)                             -- 等待
-        room:showCard(source, card_id)
+        room:showCard(source, card_id, sgs.SPlayerList(), "qhstandardfanjian")
         local msg = sgs.LogMessage()                            -- 创建消息
         msg.type = "#qhstandardfanjian"                         -- 消息结构类型(发送的消息是什么)
         msg.from = source
@@ -4440,11 +4461,12 @@ qhstandardfanjianCARD = sgs.CreateSkillCard {                                  -
         msg.card_str = card:toString()
         room:sendLog(msg)                    -- 发送消息
         if card:getSuit() ~= suit then       -- 花色不同
-            target:obtainCard(self)
+            room:obtainCard(target, self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), target:objectName(), "qhstandardfanjian", ""), true)
             local damage = sgs.DamageStruct()
             damage.card = nil
             damage.from = source
             damage.to = target
+            damage.reason = "qhstandardfanjian"
             room:damage(damage)
         else
             room:throwCard(self, source) -- 弃置发动技能的卡牌
@@ -5085,7 +5107,7 @@ qhwindbuqu = sgs.CreateTriggerSkillV2 {
         end
         room:broadcastSkillInvoke("buqu") -- 播放配音
         if duplicate then
-            player:obtainCard(sgs.Sanguosha:getCard(id))
+            room:obtainCard(player, id, "qhwindbuqu")
         else
             player:addToPile("qhwindbuqu", id)
             local Recover = sgs.RecoverStruct() -- 定义恢复结构体
@@ -5143,7 +5165,7 @@ qhwindfenji = sgs.CreateTriggerSkillV2 {
                     msg.from = player
                     msg.card_str = sgs.Sanguosha:getCard(card_id):toString()
                     room:sendLog(msg)
-                    player:obtainCard(sgs.Sanguosha:getCard(card_id))
+                    room:obtainCard(player, card_id, "qhwindfenji")
                     room:clearAG()
                 end
             end
@@ -5265,9 +5287,11 @@ qhwindgongxinCARD = sgs.CreateSkillCard {                                       
     end,
     on_use = function(self, room, source, targets)
         local target = targets[1]
+        if not source:canGet(target, "hej") then return end
         room:broadcastSkillInvoke("gongxin") -- 播放配音
-        local id = room:askForCardChosen(source, target, "hej", "qhwindgongxin", true)
-        room:obtainCard(source, id, false)   -- 获得
+        local id = room:askForCardChosen(source, target, "hej", "qhwindgongxin", true, sgs.Card_MethodGet)
+        if not source:canGet(target, id) then return end
+        room:obtainCard(source, sgs.Sanguosha:getCard(id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, source:objectName(), target:objectName(), "qhwindgongxin", ""), false) -- 获得
     end
 }
 
@@ -5344,7 +5368,7 @@ qhfiretianyiCARD = sgs.CreateSkillCard { -- 天义 技能卡
             room:setPlayerMark(from, "&qhfiretianyi-Clear", 1)
         else
             room:broadcastSkillInvoke("tianyi", 3) -- 播放配音
-            room:obtainCard(from, pindian.to_card)
+            room:obtainCard(from, pindian.to_card, "qhfiretianyi")
         end
     end
 }
@@ -5550,7 +5574,7 @@ qhfirexinhuo = sgs.CreateTriggerSkillV2 {
                     return false
                 end
                 local card = room:askForCardShow(player, player, self:objectName())
-                room:showCard(player, card:getId())
+                room:showCard(player, card:getId(), sgs.SPlayerList(), "qhfirexinhuo")
                 if card:getSuit() < 4 then              --有花色
                     room:broadcastSkillInvoke("yingzi") --播放配音
                     local suit = card:getSuitString()
@@ -6178,7 +6202,9 @@ qhstandardqiaomeng = sgs.CreateTriggerSkillV2 {
                                 local id = room:askForCardChosen(player, target, "hej", self:objectName())
                                 local card = sgs.Sanguosha:getCard(id)
                                 if card:isKindOf("EquipCard") then
-                                    room:obtainCard(player, id, false) -- 获得
+                                    if player:canGet(target, id) then
+                                        room:obtainCard(player, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), target:objectName(), "qhstandardqiaomeng", ""), false) -- 获得
+                                    end
                                 else
                                     room:throwCard(id, target, player) -- 弃牌
                                     if card:isKindOf("TrickCard") then
@@ -6208,7 +6234,9 @@ qhstandardqiaomeng = sgs.CreateTriggerSkillV2 {
                             local id = room:askForCardChosen(player, use.from, "hej", self:objectName())
                             local card = sgs.Sanguosha:getCard(id)
                             if card:isKindOf("BasicCard") then
-                                room:obtainCard(player, id, false)   -- 获得
+                                if player:canGet(use.from, id) then
+                                    room:obtainCard(player, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), use.from:objectName(), "qhstandardqiaomeng", ""), false) -- 获得
+                                end
                             else
                                 room:throwCard(id, use.from, player) -- 弃牌
                                 if card:isKindOf("TrickCard") then
@@ -6274,6 +6302,7 @@ qhwindleiji = sgs.CreateTriggerSkillV2 {
                         damage.to = target
                         damage.damage = 2
                         damage.nature = sgs.DamageStruct_Thunder
+                        damage.reason = "qhwindleiji"
                         room:damage(damage) -- 造成伤害
                     else
                         if player:isWounded() then
@@ -6289,6 +6318,7 @@ qhwindleiji = sgs.CreateTriggerSkillV2 {
                         damage.to = target
                         damage.damage = 1
                         damage.nature = sgs.DamageStruct_Thunder
+                        damage.reason = "qhwindleiji"
                         room:damage(damage) -- 造成伤害
                     end
                 end
@@ -6516,7 +6546,7 @@ qhwindhuangtianVSCARD = sgs.CreateSkillCard { -- 黄天 技能卡
         local target = targets[1]
         if target:hasLordSkill("qhwindhuangtian") then
             room:broadcastSkillInvoke("huangtian")
-            target:obtainCard(self)
+            room:obtainCard(target, self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), target:objectName(), "qhwindhuangtian", ""), true)
             if source:getKingdom() == "qun" then
                 room:drawCards(source, 1, self:objectName()) -- 摸牌
             end
@@ -7224,7 +7254,7 @@ qhfireshuangxiong = sgs.CreateTriggerSkillV2 { -- 双雄 触发技
                     if judge.card:isBlack() then
                         room:setPlayerMark(player, "&qhfireshuangxiong_black-Clear", 1)
                     end
-                    player:obtainCard(judge.card)
+                    room:obtainCard(player, judge.card, "qhfireshuangxiong")
                 end
             end
         elseif event == sgs.Damage then
@@ -7251,19 +7281,21 @@ qhfiremengjin = sgs.CreateTriggerSkillV2 {
             if target:objectName() ~= player:objectName() then
                 local playerdata = sgs.QVariant()
                 playerdata:setValue(target)
-                if target:canDiscard(target, "hej") then
+                if player:canGet(target, "hej") or player:canDiscard(target, "hej") then
                     player:setTag("qhfiremengjin-AI", data)
                     if use.card:isKindOf("Slash") then
-                        if player:getMark("qhfiremengjin_slash-Clear") < 2 then
+                        if player:getMark("qhfiremengjin_slash-Clear") < 2 and player:canGet(target, "hej") then
                             if room:askForSkillInvoke(player, self:objectName(), playerdata) then
                                 room:broadcastSkillInvoke("mengjin")
-                                local id = room:askForCardChosen(player, target, "hej", self:objectName())
-                                room:obtainCard(player, id, false) -- 获得
-                                room:addPlayerMark(player, "qhfiremengjin_slash-Clear", 1)
+                                local id = room:askForCardChosen(player, target, "hej", self:objectName(), false, sgs.Card_MethodGet)
+                                if player:canGet(target, id) then
+                                    room:obtainCard(player, sgs.Sanguosha:getCard(id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), target:objectName(), "qhfiremengjin", ""), false) -- 获得
+                                    room:addPlayerMark(player, "qhfiremengjin_slash-Clear", 1)
+                                end
                             end
                         end
                     elseif use.card:isKindOf("TrickCard") then
-                        if player:getMark("qhfiremengjin_trick-Clear") < 2 then
+                        if player:getMark("qhfiremengjin_trick-Clear") < 2 and player:canDiscard(target, "hej") then
                             if room:askForSkillInvoke(player, self:objectName(), playerdata) then
                                 room:broadcastSkillInvoke("mengjin")
                                 local id = room:askForCardChosen(player, target, "hej", self:objectName(), false,
@@ -7563,8 +7595,8 @@ qhfirerangxing = sgs.CreateTriggerSkillV2 {
             room:broadcastSkillInvoke("guanxing")
             local cards = room:getNCards(1)
             local card = sgs.Sanguosha:getCard(cards:first())
-            player:obtainCard(card)
-            room:showCard(player, cards)
+            room:obtainCard(player, card, "qhfirerangxing")
+            room:showCard(player, cards, sgs.SPlayerList(), "qhfirerangxing")
             if card:getNumber() < 7 then
                 cards = room:getNCards(1)
                 player:addToPile("stars", cards)
@@ -7717,7 +7749,7 @@ mythqicai = sgs.CreateTriggerSkillV2 {
                         end
                     end
                 end
-                player:obtainCard(dummy, false)
+                room:obtainCard(player, dummy, "mythqicai", false)
                 dummy:deleteLater()
             end
         elseif event == sgs.EventPhaseChanging then
@@ -8062,7 +8094,7 @@ mythshuangjia = sgs.CreateTriggerSkillV2 {
                 room:clearAG()
                 local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0) -- 虚拟卡
                 dummy:addSubcards(cards)
-                player:obtainCard(dummy, false)
+                room:obtainCard(player, dummy, "mythshuangjia", false)
                 dummy:deleteLater()
                 room:setPlayerProperty(player, "mythhujia", sgs.QVariant(4))
                 for i = 0, 3, 1 do
@@ -8143,7 +8175,7 @@ mythbeifen = sgs.CreateTriggerSkillV2 {
                                     end
                                 end
                             end
-                            player:obtainCard(dummy, false)
+                            room:obtainCard(player, dummy, "mythbeifen", false)
                             dummy:deleteLater()
                         end
                     end
@@ -8205,7 +8237,7 @@ mythxingchong = sgs.CreateTriggerSkillV2 {
                 room:setPlayerMark(player, "mythxingchong_" .. subcard .. "_lun", 1)
                 room:setCardTip(subcard, "mythxingchong_lun") --卡牌显示文字 每轮清除
             end
-            room:showCard(player, subcards)
+            room:showCard(player, subcards, sgs.SPlayerList(), "mythxingchong")
         elseif event == sgs.CardsMoveOneTime then
             local move = data:toMoveOneTime()
             if move.from and move.from:objectName() == player:objectName() then
@@ -8295,6 +8327,41 @@ mythliunian = sgs.CreateTriggerSkillV2 {
     end
 }
 
+--滕芳兰-落宠：生成当前可选项并询问（取消返回 nil）
+local function mythluochong_ask(self, room, player)
+    local chosen = player:property("SkillDescriptionRecord_mythluochong"):toString():split("+") --描述记录
+    if #chosen == 4 then
+        chosen = {}
+    end
+    local choices = {}
+    if not table.contains(chosen, "mythluochong:recover") then
+        for _, play in sgs.qlist(room:getAllPlayers()) do
+            if play:isWounded() then
+                table.insert(choices, "recover")
+                break
+            end
+        end
+    end
+    if not table.contains(chosen, "mythluochong:draw") then
+        table.insert(choices, "draw")
+    end
+    if not table.contains(chosen, "mythluochong:discard") then
+        for _, play in sgs.qlist(room:getOtherPlayers(player)) do
+            if player:canDiscard(play, "he") then
+                table.insert(choices, "discard")
+                break
+            end
+        end
+    end
+    if not table.contains(chosen, "mythluochong:lose") then
+        table.insert(choices, "lose")
+    end
+    table.insert(choices, "cancel")
+    local choice = room:askForChoice(player, self:objectName(), table.concat(choices, "+")) --询问
+    if not choice or choice == "cancel" then return nil end
+    return choice
+end
+
 --滕芳兰-落宠
 mythluochong = sgs.CreateTriggerSkillV2 {
     name = "mythluochong",
@@ -8308,7 +8375,19 @@ mythluochong = sgs.CreateTriggerSkillV2 {
         -- 持有者本人的事件（准备/结束阶段、受伤、失去体力、回合开始）：以事件目标为 owner
         if player:hasSkill(name) then
             local pinned = qh_pin(skill, player)
-            if pinned then return pinned, player end
+            if pinned then
+                -- 受到伤害 / 失去体力：每点触发一次
+                if event == sgs.Damaged then
+                    local damage = data:toDamage()
+                    if damage.damage < 1 then return false end
+                    pinned = pinned .. "*" .. damage.damage
+                elseif event == sgs.HpLost then
+                    local hpLost = data:toHpLost()
+                    if hpLost.lose < 1 then return false end
+                    pinned = pinned .. "*" .. hpLost.lose
+                end
+                return pinned, player
+            end
         end
         -- 被落宠标记的目标进入准备阶段：以任一持有者为名义 owner，效果内部遍历全体持有者
         if event == sgs.EventPhaseStart and player:getPhase() == sgs.Player_Start then
@@ -8322,8 +8401,15 @@ mythluochong = sgs.CreateTriggerSkillV2 {
         end
         return false
     end,
+    on_cost = function(self, event, room, player, ctx)
+        if event == sgs.Damaged or event == sgs.HpLost then
+            local choice = mythluochong_ask(self, room, player)
+            if not choice then return false end
+            ctx.choice = choice
+        end
+        return true
+    end,
     on_effect = function(self, event, room, player, ctx)
-        local data = ctx.original_data
         local invoker = ctx.invoker -- 事件目标（回合角色或受击角色）
         if event == sgs.EventPhaseStart and invoker:getPhase() == sgs.Player_Start then
             -- 落宠持有者在被标记目标的准备阶段弃置其至多4张牌（旧版为单次触发内遍历全部持有者）
@@ -8360,119 +8446,88 @@ mythluochong = sgs.CreateTriggerSkillV2 {
         end
         if event == sgs.EventPhaseStart or event == sgs.Damaged or event == sgs.HpLost then
             if player:objectName() == invoker:objectName() and player:hasSkill(self:objectName()) then
-                local times = 1
                 if event == sgs.EventPhaseStart then
                     local phase = player:getPhase()
                     if phase ~= sgs.Player_Start and phase ~= sgs.Player_Finish then return false end
                 end
-                if event == sgs.Damaged then
-                    local damage = data:toDamage()
-                    times = damage.damage
+                -- 受到伤害 / 失去体力的选择已在 on_cost 询问；阶段开始仍在此询问
+                local choice = ctx.choice
+                if event == sgs.EventPhaseStart then
+                    choice = mythluochong_ask(self, room, player)
+                    if not choice then return false end
                 end
-                if event == sgs.HpLost then
-                    local hpLost = data:toHpLost()
-                    times = hpLost.lose
+                local chosen = player:property("SkillDescriptionRecord_mythluochong"):toString():split("+") --描述记录
+                if #chosen == 4 then
+                    chosen = {}
                 end
-                for i = 1, times, 1 do
-                    local chosen = player:property("SkillDescriptionRecord_mythluochong"):toString():split("+") --描述记录
-                    if #chosen == 4 then
-                        chosen = {}
-                    end
-                    local choices = {}
-                    if not table.contains(chosen, "mythluochong:recover") then
-                        for _, play in sgs.qlist(room:getAllPlayers()) do
-                            if play:isWounded() then
-                                table.insert(choices, "recover")
-                                break
-                            end
+                room:broadcastSkillInvoke("luochong")                                                   -- 播放配音
+                table.insert(chosen, "mythluochong:" .. choice)
+                room:setPlayerProperty(player, "SkillDescriptionRecord_mythluochong",
+                    sgs.QVariant(table.concat(chosen, "+")))
+                room:setPlayerProperty(player, "mythluochong_choice", sgs.QVariant(choice)) --AI
+                player:setSkillDescriptionSwap("mythluochong", "%arg11", table.concat(chosen, "+"))
+                room:changeTranslation(player, "mythluochong", 1)                           --更改翻译
+                local targets = sgs.SPlayerList()
+                if choice == "recover" then
+                    for _, play in sgs.qlist(room:getAllPlayers()) do
+                        if play:isWounded() then
+                            targets:append(play)
                         end
                     end
-                    if not table.contains(chosen, "mythluochong:draw") then
-                        table.insert(choices, "draw")
-                    end
-                    if not table.contains(chosen, "mythluochong:discard") then
-                        for _, play in sgs.qlist(room:getOtherPlayers(player)) do
-                            if player:canDiscard(play, "he") then
-                                table.insert(choices, "discard")
-                                break
-                            end
+                end
+                if choice == "draw" then
+                    targets = room:getAllPlayers()
+                end
+                if choice == "discard" then
+                    for _, play in sgs.qlist(room:getOtherPlayers(player)) do
+                        if player:canDiscard(play, "he") then
+                            targets:append(play)
                         end
                     end
-                    if not table.contains(chosen, "mythluochong:lose") then
-                        table.insert(choices, "lose")
-                    end
-                    table.insert(choices, "cancel")
-                    local choice = room:askForChoice(player, self:objectName(), table.concat(choices, "+")) --询问
-                    if not choice or choice == "cancel" then return false end
-                    room:broadcastSkillInvoke("luochong")                                                   -- 播放配音
-                    table.insert(chosen, "mythluochong:" .. choice)
-                    room:setPlayerProperty(player, "SkillDescriptionRecord_mythluochong",
-                        sgs.QVariant(table.concat(chosen, "+")))
-                    room:setPlayerProperty(player, "mythluochong_choice", sgs.QVariant(choice)) --AI
-                    player:setSkillDescriptionSwap("mythluochong", "%arg11", table.concat(chosen, "+"))
-                    room:changeTranslation(player, "mythluochong", 1)                           --更改翻译
-                    local targets = sgs.SPlayerList()
-                    if choice == "recover" then
-                        for _, play in sgs.qlist(room:getAllPlayers()) do
-                            if play:isWounded() then
-                                targets:append(play)
-                            end
+                end
+                if choice == "lose" then
+                    targets = room:getOtherPlayers(player)
+                end
+                local target = room:askForPlayerChosen(player, targets, self:objectName(), "#mythluochong-" .. choice,
+                    false, false)
+                local msg = sgs.LogMessage()
+                msg.type = "#mythluochong"
+                msg.from = player
+                msg.to:append(target)
+                msg.arg = "mythluochong:" .. choice
+                room:sendLog(msg) -- 发送消息
+                if choice == "recover" then
+                    room:recover(target, sgs.RecoverStruct(player))
+                end
+                if choice == "draw" then
+                    target:drawCards(3, self:objectName())
+                end
+                if choice == "discard" then
+                    local ids = sgs.IntList()
+                    local places = sgs.PlaceList()
+                    target:setFlags("qh_InTempMoving")
+                    for j = 1, 3, 1 do
+                        if not player:canDiscard(target, "he") then return false end
+                        local Card = room:askForCardChosen(player, target, "he", self:objectName(), false,
+                            sgs.Card_MethodDiscard, sgs.IntList(), j ~= 1)
+                        if Card < 0 then
+                            break
                         end
+                        ids:append(Card)
+                        places:append(room:getCardPlace(Card))
+                        target:addToPile("#mythluochong", Card, false)
                     end
-                    if choice == "draw" then
-                        targets = room:getAllPlayers()
+                    for j = 0, ids:length() - 1, 1 do
+                        room:moveCardTo(sgs.Sanguosha:getCard(ids:at(j)), target, places:at(j), false)
                     end
-                    if choice == "discard" then
-                        for _, play in sgs.qlist(room:getOtherPlayers(player)) do
-                            if player:canDiscard(play, "he") then
-                                targets:append(play)
-                            end
-                        end
-                    end
-                    if choice == "lose" then
-                        targets = room:getOtherPlayers(player)
-                    end
-                    local target = room:askForPlayerChosen(player, targets, self:objectName(), "#mythluochong-" .. choice,
-                        false, false)
-                    local msg = sgs.LogMessage()
-                    msg.type = "#mythluochong"
-                    msg.from = player
-                    msg.to:append(target)
-                    msg.arg = "mythluochong:" .. choice
-                    room:sendLog(msg) -- 发送消息
-                    if choice == "recover" then
-                        room:recover(target, sgs.RecoverStruct(player))
-                    end
-                    if choice == "draw" then
-                        target:drawCards(3, self:objectName())
-                    end
-                    if choice == "discard" then
-                        local ids = sgs.IntList()
-                        local places = sgs.PlaceList()
-                        target:setFlags("qh_InTempMoving")
-                        for j = 1, 3, 1 do
-                            if not player:canDiscard(target, "he") then return false end
-                            local Card = room:askForCardChosen(player, target, "he", self:objectName(), false,
-                                sgs.Card_MethodDiscard, sgs.IntList(), j ~= 1)
-                            if Card < 0 then
-                                break
-                            end
-                            ids:append(Card)
-                            places:append(room:getCardPlace(Card))
-                            target:addToPile("#mythluochong", Card, false)
-                        end
-                        for j = 0, ids:length() - 1, 1 do
-                            room:moveCardTo(sgs.Sanguosha:getCard(ids:at(j)), target, places:at(j), false)
-                        end
-                        target:setFlags("-qh_InTempMoving")
-                        local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0) -- 虚拟卡
-                        dummy:deleteLater()
-                        dummy:addSubcards(ids)
-                        room:throwCard(dummy, target, player)
-                    end
-                    if choice == "lose" then
-                        room:loseHp(sgs.HpLostStruct(target, 1, self:objectName(), player))
-                    end
+                    target:setFlags("-qh_InTempMoving")
+                    local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0) -- 虚拟卡
+                    dummy:deleteLater()
+                    dummy:addSubcards(ids)
+                    room:throwCard(dummy, target, player)
+                end
+                if choice == "lose" then
+                    room:loseHp(sgs.HpLostStruct(target, 1, self:objectName(), player))
                 end
             end
         elseif event == sgs.RoundStart then
@@ -8543,9 +8598,11 @@ mythaichen = sgs.CreateTriggerSkillV2 {
                 player:gainHujia(math.floor(num))
             end
             if math.floor(num) ~= num then
-                if damage.from and player:canDiscard(damage.from, "he") then
-                    local id = room:askForCardChosen(player, damage.from, "he", self:objectName())
-                    room:obtainCard(player, id, false) -- 获得
+                if damage.from and player:canGet(damage.from, "he") then
+                    local id = room:askForCardChosen(player, damage.from, "he", self:objectName(), false, sgs.Card_MethodGet)
+                    if player:canGet(damage.from, id) then
+                        room:obtainCard(player, sgs.Sanguosha:getCard(id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), damage.from:objectName(), "mythaichen", ""), false) -- 获得
+                    end
                 else
                     player:drawCards(1, self:objectName())
                 end
@@ -8678,70 +8735,70 @@ mythyuqi = sgs.CreateTriggerSkillV2 { -- 隅泣 触发技
             end
         end
         if #skills_list > 0 then
+            -- 每点伤害 / 每点体力流失各触发一次
+            local times = 0
+            if event == sgs.Damaged then
+                times = data:toDamage().damage
+            elseif event == sgs.HpLost then
+                times = data:toHpLost().lose
+            end
+            if times < 1 then return false end
+            for i, pinned in ipairs(skills_list) do
+                skills_list[i] = pinned .. "*" .. times
+            end
             return table.concat(skills_list, "|"), table.concat(owners, "|")
         end
         return false
     end,
     on_effect = function(self, event, room, player, ctx)
-        local data = ctx.original_data
         local target = ctx.invoker -- 受到伤害/失去体力的角色
-        local times
-        if event == sgs.Damaged then
-            local damage = data:toDamage()
-            times = damage.damage
-        elseif event == sgs.HpLost then
-            local hpLost = data:toHpLost()
-            times = hpLost.lose
-        end
         local usableTimes, juli, guankan, geipai, huode, maxCard = yuqi_getMark(player)
-        for i = 1, times do
-            if target:isDead() then return false end
-            if player:isAlive() then
-                if usableTimes > player:getMark("mythyuqi-Clear") then
-                    room:broadcastSkillInvoke("yuqi") -- 播放配音
-                    room:sendCompulsoryTriggerLog(player, self:objectName())
-                    room:addPlayerMark(player, "mythyuqi-Clear")
-                    local cards = room:getNCards(guankan, false)
-                    room:returnToTopDrawPile(cards) --放回摸牌堆
-                    room:setPlayerMark(player, "mythyuqi_num", geipai)
-                    local cards_data = sgs.QVariant()
+        if target:isDead() then return false end
+        if player:isAlive() then
+            if usableTimes > player:getMark("mythyuqi-Clear") then
+                room:broadcastSkillInvoke("yuqi") -- 播放配音
+                room:sendCompulsoryTriggerLog(player, self:objectName())
+                room:addPlayerMark(player, "mythyuqi-Clear")
+                local cards = room:getNCards(guankan, false)
+                room:returnToTopDrawPile(cards) --放回摸牌堆
+                room:setPlayerMark(player, "mythyuqi_num", geipai)
+                local cards_data = sgs.QVariant()
+                cards_data:setValue(cards)
+                room:setPlayerProperty(player, "mythyuqi_AI", cards_data)
+                room:notifyMoveToPile(player, cards, self:objectName(), sgs.Player_DrawPile, true) --通知移动来
+                local prompt = ("#mythyuqi1:%s:%d"):format(target:objectName(), geipai)
+                local card = room:askForUseCard(player, "@@mythyuqi", prompt, -1, sgs.Card_MethodNone)
+                room:notifyMoveToPile(player, cards, self:objectName(), sgs.Player_DrawPile, false) --通知移动回
+                if card then
+                    local subcards = card:getSubcards()
+                    if not subcards:isEmpty() then
+                        for _, subcard in sgs.qlist(subcards) do
+                            cards:removeOne(subcard)
+                        end
+                    end
+                else
+                    local subcard = cards:at(math.random(0, cards:length() - 1))
+                    cards:removeOne(subcard)
+                    card = sgs.Sanguosha:getCard(subcard)
+                end
+                room:giveCard(player, target, card, self:objectName()) --给牌
+                huode = math.min(huode, cards:length())
+                if huode > 0 then
+                    room:setPlayerMark(player, "mythyuqi_num", huode)
                     cards_data:setValue(cards)
                     room:setPlayerProperty(player, "mythyuqi_AI", cards_data)
                     room:notifyMoveToPile(player, cards, self:objectName(), sgs.Player_DrawPile, true) --通知移动来
-                    local prompt = ("#mythyuqi1:%s:%d"):format(target:objectName(), geipai)
-                    local card = room:askForUseCard(player, "@@mythyuqi", prompt, -1, sgs.Card_MethodNone)
+                    prompt = ("#mythyuqi2:%d"):format(huode)
+                    card = room:askForUseCard(player, "@@mythyuqi", prompt, -1, sgs.Card_MethodNone)
                     room:notifyMoveToPile(player, cards, self:objectName(), sgs.Player_DrawPile, false) --通知移动回
                     if card then
                         local subcards = card:getSubcards()
                         if not subcards:isEmpty() then
-                            for _, subcard in sgs.qlist(subcards) do
-                                cards:removeOne(subcard)
-                            end
-                        end
-                    else
-                        local subcard = cards:at(math.random(0, cards:length() - 1))
-                        cards:removeOne(subcard)
-                        card = sgs.Sanguosha:getCard(subcard)
-                    end
-                    room:giveCard(player, target, card, self:objectName()) --给牌
-                    huode = math.min(huode, cards:length())
-                    if huode > 0 then
-                        room:setPlayerMark(player, "mythyuqi_num", huode)
-                        cards_data:setValue(cards)
-                        room:setPlayerProperty(player, "mythyuqi_AI", cards_data)
-                        room:notifyMoveToPile(player, cards, self:objectName(), sgs.Player_DrawPile, true) --通知移动来
-                        prompt = ("#mythyuqi2:%d"):format(huode)
-                        card = room:askForUseCard(player, "@@mythyuqi", prompt, -1, sgs.Card_MethodNone)
-                        room:notifyMoveToPile(player, cards, self:objectName(), sgs.Player_DrawPile, false) --通知移动回
-                        if card then
-                            local subcards = card:getSubcards()
-                            if not subcards:isEmpty() then
-                                room:obtainCard(player, card, false)
-                            end
+                            room:obtainCard(player, card, "mythyuqi", false)
                         end
                     end
-                    room:addPlayerMark(player, "&mythyuqi_maxCard-SelfClear", maxCard)
                 end
+                room:addPlayerMark(player, "&mythyuqi_maxCard-SelfClear", maxCard)
             end
         end
     end
@@ -8888,6 +8945,7 @@ mythshanshenCARD = sgs.CreateSkillCard {                -- 善身 技能卡
         damage.from = source
         damage.to = source
         damage.damage = 1
+        damage.reason = "mythshanshen"
         room:damage(damage) -- 造成伤害
         damage.to = target
         room:damage(damage) -- 造成伤害
@@ -9033,7 +9091,7 @@ mythmumu = sgs.CreateTriggerSkillV2 {
             local choices = "mopai"
             local targets = sgs.SPlayerList()
             for _, play in sgs.qlist(room:getOtherPlayers(player)) do
-                if player:canDiscard(play, "he") then
+                if player:canGet(play, "he") then
                     targets:append(play)
                     choices = "huode+mopai"
                 end
@@ -9047,10 +9105,10 @@ mythmumu = sgs.CreateTriggerSkillV2 {
                     local places = sgs.PlaceList()
                     target:setFlags("qh_InTempMoving")
                     for i = 1, 3, 1 do
-                        if not target:canDiscard(target, "hej") then break end
+                        if not player:canGet(target, "hej") then break end
                         local Card = room:askForCardChosen(player, target, "hej", self:objectName(), false,
-                            sgs.Card_MethodDiscard, sgs.IntList(), i ~= 1)
-                        if Card < 0 then
+                            sgs.Card_MethodGet, sgs.IntList(), i ~= 1)
+                        if Card < 0 or not player:canGet(target, Card) then
                             break
                         end
                         ids:append(Card)
@@ -9063,7 +9121,7 @@ mythmumu = sgs.CreateTriggerSkillV2 {
                     target:setFlags("-qh_InTempMoving")
                     local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0) -- 虚拟卡
                     dummy:addSubcards(ids)
-                    room:obtainCard(player, dummy, false) -- 获得
+                    room:obtainCard(player, dummy, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), target:objectName(), "mythmumu", ""), false) -- 获得
                     dummy:deleteLater()
                 end
                 room:setPlayerMark(player, "&mythmumu-Clear", 1)
@@ -9159,7 +9217,7 @@ mythxialei = sgs.CreateTriggerSkillV2 {
                     end
                     local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0) -- 虚拟卡
                     dummy:addSubcards(cards)
-                    player:obtainCard(dummy, false)
+                    room:obtainCard(player, dummy, "mythxialei", false)
                     dummy:deleteLater()
                     if player:isDead() then
                         room:returnToTopDrawPile(card_ids) --放回摸牌堆
@@ -9217,7 +9275,7 @@ mythxialei = sgs.CreateTriggerSkillV2 {
             end
             local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0) -- 虚拟卡
             dummy:addSubcards(cards)
-            player:obtainCard(dummy, false)
+            room:obtainCard(player, dummy, "mythxialei", false)
             dummy:deleteLater()
         end
     end
@@ -9261,7 +9319,7 @@ mythanzhiCARD = sgs.CreateSkillCard {    -- 暗织 技能卡
         judge.reason = self:objectName() -- 判定原因
         room:judge(judge)                -- 进行判定
         if source:getPhase() == sgs.Player_NotActive then
-            source:obtainCard(judge.card)
+            room:obtainCard(source, judge.card, "mythanzhi")
         end
         if judge:isGood() then -- 判定成功
             local target = room:askForPlayerChosen(source, room:getAllPlayers(), "mythanzhi", "#mythanzhi-obtain")
@@ -9290,7 +9348,7 @@ mythanzhiCARD = sgs.CreateSkillCard {    -- 暗织 技能卡
                 end
                 local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0) -- 虚拟卡
                 dummy:addSubcards(cards)
-                target:obtainCard(dummy)
+                room:obtainCard(target, dummy, "mythanzhi")
                 dummy:deleteLater()
             end
             room:addPlayerMark(source, "&mythanzhi-Clear", 1)

@@ -591,7 +591,7 @@ c_canshi = sgs.CreateTriggerSkillV2{
                 room:sendLog(msg)
 
                 player:drawCards(3 * self:getEffectiveAmount(ctx))
-				room:loseHp(player, 1)
+				room:loseHp(player, 1, true, player, self:objectName())
             end
         end
         return false
@@ -810,7 +810,7 @@ c_sandao = sgs.CreateTriggerSkillV2{
         elseif event==sgs.DamageDone then
             log(room,"#c_sandao_hit",player);player:drawCards(self:getEffectiveAmount(ctx))
             room:setCardFlag(ctx.original_data:toDamage().card,"c_sandao_hit")
-        else log(room,"#c_sandao_miss",player);room:loseHp(player,1) end
+        else log(room,"#c_sandao_miss",player);room:loseHp(player,1,true,player,self:objectName()) end
         return false
     end
 }
@@ -978,8 +978,11 @@ c_zhaoji = sgs.CreateTriggerSkillV2{
         for id in pairs(marked) do
             local place=room:getCardPlace(id)
             if place~=sgs.Player_PlaceTable and place~=sgs.Player_PlaceUnknown then
-                local reason=sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION,player:objectName(),"","c_zhaoji","")
-                room:obtainCard(player,sgs.Sanguosha:getCard(id),reason,place~=sgs.Player_PlaceHand)
+                local owner=room:getCardOwner(id)
+                if not owner or player:canGet(owner,id) then
+                    local reason=sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION,player:objectName(),owner and owner:objectName() or "","c_zhaoji","")
+                    room:obtainCard(player,sgs.Sanguosha:getCard(id),reason,place~=sgs.Player_PlaceHand)
+                end
             end
         end
         return false
@@ -1048,7 +1051,7 @@ c_fengjun = sgs.CreateTriggerSkillV2{
             end
         else
             local target=ctx.invoker
-            if not state(player,ref,"used"):toBool() then log(room,"#c_fengjun_unused",player,target);room:loseHp(target,1) end
+            if not state(player,ref,"used"):toBool() then log(room,"#c_fengjun_unused",player,target);room:loseHp(target,1,true,player,self:objectName()) end
             for _,entry in ipairs({{"c_fengjun_use","use_id"},{"c_fengjun_real","real_id"}}) do
                 local id=state(player,ref,entry[2]):toInt()
                 if id>0 then room:detachAttachedSkill(sgs.SkillInstanceRef(target:objectName(),sgs.SkillInstanceKey(entry[1],id))) end
@@ -1237,14 +1240,14 @@ c_weiqing = sgs.CreateTriggerSkillV2{
     on_cost=invoke,
     on_effect=function(self,event,room,player,ctx)
         local move=ctx.original_data:toMoveOneTime();local target=room:findPlayerByObjectName(move.to:objectName())
-        if not target or target:isNude() then return false end
+        if not target or not player:canGet(target,"he") then return false end
         local dummy=sgs.DummyCard()
         for i=1,move.card_ids:length() do
-            if target:getCardCount()<i then break end
-            local id=room:askForCardChosen(player,target,"he",self:objectName(),false,sgs.Card_MethodNone,dummy:getSubcards())
-            if id<0 then break end;dummy:addSubcard(id)
+            if target:getCardCount()<i or not player:canGet(target,"he") then break end
+            local id=room:askForCardChosen(player,target,"he",self:objectName(),false,sgs.Card_MethodGet,dummy:getSubcards())
+            if id<0 or not player:canGet(target,id) then break end;dummy:addSubcard(id)
         end
-        if dummy:subcardsLength()>0 then room:moveCardTo(dummy,player,sgs.Player_PlaceHand,false) end
+        if dummy:subcardsLength()>0 then room:obtainCard(player,dummy,sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION,player:objectName(),target:objectName(),self:objectName(),""),false) end
         dummy:deleteLater();return false
     end
 }
@@ -1303,7 +1306,7 @@ c_kurouVS = sgs.CreateViewAsSkillV2{
                 room:sendLog(msg2)
 
                 -- 失去体力
-                room:loseHp(target2, 1)
+                room:loseHp(target2, 1, true, source, "c_kurou")
 
                 -- 黄盖获得蓄力点（但不超过上限）
                 if target2:getMark("&charge_num") < xuLiMax(target2) then
@@ -1347,7 +1350,7 @@ c_kurouVS = sgs.CreateViewAsSkillV2{
                             msg3.to:append(target3)
                             room:sendLog(msg3)
 
-                            room:loseHp(target3, 1)
+                            room:loseHp(target3, 1, true, source, "c_kurou")
                             if target3:getMark("&charge_num") < xuLiMax(target3) then
                                 target3:gainMark("&charge_num")
                             end
@@ -1436,18 +1439,19 @@ c_qiaochu = sgs.CreateTriggerSkillV2{
     can_trigger=function(self,event,room,player,data)
         local use=data:toCardUse()
         if player and player:isAlive() and player:hasSkill(self:objectName()) and use.card and use.card:isKindOf("Slash") and not use.to:isEmpty() then
-            return self:objectName().."*"..use.to:length(),player
+            local names={}
+            for _,p in sgs.qlist(use.to) do
+                if p:isAlive() and not p:isNude() then table.insert(names,p:objectName()) end
+            end
+            if #names>0 then return self:objectName().."->"..table.concat(names,"+"),player end
         end
         return ""
     end,
     on_cost=function(self,event,room,player,ctx)
-        local targets=ctx.original_data:toCardUse().to
-        if ctx.trigger_count>=targets:length() then return false end
-        local target=targets:at(ctx.trigger_count)
-        if target:isNude() then return false end
+        local target=ctx.preferredTarget
+        if not target or target:isNude() then return false end
         local data=sgs.QVariant();data:setValue(target)
         if not room:askForSkillInvoke(player,self:objectName(),data) then return false end
-        ctx.targets:append(target)
         ctx.extra_data=sgs.QVariant(room:askForCardChosen(player,target,"he",self:objectName()))
         return ctx.extra_data:toInt()>=0
     end,
@@ -1537,7 +1541,7 @@ c_wuqiong = sgs.CreateTriggerSkillV2{
                     local id=room:askForAG(player,ids,false,self:objectName());if id<0 then break end
                     dummy:addSubcard(id);ids:removeOne(id);room:takeAG(player,id,false)
                 end
-                room:clearAG();if dummy:subcardsLength()>0 then player:obtainCard(dummy) end;dummy:deleteLater()
+                room:clearAG();if dummy:subcardsLength()>0 then room:obtainCard(player,dummy,"c_wuqiong") end;dummy:deleteLater()
             end
             room:acquireSkill(player,"c_kuangni")
         else
@@ -1623,11 +1627,11 @@ c_jianxiong = sgs.CreateTriggerSkillV2{
         return own(self,event,room,owner,data)
     end,
     on_cost=invoke,
-    on_pay=function(self,event,room,player,ctx) if event==sgs.Damage then room:loseHp(player,1) end;return true end,
+    on_pay=function(self,event,room,player,ctx) if event==sgs.Damage then room:loseHp(player,1,true,player,self:objectName()) end;return true end,
     on_effect=function(self,event,room,player,ctx)
         local card=ctx.original_data:toDamage().card
         local msg=sgs.LogMessage();msg.type=event==sgs.Damaged and "#c_jianxiong_get" or "#c_jianxiong_losehp";msg.from=player;msg.card_str=card:toString();room:sendLog(msg)
-        player:obtainCard(card);return false
+        room:obtainCard(player,card,self:objectName());return false
     end
 }
 
@@ -1742,7 +1746,7 @@ c_shienVS = sgs.CreateViewAsSkillV2{
             if not room:sendShimingLog(ref,false) then return end
             if not target:isKongcheng() then
                 local cards=room:askForExchange(target,"c_shien",target:getHandcardNum(),0,true,"@c_shien-give:"..source:objectName())
-                if cards and cards:subcardsLength()>0 then room:obtainCard(source,cards,false) end
+                if cards and cards:subcardsLength()>0 then room:obtainCard(source,cards,sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE,target:objectName(),source:objectName(),"c_shien",""),false) end
             end
             if source:isAlive() and target:isAlive() then
                 local count=target:getHandcardNum()
@@ -1899,7 +1903,7 @@ local function resolveLuanhui(room,source,amount)
         -- 通过失去体力或回复体力来调整，而不是直接设置
         if current_hp > lost_hp then
             -- 当前体力大于目标体力，需要失去体力
-            room:loseHp(source, current_hp - lost_hp)
+            room:loseHp(source, current_hp - lost_hp, true, source, "c_luanhui")
         elseif current_hp < lost_hp then
             -- 当前体力小于目标体力，需要回复体力
             room:recover(source, sgs.RecoverStruct(source, nil, lost_hp - current_hp))
@@ -2220,7 +2224,7 @@ local diyba_quanjian = sgs.CreateViewAsSkillV2{
         local target=ctx.targets:first()
         if not target or room:getCardOwner(id)~=ctx.invoker or room:getCardPlace(id)~=sgs.Player_PlaceHand
             or not sgs.Sanguosha:getCard(id):isKindOf("Jink") then return false end
-        room:obtainCard(target,id,false)
+        room:obtainCard(target,sgs.Sanguosha:getCard(id),sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE,ctx.invoker:objectName(),target:objectName(),self:objectName(),""),false)
         return true
     end,
     on_effect=function(self,ctx)
@@ -2228,7 +2232,7 @@ local diyba_quanjian = sgs.CreateViewAsSkillV2{
         local room=source:getRoom()
         if not source:isAlive() or not target:isAlive() or target:isKongcheng() then return end
         local id=room:askForCardChosen(source,target,"h",self:objectName())
-        room:showCard(target,id)
+        room:showCard(target,id,sgs.SPlayerList(),self:objectName())
         if sgs.Sanguosha:getCard(id):isKindOf("Jink") then
             source:drawCards(1,self:objectName())
             if target:isAlive() then target:drawCards(1,self:objectName()) end
@@ -2237,26 +2241,26 @@ local diyba_quanjian = sgs.CreateViewAsSkillV2{
 }
 local diyba_sijie = sgs.CreateTriggerSkillV2{
     name="diyba_sijie", events={sgs.Damaged},
-    can_trigger=function(self,event,room,player,data) return own(self,event,room,player,data) end,
+    can_trigger=function(self,event,room,player,data)
+        -- 每一点伤害各自选择（multiplier）；伤害过程中死亡或失去技能由 can_trigger 重检。
+        local name,owner=own(self,event,room,player,data)
+        local damage=data:toDamage()
+        if name~="" and damage.damage>0 then return name.."*"..damage.damage, owner end
+        return ""
+    end,
     on_cost=invoke,
     on_effect=function(self,event,room,player,ctx)
-        -- 每一点伤害各自选择；伤害过程中死亡或失去技能即停止。
-        for i=1,ctx.original_data:toDamage().damage do
-            if not player:isAlive() or not player:hasSkill(self:objectName()) then break end
-            if i==1 or room:askForSkillInvoke(player,self:objectName(),ctx.original_data) then
-            local candidates=sgs.SPlayerList()
-            for _,p in sgs.qlist(room:getAlivePlayers()) do
-                if player:canDiscard(p,"he") then candidates:append(p) end
-            end
-            if candidates:isEmpty() then break end
-            local target=room:askForPlayerChosen(player,candidates,self:objectName(),"@diyba-sijie",false,true)
-            local count=math.max(1,target:getLostHp())
-            for j=1,count do
-                if not player:isAlive() or not target:isAlive() or not player:canDiscard(target,"he") then break end
-                local id=room:askForCardChosen(player,target,"he",self:objectName(),false,sgs.Card_MethodDiscard)
-                room:throwCard(id,target,player)
-            end
-            end
+        local candidates=sgs.SPlayerList()
+        for _,p in sgs.qlist(room:getAlivePlayers()) do
+            if player:canDiscard(p,"he") then candidates:append(p) end
+        end
+        if candidates:isEmpty() then return false end
+        local target=room:askForPlayerChosen(player,candidates,self:objectName(),"@diyba-sijie",false,true)
+        local count=math.max(1,target:getLostHp())
+        for j=1,count do
+            if not player:isAlive() or not target:isAlive() or not player:canDiscard(target,"he") then break end
+            local id=room:askForCardChosen(player,target,"he",self:objectName(),false,sgs.Card_MethodDiscard)
+            room:throwCard(id,target,player)
         end
         return false
     end
@@ -2299,9 +2303,10 @@ local diyba_pengri=sgs.CreateViewAsSkillV2{
     on_effect=function(self,ctx)
         local player,target=ctx.invoker,ctx.targets:first()
         local room=player:getRoom()
-        if not target or not target:isAlive() or target:isNude() then return end
-        local id=room:askForCardChosen(player,target,"he",self:objectName())
-        room:obtainCard(player,id,false)
+        if not target or not target:isAlive() or not player:canGet(target,"he") then return end
+        local id=room:askForCardChosen(player,target,"he",self:objectName(),false,sgs.Card_MethodGet)
+        if not player:canGet(target,id) then return end
+        room:obtainCard(player,sgs.Sanguosha:getCard(id),sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION,player:objectName(),target:objectName(),self:objectName(),""),false)
         diyba_slash(room,target,player,self:objectName())
     end
 }
@@ -2309,27 +2314,25 @@ local diyba_gangli=sgs.CreateTriggerSkillV2{
     name="diyba_gangli", events={sgs.Damaged},
     can_trigger=function(self,event,room,player,data)
         local damage=data:toDamage()
-        if damage.from and damage.from~=player and damage.from:isAlive() then return own(self,event,room,player,data) end
+        if damage.from and damage.from~=player and damage.from:isAlive() and damage.damage>0 then
+            local name,owner=own(self,event,room,player,data)
+            if name~="" then return name.."*"..damage.damage, owner end
+        end
         return ""
     end,
     on_cost=invoke,
     on_effect=function(self,event,room,player,ctx)
         local damage=ctx.original_data:toDamage()
-        for i=1,damage.damage do
-            if not player:isAlive() or not player:hasSkill(self:objectName()) or not damage.from:isAlive() then break end
-            if i==1 or room:askForSkillInvoke(player,self:objectName(),ctx.original_data) then
-                local candidates=sgs.SPlayerList()
-                local slash=sgs.Sanguosha:cloneCard("slash",sgs.Card_NoSuit,0)
-                slash:setSkillName(self:objectName())
-                for _,p in sgs.qlist(room:getAlivePlayers()) do
-                    if p~=damage.from and not damage.from:isProhibited(p,slash) then candidates:append(p) end
-                end
-                slash:deleteLater()
-                if not candidates:isEmpty() then
-                    local target=room:askForPlayerChosen(player,candidates,self:objectName(),"@diyba-gangli",false,true)
-                    diyba_slash(room,damage.from,target,self:objectName())
-                end
-            end
+        local candidates=sgs.SPlayerList()
+        local slash=sgs.Sanguosha:cloneCard("slash",sgs.Card_NoSuit,0)
+        slash:setSkillName(self:objectName())
+        for _,p in sgs.qlist(room:getAlivePlayers()) do
+            if p~=damage.from and not damage.from:isProhibited(p,slash) then candidates:append(p) end
+        end
+        slash:deleteLater()
+        if not candidates:isEmpty() then
+            local target=room:askForPlayerChosen(player,candidates,self:objectName(),"@diyba-gangli",false,true)
+            diyba_slash(room,damage.from,target,self:objectName())
         end
         return false
     end
@@ -2390,11 +2393,11 @@ local diyba_duji=sgs.CreateTriggerSkillV2{
         -- Tag before the card movement: movement triggers may kill the user.
         use.card:setTag("drank",sgs.QVariant(math.max(1,use.card:getTag("drank"):toInt())))
         room:setCardFlag(use.card,"drank")
-        room:obtainCard(use.from,id,true)
+        room:obtainCard(use.from,sgs.Sanguosha:getCard(id),sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE,owner:objectName(),use.from:objectName(),self:objectName(),""),true)
         if use.from:isAlive() then
             if room:askForChoice(use.from,self:objectName(),"turnover+losehp",ctx.original_data)=="turnover" then
                 use.from:turnOver()
-            else room:loseHp(use.from,1) end
+            else room:loseHp(use.from,1,true,owner,self:objectName()) end
         end
         return false
     end
@@ -2437,7 +2440,7 @@ local diyba_xuezhao=sgs.CreateViewAsSkillV2{
     targets_feasible=function(self,request,selected) return #selected==2 end,
     pay=function(self,room,ctx,request)
         local ids=request:getSelectedCardIds()
-        if ids:isEmpty() then room:loseHp(ctx.invoker,1);return true end
+        if ids:isEmpty() then room:loseHp(ctx.invoker,1,true,ctx.invoker,self:objectName());return true end
         if ids:length()~=2 then return false end
         local dummy=sgs.DummyCard()
         for _,id in sgs.qlist(ids) do
@@ -2454,7 +2457,7 @@ local diyba_xuezhao=sgs.CreateViewAsSkillV2{
         local room=ctx.invoker:getRoom()
         if not from or not to or not from:isAlive() or not to:isAlive() then return end
         if not room:askForUseSlashTo(from,to,"@diyba-xuezhao:"..to:objectName(),false,false,false)
-            and from:isAlive() then room:loseHp(from,1) end
+            and from:isAlive() then room:loseHp(from,1,true,ctx.invoker,self:objectName()) end
     end
 }
 local diyba_hanhuang=sgs.CreateTriggerSkillV2{
@@ -2676,7 +2679,7 @@ local diyba_xiaoguo=sgs.CreateTriggerSkillV2{
             local place=room:getCardPlace(id)
             if place==sgs.Player_DiscardPile or place==sgs.Player_PlaceTable then jinks:addSubcard(id) end
         end
-        if jinks:subcardsLength()>0 then room:obtainCard(effect.to,jinks,true) end
+        if jinks:subcardsLength()>0 then room:obtainCard(effect.to,jinks,self:objectName(),true) end
         jinks:deleteLater()
         if not player:isAlive() or not effect.to:isAlive() then return false end
         local name=effect.slash:isBlack() and "supply_shortage" or "indulgence"
@@ -2796,7 +2799,7 @@ local diyba_jiezhong=sgs.CreateTriggerSkillV2{
             local key=sgs.SkillInstanceKey();key.skillName="diyba_sansi";key.instanceID=tonumber(ctx.choice)
             local ref=sgs.SkillInstanceRef(player:objectName(),key)
             local mode=diyba_sansiAdvance(player,ref)
-            if mode==1 then room:loseHp(player,1)
+            if mode==1 then room:loseHp(player,1,true,player,self:objectName())
             elseif mode==3 then self:resetUsage(ctx) end
         end
         return false
@@ -2946,7 +2949,7 @@ local diyba_lianer=sgs.CreateTriggerSkillV2{
         local number=card:getNumber()
         local ids=diyba_materials(card)
         local dummy=sgs.DummyCard();dummy:addSubcards(ids)
-        room:obtainCard(player,dummy,true);dummy:deleteLater()
+        room:obtainCard(player,dummy,self:objectName(),true);dummy:deleteLater()
         if player:isAlive() then
             -- 每次限制均持续本回合，交集自然保留其中最严格的上界。
             room:setPlayerCardLimitation(player,"use",".|.|"..number.."~13",true,self:objectName())
@@ -3077,7 +3080,7 @@ local diyba_mingye=sgs.CreateTriggerSkillV2{
                     end
                     if not available:isEmpty() then
                         local dummy=sgs.DummyCard();dummy:addSubcards(available)
-                        room:obtainCard(target,dummy,true);dummy:deleteLater()
+                        room:obtainCard(target,dummy,self:objectName(),true);dummy:deleteLater()
                     end
                 end
             end

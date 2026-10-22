@@ -131,13 +131,15 @@ LuaOldEnemy = sgs.CreateTriggerSkillV2 {
 				room:showAllCards(damage.from)
 			end
 			if damage.to:getMark("@LuaOldEnemyHermit") > 0 then --隐者被迫方获得牌
-				if not damage.from:isAllNude() then
+				if damage.to:canGet(damage.from, "hej") then
 					local ai_data = sgs.QVariant()
 					ai_data:setValue(damage.from)
 					room:setTag("OldEnemyHermit", ai_data)
 					if room:askForSkillInvoke(damage.to, "LuaOldEnemyHermit", sgs.QVariant("Hermit_getCard:" .. damage.from:objectName())) then
-						local card = room:askForCardChosen(damage.to, damage.from, "hej", "LuaOldEnemyHermit")
-						room:obtainCard(damage.to, card)
+						local card = room:askForCardChosen(damage.to, damage.from, "hej", "LuaOldEnemyHermit", false, sgs.Card_MethodGet)
+						if damage.to:canGet(damage.from, card) then
+							room:obtainCard(damage.to, card, "LuaOldEnemyHermit", true)
+						end
 					end
 					room:removeTag("OldEnemyHermit")
 				end
@@ -179,8 +181,10 @@ LuaOldEnemy = sgs.CreateTriggerSkillV2 {
 				if death.damage.from:getMark("@LuaPublicEnemy") > 0 then --公敌杀人拿装备
 					if death.who:getEquips():length() > 0 then
 						if room:askForSkillInvoke(death.damage.from, "LuaPublicEnemy", sgs.QVariant("PublicEnemy_getEquip:" .. death.who:objectName())) then
-							local card = room:askForCardChosen(death.damage.from, death.who, "e", "LuaPublicEnemy")
-							room:obtainCard(death.damage.from, card)
+							local card = room:askForCardChosen(death.damage.from, death.who, "e", "LuaPublicEnemy", false, sgs.Card_MethodGet)
+							if death.damage.from:canGet(death.who, card) then
+								room:obtainCard(death.damage.from, card, "LuaPublicEnemy", true)
+							end
 						end
 					end
 				end

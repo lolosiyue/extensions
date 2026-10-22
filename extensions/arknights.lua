@@ -31,14 +31,14 @@ end
 addNewKingdom("ark", "#17A9C5")
 
 
-local function arkGetSpecialCard(room, target, kind, pile, unhide)
+local function arkGetSpecialCard(room, target, kind, pile, unhide, skill_name)
     assert(type(kind) == "string")
     assert(type(pile) == "string")
     if string.find(pile, "draw") then
         for _,id in sgs.qlist(room:getDrawPile()) do
             local card = sgs.Sanguosha:getCard(id)
             if card:isKindOf(kind) then
-                room:obtainCard(target, card, unhide)
+                room:obtainCard(target, card, skill_name, unhide)
                 return card
             end
         end
@@ -47,7 +47,7 @@ local function arkGetSpecialCard(room, target, kind, pile, unhide)
         for _,id in sgs.qlist(room:getDiscardPile()) do
             local card = sgs.Sanguosha:getCard(id)
             if card:isKindOf(kind) then
-                room:obtainCard(target, card, unhide)
+                room:obtainCard(target, card, skill_name, unhide)
                 return card
             end
         end
@@ -630,7 +630,7 @@ ark_gongzhenbuff = sgs.CreateTriggerSkillV2{
                 room:removePlayerMark(who, "ark_gongzhen_from"..ctype..p:objectName())
                 room:removePlayerMark(who, "&ark_gongzhen_recordtype+"..ctype)
                 p:drawCards(1, "ark_gongzhen")
-                room:damage(sgs.DamageStruct(nil, p, who, 1, sgs.DamageStruct_Normal))
+                room:damage(sgs.DamageStruct("ark_gongzhen", p, who, 1, sgs.DamageStruct_Normal))
                 room:getThread():delay(500)
                 if who:isAlive() then
                     if card:isKindOf("BasicCard") and who:canDiscard(who, "he") then
@@ -650,7 +650,7 @@ ark_gongzhenbuff = sgs.CreateTriggerSkillV2{
                                     room:removePlayerMark(other, "ark_gongzhen_from"..ctype..p:objectName())
                                     room:removePlayerMark(other, "&ark_gongzhen_recordtype+"..ctype)
                                     p:drawCards(1, "ark_gongzhen")
-                                    room:damage(sgs.DamageStruct(nil, p, other, 1, sgs.DamageStruct_Normal))
+                                    room:damage(sgs.DamageStruct("ark_gongzhen", p, other, 1, sgs.DamageStruct_Normal))
                                     room:getThread():delay(500)
                                 end
                             end
@@ -660,7 +660,7 @@ ark_gongzhenbuff = sgs.CreateTriggerSkillV2{
                             room:removePlayerMark(nextp, "ark_gongzhen_from"..ctype..p:objectName())
                             room:removePlayerMark(nextp, "&ark_gongzhen_recordtype+"..ctype)
                             p:drawCards(1, "ark_gongzhen")
-                            room:damage(sgs.DamageStruct(nil, p, nextp, 1, sgs.DamageStruct_Normal))
+                            room:damage(sgs.DamageStruct("ark_gongzhen", p, nextp, 1, sgs.DamageStruct_Normal))
                             room:getThread():delay(500)
                         end
                     end
@@ -1281,7 +1281,7 @@ ark_wanxiang = sgs.CreateTriggerSkillV2{
                 if choice == "ark_wowu" then
                     for _,id in sgs.qlist(room:getDrawPile()) do
                         if sgs.Sanguosha:getCard(id):isKindOf("Slash") then
-                            room:obtainCard(player, sgs.Sanguosha:getCard(id), true)
+                            room:obtainCard(player, sgs.Sanguosha:getCard(id), "ark_wanxiang", true)
                             room:setCardFlag(id, "ark_wanxiang")
                             room:setCardTip(id, "ark_wanxiang")
                             return false
@@ -1289,7 +1289,7 @@ ark_wanxiang = sgs.CreateTriggerSkillV2{
                     end
                     for _,id in sgs.qlist(room:getDiscardPile()) do
                         if sgs.Sanguosha:getCard(id):isKindOf("Slash") then
-                            room:obtainCard(player, sgs.Sanguosha:getCard(id), true)
+                            room:obtainCard(player, sgs.Sanguosha:getCard(id), "ark_wanxiang", true)
                             room:setCardFlag(id, "ark_wanxiang")
                             room:setCardTip(id, "ark_wanxiang")
                             return false
@@ -1539,7 +1539,7 @@ ark_yaoyang = sgs.CreateTriggerSkillV2{
             local n = 1
             if player:getHp() <= 2 then n = 2 end
             for i = 1, n, 1 do
-                local card = arkGetSpecialCard(room, player, "Slash", "draw+discard", true)
+                local card = arkGetSpecialCard(room, player, "Slash", "draw+discard", true, "ark_yaoyang")
                 if not card then return false end
                 room:setCardFlag(card, "ark_yaoyang")
                 room:setCardFlag(card, "RemoveFromHistory")

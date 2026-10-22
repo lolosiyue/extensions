@@ -179,7 +179,10 @@ luatuxiexVS = sgs.CreateViewAsSkillV2 {
 		local card_ids = sgs.IntList()
 		local dummy = sgs.Sanguosha:cloneCard("slash")
 		for i = 1, x, 1 do
-			card_ids:append(room:askForCardChosen(from, target, "h", "luatuxiex_card"))
+			if not from:canGet(target, "h") then break end
+			local chosen_id = room:askForCardChosen(from, target, "h", "luatuxiex_card", false, sgs.Card_MethodGet)
+			if not from:canGet(target, chosen_id) then break end
+			card_ids:append(chosen_id)
 			original_places:append(room:getCardPlace(card_ids:at(i - 1)))
 			dummy:addSubcard(card_ids:at(i - 1))
 			target:addToPile("#luatuxiex", card_ids:at(i - 1), false)
@@ -191,7 +194,9 @@ luatuxiexVS = sgs.CreateViewAsSkillV2 {
 			end
 		end
 		room:setPlayerFlag(target, "-leo_InTempMoving")
-		from:obtainCard(dummy, false)
+		if dummy:subcardsLength() > 0 then
+			room:obtainCard(from, dummy, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, from:objectName(), target:objectName(), "luatuxiex", ""), false)
+		end
 		dummy:deleteLater()
 		room:broadcastSkillInvoke("tuxi")
 	end,
@@ -286,7 +291,7 @@ luaqingqiVS = sgs.CreateViewAsSkillV2
 			if from:canSlash(target, nil, false) then
 				choicelist = string.format("%s+%s", choicelist, "luaqingqi1")
 			end
-			if not target:isAllNude() then
+			if from:canGet(target, "hej") then
 				choicelist = string.format("%s+%s", choicelist, "luaqingqi2")
 			end
 			local dest = sgs.QVariant()
@@ -303,9 +308,11 @@ luaqingqiVS = sgs.CreateViewAsSkillV2
 				room:useCard(use_card, false)
 				slash:deleteLater()
 			elseif choice == "luaqingqi2" then
-				local card_id = room:askForCardChosen(from, target, "hej", "luaqingqi")
+				local card_id = room:askForCardChosen(from, target, "hej", "luaqingqi", false, sgs.Card_MethodGet)
 				room:broadcastSkillInvoke("xianzhen", 2)
-				from:obtainCard(sgs.Sanguosha:getCard(card_id))
+				if from:canGet(target, card_id) then
+					room:obtainCard(from, sgs.Sanguosha:getCard(card_id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, from:objectName(), target:objectName(), "luaqingqi", ""))
+				end
 			end
 		end,
 	}
@@ -523,14 +530,14 @@ feijiangts = sgs.CreateTriggerSkillV2 {
 			if player:getPhase() ~= sgs.Player_Start then return false end
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				for _, cd in sgs.qlist(p:getCards("ej")) do
-					if cd:isKindOf("Halberd") then
+					if cd:isKindOf("Halberd") and player:canGet(p, cd:getEffectiveId()) then
 						return skill:objectName()
 					end
 				end
 			end
 		elseif event == sgs.CardResponded then
 			local resp = data:toCardResponse()
-			if resp.m_card and resp.m_card:isKindOf("Slash") and resp.m_who and (not resp.m_who:isKongcheng())
+			if resp.m_card and resp.m_card:isKindOf("Slash") and resp.m_who and player:canGet(resp.m_who, "h")
 				and player:isLastHandCard(resp.m_card) then
 				return skill:objectName()
 			end
@@ -539,7 +546,7 @@ feijiangts = sgs.CreateTriggerSkillV2 {
 			if use.from and (use.from:objectName() == player:objectName()) and use.card
 				and use.card:isKindOf("Slash") and player:isLastHandCard(use.card) then
 				for _, p in sgs.qlist(use.to) do
-					if not p:isKongcheng() then
+					if player:canGet(p, "h") then
 						return skill:objectName()
 					end
 				end
@@ -550,38 +557,46 @@ feijiangts = sgs.CreateTriggerSkillV2 {
 	on_effect = function(skill, event, room, player, ctx)
 		if event == sgs.EventPhaseStart then
 			local qinggang_sword = nil
+			local qinggang_owner = nil
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 				for _, cd in sgs.qlist(p:getCards("ej")) do
-					if cd:isKindOf("Halberd") then
+					if cd:isKindOf("Halberd") and player:canGet(p, cd:getEffectiveId()) then
 						qinggang_sword = cd
+						qinggang_owner = p
 						break
 					end
 				end
 			end
 			if qinggang_sword ~= nil and player:askForSkillInvoke(skill:objectName()) then
 				room:broadcastSkillInvoke("wuqian", math.random(1, 2))
-				player:obtainCard(qinggang_sword)
+				room:obtainCard(player, qinggang_sword, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), qinggang_owner:objectName(), "feijiangts", ""))
 			end
 		elseif event == sgs.CardResponded then
 			local resp = ctx.original_data:toCardResponse()
 			local _data = sgs.QVariant()
 			_data:setValue(resp.m_who)
 			if player:askForSkillInvoke(skill:objectName(), _data) then
-				local card_id = room:askForCardChosen(player, resp.m_who, "h", skill:objectName())
-				room:obtainCard(player, sgs.Sanguosha:getCard(card_id), false)
+				if player:canGet(resp.m_who, "h") then
+					local card_id = room:askForCardChosen(player, resp.m_who, "h", skill:objectName(), false, sgs.Card_MethodGet)
+					if player:canGet(resp.m_who, card_id) then
+						room:obtainCard(player, sgs.Sanguosha:getCard(card_id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), resp.m_who:objectName(), skill:objectName(), ""), false)
+					end
+				end
 			end
 		else
 			local use = ctx.original_data:toCardUse()
 			for _, p in sgs.qlist(use.to) do
-				if p:isKongcheng() then continue end
+				if not player:canGet(p, "h") then continue end
 				local _data = sgs.QVariant()
 				_data:setValue(p)
 				p:setFlags("feijiangtsTarget")
 				local invoke = player:askForSkillInvoke(skill:objectName(), _data)
 				p:setFlags("-feijiangtsTarget")
-				if invoke then
-					local card_id = room:askForCardChosen(player, p, "h", skill:objectName())
-					room:obtainCard(player, sgs.Sanguosha:getCard(card_id), false)
+				if invoke and player:canGet(p, "h") then
+					local card_id = room:askForCardChosen(player, p, "h", skill:objectName(), false, sgs.Card_MethodGet)
+					if player:canGet(p, card_id) then
+						room:obtainCard(player, sgs.Sanguosha:getCard(card_id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), p:objectName(), skill:objectName(), ""), false)
+					end
 				end
 			end
 		end
@@ -1181,7 +1196,7 @@ luaqingzhan = sgs.CreateTriggerSkillV2 {
 			for _, id in sgs.qlist(ids) do
 				slash:addSubcard(id)
 			end
-			player:obtainCard(slash)
+			room:obtainCard(player, slash, "luaqingzhan")
 			slash:deleteLater()
 			move.card_ids = sgs.IntList()
 			ctx.original_data:setValue(move)
@@ -1588,10 +1603,10 @@ luajieyi = sgs.CreateViewAsSkillV2 {
 			end
 		end
 		--依次展示手牌
-		room:showCard(source, scard:getEffectiveId())
-		room:showCard(targets[1], card1:getEffectiveId())
+		room:showCard(source, scard:getEffectiveId(), sgs.SPlayerList(), "luajieyi")
+		room:showCard(targets[1], card1:getEffectiveId(), sgs.SPlayerList(), "luajieyi")
 		if #targets > 1 then
-			room:showCard(targets[2], card2:getEffectiveId())
+			room:showCard(targets[2], card2:getEffectiveId(), sgs.SPlayerList(), "luajieyi")
 		end
 		--如果颜色相同
 		if jieyiflag then
@@ -1658,8 +1673,9 @@ luafuweivs = sgs.CreateViewAsSkillV2 {
 	end,
 
 	on_effect_target = function(skill, ctx, target)
-		if target and ctx.use_card then
-			target:obtainCard(ctx.use_card)
+		local source = ctx.invoker or ctx.initiator
+		if target and ctx.use_card and source then
+			target:getRoom():obtainCard(target, ctx.use_card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), target:objectName(), "luafuwei", ""))
 		end
 	end,
 }
@@ -1854,7 +1870,10 @@ luashanquan = sgs.CreateViewAsSkillV2
 			local y = 0
 			local dummy = sgs.Sanguosha:cloneCard("slash")
 			for i = 1, target:getMaxHp(), 1 do
-				card_ids:append(room:askForCardChosen(source, target, "h", "luashanquan"))
+				if not source:canGet(target, "h") then break end
+				local chosen_id = room:askForCardChosen(source, target, "h", "luashanquan", false, sgs.Card_MethodGet)
+				if not source:canGet(target, chosen_id) then break end
+				card_ids:append(chosen_id)
 				original_places:append(room:getCardPlace(card_ids:at(i - 1)))
 				dummy:addSubcard(card_ids:at(i - 1))
 				target:addToPile("#luashanquan", card_ids:at(i - 1), false)
@@ -1867,12 +1886,14 @@ luashanquan = sgs.CreateViewAsSkillV2
 			end
 			room:setPlayerFlag(target, "-leo_InTempMoving")
 			local x = dummy:subcardsLength()
-			source:obtainCard(dummy, false)
+			if x > 0 then
+				room:obtainCard(source, dummy, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, source:objectName(), target:objectName(), "luashanquan", ""), false)
+			end
 			dummy:deleteLater()
 			local to_goback
 			local prompt = string.format("@luashanquanmove:%s", x)
 			to_goback = room:askForExchange(source, "luashanquan", x, x, true, prompt)
-			room:obtainCard(target, to_goback, false)
+			room:obtainCard(target, to_goback, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), target:objectName(), "luashanquan", ""), false)
 		end
 	}
 
@@ -2310,8 +2331,8 @@ leo_luaboxue = sgs.CreateTriggerSkillV2
 			local cardid = card:getEffectiveId()
 			--	player:drawCards(1)
 			--展示此牌
-			player:obtainCard(card)
-			room:showCard(player, cardid);
+			room:obtainCard(player, card, "leo_luaboxue")
+			room:showCard(player, cardid, sgs.SPlayerList(), "leo_luaboxue");
 			if (curcard:isKindOf("BasicCard") and not card:isKindOf("BasicCard")) or (curcard:isKindOf("TrickCard") and not card:isKindOf("TrickCard")) or (curcard:isKindOf("EquipCard") and not card:isKindOf("EquipCard")) then
 				--将1张手牌依次置于牌堆顶
 				local card_ids = sgs.IntList()
@@ -2356,7 +2377,7 @@ luaqiaoxie = sgs.CreateTriggerSkillV2
 			for _, jcard in sgs.qlist(player:getJudgingArea()) do
 				hasej = true
 			end
-			if hasej then
+			if hasej and player:canGet(player, "ej") then
 				return skill:objectName()
 			end
 			return false
@@ -2367,8 +2388,9 @@ luaqiaoxie = sgs.CreateTriggerSkillV2
 		end,
 
 		on_effect = function(skill, event, room, player, ctx)
-			local ejcard = room:askForCardChosen(player, player, "ej", "luaqiaoxie")
-			room:obtainCard(player, ejcard)
+			if not player:canGet(player, "ej") then return false end
+			local ejcard = room:askForCardChosen(player, player, "ej", "luaqiaoxie", false, sgs.Card_MethodGet)
+			if player:canGet(player, ejcard) then room:obtainCard(player, ejcard, "luaqiaoxie") end
 			return false
 		end
 	}
@@ -2495,11 +2517,11 @@ luachongzhenex = sgs.CreateTriggerSkillV2 {
 		local owner = ctx.owner
 		if owner and ctx.invoker and owner:objectName() == ctx.invoker:objectName() then
 			if owner:askForSkillInvoke(skill:objectName(), ctx.original_data) then
-				owner:obtainCard(effect.offset_card)
+				room:obtainCard(owner, effect.offset_card, "luachongzhenex")
 			end
 		else
 			if owner and owner:askForSkillInvoke(skill:objectName(), ctx.original_data) then
-				owner:obtainCard(effect.card)
+				room:obtainCard(owner, effect.card, "luachongzhenex")
 			end
 		end
 		return false
@@ -2592,9 +2614,9 @@ wyzf_pomo = sgs.CreateTriggerSkillV2
 			if player:getPhase() == sgs.Player_Play then
 				local id = room:drawCard()
 				local card = sgs.Sanguosha:getCard(id)
-				player:obtainCard(card)
+				room:obtainCard(player, card, "wyzf_pomo")
 				--展示此牌
-				room:showCard(player, card:getEffectiveId());
+				room:showCard(player, card:getEffectiveId(), sgs.SPlayerList(), "wyzf_pomo");
 				if card:isBlack() then
 					--将1张手牌依次置于牌堆顶
 					local carda = room:askForExchange(player, skill:objectName(), 1, 1, false, "wyzf_pomoGoBack",
@@ -2858,7 +2880,7 @@ luadushi = sgs.CreateTriggerSkillV2 {
 					local dest = sgs.QVariant()
 					dest:setValue(cdid)
 					room:setTag("luadushi", dest)
-					room:showCard(duship, cdid)
+					room:showCard(duship, cdid, sgs.SPlayerList(), "luadushi")
 					local dushic = sgs.Sanguosha:getCard(cdid)
 					dushicardname = dushic:objectName()
 					room:addPlayerMark(player, "&luadushi+" .. dushicardname .. "-PlayClear")
@@ -2876,15 +2898,17 @@ luadushi = sgs.CreateTriggerSkillV2 {
 			for _, cdid in sgs.qlist(move.card_ids) do
 				dushidiscard = sgs.Sanguosha:getCard(cdid)
 				if (dushidiscard:match(dushicardname)) then
-					if mover:isKongcheng() and not mover:hasEquip() then
+					if not curp:canGet(mover, "he") then
 						room:broadcastSkillInvoke("wansha", 1)
 						room:loseHp(mover, 1, true, nil, skill:objectName())
 					else
 						choice = room:askForChoice(curp, "luadushi", "luadushi1+luadushi2")
 						if (choice == "luadushi1") then
-							local movecard_id = room:askForCardChosen(curp, mover, "he", "luadushi1")
+							local movecard_id = room:askForCardChosen(curp, mover, "he", "luadushi1", false, sgs.Card_MethodGet)
 							room:broadcastSkillInvoke("fankui", 1)
-							curp:obtainCard(sgs.Sanguosha:getCard(movecard_id))
+							if curp:canGet(mover, movecard_id) then
+								room:obtainCard(curp, sgs.Sanguosha:getCard(movecard_id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, curp:objectName(), mover:objectName(), "luadushi", ""))
+							end
 						else
 							room:broadcastSkillInvoke("wansha", 1)
 							room:loseHp(mover, 1, true, nil, skill:objectName())
@@ -3486,7 +3510,7 @@ luaspbazhen = sgs.CreateTriggerSkillV2 {
 						if places:contains(sgs.Player_PlaceHand) or places:contains(sgs.Player_PlaceEquip) then
 							room:broadcastSkillInvoke("fankui",1)
 							--展示此牌
-							room:showCard(player, card:getEffectiveId());
+							room:showCard(player, card:getEffectiveId(), sgs.SPlayerList(), "luaspbazhen");
 							local targetPlayers = room:getAlivePlayers()
 							--如果失去的是基本牌或装备牌
 							if(not card:isKindOf("TrickCard")) then 
@@ -3508,12 +3532,12 @@ luaspbazhen = sgs.CreateTriggerSkillV2 {
 								--黑桃
 								if(card:getSuit()==sgs.Card_Spade) then
 									targetp = room:askForPlayerChosen(player, targetPlayers, "@luaspbazhen1")
-									if(targetp:isKongcheng() and not targetp:hasEquip()) or targetp==player then 
+									if (not player:canGet(targetp, "he")) or targetp==player then 
 										return false
 									else
 										room:broadcastSkillInvoke("fankui",1)
-										cardid = room:askForCardChosen(player, targetp, "he", "luaspbazhen");
-										player:obtainCard(sgs.Sanguosha:getCard(cardid))
+										cardid = room:askForCardChosen(player, targetp, "he", "luaspbazhen", false, sgs.Card_MethodGet);
+										if player:canGet(targetp, cardid) then room:obtainCard(player, sgs.Sanguosha:getCard(cardid), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), targetp:objectName(), "luaspbazhen", "")) end
 									end
 								--梅花
 								elseif(card:getSuit()==sgs.Card_Club) then
@@ -3523,9 +3547,9 @@ luaspbazhen = sgs.CreateTriggerSkillV2 {
 									targetp = room:askForPlayerChosen(player, targetPlayers, "@luaspbazhen3")
 									room:broadcastSkillInvoke("yiji",1)
 									if(targetp==player) then 
-										player:obtainCard(sgs.Sanguosha:getCard(cardid))
+										room:obtainCard(player, sgs.Sanguosha:getCard(cardid), "luaspbazhen")
 									else
-										targetp:obtainCard(sgs.Sanguosha:getCard(cardid))
+										room:obtainCard(targetp, sgs.Sanguosha:getCard(cardid), "luaspbazhen")
 									end
 								--方片
 								elseif(card:getSuit()==sgs.Card_Diamond) then

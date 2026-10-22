@@ -733,6 +733,7 @@ luabawang = sgs.CreateTriggerSkillV2 {
 				new_damage.from = player
 				new_damage.to = damage.to
 				new_damage.damage = 1
+				new_damage.reason = "luabawang"
 				room:damage(new_damage)
 			end
 			return false
@@ -750,6 +751,7 @@ luabawang = sgs.CreateTriggerSkillV2 {
 			damage.from = player
 			damage.to = loser
 			damage.damage = 1
+			damage.reason = "luabawang"
 			room:damage(damage)
 		end
 		return false
@@ -805,7 +807,7 @@ luajiebing = sgs.CreateTriggerSkillV2 {
 			if p:getKingdom() == "wu" then
 				local card = room:askForCard(p, "..", "@luajiebing", ctx.original_data, sgs.Card_MethodNone)
 				if card then
-					room:obtainCard(player, card, false)
+					room:obtainCard(player, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, p:objectName(), player:objectName(), "luajiebing", ""), false)
 					room:setPlayerMark(player, skill:objectName(), 0)
 					return false
 				end
@@ -881,7 +883,7 @@ luatongtang = sgs.CreateTriggerSkillV2 {
 		if not target then
 			target = player
 		end
-		room:obtainCard(target, id, false)
+		room:obtainCard(target, id, "luatongtang", false)
 		local move = sgs.CardsMoveStruct()
 		move.to = player
 		move.card_ids = card_ids
@@ -1000,7 +1002,7 @@ luacaokong = sgs.CreateTriggerSkillV2 {
 				local others = room:getOtherPlayers(player)
 				local targets = sgs.SPlayerList()
 				for _, p in sgs.qlist(others) do
-					if not p:isKongcheng() then
+					if player:canMove(p, "h") then
 						targets:append(p)
 					end
 				end
@@ -1012,7 +1014,8 @@ luacaokong = sgs.CreateTriggerSkillV2 {
 					repeated = true
 				end
 				selected:append(target)
-				local id = room:askForCardChosen(player, target, "h", self:objectName())
+				local id = room:askForCardChosen(player, target, "h", self:objectName(), false, sgs.Card_MethodMove)
+				if id < 0 or not player:canMove(target, id) then break end
 				room:broadcastSkillInvoke(self:objectName())
 				card_ids:append(id)
 				if sgs.Sanguosha:getCard(id):getSuit() == sgs.Card_Spade then
@@ -1302,7 +1305,7 @@ luaxianti = sgs.CreateTriggerSkillV2 {
 				if suit == "heart" then
 					room:setPlayerFlag(player, "xianti_draw")
 				elseif suit == "club" then
-					room:obtainCard(player, judge.card)
+					room:obtainCard(player, judge.card, "luaxianti")
 					return true
 				elseif suit == "diamond" then
 					room:setPlayerFlag(player, "xianti_discard")
@@ -1500,7 +1503,7 @@ luamengzhu = sgs.CreateTriggerSkillV2 {
 			return false
 		end
 		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-			if not p:isAllNude() then
+			if player:canGet(p, "hej") then
 				return skill:objectName()
 			end
 		end
@@ -1523,9 +1526,11 @@ luamengzhu = sgs.CreateTriggerSkillV2 {
 		end
 
 		for _, p in sgs.qlist(others) do
-			if not p:isAllNude() then
-				local id = room:askForCardChosen(player, p, "hej", skill:objectName())
-				room:obtainCard(player, id, false)
+			if player:canGet(p, "hej") then
+				local id = room:askForCardChosen(player, p, "hej", skill:objectName(), false, sgs.Card_MethodGet)
+				if player:canGet(p, id) then
+					room:obtainCard(player, sgs.Sanguosha:getCard(id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), p:objectName(), "luamengzhu", ""), false)
+				end
 				room:getThread():delay(800)
 			end
 		end

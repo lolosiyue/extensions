@@ -246,7 +246,7 @@ feituxi = sgs.CreateTriggerSkillV2 {
                 or (player:getPhase() == sgs.Player_Finish and not player:isKongcheng()) then
                 local names, owners = {}, {}
                 for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-                    if p:hasSkill(skill:objectName()) and p:getMark("&feizhaohu") > 0 then
+                    if p:hasSkill(skill:objectName()) and p:getMark("&feizhaohu") > 0 and p:canGet(player, "h") then
                         table.insert(names, skill:objectName())
                         table.insert(owners, p:objectName())
                     end
@@ -274,7 +274,12 @@ feituxi = sgs.CreateTriggerSkillV2 {
             local target = ctx.invoker
             if target:getPhase() == sgs.Player_Play or target:getPhase() == sgs.Player_Finish then
                 player:loseMark("&feizhaohu", 1)
-                room:obtainCard(player, room:askForCardChosen(player, target, "h", skill:objectName()))
+                if player:canGet(target, "h") then
+                    local id = room:askForCardChosen(player, target, "h", skill:objectName(), false, sgs.Card_MethodGet)
+                    if player:canGet(target, id) then
+                        room:obtainCard(player, id, skill:objectName(), true)
+                    end
+                end
                 room:askForDiscard(player, skill:objectName(), 1, 1, false, true)
             elseif target:getPhase() == sgs.Player_Start then
                 player:gainMark("&feizhaohu", 2)
@@ -342,6 +347,7 @@ feizhaohu = sgs.CreateTriggerSkillV2 {
             theDamage.to = target
             theDamage.damage = 1
             theDamage.nature = sgs.DamageStruct_Normal
+            theDamage.reason = skill:objectName()
             room:damage(theDamage)
             player:loseMark("&feizhaohu", 1)
         end
@@ -482,7 +488,7 @@ feihujueCard = sgs.CreateSkillCard {
         local tiger = targets[1]
         for _, id in sgs.qlist(room:getDrawPile()) do
             if sgs.Sanguosha:getCard(id):isKindOf("BasicCard") then
-                room:obtainCard(source, id, false)
+                room:obtainCard(source, id, "feihujue", false)
                 break
             end
         end
@@ -554,7 +560,7 @@ feicuxie = sgs.CreateTriggerSkillV2 {
     on_effect = function(skill, event, room, player, ctx)
         for _, id in sgs.qlist(room:getDrawPile()) do
             if sgs.Sanguosha:getCard(id):isKindOf("Slash") then
-                room:obtainCard(player, id, false)
+                room:obtainCard(player, id, skill:objectName(), false)
                 break
             end
         end
@@ -627,7 +633,7 @@ feibenzi = sgs.CreateTriggerSkillV2 {
         local n = 0
         for _, id in sgs.qlist(room:getDrawPile()) do
             if sgs.Sanguosha:getCard(id):isKindOf("BasicCard") then
-                room:obtainCard(player, id, false)
+                room:obtainCard(player, id, skill:objectName(), false)
                 n = n + 1
             end
             if n > 2 then
@@ -675,7 +681,7 @@ feifeijiang = sgs.CreateTriggerSkillV2 {
                     local card = sgs.Sanguosha:getCard(to_show)
                     local to_showlist = sgs.IntList()
                     to_showlist:append(to_show)
-                    room:showCard(p, to_showlist)
+                    room:showCard(p, to_showlist, sgs.SPlayerList(), skill:objectName())
                     if card:isKindOf("BasicCard") then
                         room:throwCard(to_show, p, player)
                     elseif card:isKindOf("TrickCard") then
@@ -1244,6 +1250,7 @@ feiyanjunCard = sgs.CreateSkillCard {
                 theDamage.to = effect.to
                 theDamage.damage = 1
                 theDamage.nature = sgs.DamageStruct_Thunder
+                theDamage.reason = "feiyanjun"
                 room:damage(theDamage)
             elseif choice == "losehp" then
                 room:loseHp(effect.to, 2, true, effect.from, "feiyanjun")
@@ -1455,25 +1462,25 @@ feiniepan = sgs.CreateTriggerSkillV2 {
             room:setPlayerProperty(player, "hp", sgs.QVariant(hp))
             for _, id in sgs.qlist(room:getDrawPile()) do
                 if sgs.Sanguosha:getCard(id):getSuit() == sgs.Card_Spade then
-                    room:obtainCard(player, id, false)
+                    room:obtainCard(player, id, skill:objectName(), false)
                     break
                 end
             end
             for _, id in sgs.qlist(room:getDrawPile()) do
                 if sgs.Sanguosha:getCard(id):getSuit() == sgs.Card_Heart then
-                    room:obtainCard(player, id, false)
+                    room:obtainCard(player, id, skill:objectName(), false)
                     break
                 end
             end
             for _, id in sgs.qlist(room:getDrawPile()) do
                 if sgs.Sanguosha:getCard(id):getSuit() == sgs.Card_Club then
-                    room:obtainCard(player, id, false)
+                    room:obtainCard(player, id, skill:objectName(), false)
                     break
                 end
             end
             for _, id in sgs.qlist(room:getDrawPile()) do
                 if sgs.Sanguosha:getCard(id):getSuit() == sgs.Card_Diamond then
-                    room:obtainCard(player, id, false)
+                    room:obtainCard(player, id, skill:objectName(), false)
                     break
                 end
             end

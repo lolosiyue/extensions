@@ -625,7 +625,7 @@ Dragon_fuyuanCard = sgs.CreateSkillCard{
 		local sunquan = targets[1]
 		if sunquan:hasLordSkill("Dragon_fuyuan") then
 			room:setPlayerFlag(sunquan, "Dragon_fuyuanInvoked")
-			sunquan:obtainCard(self)
+			room:obtainCard(sunquan, self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, source:objectName(), sunquan:objectName(), "Dragon_fuyuan", ""))
 			room:broadcastSkillInvoke("jiuyuan")
 			local subcards = self:getSubcards()
 			for _, card_id in sgs.qlist(subcards) do
@@ -1384,15 +1384,21 @@ Dragon_fankui = sgs.CreateTriggerSkillV2{
 		end
 		return false
 	end,
-	on_effect = function(skill, event, room, player, ctx)
+	on_cost = function(skill, event, room, player, ctx)
 		local from = ctx.original_data:toDamage().from
+		if not from or not player:canGet(from, "h") then return false end
 		local data = sgs.QVariant()
 		data:setValue(from)
-		if(from and (not from:isKongcheng()) and room:askForSkillInvoke(player, skill:objectName(), data)) then
-			room:broadcastSkillInvoke("fankui")
-			local card_id = room:askForCardChosen(player, from, "h", skill:objectName())
-			room:obtainCard(player, card_id)
-		end
+		if not room:askForSkillInvoke(player, skill:objectName(), data) then return false end
+		ctx.targets:append(from)
+		return true
+	end,
+	on_effect_target = function(skill, event, room, player, ctx, target)
+		room:broadcastSkillInvoke("fankui")
+		if not player:canGet(target, "h") then return false end
+		local card_id = room:askForCardChosen(player, target, "h", skill:objectName(), false, sgs.Card_MethodGet)
+		if not player:canGet(target, card_id) then return false end
+		room:obtainCard(player, sgs.Sanguosha:getCard(card_id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), target:objectName(), skill:objectName(), ""))
 		return false
 	end
 }
@@ -1541,7 +1547,7 @@ Dragon_luoshen = sgs.CreateTriggerSkillV2{
 			if judge.reason == skill:objectName() then
 				local card = judge.card
 				if card:isBlack() then
-					player:obtainCard(card)
+					room:obtainCard(player, card, "Dragon_luoshen")
 					return true
 				end
 			end
@@ -3490,14 +3496,19 @@ Promote_fanjianCard = sgs.CreateSkillCard{
 		local zhouyu = effect.from
 		local target = effect.to
 		local room = zhouyu:getRoom()
-		local card_id = zhouyu:getRandomHandCardId()
+		local gettable = {}
+		for _, c in sgs.qlist(zhouyu:getHandcards()) do
+			if target:canGet(zhouyu, c:getEffectiveId()) then table.insert(gettable, c:getEffectiveId()) end
+		end
+		if #gettable == 0 then return end
+		local card_id = gettable[math.random(1, #gettable)]
 		local card = sgs.Sanguosha:getCard(card_id)
 		local suit = room:askForChoice(target, "Promote_fanjian", "red+black")
 		if (suit == "red" and card:isRed()) or (suit == "black" and card:isBlack()) then
 			room:damage(sgs.DamageStruct("Promote_fanjian", zhouyu, target))
 		end
 		room:getThread():delay()
-		target:obtainCard(card)
+		room:obtainCard(target, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, target:objectName(), zhouyu:objectName(), "Promote_fanjian", ""))
 	end
 }
 Promote_fanjian = sgs.CreateViewAsSkillV2{
@@ -3712,7 +3723,7 @@ Promote_luoshen = sgs.CreateTriggerSkillV2{
 			if judge.reason == skill:objectName() then
 				local card = judge.card
 				if card:isBlack() then
-					player:obtainCard(card)
+					room:obtainCard(player, card, "Promote_luoshen")
 					return true
 				end
 			end
@@ -4016,7 +4027,7 @@ Promote_xuanwu = sgs.CreateRuleSkillV2{
 					room:throwCard(id, player, player:getTag("Promote_xuanwu"):toPlayer())
 					if player:getPile("Promote_xuanwu"):length() > 0 then
 						for _, id in sgs.qlist(player:getPile("Promote_xuanwu")) do
-							room:obtainCard(player, id)
+							room:obtainCard(player, id, "Promote_xuanwu")
 						end
 					end
 					player:removeTag("Promote_xuanwu")

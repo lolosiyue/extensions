@@ -124,7 +124,7 @@ local zhengjing = sgs.CreateViewAsSkillV2 {
             local target = room:askForPlayerChosen(source, room:getAlivePlayers(), skill:objectName(), "@game_zhengjing", false, true)
             if target then target:addToPile("jing", give) else for _, id in sgs.qlist(give:getSubcards()) do keep:addSubcard(id) end end
         end
-        source:obtainCard(keep); give:deleteLater(); keep:deleteLater()
+        room:obtainCard(source, keep, skill:objectName(), true); give:deleteLater(); keep:deleteLater()
         return sgs.ViewAsSkillV2_FinishSkill
     end,
 }
@@ -141,7 +141,7 @@ local zhengjing_rule = sgs.CreateRuleSkillV2 {
     end,
     on_cost = function() return true end, on_pay = function() return true end,
     on_effect = function(skill, event, room, player, ctx)
-        local card = sgs.Sanguosha:cloneCard("slash"); card:addSubcards(player:getPile("jing")); room:obtainCard(player, card, false)
+        local card = sgs.Sanguosha:cloneCard("slash"); card:addSubcards(player:getPile("jing")); room:obtainCard(player, card, "game_zhengjing", false)
         player:skip(sgs.Player_Judge); player:skip(sgs.Player_Draw); card:deleteLater(); return false
     end,
 }
@@ -386,7 +386,7 @@ local tianshu = sgs.CreateTriggerSkillV2 {
         log.type, log.from, log.arg = "#TianshuGive", player, "_taipingyaoshu"
         log.to:append(target)
         room:sendLog(log)
-        room:obtainCard(target, id)
+        room:obtainCard(target, id, skill:objectName(), true)
         local card = sgs.Sanguosha:getCard(id)
         if card then room:useCard(sgs.CardUseStruct(card, target, target)) end
         return false

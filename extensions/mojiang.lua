@@ -1162,7 +1162,7 @@ sy_weiwu = sgs.CreateTriggerSkillV2 {
 					return false
 				end
 			end
-			player:obtainCard(damage.card)
+			room:obtainCard(player, damage.card, "sy_weiwu")
 			local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_SuitToBeDecided, -1)
 			if not room:getDiscardPile():isEmpty() then
 				for _, id in sgs.qlist(room:getDiscardPile()) do
@@ -1172,7 +1172,7 @@ sy_weiwu = sgs.CreateTriggerSkillV2 {
 				end
 			end
 			if dummy:subcardsLength() > 0 then
-				player:obtainCard(dummy)
+				room:obtainCard(player, dummy, "sy_weiwu")
 			end
 			dummy:deleteLater()
 		end
@@ -1843,7 +1843,7 @@ sy_quanqingCard = sgs.CreateSkillCard {
 		local card = sgs.Sanguosha:getCard(cid)
 		room:addPlayerMark(effect.from, "sy_quanqing" .. cid .. "-PlayClear")
 		room:addPlayerMark(effect.to, "sy_quanqingTarget-PlayClear")
-		room:showCard(effect.from, cid)
+		room:showCard(effect.from, cid, sgs.SPlayerList(), "sy_quanqing")
 		local num = card:getNumber()
 		local prompt = string.format("@sy_quanqing:%s:%s", effect.from:objectName(), card:getNumberString())
 		local to_throw = nil
@@ -2742,7 +2742,7 @@ sy_ejueCard = sgs.CreateSkillCard {
 				end
 			end
 			if dummy1:subcardsLength() > 0 then
-				source:obtainCard(dummy1)
+				room:obtainCard(source, dummy1, "sy_ejue")
 			end
 			dummy1:deleteLater()
 		else
@@ -3013,7 +3013,7 @@ fcmk_jlsg_meihuoCard = sgs.CreateSkillCard {
 	end,
 	on_effect = function(self, effect)
 		local room = effect.from:getRoom()
-		room:obtainCard(effect.to, self, false)
+		room:obtainCard(effect.to, self, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, effect.from:objectName(), effect.to:objectName(), "fcmk_jlsg_meihuo", ""), false)
 		local targets, others = sgs.SPlayerList(), room:getOtherPlayers(effect.to)
 		if effect.from:getState() == "online" then
 			targets = room:askForPlayersChosen(effect.from, others, "fcmk_jlsg_meihuo", 1, others:length(), "fcmk_jlsg_meihuo-playerschosen")
@@ -3196,11 +3196,15 @@ fcmk_jlsg_miluan = sgs.CreateTriggerSkillV2 {
 			room:broadcastSkillInvoke(skill:objectName())
 			local dummy = sgs.Sanguosha:cloneCard("slash")
 			for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-				if p:isKongcheng() then
+				if not player:canGet(p, "h") then
 					continue
 				end
-				dummy:addSubcards(p:getHandcards())
-				room:obtainCard(player, dummy, false)
+				for _, c in sgs.qlist(p:getHandcards()) do
+					if player:canGet(p, c:getEffectiveId()) then
+						dummy:addSubcard(c)
+					end
+				end
+				room:obtainCard(player, dummy, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), p:objectName(), "fcmk_jlsg_miluan", ""), false)
 				dummy:clearSubcards()
 			end
 			dummy:deleteLater()
@@ -3228,7 +3232,7 @@ fcmk_jlsg_miluan = sgs.CreateTriggerSkillV2 {
 				dummi:clearSubcards()
 				n = n - gg]]
 				local give_card = sgs.Sanguosha:getCard(give_id)
-				room:obtainCard(person, give_card, false)
+				room:obtainCard(person, give_card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), person:objectName(), "fcmk_jlsg_miluan", ""), false)
 				n = n - 1
 			end
 			--dummi:deleteLater()
@@ -3896,7 +3900,7 @@ mo_juesi = sgs.CreateTriggerSkillV2 {
 		local hetaihou = room:findPlayerBySkillName(skill:objectName())
 		if not (hetaihou and hetaihou:isAlive()) then return false end
 		if player and player:isAlive() and player:objectName() ~= hetaihou:objectName()
-			and player:getPhase() == sgs.Player_Discard and not player:isKongcheng() then
+			and player:getPhase() == sgs.Player_Discard and hetaihou:canGet(player, "h") then
 			return skill:objectName(), hetaihou
 		end
 		return false
@@ -3907,7 +3911,11 @@ mo_juesi = sgs.CreateTriggerSkillV2 {
 		room:sendCompulsoryTriggerLog(player, skill:objectName())
 		room:broadcastSkillInvoke(skill:objectName())
 		room:doAnimate(1, player:objectName(), target:objectName())
-		local ids = target:handCards()
+		local ids = sgs.IntList()
+		for _, id in sgs.qlist(target:handCards()) do
+			if player:canGet(target, id) then ids:append(id) end
+		end
+		if ids:isEmpty() then return false end
 		local n = ids:length()
 		local has_heart = false
 		for _, id in sgs.qlist(ids) do
@@ -3915,7 +3923,7 @@ mo_juesi = sgs.CreateTriggerSkillV2 {
 		end
 		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		dummy:addSubcards(ids)
-		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), skill:objectName(), "")
+		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), target:objectName(), skill:objectName(), "")
 		room:obtainCard(player, dummy, reason, false)
 		dummy:deleteLater()
 		if has_heart and player:isWounded() then
@@ -4008,11 +4016,14 @@ mo_duoquan = sgs.CreateTriggerSkillV2 {
 				room:setPlayerFlag(who, "-mo_duoquan_heart")
 			end
 			local got_heart = false
-			local hc = who:getCards("h")
-			if not hc:isEmpty() then
-				local card = hc:at(math.random(0, hc:length() - 1))
+			local hc = {}
+			for _, c in sgs.qlist(who:getCards("h")) do
+				if player:canGet(who, c:getEffectiveId()) then table.insert(hc, c) end
+			end
+			if #hc > 0 then
+				local card = hc[math.random(1, #hc)]
 				if card:getSuit() == sgs.Card_Heart then got_heart = true end
-				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, who:objectName(), player:objectName(), skill:objectName(), "")
+				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), who:objectName(), skill:objectName(), "")
 				room:obtainCard(player, card, reason, false)
 			end
 			if who:getPhase() == sgs.Player_NotActive and (who:hasFlag("mo_duoquan_heart") or got_heart) then
@@ -4044,7 +4055,7 @@ mo_lanle = sgs.CreateTriggerSkillV2 {
 		if not (liushan and liushan:isAlive()) then return false end
 		local use = data:toCardUse()
 		if use.from and use.from:isAlive() and use.from:objectName() ~= liushan:objectName()
-			and not use.from:isKongcheng() then
+			and liushan:canGet(use.from, "h") then
 			return skill:objectName(), liushan
 		end
 		return false
@@ -4055,10 +4066,13 @@ mo_lanle = sgs.CreateTriggerSkillV2 {
 		if not (who and who:isAlive()) then return false end
 		room:sendCompulsoryTriggerLog(player, skill:objectName())
 		room:broadcastSkillInvoke(skill:objectName())
-		local hc = who:getCards("h")
-		if not hc:isEmpty() then
-			local cid = hc:at(math.random(0, hc:length() - 1)):getEffectiveId()
-			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, who:objectName(), player:objectName(), skill:objectName(), "")
+		local hc = {}
+		for _, c in sgs.qlist(who:getCards("h")) do
+			if player:canGet(who, c:getEffectiveId()) then table.insert(hc, c) end
+		end
+		if #hc > 0 then
+			local cid = hc[math.random(1, #hc)]:getEffectiveId()
+			local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), who:objectName(), skill:objectName(), "")
 			room:obtainCard(player, sgs.Sanguosha:getCard(cid), reason, false)
 		end
 		if use.card and use.card:getSuit() == sgs.Card_Heart and who:isAlive() and not player:isKongcheng() then
@@ -4271,13 +4285,16 @@ mo_huachong = sgs.CreateTriggerSkillV2 {
 			for i = 1, n do
 				local pool = sgs.SPlayerList()
 				for _, p in sgs.qlist(room:getOtherPlayers(player)) do
-					if p:isAlive() and not p:getCards("he"):isEmpty() then pool:append(p) end
+					if p:isAlive() and player:canGet(p, "he") then pool:append(p) end
 				end
 				if pool:isEmpty() then break end
 				local t = pool:at(math.random(0, pool:length() - 1))
-				local cs = t:getCards("he")
-				local card = cs:at(math.random(0, cs:length() - 1))
-				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, t:objectName(), player:objectName(), skill:objectName(), "")
+				local cs = {}
+				for _, c in sgs.qlist(t:getCards("he")) do
+					if player:canGet(t, c:getEffectiveId()) then table.insert(cs, c) end
+				end
+				local card = cs[math.random(1, #cs)]
+				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), t:objectName(), skill:objectName(), "")
 				room:obtainCard(player, card, reason, false)
 			end
 			return false
@@ -4291,7 +4308,7 @@ mo_huachong = sgs.CreateTriggerSkillV2 {
 			if #others > 0 then
 				local t = others[math.random(1, #others)]
 				room:doAnimate(1, player:objectName(), t:objectName())
-				room:loseHp(t, damage.damage)
+				room:loseHp(t, damage.damage, true, player, skill:objectName())
 				if player:isAlive() then
 					local re = sgs.RecoverStruct()
 					re.who = player

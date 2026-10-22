@@ -1363,7 +1363,7 @@ zl_yajiaoqiangTr = sgs.CreateTriggerSkillV2{
 				player:addMark("zl_yajiaoqiang-Clear")
 				if res.m_card:getEffectiveId()>=0 and not room:getCardOwner(res.m_card:getEffectiveId())
 				and player:askForSkillInvoke("zl_yajiaoqiang",data,false) then
-					room:obtainCard(player,res.m_card)
+					room:obtainCard(player,res.m_card,"zl_yajiaoqiang")
 				end
 			end
 		else
@@ -1373,7 +1373,7 @@ zl_yajiaoqiangTr = sgs.CreateTriggerSkillV2{
 				player:removeTag("Yajiaoqiang")
 				if not room:getCardOwner(use.card:getEffectiveId())
 				and player:askForSkillInvoke("zl_yajiaoqiang",data) then
-					room:obtainCard(player,use.card)
+					room:obtainCard(player,use.card,"zl_yajiaoqiang")
 				end
 			end
 		end
@@ -2416,9 +2416,9 @@ zd_sheshen = sgs.CreateTriggerSkillV2{
 					room:gainMaxHp(lord)
 					room:recover(lord,sgs.RecoverStruct(p,nil,p:getHp()))
 				local d = dummyCard()
-						d:addSubcards(p:handCards())
-						d:addSubcards(p:getEquipsId())
-						room:obtainCard(lord,d,false)
+						for _,id in sgs.qlist(p:handCards()) do if lord:canGet(p,id) then d:addSubcard(id) end end
+						for _,id in sgs.qlist(p:getEquipsId()) do if lord:canGet(p,id) then d:addSubcard(id) end end
+						if d:subcardsLength()>0 then room:obtainCard(lord,d,sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION,lord:objectName(),p:objectName(),"zd_sheshen",""),false) end
 						room:killPlayer(p)
 			end
 		end

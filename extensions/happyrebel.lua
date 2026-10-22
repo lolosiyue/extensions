@@ -410,7 +410,7 @@ HappyRebelVote = sgs.CreateRuleSkillV2{
                 
                 -- 执行失去体力（可能导致死亡，之后不要再使用targetPlayer）
                 -- room:writeToConsole(generalName .. " 获得最多反贼票数（" .. maxVotes .. "票），失去2点体力")
-                room:loseHp(playerObj, 2)
+                room:loseHp(playerObj, 2, true, nil, "HappyRebelVote")
                 
                 return false
             end
@@ -578,7 +578,7 @@ HappyRebelPublicVote = sgs.CreateRuleSkillV2{
                 
                 -- 执行失去体力（可能导致死亡，之后不要再使用targetPlayer）
                 -- room:writeToConsole(generalName .. " 获得最多票数（" .. maxVotes .. "票），失去2点体力")
-                room:loseHp(playerObj, 2)
+                room:loseHp(playerObj, 2, true, nil, "HappyRebelPublicVote")
                 
                 return false
             end

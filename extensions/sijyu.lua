@@ -520,7 +520,7 @@ sijyu_qifeng = sgs.CreateTriggerSkillV2 {
                                 room:throwCard(card, target, player)
                             else
                                 if room:getCardPlace(to_throw) == sgs.Player_PlaceHand then
-                                    room:showCard(target, to_throw)
+                                    room:showCard(target, to_throw, sgs.SPlayerList(), "sijyu_qifeng")
                                 end
                                 local cdata = sgs.QVariant()
                                 cdata:setValue(card)
@@ -1531,6 +1531,7 @@ sijyu_xiaowang = sgs.CreateTriggerSkillV2 {
             newdamage.to = damage.to
             newdamage.damage = 1
             newdamage.nature = sgs.DamageStruct_Fire
+            newdamage.reason = "sijyu_xiaowang"
             room:damage(newdamage)
         elseif event == sgs.EventPhaseChanging then
             room:sendCompulsoryTriggerLog(player, skill:objectName())
@@ -1541,6 +1542,7 @@ sijyu_xiaowang = sgs.CreateTriggerSkillV2 {
                 damage.to = p
                 damage.damage = 1
                 damage.nature = sgs.DamageStruct_Fire
+                damage.reason = "sijyu_xiaowang"
                 room:damage(damage)
             end
         end
@@ -1595,7 +1597,7 @@ sijyu_zhizhi = sgs.CreateTriggerSkillV2 {
             end
             for _, p in sgs.qlist(room:getAlivePlayers()) do
                 if p:getMark("sijyu_zhizhi") > 0 and not p:isKongcheng() then
-                    room:showCard(p, p:getMark("sijyu_zhizhi"))
+                    room:showCard(p, p:getMark("sijyu_zhizhi"), sgs.SPlayerList(), "sijyu_zhizhi")
                 end
             end
             table.sort(show_suit)
@@ -1641,7 +1643,7 @@ sijyu_zhizhi = sgs.CreateTriggerSkillV2 {
                             if p:getMark("sijyu_zhizhi") > 0 then
                                 local card = sgs.Sanguosha:getCard(p:getMark("sijyu_zhizhi"))
                                 if card:getSuitString() == suit then
-                                    room:obtainCard(p, dummy2)
+                                    room:obtainCard(p, dummy2, "sijyu_zhizhi")
                                     room:addPlayerMark(p, "&sijyuzhizhi_lun")
                                 end
                             end
@@ -2179,7 +2181,7 @@ sijyu_qixing = sgs.CreateTriggerSkillV2 {
         local dummy = sgs.Sanguosha:cloneCard("slash")
         dummy:addSubcards(player:getPile("sijyu_xing"))
         if dummy:subcardsLength() > 0 then
-            target:obtainCard(dummy)
+            room:obtainCard(target, dummy, "sijyu_qixing")
         end
         local exchange_card = room:askForExchange(target, "sijyu_qixing", dummy:subcardsLength(), dummy:subcardsLength())
         dummy:deleteLater()
@@ -2331,7 +2333,7 @@ sijyu_fabei = sgs.CreateTriggerSkillV2 {
             local dummy = sgs.Sanguosha:cloneCard("slash")
             dummy:addSubcards(player:getPile("sijyu_fa"))
             if dummy:subcardsLength() > 0 then
-                player:obtainCard(dummy)
+                room:obtainCard(player, dummy, "sijyu_fabei")
             end
             dummy:deleteLater()
             room:loseHp(player, 1, true, player, skill:objectName())
@@ -2442,7 +2444,7 @@ sijyu_fengyi = sgs.CreateTriggerSkillV2 {
             local dummy = sgs.Sanguosha:cloneCard("slash")
             dummy:addSubcards(player:getPile("sijyu_xing"))
             if dummy:subcardsLength() > 0 then
-                target:obtainCard(dummy)
+                room:obtainCard(target, dummy, "sijyu_fengyi")
             end
             dummy:deleteLater()
             target:turnOver()

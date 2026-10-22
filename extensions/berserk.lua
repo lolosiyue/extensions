@@ -153,7 +153,7 @@ berserk_menghuan = sgs.CreateTriggerSkillV2 {
 			end
 			a = a + 1
 		end
-		miku:obtainCard(dummy)
+		room:obtainCard(miku, dummy, skill:objectName(), true)
 		dummy:deleteLater()
 		return true
 	end,
@@ -210,12 +210,12 @@ berserk_jichang = sgs.CreateTriggerSkillV2 {
 		elseif suit == sgs.Card_Diamond then
 			pattern = ".D"
 		end
-		player:obtainCard(judge.card)
+		room:obtainCard(player, judge.card, skill:objectName(), true)
 		local prompt = string.format("@jichangask:%s:%s", player:objectName(), judge.card:getSuitString())
 		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 			local c = room:askForCard(p, pattern, prompt, sgs.QVariant(suitstring), sgs.Card_MethodNone)
 			if c then
-				room:obtainCard(player, c, true)
+				room:obtainCard(player, c, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, p:objectName(), player:objectName(), skill:objectName(), ""), true)
 			else
 				local re = sgs.RecoverStruct()
 				re.who = p

@@ -9,18 +9,18 @@ local function luaInvokeNativeSkill(skill_name, room, player, data)
 	local damage = data:toDamage()
 	if skill_name == "fankui" then
 		local from = damage.from
-		if not from or from:isNude() then return end
+		if not from or not player:canGet(from, "he") then return end
 		local invoke_data = sgs.QVariant()
 		invoke_data:setValue(from)
 		for i = 1, damage.damage do
-			if from:isNude() or not player:isAlive() then break end
+			if not player:canGet(from, "he") then break end
 			if not room:askForSkillInvoke(player, "fankui", invoke_data) then break end
 			room:broadcastSkillInvoke("fankui")
-			local card_id = room:askForCardChosen(player, from, "he", "fankui")
-			if room:getCardOwner(card_id) == from
+			local card_id = room:askForCardChosen(player, from, "he", "fankui", false, sgs.Card_MethodGet)
+			if room:getCardOwner(card_id) == from and player:canGet(from, card_id)
 				and (room:getCardPlace(card_id) == sgs.Player_PlaceHand
 					or room:getCardPlace(card_id) == sgs.Player_PlaceEquip) then
-				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName())
+				local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), from:objectName(), "fankui", "")
 				room:obtainCard(player, sgs.Sanguosha:getCard(card_id), reason,
 					room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
 			end
@@ -339,7 +339,7 @@ luafan = sgs.CreateTriggerSkillV2 {
 				if judge:isBad() then
 					room:damage(sgs.DamageStruct(skill:objectName(), player, target, 2, sgs.DamageStruct_Thunder))
 				else
-					player:obtainCard(jink)
+					room:obtainCard(player, jink, "luafan")
 				end
 			end
 		end
@@ -539,11 +539,13 @@ luajiejiangVS = sgs.CreateViewAsSkillV2 {
 		local room = target:getRoom()
 
 		room:broadcastSkillInvoke("tuxi") --音效  ok
+		if not from:canGet(target, "hej") then return end
 
-		local card_id = room:askForCardChosen(from, target, "hej", "luajiejiang2_main")
+		local card_id = room:askForCardChosen(from, target, "hej", "luajiejiang2_main", false, sgs.Card_MethodGet)
 		--local card = sgs.Sanguosha:getCard(card_id)
 		--room:moveCardTo(card, from, sgs.Player_PlaceHand, false)
-		room:obtainCard(from, card_id)
+		if not from:canGet(target, card_id) then return end
+		room:obtainCard(from, sgs.Sanguosha:getCard(card_id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, from:objectName(), target:objectName(), "luajiejiang", ""))
 	end,
 }
 
@@ -568,7 +570,7 @@ luajiejiang = sgs.CreateTriggerSkillV2 { --溃袭
 		judge.who = player
 		room:judge(judge)
 		if judge:isGood() then
-			player:obtainCard(judge.card)
+			room:obtainCard(player, judge.card, "luajiejiang")
 			room:broadcastSkillInvoke("luajiejiang") --音效  ok
 
 			if judge.card:isRed() then
@@ -1152,6 +1154,7 @@ luahuntian = sgs.CreateViewAsSkillV2 { --弃掉5张花色牌，对若干名玩�
 			damage.from = from
 			damage.to = target
 			damage.nature = sgs.DamageStruct_Fire
+			damage.reason = "luahuntian"
 			room:damage(damage)
 			if from:canDiscard(target, "he") then
 				local to_throw = room:askForCardChosen(from, target, "he", skill:objectName())
@@ -1226,7 +1229,7 @@ luajiaodi = sgs.CreateTriggerSkillV2 {
 				for _, id in ipairs(card_to_gotback) do
 					dummy2:addSubcard(id)
 				end
-				room:obtainCard(player, dummy2)
+				room:obtainCard(player, dummy2, "luajiaodi")
 				dummy2:deleteLater()
 			end
 
@@ -1239,7 +1242,7 @@ luajiaodi = sgs.CreateTriggerSkillV2 {
 				for _, cd in sgs.qlist(player:getPile("luamou")) do
 					dummy:addSubcard(sgs.Sanguosha:getCard(cd))
 				end
-				player:obtainCard(dummy)
+				room:obtainCard(player, dummy, "luajiaodi")
 				dummy:deleteLater()
 			end
 		end
@@ -1252,46 +1255,48 @@ luajilue = sgs.CreateTriggerSkillV2 {
 	events = { sgs.Damaged },
 	can_trigger = function(skill, event, room, player, data)
 		if player and player:isAlive() and player:getPile("luamou"):length() > 0 then
-			return "luajilue"
+			local damage = data:toDamage()
+			if damage.damage > 0 then
+				return "luajilue*" .. damage.damage
+			end
 		end
 		return false
 	end,
-	on_effect = function(skill, event, room, player, ctx)
-		if event == sgs.Damaged then
-			local damage = ctx.original_data:toDamage()
-			local x = damage.damage
-			for i = 1, x, 1 do
-				local choice = room:askForChoice(player, skill:objectName(), "c1+c2+c3+c4+c5")
-				local skill_name
-				if choice == "c1" then
-					skill_name = "fankui"
-				elseif choice == "c2" then
-					skill_name = "jieming"
-				elseif choice == "c3" then
-					skill_name = "fangzhu"
-				elseif choice == "c4" then
-					skill_name = "yiji"
-				end
-				if choice ~= "c5" and skill_name and sgs.Sanguosha:getTriggerSkill(skill_name) then
-					local luamous = player:getPile("luamou")
-					if luamous:isEmpty() then break end
-					room:broadcastSkillInvoke("luajilue") --音效
-					room:notifySkillInvoked(player, skill:objectName())
-					local card_id
-					if luamous:length() == 1 then
-						card_id = luamous:first()
-					else
-						room:fillAG(luamous, player)
-						card_id = room:askForAG(player, luamous, false, "luamou")
-						room:clearAG()
-					end
-					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", skill:objectName(), "")
-					room:throwCard(sgs.Sanguosha:getCard(card_id), reason, nil)
-					--room:throwCard(card_id,player)
-					luaInvokeNativeSkill(skill_name, room, player, ctx.original_data)
-				end
-			end
+	on_cost = function(skill, event, room, player, ctx)
+		local choice = room:askForChoice(player, skill:objectName(), "c1+c2+c3+c4+c5")
+		local skill_name
+		if choice == "c1" then
+			skill_name = "fankui"
+		elseif choice == "c2" then
+			skill_name = "jieming"
+		elseif choice == "c3" then
+			skill_name = "fangzhu"
+		elseif choice == "c4" then
+			skill_name = "yiji"
 		end
+		if choice == "c5" or not skill_name or not sgs.Sanguosha:getTriggerSkill(skill_name) then
+			return false
+		end
+		ctx.choice = skill_name
+		return true
+	end,
+	on_effect = function(skill, event, room, player, ctx)
+		local luamous = player:getPile("luamou")
+		if luamous:isEmpty() then return false end
+		room:broadcastSkillInvoke("luajilue") --音效
+		room:notifySkillInvoked(player, skill:objectName())
+		local card_id
+		if luamous:length() == 1 then
+			card_id = luamous:first()
+		else
+			room:fillAG(luamous, player)
+			card_id = room:askForAG(player, luamous, false, "luamou")
+			room:clearAG()
+		end
+		local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, "", skill:objectName(), "")
+		room:throwCard(sgs.Sanguosha:getCard(card_id), reason, nil)
+		--room:throwCard(card_id,player)
+		luaInvokeNativeSkill(ctx.choice, room, player, ctx.original_data)
 		return false
 	end,
 }
@@ -1387,6 +1392,7 @@ luafentianVS = sgs.CreateViewAsSkillV2 { --<b>限定技</b>,出牌阶段,你可�
 			damage.from = nil
 			damage.to = target
 			damage.nature = sgs.DamageStruct_Fire
+			damage.reason = "luafentian"
 			room:damage(damage)
 			if not target:isNude() then
 				room:askForDiscard(target, "luafentian", 1, 1, false)
@@ -1708,8 +1714,8 @@ luajice = sgs
 				local card1 = sgs.Sanguosha:getCard(card_id)
 				local card_id2 = room:askForCardChosen(luajiaxu, target, "h", "luajice_vs")
 				local card2 = sgs.Sanguosha:getCard(card_id2)
-				room:showCard(luajiaxu, card1:getEffectiveId())
-				room:showCard(target, card2:getEffectiveId())
+				room:showCard(luajiaxu, card1:getEffectiveId(), sgs.SPlayerList(), "luajice")
+				room:showCard(target, card2:getEffectiveId(), sgs.SPlayerList(), "luajice")
 				if card1:getSuit() == card2:getSuit() then
 					local damage = sgs.DamageStruct()
 					damage.card = card1

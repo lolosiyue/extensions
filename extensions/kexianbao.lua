@@ -563,7 +563,7 @@ kexianhuiyan = sgs.CreateTriggerSkillV2 {
 		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		if not to_get:isEmpty() then
 			dummy:addSubcards(getCardList(to_get))
-			player:obtainCard(dummy)
+			room:obtainCard(player, dummy, "kexianhuiyan")
 		end
 		dummy:deleteLater()
 		room:clearAG()
@@ -928,6 +928,7 @@ kexianxiuzhen = sgs.CreateTriggerSkillV2 {
 			damagee.to = damage.from
 			damagee.damage = 1
 			damagee.nature = sgs.DamageStruct_Thunder
+			damagee.reason = "kexianxiuzhen"
 			room:damage(damagee)
 		end
 		if suit == sgs.Card_Club then
@@ -1321,10 +1322,12 @@ kexianwuqin = sgs.CreateTriggerSkillV2 {
 
 		for _, p in sgs.qlist(room:getOtherPlayers(player)) do
 			if not room:askForUseCard(p, pattern, prompt, -1, sgs.Card_MethodUse) then
-				if not p:isKongcheng() then
-					local card_id = room:askForCardChosen(player, p, "h", skill:objectName())
-					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName())
-					room:obtainCard(player, sgs.Sanguosha:getCard(card_id), reason, room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
+				if player:canGet(p, "h") then
+					local card_id = room:askForCardChosen(player, p, "h", skill:objectName(), false, sgs.Card_MethodGet)
+					if player:canGet(p, card_id) then
+						local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), p:objectName(), "kexianwuqin", "")
+						room:obtainCard(player, sgs.Sanguosha:getCard(card_id), reason, room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
+					end
 				end
 			end
 		end
@@ -1464,10 +1467,12 @@ kejiexianhuoqi = sgs.CreateTriggerSkillV2 {
 							room:damage(sgs.DamageStruct(skill:objectName(), winner, loser))
 						end
 						if xuanze == "qipai" then
-							if loser:getCardCount() > 0 then
-								local card_id = room:askForCardChosen(current, loser, "he", skill:objectName())
-								local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, current:objectName())
-								room:obtainCard(current, sgs.Sanguosha:getCard(card_id), reason, room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
+							if current:canGet(loser, "he") then
+								local card_id = room:askForCardChosen(current, loser, "he", skill:objectName(), false, sgs.Card_MethodGet)
+								if current:canGet(loser, card_id) then
+									local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, current:objectName(), loser:objectName(), "kejiexianhuoqi", "")
+									room:obtainCard(current, sgs.Sanguosha:getCard(card_id), reason, room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
+								end
 							end
 						end
 					end
@@ -1825,7 +1830,7 @@ kejiexianhuiyan = sgs.CreateTriggerSkillV2 {
 		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		if not to_get:isEmpty() then
 			dummy:addSubcards(getCardList(to_get))
-			pj:obtainCard(dummy)
+			room:obtainCard(pj, dummy, "kejiexianhuiyan")
 		end
 		dummy:deleteLater()
 		room:clearAG()

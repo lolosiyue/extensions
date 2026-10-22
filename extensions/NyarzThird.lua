@@ -184,9 +184,11 @@ _nyarz_jianxiong_tianxiafuwo = sgs.CreateTrickCard {
 	end,
 	on_effect = function(self, effect)
 		local from, to, room = effect.from, effect.to, effect.to:getRoom()
-		if from:isAlive() and to:isAlive() and (not to:isAllNude()) then
-			local id = room:askForCardChosen(from, to, "hej", self:objectName())
-			room:obtainCard(from, id, false)
+		if from:isAlive() and from:canGet(to, "hej") then
+			local id = room:askForCardChosen(from, to, "hej", self:objectName(), false, sgs.Card_MethodGet)
+			if from:canGet(to, id) then
+				room:obtainCard(from, id, self:objectName(), false)
+			end
 		end
 		room:damage(sgs.DamageStruct(self, from, to, 1, sgs.DamageStruct_Normal))
 		if from:isAlive() and to:isAlive() then
@@ -538,7 +540,7 @@ nyarz_yangwu = sgs.CreateTriggerSkillV2 {
 
 			local card = sgs.Sanguosha:getCard(id)
 			if card:isKindOf("Slash") or card:isKindOf("Duel") or card:isKindOf("EquipCard") then
-				room:obtainCard(player, card, true)
+				room:obtainCard(player, card, skill:objectName(), true)
 			end
 		end
 		return false

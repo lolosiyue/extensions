@@ -306,12 +306,12 @@ GodShenfu = sgs.CreateTriggerSkillV2{
 				local card = judge.card
 				if player:getMark("Shenfublack") > 0 then
 					if card:isBlack() then
-						player:obtainCard(card)
+						room:obtainCard(player, card, "GodShenfu")
 						return true
 					end
 				else
 					if card:isRed() then
-						player:obtainCard(card)
+						room:obtainCard(player, card, "GodShenfu")
 						return true
 					end
 				end
@@ -1655,7 +1655,7 @@ quanxiang = sgs.CreateTrickCard{
 		local card = room:askForCardShow(target, source, "quanxiang")
 		if card then
 			local id = card:getEffectiveId()
-			room:showCard(target, id)
+			room:showCard(target, id, sgs.SPlayerList(), "quanxiang")
 			local realnumber = card:getNumber()
 			local number = card:getNumber()+1
 			local message

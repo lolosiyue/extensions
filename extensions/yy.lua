@@ -108,23 +108,30 @@ luanixi_tr = sgs.CreateTriggerSkillV2 {
 			if draw.reason ~= "draw_phase" then return false end
 			--end
 		end
+		if event == sgs.Damaged then
+			local damage = data:toDamage()
+			if damage.damage < 1 then return false end
+			return skill:objectName() .. "*" .. damage.damage
+		end
 		return skill:objectName()
 	end,
 	on_effect = function(skill, event, room, player, ctx)
 		if event == sgs.Damaged then
-			local damage = ctx.original_data:toDamage()
-			room:broadcastSkillInvoke("longdan") --音效
-			player:gainMark("&fenyong_y", damage.damage)
-			for i = 1, damage.damage, 1 do
-				local x = player:getLostHp()
-				if x > 0 then
-					room:sendCompulsoryTriggerLog(player, "luanixi", true)
-					player:drawCards(x)
-				end
+			if ctx.trigger_count == 0 then
+				local damage = ctx.original_data:toDamage()
+				room:broadcastSkillInvoke("longdan") --音效
+				player:gainMark("&fenyong_y", damage.damage)
 			end
-			for _, sk in sgs.qlist(player:getVisibleSkillList()) do
-				if sk:getFrequency(player) == sgs.Skill_Wake then
-					player:setCanWake(sk:objectName(), sk:objectName())
+			local x = player:getLostHp()
+			if x > 0 then
+				room:sendCompulsoryTriggerLog(player, "luanixi", true)
+				player:drawCards(x)
+			end
+			if ctx.trigger_count == ctx.multiplier - 1 then
+				for _, sk in sgs.qlist(player:getVisibleSkillList()) do
+					if sk:getFrequency(player) == sgs.Skill_Wake then
+						player:setCanWake(sk:objectName(), sk:objectName())
+					end
 				end
 			end
 		elseif event == sgs.DrawNCards then

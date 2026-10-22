@@ -365,6 +365,7 @@ ge_shenenbf2 = sgs.CreateTargetModSkillV2{
 	name = "#ge_shenenbf2",
 	pattern = ".",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "skill:ge_huihuo", "any.skill:ge_shenen", "skill:ge_kuangxiao" },
 	correct_func = function(self,ctx)
 		local from = ctx:getPrimary()
 		local card = ctx:getCard()
@@ -1108,9 +1109,11 @@ ge_honghuang = sgs.CreateTrickCard{
 	on_effect = function(self,effect)
 		local room = effect.to:getRoom()
 	   	if effect.to:getKingdom()=="god" then
-			if effect.to:getCardCount()>0 and effect.from:isAlive() then
-				local id = room:askForCardChosen(effect.from,effect.to,"he",self:objectName())
-				room:obtainCard(effect.from,id,false)
+			if effect.from:canGet(effect.to,"he") then
+				local id = room:askForCardChosen(effect.from,effect.to,"he",self:objectName(),false,sgs.Card_MethodGet)
+				if effect.from:canGet(effect.to,id) then
+					room:obtainCard(effect.from,sgs.Sanguosha:getCard(id),sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, effect.from:objectName(), effect.to:objectName(), "ge_honghuang", ""),false)
+				end
 			end
 			room:addPlayerMark(effect.to,"Qingchengge_shenyi")
 			room:addPlayerMark(effect.to,"&ge_honghuangbf")
@@ -1959,9 +1962,11 @@ yl_zhifen = sgs.CreateTriggerSkillV2{
 			local tos = room:getOtherPlayers(player)
 			tos = tos:at(math.random(0,tos:length()-1))
 			room:doAnimate(1,player:objectName(),tos:objectName())
-			if tos:getHandcardNum()>0 then
-				local id = room:askForCardChosen(player,tos,"h",skill:objectName())
-				room:obtainCard(player,id,false)
+			if player:canGet(tos,"h") then
+				local id = room:askForCardChosen(player,tos,"h",skill:objectName(),false,sgs.Card_MethodGet)
+				if player:canGet(tos,id) then
+					room:obtainCard(player,sgs.Sanguosha:getCard(id),sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), tos:objectName(), "yl_zhifen", ""),false)
+				end
 			end
 			room:damage(sgs.DamageStruct(skill:objectName(), player, tos, 1, sgs.DamageStruct_Fire))
 		end
@@ -2212,7 +2217,7 @@ yl_shiyou = sgs.CreateTriggerSkillV2{
 		room:clearAG(player)
 		move:removeCardIds(dummy:getSubcards())
 		data:setValue(move)
-		player:obtainCard(dummy)
+		room:obtainCard(player, dummy, "yl_shiyou")
 		return false
 	end
 }

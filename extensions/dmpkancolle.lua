@@ -271,6 +271,7 @@ se_leimu = sgs.CreateTriggerSkillV2 {
 		damage.from = player
 		damage.to = target
 		damage.nature = sgs.DamageStruct_Thunder
+		damage.reason = "se_leimu"
 		room:damage(damage)
 		return false
 	end,
@@ -625,7 +626,7 @@ se_qianlei = sgs.CreateTriggerSkillV2 {
 			if cardid == -1 then return false end
 			room:broadcastSkillInvoke("se_qianlei", math.random(1, 3))
 			room:doLightbox("se_qianlei1$", 1200)
-			room:obtainCard(der, cardid)
+			room:obtainCard(der, sgs.Sanguosha:getCard(cardid), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, buki:objectName(), der:objectName(), "se_qianlei", ""))
 			local card = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 			card:setSkillName(skill:objectName())
 			if damage.from then
@@ -1079,7 +1080,7 @@ eryu = sgs.CreateTriggerSkillV2 {
 			end
 			if dummy:subcardsLength() > 0 then
 				room:broadcastSkillInvoke("eryu", 2)
-				linked:obtainCard(dummy)
+				room:obtainCard(linked, dummy, "eryu")
 			end
 		else
 			for _, id in sgs.qlist(move.card_ids) do
@@ -1089,7 +1090,7 @@ eryu = sgs.CreateTriggerSkillV2 {
 			end
 			if dummy:subcardsLength() > 0 then
 				room:broadcastSkillInvoke("eryu", 1)
-				player:obtainCard(dummy)
+				room:obtainCard(player, dummy, "eryu")
 			end
 		end
 		dummy:deleteLater()
@@ -1375,6 +1376,7 @@ fanghuoBuff = sgs.CreateTriggerSkillV2 {
 		damage.to = target
 		damage.damage = 1
 		damage.nature = sgs.DamageStruct_Fire
+		damage.reason = "fanghuo"
 		room:damage(damage)
 		local log = sgs.LogMessage()
 		log.type = "#fanghuo"

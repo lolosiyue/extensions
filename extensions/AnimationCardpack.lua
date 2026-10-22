@@ -548,6 +548,7 @@ rotenburo = sgs.CreateTrickCard{
 					room:sendLog(log)
 					local killer = sgs.DamageStruct()
 					killer.from = player
+					killer.reason = "strike_the_death"
 					room:killPlayer(player, killer)
 				end
 			end
@@ -661,6 +662,7 @@ rotenburo = sgs.CreateTrickCard{
 	shuugakulyukou_prohibit = sgs.CreateProhibitSkillV2{
 	name = "shuugakulyukou_prohibit",
 	holder_selector = sgs.CorrectSkill_System,
+	gate = { "secondary.trick:shuugakulyukou" },
 	is_prohibited = function(self, ctx)
 		local from, to, card = ctx:getFrom(), ctx:getTo(), ctx:getCard()
 		if to and from then
@@ -937,7 +939,7 @@ rotenburo = sgs.CreateTrickCard{
 
 					if gaokao_special then
 						gaokao_Log(room, player, self)
-					    player:obtainCard(card)
+					    room:obtainCard(player, card, "Rho_Aias")
 					else
 						local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_REMOVE_FROM_PILE, player:objectName(), self:objectName(), "")
 						room:throwCard(card, reason, nil)
@@ -1168,7 +1170,7 @@ end
 			-- 執行空 QList removeAt(0) -> 記憶體損壞 -> memcpy 崩潰 (0x1137D)
 			arrangementMove(ids, true, effect.to)
 			arrangementMove(ids, false, effect.to)
-			room:showCard(effect.to, ids)
+			room:showCard(effect.to, ids, sgs.SPlayerList(), self:objectName())
 		else
 		    room:setPlayerMark(effect.to, "arrange", 1)
 		end
@@ -1317,13 +1319,15 @@ heikeji_test_skill = sgs.CreateTriggerSkillV2{
 		local poi = effect.from
 		local room = poi:getRoom()
 		local target = effect.to
-		target:obtainCard(self)
+		room:obtainCard(target, self, self:objectName())
 		if target:isKongcheng() then return false end
 		if target:objectName() == poi:objectName() then
 		    room:throwCard(self, poi)
 		else
-			local id = room:askForCardChosen(poi, target, "h", self:objectName())
-			room:obtainCard(poi, id)
+			if not poi:canGet(target, "h") then return false end
+			local id = room:askForCardChosen(poi, target, "h", self:objectName(), false, sgs.Card_MethodGet)
+			if not poi:canGet(target, id) then return false end
+			room:obtainCard(poi, sgs.Sanguosha:getCard(id), sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, poi:objectName(), target:objectName(), self:objectName(), ""))
 			target:speak("有毒....")
 		end
 	end,

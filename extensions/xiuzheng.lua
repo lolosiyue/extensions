@@ -59,8 +59,8 @@ local rest_fangzhu = sgs.CreateTriggerSkillV2{
         ctx.targets:append(to)
         return true
     end,
-    on_effect = function(self, event, room, player, ctx)
-        local to = ctx.targets:first(); to:drawCards(player:getLostHp() * self:getEffectiveAmount(ctx), self:objectName())
+    on_effect_target = function(self, event, room, player, ctx, to)
+        to:drawCards(player:getLostHp() * self:getEffectiveAmount(ctx), self:objectName())
         restPlayerOneTurn(room, to, self:objectName()); room:notifySkillInvoked(player, self:objectName())
     end,
 }

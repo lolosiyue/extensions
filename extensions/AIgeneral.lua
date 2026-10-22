@@ -139,7 +139,7 @@ fuwufanmang = sgs.CreateTriggerSkillV2 {
 			room:sortByActionOrder(use.to)
 			ctx.original_data:setValue(use)
 			-- 2. 使用者获得牌
-			use.from:obtainCard(use.card)
+			room:obtainCard(use.from, use.card, skill:objectName(), true)
 
 			-- 3. 显示技能特效
 			room:broadcastSkillInvoke(skill:objectName())
@@ -906,7 +906,7 @@ huiyuanshenli = sgs.CreateTriggerSkillV2 {
 						room:setPlayerFlag(p, "huiyuanshenli")
 						local id = room:askForAG(player, huiyuanCMT_pile, false, "huiyuanCMT_pile")
 						room:setPlayerFlag(p, "-huiyuanshenli")
-						room:obtainCard(p, id, true)
+						room:obtainCard(p, id, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), p:objectName(), skill:objectName(), ""), true)
 						room:setPlayerMark(p, "&huiyuanCMT+#" .. player:objectName(), 0)
 						huiyuanCMT_pile:removeOne(id)
 						room:clearAG(player)
@@ -923,7 +923,7 @@ huiyuanshenli = sgs.CreateTriggerSkillV2 {
 				end
 				local huiyuanCMT_pile2 = player:getPile("huiyuanCMT_pile")
 				for _, c in sgs.qlist(huiyuanCMT_pile2) do
-					room:obtainCard(player, c, true)
+					room:obtainCard(player, c, skill:objectName(), true)
 				end
 			end
 		end
@@ -1397,7 +1397,7 @@ tiaojiaoCMT = sgs.CreateTriggerSkillV2 {
 		room:sendCompulsoryTriggerLog(damage.to, "tiaojiaoCMT")
 		room:broadcastSkillInvoke("tiaojiaoCMT")
 		if card then
-			room:obtainCard(damage.from, card, true)
+			room:obtainCard(damage.from, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, damage.to:objectName(), damage.from:objectName(), skill:objectName(), ""), true)
 		end
 		if damage.to == player then
 			room:addPlayerMark(player, "tiaojiaoCMT", 1)

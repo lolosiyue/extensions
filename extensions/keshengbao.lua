@@ -279,9 +279,9 @@ keshenghuixueCard = sgs.CreateSkillCard {
 			room:broadcastSkillInvoke(self:objectName())
 			room:loseHp(player, 1, true, player, "keshenghuixue")
 			if player:isAlive() then
-				room:damage(sgs.DamageStruct(self:objectName(), player, target))
+				room:damage(sgs.DamageStruct("keshenghuixue", player, target))
 			else
-				room:damage(sgs.DamageStruct(self:objectName(), nil, target))
+				room:damage(sgs.DamageStruct("keshenghuixue", nil, target))
 			end
 			if player:isAlive() then
 				player:drawCards(1)
@@ -498,34 +498,35 @@ keshengqizuo = sgs.CreateTriggerSkillV2 {
 	events = { sgs.Damaged },
 	can_trigger = function(skill, event, room, player, data)
 		if player and player:isAlive() and player:hasSkill(skill:objectName()) then
-			return skill:objectName()
+			local damage = data:toDamage()
+			if damage.damage > 0 then
+				return skill:objectName() .. "*" .. damage.damage
+			end
 		end
 		return false
 	end,
+	on_cost = function(skill, event, room, player, ctx)
+		return room:askForSkillInvoke(player, skill:objectName(), ctx.original_data)
+	end,
 	on_effect = function(skill, event, room, player, ctx)
-		local damage = ctx.original_data:toDamage()
-		for i = 0, damage.damage - 1, 1 do
-			if room:askForSkillInvoke(player, skill:objectName(), ctx.original_data) then
-				room:broadcastSkillInvoke(skill:objectName())
-				local judge = sgs.JudgeStruct()
-				judge.pattern = "."
-				judge.good = true
-				judge.reason = skill:objectName()
-				judge.who = player
-				room:judge(judge)
-				if judge.card:isBlack() then
-					local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), skill:objectName(), "shengqizuo-ask", true, true)
-					if target then
-						if target:getMark("&keshengqizuo") == 0 then
-							room:addPlayerMark(target, "@skill_invalidity")
-							room:addPlayerMark(target, "&keshengqizuo")
-						end
-					end
-				end
-				if judge.card:isRed() then
-					player:obtainCard(judge.card)
+		room:broadcastSkillInvoke(skill:objectName())
+		local judge = sgs.JudgeStruct()
+		judge.pattern = "."
+		judge.good = true
+		judge.reason = skill:objectName()
+		judge.who = player
+		room:judge(judge)
+		if judge.card:isBlack() then
+			local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), skill:objectName(), "shengqizuo-ask", true, true)
+			if target then
+				if target:getMark("&keshengqizuo") == 0 then
+					room:addPlayerMark(target, "@skill_invalidity")
+					room:addPlayerMark(target, "&keshengqizuo")
 				end
 			end
+		end
+		if judge.card:isRed() then
+			room:obtainCard(player, judge.card, "keshengqizuo")
 		end
 		return false
 	end,
@@ -629,7 +630,7 @@ keshengxiangzhi = sgs.CreateTriggerSkillV2 {
 		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		if not to_get:isEmpty() then
 			dummy:addSubcards(getCardList(to_get))
-			player:obtainCard(dummy)
+			room:obtainCard(player, dummy, "keshengxiangzhi")
 		end
 		dummy:clearSubcards()
 		--进入手牌预览
@@ -871,7 +872,7 @@ kejieshengxionglve = sgs.CreateTriggerSkillV2 {
 		local dummy = sgs.Sanguosha:cloneCard("slash", sgs.Card_NoSuit, 0)
 		if not to_get:isEmpty() then
 			dummy:addSubcards(getCardList(to_get))
-			player:obtainCard(dummy)
+			room:obtainCard(player, dummy, "kejieshengxionglve")
 		end
 		dummy:clearSubcards()
 		if not to_putback:isEmpty() then
@@ -1157,8 +1158,8 @@ kejieshenghuixueCard = sgs.CreateSkillCard {
 			room:setPlayerMark(player, "&useshengshanghai", 1)
 			room:setPlayerFlag(player, "useshenghuixue")
 			room:broadcastSkillInvoke(self:objectName())
-			room:loseHp(player, 1, true, player, self:objectName())
-			room:damage(sgs.DamageStruct(self:objectName(), player, target))
+			room:loseHp(player, 1, true, player, "kejieshenghuixue")
+			room:damage(sgs.DamageStruct("kejieshenghuixue", player, target))
 			player:drawCards(1)
 			target:drawCards(1)
 		end
@@ -1448,39 +1449,42 @@ kejieshengqizuo = sgs.CreateTriggerSkillV2 {
 	events = { sgs.Damaged },
 	can_trigger = function(skill, event, room, player, data)
 		if player and player:isAlive() and player:hasSkill(skill:objectName()) then
-			return skill:objectName()
+			local damage = data:toDamage()
+			if damage.damage > 0 then
+				return skill:objectName() .. "*" .. damage.damage
+			end
 		end
 		return false
 	end,
+	on_cost = function(skill, event, room, player, ctx)
+		return room:askForSkillInvoke(player, skill:objectName(), ctx.original_data)
+	end,
 	on_effect = function(skill, event, room, player, ctx)
-		local damage = ctx.original_data:toDamage()
-		for i = 0, damage.damage - 1, 1 do
-			if room:askForSkillInvoke(player, skill:objectName(), ctx.original_data) then
-				room:broadcastSkillInvoke(skill:objectName())
-				local judge = sgs.JudgeStruct()
-				judge.pattern = "."
-				judge.good = true
-				judge.reason = skill:objectName()
-				judge.who = player
-				room:judge(judge)
-				player:obtainCard(judge.card)
-				if judge.card:isBlack() then
-					local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), skill:objectName(), "shengqizuo-ask", true, true)
-					if target then
-						if target:getMark("&kejieshengqizuo") == 0 then
-							room:addPlayerMark(target, "@skill_invalidity")
-							room:addPlayerMark(target, "&kejieshengqizuo")
-							room:setPlayerCardLimitation(target, "use,response", "BasicCard", false)
-						end
-					end
+		room:broadcastSkillInvoke(skill:objectName())
+		local judge = sgs.JudgeStruct()
+		judge.pattern = "."
+		judge.good = true
+		judge.reason = skill:objectName()
+		judge.who = player
+		room:judge(judge)
+		room:obtainCard(player, judge.card, "kejieshengqizuo")
+		if judge.card:isBlack() then
+			local target = room:askForPlayerChosen(player, room:getOtherPlayers(player), skill:objectName(), "shengqizuo-ask", true, true)
+			if target then
+				if target:getMark("&kejieshengqizuo") == 0 then
+					room:addPlayerMark(target, "@skill_invalidity")
+					room:addPlayerMark(target, "&kejieshengqizuo")
+					room:setPlayerCardLimitation(target, "use,response", "BasicCard", false)
 				end
-				if judge.card:isRed() then
-					local one = room:askForPlayerChosen(player, room:getAllPlayers(), "kejieshengqizuo_get", "shengqizuoxuanpai-ask", true, true)
-					if one and one:getCardCount() > 0 then
-						local card_id = room:askForCardChosen(player, one, "he", skill:objectName())
-						local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName())
-						room:obtainCard(player, sgs.Sanguosha:getCard(card_id), reason, room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
-					end
+			end
+		end
+		if judge.card:isRed() then
+			local one = room:askForPlayerChosen(player, room:getAllPlayers(), "kejieshengqizuo_get", "shengqizuoxuanpai-ask", true, true)
+			if one and player:canGet(one, "he") then
+				local card_id = room:askForCardChosen(player, one, "he", skill:objectName(), false, sgs.Card_MethodGet)
+				if player:canGet(one, card_id) then
+					local reason = sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION, player:objectName(), one:objectName(), "kejieshengqizuo", "")
+					room:obtainCard(player, sgs.Sanguosha:getCard(card_id), reason, room:getCardPlace(card_id) ~= sgs.Player_PlaceHand)
 				end
 			end
 		end
@@ -1571,7 +1575,7 @@ kejieshengxiangzhi = sgs.CreateTriggerSkillV2 {
 		if not to_get:isEmpty() then
 			dummy:addSubcards(getCardList(to_get))
 			--dummy:addSubcards(getCardList(to_throw))
-			player:obtainCard(dummy)
+			room:obtainCard(player, dummy, "kejieshengxiangzhi")
 		end
 		dummy:clearSubcards()
 		--进入手牌预览
@@ -1827,7 +1831,7 @@ kejieshengliema = sgs.CreateTriggerSkillV2 {
 				yes = 1
 			end
 			local move_from = move.from and room:findPlayerByObjectName(move.from:objectName()) or nil
-			room:obtainCard(player, move.card_ids:first())
+			room:obtainCard(player, move.card_ids:first(), "kejieshengliema")
 			move.card_ids:removeAt(0)
 			move.from_places:removeAt(0)
 			ctx.original_data:setValue(move)

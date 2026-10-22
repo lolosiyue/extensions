@@ -103,8 +103,10 @@ local xcx_gongxin = sgs.CreateViewAsSkillV2 {
         source:removeTag(skill:objectName())
         local card = sgs.Sanguosha:getCard(card_id)
         if result == "obtain" then
-            room:obtainCard(source, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION,
-                source:objectName(), nil, skill:objectName(), nil), false)
+            if source:canGet(target, card_id) then
+                room:obtainCard(source, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_EXTRACTION,
+                    source:objectName(), target:objectName(), skill:objectName(), ""), false)
+            end
         else
             source:setFlags("Global_GongxinOperator")
             room:moveCardTo(card, target, nil, sgs.Player_DrawPile,
@@ -378,7 +380,7 @@ local xcx_danlao = sgs.CreateTriggerSkillV2 {
                 seen[id] = true
             end
             if not valid then card:deleteLater(); break end
-            room:obtainCard(target, card, false); received[target:objectName()] = target:objectName()
+            room:obtainCard(target, card, sgs.CardMoveReason(sgs.CardMoveReason_S_REASON_GIVE, player:objectName(), target:objectName(), skill:objectName(), ""), false); received[target:objectName()] = target:objectName()
             for _, id in sgs.qlist(card:getSubcards()) do
                 for i, left_id in ipairs(left) do
                     if left_id == id then table.remove(left, i); break end
